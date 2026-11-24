@@ -5,6 +5,7 @@ import {
   useState,
   type KeyboardEvent,
   type PointerEvent,
+  type ReactNode,
 } from "react";
 import { failureText, type Translate } from "@flame/component-sdk";
 import {
@@ -787,6 +788,311 @@ function useSlideDraft(
   };
 }
 
+type Handoff = "handed" | "stale" | "copied" | "failed";
+
+function savedElement(
+  layout: SlideLayout | undefined,
+  id: string | undefined,
+): ElementView | undefined {
+  if (id === undefined) return undefined;
+  return layout?.slides
+    .flatMap((entry) => entry.elements)
+    .find((entry) => entry.id === id);
+}
+
+function RevisionNotices({
+  t,
+  viewed,
+  head,
+  draft,
+  editing,
+  pending,
+  read,
+  baseRead,
+  onOpen,
+  onRebase,
+  onDiscard,
+  onRetry,
+}: {
+  t: Translate;
+  viewed: string;
+  head: string;
+  draft: Draft | undefined;
+  editing: boolean;
+  pending: string | undefined;
+  read: LayoutRead | undefined;
+  baseRead: LayoutRead | undefined;
+  onOpen(revision: string): void;
+  onRebase(draft: Draft): void;
+  onDiscard(): void;
+  onRetry(): void;
+}) {
+  return (
+    <>
+      {viewed !== head && !draft && (
+        <Callout kind="note">{t("slides.historical")}</Callout>
+      )}
+      {editing && head !== viewed && (
+        <Callout kind="warning">
+          {t("slides.newer")}{" "}
+          <Button onClick={() => onOpen(head)}>{t("slides.compare")}</Button>
+        </Callout>
+      )}
+      {pending && draft && (
+        <RecordGroup>
+          {viewed !== head ? (
+            <Callout kind="note">
+              {t("slides.draftElsewhere")}{" "}
+              <Button onClick={() => onOpen(pending)}>
+                {t("slides.openDraft")}
+              </Button>
+            </Callout>
+          ) : baseRead?.value && read?.value ? (
+            <Reconcile
+              base={baseRead.value}
+              head={{ id: head, layout: read.value }}
+              draft={draft}
+              onRebase={onRebase}
+              onDiscard={onDiscard}
+              t={t}
+            />
+          ) : (
+            <Metadata role="status">{t("slides.loading")}</Metadata>
+          )}
+        </RecordGroup>
+      )}
+      {(read?.error || baseRead?.error) && (
+        <Callout kind="warning">
+          {read?.error ?? baseRead?.error}{" "}
+          <Button onClick={onRetry}>{t("slides.retry")}</Button>
+        </Callout>
+      )}
+      {!read && <Metadata role="status">{t("slides.loading")}</Metadata>}
+    </>
+  );
+}
+
+function ElementInspector({
+  t,
+  element,
+  original,
+  editable,
+  revertible,
+  dirty,
+  reference,
+  onFrame,
+  onText,
+  onChart,
+  onDelete,
+  onRevert,
+}: {
+  t: Translate;
+  element: ElementView;
+  original: ElementView | undefined;
+  editable: boolean;
+  revertible: boolean;
+  dirty: boolean;
+  reference: ReactNode;
+  onFrame(frame: Frame): void;
+  onText(id: string, expect: string, text: string): void;
+  onChart(expect: ChartData, data: ChartData): void;
+  onDelete(): void;
+  onRevert(): void;
+}) {
+  return (
+    <RecordGroup>
+      <Facts
+        values={[
+          [t("slides.element"), t(`slides.kind.${element.kind}`)],
+          [t("slides.name"), element.name || null],
+        ]}
+      />
+      {element.frameSource && element.frameSource !== "slide" && (
+        <Metadata>{t(`slides.inherited.${element.frameSource}`)}</Metadata>
+      )}
+      {element.frame && (
+        <FrameFields
+          frame={element.frame}
+          editable={editable}
+          onCommit={onFrame}
+          t={t}
+        />
+      )}
+      {element.text.map((run, index) => {
+        const saved =
+          original?.text.find((entry) => entry.id === run.id)?.text ?? run.text;
+        return (
+          <RunField
+            key={run.id}
+            label={t("slides.run", { number: index + 1 })}
+            text={run.text}
+            editable={editable}
+            onCommit={(text) => onText(run.id, saved, text)}
+          />
+        );
+      })}
+      {element.kind === "chart" && !element.chart && (
+        <Metadata>{t("slides.chart.unsupported")}</Metadata>
+      )}
+      {element.chart && original?.chart && (
+        <ChartFields
+          chart={element.chart}
+          editable={editable}
+          onCommit={(data) => onChart(original.chart!.data, data)}
+          t={t}
+        />
+      )}
+      <Toolbar label={t("slides.elementActions")}>
+        <Button disabled={!editable} onClick={onDelete}>
+          {t("slides.delete")}
+        </Button>
+        <Button disabled={!revertible} onClick={onRevert}>
+          {t("slides.revert")}
+        </Button>
+        {reference}
+      </Toolbar>
+      {dirty && <Metadata>{t("slides.reference.unsaved")}</Metadata>}
+    </RecordGroup>
+  );
+}
+
+function SlideInspector({
+  t,
+  slide,
+  saved,
+  slideCount,
+  editable,
+  dirty,
+  reference,
+  onText,
+  onMove,
+  onRestructure,
+}: {
+  t: Translate;
+  slide: SlideView;
+  saved: SlideView | undefined;
+  slideCount: number;
+  editable: boolean;
+  dirty: boolean;
+  reference: ReactNode;
+  onText(id: string, expect: string, text: string): void;
+  onMove(offset: number): void;
+  onRestructure(operations: unknown[]): void;
+}) {
+  const [confirmingRemoval, setConfirmingRemoval] = useState(false);
+  const structural = editable && !dirty;
+  return (
+    <RecordGroup>
+      <Metadata>{t("slides.select")}</Metadata>
+      {slide.notes.map((run, index) => {
+        const savedText =
+          saved?.notes.find((entry) => entry.id === run.id)?.text ?? run.text;
+        return (
+          <RunField
+            key={run.id}
+            label={t("slides.notes", { number: index + 1 })}
+            text={run.text}
+            editable={editable}
+            onCommit={(text) => onText(run.id, savedText, text)}
+          />
+        );
+      })}
+      <Toolbar label={t("slides.slideActions")}>
+        <Button
+          disabled={!structural || slide.number === 1}
+          onClick={() => onMove(-1)}
+        >
+          {t("slides.moveUp")}
+        </Button>
+        <Button
+          disabled={!structural || slide.number === slideCount}
+          onClick={() => onMove(1)}
+        >
+          {t("slides.moveDown")}
+        </Button>
+        <Button
+          disabled={!structural}
+          onClick={() =>
+            onRestructure([{ type: "duplicateSlide", id: slide.id }])
+          }
+        >
+          {t("slides.duplicate")}
+        </Button>
+        <Button
+          disabled={!structural || slideCount < 2}
+          onClick={() => setConfirmingRemoval(true)}
+        >
+          {t("slides.deleteSlide")}
+        </Button>
+        {reference}
+      </Toolbar>
+      {dirty && <Metadata>{t("slides.structureBlocked")}</Metadata>}
+      {confirmingRemoval && (
+        <RecordGroup>
+          <Callout kind="warning">
+            {t("slides.deleteSlide.confirm", { number: slide.number })}
+          </Callout>
+          <FormActions label={t("slides.slideActions")}>
+            <Button onClick={() => setConfirmingRemoval(false)}>
+              {t("cancel")}
+            </Button>
+            <Button
+              disabled={!structural}
+              onClick={() => {
+                setConfirmingRemoval(false);
+                onRestructure([{ type: "deleteSlide", id: slide.id }]);
+              }}
+            >
+              {t("slides.deleteSlide")}
+            </Button>
+          </FormActions>
+        </RecordGroup>
+      )}
+    </RecordGroup>
+  );
+}
+
+function DraftToolbar({
+  t,
+  draft,
+  saving,
+  dirty,
+  editable,
+  onUndo,
+  onDiscard,
+  onSave,
+}: {
+  t: Translate;
+  draft: Draft;
+  saving: boolean;
+  dirty: boolean;
+  editable: boolean;
+  onUndo(): void;
+  onDiscard(): void;
+  onSave(): void;
+}) {
+  return (
+    <Toolbar label={t("slides.draft")}>
+      <Metadata role="status">
+        {saving
+          ? t("slides.saving")
+          : dirty
+            ? t("slides.unsaved", { count: draft.operations.length })
+            : t("slides.clean")}
+      </Metadata>
+      <Button disabled={!draft.undo.length || saving} onClick={onUndo}>
+        {t("slides.undo")}
+      </Button>
+      <Button disabled={saving} onClick={onDiscard}>
+        {t("slides.discard")}
+      </Button>
+      <Button variant="primary" disabled={!dirty || !editable} onClick={onSave}>
+        {t("slides.save")}
+      </Button>
+    </Toolbar>
+  );
+}
+
 // The workspace owns drafts by document, so reading another revision (which
 // unmounts this view while it loads) never discards unsubmitted intent.
 export function SlideStudio({
@@ -819,10 +1125,7 @@ export function SlideStudio({
   } = useSlideDraft(state, document, draft, onDraft);
   const [slideId, setSlideId] = useState<string>();
   const [elementId, setElementId] = useState<string>();
-  const [removal, setRemoval] = useState<string>();
-  const [handoff, setHandoff] = useState<
-    "handed" | "stale" | "copied" | "failed"
-  >();
+  const [handoff, setHandoff] = useState<Handoff>();
   const composer = state.context.composer;
   // Hosts without a Composer collaborator still let the user carry the
   // reference by hand.
@@ -842,19 +1145,21 @@ export function SlideStudio({
   );
   const read = layouts.get(viewed);
   const baseRead = pending ? layouts.get(pending) : undefined;
+  const savedLayout = read?.value;
   const layout = useMemo(
     () =>
-      read?.value && editedDraft
-        ? preview(read.value, editedDraft.operations)
-        : read?.value,
-    [read?.value, editedDraft],
+      savedLayout && editedDraft
+        ? preview(savedLayout, editedDraft.operations)
+        : savedLayout,
+    [savedLayout, editedDraft],
   );
   const slide =
     layout?.slides.find((entry) => entry.id === slideId) ?? layout?.slides[0];
   const element = slide?.elements.find((entry) => entry.id === elementId);
-  const original = read?.value?.slides
-    .flatMap((entry) => entry.elements)
-    .find((entry) => entry.id === elementId);
+  const original = savedElement(savedLayout, elementId);
+  const savedSlide = savedLayout?.slides.find(
+    (entry) => entry.id === slide?.id,
+  );
   const changed = (target: ElementView) =>
     !!draft?.operations.some(
       (operation) =>
@@ -863,9 +1168,7 @@ export function SlideStudio({
     );
 
   const setFrame = (target: ElementView, frame: Frame) => {
-    const source = read?.value?.slides
-      .flatMap((entry) => entry.elements)
-      .find((entry) => entry.id === target.id)?.frame;
+    const source = savedElement(savedLayout, target.id)?.frame;
     if (source)
       change({ type: "setFrame", id: target.id, expect: source, frame });
   };
@@ -884,65 +1187,38 @@ export function SlideStudio({
     [ids[index], ids[target]] = [ids[target]!, ids[index]!];
     restructure([{ type: "reorderSlides", ids }]);
   };
+  // A reference always names the saved revision, never unsaved draft values.
+  const reference = (
+    <Button
+      disabled={dirty || !savedSlide || (element !== undefined && !original)}
+      onClick={() => {
+        if (savedSlide)
+          hand(selectionReference(document, savedSlide, original));
+      }}
+    >
+      {t(composer ? "slides.handoff" : "slides.reference")}
+    </Button>
+  );
 
   return (
     <PanelSection title={t("slides.title")} description={t("slides.help")}>
-      {viewed !== head && !draft && (
-        <Callout kind="note">{t("slides.historical")}</Callout>
-      )}
-      {editedDraft && head !== viewed && (
-        <Callout kind="warning">
-          {t("slides.newer")}{" "}
-          <Button
-            onClick={() => state.open({ id: documentId, revision: head })}
-          >
-            {t("slides.compare")}
-          </Button>
-        </Callout>
-      )}
-      {pending && (
-        <RecordGroup>
-          {viewed === head ? (
-            baseRead?.value && read?.value ? (
-              <Reconcile
-                base={baseRead.value}
-                head={{ id: head, layout: read.value }}
-                draft={draft!}
-                onRebase={setDraft}
-                onDiscard={() => setDraft(undefined)}
-                t={t}
-              />
-            ) : (
-              <Metadata role="status">{t("slides.loading")}</Metadata>
-            )
-          ) : (
-            <Callout kind="note">
-              {t("slides.draftElsewhere")}{" "}
-              <Button
-                onClick={() =>
-                  state.open({ id: documentId, revision: pending })
-                }
-              >
-                {t("slides.openDraft")}
-              </Button>
-            </Callout>
-          )}
-        </RecordGroup>
-      )}
-      {(read?.error || baseRead?.error) && (
-        <Callout kind="warning">
-          {read?.error ?? baseRead?.error}{" "}
-          <Button
-            onClick={() => {
-              if (read?.error) layouts.retry(viewed);
-              if (pending && baseRead?.error) layouts.retry(pending);
-            }}
-          >
-            {t("slides.retry")}
-          </Button>
-        </Callout>
-      )}
-      {!read && <Metadata role="status">{t("slides.loading")}</Metadata>}
+      <RevisionNotices
+        t={t}
+        viewed={viewed}
+        head={head}
+        draft={draft}
+        editing={editedDraft !== undefined}
+        pending={pending}
+        read={read}
+        baseRead={baseRead}
+        onOpen={(revision) => state.open({ id: documentId, revision })}
+        onRebase={setDraft}
+        onDiscard={() => setDraft(undefined)}
+        onRetry={() => {
+          if (read?.error) layouts.retry(viewed);
+          if (pending && baseRead?.error) layouts.retry(pending);
+        }}
+      />
       {layout && slide && (
         <div
           onKeyDown={(event) => {
@@ -975,7 +1251,6 @@ export function SlideStudio({
                   onClick={() => {
                     setSlideId(entry.id);
                     setElementId(undefined);
-                    setRemoval(undefined);
                   }}
                 >
                   {t("slides.slide", { number: entry.number })}
@@ -1019,215 +1294,59 @@ export function SlideStudio({
           </div>
           <div style={{ flex: "2 1 16rem", minWidth: 0 }}>
             {element ? (
-              <RecordGroup>
-                <Facts
-                  values={[
-                    [t("slides.element"), t(`slides.kind.${element.kind}`)],
-                    [t("slides.name"), element.name || null],
-                  ]}
-                />
-                {element.frameSource && element.frameSource !== "slide" && (
-                  <Metadata>
-                    {t(`slides.inherited.${element.frameSource}`)}
-                  </Metadata>
-                )}
-                {element.frame && (
-                  <FrameFields
-                    frame={element.frame}
-                    editable={editable}
-                    onCommit={(frame) => setFrame(element, frame)}
-                    t={t}
-                  />
-                )}
-                {element.text.map((run, index) => {
-                  const saved =
-                    original?.text.find((entry) => entry.id === run.id)?.text ??
-                    run.text;
-                  return (
-                    <RunField
-                      key={run.id}
-                      label={t("slides.run", { number: index + 1 })}
-                      text={run.text}
-                      editable={editable}
-                      onCommit={(text) => setText(run.id, saved, text)}
-                    />
-                  );
-                })}
-                {element.kind === "chart" && !element.chart && (
-                  <Metadata>{t("slides.chart.unsupported")}</Metadata>
-                )}
-                {element.chart && original?.chart && (
-                  <ChartFields
-                    chart={element.chart}
-                    editable={editable}
-                    onCommit={(data) =>
-                      change({
-                        type: "setChartData",
-                        id: element.id,
-                        expect: original.chart!.data,
-                        data,
-                      })
-                    }
-                    t={t}
-                  />
-                )}
-                <Toolbar label={t("slides.elementActions")}>
-                  <Button disabled={!editable} onClick={() => remove(element)}>
-                    {t("slides.delete")}
-                  </Button>
-                  <Button
-                    disabled={!editedDraft || !changed(element) || !original}
-                    onClick={() => {
-                      if (original)
-                        setDraft(
-                          (current) => current && revert(current, original),
-                        );
-                    }}
-                  >
-                    {t("slides.revert")}
-                  </Button>
-                  <Button
-                    disabled={dirty}
-                    onClick={() => {
-                      const saved = read?.value?.slides.find(
-                        (entry) => entry.id === slide.id,
-                      );
-                      if (!saved || !original) return;
-                      hand(selectionReference(document, saved, original));
-                    }}
-                  >
-                    {t(composer ? "slides.handoff" : "slides.reference")}
-                  </Button>
-                </Toolbar>
-                {dirty && <Metadata>{t("slides.reference.unsaved")}</Metadata>}
-                {handoff && (
-                  <Metadata role="status">
-                    {t(`slides.reference.${handoff}`)}
-                  </Metadata>
-                )}
-              </RecordGroup>
+              <ElementInspector
+                t={t}
+                element={element}
+                original={original}
+                editable={editable}
+                revertible={!!editedDraft && changed(element) && !!original}
+                dirty={dirty}
+                reference={reference}
+                onFrame={(frame) => setFrame(element, frame)}
+                onText={setText}
+                onChart={(expect, data) =>
+                  change({ type: "setChartData", id: element.id, expect, data })
+                }
+                onDelete={() => remove(element)}
+                onRevert={() => {
+                  if (original)
+                    setDraft((current) => current && revert(current, original));
+                }}
+              />
             ) : (
-              <RecordGroup>
-                <Metadata>{t("slides.select")}</Metadata>
-                {slide.notes.map((run, index) => {
-                  const saved =
-                    read?.value?.slides
-                      .find((entry) => entry.id === slide.id)
-                      ?.notes.find((entry) => entry.id === run.id)?.text ??
-                    run.text;
-                  return (
-                    <RunField
-                      key={run.id}
-                      label={t("slides.notes", { number: index + 1 })}
-                      text={run.text}
-                      editable={editable}
-                      onCommit={(text) => setText(run.id, saved, text)}
-                    />
-                  );
-                })}
-                <Toolbar label={t("slides.slideActions")}>
-                  <Button
-                    disabled={!editable || dirty || slide.number === 1}
-                    onClick={() => move(-1)}
-                  >
-                    {t("slides.moveUp")}
-                  </Button>
-                  <Button
-                    disabled={
-                      !editable ||
-                      dirty ||
-                      slide.number === layout.slides.length
-                    }
-                    onClick={() => move(1)}
-                  >
-                    {t("slides.moveDown")}
-                  </Button>
-                  <Button
-                    disabled={!editable || dirty}
-                    onClick={() =>
-                      restructure([{ type: "duplicateSlide", id: slide.id }])
-                    }
-                  >
-                    {t("slides.duplicate")}
-                  </Button>
-                  <Button
-                    disabled={!editable || dirty || layout.slides.length < 2}
-                    onClick={() => setRemoval(slide.id)}
-                  >
-                    {t("slides.deleteSlide")}
-                  </Button>
-                  <Button
-                    disabled={dirty}
-                    onClick={() => {
-                      const saved = read?.value?.slides.find(
-                        (entry) => entry.id === slide.id,
-                      );
-                      if (!saved) return;
-                      hand(selectionReference(document, saved, undefined));
-                    }}
-                  >
-                    {t(composer ? "slides.handoff" : "slides.reference")}
-                  </Button>
-                </Toolbar>
-                {dirty && <Metadata>{t("slides.structureBlocked")}</Metadata>}
-                {removal === slide.id && (
-                  <RecordGroup>
-                    <Callout kind="warning">
-                      {t("slides.deleteSlide.confirm", {
-                        number: slide.number,
-                      })}
-                    </Callout>
-                    <FormActions label={t("slides.slideActions")}>
-                      <Button onClick={() => setRemoval(undefined)}>
-                        {t("cancel")}
-                      </Button>
-                      <Button
-                        disabled={!editable || dirty}
-                        onClick={() => {
-                          setRemoval(undefined);
-                          restructure([{ type: "deleteSlide", id: slide.id }]);
-                        }}
-                      >
-                        {t("slides.deleteSlide")}
-                      </Button>
-                    </FormActions>
-                  </RecordGroup>
-                )}
-                {handoff && (
-                  <Metadata role="status">
-                    {t(`slides.reference.${handoff}`)}
-                  </Metadata>
-                )}
-              </RecordGroup>
+              <SlideInspector
+                key={slide.id}
+                t={t}
+                slide={slide}
+                saved={savedSlide}
+                slideCount={layout.slides.length}
+                editable={editable}
+                dirty={dirty}
+                reference={reference}
+                onText={setText}
+                onMove={move}
+                onRestructure={restructure}
+              />
+            )}
+            {handoff && (
+              <Metadata role="status">
+                {t(`slides.reference.${handoff}`)}
+              </Metadata>
             )}
           </div>
         </div>
       )}
       {editedDraft && (
-        <Toolbar label={t("slides.draft")}>
-          <Metadata role="status">
-            {saving
-              ? t("slides.saving")
-              : dirty
-                ? t("slides.unsaved", { count: editedDraft.operations.length })
-                : t("slides.clean")}
-          </Metadata>
-          <Button disabled={!editedDraft.undo.length || saving} onClick={undo}>
-            {t("slides.undo")}
-          </Button>
-          <Button disabled={saving} onClick={() => setDraft(undefined)}>
-            {t("slides.discard")}
-          </Button>
-          <Button
-            variant="primary"
-            disabled={!dirty || !editable}
-            onClick={() => {
-              void save();
-            }}
-          >
-            {t("slides.save")}
-          </Button>
-        </Toolbar>
+        <DraftToolbar
+          t={t}
+          draft={editedDraft}
+          saving={saving}
+          dirty={dirty}
+          editable={editable}
+          onUndo={undo}
+          onDiscard={() => setDraft(undefined)}
+          onSave={() => void save()}
+        />
       )}
     </PanelSection>
   );
