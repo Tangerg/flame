@@ -85,46 +85,49 @@ export function AppToaster() {
   return (
     <Toast.Portal>
       <Toast.Viewport aria-label={t("notifications.title")} {...stylex.props(styles.frame)}>
-        <ol
-          ref={listRef}
-          // The bounded notification reader must accept keyboard scrolling independently of its buttons.
-          tabIndex={0}
-          aria-label={t("notifications.title")}
-          {...stylex.props(styles.list)}
-        >
-          {toasts.map((toast) => (
-            <li key={toast.id} {...stylex.props(styles.item)}>
-              <Toast.Root
-                data-slot="notification-toast"
-                toast={toast}
-                {...stylex.props(styles.toast)}
-              >
-                <Toast.Content {...stylex.props(styles.content)}>
-                  <div {...stylex.props(styles.text)}>
-                    <Toast.Title {...stylex.props(styles.title, typeStep.uiMd)} />
-                    <Toast.Description {...stylex.props(styles.description, typeStep.uiMd)} />
-                    <Toast.Action
-                      tabIndex={0}
-                      render={<Button size="sm" variant="soft" />}
-                      {...stylex.props(styles.action)}
-                    />
-                  </div>
-                  <Toast.Close
-                    aria-hidden={false}
-                    tabIndex={0}
-                    render={
-                      <IconButton
-                        icon={iconGlyph("x")}
-                        size="xs"
-                        aria-label={t("notifications.dismiss")}
+        {/* An empty padded list would still catch pointer input and hold a tab stop. */}
+        {toasts.length > 0 && (
+          <ol
+            ref={listRef}
+            // The bounded notification reader must accept keyboard scrolling independently of its buttons.
+            tabIndex={0}
+            aria-label={t("notifications.title")}
+            {...stylex.props(styles.list)}
+          >
+            {toasts.map((toast) => (
+              <li key={toast.id} {...stylex.props(styles.item)}>
+                <Toast.Root
+                  data-slot="notification-toast"
+                  toast={toast}
+                  {...stylex.props(styles.toast)}
+                >
+                  <Toast.Content {...stylex.props(styles.content)}>
+                    <div {...stylex.props(styles.text)}>
+                      <Toast.Title {...stylex.props(styles.title, typeStep.uiMd)} />
+                      <Toast.Description {...stylex.props(styles.description, typeStep.uiMd)} />
+                      <Toast.Action
+                        tabIndex={0}
+                        render={<Button size="sm" variant="soft" />}
+                        {...stylex.props(styles.action)}
                       />
-                    }
-                  />
-                </Toast.Content>
-              </Toast.Root>
-            </li>
-          ))}
-        </ol>
+                    </div>
+                    <Toast.Close
+                      aria-hidden={false}
+                      tabIndex={0}
+                      render={
+                        <IconButton
+                          icon={iconGlyph("x")}
+                          size="xs"
+                          aria-label={t("notifications.dismiss")}
+                        />
+                      }
+                    />
+                  </Toast.Content>
+                </Toast.Root>
+              </li>
+            ))}
+          </ol>
+        )}
       </Toast.Viewport>
     </Toast.Portal>
   );
