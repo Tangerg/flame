@@ -164,6 +164,45 @@ type SetupHandler = (
   context: SetupContext,
 ) => void | ActivationResource | Promise<void | ActivationResource>;
 
+function admittedInvocation(
+  value: unknown,
+  target: string | undefined,
+): Invocation | undefined {
+  if (value === undefined) return undefined;
+  const invocation = value as Invocation;
+  exactFields(invocation, ["id", "origin", "target"], ["parent"]);
+  exactFields(invocation.target, ["scope", "reference"]);
+  if (
+    !validName(invocation.id) ||
+    !validName(invocation.origin) ||
+    (invocation.parent !== undefined &&
+      (!validName(invocation.parent) || invocation.parent === invocation.id)) ||
+    !validName(invocation.target.scope) ||
+    typeof invocation.target.reference !== "string" ||
+    !invocation.target.reference ||
+    /\p{Cc}/u.test(invocation.target.reference) ||
+    (target !== undefined && invocation.target.scope !== target)
+  )
+    throw new Error("plugin: invalid calling-owner invocation");
+  return invocation;
+}
+
+function admittedToolContext(value: unknown): ToolContext | undefined {
+  if (value === undefined) return undefined;
+  const toolContext = value as ToolContext;
+  exactFields(toolContext, ["cwd"], ["project", "embeddingSpace"]);
+  if (
+    typeof toolContext.cwd !== "string" ||
+    !toolContext.cwd.trim() ||
+    (toolContext.project !== undefined &&
+      typeof toolContext.project !== "string") ||
+    (toolContext.embeddingSpace !== undefined &&
+      typeof toolContext.embeddingSpace !== "string")
+  )
+    throw new Error("plugin: invalid captured Tool context");
+  return toolContext;
+}
+
 export class Backend {
   readonly #server: Server;
   readonly #methods = new Map<string, BoundMethod>();
@@ -461,43 +500,17 @@ export class Backend {
     target?: string,
   ): CallContext {
     const meta = this.#metadata(params);
-    const invocation = meta[wire.constants.invocationMetadataKey!] as
-      Invocation | undefined;
-    if (invocation !== undefined) {
-      exactFields(invocation, ["id", "origin", "target"], ["parent"]);
-      exactFields(invocation.target, ["scope", "reference"]);
-      if (
-        !validName(invocation.id) ||
-        !validName(invocation.origin) ||
-        (invocation.parent !== undefined &&
-          (!validName(invocation.parent) ||
-            invocation.parent === invocation.id)) ||
-        !validName(invocation.target.scope) ||
-        typeof invocation.target.reference !== "string" ||
-        !invocation.target.reference ||
-        /\p{Cc}/u.test(invocation.target.reference) ||
-        (target !== undefined && invocation.target.scope !== target)
-      )
-        throw new Error("plugin: invalid calling-owner invocation");
-    }
+    const invocation = admittedInvocation(
+      meta[wire.constants.invocationMetadataKey!],
+      target,
+    );
     const ref =
       meta[wire.constants.callbackMetadataKey!] === undefined
         ? undefined
         : callbackRef(meta[wire.constants.callbackMetadataKey!]);
-    const toolContext = meta[wire.constants.toolContextMetadataKey!] as
-      ToolContext | undefined;
-    if (toolContext !== undefined) {
-      exactFields(toolContext, ["cwd"], ["project", "embeddingSpace"]);
-      if (
-        typeof toolContext.cwd !== "string" ||
-        !toolContext.cwd.trim() ||
-        (toolContext.project !== undefined &&
-          typeof toolContext.project !== "string") ||
-        (toolContext.embeddingSpace !== undefined &&
-          typeof toolContext.embeddingSpace !== "string")
-      )
-        throw new Error("plugin: invalid captured Tool context");
-    }
+    const toolContext = admittedToolContext(
+      meta[wire.constants.toolContextMetadataKey!],
+    );
     const lifetime = owner.signal;
     return Object.freeze({
       signal: lifetime,
