@@ -7,6 +7,14 @@ export interface CellAddress {
   column: number;
   row: number;
 }
+export interface CellRange {
+  start: CellAddress;
+  end: CellAddress;
+}
+export const xlsxBounds = { columns: 16384, rows: 1048576 } as const;
+export function isSheetElement(node: XmlNode, local: string): boolean {
+  return node.uri === namespaces.sheet && node.local === local;
+}
 export function cellAddress(value: string): CellAddress {
   const match = /^([A-Z]{1,3})([1-9][0-9]{0,6})$/u.exec(value);
   if (!match) throw new Error("invalid spreadsheet cell address");
@@ -14,7 +22,7 @@ export function cellAddress(value: string): CellAddress {
   for (const letter of match[1]!)
     column = column * 26 + letter.charCodeAt(0) - 64;
   const row = Number(match[2]);
-  if (column > 16384 || row > 1048576)
+  if (column > xlsxBounds.columns || row > xlsxBounds.rows)
     throw new Error("spreadsheet cell is outside XLSX dimensions");
   return { column, row };
 }
@@ -27,16 +35,21 @@ export function addressName(column: number, row: number): string {
   }
   return `${name}${row}`;
 }
-export function cellRange(value: string): {
-  start: CellAddress;
-  end: CellAddress;
-} {
+export function cellRange(value: string): CellRange {
   const [first, last] = value.split(":");
   const start = cellAddress(first!);
   const end = cellAddress(last!);
   if (start.column > end.column || start.row > end.row)
     throw new Error("spreadsheet range bounds are reversed");
   return { start, end };
+}
+export function rangeContains(range: CellRange, point: CellAddress): boolean {
+  return (
+    point.row >= range.start.row &&
+    point.row <= range.end.row &&
+    point.column >= range.start.column &&
+    point.column <= range.end.column
+  );
 }
 export function rangeAddresses(value: string, maximum = 50_000): string[] {
   const { start, end } = cellRange(value);
@@ -57,7 +70,7 @@ function stringItemText(item: XmlNode): string {
       if (child.local === "t") return child.text;
       if (child.local !== "r") return "";
       return child.children
-        .filter((run) => run.uri === namespaces.sheet && run.local === "t")
+        .filter((run) => isSheetElement(run, "t"))
         .map((run) => run.text)
         .join("");
     })
@@ -68,9 +81,7 @@ export function sharedStrings(archive: OfficePackage): string[] {
   if (!archive.parts.has("xl/sharedStrings.xml")) return [];
   return archive
     .xml("xl/sharedStrings.xml")
-    .root.children.filter(
-      (node) => node.uri === namespaces.sheet && node.local === "si",
-    )
+    .root.children.filter((node) => isSheetElement(node, "si"))
     .map(stringItemText);
 }
 export function cellDescription(
@@ -78,9 +89,7 @@ export function cellDescription(
   strings: string[],
 ): string {
   if (!cell) return "";
-  const formula = cell.children.find(
-    (node) => node.uri === namespaces.sheet && node.local === "f",
-  );
+  const formula = cell.children.find((node) => isSheetElement(node, "f"));
   if (formula) {
     if (formula.attributes.t === "shared" && !formula.text)
       return JSON.stringify({ type: "formula", shared: formula.attributes.si });
@@ -95,15 +104,11 @@ type CellProjection =
   | { type: "number"; value: string; representation: "native_decimal" };
 
 export function cellValue(cell: XmlNode, strings: string[]): CellProjection {
-  const value = cell.children.find(
-    (node) => node.uri === namespaces.sheet && node.local === "v",
-  )?.text;
+  const value = cell.children.find((node) => isSheetElement(node, "v"))?.text;
   let projected: CellProjection;
   switch (cell.attributes.t) {
     case "inlineStr": {
-      const inline = cell.children.find(
-        (node) => node.local === "is" && node.uri === namespaces.sheet,
-      );
+      const inline = cell.children.find((node) => isSheetElement(node, "is"));
       if (!inline) throw new Error("inline string cell has no string content");
       projected = { type: "string", value: stringItemText(inline) };
       break;
@@ -173,8 +178,8 @@ export function workbookSheets(
   const workbook = archive.xml("xl/workbook.xml");
   const relationships = archive.xml("xl/_rels/workbook.xml.rels").root.children;
   const result: Array<{ name: string; part: string }> = [];
-  for (const sheet of workbook.nodes.filter(
-    (node) => node.uri === namespaces.sheet && node.local === "sheet",
+  for (const sheet of workbook.nodes.filter((node) =>
+    isSheetElement(node, "sheet"),
   )) {
     const relation = relationships.find(
       (candidate) =>
