@@ -44,10 +44,18 @@ import {
 } from "./callback.ts";
 import wire from "./protocol.generated.json";
 
+// The calling owner's Run scope on a model Tool call; Project is empty when the
+// Run's Session belongs to none.
+export interface ToolContext {
+  readonly cwd: string;
+  readonly project?: string;
+  readonly embeddingSpace?: string;
+}
 export interface CallContext {
   readonly signal: AbortSignal;
   readonly commandId?: string;
   readonly invocation?: Invocation;
+  readonly toolContext?: ToolContext;
   readonly requestInput: string;
   readonly inputDigest: string;
   readonly callback?: CallbackRef;
@@ -476,11 +484,26 @@ export class Backend {
       meta[wire.constants.callbackMetadataKey!] === undefined
         ? undefined
         : callbackRef(meta[wire.constants.callbackMetadataKey!]);
+    const toolContext = meta[wire.constants.toolContextMetadataKey!] as
+      ToolContext | undefined;
+    if (toolContext !== undefined) {
+      exactFields(toolContext, ["cwd"], ["project", "embeddingSpace"]);
+      if (
+        typeof toolContext.cwd !== "string" ||
+        !toolContext.cwd.trim() ||
+        (toolContext.project !== undefined &&
+          typeof toolContext.project !== "string") ||
+        (toolContext.embeddingSpace !== undefined &&
+          typeof toolContext.embeddingSpace !== "string")
+      )
+        throw new Error("plugin: invalid captured Tool context");
+    }
     const lifetime = owner.signal;
     return Object.freeze({
       signal: lifetime,
       commandId: params.commandId as string | undefined,
       invocation,
+      toolContext,
       callback: ref,
       requestInput: canonicalJSON(params.input),
       inputDigest: digestJSON(params.input),

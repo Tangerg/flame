@@ -54,7 +54,7 @@ func admitToolCall(ctx context.Context, params *sdk.CallToolParamsRaw) (context.
 	if err != nil {
 		return nil, err
 	}
-	if _, attached := params.Meta[ToolContextMetadataKey]; !attached {
+	if _, attached := params.Meta[pluginmcp.ToolContextMetadataKey]; !attached {
 		return ctx, nil
 	}
 	captured, err := toolContextFromMetadata(params.Meta)

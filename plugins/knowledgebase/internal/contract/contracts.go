@@ -16,7 +16,7 @@ type Contracts struct {
 	Import     *pluginmcp.Method[wire.ImportInput, knowledge.Header]
 	Reindex    *pluginmcp.Method[wire.DocumentInput, knowledge.Header]
 	Delete     *pluginmcp.Method[wire.DocumentInput, bool]
-	List       *pluginmcp.Method[struct{}, []knowledge.Header]
+	List       *pluginmcp.Method[wire.ListInput, []knowledge.Header]
 	Read       *pluginmcp.Method[wire.ReadInput, wire.DocumentRead]
 	Search     *pluginmcp.Method[wire.SearchInput, []knowledge.Match]
 }
@@ -32,7 +32,7 @@ func NewContracts() (Contracts, error) {
 		Import:     pluginmcp.Implement[wire.ImportInput, knowledge.Header](methods, published.ImportV1Method),
 		Reindex:    pluginmcp.Implement[wire.DocumentInput, knowledge.Header](methods, published.ReindexV1Method),
 		Delete:     pluginmcp.Implement[wire.DocumentInput, bool](methods, published.DeleteV1Method),
-		List:       pluginmcp.Implement[struct{}, []knowledge.Header](methods, published.ListV1Method),
+		List:       pluginmcp.Implement[wire.ListInput, []knowledge.Header](methods, published.ListV1Method),
 		Search:     pluginmcp.Implement[wire.SearchInput, []knowledge.Match](methods, published.SearchV1Method),
 		Read:       pluginmcp.Implement[wire.ReadInput, wire.DocumentRead](methods, published.ReadV1Method),
 	}

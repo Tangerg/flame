@@ -5,6 +5,7 @@ import {
   Capability,
   Refusal,
   canonicalJSON,
+  type CallContext,
 } from "@flame/backend-sdk/mcp";
 import { toolReceipts } from "@flame/backend-sdk";
 import descriptor, {
@@ -25,6 +26,15 @@ import { Engine } from "./engine";
 import { Formats } from "./format-process";
 import manifest from "../package/plugin.json";
 import { z } from "zod";
+
+const projectScoped: ReadonlySet<string> = new Set(["list", "create", "import"]);
+
+function runProject(context: CallContext): { project?: string } {
+  if (!context.toolContext)
+    throw new Error("deliverables: captured Tool context is required");
+  const { project } = context.toolContext;
+  return project ? { project } : {};
+}
 
 export function createBackend(
   environment: NodeJS.ProcessEnv,
@@ -108,10 +118,10 @@ export function createBackend(
         },
       },
       async (context, value) => {
-        const decoded = decodeInput(modelInput, value) as Record<
-          string,
-          unknown
-        >;
+        const decoded = {
+          ...(decodeInput(modelInput, value) as Record<string, unknown>),
+          ...(projectScoped.has(operation) ? runProject(context) : {}),
+        };
         try {
           context.signal.throwIfAborted();
           if (method.descriptor.kind === "query") {

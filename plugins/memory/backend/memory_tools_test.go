@@ -32,7 +32,7 @@ func callMemoryModelTool(t *testing.T, session *sdk.ClientSession, project, id, 
 	if err := meta.Set(pluginmcp.InvocationMetadataKey, framecall.Invocation{ID: id, Origin: extension.Model, Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: "memory-owner"}}); err != nil {
 		t.Fatal(err)
 	}
-	if err := meta.Set(pluginsdk.ToolContextMetadataKey, pluginsdk.ToolContext{CWD: project}); err != nil {
+	if err := meta.Set(pluginmcp.ToolContextMetadataKey, pluginsdk.ToolContext{CWD: project}); err != nil {
 		t.Fatal(err)
 	}
 	admitted, err := framevalue.EncodeJSON(input)

@@ -581,7 +581,9 @@ It has no command identity, execution continuation or model-routing authority.
 captured before the host appends transient material such as deferred-tool catalogs.
 It is absent when that source has no user message. Retrieval consumers use this
 projection instead of inferring authored input from the final request's last role.
-Earlier contributors cannot replace it.
+Earlier contributors cannot replace it. `project` is the calling Run's captured
+Project, absent when its Session belongs to none; project-scoped reference data
+keys on it.
 
 Context v3 replaces the former context method and contract without an adapter. Rebuild
 context backends and select the v3 composition explicitly. Finish waiting older work
@@ -821,7 +823,8 @@ owner, outside model arguments; callback authority remains only in `pluginmcp.Ca
 metadata. There is no standing model grant inside the context record.
 
 An ordinary installed model Tool call receives the same canonical call-scoped host
-grant as its public `plugins.call` entry, through the one grant owner. The grant
+grant as its public `plugins.call` entry, through the one grant owner, and a
+`ToolContext` naming the Run's working directory and captured Project. The grant
 carries the Tool call's own invocation and the backend's frozen dependency
 authority, so one business reached through either entry keeps identical host
 capability, declared-dependency reach and call attribution. Memory keeps its

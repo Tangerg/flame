@@ -33,8 +33,19 @@ rule or hook first needs to target a Project.
 When a Segment opens, Runtime reads the Session's Project together with its
 workspace and captures both in the execution scope. Project instructions enter the
 system message composed at Run start, which the executor checkpoint retains;
-editing them affects later Runs only. Installed Tools receive the captured Project
-in `plugin.ToolContext`.
+editing them affects later Runs only. Their provenance names the Project revision,
+so a trajectory export shows which instructions each model request carried.
+Every installed Tool receives the captured Project in `plugin.ToolContext`, and
+model-context contributions receive it in their request; neither accepts one
+from model arguments.
+
+## Plugin objects
+
+The Knowledge base and Deliverables store the captured Project with the objects
+they create. A Knowledge base document with a Project is retrieved only inside
+that Project, while shared documents are retrieved everywhere; another Project's
+document reads as absent. A deliverable records the Project it was made in, and
+inside a Project the archive lists only that Project's documents.
 
 ## Memory
 

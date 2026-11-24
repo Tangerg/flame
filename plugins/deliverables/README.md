@@ -33,6 +33,13 @@ the author's statements are true. The component owns selection and unsubmitted
 drafts only. File saving belongs to the host and does not advance a document's
 review or delivery state.
 
+A document records the Project it was created or imported in: the calling Run's
+captured Project for a model Tool, the active Session's Project for the workspace
+component. A model never names one. Inside a Project, `list` returns only that
+Project's documents; elsewhere it lists every document. Operations on a known
+document identity are not scoped. Runtime owns the Project itself, so archiving
+one changes no document.
+
 ## Format boundary
 
 `contracts/content.ts` publishes the supported content and edit vocabulary.

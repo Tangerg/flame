@@ -47,18 +47,32 @@ func newServer(library *library) (*sdk.Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	search, err := tool.NewFunc(tool.FuncConfig{Name: searchKnowledgeTool, Description: contracts.Search.Descriptor().Description}, func(ctx context.Context, input wire.SearchInput) ([]knowledge.Match, error) {
-		return modelResult(library.search(ctx, input))
+	search, err := tool.NewFunc(tool.FuncConfig{Name: searchKnowledgeTool, Description: contracts.Search.Descriptor().Description}, func(ctx context.Context, input wire.ToolSearchInput) ([]knowledge.Match, error) {
+		project, err := runProject(ctx)
+		if err != nil {
+			return nil, err
+		}
+		return modelResult(library.search(ctx, wire.SearchInput{Query: input.Query, Limit: input.Limit, Project: project}))
 	})
 	if err != nil {
 		return nil, err
 	}
-	list, err := tool.NewFunc(tool.FuncConfig{Name: listDocumentsTool, Description: contracts.List.Descriptor().Description}, func(ctx context.Context, _ struct{}) ([]knowledge.Header, error) { return library.list(ctx) })
+	list, err := tool.NewFunc(tool.FuncConfig{Name: listDocumentsTool, Description: contracts.List.Descriptor().Description}, func(ctx context.Context, _ struct{}) ([]knowledge.Header, error) {
+		project, err := runProject(ctx)
+		if err != nil {
+			return nil, err
+		}
+		return library.list(ctx, wire.ListInput{Project: project})
+	})
 	if err != nil {
 		return nil, err
 	}
-	read, err := tool.NewFunc(tool.FuncConfig{Name: readDocumentTool, Description: contracts.Read.Descriptor().Description}, func(ctx context.Context, input wire.ReadInput) (wire.DocumentRead, error) {
-		return modelResult(library.read(ctx, input))
+	read, err := tool.NewFunc(tool.FuncConfig{Name: readDocumentTool, Description: contracts.Read.Descriptor().Description}, func(ctx context.Context, input wire.ToolReadInput) (wire.DocumentRead, error) {
+		project, err := runProject(ctx)
+		if err != nil {
+			return wire.DocumentRead{}, err
+		}
+		return modelResult(library.read(ctx, wire.ReadInput{ID: input.ID, Project: project}))
 	})
 	if err != nil {
 		return nil, err
@@ -85,8 +99,8 @@ func newServer(library *library) (*sdk.Server, error) {
 		pluginstorage.RegisterCommand(backend, library.store.db, contracts.Delete, classify, func(ctx context.Context, _ *sdk.ServerSession, input wire.DocumentInput) (pluginstorage.CommandPlan[bool], error) {
 			return library.store.prepareDeletion(ctx, input.ID, input.ExpectedRevision)
 		}),
-		contracts.List.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, _ pluginmcp.Command[struct{}]) ([]knowledge.Header, error) {
-			return library.list(ctx)
+		contracts.List.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[wire.ListInput]) ([]knowledge.Header, error) {
+			return library.list(ctx, command.Input)
 		}),
 		contracts.Read.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[wire.ReadInput]) (wire.DocumentRead, error) {
 			return library.read(ctx, command.Input)
@@ -108,6 +122,11 @@ func newServer(library *library) (*sdk.Server, error) {
 	return server, nil
 }
 
+func runProject(ctx context.Context) (string, error) {
+	captured, err := pluginsdk.ToolContextFromContext(ctx)
+	return captured.Project, err
+}
+
 func modelResult[T any](value T, err error) (T, error) {
 	if _, refused := classify(err); err == nil || !refused {
 		return value, err
@@ -125,7 +144,7 @@ func (l *library) contribute(ctx context.Context, input pluginsdk.ModelContextRe
 	query := input.UserMessage.Text()
 	runes := []rune(query)
 	query = string(runes[max(0, len(runes)-knowledge.MaxQueryRunes):])
-	matches, err := l.search(ctx, wire.SearchInput{Query: query, Limit: modelContextPassages})
+	matches, err := l.search(ctx, wire.SearchInput{Query: query, Limit: modelContextPassages, Project: input.Project})
 	if err != nil {
 		return pluginsdk.ModelContextResult{}, err
 	}

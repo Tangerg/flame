@@ -14,6 +14,7 @@
     "callHeader": "Flame-Call",
     "invocationHeader": "Flame-Invocation",
     "invocationMetadataKey": "io.github.tangerg.flame/invocation",
+    "toolContextMetadataKey": "io.github.tangerg.flame/tool-context.v1",
     "receiptMethod": "io.github.tangerg.flame/commands.get"
   },
   "limits": {

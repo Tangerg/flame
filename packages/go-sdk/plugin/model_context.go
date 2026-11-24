@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
@@ -13,10 +14,13 @@ import (
 	"github.com/Tangerg/scope/core/content"
 )
 
+// Project is the calling Run's captured Project, empty when its Session belongs
+// to none, so a contribution can scope reference data without inferring it.
 type ModelContextRequest struct {
 	Use         flamemodel.Use `json:"use"`
 	Provider    string         `json:"provider"`
 	Model       string         `json:"model"`
+	Project     string         `json:"project,omitzero"`
 	Request     chat.Request   `json:"request"`
 	UserMessage *chat.Message  `json:"userMessage,omitzero"`
 }
@@ -53,6 +57,9 @@ func (r ModelContextRequest) Validate() error {
 		return err
 	}
 	if err := (ModelSelection{Provider: r.Provider, Model: r.Model}).Validate(); err != nil {
+		return err
+	}
+	if _, err := identity.ParseOptionalProject(r.Project); err != nil {
 		return err
 	}
 	if r.UserMessage != nil {

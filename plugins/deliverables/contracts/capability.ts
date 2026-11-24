@@ -7,6 +7,8 @@ import { METHODS } from "./methods";
 export { METHODS } from "./methods";
 
 const id = z.string().regex(/^[a-f0-9]{64}$/);
+// Runtime owns Project identity; a deliverable only records the one it was made in.
+const project = z.string().min(1).max(256);
 const title = z.string().min(1).max(FIELD_LIMITS.title);
 const timestamp = z.string().min(1).max(40);
 const empty = z.strictObject({});
@@ -50,6 +52,7 @@ const header = z.strictObject({
   format: formatSchema,
   head: id,
   createdAt: timestamp,
+  project: project.optional(),
 });
 const assessment = z.strictObject({
   id,
@@ -64,6 +67,7 @@ const page = z.strictObject({
   before: id.optional(),
   limit: z.number().int().min(1).max(LIMITS.pageSize),
 });
+const listInput = page.extend({ project: project.optional() });
 const selected = z.strictObject({ id, revision: id });
 const expected = z.strictObject({ id, expectedRevision: id });
 const uploaded = z.strictObject({
@@ -84,6 +88,7 @@ export const schemas = Object.freeze({
   selected,
   expected,
   page,
+  listInput,
   uploaded,
   catalog: z.strictObject({
     formatsJSON: json,
@@ -121,6 +126,7 @@ export const schemas = Object.freeze({
     format: officeFormatSchema,
     contentJSON: json,
     provenance,
+    project: project.optional(),
   }),
   edit: expected.extend({ operationsJSON: json }),
   upload: z.strictObject({
@@ -141,6 +147,7 @@ export const schemas = Object.freeze({
     format: formatSchema,
     uploadId: id,
     provenance,
+    project: project.optional(),
   }),
   review: selected.extend({
     renderId: id,
@@ -199,8 +206,8 @@ export const definitions = [
   method(
     "list",
     "query",
-    "List retained deliverables newest first. Content and evidence remain owned by exact immutable native revisions.",
-    page,
+    "List retained deliverables newest first, only the caller's Project's own when it works in a Project. Content and evidence remain owned by exact immutable native revisions.",
+    listInput,
     schemas.list,
     "model",
   ),

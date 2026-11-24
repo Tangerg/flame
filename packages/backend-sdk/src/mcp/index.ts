@@ -19,6 +19,7 @@ export {
   Backend,
   decodeReceipt,
   type CallContext,
+  type ToolContext,
   type SetupContext,
   type SetupContribution,
   type SetupBinding,

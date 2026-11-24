@@ -9,6 +9,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/Tangerg/flame/packages/go-sdk/exactint"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/scope/core/jsonschema"
 )
 
@@ -37,11 +38,14 @@ var (
 	ErrEmbeddingSpace   = errors.New("knowledge base: embedding space changed; reindex the documents")
 )
 
+// Project names the one Project whose Runs may retrieve the document; empty
+// shares it with every Run.
 type Content struct {
-	ID     string `json:"id" jsonschema:"minLength=1"`
-	Title  string `json:"title" jsonschema:"minLength=1"`
-	Source string `json:"source" jsonschema:"minLength=1"`
-	Text   string `json:"text" jsonschema:"minLength=1"`
+	ID      string `json:"id" jsonschema:"minLength=1"`
+	Title   string `json:"title" jsonschema:"minLength=1"`
+	Source  string `json:"source" jsonschema:"minLength=1"`
+	Text    string `json:"text" jsonschema:"minLength=1"`
+	Project string `json:"project,omitzero"`
 }
 
 func (Content) JSONSchemaConstraints() jsonschema.Constraints {
@@ -57,6 +61,7 @@ type Header struct {
 	ID       string `json:"id"`
 	Title    string `json:"title"`
 	Source   string `json:"source"`
+	Project  string `json:"project,omitzero"`
 	Revision int64  `json:"revision"`
 	Chunks   int    `json:"chunks"`
 	Space    string `json:"space"`
@@ -92,6 +97,9 @@ func validateContent(content Content) error {
 		if !utf8.ValidString(field.value) || strings.TrimSpace(field.value) == "" || utf8.RuneCountInString(field.value) > field.maximum {
 			return ErrInvalidDocument
 		}
+	}
+	if _, err := identity.ParseOptionalProject(content.Project); err != nil {
+		return errors.Join(ErrInvalidDocument, err)
 	}
 	return nil
 }
@@ -209,8 +217,12 @@ func (d Document) PrepareReindex(expected int64) (Draft, error) {
 
 func (d Document) Content() Content { return d.draft.content }
 
+func (d Document) VisibleIn(project string) bool {
+	return d.draft.content.Project == "" || d.draft.content.Project == project
+}
+
 func (d Document) Header() Header {
-	return Header{ID: d.draft.content.ID, Title: d.draft.content.Title, Source: d.draft.content.Source, Revision: d.revision, Chunks: len(d.draft.chunkEnds), Space: d.index.space}
+	return Header{ID: d.draft.content.ID, Title: d.draft.content.Title, Source: d.draft.content.Source, Project: d.draft.content.Project, Revision: d.revision, Chunks: len(d.draft.chunkEnds), Space: d.index.space}
 }
 
 func (d Document) Snapshot() Snapshot {

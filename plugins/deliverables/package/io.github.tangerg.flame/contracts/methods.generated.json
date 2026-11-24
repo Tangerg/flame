@@ -83,7 +83,7 @@
     "name": "flame.deliverables/list.v1",
     "kind": "query",
     "target": "installation",
-    "description": "List retained deliverables newest first. Content and evidence remain owned by exact immutable native revisions.",
+    "description": "List retained deliverables newest first, only the caller's Project's own when it works in a Project. Content and evidence remain owned by exact immutable native revisions.",
     "input": "schema.json#/$defs/ListV1Input",
     "output": "schema.json#/$defs/ListV1Output"
   },

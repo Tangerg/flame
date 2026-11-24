@@ -26,6 +26,9 @@
           "minLength": 1,
           "type": "string"
         },
+        "project": {
+          "type": "string"
+        },
         "source": {
           "minLength": 1,
           "type": "string"
@@ -146,6 +149,9 @@
         "id": {
           "type": "string"
         },
+        "project": {
+          "type": "string"
+        },
         "revision": {
           "allOf": [
             {
@@ -175,10 +181,17 @@
       ],
       "type": "object"
     },
-    "ListV1Input": {
+    "ListInput": {
       "additionalProperties": false,
-      "properties": {},
+      "properties": {
+        "project": {
+          "type": "string"
+        }
+      },
       "type": "object"
+    },
+    "ListV1Input": {
+      "$ref": "#/$defs/ListInput"
     },
     "ListV1Output": {
       "items": {
@@ -199,6 +212,9 @@
           "type": "integer"
         },
         "id": {
+          "type": "string"
+        },
+        "project": {
           "type": "string"
         },
         "revision": {
@@ -278,6 +294,9 @@
         "id": {
           "minLength": 1,
           "type": "string"
+        },
+        "project": {
+          "type": "string"
         }
       },
       "required": [
@@ -304,6 +323,9 @@
           "type": "integer"
         },
         "id": {
+          "type": "string"
+        },
+        "project": {
           "type": "string"
         },
         "revision": {
@@ -389,6 +411,9 @@
         "id": {
           "type": "string"
         },
+        "project": {
+          "type": "string"
+        },
         "revision": {
           "allOf": [
             {
@@ -443,6 +468,9 @@
           "minimum": 1,
           "type": "integer"
         },
+        "project": {
+          "type": "string"
+        },
         "query": {
           "minLength": 1,
           "type": "string"
@@ -476,6 +504,9 @@
           "type": "integer"
         },
         "id": {
+          "type": "string"
+        },
+        "project": {
           "type": "string"
         },
         "revision": {

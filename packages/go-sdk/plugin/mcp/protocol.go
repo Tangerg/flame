@@ -28,6 +28,7 @@ type ProtocolConstants struct {
 	CallHeader              string `json:"callHeader"`
 	InvocationHeader        string `json:"invocationHeader"`
 	InvocationMetadataKey   string `json:"invocationMetadataKey"`
+	ToolContextMetadataKey  string `json:"toolContextMetadataKey"`
 	ReceiptMethod           string `json:"receiptMethod"`
 }
 
@@ -47,6 +48,7 @@ func ProtocolJSON() ([]byte, error) {
 		CallHeader:              CallHeader,
 		InvocationHeader:        InvocationHeader,
 		InvocationMetadataKey:   InvocationMetadataKey,
+		ToolContextMetadataKey:  ToolContextMetadataKey,
 		ReceiptMethod:           ReceiptMethod,
 	}
 	receipt, err := ReceiptQuery()

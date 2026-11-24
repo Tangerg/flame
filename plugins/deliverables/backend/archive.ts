@@ -447,6 +447,7 @@ export class Archive {
   list(
     before: string | undefined,
     limit: number,
+    project: string | undefined,
   ): { entries: Header[]; next?: string } {
     const cursor = before
       ? this.#db
@@ -458,17 +459,19 @@ export class Archive {
         "cursor_not_found",
         "deliverable cursor is no longer retained",
       );
+    // The header owns the Project; without one every document is listed.
+    const scope = project ?? null;
     const rows = cursor
       ? this.#db
           .prepare(
-            "SELECT id,header FROM documents WHERE sequence < ? ORDER BY sequence DESC LIMIT ?",
+            "SELECT id,header FROM documents WHERE sequence < ?1 AND (?2 IS NULL OR json_extract(header,'$.project') = ?2) ORDER BY sequence DESC LIMIT ?3",
           )
-          .all(cursor.sequence!, limit + 1)
+          .all(cursor.sequence!, scope, limit + 1)
       : this.#db
           .prepare(
-            "SELECT id,header FROM documents ORDER BY sequence DESC LIMIT ?",
+            "SELECT id,header FROM documents WHERE ?1 IS NULL OR json_extract(header,'$.project') = ?1 ORDER BY sequence DESC LIMIT ?2",
           )
-          .all(limit + 1);
+          .all(scope, limit + 1);
     const entries = rows
       .slice(0, limit)
       .map((row) => this.document(text(row.id)).snapshot());

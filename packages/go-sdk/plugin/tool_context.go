@@ -7,10 +7,10 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
-
-const ToolContextMetadataKey = "io.github.tangerg.flame/tool-context.v1"
 
 // Project is the Run's captured Project identity, empty when its Session belongs
 // to none. Project-scoped plugins key on it instead of inferring from CWD.
@@ -21,10 +21,11 @@ type ToolContext struct {
 }
 
 func (c ToolContext) Validate() error {
-	if strings.TrimSpace(c.CWD) == "" || !utf8.ValidString(c.CWD) || !utf8.ValidString(c.Project) || !utf8.ValidString(c.EmbeddingSpace) {
+	if strings.TrimSpace(c.CWD) == "" || !utf8.ValidString(c.CWD) || !utf8.ValidString(c.EmbeddingSpace) {
 		return errors.New("plugin: captured Tool workspace is required")
 	}
-	return nil
+	_, err := identity.ParseOptionalProject(c.Project)
+	return err
 }
 
 func WithToolContext(ctx context.Context, captured ToolContext) (context.Context, error) {
@@ -45,7 +46,7 @@ func ToolContextFromContext(ctx context.Context) (ToolContext, error) {
 type toolContextKey struct{}
 
 func toolContextFromMetadata(metadata sdk.Meta) (ToolContext, error) {
-	encoded := metadata[ToolContextMetadataKey]
+	encoded := metadata[pluginmcp.ToolContextMetadataKey]
 	var captured ToolContext
 	if err := json.Unmarshal(encoded, &captured, json.RejectUnknownMembers(true)); err != nil {
 		return ToolContext{}, err

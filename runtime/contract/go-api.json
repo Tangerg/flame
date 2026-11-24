@@ -3991,11 +3991,6 @@
           "value": "\"tool:\""
         },
         {
-          "name": "ToolContextMetadataKey",
-          "type": "untyped string",
-          "value": "\"io.github.tangerg.flame/tool-context.v1\""
-        },
-        {
           "name": "ToolReceiptMethod",
           "type": "untyped string",
           "value": "\"io.github.tangerg.flame/tools.getResult\""
@@ -4333,6 +4328,11 @@
               "name": "Model",
               "type": "string",
               "tag": "json:\"model\""
+            },
+            {
+              "name": "Project",
+              "type": "string",
+              "tag": "json:\"project,omitzero\""
             },
             {
               "name": "Request",
@@ -5450,6 +5450,11 @@
           "value": "\"io.github.tangerg.flame/stream.v1\""
         },
         {
+          "name": "ToolContextMetadataKey",
+          "type": "untyped string",
+          "value": "\"io.github.tangerg.flame/tool-context.v1\""
+        },
+        {
           "name": "ValidateMethod",
           "type": "untyped string",
           "value": "\"io.github.tangerg.flame/operations.validate\""
@@ -6040,6 +6045,11 @@
               "name": "InvocationMetadataKey",
               "type": "string",
               "tag": "json:\"invocationMetadataKey\""
+            },
+            {
+              "name": "ToolContextMetadataKey",
+              "type": "string",
+              "tag": "json:\"toolContextMetadataKey\""
             },
             {
               "name": "ReceiptMethod",

@@ -119,8 +119,8 @@ export class Application {
       case "catalog":
         return this.catalog();
       case "list": {
-        const value = schemas.page.parse(input);
-        return this.#archive.list(value.before, value.limit);
+        const value = schemas.listInput.parse(input);
+        return this.#archive.list(value.before, value.limit, value.project);
       }
       case "read":
         return this.read(schemas.readInput.parse(input));
@@ -268,7 +268,7 @@ export class Application {
           bytes,
           provenance: value.provenance,
         });
-        const document = Document.create(value.title, initial);
+        const document = Document.create(value.title, initial, value.project);
         return () =>
           this.#archive.publish(document, initial, bytes, inspection);
       }
@@ -318,7 +318,7 @@ export class Application {
           bytes: staged.bytes,
           provenance: value.provenance,
         });
-        const document = Document.create(value.title, initial);
+        const document = Document.create(value.title, initial, value.project);
         return () => {
           this.#archive.discardUpload(value.uploadId);
           return this.#archive.publish(

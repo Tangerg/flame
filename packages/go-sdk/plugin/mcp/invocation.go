@@ -14,6 +14,9 @@ import (
 
 const InvocationMetadataKey = "io.github.tangerg.flame/invocation"
 
+// ToolContextMetadataKey carries the calling owner's plugin.ToolContext on a Tool call.
+const ToolContextMetadataKey = "io.github.tangerg.flame/tool-context.v1"
+
 type invocationKey struct{}
 
 func WithInvocation(ctx context.Context, invocation framecall.Invocation) (context.Context, error) {

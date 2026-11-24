@@ -112,7 +112,7 @@ func TestImportPublishesItsOnlyReceiptAndNeverRepeatsAnUnconfirmedEmbedding(t *t
 	if err != nil || receipt.Found {
 		t.Fatalf("uncertainty invented a receipt: %+v, %v", receipt, err)
 	}
-	if headers, err := library.list(t.Context()); err != nil || len(headers) != 1 || headers[0] != first {
+	if headers, err := library.list(t.Context(), wire.ListInput{}); err != nil || len(headers) != 1 || headers[0] != first {
 		t.Fatalf("failed publication changed the document: %+v, %v", headers, err)
 	}
 	if err := reopened.db.RunInTx(t.Context(), func(ctx context.Context) error {
@@ -121,7 +121,7 @@ func TestImportPublishesItsOnlyReceiptAndNeverRepeatsAnUnconfirmedEmbedding(t *t
 	}); err != nil {
 		t.Fatal(err)
 	}
-	_, err = library.list(t.Context())
+	_, err = library.list(t.Context(), wire.ListInput{})
 	if _, refused := classify(err); err == nil || refused {
 		t.Fatalf("corruption became a business refusal: %v", err)
 	}

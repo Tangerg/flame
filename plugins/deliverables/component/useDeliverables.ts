@@ -88,6 +88,9 @@ export function useDeliverables(context: ComponentContext) {
       },
     );
   }, [context]);
+  // Inside a Project the archive lists and records only that Project's documents.
+  const project = context.project?.id;
+  const scoped = useMemo(() => (project ? { project } : {}), [project]);
   const owner = useMemo(() => new AbortController(), [context]);
   const signal = useMemo(
     () => AbortSignal.any([context.signal, owner.signal]),
@@ -257,9 +260,9 @@ export function useDeliverables(context: ComponentContext) {
     setListPages([]);
     setHistoryPages([]);
     void query(METHODS.catalog, {});
-    void query(METHODS.list, { limit: LIMITS.pageSize });
+    void query(METHODS.list, { limit: LIMITS.pageSize, ...scoped });
     void query(METHODS.uploads, {});
-  }, [query]);
+  }, [query, scoped]);
   useEffect(() => {
     if (selection) void query(METHODS.read, selection);
   }, [query, selection?.id, selection?.revision]);
@@ -274,6 +277,7 @@ export function useDeliverables(context: ComponentContext) {
       query(METHODS.catalog, {}),
       query(METHODS.list, {
         limit: LIMITS.pageSize,
+        ...scoped,
         ...(values[METHODS.list]?.input.before
           ? { before: values[METHODS.list]!.input.before }
           : {}),
@@ -293,7 +297,7 @@ export function useDeliverables(context: ComponentContext) {
           ]
         : []),
     ]);
-  }, [query, values]);
+  }, [query, scoped, values]);
   const refreshRef = useRef(refresh);
   refreshRef.current = refresh;
 
@@ -388,7 +392,12 @@ export function useDeliverables(context: ComponentContext) {
       )
         return;
       try {
-        const promise = operations.command(method, input);
+        const promise = operations.command(
+          method,
+          method === METHODS.create || method === METHODS.import
+            ? { ...input, ...scoped }
+            : input,
+        );
         return (await observe(
           {
             id: promise.idempotencyKey,
@@ -404,7 +413,7 @@ export function useDeliverables(context: ComponentContext) {
         tell({ kind: "error", text: failureText(error) });
       }
     },
-    [commands, observe, operations, signal, tell],
+    [commands, observe, operations, scoped, signal, tell],
   );
 
   const save = useCallback(
@@ -466,6 +475,7 @@ export function useDeliverables(context: ComponentContext) {
         if (
           await query(METHODS.list, {
             limit: LIMITS.pageSize,
+            ...scoped,
             ...(before ? { before } : {}),
           })
         )
@@ -494,7 +504,7 @@ export function useDeliverables(context: ComponentContext) {
           );
       }
     },
-    [historyPages, listPages, query, values],
+    [historyPages, listPages, query, scoped, values],
   );
 
   return {

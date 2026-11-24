@@ -3,9 +3,11 @@ package main
 import (
 	"context"
 	"errors"
+	"slices"
 	"strings"
 	"unicode/utf8"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
@@ -111,18 +113,23 @@ func (l *library) indexDocument(ctx context.Context, method, id string, admitted
 }
 
 func (l *library) read(ctx context.Context, input wire.ReadInput) (wire.DocumentRead, error) {
+	if _, err := identity.ParseOptionalProject(input.Project); err != nil {
+		return wire.DocumentRead{}, err
+	}
 	document, err := l.store.read(ctx, input.ID)
 	if err != nil {
 		return wire.DocumentRead{}, err
 	}
-	if document.Header().Revision == 0 {
+	// Another Project's document is absent here, not forbidden, so its identity
+	// reveals nothing to a Run outside that Project.
+	if document.Header().Revision == 0 || !document.VisibleIn(input.Project) {
 		return wire.DocumentRead{}, knowledge.ErrNotFound
 	}
 	return wire.DocumentRead{Document: document.Header(), Text: document.Content().Text}, nil
 }
 
-func (l *library) list(ctx context.Context) ([]knowledge.Header, error) {
-	documents, err := l.store.documents(ctx)
+func (l *library) list(ctx context.Context, input wire.ListInput) ([]knowledge.Header, error) {
+	documents, err := l.visible(ctx, input.Project)
 	if err != nil {
 		return nil, err
 	}
@@ -133,11 +140,22 @@ func (l *library) list(ctx context.Context) ([]knowledge.Header, error) {
 	return headers, nil
 }
 
+func (l *library) visible(ctx context.Context, project string) ([]knowledge.Document, error) {
+	if _, err := identity.ParseOptionalProject(project); err != nil {
+		return nil, err
+	}
+	documents, err := l.store.documents(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return slices.DeleteFunc(documents, func(document knowledge.Document) bool { return !document.VisibleIn(project) }), nil
+}
+
 func (l *library) search(ctx context.Context, input wire.SearchInput) ([]knowledge.Match, error) {
 	if strings.TrimSpace(input.Query) == "" || utf8.RuneCountInString(input.Query) > knowledge.MaxQueryRunes || input.Limit < 1 || input.Limit > knowledge.MaxResults {
 		return nil, errors.New("knowledge base: a bounded query and result limit are required")
 	}
-	documents, err := l.store.documents(ctx)
+	documents, err := l.visible(ctx, input.Project)
 	if err != nil {
 		return nil, err
 	}

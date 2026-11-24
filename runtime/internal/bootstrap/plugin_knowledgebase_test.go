@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 
@@ -32,6 +33,11 @@ func TestKnowledgeBaseInstalledEntriesShareRetrievalAndLeaveConversationWithCore
 	var sawContext atomic.Bool
 	var toolOutput atomic.Value
 	toolOutput.Store("")
+	var (
+		mu         sync.Mutex
+		referenced = map[string]string{}
+		retrieved  = map[string]string{}
+	)
 	provider := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
 		if strings.HasSuffix(request.URL.Path, "/chat/completions") {
 			var input struct {
@@ -55,6 +61,7 @@ func TestKnowledgeBaseInstalledEntriesShareRetrievalAndLeaveConversationWithCore
 			var call map[string]any
 			if len(input.Tools) > 0 {
 				name := toolName.Load().(string)
+				task := ""
 				for _, message := range input.Messages {
 					if message.Role != "user" && message.Role != "tool" {
 						continue
@@ -65,10 +72,21 @@ func TestKnowledgeBaseInstalledEntriesShareRetrievalAndLeaveConversationWithCore
 						http.Error(w, "invalid content", http.StatusBadRequest)
 						return
 					}
-					if message.Role == "user" && strings.Contains(content, "Runtime reference material") && strings.Contains(content, "docs/fruit.md") {
-						sawContext.Store(true)
+					if message.Role == "user" && task == "" {
+						task = content
+					}
+					if message.Role == "user" && strings.Contains(content, "Runtime reference material") {
+						mu.Lock()
+						referenced[task] += content
+						mu.Unlock()
+						if strings.Contains(content, "docs/fruit.md") {
+							sawContext.Store(true)
+						}
 					}
 					if message.Role == "tool" && message.ToolCallID == "retrieve-knowledge" {
+						mu.Lock()
+						retrieved[task] = content
+						mu.Unlock()
 						toolOutput.Store(content)
 						text = "cited fruit guide"
 					}
@@ -77,7 +95,7 @@ func TestKnowledgeBaseInstalledEntriesShareRetrievalAndLeaveConversationWithCore
 					id, selected, arguments := "discover-knowledge", "search_tools", `{"query":"select:`+name+`"}`
 					for _, definition := range input.Tools {
 						if definition.Function.Name == name {
-							id, selected, arguments = "retrieve-knowledge", name, `{"query":"apple","limit":1}`
+							id, selected, arguments = "retrieve-knowledge", name, `{"query":"apple","limit":2}`
 						}
 					}
 					call = map[string]any{"index": 0, "id": id, "type": "function", "function": map[string]string{"name": selected, "arguments": arguments}}
@@ -179,27 +197,32 @@ func TestKnowledgeBaseInstalledEntriesShareRetrievalAndLeaveConversationWithCore
 	if replay := call(testsupport.KnowledgebaseImportV1Method, input, "knowledge-import"); replay.Output != first.Output || embeddings.Load() != 1 {
 		t.Fatalf("import repeated its model exchange: %+v, count=%d", replay, embeddings.Load())
 	}
-	typed := call(testsupport.KnowledgebaseSearchV1Method, testsupport.KnowledgebaseSearchInput{Query: "apple", Limit: generatedNumber(t, "1")}, "")
+	typed := call(testsupport.KnowledgebaseSearchV1Method, testsupport.KnowledgebaseSearchInput{Query: "apple", Limit: generatedNumber(t, "2")}, "")
 	contextContract, err := pluginsdk.ModelContextContract()
 	if err != nil {
 		t.Fatal(err)
 	}
 	r.must(delivery.PluginsSetComposition, protocol.SetPluginCompositionRequest{Contract: contextContract.Identity().String(), Members: []protocol.PluginCompositionMember{{InstallationID: installed.ID, Contribution: "knowledgebase-context"}}}, "select-knowledge-context")
-	session := r.must(delivery.SessionsCreate, protocol.CreateSessionRequest{Title: "knowledge"}, "knowledge-session").(*protocol.Session)
-	run := r.endpoint.Invoke(t.Context(), delivery.RunsStart, protocol.StartRunRequest{SessionID: session.ID, Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "Find the apple guide."}}}, protocol.CallMetadata{IdempotencyKey: "knowledge-run", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
-	if run.Failure != nil {
-		t.Fatal(run.Failure)
-	}
-	for _, err := range run.Events {
-		if err != nil {
-			t.Fatal(err)
+	runTask := func(project, task string) *protocol.Session {
+		t.Helper()
+		session := r.must(delivery.SessionsCreate, protocol.CreateSessionRequest{Title: task, ProjectID: project}, "session-"+task).(*protocol.Session)
+		run := r.endpoint.Invoke(t.Context(), delivery.RunsStart, protocol.StartRunRequest{SessionID: session.ID, Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: task}}}, protocol.CallMetadata{IdempotencyKey: "run-" + task, RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
+		if run.Failure != nil {
+			t.Fatal(run.Failure)
 		}
+		for _, err := range run.Events {
+			if err != nil {
+				t.Fatal(err)
+			}
+		}
+		started := run.Value.(*protocol.StartRunResponse)
+		finished := r.must(delivery.RunsGet, protocol.GetRunRequest{RunID: started.RunID}, "").(*protocol.RunRef)
+		if finished.Outcome == nil || finished.Outcome.Type != protocol.OutcomeCompleted {
+			t.Fatalf("knowledge Run did not complete: %+v", finished.Outcome)
+		}
+		return session
 	}
-	started := run.Value.(*protocol.StartRunResponse)
-	finished := r.must(delivery.RunsGet, protocol.GetRunRequest{RunID: started.RunID}, "").(*protocol.RunRef)
-	if finished.Outcome == nil || finished.Outcome.Type != protocol.OutcomeCompleted {
-		t.Fatalf("knowledge Run did not complete: %+v", finished.Outcome)
-	}
+	session := runTask("", "Find the apple guide.")
 	toolJSON, err := framevalue.ParseJSON([]byte(toolOutput.Load().(string)))
 	if err != nil || toolJSON.String() != typed.Output || !sawContext.Load() || !embeddedUserInput.Load() {
 		t.Fatalf("installed typed/Tool/context entrances diverged: typed=%s tool=%s context=%v error=%v", typed.Output, toolJSON.String(), sawContext.Load(), err)
@@ -219,6 +242,25 @@ func TestKnowledgeBaseInstalledEntriesShareRetrievalAndLeaveConversationWithCore
 	rebuilt := call(testsupport.KnowledgebaseReindexV1Method, reindex, "knowledge-reindex")
 	if replay := call(testsupport.KnowledgebaseReindexV1Method, reindex, "knowledge-reindex"); replay.Output != rebuilt.Output || embeddings.Load() != beforeRead+1 {
 		t.Fatalf("installed reindex repeated embedding: %+v count=%d", replay, embeddings.Load())
+	}
+
+	// A Project's document reaches only that Project's Runs, through both the
+	// automatic context and the model's own search.
+	orchard := r.must(delivery.Name("projects.create"), protocol.CreateProjectRequest{Name: "Orchard"}, "orchard").(*protocol.Project)
+	scoped := testsupport.KnowledgebaseImportInput{Content: &testsupport.KnowledgebaseContent{Project: &orchard.ID}, ExpectedRevision: generatedNumber(t, "0")}
+	scoped.Content.Id, scoped.Content.Title = "ledger", "Orchard ledger"
+	scoped.Content.Source, scoped.Content.Text = "docs/ledger.md", "apple ledger"
+	call(testsupport.KnowledgebaseImportV1Method, scoped, "knowledge-import-ledger")
+	runTask("", "Find the shared apple notes.")
+	runTask(orchard.ID, "Find the orchard apple notes.")
+	mu.Lock()
+	defer mu.Unlock()
+	for task, wantLedger := range map[string]bool{"Find the shared apple notes.": false, "Find the orchard apple notes.": true} {
+		for source, seen := range map[string]string{"context": referenced[task], "search": retrieved[task]} {
+			if !strings.Contains(seen, "docs/fruit.md") || strings.Contains(seen, "docs/ledger.md") != wantLedger {
+				t.Fatalf("%q %s crossed its Project boundary: %s", task, source, seen)
+			}
+		}
 	}
 }
 

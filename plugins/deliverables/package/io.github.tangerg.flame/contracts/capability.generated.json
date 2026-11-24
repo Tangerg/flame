@@ -242,6 +242,11 @@
             ],
             "type": "string"
           },
+          "project": {
+            "maxLength": 256,
+            "minLength": 1,
+            "type": "string"
+          },
           "provenance": {
             "additionalProperties": false,
             "properties": {
@@ -1075,6 +1080,11 @@
             ],
             "type": "string"
           },
+          "project": {
+            "maxLength": 256,
+            "minLength": 1,
+            "type": "string"
+          },
           "provenance": {
             "additionalProperties": false,
             "properties": {
@@ -1310,7 +1320,7 @@
       "name": "flame.deliverables/list.v1",
       "kind": "query",
       "target": "installation",
-      "description": "List retained deliverables newest first. Content and evidence remain owned by exact immutable native revisions.",
+      "description": "List retained deliverables newest first, only the caller's Project's own when it works in a Project. Content and evidence remain owned by exact immutable native revisions.",
       "input": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
@@ -1323,6 +1333,11 @@
             "maximum": 32,
             "minimum": 1,
             "type": "integer"
+          },
+          "project": {
+            "maxLength": 256,
+            "minLength": 1,
+            "type": "string"
           }
         },
         "required": [
@@ -1358,6 +1373,11 @@
                 },
                 "id": {
                   "pattern": "^[a-f0-9]{64}$",
+                  "type": "string"
+                },
+                "project": {
+                  "maxLength": 256,
+                  "minLength": 1,
                   "type": "string"
                 },
                 "title": {
@@ -1521,6 +1541,11 @@
               },
               "id": {
                 "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              "project": {
+                "maxLength": 256,
+                "minLength": 1,
                 "type": "string"
               },
               "title": {
@@ -2217,6 +2242,11 @@
               },
               "id": {
                 "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              "project": {
+                "maxLength": 256,
+                "minLength": 1,
                 "type": "string"
               },
               "title": {

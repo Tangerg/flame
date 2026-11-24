@@ -45,6 +45,10 @@ closing the original connection. Failed close remains retryable; an uncertain
 connection never supplies a receipt or a read projection. Reopening and reading
 the original durable evidence establishes whether a lost commit succeeded.
 
+A model Tool call's `context.toolContext` names the calling Run's working
+directory and captured Project. Key project-scoped objects on that Project, not
+on a directory or a model argument.
+
 Use `toolCommandId(context)` to derive the Flame Tool's private command identity.
 `toolReceipts(backend, handler)` exposes the Flame Tool receipt contract through
 the same Flame backend. Return `{}` for an absent receipt. A recorded receipt carries

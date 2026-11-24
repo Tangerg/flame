@@ -13,7 +13,7 @@ import (
 func main() { plugincontract.Publish(define) }
 
 func define() (*plugincontract.Capability, error) {
-	importMethod, err := pluginmcp.NewMethod[wire.ImportInput, knowledge.Header](frame.MethodConfig{Name: "flame.knowledgebase/import.v1", Kind: frame.Command, Target: extension.ScopeInstallation, Description: "Import or replace a user document and its embedding index at the inspected revision; use zero for a new document."})
+	importMethod, err := pluginmcp.NewMethod[wire.ImportInput, knowledge.Header](frame.MethodConfig{Name: "flame.knowledgebase/import.v1", Kind: frame.Command, Target: extension.ScopeInstallation, Description: "Import or replace a user document and its embedding index at the inspected revision; use zero for a new document. A document with a project is visible only within that Project."})
 	if err != nil {
 		return nil, err
 	}
@@ -25,15 +25,15 @@ func define() (*plugincontract.Capability, error) {
 	if err != nil {
 		return nil, err
 	}
-	listMethod, err := pluginmcp.NewMethod[struct{}, []knowledge.Header](frame.MethodConfig{Name: "flame.knowledgebase/list.v1", Kind: frame.Query, Target: extension.ScopeInstallation, Description: "List indexed user documents and their revisions."})
+	listMethod, err := pluginmcp.NewMethod[wire.ListInput, []knowledge.Header](frame.MethodConfig{Name: "flame.knowledgebase/list.v1", Kind: frame.Query, Target: extension.ScopeInstallation, Description: "List the indexed user documents visible to the caller, shared documents and its Project's own, with their revisions."})
 	if err != nil {
 		return nil, err
 	}
-	searchMethod, err := pluginmcp.NewMethod[wire.SearchInput, []knowledge.Match](frame.MethodConfig{Name: "flame.knowledgebase/search.v1", Kind: frame.Query, Target: extension.ScopeInstallation, Description: "Retrieve cited chunks from indexed user documents through the configured embedding role."})
+	searchMethod, err := pluginmcp.NewMethod[wire.SearchInput, []knowledge.Match](frame.MethodConfig{Name: "flame.knowledgebase/search.v1", Kind: frame.Query, Target: extension.ScopeInstallation, Description: "Retrieve cited chunks from the indexed user documents visible to the caller, shared documents and its Project's own, through the configured embedding role."})
 	if err != nil {
 		return nil, err
 	}
-	readMethod, err := pluginmcp.NewMethod[wire.ReadInput, wire.DocumentRead](frame.MethodConfig{Name: "flame.knowledgebase/read.v1", Kind: frame.Query, Target: extension.ScopeInstallation, Description: "Read one complete stored document with its exact source, revision and index identity without embedding or provider I/O."})
+	readMethod, err := pluginmcp.NewMethod[wire.ReadInput, wire.DocumentRead](frame.MethodConfig{Name: "flame.knowledgebase/read.v1", Kind: frame.Query, Target: extension.ScopeInstallation, Description: "Read one complete stored document visible to the caller with its exact source, revision and index identity without embedding or provider I/O."})
 	if err != nil {
 		return nil, err
 	}

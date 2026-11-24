@@ -43,7 +43,11 @@ const selection = {
       "At most 32 collection entries or 4096 Unicode code points. The byte budget can return fewer entries with nextOffset.",
     ),
 };
+// A model never names a Project; the Run's captured one scopes these calls.
 export const modelInputs = {
+  list: schemas.page,
+  create: schemas.create.omit({ project: true }),
+  import: schemas.import.omit({ project: true }),
   catalog: z.strictObject({
     format: schemas.format.optional(),
     section: z

@@ -209,6 +209,11 @@
           ],
           "type": "string"
         },
+        "project": {
+          "maxLength": 256,
+          "minLength": 1,
+          "type": "string"
+        },
         "provenance": {
           "additionalProperties": false,
           "properties": {
@@ -994,6 +999,11 @@
           ],
           "type": "string"
         },
+        "project": {
+          "maxLength": 256,
+          "minLength": 1,
+          "type": "string"
+        },
         "provenance": {
           "additionalProperties": false,
           "properties": {
@@ -1234,6 +1244,11 @@
           "maximum": 32,
           "minimum": 1,
           "type": "integer"
+        },
+        "project": {
+          "maxLength": 256,
+          "minLength": 1,
+          "type": "string"
         }
       },
       "required": [
@@ -1268,6 +1283,11 @@
               },
               "id": {
                 "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              "project": {
+                "maxLength": 256,
+                "minLength": 1,
                 "type": "string"
               },
               "title": {
@@ -1423,6 +1443,11 @@
             },
             "id": {
               "pattern": "^[a-f0-9]{64}$",
+              "type": "string"
+            },
+            "project": {
+              "maxLength": 256,
+              "minLength": 1,
               "type": "string"
             },
             "title": {
@@ -2079,6 +2104,11 @@
             },
             "id": {
               "pattern": "^[a-f0-9]{64}$",
+              "type": "string"
+            },
+            "project": {
+              "maxLength": 256,
+              "minLength": 1,
               "type": "string"
             },
             "title": {

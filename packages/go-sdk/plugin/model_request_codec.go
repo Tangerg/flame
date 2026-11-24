@@ -36,6 +36,7 @@ type modelContextProjection struct {
 	Use         flamemodel.Use     `json:"use"`
 	Provider    string             `json:"provider"`
 	Model       string             `json:"model"`
+	Project     string             `json:"project,omitzero"`
 	Request     scopewire.Request  `json:"request"`
 	UserMessage *scopewire.Message `json:"userMessage,omitzero"`
 }
@@ -52,7 +53,7 @@ func (r *ModelContextRequest) UnmarshalJSON(data []byte) error {
 	if err := value.DecodeValue(data, &encoded, "model context"); err != nil {
 		return err
 	}
-	*r = ModelContextRequest{Use: encoded.Use, Provider: encoded.Provider, Model: encoded.Model, Request: chat.Request(encoded.Request), UserMessage: (*chat.Message)(encoded.UserMessage)}
+	*r = ModelContextRequest{Use: encoded.Use, Provider: encoded.Provider, Model: encoded.Model, Project: encoded.Project, Request: chat.Request(encoded.Request), UserMessage: (*chat.Message)(encoded.UserMessage)}
 	return nil
 }
 

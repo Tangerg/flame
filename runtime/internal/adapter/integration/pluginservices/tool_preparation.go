@@ -78,9 +78,17 @@ func admitInstalledSource(ctx context.Context, store plugins.Store, source mcpse
 }
 
 func prepareInstalledTool(ctx context.Context, executable mcp.Executable, host mcp.ToolHost, invalidations invalidation.Publish) (mcp.ToolCall, func() error, error) {
+	cwd, attached := executionctx.CWD(ctx)
+	if !attached {
+		return nil, nil, errors.New("plugin tools: Run working directory is required")
+	}
 	metadata, release, err := host(ctx)
 	if err != nil {
 		return nil, nil, err
+	}
+	captured := pluginsdk.ToolContext{CWD: cwd, Project: executionctx.Project(ctx).String()}
+	if err := metadata.Set(pluginmcp.ToolContextMetadataKey, captured); err != nil {
+		return nil, nil, errors.Join(err, release())
 	}
 	return installedToolCall(ctx, executable.WithCallMetadata(metadata), invalidations), release, nil
 }
@@ -108,7 +116,7 @@ func prepareMemoryTool(ctx context.Context, source mcp.Executable, callbacks *pl
 	_, remote, _ := ref.MCP()
 	if remote.String() != memorycontract.SearchToolName {
 		metadata := sdk.ParamsBase{}
-		if err := metadata.Set(pluginsdk.ToolContextMetadataKey, pluginsdk.ToolContext{CWD: cwd, Project: project}); err != nil {
+		if err := metadata.Set(pluginmcp.ToolContextMetadataKey, pluginsdk.ToolContext{CWD: cwd, Project: project}); err != nil {
 			return nil, nil, err
 		}
 		return installedToolCall(ctx, source.WithCallMetadata(metadata), invalidations), func() error { return nil }, nil
@@ -141,7 +149,7 @@ func prepareMemoryTool(ctx context.Context, source mcp.Executable, callbacks *pl
 	if err != nil {
 		return nil, nil, errors.Join(err, release())
 	}
-	if err := metadata.Set(pluginsdk.ToolContextMetadataKey, pluginsdk.ToolContext{CWD: cwd, Project: project, EmbeddingSpace: space}); err != nil {
+	if err := metadata.Set(pluginmcp.ToolContextMetadataKey, pluginsdk.ToolContext{CWD: cwd, Project: project, EmbeddingSpace: space}); err != nil {
 		return nil, nil, errors.Join(err, release())
 	}
 	return installedToolCall(ctx, source.WithCallMetadata(metadata), invalidations), release, nil

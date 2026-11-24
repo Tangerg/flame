@@ -115,6 +115,7 @@ func TestTypedToolAndContextEntriesRetrieveThroughTheSameHostEmbedding(t *testin
 		t.Fatal(err)
 	}
 	query := wire.SearchInput{Query: "apple", Limit: 2}
+	toolQuery := wire.ToolSearchInput{Query: query.Query, Limit: query.Limit}
 	queryJSON, err := framevalue.EncodeJSON(query)
 	if err != nil {
 		t.Fatal(err)
@@ -127,7 +128,10 @@ func TestTypedToolAndContextEntriesRetrieveThroughTheSameHostEmbedding(t *testin
 	if err := toolMeta.Set(pluginmcp.InvocationMetadataKey, framecall.Invocation{ID: "model-search", Origin: extension.Model, Target: framecall.Target{Scope: "installation", Reference: "knowledge"}}); err != nil {
 		t.Fatal(err)
 	}
-	result, err := session.CallTool(t.Context(), &sdk.CallToolParams{Name: "search_knowledge", Arguments: query, Meta: toolMeta})
+	if err := toolMeta.Set(pluginmcp.ToolContextMetadataKey, pluginsdk.ToolContext{CWD: t.TempDir()}); err != nil {
+		t.Fatal(err)
+	}
+	result, err := session.CallTool(t.Context(), &sdk.CallToolParams{Name: "search_knowledge", Arguments: toolQuery, Meta: toolMeta})
 	if err != nil || result.IsError {
 		t.Fatalf("model retrieval = %+v, %v", result, err)
 	}
@@ -152,7 +156,10 @@ func TestTypedToolAndContextEntriesRetrieveThroughTheSameHostEmbedding(t *testin
 	if err := readMeta.Set(pluginmcp.InvocationMetadataKey, framecall.Invocation{ID: "model-read", Origin: extension.Model, Target: framecall.Target{Scope: "installation", Reference: "knowledge"}}); err != nil {
 		t.Fatal(err)
 	}
-	readResult, err := session.CallTool(t.Context(), &sdk.CallToolParams{Name: "read_knowledge_document", Arguments: wire.ReadInput{ID: input.Content.ID}, Meta: readMeta})
+	if err := readMeta.Set(pluginmcp.ToolContextMetadataKey, pluginsdk.ToolContext{CWD: t.TempDir()}); err != nil {
+		t.Fatal(err)
+	}
+	readResult, err := session.CallTool(t.Context(), &sdk.CallToolParams{Name: "read_knowledge_document", Arguments: wire.ToolReadInput{ID: input.Content.ID}, Meta: readMeta})
 	if err != nil || readResult.IsError {
 		t.Fatalf("model original read without an embedding callback: %+v %v", readResult, err)
 	}
@@ -226,7 +233,7 @@ func TestTypedToolAndContextEntriesRetrieveThroughTheSameHostEmbedding(t *testin
 	} else if refusal, ok := errors.AsType[*framecall.Refusal](err); !ok || refusal.Code != "embedding_space_changed" {
 		t.Fatalf("changed space refusal = %v", err)
 	}
-	result, err = session.CallTool(t.Context(), &sdk.CallToolParams{Name: "search_knowledge", Arguments: query, Meta: toolMeta})
+	result, err = session.CallTool(t.Context(), &sdk.CallToolParams{Name: "search_knowledge", Arguments: toolQuery, Meta: toolMeta})
 	if err != nil || !result.IsError {
 		t.Fatalf("Tool space mismatch lost its known refusal: %+v, %v", result, err)
 	}

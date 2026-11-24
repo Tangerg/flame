@@ -18,21 +18,29 @@ TypeScript bindings are in `io.github.tangerg.flame/contracts`. Use ordinary
 `plugins.call` or the generic CLI `plugins call --request ...` entrance with the
 installed contribution's exact release and contract.
 
-- `flame.knowledgebase/import.v1` accepts `content` (`id`, `title`, `source`, `text`)
-  and `expectedRevision`. Zero creates a new identity; replacement requires the
-  revision returned by list/import. Example input:
+- `flame.knowledgebase/import.v1` accepts `content` (`id`, `title`, `source`, `text`,
+  optional `project`) and `expectedRevision`. Zero creates a new identity; replacement
+  requires the revision returned by list/import. Example input:
   `{"content":{"id":"guide-1","title":"Guide","source":"docs/guide.md","text":"Flame owns durable Runs."},"expectedRevision":0}`.
-- `flame.knowledgebase/list.v1` takes `{}` and reads document headers.
-- `flame.knowledgebase/read.v1` accepts `id` and returns the complete original text
-  with its source, revision and index identity, without embedding or provider I/O.
+- `flame.knowledgebase/list.v1` takes an optional `project` and reads document headers.
+- `flame.knowledgebase/read.v1` accepts `id` and an optional `project` and returns the
+  complete original text with its source, revision and index identity, without
+  embedding or provider I/O.
 - `flame.knowledgebase/reindex.v1` accepts `id` and `expectedRevision`, rebuilds the
   index from that exact stored revision and advances the document revision. A
   concurrent edit or deletion refuses publication without replacing its result.
-- `flame.knowledgebase/search.v1` accepts `query` and `limit` (1–8) and returns
-  chunks with the document header, one-based chunk number and cosine score.
+- `flame.knowledgebase/search.v1` accepts `query`, `limit` (1–8) and an optional
+  `project` and returns chunks with the document header, one-based chunk number and
+  cosine score.
 - `flame.knowledgebase/delete.v1` accepts `id` and `expectedRevision`. Deletion
   removes content/index and retires the identity permanently. Import a new ID to
   recreate a document; an old inspected revision cannot authorize a later incarnation.
+
+A document with a `project` belongs to that Project; one without is shared. Every
+read sees the shared documents plus, when it names a Project, that Project's own.
+Another Project's document is reported as not found. Runtime owns the Project itself,
+so archiving one changes no document. Model Tools and the context contribution read
+within the calling Run's captured Project and never accept one from model arguments.
 
 `search_knowledge` calls the exact same retrieval use case as the typed query,
 including its host callback and explicit space-mismatch refusal.
@@ -51,8 +59,8 @@ bounded scan of the private index. There is no automatic provider retry.
 
 Add `knowledgebase-context` to the ordered `flame.model-context.v3` composition
 through `plugins.setComposition`. Enablement alone does not select a composition.
-It retrieves four chunks using the final 4,096 code points of the host-captured
-original `userMessage`. Host-added user-role catalogs cannot replace that input.
+It retrieves four chunks visible in the request's captured `project`, using the final
+4,096 code points of the host-captured original `userMessage`. Host-added user-role catalogs cannot replace that input.
 A text-free input or empty corpus contributes nothing. Only `use: interaction`
 performs retrieval; utility and independent model calls contribute no material and
 perform no query embedding. The contribution contains role-free reference data;

@@ -87,7 +87,7 @@
       "name": "flame.knowledgebase/import.v1",
       "kind": "command",
       "target": "installation",
-      "description": "Import or replace a user document and its embedding index at the inspected revision; use zero for a new document.",
+      "description": "Import or replace a user document and its embedding index at the inspected revision; use zero for a new document. A document with a project is visible only within that Project.",
       "input": {
         "$defs": {
           "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl.SW1wb3J0SW5wdXQ": {
@@ -136,6 +136,9 @@
             "properties": {
               "id": {
                 "minLength": 1,
+                "type": "string"
+              },
+              "project": {
                 "type": "string"
               },
               "source": {
@@ -200,6 +203,9 @@
               "id": {
                 "type": "string"
               },
+              "project": {
+                "type": "string"
+              },
               "revision": {
                 "allOf": [
                   {
@@ -245,6 +251,9 @@
           "id": {
             "type": "string"
           },
+          "project": {
+            "type": "string"
+          },
           "revision": {
             "allOf": [
               {
@@ -279,11 +288,26 @@
       "name": "flame.knowledgebase/list.v1",
       "kind": "query",
       "target": "installation",
-      "description": "List indexed user documents and their revisions.",
+      "description": "List the indexed user documents visible to the caller, shared documents and its Project's own, with their revisions.",
       "input": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl.TGlzdElucHV0": {
+            "additionalProperties": false,
+            "properties": {
+              "project": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
-        "properties": {},
+        "properties": {
+          "project": {
+            "type": "string"
+          }
+        },
         "type": "object"
       },
       "output": {
@@ -301,6 +325,9 @@
                 "type": "integer"
               },
               "id": {
+                "type": "string"
+              },
+              "project": {
                 "type": "string"
               },
               "revision": {
@@ -344,7 +371,7 @@
       "name": "flame.knowledgebase/read.v1",
       "kind": "query",
       "target": "installation",
-      "description": "Read one complete stored document with its exact source, revision and index identity without embedding or provider I/O.",
+      "description": "Read one complete stored document visible to the caller with its exact source, revision and index identity without embedding or provider I/O.",
       "input": {
         "$defs": {
           "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl.UmVhZElucHV0": {
@@ -361,6 +388,9 @@
             "properties": {
               "id": {
                 "minLength": 1,
+                "type": "string"
+              },
+              "project": {
                 "type": "string"
               }
             },
@@ -384,6 +414,9 @@
         "properties": {
           "id": {
             "minLength": 1,
+            "type": "string"
+          },
+          "project": {
             "type": "string"
           }
         },
@@ -423,6 +456,9 @@
                 "type": "integer"
               },
               "id": {
+                "type": "string"
+              },
+              "project": {
                 "type": "string"
               },
               "revision": {
@@ -563,6 +599,9 @@
               "id": {
                 "type": "string"
               },
+              "project": {
+                "type": "string"
+              },
               "revision": {
                 "allOf": [
                   {
@@ -608,6 +647,9 @@
           "id": {
             "type": "string"
           },
+          "project": {
+            "type": "string"
+          },
           "revision": {
             "allOf": [
               {
@@ -642,7 +684,7 @@
       "name": "flame.knowledgebase/search.v1",
       "kind": "query",
       "target": "installation",
-      "description": "Retrieve cited chunks from indexed user documents through the configured embedding role.",
+      "description": "Retrieve cited chunks from the indexed user documents visible to the caller, shared documents and its Project's own, through the configured embedding role.",
       "input": {
         "$defs": {
           "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl.U2VhcmNoSW5wdXQ": {
@@ -669,6 +711,9 @@
                 ],
                 "minimum": 1,
                 "type": "integer"
+              },
+              "project": {
+                "type": "string"
               },
               "query": {
                 "minLength": 1,
@@ -707,6 +752,9 @@
             "minimum": 1,
             "type": "integer"
           },
+          "project": {
+            "type": "string"
+          },
           "query": {
             "minLength": 1,
             "type": "string"
@@ -733,6 +781,9 @@
                 "type": "integer"
               },
               "id": {
+                "type": "string"
+              },
+              "project": {
                 "type": "string"
               },
               "revision": {

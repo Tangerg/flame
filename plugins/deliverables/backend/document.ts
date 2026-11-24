@@ -80,7 +80,7 @@ export class Document {
     this.#header = Object.freeze(schemas.header.parse(value));
   }
 
-  static create(title: string, initial: Revision): Document {
+  static create(title: string, initial: Revision, project?: string): Document {
     if (initial.parent || !["create", "import"].includes(initial.operation))
       throw new Error(
         "deliverables: initial revision requires a creation or import",
@@ -91,6 +91,7 @@ export class Document {
       format: initial.format,
       head: initial.id,
       createdAt: initial.createdAt,
+      ...(project ? { project } : {}),
     });
   }
 

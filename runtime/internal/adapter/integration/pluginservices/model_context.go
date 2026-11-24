@@ -10,6 +10,7 @@ import (
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 
@@ -58,7 +59,7 @@ func (o *CallComposition) PrepareContext(ctx context.Context, bindings []plugins
 		userMessage = new(userMessage.Clone())
 	}
 	request.Messages = append(request.Messages, cloneContextMessages(tail)...)
-	base := pluginsdk.ModelContextRequest{Use: use, Provider: selection.Provider(), Model: selection.Model(), Request: *request, UserMessage: userMessage}
+	base := pluginsdk.ModelContextRequest{Use: use, Provider: selection.Provider(), Model: selection.Model(), Project: executionctx.Project(ctx).String(), Request: *request, UserMessage: userMessage}
 	if err := base.Validate(); err != nil {
 		return nil, err
 	}

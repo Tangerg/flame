@@ -209,12 +209,18 @@ async function connect(dataDirectory) {
     close,
     invoke,
     tools: () => client.listTools(),
-    tool: (name, input, id = randomUUID()) =>
+    tool: (name, input, id = randomUUID(), project) =>
       client.callTool(
         {
           name,
           arguments: input,
-          _meta: meta(id, "model"),
+          _meta: {
+            ...meta(id, "model"),
+            [mcpProtocol.constants.toolContextMetadataKey]: {
+              cwd: dataDirectory,
+              ...(project ? { project } : {}),
+            },
+          },
         },
         undefined,
         { timeout: requestTimeoutMilliseconds },
@@ -352,10 +358,11 @@ it(
   scenarioTimeoutMilliseconds,
 );
 it(
-  "model tools create editable workbook and chart slides through the same owner and recover the exact tool outcome",
+  "model tools create editable workbook and chart slides in the calling Run's Project through the same owner and recover the exact tool outcome",
   async ({ backend }) => {
     const result = await backend.invoke(METHODS.catalog, {});
     const formats = JSON.parse(result.formatsJSON).formats;
+    const project = { xlsx: "prj_payments", pptx: undefined };
     for (const format of ["xlsx", "pptx"]) {
       const input = {
         title: `Native ${format}`,
@@ -365,7 +372,7 @@ it(
         provenance,
       };
       const id = `tool-${format}`;
-      const output = await backend.tool("create", input, id);
+      const output = await backend.tool("create", input, id, project[format]);
       expect(output.isError, JSON.stringify(output)).not.toBe(true);
       const native = output.structuredContent.value;
       expect(native.format).toBe(format);
@@ -389,8 +396,22 @@ it(
         })),
         details: output.structuredContent,
       });
-      expect(await backend.tool("create", input, id)).toEqual(output);
+      expect(
+        await backend.tool("create", input, id, project[format]),
+      ).toEqual(output);
     }
+    const formatsIn = (entries) => entries.map((entry) => entry.format);
+    const listed = await backend.tool(
+      "list",
+      { limit: LIMITS.pageSize },
+      undefined,
+      "prj_payments",
+    );
+    expect(formatsIn(listed.structuredContent.value.entries)).toEqual(["xlsx"]);
+    const unscoped = await backend.invoke(METHODS.list, {
+      limit: LIMITS.pageSize,
+    });
+    expect(formatsIn(unscoped.entries)).toEqual(["pptx", "xlsx"]);
   },
   scenarioTimeoutMilliseconds,
 );
