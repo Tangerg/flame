@@ -339,6 +339,88 @@ function applyComposerReadingLimit({ currentTarget, target }: FocusEvent<HTMLEle
   currentTarget.style.setProperty("--composer-reading-limit", editing ? "100%" : "calc(100% / 3)");
 }
 
+const CATALOG_VIEW = { title: "dock.catalog.title", dock: "workspace" } as const;
+
+// Without room for the dock the toggle opens the view full-page instead.
+function toggleChatDock(
+  workspaceAccess: ReturnType<typeof useWorkspace>,
+  dockAvailable: boolean,
+  dockOpen: boolean,
+) {
+  if (!dockAvailable) showWorkspaceDock(workspaceAccess, "main");
+  else if (dockOpen) collapseWorkspaceDock(workspaceAccess);
+  else showWorkspaceDock(workspaceAccess);
+}
+
+type InspectionFocus = ReturnType<typeof useInspectionFocus>;
+
+function WorkspaceViewStack({
+  presentation,
+  shown,
+  presentedViewId,
+  fullPaneViewId,
+  addressable,
+  mountedViewIds,
+  mainViewRef,
+  presentationRef,
+  catalog,
+  openViewIds,
+}: {
+  presentation: "main" | "dock";
+  shown: boolean;
+  presentedViewId: string | null;
+  fullPaneViewId: string | null;
+  addressable: boolean;
+  mountedViewIds: ReadonlySet<string>;
+  mainViewRef: InspectionFocus["mainViewRef"];
+  presentationRef: InspectionFocus["presentationRef"];
+  catalog: ReturnType<typeof useContextDockCatalog>;
+  openViewIds: ReadonlySet<string>;
+}) {
+  const t = useT();
+  const main = presentation === "main";
+  return (
+    <div {...stylex.props(sh.anchor)}>
+      <Activity mode={presentedViewId === WORKSPACE_DOCK_CATALOG ? "visible" : "hidden"}>
+        <div
+          ref={fullPaneViewId === WORKSPACE_DOCK_CATALOG ? mainViewRef : undefined}
+          role={main ? "region" : undefined}
+          aria-label={main ? t(CATALOG_VIEW.title) : undefined}
+          tabIndex={main ? -1 : undefined}
+          data-focus-inset=""
+          data-dock-view-id={WORKSPACE_DOCK_CATALOG}
+          {...stylex.props(sh.overlay)}
+        >
+          <DockCatalogPage groups={catalog} openViewIds={openViewIds} titleHidden={main} />
+        </div>
+      </Activity>
+      {/* Moving retained readers with the tab strip can reset their WebKit scroll positions. */}
+      {[...mountedViewIds].sort().map((viewId) => {
+        const visible = viewId === presentedViewId && shown;
+        return (
+          <div
+            key={viewId}
+            inert={!visible}
+            aria-hidden={!visible || undefined}
+            data-dock-view-id={addressable ? viewId : undefined}
+            {...stylex.props(sh.overlay, !visible && paneStyles.inactiveView)}
+          >
+            <ContentVisibility visible={visible} fallbackFocus={presentationRef}>
+              <PanelHost density={main ? "page" : "compact"}>
+                <WorkspaceViewBody
+                  ref={viewId === fullPaneViewId ? mainViewRef : undefined}
+                  viewId={viewId}
+                  presentation={presentation}
+                />
+              </PanelHost>
+            </ContentVisibility>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export function ChatPanel({ onSend, ref }: Props) {
   const pickerRef = useRef<HTMLButtonElement>(null);
   const composerAccess = useComposer();
@@ -429,7 +511,6 @@ export function ChatPanel({ onSend, ref }: Props) {
   }
   mountedViewIds.delete(WORKSPACE_DOCK_CATALOG);
   const presentedViewId = presentedMain ? fullPaneViewId : dock.activeViewId;
-  const catalogView = { title: "dock.catalog.title", dock: "workspace" } as const;
 
   return (
     <AgentContentCard
@@ -439,7 +520,7 @@ export function ChatPanel({ onSend, ref }: Props) {
       {presentedMain && (
         <WorkspaceWindowHeader
           view={
-            fullPaneViewId === WORKSPACE_DOCK_CATALOG ? catalogView : viewsById.get(fullPaneViewId)
+            fullPaneViewId === WORKSPACE_DOCK_CATALOG ? CATALOG_VIEW : viewsById.get(fullPaneViewId)
           }
           exit={
             inspectedFullPane && returnAction
@@ -538,50 +619,18 @@ export function ChatPanel({ onSend, ref }: Props) {
                       returnAction={returnAction}
                     />
                   )}
-                  <div {...stylex.props(sh.anchor)}>
-                    <Activity
-                      mode={presentedViewId === WORKSPACE_DOCK_CATALOG ? "visible" : "hidden"}
-                    >
-                      <div
-                        ref={fullPaneViewId === WORKSPACE_DOCK_CATALOG ? mainViewRef : undefined}
-                        role={presentedMain ? "region" : undefined}
-                        aria-label={presentedMain ? t(catalogView.title) : undefined}
-                        tabIndex={presentedMain ? -1 : undefined}
-                        data-focus-inset=""
-                        data-dock-view-id={WORKSPACE_DOCK_CATALOG}
-                        {...stylex.props(sh.overlay)}
-                      >
-                        <DockCatalogPage
-                          groups={catalog}
-                          openViewIds={openViewIds}
-                          titleHidden={presentedMain}
-                        />
-                      </div>
-                    </Activity>
-                    {/* Moving retained readers with the tab strip can reset their WebKit scroll positions. */}
-                    {[...mountedViewIds].sort().map((viewId) => {
-                      const visible = viewId === presentedViewId && (presentedMain || dockVisible);
-                      return (
-                        <div
-                          key={viewId}
-                          inert={!visible}
-                          aria-hidden={!visible || undefined}
-                          data-dock-view-id={activeMainView === null ? viewId : undefined}
-                          {...stylex.props(sh.overlay, !visible && paneStyles.inactiveView)}
-                        >
-                          <ContentVisibility visible={visible} fallbackFocus={presentationRef}>
-                            <PanelHost density={presentedMain ? "page" : "compact"}>
-                              <WorkspaceViewBody
-                                ref={viewId === fullPaneViewId ? mainViewRef : undefined}
-                                viewId={viewId}
-                                presentation={presentedMain ? "main" : "dock"}
-                              />
-                            </PanelHost>
-                          </ContentVisibility>
-                        </div>
-                      );
-                    })}
-                  </div>
+                  <WorkspaceViewStack
+                    presentation={presentedMain ? "main" : "dock"}
+                    shown={presentedMain || dockVisible}
+                    presentedViewId={presentedViewId}
+                    fullPaneViewId={fullPaneViewId}
+                    addressable={activeMainView === null}
+                    mountedViewIds={mountedViewIds}
+                    mainViewRef={mainViewRef}
+                    presentationRef={presentationRef}
+                    catalog={catalog}
+                    openViewIds={openViewIds}
+                  />
                 </AgentContextDock>
               </SessionOwnedWorkspaceState>
             )}
@@ -590,13 +639,7 @@ export function ChatPanel({ onSend, ref }: Props) {
         {viewsReady && !presentedMain && hasDockOwner && (
           <AgentDockToggle
             open={dockVisible}
-            onToggle={
-              !dockAvailable
-                ? () => showWorkspaceDock(workspaceAccess, "main")
-                : dockOpen
-                  ? collapseWorkspaceDock.bind(null, workspaceAccess)
-                  : showWorkspaceDock.bind(null, workspaceAccess)
-            }
+            onToggle={() => toggleChatDock(workspaceAccess, dockAvailable, dockOpen)}
             showLabel={dockAvailable ? t("dock.action.show") : t("dock.action.openFull")}
             hideLabel={t("dock.action.hide")}
           />
