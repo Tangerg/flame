@@ -163,4 +163,3 @@ export function createConversationImport(
   };
 }
 export type ConversationImport = ReturnType<typeof createConversationImport>;
-type ConversationImportOwner = ReturnType<ConversationImport["install"]>;

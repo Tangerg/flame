@@ -19,7 +19,7 @@ import {
 import { matchCommands } from "@/features/command/menu/application/commandMatches";
 import { useCommandMenuStore } from "@/features/command/menu/application/commandMenuState";
 import { COMMAND_MENU_COMMAND } from "@/features/command/menu/public/commandMenu";
-import { color, leading } from "@flame/ui/tokens.stylex";
+import { leading } from "@flame/ui/tokens.stylex";
 const cmd = stylex.create({
   label: {
     minWidth: 0,

@@ -99,4 +99,3 @@ export function createAgentSessionUsage() {
     },
   };
 }
-type AgentSessionUsageOwner = ReturnType<ReturnType<typeof createAgentSessionUsage>["replace"]>;

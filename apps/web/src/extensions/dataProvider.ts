@@ -1,5 +1,4 @@
 import { defineExtensionPoint } from "@/extensions/contracts";
-import { lookupExtensionByKey } from "@/extensions/selectors/extensions";
 export interface DataProviderSpec<T = unknown, P = unknown> {
   key: string;
   fetcher: (params?: P, signal?: AbortSignal) => Promise<T>;

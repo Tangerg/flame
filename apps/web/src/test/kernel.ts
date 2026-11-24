@@ -1,6 +1,5 @@
 import { shellServices } from "@/app/shellServices";
 import { type AnyPlugin, type Host } from "dougong";
-import { definePlugin, type PluginContext } from "@/extensions/definePlugin";
 import { startKernel, stopKernel } from "@/extensions/bootstrap";
 let running: Host | undefined;
 
