@@ -12982,6 +12982,17 @@ document formatting, normal static hooks and read-only integrity. Continue
 whole-product visual qualification in this same Lab; require independently
 observed native menu input before claiming physical Escape acceptance.
 
+### Memory rows name only exceptional states (2026-11-24)
+
+Every Memory record carried a status badge, so the resting state appeared
+as `Active` on every approved row. Memory statuses are only `pending` and
+`active`. `MemoryReport` now badges `Pending review` (warning) and `Pinned`
+and leaves active records unlabelled. The status filter keeps its `Active`
+option. Native `dock-agent-memory`: the pending record reads
+`Record details · Pending review` with Approve/Reject, and the approved one
+reads `Record details · Pinned` with Edit. Plugin typecheck, `check-i18n` and
+published resource checks pass.
+
 ### Memory original command observation across display languages (2026-11-12)
 
 Scope: retain the original conversation draft → filter Project memory → submit

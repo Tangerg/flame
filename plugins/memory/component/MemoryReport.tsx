@@ -135,13 +135,10 @@ export function MemoryReport({
                   title={
                     <RecordMeta>
                       <span>{t("record.details")}</span>
-                      <Badge
-                        tone={item.status === "pending" ? "warning" : "neutral"}
-                      >
-                        {item.status === "pending"
-                          ? t("status.pending")
-                          : t("status.active")}
-                      </Badge>
+                      {/* Active is the resting state; only review and pinning need a word. */}
+                      {item.status === "pending" && (
+                        <Badge tone="warning">{t("status.pending")}</Badge>
+                      )}
                       {item.pinned && <Badge>{t("pinned")}</Badge>}
                     </RecordMeta>
                   }
