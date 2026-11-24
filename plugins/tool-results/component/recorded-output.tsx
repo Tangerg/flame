@@ -1,4 +1,13 @@
-import { useLayoutEffect, useCallback, useMemo, useRef, useState } from "react";
+import {
+  useLayoutEffect,
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+  type Dispatch,
+  type RefObject,
+  type SetStateAction,
+} from "react";
 import { ArrowDownToLine, Search } from "@flame/icons/react";
 import {
   ReadingList,
@@ -46,6 +55,127 @@ function openFind(view: OutputView): OutputView {
   return view.mode === "finding" ? view : FINDING;
 }
 
+function matchingLines(lines: string[], query: string): number[] {
+  if (!query) return [];
+  return lines.flatMap((line, index) =>
+    containsQuery(ansiText(line), query) ? [index] : [],
+  );
+}
+
+type FindingView = Extract<OutputView, { mode: "finding" }>;
+
+// Enter moves to the next match and Shift+Enter to the previous, wrapping.
+function OutputFindBar({
+  t,
+  view,
+  matchCount,
+  fieldRef,
+  onView,
+  onClose,
+}: {
+  t: Translate;
+  view: FindingView;
+  matchCount: number;
+  fieldRef: RefObject<HTMLInputElement | null>;
+  onView: Dispatch<SetStateAction<OutputView>>;
+  onClose(): void;
+}) {
+  return (
+    <div data-slot="output-controls" style={findBar}>
+      <FindField
+        t={t}
+        label={t("output.search")}
+        fieldLabel={t("output.field")}
+        value={view.query}
+        fieldRef={fieldRef}
+        status={
+          view.query && (
+            <span role="status">
+              {matchCount
+                ? t("output.matchCount", {
+                    current: (view.match % matchCount) + 1,
+                    total: matchCount,
+                  })
+                : t("output.noMatches")}
+            </span>
+          )
+        }
+        onChange={(query) => onView({ mode: "finding", query, match: 0 })}
+        onClose={onClose}
+        onEnter={(backward) => {
+          if (matchCount)
+            onView((current) =>
+              current.mode === "finding"
+                ? {
+                    ...current,
+                    match:
+                      (current.match + (backward ? matchCount - 1 : 1)) %
+                      matchCount,
+                  }
+                : current,
+            );
+        }}
+      />
+    </div>
+  );
+}
+
+function OutputCaptionActions({
+  t,
+  view,
+  earlierLines,
+  totalLines,
+  atEnd,
+  onToggle,
+  onJumpToLatest,
+  onFind,
+}: {
+  t: Translate;
+  view: OutputView;
+  earlierLines: number;
+  totalLines: number;
+  atEnd: boolean;
+  onToggle(origin: HTMLElement): void;
+  onJumpToLatest(): void;
+  onFind(): void;
+}) {
+  const expanded = view.mode !== "preview";
+  return (
+    <>
+      {earlierLines > 0 && (
+        <Button
+          size="xs"
+          aria-expanded={expanded}
+          onClick={(event) => onToggle(event.currentTarget)}
+        >
+          {expanded
+            ? t("output.collapse")
+            : t("output.showEarlier", {
+                count: earlierLines,
+                total: totalLines,
+              })}
+        </Button>
+      )}
+      {expanded && !atEnd && (
+        <IconButton
+          icon={ArrowDownToLine}
+          size="xs"
+          aria-label={t("output.jumpToLatest")}
+          onClick={onJumpToLatest}
+        />
+      )}
+      {expanded && view.mode !== "finding" && (
+        <IconButton
+          icon={Search}
+          size="xs"
+          aria-label={t("find.open")}
+          onClick={onFind}
+        />
+      )}
+    </>
+  );
+}
+
 export function RecordedOutput({ text, t }: { text: string; t: Translate }) {
   const lines = useMemo(() => text.replace(/\n$/, "").split("\n"), [text]);
   const lineIndices = useMemo(
@@ -64,15 +194,7 @@ export function RecordedOutput({ text, t }: { text: string; t: Translate }) {
   const expansion = useRef<{ origin: HTMLElement; source: string } | null>(
     null,
   );
-  const matches = useMemo(
-    () =>
-      !query
-        ? []
-        : lines.flatMap((line, index) =>
-            containsQuery(ansiText(line), query) ? [index] : [],
-          ),
-    [lines, query],
-  );
+  const matches = useMemo(() => matchingLines(lines, query), [lines, query]);
   const selected =
     finding && matches.length
       ? matches[view.match % matches.length]
@@ -138,92 +260,38 @@ export function RecordedOutput({ text, t }: { text: string; t: Translate }) {
         labels={resultActions(t, t("output.copy"))}
         wrappable={false}
       >
-        {previewStart > 0 && (
-          <Button
-            size="xs"
-            aria-expanded={expanded}
-            onClick={(event) => {
-              if (expanded) {
-                event.currentTarget.focus({ preventScroll: true });
-                expansion.current = null;
-                setView(PREVIEW);
-              } else {
-                expansion.current = {
-                  origin: event.currentTarget,
-                  source: text,
-                };
-                setView(READING);
-              }
-            }}
-          >
-            {expanded
-              ? t("output.collapse")
-              : t("output.showEarlier", {
-                  count: previewStart,
-                  total: lines.length,
-                })}
-          </Button>
-        )}
-        {expanded && !atEnd && (
-          <IconButton
-            icon={ArrowDownToLine}
-            size="xs"
-            aria-label={t("output.jumpToLatest")}
-            onClick={() => {
-              void reader.current?.scrollToEnd({ animated: false });
-              reader.current
-                ?.getScrollableNode()
-                ?.focus({ preventScroll: true });
-            }}
-          />
-        )}
-        {expanded && !finding && (
-          <IconButton
-            icon={Search}
-            size="xs"
-            aria-label={t("find.open")}
-            onClick={() => setView(openFind)}
-          />
-        )}
+        <OutputCaptionActions
+          t={t}
+          view={view}
+          earlierLines={previewStart}
+          totalLines={lines.length}
+          atEnd={atEnd}
+          onToggle={(origin) => {
+            if (expanded) {
+              origin.focus({ preventScroll: true });
+              expansion.current = null;
+              setView(PREVIEW);
+            } else {
+              expansion.current = { origin, source: text };
+              setView(READING);
+            }
+          }}
+          onJumpToLatest={() => {
+            void reader.current?.scrollToEnd({ animated: false });
+            reader.current?.getScrollableNode()?.focus({ preventScroll: true });
+          }}
+          onFind={() => setView(openFind)}
+        />
       </CodeCaption>
       {view.mode === "finding" && (
-        <div data-slot="output-controls" style={findBar}>
-          <FindField
-            t={t}
-            label={t("output.search")}
-            fieldLabel={t("output.field")}
-            value={view.query}
-            fieldRef={search}
-            status={
-              view.query && (
-                <span role="status">
-                  {matches.length
-                    ? t("output.matchCount", {
-                        current: (view.match % matches.length) + 1,
-                        total: matches.length,
-                      })
-                    : t("output.noMatches")}
-                </span>
-              )
-            }
-            onChange={(query) => setView({ mode: "finding", query, match: 0 })}
-            onClose={closeFind}
-            onEnter={(backward) => {
-              if (matches.length)
-                setView((current) =>
-                  current.mode === "finding"
-                    ? {
-                        ...current,
-                        match:
-                          (current.match +
-                            (backward ? matches.length - 1 : 1)) %
-                          matches.length,
-                      }
-                    : current,
-                );
-            }}
-          />
-        </div>
+        <OutputFindBar
+          t={t}
+          view={view}
+          matchCount={matches.length}
+          fieldRef={search}
+          onView={setView}
+          onClose={closeFind}
+        />
       )}
       <div
         role={expanded ? undefined : "region"}
