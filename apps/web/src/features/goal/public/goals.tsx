@@ -1,7 +1,10 @@
 import { createContext, useContext, useMemo, useSyncExternalStore, type ReactNode } from "react";
 import { GenerationRetiredError } from "@/lib/asyncOwnership";
 import { type GoalAccess } from "@/features/goal/application/goalAccess";
-import { type GoalCommands } from "@/features/goal/application/goalCommands";
+import {
+  GOAL_COMMAND_GENERATION,
+  type GoalCommands,
+} from "@/features/goal/application/goalCommands";
 
 const GoalContext = createContext<GoalAccess | null>(null);
 
@@ -20,7 +23,7 @@ export function useGoalCommands(): Pick<GoalCommands, "update" | "clear" | "stop
   const generation = useSyncExternalStore(commands.subscribe, commands.capture, commands.capture);
   return useMemo(() => {
     const requireGeneration = () => {
-      if (!generation) throw new GenerationRetiredError("goal_command_generation");
+      if (!generation) throw new GenerationRetiredError(GOAL_COMMAND_GENERATION);
       return generation;
     };
     return {

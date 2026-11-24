@@ -4,7 +4,10 @@ import { type AgentAccess } from "@/features/agent/public/agent";
 import { type WorkspaceAccess } from "@/features/workspace/public/workspace";
 import { createNotificationCentre } from "@/features/notifications/adapters/systemNotifier";
 import { createSystemNotifier } from "@/features/notifications/systemNotifier";
-import { startSystemNotificationRouting } from "@/features/notifications/systemNotificationRouting";
+import {
+  startSystemNotificationRouting,
+  SYSTEM_NOTIFICATIONS_PLUGIN,
+} from "@/features/notifications/systemNotificationRouting";
 import { type NotificationAccess } from "@/features/notifications/public/notifier";
 import { type NotificationFeed } from "@/features/notifications/public/notifications";
 export function createNotifications(
@@ -24,7 +27,7 @@ export function createNotifications(
 ) {
   const notifier = createSystemNotifier(
     createNotificationCentre(host, endpoint, (error) =>
-      reportPluginError("flame.builtin.system-notifications", "events", error),
+      reportPluginError(SYSTEM_NOTIFICATIONS_PLUGIN, "events", error),
     ),
   );
   const access: NotificationAccess = {

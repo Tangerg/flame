@@ -10,6 +10,7 @@ import { reportPluginError } from "@/extensions/errors";
 import { type AgentAccess } from "@/features/agent/public/agent";
 import { type NotificationAccess } from "@/features/notifications/public/notifier";
 import { t } from "@/lib/i18n/index";
+import { packageId } from "@/features/plugins/adapters/packages";
 
 function ownSubscription(
   signal: AbortSignal,
@@ -53,7 +54,7 @@ export function createComponentNotifications(
           try {
             listener();
           } catch (error) {
-            reportPluginError(`package:${component.installationId}`, "events", error);
+            reportPluginError(packageId(component.installationId), "events", error);
           }
         }),
       ),
@@ -96,7 +97,7 @@ export function createComponentSettlementSubscription(
         });
         void work.catch((error: unknown) => {
           if (!signal.aborted)
-            reportPluginError(`package:${component.installationId}`, "events", error);
+            reportPluginError(packageId(component.installationId), "events", error);
         });
       }),
     );

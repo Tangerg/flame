@@ -53,16 +53,12 @@ import { type RuntimeConnectionGeneration } from "@/features/connection/public/s
 import {
   type InstalledPackageState,
   type PackageRealizationFailure,
+  INSTALLED_PLUGIN_LOADER,
+  PACKAGE_ID_PREFIX,
   PACKAGES_KEY,
+  packageScopedId,
   PROVIDERS_KEY,
 } from "@/features/plugins/adapters/packages";
-// A package-scoped id namespaces a contribution or theme by its installation so
-// two packages cannot collide on one extension-point or selection id.
-const packageIdPrefix = "package:";
-
-function packageScopedId(installationId: string, localId: string): string {
-  return `${packageIdPrefix}${installationId}:${localId}`;
-}
 
 function operationBinding(
   installation: PluginInstallation,
@@ -402,7 +398,7 @@ function createPackageReconciler(
   );
   const resources = new Map<string, { signature: string; lifetime: ContributionScope }>();
   const reconcileLocales = createLocaleReconciler(scope, (error) =>
-    reportPluginError("flame.builtin.installed-plugin-loader", "setup", error),
+    reportPluginError(INSTALLED_PLUGIN_LOADER, "setup", error),
   );
   const contributeInstallation = (
     lifetime: ContributionScope,
@@ -470,7 +466,7 @@ function createPackageReconciler(
       admitted.flatMap((item) =>
         item.selected.themes.map((theme) => packageScopedId(item.id, theme.id)),
       ),
-      packageIdPrefix,
+      PACKAGE_ID_PREFIX,
     );
     const ids = new Set(admitted.map((item) => item.id));
     for (const [id, resource] of resources) {

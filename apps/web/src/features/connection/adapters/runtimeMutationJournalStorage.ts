@@ -1,14 +1,14 @@
 import { parseJSON, stringifyJSON } from "@frame/sdk/json";
 import { pluginStoragePrefix } from "@/extensions/storage";
+import { RUNTIME_PLUGIN } from "@/features/connection/public/services";
 import type { MutationJournalStorage } from "@flame/runtime-client";
 
 // Unsettled commands must remain readable when storage is full. The durable
 // boundary propagates browser errors and never writes to probe a read.
 export function createRuntimeMutationJournalStorage(
-  name: string,
   open: () => Storage = () => window.localStorage,
 ): MutationJournalStorage {
-  const prefix = `${pluginStoragePrefix(name)}mutation-journal.`;
+  const prefix = `${pluginStoragePrefix(RUNTIME_PLUGIN)}mutation-journal.`;
   return {
     get(key) {
       const raw = open().getItem(prefix + key);

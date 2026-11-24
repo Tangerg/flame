@@ -15,9 +15,10 @@ const approval = z.strictObject({
   operationId: token,
   requestJSON: z.string().max(LIMITS.maxApprovalBytes),
 });
+const engineTool = z.enum(["js", "js_reset"]);
 const operation = z.strictObject({
   id: token,
-  tool: z.enum(["js", "js_reset"]),
+  tool: engineTool,
   startedAt: timestamp,
 });
 const session = z.strictObject({
@@ -80,7 +81,7 @@ const execute = z.strictObject({
   sessionId: token,
   workerId: token,
   surfaceDigest: digest,
-  tool: z.enum(["js", "js_reset"]),
+  tool: engineTool,
   argumentsJSON: z.string().min(2).max(LIMITS.maxInputBytes),
 });
 const executionResult = z.strictObject({

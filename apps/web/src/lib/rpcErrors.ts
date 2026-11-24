@@ -1,53 +1,7 @@
 import { failureText as untranslatedFailureText } from "@flame/component-sdk";
 import { isErrorType, RpcError } from "@flame/runtime-client";
 import { t } from "@/lib/i18n/index";
-const MAPPED_TYPES: readonly string[] = [
-  "session_busy",
-  "session_has_active_run",
-  "run_not_root",
-  "run_waiting",
-  "run_finished",
-  "stale_segment",
-  "checkpoint_unavailable",
-  "checkpoint_conflict",
-  "prompt_source_too_large",
-  "workspace_unavailable",
-  "vcs_unavailable",
-  "rate_limited",
-  "invalid_credentials",
-  "timeout",
-  "provider_unavailable",
-  "provider_rejected",
-  "provider_error",
-  "agent_stuck",
-  "denied_by_user",
-  "tool_failed",
-  "tool_canceled",
-  "child_run_canceled",
-  "idempotency_in_progress",
-  "internal_error",
-  "mcp_authorization_attempt_not_found",
-  "skill_not_found",
-  "skill_unavailable",
-  "revision_conflict",
-  "mcp_server_not_found",
-  "mcp_server_already_exists",
-  "mcp_server_disabled",
-  "path_outside_root",
-  "unsupported_mime",
-  "interrupt_not_open",
-  "idempotency_conflict",
-  "plugin_changed",
-  "plugin_in_use",
-  "plugin_not_found",
-  "plugin_stale",
-  "plugin_disabled",
-  "plugin_unavailable",
-  "mcp_owned_by_installation",
-  "export_too_large",
-  "capability_not_negotiated",
-  "invalid_protocol_version",
-];
+import { en } from "@/lib/i18n/locales/en";
 
 export function describeActiveRunRefusal(problem: {
   code?: string;
@@ -59,8 +13,10 @@ export function describeActiveRunRefusal(problem: {
   return undefined;
 }
 
+// A Problem type has a user-facing message exactly when the base dictionary has one.
 export function describeErrorType(type: string | undefined): string | undefined {
-  return type && MAPPED_TYPES.includes(type) ? t(`rpcError.${type}`) : undefined;
+  const key = `rpcError.${type}`;
+  return type && Object.hasOwn(en, key) ? t(key) : undefined;
 }
 
 export function describeRpcError(err: unknown): string | undefined {

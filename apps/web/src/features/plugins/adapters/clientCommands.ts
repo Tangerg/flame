@@ -9,6 +9,7 @@ import { reportPluginError } from "@/extensions/errors";
 import { COMMAND } from "@/features/command/public/extensionPoints";
 import { type NotificationFeed } from "@/features/notifications/public/notifications";
 import { failureMessage } from "@/lib/diagnostics";
+import { packageId } from "@/features/plugins/adapters/packages";
 
 export function createClientCommandRegistration(
   lifetime: ContributionScope,
@@ -18,7 +19,7 @@ export function createClientCommandRegistration(
   notifications: NotificationFeed,
 ): ComponentContext["registerCommand"] {
   const registered = new Map<string, symbol>();
-  const source = `package:${component.installationId}`;
+  const source = packageId(component.installationId);
   return (command: ClientCommand) => {
     signal.throwIfAborted();
     const { id: localId, label, combo, run } = command;

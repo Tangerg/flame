@@ -1,4 +1,5 @@
 import { type InstalledPluginsOwner } from "@/features/plugins/adapters/installedPlugins";
+import { INSTALLED_PLUGIN_LOADER } from "@/features/plugins/adapters/packages";
 import { lazy } from "react";
 import { RUNTIME_STREAM } from "@/features/connection/public/services";
 import { contributeLayout } from "@/extensions/contributeHelpers";
@@ -14,7 +15,7 @@ const PluginsPane = lazy(() =>
 
 export function createInstalledPluginLoader(installed: InstalledPluginsOwner) {
   return definePlugin({
-    name: "flame.builtin.installed-plugin-loader",
+    name: INSTALLED_PLUGIN_LOADER,
     requires: { runtime: RUNTIME_STREAM },
     setup(ctx) {
       contributeLayout(ctx.contributions, "composer.overlay.top", {

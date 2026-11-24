@@ -18,10 +18,12 @@ class GoalCommandSessionMismatchError extends Error {
   }
 }
 
+export const GOAL_COMMAND_GENERATION = "goal_command_generation";
+
 class GoalCommandGeneration {
   readonly #gateway: GoalCommandsGateway;
   readonly #repairProjection: GoalProjectionRepair;
-  readonly #retiredError = new GenerationRetiredError("goal_command_generation");
+  readonly #retiredError = new GenerationRetiredError(GOAL_COMMAND_GENERATION);
   readonly #cohort = new RetirableTaskCohort(this.#retiredError);
 
   constructor(gateway: GoalCommandsGateway, repairProjection: GoalProjectionRepair) {

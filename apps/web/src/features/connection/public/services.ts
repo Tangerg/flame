@@ -36,4 +36,6 @@ export interface RuntimeServerScope {
   subscribeReplacement: (onReplace: () => void) => () => void;
 }
 
+export const RUNTIME_PLUGIN = "flame.builtin.runtime";
+
 export const RUNTIME_SERVER_SCOPE = service<RuntimeServerScope>("flame.runtime.serverScope");

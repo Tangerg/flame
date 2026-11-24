@@ -67,7 +67,7 @@ function startClient(messages: NotificationFeed, render: (content: ReactNode) =>
   const connection = createRuntimeConnection(
     host,
     runtimeRequestMeta,
-    createRuntimeMutationJournalStorage("flame.builtin.runtime"),
+    createRuntimeMutationJournalStorage(),
   );
 
   const navigation = createAppNavigation();

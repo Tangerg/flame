@@ -4,6 +4,20 @@ import { create } from "zustand";
 import { createDataQuery } from "@/extensions/dataQuery";
 import { type Methods } from "@flame/runtime-client";
 import { type PluginProviderSelection, type PluginInstallation } from "@flame/runtime-client/wire";
+// Package ids namespace an installation's contributions, themes and diagnostics
+// so two packages cannot collide on one extension-point or selection id.
+export const PACKAGE_ID_PREFIX = "package:";
+
+export function packageId(installationId: string): string {
+  return `${PACKAGE_ID_PREFIX}${installationId}`;
+}
+
+export function packageScopedId(installationId: string, localId: string): string {
+  return `${packageId(installationId)}:${localId}`;
+}
+
+export const INSTALLED_PLUGIN_LOADER = "flame.builtin.installed-plugin-loader";
+
 export const PACKAGES_KEY = "runtime-packages";
 
 export const usePackages = createDataQuery<PluginInstallation[]>(PACKAGES_KEY);

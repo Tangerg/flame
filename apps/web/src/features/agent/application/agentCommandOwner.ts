@@ -2,6 +2,8 @@ import { GenerationRetiredError } from "@/lib/asyncOwnership";
 import { createPublicationSlot } from "@/lib/publicationSlot";
 import { RetirableTaskCohort } from "@/lib/taskQueue";
 import { tupleKey } from "@/lib/tupleKey";
+
+const AGENT_COMMAND_OWNER = "agent_command_owner";
 interface SessionRollbackLease {
   isCurrent(): boolean;
   release(): void;
@@ -19,7 +21,7 @@ export function createAgentCommands() {
     readonly #rollbackSessions = new Set<string>();
     readonly #effects = new Set<AgentCommandEffect>();
     readonly #steerRetries = new Map<string, () => void>();
-    readonly #retiredError = new GenerationRetiredError("agent_command_owner");
+    readonly #retiredError = new GenerationRetiredError(AGENT_COMMAND_OWNER);
     readonly #cohort = new RetirableTaskCohort(this.#retiredError);
 
     private constructor() {}
@@ -32,7 +34,7 @@ export function createAgentCommands() {
 
     static current(): AgentCommandOwner {
       const owner = agentCommandPublication.current();
-      if (!owner) throw new GenerationRetiredError("agent_command_owner");
+      if (!owner) throw new GenerationRetiredError(AGENT_COMMAND_OWNER);
       return owner;
     }
 

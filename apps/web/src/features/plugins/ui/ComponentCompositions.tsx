@@ -28,6 +28,7 @@ import {
   componentFailureScope,
 } from "@/features/plugins/ui/InstalledComponent";
 import { type RuntimeConnectionGeneration } from "@/features/connection/public/services";
+import { packageId } from "@/features/plugins/adapters/packages";
 interface LoadedContribution extends LoadedComponent {
   valueSource: string;
   key: string;
@@ -329,7 +330,7 @@ class CompositionInstance {
   }
 
   report(error: unknown) {
-    reportPluginError(`package:${this.context.component.installationId}`, "other", error);
+    reportPluginError(packageId(this.context.component.installationId), "other", error);
   }
 
   async dispose(): Promise<void> {

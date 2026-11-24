@@ -1,8 +1,7 @@
-import { type ToolRef } from "@flame/runtime-client/wire";
+import { type BuiltinToolName } from "@/foundation/protocolValues.generated";
 
 // Families group Runtime built-in tools only; a plugin or MCP tool's name is
 // its owner's vocabulary, so the host renders it generically.
-type BuiltinToolName = Extract<ToolRef, { type: "builtIn" }>["name"];
 
 interface ToolFamily {
   id: string;

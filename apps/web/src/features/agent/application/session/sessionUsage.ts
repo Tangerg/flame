@@ -7,6 +7,8 @@ import {
   type AgentRuntimeGateway,
   type AgentSessionUsage,
 } from "@/features/agent/application/runtimeGateway";
+
+const SESSION_USAGE_OWNER = "agent_session_usage_owner";
 export function createAgentSessionUsage() {
   const scope = ["usage.session", crypto.randomUUID()] as const;
   const queryKey = (sessionId?: string) =>
@@ -29,7 +31,7 @@ export function createAgentSessionUsage() {
 
     static current(): AgentSessionUsageOwner {
       const owner = agentSessionUsagePublication.current();
-      if (!owner) throw new GenerationRetiredError("agent_session_usage_owner");
+      if (!owner) throw new GenerationRetiredError(SESSION_USAGE_OWNER);
       return owner;
     }
 
@@ -68,14 +70,14 @@ export function createAgentSessionUsage() {
 
     #assertCurrent(): void {
       if (this.#retired || !agentSessionUsagePublication.owns(this)) {
-        throw new GenerationRetiredError("agent_session_usage_owner");
+        throw new GenerationRetiredError(SESSION_USAGE_OWNER);
       }
     }
 
     #retire(): void {
       if (this.#retired) return;
       this.#retired = true;
-      this.#lifetime.abort(new GenerationRetiredError("agent_session_usage_owner"));
+      this.#lifetime.abort(new GenerationRetiredError(SESSION_USAGE_OWNER));
     }
   }
 

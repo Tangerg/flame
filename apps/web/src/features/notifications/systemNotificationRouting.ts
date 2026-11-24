@@ -6,6 +6,8 @@ import { type NotificationOwner } from "@/features/notifications/adapters/notifi
 import { definePlugin } from "@/extensions/definePlugin";
 import { READY_HANDLER } from "@/extensions/lifecycle";
 
+export const SYSTEM_NOTIFICATIONS_PLUGIN = "flame.builtin.system-notifications";
+
 export function startSystemNotificationRouting(
   notifier: SystemNotifier,
   agent: AgentAccess,
@@ -29,7 +31,7 @@ export function startSystemNotificationRouting(
 
 export function createSystemNotificationsPlugin(notifications: NotificationOwner) {
   return definePlugin({
-    name: "flame.builtin.system-notifications",
+    name: SYSTEM_NOTIFICATIONS_PLUGIN,
     setup(scope) {
       scope.lifetime.defer(notifications.dispose);
       scope.contributions.add(READY_HANDLER, () => notifications.start());

@@ -25,6 +25,7 @@ import { type Goals } from "@/features/goal/application/goals";
 import { GenerationRetiredError } from "@/lib/asyncOwnership";
 import { createGoalComposerSubmitMode } from "@/features/goal/application/goalComposerSubmitMode";
 import { type GoalState } from "@/features/goal/application/goalReadModel";
+import { GOAL_COMMAND_GENERATION } from "@/features/goal/application/goalCommands";
 const GOAL_SURFACE = "composer.overlay.top:goal";
 
 const GOAL_SLASH_COMMAND: SlashCommandSpec = {
@@ -103,7 +104,7 @@ export function createGoalPlugin(
                 providers.selected(GOAL_WORKFLOW) !== source ||
                 (original && !providers.admits(GOAL_WORKFLOW, original.author))
               )
-                throw new GenerationRetiredError("goal_command_generation");
+                throw new GenerationRetiredError(GOAL_COMMAND_GENERATION);
               return commands.start(input);
             };
           },
