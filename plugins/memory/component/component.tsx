@@ -6,6 +6,7 @@ import {
   PanelHeader,
   IconButton,
   Icon,
+  Hang,
   Segmented,
   PanelFooter,
   Disclosure,
@@ -135,7 +136,9 @@ export function Memory({ context }: { context: ComponentContext }) {
                 <Button
                   variant={edit ? "outline" : "primary"}
                   size="md"
-                  disabled={locked || (!project && cwd === undefined) || Boolean(edit)}
+                  disabled={
+                    locked || (!project && cwd === undefined) || Boolean(edit)
+                  }
                   focusableWhenDisabled
                   onClick={(event) => {
                     beginEdit({
@@ -150,22 +153,24 @@ export function Memory({ context }: { context: ComponentContext }) {
               </>
             }
           >
-            <Segmented
-              ariaLabel={t("segment.label")}
-              value={scope}
-              options={[
-                { value: "project", label: t("segment.project") },
-                { value: "user", label: t("segment.user") },
-              ]}
-              onChange={(value) => {
-                if (locked || edit) return;
-                setSearch("");
-                clearFilters();
-                clearFeedback();
-                setScope(value as Scope);
-              }}
-              disabled={locked || Boolean(edit)}
-            />
+            <Hang>
+              <Segmented
+                ariaLabel={t("segment.label")}
+                value={scope}
+                options={[
+                  { value: "project", label: t("segment.project") },
+                  { value: "user", label: t("segment.user") },
+                ]}
+                onChange={(value) => {
+                  if (locked || edit) return;
+                  setSearch("");
+                  clearFilters();
+                  clearFeedback();
+                  setScope(value as Scope);
+                }}
+                disabled={locked || Boolean(edit)}
+              />
+            </Hang>
           </Toolbar>
           <FilterBar
             label={t("controls.label")}

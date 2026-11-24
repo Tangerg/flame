@@ -36,6 +36,7 @@ import {
   PanelTitle,
   RecordGroup,
   RecordHeading,
+  Hang,
   Select,
   Toolbar,
 } from "@flame/ui";
@@ -483,18 +484,20 @@ function Archive({ context }: { context: BoundContext }) {
           </>
         ) : (
           <Toolbar label={t("archive.actions.label")}>
-            <Select
-              label={t("capture.period.label")}
-              value={period}
-              onValueChange={(value) => setPeriod(value as Period)}
-              options={PERIODS.map((value) => ({
-                value,
-                label: t("period.windowed", {
-                  label: t(`period.${value}.label`),
-                  window: t(`period.${value}.window`),
-                }),
-              }))}
-            />
+            <Hang>
+              <Select
+                label={t("capture.period.label")}
+                value={period}
+                onValueChange={(value) => setPeriod(value as Period)}
+                options={PERIODS.map((value) => ({
+                  value,
+                  label: t("period.windowed", {
+                    label: t(`period.${value}.label`),
+                    window: t(`period.${value}.window`),
+                  }),
+                }))}
+              />
+            </Hang>
             <Button
               ref={saveButton}
               disabled={busy || unknown.length > 0}

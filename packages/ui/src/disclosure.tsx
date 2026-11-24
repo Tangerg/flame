@@ -4,7 +4,7 @@ import { ChevronRight } from "@flame/icons/react";
 import { Collapsible as CollapsiblePrimitive } from "@base-ui/react/collapsible";
 import { Button } from "./button";
 import { Icon } from "./font-scale";
-import { layout, space, type } from "./tokens.stylex";
+import { layout, space, type, rowInset } from "./tokens.stylex";
 
 const styles = stylex.create({
   root: {
@@ -21,7 +21,7 @@ const styles = stylex.create({
     minWidth: 0,
   },
   row: {
-    paddingInline: layout.cardPadding,
+    paddingInline: rowInset.inline,
     paddingBlock: space.s3,
   },
   rowTrigger: {

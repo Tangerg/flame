@@ -172,6 +172,11 @@ export const face = stylex.create({
   mono: { fontFamily: "var(--font-mono)", letterSpacing: 0 },
 });
 
+// Row padding reads this so a list without a visible card can narrow it (see RecordGroup).
+export const rowInset = stylex.defineConsts({
+  inline: "var(--layout-row-inset, var(--layout-card-padding))",
+});
+
 export const layout = stylex.defineVars({
   pageWidth: "var(--layout-page-width)",
   pageGutter: "var(--layout-page-gutter)",

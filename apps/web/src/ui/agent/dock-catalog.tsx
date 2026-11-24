@@ -11,6 +11,8 @@ const styles = stylex.create({
     flexDirection: "column",
     padding: space.s4,
   },
+  // Search and option fills bleed by the rows' inset; their text keeps the title's edge.
+  catalog: { display: "flex", flex: 1, minHeight: 0, marginInline: `calc(-1 * ${space.s2})` },
   title: {
     marginTop: 0,
     marginInline: 0,
@@ -45,17 +47,19 @@ export function AgentDockCatalog({
       <h2 {...heading} className={cn(heading.className, titleHidden && "sr-only")}>
         {title}
       </h2>
-      <CatalogList
-        groups={groups}
-        label={title}
-        placeholder={placeholder}
-        emptyLabel={emptyLabel}
-        clearLabel={clearLabel}
-        inputRef={searchRef}
-        onSelect={(item) => {
-          if (searchRef.current) onSelect(item.id, searchRef.current);
-        }}
-      />
+      <div {...stylex.props(styles.catalog)}>
+        <CatalogList
+          groups={groups}
+          label={title}
+          placeholder={placeholder}
+          emptyLabel={emptyLabel}
+          clearLabel={clearLabel}
+          inputRef={searchRef}
+          onSelect={(item) => {
+            if (searchRef.current) onSelect(item.id, searchRef.current);
+          }}
+        />
+      </div>
     </div>
   );
 }

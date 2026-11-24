@@ -23,6 +23,7 @@ import {
   space,
   surface,
   type as typeStep,
+  rowInset,
 } from "@flame/ui/tokens.stylex";
 import { SettingsGroup } from "@/ui/settings/SettingsGroup";
 import { settingStyles as ss } from "@/ui/settings/settingStyles";
@@ -43,14 +44,14 @@ const pp = stylex.create({
     },
     gap: space.s2_5,
     minWidth: 0,
-    paddingInline: layout.cardPadding,
+    paddingInline: rowInset.inline,
     paddingBlock: space.s3,
   },
   errors: {
     display: "flex",
     flexDirection: "column",
     gap: space.s1_5,
-    paddingInline: layout.cardPadding,
+    paddingInline: rowInset.inline,
     paddingBottom: space.s3,
   },
   errorCard: {

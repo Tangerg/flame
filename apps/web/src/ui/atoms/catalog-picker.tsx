@@ -14,7 +14,8 @@ const styles = stylex.create({
   content: { display: "flex", flex: 1, minHeight: 0, flexDirection: "column", gap: space.s1 },
   emptyFlush: { padding: { default: null, ":is([data-empty])": 0 } },
   hideWhenEmpty: { display: { default: null, ":empty": "none" } },
-  searchBox: { flexShrink: 0 },
+  // The glyph shares the option rows' text inset, so search and rows read as one column.
+  searchBox: { flexShrink: 0, paddingInline: space.s2 },
 
   row: { cursor: "default", userSelect: "none" },
   rowText: { minWidth: 0 },

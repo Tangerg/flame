@@ -16,6 +16,7 @@ import {
   PanelHeader,
   PanelSection,
   ActionMenu,
+  Hang,
   Segmented,
   IconButton,
   CodeBlock,
@@ -269,20 +270,22 @@ export function Diagnostics({ context }: { context: ComponentContext }) {
             </>
           }
         >
-          <Segmented
-            ariaLabel={t("signal.label")}
-            value={signal}
-            onChange={(value) => setSignal(value as Signal)}
-            options={(["spans", "metrics", "logs"] as const).map((value) => ({
-              value,
-              label: read.snapshot
-                ? t("signal.count", {
-                    signal: t(`signal.${value}`),
-                    count: numbers.format(read.snapshot[value].length),
-                  })
-                : t(`signal.${value}`),
-            }))}
-          />
+          <Hang>
+            <Segmented
+              ariaLabel={t("signal.label")}
+              value={signal}
+              onChange={(value) => setSignal(value as Signal)}
+              options={(["spans", "metrics", "logs"] as const).map((value) => ({
+                value,
+                label: read.snapshot
+                  ? t("signal.count", {
+                      signal: t(`signal.${value}`),
+                      count: numbers.format(read.snapshot[value].length),
+                    })
+                  : t(`signal.${value}`),
+              }))}
+            />
+          </Hang>
         </Toolbar>
       }
     >

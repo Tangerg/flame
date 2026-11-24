@@ -45,6 +45,7 @@ import {
   PanelHeader,
   PanelSection,
   SearchField,
+  Hang,
   Select,
   Toolbar,
   useCopy,
@@ -386,21 +387,23 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
                 </>
               }
             >
-              <Select
-                label={t("comparison.label")}
-                value={query.mode}
-                options={COMPARISONS.map((value) => ({
-                  value,
-                  label: t(`comparison.${value}`),
-                }))}
-                onValueChange={(value) =>
-                  setQuery((current) =>
-                    current.mode === value
-                      ? current
-                      : { ...current, mode: value as DiffMode },
-                  )
-                }
-              />
+              <Hang>
+                <Select
+                  label={t("comparison.label")}
+                  value={query.mode}
+                  options={COMPARISONS.map((value) => ({
+                    value,
+                    label: t(`comparison.${value}`),
+                  }))}
+                  onValueChange={(value) =>
+                    setQuery((current) =>
+                      current.mode === value
+                        ? current
+                        : { ...current, mode: value as DiffMode },
+                    )
+                  }
+                />
+              </Hang>
             </Toolbar>
           )}
           {showingReader ? (

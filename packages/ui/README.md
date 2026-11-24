@@ -164,7 +164,12 @@ does not keep an inflated intrinsic grid row after native page zoom.
 belongs to its existing reading canvas, without an elevated card face; it keeps
 the shared corners and clipping. Its rows follow their natural content height in a vertical flow, including
 complete wrapping paths in native WebKit; existing row insets group the rows
-without automatic separators. Callers own read and empty state: a truly empty group uses the
+without automatic separators. With no visible card, the list follows the shared
+alignment line: row text starts on the column edge of the surrounding headings,
+and rows narrow their inset (`--layout-row-inset`, read through `rowInset.inline`)
+while the list bleeds by the same amount into the gutter, so hover and current
+fills extend outward instead of indenting the text. A bounded `Panel` body
+scrolls from inside that gutter so the fills are not clipped. Callers own read and empty state: a truly empty group uses the
 native `hidden` attribute, and the group never infers visibility from transient
 DOM emptiness while its children are replaced. Its `cards` variant provides the responsive schedule grid;
 `ListRow variant="card"` owns each independent card surface.
@@ -208,7 +213,8 @@ provider and keep their display title. The former `hosted` boolean is removed;
 the host selects the density without changing the content instance.
 Portable components do not inspect viewport width or create another placement state.
 `FilterBar` owns the control zone in three meanings, in reading order: the
-growing search column, the page `actions` after it, and the refining filters as
+growing search column (whose fill hangs by the row bleed, so its glyph keeps
+the column edge), the page `actions` after it, and the refining filters as
 `children`. Search and actions share a row while they fit, where the growing
 search carries the actions to the inline end; the filters follow, joining that
 row when the width allows. Each group wraps as a unit, so actions never strand
@@ -217,7 +223,9 @@ edge rather than jumping to the opposite edge. The search/actions group and the
 filters keep their intrinsic heights and begin at the same top edge when either
 wraps, so a single filter row never floats between wrapped search and action
 rows; controls stay centered within each group's own rows. Multiple actions use
-one named `Toolbar` in the `actions` slot. When a page's actions are creation commands, as in
+one named `Toolbar` in the `actions` slot. A filled control that starts a
+column outside `FilterBar` (a leading `Segmented` or `Select`) is wrapped in
+`Hang` for the same alignment. When a page's actions are creation commands, as in
 Schedules, refresh stays with the filters it re-reads so the creation pair keeps
 one row. Scope and catalog navigation keep a separate
 preceding `Toolbar`.

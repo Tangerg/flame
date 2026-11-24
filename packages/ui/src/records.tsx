@@ -10,13 +10,13 @@ import {
   surface,
   type,
   weight,
+  rowInset,
 } from "./tokens.stylex";
 import { ChevronRight } from "@flame/icons/react";
 import { useHeadingTag } from "./heading-level";
 import { Button, type ButtonProps, type ButtonVariants } from "./button";
 import { CARD_SURFACE } from "./control-surface";
 import { Icon, type IconGlyph } from "./font-scale";
-import { IconMark } from "./icon-mark";
 
 const styles = stylex.create({
   recordButton: {
@@ -27,7 +27,7 @@ const styles = stylex.create({
     justifyContent: "start",
     alignItems: "start",
     gap: layout.contentGap,
-    paddingInline: layout.cardPadding,
+    paddingInline: rowInset.inline,
     paddingBlock: layout.rowPadding,
     borderWidth: 0,
     borderRadius: 0,
@@ -49,7 +49,12 @@ const styles = stylex.create({
     gap: 0,
     overflow: "clip",
     backgroundColor: "transparent",
+    borderWidth: 0,
     boxShadow: "none",
+    // The list has no visible card, so row text sits on the column's edge and
+    // row fills (hover, current) bleed into the gutter instead of indenting it.
+    "--layout-row-inset": space.s3,
+    marginInline: `calc(-1 * ${space.s3})`,
   },
   cards: {
     gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,20rem),1fr))",
@@ -108,6 +113,8 @@ const styles = stylex.create({
     width: "100%",
     minWidth: 0,
   },
+  // A bare glyph, not an unfilled mark box, so it sits on the row's text edge.
+  summaryGlyph: { flexShrink: 0, color: color.fgMuted },
   summaryCopy: { display: "grid", gap: space.s1, flex: 1, minWidth: 0 },
   summaryTitle: {
     color: color.fg,
@@ -326,9 +333,7 @@ export function RecordSummary({
   return (
     <span {...stylex.props(styles.summary)}>
       {icon && (
-        <IconMark tone="neutral">
-          <Icon glyph={icon} size="md" />
-        </IconMark>
+        <Icon glyph={icon} size="md" {...stylex.props(styles.summaryGlyph)} />
       )}
       <span {...stylex.props(styles.summaryCopy)}>
         <span {...stylex.props(styles.headingLine)}>

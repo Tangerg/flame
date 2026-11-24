@@ -31,6 +31,7 @@ import {
   Metadata,
   SearchField,
   FilterBar,
+  Hang,
   Select,
   Stats,
   Toolbar,
@@ -346,18 +347,20 @@ export function Usage({ context }: { context: ComponentContext }) {
               />
             }
           >
-            <Select
-              size="lg"
-              label={t("period.label")}
-              value={period.value}
-              options={PERIODS.map(({ value }) => ({
-                value,
-                label: t(`period.${value}`),
-              }))}
-              onValueChange={(value) =>
-                setPeriod(PERIODS.find((item) => item.value === value)!)
-              }
-            />
+            <Hang>
+              <Select
+                size="lg"
+                label={t("period.label")}
+                value={period.value}
+                options={PERIODS.map(({ value }) => ({
+                  value,
+                  label: t(`period.${value}`),
+                }))}
+                onValueChange={(value) =>
+                  setPeriod(PERIODS.find((item) => item.value === value)!)
+                }
+              />
+            </Hang>
           </Toolbar>
           {read.loading && (
             <Metadata role="status">{t("status.reading")}</Metadata>

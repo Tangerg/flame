@@ -51,6 +51,7 @@ export {
   PanelHeader,
   Toolbar,
   FilterBar,
+  Hang,
   PanelTitle,
   PanelSection,
   PanelFooter,

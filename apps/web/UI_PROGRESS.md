@@ -2592,6 +2592,44 @@ narrows it. Native Settings → Brand and full-view icon gallery confirm.
 `@flame/ui` typecheck/build, plugin typecheck and published resource
 checks pass.
 
+### One alignment line in panels (2026-11-24)
+
+The user asked that every surface follow its alignment baselines, with a
+reference where a title, a filled notes field's text and the row icons start
+on one vertical line and the field's fill bleeds outward. Panels had up to
+five leading edges: headings at the column edge E, list row text at E+20
+(the invisible list card's padding), the search glyph at E+10 and its text at
+E+31, segmented text at E+14, record-summary glyphs centered in an unfilled
+36 px mark (E+10).
+
+- `RecordGroup variant="list"` has no visible card, so it now narrows its
+  rows' inset to 12 px (`--layout-row-inset`, read by `ListRow`, disclosure
+  rows, `RecordButton`, `SettingRow` and the Plugins pane rows through the
+  new `rowInset.inline` constant) and bleeds by the same 12 px. Row text
+  sits on E; hover and current fills extend into the gutter. The invisible
+  card's 1 px border is dropped so the text is not nudged.
+- A bounded `Panel` body scrolls from 12 px inside the gutter, so those fills
+  are not clipped flush at E.
+- `FilterBar`'s search column hangs by the same 12 px; a new `Hang` wraps the
+  leading `Segmented` or `Select` of Memory, Skills, Diagnostics, Usage,
+  Workspace diff and Saved usage reports. All leading fills share E−12, and
+  their glyphs and text land on E within 2 px.
+- `RecordSummary` draws its neutral glyph bare instead of inside an unfilled
+  36 px mark, so Trajectory and other record icons sit on E.
+- The Dock panel catalog bleeds its search and options by their 8 px inset
+  (`catalog-picker` search now uses the option inset), so `Open a panel`,
+  `Workspace` and every option share one edge; the popup picker gains the
+  same glyph/option alignment.
+
+Measured in the Lab (Chromium) and checked natively: Memory, Skills, Usage,
+Diff files, Trajectory, Diagnostics, Saved usage reports, the panel catalog
+and Settings Appearance/Plugins read headings, row text, search glyphs and
+segment or select text on one line, with every leading fill on the line
+12 px outside it. Visible cards (Usage totals, Brand tiles, code wells) keep
+their box on E. Form fields and choice lists in Settings still start their
+fill on E; they are the next step. `@flame/ui` and Web typecheck, plugin
+typecheck, `check-plugin-modules` and published resource checks pass.
+
 ### Composer suggestions open where they can be read (2026-11-24)
 
 Typing `@` or `/` in a Session's Composer opened Lexical's typeahead below

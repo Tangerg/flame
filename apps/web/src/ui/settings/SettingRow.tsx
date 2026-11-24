@@ -1,13 +1,13 @@
 import * as stylex from "@stylexjs/stylex";
 import { type ReactNode } from "react";
-import { type as typeStep } from "@flame/ui/tokens.stylex";
+import { type as typeStep, rowInset } from "@flame/ui/tokens.stylex";
 import { color, layout, weight } from "@flame/ui/tokens.stylex";
 import { settingStyles as ss } from "@/ui/settings/settingStyles";
 const styles = stylex.create({
   row: {
     display: "grid",
     gap: layout.sectionGap,
-    paddingInline: layout.cardPadding,
+    paddingInline: rowInset.inline,
     paddingBlock: layout.rowPadding,
     minWidth: 0,
   },

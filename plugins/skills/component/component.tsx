@@ -25,6 +25,7 @@ import {
   RecordTitle,
   SearchField,
   FilterBar,
+  Hang,
   Segmented,
   selectAllInReader,
   Toolbar,
@@ -278,16 +279,18 @@ export function Skills({ context }: { context: ComponentContext }) {
         ) : (
           <>
             <Toolbar label={t("nav.label")}>
-              <Segmented
-                ariaLabel={t("nav.catalog")}
-                value={target}
-                options={SECTION_VALUES.map((value) => ({
-                  value,
-                  label: t(`section.${value}`),
-                }))}
-                disabled={Boolean(command)}
-                onChange={(value) => navigate(value as Target)}
-              />
+              <Hang>
+                <Segmented
+                  ariaLabel={t("nav.catalog")}
+                  value={target}
+                  options={SECTION_VALUES.map((value) => ({
+                    value,
+                    label: t(`section.${value}`),
+                  }))}
+                  disabled={Boolean(command)}
+                  onChange={(value) => navigate(value as Target)}
+                />
+              </Hang>
             </Toolbar>
             <FilterBar
               label={t("controls.label")}

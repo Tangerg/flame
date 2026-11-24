@@ -17,6 +17,7 @@ import {
   surface,
   type,
   weight,
+  rowInset,
 } from "./tokens.stylex";
 
 const styles = stylex.create({
@@ -95,6 +96,10 @@ const styles = stylex.create({
     minHeight: 0,
     overflowY: "auto",
     overscrollBehaviorY: "contain",
+    // The scroller reaches into the gutter by the row bleed so bleeding fills
+    // (list rows, hanging fields) are not clipped at the text edge.
+    marginInline: `calc(-1 * ${space.s3})`,
+    paddingInline: space.s3,
   },
   actions: {
     display: "flex",
@@ -137,7 +142,7 @@ const styles = stylex.create({
     display: "grid",
     alignContent: "start",
     gap: layout.contentGap,
-    paddingInline: layout.cardPadding,
+    paddingInline: rowInset.inline,
     paddingBlock: layout.rowPadding,
     minWidth: 0,
     overflowWrap: "anywhere",
@@ -157,7 +162,18 @@ const styles = stylex.create({
     flex: "1 1 20rem",
     minWidth: 0,
   },
-  filterSearch: { flex: "1 1 12rem", minWidth: 0 },
+  // The search starts its column: its glyph keeps the column edge and its fill
+  // bleeds by the same inset as list rows (see RecordGroup).
+  filterSearch: {
+    flex: "1 1 12rem",
+    minWidth: 0,
+    marginInlineStart: `calc(-1 * ${space.s3})`,
+  },
+  hang: {
+    display: "flex",
+    minWidth: 0,
+    marginInlineStart: `calc(-1 * ${space.s3})`,
+  },
   filterActions: {
     display: "flex",
     flexWrap: "wrap",
@@ -392,6 +408,13 @@ export function FilterBar({
       )}
     </div>
   );
+}
+/**
+ * Starts a column with a filled control (segmented, select) so its text, not its
+ * fill, sits on the column edge; the fill bleeds by the list rows' inset.
+ */
+export function Hang({ children }: { children: ReactNode }) {
+  return <div {...stylex.props(styles.hang)}>{children}</div>;
 }
 export function PanelTitle({
   children,
