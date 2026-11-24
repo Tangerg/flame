@@ -2766,6 +2766,11 @@ Dock and Files step (2026-11-25):
   buttons' inset: `Retry` and `Relocate…` put their glyph or label on the
   banner text with the tint bleeding, like a leading control in a panel.
 
+- A canceled run's outcome line used an 8 px icon gap while the
+  `TranscriptMark` above it (`Closed without an answer`) uses 6 px, so the
+  two quiet lines' text started 2 px apart; the outcome line now uses the
+  mark's gap.
+
 Native `dock-files`, `dock-file` and `dock-schedules` show the tab label,
 chevrons or field glyphs and panel text on one line; the chat header's
 `scope` and `+25 −9` meet the prose and bubble edges. The full-width file

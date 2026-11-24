@@ -11,7 +11,8 @@ const ro = stylex.create({
     display: "flex",
     minWidth: 0,
     alignItems: "flex-start",
-    gap: space.s2,
+    // TranscriptMark's gap, so stacked quiet lines share one text edge.
+    gap: space.s1_5,
     color: color.fgFaint,
   },
   text: {
