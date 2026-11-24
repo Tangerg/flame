@@ -50446,6 +50446,16 @@ atoms sheet: `Today` and `✓ Approved` render as single quiet lines. Web
 typecheck and the Lab build pass. Not observed in a live transcript, because
 no Lab agent state carries a settled approval or a date boundary.
 
+### Footnotes without a rule (2026-11-24)
+
+Generated footnotes opened with a full-width divider above a muted, smaller
+list, so every referenced answer ended in a rule. The block is already set
+apart by its 8× prose gap, supporting ink and size, and its numbered list.
+`[data-footnotes]` in `packages/ui/src/globals.css` drops the top border and
+its padding; authored `hr` keeps its rule because it is the writer's
+content. Native `reference-notes` (EN/light, ZH/dark) ends each answer on
+its numbered notes with return cues intact.
+
 ## Conversation/transcript surface audit
 
 A deep audit of the chat stream (message blocks, narrative rails, plan progress,

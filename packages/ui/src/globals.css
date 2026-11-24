@@ -500,8 +500,6 @@
 }
 :where([data-prose]) :where([data-footnotes]) {
   margin-block-start: calc(var(--prose-space) * 8);
-  padding-block-start: calc(var(--prose-space) * 4);
-  border-block-start: 1px solid var(--color-divider);
   color: var(--color-text-muted);
   font-size: var(--fs-ui-sm);
 }
