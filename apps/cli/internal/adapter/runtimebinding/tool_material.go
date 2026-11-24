@@ -11,55 +11,62 @@ import (
 	"github.com/Tangerg/scope/tools/fs"
 )
 
+// argumentSummary is what a builtin's arguments contribute to its transcript row.
+type argumentSummary struct {
+	command, path, query, text string
+}
+
 func summarizeToolArguments(call *conversation.ToolCall) {
 	if call.Kind == "" || call.ArgumentsText != "" {
 		return
 	}
-	var summary string
-	switch builtin.Name(call.Name) {
+	summary, ok := builtinArgumentSummary(builtin.Name(call.Name), call.ArgumentsJSON)
+	if !ok {
+		return
+	}
+	call.Command, call.Path, call.Query = summary.command, summary.path, summary.query
+	if summary.text != "" {
+		call.Summary = truncateRunes(summary.text, toolSummaryRuneLimit)
+	}
+}
+
+func builtinArgumentSummary(name builtin.Name, encoded []byte) (argumentSummary, bool) {
+	switch name {
 	case builtin.Shell:
-		var input builtin.ShellArguments
-		if json.Unmarshal(call.ArgumentsJSON, &input) != nil {
-			return
-		}
-		call.Command, summary = input.Command, input.Description
+		return summarized(encoded, func(input builtin.ShellArguments) argumentSummary {
+			return argumentSummary{command: input.Command, text: input.Description}
+		})
 	case builtin.Read:
-		var input fs.ReadRequest
-		if json.Unmarshal(call.ArgumentsJSON, &input) != nil {
-			return
-		}
-		call.Path, summary = input.Path, input.Path
+		return summarized(encoded, func(input fs.ReadRequest) argumentSummary {
+			return argumentSummary{path: input.Path, text: input.Path}
+		})
 	case builtin.Edit:
-		var input fs.EditRequest
-		if json.Unmarshal(call.ArgumentsJSON, &input) != nil {
-			return
-		}
-		call.Path, summary = input.Path, input.Path
+		return summarized(encoded, func(input fs.EditRequest) argumentSummary {
+			return argumentSummary{path: input.Path, text: input.Path}
+		})
 	case builtin.Grep:
-		var input fs.GrepRequest
-		if json.Unmarshal(call.ArgumentsJSON, &input) != nil {
-			return
-		}
-		call.Query, call.Path, summary = input.Pattern, input.Path, input.Pattern
+		return summarized(encoded, func(input fs.GrepRequest) argumentSummary {
+			return argumentSummary{query: input.Pattern, path: input.Path, text: input.Pattern}
+		})
 	case builtin.Glob:
-		var input fs.GlobRequest
-		if json.Unmarshal(call.ArgumentsJSON, &input) != nil {
-			return
-		}
-		call.Query, call.Path, summary = input.Pattern, input.Path, input.Pattern
+		return summarized(encoded, func(input fs.GlobRequest) argumentSummary {
+			return argumentSummary{query: input.Pattern, path: input.Path, text: input.Pattern}
+		})
 	case builtin.RunScript:
-		var input struct {
-			Summary string `json:"summary"`
-		}
-		if json.Unmarshal(call.ArgumentsJSON, &input) != nil {
-			return
-		}
-		summary = input.Summary
+		return summarized(encoded, func(input builtin.ScriptArguments) argumentSummary {
+			return argumentSummary{text: input.Summary}
+		})
 	default:
+		return argumentSummary{}, false
 	}
-	if summary != "" {
-		call.Summary = truncateRunes(summary, toolSummaryRuneLimit)
+}
+
+func summarized[T any](encoded []byte, summarize func(T) argumentSummary) (argumentSummary, bool) {
+	input, ok := decodeBuiltin[T](encoded)
+	if !ok {
+		return argumentSummary{}, false
 	}
+	return summarize(input), true
 }
 
 func projectToolResult(call *conversation.ToolCall) error {
@@ -73,14 +80,14 @@ func projectToolResult(call *conversation.ToolCall) error {
 	}
 	switch builtin.Name(call.Name) {
 	case builtin.Shell, builtin.ReadShellOutput:
-		result, ok := decodeBuiltinResult[builtin.CommandResult](call.ResultJSON)
+		result, ok := decodeBuiltin[builtin.CommandResult](call.ResultJSON)
 		if !ok {
 			return nil
 		}
 		call.Output, call.ExitCode = result.Output, result.ExitCode
 		call.OutputPage = result.Page
 	case builtin.ApplyPatch:
-		result, ok := decodeBuiltinResult[builtin.PatchResult](call.ResultJSON)
+		result, ok := decodeBuiltin[builtin.PatchResult](call.ResultJSON)
 		if !ok {
 			return nil
 		}
@@ -92,7 +99,7 @@ func projectToolResult(call *conversation.ToolCall) error {
 			call.Path, call.Output = paths[0], strings.Join(paths, "\n")
 		}
 	case builtin.RunScript:
-		result, ok := decodeBuiltinResult[builtin.ScriptResult](call.ResultJSON)
+		result, ok := decodeBuiltin[builtin.ScriptResult](call.ResultJSON)
 		if !ok {
 			return nil
 		}
@@ -121,7 +128,7 @@ func scriptOutput(result builtin.ScriptResult) string {
 	return strings.TrimSpace(strings.Join(lines, "\n"))
 }
 
-func decodeBuiltinResult[T any](encoded []byte) (T, bool) {
+func decodeBuiltin[T any](encoded []byte) (T, bool) {
 	var result T
 	return result, json.Unmarshal(encoded, &result) == nil
 }

@@ -108,33 +108,51 @@ func (o *observedInteractionTool) Call(ctx context.Context, bound toolcontract.I
 	if err := o.commitStart(ctx, invocation, member, start, prepared.runs()); err != nil {
 		return toolcontract.Result{}, err
 	}
-	var output toolcontract.Output
-	callErr := prepared.failure
-	var mutatedPaths []string
-	if prepared.runs() {
-		runCtx := ctx
-		if o.scriptCatalog != nil {
-			tools, err := o.scriptTools(identity, member, arguments, prepared.approved)
-			if err != nil {
-				return toolcontract.Result{}, hostFailure(err)
-			}
-			runCtx = toolset.WithScriptTools(ctx, tools)
-		}
-		var ran toolcontract.Result
-		ran, mutatedPaths, callErr = o.run(runCtx, bound, call, arguments, continuation)
-		if callErr == nil && ran.InputRequest != nil {
-			return toolcontract.Result{InputRequest: ran.InputRequest}, nil
-		}
-		output = ran.Output
-	}
-	projection, err := o.projectToolResult(start.ToolName, arguments, output, callErr, mutatedPaths)
+	executed, err := o.execute(ctx, identity, member, bound, call, prepared, continuation)
 	if err != nil {
 		return toolcontract.Result{}, err
 	}
-	if err := o.settle(ctx, member, invocation.ProcessID(), start, arguments, projection, callErr); err != nil {
+	if executed.failure == nil && executed.result.InputRequest != nil {
+		return toolcontract.Result{InputRequest: executed.result.InputRequest}, nil
+	}
+	projection, err := o.projectToolResult(start.ToolName, arguments, executed.result.Output, executed.failure, executed.mutatedPaths)
+	if err != nil {
+		return toolcontract.Result{}, err
+	}
+	if err := o.settle(ctx, member, invocation.ProcessID(), start, arguments, projection, executed.failure); err != nil {
 		return toolcontract.Result{}, err
 	}
 	return toolcontract.Result{Output: projection.output}, projection.outcome
+}
+
+type toolExecution struct {
+	result       toolcontract.Result
+	mutatedPaths []string
+	failure      error
+}
+
+// A call its preparation refused keeps that failure and runs nothing.
+func (o *observedInteractionTool) execute(
+	ctx context.Context,
+	identity runs.InvocationID,
+	member runs.ExecutorMember,
+	bound toolcontract.Invocation,
+	call corechat.ToolCall,
+	prepared preparedCall,
+	continuation *toolcontract.Continuation,
+) (toolExecution, error) {
+	if !prepared.runs() {
+		return toolExecution{failure: prepared.failure}, nil
+	}
+	if o.scriptCatalog != nil {
+		tools, err := o.scriptTools(identity, member, prepared.arguments, prepared.approved)
+		if err != nil {
+			return toolExecution{}, hostFailure(err)
+		}
+		ctx = toolset.WithScriptTools(ctx, tools)
+	}
+	ran, mutatedPaths, err := o.run(ctx, bound, call, prepared.arguments, continuation)
+	return toolExecution{result: ran, mutatedPaths: mutatedPaths, failure: err}, nil
 }
 
 func (o *observedInteractionTool) recordUnknownEffect(invocation interaction.ToolInvocation, err error) {
