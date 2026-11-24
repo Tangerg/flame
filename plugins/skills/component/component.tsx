@@ -169,6 +169,175 @@ function SkillReadStatus({
   );
 }
 
+function SkillDocumentToolbar({
+  t,
+  opened,
+  titleId,
+  scope,
+  onRefresh,
+  onBack,
+}: {
+  t: Translate;
+  opened: NonNullable<SkillsState["opened"]>;
+  titleId: string;
+  scope: string | undefined;
+  onRefresh(): void;
+  onBack(): void;
+}) {
+  return (
+    <Toolbar
+      label={t("document.toolbar")}
+      actions={
+        <IconButton
+          icon={Refresh}
+          aria-label={t("document.refresh")}
+          size="md"
+          pending={opened.loading}
+          onClick={onRefresh}
+        />
+      }
+    >
+      <Button
+        variant="ghost"
+        size="sm"
+        aria-label={t("document.back")}
+        onClick={onBack}
+      >
+        <Icon glyph={ArrowLeft} size="sm" />
+        {t("section.available")}
+      </Button>
+      <PanelTitle id={titleId} size="sm" aria-level={2}>
+        {opened.name}
+      </PanelTitle>
+      {scope && <Badge>{t(`scope.${scope}`)}</Badge>}
+    </Toolbar>
+  );
+}
+
+function SkillCatalogControls({
+  t,
+  target,
+  busy,
+  loading,
+  searchField,
+  search,
+  onNavigate,
+  onSearch,
+  onRefresh,
+}: {
+  t: Translate;
+  target: Target;
+  busy: boolean;
+  loading: boolean;
+  searchField: SkillsState["searchField"];
+  search: string;
+  onNavigate(target: Target): void;
+  onSearch(value: string): void;
+  onRefresh(): void;
+}) {
+  return (
+    <>
+      <Toolbar label={t("nav.label")}>
+        <Hang>
+          <Segmented
+            ariaLabel={t("nav.catalog")}
+            value={target}
+            options={SECTION_VALUES.map((value) => ({
+              value,
+              label: t(`section.${value}`),
+            }))}
+            disabled={busy}
+            onChange={(value) => onNavigate(value as Target)}
+          />
+        </Hang>
+      </Toolbar>
+      <FilterBar
+        label={t("controls.label")}
+        search={
+          <SearchField
+            ref={searchField}
+            size="lg"
+            id="search"
+            aria-label={t("search.label")}
+            placeholder={t("search.placeholder")}
+            value={search}
+            onChange={(event) => onSearch(event.target.value)}
+            onClear={() => onSearch("")}
+            clearLabel={t("search.clear")}
+          />
+        }
+        actions={
+          <IconButton
+            icon={Refresh}
+            aria-label={t("refresh")}
+            size="md"
+            disabled={busy}
+            pending={loading}
+            onClick={onRefresh}
+          />
+        }
+      />
+    </>
+  );
+}
+
+function SkillReviewForm({
+  t,
+  ref,
+  review,
+  workspacePath,
+  busy,
+  disabled,
+  onCancel,
+  onConfirm,
+}: {
+  t: Translate;
+  ref: SkillsState["reviewElement"];
+  review: NonNullable<SkillsState["review"]>;
+  workspacePath: string;
+  busy: boolean;
+  disabled: boolean;
+  onCancel(): void;
+  onConfirm(): void;
+}) {
+  return (
+    <RecordForm ref={ref} aria-label={t("review.label")} data-focus-unit="">
+      <RecordTitle>
+        {t(`review.title.${review.decision}`, {
+          name: review.proposal.name,
+        })}
+      </RecordTitle>
+      <FormSection title={t("review.proposed")}>
+        <RecordBody>{review.proposal.description}</RecordBody>
+        <RecordBody>{review.proposal.instructions}</RecordBody>
+      </FormSection>
+      <Disclosure title={t("review.target")}>
+        <Facts
+          values={[
+            [t("fact.workspace"), workspacePath],
+            [t("fact.scope"), t(`scope.${review.proposal.scope}`)],
+            [t("fact.revision"), review.proposal.revision],
+          ]}
+        />
+      </Disclosure>
+      <FormActions label={t("review.confirmation")}>
+        <Button variant="ghost" disabled={busy} autoFocus onClick={onCancel}>
+          {t("cancel")}
+        </Button>
+        <Button
+          {...reviewPresentation[review.decision]}
+          disabled={disabled}
+          onClick={onConfirm}
+        >
+          {t(`confirm.${review.decision}`)}
+        </Button>
+      </FormActions>
+    </RecordForm>
+  );
+}
+
+type SkillsState = ReturnType<typeof useSkills>;
+
 export function Skills({ context }: { context: ComponentContext }) {
   const {
     t,
@@ -246,79 +415,26 @@ export function Skills({ context }: { context: ComponentContext }) {
       header={<PanelHeader title={t("panel.title")} />}
       controls={
         opened ? (
-          <>
-            <Toolbar
-              label={t("document.toolbar")}
-              actions={
-                <IconButton
-                  icon={Refresh}
-                  aria-label={t("document.refresh")}
-                  size="md"
-                  pending={opened.loading}
-                  onClick={() => void readDocument(opened.name)}
-                />
-              }
-            >
-              <Button
-                variant="ghost"
-                size="sm"
-                aria-label={t("document.back")}
-                onClick={closeDocument}
-              >
-                <Icon glyph={ArrowLeft} size="sm" />
-                {t("section.available")}
-              </Button>
-              <PanelTitle id={documentTitleId} size="sm" aria-level={2}>
-                {opened.name}
-              </PanelTitle>
-              {skillDocument && (
-                <Badge>{t(`scope.${skillDocument.scope}`)}</Badge>
-              )}
-            </Toolbar>
-          </>
+          <SkillDocumentToolbar
+            t={t}
+            opened={opened}
+            titleId={documentTitleId}
+            scope={skillDocument?.scope}
+            onRefresh={() => void readDocument(opened.name)}
+            onBack={closeDocument}
+          />
         ) : (
-          <>
-            <Toolbar label={t("nav.label")}>
-              <Hang>
-                <Segmented
-                  ariaLabel={t("nav.catalog")}
-                  value={target}
-                  options={SECTION_VALUES.map((value) => ({
-                    value,
-                    label: t(`section.${value}`),
-                  }))}
-                  disabled={Boolean(command)}
-                  onChange={(value) => navigate(value as Target)}
-                />
-              </Hang>
-            </Toolbar>
-            <FilterBar
-              label={t("controls.label")}
-              search={
-                <SearchField
-                  ref={searchField}
-                  size="lg"
-                  id="search"
-                  aria-label={t("search.label")}
-                  placeholder={t("search.placeholder")}
-                  value={search}
-                  onChange={(event) => searchCatalog(event.target.value)}
-                  onClear={() => searchCatalog("")}
-                  clearLabel={t("search.clear")}
-                />
-              }
-              actions={
-                <IconButton
-                  icon={Refresh}
-                  aria-label={t("refresh")}
-                  size="md"
-                  disabled={Boolean(command)}
-                  pending={read.loading}
-                  onClick={() => void refresh()}
-                />
-              }
-            />
-          </>
+          <SkillCatalogControls
+            t={t}
+            target={target}
+            busy={Boolean(command)}
+            loading={read.loading}
+            searchField={searchField}
+            search={search}
+            onNavigate={navigate}
+            onSearch={searchCatalog}
+            onRefresh={() => void refresh()}
+          />
         )
       }
     >
@@ -333,47 +449,16 @@ export function Skills({ context }: { context: ComponentContext }) {
       />
       {feedbackRow === undefined && feedback}
       {review && (
-        <RecordForm
+        <SkillReviewForm
+          t={t}
           ref={reviewElement}
-          aria-label={t("review.label")}
-          data-focus-unit=""
-        >
-          <RecordTitle>
-            {t(`review.title.${review.decision}`, {
-              name: review.proposal.name,
-            })}
-          </RecordTitle>
-          <FormSection title={t("review.proposed")}>
-            <RecordBody>{review.proposal.description}</RecordBody>
-            <RecordBody>{review.proposal.instructions}</RecordBody>
-          </FormSection>
-          <Disclosure title={t("review.target")}>
-            <Facts
-              values={[
-                [t("fact.workspace"), workspace!.ref.path],
-                [t("fact.scope"), t(`scope.${review.proposal.scope}`)],
-                [t("fact.revision"), review.proposal.revision],
-              ]}
-            />
-          </Disclosure>
-          <FormActions label={t("review.confirmation")}>
-            <Button
-              variant="ghost"
-              disabled={Boolean(command)}
-              autoFocus
-              onClick={closeReview}
-            >
-              {t("cancel")}
-            </Button>
-            <Button
-              {...reviewPresentation[review.decision]}
-              disabled={disabled}
-              onClick={confirmReview}
-            >
-              {t(`confirm.${review.decision}`)}
-            </Button>
-          </FormActions>
-        </RecordForm>
+          review={review}
+          workspacePath={workspace!.ref.path}
+          busy={Boolean(command)}
+          disabled={disabled}
+          onCancel={closeReview}
+          onConfirm={confirmReview}
+        />
       )}
       {skillDocument && (
         <>
