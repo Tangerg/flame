@@ -70,9 +70,9 @@ export const fr: Record<string, string> = {
   "mcp.import.ok_many": "{{count}} de serveurs importés",
   "mcp.import.ok_other": "{{count}} serveurs importés",
   "mcp.import.renamed": "Renommés pour que le Runtime les accepte : {{names}}",
-  "mcp.import.interrupted":
-    "Connexion Runtime modifiée : {{count}} serveurs sur {{total}} importés avant l’interruption.",
-  "mcp.import.partial": "{{count}} serveurs sur {{total}} importés.",
+  "mcp.import.partial_one": "{{count}} serveur sur {{total}} importé.",
+  "mcp.import.partial_many": "{{count}} serveurs sur {{total}} importés.",
+  "mcp.import.partial_other": "{{count}} serveurs sur {{total}} importés.",
   "mcp.import.error": "Impossible d'importer cette configuration.",
   "mcp.import.invalidJson": "Saisissez un JSON valide.",
   "mcp.import.invalidShape":

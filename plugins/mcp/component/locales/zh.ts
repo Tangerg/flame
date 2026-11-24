@@ -58,9 +58,7 @@ export const zh: Record<string, string> = {
   "mcp.importing": "导入中…",
   "mcp.import.ok_other": "已导入 {{count}} 个服务器",
   "mcp.import.renamed": "已重命名以符合 Runtime 的要求：{{names}}",
-  "mcp.import.interrupted":
-    "Runtime 连接已更换，已导入 {{count}} / {{total}} 个服务器，其余导入已中断。",
-  "mcp.import.partial": "已导入 {{count}} / {{total}} 个服务器。",
+  "mcp.import.partial_other": "已导入 {{count}} / {{total}} 个服务器。",
   "mcp.import.error": "无法导入该配置。",
   "mcp.import.invalidJson": "请输入有效的 JSON。",
   "mcp.import.invalidShape": "请使用包含“mcpServers”对象的有效 MCP 配置。",

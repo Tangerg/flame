@@ -66,9 +66,7 @@ export const ko: Record<string, string> = {
   "mcp.import.ok_other": "서버 {{count}}개를 가져왔습니다",
   "mcp.import.renamed":
     "Runtime이 허용하는 형식으로 이름을 변경했습니다: {{names}}",
-  "mcp.import.interrupted":
-    "Runtime 연결이 변경되어 중단했습니다. 서버 {{total}}개 중 {{count}}개를 가져왔습니다.",
-  "mcp.import.partial": "서버 {{total}}개 중 {{count}}개를 가져왔습니다.",
+  "mcp.import.partial_other": "서버 {{total}}개 중 {{count}}개를 가져왔습니다.",
   "mcp.import.error": "해당 설정을 가져올 수 없습니다.",
   "mcp.import.invalidJson": "올바른 JSON을 입력하세요.",
   "mcp.tools.title": "{{server}} 도구",

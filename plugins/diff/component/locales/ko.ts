@@ -36,7 +36,7 @@ export const ko: Record<string, string> = {
   missing: "이 읽기에는 요청한 파일이 포함되어 있지 않습니다:",
   "files.changed_other": "변경된 파일 {{count}}개",
   "files.included_other": "포함된 파일 {{count}}개",
-  "files.match": "{{total}}개 파일 중 {{matching}}개 일치",
+  "files.match_other": "{{total}}개 파일 중 {{count}}개 일치",
   "stat.title": "포함된 텍스트 파일의 행 변경 사항",
   "empty.title": "이 비교에 변경 사항이 없습니다.",
   "empty.sub": "다른 비교를 선택하거나 파일을 편집한 후 새로 고치세요.",

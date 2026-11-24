@@ -589,7 +589,7 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
                 description={
                   filter
                     ? t("files.match", {
-                        matching: matching.length,
+                        count: matching.length,
                         total: files.length,
                       })
                     : undefined

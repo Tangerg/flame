@@ -65,9 +65,8 @@ export const ja: Record<string, string> = {
   "mcp.importing": "インポート中…",
   "mcp.import.ok_other": "{{count}} 個のサーバーをインポートしました",
   "mcp.import.renamed": "Runtime が受け付ける形式に改名しました: {{names}}",
-  "mcp.import.interrupted":
-    "Runtime 接続が変更されたため中断しました。{{total}} 件中 {{count}} 件をインポートしました。",
-  "mcp.import.partial": "{{total}} 件中 {{count}} 件をインポートしました。",
+  "mcp.import.partial_other":
+    "{{total}} 件中 {{count}} 件をインポートしました。",
   "mcp.import.error": "その設定をインポートできませんでした。",
   "mcp.import.invalidJson": "有効な JSON を入力してください。",
   "mcp.import.invalidShape":

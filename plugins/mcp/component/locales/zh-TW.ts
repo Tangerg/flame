@@ -62,9 +62,7 @@ export const zhTW: Record<string, string> = {
   "mcp.importing": "正在匯入…",
   "mcp.import.ok_other": "已匯入 {{count}} 個伺服器",
   "mcp.import.renamed": "已重新命名以符合 Runtime 的要求：{{names}}",
-  "mcp.import.interrupted":
-    "Runtime 連線已更換，已匯入 {{count}} / {{total}} 個伺服器，其餘匯入已中斷。",
-  "mcp.import.partial": "已匯入 {{count}} / {{total}} 個伺服器。",
+  "mcp.import.partial_other": "已匯入 {{count}} / {{total}} 個伺服器。",
   "mcp.import.error": "無法匯入該設定。",
   "mcp.import.invalidJson": "請輸入有效的 JSON。",
   "mcp.import.invalidShape": "請使用包含「mcpServers」物件的有效 MCP 設定。",

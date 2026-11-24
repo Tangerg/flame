@@ -42,7 +42,9 @@ export const fr: Record<string, string> = {
   "files.included_one": "{{count}} fichier inclus",
   "files.included_many": "{{count}} fichiers inclus",
   "files.included_other": "{{count}} fichiers inclus",
-  "files.match": "{{matching}} fichiers sur {{total}} correspondent",
+  "files.match_one": "{{count}} fichier sur {{total}} correspond",
+  "files.match_many": "{{count}} fichiers sur {{total}} correspondent",
+  "files.match_other": "{{count}} fichiers sur {{total}} correspondent",
   "stat.title": "Modifications de lignes dans les fichiers texte inclus",
   "empty.title": "Aucune modification dans cette comparaison.",
   "empty.sub":

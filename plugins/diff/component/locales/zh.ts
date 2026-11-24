@@ -37,7 +37,7 @@ export const zh: Record<string, string> = {
   missing: "此次读取未包含请求的文件：",
   "files.changed_other": "{{count}} 个已更改文件",
   "files.included_other": "{{count}} 个包含文件",
-  "files.match": "{{matching}} / {{total}} 个文件匹配",
+  "files.match_other": "{{count}} / {{total}} 个文件匹配",
   "stat.title": "包含的文本文件中的行更改",
   "empty.title": "此比较中没有更改。",
   "empty.sub": "选择其他比较，或在编辑文件后刷新。",

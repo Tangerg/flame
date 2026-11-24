@@ -37,7 +37,7 @@ export const zhTW: Record<string, string> = {
   missing: "本次讀取未包含請求的檔案：",
   "files.changed_other": "{{count}} 個已變更檔案",
   "files.included_other": "{{count}} 個包含檔案",
-  "files.match": "{{matching}} / {{total}} 個檔案相符",
+  "files.match_other": "{{count}} / {{total}} 個檔案相符",
   "stat.title": "包含的文字檔中的行變更",
   "empty.title": "此比較中沒有變更。",
   "empty.sub": "選擇其他比較，或在編輯檔案後重新整理。",

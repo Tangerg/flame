@@ -28249,7 +28249,10 @@ two-count summaries were single strings, so French and Spanish adjectives
 could not agree with `1`. Schedules (`catalog.enabled_*`,
 `catalog.disabled_*`) and Memory (`catalog.pending_*`, `catalog.active_*`)
 now compose one plural family per count; native French reads `1 activée ·
-1 désactivée`, Spanish `3 pendientes · 4 activas`. All eight catalogs follow. Native `dock-agent-memory-recorded`
+1 désactivée`, Spanish `3 pendientes · 4 activas`. The same sweep makes Diff's
+`files.match` and MCP's `mcp.import.partial` plural families keyed on the
+counted number (French Diff filtering now reads `1 fichier sur 4
+correspond`), and removes `mcp.import.interrupted`, which nothing renders. All eight catalogs follow. Native `dock-agent-memory-recorded`
 reads `7 recorded items · 3 pending · 4 active`; `dock-schedules` reads
 `1 enabled · 1 disabled`; Chinese `dock-runs` reads `19 条记录  4 次工具调用
 3 条需要关注`. Plugin typecheck, `check-i18n` and published resource checks

@@ -37,7 +37,7 @@ export const ja: Record<string, string> = {
   missing: "この読み込みには要求されたファイルが含まれていません：",
   "files.changed_other": "変更されたファイル {{count}} 件",
   "files.included_other": "含まれるファイル {{count}} 件",
-  "files.match": "{{total}} 件中 {{matching}} 件のファイルが一致",
+  "files.match_other": "{{total}} 件中 {{count}} 件のファイルが一致",
   "stat.title": "含まれるテキストファイルの行の変更",
   "empty.title": "この比較に変更はありません。",
   "empty.sub": "別の比較を選択するか、ファイルを編集してから更新してください。",
