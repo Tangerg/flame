@@ -37,7 +37,6 @@ export default definePlugin({
         "settings.radius",
       ],
       group: "general",
-      icon: "palette",
       order: 0,
       component: AppearancePane,
     });

@@ -18,7 +18,6 @@ export default definePlugin({
       label: "settings.pane.connection",
       keywords: ["settings.connection.title", "settings.connection.url"],
       group: "general",
-      icon: "network",
       order: 5,
       component: ConnectionPane,
     });

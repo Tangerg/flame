@@ -23,7 +23,6 @@ export default function createShortcutsPlugin(workspaceAccess: WorkspaceAccess) 
         label: "settings.pane.shortcuts",
         keywords: ["shortcuts.sub"],
         group: "general",
-        icon: "keyboard",
         order: 10,
         component: ShortcutsPane,
       });

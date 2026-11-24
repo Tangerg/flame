@@ -51194,6 +51194,19 @@ theme single-owner, plugins operations-generation ownership. The index-containin
 keys in `HooksPane`/`PackageManager` combine the index with stable ids on
 stateless rows — no reachable corruption.
 
+### Text-only Settings navigation (2026-11-24)
+
+The Settings rail gave built-in panes (Appearance, Connection, Keyboard
+shortcuts, Approvals, Plugins) a glyph, but extension panes (Brand identity,
+Providers, MCP servers, Lifecycle hooks) sat in an empty reserved glyph
+column. Plugin declarations carry no icon, and adding one would widen the
+package contract for decoration. `VerticalTabs`, whose only consumer is
+Settings, drops its glyph column, and `SettingsPaneSpec.icon` and the five
+built-in icon values are removed. Items sit on their group heading's edge;
+group labels and selection fill carry the hierarchy. Native Settings in
+EN/light and ZH/dark shows one aligned column under General, Agent,
+Integrations and Extensions. Web typecheck passes.
+
 ### Settings reading focus at native zoom (2026-11-06)
 
 Scope: retain a conversation draft → enter Hooks through installed Settings →

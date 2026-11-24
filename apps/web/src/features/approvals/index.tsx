@@ -18,7 +18,6 @@ export default definePlugin({
       label: "settings.pane.approvals",
       keywords: ["approvals.mode", "approvals.rules"],
       group: "agent",
-      icon: "shield",
       order: 55,
       component: ApprovalsPane,
     });

@@ -2,7 +2,6 @@ import { useWorkspace } from "@/features/workspace/public/workspace";
 import * as stylex from "@stylexjs/stylex";
 import { type ReactNode, type Ref } from "react";
 import { Suspense, useRef, useState } from "react";
-import { knownIconName } from "@/ui/index";
 import { SkeletonList } from "@/ui/index";
 import { TextButton } from "@/ui/index";
 import { VerticalTabs } from "@/ui/index";
@@ -59,7 +58,6 @@ export function SettingsPage() {
       .map((p) => ({
         id: p.id,
         label: t(p.label),
-        icon: knownIconName(p.icon),
         terms: [p.label, p.description, ...(p.keywords ?? [])]
           .filter((key): key is string => key !== undefined)
           .map((key) => t(key).toLocaleLowerCase()),

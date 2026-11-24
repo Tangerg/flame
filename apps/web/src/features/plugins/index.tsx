@@ -34,7 +34,6 @@ export const pluginManagementPane = definePlugin({
         "plugins.loadedTitle",
       ],
       group: "integrations",
-      icon: "blocks",
       order: 99,
       component: PluginsPane,
     });

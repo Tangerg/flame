@@ -11,14 +11,12 @@ import {
   type,
   weight,
 } from "@flame/ui/tokens.stylex";
-import { Icon, type IconName } from "@/ui/icons/index";
 import { Tabs as TabsPrimitive } from "@base-ui/react/tabs";
 import { ContentVisibility, ItemHighlight, HoverTrack, useHoverTrackItem, vocab } from "@flame/ui";
 import { SectionLabel } from "@/ui/atoms/section-label";
 interface VerticalTabItem {
   id: string;
   label: string;
-  icon?: IconName;
   content: ReactNode;
 }
 
@@ -67,7 +65,6 @@ const styles = stylex.create({
   group: { display: "flex", flexDirection: "column", gap: "1px" },
   tab: {
     display: "grid",
-    gridTemplateColumns: "var(--icon-sm) minmax(0, 1fr)",
     height: "var(--density-row-height)",
     alignItems: "center",
     columnGap: "var(--density-row-gap)",
@@ -92,8 +89,6 @@ const styles = stylex.create({
     transitionTimingFunction: motion.easeState,
   },
   highlight: { borderRadius: radius.row },
-  glyph: { gridColumn: 1 },
-  label: { gridColumn: 2 },
   page: {
     gridColumn: { default: 2, "@container (max-width: 40rem)": 1 },
     gridRow: { default: 1, "@container (max-width: 40rem)": 2 },
@@ -122,8 +117,7 @@ function RailTab({ item }: { item: VerticalTabItem }) {
       {...stylex.props(styles.tab, type.uiMd)}
     >
       {track?.hovered && <ItemHighlight layoutId={track.layoutId} styles={styles.highlight} />}
-      {item.icon && <Icon name={item.icon} size="sm" {...stylex.props(styles.glyph)} />}
-      <span {...stylex.props(vocab.truncate, styles.label)}>{item.label}</span>
+      <span {...stylex.props(vocab.truncate)}>{item.label}</span>
     </TabsPrimitive.Tab>
   );
 }

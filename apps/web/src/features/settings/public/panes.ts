@@ -11,7 +11,6 @@ export interface SettingsPaneSpec {
   label: string;
   localizedTitles?: Readonly<Record<string, string>>;
   description?: string;
-  icon?: string;
   order?: number;
   group?: string;
   keywords?: readonly string[];
