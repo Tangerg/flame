@@ -2784,6 +2784,12 @@ Dock and Files step (2026-11-25):
   `FormActions` like every other form's main action: trailing, its fill
   ending on the field's end edge.
 
+- A `Segmented` under a form label (MCP's `Transport`) kept its fill on
+  the label edge while the fields below hang, so its fill sat 12 px right
+  of theirs and `stdio` 14 px right of `Transport`. It now hangs like a
+  boxed field: fills share the edge and the text lands within 2 px of the
+  label.
+
 Native `dock-files`, `dock-file` and `dock-schedules` show the tab label,
 chevrons or field glyphs and panel text on one line; the chat header's
 `scope` and `+25 −9` meet the prose and bubble edges. The full-width file

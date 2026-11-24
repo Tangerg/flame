@@ -25,6 +25,11 @@ const styles = stylex.create({
     display: "inline-flex",
     width: "fit-content",
     maxWidth: "100%",
+    // Under a form label it hangs like a boxed field (FormField sets --field-hang).
+    marginInlineStart: {
+      default: 0,
+      ":first-child": "calc(-1 * var(--field-hang, 0px))",
+    },
     flexWrap: "wrap",
     alignItems: "center",
     gap: space.s0_5,

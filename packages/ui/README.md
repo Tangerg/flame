@@ -673,7 +673,7 @@ for one labelable control;
 Both share field spacing and label typography.
 Boxed single-line and multiline fields share `FIELD_SIZE` text insets and reset
 native WebKit appearance; focus and invalid borders remain with `FIELD_SURFACE`.
-Under a `FormField` label a boxed field or `Select` hangs by the row bleed: its
+Under a `FormField` or `FormGroup` label a boxed field, `Select` or `Segmented` hangs by the row bleed: its
 text starts on the label's edge, its fill starts outside it, and its end edge
 stays on the column's end.
 Provider, MCP, and hook lists consume `RecordGroup` and `ListRow`, while inline
