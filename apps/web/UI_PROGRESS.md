@@ -50417,6 +50417,14 @@ and is unchanged; its edit row's Cancel is now quiet beside Apply. Native
 code stays beside the title as the exact failure identity. Web typecheck
 passes.
 
+Follow-up: the two banners above the transcript used different surfaces.
+The missing-folder banner is a `SystemMessage` warning wash; the run-error
+banner was a card outlined in the negative edge colour, the only bordered
+box in that slot. `bannerCard` now fills with `surface.negativeWash` and has
+no outline, so both read as one banner kind with tone carried by the wash.
+Native `recovery` (light and dark) and `error-retryable` keep Retry
+distinguishable as the tonal action on the wash. Web typecheck passes.
+
 ### Settled decisions and dates as quiet marks (2026-11-24)
 
 Settled approvals, dismissed questions, generic HITL outcomes and transcript
