@@ -29,21 +29,18 @@ export function SkillRow({
   t: Translate;
 }) {
   const element = useRef<HTMLElement>(null);
+  // The tab already names proposals and available Skills, and Active is the resting
+  // lifecycle; only an archived Skill or a Skill's scope adds information.
+  const status = review ? undefined : "lifecycle" in item ? (
+    item.lifecycle === "archived" && <Badge>{t("lifecycle.archived")}</Badge>
+  ) : "scope" in item ? (
+    <Badge>{t(`scope.${item.scope}`)}</Badge>
+  ) : undefined;
   const summary = (
     <RecordSummary
       title={item.name}
       description={item.description}
-      status={
-        <Badge tone={review ? "warning" : "neutral"}>
-          {review
-            ? t("badge.proposal")
-            : "lifecycle" in item
-              ? t(`lifecycle.${item.lifecycle}`)
-              : "scope" in item
-                ? t(`scope.${item.scope}`)
-                : t("badge.available")}
-        </Badge>
-      }
+      status={status}
     />
   );
   if (read)
@@ -64,7 +61,7 @@ export function SkillRow({
         <RecordHeading
           title={item.name}
           description={item.description}
-          status={<Badge>{t(`lifecycle.${item.lifecycle}`)}</Badge>}
+          status={status}
           actions={children}
         />
         {feedback}

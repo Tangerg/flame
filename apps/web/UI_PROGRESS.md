@@ -34909,6 +34909,15 @@ stay plain text beside the name. Native `dock-skills-catalog`: 80 rows read
 name, scope and description, each with its chevron. Plugin typecheck,
 published resource check and `check-i18n` pass.
 
+Follow-up, using the same resting-state rule: proposal rows no longer repeat
+their tab as a `Proposal` tag, and library rows no longer say `Active`. An
+unscoped catalog row no longer says `Available`. `SkillRow` badges only a
+Skill's scope and an archived lifecycle. `badge.proposal`, `badge.available`
+and `lifecycle.active` leave all eight catalogs. Native `dock-skills`: the
+catalog shows `User` / `Project`, proposals show name, description and
+Reject/Approve, and the library shows `old-format-notes · Archived` beside
+Restore.
+
 ### Skills catalog query and reading return
 
 This feedback G02/G04 batch starts from frozen base
