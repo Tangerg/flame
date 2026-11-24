@@ -2731,6 +2731,12 @@ Dock and Files step (2026-11-25):
   URL` fills' edges, and the select text and `Refresh models` start on the
   `Base URL` label.
 
+- Brand identity's color row sat in an invisible list group that still
+  carried a 20 px card padding on top of the list's 12 px bleed, so the
+  swatch started 8 px inside the column and `Copy HEX` ended 8 px short of
+  the asset tiles. The group adds nothing for one static row and is gone:
+  the swatch starts on `Brand color`'s edge and `Copy HEX` ends on the tiles'.
+
 Native `dock-files`, `dock-file` and `dock-schedules` show the tab label,
 chevrons or field glyphs and panel text on one line; the chat header's
 `scope` and `+25 −9` meet the prose and bubble edges. The full-width file

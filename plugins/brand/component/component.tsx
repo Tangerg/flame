@@ -13,7 +13,6 @@ import {
   Icon,
   PanelSection,
   RecordBody,
-  RecordGroup,
   Tile,
   TileGrid,
   useCopy,
@@ -128,64 +127,59 @@ export function Brand({ context }: { context: ComponentContext }) {
         title={t("color.title")}
         description={t("color.description")}
       >
-        <RecordGroup
-          variant="list"
-          style={{ padding: "var(--layout-card-padding)" }}
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            alignItems: "center",
+            gap: "var(--layout-content-gap)",
+          }}
         >
-          <div
+          <span
+            aria-hidden="true"
             style={{
-              display: "flex",
-              flexWrap: "wrap",
-              alignItems: "center",
-              gap: "var(--layout-content-gap)",
+              width: "6rem",
+              height: "6rem",
+              flexShrink: 0,
+              borderRadius: "var(--shape-lg)",
+              backgroundColor: FLAME_ORANGE,
+            }}
+          />
+          <div style={{ flex: "1 1 12rem", minWidth: 0 }}>
+            <strong>{t("color.name")}</strong>
+            <Facts
+              values={[
+                [
+                  "HEX",
+                  <code key="hex" style={{ userSelect: "all" }}>
+                    {hex}
+                  </code>,
+                ],
+                [
+                  "RGB",
+                  <code key="rgb" style={{ userSelect: "all" }}>
+                    {rgb}
+                  </code>,
+                ],
+              ]}
+            />
+          </div>
+          <Button
+            variant="soft"
+            size="sm"
+            onClick={() => {
+              if (context.signal.aborted) return;
+              setFailure(undefined);
+              void copy().then((accepted) => {
+                if (accepted === false && !context.signal.aborted)
+                  setFailure({ kind: "copy" });
+              });
             }}
           >
-            <span
-              aria-hidden="true"
-              style={{
-                width: "6rem",
-                height: "6rem",
-                flexShrink: 0,
-                borderRadius: "var(--shape-lg)",
-                backgroundColor: FLAME_ORANGE,
-              }}
-            />
-            <div style={{ flex: "1 1 12rem", minWidth: 0 }}>
-              <strong>{t("color.name")}</strong>
-              <Facts
-                values={[
-                  [
-                    "HEX",
-                    <code key="hex" style={{ userSelect: "all" }}>
-                      {hex}
-                    </code>,
-                  ],
-                  [
-                    "RGB",
-                    <code key="rgb" style={{ userSelect: "all" }}>
-                      {rgb}
-                    </code>,
-                  ],
-                ]}
-              />
-            </div>
-            <Button
-              variant="soft"
-              size="sm"
-              onClick={() => {
-                if (context.signal.aborted) return;
-                setFailure(undefined);
-                void copy().then((accepted) => {
-                  if (accepted === false && !context.signal.aborted)
-                    setFailure({ kind: "copy" });
-                });
-              }}
-            >
-              <Icon glyph={Copy} />
-              <span aria-live="polite">{t("copyHex")}</span>
-            </Button>
-          </div>
-        </RecordGroup>
+            <Icon glyph={Copy} />
+            <span aria-live="polite">{t("copyHex")}</span>
+          </Button>
+        </div>
       </PanelSection>
       <PanelSection title={t("guidelines.title")}>
         <DocumentBody>
