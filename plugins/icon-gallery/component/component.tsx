@@ -81,7 +81,9 @@ export function Gallery({ context }: { context: ComponentContext }) {
       }
     >
       <Metadata role="status">
-        {t("counts", { visible: visible.length, total: catalog.length })}
+        {visible.length === catalog.length
+          ? t("section.count", { count: catalog.length })
+          : t("counts", { visible: visible.length, total: catalog.length })}
       </Metadata>
       {groups.map((category) => {
         const items = visible.filter((icon) => icon.group === category);

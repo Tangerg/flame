@@ -199,6 +199,8 @@ const styles = stylex.create({
   tileBody: {
     display: "flex",
     flexDirection: "column",
+    // The tile centers its text, so an action centers with it.
+    alignItems: "center",
     minWidth: 0,
     gap: space.s2,
   },

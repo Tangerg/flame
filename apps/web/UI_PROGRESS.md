@@ -2580,6 +2580,18 @@ VoiceOver, physical IME, RTL, live Git/provider execution and whole-product rout
 coverage remain unqualified. Controlled asynchronous unit outcomes are separate
 from the fixed native business-error fixture. The goal remains active.
 
+### Centered tile actions and a plain icon total (2026-11-24)
+
+`Tile` centers its visual and text, but its body column stretched children,
+so Brand's `Download PNG` sat on the left edge under centered titles. The
+tile body now centers its children; Brand's three downloads line up under
+their descriptions, and icon-gallery tiles keep their centered text. The
+icon gallery also read `601 of 601 icons` before any filter; it now reads
+`601 icons` (its existing per-section plural family) until a filter
+narrows it. Native Settings → Brand and full-view icon gallery confirm.
+`@flame/ui` typecheck/build, plugin typecheck and published resource
+checks pass.
+
 ### Composer suggestions open where they can be read (2026-11-24)
 
 Typing `@` or `/` in a Session's Composer opened Lexical's typeahead below
