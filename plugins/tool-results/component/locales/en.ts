@@ -59,11 +59,14 @@ export const en: Record<string, string> = {
   "script.status.timedOut": "The script reached its time limit.",
   "script.status.callLimitExceeded": "The script reached its tool call limit.",
   "script.status.outputLimitExceeded": "The script reached its output limit.",
+  "script.status.resultLimitExceeded":
+    "The script reached its tool result limit.",
   "script.status.canceled": "The script was canceled.",
   "script.call.succeeded": "Succeeded",
   "script.call.failed": "Failed",
   "script.call.rejected": "Rejected",
   "script.call.unconfirmed": "Unconfirmed",
   "script.call.notDispatched": "Not dispatched",
-  "script.call.omitted": "Result not kept ({{bytes}} bytes).",
+  "script.call.omitted":
+    "The script never received this result ({{bytes}} bytes).",
 };

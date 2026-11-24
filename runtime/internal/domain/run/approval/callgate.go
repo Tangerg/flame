@@ -12,6 +12,10 @@ type ToolCallInput struct {
 	SafetyClass     tool.SafetyClass
 	FileMutation    tool.FileMutationScope
 	ShellCommand    string
+	// ScriptTools is the strictest safety class of the Tools a script declares
+	// whose own calls would ask. A running script cannot pause for an answer, so
+	// it asks once, before it runs, in their place.
+	ScriptTools tool.SafetyClass
 }
 
 type ToolCallPlan struct {
@@ -47,6 +51,7 @@ const (
 	PromptCauseOutsideWorkspace    PromptCause = "outsideWorkspace"
 	PromptCauseUnknownMutation     PromptCause = "unknownMutation"
 	PromptCauseCatastrophicCommand PromptCause = "catastrophicCommand"
+	PromptCauseScriptTools         PromptCause = "scriptTools"
 )
 
 func (t ToolCallInput) Plan() ToolCallPlan {
@@ -56,7 +61,7 @@ func (t ToolCallInput) Plan() ToolCallPlan {
 	// catastrophic shell command is confirmed even under an auto-pass mode; a
 	// remembered approval still lets a repeat through.
 	immunity := tool.BypassImmunityFor(t.FileMutation, t.ShellCommand)
-	if action == GatePass && (t.RequireApproval || immunity != tool.BypassAllowed) {
+	if action == GatePass && (t.RequireApproval || t.ScriptTools != "" || immunity != tool.BypassAllowed) {
 		action = GatePrompt
 	}
 	plan.action = action
@@ -66,6 +71,10 @@ func (t ToolCallInput) Plan() ToolCallPlan {
 	case GatePrompt:
 		plan.risk = t.SafetyClass.Risk()
 		plan.promptCause = promptCauseForSafetyClass(t.SafetyClass)
+		if t.ScriptTools != "" {
+			plan.risk = t.ScriptTools.Risk()
+			plan.promptCause = PromptCauseScriptTools
+		}
 		if immunity != tool.BypassAllowed {
 			plan.risk = tool.RiskHigh
 			plan.promptCause = promptCauseForBypassImmunity(immunity)

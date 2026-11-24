@@ -2050,7 +2050,7 @@ export interface ScriptResult {
   status: ScriptStatus;
 }
 
-export type ScriptStatus = "completed" | "failed" | "timedOut" | "callLimitExceeded" | "outputLimitExceeded" | "canceled";
+export type ScriptStatus = "completed" | "failed" | "timedOut" | "callLimitExceeded" | "outputLimitExceeded" | "resultLimitExceeded" | "canceled";
 
 export interface SearchCoverage {
   remainingFiles: number;
@@ -2655,7 +2655,7 @@ export const WIRE_ENUMS = {
   RuntimeTopic: ["files.changed", "skills.changed", "mcp.changed", "plugins.changed", "plugins.dataChanged", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "hooks.changed", "models.changed", "approvals.changed", "projects.changed"],
   SafetyClass: ["safe", "write", "exec", "network"],
   ScriptCallStatus: ["succeeded", "failed", "rejected", "unconfirmed", "notDispatched"],
-  ScriptStatus: ["completed", "failed", "timedOut", "callLimitExceeded", "outputLimitExceeded", "canceled"],
+  ScriptStatus: ["completed", "failed", "timedOut", "callLimitExceeded", "outputLimitExceeded", "resultLimitExceeded", "canceled"],
   SessionProjectChangeType: ["set", "clear"],
   SessionStatus: ["running", "waiting", "idle"],
   SkillLifecycle: ["active", "archived"],

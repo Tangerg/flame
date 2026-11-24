@@ -20,6 +20,8 @@ type toolAdmission struct {
 	authorizer  interactionToolAuthorizer
 	hooks       interactionToolHooks
 	input       InteractionToolHookInput
+	// declared is set only for run_script; see observedInteractionTool.declaredApproval.
+	declared func(context.Context, tool.Arguments) (tool.SafetyClass, error)
 }
 
 func (a toolAdmission) prepare(ctx context.Context, callID string) (ToolAuthorizationRequest, ToolAuthorizationDecision, error) {
@@ -39,6 +41,11 @@ func (a toolAdmission) prepare(ctx context.Context, callID string) (ToolAuthoriz
 		SafetyClass: a.interpreter.SafetyClass(a.ref), FileMutation: fileMutationScope(a.executable, arguments, a.input.CWD), ShellCommand: a.interpreter.ShellCommand(a.ref, arguments.Canonical()), RequireApproval: forceApproval}
 	if _, err := a.binding.Contract().Prepare(toolcontract.Request{Name: request.Tool.PublishedName(request.QualifiedName), Arguments: arguments.Canonical()}, toolcontract.Admission{}); err != nil {
 		return request, ToolAuthorizationDecision{}, errors.Join(tool.ErrInvalidArguments, err)
+	}
+	if a.declared != nil {
+		if request.ScriptTools, err = a.declared(ctx, arguments); err != nil {
+			return request, ToolAuthorizationDecision{}, err
+		}
 	}
 	if !a.interpreter.UsesStandardPolicy(a.ref) {
 		if forceApproval {

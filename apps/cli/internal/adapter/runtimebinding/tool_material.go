@@ -105,6 +105,9 @@ func projectToolResult(call *conversation.ToolCall) error {
 // A builtin result that does not match its typed shape keeps the formatted raw JSON as its presentation.
 func scriptOutput(result builtin.ScriptResult) string {
 	lines := []string{result.Output}
+	if result.Status != builtin.ScriptCompleted {
+		lines = append(lines, string(result.Status))
+	}
 	if result.Error != "" {
 		lines = append(lines, result.Error)
 	}

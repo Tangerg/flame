@@ -24,6 +24,9 @@ type preparedCall struct {
 	arguments tool.Arguments
 	failure   error
 	input     *toolcontract.InputRequest
+	// approved reports that the user approved the call, by answering its prompt
+	// or through a remembered rule, rather than the policy passing it.
+	approved bool
 }
 
 func (p preparedCall) runs() bool { return p.failure == nil && p.input == nil }
@@ -74,11 +77,15 @@ func (o *observedInteractionTool) decideCall(
 		}
 		arguments = proposed
 	}
-	request, decision, err := (toolAdmission{
+	admission := toolAdmission{
 		binding: o.binding, executable: o.inner, ref: o.ref, fingerprint: o.sourceFingerprint,
 		interpreter: o.interpreter, authorizer: o.authorizer, hooks: o.hooks,
 		input: InteractionToolHookInput{SessionID: o.start.SessionID, CWD: o.start.CWD, WorkspaceCWD: o.start.WorkspaceCWD, ToolName: name, Arguments: arguments},
-	}).prepare(ctx, callID)
+	}
+	if o.scriptCatalog != nil {
+		admission.declared = o.declaredApproval
+	}
+	request, decision, err := admission.prepare(ctx, callID)
 	if err != nil {
 		if errors.Is(err, tool.ErrInvalidArguments) {
 			failure, failureErr := toolcontract.NewFailure(toolcontract.FailureConfig{Kind: toolcontract.FailureKindFailed, Cause: err, Output: toolcontract.NewTextOutput("invalid effective arguments: " + run.Diagnostic(err))})
@@ -99,7 +106,8 @@ func (o *observedInteractionTool) decideCall(
 	if prompt, ok := decision.Approval(); ok {
 		return o.requestToolApproval(ctx, bound, request, prompt)
 	}
-	return preparedCall{arguments: arguments}, nil
+	// Either requirement makes the policy ask, so passing means a remembered rule approved.
+	return preparedCall{arguments: arguments, approved: request.RequireApproval || request.ScriptTools != ""}, nil
 }
 
 func (o *observedInteractionTool) proposedArguments(ctx context.Context, callID, name string, arguments tool.Arguments) (tool.Arguments, error) {
@@ -237,5 +245,9 @@ func (o *observedInteractionTool) resolveToolApproval(
 	}, arguments, toolcontract.Admission{}); err != nil {
 		return preparedCall{arguments: arguments}, err
 	}
-	return preparedCall{arguments: arguments}, nil
+	// Arguments edited in the answer meet the subject rule that admitted the originals.
+	if err := o.validateApprovalSubject(request.Tool.PublishedName(request.QualifiedName), arguments); err != nil {
+		return preparedCall{arguments: arguments}, err
+	}
+	return preparedCall{arguments: arguments, approved: true}, nil
 }

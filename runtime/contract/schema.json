@@ -11611,6 +11611,7 @@
         "timedOut",
         "callLimitExceeded",
         "outputLimitExceeded",
+        "resultLimitExceeded",
         "canceled"
       ]
     },

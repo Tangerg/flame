@@ -57,11 +57,12 @@ export const zhTW: Record<string, string> = {
   "script.status.timedOut": "指令碼達到時間上限。",
   "script.status.callLimitExceeded": "指令碼達到工具呼叫次數上限。",
   "script.status.outputLimitExceeded": "指令碼達到輸出上限。",
+  "script.status.resultLimitExceeded": "指令碼達到工具結果上限。",
   "script.status.canceled": "指令碼已取消。",
   "script.call.succeeded": "成功",
   "script.call.failed": "失敗",
   "script.call.rejected": "已拒絕",
   "script.call.unconfirmed": "未確認",
   "script.call.notDispatched": "未派送",
-  "script.call.omitted": "未保留結果（{{bytes}} 位元組）。",
+  "script.call.omitted": "指令碼未收到此結果（{{bytes}} 位元組）。",
 };

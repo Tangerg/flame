@@ -114,7 +114,11 @@ func (o *observedInteractionTool) Call(ctx context.Context, bound toolcontract.I
 	if prepared.runs() {
 		runCtx := ctx
 		if o.scriptCatalog != nil {
-			runCtx = toolset.WithScriptTools(ctx, o.scriptTools(identity, member))
+			tools, err := o.scriptTools(identity, member, arguments, prepared.approved)
+			if err != nil {
+				return toolcontract.Result{}, hostFailure(err)
+			}
+			runCtx = toolset.WithScriptTools(ctx, tools)
 		}
 		var ran toolcontract.Result
 		ran, mutatedPaths, callErr = o.run(runCtx, bound, call, arguments, continuation)

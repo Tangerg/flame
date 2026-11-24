@@ -64,11 +64,14 @@ export const de: Record<string, string> = {
     "Das Skript hat sein Limit für Tool-Aufrufe erreicht.",
   "script.status.outputLimitExceeded":
     "Das Skript hat sein Ausgabelimit erreicht.",
+  "script.status.resultLimitExceeded":
+    "Das Skript hat sein Limit für Tool-Ergebnisse erreicht.",
   "script.status.canceled": "Das Skript wurde abgebrochen.",
   "script.call.succeeded": "Erfolgreich",
   "script.call.failed": "Fehlgeschlagen",
   "script.call.rejected": "Abgelehnt",
   "script.call.unconfirmed": "Unbestätigt",
   "script.call.notDispatched": "Nicht gesendet",
-  "script.call.omitted": "Ergebnis nicht aufbewahrt ({{bytes}} Bytes).",
+  "script.call.omitted":
+    "Das Skript hat dieses Ergebnis nie erhalten ({{bytes}} Bytes).",
 };

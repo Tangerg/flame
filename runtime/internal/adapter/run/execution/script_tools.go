@@ -23,25 +23,73 @@ import (
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
-// scriptTools binds one run_script call to the read-only Tools of its Run. A
+// scriptTools binds one run_script call to the read-only Tools it declared. A
 // script call is admitted and executed exactly as a direct call of that Tool,
-// except that it cannot pause for approval or input.
+// except that it cannot pause for input. A call that would ask for approval
+// runs only when the user approved the script and no hook asks for this call.
 type scriptTools struct {
-	caller *observedInteractionTool
-	callID runs.InvocationID
-	member runs.ExecutorMember
-	byName map[string]*observedInteractionTool
+	caller   *observedInteractionTool
+	callID   runs.InvocationID
+	member   runs.ExecutorMember
+	byName   map[string]*observedInteractionTool
+	approved bool
 }
 
-func (o *observedInteractionTool) scriptTools(callID runs.InvocationID, member runs.ExecutorMember) scriptTools {
-	byName := make(map[string]*observedInteractionTool)
+func (o *observedInteractionTool) scriptTools(callID runs.InvocationID, member runs.ExecutorMember, arguments tool.Arguments, approved bool) (scriptTools, error) {
+	names, err := toolset.ScriptToolNames(arguments)
+	if err != nil {
+		return scriptTools{}, err
+	}
+	readOnly := o.readOnlyScriptTools()
+	byName := make(map[string]*observedInteractionTool, len(names))
+	for _, name := range names {
+		if target, found := readOnly[name]; found {
+			byName[name] = target
+		}
+	}
+	return scriptTools{caller: o, callID: callID, member: member, byName: byName, approved: approved}, nil
+}
+
+func (o *observedInteractionTool) readOnlyScriptTools() map[string]*observedInteractionTool {
+	readOnly := make(map[string]*observedInteractionTool)
 	for ref, candidate := range o.scriptCatalog {
 		definition := candidate.Definition()
 		if ref != o.ref && definition.Effect == toolcontract.EffectSafe {
-			byName[definition.Name] = candidate
+			readOnly[definition.Name] = candidate
 		}
 	}
-	return scriptTools{caller: o, callID: callID, member: member, byName: byName}
+	return readOnly
+}
+
+var riskOrder = []tool.RiskLevel{tool.RiskLow, tool.RiskMedium, tool.RiskHigh}
+
+// declaredApproval returns the strictest safety class of the Tools a run_script
+// call declares whose own calls would ask, or none when no declared Tool would.
+func (o *observedInteractionTool) declaredApproval(ctx context.Context, arguments tool.Arguments) (tool.SafetyClass, error) {
+	names, err := toolset.ScriptToolNames(arguments)
+	if err != nil {
+		return "", err
+	}
+	readOnly := o.readOnlyScriptTools()
+	var strictest tool.SafetyClass
+	for _, name := range names {
+		target, found := readOnly[name]
+		if !found {
+			return "", fmt.Errorf("%w: %q is not a read-only tool a script can call", tool.ErrInvalidArguments, name)
+		}
+		class := o.interpreter.SafetyClass(target.ref)
+		asks, err := o.authorizer.AsksForTool(ctx, ToolApprovalScope{
+			SessionID: o.start.SessionID, WorkspaceCWD: o.start.WorkspaceCWD,
+			Tool: target.ref, SourceFingerprint: target.sourceFingerprint, SafetyClass: class,
+		})
+		if err != nil {
+			return "", err
+		}
+		if asks && (strictest == "" || slices.Index(riskOrder, class.Risk()) > slices.Index(riskOrder, strictest.Risk())) {
+			strictest = class
+		}
+	}
+	return strictest, nil
 }
 
 func (s scriptTools) Names() []string { return slices.Sorted(maps.Keys(s.byName)) }
@@ -72,7 +120,7 @@ func (s scriptTools) Call(ctx context.Context, index int, call script.Call) (too
 	target, found := s.byName[call.Tool]
 	if !found {
 		return toolset.ScriptToolCall{Settlement: script.Settlement{Status: builtincontract.ScriptCallRejected,
-			Message: fmt.Sprintf("%q is not a read-only tool this script can call", call.Tool)}}, nil
+			Message: fmt.Sprintf("%q is not a read-only tool this script declared", call.Tool)}}, nil
 	}
 	settled := toolset.ScriptToolCall{Source: target.ref}
 	arguments, err := tool.ParseArguments(call.Arguments)
@@ -107,9 +155,12 @@ func (s scriptTools) Call(ctx context.Context, index int, call script.Call) (too
 		settled.Settlement = script.Settlement{Status: builtincontract.ScriptCallRejected, Message: reason}
 		return settled, nil
 	}
-	if _, ask := decision.Approval(); ask {
-		settled.Settlement = script.Settlement{Status: builtincontract.ScriptCallRejected,
-			Message: fmt.Sprintf("%s needs the user's approval; call it directly instead of from a script", call.Tool)}
+	if _, ask := decision.Approval(); ask && (request.RequireApproval || !s.approved) {
+		message := fmt.Sprintf("%s needs the user's approval, which this script did not receive; call it directly instead", call.Tool)
+		if request.RequireApproval {
+			message = fmt.Sprintf("a hook asks the user to approve this %s call; call it directly instead", call.Tool)
+		}
+		settled.Settlement = script.Settlement{Status: builtincontract.ScriptCallRejected, Message: message}
 		return settled, nil
 	}
 	result, callErr := target.invoke(ctx, corechat.ToolCall{ID: id.String(), Name: call.Tool, Arguments: arguments.Canonical()}, arguments, toolcontract.Admission{})

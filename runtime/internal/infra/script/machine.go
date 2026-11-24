@@ -74,6 +74,7 @@ type machine struct {
 	calls       sync.WaitGroup
 	unwatch     func() bool
 
+	received int
 	output   strings.Builder
 	result   string
 	finished bool
@@ -328,8 +329,19 @@ func (m *machine) settle(done completion) {
 	delete(m.promises, done.index)
 	defer promise.Free()
 	var err error
-	if done.settlement.Status == builtin.ScriptCallSucceeded {
-		_, err = promise.Resolve.Call(quickjs.UndefinedValue, string(done.settlement.Value))
+	if value := done.settlement.Value; done.settlement.Status == builtin.ScriptCallSucceeded {
+		if m.received+len(value) > m.limits.ResultBytes {
+			m.halt(builtin.ScriptResultLimitExceeded)
+			return
+		}
+		var delivered string
+		if delivered, err = scriptValue(value); err != nil {
+			m.hostErr = fmt.Errorf("script: project call result: %w", err)
+			return
+		}
+		m.received += len(value)
+		m.records[done.index].Result = value
+		_, err = promise.Resolve.Call(quickjs.UndefinedValue, delivered)
 	} else {
 		var rejection []byte
 		rejection, err = json.Marshal(map[string]string{"status": string(done.settlement.Status), "message": done.settlement.Message})

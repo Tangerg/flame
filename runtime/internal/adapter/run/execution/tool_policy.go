@@ -59,26 +59,21 @@ func (t *ToolAuthorizer) AuthorizeTool(
 		SafetyClass:     request.SafetyClass,
 		FileMutation:    request.FileMutation,
 		ShellCommand:    request.ShellCommand,
+		ScriptTools:     request.ScriptTools,
 	}).Plan()
 	if plan.Action() != approval.GateDeny {
 		subject, err := t.subjects.ApprovalSubject(request.Tool, request.Arguments)
 		if err != nil {
 			return ToolAuthorizationDecision{}, fmt.Errorf("execution: derive Tool approval subject: %w", err)
 		}
-		decision, matched, err := t.policy.Decide(ctx, approval.Query{
+		plan, err = t.remembered(ctx, plan, approval.Query{
 			SessionID:    request.SessionID,
 			WorkspaceDir: request.WorkspaceCWD,
 			Tool:         request.Tool, SourceFingerprint: request.SourceFingerprint,
 			Subject: subject,
 		})
 		if err != nil {
-			return ToolAuthorizationDecision{}, fmt.Errorf("execution: evaluate remembered Tool approval: %w", err)
-		}
-		if matched {
-			plan, err = plan.ApplyRule(decision)
-			if err != nil {
-				return ToolAuthorizationDecision{}, fmt.Errorf("execution: evaluate remembered Tool approval: %w", err)
-			}
+			return ToolAuthorizationDecision{}, err
 		}
 	}
 	switch plan.Action() {
@@ -100,6 +95,51 @@ func (t *ToolAuthorizer) AuthorizeTool(
 	default:
 		return ToolAuthorizationDecision{}, errors.New("execution: Tool approval policy returned an unknown action")
 	}
+}
+
+// AsksForTool reports whether every call of a Tool would ask the user under the
+// Session's mode and remembered rules. A Tool whose remembered rules key on its
+// arguments is assumed to ask, because a script declares Tools before it knows
+// their arguments.
+func (t *ToolAuthorizer) AsksForTool(ctx context.Context, scope ToolApprovalScope) (bool, error) {
+	mode, err := t.policy.Mode(ctx, scope.SessionID)
+	if err != nil {
+		return false, fmt.Errorf("execution: read Tool approval mode: %w", err)
+	}
+	plan := (approval.ToolCallInput{Mode: mode, SafetyClass: scope.SafetyClass, FileMutation: tool.FileMutationNone}).Plan()
+	if plan.Action() != approval.GatePrompt {
+		return false, nil
+	}
+	subject, err := t.subjects.ApprovalSubject(scope.Tool, tool.Arguments{})
+	if errors.Is(err, tool.ErrInvalidArguments) {
+		return true, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("execution: derive Tool approval subject: %w", err)
+	}
+	plan, err = t.remembered(ctx, plan, approval.Query{
+		SessionID: scope.SessionID, WorkspaceDir: scope.WorkspaceCWD,
+		Tool: scope.Tool, SourceFingerprint: scope.SourceFingerprint, Subject: subject,
+	})
+	if err != nil {
+		return false, err
+	}
+	return plan.Action() == approval.GatePrompt, nil
+}
+
+func (t *ToolAuthorizer) remembered(ctx context.Context, plan approval.ToolCallPlan, query approval.Query) (approval.ToolCallPlan, error) {
+	decision, matched, err := t.policy.Decide(ctx, query)
+	if err != nil {
+		return approval.ToolCallPlan{}, fmt.Errorf("execution: evaluate remembered Tool approval: %w", err)
+	}
+	if !matched {
+		return plan, nil
+	}
+	plan, err = plan.ApplyRule(decision)
+	if err != nil {
+		return approval.ToolCallPlan{}, fmt.Errorf("execution: evaluate remembered Tool approval: %w", err)
+	}
+	return plan, nil
 }
 
 func (t *ToolAuthorizer) ResolveToolApproval(
@@ -233,6 +273,8 @@ func approvalPromptReason(cause approval.PromptCause) string {
 		return "Has filesystem mutation targets that could not be verified."
 	case approval.PromptCauseCatastrophicCommand:
 		return "Runs a high-confidence catastrophic shell command."
+	case approval.PromptCauseScriptTools:
+		return "Lets a script call tools that need your approval."
 	default:
 		return "Has an unknown safety classification."
 	}

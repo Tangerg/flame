@@ -19,10 +19,13 @@ type Limits struct {
 	Calls           int
 	ConcurrentCalls int
 	OutputBytes     int
+	// ResultBytes bounds the call results a script receives. Each received
+	// result is kept in its record, so this also bounds the record.
+	ResultBytes int
 }
 
 func (l Limits) validate() error {
-	if l.Deadline <= 0 || l.MemoryBytes == 0 || l.Calls <= 0 || l.ConcurrentCalls <= 0 || l.OutputBytes <= 0 {
+	if l.Deadline <= 0 || l.MemoryBytes == 0 || l.Calls <= 0 || l.ConcurrentCalls <= 0 || l.OutputBytes <= 0 || l.ResultBytes <= 0 {
 		return errors.New("script: every limit must be positive")
 	}
 	return nil
@@ -73,6 +76,9 @@ type CallRecord struct {
 	Call    Call
 	Status  builtin.ScriptCallStatus
 	Message string
+	// Result is the exact value a succeeded call delivered to the script; it is
+	// nil when the script ended before receiving it.
+	Result jsontext.Value
 }
 
 type Outcome struct {

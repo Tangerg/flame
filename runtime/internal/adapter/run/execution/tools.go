@@ -49,6 +49,17 @@ type ToolAuthorizationRequest struct {
 	FileMutation      tool.FileMutationScope
 	ShellCommand      string
 	RequireApproval   bool
+	// ScriptTools is set for run_script; see approval.ToolCallInput.
+	ScriptTools tool.SafetyClass
+}
+
+// ToolApprovalScope names a Tool without a call, for a script that declares it.
+type ToolApprovalScope struct {
+	SessionID         identity.SessionID
+	WorkspaceCWD      string
+	Tool              tool.Ref
+	SourceFingerprint framevalue.Digest
+	SafetyClass       tool.SafetyClass
 }
 
 type ToolAuthorizationDecision struct {
@@ -131,6 +142,7 @@ type interactionToolAuthorizer interface {
 		prompt runs.ApprovalPrompt,
 		resolution run.InterruptResolution,
 	) (ToolAuthorizationDecision, error)
+	AsksForTool(ctx context.Context, scope ToolApprovalScope) (bool, error)
 }
 
 type InteractionToolHookInput struct {

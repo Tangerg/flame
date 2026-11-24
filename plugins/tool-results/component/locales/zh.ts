@@ -57,11 +57,12 @@ export const zh: Record<string, string> = {
   "script.status.timedOut": "脚本达到时间上限。",
   "script.status.callLimitExceeded": "脚本达到工具调用次数上限。",
   "script.status.outputLimitExceeded": "脚本达到输出上限。",
+  "script.status.resultLimitExceeded": "脚本达到工具结果上限。",
   "script.status.canceled": "脚本已取消。",
   "script.call.succeeded": "成功",
   "script.call.failed": "失败",
   "script.call.rejected": "已拒绝",
   "script.call.unconfirmed": "未确认",
   "script.call.notDispatched": "未派发",
-  "script.call.omitted": "未保留结果（{{bytes}} 字节）。",
+  "script.call.omitted": "脚本未收到此结果（{{bytes}} 字节）。",
 };

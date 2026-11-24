@@ -197,6 +197,11 @@
           "value": "\"outputLimitExceeded\""
         },
         {
+          "name": "ScriptResultLimitExceeded",
+          "type": "ScriptStatus",
+          "value": "\"resultLimitExceeded\""
+        },
+        {
           "name": "ScriptTimedOut",
           "type": "ScriptStatus",
           "value": "\"timedOut\""

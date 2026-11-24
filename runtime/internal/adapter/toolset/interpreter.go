@@ -57,6 +57,13 @@ func (Interpreter) ApprovalSubject(ref tool.Ref, arguments tool.Arguments) (stri
 		field = shellCommandField
 	case builtincontract.Read, builtincontract.Edit:
 		field = "path"
+	case builtincontract.RunScript:
+		// A remembered script approval covers exactly the Tools it named.
+		names, err := ScriptToolNames(arguments)
+		if err != nil {
+			return "", err
+		}
+		return strings.Join(names, ", "), nil
 	default:
 		return "", nil
 	}

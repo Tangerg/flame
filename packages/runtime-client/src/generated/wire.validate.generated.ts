@@ -4187,7 +4187,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     output: text(),
     status: ref(() => CHECKS.ScriptStatus),
   }, ["calls", "output", "status"]),
-  ScriptStatus: enumOf(["completed", "failed", "timedOut", "callLimitExceeded", "outputLimitExceeded", "canceled"]),
+  ScriptStatus: enumOf(["completed", "failed", "timedOut", "callLimitExceeded", "outputLimitExceeded", "resultLimitExceeded", "canceled"]),
   SearchCoverage: object({
     remainingFiles: integer(),
     scannedFiles: integer(),

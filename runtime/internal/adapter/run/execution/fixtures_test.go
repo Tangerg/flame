@@ -303,6 +303,10 @@ func (allowInteractionTools) ResolveToolApproval(context.Context, ToolAuthorizat
 	return allowTool(), nil
 }
 
+func (allowInteractionTools) AsksForTool(context.Context, ToolApprovalScope) (bool, error) {
+	return false, nil
+}
+
 func rootInteractionExecutionContinuation(
 	checkpoint runs.ExecutorCheckpoint,
 	workspace string,

@@ -76,13 +76,15 @@ const (
 	ScriptTimedOut            ScriptStatus = "timedOut"
 	ScriptCallLimitExceeded   ScriptStatus = "callLimitExceeded"
 	ScriptOutputLimitExceeded ScriptStatus = "outputLimitExceeded"
+	ScriptResultLimitExceeded ScriptStatus = "resultLimitExceeded"
 	ScriptCanceled            ScriptStatus = "canceled"
 )
 
 func (ScriptStatus) Values() []string {
 	return []string{
 		string(ScriptCompleted), string(ScriptFailed), string(ScriptTimedOut),
-		string(ScriptCallLimitExceeded), string(ScriptOutputLimitExceeded), string(ScriptCanceled),
+		string(ScriptCallLimitExceeded), string(ScriptOutputLimitExceeded), string(ScriptResultLimitExceeded),
+		string(ScriptCanceled),
 	}
 }
 
@@ -95,7 +97,8 @@ type ScriptCall struct {
 	Status    ScriptCallStatus `json:"status"`
 	Error     string           `json:"error,omitempty"`
 	Result    any              `json:"result,omitzero"`
-	// OmittedBytes is the size of a result the record did not retain.
+	// OmittedBytes is the size of a succeeded call's result that the script
+	// never received; every result the script received is in Result.
 	OmittedBytes int `json:"omittedBytes,omitzero"`
 }
 

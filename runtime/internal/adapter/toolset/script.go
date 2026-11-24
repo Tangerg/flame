@@ -6,6 +6,7 @@ import (
 	json "encoding/json/v2"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -22,25 +23,38 @@ var scriptLimits = script.Limits{
 	Calls:           256,
 	ConcurrentCalls: 8,
 	OutputBytes:     256 << 10,
+	ResultBytes:     16 << 20,
 }
-
-// Results the script received are retained for clients up to this many bytes
-// per script; the record states the size of each result it omits.
-const scriptRecordBytes = 256 << 10
 
 const scriptDescription = `Run a JavaScript program that calls this Run's read-only tools, then return only what you need. Use it to page through, filter, join or count tool results without reading every intermediate result yourself; call a tool directly for a single lookup.
 
-The script is the body of an async function: use await and return. ` + "`tools`" + ` maps each callable tool's exact name to an async function taking its arguments object, for example ` + "`await tools.read({ path: \"go.mod\" })`" + ` or ` + "`await tools[\"name-with-dash\"]({})`" + `. A call resolves to the tool's structured result, or to its text when it has none, and rejects with an Error whose status is "failed" or "rejected". ` + "`Object.keys(tools)`" + ` lists the callable tools and ` + "`describeTool(name)`" + ` returns one tool's description, input schema and source. ` + "`console.log`" + ` lines and the returned value form the output.
+List in ` + "`tools`" + ` the exact names of the read-only tools the script calls; it can call only those. When any of them would need the user's approval, the user approves the script once, seeing its source and tools, before it runs.
 
-Only tools that cannot change anything are callable. Each call passes the same hooks and approval policy as a direct call; a call that would need the user's approval is rejected, so make that call directly. There is no filesystem, network, environment, timer or module access. A script ends after 3 minutes, 256 tool calls, 64 MiB of memory or 256 KiB of output, and at most 8 calls run at once.`
+The script is the body of an async function: use await and return. ` + "`tools`" + ` maps each listed tool's name to an async function taking its arguments object, for example ` + "`await tools.read({ path: \"go.mod\" })`" + ` or ` + "`await tools[\"name-with-dash\"]({})`" + `. A call resolves to the tool's structured result, or to its text when it has none, and rejects with an Error whose status is "failed" or "rejected". A number that a JavaScript number cannot hold exactly arrives as its decimal string. ` + "`describeTool(name)`" + ` returns a listed tool's description, input schema and source. ` + "`console.log`" + ` lines and the returned value form the output.
+
+Each call passes the same hooks, approval rules and argument checks as a direct call. There is no filesystem, network, environment, timer or module access. A script ends after 3 minutes, 256 tool calls, 64 MiB of memory, 16 MiB of received tool results or 256 KiB of output, and at most 8 calls run at once.`
 
 type scriptInput struct {
-	Summary string `json:"summary" jsonschema:"minLength=1,maxLength=80,pattern=^[^[:space:]](.*[^[:space:]])?$" jsonschema_description:"Concise 3-5 word label for what the script reads, at most 80 characters, without leading or trailing whitespace."`
-	Script  string `json:"script" jsonschema:"minLength=1,maxLength=65536" jsonschema_description:"JavaScript run as the body of an async function. Return the result the conversation needs."`
+	Summary string   `json:"summary" jsonschema:"minLength=1,maxLength=80,pattern=^[^[:space:]](.*[^[:space:]])?$" jsonschema_description:"Concise 3-5 word label for what the script reads, at most 80 characters, without leading or trailing whitespace."`
+	Script  string   `json:"script" jsonschema:"minLength=1,maxLength=65536" jsonschema_description:"JavaScript run as the body of an async function. Return the result the conversation needs."`
+	Tools   []string `json:"tools" jsonschema:"minItems=1" jsonschema_description:"Exact names of the read-only tools the script calls."`
 }
 
-// ScriptTools is the Run's read-only Tool catalog for one run_script call. Each
-// Call passes the Run's admission for that Tool before executing it.
+// ScriptToolNames returns the distinct Tools a run_script call declares, sorted
+// so that one set has one approval subject.
+func ScriptToolNames(arguments tool.Arguments) ([]string, error) {
+	var input scriptInput
+	if err := json.Unmarshal([]byte(arguments.Canonical()), &input); err != nil {
+		return nil, fmt.Errorf("%w: run_script tools: %w", tool.ErrInvalidArguments, err)
+	}
+	if len(input.Tools) == 0 || slices.Contains(input.Tools, "") {
+		return nil, fmt.Errorf("%w: run_script requires the names of the tools it calls", tool.ErrInvalidArguments)
+	}
+	return slices.Compact(slices.Sorted(slices.Values(input.Tools))), nil
+}
+
+// ScriptTools is the read-only Tools one run_script call declared. Each Call
+// passes the Run's admission for that Tool before executing it.
 type ScriptTools interface {
 	Names() []string
 	Describe(name string) (jsontext.Value, bool)
@@ -145,7 +159,6 @@ func (h *scriptHost) result(outcome script.Outcome) builtincontract.ScriptResult
 		Status: outcome.Status, Error: outcome.Error, Output: outcome.Output,
 		Calls: make([]builtincontract.ScriptCall, len(outcome.Calls)),
 	}
-	retained := 0
 	for index, record := range outcome.Calls {
 		call := builtincontract.ScriptCall{Tool: record.Call.Tool, Status: record.Status, Error: record.Message}
 		if requested, err := tool.ParseArguments(record.Call.Arguments); err == nil {
@@ -158,14 +171,11 @@ func (h *scriptHost) result(outcome script.Outcome) builtincontract.ScriptResult
 		if found && settled.Arguments != nil {
 			call.Arguments = settled.Arguments.Map()
 		}
-		if found && record.Status == builtincontract.ScriptCallSucceeded {
-			value := settled.Settlement.Value
-			if retained+len(value) <= scriptRecordBytes {
-				retained += len(value)
-				call.Result = value
-			} else {
-				call.OmittedBytes = len(value)
-			}
+		switch {
+		case record.Result != nil:
+			call.Result = record.Result
+		case found && record.Status == builtincontract.ScriptCallSucceeded:
+			call.OmittedBytes = len(settled.Settlement.Value)
 		}
 		result.Calls[index] = call
 	}
@@ -184,6 +194,8 @@ func scriptReport(result builtincontract.ScriptResult) string {
 		fmt.Fprintf(&report, "The script requested more than %d tool calls and was stopped.\n", scriptLimits.Calls)
 	case builtincontract.ScriptOutputLimitExceeded:
 		fmt.Fprintf(&report, "The script produced more than %d bytes of output and was stopped.\n", scriptLimits.OutputBytes)
+	case builtincontract.ScriptResultLimitExceeded:
+		fmt.Fprintf(&report, "The script received more than %d bytes of tool results and was stopped.\n", scriptLimits.ResultBytes)
 	case builtincontract.ScriptCanceled:
 		report.WriteString("The script was canceled.\n")
 	}

@@ -237,12 +237,15 @@ Tool search reports its fixed initial catalog and the names selected by that inv
 
 `run_script` runs a model-authored JavaScript program in the QuickJS machine of
 `infra/script`, which reaches nothing but the host calls it is given. Its host is
-the same Run's frozen Tool catalog filtered to Tools whose definition declares
-Scope's safe effect; Runtime trusts that declaration from built-ins and installed
-packages only. Each script call is admitted, hooked, authorized and executed by
-the observed Tool of its target under a script call identity, and a call that
-needs an approval prompt or input is refused. The script's structured result
-records every real call. See [Code Mode](../../docs/decisions/code-mode.md).
+the Tools the call declares from the same Run's frozen catalog, each of which must
+declare Scope's safe effect; Runtime trusts that declaration from built-ins and
+installed packages only. When a declared Tool's own calls would ask, the
+`run_script` call asks once before it runs, and its approval admits those Tools'
+prompts for that script. Each script call is admitted, hooked, authorized and
+executed by the observed Tool of its target under a script call identity; a call
+that a hook asks about, that the script was not approved for, or that needs input
+is refused. The script's structured result records every real call and every
+result the script received. See [Code Mode](../../docs/decisions/code-mode.md).
 
 Scope's `ToolSetConfig.DecorateDispatcher` applies the product Segment gate to the full Tool child dispatch boundary. The same gate decorates model dispatch; per-Tool wrappers own only product approval, preparation, result projection and resource policy. Recovery uses the original ToolSet's `SettleToolResult` without replaying the dispatcher or its decorator.
 

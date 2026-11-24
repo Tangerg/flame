@@ -65,11 +65,14 @@ export const es: Record<string, string> = {
   "script.status.callLimitExceeded":
     "El script alcanzó su límite de llamadas a herramientas.",
   "script.status.outputLimitExceeded": "El script alcanzó su límite de salida.",
+  "script.status.resultLimitExceeded":
+    "El script alcanzó su límite de resultados de herramientas.",
   "script.status.canceled": "El script se canceló.",
   "script.call.succeeded": "Correcta",
   "script.call.failed": "Fallida",
   "script.call.rejected": "Rechazada",
   "script.call.unconfirmed": "Sin confirmar",
   "script.call.notDispatched": "No enviada",
-  "script.call.omitted": "Resultado no conservado ({{bytes}} bytes).",
+  "script.call.omitted":
+    "El script nunca recibió este resultado ({{bytes}} bytes).",
 };
