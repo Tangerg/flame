@@ -87,10 +87,12 @@ export function MemoryReport({
                 `${t("footer.page", { page: pageNumber })} · `}
               {t("footer.items", { count: rows.length })}
               {" · "}
-              {t("catalog.summary", {
-                pending: rows.filter((item) => item.status === "pending")
-                  .length,
-                active: rows.filter((item) => item.status === "active").length,
+              {t("catalog.pending", {
+                count: rows.filter((item) => item.status === "pending").length,
+              })}
+              {" · "}
+              {t("catalog.active", {
+                count: rows.filter((item) => item.status === "active").length,
               })}
             </span>
           )

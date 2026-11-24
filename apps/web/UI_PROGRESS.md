@@ -28244,7 +28244,12 @@ counts, so `on this page` leaves the summary strings. Memory splits
 `records.onPage_*` / `records.ofTotal_*` into `records.page`,
 `records.count_*` and `records.matching_*`, and draws `need attention` only
 when nonzero. Search placeholders keep `on this page`, because search stays
-page-local. All eight catalogs follow. Native `dock-agent-memory-recorded`
+page-local. A French capture then showed `1 activées · 1 désactivées`: the
+two-count summaries were single strings, so French and Spanish adjectives
+could not agree with `1`. Schedules (`catalog.enabled_*`,
+`catalog.disabled_*`) and Memory (`catalog.pending_*`, `catalog.active_*`)
+now compose one plural family per count; native French reads `1 activée ·
+1 désactivée`, Spanish `3 pendientes · 4 activas`. All eight catalogs follow. Native `dock-agent-memory-recorded`
 reads `7 recorded items · 3 pending · 4 active`; `dock-schedules` reads
 `1 enabled · 1 disabled`; Chinese `dock-runs` reads `19 条记录  4 次工具调用
 3 条需要关注`. Plugin typecheck, `check-i18n` and published resource checks

@@ -54,7 +54,12 @@ export const es: Record<string, string> = {
   "pages.previous": "Página anterior",
   "pages.next": "Página siguiente",
   "catalog.title": "Memoria guardada",
-  "catalog.summary": "{{pending}} pendientes · {{active}} activas",
+  "catalog.pending_one": "{{count}} pendiente",
+  "catalog.pending_many": "{{count}} pendientes",
+  "catalog.pending_other": "{{count}} pendientes",
+  "catalog.active_one": "{{count}} activa",
+  "catalog.active_many": "{{count}} activas",
+  "catalog.active_other": "{{count}} activas",
   "catalog.group.label": "Memoria registrada",
   "catalog.empty.filtered.title":
     "No hay elementos coincidentes en esta página.",

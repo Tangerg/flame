@@ -441,9 +441,10 @@ export function Schedules({ context }: { context: ComponentContext }) {
                   {" · "}
                 </>
               )}
-              {t("catalog.summary", {
-                enabled: rows.filter(enabled).length,
-                disabled: rows.filter((item) => !enabled(item)).length,
+              {t("catalog.enabled", { count: rows.filter(enabled).length })}
+              {" · "}
+              {t("catalog.disabled", {
+                count: rows.filter((item) => !enabled(item)).length,
               })}
             </span>
           ) : undefined
