@@ -306,7 +306,8 @@ large preview cannot fit beside them. A text body taller than the frame keeps
 the Panel's focused-control fallback. That body is a vertical flow that takes
 the card's remaining height, so a caller can align a trailing action across
 equal-height tiles with an auto block-start margin; tiles without one keep their
-natural text layout.
+natural text layout. The body centers its children on the tile's centered text,
+so a trailing action sits under its title rather than on the leading edge.
 `Stats` groups metrics in one shared card with a single inset and compact,
 content-driven columns that wrap with the available width;
 `MetricValue` and `ShareBar` render existing values without calculating business totals. `Segmented` owns controlled single-value selection in
