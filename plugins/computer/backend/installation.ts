@@ -189,6 +189,70 @@ function readExactly(fd: number, length: number, offset: number): Buffer {
   return result;
 }
 
+const MAX_ARCHIVE_HEADER_BYTES = 64 * 1024 * 1024;
+const MAX_PACKAGE_JSON_BYTES = 1024 * 1024;
+
+interface ArchiveIndex {
+  files: Record<string, unknown>;
+  // Entry offsets count from the end of the length-prefixed header.
+  contentStart: number;
+}
+
+// An Electron ASAR archive opens with a Chromium pickle: four little-endian
+// u32 lengths, then the JSON file index.
+function archiveIndex(fd: number, size: number): ArchiveIndex {
+  const prefix = readExactly(fd, 16, 0);
+  const headerSize = prefix.readUInt32LE(4);
+  const payloadSize = prefix.readUInt32LE(8);
+  const jsonSize = prefix.readUInt32LE(12);
+  if (
+    prefix.readUInt32LE(0) !== 4 ||
+    headerSize < 8 ||
+    payloadSize !== headerSize - 4 ||
+    jsonSize > payloadSize - 4 ||
+    jsonSize > MAX_ARCHIVE_HEADER_BYTES ||
+    8 + headerSize > size
+  )
+    throw new InstallationError("application archive header is invalid");
+  const header = JSON.parse(
+    new TextDecoder("utf-8", { fatal: true }).decode(
+      readExactly(fd, jsonSize, 16),
+    ),
+  );
+  return { files: header?.files ?? {}, contentStart: 8 + headerSize };
+}
+
+function packageJSONBounds(
+  index: ArchiveIndex,
+  size: number,
+): { offset: number; length: number } {
+  const entry = index.files["package.json"] as
+    | { link?: unknown; unpacked?: unknown; offset?: unknown; size?: unknown }
+    | undefined;
+  if (
+    !entry ||
+    entry.link !== undefined ||
+    entry.unpacked ||
+    typeof entry.offset !== "string" ||
+    !/^\d+$/.test(entry.offset) ||
+    typeof entry.size !== "number" ||
+    !Number.isSafeInteger(entry.size) ||
+    entry.size < 0 ||
+    entry.size > MAX_PACKAGE_JSON_BYTES
+  )
+    throw new InstallationError("application archive metadata is invalid");
+  const offset = Number(entry.offset);
+  if (
+    !Number.isSafeInteger(offset) ||
+    offset < 0 ||
+    index.contentStart + offset + entry.size > size
+  )
+    throw new InstallationError(
+      "application archive metadata is out of bounds",
+    );
+  return { offset: index.contentStart + offset, length: entry.size };
+}
+
 function appMetadata(archive: string): z.infer<typeof appSchema> {
   const fd = openSync(
     archive,
@@ -198,50 +262,14 @@ function appMetadata(archive: string): z.infer<typeof appSchema> {
     const info = fstatSync(fd);
     if (!info.isFile())
       throw new InstallationError("application archive is not a regular file");
-    const size = info.size;
-    const prefix = readExactly(fd, 16, 0);
-    const headerSize = prefix.readUInt32LE(4);
-    const payloadSize = prefix.readUInt32LE(8);
-    const jsonSize = prefix.readUInt32LE(12);
-    if (
-      prefix.readUInt32LE(0) !== 4 ||
-      headerSize < 8 ||
-      payloadSize !== headerSize - 4 ||
-      jsonSize > payloadSize - 4 ||
-      jsonSize > 64 * 1024 * 1024 ||
-      8 + headerSize > size
-    )
-      throw new InstallationError("application archive header is invalid");
-    const header = JSON.parse(
-      new TextDecoder("utf-8", { fatal: true }).decode(
-        readExactly(fd, jsonSize, 16),
-      ),
+    const { offset, length } = packageJSONBounds(
+      archiveIndex(fd, info.size),
+      info.size,
     );
-    const entry = header?.files?.["package.json"];
-    if (
-      !entry ||
-      entry.link !== undefined ||
-      entry.unpacked ||
-      typeof entry.offset !== "string" ||
-      !/^\d+$/.test(entry.offset) ||
-      !Number.isSafeInteger(entry.size) ||
-      entry.size < 0 ||
-      entry.size > 1024 * 1024
-    )
-      throw new InstallationError("application archive metadata is invalid");
-    const offset = Number(entry.offset);
-    if (
-      !Number.isSafeInteger(offset) ||
-      offset < 0 ||
-      8 + headerSize + offset + entry.size > size
-    )
-      throw new InstallationError(
-        "application archive metadata is out of bounds",
-      );
     return appSchema.parse(
       JSON.parse(
         new TextDecoder("utf-8", { fatal: true }).decode(
-          readExactly(fd, entry.size, 8 + headerSize + offset),
+          readExactly(fd, length, offset),
         ),
       ),
     );
