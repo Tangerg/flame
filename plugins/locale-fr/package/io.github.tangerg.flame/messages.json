@@ -543,7 +543,7 @@
   "projects.showMore": "Afficher {{count}} de plus",
   "projects.showLess": "Afficher moins",
   "projects.empty.title": "Aucun projet",
-  "projects.empty.sub": "Démarrez une session dans un dossier pour créer un groupe d’espace de travail.",
+  "projects.empty.sub": "Démarrez une session dans un dossier pour créer un projet.",
   "projects.error.title": "Impossible de charger les projets",
   "projects.error.sub": "Vérifiez la connexion au Runtime, puis rouvrez l’index de travail.",
   "convExport.import": "Importer une conversation depuis JSON",

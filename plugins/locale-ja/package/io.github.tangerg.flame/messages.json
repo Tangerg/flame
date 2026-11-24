@@ -527,7 +527,7 @@
   "projects.showMore": "さらに {{count}} 件表示",
   "projects.showLess": "折りたたむ",
   "projects.empty.title": "プロジェクトなし",
-  "projects.empty.sub": "フォルダでセッションを始めるとワークスペースグループが作成されます。",
+  "projects.empty.sub": "フォルダでセッションを始めるとプロジェクトが作成されます。",
   "projects.error.title": "プロジェクトを読み込めませんでした",
   "projects.error.sub": "Runtime 接続を確認してから、ワークインデックスを開き直してください。",
   "convExport.import": "JSON から会話をインポート",

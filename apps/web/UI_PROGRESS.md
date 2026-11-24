@@ -50753,6 +50753,17 @@ no effects/timers/listeners leak. One real mental-model gap was fixed:
   (`session.title.trim() || t("session.untitled")`), so the target object is
   unambiguous — directly serving the brief's "which object does this act on" axis.
 
+### Project counts only while folded (2026-11-24)
+
+Every project row ended in a faint mono session count, also while open,
+where the sessions and `Show 1 more` already show the total. Waiting and
+running marks on that row already appear only while folded. The count now
+follows the same rule and uses the interface face with tabular figures.
+The empty Projects state said `workspace group`; it now says `project` in
+all eight catalogs, matching the section title. Native `fixture=shell`:
+open `scope` has no count; folded `runtime-lab` reads `1`. Web typecheck
+and `check:locales` (940 keys) pass.
+
 ### Work-index snapshot readiness
 
 `features/navigation/application/useWorkIndex.ts:32` previously projected query

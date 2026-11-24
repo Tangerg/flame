@@ -572,7 +572,7 @@
   "projects.showMore": "显示另外 {{count}} 条",
   "projects.showLess": "收起",
   "projects.empty.title": "无项目",
-  "projects.empty.sub": "在文件夹里开始一个会话，即可创建工作区分组。",
+  "projects.empty.sub": "在文件夹里开始一个会话，即可创建项目。",
   "projects.error.title": "无法加载项目",
   "projects.error.sub": "请检查 Runtime 连接，然后重新打开工作索引。",
   "convExport.import": "从 JSON 导入对话",

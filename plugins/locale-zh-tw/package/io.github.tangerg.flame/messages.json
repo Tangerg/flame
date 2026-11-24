@@ -546,7 +546,7 @@
   "projects.showMore": "顯示另外 {{count}} 條",
   "projects.showLess": "收合",
   "projects.empty.title": "無專案",
-  "projects.empty.sub": "在資料夾中開始一個工作階段，即可建立工作區分組。",
+  "projects.empty.sub": "在資料夾中開始一個工作階段，即可建立專案。",
   "projects.error.title": "無法載入專案",
   "projects.error.sub": "請檢查 Runtime 連線，然後重新開啟工作索引。",
   "convExport.import": "從 JSON 匯入對話",

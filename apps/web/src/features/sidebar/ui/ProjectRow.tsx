@@ -8,7 +8,7 @@ import { useT } from "@/lib/i18n/index";
 import { type WorkProject } from "@/features/navigation/public/workIndex";
 import { color, space, type as typeStep, weight } from "@flame/ui/tokens.stylex";
 const pr = stylex.create({
-  count: { fontFamily: "var(--font-mono)", lineHeight: 1, color: color.fgFaint },
+  count: { fontVariantNumeric: "tabular-nums", lineHeight: 1, color: color.fgFaint },
   line: { display: "inline-flex", minWidth: 0, alignItems: "center", gap: space.s1_5 },
   warn: { flexShrink: 0, color: color.warning },
   waiting: { flexShrink: 0, fontWeight: weight.medium, color: color.warning },
@@ -55,7 +55,7 @@ export function ProjectRow({
           {!open && waiting === 0 && running && (
             <StatusDot tone="running" ring label={t("session.status.running")} />
           )}
-          <span {...stylex.props(pr.count, typeStep.uiSm)}>{count}</span>
+          {!open && <span {...stylex.props(pr.count, typeStep.uiSm)}>{count}</span>}
         </span>
       }
       action={

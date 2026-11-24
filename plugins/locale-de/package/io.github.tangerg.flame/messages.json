@@ -535,7 +535,7 @@
   "projects.showMore": "{{count}} weitere anzeigen",
   "projects.showLess": "Weniger anzeigen",
   "projects.empty.title": "Keine Projekte",
-  "projects.empty.sub": "Starte eine Sitzung in einem Ordner, um eine Workspace-Gruppe zu erstellen.",
+  "projects.empty.sub": "Starte eine Sitzung in einem Ordner, um ein Projekt zu erstellen.",
   "projects.error.title": "Projekte konnten nicht geladen werden",
   "projects.error.sub": "Prüfe die Runtime-Verbindung und öffne anschließend den Arbeitsindex erneut.",
   "convExport.import": "Konversation aus JSON importieren",

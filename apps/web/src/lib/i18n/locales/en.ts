@@ -624,7 +624,7 @@ export const en: Record<string, string> = {
   "projects.showMore": "Show {{count}} more",
   "projects.showLess": "Show less",
   "projects.empty.title": "No projects",
-  "projects.empty.sub": "Start a session in a folder to create a workspace group.",
+  "projects.empty.sub": "Start a session in a folder to create a project.",
   "projects.error.title": "Couldn't load projects",
   "projects.error.sub": "Check the Runtime connection, then reopen the work index.",
   "convExport.import": "Import conversation from JSON",
