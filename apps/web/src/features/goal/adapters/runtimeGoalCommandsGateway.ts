@@ -15,7 +15,11 @@ import {
   type GoalCommandsGateway,
 } from "@/features/goal/application/ports/goalCommandsGateway";
 import { type GoalCommandOwner } from "@/features/goal/application/goalCommands";
-import { type GoalReadModel, type GoalState } from "@/features/goal/application/goalReadModel";
+import {
+  GOAL_MATERIAL,
+  type GoalReadModel,
+  type GoalState,
+} from "@/features/goal/application/goalReadModel";
 function goalMutationIdentity(
   method: "start" | "update" | "clear" | "stop" | "resume",
   input: unknown,
@@ -118,7 +122,7 @@ export function createGoalRuntimeAdapter(
     );
   }
   const disposeSharedMaterial = agentAccess.registerAgentSessionSharedMaterial<SessionSnapshot>(
-    "goal",
+    GOAL_MATERIAL,
     (_sessionId, snapshot) => {
       return runtimeGoalMaterial(snapshot.goal, runtimeCapability(runtimeAccess, "goals"));
     },

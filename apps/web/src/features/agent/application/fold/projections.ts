@@ -220,6 +220,39 @@ function shellFields(tool: AgentToolInvocation): Partial<ToolCall> {
   };
 }
 
+// The runtime projects the per-file change receipt, counts and all; the client
+// renders it without re-parsing the patch.
+function editFields(tool: AgentToolInvocation): Partial<ToolCall> {
+  const changes = patchToolResult(tool.result)?.changes ?? [];
+  return {
+    ...(changes.length > 1 ? { files: changes.length } : {}),
+    ...(changes.length > 0
+      ? {
+          changes,
+          added: changes.reduce((sum, file) => sum + file.added, 0),
+          removed: changes.reduce((sum, file) => sum + file.removed, 0),
+        }
+      : {}),
+    ...rawResult(tool.result),
+  };
+}
+
+function readFields(result: Record<string, unknown> | undefined): Partial<ToolCall> {
+  const content = asString(result?.content);
+  const lines = asNumber(result?.total_lines);
+  const start = asNumber(result?.start_line);
+  const end = asNumber(result?.end_line);
+  const range =
+    start !== undefined && end !== undefined && (start > 1 || (lines !== undefined && end < lines))
+      ? { start, end }
+      : undefined;
+  return {
+    ...(content !== undefined ? { result: content } : {}),
+    ...(lines !== undefined ? { lines } : {}),
+    ...(range ? { range } : {}),
+  };
+}
+
 function categoryFields(
   tool: AgentToolInvocation,
   result: Record<string, unknown> | undefined,
@@ -227,43 +260,16 @@ function categoryFields(
   switch (tool.category) {
     case "shell":
       return shellFields(tool);
-    case "edit": {
-      // The runtime projects the per-file change receipt, counts and all; the
-      // client renders it without re-parsing the patch.
-      const changes = patchToolResult(tool.result)?.changes ?? [];
-      return {
-        ...(changes.length > 1 ? { files: changes.length } : {}),
-        ...(changes.length > 0
-          ? {
-              changes,
-              added: changes.reduce((sum, file) => sum + file.added, 0),
-              removed: changes.reduce((sum, file) => sum + file.removed, 0),
-            }
-          : {}),
-        ...rawResult(tool.result),
-      };
-    }
+    case "edit":
+      return editFields(tool);
     case "search":
       return {
         hits: asArrayLength(searchToolResult(tool.result)?.hits),
         ...rawResult(tool.result),
       };
-    case "read": {
-      if (tool.name !== "read") break;
-      const content = asString(result?.content);
-      const lines = asNumber(result?.total_lines);
-      const start = asNumber(result?.start_line);
-      const end = asNumber(result?.end_line);
-      const partial =
-        start !== undefined &&
-        end !== undefined &&
-        (start > 1 || (lines !== undefined && end < lines));
-      return {
-        ...(content !== undefined ? { result: content } : {}),
-        ...(lines !== undefined ? { lines } : {}),
-        ...(partial ? { range: { start: start!, end: end! } } : {}),
-      };
-    }
+    case "read":
+      if (builtinToolName(tool) !== "read") break;
+      return readFields(result);
     case "task":
       return rawResult(asString(result?.reply) ?? tool.result);
   }

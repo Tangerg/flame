@@ -20,11 +20,16 @@ export interface GoalReadModel {
   createdAt: string;
 }
 
+// The Session shared-material path every Goal projection is published under.
+export const GOAL_MATERIAL = "goal";
+
+export const GOAL_SLASH_COMMAND = "/goal";
+
 export interface GoalState {
   available: boolean;
   goal: GoalReadModel | null;
 }
 
 export function useGoalMaterial(): AgentProjectionMaterial<GoalState> {
-  return useAgentSessionSharedMaterial<GoalState>("goal");
+  return useAgentSessionSharedMaterial<GoalState>(GOAL_MATERIAL);
 }

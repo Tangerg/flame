@@ -24,11 +24,15 @@ import { runtimeCommandsAvailable } from "@/features/connection/public/serviceSt
 import { type Goals } from "@/features/goal/application/goals";
 import { GenerationRetiredError } from "@/lib/asyncOwnership";
 import { createGoalComposerSubmitMode } from "@/features/goal/application/goalComposerSubmitMode";
-import { type GoalState } from "@/features/goal/application/goalReadModel";
+import {
+  GOAL_MATERIAL,
+  GOAL_SLASH_COMMAND,
+  type GoalState,
+} from "@/features/goal/application/goalReadModel";
 import { GOAL_COMMAND_GENERATION } from "@/features/goal/application/goalCommands";
 const GOAL_SURFACE = "composer.overlay.top:goal";
 
-const GOAL_SLASH_COMMAND: SlashCommandSpec = {
+const GOAL_SLASH_SPEC: SlashCommandSpec = {
   description: "slash.goal",
 };
 
@@ -81,7 +85,10 @@ export function createGoalPlugin(
         createGoalComposerSubmitMode(composerMode, {
           getActiveSessionId: agentAccess.getActiveSessionId,
           goalState: (sessionId) => {
-            const state = agentAccess.getAgentSessionSharedMaterial<GoalState>(sessionId, "goal");
+            const state = agentAccess.getAgentSessionSharedMaterial<GoalState>(
+              sessionId,
+              GOAL_MATERIAL,
+            );
             if (state?.goal && !providers.admits(GOAL_WORKFLOW, state.goal.author))
               return { ...state, available: false };
             return state;
@@ -96,7 +103,7 @@ export function createGoalPlugin(
             return (input) => {
               const original = agentAccess.getAgentSessionSharedMaterial<GoalState>(
                 input.sessionId,
-                "goal",
+                GOAL_MATERIAL,
               )?.goal;
               if (
                 !commands ||
@@ -127,7 +134,9 @@ export function createGoalPlugin(
         unregister = undefined;
         composerMode.reset();
         if (source === undefined) return;
-        const slash = ctx.contributions.add(SLASH_COMMAND, GOAL_SLASH_COMMAND, { key: "/goal" });
+        const slash = ctx.contributions.add(SLASH_COMMAND, GOAL_SLASH_SPEC, {
+          key: GOAL_SLASH_COMMAND,
+        });
         unregister = () => slash[Symbol.dispose]();
       };
       ctx.lifetime.defer(providers.subscribe(refresh));

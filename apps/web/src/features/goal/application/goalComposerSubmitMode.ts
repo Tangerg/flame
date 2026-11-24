@@ -3,7 +3,11 @@ import {
   type ComposerSubmitModeContext,
   type ComposerSubmitModeSpec,
 } from "@/features/composer/public/types";
-import { type GoalReadModel, type GoalState } from "@/features/goal/application/goalReadModel";
+import {
+  GOAL_SLASH_COMMAND,
+  type GoalReadModel,
+  type GoalState,
+} from "@/features/goal/application/goalReadModel";
 import { goalCanResume } from "@/features/goal/application/goalStatusPresentation";
 import { type StartGoalInput } from "@/features/goal/application/ports/goalCommandsGateway";
 import {
@@ -31,7 +35,9 @@ export function createGoalComposerSubmitMode(
     id: "goal",
     matches: (draft) => {
       const sessionId = dependencies.getActiveSessionId();
-      return draft.slash?.command === "/goal" || Boolean(sessionId && owner.active(sessionId));
+      return (
+        draft.slash?.command === GOAL_SLASH_COMMAND || Boolean(sessionId && owner.active(sessionId))
+      );
     },
     submit: (context) => submitGoalComposerMode(owner, dependencies, context),
   };
@@ -60,7 +66,7 @@ function submitGoalComposerMode(
   }
 
   const slash = context.slash;
-  const goalCommand = slash?.command === "/goal";
+  const goalCommand = slash?.command === GOAL_SLASH_COMMAND;
   const objective = (goalCommand ? slash.args : context.text).trim();
   const existing = state.goal;
   if (!goalCanEnterComposerMode(existing)) {
