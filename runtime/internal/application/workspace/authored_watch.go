@@ -31,7 +31,7 @@ func (a AuthoredResource) InvalidationResource() invalidation.Resource {
 }
 
 type AuthoredScope struct {
-	Workspace   string
+	Workspace      string
 	RepositoryRoot string
 }
 
@@ -99,7 +99,7 @@ func (a *AuthoredWatch) Watch(
 		return nopAuthoredWatch{}, nil
 	}
 	type authoredScopeKey struct {
-		workspace   string
+		workspace      string
 		repositoryRoot string
 	}
 	seen := make(map[authoredScopeKey]struct{}, len(cwds))

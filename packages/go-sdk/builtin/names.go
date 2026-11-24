@@ -23,6 +23,7 @@ const (
 	ReadSkillResource Name = "read_skill_resource"
 	ReadToolResult    Name = "read_tool_result"
 	ReportGoalOutcome Name = "report_goal_outcome"
+	RunScript         Name = "run_script"
 	SearchTools       Name = "search_tools"
 	SetPlan           Name = "set_plan"
 	Shell             Name = "shell"
@@ -33,7 +34,7 @@ var names = []Name{
 	ApplyPatch, AskUser, CreateGoal, DelegateTask, Edit,
 	EnterPlanMode, ExitPlanMode, GetGoal, Glob, Grep, ListSkills,
 	LoadSkill, ProposeSkill, Read, ReadShellOutput, ReadSkillResource, ReadToolResult,
-	ReportGoalOutcome, SearchTools, SetPlan, Shell, StopShell,
+	ReportGoalOutcome, RunScript, SearchTools, SetPlan, Shell, StopShell,
 }
 
 func Names() []Name { return slices.Clone(names) }

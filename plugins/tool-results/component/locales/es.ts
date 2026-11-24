@@ -59,4 +59,17 @@ export const es: Record<string, string> = {
   "caption.results": "Resultados",
   "caption.response": "Respuesta",
   "caption.output": "Salida",
+  "caption.script": "Ejecución del script",
+  "script.status.failed": "El script falló.",
+  "script.status.timedOut": "El script alcanzó su límite de tiempo.",
+  "script.status.callLimitExceeded":
+    "El script alcanzó su límite de llamadas a herramientas.",
+  "script.status.outputLimitExceeded": "El script alcanzó su límite de salida.",
+  "script.status.canceled": "El script se canceló.",
+  "script.call.succeeded": "Correcta",
+  "script.call.failed": "Fallida",
+  "script.call.rejected": "Rechazada",
+  "script.call.unconfirmed": "Sin confirmar",
+  "script.call.notDispatched": "No enviada",
+  "script.call.omitted": "Resultado no conservado ({{bytes}} bytes).",
 };

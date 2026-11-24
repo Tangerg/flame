@@ -19,7 +19,7 @@ import (
 )
 
 func readTool[P, R any](name, description string, read func(context.Context, P) (R, error)) (tool.Tool, error) {
-	return tool.NewFunc(tool.FuncConfig{Name: name, Description: description}, func(ctx context.Context, input P) (R, error) {
+	return tool.NewFunc(tool.FuncConfig{Name: name, Description: description, Effect: tool.EffectSafe}, func(ctx context.Context, input P) (R, error) {
 		result, err := read(ctx, input)
 		if err == nil {
 			return result, nil

@@ -13,6 +13,7 @@ import (
 const (
 	modelInvocationNamespace = "model"
 	toolInvocationNamespace  = "tool"
+	scriptCallNamespace      = "script"
 )
 
 func modelInvocationID(invocation modelCallSource) (runs.InvocationID, error) {

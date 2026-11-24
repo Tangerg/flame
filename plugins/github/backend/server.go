@@ -25,7 +25,7 @@ func classify(err error) (string, bool) {
 }
 
 func toolQuery[P, R any](name, description string, call func(context.Context, P) (R, error)) (tool.Tool, error) {
-	return tool.NewFunc(tool.FuncConfig{Name: name, Description: description}, func(ctx context.Context, input P) (R, error) {
+	return tool.NewFunc(tool.FuncConfig{Name: name, Description: description, Effect: tool.EffectSafe}, func(ctx context.Context, input P) (R, error) {
 		result, err := call(ctx, input)
 		if _, refused := classify(err); err == nil || !refused {
 			return result, err

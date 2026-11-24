@@ -13,9 +13,9 @@ import (
 )
 
 type SkillLibraries struct {
-	user     *skillauthoring.Store
+	user         *skillauthoring.Store
 	repositories sync.Map
-	journal  string
+	journal      string
 }
 
 func NewSkillLibraries(user *skillauthoring.Store, journal string) (*SkillLibraries, error) {

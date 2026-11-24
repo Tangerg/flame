@@ -51,8 +51,8 @@ func ValidateAuthoredPromptDocument(document []byte) error {
 type AgentDocScope string
 
 const (
-	AgentDocScopeHome        AgentDocScope = "home"
-	AgentDocScopeCWD         AgentDocScope = "cwd"
+	AgentDocScopeHome           AgentDocScope = "home"
+	AgentDocScopeCWD            AgentDocScope = "cwd"
 	AgentDocScopeRepositoryRoot AgentDocScope = "repositoryRoot"
 )
 
@@ -137,7 +137,7 @@ type SkillSource struct {
 }
 
 func RepositorySkillSource() SkillSource { return SkillSource{scope: skills.ScopeRepository} }
-func UserSkillSource() SkillSource    { return SkillSource{scope: skills.ScopeUser} }
+func UserSkillSource() SkillSource       { return SkillSource{scope: skills.ScopeUser} }
 
 func InstallationSkillSource(release plugin.Dependency) (SkillSource, error) {
 	if err := release.Validate(); err != nil {

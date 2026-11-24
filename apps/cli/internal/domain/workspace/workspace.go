@@ -10,9 +10,9 @@ import (
 var ErrVersionControlUnavailable = errors.New("version control unavailable")
 
 type Workspace struct {
-	Path         string
-	RepositoryRoot  string
-	Availability protocol.WorkspaceAvailability
+	Path           string
+	RepositoryRoot string
+	Availability   protocol.WorkspaceAvailability
 }
 
 func (w Workspace) IsAvailable() bool { return w.Availability == protocol.WorkspaceAvailable }

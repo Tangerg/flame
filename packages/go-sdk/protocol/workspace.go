@@ -17,9 +17,9 @@ const (
 )
 
 type WorkspaceInfo struct {
-	Ref          WorkspaceRef          `json:"ref"`
-	RepositoryRoot  string                `json:"repositoryRoot,omitempty"`
-	Availability WorkspaceAvailability `json:"availability"`
+	Ref            WorkspaceRef          `json:"ref"`
+	RepositoryRoot string                `json:"repositoryRoot,omitempty"`
+	Availability   WorkspaceAvailability `json:"availability"`
 }
 
 type WorkspaceSummary struct {

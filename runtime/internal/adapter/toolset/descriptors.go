@@ -43,6 +43,7 @@ var builtInDescriptors = map[builtincontract.Name]builtInDescriptor{
 	builtincontract.ExitPlanMode:      builtInDescriptor{safety: tool.SafetyClassSafe},
 	builtincontract.SetPlan:           builtInDescriptor{safety: tool.SafetyClassSafe, outcome: planOutcomeProjection},
 	builtincontract.ReadToolResult:    builtInDescriptor{safety: tool.SafetyClassSafe},
+	builtincontract.RunScript:         builtInDescriptor{safety: tool.SafetyClassSafe},
 	builtincontract.DelegateTask:      builtInDescriptor{safety: tool.SafetyClassSafe, orchestration: true},
 	builtincontract.CreateGoal:        builtInDescriptor{safety: tool.SafetyClassSafe},
 	builtincontract.GetGoal:           builtInDescriptor{safety: tool.SafetyClassSafe},
@@ -55,6 +56,9 @@ var builtInDescriptors = map[builtincontract.Name]builtInDescriptor{
 }
 
 func resultContractFor(name builtincontract.Name) (resultProjectionContract, bool) {
+	if name == builtincontract.RunScript {
+		return scriptResultContract(), true
+	}
 	switch name.ResultShape() {
 	case extension.ResultShapeCommand:
 		return commandResultContract(), true

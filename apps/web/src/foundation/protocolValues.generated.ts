@@ -64,6 +64,7 @@ export const BUILTIN_TOOL_NAMES = [
   "read_skill_resource",
   "read_tool_result",
   "report_goal_outcome",
+  "run_script",
   "search_tools",
   "set_plan",
   "shell",

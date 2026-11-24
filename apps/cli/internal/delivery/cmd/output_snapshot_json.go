@@ -37,9 +37,9 @@ type sessionFrame struct {
 }
 
 type workspaceFrame struct {
-	Path         string `json:"path"`
-	RepositoryRoot  string `json:"repositoryRoot"`
-	Availability string `json:"availability"`
+	Path           string `json:"path"`
+	RepositoryRoot string `json:"repositoryRoot"`
+	Availability   string `json:"availability"`
 }
 
 type runJSONFrame struct {

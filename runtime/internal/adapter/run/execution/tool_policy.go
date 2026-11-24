@@ -66,9 +66,9 @@ func (t *ToolAuthorizer) AuthorizeTool(
 			return ToolAuthorizationDecision{}, fmt.Errorf("execution: derive Tool approval subject: %w", err)
 		}
 		decision, matched, err := t.policy.Decide(ctx, approval.Query{
-			SessionID:  request.SessionID,
+			SessionID:    request.SessionID,
 			WorkspaceDir: request.WorkspaceCWD,
-			Tool:       request.Tool, SourceFingerprint: request.SourceFingerprint,
+			Tool:         request.Tool, SourceFingerprint: request.SourceFingerprint,
 			Subject: subject,
 		})
 		if err != nil {

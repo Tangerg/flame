@@ -105,6 +105,7 @@ type resolverDeps struct {
 	ExitPlan        toolcontract.Tool
 	Plan            toolcontract.Tool
 	ToolResult      toolcontract.Tool
+	Script          toolcontract.Tool
 	GoalGet         toolcontract.Tool
 	GoalReport      toolcontract.Tool
 	ProposeSkill    toolcontract.Tool
@@ -123,7 +124,7 @@ func newResolver(d resolverDeps) (*Resolver, error) {
 		{"Goal availability", d.GoalAvailable}, {"Plan availability", d.PlanAvailable},
 		{"MCP exposure policy", d.MCPToolDisabled}, {"MCP restoration", d.RestoreMCP},
 		{"ask_user", d.AskUser}, {"enter_plan_mode", d.EnterPlan}, {"exit_plan_mode", d.ExitPlan}, {"set_plan", d.Plan},
-		{"read_tool_result", d.ToolResult}, {"get_goal", d.GoalGet}, {"report_goal_outcome", d.GoalReport}, {"propose_skill", d.ProposeSkill},
+		{"read_tool_result", d.ToolResult}, {"run_script", d.Script}, {"get_goal", d.GoalGet}, {"report_goal_outcome", d.GoalReport}, {"propose_skill", d.ProposeSkill},
 	} {
 		if lo.IsNil(required.value) {
 			return nil, fmt.Errorf("toolset: resolver %s is required", required.name)
@@ -149,6 +150,7 @@ func newResolver(d resolverDeps) (*Resolver, error) {
 			{tool: d.ExitPlan, audience: audienceRoot, placement: interactionTail, availability: whenPlanAvailable},
 			{tool: d.Plan, audience: audienceRoot, placement: afterSkill, availability: whenPlanAvailable},
 			{tool: d.ToolResult, audience: audienceBoth, placement: afterSkill},
+			{tool: d.Script, audience: audienceBoth, placement: afterSkill},
 			{tool: d.ProposeSkill, audience: audienceRoot, placement: afterSkill, deferred: true},
 			{tool: d.GoalGet, audience: audienceRoot, placement: rootTail},
 			{tool: d.GoalReport, audience: audienceRoot, placement: rootTail, availability: goalRunsOnly},

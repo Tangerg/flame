@@ -15,9 +15,9 @@ type ApprovalRule struct {
 type ApprovalRuleScope string
 
 const (
-	ApprovalRuleScopeSession ApprovalRuleScope = "session"
+	ApprovalRuleScopeSession   ApprovalRuleScope = "session"
 	ApprovalRuleScopeWorkspace ApprovalRuleScope = "workspace"
-	ApprovalRuleScopeGlobal  ApprovalRuleScope = "global"
+	ApprovalRuleScopeGlobal    ApprovalRuleScope = "global"
 )
 
 //flame:enum

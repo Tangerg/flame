@@ -32,7 +32,7 @@ type Catalog struct {
 type CatalogView struct {
 	RepositoryRoot    string
 	RepositoryTrusted bool
-	Hooks          []Resolved
+	Hooks             []Resolved
 }
 
 type Resolved struct {

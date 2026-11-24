@@ -36,6 +36,14 @@ func sourceTools(ctx context.Context, owner *connections, descriptor ServerConfi
 			ref, _ := domaintool.MCP(server, remoteName)
 			return ref.DiscoveryName()
 		},
+		// An installed package's read-only declaration is its own Tool contract;
+		// any other server's annotation is an untrusted hint.
+		EffectPolicy: func(_, _ string, annotations sdk.ToolAnnotations) toolcontract.Effect {
+			if _, installed := server.Origin().Installation(); installed && annotations.ReadOnlyHint {
+				return toolcontract.EffectSafe
+			}
+			return toolcontract.EffectUnsafe
+		},
 		ConcurrencyPolicy: scopemcp.AnnotatedReadOnlyConcurrencyPolicy,
 		RequestMeta: func(ctx context.Context, _ toolcontract.Invocation) sdk.Meta {
 			captured, _ := ctx.Value(callKey).(sdk.Meta)

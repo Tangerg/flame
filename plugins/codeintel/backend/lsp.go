@@ -130,7 +130,7 @@ type lspRunner struct {
 func newQuery(ci *analyzer.Analyzer) (toolcontract.Tool, error) {
 	t := &lspRunner{analyzer: ci}
 	return toolcontract.NewFunc[lspInput, string](
-		toolcontract.FuncConfig{Name: "lsp", Description: lspDesc},
+		toolcontract.FuncConfig{Name: "lsp", Description: lspDesc, Effect: toolcontract.EffectSafe},
 		func(ctx context.Context, input lspInput) (string, error) {
 			result, err := t.query(ctx, input)
 			return result, pluginsdk.DefiniteToolFailure(err)

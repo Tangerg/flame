@@ -12,15 +12,15 @@ import (
 type approvalAction string
 
 const (
-	approvalAllowOnce    approvalAction = "allow-once"
-	approvalAllowSession approvalAction = "allow-session"
+	approvalAllowOnce      approvalAction = "allow-once"
+	approvalAllowSession   approvalAction = "allow-session"
 	approvalAllowWorkspace approvalAction = "allow-workspace"
-	approvalAllowGlobal  approvalAction = "allow-global"
-	approvalDenyOnce     approvalAction = "deny-once"
-	approvalDenySession  approvalAction = "deny-session"
+	approvalAllowGlobal    approvalAction = "allow-global"
+	approvalDenyOnce       approvalAction = "deny-once"
+	approvalDenySession    approvalAction = "deny-session"
 	approvalDenyWorkspace  approvalAction = "deny-workspace"
-	approvalDenyGlobal   approvalAction = "deny-global"
-	approvalEditArgs     approvalAction = "edit-arguments"
+	approvalDenyGlobal     approvalAction = "deny-global"
+	approvalEditArgs       approvalAction = "edit-arguments"
 )
 
 func approvalOptions(rememberable bool) []base.Option[approvalAction] {

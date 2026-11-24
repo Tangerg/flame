@@ -35,17 +35,17 @@ type HookInfo struct {
 type HookScope string
 
 const (
-	HookScopeGlobal  HookScope = "global"
+	HookScopeGlobal     HookScope = "global"
 	HookScopeRepository HookScope = "repository"
 )
 
 type HooksListResult struct {
 	RepositoryRoot    string     `json:"repositoryRoot,omitempty"`
 	RepositoryTrusted bool       `json:"repositoryTrusted"`
-	Hooks          []HookInfo `json:"hooks"`
+	Hooks             []HookInfo `json:"hooks"`
 }
 
 type SetHookTrustRequest struct {
 	RepositoryRoot string `json:"repositoryRoot"`
-	Trusted     bool   `json:"trusted"`
+	Trusted        bool   `json:"trusted"`
 }

@@ -59,15 +59,17 @@ require (
 	golang.org/x/text v0.44.0 // indirect
 	golang.org/x/time v0.16.0 // indirect
 	modernc.org/libc v1.80.2 // indirect
+	modernc.org/libquickjs v0.14.0 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.12.1 // indirect
+	modernc.org/quickjs v0.27.0 // indirect
 	modernc.org/sqlite v1.62.0 // indirect
 )
 
 require (
-	github.com/Tangerg/flame/packages/go-sdk v0.1.56-dev.20261124.tafde14360c71
+	github.com/Tangerg/flame/packages/go-sdk v0.1.57-dev.20261124.t5932a3c53949
 	github.com/Tangerg/flame/packages/local-runtime v0.1.14-dev.20261123.tca9fa5e1c260
-	github.com/Tangerg/flame/runtime v0.1.117-dev.20261124.tc1d349c094c2
+	github.com/Tangerg/flame/runtime v0.1.118-dev.20261124.t81c6f0c9f152
 	github.com/Tangerg/frame v0.5.0
 	github.com/Tangerg/go-sdk v1.9.0-scope.1
 	golang.org/x/mod v0.43.0

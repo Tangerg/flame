@@ -35,18 +35,18 @@ func NewDiscovery(scope *Scope, workspaces catalog, agentDocs agentDocFinder) (*
 }
 
 type Resolved struct {
-	Path        string
+	Path           string
 	RepositoryRoot string
-	Missing     bool
+	Missing        bool
 }
 
 type Summary struct {
-	Name         string
-	Path         string
-	RepositoryRoot  string
-	Missing      bool
-	SessionCount int
-	LastActiveAt time.Time
+	Name           string
+	Path           string
+	RepositoryRoot string
+	Missing        bool
+	SessionCount   int
+	LastActiveAt   time.Time
 }
 
 type catalog interface {

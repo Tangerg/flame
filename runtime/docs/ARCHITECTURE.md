@@ -235,6 +235,15 @@ its diagnostic contract and is not a plugin action entrance.
 
 Tool search reports its fixed initial catalog and the names selected by that invocation. Its structured result owns the executed matches, including after argument rewriting; `interaction.AdvertisingTool` reads those names without repeating a search from the original model proposal. Scope validates the exact deferred bindings and commits cumulative Tool visibility only after successful execution. Neither a frozen description nor one search result can say which other Tools remain unloaded. The former context-bound advertisement callback is removed.
 
+`run_script` runs a model-authored JavaScript program in the QuickJS machine of
+`infra/script`, which reaches nothing but the host calls it is given. Its host is
+the same Run's frozen Tool catalog filtered to Tools whose definition declares
+Scope's safe effect; Runtime trusts that declaration from built-ins and installed
+packages only. Each script call is admitted, hooked, authorized and executed by
+the observed Tool of its target under a script call identity, and a call that
+needs an approval prompt or input is refused. The script's structured result
+records every real call. See [Code Mode](../../docs/decisions/code-mode.md).
+
 Scope's `ToolSetConfig.DecorateDispatcher` applies the product Segment gate to the full Tool child dispatch boundary. The same gate decorates model dispatch; per-Tool wrappers own only product approval, preparation, result projection and resource policy. Recovery uses the original ToolSet's `SettleToolResult` without replaying the dispatcher or its decorator.
 
 Model boundaries preserve Scope's `chat.CallFailure` and use `chat.ClassifyFailure` for the complete invocation. A nested cause cannot establish non-execution for earlier work. An adapter uses `CallFailureNotExecuted` only while it still holds proof that the model was never called. Scope settles known failures directly; Runtime keeps physical consumption and product failure classification without replacing a known failure with host cancellation. Validated generation and usage survive later product publication failures. Unknown provider outcomes retain their uncertain execution semantics and the existing product stop policy. An initial commit failure retains Scope's `StartError` with its attempted root, incarnation, sequence and digest; these are reconciliation evidence, never an acknowledged head or permission to repeat execution.

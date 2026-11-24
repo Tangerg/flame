@@ -290,6 +290,11 @@ arguments or transport IDs. `ToolCommandID` qualifies that identity for receipt
 owners that separate Tool and human command namespaces. These identities are not
 credentials or standing approval grants.
 
+A Tool that changes nothing declares Scope's safe effect in its definition. Scope
+publishes it as the MCP read-only annotation, and Runtime trusts that annotation
+from installed packages only: such a Tool may be replayed during recovery and is
+callable from `run_script`. Each call still passes Runtime's ordinary approval.
+
 `ToolReceiptMethod` is an optional read of an original model Tool result. Register
 it with `pluginmcp.Method.RegisterServer` and accept `pluginmcp.ReceiptRequest`: its `Method` field is the original
 remote Tool name, `ID` is its `ToolCommandID`, and `InputDigest` identifies the

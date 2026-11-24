@@ -2031,6 +2031,27 @@ export type RuntimeTopic = "files.changed" | "skills.changed" | "mcp.changed" | 
 
 export type SafetyClass = "safe" | "write" | "exec" | "network";
 
+export interface ScriptCall {
+  arguments?: Record<string, unknown>;
+  error?: string;
+  omittedBytes?: number;
+  result?: unknown;
+  source?: string;
+  status: ScriptCallStatus;
+  tool: string;
+}
+
+export type ScriptCallStatus = "succeeded" | "failed" | "rejected" | "unconfirmed" | "notDispatched";
+
+export interface ScriptResult {
+  calls: ScriptCall[];
+  error?: string;
+  output: string;
+  status: ScriptStatus;
+}
+
+export type ScriptStatus = "completed" | "failed" | "timedOut" | "callLimitExceeded" | "outputLimitExceeded" | "canceled";
+
 export interface SearchCoverage {
   remainingFiles: number;
   scannedFiles: number;
@@ -2378,7 +2399,7 @@ export interface ToolInvocation {
 }
 
 export type ToolRef =
-  | { type: "builtIn"; name: "apply_patch" | "ask_user" | "create_goal" | "delegate_task" | "edit" | "enter_plan_mode" | "exit_plan_mode" | "get_goal" | "glob" | "grep" | "list_skills" | "load_skill" | "propose_skill" | "read" | "read_shell_output" | "read_skill_resource" | "read_tool_result" | "report_goal_outcome" | "search_tools" | "set_plan" | "shell" | "stop_shell" }
+  | { type: "builtIn"; name: "apply_patch" | "ask_user" | "create_goal" | "delegate_task" | "edit" | "enter_plan_mode" | "exit_plan_mode" | "get_goal" | "glob" | "grep" | "list_skills" | "load_skill" | "propose_skill" | "read" | "read_shell_output" | "read_skill_resource" | "read_tool_result" | "report_goal_outcome" | "run_script" | "search_tools" | "set_plan" | "shell" | "stop_shell" }
   | { type: "mcp"; name: string; server: MCPServerID };
 
 export type ToolRefType = "builtIn" | "mcp";
@@ -2633,6 +2654,8 @@ export const WIRE_ENUMS = {
   RuntimeEventType: ["files.changed", "skills.changed", "mcp.changed", "plugins.changed", "plugins.dataChanged", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "hooks.changed", "models.changed", "approvals.changed", "projects.changed", "resync"],
   RuntimeTopic: ["files.changed", "skills.changed", "mcp.changed", "plugins.changed", "plugins.dataChanged", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "hooks.changed", "models.changed", "approvals.changed", "projects.changed"],
   SafetyClass: ["safe", "write", "exec", "network"],
+  ScriptCallStatus: ["succeeded", "failed", "rejected", "unconfirmed", "notDispatched"],
+  ScriptStatus: ["completed", "failed", "timedOut", "callLimitExceeded", "outputLimitExceeded", "canceled"],
   SessionProjectChangeType: ["set", "clear"],
   SessionStatus: ["running", "waiting", "idle"],
   SkillLifecycle: ["active", "archived"],

@@ -22,9 +22,9 @@ const (
 )
 
 type WorkspaceView struct {
-	Path        string
+	Path           string
 	RepositoryRoot string
-	Missing     bool
+	Missing        bool
 }
 
 type View struct {

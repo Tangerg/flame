@@ -41,9 +41,9 @@ func (m Mode) ValidDefault() bool {
 type Scope string
 
 const (
-	ScopeSession Scope = "session"
+	ScopeSession   Scope = "session"
 	ScopeWorkspace Scope = "workspace"
-	ScopeGlobal  Scope = "global"
+	ScopeGlobal    Scope = "global"
 )
 
 func (s Scope) Valid() bool {
@@ -111,7 +111,7 @@ func (r Rule) Decision() Decision                   { return r.decision }
 
 type Query struct {
 	SessionID         identity.SessionID
-	WorkspaceDir        string
+	WorkspaceDir      string
 	Tool              tool.Ref
 	SourceFingerprint framevalue.Digest
 	Subject           string
@@ -120,7 +120,7 @@ type Query struct {
 type RememberRequest struct {
 	Scope             Scope
 	SessionID         identity.SessionID
-	WorkspaceDir        string
+	WorkspaceDir      string
 	Tool              tool.Ref
 	SourceFingerprint framevalue.Digest
 	Subject           Subject

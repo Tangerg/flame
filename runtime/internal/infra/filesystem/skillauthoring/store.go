@@ -20,10 +20,10 @@ import (
 )
 
 type Store struct {
-	root              string
+	root                 string
 	repository, relative string
-	scope             skills.Scope
-	mu                sync.RWMutex
+	scope                skills.Scope
+	mu                   sync.RWMutex
 }
 
 func NewStore(root string, scope skills.Scope) (*Store, error) {

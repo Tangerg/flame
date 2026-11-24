@@ -6,7 +6,7 @@ import "github.com/Tangerg/flame/packages/go-sdk/skill"
 type SkillScope string
 
 const (
-	SkillScopeRepository      SkillScope = SkillScope(skill.Repository)
+	SkillScopeRepository   SkillScope = SkillScope(skill.Repository)
 	SkillScopeUser         SkillScope = SkillScope(skill.User)
 	SkillScopeInstallation SkillScope = SkillScope(skill.Installation)
 )

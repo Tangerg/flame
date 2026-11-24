@@ -164,13 +164,13 @@ type sourceAuthorities interface {
 	Fingerprints(context.Context, []tool.Ref) (map[tool.Ref]framevalue.Digest, error)
 }
 type RuleView struct {
-	ID         string
-	Scope      approval.Scope
+	ID           string
+	Scope        approval.Scope
 	WorkspaceDir string
-	Tool       tool.Ref
-	Subject    approval.Subject
-	Decision   approval.Decision
-	Stale      bool
+	Tool         tool.Ref
+	Subject      approval.Subject
+	Decision     approval.Decision
+	Stale        bool
 }
 
 func (r *RuntimePolicy) ListRules(ctx context.Context, sessionID identity.SessionID) ([]RuleView, error) {

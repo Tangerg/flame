@@ -25,6 +25,7 @@ const presentations = new Map<string, ToolPresentation>([
   ["read_skill_resource", { category: "read" }],
   ["read_tool_result", { category: "read" }],
   ["report_goal_outcome", { category: "task" }],
+  ["run_script", { category: "task" }],
   ["search_tools", { category: "search" }],
   ["set_plan", { category: "task" }],
   ["shell", { category: "shell", resultShape: "command" }],

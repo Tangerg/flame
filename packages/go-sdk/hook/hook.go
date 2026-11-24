@@ -44,7 +44,7 @@ const (
 type Scope string
 
 const (
-	ScopeGlobal  Scope = "global"
+	ScopeGlobal     Scope = "global"
 	ScopeRepository Scope = "repository"
 )
 

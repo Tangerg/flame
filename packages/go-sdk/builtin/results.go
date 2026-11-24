@@ -60,3 +60,60 @@ type AppliedChange struct {
 	Added   int          `json:"added"`
 	Removed int          `json:"removed"`
 }
+
+type ScriptResult struct {
+	Status ScriptStatus `json:"status"`
+	Error  string       `json:"error,omitempty"`
+	Output string       `json:"output"`
+	Calls  []ScriptCall `json:"calls"`
+}
+
+type ScriptStatus string
+
+const (
+	ScriptCompleted           ScriptStatus = "completed"
+	ScriptFailed              ScriptStatus = "failed"
+	ScriptTimedOut            ScriptStatus = "timedOut"
+	ScriptCallLimitExceeded   ScriptStatus = "callLimitExceeded"
+	ScriptOutputLimitExceeded ScriptStatus = "outputLimitExceeded"
+	ScriptCanceled            ScriptStatus = "canceled"
+)
+
+func (ScriptStatus) Values() []string {
+	return []string{
+		string(ScriptCompleted), string(ScriptFailed), string(ScriptTimedOut),
+		string(ScriptCallLimitExceeded), string(ScriptOutputLimitExceeded), string(ScriptCanceled),
+	}
+}
+
+// ScriptCall records one Tool call a script requested. Source is the canonical
+// Tool reference and is empty when the script named no callable Tool.
+type ScriptCall struct {
+	Tool      string           `json:"tool"`
+	Source    string           `json:"source,omitempty"`
+	Arguments map[string]any   `json:"arguments,omitzero"`
+	Status    ScriptCallStatus `json:"status"`
+	Error     string           `json:"error,omitempty"`
+	Result    any              `json:"result,omitzero"`
+	// OmittedBytes is the size of a result the record did not retain.
+	OmittedBytes int `json:"omittedBytes,omitzero"`
+}
+
+type ScriptCallStatus string
+
+const (
+	ScriptCallSucceeded ScriptCallStatus = "succeeded"
+	ScriptCallFailed    ScriptCallStatus = "failed"
+	ScriptCallRejected  ScriptCallStatus = "rejected"
+	// The call started but the script ended before its outcome arrived.
+	ScriptCallUnconfirmed ScriptCallStatus = "unconfirmed"
+	// The script requested the call but it never started.
+	ScriptCallNotDispatched ScriptCallStatus = "notDispatched"
+)
+
+func (ScriptCallStatus) Values() []string {
+	return []string{
+		string(ScriptCallSucceeded), string(ScriptCallFailed), string(ScriptCallRejected),
+		string(ScriptCallUnconfirmed), string(ScriptCallNotDispatched),
+	}
+}

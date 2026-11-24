@@ -47,7 +47,7 @@ func newServer(library *library) (*sdk.Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	search, err := tool.NewFunc(tool.FuncConfig{Name: searchKnowledgeTool, Description: contracts.Search.Descriptor().Description}, func(ctx context.Context, input wire.ToolSearchInput) ([]knowledge.Match, error) {
+	search, err := tool.NewFunc(tool.FuncConfig{Name: searchKnowledgeTool, Description: contracts.Search.Descriptor().Description, Effect: tool.EffectSafe}, func(ctx context.Context, input wire.ToolSearchInput) ([]knowledge.Match, error) {
 		project, err := runProject(ctx)
 		if err != nil {
 			return nil, err
@@ -57,7 +57,7 @@ func newServer(library *library) (*sdk.Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	list, err := tool.NewFunc(tool.FuncConfig{Name: listDocumentsTool, Description: contracts.List.Descriptor().Description}, func(ctx context.Context, _ struct{}) ([]knowledge.Header, error) {
+	list, err := tool.NewFunc(tool.FuncConfig{Name: listDocumentsTool, Description: contracts.List.Descriptor().Description, Effect: tool.EffectSafe}, func(ctx context.Context, _ struct{}) ([]knowledge.Header, error) {
 		project, err := runProject(ctx)
 		if err != nil {
 			return nil, err
@@ -67,7 +67,7 @@ func newServer(library *library) (*sdk.Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	read, err := tool.NewFunc(tool.FuncConfig{Name: readDocumentTool, Description: contracts.Read.Descriptor().Description}, func(ctx context.Context, input wire.ToolReadInput) (wire.DocumentRead, error) {
+	read, err := tool.NewFunc(tool.FuncConfig{Name: readDocumentTool, Description: contracts.Read.Descriptor().Description, Effect: tool.EffectSafe}, func(ctx context.Context, input wire.ToolReadInput) (wire.DocumentRead, error) {
 		project, err := runProject(ctx)
 		if err != nil {
 			return wire.DocumentRead{}, err

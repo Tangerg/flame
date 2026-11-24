@@ -57,4 +57,18 @@ export const de: Record<string, string> = {
   "caption.results": "Ergebnisse",
   "caption.response": "Antwort",
   "caption.output": "Ausgabe",
+  "caption.script": "Skriptausführung",
+  "script.status.failed": "Das Skript ist fehlgeschlagen.",
+  "script.status.timedOut": "Das Skript hat sein Zeitlimit erreicht.",
+  "script.status.callLimitExceeded":
+    "Das Skript hat sein Limit für Tool-Aufrufe erreicht.",
+  "script.status.outputLimitExceeded":
+    "Das Skript hat sein Ausgabelimit erreicht.",
+  "script.status.canceled": "Das Skript wurde abgebrochen.",
+  "script.call.succeeded": "Erfolgreich",
+  "script.call.failed": "Fehlgeschlagen",
+  "script.call.rejected": "Abgelehnt",
+  "script.call.unconfirmed": "Unbestätigt",
+  "script.call.notDispatched": "Nicht gesendet",
+  "script.call.omitted": "Ergebnis nicht aufbewahrt ({{bytes}} Bytes).",
 };

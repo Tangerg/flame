@@ -28,7 +28,7 @@ type ReviewRef struct {
 }
 type Libraries struct {
 	Repository string `json:"repository"`
-	User    string `json:"user"`
+	User       string `json:"user"`
 }
 type Queue struct {
 	Proposals []ReviewRef `json:"proposals"`

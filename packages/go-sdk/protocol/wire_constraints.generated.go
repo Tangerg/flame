@@ -1399,7 +1399,7 @@ func (t ToolRef) validateWire() error {
 		closedEnum("type", string(t.Type), []string{"builtIn", "mcp"}, false),
 		requiredWhen(wireFieldEquals(t, "type", "builtIn"), "name", t),
 		forbiddenWhen(wireFieldEquals(t, "type", "builtIn"), "server", t),
-		allowedValuesWhen(wireFieldEquals(t, "type", "builtIn"), "name", t, []string{"apply_patch", "ask_user", "create_goal", "delegate_task", "edit", "enter_plan_mode", "exit_plan_mode", "get_goal", "glob", "grep", "list_skills", "load_skill", "propose_skill", "read", "read_shell_output", "read_skill_resource", "read_tool_result", "report_goal_outcome", "search_tools", "set_plan", "shell", "stop_shell"}),
+		allowedValuesWhen(wireFieldEquals(t, "type", "builtIn"), "name", t, []string{"apply_patch", "ask_user", "create_goal", "delegate_task", "edit", "enter_plan_mode", "exit_plan_mode", "get_goal", "glob", "grep", "list_skills", "load_skill", "propose_skill", "read", "read_shell_output", "read_skill_resource", "read_tool_result", "report_goal_outcome", "run_script", "search_tools", "set_plan", "shell", "stop_shell"}),
 		requiredWhen(wireFieldEquals(t, "type", "mcp"), "server", t),
 		requiredWhen(wireFieldEquals(t, "type", "mcp"), "name", t),
 	)

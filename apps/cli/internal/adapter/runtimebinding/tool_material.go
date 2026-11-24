@@ -47,6 +47,14 @@ func summarizeToolArguments(call *conversation.ToolCall) {
 			return
 		}
 		call.Query, call.Path, summary = input.Pattern, input.Path, input.Pattern
+	case builtin.RunScript:
+		var input struct {
+			Summary string `json:"summary"`
+		}
+		if json.Unmarshal(call.ArgumentsJSON, &input) != nil {
+			return
+		}
+		summary = input.Summary
 	default:
 	}
 	if summary != "" {
@@ -83,12 +91,33 @@ func projectToolResult(call *conversation.ToolCall) error {
 		if len(paths) != 0 {
 			call.Path, call.Output = paths[0], strings.Join(paths, "\n")
 		}
+	case builtin.RunScript:
+		result, ok := decodeBuiltinResult[builtin.ScriptResult](call.ResultJSON)
+		if !ok {
+			return nil
+		}
+		call.Output = scriptOutput(result)
 	default:
 	}
 	return nil
 }
 
 // A builtin result that does not match its typed shape keeps the formatted raw JSON as its presentation.
+func scriptOutput(result builtin.ScriptResult) string {
+	lines := []string{result.Output}
+	if result.Error != "" {
+		lines = append(lines, result.Error)
+	}
+	for _, call := range result.Calls {
+		line := call.Tool + " · " + string(call.Status)
+		if call.Error != "" {
+			line += ": " + call.Error
+		}
+		lines = append(lines, line)
+	}
+	return strings.TrimSpace(strings.Join(lines, "\n"))
+}
+
 func decodeBuiltinResult[T any](encoded []byte) (T, bool) {
 	var result T
 	return result, json.Unmarshal(encoded, &result) == nil

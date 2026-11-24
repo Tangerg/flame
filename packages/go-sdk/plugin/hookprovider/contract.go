@@ -15,9 +15,9 @@ const (
 )
 
 type Discovery struct {
-	CWD            string `json:"cwd"`
+	CWD               string `json:"cwd"`
 	RepositoryRoot    string `json:"repositoryRoot"`
-	Home           string `json:"home,omitempty"`
+	Home              string `json:"home,omitempty"`
 	IncludeRepository bool   `json:"includeRepository"`
 }
 

@@ -62,6 +62,10 @@ const TOOL_FAMILIES = [
     tools: [{ name: "read_tool_result", icon: "file-output" }],
   },
   {
+    id: "scripts",
+    tools: [{ name: "run_script", icon: "file-code" }],
+  },
+  {
     id: "goals",
     tools: [
       { name: "create_goal", icon: "target" },

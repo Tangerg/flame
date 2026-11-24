@@ -142,6 +142,66 @@
           "value": "\"report_goal_outcome\""
         },
         {
+          "name": "RunScript",
+          "type": "Name",
+          "value": "\"run_script\""
+        },
+        {
+          "name": "ScriptCallFailed",
+          "type": "ScriptCallStatus",
+          "value": "\"failed\""
+        },
+        {
+          "name": "ScriptCallLimitExceeded",
+          "type": "ScriptStatus",
+          "value": "\"callLimitExceeded\""
+        },
+        {
+          "name": "ScriptCallNotDispatched",
+          "type": "ScriptCallStatus",
+          "value": "\"notDispatched\""
+        },
+        {
+          "name": "ScriptCallRejected",
+          "type": "ScriptCallStatus",
+          "value": "\"rejected\""
+        },
+        {
+          "name": "ScriptCallSucceeded",
+          "type": "ScriptCallStatus",
+          "value": "\"succeeded\""
+        },
+        {
+          "name": "ScriptCallUnconfirmed",
+          "type": "ScriptCallStatus",
+          "value": "\"unconfirmed\""
+        },
+        {
+          "name": "ScriptCanceled",
+          "type": "ScriptStatus",
+          "value": "\"canceled\""
+        },
+        {
+          "name": "ScriptCompleted",
+          "type": "ScriptStatus",
+          "value": "\"completed\""
+        },
+        {
+          "name": "ScriptFailed",
+          "type": "ScriptStatus",
+          "value": "\"failed\""
+        },
+        {
+          "name": "ScriptOutputLimitExceeded",
+          "type": "ScriptStatus",
+          "value": "\"outputLimitExceeded\""
+        },
+        {
+          "name": "ScriptTimedOut",
+          "type": "ScriptStatus",
+          "value": "\"timedOut\""
+        },
+        {
           "name": "SearchTools",
           "type": "Name",
           "value": "\"search_tools\""
@@ -300,6 +360,95 @@
               "name": "Changes",
               "type": "[]AppliedChange",
               "tag": "json:\"changes\""
+            }
+          ]
+        },
+        {
+          "name": "ScriptCall",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Tool",
+              "type": "string",
+              "tag": "json:\"tool\""
+            },
+            {
+              "name": "Source",
+              "type": "string",
+              "tag": "json:\"source,omitempty\""
+            },
+            {
+              "name": "Arguments",
+              "type": "map[string]any",
+              "tag": "json:\"arguments,omitzero\""
+            },
+            {
+              "name": "Status",
+              "type": "ScriptCallStatus",
+              "tag": "json:\"status\""
+            },
+            {
+              "name": "Error",
+              "type": "string",
+              "tag": "json:\"error,omitempty\""
+            },
+            {
+              "name": "Result",
+              "type": "any",
+              "tag": "json:\"result,omitzero\""
+            },
+            {
+              "name": "OmittedBytes",
+              "type": "int",
+              "tag": "json:\"omittedBytes,omitzero\""
+            }
+          ]
+        },
+        {
+          "name": "ScriptCallStatus",
+          "kind": "defined",
+          "underlying": "string",
+          "methods": [
+            {
+              "name": "Values",
+              "signature": "func() []string"
+            }
+          ]
+        },
+        {
+          "name": "ScriptResult",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Status",
+              "type": "ScriptStatus",
+              "tag": "json:\"status\""
+            },
+            {
+              "name": "Error",
+              "type": "string",
+              "tag": "json:\"error,omitempty\""
+            },
+            {
+              "name": "Output",
+              "type": "string",
+              "tag": "json:\"output\""
+            },
+            {
+              "name": "Calls",
+              "type": "[]ScriptCall",
+              "tag": "json:\"calls\""
+            }
+          ]
+        },
+        {
+          "name": "ScriptStatus",
+          "kind": "defined",
+          "underlying": "string",
+          "methods": [
+            {
+              "name": "Values",
+              "signature": "func() []string"
             }
           ]
         },

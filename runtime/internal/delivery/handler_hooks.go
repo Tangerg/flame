@@ -16,7 +16,7 @@ func (s *Handler) ListHooks(ctx context.Context, in protocol.ListHooksRequest) (
 	out := &protocol.HooksListResult{
 		RepositoryRoot:    insp.RepositoryRoot,
 		RepositoryTrusted: insp.RepositoryTrusted,
-		Hooks:          make([]protocol.HookInfo, 0, len(insp.Hooks)),
+		Hooks:             make([]protocol.HookInfo, 0, len(insp.Hooks)),
 	}
 	for _, resolved := range insp.Hooks {
 		h := resolved.Hook

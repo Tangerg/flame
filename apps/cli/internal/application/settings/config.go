@@ -99,10 +99,10 @@ type Approval struct {
 type RememberPreference string
 
 const (
-	RememberNone    RememberPreference = "none"
-	RememberSession RememberPreference = "session"
+	RememberNone      RememberPreference = "none"
+	RememberSession   RememberPreference = "session"
 	RememberWorkspace RememberPreference = "workspace"
-	RememberGlobal  RememberPreference = "global"
+	RememberGlobal    RememberPreference = "global"
 )
 
 type UI struct {

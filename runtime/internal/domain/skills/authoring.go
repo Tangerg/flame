@@ -50,7 +50,7 @@ type Scope string
 
 const (
 	ScopeRepository Scope = Scope(skill.Repository)
-	ScopeUser    Scope = Scope(skill.User)
+	ScopeUser       Scope = Scope(skill.User)
 )
 
 func (s Scope) Validate() error {

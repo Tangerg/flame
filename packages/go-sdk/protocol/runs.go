@@ -293,9 +293,9 @@ type InterruptResponseValue struct {
 type RememberScopeKind string
 
 const (
-	RememberSession RememberScopeKind = "session"
+	RememberSession   RememberScopeKind = "session"
 	RememberWorkspace RememberScopeKind = "workspace"
-	RememberGlobal  RememberScopeKind = "global"
+	RememberGlobal    RememberScopeKind = "global"
 )
 
 type RememberScope struct {

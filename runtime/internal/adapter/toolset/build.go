@@ -103,6 +103,10 @@ func Build(config BuildConfig) (_ Built, err error) {
 	if err != nil {
 		return Built{}, fmt.Errorf("toolset: build propose_skill: %w", err)
 	}
+	scriptTool, err := newScriptTool()
+	if err != nil {
+		return Built{}, fmt.Errorf("toolset: build run_script: %w", err)
+	}
 
 	resolver, err := newResolver(resolverDeps{
 		SkillUsage:    config.SkillUsage,
@@ -115,6 +119,7 @@ func Build(config BuildConfig) (_ Built, err error) {
 		ExitPlan:        planFamily.Exit,
 		Plan:            planFamily.Set,
 		ToolResult:      toolResultTool,
+		Script:          scriptTool,
 		GoalGet:         goalGetTool,
 		GoalReport:      goalReportTool,
 		ProposeSkill:    proposeSkillTool,

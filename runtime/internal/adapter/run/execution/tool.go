@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"slices"
 
+	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	runinput "github.com/Tangerg/flame/runtime/internal/adapter/run/input"
@@ -41,6 +42,8 @@ type observedInteractionTool struct {
 	offloadPolicy     toolResultOffloadPolicy
 	start             runs.RootExecutionStart
 	concurrent        func(toolcontract.Invocation) (string, bool)
+	// scriptCatalog holds every Tool of the Run when this Tool is run_script.
+	scriptCatalog map[tool.Ref]*observedInteractionTool
 }
 
 func (o *observedInteractionTool) Definition() toolcontract.Definition {
@@ -109,8 +112,12 @@ func (o *observedInteractionTool) Call(ctx context.Context, bound toolcontract.I
 	callErr := prepared.failure
 	var mutatedPaths []string
 	if prepared.runs() {
+		runCtx := ctx
+		if o.scriptCatalog != nil {
+			runCtx = toolset.WithScriptTools(ctx, o.scriptTools(identity, member))
+		}
 		var ran toolcontract.Result
-		ran, mutatedPaths, callErr = o.run(ctx, bound, call, arguments, continuation)
+		ran, mutatedPaths, callErr = o.run(runCtx, bound, call, arguments, continuation)
 		if callErr == nil && ran.InputRequest != nil {
 			return toolcontract.Result{InputRequest: ran.InputRequest}, nil
 		}
@@ -486,6 +493,9 @@ func (w toolWrapping) observe(ctx context.Context, executable toolcontract.Tool)
 	}
 	if err := observed.captureReceiptSource(ctx, w.config.OriginalToolResults); err != nil {
 		return nil, err
+	}
+	if ref.IsBuiltIn(builtincontract.RunScript) {
+		observed.scriptCatalog = w.owners
 	}
 	// Proposals, policy prompts and approval interrupts can pause or reshape a
 	// call, so they rule out concurrency.

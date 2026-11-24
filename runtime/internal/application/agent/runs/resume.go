@@ -207,7 +207,7 @@ func rememberedRuleCandidates(
 			Request: approval.RememberRequest{
 				Scope:             resolution.RememberScope,
 				SessionID:         sessionID,
-				WorkspaceDir:        workspaceDir,
+				WorkspaceDir:      workspaceDir,
 				Tool:              binding.ToolRef,
 				SourceFingerprint: binding.SourceFingerprint,
 				Decision:          resolution.Decision,

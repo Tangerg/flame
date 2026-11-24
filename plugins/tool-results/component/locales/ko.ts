@@ -54,4 +54,17 @@ export const ko: Record<string, string> = {
   "caption.results": "결과",
   "caption.response": "응답",
   "caption.output": "출력",
+  "caption.script": "스크립트 실행",
+  "script.status.failed": "스크립트가 실패했습니다.",
+  "script.status.timedOut": "스크립트가 시간 제한에 도달했습니다.",
+  "script.status.callLimitExceeded":
+    "스크립트가 도구 호출 횟수 제한에 도달했습니다.",
+  "script.status.outputLimitExceeded": "스크립트가 출력 제한에 도달했습니다.",
+  "script.status.canceled": "스크립트가 취소되었습니다.",
+  "script.call.succeeded": "성공",
+  "script.call.failed": "실패",
+  "script.call.rejected": "거부됨",
+  "script.call.unconfirmed": "미확인",
+  "script.call.notDispatched": "전송 안 됨",
+  "script.call.omitted": "결과를 보관하지 않았습니다({{bytes}}바이트).",
 };

@@ -230,6 +230,18 @@
       "export": "RecordedResult"
     },
     {
+      "id": "run-script",
+      "title": "Run Script",
+      "scope": "toolResult",
+      "placement": "toolResultRenderer",
+      "selector": {
+        "type": "toolName",
+        "name": "run_script"
+      },
+      "entry": "io.github.tangerg.flame/components/component.js",
+      "export": "RecordedResult"
+    },
+    {
       "id": "search-tools",
       "title": "Search Tools",
       "scope": "toolResult",

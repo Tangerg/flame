@@ -3348,6 +3348,12 @@
       }
     },
     {
+      "toolName": "run_script",
+      "schema": {
+        "$ref": "schema.json#/$defs/ScriptResult"
+      }
+    },
+    {
       "toolName": "shell",
       "schema": {
         "$ref": "schema.json#/$defs/CommandResult"
@@ -4595,6 +4601,7 @@
                 "read_skill_resource",
                 "read_tool_result",
                 "report_goal_outcome",
+                "run_script",
                 "search_tools",
                 "set_plan",
                 "shell",

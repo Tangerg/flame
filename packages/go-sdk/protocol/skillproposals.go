@@ -15,7 +15,7 @@ type SkillProposalScope string
 
 const (
 	SkillProposalScopeRepository SkillProposalScope = SkillProposalScope(skill.Repository)
-	SkillProposalScopeUser    SkillProposalScope = SkillProposalScope(skill.User)
+	SkillProposalScopeUser       SkillProposalScope = SkillProposalScope(skill.User)
 )
 
 type SkillProposal struct {

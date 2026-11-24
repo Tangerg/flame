@@ -360,6 +360,10 @@ export type WireTypeName =
   | "RuntimeSubscribeResponse"
   | "RuntimeTopic"
   | "SafetyClass"
+  | "ScriptCall"
+  | "ScriptCallStatus"
+  | "ScriptResult"
+  | "ScriptStatus"
   | "SearchCoverage"
   | "SearchHit"
   | "SearchResult"
@@ -4167,6 +4171,23 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   RuntimeSubscribeResponse: object({}, []),
   RuntimeTopic: enumOf(["files.changed", "skills.changed", "mcp.changed", "plugins.changed", "plugins.dataChanged", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "hooks.changed", "models.changed", "approvals.changed", "projects.changed"]),
   SafetyClass: enumOf(["safe", "write", "exec", "network"]),
+  ScriptCall: object({
+    arguments: record(anything()),
+    error: text(),
+    omittedBytes: integer(),
+    result: anything(),
+    source: text(),
+    status: ref(() => CHECKS.ScriptCallStatus),
+    tool: text(),
+  }, ["status", "tool"]),
+  ScriptCallStatus: enumOf(["succeeded", "failed", "rejected", "unconfirmed", "notDispatched"]),
+  ScriptResult: object({
+    calls: array(ref(() => CHECKS.ScriptCall)),
+    error: text(),
+    output: text(),
+    status: ref(() => CHECKS.ScriptStatus),
+  }, ["calls", "output", "status"]),
+  ScriptStatus: enumOf(["completed", "failed", "timedOut", "callLimitExceeded", "outputLimitExceeded", "canceled"]),
   SearchCoverage: object({
     remainingFiles: integer(),
     scannedFiles: integer(),
@@ -4657,7 +4678,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     }, []),
     oneOf([
       fields({
-        name: enumOf(["apply_patch", "ask_user", "create_goal", "delegate_task", "edit", "enter_plan_mode", "exit_plan_mode", "get_goal", "glob", "grep", "list_skills", "load_skill", "propose_skill", "read", "read_shell_output", "read_skill_resource", "read_tool_result", "report_goal_outcome", "search_tools", "set_plan", "shell", "stop_shell"]),
+        name: enumOf(["apply_patch", "ask_user", "create_goal", "delegate_task", "edit", "enter_plan_mode", "exit_plan_mode", "get_goal", "glob", "grep", "list_skills", "load_skill", "propose_skill", "read", "read_shell_output", "read_skill_resource", "read_tool_result", "report_goal_outcome", "run_script", "search_tools", "set_plan", "shell", "stop_shell"]),
         server: absent(),
         type: literal("builtIn"),
       }, ["name", "type"]),

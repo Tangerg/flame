@@ -4,9 +4,9 @@ package protocol
 type AgentDocScope string
 
 const (
-	AgentDocScopeCWD         AgentDocScope = "cwd"
+	AgentDocScopeCWD            AgentDocScope = "cwd"
 	AgentDocScopeRepositoryRoot AgentDocScope = "repositoryRoot"
-	AgentDocScopeHome        AgentDocScope = "home"
+	AgentDocScopeHome           AgentDocScope = "home"
 )
 
 type AgentDoc struct {

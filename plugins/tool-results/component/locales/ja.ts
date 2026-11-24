@@ -54,4 +54,17 @@ export const ja: Record<string, string> = {
   "caption.results": "結果",
   "caption.response": "レスポンス",
   "caption.output": "出力",
+  "caption.script": "スクリプト実行",
+  "script.status.failed": "スクリプトが失敗しました。",
+  "script.status.timedOut": "スクリプトが時間の上限に達しました。",
+  "script.status.callLimitExceeded":
+    "スクリプトがツール呼び出し回数の上限に達しました。",
+  "script.status.outputLimitExceeded": "スクリプトが出力の上限に達しました。",
+  "script.status.canceled": "スクリプトはキャンセルされました。",
+  "script.call.succeeded": "成功",
+  "script.call.failed": "失敗",
+  "script.call.rejected": "拒否",
+  "script.call.unconfirmed": "未確認",
+  "script.call.notDispatched": "未送信",
+  "script.call.omitted": "結果は保持されていません（{{bytes}} バイト）。",
 };

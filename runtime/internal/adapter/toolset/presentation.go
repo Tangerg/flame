@@ -167,6 +167,19 @@ func patchResultEnums() map[reflect.Type][]string {
 	}
 }
 
+func scriptResultContract() resultProjectionContract {
+	return resultProjectionContract{
+		project:    func(_ tool.Arguments, result tool.Result) (tool.Result, string) { return result, "" },
+		resultType: reflect.TypeFor[builtincontract.ScriptResult](),
+		enums: func() map[reflect.Type][]string {
+			return map[reflect.Type][]string{
+				reflect.TypeFor[builtincontract.ScriptStatus]():     builtincontract.ScriptStatus("").Values(),
+				reflect.TypeFor[builtincontract.ScriptCallStatus](): builtincontract.ScriptCallStatus("").Values(),
+			}
+		},
+	}
+}
+
 type patchExecutionResult struct {
 	Files []struct {
 		Path      string `json:"path"`

@@ -53,7 +53,9 @@ func withReadTracking(inner toolcontract.Tool, tr *readTracker, root *filesystem
 			tr.forget(executionctx.SessionID(ctx), abs)
 			return out, fmt.Errorf("track read %s: file changed while reading; read it again", request.Path)
 		}
-		tr.record(executionctx.SessionID(ctx), abs, after.fingerprint)
+		if !readAuthorityWithheld(ctx) {
+			tr.record(executionctx.SessionID(ctx), abs, after.fingerprint)
+		}
 		return out, nil
 	})
 }

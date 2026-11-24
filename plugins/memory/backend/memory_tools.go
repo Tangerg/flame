@@ -113,7 +113,7 @@ func buildMemoryTools(coordinator *coordination.Coordinator, db framesqlite.Data
 		return nil, errors.New("memory: coordinator and database are required")
 	}
 	t := memoryTools{coordinator: coordinator, db: db}
-	list, err := tool.NewFunc[listMemoryArgs, memoryPage](tool.FuncConfig{Name: listMemoriesTool, Description: "List active and pending memories with their exact ids, scopes and revisions. Choose project for the current workspace or user for shared user memory. Follow next_cursor to continue."}, t.list)
+	list, err := tool.NewFunc[listMemoryArgs, memoryPage](tool.FuncConfig{Name: listMemoriesTool, Effect: tool.EffectSafe, Description: "List active and pending memories with their exact ids, scopes and revisions. Choose project for the current workspace or user for shared user memory. Follow next_cursor to continue."}, t.list)
 	if err != nil {
 		return nil, err
 	}

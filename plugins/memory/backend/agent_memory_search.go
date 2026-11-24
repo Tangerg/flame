@@ -55,7 +55,7 @@ func newAgentMemorySearch(search agentMemorySearch) (toolcontract.Tool, error) {
 
 func agentMemorySearchDefinition() toolcontract.FuncConfig {
 	return toolcontract.FuncConfig{
-		Name: rpc.ModelCallerPolicy().SearchToolName,
+		Name: rpc.ModelCallerPolicy().SearchToolName, Effect: toolcontract.EffectSafe,
 		Description: "Search curated long-term memory for the current project, including durable decisions, " +
 			"conventions, and user preferences from earlier work. Use it when needed context is not already in " +
 			"the prompt. Results include exact ids, scopes and revisions for a subsequent user-requested correction or removal. Use grep for source code.",

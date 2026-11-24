@@ -11539,6 +11539,81 @@
         "network"
       ]
     },
+    "ScriptCall": {
+      "type": "object",
+      "properties": {
+        "arguments": {
+          "type": "object",
+          "additionalProperties": {}
+        },
+        "error": {
+          "type": "string"
+        },
+        "omittedBytes": {
+          "type": "integer"
+        },
+        "result": {},
+        "source": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/ScriptCallStatus"
+        },
+        "tool": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "status",
+        "tool"
+      ]
+    },
+    "ScriptCallStatus": {
+      "type": "string",
+      "enum": [
+        "succeeded",
+        "failed",
+        "rejected",
+        "unconfirmed",
+        "notDispatched"
+      ]
+    },
+    "ScriptResult": {
+      "type": "object",
+      "properties": {
+        "calls": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ScriptCall"
+          }
+        },
+        "error": {
+          "type": "string"
+        },
+        "output": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/ScriptStatus"
+        }
+      },
+      "required": [
+        "calls",
+        "output",
+        "status"
+      ]
+    },
+    "ScriptStatus": {
+      "type": "string",
+      "enum": [
+        "completed",
+        "failed",
+        "timedOut",
+        "callLimitExceeded",
+        "outputLimitExceeded",
+        "canceled"
+      ]
+    },
     "SearchCoverage": {
       "type": "object",
       "properties": {
@@ -13381,6 +13456,7 @@
                 "read_skill_resource",
                 "read_tool_result",
                 "report_goal_outcome",
+                "run_script",
                 "search_tools",
                 "set_plan",
                 "shell",

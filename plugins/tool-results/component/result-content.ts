@@ -287,6 +287,7 @@ export function resultContent(
       };
   }
   const result = parsed(source);
+  if (renderer === "run-script") return scriptContent(result, source, t);
   if (renderer === "http-request") {
     const response = httpResponseRow(result, t);
     return response
@@ -373,6 +374,91 @@ export function resultContent(
       break;
   }
   return { kind: "rows", label: t("caption.result"), rows: sourceRows(source) };
+}
+
+const SCRIPT_CALL_STATUSES = new Set([
+  "succeeded",
+  "failed",
+  "rejected",
+  "unconfirmed",
+  "notDispatched",
+]);
+
+// Each row is one Tool call the script really made, in request order; the
+// status word stays in the title so find can filter by outcome.
+function scriptContent(
+  result: Record<string, unknown>,
+  source: string,
+  t: Translate,
+): ResultContent {
+  if (typeof result.output !== "string" || !Array.isArray(result.calls))
+    return {
+      kind: "rows",
+      label: t("caption.result"),
+      rows: sourceRows(source),
+    };
+  const status = text(result.status);
+  const entries: unknown[] = result.calls;
+  const calls: Row[] = entries.map((entry) => {
+    const call = record(entry);
+    const callStatus = text(call.status);
+    const outcome = SCRIPT_CALL_STATUSES.has(callStatus)
+      ? t(`script.call.${callStatus}`)
+      : callStatus;
+    const body =
+      typeof call.error === "string"
+        ? call.error
+        : call.result !== undefined
+          ? typeof call.result === "string"
+            ? call.result
+            : JSON.stringify(call.result, null, 2)
+          : typeof call.omittedBytes === "number"
+            ? t("script.call.omitted", { bytes: call.omittedBytes })
+            : undefined;
+    return {
+      kind: "entry",
+      title: `${text(call.tool)} · ${outcome}`,
+      context:
+        [
+          typeof call.source === "string" ? call.source : undefined,
+          call.arguments === undefined
+            ? undefined
+            : JSON.stringify(call.arguments),
+        ]
+          .filter((part) => part !== undefined)
+          .join("\n") || undefined,
+      body,
+    };
+  });
+  const counts = [...SCRIPT_CALL_STATUSES]
+    .map((callStatus) => {
+      const count = entries.filter(
+        (call) => record(call).status === callStatus,
+      ).length;
+      return count ? `${t(`script.call.${callStatus}`)} ${count}` : "";
+    })
+    .filter((part) => part !== "")
+    .join(" · ");
+  return {
+    kind: "rows",
+    label: t("caption.script"),
+    notice:
+      [
+        status === "completed" ? "" : t(`script.status.${status}`),
+        text(result.error),
+        counts,
+      ]
+        .filter((part) => part !== "")
+        .join("\n") || undefined,
+    rows: [
+      {
+        kind: "located",
+        location: t("caption.output"),
+        body: result.output === "" ? t("output.empty") : result.output,
+      },
+      ...calls,
+    ],
+  };
 }
 
 function searchContent(

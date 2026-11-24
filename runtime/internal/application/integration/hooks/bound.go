@@ -77,7 +77,7 @@ func (b *Bound) Run(ctx context.Context, in hookdata.Input) domainhooks.Decision
 type Inspection struct {
 	RepositoryRoot    string
 	RepositoryTrusted bool
-	Hooks          []hookdata.Hook
+	Hooks             []hookdata.Hook
 }
 
 func (b *Bound) Close() error { return b.close() }
