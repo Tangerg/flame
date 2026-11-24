@@ -10,7 +10,9 @@ import {
   useLayoutEffect,
   useRef,
   useState,
+  type ComponentProps,
   type FocusEvent,
+  type KeyboardEvent,
   type ReactNode,
   type Ref,
   type RefObject,
@@ -421,6 +423,155 @@ function WorkspaceViewStack({
   );
 }
 
+type WorkspaceDock = ReturnType<typeof useWorkspaceDock>;
+type WorkspaceInspection = ReturnType<typeof useWorkspaceInspection>;
+
+// Which view the workspace presents, and where: a main view wins; otherwise a
+// dock too narrow to sit beside the conversation shows an inspected view full
+// pane instead.
+function workspacePresentation({
+  activeSessionId,
+  dock,
+  activeMainView,
+  inspection,
+  rowWidth,
+}: {
+  activeSessionId: string;
+  dock: WorkspaceDock;
+  activeMainView: string | null;
+  inspection: WorkspaceInspection;
+  rowWidth: number | null;
+}) {
+  const dockAvailable = canPresentDock(rowWidth ?? 0);
+  const hasDockOwner = activeSessionId !== "";
+  const showingCatalog = dock.activeViewId === WORKSPACE_DOCK_CATALOG;
+  const dockOpen = hasDockOwner && dock.open && (showingCatalog || dock.viewIds.length > 0);
+  const fullPaneViewId =
+    activeMainView ??
+    (dockOpen && rowWidth !== null && !dockAvailable && inspection?.viewId === dock.activeViewId
+      ? dock.activeViewId
+      : null);
+  return {
+    hasDockOwner,
+    dockOpen,
+    dockVisible: dockOpen && dockAvailable,
+    ownedDockViewIds: hasDockOwner ? dock.viewIds : [],
+    fullPaneViewId,
+    inspectedFullPane: fullPaneViewId !== null && inspection?.viewId === fullPaneViewId,
+  };
+}
+
+// Views stay mounted while open or while an inspection can return to them, so
+// a return finds the reader where it was left.
+function mountedWorkspaceViews(
+  openViewIds: ReadonlySet<string>,
+  inspection: WorkspaceInspection,
+): Set<string> {
+  const mounted = new Set(openViewIds);
+  for (let source = inspection; source; source = source.previous) {
+    if (source.returnViewId && source.returnViewId !== source.viewId)
+      mounted.add(source.returnViewId);
+  }
+  mounted.delete(WORKSPACE_DOCK_CATALOG);
+  return mounted;
+}
+
+function useDockTabs(
+  viewIds: readonly string[],
+  viewsById: ReadonlyMap<string, ReturnType<typeof useWorkspaceViews>[number]>,
+  activeViewId: string | null,
+) {
+  const t = useT();
+  const workspaceAccess = useWorkspace();
+  const navigation = workspaceAccess.navigation;
+  return viewIds.map((id) => {
+    const view = viewsById.get(id);
+    const title = view ? t(view.title) : id;
+    const Badge = view?.badge;
+    return {
+      id,
+      title,
+      badge: Badge ? <Badge /> : undefined,
+      active: id === activeViewId,
+      onClose: () => navigation.closeDockView(id),
+      closeLabel: `${t("common.close")} ${title}`,
+      onCloseOthers: () => navigation.closeOtherDockViews(id),
+      closeOthersLabel: t("dock.tabs.closeOthers"),
+      onCloseAll: navigation.closeAllDockViews.bind(navigation),
+      closeAllLabel: t("dock.tabs.closeAll"),
+    };
+  });
+}
+
+function ConversationPane({
+  ref,
+  hidden,
+  fallbackFocus,
+  ready,
+  sessionId,
+  onSend,
+}: {
+  ref: Ref<HTMLDivElement>;
+  hidden: boolean;
+  fallbackFocus: RefObject<HTMLElement | null>;
+  ready: boolean;
+  sessionId: string;
+  onSend: Props["onSend"];
+}) {
+  const t = useT();
+  return (
+    <div
+      ref={ref}
+      inert={hidden}
+      aria-hidden={hidden || undefined}
+      tabIndex={-1}
+      role="region"
+      aria-label={t("shell.region.conversation")}
+      data-focus-inset=""
+      {...stylex.props(sh.paneNarrow, paneStyles.conversation, hidden && paneStyles.inactiveView)}
+    >
+      <ContentVisibility visible={!hidden} fallbackFocus={fallbackFocus}>
+        <ConversationContent ready={ready} sessionId={sessionId} onSend={onSend} />
+      </ContentVisibility>
+    </div>
+  );
+}
+
+// An inspected full-pane view returns to its source; any other closes.
+function FullPaneHeader({
+  viewId,
+  view,
+  returnAction,
+  dockAvailable,
+  onKeyDown,
+  picker,
+}: {
+  viewId: string;
+  view: ComponentProps<typeof WorkspaceWindowHeader>["view"];
+  returnAction: { label: string; onReturn: () => void } | undefined;
+  dockAvailable: boolean;
+  onKeyDown: ((event: KeyboardEvent<HTMLElement>) => void) | undefined;
+  picker: ReactNode;
+}) {
+  const workspaceAccess = useWorkspace();
+  return (
+    <WorkspaceWindowHeader
+      view={view}
+      exit={
+        returnAction
+          ? { kind: "return", ...returnAction }
+          : { kind: "close", onClose: () => closeWorkspaceView(workspaceAccess, viewId) }
+      }
+      onOpenInDock={
+        dockAvailable ? () => openWorkspaceViewInDock(workspaceAccess, viewId) : undefined
+      }
+      onKeyDown={onKeyDown}
+    >
+      {picker}
+    </WorkspaceWindowHeader>
+  );
+}
+
 export function ChatPanel({ onSend, ref }: Props) {
   const pickerRef = useRef<HTMLButtonElement>(null);
   const composerAccess = useComposer();
@@ -437,22 +588,18 @@ export function ChatPanel({ onSend, ref }: Props) {
   const t = useT();
   const inspection = useWorkspaceInspection();
   const [rowWidth, dockRowRef] = useDockRowWidth();
-  const measuredWidth = rowWidth ?? 0;
-  const dockAvailable = canPresentDock(measuredWidth);
+  const dockAvailable = canPresentDock(rowWidth ?? 0);
 
-  const hasDockOwner = activeSessionId !== "";
-  const showingCatalog = dock.activeViewId === WORKSPACE_DOCK_CATALOG;
-  const dockOpen = hasDockOwner && dock.open && (showingCatalog || dock.viewIds.length > 0);
-  const dockVisible = dockOpen && dockAvailable;
-  const ownedDockViewIds = hasDockOwner ? dock.viewIds : [];
+  const {
+    hasDockOwner,
+    dockOpen,
+    dockVisible,
+    ownedDockViewIds,
+    fullPaneViewId,
+    inspectedFullPane,
+  } = workspacePresentation({ activeSessionId, dock, activeMainView, inspection, rowWidth });
   const conversationReady = sessions !== undefined;
   const viewsReady = conversationReady || activeMainView !== null || dock.open;
-  const fullPaneViewId =
-    activeMainView ??
-    (dockOpen && rowWidth !== null && !dockAvailable && inspection?.viewId === dock.activeViewId
-      ? dock.activeViewId
-      : null);
-  const inspectedFullPane = fullPaneViewId !== null && inspection?.viewId === fullPaneViewId;
   const {
     dockRef,
     conversationRef,
@@ -482,34 +629,12 @@ export function ChatPanel({ onSend, ref }: Props) {
     ? { label: returnActionLabel(t, inspection, viewsById), onReturn: returnToSource }
     : undefined;
 
-  const dockTabs = ownedDockViewIds.map((id) => {
-    const view = viewsById.get(id);
-    const title = view ? t(view.title) : id;
-    const Badge = view?.badge;
-    return {
-      id,
-      title,
-      badge: Badge ? <Badge /> : undefined,
-      active: id === dock.activeViewId,
-      onClose: () => workspaceAccess.navigation.closeDockView(id),
-      closeLabel: `${t("common.close")} ${title}`,
-      onCloseOthers: () => workspaceAccess.navigation.closeOtherDockViews(id),
-      closeOthersLabel: t("dock.tabs.closeOthers"),
-      onCloseAll: workspaceAccess.navigation.closeAllDockViews.bind(workspaceAccess.navigation),
-      closeAllLabel: t("dock.tabs.closeAll"),
-    };
-  });
+  const dockTabs = useDockTabs(ownedDockViewIds, viewsById, dock.activeViewId);
   const openViewIds = new Set(ownedDockViewIds);
   if (activeMainView !== null) openViewIds.add(activeMainView);
   const presentedMain = fullPaneViewId !== null;
   const panelSizes = PANEL_SIZES[presentedMain ? "main" : dockVisible ? "dock" : "closed"];
-  const mountedViewIds = new Set(openViewIds);
-  for (let source = inspection; source; source = source.previous) {
-    if (source.returnViewId && source.returnViewId !== source.viewId) {
-      mountedViewIds.add(source.returnViewId);
-    }
-  }
-  mountedViewIds.delete(WORKSPACE_DOCK_CATALOG);
+  const mountedViewIds = mountedWorkspaceViews(openViewIds, inspection);
   const presentedViewId = presentedMain ? fullPaneViewId : dock.activeViewId;
 
   return (
@@ -518,26 +643,16 @@ export function ChatPanel({ onSend, ref }: Props) {
       onFocusCapture={applyComposerReadingLimit}
     >
       {presentedMain && (
-        <WorkspaceWindowHeader
+        <FullPaneHeader
+          viewId={fullPaneViewId}
           view={
             fullPaneViewId === WORKSPACE_DOCK_CATALOG ? CATALOG_VIEW : viewsById.get(fullPaneViewId)
           }
-          exit={
-            inspectedFullPane && returnAction
-              ? { kind: "return", ...returnAction }
-              : {
-                  kind: "close",
-                  onClose: () => closeWorkspaceView(workspaceAccess, fullPaneViewId),
-                }
-          }
-          onOpenInDock={
-            dockAvailable
-              ? () => openWorkspaceViewInDock(workspaceAccess, fullPaneViewId)
-              : undefined
-          }
+          returnAction={inspectedFullPane ? returnAction : undefined}
+          dockAvailable={dockAvailable}
           onKeyDown={inspectedFullPane ? onMaterialKeyDown : undefined}
-        >
-          {hasDockOwner &&
+          picker={
+            hasDockOwner &&
             fullPaneViewId !== WORKSPACE_DOCK_CATALOG &&
             viewsById.get(fullPaneViewId)?.dock !== undefined && (
               <WorkspaceViewPicker
@@ -548,8 +663,9 @@ export function ChatPanel({ onSend, ref }: Props) {
                 activeViewId={fullPaneViewId}
                 onSelect={openWorkspaceView.bind(null, workspaceAccess)}
               />
-            )}
-        </WorkspaceWindowHeader>
+            )
+          }
+        />
       )}
       <AgentDockRow
         ref={dockRowRef}
@@ -565,28 +681,14 @@ export function ChatPanel({ onSend, ref }: Props) {
           style={{ flex: 1, width: "100%", minHeight: 0 }}
         >
           <Panel id="conversation" {...panelSizes.conversation}>
-            <div
+            <ConversationPane
               ref={conversationRef}
-              inert={presentedMain}
-              aria-hidden={presentedMain || undefined}
-              tabIndex={-1}
-              role="region"
-              aria-label={t("shell.region.conversation")}
-              data-focus-inset=""
-              {...stylex.props(
-                sh.paneNarrow,
-                paneStyles.conversation,
-                presentedMain && paneStyles.inactiveView,
-              )}
-            >
-              <ContentVisibility visible={!presentedMain} fallbackFocus={presentationRef}>
-                <ConversationContent
-                  ready={conversationReady}
-                  sessionId={activeSessionId}
-                  onSend={onSend}
-                />
-              </ContentVisibility>
-            </div>
+              hidden={presentedMain}
+              fallbackFocus={presentationRef}
+              ready={conversationReady}
+              sessionId={activeSessionId}
+              onSend={onSend}
+            />
           </Panel>
           {!presentedMain && dockVisible && <AgentDockSeparator label={t("dock.action.resize")} />}
           <Panel id="dock" defaultSize={480} {...panelSizes.dock}>
