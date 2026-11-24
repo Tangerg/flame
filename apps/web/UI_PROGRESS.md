@@ -28180,6 +28180,16 @@ is required. Delivery integrates only the qualified owned paths into main.
 Next inspect a fresh content/Dock task gap from current native evidence; do not
 repeat the resolved literal-body, identity-order or keyboard-resize investigation.
 
+### Trajectory opens on its controls (2026-11-24)
+
+The Dock's Session trajectory header read `Session ses_visual` above the
+search field. A Session-scoped panel is keyed to the active Session, so the
+raw ID only restated the conversation beside it as a code breadcrumb. The
+header keeps its accessible title only; the ID stays in Session details and
+the export file name. Native `dock-runs` opens on search, the observation and
+Run filters, then the page summary. Plugin typecheck and published resource
+checks pass.
+
 ### Trajectory page and failure continuity across display languages (2026-11-13)
 
 Changing the display language now keeps the accepted page, captured descendant

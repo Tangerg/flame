@@ -31,7 +31,6 @@ import {
   FormField,
   FormSection,
   FormActions,
-  Metadata,
   RecordBody,
   SearchField,
   FilterBar,
@@ -142,17 +141,7 @@ export function Trajectory({ context }: { context: ComponentContext }) {
   return (
     <Panel
       label={t("panel.title")}
-      header={
-        <PanelHeader
-          size="md"
-          title={t("panel.title")}
-          context={
-            <Metadata>
-              {t("panel.session")} <code>{sessionId}</code>
-            </Metadata>
-          }
-        />
-      }
+      header={<PanelHeader size="md" title={t("panel.title")} />}
       controls={
         <FilterBar
           label={t("controls.label")}
