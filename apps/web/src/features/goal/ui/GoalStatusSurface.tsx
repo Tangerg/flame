@@ -254,7 +254,6 @@ function GoalRow({ goal, writable }: { goal: GoalReadModel; writable: boolean })
   );
 }
 
-// Each command disables the row while it runs; the pressed control keeps focus.
 function GoalActions({
   createdAt,
   disabled,
@@ -281,7 +280,6 @@ function GoalActions({
         quiet
         aria-label={t("goal.action.clear")}
         disabled={disabled}
-        focusableWhenDisabled
         aria-busy={clearBusy}
         onClick={onClear}
       />
@@ -293,7 +291,6 @@ function GoalActions({
           quiet
           aria-label={t(status.active ? "goal.action.pause" : "goal.action.resume")}
           disabled={disabled}
-          focusableWhenDisabled
           aria-busy={status.busy}
           onClick={status.onChange}
         />
@@ -306,7 +303,6 @@ function GoalActions({
           quiet
           aria-label={t("goal.action.edit")}
           disabled={disabled}
-          focusableWhenDisabled
           onClick={onEdit}
         />
       )}

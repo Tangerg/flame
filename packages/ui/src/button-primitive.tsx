@@ -1,4 +1,9 @@
-import type { ComponentPropsWithoutRef, ReactNode, Ref } from "react";
+import {
+  useState,
+  type ComponentPropsWithoutRef,
+  type ReactNode,
+  type Ref,
+} from "react";
 import { Button as BaseButton } from "@base-ui/react/button";
 import { useRender } from "@base-ui/react/use-render";
 
@@ -19,14 +24,28 @@ export function ButtonPrimitive({
   onClick,
   onKeyDown,
   focusableWhenDisabled,
+  onFocus,
+  onBlur,
   render,
   ref,
   ...props
 }: ButtonPrimitiveProps) {
-  const focusable = pending || focusableWhenDisabled;
+  const [focused, setFocused] = useState(false);
+  // A control disabled under the user's focus (its own command running, its
+  // work done) keeps that focus until the user moves on, instead of dropping it
+  // to the document. `focusableWhenDisabled` keeps a control tabbable as well.
+  const focusable = pending || focusableWhenDisabled || (disabled && focused);
   return (
     <BaseButton
       {...props}
+      onFocus={(event) => {
+        setFocused(true);
+        onFocus?.(event);
+      }}
+      onBlur={(event) => {
+        setFocused(false);
+        onBlur?.(event);
+      }}
       ref={ref}
       disabled={disabled || pending}
       focusableWhenDisabled={focusable}
