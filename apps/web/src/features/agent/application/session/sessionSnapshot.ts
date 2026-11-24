@@ -5,6 +5,7 @@ import { reduceDurableItem } from "@/features/agent/application/fold/reducer";
 import { foldRunSnapshot } from "@/features/agent/application/fold/runSnapshot";
 import { foldPendingInterruptSet } from "@/features/agent/application/fold/pendingInterruptSnapshot";
 import { onPlanUpdated } from "@/features/agent/application/fold/planHandlers";
+import { retiredSteerMessageId } from "@/features/agent/application/view/optimisticMessageIdentity";
 import {
   agentInputMessagePart,
   userContentBlocks,
@@ -18,7 +19,9 @@ export function projectAgentSessionSnapshot(snapshot: AgentSessionSnapshot): Age
   }
   for (const accepted of snapshot.steerInputs ?? []) {
     const identity =
-      accepted.receipt === "retired" ? `retired-steer:${accepted.userItemId}` : accepted.userItemId;
+      accepted.receipt === "retired"
+        ? retiredSteerMessageId(accepted.userItemId)
+        : accepted.userItemId;
     const present = view.messages.find((message) => message.id === identity);
     if (present) {
       if (present.role !== "user" || present.runId !== accepted.runId)

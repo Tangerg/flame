@@ -9,7 +9,10 @@ import {
 } from "@/features/agent/application/runtimeGateway";
 
 import { steerInputFeedback } from "@/features/agent/application/view/steerInputFeedback";
-import { OPTIMISTIC_STEER_MESSAGE_PREFIX } from "@/features/agent/application/view/optimisticMessageIdentity";
+import {
+  retiredSteerMessageId,
+  steerMessageId,
+} from "@/features/agent/application/view/optimisticMessageIdentity";
 import {
   settleAgentInput,
   type AgentInputSettlement,
@@ -44,11 +47,25 @@ export function steerRunningTurn(
   return observeSteer(
     agentAccess,
     sessionId,
-    runId,
-    prepared,
-    submission.idempotencyKey,
-    () => submission,
+    {
+      runId,
+      input: prepared,
+      idempotencyKey: submission.idempotencyKey,
+      messageId: steerMessageId(submission.idempotencyKey),
+      open: () => submission,
+    },
+    "deliver",
   );
+}
+
+function unresolvedSteer(command: AgentUnresolvedSteer): ObservedSteer {
+  return {
+    runId: command.runId,
+    input: command.input,
+    idempotencyKey: command.idempotencyKey,
+    messageId: steerMessageId(command.idempotencyKey, command.userItemId),
+    open: command.retry,
+  };
 }
 
 export function restoreUnresolvedSteers(
@@ -57,42 +74,37 @@ export function restoreUnresolvedSteers(
   commands: AgentUnresolvedSteer[],
 ): void {
   for (const command of commands) {
-    const localId =
-      command.userItemId ?? `${OPTIMISTIC_STEER_MESSAGE_PREFIX}${command.idempotencyKey}`;
+    const steer = unresolvedSteer(command);
     if (
       agentAccess.view
         .getSession(sessionId)
-        ?.view.messages.some((message) => message.id === localId)
+        ?.view.messages.some((message) => message.id === steer.messageId)
     )
       continue;
-    observeSteer(
-      agentAccess,
-      sessionId,
-      command.runId,
-      command.input,
-      command.idempotencyKey,
-      command.retry,
-      true,
-      command.userItemId,
-    );
+    void observeSteer(agentAccess, sessionId, steer, "awaitRetry");
   }
 }
 
+interface ObservedSteer {
+  runId: string;
+  input: AgentInput;
+  idempotencyKey: string;
+  messageId: string;
+  open: () => AgentSteerSubmission;
+}
+
+// A restored steer's delivery stays unknown until the user retries it.
 function observeSteer(
   agentAccess: AgentDependencies,
   sessionId: string,
-  runId: string,
-  input: AgentInput,
-  key: string,
-  open: () => AgentSteerSubmission,
-  restored = false,
-  nominatedId: string | null = null,
+  { runId, input, idempotencyKey, messageId, open }: ObservedSteer,
+  start: "deliver" | "awaitRetry",
 ): Promise<AgentInputSettlement> {
   const owner = agentAccess.commands.current();
   const runtime = agentAccess.runtime;
   const view = agentAccess.view;
   const prepared = structuredClone(input);
-  let localId = nominatedId ?? `${OPTIMISTIC_STEER_MESSAGE_PREFIX}${key}`;
+  let localId = messageId;
   if (!view.getSession(sessionId)?.view.messages.some((message) => message.id === localId))
     view.appendLocalUserMessage(sessionId, localId, prepared);
   const clearProvisional = () => {
@@ -169,7 +181,7 @@ function observeSteer(
         if (!owner.isCurrent()) return accepted;
         if (result.type === "retired") {
           clearProvisional();
-          const retiredId = `retired-steer:${result.userItemId}`;
+          const retiredId = retiredSteerMessageId(result.userItemId);
           view.appendLocalUserMessage(sessionId, retiredId, prepared);
           view.projectSteerReceipt(sessionId, retiredId, { runId, receipt: "retired" });
           effect.settle();
@@ -217,12 +229,12 @@ function observeSteer(
     });
   }
 
-  if (restored) {
+  if (start === "awaitRetry") {
     view.projectSteerDelivery(sessionId, localId, { runId, delivery: "unknown" });
     owner.retainSteerRetry(localId, () => attempt(open));
     return Promise.resolve({
       status: "unknown",
-      idempotencyKey: key,
+      idempotencyKey,
       recover: () => attempt(open),
     });
   }
@@ -234,16 +246,7 @@ export function recoverUnresolvedSteer(
   sessionId: string,
   command: AgentUnresolvedSteer,
 ): Promise<AgentInputSettlement> {
-  return observeSteer(
-    agentAccess,
-    sessionId,
-    command.runId,
-    command.input,
-    command.idempotencyKey,
-    command.retry,
-    false,
-    command.userItemId,
-  );
+  return observeSteer(agentAccess, sessionId, unresolvedSteer(command), "deliver");
 }
 
 export function retrySteerInput(agentAccess: AgentDependencies, messageId: string): boolean {
