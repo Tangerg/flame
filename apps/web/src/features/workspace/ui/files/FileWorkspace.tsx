@@ -14,6 +14,7 @@ import {
   type KeyboardEventHandler,
   type MouseEvent,
   type Ref,
+  type ReactNode,
   type RefObject,
 } from "react";
 import { fileExtension, splitFilePath } from "@/lib/path";
@@ -460,26 +461,38 @@ function describeFileRead(
       : undefined;
   const jumpPending =
     jump && (read.awaitingPrevious ? read.retainedPending : read.placeholderFetching);
+  const rejectedInitialLine = invalidLine && !read.retained;
+  const pageError =
+    read.page && read.awaitingPrevious && read.error != null
+      ? {
+          title: t("file.error.requestedRange", {
+            start: read.page.startLine,
+            end: read.page.endLine,
+          }),
+          sub: "",
+          size: "compact" as const,
+        }
+      : undefined;
   return {
     rejectedJump,
-    rejectedInitialLine: invalidLine && !read.retained,
+    rejectedInitialLine,
     jumpFailureTitle,
     jumpLabel: rejectedJump
       ? jumpFailureTitle
       : jumpPending
         ? t("file.goToLine.pending", { line: read.targetLine })
         : undefined,
-    pageError:
-      read.page && read.awaitingPrevious && read.error != null
+    pageError,
+    // The reader's own failure: a failed page, a rejected opening line, or the file.
+    readError:
+      pageError ??
+      (rejectedInitialLine
         ? {
-            title: t("file.error.requestedRange", {
-              start: read.page.startLine,
-              end: read.page.endLine,
-            }),
+            title: t("file.error.requestedLine", { line: read.targetLine }),
             sub: "",
-            size: "compact" as const,
+            retryLabel: t("file.openFromStart"),
           }
-        : undefined,
+        : { title: t("file.error.title"), sub: t("file.error.sub") }),
   };
 }
 
@@ -529,6 +542,173 @@ function FileReadFeedback({
   );
 }
 
+// Set only while FileView presents the source, including as a renderer's fallback;
+// rendered content keeps the browser's formatted copy and editable fields stay native.
+function useFileReaderInput(content: string | undefined) {
+  const source = useRef<HTMLDivElement>(null);
+  const selectionContentRef = useRef<Element | null>(null);
+  const sourceScrollRef = useRef<HTMLElement | null>(null);
+  const displayed = useRef<HTMLDivElement>(null);
+  const onKeyDown: KeyboardEventHandler<HTMLDivElement> = (event) => {
+    const sourceView = source.current;
+    const sourceContent = sourceView ? selectionContentRef.current : null;
+    const selectable = sourceContent ?? sourceView ?? displayed.current;
+    if (selectable) selectAllInReader(event, selectable);
+    const sourceScroll = sourceView ? sourceScrollRef.current : null;
+    if (
+      (event.key === "ArrowLeft" || event.key === "ArrowRight") &&
+      event.cancelable &&
+      !isImeKey(event.nativeEvent) &&
+      sourceScroll &&
+      sourceScroll.scrollWidth > sourceScroll.clientWidth
+    ) {
+      // The named viewport holds focus while Pierre's raw column pans.
+      scrollWithHorizontalArrow(event, (delta) => {
+        sourceScroll.scrollBy({ left: delta, behavior: "instant" });
+      });
+    }
+    scrollReaderWithForeignSelection(event, "both");
+  };
+  const onCopy: ClipboardEventHandler<HTMLDivElement> = (event) => {
+    if (source.current && content !== undefined)
+      copyReaderSelection(event, content, source.current);
+  };
+  return { source, selectionContentRef, sourceScrollRef, displayed, onKeyDown, onCopy };
+}
+
+// A reading control (retry, mode switch, rendered preview) can retire while the
+// same page stays visible; focus it held returns to the reader, not the body.
+function useRetiringControlFocus(reader: RefObject<HTMLDivElement | null>, active: boolean) {
+  const retiredFocusRoot = useRef<HTMLDivElement>(null);
+  const controlRef = useCallback((root: HTMLDivElement | null) => {
+    if (!root) return;
+    if (retiredFocusRoot.current === root) retiredFocusRoot.current = null;
+    return () => {
+      // The retiring subtree still contains the focus owner before React removes it.
+      if (root.contains(root.ownerDocument.activeElement)) retiredFocusRoot.current = root;
+    };
+  }, []);
+  useLayoutEffect(() => {
+    const root = retiredFocusRoot.current;
+    if (!root) return;
+    retiredFocusRoot.current = null;
+    const port = reader.current;
+    if (
+      active &&
+      !root.isConnected &&
+      port?.isConnected &&
+      port.ownerDocument.activeElement === port.ownerDocument.body
+    ) {
+      port.focus({ preventScroll: true });
+    }
+  });
+  return controlRef;
+}
+
+type PreviewMode = "rendered" | "source";
+
+// A line target opens the source; otherwise the rendered view leads. A choice
+// belongs to the file intent it was made for.
+function usePreviewMode(intent: WorkspaceFileViewer) {
+  const defaultMode: PreviewMode = intent.line > 0 ? "source" : "rendered";
+  const [choice, setChoice] = useState<{
+    intent: WorkspaceFileViewer;
+    mode: PreviewMode;
+  }>(() => ({ intent, mode: defaultMode }));
+  const mode = choice.intent === intent ? choice.mode : defaultMode;
+  return [mode, (next: PreviewMode) => setChoice({ intent, mode: next })] as const;
+}
+
+function UnsupportedFile({
+  path,
+  cwd,
+  fileActions,
+}: {
+  path: string;
+  cwd: string | undefined;
+  fileActions: LocalFileActions;
+}) {
+  const t = useT();
+  const workspaceAccess = useWorkspace();
+  return (
+    <EmptyState
+      icon={iconGlyph(fileIconName(path))}
+      title={t(fileKind(path) === "image" ? "file.unsupported.image" : "file.unsupported.binary")}
+      sub={t("file.unsupported.sub")}
+      action={
+        cwd &&
+        workspaceAccess.local.available() && (
+          <Button size="sm" onClick={() => fileActions.open(cwd, path)}>
+            {t("file.open")}
+          </Button>
+        )
+      }
+    />
+  );
+}
+
+function fileLineSummary(
+  t: ReturnType<typeof useT>,
+  data: { startLine: number; endLine: number; totalLines: number },
+  partial: boolean,
+): string {
+  return partial
+    ? t("file.range", { start: data.startLine, end: data.endLine, total: data.totalLines })
+    : t("file.lines", { count: data.totalLines });
+}
+
+function FileJumpStatus({ label, rejected }: { label: string | undefined; rejected: boolean }) {
+  return (
+    <>
+      {label && " "}
+      <span
+        role="status"
+        {...stylex.props(fp.jumpStatus, rejected ? vocab.negative : vocab.accent)}
+      >
+        {label}
+      </span>
+    </>
+  );
+}
+
+function FilePreviewActions({
+  path,
+  cwd,
+  rendererControl,
+  onGoToLine,
+  fileActions,
+}: {
+  path: string;
+  cwd: string | undefined;
+  rendererControl: ReactNode;
+  onGoToLine: ((line: number) => void) | undefined;
+  fileActions: LocalFileActions;
+}) {
+  const t = useT();
+  const workspaceAccess = useWorkspace();
+  const copy = useCopy(path, t("file.copyPath"));
+  return (
+    <>
+      {rendererControl}
+      {onGoToLine && <GoToLine key={path} onGo={onGoToLine} />}
+      <IconButton
+        icon={iconGlyph("copy")}
+        size="sm"
+        aria-label={t("file.copyPath")}
+        onClick={() => void copy()}
+      />
+      {cwd && workspaceAccess.local.available() && (
+        <IconButton
+          icon={iconGlyph("folder-open")}
+          size="sm"
+          aria-label={t("file.reveal")}
+          onClick={() => fileActions.reveal(cwd, path)}
+        />
+      )}
+    </>
+  );
+}
+
 function FilePreview({
   workspace,
   viewer,
@@ -546,7 +726,6 @@ function FilePreview({
   const visible = useContentVisible();
 
   const t = useT();
-  const copy = useCopy(viewer.path, t("file.copyPath"));
   const targetLine = viewer.line;
   const scrollPort = useRef<HTMLDivElement>(null);
   const {
@@ -581,82 +760,21 @@ function FilePreview({
     fileRendererCandidates(renderers, extension),
   );
   const wholeFile = !!data && coversWholeFile(data, moreBefore, moreAfter);
-  const defaultMode = displayedViewer.line > 0 ? "source" : "rendered";
-  const [modeFor, setModeFor] = useState<{
-    intent: WorkspaceFileViewer;
-    mode: "rendered" | "source";
-  }>(() => ({
-    intent: displayedViewer,
-    mode: defaultMode,
-  }));
-  const mode = modeFor.intent === displayedViewer ? modeFor.mode : defaultMode;
-  const setMode = (mode: "rendered" | "source") => setModeFor({ intent: displayedViewer, mode });
+  const [mode, setMode] = usePreviewMode(displayedViewer);
   const showRendered = renderer !== undefined && wholeFile && mode === "rendered";
 
-  // Set only while FileView presents the source, including as a renderer's fallback;
-  // rendered content keeps the browser's formatted copy and editable fields stay native.
-  const source = useRef<HTMLDivElement>(null);
-  const selectionContentRef = useRef<Element | null>(null);
-  const sourceScrollRef = useRef<HTMLElement | null>(null);
-  const displayed = useRef<HTMLDivElement>(null);
-  const onFileKeyDown: KeyboardEventHandler<HTMLDivElement> = (event) => {
-    const sourceView = source.current;
-    const sourceContent = sourceView ? selectionContentRef.current : null;
-    const content = sourceContent ?? sourceView ?? displayed.current;
-    if (content) selectAllInReader(event, content);
-    const sourceScroll = sourceView ? sourceScrollRef.current : null;
-    if (
-      (event.key === "ArrowLeft" || event.key === "ArrowRight") &&
-      event.cancelable &&
-      !isImeKey(event.nativeEvent) &&
-      sourceScroll &&
-      sourceScroll.scrollWidth > sourceScroll.clientWidth
-    ) {
-      // The named viewport holds focus while Pierre's raw column pans.
-      scrollWithHorizontalArrow(event, (delta) => {
-        sourceScroll.scrollBy({ left: delta, behavior: "instant" });
-      });
-    }
-    scrollReaderWithForeignSelection(event, "both");
-  };
-  const copySource: ClipboardEventHandler<HTMLDivElement> = (event) => {
-    if (source.current && data) copyReaderSelection(event, data.content, source.current);
-  };
+  const { source, selectionContentRef, sourceScrollRef, displayed, onKeyDown, onCopy } =
+    useFileReaderInput(data?.content);
 
   const unsupported = workspaceAccess.errors.isUnsupportedFile(error);
   const retained = (acceptedData !== undefined || previousData !== undefined) && !unsupported;
   const canRender = wholeFile && !unsupported;
   const canSwitchMode = canRender && renderer !== undefined;
-  const retiredFocusRoot = useRef<HTMLDivElement>(null);
-  const readingControlRef = useCallback((root: HTMLDivElement | null) => {
-    if (!root) return;
-    if (retiredFocusRoot.current === root) retiredFocusRoot.current = null;
-    return () => {
-      // The retiring subtree still contains the focus owner before React removes it.
-      if (root.contains(root.ownerDocument.activeElement)) retiredFocusRoot.current = root;
-    };
-  }, []);
-  // Each committing render can retire a control while the same page stays visible.
-  useLayoutEffect(() => {
-    const root = retiredFocusRoot.current;
-    if (!root) return;
-    retiredFocusRoot.current = null;
-    const reader = scrollPort.current;
-    if (
-      visible &&
-      retained &&
-      !root.isConnected &&
-      reader?.isConnected &&
-      reader.ownerDocument.activeElement === reader.ownerDocument.body
-    ) {
-      reader.focus({ preventScroll: true });
-    }
-  });
+  const readingControlRef = useRetiringControlFocus(scrollPort, visible && retained);
 
-  const kind = fileKind(viewer.path);
   const icon = fileIconName(viewer.path);
   const { name, directory } = splitFilePath(viewer.path);
-  const { rejectedJump, rejectedInitialLine, jumpFailureTitle, jumpLabel, pageError } =
+  const { rejectedJump, rejectedInitialLine, jumpFailureTitle, jumpLabel, pageError, readError } =
     describeFileRead(t, {
       page,
       targetLine,
@@ -670,23 +788,13 @@ function FilePreview({
     });
 
   const lineSummary =
-    data && !unsupported
-      ? moreBefore || moreAfter
-        ? t("file.range", { start: data.startLine, end: data.endLine, total: data.totalLines })
-        : t("file.lines", { count: data.totalLines })
-      : undefined;
+    data && !unsupported ? fileLineSummary(t, data, moreBefore || moreAfter) : undefined;
   const sub =
     directory || lineSummary ? (
       <>
         {directory && <FileDirectory directory={directory} />}
         {lineSummary}
-        {jumpLabel && " "}
-        <span
-          role="status"
-          {...stylex.props(fp.jumpStatus, rejectedJump ? vocab.negative : vocab.accent)}
-        >
-          {jumpLabel}
-        </span>
+        <FileJumpStatus label={jumpLabel} rejected={rejectedJump} />
       </>
     ) : undefined;
 
@@ -695,8 +803,8 @@ function FilePreview({
       scrollRef={scrollPort}
       scrollInset="flush"
       scrollLabel={viewer.path}
-      onScrollKeyDown={onFileKeyDown}
-      onScrollCopy={copySource}
+      onScrollKeyDown={onKeyDown}
+      onScrollCopy={onCopy}
       notice={
         <>
           <span role="status" className="sr-only">
@@ -742,40 +850,17 @@ function FilePreview({
         ) : undefined
       }
       actions={
-        <>
-          {canRender && control}
-          {data && !unsupported && <GoToLine key={viewer.path} onGo={goToLine} />}
-          <IconButton
-            icon={iconGlyph("copy")}
-            size="sm"
-            aria-label={t("file.copyPath")}
-            onClick={() => void copy()}
-          />
-          {cwd && workspaceAccess.local.available() && (
-            <IconButton
-              icon={iconGlyph("folder-open")}
-              size="sm"
-              aria-label={t("file.reveal")}
-              onClick={() => fileActions.reveal(cwd, viewer.path)}
-            />
-          )}
-        </>
+        <FilePreviewActions
+          path={viewer.path}
+          cwd={cwd}
+          rendererControl={canRender ? control : undefined}
+          onGoToLine={data && !unsupported ? goToLine : undefined}
+          fileActions={fileActions}
+        />
       }
     >
       {unsupported ? (
-        <EmptyState
-          icon={iconGlyph(icon)}
-          title={t(kind === "image" ? "file.unsupported.image" : "file.unsupported.binary")}
-          sub={t("file.unsupported.sub")}
-          action={
-            cwd &&
-            workspaceAccess.local.available() && (
-              <Button size="sm" onClick={() => fileActions.open(cwd, viewer.path)}>
-                {t("file.open")}
-              </Button>
-            )
-          }
-        />
+        <UnsupportedFile path={viewer.path} cwd={cwd} fileActions={fileActions} />
       ) : (
         <DataView
           items={data ? [data] : []}
@@ -784,16 +869,7 @@ function FilePreview({
           onRetry={rejectedInitialLine ? onOpenFromStart : refetch}
           focusTarget={pageError || rejectedInitialLine ? scrollPort : undefined}
           skeletonCount={12}
-          error={
-            pageError ??
-            (rejectedInitialLine
-              ? {
-                  title: t("file.error.requestedLine", { line: targetLine }),
-                  sub: "",
-                  retryLabel: t("file.openFromStart"),
-                }
-              : { title: t("file.error.title"), sub: t("file.error.sub") })
-          }
+          error={readError}
         >
           {(items) => {
             const recorded = (
