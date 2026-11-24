@@ -58,6 +58,9 @@ const gm = stylex.create({
     marginInlineStart: "calc(var(--spacing) * -1)",
   },
   rowExpanded: { color: color.fg },
+  // Like AgentActivityDisclosure: the chevron follows the object, and the detail truncates first.
+  labelBeforeDetail: { flexShrink: 0, maxWidth: "60%" },
+  detail: { minWidth: 0, flex: "0 1 auto" },
   meta: { flexShrink: 0, fontVariantNumeric: "tabular-nums" },
 });
 
@@ -84,7 +87,22 @@ export function ToolGroupMember({ tool, expanded, onExpandedChange }: Props) {
       <span aria-hidden {...stylex.props(gm.mark, vocab.faint)}>
         <Icon name={toolCallIconFor(tool)} size="sm" />
       </span>
-      <ToolText value={model.intent.label} styles={[vocab.min, gm.inherit]} wrap={disclosed} />
+      <ToolText
+        value={model.intent.label}
+        styles={[
+          vocab.min,
+          gm.inherit,
+          Boolean(model.detail) && !stackDetail && gm.labelBeforeDetail,
+        ]}
+        wrap={disclosed}
+      />
+      {model.detail && (
+        <ToolText
+          value={model.detail}
+          styles={[stackDetail ? stackedActivityDetail.detail : gm.detail, vocab.faint]}
+          wrap={stackDetail}
+        />
+      )}
       {disclosable && (
         <span
           aria-hidden
@@ -93,13 +111,7 @@ export function ToolGroupMember({ tool, expanded, onExpandedChange }: Props) {
           <Icon name="chevron-down" size="xs" />
         </span>
       )}
-      {model.detail && (
-        <ToolText
-          value={model.detail}
-          styles={[stackDetail ? stackedActivityDetail.detail : vocab.fill, vocab.faint]}
-          wrap={stackDetail}
-        />
-      )}
+      <span aria-hidden {...stylex.props(vocab.fill)} />
       {model.diffStat && <DiffStat added={model.diffStat.added} removed={model.diffStat.removed} />}
       {headline && (
         <span

@@ -92,6 +92,8 @@ const styles = stylex.create({
     lineHeight: leading.snug,
     color: "var(--row-detail-ink)",
   },
+  // A preview fills what the trigger leaves; sized by its content it would squeeze the label away.
+  preview: { flex: "1 1 0" },
   previewLine: { paddingInlineStart: space.s2 },
   previewCard: { paddingInlineEnd: space.s3 },
   spacer: { minWidth: 0, flex: 1 },
@@ -304,7 +306,13 @@ export function AgentActivityDisclosure({
           <span
             aria-hidden
             data-slot="agent-activity-preview"
-            {...stylex.props(styles.detail, vocab.truncate, skin.text, skin.preview)}
+            {...stylex.props(
+              styles.detail,
+              styles.preview,
+              vocab.truncate,
+              skin.text,
+              skin.preview,
+            )}
           >
             {preview}
           </span>

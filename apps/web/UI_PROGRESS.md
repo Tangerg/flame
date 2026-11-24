@@ -46835,6 +46835,21 @@ same way, German counts `Befehle`, and CJK keep their single form. Native
 `tool-agentic`, `waves` and French `tool-remote` (`6 commandes`) confirm.
 `check:locales` (940 keys) and Web typecheck pass.
 
+Fourth follow-up, from the live `answer-opening` state. (1) The detail
+reorder made the shared detail style `flex: 0 1 auto`, which the streaming
+reasoning glimpse also uses; sized by its long line, the glimpse squeezed
+the `Thinking` label to nothing and slid over the chevron. The preview now
+fills only what the trigger leaves (`flex: 1 1 0`). (2) Rows inside a tool
+group (`ToolGroupMember`) are a separate component and still placed the
+chevron between verb and object (`Read › /Users/…`, `Searching ›
+idempotency|atomicity`). They now follow the disclosure order: label,
+object, chevron, then a spacer before meta; the label keeps its width up to
+60% and the object truncates first. Expanded path rows keep the stacked
+layout (chevron with the verb, path below). Native `answer-opening` reads
+`Thinking › …also why a steer arrives…`, `Read /Users/…/atomicity_and_
+idempotency.go ›  6 lines` and `Searching idempotency|atomicity ›`; expanding
+Read stacks the path under `Read ⌄`. Web typecheck passes.
+
 ## Tool row action context
 
 Single and grouped Tool row actions now reference their existing visible summary.
