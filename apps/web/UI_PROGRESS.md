@@ -50520,6 +50520,17 @@ announced but not drawn; `Showing the last accepted read.` stays visible
 when a refresh fails. Native `dock-diagnostics-recorded` goes from the
 tabs straight to the first trace.
 
+### Directory statuses on the tree's text edge (2026-11-24)
+
+A failed folder read in Files reports below the virtualized tree, one
+status per path. Its path label sat flush against the Dock's left edge,
+because the status region had no inset while tree rows carry an 8 px
+margin plus 8 px padding. The region now has that 16 px inline inset.
+Native `dock-files` with `directory-state=error`: expanding `apps` shows
+`apps` on the row text edge above `Couldn't load` and Retry. The status
+still sits at the bottom of the panel rather than under the folder; an
+inline row would need a tree-owned error item. Web typecheck passes.
+
 ### No orphan rule in the project chooser (2026-11-24)
 
 With no projects, the Composer's `Choose project` menu opened on a separator

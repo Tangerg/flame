@@ -55,6 +55,8 @@ const styles = stylex.create({
   },
   name: { flex: 1, overflowWrap: "anywhere" },
   loading: { marginInline: space.s2 },
+  // Statuses start on the rows' text edge: row margin plus row padding.
+  statuses: { flexShrink: 0, maxHeight: "40vh", overflow: "auto", paddingInline: space.s4 },
 });
 type Directory = ReturnType<typeof useDirectory>;
 function More({ query }: { query: Directory }) {
@@ -445,7 +447,7 @@ export function FileTree({
               }
             />
           </Virtualizer>
-          <div style={{ flexShrink: 0, maxHeight: "40vh", overflow: "auto" }}>
+          <div {...stylex.props(styles.statuses)}>
             <DirectoryStatus cwd={cwd} path="" focusTarget={treeRef} />
             {statusPaths.map((path) => (
               <DirectoryStatus key={path} cwd={cwd} path={path} focusTarget={treeRef} />
