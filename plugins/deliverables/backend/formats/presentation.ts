@@ -5,6 +5,7 @@ import {
   presentationEditSchema,
   type Inspection,
   type PresentationOperation,
+  type PresentationContent,
   type SlideElement,
 } from "../../contracts/content";
 import { canonicalJSON } from "@frame/sdk/json";
@@ -84,183 +85,212 @@ function imageOptions(
   };
 }
 
-export async function createPresentation(json: string): Promise<Uint8Array> {
-  const content = parseContent(presentationContentSchema, json);
-  const presentation = new PptxGenJS();
-  presentation.layout =
-    content.layout === "standard" ? "LAYOUT_4X3" : "LAYOUT_WIDE";
-  presentation.author = content.author ?? "Flame";
-  presentation.title = content.title;
-  presentation.subject = content.subject ?? "";
-  const font = content.font ?? "Aptos";
-  presentation.theme = { headFontFace: font, bodyFontFace: font };
-  const width = content.layout === "standard" ? 10 : 13.333333;
-  const height = 7.5;
-  const checkPosition = (element: SlideElement) => {
-    if (
-      element.x + element.width > width + 0.001 ||
-      element.y + element.height > height + 0.001
-    )
-      throw new Error("slide element exceeds the selected slide dimensions");
-  };
+// Slide dimensions in inches for each PptxGenJS layout the content may select.
+const LAYOUTS = {
+  wide: { name: "LAYOUT_WIDE", width: 13.333333, height: 7.5 },
+  standard: { name: "LAYOUT_4X3", width: 10, height: 7.5 },
+} as const;
+// Positions are authored in inches; this absorbs rounding at the slide edge.
+const EDGE_TOLERANCE = 0.001;
+
+type Element<T extends SlideElement["type"]> = Extract<
+  SlideElement,
+  { type: T }
+>;
+
+interface Authoring {
+  presentation: PptxGenJS;
+  font: string;
+  language: PresentationContent["language"];
+  layout: (typeof LAYOUTS)[keyof typeof LAYOUTS];
+}
+
+function checkPosition(element: SlideElement, { layout }: Authoring): void {
+  if (
+    element.x + element.width > layout.width + EDGE_TOLERANCE ||
+    element.y + element.height > layout.height + EDGE_TOLERANCE
+  )
+    throw new Error("slide element exceeds the selected slide dimensions");
+}
+
+type MasterElement = NonNullable<
+  PresentationContent["masters"]
+>[number]["elements"][number];
+
+function masterObject(
+  element: MasterElement,
+  authoring: Authoring,
+): NonNullable<PptxGenJS.SlideMasterProps["objects"]>[number] {
+  checkPosition(element, authoring);
+  if (element.type === "text")
+    return {
+      text: {
+        text: element.text,
+        options: textOptions(element, authoring.font, authoring.language),
+      },
+    };
+  if (element.type === "image") return { image: imageOptions(element) };
+  return element.shape === "line"
+    ? { line: shapeOptions(element) }
+    : { rect: shapeOptions(element) };
+}
+
+function defineMasters(
+  content: PresentationContent,
+  authoring: Authoring,
+): Set<string> {
   const masters = new Set<string>();
   for (const master of content.masters ?? []) {
     if (masters.has(master.name))
       throw new Error("slide master names must be unique");
     masters.add(master.name);
-    const objects: NonNullable<PptxGenJS.SlideMasterProps["objects"]> =
-      master.elements.map((element) => {
-        checkPosition(element);
-        if (element.type === "text")
-          return {
-            text: {
-              text: element.text,
-              options: textOptions(element, font, content.language),
-            },
-          };
-        if (element.type === "image") return { image: imageOptions(element) };
-        return element.shape === "line"
-          ? { line: shapeOptions(element) }
-          : { rect: shapeOptions(element) };
-      });
-    presentation.defineSlideMaster({
+    authoring.presentation.defineSlideMaster({
       title: master.name,
       background: master.background ? { color: master.background } : undefined,
-      objects,
+      objects: master.elements.map((element) =>
+        masterObject(element, authoring),
+      ),
     });
   }
-  for (const authored of content.slides) {
-    if (authored.master && !masters.has(authored.master))
-      throw new Error("slide references an undeclared master");
-    const slide = presentation.addSlide(
-      authored.master ? { masterName: authored.master } : undefined,
+  return masters;
+}
+
+function addTable(
+  slide: PptxGenJS.Slide,
+  element: Element<"table">,
+  { font }: Authoring,
+): void {
+  const columns = element.rows[0]!.length;
+  if (element.rows.some((row) => row.length !== columns))
+    throw new Error("slide table rows must have equal column counts");
+  slide.addTable(
+    element.rows.map((row, index) =>
+      row.map((text) => ({
+        text,
+        options:
+          index === 0 && element.header
+            ? { bold: true, color: "FFFFFF", fill: { color: "245B78" } }
+            : {},
+      })),
+    ),
+    {
+      ...position(element),
+      fontFace: font,
+      fontSize: element.fontSize ?? 14,
+      border: { type: "solid", color: "D3DEE5", pt: 0.5 },
+      margin: 0.08,
+      autoPage: false,
+      rowH: element.height / element.rows.length,
+    },
+  );
+}
+
+function chartFrame(
+  element: Element<"chart"> | Element<"scatter">,
+  { font, language }: Authoring,
+) {
+  return {
+    ...position(element),
+    lang: language,
+    showTitle: !!element.title,
+    title: element.title,
+    showLegend: true,
+    legendPos: "b" as const,
+    chartColors: CHART_COLORS,
+    catAxisLabelFontFace: font,
+    valAxisLabelFontFace: font,
+  };
+}
+
+function addChart(
+  slide: PptxGenJS.Slide,
+  element: Element<"chart">,
+  authoring: Authoring,
+): void {
+  if (
+    element.series.some(
+      (series) => series.labels.length !== series.values.length,
+    )
+  )
+    throw new Error("slide chart labels and values must have equal lengths");
+  if (
+    ["pie", "doughnut"].includes(element.chart) &&
+    element.series.length !== 1
+  )
+    throw new Error("pie and doughnut charts require exactly one series");
+  const values = element.series.flatMap((series) => series.values);
+  // A bar axis keeps zero in view when every value sits on one side of it.
+  const bar = element.chart === "bar";
+  slide.addChart(
+    authoring.presentation.ChartType[element.chart],
+    element.series,
+    {
+      ...chartFrame(element, authoring),
+      showValue: false,
+      valAxisMinVal: bar && values.every((value) => value >= 0) ? 0 : undefined,
+      valAxisMaxVal: bar && values.every((value) => value <= 0) ? 0 : undefined,
+    },
+  );
+}
+
+function addScatter(
+  slide: PptxGenJS.Slide,
+  element: Element<"scatter">,
+  authoring: Authoring,
+): void {
+  if (
+    element.series.some(
+      (series) => series.values.length !== element.xValues.length,
+    )
+  )
+    throw new Error(
+      "every scatter series needs one y value for each shared x value",
     );
-    if (authored.background) slide.background = { color: authored.background };
-    for (const element of authored.elements) {
-      checkPosition(element);
-      switch (element.type) {
-        case "text":
-          slide.addText(
-            element.text,
-            textOptions(element, font, content.language),
-          );
-          break;
-        case "shape":
-          slide.addShape(
-            presentation.ShapeType[element.shape],
-            shapeOptions(element),
-          );
-          break;
-        case "image":
-          slide.addImage(imageOptions(element));
-          break;
-        case "table": {
-          const columns = element.rows[0]!.length;
-          if (element.rows.some((row) => row.length !== columns))
-            throw new Error("slide table rows must have equal column counts");
-          slide.addTable(
-            element.rows.map((row, index) =>
-              row.map((text) => ({
-                text,
-                options:
-                  index === 0 && element.header
-                    ? { bold: true, color: "FFFFFF", fill: { color: "245B78" } }
-                    : {},
-              })),
-            ),
-            {
-              ...position(element),
-              fontFace: font,
-              fontSize: element.fontSize ?? 14,
-              border: { type: "solid", color: "D3DEE5", pt: 0.5 },
-              margin: 0.08,
-              autoPage: false,
-              rowH: element.height / element.rows.length,
-            },
-          );
-          break;
-        }
-        case "chart": {
-          if (
-            element.series.some(
-              (series) => series.labels.length !== series.values.length,
-            )
-          )
-            throw new Error(
-              "slide chart labels and values must have equal lengths",
-            );
-          if (
-            ["pie", "doughnut"].includes(element.chart) &&
-            element.series.length !== 1
-          )
-            throw new Error(
-              "pie and doughnut charts require exactly one series",
-            );
-          const values = element.series.flatMap((series) => series.values);
-          slide.addChart(
-            presentation.ChartType[element.chart],
-            element.series,
-            {
-              ...position(element),
-              lang: content.language,
-              showTitle: !!element.title,
-              title: element.title,
-              showLegend: true,
-              legendPos: "b",
-              showValue: false,
-              chartColors: CHART_COLORS,
-              catAxisLabelFontFace: font,
-              valAxisLabelFontFace: font,
-              valAxisMinVal:
-                element.chart === "bar" && values.every((value) => value >= 0)
-                  ? 0
-                  : undefined,
-              valAxisMaxVal:
-                element.chart === "bar" && values.every((value) => value <= 0)
-                  ? 0
-                  : undefined,
-            },
-          );
-          break;
-        }
-        case "scatter": {
-          if (
-            element.series.some(
-              (series) => series.values.length !== element.xValues.length,
-            )
-          )
-            throw new Error(
-              "every scatter series needs one y value for each shared x value",
-            );
-          slide.addChart(
-            presentation.ChartType.scatter,
-            [{ name: "x", values: element.xValues }, ...element.series],
-            {
-              ...position(element),
-              lang: content.language,
-              showTitle: !!element.title,
-              title: element.title,
-              showLegend: true,
-              legendPos: "b",
-              chartColors: CHART_COLORS,
-              catAxisLabelFontFace: font,
-              valAxisLabelFontFace: font,
-            },
-          );
-          break;
-        }
-      }
-    }
-    if (authored.notes) slide.addNotes(authored.notes);
+  slide.addChart(
+    authoring.presentation.ChartType.scatter,
+    [{ name: "x", values: element.xValues }, ...element.series],
+    chartFrame(element, authoring),
+  );
+}
+
+function addElement(
+  slide: PptxGenJS.Slide,
+  element: SlideElement,
+  authoring: Authoring,
+): void {
+  checkPosition(element, authoring);
+  switch (element.type) {
+    case "text":
+      slide.addText(
+        element.text,
+        textOptions(element, authoring.font, authoring.language),
+      );
+      return;
+    case "shape":
+      slide.addShape(
+        authoring.presentation.ShapeType[element.shape],
+        shapeOptions(element),
+      );
+      return;
+    case "image":
+      slide.addImage(imageOptions(element));
+      return;
+    case "table":
+      return addTable(slide, element, authoring);
+    case "chart":
+      return addChart(slide, element, authoring);
+    case "scatter":
+      return addScatter(slide, element, authoring);
   }
-  const result = await presentation.write({
-    outputType: "uint8array",
-    compression: true,
-  });
-  if (!(result instanceof Uint8Array))
-    throw new Error("presentation encoder returned an unexpected result");
-  const archive = OfficePackage.open("pptx", result);
-  content.slides.forEach((slide, index) => {
+}
+
+// PptxGenJS cannot name a slide, so authored titles are written into each
+// slide's cSld name after encoding.
+function nameSlides(
+  archive: OfficePackage,
+  slides: PresentationContent["slides"],
+): void {
+  slides.forEach((slide, index) => {
     if (!slide.title) return;
     const path = `ppt/slides/slide${index + 1}.xml`;
     const document = archive.xml(path);
@@ -280,6 +310,44 @@ export async function createPresentation(json: string): Promise<Uint8Array> {
       ]),
     );
   });
+}
+
+export async function createPresentation(json: string): Promise<Uint8Array> {
+  const content = parseContent(presentationContentSchema, json);
+  const presentation = new PptxGenJS();
+  const layout = LAYOUTS[content.layout ?? "wide"];
+  const font = content.font ?? "Aptos";
+  presentation.layout = layout.name;
+  presentation.author = content.author ?? "Flame";
+  presentation.title = content.title;
+  presentation.subject = content.subject ?? "";
+  presentation.theme = { headFontFace: font, bodyFontFace: font };
+  const authoring: Authoring = {
+    presentation,
+    font,
+    language: content.language,
+    layout,
+  };
+  const masters = defineMasters(content, authoring);
+  for (const authored of content.slides) {
+    if (authored.master && !masters.has(authored.master))
+      throw new Error("slide references an undeclared master");
+    const slide = presentation.addSlide(
+      authored.master ? { masterName: authored.master } : undefined,
+    );
+    if (authored.background) slide.background = { color: authored.background };
+    for (const element of authored.elements)
+      addElement(slide, element, authoring);
+    if (authored.notes) slide.addNotes(authored.notes);
+  }
+  const result = await presentation.write({
+    outputType: "uint8array",
+    compression: true,
+  });
+  if (!(result instanceof Uint8Array))
+    throw new Error("presentation encoder returned an unexpected result");
+  const archive = OfficePackage.open("pptx", result);
+  nameSlides(archive, content.slides);
   return archive.save();
 }
 
