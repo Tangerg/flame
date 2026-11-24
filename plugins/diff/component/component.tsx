@@ -211,6 +211,121 @@ function useDiffFocusRestoration(
   ]);
 }
 
+type DiffFile = NonNullable<
+  Read["accepted"]
+>["diff"]["visual"]["manifest"][number];
+
+function DiffReaderNavigation({
+  t,
+  files,
+  index,
+  filtered,
+  changes,
+  onOpen,
+}: {
+  t: Translate;
+  files: readonly DiffFile[];
+  index: number;
+  filtered: boolean;
+  changes: string | undefined;
+  onOpen: (path: string, navigation: HTMLButtonElement) => void;
+}) {
+  return (
+    <>
+      <Metadata role="status">
+        <span aria-hidden="true">
+          {index + 1} / {files.length}
+        </span>
+        <span className="sr-only">
+          {changes}
+          {" · "}
+          {t(filtered ? "navigation.positionMatching" : "navigation.position", {
+            position: index + 1,
+            total: files.length,
+          })}
+        </span>
+      </Metadata>
+      <IconButton
+        icon={ChevronLeft}
+        aria-label={t("nav.previous")}
+        size="sm"
+        disabled={index <= 0}
+        onClick={(event) => onOpen(files[index - 1]!.path, event.currentTarget)}
+      />
+      <IconButton
+        icon={ChevronRight}
+        aria-label={t("nav.next")}
+        size="sm"
+        disabled={index < 0 || index >= files.length - 1}
+        onClick={(event) => onOpen(files[index + 1]!.path, event.currentTarget)}
+      />
+    </>
+  );
+}
+
+function DiffOverview({
+  t,
+  files,
+  matching,
+  filtered,
+  truncated,
+  currentPath,
+  listRef,
+  onSelect,
+}: {
+  t: Translate;
+  files: readonly DiffFile[];
+  matching: readonly DiffFile[];
+  filtered: boolean;
+  truncated: boolean;
+  currentPath: string | null;
+  listRef: RefObject<HTMLElement | null>;
+  onSelect: (path: string) => void;
+}) {
+  const textFiles = files.filter((item) => !item.binary);
+  // A total is stated only when every text file reports that count.
+  const total = (key: "added" | "removed") =>
+    textFiles.every((item) => item[key] !== undefined)
+      ? textFiles.reduce((sum, item) => sum + item[key]!, 0)
+      : undefined;
+  return (
+    <PanelSection
+      title={t(truncated ? "files.included" : "files.changed", {
+        count: files.length,
+      })}
+      description={
+        filtered
+          ? t("files.match", { count: matching.length, total: files.length })
+          : undefined
+      }
+      actions={
+        textFiles.length > 0 ? (
+          <DiffStat
+            title={t("stat.title")}
+            added={total("added")}
+            removed={total("removed")}
+          />
+        ) : undefined
+      }
+    >
+      {!matching.length && (
+        <EmptyState
+          size="compact"
+          title={t("nomatch.title")}
+          sub={t("nomatch.sub")}
+        />
+      )}
+      <DiffFileList
+        ref={listRef}
+        files={matching.map((item) => fileSummary(t, item))}
+        label={t("files.region")}
+        currentPath={currentPath}
+        onSelect={onSelect}
+      />
+    </PanelSection>
+  );
+}
+
 function DiffReadStatus({
   t,
   read,
@@ -378,11 +493,6 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
     ? matching
     : files;
   const index = navigationFiles.findIndex((item) => item.path === file?.path);
-  const textFiles = files.filter((item) => !item.binary);
-  const total = (key: "added" | "removed") =>
-    textFiles.every((item) => item[key] !== undefined)
-      ? textFiles.reduce((sum, item) => sum + item[key]!, 0)
-      : undefined;
 
   function filterFiles(next: string) {
     if (next === filter) return;
@@ -513,52 +623,16 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
                 actions={
                   <>
                     {file && (
-                      <>
-                        <Metadata role="status">
-                          <span aria-hidden="true">
-                            {index + 1} / {navigationFiles.length}
-                          </span>
-                          <span className="sr-only">
-                            {fileChanges}
-                            {" · "}
-                            {t(
-                              filter && navigationFiles === matching
-                                ? "navigation.positionMatching"
-                                : "navigation.position",
-                              {
-                                position: index + 1,
-                                total: navigationFiles.length,
-                              },
-                            )}
-                          </span>
-                        </Metadata>
-                        <IconButton
-                          icon={ChevronLeft}
-                          aria-label={t("nav.previous")}
-                          size="sm"
-                          disabled={index <= 0}
-                          onClick={(event) =>
-                            openFile(
-                              navigationFiles[index - 1]!.path,
-                              event.currentTarget,
-                            )
-                          }
-                        />
-                        <IconButton
-                          icon={ChevronRight}
-                          aria-label={t("nav.next")}
-                          size="sm"
-                          disabled={
-                            index < 0 || index >= navigationFiles.length - 1
-                          }
-                          onClick={(event) =>
-                            openFile(
-                              navigationFiles[index + 1]!.path,
-                              event.currentTarget,
-                            )
-                          }
-                        />
-                      </>
+                      <DiffReaderNavigation
+                        t={t}
+                        files={navigationFiles}
+                        index={index}
+                        filtered={
+                          Boolean(filter) && navigationFiles === matching
+                        }
+                        changes={fileChanges}
+                        onOpen={openFile}
+                      />
                     )}
                     {read.error && <Metadata>{t("read.failedShort")}</Metadata>}
                     <IconButton
@@ -651,43 +725,16 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
           )}
           {hasFiles && (
             <div hidden={showingReader}>
-              <PanelSection
-                title={t(truncated ? "files.included" : "files.changed", {
-                  count: files.length,
-                })}
-                description={
-                  filter
-                    ? t("files.match", {
-                        count: matching.length,
-                        total: files.length,
-                      })
-                    : undefined
-                }
-                actions={
-                  textFiles.length > 0 ? (
-                    <DiffStat
-                      title={t("stat.title")}
-                      added={total("added")}
-                      removed={total("removed")}
-                    />
-                  ) : undefined
-                }
-              >
-                {!matching.length && (
-                  <EmptyState
-                    size="compact"
-                    title={t("nomatch.title")}
-                    sub={t("nomatch.sub")}
-                  />
-                )}
-                <DiffFileList
-                  ref={list}
-                  files={matching.map((item) => fileSummary(t, item))}
-                  label={t("files.region")}
-                  currentPath={selection.path}
-                  onSelect={(path) => openFile(path)}
-                />
-              </PanelSection>
+              <DiffOverview
+                t={t}
+                files={files}
+                matching={matching}
+                filtered={Boolean(filter)}
+                truncated={truncated}
+                currentPath={selection.path}
+                listRef={list}
+                onSelect={(path) => openFile(path)}
+              />
             </div>
           )}
           {file && (
