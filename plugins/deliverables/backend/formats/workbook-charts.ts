@@ -4,13 +4,13 @@ import type {
   CellValue,
 } from "../../contracts/content";
 import { OfficePackage } from "./archive";
+import { HOUSE_STYLE } from "./style";
 import { cellAddress, cellRange, rangeAddresses } from "./workbook-cells";
 import { escapeXML, namespaces, patchXML } from "./xml";
 
 const chartType =
   "application/vnd.openxmlformats-officedocument.drawingml.chart+xml";
 const drawingType = "application/vnd.openxmlformats-officedocument.drawing+xml";
-const palette = ["245B78", "39A597", "DF9D3A", "8B6FB3", "D65C68", "739643"];
 const declaration = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
 
 function formula(sheet: string, range: string): string {
@@ -71,7 +71,9 @@ function chartXML(
             : "";
         })
         .join("");
-      const color = series.color ?? palette[position % palette.length]!;
+      const color =
+        series.color ??
+        HOUSE_STYLE.palette[position % HOUSE_STYLE.palette.length]!;
       return `<c:ser><c:idx val="${position}"/><c:order val="${position}"/><c:tx><c:v>${escapeXML(series.name)}</c:v></c:tx><c:spPr><a:solidFill><a:srgbClr val="${color}"/></a:solidFill><a:ln><a:solidFill><a:srgbClr val="${color}"/></a:solidFill></a:ln></c:spPr>${chart.type === "line" ? '<c:marker><c:symbol val="circle"/><c:size val="5"/></c:marker>' : ""}<c:cat><c:strRef><c:f>${formula(sheet, chart.categories)}</c:f><c:strCache><c:ptCount val="${categories.length}"/>${catPoints}</c:strCache></c:strRef></c:cat><c:val><c:numRef><c:f>${formula(sheet, series.values)}</c:f><c:numCache><c:formatCode>General</c:formatCode><c:ptCount val="${values.length}"/>${points}</c:numCache></c:numRef></c:val></c:ser>`;
     })
     .join("");

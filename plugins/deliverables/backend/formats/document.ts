@@ -22,154 +22,165 @@ import {
   documentContentSchema,
   documentEditSchema,
   parseContent,
+  type DocumentContent,
   type Inspection,
 } from "../../contracts/content";
 import { OfficePackage } from "./archive";
 import { imageBytes } from "./images";
 import { inspectOfficeText, officeReport } from "./inspection";
 import { replaceText } from "./text-edits";
+import { HOUSE_STYLE } from "./style";
 import { escapeXML, namespaces, patchXML, tagName } from "./xml";
 
-export async function createDocument(json: string): Promise<Uint8Array> {
-  const content = parseContent(documentContentSchema, json);
-  const accent = content.accent ?? "245B78";
-  const font = content.font ?? "Aptos";
-  const size = content.fontSize ?? 11;
-  const children: Array<Paragraph | Table> = [];
-  const headings = [
-    HeadingLevel.HEADING_1,
-    HeadingLevel.HEADING_2,
-    HeadingLevel.HEADING_3,
-    HeadingLevel.HEADING_4,
-    HeadingLevel.HEADING_5,
-    HeadingLevel.HEADING_6,
-  ];
-  const alignments = {
-    left: AlignmentType.LEFT,
-    center: AlignmentType.CENTER,
-    right: AlignmentType.RIGHT,
-    justify: AlignmentType.JUSTIFIED,
-  };
-  for (const block of content.blocks) {
-    if (block.type === "paragraph") {
-      children.push(
-        new Paragraph({
-          children: block.runs.map((run) => {
-            const text = new TextRun({
-              text: run.text,
-              bold: run.bold,
-              italics: run.italic,
-              underline: run.underline ? {} : undefined,
-              color: run.color,
-              size: run.size ? run.size * 2 : undefined,
-            });
-            return run.url
-              ? new ExternalHyperlink({ children: [text], link: run.url })
-              : text;
-          }),
-          heading: block.heading ? headings[block.heading - 1] : undefined,
-          alignment: block.alignment ? alignments[block.alignment] : undefined,
-          bullet: block.bullet ? { level: 0 } : undefined,
-          keepNext: block.keepNext,
-          spacing: { after: 140, line: 276 },
-        }),
-      );
-    } else if (block.type === "table") {
-      if (block.rows.some((row) => row.length !== block.headers.length))
-        throw new Error("document table rows must match the header width");
-      const rows = [block.headers, ...block.rows].map(
-        (row, index) =>
-          new TableRow({
-            tableHeader: index === 0,
-            cantSplit: true,
-            children: row.map(
-              (cell) =>
-                new TableCell({
-                  shading: index === 0 ? { fill: accent } : undefined,
-                  margins: { top: 100, bottom: 100, left: 120, right: 120 },
+type Block = DocumentContent["blocks"][number];
+type BlockOf<T extends Block["type"]> = Extract<Block, { type: T }>;
+
+const HEADINGS = [
+  HeadingLevel.HEADING_1,
+  HeadingLevel.HEADING_2,
+  HeadingLevel.HEADING_3,
+  HeadingLevel.HEADING_4,
+  HeadingLevel.HEADING_5,
+  HeadingLevel.HEADING_6,
+] as const;
+const ALIGNMENTS = {
+  left: AlignmentType.LEFT,
+  center: AlignmentType.CENTER,
+  right: AlignmentType.RIGHT,
+  justify: AlignmentType.JUSTIFIED,
+} as const;
+const IMAGE_TYPES = { "image/png": "png", "image/jpeg": "jpg" } as const;
+
+function paragraph(block: BlockOf<"paragraph">): Paragraph {
+  return new Paragraph({
+    children: block.runs.map((run) => {
+      const text = new TextRun({
+        text: run.text,
+        bold: run.bold,
+        italics: run.italic,
+        underline: run.underline ? {} : undefined,
+        color: run.color,
+        size: run.size ? run.size * 2 : undefined,
+      });
+      return run.url
+        ? new ExternalHyperlink({ children: [text], link: run.url })
+        : text;
+    }),
+    heading: block.heading ? HEADINGS[block.heading - 1] : undefined,
+    alignment: block.alignment ? ALIGNMENTS[block.alignment] : undefined,
+    bullet: block.bullet ? { level: 0 } : undefined,
+    keepNext: block.keepNext,
+    spacing: { after: 140, line: 276 },
+  });
+}
+
+function table(block: BlockOf<"table">, accent: string): Table {
+  if (block.rows.some((row) => row.length !== block.headers.length))
+    throw new Error("document table rows must match the header width");
+  const rows = [block.headers, ...block.rows].map(
+    (row, index) =>
+      new TableRow({
+        tableHeader: index === 0,
+        cantSplit: true,
+        children: row.map(
+          (cell) =>
+            new TableCell({
+              shading: index === 0 ? { fill: accent } : undefined,
+              margins: { top: 100, bottom: 100, left: 120, right: 120 },
+              children: [
+                new Paragraph({
                   children: [
-                    new Paragraph({
-                      children: [
-                        new TextRun({
-                          text: cell,
-                          bold: index === 0,
-                          color: index === 0 ? "FFFFFF" : undefined,
-                        }),
-                      ],
+                    new TextRun({
+                      text: cell,
+                      bold: index === 0,
+                      color: index === 0 ? HOUSE_STYLE.onAccent : undefined,
                     }),
                   ],
                 }),
-            ),
-          }),
-      );
-      children.push(
-        new Table({
-          rows,
-          width: { size: 100, type: WidthType.PERCENTAGE },
-          borders: {
-            top: { style: BorderStyle.SINGLE, size: 1, color: "D3DEE5" },
-            bottom: { style: BorderStyle.SINGLE, size: 1, color: "D3DEE5" },
-          },
-        }),
-      );
-    } else if (block.type === "image") {
-      children.push(
-        new Paragraph({
-          children: [
-            new ImageRun({
-              type: block.image.mime === "image/png" ? "png" : "jpg",
-              data: imageBytes(block.image),
-              transformation: { width: block.width, height: block.height },
-              altText: {
-                name: block.image.alt,
-                description: block.image.alt,
-                title: block.caption ?? block.image.alt,
-              },
+              ],
             }),
-          ],
-          alignment: AlignmentType.CENTER,
-        }),
-      );
-      if (block.caption)
-        children.push(
-          new Paragraph({
-            children: [
-              new TextRun({ text: block.caption, italics: true, size: 18 }),
-            ],
-            alignment: AlignmentType.CENTER,
-          }),
-        );
-    } else children.push(new Paragraph({ children: [new PageBreak()] }));
+        ),
+      }),
+  );
+  const rule = { style: BorderStyle.SINGLE, size: 1, color: HOUSE_STYLE.rule };
+  return new Table({
+    rows,
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    borders: { top: rule, bottom: rule },
+  });
+}
+
+function figure(block: BlockOf<"image">): Paragraph[] {
+  const image = new Paragraph({
+    children: [
+      new ImageRun({
+        type: IMAGE_TYPES[block.image.mime],
+        data: imageBytes(block.image),
+        transformation: { width: block.width, height: block.height },
+        altText: {
+          name: block.image.alt,
+          description: block.image.alt,
+          title: block.caption ?? block.image.alt,
+        },
+      }),
+    ],
+    alignment: AlignmentType.CENTER,
+  });
+  if (!block.caption) return [image];
+  return [
+    image,
+    new Paragraph({
+      children: [new TextRun({ text: block.caption, italics: true, size: 18 })],
+      alignment: AlignmentType.CENTER,
+    }),
+  ];
+}
+
+function blockContent(block: Block, accent: string): Array<Paragraph | Table> {
+  switch (block.type) {
+    case "paragraph":
+      return [paragraph(block)];
+    case "table":
+      return [table(block, accent)];
+    case "image":
+      return figure(block);
+    default:
+      return [new Paragraph({ children: [new PageBreak()] })];
   }
-  if (content.references?.length) {
-    if (
-      new Set(content.references.map((reference) => reference.id)).size !==
-      content.references.length
-    )
-      throw new Error("document reference identifiers must be unique");
-    children.push(
-      new Paragraph({ heading: HeadingLevel.HEADING_1, text: "References" }),
-    );
-    for (const reference of content.references) {
+}
+
+function referenceList(
+  references: NonNullable<DocumentContent["references"]>,
+): Paragraph[] {
+  if (!references.length) return [];
+  if (
+    new Set(references.map((reference) => reference.id)).size !==
+    references.length
+  )
+    throw new Error("document reference identifiers must be unique");
+  return [
+    new Paragraph({ heading: HeadingLevel.HEADING_1, text: "References" }),
+    ...references.map((reference) => {
       const label = `[${reference.id}] ${reference.title}${reference.accessed ? ` (accessed ${reference.accessed})` : ""}`;
-      children.push(
-        new Paragraph({
-          children: reference.url
-            ? [
-                new ExternalHyperlink({
-                  children: [new TextRun({ text: label, style: "Hyperlink" })],
-                  link: reference.url,
-                }),
-              ]
-            : [new TextRun(label)],
-        }),
-      );
-    }
-  }
-  const footer = [];
-  if (content.footer) footer.push(new TextRun(content.footer));
+      return new Paragraph({
+        children: reference.url
+          ? [
+              new ExternalHyperlink({
+                children: [new TextRun({ text: label, style: "Hyperlink" })],
+                link: reference.url,
+              }),
+            ]
+          : [new TextRun(label)],
+      });
+    }),
+  ];
+}
+
+function footerRuns(content: DocumentContent): TextRun[] {
+  const runs = [];
+  if (content.footer) runs.push(new TextRun(content.footer));
   if (content.pageNumbers)
-    footer.push(
+    runs.push(
       new TextRun({
         children: [
           content.footer ? " · " : "",
@@ -179,9 +190,22 @@ export async function createDocument(json: string): Promise<Uint8Array> {
         ],
       }),
     );
+  return runs;
+}
+
+export async function createDocument(json: string): Promise<Uint8Array> {
+  const content = parseContent(documentContentSchema, json);
+  const accent = content.accent ?? HOUSE_STYLE.accent;
+  const font = content.font ?? HOUSE_STYLE.font;
+  const size = content.fontSize ?? 11;
+  const children = [
+    ...content.blocks.flatMap((block) => blockContent(block, accent)),
+    ...referenceList(content.references ?? []),
+  ];
+  const footer = footerRuns(content);
   const document = new Document({
     title: content.title,
-    creator: content.author ?? "Flame",
+    creator: content.author ?? HOUSE_STYLE.author,
     description: "Editable document created by Flame Deliverables",
     styles: {
       default: {

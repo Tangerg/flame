@@ -11,6 +11,7 @@ import {
 import { canonicalJSON } from "@frame/sdk/json";
 import { OfficePackage, relations, relationshipsPath } from "./archive";
 import { setChartData } from "./charts";
+import { HOUSE_STYLE } from "./style";
 import { imageBytes } from "./images";
 import { inspectOfficeText, officeReport } from "./inspection";
 import {
@@ -36,8 +37,6 @@ import {
   type XmlNode,
   type XmlPatch,
 } from "./xml";
-
-const CHART_COLORS = ["245B78", "39A597", "DF9D3A", "8B6FB3"];
 
 function position(element: SlideElement) {
   return { x: element.x, y: element.y, w: element.width, h: element.height };
@@ -71,7 +70,10 @@ function shapeOptions(
     fill: element.fill
       ? { color: element.fill }
       : { color: "FFFFFF", transparency: 100 },
-    line: { color: element.line ?? element.fill ?? "245B78", width: 1 },
+    line: {
+      color: element.line ?? element.fill ?? HOUSE_STYLE.accent,
+      width: 1,
+    },
   };
 }
 function imageOptions(
@@ -169,7 +171,11 @@ function addTable(
         text,
         options:
           index === 0 && element.header
-            ? { bold: true, color: "FFFFFF", fill: { color: "245B78" } }
+            ? {
+                bold: true,
+                color: HOUSE_STYLE.onAccent,
+                fill: { color: HOUSE_STYLE.accent },
+              }
             : {},
       })),
     ),
@@ -177,7 +183,7 @@ function addTable(
       ...position(element),
       fontFace: font,
       fontSize: element.fontSize ?? 14,
-      border: { type: "solid", color: "D3DEE5", pt: 0.5 },
+      border: { type: "solid", color: HOUSE_STYLE.rule, pt: 0.5 },
       margin: 0.08,
       autoPage: false,
       rowH: element.height / element.rows.length,
@@ -196,7 +202,7 @@ function chartFrame(
     title: element.title,
     showLegend: true,
     legendPos: "b" as const,
-    chartColors: CHART_COLORS,
+    chartColors: [...HOUSE_STYLE.palette],
     catAxisLabelFontFace: font,
     valAxisLabelFontFace: font,
   };
@@ -316,9 +322,9 @@ export async function createPresentation(json: string): Promise<Uint8Array> {
   const content = parseContent(presentationContentSchema, json);
   const presentation = new PptxGenJS();
   const layout = LAYOUTS[content.layout ?? "wide"];
-  const font = content.font ?? "Aptos";
+  const font = content.font ?? HOUSE_STYLE.font;
   presentation.layout = layout.name;
-  presentation.author = content.author ?? "Flame";
+  presentation.author = content.author ?? HOUSE_STYLE.author;
   presentation.title = content.title;
   presentation.subject = content.subject ?? "";
   presentation.theme = { headFontFace: font, bodyFontFace: font };

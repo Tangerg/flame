@@ -15,6 +15,7 @@ import {
   relationshipsPath,
 } from "./archive";
 import { officeReport } from "./inspection";
+import { HOUSE_STYLE } from "./style";
 import { addWorkbookCharts } from "./workbook-charts";
 import {
   addressName,
@@ -83,7 +84,7 @@ function addWorksheet(
 
 function styleCell(cell: ExcelJS.Cell, style: AuthoredStyle): void {
   cell.font = {
-    name: "Aptos",
+    name: HOUSE_STYLE.font,
     size: style.fontSize ?? 11,
     bold: style.bold,
     italic: style.italic,
@@ -102,7 +103,10 @@ function styleCell(cell: ExcelJS.Cell, style: AuthoredStyle): void {
     vertical: "middle",
   };
   if (style.border) {
-    const border = { style: "thin" as const, color: { argb: "FFD3DEE5" } };
+    const border = {
+      style: "thin" as const,
+      color: { argb: `FF${HOUSE_STYLE.rule}` },
+    };
     cell.border = { top: border, bottom: border, left: border, right: border };
   }
 }
@@ -207,7 +211,7 @@ export async function createWorkbook(json: string): Promise<Uint8Array> {
   const names = new Set<string>();
   const tableNames = new Set<string>();
   const book = new ExcelJS.Workbook();
-  book.creator = content.author ?? "Flame";
+  book.creator = content.author ?? HOUSE_STYLE.author;
   book.title = content.title;
   book.calcProperties.fullCalcOnLoad = true;
   for (const sheet of content.sheets) {
