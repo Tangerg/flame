@@ -2723,6 +2723,14 @@ Dock and Files step (2026-11-25):
   schedule's Model and Reasoning effort). Its maximum width now includes the
   hang, and both columns' fills end on one edge.
 
+- Settings → Model providers' role rows used their own 17.5 rem grid with a
+  12 px gap, so the Utility and Embedding selects started 4 px right of the
+  provider forms' second column and their text 3 px right of `Base URL`. The
+  rows now use `FormRow`, and the control column hangs its `Select` and its
+  leading borderless action like a form field: role fills share the `Base
+  URL` fills' edges, and the select text and `Refresh models` start on the
+  `Base URL` label.
+
 Native `dock-files`, `dock-file` and `dock-schedules` show the tab label,
 chevrons or field glyphs and panel text on one line; the chat header's
 `scope` and `+25 −9` meet the prose and bubble edges. The full-width file

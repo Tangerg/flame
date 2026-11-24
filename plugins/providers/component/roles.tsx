@@ -1,11 +1,18 @@
-import { useId, useSyncExternalStore } from "react";
+import { useId, useSyncExternalStore, type CSSProperties } from "react";
 import {
   failureText,
   type ComponentContext,
   type Translate,
 } from "@flame/component-sdk";
 import type { Model } from "@flame/runtime-client/wire";
-import { Button, ListRow, Metadata, RecordBody, Select } from "@flame/ui";
+import {
+  Button,
+  FormRow,
+  ListRow,
+  Metadata,
+  RecordBody,
+  Select,
+} from "@flame/ui";
 import type { ProviderSettings, Read } from "./settings";
 import { CommandFeedback } from "./feedback";
 const column = {
@@ -13,6 +20,14 @@ const column = {
   minWidth: 0,
   gap: "var(--layout-field-gap)",
 } as const;
+// The control sits in a FormRow's second column like the provider forms above it: the
+// Select's fill hangs by the row bleed and a leading borderless action keeps the edge,
+// so both start on that column's label line.
+const control = {
+  ...column,
+  "--field-hang": "calc(var(--spacing) * 3)",
+  "--ghost-hang": 1,
+} as CSSProperties;
 type Choice = { provider: string; model: string; label: string };
 const choiceKey = (value: { provider?: string; model?: string }) =>
   JSON.stringify([value.provider ?? "", value.model ?? ""]);
@@ -134,87 +149,80 @@ export function RoleSection({
     !configured.some((provider) => provider.id === saved.provider);
   return (
     <ListRow aria-busy={command?.phase === "running" || undefined}>
-      <div
-        data-focus-unit=""
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,17.5rem),1fr))",
-          gap: "var(--layout-content-gap)",
-          alignItems: "start",
-          minWidth: 0,
-        }}
-      >
-        <div style={column}>
-          <strong>{title}</strong>
-          <RecordBody>{t(labels.description)}</RecordBody>
-          {(read.phase === "failed" || state.providers.phase === "failed") &&
-            known && <Metadata>{t("providers.role.stale")}</Metadata>}
-          {unavailable && <Metadata>{t("providers.notConfigured")}</Metadata>}
-          {kind === "embedding" && known && choices.length === 0 && (
-            <Metadata>
-              {t(
-                embeddingProviders.length
-                  ? "providers.embedding.noPreset"
-                  : "providers.embedding.none",
-              )}
-            </Metadata>
-          )}
-        </div>
-        <div style={column}>
-          {!known ? (
-            unknownFailure ? (
-              <>
-                <p role="alert">{t("providers.role.loadError")}</p>
-                <Button
-                  aria-label={`${t("retry")} · ${title}`}
-                  onClick={() => {
-                    settings.refreshRead(context, kind);
-                    settings.refreshRead(context, "providers");
-                  }}
-                >
-                  {t("retry")}
+      <div data-focus-unit="">
+        <FormRow>
+          <div style={column}>
+            <strong>{title}</strong>
+            <RecordBody>{t(labels.description)}</RecordBody>
+            {(read.phase === "failed" || state.providers.phase === "failed") &&
+              known && <Metadata>{t("providers.role.stale")}</Metadata>}
+            {unavailable && <Metadata>{t("providers.notConfigured")}</Metadata>}
+            {kind === "embedding" && known && choices.length === 0 && (
+              <Metadata>
+                {t(
+                  embeddingProviders.length
+                    ? "providers.embedding.noPreset"
+                    : "providers.embedding.none",
+                )}
+              </Metadata>
+            )}
+          </div>
+          <div style={control}>
+            {!known ? (
+              unknownFailure ? (
+                <>
+                  <p role="alert">{t("providers.role.loadError")}</p>
+                  <Button
+                    aria-label={`${t("retry")} · ${title}`}
+                    onClick={() => {
+                      settings.refreshRead(context, kind);
+                      settings.refreshRead(context, "providers");
+                    }}
+                  >
+                    {t("retry")}
+                  </Button>
+                </>
+              ) : (
+                <Button variant="outline" disabled aria-label={title}>
+                  {t("reading")}
                 </Button>
-              </>
+              )
             ) : (
-              <Button variant="outline" disabled aria-label={title}>
-                {t("reading")}
-              </Button>
-            )
-          ) : (
-            <>
-              <span id={descriptionId} hidden>
-                {options.find((option) => option.value === value)?.label}
-              </span>
-              <Select
-                label={title}
-                aria-describedby={descriptionId}
-                value={value}
-                options={options}
-                disabled={Boolean(command)}
-                focusableWhenDisabled
-                onValueChange={pick}
+              <>
+                <Select
+                  label={title}
+                  aria-describedby={descriptionId}
+                  value={value}
+                  options={options}
+                  disabled={Boolean(command)}
+                  focusableWhenDisabled
+                  onValueChange={pick}
+                />
+                <span id={descriptionId} hidden>
+                  {options.find((option) => option.value === value)?.label}
+                </span>
+                {command?.phase === "running" && (
+                  <p role="status">{t("providers.saving")}</p>
+                )}
+              </>
+            )}
+            {kind === "utility" && (
+              <ModelCatalogStatus
+                read={state.models}
+                t={t}
+                refresh={() => settings.refreshRead(context, "models")}
               />
-              {command?.phase === "running" && (
-                <p role="status">{t("providers.saving")}</p>
-              )}
-            </>
-          )}
-          {kind === "utility" && (
-            <ModelCatalogStatus
-              read={state.models}
+            )}
+            <CommandFeedback
+              context={context}
+              settings={settings}
+              resource={kind}
+              command={command}
+              feedback={feedback}
               t={t}
-              refresh={() => settings.refreshRead(context, "models")}
             />
-          )}
-          <CommandFeedback
-            context={context}
-            settings={settings}
-            resource={kind}
-            command={command}
-            feedback={feedback}
-            t={t}
-          />
-        </div>
+          </div>
+        </FormRow>
       </div>
     </ListRow>
   );
