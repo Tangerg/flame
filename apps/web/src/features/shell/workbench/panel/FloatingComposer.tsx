@@ -85,6 +85,12 @@ function ComposerStack({ children }: { children: ReactNode }) {
   );
 }
 
+// The editing scrollport sits inside the overlay; only it is where the user writes.
+export function composerFocusRegion(target: Element): "editing" | "overlay" | null {
+  if (target.closest('[data-slot="composer-scrollport"]')) return "editing";
+  return target.closest('[data-slot="composer-overlay"]') ? "overlay" : null;
+}
+
 export function FloatingComposer({
   overlayRef,
   jumpRef,

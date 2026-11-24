@@ -49,6 +49,22 @@ const styles = stylex.create({
   cancel: { alignSelf: "flex-start", marginBlockStart: space.s2 },
 });
 
+// The Run a link inside `element` opens, with the control that opens it.
+export function closestDelegatedRun(
+  element: Element,
+): { runId: string; opener: HTMLButtonElement | null } | undefined {
+  const row = element.closest<HTMLElement>('[data-slot="delegated-run-link"]');
+  const runId = row?.dataset.runId;
+  return row && runId ? { runId, opener: row.querySelector("button") } : undefined;
+}
+
+export function delegatedRunOpener(container: ParentNode, runId: string): HTMLButtonElement | null {
+  const row = [...container.querySelectorAll<HTMLElement>('[data-slot="delegated-run-link"]')].find(
+    (node) => node.dataset.runId === runId && !node.closest("[hidden], [inert]"),
+  );
+  return row?.querySelector("button") ?? null;
+}
+
 export function DelegatedRunLink({
   run,
   ordinal,

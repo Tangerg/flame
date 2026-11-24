@@ -1,11 +1,10 @@
 import type { ClipboardEvent } from "react";
 import type { FileDiffMetadata } from "@pierre/diffs";
+import { codeLines, isDeletionRow, rowNumber } from "@/lib/highlight/pierreMarkup";
 
 function sourceLine(file: FileDiffMetadata, line: Element): string {
-  const number = Number(line.getAttribute("data-line"));
-  const deleted =
-    line.closest("code[data-deletions]") !== null ||
-    line.getAttribute("data-line-type")?.endsWith("deletion") === true;
+  const number = rowNumber(line);
+  const deleted = isDeletionRow(line);
   const start = deleted ? "deletionStart" : "additionStart";
   const count = deleted ? "deletionCount" : "additionCount";
   const index = deleted ? "deletionLineIndex" : "additionLineIndex";
@@ -42,7 +41,7 @@ export function copyDiffSelection(
   if (!range) return;
   const document = root.ownerDocument;
   const parts: string[] = [];
-  for (const line of root.querySelectorAll("[data-code] [data-line]")) {
+  for (const line of codeLines(root)) {
     if (!range.intersectsNode(line)) continue;
     const slice = document.createRange();
     slice.selectNodeContents(line);

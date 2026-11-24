@@ -39,12 +39,19 @@ import {
   delegatedRunSummary,
   type DelegatedRunSummary,
 } from "@/features/chat/message/application/delegatedRunSummary";
-import { DelegatedRunLink } from "@/features/chat/message/ui/DelegatedRunLink";
+import {
+  closestDelegatedRun,
+  DelegatedRunLink,
+  delegatedRunOpener,
+} from "@/features/chat/message/ui/DelegatedRunLink";
 import { type BlockCtx } from "@/features/chat/message/ui/BlockRenderer";
 import { MessageTranscript } from "@/features/chat/message/ui/MessageTranscript";
 import { readingColumn as rc } from "./readingColumn";
 import { UnresolvedRunEffects } from "@/features/chat/message/ui/UnresolvedRunEffects";
-import { SubagentStopButton } from "@/features/chat/message/ui/SubagentStopButton";
+import {
+  isSubagentStopButton,
+  SubagentStopButton,
+} from "@/features/chat/message/ui/SubagentStopButton";
 import { SubagentReadingSurface } from "./SubagentReadingSurface";
 const styles = stylex.create({
   header: {
@@ -112,13 +119,6 @@ const styles = stylex.create({
   },
 });
 
-function subagentOpener(container: HTMLElement, runId: string) {
-  const row = [...container.querySelectorAll<HTMLElement>('[data-slot="delegated-run-link"]')].find(
-    (node) => node.dataset.runId === runId && !node.closest("[hidden], [inert]"),
-  );
-  return row?.querySelector<HTMLButtonElement>("button") ?? null;
-}
-
 interface SubagentPanelLayoutProps {
   panel: RefObject<HTMLDivElement | null>;
   back: RefObject<HTMLButtonElement | null>;
@@ -160,16 +160,14 @@ class SubagentPanelLayout extends Component<
       source.closest("[hidden], [inert]")
     )
       return null;
-    const row = source.closest<HTMLElement>('[data-slot="delegated-run-link"]');
-    if (row?.dataset.runId)
+    const run = closestDelegatedRun(source);
+    if (run)
       return {
         source,
         container: source.closest<HTMLElement>('[data-slot="subagent-transcript"]') ?? panel,
-        runId: row.dataset.runId,
+        runId: run.runId,
       };
-    return source.matches("[data-subagent-stop]")
-      ? { source, container: panel, runId: null }
-      : null;
+    return isSubagentStopButton(source) ? { source, container: panel, runId: null } : null;
   }
 
   override componentDidUpdate(
@@ -188,7 +186,7 @@ class SubagentPanelLayout extends Component<
       return;
     if (retired.runId) {
       const container = retired.container.isConnected ? retired.container : panel;
-      (subagentOpener(container, retired.runId) ?? panel).focus();
+      (delegatedRunOpener(container, retired.runId) ?? panel).focus();
     } else this.props.back.current?.focus({ preventScroll: true });
   }
 
@@ -238,21 +236,17 @@ export function SubagentsPanel() {
     const panel = panelRef.current;
     if (!panel) return;
     const active = panel.ownerDocument.activeElement;
-    const source = active?.closest<HTMLElement>('[data-slot="delegated-run-link"]');
+    const source = active ? closestDelegatedRun(active) : undefined;
     if (
       active !== panel.ownerDocument.body &&
       !panel.contains(active) &&
-      !(
-        selectedId !== null &&
-        source?.dataset.runId === selectedId &&
-        source.querySelector("button") === active
-      )
+      !(selectedId !== null && source?.runId === selectedId && source.opener === active)
     )
       return;
     if (selectedId) {
       backRef.current?.focus({ preventScroll: true });
     } else if (fromRun) {
-      (subagentOpener(panel, fromRun) ?? panel).focus();
+      (delegatedRunOpener(panel, fromRun) ?? panel).focus();
     }
   }, [selectedId, inspection, visible]);
   const summary = selected

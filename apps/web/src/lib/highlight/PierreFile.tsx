@@ -11,6 +11,14 @@ import {
   selectAllInReader,
   type CodeSourceProps,
 } from "@flame/ui";
+import {
+  codeLines,
+  columnContent,
+  fileCodeColumn,
+  gutterNumberLabels,
+  gutterRowNumber,
+  rowNumber,
+} from "@/lib/highlight/pierreMarkup";
 
 registerCustomCSSVariableTheme("flame-code", codeSyntaxColors);
 export const CODE_RENDERING = { preferredHighlighter: "shiki-js" as const, theme: "flame-code" };
@@ -35,10 +43,8 @@ interface ServedRange {
 function numberServedLines(code: HTMLElement, { startLine, endLine }: ServedRange): void {
   if (endLine === undefined) return;
   code.style.setProperty("--diffs-min-number-column-width", `${String(endLine).length}ch`);
-  for (const label of code.querySelectorAll(
-    "[data-gutter] [data-column-number] > [data-line-number-content]",
-  )) {
-    const number = Number(label.parentElement?.getAttribute("data-column-number")) + startLine - 1;
+  for (const label of gutterNumberLabels(code)) {
+    const number = gutterRowNumber(label) + startLine - 1;
     const text = number <= endLine ? String(number) : "";
     if (label.textContent !== text) label.textContent = text;
   }
@@ -103,8 +109,8 @@ function selectedSourceText(
   // A served range can end on an empty authored line.
   if (endLine !== undefined && (source === "" || source.endsWith("\n"))) sourceLines.push("");
   const parts: string[] = [];
-  for (const line of shadow.querySelectorAll<HTMLElement>("[data-code] [data-line]")) {
-    const index = Number(line.dataset.line) - 1;
+  for (const line of codeLines(shadow)) {
+    const index = rowNumber(line) - 1;
     if ((endLine !== undefined && startLine + index > endLine) || !range.intersectsNode(line))
       continue;
     const slice = shadow.ownerDocument.createRange();
@@ -183,10 +189,10 @@ export function PierreFile({
         const shadow = node.shadowRoot;
         if (!shadow) throw new Error("code renderer omitted its source root");
         root.current = shadow;
-        const code = shadow.querySelector<HTMLElement>("[data-file] > [data-code]");
+        const code = fileCodeColumn(shadow);
         if (code) numberServedLines(code, served);
-        for (const line of shadow.querySelectorAll<HTMLElement>("[data-code] [data-line]")) {
-          const index = Number(line.dataset.line) - 1;
+        for (const line of codeLines(shadow)) {
+          const index = rowNumber(line) - 1;
           const number = startLine + index;
           const isServed = endLine === undefined || number <= endLine;
           if (isServed) {
@@ -207,8 +213,7 @@ export function PierreFile({
           }
         }
         if (selectionContentRef) {
-          selectionContentRef.current =
-            code && endLine !== undefined ? code.querySelector(":scope > [data-content]") : code;
+          selectionContentRef.current = code && endLine !== undefined ? columnContent(code) : code;
         }
         if (sourceScrollRef) sourceScrollRef.current = code;
       },

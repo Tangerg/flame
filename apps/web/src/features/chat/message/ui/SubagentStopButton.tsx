@@ -5,6 +5,10 @@ import { useT } from "@/lib/i18n/index";
 import { useRuntimeCommandsAvailable } from "@/features/connection/public/serviceStatus";
 import { type AgentRunView } from "@/features/agent/public/sessionView";
 import { iconGlyph } from "@/ui/icons/index";
+export function isSubagentStopButton(element: Element): boolean {
+  return element.matches("[data-subagent-stop]");
+}
+
 export function SubagentStopButton({
   run,
   summaryId,

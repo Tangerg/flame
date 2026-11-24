@@ -57,7 +57,8 @@ import { type ContextDockDestinationGroup } from "@/features/workspace/public/co
 import { useWorkspaceViews } from "@/features/workspace/public/views";
 import { useDockLayout } from "@/features/workspace/public/sidebarDrawer";
 import { Slot } from "@/extensions/host/Slot";
-import { WORKSPACE_DOCK_CATALOG } from "@/features/workspace/public/navigation";
+import { dockViewMarker, WORKSPACE_DOCK_CATALOG } from "@/features/workspace/public/navigation";
+import { composerFocusRegion } from "@/features/shell/workbench/panel/FloatingComposer";
 import { ChatStream } from "@/features/shell/workbench/panel/ChatStream";
 import { TranscriptReaderProvider } from "@/ui/agent/transcript-reader";
 import { RuntimeConnectionNotice } from "@/features/shell/workbench/panel/RuntimeConnectionNotice";
@@ -138,7 +139,7 @@ function WorkspaceViewPicker({
           size="sm"
           quiet
           aria-label={t("dock.action.browse")}
-          data-dock-view-id={activeViewId}
+          {...dockViewMarker(activeViewId)}
           className={stylex.props(sh.toEnd).className}
         />
       }
@@ -335,10 +336,13 @@ function returnActionLabel(
 function applyComposerReadingLimit({ currentTarget, target }: FocusEvent<HTMLElement>) {
   // Portaled menus keep their opener's reading context through native focus handoffs.
   if (!currentTarget.contains(target)) return;
-  const editing = target.closest('[data-slot="composer-scrollport"]');
+  const region = composerFocusRegion(target);
   // Jump navigates the current frame without changing its editing or reading budget.
-  if (!editing && target.closest('[data-slot="composer-overlay"]')) return;
-  currentTarget.style.setProperty("--composer-reading-limit", editing ? "100%" : "calc(100% / 3)");
+  if (region === "overlay") return;
+  currentTarget.style.setProperty(
+    "--composer-reading-limit",
+    region === "editing" ? "100%" : "calc(100% / 3)",
+  );
 }
 
 const CATALOG_VIEW = { title: "dock.catalog.title", dock: "workspace" } as const;
@@ -390,7 +394,7 @@ function WorkspaceViewStack({
           aria-label={main ? t(CATALOG_VIEW.title) : undefined}
           tabIndex={main ? -1 : undefined}
           data-focus-inset=""
-          data-dock-view-id={WORKSPACE_DOCK_CATALOG}
+          {...dockViewMarker(WORKSPACE_DOCK_CATALOG)}
           {...stylex.props(sh.overlay)}
         >
           <DockCatalogPage groups={catalog} openViewIds={openViewIds} titleHidden={main} />
@@ -404,7 +408,7 @@ function WorkspaceViewStack({
             key={viewId}
             inert={!visible}
             aria-hidden={!visible || undefined}
-            data-dock-view-id={addressable ? viewId : undefined}
+            {...dockViewMarker(addressable ? viewId : undefined)}
             {...stylex.props(sh.overlay, !visible && paneStyles.inactiveView)}
           >
             <ContentVisibility visible={visible} fallbackFocus={presentationRef}>

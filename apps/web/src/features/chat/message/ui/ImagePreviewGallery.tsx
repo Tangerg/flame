@@ -20,6 +20,7 @@ import {
   LightboxDialog,
   ImageViewport,
   type ImageSource,
+  isImageCameraTarget,
 } from "@flame/ui";
 import { useImageSave } from "@/features/chat/public/imageSave";
 import { MESSAGE_CONTENT_SELECTOR } from "@/features/chat/message/ui/messageContent";
@@ -200,12 +201,7 @@ export function ImagePreviewGallery({ item, trigger, renderEntry, finalFocus }: 
     );
   };
   const onKeyDown: KeyboardEventHandler<HTMLDivElement> = (event) => {
-    if (
-      !gallery ||
-      event.defaultPrevented ||
-      (event.target instanceof Element && event.target.closest('[data-slot="image-camera"]'))
-    )
-      return;
+    if (!gallery || event.defaultPrevented || isImageCameraTarget(event.target)) return;
     if (event.key === "ArrowLeft" && gallery.index > 0) {
       event.preventDefault();
       setGalleryIndex(gallery.index - 1);

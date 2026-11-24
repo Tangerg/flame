@@ -2,6 +2,7 @@ import { DIFFS_TAG_NAME } from "@pierre/diffs";
 import { quotedLineOf, quotedReaderOf } from "@flame/ui";
 import type { ComposerAccess } from "./composer";
 import { quoteText } from "../quote-selection/quoteText";
+import { fileContentRows } from "@/lib/highlight/pierreMarkup";
 
 export function captureComposerSelectionQuote(
   composer: ComposerAccess,
@@ -50,17 +51,17 @@ function wholeSourceLineRange(range: StaticRange): [number, number] | null {
     content !== endContainer ||
     startOffset !== 0 ||
     endOffset !== content.childNodes.length ||
-    !(content instanceof HTMLElement) ||
-    !content.matches("[data-file] > [data-code] > [data-content]")
+    !(content instanceof HTMLElement)
   )
     return null;
+  const rows = fileContentRows(content);
   const root = content.getRootNode();
-  if (!(root instanceof ShadowRoot) || root.host.localName !== DIFFS_TAG_NAME) return null;
+  if (!rows || !(root instanceof ShadowRoot) || root.host.localName !== DIFFS_TAG_NAME) return null;
 
   // Select All addresses the source column; its marked rows carry the served bounds.
   let first: number | null = null;
   let last: number | null = null;
-  for (const row of content.querySelectorAll(":scope > [data-line]")) {
+  for (const row of rows) {
     const line = quotedLineOf(row);
     if (line === null) continue;
     first ??= line;

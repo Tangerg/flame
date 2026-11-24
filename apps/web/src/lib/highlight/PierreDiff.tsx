@@ -14,10 +14,12 @@ import {
   selectAllInReader,
   useContentVisible,
   type DiffSourceProps,
+  closestPanelBody,
 } from "@flame/ui";
 import { useScheme } from "@/lib/appearance";
 import { copyDiffSelection, selectedDiffRange } from "./diffSelection";
 import { CODE_RENDERING } from "./PierreFile";
+import { diffColumns, indexedLine, indexedLines, rowIndexPair } from "@/lib/highlight/pierreMarkup";
 
 const styles = stylex.create({
   reader: {
@@ -59,15 +61,15 @@ function firstVisibleLine(
   const top = viewport.getBoundingClientRect().top + viewport.clientTop;
   const bottom = top + viewport.clientHeight;
   let first: DiffLineAnchor | null = null;
-  for (const column of root.querySelectorAll("[data-code]")) {
-    for (const line of column.querySelectorAll("[data-line][data-line-index]")) {
+  for (const column of diffColumns(root)) {
+    for (const line of indexedLines(column)) {
       const bounds = line.getBoundingClientRect();
       if (bounds.top >= bottom) break;
       if (Math.min(bounds.bottom, bottom) - Math.max(bounds.top, top) < 1) continue;
 
       // Pierre stamps the same unified,split index pair in both layouts. Paired
       // cells share the second index but have distinct unified indices.
-      const index = line.getAttribute("data-line-index")!;
+      const index = rowIndexPair(line);
       const offset = bounds.top - top;
       const paired = first && index.split(",")[1] === first.index.split(",")[1];
       if (
@@ -114,7 +116,7 @@ class DiffPresentation extends Component<DiffPresentationProps, unknown, DiffLin
       current?.file !== file
     )
       return null;
-    const viewport = current.node.host.closest<HTMLElement>('[data-slot="panel-body"]');
+    const viewport = closestPanelBody(current.node.host);
     return viewport?.isConnected && viewport.clientHeight > 0 && viewport.scrollTop > 0
       ? firstVisibleLine(current.node, viewport, this.preferredIndex)
       : null;
@@ -132,9 +134,7 @@ class DiffPresentation extends Component<DiffPresentationProps, unknown, DiffLin
     if (!anchor || current?.file !== file || !anchor.viewport.contains(current.node.host)) return;
 
     const { viewport, index, offset } = anchor;
-    const line = current.node.querySelector(
-      `[data-code] [data-line][data-line-index="${CSS.escape(index)}"]`,
-    );
+    const line = indexedLine(current.node, index);
     const bounds = line?.getBoundingClientRect();
     if (!bounds?.height) return;
     const top = viewport.getBoundingClientRect().top + viewport.clientTop;

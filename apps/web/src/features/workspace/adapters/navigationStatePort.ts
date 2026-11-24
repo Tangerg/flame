@@ -9,6 +9,15 @@ import {
   type WorkspaceNavigationPort,
   type WorkspaceChatPresentation,
 } from "@/features/workspace/application/navigationState";
+// The Dock view an element renders in, so an inspection opened from it returns there.
+export function dockViewMarker(viewId: string | undefined): { "data-dock-view-id"?: string } {
+  return viewId === undefined ? {} : { "data-dock-view-id": viewId };
+}
+
+function markedDockViewId(element: HTMLElement): string | null {
+  return element.closest<HTMLElement>("[data-dock-view-id]")?.dataset.dockViewId ?? null;
+}
+
 export function createWorkspaceNavigation(
   navigation: Navigator,
   dockStore: ContextDockStore,
@@ -35,8 +44,7 @@ export function createWorkspaceNavigation(
     if (!origin) return;
     const location = navigation.get();
     const state = useContextDockStore.getState();
-    const returnDockId =
-      origin.closest<HTMLElement>("[data-dock-view-id]")?.dataset.dockViewId ?? null;
+    const returnDockId = markedDockViewId(origin);
     const sourceViewId = location.view ?? (returnDockId === location.dock ? returnDockId : null);
     useContextDockStore.setState({
       inspection: {

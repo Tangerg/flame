@@ -1,3 +1,4 @@
+import { isMermaidDiagramText } from "@/features/chat/public/message/rendering";
 const HIGHLIGHTS_AVAILABLE = typeof CSS !== "undefined" && "highlights" in CSS;
 const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
 const diagramMarkers = new WeakSet<Node>();
@@ -59,8 +60,8 @@ function diagramMatchOutlines(range: Range, label: SVGTextElement, toDiagram: DO
 function paintDiagramMatch(range: Range): SVGPathElement | null {
   const label = range.startContainer.parentElement?.closest("text");
   if (
-    !(label instanceof SVGTextElement) ||
-    !label.closest('[data-slot="mermaid-stage"]') ||
+    !label ||
+    !isMermaidDiagramText(label) ||
     !label.contains(range.endContainer) ||
     !(label.parentElement instanceof SVGGraphicsElement)
   ) {

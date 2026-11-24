@@ -57,6 +57,7 @@ export {
   PanelFooter,
   ListRow,
   Metadata,
+  closestPanelBody,
 } from "./panel";
 export {
   FormRow,
@@ -71,6 +72,7 @@ export { ModalDialog } from "./modal-dialog";
 export { LightboxDialog, type LightboxDialogProps } from "./lightbox-dialog";
 export {
   ImageViewport,
+  isImageCameraTarget,
   type ImageSource,
   type ImageViewportLabels,
 } from "./image-viewport";
@@ -100,6 +102,7 @@ export {
   DiffFilePath,
   DiffFileList,
   DiffFileHeader,
+  diffFileRow,
 } from "./diff-files";
 export {
   CodeBlock,

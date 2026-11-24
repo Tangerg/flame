@@ -75,6 +75,13 @@ interface Props {
 
 type MermaidRenderResult = { status: "error" } | { status: "rendered"; svg: string };
 
+// Diagram text is SVG, positioned by coordinates rather than text flow.
+export function isMermaidDiagramText(element: Element): element is SVGTextElement {
+  return (
+    element instanceof SVGTextElement && element.closest('[data-slot="mermaid-stage"]') !== null
+  );
+}
+
 export function MermaidBlock({ code }: Props) {
   const t = useT();
   const visible = useContentVisible();

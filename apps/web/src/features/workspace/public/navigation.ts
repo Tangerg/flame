@@ -32,3 +32,4 @@ export {
   resolveInspectionReturnDock,
 } from "@/features/workspace/application/navigation";
 export type { WorkspaceInspection } from "@/features/workspace/application/navigationState";
+export { dockViewMarker } from "@/features/workspace/adapters/navigationStatePort";

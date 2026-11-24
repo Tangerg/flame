@@ -99,6 +99,14 @@ function Controls({ labels }: { labels: ImageViewportLabels }) {
     </div>
   );
 }
+// Keys inside the camera pan and zoom the image instead of moving between images.
+export function isImageCameraTarget(target: EventTarget | null): boolean {
+  return (
+    target instanceof Element &&
+    target.closest('[data-slot="image-camera"]') !== null
+  );
+}
+
 export function ImageViewport({
   image,
   label,

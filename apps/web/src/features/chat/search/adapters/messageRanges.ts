@@ -1,5 +1,8 @@
 import { readingRow, type ReadingListHandle } from "@flame/ui";
-import { MESSAGE_CONTENT_SELECTOR } from "@/features/chat/public/message/rendering";
+import {
+  isMermaidDiagramText,
+  MESSAGE_CONTENT_SELECTOR,
+} from "@/features/chat/public/message/rendering";
 import { isChatSearchHighlightMarker } from "./searchHighlights";
 
 export interface MessageMatch {
@@ -61,10 +64,7 @@ function collectTextFlows(messageRoot: HTMLElement): FlowText[][] {
       return;
     }
 
-    const line =
-      element instanceof SVGTextElement && element.closest('[data-slot="mermaid-stage"]')
-        ? { y: element.getAttribute("y") }
-        : diagramLine;
+    const line = isMermaidDiagramText(element) ? { y: element.getAttribute("y") } : diagramLine;
     if (line && element.matches("tspan[x][y]")) {
       const y = element.getAttribute("y");
       // Pele can position several runs separately at the same y.

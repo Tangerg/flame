@@ -101,6 +101,15 @@ function FileState({ file }: { file: DiffFileSummary }) {
   );
 }
 
+export function diffFileRow(
+  list: ParentNode,
+  path: string,
+): HTMLButtonElement | undefined {
+  return Array.from(
+    list.querySelectorAll<HTMLButtonElement>("[data-diff-file]"),
+  ).find((row) => row.dataset.diffFile === path);
+}
+
 export function DiffFileList({
   files,
   label,

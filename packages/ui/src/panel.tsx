@@ -241,6 +241,10 @@ export type PanelDensity = "compact" | "page";
 
 const PanelHostContext = createContext<PanelDensity | null>(null);
 
+export function closestPanelBody(element: Element): HTMLElement | null {
+  return element.closest<HTMLElement>('[data-slot="panel-body"]');
+}
+
 export function usePanelHostDensity(): PanelDensity | null {
   return useContext(PanelHostContext);
 }

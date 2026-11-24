@@ -51,6 +51,7 @@ import {
   Toolbar,
   useCopy,
   type DiffFileSummary,
+  diffFileRow,
 } from "@flame/ui";
 import { en } from "./locales/en";
 import { zh } from "./locales/zh";
@@ -106,9 +107,8 @@ function restoreFileOverview(
   fallback: HTMLElement | null,
   selectedPath: string | null,
 ) {
-  const row = Array.from(
-    list?.querySelectorAll<HTMLButtonElement>("[data-diff-file]") ?? [],
-  ).find((item) => item.dataset.diffFile === selectedPath);
+  const row =
+    list && selectedPath !== null ? diffFileRow(list, selectedPath) : undefined;
   (row ?? fallback)?.focus();
 }
 
