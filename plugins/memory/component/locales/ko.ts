@@ -3,7 +3,7 @@ export const ko: Record<string, string> = {
   "scope.user": "사용자 메모리",
   "scope.project": "프로젝트 메모리",
   "scope.none":
-    "작업 공간이 있는 Session을 선택하거나 사용자 메모리를 선택하세요.",
+    "작업 공간이 있는 세션을 선택하거나 사용자 메모리를 선택하세요.",
   "nav.label": "메모리 탐색",
   refresh: "새로 고침",
   add: "메모리 추가",

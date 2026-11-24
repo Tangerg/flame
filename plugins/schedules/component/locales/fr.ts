@@ -59,7 +59,7 @@ export const fr: Record<string, string> = {
   cancel: "Annuler",
   "delete.title": "Supprimer {{name}} ?",
   "delete.description":
-    "Les déclenchements futurs s'arrêteront. Le travail capturé et les Run acceptées sont conservés.",
+    "Les déclenchements futurs s'arrêteront. Le travail capturé et les exécutions acceptées sont conservés.",
   "delete.close": "Fermer la confirmation de suppression",
   "delete.confirm": "Confirmer la suppression",
   "catalog.title": "Planifications enregistrées",
@@ -94,7 +94,7 @@ export const fr: Record<string, string> = {
   "pages.next": "Suivant",
   "pages.current": "Page {{page}}",
   "notice.accepted":
-    "Le Runtime a accepté la Run {{run}} dans la Session {{session}}.",
+    "Le Runtime a accepté l'exécution {{run}} dans la session {{session}}.",
   "notice.openSession": "Ouvrir la conversation",
   "notice.completed": "{{label}} terminé.",
   "notice.revision":

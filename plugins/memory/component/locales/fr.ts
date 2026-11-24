@@ -3,7 +3,7 @@ export const fr: Record<string, string> = {
   "scope.user": "Mémoire utilisateur",
   "scope.project": "Mémoire de projet",
   "scope.none":
-    "Choisissez une Session avec un espace de travail, ou sélectionnez la mémoire utilisateur.",
+    "Choisissez une session avec un espace de travail, ou sélectionnez la mémoire utilisateur.",
   "nav.label": "Navigation de la mémoire",
   refresh: "Actualiser",
   add: "Ajouter une mémoire",

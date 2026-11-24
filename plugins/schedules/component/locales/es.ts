@@ -60,7 +60,7 @@ export const es: Record<string, string> = {
   cancel: "Cancelar",
   "delete.title": "¿Eliminar {{name}}?",
   "delete.description":
-    "Las futuras ejecuciones se detendrán. El trabajo capturado y las Run aceptadas se conservan.",
+    "Las futuras ejecuciones se detendrán. El trabajo capturado y las ejecuciones aceptadas se conservan.",
   "delete.close": "Cerrar la confirmación de eliminación",
   "delete.confirm": "Confirmar eliminación",
   "catalog.title": "Programaciones guardadas",
@@ -94,7 +94,7 @@ export const es: Record<string, string> = {
   "pages.next": "Siguiente",
   "pages.current": "Página {{page}}",
   "notice.accepted":
-    "El Runtime aceptó la Run {{run}} en la Session {{session}}.",
+    "El Runtime aceptó la ejecución {{run}} en la sesión {{session}}.",
   "notice.openSession": "Abrir conversación",
   "notice.completed": "{{label}} completado.",
   "notice.revision":

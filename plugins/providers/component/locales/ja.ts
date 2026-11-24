@@ -31,7 +31,7 @@ export const ja: Record<string, string> = {
   "providers.models.refresh": "モデル一覧を更新",
   "providers.empty": "プロバイダーがありません",
   "providers.empty.sub":
-    "ランタイムはサポートされている LLM プロバイダーを報告していません。",
+    "Runtime はサポートされている LLM プロバイダーを報告していません。",
   "providers.apiKey.envPlaceholder":
     "環境変数のキーを使用中 — 入力すると上書きします",
   "providers.fromEnv": "環境変数から",

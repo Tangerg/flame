@@ -49,10 +49,10 @@ export const ko = {
   "reason.cancelled": "시작 취소됨",
   "operation.id": "작업 식별자",
   "operation.started": "시작 시간",
-  "context.reading": "현재 런타임 지침과 도구 읽는 중…",
-  "context.instructions": "원래 런타임 지침",
+  "context.reading": "현재 Runtime 지침과 도구 읽는 중…",
+  "context.instructions": "원래 Runtime 지침",
   "context.tools": "캡처된 도구 정의",
-  "context.server": "런타임 서버 정보",
+  "context.server": "Runtime 서버 정보",
   "execute.title": "수동 실행",
   "execute.action": "컴퓨터 작업 실행",
   "execute.help":

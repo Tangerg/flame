@@ -59,7 +59,7 @@ export const de: Record<string, string> = {
   cancel: "Abbrechen",
   "delete.title": "{{name}} löschen?",
   "delete.description":
-    "Zukünftige Auslösungen werden gestoppt. Erfasste Arbeit und akzeptierte Runs bleiben erhalten.",
+    "Zukünftige Auslösungen werden gestoppt. Erfasste Arbeit und akzeptierte Läufe bleiben erhalten.",
   "delete.close": "Löschbestätigung schließen",
   "delete.confirm": "Löschen bestätigen",
   "catalog.title": "Gespeicherte Zeitpläne",
@@ -94,7 +94,7 @@ export const de: Record<string, string> = {
   "pages.next": "Weiter",
   "pages.current": "Seite {{page}}",
   "notice.accepted":
-    "Runtime hat Run {{run}} in Session {{session}} akzeptiert.",
+    "Die Runtime hat den Lauf {{run}} in der Sitzung {{session}} akzeptiert.",
   "notice.openSession": "Unterhaltung öffnen",
   "notice.completed": "{{label}} abgeschlossen.",
   "notice.revision":

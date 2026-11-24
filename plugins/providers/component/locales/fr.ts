@@ -69,7 +69,7 @@ export const fr: Record<string, string> = {
   "rpcError.invalid_credentials":
     "Le fournisseur a rejeté la clé API — vérifie-la dans les réglages du fournisseur.",
   "rpcError.timeout":
-    "La requête au fournisseur de modèle a expiré — vérifie ta connexion et réessaie.",
+    "La requête au fournisseur de modèle a expiré — vérifiez votre connexion et réessayez.",
   title: "Fournisseurs",
   cancel: "Annuler",
   reading: "Chargement",

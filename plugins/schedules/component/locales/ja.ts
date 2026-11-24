@@ -59,7 +59,7 @@ export const ja: Record<string, string> = {
   cancel: "キャンセル",
   "delete.title": "{{name}} を削除しますか？",
   "delete.description":
-    "今後の実行は停止します。取得した作業と受け入れ済みの Run は保持されます。",
+    "今後の実行は停止します。取得した作業と受け入れ済みの実行は保持されます。",
   "delete.close": "削除確認を閉じる",
   "delete.confirm": "削除を確認",
   "catalog.title": "保存済みのスケジュール",
@@ -93,7 +93,7 @@ export const ja: Record<string, string> = {
   "pages.next": "次へ",
   "pages.current": "{{page}} ページ",
   "notice.accepted":
-    "Runtime は Session {{session}} の Run {{run}} を受け入れました。",
+    "Runtime はセッション {{session}} の実行 {{run}} を受け入れました。",
   "notice.openSession": "会話を開く",
   "notice.completed": "{{label}} が完了しました。",
   "notice.revision":

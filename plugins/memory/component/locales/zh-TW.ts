@@ -2,7 +2,7 @@ export const zhTW: Record<string, string> = {
   "panel.title": "Agent 記憶",
   "scope.user": "使用者記憶",
   "scope.project": "專案記憶",
-  "scope.none": "請選擇包含工作區的 Session，或選擇使用者記憶。",
+  "scope.none": "請選擇包含工作區的工作階段，或選擇使用者記憶。",
   "nav.label": "記憶導覽",
   refresh: "重新整理",
   add: "新增記憶",

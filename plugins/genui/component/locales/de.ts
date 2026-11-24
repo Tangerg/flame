@@ -5,11 +5,11 @@ export const de: Record<string, string> = {
   "interaction.failed": "Der Vorgang ist fehlgeschlagen.",
   "interaction.complete": "Aktion angenommen.",
   "interaction.unknown":
-    "Die ursprüngliche Aktion ist nicht bestätigt. Stellen Sie sie vor erneutem Senden wieder her.",
+    "Die ursprüngliche Aktion ist nicht bestätigt. Stelle sie vor erneutem Senden wieder her.",
   "interaction.recover": "Ursprüngliche Aktion wiederherstellen",
   "interaction.review": "Geschäftsbefehl prüfen",
   "interaction.reviewDescription":
-    "Diese Aktion ruft das unten angegebene installierte Plugin auf. Prüfen Sie Ziel und genaue Eingabedaten.",
+    "Diese Aktion ruft das unten angegebene installierte Plugin auf. Prüfe Ziel und genaue Eingabedaten.",
   "interaction.cancel": "Abbrechen",
   "interaction.confirm": "Befehl bestätigen",
   "interaction.installation": "Installiertes Plugin",

@@ -29,7 +29,7 @@ export const ko: Record<string, string> = {
   "providers.models.error": "모델을 불러올 수 없습니다.",
   "providers.models.refresh": "모델 목록 새로고침",
   "providers.empty": "공급자 없음",
-  "providers.empty.sub": "런타임이 지원되는 LLM 공급자를 보고하지 않습니다.",
+  "providers.empty.sub": "Runtime이 지원되는 LLM 공급자를 보고하지 않습니다.",
   "providers.apiKey.envPlaceholder":
     "환경 변수 키 사용 중 — 입력하면 덮어씁니다",
   "providers.fromEnv": "환경 변수에서",

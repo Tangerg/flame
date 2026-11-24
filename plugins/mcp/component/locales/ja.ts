@@ -64,7 +64,7 @@ export const ja: Record<string, string> = {
   "mcp.import.confirm": "インポート",
   "mcp.importing": "インポート中…",
   "mcp.import.ok_other": "{{count}} 個のサーバーをインポートしました",
-  "mcp.import.renamed": "ランタイムが受け付ける形式に改名しました: {{names}}",
+  "mcp.import.renamed": "Runtime が受け付ける形式に改名しました: {{names}}",
   "mcp.import.interrupted":
     "Runtime 接続が変更されたため中断しました。{{total}} 件中 {{count}} 件をインポートしました。",
   "mcp.import.partial": "{{total}} 件中 {{count}} 件をインポートしました。",

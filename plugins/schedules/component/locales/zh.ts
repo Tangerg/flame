@@ -55,7 +55,7 @@ export const zh: Record<string, string> = {
   "models.refreshing": "正在刷新模型选项…",
   cancel: "取消",
   "delete.title": "删除 {{name}}？",
-  "delete.description": "后续触发将停止。已捕获的工作和已接受的 Run 将保留。",
+  "delete.description": "后续触发将停止。已捕获的工作和已接受的运行将保留。",
   "delete.close": "关闭删除确认",
   "delete.confirm": "确认删除",
   "catalog.title": "已保存的定时任务",
@@ -88,7 +88,7 @@ export const zh: Record<string, string> = {
   "pages.previous": "上一页",
   "pages.next": "下一页",
   "pages.current": "第 {{page}} 页",
-  "notice.accepted": "Runtime 已接受 Session {{session}} 中的 Run {{run}}。",
+  "notice.accepted": "Runtime 已接受会话 {{session}} 中的运行 {{run}}。",
   "notice.openSession": "打开会话",
   "notice.completed": "{{label}} 已完成。",
   "notice.revision":

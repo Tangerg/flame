@@ -15,15 +15,15 @@ export const de: Record<string, string> = {
     "Die feste Markenfarbe bleibt in allen Darstellungsthemen gleich.",
   "color.name": "Flame Orange",
   copyFailed:
-    "Die Farbe konnte nicht kopiert werden. Wählen Sie den HEX-Wert zum Kopieren aus.",
+    "Die Farbe konnte nicht kopiert werden. Wähle den HEX-Wert zum Kopieren aus.",
   downloadPng: "PNG herunterladen",
   downloadFailed:
-    "Das Bild konnte nicht gespeichert werden. Versuchen Sie es erneut.",
+    "Das Bild konnte nicht gespeichert werden. Versuche es erneut.",
   copied: "Kopiert",
   copyHex: "HEX kopieren",
   "guidelines.title": "Verwendung der Identität",
   "guidelines.shape":
-    "Behalten Sie Proportionen, Ausdruck und Flammenspitzen bei und lassen Sie Platz um das Logo.",
+    "Behalte Proportionen, Ausdruck und Flammenspitzen bei und lass Platz um das Logo.",
   "guidelines.color":
-    "Verwenden Sie für Flächen die genaue Markenfarbe und erhalten Sie Licht und Material der Figuren.",
+    "Verwende für Flächen die genaue Markenfarbe und erhalte Licht und Material der Figuren.",
 };

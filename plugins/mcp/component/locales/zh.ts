@@ -57,7 +57,7 @@ export const zh: Record<string, string> = {
   "mcp.import.confirm": "导入",
   "mcp.importing": "导入中…",
   "mcp.import.ok_other": "已导入 {{count}} 个服务器",
-  "mcp.import.renamed": "已重命名以符合运行时的要求：{{names}}",
+  "mcp.import.renamed": "已重命名以符合 Runtime 的要求：{{names}}",
   "mcp.import.interrupted":
     "Runtime 连接已更换，已导入 {{count}} / {{total}} 个服务器，其余导入已中断。",
   "mcp.import.partial": "已导入 {{count}} / {{total}} 个服务器。",

@@ -37,7 +37,7 @@ export const de: Record<string, string> = {
   "result.showMore": "{{rows}} weitere passende Zeilen anzeigen",
   "result.empty": "Es wurden keine Ergebnisse zurückgegeben.",
   "result.noMatches":
-    "Keine passenden Zeilen. Schließen Sie die Suche, um das gesamte Ergebnis zu sehen.",
+    "Keine passenden Zeilen. Schließe die Suche, um das gesamte Ergebnis zu sehen.",
   "changes.empty": "Es wurden keine Änderungen aufgezeichnet.",
   "changes.applied": "Angewendete Änderungen",
   "changes.from": "Von {{from}}",

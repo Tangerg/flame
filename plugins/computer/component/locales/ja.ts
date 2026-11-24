@@ -49,10 +49,10 @@ export const ja = {
   "reason.cancelled": "開始をキャンセル",
   "operation.id": "操作 ID",
   "operation.started": "開始日時",
-  "context.reading": "現在の実行環境の指示とツールを取得中…",
-  "context.instructions": "実行環境の元の指示",
+  "context.reading": "現在の Runtime の指示とツールを取得中…",
+  "context.instructions": "Runtime の元の指示",
   "context.tools": "取得したツール定義",
-  "context.server": "実行環境サーバー情報",
+  "context.server": "Runtime サーバー情報",
   "execute.title": "手動実行",
   "execute.action": "コンピューター操作を実行",
   "execute.help":

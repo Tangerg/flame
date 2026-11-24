@@ -9,10 +9,10 @@ export const es: Record<string, string> = {
   "interaction.recover": "Recuperar acción original",
   "interaction.review": "Revisar comando",
   "interaction.reviewDescription":
-    "Esta acción llama al complemento instalado que aparece abajo. Confirme el destino y los datos exactos.",
+    "Esta acción llama al plugin instalado que aparece abajo. Confirma el destino y los datos exactos.",
   "interaction.cancel": "Cancelar",
   "interaction.confirm": "Confirmar comando",
-  "interaction.installation": "Complemento instalado",
+  "interaction.installation": "Plugin instalado",
   "interaction.method": "Operación",
   "interaction.target": "Destino",
   "interaction.input": "Datos enviados",

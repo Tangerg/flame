@@ -17,10 +17,10 @@ export const de = {
   "host.scope":
     "Aktionen betreffen den angezeigten Runtime-Host, der von diesem Browser-Computer abweichen kann.",
   "host.setup":
-    "Wählen Sie die installierte ChatGPT-Anwendung in den Plugin-Einstellungen aus und öffnen Sie das Plugin erneut. Flame startet die CUA-Engine direkt.",
+    "Wähle die installierte ChatGPT-Anwendung in den Plugin-Einstellungen aus und öffne das Plugin erneut. Flame startet die CUA-Engine direkt.",
   "open.title": "Steuerungszeitraum genehmigen",
   "open.help":
-    "Während dieses Zeitraums können Modellwerkzeuge den Runtime-Host über Flames Computersteuerung steuern. Verwenden Sie eine Konsole außerhalb des gesteuerten Desktops, Kontos und Browsers, etwa ein separates Gerät oder ein isoliertes Ziel. Das Schließen dieser Ansicht beendet die Freigabe nicht.",
+    "Während dieses Zeitraums können Modellwerkzeuge den Runtime-Host über Flames Computersteuerung steuern. Verwende eine Konsole außerhalb des gesteuerten Desktops, Kontos und Browsers, etwa ein separates Gerät oder ein isoliertes Ziel. Das Schließen dieser Ansicht beendet die Freigabe nicht.",
   "open.lease": "Dauer in Sekunden",
   "open.invalid":
     "Ganze Zahl zwischen {{minimum}} und {{maximum}} Sekunden eingeben.",
@@ -52,10 +52,10 @@ export const de = {
   "operation.id": "Aktionskennung",
   "operation.started": "Gestartet",
   "context.reading":
-    "Aktuelle Laufzeit-Anweisungen und Werkzeuge werden gelesen…",
-  "context.instructions": "Ursprüngliche Laufzeit-Anweisungen",
+    "Aktuelle Runtime-Anweisungen und Werkzeuge werden gelesen…",
+  "context.instructions": "Ursprüngliche Runtime-Anweisungen",
   "context.tools": "Erfasste Werkzeugdefinitionen",
-  "context.server": "Laufzeit-Serverinformationen",
+  "context.server": "Runtime-Serverinformationen",
   "execute.title": "Manuelle Ausführung",
   "execute.action": "Computeraktion ausführen",
   "execute.help":

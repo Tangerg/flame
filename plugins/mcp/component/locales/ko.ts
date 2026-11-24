@@ -65,7 +65,7 @@ export const ko: Record<string, string> = {
   "mcp.importing": "가져오는 중…",
   "mcp.import.ok_other": "서버 {{count}}개를 가져왔습니다",
   "mcp.import.renamed":
-    "런타임이 허용하는 형식으로 이름을 변경했습니다: {{names}}",
+    "Runtime이 허용하는 형식으로 이름을 변경했습니다: {{names}}",
   "mcp.import.interrupted":
     "Runtime 연결이 변경되어 중단했습니다. 서버 {{total}}개 중 {{count}}개를 가져왔습니다.",
   "mcp.import.partial": "서버 {{total}}개 중 {{count}}개를 가져왔습니다.",

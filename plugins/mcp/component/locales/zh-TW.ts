@@ -61,7 +61,7 @@ export const zhTW: Record<string, string> = {
   "mcp.import.confirm": "匯入",
   "mcp.importing": "正在匯入…",
   "mcp.import.ok_other": "已匯入 {{count}} 個伺服器",
-  "mcp.import.renamed": "已重新命名以符合執行階段的要求：{{names}}",
+  "mcp.import.renamed": "已重新命名以符合 Runtime 的要求：{{names}}",
   "mcp.import.interrupted":
     "Runtime 連線已更換，已匯入 {{count}} / {{total}} 個伺服器，其餘匯入已中斷。",
   "mcp.import.partial": "已匯入 {{count}} / {{total}} 個伺服器。",
@@ -102,7 +102,7 @@ export const zhTW: Record<string, string> = {
     "已連線，但這個伺服器沒有回傳可用的工具清單。請檢查伺服器後重試。",
   "mcpStatus.mcp_configuration_failed":
     "無法使用這個伺服器的設定或已儲存的憑證。請檢查設定後重試。",
-  "mcpStatus.mcp_dial_failed": "連不上這個伺服器 —— 檢查指令或 URL 後重試。",
+  "mcpStatus.mcp_dial_failed": "連不上這個伺服器 —— 檢查命令或 URL 後重試。",
   "common.cancel": "取消",
   "common.close": "關閉",
   "command.uncertain":

@@ -268,7 +268,7 @@ export const en: Record<string, string> = {
   "goal.summary.blocked": "Goal stalled",
   "goal.summary.completing": "Finishing goal",
   "goal.reason.stoppedByUser": "Paused at your request.",
-  "goal.reason.runtimeRestarted": "Paused after the execution service restarted.",
+  "goal.reason.runtimeRestarted": "Paused after the Runtime restarted.",
   "goal.reason.runStartFailed": "A new run could not be started.",
   "goal.reason.awaitingInput": "Waiting for your answer or approval.",
   "goal.reason.terminalOutcomeMissing": "The previous run has no recorded outcome.",

@@ -3,7 +3,7 @@ export const ja: Record<string, string> = {
   "scope.user": "ユーザーメモリ",
   "scope.project": "プロジェクトメモリ",
   "scope.none":
-    "ワークスペースを持つ Session を選択するか、ユーザーメモリを選択してください。",
+    "ワークスペースを持つセッションを選択するか、ユーザーメモリを選択してください。",
   "nav.label": "メモリのナビゲーション",
   refresh: "更新",
   add: "メモリを追加",

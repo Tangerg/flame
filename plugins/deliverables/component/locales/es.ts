@@ -25,7 +25,7 @@ export const es = {
   "author.help.docx":
     "Separe los párrafos con una línea vacía. El editor avanzado admite tablas, imágenes, referencias y estilos.",
   "author.help.xlsx":
-    "Pegue celdas separadas por tabuladores, una fila por línea. Los números y =fórmulas serán celdas nativas. El modo avanzado añade estilos y gráficos.",
+    "Pega celdas separadas por tabuladores, una fila por línea. Los números y =fórmulas serán celdas nativas. El modo avanzado añade estilos y gráficos.",
   "author.help.pptx":
     "Separe diapositivas con una línea ---. La primera línea es el título; el resto, el cuerpo. El modo avanzado añade gráficos, formas y patrones.",
   "author.body.docx": "Texto del documento",
@@ -34,7 +34,7 @@ export const es = {
   "author.sheet": "Nombre de hoja",
   "author.content": "Especificación del contenido (JSON)",
   "author.advancedHelp":
-    "Use el esquema instalado. Cargar un ejemplo sustituye el borrador JSON de este formato.",
+    "Usa el esquema instalado. Cargar un ejemplo sustituye el borrador JSON de este formato.",
   "author.examples": "Fuentes del borrador",
   "author.loadExample": "Cargar ejemplo",
   "author.fromGuided": "Copiar borrador a JSON",
@@ -42,7 +42,7 @@ export const es = {
   "author.actions": "Crear documento",
   "author.create": "Crear documento nativo",
   "author.created": "La revisión nativa se creó. El borrador se conserva.",
-  "author.titleRequired": "Escriba un título.",
+  "author.titleRequired": "Escribe un título.",
   "author.tooLarge": "El contenido supera el tamaño admitido.",
   "provenance.title": "Fuentes y supuestos",
   "provenance.help":
@@ -57,15 +57,15 @@ export const es = {
   "source.remove": "Quitar fuente",
   "import.open": "Importar archivo nativo",
   "import.help":
-    "Importe DOCX, XLSX, PPTX o PDF. Los bytes originales se conservan como revisión inmutable.",
+    "Importa DOCX, XLSX, PPTX o PDF. Los bytes originales se conservan como revisión inmutable.",
   "import.file": "Elegir archivo nativo",
   "import.filename": "Nombre local",
   "import.hashing": "Verificando el archivo local…",
-  "import.limit": "Elija un archivo no vacío de hasta {{maximum}} MiB.",
-  "import.readRequired": "Lea el estado actual antes de continuar.",
+  "import.limit": "Elige un archivo no vacío de hasta {{maximum}} MiB.",
+  "import.readRequired": "Lee el estado actual antes de continuar.",
   "import.missing": "La carga temporal ya no está disponible.",
   "import.mismatch":
-    "Seleccione el archivo original: el tamaño y SHA-256 deben coincidir.",
+    "Selecciona el archivo original: el tamaño y SHA-256 deben coincidir.",
   "import.resuming":
     "Carga {{id}} seleccionada · {{received}} bytes confirmados.",
   "import.actions": "Acciones de importación",
@@ -75,7 +75,7 @@ export const es = {
   "import.finished": "El archivo original se importó como nueva revisión.",
   "import.staged": "Cargas temporales",
   "import.stagedHelp":
-    "Reanude con los mismos bytes o descarte la carga. Recupere los comandos de resultado incierto con su identidad original.",
+    "Reanuda con los mismos bytes o descarta la carga. Recupera los comandos de resultado incierto con su identidad original.",
   "import.stagedId": "Identificador de carga",
   "import.stagedActions": "Acciones de carga temporal",
   "import.select": "Reanudar esta carga",
@@ -91,12 +91,12 @@ export const es = {
   "edit.help":
     "La edición local comprueba el texto original y crea una revisión. Las partes no modificadas se conservan.",
   "edit.historical":
-    "Abra la revisión actual para editar. Esta revisión histórica sigue disponible.",
+    "Abre la revisión actual para editar. Esta revisión histórica sigue disponible.",
   "edit.mode": "Modo de edición",
   "edit.itemMode": "Editar elemento inspeccionado",
   "edit.append": "Añadir párrafo",
   "edit.item": "Elemento a editar",
-  "edit.selectRequired": "Seleccione primero un elemento.",
+  "edit.selectRequired": "Selecciona primero un elemento.",
   "edit.original": "Contenido original",
   "edit.valueType": "Tipo de valor",
   "edit.value": "Valor nuevo",
@@ -133,7 +133,7 @@ export const es = {
     "Sin renderizado registrado. Crear PDF y vistas previas no aprueba su calidad visual.",
   "preview.renderChoice": "Renderizado registrado",
   "preview.help":
-    "Estas imágenes proceden del PDF de esta revisión exacta. Revise las páginas antes de registrar observaciones.",
+    "Estas imágenes proceden del PDF de esta revisión exacta. Revisa las páginas antes de registrar observaciones.",
   "preview.navigation": "Navegación de vista previa",
   "preview.pageLabel": "Página de vista previa",
   "preview.page": "Página {{page}}",
@@ -142,7 +142,7 @@ export const es = {
   "preview.empty": "Este renderizado no contiene vistas previas.",
   "preview.invalid": "La página no coincide con el registro del renderizado.",
   "preview.fonts":
-    "La sustitución de fuentes no está verificada. Revise espacios, recortes, saltos y gráficos.",
+    "La sustitución de fuentes no está verificada. Revisa espacios, recortes, saltos y gráficos.",
   "preview.details": "Evidencias de renderizado",
   "preview.platform": "Plataforma de renderizado",
   "preview.engines": "Versiones de motores",
@@ -150,7 +150,7 @@ export const es = {
   "preview.renderId": "Identificador del renderizado",
   "review.title": "Registrar revisión visual",
   "review.help":
-    "Añada solo páginas vistas. El dictamen se aplica a esas páginas y revisión; no autoriza publicación.",
+    "Añade solo páginas vistas. El dictamen se aplica a esas páginas y revisión; no autoriza publicación.",
   "review.pages": "Páginas revisadas",
   "review.addPage": "Añadir página {{page}}",
   "review.removePage": "Quitar página {{page}}",
@@ -176,7 +176,7 @@ export const es = {
   "list.format": "Filtrar por formato",
   "list.all": "Todos los formatos",
   "list.empty": "No hay entregables coincidentes",
-  "list.emptyHelp": "Cree o importe un documento, o ajuste los filtros.",
+  "list.emptyHelp": "Crea o importa un documento, o ajusta los filtros.",
   "list.paging": "Páginas de entregables",
   "history.title": "Historial de revisiones",
   "history.choose": "Elegir revisión exacta",
@@ -229,7 +229,7 @@ export const es = {
   "capabilities.title": "Formatos admitidos y renderizado",
   "capabilities.configured": "Motores configurados",
   "capabilities.setup":
-    "Configure los motores en los ajustes de esta instalación para renderizar Office y PDF.",
+    "Configura los motores en los ajustes de esta instalación para renderizar Office y PDF.",
   "capabilities.engines": "Rutas de motores",
   "capabilities.limits": "Límites instalados",
   "image.view": "Ver imagen",

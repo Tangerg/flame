@@ -59,7 +59,7 @@ export const ko: Record<string, string> = {
   cancel: "취소",
   "delete.title": "{{name}}을(를) 삭제할까요?",
   "delete.description":
-    "향후 실행이 중지됩니다. 캡처된 작업과 수락된 Run은 유지됩니다.",
+    "향후 실행이 중지됩니다. 캡처된 작업과 수락된 실행은 유지됩니다.",
   "delete.close": "삭제 확인 닫기",
   "delete.confirm": "삭제 확인",
   "catalog.title": "저장된 스케줄",
@@ -93,7 +93,7 @@ export const ko: Record<string, string> = {
   "pages.next": "다음",
   "pages.current": "{{page}}페이지",
   "notice.accepted":
-    "Runtime이 Session {{session}}에서 Run {{run}}을(를) 수락했습니다.",
+    "Runtime이 세션 {{session}}에서 실행 {{run}}을(를) 수락했습니다.",
   "notice.openSession": "대화 열기",
   "notice.completed": "{{label}}이(가) 완료되었습니다.",
   "notice.revision":
