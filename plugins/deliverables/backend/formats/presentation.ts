@@ -9,7 +9,12 @@ import {
   type SlideElement,
 } from "../../contracts/content";
 import { canonicalJSON } from "@frame/sdk/json";
-import { OfficePackage, relations, relationshipsPath } from "./archive";
+import {
+  OfficePackage,
+  relations,
+  relationshipsPath,
+  MAIN_PARTS,
+} from "./archive";
 import { setChartData } from "./charts";
 import { HOUSE_STYLE } from "./style";
 import { imageBytes } from "./images";
@@ -542,7 +547,7 @@ export async function editPresentation(
         document.source.slice(slide.node.start, slide.node.end),
       ]),
     );
-    archive.patch("ppt/presentation.xml", [
+    archive.patch(MAIN_PARTS.pptx, [
       {
         start: list.openEnd,
         end: list.closeStart,

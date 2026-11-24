@@ -3,6 +3,8 @@ import {
   relations,
   relationshipsPath,
   sourceForRelationships,
+  CONTENT_TYPES_PART,
+  MAIN_PARTS,
 } from "./archive";
 import { relativeTarget, sectionEntries, slideList } from "./slides";
 import {
@@ -61,9 +63,9 @@ export function pruneParts(archive: OfficePackage, before: Set<string>): void {
     archive.parts.delete(part);
     archive.parts.delete(relationshipsPath(part));
   }
-  const types = archive.xml("[Content_Types].xml");
+  const types = archive.xml(CONTENT_TYPES_PART);
   archive.patch(
-    "[Content_Types].xml",
+    CONTENT_TYPES_PART,
     types.root.children
       .filter((node) => removed.has(node.attributes.PartName?.slice(1) ?? ""))
       .map((node) => ({ start: node.start, end: node.end, value: "" })),
@@ -87,13 +89,13 @@ function copyContentType(
   source: string,
   copy: string,
 ): void {
-  const types = archive.xml("[Content_Types].xml");
+  const types = archive.xml(CONTENT_TYPES_PART);
   const override = types.root.children.find(
     (node) =>
       node.local === "Override" && node.attributes.PartName === `/${source}`,
   );
   if (!override) return;
-  archive.patch("[Content_Types].xml", [
+  archive.patch(CONTENT_TYPES_PART, [
     {
       start: override.end,
       end: override.end,
@@ -151,9 +153,9 @@ function duplicateSlide(archive: OfficePackage, slide: string): void {
   const { document, slides } = slideList(archive);
   const source = slides.find((entry) => entry.id === slide)!;
   const copy = copyPart(archive, slide, new Map());
-  const relationship = nextRelationshipId(archive, "ppt/presentation.xml");
+  const relationship = nextRelationshipId(archive, MAIN_PARTS.pptx);
   const relationships = archive.xml("ppt/_rels/presentation.xml.rels");
-  const template = relations(archive, "ppt/presentation.xml").find(
+  const template = relations(archive, MAIN_PARTS.pptx).find(
     (relation) => relation.id === source.relation,
   )!.node;
   archive.patch("ppt/_rels/presentation.xml.rels", [
@@ -163,7 +165,7 @@ function duplicateSlide(archive: OfficePackage, slide: string): void {
       value: emptyTag(template, {
         ...template.attributes,
         Id: relationship,
-        Target: relativeTarget("ppt/presentation.xml", copy),
+        Target: relativeTarget(MAIN_PARTS.pptx, copy),
       }),
     },
   ]);
@@ -177,7 +179,7 @@ function duplicateSlide(archive: OfficePackage, slide: string): void {
       source.node.attributes[name] ===
         attribute(source.node, namespaces.officeRelationships, "id"),
   )!;
-  archive.patch("ppt/presentation.xml", [
+  archive.patch(MAIN_PARTS.pptx, [
     {
       start: source.node.end,
       end: source.node.end,
@@ -199,7 +201,7 @@ function incomingLinks(archive: OfficePackage, slide: string, notes?: string) {
     .filter((part) => /(?:^|\/)_rels\/[^/]+\.rels$/u.test(part))
     .flatMap((path) => {
       const source = sourceForRelationships(path);
-      if (source === "ppt/presentation.xml" || source === notes) return [];
+      if (source === MAIN_PARTS.pptx || source === notes) return [];
       return relations(archive, source).filter(
         (relation) => relation.target === slide,
       );
@@ -223,7 +225,7 @@ function deleteSlide(archive: OfficePackage, slide: string): void {
   )?.target;
   if (incomingLinks(archive, slide, notes).length)
     throw new Error("another part links to this slide; remove that link first");
-  archive.patch("ppt/presentation.xml", [
+  archive.patch(MAIN_PARTS.pptx, [
     { start: entry.node.start, end: entry.node.end, value: "" },
     ...sectionEntries(document, entry.node.attributes.id!).map((node) => ({
       start: node.start,
@@ -231,7 +233,7 @@ function deleteSlide(archive: OfficePackage, slide: string): void {
       value: "",
     })),
   ]);
-  const relation = relations(archive, "ppt/presentation.xml").find(
+  const relation = relations(archive, MAIN_PARTS.pptx).find(
     (candidate) => candidate.id === entry.relation,
   )!;
   archive.patch("ppt/_rels/presentation.xml.rels", [

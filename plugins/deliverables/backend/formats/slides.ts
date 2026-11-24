@@ -4,7 +4,12 @@ import {
   type Frame,
   type SlideLayout,
 } from "../../contracts/content";
-import { OfficePackage, relations, relationshipTarget } from "./archive";
+import {
+  OfficePackage,
+  relations,
+  relationshipTarget,
+  MAIN_PARTS,
+} from "./archive";
 import { readChart } from "./charts";
 import { textNodes } from "./inspection";
 import { attribute, namespaces, type XmlDocument, type XmlNode } from "./xml";
@@ -23,9 +28,9 @@ export function child(
 }
 
 export function slideList(archive: OfficePackage) {
-  const document = archive.xml("ppt/presentation.xml");
+  const document = archive.xml(MAIN_PARTS.pptx);
   const list = child(document.root, namespaces.presentation, "sldIdLst");
-  const presentationRelations = relations(archive, "ppt/presentation.xml");
+  const presentationRelations = relations(archive, MAIN_PARTS.pptx);
   if (!list) throw new Error("presentation has no slide list");
   const slides = list.children.map((node) => {
     const relation = presentationRelations.find(
@@ -311,7 +316,7 @@ function notes(archive: OfficePackage, slidePart: string) {
 
 export function slideLayout(archive: OfficePackage): SlideLayout {
   const size = child(
-    archive.xml("ppt/presentation.xml").root,
+    archive.xml(MAIN_PARTS.pptx).root,
     namespaces.presentation,
     "sldSz",
   );

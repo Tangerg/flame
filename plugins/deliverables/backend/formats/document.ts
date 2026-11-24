@@ -25,7 +25,7 @@ import {
   type DocumentContent,
   type Inspection,
 } from "../../contracts/content";
-import { OfficePackage } from "./archive";
+import { OfficePackage, MAIN_PARTS } from "./archive";
 import { imageBytes } from "./images";
 import { inspectOfficeText, officeReport } from "./inspection";
 import { replaceText } from "./text-edits";
@@ -275,7 +275,7 @@ export async function createDocument(json: string): Promise<Uint8Array> {
 export function inspectDocument(archive: OfficePackage): Inspection {
   const report = officeReport(archive);
   inspectOfficeText(archive, report);
-  const document = archive.xml("word/document.xml");
+  const document = archive.xml(MAIN_PARTS.docx);
   report.result.facts.paragraphs = document.nodes.filter(
     (node) => node.uri === namespaces.word && node.local === "p",
   ).length;
@@ -298,7 +298,7 @@ export function editDocument(archive: OfficePackage, json: string): Uint8Array {
     (operation) => operation.type === "appendParagraph",
   );
   if (appended.length) {
-    const document = archive.xml("word/document.xml");
+    const document = archive.xml(MAIN_PARTS.docx);
     const body = document.root.children.find(
       (node) => node.uri === namespaces.word && node.local === "body",
     );
@@ -321,7 +321,7 @@ export function editDocument(archive: OfficePackage, json: string): Uint8Array {
       .join("");
     const position = section?.start ?? body.closeStart;
     archive.setXML(
-      "word/document.xml",
+      MAIN_PARTS.docx,
       patchXML(document.source, [{ start: position, end: position, value }]),
     );
   }

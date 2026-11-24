@@ -13,6 +13,8 @@ import {
   OfficePackage,
   relationshipTarget,
   relationshipsPath,
+  CONTENT_TYPES_PART,
+  MAIN_PARTS,
 } from "./archive";
 import { officeReport } from "./inspection";
 import { HOUSE_STYLE } from "./style";
@@ -404,7 +406,7 @@ function clearCalculation(archive: OfficePackage): void {
         ),
       );
   }
-  const workbook = archive.xml("xl/workbook.xml");
+  const workbook = archive.xml(MAIN_PARTS.xlsx);
   const calc = workbook.root.children.find((node) =>
     isSheetElement(node, "calcPr"),
   );
@@ -434,7 +436,7 @@ function clearCalculation(archive: OfficePackage): void {
   );
   const point = before?.start ?? workbook.root.closeStart;
   archive.setXML(
-    "xl/workbook.xml",
+    MAIN_PARTS.xlsx,
     patchXML(workbook.source, [
       { start: calc?.start ?? point, end: calc?.end ?? point, value },
     ]),
@@ -446,7 +448,7 @@ function clearCalculation(archive: OfficePackage): void {
   );
   for (const relation of relations) {
     const path = relationshipTarget(
-      "xl/workbook.xml",
+      MAIN_PARTS.xlsx,
       relation.attributes.Target!,
     );
     archive.parts.delete(path);
@@ -465,9 +467,9 @@ function clearCalculation(archive: OfficePackage): void {
       ),
     );
   if (deleted.size) {
-    const types = archive.xml("[Content_Types].xml");
+    const types = archive.xml(CONTENT_TYPES_PART);
     archive.setXML(
-      "[Content_Types].xml",
+      CONTENT_TYPES_PART,
       patchXML(
         types.source,
         types.root.children

@@ -1,5 +1,5 @@
 import { attribute, namespaces, type XmlNode } from "./xml";
-import { OfficePackage, relationshipTarget } from "./archive";
+import { OfficePackage, relationshipTarget, MAIN_PARTS } from "./archive";
 import type { CellValue } from "../../contracts/content";
 import { parseJSON, projectNumber } from "@frame/sdk/json";
 
@@ -167,7 +167,7 @@ function numericCell(value: string): CellProjection {
 export function workbookSheets(
   archive: OfficePackage,
 ): Array<{ name: string; part: string }> {
-  const workbook = archive.xml("xl/workbook.xml");
+  const workbook = archive.xml(MAIN_PARTS.xlsx);
   const relationships = archive.xml("xl/_rels/workbook.xml.rels").root.children;
   const result: Array<{ name: string; part: string }> = [];
   for (const sheet of workbook.nodes.filter((node) =>
@@ -185,7 +185,7 @@ export function workbookSheets(
     )
       throw new Error("workbook contains an unsupported sheet relationship");
     const part = relationshipTarget(
-      "xl/workbook.xml",
+      MAIN_PARTS.xlsx,
       relation.attributes.Target!,
     );
     if (

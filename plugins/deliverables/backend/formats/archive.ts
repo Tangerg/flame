@@ -36,11 +36,12 @@ const unixDirectory = 0x4000;
 const zipVersion = 20;
 // A fixed DOS date (1980-01-01) keeps saved packages byte-for-byte reproducible.
 const fixedDosDate = 33;
-const mainParts: Record<OfficeFormat, string> = {
+export const MAIN_PARTS = Object.freeze({
   docx: "word/document.xml",
   xlsx: "xl/workbook.xml",
   pptx: "ppt/presentation.xml",
-};
+} as const satisfies Record<OfficeFormat, string>);
+export const CONTENT_TYPES_PART = "[Content_Types].xml";
 const mainTypes: Record<OfficeFormat, string> = {
   docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml",
   xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml",
@@ -521,7 +522,7 @@ export class OfficePackage {
   }
 
   private declaredContentTypes(): (path: string) => string | undefined {
-    const types = this.xml("[Content_Types].xml");
+    const types = this.xml(CONTENT_TYPES_PART);
     if (
       types.root.uri !== namespaces.contentTypes ||
       types.root.local !== "Types"
@@ -545,8 +546,8 @@ export class OfficePackage {
       table.set(key, value);
     }
     if (
-      overrides.get(`/${mainParts[this.format]}`) !== mainTypes[this.format] ||
-      !this.parts.has(mainParts[this.format])
+      overrides.get(`/${MAIN_PARTS[this.format]}`) !== mainTypes[this.format] ||
+      !this.parts.has(MAIN_PARTS[this.format])
     )
       throw new Error(
         "native file does not match the declared macro-free Office format",
@@ -562,7 +563,7 @@ export class OfficePackage {
     budget: InflationBudget,
     depth: number,
   ): void {
-    if (path !== "[Content_Types].xml" && !contentType)
+    if (path !== CONTENT_TYPES_PART && !contentType)
       throw new Error("Office part has no content type");
     if (activePayload.test(`${path} ${contentType}`))
       throw new Error("active or external-data Office payload is not admitted");
@@ -613,7 +614,7 @@ export class OfficePackage {
       if (!this.parts.has(destination))
         throw new Error("Office relationship targets a missing part");
       if (source || type !== officeDocumentRelationship) continue;
-      if (destination !== mainParts[this.format])
+      if (destination !== MAIN_PARTS[this.format])
         throw new Error("Office root relationship has an unexpected main part");
       main++;
     }

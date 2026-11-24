@@ -3,7 +3,7 @@ import type {
   WorkbookChart,
   CellValue,
 } from "../../contracts/content";
-import { OfficePackage } from "./archive";
+import { OfficePackage, CONTENT_TYPES_PART } from "./archive";
 import { HOUSE_STYLE } from "./style";
 import { cellAddress, cellRange, rangeAddresses } from "./workbook-cells";
 import { escapeXML, namespaces, patchXML } from "./xml";
@@ -202,9 +202,9 @@ export function addWorkbookCharts(
     );
   });
   if (additions.length) {
-    const types = archive.xml("[Content_Types].xml");
+    const types = archive.xml(CONTENT_TYPES_PART);
     archive.setXML(
-      "[Content_Types].xml",
+      CONTENT_TYPES_PART,
       patchXML(types.source, [
         {
           start: types.root.closeStart,
