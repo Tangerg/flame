@@ -23,6 +23,15 @@ export class InvalidPresentation extends Error {
     super(message, { cause });
   }
 }
+// Host-handled actions; every other action names a declared operation.
+export const BUILTIN_ACTIONS = Object.freeze({
+  followup: "followup",
+  resetDraft: "resetDraft",
+} as const);
+const builtinActionNames: ReadonlySet<string> = new Set(
+  Object.values(BUILTIN_ACTIONS),
+);
+
 export const limits = {
   bytes: 512 * 1024,
   nodes: 512,
@@ -170,15 +179,10 @@ function binding(
 function admit(document: UiDocument): void {
   unique(document.operations.map(({ id }) => id));
   const names = new Set([
-    "followup",
-    "resetDraft",
+    ...builtinActionNames,
     ...document.operations.map(({ id }) => id),
   ]);
-  if (
-    document.operations.some(
-      ({ id }) => id === "followup" || id === "resetDraft",
-    )
-  )
+  if (document.operations.some(({ id }) => builtinActionNames.has(id)))
     throw new InvalidPresentation("reserved action name");
   const knownFunctions = new Set(functions.map(({ name }) => name));
   function walk(value: unknown) {
@@ -334,8 +338,7 @@ export class Presentation {
       )
     )
       throw new InvalidPresentation("action belongs to another surface");
-    if (action.name !== "followup" && action.name !== "resetDraft")
-      this.operation(action.name);
+    if (!builtinActionNames.has(action.name)) this.operation(action.name);
     bounded(action.context);
   }
   text(): string {

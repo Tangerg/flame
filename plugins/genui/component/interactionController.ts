@@ -12,7 +12,7 @@ import {
 import { parseJSON, stringifyJSON } from "@frame/sdk/json";
 import type { CallPluginRequest } from "@flame/runtime-client/wire";
 import type { ActionPayload } from "@a2ui/web_core";
-import { Presentation, limits } from "../contracts/document";
+import { BUILTIN_ACTIONS, Presentation, limits } from "../contracts/document";
 
 export interface InteractionState {
   writeOperation(id: string, value: unknown): void;
@@ -116,9 +116,9 @@ export class InteractionController {
     const captured = structuredClone(action);
     await this.#guard(captured.name, async () => {
       this.#presentation.action(captured);
-      if (captured.name === "resetDraft") {
+      if (captured.name === BUILTIN_ACTIONS.resetDraft) {
         this.#state.resetDraft(captured.surfaceId);
-      } else if (captured.name === "followup") {
+      } else if (captured.name === BUILTIN_ACTIONS.followup) {
         if (
           !this.#context.interaction ||
           this.#context.interaction.source.runId !==
