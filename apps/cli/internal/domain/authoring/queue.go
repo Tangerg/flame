@@ -264,39 +264,40 @@ func (q *Queue) ReleaseDispatch(sessionID string) bool {
 func (q *Queue) Hold(sessionID string, id QueueEntryID) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
-	entries := q.entries[sessionID]
-	index := entryIndex(entries, id)
-	if index < 0 {
-		return ErrEntryNotFound
+	entry, err := q.waitingEntry(sessionID, id)
+	if err != nil {
+		return err
 	}
-	if dispatching, exists := q.dispatching[sessionID]; exists && dispatching == id {
-		return ErrEntryDispatching
-	}
-	if entries[index].Held {
+	if entry.Held {
 		return ErrEntryHeld
 	}
-	entries[index].Held = true
-	q.entries[sessionID] = entries
+	entry.Held = true
 	return nil
 }
 
 func (q *Queue) Release(sessionID string, id QueueEntryID) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
+	entry, err := q.waitingEntry(sessionID, id)
+	if err != nil {
+		return err
+	}
+	entry.Held = false
+	return nil
+}
+
+// waitingEntry returns the queued entry that is not being dispatched; the
+// caller must hold q.mu.
+func (q *Queue) waitingEntry(sessionID string, id QueueEntryID) (*QueueEntry, error) {
 	entries := q.entries[sessionID]
 	index := entryIndex(entries, id)
 	if index < 0 {
-		return ErrEntryNotFound
+		return nil, ErrEntryNotFound
 	}
 	if dispatching, exists := q.dispatching[sessionID]; exists && dispatching == id {
-		return ErrEntryDispatching
+		return nil, ErrEntryDispatching
 	}
-	if !entries[index].Held {
-		return nil
-	}
-	entries[index].Held = false
-	q.entries[sessionID] = entries
-	return nil
+	return &entries[index], nil
 }
 
 func (q *Queue) Update(sessionID string, id QueueEntryID, message Message, commandID CommandID) error {

@@ -185,13 +185,9 @@ func (r *Registry) registerExtension[Capability, Params any](meta MethodMeta, cl
 		return classify(request)
 	}
 	registered.prepare = func(target any, ctx context.Context, parameters any) (*Method, error) {
-		request, ok := parameters.(Params)
-		if !ok {
-			return nil, fmt.Errorf("operation: %s received invalid parameters", meta.Name)
-		}
-		capability, ok := target.(Capability)
-		if !ok || !capabilityAvailable(capability) {
-			return nil, fmt.Errorf("operation: target cannot handle %s", meta.Name)
+		capability, request, err := bound[Capability, Params](meta, target, parameters)
+		if err != nil {
+			return nil, err
 		}
 		kind, call, err := prepare(capability, ctx, request)
 		if err != nil {
@@ -235,13 +231,9 @@ func (r *Registry) registerUnary[Capability, Params, Response any](
 	}
 	meta.Pagination = pagination
 	return r.add(meta, func(target any, ctx context.Context, parameters any) rawResult {
-		typed, ok := parameters.(Params)
-		if !ok {
-			return rawResult{err: fmt.Errorf("operation: %s received parameters of type %T, want %s", meta.Name, parameters, meta.Params)}
-		}
-		capability, ok := target.(Capability)
-		if !ok || !capabilityAvailable(capability) {
-			return rawResult{err: fmt.Errorf("operation: target cannot handle %s", meta.Name)}
+		capability, typed, err := bound[Capability, Params](meta, target, parameters)
+		if err != nil {
+			return rawResult{err: err}
 		}
 		value, err := call(capability, ctx, typed)
 		return rawResult{value: value, err: err}
@@ -261,13 +253,9 @@ func (r *Registry) commandAck[Capability, Params any](
 	meta.Pagination = paginationNone
 	meta.Params = reflect.TypeFor[Params]()
 	return r.add(meta, func(target any, ctx context.Context, parameters any) rawResult {
-		typed, ok := parameters.(Params)
-		if !ok {
-			return rawResult{err: fmt.Errorf("operation: %s received parameters of type %T, want %s", meta.Name, parameters, meta.Params)}
-		}
-		capability, ok := target.(Capability)
-		if !ok || !capabilityAvailable(capability) {
-			return rawResult{err: fmt.Errorf("operation: target cannot handle %s", meta.Name)}
+		capability, typed, err := bound[Capability, Params](meta, target, parameters)
+		if err != nil {
+			return rawResult{err: err}
 		}
 		return rawResult{value: struct{}{}, err: call(capability, ctx, typed)}
 	})
@@ -319,17 +307,28 @@ func (r *Registry) registerStream[Capability, Params, Ack, Event any](
 	meta.Event = reflect.TypeFor[Event]()
 	meta.Pagination = paginationNone
 	r.add(meta, func(target any, ctx context.Context, parameters any) rawResult {
-		typed, ok := parameters.(Params)
-		if !ok {
-			return rawResult{err: fmt.Errorf("operation: %s received parameters of type %T, want %s", meta.Name, parameters, meta.Params)}
-		}
-		capability, ok := target.(Capability)
-		if !ok || !capabilityAvailable(capability) {
-			return rawResult{err: fmt.Errorf("operation: target cannot handle %s", meta.Name)}
+		capability, typed, err := bound[Capability, Params](meta, target, parameters)
+		if err != nil {
+			return rawResult{err: err}
 		}
 		ack, events, err := call(capability, ctx, typed)
 		return rawResult{value: ack, events: eraseEventType(events), err: err}
 	})
+}
+
+// bound narrows a dispatched call to the capability and parameter types the
+// method was registered with; storing the method erased both.
+func bound[Capability, Params any](meta MethodMeta, target, parameters any) (Capability, Params, error) {
+	var capability Capability
+	typed, ok := parameters.(Params)
+	if !ok {
+		return capability, typed, fmt.Errorf("operation: %s received parameters of type %T, want %s", meta.Name, parameters, meta.Params)
+	}
+	capability, ok = target.(Capability)
+	if !ok || !capabilityAvailable(capability) {
+		return capability, typed, fmt.Errorf("operation: target cannot handle %s", meta.Name)
+	}
+	return capability, typed, nil
 }
 
 func capabilityAvailable(capability any) bool {
