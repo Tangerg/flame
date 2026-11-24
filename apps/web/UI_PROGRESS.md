@@ -51517,6 +51517,15 @@ are unchanged. Native Settings → Providers shows `Key sk-…7F2A` in mono and
 `Not configured` in the body face. Plugin typecheck, `check-i18n` and
 published resource checks pass.
 
+The Model roles descriptions are trimmed to their first sentence in all
+eight catalogs. Utility model reads `Model for summaries, titles, and fact
+extraction.`; Embedding model reads `Optionally improves Agent Memory
+ranking.` The dropped sentences repeated what the selects show (`Use
+Runtime default`, `Off`) or described timing a user cannot act on. Each kept
+sentence is the catalog's own first sentence, so no new translation was
+written. Native Settings → Providers in Chinese shows one line under 辅助模型
+and 嵌入模型.
+
 The same voice rule applies to remembered approval rules (`RulesRow`). The
 localized scope badge (`Session`, `Project`, `Global`) and the details line
 (`Built-in`, `All arguments`) were in mono. The body face now carries the

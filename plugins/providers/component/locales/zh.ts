@@ -31,13 +31,11 @@ export const zh: Record<string, string> = {
   "providers.empty": "暂无提供方",
   "providers.empty.sub": "运行时报告没有受支持的 LLM 提供方。",
   "providers.utility.title": "辅助模型",
-  "providers.utility.desc":
-    "用于摘要、标题和事实提取。未设置时使用 Runtime 默认模型。修改从下一次辅助调用生效，包括当前运行中的辅助调用。",
+  "providers.utility.desc": "用于摘要、标题和事实提取。",
   "providers.utility.main": "使用 Runtime 默认模型",
   "providers.utility.error": "设置辅助模型失败。",
   "providers.embedding.title": "嵌入模型",
-  "providers.embedding.desc":
-    "可选地改善 Agent Memory 排序。请选择支持嵌入的 Provider；关闭时 Memory 仍使用关键词匹配。 对后续搜索生效。",
+  "providers.embedding.desc": "可选地改善 Agent Memory 排序。",
   "providers.embedding.off": "关闭",
   "providers.embedding.none":
     "尚未配置支持 embedding 的 provider —— 先在上方添加一个(如 OpenAI)。",

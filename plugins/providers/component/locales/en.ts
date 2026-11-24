@@ -33,13 +33,11 @@ export const en: Record<string, string> = {
   "providers.empty": "No providers",
   "providers.empty.sub": "The Runtime reports no supported LLM providers.",
   "providers.utility.title": "Utility model",
-  "providers.utility.desc":
-    "Model for summaries, titles, and fact extraction. Uses the Runtime default when unset. Changes apply to the next utility call, including in an existing run.",
+  "providers.utility.desc": "Model for summaries, titles, and fact extraction.",
   "providers.utility.main": "Use Runtime default",
   "providers.utility.error": "Couldn't set the utility model.",
   "providers.embedding.title": "Embedding model",
-  "providers.embedding.desc":
-    "Optionally improves Agent Memory ranking. Pick an embedding-capable provider; when Off, Memory continues with keyword matching. Applies to subsequent searches.",
+  "providers.embedding.desc": "Optionally improves Agent Memory ranking.",
   "providers.embedding.off": "Off",
   "providers.embedding.none":
     "No embedding-capable provider configured yet — add one (e.g. OpenAI) above.",

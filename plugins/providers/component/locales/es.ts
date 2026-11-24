@@ -36,12 +36,12 @@ export const es: Record<string, string> = {
   "providers.fromEnv": "Del entorno",
   "providers.utility.title": "Modelo auxiliar",
   "providers.utility.desc":
-    "Modelo para resúmenes, títulos y extracción de hechos. Sin selección, usa el modelo predeterminado de Runtime. Los cambios se aplican a la siguiente llamada auxiliar, incluso durante una ejecución en curso.",
+    "Modelo para resúmenes, títulos y extracción de hechos.",
   "providers.utility.main": "Usar el modelo predeterminado de Runtime",
   "providers.utility.error": "No se pudo establecer el modelo auxiliar.",
   "providers.embedding.title": "Modelo de embeddings",
   "providers.embedding.desc":
-    "Mejora opcionalmente la clasificación de Agent Memory. Si se desactiva, Memory sigue usando coincidencias por palabras clave. Se aplica a las búsquedas posteriores.",
+    "Mejora opcionalmente la clasificación de Agent Memory.",
   "providers.embedding.off": "Desactivado",
   "providers.embedding.none":
     "Todavía no hay ningún proveedor con embeddings configurado: añade uno arriba (por ejemplo OpenAI).",

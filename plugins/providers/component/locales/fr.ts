@@ -36,12 +36,12 @@ export const fr: Record<string, string> = {
   "providers.fromEnv": "Depuis l'environnement",
   "providers.utility.title": "Modèle utilitaire",
   "providers.utility.desc":
-    "Modèle pour les résumés, titres et extractions de faits. Sans sélection, le modèle par défaut de Runtime est utilisé. Les changements prennent effet au prochain appel auxiliaire, même pendant une exécution en cours.",
+    "Modèle pour les résumés, titres et extractions de faits.",
   "providers.utility.main": "Utiliser le modèle par défaut de Runtime",
   "providers.utility.error": "Impossible de définir le modèle utilitaire.",
   "providers.embedding.title": "Modèle d'embedding",
   "providers.embedding.desc":
-    "Améliore facultativement le classement d'Agent Memory. Désactivé, Memory continue avec la recherche par mots-clés. S’applique aux recherches suivantes.",
+    "Améliore facultativement le classement d'Agent Memory.",
   "providers.embedding.off": "Désactivé",
   "providers.embedding.none":
     "Aucun fournisseur compatible embedding pour l'instant — ajoutez-en un ci-dessus (par ex. OpenAI).",

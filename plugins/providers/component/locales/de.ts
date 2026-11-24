@@ -35,12 +35,12 @@ export const de: Record<string, string> = {
   "providers.fromEnv": "Aus Umgebung",
   "providers.utility.title": "Hilfsmodell",
   "providers.utility.desc":
-    "Modell für Zusammenfassungen, Titel und Faktenextraktion. Ohne Auswahl gilt der Runtime-Standard. Änderungen gelten ab dem nächsten Hilfsaufruf, auch innerhalb einer laufenden Ausführung.",
+    "Modell für Zusammenfassungen, Titel und Faktenextraktion.",
   "providers.utility.main": "Runtime-Standard verwenden",
   "providers.utility.error": "Hilfsmodell konnte nicht gesetzt werden.",
   "providers.embedding.title": "Embedding-Modell",
   "providers.embedding.desc":
-    "Verbessert optional das Ranking des Agent Memory. Bei Aus arbeitet Memory weiterhin mit Stichwortabgleich. Gilt für nachfolgende Suchen.",
+    "Verbessert optional das Ranking des Agent Memory.",
   "providers.embedding.off": "Aus",
   "providers.embedding.none":
     "Noch kein Anbieter mit Embedding-Unterstützung konfiguriert — füge oben einen hinzu (z. B. OpenAI).",

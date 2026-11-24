@@ -36,13 +36,12 @@ export const ja: Record<string, string> = {
     "環境変数のキーを使用中 — 入力すると上書きします",
   "providers.fromEnv": "環境変数から",
   "providers.utility.title": "補助モデル",
-  "providers.utility.desc":
-    "要約、タイトル、事実抽出に使うモデルです。未設定時は Runtime の既定モデルを使用します。変更は実行中の処理を含め、次の補助呼び出しから反映されます。",
+  "providers.utility.desc": "要約、タイトル、事実抽出に使うモデルです。",
   "providers.utility.main": "Runtime の既定モデルを使用",
   "providers.utility.error": "補助モデルを設定できませんでした。",
   "providers.embedding.title": "埋め込みモデル",
   "providers.embedding.desc":
-    "Agent Memory のランキングを必要に応じて改善します。オフの場合も Memory はキーワード照合を続けます。 以降の検索に適用されます。",
+    "Agent Memory のランキングを必要に応じて改善します。",
   "providers.embedding.off": "オフ",
   "providers.embedding.none":
     "埋め込み対応のプロバイダーがまだ設定されていません — 上で追加してください（例：OpenAI）。",

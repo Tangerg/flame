@@ -31,13 +31,11 @@ export const zhTW: Record<string, string> = {
   "providers.apiKey.envPlaceholder": "正在使用環境變數金鑰 —— 輸入即可覆寫",
   "providers.fromEnv": "來自環境變數",
   "providers.utility.title": "輔助模型",
-  "providers.utility.desc":
-    "用於摘要、標題和事實擷取。未設定時使用 Runtime 預設模型。變更從下一次輔助呼叫生效，包括目前執行中的輔助呼叫。",
+  "providers.utility.desc": "用於摘要、標題和事實擷取。",
   "providers.utility.main": "使用 Runtime 預設模型",
   "providers.utility.error": "無法設定輔助模型。",
   "providers.embedding.title": "Embedding 模型",
-  "providers.embedding.desc":
-    "可選擇改善 Agent Memory 排序。請選擇支援 embedding 的供應商；關閉時 Memory 仍使用關鍵字比對。 對後續搜尋生效。",
+  "providers.embedding.desc": "可選擇改善 Agent Memory 排序。",
   "providers.embedding.off": "關閉",
   "providers.embedding.none":
     "尚未設定任何支援 embedding 的供應商 —— 請先在上方新增一個（例如 OpenAI）。",

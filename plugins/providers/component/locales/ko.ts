@@ -34,13 +34,11 @@ export const ko: Record<string, string> = {
     "환경 변수 키 사용 중 — 입력하면 덮어씁니다",
   "providers.fromEnv": "환경 변수에서",
   "providers.utility.title": "보조 모델",
-  "providers.utility.desc":
-    "요약, 제목, 사실 추출용 모델입니다. 미설정 시 Runtime 기본 모델을 사용합니다. 변경 사항은 진행 중인 실행에서도 다음 보조 호출부터 적용됩니다.",
+  "providers.utility.desc": "요약, 제목, 사실 추출용 모델입니다.",
   "providers.utility.main": "Runtime 기본 모델 사용",
   "providers.utility.error": "보조 모델을 설정할 수 없습니다.",
   "providers.embedding.title": "임베딩 모델",
-  "providers.embedding.desc":
-    "Agent Memory 순위를 선택적으로 개선합니다. 꺼도 Memory는 키워드 일치를 계속 사용합니다. 이후 검색에 적용됩니다.",
+  "providers.embedding.desc": "Agent Memory 순위를 선택적으로 개선합니다.",
   "providers.embedding.off": "끄기",
   "providers.embedding.none":
     "임베딩을 지원하는 제공자가 아직 없습니다 — 위에서 하나 추가하세요(예: OpenAI).",
