@@ -164,16 +164,21 @@ export function Hooks({ context }: { context: ComponentContext }) {
   const snapshot = read.accepted?.result;
   return (
     <>
-      <Toolbar label={t("title")}>
-        <IconButton
-          icon={Refresh}
-          aria-label={t("refresh")}
-          pending={read.loading}
-          onClick={() => {
-            setObservationError(undefined);
-            void refresh();
-          }}
-        />
+      <Toolbar
+        label={t("title")}
+        actions={
+          <IconButton
+            icon={Refresh}
+            aria-label={t("refresh")}
+            pending={read.loading}
+            onClick={() => {
+              setObservationError(undefined);
+              void refresh();
+            }}
+          />
+        }
+      >
+        {null}
       </Toolbar>
       {read.loading && !snapshot && <p role="status">{t("reading")}</p>}
       {read.error && (

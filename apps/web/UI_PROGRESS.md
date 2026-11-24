@@ -50446,6 +50446,20 @@ atoms sheet: `Today` and `✓ Approved` render as single quiet lines. Web
 typecheck and the Lab build pass. Not observed in a live transcript, because
 no Lab agent state carries a settled approval or a date boundary.
 
+### Refresh on the trailing edge (2026-11-24)
+
+Settings → Lifecycle hooks and Providers rendered their only toolbar
+control, Refresh, as leading content, so a lone glyph floated at the top
+left above the pane. Diagnostics led with Refresh and its action menu
+before the signal tabs. Diff and Session trajectory already put the
+selector first and Refresh on the trailing edge. All three now pass Refresh
+(and Diagnostics' action menu) through `Toolbar`'s `actions`; Diagnostics
+keeps Traces / Metrics / Logs as the leading content, and focus order
+follows the new visual order. Native Settings → Lifecycle hooks and
+Providers show Refresh on the content's trailing edge; `dock-diagnostics-
+recorded` reads the signal tabs, then Refresh and More. Plugin typecheck and
+published resource checks pass.
+
 ### Model picker without a rail rule or a resting ring (2026-11-24)
 
 The Composer model picker drew a vertical rule between its provider rail and

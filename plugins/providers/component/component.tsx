@@ -67,13 +67,18 @@ function ProvidersPane({
     setOnboarding({ settings, cameUnset: true });
   return (
     <div style={column}>
-      <Toolbar label={t("title")}>
-        <IconButton
-          icon={Refresh}
-          aria-label={t("refresh")}
-          pending={state.providers.phase === "loading"}
-          onClick={() => setAttempt((value) => value + 1)}
-        />
+      <Toolbar
+        label={t("title")}
+        actions={
+          <IconButton
+            icon={Refresh}
+            aria-label={t("refresh")}
+            pending={state.providers.phase === "loading"}
+            onClick={() => setAttempt((value) => value + 1)}
+          />
+        }
+      >
+        {null}
       </Toolbar>
       {unset && <RecordBody>{t("providers.setup.steps")}</RecordBody>}
       {onboarding.settings === settings &&

@@ -244,25 +244,31 @@ export function Diagnostics({ context }: { context: ComponentContext }) {
       label={t("panel.title")}
       header={<PanelHeader title={t("panel.title")} />}
       controls={
-        <Toolbar label={t("controls.label")}>
-          <IconButton
-            icon={Refresh}
-            aria-label={t("refresh")}
-            size="md"
-            disabled={componentSignal.aborted}
-            onClick={refresh}
-          />
-          <ActionMenu
-            label={t("actions.label")}
-            disabled={componentSignal.aborted}
-            items={[
-              {
-                label: t("actions.clear"),
-                tone: "negative",
-                onSelect: clear,
-              },
-            ]}
-          />
+        <Toolbar
+          label={t("controls.label")}
+          actions={
+            <>
+              <IconButton
+                icon={Refresh}
+                aria-label={t("refresh")}
+                size="md"
+                disabled={componentSignal.aborted}
+                onClick={refresh}
+              />
+              <ActionMenu
+                label={t("actions.label")}
+                disabled={componentSignal.aborted}
+                items={[
+                  {
+                    label: t("actions.clear"),
+                    tone: "negative",
+                    onSelect: clear,
+                  },
+                ]}
+              />
+            </>
+          }
+        >
           <Segmented
             ariaLabel={t("signal.label")}
             value={signal}
