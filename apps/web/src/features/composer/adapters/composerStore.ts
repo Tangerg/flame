@@ -64,6 +64,13 @@ interface ImageRead {
   controller: AbortController;
 }
 
+// The session draft a state change authors. A replaced draft is new text even
+// when it reads the same, so it supersedes the stored draft.
+interface DraftAuthoring {
+  sessionId: string;
+  text: "compared" | "replaced";
+}
+
 export function createComposerStore() {
   const database = new DraftDatabase();
   const targets = new Map<string, Target>();
@@ -198,8 +205,10 @@ export function createComposerStore() {
   const useComposerStore = create<ComposerState & ComposerActions>()((_set, get) => {
     const publish = (
       change: Partial<ComposerState> | ((state: ComposerState) => Partial<ComposerState>),
-      sessionId: string | false = current.state.composer.activeSessionId,
-      forceText = false,
+      authoring: DraftAuthoring | null = {
+        sessionId: current.state.composer.activeSessionId,
+        text: "compared",
+      },
     ) => {
       const owner = current;
       const beforeState = owner.state;
@@ -207,10 +216,11 @@ export function createComposerStore() {
         ...beforeState,
         ...(typeof change === "function" ? change(beforeState) : change),
       };
-      if (sessionId !== false) {
+      if (authoring !== null) {
+        const { sessionId } = authoring;
         const before = beforeState.composer.activate(sessionId).draft;
         const after = next.composer.activate(sessionId).draft;
-        const textChanged = forceText || !before.hasSameText(after);
+        const textChanged = authoring.text === "replaced" || !before.hasSameText(after);
         const authored = textChanged || !before.hasSameAttachments(after);
         if (authored) {
           owner.authored = true;
@@ -242,12 +252,14 @@ export function createComposerStore() {
       present(owner);
       void flush(owner);
     };
-    const edit = (change: Parameters<Composer["edit"]>[0], forceText = false) =>
-      publish(
-        (state) => ({ composer: state.composer.edit(change) }),
-        current.state.composer.activeSessionId,
-        forceText,
-      );
+    const edit = (
+      change: Parameters<Composer["edit"]>[0],
+      text: DraftAuthoring["text"] = "compared",
+    ) =>
+      publish((state) => ({ composer: state.composer.edit(change) }), {
+        sessionId: current.state.composer.activeSessionId,
+        text,
+      });
     return {
       ...current.state,
       checkpoint: (content) => edit((draft) => draft.withContent(content)),
@@ -258,14 +270,13 @@ export function createComposerStore() {
         edit((draft) => draft.withContent(draft.content.startFileReference())),
       startSlashCommand: () =>
         edit((draft) => draft.withContent(draft.content.startSlashCommand())),
-      setModel: (modelPreference) => publish({ modelPreference }, false),
+      setModel: (modelPreference) => publish({ modelPreference }, null),
       clear: () => {
         cancelReads(current, current.state.composer.activeSessionId);
-        publish(
-          (state) => ({ composer: state.composer.clear() }),
-          current.state.composer.activeSessionId,
-          true,
-        );
+        publish((state) => ({ composer: state.composer.clear() }), {
+          sessionId: current.state.composer.activeSessionId,
+          text: "replaced",
+        });
       },
       captureSubmission: () => {
         const generation = storageGeneration;
@@ -282,8 +293,7 @@ export function createComposerStore() {
             const matches = draft.attachmentsReady && current.activate(sessionId).draft === draft;
             publish(
               { composer: current.consumeDraft(sessionId, draft, historyText) },
-              sessionId,
-              matches,
+              { sessionId, text: matches ? "replaced" : "compared" },
             );
             return matches && current.activeSessionId === sessionId;
           },
@@ -304,7 +314,7 @@ export function createComposerStore() {
             ComposerDraft.restore(DraftContent.fromText(input.text))
               .withImages(images)
               .withReferences(references),
-          true,
+          "replaced",
         );
       },
       captureDraftReplacement: () => {
@@ -367,10 +377,13 @@ export function createComposerStore() {
       },
       restorePaste: (id, text) => edit((draft) => draft.restorePaste(id, text)),
       loadSession: (sessionId) =>
-        publish((s) => ({ composer: s.composer.activate(sessionId) }), false),
+        publish((s) => ({ composer: s.composer.activate(sessionId) }), null),
       discardSession: (sessionId) => {
         cancelReads(current, sessionId);
-        publish((s) => ({ composer: s.composer.discardSession(sessionId) }), sessionId, true);
+        publish((s) => ({ composer: s.composer.discardSession(sessionId) }), {
+          sessionId,
+          text: "replaced",
+        });
       },
       historyPrev: () => {
         const recalled = get().composer.recallOlder();
