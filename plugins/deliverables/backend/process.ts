@@ -62,6 +62,85 @@ function residentBytes(pid: number): Promise<number> {
   });
 }
 
+function streamBounds(options: ProcessIO) {
+  const bounds = {
+    input: options.inputBytes ?? LIMITS.inputBytes,
+    stdout: options.stdoutBytes ?? LIMITS.outputBytes,
+    stderr: options.stderrBytes ?? LIMITS.outputBytes,
+  };
+  if (
+    Object.values(bounds).some(
+      (value) => !Number.isSafeInteger(value) || value < 0,
+    )
+  )
+    throw new RangeError("deliverables: invalid process stream bound");
+  return bounds;
+}
+
+function admittedInput(
+  input: Uint8Array | undefined,
+  limit: number,
+): Buffer | undefined {
+  if (input === undefined) return undefined;
+  if (!(input instanceof Uint8Array) || input.byteLength > limit)
+    throw new Refusal(
+      "process_input_limit",
+      "The confined process input exceeds its admitted byte limit.",
+    );
+  return Buffer.from(input);
+}
+
+// The kernel may observe exit before Node delivers the child event, so a
+// vanished process is reported as exited: only the original close and status
+// can settle the operation.
+async function watchResidentMemory(
+  pid: number,
+  limit: number,
+  signal: AbortSignal,
+  report: { exited(): void; failed(cause: Refusal): void },
+): Promise<void> {
+  try {
+    while (!signal.aborted) {
+      const bytes = await residentBytes(pid);
+      if (signal.aborted) return;
+      if (bytes > limit)
+        throw new Refusal(
+          "process_memory_limit",
+          "The confined process exceeded its resident memory limit.",
+        );
+      await delay(LIMITS.processMemorySampleMs, undefined, { signal });
+    }
+  } catch (cause) {
+    if (signal.aborted) return;
+    if (missing(cause)) {
+      report.exited();
+      return;
+    }
+    report.failed(
+      cause instanceof Refusal
+        ? cause
+        : Object.assign(
+            new Refusal(
+              "process_resources_unavailable",
+              "The confined process memory could not be measured.",
+            ),
+            { cause },
+          ),
+    );
+  }
+}
+
+async function awaitGroupGone(pid: number): Promise<void> {
+  const deadline = performance.now() + LIMITS.processExitMs;
+  while (groupExists(pid)) {
+    if (performance.now() >= deadline)
+      throw new UnconfirmedProcessExit(
+        "deliverables: descendants remain after process close",
+      );
+    await new Promise<void>((resolve) => setTimeout(resolve, 20));
+  }
+}
+
 // One call owns every captured byte and the actual close. Linux's PID namespace
 // contains descendants; Darwin's policy denies fork, so its child handle suffices.
 export async function runProcess(
@@ -70,26 +149,12 @@ export async function runProcess(
   options: ProcessIO = {},
 ): Promise<{ stdout: string; stderr: string }> {
   signal.throwIfAborted();
-  const inputLimit = options.inputBytes ?? LIMITS.inputBytes;
-  const outputLimit = options.stdoutBytes ?? LIMITS.outputBytes;
-  const errorLimit = options.stderrBytes ?? LIMITS.outputBytes;
-  if (
-    [inputLimit, outputLimit, errorLimit].some(
-      (value) => !Number.isSafeInteger(value) || value < 0,
-    )
-  )
-    throw new RangeError("deliverables: invalid process stream bound");
-  if (
-    options.input !== undefined &&
-    (!(options.input instanceof Uint8Array) ||
-      options.input.byteLength > inputLimit)
-  )
-    throw new Refusal(
-      "process_input_limit",
-      "The confined process input exceeds its admitted byte limit.",
-    );
-  const input =
-    options.input === undefined ? undefined : Buffer.from(options.input);
+  const {
+    input: inputLimit,
+    stdout: outputLimit,
+    stderr: errorLimit,
+  } = streamBounds(options);
+  const input = admittedInput(options.input, inputLimit);
   const child = spawn(plan.command, plan.args, {
     cwd: plan.cwd,
     env: plan.env,
@@ -189,41 +254,13 @@ export async function runProcess(
     if (plan.containment.kind === "single" && child.pid) {
       const pid = child.pid;
       const limit = plan.containment.residentLimitBytes;
-      monitor = (async () => {
-        try {
-          while (!monitoring.signal.aborted) {
-            const bytes = await residentBytes(pid);
-            if (monitoring.signal.aborted) return;
-            if (bytes > limit)
-              throw new Refusal(
-                "process_memory_limit",
-                "The confined process exceeded its resident memory limit.",
-              );
-            await delay(LIMITS.processMemorySampleMs, undefined, {
-              signal: monitoring.signal,
-            });
-          }
-        } catch (cause) {
-          if (monitoring.signal.aborted) return;
-          // The kernel may observe exit before Node delivers the child event.
-          // Only the original close and status can settle that operation.
-          if (missing(cause)) {
-            awaitExit();
-            return;
-          }
-          failure ??=
-            cause instanceof Refusal
-              ? cause
-              : Object.assign(
-                  new Refusal(
-                    "process_resources_unavailable",
-                    "The confined process memory could not be measured.",
-                  ),
-                  { cause },
-                );
+      monitor = watchResidentMemory(pid, limit, monitoring.signal, {
+        exited: awaitExit,
+        failed: (cause) => {
+          failure ??= cause;
           stop();
-        }
-      })();
+        },
+      });
     }
   });
   if (signal.aborted) stop();
@@ -247,16 +284,8 @@ export async function runProcess(
   try {
     const status = await Promise.race([closed, unconfirmed.promise]);
     clearTimeout(exitTimer);
-    if (child.pid && plan.containment.kind === "namespace") {
-      const deadline = performance.now() + LIMITS.processExitMs;
-      while (groupExists(child.pid)) {
-        if (performance.now() >= deadline)
-          throw new UnconfirmedProcessExit(
-            "deliverables: descendants remain after process close",
-          );
-        await new Promise<void>((resolve) => setTimeout(resolve, 20));
-      }
-    }
+    if (child.pid && plan.containment.kind === "namespace")
+      await awaitGroupGone(child.pid);
     if (failure) throw failure;
     signal.throwIfAborted();
     if (!inputFinished)
