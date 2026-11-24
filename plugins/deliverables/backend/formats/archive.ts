@@ -139,7 +139,7 @@ function readCentralDirectory(
   if (
     count !== buffer.readUInt16LE(end + 8) ||
     count === 0xffff ||
-    budget.parts + count > contentLimits.archiveParts
+    budget.parts + count > contentLimits.packageParts
   )
     throw new Error("ZIP part count exceeds the limit or is invalid");
   const start = buffer.readUInt32LE(end + 16);
@@ -336,7 +336,7 @@ export function encodeArchive(
   parts: ReadonlyMap<string, Uint8Array>,
   maximumFileBytes: number = contentLimits.fileBytes,
 ): Uint8Array {
-  if (parts.size > contentLimits.archiveParts)
+  if (parts.size > contentLimits.packageParts)
     throw new Error("ZIP part count exceeds the limit");
   const payload: Buffer[] = [];
   const directory: Buffer[] = [];

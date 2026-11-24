@@ -1,20 +1,18 @@
 import { inflateSync } from "node:zlib";
 import { decode as decodeJPEG } from "jpeg-js";
 import { PNG } from "pngjs";
-import type { AuthoredImage } from "../../contracts/content";
+import { contentLimits, type AuthoredImage } from "../../contracts/content";
 
 const maximumImageBytes = 8 * 1024 * 1024;
-const maximumDimension = 16384;
-const maximumPixels = 40_000_000;
 const pngSignature = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
 
 function admitDimensions(width: number, height: number): void {
   if (
     !width ||
     !height ||
-    width > maximumDimension ||
-    height > maximumDimension ||
-    width * height > maximumPixels
+    width > contentLimits.imageDimension ||
+    height > contentLimits.imageDimension ||
+    width * height > contentLimits.imagePixels
   )
     throw new Error("image pixel dimensions exceed the supported limits");
 }
@@ -73,7 +71,7 @@ export function imageBytes(image: AuthoredImage): Uint8Array {
   } else {
     const { width, height } = decodeJPEG(bytes, {
       tolerantDecoding: false,
-      maxResolutionInMP: maximumPixels / 1_000_000,
+      maxResolutionInMP: contentLimits.imagePixels / 1_000_000,
       maxMemoryUsageInMB: 384,
     });
     admitDimensions(width, height);

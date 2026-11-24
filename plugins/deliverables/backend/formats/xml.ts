@@ -65,7 +65,10 @@ export function parseXML(bytes: Uint8Array | string): XmlDocument {
     throw new Error("invalid XML part", { cause: error });
   });
   parser.on("opentag", (tag) => {
-    if (nodes.length >= contentLimits.xmlNodes || stack.length >= 128)
+    if (
+      nodes.length >= contentLimits.structureNodes ||
+      stack.length >= contentLimits.nestingDepth
+    )
       throw new Error("XML structure exceeds the node or depth limit");
     const node: XmlNode = {
       name: tag.name,

@@ -6,9 +6,12 @@ import { checkSchema } from "./evidence";
 export const contentLimits = {
   fileBytes: LIMITS.fileBytes,
   expandedBytes: 128 * 1024 * 1024,
-  archiveParts: 10_000,
+  packageParts: 10_000,
   xmlBytes: 16 * 1024 * 1024,
-  xmlNodes: 250_000,
+  structureNodes: 250_000,
+  nestingDepth: 128,
+  imageDimension: 16384,
+  imagePixels: 40_000_000,
   jsonBytes: LIMITS.inputBytes,
   cells: 50_000,
   authoredRows: 100_000,
@@ -544,6 +547,7 @@ export const pdfEditSchema = z.strictObject({
     .min(1)
     .max(1000),
 });
+export type PDFOperation = z.infer<typeof pdfEditSchema>["operations"][number];
 
 export function parseContent<T>(schema: z.ZodType<T>, json: string): T {
   if (new TextEncoder().encode(json).byteLength > contentLimits.jsonBytes)
