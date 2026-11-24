@@ -18,18 +18,7 @@ import { ButtonPrimitive } from "./button-primitive";
 import { type ButtonPrimitiveProps } from "./button-primitive";
 import { toneInk } from "./tone-ink";
 
-type ButtonVariant =
-  | "ghost"
-  | "soft"
-  | "outline"
-  | "primary"
-  | "wash"
-  | "tonal"
-  | "media"
-  | "mediaTray"
-  | "raised"
-  | "bare"
-  | "link";
+type ButtonVariant = keyof typeof VARIANT;
 
 export type ButtonTone = "negative" | "warning" | "accent" | "success";
 
@@ -421,14 +410,18 @@ const TONAL = {
 const WASH = {
   negative: styles.washNegative,
   warning: styles.washWarning,
-} as const;
+} as const satisfies Record<keyof typeof TONAL, unknown>;
+
+const PRESS = { scale: styles.press, nudge: styles.nudge, none: null } as const;
+
+const JOIN = { start: styles.joinStart, end: styles.joinEnd } as const;
 
 const QUIET_TONE = {
   negative: styles.quietNegative,
   warning: styles.quietWarning,
   accent: styles.quietAccent,
   success: styles.quietSuccess,
-} as const;
+} as const satisfies Record<ButtonTone, unknown>;
 
 const CHIP_INSET = { sm: styles.chipSm, md: styles.chipMd } as const;
 
@@ -447,6 +440,17 @@ export interface ButtonVariants {
   active?: boolean;
   flex?: "none" | "fill";
   face?: "text" | "mono";
+}
+
+// Only tonal and wash fills carry a tone; every variant tints its ink.
+function isFillTone(tone: ButtonTone): tone is keyof typeof TONAL {
+  return Object.hasOwn(TONAL, tone);
+}
+
+function tonedFill(variant: ButtonVariant, tone: ButtonTone) {
+  if (!isFillTone(tone)) return null;
+  if (variant === "tonal") return TONAL[tone];
+  return variant === "wash" ? WASH[tone] : null;
 }
 
 function pressFor({
@@ -481,21 +485,11 @@ export function dress({
     styles.base,
     tone && toneInk[tone],
     SIZE[size],
-    pressStep === "scale" && styles.press,
-    pressStep === "nudge" && styles.nudge,
+    PRESS[pressStep],
     round && corner.pill,
-    join && styles.joined,
-    join === "start" && styles.joinStart,
-    join === "end" && styles.joinEnd,
+    join && [styles.joined, JOIN[join]],
     VARIANT[variant],
-    variant === "tonal" &&
-      tone &&
-      tone in TONAL &&
-      TONAL[tone as keyof typeof TONAL],
-    variant === "wash" &&
-      tone &&
-      tone in WASH &&
-      WASH[tone as keyof typeof WASH],
+    tone && tonedFill(variant, tone),
     chip && styles.chip,
     chipStep && [
       CHIP_INSET[chipStep],
