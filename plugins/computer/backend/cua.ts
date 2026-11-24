@@ -15,6 +15,7 @@ import type { Configuration } from "./configuration";
 import { Installation, InstallationError } from "./installation";
 import { validateBrowser } from "./browser";
 import { prepareSandbox } from "./sandboxLaunch";
+import type { EngineTool } from "../contracts/tools";
 
 function childEnvironment(
   config: Configuration,
@@ -218,7 +219,7 @@ export class Cua {
   }
 
   async call(
-    tool: "js" | "js_reset",
+    tool: EngineTool,
     args: Record<string, unknown>,
     scope: EngineCallScope,
   ): Promise<EngineResult> {

@@ -2,6 +2,7 @@ import { METHODS } from "./methods";
 import { z } from "zod";
 import { PROTOCOL, type CapabilityDescriptor } from "@flame/backend-sdk/mcp";
 import { LIMITS } from "./limits";
+import { ENGINE_TOOLS } from "./tools";
 
 const token = z.string().min(1).max(256);
 const digest = z.string().regex(/^[a-f0-9]{64}$/);
@@ -15,7 +16,7 @@ const approval = z.strictObject({
   operationId: token,
   requestJSON: z.string().max(LIMITS.maxApprovalBytes),
 });
-const engineTool = z.enum(["js", "js_reset"]);
+const engineTool = z.enum(ENGINE_TOOLS);
 const operation = z.strictObject({
   id: token,
   tool: engineTool,

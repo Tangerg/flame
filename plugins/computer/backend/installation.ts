@@ -13,6 +13,7 @@ import {
 } from "node:fs";
 import { isAbsolute, join, relative, sep } from "node:path";
 import { z } from "zod";
+import { REQUIRED_ENGINE_TOOLS } from "../contracts/tools";
 
 const manifestSchema = z.object({
   platform: z.enum(["linux", "darwin"]),
@@ -73,8 +74,6 @@ function codexToolLayout(
   return layouts[0]!;
 }
 
-const REQUIRED_CUA_TOOLS = ["js", "js_reset", "turn_ended"] as const;
-
 function assertControlSurface(application: string, resources: string): void {
   const declaration = regular(
     application,
@@ -87,7 +86,7 @@ function assertControlSurface(application: string, resources: string): void {
   const enabled: unknown = declared?.mcpServers?.cua_repl?.enabled_tools;
   if (
     !Array.isArray(enabled) ||
-    !REQUIRED_CUA_TOOLS.every((name) => enabled.includes(name))
+    !REQUIRED_ENGINE_TOOLS.every((name) => enabled.includes(name))
   )
     throw new InstallationError(
       "application does not declare the required CUA control surface",

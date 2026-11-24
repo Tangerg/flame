@@ -27,6 +27,12 @@ import {
 import { z } from "zod";
 import { EngineProcess, type EngineConfig } from "./engineProcess";
 import { LIMITS } from "../contracts/limits";
+import {
+  isEngineTool,
+  REQUIRED_ENGINE_TOOLS,
+  TURN_ENDED_TOOL,
+  type EngineTool,
+} from "../contracts/tools";
 import manifest from "../package/plugin.json";
 
 export type { EngineConfig } from "./engineProcess";
@@ -261,7 +267,7 @@ export class Engine {
         !instructions?.trim() ||
         !serverInfo ||
         !capabilities ||
-        ["js", "js_reset", "turn_ended"].some(
+        REQUIRED_ENGINE_TOOLS.some(
           (name) =>
             listed.tools.filter((tool) => tool.name === name).length !== 1,
         )
@@ -270,7 +276,7 @@ export class Engine {
           "computer: engine instructions or lifecycle tools are incomplete",
         );
       for (const tool of listed.tools.filter((tool) =>
-        ["js", "js_reset", "turn_ended"].includes(tool.name),
+        REQUIRED_ENGINE_TOOLS.includes(tool.name),
       )) {
         if (tool.execution?.taskSupport === "required")
           throw new Error(
@@ -293,9 +299,7 @@ export class Engine {
         instructions,
         tools: originalTools
           .parse(cloneJSON(listed))
-          .tools.filter(
-            (tool) => tool.name === "js" || tool.name === "js_reset",
-          ),
+          .tools.filter((tool) => isEngineTool(tool.name)),
         serverInfo: ImplementationSchema.parse(cloneJSON(serverInfo)),
         capabilities: ServerCapabilitiesSchema.parse(cloneJSON(capabilities)),
       });
@@ -390,7 +394,7 @@ export class Engine {
   }
 
   call(
-    tool: "js" | "js_reset",
+    tool: EngineTool,
     args: Record<string, unknown>,
     scope: EngineCallScope,
   ): Promise<EngineResult> {
@@ -401,7 +405,7 @@ export class Engine {
         "computer: engine already has an active control operation",
       );
     if (
-      !["js", "js_reset"].includes(tool) ||
+      !isEngineTool(tool) ||
       ![scope.sessionId, scope.turnId, scope.callId].every(ownedIdentity)
     )
       throw new Error(
@@ -442,7 +446,7 @@ export class Engine {
 
   async #execute(
     active: ActiveCall,
-    tool: "js" | "js_reset",
+    tool: EngineTool,
     args: Record<string, unknown>,
   ): Promise<EngineResult> {
     let result: CallToolResult | undefined;
@@ -556,7 +560,7 @@ export class Engine {
     try {
       const ended = await this.#callTool(
         {
-          name: "turn_ended",
+          name: TURN_ENDED_TOOL,
           arguments: {
             hook_event_name:
               observed &&

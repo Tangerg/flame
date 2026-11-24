@@ -52,6 +52,7 @@ import { ko } from "./locales/ko";
 import { es } from "./locales/es";
 import { fr } from "./locales/fr";
 import { de } from "./locales/de";
+import { ENGINE_TOOLS } from "../contracts/tools";
 
 const CATALOGS = { en, zh, "zh-TW": zhTW, ja, ko, es, fr, de };
 
@@ -211,10 +212,7 @@ function ExecuteForm({
         <Select
           label={t("execute.tool")}
           value={tool}
-          options={[
-            { value: "js", label: "js" },
-            { value: "js_reset", label: "js_reset" },
-          ]}
+          options={ENGINE_TOOLS.map((value) => ({ value, label: value }))}
           disabled={!ready || pending}
           onValueChange={(value) => {
             setTool(value as ExecuteInput["tool"]);
