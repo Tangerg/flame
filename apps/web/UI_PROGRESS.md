@@ -56656,6 +56656,11 @@ ownership. Same-open Settings language-change coverage is now qualified in that
 section. Run receipt navigation is already complete in “Accepted Run receipts
 and native command focus.” Choose fresh task evidence before selecting a repair.
 
+### Open observations from the 2026-11-24 rounds
+
+- **`dock-feature-off` never becomes ready in WebKit.** Native captures show a blank window, then the Lab error `fixture surfaces or draft storage did not settle before the readiness deadline`. A temporary, reverted diagnostic reported `{"child":true,"drafts":true,"pending":[]}`. No surface is pending, and the composer's `persistenceState` stays `loading`. `dock-review` in the same host settles, and Chromium renders `dock-feature-off` fully. `composerStore.hydrate` returns early when its store is disposed mid-read, leaving that store's state at `loading`, and the readiness check reads `visualClient.composer.store`. A store replaced during hydration in this capability set is the likely path but is not confirmed. Next step: log store construction and disposal in this scene before changing either owner.
+- **Full-pane entry ring.** Settings and full-width views focus their named region on entry. WebKit treats the programmatic focus after a direct load or keyboard entry as focus-visible and frames the whole pane in the accent ring. This matches the panel focus border of keyboard-first editors, and the Lab cannot exercise mouse entry (the shell fixture's Settings row does not route). Keep it unless a mouse-entry capture shows the frame.
+
 ## Working and maintenance practice
 
 - Read `/Users/tangerg/Desktop/flame/AGENTS.md`, `/Users/tangerg/Desktop/flame/PROJECT_RULES.md`, `/Users/tangerg/Desktop/flame/DEVELOPMENT.md`, the target module README and applicable nested instructions. This progress file does not replace them.
