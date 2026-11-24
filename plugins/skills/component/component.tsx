@@ -175,7 +175,7 @@ export function Skills({ context }: { context: ComponentContext }) {
     bodyViewport,
     opened,
     review,
-    setReview,
+    beginReview,
     closeReview,
     confirmReview,
     reviewElement,
@@ -197,7 +197,7 @@ export function Skills({ context }: { context: ComponentContext }) {
     reconcile,
     workspace,
     disabled,
-    submit,
+    toggleArchived,
     rows,
     matching,
     openDocument,
@@ -453,21 +453,7 @@ export function Skills({ context }: { context: ComponentContext }) {
                     variant="soft"
                     size="md"
                     disabled={disabled}
-                    onClick={() =>
-                      submit(
-                        () =>
-                          item.lifecycle === "archived"
-                            ? context.runtime.skills.restore(item.name)
-                            : context.runtime.skills.archive(item.name),
-                        {
-                          action:
-                            item.lifecycle === "archived"
-                              ? "restore"
-                              : "archive",
-                          name: item.name,
-                        },
-                      )
-                    }
+                    onClick={() => toggleArchived(item)}
                   >
                     {t(
                       item.lifecycle === "archived"
@@ -486,11 +472,7 @@ export function Skills({ context }: { context: ComponentContext }) {
                         key={decision}
                         pending={disabled}
                         onClick={(event) =>
-                          setReview({
-                            proposal: structuredClone(item),
-                            decision,
-                            opener: event.currentTarget,
-                          })
+                          beginReview(item, decision, event.currentTarget)
                         }
                       >
                         {t(`action.${decision}`)}

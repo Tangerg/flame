@@ -16,6 +16,10 @@ import {
   useTranslator,
 } from "@flame/component-sdk";
 import { type MutationPromise } from "@flame/runtime-client";
+import {
+  type ManagedSkill,
+  type SkillProposal,
+} from "@flame/runtime-client/wire";
 
 import {
   type SkillSnapshot,
@@ -347,6 +351,23 @@ export function useSkills(context: ComponentContext) {
         setNotice({ kind: "failure", intent, detail: failure(error) });
     }
   }
+  function toggleArchived(skill: ManagedSkill) {
+    const restore = skill.lifecycle === "archived";
+    submit(
+      () =>
+        restore
+          ? context.runtime.skills.restore(skill.name)
+          : context.runtime.skills.archive(skill.name),
+      { action: restore ? "restore" : "archive", name: skill.name },
+    );
+  }
+  function beginReview(
+    proposal: SkillProposal,
+    decision: Review["decision"],
+    opener: HTMLElement,
+  ) {
+    setReview({ proposal: structuredClone(proposal), decision, opener });
+  }
   function confirmReview() {
     if (!review || !workspace) return;
     const { scope, name, revision } = review.proposal;
@@ -398,7 +419,7 @@ export function useSkills(context: ComponentContext) {
     bodyViewport,
     opened,
     review,
-    setReview,
+    beginReview,
     closeReview,
     confirmReview,
     reviewElement,
@@ -420,7 +441,7 @@ export function useSkills(context: ComponentContext) {
     reconcile,
     workspace,
     disabled,
-    submit,
+    toggleArchived,
     rows,
     matching,
     openDocument,
