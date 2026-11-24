@@ -52582,6 +52582,18 @@ menu keeps its per-command glyphs, which differ by command. Native
 `overlay=finder` shows title and time rows with one highlight. Web typecheck
 passes.
 
+Follow-up: the menu listed `Open command menu` as its first row, a toggle
+that inside the open menu can only close it; the menu now omits its own
+command. Its session commands also said `chat` (`New chat`, `Search chats`,
+`Previous chat`, `Close panel or chat`) beside a sidebar that says
+`New session` and `Search sessions…`. Every catalog now uses its Session
+term for the five session commands and its Conversation term for in-transcript
+search (`Find in conversation`); the keys become `command.newSession` and
+`command.searchSessions`, while persisted command IDs (`chat.new`) stay so
+saved shortcut overrides keep applying. Native `overlay=commands` in EN/light
+and DE/dark lists `New session` / `Neue Sitzung` and no self-toggle. Web
+typecheck and `check:locales` (940 keys) pass.
+
 ### Complete command names and visible view handoff (2026-11-06)
 
 Qualified from `db2e4c0ff` after fresh remote/local main merges. The original

@@ -54,7 +54,7 @@ function defaultStaticCommands(runs: DefaultCommandRuns): CommandSpec[] {
     },
     {
       id: "chat.new",
-      label: "command.newChat",
+      label: "command.newSession",
       combo: "Mod+N",
       run: runs.newChat,
     },

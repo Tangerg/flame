@@ -14,7 +14,7 @@ export default definePlugin({
     });
     ctx.contributions.add(COMMAND, {
       id: SESSION_SEARCH_COMMAND,
-      label: "command.searchChats",
+      label: "command.searchSessions",
       combo: "Mod+K",
       run: () => useSessionSearchStore.getState().toggle(),
     });

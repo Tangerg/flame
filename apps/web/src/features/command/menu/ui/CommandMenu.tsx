@@ -20,6 +20,7 @@ import {
 } from "@/features/workspace/public/navigation";
 import { matchCommands } from "@/features/command/menu/application/commandMatches";
 import { useCommandMenuStore } from "@/features/command/menu/application/commandMenuState";
+import { COMMAND_MENU_COMMAND } from "@/features/command/menu/public/commandMenu";
 import { color, leading } from "@flame/ui/tokens.stylex";
 const cmd = stylex.create({
   glyph: { flexShrink: 0, color: color.fgMuted },
@@ -67,6 +68,8 @@ export function CommandMenu() {
 
   const choices: CommandChoice[] = [
     ...commands.flatMap((command) => {
+      // Inside the open menu its own toggle would only close it.
+      if (command.id === COMMAND_MENU_COMMAND) return [];
       let run = () => void command.run();
       if (command.prepareForMenu) {
         const registration = lookupExtensionByKey(COMMAND, command.id);
