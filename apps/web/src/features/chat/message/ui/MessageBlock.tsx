@@ -10,7 +10,9 @@ import {
   useMemo,
   useRef,
   useState,
+  type FocusEvent,
   type ReactNode,
+  type RefObject,
 } from "react";
 import { Slot } from "@/extensions/host/Slot";
 import { MessageContext } from "@/features/chat/public/messageContext";
@@ -61,6 +63,98 @@ interface DraftReplacement {
   apply: () => boolean;
 }
 
+// A replacement is confirmed in a dialog and applied only after the dialog and
+// its focus manager are gone, so the Composer can take focus cleanly.
+function useDraftReplacement(column: RefObject<HTMLDivElement | null>) {
+  const t = useT();
+  const { messages } = useNotifications();
+  const visible = useContentVisible();
+  const [replacement, setReplacement] = useState<DraftReplacement | null>(null);
+  useLayoutEffect(() => {
+    if (replacement?.status !== "ready") return;
+    setReplacement(null);
+    if (replacement.apply()) return;
+    const origin = replacement.origin?.isConnected ? replacement.origin : column.current;
+    if (visible && origin && origin.ownerDocument.activeElement === origin.ownerDocument.body)
+      origin.focus({ preventScroll: true });
+    messages.notify("info", t("msgActions.replaceDraft.changed"), { source: "composer" });
+  }, [replacement, messages, t, visible, column]);
+  const confirm = useCallback(
+    (scope: DraftReplacementScope, apply: () => boolean, origin?: HTMLElement) => {
+      setReplacement({ status: "confirming", scope, origin: origin ?? column.current, apply });
+    },
+    [column],
+  );
+  return { replacement, setReplacement, confirm, visible };
+}
+
+function DraftReplacementDialog({
+  replacement,
+  visible,
+  column,
+  onChange,
+}: {
+  replacement: DraftReplacement;
+  visible: boolean;
+  column: RefObject<HTMLDivElement | null>;
+  onChange: (next: DraftReplacement | null) => void;
+}) {
+  const t = useT();
+  const copy = draftReplacementCopy[replacement.scope];
+  return (
+    <ConfirmDialog
+      open={visible && replacement.status === "confirming"}
+      onOpenChange={(open) => {
+        if (!open && replacement.status === "confirming")
+          onChange({ ...replacement, status: "dismissed" });
+      }}
+      onOpenChangeComplete={(open) => {
+        if (open) return;
+        onChange(replacement.status === "confirmed" ? { ...replacement, status: "ready" } : null);
+      }}
+      title={t("msgActions.replaceDraft.title")}
+      body={t(copy.body)}
+      confirmLabel={t(copy.confirm)}
+      cancelLabel={t("common.cancel")}
+      destructive
+      finalFocus={
+        replacement.status === "confirmed"
+          ? false
+          : () => (replacement.origin?.isConnected ? replacement.origin : (column.current ?? false))
+      }
+      onConfirm={() => onChange({ ...replacement, status: "confirmed" })}
+    />
+  );
+}
+
+// Reclaim only the focus the stream took: a child that had focus and is now
+// unmounted. One still in the DOM means the user blurred to body on purpose.
+function useStreamFocusReclaim(column: RefObject<HTMLDivElement | null>) {
+  const heldFocus = useRef(false);
+  const lastFocused = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    if (!heldFocus.current) return;
+    if (document.activeElement !== document.body) return;
+    const prior = lastFocused.current;
+    heldFocus.current = false;
+    lastFocused.current = null;
+    if (prior?.isConnected) return;
+    column.current?.focus({ preventScroll: true });
+  });
+  return {
+    onFocusCapture: (event: FocusEvent<HTMLDivElement>) => {
+      heldFocus.current = true;
+      lastFocused.current = event.target as HTMLElement;
+    },
+    onBlurCapture: (event: FocusEvent<HTMLDivElement>) => {
+      if (event.relatedTarget) {
+        heldFocus.current = false;
+        lastFocused.current = null;
+      }
+    },
+  };
+}
+
 function MessageBlockInner({
   row,
   ctx,
@@ -82,33 +176,13 @@ function MessageBlockInner({
   const isUser = msg.role === "user";
   const t = useT();
   const composer = useComposer();
-  const { messages } = useNotifications();
-  const visible = useContentVisible();
   const columnRef = useRef<HTMLDivElement>(null);
-  const [draftReplacement, setDraftReplacement] = useState<DraftReplacement | null>(null);
-  useLayoutEffect(() => {
-    if (draftReplacement?.status !== "ready") return;
-    // The closing dialog and its focus manager must be gone before presenting Composer.
-    setDraftReplacement(null);
-    if (draftReplacement.apply()) return;
-    const origin = draftReplacement.origin?.isConnected
-      ? draftReplacement.origin
-      : columnRef.current;
-    if (visible && origin && origin.ownerDocument.activeElement === origin.ownerDocument.body)
-      origin.focus({ preventScroll: true });
-    messages.notify("info", t("msgActions.replaceDraft.changed"), { source: "composer" });
-  }, [draftReplacement, messages, t, visible]);
-  const confirmDraftReplacement = useCallback(
-    (scope: DraftReplacementScope, apply: () => boolean, origin?: HTMLElement) => {
-      setDraftReplacement({
-        status: "confirming",
-        scope,
-        origin: origin ?? columnRef.current,
-        apply,
-      });
-    },
-    [],
-  );
+  const {
+    replacement: draftReplacement,
+    setReplacement: setDraftReplacement,
+    confirm: confirmDraftReplacement,
+    visible,
+  } = useDraftReplacement(columnRef);
   const editInComposer = useCallback(
     (origin?: HTMLElement) => {
       editMessageInComposer(composer, msg, (apply) =>
@@ -148,19 +222,7 @@ function MessageBlockInner({
           isLast,
         });
 
-  const heldFocus = useRef(false);
-  const lastFocused = useRef<HTMLElement | null>(null);
-  useEffect(() => {
-    if (!heldFocus.current) return;
-    if (document.activeElement !== document.body) return;
-    const prior = lastFocused.current;
-    heldFocus.current = false;
-    lastFocused.current = null;
-    // Reclaim only the focus the stream took: a child that had focus and is now
-    // unmounted. One still in the DOM means the user blurred to body on purpose.
-    if (prior?.isConnected) return;
-    columnRef.current?.focus({ preventScroll: true });
-  });
+  const focusReclaim = useStreamFocusReclaim(columnRef);
 
   if (msg.role === "system") {
     return (
@@ -206,16 +268,7 @@ function MessageBlockInner({
     <div
       ref={columnRef}
       tabIndex={-1}
-      onFocusCapture={(event) => {
-        heldFocus.current = true;
-        lastFocused.current = event.target as HTMLElement;
-      }}
-      onBlurCapture={(event) => {
-        if (event.relatedTarget) {
-          heldFocus.current = false;
-          lastFocused.current = null;
-        }
-      }}
+      {...focusReclaim}
       {...stylex.props(reveal.host, messageStyles.column, isUser && messageStyles.columnUser)}
     >
       <h2 className={cn("sr-only", stylex.props(messageStyles.unselectable).className)}>
@@ -254,34 +307,11 @@ function MessageBlockInner({
         )}
         {actionMaterialization === "settled" && terminalFooter}
         {draftReplacement && draftReplacement.status !== "ready" && (
-          <ConfirmDialog
-            open={visible && draftReplacement.status === "confirming"}
-            onOpenChange={(open) => {
-              if (!open && draftReplacement.status === "confirming")
-                setDraftReplacement({ ...draftReplacement, status: "dismissed" });
-            }}
-            onOpenChangeComplete={(open) => {
-              if (open) return;
-              setDraftReplacement(
-                draftReplacement.status === "confirmed"
-                  ? { ...draftReplacement, status: "ready" }
-                  : null,
-              );
-            }}
-            title={t("msgActions.replaceDraft.title")}
-            body={t(draftReplacementCopy[draftReplacement.scope].body)}
-            confirmLabel={t(draftReplacementCopy[draftReplacement.scope].confirm)}
-            cancelLabel={t("common.cancel")}
-            destructive
-            finalFocus={
-              draftReplacement.status === "confirmed"
-                ? false
-                : () =>
-                    draftReplacement.origin?.isConnected
-                      ? draftReplacement.origin
-                      : (columnRef.current ?? false)
-            }
-            onConfirm={() => setDraftReplacement({ ...draftReplacement, status: "confirmed" })}
+          <DraftReplacementDialog
+            replacement={draftReplacement}
+            visible={visible}
+            column={columnRef}
+            onChange={setDraftReplacement}
           />
         )}
       </MessageVisibleMaterialProvider>
