@@ -6,7 +6,7 @@ import { Icon } from "@/ui/index";
 
 import { reveal } from "@/ui/index";
 import { StatusDot } from "@/ui/index";
-import { RecordSummary, toneInk, vocab, ButtonPrimitive } from "@flame/ui";
+import { RecordSummary, toneInk, vocab, ButtonPrimitive, isConcealed } from "@flame/ui";
 import { useT } from "@/lib/i18n/index";
 import {
   openWorkspaceSubagentRun,
@@ -60,7 +60,7 @@ export function closestDelegatedRun(
 
 export function delegatedRunOpener(container: ParentNode, runId: string): HTMLButtonElement | null {
   const row = [...container.querySelectorAll<HTMLElement>('[data-slot="delegated-run-link"]')].find(
-    (node) => node.dataset.runId === runId && !node.closest("[hidden], [inert]"),
+    (node) => node.dataset.runId === runId && !isConcealed(node),
   );
   return row?.querySelector("button") ?? null;
 }

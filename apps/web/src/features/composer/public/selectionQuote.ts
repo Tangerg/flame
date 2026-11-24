@@ -1,5 +1,5 @@
 import { DIFFS_TAG_NAME } from "@pierre/diffs";
-import { quotedLineOf, quotedReaderOf } from "@flame/ui";
+import { quotedLineOf, quotedReaderOf, isConcealed } from "@flame/ui";
 import type { ComposerAccess } from "./composer";
 import { quoteText } from "../quote-selection/quoteText";
 import { fileContentRows } from "@/lib/highlight/pierreMarkup";
@@ -30,7 +30,7 @@ function captureQuote(trigger?: Node): string | null {
     !reader?.host.isConnected ||
     reader.host !== quotedReaderOf(range.endContainer)?.host ||
     (trigger && reader.host !== quotedReaderOf(trigger)?.host) ||
-    reader.host.closest("[hidden],[inert],[aria-hidden='true']")
+    isConcealed(reader.host)
   )
     return null;
   if (reader.source.kind !== "file") return quoteText(reader.source, text);

@@ -2,7 +2,7 @@ import * as stylex from "@stylexjs/stylex";
 import { Component, createRef, type ReactNode } from "react";
 import { type ToolCall } from "@/features/agent/public/sessionView";
 import { CodeArtifact, useContentVisible } from "@/ui/index";
-import { Disclosure, vocab } from "@flame/ui";
+import { Disclosure, vocab, isConcealed } from "@flame/ui";
 import { useT } from "@/lib/i18n/index";
 import {
   toolInspectorModel,
@@ -59,7 +59,7 @@ class ToolResultLayout extends Component<ToolResultLayoutProps, unknown, HTMLEle
       !source.isConnected &&
       root?.isConnected &&
       this.props.visible &&
-      !root.closest('[hidden], [inert], [aria-hidden="true"]') &&
+      !isConcealed(root) &&
       root.ownerDocument.activeElement === root.ownerDocument.body
     ) {
       root.focus({ preventScroll: true });

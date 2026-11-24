@@ -9,6 +9,7 @@ import {
   useContentVisible,
   vocab,
   type ReadingListHandle,
+  isConcealed,
 } from "@flame/ui";
 import { useT } from "@/lib/i18n/index";
 import { useAppearanceProjection } from "@/lib/appearance";
@@ -326,7 +327,7 @@ function captureFocusReturn(composer: ComposerAccess): (() => boolean) | null {
   if (!(element instanceof HTMLElement) || element === document.body) return null;
   const restoreEditor = composer.captureEditorFocusReturn(element);
   return () => {
-    if (!element.isConnected || element.closest("[hidden], [inert]")) return false;
+    if (!element.isConnected || isConcealed(element)) return false;
     if (restoreEditor) return restoreEditor();
     element.focus({ preventScroll: true });
     // A focus call on unrendered material is a no-op; only a landed focus counts.

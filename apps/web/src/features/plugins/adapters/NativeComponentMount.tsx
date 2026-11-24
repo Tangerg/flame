@@ -16,7 +16,7 @@ import {
   type SourceComponent,
 } from "@/features/plugins/adapters/componentModules";
 import * as stylex from "@stylexjs/stylex";
-import { Placed, useContentVisible, usePlacement, type Placement } from "@flame/ui";
+import { Placed, useContentVisible, usePlacement, type Placement, isConcealed } from "@flame/ui";
 
 const styles = stylex.create({ container: { display: "contents" } });
 const ComponentUse = createContext<Use | undefined>(undefined);
@@ -69,7 +69,7 @@ function ownedInput(
 }
 
 function readingHost(root: HTMLElement): HTMLElement | null {
-  if (!root.isConnected || root.closest('[hidden], [inert], [aria-hidden="true"]')) return null;
+  if (!root.isConnected || isConcealed(root)) return null;
   return root.parentElement?.closest<HTMLElement>("[tabindex]") ?? null;
 }
 

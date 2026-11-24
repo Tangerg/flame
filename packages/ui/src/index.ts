@@ -188,7 +188,7 @@ export {
   type PixelSize,
 } from "./image-dimensions";
 
-export { handoffFocus } from "./focus";
+export { handoffFocus, isConcealed } from "./focus";
 
 export {
   ReadingList,

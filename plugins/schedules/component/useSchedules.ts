@@ -43,6 +43,7 @@ import {
   type Edit,
   type ModelRead,
 } from "./types";
+import { isConcealed } from "@flame/ui";
 export const enabled = (item: Schedule) => item.nextRunAt !== undefined;
 export const modelKey = (provider: string, model: string) =>
   JSON.stringify([provider, model]);
@@ -304,7 +305,7 @@ export function useSchedules(context: ComponentContext) {
       const feedback = feedbackElement.current;
       if (
         feedback &&
-        !feedback.closest("[hidden], [inert]") &&
+        !isConcealed(feedback) &&
         (feedback.contains(feedback.ownerDocument.activeElement) ||
           feedback.ownerDocument.activeElement === feedback.ownerDocument.body)
       )

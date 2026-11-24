@@ -30,7 +30,7 @@ import { ScrollArea } from "@/ui/index";
 import { SectionLabel } from "@/ui/index";
 import { StatusDot } from "@/ui/index";
 import { ContentVisibility, useContentVisible } from "@/ui/index";
-import { EmptyState, IconButton, RecordBody, toneInk, vocab } from "@flame/ui";
+import { EmptyState, IconButton, RecordBody, toneInk, vocab, isConcealed } from "@flame/ui";
 import { AgentJumpToBottom } from "@/ui/agent/index";
 import { AgentWorkspaceView } from "@/ui/agent/index";
 import { space, type as typeStep, weight } from "@flame/ui/tokens.stylex";
@@ -157,7 +157,7 @@ class SubagentPanelLayout extends Component<
       !panel ||
       !(source instanceof HTMLElement) ||
       !panel.contains(source) ||
-      source.closest("[hidden], [inert]")
+      isConcealed(source)
     )
       return null;
     const run = closestDelegatedRun(source);
@@ -179,7 +179,7 @@ class SubagentPanelLayout extends Component<
     if (
       !retired ||
       !panel ||
-      panel.closest("[hidden], [inert]") ||
+      isConcealed(panel) ||
       retired.source.isConnected ||
       panel.ownerDocument.activeElement !== panel.ownerDocument.body
     )

@@ -1,9 +1,15 @@
+// Hidden, inert and aria-hidden subtrees are not presented to every user, so
+// focus must never land in one.
+export function isConcealed(element: Element): boolean {
+  return element.closest("[hidden], [inert], [aria-hidden='true']") !== null;
+}
+
 function availableFocusTarget(
   target: HTMLElement | null | undefined,
 ): target is HTMLElement {
   if (
     !target?.isConnected ||
-    target.closest("[hidden], [inert], [aria-hidden='true']") ||
+    isConcealed(target) ||
     target.matches(":disabled")
   )
     return false;
