@@ -1,3 +1,4 @@
+import { METHODS } from "../contracts/methods";
 import manifest from "../package/plugin.json" with { type: "json" };
 import { runtime } from "@flame/backend-sdk";
 import { readFileSync } from "node:fs";
@@ -26,7 +27,7 @@ backend.onSetup((context) => {
   context.defer(() => archive.close());
 });
 backend.implement(
-  contract.portable.method("flame.usage-reports/capture.v1"),
+  contract.portable.method(METHODS.capture),
   (value) => value,
   async (context) =>
     archive.capture(context, async (days) => {
@@ -39,17 +40,17 @@ backend.implement(
     }),
 );
 backend.implement(
-  contract.portable.method("flame.usage-reports/list.v2"),
+  contract.portable.method(METHODS.list),
   (value) => value,
   () => ({ reports: archive.list() }),
 );
 backend.implement(
-  contract.portable.method("flame.usage-reports/get.v1"),
+  contract.portable.method(METHODS.get),
   (value) => value as { id: string },
   (_context, input) => archive.read(input.id),
 );
 backend.implement(
-  contract.portable.method("flame.usage-reports/delete.v1"),
+  contract.portable.method(METHODS.delete),
   (value) => value,
   (context) => archive.remove(context),
 );

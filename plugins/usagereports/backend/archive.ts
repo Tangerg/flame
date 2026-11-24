@@ -1,3 +1,4 @@
+import { METHODS } from "../contracts/methods";
 import type { SQLOutputValue } from "node:sqlite";
 import { openPrivateDatabase, type Database } from "@flame/backend-sdk/sqlite";
 import { Temporal } from "@js-temporal/polyfill";
@@ -119,9 +120,9 @@ export class Archive {
   readonly #commands: ReadonlyMap<string, Method>;
 
   constructor(path: string, contract: Capability) {
-    this.#capture = contract.portable.method("flame.usage-reports/capture.v1");
-    this.#remove = contract.portable.method("flame.usage-reports/delete.v1");
-    this.#get = contract.portable.method("flame.usage-reports/get.v1");
+    this.#capture = contract.portable.method(METHODS.capture);
+    this.#remove = contract.portable.method(METHODS.delete);
+    this.#get = contract.portable.method(METHODS.get);
     this.#commands = new Map(
       [this.#capture, this.#remove].map((method) => [
         method.descriptor.name,
