@@ -521,3 +521,6 @@ export function useSchedules(context: ComponentContext) {
     toggleEnabled,
   };
 }
+
+export type ScheduleState = ReturnType<typeof useSchedules>;
+export type Translate = ScheduleState["t"];
