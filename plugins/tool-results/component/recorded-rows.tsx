@@ -7,6 +7,7 @@ import {
   type CSSProperties,
   type Ref,
 } from "react";
+import * as token from "@flame/ui/tokens.stylex";
 import { Search } from "@flame/icons/react";
 import type { Translate } from "@flame/component-sdk";
 import {
@@ -210,7 +211,7 @@ export function RecordedRows({
             minHeight: 0,
             overflow: "auto",
             overscrollBehavior: "contain auto",
-            scrollPaddingBlock: "var(--layout-control-gap)",
+            scrollPaddingBlock: token.layout.controlGap,
             paddingInline: frameInset,
             paddingBlockEnd: frameInset,
           }}
@@ -252,7 +253,7 @@ export function RecordedRows({
             {matching.length > visible && (
               <Button
                 onClick={(event) => showMore(event.currentTarget)}
-                style={{ marginBlockStart: "var(--layout-control-gap)" }}
+                style={{ marginBlockStart: token.layout.controlGap }}
               >
                 {t("result.showMore", {
                   rows: Math.min(RESULT_PAGE_ROWS, matching.length - visible),
@@ -282,18 +283,18 @@ function rowStyle(
       row.kind === "source"
         ? `${numberWidth} minmax(0, 1fr)`
         : "minmax(0, 1fr)",
-    columnGap: "var(--layout-content-gap)",
-    rowGap: "var(--layout-label-gap)",
+    columnGap: token.layout.contentGap,
+    rowGap: token.layout.labelGap,
     paddingBlockStart:
       first || !grouped
         ? undefined
         : row.body === undefined
-          ? "var(--layout-label-gap)"
-          : "calc(var(--layout-row-padding) * 2)",
+          ? token.layout.labelGap
+          : `calc(${token.layout.rowPadding} * 2)`,
     minWidth: 0,
-    fontFamily: mono ? "var(--font-mono)" : "var(--font-sans)",
-    fontSize: mono ? "var(--fs-code)" : "var(--fs-ui-md)",
-    lineHeight: "var(--leading-relaxed)",
+    fontFamily: mono ? token.font.mono : token.font.sans,
+    fontSize: mono ? token.fontSize.code : token.fontSize.uiMd,
+    lineHeight: token.leading.relaxed,
   };
 }
 
@@ -315,7 +316,7 @@ function RecordedRow({
       {row.kind === "source" && (
         <span
           style={{
-            color: "var(--color-text-faint)",
+            color: token.color.fgFaint,
             textAlign: "end",
             userSelect: "none",
             fontVariantNumeric: "tabular-nums",
@@ -363,9 +364,9 @@ function RecordedRow({
               overflowWrap: "anywhere",
               margin: 0,
               color: /^error\b/.test(row.body)
-                ? "var(--color-negative)"
+                ? token.color.negative
                 : /^warning\b/.test(row.body)
-                  ? "var(--color-warning)"
+                  ? token.color.warning
                   : undefined,
             }}
           >

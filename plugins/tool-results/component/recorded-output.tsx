@@ -8,6 +8,7 @@ import {
   type RefObject,
   type SetStateAction,
 } from "react";
+import * as token from "@flame/ui/tokens.stylex";
 import { ArrowDownToLine, Search } from "@flame/icons/react";
 import {
   ReadingList,
@@ -239,10 +240,10 @@ export function RecordedOutput({ text, t }: { text: string; t: Translate }) {
           minWidth: "100%",
           width: "max-content",
           paddingInline: expanded
-            ? `calc(${frameInset} - var(--focus-inset-edge))`
+            ? `calc(${frameInset} - ${token.edge.focusInset})`
             : frameInset,
           backgroundColor:
-            selected === index ? "var(--wash-selected)" : undefined,
+            selected === index ? token.surface.selected : undefined,
         }}
       >
         <span data-output-line={index}>
@@ -319,14 +320,14 @@ export function RecordedOutput({ text, t }: { text: string; t: Translate }) {
           )
         }
         style={{
-          fontFamily: "var(--font-mono)",
-          fontSize: "var(--fs-code)",
-          lineHeight: "var(--leading-relaxed)",
+          fontFamily: token.font.mono,
+          fontSize: token.fontSize.code,
+          lineHeight: token.leading.relaxed,
           minHeight: 0,
           display: "flex",
           flexDirection: "column",
           height: expanded
-            ? `min(24rem, 60vh, calc(${lines.length}lh + ${frameInset} + 2 * var(--focus-inset-edge)))`
+            ? `min(24rem, 60vh, calc(${lines.length}lh + ${frameInset} + 2 * ${token.edge.focusInset}))`
             : undefined,
           overflowX: expanded ? undefined : "auto",
           overscrollBehaviorX: expanded ? undefined : "contain",

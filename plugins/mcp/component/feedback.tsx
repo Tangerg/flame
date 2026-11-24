@@ -1,3 +1,4 @@
+import * as token from "@flame/ui/tokens.stylex";
 import { useState, useSyncExternalStore } from "react";
 import {
   failureText,
@@ -9,7 +10,7 @@ import type { Feedback, Read, MCPSettings } from "./settings";
 const column = {
   display: "grid",
   minWidth: 0,
-  gap: "var(--layout-content-gap)",
+  gap: token.layout.contentGap,
 } as const;
 export function ReadStatus<T>({
   read,

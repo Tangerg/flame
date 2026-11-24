@@ -1,3 +1,4 @@
+import * as token from "@flame/ui/tokens.stylex";
 import type { CSSProperties, KeyboardEvent, ReactNode, RefObject } from "react";
 import { X } from "@flame/icons/react";
 import { IconButton, isImeKey, SearchField } from "@flame/ui";
@@ -7,11 +8,11 @@ import { frameInset } from "./frame";
 export const findBar: CSSProperties = {
   display: "flex",
   minWidth: 0,
-  paddingInline: `${frameInset} calc(var(--spacing) * 1.5)`,
-  paddingBlockEnd: "var(--layout-label-gap)",
-  fontFamily: "var(--font-sans)",
-  fontSize: "var(--fs-ui-sm)",
-  lineHeight: "var(--leading-body)",
+  paddingInline: `${frameInset} ${token.space.s1_5}`,
+  paddingBlockEnd: token.layout.labelGap,
+  fontFamily: token.font.sans,
+  fontSize: token.fontSize.uiSm,
+  lineHeight: token.leading.body,
 };
 
 export function isFindShortcut(event: KeyboardEvent) {
@@ -86,7 +87,7 @@ export function FindField({
         display: "flex",
         flex: "1 1 14rem",
         alignItems: "center",
-        gap: "var(--layout-control-gap)",
+        gap: token.layout.controlGap,
         minWidth: 0,
       }}
     >

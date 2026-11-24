@@ -6,6 +6,7 @@ import {
   useSyncExternalStore,
   type RefObject,
 } from "react";
+import * as token from "@flame/ui/tokens.stylex";
 import type { ComponentContext, Translate } from "@flame/component-sdk";
 import {
   Button,
@@ -43,7 +44,7 @@ const split = {
   display: "flex",
   justifyContent: "space-between",
   alignItems: "center",
-  gap: "var(--layout-content-gap)",
+  gap: token.layout.contentGap,
 } as const;
 // Credentials, commands and JSON are typed literally, never corrected.
 const LITERAL_INPUT = {
@@ -63,14 +64,14 @@ function FieldIssue({
 }) {
   if (!shown) return null;
   return (
-    <span id={id} role="alert" style={{ color: "var(--color-negative)" }}>
+    <span id={id} role="alert" style={{ color: token.color.negative }}>
       {message}
     </span>
   );
 }
 
 function FieldWarning({ message }: { message: string }) {
-  return <span style={{ color: "var(--color-warning)" }}>{message}</span>;
+  return <span style={{ color: token.color.warning }}>{message}</span>;
 }
 
 function ClearStoredSecret({

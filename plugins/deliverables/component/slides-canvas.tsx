@@ -1,3 +1,4 @@
+import * as token from "@flame/ui/tokens.stylex";
 import { useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
 import { type Translate } from "@flame/component-sdk";
 import {
@@ -127,9 +128,9 @@ export function Canvas({
         width: "100%",
         aspectRatio: `${layout.width} / ${layout.height}`,
         overflow: "hidden",
-        background: "var(--color-surface)",
-        border: "1px solid var(--color-border)",
-        borderRadius: "var(--shape-sm)",
+        background: token.surface.surface,
+        border: `1px solid ${token.surface.field}`,
+        borderRadius: token.radius.sm,
         touchAction: "none",
       }}
     >
@@ -168,20 +169,20 @@ export function Canvas({
               font: "inherit",
               fontSize: "0.7rem",
               lineHeight: 1.25,
-              color: "var(--color-text-soft)",
+              color: token.color.fgSoft,
               cursor: editable && element.frame ? "move" : "pointer",
               background:
                 element.kind === "chart" || element.kind === "table"
-                  ? "var(--color-info-wash)"
+                  ? token.surface.infoWash
                   : element.kind === "picture"
-                    ? "var(--color-sunken)"
+                    ? token.surface.sunken
                     : element.kind === "text"
                       ? "transparent"
-                      : "var(--color-surface-2)",
+                      : token.surface.surface2,
               border: `1px ${active ? "solid" : "dashed"} ${
-                active ? "var(--color-accent)" : "var(--color-border-strong)"
+                active ? token.color.accent : token.surface.fieldStrong
               }`,
-              outline: active ? "2px solid var(--color-accent)" : "none",
+              outline: active ? `2px solid ${token.color.accent}` : "none",
               outlineOffset: 1,
               zIndex: active ? 1 : undefined,
             }}
@@ -206,7 +207,7 @@ export function Canvas({
                   width: 10,
                   height: 10,
                   cursor: "nwse-resize",
-                  background: "var(--color-accent)",
+                  background: token.color.accent,
                 }}
               />
             )}

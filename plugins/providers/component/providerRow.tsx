@@ -1,3 +1,4 @@
+import * as token from "@flame/ui/tokens.stylex";
 import { useId, useState, useSyncExternalStore } from "react";
 import type { ComponentContext, Translate } from "@flame/component-sdk";
 import type { Provider } from "@flame/runtime-client/wire";
@@ -16,7 +17,7 @@ import { providerResource, type ProviderSettings } from "./settings";
 import { EndpointField } from "./endpointField";
 import { CommandFeedback } from "./feedback";
 const literal = { whiteSpace: "pre-wrap", overflowWrap: "anywhere" } as const;
-const mono = { fontFamily: "var(--font-mono)" } as const;
+const mono = { fontFamily: token.font.mono } as const;
 const MASKED = "\u0000";
 
 function ProviderCredentialBadge({
@@ -87,7 +88,7 @@ export function ProviderRow({
           display: "flex",
           flexWrap: "wrap",
           alignItems: "center",
-          gap: "var(--layout-content-gap)",
+          gap: token.layout.contentGap,
           minWidth: 0,
         }}
       >

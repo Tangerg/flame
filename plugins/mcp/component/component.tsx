@@ -10,6 +10,7 @@ import {
   type ComponentContext,
   useTranslator,
 } from "@flame/component-sdk";
+import * as token from "@flame/ui/tokens.stylex";
 import { Plus, Refresh, Server } from "@flame/icons/react";
 import {
   Button,
@@ -37,7 +38,7 @@ const CATALOGS = { en, zh, "zh-TW": zhTW, ja, ko, es, fr, de };
 const column = {
   display: "grid",
   minWidth: 0,
-  gap: "var(--layout-field-gap)",
+  gap: token.layout.fieldGap,
 } as const;
 export const MCPServers = defineComponent((source) => {
   const settings = new MCPSettings(source);

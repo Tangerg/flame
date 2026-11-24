@@ -132,6 +132,25 @@ export const leading = stylex.defineVars({
   tight: "var(--leading-tight)",
 });
 
+export const font = stylex.defineVars({
+  sans: "var(--font-sans)",
+  mono: "var(--font-mono)",
+});
+
+export const fontSize = stylex.defineVars({
+  ui2xs: "var(--fs-ui-2xs)",
+  uiXs: "var(--fs-ui-xs)",
+  uiSm: "var(--fs-ui-sm)",
+  uiMd: "var(--fs-ui-md)",
+  code: "var(--fs-code)",
+  prose: "var(--fs-prose)",
+});
+
+export const edge = stylex.defineVars({
+  control: "var(--control-edge-width)",
+  focusInset: "var(--focus-inset-edge)",
+});
+
 export const corner = stylex.create({
   pill: { borderRadius: "var(--shape-pill)", "corner-shape": "round" },
   bubble: { borderRadius: "var(--shape-bubble)", "corner-shape": "round" },

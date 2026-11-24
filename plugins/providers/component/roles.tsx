@@ -1,3 +1,4 @@
+import * as token from "@flame/ui/tokens.stylex";
 import { useId, useSyncExternalStore, type CSSProperties } from "react";
 import {
   failureText,
@@ -18,14 +19,14 @@ import { CommandFeedback } from "./feedback";
 const column = {
   display: "grid",
   minWidth: 0,
-  gap: "var(--layout-field-gap)",
+  gap: token.layout.fieldGap,
 } as const;
 // The control sits in a FormRow's second column like the provider forms above it: the
 // Select's fill hangs by the row bleed and a leading borderless action keeps the edge,
 // so both start on that column's label line.
 const control = {
   ...column,
-  "--field-hang": "calc(var(--spacing) * 3)",
+  "--field-hang": token.space.s3,
   "--ghost-hang": 1,
 } as CSSProperties;
 type Choice = { provider: string; model: string; label: string };

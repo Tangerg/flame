@@ -9,6 +9,7 @@ import {
   type ComponentContext,
   useTranslator,
 } from "@flame/component-sdk";
+import * as token from "@flame/ui/tokens.stylex";
 import { Refresh, Server } from "@flame/icons/react";
 import {
   EmptyState,
@@ -35,7 +36,7 @@ const CATALOGS = { en, zh, "zh-TW": zhTW, ja, ko, es, fr, de };
 const column = {
   display: "grid",
   minWidth: 0,
-  gap: "var(--layout-field-gap)",
+  gap: token.layout.fieldGap,
 } as const;
 export const Providers = defineComponent((source) => {
   const settings = new ProviderSettings(source);

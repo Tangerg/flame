@@ -1,11 +1,12 @@
+import * as token from "@flame/ui/tokens.stylex";
 import type { CSSProperties } from "react";
 
 const INK = {
-  muted: "var(--color-text-muted)",
-  negative: "var(--color-negative)",
-  success: "var(--color-success)",
-  warning: "var(--color-warning)",
-  accent: "var(--color-accent-text)",
+  muted: token.color.fgMuted,
+  negative: token.color.negative,
+  success: token.color.success,
+  warning: token.color.warning,
+  accent: token.color.accentText,
 } as const;
 
 type AnsiStyle = {

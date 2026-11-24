@@ -1,3 +1,4 @@
+import * as token from "@flame/ui/tokens.stylex";
 import ReactMarkdown from "react-markdown";
 import {
   Fragment,
@@ -118,7 +119,7 @@ const implementations: ReactCatalogComponent[] = [
         whiteSpace: "pre-wrap",
         overflowWrap: "anywhere",
         flexGrow: props.weight,
-        fontSize: props.variant === "caption" ? "var(--fs-ui-xs)" : undefined,
+        fontSize: props.variant === "caption" ? token.fontSize.uiXs : undefined,
       }}
     >
       <ReactMarkdown
@@ -139,7 +140,7 @@ const implementations: ReactCatalogComponent[] = [
         flexGrow: props.weight,
         justifyContent: justification[props.justify ?? "start"],
         alignItems: props.align,
-        gap: "calc(var(--spacing) * 3)",
+        gap: token.space.s3,
         minWidth: 0,
       }}
     >
@@ -154,7 +155,7 @@ const implementations: ReactCatalogComponent[] = [
         flexGrow: props.weight,
         justifyContent: justification[props.justify ?? "start"],
         alignItems: props.align,
-        gap: "calc(var(--spacing) * 3)",
+        gap: token.space.s3,
         minWidth: 0,
       }}
     >
@@ -168,7 +169,7 @@ const implementations: ReactCatalogComponent[] = [
         flexDirection: props.direction === "horizontal" ? "row" : "column",
         flexGrow: props.weight,
         alignItems: props.align,
-        gap: "calc(var(--spacing) * 2)",
+        gap: token.space.s2,
         minWidth: 0,
       }}
     >
@@ -189,13 +190,13 @@ const implementations: ReactCatalogComponent[] = [
               alignSelf: "stretch",
               height: "auto",
               border: 0,
-              borderInlineStart: "1px solid var(--color-divider)",
+              borderInlineStart: `1px solid ${token.surface.divider}`,
               flexGrow: props.weight,
             }
           : {
               width: "100%",
               border: 0,
-              borderBlockStart: "1px solid var(--color-divider)",
+              borderBlockStart: `1px solid ${token.surface.divider}`,
               flexGrow: props.weight,
             }
       }

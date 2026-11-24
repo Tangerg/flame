@@ -1,3 +1,4 @@
+import * as token from "@flame/ui/tokens.stylex";
 import { useEffect, useEffectEvent, useSyncExternalStore } from "react";
 import type { ComponentContext, Translate } from "@flame/component-sdk";
 import type { MCPServerID, ToolRef } from "@flame/runtime-client/wire";
@@ -16,20 +17,20 @@ import { CommandFeedback, ReadStatus } from "./feedback";
 const column = {
   display: "grid",
   minWidth: 0,
-  gap: "var(--layout-content-gap)",
+  gap: token.layout.contentGap,
 } as const;
 const controls = {
   display: "flex",
   flexWrap: "wrap",
   alignItems: "center",
   justifyContent: "flex-end",
-  gap: "var(--layout-content-gap)",
+  gap: token.layout.contentGap,
   minWidth: 0,
 } as const;
 const choice = {
   display: "inline-flex",
   alignItems: "center",
-  gap: "var(--layout-control-gap)",
+  gap: token.layout.controlGap,
   minWidth: 0,
   maxWidth: "100%",
 } as const;

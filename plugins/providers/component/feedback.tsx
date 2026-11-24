@@ -1,3 +1,4 @@
+import * as token from "@flame/ui/tokens.stylex";
 import { useState } from "react";
 import {
   failureText,
@@ -9,7 +10,7 @@ import type { Command, Feedback, ProviderSettings } from "./settings";
 const column = {
   display: "grid",
   minWidth: 0,
-  gap: "var(--layout-field-gap)",
+  gap: token.layout.fieldGap,
 } as const;
 export function ReadFailure({
   error,

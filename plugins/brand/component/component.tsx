@@ -1,3 +1,4 @@
+import * as token from "@flame/ui/tokens.stylex";
 import { useRef, useState } from "react";
 import { companion, FLAME_ORANGE, mark, plush } from "@flame/brand-assets";
 import {
@@ -132,7 +133,7 @@ export function Brand({ context }: { context: ComponentContext }) {
             display: "flex",
             flexWrap: "wrap",
             alignItems: "center",
-            gap: "var(--layout-content-gap)",
+            gap: token.layout.contentGap,
           }}
         >
           <span
@@ -141,7 +142,7 @@ export function Brand({ context }: { context: ComponentContext }) {
               width: "6rem",
               height: "6rem",
               flexShrink: 0,
-              borderRadius: "var(--shape-lg)",
+              borderRadius: token.radius.lg,
               backgroundColor: FLAME_ORANGE,
             }}
           />

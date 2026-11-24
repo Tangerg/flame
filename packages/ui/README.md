@@ -124,7 +124,7 @@ import "@flame/ui/styles.css";
 </FontScaleProvider>;
 ```
 
-The build emits JavaScript, declarations and one stylesheet. Ordinary consumers need no StyleX transform or application aliases. StyleX consumers may import the shared token declarations from `@flame/ui/tokens.stylex`; those declarations are compiled by their existing StyleX pipeline. Component overrides use the existing `styles` contract so each element merges its styles in one `stylex.props` call.
+The build emits JavaScript, declarations and one stylesheet. Ordinary consumers need no StyleX transform or application aliases. StyleX consumers may import the shared token declarations from `@flame/ui/tokens.stylex`; those declarations are compiled by their existing StyleX pipeline. Installed components, which are built without StyleX, import the same module from the host and use its variable groups (`layout`, `space`, `color`, `surface`, `font`, `fontSize`, `edge`, `radius`, `leading`) as inline style values instead of spelling host custom property names. Component overrides use the existing `styles` contract so each element merges its styles in one `stylex.props` call.
 
 ```sh
 npm ci

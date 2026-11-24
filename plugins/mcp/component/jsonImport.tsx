@@ -10,6 +10,7 @@ import {
   type ComponentContext,
   type Translate,
 } from "@flame/component-sdk";
+import * as token from "@flame/ui/tokens.stylex";
 import { FileBraces } from "@flame/icons/react";
 import { Button, Icon, ModalDialog, RecordBody, TextArea } from "@flame/ui";
 import { McpImportError, type McpImportIssue } from "./import";
@@ -17,7 +18,7 @@ import { IMPORT, type MCPSettings } from "./settings";
 import { CommandFeedback } from "./feedback";
 const editorStyle = {
   maxHeight: "100%",
-  minHeight: "calc(1lh + var(--spacing) * 4 + var(--control-edge-width) * 2)",
+  minHeight: `calc(1lh + ${token.space.s4} + ${token.edge.control} * 2)`,
 } as const;
 const EXAMPLE = JSON.stringify(
   {

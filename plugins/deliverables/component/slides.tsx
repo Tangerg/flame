@@ -30,6 +30,7 @@ import {
   type Frame,
   type SlideView,
 } from "../contracts/content";
+import * as token from "@flame/ui/tokens.stylex";
 import { METHODS } from "../contracts/methods";
 import type { DocumentRead } from "./types";
 import type { DeliverablesState } from "./useDeliverables";
@@ -608,7 +609,7 @@ export function SlideStudio({
           style={{
             display: "flex",
             flexWrap: "wrap",
-            gap: "var(--layout-content-gap, 12px)",
+            gap: token.layout.contentGap,
             alignItems: "flex-start",
           }}
         >

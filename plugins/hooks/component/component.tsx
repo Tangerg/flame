@@ -12,6 +12,7 @@ import {
   type Translate,
   useTranslator,
 } from "@flame/component-sdk";
+import * as token from "@flame/ui/tokens.stylex";
 import { type MutationPromise } from "@flame/runtime-client";
 import {
   type HookInfo,
@@ -252,14 +253,12 @@ export function Hooks({ context }: { context: ComponentContext }) {
 function HookRow({ value, t }: { value: HookInfo; t: Translate }) {
   return (
     <ListRow>
-      <div
-        style={{ display: "grid", minWidth: 0, gap: "var(--layout-label-gap)" }}
-      >
+      <div style={{ display: "grid", minWidth: 0, gap: token.layout.labelGap }}>
         <div
           style={{
             display: "flex",
             flexWrap: "wrap",
-            gap: "var(--layout-control-gap)",
+            gap: token.layout.controlGap,
             alignItems: "center",
           }}
         >

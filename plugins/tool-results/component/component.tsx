@@ -1,3 +1,4 @@
+import * as token from "@flame/ui/tokens.stylex";
 import { useMemo } from "react";
 import { type ComponentContext, useTranslator } from "@flame/component-sdk";
 import { Metadata, RecordMeta } from "@flame/ui";
@@ -50,10 +51,10 @@ export function RecordedResult({ context }: { context: ComponentContext }) {
                     width: verb ? "1%" : "5em",
                     whiteSpace: verb ? "nowrap" : undefined,
                     overflowWrap: "anywhere",
-                    paddingInlineEnd: "var(--layout-content-gap)",
+                    paddingInlineEnd: token.layout.contentGap,
                     verticalAlign: "baseline",
-                    color: "var(--color-text-muted)",
-                    fontSize: "var(--fs-ui-sm)",
+                    color: token.color.fgMuted,
+                    fontSize: token.fontSize.uiSm,
                   }}
                 >
                   {verb ? t(verb) : status}
@@ -62,8 +63,8 @@ export function RecordedResult({ context }: { context: ComponentContext }) {
                   style={{
                     verticalAlign: "baseline",
                     overflowWrap: "anywhere",
-                    fontFamily: "var(--font-mono)",
-                    fontSize: "var(--fs-code)",
+                    fontFamily: token.font.mono,
+                    fontSize: token.fontSize.code,
                   }}
                 >
                   <span title={path}>{path}</span>
