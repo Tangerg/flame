@@ -1,4 +1,5 @@
 import { CalendarClock, Refresh, Plus, ChevronDown } from "@flame/icons/react";
+import { type ReactNode } from "react";
 import { type ComponentContext } from "@flame/component-sdk";
 
 import {
@@ -34,12 +35,17 @@ import {
 } from "@flame/ui";
 import { templates } from "./templates";
 
-import { useSchedules, selection, enabled } from "./useSchedules";
+import { useSchedules, selection, enabled, modelKey } from "./useSchedules";
+import { type Edit, type Schedule } from "./types";
+
+type ScheduleState = ReturnType<typeof useSchedules>;
+type Translate = ScheduleState["t"];
+
 export function Schedules({ context }: { context: ComponentContext }) {
   const openSession = context.openSession;
+  const schedules = useSchedules(context);
   const {
     t,
-    dateTime,
     notice,
     feedbackElement,
     command,
@@ -57,29 +63,11 @@ export function Schedules({ context }: { context: ComponentContext }) {
     summary,
     liveError,
     edit,
-    titleElement,
-    resolveOpener,
-    cancelTask,
-    save,
-    canSave,
-    patch,
-    selectedKey,
-    models,
-    selectedModel,
-    currentModels,
-    setModelRefresh,
     deleting,
-    deleteCancel,
-    submit,
     page,
     rows,
     matching,
-    disabled,
-    taskOpener,
-    setNotice,
-    setEdit,
-    setDeleting,
-  } = useSchedules(context);
+  } = schedules;
   const history = read.accepted?.history ?? [];
   const paginated = Boolean(history.length) || Boolean(page?.nextCursor);
   const feedback = (notice || command) && (
@@ -176,258 +164,13 @@ export function Schedules({ context }: { context: ComponentContext }) {
       )}
       {!editorOpen && feedback}
       {edit && (
-        <ModalDialog
-          open
-          title={
-            edit.basis
-              ? t("editor.edit.title", {
-                  title: edit.basis.title || t("editor.edit.untitled"),
-                })
-              : t("editor.new.title")
-          }
-          description={
-            edit.basis
-              ? t("editor.edit.description", {
-                  revision: String(edit.basis.revision),
-                })
-              : undefined
-          }
-          closeLabel={t("editor.close")}
-          size="lg"
-          initialFocus={titleElement}
-          finalFocus={resolveOpener}
-          dismissible={!busy}
-          onOpenChange={(open) => {
-            if (!open) cancelTask();
-          }}
-          onSubmit={(event) => {
-            event.preventDefault();
-            save();
-          }}
-          auxiliaryAction={feedback}
-          footer={
-            <>
-              <Button variant="ghost" disabled={busy} onClick={cancelTask}>
-                {t("cancel")}
-              </Button>
-              <Button
-                variant="primary"
-                type="submit"
-                focusableWhenDisabled={busy}
-                disabled={!canSave}
-              >
-                {t("command.save")}
-              </Button>
-            </>
-          }
-        >
-          <FormField label={t("field.title")}>
-            <TextField
-              ref={titleElement}
-              size="lg"
-              aria-label={t("field.title")}
-              value={edit.draft.title}
-              disabled={busy}
-              onChange={(event) => patch("title", event.target.value)}
-            />
-          </FormField>
-          <FormField label={t("field.instructions")}>
-            <TextArea
-              aria-label={t("field.instructions")}
-              value={edit.draft.instructions}
-              disabled={busy}
-              rows={4}
-              onChange={(event) => patch("instructions", event.target.value)}
-            />
-          </FormField>
-          <FormSection title={t("editor.section.timing.title")}>
-            <FormRow>
-              <FormField label={t("field.cron")}>
-                <TextField
-                  size="lg"
-                  aria-label={t("field.cron")}
-                  placeholder="0 9 * * 1"
-                  value={edit.draft.cron}
-                  disabled={busy}
-                  onChange={(event) => patch("cron", event.target.value)}
-                />
-              </FormField>
-              <FormField label={t("field.timeZone")}>
-                <TextField
-                  size="lg"
-                  aria-label={t("field.timeZone")}
-                  value={edit.draft.timeZone}
-                  disabled={busy}
-                  onChange={(event) => patch("timeZone", event.target.value)}
-                />
-              </FormField>
-              <FormField label={t("field.workspace")}>
-                <TextField
-                  size="lg"
-                  aria-label={t("field.workspace")}
-                  placeholder={t("field.workspace.placeholder")}
-                  value={edit.draft.cwd}
-                  disabled={busy}
-                  onChange={(event) => patch("cwd", event.target.value)}
-                />
-              </FormField>
-            </FormRow>
-            <Checkbox
-              label={t("status.enabled")}
-              checked={edit.draft.enabled}
-              disabled={busy}
-              onCheckedChange={(value) => patch("enabled", value)}
-            />
-          </FormSection>
-          <FormSection title={t("editor.section.execution.title")}>
-            <FormRow>
-              <FormField label={t("field.model")}>
-                <Select
-                  size="lg"
-                  label={t("field.model")}
-                  value={selectedKey}
-                  disabled={busy}
-                  options={[
-                    { value: "default", label: t("model.default") },
-                    ...models
-                      .filter((model) => !model.deprecated)
-                      .map((model) => ({
-                        value: JSON.stringify([model.provider, model.id]),
-                        label: `${model.provider} / ${model.displayName ?? model.id}`,
-                      })),
-                    ...(selectedKey !== "default" &&
-                    (!selectedModel || selectedModel.deprecated)
-                      ? [
-                          {
-                            value: selectedKey,
-                            label: t("model.existing", {
-                              provider: edit.draft.modelSelection.provider,
-                              model: edit.draft.modelSelection.model,
-                              state: selectedModel?.deprecated
-                                ? t("model.deprecated")
-                                : t("model.unavailable"),
-                            }),
-                          },
-                        ]
-                      : []),
-                  ]}
-                  onValueChange={(key) =>
-                    patch(
-                      "modelSelection",
-                      selection(
-                        models.find(
-                          (model) =>
-                            JSON.stringify([model.provider, model.id]) === key,
-                        ),
-                      ),
-                    )
-                  }
-                />
-              </FormField>
-              <FormField label={t("field.reasoning")}>
-                <Select
-                  size="lg"
-                  label={t("field.reasoning")}
-                  value={edit.draft.modelSelection.reasoningEffort || "default"}
-                  disabled={busy || !edit.draft.modelSelection.model}
-                  options={[
-                    { value: "default", label: t("reasoning.default") },
-                    ...(selectedModel?.capabilities?.reasoningLevels ?? []).map(
-                      (value) => ({
-                        value,
-                        label: value,
-                      }),
-                    ),
-                    ...(edit.draft.modelSelection.reasoningEffort &&
-                    !selectedModel?.capabilities?.reasoningLevels?.includes(
-                      edit.draft.modelSelection.reasoningEffort,
-                    )
-                      ? [
-                          {
-                            value: edit.draft.modelSelection.reasoningEffort,
-                            label: t("reasoning.unavailable", {
-                              effort: edit.draft.modelSelection.reasoningEffort,
-                            }),
-                          },
-                        ]
-                      : []),
-                  ]}
-                  onValueChange={(value) =>
-                    patch("modelSelection", {
-                      ...edit.draft.modelSelection,
-                      reasoningEffort: value === "default" ? "" : value,
-                    })
-                  }
-                />
-              </FormField>
-            </FormRow>
-            <FormActions
-              label={t("models.refresh")}
-              feedback={
-                currentModels?.error && (
-                  <p role="alert">
-                    {t("models.error", { error: currentModels.error })}
-                  </p>
-                )
-              }
-            >
-              <Button
-                pending={currentModels?.loading && !busy}
-                aria-busy={currentModels?.loading}
-                disabled={busy || currentModels?.loading}
-                onClick={() => setModelRefresh((value) => value + 1)}
-              >
-                {currentModels?.loading
-                  ? t("models.refreshing")
-                  : t("models.refresh")}
-              </Button>
-            </FormActions>
-          </FormSection>
-        </ModalDialog>
+        <ScheduleEditor {...schedules} edit={edit} feedback={feedback} />
       )}
       {deleting && (
-        <ModalDialog
-          open
-          role="alertdialog"
-          title={t("delete.title", {
-            name: deleting.item.title || deleting.item.id,
-          })}
-          description={t("delete.description")}
-          closeLabel={t("delete.close")}
-          size="sm"
-          initialFocus={deleteCancel}
-          finalFocus={resolveOpener}
-          dismissible={!busy}
-          onOpenChange={(open) => {
-            if (!open) cancelTask();
-          }}
-          auxiliaryAction={feedback}
-          footer={
-            <>
-              <Button
-                ref={deleteCancel}
-                variant="ghost"
-                disabled={busy}
-                onClick={cancelTask}
-              >
-                {t("cancel")}
-              </Button>
-              <Button
-                variant="tonal"
-                tone="negative"
-                disabled={busy}
-                onClick={() =>
-                  submit(
-                    "flame.schedules/delete.v2",
-                    { id: deleting.item.id },
-                    t("command.delete"),
-                  )
-                }
-              >
-                {t("delete.confirm")}
-              </Button>
-            </>
-          }
+        <ScheduleDeletion
+          {...schedules}
+          item={deleting.item}
+          feedback={feedback}
         />
       )}
       <PanelSection
@@ -484,136 +227,7 @@ export function Schedules({ context }: { context: ComponentContext }) {
             />
           )}
           {matching.map((item) => (
-            <ListRow key={item.id}>
-              <RecordHeading
-                title={item.title || t("untitled")}
-                actions={
-                  <ActionMenu
-                    label={t("actions.more", {
-                      name: item.title || t("untitled"),
-                    })}
-                    disabled={disabled}
-                    finalFocus={
-                      command?.command.method === "flame.schedules/runNow.v2"
-                        ? feedbackElement
-                        : undefined
-                    }
-                    items={[
-                      {
-                        label: t("action.runNow"),
-                        onSelect: () =>
-                          submit(
-                            "flame.schedules/runNow.v2",
-                            { id: item.id },
-                            t("command.runNow"),
-                          ),
-                      },
-                      {
-                        label: t("action.edit"),
-                        onSelect: (opener) => {
-                          taskOpener.current = opener;
-                          setNotice(undefined);
-                          setEdit({
-                            basis: structuredClone(item),
-                            draft: {
-                              title: item.title,
-                              instructions: item.instructions,
-                              cron: item.cron,
-                              timeZone: item.timeZone,
-                              cwd: item.cwd,
-                              modelSelection: structuredClone(
-                                item.modelSelection,
-                              ),
-                              enabled: enabled(item),
-                            },
-                          });
-                          setDeleting(undefined);
-                        },
-                      },
-                      {
-                        label: enabled(item)
-                          ? t("action.disable")
-                          : t("action.enable"),
-                        onSelect: () =>
-                          submit(
-                            "flame.schedules/update.v2",
-                            {
-                              id: item.id,
-                              expectedRevision: item.revision,
-                              enabled: !enabled(item),
-                              modelSelection: {},
-                            },
-                            enabled(item)
-                              ? t("command.disable")
-                              : t("command.enable"),
-                          ),
-                      },
-                      {
-                        label: t("action.delete"),
-                        tone: "negative",
-                        onSelect: (opener) => {
-                          taskOpener.current = opener;
-                          setNotice(undefined);
-                          setDeleting({ item: structuredClone(item) });
-                          setEdit(undefined);
-                        },
-                      },
-                    ]}
-                  />
-                }
-                // Enabled is the resting state; only a paused schedule needs a word.
-                status={
-                  enabled(item) ? undefined : (
-                    <Badge>{t("status.disabled")}</Badge>
-                  )
-                }
-              />
-              <RecordBody>{item.instructions}</RecordBody>
-              {/* A disabled schedule says so in its status; "not scheduled" would only repeat it. */}
-              {(enabled(item) || item.nextRunAt !== undefined) && (
-                <Metadata>
-                  {t("nextFiring.label")} ·{" "}
-                  {item.nextRunAt !== undefined ? (
-                    <time dateTime={item.nextRunAt}>
-                      {dateTime.format(new Date(item.nextRunAt))}
-                    </time>
-                  ) : (
-                    t("nextFiring.none")
-                  )}
-                </Metadata>
-              )}
-              <Disclosure title={t("details.title")}>
-                <Facts
-                  values={[
-                    [t("fact.cron"), item.cron],
-                    [t("fact.timeZone"), item.timeZone],
-                    [t("fact.schedule"), item.id],
-                    [t("fact.revision"), String(item.revision)],
-                    [t("fact.workspace"), item.cwd || t("runtimeDefault")],
-                    [
-                      t("field.model"),
-                      item.modelSelection.provider && item.modelSelection.model
-                        ? `${item.modelSelection.provider}/${item.modelSelection.model}`
-                        : t("runtimeDefault"),
-                    ],
-                    [
-                      t("field.reasoning"),
-                      item.modelSelection.reasoningEffort || undefined,
-                    ],
-                    [
-                      t("fact.lastFiring"),
-                      item.lastRunAt !== undefined
-                        ? dateTime.format(new Date(item.lastRunAt))
-                        : t("fact.neverFired"),
-                    ],
-                    [
-                      t("fact.created"),
-                      dateTime.format(new Date(item.createdAt)),
-                    ],
-                  ]}
-                />
-              </Disclosure>
-            </ListRow>
+            <ScheduleRow key={item.id} {...schedules} item={item} />
           ))}
         </RecordGroup>
         {paginated && (
@@ -650,6 +264,425 @@ export function Schedules({ context }: { context: ComponentContext }) {
   );
 }
 
+// A model that is no longer offered stays selectable under its saved name, so
+// opening an existing schedule never silently changes its model.
+function modelOptions(
+  t: Translate,
+  models: ScheduleState["models"],
+  selectedKey: string,
+  selectedModel: ScheduleState["selectedModel"],
+  saved: Edit["draft"]["modelSelection"],
+) {
+  const options = [
+    { value: "default", label: t("model.default") },
+    ...models
+      .filter((model) => !model.deprecated)
+      .map((model) => ({
+        value: modelKey(model.provider, model.id),
+        label: `${model.provider} / ${model.displayName ?? model.id}`,
+      })),
+  ];
+  if (selectedKey !== "default" && (!selectedModel || selectedModel.deprecated))
+    options.push({
+      value: selectedKey,
+      label: t("model.existing", {
+        provider: saved.provider,
+        model: saved.model,
+        state: selectedModel?.deprecated
+          ? t("model.deprecated")
+          : t("model.unavailable"),
+      }),
+    });
+  return options;
+}
+
+function reasoningOptions(
+  t: Translate,
+  selectedModel: ScheduleState["selectedModel"],
+  effort: string,
+) {
+  const levels = selectedModel?.capabilities?.reasoningLevels ?? [];
+  const options = [
+    { value: "default", label: t("reasoning.default") },
+    ...levels.map((value) => ({ value, label: value })),
+  ];
+  if (effort && !levels.includes(effort))
+    options.push({
+      value: effort,
+      label: t("reasoning.unavailable", { effort }),
+    });
+  return options;
+}
+
+function ScheduleEditor({
+  t,
+  edit,
+  feedback,
+  busy,
+  canSave,
+  titleElement,
+  resolveOpener,
+  cancelTask,
+  save,
+  patch,
+  selectedKey,
+  models,
+  selectedModel,
+  currentModels,
+  setModelRefresh,
+}: Pick<
+  ScheduleState,
+  | "t"
+  | "busy"
+  | "canSave"
+  | "titleElement"
+  | "resolveOpener"
+  | "cancelTask"
+  | "save"
+  | "patch"
+  | "selectedKey"
+  | "models"
+  | "selectedModel"
+  | "currentModels"
+  | "setModelRefresh"
+> & { edit: Edit; feedback: ReactNode }) {
+  const { draft } = edit;
+  return (
+    <ModalDialog
+      open
+      title={
+        edit.basis
+          ? t("editor.edit.title", {
+              title: edit.basis.title || t("editor.edit.untitled"),
+            })
+          : t("editor.new.title")
+      }
+      description={
+        edit.basis
+          ? t("editor.edit.description", {
+              revision: String(edit.basis.revision),
+            })
+          : undefined
+      }
+      closeLabel={t("editor.close")}
+      size="lg"
+      initialFocus={titleElement}
+      finalFocus={resolveOpener}
+      dismissible={!busy}
+      onOpenChange={(open) => {
+        if (!open) cancelTask();
+      }}
+      onSubmit={(event) => {
+        event.preventDefault();
+        save();
+      }}
+      auxiliaryAction={feedback}
+      footer={
+        <>
+          <Button variant="ghost" disabled={busy} onClick={cancelTask}>
+            {t("cancel")}
+          </Button>
+          <Button
+            variant="primary"
+            type="submit"
+            focusableWhenDisabled={busy}
+            disabled={!canSave}
+          >
+            {t("command.save")}
+          </Button>
+        </>
+      }
+    >
+      <FormField label={t("field.title")}>
+        <TextField
+          ref={titleElement}
+          size="lg"
+          aria-label={t("field.title")}
+          value={draft.title}
+          disabled={busy}
+          onChange={(event) => patch("title", event.target.value)}
+        />
+      </FormField>
+      <FormField label={t("field.instructions")}>
+        <TextArea
+          aria-label={t("field.instructions")}
+          value={draft.instructions}
+          disabled={busy}
+          rows={4}
+          onChange={(event) => patch("instructions", event.target.value)}
+        />
+      </FormField>
+      <FormSection title={t("editor.section.timing.title")}>
+        <FormRow>
+          <FormField label={t("field.cron")}>
+            <TextField
+              size="lg"
+              aria-label={t("field.cron")}
+              placeholder="0 9 * * 1"
+              value={draft.cron}
+              disabled={busy}
+              onChange={(event) => patch("cron", event.target.value)}
+            />
+          </FormField>
+          <FormField label={t("field.timeZone")}>
+            <TextField
+              size="lg"
+              aria-label={t("field.timeZone")}
+              value={draft.timeZone}
+              disabled={busy}
+              onChange={(event) => patch("timeZone", event.target.value)}
+            />
+          </FormField>
+          <FormField label={t("field.workspace")}>
+            <TextField
+              size="lg"
+              aria-label={t("field.workspace")}
+              placeholder={t("field.workspace.placeholder")}
+              value={draft.cwd}
+              disabled={busy}
+              onChange={(event) => patch("cwd", event.target.value)}
+            />
+          </FormField>
+        </FormRow>
+        <Checkbox
+          label={t("status.enabled")}
+          checked={draft.enabled}
+          disabled={busy}
+          onCheckedChange={(value) => patch("enabled", value)}
+        />
+      </FormSection>
+      <FormSection title={t("editor.section.execution.title")}>
+        <FormRow>
+          <FormField label={t("field.model")}>
+            <Select
+              size="lg"
+              label={t("field.model")}
+              value={selectedKey}
+              disabled={busy}
+              options={modelOptions(
+                t,
+                models,
+                selectedKey,
+                selectedModel,
+                draft.modelSelection,
+              )}
+              onValueChange={(key) =>
+                patch(
+                  "modelSelection",
+                  selection(
+                    models.find(
+                      (model) => modelKey(model.provider, model.id) === key,
+                    ),
+                  ),
+                )
+              }
+            />
+          </FormField>
+          <FormField label={t("field.reasoning")}>
+            <Select
+              size="lg"
+              label={t("field.reasoning")}
+              value={draft.modelSelection.reasoningEffort || "default"}
+              disabled={busy || !draft.modelSelection.model}
+              options={reasoningOptions(
+                t,
+                selectedModel,
+                draft.modelSelection.reasoningEffort,
+              )}
+              onValueChange={(value) =>
+                patch("modelSelection", {
+                  ...draft.modelSelection,
+                  reasoningEffort: value === "default" ? "" : value,
+                })
+              }
+            />
+          </FormField>
+        </FormRow>
+        <FormActions
+          label={t("models.refresh")}
+          feedback={
+            currentModels?.error && (
+              <p role="alert">
+                {t("models.error", { error: currentModels.error })}
+              </p>
+            )
+          }
+        >
+          <Button
+            pending={currentModels?.loading && !busy}
+            aria-busy={currentModels?.loading}
+            disabled={busy || currentModels?.loading}
+            onClick={() => setModelRefresh((value) => value + 1)}
+          >
+            {currentModels?.loading
+              ? t("models.refreshing")
+              : t("models.refresh")}
+          </Button>
+        </FormActions>
+      </FormSection>
+    </ModalDialog>
+  );
+}
+
+function ScheduleDeletion({
+  t,
+  item,
+  feedback,
+  busy,
+  deleteCancel,
+  resolveOpener,
+  cancelTask,
+  deleteConfirmed,
+}: Pick<
+  ScheduleState,
+  | "t"
+  | "busy"
+  | "deleteCancel"
+  | "resolveOpener"
+  | "cancelTask"
+  | "deleteConfirmed"
+> & { item: Schedule; feedback: ReactNode }) {
+  return (
+    <ModalDialog
+      open
+      role="alertdialog"
+      title={t("delete.title", { name: item.title || item.id })}
+      description={t("delete.description")}
+      closeLabel={t("delete.close")}
+      size="sm"
+      initialFocus={deleteCancel}
+      finalFocus={resolveOpener}
+      dismissible={!busy}
+      onOpenChange={(open) => {
+        if (!open) cancelTask();
+      }}
+      auxiliaryAction={feedback}
+      footer={
+        <>
+          <Button
+            ref={deleteCancel}
+            variant="ghost"
+            disabled={busy}
+            onClick={cancelTask}
+          >
+            {t("cancel")}
+          </Button>
+          <Button
+            variant="tonal"
+            tone="negative"
+            disabled={busy}
+            onClick={deleteConfirmed}
+          >
+            {t("delete.confirm")}
+          </Button>
+        </>
+      }
+    />
+  );
+}
+
+function ScheduleRow({
+  t,
+  dateTime,
+  item,
+  disabled,
+  command,
+  feedbackElement,
+  runNow,
+  editSchedule,
+  toggleEnabled,
+  confirmDeletion,
+}: Pick<
+  ScheduleState,
+  | "t"
+  | "dateTime"
+  | "disabled"
+  | "command"
+  | "feedbackElement"
+  | "runNow"
+  | "editSchedule"
+  | "toggleEnabled"
+  | "confirmDeletion"
+> & { item: Schedule }) {
+  const title = item.title || t("untitled");
+  const { provider, model, reasoningEffort } = item.modelSelection;
+  return (
+    <ListRow>
+      <RecordHeading
+        title={title}
+        actions={
+          <ActionMenu
+            label={t("actions.more", { name: title })}
+            disabled={disabled}
+            finalFocus={
+              command?.command.method === "flame.schedules/runNow.v2"
+                ? feedbackElement
+                : undefined
+            }
+            items={[
+              { label: t("action.runNow"), onSelect: () => runNow(item) },
+              {
+                label: t("action.edit"),
+                onSelect: (opener) => editSchedule(item, opener),
+              },
+              {
+                label: enabled(item) ? t("action.disable") : t("action.enable"),
+                onSelect: () => toggleEnabled(item),
+              },
+              {
+                label: t("action.delete"),
+                tone: "negative",
+                onSelect: (opener) => confirmDeletion(item, opener),
+              },
+            ]}
+          />
+        }
+        // Enabled is the resting state; only a paused schedule needs a word.
+        status={
+          enabled(item) ? undefined : <Badge>{t("status.disabled")}</Badge>
+        }
+      />
+      <RecordBody>{item.instructions}</RecordBody>
+      {/* A disabled schedule says so in its status; "not scheduled" would only repeat it. */}
+      {(enabled(item) || item.nextRunAt !== undefined) && (
+        <Metadata>
+          {t("nextFiring.label")} ·{" "}
+          {item.nextRunAt !== undefined ? (
+            <time dateTime={item.nextRunAt}>
+              {dateTime.format(new Date(item.nextRunAt))}
+            </time>
+          ) : (
+            t("nextFiring.none")
+          )}
+        </Metadata>
+      )}
+      <Disclosure title={t("details.title")}>
+        <Facts
+          values={[
+            [t("fact.cron"), item.cron],
+            [t("fact.timeZone"), item.timeZone],
+            [t("fact.schedule"), item.id],
+            [t("fact.revision"), String(item.revision)],
+            [t("fact.workspace"), item.cwd || t("runtimeDefault")],
+            [
+              t("field.model"),
+              provider && model ? `${provider}/${model}` : t("runtimeDefault"),
+            ],
+            [t("field.reasoning"), reasoningEffort || undefined],
+            [
+              t("fact.lastFiring"),
+              item.lastRunAt !== undefined
+                ? dateTime.format(new Date(item.lastRunAt))
+                : t("fact.neverFired"),
+            ],
+            [t("fact.created"), dateTime.format(new Date(item.createdAt))],
+          ]}
+        />
+      </Disclosure>
+    </ListRow>
+  );
+}
+
 function ScheduleFeedback({
   t,
   notice,
@@ -658,7 +691,7 @@ function ScheduleFeedback({
   reconcile,
   openSession,
 }: Pick<
-  ReturnType<typeof useSchedules>,
+  ScheduleState,
   "t" | "notice" | "feedbackElement" | "command" | "reconcile"
 > & { openSession: ComponentContext["openSession"] }) {
   return (

@@ -44,6 +44,8 @@ import {
   type ModelRead,
 } from "./types";
 export const enabled = (item: Schedule) => item.nextRunAt !== undefined;
+export const modelKey = (provider: string, model: string) =>
+  JSON.stringify([provider, model]);
 export const selection = (model?: Model, reasoningEffort = "") => ({
   provider: model?.provider ?? "",
   model: model?.id ?? "",
@@ -318,22 +320,78 @@ export function useSchedules(context: ComponentContext) {
         });
     }
   }
-  function add(opener: HTMLElement, template?: (typeof templates)[number]) {
+  // Opening a task replaces any other one and remembers where focus returns.
+  function beginTask(
+    opener: HTMLElement,
+    task: { edit: Edit } | { deleting: Schedule },
+  ) {
     if (command) return;
     taskOpener.current = opener;
     setNotice(undefined);
-    setEdit({
-      draft: {
-        title: template ? t(`template.${template.id}.title`) : "",
-        instructions: template ? t(`template.${template.id}.instructions`) : "",
-        cron: template?.cron ?? "",
-        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        cwd: context.workspace?.ref.path ?? "",
-        modelSelection: selection(),
-        enabled: true,
+    setEdit("edit" in task ? task.edit : undefined);
+    setDeleting(
+      "deleting" in task ? { item: structuredClone(task.deleting) } : undefined,
+    );
+  }
+  function add(opener: HTMLElement, template?: (typeof templates)[number]) {
+    beginTask(opener, {
+      edit: {
+        draft: {
+          title: template ? t(`template.${template.id}.title`) : "",
+          instructions: template
+            ? t(`template.${template.id}.instructions`)
+            : "",
+          cron: template?.cron ?? "",
+          timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          cwd: context.workspace?.ref.path ?? "",
+          modelSelection: selection(),
+          enabled: true,
+        },
       },
     });
-    setDeleting(undefined);
+  }
+  function editSchedule(item: Schedule, opener: HTMLElement) {
+    beginTask(opener, {
+      edit: {
+        basis: structuredClone(item),
+        draft: {
+          title: item.title,
+          instructions: item.instructions,
+          cron: item.cron,
+          timeZone: item.timeZone,
+          cwd: item.cwd,
+          modelSelection: structuredClone(item.modelSelection),
+          enabled: enabled(item),
+        },
+      },
+    });
+  }
+  function confirmDeletion(item: Schedule, opener: HTMLElement) {
+    beginTask(opener, { deleting: item });
+  }
+  function deleteConfirmed() {
+    if (deleting)
+      submit(
+        "flame.schedules/delete.v2",
+        { id: deleting.item.id },
+        t("command.delete"),
+      );
+  }
+  function runNow(item: Schedule) {
+    submit("flame.schedules/runNow.v2", { id: item.id }, t("command.runNow"));
+  }
+  function toggleEnabled(item: Schedule) {
+    const next = !enabled(item);
+    submit(
+      "flame.schedules/update.v2",
+      {
+        id: item.id,
+        expectedRevision: item.revision,
+        enabled: next,
+        modelSelection: {},
+      },
+      next ? t("command.enable") : t("command.disable"),
+    );
   }
   function patch<K extends keyof Draft>(key: K, value: Draft[K]) {
     setEdit((previous) =>
@@ -413,10 +471,10 @@ export function useSchedules(context: ComponentContext) {
   );
   const selectedKey =
     edit?.draft.modelSelection.provider && edit.draft.modelSelection.model
-      ? JSON.stringify([
+      ? modelKey(
           edit.draft.modelSelection.provider,
           edit.draft.modelSelection.model,
-        ])
+        )
       : "default";
   return {
     t,
@@ -451,14 +509,14 @@ export function useSchedules(context: ComponentContext) {
     setModelRefresh,
     deleting,
     deleteCancel,
-    submit,
     page,
     rows,
     matching,
     disabled,
-    taskOpener,
-    setNotice,
-    setEdit,
-    setDeleting,
+    editSchedule,
+    confirmDeletion,
+    deleteConfirmed,
+    runNow,
+    toggleEnabled,
   };
 }
