@@ -5,7 +5,13 @@ import {
   sourceForRelationships,
 } from "./archive";
 import { relativeTarget, sectionEntries, slideList } from "./slides";
-import { attribute, namespaces, openTag, type XmlNode, type XmlPatch } from "./xml";
+import {
+  attribute,
+  namespaces,
+  openTag,
+  type XmlNode,
+  type XmlPatch,
+} from "./xml";
 
 // Relationship types whose targets belong to one slide; a duplicate receives
 // its own copies. Layouts, media and links stay shared.
@@ -83,14 +89,18 @@ function copyContentType(
 ): void {
   const types = archive.xml("[Content_Types].xml");
   const override = types.root.children.find(
-    (node) => node.local === "Override" && node.attributes.PartName === `/${source}`,
+    (node) =>
+      node.local === "Override" && node.attributes.PartName === `/${source}`,
   );
   if (!override) return;
   archive.patch("[Content_Types].xml", [
     {
       start: override.end,
       end: override.end,
-      value: emptyTag(override, { ...override.attributes, PartName: `/${copy}` }),
+      value: emptyTag(override, {
+        ...override.attributes,
+        PartName: `/${copy}`,
+      }),
     },
   ]);
 }
@@ -235,16 +245,21 @@ export function restructureSlides(
 ): void {
   const targets = operations.map((operation) => operation.id);
   if (new Set(targets).size !== targets.length)
-    throw new Error("one slide may be duplicated or deleted only once per revision");
+    throw new Error(
+      "one slide may be duplicated or deleted only once per revision",
+    );
   const { slides } = slideList(archive);
   if (targets.some((id) => !slides.some((slide) => slide.id === id)))
     throw new Error("slide identifier does not belong to this presentation");
-  const deletions = operations.filter((operation) => operation.type === "deleteSlide");
+  const deletions = operations.filter(
+    (operation) => operation.type === "deleteSlide",
+  );
   if (deletions.length >= slides.length)
     throw new Error("a presentation must retain at least one slide");
   const before = reachableParts(archive);
   for (const operation of operations)
-    if (operation.type === "duplicateSlide") duplicateSlide(archive, operation.id);
+    if (operation.type === "duplicateSlide")
+      duplicateSlide(archive, operation.id);
   for (const operation of deletions) deleteSlide(archive, operation.id);
   pruneParts(archive, before);
 }

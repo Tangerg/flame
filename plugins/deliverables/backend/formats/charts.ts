@@ -62,7 +62,10 @@ function sheetRange(formula: string): SheetRange {
   const start = `${match[3]}${match[4]}`;
   const end = match[5] ? `${match[5]}${match[6]}` : start;
   const addresses = rangeAddresses(`${start}:${end}`, 1000);
-  if (match[3] !== (match[5] ?? match[3]) && match[4] !== (match[6] ?? match[4]))
+  if (
+    match[3] !== (match[5] ?? match[3]) &&
+    match[4] !== (match[6] ?? match[4])
+  )
     throw new Error("chart data ranges must be a single row or column");
   return { sheet: match[1]?.replaceAll("''", "'") ?? match[2]!, addresses };
 }
@@ -295,7 +298,9 @@ export async function setChartData(
 ): Promise<void> {
   const model = readChart(archive, part);
   if (canonicalJSON(model.data) !== canonicalJSON(expect))
-    throw new Error("chart data precondition does not match the exact revision");
+    throw new Error(
+      "chart data precondition does not match the exact revision",
+    );
   if (
     data.categories.length !== model.data.categories.length ||
     data.series.length !== model.series.length ||
@@ -311,11 +316,14 @@ export async function setChartData(
       "the embedded chart workbook holds data outside the chart ranges; edit it in Office",
     );
   const numericCategories = model.series[0]!.categories.kind === "numRef";
-  if (numericCategories) for (const category of data.categories) exact(category);
+  if (numericCategories)
+    for (const category of data.categories) exact(category);
   archive.patch(
     part,
     model.series.flatMap((series, index) => [
-      cachePatch(model.document.source, series.name, [data.series[index]!.name]),
+      cachePatch(model.document.source, series.name, [
+        data.series[index]!.name,
+      ]),
       cachePatch(model.document.source, series.categories, data.categories),
       cachePatch(
         model.document.source,

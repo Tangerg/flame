@@ -239,15 +239,19 @@ export const ja = {
   "image.zoomOut": "画像を縮小",
   "image.description": "画像の説明",
   "slides.title": "スライド編集",
-  "slides.help": "スライドの要素を直接移動・サイズ変更・編集できます。変更は保存して新しいリビジョンにするまでローカルの下書きに残ります。",
+  "slides.help":
+    "スライドの要素を直接移動・サイズ変更・編集できます。変更は保存して新しいリビジョンにするまでローカルの下書きに残ります。",
   "slides.loading": "スライドを読み込み中…",
   "slides.retry": "再試行",
-  "slides.historical": "これは以前のリビジョンです。編集するには現在のリビジョンを開いてください。",
-  "slides.newer": "新しいリビジョンがあります。保存する前に下書きと比較してください。",
+  "slides.historical":
+    "これは以前のリビジョンです。編集するには現在のリビジョンを開いてください。",
+  "slides.newer":
+    "新しいリビジョンがあります。保存する前に下書きと比較してください。",
   "slides.compare": "現在のリビジョンと比較",
   "slides.draftElsewhere": "下書きは別のリビジョンに基づいています。",
   "slides.openDraft": "下書きのリビジョンを開く",
-  "slides.reconcile.help": "各変更を現在のリビジョンと照合しました。双方が変更した箇所はどちらを残すか選んでください。",
+  "slides.reconcile.help":
+    "各変更を現在のリビジョンと照合しました。双方が変更した箇所はどちらを残すか選んでください。",
   "slides.reconcile.choice": "残すバージョン",
   "slides.reconcile.actions": "下書きの比較操作",
   "slides.status.clean": "そのまま適用可能",
@@ -263,7 +267,8 @@ export const ja = {
   "slides.slide": "スライド {{number}}",
   "slides.hidden": "非表示",
   "slides.canvas": "スライド {{number}} のキャンバス",
-  "slides.keyboard": "矢印キーで選択要素を移動、Shift で 1 インチずつ移動、Delete で削除、Esc で選択解除。",
+  "slides.keyboard":
+    "矢印キーで選択要素を移動、Shift で 1 インチずつ移動、Delete で削除、Esc で選択解除。",
   "slides.elements": "このスライドの要素",
   "slides.noFrame": "位置なし",
   "slides.changed": "変更あり",
@@ -280,7 +285,8 @@ export const ja = {
   "slides.kind.other": "オブジェクト",
   "slides.kind.deleted": "削除",
   "slides.inherited.layout": "移動するまで位置はレイアウトから継承されます。",
-  "slides.inherited.master": "移動するまで位置はスライドマスターから継承されます。",
+  "slides.inherited.master":
+    "移動するまで位置はスライドマスターから継承されます。",
   "slides.frame.x": "左（インチ）",
   "slides.frame.y": "上（インチ）",
   "slides.frame.width": "幅（インチ）",
@@ -293,22 +299,28 @@ export const ja = {
   "slides.chart.series": "系列 {{number}} の名前",
   "slides.chart.apply": "このデータを使用",
   "slides.chart.invalid": "数値を入力するか空欄にしてください。",
-  "slides.chart.mixed": "このグラフの埋め込みブックには他のデータもあります。PowerPoint で編集してください。",
-  "slides.chart.unsupported": "このグラフは移動できますが、ここではデータを編集できません。",
+  "slides.chart.mixed":
+    "このグラフの埋め込みブックには他のデータもあります。PowerPoint で編集してください。",
+  "slides.chart.unsupported":
+    "このグラフは移動できますが、ここではデータを編集できません。",
   "slides.elementActions": "要素の操作",
   "slides.delete": "要素を削除",
   "slides.revert": "この要素の変更を取り消す",
   "slides.reference": "Agent 用の参照をコピー",
-  "slides.reference.copied": "参照をコピーしました。Agent へのメッセージに貼り付けてください。",
+  "slides.reference.copied":
+    "参照をコピーしました。Agent へのメッセージに貼り付けてください。",
   "slides.reference.failed": "参照をコピーできませんでした。",
-  "slides.reference.unsaved": "Agent に渡す前に下書きを保存または破棄してください。参照は保存済みのリビジョンだけを指します。",
+  "slides.reference.unsaved":
+    "Agent に渡す前に下書きを保存または破棄してください。参照は保存済みのリビジョンだけを指します。",
   "slides.slideActions": "スライドの操作",
   "slides.moveUp": "前へ移動",
   "slides.moveDown": "後ろへ移動",
   "slides.duplicate": "スライドを複製",
   "slides.deleteSlide": "スライドを削除",
-  "slides.deleteSlide.confirm": "スライド {{number}} を削除しますか？新しいリビジョンではノートとグラフも削除され、以前のリビジョンには残ります。",
-  "slides.structureBlocked": "スライドの変更や Agent に渡す前に、下書きを保存または破棄してください。",
+  "slides.deleteSlide.confirm":
+    "スライド {{number}} を削除しますか？新しいリビジョンではノートとグラフも削除され、以前のリビジョンには残ります。",
+  "slides.structureBlocked":
+    "スライドの変更や Agent に渡す前に、下書きを保存または破棄してください。",
   "slides.draft": "下書き",
   "slides.clean": "未保存の変更はありません",
   "slides.unsaved": "未保存の変更：{{count}}",
@@ -321,6 +333,8 @@ export const ja = {
   "slides.op.deleteElement": "{{name}} を削除",
   "slides.op.setChartData": "{{name}} のデータ",
   "slides.handoff": "Agent に渡す",
-  "slides.reference.handed": "メッセージに追加しました。変更内容を書いて送信してください。",
-  "slides.reference.stale": "会話が切り替わったため、参照は追加されませんでした。もう一度お試しください。",
+  "slides.reference.handed":
+    "メッセージに追加しました。変更内容を書いて送信してください。",
+  "slides.reference.stale":
+    "会話が切り替わったため、参照は追加されませんでした。もう一度お試しください。",
 } satisfies Record<keyof typeof en, string>;

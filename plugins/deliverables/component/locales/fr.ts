@@ -241,15 +241,19 @@ export const fr = {
   "image.zoomOut": "Réduire l’image",
   "image.description": "Description de l’image",
   "slides.title": "Éditeur de diapositives",
-  "slides.help": "Déplacez, redimensionnez et modifiez directement les éléments. Les changements restent dans un brouillon local jusqu’à leur enregistrement comme nouvelle révision.",
+  "slides.help":
+    "Déplacez, redimensionnez et modifiez directement les éléments. Les changements restent dans un brouillon local jusqu’à leur enregistrement comme nouvelle révision.",
   "slides.loading": "Lecture des diapositives…",
   "slides.retry": "Réessayer",
-  "slides.historical": "Révision antérieure. Ouvrez la révision actuelle pour la modifier.",
-  "slides.newer": "Une révision plus récente existe. Comparez-la à votre brouillon avant d’enregistrer.",
+  "slides.historical":
+    "Révision antérieure. Ouvrez la révision actuelle pour la modifier.",
+  "slides.newer":
+    "Une révision plus récente existe. Comparez-la à votre brouillon avant d’enregistrer.",
   "slides.compare": "Comparer à l’actuelle",
   "slides.draftElsewhere": "Votre brouillon repose sur une autre révision.",
   "slides.openDraft": "Ouvrir la révision du brouillon",
-  "slides.reconcile.help": "Chaque changement est comparé à la révision actuelle. Choisissez quoi garder là où les deux ont changé.",
+  "slides.reconcile.help":
+    "Chaque changement est comparé à la révision actuelle. Choisissez quoi garder là où les deux ont changé.",
   "slides.reconcile.choice": "Version à garder",
   "slides.reconcile.actions": "Actions de comparaison",
   "slides.status.clean": "S’applique sans conflit",
@@ -265,7 +269,8 @@ export const fr = {
   "slides.slide": "Diapositive {{number}}",
   "slides.hidden": "Masquée",
   "slides.canvas": "Canevas de la diapositive {{number}}",
-  "slides.keyboard": "Les flèches déplacent l’élément sélectionné, Maj d’un pouce, Suppr le retire et Échap annule la sélection.",
+  "slides.keyboard":
+    "Les flèches déplacent l’élément sélectionné, Maj d’un pouce, Suppr le retire et Échap annule la sélection.",
   "slides.elements": "Éléments de cette diapositive",
   "slides.noFrame": "sans position",
   "slides.changed": "Modifié",
@@ -281,13 +286,16 @@ export const fr = {
   "slides.kind.connector": "Connecteur",
   "slides.kind.other": "Objet",
   "slides.kind.deleted": "Supprimé",
-  "slides.inherited.layout": "La position vient de la disposition jusqu’à ce que vous la déplaciez.",
-  "slides.inherited.master": "La position vient du masque jusqu’à ce que vous la déplaciez.",
+  "slides.inherited.layout":
+    "La position vient de la disposition jusqu’à ce que vous la déplaciez.",
+  "slides.inherited.master":
+    "La position vient du masque jusqu’à ce que vous la déplaciez.",
   "slides.frame.x": "Gauche (po)",
   "slides.frame.y": "Haut (po)",
   "slides.frame.width": "Largeur (po)",
   "slides.frame.height": "Hauteur (po)",
-  "slides.frame.invalid": "Saisissez des nombres ; largeur et hauteur ne peuvent pas être négatives.",
+  "slides.frame.invalid":
+    "Saisissez des nombres ; largeur et hauteur ne peuvent pas être négatives.",
   "slides.run": "Texte {{number}}",
   "slides.notes": "Notes de l’orateur {{number}}",
   "slides.chart.category": "Catégorie",
@@ -295,22 +303,28 @@ export const fr = {
   "slides.chart.series": "Nom de la série {{number}}",
   "slides.chart.apply": "Utiliser ces données",
   "slides.chart.invalid": "Saisissez des nombres ou laissez la valeur vide.",
-  "slides.chart.mixed": "Le classeur incorporé de ce graphique contient d’autres données. Modifiez-les dans PowerPoint.",
-  "slides.chart.unsupported": "Ce graphique peut être déplacé, mais ses données ne se modifient pas ici.",
+  "slides.chart.mixed":
+    "Le classeur incorporé de ce graphique contient d’autres données. Modifiez-les dans PowerPoint.",
+  "slides.chart.unsupported":
+    "Ce graphique peut être déplacé, mais ses données ne se modifient pas ici.",
   "slides.elementActions": "Actions sur l’élément",
   "slides.delete": "Supprimer l’élément",
   "slides.revert": "Annuler les changements de l’élément",
   "slides.reference": "Copier la référence pour l’Agent",
-  "slides.reference.copied": "Référence copiée. Collez-la dans votre message à l’Agent.",
+  "slides.reference.copied":
+    "Référence copiée. Collez-la dans votre message à l’Agent.",
   "slides.reference.failed": "Impossible de copier la référence.",
-  "slides.reference.unsaved": "Enregistrez ou abandonnez le brouillon avant de le transmettre à l’Agent ; une référence ne désigne que des révisions enregistrées.",
+  "slides.reference.unsaved":
+    "Enregistrez ou abandonnez le brouillon avant de le transmettre à l’Agent ; une référence ne désigne que des révisions enregistrées.",
   "slides.slideActions": "Actions sur la diapositive",
   "slides.moveUp": "Avancer",
   "slides.moveDown": "Reculer",
   "slides.duplicate": "Dupliquer la diapositive",
   "slides.deleteSlide": "Supprimer la diapositive",
-  "slides.deleteSlide.confirm": "Supprimer la diapositive {{number}} ? La nouvelle révision retire ses notes et graphiques ; les précédentes les conservent.",
-  "slides.structureBlocked": "Enregistrez ou abandonnez le brouillon avant de modifier les diapositives ou de les transmettre à l’Agent.",
+  "slides.deleteSlide.confirm":
+    "Supprimer la diapositive {{number}} ? La nouvelle révision retire ses notes et graphiques ; les précédentes les conservent.",
+  "slides.structureBlocked":
+    "Enregistrez ou abandonnez le brouillon avant de modifier les diapositives ou de les transmettre à l’Agent.",
   "slides.draft": "Brouillon",
   "slides.clean": "Aucun changement non enregistré",
   "slides.unsaved": "Changements non enregistrés : {{count}}",
@@ -323,6 +337,8 @@ export const fr = {
   "slides.op.deleteElement": "Supprimer {{name}}",
   "slides.op.setChartData": "Données de {{name}}",
   "slides.handoff": "Transmettre à l’Agent",
-  "slides.reference.handed": "Ajouté à votre message. Décrivez la modification, puis envoyez-le.",
-  "slides.reference.stale": "La conversation a changé ; la référence n’a pas été ajoutée. Réessayez.",
+  "slides.reference.handed":
+    "Ajouté à votre message. Décrivez la modification, puis envoyez-le.",
+  "slides.reference.stale":
+    "La conversation a changé ; la référence n’a pas été ajoutée. Réessayez.",
 } satisfies Record<keyof typeof en, string>;

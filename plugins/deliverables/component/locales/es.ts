@@ -239,15 +239,19 @@ export const es = {
   "image.zoomOut": "Reducir imagen",
   "image.description": "Descripción de la imagen",
   "slides.title": "Editor de diapositivas",
-  "slides.help": "Mueve, redimensiona y edita los elementos de la diapositiva. Los cambios quedan en un borrador local hasta que los guardes como una revisión nueva.",
+  "slides.help":
+    "Mueve, redimensiona y edita los elementos de la diapositiva. Los cambios quedan en un borrador local hasta que los guardes como una revisión nueva.",
   "slides.loading": "Leyendo diapositivas…",
   "slides.retry": "Reintentar",
-  "slides.historical": "Es una revisión anterior. Abre la revisión actual para editarla.",
-  "slides.newer": "Hay una revisión más reciente. Compárala con tu borrador antes de guardar.",
+  "slides.historical":
+    "Es una revisión anterior. Abre la revisión actual para editarla.",
+  "slides.newer":
+    "Hay una revisión más reciente. Compárala con tu borrador antes de guardar.",
   "slides.compare": "Comparar con la actual",
   "slides.draftElsewhere": "Tu borrador se basa en otra revisión.",
   "slides.openDraft": "Abrir la revisión del borrador",
-  "slides.reconcile.help": "Cada cambio se compara con la revisión actual. Elige qué conservar donde ambos cambiaron.",
+  "slides.reconcile.help":
+    "Cada cambio se compara con la revisión actual. Elige qué conservar donde ambos cambiaron.",
   "slides.reconcile.choice": "Versión que se conserva",
   "slides.reconcile.actions": "Acciones de comparación",
   "slides.status.clean": "Se aplica sin conflicto",
@@ -263,7 +267,8 @@ export const es = {
   "slides.slide": "Diapositiva {{number}}",
   "slides.hidden": "Oculta",
   "slides.canvas": "Lienzo de la diapositiva {{number}}",
-  "slides.keyboard": "Las flechas mueven el elemento seleccionado, Mayús lo mueve una pulgada, Supr lo elimina y Esc quita la selección.",
+  "slides.keyboard":
+    "Las flechas mueven el elemento seleccionado, Mayús lo mueve una pulgada, Supr lo elimina y Esc quita la selección.",
   "slides.elements": "Elementos de esta diapositiva",
   "slides.noFrame": "sin posición",
   "slides.changed": "Modificado",
@@ -279,13 +284,16 @@ export const es = {
   "slides.kind.connector": "Conector",
   "slides.kind.other": "Objeto",
   "slides.kind.deleted": "Eliminado",
-  "slides.inherited.layout": "La posición viene del diseño hasta que la muevas.",
-  "slides.inherited.master": "La posición viene del patrón hasta que la muevas.",
+  "slides.inherited.layout":
+    "La posición viene del diseño hasta que la muevas.",
+  "slides.inherited.master":
+    "La posición viene del patrón hasta que la muevas.",
   "slides.frame.x": "Izquierda (pulg.)",
   "slides.frame.y": "Arriba (pulg.)",
   "slides.frame.width": "Ancho (pulg.)",
   "slides.frame.height": "Alto (pulg.)",
-  "slides.frame.invalid": "Escribe números; el ancho y el alto no pueden ser negativos.",
+  "slides.frame.invalid":
+    "Escribe números; el ancho y el alto no pueden ser negativos.",
   "slides.run": "Texto {{number}}",
   "slides.notes": "Notas del orador {{number}}",
   "slides.chart.category": "Categoría",
@@ -293,22 +301,28 @@ export const es = {
   "slides.chart.series": "Nombre de la serie {{number}}",
   "slides.chart.apply": "Usar estos datos",
   "slides.chart.invalid": "Escribe números o deja el valor vacío.",
-  "slides.chart.mixed": "El libro incrustado de este gráfico contiene otros datos. Edítalos en PowerPoint.",
-  "slides.chart.unsupported": "Este gráfico se puede mover, pero sus datos no se editan aquí.",
+  "slides.chart.mixed":
+    "El libro incrustado de este gráfico contiene otros datos. Edítalos en PowerPoint.",
+  "slides.chart.unsupported":
+    "Este gráfico se puede mover, pero sus datos no se editan aquí.",
   "slides.elementActions": "Acciones del elemento",
   "slides.delete": "Eliminar elemento",
   "slides.revert": "Deshacer cambios del elemento",
   "slides.reference": "Copiar referencia para el Agent",
-  "slides.reference.copied": "Referencia copiada. Pégala en tu mensaje al Agent.",
+  "slides.reference.copied":
+    "Referencia copiada. Pégala en tu mensaje al Agent.",
   "slides.reference.failed": "No se pudo copiar la referencia.",
-  "slides.reference.unsaved": "Guarda o descarta el borrador antes de pasarlo al Agent; una referencia solo nombra revisiones guardadas.",
+  "slides.reference.unsaved":
+    "Guarda o descarta el borrador antes de pasarlo al Agent; una referencia solo nombra revisiones guardadas.",
   "slides.slideActions": "Acciones de diapositiva",
   "slides.moveUp": "Mover antes",
   "slides.moveDown": "Mover después",
   "slides.duplicate": "Duplicar diapositiva",
   "slides.deleteSlide": "Eliminar diapositiva",
-  "slides.deleteSlide.confirm": "¿Eliminar la diapositiva {{number}}? La nueva revisión quita sus notas y gráficos; las anteriores los conservan.",
-  "slides.structureBlocked": "Guarda o descarta el borrador antes de cambiar diapositivas o pasarlas al Agent.",
+  "slides.deleteSlide.confirm":
+    "¿Eliminar la diapositiva {{number}}? La nueva revisión quita sus notas y gráficos; las anteriores los conservan.",
+  "slides.structureBlocked":
+    "Guarda o descarta el borrador antes de cambiar diapositivas o pasarlas al Agent.",
   "slides.draft": "Borrador",
   "slides.clean": "Sin cambios sin guardar",
   "slides.unsaved": "Cambios sin guardar: {{count}}",
@@ -321,6 +335,8 @@ export const es = {
   "slides.op.deleteElement": "Eliminar {{name}}",
   "slides.op.setChartData": "Datos de {{name}}",
   "slides.handoff": "Pasar al Agent",
-  "slides.reference.handed": "Añadido a tu mensaje. Describe el cambio y envíalo.",
-  "slides.reference.stale": "La conversación cambió y la referencia no se añadió. Inténtalo de nuevo.",
+  "slides.reference.handed":
+    "Añadido a tu mensaje. Describe el cambio y envíalo.",
+  "slides.reference.stale":
+    "La conversación cambió y la referencia no se añadió. Inténtalo de nuevo.",
 } satisfies Record<keyof typeof en, string>;

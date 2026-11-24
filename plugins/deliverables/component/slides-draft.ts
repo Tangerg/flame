@@ -109,7 +109,10 @@ export function preview(
         .map((element) => ({
           ...element,
           ...(frames.has(element.id)
-            ? { frame: frames.get(element.id)!.frame, frameSource: "slide" as const }
+            ? {
+                frame: frames.get(element.id)!.frame,
+                frameSource: "slide" as const,
+              }
             : {}),
           text: element.text.map((run) => ({
             ...run,
@@ -194,12 +197,18 @@ export function reconcile(
     }
     const value =
       operation.type === "setFrame" ? current?.frame : current?.chart?.data;
-    if (!current || value === undefined) return { operation, status: "missing" };
+    if (!current || value === undefined)
+      return { operation, status: "missing" };
     if (same(value, target(operation)))
       return { operation, status: "applied", rebased: operation };
     if (same(value, operation.expect))
       return { operation, status: "clean", rebased: operation };
-    return { operation, status: "conflict", rebased: operation, current: value };
+    return {
+      operation,
+      status: "conflict",
+      rebased: operation,
+      current: value,
+    };
   });
 }
 

@@ -237,15 +237,18 @@ export const ko = {
   "image.zoomOut": "이미지 축소",
   "image.description": "이미지 설명",
   "slides.title": "슬라이드 편집",
-  "slides.help": "슬라이드 요소를 직접 이동하고 크기를 바꾸고 편집합니다. 변경 사항은 새 리비전으로 저장할 때까지 로컬 초안에 남습니다.",
+  "slides.help":
+    "슬라이드 요소를 직접 이동하고 크기를 바꾸고 편집합니다. 변경 사항은 새 리비전으로 저장할 때까지 로컬 초안에 남습니다.",
   "slides.loading": "슬라이드를 읽는 중…",
   "slides.retry": "다시 시도",
   "slides.historical": "이전 리비전입니다. 편집하려면 현재 리비전을 여세요.",
-  "slides.newer": "더 새로운 리비전이 있습니다. 저장하기 전에 초안과 비교하세요.",
+  "slides.newer":
+    "더 새로운 리비전이 있습니다. 저장하기 전에 초안과 비교하세요.",
   "slides.compare": "현재 리비전과 비교",
   "slides.draftElsewhere": "초안은 다른 리비전을 기반으로 합니다.",
   "slides.openDraft": "초안 리비전 열기",
-  "slides.reconcile.help": "각 변경을 현재 리비전과 비교했습니다. 양쪽 모두 바뀐 곳은 어느 쪽을 남길지 고르세요.",
+  "slides.reconcile.help":
+    "각 변경을 현재 리비전과 비교했습니다. 양쪽 모두 바뀐 곳은 어느 쪽을 남길지 고르세요.",
   "slides.reconcile.choice": "남길 버전",
   "slides.reconcile.actions": "초안 비교 작업",
   "slides.status.clean": "그대로 적용 가능",
@@ -261,7 +264,8 @@ export const ko = {
   "slides.slide": "슬라이드 {{number}}",
   "slides.hidden": "숨김",
   "slides.canvas": "슬라이드 {{number}} 캔버스",
-  "slides.keyboard": "화살표 키로 선택한 요소를 이동하고, Shift는 1인치씩, Delete는 삭제, Esc는 선택 해제입니다.",
+  "slides.keyboard":
+    "화살표 키로 선택한 요소를 이동하고, Shift는 1인치씩, Delete는 삭제, Esc는 선택 해제입니다.",
   "slides.elements": "이 슬라이드의 요소",
   "slides.noFrame": "위치 없음",
   "slides.changed": "변경됨",
@@ -278,12 +282,14 @@ export const ko = {
   "slides.kind.other": "개체",
   "slides.kind.deleted": "삭제됨",
   "slides.inherited.layout": "이동하기 전까지 위치는 레이아웃에서 가져옵니다.",
-  "slides.inherited.master": "이동하기 전까지 위치는 슬라이드 마스터에서 가져옵니다.",
+  "slides.inherited.master":
+    "이동하기 전까지 위치는 슬라이드 마스터에서 가져옵니다.",
   "slides.frame.x": "왼쪽(인치)",
   "slides.frame.y": "위쪽(인치)",
   "slides.frame.width": "너비(인치)",
   "slides.frame.height": "높이(인치)",
-  "slides.frame.invalid": "숫자를 입력하세요. 너비와 높이는 음수일 수 없습니다.",
+  "slides.frame.invalid":
+    "숫자를 입력하세요. 너비와 높이는 음수일 수 없습니다.",
   "slides.run": "텍스트 {{number}}",
   "slides.notes": "발표자 노트 {{number}}",
   "slides.chart.category": "범주",
@@ -291,22 +297,28 @@ export const ko = {
   "slides.chart.series": "계열 {{number}} 이름",
   "slides.chart.apply": "이 데이터 사용",
   "slides.chart.invalid": "숫자를 입력하거나 비워 두세요.",
-  "slides.chart.mixed": "이 차트의 포함된 통합 문서에 다른 데이터도 있습니다. PowerPoint에서 편집하세요.",
-  "slides.chart.unsupported": "이 차트는 이동할 수 있지만 여기서 데이터를 편집할 수 없습니다.",
+  "slides.chart.mixed":
+    "이 차트의 포함된 통합 문서에 다른 데이터도 있습니다. PowerPoint에서 편집하세요.",
+  "slides.chart.unsupported":
+    "이 차트는 이동할 수 있지만 여기서 데이터를 편집할 수 없습니다.",
   "slides.elementActions": "요소 작업",
   "slides.delete": "요소 삭제",
   "slides.revert": "이 요소의 변경 취소",
   "slides.reference": "Agent용 참조 복사",
-  "slides.reference.copied": "참조를 복사했습니다. Agent에게 보낼 메시지에 붙여 넣으세요.",
+  "slides.reference.copied":
+    "참조를 복사했습니다. Agent에게 보낼 메시지에 붙여 넣으세요.",
   "slides.reference.failed": "참조를 복사하지 못했습니다.",
-  "slides.reference.unsaved": "Agent에게 넘기기 전에 초안을 저장하거나 버리세요. 참조는 저장된 리비전만 가리킵니다.",
+  "slides.reference.unsaved":
+    "Agent에게 넘기기 전에 초안을 저장하거나 버리세요. 참조는 저장된 리비전만 가리킵니다.",
   "slides.slideActions": "슬라이드 작업",
   "slides.moveUp": "앞으로 이동",
   "slides.moveDown": "뒤로 이동",
   "slides.duplicate": "슬라이드 복제",
   "slides.deleteSlide": "슬라이드 삭제",
-  "slides.deleteSlide.confirm": "슬라이드 {{number}}을(를) 삭제할까요? 새 리비전에서 노트와 차트도 빠지며, 이전 리비전에는 남습니다.",
-  "slides.structureBlocked": "슬라이드를 바꾸거나 Agent에게 넘기기 전에 초안을 저장하거나 버리세요.",
+  "slides.deleteSlide.confirm":
+    "슬라이드 {{number}}을(를) 삭제할까요? 새 리비전에서 노트와 차트도 빠지며, 이전 리비전에는 남습니다.",
+  "slides.structureBlocked":
+    "슬라이드를 바꾸거나 Agent에게 넘기기 전에 초안을 저장하거나 버리세요.",
   "slides.draft": "초안",
   "slides.clean": "저장하지 않은 변경 없음",
   "slides.unsaved": "저장하지 않은 변경: {{count}}",
@@ -319,6 +331,8 @@ export const ko = {
   "slides.op.deleteElement": "{{name}} 삭제",
   "slides.op.setChartData": "{{name}}의 데이터",
   "slides.handoff": "Agent에게 넘기기",
-  "slides.reference.handed": "메시지에 추가했습니다. 바꿀 내용을 적고 보내세요.",
-  "slides.reference.stale": "대화가 바뀌어 참조를 추가하지 않았습니다. 다시 시도하세요.",
+  "slides.reference.handed":
+    "메시지에 추가했습니다. 바꿀 내용을 적고 보내세요.",
+  "slides.reference.stale":
+    "대화가 바뀌어 참조를 추가하지 않았습니다. 다시 시도하세요.",
 } satisfies Record<keyof typeof en, string>;

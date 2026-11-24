@@ -229,7 +229,8 @@ export const zh = {
   "image.zoomOut": "缩小图片",
   "image.description": "图片说明",
   "slides.title": "幻灯片编辑",
-  "slides.help": "直接移动、缩放和编辑页面元素。修改先留在本地草稿，保存后才成为新修订。",
+  "slides.help":
+    "直接移动、缩放和编辑页面元素。修改先留在本地草稿，保存后才成为新修订。",
   "slides.loading": "正在读取幻灯片…",
   "slides.retry": "重试",
   "slides.historical": "这是较早的修订。打开当前修订才能编辑。",
@@ -237,7 +238,8 @@ export const zh = {
   "slides.compare": "与当前修订比较",
   "slides.draftElsewhere": "你的草稿基于另一个修订。",
   "slides.openDraft": "打开草稿所在修订",
-  "slides.reconcile.help": "每项修改都已和当前修订比较。双方都改过的地方请选择保留哪一边。",
+  "slides.reconcile.help":
+    "每项修改都已和当前修订比较。双方都改过的地方请选择保留哪一边。",
   "slides.reconcile.choice": "保留的版本",
   "slides.reconcile.actions": "草稿比较操作",
   "slides.status.clean": "可直接应用",
@@ -253,7 +255,8 @@ export const zh = {
   "slides.slide": "第 {{number}} 页",
   "slides.hidden": "已隐藏",
   "slides.canvas": "第 {{number}} 页画布",
-  "slides.keyboard": "方向键移动所选元素，按住 Shift 每次移动 1 英寸，Delete 删除，Esc 取消选择。",
+  "slides.keyboard":
+    "方向键移动所选元素，按住 Shift 每次移动 1 英寸，Delete 删除，Esc 取消选择。",
   "slides.elements": "本页元素",
   "slides.noFrame": "无位置",
   "slides.changed": "已修改",
@@ -283,7 +286,8 @@ export const zh = {
   "slides.chart.series": "系列 {{number}} 名称",
   "slides.chart.apply": "使用这些数据",
   "slides.chart.invalid": "请输入数字，或将该值留空。",
-  "slides.chart.mixed": "该图表的嵌入工作簿还包含其他数据，请在 PowerPoint 中编辑。",
+  "slides.chart.mixed":
+    "该图表的嵌入工作簿还包含其他数据，请在 PowerPoint 中编辑。",
   "slides.chart.unsupported": "该图表类型可以移动，但不能在这里编辑数据。",
   "slides.elementActions": "元素操作",
   "slides.delete": "删除元素",
@@ -291,13 +295,15 @@ export const zh = {
   "slides.reference": "复制给 Agent 的引用",
   "slides.reference.copied": "引用已复制。把它粘贴到发给 Agent 的消息里。",
   "slides.reference.failed": "无法复制引用。",
-  "slides.reference.unsaved": "先保存或放弃草稿，再交给 Agent；引用只指向已保存的修订。",
+  "slides.reference.unsaved":
+    "先保存或放弃草稿，再交给 Agent；引用只指向已保存的修订。",
   "slides.slideActions": "页面操作",
   "slides.moveUp": "前移",
   "slides.moveDown": "后移",
   "slides.duplicate": "复制此页",
   "slides.deleteSlide": "删除此页",
-  "slides.deleteSlide.confirm": "删除第 {{number}} 页？新修订会去掉它的备注和图表，旧修订仍保留。",
+  "slides.deleteSlide.confirm":
+    "删除第 {{number}} 页？新修订会去掉它的备注和图表，旧修订仍保留。",
   "slides.structureBlocked": "先保存或放弃草稿，再调整页面或交给 Agent。",
   "slides.draft": "草稿",
   "slides.clean": "没有未保存的修改",

@@ -152,7 +152,9 @@ native(
       );
       const [first, second] = layoutFile(created).slides;
       const title = first!.elements.find((element) => element.kind === "text")!;
-      const chart = first!.elements.find((element) => element.kind === "chart")!;
+      const chart = first!.elements.find(
+        (element) => element.kind === "chart",
+      )!;
       const edited = await editFile(
         "pptx",
         created,

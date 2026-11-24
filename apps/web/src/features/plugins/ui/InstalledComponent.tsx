@@ -204,9 +204,7 @@ class ComponentInstance {
         : undefined,
       message: this.sources.message,
       toolResult: this.sources.toolResult,
-      composer: this.sources.composer
-        ? captureComposer(this.sources.composer, signal)
-        : undefined,
+      composer: this.sources.composer ? captureComposer(this.sources.composer, signal) : undefined,
       interaction:
         this.sources.toolResult && this.sources.submitInput
           ? captureToolInteraction(

@@ -240,15 +240,19 @@ export const en = {
   "image.zoomOut": "Zoom out image",
   "image.description": "Image description",
   "slides.title": "Slide editor",
-  "slides.help": "Move, resize and edit slide elements directly. Changes stay in a local draft until you save them as a new revision.",
+  "slides.help":
+    "Move, resize and edit slide elements directly. Changes stay in a local draft until you save them as a new revision.",
   "slides.loading": "Reading slides…",
   "slides.retry": "Try again",
-  "slides.historical": "This is an earlier revision. Open the current revision to edit it.",
-  "slides.newer": "A newer revision exists. Compare your draft with it before saving.",
+  "slides.historical":
+    "This is an earlier revision. Open the current revision to edit it.",
+  "slides.newer":
+    "A newer revision exists. Compare your draft with it before saving.",
   "slides.compare": "Compare with current",
   "slides.draftElsewhere": "Your draft is based on another revision.",
   "slides.openDraft": "Open draft revision",
-  "slides.reconcile.help": "Each change is checked against the current revision. Choose which side to keep where both changed.",
+  "slides.reconcile.help":
+    "Each change is checked against the current revision. Choose which side to keep where both changed.",
   "slides.reconcile.choice": "Version to keep",
   "slides.reconcile.actions": "Draft comparison actions",
   "slides.status.clean": "Applies cleanly",
@@ -264,7 +268,8 @@ export const en = {
   "slides.slide": "Slide {{number}}",
   "slides.hidden": "Hidden",
   "slides.canvas": "Slide {{number}} canvas",
-  "slides.keyboard": "Arrow keys move the selected element, Shift moves by one inch, Delete removes it and Escape clears the selection.",
+  "slides.keyboard":
+    "Arrow keys move the selected element, Shift moves by one inch, Delete removes it and Escape clears the selection.",
   "slides.elements": "Elements on this slide",
   "slides.noFrame": "no position",
   "slides.changed": "Changed",
@@ -280,8 +285,10 @@ export const en = {
   "slides.kind.connector": "Connector",
   "slides.kind.other": "Object",
   "slides.kind.deleted": "Deleted",
-  "slides.inherited.layout": "Position comes from the slide layout until you move it.",
-  "slides.inherited.master": "Position comes from the slide master until you move it.",
+  "slides.inherited.layout":
+    "Position comes from the slide layout until you move it.",
+  "slides.inherited.master":
+    "Position comes from the slide master until you move it.",
   "slides.frame.x": "Left (in)",
   "slides.frame.y": "Top (in)",
   "slides.frame.width": "Width (in)",
@@ -294,22 +301,28 @@ export const en = {
   "slides.chart.series": "Series {{number}} name",
   "slides.chart.apply": "Use this data",
   "slides.chart.invalid": "Enter numbers or leave a value empty.",
-  "slides.chart.mixed": "This chart's embedded workbook holds other data. Edit the data in PowerPoint.",
-  "slides.chart.unsupported": "This chart type can be moved but its data cannot be edited here.",
+  "slides.chart.mixed":
+    "This chart's embedded workbook holds other data. Edit the data in PowerPoint.",
+  "slides.chart.unsupported":
+    "This chart type can be moved but its data cannot be edited here.",
   "slides.elementActions": "Element actions",
   "slides.delete": "Delete element",
   "slides.revert": "Undo changes to this element",
   "slides.reference": "Copy reference for Agent",
-  "slides.reference.copied": "Reference copied. Paste it into your message to the Agent.",
+  "slides.reference.copied":
+    "Reference copied. Paste it into your message to the Agent.",
   "slides.reference.failed": "The reference could not be copied.",
-  "slides.reference.unsaved": "Save or discard the draft before handing it to the Agent; a reference names saved revisions only.",
+  "slides.reference.unsaved":
+    "Save or discard the draft before handing it to the Agent; a reference names saved revisions only.",
   "slides.slideActions": "Slide actions",
   "slides.moveUp": "Move earlier",
   "slides.moveDown": "Move later",
   "slides.duplicate": "Duplicate slide",
   "slides.deleteSlide": "Delete slide",
-  "slides.deleteSlide.confirm": "Delete slide {{number}}? The new revision drops its notes and charts; earlier revisions keep them.",
-  "slides.structureBlocked": "Save or discard the draft before changing slides or handing them to the Agent.",
+  "slides.deleteSlide.confirm":
+    "Delete slide {{number}}? The new revision drops its notes and charts; earlier revisions keep them.",
+  "slides.structureBlocked":
+    "Save or discard the draft before changing slides or handing them to the Agent.",
   "slides.draft": "Draft",
   "slides.clean": "No unsaved changes",
   "slides.unsaved": "Unsaved changes: {{count}}",
@@ -322,6 +335,8 @@ export const en = {
   "slides.op.deleteElement": "Delete {{name}}",
   "slides.op.setChartData": "Data of {{name}}",
   "slides.handoff": "Hand to Agent",
-  "slides.reference.handed": "Added to your message. Describe the change, then send it.",
-  "slides.reference.stale": "The conversation changed, so the reference was not added. Try again.",
+  "slides.reference.handed":
+    "Added to your message. Describe the change, then send it.",
+  "slides.reference.stale":
+    "The conversation changed, so the reference was not added. Try again.",
 } as const;

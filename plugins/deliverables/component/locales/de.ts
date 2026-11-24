@@ -244,15 +244,19 @@ export const de = {
   "image.zoomOut": "Bild verkleinern",
   "image.description": "Bildbeschreibung",
   "slides.title": "Folieneditor",
-  "slides.help": "Elemente direkt verschieben, skalieren und bearbeiten. Änderungen bleiben im lokalen Entwurf, bis du sie als neue Revision speicherst.",
+  "slides.help":
+    "Elemente direkt verschieben, skalieren und bearbeiten. Änderungen bleiben im lokalen Entwurf, bis du sie als neue Revision speicherst.",
   "slides.loading": "Folien werden gelesen…",
   "slides.retry": "Erneut versuchen",
-  "slides.historical": "Dies ist eine frühere Revision. Öffne die aktuelle Revision, um sie zu bearbeiten.",
-  "slides.newer": "Es gibt eine neuere Revision. Vergleiche sie vor dem Speichern mit deinem Entwurf.",
+  "slides.historical":
+    "Dies ist eine frühere Revision. Öffne die aktuelle Revision, um sie zu bearbeiten.",
+  "slides.newer":
+    "Es gibt eine neuere Revision. Vergleiche sie vor dem Speichern mit deinem Entwurf.",
   "slides.compare": "Mit aktueller vergleichen",
   "slides.draftElsewhere": "Dein Entwurf basiert auf einer anderen Revision.",
   "slides.openDraft": "Revision des Entwurfs öffnen",
-  "slides.reconcile.help": "Jede Änderung wird mit der aktuellen Revision verglichen. Wähle, was bei beidseitigen Änderungen bleibt.",
+  "slides.reconcile.help":
+    "Jede Änderung wird mit der aktuellen Revision verglichen. Wähle, was bei beidseitigen Änderungen bleibt.",
   "slides.reconcile.choice": "Beizubehaltende Version",
   "slides.reconcile.actions": "Vergleichsaktionen",
   "slides.status.clean": "Konfliktfrei anwendbar",
@@ -268,7 +272,8 @@ export const de = {
   "slides.slide": "Folie {{number}}",
   "slides.hidden": "Ausgeblendet",
   "slides.canvas": "Zeichenfläche von Folie {{number}}",
-  "slides.keyboard": "Pfeiltasten verschieben das Element, Umschalt um einen Zoll, Entf löscht es, Esc hebt die Auswahl auf.",
+  "slides.keyboard":
+    "Pfeiltasten verschieben das Element, Umschalt um einen Zoll, Entf löscht es, Esc hebt die Auswahl auf.",
   "slides.elements": "Elemente auf dieser Folie",
   "slides.noFrame": "ohne Position",
   "slides.changed": "Geändert",
@@ -284,13 +289,16 @@ export const de = {
   "slides.kind.connector": "Verbinder",
   "slides.kind.other": "Objekt",
   "slides.kind.deleted": "Gelöscht",
-  "slides.inherited.layout": "Die Position stammt aus dem Layout, bis du sie verschiebst.",
-  "slides.inherited.master": "Die Position stammt aus dem Master, bis du sie verschiebst.",
+  "slides.inherited.layout":
+    "Die Position stammt aus dem Layout, bis du sie verschiebst.",
+  "slides.inherited.master":
+    "Die Position stammt aus dem Master, bis du sie verschiebst.",
   "slides.frame.x": "Links (Zoll)",
   "slides.frame.y": "Oben (Zoll)",
   "slides.frame.width": "Breite (Zoll)",
   "slides.frame.height": "Höhe (Zoll)",
-  "slides.frame.invalid": "Gib Zahlen ein; Breite und Höhe dürfen nicht negativ sein.",
+  "slides.frame.invalid":
+    "Gib Zahlen ein; Breite und Höhe dürfen nicht negativ sein.",
   "slides.run": "Text {{number}}",
   "slides.notes": "Notizen {{number}}",
   "slides.chart.category": "Kategorie",
@@ -298,22 +306,28 @@ export const de = {
   "slides.chart.series": "Name der Reihe {{number}}",
   "slides.chart.apply": "Diese Daten verwenden",
   "slides.chart.invalid": "Gib Zahlen ein oder lass den Wert leer.",
-  "slides.chart.mixed": "Die eingebettete Arbeitsmappe enthält weitere Daten. Bearbeite sie in PowerPoint.",
-  "slides.chart.unsupported": "Dieses Diagramm lässt sich verschieben, seine Daten aber nicht hier bearbeiten.",
+  "slides.chart.mixed":
+    "Die eingebettete Arbeitsmappe enthält weitere Daten. Bearbeite sie in PowerPoint.",
+  "slides.chart.unsupported":
+    "Dieses Diagramm lässt sich verschieben, seine Daten aber nicht hier bearbeiten.",
   "slides.elementActions": "Elementaktionen",
   "slides.delete": "Element löschen",
   "slides.revert": "Änderungen am Element verwerfen",
   "slides.reference": "Verweis für den Agent kopieren",
-  "slides.reference.copied": "Verweis kopiert. Füge ihn in deine Nachricht an den Agent ein.",
+  "slides.reference.copied":
+    "Verweis kopiert. Füge ihn in deine Nachricht an den Agent ein.",
   "slides.reference.failed": "Der Verweis konnte nicht kopiert werden.",
-  "slides.reference.unsaved": "Speichere oder verwirf den Entwurf, bevor du ihn an den Agent übergibst; ein Verweis nennt nur gespeicherte Revisionen.",
+  "slides.reference.unsaved":
+    "Speichere oder verwirf den Entwurf, bevor du ihn an den Agent übergibst; ein Verweis nennt nur gespeicherte Revisionen.",
   "slides.slideActions": "Folienaktionen",
   "slides.moveUp": "Nach vorne",
   "slides.moveDown": "Nach hinten",
   "slides.duplicate": "Folie duplizieren",
   "slides.deleteSlide": "Folie löschen",
-  "slides.deleteSlide.confirm": "Folie {{number}} löschen? Die neue Revision entfernt Notizen und Diagramme; frühere Revisionen behalten sie.",
-  "slides.structureBlocked": "Speichere oder verwirf den Entwurf, bevor du Folien änderst oder an den Agent übergibst.",
+  "slides.deleteSlide.confirm":
+    "Folie {{number}} löschen? Die neue Revision entfernt Notizen und Diagramme; frühere Revisionen behalten sie.",
+  "slides.structureBlocked":
+    "Speichere oder verwirf den Entwurf, bevor du Folien änderst oder an den Agent übergibst.",
   "slides.draft": "Entwurf",
   "slides.clean": "Keine ungespeicherten Änderungen",
   "slides.unsaved": "Ungespeicherte Änderungen: {{count}}",
@@ -326,6 +340,8 @@ export const de = {
   "slides.op.deleteElement": "{{name}} löschen",
   "slides.op.setChartData": "Daten von {{name}}",
   "slides.handoff": "An den Agent übergeben",
-  "slides.reference.handed": "Zur Nachricht hinzugefügt. Beschreibe die Änderung und sende sie.",
-  "slides.reference.stale": "Die Unterhaltung hat gewechselt; der Verweis wurde nicht hinzugefügt. Bitte erneut versuchen.",
+  "slides.reference.handed":
+    "Zur Nachricht hinzugefügt. Beschreibe die Änderung und sende sie.",
+  "slides.reference.stale":
+    "Die Unterhaltung hat gewechselt; der Verweis wurde nicht hinzugefügt. Bitte erneut versuchen.",
 } satisfies Record<keyof typeof en, string>;

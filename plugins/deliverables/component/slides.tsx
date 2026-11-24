@@ -53,7 +53,11 @@ type LayoutRead = { value?: SlideLayout; error?: string };
 
 // The bounded format process admits one operation at a time, so revisions are
 // read in sequence rather than in parallel.
-function useLayouts(state: DeliverablesState, documentId: string, wanted: string[]) {
+function useLayouts(
+  state: DeliverablesState,
+  documentId: string,
+  wanted: string[],
+) {
   const [entries, setEntries] = useState<Record<string, LayoutRead>>({});
   const active = useRef<string | undefined>(undefined);
   const owner = useMemo(() => new AbortController(), []);
@@ -68,8 +72,12 @@ function useLayouts(state: DeliverablesState, documentId: string, wanted: string
       .query(METHODS.slides, { id: documentId, revision: next }, lifetime)
       .then((result): LayoutRead => {
         if (result.revision !== next)
-          throw new Error("deliverables: slide layout differs from its revision");
-        return { value: slideLayoutSchema.parse(JSON.parse(result.layoutJSON)) };
+          throw new Error(
+            "deliverables: slide layout differs from its revision",
+          );
+        return {
+          value: slideLayoutSchema.parse(JSON.parse(result.layoutJSON)),
+        };
       })
       .catch((error: unknown): LayoutRead => ({ error: failureText(error) }))
       .then((read) => {
@@ -96,9 +104,7 @@ function inches(value: number): string {
 function excerpt(element: ElementView): string {
   const runs = element.text.filter((run) => run.text.trim());
   const text = (runs[0]?.text ?? "").replace(/\s+/gu, " ").trim();
-  return text.length > 80 || runs.length > 1
-    ? `${text.slice(0, 80)}…`
-    : text;
+  return text.length > 80 || runs.length > 1 ? `${text.slice(0, 80)}…` : text;
 }
 
 function label(element: ElementView, t: Translate): string {
@@ -466,7 +472,11 @@ function ChartFields({
     const values = grid.values.map((series) =>
       series.map((value) => (value.trim() === "" ? null : Number(value))),
     );
-    if (values.some((series) => series.some((value) => value !== null && !Number.isFinite(value)))) {
+    if (
+      values.some((series) =>
+        series.some((value) => value !== null && !Number.isFinite(value)),
+      )
+    ) {
       setInvalid(true);
       return;
     }
@@ -496,7 +506,9 @@ function ChartFields({
                 <th key={series} scope="col" style={cell}>
                   <TextField
                     size="sm"
-                    aria-label={t("slides.chart.series", { number: series + 1 })}
+                    aria-label={t("slides.chart.series", {
+                      number: series + 1,
+                    })}
                     value={name}
                     readOnly={!writable}
                     onChange={(event) => {
@@ -557,7 +569,11 @@ function ChartFields({
   );
 }
 
-function describe(operation: DraftOperation, base: SlideLayout | undefined, t: Translate) {
+function describe(
+  operation: DraftOperation,
+  base: SlideLayout | undefined,
+  t: Translate,
+) {
   if (operation.type === "replaceText")
     return t("slides.op.replaceText", { text: operation.text.slice(0, 60) });
   const element = base?.slides
@@ -636,10 +652,7 @@ function Reconcile({
                               : result.operation.data,
                         ),
                   ],
-                  [
-                    t("slides.theirs"),
-                    show(result.operation, result.current),
-                  ],
+                  [t("slides.theirs"), show(result.operation, result.current)],
                 ]}
               />
               <Segmented
@@ -734,7 +747,9 @@ export function SlideStudio({
     viewed === head && !state.blocked && !saving && (!draft || editing);
   const layout = useMemo(
     () =>
-      read?.value && editing ? preview(read.value, draft.operations) : read?.value,
+      read?.value && editing
+        ? preview(read.value, draft.operations)
+        : read?.value,
     [read?.value, editing, draft?.operations],
   );
   const slide =
@@ -754,14 +769,19 @@ export function SlideStudio({
   const change = (operation: DraftOperation, target?: ElementView) => {
     if (!editable) return;
     setDraft((current) =>
-      record(current ?? { base: viewed, operations: [], undo: [] }, operation, target),
+      record(
+        current ?? { base: viewed, operations: [], undo: [] },
+        operation,
+        target,
+      ),
     );
   };
   const setFrame = (target: ElementView, frame: Frame) => {
     const source = read?.value?.slides
       .flatMap((entry) => entry.elements)
       .find((entry) => entry.id === target.id)?.frame;
-    if (source) change({ type: "setFrame", id: target.id, expect: source, frame });
+    if (source)
+      change({ type: "setFrame", id: target.id, expect: source, frame });
   };
   const setText = (id: string, expect: string, text: string) =>
     change({ type: "replaceText", id, expect, text });
@@ -794,7 +814,10 @@ export function SlideStudio({
         },
         (value) => {
           setDraft((current) => (current === captured ? undefined : current));
-          state.selectRevision(value, { id: documentId, revision: captured.base });
+          state.selectRevision(value, {
+            id: documentId,
+            revision: captured.base,
+          });
         },
       );
       if (!revision) void state.refresh();
@@ -859,7 +882,9 @@ export function SlideStudio({
             <Callout kind="note">
               {t("slides.draftElsewhere")}{" "}
               <Button
-                onClick={() => state.open({ id: documentId, revision: pending })}
+                onClick={() =>
+                  state.open({ id: documentId, revision: pending })
+                }
               >
                 {t("slides.openDraft")}
               </Button>
@@ -1017,7 +1042,9 @@ export function SlideStudio({
                     disabled={!editing || !changed(element) || !original}
                     onClick={() => {
                       if (original)
-                        setDraft((current) => current && revert(current, original));
+                        setDraft(
+                          (current) => current && revert(current, original),
+                        );
                     }}
                   >
                     {t("slides.revert")}
@@ -1070,7 +1097,9 @@ export function SlideStudio({
                   </Button>
                   <Button
                     disabled={
-                      !editable || dirty || slide.number === layout.slides.length
+                      !editable ||
+                      dirty ||
+                      slide.number === layout.slides.length
                     }
                     onClick={() => move(1)}
                   >
@@ -1107,7 +1136,9 @@ export function SlideStudio({
                 {removal === slide.id && (
                   <RecordGroup>
                     <Callout kind="warning">
-                      {t("slides.deleteSlide.confirm", { number: slide.number })}
+                      {t("slides.deleteSlide.confirm", {
+                        number: slide.number,
+                      })}
                     </Callout>
                     <FormActions label={t("slides.slideActions")}>
                       <Button onClick={() => setRemoval(undefined)}>

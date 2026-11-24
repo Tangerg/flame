@@ -34,7 +34,9 @@ class Subscriber {
   #route(event: RuntimeEvent): RuntimeEvent | undefined {
     if (event.type !== "resync") return this.topics.has(event.type) ? event : undefined;
     const missed = event.topics.filter((topic) => this.topics.has(topic));
-    return missed.length > 0 ? { type: "resync", sequence: event.sequence, topics: missed } : undefined;
+    return missed.length > 0
+      ? { type: "resync", sequence: event.sequence, topics: missed }
+      : undefined;
   }
 }
 

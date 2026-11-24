@@ -9,7 +9,8 @@ import { readChart } from "./charts";
 import { textNodes } from "./inspection";
 import { attribute, namespaces, type XmlDocument, type XmlNode } from "./xml";
 
-const POWERPOINT_2010 = "http://schemas.microsoft.com/office/powerpoint/2010/main";
+const POWERPOINT_2010 =
+  "http://schemas.microsoft.com/office/powerpoint/2010/main";
 
 export function child(
   node: XmlNode | undefined,
@@ -91,8 +92,7 @@ export function slideElements(
     )
       return [];
     const identity = nonVisual(node);
-    if (!identity || !/^[0-9]+$/u.test(identity.attributes.id ?? ""))
-      return [];
+    if (!identity || !/^[0-9]+$/u.test(identity.attributes.id ?? "")) return [];
     return [
       {
         id: `${part}#element:${identity.attributes.id}`,
@@ -251,7 +251,8 @@ export function chartPart(
     namespaces.chart,
     "chart",
   );
-  const id = reference && attribute(reference, namespaces.officeRelationships, "id");
+  const id =
+    reference && attribute(reference, namespaces.officeRelationships, "id");
   if (!id) return;
   const relation = relations(archive, slidePart).find(
     (entry) => entry.id === id,
@@ -338,7 +339,9 @@ export function slideLayout(archive: OfficePackage): SlideLayout {
           id,
           kind: elementKind(node, text.length > 0),
           name,
-          ...(placed ? { frame: placed.frame, frameSource: placed.source } : {}),
+          ...(placed
+            ? { frame: placed.frame, frameSource: placed.source }
+            : {}),
           ...(rotation && /^-?[0-9]+$/u.test(rotation)
             ? { rotation: Number(rotation) / 60000 }
             : {}),
@@ -350,7 +353,9 @@ export function slideLayout(archive: OfficePackage): SlideLayout {
     return {
       id: slide.id,
       number: index + 1,
-      name: child(document.root, namespaces.presentation, "cSld")?.attributes.name ?? "",
+      name:
+        child(document.root, namespaces.presentation, "cSld")?.attributes
+          .name ?? "",
       hidden: document.root.attributes.show === "0",
       elements,
       notes: notes(archive, slide.id),

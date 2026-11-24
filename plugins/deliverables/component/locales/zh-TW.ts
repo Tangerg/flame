@@ -229,7 +229,8 @@ export const zhTW = {
   "image.zoomOut": "縮小圖片",
   "image.description": "圖片說明",
   "slides.title": "投影片編輯",
-  "slides.help": "直接移動、縮放和編輯頁面元素。修改先留在本機草稿，儲存後才成為新修訂。",
+  "slides.help":
+    "直接移動、縮放和編輯頁面元素。修改先留在本機草稿，儲存後才成為新修訂。",
   "slides.loading": "正在讀取投影片…",
   "slides.retry": "重試",
   "slides.historical": "這是較早的修訂。開啟目前修訂才能編輯。",
@@ -237,7 +238,8 @@ export const zhTW = {
   "slides.compare": "與目前修訂比較",
   "slides.draftElsewhere": "你的草稿以另一個修訂為基礎。",
   "slides.openDraft": "開啟草稿所在修訂",
-  "slides.reconcile.help": "每項修改都已和目前修訂比較。雙方都改過的地方請選擇保留哪一邊。",
+  "slides.reconcile.help":
+    "每項修改都已和目前修訂比較。雙方都改過的地方請選擇保留哪一邊。",
   "slides.reconcile.choice": "保留的版本",
   "slides.reconcile.actions": "草稿比較操作",
   "slides.status.clean": "可直接套用",
@@ -253,7 +255,8 @@ export const zhTW = {
   "slides.slide": "第 {{number}} 頁",
   "slides.hidden": "已隱藏",
   "slides.canvas": "第 {{number}} 頁畫布",
-  "slides.keyboard": "方向鍵移動所選元素，按住 Shift 每次移動 1 英吋，Delete 刪除，Esc 取消選取。",
+  "slides.keyboard":
+    "方向鍵移動所選元素，按住 Shift 每次移動 1 英吋，Delete 刪除，Esc 取消選取。",
   "slides.elements": "本頁元素",
   "slides.noFrame": "無位置",
   "slides.changed": "已修改",
@@ -283,7 +286,8 @@ export const zhTW = {
   "slides.chart.series": "數列 {{number}} 名稱",
   "slides.chart.apply": "使用這些資料",
   "slides.chart.invalid": "請輸入數字，或將該值留空。",
-  "slides.chart.mixed": "此圖表的內嵌活頁簿還包含其他資料，請在 PowerPoint 中編輯。",
+  "slides.chart.mixed":
+    "此圖表的內嵌活頁簿還包含其他資料，請在 PowerPoint 中編輯。",
   "slides.chart.unsupported": "此圖表類型可以移動，但不能在這裡編輯資料。",
   "slides.elementActions": "元素操作",
   "slides.delete": "刪除元素",
@@ -291,13 +295,15 @@ export const zhTW = {
   "slides.reference": "複製給 Agent 的引用",
   "slides.reference.copied": "引用已複製。把它貼到傳給 Agent 的訊息裡。",
   "slides.reference.failed": "無法複製引用。",
-  "slides.reference.unsaved": "先儲存或捨棄草稿，再交給 Agent；引用只指向已儲存的修訂。",
+  "slides.reference.unsaved":
+    "先儲存或捨棄草稿，再交給 Agent；引用只指向已儲存的修訂。",
   "slides.slideActions": "頁面操作",
   "slides.moveUp": "前移",
   "slides.moveDown": "後移",
   "slides.duplicate": "複製此頁",
   "slides.deleteSlide": "刪除此頁",
-  "slides.deleteSlide.confirm": "刪除第 {{number}} 頁？新修訂會移除它的備忘稿和圖表，舊修訂仍保留。",
+  "slides.deleteSlide.confirm":
+    "刪除第 {{number}} 頁？新修訂會移除它的備忘稿和圖表，舊修訂仍保留。",
   "slides.structureBlocked": "先儲存或捨棄草稿，再調整頁面或交給 Agent。",
   "slides.draft": "草稿",
   "slides.clean": "沒有未儲存的修改",

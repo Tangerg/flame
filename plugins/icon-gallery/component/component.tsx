@@ -51,9 +51,7 @@ export function Gallery({ context }: { context: ComponentContext }) {
   return (
     <Panel
       label={t("panel.title")}
-      header={
-        <PanelHeader title={t("panel.title")} />
-      }
+      header={<PanelHeader title={t("panel.title")} />}
       controls={
         <FilterBar
           label={t("filters.label")}

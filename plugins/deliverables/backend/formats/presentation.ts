@@ -317,7 +317,8 @@ type Operation<T extends PresentationOperation["type"]> = Extract<
 
 function drawingName(document: XmlDocument, local: string) {
   const prefix = Object.entries(document.root.attributes).find(
-    ([name, value]) => name.startsWith("xmlns:") && value === namespaces.drawing,
+    ([name, value]) =>
+      name.startsWith("xmlns:") && value === namespaces.drawing,
   )?.[0];
   return prefix
     ? { name: `${prefix.slice(6)}:${local}`, declaration: "" }
