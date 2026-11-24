@@ -1,14 +1,12 @@
 import { useId, useState, useSyncExternalStore } from "react";
 import type { ComponentContext, Translate } from "@flame/component-sdk";
 import type { Provider } from "@flame/runtime-client/wire";
-import { Server } from "@flame/icons/react";
 import {
   Badge,
   Button,
   FormActions,
   FormField,
   FormRow,
-  Icon,
   ListRow,
   ModalDialog,
   TextField,
@@ -87,7 +85,6 @@ export function ProviderRow({
           minWidth: 0,
         }}
       >
-        <Icon glyph={Server} size="lg" />
         <strong style={{ ...literal, flex: "1 1 10rem" }}>{provider.id}</strong>
         <ProviderCredentialBadge provider={provider} t={t} />
       </div>

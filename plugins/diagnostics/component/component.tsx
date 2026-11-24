@@ -9,7 +9,7 @@ import {
   type Translate,
   useTranslator,
 } from "@flame/component-sdk";
-import { Activity, Refresh, Gauge, FileText } from "@flame/icons/react";
+import { Activity, Refresh } from "@flame/icons/react";
 import {
   Toolbar,
   Panel,
@@ -47,7 +47,6 @@ function title(row: Observation, t: Translate, clock: Intl.DateTimeFormat) {
   if ("durationMillis" in row)
     return (
       <RecordSummary
-        icon={Activity}
         title={row.name}
         description={t("span.meta", { ms: row.durationMillis, kind: row.kind })}
         status={
@@ -60,7 +59,6 @@ function title(row: Observation, t: Translate, clock: Intl.DateTimeFormat) {
   if ("severity" in row)
     return (
       <RecordSummary
-        icon={FileText}
         title={
           row.body
             .split(/\r?\n/)
@@ -77,7 +75,6 @@ function title(row: Observation, t: Translate, clock: Intl.DateTimeFormat) {
     );
   return (
     <RecordSummary
-      icon={Gauge}
       title={row.name}
       description={row.description || undefined}
       status={<Badge>{t(`metric.kind.${row.kind}`)}</Badge>}

@@ -33652,6 +33652,14 @@ search rows. Native `dock-diff-evidence` Files shows four glyph-free rows
 with the current file tinted. `@flame/ui` typecheck/build and published
 resource checks pass.
 
+The same sweep removes the per-kind glyph from Diagnostics rows, because
+each Traces, Metrics or Logs tab already holds one kind. It also removes the
+server glyph from every provider row in Settings → Providers. The
+Diagnostics status, severity and kind badges stay, as recorded forensic
+evidence (see Milestone closure). Native `dock-diagnostics-recorded` and
+Providers render name-first rows. Plugin typecheck and published resource
+checks pass.
+
 Checks: plugin typecheck, `check-i18n` (20 catalogs × 8 locales),
 `build-components --check`, the three Diff component cases, the Web Diff
 and file-reference contracts (7), `@flame/ui` package test and Web
