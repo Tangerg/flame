@@ -50898,8 +50898,11 @@ Every project row ended in a faint mono session count, also while open,
 where the sessions and `Show 1 more` already show the total. Waiting and
 running marks on that row already appear only while folded. The count now
 follows the same rule and uses the interface face with tabular figures.
-The empty Projects state said `workspace group`; it now says `project` in
-all eight catalogs, matching the section title. Native `fixture=shell`:
+The empty state said `workspace group`; it briefly said `project`. Once
+folder groups became Folders and Project named the separate aggregate
+(`cd950e683`), `folders.empty.sub` reads `Start a session in a folder to
+list it here.` in all eight catalogs. `FolderRow` and `ProjectRow` both
+keep the folded-only count. Native `fixture=shell`:
 open `scope` has no count; folded `runtime-lab` reads `1`. Web typecheck
 and `check:locales` (940 keys) pass.
 
