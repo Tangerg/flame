@@ -567,16 +567,19 @@ export function Schedules({ context }: { context: ComponentContext }) {
                 }
               />
               <RecordBody>{item.instructions}</RecordBody>
-              <Metadata>
-                {t("nextFiring.label")} ·{" "}
-                {item.nextRunAt !== undefined ? (
-                  <time dateTime={item.nextRunAt}>
-                    {dateTime.format(new Date(item.nextRunAt))}
-                  </time>
-                ) : (
-                  t("nextFiring.none")
-                )}
-              </Metadata>
+              {/* A disabled schedule says so in its status; "not scheduled" would only repeat it. */}
+              {(enabled(item) || item.nextRunAt !== undefined) && (
+                <Metadata>
+                  {t("nextFiring.label")} ·{" "}
+                  {item.nextRunAt !== undefined ? (
+                    <time dateTime={item.nextRunAt}>
+                      {dateTime.format(new Date(item.nextRunAt))}
+                    </time>
+                  ) : (
+                    t("nextFiring.none")
+                  )}
+                </Metadata>
+              )}
               <Disclosure title={t("details.title")}>
                 <Facts
                   values={[

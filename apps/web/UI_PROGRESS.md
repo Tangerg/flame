@@ -18380,6 +18380,18 @@ preserve exact authored material and required object/status facts while reducing
 presentation chrome. Start with the observed repeated labels and container
 boundaries in the content/Dock surfaces. The goal remains active.
 
+### Disabled schedules without a repeated "Not scheduled" (2026-11-24)
+
+A disabled schedule showed `Disabled` beside its title and then
+`Next firing · Not scheduled`, which only repeated the status. The
+next-firing line now renders when the schedule is enabled or has a recorded
+next run. An enabled schedule with no upcoming run still reads
+`Not scheduled`, where it is information. Native `dock-schedules`:
+`Weekly maintenance notes` reads title, `Disabled`, instructions and
+Schedule details. `Nightly dependency audit` keeps
+`Next firing · Aug 1, 2026 at 10:00 AM`. Plugin typecheck and published
+resource checks pass.
+
 ### Schedules native editing and retained reading after main (2026-11-05)
 
 Continued from published main `58d095069`. The user's requested fresh main
