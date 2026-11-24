@@ -69,6 +69,67 @@ export type Notice =
       filename: string;
     };
 
+interface CommandEffect {
+  // An announced result the notice offers to open.
+  result?: "asset" | "revision";
+  announced: boolean;
+  reload: "views" | "uploads" | "none";
+  // Commands that author a document carry the current project scope.
+  scoped?: true;
+}
+
+const COMMAND_EFFECTS: Record<CommandMethod, CommandEffect> = {
+  [METHODS.create]: {
+    result: "revision",
+    announced: true,
+    reload: "views",
+    scoped: true,
+  },
+  [METHODS.import]: {
+    result: "revision",
+    announced: true,
+    reload: "views",
+    scoped: true,
+  },
+  [METHODS.edit]: { result: "revision", announced: true, reload: "views" },
+  [METHODS.recalculate]: {
+    result: "revision",
+    announced: true,
+    reload: "views",
+  },
+  [METHODS.export]: { result: "asset", announced: true, reload: "none" },
+  [METHODS.render]: { announced: true, reload: "views" },
+  [METHODS.review]: { announced: true, reload: "views" },
+  [METHODS.remove]: { announced: true, reload: "views" },
+  [METHODS.discard]: { announced: true, reload: "uploads" },
+  [METHODS.upload]: { announced: false, reload: "uploads" },
+  [METHODS.append]: { announced: false, reload: "none" },
+};
+
+function commandNotice(
+  method: CommandMethod,
+  result: unknown,
+): Notice | undefined {
+  const effect = COMMAND_EFFECTS[method];
+  if (!effect.announced) return undefined;
+  if (effect.result === "asset")
+    return { kind: "command", method, asset: result as Asset };
+  if (effect.result === "revision")
+    return { kind: "command", method, revision: result as Revision };
+  return { kind: "command", method };
+}
+
+// A failure that does not prove the command was refused leaves its outcome
+// open; the observation stays recoverable instead of reporting an error.
+function outcomeUnknown(error: unknown, recoverable: boolean): boolean {
+  return (
+    mutationSettlementIsUnknown(error) ||
+    (recoverable &&
+      !(error instanceof OperationFailure) &&
+      !isErrorType(error, "plugin_command_retired"))
+  );
+}
+
 function sameSelection(a?: Selection, b?: Selection): boolean {
   return a?.id === b?.id && a?.revision === b?.revision;
 }
@@ -316,48 +377,24 @@ export function useDeliverables(context: ComponentContext) {
         const result = await promise;
         if (signal.aborted) return;
         commands.delete(original.id);
-        const notice: Notice = { kind: "command", method: original.method };
-        if (original.method === METHODS.export) notice.asset = result as Asset;
-        if (
-          original.method === METHODS.create ||
-          original.method === METHODS.edit ||
-          original.method === METHODS.import ||
-          original.method === METHODS.recalculate
-        )
-          notice.revision = result as Revision;
-        if (
-          original.method !== METHODS.append &&
-          original.method !== METHODS.upload
-        )
-          tell(notice);
+        const notice = commandNotice(original.method, result);
+        if (notice) tell(notice);
         // This callback belongs to the original authored action, never the current draft.
         try {
           original.settled?.(result);
         } catch (error) {
           tell({ kind: "error", text: failureText(error) });
         }
-        if (
-          original.method === METHODS.upload ||
-          original.method === METHODS.discard
-        )
-          void query(METHODS.uploads, {});
-        else if (
-          original.method !== METHODS.append &&
-          original.method !== METHODS.export
-        )
-          void refreshRef.current();
+        const { reload } = COMMAND_EFFECTS[original.method];
+        if (reload === "uploads") void query(METHODS.uploads, {});
+        else if (reload === "views") void refreshRef.current();
         return result;
       } catch (error) {
         if (signal.aborted) return;
         const pending = operations
           .pendingCommands(original.method)
           .find((entry) => entry.idempotencyKey === original.id);
-        if (
-          mutationSettlementIsUnknown(error) ||
-          (original.recover &&
-            !(error instanceof OperationFailure) &&
-            !isErrorType(error, "plugin_command_retired"))
-        ) {
+        if (outcomeUnknown(error, original.recover !== undefined)) {
           commands.set(original.id, {
             ...original,
             status: "unknown",
@@ -394,9 +431,7 @@ export function useDeliverables(context: ComponentContext) {
       try {
         const promise = operations.command(
           method,
-          method === METHODS.create || method === METHODS.import
-            ? { ...input, ...scoped }
-            : input,
+          COMMAND_EFFECTS[method].scoped ? { ...input, ...scoped } : input,
         );
         return (await observe(
           {
