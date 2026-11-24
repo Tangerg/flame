@@ -375,52 +375,68 @@ function DiffReadStatus({
   );
 }
 
-export function WorkspaceDiff({ context }: { context: ComponentContext }) {
-  const t = useTranslator(CATALOGS, context.locale);
-  const {
-    runtime,
-    workspace: capturedWorkspace,
-    signal: componentSignal,
-    track,
-  } = context;
-  const workspace = useMemo(() => {
-    if (!capturedWorkspace || !capturedWorkspace.focus)
-      throw new Error("Workspace diff requires a workspace context");
-    const prefix = capturedWorkspace.ref.path.endsWith("/")
-      ? capturedWorkspace.ref.path
-      : `${capturedWorkspace.ref.path}/`;
-    const path = capturedWorkspace.focus.path;
-    return {
-      ref: capturedWorkspace.ref,
-      focusPath: path.startsWith(prefix) ? path.slice(prefix.length) : path,
-    };
-  }, [capturedWorkspace]);
-  const [query, setQuery] = useState<Query>(() => ({
-    mode: "worktree",
-    ...(workspace.focusPath ? { path: workspace.focusPath } : {}),
-  }));
-  const timeFormat = useMemo(
-    () => new Intl.DateTimeFormat(context.locale, { timeStyle: "medium" }),
-    [context.locale],
+// Paths are addressed relative to the workspace root the diff reads.
+function diffWorkspace(captured: ComponentContext["workspace"]) {
+  if (!captured || !captured.focus)
+    throw new Error("Workspace diff requires a workspace context");
+  const prefix = captured.ref.path.endsWith("/")
+    ? captured.ref.path
+    : `${captured.ref.path}/`;
+  const path = captured.focus.path;
+  return {
+    ref: captured.ref,
+    focusPath: path.startsWith(prefix) ? path.slice(prefix.length) : path,
+  };
+}
+
+// The reader steps through the filtered files while the open file matches the
+// filter, and through all files otherwise, so filtering never strands it.
+function fileNavigation(
+  files: DiffFile[],
+  filter: string,
+  openPath: string | undefined,
+) {
+  const needle = filter.toLocaleLowerCase();
+  const matching = files.filter((item) =>
+    `${item.path} ${item.previousPath ?? ""}`
+      .toLocaleLowerCase()
+      .includes(needle),
   );
-  const [filter, setFilter] = useState("");
-  const [layout, setLayout] = useState<"unified" | "split">("unified");
-  const [selection, setSelection] = useState<Selection>(() =>
-    workspace.focusPath
-      ? { view: "file", path: workspace.focusPath, returnTo: "source" }
-      : { view: "files", path: null },
-  );
+  const navigationFiles = matching.some((item) => item.path === openPath)
+    ? matching
+    : files;
+  return {
+    matching,
+    navigationFiles,
+    index: navigationFiles.findIndex((item) => item.path === openPath),
+  };
+}
+
+// One read at a time: a new query or refresh aborts the read it supersedes, and
+// a failed read keeps the last accepted diff.
+function useDiffRead({
+  runtime,
+  signal: componentSignal,
+  track,
+  workspace,
+  query,
+  onAccepted,
+  onFailed,
+}: {
+  runtime: ComponentContext["runtime"];
+  signal: AbortSignal;
+  track: ComponentContext["track"];
+  workspace: ReturnType<typeof diffWorkspace>;
+  query: Query;
+  onAccepted(manifest: DiffFile[]): void;
+  onFailed(): void;
+}) {
   const [read, setRead] = useState<Read>({ loading: true });
   const reading = useRef<AbortController>(undefined);
-  const bodyViewport = useRef<HTMLDivElement>(null);
-  const list = useRef<HTMLElement>(null);
-  const search = useRef<HTMLInputElement>(null);
-  const heading = useRef<HTMLHeadingElement>(null);
-  const refreshButton = useRef<HTMLButtonElement>(null);
-  const overviewScroll = useRef(0);
-  const lastFocus = useRef<HTMLElement>(null);
-  const pendingFocus = useRef<PendingFocus | null>(null);
-
+  const callbacks = useRef({ onAccepted, onFailed });
+  useLayoutEffect(() => {
+    callbacks.current = { onAccepted, onFailed };
+  });
   const refresh = useCallback(async () => {
     reading.current?.abort();
     const controller = new AbortController();
@@ -436,19 +452,12 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
       if (!signal.aborted) {
         const projected = parseVisualDiff(diff);
         const at = new Date().toISOString();
-        setSelection((current) =>
-          current.view === "file" &&
-          !projected.diff.visual.manifest.some(
-            (file) => file.path === current.path,
-          )
-            ? { path: current.path, view: "files" }
-            : current,
-        );
+        callbacks.current.onAccepted(projected.diff.visual.manifest);
         setRead({ loading: false, accepted: { ...projected, query, at } });
       }
     } catch (error) {
       if (!signal.aborted) {
-        pendingFocus.current = null;
+        callbacks.current.onFailed();
         setRead((previous) => ({
           ...previous,
           loading: false,
@@ -461,6 +470,205 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
     void refresh();
     return () => reading.current?.abort();
   }, [refresh]);
+  return { read, refresh };
+}
+
+function DiffScopeToolbar({
+  t,
+  scoped,
+  mode,
+  readingOverview,
+  loading,
+  failed,
+  refreshRef,
+  onShowFiles,
+  onMode,
+  onRefresh,
+}: {
+  t: Translate;
+  scoped: boolean;
+  mode: DiffMode;
+  readingOverview: boolean;
+  loading: boolean;
+  failed: boolean;
+  refreshRef: RefObject<HTMLButtonElement | null>;
+  onShowFiles(): void;
+  onMode(mode: DiffMode): void;
+  onRefresh(): void;
+}) {
+  return (
+    <Toolbar
+      label={t("scope.label")}
+      actions={
+        <>
+          {scoped && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onShowFiles}
+              aria-label={t("files.show")}
+              pending={readingOverview}
+            >
+              <Icon glyph={List} size="sm" />
+              {t("files.button")}
+            </Button>
+          )}
+          {failed && <Metadata>{t("read.failedShort")}</Metadata>}
+          <IconButton
+            ref={refreshRef}
+            icon={Refresh}
+            aria-label={t("refresh")}
+            size="md"
+            pending={loading}
+            onClick={onRefresh}
+          />
+        </>
+      }
+    >
+      <Hang>
+        <Select
+          label={t("comparison.label")}
+          value={mode}
+          options={COMPARISONS.map((value) => ({
+            value,
+            label: t(`comparison.${value}`),
+          }))}
+          onValueChange={(value) => onMode(value as DiffMode)}
+        />
+      </Hang>
+    </Toolbar>
+  );
+}
+
+function DiffFileReader({
+  t,
+  file,
+  rendered,
+  layout,
+  label,
+}: {
+  t: Translate;
+  file: DiffFile;
+  rendered: { source: string } | undefined;
+  layout: "unified" | "split";
+  label: string | undefined;
+}) {
+  return (
+    <section aria-label={label}>
+      {file.binary ? (
+        <Metadata>{t("file.binary")}</Metadata>
+      ) : rendered ? (
+        <DiffBody
+          key={file.path}
+          patch={rendered.source}
+          layout={layout}
+          label={t("reader.region", { path: file.path })}
+        />
+      ) : (
+        <Metadata>{t("file.noLineChanges")}</Metadata>
+      )}
+    </section>
+  );
+}
+
+function DiffDetails({
+  t,
+  accepted,
+  root,
+  timeFormat,
+}: {
+  t: Translate;
+  accepted: NonNullable<Read["accepted"]>;
+  root: string;
+  timeFormat: Intl.DateTimeFormat;
+}) {
+  const baseline = accepted.diff.baseline;
+  return (
+    <Disclosure title={t("details.title")}>
+      <Metadata>
+        {baseline.type === "emptyTree"
+          ? t("details.emptyTree")
+          : accepted.query.mode === "worktree"
+            ? t("details.worktree")
+            : t("details.base")}
+      </Metadata>
+      <Metadata>
+        {baseline.type === "emptyTree"
+          ? t("baseline.emptyTree")
+          : t("baseline.label", {
+              ref:
+                baseline.type === "head"
+                  ? t("baseline.head")
+                  : t("baseline.mergeBase"),
+              commit: baseline.commit,
+            })}
+      </Metadata>
+      <Metadata>
+        <DiffFilePath path={root} />
+      </Metadata>
+      <Metadata>
+        <time dateTime={accepted.at}>
+          {t("read.at", { time: timeFormat.format(new Date(accepted.at)) })}
+        </time>
+      </Metadata>
+    </Disclosure>
+  );
+}
+
+export function WorkspaceDiff({ context }: { context: ComponentContext }) {
+  const t = useTranslator(CATALOGS, context.locale);
+  const {
+    runtime,
+    workspace: capturedWorkspace,
+    signal: componentSignal,
+    track,
+  } = context;
+  const workspace = useMemo(
+    () => diffWorkspace(capturedWorkspace),
+    [capturedWorkspace],
+  );
+  const [query, setQuery] = useState<Query>(() => ({
+    mode: "worktree",
+    ...(workspace.focusPath ? { path: workspace.focusPath } : {}),
+  }));
+  const timeFormat = useMemo(
+    () => new Intl.DateTimeFormat(context.locale, { timeStyle: "medium" }),
+    [context.locale],
+  );
+  const [filter, setFilter] = useState("");
+  const [layout, setLayout] = useState<"unified" | "split">("unified");
+  const [selection, setSelection] = useState<Selection>(() =>
+    workspace.focusPath
+      ? { view: "file", path: workspace.focusPath, returnTo: "source" }
+      : { view: "files", path: null },
+  );
+
+  const bodyViewport = useRef<HTMLDivElement>(null);
+  const list = useRef<HTMLElement>(null);
+  const search = useRef<HTMLInputElement>(null);
+  const heading = useRef<HTMLHeadingElement>(null);
+  const refreshButton = useRef<HTMLButtonElement>(null);
+  const overviewScroll = useRef(0);
+  const lastFocus = useRef<HTMLElement>(null);
+  const pendingFocus = useRef<PendingFocus | null>(null);
+
+  const { read, refresh } = useDiffRead({
+    runtime,
+    signal: componentSignal,
+    track,
+    workspace,
+    query,
+    onAccepted: (manifest) =>
+      setSelection((current) =>
+        current.view === "file" &&
+        !manifest.some((file) => file.path === current.path)
+          ? { path: current.path, view: "files" }
+          : current,
+      ),
+    onFailed: () => {
+      pendingFocus.current = null;
+    },
+  });
 
   const accepted = read.accepted;
   const files = accepted?.diff.visual.manifest ?? [];
@@ -484,15 +692,11 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
     read.loading &&
     query.path === undefined &&
     accepted?.query.path !== undefined;
-  const matching = files.filter((item) =>
-    `${item.path} ${item.previousPath ?? ""}`
-      .toLocaleLowerCase()
-      .includes(filter.toLocaleLowerCase()),
+  const { matching, navigationFiles, index } = fileNavigation(
+    files,
+    filter,
+    file?.path,
   );
-  const navigationFiles = matching.some((item) => item.path === file?.path)
-    ? matching
-    : files;
-  const index = navigationFiles.findIndex((item) => item.path === file?.path);
 
   function filterFiles(next: string) {
     if (next === filter) return;
@@ -569,52 +773,22 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
       controls={
         <>
           {!showingReader && (
-            <Toolbar
-              label={t("scope.label")}
-              actions={
-                <>
-                  {(query.path || accepted?.query.path) && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={showFiles}
-                      aria-label={t("files.show")}
-                      pending={readingOverview}
-                    >
-                      <Icon glyph={List} size="sm" />
-                      {t("files.button")}
-                    </Button>
-                  )}
-                  {read.error && <Metadata>{t("read.failedShort")}</Metadata>}
-                  <IconButton
-                    ref={refreshButton}
-                    icon={Refresh}
-                    aria-label={t("refresh")}
-                    size="md"
-                    pending={read.loading}
-                    onClick={() => void refresh()}
-                  />
-                </>
+            <DiffScopeToolbar
+              t={t}
+              scoped={Boolean(query.path || accepted?.query.path)}
+              mode={query.mode}
+              readingOverview={readingOverview}
+              loading={read.loading}
+              failed={Boolean(read.error)}
+              refreshRef={refreshButton}
+              onShowFiles={showFiles}
+              onMode={(mode) =>
+                setQuery((current) =>
+                  current.mode === mode ? current : { ...current, mode },
+                )
               }
-            >
-              <Hang>
-                <Select
-                  label={t("comparison.label")}
-                  value={query.mode}
-                  options={COMPARISONS.map((value) => ({
-                    value,
-                    label: t(`comparison.${value}`),
-                  }))}
-                  onValueChange={(value) =>
-                    setQuery((current) =>
-                      current.mode === value
-                        ? current
-                        : { ...current, mode: value as DiffMode },
-                    )
-                  }
-                />
-              </Hang>
-            </Toolbar>
+              onRefresh={() => void refresh()}
+            />
           )}
           {showingReader ? (
             <>
@@ -738,51 +912,20 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
             </div>
           )}
           {file && (
-            <section aria-label={fileChanges}>
-              {file.binary ? (
-                <Metadata>{t("file.binary")}</Metadata>
-              ) : readable ? (
-                <DiffBody
-                  key={file.path}
-                  patch={rendered.source}
-                  layout={layout}
-                  label={t("reader.region", { path: file.path })}
-                />
-              ) : (
-                <Metadata>{t("file.noLineChanges")}</Metadata>
-              )}
-            </section>
+            <DiffFileReader
+              t={t}
+              file={file}
+              rendered={readable ? rendered : undefined}
+              layout={layout}
+              label={fileChanges}
+            />
           )}
-          <Disclosure title={t("details.title")}>
-            <Metadata>
-              {accepted.diff.baseline.type === "emptyTree"
-                ? t("details.emptyTree")
-                : accepted.query.mode === "worktree"
-                  ? t("details.worktree")
-                  : t("details.base")}
-            </Metadata>
-            <Metadata>
-              {accepted.diff.baseline.type === "emptyTree"
-                ? t("baseline.emptyTree")
-                : t("baseline.label", {
-                    ref:
-                      accepted.diff.baseline.type === "head"
-                        ? t("baseline.head")
-                        : t("baseline.mergeBase"),
-                    commit: accepted.diff.baseline.commit,
-                  })}
-            </Metadata>
-            <Metadata>
-              <DiffFilePath path={workspace.ref.path} />
-            </Metadata>
-            <Metadata>
-              <time dateTime={accepted.at}>
-                {t("read.at", {
-                  time: timeFormat.format(new Date(accepted.at)),
-                })}
-              </time>
-            </Metadata>
-          </Disclosure>
+          <DiffDetails
+            t={t}
+            accepted={accepted}
+            root={workspace.ref.path}
+            timeFormat={timeFormat}
+          />
         </>
       )}
     </Panel>
