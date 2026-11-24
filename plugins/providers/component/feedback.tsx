@@ -4,8 +4,7 @@ import {
   type ComponentContext,
   type Translate,
 } from "@flame/component-sdk";
-import { Alert } from "@flame/icons/react";
-import { Button, Icon, Metadata, RecordBody } from "@flame/ui";
+import { AlertMessage, Button, Metadata, RecordBody } from "@flame/ui";
 import type { Command, Feedback, ProviderSettings } from "./settings";
 const column = {
   display: "grid",
@@ -72,7 +71,7 @@ export function CommandFeedback({
 
 function feedbackMessage(feedback: Feedback, t: Translate) {
   if (feedback.kind === "error")
-    return <ErrorMessage>{failureText(feedback.error)}</ErrorMessage>;
+    return <AlertMessage>{failureText(feedback.error)}</AlertMessage>;
   if (feedback.kind === "saved")
     return <p role="status">{t("providers.saved")}</p>;
   if (feedback.outcome === "reachable")
@@ -83,22 +82,5 @@ function feedbackMessage(feedback: Feedback, t: Translate) {
     timedOut: "rpcError.timeout",
     failed: "providers.testOutcome.failed",
   }[feedback.outcome];
-  return <ErrorMessage>{t(key)}</ErrorMessage>;
-}
-
-function ErrorMessage({ children }: { children: string }) {
-  return (
-    <div
-      role="alert"
-      style={{
-        display: "flex",
-        alignItems: "flex-start",
-        gap: "var(--layout-content-gap)",
-        overflowWrap: "anywhere",
-      }}
-    >
-      <Icon glyph={Alert} size="sm" />
-      <RecordBody>{children}</RecordBody>
-    </div>
-  );
+  return <AlertMessage>{t(key)}</AlertMessage>;
 }

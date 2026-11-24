@@ -4,9 +4,7 @@ import {
   type ComponentContext,
   type Translate,
 } from "@flame/component-sdk";
-import { Button, Icon, Metadata, RecordBody } from "@flame/ui";
-import { Alert } from "@flame/icons/react";
-import type { ReactNode } from "react";
+import { AlertMessage, Button, Metadata, RecordBody } from "@flame/ui";
 import type { Feedback, Read, MCPSettings } from "./settings";
 const column = {
   display: "grid",
@@ -101,7 +99,7 @@ export function CommandFeedback({
 
 function feedbackMessage(feedback: Feedback, t: Translate) {
   if (feedback.kind === "error")
-    return <ErrorMessage>{failureText(feedback.error)}</ErrorMessage>;
+    return <AlertMessage>{failureText(feedback.error)}</AlertMessage>;
   if (feedback.kind === "tested")
     return (
       <p role={feedback.outcome === "reachable" ? "status" : "alert"}>
@@ -118,23 +116,6 @@ function feedbackMessage(feedback: Feedback, t: Translate) {
   return (
     <div role="status">
       <RecordBody>{t("mcp.import.ok", { count: feedback.count })}</RecordBody>
-    </div>
-  );
-}
-
-function ErrorMessage({ children }: { children: ReactNode }) {
-  return (
-    <div
-      role="alert"
-      style={{
-        display: "flex",
-        alignItems: "flex-start",
-        gap: "var(--layout-content-gap)",
-        overflowWrap: "anywhere",
-      }}
-    >
-      <Icon glyph={Alert} size="sm" />
-      <RecordBody>{children}</RecordBody>
     </div>
   );
 }

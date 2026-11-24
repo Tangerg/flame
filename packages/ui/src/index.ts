@@ -156,6 +156,7 @@ export {
   type CalloutLabels,
 } from "./callout";
 export { ImageNotice } from "./image-notice";
+export { AlertMessage } from "./alert-message";
 export { DiffStat } from "./diff-stat";
 export { Checkbox } from "./checkbox";
 export { Select } from "./select";
