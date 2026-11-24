@@ -2601,6 +2601,11 @@ although every `SlashCommandSpec` already declares a localized
 description in muted ink, truncated on one line. Native `/` reads `/goal
 Set a goal the agent keeps pursuing`.
 
+The menu also drew its own grey `surface2` panel, unlike the Composer's
+other popups (model picker, add menu, project chooser). It now uses the
+shared `FLOATING_PANEL` face, and the active row the same hover wash as the
+command menu. Native light `@run` and dark `/` match the add menu's panel.
+
 ### Empty Composer hints and shared natural height (2026-11-10)
 
 The 18 px English code-reading capture exposes a two-line empty Composer hint

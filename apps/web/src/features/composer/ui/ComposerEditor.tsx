@@ -39,6 +39,7 @@ import {
   type RangeSelection,
 } from "lexical";
 import { isImeKey, useContentVisible, Button, ButtonPrimitive } from "@flame/ui";
+import { FLOATING_PANEL } from "@flame/ui/floating-surface";
 import { useComposer } from "@/features/composer/public/composer";
 import { useRuntime } from "@/features/connection/public/runtime";
 import { runtimeCommandsAvailable } from "@/features/connection/public/serviceStatus";
@@ -91,9 +92,6 @@ const styles = stylex.create({
     overflow: "auto",
     minWidth: "14rem",
     maxWidth: "min(30rem, 90vw)",
-    backgroundColor: surface.surface2,
-    borderRadius: radius.floatingPanel,
-    boxShadow: "var(--shadow-overlay)",
     padding: space.s1,
   },
   option: {
@@ -108,7 +106,7 @@ const styles = stylex.create({
     backgroundColor: "transparent",
     borderWidth: 0,
   },
-  selected: { backgroundColor: surface.surface3 },
+  selected: { backgroundColor: surface.hover },
   optionDescription: {
     minWidth: 0,
     overflow: "hidden",
@@ -170,7 +168,7 @@ function MenuPlacement({ children }: { children: ReactNode }) {
     <div {...stylex.props(styles.menuHost)}>
       <div
         ref={menuRef}
-        {...stylex.props(styles.menu, typeStep.uiSm)}
+        {...stylex.props(FLOATING_PANEL, styles.menu, typeStep.uiSm)}
         style={{
           transform: `translate(${placement.x}px, ${placement.y}px)`,
           maxHeight:
