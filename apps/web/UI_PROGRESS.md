@@ -50592,6 +50592,9 @@ published resource checks pass.
 
 MCP servers follows: `Import from JSON` and `Add server` stay leading as
 the pane's create actions and Refresh moves to the trailing edge.
+Session trajectory keeps Refresh in `FilterBar`'s lead beside its search:
+a trial that moved it after the two filters wrapped the bar onto two rows
+at the default Dock width, so it was reverted.
 
 Diagnostics also printed `Last buffer read` under the tabs after every
 successful read. Like Diff's loaded status, that resting confirmation is now
