@@ -1,7 +1,7 @@
 export const ko: Record<string, string> = {
   "failure.required": "필수: 오류 시 차단",
   "failure.advisory": "권고: 오류 시 계속",
-  title: "훅",
+  title: "수명 주기 훅",
   trust: "이 저장소의 훅을 신뢰",
   "trust.sub":
     "이 저장소의 훅은 사용자 머신에서 셸 명령을 실행합니다. 신뢰하는 저장소에만 켜세요. 다음 턴부터 적용됩니다.",

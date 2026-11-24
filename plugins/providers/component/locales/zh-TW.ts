@@ -57,7 +57,7 @@ export const zhTW: Record<string, string> = {
   "rpcError.invalid_credentials":
     "供應方拒絕了該 API key —— 請在供應方設定裡檢查。",
   "rpcError.timeout": "請求模型供應方逾時 —— 檢查網路後重試。",
-  title: "供應商",
+  title: "模型供應商",
   cancel: "取消",
   reading: "載入中",
   refresh: "重新整理",

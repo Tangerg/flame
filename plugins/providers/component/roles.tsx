@@ -26,13 +26,73 @@ function modelChoice(model: Model): Choice {
 const choiceLabel = (value: Choice) =>
   `${value.label} · ${value.provider}${value.label === value.model ? "" : ` / ${value.model}`}`;
 
+type RoleKind = "utility" | "embedding";
+type Snapshot = ReturnType<ProviderSettings["getSnapshot"]>;
+
+const ROLES = {
+  utility: {
+    title: "providers.utility.title",
+    description: "providers.utility.desc",
+    unset: "providers.utility.main",
+  },
+  embedding: {
+    title: "providers.embedding.title",
+    description: "providers.embedding.desc",
+    unset: "providers.embedding.off",
+  },
+} as const satisfies Record<RoleKind, Record<string, string>>;
+
+// A utility role may use any listed model; an embedding role uses the preset
+// embedding model of a configured provider that can embed.
+function roleChoices(kind: RoleKind, state: Snapshot): Choice[] {
+  if (kind === "utility") return (state.models.data ?? []).map(modelChoice);
+  return (state.providers.data ?? [])
+    .filter(
+      (provider) =>
+        provider.configured &&
+        provider.embeddingCapable &&
+        provider.defaultEmbeddingModel,
+    )
+    .map((provider) => ({
+      provider: provider.id,
+      model: provider.defaultEmbeddingModel!,
+      label: provider.defaultEmbeddingModel!,
+    }));
+}
+
+// A saved role that is no longer offered stays visible, disabled, under its
+// saved name rather than silently reading as unset.
+function roleOptions(
+  choices: Choice[],
+  unsetLabel: string,
+  saved: { provider: string; model: string } | undefined,
+) {
+  const options: { value: string; label: string; disabled?: boolean }[] = [
+    { value: "default", label: unsetLabel },
+    ...choices.map((choice) => ({
+      value: choiceKey(choice),
+      label: choiceLabel(choice),
+    })),
+  ];
+  if (
+    saved &&
+    !choices.some((choice) => choiceKey(choice) === choiceKey(saved))
+  )
+    options.push({
+      value: choiceKey(saved),
+      label: choiceLabel({ ...saved, label: saved.model }),
+      disabled: true,
+    });
+  return options;
+}
+
 export function RoleSection({
   kind,
   context,
   settings,
   t,
 }: {
-  kind: "utility" | "embedding";
+  kind: RoleKind;
   context: ComponentContext;
   settings: ProviderSettings;
   t: Translate;
@@ -42,48 +102,20 @@ export function RoleSection({
   const role = read.data;
   const descriptionId = useId();
   const known = role !== undefined && state.providers.data !== undefined;
-  const title = t(
-    kind === "utility"
-      ? "providers.utility.title"
-      : "providers.embedding.title",
-  );
-  const isSet = Boolean(role?.provider && role.model);
+  const labels = ROLES[kind];
+  const title = t(labels.title);
+  const saved =
+    role?.provider && role.model
+      ? { provider: role.provider, model: role.model }
+      : undefined;
   const configured =
     state.providers.data?.filter((provider) => provider.configured) ?? [];
   const embeddingProviders = configured.filter(
     (provider) => provider.embeddingCapable,
   );
-  const choices =
-    kind === "utility"
-      ? (state.models.data ?? []).map(modelChoice)
-      : embeddingProviders
-          .filter((provider) => provider.defaultEmbeddingModel)
-          .map((provider) => ({
-            provider: provider.id,
-            model: provider.defaultEmbeddingModel!,
-            label: provider.defaultEmbeddingModel!,
-          }));
-  const defaultLabel = t(
-    kind === "utility" ? "providers.utility.main" : "providers.embedding.off",
-  );
-  const value = isSet ? choiceKey(role!) : "default";
-  const options: { value: string; label: string; disabled?: boolean }[] = [
-    { value: "default", label: defaultLabel },
-    ...choices.map((choice) => ({
-      value: choiceKey(choice),
-      label: choiceLabel(choice),
-    })),
-  ];
-  if (isSet && !choices.some((choice) => choiceKey(choice) === value))
-    options.push({
-      value,
-      label: choiceLabel({
-        provider: role!.provider!,
-        model: role!.model!,
-        label: role!.model!,
-      }),
-      disabled: true,
-    });
+  const choices = roleChoices(kind, state);
+  const value = saved ? choiceKey(saved) : "default";
+  const options = roleOptions(choices, t(labels.unset), saved);
   const command = state.commands.get(kind);
   const feedback = state.feedback.get(kind);
   const unknownFailure =
@@ -98,7 +130,8 @@ export function RoleSection({
       );
   };
   const unavailable =
-    isSet && !configured.some((provider) => provider.id === role?.provider);
+    saved !== undefined &&
+    !configured.some((provider) => provider.id === saved.provider);
   return (
     <ListRow aria-busy={command?.phase === "running" || undefined}>
       <div
@@ -113,13 +146,7 @@ export function RoleSection({
       >
         <div style={column}>
           <strong>{title}</strong>
-          <RecordBody>
-            {t(
-              kind === "utility"
-                ? "providers.utility.desc"
-                : "providers.embedding.desc",
-            )}
-          </RecordBody>
+          <RecordBody>{t(labels.description)}</RecordBody>
           {(read.phase === "failed" || state.providers.phase === "failed") &&
             known && <Metadata>{t("providers.role.stale")}</Metadata>}
           {unavailable && <Metadata>{t("providers.notConfigured")}</Metadata>}

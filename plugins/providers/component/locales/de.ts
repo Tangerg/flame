@@ -69,7 +69,7 @@ export const de: Record<string, string> = {
     "Der Anbieter hat den API-Key abgelehnt — prüfe ihn in den Anbieter-Einstellungen.",
   "rpcError.timeout":
     "Die Anfrage an den Modellanbieter hat das Zeitlimit überschritten — Verbindung prüfen und erneut versuchen.",
-  title: "Anbieter",
+  title: "Modellanbieter",
   cancel: "Abbrechen",
   reading: "Wird geladen",
   refresh: "Aktualisieren",

@@ -1,5 +1,5 @@
 export const ja: Record<string, string> = {
-  title: "ブランド",
+  title: "ブランドアイデンティティ",
   assets: "ブランド素材",
   "mark.title": "メインロゴ",
   "mark.description":

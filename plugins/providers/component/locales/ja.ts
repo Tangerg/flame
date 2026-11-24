@@ -70,7 +70,7 @@ export const ja: Record<string, string> = {
     "プロバイダが API キーを拒否しました — プロバイダ設定で確認してください。",
   "rpcError.timeout":
     "モデルプロバイダへのリクエストがタイムアウトしました — 接続を確認して再試行してください。",
-  title: "プロバイダー",
+  title: "モデルプロバイダー",
   cancel: "キャンセル",
   reading: "読み込み中",
   refresh: "更新",

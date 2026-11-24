@@ -66,7 +66,7 @@ export const en: Record<string, string> = {
     "The provider rejected the API key — check it in provider settings.",
   "rpcError.timeout":
     "The request to the model provider timed out — check your connection and retry.",
-  title: "Providers",
+  title: "Model providers",
   cancel: "Cancel",
   reading: "Loading",
   refresh: "Refresh",

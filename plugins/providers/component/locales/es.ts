@@ -70,7 +70,7 @@ export const es: Record<string, string> = {
     "El proveedor rechazó la API key — revísala en los ajustes del proveedor.",
   "rpcError.timeout":
     "La petición al proveedor del modelo agotó el tiempo — comprueba la conexión y reintenta.",
-  title: "Proveedores",
+  title: "Proveedores de modelos",
   cancel: "Cancelar",
   reading: "Cargando",
   refresh: "Actualizar",

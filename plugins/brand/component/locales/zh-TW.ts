@@ -1,5 +1,5 @@
 export const zhTW: Record<string, string> = {
-  title: "品牌形象",
+  title: "品牌識別",
   assets: "品牌資源",
   "mark.title": "主 logo",
   "mark.description": "圓潤火苗與兩顆好奇的眼睛，適用於圖示、頭像和導覽。",

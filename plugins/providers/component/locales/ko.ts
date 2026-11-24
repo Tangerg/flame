@@ -65,7 +65,7 @@ export const ko: Record<string, string> = {
     "제공자가 API 키를 거부했습니다 — 제공자 설정에서 확인하세요.",
   "rpcError.timeout":
     "모델 제공자 요청이 시간 초과되었습니다 — 연결을 확인하고 다시 시도하세요.",
-  title: "공급자",
+  title: "모델 제공자",
   cancel: "취소",
   reading: "불러오는 중",
   refresh: "새로 고침",

@@ -1,7 +1,7 @@
 export const zh: Record<string, string> = {
   "failure.required": "必需：出错时阻止",
   "failure.advisory": "建议：出错时继续",
-  title: "钩子",
+  title: "生命周期钩子",
   trust: "信任此仓库的钩子",
   "trust.sub":
     "此仓库的钩子会在你的机器上执行 shell 命令。只对你信任的仓库启用。下一个 turn 起生效。",

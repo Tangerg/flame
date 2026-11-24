@@ -1,7 +1,7 @@
 export const zhTW: Record<string, string> = {
   "failure.required": "必要：出錯時阻止",
   "failure.advisory": "建議：出錯時繼續",
-  title: "Hooks",
+  title: "生命週期掛鉤",
   trust: "信任此儲存庫的 hooks",
   "trust.sub":
     "此儲存庫的 hooks 會在你的機器上執行 shell 命令。只對你信任的儲存庫啟用。下一個回合起生效。",
