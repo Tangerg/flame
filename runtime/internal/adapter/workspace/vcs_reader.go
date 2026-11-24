@@ -33,7 +33,7 @@ func (VCS) Changes(ctx context.Context, root string, maxChanges int) ([]workspac
 func (VCS) StructuredDiff(
 	ctx context.Context,
 	root, path string,
-	base bool,
+	mode workspaceapp.DiffMode,
 	format workspaceapp.DiffFormat,
 	budget workspaceapp.DiffBudget,
 ) (workspaceapp.StructuredDiffResult, error) {
@@ -41,7 +41,11 @@ func (VCS) StructuredDiff(
 	if err != nil {
 		return workspaceapp.StructuredDiffResult{}, err
 	}
-	result, err := git.Diff(ctx, root, path, diffMode(base), projection, git.DiffBudget{Files: budget.Files, Rows: budget.Rows, Bytes: budget.Bytes})
+	source, err := diffSource(mode)
+	if err != nil {
+		return workspaceapp.StructuredDiffResult{}, err
+	}
+	result, err := git.Diff(ctx, root, path, source, projection, git.DiffBudget{Files: budget.Files, Rows: budget.Rows, Bytes: budget.Bytes})
 	if err != nil {
 		return workspaceapp.StructuredDiffResult{}, vcsError(err)
 	}
@@ -75,8 +79,12 @@ func (VCS) StructuredDiff(
 	}, nil
 }
 
-func (VCS) RawDiff(ctx context.Context, root, path string, base bool, maxBytes int) (workspaceapp.RawDiffResult, error) {
-	result, err := git.RawDiff(ctx, root, path, diffMode(base), maxBytes)
+func (VCS) RawDiff(ctx context.Context, root, path string, mode workspaceapp.DiffMode, maxBytes int) (workspaceapp.RawDiffResult, error) {
+	source, err := diffSource(mode)
+	if err != nil {
+		return workspaceapp.RawDiffResult{}, err
+	}
+	result, err := git.RawDiff(ctx, root, path, source, maxBytes)
 	if err != nil {
 		return workspaceapp.RawDiffResult{}, vcsError(err)
 	}
@@ -160,9 +168,13 @@ func vcsError(err error) error {
 	}
 }
 
-func diffMode(base bool) git.Mode {
-	if base {
-		return git.Base
+func diffSource(mode workspaceapp.DiffMode) (git.Mode, error) {
+	switch mode {
+	case workspaceapp.DiffModeWorktree:
+		return git.Worktree, nil
+	case workspaceapp.DiffModeBase:
+		return git.Base, nil
+	default:
+		return "", fmt.Errorf("workspace: unknown diff mode %q", mode)
 	}
-	return git.Worktree
 }

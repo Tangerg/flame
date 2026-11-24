@@ -125,9 +125,16 @@ type RawDiffResult struct {
 
 type gitReader interface {
 	Changes(ctx context.Context, root string, maxChanges int) ([]FileChange, error)
-	StructuredDiff(ctx context.Context, root, path string, base bool, format DiffFormat, budget DiffBudget) (StructuredDiffResult, error)
-	RawDiff(ctx context.Context, root, path string, base bool, maxBytes int) (RawDiffResult, error)
+	StructuredDiff(ctx context.Context, root, path string, mode DiffMode, format DiffFormat, budget DiffBudget) (StructuredDiffResult, error)
+	RawDiff(ctx context.Context, root, path string, mode DiffMode, maxBytes int) (RawDiffResult, error)
 }
+
+type DiffMode string
+
+const (
+	DiffModeWorktree DiffMode = "worktree"
+	DiffModeBase     DiffMode = "base"
+)
 
 type DiffFormat string
 
@@ -146,7 +153,7 @@ type DiffBudget struct {
 type DiffInput struct {
 	CWD      string
 	Path     string
-	Base     bool
+	Mode     DiffMode
 	Format   DiffFormat
 	RowLimit DiffRowLimit
 }
@@ -218,7 +225,7 @@ func (v *VCS) Diff(ctx context.Context, input DiffInput) (Diff, error) {
 		}
 	}
 	if format == DiffFormatRaw {
-		return v.rawDiff(ctx, root, path, input.Base)
+		return v.rawDiff(ctx, root, path, input.Mode)
 	}
 	return v.structuredDiff(ctx, root, path, input, format)
 }
@@ -240,8 +247,8 @@ func (d DiffInput) format() (DiffFormat, error) {
 	return format, nil
 }
 
-func (v *VCS) rawDiff(ctx context.Context, root, path string, base bool) (Diff, error) {
-	result, err := v.git.RawDiff(ctx, root, path, base, maxWorkspaceDiffBytes)
+func (v *VCS) rawDiff(ctx context.Context, root, path string, mode DiffMode) (Diff, error) {
+	result, err := v.git.RawDiff(ctx, root, path, mode, maxWorkspaceDiffBytes)
 	if err != nil {
 		return Diff{}, err
 	}
@@ -256,7 +263,7 @@ func (v *VCS) rawDiff(ctx context.Context, root, path string, base bool) (Diff, 
 
 func (v *VCS) structuredDiff(ctx context.Context, root, path string, input DiffInput, format DiffFormat) (Diff, error) {
 	budget := DiffBudget{Files: maxWorkspaceDiffFiles, Rows: input.RowLimit.Rows(), Bytes: maxWorkspaceDiffBytes}
-	result, err := v.git.StructuredDiff(ctx, root, path, input.Base, format, budget)
+	result, err := v.git.StructuredDiff(ctx, root, path, input.Mode, format, budget)
 	if err != nil {
 		return Diff{}, err
 	}

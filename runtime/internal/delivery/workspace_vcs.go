@@ -14,6 +14,11 @@ var diffFormats = wireVocabulary[workspaceapp.DiffFormat, protocol.DiffFormat]{
 	{workspaceapp.DiffFormatVisual, protocol.DiffFormatVisual},
 }
 
+var diffModes = wireVocabulary[workspaceapp.DiffMode, protocol.DiffMode]{
+	{workspaceapp.DiffModeWorktree, protocol.DiffModeWorktree},
+	{workspaceapp.DiffModeBase, protocol.DiffModeBase},
+}
+
 var diffBaselines = wireVocabulary[workspaceapp.DiffBaselineType, protocol.DiffBaselineType]{
 	{workspaceapp.DiffBaselineHead, protocol.DiffBaselineHead},
 	{workspaceapp.DiffBaselineMergeBase, protocol.DiffBaselineMergeBase},
@@ -60,12 +65,11 @@ func workspaceDiffInput(in protocol.GetDiffRequest) (workspaceapp.DiffInput, err
 	if !known && in.Format != "" {
 		return workspaceapp.DiffInput{}, protocol.NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("unknown diff format %q", in.Format))
 	}
-	var base bool
-	switch in.Mode {
-	case "", protocol.DiffModeWorktree:
-	case protocol.DiffModeBase:
-		base = true
-	default:
+	mode, known := diffModes.domain(in.Mode)
+	switch {
+	case in.Mode == "":
+		mode = workspaceapp.DiffModeWorktree
+	case !known:
 		return workspaceapp.DiffInput{}, protocol.NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("unknown mode %q", in.Mode))
 	}
 	if in.Format == protocol.DiffFormatRaw && in.Limit != nil {
@@ -80,7 +84,7 @@ func workspaceDiffInput(in protocol.GetDiffRequest) (workspaceapp.DiffInput, err
 		rowLimit = explicit
 	}
 	return workspaceapp.DiffInput{
-		CWD: in.Workspace.Path, Path: in.Path, Base: base, Format: format, RowLimit: rowLimit,
+		CWD: in.Workspace.Path, Path: in.Path, Mode: mode, Format: format, RowLimit: rowLimit,
 	}, nil
 }
 
