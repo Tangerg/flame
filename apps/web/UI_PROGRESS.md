@@ -51448,6 +51448,15 @@ are unchanged. Native Settings → Providers shows `Key sk-…7F2A` in mono and
 `Not configured` in the body face. Plugin typecheck, `check-i18n` and
 published resource checks pass.
 
+The same voice rule applies to remembered approval rules (`RulesRow`). The
+localized scope badge (`Session`, `Project`, `Global`) and the details line
+(`Built-in`, `All arguments`) were in mono. The body face now carries the
+prose. Mono stays on data: an external tool source, the subject value
+after `Exact:` / `Glob:`, and the rule directory. `describeApprovalSubject`
+returns `{ label, value? }` for its only caller. Web typecheck passes. Not
+observed natively: no Lab fixture carries remembered rules, and the empty
+Approvals pane is unchanged.
+
 ### Literal Provider command-error reading (2026-11-13)
 
 Qualified from `7ee40983b`. Actual Wails reproduced a known Utility role refusal

@@ -37,12 +37,13 @@ export function describeApprovalMode(policy: ApprovalModePolicy, t: Translate): 
   ).join(" · ");
 }
 
+// The label is prose and the value is the matched argument, so callers set them in different faces.
 export function describeApprovalSubject(
   subject: ApprovalRuleSummary["subject"],
   t: Translate,
-): string {
+): { label: string; value?: string } {
   const label = t(`approvals.subject.${subject.type}`);
-  return subject.type === "all" ? label : `${label}: ${subject.value}`;
+  return subject.type === "all" ? { label } : { label, value: subject.value };
 }
 
 export function describeApprovalRuleTool(tool: ApprovalRuleSummary["tool"], t: Translate): string {

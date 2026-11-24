@@ -138,7 +138,7 @@ export function RulesRow() {
                   <div key={rule.id} data-focus-unit="" {...stylex.props(r.rule)}>
                     <div id={descriptionId} {...stylex.props(r.copy)}>
                       <div {...stylex.props(r.identity)}>
-                        <Badge tone={SCOPE_TONE[rule.scope]} face="mono">
+                        <Badge tone={SCOPE_TONE[rule.scope]}>
                           {t(`approvals.scope.${rule.scope}`)}
                         </Badge>
                         <span
@@ -155,10 +155,12 @@ export function RulesRow() {
                         </span>
                         {rule.stale ? <Badge tone="warning">{t("approvals.stale")}</Badge> : null}
                       </div>
-                      <div {...stylex.props(r.details, vocab.muted, typeStep.uiSm, face.mono)}>
-                        <span>{describeApprovalRuleTool(rule.tool, t)}</span>
-                        <span>{describeApprovalSubject(rule.subject, t)}</span>
-                        {rule.dir ? <span>{rule.dir}</span> : null}
+                      <div {...stylex.props(r.details, vocab.muted, typeStep.uiSm)}>
+                        <span {...stylex.props(rule.tool.type !== "builtIn" && face.mono)}>
+                          {describeApprovalRuleTool(rule.tool, t)}
+                        </span>
+                        <SubjectLine subject={describeApprovalSubject(rule.subject, t)} />
+                        {rule.dir ? <span {...stylex.props(face.mono)}>{rule.dir}</span> : null}
                       </div>
                     </div>
                     <RuleForget
@@ -244,5 +246,19 @@ function ClearRules({
     >
       {label}
     </TextButton>
+  );
+}
+
+function SubjectLine({ subject }: { subject: { label: string; value?: string } }) {
+  return (
+    <span>
+      {subject.label}
+      {subject.value !== undefined && (
+        <>
+          {": "}
+          <span {...stylex.props(face.mono)}>{subject.value}</span>
+        </>
+      )}
+    </span>
   );
 }
