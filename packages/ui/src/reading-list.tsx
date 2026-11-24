@@ -7,8 +7,10 @@ import {
   useRef,
   useState,
   type CSSProperties,
+  type KeyboardEvent,
   type ReactNode,
   type Ref,
+  type RefObject,
 } from "react";
 import { LegendList, type LegendListRef } from "@legendapp/list/react";
 import { useContentVisible } from "./content-visibility";
@@ -66,6 +68,186 @@ function selectedRows(root: HTMLElement, selector: string): HTMLElement[] {
   );
 }
 
+// Hosts that commit their layout after the list mounts hold the first
+// scroll-to-end until both the list and the host report ready.
+function useInitialEndPlacement({
+  list,
+  currentList,
+  waitForHostLayout,
+  layoutReady,
+  eligible,
+}: {
+  list: ReadingListHandle | null;
+  currentList: RefObject<ReadingListHandle | null>;
+  waitForHostLayout: boolean;
+  layoutReady: boolean | undefined;
+  eligible: boolean;
+}) {
+  const [pending, setPending] = useState(waitForHostLayout);
+  const readiness = useRef(
+    waitForHostLayout ? { listReady: false, layoutReady: false } : null,
+  );
+  const waiting = pending && waitForHostLayout && eligible;
+  const release = useCallback(() => {
+    if (!readiness.current) return;
+    readiness.current = null;
+    setPending(false);
+  }, []);
+  const settle = useCallback(() => {
+    const ready = readiness.current;
+    if (!ready?.listReady || !ready.layoutReady) return;
+    const value = currentList.current;
+    const viewport = value?.getScrollableNode();
+    if (!value || !viewport?.isConnected) return;
+    const height = viewport.clientHeight;
+    const { isAtEnd, isFollowingEnd, scrollLength } = value.getState();
+    // Legend's accepted viewport can lag the host's committed layout.
+    if (height === 0 || Math.abs(height - scrollLength) > 1) return;
+    release();
+    // A row can grow after initial scrolling while Legend still intends to follow.
+    if (!isAtEnd || !isFollowingEnd)
+      void value.scrollToEnd({ animated: false });
+  }, [currentList, release]);
+  const onReady = () => {
+    if (!readiness.current) return;
+    readiness.current.listReady = true;
+    if (layoutReady) settle();
+  };
+  useLayoutEffect(() => {
+    if (!waiting) {
+      release();
+      return;
+    }
+    if (!readiness.current) return;
+    readiness.current.layoutReady = layoutReady === true;
+    settle();
+  }, [layoutReady, list, release, settle, waiting]);
+  return {
+    waiting,
+    release,
+    onReady: waiting ? onReady : undefined,
+    onLayout: waiting && layoutReady ? settle : undefined,
+  };
+}
+
+// A fit-content list is a scroll stop only once its content overflows.
+function useOverflowing(
+  measuring: boolean,
+  list: ReadingListHandle | null,
+): boolean {
+  const [overflowing, setOverflowing] = useState(false);
+  useLayoutEffect(() => {
+    if (!measuring || !list) return;
+    const viewport = list.getScrollableNode();
+    if (!viewport) return;
+    const native = list.getNativeScrollRef();
+    const content =
+      "getContentNode" in native ? native.getContentNode?.() : null;
+    const measure = () => {
+      setOverflowing(viewport.scrollHeight > viewport.clientHeight);
+    };
+    const observer = new ResizeObserver(measure);
+    observer.observe(viewport);
+    if (content) observer.observe(content);
+    measure();
+    return () => observer.disconnect();
+  }, [measuring, list]);
+  return overflowing;
+}
+
+// Keeps the focused control inside a row visible while the row resizes or the
+// list repositions, until the reader scrolls away on purpose.
+function useFocusedControlVisible({
+  root,
+  rowSelector,
+  focused,
+  list,
+  visible,
+  retain,
+}: {
+  root: RefObject<HTMLDivElement | null>;
+  rowSelector: string;
+  focused: string | null;
+  list: ReadingListHandle | null;
+  visible: boolean;
+  retain: RefObject<boolean>;
+}) {
+  useLayoutEffect(() => {
+    if (!focused || !list || !visible) return;
+    const row = [
+      ...(root.current?.querySelectorAll<HTMLElement>(rowSelector) ?? []),
+    ].find((element) => element.dataset.readingKey === focused);
+    if (!row) return;
+    const reveal = () => {
+      const active = row.ownerDocument.activeElement;
+      if (
+        !retain.current ||
+        row.querySelector(":active") ||
+        !(active instanceof HTMLElement) ||
+        !row.contains(active)
+      )
+        return;
+      const rowBounds = row.getBoundingClientRect();
+      const bounds = active.getBoundingClientRect();
+      const index = list.getState().indexByKey(focused);
+      if (index !== undefined)
+        void list.scrollIndexIntoView({
+          index,
+          animated: false,
+          itemOffset: Math.max(0, bounds.top - rowBounds.top),
+          itemLength: bounds.height,
+          viewportMargin: { start: 8, end: 8 },
+        });
+    };
+    let frame: number | undefined;
+    const requestReveal = () => {
+      if (frame !== undefined) return;
+      frame = requestAnimationFrame(() => {
+        frame = undefined;
+        reveal();
+      });
+    };
+    const observer = new ResizeObserver(requestReveal);
+    observer.observe(row);
+    const stop = list.getState().listen("lastPositionUpdate", requestReveal);
+    return () => {
+      observer.disconnect();
+      stop();
+      if (frame !== undefined) cancelAnimationFrame(frame);
+    };
+  }, [focused, list, visible, rowSelector, root, retain]);
+}
+
+// Rows the reader is working in stay mounted outside the rendered window.
+function pinnedKeys(
+  keys: ReadonlySet<string>,
+  selected: readonly string[],
+  focused: string | null,
+  composing: string | null,
+): string[] {
+  return [
+    ...new Set(
+      [...selected, focused, composing].filter(
+        (key): key is string => key !== null && keys.has(key),
+      ),
+    ),
+  ];
+}
+
+function readerKeyDown(
+  event: KeyboardEvent<HTMLElement>,
+  list: ReadingListHandle | null,
+): void {
+  if (list?.getScrollableNode() !== event.currentTarget) return;
+  if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+    if (event.cancelable && !isImeKey(event.nativeEvent))
+      scrollWithHorizontalArrow(event);
+    scrollReaderWithLocalArrow(event);
+  } else {
+    scrollReaderWithForeignSelection(event, "vertical");
+  }
+}
+
 export function ReadingList<T>({
   data,
   role = "region",
@@ -108,21 +290,22 @@ export function ReadingList<T>({
     generation: number;
     anchor: { index: number; viewOffset: number } | null;
   }>({ generation: 0, anchor: null });
-  const waitForHostLayout = initialEndLayoutReady !== undefined && !ref;
-  const [initialEndPending, setInitialEndPending] = useState(waitForHostLayout);
-  const initialEnd = useRef(
-    waitForHostLayout ? { listReady: false, layoutReady: false } : null,
-  );
   const visible = useContentVisible();
-  const [overflowing, setOverflowing] = useState(false);
+  const initialEnd = useInitialEndPlacement({
+    list,
+    currentList,
+    waitForHostLayout: initialEndLayoutReady !== undefined && !ref,
+    layoutReady: initialEndLayoutReady,
+    eligible:
+      visible &&
+      !renderAll &&
+      windowed.generation === 0 &&
+      windowed.anchor === null,
+  });
+  const waitingForInitialEnd = initialEnd.waiting;
+  const releaseInitialEnd = initialEnd.release;
+  const overflowing = useOverflowing(fitContent && visible, list);
   const hasScrollStop = !fitContent || overflowing;
-  const waitingForInitialEnd =
-    initialEndPending &&
-    waitForHostLayout &&
-    visible &&
-    !renderAll &&
-    windowed.generation === 0 &&
-    windowed.anchor === null;
   const renderedAll = useRef(renderAll);
   const [selected, setSelected] = useState<string[]>([]);
   const [focused, setFocused] = useState<string | null>(null);
@@ -143,62 +326,6 @@ export function ReadingList<T>({
     },
     [ref],
   );
-  useLayoutEffect(() => {
-    if (!fitContent || !visible || !list) return;
-    const viewport = list.getScrollableNode();
-    if (!viewport) return;
-    const native = list.getNativeScrollRef();
-    const content =
-      "getContentNode" in native ? native.getContentNode?.() : null;
-    const measure = () => {
-      setOverflowing(viewport.scrollHeight > viewport.clientHeight);
-    };
-    const observer = new ResizeObserver(measure);
-    observer.observe(viewport);
-    if (content) observer.observe(content);
-    measure();
-    return () => observer.disconnect();
-  }, [fitContent, visible, list]);
-  const releaseInitialEnd = useCallback(() => {
-    if (!initialEnd.current) return;
-    initialEnd.current = null;
-    setInitialEndPending(false);
-  }, []);
-  const settleInitialEnd = useCallback(() => {
-    const readiness = initialEnd.current;
-    if (!readiness?.listReady || !readiness.layoutReady) return;
-    const value = currentList.current;
-    const viewport = value?.getScrollableNode();
-    if (!value || !viewport?.isConnected) return;
-    const height = viewport.clientHeight;
-    const { isAtEnd, isFollowingEnd, scrollLength } = value.getState();
-    // Legend's accepted viewport can lag the host's committed layout.
-    if (height === 0 || Math.abs(height - scrollLength) > 1) return;
-    releaseInitialEnd();
-    // A row can grow after initial scrolling while Legend still intends to follow.
-    if (!isAtEnd || !isFollowingEnd)
-      void value.scrollToEnd({ animated: false });
-  }, [releaseInitialEnd]);
-  const onInitialEndReady = () => {
-    if (!initialEnd.current) return;
-    initialEnd.current.listReady = true;
-    if (initialEndLayoutReady) settleInitialEnd();
-  };
-  useLayoutEffect(() => {
-    if (!waitingForInitialEnd) {
-      releaseInitialEnd();
-      return;
-    }
-    if (!initialEnd.current) return;
-    initialEnd.current.layoutReady = initialEndLayoutReady === true;
-    settleInitialEnd();
-  }, [
-    initialEndLayoutReady,
-    list,
-    releaseInitialEnd,
-    settleInitialEnd,
-    waitingForInitialEnd,
-  ]);
   useEffect(() => {
     // Keep explicit navigation from competing with the initial placement.
     if (!list || waitingForInitialEnd) return;
@@ -308,58 +435,20 @@ export function ReadingList<T>({
       if (frame !== undefined) view?.cancelAnimationFrame(frame);
     };
   }, [list, rowSelector]);
-  useLayoutEffect(() => {
-    if (!focused || !list || !visible) return;
-    const row = [
-      ...(root.current?.querySelectorAll<HTMLElement>(rowSelector) ?? []),
-    ].find((element) => element.dataset.readingKey === focused);
-    if (!row) return;
-    const reveal = () => {
-      const active = row.ownerDocument.activeElement;
-      if (
-        !retainFocusVisibility.current ||
-        row.querySelector(":active") ||
-        !(active instanceof HTMLElement) ||
-        !row.contains(active)
-      )
-        return;
-      const rowBounds = row.getBoundingClientRect();
-      const bounds = active.getBoundingClientRect();
-      const index = list.getState().indexByKey(focused);
-      if (index !== undefined)
-        void list.scrollIndexIntoView({
-          index,
-          animated: false,
-          itemOffset: Math.max(0, bounds.top - rowBounds.top),
-          itemLength: bounds.height,
-          viewportMargin: { start: 8, end: 8 },
-        });
-    };
-    let frame: number | undefined;
-    const requestReveal = () => {
-      if (frame !== undefined) return;
-      frame = requestAnimationFrame(() => {
-        frame = undefined;
-        reveal();
-      });
-    };
-    const observer = new ResizeObserver(requestReveal);
-    observer.observe(row);
-    const stop = list.getState().listen("lastPositionUpdate", requestReveal);
-    return () => {
-      observer.disconnect();
-      stop();
-      if (frame !== undefined) cancelAnimationFrame(frame);
-    };
-  }, [focused, list, visible, rowSelector]);
-  const keys = new Set(data.map(keyExtractor));
-  const pinned = [
-    ...new Set(
-      [...selected, focused, composing].filter(
-        (key): key is string => key !== null && keys.has(key),
-      ),
-    ),
-  ];
+  useFocusedControlVisible({
+    root,
+    rowSelector,
+    focused,
+    list,
+    visible,
+    retain: retainFocusVisibility,
+  });
+  const pinned = pinnedKeys(
+    new Set(data.map(keyExtractor)),
+    selected,
+    focused,
+    composing,
+  );
   return (
     <div
       ref={root}
@@ -385,17 +474,7 @@ export function ReadingList<T>({
         role={hasScrollStop ? role : undefined}
         aria-label={hasScrollStop ? label : undefined}
         tabIndex={hasScrollStop ? 0 : undefined}
-        onKeyDown={(event) => {
-          if (currentList.current?.getScrollableNode() !== event.currentTarget)
-            return;
-          if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
-            if (event.cancelable && !isImeKey(event.nativeEvent))
-              scrollWithHorizontalArrow(event);
-            scrollReaderWithLocalArrow(event);
-          } else {
-            scrollReaderWithForeignSelection(event, "vertical");
-          }
-        }}
+        onKeyDown={(event) => readerKeyDown(event, currentList.current)}
         className={className}
         data={data}
         extraData={renderItem}
@@ -405,12 +484,8 @@ export function ReadingList<T>({
         maintainVisibleContentPosition
         maintainScrollAtEnd={{ animated: false }}
         maintainScrollAtEndThreshold={maintainScrollAtEndThreshold}
-        onReady={waitingForInitialEnd ? onInitialEndReady : undefined}
-        onLayout={
-          waitingForInitialEnd && initialEndLayoutReady
-            ? settleInitialEnd
-            : undefined
-        }
+        onReady={initialEnd.onReady}
+        onLayout={initialEnd.onLayout}
         initialScrollAtEnd={windowed.anchor === null}
         initialScrollIndex={windowed.anchor ?? undefined}
         alwaysRender={renderAll ? { top: data.length } : { keys: pinned }}
