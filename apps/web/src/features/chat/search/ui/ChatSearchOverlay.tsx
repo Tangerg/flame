@@ -22,7 +22,7 @@ import {
   clearChatSearchHighlights,
   paintChatSearchHighlights,
 } from "@/features/chat/search/adapters/searchHighlights";
-import { setChatSearchOpener } from "@/features/chat/search/application/openChatSearch";
+import { type ChatSearchOpener } from "@/features/chat/search/application/openChatSearch";
 import {
   findMessageMatches,
   observeMessageChanges,
@@ -42,11 +42,13 @@ const cs = stylex.create({
   count: { flexShrink: 0, paddingInline: space.s1_5, whiteSpace: "nowrap" },
 });
 
-export function ChatSearchOverlay() {
+export function ChatSearchOverlay({ opener }: { opener: ChatSearchOpener }) {
   const activeSessionId = useActiveSessionId();
   const visible = useContentVisible();
 
-  return visible ? <SessionChatSearchOverlay key={activeSessionId || "no-session"} /> : null;
+  return visible ? (
+    <SessionChatSearchOverlay key={activeSessionId || "no-session"} opener={opener} />
+  ) : null;
 }
 
 type SearchState = {
@@ -61,7 +63,7 @@ const EMPTY_SEARCH: SearchState = {
   activeIndex: 0,
 };
 
-function SessionChatSearchOverlay() {
+function SessionChatSearchOverlay({ opener }: { opener: ChatSearchOpener }) {
   const appearance = useAppearanceProjection();
   const composer = useComposer();
   const list = useTranscriptReader()?.list ?? null;
@@ -89,10 +91,7 @@ function SessionChatSearchOverlay() {
     inputRef.current?.select();
   });
 
-  useEffect(() => {
-    setChatSearchOpener(() => requestOpen());
-    return () => setChatSearchOpener(null);
-  }, []);
+  useEffect(() => opener.attach(() => requestOpen()), [opener]);
 
   useEffect(() => () => clearChatSearchHighlights(), []);
 
