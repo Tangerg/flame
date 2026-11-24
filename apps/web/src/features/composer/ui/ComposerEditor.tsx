@@ -88,7 +88,7 @@ const styles = stylex.create({
     position: "absolute",
     insetBlockStart: 0,
     insetInlineStart: 0,
-    zIndex: "var(--layer-popup)",
+    zIndex: "var(--layer-floating)",
     overflow: "auto",
     minWidth: "14rem",
     maxWidth: "min(30rem, 90vw)",

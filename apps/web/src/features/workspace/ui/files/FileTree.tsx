@@ -36,7 +36,7 @@ import {
 } from "@/features/workspace/application/navigation";
 import { useDirectory } from "@/features/workspace/application/fileTree";
 import type { WorkspaceFileEntry } from "@/features/workspace/application/workspaceQueries";
-import { space, color, radius, type as typeStep } from "@flame/ui/tokens.stylex";
+import { space, color, radius, surface, type as typeStep } from "@flame/ui/tokens.stylex";
 const styles = stylex.create({
   // The virtualizer sizes rows to the scroller's full width, so the inline inset lives on rows.
   tree: { minHeight: 0, height: "100%", overflow: "auto", paddingBlock: space.s2 },
@@ -51,7 +51,7 @@ const styles = stylex.create({
     borderRadius: radius.sm,
     color: color.fg,
     outlineOffset: "-2px",
-    backgroundColor: { default: "transparent", "[aria-current]": "var(--control-active-surface)" },
+    backgroundColor: { default: "transparent", "[aria-current]": surface.selected },
   },
   name: { flex: 1, overflowWrap: "anywhere" },
   loading: { marginInline: space.s2 },

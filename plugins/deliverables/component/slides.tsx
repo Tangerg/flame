@@ -257,7 +257,7 @@ function Canvas({
         overflow: "hidden",
         background: "var(--color-surface)",
         border: "1px solid var(--color-border)",
-        borderRadius: "var(--radius-md, 6px)",
+        borderRadius: "var(--shape-sm)",
         touchAction: "none",
       }}
     >

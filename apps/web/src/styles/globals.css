@@ -815,16 +815,6 @@ body:has([data-slot="notification-toast"])
   display: block;
   margin-inline: auto;
 }
-[data-mermaid-fit] svg {
-  max-width: 100%;
-  max-height: 100%;
-  width: auto;
-  height: auto;
-}
-[data-mermaid-scale] svg {
-  width: 100%;
-  height: auto;
-}
 [data-pulse] svg {
   animation: var(--animate-pulse-dot);
 }

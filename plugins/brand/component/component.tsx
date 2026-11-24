@@ -146,7 +146,7 @@ export function Brand({ context }: { context: ComponentContext }) {
                 width: "6rem",
                 height: "6rem",
                 flexShrink: 0,
-                borderRadius: "var(--radius-lg)",
+                borderRadius: "var(--shape-lg)",
                 backgroundColor: FLAME_ORANGE,
               }}
             />

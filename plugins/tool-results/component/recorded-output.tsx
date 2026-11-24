@@ -120,7 +120,7 @@ export function RecordedOutput({ text, t }: { text: string; t: Translate }) {
             ? `calc(${frameInset} - var(--focus-inset-edge))`
             : frameInset,
           backgroundColor:
-            selected === index ? "var(--color-highlight)" : undefined,
+            selected === index ? "var(--wash-selected)" : undefined,
         }}
       >
         <span data-output-line={index}>
