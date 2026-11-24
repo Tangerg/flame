@@ -86,6 +86,50 @@ function blockTop(anchor: BlockAnchor, viewport: HTMLElement): number | undefine
   return bounds.top + bounds.height * portion;
 }
 
+type ReaderState = ReturnType<ReadingListHandle["getState"]>;
+
+// The reader has re-measured at the new width when its viewport, scroll range
+// and content length agree; positions read before then are transient.
+function settledAtNewWidth(
+  viewport: HTMLElement,
+  state: ReaderState,
+  previousWidth: number,
+): boolean {
+  const height = viewport.clientHeight;
+  return (
+    viewport.clientWidth !== previousWidth &&
+    height !== 0 &&
+    Math.abs(height - state.scrollLength) <= 1 &&
+    Math.abs(Math.max(height, state.contentLength) - viewport.scrollHeight) <= 1
+  );
+}
+
+// The anchored row's rendered bounds, or null while its measurement is stale.
+function measuredRow(
+  state: ReaderState,
+  row: ReadingAnchor["row"],
+): { index: number | undefined; bounds: DOMRect | undefined } | null {
+  const index = row ? state.indexByKey(row.key) : undefined;
+  const bounds =
+    index === undefined ? undefined : state.elementAtIndex(index)?.getBoundingClientRect();
+  if (bounds && index !== undefined) {
+    const measured = state.sizeAtIndex(index);
+    if (!Number.isFinite(measured) || Math.abs(measured - bounds.height) > 1) return null;
+  }
+  return { index, bounds };
+}
+
+// A text block holds the reading line exactly; the row offset is the fallback.
+function anchoredTop(
+  { block, row }: ReadingAnchor,
+  rowBounds: DOMRect | undefined,
+  viewport: HTMLElement,
+): number | undefined {
+  const top = block ? blockTop(block, viewport) : undefined;
+  if (top !== undefined && block) return top - block.viewportOffset;
+  return rowBounds && row ? rowBounds.top + row.offset : undefined;
+}
+
 export class SubagentReadingSurface extends Component<Props, unknown, PresentationSnapshot | null> {
   private anchor: ReadingAnchor | null = null;
   private stopSettling: (() => void) | undefined;
@@ -143,7 +187,7 @@ export class SubagentReadingSurface extends Component<Props, unknown, Presentati
       return;
     }
 
-    const { block, row } = snapshot.anchor;
+    const { row } = snapshot.anchor;
     let queued = false;
     const settle = () => {
       queued = false;
@@ -153,32 +197,12 @@ export class SubagentReadingSurface extends Component<Props, unknown, Presentati
         return;
       }
       const state = reader.getState();
-      const height = viewport.clientHeight;
-      if (
-        viewport.clientWidth === snapshot.width ||
-        height === 0 ||
-        Math.abs(height - state.scrollLength) > 1 ||
-        Math.abs(Math.max(height, state.contentLength) - viewport.scrollHeight) > 1
-      )
-        return;
-
-      const index = row ? state.indexByKey(row.key) : undefined;
-      const bounds =
-        index === undefined ? undefined : state.elementAtIndex(index)?.getBoundingClientRect();
-      if (bounds && index !== undefined) {
-        const measured = state.sizeAtIndex(index);
-        if (!Number.isFinite(measured) || Math.abs(measured - bounds.height) > 1) return;
-      }
-
-      const top = block ? blockTop(block, viewport) : undefined;
-      const desiredTop =
-        top !== undefined && block
-          ? top - block.viewportOffset
-          : bounds && row
-            ? bounds.top + row.offset
-            : undefined;
+      if (!settledAtNewWidth(viewport, state, snapshot.width)) return;
+      const placed = measuredRow(state, row);
+      if (!placed) return;
+      const desiredTop = anchoredTop(snapshot.anchor, placed.bounds, viewport);
       if (desiredTop === undefined) {
-        if (!row || index === undefined) {
+        if (!row || placed.index === undefined) {
           this.retire();
           return;
         }

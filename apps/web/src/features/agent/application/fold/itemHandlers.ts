@@ -1,5 +1,6 @@
 import { type AgentItem, type AgentItemDelta } from "@/features/agent/public/events";
-import { type AgentSessionView } from "@/features/agent/public/sessionView";
+import { type AgentSessionView, type Message } from "@/features/agent/public/sessionView";
+import { type ContentBlock } from "@/features/agent/public/contentBlock";
 import { blockStatus } from "@/features/agent/application/fold/projections";
 import {
   appendUserMessage,
@@ -42,46 +43,47 @@ interface ProjectedItemIdentity {
   runId: string | null;
 }
 
-function assertItemProjectionIdentity(state: AgentSessionView, item: AgentItem): boolean {
-  const identities: ProjectedItemIdentity[] = [];
-  const tool = state.toolCalls[item.id];
-  if (tool) identities.push({ type: "toolCall", runId: tool.runId });
+// The Item type a block projects, when the block was folded from `itemId`.
+function blockItemType(block: ContentBlock, itemId: string): AgentItem["type"] | undefined {
+  switch (block.kind) {
+    case "text":
+    case "image":
+      return block.itemId === itemId ? "agentMessage" : undefined;
+    case "reasoning":
+      return block.reasoningId === itemId ? "reasoning" : undefined;
+    case "tool":
+      return block.toolCallId === itemId ? "toolCall" : undefined;
+    case "approval":
+      return block.itemId === itemId ? "toolCall" : undefined;
+    case "question":
+      return block.itemId === itemId ? "question" : undefined;
+    default:
+      return undefined;
+  }
+}
 
+function messageItemType(message: Message): AgentItem["type"] | undefined {
+  if (message.role === "user") return "userMessage";
+  return message.blocks.some((block) => block.kind === "compaction") ? "compaction" : undefined;
+}
+
+function projectedIdentities(state: AgentSessionView, itemId: string): ProjectedItemIdentity[] {
+  const identities: ProjectedItemIdentity[] = [];
+  const tool = state.toolCalls[itemId];
+  if (tool) identities.push({ type: "toolCall", runId: tool.runId });
   for (const message of state.messages) {
-    if (message.id === item.id) {
-      if (message.role === "user") {
-        identities.push({ type: "userMessage", runId: message.runId });
-      } else if (message.blocks.some((block) => block.kind === "compaction")) {
-        identities.push({ type: "compaction", runId: message.runId });
-      }
-    }
+    const own = message.id === itemId ? messageItemType(message) : undefined;
+    if (own) identities.push({ type: own, runId: message.runId });
     for (const block of message.blocks) {
-      switch (block.kind) {
-        case "text":
-        case "image":
-          if (block.itemId === item.id)
-            identities.push({ type: "agentMessage", runId: message.runId });
-          break;
-        case "reasoning":
-          if (block.reasoningId === item.id)
-            identities.push({ type: "reasoning", runId: message.runId });
-          break;
-        case "tool":
-          if (block.toolCallId === item.id)
-            identities.push({ type: "toolCall", runId: message.runId });
-          break;
-        case "approval":
-          if (block.itemId === item.id) identities.push({ type: "toolCall", runId: message.runId });
-          break;
-        case "question":
-          if (block.itemId === item.id) identities.push({ type: "question", runId: message.runId });
-          break;
-        default:
-          break;
-      }
+      const type = blockItemType(block, itemId);
+      if (type) identities.push({ type, runId: message.runId });
     }
   }
+  return identities;
+}
 
+function assertItemProjectionIdentity(state: AgentSessionView, item: AgentItem): boolean {
+  const identities = projectedIdentities(state, item.id);
   for (const identity of identities) {
     if (identity.type !== item.type || (identity.runId !== null && identity.runId !== item.runId)) {
       throw new Error(
