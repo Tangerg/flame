@@ -651,9 +651,9 @@
       "tree": "ffdf35a7aa110118f280b72a20db8a4b7ced62dc",
       "time": "2026-11-24T18:29:45Z"
     },
-    "v0.1.122-dev.20261124.tf1711f0e29e6": {
+    "v0.1.123-dev.20261124.tf1711f0e29e6": {
       "tree": "f1711f0e29e67729ce04b37efb4127ceedfadcce",
-      "time": "2026-11-24T18:43:58Z"
+      "time": "2026-11-24T18:44:23Z"
     }
   },
   "github.com/Tangerg/flame/apps/cli": {
