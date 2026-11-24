@@ -51,12 +51,8 @@ export function Schedules({ context }: { context: ComponentContext }) {
     command,
     reconcile,
     searchElement,
-    search,
     filterPage,
     editorOpen,
-    actionsDisabled,
-    add,
-    status,
     read,
     busy,
     refresh,
@@ -85,69 +81,7 @@ export function Schedules({ context }: { context: ComponentContext }) {
     <Panel
       label={t("panel.title")}
       header={<PanelHeader title={t("panel.title")} />}
-      controls={
-        <FilterBar
-          label={t("controls.label")}
-          search={
-            <SearchField
-              ref={searchElement}
-              size="lg"
-              aria-label={t("search.label")}
-              placeholder={t("search.placeholder")}
-              value={search}
-              onChange={(event) => filterPage(event.target.value)}
-              onClear={() => filterPage("")}
-              clearLabel={t("search.clear")}
-            />
-          }
-          actions={
-            <Toolbar label={t("actions.label")}>
-              <Button
-                variant={editorOpen ? "outline" : "primary"}
-                size="lg"
-                disabled={actionsDisabled}
-                onClick={(event) => add(event.currentTarget)}
-              >
-                <Icon glyph={Plus} size="sm" /> {t("add")}
-              </Button>
-              <ActionMenu
-                label={t("templates.label")}
-                disabled={actionsDisabled}
-                triggerContent={
-                  <>
-                    {t("templates.trigger")}{" "}
-                    <Icon glyph={ChevronDown} size="sm" />
-                  </>
-                }
-                items={templates.map((template) => ({
-                  label: t(`template.${template.id}.title`),
-                  onSelect: (opener) => add(opener, template),
-                }))}
-              />
-            </Toolbar>
-          }
-        >
-          <Select
-            size="lg"
-            label={t("status.label")}
-            value={status}
-            onValueChange={(value) => filterPage(search, value)}
-            options={[
-              { value: "all", label: t("status.all") },
-              { value: "enabled", label: t("status.enabled") },
-              { value: "disabled", label: t("status.disabled") },
-            ]}
-          />
-          <IconButton
-            icon={Refresh}
-            aria-label={t("refresh")}
-            size="md"
-            pending={read.loading}
-            disabled={busy}
-            onClick={() => void refresh()}
-          />
-        </FilterBar>
-      }
+      controls={<ScheduleControls {...schedules} />}
     >
       {read.loading && <p role="status">{t("reading")}</p>}
       {read.error && (
@@ -176,7 +110,7 @@ export function Schedules({ context }: { context: ComponentContext }) {
       <PanelSection
         title={t("catalog.title")}
         description={
-          page ? (
+          page && (
             <span ref={summary} tabIndex={-1}>
               {paginated && (
                 <>
@@ -190,7 +124,7 @@ export function Schedules({ context }: { context: ComponentContext }) {
                 count: rows.filter((item) => !enabled(item)).length,
               })}
             </span>
-          ) : undefined
+          )
         }
       >
         <RecordGroup
@@ -200,30 +134,14 @@ export function Schedules({ context }: { context: ComponentContext }) {
           hidden={!page}
         >
           {page && !matching.length && (
-            <EmptyState
-              icon={CalendarClock}
-              size="compact"
-              title={
-                rows.length
-                  ? t("empty.filtered.title")
-                  : paginated
-                    ? t("empty.page.title")
-                    : t("empty.none.title")
-              }
-              sub={rows.length || paginated ? undefined : t("empty.none.sub")}
-              action={
-                rows.length ? (
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      filterPage("", "all");
-                      searchElement.current?.focus();
-                    }}
-                  >
-                    {t("empty.filtered.action")}
-                  </Button>
-                ) : undefined
-              }
+            <ScheduleCatalogEmpty
+              t={t}
+              filtered={rows.length > 0}
+              paginated={paginated}
+              onClearFilters={() => {
+                filterPage("", "all");
+                searchElement.current?.focus();
+              }}
             />
           )}
           {matching.map((item) => (
@@ -231,36 +149,192 @@ export function Schedules({ context }: { context: ComponentContext }) {
           ))}
         </RecordGroup>
         {paginated && (
-          <PanelFooter>
-            <Toolbar label={t("pages.label")}>
-              <Button
-                pending={read.loading && !busy}
-                focusableWhenDisabled={!busy}
-                disabled={busy || !history.length}
-                onClick={(event) =>
-                  void refresh(history.slice(0, -1), event.currentTarget)
-                }
-              >
-                {t("pages.previous")}
-              </Button>
-              <Button
-                pending={read.loading && !busy}
-                focusableWhenDisabled={!busy}
-                disabled={busy || !page?.nextCursor}
-                onClick={(event) =>
-                  void refresh(
-                    [...history, page!.nextCursor],
-                    event.currentTarget,
-                  )
-                }
-              >
-                {t("pages.next")}
-              </Button>
-            </Toolbar>
-          </PanelFooter>
+          <SchedulePager
+            t={t}
+            history={history}
+            nextCursor={page?.nextCursor}
+            loading={read.loading}
+            busy={busy}
+            onPage={(cursors, control) => void refresh(cursors, control)}
+          />
         )}
       </PanelSection>
     </Panel>
+  );
+}
+
+function ScheduleControls({
+  t,
+  searchElement,
+  search,
+  filterPage,
+  status,
+  editorOpen,
+  actionsDisabled,
+  add,
+  read,
+  busy,
+  refresh,
+}: Pick<
+  ScheduleState,
+  | "t"
+  | "searchElement"
+  | "search"
+  | "filterPage"
+  | "status"
+  | "editorOpen"
+  | "actionsDisabled"
+  | "add"
+  | "read"
+  | "busy"
+  | "refresh"
+>) {
+  return (
+    <FilterBar
+      label={t("controls.label")}
+      search={
+        <SearchField
+          ref={searchElement}
+          size="lg"
+          aria-label={t("search.label")}
+          placeholder={t("search.placeholder")}
+          value={search}
+          onChange={(event) => filterPage(event.target.value)}
+          onClear={() => filterPage("")}
+          clearLabel={t("search.clear")}
+        />
+      }
+      actions={
+        <Toolbar label={t("actions.label")}>
+          <Button
+            variant={editorOpen ? "outline" : "primary"}
+            size="lg"
+            disabled={actionsDisabled}
+            onClick={(event) => add(event.currentTarget)}
+          >
+            <Icon glyph={Plus} size="sm" /> {t("add")}
+          </Button>
+          <ActionMenu
+            label={t("templates.label")}
+            disabled={actionsDisabled}
+            triggerContent={
+              <>
+                {t("templates.trigger")} <Icon glyph={ChevronDown} size="sm" />
+              </>
+            }
+            items={templates.map((template) => ({
+              label: t(`template.${template.id}.title`),
+              onSelect: (opener) => add(opener, template),
+            }))}
+          />
+        </Toolbar>
+      }
+    >
+      <Select
+        size="lg"
+        label={t("status.label")}
+        value={status}
+        onValueChange={(value) => filterPage(search, value)}
+        options={[
+          { value: "all", label: t("status.all") },
+          { value: "enabled", label: t("status.enabled") },
+          { value: "disabled", label: t("status.disabled") },
+        ]}
+      />
+      <IconButton
+        icon={Refresh}
+        aria-label={t("refresh")}
+        size="md"
+        pending={read.loading}
+        disabled={busy}
+        onClick={() => void refresh()}
+      />
+    </FilterBar>
+  );
+}
+
+// An empty page says why: the filters hid its rows, a later page ran out, or
+// nothing is scheduled yet.
+function ScheduleCatalogEmpty({
+  t,
+  filtered,
+  paginated,
+  onClearFilters,
+}: {
+  t: Translate;
+  filtered: boolean;
+  paginated: boolean;
+  onClearFilters(): void;
+}) {
+  if (filtered)
+    return (
+      <EmptyState
+        icon={CalendarClock}
+        size="compact"
+        title={t("empty.filtered.title")}
+        action={
+          <Button variant="outline" onClick={onClearFilters}>
+            {t("empty.filtered.action")}
+          </Button>
+        }
+      />
+    );
+  if (paginated)
+    return (
+      <EmptyState
+        icon={CalendarClock}
+        size="compact"
+        title={t("empty.page.title")}
+      />
+    );
+  return (
+    <EmptyState
+      icon={CalendarClock}
+      size="compact"
+      title={t("empty.none.title")}
+      sub={t("empty.none.sub")}
+    />
+  );
+}
+
+function SchedulePager({
+  t,
+  history,
+  nextCursor,
+  loading,
+  busy,
+  onPage,
+}: {
+  t: Translate;
+  history: string[];
+  nextCursor: string | undefined;
+  loading: boolean;
+  busy: boolean;
+  onPage(cursors: string[], control: HTMLElement): void;
+}) {
+  return (
+    <PanelFooter>
+      <Toolbar label={t("pages.label")}>
+        <Button
+          pending={loading && !busy}
+          focusableWhenDisabled={!busy}
+          disabled={busy || !history.length}
+          onClick={(event) => onPage(history.slice(0, -1), event.currentTarget)}
+        >
+          {t("pages.previous")}
+        </Button>
+        <Button
+          pending={loading && !busy}
+          focusableWhenDisabled={!busy}
+          disabled={busy || !nextCursor}
+          onClick={(event) =>
+            onPage([...history, nextCursor!], event.currentTarget)
+          }
+        >
+          {t("pages.next")}
+        </Button>
+      </Toolbar>
+    </PanelFooter>
   );
 }
 
