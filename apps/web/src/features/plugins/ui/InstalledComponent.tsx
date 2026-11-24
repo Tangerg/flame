@@ -303,7 +303,7 @@ function RenderingInstance({
   reload,
   locale,
   compose,
-}: ComponentProps & { instance: ComponentInstance; locale: string }) {
+}: InstalledComponentProps & { instance: ComponentInstance; locale: string }) {
   const captured = useSyncExternalStore(instance.subscribe, instance.getSnapshot);
   const context = useMemo(() => {
     if (!captured) return null;
@@ -330,7 +330,7 @@ function RenderingInstance({
 }
 
 export function RenderingComponent(
-  props: ComponentProps &
+  props: InstalledComponentProps &
     Omit<
       ComponentSources,
       "captureSessionId" | "notificationAccess" | "subscribeRootRunSettlements"
@@ -426,7 +426,7 @@ export function RenderingComponent(
   );
 }
 
-type ComponentProps = {
+export type InstalledComponentProps = {
   placement?: PluginClientComponent["placement"];
   reload?: () => Promise<void>;
   fallback?: ReactNode;
@@ -445,7 +445,7 @@ type ComponentProps = {
 };
 
 type ComponentSources = Pick<
-  ComponentProps,
+  InstalledComponentProps,
   | "runtime"
   | "binding"
   | "lifetime"
@@ -470,7 +470,7 @@ type ComponentSources = Pick<
   subscribeRootRunSettlements: AgentAccess["subscribeRootRunSettlements"];
 };
 
-function WorkspaceComponent(props: ComponentProps) {
+function WorkspaceComponent(props: InstalledComponentProps) {
   const t = useT();
   const composer = useComposer();
   const selection = useActiveSessionWorkspace();
@@ -508,7 +508,7 @@ function WorkspaceComponent(props: ComponentProps) {
   );
 }
 
-function ClientComponent(props: ComponentProps) {
+function ClientComponent(props: InstalledComponentProps) {
   const composer = useComposer();
   const selection = useActiveSessionWorkspace();
   const sessionId = useActiveSessionId();
@@ -531,7 +531,7 @@ function ClientComponent(props: ComponentProps) {
   );
 }
 
-function SessionComponent(props: ComponentProps) {
+function SessionComponent(props: InstalledComponentProps) {
   const t = useT();
   const composer = useComposer();
   const sessionId = useActiveSessionId();
@@ -541,7 +541,10 @@ function SessionComponent(props: ComponentProps) {
   );
 }
 
-export function InstalledComponent({ scope, ...props }: ComponentProps & { scope: string }) {
+export function InstalledComponent({
+  scope,
+  ...props
+}: InstalledComponentProps & { scope: string }) {
   if (scope === "client") return <ClientComponent {...props} />;
   if (scope === "session") return <SessionComponent {...props} />;
   if (scope === "workspace") return <WorkspaceComponent {...props} />;
@@ -553,7 +556,7 @@ export function InstalledComponent({ scope, ...props }: ComponentProps & { scope
 export function InstalledFileComponent({
   file,
   ...props
-}: ComponentProps & { file: CapturedFile }) {
+}: InstalledComponentProps & { file: CapturedFile }) {
   return <RenderingComponent {...props} file={file} />;
 }
 
@@ -561,7 +564,7 @@ export function InstalledFileComponent({
 export function InstalledToolResultComponent({
   toolResult,
   ...props
-}: ComponentProps & { toolResult: CapturedToolResult }) {
+}: InstalledComponentProps & { toolResult: CapturedToolResult }) {
   const submitInput = useSubmitCapturedAgentInput();
   return <RenderingComponent {...props} toolResult={toolResult} submitInput={submitInput} />;
 }
@@ -569,6 +572,6 @@ export function InstalledToolResultComponent({
 export function InstalledSessionActionComponent({
   session,
   ...props
-}: ComponentProps & { session: CapturedSession }) {
+}: InstalledComponentProps & { session: CapturedSession }) {
   return <RenderingComponent {...props} sessionTarget={session} />;
 }

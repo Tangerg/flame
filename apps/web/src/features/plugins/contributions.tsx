@@ -20,6 +20,7 @@ import {
   ComponentBoundary,
   componentFailureScope,
   ComponentLoading,
+  type InstalledComponentProps,
 } from "@/features/plugins/ui/InstalledComponent";
 import { asyncDisposeSymbol, isCancellationReason } from "dougong";
 import { onAbort } from "dougong/advanced";
@@ -81,15 +82,304 @@ function operationBinding(
     : undefined;
 }
 
-function actionPlacement(placement: string) {
+type ComponentEntry = PluginInstallation["selected"]["components"][number];
+
+// One installed component and the scope that owns everything it contributes.
+interface PackageComponent {
+  lifetime: ContributionScope;
+  installation: PluginInstallation;
+  entry: ComponentEntry;
+  id: string;
+  qualifiedTitle: string;
+  failureScope: string;
+  modules: ComponentModules;
+  load: () => Promise<InstalledComponentProps>;
+}
+
+function contributeComponent(target: PackageComponent, workspace: WorkspaceAccess): void {
+  switch (target.entry.placement) {
+    case "export":
+      return;
+    case "fileRenderer":
+      return contributeFileRenderer(target);
+    case "toolResultRenderer":
+      return contributeToolResultRenderer(target);
+    case "sessionAction":
+      return contributeSessionAction(target);
+    default:
+      return contributePlacedComponent(target, workspace);
+  }
+}
+
+function contributeFileRenderer({
+  lifetime,
+  entry,
+  id,
+  qualifiedTitle,
+  failureScope,
+  modules,
+  load,
+}: PackageComponent) {
+  if (!entry.selector || entry.selector.type !== "fileExtension")
+    throw new Error("File component requires an extension selector");
+  const File = lazy(async () => {
+    const rendering = await load();
+    return {
+      default: ({ file, fallback }: { file: CapturedFile; fallback: ReactNode }) => (
+        <InstalledFileComponent {...rendering} file={file} fallback={fallback} />
+      ),
+    };
+  });
+  lifetime.add(
+    WORKSPACE_FILE_RENDERER,
+    {
+      id,
+      title: qualifiedTitle,
+      extension: entry.selector.name,
+      component: (props) => (
+        <ComponentBoundary
+          scope={failureScope}
+          reload={() => modules.reload()}
+          fallback={props.fallback}
+        >
+          <Suspense fallback={props.fallback}>
+            <RecordedFileComponent {...props} entry={File} />
+          </Suspense>
+        </ComponentBoundary>
+      ),
+    },
+    { key: id },
+  );
+}
+
+function contributeToolResultRenderer({
+  lifetime,
+  entry,
+  id,
+  qualifiedTitle,
+  failureScope,
+  modules,
+  load,
+}: PackageComponent) {
+  if (!entry.selector || entry.selector.type === "fileExtension")
+    throw new Error("Tool result component requires a result selector");
+  const Result = lazy(async () => {
+    const rendering = await load();
+    return {
+      default: ({
+        toolResult,
+        fallback,
+      }: {
+        toolResult: CapturedToolResult;
+        fallback: ReactNode;
+      }) => (
+        <InstalledToolResultComponent {...rendering} toolResult={toolResult} fallback={fallback} />
+      ),
+    };
+  });
+  lifetime.add(
+    TOOL_RESULT_RENDERER,
+    {
+      id,
+      title: qualifiedTitle,
+      selector:
+        entry.selector.type === "resultShape"
+          ? { type: "resultShape", shape: entry.selector.shape }
+          : { type: "toolName", name: entry.selector.name },
+      component: (props) => (
+        <ComponentBoundary
+          scope={failureScope}
+          reload={() => modules.reload()}
+          fallback={props.fallback}
+        >
+          <Suspense fallback={props.fallback}>
+            <RecordedToolComponent {...props} entry={Result} />
+          </Suspense>
+        </ComponentBoundary>
+      ),
+    },
+    { key: id },
+  );
+}
+
+function contributeSessionAction({ lifetime, entry, id, qualifiedTitle, load }: PackageComponent) {
+  const Action = lazy(async () => {
+    const rendering = await load();
+    return {
+      default: ({ session }: { session: CapturedSession }) => (
+        <InstalledSessionActionComponent {...rendering} session={session} />
+      ),
+    };
+  });
+  lifetime.add(
+    SESSION_ACTION,
+    {
+      id,
+      title: qualifiedTitle,
+      localizedTitles: entry.localizedTitles,
+      component: Action,
+    },
+    { key: id },
+  );
+}
+
+// Effects and toolbar actions have no surface of their own to show loading or recovery in.
+const SURFACELESS_PLACEMENTS = new Set<ComponentEntry["placement"]>([
+  "clientEffect",
+  "sharedClientEffect",
+  "messageAction",
+  "workspaceChangesAction",
+]);
+
+function contributePlacedComponent(
+  {
+    lifetime,
+    installation,
+    entry,
+    id,
+    qualifiedTitle,
+    failureScope,
+    modules,
+    load,
+  }: PackageComponent,
+  workspace: WorkspaceAccess,
+) {
+  const { placement } = entry;
+  const View = lazy(async () => {
+    const rendering = { placement, ...(await load()) };
+    switch (placement) {
+      case "messageAction":
+        return { default: () => <InstalledMessageAction {...rendering} /> };
+      case "workspaceChangesAction":
+        return {
+          default: () => (
+            <WorkspaceChangesAction
+              {...rendering}
+              targetView={packageScopedId(installation.id, entry.targetView!)}
+            />
+          ),
+        };
+      case "clientEffect":
+      case "sharedClientEffect":
+        return { default: () => <RenderingComponent {...rendering} /> };
+      default:
+        return { default: () => <InstalledComponent {...rendering} scope={entry.scope} /> };
+    }
+  });
+  const surfaceless = SURFACELESS_PLACEMENTS.has(placement);
+  const PlacedComponent = () => (
+    <ComponentBoundary
+      scope={failureScope}
+      reload={() => modules.reload()}
+      report={surfaceless ? modules.report : undefined}
+    >
+      <Suspense fallback={surfaceless ? null : <ComponentLoading />}>
+        <View />
+      </Suspense>
+    </ComponentBoundary>
+  );
   switch (placement) {
     case "messageAction":
-      return { slot: "message.actions" as const, order: 15 };
+      contributeLayout(lifetime, "message.actions", { id, order: 15, component: PlacedComponent });
+      return;
     case "workspaceChangesAction":
-      return { slot: "chat.header.meta" as const };
-    default:
-      return undefined;
+      contributeLayout(lifetime, "chat.header.meta", { id, component: PlacedComponent });
+      return;
+    case "sharedClientEffect":
+      lifetime.add(
+        SHARED_CLIENT_EFFECT,
+        {
+          id,
+          group: tupleKey(installation.selected.name, entry.id),
+          title: entry.title,
+          component: PlacedComponent,
+        },
+        { key: id },
+      );
+      return;
+    case "clientEffect":
+      contributeLayout(lifetime, "app.overlay", { id, component: PlacedComponent });
+      return;
+    case "settingsPane":
+      lifetime.add(
+        SETTINGS_PANE,
+        {
+          id,
+          label: entry.title,
+          localizedTitles: entry.localizedTitles,
+          keywords: [entry.title, entry.id],
+          material: entry.material,
+          intent: entry.settingsIntent,
+          group: "extensions",
+          component: PlacedComponent,
+        },
+        { key: id },
+      );
+      return;
   }
+  if (entry.toolCategory) {
+    lifetime.add(
+      TOOL_VIEW_OPENER,
+      {
+        id,
+        predicate: (tool) => tool.category === entry.toolCategory,
+        label: () => presentationTitle(entry.title, entry.localizedTitles, activeLocale()),
+        open: (tool, origin) => {
+          lifetime.lifetime.signal.throwIfAborted();
+          openWorkspaceViewAtPath(workspace, id, tool.fnKind === "path" ? tool.fn : "", origin);
+        },
+      },
+      { key: id },
+    );
+  }
+  lifetime.add(
+    WORKSPACE_VIEW,
+    {
+      id,
+      title: qualifiedTitle,
+      localizedTitles: entry.localizedTitles,
+      material: entry.material,
+      dock: entry.scope === "session" ? "session" : undefined,
+      component: PlacedComponent,
+    },
+    { key: id },
+  );
+}
+
+function contributeThemes(
+  themeAccess: ThemeAccess,
+  lifetime: ContributionScope,
+  installation: PluginInstallation,
+) {
+  const release = installation.selected;
+  for (const theme of release.themes) {
+    const { background, foreground, accent, muted, border } = theme.colors;
+    contributePaletteTheme(themeAccess.preference, lifetime, {
+      id: packageScopedId(installation.id, theme.id),
+      label: `${release.name} · ${theme.title}`,
+      scheme: theme.scheme,
+      palette: { background, foreground, accent, muted, border },
+    });
+  }
+}
+
+function localeSources(client: FlameClient, admitted: PluginInstallation[]) {
+  return admitted.flatMap((installation) =>
+    installation.selected.locales.map((locale) => {
+      const request = {
+        installationId: installation.id,
+        digest: installation.selected.digest,
+        tag: locale.tag,
+      };
+      return {
+        key: JSON.stringify([request.installationId, request.digest, request.tag]),
+        tag: locale.tag,
+        title: locale.title,
+        load: async (signal: AbortSignal) =>
+          (await client.plugins.readLocale(request, signal)).messages,
+      };
+    }),
+  );
 }
 
 function createPackageReconciler(
@@ -114,6 +404,57 @@ function createPackageReconciler(
   const reconcileLocales = createLocaleReconciler(scope, (error) =>
     reportPluginError("flame.builtin.installed-plugin-loader", "setup", error),
   );
+  const contributeInstallation = (
+    lifetime: ContributionScope,
+    installation: PluginInstallation,
+  ) => {
+    const release = installation.selected;
+    for (const entry of release.components) {
+      if (entry.placement === "export") continue;
+      const component = {
+        installationId: installation.id,
+        digest: release.digest,
+        componentId: entry.id,
+      };
+      const compose = compositions.renderer(lifetime, [component]);
+      const binding = operationBinding(installation, entry);
+      contributeComponent(
+        {
+          lifetime,
+          installation,
+          entry,
+          id: packageScopedId(installation.id, entry.id),
+          qualifiedTitle: `${release.name} · ${entry.title}`,
+          failureScope: componentFailureScope(component, generation),
+          modules,
+          load: async () => {
+            const loaded = await modules.component(
+              moduleScope,
+              client,
+              endpoint,
+              generation,
+              installation,
+              entry,
+            );
+            return {
+              entry: loaded.component,
+              reload: loaded.reload,
+              component,
+              generation,
+              compose,
+              saveFile,
+              resources: loaded.signal,
+              runtime: client,
+              binding,
+              lifetime,
+            };
+          },
+        },
+        workspace,
+      );
+    }
+    contributeThemes(themeAccess, lifetime, installation);
+  };
   return async (installations: PluginInstallation[]) => {
     const admitted = installations.filter((item) => item.presentation === "admitted");
     // A withheld but enabled package is still the user's language source; only
@@ -123,25 +464,7 @@ function createPackageReconciler(
         .filter((item) => item.enabled)
         .flatMap((item) => item.selected.locales.map((locale) => locale.tag)),
     );
-    await reconcileLocales(
-      admitted.flatMap((installation) =>
-        installation.selected.locales.map((locale) => {
-          const request = {
-            installationId: installation.id,
-            digest: installation.selected.digest,
-            tag: locale.tag,
-          };
-          return {
-            key: JSON.stringify([request.installationId, request.digest, request.tag]),
-            tag: locale.tag,
-            title: locale.title,
-            load: async (signal: AbortSignal) =>
-              (await client.plugins.readLocale(request, signal)).messages,
-          };
-        }),
-      ),
-      offered,
-    );
+    await reconcileLocales(localeSources(client, admitted), offered);
     retainThemeSelection(
       themeAccess.preference,
       admitted.flatMap((item) =>
@@ -158,8 +481,7 @@ function createPackageReconciler(
     }
     for (const installation of admitted) {
       if (scope.lifetime.signal.aborted) return;
-      const release = installation.selected;
-      const signature = release.digest;
+      const signature = installation.selected.digest;
       const previous = resources.get(installation.id);
       if (previous?.signature === signature) continue;
       if (previous) {
@@ -169,262 +491,7 @@ function createPackageReconciler(
       if (scope.lifetime.signal.aborted) return;
       const lifetime = scope.child(installation.id);
       resources.set(installation.id, { signature, lifetime });
-      for (const entry of release.components) {
-        const { placement, scope: contextScope } = entry;
-        if (placement === "export") continue;
-        const component = {
-          installationId: installation.id,
-          digest: release.digest,
-          componentId: entry.id,
-        };
-        const compose = compositions.renderer(lifetime, [component]);
-        const binding = operationBinding(installation, entry);
-        const loadRendering = async () => {
-          const loaded = await modules.component(
-            moduleScope,
-            client,
-            endpoint,
-            generation,
-            installation,
-            entry,
-          );
-          return {
-            entry: loaded.component,
-            reload: loaded.reload,
-            component,
-            generation,
-            compose,
-            saveFile,
-            resources: loaded.signal,
-            runtime: client,
-            binding,
-            lifetime,
-          };
-        };
-        if (placement === "fileRenderer") {
-          if (!entry.selector || entry.selector.type !== "fileExtension")
-            throw new Error("File component requires an extension selector");
-          const File = lazy(async () => {
-            const rendering = await loadRendering();
-            return {
-              default: ({ file, fallback }: { file: CapturedFile; fallback: ReactNode }) => (
-                <InstalledFileComponent {...rendering} file={file} fallback={fallback} />
-              ),
-            };
-          });
-          const id = packageScopedId(installation.id, entry.id);
-          lifetime.add(
-            WORKSPACE_FILE_RENDERER,
-            {
-              id,
-              title: `${release.name} · ${entry.title}`,
-              extension: entry.selector.name,
-              component: (props) => (
-                <ComponentBoundary
-                  scope={componentFailureScope(component, generation)}
-                  reload={() => modules.reload()}
-                  fallback={props.fallback}
-                >
-                  <Suspense fallback={props.fallback}>
-                    <RecordedFileComponent {...props} entry={File} />
-                  </Suspense>
-                </ComponentBoundary>
-              ),
-            },
-            { key: id },
-          );
-          continue;
-        }
-        if (placement === "toolResultRenderer") {
-          if (!entry.selector || entry.selector.type === "fileExtension")
-            throw new Error("Tool result component requires a result selector");
-          const Result = lazy(async () => {
-            const rendering = await loadRendering();
-            return {
-              default: ({
-                toolResult,
-                fallback,
-              }: {
-                toolResult: CapturedToolResult;
-                fallback: ReactNode;
-              }) => (
-                <InstalledToolResultComponent
-                  {...rendering}
-                  toolResult={toolResult}
-                  fallback={fallback}
-                />
-              ),
-            };
-          });
-          const id = packageScopedId(installation.id, entry.id);
-          lifetime.add(
-            TOOL_RESULT_RENDERER,
-            {
-              id,
-              title: `${release.name} · ${entry.title}`,
-              selector:
-                entry.selector.type === "resultShape"
-                  ? { type: "resultShape", shape: entry.selector.shape }
-                  : { type: "toolName", name: entry.selector.name },
-              component: (props) => (
-                <ComponentBoundary
-                  scope={componentFailureScope(component, generation)}
-                  reload={() => modules.reload()}
-                  fallback={props.fallback}
-                >
-                  <Suspense fallback={props.fallback}>
-                    <RecordedToolComponent {...props} entry={Result} />
-                  </Suspense>
-                </ComponentBoundary>
-              ),
-            },
-            { key: id },
-          );
-          continue;
-        }
-        if (placement === "sessionAction") {
-          const Action = lazy(async () => {
-            const rendering = await loadRendering();
-            return {
-              default: ({ session }: { session: CapturedSession }) => (
-                <InstalledSessionActionComponent {...rendering} session={session} />
-              ),
-            };
-          });
-          const id = packageScopedId(installation.id, entry.id);
-          lifetime.add(
-            SESSION_ACTION,
-            {
-              id,
-              title: `${release.name} · ${entry.title}`,
-              localizedTitles: entry.localizedTitles,
-              component: Action,
-            },
-            { key: id },
-          );
-          continue;
-        }
-        const View = lazy(async () => {
-          const rendering = { placement, ...(await loadRendering()) };
-          if (placement === "messageAction")
-            return { default: () => <InstalledMessageAction {...rendering} /> };
-          if (placement === "workspaceChangesAction")
-            return {
-              default: () => (
-                <WorkspaceChangesAction
-                  {...rendering}
-                  targetView={packageScopedId(installation.id, entry.targetView!)}
-                />
-              ),
-            };
-          return {
-            default: () =>
-              placement === "clientEffect" || placement === "sharedClientEffect" ? (
-                <RenderingComponent {...rendering} />
-              ) : (
-                <InstalledComponent {...rendering} scope={contextScope} />
-              ),
-          };
-        });
-        const id = packageScopedId(installation.id, entry.id);
-        const action = actionPlacement(placement);
-        const surfaceless =
-          placement === "clientEffect" || placement === "sharedClientEffect" || !!action;
-        const PlacedComponent = () => (
-          <ComponentBoundary
-            scope={componentFailureScope(component, generation)}
-            reload={() => modules.reload()}
-            report={surfaceless ? modules.report : undefined}
-          >
-            <Suspense fallback={surfaceless ? null : <ComponentLoading />}>
-              <View />
-            </Suspense>
-          </ComponentBoundary>
-        );
-        if (action) {
-          contributeLayout(lifetime, action.slot, {
-            id,
-            order: action.order,
-            component: PlacedComponent,
-          });
-          continue;
-        }
-        if (placement === "sharedClientEffect") {
-          lifetime.add(
-            SHARED_CLIENT_EFFECT,
-            {
-              id,
-              group: tupleKey(release.name, entry.id),
-              title: entry.title,
-              component: PlacedComponent,
-            },
-            { key: id },
-          );
-          continue;
-        }
-        if (placement === "clientEffect") {
-          contributeLayout(lifetime, "app.overlay", { id, component: PlacedComponent });
-          continue;
-        }
-        if (placement === "settingsPane") {
-          lifetime.add(
-            SETTINGS_PANE,
-            {
-              id,
-              label: entry.title,
-              localizedTitles: entry.localizedTitles,
-              keywords: [entry.title, entry.id],
-              material: entry.material,
-              intent: entry.settingsIntent,
-              group: "extensions",
-              component: PlacedComponent,
-            },
-            { key: id },
-          );
-          continue;
-        }
-        if (entry.toolCategory) {
-          lifetime.add(
-            TOOL_VIEW_OPENER,
-            {
-              id,
-              predicate: (tool) => tool.category === entry.toolCategory,
-              label: () => presentationTitle(entry.title, entry.localizedTitles, activeLocale()),
-              open: (tool, origin) => {
-                lifetime.lifetime.signal.throwIfAborted();
-                openWorkspaceViewAtPath(
-                  workspace,
-                  id,
-                  tool.fnKind === "path" ? tool.fn : "",
-                  origin,
-                );
-              },
-            },
-            { key: id },
-          );
-        }
-        lifetime.add(
-          WORKSPACE_VIEW,
-          {
-            id,
-            title: `${release.name} · ${entry.title}`,
-            localizedTitles: entry.localizedTitles,
-            material: entry.material,
-            dock: contextScope === "session" ? "session" : undefined,
-            component: PlacedComponent,
-          },
-          { key: id },
-        );
-      }
-      for (const theme of release.themes) {
-        const { background, foreground, accent, muted, border } = theme.colors;
-        contributePaletteTheme(themeAccess.preference, lifetime, {
-          id: packageScopedId(installation.id, theme.id),
-          label: `${release.name} · ${theme.title}`,
-          scheme: theme.scheme,
-          palette: { background, foreground, accent, muted, border },
-        });
-      }
+      contributeInstallation(lifetime, installation);
     }
   };
 }
