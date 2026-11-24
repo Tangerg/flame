@@ -51437,6 +51437,17 @@ visual suites and performance benchmarks remain excluded. No migration is needed
 Whole-product and award-level acceptance remain open. Continue selecting the
 next batch from fresh native evidence in remaining task paths.
 
+### Provider credential tags in the right voice (2026-11-24)
+
+Provider credential tags set every state in mono lowercase (`not configured`,
+`from env`, `ready`), as if they were data. Only a masked key is data.
+`ProviderCredentialBadge` now keeps mono for `Key sk-…7F2A` and uses the body
+face for the other states. English, German, Spanish and French are
+sentence-cased (`Not configured`, `From environment`, `Ready`); CJK catalogs
+are unchanged. Native Settings → Providers shows `Key sk-…7F2A` in mono and
+`Not configured` in the body face. Plugin typecheck, `check-i18n` and
+published resource checks pass.
+
 ### Literal Provider command-error reading (2026-11-13)
 
 Qualified from `7ee40983b`. Actual Wails reproduced a known Utility role refusal

@@ -17,8 +17,8 @@ export const de: Record<string, string> = {
     "Verwende eine HTTP(S)-URL ohne Zugangsdaten, Abfrage oder Fragment.",
   "providers.baseUrl.aria": "{{provider}} Basis-URL",
   "providers.key": "Schlüssel {{masked}}",
-  "providers.ready": "bereit",
-  "providers.notConfigured": "nicht konfiguriert",
+  "providers.ready": "Bereit",
+  "providers.notConfigured": "Nicht konfiguriert",
   "providers.save": "Speichern",
   "providers.saving": "Speichern…",
   "providers.test": "Testen",
@@ -32,7 +32,7 @@ export const de: Record<string, string> = {
   "providers.empty.sub": "Die Runtime meldet keine unterstützten LLM-Anbieter.",
   "providers.apiKey.envPlaceholder":
     "Umgebungsschlüssel wird verwendet — tippen zum Überschreiben",
-  "providers.fromEnv": "aus Umgebung",
+  "providers.fromEnv": "Aus Umgebung",
   "providers.utility.title": "Hilfsmodell",
   "providers.utility.desc":
     "Modell für Zusammenfassungen, Titel und Faktenextraktion. Ohne Auswahl gilt der Runtime-Standard. Änderungen gelten ab dem nächsten Hilfsaufruf, auch innerhalb einer laufenden Ausführung.",

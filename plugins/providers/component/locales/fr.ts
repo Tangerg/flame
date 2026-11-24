@@ -16,9 +16,9 @@ export const fr: Record<string, string> = {
   "providers.baseUrl.invalid":
     "Saisissez une URL HTTP(S) sans identifiants, paramètres ni fragment.",
   "providers.baseUrl.aria": "URL de base {{provider}}",
-  "providers.key": "clé {{masked}}",
-  "providers.ready": "prêt",
-  "providers.notConfigured": "non configuré",
+  "providers.key": "Clé {{masked}}",
+  "providers.ready": "Prêt",
+  "providers.notConfigured": "Non configuré",
   "providers.save": "Enregistrer",
   "providers.saving": "Enregistrement…",
   "providers.test": "Tester",
@@ -33,7 +33,7 @@ export const fr: Record<string, string> = {
     "Le Runtime ne signale aucun fournisseur LLM pris en charge.",
   "providers.apiKey.envPlaceholder":
     "Clé d'environnement utilisée — saisissez pour la remplacer",
-  "providers.fromEnv": "depuis l'environnement",
+  "providers.fromEnv": "Depuis l'environnement",
   "providers.utility.title": "Modèle utilitaire",
   "providers.utility.desc":
     "Modèle pour les résumés, titres et extractions de faits. Sans sélection, le modèle par défaut de Runtime est utilisé. Les changements prennent effet au prochain appel auxiliaire, même pendant une exécution en cours.",

@@ -29,18 +29,15 @@ function ProviderCredentialBadge({
   const credential = provider.credential;
   if (credential?.source === "env")
     return (
-      <Badge tone="info" title={credential.masked} face="mono">
+      <Badge tone="info" title={credential.masked}>
         {t("providers.fromEnv")}
       </Badge>
     );
   if (!provider.configured)
-    return (
-      <Badge tone="neutral" face="mono">
-        {t("providers.notConfigured")}
-      </Badge>
-    );
+    return <Badge tone="neutral">{t("providers.notConfigured")}</Badge>;
   return (
-    <Badge tone="success" face="mono">
+    // Only the masked key is data; the surrounding words keep the body face.
+    <Badge tone="success" face={credential ? "mono" : undefined}>
       {credential
         ? t("providers.key", { masked: credential.masked })
         : t("providers.ready")}

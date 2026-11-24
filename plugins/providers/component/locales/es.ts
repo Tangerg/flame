@@ -16,9 +16,9 @@ export const es: Record<string, string> = {
   "providers.baseUrl.invalid":
     "Introduce una URL HTTP(S) sin credenciales, consulta ni fragmento.",
   "providers.baseUrl.aria": "URL base de {{provider}}",
-  "providers.key": "clave {{masked}}",
-  "providers.ready": "listo",
-  "providers.notConfigured": "sin configurar",
+  "providers.key": "Clave {{masked}}",
+  "providers.ready": "Listo",
+  "providers.notConfigured": "Sin configurar",
   "providers.save": "Guardar",
   "providers.saving": "Guardando…",
   "providers.test": "Probar",
@@ -33,7 +33,7 @@ export const es: Record<string, string> = {
     "El Runtime no informa proveedores de LLM compatibles.",
   "providers.apiKey.envPlaceholder":
     "Usando la clave del entorno: escribe para sobrescribirla",
-  "providers.fromEnv": "del entorno",
+  "providers.fromEnv": "Del entorno",
   "providers.utility.title": "Modelo auxiliar",
   "providers.utility.desc":
     "Modelo para resúmenes, títulos y extracción de hechos. Sin selección, usa el modelo predeterminado de Runtime. Los cambios se aplican a la siguiente llamada auxiliar, incluso durante una ejecución en curso.",
