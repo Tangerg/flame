@@ -33,7 +33,7 @@ func TestSessionActionUsesCanonicalSessionRevisionAndDurableReplay(t *testing.T)
 	session := r.must(delivery.SessionsCreate, protocol.CreateSessionRequest{Title: "Original"}, "session").(*protocol.Session)
 	title := "Renamed"
 	request := protocol.UpdateSessionRequest{SessionID: session.ID, ExpectedRevision: session.Revision, Title: &title}
-	resource := protocol.ReadPluginResourceRequest{OpenPluginResourcesRequest: protocol.OpenPluginResourcesRequest{PluginReleaseRequest: protocol.PluginReleaseRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest}, ComponentID: component.ID}, Path: component.Entry}
+	resource := protocol.ReadPluginResourceRequest{PluginReleaseRequest: protocol.PluginReleaseRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest}, ComponentID: component.ID, Path: component.Entry}
 	resourceRefused := func() {
 		t.Helper()
 		result := r.endpoint.Invoke(t.Context(), delivery.PluginsReadResource, resource, protocol.CallMetadata{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})

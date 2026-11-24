@@ -203,9 +203,6 @@ func (r *Runtime) StreamPlugin(ctx context.Context, request protocol.CallPluginR
 func (r *Runtime) NotifyPluginChange(ctx context.Context, request protocol.PluginChangeNotice, options protocol.CommandOptions) error {
 	return r.invokeAck[protocol.PluginChangeNotice](ctx, delivery.Name("plugins.notifyChange"), request, options.Metadata())
 }
-func (r *Runtime) OpenPluginResources(ctx context.Context, request protocol.OpenPluginResourcesRequest, options protocol.SubscriptionOptions) (*protocol.PluginResourceLease, iter.Seq2[protocol.PluginResourceEvent, error], error) {
-	return r.invokeStream[protocol.OpenPluginResourcesRequest, *protocol.PluginResourceLease, protocol.PluginResourceEvent](ctx, delivery.Name("plugins.openResources"), request, options.Metadata())
-}
 func (r *Runtime) ReadPluginResource(ctx context.Context, request protocol.ReadPluginResourceRequest, options protocol.CallOptions) (*protocol.PluginResource, error) {
 	return r.invoke[protocol.ReadPluginResourceRequest, *protocol.PluginResource](ctx, delivery.Name("plugins.readResource"), request, options.Metadata())
 }

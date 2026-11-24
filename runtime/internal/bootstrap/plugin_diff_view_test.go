@@ -52,7 +52,7 @@ func TestDiffComponentUsesCanonicalWorkspaceReadsAndWithdrawalPreservesFiles(t *
 	if component.Scope != "workspace" || component.Material != "diff" {
 		t.Fatalf("workspace diff component: %+v", component)
 	}
-	resource := protocol.ReadPluginResourceRequest{OpenPluginResourcesRequest: protocol.OpenPluginResourcesRequest{PluginReleaseRequest: protocol.PluginReleaseRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest}, ComponentID: component.ID}, Path: component.Entry}
+	resource := protocol.ReadPluginResourceRequest{PluginReleaseRequest: protocol.PluginReleaseRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest}, ComponentID: component.ID, Path: component.Entry}
 	read := protocol.GetDiffRequest{Workspace: protocol.WorkspaceRef{Path: root}, Format: protocol.DiffFormatVisual}
 	compare := func() {
 		t.Helper()

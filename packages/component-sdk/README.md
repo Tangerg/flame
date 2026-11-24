@@ -9,7 +9,7 @@ SDK exposes no application alias, private state store or ambient service lookup.
 
 Components with `settingsPane` placement contribute optional settings entries in
 the host's Extensions group. Client, workspace and installation contexts use the
-same captured identity, resource lease and command lifetime as workspace views.
+same captured identity, component Use and command lifetime as workspace views.
 Disabling the installation removes its entry. Locale changes update the display
 projection while preserving accepted work and its original cancellation signal.
 The optional `settingsIntent` is a package-declared identifier. Clients can address any admitted intent, including `model-providers` for model

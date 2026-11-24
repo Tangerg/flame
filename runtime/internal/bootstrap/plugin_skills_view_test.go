@@ -95,7 +95,7 @@ func TestSkillsComponentUsesCanonicalOwnersAndWithdrawalPreservesCuration(t *tes
 	proposal := skills.Proposal{Scope: skills.ScopeUser, Name: "review", Description: "Review changes", Instructions: "Inspect the important invariants.", Origin: skills.ProposalOriginRequested}
 	ref := submit("initial", proposal)
 	component := installed.Selected.Components[0]
-	resource := protocol.ReadPluginResourceRequest{OpenPluginResourcesRequest: protocol.OpenPluginResourcesRequest{PluginReleaseRequest: protocol.PluginReleaseRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest}, ComponentID: component.ID}, Path: component.Entry}
+	resource := protocol.ReadPluginResourceRequest{PluginReleaseRequest: protocol.PluginReleaseRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest}, ComponentID: component.ID, Path: component.Entry}
 	query := protocol.WorkspaceQuery{Workspace: protocol.WorkspaceRef{Path: cfg.defaultWorkspacePath}}
 	detail := protocol.SkillDetailRequest{Workspace: query.Workspace, Name: "verify"}
 	inspect := func() {

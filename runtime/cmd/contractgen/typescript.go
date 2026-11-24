@@ -134,9 +134,6 @@ func (t *tsEmitter) httpEndpoints() {
 		t.line("    method: %s,", wiregen.StringLiteral(endpoint.Method))
 		t.line("    path: %s,", wiregen.StringLiteral(endpoint.Path))
 		t.line("    authentication: %s,", wiregen.StringLiteral(string(endpoint.Authentication)))
-		if endpoint.Projects != "" {
-			t.line("    projects: %s,", wiregen.StringLiteral(string(endpoint.Projects)))
-		}
 		statuses := make([]string, 0, len(endpoint.ResponseStatuses))
 		for _, status := range endpoint.ResponseStatuses {
 			statuses = append(statuses, strconv.Itoa(status))

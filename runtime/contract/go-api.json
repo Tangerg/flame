@@ -812,10 +812,6 @@
               "signature": "func(ctx context.Context, request protocol.OpenPluginBrowserRealmRequest, options protocol.CommandOptions) (*protocol.PluginBrowserSession, error)"
             },
             {
-              "name": "OpenPluginResources",
-              "signature": "func(ctx context.Context, request protocol.OpenPluginResourcesRequest, options protocol.SubscriptionOptions) (*protocol.PluginResourceLease, iter.Seq2[protocol.PluginResourceEvent, error], error)"
-            },
-            {
               "name": "ReadPluginLocale",
               "signature": "func(ctx context.Context, request protocol.ReadPluginLocaleRequest, options protocol.CallOptions) (*protocol.PluginLocaleCatalog, error)"
             },
@@ -14376,21 +14372,6 @@
           ]
         },
         {
-          "name": "OpenPluginResourcesRequest",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "PluginReleaseRequest",
-              "type": "PluginReleaseRequest"
-            },
-            {
-              "name": "ComponentID",
-              "type": "string",
-              "tag": "json:\"componentId\""
-            }
-          ]
-        },
-        {
           "name": "OperationResult",
           "kind": "struct",
           "fields": [
@@ -15555,26 +15536,6 @@
           ]
         },
         {
-          "name": "PluginResourceEvent",
-          "kind": "struct"
-        },
-        {
-          "name": "PluginResourceLease",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "Token",
-              "type": "string",
-              "tag": "json:\"token\""
-            },
-            {
-              "name": "Entry",
-              "type": "string",
-              "tag": "json:\"entry\""
-            }
-          ]
-        },
-        {
           "name": "PluginServerDeclaration",
           "kind": "struct",
           "fields": [
@@ -16299,8 +16260,13 @@
           "kind": "struct",
           "fields": [
             {
-              "name": "OpenPluginResourcesRequest",
-              "type": "OpenPluginResourcesRequest"
+              "name": "PluginReleaseRequest",
+              "type": "PluginReleaseRequest"
+            },
+            {
+              "name": "ComponentID",
+              "type": "string",
+              "tag": "json:\"componentId\""
             },
             {
               "name": "Path",
@@ -20183,10 +20149,6 @@
             {
               "name": "OpenPluginBrowserRealm",
               "signature": "func(ctx context.Context, request protocol.OpenPluginBrowserRealmRequest, options protocol.CommandOptions) (*protocol.PluginBrowserSession, error)"
-            },
-            {
-              "name": "OpenPluginResources",
-              "signature": "func(ctx context.Context, request protocol.OpenPluginResourcesRequest, options protocol.SubscriptionOptions) (*protocol.PluginResourceLease, iter.Seq2[protocol.PluginResourceEvent, error], error)"
             },
             {
               "name": "ReadPluginLocale",

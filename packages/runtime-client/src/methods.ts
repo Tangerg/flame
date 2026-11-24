@@ -13,8 +13,6 @@ import type {
   AcquirePluginComponentRequest,
   ClosePluginBrowserRealmRequest,
   PluginBrowserUseGrant,
-  OpenPluginResourcesRequest,
-  PluginResourceLease,
   ReadPluginResourceRequest,
   ReadPluginLocaleRequest,
   PluginLocaleCatalog,
@@ -138,7 +136,6 @@ import type {
 } from "@flame/runtime-client/wire";
 import { streamRunEvents, streamRuntimeEvents } from "./stream";
 import { createRuntimeEventFeed } from "./runtimeEventFeed";
-import { openResourceLease, type ResourceSubscription } from "./resources";
 import type { AutoPagingPromise } from "./pagination";
 import { RUNTIME_SUBSCRIBE_METHOD } from "./transport";
 import {
@@ -426,10 +423,6 @@ export interface Methods {
       request: SelectPluginProviderRequest,
       signal?: AbortSignal,
     ) => MutationPromise<PluginProviderSelection>;
-    openResources: (
-      request: OpenPluginResourcesRequest,
-      signal?: AbortSignal,
-    ) => Promise<ResourceSubscription<PluginResourceLease>>;
     readResource: (
       request: ReadPluginResourceRequest,
       signal?: AbortSignal,
@@ -955,7 +948,6 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
       resolveComposition: (request, signal) =>
         call("plugins.resolveComposition", request, { signal }),
       selectProvider: (request, signal) => call("plugins.selectProvider", request, { signal }),
-      openResources: (request, signal) => openResourceLease(client, call, request, signal),
       readResource: (request, signal) => call("plugins.readResource", request, { signal }),
       readLocale: (request, signal) => call("plugins.readLocale", request, { signal }),
       resolvePoint: (request, signal) => call("plugins.resolvePoint", request, { signal }),

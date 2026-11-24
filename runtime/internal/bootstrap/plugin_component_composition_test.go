@@ -80,7 +80,7 @@ func TestIndependentComponentPackagesComposeThroughInstallationLifecycle(t *test
 			if len(r.must(delivery.PluginsResolvePoint, summary, "").(*protocol.Page[protocol.PluginPointBinding]).Data) != 1 {
 				t.Fatal("selection failed")
 			}
-			resource := protocol.ReadPluginResourceRequest{OpenPluginResourcesRequest: protocol.OpenPluginResourcesRequest{PluginReleaseRequest: protocol.PluginReleaseRequest{InstallationID: provider.ID, Digest: provider.Selected.Digest}, ComponentID: "panel"}, Path: "io.github.tangerg.flame/components/component.js"}
+			resource := protocol.ReadPluginResourceRequest{PluginReleaseRequest: protocol.PluginReleaseRequest{InstallationID: provider.ID, Digest: provider.Selected.Digest}, ComponentID: "panel", Path: "io.github.tangerg.flame/components/component.js"}
 			r.must(delivery.PluginsReadResource, resource, "")
 			refused := func(method delivery.Name, input any, want error) {
 				t.Helper()

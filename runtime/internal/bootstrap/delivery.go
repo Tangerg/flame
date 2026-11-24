@@ -93,7 +93,7 @@ func (h *runtimeApplication) publishCallbacks(endpoint *delivery.Endpoint) error
 		return err
 	}
 	mux := http.NewServeMux()
-	runtimehttp.RegisterCallbackEndpoints(mux, rpc, runtimehttp.NewPluginResourceHandler(endpoint))
+	runtimehttp.RegisterCallbackEndpoints(mux, rpc)
 	return h.callbacks.PublishRPC(mux, h.modelCallbacks...)
 }
 

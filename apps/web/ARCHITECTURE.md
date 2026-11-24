@@ -151,7 +151,7 @@ Workspace view contributions with `material: "diff"` and owns no separate render
 registration. The former compiled Diff view and guest carrier are removed.
 
 Optional settings pages use installed `settingsPane` components in the Extensions
-group. They share the ordinary package resource lease, error boundary and captured
+group. They share the ordinary component Use, error boundary and captured
 command lifetime. Brand artwork, Hooks management, model configuration and MCP settings live in
 `plugins/brand`, `plugins/hooks`, `plugins/providers` and `plugins/mcp`; Runtime
 retains credentials, model roles, project trust, MCP connections, OAuth attempts

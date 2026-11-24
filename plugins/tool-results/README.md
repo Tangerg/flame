@@ -128,7 +128,7 @@ inspection during loading, failure, connection retirement and withdrawal. Openin
 history never downloads or executes the old producer's JavaScript or replays a Tool.
 
 The component is trusted workbench code using shared React, the public SDK and UI
-controls/provider context. It uses the common exact-release resource lease and logical
+controls/provider context. It uses the common exact-release component Use and logical
 component lifetime; replacement may require a window reload. The HTML guest, channel,
 source, resource and dedicated builder are removed. Rebuild through
 `node plugins/scripts/build-components.mjs`; verify with the same command's `--check` option.

@@ -24,7 +24,6 @@ export type {
   SteerCommandResult,
   SteerMutationPromise,
 } from "./methods";
-export type { ResourceSubscription } from "./resources";
 export { createFlameClient } from "./sdk";
 export type { FlameClient, FlameClientOptions } from "./sdk";
 export { HTTP_ENDPOINTS, PROTOCOL_VERSION } from "@flame/runtime-client/wire";

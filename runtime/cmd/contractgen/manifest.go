@@ -43,7 +43,6 @@ type httpEndpointEntry struct {
 	Authentication   string          `json:"authentication"`
 	ResponseStatuses []int           `json:"responseStatuses"`
 	Response         *wiregen.Schema `json:"response,omitzero"`
-	Projects         string          `json:"projects,omitzero"`
 }
 
 type methodEntry struct {
@@ -217,7 +216,6 @@ func httpEndpoints(walked *schemaSet) []httpEndpointEntry {
 			Authentication:   string(endpoint.Authentication),
 			ResponseStatuses: slices.Clone(endpoint.ResponseStatuses),
 			Response:         response,
-			Projects:         string(endpoint.Projects),
 		})
 	}
 	return out

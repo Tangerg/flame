@@ -4,10 +4,8 @@ import (
 	"net/http"
 	"reflect"
 	"slices"
-	"strings"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -48,31 +46,26 @@ func requestHeaders() []string {
 type EndpointKind string
 
 const (
-	EndpointKindRPC      EndpointKind = "rpc"
-	EndpointKindSidecar  EndpointKind = "sidecar"
-	endpointKindResource EndpointKind = "resource"
-	endpointKindControl  EndpointKind = "pluginControl"
+	EndpointKindRPC     EndpointKind = "rpc"
+	EndpointKindSidecar EndpointKind = "sidecar"
+	endpointKindControl EndpointKind = "pluginControl"
 )
 
 type EndpointAuthentication string
 
 const (
-	EndpointAuthenticationNone          EndpointAuthentication = "none"
-	EndpointAuthenticationLocalToken    EndpointAuthentication = "localToken"
-	EndpointAuthenticationResourceLease EndpointAuthentication = "resourceLease"
-	EndpointAuthenticationRealm         EndpointAuthentication = "pluginRealm"
+	EndpointAuthenticationNone       EndpointAuthentication = "none"
+	EndpointAuthenticationLocalToken EndpointAuthentication = "localToken"
+	EndpointAuthenticationRealm      EndpointAuthentication = "pluginRealm"
 )
 
 const (
-	endpointPrefix          = "/v2"
-	endpointRPC             = "rpc"
-	endpointInfo            = "info"
-	endpointLiveness        = "liveness"
-	endpointReadiness       = "readiness"
-	endpointPluginResources = "pluginResources"
+	endpointPrefix    = "/v2"
+	endpointRPC       = "rpc"
+	endpointInfo      = "info"
+	endpointLiveness  = "liveness"
+	endpointReadiness = "readiness"
 )
-
-const pluginResourcePrefix = endpointPrefix + "/plugin-resources/"
 
 const PluginControlPath = endpointPrefix + "/frame"
 
@@ -84,7 +77,6 @@ type EndpointSpec struct {
 	Authentication   EndpointAuthentication
 	ResponseStatuses []int
 	ResponseType     reflect.Type
-	Projects         delivery.Name
 }
 
 type endpointRegistration struct {
@@ -124,10 +116,6 @@ var endpointRegistry = struct {
 			handler: func(server *Server, w http.ResponseWriter, r *http.Request) {
 				server.pluginControl.ServeHTTP(w, r)
 			},
-		},
-		{
-			EndpointSpec: EndpointSpec{Name: endpointPluginResources, Projects: delivery.PluginsReadResource, Kind: endpointKindResource, Method: http.MethodGet, Path: pluginResourcePrefix + "{lease}/*", Authentication: EndpointAuthenticationResourceLease, ResponseStatuses: []int{http.StatusOK, http.StatusGone, http.StatusInternalServerError}},
-			handler:      func(server *Server, w http.ResponseWriter, r *http.Request) { server.resources.ServeHTTP(w, r) },
 		},
 		{
 			EndpointSpec: EndpointSpec{
@@ -220,13 +208,11 @@ func endpointPath(name string) string {
 	return endpointNamed(name).Path
 }
 
-func RegisterCallbackEndpoints(mux *http.ServeMux, rpc, resources http.Handler) {
+func RegisterCallbackEndpoints(mux *http.ServeMux, rpc http.Handler) {
 	for _, route := range endpointRegistry.Endpoints {
 		switch route.Kind {
 		case EndpointKindRPC:
 			mux.Handle(route.Method+" "+route.Path, rpc)
-		case endpointKindResource:
-			mux.Handle(route.Method+" "+strings.Replace(route.Path, "/*", "/{resource...}", 1), resources)
 		case EndpointKindSidecar, endpointKindControl:
 		}
 	}
@@ -241,7 +227,7 @@ func registerEndpoints(router *chi.Mux, server *Server) {
 		switch endpoint.Authentication {
 		case EndpointAuthenticationLocalToken:
 			routed = server.protectRPC(routed)
-		case EndpointAuthenticationNone, EndpointAuthenticationResourceLease, EndpointAuthenticationRealm:
+		case EndpointAuthenticationNone, EndpointAuthenticationRealm:
 		default:
 			panic("http: endpoint has invalid authentication policy")
 		}

@@ -55,7 +55,7 @@ func TestTrajectoryComponentReadsInstalledBytesAndCanonicalHistory(t *testing.T)
 	if component.Scope != "session" || component.Placement != extension.ComponentPlacementWorkspaceView || component.Export != "Trajectory" {
 		t.Fatalf("trajectory component: %+v", component)
 	}
-	request := protocol.ReadPluginResourceRequest{OpenPluginResourcesRequest: protocol.OpenPluginResourcesRequest{PluginReleaseRequest: protocol.PluginReleaseRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest}, ComponentID: component.ID}, Path: component.Entry}
+	request := protocol.ReadPluginResourceRequest{PluginReleaseRequest: protocol.PluginReleaseRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest}, ComponentID: component.ID, Path: component.Entry}
 	checkFailure := func(method delivery.Name, input any, want error) {
 		t.Helper()
 		result := r.endpoint.Invoke(t.Context(), method, input, protocol.CallMetadata{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
@@ -164,7 +164,7 @@ func TestMemoryComponentUsesInstalledPublicOperationsAndPreservesPrivateFacts(t 
 	if len(installed.Selected.Diagnostics) != 0 || len(installed.Selected.Components) != 1 || installed.Selected.Components[0].Scope != "client" {
 		t.Fatalf("memory admission: %+v", installed.Selected)
 	}
-	resourceRequest := protocol.ReadPluginResourceRequest{OpenPluginResourcesRequest: protocol.OpenPluginResourcesRequest{PluginReleaseRequest: protocol.PluginReleaseRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest}, ComponentID: "memory"}, Path: installed.Selected.Components[0].Entry}
+	resourceRequest := protocol.ReadPluginResourceRequest{PluginReleaseRequest: protocol.PluginReleaseRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest}, ComponentID: "memory", Path: installed.Selected.Components[0].Entry}
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, "enable-memory")
 	r.must(delivery.PluginsSelectProvider, protocol.SelectPluginProviderRequest{Role: "memory", InstallationID: installed.ID, Contribution: "memory-provider"}, "select-memory")
 	resource := r.must(delivery.PluginsReadResource, resourceRequest, "").(*protocol.PluginResource)
@@ -225,7 +225,7 @@ func TestScheduleComponentUsesOwnBackendAndWithdrawalPreservesPrivateData(t *tes
 		t.Fatalf("schedule admission: %+v", installed.Selected)
 	}
 	component := installed.Selected.Components[0]
-	resource := protocol.ReadPluginResourceRequest{OpenPluginResourcesRequest: protocol.OpenPluginResourcesRequest{PluginReleaseRequest: protocol.PluginReleaseRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest}, ComponentID: component.ID}, Path: component.Entry}
+	resource := protocol.ReadPluginResourceRequest{PluginReleaseRequest: protocol.PluginReleaseRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest}, ComponentID: component.ID, Path: component.Entry}
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, "enable-schedules")
 	r.must(delivery.PluginsSelectProvider, protocol.SelectPluginProviderRequest{Role: "schedules", InstallationID: installed.ID, Contribution: "schedules-provider"}, "select-schedules")
 	projection := r.must(delivery.PluginsReadResource, resource, "").(*protocol.PluginResource)
@@ -313,7 +313,7 @@ func TestUsageComponentUsesCanonicalSummaryAndUninstallPreservesUsage(t *testing
 	}
 	release := protocol.PluginReleaseRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest}
 	component := installed.Selected.Components[0]
-	resourceRequest := protocol.ReadPluginResourceRequest{OpenPluginResourcesRequest: protocol.OpenPluginResourcesRequest{PluginReleaseRequest: release, ComponentID: component.ID}, Path: component.Entry}
+	resourceRequest := protocol.ReadPluginResourceRequest{PluginReleaseRequest: release, ComponentID: component.ID, Path: component.Entry}
 	read := protocol.UsageSummaryRequest{}
 	refused := func(input any, method delivery.Name, want error) {
 		t.Helper()

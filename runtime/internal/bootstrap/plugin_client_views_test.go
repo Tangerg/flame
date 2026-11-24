@@ -38,7 +38,7 @@ func TestClientComponentsRemainAvailableWithoutBackend(t *testing.T) {
 			component := installed.Selected.Components[0]
 			path := component.Entry
 			operation := delivery.PluginsReadResource
-			request := protocol.ReadPluginResourceRequest{OpenPluginResourcesRequest: protocol.OpenPluginResourcesRequest{PluginReleaseRequest: release, ComponentID: component.ID}, Path: path}
+			request := protocol.ReadPluginResourceRequest{PluginReleaseRequest: release, ComponentID: component.ID, Path: path}
 			resource := r.must(operation, request, "").(*protocol.PluginResource)
 			body, err := base64.StdEncoding.DecodeString(resource.Body)
 			if err != nil {

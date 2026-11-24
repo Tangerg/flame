@@ -5,7 +5,7 @@
 > method the Runtime does not serve. The adjacent JSON artifacts are the
 > machine-readable contract; this file is its mechanical human-readable index.
 
-Protocol `2026-10-30.2` · 109 methods
+Protocol `2026-10-30.2` · 108 methods
 
 ## Methods
 
@@ -76,7 +76,6 @@ Protocol `2026-10-30.2` · 109 methods
 | `plugins.retireCommand` | command | unary | ownerResponse | none | none | — | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_disabled`, `plugin_stale`, `plugin_command_retired`, `capability_not_negotiated` |
 | `plugins.stream` | extension | stream | ownerResponse | none | none | — | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_disabled`, `plugin_stale`, `plugin_command_retired`, `capability_not_negotiated` |
 | `plugins.notifyChange` | command | unary | replayResponse | none | none | — | `plugins` | `capability_not_negotiated` |
-| `plugins.openResources` | subscription | stream | none | none | none | — | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_disabled`, `plugin_stale`, `plugin_command_retired`, `capability_not_negotiated` |
 | `plugins.readResource` | query | unary | none | none | none | — | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_disabled`, `plugin_stale`, `plugin_command_retired`, `capability_not_negotiated` |
 | `plugins.readLocale` | query | unary | none | none | none | — | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_disabled`, `plugin_stale`, `plugin_command_retired`, `capability_not_negotiated` |
 | `plugins.resolvePoint` | query | unary | none | none | none | — | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_disabled`, `plugin_stale`, `plugin_command_retired`, `capability_not_negotiated` |
@@ -123,14 +122,13 @@ Protocol `2026-10-30.2` · 109 methods
 
 ## HTTP endpoints
 
-| name | kind | method | path | authentication | response statuses | response | projects |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| `pluginControl` | pluginControl | `POST` | `/v2/frame` | pluginRealm | 200, 401, 409, 503 | — | — |
-| `pluginResources` | resource | `GET` | `/v2/plugin-resources/{lease}/*` | resourceLease | 200, 410, 500 | — | `plugins.readResource` |
-| `rpc` | rpc | `POST` | `/v2/rpc` | localToken | 200, 202, 204 | — | — |
-| `info` | sidecar | `GET` | `/v2/info` | none | 200 | `schema.json#/$defs/RuntimeInfo` | — |
-| `liveness` | sidecar | `GET` | `/v2/health/live` | none | 200 | `schema.json#/$defs/LivenessStatus` | — |
-| `readiness` | sidecar | `GET` | `/v2/health/ready` | none | 200, 503 | `schema.json#/$defs/ReadinessStatus` | — |
+| name | kind | method | path | authentication | response statuses | response |
+| --- | --- | --- | --- | --- | --- | --- |
+| `pluginControl` | pluginControl | `POST` | `/v2/frame` | pluginRealm | 200, 401, 409, 503 | — |
+| `rpc` | rpc | `POST` | `/v2/rpc` | localToken | 200, 202, 204 | — |
+| `info` | sidecar | `GET` | `/v2/info` | none | 200 | `schema.json#/$defs/RuntimeInfo` |
+| `liveness` | sidecar | `GET` | `/v2/health/live` | none | 200 | `schema.json#/$defs/LivenessStatus` |
+| `readiness` | sidecar | `GET` | `/v2/health/ready` | none | 200, 503 | `schema.json#/$defs/ReadinessStatus` |
 
 ## Streaming methods
 
@@ -142,7 +140,6 @@ their own event stream.
 - `runs.subscribe`
 - `runtime.subscribe`
 - `plugins.stream`
-- `plugins.openResources`
 
 ## Run event reliability
 
@@ -1075,7 +1072,7 @@ TypeScript validator from this single registry projection.
 | `PluginTerminalAction` | `id` | `pattern("^[a-z][a-z0-9._-]{0,63}$")` |
 | `PluginTerminalAction` | `title` | `nonEmpty` |
 | `PluginTerminalAction` | `title` | `maxLength(128)` |
-| `OpenPluginResourcesRequest` | `componentId` | `pattern("^[a-z][a-z0-9._-]{0,63}$")` |
+| `ReadPluginResourceRequest` | `componentId` | `pattern("^[a-z][a-z0-9._-]{0,63}$")` |
 | `ReadPluginLocaleRequest` | `tag` | `nonEmpty` |
 | `ReadPluginLocaleRequest` | `tag` | `maxLength(128)` |
 | `PluginLocale` | `tag` | `nonEmpty` |
@@ -1357,7 +1354,6 @@ available. Refusal is `capability_not_negotiated` — never a silent downgrade.
 | `plugins.retireCommand` | always | `plugins` |
 | `plugins.stream` | always | `plugins` |
 | `plugins.notifyChange` | always | `plugins` |
-| `plugins.openResources` | always | `plugins` |
 | `plugins.readResource` | always | `plugins` |
 | `plugins.readLocale` | always | `plugins` |
 | `plugins.resolvePoint` | always | `plugins` |

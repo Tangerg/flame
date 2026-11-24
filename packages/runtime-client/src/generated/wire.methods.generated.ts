@@ -70,7 +70,6 @@ import type {
   MCPTestResult,
   MCPToolExposure,
   OpenPluginBrowserRealmRequest,
-  OpenPluginResourcesRequest,
   PageOfAgentDoc,
   PageOfMCPServer,
   PageOfMCPTool,
@@ -106,7 +105,6 @@ import type {
   PluginReleaseRequest,
   PluginRequest,
   PluginResource,
-  PluginResourceLease,
   Project,
   Provider,
   ProviderTestResult,
@@ -252,7 +250,6 @@ const METHOD_NAMES = [
   "plugins.retireCommand",
   "plugins.stream",
   "plugins.notifyChange",
-  "plugins.openResources",
   "plugins.readResource",
   "plugins.readLocale",
   "plugins.resolvePoint",
@@ -308,7 +305,6 @@ export const WIRE_STREAMING_METHOD_NAMES = [
   "runs.subscribe",
   "runtime.subscribe",
   "plugins.stream",
-  "plugins.openResources",
 ] as const;
 
 export type WireStreamingMethodName = (typeof WIRE_STREAMING_METHOD_NAMES)[number];
@@ -375,7 +371,6 @@ const VALUE_METHOD_NAMES = [
   "plugins.acquireComponent",
   "plugins.getCommand",
   "plugins.stream",
-  "plugins.openResources",
   "plugins.readResource",
   "plugins.readLocale",
   "plugins.resolvePoint",
@@ -890,13 +885,6 @@ export const WIRE_METHOD_POLICY = {
     operation: "command",
     response: "unary",
     idempotency: "replayResponse",
-    replayCursor: "none",
-    pagination: "none",
-  },
-  "plugins.openResources": {
-    operation: "subscription",
-    response: "stream",
-    idempotency: "none",
     replayCursor: "none",
     pagination: "none",
   },
@@ -1417,9 +1405,6 @@ export const WIRE_CAPABILITY_POLICY: {
   "plugins.notifyChange": [
     { requires: ["plugins"] },
   ],
-  "plugins.openResources": [
-    { requires: ["plugins"] },
-  ],
   "plugins.readResource": [
     { requires: ["plugins"] },
   ],
@@ -1558,7 +1543,6 @@ export interface WireShapes {
   "plugins.retireCommand": { params: PluginCommandRequest };
   "plugins.stream": { params: CallPluginRequest; result: Record<string, never> };
   "plugins.notifyChange": { params: PluginChangeNotice };
-  "plugins.openResources": { params: OpenPluginResourcesRequest; result: PluginResourceLease };
   "plugins.readResource": { params: ReadPluginResourceRequest; result: PluginResource };
   "plugins.readLocale": { params: ReadPluginLocaleRequest; result: PluginLocaleCatalog };
   "plugins.resolvePoint": { params: ResolvePluginPointRequest; result: PageOfPluginPointBinding };

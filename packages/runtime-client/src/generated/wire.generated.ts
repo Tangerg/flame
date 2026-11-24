@@ -52,14 +52,6 @@ export const HTTP_ENDPOINTS = {
     authentication: "pluginRealm",
     responseStatuses: [200, 401, 409, 503],
   },
-  pluginResources: {
-    kind: "resource",
-    method: "GET",
-    path: "/v2/plugin-resources/{lease}/*",
-    authentication: "resourceLease",
-    projects: "plugins.readResource",
-    responseStatuses: [200, 410, 500],
-  },
   rpc: {
     kind: "rpc",
     method: "POST",
@@ -1196,12 +1188,6 @@ export interface OpenPluginBrowserRealmRequest {
   resumeToken: string;
 }
 
-export interface OpenPluginResourcesRequest {
-  componentId: string;
-  digest: string;
-  installationId: string;
-}
-
 export interface PageContinuation {
   nextCursor?: string;
 }
@@ -1558,14 +1544,6 @@ export interface PluginRequirement {
 export interface PluginResource {
   body: string;
   mediaType: string;
-}
-
-export interface PluginResourceEvent {
-}
-
-export interface PluginResourceLease {
-  entry: string;
-  token: string;
 }
 
 export type PluginServerDeclaration =

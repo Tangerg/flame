@@ -16,7 +16,6 @@ const (
 	PluginsStream              Name = "plugins.stream"
 	pluginsResolveRequirements Name = "plugins.resolveRequirements"
 	PluginsResolvePoint        Name = "plugins.resolvePoint"
-	pluginsOpenResources       Name = "plugins.openResources"
 	PluginsOpenBrowserRealm    Name = "plugins.openBrowserRealm"
 	PluginsAcquireComponent    Name = "plugins.acquireComponent"
 	PluginsCloseBrowserRealm   Name = "plugins.closeBrowserRealm"
@@ -83,11 +82,6 @@ func registerPlugins(r *Registry) {
 		return service.NotifyPluginChange(ctx, request)
 	})
 
-	r.subscription(MethodMeta{Name: pluginsOpenResources, GoName: "OpenPluginResources", CapabilityRules: requires(protocol.FeaturePlugins), Errors: pluginErrors()}, func(s interface {
-		OpenPluginResources(context.Context, protocol.OpenPluginResourcesRequest) (*protocol.PluginResourceLease, iter.Seq2[protocol.PluginResourceEvent, error], error)
-	}, ctx context.Context, in protocol.OpenPluginResourcesRequest) (*protocol.PluginResourceLease, iter.Seq2[protocol.PluginResourceEvent, error], error) {
-		return s.OpenPluginResources(ctx, in)
-	})
 	r.query(MethodMeta{Name: PluginsReadResource, GoName: "ReadPluginResource", CapabilityRules: requires(protocol.FeaturePlugins), Errors: pluginErrors()}, func(s interface {
 		ReadPluginResource(context.Context, protocol.ReadPluginResourceRequest) (*protocol.PluginResource, error)
 	}, ctx context.Context, in protocol.ReadPluginResourceRequest) (*protocol.PluginResource, error) {

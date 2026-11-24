@@ -99,7 +99,7 @@ func registerPluginValues(s *Shapes) {
 		{Field: "title", Kind: ConstraintNonEmpty},
 		{Field: "title", Kind: ConstraintMaxLength, Limit: plugin.MaxPresentationTitleBytes},
 	}})
-	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.OpenPluginResourcesRequest](), Constraints: []FieldConstraint{{Field: "componentId", Kind: ConstraintPattern, Value: identity.DeclarationIDPattern}}})
+	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.ReadPluginResourceRequest](), Constraints: []FieldConstraint{{Field: "componentId", Kind: ConstraintPattern, Value: identity.DeclarationIDPattern}}})
 	declared := func(field string) FieldConstraint {
 		return FieldConstraint{Field: field, Kind: ConstraintPattern, Value: identity.DeclarationIDPattern}
 	}

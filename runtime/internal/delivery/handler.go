@@ -105,7 +105,6 @@ type Handler struct {
 	mcpAuthorizationAttempts protocol.MCPAuthorizationAttemptLimits
 
 	runtimeEvents *runtimeEventHub
-	resources     *resourceLeases
 }
 
 type featureAvailability struct {
@@ -244,7 +243,6 @@ func newHandler(cfg HandlerConfig, facts contractFacts) *Handler {
 		trajectoryExports:        cfg.TrajectoryExports,
 		serverInfo:               cfg.ServerInfo,
 		runtimeEvents:            newRuntimeEventHub(),
-		resources:                newResourceLeases(),
 		goals:                    cfg.Goals,
 		workspaceFiles:           cfg.WorkspaceFiles,
 		workspaceVCS:             cfg.WorkspaceVCS,

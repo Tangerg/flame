@@ -19,7 +19,7 @@ A configured Web distribution must include its current build policy. The shared
 nonce-based script CSP and main-document embedding denial, and keeps HTML
 `no-store` with unconditional fresh 200 responses. Only build-proven fingerprint
 URLs receive immutable caching; unversioned public resources remain updateable.
-Protocol responses and resource leases retain their own no-store policy.
+Protocol responses retain their own no-store policy.
 
 Local HTTP requests in token-free mode must use the loopback listener authority. Browser origins must be the listener origin or an explicitly allowed UI origin. OAuth token forms may follow redirects only within the original issuer endpoint origin. If a system browser cannot open, configure its launcher and start a new sign-in attempt.
 
@@ -538,12 +538,12 @@ borrow their original Use, including exact parent/child bindings. Release eviden
 returns to the Go Host before execution protection is removed. Private workbench
 registrations do not select another provider or create another public authority.
 
-`plugins.openResources` creates a live exact-release resource subscription. Each
-asset read rechecks the enabled release, component and package integrity through
-canonical Delivery. Closing the subscription or Runtime withdraws its ephemeral
-access. Asset URLs carry no persistent Runtime bearer token. The workbench's
-shared module graph supplies React, the SDK and UI; replacement of evaluated code
-requires a fresh window generation. Source/native compilation alone does not
+`plugins.readResource` returns one asset of an exact enabled release's component.
+Each read rechecks the enabled release, component and package integrity through
+canonical Delivery. The browser evaluates the captured bytes as a data module, so
+an evaluated component holds no Runtime resource. The workbench's shared module
+graph supplies React, the SDK and UI; replacement of evaluated code requires a
+fresh window generation. Source/native compilation alone does not
 verify rendered interaction.
 
 File renderers receive a frozen accepted file read. Tool-result renderers receive

@@ -10,19 +10,6 @@ import (
 	framevalue "github.com/Tangerg/frame/value"
 )
 
-func (c *Coordinator) Component(ctx context.Context, id identity.InstallationID, digest framevalue.Digest, component plugin.ContributionID) (plugin.ClientComponent, error) {
-	var value plugin.ClientComponent
-	err := c.framework.Admission().Admit(ctx, func(ctx context.Context) error {
-		snapshot, err := c.installationSnapshot(ctx, id)
-		if err != nil {
-			return err
-		}
-		value, err = snapshot.Installation.AuthorizeComponent(snapshot.Selected, digest, component)
-		return err
-	})
-	return value, err
-}
-
 func (c *Coordinator) Resource(ctx context.Context, id identity.InstallationID, digest framevalue.Digest, component plugin.ContributionID, resource string) ([]byte, error) {
 	if !plugin.ValidResourcePath(resource) || !strings.HasPrefix(resource, plugin.Namespace+"/") {
 		return nil, plugin.ErrInvalid

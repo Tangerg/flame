@@ -454,21 +454,10 @@ type PluginTerminalFormField struct {
 	Default *PluginTerminalBinding     `json:"default,omitzero"`
 }
 
-type OpenPluginResourcesRequest struct {
+type ReadPluginResourceRequest struct {
 	PluginReleaseRequest
 	ComponentID string `json:"componentId"`
-}
-
-type PluginResourceLease struct {
-	Token string `json:"token"`
-	Entry string `json:"entry"`
-}
-
-type PluginResourceEvent struct{}
-
-type ReadPluginResourceRequest struct {
-	OpenPluginResourcesRequest
-	Path string `json:"path"`
+	Path        string `json:"path"`
 }
 
 type PluginResource struct {

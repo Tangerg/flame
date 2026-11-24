@@ -72,7 +72,6 @@ var methodMetadata = map[string]methodMeta{
 	"plugins.retireCommand":            {Name: "plugins.retireCommand", Kind: unaryMethod, Operation: commandOperation, Result: reflect.TypeFor[struct{}](), Event: nil, ResultNullable: false},
 	"plugins.stream":                   {Name: "plugins.stream", Kind: streamMethod, Operation: extensionOperation, Result: reflect.TypeFor[struct{}](), Event: reflect.TypeFor[protocol.PluginStreamEvent](), ResultNullable: false},
 	"plugins.notifyChange":             {Name: "plugins.notifyChange", Kind: unaryMethod, Operation: commandOperation, Result: reflect.TypeFor[struct{}](), Event: nil, ResultNullable: false},
-	"plugins.openResources":            {Name: "plugins.openResources", Kind: streamMethod, Operation: subscriptionOperation, Result: reflect.TypeFor[*protocol.PluginResourceLease](), Event: reflect.TypeFor[protocol.PluginResourceEvent](), ResultNullable: false},
 	"plugins.readResource":             {Name: "plugins.readResource", Kind: unaryMethod, Operation: queryOperation, Result: reflect.TypeFor[*protocol.PluginResource](), Event: nil, ResultNullable: false},
 	"plugins.readLocale":               {Name: "plugins.readLocale", Kind: unaryMethod, Operation: queryOperation, Result: reflect.TypeFor[*protocol.PluginLocaleCatalog](), Event: nil, ResultNullable: false},
 	"plugins.resolvePoint":             {Name: "plugins.resolvePoint", Kind: unaryMethod, Operation: queryOperation, Result: reflect.TypeFor[*protocol.Page[protocol.PluginPointBinding]](), Event: nil, ResultNullable: false},

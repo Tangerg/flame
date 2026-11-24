@@ -142,14 +142,6 @@ export async function createCompositionTransport(
           throw new Error("composition fixture cannot read an unrecorded resource");
         return { body, mediaType: "text/javascript" };
       },
-      openResources: async () => {
-        const closed = Promise.withResolvers<void>();
-        return {
-          result: { token: "baseline", entry: entry.entry },
-          closed: closed.promise,
-          close: async () => closed.resolve(),
-        };
-      },
       resolvePoint: async (request) => ({
         data: (request.order ?? []).map((member, index) => ({
           ...member,
@@ -162,7 +154,6 @@ export async function createCompositionTransport(
       | "openBrowserRealm"
       | "acquireComponent"
       | "closeBrowserRealm"
-      | "openResources"
       | "readResource"
       | "resolvePoint"
     >,

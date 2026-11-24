@@ -153,8 +153,6 @@ func runServer(ctx context.Context, errw io.Writer, httpServer runtimeHTTPServer
 				gate = "no auth"
 			case endpoint.Authentication == runtimehttp.EndpointAuthenticationRealm:
 				gate = "realm-gated"
-			case endpoint.Authentication == runtimehttp.EndpointAuthenticationResourceLease:
-				gate = "lease-gated"
 			case token == nil:
 				gate = "UNGATED"
 			}

@@ -58,6 +58,6 @@ node plugins/scripts/build-components.mjs --check
 
 The source owns the generated namespace-local `components/component.js`. The three
 extension declarations share that module and export. Do not edit generated resources.
-The exact release resource lease and client generation are the same as other installed
+The exact-release component Use and client generation are the same as other installed
 components. Code replacement may require a window reload; logical disposal does not
 claim JavaScript module unloading. Appearance remains owned by shared UI and the client.

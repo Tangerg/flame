@@ -51,7 +51,7 @@ func TestToolComponentUsesSelectedImmutableBytes(t *testing.T) {
 	if component.Selector == nil || component.Selector.Type != extension.RendererToolName || component.Selector.Name != "grep" || component.Scope != extension.ComponentScopeToolResult || component.Placement != extension.ComponentPlacementToolResultRenderer {
 		t.Fatalf("selector: %+v", component)
 	}
-	request := protocol.ReadPluginResourceRequest{OpenPluginResourcesRequest: protocol.OpenPluginResourcesRequest{PluginReleaseRequest: protocol.PluginReleaseRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest}, ComponentID: component.ID}, Path: component.Entry}
+	request := protocol.ReadPluginResourceRequest{PluginReleaseRequest: protocol.PluginReleaseRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest}, ComponentID: component.ID, Path: component.Entry}
 	refused := func(input protocol.ReadPluginResourceRequest, want error) {
 		t.Helper()
 		result := r.endpoint.Invoke(t.Context(), delivery.PluginsReadResource, input, protocol.CallMetadata{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
@@ -98,7 +98,7 @@ func TestFileComponentUsesSelectedImmutableBytes(t *testing.T) {
 		if component.Scope != extension.ComponentScopeFile || component.Placement != extension.ComponentPlacementFileRenderer || component.Selector == nil || component.Selector.Type != extension.RendererFileExtension {
 			t.Fatalf("file selector: %+v", component)
 		}
-		request := protocol.ReadPluginResourceRequest{OpenPluginResourcesRequest: protocol.OpenPluginResourcesRequest{PluginReleaseRequest: protocol.PluginReleaseRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest}, ComponentID: component.ID}, Path: component.Entry}
+		request := protocol.ReadPluginResourceRequest{PluginReleaseRequest: protocol.PluginReleaseRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest}, ComponentID: component.ID, Path: component.Entry}
 		resource := r.must(delivery.PluginsReadResource, request, "").(*protocol.PluginResource)
 		body, err := base64.StdEncoding.DecodeString(resource.Body)
 		if err != nil {
