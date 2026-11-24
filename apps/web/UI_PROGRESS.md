@@ -2718,6 +2718,11 @@ Dock and Files step (2026-11-25):
   inside the user bubble's edge. The header now follows the `conversation`
   container like the transcript.
 
+- A hanging `Select` under a form label kept a `max-width: 100%`, so its
+  fill ended 12 px short of the text fields in the same column (New
+  schedule's Model and Reasoning effort). Its maximum width now includes the
+  hang, and both columns' fills end on one edge.
+
 Native `dock-files`, `dock-file` and `dock-schedules` show the tab label,
 chevrons or field glyphs and panel text on one line; the chat header's
 `scope` and `+25 −9` meet the prose and bubble edges. The full-width file

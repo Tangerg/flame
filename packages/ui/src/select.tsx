@@ -43,7 +43,11 @@ const styles = stylex.create({
     },
     justifySelf: "stretch",
     width: "auto",
-    maxWidth: "100%",
+    // A hanging trigger keeps its column's end edge, as a hanging TextField does.
+    maxWidth: {
+      default: "100%",
+      ":first-child": "calc(100% + var(--field-hang, 0px))",
+    },
     height: "auto",
     whiteSpace: "normal",
     textAlign: "start",
