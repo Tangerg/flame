@@ -56977,6 +56977,14 @@ and native command focus.” Choose fresh task evidence before selecting a repai
   Other bootstraps (agent, workspace, navigation, notifications, installed
   plugins, connection) also defer disposal of objects `main.tsx` owns. Review
   them under the same ownership rule before relying on plugin restarts.
+- **Generated interfaces stay folded behind a raw tool name.** In `genui-report`
+  the answer says `The captured delivery review is ready.` while the review
+  itself sits inside a collapsed `genui_ui_present ›` row in mono. The GenUI
+  declaration already titles its renderer `Generated interface`, but tool rows
+  neither take a renderer's title nor open a presentation result by default,
+  and expansion is user-owned state in `ChatStream`. Opening it inline needs a
+  declared presentation intent on the renderer contribution (a plugin
+  contract change), not a client special case for one tool name.
 - **Full-pane entry ring.** Settings and full-width views focus their named region on entry. WebKit treats the programmatic focus after a direct load or keyboard entry as focus-visible and frames the whole pane in the accent ring. This matches the panel focus border of keyboard-first editors, and the Lab cannot exercise mouse entry (the shell fixture's Settings row does not route). Keep it unless a mouse-entry capture shows the frame.
 
 ## Working and maintenance practice
