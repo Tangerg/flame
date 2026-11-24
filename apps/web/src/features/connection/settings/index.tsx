@@ -16,7 +16,11 @@ export default definePlugin({
     registerSettingsPane(ctx.contributions, {
       id: CONNECTION_PANE,
       label: "settings.pane.connection",
-      keywords: ["settings.connection.title", "settings.connection.url"],
+      keywords: [
+        "settings.connection.title",
+        "settings.connection.url",
+        "settings.connection.token",
+      ],
       group: "general",
       order: 5,
       component: ConnectionPane,

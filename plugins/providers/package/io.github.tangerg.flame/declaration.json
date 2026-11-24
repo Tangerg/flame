@@ -13,7 +13,7 @@
   "components": [
     {
       "id": "settings",
-      "title": "Providers",
+      "title": "Model providers",
       "localizedTitles": {
         "zh": "模型供应商",
         "zh-TW": "模型供應商",

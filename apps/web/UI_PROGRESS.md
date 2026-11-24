@@ -20977,6 +20977,17 @@ deletion; rerunning with its exact digest passed all source, artifact, native,
 publication and ownership checks. This documentation receipt changes no tested
 source. The primary checkout and its parallel work remain untouched.
 
+### Settings search finds tokens and models (2026-11-24)
+
+Settings search matches pane titles and declared keywords. `token` found
+nothing although Connection holds `Access token`, and `model` found nothing
+because the English provider pane was titled `Providers` while every other
+catalog says model providers. Connection adds `settings.connection.token`
+to its keywords, and the Providers declaration's English title becomes
+`Model providers`. Native Settings search: `token` lists General →
+Connection; `model` lists Extensions → Model providers. Web typecheck,
+plugin `check-i18n` and published resource checks pass.
+
 ### Only the masked key in mono (2026-11-24)
 
 The Providers credential badge set its whole text in mono (`Key sk-…7F2A`,
