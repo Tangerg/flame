@@ -89,16 +89,41 @@ function pluginCallResult(call: CallPluginRequest, memoryPages: VisualMemoryPage
   }
 }
 
+interface VisualRuntimeFacts {
+  snapshot: RuntimeAgentSessionSnapshot;
+  capabilities: ServerCapabilities;
+  approval: ApprovalModeResult;
+  models: VisualModelFacts;
+  mcpServers: MCPServer[];
+  skillDocuments: SkillDetail[];
+  memoryPages: VisualMemoryPages;
+  readDiff: (signal?: AbortSignal, request?: GetDiffRequest) => Promise<Diff>;
+}
+
+// Mutations the recorded Runtime refuses so a screen shows its failure path.
+const REFUSED_METHODS: ReadonlySet<string> = new Set([
+  "models.setUtilityRole",
+  "models.setEmbeddingRole",
+  "mcp.servers.test",
+  "mcp.servers.create",
+  "mcp.servers.update",
+  "mcp.servers.delete",
+  "mcp.servers.reconnect",
+  "mcp.tools.setExposure",
+]);
+
 function resultFor(
   request: TransportRequest,
-  snapshot: RuntimeAgentSessionSnapshot,
-  capabilities: ServerCapabilities,
-  approval: ApprovalModeResult,
-  models: VisualModelFacts,
-  mcpServers: MCPServer[],
-  skillDocuments: SkillDetail[],
-  memoryPages: VisualMemoryPages,
-  readDiff: (signal?: AbortSignal, request?: GetDiffRequest) => Promise<Diff>,
+  {
+    snapshot,
+    capabilities,
+    approval,
+    models,
+    mcpServers,
+    skillDocuments,
+    memoryPages,
+    readDiff,
+  }: VisualRuntimeFacts,
   signal?: AbortSignal,
 ): unknown {
   switch (request.method) {
@@ -253,16 +278,7 @@ export function createVisualRuntimeTransport(
     },
     async send(request, signal, options) {
       signal?.throwIfAborted();
-      if (
-        request.method === "models.setUtilityRole" ||
-        request.method === "models.setEmbeddingRole" ||
-        request.method === "mcp.servers.test" ||
-        request.method === "mcp.servers.create" ||
-        request.method === "mcp.servers.update" ||
-        request.method === "mcp.servers.delete" ||
-        request.method === "mcp.servers.reconnect" ||
-        request.method === "mcp.tools.setExposure"
-      ) {
+      if (REFUSED_METHODS.has(request.method)) {
         await transport.send(request, signal, options);
         transport.inject({
           jsonrpc: "2.0",
@@ -307,14 +323,16 @@ export function createVisualRuntimeTransport(
       } else {
         result = await resultFor(
           request,
-          snapshot,
-          capabilities,
-          approval,
-          models,
-          mcpServers,
-          skillDocuments,
-          memoryPages,
-          readDiff,
+          {
+            snapshot,
+            capabilities,
+            approval,
+            models,
+            mcpServers,
+            skillDocuments,
+            memoryPages,
+            readDiff,
+          },
           signal,
         );
       }
