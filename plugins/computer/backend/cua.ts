@@ -77,6 +77,62 @@ function childEnvironment(
   return environment;
 }
 
+function assertDesktopSession(
+  installation: Installation,
+  environment: Configuration["environment"],
+): void {
+  if (
+    installation.platform === "linux" &&
+    (!environment.DISPLAY ||
+      !environment.DBUS_SESSION_BUS_ADDRESS ||
+      environment.XDG_SESSION_TYPE === "wayland")
+  )
+    throw new InstallationError(
+      "Linux CUA requires an explicitly selected X11 desktop and D-Bus session",
+    );
+}
+
+async function assertAccountState(codexHome: string): Promise<void> {
+  try {
+    if (!(await stat(codexHome)).isDirectory())
+      throw new Error("engine account state is not a directory");
+  } catch (cause) {
+    throw new InstallationError(
+      "initialize the selected CUA application for this account before opening computer control",
+      cause,
+    );
+  }
+}
+
+function engineLaunch(
+  config: Configuration,
+  installation: Installation,
+  environment: Record<string, string>,
+  workdir: string,
+): EngineConfig {
+  const launch: EngineConfig = {
+    command: installation.node,
+    args: [installation.entry],
+    env: environment,
+    ownershipPath: join(config.data, "engine-ownership.json"),
+    cwd: workdir,
+  };
+  if (installation.native)
+    launch.native = {
+      service: installation.native.service,
+      client: installation.native.client,
+      helper: installation.native.helper,
+      wrapper: join(
+        config.packageRoot,
+        "io.github.tangerg.flame/engine/native-sky.mjs",
+      ),
+      ...(config.browser
+        ? { browserService: "@oai/browser-desktop/service" }
+        : {}),
+    };
+  return launch;
+}
+
 export class Cua {
   readonly #installation: Installation;
   readonly #engine: Engine;
@@ -108,15 +164,7 @@ export class Cua {
         config.application,
         hooks.signal,
       );
-      if (
-        installation.platform === "linux" &&
-        (!config.environment.DISPLAY ||
-          !config.environment.DBUS_SESSION_BUS_ADDRESS ||
-          config.environment.XDG_SESSION_TYPE === "wayland")
-      )
-        throw new InstallationError(
-          "Linux CUA requires an explicitly selected X11 desktop and D-Bus session",
-        );
+      assertDesktopSession(installation, config.environment);
       const leases = join(config.data, "leases");
       await mkdir(leases, { recursive: true, mode: 0o700 });
       directory = await mkdtemp(join(leases, "lease-"));
@@ -132,15 +180,7 @@ export class Cua {
         installation,
         controlDirectory,
       );
-      try {
-        if (!(await stat(environment.CODEX_HOME!)).isDirectory())
-          throw new Error("engine account state is not a directory");
-      } catch (cause) {
-        throw new InstallationError(
-          "initialize the selected CUA application for this account before opening computer control",
-          cause,
-        );
-      }
+      await assertAccountState(environment.CODEX_HOME!);
       if (config.browser)
         await validateBrowser(installation, environment, hooks.signal);
       const prepared = await prepareSandbox(
@@ -160,27 +200,7 @@ export class Cua {
         ...JSON.parse(environment.NODE_REPL_REQUEST_META!),
         "codex/sandbox-state-meta": prepared.sandbox,
       });
-      const launch: EngineConfig = {
-        command: installation.node,
-        args: [installation.entry],
-        env: environment,
-        ownershipPath: join(config.data, "engine-ownership.json"),
-        cwd: workdir,
-      };
-      if (installation.native) {
-        launch.native = {
-          service: installation.native.service,
-          client: installation.native.client,
-          helper: installation.native.helper,
-          wrapper: join(
-            config.packageRoot,
-            "io.github.tangerg.flame/engine/native-sky.mjs",
-          ),
-          ...(config.browser
-            ? { browserService: "@oai/browser-desktop/service" }
-            : {}),
-        };
-      }
+      const launch = engineLaunch(config, installation, environment, workdir);
       hooks.signal.throwIfAborted();
       installation.assertCurrent();
       engine = await Engine.connect(launch, hooks);
