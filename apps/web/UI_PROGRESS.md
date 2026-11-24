@@ -2779,6 +2779,11 @@ Dock and Files step (2026-11-25):
   wrapped label's second line or between a label and its description. Marks
   now center on the label's first line (question cards, Approvals mode).
 
+- Computer use's `Authorize and open control` was a bare primary button
+  under the lease field, its fill 10 px inside the field's. It now sits in
+  `FormActions` like every other form's main action: trailing, its fill
+  ending on the field's end edge.
+
 Native `dock-files`, `dock-file` and `dock-schedules` show the tab label,
 chevrons or field glyphs and panel text on one line; the chat header's
 `scope` and `+25 −9` meet the prose and bubble edges. The full-width file

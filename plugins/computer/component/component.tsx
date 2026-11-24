@@ -24,6 +24,7 @@ import {
   Disclosure,
   EmptyState,
   Facts,
+  FormActions,
   FormField,
   FormRow,
   Metadata,
@@ -678,9 +679,11 @@ function LeaseForm({
           })}
         </p>
       )}
-      <Button variant="primary" disabled={disabled} onClick={onOpen}>
-        {t("open.action")}
-      </Button>
+      <FormActions label={t("open.title")}>
+        <Button variant="primary" disabled={disabled} onClick={onOpen}>
+          {t("open.action")}
+        </Button>
+      </FormActions>
     </PanelSection>
   );
 }
