@@ -229,7 +229,7 @@ function SkillCatalogControls({
   target: Target;
   busy: boolean;
   loading: boolean;
-  searchField: SkillsState["searchField"];
+  searchField: SkillsState["search"]["field"];
   search: string;
   onNavigate(target: Target): void;
   onSearch(value: string): void;
@@ -354,9 +354,7 @@ export function Skills({ context }: { context: ComponentContext }) {
     skillDocument,
     command,
     navigate,
-    searchField,
-    search,
-    searchCatalog,
+    search: { query: search, field: searchField, change: searchCatalog },
     read,
     refresh,
     title,

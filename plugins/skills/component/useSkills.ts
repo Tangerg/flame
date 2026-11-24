@@ -21,6 +21,7 @@ import {
   type SkillProposal,
 } from "@flame/runtime-client/wire";
 
+import { useSkillSearch } from "./useSkillSearch";
 import {
   type SkillSnapshot,
   type SkillRecord,
@@ -91,9 +92,8 @@ export function useSkills(context: ComponentContext) {
       current.target === target
     );
   };
-  const [search, setSearch] = useState("");
   const bodyViewport = useRef<HTMLDivElement>(null);
-  const searchField = useRef<HTMLInputElement>(null);
+  const search = useSkillSearch(bodyViewport);
   const [read, setRead] = useState<Read>({ loading: true });
   const reading = useRef<AbortController>(undefined);
   const [opened, setOpened] = useState<OpenedDocument>();
@@ -111,7 +111,7 @@ export function useSkills(context: ComponentContext) {
     if (form && canRestoreFocus())
       handoffFocus(
         form,
-        review?.opener?.isConnected ? review.opener : searchField.current,
+        review?.opener?.isConnected ? review.opener : search.field.current,
       );
     setReview(undefined);
   }
@@ -253,12 +253,7 @@ export function useSkills(context: ComponentContext) {
     setTarget(next);
     setReview(undefined);
     setNotice(undefined);
-    setSearch("");
-  }
-  function searchCatalog(next: string) {
-    if (next === search) return;
-    setSearch(next);
-    if (bodyViewport.current) bodyViewport.current.scrollTop = 0;
+    search.reset();
   }
   function openDocument(name: string, opener: HTMLElement) {
     if (command || componentSignal.aborted) return;
@@ -301,7 +296,7 @@ export function useSkills(context: ComponentContext) {
       if (viewport && catalog) viewport.scrollTop = catalog.scrollTop;
       const opener = catalog?.opener;
       if (focusIsUnclaimed)
-        (opener?.isConnected ? opener : searchField.current)?.focus();
+        (opener?.isConnected ? opener : search.field.current)?.focus();
     }
   }, [opened]);
   async function observe(captured: Command) {
@@ -405,11 +400,7 @@ export function useSkills(context: ComponentContext) {
     snapshot?.type === "available"
       ? snapshot.data.skills
       : (snapshot?.data.data ?? []);
-  const matching = rows.filter((item) =>
-    `${item.name} ${item.description ?? ""} ${"scope" in item ? item.scope : "lifecycle" in item ? item.lifecycle : ""}`
-      .toLocaleLowerCase()
-      .includes(search.toLocaleLowerCase()),
-  );
+  const matching = search.matching(rows);
   const disabled = Boolean(command) || read.loading || Boolean(read.error);
   const title = t(`section.${target}`);
   const skillDocument = opened?.accepted;
@@ -429,9 +420,7 @@ export function useSkills(context: ComponentContext) {
     skillDocument,
     command,
     navigate,
-    searchField,
     search,
-    searchCatalog,
     read,
     refresh,
     title,
