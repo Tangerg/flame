@@ -1,17 +1,18 @@
+import { type Label, type MessageKey } from "@/lib/i18n/index";
 import {
   type ContextDockDestinationScope,
   type WorkspaceViewSpec,
 } from "@/features/workspace/public/views";
 interface ContextDockItem {
   viewId: string;
-  title: string;
+  title: Label;
   scope: ContextDockDestinationScope;
   order?: number;
 }
 
 export interface ContextDockDestinationGroup {
   id: ContextDockDestinationScope;
-  title: string;
+  title: Label;
   destinations: ContextDockItem[];
 }
 
@@ -31,7 +32,7 @@ export function resolveContextDockItems(
   return items;
 }
 
-const groupOrder: Array<{ id: ContextDockDestinationScope; title: string }> = [
+const groupOrder: Array<{ id: ContextDockDestinationScope; title: MessageKey }> = [
   { id: "workspace", title: "contextDock.group.workspace" },
   { id: "run", title: "contextDock.group.run" },
   { id: "session", title: "contextDock.group.session" },

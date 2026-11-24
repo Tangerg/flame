@@ -1,5 +1,5 @@
-import { type Translate } from "@/lib/i18n/index";
-const PUBLISHED_EFFORT_LABEL: Readonly<Record<string, string>> = {
+import { type Translate, type MessageKey } from "@/lib/i18n/index";
+const PUBLISHED_EFFORT_LABEL: Readonly<Record<string, MessageKey>> = {
   none: "model.effort.none",
   minimal: "model.effort.minimal",
   low: "model.effort.low",

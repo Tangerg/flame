@@ -4,7 +4,7 @@ import * as stylex from "@stylexjs/stylex";
 import { useScrollReach } from "@/ui/atoms/use-scroll-reach";
 import { SkeletonList } from "@/ui/index";
 import { EmptyState, useFieldVisibility } from "@flame/ui";
-import { useT } from "@/lib/i18n/index";
+import { useT, labelText } from "@/lib/i18n/index";
 import { PluginBoundary } from "@/extensions/host/PluginBoundary";
 import { useWorkspaceViews } from "@/features/workspace/public/views";
 import { AgentDockPanel } from "@/ui/agent/context-dock";
@@ -48,7 +48,7 @@ export function WorkspaceViewBody({ viewId, presentation, ref }: Props) {
   const workspaceViews = useWorkspaceViews();
   const view = workspaceViews.find((v) => v.id === viewId);
   const Body = view?.component;
-  const label = t(view?.title ?? "plugins.mainView");
+  const label = view ? labelText(view.title, t) : t("plugins.mainView");
   return (
     <AgentDockPanel
       value={viewId}

@@ -2,7 +2,7 @@ import * as stylex from "@stylexjs/stylex";
 import { type KeyboardEventHandler, type ReactNode } from "react";
 import { IconButton, vocab } from "@flame/ui";
 import { space, type as typeStep, weight } from "@flame/ui/tokens.stylex";
-import { useT } from "@/lib/i18n/index";
+import { useT, labelText } from "@/lib/i18n/index";
 import { type WorkspaceViewSpec } from "@/features/workspace/public/views";
 import { iconGlyph } from "@/ui/icons/index";
 import { AgentSurfaceHeader } from "@/ui/agent/index";
@@ -29,7 +29,7 @@ export function WorkspaceWindowHeader({
   children?: ReactNode;
 }) {
   const t = useT();
-  const title = t(view ? view.title : "workspace.view.unavailable.title");
+  const title = view ? labelText(view.title, t) : t("workspace.view.unavailable.title");
   return (
     <AgentSurfaceHeader corner="window" data-slot="workspace-window-header" onKeyDown={onKeyDown}>
       {exit.kind === "return" && <ReturnButton label={exit.label} onReturn={exit.onReturn} />}

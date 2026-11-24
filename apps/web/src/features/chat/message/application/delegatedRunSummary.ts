@@ -1,6 +1,6 @@
 import { type DotTone } from "@/lib/tone";
 import { type Tone } from "@flame/ui/badge";
-import { type Translate } from "@/lib/i18n/index";
+import { type Translate, type MessageKey } from "@/lib/i18n/index";
 import { type AgentRunView } from "@/features/agent/public/sessionView";
 import {
   agentRunDetail,
@@ -19,7 +19,7 @@ export interface DelegatedRunSummary {
 
 const STATUS_VIEW: Record<
   AgentRunPresentationState,
-  { labelKey: string; dotTone: DotTone; ink: Tone }
+  { labelKey: MessageKey; dotTone: DotTone; ink: Tone }
 > = {
   running: {
     labelKey: "agent.runTree.status.running",

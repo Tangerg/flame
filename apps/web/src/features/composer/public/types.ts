@@ -1,3 +1,4 @@
+import { type MessageKey } from "@/lib/i18n/index";
 interface ComposerKeyContext {
   submit: () => void;
   event: KeyboardEvent;
@@ -37,6 +38,6 @@ interface SlashCommandRunCtx {
 }
 
 export interface SlashCommandSpec {
-  description: string;
+  description: MessageKey;
   run?: (ctx: SlashCommandRunCtx) => void | Promise<void>;
 }

@@ -6,7 +6,7 @@ import { SkeletonList } from "@/ui/index";
 import { TextButton } from "@/ui/index";
 import { VerticalTabs } from "@/ui/index";
 import { HeadingLevel, isImeKey, Panel, PanelHeader, SearchField } from "@flame/ui";
-import { useT } from "@/lib/i18n/index";
+import { useT, type MessageKey, labelText } from "@/lib/i18n/index";
 import { PluginBoundary } from "@/extensions/host/PluginBoundary";
 import {
   openWorkspaceSettingsPane,
@@ -30,7 +30,7 @@ const sp = stylex.create({
   },
 });
 
-const GROUPS: { id: string; labelKey: string }[] = [
+const GROUPS: { id: string; labelKey: MessageKey }[] = [
   { id: "general", labelKey: "settings.group.general" },
   { id: "models", labelKey: "settings.group.models" },
   { id: "agent", labelKey: "settings.group.agent" },
@@ -59,16 +59,18 @@ export function SettingsPage() {
       .filter((p) => (p.group && known.has(p.group) ? p.group : FALLBACK_GROUP) === g.id)
       .map((p) => ({
         id: p.id,
-        label: t(p.label),
-        terms: [p.label, p.description, ...(p.keywords ?? [])]
-          .filter((key): key is string => key !== undefined)
-          .map((key) => t(key).toLocaleLowerCase()),
+        label: labelText(p.label, t),
+        terms: [
+          labelText(p.label, t),
+          ...(p.description ? [t(p.description)] : []),
+          ...(p.keywords ?? []).map((keyword) => labelText(keyword, t)),
+        ].map((term) => term.toLocaleLowerCase()),
         content: (
           <SettingsPaneFrame
-            title={t(p.label)}
+            title={labelText(p.label, t)}
             description={p.description ? t(p.description) : undefined}
           >
-            <PluginBoundary plugin={`settings:${p.id}`} label={t(p.label)}>
+            <PluginBoundary plugin={`settings:${p.id}`} label={labelText(p.label, t)}>
               <Suspense fallback={<SkeletonList count={4} label={t("common.loading")} />}>
                 <p.component />
               </Suspense>

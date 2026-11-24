@@ -75,21 +75,27 @@ const TOOL_FAMILIES = [
 ] as const satisfies readonly ToolFamily[];
 
 type ToolFamilyId = (typeof TOOL_FAMILIES)[number]["id"];
+type FamilyTool = (typeof TOOL_FAMILIES)[number]["tools"][number]["name"];
+type CamelCase<Name extends string> = Name extends `${infer Head}_${infer Initial}${infer Tail}`
+  ? `${Head}${Uppercase<Initial>}${CamelCase<Tail>}`
+  : Name;
+// Built-in tool verbs are catalog keys, so each family tool needs its messages.
+export type ToolVerb = CamelCase<FamilyTool>;
 
 export function toolFamilyNames(id: ToolFamilyId): readonly string[] {
   return TOOL_FAMILIES.find((family) => family.id === id)!.tools.map((tool) => tool.name);
 }
 
-export function toolFamilyId(name: string): string | undefined {
+export function toolFamilyId(name: string): ToolFamilyId | undefined {
   return FAMILY_BY_TOOL.get(name);
 }
 
-export function toolVerbId(name: string): string | undefined {
+export function toolVerbId(name: string): ToolVerb | undefined {
   if (!FAMILY_BY_TOOL.has(name)) return undefined;
-  return name.replace(/_([a-z])/g, (_, initial: string) => initial.toUpperCase());
+  return name.replace(/_([a-z])/g, (_, initial: string) => initial.toUpperCase()) as ToolVerb;
 }
 
-const FAMILY_BY_TOOL = new Map<string, string>(
+const FAMILY_BY_TOOL = new Map<string, ToolFamilyId>(
   TOOL_FAMILIES.flatMap((family) => family.tools.map((tool) => [tool.name, family.id] as const)),
 );
 

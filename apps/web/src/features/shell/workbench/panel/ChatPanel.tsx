@@ -69,7 +69,7 @@ import { RunStatusPill } from "@/features/shell/workbench/panel/RunStatusPill";
 import { SessionIdentity } from "@/features/shell/workbench/panel/SessionIdentity";
 import { WorkspaceViewBody } from "@/features/shell/workbench/panel/WorkspaceViewBody";
 import { WorkspaceWindowHeader } from "@/features/shell/workbench/panel/WorkspaceWindowHeader";
-import { useT, type Translate } from "@/lib/i18n/index";
+import { useT, type Translate, labelText, type Label } from "@/lib/i18n/index";
 import { canPresentDock } from "@/features/shell/workbench/panel/shellGeometry";
 import { shellStyles as sh } from "@/features/shell/workbench/shellStyles";
 import { useInspectionFocus } from "@/features/shell/workbench/panel/useInspectionFocus";
@@ -99,11 +99,11 @@ function useDockCatalogGroups(
   const t = useT();
   return groups.map((group) => ({
     id: group.id,
-    label: t(group.title),
+    label: labelText(group.title, t),
     items: group.destinations.map((destination) => ({
       id: destination.viewId,
-      label: t(destination.title),
-      keywords: [destination.viewId, group.id, t(group.title)],
+      label: labelText(destination.title, t),
+      keywords: [destination.viewId, group.id, labelText(group.title, t)],
       active: openViewIds.has(destination.viewId),
     })),
   }));
@@ -321,7 +321,7 @@ function useDockRowWidth() {
 function returnActionLabel(
   t: Translate,
   inspection: NonNullable<ReturnType<typeof useWorkspaceInspection>>,
-  viewsById: ReadonlyMap<string, { title: string }>,
+  viewsById: ReadonlyMap<string, { title: Label }>,
 ): string {
   const returnViewId = inspection.returnViewId ?? inspection.returnDockId;
   if (returnViewId === "subagents" && inspection.returnSubagentRunId)
@@ -329,7 +329,7 @@ function returnActionLabel(
   if (returnViewId === WORKSPACE_DOCK_CATALOG) return t("dock.action.returnToCatalog");
   const returnTitle = returnViewId ? viewsById.get(returnViewId)?.title : undefined;
   return returnTitle
-    ? t("dock.action.returnToView", { view: t(returnTitle) })
+    ? t("dock.action.returnToView", { view: labelText(returnTitle, t) })
     : t("dock.action.returnToConversation");
 }
 
@@ -490,7 +490,7 @@ function useDockTabs(
   const navigation = workspaceAccess.navigation;
   return viewIds.map((id) => {
     const view = viewsById.get(id);
-    const title = view ? t(view.title) : id;
+    const title = view ? labelText(view.title, t) : id;
     const Badge = view?.badge;
     return {
       id,
@@ -709,7 +709,10 @@ export function ChatPanel({ onSend, ref }: Props) {
                   aria-label={
                     presentedMain
                       ? undefined
-                      : t(viewsById.get(dock.activeViewId ?? "")?.title ?? "dock.tabs.label")
+                      : (() => {
+                          const active = viewsById.get(dock.activeViewId ?? "");
+                          return active ? labelText(active.title, t) : t("dock.tabs.label");
+                        })()
                   }
                   data-focus-inset=""
                   onKeyDown={

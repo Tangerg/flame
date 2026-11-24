@@ -53,7 +53,7 @@ import {
   composerPasteIntent,
 } from "@/features/composer/application/composerInputEvents";
 import { imageFiles } from "@/features/composer/public/input";
-import { useT } from "@/lib/i18n/index";
+import { useT, type MessageKey } from "@/lib/i18n/index";
 import type { AgentInput } from "@/features/agent/public/input";
 import { useNotifications } from "@/features/notifications/public/notifier";
 import * as stylex from "@stylexjs/stylex";
@@ -186,7 +186,7 @@ class Candidate extends MenuOption {
   constructor(
     readonly kind: "file" | "slash",
     readonly label: string,
-    readonly description?: string,
+    readonly description?: MessageKey,
   ) {
     super(kind + ":" + label);
   }

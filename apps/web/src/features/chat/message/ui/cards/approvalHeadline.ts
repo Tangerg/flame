@@ -1,6 +1,7 @@
+import { type Translate } from "@/lib/i18n/index";
 import { type ToolCategory } from "@/features/agent/public/sessionView";
 export function approvalHeadline(
-  t: (key: string, params?: Record<string, string | number>) => string,
+  t: Translate,
   toolName: string | undefined,
   category: ToolCategory | undefined,
 ): string {

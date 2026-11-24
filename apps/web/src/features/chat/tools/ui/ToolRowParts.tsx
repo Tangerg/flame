@@ -6,7 +6,7 @@ import { reveal } from "@/ui/index";
 import { StatusDot } from "@/ui/index";
 import { IconButton, vocab } from "@flame/ui";
 import { useMemo, type ReactNode } from "react";
-import { useT } from "@/lib/i18n/index";
+import { useT, labelText } from "@/lib/i18n/index";
 import { type AsyncFeedback, useAsyncFeedback } from "@/lib/useAsyncFeedback";
 import { failureText } from "@/lib/rpcErrors";
 import {
@@ -144,12 +144,12 @@ export function useToolRowActions(tool: ToolCall, summaryId: string) {
       icon={iconGlyph(knownIconName(action.icon) ?? "tool")}
       size="xs"
       quiet
-      aria-label={t(action.title)}
+      aria-label={labelText(action.title, t)}
       aria-describedby={summaryId}
       onClick={(event) => {
         event.stopPropagation();
         activate(
-          t(action.title),
+          labelText(action.title, t),
           lookupToolActionOwner(action.id) ?? "unknown",
           `[plugin] tool action ${action.id} threw:`,
           `tool action: ${action.id}`,
@@ -168,13 +168,13 @@ export function useToolRowActions(tool: ToolCall, summaryId: string) {
         icon={iconGlyph("open")}
         size="xs"
         quiet
-        aria-label={t(opener.label(tool))}
+        aria-label={labelText(opener.label(tool), t)}
         aria-describedby={summaryId}
         onClick={(event) => {
           event.stopPropagation();
           const anchor = event.currentTarget;
           activate(
-            t(opener.label(tool)),
+            labelText(opener.label(tool), t),
             lookupToolViewOpenerOwner(opener.id) ?? "unknown",
             `[plugin] tool view opener ${opener.id} threw:`,
             `tool view opener: ${opener.id}`,

@@ -1,12 +1,12 @@
 import { Select } from "@flame/ui";
 import { useSyncExternalStore } from "react";
 import { useInstalledPlugins } from "@/features/plugins/context";
-import { useT } from "@/lib/i18n/index";
+import { useT, labelText, type Label } from "@/lib/i18n/index";
 import { tupleKey } from "@/lib/tupleKey";
 
 interface Renderer {
   id: string;
-  title: string;
+  title: Label;
 }
 
 export function resolveRenderer<T extends Renderer>(
@@ -54,12 +54,13 @@ function RendererPicker({
   const automatic = "";
   const options = [
     { value: automatic, label: t("renderer.automatic") },
-    ...candidates.map(({ id, title }) => ({
-      value: id,
-      label: candidates.some((other) => other.id !== id && other.title === title)
-        ? title + " · " + id
-        : title,
-    })),
+    ...candidates.map(({ id, title }) => {
+      const text = labelText(title, t);
+      const ambiguous = candidates.some(
+        (other) => other.id !== id && labelText(other.title, t) === text,
+      );
+      return { value: id, label: ambiguous ? text + " · " + id : text };
+    }),
   ];
   if (preferred && !candidates.some(({ id }) => id === preferred))
     options.push({ value: preferred, label: t("renderer.unavailable") });

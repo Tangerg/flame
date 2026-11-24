@@ -1,20 +1,20 @@
 import { UI_DENSITY_MODES, type UiDensity } from "@/features/theme/public/appearance";
-import { Segmented, type SegmentedOption } from "@flame/ui";
-import { useT } from "@/lib/i18n/index";
+import { Segmented } from "@flame/ui";
+import { useT, type MessageKey } from "@/lib/i18n/index";
 import { useAppearance, useAppearanceEdit } from "@/features/theme/public/appearance";
 import { SettingRow } from "@/ui/settings/SettingRow";
-const DENSITY_OPTIONS: SegmentedOption<UiDensity>[] = UI_DENSITY_MODES.map((mode) => ({
+const DENSITY_OPTIONS = UI_DENSITY_MODES.map((mode) => ({
   value: mode,
-  label: `settings.density.${mode}`,
+  label: `settings.density.${mode}` as const,
 }));
 
-const RADIUS_OPTIONS: SegmentedOption<number>[] = [
+const RADIUS_OPTIONS: { value: number; label: MessageKey }[] = [
   { value: 0.6, label: "shape.opt.sharp" },
   { value: 1, label: "settings.font.default" },
   { value: 1.4, label: "shape.opt.soft" },
 ];
 
-const MOTION_OPTIONS: SegmentedOption<number>[] = [
+const MOTION_OPTIONS: { value: number; label: MessageKey }[] = [
   { value: 0, label: "shape.opt.off" },
   { value: 0.6, label: "shape.opt.fast" },
   { value: 1, label: "settings.font.default" },

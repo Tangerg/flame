@@ -24,7 +24,7 @@ export function visualFileRenderers(runtimeClient: () => FlameClient) {
           WORKSPACE_FILE_RENDERER,
           {
             id: `visual:${entry.id}`,
-            title: entry.title,
+            title: { text: entry.title },
             extension: entry.selector.name,
             component: (props) => createElement(RecordedFileComponent, { ...props, entry: File }),
           },

@@ -1,7 +1,8 @@
+import { type MessageKey } from "@/lib/i18n/index";
 import { type SlashCommandSpec } from "@/features/composer/public/types";
 interface SlashHintDefinition {
   cmd: string;
-  descriptionKey: string;
+  descriptionKey: MessageKey;
 }
 
 interface SlashHintContribution {

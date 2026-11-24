@@ -1,7 +1,8 @@
+import { type Label } from "@/lib/i18n/index";
 import { type ToolActionSpec } from "@/features/chat/public/tools/types";
 import { type ToolCall } from "@/features/agent/public/sessionView";
 interface CopyToolArgsActionOptions {
-  title: string;
+  title: Label;
   copyText: (text: string) => unknown | Promise<unknown>;
 }
 

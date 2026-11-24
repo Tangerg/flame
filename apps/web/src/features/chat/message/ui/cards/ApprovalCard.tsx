@@ -7,7 +7,7 @@ import { type ApprovalDecision } from "@/features/agent/public/hitl";
 import { type RememberScope } from "@/features/agent/public/hitl";
 import { type ToolCategory } from "@/features/agent/public/sessionView";
 import { useRuntimeCommandsAvailable } from "@/features/connection/public/serviceStatus";
-import { useT } from "@/lib/i18n/index";
+import { useT, type Translate, type MessageKey } from "@/lib/i18n/index";
 import { TranscriptMark } from "@/ui/index";
 import { DropdownMenu } from "@/ui/index";
 import { Icon, type IconName } from "@/ui/index";
@@ -40,7 +40,7 @@ interface Props {
 
 const REMEMBER_ACTIONS: readonly {
   scope: RememberScope;
-  labelKey: string;
+  labelKey: MessageKey;
 }[] = [
   { scope: "session", labelKey: "approval.action.allowSession" },
   { scope: "workspace", labelKey: "approval.action.allowWorkspace" },
@@ -200,7 +200,7 @@ export function ApprovalCard({
 }
 
 function approvalIdentity(
-  t: (key: string, params?: Record<string, string | number>) => string,
+  t: Translate,
   toolName: string | undefined,
 ): { icon: IconName; label: string } {
   if (!toolName) {

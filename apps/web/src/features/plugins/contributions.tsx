@@ -130,7 +130,7 @@ function contributeFileRenderer({
     WORKSPACE_FILE_RENDERER,
     {
       id,
-      title: qualifiedTitle,
+      title: { text: qualifiedTitle },
       extension: entry.selector.name,
       component: (props) => (
         <ComponentBoundary
@@ -177,7 +177,7 @@ function contributeToolResultRenderer({
     TOOL_RESULT_RENDERER,
     {
       id,
-      title: qualifiedTitle,
+      title: { text: qualifiedTitle },
       selector:
         entry.selector.type === "resultShape"
           ? { type: "resultShape", shape: entry.selector.shape }
@@ -301,9 +301,9 @@ function contributePlacedComponent(
         SETTINGS_PANE,
         {
           id,
-          label: entry.title,
+          label: { text: entry.title },
           localizedTitles: entry.localizedTitles,
-          keywords: [entry.title, entry.id],
+          keywords: [{ text: entry.title }, { text: entry.id }],
           material: entry.material,
           intent: entry.settingsIntent,
           group: "extensions",
@@ -319,7 +319,9 @@ function contributePlacedComponent(
       {
         id,
         predicate: (tool) => tool.category === entry.toolCategory,
-        label: () => presentationTitle(entry.title, entry.localizedTitles, activeLocale()),
+        label: () => ({
+          text: presentationTitle(entry.title, entry.localizedTitles, activeLocale()),
+        }),
         open: (tool, origin) => {
           lifetime.lifetime.signal.throwIfAborted();
           openWorkspaceViewAtPath(workspace, id, tool.fnKind === "path" ? tool.fn : "", origin);
@@ -332,7 +334,7 @@ function contributePlacedComponent(
     WORKSPACE_VIEW,
     {
       id,
-      title: qualifiedTitle,
+      title: { text: qualifiedTitle },
       localizedTitles: entry.localizedTitles,
       material: entry.material,
       dock: entry.scope === "session" ? "session" : undefined,

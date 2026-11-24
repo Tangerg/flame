@@ -1,3 +1,4 @@
+import { type Label } from "@/lib/i18n/index";
 import { type ComponentType, type ReactNode } from "react";
 import { type ToolCall } from "@/features/agent/public/sessionView";
 import { type PluginRendererSelector } from "@/foundation/protocolValues.generated";
@@ -10,7 +11,7 @@ export interface ToolPreviewProps {
 
 export interface ToolResultRendererSpec {
   id: string;
-  title: string;
+  title: Label;
   selector: PluginRendererSelector;
   component: ComponentType<ToolPreviewProps & { fallback: ReactNode }>;
 }
@@ -18,7 +19,7 @@ export interface ToolResultRendererSpec {
 export interface ToolActionSpec {
   id: string;
   icon: string;
-  title: string;
+  title: Label;
   order?: number;
   predicate?: (tool: ToolCall) => boolean;
   run: (tool: ToolCall) => void | Promise<void>;
@@ -28,7 +29,7 @@ export interface ToolViewOpenerSpec {
   id: string;
   order?: number;
   predicate: (tool: ToolCall) => boolean;
-  label: (tool: ToolCall) => string;
+  label: (tool: ToolCall) => Label;
   open: (tool: ToolCall, origin: HTMLElement) => void | Promise<void>;
 }
 

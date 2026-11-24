@@ -1,4 +1,4 @@
-export const en: Record<string, string> = {
+export const en = {
   "common.copied": "Copied",
   "common.copyFailed": "Could not copy",
   "file.loadMore": "Load more files",
@@ -1037,4 +1037,4 @@ export const en: Record<string, string> = {
   "diff.unknownUnmodifiedLines": "Unchanged context is not included in this patch.",
   "diff.expandAll": "Expand all available context",
   "diff.noNewline": "No newline at end of file",
-};
+} as const satisfies Record<string, string>;

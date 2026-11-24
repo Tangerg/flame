@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useLocale } from "@/lib/i18n/index";
+import { useLocale, type Label, labelText } from "@/lib/i18n/index";
 import { presentationTitle } from "@/lib/i18n/presentationTitle";
 import { type ComponentType, type ReactNode } from "react";
 import { defineExtensionPoint } from "@/extensions/contracts";
@@ -16,7 +16,7 @@ export interface WorkspaceFileRendererProps {
 
 export interface WorkspaceFileRendererSpec {
   id: string;
-  title: string;
+  title: Label;
   extension: string;
   component: ComponentType<WorkspaceFileRendererProps>;
 }
@@ -26,7 +26,7 @@ export type ContextDockDestinationScope = "workspace" | "session" | "run";
 export interface WorkspaceViewSpec {
   material?: string;
   id: string;
-  title: string;
+  title: Label;
   localizedTitles?: Readonly<Record<string, string>>;
   badge?: ComponentType;
   order?: number;
@@ -51,7 +51,12 @@ export function useWorkspaceViews(): WorkspaceViewSpec[] {
     () =>
       entries.map((entry) =>
         entry.localizedTitles
-          ? { ...entry, title: presentationTitle(entry.title, entry.localizedTitles, locale) }
+          ? {
+              ...entry,
+              title: {
+                text: presentationTitle(labelText(entry.title), entry.localizedTitles, locale),
+              },
+            }
           : entry,
       ),
     [entries, locale],

@@ -1,3 +1,4 @@
+import { type Label, type MessageKey } from "@/lib/i18n/index";
 import { service } from "dougong";
 import { COMMAND } from "@/features/command/public/extensionPoints";
 import { lookupExtensionByKey } from "@/extensions/selectors/extensions";
@@ -6,7 +7,7 @@ export type CommandMenuAction = () => void | Promise<void>;
 
 export interface CommandSpec {
   id: string;
-  label: string;
+  label: Label;
   combo?: string;
   run: (...args: unknown[]) => void | Promise<void>;
   prepareForMenu?: () => CommandMenuAction | null;
@@ -17,7 +18,7 @@ type ShortcutHandler = (event: KeyboardEvent) => void;
 export interface ShortcutSpec {
   key: string;
   handler: ShortcutHandler;
-  description?: string;
+  description?: Label;
   allowInInputs?: boolean;
 }
 

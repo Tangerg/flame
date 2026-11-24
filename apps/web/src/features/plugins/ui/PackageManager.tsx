@@ -11,7 +11,7 @@ import {
   type PluginReleaseRequest,
   type PluginRequest,
 } from "@flame/runtime-client/wire";
-import { useT } from "@/lib/i18n/index";
+import { useT, type MessageKey } from "@/lib/i18n/index";
 import { useCodeActionLabels } from "@/ui/index";
 import { DataError, DataView, SkeletonList } from "@/ui/index";
 import { SystemMessage } from "@/ui/index";
@@ -63,17 +63,17 @@ type PackageEdit = { name: string; version?: string; value: string; validationEr
   { type: "configure"; target: PluginReleaseRequest } | { type: "stage"; target: PluginRequest }
 );
 
-const EDIT_LABEL: Record<PackageEdit["type"], string> = {
+const EDIT_LABEL: Record<PackageEdit["type"], MessageKey> = {
   configure: "packages.configure",
   stage: "packages.stage",
 };
 
-const EDIT_INPUT: Record<PackageEdit["type"], string> = {
+const EDIT_INPUT: Record<PackageEdit["type"], MessageKey> = {
   configure: "packages.configureInput",
   stage: "packages.source",
 };
 
-const EDIT_SAVE: Record<PackageEdit["type"], string> = {
+const EDIT_SAVE: Record<PackageEdit["type"], MessageKey> = {
   configure: "packages.save",
   stage: "packages.stage",
 };

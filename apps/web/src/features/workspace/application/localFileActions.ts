@@ -1,7 +1,7 @@
 import { type WorkspaceAccess } from "@/features/workspace/public/workspace";
 import { type NotificationFeed } from "@/features/notifications/public/notifications";
 
-import { t } from "@/lib/i18n/index";
+import { t, type MessageKey } from "@/lib/i18n/index";
 import { failureText } from "@/lib/rpcErrors";
 
 type LocalFileActionResult = { ok: true } | { ok: false; error: string };
@@ -9,7 +9,7 @@ type LocalFileActionResult = { ok: true } | { ok: false; error: string };
 async function runLocalFileAction(
   notifications: NotificationFeed,
   action: () => Promise<boolean>,
-  failedTitle: string,
+  failedTitle: MessageKey,
   path: string,
 ): Promise<LocalFileActionResult> {
   let description: string;

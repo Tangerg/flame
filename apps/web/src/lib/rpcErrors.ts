@@ -1,7 +1,6 @@
 import { failureText as untranslatedFailureText } from "@flame/component-sdk";
 import { isErrorType, RpcError } from "@flame/runtime-client";
-import { t } from "@/lib/i18n/index";
-import { en } from "@/lib/i18n/locales/en";
+import { t, isMessageKey } from "@/lib/i18n/index";
 
 export function describeActiveRunRefusal(problem: {
   code?: string;
@@ -16,7 +15,7 @@ export function describeActiveRunRefusal(problem: {
 // A Problem type has a user-facing message exactly when the base dictionary has one.
 export function describeErrorType(type: string | undefined): string | undefined {
   const key = `rpcError.${type}`;
-  return type && Object.hasOwn(en, key) ? t(key) : undefined;
+  return type && isMessageKey(key) ? t(key) : undefined;
 }
 
 export function describeRpcError(err: unknown): string | undefined {

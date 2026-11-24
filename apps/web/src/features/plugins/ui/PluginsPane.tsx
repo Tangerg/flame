@@ -10,7 +10,7 @@ import { Icon } from "@/ui/index";
 import { TextButton } from "@/ui/index";
 import { Button, Badge, IconButton, PanelSection, ScrollRegion, vocab } from "@flame/ui";
 import { writeToClipboard } from "@/lib/clipboard";
-import { useT } from "@/lib/i18n/index";
+import { useT, type MessageKey } from "@/lib/i18n/index";
 import { useLoadedPluginNames } from "@/extensions/kernel";
 import { usePluginErrorStore } from "@/extensions/errors";
 import {
@@ -181,7 +181,7 @@ export function PluginsPane() {
   );
 }
 
-const SOURCE_LABEL_KEYS: Record<PluginErrorSource, string> = {
+const SOURCE_LABEL_KEYS: Record<PluginErrorSource, MessageKey> = {
   setup: "plugins.errorSource.setup",
   render: "plugins.errorSource.render",
   events: "plugins.errorSource.events",

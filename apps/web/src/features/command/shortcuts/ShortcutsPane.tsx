@@ -4,7 +4,7 @@ import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "re
 import { Kbd } from "@/ui/index";
 import { TextButton } from "@/ui/index";
 import { Button, EmptyState, Hang, SearchField, TextField, useContentVisible } from "@flame/ui";
-import { useT } from "@/lib/i18n/index";
+import { useT, labelText } from "@/lib/i18n/index";
 import { normalizeHotkey, areHotkeysEqual, formatForDisplay } from "@tanstack/hotkeys";
 import { useHotkeyRecorder } from "@tanstack/react-hotkeys";
 import { SHORTCUT } from "@/features/command/public/extensionPoints";
@@ -228,20 +228,24 @@ export function ShortcutsPane() {
       [
         ...commands.map((command) => ({
           id: command.id,
-          label: t(command.label),
+          label: labelText(command.label, t),
           combo: command.combo,
           editable: true,
           overridden: Object.hasOwn(overrides, command.id),
         })),
-        ...fixed
-          .filter((shortcut) => shortcut.description)
-          .map((shortcut) => ({
-            id: `fixed:${shortcut.key}`,
-            label: t(shortcut.description ?? ""),
-            combo: shortcut.key,
-            editable: false,
-            overridden: false,
-          })),
+        ...fixed.flatMap((shortcut) =>
+          shortcut.description === undefined
+            ? []
+            : [
+                {
+                  id: `fixed:${shortcut.key}`,
+                  label: labelText(shortcut.description, t),
+                  combo: shortcut.key,
+                  editable: false,
+                  overridden: false,
+                },
+              ],
+        ),
       ].sort((a, b) => a.label.localeCompare(b.label)),
     [commands, fixed, overrides, t],
   );

@@ -1,3 +1,4 @@
+import { labelText } from "@/lib/i18n/index";
 import { useHotkeys } from "@tanstack/react-hotkeys";
 import { normalizeHotkey, parseHotkey } from "@tanstack/hotkeys";
 import { useKeymap } from "@/features/command/keymap";
@@ -15,7 +16,7 @@ export function ShortcutsProvider() {
         },
         options: {
           ignoreInputs: !spec.allowInInputs ? true : !commandModified ? ("auto" as const) : false,
-          meta: { name: spec.description },
+          meta: { name: spec.description && labelText(spec.description) },
         },
       };
     }),

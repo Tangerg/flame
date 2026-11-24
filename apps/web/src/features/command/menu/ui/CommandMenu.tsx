@@ -1,7 +1,7 @@
 import { useWorkspace } from "@/features/workspace/public/workspace";
 import { iconGlyph } from "@/ui/icons/index";
 import * as stylex from "@stylexjs/stylex";
-import { useT } from "@/lib/i18n/index";
+import { useT, labelText, type Label } from "@/lib/i18n/index";
 import { normalizeHotkey, formatForDisplay } from "@tanstack/hotkeys";
 import { Kbd } from "@/ui/index";
 import { SearchOverlay } from "@/ui/index";
@@ -51,9 +51,9 @@ export function CommandMenu() {
   const docked = new Set(
     catalog.flatMap((group) => group.destinations.map((destination) => destination.viewId)),
   );
-  const viewRow = (id: string, title: string): CommandChoice => ({
+  const viewRow = (id: string, title: Label): CommandChoice => ({
     key: `view:${id}`,
-    label: t("commandMenu.view", { title: t(title) }),
+    label: t("commandMenu.view", { title: labelText(title, t) }),
     run: (origin) =>
       docked.has(id)
         ? openWorkspaceViewInDock(workspaceAccess, id, origin)
@@ -73,7 +73,7 @@ export function CommandMenu() {
           if (lookupExtensionByKey(COMMAND, command.id) === registration) void action();
         };
       }
-      return [{ key: command.id, label: t(command.label), combo: command.combo, run }];
+      return [{ key: command.id, label: labelText(command.label, t), combo: command.combo, run }];
     }),
     ...views
       .filter((view) => view.id !== WORKSPACE_SETTINGS_VIEW)

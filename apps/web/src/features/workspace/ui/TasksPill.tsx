@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { useTasksStore } from "@/extensions/tasksStore";
 import { iconGlyph } from "@/ui/icons/index";
 import * as stylex from "@stylexjs/stylex";
-import { useT } from "@/lib/i18n/index";
+import { useT, type MessageKey } from "@/lib/i18n/index";
 import { color, motion, radius, space, type as typeStep, weight } from "@flame/ui/tokens.stylex";
 import { Icon, type IconName } from "@/ui/index";
 import { Popover } from "@/ui/index";
@@ -13,7 +13,7 @@ import { type TaskEntry, type TaskStatus } from "@/extensions/tasksStore";
 import { taskProgressPercent, taskReadout } from "@/features/workspace/application/taskReadout";
 const STATUS_ICON: Record<
   TaskStatus,
-  { name: IconName; label: string; tone?: "accent" | "negative" }
+  { name: IconName; label: MessageKey; tone?: "accent" | "negative" }
 > = {
   running: { name: "activity", label: "tasks.status.running" },
   succeeded: { name: "circle-check", label: "tasks.status.succeeded", tone: "accent" },

@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { Segmented, Slider, type SegmentedOption } from "@flame/ui";
+import { Segmented, Slider } from "@flame/ui";
 import { useT } from "@/lib/i18n/index";
 import {
   PAPER_TEXTURES,
@@ -11,9 +11,9 @@ import { SettingRow } from "@/ui/settings/SettingRow";
 import { type as typeStep } from "@flame/ui/tokens.stylex";
 import { settingStyles as ss } from "@/ui/settings/settingStyles";
 
-const TEXTURE_OPTIONS: SegmentedOption<PaperTexture>[] = PAPER_TEXTURES.map((texture) => ({
+const TEXTURE_OPTIONS = PAPER_TEXTURES.map((texture) => ({
   value: texture,
-  label: `settings.paperTexture.${texture}`,
+  label: `settings.paperTexture.${texture}` as const,
 }));
 
 export function PaperTextureSection() {

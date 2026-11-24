@@ -38,7 +38,7 @@ export function createClientCommandRegistration(
     };
     const contribution = lifetime.add(COMMAND, {
       id: JSON.stringify(["package", component.installationId, component.componentId, localId]),
-      label,
+      label: { text: label },
       combo,
       run: () => {
         const work = execute();

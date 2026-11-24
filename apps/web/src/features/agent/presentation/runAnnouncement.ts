@@ -1,3 +1,4 @@
+import { type MessageKey } from "@/lib/i18n/index";
 import { type AgentRunView } from "@/features/agent/public/sessionView";
 import { type RootRunSettlement } from "@/features/agent/application/run/rootAttention";
 import { terminalSettlementStatus } from "@/features/agent/application/run/rootAttention";
@@ -19,7 +20,7 @@ export function runAnnouncement(
   }
 }
 
-const KEY: Record<Exclude<RunAnnouncement, null>, string> = {
+const KEY: Record<Exclude<RunAnnouncement, null>, MessageKey> = {
   running: "announce.running",
   needsInput: "announce.needsInput",
   finished: "announce.finished",
@@ -27,6 +28,6 @@ const KEY: Record<Exclude<RunAnnouncement, null>, string> = {
   canceled: "announce.canceled",
 };
 
-export function runAnnouncementKey(announcement: RunAnnouncement): string | null {
+export function runAnnouncementKey(announcement: RunAnnouncement): MessageKey | null {
   return announcement === null ? null : KEY[announcement];
 }

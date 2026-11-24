@@ -1,4 +1,4 @@
-import { type Translate } from "@/lib/i18n/index";
+import { type Translate, type MessageKey } from "@/lib/i18n/index";
 import { toolSourceLabel } from "@/features/agent/presentation/toolSource";
 import {
   type ApprovalGate,
@@ -6,7 +6,7 @@ import {
   type ApprovalModePolicy,
 } from "@/features/agent/domain/hitl";
 import { type ApprovalRuleSummary } from "@/features/agent/application/approvalPolicyQueries";
-export const APPROVAL_MODE_LABEL_KEY: Record<ApprovalMode, string> = {
+export const APPROVAL_MODE_LABEL_KEY: Record<ApprovalMode, MessageKey> = {
   safe: "approvals.mode.safe",
   balanced: "approvals.mode.balanced",
   yolo: "approvals.mode.auto",
@@ -16,13 +16,13 @@ type ToolClass = keyof Omit<ApprovalModePolicy, "mode">;
 
 const TOOL_CLASSES: ToolClass[] = ["write", "exec", "network"];
 
-const TOOL_CLASS_KEY: Record<ToolClass, string> = {
+const TOOL_CLASS_KEY: Record<ToolClass, MessageKey> = {
   write: "approvals.toolClass.write",
   exec: "approvals.toolClass.exec",
   network: "approvals.toolClass.network",
 };
 
-const GATE_KEY: Record<ApprovalGate, string> = {
+const GATE_KEY: Record<ApprovalGate, MessageKey> = {
   pass: "approvals.gate.pass",
   prompt: "approvals.gate.prompt",
   deny: "approvals.gate.deny",

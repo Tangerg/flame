@@ -264,9 +264,9 @@ function workspaceDataPlugin(
       const brandPane = publishedComponent(brandDeclaration, "brand");
       brandLifetime.add(SETTINGS_PANE, {
         id: "brand",
-        label: brandPane.title,
+        label: { text: brandPane.title },
         localizedTitles: brandPane.localizedTitles,
-        keywords: [brandPane.title, brandPane.id],
+        keywords: [{ text: brandPane.title }, { text: brandPane.id }],
         group: "extensions",
         component: () =>
           createElement(InstalledComponent, {
@@ -290,9 +290,9 @@ function workspaceDataPlugin(
       const providersPane = publishedComponent(providersDeclaration, "settings");
       providersLifetime.add(SETTINGS_PANE, {
         id: "providers",
-        label: providersPane.title,
+        label: { text: providersPane.title },
         localizedTitles: providersPane.localizedTitles,
-        keywords: [providersPane.title, providersPane.id],
+        keywords: [{ text: providersPane.title }, { text: providersPane.id }],
         material: "providers",
         intent: "model-providers",
         group: "extensions",
@@ -313,9 +313,9 @@ function workspaceDataPlugin(
       const mcpPane = publishedComponent(mcpDeclaration, "settings");
       mcpLifetime.add(SETTINGS_PANE, {
         id: "mcp-servers",
-        label: mcpPane.title,
+        label: { text: mcpPane.title },
         localizedTitles: mcpPane.localizedTitles,
-        keywords: [mcpPane.title, mcpPane.id],
+        keywords: [{ text: mcpPane.title }, { text: mcpPane.id }],
         intent: "mcp-servers",
         group: "extensions",
         component: () =>
@@ -330,9 +330,9 @@ function workspaceDataPlugin(
       const hooksPane = publishedComponent(hooksDeclaration, "settings");
       hooksLifetime.add(SETTINGS_PANE, {
         id: "hooks",
-        label: hooksPane.title,
+        label: { text: hooksPane.title },
         localizedTitles: hooksPane.localizedTitles,
-        keywords: [hooksPane.title, hooksPane.id],
+        keywords: [{ text: hooksPane.title }, { text: hooksPane.id }],
         group: "extensions",
         component: () =>
           createElement(InstalledComponent, { ...hooksSources, scope: "client", entry: Hooks }),
@@ -346,7 +346,7 @@ function workspaceDataPlugin(
       const diagnosticsView = publishedComponent(diagnosticsDeclaration, "diagnostics");
       diagnosticsLifetime.add(WORKSPACE_VIEW, {
         id: "package:visual:diagnostics",
-        title: diagnosticsView.title,
+        title: { text: diagnosticsView.title },
         localizedTitles: diagnosticsView.localizedTitles,
         dock: "workspace",
         material: "diagnostics",
@@ -362,7 +362,7 @@ function workspaceDataPlugin(
       const galleryView = publishedComponent(galleryDeclaration, "icon-gallery");
       galleryLifetime.add(WORKSPACE_VIEW, {
         id: "package:visual:icon-gallery",
-        title: galleryView.title,
+        title: { text: galleryView.title },
         localizedTitles: galleryView.localizedTitles,
         component: () =>
           createElement(InstalledComponent, {
@@ -376,7 +376,7 @@ function workspaceDataPlugin(
       const trajectoryView = publishedComponent(trajectoryDeclaration, "trajectory");
       lifetime.add(WORKSPACE_VIEW, {
         id: "package:visual:trajectory",
-        title: trajectoryView.title,
+        title: { text: trajectoryView.title },
         localizedTitles: trajectoryView.localizedTitles,
         dock: "session",
         component: () =>
@@ -391,7 +391,7 @@ function workspaceDataPlugin(
       const diffView = publishedComponent(diffDeclaration, "diff");
       diffLifetime.add(WORKSPACE_VIEW, {
         id: "package:visual:diff",
-        title: diffView.title,
+        title: { text: diffView.title },
         localizedTitles: diffView.localizedTitles,
         dock: "workspace",
         material: "diff",
@@ -421,7 +421,7 @@ function workspaceDataPlugin(
       const usageView = publishedComponent(usageDeclaration, "usage");
       usageLifetime.add(WORKSPACE_VIEW, {
         id: "package:visual:usage",
-        title: usageView.title,
+        title: { text: usageView.title },
         localizedTitles: usageView.localizedTitles,
         dock: "workspace",
         component: () =>
@@ -437,7 +437,7 @@ function workspaceDataPlugin(
       const usageReportsView = publishedComponent(usageReportsDeclaration, "usage-reports");
       usageReportsLifetime.add(WORKSPACE_VIEW, {
         id: "package:visual:usage-reports",
-        title: usageReportsView.title,
+        title: { text: usageReportsView.title },
         localizedTitles: usageReportsView.localizedTitles,
         dock: "workspace",
         material: "usage",
@@ -458,7 +458,7 @@ function workspaceDataPlugin(
       const memoryView = publishedComponent(memoryDeclaration, "memory");
       memoryLifetime.add(WORKSPACE_VIEW, {
         id: "package:visual:memory",
-        title: memoryView.title,
+        title: { text: memoryView.title },
         localizedTitles: memoryView.localizedTitles,
         dock: "workspace",
         component: () =>
@@ -479,7 +479,7 @@ function workspaceDataPlugin(
       const schedulesView = publishedComponent(schedulesDeclaration, "schedules");
       schedulesLifetime.add(WORKSPACE_VIEW, {
         id: "package:visual:schedules",
-        title: schedulesView.title,
+        title: { text: schedulesView.title },
         localizedTitles: schedulesView.localizedTitles,
         dock: "workspace",
         component: () =>
@@ -495,7 +495,7 @@ function workspaceDataPlugin(
       const skillsView = publishedComponent(skillsDeclaration, "skills");
       skillsLifetime.add(WORKSPACE_VIEW, {
         id: "package:visual:skills",
-        title: skillsView.title,
+        title: { text: skillsView.title },
         localizedTitles: skillsView.localizedTitles,
         dock: "workspace",
         component: () =>

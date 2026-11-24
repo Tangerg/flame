@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useLocale } from "@/lib/i18n/index";
+import { labelText, useLocale, type Label, type MessageKey } from "@/lib/i18n/index";
 import { presentationTitle } from "@/lib/i18n/presentationTitle";
 import { type ComponentType } from "react";
 import { defineExtensionPoint } from "@/extensions/contracts";
@@ -8,12 +8,12 @@ export interface SettingsPaneSpec {
   id: string;
   material?: string;
   intent?: string;
-  label: string;
+  label: Label;
   localizedTitles?: Readonly<Record<string, string>>;
-  description?: string;
+  description?: MessageKey;
   order?: number;
   group?: string;
-  keywords?: readonly string[];
+  keywords?: readonly Label[];
   component: ComponentType;
 }
 
@@ -29,7 +29,12 @@ export function useSettingsPanes(): SettingsPaneSpec[] {
     () =>
       entries.map((entry) =>
         entry.localizedTitles
-          ? { ...entry, label: presentationTitle(entry.label, entry.localizedTitles, locale) }
+          ? {
+              ...entry,
+              label: {
+                text: presentationTitle(labelText(entry.label), entry.localizedTitles, locale),
+              },
+            }
           : entry,
       ),
     [entries, locale],

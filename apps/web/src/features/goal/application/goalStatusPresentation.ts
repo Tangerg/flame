@@ -1,3 +1,4 @@
+import { type MessageKey } from "@/lib/i18n/index";
 import { type GoalReason, type RunOutcomeType } from "@flame/runtime-client/wire";
 import { type GoalReadModel, type GoalStatus } from "@/features/goal/application/goalReadModel";
 export const GOAL_STATUS_I18N = {
@@ -24,7 +25,7 @@ const GOAL_RUN_OUTCOME_I18N = {
 } as const satisfies Record<Exclude<RunOutcomeType, "completed">, string>;
 
 /** The wire admits a runNotCompleted reason only with an unsuccessful outcome. */
-export function goalReasonLabel(reason: GoalReason): string {
+export function goalReasonLabel(reason: GoalReason): MessageKey {
   if (reason.code !== "runNotCompleted") return GOAL_REASON_I18N[reason.code];
   const outcome = reason.runOutcome;
   if (outcome === undefined || outcome === "completed") {

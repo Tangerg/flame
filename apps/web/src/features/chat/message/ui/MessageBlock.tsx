@@ -26,7 +26,7 @@ import { useComposer } from "@/features/composer/public/composer";
 import { useNotifications } from "@/features/notifications/public/notifier";
 import { messageActionMaterialization } from "@/features/chat/message/application/messageBlockModel";
 import { cn } from "@/lib/classNames";
-import { useT } from "@/lib/i18n/index";
+import { useT, type MessageKey } from "@/lib/i18n/index";
 import { MESSAGE_CONTENT_CLASS } from "@/features/chat/message/ui/messageContent";
 import { MessageContextMenu } from "@/features/chat/message/ui/MessageContextMenu";
 import { renderBlock, renderMessageBlocks } from "@/features/chat/message/ui/BlockRenderer";
@@ -54,7 +54,7 @@ const draftReplacementCopy = {
     body: "msgActions.replaceDraft.historyFilesBody",
     confirm: "msgActions.replaceDraft.historyFilesConfirm",
   },
-} satisfies Record<DraftReplacementScope, { body: string; confirm: string }>;
+} satisfies Record<DraftReplacementScope, { body: MessageKey; confirm: MessageKey }>;
 
 interface DraftReplacement {
   status: "confirming" | "dismissed" | "confirmed" | "ready";

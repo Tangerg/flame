@@ -2,7 +2,7 @@ import * as stylex from "@stylexjs/stylex";
 import { useRef, useState } from "react";
 import { StatusDot } from "@/ui/index";
 import { Button, FormActions, FormField, isImeKey, TextField, vocab } from "@flame/ui";
-import { useT, type Translate } from "@/lib/i18n/index";
+import { useT, type Translate, type MessageKey } from "@/lib/i18n/index";
 import { useRuntime, type RuntimeEndpointRejection } from "@/features/connection/public/endpoint";
 import { useRuntimeServiceStatus } from "@/features/connection/public/serviceStatus";
 import { type RuntimeServicePhase } from "@/features/connection/public/serviceStatus";
@@ -53,7 +53,7 @@ const STATUS_TONE: Record<RuntimeServicePhase, "ok" | "running" | "waiting" | "e
   unavailable: "err",
 };
 
-const STATUS_KEY: Record<RuntimeServicePhase, string> = {
+const STATUS_KEY: Record<RuntimeServicePhase, MessageKey> = {
   checking: "settings.connection.status.checking",
   reconnecting: "settings.connection.status.reconnecting",
   ready: "settings.connection.status.ready",

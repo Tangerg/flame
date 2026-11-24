@@ -68,8 +68,28 @@ function rememberActiveDictionary(locale: Locale): void {
   });
 }
 
-export function t(key: string, params?: Record<string, string | number>): string {
+type CatalogKey = keyof typeof en;
+type PluralForm = "zero" | "one" | "two" | "few" | "many" | "other";
+export type MessageKey = CatalogKey extends infer K
+  ? K extends `${infer Base}_${PluralForm}`
+    ? Base
+    : K
+  : never;
+
+export function t(key: MessageKey, params?: Record<string, string | number>): string {
   return params === undefined ? i18next.t(key) : i18next.t(key, params);
+}
+
+export function isMessageKey(key: string): key is MessageKey {
+  return Object.hasOwn(en, key);
+}
+
+// Built-in contributions name a catalog message; installed packages supply text
+// they already localized.
+export type Label = MessageKey | { readonly text: string };
+
+export function labelText(label: Label, translate: Translate = t): string {
+  return typeof label === "string" ? translate(label) : label.text;
 }
 
 export type Translate = typeof t;

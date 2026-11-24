@@ -28,7 +28,7 @@ import {
   TextField,
   vocab,
 } from "@flame/ui";
-import { useT } from "@/lib/i18n/index";
+import { useT, labelText } from "@/lib/i18n/index";
 import { FileView } from "@/features/workspace/ui/files/FileView";
 import { type WorkspaceFileContent } from "@/features/workspace/application/workspaceQueries";
 import { type WorkspaceFileViewer } from "@/features/workspace/application/navigationState";
@@ -220,7 +220,7 @@ export function FileReadingBody({
           <PluginBoundary
             key={renderer.id}
             plugin={renderer.id}
-            label={renderer.title}
+            label={labelText(renderer.title, t)}
             fallback={recorded}
           >
             <Renderer cwd={cwd} path={path} {...file} fallback={recorded} />
