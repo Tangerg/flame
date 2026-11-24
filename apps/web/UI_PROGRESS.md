@@ -14320,6 +14320,20 @@ receipt changes no accepted product input; its publication is followed by fresh
 remote, cleanliness and preservation checks. Continue from a fresh task observation,
 preserving Memory's local recovery and nonmodal command/draft ownership.
 
+### Usage coverage stated only when partial (2026-11-24)
+
+The Usage overview always read `24 model attempts · 24 with usage · 24
+priced`. When every attempt reported usage and every attempt has a price,
+the last two clauses repeat the first. Accounting details already list
+`Usage / attempts` and `Priced / attempts`. `plugins/usage` now uses
+`overview.attempts` (`24 model attempts`) when coverage is complete. It keeps
+`overview.summary` with both counts when either is partial, so the shortfall
+stays visible. The new string has plural forms in all eight catalogs. Native
+`dock-usage` in EN/light and ZH/dark shows `24 model attempts` and
+`24 次模型尝试` above the totals. Plugin typecheck, `check-i18n` and
+published resource checks pass. A partial-coverage fixture was not observed
+natively.
+
 ### Usage range and read continuity across display languages (2026-11-12)
 
 Starting from published `88ea59f83`, the original exact Usage ESM reproduces a

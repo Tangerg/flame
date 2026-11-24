@@ -22,6 +22,7 @@ export const ko: Record<string, string> = {
   "group.byOrigin": "호출 출처",
   "group.byScope": "연결",
   "overview.title": "개요",
+  "overview.attempts_other": "모델 시도 {{calls}}건",
   "overview.summary_other":
     "모델 시도 {{calls}}건 · 사용량 있음 {{reported}}건 · 가격 책정 {{priced}}건",
   "totals.label": "기록된 사용량 합계",

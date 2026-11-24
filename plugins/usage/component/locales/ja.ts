@@ -22,6 +22,7 @@ export const ja: Record<string, string> = {
   "group.byOrigin": "呼び出し元",
   "group.byScope": "関連付け",
   "overview.title": "概要",
+  "overview.attempts_other": "{{calls}} 件のモデル試行",
   "overview.summary_other":
     "{{calls}} 件のモデル試行 · {{reported}} 件に使用量 · {{priced}} 件が価格確定",
   "totals.label": "記録された使用量の合計",

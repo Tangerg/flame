@@ -22,6 +22,8 @@ export const de: Record<string, string> = {
   "group.byOrigin": "Aufrufquelle",
   "group.byScope": "Zuordnung",
   "overview.title": "Übersicht",
+  "overview.attempts_one": "{{calls}} Modellversuch",
+  "overview.attempts_other": "{{calls}} Modellversuche",
   "overview.summary_one":
     "{{calls}} Modellversuch · {{reported}} mit Nutzung · {{priced}} mit Preis",
   "overview.summary_other":

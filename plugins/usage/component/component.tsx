@@ -124,12 +124,19 @@ function UsageReport({
     <>
       <PanelSection
         title={t("overview.title")}
-        description={t("overview.summary", {
-          count: report.coverage.calls,
-          calls: fmt.number(report.coverage.calls),
-          reported: fmt.number(report.coverage.reportedCalls),
-          priced: fmt.number(report.coverage.pricedCalls),
-        })}
+        // Coverage is stated only when partial; the accounting details keep the full ratios.
+        description={t(
+          report.coverage.reportedCalls === report.coverage.calls &&
+            report.coverage.pricedCalls === report.coverage.calls
+            ? "overview.attempts"
+            : "overview.summary",
+          {
+            count: report.coverage.calls,
+            calls: fmt.number(report.coverage.calls),
+            reported: fmt.number(report.coverage.reportedCalls),
+            priced: fmt.number(report.coverage.pricedCalls),
+          },
+        )}
       >
         <Stats
           id="totals"

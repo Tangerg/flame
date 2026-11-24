@@ -22,6 +22,9 @@ export const fr: Record<string, string> = {
   "group.byOrigin": "Origine de l’appel",
   "group.byScope": "Association",
   "overview.title": "Vue d’ensemble",
+  "overview.attempts_one": "{{calls}} tentative de modèle",
+  "overview.attempts_many": "{{calls}} tentatives de modèle",
+  "overview.attempts_other": "{{calls}} tentatives de modèle",
   "overview.summary_one":
     "{{calls}} tentative de modèle · {{reported}} avec utilisation · {{priced}} avec un prix",
   "overview.summary_many":

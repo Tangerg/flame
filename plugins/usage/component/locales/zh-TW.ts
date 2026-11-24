@@ -22,6 +22,7 @@ export const zhTW: Record<string, string> = {
   "group.byOrigin": "呼叫來源",
   "group.byScope": "關聯",
   "overview.title": "概覽",
+  "overview.attempts_other": "{{calls}} 次模型嘗試",
   "overview.summary_other":
     "{{calls}} 次模型嘗試 · {{reported}} 次有用量 · {{priced}} 次已計價",
   "totals.label": "已記錄用量合計",
