@@ -32,8 +32,9 @@ export const ja: Record<string, string> = {
   "pages.newer": "新しいレコード",
   "pages.older": "古いレコード",
   "records.label": "履歴の観測",
-  "records.onPage_other": "{{page}} ページ · {{count}} 件の記録",
-  "records.ofTotal_other": "{{page}} ページ · {{count}} 件中 {{matching}} 件",
+  "records.page": "{{page}} ページ",
+  "records.count_other": "{{count}} 件の記録",
+  "records.matching_other": "{{count}} 件中 {{matching}} 件",
   toolCalls_other: "{{count}} 件のツール呼び出し",
   attention_other: "{{count}} 件が要対応",
   "empty.filtered.title":

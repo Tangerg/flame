@@ -540,17 +540,19 @@ export function TrajectoryReport({
     <>
       <Metadata ref={ref} tabIndex={-1} role="status">
         <RecordMeta>
+          {(pageNumber > 1 || Boolean(page.nextCursor)) && (
+            <span>{t("records.page", { page: pageNumber })}</span>
+          )}
           <span>
             {matching.length === rows.length
-              ? t("records.onPage", { page: pageNumber, count: rows.length })
-              : t("records.ofTotal", {
-                  page: pageNumber,
+              ? t("records.count", { count: rows.length })
+              : t("records.matching", {
                   count: rows.length,
                   matching: matching.length,
                 })}
           </span>
           <span>{t("toolCalls", { count: toolCalls })}</span>
-          <span>{t("attention", { count: attention })}</span>
+          {attention > 0 && <span>{t("attention", { count: attention })}</span>}
           {stale && <span>{t("summary.stale")}</span>}
         </RecordMeta>
       </Metadata>

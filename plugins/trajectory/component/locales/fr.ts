@@ -32,15 +32,13 @@ export const fr: Record<string, string> = {
   "pages.newer": "Enregistrements plus récents",
   "pages.older": "Enregistrements plus anciens",
   "records.label": "Observations de trajectoire",
-  "records.onPage_one": "Page {{page}} · {{count}} enregistrement",
-  "records.onPage_many": "Page {{page}} · {{count}} enregistrements",
-  "records.onPage_other": "Page {{page}} · {{count}} enregistrements",
-  "records.ofTotal_one":
-    "Page {{page}} · {{matching}} sur {{count}} enregistrement",
-  "records.ofTotal_many":
-    "Page {{page}} · {{matching}} sur {{count}} enregistrements",
-  "records.ofTotal_other":
-    "Page {{page}} · {{matching}} sur {{count}} enregistrements",
+  "records.page": "Page {{page}}",
+  "records.count_one": "{{count}} enregistrement",
+  "records.count_many": "{{count}} enregistrements",
+  "records.count_other": "{{count}} enregistrements",
+  "records.matching_one": "{{matching}} sur {{count}} enregistrement",
+  "records.matching_many": "{{matching}} sur {{count}} enregistrements",
+  "records.matching_other": "{{matching}} sur {{count}} enregistrements",
   toolCalls_one: "{{count}} appel d’outil",
   toolCalls_many: "{{count}} appels d’outil",
   toolCalls_other: "{{count}} appels d’outil",

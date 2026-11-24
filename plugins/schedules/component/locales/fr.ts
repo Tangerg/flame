@@ -63,8 +63,7 @@ export const fr: Record<string, string> = {
   "delete.close": "Fermer la confirmation de suppression",
   "delete.confirm": "Confirmer la suppression",
   "catalog.title": "Planifications enregistrées",
-  "catalog.summary":
-    "{{enabled}} activées · {{disabled}} désactivées sur cette page",
+  "catalog.summary": "{{enabled}} activées · {{disabled}} désactivées",
   "empty.filtered.title": "Aucune planification correspondante sur cette page.",
   "empty.filtered.action": "Effacer les filtres",
   "empty.none.title": "Aucune planification enregistrée.",

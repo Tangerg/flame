@@ -64,8 +64,7 @@ export const es: Record<string, string> = {
   "delete.close": "Cerrar la confirmación de eliminación",
   "delete.confirm": "Confirmar eliminación",
   "catalog.title": "Programaciones guardadas",
-  "catalog.summary":
-    "{{enabled}} activadas · {{disabled}} desactivadas en esta página",
+  "catalog.summary": "{{enabled}} activadas · {{disabled}} desactivadas",
   "empty.filtered.title": "No hay programaciones coincidentes en esta página.",
   "empty.filtered.action": "Borrar filtros",
   "empty.none.title": "No hay programaciones guardadas.",

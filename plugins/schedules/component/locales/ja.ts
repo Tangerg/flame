@@ -63,7 +63,7 @@ export const ja: Record<string, string> = {
   "delete.close": "削除確認を閉じる",
   "delete.confirm": "削除を確認",
   "catalog.title": "保存済みのスケジュール",
-  "catalog.summary": "このページで有効 {{enabled}} 件 · 無効 {{disabled}} 件",
+  "catalog.summary": "有効 {{enabled}} 件 · 無効 {{disabled}} 件",
   "empty.filtered.title": "このページに一致するスケジュールはありません。",
   "empty.filtered.action": "絞り込みをクリア",
   "empty.none.title": "スケジュールは保存されていません。",

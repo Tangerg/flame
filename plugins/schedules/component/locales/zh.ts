@@ -59,7 +59,7 @@ export const zh: Record<string, string> = {
   "delete.close": "关闭删除确认",
   "delete.confirm": "确认删除",
   "catalog.title": "已保存的定时任务",
-  "catalog.summary": "本页 {{enabled}} 项已启用 · {{disabled}} 项已禁用",
+  "catalog.summary": "{{enabled}} 项已启用 · {{disabled}} 项已禁用",
   "empty.filtered.title": "本页没有匹配的定时任务。",
   "empty.filtered.action": "清除筛选",
   "empty.none.title": "尚未保存定时任务。",

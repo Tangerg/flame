@@ -32,9 +32,9 @@ export const ko: Record<string, string> = {
   "pages.newer": "최신 레코드",
   "pages.older": "이전 레코드",
   "records.label": "궤적 관측",
-  "records.onPage_other": "{{page}}페이지 · 레코드 {{count}}개",
-  "records.ofTotal_other":
-    "{{page}}페이지 · 레코드 {{count}}개 중 {{matching}}개",
+  "records.page": "{{page}}페이지",
+  "records.count_other": "레코드 {{count}}개",
+  "records.matching_other": "레코드 {{count}}개 중 {{matching}}개",
   toolCalls_other: "도구 호출 {{count}}회",
   attention_other: "{{count}}개 주의 필요",
   "empty.filtered.title": "이 페이지에 이 필터와 일치하는 레코드가 없습니다.",

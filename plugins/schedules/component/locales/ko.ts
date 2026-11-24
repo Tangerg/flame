@@ -63,8 +63,7 @@ export const ko: Record<string, string> = {
   "delete.close": "삭제 확인 닫기",
   "delete.confirm": "삭제 확인",
   "catalog.title": "저장된 스케줄",
-  "catalog.summary":
-    "이 페이지에서 사용 {{enabled}}개 · 사용 안 함 {{disabled}}개",
+  "catalog.summary": "사용 {{enabled}}개 · 사용 안 함 {{disabled}}개",
   "empty.filtered.title": "이 페이지에 일치하는 스케줄이 없습니다.",
   "empty.filtered.action": "필터 지우기",
   "empty.none.title": "저장된 스케줄이 없습니다.",

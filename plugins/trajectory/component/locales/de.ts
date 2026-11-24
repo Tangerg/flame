@@ -33,12 +33,11 @@ export const de: Record<string, string> = {
   "pages.newer": "Neuere Datensätze",
   "pages.older": "Ältere Datensätze",
   "records.label": "Verlaufsbeobachtungen",
-  "records.onPage_one": "Seite {{page}} · {{count}} Datensatz",
-  "records.onPage_other": "Seite {{page}} · {{count}} Datensätze",
-  "records.ofTotal_one":
-    "Seite {{page}} · {{matching}} von {{count}} Datensatz",
-  "records.ofTotal_other":
-    "Seite {{page}} · {{matching}} von {{count}} Datensätzen",
+  "records.page": "Seite {{page}}",
+  "records.count_one": "{{count}} Datensatz",
+  "records.count_other": "{{count}} Datensätze",
+  "records.matching_one": "{{matching}} von {{count}} Datensatz",
+  "records.matching_other": "{{matching}} von {{count}} Datensätzen",
   toolCalls_one: "{{count}} Tool-Aufruf",
   toolCalls_other: "{{count}} Tool-Aufrufe",
   attention_one: "{{count}} erfordert Aufmerksamkeit",

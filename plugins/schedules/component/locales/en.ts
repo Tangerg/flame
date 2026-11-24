@@ -62,7 +62,7 @@ export const en: Record<string, string> = {
   "delete.close": "Close deletion confirmation",
   "delete.confirm": "Confirm deletion",
   "catalog.title": "Saved schedules",
-  "catalog.summary": "{{enabled}} enabled · {{disabled}} disabled on this page",
+  "catalog.summary": "{{enabled}} enabled · {{disabled}} disabled",
   "empty.filtered.title": "No matching schedules on this page.",
   "empty.filtered.action": "Clear filters",
   "empty.none.title": "No schedules saved.",

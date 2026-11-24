@@ -63,8 +63,7 @@ export const de: Record<string, string> = {
   "delete.close": "Löschbestätigung schließen",
   "delete.confirm": "Löschen bestätigen",
   "catalog.title": "Gespeicherte Zeitpläne",
-  "catalog.summary":
-    "{{enabled}} aktiviert · {{disabled}} deaktiviert auf dieser Seite",
+  "catalog.summary": "{{enabled}} aktiviert · {{disabled}} deaktiviert",
   "empty.filtered.title": "Keine passenden Zeitpläne auf dieser Seite.",
   "empty.filtered.action": "Filter zurücksetzen",
   "empty.none.title": "Keine Zeitpläne gespeichert.",

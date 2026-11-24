@@ -28191,6 +28191,25 @@ is required. Delivery integrates only the qualified owned paths into main.
 Next inspect a fresh content/Dock task gap from current native evidence; do not
 repeat the resolved literal-body, identity-order or keyboard-resize investigation.
 
+### Page counts without a page qualifier on a single page (2026-11-24)
+
+Memory, Schedules and Session trajectory summaries always qualified their
+counts: `Page 1 · 7 recorded items · 3 pending · 4 active on this page`,
+`1 enabled · 1 disabled on this page`, `Page 1 · 19 records  4 tool calls
+0 need attention`. The counts are page-local, but a first page without a
+next cursor is the whole read. Each summary now prefixes `Page N` only
+when a previous or next page exists, and that prefix alone scopes the
+counts, so `on this page` leaves the summary strings. Memory splits
+`footer.page_*` into `footer.page` plus `footer.items_*`; Trajectory splits
+`records.onPage_*` / `records.ofTotal_*` into `records.page`,
+`records.count_*` and `records.matching_*`, and draws `need attention` only
+when nonzero. Search placeholders keep `on this page`, because search stays
+page-local. All eight catalogs follow. Native `dock-agent-memory-recorded`
+reads `7 recorded items · 3 pending · 4 active`; `dock-schedules` reads
+`1 enabled · 1 disabled`; Chinese `dock-runs` reads `19 条记录  4 次工具调用
+3 条需要关注`. Plugin typecheck, `check-i18n` and published resource checks
+pass.
+
 ### Trajectory opens on its controls (2026-11-24)
 
 The Dock's Session trajectory header read `Session ses_visual` above the

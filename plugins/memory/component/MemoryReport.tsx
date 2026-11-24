@@ -83,7 +83,9 @@ export function MemoryReport({
           page &&
           pageNumber !== undefined && (
             <span id="summary" ref={summary} tabIndex={-1}>
-              {t("footer.page", { page: pageNumber, count: rows.length })}
+              {(pageNumber > 1 || Boolean(page.nextCursor)) &&
+                `${t("footer.page", { page: pageNumber })} · `}
+              {t("footer.items", { count: rows.length })}
               {" · "}
               {t("catalog.summary", {
                 pending: rows.filter((item) => item.status === "pending")
