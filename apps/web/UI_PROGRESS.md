@@ -18403,6 +18403,13 @@ Schedule details. `Nightly dependency audit` keeps
 `Next firing · Aug 1, 2026 at 10:00 AM`. Plugin typecheck and published
 resource checks pass.
 
+Follow-up, using the same resting-state rule as Diff `Modified` and Memory
+`Active`: enabled schedules no longer carry a green `Enabled` tag. Only a
+paused schedule shows `Disabled`. The status filter and the editor's enabled
+switch keep their labels. Native `dock-schedules`: `Nightly dependency
+audit` reads title, then instructions; `Weekly maintenance notes · Disabled`
+is unchanged.
+
 ### Schedules native editing and retained reading after main (2026-11-05)
 
 Continued from published main `58d095069`. The user's requested fresh main

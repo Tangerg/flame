@@ -560,10 +560,11 @@ export function Schedules({ context }: { context: ComponentContext }) {
                     ]}
                   />
                 }
+                // Enabled is the resting state; only a paused schedule needs a word.
                 status={
-                  <Badge tone={enabled(item) ? "success" : "neutral"}>
-                    {enabled(item) ? t("status.enabled") : t("status.disabled")}
-                  </Badge>
+                  enabled(item) ? undefined : (
+                    <Badge>{t("status.disabled")}</Badge>
+                  )
                 }
               />
               <RecordBody>{item.instructions}</RecordBody>
