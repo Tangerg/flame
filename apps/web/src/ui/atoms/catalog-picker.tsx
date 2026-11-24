@@ -99,7 +99,9 @@ const styles = stylex.create({
     flexShrink: 0,
     alignItems: "center",
     gap: space.s2,
-    paddingInline: space.s3,
+    // Same inset as the option list (listInset), so the search fill lines up
+    // with option fills and its glyph with the option marks.
+    paddingInline: space.s1,
     paddingTop: space.s2,
     paddingBottom: space.s1,
   },

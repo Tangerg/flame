@@ -78,7 +78,8 @@ const qc = stylex.create({
     display: "flex",
     flexDirection: "column",
     gap: space.s1,
-    paddingInline: space.s2,
+    // The card's content inset; ChoiceList bleeds its row fills back out by s2.
+    paddingInline: space.s4,
     paddingTop: space.s1,
     paddingBottom: 0,
   },

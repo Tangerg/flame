@@ -2651,6 +2651,17 @@ row edge) and Plugins (install path on `Install a plugin`). The first
 borderless action now sits a few pixels further from its neighbour than the
 others; the shift keeps every group's width intact.
 
+Popups and cards: the model picker's search sat 12 px in while its options
+sat 4 px in, so the search glyph was 8 px right of the provider marks. Its
+rail head now uses the option list's 4 px inset: search and option fills
+share an edge, and the glyph and query text sit on the marks and model
+names. The question card had aligned its radios with its title through its
+own 8 px choice inset; with `ChoiceList` now bleeding, the card's choice
+inset becomes 16 px so radios stay on the title edge and the selected fill
+stays inside the card. The sidebar (icons on one line, labels and section
+titles on the next) and the Composer (placeholder on the add glyph, message
+actions on the prose edge) already measured aligned and are unchanged.
+
 ### Composer suggestions open where they can be read (2026-11-24)
 
 Typing `@` or `/` in a Session's Composer opened Lexical's typeahead below
