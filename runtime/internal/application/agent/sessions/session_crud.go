@@ -162,9 +162,6 @@ func (c *Coordinator) requireProject(ctx context.Context, id identity.ProjectID)
 	return err
 }
 
-// A committed execution-policy change must not inherit processes, context evidence
-// or an isolated copy from the preceding policy, so those are retired before
-// persistence exposes the replacement.
 func (c *Coordinator) patchedWorkspace(path *string) (*session.Workspace, error) {
 	if path == nil {
 		return nil, nil
@@ -252,6 +249,9 @@ func (c *Coordinator) admittedSelection(ctx context.Context, patch flamemodel.Pa
 	return &resolved, nil
 }
 
+// A committed execution-policy change must not inherit processes, context evidence
+// or an isolated copy from the preceding policy, so those are retired before
+// persistence exposes the replacement.
 func (c *Coordinator) retireExecutionPolicy(id identity.SessionID) error {
 	if err := c.transientState.QuiesceSession(id); err != nil {
 		return fmt.Errorf("sessions: quiesce process-local Session state before execution policy change: %w", err)

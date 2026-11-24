@@ -20,8 +20,8 @@ var (
 	ErrRevisionConflict     = errors.New("project: revision conflict")
 )
 
-// Instructions enter every Run's system message, so they share the agent
-// document budget rather than an independent size.
+// Instructions are sent with every Run's system message, so their size is
+// bounded.
 const MaxInstructionsBytes = 32 * 1024
 
 type Draft struct {
