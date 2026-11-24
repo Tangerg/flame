@@ -98,7 +98,7 @@ export function RunErrorBanner() {
           transition={disclosureTransition}
           className={stylex.props(sh.banner, sh.bannerCard, reb.sans, vocab.ink).className}
         >
-          <Icon name="alert" size="sm" className={stylex.props(reb.glyph).className} />
+          <Icon name="alert" size="md" className={stylex.props(reb.glyph).className} />
           <div {...stylex.props(vocab.min)}>
             <div {...stylex.props(sh.bannerHead)}>
               <span {...stylex.props(vocab.negative, vocab.strong, typeStep.uiMd)}>

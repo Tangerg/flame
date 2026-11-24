@@ -12,7 +12,8 @@ import { color, face, space, type as typeStep, weight } from "@flame/ui/tokens.s
 const cw = stylex.create({
   title: { marginBottom: space.s0_5, color: color.warning, fontWeight: weight.semibold },
   body: { color: color.fgSoft, overflowWrap: "break-word" },
-  form: { marginTop: space.s2 },
+  // Hangs like the run error banner's actions (sh.bannerActions).
+  form: { marginTop: space.s2, marginInlineStart: `calc(-1 * ${space.s2})` },
   field: { width: "calc(var(--spacing) * 72)", maxWidth: "100%" },
 });
 

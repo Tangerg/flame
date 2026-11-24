@@ -2759,6 +2759,13 @@ Dock and Files step (2026-11-25):
   summary is text, so hover and a consumer's focus marker now change its ink
   only; row disclosures keep their bleeding fill.
 
+- The run error banner drew a 14 px icon with a 10 px gap while every
+  `SystemMessage` (the missing-folder banner beside it) draws 16 px with
+  12 px, so the two banners' text started 4 px apart. The run error card now
+  shares that geometry, and both banners' action rows hang by the small
+  buttons' inset: `Retry` and `Relocate…` put their glyph or label on the
+  banner text with the tint bleeding, like a leading control in a panel.
+
 Native `dock-files`, `dock-file` and `dock-schedules` show the tab label,
 chevrons or field glyphs and panel text on one line; the chat header's
 `scope` and `+25 −9` meet the prose and bubble edges. The full-width file
