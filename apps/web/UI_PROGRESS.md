@@ -2796,6 +2796,12 @@ Dock and Files step (2026-11-25):
   start: the menu's edge meets the trigger's fill and its items start
   within 2 px of `Templates`.
 
+- Trailing row chevrons (`RecordButton` in the Skills catalog, row
+  `Disclosure` in Diagnostics, Trajectory and runs) ended their box on the
+  row's text edge, so the stroke stopped 4 px short of the trailing fills
+  and values. They now push out by the same 5/16 bearing the leading
+  chevron pulls back, ending the stroke on the edge.
+
 Native `dock-files`, `dock-file` and `dock-schedules` show the tab label,
 chevrons or field glyphs and panel text on one line; the chat header's
 `scope` and `+25 −9` meet the prose and bubble edges. The full-width file

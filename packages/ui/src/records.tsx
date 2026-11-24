@@ -33,7 +33,13 @@ const styles = stylex.create({
     borderRadius: 0,
     color: color.fg,
   },
-  recordChevron: { color: color.fgMuted, alignSelf: "center" },
+  // The chevron's stroke ends 5/16 before its box; push it out so the stroke, like
+  // the trailing values and fills, ends on the row's text edge.
+  recordChevron: {
+    color: color.fgMuted,
+    alignSelf: "center",
+    marginInlineEnd: "calc(var(--icon-xs, 12px) * -0.3125)",
+  },
   group: {
     // Callers hide a truly empty group from their read state; hiding on
     // :empty would collapse the frame while React replaces its children.

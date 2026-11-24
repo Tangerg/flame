@@ -52,6 +52,8 @@ const styles = stylex.create({
   // The chevron drawing starts 6/16 into its box; pull it back so the stroke,
   // not the box, sits on the column edge the label's column starts from.
   leadGlyph: { marginInlineStart: "calc(var(--icon-xs, 12px) * -0.3125)" },
+  // A row's trailing chevron ends its stroke, not its box, on the row's text edge.
+  trailGlyph: { marginInlineEnd: "calc(var(--icon-xs, 12px) * -0.3125)" },
   glyph: {
     flexShrink: 0,
     transform: {
@@ -144,7 +146,7 @@ export function Disclosure({
             <Icon
               glyph={ChevronRight}
               size="xs"
-              {...stylex.props(styles.glyph)}
+              {...stylex.props(styles.glyph, styles.trailGlyph)}
             />
           )}
         </CollapsiblePrimitive.Trigger>
