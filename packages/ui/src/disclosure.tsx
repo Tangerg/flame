@@ -24,9 +24,10 @@ const styles = stylex.create({
     paddingInline: rowInset.inline,
     paddingBlock: space.s3,
   },
+  // The summary's fill spans the row's inset, matching other list row fills.
   rowTrigger: {
-    marginInline: `calc(-1 * ${space.s2})`,
-    paddingInline: space.s2,
+    marginInline: `calc(-1 * ${rowInset.inline})`,
+    paddingInline: rowInset.inline,
     maxWidth: "none",
     borderWidth: 0,
     lineHeight: "inherit",

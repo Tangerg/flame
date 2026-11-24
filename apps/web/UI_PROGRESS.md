@@ -2672,6 +2672,15 @@ borderless-button rule now comes from `Toolbar` itself (its `actions`
 slot resets it): Computer use's `Refresh status` moves onto the page
 title's edge, alongside Workspace diff's `Files` and MCP's `Import from JSON`.
 
+Disclosure rows (Trajectory, Diagnostics, Memory details) drew their
+summary hover fill 8 px outside the text while list rows and the search fill
+sit 12 px outside it. The row trigger now spans the row's inset
+(`rowInset.inline`), so every fill in a panel starts on the same line.
+Checked natively in `dock-runs` with the pointer on the first record. The
+Composer's folder and goal trays keep their reference-matched shoulder: their
+box sits on the Composer's text edge with the chip inside it, and the goal
+editor dialog already aligns its label, icon tile and field text.
+
 ### Composer suggestions open where they can be read (2026-11-24)
 
 Typing `@` or `/` in a Session's Composer opened Lexical's typeahead below
