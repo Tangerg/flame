@@ -52387,6 +52387,14 @@ Native `overlay=commands` in EN/light and ZH/dark shows right-aligned
 `⌘ W`, `⇧ ⌘ ]` text, and the sidebar hint reads `⌘ K`. Web typecheck
 passes.
 
+Session search used the same overlay but drew an identical chat glyph on
+every session row. `SessionSearch` rows now read title and relative time.
+The row text starts on the query row's search-glyph edge, because the list
+inset plus row padding equals the query row's inline padding. The command
+menu keeps its per-command glyphs, which differ by command. Native
+`overlay=finder` shows title and time rows with one highlight. Web typecheck
+passes.
+
 ### Complete command names and visible view handoff (2026-11-06)
 
 Qualified from `db2e4c0ff` after fresh remote/local main merges. The original

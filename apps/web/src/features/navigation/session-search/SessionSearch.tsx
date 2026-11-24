@@ -3,7 +3,7 @@ import { iconGlyph } from "@/ui/icons/index";
 import * as stylex from "@stylexjs/stylex";
 import { formatRelative } from "@/lib/i18n/relativeTime";
 import { useT } from "@/lib/i18n/index";
-import { DataError, Icon, SearchOverlay, SkeletonList } from "@/ui/index";
+import { DataError, SearchOverlay, SkeletonList } from "@/ui/index";
 import { EmptyState } from "@flame/ui";
 
 import { sessionDisplayTitle, useAgentSessions } from "@/features/agent/public/session";
@@ -11,7 +11,6 @@ import { matchSessions } from "@/features/navigation/session-search/sessionMatch
 import { useSessionSearchStore } from "@/features/navigation/session-search/sessionSearchState";
 import { color, leading, type as typeStep } from "@flame/ui/tokens.stylex";
 const cmd = stylex.create({
-  glyph: { flexShrink: 0, color: color.fgMuted },
   label: {
     minWidth: 0,
     flex: 1,
@@ -61,7 +60,6 @@ export function SessionSearch() {
               onSelect: () => agentAccess.selectAgentSession(session.id),
               children: (
                 <>
-                  <Icon name="chat" size="sm" className={stylex.props(cmd.glyph).className} />
                   <span {...stylex.props(cmd.label)}>{sessionDisplayTitle(t, session.title)}</span>
                   <span {...stylex.props(cmd.stamp, typeStep.uiSm)}>
                     {formatRelative(session.time)}
