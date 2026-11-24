@@ -7,6 +7,11 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 
 type JSONRecord = Record<string, unknown>;
+
+// Scope's portable content attributes and the original MCP content envelope,
+// both carried in content metadata.
+const PORTABLE_CONTENT_KEY = "scope/content";
+const MCP_CONTENT_KEY = "mcp/content";
 interface ToolMedia {
   mime?: string;
   source: { kind: "bytes"; bytes: string } | { kind: "uri"; uri: string };
@@ -88,13 +93,41 @@ function bytes(value: string, mimeType?: string): ToolMedia {
   };
 }
 
+function portableCitation(value: unknown): JSONRecord {
+  const citation = record(value);
+  fields(citation, ["source", "title", "quote"]);
+  const source = record(citation.source);
+  fields(source, ["kind", "value"]);
+  const target = string(source.value);
+  if (
+    !target ||
+    target.trim() !== target ||
+    !["uri", "reference"].includes(String(source.kind))
+  )
+    throw new Error("computer: tool citation source is invalid");
+  if (source.kind === "uri") {
+    absoluteURI(target);
+    if (/\p{White_Space}/u.test(target))
+      throw new Error("computer: tool citation URI contains whitespace");
+  }
+  const title = citation.title === undefined ? "" : string(citation.title);
+  const quote = citation.quote === undefined ? "" : string(citation.quote);
+  if (title.trim() !== title)
+    throw new Error("computer: tool citation title has surrounding whitespace");
+  return {
+    source,
+    ...(title ? { title } : {}),
+    ...(quote ? { quote } : {}),
+  };
+}
+
 function restorePortable(
   part: ToolContent,
   content: ContentBlock,
   meta: JSONRecord,
 ): void {
-  if (!Object.hasOwn(meta, "scope/content")) return;
-  const portable = record(meta["scope/content"]);
+  if (!Object.hasOwn(meta, PORTABLE_CONTENT_KEY)) return;
+  const portable = record(meta[PORTABLE_CONTENT_KEY]);
   fields(portable, [
     "metadata",
     "citations",
@@ -102,9 +135,9 @@ function restorePortable(
     "media_id",
     "media_metadata",
   ]);
-  delete meta["scope/content"];
+  delete meta[PORTABLE_CONTENT_KEY];
   const restored = metadata(portable.metadata);
-  if (Object.hasOwn(restored, "mcp/content"))
+  if (Object.hasOwn(restored, MCP_CONTENT_KEY))
     throw new Error("computer: portable metadata cannot nest an MCP envelope");
   if (Object.keys(restored).length) part.metadata = restored;
   const name = portable.name === undefined ? "" : string(portable.name);
@@ -125,37 +158,7 @@ function restorePortable(
     if (portable.citations.length) {
       if (part.kind !== "text")
         throw new Error("computer: citations require text content");
-      part.citations = portable.citations.map((value) => {
-        const citation = record(value);
-        fields(citation, ["source", "title", "quote"]);
-        const source = record(citation.source);
-        fields(source, ["kind", "value"]);
-        const target = string(source.value);
-        if (
-          !target ||
-          target.trim() !== target ||
-          !["uri", "reference"].includes(String(source.kind))
-        )
-          throw new Error("computer: tool citation source is invalid");
-        if (source.kind === "uri") {
-          absoluteURI(target);
-          if (/\p{White_Space}/u.test(target))
-            throw new Error("computer: tool citation URI contains whitespace");
-        }
-        const title =
-          citation.title === undefined ? "" : string(citation.title);
-        const quote =
-          citation.quote === undefined ? "" : string(citation.quote);
-        if (title.trim() !== title)
-          throw new Error(
-            "computer: tool citation title has surrounding whitespace",
-          );
-        return {
-          source,
-          ...(title ? { title } : {}),
-          ...(quote ? { quote } : {}),
-        };
-      });
+      part.citations = portable.citations.map(portableCitation);
     }
   }
 }
@@ -268,7 +271,7 @@ function projectContent(content: ContentBlock): ToolContent | undefined {
     Object.keys(meta).length ||
     content.annotations
   )
-    part.metadata = { ...part.metadata, "mcp/content": envelope };
+    part.metadata = { ...part.metadata, [MCP_CONTENT_KEY]: envelope };
   return part;
 }
 
@@ -282,8 +285,8 @@ export function admitToolResult(
   canonicalJSON(value);
 }
 
-// Receipts retain the admitted MCP result once. This is only the public Scope
-// ToolOutput wire projection; parity tests execute the pinned Scope mapper.
+// Receipts retain the admitted MCP result once; this is only its public Scope
+// ToolOutput wire projection.
 export function projectToolOutput(
   method: string,
   result: CallToolResult,
