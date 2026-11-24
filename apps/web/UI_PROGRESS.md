@@ -33646,6 +33646,12 @@ for native checks.
   (Dock ≈ 350 px) name and actions share one row and the directory wraps at
   separators.
 
+Follow-up: `DiffFileList` rows drew the same file-diff glyph on every changed
+file. Rows now read name, directory, then change, like Skills and session
+search rows. Native `dock-diff-evidence` Files shows four glyph-free rows
+with the current file tinted. `@flame/ui` typecheck/build and published
+resource checks pass.
+
 Checks: plugin typecheck, `check-i18n` (20 catalogs × 8 locales),
 `build-components --check`, the three Diff component cases, the Web Diff
 and file-reference contracts (7), `@flame/ui` package test and Web

@@ -1,9 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import { Fragment, type ReactNode, type Ref } from "react";
-import { FileDiff } from "@flame/icons/react";
 import { DiffStat } from "./diff-stat";
 import { useHeadingTag } from "./heading-level";
-import { Icon } from "./font-scale";
 import { RecordButton, RecordGroup } from "./records";
 import { color, layout, space, type, weight } from "./tokens.stylex";
 
@@ -48,7 +46,6 @@ const styles = stylex.create({
     minWidth: 0,
   },
   state: { color: color.fgMuted, fontWeight: weight.regular },
-  glyph: { color: color.fgMuted, marginBlockStart: space.s0_5 },
   heading: { display: "grid", gap: space.s1, minWidth: 0 },
   headingLine: {
     display: "flex",
@@ -134,7 +131,6 @@ export function DiffFileList({
             aria-current={file.path === currentPath ? "true" : undefined}
             onClick={(event) => onSelect(file.path, event.currentTarget)}
           >
-            <Icon glyph={FileDiff} size="sm" {...stylex.props(styles.glyph)} />
             <span {...stylex.props(styles.copy)}>
               <span {...stylex.props(styles.name, type.uiMd)}>
                 {file.path.slice(cut)}
