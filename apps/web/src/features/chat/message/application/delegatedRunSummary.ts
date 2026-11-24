@@ -24,7 +24,7 @@ const STATUS_VIEW: Record<
   running: {
     labelKey: "agent.runTree.status.running",
     dotTone: "running",
-    ink: "info",
+    ink: "accent",
   },
   waiting: {
     labelKey: "agent.runTree.status.waiting",

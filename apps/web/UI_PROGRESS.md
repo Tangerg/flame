@@ -20977,6 +20977,16 @@ deletion; rerunning with its exact digest passed all source, artifact, native,
 publication and ownership checks. This documentation receipt changes no tested
 source. The primary checkout and its parallel work remain untouched.
 
+### Running reads in one tone (2026-11-24)
+
+Delegated runs paired the running dot's accent with info-blue text, so a
+running sub-agent read `• Running` in two colours, while tool activity,
+the header chip and the sidebar mark running in accent alone.
+`delegatedRunSummary` now inks running in accent; waiting, error,
+finished and canceled are unchanged. Native `dock-subagents` in light and
+dark reads `Verify package dependencies • Running` in one accent tone,
+also used by the transcript's delegated rows. Web typecheck passes.
+
 ### One delegation title in the Subagents list (2026-11-24)
 
 The Subagents Dock repeated a four-way delegation title on every member
