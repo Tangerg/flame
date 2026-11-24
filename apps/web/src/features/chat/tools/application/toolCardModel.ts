@@ -1,5 +1,5 @@
 import { type Translate } from "@/lib/i18n/index";
-import { type ToolCall } from "@/features/agent/public/sessionView";
+import { type ToolCall, type ToolCallStatus } from "@/features/agent/public/sessionView";
 import {
   toolDiffStat,
   toolIntent,
@@ -10,9 +10,7 @@ import {
 } from "@/features/agent/public/messagePresentation";
 import { type ToolActionSpec, type ToolViewOpenerSpec } from "@/features/chat/public/tools/types";
 export interface ToolCardModel {
-  running: boolean;
-  failed: boolean;
-  denied: boolean;
+  status: ToolCallStatus;
   disclosable: boolean;
   intent: ToolIntent;
   detail?: ToolDetail;
@@ -30,9 +28,7 @@ export function toolCardModel(t: Translate, tool: ToolCall): ToolCardModel {
   const metaItems = toolMetaItems(t, tool);
   const diffStat = toolDiffStat(tool);
   return {
-    running: tool.status === "running",
-    failed: tool.status === "err",
-    denied: tool.status === "denied",
+    status: tool.status,
     disclosable: tool.status !== "denied" || tool.args.length > 0,
     intent,
     detail: namesOneOfMany(intent.detail, tool) ? undefined : intent.detail,

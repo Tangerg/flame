@@ -50,10 +50,11 @@ export function ToolRowActions({ children }: { children: ReactNode }) {
 
 export function ToolStatusMarks({ model }: { model: ToolCardModel }) {
   const t = useT();
-  return (
-    <>
-      {model.running && <StatusDot tone="running" />}
-      {model.failed && (
+  switch (model.status) {
+    case "running":
+      return <StatusDot tone="running" />;
+    case "err":
+      return (
         <span
           data-slot="tool-status"
           data-tone="negative"
@@ -61,14 +62,16 @@ export function ToolStatusMarks({ model }: { model: ToolCardModel }) {
         >
           {t("tool.state.failed")}
         </span>
-      )}
-      {model.denied && (
+      );
+    case "denied":
+      return (
         <span data-slot="tool-status" {...stylex.props(styles.sans, vocab.muted, typeStep.uiXs)}>
           {t("tool.state.denied")}
         </span>
-      )}
-    </>
-  );
+      );
+    case "ok":
+      return null;
+  }
 }
 
 export function ToolFailureLine({ model }: { model: ToolCardModel }) {
