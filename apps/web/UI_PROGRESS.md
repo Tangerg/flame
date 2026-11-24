@@ -2595,6 +2595,12 @@ shifted back inside the right edge. Native `agent` `idle`: `/` shows
 `/goal` above the line; `@run` lists three files above the Composer with
 the first highlighted. Web typecheck passes.
 
+Follow-up: slash rows showed only the bare command (`/goal`, `/review`),
+although every `SlashCommandSpec` already declares a localized
+`description` that nothing rendered. Rows now read the command, then its
+description in muted ink, truncated on one line. Native `/` reads `/goal
+Set a goal the agent keeps pursuing`.
+
 ### Empty Composer hints and shared natural height (2026-11-10)
 
 The 18 px English code-reading capture exposes a two-line empty Composer hint

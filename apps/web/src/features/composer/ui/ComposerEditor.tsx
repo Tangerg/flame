@@ -97,7 +97,9 @@ const styles = stylex.create({
     padding: space.s1,
   },
   option: {
-    display: "block",
+    display: "flex",
+    alignItems: "baseline",
+    gap: space.s2,
     width: "100%",
     textAlign: "start",
     padding: space.s2,
@@ -107,6 +109,13 @@ const styles = stylex.create({
     borderWidth: 0,
   },
   selected: { backgroundColor: surface.surface3 },
+  optionDescription: {
+    minWidth: 0,
+    overflow: "hidden",
+    color: color.fgMuted,
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+  },
 });
 const MENU_GAP = 4;
 const MENU_MAX_REM = 18;
@@ -179,6 +188,7 @@ class Candidate extends MenuOption {
   constructor(
     readonly kind: "file" | "slash",
     readonly label: string,
+    readonly description?: string,
   ) {
     super(kind + ":" + label);
   }
@@ -227,7 +237,7 @@ function Suggestions() {
           ? (listing.data?.data ?? []).map((entry) => new Candidate("file", entry.path))
           : commands
               .filter(({ cmd }) => cmd.toLowerCase().startsWith("/" + query.toLowerCase()))
-              .map(({ cmd }) => new Candidate("slash", cmd)),
+              .map(({ cmd, spec }) => new Candidate("slash", cmd, spec.description)),
     [query, kind, listing.data, commands],
   );
   return (
@@ -279,7 +289,12 @@ function Suggestions() {
                       onClick={() => selectOptionAndCleanUp(option)}
                       {...stylex.props(styles.option, selectedIndex === index && styles.selected)}
                     >
-                      {option.label}
+                      <span>{option.label}</span>
+                      {option.description && (
+                        <span {...stylex.props(styles.optionDescription)}>
+                          {t(option.description)}
+                        </span>
+                      )}
                     </ButtonPrimitive>
                   ))}
                 </div>
