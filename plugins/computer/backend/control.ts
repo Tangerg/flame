@@ -69,21 +69,30 @@ type Resource = {
   disposal?: Promise<void>;
 };
 
-function trusted(context: CallContext, human = false): Invocation {
-  if (
-    !context.invocation ||
-    context.invocation.target.scope !== "installation" ||
-    (human
-      ? context.invocation.origin !== "human"
-      : context.invocation.origin === "automatic")
-  )
+function installationInvocation(context: CallContext): Invocation | undefined {
+  return context.invocation?.target.scope === "installation"
+    ? context.invocation
+    : undefined;
+}
+
+function capturedCaller(context: CallContext): Invocation {
+  const invocation = installationInvocation(context);
+  if (!invocation || invocation.origin === "automatic")
     throw new Refusal(
-      human ? "human_required" : "invocation_required",
-      human
-        ? "computer control requires the original human caller"
-        : "computer control requires a captured model or human caller",
+      "invocation_required",
+      "computer control requires a captured model or human caller",
     );
-  return context.invocation;
+  return invocation;
+}
+
+function humanCaller(context: CallContext): Invocation {
+  const invocation = installationInvocation(context);
+  if (!invocation || invocation.origin !== "human")
+    throw new Refusal(
+      "human_required",
+      "computer control requires the original human caller",
+    );
+  return invocation;
 }
 
 function engineJSON(value: unknown): unknown {
@@ -245,7 +254,7 @@ export class Control {
     kind: "tool" | "command",
     method: string,
   ): OriginalCommand {
-    const invocation = trusted(context);
+    const invocation = capturedCaller(context);
     const id = kind === "tool" ? toolCommandId(context) : context.commandId;
     if (!id) throw new Error("computer: original command identity is required");
     return {
@@ -306,7 +315,7 @@ export class Control {
 
   open(context: CallContext, leaseSeconds: number): Promise<ControlSession> {
     return this.#command(context, METHODS.open, async (id) => {
-      trusted(context, true);
+      humanCaller(context);
       this.#signal.throwIfAborted();
       if (this.#closing)
         throw new Refusal("computer_closed", "computer backend is closing");
@@ -446,7 +455,7 @@ export class Control {
       context,
       METHODS.close,
       async (id) => {
-        trusted(context, true);
+        humanCaller(context);
         const resource = this.#current(sessionId);
         this.#receipts.markDispatched(id);
         this.#retire(resource, "user");
@@ -466,7 +475,7 @@ export class Control {
       context,
       METHODS.stop,
       async (id) => {
-        trusted(context, true);
+        humanCaller(context);
         const resource = this.#current(sessionId);
         resource.session.assertOperation(operationId);
         this.#receipts.markDispatched(id);
@@ -525,7 +534,7 @@ export class Control {
 
   reply(context: CallContext, input: ReplyInput): Promise<boolean> {
     return this.#command(context, METHODS.reply, (id) => {
-      trusted(context, true);
+      humanCaller(context);
       const resource = this.#current(input.sessionId);
       const pending = resource.permission;
       if (

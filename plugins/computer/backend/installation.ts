@@ -56,11 +56,11 @@ function codexToolLayout(
   const layouts: { codex: string; host: string }[] = [];
   for (const directory of [resources, join(resources, "codex-cli/bin")]) {
     try {
-      const codex = regular(application, join(directory, "codex"), true);
+      const codex = regular(application, join(directory, "codex"), "execute");
       const host = regular(
         application,
         join(directory, "codex-code-mode-host"),
-        true,
+        "execute",
       );
       layouts.push({ codex, host });
     } catch (cause) {
@@ -112,7 +112,7 @@ async function darwinNative(
       bundle,
       "Contents/SharedSupport/SkyComputerUseClient.app/Contents/MacOS/SkyComputerUseClient",
     ),
-    true,
+    "execute",
   );
   regular(application, join(application, "Contents/Info.plist"));
   regular(
@@ -139,13 +139,17 @@ function within(path: string, root: string): boolean {
   );
 }
 
-function regular(root: string, path: string, executable = false): string {
+function regular(
+  root: string,
+  path: string,
+  use: "read" | "execute" = "read",
+): string {
   let resolved: string;
   try {
     resolved = realpathSync(path);
     if (!within(resolved, root) || !statSync(resolved).isFile())
       throw new Error("not a contained regular file");
-    if (executable) accessSync(resolved, constants.X_OK);
+    if (use === "execute") accessSync(resolved, constants.X_OK);
   } catch (cause) {
     throw new InstallationError(
       "selected CUA application is incomplete or contains an external file",
@@ -490,12 +494,12 @@ export class Installation {
       const node = regular(
         application,
         join(runtime, manifest.node_path),
-        true,
+        "execute",
       );
       const nodeRepl = regular(
         application,
         join(runtime, manifest.node_repl_path),
-        true,
+        "execute",
       );
       const modules = realpathSync(join(runtime, manifest.node_modules));
       if (!within(modules, application))
