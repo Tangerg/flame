@@ -148,6 +148,13 @@ export interface CapturedToolInteraction {
   submit(input: ToolInteractionInput): Promise<InteractionSubmission>;
 }
 
+// The Composer draft current when the context was captured. Appending only
+// edits that draft; the user still owns sending it.
+export interface CapturedComposer {
+  // False when another Session's draft has replaced the captured one.
+  append(text: string): boolean;
+}
+
 export interface SaveFileRequest {
   /** Suggested basename only; the host owns the actual destination. */
   readonly filename: string;
@@ -202,6 +209,7 @@ export interface ComponentContext {
   readonly toolResult?: Readonly<CapturedToolResult>;
   readonly message?: CapturedMessage;
   readonly interaction?: CapturedToolInteraction;
+  readonly composer?: CapturedComposer;
   readonly runtime: FlameClient;
   readonly telemetry: ClientTelemetry;
   readonly workspace?: Readonly<WorkspaceContext>;

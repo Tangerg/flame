@@ -699,7 +699,21 @@ export function SlideStudio({
   const [slideId, setSlideId] = useState<string>();
   const [elementId, setElementId] = useState<string>();
   const [removal, setRemoval] = useState<string>();
-  const [copied, setCopied] = useState<"copied" | "failed">();
+  const [handoff, setHandoff] = useState<
+    "handed" | "stale" | "copied" | "failed"
+  >();
+  const composer = state.context.composer;
+  // Hosts without a Composer collaborator still let the user carry the
+  // reference by hand.
+  const hand = (reference: string) => {
+    if (composer) {
+      setHandoff(composer.append(`${reference}\n\n`) ? "handed" : "stale");
+      return;
+    }
+    void copyText(reference).then((done) =>
+      setHandoff(done ? "copied" : "failed"),
+    );
+  };
   const pending =
     draft && draft.base !== viewed && draft.operations.length
       ? draft.base
@@ -917,7 +931,7 @@ export function SlideStudio({
               editable={editable}
               onSelect={(id) => {
                 setElementId(id);
-                setCopied(undefined);
+                setHandoff(undefined);
               }}
               onFrame={setFrame}
               onDelete={remove}
@@ -931,7 +945,7 @@ export function SlideStudio({
                   aria-pressed={entry.id === element?.id}
                   onClick={() => {
                     setElementId(entry.id);
-                    setCopied(undefined);
+                    setHandoff(undefined);
                   }}
                 >
                   {t(`slides.kind.${entry.kind}`)} · {label(entry, t)}
@@ -1009,25 +1023,22 @@ export function SlideStudio({
                     {t("slides.revert")}
                   </Button>
                   <Button
+                    disabled={dirty}
                     onClick={() => {
-                      const unsavedSlide = read?.value?.slides.find(
+                      const saved = read?.value?.slides.find(
                         (entry) => entry.id === slide.id,
                       );
-                      if (!unsavedSlide || !original) return;
-                      void copyText(
-                        selectionReference(document, unsavedSlide, original),
-                      ).then((done) => setCopied(done ? "copied" : "failed"));
+                      if (!saved || !original) return;
+                      hand(selectionReference(document, saved, original));
                     }}
                   >
-                    {t("slides.reference")}
+                    {t(composer ? "slides.handoff" : "slides.reference")}
                   </Button>
                 </Toolbar>
-                {changed(element) && (
-                  <Metadata>{t("slides.reference.unsaved")}</Metadata>
-                )}
-                {copied && (
+                {dirty && <Metadata>{t("slides.reference.unsaved")}</Metadata>}
+                {handoff && (
                   <Metadata role="status">
-                    {t(`slides.reference.${copied}`)}
+                    {t(`slides.reference.${handoff}`)}
                   </Metadata>
                 )}
               </RecordGroup>
@@ -1080,17 +1091,16 @@ export function SlideStudio({
                     {t("slides.deleteSlide")}
                   </Button>
                   <Button
+                    disabled={dirty}
                     onClick={() => {
                       const saved = read?.value?.slides.find(
                         (entry) => entry.id === slide.id,
                       );
                       if (!saved) return;
-                      void copyText(
-                        selectionReference(document, saved, undefined),
-                      ).then((done) => setCopied(done ? "copied" : "failed"));
+                      hand(selectionReference(document, saved, undefined));
                     }}
                   >
-                    {t("slides.reference")}
+                    {t(composer ? "slides.handoff" : "slides.reference")}
                   </Button>
                 </Toolbar>
                 {dirty && <Metadata>{t("slides.structureBlocked")}</Metadata>}
@@ -1115,9 +1125,9 @@ export function SlideStudio({
                     </FormActions>
                   </RecordGroup>
                 )}
-                {copied && (
+                {handoff && (
                   <Metadata role="status">
-                    {t(`slides.reference.${copied}`)}
+                    {t(`slides.reference.${handoff}`)}
                   </Metadata>
                 )}
               </RecordGroup>

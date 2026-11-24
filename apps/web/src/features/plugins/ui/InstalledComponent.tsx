@@ -14,6 +14,7 @@ import { FailureDetails } from "@/ui/index";
 import { failureDiagnostics } from "@/lib/diagnostics";
 import {
   type CapturedFile,
+  type CapturedComposer,
   type CapturedSession,
   type CapturedToolResult,
   type CapturedMessage,
@@ -46,6 +47,7 @@ import { trackContributionIO } from "@/extensions/contributionIO";
 import { type ContributionScope } from "@/extensions/definePlugin";
 import { type RuntimeConnectionGeneration } from "@/features/connection/public/services";
 import { useSubmitCapturedAgentInput } from "@/features/agent/public/input";
+import { type ComposerAccess, useComposer } from "@/features/composer/public/composer";
 import {
   captureToolInteraction,
   type SubmitCapturedAgentInput,
@@ -158,6 +160,19 @@ function ComponentRecovery({
 
 type CapturedContext = Omit<ComponentContext, "locale" | "compose">;
 
+// The draft is captured with the context, so a later Session switch cannot
+// redirect a component's text into another conversation.
+function captureComposer(composer: ComposerAccess, signal: AbortSignal): CapturedComposer {
+  const append = composer.captureAppendText();
+  return Object.freeze({
+    append(text: string) {
+      signal.throwIfAborted();
+      if (!text.trim()) throw new Error("Composer text is empty.");
+      return append(text);
+    },
+  });
+}
+
 class ComponentInstance {
   private controller = new AbortController();
   private listeners = new Set<() => void>();
@@ -186,6 +201,9 @@ class ComponentInstance {
         : undefined,
       message: this.sources.message,
       toolResult: this.sources.toolResult,
+      composer: this.sources.composer
+        ? captureComposer(this.sources.composer, signal)
+        : undefined,
       interaction:
         this.sources.toolResult && this.sources.submitInput
           ? captureToolInteraction(
@@ -334,6 +352,7 @@ export function RenderingComponent(
     message,
     toolResult,
     submitInput,
+    composer,
     sessionTarget,
     component,
     compose,
@@ -353,6 +372,7 @@ export function RenderingComponent(
         message,
         toolResult,
         submitInput,
+        composer,
         sessionTarget,
         component,
         compose,
@@ -374,6 +394,7 @@ export function RenderingComponent(
       message,
       toolResult,
       submitInput,
+      composer,
       sessionTarget,
       component,
       compose,
@@ -435,6 +456,7 @@ type ComponentSources = Pick<
   file?: CapturedFile;
   toolResult?: CapturedToolResult;
   submitInput?: SubmitCapturedAgentInput;
+  composer?: ComposerAccess;
   sessionTarget?: CapturedSession;
   openSession?: (sessionId: string) => void;
   captureSessionId: () => string | undefined;
@@ -444,6 +466,7 @@ type ComponentSources = Pick<
 
 function WorkspaceComponent(props: ComponentProps) {
   const t = useT();
+  const composer = useComposer();
   const selection = useActiveSessionWorkspace();
   const focus = useWorkspaceFileFocus();
   const cwd = resolvedWorkspaceCwd(selection);
@@ -467,10 +490,11 @@ function WorkspaceComponent(props: ComponentProps) {
     props.placement === "workspaceChangesAction"
       ? workspace.ref.path
       : tupleKey(workspace.ref.path, workspace.focus.revision.toString(), workspace.focus.path);
-  return <RenderingComponent key={key} {...props} workspace={workspace} />;
+  return <RenderingComponent key={key} {...props} workspace={workspace} composer={composer} />;
 }
 
 function ClientComponent(props: ComponentProps) {
+  const composer = useComposer();
   const selection = useActiveSessionWorkspace();
   const sessionId = useActiveSessionId();
   const cwd = resolvedWorkspaceCwd(selection);
@@ -484,15 +508,19 @@ function ClientComponent(props: ComponentProps) {
       {...props}
       workspace={workspace}
       sessionId={sessionId ?? undefined}
+      composer={composer}
     />
   );
 }
 
 function SessionComponent(props: ComponentProps) {
   const t = useT();
+  const composer = useComposer();
   const sessionId = useActiveSessionId();
   if (!sessionId) return <p role="status">{t("packages.module.selectSession")}</p>;
-  return <RenderingComponent key={sessionId} {...props} sessionId={sessionId} />;
+  return (
+    <RenderingComponent key={sessionId} {...props} sessionId={sessionId} composer={composer} />
+  );
 }
 
 export function InstalledComponent({ scope, ...props }: ComponentProps & { scope: string }) {

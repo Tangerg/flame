@@ -225,6 +225,15 @@ readable without offering that action. Session navigation follows the existing
 scope lifetimes above and may retire the source component. It does not promise
 an exact Run reading anchor or retain another Session's local page filters.
 
+Client, workspace and Session components can receive optional `context.composer`,
+a frozen `CapturedComposer` bound to the Composer draft that was current when the
+context was captured. `append(text)` adds text to that draft and focuses it,
+using the same path as quoting a selection. It returns false once another
+Session's draft has replaced the captured one, and refuses after the component
+signal ends. It never sends anything: the user edits and submits the message,
+and Runtime and Session ownership of input stay unchanged. Hosts without a
+Composer omit the field; components fall back to copying the text, for example.
+
 Contextual Session actions receive `context.sessionTarget`, a frozen `CapturedSession`
 projection of the accepted row's ID, title and revision at interaction time. The action
 placement is local metadata; offering a menu does not activate code or query a backend.

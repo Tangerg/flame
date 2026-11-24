@@ -100,9 +100,12 @@ current value unless the user keeps theirs, which then carries the current value
 as its precondition. The native write still refuses anything that changed after
 that choice.
 
-Installed workspace views have no host capability to place input in the
-Composer, so "Copy reference for Agent" copies the document, revision, slide and
-element identities for the user to paste. The model resolves them with `slides`.
+"Hand to Agent" appends the saved revision's document, revision, slide and
+element identities to the conversation's Composer draft through
+`context.composer`. The user adds the instruction and sends it, and the model
+resolves the identities with `slides`. A reference names saved revisions only,
+so the action waits until the draft is saved or discarded. Hosts without a
+Composer collaborator get "Copy reference for Agent" instead.
 
 ### Bounded model inspection
 

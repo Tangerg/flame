@@ -990,6 +990,11 @@ reads the existing journal projection first, including an acceptance recovered
 during that read, before admitting another input. These are receipt projections,
 not a second transcript, scheduler or command store.
 
+Client, workspace and Session components receive `context.composer`. It captures
+`captureAppendText` from the Composer when the component context is created, so
+appended text reaches the draft that was current then and is refused after a
+Session switch. The draft and its submission stay with the Composer.
+
 Installed components can offer `context.openSession(sessionId)` on an existing
 Runtime Session reference. Explicit activation enters the same Session selection
 and conversation presentation as the Host's other navigation. The captured
