@@ -107,6 +107,7 @@ const styles = stylex.create({
     alignItems: "center",
     gap: layout.controlGap,
     minWidth: 0,
+    "--ghost-hang": 0,
   },
   description: {
     margin: 0,
@@ -115,6 +116,8 @@ const styles = stylex.create({
     textWrap: "pretty",
   },
   toolbar: {
+    // A toolbar starts its row: a leading borderless button keeps the text edge.
+    "--ghost-hang": 1,
     display: "flex",
     flexWrap: "wrap",
     alignItems: "center",
@@ -122,7 +125,6 @@ const styles = stylex.create({
     minWidth: 0,
   },
   toolbarLead: {
-    "--ghost-hang": 1,
     display: "flex",
     flexWrap: "wrap",
     alignItems: "center",

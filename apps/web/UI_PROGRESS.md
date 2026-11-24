@@ -2667,6 +2667,11 @@ The Settings rail search sat 4 px inside the rail item fills with its glyph
 the field the items' 8 px padding: search and item fills span 14–246 px, and
 the glyph lands on the item text (23 / 22 px).
 
+Toolbars without an actions slot also start their row, so the leading
+borderless-button rule now comes from `Toolbar` itself (its `actions`
+slot resets it): Computer use's `Refresh status` moves onto the page
+title's edge, alongside Workspace diff's `Files` and MCP's `Import from JSON`.
+
 ### Composer suggestions open where they can be read (2026-11-24)
 
 Typing `@` or `/` in a Session's Composer opened Lexical's typeahead below
