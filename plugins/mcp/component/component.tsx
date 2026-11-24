@@ -62,7 +62,17 @@ function McpServersPane({
   const servers = state.servers.data;
   return (
     <div style={column}>
-      <Toolbar label={t("title")}>
+      <Toolbar
+        label={t("title")}
+        actions={
+          <IconButton
+            icon={Refresh}
+            aria-label={t("refresh")}
+            pending={state.servers.phase === "loading"}
+            onClick={() => setAttempt((value) => value + 1)}
+          />
+        }
+      >
         <JsonImport context={context} settings={settings} t={t} />
         <Button
           variant="primary"
@@ -76,12 +86,6 @@ function McpServersPane({
           <Icon glyph={Plus} size="sm" />
           {t("mcp.add")}
         </Button>
-        <IconButton
-          icon={Refresh}
-          aria-label={t("refresh")}
-          pending={state.servers.phase === "loading"}
-          onClick={() => setAttempt((value) => value + 1)}
-        />
       </Toolbar>
       {adding && (
         <div id={panelId}>

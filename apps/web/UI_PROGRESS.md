@@ -50460,6 +50460,9 @@ Providers show Refresh on the content's trailing edge; `dock-diagnostics-
 recorded` reads the signal tabs, then Refresh and More. Plugin typecheck and
 published resource checks pass.
 
+MCP servers follows: `Import from JSON` and `Add server` stay leading as
+the pane's create actions and Refresh moves to the trailing edge.
+
 ### Model picker without a rail rule or a resting ring (2026-11-24)
 
 The Composer model picker drew a vertical rule between its provider rail and
