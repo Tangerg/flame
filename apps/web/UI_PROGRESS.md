@@ -26109,6 +26109,14 @@ size.` It is removed from the header and all eight catalogs. Other plugin
 headers carry only a title or a scope context. Native full-view
 `package:visual:icon-gallery` opens on search and the grid.
 
+In Settings the audit removes one restatement: `approvals.mode.sub` (`How
+much the agent may do without asking each time.`) above three options that
+each describe their edit, command and network policy. It leaves all eight
+catalogs (935 keys). Kept because layout cannot carry them: the remembered
+rules precedence note, the Connection reconnect note and the token storage
+hint. Native Settings → Approvals shows `Mode` directly above Safe, Balanced
+and Auto.
+
 ### Captured source reading and visible context
 
 At `3cc13e9a8`, Computer's separate `Source` pre bypasses the shared reader's

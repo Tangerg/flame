@@ -291,7 +291,6 @@
   "settings.pane.shortcuts": "鍵盤快捷鍵",
   "settings.pane.approvals": "核准",
   "approvals.mode": "模式",
-  "approvals.mode.sub": "agent 每次無需詢問即可執行的範圍。",
   "approvals.mode.aria": "核准模式",
   "approvals.mode.safe": "安全",
   "approvals.mode.balanced": "均衡",

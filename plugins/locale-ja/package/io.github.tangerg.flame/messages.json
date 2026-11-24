@@ -287,7 +287,6 @@
   "settings.pane.shortcuts": "キーボードショートカット",
   "settings.pane.approvals": "承認",
   "approvals.mode": "モード",
-  "approvals.mode.sub": "毎回確認せずに agent が実行できる範囲。",
   "approvals.mode.aria": "承認モード",
   "approvals.mode.safe": "安全",
   "approvals.mode.balanced": "バランス",

@@ -292,7 +292,6 @@
   "settings.pane.shortcuts": "Tastenkürzel",
   "settings.pane.approvals": "Freigaben",
   "approvals.mode": "Modus",
-  "approvals.mode.sub": "Wie viel der Agent ohne Nachfrage tun darf.",
   "approvals.mode.aria": "Freigabemodus",
   "approvals.mode.safe": "Sicher",
   "approvals.mode.balanced": "Ausgewogen",

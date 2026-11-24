@@ -310,7 +310,6 @@
   "context.usage.statusLeft": "{{percent}}% 已用（剩余 {{remaining}}%）",
   "context.usage.tooltip": "已用 {{used}} 标记，共 {{window}}",
   "approvals.mode": "模式",
-  "approvals.mode.sub": "agent 每次无需询问即可执行的范围。",
   "approvals.mode.aria": "审批模式",
   "approvals.mode.safe": "安全",
   "approvals.mode.balanced": "均衡",

@@ -42,12 +42,7 @@ export function ModeRow({ approval }: { approval: ApprovalModeResult | undefined
     modeAction.run(() => agentAccess.setApprovalMode(next).finally(() => setPending(null)));
   };
   return (
-    <SettingRow
-      label={t("approvals.mode")}
-      labelId={labelId}
-      sub={t("approvals.mode.sub")}
-      align="stacked"
-    >
+    <SettingRow label={t("approvals.mode")} labelId={labelId} align="stacked">
       {approval === undefined ? (
         <SkeletonList
           count={Object.keys(APPROVAL_MODE_LABEL_KEY).length}

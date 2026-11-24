@@ -297,7 +297,6 @@
   "settings.pane.shortcuts": "Atajos de teclado",
   "settings.pane.approvals": "Aprobaciones",
   "approvals.mode": "Modo",
-  "approvals.mode.sub": "Cuánto puede hacer el agent sin preguntar cada vez.",
   "approvals.mode.aria": "Modo de aprobación",
   "approvals.mode.safe": "Seguro",
   "approvals.mode.balanced": "Equilibrado",

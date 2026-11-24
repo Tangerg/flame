@@ -345,7 +345,6 @@ export const en: Record<string, string> = {
   "context.usage.statusLeft": "{{percent}}% used ({{remaining}}% left)",
   "context.usage.tooltip": "{{used}} / {{window}} tokens used",
   "approvals.mode": "Mode",
-  "approvals.mode.sub": "How much the agent may do without asking each time.",
   "approvals.mode.aria": "Approval mode",
   "approvals.mode.safe": "Safe",
   "approvals.mode.balanced": "Balanced",

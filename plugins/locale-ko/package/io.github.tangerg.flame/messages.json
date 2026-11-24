@@ -287,7 +287,6 @@
   "settings.pane.shortcuts": "키보드 단축키",
   "settings.pane.approvals": "승인",
   "approvals.mode": "모드",
-  "approvals.mode.sub": "agent가 매번 묻지 않고 수행할 수 있는 범위.",
   "approvals.mode.aria": "승인 모드",
   "approvals.mode.safe": "안전",
   "approvals.mode.balanced": "균형",
