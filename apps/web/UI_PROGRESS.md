@@ -46746,6 +46746,14 @@ and `tools.group.calls` leaves all eight catalogs. Native `tool-search` reads
 `3 search ›`. Web typecheck, `check:locales` (936 keys) and Web contract tests
 (112) pass.
 
+Third follow-up: the per-kind summary itself was not English. Labels were
+invariant (`4 search · 2 run`, `6 run`), and `run` collided with the Runtime's
+Run. Each family is now a plural family in every catalog: `4 searches ·
+2 commands`, `1 read · 1 search`, `1 write`; French and Spanish inflect the
+same way, German counts `Befehle`, and CJK keep their single form. Native
+`tool-agentic`, `waves` and French `tool-remote` (`6 commandes`) confirm.
+`check:locales` (940 keys) and Web typecheck pass.
+
 ## Tool row action context
 
 Single and grouped Tool row actions now reference their existing visible summary.
