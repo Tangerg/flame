@@ -32,6 +32,12 @@ import type { DeliverablesState } from "./useDeliverables";
 import { downloadAsset } from "./transfer";
 import { Source } from "./authoring";
 
+// The part of the deliverables state this view reads.
+type EvidenceState = Pick<
+  DeliverablesState,
+  "blocked" | "run" | "selectRevision" | "operations" | "signal"
+>;
+
 export function Findings({ checks, t }: { checks: Check[]; t: Translate }) {
   return (
     <RecordGroup aria-label={t("checks.title")}>
@@ -70,7 +76,7 @@ export function Findings({ checks, t }: { checks: Check[]; t: Translate }) {
 }
 
 function useAssessment(
-  state: DeliverablesState,
+  state: EvidenceState,
   document: DocumentRead,
   id?: string,
 ) {
@@ -123,7 +129,7 @@ function PageImage({
   t,
   loaded,
 }: {
-  state: DeliverablesState;
+  state: EvidenceState;
   asset: Asset;
   page: number;
   t: Translate;
@@ -214,7 +220,7 @@ function RenderedPages({
   report,
   t,
 }: {
-  state: DeliverablesState;
+  state: EvidenceState;
   document: DocumentRead;
   assessment: Assessment;
   report: RenderReport;
@@ -417,7 +423,7 @@ function ReviewRecord({
   id,
   t,
 }: {
-  state: DeliverablesState;
+  state: EvidenceState;
   document: DocumentRead;
   id: string;
   t: Translate;
@@ -474,7 +480,7 @@ export function EvidencePanel({
   document,
   t,
 }: {
-  state: DeliverablesState;
+  state: EvidenceState;
   document: DocumentRead;
   t: Translate;
 }) {

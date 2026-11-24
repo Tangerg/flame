@@ -41,6 +41,12 @@ import { METHODS } from "../contracts/methods";
 import type { DeliverablesState } from "./useDeliverables";
 import { emptyProvenance, type DocumentRead, type Provenance } from "./types";
 
+// The part of the deliverables state this view reads.
+type AuthoringState = Pick<
+  DeliverablesState,
+  "blocked" | "run" | "selectRevision" | "selection" | "signal"
+>;
+
 const creationSchemas = {
   docx: documentContentSchema,
   xlsx: workbookContentSchema,
@@ -278,7 +284,7 @@ export function CreateForm({
   catalog,
   t,
 }: {
-  state: DeliverablesState;
+  state: AuthoringState;
   catalog?: FormatCatalog;
   t: Translate;
 }) {
@@ -553,7 +559,7 @@ export function RevisionEditor({
   catalog,
   t,
 }: {
-  state: DeliverablesState;
+  state: AuthoringState;
   document: DocumentRead;
   inspection: Inspection;
   catalog?: FormatCatalog;

@@ -24,6 +24,19 @@ import { boundedInteger, encodeChunk, sha256 } from "./transfer";
 import { emptyProvenance, type Upload } from "./types";
 import type { DeliverablesState } from "./useDeliverables";
 
+// The part of the deliverables state this view reads.
+type ImportState = Pick<
+  DeliverablesState,
+  | "blocked"
+  | "commands"
+  | "refreshUploads"
+  | "run"
+  | "selectRevision"
+  | "selection"
+  | "signal"
+  | "uploads"
+>;
+
 const ACCEPTED_FILES = FORMATS.map((format) => `.${format}`).join(",");
 
 type FileSelection =
@@ -38,13 +51,7 @@ type Submission =
   | { kind: "finished" }
   | { kind: "failed"; error: string };
 
-export function ImportForm({
-  state,
-  t,
-}: {
-  state: DeliverablesState;
-  t: Translate;
-}) {
+export function ImportForm({ state, t }: { state: ImportState; t: Translate }) {
   const [title, setTitle] = useState("");
   const [format, setFormat] = useState<Format>("docx");
   const [provenance, setProvenance] = useState(emptyProvenance);

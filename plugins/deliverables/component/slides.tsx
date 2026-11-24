@@ -50,10 +50,23 @@ import {
 } from "./slides-revisions";
 import { Canvas } from "./slides-canvas";
 
+// The part of the deliverables state this view reads.
+type SlideStudioState = Pick<
+  DeliverablesState,
+  | "blocked"
+  | "context"
+  | "open"
+  | "operations"
+  | "refresh"
+  | "run"
+  | "selectRevision"
+  | "signal"
+>;
+
 // The bounded format process admits one operation at a time, so revisions are
 // read in sequence rather than in parallel.
 function useLayouts(
-  state: DeliverablesState,
+  state: SlideStudioState,
   documentId: string,
   wanted: string[],
 ) {
@@ -137,7 +150,7 @@ export type DraftUpdate = (current: Draft | undefined) => Draft | undefined;
 // The draft records intent against the revision it was read from; edits apply only
 // while that revision is the head, and saving re-checks it as the precondition.
 function useSlideDraft(
-  state: DeliverablesState,
+  state: SlideStudioState,
   document: DocumentRead,
   draft: Draft | undefined,
   onDraft: (update: DraftUpdate) => void,
@@ -463,7 +476,7 @@ export function SlideStudio({
   onDraft,
   t,
 }: {
-  state: DeliverablesState;
+  state: SlideStudioState;
   document: DocumentRead;
   draft: Draft | undefined;
   onDraft(update: DraftUpdate): void;

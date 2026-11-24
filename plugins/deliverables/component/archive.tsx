@@ -21,8 +21,21 @@ import { Source } from "./authoring";
 import type { DeliverablesState } from "./useDeliverables";
 import type { DocumentRead } from "./types";
 
+// The part of the deliverables state this view reads.
+type ArchiveState = Pick<
+  DeliverablesState,
+  | "history"
+  | "historyPrevious"
+  | "list"
+  | "listPrevious"
+  | "open"
+  | "page"
+  | "read"
+  | "selection"
+>;
+
 type ArchiveProps = {
-  state: DeliverablesState;
+  state: ArchiveState;
   dateTime: Intl.DateTimeFormat;
   t: Translate;
 };
@@ -61,7 +74,7 @@ function ArchivePaging({
   page,
   t,
 }: {
-  state: DeliverablesState;
+  state: ArchiveState;
   page: "list" | "history";
   t: Translate;
 }) {
