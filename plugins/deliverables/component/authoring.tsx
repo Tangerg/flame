@@ -486,6 +486,66 @@ export function CreateForm({
   );
 }
 
+type EditMode = "item" | "append" | "advanced";
+type InspectionItem = Inspection["items"][number];
+const EDITABLE_KINDS = new Set(["text", "cell", "page", "field"]);
+
+interface ItemDraft {
+  text: string;
+  valueType: CellValue["type"];
+  degrees: string;
+}
+
+// A cell or field item's text is its JSON value; the draft edits the value.
+function itemDraftText(
+  item: InspectionItem,
+): Pick<ItemDraft, "text"> & Partial<Pick<ItemDraft, "valueType">> {
+  if (item.kind === "cell") {
+    const parsed = cellValueSchema.safeParse(JSON.parse(item.text));
+    if (!parsed.success) return { valueType: "string", text: item.text };
+    return {
+      valueType: parsed.data.type,
+      text: "value" in parsed.data ? String(parsed.data.value) : "",
+    };
+  }
+  if (item.kind === "field") {
+    const source = JSON.parse(item.text) as { value?: unknown };
+    return { text: JSON.stringify(source.value ?? "") };
+  }
+  return { text: item.text };
+}
+
+function cellDraftValue({ valueType, text }: ItemDraft): unknown {
+  if (valueType === "blank") return { type: "blank" };
+  if (valueType === "number")
+    return { type: valueType, value: projectNumber(parseJSON(text.trim())) };
+  if (valueType === "boolean")
+    return { type: valueType, value: text === "true" };
+  return { type: valueType, value: text };
+}
+
+function itemOperation(item: InspectionItem, draft: ItemDraft): unknown {
+  const target = { id: item.id, expect: item.text };
+  switch (item.kind) {
+    case "cell":
+      return {
+        type: "setCell",
+        ...target,
+        value: cellValueSchema.parse(cellDraftValue(draft)),
+      };
+    case "page":
+      return { type: "rotatePage", ...target, degrees: Number(draft.degrees) };
+    case "field":
+      return {
+        type: "fillField",
+        ...target,
+        value: projectNumbers(parseJSON(draft.text)),
+      };
+    default:
+      return { type: "replaceText", ...target, text: draft.text };
+  }
+}
+
 export function RevisionEditor({
   state,
   document,
@@ -499,21 +559,21 @@ export function RevisionEditor({
   catalog?: FormatCatalog;
   t: Translate;
 }) {
-  const [mode, setMode] = useState("item");
+  const [mode, setMode] = useState<EditMode>("item");
   const [selected, setSelected] = useState("");
   const [text, setText] = useState("");
   const [valueType, setValueType] = useState<CellValue["type"]>("string");
   const [degrees, setDegrees] = useState("90");
   const [operationsJSON, setOperationsJSON] = useState('{"operations":[]}');
   const [error, setError] = useState<string>();
-  const item = inspection.items.find((entry) => entry.id === selected);
   const editable = useMemo(
-    () =>
-      inspection.items.filter((entry) =>
-        ["text", "cell", "page", "field"].includes(entry.kind),
-      ),
+    () => inspection.items.filter((entry) => EDITABLE_KINDS.has(entry.kind)),
     [inspection],
   );
+  const target =
+    mode === "item"
+      ? inspection.items.find((entry) => entry.id === selected)
+      : undefined;
   const historical = document.document.head !== document.revision.id;
   const disabled = state.blocked || historical;
   const format = document.revision.format;
@@ -524,19 +584,19 @@ export function RevisionEditor({
     setSelected(id);
     setError(undefined);
     if (!next) return;
-    if (next.kind === "cell") {
-      const parsed = cellValueSchema.safeParse(JSON.parse(next.text));
-      if (parsed.success) {
-        setValueType(parsed.data.type);
-        setText("value" in parsed.data ? String(parsed.data.value) : "");
-      } else {
-        setValueType("string");
-        setText(next.text);
-      }
-    } else if (next.kind === "field") {
-      const source = JSON.parse(next.text) as { value?: unknown };
-      setText(JSON.stringify(source.value ?? ""));
-    } else setText(next.text);
+    const draft = itemDraftText(next);
+    setText(draft.text);
+    if (draft.valueType) setValueType(draft.valueType);
+  }
+
+  function operations(): unknown {
+    if (mode === "advanced") return projectNumbers(parseJSON(operationsJSON));
+    if (mode === "append")
+      return { operations: [{ type: "appendParagraph", text }] };
+    if (!target) throw new Error(t("edit.selectRequired"));
+    return {
+      operations: [itemOperation(target, { text, valueType, degrees })],
+    };
   }
 
   async function apply() {
@@ -547,66 +607,7 @@ export function RevisionEditor({
       revision: document.revision.id,
     };
     try {
-      let operations: unknown;
-      if (mode === "advanced")
-        operations = projectNumbers(parseJSON(operationsJSON));
-      else if (mode === "append")
-        operations = { operations: [{ type: "appendParagraph", text }] };
-      else {
-        if (!item) throw new Error(t("edit.selectRequired"));
-        if (item.kind === "cell") {
-          const value: unknown =
-            valueType === "blank"
-              ? { type: "blank" }
-              : {
-                  type: valueType,
-                  value:
-                    valueType === "number"
-                      ? projectNumber(parseJSON(text.trim()))
-                      : valueType === "boolean"
-                        ? text === "true"
-                        : text,
-                };
-          operations = {
-            operations: [
-              {
-                type: "setCell",
-                id: item.id,
-                expect: item.text,
-                value: cellValueSchema.parse(value),
-              },
-            ],
-          };
-        } else if (item.kind === "page")
-          operations = {
-            operations: [
-              {
-                type: "rotatePage",
-                id: item.id,
-                expect: item.text,
-                degrees: Number(degrees),
-              },
-            ],
-          };
-        else if (item.kind === "field")
-          operations = {
-            operations: [
-              {
-                type: "fillField",
-                id: item.id,
-                expect: item.text,
-                value: projectNumbers(parseJSON(text)),
-              },
-            ],
-          };
-        else
-          operations = {
-            operations: [
-              { type: "replaceText", id: item.id, expect: item.text, text },
-            ],
-          };
-      }
-      const parsed = editSchemas[format].safeParse(operations);
+      const parsed = editSchemas[format].safeParse(operations());
       if (!parsed.success)
         throw new Error(
           parsed.error.issues
@@ -645,7 +646,7 @@ export function RevisionEditor({
           value={mode}
           disabled={disabled}
           onValueChange={(value) => {
-            setMode(value);
+            setMode(value as EditMode);
             setError(undefined);
           }}
           options={[
@@ -685,10 +686,10 @@ export function RevisionEditor({
                 }))}
               />
             )}
-            {mode === "item" && item && (
-              <Source label={t("edit.original")} value={item.text} />
+            {target && (
+              <Source label={t("edit.original")} value={target.text} />
             )}
-            {mode === "item" && item?.kind === "cell" && (
+            {target?.kind === "cell" && (
               <Select
                 label={t("edit.valueType")}
                 value={valueType}
@@ -706,50 +707,14 @@ export function RevisionEditor({
                 }}
               />
             )}
-            {mode === "item" && item?.kind === "page" ? (
-              <Select
-                label={t("edit.rotation")}
-                value={degrees}
-                disabled={disabled}
-                onValueChange={setDegrees}
-                options={PAGE_ROTATIONS.map((value) => ({
-                  value: String(value),
-                  label: `${value}°`,
-                }))}
-              />
-            ) : mode === "item" &&
-              item?.kind === "cell" &&
-              valueType === "boolean" ? (
-              <Select
-                label={t("edit.value")}
-                value={text === "true" ? "true" : "false"}
-                disabled={disabled}
-                onValueChange={setText}
-                options={[
-                  { value: "true", label: t("yes") },
-                  { value: "false", label: t("no") },
-                ]}
-              />
-            ) : (
-              !(
-                mode === "item" &&
-                item?.kind === "cell" &&
-                valueType === "blank"
-              ) && (
-                <FormField
-                  label={t(
-                    item?.kind === "field" ? "edit.fieldJSON" : "edit.value",
-                  )}
-                >
-                  <TextArea
-                    rows={6}
-                    value={text}
-                    disabled={disabled}
-                    onChange={(event) => setText(event.target.value)}
-                  />
-                </FormField>
-              )
-            )}
+            <ItemValueField
+              target={target}
+              draft={{ text, valueType, degrees }}
+              disabled={disabled}
+              onText={setText}
+              onDegrees={setDegrees}
+              t={t}
+            />
           </RecordGroup>
         )}
         <FormActions
@@ -768,5 +733,62 @@ export function RevisionEditor({
         </FormActions>
       </Form>
     </Disclosure>
+  );
+}
+
+// Appending a paragraph has no target and edits plain text.
+function ItemValueField({
+  target,
+  draft,
+  disabled,
+  onText,
+  onDegrees,
+  t,
+}: {
+  target: InspectionItem | undefined;
+  draft: ItemDraft;
+  disabled: boolean;
+  onText(text: string): void;
+  onDegrees(degrees: string): void;
+  t: Translate;
+}) {
+  if (target?.kind === "page")
+    return (
+      <Select
+        label={t("edit.rotation")}
+        value={draft.degrees}
+        disabled={disabled}
+        onValueChange={onDegrees}
+        options={PAGE_ROTATIONS.map((value) => ({
+          value: String(value),
+          label: `${value}°`,
+        }))}
+      />
+    );
+  if (target?.kind === "cell" && draft.valueType === "blank") return null;
+  if (target?.kind === "cell" && draft.valueType === "boolean")
+    return (
+      <Select
+        label={t("edit.value")}
+        value={draft.text === "true" ? "true" : "false"}
+        disabled={disabled}
+        onValueChange={onText}
+        options={[
+          { value: "true", label: t("yes") },
+          { value: "false", label: t("no") },
+        ]}
+      />
+    );
+  return (
+    <FormField
+      label={t(target?.kind === "field" ? "edit.fieldJSON" : "edit.value")}
+    >
+      <TextArea
+        rows={6}
+        value={draft.text}
+        disabled={disabled}
+        onChange={(event) => onText(event.target.value)}
+      />
+    </FormField>
   );
 }
