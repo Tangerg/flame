@@ -213,7 +213,6 @@ export function AgentActivityDisclosure({
   const skin = SHELL_SKINS[shell];
   const ownSummaryId = useId();
   const triggerId = summaryId ?? ownSummaryId;
-  const framed = shell !== "line" && icon !== undefined;
   const disclosable = children != null;
   const stackDetail = detail != null && detailPlacement === "below";
   return (
@@ -251,20 +250,7 @@ export function AgentActivityDisclosure({
             ).className
           }
         >
-          <span
-            aria-hidden
-            data-slot="agent-activity-mark"
-            data-framed={framed ? "" : undefined}
-            data-tone={tone}
-            {...stylex.props(
-              styles.mark,
-              skin.mark,
-              framed && [styles.markFramed, TRAY_TONE[tone]],
-              toneInk[tone],
-            )}
-          >
-            {leading ?? (icon ? <Icon name={icon} size={skin.iconSize} /> : null)}
-          </span>
+          <ActivityMark icon={icon} leading={leading} tone={tone} shell={shell} />
           <span
             data-slot="agent-activity-label"
             {...stylex.props(
@@ -326,28 +312,90 @@ export function AgentActivityDisclosure({
       {progress && <ProgressBar value={progress.value} label={progress.label} weight="seam" />}
       {feedback}
       {disclosable && (
-        <Collapsible.Panel
-          keepMounted
-          hidden={false}
-          inert={!open}
-          aria-hidden={!open || undefined}
-          role="region"
-          aria-labelledby={triggerId}
-          {...stylex.props(styles.panel)}
+        <ActivityPanel
+          open={open}
+          labelledBy={triggerId}
+          shell={shell}
+          contentInset={contentInset}
+          contentClassName={contentClassName}
         >
-          <div {...stylex.props(skin.body)}>
-            <div
-              className={cn(
-                stylex.props(contentInset === "rows" && styles.bodyRows).className,
-                contentClassName,
-              )}
-            >
-              <AgentActivityBody open={open}>{children}</AgentActivityBody>
-            </div>
-          </div>
-        </Collapsible.Panel>
+          {children}
+        </ActivityPanel>
       )}
     </Collapsible.Root>
+  );
+}
+
+// A line shell never frames its mark; a card or row frames an icon in a tone tray.
+function ActivityMark({
+  icon,
+  leading,
+  tone,
+  shell,
+}: {
+  icon: IconName | undefined;
+  leading: ReactNode;
+  tone: ActivityTone;
+  shell: ActivityShell;
+}) {
+  const skin = SHELL_SKINS[shell];
+  const framed = shell !== "line" && icon !== undefined;
+  return (
+    <span
+      aria-hidden
+      data-slot="agent-activity-mark"
+      data-framed={framed ? "" : undefined}
+      data-tone={tone}
+      {...stylex.props(
+        styles.mark,
+        skin.mark,
+        framed && [styles.markFramed, TRAY_TONE[tone]],
+        toneInk[tone],
+      )}
+    >
+      {leading ?? (icon ? <Icon name={icon} size={skin.iconSize} /> : null)}
+    </span>
+  );
+}
+
+// The panel stays mounted while closed so its content keeps its state; it is
+// inert and hidden from assistive technology until opened.
+function ActivityPanel({
+  open,
+  labelledBy,
+  shell,
+  contentInset,
+  contentClassName,
+  children,
+}: {
+  open: boolean;
+  labelledBy: string;
+  shell: ActivityShell;
+  contentInset?: "rows";
+  contentClassName?: string;
+  children: ReactNode;
+}) {
+  return (
+    <Collapsible.Panel
+      keepMounted
+      hidden={false}
+      inert={!open}
+      aria-hidden={!open || undefined}
+      role="region"
+      aria-labelledby={labelledBy}
+      {...stylex.props(styles.panel)}
+    >
+      <div {...stylex.props(SHELL_SKINS[shell].body)}>
+        <div
+          className={cn(
+            stylex.props(contentInset === "rows" && styles.bodyRows).className,
+            contentClassName,
+          )}
+        >
+          <AgentActivityBody open={open}>{children}</AgentActivityBody>
+        </div>
+      </div>
+    </Collapsible.Panel>
   );
 }
 
