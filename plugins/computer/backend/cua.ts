@@ -175,15 +175,11 @@ export class Cua {
             config.packageRoot,
             "io.github.tangerg.flame/engine/native-sky.mjs",
           ),
+          ...(config.browser
+            ? { browserService: "@oai/browser-desktop/service" }
+            : {}),
         };
       }
-      if (launch.native)
-        environment.NODE_REPL_TRUSTED_SERVICES = JSON.stringify({
-          sky: launch.native.wrapper,
-          ...(config.browser
-            ? { browser: "@oai/browser-desktop/service" }
-            : {}),
-        });
       hooks.signal.throwIfAborted();
       installation.assertCurrent();
       engine = await Engine.connect(launch, hooks);

@@ -22,12 +22,21 @@ export interface EngineConfig {
   env: Record<string, string>;
   ownershipPath: string;
   cwd?: string;
-  native?: NativeConfig;
+  native?: NativeLaunch;
 }
+
+// The engine loads trusted services only for native execution, and its sky
+// service must be the wrapper that reports turns to the native lifecycle.
+export interface NativeLaunch extends NativeConfig {
+  wrapper: string;
+  browserService?: string;
+}
+
+const TRUSTED_SERVICES = "NODE_REPL_TRUSTED_SERVICES";
 
 const EXIT_WAIT_MS = 2_000;
 
-function environment(config: EngineConfig): Record<string, string> {
+function assertLaunchable(config: EngineConfig): void {
   if (
     !isAbsolute(config.command) ||
     !isAbsolute(config.ownershipPath) ||
@@ -43,35 +52,28 @@ function environment(config: EngineConfig): Record<string, string> {
     throw new Error(
       "computer: engine requires an absolute executable and valid argv",
     );
+}
+
+function environment(config: EngineConfig): Record<string, string> {
+  assertLaunchable(config);
   const env: Record<string, string> = {};
   for (const [name, value] of Object.entries(config.env)) {
     if (
       !/^[A-Za-z_][A-Za-z0-9_]*$/.test(name) ||
+      name === TRUSTED_SERVICES ||
       typeof value !== "string" ||
       value.includes("\0")
     )
       throw new Error("computer: invalid engine environment");
     env[name] = value;
   }
-  if (config.native) {
-    let services: unknown;
-    try {
-      services = JSON.parse(env.NODE_REPL_TRUSTED_SERVICES ?? "null");
-    } catch (cause) {
-      throw new Error("computer: native trusted-service selection is invalid", {
-        cause,
-      });
-    }
-    if (
-      !services ||
-      typeof services !== "object" ||
-      Array.isArray(services) ||
-      (services as Record<string, unknown>).sky !== config.native.wrapper
-    )
-      throw new Error(
-        "computer: native execution requires its owned lifecycle service",
-      );
-  }
+  if (config.native)
+    env[TRUSTED_SERVICES] = JSON.stringify({
+      sky: config.native.wrapper,
+      ...(config.native.browserService
+        ? { browser: config.native.browserService }
+        : {}),
+    });
   return env;
 }
 

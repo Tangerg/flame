@@ -15,7 +15,6 @@ export interface NativeConfig {
   service: string;
   client: string;
   helper: string;
-  wrapper: string;
 }
 
 interface ActiveNativeTurn {
