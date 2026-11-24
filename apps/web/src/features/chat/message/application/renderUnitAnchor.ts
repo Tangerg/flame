@@ -15,7 +15,7 @@ export function renderUnitAnchor(messageId: string, unit: MessageRenderUnit): st
   }
   if (unit.kind === "toolGroup") return `${messageId}:g:${unit.tools[0]?.id ?? "0"}`;
   const { block, index } = unit;
-  if (block.kind === "tool") return `${messageId}:t:${block.toolCallId}`;
+  if (block.kind === "tool") return `${messageId}:t:${block.itemId}`;
   if ((block.kind === "approval" || block.kind === "question") && block.itemId) {
     return `${messageId}:i:${block.itemId}`;
   }

@@ -151,7 +151,7 @@ function findApprovalOwnedToolCallIds(
 }
 
 function toolOf(block: ContentBlock, toolCalls: Record<string, ToolCall>): ToolCall | undefined {
-  return block.kind === "tool" ? toolCalls[block.toolCallId] : undefined;
+  return block.kind === "tool" ? toolCalls[block.itemId] : undefined;
 }
 
 export function waveStepCount(units: readonly MessageRenderUnit[]): number {
@@ -175,7 +175,7 @@ export function waveToolCalls(
       continue;
     }
     if (unit.kind !== "block" || unit.block.kind !== "tool") continue;
-    const tool = toolCalls[unit.block.toolCallId];
+    const tool = toolCalls[unit.block.itemId];
     if (tool) tools.push(tool);
   }
   return tools;

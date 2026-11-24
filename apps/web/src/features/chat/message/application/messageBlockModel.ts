@@ -14,7 +14,7 @@ export function narratedBlocks(
 ): ContentBlock[] {
   return blocks.filter((block) => {
     if (block.kind !== "tool") return true;
-    const tool = toolCalls[block.toolCallId];
+    const tool = toolCalls[block.itemId];
     return tool?.status !== "ok" || !standing(tool.name);
   });
 }
@@ -59,7 +59,7 @@ export function messageActionMaterialization(row: TranscriptRow): MessageActionM
   for (const block of row.message.blocks) {
     if (blockOwnsActiveMaterial(block, row.facts.awaiting)) return "active";
     if (block.kind !== "tool") continue;
-    if (row.facts.toolCalls[block.toolCallId]?.status === "running") return "active";
+    if (row.facts.toolCalls[block.itemId]?.status === "running") return "active";
   }
 
   for (const narratives of Object.values(row.facts.delegatedRuns)) {

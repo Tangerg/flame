@@ -43,23 +43,19 @@ interface ProjectedItemIdentity {
   runId: string | null;
 }
 
-// The Item type a block projects, when the block was folded from `itemId`.
+// The Item type each block kind is folded from; compaction and reference
+// blocks belong to their message rather than an Item of their own.
+const BLOCK_ITEM_TYPES: Partial<Record<ContentBlock["kind"], AgentItem["type"]>> = {
+  text: "agentMessage",
+  image: "agentMessage",
+  reasoning: "reasoning",
+  tool: "toolCall",
+  approval: "toolCall",
+  question: "question",
+};
+
 function blockItemType(block: ContentBlock, itemId: string): AgentItem["type"] | undefined {
-  switch (block.kind) {
-    case "text":
-    case "image":
-      return block.itemId === itemId ? "agentMessage" : undefined;
-    case "reasoning":
-      return block.reasoningId === itemId ? "reasoning" : undefined;
-    case "tool":
-      return block.toolCallId === itemId ? "toolCall" : undefined;
-    case "approval":
-      return block.itemId === itemId ? "toolCall" : undefined;
-    case "question":
-      return block.itemId === itemId ? "question" : undefined;
-    default:
-      return undefined;
-  }
+  return "itemId" in block && block.itemId === itemId ? BLOCK_ITEM_TYPES[block.kind] : undefined;
 }
 
 function messageItemType(message: Message): AgentItem["type"] | undefined {
@@ -113,7 +109,7 @@ export function onItemDelta(
         state,
         source.runId,
         (block) =>
-          block.kind === "reasoning" && block.reasoningId === itemId && block.status === "running",
+          block.kind === "reasoning" && block.itemId === itemId && block.status === "running",
         (block) =>
           block.kind === "reasoning" ? { ...block, text: block.text + delta.text } : block,
       );

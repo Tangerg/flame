@@ -144,7 +144,7 @@ function readTurnFacts(
         identities.push(`awaiting:${itemId}:${resumeRunId}`);
       }
       if (block.kind !== "tool") continue;
-      const toolCallId = block.toolCallId;
+      const toolCallId = block.itemId;
 
       const call = sessionToolCalls[toolCallId];
       if (call !== undefined) {
@@ -188,7 +188,7 @@ function awaitableItemId(block: Message["blocks"][number]): string | undefined {
     case "question":
       return block.itemId;
     case "tool":
-      return block.toolCallId;
+      return block.itemId;
     default:
       return undefined;
   }

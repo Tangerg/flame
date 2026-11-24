@@ -54,20 +54,20 @@ export function renderBlock(block: ContentBlock, key: number, facts: TurnFacts, 
       return <ReferenceBlock key={key} label={block.label} text={block.text} />;
 
     case "tool": {
-      const tool = facts.toolCalls[block.toolCallId];
+      const tool = facts.toolCalls[block.itemId];
       if (!tool) return null;
-      const delegatedRuns = facts.delegatedRuns[block.toolCallId] ?? [];
+      const delegatedRuns = facts.delegatedRuns[block.itemId] ?? [];
       return (
         <div
-          id={block.toolCallId}
-          key={block.toolCallId}
+          id={block.itemId}
+          key={block.itemId}
           role={delegatedRuns.length > 0 ? "group" : undefined}
           aria-label={delegatedRuns.length > 0 ? tool.fn : undefined}
         >
           <ToolCard
             tool={tool}
-            expanded={ctx.expandedIds.has(block.toolCallId)}
-            onExpandedChange={(expanded) => ctx.onExpandedChange(block.toolCallId, expanded)}
+            expanded={ctx.expandedIds.has(block.itemId)}
+            onExpandedChange={(expanded) => ctx.onExpandedChange(block.itemId, expanded)}
           />
           {delegatedRuns.length > 0 && (
             <div {...stylex.props(styles.delegatedRuns)}>

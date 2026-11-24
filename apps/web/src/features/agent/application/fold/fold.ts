@@ -287,8 +287,8 @@ export function foldReasoning(
   return upsertBlock(
     state,
     item,
-    (b) => b.kind === "reasoning" && b.reasoningId === item.id,
-    () => ({ kind: "reasoning", reasoningId: item.id, text, status }),
+    (b) => b.kind === "reasoning" && b.itemId === item.id,
+    () => ({ kind: "reasoning", itemId: item.id, text, status }),
     (b) => (b.kind === "reasoning" ? { ...b, text: text || b.text, status } : b),
   );
 }
@@ -378,13 +378,7 @@ export function writeToolCall(
 ): AgentSessionView {
   const withBlock =
     state.toolCalls[item.id] === undefined
-      ? appendToTurn(
-          state,
-          item.runId,
-          item.id,
-          { kind: "tool", toolCallId: item.id },
-          item.startedAt,
-        )
+      ? appendToTurn(state, item.runId, item.id, { kind: "tool", itemId: item.id }, item.startedAt)
       : state;
   const tool = projectToolCall(item, withBlock.toolCalls[item.id], source);
   const next = { ...withBlock, toolCalls: { ...withBlock.toolCalls, [item.id]: tool } };

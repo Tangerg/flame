@@ -30,8 +30,8 @@ interface ContentBlockMap {
   text: { kind: "text"; text: string; status: BlockStatus; itemId?: string };
   image: { kind: "image"; mime: string; data: string; itemId?: string };
   reference: { kind: "reference"; label: string; text: string };
-  reasoning: { kind: "reasoning"; reasoningId: string; text: string; status: BlockStatus };
-  tool: { kind: "tool"; toolCallId: string };
+  reasoning: { kind: "reasoning"; itemId: string; text: string; status: BlockStatus };
+  tool: { kind: "tool"; itemId: string };
   approval: {
     kind: "approval";
     toolName?: string;
