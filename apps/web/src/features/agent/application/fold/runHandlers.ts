@@ -1,11 +1,9 @@
+import { canonicalJSON } from "@frame/sdk/json";
 import { type AgentInterrupt, type AgentRunFact } from "@/features/agent/public/events";
 import {
-  type AgentRunMetrics,
-  type AgentRunOutcome,
   type AgentRunProgress,
   type AgentRunView,
   type AgentSessionView,
-  type RunUsage,
 } from "@/features/agent/public/sessionView";
 import {
   dropRunPendingInterrupts,
@@ -18,64 +16,16 @@ import {
   projectFinishedRun,
   projectStartedRun,
 } from "@/features/agent/application/view/runProjection";
-import { isAgentRunFailure } from "@/features/agent/application/view/runOutcome";
-function sameRunUsage(left: RunUsage | undefined, right: RunUsage | undefined): boolean {
-  if (!left || !right) return left === right;
-  return (
-    left.inputTokens === right.inputTokens &&
-    left.outputTokens === right.outputTokens &&
-    left.cacheReadTokens === right.cacheReadTokens &&
-    left.costUsd === right.costUsd
-  );
-}
 
-function sameRunMetrics(left: AgentRunMetrics, right: AgentRunMetrics): boolean {
-  return (
-    left.steps === right.steps &&
-    left.activeDurationMillis === right.activeDurationMillis &&
-    sameRunUsage(left.usage, right.usage)
-  );
-}
-
-function sameRunOutcome(left: AgentRunOutcome | null, right: AgentRunOutcome): boolean {
-  if (!left || left.type !== right.type) return false;
-  const leftEffects = left.unresolvedEffects ?? [];
-  const rightEffects = right.unresolvedEffects ?? [];
-  if (
-    leftEffects.length !== rightEffects.length ||
-    leftEffects.some((effect, index) => {
-      const other = rightEffects[index]!;
-      return (
-        effect.processId !== other.processId ||
-        effect.effectId !== other.effectId ||
-        effect.cause !== other.cause ||
-        effect.reason !== other.reason ||
-        effect.detail !== other.detail ||
-        effect.output !== other.output
-      );
-    })
-  )
-    return false;
-  if (left.type === "completed") return true;
-  if (left.type === "lost" && right.type === "lost") {
-    return left.loss.reason === right.loss.reason && left.loss.detail === right.loss.detail;
-  }
-  if (
-    isAgentRunFailure(left) &&
-    isAgentRunFailure(right) &&
-    left.type !== "lost" &&
-    right.type !== "lost"
-  ) {
-    return (
-      left.error.code === right.error.code &&
-      left.error.message === right.error.message &&
-      left.error.retryAfterSeconds === right.error.retryAfterSeconds
-    );
-  }
-  if (left.type === "canceled" && right.type === left.type) {
-    return left.detail === right.detail;
-  }
-  return false;
+// Live and durable finishes pass through one runtime projection, so a replayed
+// finish encodes exactly like the one already folded.
+function settledFacts(run: AgentRunView) {
+  return canonicalJSON({
+    status: run.status,
+    finishedAt: run.finishedAt,
+    metrics: run.metrics,
+    outcome: run.status === "finished" ? run.outcome : null,
+  });
 }
 
 function isDuplicateRunFinish(
@@ -85,14 +35,8 @@ function isDuplicateRunFinish(
 ): boolean {
   const previous = state.runsById[run.id];
   if (!previous || previous.status === "running") return false;
-  if (
-    previous.status !== run.status ||
-    previous.finishedAt !== run.finishedAt ||
-    !sameRunMetrics(previous.metrics, run.metrics)
-  )
-    return false;
-  if (run.status === "finished")
-    return run.outcome !== null && sameRunOutcome(previous.outcome, run.outcome);
+  if (settledFacts(previous) !== settledFacts(run)) return false;
+  if (run.status === "finished") return run.outcome !== null;
   const open = new Set(
     state.pendingInterrupts
       .filter((group) => group.runId === run.id)
