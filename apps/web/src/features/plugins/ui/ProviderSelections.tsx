@@ -218,14 +218,16 @@ function ProviderRole({
           onValueChange={(draft) => update({ draft })}
           disabled={busy || !!unknown}
         />
-        <Button
-          variant="soft"
-          pending={busy}
-          disabled={!candidate || !!unknown || operations.signal.aborted}
-          onClick={select}
-        >
-          {t("packages.providers.apply")}
-        </Button>
+        {candidate && (
+          <Button
+            variant="soft"
+            pending={busy}
+            disabled={!!unknown || operations.signal.aborted}
+            onClick={select}
+          >
+            {t("packages.providers.apply")}
+          </Button>
+        )}
       </Toolbar>
       {failure && <SystemMessage variant="warning">{failure}</SystemMessage>}
       {unknown && (

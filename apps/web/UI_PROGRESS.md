@@ -50512,6 +50512,15 @@ announced but not drawn; `Showing the last accepted read.` stays visible
 when a refresh fails. Native `dock-diagnostics-recorded` goes from the
 tabs straight to the first trace.
 
+### Apply a provider selection once one is chosen (2026-11-24)
+
+Settings → Plugins → Provider selections drew a disabled `Apply selection`
+beside every role's `Choose provider` select, three inert buttons at rest.
+The button now appears only after a provider is chosen and leaves with the
+draft once the Runtime accepts the selection. Native `pane=plugins`: the
+three roles rest on their selects; choosing `flame.memory · memory-provider`
+for `memory` adds `Apply selection` to that row only. Web typecheck passes.
+
 ### Text-only Dock tabs and panel catalog (2026-11-24)
 
 Installed workspace views declare no glyph, so in the product only Files,
