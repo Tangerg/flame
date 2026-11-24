@@ -28,20 +28,7 @@ func (s *streamFollower) followAttachedSession() {
 	if !ok {
 		return
 	}
-	active := true
-	var reconcileErr error
-	postErr := s.runs.tasks.deliver(s.ctx, func() {
-		if !s.current() {
-			active = false
-			return
-		}
-		reconcileErr = s.runs.sessions.reconcileRunSnapshot(recovered.Snapshot, recovered.Stream)
-	})
-	if postErr != nil || reconcileErr != nil {
-		s.postFailure(errors.Join(postErr, reconcileErr))
-		return
-	}
-	if !active || recovered.Run.Status != protocol.RunStatusRunning {
+	if !s.adoptRecovery(recovered) {
 		return
 	}
 	s.runStream(recovered.Stream)
@@ -341,6 +328,15 @@ func (s *streamFollower) recover(runID string, cause error) recoveryAttempt {
 		}
 		return recoveryAttempt{disposition: recoveryRetry, cause: err}
 	}
+	if !s.adoptRecovery(recovered) {
+		return recoveryAttempt{disposition: recoveryStopped}
+	}
+	return recoveryAttempt{disposition: recoveryAttached, stream: recovered.Stream}
+}
+
+// adoptRecovery reconciles the recovered snapshot on the UI goroutine and
+// reports whether its run is still live for this follower to stream.
+func (s *streamFollower) adoptRecovery(recovered runworkflow.Recovery) bool {
 	active := true
 	var reconcileErr error
 	postErr := s.runs.tasks.deliver(s.ctx, func() {
@@ -352,12 +348,9 @@ func (s *streamFollower) recover(runID string, cause error) recoveryAttempt {
 	})
 	if postErr != nil || reconcileErr != nil {
 		s.postFailure(errors.Join(postErr, reconcileErr))
-		return recoveryAttempt{disposition: recoveryStopped}
+		return false
 	}
-	if !active || recovered.Run.Status != protocol.RunStatusRunning {
-		return recoveryAttempt{disposition: recoveryStopped}
-	}
-	return recoveryAttempt{disposition: recoveryAttached, stream: recovered.Stream}
+	return active && recovered.Run.Status == protocol.RunStatusRunning
 }
 
 func (s *streamFollower) finish() {
