@@ -51457,6 +51457,15 @@ returns `{ label, value? }` for its only caller. Web typecheck passes. Not
 observed natively: no Lab fixture carries remembered rules, and the empty
 Approvals pane is unchanged.
 
+Cleanup in the same pass: the `Tag` atom (`apps/web/src/ui/atoms/tag.tsx`, a
+mono grey chip) had no production consumer. Only the atoms specimen sheet
+and a Lab file-path example used it. The atom, its export, both demos and the
+orphaned `readOnly` Lab message are removed, and the specimen is now
+`chip-kbd`. Web typecheck, which includes `lab/`, and the Lab build pass.
+The native atoms sheet renders. `tsconfig.node.json` independently fails
+under TypeScript 7 (`moduleResolution=node10` removed); that predates this
+work and is not part of the Web typecheck.
+
 ### Literal Provider command-error reading (2026-11-13)
 
 Qualified from `7ee40983b`. Actual Wails reproduced a known Utility role refusal

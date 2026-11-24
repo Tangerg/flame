@@ -263,6 +263,5 @@ export const businessMessages = {
     inspect: { "zh-CN": "检查详情", en: "Inspect details" },
     path: { "zh-CN": "示例路径", en: "Sample path" },
     pathPreview: { "zh-CN": "路径展示", en: "Path presentation" },
-    readOnly: { "zh-CN": "仅预览", en: "Preview only" },
   },
 } as const;

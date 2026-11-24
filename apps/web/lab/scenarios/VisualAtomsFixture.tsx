@@ -19,7 +19,6 @@ import { SkeletonList } from "@/ui/index";
 import { StatusDot } from "@/ui/index";
 import { StepMark } from "@/ui/index";
 import { SystemMessage } from "@/ui/index";
-import { Tag } from "@/ui/index";
 import { TextButton } from "@/ui/index";
 import { Well } from "@/ui/index";
 import {
@@ -367,10 +366,8 @@ function AtomsGallery() {
           <Badge tone="info">Info</Badge>
         </div>
       </Specimen>
-      <Specimen name="tag-chip-kbd">
+      <Specimen name="chip-kbd">
         <div {...stylex.props(styles.row)}>
-          <Tag>tag</Tag>
-          <Tag ink="strong">strong</Tag>
           <Chip icon="file" onClose={noop} closeLabel="Remove">
             main.go
           </Chip>
@@ -429,7 +426,7 @@ function AtomsGallery() {
       </Specimen>
       <Specimen name="section-divider">
         <div {...stylex.props(styles.column)}>
-          <SectionLabel trailing={<Tag>3</Tag>}>Section</SectionLabel>
+          <SectionLabel trailing="3">Section</SectionLabel>
           <Divider>Divider</Divider>
           <Divider intent="accent" icon={<Icon name="check" size="xs" />}>
             Approved

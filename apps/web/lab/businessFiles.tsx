@@ -2,7 +2,6 @@ import { useState } from "react";
 import * as stylex from "@stylexjs/stylex";
 import { FormField, TextField } from "@flame/ui";
 import { FilePath } from "@/ui/atoms/file-path";
-import { Tag } from "@/ui/atoms/tag";
 import { businessMessages as messages } from "./businessMessages";
 import { businessStyles as styles } from "./businessStyles";
 import { businessVariant, fileVariants } from "./businessVariants";
@@ -40,7 +39,6 @@ function FileIdentityEditor({
         {...stylex.props(styles.rows)}
       >
         <FilePath path={path} />
-        <Tag>{localize(messages.samples.readOnly, locale)}</Tag>
       </div>
     </div>
   );

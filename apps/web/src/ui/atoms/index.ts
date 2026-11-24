@@ -28,7 +28,6 @@ export { CodeArtifact } from "@/ui/atoms/code-artifact";
 export { useCodeActionLabels } from "@/ui/atoms/codeActionLabels";
 export { SkeletonList, SkeletonText } from "@/ui/atoms/skeleton";
 export { SystemMessage } from "@/ui/atoms/system-message";
-export { Tag } from "@/ui/atoms/tag";
 export { TextEditorDialog } from "@/ui/atoms/text-editor-dialog";
 export { TextButton } from "@/ui/atoms/text-button";
 
