@@ -26088,6 +26088,21 @@ Parallel primary-checkout work remains preserved. This repair is published as
 `3cc13e9a8`. The captured-source follow-up below continues its long-content task;
 neither task claims complete Computer-console or whole-product acceptance.
 
+### Computer use without a tagline (2026-11-24)
+
+Following the "remove taglines and helper text unless the layout cannot
+carry the meaning" rule, the Computer use page drops its header tagline
+(`Inspect the actual control host, permissions and original operation
+outcomes.`) and the Original outcomes description. The tagline restated the
+page. The description restated the section plus a guarantee the user cannot
+act on. Three notes stay because layout cannot express them: the host
+note (actions run on the Runtime host, which may not be this computer), the
+capacity note (work may stop before the shown limits) and the lease safety
+instruction (use an operator console outside the controlled desktop).
+`panel.description` and `history.help` leave all eight catalogs. Native
+`fixture=computer` opens on the title and Refresh status. Plugin
+typecheck, `check-i18n` and published resource checks pass.
+
 ### Captured source reading and visible context
 
 At `3cc13e9a8`, Computer's separate `Source` pre bypasses the shared reader's

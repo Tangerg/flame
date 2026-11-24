@@ -1,6 +1,5 @@
 export const zh = {
   "panel.title": "电脑控制",
-  "panel.description": "查看实际控制主机、权限请求与原始操作结果。",
   "controls.label": "电脑控制操作",
   refresh: "刷新状态",
   reading: "正在读取控制状态…",
@@ -103,8 +102,6 @@ export const zh = {
   "receipts.help":
     "字节数包含为待定结果预留的空间。新操作还会预留撤销控制的位置，因此可能在达到总上限前停止准入。不会为接纳新操作而删除原始证据。",
   "history.title": "原始操作结果",
-  "history.help":
-    "查看保留的命令证据。缺失的结果仍为未确认，不会通过当前桌面状态反推。",
   "history.refresh": "刷新操作结果",
   "history.reading": "正在读取原始证据…",
   "history.empty": "尚无命令记录。",

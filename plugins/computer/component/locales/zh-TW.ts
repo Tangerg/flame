@@ -1,6 +1,5 @@
 export const zhTW = {
   "panel.title": "電腦控制",
-  "panel.description": "查看實際控制主機、權限請求與原始操作結果。",
   "controls.label": "電腦控制操作",
   refresh: "重新整理狀態",
   reading: "正在讀取控制狀態…",
@@ -103,8 +102,6 @@ export const zhTW = {
   "receipts.help":
     "位元組數包含為待定結果預留的空間。新操作還會預留撤銷控制的位置，因此可能在達到總上限前停止准入。不會為接納新操作而刪除原始證據。",
   "history.title": "原始操作結果",
-  "history.help":
-    "查看保留的命令證據。缺失結果仍為未確認，不會透過目前桌面狀態反推。",
   "history.refresh": "重新整理操作結果",
   "history.reading": "正在讀取原始證據…",
   "history.empty": "尚無命令記錄。",

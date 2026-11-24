@@ -1,7 +1,5 @@
 export const es = {
   "panel.title": "Uso del ordenador",
-  "panel.description":
-    "Inspecciona el equipo controlado, los permisos y los resultados originales.",
   "controls.label": "Controles del ordenador",
   refresh: "Actualizar estado",
   reading: "Leyendo el estado…",
@@ -109,8 +107,6 @@ export const es = {
   "receipts.help":
     "Los bytes incluyen espacio reservado para resultados pendientes. Las nuevas operaciones también reservan una plaza para revocar el control y pueden detenerse antes de alcanzar los límites. La evidencia original nunca se elimina para admitir más acciones.",
   "history.title": "Resultados originales",
-  "history.help":
-    "Consulta las pruebas conservadas. Los resultados ausentes no se infieren del escritorio actual.",
   "history.refresh": "Actualizar resultados",
   "history.reading": "Leyendo pruebas originales…",
   "history.empty": "No hay órdenes registradas.",

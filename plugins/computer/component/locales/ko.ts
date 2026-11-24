@@ -1,7 +1,5 @@
 export const ko = {
   "panel.title": "컴퓨터 제어",
-  "panel.description":
-    "실제 제어 호스트, 권한 요청 및 원래 작업 결과를 확인합니다.",
   "controls.label": "컴퓨터 제어 작업",
   refresh: "상태 새로 고침",
   reading: "제어 상태 읽는 중…",
@@ -107,8 +105,6 @@ export const ko = {
   "receipts.help":
     "바이트 수에는 대기 중인 결과를 위한 예약 공간이 포함됩니다. 새 작업은 제어 종료용 공간도 남기므로 전체 한도에 도달하기 전에 접수가 중단될 수 있습니다. 새 작업을 허용하기 위해 원본 증거를 삭제하지 않습니다.",
   "history.title": "원래 작업 결과",
-  "history.help":
-    "보관된 명령 증거를 확인합니다. 누락된 결과는 미확인 상태로 유지되며 현재 데스크톱에서 추정하지 않습니다.",
   "history.refresh": "결과 새로 고침",
   "history.reading": "원래 증거 읽는 중…",
   "history.empty": "기록된 명령이 없습니다.",

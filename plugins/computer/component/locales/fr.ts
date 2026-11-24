@@ -1,7 +1,5 @@
 export const fr = {
   "panel.title": "Utilisation de l’ordinateur",
-  "panel.description":
-    "Consultez l’hôte contrôlé, les permissions et les résultats d’origine.",
   "controls.label": "Commandes de l’ordinateur",
   refresh: "Actualiser l’état",
   reading: "Lecture de l’état…",
@@ -109,8 +107,6 @@ export const fr = {
   "receipts.help":
     "Les octets incluent l’espace réservé aux résultats en attente. Les nouvelles opérations réservent aussi une place pour révoquer le contrôle et peuvent être refusées avant d’atteindre les limites. Les preuves originales ne sont jamais supprimées pour accepter de nouvelles actions.",
   "history.title": "Résultats d’origine",
-  "history.help":
-    "Consultez les preuves conservées. Les résultats absents ne sont jamais déduits du bureau actuel.",
   "history.refresh": "Actualiser les résultats",
   "history.reading": "Lecture des preuves d’origine…",
   "history.empty": "Aucune commande enregistrée.",

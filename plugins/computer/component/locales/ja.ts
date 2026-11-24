@@ -1,6 +1,5 @@
 export const ja = {
   "panel.title": "コンピューター操作",
-  "panel.description": "実際の制御ホスト、権限要求、元の操作結果を確認します。",
   "controls.label": "操作コントロール",
   refresh: "状態を更新",
   reading: "操作状態を取得中…",
@@ -106,8 +105,6 @@ export const ja = {
   "receipts.help":
     "バイト数には保留中の結果用の予約領域が含まれます。新規操作は制御終了用の枠も確保するため、上限に達する前に受付を停止する場合があります。新規操作のために元の証拠を削除することはありません。",
   "history.title": "元の操作結果",
-  "history.help":
-    "保存されたコマンドの記録を確認します。結果がない操作を現在の画面から推測することはありません。",
   "history.refresh": "結果を更新",
   "history.reading": "元の記録を取得中…",
   "history.empty": "コマンドの記録はありません。",

@@ -545,7 +545,6 @@ function ConsoleHistory({
   return (
     <PanelSection
       title={t("history.title")}
-      description={t("history.help")}
       actions={
         <Button
           disabled={state.history?.loading}
@@ -778,12 +777,7 @@ function Console({
   return (
     <Panel
       label={t("panel.title")}
-      header={
-        <PanelHeader
-          title={t("panel.title")}
-          description={t("panel.description")}
-        />
-      }
+      header={<PanelHeader title={t("panel.title")} />}
       controls={
         <ConsoleControls
           state={state}

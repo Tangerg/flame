@@ -1,7 +1,5 @@
 export const en = {
   "panel.title": "Computer use",
-  "panel.description":
-    "Inspect the actual control host, permissions and original operation outcomes.",
   "controls.label": "Computer controls",
   refresh: "Refresh status",
   reading: "Reading control status…",
@@ -109,8 +107,6 @@ export const en = {
   "receipts.help":
     "Bytes include reserved space for pending outcomes. New work also reserves a revocation slot and may stop before these totals are full. Original evidence is never deleted to admit more actions.",
   "history.title": "Original outcomes",
-  "history.help":
-    "Read retained command evidence. Missing results remain unconfirmed and are never reconstructed from the current desktop.",
   "history.refresh": "Refresh outcomes",
   "history.reading": "Reading original evidence…",
   "history.empty": "No commands have been recorded.",
