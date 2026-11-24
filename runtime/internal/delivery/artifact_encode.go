@@ -139,6 +139,31 @@ func artifactToolFailureFromDomain(failure *tool.Failure) (*protocol.ArtifactPro
 	}, nil
 }
 
+func artifactToolCall(out *protocol.ArtifactItem, item transcript.Item, call transcript.ToolCallBody) error {
+	problem, err := artifactToolFailureFromDomain(call.Failure)
+	if err != nil {
+		return fmt.Errorf("item %q error: %w", item.ID(), err)
+	}
+	out.Error = problem
+	out.SafetyClass = presentSafetyClass(call.SafetyClass)
+	if call.Approval != nil {
+		out.ApprovalDecision = presentItemApprovalDecision(call.Approval.Decision)
+	}
+	invocation := call.Invocation
+	rejected, _ := invocation.Input.Rejected()
+	tool := protocol.ToolInvocation{Name: invocation.Name, Source: recordedSource(invocation.Source), ArgumentsText: rejected, Arguments: invocation.Input.Arguments().Map()}
+	if invocation.Result != nil {
+		tool.Result = invocation.Result.Any()
+	}
+	out.Tool = &tool
+	out.StartedAt = item.OccurredAt()
+	out.FinishedAt = call.FinishedAt
+	if call.ExecutionDuration != nil {
+		out.DurationMillis = new(call.ExecutionDuration.Milliseconds())
+	}
+	return nil
+}
+
 func artifactItemFromTranscript(item transcript.Item) (protocol.ArtifactItem, error) {
 	out := protocol.ArtifactItem{
 		ID: item.ID().String(), RunID: item.RunID().String(), Status: presentItemStatus(item.Status()),
@@ -163,26 +188,8 @@ func artifactItemFromTranscript(item transcript.Item) (protocol.ArtifactItem, er
 	case transcript.CompactionBody:
 		out.Summary, out.DroppedMessages = payload.Summary, payload.DroppedMessages
 	case transcript.ToolCallBody:
-		problem, err := artifactToolFailureFromDomain(payload.Failure)
-		if err != nil {
-			return protocol.ArtifactItem{}, fmt.Errorf("item %q error: %w", item.ID(), err)
-		}
-		out.Error = problem
-		out.SafetyClass = presentSafetyClass(payload.SafetyClass)
-		if payload.Approval != nil {
-			out.ApprovalDecision = presentItemApprovalDecision(payload.Approval.Decision)
-		}
-		invocation := payload.Invocation
-		rejected, _ := invocation.Input.Rejected()
-		tool := protocol.ToolInvocation{Name: invocation.Name, Source: recordedSource(invocation.Source), ArgumentsText: rejected, Arguments: invocation.Input.Arguments().Map()}
-		if invocation.Result != nil {
-			tool.Result = invocation.Result.Any()
-		}
-		out.Tool = &tool
-		out.StartedAt = item.OccurredAt()
-		out.FinishedAt = payload.FinishedAt
-		if payload.ExecutionDuration != nil {
-			out.DurationMillis = new(payload.ExecutionDuration.Milliseconds())
+		if err := artifactToolCall(&out, item, payload); err != nil {
+			return protocol.ArtifactItem{}, err
 		}
 	}
 	if len(content) != 0 {

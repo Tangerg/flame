@@ -144,17 +144,12 @@ func wireRunStartErr(err error) error {
 		return wireWorkspaceError(err)
 	case errors.Is(err, runs.ErrInputRequired):
 		return protocol.NewFailure(protocol.ErrInvalidParams, "input must contain a user text or image block", err)
-	case flamemodel.IsInvalid(err):
-		return protocol.NewFailure(protocol.ErrInvalidParams, err.Error(), err)
-	case errors.Is(err, runs.ErrInvalidRunOptions):
-		return protocol.NewFailure(protocol.ErrInvalidParams, err.Error(), err)
-	case errors.Is(err, runs.ErrUnsupportedMedia):
-		return protocol.NewFailure(protocol.ErrInvalidParams, err.Error(), err)
-	case errors.Is(err, runs.ErrUnsupportedModelSelection):
-		return protocol.NewFailure(protocol.ErrInvalidParams, err.Error(), err)
-	case errors.Is(err, runs.ErrInvalidStart):
-		return protocol.NewFailure(protocol.ErrInvalidParams, err.Error(), err)
-	case errors.Is(err, session.ErrInvalid):
+	case flamemodel.IsInvalid(err),
+		errors.Is(err, runs.ErrInvalidRunOptions),
+		errors.Is(err, runs.ErrUnsupportedMedia),
+		errors.Is(err, runs.ErrUnsupportedModelSelection),
+		errors.Is(err, runs.ErrInvalidStart),
+		errors.Is(err, session.ErrInvalid):
 		return protocol.NewFailure(protocol.ErrInvalidParams, err.Error(), err)
 	case errors.Is(err, rundomain.ErrSessionBusy):
 		return protocol.ErrSessionBusy

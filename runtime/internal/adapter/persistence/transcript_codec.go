@@ -14,17 +14,41 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
-func encodeUserContent(content []transcript.ContentBlock) ([]byte, error) {
-	payload := make([]contentPayload, len(content))
+func encodeContentPayloads(content []transcript.ContentBlock) ([]contentPayload, error) {
+	payloads := make([]contentPayload, len(content))
 	for index, block := range content {
+		encoded, err := encodeContentPayload(block)
+		if err != nil {
+			return nil, fmt.Errorf("content %d: %w", index, err)
+		}
+		payloads[index] = encoded
+	}
+	return payloads, nil
+}
+
+func decodeContentPayloads(payloads []contentPayload) ([]transcript.ContentBlock, error) {
+	content := make([]transcript.ContentBlock, len(payloads))
+	for index, encoded := range payloads {
+		block, err := decodeContentPayload(encoded)
+		if err != nil {
+			return nil, fmt.Errorf("content %d: %w", index, err)
+		}
+		content[index] = block
+	}
+	return content, nil
+}
+
+// User input is stored before any Item owns it, so its blocks are validated on
+// both sides of the store rather than through an Item's invariants.
+func encodeUserContent(content []transcript.ContentBlock) ([]byte, error) {
+	for _, block := range content {
 		if err := block.Validate(); err != nil {
 			return nil, err
 		}
-		var err error
-		payload[index], err = encodeContentPayload(block)
-		if err != nil {
-			return nil, err
-		}
+	}
+	payload, err := encodeContentPayloads(content)
+	if err != nil {
+		return nil, err
 	}
 	return json.Marshal(payload)
 }
@@ -34,14 +58,12 @@ func decodeUserContent(encoded []byte) ([]transcript.ContentBlock, error) {
 	if err := json.Unmarshal(encoded, &payload, json.RejectUnknownMembers(true)); err != nil {
 		return nil, err
 	}
-	content := make([]transcript.ContentBlock, len(payload))
-	for index, block := range payload {
-		var err error
-		content[index], err = decodeContentPayload(block)
-		if err != nil {
-			return nil, err
-		}
-		if err := content[index].Validate(); err != nil {
+	content, err := decodeContentPayloads(payload)
+	if err != nil {
+		return nil, err
+	}
+	for _, block := range content {
+		if err := block.Validate(); err != nil {
 			return nil, err
 		}
 	}
@@ -137,14 +159,11 @@ func encodeTranscriptItem(item transcript.Item) ([]byte, error) {
 		return nil, fmt.Errorf("unknown item kind %q", item.Kind())
 	}
 	if len(content) > 0 {
-		payload.Content = make([]contentPayload, len(content))
-		for index, block := range content {
-			encoded, err := encodeContentPayload(block)
-			if err != nil {
-				return nil, fmt.Errorf("content %d: %w", index, err)
-			}
-			payload.Content[index] = encoded
+		encoded, err := encodeContentPayloads(content)
+		if err != nil {
+			return nil, err
 		}
+		payload.Content = encoded
 	}
 	return encodeStoredJSON(payload)
 }
@@ -185,14 +204,11 @@ func decodeTranscriptItem(data []byte) (transcript.ItemSnapshot, error) {
 	}
 	var content []transcript.ContentBlock
 	if len(payload.Content) > 0 {
-		content = make([]transcript.ContentBlock, len(payload.Content))
-		for index, encoded := range payload.Content {
-			block, err := decodeContentPayload(encoded)
-			if err != nil {
-				return transcript.ItemSnapshot{}, fmt.Errorf("content %d: %w", index, err)
-			}
-			content[index] = block
+		decoded, err := decodeContentPayloads(payload.Content)
+		if err != nil {
+			return transcript.ItemSnapshot{}, err
 		}
+		content = decoded
 	}
 	snapshot := transcript.ItemSnapshot{Status: payload.Status}
 	switch payload.Kind {
