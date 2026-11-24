@@ -50512,6 +50512,13 @@ announced but not drawn; `Showing the last accepted read.` stays visible
 when a refresh fails. Native `dock-diagnostics-recorded` goes from the
 tabs straight to the first trace.
 
+### No orphan rule in the project chooser (2026-11-24)
+
+With no projects, the Composer's `Choose project` menu opened on a separator
+above its only row, `New project`. The separator now renders only when a
+loading row or at least one project sits above it. Native `agent` `empty`
+opens the chooser on `+ New project` alone. Web typecheck passes.
+
 ### Apply a provider selection once one is chosen (2026-11-24)
 
 Settings → Plugins → Provider selections drew a disabled `Apply selection`

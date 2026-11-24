@@ -102,7 +102,7 @@ function ProjectMenuContent({
           </DropdownMenu.Item>
         ))
       )}
-      <DropdownMenu.Separator />
+      {((loading && !groups) || Boolean(groups?.length)) && <DropdownMenu.Separator />}
       <DropdownMenu.Item disabled={!canCreate} onClick={onAdd} layout="glyph">
         <Icon name="plus" size="sm" className={stylex.props(vocab.muted).className} />
         <span>{t("composer.project.add")}</span>
