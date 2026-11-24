@@ -6,7 +6,7 @@ import { tupleKey } from "@/lib/tupleKey";
 import { iconGlyph } from "@/ui/icons/index";
 import * as stylex from "@stylexjs/stylex";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
-import { useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { Icon } from "@/ui/index";
 import { TextEditorDialog } from "@/ui/index";
 import {
@@ -24,6 +24,8 @@ import { useT } from "@/lib/i18n/index";
 import { durationText } from "@/lib/format";
 import { useElapsedMillis } from "@/lib/useElapsedMillis";
 import { useCommandAction } from "@/features/command/public/commandAction";
+import { useComposer } from "@/features/composer/public/composer";
+import { focusComposer } from "@/features/composer/public/focus";
 import { useGoalCommands } from "@/features/goal/public/goals";
 import {
   GOAL_STATUS_I18N,
@@ -131,23 +133,26 @@ function GoalRow({ goal, writable }: { goal: GoalReadModel; writable: boolean })
   const runtimeAccess = useRuntime();
 
   const t = useT();
-  const {
-    clear: clearGoal,
-    resume: resumeGoal,
-    stop: stopGoal,
-    update: updateGoal,
-  } = useGoalCommands();
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const { clear: clearGoal, resume: resumeGoal, stop: stopGoal } = useGoalCommands();
+  const composerAccess = useComposer();
+  // The row retires with its goal (cleared, settled or withdrawn); focus it
+  // held continues in the composer instead of falling to the document.
+  const rowRef = useCallback(
+    (row: HTMLDivElement | null) => {
+      if (!row) return;
+      return () => {
+        if (row.contains(row.ownerDocument.activeElement)) focusComposer(composerAccess);
+      };
+    },
+    [composerAccess],
+  );
   const readerRef = useRef<HTMLDivElement>(null);
-  const [draft, setDraft] = useState(goal.objective);
-  const [editorError, setEditorError] = useState<string>();
-  const [hasRevisionConflict, setHasRevisionConflict] = useState(false);
+  const [readerOpen, setReaderOpen] = useState(false);
   const runtimeAvailable = useRuntimeCommandsAvailable();
   const active = goalIsActive(goal);
   const canChangeStatus = goalCanChangeStatus(goal);
   const canEdit = writable && goalCanEdit(goal);
-  const nextObjective = draft.trim();
-  const canSave = canEdit && nextObjective.length > 0 && nextObjective !== goal.objective;
+  const editor = useGoalEditor(goal, canEdit);
   const clearAction = useCommandAction({
     wasRetired: wasGenerationRetired,
     fallback: t("goal.error.clear"),
@@ -157,16 +162,8 @@ function GoalRow({ goal, writable }: { goal: GoalReadModel; writable: boolean })
     wasRetired: wasGenerationRetired,
     fallback: statusFallback,
   });
-  const editAction = useCommandAction({
-    wasRetired: wasGenerationRetired,
-    fallback: t("goal.error.update"),
-    onError: (message, error) => {
-      if (isErrorType(error, "revision_conflict")) setHasRevisionConflict(true);
-      else setEditorError(message);
-    },
-  });
-  const busy = clearAction.busy || statusAction.busy || editAction.busy;
-  const createdAt = goalCreatedAtMillis(goal.createdAt);
+  const busy = clearAction.busy || statusAction.busy || editor.busy;
+  const controlsDisabled = busy || !runtimeAvailable;
 
   const admitted = (fallback: string) => {
     if (runtimeCommandsAvailable(runtimeAccess)) return true;
@@ -184,56 +181,9 @@ function GoalRow({ goal, writable }: { goal: GoalReadModel; writable: boolean })
     clearAction.run(() => clearGoal(goal.sessionId));
   };
 
-  const changeEditorOpen = (open: boolean) => {
-    setDialogOpen(open);
-    if (!open) {
-      setEditorError(undefined);
-      setHasRevisionConflict(false);
-    }
-  };
-
-  const save = () => {
-    if (!canSave) return;
-    if (!runtimeCommandsAvailable(runtimeAccess)) {
-      setEditorError(t("goal.error.update"));
-      return;
-    }
-    setEditorError(undefined);
-    editAction.run(async () => {
-      await updateGoal({ sessionId: goal.sessionId, objective: nextObjective });
-      changeEditorOpen(false);
-    });
-  };
-
-  const controlsDisabled = busy || !runtimeAvailable;
-  const openEditor = () => {
-    setDraft(goal.objective);
-    setEditorError(undefined);
-    setDialogOpen(true);
-  };
-  const editDraft = (value: string) => {
-    setDraft(value);
-    setEditorError(undefined);
-  };
-  const latestObjectiveLabel = t("goal.edit.latestObjective");
-
-  const summary = (
-    <>
-      <span {...stylex.props(vocab.min, vocab.truncate, vocab.ink, typeStep.uiSm)}>
-        {goal.objective}
-      </span>
-      {goal.status === "active" ? (
-        <span className="sr-only">{t(GOAL_STATUS_I18N[goal.status].label)}</span>
-      ) : (
-        <span {...stylex.props(vocab.muted, typeStep.uiSm)}>
-          {t(GOAL_STATUS_I18N[goal.status].label)}
-        </span>
-      )}
-    </>
-  );
   return (
     <>
-      <div data-slot="goal-status-row" {...stylex.props(gs.bar)}>
+      <div ref={rowRef} data-slot="goal-status-row" {...stylex.props(gs.bar)}>
         <div data-slot="goal-identity" {...stylex.props(vocab.line, gs.identity)}>
           <Icon
             name="target"
@@ -250,54 +200,41 @@ function GoalRow({ goal, writable }: { goal: GoalReadModel; writable: boolean })
             flex="fill"
             title={goal.objective}
             styles={gs.summary}
-            onClick={writable ? openEditor : () => setDialogOpen(true)}
+            onClick={writable ? editor.begin : () => setReaderOpen(true)}
           >
-            {summary}
+            <span {...stylex.props(vocab.min, vocab.truncate, vocab.ink, typeStep.uiSm)}>
+              {goal.objective}
+            </span>
+            {goal.status === "active" ? (
+              <span className="sr-only">{t(GOAL_STATUS_I18N[goal.status].label)}</span>
+            ) : (
+              <span {...stylex.props(vocab.muted, typeStep.uiSm)}>
+                {t(GOAL_STATUS_I18N[goal.status].label)}
+              </span>
+            )}
           </Button>
         </div>
         {writable && (
           <div data-slot="goal-actions" {...stylex.props(gs.actions)}>
-            {createdAt !== null && <GoalElapsed createdAt={createdAt} />}
-            <IconButton
-              type="button"
-              size="xs"
-              icon={iconGlyph("trash")}
-              quiet
-              aria-label={t("goal.action.clear")}
+            <GoalActions
+              createdAt={goalCreatedAtMillis(goal.createdAt)}
               disabled={controlsDisabled}
-              aria-busy={clearAction.busy}
-              onClick={clear}
+              clearBusy={clearAction.busy}
+              onClear={clear}
+              status={
+                canChangeStatus
+                  ? { active, busy: statusAction.busy, onChange: changeStatus }
+                  : undefined
+              }
+              onEdit={canEdit ? editor.begin : undefined}
             />
-            {canChangeStatus && (
-              <IconButton
-                type="button"
-                size="xs"
-                icon={iconGlyph(active ? "circle-pause" : "circle-play")}
-                quiet
-                aria-label={t(active ? "goal.action.pause" : "goal.action.resume")}
-                disabled={controlsDisabled}
-                aria-busy={statusAction.busy}
-                onClick={changeStatus}
-              />
-            )}
-            {canEdit && (
-              <IconButton
-                type="button"
-                size="xs"
-                icon={iconGlyph("maximize")}
-                quiet
-                aria-label={t("goal.action.edit")}
-                disabled={controlsDisabled}
-                onClick={openEditor}
-              />
-            )}
           </div>
         )}
       </div>
       <GoalStopReason goal={goal} />
       <ModalDialog
-        open={dialogOpen && !writable}
-        onOpenChange={setDialogOpen}
+        open={readerOpen}
+        onOpenChange={setReaderOpen}
         icon={<Icon name="target" size="lg" className={stylex.props(vocab.muted).className} />}
         title={t("goal.edit.label")}
         closeLabel={t("common.close")}
@@ -307,38 +244,180 @@ function GoalRow({ goal, writable }: { goal: GoalReadModel; writable: boolean })
       >
         {goal.objective}
       </ModalDialog>
-      <TextEditorDialog
-        open={dialogOpen && canEdit}
-        onOpenChange={changeEditorOpen}
-        icon={<Icon name="target" size="lg" className={stylex.props(vocab.muted).className} />}
-        title={t("goal.edit.title")}
-        closeLabel={t("common.close")}
-        label={t("goal.edit.label")}
-        value={draft}
-        onChange={editDraft}
-        cancelLabel={t("common.cancel")}
-        saveLabel={t("goal.edit.save")}
-        savingLabel={t("goal.edit.saving")}
-        busy={editAction.busy}
-        error={editorError ?? (hasRevisionConflict ? t("goal.edit.conflict") : undefined)}
-        feedbackBody={
-          hasRevisionConflict && (
-            <div>
-              <Metadata>{latestObjectiveLabel}</Metadata>
-              <ScrollRegion
-                label={latestObjectiveLabel}
-                styles={[gs.objectiveReader, gs.conflictReader]}
-                data-focus-inset=""
-              >
-                {goal.objective}
-              </ScrollRegion>
-            </div>
-          )
-        }
-        saveDisabled={!canSave || controlsDisabled}
-        onSave={save}
+      <GoalEditorDialog
+        editor={editor}
+        open={editor.open && canEdit}
+        latestObjective={goal.objective}
+        disabled={controlsDisabled}
       />
     </>
+  );
+}
+
+// Each command disables the row while it runs; the pressed control keeps focus.
+function GoalActions({
+  createdAt,
+  disabled,
+  clearBusy,
+  onClear,
+  status,
+  onEdit,
+}: {
+  createdAt: number | null;
+  disabled: boolean;
+  clearBusy: boolean;
+  onClear: () => void;
+  status: { active: boolean; busy: boolean; onChange: () => void } | undefined;
+  onEdit: (() => void) | undefined;
+}) {
+  const t = useT();
+  return (
+    <>
+      {createdAt !== null && <GoalElapsed createdAt={createdAt} />}
+      <IconButton
+        type="button"
+        size="xs"
+        icon={iconGlyph("trash")}
+        quiet
+        aria-label={t("goal.action.clear")}
+        disabled={disabled}
+        focusableWhenDisabled
+        aria-busy={clearBusy}
+        onClick={onClear}
+      />
+      {status && (
+        <IconButton
+          type="button"
+          size="xs"
+          icon={iconGlyph(status.active ? "circle-pause" : "circle-play")}
+          quiet
+          aria-label={t(status.active ? "goal.action.pause" : "goal.action.resume")}
+          disabled={disabled}
+          focusableWhenDisabled
+          aria-busy={status.busy}
+          onClick={status.onChange}
+        />
+      )}
+      {onEdit && (
+        <IconButton
+          type="button"
+          size="xs"
+          icon={iconGlyph("maximize")}
+          quiet
+          aria-label={t("goal.action.edit")}
+          disabled={disabled}
+          focusableWhenDisabled
+          onClick={onEdit}
+        />
+      )}
+    </>
+  );
+}
+
+// A revision conflict stays for the editing session so the latest objective
+// remains readable; other failures clear once the draft changes.
+function useGoalEditor(goal: GoalReadModel, canEdit: boolean) {
+  const runtimeAccess = useRuntime();
+  const t = useT();
+  const { update: updateGoal } = useGoalCommands();
+  const [open, setOpen] = useState(false);
+  const [draft, setDraft] = useState(goal.objective);
+  const [failure, setFailure] = useState<string>();
+  const [conflict, setConflict] = useState(false);
+  const action = useCommandAction({
+    wasRetired: wasGenerationRetired,
+    fallback: t("goal.error.update"),
+    onError: (message, error) => {
+      if (isErrorType(error, "revision_conflict")) setConflict(true);
+      else setFailure(message);
+    },
+  });
+  const objective = draft.trim();
+  const canSave = canEdit && objective.length > 0 && objective !== goal.objective;
+  const changeOpen = (next: boolean) => {
+    setOpen(next);
+    if (!next) {
+      setFailure(undefined);
+      setConflict(false);
+    }
+  };
+  return {
+    open,
+    draft,
+    conflict,
+    error: failure ?? (conflict ? t("goal.edit.conflict") : undefined),
+    busy: action.busy,
+    canSave,
+    changeOpen,
+    begin: () => {
+      setDraft(goal.objective);
+      setFailure(undefined);
+      setOpen(true);
+    },
+    edit: (value: string) => {
+      setDraft(value);
+      setFailure(undefined);
+    },
+    save: () => {
+      if (!canSave) return;
+      if (!runtimeCommandsAvailable(runtimeAccess)) {
+        setFailure(t("goal.error.update"));
+        return;
+      }
+      setFailure(undefined);
+      action.run(async () => {
+        await updateGoal({ sessionId: goal.sessionId, objective });
+        changeOpen(false);
+      });
+    },
+  };
+}
+
+function GoalEditorDialog({
+  editor,
+  open,
+  latestObjective,
+  disabled,
+}: {
+  editor: ReturnType<typeof useGoalEditor>;
+  open: boolean;
+  latestObjective: string;
+  disabled: boolean;
+}) {
+  const t = useT();
+  const latestObjectiveLabel = t("goal.edit.latestObjective");
+  return (
+    <TextEditorDialog
+      open={open}
+      onOpenChange={editor.changeOpen}
+      icon={<Icon name="target" size="lg" className={stylex.props(vocab.muted).className} />}
+      title={t("goal.edit.title")}
+      closeLabel={t("common.close")}
+      label={t("goal.edit.label")}
+      value={editor.draft}
+      onChange={editor.edit}
+      cancelLabel={t("common.cancel")}
+      saveLabel={t("goal.edit.save")}
+      savingLabel={t("goal.edit.saving")}
+      busy={editor.busy}
+      error={editor.error}
+      feedbackBody={
+        editor.conflict && (
+          <div>
+            <Metadata>{latestObjectiveLabel}</Metadata>
+            <ScrollRegion
+              label={latestObjectiveLabel}
+              styles={[gs.objectiveReader, gs.conflictReader]}
+              data-focus-inset=""
+            >
+              {latestObjective}
+            </ScrollRegion>
+          </div>
+        )
+      }
+      saveDisabled={!editor.canSave || disabled}
+      onSave={editor.save}
+    />
   );
 }
 
