@@ -107,47 +107,56 @@ function skillPageRows(page: SkillPage, rows: Row[]): Row[] {
     : rows;
 }
 
+const WEB_PAGE_MEMBERS = new Set([
+  "snapshotId",
+  "url",
+  "format",
+  "content",
+  "offset",
+  "totalRunes",
+  "nextOffset",
+]);
+const WEB_PAGE_FORMATS = new Set(["markdown", "html", "text"]);
+
+function isRuneOffset(value: unknown): value is number {
+  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
+}
+
+// A page is one window of its snapshot: it ends where the next page starts, or
+// at the snapshot's end when there is no next page.
+function continuesSnapshot(
+  offset: number,
+  content: string,
+  totalRunes: number,
+  nextOffset: unknown,
+): boolean {
+  const end = offset + Array.from(content).length;
+  if (end > totalRunes) return false;
+  if (nextOffset === undefined) return end === totalRunes;
+  return (
+    isRuneOffset(nextOffset) &&
+    nextOffset === end &&
+    nextOffset > offset &&
+    nextOffset < totalRunes
+  );
+}
+
 function webPage(page: Record<string, unknown>) {
   const { snapshotId, url, format, content, offset, totalRunes, nextOffset } =
     page;
   if (
-    Object.keys(page).some(
-      (key) =>
-        ![
-          "snapshotId",
-          "url",
-          "format",
-          "content",
-          "offset",
-          "totalRunes",
-          "nextOffset",
-        ].includes(key),
-    ) ||
+    Object.keys(page).some((key) => !WEB_PAGE_MEMBERS.has(key)) ||
     typeof snapshotId !== "string" ||
     !/^[0-9a-f]{64}$/.test(snapshotId) ||
     typeof url !== "string" ||
     !url ||
     typeof format !== "string" ||
-    !["markdown", "html", "text"].includes(format) ||
+    !WEB_PAGE_FORMATS.has(format) ||
     typeof content !== "string" ||
-    typeof offset !== "number" ||
-    !Number.isSafeInteger(offset) ||
-    offset < 0 ||
-    typeof totalRunes !== "number" ||
-    !Number.isSafeInteger(totalRunes) ||
-    totalRunes < offset
-  )
-    return undefined;
-  const end = offset + Array.from(content).length;
-  if (
-    end > totalRunes ||
-    (nextOffset === undefined
-      ? end !== totalRunes
-      : typeof nextOffset !== "number" ||
-        !Number.isSafeInteger(nextOffset) ||
-        nextOffset !== end ||
-        nextOffset <= offset ||
-        nextOffset >= totalRunes)
+    !isRuneOffset(offset) ||
+    !isRuneOffset(totalRunes) ||
+    totalRunes < offset ||
+    !continuesSnapshot(offset, content, totalRunes, nextOffset)
   )
     return undefined;
   return {
@@ -170,16 +179,37 @@ function httpContent(value: unknown): string | undefined {
   return undefined;
 }
 
+const HTTP_RESPONSE_MEMBERS = new Set([
+  "status",
+  "duration",
+  "truncated",
+  "headers",
+  "body",
+]);
+
+// Each recorded header value is its own line, in the order the response had them.
+function httpHeaderLines(value: unknown): string[] | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value))
+    return undefined;
+  const lines: string[] = [];
+  for (const [name, values] of Object.entries(value)) {
+    if (!Array.isArray(values) || values.length === 0) return undefined;
+    for (const entry of values) {
+      const content = httpContent(entry);
+      if (content === undefined) return undefined;
+      lines.push(`${name}: ${content}`);
+    }
+  }
+  return lines;
+}
+
 function httpResponseRow(
   response: Record<string, unknown>,
   t: Translate,
 ): Row | undefined {
   const { status, duration, truncated } = response;
   if (
-    Object.keys(response).some(
-      (key) =>
-        !["status", "duration", "truncated", "headers", "body"].includes(key),
-    ) ||
+    Object.keys(response).some((key) => !HTTP_RESPONSE_MEMBERS.has(key)) ||
     typeof status !== "number" ||
     !Number.isInteger(status) ||
     typeof duration !== "string" ||
@@ -188,23 +218,9 @@ function httpResponseRow(
     return undefined;
   const body = httpContent(response.body);
   if (body === undefined) return undefined;
-  const headers: string[] = [];
-  if (response.headers !== undefined) {
-    if (
-      !response.headers ||
-      typeof response.headers !== "object" ||
-      Array.isArray(response.headers)
-    )
-      return undefined;
-    for (const [name, values] of Object.entries(response.headers)) {
-      if (!Array.isArray(values) || values.length === 0) return undefined;
-      for (const value of values) {
-        const content = httpContent(value);
-        if (content === undefined) return undefined;
-        headers.push(`${name}: ${content}`);
-      }
-    }
-  }
+  const headers =
+    response.headers === undefined ? [] : httpHeaderLines(response.headers);
+  if (!headers) return undefined;
   return {
     kind: "located",
     location: `${status} ${duration}${truncated ? ` · ${t("http.truncated")}` : ""}`,
