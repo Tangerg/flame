@@ -218,8 +218,7 @@ a subtree in a separate React root, such as an installed component, reads them a
 the mount site and re-provides them with `Placed`; otherwise that subtree repeats
 its view title and keeps popups open while hidden.
 `FilterBar` owns the control zone in three meanings, in reading order: the
-growing search column (whose fill hangs by the row bleed, so its glyph keeps
-the column edge), the page `actions` after it, and the refining filters as
+growing search column, the page `actions` after it, and the refining filters as
 `children`. Search and actions share a row while they fit, where the growing
 search carries the actions to the inline end; the filters follow, joining that
 row when the width allows. Each group wraps as a unit, so actions never strand
@@ -227,7 +226,9 @@ between filters. Wrapped actions and filters start at the search's inline-start
 edge rather than jumping to the opposite edge. The search/actions group and the
 filters keep their intrinsic heights and begin at the same top edge when either
 wraps, so a single filter row never floats between wrapped search and action
-rows; controls stay centered within each group's own rows. Multiple actions use
+rows; controls stay centered within each group's own rows. The whole bar hangs by the row bleed, so
+whichever control starts a line, before or after a wrap, puts its fill on the
+panel's fill line and its glyph or text on the column edge. Multiple actions use
 one named `Toolbar` in the `actions` slot. A filled control that starts a
 column outside `FilterBar` (a leading `Segmented` or `Select`) is wrapped in
 `Hang` for the same alignment. When a page's actions are creation commands, as in

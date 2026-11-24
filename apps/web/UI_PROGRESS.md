@@ -2687,6 +2687,14 @@ box, about 4 px right of the column edge. It now pulls back by that bearing
 (`--icon-xs × 5/16`), so the stroke, not the box, starts on the line; native
 Usage shows the chevron on `Usage breakdown`'s edge.
 
+`FilterBar` now hangs as a whole instead of hanging only its search. In a
+narrow Dock, Schedules wraps `Add schedule` and `Templates` below the search;
+they used to start on the column edge with their fill 12 px inside the
+search's. Shifting the bar means whichever control starts a line, after any
+wrap, lands on the fill line; mid-line controls keep their gaps. Native
+`dock-schedules` shows the search and `Add schedule` fills on one edge;
+Trajectory, Usage and Skills are unchanged.
+
 ### Composer suggestions open where they can be read (2026-11-24)
 
 Typing `@` or `/` in a Session's Composer opened Lexical's typeahead below

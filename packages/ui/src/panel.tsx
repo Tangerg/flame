@@ -150,12 +150,16 @@ const styles = stylex.create({
     minWidth: 0,
     overflowWrap: "anywhere",
   },
+  // The whole bar hangs by the row bleed: whichever control starts a line,
+  // after any wrap, puts its fill on the panel fill line and its glyph or text
+  // on the column edge (see RecordGroup).
   filters: {
     display: "flex",
     flexWrap: "wrap",
     alignItems: "flex-start",
     gap: layout.controlGap,
     minWidth: 0,
+    marginInlineStart: `calc(-1 * ${space.s3})`,
   },
   filterLead: {
     display: "flex",
@@ -165,13 +169,7 @@ const styles = stylex.create({
     flex: "1 1 20rem",
     minWidth: 0,
   },
-  // The search starts its column: its glyph keeps the column edge and its fill
-  // bleeds by the same inset as list rows (see RecordGroup).
-  filterSearch: {
-    flex: "1 1 12rem",
-    minWidth: 0,
-    marginInlineStart: `calc(-1 * ${space.s3})`,
-  },
+  filterSearch: { flex: "1 1 12rem", minWidth: 0 },
   hang: {
     display: "flex",
     minWidth: 0,
