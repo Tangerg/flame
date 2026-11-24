@@ -1,4 +1,12 @@
-import { Fragment, useLayoutEffect, useMemo, useRef, useState } from "react";
+import {
+  Fragment,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type Ref,
+} from "react";
 import { Search } from "@flame/icons/react";
 import type { Translate } from "@flame/component-sdk";
 import {
@@ -223,107 +231,18 @@ export function RecordedRows({
               filtering and paging would shift; one stable child keeps it whole. */}
           <div>
             {presented.map((row, index) => (
-              <div
+              <RecordedRow
                 key={index}
                 ref={
                   index === visible - RESULT_PAGE_ROWS
                     ? firstRevealed
                     : undefined
                 }
-                style={{
-                  display: "grid",
-                  gridTemplateColumns:
-                    row.kind === "source"
-                      ? `${numberWidth} minmax(0, 1fr)`
-                      : "minmax(0, 1fr)",
-                  columnGap: "var(--layout-content-gap)",
-                  rowGap: "var(--layout-label-gap)",
-                  paddingBlockStart:
-                    index === 0 ||
-                    (row.kind !== "located" && row.kind !== "entry")
-                      ? undefined
-                      : row.body === undefined
-                        ? "var(--layout-label-gap)"
-                        : "calc(var(--layout-row-padding) * 2)",
-                  minWidth: 0,
-                  fontFamily:
-                    row.kind === "source" || row.kind === "located"
-                      ? "var(--font-mono)"
-                      : "var(--font-sans)",
-                  fontSize:
-                    row.kind === "source" || row.kind === "located"
-                      ? "var(--fs-code)"
-                      : "var(--fs-ui-md)",
-                  lineHeight: "var(--leading-relaxed)",
-                }}
-              >
-                {row.kind === "source" && (
-                  <span
-                    style={{
-                      color: "var(--color-text-faint)",
-                      textAlign: "end",
-                      userSelect: "none",
-                      fontVariantNumeric: "tabular-nums",
-                    }}
-                  >
-                    <span className="sr-only">{t("result.line")}</span>
-                    {row.number}
-                  </span>
-                )}
-                {row.kind === "located" && row.location !== undefined && (
-                  <Metadata
-                    style={{
-                      whiteSpace: "pre-wrap",
-                    }}
-                  >
-                    {row.location.split("/").map((part, index) => (
-                      <Fragment key={index}>
-                        {index > 0 && "/"}
-                        {index > 0 && <wbr />}
-                        {part}
-                      </Fragment>
-                    ))}
-                  </Metadata>
-                )}
-                {row.kind === "entry" && (
-                  <RecordSummary
-                    title={
-                      <span style={{ whiteSpace: "pre-wrap" }}>
-                        {row.title}
-                      </span>
-                    }
-                    description={
-                      row.context === undefined ? undefined : (
-                        <span style={{ whiteSpace: "pre-wrap" }}>
-                          {row.context}
-                        </span>
-                      )
-                    }
-                  />
-                )}
-                {row.body !== undefined &&
-                  (row.kind === "entry" || row.kind === "prose") && (
-                    <RecordBody>{row.body || " "}</RecordBody>
-                  )}
-                {row.kind === "notice" && <Metadata>{row.body}</Metadata>}
-                {row.body !== undefined &&
-                  (row.kind === "source" || row.kind === "located") && (
-                    <pre
-                      style={{
-                        whiteSpace: "pre-wrap",
-                        overflowWrap: "anywhere",
-                        margin: 0,
-                        color: /^error\b/.test(row.body)
-                          ? "var(--color-negative)"
-                          : /^warning\b/.test(row.body)
-                            ? "var(--color-warning)"
-                            : undefined,
-                      }}
-                    >
-                      {renderAnsi(row.body || " ")}
-                    </pre>
-                  )}
-              </div>
+                row={row}
+                first={index === 0}
+                numberWidth={numberWidth}
+                t={t}
+              />
             ))}
             {!recorded.length ? (
               <Metadata>{emptyMessage ?? t("result.empty")}</Metadata>
@@ -343,6 +262,116 @@ export function RecordedRows({
           </div>
         </div>
       </CodeFrame>
+    </div>
+  );
+}
+
+// Code-like rows keep the monospaced reading face; entries and prose do not.
+const MONO_ROWS: ReadonlySet<Row["kind"]> = new Set(["source", "located"]);
+
+function rowStyle(
+  row: Row,
+  first: boolean,
+  numberWidth: string,
+): CSSProperties {
+  const mono = MONO_ROWS.has(row.kind);
+  const grouped = row.kind === "located" || row.kind === "entry";
+  return {
+    display: "grid",
+    gridTemplateColumns:
+      row.kind === "source"
+        ? `${numberWidth} minmax(0, 1fr)`
+        : "minmax(0, 1fr)",
+    columnGap: "var(--layout-content-gap)",
+    rowGap: "var(--layout-label-gap)",
+    paddingBlockStart:
+      first || !grouped
+        ? undefined
+        : row.body === undefined
+          ? "var(--layout-label-gap)"
+          : "calc(var(--layout-row-padding) * 2)",
+    minWidth: 0,
+    fontFamily: mono ? "var(--font-mono)" : "var(--font-sans)",
+    fontSize: mono ? "var(--fs-code)" : "var(--fs-ui-md)",
+    lineHeight: "var(--leading-relaxed)",
+  };
+}
+
+function RecordedRow({
+  ref,
+  row,
+  first,
+  numberWidth,
+  t,
+}: {
+  ref?: Ref<HTMLDivElement>;
+  row: Row;
+  first: boolean;
+  numberWidth: string;
+  t: Translate;
+}) {
+  return (
+    <div ref={ref} style={rowStyle(row, first, numberWidth)}>
+      {row.kind === "source" && (
+        <span
+          style={{
+            color: "var(--color-text-faint)",
+            textAlign: "end",
+            userSelect: "none",
+            fontVariantNumeric: "tabular-nums",
+          }}
+        >
+          <span className="sr-only">{t("result.line")}</span>
+          {row.number}
+        </span>
+      )}
+      {row.kind === "located" && row.location !== undefined && (
+        <Metadata
+          style={{
+            whiteSpace: "pre-wrap",
+          }}
+        >
+          {row.location.split("/").map((part, index) => (
+            <Fragment key={index}>
+              {index > 0 && "/"}
+              {index > 0 && <wbr />}
+              {part}
+            </Fragment>
+          ))}
+        </Metadata>
+      )}
+      {row.kind === "entry" && (
+        <RecordSummary
+          title={<span style={{ whiteSpace: "pre-wrap" }}>{row.title}</span>}
+          description={
+            row.context === undefined ? undefined : (
+              <span style={{ whiteSpace: "pre-wrap" }}>{row.context}</span>
+            )
+          }
+        />
+      )}
+      {row.body !== undefined &&
+        (row.kind === "entry" || row.kind === "prose") && (
+          <RecordBody>{row.body || " "}</RecordBody>
+        )}
+      {row.kind === "notice" && <Metadata>{row.body}</Metadata>}
+      {row.body !== undefined &&
+        (row.kind === "source" || row.kind === "located") && (
+          <pre
+            style={{
+              whiteSpace: "pre-wrap",
+              overflowWrap: "anywhere",
+              margin: 0,
+              color: /^error\b/.test(row.body)
+                ? "var(--color-negative)"
+                : /^warning\b/.test(row.body)
+                  ? "var(--color-warning)"
+                  : undefined,
+            }}
+          >
+            {renderAnsi(row.body || " ")}
+          </pre>
+        )}
     </div>
   );
 }
