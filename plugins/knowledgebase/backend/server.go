@@ -47,37 +47,11 @@ func newServer(library *library) (*sdk.Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	search, err := tool.NewFunc(tool.FuncConfig{Name: searchKnowledgeTool, Description: contracts.Search.Descriptor().Description, Effect: tool.EffectSafe}, func(ctx context.Context, input wire.ToolSearchInput) ([]knowledge.Match, error) {
-		project, err := runProject(ctx)
-		if err != nil {
-			return nil, err
-		}
-		return modelResult(library.search(ctx, wire.SearchInput{Query: input.Query, Limit: input.Limit, Project: project}))
-	})
+	tools, err := knowledgeTools(library, contracts)
 	if err != nil {
 		return nil, err
 	}
-	list, err := tool.NewFunc(tool.FuncConfig{Name: listDocumentsTool, Description: contracts.List.Descriptor().Description, Effect: tool.EffectSafe}, func(ctx context.Context, _ struct{}) ([]knowledge.Header, error) {
-		project, err := runProject(ctx)
-		if err != nil {
-			return nil, err
-		}
-		return library.list(ctx, wire.ListInput{Project: project})
-	})
-	if err != nil {
-		return nil, err
-	}
-	read, err := tool.NewFunc(tool.FuncConfig{Name: readDocumentTool, Description: contracts.Read.Descriptor().Description, Effect: tool.EffectSafe}, func(ctx context.Context, input wire.ToolReadInput) (wire.DocumentRead, error) {
-		project, err := runProject(ctx)
-		if err != nil {
-			return wire.DocumentRead{}, err
-		}
-		return modelResult(library.read(ctx, wire.ReadInput{ID: input.ID, Project: project}))
-	})
-	if err != nil {
-		return nil, err
-	}
-	if err := pluginsdk.RegisterTools(server, search, list, read); err != nil {
+	if err := pluginsdk.RegisterTools(server, tools...); err != nil {
 		return nil, err
 	}
 	if err := errors.Join(
@@ -120,6 +94,41 @@ func newServer(library *library) (*sdk.Server, error) {
 		return nil, err
 	}
 	return server, nil
+}
+
+// The model reads only the documents of the Project its Run captured.
+func knowledgeTools(library *library, contracts rpc.Contracts) ([]tool.Tool, error) {
+	search, err := tool.NewFunc(tool.FuncConfig{Name: searchKnowledgeTool, Description: contracts.Search.Descriptor().Description, Effect: tool.EffectSafe}, func(ctx context.Context, input wire.ToolSearchInput) ([]knowledge.Match, error) {
+		project, err := runProject(ctx)
+		if err != nil {
+			return nil, err
+		}
+		return modelResult(library.search(ctx, wire.SearchInput{Query: input.Query, Limit: input.Limit, Project: project}))
+	})
+	if err != nil {
+		return nil, err
+	}
+	list, err := tool.NewFunc(tool.FuncConfig{Name: listDocumentsTool, Description: contracts.List.Descriptor().Description, Effect: tool.EffectSafe}, func(ctx context.Context, _ struct{}) ([]knowledge.Header, error) {
+		project, err := runProject(ctx)
+		if err != nil {
+			return nil, err
+		}
+		return library.list(ctx, wire.ListInput{Project: project})
+	})
+	if err != nil {
+		return nil, err
+	}
+	read, err := tool.NewFunc(tool.FuncConfig{Name: readDocumentTool, Description: contracts.Read.Descriptor().Description, Effect: tool.EffectSafe}, func(ctx context.Context, input wire.ToolReadInput) (wire.DocumentRead, error) {
+		project, err := runProject(ctx)
+		if err != nil {
+			return wire.DocumentRead{}, err
+		}
+		return modelResult(library.read(ctx, wire.ReadInput{ID: input.ID, Project: project}))
+	})
+	if err != nil {
+		return nil, err
+	}
+	return []tool.Tool{search, list, read}, nil
 }
 
 func runProject(ctx context.Context) (string, error) {

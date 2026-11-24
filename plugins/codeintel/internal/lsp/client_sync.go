@@ -40,17 +40,23 @@ func (c *client) ensureOpen(ctx context.Context, abs string) error {
 	return err
 }
 
-func (c *client) ensureContent(ctx context.Context, abs string, text []byte) (int, error) {
+func admitDocumentText(text []byte) error {
 	if len(text) > int(maxDocumentBytes) {
-		return 0, errDocumentTooLarge
+		return errDocumentTooLarge
 	}
 	if !utf8.Valid(text) || bytes.IndexByte(text, 0) >= 0 {
-		return 0, errUnsupportedDocument
+		return errUnsupportedDocument
+	}
+	return nil
+}
+
+func (c *client) ensureContent(ctx context.Context, abs string, text []byte) (int, error) {
+	if err := admitDocumentText(text); err != nil {
+		return 0, err
 	}
 	if err := errors.Join(ctx.Err(), context.Cause(ctx)); err != nil {
 		return 0, err
 	}
-	var err error
 	uri := pathToURI(abs)
 	hash := sha256.Sum256(text)
 
@@ -68,27 +74,15 @@ func (c *client) ensureContent(ctx context.Context, abs string, text []byte) (in
 	if c.version == math.MaxInt32 {
 		return 0, errors.New("lsp: document version space exhausted")
 	}
+	if isOpen && c.syncPolicy.Change == changeNone {
+		return 0, errors.New("lsp: server did not negotiate document changes")
+	}
 	version := c.version + 1
-	if !isOpen {
-		if err := c.evictColdestDocumentLocked(ctx); err != nil {
-			return 0, err
-		}
-		err = c.notify(ctx, "textDocument/didOpen", didOpenParams{
-			TextDocument: textDocumentItem{URI: uri, LanguageID: c.spec.Languages[strings.ToLower(filepath.Ext(abs))], Version: version, Text: string(text)},
-		})
+	var err error
+	if isOpen {
+		err = c.changeDocumentLocked(ctx, uri, text, version, prev)
 	} else {
-		change := contentChange{Text: string(text)}
-		switch c.syncPolicy.Change {
-		case changeNone:
-			return 0, errors.New("lsp: server did not negotiate document changes")
-		case changeIncremental:
-			change.Range = &Range{End: prev.end}
-		case changeFull:
-		}
-		err = c.notify(ctx, "textDocument/didChange", didChangeParams{
-			TextDocument:   versionedTextDocumentIdentifier{URI: uri, Version: version},
-			ContentChanges: []contentChange{change},
-		})
+		err = c.openDocumentLocked(ctx, uri, abs, text, version)
 	}
 	if err != nil {
 		return 0, fmt.Errorf("lsp: sync %s: %w", abs, err)
@@ -100,6 +94,26 @@ func (c *client) ensureContent(ctx context.Context, abs string, text []byte) (in
 	}
 	c.open[uri] = doc
 	return version, nil
+}
+
+func (c *client) openDocumentLocked(ctx context.Context, uri, abs string, text []byte, version int) error {
+	if err := c.evictColdestDocumentLocked(ctx); err != nil {
+		return err
+	}
+	return c.notify(ctx, "textDocument/didOpen", didOpenParams{
+		TextDocument: textDocumentItem{URI: uri, LanguageID: c.spec.Languages[strings.ToLower(filepath.Ext(abs))], Version: version, Text: string(text)},
+	})
+}
+
+func (c *client) changeDocumentLocked(ctx context.Context, uri string, text []byte, version int, prev openDoc) error {
+	change := contentChange{Text: string(text)}
+	if c.syncPolicy.Change == changeIncremental {
+		change.Range = &Range{End: prev.end}
+	}
+	return c.notify(ctx, "textDocument/didChange", didChangeParams{
+		TextDocument:   versionedTextDocumentIdentifier{URI: uri, Version: version},
+		ContentChanges: []contentChange{change},
+	})
 }
 
 func (c *client) evictColdestDocumentLocked(ctx context.Context) error {
