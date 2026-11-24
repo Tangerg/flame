@@ -3,7 +3,7 @@ import * as stylex from "@stylexjs/stylex";
 import { type BlockStatus, type QuestionItem } from "@/features/agent/public/contentBlock";
 import { useId, useLayoutEffect, useRef, useState, type ChangeEvent } from "react";
 import { ChoiceList, ChoiceOption } from "@/ui/index";
-import { Divider } from "@/ui/index";
+import { TranscriptMark } from "@/ui/index";
 import { Icon } from "@/ui/index";
 import { Surface } from "@/ui/index";
 import { Badge, Button, IconButton, TextArea, TextField } from "@flame/ui";
@@ -221,7 +221,9 @@ export function QuestionCard({
     const shown = settled.answers;
     if (!shown)
       return (
-        <Divider icon={<Icon name="x" size="xs" />}>{t("question.settled.dismissed")}</Divider>
+        <TranscriptMark icon={<Icon name="x" size="xs" />}>
+          {t("question.settled.dismissed")}
+        </TranscriptMark>
       );
     const countLabel = t("question.settled.question", { count: questions.length });
     return (

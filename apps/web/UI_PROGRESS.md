@@ -50363,6 +50363,19 @@ and is unchanged; its edit row's Cancel is now quiet beside Apply. Native
 code stays beside the title as the exact failure identity. Web typecheck
 passes.
 
+### Settled decisions and dates as quiet marks (2026-11-24)
+
+Settled approvals, dismissed questions, generic HITL outcomes and transcript
+date separators used the `Divider` atom. It drew a full-width rule, a grey
+pill around the glyph, the label and a second rule, so `Approved` crossed the
+reading column as a decorated divider. The atom becomes `TranscriptMark`
+(`apps/web/src/ui/atoms/transcript-mark.tsx`): glyph and label on the
+reading edge in faint ink, or accent ink for approval, with no rules or pill.
+The four consumers and the atoms specimen (`section-mark`) follow. Native
+atoms sheet: `Today` and `✓ Approved` render as single quiet lines. Web
+typecheck and the Lab build pass. Not observed in a live transcript, because
+no Lab agent state carries a settled approval or a date boundary.
+
 ## Conversation/transcript surface audit
 
 A deep audit of the chat stream (message blocks, narrative rails, plan progress,

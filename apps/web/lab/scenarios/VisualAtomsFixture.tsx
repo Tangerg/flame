@@ -6,7 +6,7 @@ import * as stylex from "@stylexjs/stylex";
 import { color, space, surface, type as typeStep } from "@flame/ui/tokens.stylex";
 import { ChoiceList, ChoiceOption } from "@/ui/index";
 import { Chip } from "@/ui/index";
-import { Divider } from "@/ui/index";
+import { TranscriptMark } from "@/ui/index";
 import { FilePath } from "@/ui/index";
 import { Gauge } from "@/ui/index";
 import { Kbd } from "@/ui/index";
@@ -424,13 +424,13 @@ function AtomsGallery() {
           </SystemMessage>
         </div>
       </Specimen>
-      <Specimen name="section-divider">
+      <Specimen name="section-mark">
         <div {...stylex.props(styles.column)}>
           <SectionLabel trailing="3">Section</SectionLabel>
-          <Divider>Divider</Divider>
-          <Divider intent="accent" icon={<Icon name="check" size="xs" />}>
+          <TranscriptMark>Today</TranscriptMark>
+          <TranscriptMark intent="accent" icon={<Icon name="check" size="xs" />}>
             Approved
-          </Divider>
+          </TranscriptMark>
         </div>
       </Specimen>
       <Specimen name="well-path">

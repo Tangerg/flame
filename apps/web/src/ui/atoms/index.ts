@@ -8,7 +8,7 @@ export { DataError } from "@/ui/atoms/data-error";
 export { DataView } from "@/ui/atoms/data-view";
 export { FailureDetails } from "@/ui/atoms/failure-details";
 export { FilePath } from "@/ui/atoms/file-path";
-export { Divider } from "@/ui/atoms/divider";
+export { TranscriptMark } from "@/ui/atoms/transcript-mark";
 export { TextLink } from "@/ui/atoms/text-link";
 export { reveal } from "@/ui/atoms/reveal";
 export { HiddenFileInput } from "@/ui/atoms/hidden-file-input";

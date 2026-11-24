@@ -5,7 +5,7 @@ import { type TranscriptRow } from "@/features/agent/public/conversation";
 import { type Message } from "@/features/agent/public/sessionView";
 import { dayKey, formatDay } from "@/lib/i18n/relativeTime";
 import { useT } from "@/lib/i18n/index";
-import { Divider } from "@/ui/index";
+import { TranscriptMark } from "@/ui/index";
 import { space } from "@flame/ui/tokens.stylex";
 import { type BlockCtx } from "@/features/chat/message/ui/blockContext";
 import { MessageTurn } from "@/features/chat/message/ui/MessageTurn";
@@ -35,7 +35,7 @@ function DaySeparator({ createdAt }: { createdAt?: string }) {
   if (!label) return null;
   return (
     <div {...stylex.props(rc.box, rc.gutter, styles.dayPad)}>
-      <Divider align="start">{label}</Divider>
+      <TranscriptMark>{label}</TranscriptMark>
     </div>
   );
 }

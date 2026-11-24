@@ -8,7 +8,7 @@ import { type RememberScope } from "@/features/agent/public/hitl";
 import { type ToolCategory } from "@/features/agent/public/sessionView";
 import { useRuntimeCommandsAvailable } from "@/features/connection/public/serviceStatus";
 import { useT } from "@/lib/i18n/index";
-import { Divider } from "@/ui/index";
+import { TranscriptMark } from "@/ui/index";
 import { DropdownMenu } from "@/ui/index";
 import { Icon, type IconName } from "@/ui/index";
 import { Surface } from "@/ui/index";
@@ -84,7 +84,9 @@ export function ApprovalCard({
   if (decision === "deny") {
     return (
       <div role="status">
-        <Divider icon={<Icon name="x" size="xs" />}>{t("approval.settled.declined")}</Divider>
+        <TranscriptMark icon={<Icon name="x" size="xs" />}>
+          {t("approval.settled.declined")}
+        </TranscriptMark>
       </div>
     );
   }
