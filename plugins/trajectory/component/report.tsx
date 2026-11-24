@@ -261,19 +261,13 @@ interface ExpandedRecord {
   sourcePosition: RefObject<EvidenceScrollPosition | null>;
 }
 
-function Observation({
-  row: recorded,
-  t,
-  expansion,
-  onEvidenceOpenChange,
-}: {
-  row: TrajectoryEntry;
-  t: Translate;
-  expansion?: ExpandedRecord;
-  onEvidenceOpenChange: (open: boolean) => void;
-}) {
-  const sourcePosition = expansion?.sourcePosition;
-  const sourceBodyRef = useCallback(
+// A scroll position belongs to the record it was taken from, so returning to
+// the same record restores it and opening another record starts at the top.
+function useEvidenceScrollRestoration(
+  recorded: TrajectoryEntry,
+  sourcePosition: RefObject<EvidenceScrollPosition | null> | undefined,
+) {
+  return useCallback(
     (node: HTMLDivElement | null) => {
       if (!node || !sourcePosition) return;
       const saved = sourcePosition.current;
@@ -294,112 +288,146 @@ function Observation({
     },
     [recorded, sourcePosition],
   );
-  const row = evidence(recorded);
-  const body: ReactNode[] = [];
-  if (row.type === "item") {
-    const item = row.item;
-    if (item.type === "userMessage" || item.type === "agentMessage") {
-      for (const [index, part] of (item.content ?? []).entries()) {
-        if (part.type === "text") {
-          if (part.text)
-            body.push(<RecordBody key={index}>{part.text}</RecordBody>);
-        } else {
-          body.push(
-            <RecordedImage
-              key={index}
-              mime={part.mime}
-              data={part.data}
-              t={t}
-            />,
-          );
-        }
-      }
-    } else {
-      const text =
-        item.type === "reasoning"
-          ? item.text
-          : item.type === "compaction"
-            ? item.summary
-            : undefined;
-      if (text) body.push(<RecordBody key="text">{text}</RecordBody>);
-    }
+}
+
+function recordedBody(row: TrajectoryEntry, t: Translate): ReactNode[] {
+  if (row.type !== "item") return [];
+  const item = row.item;
+  if (item.type === "userMessage" || item.type === "agentMessage")
+    return (item.content ?? []).flatMap((part, index) =>
+      part.type !== "text" ? (
+        <RecordedImage key={index} mime={part.mime} data={part.data} t={t} />
+      ) : part.text ? (
+        <RecordBody key={index}>{part.text}</RecordBody>
+      ) : (
+        []
+      ),
+    );
+  const text =
+    item.type === "reasoning"
+      ? item.text
+      : item.type === "compaction"
+        ? item.summary
+        : undefined;
+  return text ? [<RecordBody key="text">{text}</RecordBody>] : [];
+}
+
+interface Findings {
+  facts: Fact[];
+  notes: ReactNode[];
+}
+
+function modelFindings(
+  source: Extract<TrajectoryEntry, { type: "model" }>["model"],
+  t: Translate,
+  { facts, notes }: Findings,
+): void {
+  facts.push(
+    [t("fact.segmentId"), source.segmentId],
+    [t("fact.settlement"), source.settledAt ?? t("value.unrecorded")],
+  );
+  if (["completed", "failed"].includes(source.state) && source.settledAt) {
+    const duration =
+      Date.parse(source.settledAt) - Date.parse(source.startedAt);
+    if (Number.isFinite(duration) && duration >= 0)
+      facts.push([t("fact.wallDurationMs"), duration]);
   }
-  const facts: Fact[] =
-    row.type === "run"
-      ? [[t("fact.runId"), row.run.id]]
-      : [
-          [t("fact.recordId"), identity(row)],
-          [t("fact.runId"), runId(row) || t("value.sessionOnly")],
-        ];
-  const notes: ReactNode[] = [];
-  if (row.type === "model") {
-    const source = row.model;
-    facts.push(
-      [t("fact.segmentId"), source.segmentId],
-      [t("fact.settlement"), source.settledAt ?? t("value.unrecorded")],
-    );
-    if (["completed", "failed"].includes(source.state) && source.settledAt) {
-      const duration =
-        Date.parse(source.settledAt) - Date.parse(source.startedAt);
-      if (Number.isFinite(duration) && duration >= 0)
-        facts.push([t("fact.wallDurationMs"), duration]);
-    }
-    facts.push(
-      [
-        t("fact.firstOutputMs"),
-        source.firstOutputLatencyMillis ?? t("value.unrecorded"),
-      ],
-      [
-        t("fact.inputTokens"),
-        source.usage?.inputTokens ?? t("value.unrecorded"),
-      ],
-      [
-        t("fact.outputTokens"),
-        source.usage?.outputTokens ?? t("value.unrecorded"),
-      ],
-    );
-    for (const [key, label] of [
-      ["cacheReadTokens", "fact.cacheReadTokens"],
-      ["cacheWriteTokens", "fact.cacheWriteTokens"],
-      ["reasoningTokens", "fact.reasoningTokens"],
-    ] as const)
-      if (source.usage?.[key] !== undefined)
-        facts.push([t(label), source.usage[key]]);
-    if (!source.usage) notes.push(t("note.usageMissing"));
-    if (source.state === "unknown") notes.push(t("note.outcomeUnobserved"));
-  } else if (row.type === "endpoint") {
-    facts.push(
-      [t("fact.callingOperation"), row.endpoint.caller.id],
-      [
-        t("fact.parentOperation"),
-        row.endpoint.caller.parent ?? t("value.unrecorded"),
-      ],
-      [t("fact.origin"), row.endpoint.caller.origin],
-      [t("fact.costUsd"), row.endpoint.costUsd ?? t("value.unpriced")],
-      [t("fact.settlement"), row.endpoint.settledAt ?? t("value.unrecorded")],
-    );
-    if (row.endpoint.failure) notes.push(row.endpoint.failure);
-    if (row.endpoint.state === "unknown")
-      notes.push(t("note.providerUnobserved"));
-  } else if (row.type === "run") {
-    facts.push([
-      t("fact.rootRunId"),
-      row.run.rootRunId ?? t("value.unrecorded"),
-    ]);
-    if (row.run.parentRunId)
-      facts.push([t("fact.parentRunId"), row.run.parentRunId]);
-    if (row.run.spawnedByItemId)
-      facts.push([t("fact.delegatingItemId"), row.run.spawnedByItemId]);
-  } else if (row.item.type === "toolCall") {
-    facts.push([
+  facts.push(
+    [
+      t("fact.firstOutputMs"),
+      source.firstOutputLatencyMillis ?? t("value.unrecorded"),
+    ],
+    [t("fact.inputTokens"), source.usage?.inputTokens ?? t("value.unrecorded")],
+    [
+      t("fact.outputTokens"),
+      source.usage?.outputTokens ?? t("value.unrecorded"),
+    ],
+  );
+  for (const [key, label] of [
+    ["cacheReadTokens", "fact.cacheReadTokens"],
+    ["cacheWriteTokens", "fact.cacheWriteTokens"],
+    ["reasoningTokens", "fact.reasoningTokens"],
+  ] as const)
+    if (source.usage?.[key] !== undefined)
+      facts.push([t(label), source.usage[key]]);
+  if (!source.usage) notes.push(t("note.usageMissing"));
+  if (source.state === "unknown") notes.push(t("note.outcomeUnobserved"));
+}
+
+function endpointFindings(
+  endpoint: Extract<TrajectoryEntry, { type: "endpoint" }>["endpoint"],
+  t: Translate,
+  { facts, notes }: Findings,
+): void {
+  facts.push(
+    [t("fact.callingOperation"), endpoint.caller.id],
+    [
+      t("fact.parentOperation"),
+      endpoint.caller.parent ?? t("value.unrecorded"),
+    ],
+    [t("fact.origin"), endpoint.caller.origin],
+    [t("fact.costUsd"), endpoint.costUsd ?? t("value.unpriced")],
+    [t("fact.settlement"), endpoint.settledAt ?? t("value.unrecorded")],
+  );
+  if (endpoint.failure) notes.push(endpoint.failure);
+  if (endpoint.state === "unknown") notes.push(t("note.providerUnobserved"));
+}
+
+function runFacts(
+  run: Extract<TrajectoryEntry, { type: "run" }>["run"],
+  t: Translate,
+  facts: Fact[],
+): void {
+  // A root run has no lineage; delegated runs record all three ids.
+  if (run.rootRunId) facts.push([t("fact.rootRunId"), run.rootRunId]);
+  if (run.parentRunId) facts.push([t("fact.parentRunId"), run.parentRunId]);
+  if (run.spawnedByItemId)
+    facts.push([t("fact.delegatingItemId"), run.spawnedByItemId]);
+}
+
+function observationFindings(row: TrajectoryEntry, t: Translate): Findings {
+  const findings: Findings = {
+    facts:
+      row.type === "run"
+        ? [[t("fact.runId"), row.run.id]]
+        : [
+            [t("fact.recordId"), identity(row)],
+            [t("fact.runId"), runId(row) || t("value.sessionOnly")],
+          ],
+    notes: [],
+  };
+  if (row.type === "model") modelFindings(row.model, t, findings);
+  else if (row.type === "endpoint") endpointFindings(row.endpoint, t, findings);
+  else if (row.type === "run") runFacts(row.run, t, findings.facts);
+  else if (row.item.type === "toolCall") {
+    findings.facts.push([
       t("fact.executionDurationMs"),
       row.item.durationMillis ?? t("value.unrecorded"),
     ]);
     const { approval } = readable(row, t);
-    if (approval) facts.push([t("fact.approval"), approval]);
+    if (approval) findings.facts.push([t("fact.approval"), approval]);
   }
   if (row.type === "item" && row.item.type === "reasoning" && row.item.redacted)
-    notes.push(t("note.reasoningRedacted"));
+    findings.notes.push(t("note.reasoningRedacted"));
+  return findings;
+}
+
+function Observation({
+  row: recorded,
+  t,
+  expansion,
+  onEvidenceOpenChange,
+}: {
+  row: TrajectoryEntry;
+  t: Translate;
+  expansion?: ExpandedRecord;
+  onEvidenceOpenChange: (open: boolean) => void;
+}) {
+  const sourcePosition = expansion?.sourcePosition;
+  const sourceBodyRef = useEvidenceScrollRestoration(recorded, sourcePosition);
+  const row = evidence(recorded);
+  const body = recordedBody(row, t);
+  const { facts, notes } = observationFindings(row, t);
   const raw = (
     <CodeBlock
       label={t("evidence.recorded")}
