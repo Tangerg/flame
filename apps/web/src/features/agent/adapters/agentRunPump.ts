@@ -34,6 +34,51 @@ export interface RunStreamPosition {
   recovery: "replay" | "cold";
 }
 
+interface DrainedStream {
+  finished: boolean;
+  recovery: RunStreamPosition["recovery"];
+  error?: unknown;
+}
+
+const MAXIMUM_STALLED_REPLAYS = 3;
+const REATTACH_BACKOFF_BASE_MILLISECONDS = 50;
+const REATTACH_BACKOFF_CAP_MILLISECONDS = 1000;
+
+// Replays that leave the position unchanged escalate to one cold recovery, and a
+// cold recovery that also makes no progress fails rather than retrying forever.
+class ReattachPolicy {
+  #lastDetached: RunStreamPosition;
+  #stalledReplays = 0;
+  #coldRecovered = false;
+
+  constructor(position: RunStreamPosition) {
+    this.#lastDetached = position;
+  }
+
+  next(position: RunStreamPosition, projectionAdvanced: boolean, drained: DrainedStream) {
+    const segmentChanged = position.segmentId !== this.#lastDetached.segmentId;
+    const advanced = segmentChanged || position.lastEventId !== this.#lastDetached.lastEventId;
+    this.#stalledReplays = advanced ? 0 : this.#stalledReplays + 1;
+    if ((advanced && projectionAdvanced) || segmentChanged) this.#coldRecovered = false;
+    this.#lastDetached = position;
+    if (drained.recovery !== "cold" && this.#stalledReplays < MAXIMUM_STALLED_REPLAYS)
+      return position;
+    if (this.#coldRecovered)
+      throw new Error("run synchronization incomplete: recovery made no progress", {
+        cause: drained.error,
+      });
+    this.#coldRecovered = true;
+    return { ...position, recovery: "cold" as const };
+  }
+
+  backoffMilliseconds(): number {
+    return Math.min(
+      REATTACH_BACKOFF_BASE_MILLISECONDS * 2 ** this.#stalledReplays,
+      REATTACH_BACKOFF_CAP_MILLISECONDS,
+    );
+  }
+}
+
 interface AgentRunPumpOptions {
   sessionId: string;
   onRunFinished: () => void;
@@ -77,6 +122,7 @@ export function createAgentRunPump({
   return {
     async pump(stream, signal) {
       const pumpLease = (currentPumpLease = {});
+      const superseded = () => currentPumpLease !== pumpLease || isCancelled() || signal.aborted;
       const runId = stream.result.runId;
       currentRunId = runId;
       currentSegmentId = stream.result.segmentId;
@@ -88,9 +134,7 @@ export function createAgentRunPump({
       };
       activeBatcher?.dispose();
       let eventBatcher: ReturnType<typeof createRunEventBatcher> | null = null;
-      let coldRecovered = false;
-      let lastDetachedPosition = position;
-      let noProgressRecoveries = 0;
+      const reattachPolicy = new ReattachPolicy(position);
       let events: AsyncIterable<RunEvent> | null = stream.events;
       try {
         while (events) {
@@ -125,39 +169,13 @@ export function createAgentRunPump({
             drained.recovery = "cold";
             drained.error = projectionFailure.signal.reason;
           }
-          if (
-            currentPumpLease !== pumpLease ||
-            drained.finished ||
-            !reattach ||
-            isCancelled() ||
-            signal.aborted
-          )
-            break;
-          const advanced =
-            position.segmentId !== lastDetachedPosition.segmentId ||
-            position.lastEventId !== lastDetachedPosition.lastEventId;
-          noProgressRecoveries = advanced ? 0 : noProgressRecoveries + 1;
-          if (
-            (advanced && projectionAdvanced) ||
-            position.segmentId !== lastDetachedPosition.segmentId
-          ) {
-            coldRecovered = false;
-          }
-          lastDetachedPosition = position;
-          if (drained.recovery === "cold" || noProgressRecoveries >= 3) {
-            if (coldRecovered) {
-              throw new Error("run synchronization incomplete: recovery made no progress", {
-                cause: drained.error,
-              });
-            }
-            coldRecovered = true;
-            position = { ...position, recovery: "cold" };
-          }
-          await delayUntilAborted(Math.min(50 * 2 ** noProgressRecoveries, 1000), signal);
-          if (currentPumpLease !== pumpLease || isCancelled() || signal.aborted) break;
+          if (superseded() || drained.finished || !reattach) break;
+          position = reattachPolicy.next(position, projectionAdvanced, drained);
+          await delayUntilAborted(reattachPolicy.backoffMilliseconds(), signal);
+          if (superseded()) break;
           const next = await reattach(position, signal);
           if (!next) break;
-          if (currentPumpLease !== pumpLease || isCancelled() || signal.aborted) {
+          if (superseded()) {
             await disposeAsyncIterator(next.events[Symbol.asyncIterator]());
             break;
           }
@@ -171,7 +189,7 @@ export function createAgentRunPump({
           events = next.events;
         }
       } catch (error) {
-        if (currentPumpLease === pumpLease && !isCancelled() && !signal.aborted) {
+        if (!superseded()) {
           console.warn("[agent] run synchronization failed:", { sessionId, ...position }, error);
           onSynchronizationFailed?.(error);
         }
@@ -179,26 +197,7 @@ export function createAgentRunPump({
       } finally {
         eventBatcher?.dispose();
         if (activeBatcher === eventBatcher) activeBatcher = null;
-        if (currentPumpLease === pumpLease) {
-          let snapshot: RunRef | undefined;
-          if (readRunSnapshot && !isCancelled() && !signal.aborted) {
-            try {
-              const read = await settleBeforeAbort(readRunSnapshot(runId, signal), signal);
-              if (read !== ABORTED) snapshot = read;
-            } catch (error) {
-              if (!isCancelled() && !signal.aborted && !(error instanceof RpcConnectionError)) {
-                console.warn("[agent] exact run read failed:", sessionId, runId, error);
-              }
-            }
-          }
-
-          if (currentPumpLease === pumpLease) {
-            if (snapshot && !isCancelled() && !signal.aborted) applyRunSnapshot?.(snapshot);
-            currentRunId = null;
-            currentSegmentId = null;
-            onIdle?.();
-          }
-        }
+        await settleIdle(pumpLease, runId, signal);
       }
     },
     isFollowing(runId, segmentId) {
@@ -213,12 +212,34 @@ export function createAgentRunPump({
     },
   };
 
+  async function settleIdle(pumpLease: object, runId: RunId, signal: AbortSignal) {
+    if (currentPumpLease !== pumpLease) return;
+    const snapshot = await readFinalSnapshot(runId, signal);
+    if (currentPumpLease !== pumpLease) return;
+    if (snapshot && !isCancelled() && !signal.aborted) applyRunSnapshot?.(snapshot);
+    currentRunId = null;
+    currentSegmentId = null;
+    onIdle?.();
+  }
+
+  async function readFinalSnapshot(runId: RunId, signal: AbortSignal) {
+    if (!readRunSnapshot || isCancelled() || signal.aborted) return undefined;
+    try {
+      const read = await settleBeforeAbort(readRunSnapshot(runId, signal), signal);
+      return read === ABORTED ? undefined : read;
+    } catch (error) {
+      if (!isCancelled() && !signal.aborted && !(error instanceof RpcConnectionError))
+        console.warn("[agent] exact run read failed:", sessionId, runId, error);
+      return undefined;
+    }
+  }
+
   async function consume(
     events: AsyncIterable<RunEvent>,
     rootSegmentId: SegmentId,
     signal: AbortSignal,
     eventBatcher: ReturnType<typeof createRunEventBatcher>,
-  ): Promise<{ finished: boolean; recovery: "replay" | "cold"; error?: unknown }> {
+  ): Promise<DrainedStream> {
     let finished = false;
     let recovery: "replay" | "cold" = "replay";
     let error: unknown;

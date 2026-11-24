@@ -97,6 +97,11 @@ function bounds(
     );
 }
 
+type FieldDefinition<Type extends PrimitiveSchemaDefinition["type"]> = Extract<
+  PrimitiveSchemaDefinition,
+  { type: Type }
+>;
+
 function fieldSchema(field: PrimitiveSchemaDefinition): z.ZodType {
   const admitted = propertyDefinition.safeParse(field);
   if (!admitted.success)
@@ -104,111 +109,120 @@ function fieldSchema(field: PrimitiveSchemaDefinition): z.ZodType {
       "computer: unsupported permission field definition",
       { cause: admitted.error },
     );
-  let result: z.ZodType;
-  switch (field.type) {
-    case "boolean":
-      result = z.boolean();
-      break;
-    case "integer":
-    case "number": {
-      bounds(field.minimum, field.maximum);
-      if (
-        field.type === "integer" &&
-        field.minimum !== undefined &&
-        field.maximum !== undefined &&
-        Math.ceil(field.minimum) > Math.floor(field.maximum)
-      )
-        throw new InvalidPermission(
-          "computer: permission constraints contain no integer",
-        );
-      let schema = field.type === "integer" ? z.number().int() : z.number();
-      if (field.minimum !== undefined) schema = schema.min(field.minimum);
-      if (field.maximum !== undefined) schema = schema.max(field.maximum);
-      result = schema;
-      break;
-    }
-    case "string": {
-      if ("enum" in field && "oneOf" in field)
-        throw new InvalidPermission(
-          "computer: permission choices require one representation",
-        );
-      if (
-        "enumNames" in field &&
-        field.enumNames !== undefined &&
-        (!("enum" in field) || field.enumNames.length !== field.enum.length)
-      )
-        throw new InvalidPermission(
-          "computer: permission choice labels must match their values",
-        );
-      const choices =
-        "enum" in field
-          ? field.enum
-          : "oneOf" in field
-            ? field.oneOf.map((item) => item.const)
-            : undefined;
-      if (
-        choices &&
-        (!choices.length || new Set(choices).size !== choices.length)
-      )
-        throw new InvalidPermission(
-          "computer: permission choices must be distinct",
-        );
-      bounds(
-        "minLength" in field ? field.minLength : undefined,
-        "maxLength" in field ? field.maxLength : undefined,
-        true,
-      );
-      let schema = z.string();
-      if ("minLength" in field && field.minLength !== undefined)
-        schema = schema.min(field.minLength);
-      if ("maxLength" in field && field.maxLength !== undefined)
-        schema = schema.max(field.maxLength);
-      result = choices
-        ? schema.refine((value) => choices.includes(value))
-        : schema;
-      if ("format" in field && field.format) {
-        const formats = {
-          email: z.email(),
-          uri: z.url(),
-          date: z.iso.date(),
-          "date-time": z.iso.datetime({ offset: true }),
-        };
-        result = result.and(formats[field.format]);
-      }
-      if (choices && !choices.some((value) => result.safeParse(value).success))
-        throw new InvalidPermission(
-          "computer: permission constraints exclude every choice",
-        );
-      break;
-    }
-    case "array": {
-      bounds(field.minItems, field.maxItems, true);
-      const choices =
-        "enum" in field.items
-          ? field.items.enum
-          : field.items.anyOf.map((item) => item.const);
-      if (!choices.length || new Set(choices).size !== choices.length)
-        throw new InvalidPermission(
-          "computer: permission choices must be distinct",
-        );
-      if (field.minItems !== undefined && field.minItems > choices.length)
-        throw new InvalidPermission(
-          "computer: permission requires more distinct selections than it offers",
-        );
-      let schema = z.array(
-        z.string().refine((value) => choices.includes(value)),
-      );
-      if (field.minItems !== undefined) schema = schema.min(field.minItems);
-      if (field.maxItems !== undefined) schema = schema.max(field.maxItems);
-      result = schema.refine((value) => new Set(value).size === value.length);
-      break;
-    }
-  }
+  const result = typedFieldSchema(field);
   if (field.default !== undefined && !result.safeParse(field.default).success)
     throw new InvalidPermission(
       "computer: permission default does not satisfy its field",
     );
   return result;
+}
+
+function typedFieldSchema(field: PrimitiveSchemaDefinition): z.ZodType {
+  switch (field.type) {
+    case "boolean":
+      return z.boolean();
+    case "integer":
+    case "number":
+      return numberSchema(field);
+    case "string":
+      return stringSchema(field);
+    case "array":
+      return arraySchema(field);
+  }
+}
+
+function numberSchema(field: FieldDefinition<"integer" | "number">): z.ZodType {
+  bounds(field.minimum, field.maximum);
+  if (
+    field.type === "integer" &&
+    field.minimum !== undefined &&
+    field.maximum !== undefined &&
+    Math.ceil(field.minimum) > Math.floor(field.maximum)
+  )
+    throw new InvalidPermission(
+      "computer: permission constraints contain no integer",
+    );
+  let schema = field.type === "integer" ? z.number().int() : z.number();
+  if (field.minimum !== undefined) schema = schema.min(field.minimum);
+  if (field.maximum !== undefined) schema = schema.max(field.maximum);
+  return schema;
+}
+
+function stringChoices(field: FieldDefinition<"string">): string[] | undefined {
+  if ("enum" in field && "oneOf" in field)
+    throw new InvalidPermission(
+      "computer: permission choices require one representation",
+    );
+  if (
+    "enumNames" in field &&
+    field.enumNames !== undefined &&
+    (!("enum" in field) || field.enumNames.length !== field.enum.length)
+  )
+    throw new InvalidPermission(
+      "computer: permission choice labels must match their values",
+    );
+  const choices =
+    "enum" in field
+      ? field.enum
+      : "oneOf" in field
+        ? field.oneOf.map((item) => item.const)
+        : undefined;
+  if (choices && (!choices.length || new Set(choices).size !== choices.length))
+    throw new InvalidPermission(
+      "computer: permission choices must be distinct",
+    );
+  return choices;
+}
+
+function stringSchema(field: FieldDefinition<"string">): z.ZodType {
+  const choices = stringChoices(field);
+  bounds(
+    "minLength" in field ? field.minLength : undefined,
+    "maxLength" in field ? field.maxLength : undefined,
+    true,
+  );
+  let schema = z.string();
+  if ("minLength" in field && field.minLength !== undefined)
+    schema = schema.min(field.minLength);
+  if ("maxLength" in field && field.maxLength !== undefined)
+    schema = schema.max(field.maxLength);
+  let result: z.ZodType = choices
+    ? schema.refine((value) => choices.includes(value))
+    : schema;
+  if ("format" in field && field.format) {
+    const formats = {
+      email: z.email(),
+      uri: z.url(),
+      date: z.iso.date(),
+      "date-time": z.iso.datetime({ offset: true }),
+    };
+    result = result.and(formats[field.format]);
+  }
+  if (choices && !choices.some((value) => result.safeParse(value).success))
+    throw new InvalidPermission(
+      "computer: permission constraints exclude every choice",
+    );
+  return result;
+}
+
+function arraySchema(field: FieldDefinition<"array">): z.ZodType {
+  bounds(field.minItems, field.maxItems, true);
+  const choices =
+    "enum" in field.items
+      ? field.items.enum
+      : field.items.anyOf.map((item) => item.const);
+  if (!choices.length || new Set(choices).size !== choices.length)
+    throw new InvalidPermission(
+      "computer: permission choices must be distinct",
+    );
+  if (field.minItems !== undefined && field.minItems > choices.length)
+    throw new InvalidPermission(
+      "computer: permission requires more distinct selections than it offers",
+    );
+  let schema = z.array(z.string().refine((value) => choices.includes(value)));
+  if (field.minItems !== undefined) schema = schema.min(field.minItems);
+  if (field.maxItems !== undefined) schema = schema.max(field.maxItems);
+  return schema.refine((value) => new Set(value).size === value.length);
 }
 
 export class PermissionRequest {
