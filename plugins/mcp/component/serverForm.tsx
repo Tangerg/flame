@@ -4,6 +4,7 @@ import {
   useRef,
   useState,
   useSyncExternalStore,
+  type RefObject,
 } from "react";
 import type { ComponentContext, Translate } from "@flame/component-sdk";
 import {
@@ -21,7 +22,7 @@ import {
   TextField,
 } from "@flame/ui";
 import type { MCPServerSettings, MCPTransport } from "./model";
-import { MCPServerEdit, type MCPServerFields } from "./draft";
+import { MCPServerEdit, RetainedValue, type MCPServerFields } from "./draft";
 import { MCPSettings, editorKey } from "./settings";
 import { CommandFeedback } from "./feedback";
 // Input examples are protocol values, not prose: they are written in the exact
@@ -44,6 +45,57 @@ const split = {
   alignItems: "center",
   gap: "var(--layout-content-gap)",
 } as const;
+// Credentials, commands and JSON are typed literally, never corrected.
+const LITERAL_INPUT = {
+  autoCapitalize: "none",
+  autoCorrect: "off",
+  spellCheck: false,
+} as const;
+
+function FieldIssue({
+  id,
+  shown,
+  message,
+}: {
+  id: string;
+  shown: boolean;
+  message: string;
+}) {
+  if (!shown) return null;
+  return (
+    <span id={id} role="alert" style={{ color: "var(--color-negative)" }}>
+      {message}
+    </span>
+  );
+}
+
+function FieldWarning({ message }: { message: string }) {
+  return <span style={{ color: "var(--color-warning)" }}>{message}</span>;
+}
+
+function ClearStoredSecret({
+  label,
+  value,
+  disabled,
+  onChange,
+}: {
+  label: string;
+  value: RetainedValue;
+  disabled: boolean;
+  onChange(value: RetainedValue): void;
+}) {
+  return (
+    <div style={split}>
+      <span>{label}</span>
+      <Switch
+        checked={value.disposition === "clear"}
+        onCheckedChange={(clear) => onChange(value.cleared(clear))}
+        ariaLabel={label}
+        disabled={disabled}
+      />
+    </div>
+  );
+}
 interface Props {
   context: ComponentContext;
   settings: MCPSettings;
@@ -90,7 +142,6 @@ export function ServerForm({
   const saving = state.commands.has(key);
   const blocked = busy && !saving;
   const probing = state.probing.has(key);
-  const jsonIssue = edit.jsonIssue;
   const jsonErrorId = useId();
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const {
@@ -102,9 +153,6 @@ export function ServerForm({
     key: K,
     value: MCPServerFields[K],
   ) => settings.edit(context, editorKey(server?.id), edit.with(key, value));
-  const needsAuthorizationDisposition = edit.authorizationNeedsDisposition;
-  const needsHeadersDisposition = edit.headersNeedDisposition;
-  const needsEnvironmentDisposition = edit.environmentNeedsDisposition;
   const valid = edit.isValid;
   const onSave = async () => {
     if ((await settings.save(context, edit, server?.id)) && presented.current)
@@ -143,9 +191,7 @@ export function ServerForm({
             type="text"
             required
             aria-label={t("mcp.form.name.aria")}
-            autoCapitalize="none"
-            autoCorrect="off"
-            spellCheck={false}
+            {...LITERAL_INPUT}
             pending={busy}
             value={draft.name}
             disabled={isEdit}
@@ -167,238 +213,26 @@ export function ServerForm({
       </FormRow>
 
       {draft.transport === "stdio" ? (
-        <>
-          <FormField label={t("mcp.form.command.aria")}>
-            <TextField
-              ref={isEdit ? firstField : undefined}
-              font="mono"
-              type="text"
-              required
-              aria-label={t("mcp.form.command.aria")}
-              autoCapitalize="none"
-              autoCorrect="off"
-              spellCheck={false}
-              pending={busy}
-              value={draft.command}
-              onChange={(e) => updateDraft("command", e.target.value)}
-              placeholder={EXAMPLE.command}
-            />
-          </FormField>
-          <FormRow>
-            <FormField label={t("mcp.form.args")}>
-              <TextArea
-                font="mono"
-                rows={3}
-                autosize
-                aria-label={t("mcp.form.args")}
-                autoCapitalize="none"
-                autoCorrect="off"
-                spellCheck={false}
-                pending={busy}
-                value={draft.args}
-                invalid={jsonIssue === "args"}
-                aria-describedby={
-                  jsonIssue === "args" ? jsonErrorId : undefined
-                }
-                onChange={(event) => updateDraft("args", event.target.value)}
-                placeholder={EXAMPLE.args}
-              />
-              {jsonIssue === "args" && (
-                <span
-                  id={jsonErrorId}
-                  role="alert"
-                  style={{ color: "var(--color-negative)" }}
-                >
-                  {t("mcp.form.args.invalid")}
-                </span>
-              )}
-            </FormField>
-            <FormGroup label={t("mcp.form.env")}>
-              <TextArea
-                font="mono"
-                rows={3}
-                autosize
-                aria-label={t("mcp.form.env")}
-                autoCapitalize="none"
-                autoCorrect="off"
-                spellCheck={false}
-                pending={busy}
-                value={draft.environment.text}
-                invalid={jsonIssue === "environment"}
-                aria-describedby={
-                  jsonIssue === "environment" ? jsonErrorId : undefined
-                }
-                onChange={(event) =>
-                  updateDraft(
-                    "environment",
-                    draft.environment.edited(event.target.value),
-                  )
-                }
-                placeholder={
-                  hasEnvironmentStored
-                    ? t("mcp.form.env.keep")
-                    : EXAMPLE.environment
-                }
-              />
-              {jsonIssue === "environment" && (
-                <span
-                  id={jsonErrorId}
-                  role="alert"
-                  style={{ color: "var(--color-negative)" }}
-                >
-                  {t("mcp.form.env.invalid")}
-                </span>
-              )}
-              {hasEnvironmentStored && (
-                <div style={split}>
-                  <span>{t("mcp.form.env.clear")}</span>
-                  <Switch
-                    checked={draft.environment.disposition === "clear"}
-                    onCheckedChange={(value) =>
-                      updateDraft(
-                        "environment",
-                        draft.environment.cleared(value),
-                      )
-                    }
-                    ariaLabel={t("mcp.form.env.clear")}
-                    disabled={busy}
-                  />
-                </div>
-              )}
-              {needsEnvironmentDisposition && (
-                <span style={{ color: "var(--color-warning)" }}>
-                  {t("mcp.form.env.targetChanged")}
-                </span>
-              )}
-            </FormGroup>
-          </FormRow>
-          <FormField label={t("mcp.form.dir.aria")}>
-            <TextField
-              font="mono"
-              type="text"
-              aria-label={t("mcp.form.dir.aria")}
-              autoCapitalize="none"
-              autoCorrect="off"
-              spellCheck={false}
-              pending={busy}
-              value={draft.dir}
-              onChange={(e) => updateDraft("dir", e.target.value)}
-            />
-          </FormField>
-        </>
+        <StdioFields
+          t={t}
+          edit={edit}
+          busy={busy}
+          firstField={isEdit ? firstField : undefined}
+          jsonErrorId={jsonErrorId}
+          environmentStored={hasEnvironmentStored}
+          updateDraft={updateDraft}
+        />
       ) : (
-        <>
-          <FormField label={t("mcp.form.url.aria")}>
-            <TextField
-              ref={isEdit ? firstField : undefined}
-              font="mono"
-              type="text"
-              required
-              aria-label={t("mcp.form.url.aria")}
-              autoCapitalize="none"
-              autoCorrect="off"
-              spellCheck={false}
-              pending={busy}
-              value={draft.url}
-              onChange={(e) => updateDraft("url", e.target.value)}
-              placeholder={EXAMPLE.url}
-            />
-          </FormField>
-          <FormField label={t("mcp.form.auth.aria")}>
-            <TextField
-              font="mono"
-              type="password"
-              aria-label={t("mcp.form.auth.aria")}
-              autoCapitalize="none"
-              autoCorrect="off"
-              spellCheck={false}
-              pending={busy}
-              value={draft.authorization.text}
-              onChange={(e) =>
-                updateDraft(
-                  "authorization",
-                  draft.authorization.edited(e.target.value),
-                )
-              }
-              placeholder={
-                hasAuthStored
-                  ? t("mcp.form.auth.keep")
-                  : t("mcp.form.auth.placeholder")
-              }
-            />
-          </FormField>
-          {hasAuthStored && (
-            <div style={split}>
-              <span>{t("mcp.form.auth.clear")}</span>
-              <Switch
-                checked={draft.authorization.disposition === "clear"}
-                onCheckedChange={(value) =>
-                  updateDraft(
-                    "authorization",
-                    draft.authorization.cleared(value),
-                  )
-                }
-                ariaLabel={t("mcp.form.auth.clear")}
-                disabled={busy}
-              />
-            </div>
-          )}
-          {needsAuthorizationDisposition && (
-            <span style={{ color: "var(--color-warning)" }}>
-              {t("mcp.form.auth.originChanged")}
-            </span>
-          )}
-          <FormField label={t("mcp.form.headers")}>
-            <TextArea
-              font="mono"
-              rows={3}
-              autosize
-              aria-label={t("mcp.form.headers")}
-              autoCapitalize="none"
-              autoCorrect="off"
-              spellCheck={false}
-              pending={busy}
-              value={draft.headers.text}
-              invalid={jsonIssue === "headers"}
-              aria-describedby={
-                jsonIssue === "headers" ? jsonErrorId : undefined
-              }
-              onChange={(event) =>
-                updateDraft("headers", draft.headers.edited(event.target.value))
-              }
-              placeholder={
-                hasHeadersStored ? t("mcp.form.headers.keep") : EXAMPLE.headers
-              }
-            />
-            {jsonIssue === "headers" && (
-              <span
-                id={jsonErrorId}
-                role="alert"
-                style={{ color: "var(--color-negative)" }}
-              >
-                {t("mcp.form.headers.invalid")}
-              </span>
-            )}
-          </FormField>
-          {hasHeadersStored && (
-            <div style={split}>
-              <span>{t("mcp.form.headers.clear")}</span>
-              <Switch
-                checked={draft.headers.disposition === "clear"}
-                onCheckedChange={(value) =>
-                  updateDraft("headers", draft.headers.cleared(value))
-                }
-                ariaLabel={t("mcp.form.headers.clear")}
-                disabled={busy}
-              />
-            </div>
-          )}
-          {needsHeadersDisposition && (
-            <span style={{ color: "var(--color-warning)" }}>
-              {t("mcp.form.headers.originChanged")}
-            </span>
-          )}
-        </>
+        <HttpFields
+          t={t}
+          edit={edit}
+          busy={busy}
+          firstField={isEdit ? firstField : undefined}
+          jsonErrorId={jsonErrorId}
+          authorizationStored={hasAuthStored}
+          headersStored={hasHeadersStored}
+          updateDraft={updateDraft}
+        />
       )}
 
       <FormRow>
@@ -417,15 +251,13 @@ export function ServerForm({
             onChange={(e) => updateDraft("timeoutSec", e.target.value)}
             placeholder={EXAMPLE.timeoutSeconds}
           />
-          {timeoutInvalid && (
-            <span
-              id={timeoutErrorId}
-              role="alert"
-              style={{ color: "var(--color-negative)" }}
-            >
-              {t("mcp.form.timeout.invalid")}
-            </span>
-          )}
+          <FieldIssue
+            id={timeoutErrorId}
+
+            shown={timeoutInvalid}
+
+            message={t("mcp.form.timeout.invalid")}
+          />
         </FormField>
 
         <FormField label={t("mcp.form.description.aria")}>
@@ -521,6 +353,241 @@ export function ServerForm({
         </ModalDialog>
       )}
     </RecordForm>
+  );
+}
+
+interface TransportFieldsProps {
+  t: Translate;
+  edit: MCPServerEdit;
+  busy: boolean;
+  firstField: RefObject<HTMLInputElement | null> | undefined;
+  jsonErrorId: string;
+  updateDraft<K extends keyof MCPServerFields>(
+    key: K,
+    value: MCPServerFields[K],
+  ): void;
+}
+
+function StdioFields({
+  t,
+  edit,
+  busy,
+  firstField,
+  jsonErrorId,
+  environmentStored,
+  updateDraft,
+}: TransportFieldsProps & { environmentStored: boolean }) {
+  const draft = edit.fields;
+  return (
+    <>
+      <FormField label={t("mcp.form.command.aria")}>
+        <TextField
+          ref={firstField}
+          font="mono"
+          type="text"
+          required
+          aria-label={t("mcp.form.command.aria")}
+          {...LITERAL_INPUT}
+          pending={busy}
+          value={draft.command}
+          onChange={(e) => updateDraft("command", e.target.value)}
+          placeholder={EXAMPLE.command}
+        />
+      </FormField>
+      <FormRow>
+        <FormField label={t("mcp.form.args")}>
+          <TextArea
+            font="mono"
+            rows={3}
+            autosize
+            aria-label={t("mcp.form.args")}
+            {...LITERAL_INPUT}
+            pending={busy}
+            value={draft.args}
+            invalid={edit.jsonIssue === "args"}
+            aria-describedby={
+              edit.jsonIssue === "args" ? jsonErrorId : undefined
+            }
+            onChange={(event) => updateDraft("args", event.target.value)}
+            placeholder={EXAMPLE.args}
+          />
+          <FieldIssue
+            id={jsonErrorId}
+
+            shown={edit.jsonIssue === "args"}
+
+            message={t("mcp.form.args.invalid")}
+          />
+        </FormField>
+        <FormGroup label={t("mcp.form.env")}>
+          <TextArea
+            font="mono"
+            rows={3}
+            autosize
+            aria-label={t("mcp.form.env")}
+            {...LITERAL_INPUT}
+            pending={busy}
+            value={draft.environment.text}
+            invalid={edit.jsonIssue === "environment"}
+            aria-describedby={
+              edit.jsonIssue === "environment" ? jsonErrorId : undefined
+            }
+            onChange={(event) =>
+              updateDraft(
+                "environment",
+                draft.environment.edited(event.target.value),
+              )
+            }
+            placeholder={
+              environmentStored ? t("mcp.form.env.keep") : EXAMPLE.environment
+            }
+          />
+          <FieldIssue
+            id={jsonErrorId}
+
+            shown={edit.jsonIssue === "environment"}
+
+            message={t("mcp.form.env.invalid")}
+          />
+          {environmentStored && (
+            <ClearStoredSecret
+              label={t("mcp.form.env.clear")}
+
+              value={draft.environment}
+
+              disabled={busy}
+
+              onChange={(value) => updateDraft("environment", value)}
+            />
+          )}
+          {edit.environmentNeedsDisposition && (
+            <FieldWarning message={t("mcp.form.env.targetChanged")} />
+          )}
+        </FormGroup>
+      </FormRow>
+      <FormField label={t("mcp.form.dir.aria")}>
+        <TextField
+          font="mono"
+          type="text"
+          aria-label={t("mcp.form.dir.aria")}
+          {...LITERAL_INPUT}
+          pending={busy}
+          value={draft.dir}
+          onChange={(e) => updateDraft("dir", e.target.value)}
+        />
+      </FormField>
+    </>
+  );
+}
+
+function HttpFields({
+  t,
+  edit,
+  busy,
+  firstField,
+  jsonErrorId,
+  authorizationStored,
+  headersStored,
+  updateDraft,
+}: TransportFieldsProps & {
+  authorizationStored: boolean;
+  headersStored: boolean;
+}) {
+  const draft = edit.fields;
+  return (
+    <>
+      <FormField label={t("mcp.form.url.aria")}>
+        <TextField
+          ref={firstField}
+          font="mono"
+          type="text"
+          required
+          aria-label={t("mcp.form.url.aria")}
+          {...LITERAL_INPUT}
+          pending={busy}
+          value={draft.url}
+          onChange={(e) => updateDraft("url", e.target.value)}
+          placeholder={EXAMPLE.url}
+        />
+      </FormField>
+      <FormField label={t("mcp.form.auth.aria")}>
+        <TextField
+          font="mono"
+          type="password"
+          aria-label={t("mcp.form.auth.aria")}
+          {...LITERAL_INPUT}
+          pending={busy}
+          value={draft.authorization.text}
+          onChange={(e) =>
+            updateDraft(
+              "authorization",
+              draft.authorization.edited(e.target.value),
+            )
+          }
+          placeholder={
+            authorizationStored
+              ? t("mcp.form.auth.keep")
+              : t("mcp.form.auth.placeholder")
+          }
+        />
+      </FormField>
+      {authorizationStored && (
+        <ClearStoredSecret
+          label={t("mcp.form.auth.clear")}
+
+          value={draft.authorization}
+
+          disabled={busy}
+
+          onChange={(value) => updateDraft("authorization", value)}
+        />
+      )}
+      {edit.authorizationNeedsDisposition && (
+        <FieldWarning message={t("mcp.form.auth.originChanged")} />
+      )}
+      <FormField label={t("mcp.form.headers")}>
+        <TextArea
+          font="mono"
+          rows={3}
+          autosize
+          aria-label={t("mcp.form.headers")}
+          {...LITERAL_INPUT}
+          pending={busy}
+          value={draft.headers.text}
+          invalid={edit.jsonIssue === "headers"}
+          aria-describedby={
+            edit.jsonIssue === "headers" ? jsonErrorId : undefined
+          }
+          onChange={(event) =>
+            updateDraft("headers", draft.headers.edited(event.target.value))
+          }
+          placeholder={
+            headersStored ? t("mcp.form.headers.keep") : EXAMPLE.headers
+          }
+        />
+        <FieldIssue
+          id={jsonErrorId}
+
+          shown={edit.jsonIssue === "headers"}
+
+          message={t("mcp.form.headers.invalid")}
+        />
+      </FormField>
+      {headersStored && (
+        <ClearStoredSecret
+          label={t("mcp.form.headers.clear")}
+
+          value={draft.headers}
+
+          disabled={busy}
+
+          onChange={(value) => updateDraft("headers", value)}
+        />
+      )}
+      {edit.headersNeedDisposition && (
+        <FieldWarning message={t("mcp.form.headers.originChanged")} />
+      )}
+    </>
   );
 }
 
