@@ -300,6 +300,7 @@ publish one namespaced pattern branch without weakening first-party tags.
 | --- | --- | --- |
 | `text` | `text` | — |
 | `image` | `mime`, `data` | — |
+| `reference` | `label`, `text` | — |
 
 ### `QuestionField`
 

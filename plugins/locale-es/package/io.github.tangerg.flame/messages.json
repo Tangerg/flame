@@ -629,6 +629,8 @@
   "composer.paste.chars_many": "Pegado · {{count}} caracteres",
   "composer.paste.chars_other": "Pegado · {{count}} caracteres",
   "composer.paste.remove": "Quitar el texto pegado",
+  "composer.reference.review": "Revisar la referencia",
+  "composer.reference.remove": "Quitar la referencia",
   "composer.mention.heading": "Archivos",
   "composer.drop.files": "Suelta archivos aquí · se adjuntarán las imágenes compatibles",
   "msgActions.restore": "Restaurar hasta aquí",

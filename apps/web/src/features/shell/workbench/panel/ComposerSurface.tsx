@@ -8,9 +8,11 @@ import {
   useAddComposerPaste,
   useComposerImageAttachments,
   useComposerPastes,
+  useComposerReferences,
   useEditComposerPaste,
   useRemoveComposerImage,
   useRemoveComposerPaste,
+  useRemoveComposerReference,
   useRestoreComposerPaste,
 } from "@/features/composer/public/attachments";
 export const ComposerSurface = memo(function ComposerSurface({
@@ -27,6 +29,8 @@ export const ComposerSurface = memo(function ComposerSurface({
   const editPaste = useEditComposerPaste();
   const restorePaste = useRestoreComposerPaste();
   const addPaste = useAddComposerPaste();
+  const references = useComposerReferences();
+  const removeReference = useRemoveComposerReference();
   const acceptsImages = useSelectedModel()?.acceptsInput("image") ?? false;
 
   return (
@@ -41,6 +45,8 @@ export const ComposerSurface = memo(function ComposerSurface({
       onEditPaste={editPaste}
       onRestorePaste={restorePaste}
       onAddPaste={addPaste}
+      references={references}
+      onRemoveReference={removeReference}
       acceptsImages={acceptsImages}
     />
   );

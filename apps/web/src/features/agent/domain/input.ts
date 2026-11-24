@@ -9,7 +9,13 @@ interface AgentImageInput {
   data: string;
 }
 
-export type AgentInputPart = AgentTextInput | AgentImageInput;
+interface AgentReferenceInput {
+  kind: "reference";
+  label: string;
+  text: string;
+}
+
+export type AgentInputPart = AgentTextInput | AgentImageInput | AgentReferenceInput;
 
 export interface AgentInput {
   parts: AgentInputPart[];

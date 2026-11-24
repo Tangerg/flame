@@ -16,7 +16,9 @@ import {
   type ToolCategory,
 } from "@/features/agent/public/sessionView";
 export type AgentMessagePart =
-  { type: "text"; text: string } | { type: "image"; data: string; mime: string };
+  | { type: "text"; text: string }
+  | { type: "image"; data: string; mime: string }
+  | { type: "reference"; label: string; text: string };
 
 interface AgentQuestionOption {
   label: string;

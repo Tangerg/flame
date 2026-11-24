@@ -5,6 +5,7 @@ import {
   DraftContent,
   type ComposerDraftInput,
   type ComposerImage,
+  type ComposerReference,
   type ImageReadResult,
 } from "@/features/composer/domain/draft";
 import {
@@ -24,7 +25,8 @@ interface ComposerState {
 }
 interface ComposerActions {
   checkpoint(content: DraftContent): void;
-  appendText(text: string): void;
+  addReference(reference: ComposerReference): void;
+  removeReference(id: string): void;
   startFileReference(): void;
   startSlashCommand(): void;
   setModel(preference: ComposerModelPreference): void;
@@ -249,7 +251,9 @@ export function createComposerStore() {
     return {
       ...current.state,
       checkpoint: (content) => edit((draft) => draft.withContent(content)),
-      appendText: (text) => edit((draft) => draft.withContent(draft.content.append(text))),
+      addReference: (reference) =>
+        edit((draft) => draft.addReference({ ...reference, id: crypto.randomUUID() })),
+      removeReference: (id) => edit((draft) => draft.removeReference(id)),
       startFileReference: () =>
         edit((draft) => draft.withContent(draft.content.startFileReference())),
       startSlashCommand: () =>
@@ -271,6 +275,7 @@ export function createComposerStore() {
           images: draft.images,
           attachmentsReady: draft.attachmentsReady,
           pastes: draft.pastes,
+          references: draft.references,
           consume: (historyText) => {
             if (generation !== storageGeneration) return false;
             const current = get().composer;
@@ -290,8 +295,15 @@ export function createComposerStore() {
           ...image,
           id: crypto.randomUUID(),
         }));
+        const references = (input.references ?? []).map((reference) => ({
+          ...reference,
+          id: crypto.randomUUID(),
+        }));
         edit(
-          () => ComposerDraft.restore(DraftContent.fromText(input.text)).withImages(images),
+          () =>
+            ComposerDraft.restore(DraftContent.fromText(input.text))
+              .withImages(images)
+              .withReferences(references),
           true,
         );
       },

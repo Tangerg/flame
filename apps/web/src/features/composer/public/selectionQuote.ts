@@ -1,20 +1,21 @@
 import { DIFFS_TAG_NAME } from "@pierre/diffs";
 import { quotedLineOf, quotedReaderOf, isConcealed } from "@flame/ui";
 import type { ComposerAccess } from "./composer";
-import { quoteText } from "../quote-selection/quoteText";
+import { type ComposerReference } from "@/features/composer/domain/draft";
+import { quoteReference } from "../quote-selection/quoteReference";
 import { fileContentRows } from "@/lib/highlight/pierreMarkup";
 
 export function captureComposerSelectionQuote(
   composer: ComposerAccess,
   trigger?: Node,
 ): (() => boolean) | null {
-  const text = captureQuote(trigger);
-  if (!text) return null;
-  const append = composer.captureAppendText();
-  return () => append(text);
+  const reference = captureQuote(trigger);
+  if (!reference) return null;
+  const add = composer.captureAddReference();
+  return () => add(reference);
 }
 
-function captureQuote(trigger?: Node): string | null {
+function captureQuote(trigger?: Node): ComposerReference | null {
   const selection = document.getSelection();
   if (!selection) return null;
   // WebKit can report a collapsed document selection for selected shadow text.
@@ -33,10 +34,10 @@ function captureQuote(trigger?: Node): string | null {
     isConcealed(reader.host)
   )
     return null;
-  if (reader.source.kind !== "file") return quoteText(reader.source, text);
+  if (reader.source.kind !== "file") return quoteReference(reader.source, text);
   const first = quotedLineOf(range.startContainer);
   const last = quotedLineOf(range.endContainer);
-  return quoteText(
+  return quoteReference(
     reader.source,
     text,
     first !== null && last !== null

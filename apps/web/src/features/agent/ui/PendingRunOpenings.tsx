@@ -43,17 +43,17 @@ export function PendingRunOpenings() {
       <div {...stylex.props(styles.detail)}>
         <Disclosure title={t("agent.opening.review")}>
           {command.input?.parts.map((block, index) =>
-            block.kind === "text" ? (
-              <p key={index} {...stylex.props(styles.content)}>
-                {block.text}
-              </p>
-            ) : (
+            block.kind === "image" ? (
               <img
                 key={index}
                 {...stylex.props(styles.image)}
                 src={`data:${block.mime};base64,${block.data}`}
                 alt={t("agent.opening.review")}
               />
+            ) : (
+              <p key={index} {...stylex.props(styles.content)}>
+                {block.kind === "reference" ? `${block.label}\n${block.text}` : block.text}
+              </p>
             ),
           )}
           <pre {...stylex.props(styles.content, face.mono, typeStep.uiSm)}>

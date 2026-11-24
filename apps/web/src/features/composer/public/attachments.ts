@@ -1,9 +1,15 @@
 import { useComposer } from "@/features/composer/public/composer";
-import { type ComposerImageAttachment, type PastedText } from "@/features/composer/domain/draft";
+import {
+  type ComposerDraftReference,
+  type ComposerImageAttachment,
+  type PastedText,
+} from "@/features/composer/domain/draft";
 
 export type {
+  ComposerDraftReference,
   ComposerImage,
   ComposerImageAttachment,
+  ComposerReference,
   PastedText,
 } from "@/features/composer/domain/draft";
 
@@ -21,6 +27,14 @@ export function useComposerPastes(): readonly PastedText[] {
   const composerAccess = useComposer();
 
   return composerAccess.usePastes();
+}
+
+export function useComposerReferences(): readonly ComposerDraftReference[] {
+  return useComposer().useReferences();
+}
+
+export function useRemoveComposerReference(): (id: string) => void {
+  return useComposer().useRemoveReference();
 }
 
 export function useAddComposerImageFiles(): (files: File[]) => void {

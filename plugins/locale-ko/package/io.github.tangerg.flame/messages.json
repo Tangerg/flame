@@ -609,6 +609,8 @@
   "composer.paste.lines_other": "붙여넣기 · {{count}}줄",
   "composer.paste.chars_other": "붙여넣기 · {{count}}자",
   "composer.paste.remove": "붙여넣은 텍스트 제거",
+  "composer.reference.review": "참조 검토",
+  "composer.reference.remove": "참조 제거",
   "composer.mention.heading": "파일",
   "composer.drop.files": "여기에 파일을 놓으세요 · 지원되는 이미지가 첨부됩니다",
   "msgActions.restore": "여기로 복원",

@@ -11,6 +11,7 @@ import {
   useComposerAttachmentsReady,
   useComposerImageAttachments,
   useComposerPastes,
+  useComposerReferences,
 } from "@/features/composer/public/attachments";
 import { captureComposerSubmission, useComposerText } from "@/features/composer/public/draft";
 import { captureComposerFocus } from "@/features/composer/public/focus";
@@ -30,6 +31,7 @@ function SendButton() {
   const images = useComposerImageAttachments();
   const attachmentsReady = useComposerAttachmentsReady();
   const pastes = useComposerPastes();
+  const references = useComposerReferences();
   const send = useChatSend();
   const stop = useStopCurrentRootRun();
   const running = useIsCurrentRootRunning();
@@ -38,7 +40,7 @@ function SendButton() {
   const activeSessionId = useActiveSessionId();
   const canSend = runtimeAvailable && agentCanSend && attachmentsReady;
 
-  const hasInput = hasSendableContent({ value, images, pastes });
+  const hasInput = hasSendableContent({ value, images, pastes, references });
   const layout = composerActionLayout({ running, hasInput });
   const submit = () =>
     submitComposer({

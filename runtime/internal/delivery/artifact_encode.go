@@ -192,7 +192,7 @@ func artifactItemFromTranscript(item transcript.Item) (protocol.ArtifactItem, er
 			if err != nil {
 				return protocol.ArtifactItem{}, fmt.Errorf("item %q content %d: %w", item.ID(), index, err)
 			}
-			out.Content[index] = protocol.ContentBlock{Type: encoded.kind, Text: encoded.text, Mime: encoded.mime, Data: encoded.data}
+			out.Content[index] = encoded
 		}
 	}
 	return out, nil

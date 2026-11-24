@@ -5,7 +5,10 @@ import { reduceDurableItem } from "@/features/agent/application/fold/reducer";
 import { foldRunSnapshot } from "@/features/agent/application/fold/runSnapshot";
 import { foldPendingInterruptSet } from "@/features/agent/application/fold/pendingInterruptSnapshot";
 import { onPlanUpdated } from "@/features/agent/application/fold/planHandlers";
-import { userContentBlocks } from "@/features/agent/application/fold/projections";
+import {
+  agentInputMessagePart,
+  userContentBlocks,
+} from "@/features/agent/application/fold/projections";
 export function projectAgentSessionSnapshot(snapshot: AgentSessionSnapshot): AgentSessionView {
   let view = EMPTY_AGENT_SESSION_VIEW;
   for (const run of snapshot.runs) view = foldRunSnapshot(view, run);
@@ -38,13 +41,7 @@ export function projectAgentSessionSnapshot(snapshot: AgentSessionSnapshot): Age
           id: identity,
           role: "user",
           runId: null,
-          blocks: userContentBlocks(
-            accepted.input.parts.map((part) =>
-              part.kind === "text"
-                ? { type: "text", text: part.text }
-                : { type: "image", mime: part.mime, data: part.data },
-            ),
-          ),
+          blocks: userContentBlocks(accepted.input.parts.map(agentInputMessagePart)),
           steer: {
             runId: accepted.runId,
             receipt: accepted.receipt,

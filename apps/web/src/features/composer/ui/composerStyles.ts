@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { color, space, surface, weight } from "@flame/ui/tokens.stylex";
+import { color, leading, space, surface, weight } from "@flame/ui/tokens.stylex";
 export const composerStyles = stylex.create({
   surface: { maxHeight: "var(--composer-surface-limit, none)" },
   editorInset: {
@@ -60,6 +60,12 @@ export const composerStyles = stylex.create({
     objectFit: "contain",
   },
   thumbRemove: { position: "absolute", top: space.s0_5, right: space.s0_5 },
+  referenceText: {
+    maxHeight: "60dvh",
+    whiteSpace: "pre-wrap",
+    overflowWrap: "anywhere",
+    lineHeight: leading.body,
+  },
 
   dropCue: {
     position: "absolute",

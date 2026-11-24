@@ -74,6 +74,7 @@ type contentPayload struct {
 	Text      string                 `json:"text,omitempty"`
 	MediaType string                 `json:"mediaType,omitempty"`
 	Data      string                 `json:"data,omitempty"`
+	Label     string                 `json:"label,omitempty"`
 }
 
 type questionPayload struct {
@@ -264,6 +265,8 @@ func encodeContentPayload(block transcript.ContentBlock) (contentPayload, error)
 			Kind: block.Kind, MediaType: block.MediaType,
 			Data: base64.StdEncoding.EncodeToString(block.Bytes),
 		}, nil
+	case transcript.ReferenceContent:
+		return contentPayload{Kind: block.Kind, Label: block.Label, Text: block.Text}, nil
 	default:
 		return contentPayload{}, fmt.Errorf("unknown content kind %q", block.Kind)
 	}
@@ -274,7 +277,7 @@ func decodeContentPayload(payload contentPayload) (transcript.ContentBlock, erro
 	if err != nil {
 		return transcript.ContentBlock{}, fmt.Errorf("decode content data: %w", err)
 	}
-	return transcript.ContentBlock{Kind: payload.Kind, Text: payload.Text, MediaType: payload.MediaType, Bytes: data}, nil
+	return transcript.ContentBlock{Kind: payload.Kind, Text: payload.Text, MediaType: payload.MediaType, Bytes: data, Label: payload.Label}, nil
 }
 
 func encodeQuestionPayload(question transcript.Question) (questionPayload, error) {

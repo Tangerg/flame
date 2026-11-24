@@ -70,6 +70,8 @@ func projectDroppedRun(value protocol.DroppedRun) (conversation.DroppedRun, erro
 		switch content.Type {
 		case protocol.ContentBlockText:
 			projected.Input = append(projected.Input, conversation.InputContent{Kind: content.Type, Text: content.Text})
+		case protocol.ContentBlockReference:
+			projected.Input = append(projected.Input, conversation.InputContent{Kind: protocol.ContentBlockText, Text: referenceText(content)})
 		case protocol.ContentBlockImage:
 			data, err := base64.StdEncoding.DecodeString(content.Data)
 			if err != nil {

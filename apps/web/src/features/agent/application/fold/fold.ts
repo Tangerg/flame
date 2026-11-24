@@ -205,11 +205,17 @@ export function foldAgentMessage(
   const blocks: ContentBlock[] =
     status === "running"
       ? [{ kind: "text", itemId: item.id, text: contentText(item.content), status }]
-      : (item.content ?? []).map((part): ContentBlock =>
-          part.type === "text"
-            ? { kind: "text", itemId: item.id, text: part.text, status }
-            : { kind: "image", itemId: item.id, mime: part.mime, data: part.data },
-        );
+      : (item.content ?? []).flatMap((part): ContentBlock[] => {
+          switch (part.type) {
+            case "text":
+              return [{ kind: "text", itemId: item.id, text: part.text, status }];
+            case "image":
+              return [{ kind: "image", itemId: item.id, mime: part.mime, data: part.data }];
+            case "reference":
+              // Runtime refuses references outside user input.
+              return [];
+          }
+        });
   // Empty terminal Items still need their identity so replay cannot open another turn.
   if (blocks.length === 0) blocks.push({ kind: "text", itemId: item.id, text: "", status });
   if (item.phase === "finalAnswer") return foldFinalMessage(state, item, blocks);

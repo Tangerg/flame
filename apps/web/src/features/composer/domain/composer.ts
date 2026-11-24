@@ -1,5 +1,6 @@
 import {
   DraftContent,
+  type ComposerDraftReference,
   type ComposerImage,
   type ComposerImageAttachment,
   type ImageReadResult,
@@ -13,11 +14,13 @@ const HISTORY_CAP = 50;
 export interface ComposerDraftText {
   content: DraftContent;
   pastes: readonly Pick<PastedText, "id" | "text">[];
+  references: readonly ComposerDraftReference[];
 }
 
 export class ComposerDraft {
   private static readonly EMPTY = new ComposerDraft(
     DraftContent.empty(),
+    Object.freeze([]),
     Object.freeze([]),
     Object.freeze([]),
   );
@@ -28,6 +31,7 @@ export class ComposerDraft {
     readonly content: DraftContent,
     readonly imageAttachments: readonly ComposerImageAttachment[],
     readonly pastes: readonly PastedText[],
+    readonly references: readonly ComposerDraftReference[],
   ) {
     this.images = imageAttachments.flatMap((attachment) =>
       attachment.status === "ready"
@@ -48,7 +52,7 @@ export class ComposerDraft {
   }
 
   static restore(content: DraftContent): ComposerDraft {
-    return new ComposerDraft(content, [], []);
+    return new ComposerDraft(content, [], [], []);
   }
 
   get value(): string {
@@ -66,7 +70,9 @@ export class ComposerDraft {
       this.pastes.every(
         (paste, index) =>
           paste.id === other.pastes[index]?.id && paste.text === other.pastes[index]?.text,
-      )
+      ) &&
+      this.references.length === other.references.length &&
+      this.references.every((reference, index) => reference.id === other.references[index]?.id)
     );
   }
 
@@ -80,11 +86,11 @@ export class ComposerDraft {
   withContent(content: DraftContent): ComposerDraft {
     return content.equals(this.content)
       ? this
-      : new ComposerDraft(content, this.imageAttachments, this.pastes);
+      : new ComposerDraft(content, this.imageAttachments, this.pastes, this.references);
   }
 
   hydrateText(draft: ComposerDraft): ComposerDraft {
-    return new ComposerDraft(draft.content, this.imageAttachments, draft.pastes);
+    return new ComposerDraft(draft.content, this.imageAttachments, draft.pastes, draft.references);
   }
 
   withImages(images: readonly ComposerImage[]): ComposerDraft {
@@ -92,6 +98,7 @@ export class ComposerDraft {
       this.content,
       images.map((image) => ({ ...image, status: "ready" })),
       this.pastes,
+      this.references,
     );
   }
 
@@ -103,6 +110,7 @@ export class ComposerDraft {
         ...images.map((image) => ({ ...image, status: "ready" as const })),
       ],
       this.pastes,
+      this.references,
     );
   }
 
@@ -114,6 +122,7 @@ export class ComposerDraft {
         ...images.map((image) => ({ ...image, status: "pending" as const })),
       ],
       this.pastes,
+      this.references,
     );
   }
 
@@ -128,6 +137,7 @@ export class ComposerDraft {
       this.content,
       this.imageAttachments.map((attachment) => (attachment === pending ? settled : attachment)),
       this.pastes,
+      this.references,
     );
   }
 
@@ -137,11 +147,12 @@ export class ComposerDraft {
       this.content,
       this.imageAttachments.filter((attachment) => attachment.id !== id),
       this.pastes,
+      this.references,
     );
   }
 
   withPastes(pastes: readonly PastedText[]): ComposerDraft {
-    return new ComposerDraft(this.content, this.imageAttachments, pastes);
+    return new ComposerDraft(this.content, this.imageAttachments, pastes, this.references);
   }
 
   editPaste(id: string, text: string): ComposerDraft {
@@ -151,12 +162,33 @@ export class ComposerDraft {
     );
   }
 
+  withReferences(references: readonly ComposerDraftReference[]): ComposerDraft {
+    return new ComposerDraft(this.content, this.imageAttachments, this.pastes, references);
+  }
+
+  // Adding what the draft already references would only repeat it to the model.
+  addReference(reference: ComposerDraftReference): ComposerDraft {
+    if (
+      this.references.some(
+        ({ label, text }) => label === reference.label && text === reference.text,
+      )
+    )
+      return this;
+    return this.withReferences([...this.references, reference]);
+  }
+
+  removeReference(id: string): ComposerDraft {
+    if (!this.references.some((reference) => reference.id === id)) return this;
+    return this.withReferences(this.references.filter((reference) => reference.id !== id));
+  }
+
   restorePaste(id: string, text: string): ComposerDraft {
     if (!this.pastes.some((paste) => paste.id === id)) return this;
     return new ComposerDraft(
       text.trim() ? this.content.append(text) : this.content,
       this.imageAttachments,
       this.pastes.filter((paste) => paste.id !== id),
+      this.references,
     );
   }
 }
@@ -183,9 +215,9 @@ export class Composer {
     for (const [sessionId, text] of texts) {
       drafts.set(
         sessionId,
-        ComposerDraft.restore(text.content).withPastes(
-          text.pastes.map(({ id, text }) => ({ id, text, lines: countLines(text) })),
-        ),
+        ComposerDraft.restore(text.content)
+          .withPastes(text.pastes.map(({ id, text }) => ({ id, text, lines: countLines(text) })))
+          .withReferences(text.references),
       );
     }
     return new Composer(drafts, new Map(), SCRATCH_SESSION_ID, NOT_RECALLING);
@@ -202,11 +234,13 @@ export class Composer {
   durableDraftTexts(): Map<string, ComposerDraftText> {
     const texts = new Map<string, ComposerDraftText>();
     for (const [sessionId, draft] of this.drafts) {
-      if (draft.content.isEmpty && draft.pastes.length === 0) continue;
+      if (draft.content.isEmpty && draft.pastes.length === 0 && draft.references.length === 0)
+        continue;
       // Flattening a paste into the content could turn authored text into a slash command.
       texts.set(sessionId, {
         content: draft.content,
         pastes: draft.pastes.map(({ id, text }) => ({ id, text })),
+        references: draft.references,
       });
     }
     return texts;

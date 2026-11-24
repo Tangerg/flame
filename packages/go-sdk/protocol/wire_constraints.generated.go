@@ -1156,13 +1156,19 @@ func (c ContentBlock) validateWire() error {
 	return collectWireViolations("ContentBlock",
 		optionalTextPattern("text", c.Text, "\\S"),
 		optionalTextPattern("mime", c.Mime, "^image/"),
-		closedEnum("type", string(c.Type), []string{"text", "image"}, false),
+		closedEnum("type", string(c.Type), []string{"text", "image", "reference"}, false),
 		requiredWhen(wireFieldEquals(c, "type", "text"), "text", c),
 		forbiddenWhen(wireFieldEquals(c, "type", "text"), "mime", c),
 		forbiddenWhen(wireFieldEquals(c, "type", "text"), "data", c),
+		forbiddenWhen(wireFieldEquals(c, "type", "text"), "label", c),
 		requiredWhen(wireFieldEquals(c, "type", "image"), "mime", c),
 		requiredWhen(wireFieldEquals(c, "type", "image"), "data", c),
 		forbiddenWhen(wireFieldEquals(c, "type", "image"), "text", c),
+		forbiddenWhen(wireFieldEquals(c, "type", "image"), "label", c),
+		requiredWhen(wireFieldEquals(c, "type", "reference"), "label", c),
+		requiredWhen(wireFieldEquals(c, "type", "reference"), "text", c),
+		forbiddenWhen(wireFieldEquals(c, "type", "reference"), "mime", c),
+		forbiddenWhen(wireFieldEquals(c, "type", "reference"), "data", c),
 	)
 }
 

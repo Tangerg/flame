@@ -54,7 +54,7 @@ function submitGoalComposerMode(
     return;
   }
 
-  if (context.hasImages || context.hasPastes) {
+  if (context.hasImages || context.hasPastes || context.hasReferences) {
     dependencies.reportUnsupportedAttachments();
     return;
   }

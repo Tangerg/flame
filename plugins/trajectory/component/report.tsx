@@ -291,8 +291,10 @@ function recordedBody(row: TrajectoryEntry, t: Translate): ReactNode[] {
   const item = row.item;
   if (item.type === "userMessage" || item.type === "agentMessage")
     return (item.content ?? []).flatMap((part, index) =>
-      part.type !== "text" ? (
+      part.type === "image" ? (
         <RecordedImage key={index} mime={part.mime} data={part.data} t={t} />
+      ) : part.type === "reference" ? (
+        <RecordBody key={index}>{`${part.label}\n\n${part.text}`}</RecordBody>
       ) : part.text ? (
         <RecordBody key={index}>{part.text}</RecordBody>
       ) : (

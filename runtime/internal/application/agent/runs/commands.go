@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"iter"
 	"slices"
+	"strconv"
 	"strings"
 	"unicode/utf8"
 
@@ -109,14 +110,24 @@ func (s StartCommand) clone() StartCommand {
 	return s
 }
 
+// A reference is framed so the model can tell what the user pointed at from
+// what the user wrote; quoting the label keeps it on the frame's one line.
+func renderReference(block transcript.ContentBlock) string {
+	return "[Reference attached by the user: " + strconv.Quote(block.Label) + "]\n" + block.Text + "\n[End reference]"
+}
+
 func MaterializeUserMessage(input []transcript.ContentBlock) (corechat.Message, error) {
 	parts := make([]corechat.Part, 0, len(input))
 	for index, block := range input {
 		if err := block.Validate(); err != nil {
 			return corechat.Message{}, invalidInputContent(index, err)
 		}
-		if block.Kind == transcript.TextContent {
+		switch block.Kind {
+		case transcript.TextContent:
 			parts = append(parts, corechat.NewTextPart(block.Text))
+			continue
+		case transcript.ReferenceContent:
+			parts = append(parts, corechat.NewTextPart(renderReference(block)))
 			continue
 		}
 		image, err := media.NewBytes(block.MediaType, block.Bytes)

@@ -148,6 +148,8 @@
   "composer.paste.lines_other": "已貼上 · {{count}} 行",
   "composer.paste.chars_other": "已貼上 · {{count}} 字元",
   "composer.paste.remove": "移除貼上的文字",
+  "composer.reference.review": "檢視引用",
+  "composer.reference.remove": "移除引用",
   "composer.mention.heading": "檔案",
   "composer.slash.heading": "命令",
   "chat.notices": "對話通知",

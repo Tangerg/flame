@@ -22,8 +22,8 @@ interface SubmitDeps {
 
 export function submitComposer({ draft, sendInput, canSend, restoreFocus }: SubmitDeps): void {
   if (!draft.attachmentsReady) return;
-  const { value, images, pastes } = draft;
-  const intent = createComposerSendIntent({ value, images, pastes });
+  const { value, images, pastes, references } = draft;
+  const intent = createComposerSendIntent({ value, images, pastes, references });
   if (!intent.shouldSend) return;
 
   const modeDraft = {
@@ -33,6 +33,7 @@ export function submitComposer({ draft, sendInput, canSend, restoreFocus }: Subm
     slash: intent.slash ? { command: intent.slash.cmd, args: intent.slash.args } : null,
     hasImages: images.length > 0,
     hasPastes: pastes.length > 0,
+    hasReferences: references.length > 0,
   };
   let settled = false;
   const consume = (record: boolean) => {
@@ -92,6 +93,6 @@ export function submitComposer({ draft, sendInput, canSend, restoreFocus }: Subm
     }
   }
   if (!canSend()) return;
-  if (!sendInput(buildInput(intent.body, images))) return;
+  if (!sendInput(buildInput(intent.body, images, references))) return;
   accept();
 }

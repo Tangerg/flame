@@ -505,9 +505,7 @@ func portableItemKind(path string, value protocol.ItemType) (transcript.ItemKind
 }
 
 func portableContentFromArtifact(path string, artifact protocol.ContentBlock) (transcript.ContentBlock, error) {
-	decoded, decodeErr := decodeContent(encodedContent{
-		kind: artifact.Type, text: artifact.Text, mime: artifact.Mime, data: artifact.Data,
-	})
+	decoded, decodeErr := decodeContent(artifact)
 	if decodeErr != nil {
 		return transcript.ContentBlock{}, invalidArtifact(path+"."+decodeErr.field, "%s", decodeErr.detail)
 	}

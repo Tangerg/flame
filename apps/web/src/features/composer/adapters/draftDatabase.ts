@@ -15,12 +15,16 @@ const draftSegment = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("text"), text: z.string().min(1) }).strict(),
   z.object({ kind: z.literal("file"), path: z.string().min(1) }).strict(),
 ]);
+const draftReference = z
+  .object({ id: z.string().min(1), label: z.string().min(1), text: z.string().min(1) })
+  .strict();
 const draftRecord = z
   .object({
     endpoint: z.string(),
     session: z.string(),
     content: z.array(draftSegment),
     pastes: pasteReferences,
+    references: z.array(draftReference).optional(),
   })
   .strict();
 const textDraftRecord = z
@@ -218,6 +222,7 @@ export class DraftDatabase {
       texts.set(draft.session, {
         content: DraftContent.of(draft.content),
         pastes: attached.map(({ id, text }) => ({ id, text })),
+        references: draft.references ?? [],
       });
     }
     this.pastes.set(endpoint, retained);
@@ -243,6 +248,7 @@ export class DraftDatabase {
         session,
         content: draft.content,
         pastes,
+        references: draft.references,
         added: pastes.filter((paste) => !previous.includes(paste)),
       };
     });
@@ -255,7 +261,7 @@ export class DraftDatabase {
       failure.cause = cause;
       transaction.abort();
     };
-    for (const { session, content, pastes, added } of prepared) {
+    for (const { session, content, pastes, references, added } of prepared) {
       const request = draftStore.get([endpoint, session]);
       request.onsuccess = () => {
         try {
@@ -277,12 +283,15 @@ export class DraftDatabase {
               pasteStore.delete(reference.record);
           }
           for (const paste of added) pasteStore.add(paste);
-          if (!content.isEmpty || pastes.length)
+          if (!content.isEmpty || pastes.length || references.length)
             draftStore.put({
               endpoint,
               session,
               content: content.segments,
               pastes: pastes.map(({ id, record }) => ({ id, record })),
+              ...(references.length
+                ? { references: references.map(({ id, label, text }) => ({ id, label, text })) }
+                : {}),
             });
           else draftStore.delete([endpoint, session]);
         } catch (cause) {

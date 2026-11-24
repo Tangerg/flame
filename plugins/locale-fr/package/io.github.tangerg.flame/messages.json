@@ -629,6 +629,8 @@
   "composer.paste.chars_many": "Collé · {{count}} de caractères",
   "composer.paste.chars_other": "Collé · {{count}} caractères",
   "composer.paste.remove": "Supprimer le texte collé",
+  "composer.reference.review": "Relire la référence",
+  "composer.reference.remove": "Supprimer la référence",
   "composer.mention.heading": "Fichiers",
   "composer.drop.files": "Déposez les fichiers ici · les images compatibles seront jointes",
   "msgActions.restore": "Restaurer jusqu'ici",

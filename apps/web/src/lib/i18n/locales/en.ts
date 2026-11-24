@@ -167,6 +167,8 @@ export const en: Record<string, string> = {
   "composer.paste.chars_one": "Pasted · {{count}} char",
   "composer.paste.chars_other": "Pasted · {{count}} chars",
   "composer.paste.remove": "Remove pasted text",
+  "composer.reference.review": "Review reference",
+  "composer.reference.remove": "Remove reference",
   "composer.mention.heading": "Files",
   "composer.drop.files": "Drop files here · supported images will be attached",
   "composer.slash.heading": "Commands",

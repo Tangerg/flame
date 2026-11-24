@@ -1017,6 +1017,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   ContentBlock: allOf([
     object({
       data: text(),
+      label: text(),
       mime: allOf([text(), pattern("^image/")]),
       text: allOf([text(), pattern("\\S")]),
       type: ref(() => CHECKS.ContentBlockType),
@@ -1024,16 +1025,23 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     oneOf([
       fields({
         data: absent(),
+        label: absent(),
         mime: absent(),
         type: literal("text"),
       }, ["text", "type"]),
       fields({
+        label: absent(),
         text: absent(),
         type: literal("image"),
       }, ["data", "mime", "type"]),
+      fields({
+        data: absent(),
+        mime: absent(),
+        type: literal("reference"),
+      }, ["label", "text", "type"]),
     ]),
   ]),
-  ContentBlockType: enumOf(["text", "image"]),
+  ContentBlockType: enumOf(["text", "image", "reference"]),
   ContributionSource: object({
     contribution: text(),
     installationId: text(),

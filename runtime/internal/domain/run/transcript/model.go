@@ -90,6 +90,10 @@ type ContentKind string
 const (
 	TextContent  ContentKind = "text"
 	ImageContent ContentKind = "image"
+	// ReferenceContent is something the user pointed at. Its producer wrote the
+	// Label people see and the Text the model receives when the user added it,
+	// so the reference keeps the version and position it named.
+	ReferenceContent ContentKind = "reference"
 )
 
 type ContentBlock struct {
@@ -97,10 +101,11 @@ type ContentBlock struct {
 	Text      string
 	MediaType string
 	Bytes     []byte
+	Label     string
 }
 
 func (c ContentBlock) Equal(other ContentBlock) bool {
-	return c.Kind == other.Kind && c.Text == other.Text && c.MediaType == other.MediaType && bytes.Equal(c.Bytes, other.Bytes)
+	return c.Kind == other.Kind && c.Text == other.Text && c.MediaType == other.MediaType && bytes.Equal(c.Bytes, other.Bytes) && c.Label == other.Label
 }
 
 func (c ContentBlock) Clone() ContentBlock {
@@ -263,6 +268,7 @@ const (
 	ContentTextField
 	ContentMediaTypeField
 	ContentBytesField
+	ContentLabelField
 )
 
 type ContentError struct {
@@ -273,13 +279,19 @@ type ContentError struct {
 func (e *ContentError) Error() string { return "transcript: content " + e.Detail }
 
 func (c ContentBlock) Validate() error {
+	if c.Kind != ReferenceContent && c.Label != "" {
+		return &ContentError{Field: ContentLabelField, Detail: "only a reference carries a label"}
+	}
 	switch c.Kind {
-	case TextContent:
+	case TextContent, ReferenceContent:
 		if strings.TrimSpace(c.Text) == "" {
 			return &ContentError{Field: ContentTextField, Detail: "must contain non-whitespace text"}
 		}
 		if c.MediaType != "" || len(c.Bytes) != 0 {
-			return &ContentError{Field: ContentKindField, Detail: "text content cannot carry media"}
+			return &ContentError{Field: ContentKindField, Detail: fmt.Sprintf("%s content cannot carry media", c.Kind)}
+		}
+		if c.Kind == ReferenceContent && (strings.TrimSpace(c.Label) == "" || strings.ContainsAny(c.Label, "\r\n")) {
+			return &ContentError{Field: ContentLabelField, Detail: "must be one non-empty line"}
 		}
 	case ImageContent:
 		if c.Text != "" {

@@ -2,6 +2,7 @@ import { useComposer } from "@/features/composer/public/composer";
 import { ComposerEditor } from "./ComposerEditor";
 import { useNotifications } from "@/features/notifications/public/notifier";
 import {
+  type ComposerDraftReference,
   type ComposerImageAttachment,
   type PastedText,
 } from "@/features/composer/public/attachments";
@@ -26,6 +27,8 @@ interface Props {
   onEditPaste: (id: string, text: string) => boolean;
   onRestorePaste: (id: string, text: string) => void;
   onAddPaste: (text: string) => void;
+  references: readonly ComposerDraftReference[];
+  onRemoveReference: (id: string) => void;
   acceptsImages: boolean;
 }
 
@@ -39,6 +42,8 @@ export function Composer({
   onEditPaste,
   onRestorePaste,
   onAddPaste,
+  references,
+  onRemoveReference,
   acceptsImages,
 }: Props) {
   const t = useT();
@@ -83,6 +88,8 @@ export function Composer({
           onRemovePaste={onRemovePaste}
           onEditPaste={onEditPaste}
           onRestorePaste={onRestorePaste}
+          references={references}
+          onRemoveReference={onRemoveReference}
           composerInput={inputRef}
         />
         {draftLoading ? (

@@ -12,6 +12,7 @@ import { CompactionBlock } from "@/features/chat/message/ui/cards/index";
 import { ImageBlock } from "@/features/chat/message/ui/cards/index";
 import { QuestionCard } from "@/features/chat/message/ui/cards/index";
 import { ReasoningBlock } from "@/features/chat/message/ui/cards/index";
+import { ReferenceBlock } from "@/features/chat/message/ui/cards/index";
 import { ToolCard } from "@/features/chat/public/tools/rendering";
 import { ToolGroup } from "@/features/chat/public/tools/rendering";
 import { lookupExtensionByKey } from "@/extensions/selectors/extensions";
@@ -48,6 +49,9 @@ export function renderBlock(block: ContentBlock, key: number, facts: TurnFacts, 
 
     case "image":
       return <ImageBlock key={key} mime={block.mime} data={block.data} />;
+
+    case "reference":
+      return <ReferenceBlock key={key} label={block.label} text={block.text} />;
 
     case "tool": {
       const tool = facts.toolCalls[block.toolCallId];

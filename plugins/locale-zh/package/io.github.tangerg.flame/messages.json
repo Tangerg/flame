@@ -149,6 +149,8 @@
   "composer.paste.lines_other": "已粘贴 · {{count}} 行",
   "composer.paste.chars_other": "已粘贴 · {{count}} 字符",
   "composer.paste.remove": "移除粘贴的文本",
+  "composer.reference.review": "查看引用",
+  "composer.reference.remove": "移除引用",
   "composer.mention.heading": "文件",
   "composer.slash.heading": "命令",
   "chat.notices": "对话通知",

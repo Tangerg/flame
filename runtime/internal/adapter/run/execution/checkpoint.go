@@ -76,6 +76,7 @@ type interactionContentBlockWire struct {
 	Text      string                 `json:"text,omitempty"`
 	MediaType string                 `json:"mediaType,omitempty"`
 	Data      string                 `json:"data,omitempty"`
+	Label     string                 `json:"label,omitempty"`
 }
 
 type interactionCheckpointState struct {
@@ -299,6 +300,8 @@ func encodeInteractionContentBlock(
 			Kind: block.Kind, MediaType: block.MediaType,
 			Data: base64.StdEncoding.EncodeToString(block.Bytes),
 		}, nil
+	case transcript.ReferenceContent:
+		return interactionContentBlockWire{Kind: block.Kind, Label: block.Label, Text: block.Text}, nil
 	default:
 		return interactionContentBlockWire{}, fmt.Errorf("has unknown kind %q", block.Kind)
 	}
@@ -529,13 +532,15 @@ func (w interactionContentBlockWire) decode() (transcript.ContentBlock, error) {
 		return w.decodeText()
 	case transcript.ImageContent:
 		return w.decodeImage()
+	case transcript.ReferenceContent:
+		return w.decodeReference()
 	default:
 		return transcript.ContentBlock{}, fmt.Errorf("has unknown kind %q", w.Kind)
 	}
 }
 
 func (w interactionContentBlockWire) decodeText() (transcript.ContentBlock, error) {
-	if w.Text == "" || w.MediaType != "" || w.Data != "" {
+	if w.Text == "" || w.MediaType != "" || w.Data != "" || w.Label != "" {
 		return transcript.ContentBlock{}, errors.New("is not canonical text")
 	}
 	content := transcript.ContentBlock{Kind: transcript.TextContent, Text: w.Text}
@@ -545,8 +550,19 @@ func (w interactionContentBlockWire) decodeText() (transcript.ContentBlock, erro
 	return content, nil
 }
 
+func (w interactionContentBlockWire) decodeReference() (transcript.ContentBlock, error) {
+	if w.MediaType != "" || w.Data != "" {
+		return transcript.ContentBlock{}, errors.New("is not canonical reference")
+	}
+	content := transcript.ContentBlock{Kind: transcript.ReferenceContent, Label: w.Label, Text: w.Text}
+	if err := content.Validate(); err != nil {
+		return transcript.ContentBlock{}, err
+	}
+	return content, nil
+}
+
 func (w interactionContentBlockWire) decodeImage() (transcript.ContentBlock, error) {
-	if w.Text != "" || w.MediaType == "" || w.Data == "" {
+	if w.Text != "" || w.MediaType == "" || w.Data == "" || w.Label != "" {
 		return transcript.ContentBlock{}, errors.New("is not canonical image")
 	}
 	data, err := base64.StdEncoding.Strict().DecodeString(w.Data)

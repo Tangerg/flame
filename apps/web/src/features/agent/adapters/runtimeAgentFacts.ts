@@ -137,9 +137,14 @@ export function runtimeRunFact(run: RunRef): AgentRunFact {
 }
 
 function runtimeContent(block: ContentBlock): AgentMessagePart {
-  return block.type === "text"
-    ? { type: "text", text: block.text }
-    : { type: "image", data: block.data, mime: block.mime };
+  switch (block.type) {
+    case "text":
+      return { type: "text", text: block.text };
+    case "image":
+      return { type: "image", data: block.data, mime: block.mime };
+    case "reference":
+      return { type: "reference", label: block.label, text: block.text };
+  }
 }
 
 function runtimeQuestion(question: Question): AgentQuestion {

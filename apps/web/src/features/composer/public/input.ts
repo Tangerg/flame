@@ -1,12 +1,18 @@
 import { type AgentInput, type AgentInputPart } from "@/features/agent/public/input";
+import { type ComposerReference } from "@/features/composer/domain/draft";
 export interface InputImage {
   mime: string;
   data: string;
 }
 
-export function buildInput(text: string, images: readonly InputImage[]): AgentInput {
+export function buildInput(
+  text: string,
+  images: readonly InputImage[],
+  references: readonly ComposerReference[] = [],
+): AgentInput {
   const parts: AgentInputPart[] = [];
   if (text) parts.push({ kind: "text", text });
+  for (const { label, text } of references) parts.push({ kind: "reference", label, text });
   for (const img of images) parts.push({ kind: "image", mime: img.mime, data: img.data });
   return { parts };
 }

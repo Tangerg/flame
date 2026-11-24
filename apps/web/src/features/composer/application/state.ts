@@ -1,8 +1,10 @@
 import {
   type DraftContent,
   type ComposerDraftInput,
+  type ComposerDraftReference,
   type ComposerImage,
   type ComposerImageAttachment,
+  type ComposerReference,
   type PastedText,
 } from "@/features/composer/domain/draft";
 export type ComposerModelPreference =
@@ -14,6 +16,7 @@ export interface ComposerSubmission {
   readonly images: readonly ComposerImage[];
   readonly attachmentsReady: boolean;
   readonly pastes: readonly PastedText[];
+  readonly references: readonly ComposerDraftReference[];
   consume(historyText?: string): boolean;
 }
 
@@ -68,8 +71,11 @@ export interface ComposerStatePort {
     requestConfirmation: RequestDraftReplacementConfirmation,
     begin: (replace: ComposerDraftReplacement) => boolean,
   ): void;
-  appendText(text: string): void;
-  captureAppendText(): (text: string) => boolean;
+  // The returned function adds to the draft that was current when it was
+  // captured and reports false once another draft has replaced it.
+  captureAddReference(): (reference: ComposerReference) => boolean;
+  useReferences(): readonly ComposerDraftReference[];
+  useRemoveReference(): (id: string) => void;
   useImageAttachments(): readonly ComposerImageAttachment[];
   useAttachmentsReady(): boolean;
   usePastes(): readonly PastedText[];

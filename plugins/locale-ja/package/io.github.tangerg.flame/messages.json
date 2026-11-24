@@ -609,6 +609,8 @@
   "composer.paste.lines_other": "貼り付け · {{count}} 行",
   "composer.paste.chars_other": "貼り付け · {{count}} 文字",
   "composer.paste.remove": "貼り付けたテキストを削除",
+  "composer.reference.review": "参照を確認",
+  "composer.reference.remove": "参照を削除",
   "composer.mention.heading": "ファイル",
   "composer.drop.files": "ここにファイルをドロップ · 対応する画像を添付します",
   "msgActions.restore": "ここまで復元",

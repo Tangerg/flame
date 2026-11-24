@@ -180,19 +180,17 @@ export function createComposer(
         if (started) presentFocus(() => focus());
         return started;
       }),
-    captureAppendText: () => {
+    captureAddReference: () => {
       const source = inputScope;
-      return (text) => {
+      return (reference) => {
         if (disposed || source !== inputScope) return false;
-        access.appendText(text);
+        useComposerStore.getState().addReference(reference);
+        presentFocus(() => focus());
         return true;
       };
     },
-    appendText: (text) => {
-      useComposerStore.getState().appendText(text);
-      presentDraft();
-      presentFocus(() => focus());
-    },
+    useReferences: () => useComposerStore((state) => state.composer.draft.references),
+    useRemoveReference: () => useComposerStore((state) => state.removeReference),
     useImageAttachments: () => useComposerStore((state) => state.composer.draft.imageAttachments),
     useAttachmentsReady: () => useComposerStore((state) => state.composer.draft.attachmentsReady),
     usePastes: () => useComposerStore((state) => state.composer.draft.pastes),

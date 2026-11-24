@@ -153,6 +153,12 @@ func (r *Connection) requireInputCapabilities(message authoring.Message) error {
 	return nil
 }
 
+// The terminal has no reference chips, so a reference reads as its label above
+// the text the model received.
+func referenceText(block protocol.ContentBlock) string {
+	return "Reference: " + block.Label + "\n" + block.Text
+}
+
 func projectContent(itemID string, content []protocol.ContentBlock) (string, []authoring.Attachment, error) {
 	projected, err := projectContentValue(itemID, content)
 	return projected.text, projected.attachments, err
@@ -177,6 +183,8 @@ func projectContentValue(itemID string, content []protocol.ContentBlock) (conten
 		switch block.Type {
 		case protocol.ContentBlockText:
 			textParts = append(textParts, block.Text)
+		case protocol.ContentBlockReference:
+			textParts = append(textParts, referenceText(block))
 		case protocol.ContentBlockImage:
 			data, err := base64.StdEncoding.DecodeString(block.Data)
 			if err != nil {

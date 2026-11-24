@@ -3,3 +3,4 @@ export { CompactionBlock } from "@/features/chat/message/ui/cards/CompactionBloc
 export { ImageBlock } from "@/features/chat/message/ui/cards/ImageBlock";
 export { QuestionCard } from "@/features/chat/message/ui/cards/QuestionCard";
 export { ReasoningBlock } from "@/features/chat/message/ui/cards/ReasoningBlock";
+export { ReferenceBlock } from "@/features/chat/message/ui/cards/ReferenceBlock";

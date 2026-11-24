@@ -227,12 +227,16 @@ an exact Run reading anchor or retain another Session's local page filters.
 
 Client, workspace and Session components can receive optional `context.composer`,
 a frozen `CapturedComposer` bound to the Composer draft that was current when the
-context was captured. `append(text)` adds text to that draft and focuses it,
-using the same path as quoting a selection. It returns false once another
+context was captured. `addReference({ label, text })` attaches a reference to
+that draft and focuses it, using the same path as quoting a selection. The
+component owns what it points at: `label` is the one line people see on the
+reference, and `text` is what the model receives, naming the exact object,
+version and position so the reference stays valid after the view moves on. The
+user can open and remove the reference before sending; once sent, Runtime keeps
+it in the user message exactly as attached. It returns false once another
 Session's draft has replaced the captured one, and refuses after the component
-signal ends. It never sends anything: the user edits and submits the message,
-and Runtime and Session ownership of input stay unchanged. Hosts without a
-Composer omit the field; components fall back to copying the text, for example.
+signal ends. It never sends anything. Hosts without a Composer omit the field;
+components fall back to copying the text, for example.
 
 Client and workspace components receive `context.project`, the frozen `{ id, name }`
 of the active Session's Project, when it has one. A changed Project remounts the

@@ -115,9 +115,7 @@ func unattachable(err error) bool {
 func decodeRunInput(blocks []protocol.ContentBlock) ([]transcript.ContentBlock, error) {
 	input := make([]transcript.ContentBlock, len(blocks))
 	for i, block := range blocks {
-		decoded, decodeErr := decodeContent(encodedContent{
-			kind: block.Type, text: block.Text, mime: block.Mime, data: block.Data,
-		})
+		decoded, decodeErr := decodeContent(block)
 		if decodeErr != nil {
 			return nil, invalidWireContentBlock(i, decodeErr.field, decodeErr.detail)
 		}

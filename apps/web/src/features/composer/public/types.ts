@@ -16,6 +16,7 @@ interface ComposerSubmitModeDraft {
   slash: { command: string; args: string } | null;
   hasImages: boolean;
   hasPastes: boolean;
+  hasReferences: boolean;
 }
 
 export interface ComposerSubmitModeContext extends ComposerSubmitModeDraft {

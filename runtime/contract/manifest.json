@@ -4145,6 +4145,13 @@
             "mime",
             "data"
           ]
+        },
+        {
+          "tag": "reference",
+          "required": [
+            "label",
+            "text"
+          ]
         }
       ]
     },

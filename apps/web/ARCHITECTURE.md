@@ -373,7 +373,9 @@ observed output stays an exact document and never becomes a final ToolResult or 
 instruction to resume the finished Run.
 
 The client owns authoring facts: drafts, attachment preparation, queued intent,
-and unresolved command identity. Changing the endpoint scopes this local state
+and unresolved command identity. A draft reference keeps the label and model text
+its producer wrote when the user added it; the Composer shows and removes it but
+never rewrites it, and Runtime owns it once the message is sent. Changing the endpoint scopes this local state
 to the selected Runtime. A remote path describes the Runtime machine; a browser
 file selection does not turn it into a server workspace.
 

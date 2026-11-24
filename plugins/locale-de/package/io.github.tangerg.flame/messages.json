@@ -619,6 +619,8 @@
   "composer.paste.chars_one": "Eingefügt · {{count}} Zeichen",
   "composer.paste.chars_other": "Eingefügt · {{count}} Zeichen",
   "composer.paste.remove": "Eingefügten Text entfernen",
+  "composer.reference.review": "Verweis prüfen",
+  "composer.reference.remove": "Verweis entfernen",
   "composer.mention.heading": "Dateien",
   "composer.drop.files": "Dateien hier ablegen · unterstützte Bilder werden angehängt",
   "msgActions.restore": "Bis hierher wiederherstellen",

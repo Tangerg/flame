@@ -87,6 +87,9 @@ type ContentBlockType string
 const (
 	ContentBlockText  ContentBlockType = "text"
 	ContentBlockImage ContentBlockType = "image"
+	// A reference pins something the user pointed at, such as a slide element
+	// or lines of a file, as its producer described it when the user added it.
+	ContentBlockReference ContentBlockType = "reference"
 )
 
 //flame:enum
@@ -137,6 +140,8 @@ type ContentBlock struct {
 	Text string           `json:"text,omitempty"`
 	Mime string           `json:"mime,omitempty"`
 	Data string           `json:"data,omitempty"`
+	// Label names a reference for people; Text is what the model receives.
+	Label string `json:"label,omitempty"`
 }
 
 type Question struct {

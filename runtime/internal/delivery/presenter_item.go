@@ -124,7 +124,7 @@ func presentContent(block transcript.ContentBlock) protocol.ContentBlock {
 	if err != nil {
 		panic("delivery: " + err.Error())
 	}
-	return protocol.ContentBlock{Type: encoded.kind, Text: encoded.text, Mime: encoded.mime, Data: encoded.data}
+	return encoded
 }
 
 func presentQuestion(question transcript.Question) protocol.Question {

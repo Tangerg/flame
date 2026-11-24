@@ -72,6 +72,9 @@ func (p AgentMessageBody) validate(status ItemStatus, _ time.Time) error {
 	if !p.Phase.Valid() {
 		return fmt.Errorf("transcript: unknown AgentMessage phase %q", p.Phase)
 	}
+	if slices.ContainsFunc(p.Content, func(block ContentBlock) bool { return block.Kind == ReferenceContent }) {
+		return errors.New("transcript: only the user attaches references")
+	}
 	return validateMessageContent(p.Content)
 }
 

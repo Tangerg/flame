@@ -13,6 +13,7 @@ function unitVoice(unit: MessageRenderUnit): UnitVoice {
     case "approval":
     case "question":
     case "image":
+    case "reference":
       return "panel";
   }
 }

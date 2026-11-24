@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import * as stylex from "@stylexjs/stylex";
 import { TextArea } from "@flame/ui";
 import {
+  type ComposerDraftReference,
   type ComposerImageAttachment,
   type PastedText,
 } from "@/features/composer/public/attachments";
@@ -19,6 +20,17 @@ const LONG_IMAGE_NAME =
 const LONG_REFERENCE =
   "apps/web/src/features/composer/ui/composer-attachment-tray-layout-with-a-long-referenced-file-name.tsx";
 const NO_PASTES: readonly PastedText[] = [];
+const SLIDE_REFERENCE: ComposerDraftReference = {
+  id: "sample-reference",
+  label: "Quarterly business review · Slide 4 · Revenue by region and quarter",
+  text: [
+    "Flame deliverable selection",
+    'Document: "Quarterly business review" (doc_1)',
+    "Revision: rev_12",
+    "Slide 4: slide_4",
+    'Element "Revenue by region and quarter" (chart): slide4:7',
+  ].join("\n"),
+};
 
 function ignorePaste() {}
 
@@ -34,6 +46,9 @@ export function AttachmentsExample({ variant, locale, observe }: LabExampleProps
     scenario.id === "reference"
       ? []
       : [{ id: "sample-image", status: scenario.id, name: LONG_IMAGE_NAME }],
+  );
+  const [references, setReferences] = useState<readonly ComposerDraftReference[]>(() =>
+    scenario.id === "reference" ? [SLIDE_REFERENCE] : [],
   );
   const changeValue = (next: string) => {
     setValue(next);
@@ -52,6 +67,11 @@ export function AttachmentsExample({ variant, locale, observe }: LabExampleProps
           onRemovePaste={ignorePaste}
           onEditPaste={() => false}
           onRestorePaste={ignorePaste}
+          references={references}
+          onRemoveReference={(id) => {
+            setReferences((current) => current.filter((reference) => reference.id !== id));
+            observe("composer.attachment.remove", "reference");
+          }}
           composerInput={input}
         />
         <TextArea

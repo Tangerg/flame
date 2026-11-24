@@ -4,9 +4,21 @@ interface ComposerDraftImage {
   readonly name?: string;
 }
 
+// The producer wrote the label people see and the text the model receives; the
+// draft only carries a reference until it is sent or removed.
+export interface ComposerReference {
+  readonly label: string;
+  readonly text: string;
+}
+
+export interface ComposerDraftReference extends ComposerReference {
+  readonly id: string;
+}
+
 export interface ComposerDraftInput {
   text: string;
   images?: readonly ComposerDraftImage[];
+  references?: readonly ComposerReference[];
 }
 
 export interface ComposerImage extends ComposerDraftImage {

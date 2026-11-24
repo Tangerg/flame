@@ -157,9 +157,16 @@ export interface CapturedToolInteraction {
 
 // The Composer draft current when the context was captured. Appending only
 // edits that draft; the user still owns sending it.
+export interface ComposerReference {
+  /** One line naming what the user pointed at. */
+  readonly label: string;
+  /** What the model receives: the exact object, version and position. */
+  readonly text: string;
+}
+
 export interface CapturedComposer {
   // False when another Session's draft has replaced the captured one.
-  append(text: string): boolean;
+  addReference(reference: ComposerReference): boolean;
 }
 
 export interface SaveFileRequest {

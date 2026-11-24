@@ -7,7 +7,11 @@ import {
   type PointerEvent,
   type ReactNode,
 } from "react";
-import { failureText, type Translate } from "@flame/component-sdk";
+import {
+  failureText,
+  type ComposerReference,
+  type Translate,
+} from "@flame/component-sdk";
 import {
   Badge,
   Button,
@@ -116,8 +120,17 @@ function selectionReference(
   document: DocumentRead,
   slide: SlideView,
   element: ElementView | undefined,
-): string {
-  return [
+  t: Translate,
+): ComposerReference {
+  const name = [
+    document.document.title,
+    t("slides.slide", { number: slide.number }),
+    ...(element ? [label(element, t)] : []),
+  ]
+    .join(" · ")
+    .replace(/\s+/gu, " ")
+    .trim();
+  const text = [
     "Flame deliverable selection",
     `Document: ${JSON.stringify(document.document.title)} (${document.document.id})`,
     `Revision: ${document.revision.id}`,
@@ -129,6 +142,7 @@ function selectionReference(
       : []),
     "Read this exact revision with the Deliverables slides tool and carry its current values as expect when editing.",
   ].join("\n");
+  return { label: name, text };
 }
 
 function editableTarget(event: KeyboardEvent): boolean {
@@ -1129,12 +1143,12 @@ export function SlideStudio({
   const composer = state.context.composer;
   // Hosts without a Composer collaborator still let the user carry the
   // reference by hand.
-  const hand = (reference: string) => {
+  const hand = (reference: ComposerReference) => {
     if (composer) {
-      setHandoff(composer.append(`${reference}\n\n`) ? "handed" : "stale");
+      setHandoff(composer.addReference(reference) ? "handed" : "stale");
       return;
     }
-    void copyText(reference).then((done) =>
+    void copyText(reference.text).then((done) =>
       setHandoff(done ? "copied" : "failed"),
     );
   };
@@ -1193,7 +1207,7 @@ export function SlideStudio({
       disabled={dirty || !savedSlide || (element !== undefined && !original)}
       onClick={() => {
         if (savedSlide)
-          hand(selectionReference(document, savedSlide, original));
+          hand(selectionReference(document, savedSlide, original, t));
       }}
     >
       {t(composer ? "slides.handoff" : "slides.reference")}

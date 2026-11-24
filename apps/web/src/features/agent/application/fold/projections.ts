@@ -19,6 +19,7 @@ import {
 import { type ToolCall, type ToolCallStatus } from "@/features/agent/public/sessionView";
 import { builtinToolName } from "@/features/agent/domain/toolCategory";
 import { type AgentFoldSource } from "@/features/agent/application/fold/source";
+import { type AgentInputPart } from "@/features/agent/domain/input";
 export function itemStartedAt(item: AgentItem): string {
   return item.type === "toolCall" ? item.startedAt : item.createdAt;
 }
@@ -36,10 +37,24 @@ export function contentText(blocks: AgentMessagePart[] | undefined): string {
     .join("");
 }
 
+export function agentInputMessagePart(part: AgentInputPart): AgentMessagePart {
+  switch (part.kind) {
+    case "text":
+      return { type: "text", text: part.text };
+    case "image":
+      return { type: "image", mime: part.mime, data: part.data };
+    case "reference":
+      return { type: "reference", label: part.label, text: part.text };
+  }
+}
+
 export function userContentBlocks(content: AgentMessagePart[]): ContentBlock[] {
   const blocks: ContentBlock[] = [];
   const text = contentText(content);
   if (text) blocks.push({ kind: "text", text, status: "complete" });
+  for (const b of content) {
+    if (b.type === "reference") blocks.push({ kind: "reference", label: b.label, text: b.text });
+  }
   for (const b of content) {
     if (b.type === "image") blocks.push({ kind: "image", mime: b.mime, data: b.data });
   }

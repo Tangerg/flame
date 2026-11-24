@@ -90,7 +90,7 @@ func retainedItemBytes(item transcript.Item) int {
 func retainedContentBytes(content []transcript.ContentBlock) int {
 	bytes := cap(content) * retainedSliceEntryBytes
 	for _, block := range content {
-		bytes += len(block.Text) + len(block.MediaType) + cap(block.Bytes)
+		bytes += len(block.Text) + len(block.MediaType) + cap(block.Bytes) + len(block.Label)
 	}
 	return bytes
 }

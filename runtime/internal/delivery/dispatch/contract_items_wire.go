@@ -69,6 +69,7 @@ func registerItemUnions(s *Shapes) {
 		Variants: []VariantSpec{
 			{Tag: string(protocol.ContentBlockText), Required: []string{"text"}},
 			{Tag: string(protocol.ContentBlockImage), Required: []string{"mime", "data"}},
+			{Tag: string(protocol.ContentBlockReference), Required: []string{"label", "text"}},
 		},
 	})
 

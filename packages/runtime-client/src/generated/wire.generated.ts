@@ -460,9 +460,10 @@ export interface ConfigurePluginRequest {
 
 export type ContentBlock =
   | { type: "text"; text: string }
-  | { type: "image"; data: string; mime: string };
+  | { type: "image"; data: string; mime: string }
+  | { type: "reference"; label: string; text: string };
 
-export type ContentBlockType = "text" | "image";
+export type ContentBlockType = "text" | "image" | "reference";
 
 export interface ContributionSource {
   contribution: string;
@@ -2586,7 +2587,7 @@ export const WIRE_ENUMS = {
   ChangeStatus: ["added", "deleted", "modified", "moved"],
   ComponentPlacement: ["workspaceChangesAction", "sharedClientEffect", "export", "workspaceView", "settingsPane", "clientEffect", "messageAction", "sessionAction", "fileRenderer", "toolResultRenderer"],
   ComponentScope: ["installation", "workspace", "session", "client", "file", "toolResult"],
-  ContentBlockType: ["text", "image"],
+  ContentBlockType: ["text", "image", "reference"],
   DiffBaselineType: ["head", "mergeBase", "emptyTree"],
   DiffFormat: ["rows", "raw", "visual"],
   DiffMode: ["worktree", "base"],

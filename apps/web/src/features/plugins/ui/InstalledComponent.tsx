@@ -15,6 +15,7 @@ import { failureDiagnostics } from "@/lib/diagnostics";
 import {
   type CapturedFile,
   type CapturedComposer,
+  type ComposerReference,
   type CapturedProject,
   type CapturedSession,
   type CapturedToolResult,
@@ -166,12 +167,14 @@ type CapturedContext = Omit<ComponentContext, "locale" | "compose">;
 // The draft is captured with the context, so a later Session switch cannot
 // redirect a component's text into another conversation.
 function captureComposer(composer: ComposerAccess, signal: AbortSignal): CapturedComposer {
-  const append = composer.captureAppendText();
+  const add = composer.captureAddReference();
   return Object.freeze({
-    append(text: string) {
+    addReference({ label, text }: ComposerReference) {
       signal.throwIfAborted();
-      if (!text.trim()) throw new Error("Composer text is empty.");
-      return append(text);
+      if (!label.trim() || /[\r\n]/.test(label))
+        throw new Error("Reference label must be one line.");
+      if (!text.trim()) throw new Error("Reference text is empty.");
+      return add({ label, text });
     },
   });
 }

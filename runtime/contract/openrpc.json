@@ -8939,6 +8939,7 @@
       "ContentBlock": {
         "properties": {
           "data": {},
+          "label": {},
           "mime": {},
           "text": {},
           "type": {}

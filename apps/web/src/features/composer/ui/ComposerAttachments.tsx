@@ -3,6 +3,7 @@ import * as stylex from "@stylexjs/stylex";
 import { type RefObject, useRef, useState } from "react";
 import { cn } from "@/lib/classNames";
 import {
+  type ComposerDraftReference,
   type ComposerImage,
   type ComposerImageAttachment,
   type PastedText,
@@ -10,7 +11,7 @@ import {
 import { AnimatePresence, motion } from "motion/react";
 import { chipPresence } from "@/lib/motion";
 import { Chip } from "@/ui/index";
-import { LightboxDialog, ButtonPrimitive } from "@flame/ui";
+import { LightboxDialog, ButtonPrimitive, ModalDialog } from "@flame/ui";
 
 import { TextEditorDialog } from "@/ui/index";
 import { reveal } from "@/ui/index";
@@ -18,6 +19,7 @@ import { IconButton } from "@flame/ui";
 import { Icon } from "@/ui/icons/index";
 import { useT } from "@/lib/i18n/index";
 import { composerStyles } from "@/features/composer/ui/composerStyles";
+import { face, type as typeStep } from "@flame/ui/tokens.stylex";
 interface Props {
   images: readonly ComposerImageAttachment[];
   pastes: readonly PastedText[];
@@ -25,6 +27,8 @@ interface Props {
   onRemovePaste: (id: string) => void;
   onEditPaste: (id: string, text: string) => boolean;
   onRestorePaste: (id: string, text: string) => void;
+  references: readonly ComposerDraftReference[];
+  onRemoveReference: (id: string) => void;
   composerInput: RefObject<HTMLElement | null>;
 }
 
@@ -35,6 +39,8 @@ export function ComposerAttachments({
   onRemovePaste,
   onEditPaste,
   onRestorePaste,
+  references,
+  onRemoveReference,
   composerInput,
 }: Props) {
   const t = useT();
@@ -44,6 +50,10 @@ export function ComposerAttachments({
   };
   const removePaste = (id: string) => {
     onRemovePaste(id);
+    composerInput.current?.focus();
+  };
+  const removeReference = (id: string) => {
+    onRemoveReference(id);
     composerInput.current?.focus();
   };
   const imageStatus = (image: ComposerImageAttachment) =>
@@ -60,9 +70,21 @@ export function ComposerAttachments({
       <span role="status" className="sr-only">
         {images.map(imageStatus).join(". ")}
       </span>
-      {(images.length > 0 || pastes.length > 0) && (
+      {(images.length > 0 || pastes.length > 0 || references.length > 0) && (
         <div data-slot="composer-attachments" {...stylex.props(composerStyles.tray)}>
           <AnimatePresence initial={false}>
+            {references.map((reference) => (
+              <motion.div
+                key={reference.id}
+                {...chipPresence}
+                {...stylex.props(composerStyles.attachment)}
+              >
+                <ReferenceChip
+                  reference={reference}
+                  onRemove={() => removeReference(reference.id)}
+                />
+              </motion.div>
+            ))}
             {images.map((image) => (
               <motion.div
                 key={image.id}
@@ -139,6 +161,43 @@ function ImageThumb({ image, onRemove }: { image: ComposerImage; onRemove: () =>
         className={stylex.props(reveal.shown, composerStyles.thumbRemove).className}
       />
     </div>
+  );
+}
+
+// Opening a reference shows exactly what the model will receive; only removing
+// it changes the draft, because its producer owns what it points at.
+function ReferenceChip({
+  reference,
+  onRemove,
+}: {
+  reference: ComposerDraftReference;
+  onRemove: () => void;
+}) {
+  const t = useT();
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <Chip
+        icon="crosshair"
+        kind="attached"
+        title={t("composer.reference.review")}
+        onOpen={() => setOpen(true)}
+        onClose={onRemove}
+        closeLabel={t("composer.reference.remove")}
+      >
+        {reference.label}
+      </Chip>
+      <ModalDialog
+        open={open}
+        onOpenChange={setOpen}
+        icon={<Icon name="crosshair" size="md" />}
+        title={reference.label}
+        closeLabel={t("common.close")}
+        bodyStyles={[composerStyles.referenceText, face.mono, typeStep.code]}
+      >
+        {reference.text}
+      </ModalDialog>
+    </>
   );
 }
 

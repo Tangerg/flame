@@ -131,7 +131,8 @@ and delegating item relationships.
 Message text, non-redacted reasoning and compaction summaries use literal recorded
 prose. Expanded records show their identity facts, notices and complete JSON
 entry before the body, so long content cannot bury its source or evidence action.
-Message content keeps its text and image order. When a readable body is present,
+Message content keeps its text, reference and image order; a reference reads as
+its label above the text the model received. When a readable body is present,
 complete JSON remains available under Recorded evidence; structured records keep
 primary JSON evidence. Both projections use the same redacted evidence, preserving
 unknown fields while omitting redacted reasoning text.
