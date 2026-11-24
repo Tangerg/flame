@@ -32,10 +32,10 @@
         "zh": "会话轨迹",
         "zh-TW": "工作階段軌跡",
         "de": "Sitzungsverlauf",
-        "fr": "Parcours de la session",
-        "es": "Trayectoria de sesión",
-        "ja": "セッションの軌跡",
-        "ko": "세션 기록"
+        "fr": "Trajectoire de la session",
+        "es": "Trayectoria de la sesión",
+        "ja": "セッション履歴",
+        "ko": "세션 궤적"
       },
       "scope": "session",
       "placement": "workspaceView",

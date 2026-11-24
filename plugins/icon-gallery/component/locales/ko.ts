@@ -1,5 +1,5 @@
 export const ko: Record<string, string> = {
-  "panel.title": "Flame 아이콘 갤러리",
+  "panel.title": "아이콘 갤러리",
   "filters.label": "아이콘 필터",
   "filter.label": "아이콘 필터링",
   "filter.placeholder": "이름 또는 카테고리",

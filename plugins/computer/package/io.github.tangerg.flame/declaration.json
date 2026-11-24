@@ -50,11 +50,11 @@
       "id": "computer",
       "title": "Computer use",
       "localizedTitles": {
-        "zh": "计算机操作",
-        "zh-TW": "電腦操作",
+        "zh": "电脑控制",
+        "zh-TW": "電腦控制",
         "de": "Computersteuerung",
-        "fr": "Contrôle de l’ordinateur",
-        "es": "Control del ordenador",
+        "fr": "Utilisation de l’ordinateur",
+        "es": "Uso del ordenador",
         "ja": "コンピューター操作",
         "ko": "컴퓨터 제어"
       },

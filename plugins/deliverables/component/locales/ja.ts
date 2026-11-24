@@ -1,7 +1,7 @@
 import type { en } from "./en";
 
 export const ja = {
-  "panel.title": "成果物の作成・納品",
+  "panel.title": "成果物",
   "panel.controls": "成果物の操作",
   refresh: "更新",
   reading: "読み込み中…",

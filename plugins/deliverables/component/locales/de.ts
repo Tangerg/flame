@@ -1,7 +1,7 @@
 import type { en } from "./en";
 
 export const de = {
-  "panel.title": "Professionelle Arbeitsergebnisse",
+  "panel.title": "Arbeitsergebnisse",
   "panel.controls": "Aktionen für Arbeitsergebnisse",
   refresh: "Aktualisieren",
   reading: "Wird geladen…",

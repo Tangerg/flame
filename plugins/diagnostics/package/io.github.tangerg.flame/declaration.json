@@ -3,11 +3,11 @@
   "components": [
     {
       "id": "diagnostics",
-      "title": "Diagnostics",
+      "title": "Client diagnostics",
       "localizedTitles": {
         "zh": "客户端诊断",
         "zh-TW": "用戶端診斷",
-        "de": "Clientdiagnose",
+        "de": "Client-Diagnose",
         "fr": "Diagnostic du client",
         "es": "Diagnóstico del cliente",
         "ja": "クライアント診断",

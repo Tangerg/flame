@@ -1,5 +1,5 @@
 export const zh: Record<string, string> = {
-  "panel.title": "Flame 图标库",
+  "panel.title": "图标库",
   "filters.label": "图标筛选",
   "filter.label": "筛选图标",
   "filter.placeholder": "名称或分类",

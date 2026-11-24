@@ -1,5 +1,5 @@
 export const zhTW: Record<string, string> = {
-  "panel.title": "Flame 圖示庫",
+  "panel.title": "圖示庫",
   "filters.label": "圖示篩選",
   "filter.label": "篩選圖示",
   "filter.placeholder": "名稱或分類",

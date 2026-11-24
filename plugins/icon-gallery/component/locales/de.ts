@@ -1,5 +1,5 @@
 export const de: Record<string, string> = {
-  "panel.title": "Flame-Symbolgalerie",
+  "panel.title": "Symbolgalerie",
   "filters.label": "Symbolfilter",
   "filter.label": "Symbole filtern",
   "filter.placeholder": "Name oder Kategorie",

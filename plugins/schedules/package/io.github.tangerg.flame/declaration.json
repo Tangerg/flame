@@ -14,13 +14,13 @@
       "id": "schedules",
       "title": "Schedules",
       "localizedTitles": {
-        "zh": "计划任务",
-        "zh-TW": "排程工作",
+        "zh": "定时任务",
+        "zh-TW": "排程",
         "de": "Zeitpläne",
-        "fr": "Tâches planifiées",
-        "es": "Tareas programadas",
+        "fr": "Planifications",
+        "es": "Programaciones",
         "ja": "スケジュール",
-        "ko": "예약 작업"
+        "ko": "스케줄"
       },
       "scope": "client",
       "placement": "workspaceView",

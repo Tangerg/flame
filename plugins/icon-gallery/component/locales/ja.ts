@@ -1,5 +1,5 @@
 export const ja: Record<string, string> = {
-  "panel.title": "Flame アイコンギャラリー",
+  "panel.title": "アイコンギャラリー",
   "filters.label": "アイコンの絞り込み",
   "filter.label": "アイコンを絞り込む",
   "filter.placeholder": "名前またはカテゴリ",
