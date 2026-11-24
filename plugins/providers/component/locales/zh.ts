@@ -55,8 +55,8 @@ export const zh: Record<string, string> = {
   "providers.setup.done": "提供方已就绪。关闭设置即可返回——你的草稿仍在。",
   "providers.roles.heading": "模型角色",
   "rpcError.invalid_credentials":
-    "提供方拒绝了该 API key —— 请在提供方设置里检查。",
-  "rpcError.timeout": "请求模型提供方超时 —— 检查网络后重试。",
+    "提供方拒绝了该 API 密钥——请在提供方设置里检查。",
+  "rpcError.timeout": "请求模型提供方超时——检查网络后重试。",
   title: "模型提供方",
   cancel: "取消",
   reading: "加载中",
