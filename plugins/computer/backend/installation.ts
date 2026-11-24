@@ -27,6 +27,104 @@ const appSchema = z.object({
   version: z.string().min(1).max(200),
 });
 
+const SUPPORTED_HOSTS: Partial<Record<NodeJS.Platform, readonly string[]>> = {
+  linux: ["arm64", "x64"],
+  darwin: ["arm64"],
+};
+
+function assertSupportedHost(platform: NodeJS.Platform, arch: string): void {
+  if (!SUPPORTED_HOSTS[platform]?.includes(arch))
+    throw new InstallationError(
+      "direct CUA supports macOS arm64 and Linux arm64/x64 with X11",
+    );
+}
+
+function isMissingEntry(cause: unknown): boolean {
+  return (
+    cause instanceof InstallationError &&
+    (cause.cause as NodeJS.ErrnoException | undefined)?.code === "ENOENT"
+  );
+}
+
+// Codex ships its tools either beside the resources or under codex-cli/bin;
+// exactly one complete layout keeps the executable that is run unambiguous.
+function codexToolLayout(
+  application: string,
+  resources: string,
+): { codex: string; host: string } {
+  const layouts: { codex: string; host: string }[] = [];
+  for (const directory of [resources, join(resources, "codex-cli/bin")]) {
+    try {
+      const codex = regular(application, join(directory, "codex"), true);
+      const host = regular(
+        application,
+        join(directory, "codex-code-mode-host"),
+        true,
+      );
+      layouts.push({ codex, host });
+    } catch (cause) {
+      if (!isMissingEntry(cause)) throw cause;
+    }
+  }
+  if (layouts.length !== 1)
+    throw new InstallationError(
+      "application must contain one complete Codex tool layout",
+    );
+  return layouts[0]!;
+}
+
+const REQUIRED_CUA_TOOLS = ["js", "js_reset", "turn_ended"] as const;
+
+function assertControlSurface(application: string, resources: string): void {
+  const declaration = regular(
+    application,
+    join(
+      resources,
+      "plugins/openai-bundled/plugins/unified-computer-use/.mcp.json",
+    ),
+  );
+  const declared = JSON.parse(readBounded(declaration).toString("utf8"));
+  const enabled: unknown = declared?.mcpServers?.cua_repl?.enabled_tools;
+  if (
+    !Array.isArray(enabled) ||
+    !REQUIRED_CUA_TOOLS.every((name) => enabled.includes(name))
+  )
+    throw new InstallationError(
+      "application does not declare the required CUA control surface",
+    );
+}
+
+// macOS runs the signed Sky service bundle; both it and the application must
+// carry their expected signing identities.
+async function darwinNative(
+  application: string,
+  modules: string,
+  service: string,
+  signal: AbortSignal,
+): Promise<NonNullable<Installation["native"]>> {
+  const bundle = join(modules, "@oai/sky/Codex Computer Use.app");
+  const client = regular(
+    application,
+    join(modules, "@oai/sky/dist/project/cua/sky_js/src/targets/mac/client.js"),
+  );
+  const helper = regular(
+    application,
+    join(
+      bundle,
+      "Contents/SharedSupport/SkyComputerUseClient.app/Contents/MacOS/SkyComputerUseClient",
+    ),
+    true,
+  );
+  regular(application, join(application, "Contents/Info.plist"));
+  regular(
+    application,
+    join(application, "Contents/_CodeSignature/CodeResources"),
+  );
+  await verifyBundle(application, "com.openai.codex", signal);
+  await verifyBundle(bundle, "com.openai.sky.CUAService", signal);
+  return { service, client, helper, bundle };
+}
+
 export class InstallationError extends Error {
   constructor(message: string, cause?: unknown) {
     super(`computer: ${message}`, { cause });
@@ -341,13 +439,7 @@ export class Installation {
     signal.throwIfAborted();
     const platform = process.platform;
     const arch = process.arch;
-    if (!(
-      (platform === "linux" && (arch === "arm64" || arch === "x64")) ||
-      (platform === "darwin" && arch === "arm64")
-    ))
-      throw new InstallationError(
-        "direct CUA supports macOS arm64 and Linux arm64/x64 with X11",
-      );
+    assertSupportedHost(platform, arch);
     if (!isAbsolute(path))
       throw new InstallationError("CUA application path must be absolute");
     try {
@@ -391,79 +483,14 @@ export class Installation {
         application,
         join(modules, "@oai/sky/dist/project/cua/sky_js/src/service.js"),
       );
-      const tools: { codex: string; host: string }[] = [];
-      for (const directory of [resources, join(resources, "codex-cli/bin")]) {
-        try {
-          const codex = regular(application, join(directory, "codex"), true);
-          const host = regular(
-            application,
-            join(directory, "codex-code-mode-host"),
-            true,
-          );
-          tools.push({ codex, host });
-        } catch (cause) {
-          if (
-            !(cause instanceof InstallationError) ||
-            !(
-              (cause.cause as NodeJS.ErrnoException | undefined)?.code ===
-              "ENOENT"
-            )
-          )
-            throw cause;
-        }
-      }
-      if (tools.length !== 1)
-        throw new InstallationError(
-          "application must contain one complete Codex tool layout",
-        );
-      const toolsEntry = tools[0]!;
-      const originalDeclaration = regular(
-        application,
-        join(
-          resources,
-          "plugins/openai-bundled/plugins/unified-computer-use/.mcp.json",
-        ),
-      );
-      const declared = JSON.parse(
-        readBounded(originalDeclaration).toString("utf8"),
-      );
-      if (
-        !["js", "js_reset", "turn_ended"].every((name) =>
-          declared?.mcpServers?.cua_repl?.enabled_tools?.includes(name),
-        )
-      )
-        throw new InstallationError(
-          "application does not declare the required CUA control surface",
-        );
+      const toolsEntry = codexToolLayout(application, resources);
+      assertControlSurface(application, resources);
       const archive = regular(application, join(resources, "app.asar"));
       const metadata = appMetadata(archive);
-      let native: Installation["native"];
-      if (platform === "darwin") {
-        const bundle = join(modules, "@oai/sky/Codex Computer Use.app");
-        const client = regular(
-          application,
-          join(
-            modules,
-            "@oai/sky/dist/project/cua/sky_js/src/targets/mac/client.js",
-          ),
-        );
-        const helper = regular(
-          application,
-          join(
-            bundle,
-            "Contents/SharedSupport/SkyComputerUseClient.app/Contents/MacOS/SkyComputerUseClient",
-          ),
-          true,
-        );
-        regular(application, join(application, "Contents/Info.plist"));
-        regular(
-          application,
-          join(application, "Contents/_CodeSignature/CodeResources"),
-        );
-        await verifyBundle(application, "com.openai.codex", signal);
-        await verifyBundle(bundle, "com.openai.sky.CUAService", signal);
-        native = { service: sky, client, helper, bundle };
-      }
+      const native =
+        platform === "darwin"
+          ? await darwinNative(application, modules, sky, signal)
+          : undefined;
       signal.throwIfAborted();
       const installation = new Installation({
         application,
