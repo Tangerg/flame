@@ -46,7 +46,7 @@ func TestRuntimeHookTrustAndRevocationSurviveRestart(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if result.ProjectRoot == "" || result.ProjectTrusted != trusted || len(result.Hooks) != 2 {
+		if result.RepositoryRoot == "" || result.RepositoryTrusted != trusted || len(result.Hooks) != 2 {
 			t.Fatalf("ListHooks = %+v, want global and project hooks with trust %v", result, trusted)
 		}
 		for _, hook := range result.Hooks {
@@ -54,7 +54,7 @@ func TestRuntimeHookTrustAndRevocationSurviveRestart(t *testing.T) {
 				t.Fatalf("hook = %+v, want active %v", hook, want)
 			}
 		}
-		return result.ProjectRoot
+		return result.RepositoryRoot
 	}
 	root := inspect(false)
 	for _, change := range []struct {
@@ -65,7 +65,7 @@ func TestRuntimeHookTrustAndRevocationSurviveRestart(t *testing.T) {
 		{trusted: false, key: "revoke-project-hooks"},
 	} {
 		if err := current.SetHookTrust(t.Context(), protocol.SetHookTrustRequest{
-			ProjectRoot: root, Trusted: change.trusted,
+			RepositoryRoot: root, Trusted: change.trusted,
 		}, protocol.CommandOptions{IdempotencyKey: change.key}); err != nil {
 			t.Fatal(err)
 		}

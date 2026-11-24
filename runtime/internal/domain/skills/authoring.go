@@ -49,13 +49,13 @@ var proposalRevisionPattern = regexp.MustCompile(ProposalRevisionPattern)
 type Scope string
 
 const (
-	ScopeProject Scope = Scope(skill.Project)
+	ScopeRepository Scope = Scope(skill.Repository)
 	ScopeUser    Scope = Scope(skill.User)
 )
 
 func (s Scope) Validate() error {
 	switch s {
-	case ScopeProject, ScopeUser:
+	case ScopeRepository, ScopeUser:
 		return nil
 	default:
 		return fmt.Errorf("skills: invalid scope %q", s)

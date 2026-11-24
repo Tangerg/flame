@@ -54,7 +54,7 @@ func TestSkillDiscoveryRestoresOriginalReleaseAndRefusesForeignWorkspace(t *test
 	r = reopenPluginRuntime(t, r, &cfg)
 	waitCallContributorState(t, r, first.ID, protocol.MCPServerConnected)
 	withNewReader := original
-	withNewReader.Items = append(withNewReader.Items, skilllearning.Candidate{Name: "verify", Scope: skill.Project, Source: "project"})
+	withNewReader.Items = append(withNewReader.Items, skilllearning.Candidate{Name: "verify", Scope: skill.Repository, Source: "repository"})
 	restore := &promptsource.SkillCapture{Restore: true, Command: capture.Command}
 	got, err := consumer().Discover(t.Context(), withNewReader, restore)
 	if err != nil || !reflect.DeepEqual(got, result) || !restore.Activation.Equal(capture.Activation) {
@@ -70,7 +70,7 @@ func TestSkillDiscoveryRestoresOriginalReleaseAndRefusesForeignWorkspace(t *test
 		t.Fatal("replacement supplied an original capture")
 	}
 	fresh, err := consumer().Discover(t.Context(), withNewReader, nil)
-	if err != nil || len(fresh.Entries) != 1 || fresh.Entries[0].Source != "project" {
+	if err != nil || len(fresh.Entries) != 1 || fresh.Entries[0].Source != "repository" {
 		t.Fatalf("new discovery did not go to selected provider: %+v %v", fresh, err)
 	}
 }

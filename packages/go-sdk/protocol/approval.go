@@ -16,7 +16,7 @@ type ApprovalRuleScope string
 
 const (
 	ApprovalRuleScopeSession ApprovalRuleScope = "session"
-	ApprovalRuleScopeProject ApprovalRuleScope = "project"
+	ApprovalRuleScopeWorkspace ApprovalRuleScope = "workspace"
 	ApprovalRuleScopeGlobal  ApprovalRuleScope = "global"
 )
 

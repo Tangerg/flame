@@ -2,6 +2,7 @@ export const ko: Record<string, string> = {
   "panel.title": "Agent 메모리",
   "scope.user": "사용자 메모리",
   "scope.project": "프로젝트 메모리",
+  "scope.folder": "폴더 메모리",
   "scope.none":
     "작업 공간이 있는 세션을 선택하거나 사용자 메모리를 선택하세요.",
   "nav.label": "메모리 탐색",
@@ -10,6 +11,7 @@ export const ko: Record<string, string> = {
   edit: "메모리 편집",
   "segment.label": "메모리 범위",
   "segment.project": "현재 프로젝트",
+  "segment.folder": "현재 폴더",
   "segment.user": "사용자",
   "controls.label": "메모리 컨트롤",
   "search.label": "이 페이지 검색",
@@ -40,6 +42,7 @@ export const ko: Record<string, string> = {
   save: "저장",
   "command.delete": "{{id}} 삭제",
   "command.add.project": "프로젝트 메모리 추가",
+  "command.add.folder": "폴더 메모리 추가",
   "command.add.user": "사용자 메모리 추가",
   "command.edit": "{{id}} 편집",
   "command.approve": "{{id}} 승인",

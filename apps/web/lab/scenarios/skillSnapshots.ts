@@ -19,7 +19,7 @@ export const VISUAL_SKILL_DOCUMENTS: SkillDetail[] = [
   {
     name: "runtime-boundaries",
     description: "Keep durable decisions with their Runtime owner.",
-    scope: "project",
+    scope: "repository",
     path: "/Users/visual/scope/.flame/skills/runtime-boundaries/SKILL.md",
     revision: "2".repeat(64),
     instructions: [
@@ -48,7 +48,7 @@ export const VISUAL_LONG_SKILL_DOCUMENTS: SkillDetail[] = Array.from(
       description: project
         ? `Review Runtime ownership boundary ${index}.`
         : `Review workspace projection ${index}.`,
-      scope: project ? "project" : "user",
+      scope: project ? "repository" : "user",
       path: project
         ? `${VISUAL_WORKSPACE_PATH}/.flame/skills/${name}/SKILL.md`
         : `/Users/visual/.flame/skills/${name}/SKILL.md`,
@@ -81,7 +81,7 @@ export const VISUAL_SKILL_PROPOSALS: Page<SkillProposal> = {
     {
       name: "risk-first-review",
       description: "Proposed review instructions.",
-      scope: "project",
+      scope: "repository",
       origin: "requested",
       revises: true,
       revision: "3".repeat(64),
@@ -91,7 +91,7 @@ export const VISUAL_SKILL_PROPOSALS: Page<SkillProposal> = {
     {
       name: "release-notes",
       description: "Summarize verified product behavior.",
-      scope: "project",
+      scope: "repository",
       origin: "mined",
       revises: false,
       revision: "4".repeat(64),

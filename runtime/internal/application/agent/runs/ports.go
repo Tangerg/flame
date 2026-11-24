@@ -224,5 +224,5 @@ type ExecutionContinuation struct {
 }
 
 type isolationProvider interface {
-	Workspace(ctx context.Context, sessionID identity.SessionID, projectRoot string) (string, error)
+	Workspace(ctx context.Context, sessionID identity.SessionID, repositoryRoot string) (string, error)
 }

@@ -67,7 +67,7 @@ func (t *ToolAuthorizer) AuthorizeTool(
 		}
 		decision, matched, err := t.policy.Decide(ctx, approval.Query{
 			SessionID:  request.SessionID,
-			ProjectDir: request.WorkspaceCWD,
+			WorkspaceDir: request.WorkspaceCWD,
 			Tool:       request.Tool, SourceFingerprint: request.SourceFingerprint,
 			Subject: subject,
 		})

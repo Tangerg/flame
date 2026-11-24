@@ -3,7 +3,7 @@ package skill
 type Scope string
 
 const (
-	Project      Scope = "project"
+	Repository   Scope = "repository"
 	User         Scope = "user"
 	Installation Scope = "installation"
 )

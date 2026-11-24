@@ -3,7 +3,7 @@
     "name": "flame.hooks/discover.v1",
     "kind": "query",
     "target": "installation",
-    "description": "Read ordered lifecycle rules. Exclude all project configuration when the Runtime has not admitted its trust.",
+    "description": "Read ordered lifecycle rules. Exclude all repository configuration when the Runtime has not admitted its trust.",
     "input": "schema.json#/$defs/DiscoverV1Input",
     "output": "schema.json#/$defs/DiscoverV1Output"
   },

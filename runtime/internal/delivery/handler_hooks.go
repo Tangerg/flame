@@ -14,8 +14,8 @@ func (s *Handler) ListHooks(ctx context.Context, in protocol.ListHooksRequest) (
 		return nil, wireWorkspaceError(fmt.Errorf("hooks: inspect: %w", err))
 	}
 	out := &protocol.HooksListResult{
-		ProjectRoot:    insp.ProjectRoot,
-		ProjectTrusted: insp.ProjectTrusted,
+		RepositoryRoot:    insp.RepositoryRoot,
+		RepositoryTrusted: insp.RepositoryTrusted,
 		Hooks:          make([]protocol.HookInfo, 0, len(insp.Hooks)),
 	}
 	for _, resolved := range insp.Hooks {
@@ -71,13 +71,13 @@ func presentHookScope(scope hookdata.Scope) (protocol.HookScope, bool) {
 	switch scope {
 	case hookdata.ScopeGlobal:
 		return protocol.HookScopeGlobal, true
-	case hookdata.ScopeProject:
-		return protocol.HookScopeProject, true
+	case hookdata.ScopeRepository:
+		return protocol.HookScopeRepository, true
 	default:
 		return "", false
 	}
 }
 
 func (s *Handler) SetHookTrust(ctx context.Context, in protocol.SetHookTrustRequest) error {
-	return wireWorkspaceError(s.hooks.SetProjectTrust(ctx, in.ProjectRoot, in.Trusted))
+	return wireWorkspaceError(s.hooks.SetRepositoryTrust(ctx, in.RepositoryRoot, in.Trusted))
 }

@@ -48,7 +48,7 @@ func (a AuthoredWatcher) Watch(
 			MaxBytes: hookdata.MaxConfigurationFileBytes,
 		})
 		for _, scope := range scopes {
-			directories, err := directoriesRootToLeaf(scope.ProjectRoot, scope.Workspace)
+			directories, err := directoriesRootToLeaf(scope.RepositoryRoot, scope.Workspace)
 			if err != nil {
 				return nil, err
 			}
@@ -124,7 +124,7 @@ func (a AuthoredWatcher) directoryFileTargets(
 	for _, scope := range scopes {
 		targets = append(targets, fileobservation.ChildFileTarget{
 			Key:  string(workspaceapp.AuthoredSkills),
-			Path: promptsource.ProjectSkillDir(scope.Workspace), Boundary: scope.Workspace,
+			Path: promptsource.RepositorySkillDir(scope.Workspace), Boundary: scope.Workspace,
 			FileName: skillspec.SkillFile, MaxEntries: domainskills.MaxSkillDirectoryEntries,
 			MaxBytes: domainskills.MaxAuthoredSkillDocumentBytes,
 		})
@@ -144,7 +144,7 @@ func directoriesRootToLeaf(root, leaf string) ([]string, error) {
 	leaf = filepath.Clean(leaf)
 	relative, err := filepath.Rel(root, leaf)
 	if err != nil || relative == ".." || strings.HasPrefix(relative, ".."+string(filepath.Separator)) || filepath.IsAbs(relative) {
-		return nil, fmt.Errorf("workspace authored watcher: workspace %q is outside project root %q", leaf, root)
+		return nil, fmt.Errorf("workspace authored watcher: workspace %q is outside repository root %q", leaf, root)
 	}
 	chain := []string{leaf}
 	for current := leaf; current != root; {

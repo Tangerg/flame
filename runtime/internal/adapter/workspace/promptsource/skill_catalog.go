@@ -52,13 +52,13 @@ func (c *candidates) add(name, source string, scope skill.Scope, reader selected
 	return nil
 }
 
-func (c *candidates) directories(ctx context.Context, user, project *SkillSource) error {
+func (c *candidates) directories(ctx context.Context, user, repository *SkillSource) error {
 	for _, layer := range []struct {
 		source *SkillSource
 		origin workspaceapp.SkillSource
 		scope  skill.Scope
 	}{
-		{user, workspaceapp.UserSkillSource(), skill.User}, {project, workspaceapp.ProjectSkillSource(), skill.Project},
+		{user, workspaceapp.UserSkillSource(), skill.User}, {repository, workspaceapp.RepositorySkillSource(), skill.Repository},
 	} {
 		if layer.source == nil {
 			continue

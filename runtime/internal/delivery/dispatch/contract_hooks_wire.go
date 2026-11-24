@@ -42,5 +42,5 @@ func registerHookValues(s *Shapes) {
 			{Field: "timeoutMillis", Kind: ConstraintMaximum, Limit: hookdata.MaxTimeoutMillis},
 		},
 	})
-	nonEmpty[protocol.SetHookTrustRequest](s, "projectRoot")
+	nonEmpty[protocol.SetHookTrustRequest](s, "repositoryRoot")
 }

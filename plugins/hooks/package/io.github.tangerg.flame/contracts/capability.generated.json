@@ -8,7 +8,7 @@
       "name": "flame.hooks/discover.v1",
       "kind": "query",
       "target": "installation",
-      "description": "Read ordered lifecycle rules. Exclude all project configuration when the Runtime has not admitted its trust.",
+      "description": "Read ordered lifecycle rules. Exclude all repository configuration when the Runtime has not admitted its trust.",
       "input": {
         "$defs": {
           "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vaG9va3Byb3ZpZGVy.RGlzY292ZXJ5": {
@@ -20,17 +20,17 @@
               "home": {
                 "type": "string"
               },
-              "includeProject": {
+              "includeRepository": {
                 "type": "boolean"
               },
-              "projectRoot": {
+              "repositoryRoot": {
                 "type": "string"
               }
             },
             "required": [
               "cwd",
-              "projectRoot",
-              "includeProject"
+              "repositoryRoot",
+              "includeRepository"
             ],
             "type": "object"
           }
@@ -44,17 +44,17 @@
           "home": {
             "type": "string"
           },
-          "includeProject": {
+          "includeRepository": {
             "type": "boolean"
           },
-          "projectRoot": {
+          "repositoryRoot": {
             "type": "string"
           }
         },
         "required": [
           "cwd",
-          "projectRoot",
-          "includeProject"
+          "repositoryRoot",
+          "includeRepository"
         ],
         "type": "object"
       },
@@ -104,7 +104,7 @@
                   {
                     "enum": [
                       "global",
-                      "project"
+                      "repository"
                     ]
                   }
                 ],
@@ -189,7 +189,7 @@
                   {
                     "enum": [
                       "global",
-                      "project"
+                      "repository"
                     ]
                   }
                 ],

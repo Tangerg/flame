@@ -294,7 +294,7 @@ type RememberScopeKind string
 
 const (
 	RememberSession RememberScopeKind = "session"
-	RememberProject RememberScopeKind = "project"
+	RememberWorkspace RememberScopeKind = "workspace"
 	RememberGlobal  RememberScopeKind = "global"
 )
 

@@ -24,9 +24,14 @@ object's owner, and the project home is a projection assembled from those reads.
 
 Workspace keeps its meaning: the filesystem root that file Tools, hooks, agent
 documents and approval rules resolve. A Project neither selects nor implies one.
-`projectRoot`, project-level hooks and the `project` approval-rule scope still name
-the repository directory above a workspace, not this aggregate. Rename them when a
-rule or hook first needs to target a Project.
+
+"Project" names only this aggregate. Directory concepts use their own words:
+`repositoryRoot` is the Git repository above a workspace (the workspace itself
+outside one), and hooks, Skills, agent documents and hook trust found there have
+the `repository` scope. An approval rule remembered for the current folder has the
+`workspace` scope because it keys on the Session's workspace path. Memory's
+`project` scope keeps its name: it keys on the Session's Project, and only a
+Session without one falls back to its workspace.
 
 ## Run scope
 
@@ -68,3 +73,9 @@ pre-release data policy an existing data directory is refused; open a fresh one.
 Session export carries no Project, so an imported Session starts unassigned in its
 new Runtime. Memory keeps its storage: directory targets stay valid and Project
 targets use the Project identity.
+
+The vocabulary split renames `projectRoot`, the hook and Skill `project` scope and
+the approval `project` scope across the protocol, storage and CLI preferences
+(`approval.remember: workspace`). Hook trust and approval rules are Runtime schema,
+so the data directory is refused again; trust repositories and remember approval
+rules again in a fresh one.

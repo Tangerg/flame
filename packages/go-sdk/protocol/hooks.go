@@ -36,16 +36,16 @@ type HookScope string
 
 const (
 	HookScopeGlobal  HookScope = "global"
-	HookScopeProject HookScope = "project"
+	HookScopeRepository HookScope = "repository"
 )
 
 type HooksListResult struct {
-	ProjectRoot    string     `json:"projectRoot,omitempty"`
-	ProjectTrusted bool       `json:"projectTrusted"`
+	RepositoryRoot    string     `json:"repositoryRoot,omitempty"`
+	RepositoryTrusted bool       `json:"repositoryTrusted"`
 	Hooks          []HookInfo `json:"hooks"`
 }
 
 type SetHookTrustRequest struct {
-	ProjectRoot string `json:"projectRoot"`
+	RepositoryRoot string `json:"repositoryRoot"`
 	Trusted     bool   `json:"trusted"`
 }

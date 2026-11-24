@@ -15,7 +15,7 @@ func (s *Handler) ResolveWorkspace(_ context.Context, in protocol.ResolveWorkspa
 	if err != nil {
 		return nil, wireWorkspaceError(err)
 	}
-	out := presentWorkspaceInfo(resolved.Path, resolved.ProjectRoot, resolved.Missing)
+	out := presentWorkspaceInfo(resolved.Path, resolved.RepositoryRoot, resolved.Missing)
 	return &out, nil
 }
 
@@ -28,19 +28,19 @@ func (s *Handler) ListWorkspaces(ctx context.Context) (*protocol.Page[protocol.W
 	for _, workspace := range workspaces {
 		lastActiveAt := workspace.LastActiveAt
 		out = append(out, protocol.WorkspaceSummary{
-			Workspace: presentWorkspaceInfo(workspace.Path, workspace.ProjectRoot, workspace.Missing),
+			Workspace: presentWorkspaceInfo(workspace.Path, workspace.RepositoryRoot, workspace.Missing),
 			Name:      workspace.Name, SessionCount: workspace.SessionCount, LastActiveAt: &lastActiveAt,
 		})
 	}
 	return protocol.NewPage(out), nil
 }
 
-func presentWorkspaceInfo(path, projectRoot string, missing bool) protocol.WorkspaceInfo {
+func presentWorkspaceInfo(path, repositoryRoot string, missing bool) protocol.WorkspaceInfo {
 	availability := protocol.WorkspaceAvailable
 	if missing {
 		availability = protocol.WorkspaceMissing
 	}
 	return protocol.WorkspaceInfo{
-		Ref: protocol.WorkspaceRef{Path: path}, ProjectRoot: projectRoot, Availability: availability,
+		Ref: protocol.WorkspaceRef{Path: path}, RepositoryRoot: repositoryRoot, Availability: availability,
 	}
 }

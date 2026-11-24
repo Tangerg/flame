@@ -84,7 +84,7 @@ export const de: Record<string, string> = {
   "action.archive": "Archivieren",
   "proposal.actions": "Vorschlagsaktionen für {{name}}",
   "lifecycle.archived": "Archiviert",
-  "scope.project": "Projekt",
+  "scope.repository": "Repository",
   "scope.user": "Benutzer",
   "scope.installation": "Installation",
   "fact.workspace": "Arbeitsbereich",

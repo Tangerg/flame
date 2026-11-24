@@ -4,7 +4,7 @@
 
 ## Source discovery and review
 
-The provider selects a project Skill ahead of a user Skill and a user Skill ahead of an installed Skill. Multiple installed copies without an authored override produce a diagnostic. Human catalog reads query the provider. Each Run tool group retains its original discovery command and activation in its checkpoint. Recovery reads the original receipt and resolves the chosen opaque references against admitted readers. New precedence choices apply to new Runs.
+The provider selects a repository Skill ahead of a user Skill and a user Skill ahead of an installed Skill. Multiple installed copies without an authored override produce a diagnostic. Human catalog reads query the provider. Each Run tool group retains its original discovery command and activation in its checkpoint. Recovery reads the original receipt and resolves the chosen opaque references against admitted readers. New precedence choices apply to new Runs.
 
 The review revision exposed to GUI, CLI and Agent is the originating command ID. Its retained input captures the content, provenance, target library, reviewed preimage and provider release. Switching the selected provider starts a separate queue. Previously reviewed work remains actionable while its original release is enabled. Disabling, replacing or uninstalling it prevents its pending commands from publishing. Forking a Session preserves the original proposal and source Session.
 

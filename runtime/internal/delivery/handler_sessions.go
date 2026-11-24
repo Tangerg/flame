@@ -328,7 +328,7 @@ func presentSession(view sessions.View) protocol.Session {
 	return protocol.Session{
 		ID:              view.ID.String(),
 		Title:           view.Title,
-		Workspace:       presentWorkspaceInfo(view.Workspace.Path, view.Workspace.ProjectRoot, view.Workspace.Missing),
+		Workspace:       presentWorkspaceInfo(view.Workspace.Path, view.Workspace.RepositoryRoot, view.Workspace.Missing),
 		ProjectID:       view.Project.String(),
 		Provider:        view.Provider,
 		Model:           view.Model,

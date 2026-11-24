@@ -131,10 +131,10 @@ func TestInstalledHooksAbsenceTrustAndDisablementThroughRuntime(t *testing.T) {
 	if _, err := r.api.ListHooks(protocolLifecycleContext(t.Context()), protocol.ListHooksRequest{}); err == nil {
 		t.Fatal("management inspection silently discarded malformed project configuration")
 	}
-	r.must(delivery.Name("hooks.setTrust"), protocol.SetHookTrustRequest{ProjectRoot: cfg.defaultWorkspacePath, Trusted: true}, "trust-hook-project")
+	r.must(delivery.Name("hooks.setTrust"), protocol.SetHookTrustRequest{RepositoryRoot: cfg.defaultWorkspacePath, Trusted: true}, "trust-hook-project")
 	writeHookSource(t, cfg.defaultWorkspacePath, `{"hooks":[{"event":"UserPromptSubmit","inject":"trusted project"}]}`)
 	view, err := r.api.ListHooks(protocolLifecycleContext(t.Context()), protocol.ListHooksRequest{})
-	if err != nil || !view.ProjectTrusted || len(view.Hooks) != 2 {
+	if err != nil || !view.RepositoryTrusted || len(view.Hooks) != 2 {
 		t.Fatalf("installed rules lost Runtime trust: %+v %v", view, err)
 	}
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: false}, "disable-hooks")
@@ -143,7 +143,7 @@ func TestInstalledHooksAbsenceTrustAndDisablementThroughRuntime(t *testing.T) {
 	}
 	r = reopenPluginRuntime(t, r, &cfg)
 	view, err = r.api.ListHooks(protocolLifecycleContext(context.Background()), protocol.ListHooksRequest{})
-	if err != nil || !view.ProjectTrusted || len(view.Hooks) != 0 {
+	if err != nil || !view.RepositoryTrusted || len(view.Hooks) != 0 {
 		t.Fatalf("disabled source or trust changed across restart: %+v %v", view, err)
 	}
 	r.must(delivery.SessionsGet, protocol.GetSessionRequest{SessionID: session.ID}, "")

@@ -25,17 +25,17 @@ func (r *Runtime) ListApprovalRules(ctx context.Context, sessionID string) ([]pr
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	projectDir := ""
+	workspaceDir := ""
 	if sessionID != "" {
 		session := r.sessions[sessionID]
 		if session == nil {
 			return nil, fmt.Errorf("%w: %s", conversation.ErrSessionNotFound, sessionID)
 		}
-		projectDir = session.meta.Workspace.ProjectRoot
+		workspaceDir = session.meta.Workspace.RepositoryRoot
 	}
 	out := make([]protocol.ApprovalRule, 0, len(r.rules))
 	for _, stored := range r.rules {
-		if ruleApplies(stored, sessionID, projectDir) {
+		if ruleApplies(stored, sessionID, workspaceDir) {
 			out = append(out, stored.view)
 		}
 	}
@@ -69,7 +69,7 @@ func (r *Runtime) rememberApprovalLocked(run *runState, approval conversation.Ap
 	scope := approvalRuleScope(answer.Remember)
 	for _, stored := range r.rules {
 		rule := stored.view
-		if rule.Tool == (protocol.ToolRef{Type: protocol.ToolRefBuiltIn, Name: tool}) && rule.Subject == (protocol.ApprovalSubject{Type: protocol.ApprovalSubjectExact, Value: subject}) && rule.Scope == scope && ruleApplies(stored, run.sessionID, session.meta.Workspace.ProjectRoot) {
+		if rule.Tool == (protocol.ToolRef{Type: protocol.ToolRefBuiltIn, Name: tool}) && rule.Subject == (protocol.ApprovalSubject{Type: protocol.ApprovalSubjectExact, Value: subject}) && rule.Scope == scope && ruleApplies(stored, run.sessionID, session.meta.Workspace.RepositoryRoot) {
 			return
 		}
 	}
@@ -81,8 +81,8 @@ func (r *Runtime) rememberApprovalLocked(run *runState, approval conversation.Ap
 	switch answer.Remember {
 	case protocol.RememberSession:
 		stored.sessionID = run.sessionID
-	case protocol.RememberProject:
-		stored.view.Dir = session.meta.Workspace.ProjectRoot
+	case protocol.RememberWorkspace:
+		stored.view.Dir = session.meta.Workspace.RepositoryRoot
 	case protocol.RememberGlobal:
 	default:
 		return
@@ -110,7 +110,7 @@ func (r *Runtime) resolveRememberedLocked(run *runState, interrupts []conversati
 }
 
 func (r *Runtime) rememberedAnswerLocked(run *runState, approval conversation.Approval) (conversation.ApprovalAnswer, bool) {
-	workspace := r.sessions[run.sessionID].meta.Workspace.ProjectRoot
+	workspace := r.sessions[run.sessionID].meta.Workspace.RepositoryRoot
 	tool, subject := approvalRuleParts(approval)
 	for _, stored := range slices.Backward(r.rules) {
 		rule := stored.view
@@ -139,7 +139,7 @@ func ruleApplies(rule storedRule, sessionID, workspace string) bool {
 	switch rule.view.Scope {
 	case protocol.ApprovalRuleScopeSession:
 		return rule.sessionID == sessionID
-	case protocol.ApprovalRuleScopeProject:
+	case protocol.ApprovalRuleScopeWorkspace:
 		return rule.view.Dir == workspace
 	case protocol.ApprovalRuleScopeGlobal:
 		return true
@@ -152,8 +152,8 @@ func approvalRuleScope(scope protocol.RememberScopeKind) protocol.ApprovalRuleSc
 	switch scope {
 	case protocol.RememberSession:
 		return protocol.ApprovalRuleScopeSession
-	case protocol.RememberProject:
-		return protocol.ApprovalRuleScopeProject
+	case protocol.RememberWorkspace:
+		return protocol.ApprovalRuleScopeWorkspace
 	case protocol.RememberGlobal:
 		return protocol.ApprovalRuleScopeGlobal
 	default:
@@ -165,8 +165,8 @@ func rememberScope(scope protocol.ApprovalRuleScope) protocol.RememberScopeKind 
 	switch scope {
 	case protocol.ApprovalRuleScopeSession:
 		return protocol.RememberSession
-	case protocol.ApprovalRuleScopeProject:
-		return protocol.RememberProject
+	case protocol.ApprovalRuleScopeWorkspace:
+		return protocol.RememberWorkspace
 	case protocol.ApprovalRuleScopeGlobal:
 		return protocol.RememberGlobal
 	default:
@@ -214,22 +214,22 @@ func (r *Runtime) SetApprovalRule(ctx context.Context, request protocol.SetAppro
 	if !found {
 		return fmt.Errorf("fixture: tool source has no configured model name: %v", request.Tool)
 	}
-	projectDir := ""
-	if request.Scope == protocol.ApprovalRuleScopeProject {
+	workspaceDir := ""
+	if request.Scope == protocol.ApprovalRuleScopeWorkspace {
 		session := r.sessions[request.SessionID]
 		if session == nil {
 			return conversation.ErrSessionNotFound
 		}
-		projectDir = session.meta.Workspace.ProjectRoot
+		workspaceDir = session.meta.Workspace.RepositoryRoot
 	}
 	for i := range r.rules {
 		stored := &r.rules[i]
-		if reflect.DeepEqual(stored.view.Tool, request.Tool) && stored.view.Scope == request.Scope && stored.view.Subject == request.Subject && stored.view.Dir == projectDir && stored.sessionID == request.SessionID {
+		if reflect.DeepEqual(stored.view.Tool, request.Tool) && stored.view.Scope == request.Scope && stored.view.Subject == request.Subject && stored.view.Dir == workspaceDir && stored.sessionID == request.SessionID {
 			stored.view.Decision = request.Decision
 			stored.view.ModelName = name
 			return nil
 		}
 	}
-	r.rules = append(r.rules, storedRule{view: protocol.ApprovalRule{ID: r.identities.next(ruleIdentity), Tool: request.Tool, ModelName: name, Scope: request.Scope, Dir: projectDir, Subject: request.Subject, Decision: request.Decision}, sessionID: request.SessionID})
+	r.rules = append(r.rules, storedRule{view: protocol.ApprovalRule{ID: r.identities.next(ruleIdentity), Tool: request.Tool, ModelName: name, Scope: request.Scope, Dir: workspaceDir, Subject: request.Subject, Decision: request.Decision}, sessionID: request.SessionID})
 	return nil
 }

@@ -154,7 +154,7 @@ Optional settings pages use installed `settingsPane` components in the Extension
 group. They share the ordinary component Use, error boundary and captured
 command lifetime. Brand artwork, Hooks management, model configuration and MCP settings live in
 `plugins/brand`, `plugins/hooks`, `plugins/providers` and `plugins/mcp`; Runtime
-retains credentials, model roles, project trust, MCP connections, OAuth attempts
+retains credentials, model roles, repository trust, MCP connections, OAuth attempts
 and approval rules. Declared settings intents connect setup, Composer and the
 tools shortcut to the exact installed entries. Missing or ambiguous entries route to plugin management.
 Changing the display locale preserves each accepted operation's captured signal
@@ -232,7 +232,7 @@ locator. Each owner creates its stores, persistence scope, task cohorts, subscri
 and generation publication together. Providers expose that instance rather than
 creating another store. Settings panes only consume these dependencies.
 
-Provider settings, MCP servers, Goal commands and composer mode, project hook
+Provider settings, MCP servers, Goal commands and composer mode, repository hook
 trust, and message feedback follow this lifetime explicitly. Renderer composition
 constructs their owners, plugins bind and retire Runtime generations, and renderer
 shutdown disposes the owners. UI commands capture the admitted generation rather

@@ -14,7 +14,7 @@ import (
 
 type SkillLibraries struct {
 	user     *skillauthoring.Store
-	projects sync.Map
+	repositories sync.Map
 	journal  string
 }
 
@@ -49,29 +49,29 @@ func (l *SkillLibraries) Publish(ctx context.Context, root string, proposal skil
 	return store.Publish(ctx, proposal, previous, permit, l.journal)
 }
 
-func (l *SkillLibraries) store(scope skills.Scope, projectRoot string) (*skillauthoring.Store, error) {
+func (l *SkillLibraries) store(scope skills.Scope, repositoryRoot string) (*skillauthoring.Store, error) {
 	switch scope {
 	case skills.ScopeUser:
 		return l.user, nil
-	case skills.ScopeProject:
-		if strings.TrimSpace(projectRoot) == "" {
-			return nil, errors.New("workspace Skill libraries: project root is required")
+	case skills.ScopeRepository:
+		if strings.TrimSpace(repositoryRoot) == "" {
+			return nil, errors.New("workspace Skill libraries: repository root is required")
 		}
-		if loaded, ok := l.projects.Load(projectRoot); ok {
+		if loaded, ok := l.repositories.Load(repositoryRoot); ok {
 			store, ok := loaded.(*skillauthoring.Store)
 			if !ok {
-				return nil, errors.New("workspace Skill libraries: project cache contains an invalid entry")
+				return nil, errors.New("workspace Skill libraries: repository cache contains an invalid entry")
 			}
 			return store, nil
 		}
-		created, err := skillauthoring.NewProjectStore(projectRoot, promptsource.ProjectSkillDir(projectRoot))
+		created, err := skillauthoring.NewRepositoryStore(repositoryRoot, promptsource.RepositorySkillDir(repositoryRoot))
 		if err != nil {
 			return nil, err
 		}
-		loaded, _ := l.projects.LoadOrStore(projectRoot, created)
+		loaded, _ := l.repositories.LoadOrStore(repositoryRoot, created)
 		store, ok := loaded.(*skillauthoring.Store)
 		if !ok {
-			return nil, errors.New("workspace Skill libraries: project cache contains an invalid entry")
+			return nil, errors.New("workspace Skill libraries: repository cache contains an invalid entry")
 		}
 		return store, nil
 	default:

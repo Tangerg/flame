@@ -470,7 +470,7 @@ func mixedInterruptPTYAnswersMatch(provided []conversation.InterruptAnswer) bool
 		return false
 	}
 	approval, ok := provided[0].Answer.(conversation.ApprovalAnswer)
-	if !ok || approval.Decision != protocol.ApprovalApprove || approval.Remember != protocol.RememberProject ||
+	if !ok || approval.Decision != protocol.ApprovalApprove || approval.Remember != protocol.RememberWorkspace ||
 		approval.ArgumentOverride == nil ||
 		string(approval.ArgumentOverride.JSON()) != `{"command":"go test ./...","count":2}` {
 		return false

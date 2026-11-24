@@ -1,7 +1,7 @@
 {
   "workspace": {
     "ref": { "path": "/Users/dev/project" },
-    "projectRoot": "/Users/dev/project",
+    "repositoryRoot": "/Users/dev/project",
     "availability": "available"
   },
   "name": "project",

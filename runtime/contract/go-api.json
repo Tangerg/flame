@@ -2203,9 +2203,9 @@
           "value": "\"global\""
         },
         {
-          "name": "ScopeProject",
+          "name": "ScopeRepository",
           "type": "Scope",
-          "value": "\"project\""
+          "value": "\"repository\""
         },
         {
           "name": "SessionStart",
@@ -5239,9 +5239,9 @@
               "tag": "json:\"cwd\""
             },
             {
-              "name": "ProjectRoot",
+              "name": "RepositoryRoot",
               "type": "string",
-              "tag": "json:\"projectRoot\""
+              "tag": "json:\"repositoryRoot\""
             },
             {
               "name": "Home",
@@ -5249,9 +5249,9 @@
               "tag": "json:\"home,omitempty\""
             },
             {
-              "name": "IncludeProject",
+              "name": "IncludeRepository",
               "type": "bool",
-              "tag": "json:\"includeProject\""
+              "tag": "json:\"includeRepository\""
             }
           ],
           "methods": [
@@ -8410,9 +8410,9 @@
           "kind": "struct",
           "fields": [
             {
-              "name": "Project",
+              "name": "Repository",
               "type": "string",
-              "tag": "json:\"project\""
+              "tag": "json:\"repository\""
             },
             {
               "name": "User",
@@ -8780,9 +8780,9 @@
           "value": "\"home\""
         },
         {
-          "name": "AgentDocScopeProjectRoot",
+          "name": "AgentDocScopeRepositoryRoot",
           "type": "AgentDocScope",
-          "value": "\"projectRoot\""
+          "value": "\"repositoryRoot\""
         },
         {
           "name": "ApprovalApprove",
@@ -8855,14 +8855,14 @@
           "value": "\"global\""
         },
         {
-          "name": "ApprovalRuleScopeProject",
-          "type": "ApprovalRuleScope",
-          "value": "\"project\""
-        },
-        {
           "name": "ApprovalRuleScopeSession",
           "type": "ApprovalRuleScope",
           "value": "\"session\""
+        },
+        {
+          "name": "ApprovalRuleScopeWorkspace",
+          "type": "ApprovalRuleScope",
+          "value": "\"workspace\""
         },
         {
           "name": "ApprovalSubjectAll",
@@ -9295,9 +9295,9 @@
           "value": "\"global\""
         },
         {
-          "name": "HookScopeProject",
+          "name": "HookScopeRepository",
           "type": "HookScope",
-          "value": "\"project\""
+          "value": "\"repository\""
         },
         {
           "name": "IDPrefixEvent",
@@ -10095,14 +10095,14 @@
           "value": "\"global\""
         },
         {
-          "name": "RememberProject",
-          "type": "RememberScopeKind",
-          "value": "\"project\""
-        },
-        {
           "name": "RememberSession",
           "type": "RememberScopeKind",
           "value": "\"session\""
+        },
+        {
+          "name": "RememberWorkspace",
+          "type": "RememberScopeKind",
+          "value": "\"workspace\""
         },
         {
           "name": "ReplayScopeRuntimeInstanceRootSegment",
@@ -10345,9 +10345,9 @@
           "value": "\"requested\""
         },
         {
-          "name": "SkillProposalScopeProject",
+          "name": "SkillProposalScopeRepository",
           "type": "SkillProposalScope",
-          "value": "\"project\""
+          "value": "\"repository\""
         },
         {
           "name": "SkillProposalScopeUser",
@@ -10360,9 +10360,9 @@
           "value": "\"installation\""
         },
         {
-          "name": "SkillScopeProject",
+          "name": "SkillScopeRepository",
           "type": "SkillScope",
-          "value": "\"project\""
+          "value": "\"repository\""
         },
         {
           "name": "SkillScopeUser",
@@ -12858,14 +12858,14 @@
           "kind": "struct",
           "fields": [
             {
-              "name": "ProjectRoot",
+              "name": "RepositoryRoot",
               "type": "string",
-              "tag": "json:\"projectRoot,omitempty\""
+              "tag": "json:\"repositoryRoot,omitempty\""
             },
             {
-              "name": "ProjectTrusted",
+              "name": "RepositoryTrusted",
               "type": "bool",
-              "tag": "json:\"projectTrusted\""
+              "tag": "json:\"repositoryTrusted\""
             },
             {
               "name": "Hooks",
@@ -17537,9 +17537,9 @@
           "kind": "struct",
           "fields": [
             {
-              "name": "ProjectRoot",
+              "name": "RepositoryRoot",
               "type": "string",
-              "tag": "json:\"projectRoot\""
+              "tag": "json:\"repositoryRoot\""
             },
             {
               "name": "Trusted",
@@ -18806,9 +18806,9 @@
               "tag": "json:\"ref\""
             },
             {
-              "name": "ProjectRoot",
+              "name": "RepositoryRoot",
               "type": "string",
-              "tag": "json:\"projectRoot,omitempty\""
+              "tag": "json:\"repositoryRoot,omitempty\""
             },
             {
               "name": "Availability",
@@ -19377,9 +19377,9 @@
           "value": "\"mined\""
         },
         {
-          "name": "Project",
+          "name": "Repository",
           "type": "Scope",
-          "value": "\"project\""
+          "value": "\"repository\""
         },
         {
           "name": "Requested",

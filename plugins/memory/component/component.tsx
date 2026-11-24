@@ -73,6 +73,9 @@ export function Memory({ context }: { context: ComponentContext }) {
     recordResult,
     canRestoreFocus,
   } = useMemory(context);
+  // Outside a Project, Memory's project scope keys on the Session's folder.
+  const scopeLabel = (value: Scope) =>
+    value === "project" && !context.project ? "folder" : value;
   const recordCommand = unknown?.source === "record" ? unknown : undefined;
   const recovering = unknown?.source === "editor";
   const editFeedback = (editorFeedback || recovering) && (
@@ -82,6 +85,7 @@ export function Memory({ context }: { context: ComponentContext }) {
       original={recovering ? unknown : undefined}
       pending={pending}
       reconcile={reconcile}
+      scopeLabel={scopeLabel}
       t={t}
     />
   );
@@ -158,7 +162,10 @@ export function Memory({ context }: { context: ComponentContext }) {
                 ariaLabel={t("segment.label")}
                 value={scope}
                 options={[
-                  { value: "project", label: t("segment.project") },
+                  {
+                    value: "project",
+                    label: t(`segment.${scopeLabel("project")}`),
+                  },
                   { value: "user", label: t("segment.user") },
                 ]}
                 onChange={(value) => {
@@ -277,7 +284,7 @@ export function Memory({ context }: { context: ComponentContext }) {
             </RecordTitle>
             {edit.type === "update" && (
               <RecordMeta>
-                <span>{t(`scope.${edit.item.scope}`)}</span>
+                <span>{t(`scope.${scopeLabel(edit.item.scope)}`)}</span>
                 <span>{edit.item.id}</span>
               </RecordMeta>
             )}
@@ -373,6 +380,7 @@ export function Memory({ context }: { context: ComponentContext }) {
                 pending={pending}
                 reconcile={reconcile}
                 result={recordResult}
+                scopeLabel={scopeLabel}
                 t={t}
               />
             }

@@ -28,8 +28,8 @@ func presentAgentDocScope(scope workspaceapp.AgentDocScope) (protocol.AgentDocSc
 	switch scope {
 	case workspaceapp.AgentDocScopeCWD:
 		return protocol.AgentDocScopeCWD, true
-	case workspaceapp.AgentDocScopeProjectRoot:
-		return protocol.AgentDocScopeProjectRoot, true
+	case workspaceapp.AgentDocScopeRepositoryRoot:
+		return protocol.AgentDocScopeRepositoryRoot, true
 	case workspaceapp.AgentDocScopeHome:
 		return protocol.AgentDocScopeHome, true
 	default:

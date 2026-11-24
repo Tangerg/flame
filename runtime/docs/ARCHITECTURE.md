@@ -75,14 +75,14 @@ through `protocol.ValidateWireTree`.
 | Scope execution translation | `adapter/run/execution`                           | Deployment, tree observation, checkpoints, and execution resource lifetime        |
 | Human-input translation     | `adapter/run/input`                               | Strict prompt, resolution, and continuation codecs against Scope's input contract |
 | Model integration           | `adapter/integration/model`                       | Provider selection translation, capabilities, pricing, and auxiliary calls        |
-| Lifecycle Hooks             | `application/integration/hooks`                   | Catalog inspection, project trust changes, and event decisions                    |
+| Lifecycle Hooks             | `application/integration/hooks`                   | Catalog inspection, repository trust changes, and event decisions                    |
 | Feedback                    | `domain/annotation`, `application/agent/feedback` | Opaque provider-authored observations and their source-bound durable append       |
 | Workspace observations      | `application/workspace`, `adapter/workspace`      | Resolved workspace scope and translation of filesystem and Git observations       |
 
 Hook management consumes its own `Roots`, `Inspector`, and `TrustStore` ports.
 Bootstrap supplies the existing workspace scope as the root resolver, so Hooks
 share canonical workspace identity without depending on the Workspace use-case
-implementation. Global hooks remain active independently of project trust;
+implementation. Global hooks remain active independently of repository trust;
 successful trust writes publish the Hook invalidation.
 
 Feedback references to Sessions, Runs, and Items are optional historical context.

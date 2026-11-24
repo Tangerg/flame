@@ -384,7 +384,7 @@ export const en: Record<string, string> = {
   "approvals.rules.empty": "No rules yet",
   "approvals.rules.emptySub": "Approve or deny with “don't ask again” to add one.",
   "approvals.scope.session": "Session",
-  "approvals.scope.project": "Project",
+  "approvals.scope.workspace": "Folder",
   "approvals.scope.global": "Global",
   "approvals.clearAll": "Clear all",
   "approvals.allow": "allow",
@@ -519,7 +519,7 @@ export const en: Record<string, string> = {
   "approval.action.allowOnce": "Allow once",
   "approval.action.allowOptions": "Approval options",
   "approval.action.allowSession": "Allow for this session",
-  "approval.action.allowProject": "Allow for this project",
+  "approval.action.allowWorkspace": "Allow in this folder",
   "approval.action.allowGlobal": "Always allow",
   "approval.action.deny": "Deny",
   "approval.args.label": "Arguments",
@@ -887,7 +887,7 @@ export const en: Record<string, string> = {
 
   "composer.mention.status.empty": "No matching files",
 
-  "composer.mention.status.no-workspace": "Choose a project to reference its files",
+  "composer.mention.status.no-workspace": "Choose a folder to reference its files",
   "settings.search.empty": "No settings match “{{query}}”.",
   "startup.failed.title": "Flame couldn’t start",
   "startup.unsupported.body":
@@ -934,7 +934,7 @@ export const en: Record<string, string> = {
   "dock.action.expand": "Open full width",
   "dock.action.openFull": "Open material full width",
   "composer.add": "Add to message",
-  "composer.add.file": "Reference a project file",
+  "composer.add.file": "Reference a file",
   "composer.add.command": "Run a command",
   "composer.add.command.startsMessage": "A command starts an empty message.",
   "shortcuts.edit": "Change",

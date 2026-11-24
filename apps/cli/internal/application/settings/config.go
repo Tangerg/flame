@@ -101,7 +101,7 @@ type RememberPreference string
 const (
 	RememberNone    RememberPreference = "none"
 	RememberSession RememberPreference = "session"
-	RememberProject RememberPreference = "project"
+	RememberWorkspace RememberPreference = "workspace"
 	RememberGlobal  RememberPreference = "global"
 )
 
@@ -167,7 +167,7 @@ func (c Config) Validate() error {
 }
 
 func validateApproval(approval Approval) []error {
-	if !slices.Contains([]RememberPreference{RememberNone, RememberSession, RememberProject, RememberGlobal}, approval.Remember) {
+	if !slices.Contains([]RememberPreference{RememberNone, RememberSession, RememberWorkspace, RememberGlobal}, approval.Remember) {
 		return []error{fmt.Errorf("approval remember scope %q is invalid", approval.Remember)}
 	}
 	return nil

@@ -468,7 +468,7 @@ function scriptedReply(body: FakeChatRequest): {
           name: "e2e-project-proposal",
           description: "Preserve the project-side HTTP E2E workflow.",
           instructions: "Run the project-side HTTP E2E workflow and report its result.",
-          scope: "project",
+          scope: "repository",
         }),
       },
     };
@@ -3981,7 +3981,7 @@ for await (const line of lines) {
     });
     await expect(workspace.skills.listDiscovered()).resolves.toMatchObject({
       skills: expect.arrayContaining([
-        expect.objectContaining({ name: projectSkillName, scope: "project" }),
+        expect.objectContaining({ name: projectSkillName, scope: "repository" }),
       ]),
     });
 
@@ -4018,7 +4018,7 @@ for await (const line of lines) {
     const projectSkill = {
       name: managedSkillName,
       description: "Project-owned review.",
-      scope: "project",
+      scope: "repository",
     };
     try {
       await client.skills.archive(managedSkillName);
@@ -4073,7 +4073,7 @@ for await (const line of lines) {
     expect(projectProposals.data).toEqual([
       expect.objectContaining({
         name: "e2e-project-proposal",
-        scope: "project",
+        scope: "repository",
         origin: "requested",
         sourceSession: projectSession.id,
         description: "Preserve the project-side HTTP E2E workflow.",
@@ -4095,7 +4095,7 @@ for await (const line of lines) {
     await expect(workspace.skills.listProposals()).resolves.toMatchObject({ data: [] });
     await expect(workspace.skills.listDiscovered()).resolves.toMatchObject({
       skills: expect.arrayContaining([
-        expect.objectContaining({ name: projectProposal.name, scope: "project" }),
+        expect.objectContaining({ name: projectProposal.name, scope: "repository" }),
       ]),
     });
     await expect(
@@ -4193,20 +4193,20 @@ for await (const line of lines) {
   it("keeps file-change signals scoped and reconciles them through cold reads", async () => {
     if (!client) throw new Error("runtime client was not initialized");
 
-    const projectRoot = join(root, "workspace-file-events");
-    const workspaceRoot = join(projectRoot, "packages", "desktop");
+    const repositoryRoot = join(root, "workspace-file-events");
+    const workspaceRoot = join(repositoryRoot, "packages", "desktop");
     await mkdir(workspaceRoot, { recursive: true });
-    await execFileAsync("git", ["init", "--quiet"], { cwd: projectRoot });
+    await execFileAsync("git", ["init", "--quiet"], { cwd: repositoryRoot });
     await execFileAsync("git", ["config", "user.name", "Runtime HTTP E2E"], {
-      cwd: projectRoot,
+      cwd: repositoryRoot,
     });
     await execFileAsync("git", ["config", "user.email", "runtime-http-e2e@example.invalid"], {
-      cwd: projectRoot,
+      cwd: repositoryRoot,
     });
     await writeFile(join(workspaceRoot, "tracked.txt"), "before\n");
-    await execFileAsync("git", ["add", "packages/desktop/tracked.txt"], { cwd: projectRoot });
+    await execFileAsync("git", ["add", "packages/desktop/tracked.txt"], { cwd: repositoryRoot });
     await execFileAsync("git", ["commit", "--quiet", "-m", "baseline"], {
-      cwd: projectRoot,
+      cwd: repositoryRoot,
     });
 
     const streamController = new AbortController();
@@ -4221,7 +4221,7 @@ for await (const line of lines) {
     const events = subscription.events[Symbol.asyncIterator]();
 
     await writeFile(join(workspaceRoot, "tracked.txt"), "after\n");
-    await execFileAsync("git", ["add", "packages/desktop/tracked.txt"], { cwd: projectRoot });
+    await execFileAsync("git", ["add", "packages/desktop/tracked.txt"], { cwd: repositoryRoot });
 
     const changed = await nextRuntimeEvent(events, "resync");
     expect(changed.type === "resync" && changed.topics).toContain("files.changed");
@@ -4493,13 +4493,13 @@ for await (const line of lines) {
   it("consumes workspace files and hook trust through bound APIs", async () => {
     if (!client) throw new Error("runtime client was not initialized");
 
-    const projectRoot = join(root, "workspace-side-api-project");
-    const workspaceRoot = join(projectRoot, "packages", "desktop");
+    const repositoryRoot = join(root, "workspace-side-api-project");
+    const workspaceRoot = join(repositoryRoot, "packages", "desktop");
     await mkdir(workspaceRoot, { recursive: true });
-    await execFileAsync("git", ["init", "--quiet"], { cwd: projectRoot });
+    await execFileAsync("git", ["init", "--quiet"], { cwd: repositoryRoot });
 
     await Promise.all([
-      mkdir(join(projectRoot, ".flame"), { recursive: true }),
+      mkdir(join(repositoryRoot, ".flame"), { recursive: true }),
       mkdir(join(workspaceRoot, ".flame"), { recursive: true }),
       mkdir(join(runtimeHome, ".flame"), { recursive: true }),
       mkdir(join(workspaceRoot, "nested"), { recursive: true }),
@@ -4509,7 +4509,7 @@ for await (const line of lines) {
       writeFile(join(workspaceRoot, "nested", "bravo.txt"), "workspace-side-api-marker\n"),
       writeFile(join(workspaceRoot, ".gitignore"), "ignored.log\n"),
       writeFile(join(workspaceRoot, "ignored.log"), "ignored marker\n"),
-      writeFile(join(projectRoot, "AGENTS.md"), "project-root instructions\n"),
+      writeFile(join(repositoryRoot, "AGENTS.md"), "project-root instructions\n"),
       writeFile(join(workspaceRoot, ".flame", "AGENTS.md"), "workspace instructions\n"),
       writeFile(join(runtimeHome, ".flame", "AGENTS.md"), "home instructions\n"),
       writeFile(
@@ -4517,7 +4517,7 @@ for await (const line of lines) {
         JSON.stringify({ hooks: [{ event: "SessionStart", inject: "global hook context" }] }),
       ),
       writeFile(
-        join(projectRoot, ".flame", "hooks.json"),
+        join(repositoryRoot, ".flame", "hooks.json"),
         JSON.stringify({
           hooks: [{ event: "PreToolUse", matcher: "shell", command: "true" }],
         }),
@@ -4528,10 +4528,10 @@ for await (const line of lines) {
     const canonicalWorkspaceRoot = await realpath(workspaceRoot);
     expect(resolved).toMatchObject({
       ref: { path: canonicalWorkspaceRoot },
-      projectRoot: await realpath(projectRoot),
+      repositoryRoot: await realpath(repositoryRoot),
       availability: "available",
     });
-    if (!resolved.projectRoot) throw new Error("nested Git workspace omitted its project root");
+    if (!resolved.repositoryRoot) throw new Error("nested Git workspace omitted its project root");
 
     const workspace = client.workspace({ path: workspaceRoot });
     await expect(
@@ -4585,8 +4585,8 @@ for await (const line of lines) {
 
     const untrusted = await workspace.hooks.list();
     expect(untrusted).toMatchObject({
-      projectRoot: resolved.projectRoot,
-      projectTrusted: false,
+      repositoryRoot: resolved.repositoryRoot,
+      repositoryTrusted: false,
     });
     expect(untrusted.hooks).toEqual([
       expect.objectContaining({
@@ -4597,7 +4597,7 @@ for await (const line of lines) {
       }),
       expect.objectContaining({
         event: "PreToolUse",
-        scope: "project",
+        scope: "repository",
         matcher: "shell",
         command: "true",
         active: false,
@@ -4612,23 +4612,23 @@ for await (const line of lines) {
       hookController.signal,
     );
     const hookEvents = hookSubscription.events[Symbol.asyncIterator]();
-    await client.hooks.setTrust(resolved.projectRoot, true);
+    await client.hooks.setTrust(resolved.repositoryRoot, true);
     await expect(nextRuntimeEvent(hookEvents, "hooks.changed")).resolves.toMatchObject({
       type: "hooks.changed",
     });
     await expect(workspace.hooks.list()).resolves.toMatchObject({
-      projectRoot: resolved.projectRoot,
-      projectTrusted: true,
+      repositoryRoot: resolved.repositoryRoot,
+      repositoryTrusted: true,
       hooks: [
         expect.objectContaining({ scope: "global", active: true }),
-        expect.objectContaining({ scope: "project", active: true }),
+        expect.objectContaining({ scope: "repository", active: true }),
       ],
     });
-    await client.hooks.setTrust(resolved.projectRoot, false);
+    await client.hooks.setTrust(resolved.repositoryRoot, false);
     await expect(nextRuntimeEvent(hookEvents, "hooks.changed")).resolves.toMatchObject({
       type: "hooks.changed",
     });
-    await expect(workspace.hooks.list()).resolves.toMatchObject({ projectTrusted: false });
+    await expect(workspace.hooks.list()).resolves.toMatchObject({ repositoryTrusted: false });
 
     const externalHookChanges = [
       {
@@ -4638,15 +4638,15 @@ for await (const line of lines) {
         event: "SessionStart",
       },
       {
-        path: join(projectRoot, ".flame", "hooks.json"),
+        path: join(repositoryRoot, ".flame", "hooks.json"),
         marker: "external project hook",
-        scope: "project",
+        scope: "repository",
         event: "UserPromptSubmit",
       },
       {
         path: join(workspaceRoot, ".flame", "hooks.json"),
         marker: "external cwd hook",
-        scope: "project",
+        scope: "repository",
         event: "Notification",
       },
     ] as const;

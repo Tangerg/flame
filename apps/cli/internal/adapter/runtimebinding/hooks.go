@@ -33,19 +33,19 @@ func (h *Hooks) Catalog(ctx context.Context, workspacePath string) (workspace.Ho
 		return workspace.HookCatalog{}, runtimeContractViolation("list hooks returned nil")
 	}
 	return workspace.HookCatalog{
-		ProjectRoot: result.ProjectRoot, ProjectTrusted: result.ProjectTrusted,
+		RepositoryRoot: result.RepositoryRoot, RepositoryTrusted: result.RepositoryTrusted,
 		Hooks: slices.Clone(result.Hooks),
 	}, nil
 }
 
-func (h *Hooks) SetProjectTrust(ctx context.Context, projectRoot string, trusted bool) error {
+func (h *Hooks) SetRepositoryTrust(ctx context.Context, repositoryRoot string, trusted bool) error {
 	r := h.runtime
-	projectRoot = strings.TrimSpace(projectRoot)
-	if projectRoot == "" {
-		return errors.New("set hook trust: project root is empty")
+	repositoryRoot = strings.TrimSpace(repositoryRoot)
+	if repositoryRoot == "" {
+		return errors.New("set hook trust: repository root is empty")
 	}
 	options := r.commandOptions()
 	return classifyError(r.hooks.SetHookTrust(ctx, protocol.SetHookTrustRequest{
-		ProjectRoot: projectRoot, Trusted: trusted,
+		RepositoryRoot: repositoryRoot, Trusted: trusted,
 	}, options))
 }

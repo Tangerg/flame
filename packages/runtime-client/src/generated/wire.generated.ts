@@ -257,7 +257,7 @@ export interface AgentDoc {
   scope: AgentDocScope;
 }
 
-export type AgentDocScope = "cwd" | "projectRoot" | "home";
+export type AgentDocScope = "cwd" | "repositoryRoot" | "home";
 
 export interface AnnotationSource {
   contractRef: string;
@@ -307,7 +307,7 @@ export interface ApprovalRule {
 
 export type ApprovalRuleDecision = "allow" | "deny";
 
-export type ApprovalRuleScope = "session" | "project" | "global";
+export type ApprovalRuleScope = "session" | "workspace" | "global";
 
 export type ApprovalSubject =
   | { type: "all" }
@@ -770,12 +770,12 @@ export interface HookInfo {
   timeoutMillis?: number;
 }
 
-export type HookScope = "global" | "project";
+export type HookScope = "global" | "repository";
 
 export interface HooksListResult {
   hooks: HookInfo[];
-  projectRoot?: string;
-  projectTrusted: boolean;
+  repositoryRoot?: string;
+  repositoryTrusted: boolean;
 }
 
 export interface IdempotencyLimits {
@@ -1807,7 +1807,7 @@ export interface RememberScope {
   scope: RememberScopeKind;
 }
 
-export type RememberScopeKind = "session" | "project" | "global";
+export type RememberScopeKind = "session" | "workspace" | "global";
 
 export type RendererSelectorKind = "toolName" | "resultShape" | "fileExtension";
 
@@ -2169,7 +2169,7 @@ export interface SetApprovalRuleRequest {
 }
 
 export interface SetHookTrustRequest {
-  projectRoot: string;
+  repositoryRoot: string;
   trusted: boolean;
 }
 
@@ -2252,9 +2252,9 @@ export interface SkillProposalRef {
   workspace: WorkspaceRef;
 }
 
-export type SkillProposalScope = "project" | "user";
+export type SkillProposalScope = "repository" | "user";
 
-export type SkillScope = "project" | "user" | "installation";
+export type SkillScope = "repository" | "user" | "installation";
 
 export interface StagePluginRequest {
   installationId: string;
@@ -2528,8 +2528,8 @@ export interface WorkspaceFileChange {
 
 export interface WorkspaceInfo {
   availability: WorkspaceAvailability;
-  projectRoot?: string;
   ref: WorkspaceRef;
+  repositoryRoot?: string;
 }
 
 export interface WorkspaceQuery {
@@ -2550,13 +2550,13 @@ export interface WorkspaceSummary {
 // The closed value sets, as data: a union type does not exist at runtime.
 export const WIRE_ENUMS = {
   ActivityType: ["callingModel", "modelCallFailed", "applyingUserInput", "toolCall"],
-  AgentDocScope: ["cwd", "projectRoot", "home"],
+  AgentDocScope: ["cwd", "repositoryRoot", "home"],
   ApprovalDecision: ["approve", "deny"],
   ApprovalGate: ["pass", "prompt", "deny"],
   ApprovalMode: ["safe", "balanced", "yolo"],
   ApprovalRisk: ["low", "medium", "high"],
   ApprovalRuleDecision: ["allow", "deny"],
-  ApprovalRuleScope: ["session", "project", "global"],
+  ApprovalRuleScope: ["session", "workspace", "global"],
   ApprovalSubjectType: ["all", "exact", "glob"],
   ArtifactOutcomeType: ["completed", "timedOut", "failed", "canceled", "lost"],
   ArtifactProblemType: ["internal_error", "agent_stuck", "rate_limited", "invalid_credentials", "timeout", "provider_unavailable", "provider_rejected", "denied_by_user", "tool_failed", "child_run_canceled", "tool_canceled"],
@@ -2579,7 +2579,7 @@ export const WIRE_ENUMS = {
   GoalStatus: ["active", "paused", "blocked", "completing"],
   HealthStatus: ["ok", "degraded", "unhealthy"],
   HookEvent: ["PreToolUse", "PostToolUse", "UserPromptSubmit", "SessionStart", "PreCompact", "Stop", "Notification"],
-  HookScope: ["global", "project"],
+  HookScope: ["global", "repository"],
   InterruptResponseType: ["approval", "answer"],
   InterruptType: ["approval", "question"],
   ItemDeltaType: ["content", "reasoning", "toolArguments", "toolOutput"],
@@ -2620,7 +2620,7 @@ export const WIRE_ENUMS = {
   ProviderKeySource: ["stored", "env"],
   ProviderTestOutcome: ["reachable", "notConfigured", "invalidCredentials", "timedOut", "failed"],
   QuestionFieldType: ["text", "choice"],
-  RememberScopeKind: ["session", "project", "global"],
+  RememberScopeKind: ["session", "workspace", "global"],
   RendererSelectorKind: ["toolName", "resultShape", "fileExtension"],
   RestoreType: ["history", "files", "both"],
   ResultShape: ["search", "patch", "command"],
@@ -2637,8 +2637,8 @@ export const WIRE_ENUMS = {
   SessionStatus: ["running", "waiting", "idle"],
   SkillLifecycle: ["active", "archived"],
   SkillProposalOrigin: ["requested", "mined"],
-  SkillProposalScope: ["project", "user"],
-  SkillScope: ["project", "user", "installation"],
+  SkillProposalScope: ["repository", "user"],
+  SkillScope: ["repository", "user", "installation"],
   StreamEventType: ["segment.started", "segment.progress", "segment.finished", "item.started", "item.delta", "item.completed", "plan.updated"],
   SuppressibleRunEventType: ["segment.progress", "item.delta"],
   TerminalActionTarget: ["view", "row"],

@@ -86,7 +86,7 @@ func registerWorkspaceConditions(s *Shapes) {
 
 func registerWorkspaceValues(s *Shapes) {
 	nonEmpty[protocol.WorkspaceRef](s, "path")
-	nonEmpty[protocol.WorkspaceInfo](s, "projectRoot")
+	nonEmpty[protocol.WorkspaceInfo](s, "repositoryRoot")
 	s.valueConstraint(FieldConstraintSpec{
 		GoType: typeOf[protocol.WorkspaceSummary](),
 		Constraints: []FieldConstraint{

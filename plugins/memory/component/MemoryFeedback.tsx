@@ -2,7 +2,7 @@ import { type RefObject, useRef } from "react";
 import { Metadata, RecordBody, RecordGroup, Toolbar } from "@flame/ui";
 import { failureText, type Translate } from "@flame/component-sdk";
 import { MemoryAction } from "./MemoryAction";
-import { type Command, type Feedback } from "./types";
+import { type Command, type Feedback, type Scope } from "./types";
 export function MemoryFeedback({
   feedback,
   original,
@@ -10,6 +10,7 @@ export function MemoryFeedback({
   reconcile,
   result: destination,
   canRestoreFocus,
+  scopeLabel,
   t,
 }: {
   feedback?: Feedback;
@@ -18,6 +19,7 @@ export function MemoryFeedback({
   reconcile(): void;
   result?: RefObject<HTMLElement | null>;
   canRestoreFocus(): boolean;
+  scopeLabel(scope: Scope): string;
   t: Translate;
 }) {
   const own = useRef<HTMLElement>(null);
@@ -47,7 +49,7 @@ export function MemoryFeedback({
             {t(`feedback.${feedback.state}`, {
               label:
                 feedback.intent.action === "add"
-                  ? t(`command.add.${feedback.intent.scope}`)
+                  ? t(`command.add.${scopeLabel(feedback.intent.scope)}`)
                   : t(`command.${feedback.intent.action}`, {
                       id: feedback.intent.id,
                     }),

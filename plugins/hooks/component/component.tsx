@@ -149,7 +149,7 @@ export function Hooks({ context }: { context: ComponentContext }) {
     }
   }
   function trust(trusted: boolean) {
-    const root = read.accepted?.result.projectRoot;
+    const root = read.accepted?.result.repositoryRoot;
     if (!root || command || context.signal.aborted) return;
     setCommandError(undefined);
     try {
@@ -210,8 +210,8 @@ export function Hooks({ context }: { context: ComponentContext }) {
           </Button>
         </div>
       )}
-      {snapshot?.projectRoot &&
-        snapshot.hooks.some((value) => value.scope === "project") && (
+      {snapshot?.repositoryRoot &&
+        snapshot.hooks.some((value) => value.scope === "repository") && (
           <RecordGroup variant="list" aria-busy={command?.phase === "running"}>
             <ListRow
               data-focus-unit=""
@@ -220,10 +220,10 @@ export function Hooks({ context }: { context: ComponentContext }) {
               <div style={{ minWidth: 0, flex: 1 }}>
                 <strong>{t("trust")}</strong>
                 <RecordBody>{t("trust.sub")}</RecordBody>
-                <code style={literal}>{snapshot.projectRoot}</code>
+                <code style={literal}>{snapshot.repositoryRoot}</code>
               </div>
               <Switch
-                checked={snapshot.projectTrusted}
+                checked={snapshot.repositoryTrusted}
                 disabled={Boolean(command) || read.loading}
                 onCheckedChange={trust}
                 ariaLabel={t("trust.aria")}

@@ -18,8 +18,8 @@ type Inspector interface {
 }
 
 type TrustStore interface {
-	Trust(ctx context.Context, projectRoot string) error
-	Untrust(ctx context.Context, projectRoot string) error
+	Trust(ctx context.Context, repositoryRoot string) error
+	Untrust(ctx context.Context, repositoryRoot string) error
 }
 
 type Catalog struct {
@@ -30,8 +30,8 @@ type Catalog struct {
 }
 
 type CatalogView struct {
-	ProjectRoot    string
-	ProjectTrusted bool
+	RepositoryRoot    string
+	RepositoryTrusted bool
 	Hooks          []Resolved
 }
 
@@ -70,19 +70,19 @@ func (h *Catalog) Inspect(ctx context.Context, cwd string) (CatalogView, error) 
 		return CatalogView{}, err
 	}
 	resolved := CatalogView{
-		ProjectRoot: inspection.ProjectRoot, ProjectTrusted: inspection.ProjectTrusted,
+		RepositoryRoot: inspection.RepositoryRoot, RepositoryTrusted: inspection.RepositoryTrusted,
 		Hooks: make([]Resolved, 0, len(inspection.Hooks)),
 	}
 	for _, hook := range inspection.Hooks {
 		resolved.Hooks = append(resolved.Hooks, Resolved{
-			Hook: hook, Active: hook.Scope == hookdata.ScopeGlobal || inspection.ProjectTrusted,
+			Hook: hook, Active: hook.Scope == hookdata.ScopeGlobal || inspection.RepositoryTrusted,
 		})
 	}
 	return resolved, nil
 }
 
-func (h *Catalog) SetProjectTrust(ctx context.Context, projectRoot string, trusted bool) error {
-	root, err := h.roots.ResolveRoot(projectRoot)
+func (h *Catalog) SetRepositoryTrust(ctx context.Context, repositoryRoot string, trusted bool) error {
+	root, err := h.roots.ResolveRoot(repositoryRoot)
 	if err != nil {
 		return err
 	}

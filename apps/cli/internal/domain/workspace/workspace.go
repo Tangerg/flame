@@ -11,7 +11,7 @@ var ErrVersionControlUnavailable = errors.New("version control unavailable")
 
 type Workspace struct {
 	Path         string
-	ProjectRoot  string
+	RepositoryRoot  string
 	Availability protocol.WorkspaceAvailability
 }
 

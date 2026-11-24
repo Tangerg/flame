@@ -65,7 +65,7 @@ func preference[T any](v *viper.Viper, flags *pflag.FlagSet, define func(name st
 type configAuthority uint8
 
 const (
-	projectConfigAuthority configAuthority = iota
+	workspaceConfigAuthority configAuthority = iota
 	explicitConfigAuthority
 	userConfigAuthority
 )
@@ -94,13 +94,13 @@ func loadConfig(v *viper.Viper, cmd *cobra.Command) error {
 		if err := v.ReadConfig(bytes.NewReader(content)); err != nil {
 			return fmt.Errorf("read configuration %q: %w", source.path, err)
 		}
-		// Project preferences cannot grant native code execution or route a process-owned bearer.
+		// Workspace preferences cannot grant native code execution or route a process-owned bearer.
 		// Validate the already-read bytes, not a second read of a mutable file.
-		if source.authority == projectConfigAuthority && v.InConfig(pluginDirectoriesKey) {
-			return errors.New("project configuration cannot select executable plugin directories; use --plugin-dir, user configuration, or an explicit --config")
+		if source.authority == workspaceConfigAuthority && v.InConfig(pluginDirectoriesKey) {
+			return errors.New("workspace configuration cannot select executable plugin directories; use --plugin-dir, user configuration, or an explicit --config")
 		}
-		if source.authority == projectConfigAuthority && (v.InConfig(runtimeEndpointKey) || v.InConfig(runtimeModeKey)) {
-			return errors.New("project configuration cannot select a runtime endpoint; use --runtime-url, FLAME_CLI_RUNTIME_ENDPOINT, user configuration, or an explicit --config")
+		if source.authority == workspaceConfigAuthority && (v.InConfig(runtimeEndpointKey) || v.InConfig(runtimeModeKey)) {
+			return errors.New("workspace configuration cannot select a runtime endpoint; use --runtime-url, FLAME_CLI_RUNTIME_ENDPOINT, user configuration, or an explicit --config")
 		}
 	}
 	_, err = readSettings(v)
@@ -116,15 +116,15 @@ func selectConfigSource(cmd *cobra.Command, explicitPath string) (*selectedConfi
 	}
 	workspace, err := resolveLocalDirectory(cmd)
 	if err != nil {
-		return nil, fmt.Errorf("resolve project configuration workspace: %w", err)
+		return nil, fmt.Errorf("resolve workspace configuration directory: %w", err)
 	}
-	projectConfig := filepath.Join(workspace, ".flame.yaml")
-	_, err = os.Stat(projectConfig)
+	workspaceConfig := filepath.Join(workspace, ".flame.yaml")
+	_, err = os.Stat(workspaceConfig)
 	switch {
 	case err == nil:
-		return &selectedConfigSource{path: projectConfig, authority: projectConfigAuthority}, nil
+		return &selectedConfigSource{path: workspaceConfig, authority: workspaceConfigAuthority}, nil
 	case !errors.Is(err, os.ErrNotExist):
-		return nil, fmt.Errorf("inspect project configuration: %w", err)
+		return nil, fmt.Errorf("inspect workspace configuration: %w", err)
 	}
 	configDir, err := os.UserConfigDir()
 	if err != nil {

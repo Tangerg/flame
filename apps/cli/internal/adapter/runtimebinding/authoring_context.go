@@ -51,7 +51,7 @@ func agentDocumentRenderPhase(scope protocol.AgentDocScope) int {
 	switch scope {
 	case protocol.AgentDocScopeHome:
 		return 0
-	case protocol.AgentDocScopeProjectRoot:
+	case protocol.AgentDocScopeRepositoryRoot:
 		return 1
 	case protocol.AgentDocScopeCWD:
 		return 2

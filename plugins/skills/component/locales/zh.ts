@@ -68,7 +68,7 @@ export const zh: Record<string, string> = {
   "action.archive": "归档",
   "proposal.actions": "{{name}} 的提议操作",
   "lifecycle.archived": "已归档",
-  "scope.project": "项目",
+  "scope.repository": "仓库",
   "scope.user": "用户",
   "scope.installation": "安装",
   "fact.workspace": "工作区",

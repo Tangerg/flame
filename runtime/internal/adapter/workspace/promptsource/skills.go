@@ -17,14 +17,14 @@ import (
 )
 
 const (
-	projectSkillsSubdir = identity.AuthoredDirectory + "/skills"
+	repositorySkillsSubdir = identity.AuthoredDirectory + "/skills"
 )
 
-func ProjectSkillDir(workspaceRoot string) string {
+func RepositorySkillDir(workspaceRoot string) string {
 	if workspaceRoot == "" {
 		return ""
 	}
-	return filepath.Join(workspaceRoot, projectSkillsSubdir)
+	return filepath.Join(workspaceRoot, repositorySkillsSubdir)
 }
 
 func OverlaySkillSource(ctx context.Context, workspaceRoot, userDir string, packages SkillSources, decorateUser func(skillspec.ResourceSource) skillspec.ResourceSource, retained []plugin.Dependency) (skillspec.ResourceSource, []plugin.Dependency, error) {
@@ -124,7 +124,7 @@ func (s *resolvedSkills) list(ctx context.Context) (workspaceapp.SkillDiscovery,
 		}
 		switch {
 		case errors.Is(err, errPackageSkillConflict):
-			out.Diagnostics = append(out.Diagnostics, workspaceapp.SkillDiagnostic{Name: name, Detail: "Multiple installations supply this Skill; disable a package copy or provide an explicit project/user override."})
+			out.Diagnostics = append(out.Diagnostics, workspaceapp.SkillDiagnostic{Name: name, Detail: "Multiple installations supply this Skill; disable a package copy or provide an explicit repository/user override."})
 			continue
 		case errors.Is(err, skillspec.ErrInvalidSkill):
 			out.Diagnostics = append(out.Diagnostics, workspaceapp.SkillDiagnostic{Name: name, Detail: "Invalid SKILL.md; provide a regular document with valid frontmatter and the selected bundle's name."})
@@ -141,7 +141,7 @@ func (s *resolvedSkills) list(ctx context.Context) (workspaceapp.SkillDiscovery,
 			return workspaceapp.SkillDiscovery{}, err
 		}
 		if _, installed := detail.Source.Installation(); !installed && s.byName[name].packageCopy {
-			out.Diagnostics = append(out.Diagnostics, workspaceapp.SkillDiagnostic{Name: name, Detail: "An explicit project/user Skill overrides the installed package copy."})
+			out.Diagnostics = append(out.Diagnostics, workspaceapp.SkillDiagnostic{Name: name, Detail: "An explicit repository/user Skill overrides the installed package copy."})
 		}
 		out.Skills = append(out.Skills, detail.SkillSummary)
 	}

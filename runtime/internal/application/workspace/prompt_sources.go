@@ -53,7 +53,7 @@ type AgentDocScope string
 const (
 	AgentDocScopeHome        AgentDocScope = "home"
 	AgentDocScopeCWD         AgentDocScope = "cwd"
-	AgentDocScopeProjectRoot AgentDocScope = "projectRoot"
+	AgentDocScopeRepositoryRoot AgentDocScope = "repositoryRoot"
 )
 
 type AgentDocFile struct {
@@ -112,7 +112,7 @@ func (s AgentDocScope) renderPhase() (int, bool) {
 	switch s {
 	case AgentDocScopeHome:
 		return 0, true
-	case AgentDocScopeProjectRoot:
+	case AgentDocScopeRepositoryRoot:
 		return 1, true
 	case AgentDocScopeCWD:
 		return 2, true
@@ -136,7 +136,7 @@ type SkillSource struct {
 	dependency plugin.Dependency
 }
 
-func ProjectSkillSource() SkillSource { return SkillSource{scope: skills.ScopeProject} }
+func RepositorySkillSource() SkillSource { return SkillSource{scope: skills.ScopeRepository} }
 func UserSkillSource() SkillSource    { return SkillSource{scope: skills.ScopeUser} }
 
 func InstallationSkillSource(release plugin.Dependency) (SkillSource, error) {

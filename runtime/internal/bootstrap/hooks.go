@@ -13,7 +13,7 @@ import (
 )
 
 type hookTrust interface {
-	IsTrusted(ctx context.Context, projectRoot string) (bool, error)
+	IsTrusted(ctx context.Context, repositoryRoot string) (bool, error)
 }
 
 func newHookResolver(userHome string, trust hookTrust, source adapterhooks.Source) (*adapterhooks.Resolver, error) {
@@ -21,10 +21,10 @@ func newHookResolver(userHome string, trust hookTrust, source adapterhooks.Sourc
 		return nil, errors.New("hooks: trust store is required")
 	}
 	return adapterhooks.NewResolver(userHome,
-		func(ctx context.Context, projectRoot string) (bool, error) {
-			ok, err := trust.IsTrusted(ctx, projectRoot)
+		func(ctx context.Context, repositoryRoot string) (bool, error) {
+			ok, err := trust.IsTrusted(ctx, repositoryRoot)
 			if err != nil {
-				return false, fmt.Errorf("hooks: read trust for project %q: %w", projectRoot, err)
+				return false, fmt.Errorf("hooks: read trust for repository %q: %w", repositoryRoot, err)
 			}
 			return ok, nil
 		},

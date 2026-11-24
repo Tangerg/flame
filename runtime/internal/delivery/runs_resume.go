@@ -132,7 +132,7 @@ func decodeApprovalResponse(wire protocol.InterruptResponseValue) (*runs.Approva
 	if wire.Remember != nil {
 		scope, ok := rememberScopeFromWire(wire.Remember.Scope)
 		if !ok {
-			return nil, protocol.NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("remember scope must be %q | %q | %q", protocol.RememberSession, protocol.RememberProject, protocol.RememberGlobal))
+			return nil, protocol.NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("remember scope must be %q | %q | %q", protocol.RememberSession, protocol.RememberWorkspace, protocol.RememberGlobal))
 		}
 		approval.RememberScope = scope
 	}

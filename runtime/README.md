@@ -961,14 +961,14 @@ before filesystem preparation on every host.
 Reserved device stems include superscript digit aliases from the
 [Win32 naming rules](https://learn.microsoft.com/en-us/windows/win32/fileio/naming-a-file).
 
-Package Skills join the existing resolver. Explicit project Skills override user Skills,
+Package Skills join the existing resolver. Explicit repository Skills override user Skills,
 which override package Skills. Conflicting package names are excluded rather than chosen
 by installation order. Discovery, loads and frozen Run dependencies use the same source
-resolution. Discovery diagnoses explicit project/user overrides and counts capacity per
+resolution. Discovery diagnoses explicit repository/user overrides and counts capacity per
 selected source. Revoked or disabled package Skills become unavailable for document
 and resource reads; existing execution metadata retains its admitted release identity.
 Discovery distinguishes package name conflicts from unavailable release bytes or
-withdrawn authority. An override diagnostic can accompany its available project
+withdrawn authority. An override diagnostic can accompany its available repository
 or user Skill; independent installations do not share one Skill capacity budget.
 Admission, discovery, detail and model loading share Scope's format and directory-name
 binding. Parsing consumes exactly the verified bytes. Names must already be in Unicode
@@ -1703,7 +1703,7 @@ trees, including through symlink aliases. Snapshot and restore reject either
 tree containing the other with `checkpoint_unavailable`, before creating or
 changing checkpoint state. With Runtime's standard `<DataDirectory>/checkpoints`
 layout, the data directory itself and its ancestors cannot serve as checkpointed
-workspaces: Runtime durability must not be archived as project material.
+workspaces: Runtime durability must not be archived as workspace material.
 
 An existing checkpoint repository is never rebuilt from its current HEAD state:
 retained Run boundaries belong to that repository even when HEAD has no commit.
@@ -1725,7 +1725,7 @@ recovery, including when the retired Session row no longer exists.
 
 Scratch copies use a managed per-Session container so recovery can reach copies
 left by an abruptly terminated process. They remain ephemeral and are never
-written back to the source project. The new committed-retirement table requires
+written back to the source workspace. The new committed-retirement table requires
 a fresh Runtime data directory. Former database shapes are refused
 without conversion; the former scratch layout has no compatibility reader. Retain
 earlier data separately.
@@ -1893,7 +1893,7 @@ entries; the resolved configuration consumes the same values that were validated
 | Utility model         | Next utility invocation, including during an existing Run; an in-flight invocation retains its resolved model |
 | Embedding model       | Subsequent semantic searches                                                                                  |
 | MCP configuration     | Persisted first; enabled servers connect in the background, and resource status reports readiness             |
-| Project hook trust    | Next Run opening; waiting resume is not a new Run                                                             |
+| Repository hook trust | Next Run opening; waiting resume is not a new Run                                                             |
 | Skill archive/restore | Subsequent resolution; existing conversation context is not erased                                            |
 
 An unset utility role uses the Runtime composition's default model selection. It does not follow each Run's explicit main-model override. Changing the utility role does not replace the main-model deployment of a live or waiting Run. Saving configuration is not a universal live-reload guarantee. Restart recovery validates the retained model and tool deployment; it does not silently reinterpret an existing execution using arbitrary current settings.
@@ -1916,7 +1916,7 @@ A proposal revision identifies its original provider command. Explicit review re
 
 `skills.discovered.list` returns a complete bounded `skills` catalog and `diagnostics`, replacing the former page shape. `skills.discovered.get` / `GetDiscoveredSkill` reads one named document on demand and returns its selected scope, source path, instructions, and SHA-256 revision of the exact document bytes. Upgrade consumers together; there is no legacy page adapter.
 
-Discovery, inspection, and model loading share one source-selection rule and Scope's document format. Project bundles own a colliding name even when malformed; they never expose the user copy as a fallback. Invalid or oversized selected documents appear as diagnostics alongside usable entries. Filesystem, confinement, capacity, and cancellation failures remain explicit query failures. Instructions retain the existing 1 MiB document bound and source directories retain their entry bounds. Inspection describes current authored content, not proof that it was loaded into an existing model conversation.
+Discovery, inspection, and model loading share one source-selection rule and Scope's document format. Repository bundles own a colliding name even when malformed; they never expose the user copy as a fallback. Invalid or oversized selected documents appear as diagnostics alongside usable entries. Filesystem, confinement, capacity, and cancellation failures remain explicit query failures. Instructions retain the existing 1 MiB document bound and source directories retain their entry bounds. Inspection describes current authored content, not proof that it was loaded into an existing model conversation.
 Document admission classifies a non-regular `SKILL.md` as an invalid selected bundle,
 preserving its file-kind cause; oversized documents retain their size-admission cause.
 Cleanup failures remain I/O failures rather than skippable document diagnostics.
@@ -2278,7 +2278,7 @@ External effects require their own owner's receipt or reconciliation.
 
 ## Complete AGENTS guidance
 
-Project instruction files must resolve within their project root. User instruction aliases must resolve within the configured home. Run guidance includes the complete discovered AGENTS.md cascade in source order, with provenance markers. The rendered cascade, including its heading and separators, must fit the 32 KiB guidance budget. An over-budget cascade fails preparation with `prompt_source_too_large`; Runtime does not silently remove ancestor instructions to retain only the most specific files. Shorten the authored documents before retrying. Discovery describes the current documents; it does not prove that a previous Run loaded them.
+Repository instruction files must resolve within their repository root. User instruction aliases must resolve within the configured home. Run guidance includes the complete discovered AGENTS.md cascade in source order, with provenance markers. The rendered cascade, including its heading and separators, must fit the 32 KiB guidance budget. An over-budget cascade fails preparation with `prompt_source_too_large`; Runtime does not silently remove ancestor instructions to retain only the most specific files. Shorten the authored documents before retrying. Discovery describes the current documents; it does not prove that a previous Run loaded them.
 Discovery and authored-file reads retain the standard cancellation category and
 the caller's cause. Complete reads share one document-size rule with retained
 cascade values. Input, admission, version and close failures remain identifiable
@@ -2504,7 +2504,7 @@ deferred cleanup.
 ## Installed lifecycle rules
 
 The installed [Hooks backend](../plugins/hooks/README.md) owns configuration
-sources and bounded command execution. Runtime passes its captured project root
+sources and bounded command execution. Runtime passes its captured repository root
 and trust decision before discovery, retains the exact source through each event
 set, and owns final authorization, approval and argument admission. The selected provider matches
 and folds the captured rules, retaining the event and its original shell receipts. Disabled
@@ -2516,6 +2516,6 @@ fails or returns an invalid decision. Required policies apply only to
 `PreToolUse`, `UserPromptSubmit` and `PreCompact`; post-effect observers cannot
 undo completed work. Explicit deny and ask decisions retain their existing
 semantics under either policy. The SDK owns the default and the permitted events;
-clients display that resolved policy. Project trust remains Runtime-owned.
+clients display that resolved policy. Repository trust remains Runtime-owned.
 Commands use the installed process environment rather than inheriting ambient
 Runtime variables.

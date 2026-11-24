@@ -18,7 +18,7 @@ const (
 
 type WorkspaceInfo struct {
 	Ref          WorkspaceRef          `json:"ref"`
-	ProjectRoot  string                `json:"projectRoot,omitempty"`
+	RepositoryRoot  string                `json:"repositoryRoot,omitempty"`
 	Availability WorkspaceAvailability `json:"availability"`
 }
 

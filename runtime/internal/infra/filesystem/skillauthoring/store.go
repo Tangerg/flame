@@ -21,7 +21,7 @@ import (
 
 type Store struct {
 	root              string
-	project, relative string
+	repository, relative string
 	scope             skills.Scope
 	mu                sync.RWMutex
 }
@@ -36,16 +36,16 @@ func NewStore(root string, scope skills.Scope) (*Store, error) {
 	return &Store{root: root, scope: scope}, nil
 }
 
-func NewProjectStore(project, library string) (*Store, error) {
-	relative, err := filepath.Rel(project, library)
+func NewRepositoryStore(repository, library string) (*Store, error) {
+	relative, err := filepath.Rel(repository, library)
 	if err != nil || !filepath.IsLocal(relative) {
-		return nil, errors.New("skillauthoring: library is outside project root")
+		return nil, errors.New("skillauthoring: library is outside repository root")
 	}
-	store, err := NewStore(library, skills.ScopeProject)
+	store, err := NewStore(library, skills.ScopeRepository)
 	if err != nil {
 		return nil, err
 	}
-	store.project = project
+	store.repository = repository
 	store.relative = relative
 	return store, nil
 }
@@ -53,8 +53,8 @@ func NewProjectStore(project, library string) (*Store, error) {
 func (s *Store) Library() string { return s.root }
 
 func (s *Store) openRoot() (*os.Root, error) {
-	if s.project != "" {
-		parent, err := os.OpenRoot(s.project)
+	if s.repository != "" {
+		parent, err := os.OpenRoot(s.repository)
 		if err != nil {
 			return nil, err
 		}

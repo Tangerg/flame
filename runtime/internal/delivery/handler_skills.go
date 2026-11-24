@@ -154,8 +154,8 @@ func skillProposalRef(in protocol.SkillProposalRef) (skills.ProposalRef, error) 
 
 func presentSkillProposalScope(scope skills.Scope) (protocol.SkillProposalScope, bool) {
 	switch scope {
-	case skills.ScopeProject:
-		return protocol.SkillProposalScopeProject, true
+	case skills.ScopeRepository:
+		return protocol.SkillProposalScopeRepository, true
 	case skills.ScopeUser:
 		return protocol.SkillProposalScopeUser, true
 	default:
@@ -165,8 +165,8 @@ func presentSkillProposalScope(scope skills.Scope) (protocol.SkillProposalScope,
 
 func proposalScopeDomain(scope protocol.SkillProposalScope) skills.Scope {
 	switch scope {
-	case protocol.SkillProposalScopeProject:
-		return skills.ScopeProject
+	case protocol.SkillProposalScopeRepository:
+		return skills.ScopeRepository
 	case protocol.SkillProposalScopeUser:
 		return skills.ScopeUser
 	default:
@@ -176,8 +176,8 @@ func proposalScopeDomain(scope protocol.SkillProposalScope) skills.Scope {
 
 func presentSkillScope(scope skills.Scope) (protocol.SkillScope, bool) {
 	switch scope {
-	case skills.ScopeProject:
-		return protocol.SkillScopeProject, true
+	case skills.ScopeRepository:
+		return protocol.SkillScopeRepository, true
 	case skills.ScopeUser:
 		return protocol.SkillScopeUser, true
 	default:

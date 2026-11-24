@@ -2,6 +2,7 @@ export const de: Record<string, string> = {
   "panel.title": "Agent-Memory",
   "scope.user": "Benutzer-Memory",
   "scope.project": "Projekt-Memory",
+  "scope.folder": "Ordner-Memory",
   "scope.none":
     "Wähle eine Sitzung mit einem Arbeitsbereich oder wähle Benutzer-Memory.",
   "nav.label": "Memory-Navigation",
@@ -10,6 +11,7 @@ export const de: Record<string, string> = {
   edit: "Memory bearbeiten",
   "segment.label": "Memory-Bereich",
   "segment.project": "Aktuelles Projekt",
+  "segment.folder": "Aktueller Ordner",
   "segment.user": "Benutzer",
   "controls.label": "Memory-Steuerung",
   "search.label": "Diese Seite durchsuchen",
@@ -40,6 +42,7 @@ export const de: Record<string, string> = {
   save: "Speichern",
   "command.delete": "{{id}} löschen",
   "command.add.project": "Projekt-Memory hinzufügen",
+  "command.add.folder": "Ordner-Memory hinzufügen",
   "command.add.user": "Benutzer-Memory hinzufügen",
   "command.edit": "{{id}} bearbeiten",
   "command.approve": "{{id}} genehmigen",

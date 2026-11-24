@@ -1,6 +1,6 @@
 {
-  "projectRoot": "/Users/dev/project",
-  "projectTrusted": true,
+  "repositoryRoot": "/Users/dev/project",
+  "repositoryTrusted": true,
   "hooks": [
     {
       "event": "PreToolUse",
@@ -8,7 +8,7 @@
       "command": "./.flame/hooks/guard.sh",
       "failurePolicy": "advisory",
       "timeoutMillis": 5000,
-      "scope": "project",
+      "scope": "repository",
       "source": "/Users/dev/project/.flame/hooks.json",
       "active": true
     },

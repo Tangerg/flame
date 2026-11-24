@@ -945,7 +945,7 @@ TypeScript validator from this single registry projection.
 | `PlanStep` | `id` | `nonEmpty` |
 | `PlanStep` | `description` | `pattern("\\S")` |
 | `WorkspaceRef` | `path` | `nonEmpty` |
-| `WorkspaceInfo` | `projectRoot` | `nonEmpty` |
+| `WorkspaceInfo` | `repositoryRoot` | `nonEmpty` |
 | `WorkspaceSummary` | `name` | `nonEmpty` |
 | `WorkspaceSummary` | `sessionCount` | `nonNegative` |
 | `FileContent` | `totalLines` | `positive` |
@@ -1017,7 +1017,7 @@ TypeScript validator from this single registry projection.
 | `HookInfo` | `source` | `nonEmpty` |
 | `HookInfo` | `timeoutMillis` | `nonNegative` |
 | `HookInfo` | `timeoutMillis` | `maximum(300000)` |
-| `SetHookTrustRequest` | `projectRoot` | `nonEmpty` |
+| `SetHookTrustRequest` | `repositoryRoot` | `nonEmpty` |
 | `ToolRef` | `name` | `pattern("^[A-Za-z0-9_.-]{1,128}$")` |
 | `SetApprovalRuleRequest` | `sessionId` | `identity` |
 | `SetApprovalRuleRequest` | `sessionId` | `maxLength(256)` |

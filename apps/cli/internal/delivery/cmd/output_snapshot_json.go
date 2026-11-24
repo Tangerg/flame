@@ -38,7 +38,7 @@ type sessionFrame struct {
 
 type workspaceFrame struct {
 	Path         string `json:"path"`
-	ProjectRoot  string `json:"projectRoot"`
+	RepositoryRoot  string `json:"repositoryRoot"`
 	Availability string `json:"availability"`
 }
 
@@ -126,7 +126,7 @@ func encodeSession(session conversation.Session) sessionFrame {
 		ID: session.ID, Title: session.Title, Status: string(session.Status),
 		Provider: session.Provider, Model: session.Model, ReasoningEffort: session.ReasoningEffort,
 		Workspace: workspaceFrame{
-			Path: session.Workspace.Path, ProjectRoot: session.Workspace.ProjectRoot,
+			Path: session.Workspace.Path, RepositoryRoot: session.Workspace.RepositoryRoot,
 			Availability: string(session.Workspace.Availability),
 		},
 		CreatedAt: session.CreatedAt, UpdatedAt: session.UpdatedAt,

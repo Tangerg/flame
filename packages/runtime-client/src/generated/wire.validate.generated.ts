@@ -492,7 +492,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     path: allOf([text(), pattern("\\S")]),
     scope: ref(() => CHECKS.AgentDocScope),
   }, ["path", "scope"]),
-  AgentDocScope: enumOf(["cwd", "projectRoot", "home"]),
+  AgentDocScope: enumOf(["cwd", "repositoryRoot", "home"]),
   AnnotationSource: object({
     contractRef: text(),
     contribution: text(),
@@ -533,7 +533,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     }, ["decision", "id", "modelName", "scope", "stale", "subject", "tool"]),
     ifThen(
       fields({
-        scope: literal("project"),
+        scope: literal("workspace"),
       }, ["scope"]),
       fields({}, ["dir"]),
     ),
@@ -555,7 +555,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     ),
   ]),
   ApprovalRuleDecision: enumOf(["allow", "deny"]),
-  ApprovalRuleScope: enumOf(["session", "project", "global"]),
+  ApprovalRuleScope: enumOf(["session", "workspace", "global"]),
   ApprovalSubject: allOf([
     object({
       type: ref(() => CHECKS.ApprovalSubjectType),
@@ -1579,12 +1579,12 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       }, []),
     ),
   ]),
-  HookScope: enumOf(["global", "project"]),
+  HookScope: enumOf(["global", "repository"]),
   HooksListResult: object({
     hooks: array(ref(() => CHECKS.HookInfo)),
-    projectRoot: text(),
-    projectTrusted: flag(),
-  }, ["hooks", "projectTrusted"]),
+    repositoryRoot: text(),
+    repositoryTrusted: flag(),
+  }, ["hooks", "repositoryTrusted"]),
   IdempotencyLimits: object({
     namespace: allOf([text(), pattern("^idp_[0-9a-f]{32}$")]),
     retentionSeconds: allOf([integer(), minimum("1"), maximum("9223372036")]),
@@ -3635,7 +3635,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   RememberScope: object({
     scope: ref(() => CHECKS.RememberScopeKind),
   }, ["scope"]),
-  RememberScopeKind: enumOf(["session", "project", "global"]),
+  RememberScopeKind: enumOf(["session", "workspace", "global"]),
   RendererSelectorKind: enumOf(["toolName", "resultShape", "fileExtension"]),
   RequestMeta: object({
     clientCapabilities: ref(() => CHECKS.ClientCapabilities),
@@ -4315,15 +4315,15 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     ),
     ifThen(
       fields({
-        scope: literal("project"),
+        scope: literal("workspace"),
       }, ["scope"]),
       fields({}, ["sessionId"]),
     ),
   ]),
   SetHookTrustRequest: object({
-    projectRoot: allOf([text(), minLength(1)]),
+    repositoryRoot: allOf([text(), minLength(1)]),
     trusted: flag(),
-  }, ["projectRoot", "trusted"]),
+  }, ["repositoryRoot", "trusted"]),
   SetMCPToolExposureRequest: object({
     disabled: flag(),
     name: allOf([text(), pattern("^[A-Za-z0-9_.-]{1,128}$")]),
@@ -4389,8 +4389,8 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     scope: ref(() => CHECKS.SkillProposalScope),
     workspace: ref(() => CHECKS.WorkspaceRef),
   }, ["name", "revision", "scope", "workspace"]),
-  SkillProposalScope: enumOf(["project", "user"]),
-  SkillScope: enumOf(["project", "user", "installation"]),
+  SkillProposalScope: enumOf(["repository", "user"]),
+  SkillScope: enumOf(["repository", "user", "installation"]),
   StagePluginRequest: object({
     installationId: allOf([text(), pattern("^(?:[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000000[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000000[1-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000000[1-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000000[1-9a-f])$")]),
     source: allOf([text(), minLength(1), maxLength(4096)]),
@@ -4879,8 +4879,8 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   ]),
   WorkspaceInfo: object({
     availability: ref(() => CHECKS.WorkspaceAvailability),
-    projectRoot: allOf([text(), minLength(1)]),
     ref: ref(() => CHECKS.WorkspaceRef),
+    repositoryRoot: allOf([text(), minLength(1)]),
   }, ["availability", "ref"]),
   WorkspaceQuery: object({
     workspace: ref(() => CHECKS.WorkspaceRef),

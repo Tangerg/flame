@@ -1,4 +1,4 @@
-package project
+package repository
 
 import (
 	"errors"

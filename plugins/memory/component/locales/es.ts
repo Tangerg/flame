@@ -2,6 +2,7 @@ export const es: Record<string, string> = {
   "panel.title": "Memoria del agente",
   "scope.user": "Memoria de usuario",
   "scope.project": "Memoria de proyecto",
+  "scope.folder": "Memoria de carpeta",
   "scope.none":
     "Elige una sesión con un espacio de trabajo o selecciona la memoria de usuario.",
   "nav.label": "Navegación de memoria",
@@ -10,6 +11,7 @@ export const es: Record<string, string> = {
   edit: "Editar memoria",
   "segment.label": "Alcance de la memoria",
   "segment.project": "Proyecto actual",
+  "segment.folder": "Carpeta actual",
   "segment.user": "Usuario",
   "controls.label": "Controles de memoria",
   "search.label": "Buscar en esta página",
@@ -40,6 +42,7 @@ export const es: Record<string, string> = {
   save: "Guardar",
   "command.delete": "Eliminar {{id}}",
   "command.add.project": "Añadir memoria de proyecto",
+  "command.add.folder": "Añadir memoria de carpeta",
   "command.add.user": "Añadir memoria de usuario",
   "command.edit": "Editar {{id}}",
   "command.approve": "Aprobar {{id}}",

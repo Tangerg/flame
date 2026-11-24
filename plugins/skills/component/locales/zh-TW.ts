@@ -69,7 +69,7 @@ export const zhTW: Record<string, string> = {
   "action.archive": "封存",
   "proposal.actions": "{{name}} 的提議操作",
   "lifecycle.archived": "已封存",
-  "scope.project": "專案",
+  "scope.repository": "儲存庫",
   "scope.user": "使用者",
   "scope.installation": "安裝",
   "fact.workspace": "工作區",

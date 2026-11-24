@@ -32,7 +32,7 @@ func (a AuthoredResource) InvalidationResource() invalidation.Resource {
 
 type AuthoredScope struct {
 	Workspace   string
-	ProjectRoot string
+	RepositoryRoot string
 }
 
 type AuthoredResourceWatcher interface {
@@ -100,7 +100,7 @@ func (a *AuthoredWatch) Watch(
 	}
 	type authoredScopeKey struct {
 		workspace   string
-		projectRoot string
+		repositoryRoot string
 	}
 	seen := make(map[authoredScopeKey]struct{}, len(cwds))
 	scopes := make([]AuthoredScope, 0, len(cwds))
@@ -113,15 +113,15 @@ func (a *AuthoredWatch) Watch(
 		if err != nil {
 			return nil, err
 		}
-		if resolved.Missing || resolved.ProjectRoot == "" {
+		if resolved.Missing || resolved.RepositoryRoot == "" {
 			return nil, ErrCWDUnavailable
 		}
-		identity := authoredScopeKey{workspace: root, projectRoot: resolved.ProjectRoot}
+		identity := authoredScopeKey{workspace: root, repositoryRoot: resolved.RepositoryRoot}
 		if _, duplicate := seen[identity]; duplicate {
 			continue
 		}
 		seen[identity] = struct{}{}
-		scopes = append(scopes, AuthoredScope{Workspace: root, ProjectRoot: resolved.ProjectRoot})
+		scopes = append(scopes, AuthoredScope{Workspace: root, RepositoryRoot: resolved.RepositoryRoot})
 	}
 	inner, err := a.watcher.Watch(scopes, resources, notify, report)
 	if err != nil {

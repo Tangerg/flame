@@ -14,7 +14,7 @@ const (
 type SkillProposalScope string
 
 const (
-	SkillProposalScopeProject SkillProposalScope = SkillProposalScope(skill.Project)
+	SkillProposalScopeRepository SkillProposalScope = SkillProposalScope(skill.Repository)
 	SkillProposalScopeUser    SkillProposalScope = SkillProposalScope(skill.User)
 )
 

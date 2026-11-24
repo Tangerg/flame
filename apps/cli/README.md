@@ -37,7 +37,7 @@ The client does not parse raw patches into a second diff model.
 
 CLI preferences and Runtime configuration have separate owners.
 
-- `.flame.yaml` in the selected local directory (`.` or `-C`) is the project-local CLI preferences file.
+- `.flame.yaml` in the selected local directory (`.` or `-C`) is the workspace-local CLI preferences file.
 - The OS user configuration directory provides the default CLI preferences file.
 - `--config` selects an explicit CLI YAML file.
 - `FLAME_CLI_*` variables and flags override file values.
@@ -75,13 +75,13 @@ never starts a replacement Runtime or falls back to local storage.
 A configured bearer requires HTTPS outside loopback. A remote Runtime listening on
 HTTP can sit behind a TLS reverse proxy; configure its HTTPS base URL in CLI.
 
-An automatically discovered project `.flame.yaml` cannot declare `runtime.endpoint`.
+An automatically discovered workspace `.flame.yaml` cannot declare `runtime.endpoint`.
 Such a file is rejected before Runtime discovery, including dynamic completion;
 it cannot select the destination of a process-owned bearer. Remove that setting
-from project preferences and choose the endpoint through one of the explicit or
+from workspace preferences and choose the endpoint through one of the explicit or
 user-level sources above. Passing `--config` explicitly authorizes the chosen file.
-The automatic selector loads one file, not a merged user/project pair. When
-project preferences are present, choose the endpoint with the environment or
+The automatic selector loads one file, not a merged user/workspace pair. When
+workspace preferences are present, choose the endpoint with the environment or
 flag, or select a trusted file explicitly with `--config`.
 
 ```sh
@@ -385,7 +385,7 @@ preparing a new one; only an owner acknowledgement or business refusal retires i
 An open view re-reads its rows on `plugins.dataChanged`, and the view commands are
 rebuilt on `plugins.changed`.
 
-An automatically discovered project configuration cannot grant native command
+An automatically discovered workspace configuration cannot grant native command
 execution through `plugins.directories`. Declare executable roots in user
 configuration, an explicitly selected `--config`, or trusted `--plugin-dir`
 flags. Discovery captures each entry's content digest. Execution verifies a

@@ -233,7 +233,7 @@ func (*Runtime) Catalog(context.Context, string) (_ workspace.HookCatalog, err e
 	return
 }
 
-func (*Runtime) SetProjectTrust(context.Context, string, bool) (err error) {
+func (*Runtime) SetRepositoryTrust(context.Context, string, bool) (err error) {
 	err = errUnsupported
 	return
 }

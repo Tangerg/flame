@@ -43,7 +43,7 @@ const REMEMBER_ACTIONS: readonly {
   labelKey: string;
 }[] = [
   { scope: "session", labelKey: "approval.action.allowSession" },
-  { scope: "project", labelKey: "approval.action.allowProject" },
+  { scope: "workspace", labelKey: "approval.action.allowWorkspace" },
   { scope: "global", labelKey: "approval.action.allowGlobal" },
 ];
 

@@ -16,18 +16,18 @@ const (
 
 type Discovery struct {
 	CWD            string `json:"cwd"`
-	ProjectRoot    string `json:"projectRoot"`
+	RepositoryRoot    string `json:"repositoryRoot"`
 	Home           string `json:"home,omitempty"`
-	IncludeProject bool   `json:"includeProject"`
+	IncludeRepository bool   `json:"includeRepository"`
 }
 
 func (d Discovery) Validate() error {
-	if !filepath.IsAbs(d.CWD) || !filepath.IsAbs(d.ProjectRoot) || (d.Home != "" && !filepath.IsAbs(d.Home)) {
+	if !filepath.IsAbs(d.CWD) || !filepath.IsAbs(d.RepositoryRoot) || (d.Home != "" && !filepath.IsAbs(d.Home)) {
 		return errors.New("hooks: absolute discovery directories are required")
 	}
-	relative, err := filepath.Rel(d.ProjectRoot, d.CWD)
+	relative, err := filepath.Rel(d.RepositoryRoot, d.CWD)
 	if err != nil || relative == ".." || strings.HasPrefix(relative, ".."+string(filepath.Separator)) {
-		return errors.New("hooks: directory is outside the captured project root")
+		return errors.New("hooks: directory is outside the captured repository root")
 	}
 	return nil
 }

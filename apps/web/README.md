@@ -192,8 +192,8 @@ settlement, so a late reply cannot accept or change a newer draft in the same
 Session. Plugin shutdown retires Runtime work and resets mode; renderer shutdown
 disposes both owners.
 
-Project hook trust captures the command generation supplied by its feature
-Provider. Trust writes remain serialized per project through canonical query
+Repository hook trust captures the command generation supplied by its feature
+Provider. Trust writes remain serialized per repository through canonical query
 revalidation. Runtime withdrawal retires pending and queued intent, and a stale
 control cannot submit that intent through a successor Runtime.
 

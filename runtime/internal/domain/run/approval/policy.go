@@ -42,13 +42,13 @@ type Scope string
 
 const (
 	ScopeSession Scope = "session"
-	ScopeProject Scope = "project"
+	ScopeWorkspace Scope = "workspace"
 	ScopeGlobal  Scope = "global"
 )
 
 func (s Scope) Valid() bool {
 	switch s {
-	case ScopeSession, ScopeProject, ScopeGlobal:
+	case ScopeSession, ScopeWorkspace, ScopeGlobal:
 		return true
 	default:
 		return false
@@ -111,7 +111,7 @@ func (r Rule) Decision() Decision                   { return r.decision }
 
 type Query struct {
 	SessionID         identity.SessionID
-	ProjectDir        string
+	WorkspaceDir        string
 	Tool              tool.Ref
 	SourceFingerprint framevalue.Digest
 	Subject           string
@@ -120,7 +120,7 @@ type Query struct {
 type RememberRequest struct {
 	Scope             Scope
 	SessionID         identity.SessionID
-	ProjectDir        string
+	WorkspaceDir        string
 	Tool              tool.Ref
 	SourceFingerprint framevalue.Digest
 	Subject           Subject

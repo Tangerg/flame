@@ -1,6 +1,6 @@
 {
   "id": "rule_01",
-  "scope": "project",
+  "scope": "workspace",
   "tool": {
     "type": "builtIn",
     "name": "shell"

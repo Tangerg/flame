@@ -30,7 +30,7 @@ func (a *ApprovalRuleStore) Put(ctx context.Context, r approval.Rule) error {
 	})
 }
 
-func (a *ApprovalRuleStore) Visible(ctx context.Context, sessionID identity.SessionID, projectDir string, limit int) ([]approval.Rule, error) {
+func (a *ApprovalRuleStore) Visible(ctx context.Context, sessionID identity.SessionID, workspaceDir string, limit int) ([]approval.Rule, error) {
 	return scopedValue(ctx, a.db.read, func(ctx context.Context) ([]approval.Rule, error) {
 		if limit <= 0 || limit > approval.MaximumVisibleRules+1 {
 			return nil, fmt.Errorf("sqlite: list approval rules: invalid limit %d", limit)
@@ -39,10 +39,10 @@ func (a *ApprovalRuleStore) Visible(ctx context.Context, sessionID identity.Sess
 		        r.source_fingerprint, r.subject_type, r.subject, r.decision
 		   FROM approval_rules r LEFT JOIN mcp_sources s ON s.id = r.mcp_source
 		 WHERE (r.scope = 'session' AND r.scope_key = ?)
-		    OR (r.scope = 'project' AND ? <> '' AND r.scope_key = ?)
+		    OR (r.scope = 'workspace' AND ? <> '' AND r.scope_key = ?)
 		    OR r.scope = 'global'
 		 ORDER BY r.scope, r.scope_key, r.tool_kind, s.origin <> 'user', s.installation_id, s.name, r.tool_name, r.subject_type, r.subject, r.id
-		 LIMIT ?`, sessionID, projectDir, projectDir, limit)
+		 LIMIT ?`, sessionID, workspaceDir, workspaceDir, limit)
 		if err != nil {
 			return nil, fmt.Errorf("sqlite: list approval rules: %w", err)
 		}
@@ -123,7 +123,7 @@ func approvalRulesSchema() string {
  CHECK ((scope = '%[3]s') = (scope_key = '')),
  CHECK ((subject_type = 'all' AND subject = '') OR (subject_type <> 'all' AND subject <> '')),
  CHECK ((tool_kind = '%[4]s') = (mcp_source IS NOT NULL))
-)`, sqlValues(string(approval.ScopeSession), string(approval.ScopeProject), string(approval.ScopeGlobal)), sqlValues(kinds...), approval.ScopeGlobal, tool.MCPKind)
+)`, sqlValues(string(approval.ScopeSession), string(approval.ScopeWorkspace), string(approval.ScopeGlobal)), sqlValues(kinds...), approval.ScopeGlobal, tool.MCPKind)
 }
 
 const putApprovalRuleSQL = `INSERT INTO approval_rules

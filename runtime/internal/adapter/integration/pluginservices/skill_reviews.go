@@ -238,11 +238,11 @@ func (s *SkillGovernance) list(ctx context.Context, root string, source plugins.
 	if err != nil {
 		return nil, err
 	}
-	project, err := s.libraryID(ctx, root, skills.ScopeProject, source)
+	repository, err := s.libraryID(ctx, root, skills.ScopeRepository, source)
 	if err != nil {
 		return nil, err
 	}
-	result, err := query[skilllearning.Libraries, skilllearning.Queue](borrowed.Context(), source, borrowed.Session(), method.Name(), skilllearning.Libraries{User: user, Project: project}, sdk.ParamsBase{})
+	result, err := query[skilllearning.Libraries, skilllearning.Queue](borrowed.Context(), source, borrowed.Session(), method.Name(), skilllearning.Libraries{User: user, Repository: repository}, sdk.ParamsBase{})
 	if err != nil {
 		return nil, err
 	}

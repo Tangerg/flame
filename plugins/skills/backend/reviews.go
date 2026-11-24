@@ -114,7 +114,7 @@ func (r reviewQueue) prepareStage(ctx context.Context, command string, draft ski
 func (r reviewQueue) pending(ctx context.Context, libraries skilllearning.Libraries) (skilllearning.Queue, error) {
 	queue := skilllearning.Queue{Proposals: []skilllearning.ReviewRef{}}
 	err := r.db.Read(ctx, func(reader framesqlite.Reader) error {
-		rows, err := reader.QueryContext(ctx, `SELECT proposal FROM reviews WHERE library IN (?,?) ORDER BY library,name`, libraries.Project, libraries.User)
+		rows, err := reader.QueryContext(ctx, `SELECT proposal FROM reviews WHERE library IN (?,?) ORDER BY library,name`, libraries.Repository, libraries.User)
 		if err != nil {
 			return err
 		}

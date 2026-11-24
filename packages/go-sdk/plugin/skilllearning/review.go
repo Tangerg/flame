@@ -27,7 +27,7 @@ type ReviewRef struct {
 	Command string `json:"command"`
 }
 type Libraries struct {
-	Project string `json:"project"`
+	Repository string `json:"repository"`
 	User    string `json:"user"`
 }
 type Queue struct {

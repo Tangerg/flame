@@ -148,7 +148,7 @@
       "type": "string",
       "enum": [
         "cwd",
-        "projectRoot",
+        "repositoryRoot",
         "home"
       ]
     },
@@ -319,7 +319,7 @@
           "if": {
             "properties": {
               "scope": {
-                "const": "project"
+                "const": "workspace"
               }
             },
             "required": [
@@ -379,7 +379,7 @@
       "type": "string",
       "enum": [
         "session",
-        "project",
+        "workspace",
         "global"
       ]
     },
@@ -3546,7 +3546,7 @@
       "type": "string",
       "enum": [
         "global",
-        "project"
+        "repository"
       ]
     },
     "HooksListResult": {
@@ -3558,16 +3558,16 @@
             "$ref": "#/$defs/HookInfo"
           }
         },
-        "projectRoot": {
+        "repositoryRoot": {
           "type": "string"
         },
-        "projectTrusted": {
+        "repositoryTrusted": {
           "type": "boolean"
         }
       },
       "required": [
         "hooks",
-        "projectTrusted"
+        "repositoryTrusted"
       ]
     },
     "IdempotencyLimits": {
@@ -9912,7 +9912,7 @@
       "type": "string",
       "enum": [
         "session",
-        "project",
+        "workspace",
         "global"
       ]
     },
@@ -12165,7 +12165,7 @@
           "if": {
             "properties": {
               "scope": {
-                "const": "project"
+                "const": "workspace"
               }
             },
             "required": [
@@ -12183,7 +12183,7 @@
     "SetHookTrustRequest": {
       "type": "object",
       "properties": {
-        "projectRoot": {
+        "repositoryRoot": {
           "type": "string",
           "minLength": 1
         },
@@ -12192,7 +12192,7 @@
         }
       },
       "required": [
-        "projectRoot",
+        "repositoryRoot",
         "trusted"
       ]
     },
@@ -12474,14 +12474,14 @@
     "SkillProposalScope": {
       "type": "string",
       "enum": [
-        "project",
+        "repository",
         "user"
       ]
     },
     "SkillScope": {
       "type": "string",
       "enum": [
-        "project",
+        "repository",
         "user",
         "installation"
       ]
@@ -14139,12 +14139,12 @@
         "availability": {
           "$ref": "#/$defs/WorkspaceAvailability"
         },
-        "projectRoot": {
-          "type": "string",
-          "minLength": 1
-        },
         "ref": {
           "$ref": "#/$defs/WorkspaceRef"
+        },
+        "repositoryRoot": {
+          "type": "string",
+          "minLength": 1
         }
       },
       "required": [

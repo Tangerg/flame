@@ -10,7 +10,7 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/hook"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/hookprovider"
 	apphooks "github.com/Tangerg/flame/runtime/internal/application/integration/hooks"
-	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/project"
+	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/repository"
 	"github.com/samber/lo"
 )
 
@@ -42,7 +42,7 @@ func (r *Resolver) For(ctx context.Context, cwd string) (*apphooks.Bound, error)
 	if cwd == "" {
 		return apphooks.Unbound(), nil
 	}
-	inspection, use, err := r.discover(ctx, cwd, trustedProjectRules)
+	inspection, use, err := r.discover(ctx, cwd, trustedRepositoryRules)
 	if err != nil {
 		return nil, err
 	}
@@ -50,14 +50,14 @@ func (r *Resolver) For(ctx context.Context, cwd string) (*apphooks.Bound, error)
 		return apphooks.Unbound(), nil
 	}
 	evaluate := use.Evaluate
-	if slices.ContainsFunc(inspection.Hooks, func(rule hook.Hook) bool { return rule.Scope == hook.ScopeProject }) {
+	if slices.ContainsFunc(inspection.Hooks, func(rule hook.Hook) bool { return rule.Scope == hook.ScopeRepository }) {
 		evaluate = func(ctx context.Context, event hookprovider.Evaluation) (hookprovider.Advice, error) {
-			trusted, err := r.trusted(ctx, inspection.ProjectRoot)
+			trusted, err := r.trusted(ctx, inspection.RepositoryRoot)
 			if err != nil {
 				return hookprovider.Advice{}, err
 			}
 			if !trusted {
-				event.Rules = slices.DeleteFunc(slices.Clone(event.Rules), func(rule hook.Hook) bool { return rule.Scope == hook.ScopeProject })
+				event.Rules = slices.DeleteFunc(slices.Clone(event.Rules), func(rule hook.Hook) bool { return rule.Scope == hook.ScopeRepository })
 			}
 			if len(event.Rules) == 0 {
 				return hookprovider.Advice{Decision: hook.CommandDecision{Verdict: hook.CommandAllow}}, nil
@@ -76,29 +76,29 @@ func (r *Resolver) Inspect(ctx context.Context, cwd string) (_ apphooks.Inspecti
 	if cwd == "" {
 		return apphooks.Inspection{}, nil
 	}
-	inspection, use, err := r.discover(ctx, cwd, everyProjectRule)
+	inspection, use, err := r.discover(ctx, cwd, everyRepositoryRule)
 	if use != nil {
 		defer func() { returned = errors.Join(returned, use.Close()) }()
 	}
 	return inspection, err
 }
 
-// Inspection lists an untrusted project's rules so the user can decide on trust;
+// Inspection lists an untrusted repository's rules so the user can decide on trust;
 // binding never loads them.
-type projectRuleSelection int
+type repositoryRuleSelection int
 
 const (
-	trustedProjectRules projectRuleSelection = iota
-	everyProjectRule
+	trustedRepositoryRules repositoryRuleSelection = iota
+	everyRepositoryRule
 )
 
-func (r *Resolver) discover(ctx context.Context, cwd string, selection projectRuleSelection) (_ apphooks.Inspection, _ Use, returned error) {
-	root, err := project.Root(cwd)
+func (r *Resolver) discover(ctx context.Context, cwd string, selection repositoryRuleSelection) (_ apphooks.Inspection, _ Use, returned error) {
+	root, err := repository.Root(cwd)
 	if err != nil {
-		return apphooks.Inspection{}, nil, fmt.Errorf("hooks: locate project root: %w", err)
+		return apphooks.Inspection{}, nil, fmt.Errorf("hooks: locate repository root: %w", err)
 	}
-	inspection := apphooks.Inspection{ProjectRoot: root}
-	inspection.ProjectTrusted, err = r.trusted(ctx, root)
+	inspection := apphooks.Inspection{RepositoryRoot: root}
+	inspection.RepositoryTrusted, err = r.trusted(ctx, root)
 	if err != nil {
 		return apphooks.Inspection{}, nil, err
 	}
@@ -111,7 +111,7 @@ func (r *Resolver) discover(ctx context.Context, cwd string, selection projectRu
 			returned = errors.Join(returned, use.Close())
 		}
 	}()
-	query := hookprovider.Discovery{CWD: cwd, ProjectRoot: root, Home: r.home, IncludeProject: selection == everyProjectRule || inspection.ProjectTrusted}
+	query := hookprovider.Discovery{CWD: cwd, RepositoryRoot: root, Home: r.home, IncludeRepository: selection == everyRepositoryRule || inspection.RepositoryTrusted}
 	inspection.Hooks, err = use.Discover(ctx, query)
 	if err != nil {
 		return apphooks.Inspection{}, nil, fmt.Errorf("hooks: discover installed rules: %w", err)
@@ -119,8 +119,8 @@ func (r *Resolver) discover(ctx context.Context, cwd string, selection projectRu
 	if err := inspection.ValidateFor(cwd); err != nil {
 		return apphooks.Inspection{}, nil, err
 	}
-	if !query.IncludeProject && slices.ContainsFunc(inspection.Hooks, func(value hook.Hook) bool { return value.Scope == hook.ScopeProject }) {
-		return apphooks.Inspection{}, nil, errors.New("hooks: source returned untrusted project rules")
+	if !query.IncludeRepository && slices.ContainsFunc(inspection.Hooks, func(value hook.Hook) bool { return value.Scope == hook.ScopeRepository }) {
+		return apphooks.Inspection{}, nil, errors.New("hooks: source returned untrusted repository rules")
 	}
 	return inspection, use, nil
 }

@@ -11,7 +11,7 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 )
 
-// ConfigurationPath is relative to the home or project directory whose hooks it declares.
+// ConfigurationPath is relative to the home or repository directory whose hooks it declares.
 const ConfigurationPath = identity.AuthoredDirectory + "/hooks.json"
 
 const (
@@ -45,7 +45,7 @@ type Scope string
 
 const (
 	ScopeGlobal  Scope = "global"
-	ScopeProject Scope = "project"
+	ScopeRepository Scope = "repository"
 )
 
 type FailurePolicy string
@@ -294,7 +294,7 @@ func (Event) JSONSchemaEnum() []string {
 	return []string{string(PreToolUse), string(PostToolUse), string(UserPromptSubmit), string(SessionStart), string(PreCompact), string(Stop), string(Notification)}
 }
 
-func (Scope) JSONSchemaEnum() []string { return []string{string(ScopeGlobal), string(ScopeProject)} }
+func (Scope) JSONSchemaEnum() []string { return []string{string(ScopeGlobal), string(ScopeRepository)} }
 
 type CommandVerdict string
 

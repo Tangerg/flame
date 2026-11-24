@@ -347,7 +347,7 @@ export interface Methods {
     ) => Promise<StreamingResult<RuntimeSubscribeResponse, RuntimeEvent>>;
   };
   hooks: {
-    setTrust: (projectRoot: string, trusted: boolean) => MutationPromise<void>;
+    setTrust: (repositoryRoot: string, trusted: boolean) => MutationPromise<void>;
   };
   skills: {
     listLibrary: (signal?: AbortSignal) => Promise<Page<ManagedSkill>>;
@@ -881,9 +881,9 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
     },
     workspace: (ref) => bindWorkspace(call, ref),
     hooks: {
-      setTrust: (projectRoot, trusted) =>
+      setTrust: (repositoryRoot, trusted) =>
         call("hooks.setTrust", {
-          projectRoot,
+          repositoryRoot,
           trusted,
         }),
     },

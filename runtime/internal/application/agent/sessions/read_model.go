@@ -23,7 +23,7 @@ const (
 
 type WorkspaceView struct {
 	Path        string
-	ProjectRoot string
+	RepositoryRoot string
 	Missing     bool
 }
 
@@ -221,7 +221,7 @@ func (c *Coordinator) view(value session.Session, activity Activity) (View, erro
 		ID:    value.ID(),
 		Title: value.Title(),
 		Workspace: WorkspaceView{
-			Path: workspace.Path, ProjectRoot: workspace.ProjectRoot, Missing: workspace.Missing,
+			Path: workspace.Path, RepositoryRoot: workspace.RepositoryRoot, Missing: workspace.Missing,
 		},
 		Project:         value.Project(),
 		Provider:        selection.Provider(),

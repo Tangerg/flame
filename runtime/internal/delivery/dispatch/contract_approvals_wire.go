@@ -10,7 +10,7 @@ func registerApprovalConditions(s *Shapes) {
 	s.constraint(ObjectConstraintSpec{
 		GoType: typeOf[protocol.ApprovalRule](),
 		Rules: []ConditionalRule{{
-			When:     whenEquals("scope", string(protocol.ApprovalRuleScopeProject)),
+			When:     whenEquals("scope", string(protocol.ApprovalRuleScopeWorkspace)),
 			Required: []string{"dir"},
 		}, {
 			When:      whenEquals("scope", string(protocol.ApprovalRuleScopeSession)),

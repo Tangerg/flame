@@ -187,7 +187,7 @@ func (c *Coordinator) openResumedSegment(
 }
 
 func rememberedRuleCandidates(
-	sessionID identity.SessionID, projectDir string,
+	sessionID identity.SessionID, workspaceDir string,
 	pending Pending,
 	items map[identity.ItemID]transcript.Item,
 	answers []InterruptAnswer,
@@ -207,7 +207,7 @@ func rememberedRuleCandidates(
 			Request: approval.RememberRequest{
 				Scope:             resolution.RememberScope,
 				SessionID:         sessionID,
-				ProjectDir:        projectDir,
+				WorkspaceDir:        workspaceDir,
 				Tool:              binding.ToolRef,
 				SourceFingerprint: binding.SourceFingerprint,
 				Decision:          resolution.Decision,

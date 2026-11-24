@@ -111,7 +111,7 @@ func (r *Runtime) ListSessions(ctx context.Context, query conversation.SessionQu
 		if workspace != "" && state.meta.Workspace.Path != workspace {
 			continue
 		}
-		if needle != "" && !strings.Contains(strings.ToLower(state.meta.Title+"\n"+state.meta.Workspace.Path+"\n"+state.meta.Workspace.ProjectRoot), needle) {
+		if needle != "" && !strings.Contains(strings.ToLower(state.meta.Title+"\n"+state.meta.Workspace.Path+"\n"+state.meta.Workspace.RepositoryRoot), needle) {
 			continue
 		}
 		items = append(items, state.meta)
@@ -255,7 +255,7 @@ func (r *Runtime) UpdateSession(ctx context.Context, in conversation.UpdateSessi
 }
 
 func availableWorkspace(path string) workspace.Workspace {
-	return workspace.Workspace{Path: path, ProjectRoot: path, Availability: protocol.WorkspaceAvailable}
+	return workspace.Workspace{Path: path, RepositoryRoot: path, Availability: protocol.WorkspaceAvailable}
 }
 
 func (r *Runtime) ForkSession(ctx context.Context, in conversation.ForkSession) (conversation.Session, error) {

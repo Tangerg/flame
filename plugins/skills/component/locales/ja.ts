@@ -74,7 +74,7 @@ export const ja: Record<string, string> = {
   "action.archive": "アーカイブ",
   "proposal.actions": "{{name}} の提案アクション",
   "lifecycle.archived": "アーカイブ済み",
-  "scope.project": "プロジェクト",
+  "scope.repository": "リポジトリ",
   "scope.user": "ユーザー",
   "scope.installation": "インストール",
   "fact.workspace": "ワークスペース",

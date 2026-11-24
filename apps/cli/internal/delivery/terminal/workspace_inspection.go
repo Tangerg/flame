@@ -34,8 +34,8 @@ func (w *workspaceScreens) ShowWorkspaces() {
 				if !value.Workspace.IsAvailable() {
 					label += "  · missing"
 				}
-				if value.Workspace.ProjectRoot != "" && value.Workspace.ProjectRoot != value.Workspace.Path {
-					label += "  · project " + value.Workspace.ProjectRoot
+				if value.Workspace.RepositoryRoot != "" && value.Workspace.RepositoryRoot != value.Workspace.Path {
+					label += "  · repository " + value.Workspace.RepositoryRoot
 				}
 				if value.LastActive != nil {
 					label += "  · active " + value.LastActive.Format(time.RFC3339)

@@ -162,7 +162,7 @@ func registerToolRefUnion(s *Shapes) {
 	s.constraint(ObjectConstraintSpec{GoType: typeOf[protocol.SetApprovalRuleRequest](), Rules: []ConditionalRule{
 		{When: whenEquals("scope", "global"), Forbidden: []string{"sessionId"}},
 		{When: whenEquals("scope", "session"), Required: []string{"sessionId"}},
-		{When: whenEquals("scope", "project"), Required: []string{"sessionId"}},
+		{When: whenEquals("scope", "workspace"), Required: []string{"sessionId"}},
 	}})
 }
 

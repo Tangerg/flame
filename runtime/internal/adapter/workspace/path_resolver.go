@@ -8,7 +8,7 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
-	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/project"
+	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/repository"
 )
 
 type Resolver struct{ filesystem.DirectoryResolver }
@@ -60,7 +60,7 @@ func (Resolver) Inspect(path string) (workspaceapp.Resolved, error) {
 	if err != nil {
 		return workspaceapp.Resolved{}, err
 	}
-	identity := workspaceapp.Resolved{Path: cwd, ProjectRoot: cwd}
+	identity := workspaceapp.Resolved{Path: cwd, RepositoryRoot: cwd}
 	info, err := os.Stat(cwd)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
@@ -74,10 +74,10 @@ func (Resolver) Inspect(path string) (workspaceapp.Resolved, error) {
 		return identity, nil
 	}
 
-	root, err := project.Root(cwd)
+	root, err := repository.Root(cwd)
 	if err != nil {
 		return workspaceapp.Resolved{}, err
 	}
-	identity.ProjectRoot = root
+	identity.RepositoryRoot = root
 	return identity, nil
 }

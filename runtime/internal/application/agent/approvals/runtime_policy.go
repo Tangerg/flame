@@ -125,7 +125,7 @@ func (r *RuntimePolicy) Decide(ctx context.Context, q approval.Query) (approval.
 	if !found || current != q.SourceFingerprint {
 		return "", false, nil
 	}
-	candidates, err := r.visibleRules(ctx, q.SessionID, q.ProjectDir)
+	candidates, err := r.visibleRules(ctx, q.SessionID, q.WorkspaceDir)
 	if err != nil {
 		return "", false, err
 	}
@@ -166,7 +166,7 @@ type sourceAuthorities interface {
 type RuleView struct {
 	ID         string
 	Scope      approval.Scope
-	ProjectDir string
+	WorkspaceDir string
 	Tool       tool.Ref
 	Subject    approval.Subject
 	Decision   approval.Decision
@@ -174,15 +174,15 @@ type RuleView struct {
 }
 
 func (r *RuntimePolicy) ListRules(ctx context.Context, sessionID identity.SessionID) ([]RuleView, error) {
-	projectDir := ""
+	workspaceDir := ""
 	if !sessionID.IsZero() {
 		sess, err := r.sessions.Get(ctx, sessionID)
 		if err != nil {
 			return nil, err
 		}
-		projectDir = sess.Workspace().Path()
+		workspaceDir = sess.Workspace().Path()
 	}
-	rules, err := r.visibleRules(ctx, sessionID, projectDir)
+	rules, err := r.visibleRules(ctx, sessionID, workspaceDir)
 	if err != nil {
 		return nil, err
 	}
@@ -201,8 +201,8 @@ func (r *RuntimePolicy) ListRules(ctx context.Context, sessionID identity.Sessio
 			ID: rule.ID(), Scope: rule.Scope().Kind(), Tool: rule.Tool(), Subject: rule.Subject(), Decision: rule.Decision(),
 			Stale: !found || authority != rule.SourceFingerprint(),
 		}
-		if rule.Scope().Kind() == approval.ScopeProject {
-			entry.ProjectDir = rule.Scope().Key()
+		if rule.Scope().Kind() == approval.ScopeWorkspace {
+			entry.WorkspaceDir = rule.Scope().Key()
 		}
 		view = append(view, entry)
 	}
@@ -210,13 +210,13 @@ func (r *RuntimePolicy) ListRules(ctx context.Context, sessionID identity.Sessio
 }
 
 func (r *RuntimePolicy) SetRule(ctx context.Context, change RuleChange) error {
-	projectDir := ""
+	workspaceDir := ""
 	if change.Scope != approval.ScopeGlobal {
 		sess, err := r.sessions.Get(ctx, change.SessionID)
 		if err != nil {
 			return err
 		}
-		projectDir = sess.Workspace().Path()
+		workspaceDir = sess.Workspace().Path()
 	}
 	authority, found, err := r.authorities.Fingerprint(ctx, change.Tool)
 	if err != nil {
@@ -225,19 +225,19 @@ func (r *RuntimePolicy) SetRule(ctx context.Context, change RuleChange) error {
 	if !found {
 		return fmt.Errorf("%w: tool source is missing", approval.ErrInvalidRule)
 	}
-	rule, err := approval.RememberRequest{Scope: change.Scope, SessionID: change.SessionID, ProjectDir: projectDir, Tool: change.Tool, SourceFingerprint: authority, Subject: change.Subject, Decision: change.Decision}.Rule()
+	rule, err := approval.RememberRequest{Scope: change.Scope, SessionID: change.SessionID, WorkspaceDir: workspaceDir, Tool: change.Tool, SourceFingerprint: authority, Subject: change.Subject, Decision: change.Decision}.Rule()
 	if err != nil {
 		return err
 	}
 	return r.put(ctx, rule)
 }
 
-func (r *RuntimePolicy) visibleRules(ctx context.Context, sessionID identity.SessionID, projectDir string) ([]approval.Rule, error) {
-	rules, err := r.store.Visible(ctx, sessionID, projectDir, approval.MaximumVisibleRules+1)
+func (r *RuntimePolicy) visibleRules(ctx context.Context, sessionID identity.SessionID, workspaceDir string) ([]approval.Rule, error) {
+	rules, err := r.store.Visible(ctx, sessionID, workspaceDir, approval.MaximumVisibleRules+1)
 	if err != nil {
 		return nil, err
 	}
-	if err := approval.ValidateVisibleRules(rules, sessionID, projectDir); err != nil {
+	if err := approval.ValidateVisibleRules(rules, sessionID, workspaceDir); err != nil {
 		return nil, err
 	}
 	return rules, nil

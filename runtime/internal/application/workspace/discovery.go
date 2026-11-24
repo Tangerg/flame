@@ -36,14 +36,14 @@ func NewDiscovery(scope *Scope, workspaces catalog, agentDocs agentDocFinder) (*
 
 type Resolved struct {
 	Path        string
-	ProjectRoot string
+	RepositoryRoot string
 	Missing     bool
 }
 
 type Summary struct {
 	Name         string
 	Path         string
-	ProjectRoot  string
+	RepositoryRoot  string
 	Missing      bool
 	SessionCount int
 	LastActiveAt time.Time
@@ -75,7 +75,7 @@ func (d *Discovery) Workspaces(ctx context.Context) ([]Summary, error) {
 			return nil, err
 		}
 		workspace.Path = identity.Path
-		workspace.ProjectRoot = identity.ProjectRoot
+		workspace.RepositoryRoot = identity.RepositoryRoot
 		workspace.Missing = identity.Missing
 		workspace.Name = filepath.Base(identity.Path)
 		if index, exists := byPath[identity.Path]; exists {
@@ -145,7 +145,7 @@ func (d *Discovery) AgentDocs(ctx context.Context, cwd string) ([]AgentDoc, erro
 	docs := make([]AgentDoc, 0, len(files))
 	for _, file := range files {
 		switch file.Scope {
-		case AgentDocScopeHome, AgentDocScopeProjectRoot, AgentDocScopeCWD:
+		case AgentDocScopeHome, AgentDocScopeRepositoryRoot, AgentDocScopeCWD:
 			docs = append(docs, AgentDoc{Path: file.Path, Scope: file.Scope})
 		default:
 			return nil, fmt.Errorf("workspace: unsupported agent document scope %q", file.Scope)

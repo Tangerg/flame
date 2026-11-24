@@ -28,7 +28,7 @@ type proposalArgs struct {
 	Name         string       `json:"name" jsonschema:"required,minLength=1,maxLength=64,pattern=^[a-z0-9]+(-[a-z0-9]+)*$" jsonschema_description:"Stable lowercase hyphenated Skill identifier of at most 64 characters, such as review-go-api. Describe the workflow, not the current task."`
 	Description  string       `json:"description" jsonschema:"required,minLength=1,maxLength=1024" jsonschema_description:"One or two sentences stating what reusable workflow the Skill provides and when it should be used."`
 	Instructions string       `json:"instructions" jsonschema:"required,minLength=1,maxLength=1048576" jsonschema_description:"Complete self-contained instructions an Agent should follow in future work. The value may not exceed 1 MiB and must exclude one-off progress, transient context, and secrets."`
-	Scope        skills.Scope `json:"scope" jsonschema:"required,enum=project,enum=user" jsonschema_description:"project = available only in the current workspace; user = available across all workspaces for this user."`
+	Scope        skills.Scope `json:"scope" jsonschema:"required,enum=repository,enum=user" jsonschema_description:"repository = available only in the current repository; user = available across all workspaces for this user."`
 }
 
 type proposalStatus string
@@ -73,7 +73,7 @@ func (p *proposer) run(ctx context.Context, input proposalArgs) (proposalResult,
 		return proposalResult{}, fmt.Errorf("%s: no attached Run workspace", builtincontract.ProposeSkill)
 	}
 	if err := input.Scope.Validate(); err != nil {
-		return proposalResult{}, pluginsdk.DefiniteToolFailure(fmt.Errorf("%s: scope must be project or user: %w", builtincontract.ProposeSkill, err))
+		return proposalResult{}, pluginsdk.DefiniteToolFailure(fmt.Errorf("%s: scope must be repository or user: %w", builtincontract.ProposeSkill, err))
 	}
 	proposal := skills.Proposal{
 		Scope:         input.Scope,

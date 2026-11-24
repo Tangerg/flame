@@ -35,7 +35,7 @@ type resolvedSkills struct {
 }
 
 func resolveSkills(ctx context.Context, workspaceRoot, userDir string, sources SkillSources, retained []plugin.Dependency) (*resolvedSkills, error) {
-	project, err := openRuntimeSkillSource(ProjectSkillDir(workspaceRoot), workspaceRoot)
+	repository, err := openRuntimeSkillSource(RepositorySkillDir(workspaceRoot), workspaceRoot)
 	if err != nil {
 		return nil, err
 	}
@@ -48,7 +48,7 @@ func resolveSkills(ctx context.Context, workspaceRoot, userDir string, sources S
 	if err != nil {
 		return nil, err
 	}
-	if project == nil && user == nil && len(bundles) == 0 && (sources.Capture == nil || sources.Capture.Command == "") {
+	if repository == nil && user == nil && len(bundles) == 0 && (sources.Capture == nil || sources.Capture.Command == "") {
 		return nil, nil
 	}
 	set := candidates{readers: make(map[skilllearning.Choice]selectedSkill), installed: make(map[string]bool)}
@@ -56,7 +56,7 @@ func resolveSkills(ctx context.Context, workspaceRoot, userDir string, sources S
 	if err := set.bundles(bundles, packages); err != nil {
 		return nil, err
 	}
-	if err := set.directories(ctx, user, project); err != nil {
+	if err := set.directories(ctx, user, repository); err != nil {
 		return nil, err
 	}
 	return set.selectReaders(ctx, sources)

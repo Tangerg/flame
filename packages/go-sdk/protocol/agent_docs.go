@@ -5,7 +5,7 @@ type AgentDocScope string
 
 const (
 	AgentDocScopeCWD         AgentDocScope = "cwd"
-	AgentDocScopeProjectRoot AgentDocScope = "projectRoot"
+	AgentDocScopeRepositoryRoot AgentDocScope = "repositoryRoot"
 	AgentDocScopeHome        AgentDocScope = "home"
 )
 

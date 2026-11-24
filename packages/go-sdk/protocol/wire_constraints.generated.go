@@ -340,7 +340,7 @@ func (s SkillProposalRef) validateWire() error {
 	return collectWireViolations("SkillProposalRef",
 		requiredTextPattern("name", s.Name, "\\S"),
 		requiredTextPattern("revision", s.Revision, "^[0-9a-f]{64}$"),
-		closedEnum("scope", string(s.Scope), []string{"project", "user"}, false),
+		closedEnum("scope", string(s.Scope), []string{"repository", "user"}, false),
 	)
 }
 
@@ -508,7 +508,7 @@ func (p PluginRequest) validateWire() error {
 
 func (s SetHookTrustRequest) validateWire() error {
 	return collectWireViolations("SetHookTrustRequest",
-		requiredText("projectRoot", s.ProjectRoot),
+		requiredText("repositoryRoot", s.RepositoryRoot),
 	)
 }
 
@@ -516,11 +516,11 @@ func (s SetApprovalRuleRequest) validateWire() error {
 	return collectWireViolations("SetApprovalRuleRequest",
 		identity("sessionId", s.SessionID),
 		maxLength("sessionId", s.SessionID, 256),
-		closedEnum("scope", string(s.Scope), []string{"session", "project", "global"}, false),
+		closedEnum("scope", string(s.Scope), []string{"session", "workspace", "global"}, false),
 		closedEnum("decision", string(s.Decision), []string{"allow", "deny"}, false),
 		forbiddenWhen(wireFieldEquals(s, "scope", "global"), "sessionId", s),
 		requiredWhen(wireFieldEquals(s, "scope", "session"), "sessionId", s),
-		requiredWhen(wireFieldEquals(s, "scope", "project"), "sessionId", s),
+		requiredWhen(wireFieldEquals(s, "scope", "workspace"), "sessionId", s),
 	)
 }
 
@@ -2161,7 +2161,7 @@ func (h HookInfo) validateWire() error {
 		maximumNumber("timeoutMillis", h.TimeoutMillis, 300000),
 		closedEnum("event", string(h.Event), []string{"PreToolUse", "PostToolUse", "UserPromptSubmit", "SessionStart", "PreCompact", "Stop", "Notification"}, false),
 		closedEnum("failurePolicy", string(h.FailurePolicy), []string{"advisory", "required"}, true),
-		closedEnum("scope", string(h.Scope), []string{"global", "project"}, false),
+		closedEnum("scope", string(h.Scope), []string{"global", "repository"}, false),
 		requiredAny([]string{"command", "inject"}, h),
 		requiredWhen(wireFieldPresent(h, "command"), "failurePolicy", h),
 		forbiddenWhen(wireFieldPresent(h, "command"), "inject", h),
@@ -2214,9 +2214,9 @@ func (a ApprovalRule) validateWire() error {
 		identity("id", a.ID),
 		maxLength("id", a.ID, 256),
 		requiredTextPattern("modelName", a.ModelName, "^[A-Za-z0-9_-]{1,64}$"),
-		closedEnum("scope", string(a.Scope), []string{"session", "project", "global"}, false),
+		closedEnum("scope", string(a.Scope), []string{"session", "workspace", "global"}, false),
 		closedEnum("decision", string(a.Decision), []string{"allow", "deny"}, false),
-		requiredWhen(wireFieldEquals(a, "scope", "project"), "dir", a),
+		requiredWhen(wireFieldEquals(a, "scope", "workspace"), "dir", a),
 		forbiddenWhen(wireFieldEquals(a, "scope", "session"), "dir", a),
 		forbiddenWhen(wireFieldEquals(a, "scope", "global"), "dir", a),
 	)
@@ -2658,7 +2658,7 @@ func (w WorkspaceRef) validateWire() error {
 
 func (w WorkspaceInfo) validateWire() error {
 	return collectWireViolations("WorkspaceInfo",
-		requiredText("projectRoot", w.ProjectRoot),
+		requiredText("repositoryRoot", w.RepositoryRoot),
 		closedEnum("availability", string(w.Availability), []string{"available", "missing"}, false),
 	)
 }
@@ -2747,14 +2747,14 @@ func (s SkillDetail) validateWire() error {
 		requiredText("path", s.Path),
 		requiredTextPattern("revision", s.Revision, "^[a-f0-9]{64}$"),
 		requiredTextPattern("name", s.Name, "\\S"),
-		closedEnum("scope", string(s.Scope), []string{"project", "user", "installation"}, false),
+		closedEnum("scope", string(s.Scope), []string{"repository", "user", "installation"}, false),
 	)
 }
 
 func (s Skill) validateWire() error {
 	return collectWireViolations("Skill",
 		requiredTextPattern("name", s.Name, "\\S"),
-		closedEnum("scope", string(s.Scope), []string{"project", "user", "installation"}, false),
+		closedEnum("scope", string(s.Scope), []string{"repository", "user", "installation"}, false),
 	)
 }
 
@@ -2771,7 +2771,7 @@ func (s SkillProposal) validateWire() error {
 		requiredTextPattern("revision", s.Revision, "^[0-9a-f]{64}$"),
 		requiredTextPattern("description", s.Description, "\\S"),
 		requiredTextPattern("instructions", s.Instructions, "\\S"),
-		closedEnum("scope", string(s.Scope), []string{"project", "user"}, false),
+		closedEnum("scope", string(s.Scope), []string{"repository", "user"}, false),
 		closedEnum("origin", string(s.Origin), []string{"requested", "mined"}, false),
 	)
 }
@@ -3009,7 +3009,7 @@ func (m ModelCapabilities) validateWire() error {
 func (a AgentDoc) validateWire() error {
 	return collectWireViolations("AgentDoc",
 		requiredTextPattern("path", a.Path, "\\S"),
-		closedEnum("scope", string(a.Scope), []string{"cwd", "projectRoot", "home"}, false),
+		closedEnum("scope", string(a.Scope), []string{"cwd", "repositoryRoot", "home"}, false),
 	)
 }
 
@@ -3202,7 +3202,7 @@ func (p ProviderTestResult) validateWire() error {
 
 func (r RememberScope) validateWire() error {
 	return collectWireViolations("RememberScope",
-		closedEnum("scope", string(r.Scope), []string{"session", "project", "global"}, false),
+		closedEnum("scope", string(r.Scope), []string{"session", "workspace", "global"}, false),
 	)
 }
 

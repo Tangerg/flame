@@ -29,7 +29,7 @@ export type LossReason =
 
 export type MessagePhase = "commentary" | "finalAnswer";
 
-export type RememberScopeKind = "session" | "project" | "global";
+export type RememberScopeKind = "session" | "workspace" | "global";
 
 export type ResultShape = "search" | "patch" | "command";
 

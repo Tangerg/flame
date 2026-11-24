@@ -233,7 +233,7 @@ func (r *Connection) Read(ctx context.Context, request workspace.ReadRequest) (w
 
 func projectWorkspace(value protocol.WorkspaceInfo) workspace.Workspace {
 	return workspace.Workspace{
-		Path: value.Ref.Path, ProjectRoot: value.ProjectRoot, Availability: value.Availability,
+		Path: value.Ref.Path, RepositoryRoot: value.RepositoryRoot, Availability: value.Availability,
 	}
 }
 

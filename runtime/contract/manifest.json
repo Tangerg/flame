@@ -5462,7 +5462,7 @@
             {
               "field": "scope",
               "operator": "equals",
-              "value": "project"
+              "value": "workspace"
             }
           ],
           "required": [
@@ -6160,7 +6160,7 @@
             {
               "field": "scope",
               "operator": "equals",
-              "value": "project"
+              "value": "workspace"
             }
           ],
           "required": [
@@ -9041,7 +9041,7 @@
       "type": "WorkspaceInfo",
       "rules": [
         {
-          "field": "projectRoot",
+          "field": "repositoryRoot",
           "constraint": "nonEmpty"
         }
       ]
@@ -9479,7 +9479,7 @@
       "type": "SetHookTrustRequest",
       "rules": [
         {
-          "field": "projectRoot",
+          "field": "repositoryRoot",
           "constraint": "nonEmpty"
         }
       ]

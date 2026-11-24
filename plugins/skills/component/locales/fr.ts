@@ -92,7 +92,7 @@ export const fr: Record<string, string> = {
   "action.archive": "Archiver",
   "proposal.actions": "Actions de proposition pour {{name}}",
   "lifecycle.archived": "Archivé",
-  "scope.project": "Projet",
+  "scope.repository": "Dépôt",
   "scope.user": "Utilisateur",
   "scope.installation": "Installation",
   "fact.workspace": "Espace de travail",

@@ -63,7 +63,7 @@ func NewIsolator(userHome, baseDir string, readOnlyPaths []string) (*Isolator, e
 	}, nil
 }
 
-func (i *Isolator) Workspace(ctx context.Context, sessionID identity.SessionID, projectRoot string) (string, error) {
+func (i *Isolator) Workspace(ctx context.Context, sessionID identity.SessionID, repositoryRoot string) (string, error) {
 	owned, closed := i.lookup(sessionID)
 	if closed {
 		return "", sandbox.ErrShutdown
@@ -72,7 +72,7 @@ func (i *Isolator) Workspace(ctx context.Context, sessionID identity.SessionID, 
 		if owned.retiring {
 			return "", errWorkspaceRetiring
 		}
-		if owned.source != projectRoot {
+		if owned.source != repositoryRoot {
 			return "", errWorkspaceChanged
 		}
 		return owned.workspace.Path()
@@ -83,7 +83,7 @@ func (i *Isolator) Workspace(ctx context.Context, sessionID identity.SessionID, 
 		UserHome:      i.userHome,
 		BaseDir:       i.sessionDir(sessionID),
 		ReadOnlyPaths: i.readOnlyPaths,
-	}, projectRoot)
+	}, repositoryRoot)
 	if err != nil {
 		return "", err
 	}
@@ -95,7 +95,7 @@ func (i *Isolator) Workspace(ctx context.Context, sessionID identity.SessionID, 
 	if i.workspaces[sessionID] != nil {
 		return "", errors.Join(errConcurrentWorkspace, fresh.Shutdown())
 	}
-	i.workspaces[sessionID] = &ownedWorkspace{workspace: fresh, source: projectRoot}
+	i.workspaces[sessionID] = &ownedWorkspace{workspace: fresh, source: repositoryRoot}
 	return fresh.Path()
 }
 

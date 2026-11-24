@@ -10,7 +10,7 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
-	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/project"
+	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/repository"
 )
 
 const agentDocName = "AGENTS.md"
@@ -30,7 +30,7 @@ func (AgentDocs) Find(ctx context.Context, cwd, home string) ([]workspaceapp.Age
 	if err := d.discoverHome(ctx, home); err != nil {
 		return nil, err
 	}
-	if err := d.discoverProjectTree(ctx, cwd); err != nil {
+	if err := d.discoverRepositoryTree(ctx, cwd); err != nil {
 		return nil, err
 	}
 	return d.files, nil
@@ -70,10 +70,10 @@ func (a *agentDocScan) discoverHome(ctx context.Context, home string) (err error
 	return a.discoverIn(ctx, root, home, filepath.Join(home, ".agents"), workspaceapp.AgentDocScopeHome)
 }
 
-func (a *agentDocScan) discoverProjectTree(ctx context.Context, cwd string) (err error) {
-	root, err := project.Root(cwd)
+func (a *agentDocScan) discoverRepositoryTree(ctx context.Context, cwd string) (err error) {
+	root, err := repository.Root(cwd)
 	if err != nil {
-		return fmt.Errorf("promptsource: locate project root for %q: %w", cwd, err)
+		return fmt.Errorf("promptsource: locate repository root for %q: %w", cwd, err)
 	}
 	boundary, err := openDocumentRoot(root)
 	if errors.Is(err, os.ErrNotExist) {
@@ -83,8 +83,8 @@ func (a *agentDocScan) discoverProjectTree(ctx context.Context, cwd string) (err
 		return err
 	}
 	defer func() { err = errors.Join(err, boundary.Close()) }()
-	for _, dir := range project.Chain(cwd, root) {
-		scope := workspaceapp.AgentDocScopeProjectRoot
+	for _, dir := range repository.Chain(cwd, root) {
+		scope := workspaceapp.AgentDocScopeRepositoryRoot
 		if dir == cwd {
 			scope = workspaceapp.AgentDocScopeCWD
 		}
@@ -123,7 +123,7 @@ func (a *agentDocScan) try(ctx context.Context, root *os.Root, path string, scop
 	}
 	relative, err := filepath.Rel(root.Name(), abs)
 	if err != nil || !filepath.IsLocal(relative) {
-		return false, fmt.Errorf("%w: project instruction %q: %w", workspaceapp.ErrInvalidPromptSource, path, workspaceapp.ErrPathOutsideRoot)
+		return false, fmt.Errorf("%w: repository instruction %q: %w", workspaceapp.ErrInvalidPromptSource, path, workspaceapp.ErrPathOutsideRoot)
 	}
 	if _, dup := a.seen[abs]; dup {
 		return true, nil

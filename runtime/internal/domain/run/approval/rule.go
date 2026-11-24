@@ -18,7 +18,7 @@ func Decide(rules []Rule, q Query) (Decision, bool, error) {
 	return ruleSet(rules).decide(q)
 }
 
-func ValidateVisibleRules(rules []Rule, sessionID identity.SessionID, projectDir string) error {
+func ValidateVisibleRules(rules []Rule, sessionID identity.SessionID, workspaceDir string) error {
 	if len(rules) > MaximumVisibleRules {
 		return fmt.Errorf(
 			"%w: got %d rules, maximum %d",
@@ -32,7 +32,7 @@ func ValidateVisibleRules(rules []Rule, sessionID identity.SessionID, projectDir
 		if !rule.scope.kind.Valid() {
 			return fmt.Errorf("%w: visible rule %d was never constructed", ErrInvalidRule, index)
 		}
-		if !rule.scope.visibleFrom(sessionID, projectDir) {
+		if !rule.scope.visibleFrom(sessionID, workspaceDir) {
 			return fmt.Errorf(
 				"%w: visible rule %d with scope %q and key %q is outside the requested scope",
 				ErrInvalidRule,
@@ -63,11 +63,11 @@ func SessionScope(sessionID identity.SessionID) (RuleScope, error) {
 	return RuleScope{kind: ScopeSession, key: sessionID.String()}, nil
 }
 
-func ProjectScope(dir string) (RuleScope, error) {
+func WorkspaceScope(dir string) (RuleScope, error) {
 	if strings.TrimSpace(dir) == "" {
-		return RuleScope{}, fmt.Errorf("%w: project scope requires a directory", ErrInvalidRule)
+		return RuleScope{}, fmt.Errorf("%w: workspace scope requires a directory", ErrInvalidRule)
 	}
-	return RuleScope{kind: ScopeProject, key: dir}, nil
+	return RuleScope{kind: ScopeWorkspace, key: dir}, nil
 }
 
 func RestoreRuleScope(kind Scope, key string) (RuleScope, error) {
@@ -78,8 +78,8 @@ func RestoreRuleScope(kind Scope, key string) (RuleScope, error) {
 			return RuleScope{}, fmt.Errorf("%w: session scope: %w", ErrInvalidRule, err)
 		}
 		return SessionScope(sessionID)
-	case ScopeProject:
-		return ProjectScope(key)
+	case ScopeWorkspace:
+		return WorkspaceScope(key)
 	case ScopeGlobal:
 		if key != "" {
 			return RuleScope{}, fmt.Errorf("%w: global scope cannot carry a key", ErrInvalidRule)
@@ -94,13 +94,13 @@ func (s RuleScope) Kind() Scope { return s.kind }
 
 func (s RuleScope) Key() string { return s.key }
 
-// Empty session and project keys are refused so rules cannot leak across scopes.
-func (s RuleScope) visibleFrom(sessionID identity.SessionID, projectDir string) bool {
+// Empty session and workspace keys are refused so rules cannot leak across scopes.
+func (s RuleScope) visibleFrom(sessionID identity.SessionID, workspaceDir string) bool {
 	switch s.kind {
 	case ScopeSession:
 		return !sessionID.IsZero() && s.key == sessionID.String()
-	case ScopeProject:
-		return projectDir != "" && s.key == projectDir
+	case ScopeWorkspace:
+		return workspaceDir != "" && s.key == workspaceDir
 	default:
 		return s.kind == ScopeGlobal
 	}
@@ -125,7 +125,7 @@ func NewRule(scope RuleScope, ref tool.Ref, source framevalue.Digest, subject Su
 func (r Rule) specificity() [2]int {
 	rank := func(order []string, value string) int { return slices.Index(order, value) + 1 }
 	return [2]int{
-		rank([]string{string(ScopeGlobal), string(ScopeProject), string(ScopeSession)}, string(r.scope.kind)),
+		rank([]string{string(ScopeGlobal), string(ScopeWorkspace), string(ScopeSession)}, string(r.scope.kind)),
 		rank([]string{string(SubjectAll), string(SubjectGlob), string(SubjectExact)}, string(r.subject.Type)),
 	}
 }
@@ -143,7 +143,7 @@ func (r ruleSet) decide(q Query) (Decision, bool, error) {
 	if err := q.Validate(); err != nil {
 		return "", false, err
 	}
-	if err := ValidateVisibleRules(r, q.SessionID, q.ProjectDir); err != nil {
+	if err := ValidateVisibleRules(r, q.SessionID, q.WorkspaceDir); err != nil {
 		return "", false, err
 	}
 	var best [2]int
@@ -175,8 +175,8 @@ func (r RememberRequest) Rule() (Rule, error) {
 	switch r.Scope {
 	case ScopeSession:
 		scope, err = SessionScope(r.SessionID)
-	case ScopeProject:
-		scope, err = ProjectScope(r.ProjectDir)
+	case ScopeWorkspace:
+		scope, err = WorkspaceScope(r.WorkspaceDir)
 	case ScopeGlobal:
 		scope = GlobalScope()
 	default:

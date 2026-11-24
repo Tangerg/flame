@@ -7155,7 +7155,7 @@
       "paramStructure": "by-name",
       "params": [
         {
-          "name": "projectRoot",
+          "name": "repositoryRoot",
           "required": true,
           "schema": {
             "type": "string",
@@ -7198,7 +7198,7 @@
           "_meta": {
             "$ref": "#/components/schemas/RequestMeta"
           },
-          "projectRoot": {},
+          "repositoryRoot": {},
           "trusted": {}
         },
         "unevaluatedProperties": false,

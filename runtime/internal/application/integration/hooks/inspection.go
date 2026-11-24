@@ -18,15 +18,15 @@ func (i Inspection) ValidateFor(workspaceRoot string) error {
 	if err := hookdata.ValidateHookCascade(len(i.Hooks)); err != nil {
 		return fmt.Errorf("%w: %w", errInvalidInspection, err)
 	}
-	if i.ProjectRoot != "" {
-		if !canonicalAbsolutePath(i.ProjectRoot) {
-			return fmt.Errorf("%w: project root %q is not a canonical absolute path", errInvalidInspection, i.ProjectRoot)
+	if i.RepositoryRoot != "" {
+		if !canonicalAbsolutePath(i.RepositoryRoot) {
+			return fmt.Errorf("%w: repository root %q is not a canonical absolute path", errInvalidInspection, i.RepositoryRoot)
 		}
-		if !pathContains(i.ProjectRoot, workspaceRoot) {
-			return fmt.Errorf("%w: project root %q does not contain workspace %q", errInvalidInspection, i.ProjectRoot, workspaceRoot)
+		if !pathContains(i.RepositoryRoot, workspaceRoot) {
+			return fmt.Errorf("%w: repository root %q does not contain workspace %q", errInvalidInspection, i.RepositoryRoot, workspaceRoot)
 		}
-	} else if i.ProjectTrusted {
-		return fmt.Errorf("%w: trusted project has no root", errInvalidInspection)
+	} else if i.RepositoryTrusted {
+		return fmt.Errorf("%w: trusted repository has no root", errInvalidInspection)
 	}
 
 	for index, hook := range i.Hooks {
@@ -38,12 +38,12 @@ func (i Inspection) ValidateFor(workspaceRoot string) error {
 		}
 		switch hook.Scope {
 		case hookdata.ScopeGlobal:
-		case hookdata.ScopeProject:
-			if i.ProjectRoot == "" {
-				return fmt.Errorf("%w: project hook %d has no project root", errInvalidInspection, index+1)
+		case hookdata.ScopeRepository:
+			if i.RepositoryRoot == "" {
+				return fmt.Errorf("%w: repository hook %d has no repository root", errInvalidInspection, index+1)
 			}
-			if !pathContains(i.ProjectRoot, hook.Source) {
-				return fmt.Errorf("%w: project hook %d source %q is outside project root %q", errInvalidInspection, index+1, hook.Source, i.ProjectRoot)
+			if !pathContains(i.RepositoryRoot, hook.Source) {
+				return fmt.Errorf("%w: repository hook %d source %q is outside repository root %q", errInvalidInspection, index+1, hook.Source, i.RepositoryRoot)
 			}
 		default:
 			return fmt.Errorf("%w: hook %d has unknown scope %q", errInvalidInspection, index+1, hook.Scope)

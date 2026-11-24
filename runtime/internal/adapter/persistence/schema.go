@@ -477,10 +477,10 @@ func currentSchema() []string {
 		approvalRulesSchema(),
 		`CREATE INDEX IF NOT EXISTS idx_approval_rules_scope
 			ON approval_rules(scope, scope_key)`,
-		// A cloned repo's project hooks must not auto-execute (supply-chain RCE); trust is
-		// granted explicitly per project.
-		`CREATE TABLE IF NOT EXISTS trusted_projects (
-			project_root TEXT PRIMARY KEY
+		// A cloned repository's hooks must not auto-execute (supply-chain RCE); trust is
+		// granted explicitly per repository.
+		`CREATE TABLE IF NOT EXISTS trusted_repositories (
+			repository_root TEXT PRIMARY KEY
 		)`,
 		`CREATE TABLE IF NOT EXISTS runtime_identity (
 			id                    INTEGER PRIMARY KEY CHECK (id = 1),

@@ -80,7 +80,7 @@ export const en: Record<string, string> = {
   "action.archive": "Archive",
   "proposal.actions": "Proposal actions for {{name}}",
   "lifecycle.archived": "Archived",
-  "scope.project": "Project",
+  "scope.repository": "Repository",
   "scope.user": "User",
   "scope.installation": "Installation",
   "fact.workspace": "Workspace",

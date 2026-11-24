@@ -75,8 +75,8 @@ func (b *Bound) Run(ctx context.Context, in hookdata.Input) domainhooks.Decision
 }
 
 type Inspection struct {
-	ProjectRoot    string
-	ProjectTrusted bool
+	RepositoryRoot    string
+	RepositoryTrusted bool
 	Hooks          []hookdata.Hook
 }
 

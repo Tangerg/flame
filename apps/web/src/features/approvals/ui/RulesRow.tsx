@@ -35,7 +35,7 @@ import { SettingRow } from "@/ui/settings/SettingRow";
 import { settingStyles as ss } from "@/ui/settings/settingStyles";
 const SCOPE_TONE: Record<ApprovalRuleSummary["scope"], Tone> = {
   session: "neutral",
-  project: "accent",
+  workspace: "accent",
   global: "warning",
 };
 

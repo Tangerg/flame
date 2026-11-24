@@ -32,8 +32,8 @@ func registerDiscovery(server *pluginmcp.Backend, db framesqlite.Database) error
 		}))
 }
 
-// A later scope overrides an earlier one: project over user over installation.
-var sourcePrecedence = []skill.Scope{skill.Installation, skill.User, skill.Project}
+// A later scope overrides an earlier one: repository over user over installation.
+var sourcePrecedence = []skill.Scope{skill.Installation, skill.User, skill.Repository}
 
 func sourceRank(scope skill.Scope) int { return slices.Index(sourcePrecedence, scope) + 1 }
 

@@ -33,10 +33,10 @@ type SkillCurator interface {
 }
 
 type SkillProposals interface {
-	SubmitProposal(ctx context.Context, projectRoot string, proposal skills.Proposal) (skills.ProposalRef, error)
-	ListProposals(ctx context.Context, projectRoot string) ([]skills.ProposalReview, error)
-	ApproveProposal(ctx context.Context, projectRoot string, ref skills.ProposalRef) ([]string, error)
-	RejectProposal(ctx context.Context, projectRoot string, ref skills.ProposalRef) error
+	SubmitProposal(ctx context.Context, repositoryRoot string, proposal skills.Proposal) (skills.ProposalRef, error)
+	ListProposals(ctx context.Context, repositoryRoot string) ([]skills.ProposalReview, error)
+	ApproveProposal(ctx context.Context, repositoryRoot string, ref skills.ProposalRef) ([]string, error)
+	RejectProposal(ctx context.Context, repositoryRoot string, ref skills.ProposalRef) error
 }
 
 type Skills struct {

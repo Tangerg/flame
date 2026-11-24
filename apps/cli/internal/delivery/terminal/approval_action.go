@@ -14,11 +14,11 @@ type approvalAction string
 const (
 	approvalAllowOnce    approvalAction = "allow-once"
 	approvalAllowSession approvalAction = "allow-session"
-	approvalAllowProject approvalAction = "allow-project"
+	approvalAllowWorkspace approvalAction = "allow-workspace"
 	approvalAllowGlobal  approvalAction = "allow-global"
 	approvalDenyOnce     approvalAction = "deny-once"
 	approvalDenySession  approvalAction = "deny-session"
-	approvalDenyProject  approvalAction = "deny-project"
+	approvalDenyWorkspace  approvalAction = "deny-workspace"
 	approvalDenyGlobal   approvalAction = "deny-global"
 	approvalEditArgs     approvalAction = "edit-arguments"
 )
@@ -34,12 +34,12 @@ func approvalOptions(rememberable bool) []base.Option[approvalAction] {
 	}
 	options = slices.Insert(options, 1,
 		base.Option[approvalAction]{Label: "Allow for this session", Value: approvalAllowSession},
-		base.Option[approvalAction]{Label: "Allow for this project", Value: approvalAllowProject},
+		base.Option[approvalAction]{Label: "Allow in this workspace", Value: approvalAllowWorkspace},
 		base.Option[approvalAction]{Label: "Always allow this rule", Value: approvalAllowGlobal},
 	)
 	return slices.Insert(options, len(options)-1,
 		base.Option[approvalAction]{Label: "Deny for this session", Value: approvalDenySession},
-		base.Option[approvalAction]{Label: "Deny for this project", Value: approvalDenyProject},
+		base.Option[approvalAction]{Label: "Deny in this workspace", Value: approvalDenyWorkspace},
 		base.Option[approvalAction]{Label: "Always deny this rule", Value: approvalDenyGlobal},
 	)
 }
@@ -64,8 +64,8 @@ func defaultApprovalAction(preference settings.RememberPreference) approvalActio
 	switch preference {
 	case settings.RememberSession:
 		return approvalAllowSession
-	case settings.RememberProject:
-		return approvalAllowProject
+	case settings.RememberWorkspace:
+		return approvalAllowWorkspace
 	case settings.RememberGlobal:
 		return approvalAllowGlobal
 	default:
@@ -77,16 +77,16 @@ func (a approvalAction) Answer() (conversation.ApprovalAnswer, bool) {
 	switch a {
 	case approvalAllowSession:
 		return conversation.ApprovalAnswer{Decision: protocol.ApprovalApprove, Remember: protocol.RememberSession}, true
-	case approvalAllowProject:
-		return conversation.ApprovalAnswer{Decision: protocol.ApprovalApprove, Remember: protocol.RememberProject}, true
+	case approvalAllowWorkspace:
+		return conversation.ApprovalAnswer{Decision: protocol.ApprovalApprove, Remember: protocol.RememberWorkspace}, true
 	case approvalAllowGlobal:
 		return conversation.ApprovalAnswer{Decision: protocol.ApprovalApprove, Remember: protocol.RememberGlobal}, true
 	case approvalAllowOnce:
 		return conversation.ApprovalAnswer{Decision: protocol.ApprovalApprove}, true
 	case approvalDenySession:
 		return conversation.ApprovalAnswer{Decision: protocol.ApprovalDeny, Remember: protocol.RememberSession}, true
-	case approvalDenyProject:
-		return conversation.ApprovalAnswer{Decision: protocol.ApprovalDeny, Remember: protocol.RememberProject}, true
+	case approvalDenyWorkspace:
+		return conversation.ApprovalAnswer{Decision: protocol.ApprovalDeny, Remember: protocol.RememberWorkspace}, true
 	case approvalDenyGlobal:
 		return conversation.ApprovalAnswer{Decision: protocol.ApprovalDeny, Remember: protocol.RememberGlobal}, true
 	case approvalDenyOnce:

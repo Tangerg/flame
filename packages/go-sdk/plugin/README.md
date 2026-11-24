@@ -878,12 +878,12 @@ and execution budgets retain their respective owners.
 
 `plugin/hookprovider` publishes `flame.hooks.v1`. An installed source discovers
 ordered `hook.Hook` values and evaluates trusted lifecycle events with private original
-receipts. `Discovery.IncludeProject` is the Runtime's trust decision: an
-untrusted project must not be read or parsed during execution discovery.
+receipts. `Discovery.IncludeRepository` is the Runtime's trust decision: an
+untrusted repository must not be read or parsed during execution discovery.
 Inspection may request the complete cascade without authorizing its commands.
 
 `hook` owns portable rules, bounded event material and command advice. Runtime
-owns project trust, event delivery, final Tool admission and approval. The selected
+owns repository trust, event delivery, final Tool admission and approval. The selected
 provider matches rules and combines their outcomes inside a single event receipt. A command's `allow` advice cannot override those owners. Cancellation
 must stop and join the command's process group; an admitted command without a
 known original receipt cannot run again under that identity.

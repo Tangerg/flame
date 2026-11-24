@@ -75,7 +75,7 @@ func presentApprovalRule(r approvals.RuleView) (protocol.ApprovalRule, error) {
 		ID:    r.ID,
 		Scope: scope,
 		Tool:  ref, ModelName: r.Tool.ModelName(), Stale: r.Stale,
-		Dir:      r.ProjectDir,
+		Dir:      r.WorkspaceDir,
 		Subject:  protocol.ApprovalSubject{Type: approvalSubjects.mustWire(r.Subject.Type), Value: r.Subject.Value},
 		Decision: decision,
 	}
@@ -84,7 +84,7 @@ func presentApprovalRule(r approvals.RuleView) (protocol.ApprovalRule, error) {
 
 var approvalScopes = wireVocabulary[approval.Scope, protocol.ApprovalRuleScope]{
 	{approval.ScopeSession, protocol.ApprovalRuleScopeSession},
-	{approval.ScopeProject, protocol.ApprovalRuleScopeProject},
+	{approval.ScopeWorkspace, protocol.ApprovalRuleScopeWorkspace},
 	{approval.ScopeGlobal, protocol.ApprovalRuleScopeGlobal},
 }
 
@@ -147,8 +147,8 @@ func rememberScopeFromWire(s protocol.RememberScopeKind) (approval.Scope, bool) 
 	switch s {
 	case protocol.RememberSession:
 		return approval.ScopeSession, true
-	case protocol.RememberProject:
-		return approval.ScopeProject, true
+	case protocol.RememberWorkspace:
+		return approval.ScopeWorkspace, true
 	case protocol.RememberGlobal:
 		return approval.ScopeGlobal, true
 	}

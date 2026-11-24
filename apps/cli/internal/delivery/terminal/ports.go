@@ -120,7 +120,7 @@ type AuthoringContext interface {
 
 type Hooks interface {
 	Catalog(context.Context, string) (workspace.HookCatalog, error)
-	SetProjectTrust(context.Context, string, bool) error
+	SetRepositoryTrust(context.Context, string, bool) error
 }
 
 type Feedback interface {

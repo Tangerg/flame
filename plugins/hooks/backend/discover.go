@@ -30,9 +30,9 @@ func discover(ctx context.Context, input hookprovider.Discovery) ([]hook.Hook, e
 			return nil, err
 		}
 	}
-	if input.IncludeProject {
-		for _, dir := range projectChain(filepath.Clean(input.CWD), filepath.Clean(input.ProjectRoot)) {
-			if err := cascade.add(ctx, filepath.Join(dir, hook.ConfigurationPath), hook.ScopeProject); err != nil {
+	if input.IncludeRepository {
+		for _, dir := range projectChain(filepath.Clean(input.CWD), filepath.Clean(input.RepositoryRoot)) {
+			if err := cascade.add(ctx, filepath.Join(dir, hook.ConfigurationPath), hook.ScopeRepository); err != nil {
 				return nil, err
 			}
 		}

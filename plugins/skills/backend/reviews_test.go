@@ -59,7 +59,7 @@ func TestReviewSurvivesRestartAndKeepsOriginalHumanPermit(t *testing.T) {
 	reject, _ := skilllearning.RejectMethod()
 	confirm, _ := skilllearning.ConfirmMethod()
 	queue, _ := skilllearning.QueueMethod()
-	draft := skilllearning.Draft{Library: "captured-project", Scope: "project", Skill: skilllearning.Skill{Name: "check", Description: "Inspect the project sources", Instructions: "Read the repository."}, Origin: "requested", SourceSession: "ses_parent"}
+	draft := skilllearning.Draft{Library: "captured-repository", Scope: "repository", Skill: skilllearning.Skill{Name: "check", Description: "Inspect the project sources", Instructions: "Read the repository."}, Origin: "requested", SourceSession: "ses_parent"}
 	first, err := reviewCall(t, session, propose, "initial", extension.Model, draft)
 	if err != nil {
 		t.Fatal(err)
@@ -88,7 +88,7 @@ func TestReviewSurvivesRestartAndKeepsOriginalHumanPermit(t *testing.T) {
 	if err != nil || again != permit {
 		t.Fatalf("restart rebound permit: %+v %v", again, err)
 	}
-	pending, err := reviewCall(t, session, queue, "read", extension.Human, skilllearning.Libraries{Project: draft.Library})
+	pending, err := reviewCall(t, session, queue, "read", extension.Human, skilllearning.Libraries{Repository: draft.Library})
 	if err != nil || len(pending.Proposals) != 1 || pending.Proposals[0] != current {
 		t.Fatalf("recovered queue: %+v %v", pending, err)
 	}
@@ -99,7 +99,7 @@ func TestReviewSurvivesRestartAndKeepsOriginalHumanPermit(t *testing.T) {
 	if _, err := reviewCall(t, session, confirm, "receipt", extension.Human, publication); err != nil {
 		t.Fatal(err)
 	}
-	pending, err = reviewCall(t, session, queue, "reread", extension.Human, skilllearning.Libraries{Project: draft.Library})
+	pending, err = reviewCall(t, session, queue, "reread", extension.Human, skilllearning.Libraries{Repository: draft.Library})
 	if err != nil || len(pending.Proposals) != 0 {
 		t.Fatalf("settled publication still pending: %+v %v", pending, err)
 	}

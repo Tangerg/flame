@@ -11,7 +11,7 @@ import (
 )
 
 func DiscoverMethod() (*pluginmcp.Method[hookprovider.Discovery, []hook.Hook], error) {
-	return pluginmcp.NewMethod[hookprovider.Discovery, []hook.Hook](frame.MethodConfig{Name: "flame.hooks/discover.v1", Kind: frame.Query, Target: extension.ScopeInstallation, Description: "Read ordered lifecycle rules. Exclude all project configuration when the Runtime has not admitted its trust."})
+	return pluginmcp.NewMethod[hookprovider.Discovery, []hook.Hook](frame.MethodConfig{Name: "flame.hooks/discover.v1", Kind: frame.Query, Target: extension.ScopeInstallation, Description: "Read ordered lifecycle rules. Exclude all repository configuration when the Runtime has not admitted its trust."})
 }
 
 func EvaluateMethod() (*pluginmcp.Method[hookprovider.Evaluation, hookprovider.Advice], error) {

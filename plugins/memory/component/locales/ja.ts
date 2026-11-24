@@ -2,6 +2,7 @@ export const ja: Record<string, string> = {
   "panel.title": "Agent メモリ",
   "scope.user": "ユーザーメモリ",
   "scope.project": "プロジェクトメモリ",
+  "scope.folder": "フォルダメモリ",
   "scope.none":
     "ワークスペースを持つセッションを選択するか、ユーザーメモリを選択してください。",
   "nav.label": "メモリのナビゲーション",
@@ -10,6 +11,7 @@ export const ja: Record<string, string> = {
   edit: "メモリを編集",
   "segment.label": "メモリの範囲",
   "segment.project": "現在のプロジェクト",
+  "segment.folder": "現在のフォルダ",
   "segment.user": "ユーザー",
   "controls.label": "メモリコントロール",
   "search.label": "このページを検索",
@@ -40,6 +42,7 @@ export const ja: Record<string, string> = {
   save: "保存",
   "command.delete": "{{id}} を削除",
   "command.add.project": "プロジェクトメモリを追加",
+  "command.add.folder": "フォルダメモリを追加",
   "command.add.user": "ユーザーメモリを追加",
   "command.edit": "{{id}} を編集",
   "command.approve": "{{id}} を承認",

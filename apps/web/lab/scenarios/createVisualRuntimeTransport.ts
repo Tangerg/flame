@@ -108,7 +108,7 @@ function resultFor(
         throw new Error(`Visual Runtime has no recorded workspace "${ref.path}"`);
       return {
         ref: { path: VISUAL_WORKSPACE_PATH },
-        projectRoot: VISUAL_WORKSPACE_PATH,
+        repositoryRoot: VISUAL_WORKSPACE_PATH,
         availability: "available",
       } satisfies WorkspaceInfo;
     }

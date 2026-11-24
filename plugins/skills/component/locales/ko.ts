@@ -74,7 +74,7 @@ export const ko: Record<string, string> = {
   "action.archive": "보관",
   "proposal.actions": "{{name}}의 제안 작업",
   "lifecycle.archived": "보관됨",
-  "scope.project": "프로젝트",
+  "scope.repository": "저장소",
   "scope.user": "사용자",
   "scope.installation": "설치",
   "fact.workspace": "작업 공간",

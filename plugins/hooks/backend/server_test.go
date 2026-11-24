@@ -126,12 +126,12 @@ func TestDiscoverySkipsUntrustedProjectConfigurationUnderItsCapturedRoot(t *test
 	if err != nil {
 		t.Fatal(err)
 	}
-	request := hookprovider.Discovery{CWD: cwd, ProjectRoot: cwd, Home: home}
+	request := hookprovider.Discovery{CWD: cwd, RepositoryRoot: cwd, Home: home}
 	result, err := hookMethod(t, session, method).Call(hookContext(t), request)
 	if err != nil || len(result) != 1 || result[0].Inject != "global" || result[0].Scope != hook.ScopeGlobal {
 		t.Fatalf("untrusted discovery=%+v, %v", result, err)
 	}
-	request.IncludeProject = true
+	request.IncludeRepository = true
 	if _, err := hookMethod(t, session, method).Call(hookContext(t), request); err == nil {
 		t.Fatal("inspection hid malformed project rules")
 	}
