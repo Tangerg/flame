@@ -28,7 +28,6 @@ export interface WorkspaceViewSpec {
   id: string;
   title: string;
   localizedTitles?: Readonly<Record<string, string>>;
-  icon?: string;
   badge?: ComponentType;
   order?: number;
   dock?: ContextDockDestinationScope;

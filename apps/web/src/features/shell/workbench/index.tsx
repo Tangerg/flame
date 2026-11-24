@@ -69,7 +69,6 @@ export const workbenchSettings = (workspaceAccess: WorkspaceAccess) =>
       ctx.contributions.add(WORKSPACE_VIEW, {
         id: WORKSPACE_SETTINGS_VIEW,
         title: "settings.title",
-        icon: "settings",
         order: 200,
         component: SettingsPage,
       });

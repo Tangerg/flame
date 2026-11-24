@@ -348,7 +348,6 @@ function workspaceDataPlugin(
         id: "package:visual:diagnostics",
         title: diagnosticsView.title,
         localizedTitles: diagnosticsView.localizedTitles,
-        icon: "activity",
         dock: "workspace",
         material: "diagnostics",
         component: () =>
@@ -394,7 +393,6 @@ function workspaceDataPlugin(
         id: "package:visual:diff",
         title: diffView.title,
         localizedTitles: diffView.localizedTitles,
-        icon: "diff",
         dock: "workspace",
         material: "diff",
         component: () =>
@@ -425,7 +423,6 @@ function workspaceDataPlugin(
         id: "package:visual:usage",
         title: usageView.title,
         localizedTitles: usageView.localizedTitles,
-        icon: "chart",
         dock: "workspace",
         component: () =>
           createElement(InstalledComponent, { ...usageSources, scope: "client", entry: Usage }),
@@ -442,7 +439,6 @@ function workspaceDataPlugin(
         id: "package:visual:usage-reports",
         title: usageReportsView.title,
         localizedTitles: usageReportsView.localizedTitles,
-        icon: "chart",
         dock: "workspace",
         material: "usage",
         component: () =>
@@ -464,7 +460,6 @@ function workspaceDataPlugin(
         id: "package:visual:memory",
         title: memoryView.title,
         localizedTitles: memoryView.localizedTitles,
-        icon: "brain",
         dock: "workspace",
         component: () =>
           createElement(InstalledComponent, {
@@ -486,7 +481,6 @@ function workspaceDataPlugin(
         id: "package:visual:schedules",
         title: schedulesView.title,
         localizedTitles: schedulesView.localizedTitles,
-        icon: "calendar",
         dock: "workspace",
         component: () =>
           createElement(InstalledComponent, {
@@ -503,7 +497,6 @@ function workspaceDataPlugin(
         id: "package:visual:skills",
         title: skillsView.title,
         localizedTitles: skillsView.localizedTitles,
-        icon: "book",
         dock: "workspace",
         component: () =>
           createElement(InstalledComponent, {

@@ -4,7 +4,7 @@ import { SearchField, ButtonPrimitive } from "@flame/ui";
 import { cn } from "@/lib/classNames";
 import { color, motion, radius, space, surface, type, weight } from "@flame/ui/tokens.stylex";
 import { Combobox as ComboboxPrimitive } from "@base-ui/react/combobox";
-import { Icon, type IconName } from "@/ui/icons/index";
+import { Icon } from "@/ui/icons/index";
 import { dress } from "@flame/ui/button";
 import { Popover } from "@flame/ui";
 import { floatingRow } from "@/ui/atoms/option-row";
@@ -17,7 +17,6 @@ const styles = stylex.create({
   searchBox: { flexShrink: 0 },
 
   row: { cursor: "default", userSelect: "none" },
-  rowGlyph: { color: color.fgMuted },
   rowText: { minWidth: 0 },
   rowLine: { display: "flex", minWidth: 0, alignItems: "baseline", gap: space.s1_5 },
   caption: { flexShrink: 0, color: color.fgFaint },
@@ -106,6 +105,7 @@ const styles = stylex.create({
   rowUnmarked: {
     gridTemplateColumns: "var(--menu-glyph, calc(var(--spacing) * 4)) minmax(0, 1fr)",
   },
+  rowPlainUnmarked: { gridTemplateColumns: "minmax(0, 1fr)" },
   rowCurrent: {
     backgroundColor: {
       default: surface.selected,
@@ -136,7 +136,6 @@ const styles = stylex.create({
 interface CatalogPickerItem {
   id: string;
   label: string;
-  icon?: IconName;
   leading?: ReactNode;
   description?: ReactNode;
   keywords?: readonly string[];
@@ -196,12 +195,14 @@ function CatalogSearch({
   clearLabel,
   value,
   onClear,
+  ring,
   ref,
 }: {
   placeholder: string;
   clearLabel: string;
   value: string;
   onClear: () => void;
+  ring: boolean;
   ref?: Ref<HTMLInputElement>;
 }) {
   return (
@@ -214,7 +215,7 @@ function CatalogSearch({
           value={value}
           onClear={onClear}
           clearLabel={clearLabel}
-          ring={false}
+          ring={ring}
           styles={styles.searchBox}
         />
       }
@@ -238,15 +239,13 @@ function CatalogRow(
       title={item.title ?? item.label}
       data-current={item.active ? "" : undefined}
       {...stylex.props(
-        floatingRow("pick", item.description ? "lg" : size),
+        floatingRow(item.leading ? "pick" : "pickPlain", item.description ? "lg" : size),
         styles.row,
-        mark === "tint" && styles.rowUnmarked,
+        mark === "tint" && (item.leading ? styles.rowUnmarked : styles.rowPlainUnmarked),
         mark === "tint" && item.active && styles.rowCurrent,
       )}
     >
-      {item.leading ?? (
-        <Icon name={item.icon ?? "panel-r"} size="md" {...stylex.props(styles.rowGlyph)} />
-      )}
+      {item.leading}
       <span {...stylex.props(styles.rowText)}>
         <span {...stylex.props(styles.rowLine)}>
           <span {...stylex.props(vocab.truncate)}>{item.label}</span>
@@ -270,9 +269,11 @@ export function CatalogList({
   clearLabel,
   onSelect,
   inputRef,
+  searchRing = true,
 }: Pick<CatalogSurfaceProps, "label" | "placeholder" | "emptyLabel" | "clearLabel" | "onSelect"> & {
   groups: CatalogPickerGroup[];
   inputRef?: Ref<HTMLInputElement>;
+  searchRing?: boolean;
 }) {
   const [query, setQuery] = useState("");
   return (
@@ -296,6 +297,7 @@ export function CatalogList({
           clearLabel={clearLabel}
           value={query}
           onClear={() => setQuery("")}
+          ring={searchRing}
         />
         <ComboboxPrimitive.Empty
           className={stylex.props(styles.empty, styles.hideWhenEmpty, type.uiSm).className}
@@ -377,6 +379,7 @@ export function CatalogPicker({
           placeholder={placeholder}
           emptyLabel={emptyLabel}
           clearLabel={clearLabel}
+          searchRing={false}
           onSelect={(item) => {
             selection.current = { deliver: () => onSelect(item) };
             setOpen(false);
@@ -503,6 +506,7 @@ export function RailCatalogPicker({
                   clearLabel={clearLabel}
                   value={query}
                   onClear={() => setQuery("")}
+                  ring={false}
                 />
               </div>
               {feedback}

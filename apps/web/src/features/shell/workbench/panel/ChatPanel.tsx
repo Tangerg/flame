@@ -22,7 +22,6 @@ import { ReturnButton } from "@/features/shell/workbench/panel/ReturnButton";
 import { type AgentInput } from "@/features/agent/public/input";
 import { CatalogPicker, type CatalogPickerGroup } from "@/ui/index";
 import { ContentVisibility } from "@/ui/index";
-import { knownIconName } from "@/ui/index";
 import { AgentContentCard } from "@/ui/agent/index";
 import {
   AgentContextDock,
@@ -100,7 +99,6 @@ function useDockCatalogGroups(
     items: group.destinations.map((destination) => ({
       id: destination.viewId,
       label: t(destination.title),
-      icon: knownIconName(destination.icon) ?? "panel-r",
       keywords: [destination.viewId, group.id, t(group.title)],
       active: openViewIds.has(destination.viewId),
     })),
@@ -392,7 +390,6 @@ export function ChatPanel({ onSend, ref }: Props) {
     return {
       id,
       title,
-      icon: knownIconName(view?.icon),
       badge: Badge ? <Badge /> : undefined,
       active: id === dock.activeViewId,
       onClose: () => workspaceAccess.navigation.closeDockView(id),
@@ -416,7 +413,7 @@ export function ChatPanel({ onSend, ref }: Props) {
   }
   mountedViewIds.delete(WORKSPACE_DOCK_CATALOG);
   const presentedViewId = presentedMain ? fullPaneViewId : dock.activeViewId;
-  const catalogView = { title: "dock.catalog.title", icon: "panel-r", dock: "workspace" } as const;
+  const catalogView = { title: "dock.catalog.title", dock: "workspace" } as const;
 
   return (
     <AgentContentCard

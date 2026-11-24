@@ -4,7 +4,6 @@ import { IconButton, vocab } from "@flame/ui";
 import { space, type as typeStep, weight } from "@flame/ui/tokens.stylex";
 import { useT } from "@/lib/i18n/index";
 import { type WorkspaceViewSpec } from "@/features/workspace/public/views";
-import { Icon, knownIconName } from "@/ui/index";
 import { iconGlyph } from "@/ui/icons/index";
 import { AgentSurfaceHeader } from "@/ui/agent/index";
 import { ReturnButton } from "@/features/shell/workbench/panel/ReturnButton";
@@ -23,7 +22,7 @@ export function WorkspaceWindowHeader({
   onKeyDown,
   children,
 }: {
-  view: Pick<WorkspaceViewSpec, "title" | "icon" | "dock"> | undefined;
+  view: Pick<WorkspaceViewSpec, "title" | "dock"> | undefined;
   exit: WorkspaceWindowExit;
   onOpenInDock?: () => void;
   onKeyDown?: KeyboardEventHandler<HTMLDivElement>;
@@ -31,13 +30,9 @@ export function WorkspaceWindowHeader({
 }) {
   const t = useT();
   const title = t(view ? view.title : "workspace.view.unavailable.title");
-  const icon = knownIconName(view?.icon);
   return (
     <AgentSurfaceHeader corner="window" data-slot="workspace-window-header" onKeyDown={onKeyDown}>
       {exit.kind === "return" && <ReturnButton label={exit.label} onReturn={exit.onReturn} />}
-      {icon && (
-        <Icon name={icon} size="md" className={stylex.props(vocab.hold, vocab.muted).className} />
-      )}
       <span title={title} {...stylex.props(styles.title, vocab.truncate, typeStep.uiMd)}>
         {title}
       </span>

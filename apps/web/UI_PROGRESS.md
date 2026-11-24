@@ -50510,6 +50510,25 @@ announced but not drawn; `Showing the last accepted read.` stays visible
 when a refresh fails. Native `dock-diagnostics-recorded` goes from the
 tabs straight to the first trace.
 
+### Text-only Dock tabs and panel catalog (2026-11-24)
+
+Installed workspace views declare no glyph, so in the product only Files,
+Subagents and Settings carried one: the Files tab had a folder glyph beside
+text-only `Workspace diff` and `Session trajectory`, and the catalog drew the `panel-r`
+fallback on every installed row. The Lab hid this by giving its fixture
+views icons the packages never declare. Following the Settings rail
+decision, `WorkspaceViewSpec.icon` is removed with its three built-in
+values, the Dock tab glyph, the catalog fallback, the window-header glyph
+and the command menu's view glyphs; Lab fixtures no longer invent icons.
+Catalog rows without a `leading` element use the plain row grid, and the
+command menu drops its empty glyph slot, so its rows start on the search
+glyph edge like Session search. The model picker keeps its provider marks
+and its popup search stays ringless; the inline Dock catalog keeps the field
+ring, because there focus can leave and return. Native `dock-skills` reads
+`Skills | Files | Workspace diff | Session trajectory`; `dock-catalog` lists
+plain names under Workspace and Session; Settings' header reads `Settings`.
+Web typecheck passes.
+
 ### Model picker without a rail rule or a resting ring (2026-11-24)
 
 The Composer model picker drew a vertical rule between its provider rail and

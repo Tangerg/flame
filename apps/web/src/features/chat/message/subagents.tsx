@@ -7,7 +7,6 @@ export const subagentsView = definePlugin({
     ctx.contributions.add(WORKSPACE_VIEW, {
       id: "subagents",
       title: "subagents.title",
-      icon: "bot",
       order: 130,
       dock: "session",
       component: lazy(() =>

@@ -3,11 +3,9 @@ import { iconGlyph } from "@/ui/icons/index";
 import * as stylex from "@stylexjs/stylex";
 import { useT } from "@/lib/i18n/index";
 import { normalizeHotkey, formatForDisplay } from "@tanstack/hotkeys";
-import { Icon } from "@/ui/index";
 import { Kbd } from "@/ui/index";
 import { SearchOverlay } from "@/ui/index";
 import { EmptyState } from "@flame/ui";
-import { knownIconName } from "@/ui/icons/index";
 import { useEffectiveCommands } from "@/features/command/public/shortcutOverrides";
 import { COMMAND } from "@/features/command/public/extensionPoints";
 import { lookupExtensionByKey } from "@/extensions/selectors/extensions";
@@ -23,8 +21,6 @@ import { useCommandMenuStore } from "@/features/command/menu/application/command
 import { COMMAND_MENU_COMMAND } from "@/features/command/menu/public/commandMenu";
 import { color, leading } from "@flame/ui/tokens.stylex";
 const cmd = stylex.create({
-  glyph: { flexShrink: 0, color: color.fgMuted },
-  glyphSlot: { height: "var(--icon-sm)", width: "var(--icon-sm)", flexShrink: 0 },
   label: {
     minWidth: 0,
     flex: 1,
@@ -38,7 +34,6 @@ const cmd = stylex.create({
 interface CommandChoice {
   key: string;
   label: string;
-  icon?: string;
   combo?: string;
   run: (origin?: HTMLElement) => void;
 }
@@ -56,10 +51,9 @@ export function CommandMenu() {
   const docked = new Set(
     catalog.flatMap((group) => group.destinations.map((destination) => destination.viewId)),
   );
-  const viewRow = (id: string, title: string, icon: string | undefined): CommandChoice => ({
+  const viewRow = (id: string, title: string): CommandChoice => ({
     key: `view:${id}`,
     label: t("commandMenu.view", { title: t(title) }),
-    icon,
     run: (origin) =>
       docked.has(id)
         ? openWorkspaceViewInDock(workspaceAccess, id, origin)
@@ -83,7 +77,7 @@ export function CommandMenu() {
     }),
     ...views
       .filter((view) => view.id !== WORKSPACE_SETTINGS_VIEW)
-      .map((view) => viewRow(view.id, view.title, view.icon)),
+      .map((view) => viewRow(view.id, view.title)),
   ];
 
   return (
@@ -106,15 +100,6 @@ export function CommandMenu() {
           onSelect: choice.run,
           children: (
             <>
-              {knownIconName(choice.icon) ? (
-                <Icon
-                  name={knownIconName(choice.icon)!}
-                  size="sm"
-                  className={stylex.props(cmd.glyph).className}
-                />
-              ) : (
-                <span aria-hidden {...stylex.props(cmd.glyphSlot)} />
-              )}
               <span {...stylex.props(cmd.label)}>{choice.label}</span>
               {choice.combo && (
                 <Kbd variant="inline" {...stylex.props(cmd.keys)}>

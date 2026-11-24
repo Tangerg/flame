@@ -7,7 +7,6 @@ export const fileView = definePlugin({
     ctx.contributions.add(WORKSPACE_VIEW, {
       id: "file",
       title: "workspace.view.title.file",
-      icon: "folder",
       order: 20,
       dock: "workspace",
       component: lazy(() =>

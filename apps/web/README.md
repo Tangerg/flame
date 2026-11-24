@@ -123,8 +123,8 @@ Settings navigation reveals its currently selected category inside its own
 scrollport after a resize or selection change, moving only as far as needed.
 A visible or search-hidden selection leaves the rail where the user scrolled it.
 Editing focus and the retained page position remain owned by that page.
-Optional category icons occupy a stable column using the shared icon size and
-row gap, so built-in and contributed labels share one logical leading edge.
+Built-in and contributed categories are text-only and share one logical leading
+edge.
 The rail reserves one complete navigation row and its existing bottom padding;
 at short stacked sizes the open pane yields enough space to keep that row usable.
 The existing geometry observer supplies the header's actual height to that cap,
@@ -876,8 +876,10 @@ cannot reacquire a drag from either retired binding.
 
 The Dock strip reveals its current tab when selection, that tab's ordered
 position, or its available width changes. Tab rows fit between the strip's
-overflow fades so the revealed tab keeps its leading icon and adjacent actions
-visible. Reordering retains the material and focus. Ordinary rerenders preserve
+overflow fades so the revealed tab keeps its label and adjacent actions
+visible. Tabs, the panel catalog and window headers are text-only: installed
+views declare no glyph, so a glyph on the few built-in views would mark them
+apart rather than identify them. Reordering retains the material and focus. Ordinary rerenders preserve
 the user's horizontal browsing position.
 The same controlled Tabs root includes the strip and actual material viewports.
 Each material tab labels and controls its retained panel; the catalog leaves

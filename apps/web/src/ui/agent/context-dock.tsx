@@ -14,7 +14,6 @@ import {
 } from "react";
 import { cn } from "@/lib/classNames";
 import { color, motion, space, surface, type, weight } from "@flame/ui/tokens.stylex";
-import { Icon, type IconName } from "@/ui/icons/index";
 import { ContextMenu } from "@/ui/atoms/menu";
 import { IconButton } from "@flame/ui/icon-button";
 import { handoffFocus, isImeKey, vocab, useContentVisible } from "@flame/ui";
@@ -91,7 +90,6 @@ function SortableTabRow({
 export interface AgentDockTab {
   id: string;
   title: string;
-  icon?: IconName;
   badge?: ReactNode;
   active?: boolean;
   onClose: () => void;
@@ -161,7 +159,6 @@ const styles = stylex.create({
     color: "inherit",
   },
   labelClosable: { paddingLeft: "var(--dock-tab-inset)", paddingRight: space.s1 },
-  glyph: { flexShrink: 0, opacity: "var(--glyph-step)" },
   sortHandle: { flexShrink: 0, cursor: "grab" },
   hiddenSortHandle: { display: "none" },
   tabClose: { marginRight: space.s0_5 },
@@ -250,7 +247,6 @@ function DockTab({
             }}
             {...stylex.props(styles.label, type.uiMd, styles.labelClosable)}
           >
-            {tab.icon && <Icon name={tab.icon} size="sm" {...stylex.props(styles.glyph)} />}
             <span ref={label} {...stylex.props(vocab.truncate)}>
               {tab.title}
             </span>

@@ -5,7 +5,6 @@ import {
 interface ContextDockItem {
   viewId: string;
   title: string;
-  icon?: string;
   scope: ContextDockDestinationScope;
   order?: number;
 }
@@ -17,7 +16,7 @@ export interface ContextDockDestinationGroup {
 }
 
 export function resolveContextDockItems(
-  views: readonly Pick<WorkspaceViewSpec, "id" | "title" | "icon" | "order" | "dock">[],
+  views: readonly Pick<WorkspaceViewSpec, "id" | "title" | "order" | "dock">[],
 ): ContextDockItem[] {
   const items: ContextDockItem[] = [];
   for (const view of views) {
@@ -25,7 +24,6 @@ export function resolveContextDockItems(
     items.push({
       viewId: view.id,
       title: view.title,
-      icon: view.icon,
       scope: view.dock,
       order: view.order,
     });

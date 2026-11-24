@@ -8,10 +8,10 @@ import { businessVariant, catalogVariants } from "./businessVariants";
 import { localize, type LabExampleProps } from "./story";
 
 const SAMPLE_PANELS = [
-  { id: "files", label: messages.samples.files, icon: "folder" },
-  { id: "changes", label: messages.samples.changes, icon: "file-diff" },
-  { id: "trajectory", label: messages.samples.trajectory, icon: "workflow" },
-  { id: "diagnostics", label: messages.samples.diagnostics, icon: "activity" },
+  { id: "files", label: messages.samples.files },
+  { id: "changes", label: messages.samples.changes },
+  { id: "trajectory", label: messages.samples.trajectory },
+  { id: "diagnostics", label: messages.samples.diagnostics },
 ] as const;
 
 export function CatalogExample({ variant, locale, observe }: LabExampleProps) {
@@ -26,7 +26,6 @@ export function CatalogExample({ variant, locale, observe }: LabExampleProps) {
           items: SAMPLE_PANELS.map((panel) => ({
             id: panel.id,
             label: localize(panel.label, locale),
-            icon: panel.icon,
             active: selected === panel.id,
           })),
         },
