@@ -570,7 +570,7 @@
   "workIndex.showMore": "顯示另外 {{count}} 條",
   "workIndex.showLess": "收合",
   "folders.empty.title": "無資料夾",
-  "folders.empty.sub": "在資料夾中開始一個工作階段，即可建立專案。",
+  "folders.empty.sub": "在資料夾中開始一個工作階段，它就會顯示在這裡。",
   "folders.error.title": "無法載入資料夾",
   "folders.error.sub": "請檢查 Runtime 連線，然後重新開啟工作索引。",
   "convExport.import": "從 JSON 匯入對話",

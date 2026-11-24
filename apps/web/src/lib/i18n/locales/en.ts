@@ -647,7 +647,7 @@ export const en: Record<string, string> = {
   "workIndex.showMore": "Show {{count}} more",
   "workIndex.showLess": "Show less",
   "folders.empty.title": "No folders",
-  "folders.empty.sub": "Start a session in a folder to create a project.",
+  "folders.empty.sub": "Start a session in a folder to list it here.",
   "folders.error.title": "Couldn't load folders",
   "folders.error.sub": "Check the Runtime connection, then reopen the work index.",
   "convExport.import": "Import conversation from JSON",

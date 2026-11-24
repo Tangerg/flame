@@ -551,7 +551,7 @@
   "workIndex.showMore": "さらに {{count}} 件表示",
   "workIndex.showLess": "折りたたむ",
   "folders.empty.title": "フォルダーなし",
-  "folders.empty.sub": "フォルダでセッションを始めるとプロジェクトが作成されます。",
+  "folders.empty.sub": "フォルダでセッションを始めると、ここに表示されます。",
   "folders.error.title": "フォルダーを読み込めませんでした",
   "folders.error.sub": "Runtime 接続を確認してから、ワークインデックスを開き直してください。",
   "convExport.import": "JSON から会話をインポート",

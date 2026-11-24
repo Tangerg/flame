@@ -567,7 +567,7 @@
   "workIndex.showMore": "Mostrar {{count}} más",
   "workIndex.showLess": "Mostrar menos",
   "folders.empty.title": "Sin carpetas",
-  "folders.empty.sub": "Inicia una sesión en una carpeta para crear un proyecto.",
+  "folders.empty.sub": "Inicia una sesión en una carpeta para verla aquí.",
   "folders.error.title": "No se pudieron cargar las carpetas",
   "folders.error.sub": "Comprueba la conexión con Runtime y vuelve a abrir el índice de trabajo.",
   "convExport.import": "Importar conversación desde JSON",

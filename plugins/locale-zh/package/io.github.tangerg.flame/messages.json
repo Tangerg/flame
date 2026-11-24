@@ -596,7 +596,7 @@
   "workIndex.showMore": "显示另外 {{count}} 条",
   "workIndex.showLess": "收起",
   "folders.empty.title": "无文件夹",
-  "folders.empty.sub": "在文件夹里开始一个会话，即可创建项目。",
+  "folders.empty.sub": "在文件夹里开始一个会话，它就会显示在这里。",
   "folders.error.title": "无法加载文件夹",
   "folders.error.sub": "请检查 Runtime 连接，然后重新打开工作索引。",
   "convExport.import": "从 JSON 导入对话",

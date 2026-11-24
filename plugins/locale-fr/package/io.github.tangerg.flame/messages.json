@@ -567,7 +567,7 @@
   "workIndex.showMore": "Afficher {{count}} de plus",
   "workIndex.showLess": "Afficher moins",
   "folders.empty.title": "Aucun dossier",
-  "folders.empty.sub": "Démarrez une session dans un dossier pour créer un projet.",
+  "folders.empty.sub": "Démarrez une session dans un dossier pour l’afficher ici.",
   "folders.error.title": "Impossible de charger les dossiers",
   "folders.error.sub": "Vérifiez la connexion au Runtime, puis rouvrez l’index de travail.",
   "convExport.import": "Importer une conversation depuis JSON",

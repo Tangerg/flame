@@ -559,7 +559,7 @@
   "workIndex.showMore": "{{count}} weitere anzeigen",
   "workIndex.showLess": "Weniger anzeigen",
   "folders.empty.title": "Keine Ordner",
-  "folders.empty.sub": "Starte eine Sitzung in einem Ordner, um ein Projekt zu erstellen.",
+  "folders.empty.sub": "Starte eine Sitzung in einem Ordner, um ihn hier aufzulisten.",
   "folders.error.title": "Ordner konnten nicht geladen werden",
   "folders.error.sub": "Prüfe die Runtime-Verbindung und öffne anschließend den Arbeitsindex erneut.",
   "convExport.import": "Konversation aus JSON importieren",
