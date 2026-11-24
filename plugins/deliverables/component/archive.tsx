@@ -17,7 +17,7 @@ import {
   Toolbar,
 } from "@flame/ui";
 import { formatSchema, type Inspection } from "../contracts/content";
-import { Source } from "./authoring";
+import { Source } from "./provenance";
 import type { DeliverablesState } from "./useDeliverables";
 import type { DocumentRead } from "./types";
 

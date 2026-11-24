@@ -30,7 +30,7 @@ import {
 import type { Asset, Assessment, DocumentRead } from "./types";
 import type { DeliverablesState } from "./useDeliverables";
 import { downloadAsset } from "./transfer";
-import { Source } from "./authoring";
+import { Source } from "./provenance";
 
 // The part of the deliverables state this view reads.
 type EvidenceState = Pick<

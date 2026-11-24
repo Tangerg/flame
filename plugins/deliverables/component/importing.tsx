@@ -19,7 +19,7 @@ import {
 import { FORMATS, formatSchema, type Format } from "../contracts/content";
 import { FIELD_LIMITS, LIMITS } from "../contracts/limits";
 import { METHODS } from "../contracts/methods";
-import { cleanProvenance, ProvenanceEditor } from "./authoring";
+import { cleanProvenance, ProvenanceEditor } from "./provenance";
 import { boundedInteger, encodeChunk, sha256 } from "./transfer";
 import { emptyProvenance, type Upload } from "./types";
 import type { DeliverablesState } from "./useDeliverables";
