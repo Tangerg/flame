@@ -120,6 +120,136 @@ function CapturedImage({
   );
 }
 
+type ContentRecord = Record<string, unknown>;
+
+function rawContent(value: unknown, t: Translate) {
+  return (
+    <Source value={stringifyJSON(value)} label={t("result.content")} t={t} />
+  );
+}
+
+function ImageContent({
+  src,
+  data,
+  index,
+  t,
+}: {
+  src: string;
+  data: unknown;
+  index: number;
+  t: Translate;
+}) {
+  return (
+    <figure style={{ minWidth: 0, margin: 0 }}>
+      <CapturedImage
+        src={src}
+        data={String(data)}
+        label={t("result.image", { number: String(index + 1) })}
+        t={t}
+      />
+      <figcaption>
+        <Metadata>{t("result.captured")}</Metadata>
+      </figcaption>
+    </figure>
+  );
+}
+
+function AudioContent({
+  src,
+  index,
+  t,
+}: {
+  src: string;
+  index: number;
+  t: Translate;
+}) {
+  return (
+    <audio
+      controls
+      preload="none"
+      src={src}
+      aria-label={t("result.audio", { number: String(index + 1) })}
+      style={{ maxWidth: "100%" }}
+    />
+  );
+}
+
+// An embedded resource shows its text as source, or its blob as the media it
+// declares; anything else is shown raw.
+function EmbeddedResource({
+  value,
+  resource,
+  index,
+  t,
+}: {
+  value: ContentRecord;
+  resource: ContentRecord;
+  index: number;
+  t: Translate;
+}) {
+  const uri =
+    typeof resource.uri === "string" && resource.uri.trim()
+      ? resource.uri
+      : undefined;
+  if (typeof resource.text === "string")
+    return (
+      <Source t={t} value={resource.text} label={uri ?? t("result.resource")} />
+    );
+  if (typeof resource.mimeType !== "string") return rawContent(value, t);
+  const kind = resource.mimeType.startsWith("image/") ? "image" : "audio";
+  if (!mediaURL(resource.mimeType, resource.blob, kind))
+    return rawContent(value, t);
+  return (
+    <RecordGroup data-focus-unit="">
+      {uri && <RecordBody>{uri}</RecordBody>}
+      <Content
+        value={{ type: kind, mimeType: resource.mimeType, data: resource.blob }}
+        index={index}
+        t={t}
+      />
+    </RecordGroup>
+  );
+}
+
+function ResourceLink({
+  value,
+  uri,
+  t,
+}: {
+  value: ContentRecord;
+  uri: string;
+  t: Translate;
+}) {
+  const href = externalURL(uri);
+  const label =
+    [value.title, value.name, uri].find(
+      (candidate): candidate is string =>
+        typeof candidate === "string" && candidate.trim() !== "",
+    ) ?? t("result.resource");
+  return (
+    <RecordGroup data-prose="" data-focus-unit="">
+      <RecordBody>
+        {href ? (
+          <a href={href} target="_blank" rel="noopener noreferrer">
+            {label}
+          </a>
+        ) : (
+          label
+        )}
+        {uri.trim() !== "" && label !== uri && (
+          <>
+            <br />
+            <span data-slot="link-destination">{uri}</span>
+          </>
+        )}
+      </RecordBody>
+      {typeof value.description === "string" && (
+        <RecordBody>{value.description}</RecordBody>
+      )}
+    </RecordGroup>
+  );
+}
+
 function Content({
   value,
   index,
@@ -129,108 +259,40 @@ function Content({
   index: number;
   t: Translate;
 }) {
-  if (!object(value))
-    return (
-      <Source value={stringifyJSON(value)} label={t("result.content")} t={t} />
-    );
-  if (value.type === "text" && typeof value.text === "string")
-    return <RecordBody>{value.text}</RecordBody>;
-  if (value.type === "image") {
-    const src = mediaURL(value.mimeType, value.data, "image");
-    if (src)
-      return (
-        <figure style={{ minWidth: 0, margin: 0 }}>
-          <CapturedImage
-            src={src}
-            data={String(value.data)}
-            label={t("result.image", { number: String(index + 1) })}
+  if (!object(value)) return rawContent(value, t);
+  switch (value.type) {
+    case "text":
+      if (typeof value.text === "string")
+        return <RecordBody>{value.text}</RecordBody>;
+      break;
+    case "image": {
+      const src = mediaURL(value.mimeType, value.data, "image");
+      if (src)
+        return <ImageContent src={src} data={value.data} index={index} t={t} />;
+      break;
+    }
+    case "audio": {
+      const src = mediaURL(value.mimeType, value.data, "audio");
+      if (src) return <AudioContent src={src} index={index} t={t} />;
+      break;
+    }
+    case "resource":
+      if (object(value.resource))
+        return (
+          <EmbeddedResource
+            value={value}
+            resource={value.resource}
+            index={index}
             t={t}
           />
-          <figcaption>
-            <Metadata>{t("result.captured")}</Metadata>
-          </figcaption>
-        </figure>
-      );
-  }
-  if (value.type === "audio") {
-    const src = mediaURL(value.mimeType, value.data, "audio");
-    if (src)
-      return (
-        <audio
-          controls
-          preload="none"
-          src={src}
-          aria-label={t("result.audio", { number: String(index + 1) })}
-          style={{ maxWidth: "100%" }}
-        />
-      );
-  }
-  if (value.type === "resource" && object(value.resource)) {
-    const resource = value.resource;
-    const uri =
-      typeof resource.uri === "string" && resource.uri.trim()
-        ? resource.uri
-        : undefined;
-    if (typeof resource.text === "string")
-      return (
-        <Source
-          t={t}
-          value={resource.text}
-          label={uri ?? t("result.resource")}
-        />
-      );
-    if (typeof resource.mimeType === "string") {
-      const kind = resource.mimeType.startsWith("image/") ? "image" : "audio";
-      if (mediaURL(resource.mimeType, resource.blob, kind))
-        return (
-          <RecordGroup data-focus-unit="">
-            {uri && <RecordBody>{uri}</RecordBody>}
-            <Content
-              value={{
-                type: kind,
-                mimeType: resource.mimeType,
-                data: resource.blob,
-              }}
-              index={index}
-              t={t}
-            />
-          </RecordGroup>
         );
-    }
+      break;
+    case "resource_link":
+      if (typeof value.uri === "string")
+        return <ResourceLink value={value} uri={value.uri} t={t} />;
+      break;
   }
-  if (value.type === "resource_link" && typeof value.uri === "string") {
-    const href = externalURL(value.uri);
-    const label =
-      [value.title, value.name, value.uri].find(
-        (candidate): candidate is string =>
-          typeof candidate === "string" && candidate.trim() !== "",
-      ) ?? t("result.resource");
-    return (
-      <RecordGroup data-prose="" data-focus-unit="">
-        <RecordBody>
-          {href ? (
-            <a href={href} target="_blank" rel="noopener noreferrer">
-              {label}
-            </a>
-          ) : (
-            label
-          )}
-          {value.uri.trim() !== "" && label !== value.uri && (
-            <>
-              <br />
-              <span data-slot="link-destination">{value.uri}</span>
-            </>
-          )}
-        </RecordBody>
-        {typeof value.description === "string" && (
-          <RecordBody>{value.description}</RecordBody>
-        )}
-      </RecordGroup>
-    );
-  }
-  return (
-    <Source value={stringifyJSON(value)} label={t("result.content")} t={t} />
-  );
+  return rawContent(value, t);
 }
 
 export function Outcome({
