@@ -222,9 +222,13 @@ function GoalRow({ goal, writable }: { goal: GoalReadModel; writable: boolean })
       <span {...stylex.props(vocab.min, vocab.truncate, vocab.ink, typeStep.uiSm)}>
         {goal.objective}
       </span>
-      <span {...stylex.props(vocab.muted, typeStep.uiSm)}>
-        {t(GOAL_STATUS_I18N[goal.status].label)}
-      </span>
+      {goal.status === "active" ? (
+        <span className="sr-only">{t(GOAL_STATUS_I18N[goal.status].label)}</span>
+      ) : (
+        <span {...stylex.props(vocab.muted, typeStep.uiSm)}>
+          {t(GOAL_STATUS_I18N[goal.status].label)}
+        </span>
+      )}
     </>
   );
   return (

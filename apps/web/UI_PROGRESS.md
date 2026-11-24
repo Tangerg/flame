@@ -8108,6 +8108,17 @@ evidence. The actual Wails observations below establish that behavior.
 Continue with another observed conversation → material → return path on current
 main; do not turn this completed rail/read task into an unrelated redesign.
 
+### Goal status only when it is not pursuing (2026-11-24)
+
+The Goal strip above the Composer always followed the objective with its
+state, so an active goal read `… Pursuing goal` beside its own Pause
+control. Paused, stalled and finishing goals are the states that change
+what the user does next. The active label is now screen-reader text inside
+the summary button; the other three stay visible. Native `running` shows the
+objective, elapsed time and Pause; `terminal` still reads `Paused goal`.
+Web typecheck passes.
+
+
 ### Retained Goal summary and complete reading (2026-11-03)
 
 On base main `d7a5e1823`, an unavailable original author replaces the summary's
