@@ -128,7 +128,6 @@ export function PackageManager() {
             variant="primary"
             pending={busy}
             aria-busy={busy || undefined}
-            focusableWhenDisabled={feedback.state === "ok"}
             disabled={!source || !operations}
             onClick={() => void install()}
           >

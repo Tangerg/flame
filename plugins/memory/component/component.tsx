@@ -475,7 +475,6 @@ function MemoryEditor({
           disabled={
             recovering ? aborted : locked || !edit.content.trim() || unchanged
           }
-          focusableWhenDisabled={locked}
           onClick={recovering ? reconcile : saveEdit}
         >
           {recovering ? t("feedback.check") : t("save")}

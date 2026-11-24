@@ -456,12 +456,7 @@ function ScheduleEditor({
           <Button variant="ghost" disabled={busy} onClick={cancelTask}>
             {t("cancel")}
           </Button>
-          <Button
-            variant="primary"
-            type="submit"
-            focusableWhenDisabled={busy}
-            disabled={!canSave}
-          >
+          <Button variant="primary" type="submit" disabled={!canSave}>
             {t("command.save")}
           </Button>
         </>

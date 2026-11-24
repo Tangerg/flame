@@ -67,7 +67,6 @@ export function MemoryDeleteConfirmation({
           tone={recovering ? undefined : "negative"}
           pending={pending}
           disabled={recovering ? aborted : locked}
-          focusableWhenDisabled={locked}
           onClick={confirm}
         >
           {recovering ? t("feedback.check") : t("delete.confirm")}

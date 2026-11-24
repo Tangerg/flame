@@ -110,7 +110,6 @@ export function JsonImport({
               type="submit"
               variant="primary"
               disabled={!state.importText.trim() || busy || completed}
-              focusableWhenDisabled={completed}
               pending={command?.phase === "running"}
             >
               {t(

@@ -436,20 +436,13 @@ export function QuestionCard({
         </div>
       </div>
       <div {...stylex.props(ms.cardActions, qc.footerShrink)}>
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={actionsBlocked}
-          focusableWhenDisabled={actions.disabled}
-          onClick={skipCurrent}
-        >
+        <Button variant="outline" size="sm" disabled={actionsBlocked} onClick={skipCurrent}>
           {t(isLastQuestion ? "question.action.skipSubmit" : "question.action.skip")}
         </Button>
         <Button
           variant="primary"
           size="sm"
           disabled={actionsBlocked || !activeQuestionComplete}
-          focusableWhenDisabled={actions.disabled}
           onClick={confirmCurrent}
         >
           {t(isLastQuestion ? "question.action.submit" : "question.action.advance")}
