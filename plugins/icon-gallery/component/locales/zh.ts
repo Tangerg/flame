@@ -1,6 +1,5 @@
 export const zh: Record<string, string> = {
   "panel.title": "Flame 图标库",
-  "panel.description": "原创绘制，以其标准的 24 px 视觉尺寸显示。",
   "filters.label": "图标筛选",
   "filter.label": "筛选图标",
   "filter.placeholder": "名称或分类",

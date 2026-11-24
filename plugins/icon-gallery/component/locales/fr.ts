@@ -1,7 +1,5 @@
 export const fr: Record<string, string> = {
   "panel.title": "Galerie d’icônes Flame",
-  "panel.description":
-    "Dessins originaux, affichés à leur taille optique canonique de 24 px.",
   "filters.label": "Filtres d’icônes",
   "filter.label": "Filtrer les icônes",
   "filter.placeholder": "Nom ou catégorie",

@@ -26103,6 +26103,12 @@ instruction (use an operator console outside the controlled desktop).
 `fixture=computer` opens on the title and Refresh status. Plugin
 typecheck, `check-i18n` and published resource checks pass.
 
+The same audit over every plugin `PanelHeader` finds one more tagline: the
+icon gallery's `Original drawings, shown at their canonical 24 px optical
+size.` It is removed from the header and all eight catalogs. Other plugin
+headers carry only a title or a scope context. Native full-view
+`package:visual:icon-gallery` opens on search and the grid.
+
 ### Captured source reading and visible context
 
 At `3cc13e9a8`, Computer's separate `Source` pre bypasses the shared reader's

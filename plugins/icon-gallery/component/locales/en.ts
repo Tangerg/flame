@@ -1,7 +1,5 @@
 export const en: Record<string, string> = {
   "panel.title": "Flame icon gallery",
-  "panel.description":
-    "Original drawings, shown at their canonical 24 px optical size.",
   "filters.label": "Icon filters",
   "filter.label": "Filter icons",
   "filter.placeholder": "Name or category",

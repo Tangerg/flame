@@ -1,6 +1,5 @@
 export const zhTW: Record<string, string> = {
   "panel.title": "Flame 圖示庫",
-  "panel.description": "原創繪製，以其標準的 24 px 視覺尺寸顯示。",
   "filters.label": "圖示篩選",
   "filter.label": "篩選圖示",
   "filter.placeholder": "名稱或分類",

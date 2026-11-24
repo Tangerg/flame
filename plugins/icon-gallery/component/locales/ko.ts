@@ -1,6 +1,5 @@
 export const ko: Record<string, string> = {
   "panel.title": "Flame 아이콘 갤러리",
-  "panel.description": "원본 드로잉을 표준 24 px 시각 크기로 표시합니다.",
   "filters.label": "아이콘 필터",
   "filter.label": "아이콘 필터링",
   "filter.placeholder": "이름 또는 카테고리",
