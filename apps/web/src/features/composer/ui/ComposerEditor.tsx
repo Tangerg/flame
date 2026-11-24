@@ -1,4 +1,13 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type Ref } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+  type Ref,
+} from "react";
 import { createPortal } from "react-dom";
 import { LexicalComposer } from "@lexical/react/LexicalComposer";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
@@ -71,10 +80,14 @@ const styles = stylex.create({
     whiteSpace: "pre-wrap",
     overflowWrap: "anywhere",
   },
+  // Lexical measures this zero-size box, so its own flip and edge shift never fire;
+  // MenuPlacement alone places the visible menu.
+  menuHost: { position: "relative", width: 0, height: 0 },
   menu: {
-    position: "relative",
+    position: "absolute",
+    insetBlockStart: 0,
+    insetInlineStart: 0,
     zIndex: "var(--layer-popup)",
-    maxHeight: "18rem",
     overflow: "auto",
     minWidth: "14rem",
     maxWidth: "min(30rem, 90vw)",
@@ -95,6 +108,73 @@ const styles = stylex.create({
   },
   selected: { backgroundColor: surface.surface3 },
 });
+const MENU_GAP = 4;
+const MENU_MAX_REM = 18;
+// Lexical places its anchor 3 px below the matched text, with the text's own height.
+const ANCHOR_OFFSET = 3;
+interface Placement {
+  x: number;
+  y: number;
+  room: number | null;
+}
+// The Composer usually sits at the bottom of the window, so the menu opens above the
+// matched text like the Composer's other popups, and below it only when that has more room.
+function MenuPlacement({ children }: { children: ReactNode }) {
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [placement, setPlacement] = useState<Placement>({ x: 0, y: 0, room: null });
+  useLayoutEffect(() => {
+    const menu = menuRef.current;
+    const anchor = menu?.parentElement?.parentElement;
+    if (!menu || !anchor) return;
+    const place = () => {
+      const box = anchor.getBoundingClientRect();
+      const cap = MENU_MAX_REM * parseFloat(getComputedStyle(document.documentElement).fontSize);
+      const height = Math.min(menu.scrollHeight, cap);
+      const textTop = box.top - ANCHOR_OFFSET - box.height;
+      const above = textTop - MENU_GAP * 2;
+      const below = window.innerHeight - box.top - MENU_GAP;
+      const up = height <= above || above > below;
+      const room = Math.max(0, up ? above : below);
+      const shown = Math.min(height, room);
+      const next = {
+        x: Math.min(0, window.innerWidth - MENU_GAP - (box.left + menu.offsetWidth)),
+        y: up ? -(ANCHOR_OFFSET + box.height + MENU_GAP + shown) : 0,
+        room,
+      };
+      setPlacement((current) =>
+        current.x === next.x && current.y === next.y && current.room === next.room ? current : next,
+      );
+    };
+    place();
+    const resized = new ResizeObserver(place);
+    resized.observe(menu);
+    const moved = new MutationObserver(place);
+    moved.observe(anchor, { attributes: true, attributeFilter: ["style"] });
+    window.addEventListener("resize", place);
+    return () => {
+      resized.disconnect();
+      moved.disconnect();
+      window.removeEventListener("resize", place);
+    };
+  }, []);
+  return (
+    <div {...stylex.props(styles.menuHost)}>
+      <div
+        ref={menuRef}
+        {...stylex.props(styles.menu, typeStep.uiSm)}
+        style={{
+          transform: `translate(${placement.x}px, ${placement.y}px)`,
+          maxHeight:
+            placement.room === null
+              ? `${MENU_MAX_REM}rem`
+              : `min(${MENU_MAX_REM}rem, ${placement.room}px)`,
+        }}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
 class Candidate extends MenuOption {
   constructor(
     readonly kind: "file" | "slash",
@@ -179,7 +259,7 @@ function Suggestions() {
       ) =>
         anchor.current
           ? createPortal(
-              <div {...stylex.props(styles.menu, typeStep.uiSm)}>
+              <MenuPlacement>
                 <div
                   role="listbox"
                   aria-label={t(
@@ -226,7 +306,7 @@ function Suggestions() {
                     )}
                   </div>
                 )}
-              </div>,
+              </MenuPlacement>,
               anchor.current,
             )
           : null

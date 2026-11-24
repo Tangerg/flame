@@ -2580,6 +2580,21 @@ VoiceOver, physical IME, RTL, live Git/provider execution and whole-product rout
 coverage remain unqualified. Controlled asynchronous unit outcomes are separate
 from the fixed native business-error fixture. The goal remains active.
 
+### Composer suggestions open where they can be read (2026-11-24)
+
+Typing `@` or `/` in a Session's Composer opened Lexical's typeahead below
+the caret. The Composer sits at the bottom of the window, so the file list
+ran past the window edge: two of eight files were visible and arrowing
+moved into rows nobody could see. Lexical's own flip only fires when the
+space above lies inside the editor, which a one-line Composer never has.
+`MenuPlacement` in `ComposerEditor.tsx` now owns placement: Lexical
+measures a zero-size host (so its flip and edge shift never compete), and
+the menu opens above the matched text like the Composer's other popups,
+below it only when that side has more room, capped to the room it gets and
+shifted back inside the right edge. Native `agent` `idle`: `/` shows
+`/goal` above the line; `@run` lists three files above the Composer with
+the first highlighted. Web typecheck passes.
+
 ### Empty Composer hints and shared natural height (2026-11-10)
 
 The 18 px English code-reading capture exposes a two-line empty Composer hint
