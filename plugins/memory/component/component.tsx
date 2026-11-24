@@ -31,12 +31,14 @@ import { MemoryDeleteConfirmation } from "./MemoryDeleteConfirmation";
 import { MemoryReport } from "./MemoryReport";
 import { MemoryFeedback } from "./MemoryFeedback";
 import { useMemory } from "./useMemory";
+import { useMemoryFilters, type MemoryFilterState } from "./useMemoryFilters";
 // Installed component bundles use host UI styles without StyleX compilation.
 const EDITOR_STYLE = { maxHeight: "40dvh" };
 type MemoryState = ReturnType<typeof useMemory>;
 
 export function Memory({ context }: { context: ComponentContext }) {
-  const memory = useMemory(context);
+  const filters = useMemoryFilters();
+  const memory = useMemory(context, filters);
   const {
     t,
     edit,
@@ -53,20 +55,7 @@ export function Memory({ context }: { context: ComponentContext }) {
     editItem,
     removeItem,
     deleteEdited,
-    setSearch,
-    clearFilters,
     changeScope,
-    searchElement,
-    search,
-    filtersOpen,
-    setFiltersOpen,
-    activeFilters,
-    status,
-    setStatus,
-    origin,
-    setOrigin,
-    pinned,
-    setPinned,
     editorFeedback,
     unknown,
     reconcile,
@@ -95,8 +84,8 @@ export function Memory({ context }: { context: ComponentContext }) {
     />
   );
   function clearFiltersAndFocusSearch() {
-    clearFilters();
-    searchElement.current?.focus();
+    filters.clear();
+    filters.searchElement.current?.focus();
   }
   return (
     <Panel
@@ -169,19 +158,8 @@ export function Memory({ context }: { context: ComponentContext }) {
           </Toolbar>
           <MemoryFilters
             t={t}
-            searchElement={searchElement}
-            search={search}
-            setSearch={setSearch}
-            filtersOpen={filtersOpen}
-            setFiltersOpen={setFiltersOpen}
-            activeFilters={activeFilters}
+            filters={filters}
             onClearFilters={clearFiltersAndFocusSearch}
-            status={status}
-            setStatus={setStatus}
-            origin={origin}
-            setOrigin={setOrigin}
-            pinned={pinned}
-            setPinned={setPinned}
           />
         </>
       }
@@ -218,12 +196,12 @@ export function Memory({ context }: { context: ComponentContext }) {
             page={current?.page}
             pageNumber={current?.cursors.length}
             summary={summary}
-            search={search}
-            status={status}
-            origin={origin}
-            pinned={pinned}
+            search={filters.search}
+            status={filters.status}
+            origin={filters.origin}
+            pinned={filters.pinned}
             clearSearchAndFilters={() => {
-              setSearch("");
+              filters.setSearch("");
               clearFiltersAndFocusSearch();
             }}
             feedback={
@@ -308,35 +286,26 @@ function MemoryPager({
 
 function MemoryFilters({
   t,
-  searchElement,
-  search,
-  setSearch,
-  filtersOpen,
-  setFiltersOpen,
-  activeFilters,
+  filters: {
+    searchElement,
+    search,
+    setSearch,
+    open: filtersOpen,
+    setOpen: setFiltersOpen,
+    active: activeFilters,
+    status,
+    setStatus,
+    origin,
+    setOrigin,
+    pinned,
+    setPinned,
+  },
   onClearFilters,
-  status,
-  setStatus,
-  origin,
-  setOrigin,
-  pinned,
-  setPinned,
-}: Pick<
-  MemoryState,
-  | "t"
-  | "searchElement"
-  | "search"
-  | "setSearch"
-  | "filtersOpen"
-  | "setFiltersOpen"
-  | "activeFilters"
-  | "status"
-  | "setStatus"
-  | "origin"
-  | "setOrigin"
-  | "pinned"
-  | "setPinned"
-> & { onClearFilters(): void }) {
+}: {
+  t: MemoryState["t"];
+  filters: MemoryFilterState;
+  onClearFilters(): void;
+}) {
   return (
     <FilterBar
       label={t("controls.label")}

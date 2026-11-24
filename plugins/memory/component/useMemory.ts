@@ -1,3 +1,4 @@
+import { type MemoryFilterState } from "./useMemoryFilters";
 import { handoffFocus } from "@flame/ui";
 import {
   useCallback,
@@ -58,7 +59,10 @@ function activeFeedback(state: CommandState): Feedback | undefined {
       return { intent: state.command.intent, state: "submitting" };
   }
 }
-export function useMemory(context: ComponentContext) {
+export function useMemory(
+  context: ComponentContext,
+  filters: MemoryFilterState,
+) {
   const t = useTranslator(CATALOGS, context.locale);
   const operations = useMemo(() => {
     if (!context.binding)
@@ -73,11 +77,6 @@ export function useMemory(context: ComponentContext) {
     );
   }, [context]);
   const [scope, setScope] = useState<Scope>("project");
-  const [search, setSearch] = useState("");
-  const [status, setStatus] = useState("all");
-  const [origin, setOrigin] = useState("all");
-  const [pinned, setPinned] = useState(false);
-  const [filtersOpen, setFiltersOpen] = useState(false);
   // A Session in a Project keeps project memory under that Project, never under
   // the folder it happens to run in.
   const project = scope === "project" ? context.project : undefined;
@@ -120,15 +119,14 @@ export function useMemory(context: ComponentContext) {
       ? read.accepted
       : undefined;
   const [edit, setEdit] = useState<Edit>();
-  const searchElement = useRef<HTMLInputElement>(null);
   const editorElement = useRef<HTMLElement>(null);
   const editOpener = edit?.opener;
   const resolveOpener = useCallback(
     () =>
       editOpener?.isConnected && !editOpener.matches(":disabled")
         ? editOpener
-        : searchElement.current,
-    [editOpener],
+        : filters.searchElement.current,
+    [editOpener, filters.searchElement],
   );
   function closeEditor() {
     const form = editorElement.current;
@@ -251,15 +249,8 @@ export function useMemory(context: ComponentContext) {
     return () => controller.abort();
   }, [context, load]);
   const locked = command.phase !== "idle" || context.signal.aborted;
-  const activeFilters =
-    Number(status !== "all") + Number(origin !== "all") + Number(pinned);
-  function clearFilters() {
-    setStatus("all");
-    setOrigin("all");
-    setPinned(false);
-  }
   function beginEdit(next: Edit) {
-    setFiltersOpen(false);
+    filters.setOpen(false);
     settle("editor", undefined);
     setEdit(next);
   }
@@ -268,8 +259,7 @@ export function useMemory(context: ComponentContext) {
   }
   function changeScope(next: Scope) {
     if (locked || edit) return;
-    setSearch("");
-    clearFilters();
+    filters.reset();
     clearFeedback();
     setScope(next);
   }
@@ -425,20 +415,7 @@ export function useMemory(context: ComponentContext) {
     removeItem,
     saveEdit,
     deleteEdited,
-    setSearch,
-    clearFilters,
     changeScope,
-    searchElement,
-    search,
-    filtersOpen,
-    setFiltersOpen,
-    activeFilters,
-    status,
-    setStatus,
-    origin,
-    setOrigin,
-    pinned,
-    setPinned,
     resolveOpener,
     editorFeedback: feedbackFor("editor"),
     unknown,
