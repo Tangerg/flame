@@ -83,7 +83,7 @@ func workspaceObservedTopics(topics []protocol.RuntimeTopic) []protocol.RuntimeT
 		switch topic {
 		case protocol.TopicHooksChanged, protocol.TopicSkillsChanged:
 			observed = append(observed, topic)
-		case protocol.TopicFilesChanged, protocol.TopicMCPChanged, protocol.TopicPluginsChanged, protocol.TopicPluginDataChanged, protocol.TopicSessionsChanged, protocol.TopicRunsChanged, protocol.TopicPlanChanged, protocol.TopicGoalsChanged, protocol.TopicInterruptsChanged, protocol.TopicModelsChanged, protocol.TopicApprovalsChanged:
+		case protocol.TopicFilesChanged, protocol.TopicMCPChanged, protocol.TopicPluginsChanged, protocol.TopicPluginDataChanged, protocol.TopicSessionsChanged, protocol.TopicRunsChanged, protocol.TopicPlanChanged, protocol.TopicGoalsChanged, protocol.TopicInterruptsChanged, protocol.TopicModelsChanged, protocol.TopicApprovalsChanged, protocol.TopicProjectsChanged:
 		}
 	}
 	return observed
