@@ -9,7 +9,7 @@ import {
   SpanStatusCode,
   trace,
 } from "@opentelemetry/api";
-import { createParser } from "eventsource-parser";
+import { createParser, type EventSourceMessage } from "eventsource-parser";
 import { createPushPullChannel } from "../channel";
 import { stringifyJSON } from "@frame/sdk/json";
 import {
@@ -27,7 +27,7 @@ import {
   type TransportResponseMetadata,
   type TransportSendOptions,
 } from "../transport";
-import type { RpcId, RpcResponse } from "../types";
+import type { RpcId, RpcMessage, RpcResponse } from "../types";
 import { isResponse, parseRpcMessage } from "../types";
 import { HTTP_ENDPOINTS, HTTP_HEADERS, RPC_HTTP } from "@flame/runtime-client/wire";
 import {
@@ -95,6 +95,59 @@ function requireExactHeaderValues(headers: Record<string, string>): void {
     if (!/^[\t\x20-\x7e]*$/u.test(value) || value.trim() !== value)
       throw new TypeError("HTTP request headers must contain exact ASCII field values");
   }
+}
+
+// Plugin streams carry ephemeral messages only: a replay cursor or a named event
+// would promise a resumption the plugin channel cannot honour.
+function admitStreamFrame(
+  event: EventSourceMessage,
+  method: WireStreamingMethodName,
+  maximumFrameBytes: number | undefined,
+  requestId: string | undefined,
+): RpcMessage {
+  if (
+    maximumFrameBytes !== undefined &&
+    new TextEncoder().encode(event.data).byteLength + 1 > maximumFrameBytes
+  )
+    throw new RpcTransportError(
+      "event-stream frame exceeds its byte capacity",
+      undefined,
+      requestId,
+    );
+  if (
+    method === "plugins.stream" &&
+    (event.id || (event.event !== undefined && event.event !== "message"))
+  )
+    throw new RpcProtocolError(
+      "plugin stream",
+      [{ path: "$", detail: "requires ephemeral message frames without a replay cursor" }],
+      requestId,
+    );
+  const message = parseRpcMessage(event.data);
+  if (!message)
+    throw new RpcProtocolError(
+      "event stream",
+      [{ path: "$", detail: "must contain a valid JSON-RPC envelope" }],
+      requestId,
+    );
+  return message;
+}
+
+function utf8StreamDecoder(requestId: string | undefined): (chunk?: Uint8Array) => string {
+  const decoder = new TextDecoder("utf-8", { fatal: true });
+  return (chunk) => {
+    try {
+      return decoder.decode(chunk, { stream: chunk !== undefined });
+    } catch (cause) {
+      const error = new RpcProtocolError(
+        "event stream",
+        [{ path: "$", detail: "must contain valid UTF-8" }],
+        requestId,
+      );
+      error.cause = cause;
+      throw error;
+    }
+  };
 }
 
 async function feedEventStreamText(
@@ -203,34 +256,12 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
     const parser = createParser({
       onEvent(event) {
         if (!event.data) return;
-        if (
-          maximumEventStreamFrameBytes !== undefined &&
-          new TextEncoder().encode(event.data).byteLength + 1 > maximumEventStreamFrameBytes
-        )
-          throw new RpcTransportError(
-            "event-stream frame exceeds its byte capacity",
-            undefined,
-            metadata.requestId,
-          );
-        if (
-          method === "plugins.stream" &&
-          (event.id || (event.event !== undefined && event.event !== "message"))
-        ) {
-          throw new RpcProtocolError(
-            "plugin stream",
-            [{ path: "$", detail: "requires ephemeral message frames without a replay cursor" }],
-            metadata.requestId,
-          );
-        }
-        const msg = parseRpcMessage(event.data);
-        if (!msg) {
-          streamError = new RpcProtocolError(
-            "event stream",
-            [{ path: "$", detail: "must contain a valid JSON-RPC envelope" }],
-            metadata.requestId,
-          );
-          throw streamError;
-        }
+        const msg = admitStreamFrame(
+          event,
+          method,
+          maximumEventStreamFrameBytes,
+          metadata.requestId,
+        );
         if (isResponse(msg) && msg.id === requestId) {
           responseSeen = true;
         }
@@ -252,12 +283,11 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
       },
       onError(error) {
         if (error.type !== "max-buffer-size-exceeded") return;
-        streamError = new RpcTransportError(
+        throw new RpcTransportError(
           `event-stream frame exceeds ${maximumEventStreamFrameCharacters} characters`,
           undefined,
           metadata.requestId,
         );
-        throw streamError;
       },
       maxBufferSize: maximumEventStreamFrameCharacters,
     });
@@ -278,20 +308,7 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
     const reader = body.getReader();
     const cancellation = bodyCancellation(reader);
     readers.set(reader, cancellation);
-    const decoder = new TextDecoder("utf-8", { fatal: true });
-    const decodeChunk = (chunk?: Uint8Array): string => {
-      try {
-        return decoder.decode(chunk, { stream: chunk !== undefined });
-      } catch (cause) {
-        const error = new RpcProtocolError(
-          "event stream",
-          [{ path: "$", detail: "must contain valid UTF-8" }],
-          metadata.requestId,
-        );
-        error.cause = cause;
-        throw error;
-      }
-    };
+    const decodeChunk = utf8StreamDecoder(metadata.requestId);
     let bodyComplete = false;
     try {
       for (;;) {
@@ -333,31 +350,42 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
       }
       readers.delete(reader);
       reader.releaseLock();
-      // Cancellation still ends an admitted stream. Resource owners join this
-      // notification after reader cleanup; silence would leave close pending.
-      if (!channel.closed) {
-        if (!responseSeen && signal?.aborted !== true) {
-          await channel.send({
-            type: "requestError",
-            rpcId: requestId,
-            error:
-              streamError ??
-              new RpcTransportError(
-                "event stream ended before the call's response",
-                undefined,
-                metadata.requestId,
-              ),
-          });
-        }
-        await channel.send({
-          type: "streamEnd",
-          method,
-          requestRpcId: requestId,
-          ...(streamError ? { error: streamError } : {}),
-          metadata,
-        });
-      }
+      await announceStreamEnd(requestId, method, metadata, {
+        unanswered: !responseSeen && signal?.aborted !== true,
+        error: streamError,
+      });
     }
+  }
+
+  // Cancellation still ends an admitted stream. Resource owners join this
+  // notification after reader cleanup; silence would leave close pending.
+  async function announceStreamEnd(
+    requestId: RpcId,
+    method: WireStreamingMethodName,
+    metadata: TransportResponseMetadata,
+    end: { unanswered: boolean; error: Error | undefined },
+  ): Promise<void> {
+    if (channel.closed) return;
+    if (end.unanswered) {
+      await channel.send({
+        type: "requestError",
+        rpcId: requestId,
+        error:
+          end.error ??
+          new RpcTransportError(
+            "event stream ended before the call's response",
+            undefined,
+            metadata.requestId,
+          ),
+      });
+    }
+    await channel.send({
+      type: "streamEnd",
+      method,
+      requestRpcId: requestId,
+      ...(end.error ? { error: end.error } : {}),
+      metadata,
+    });
   }
 
   async function sendRequest(
