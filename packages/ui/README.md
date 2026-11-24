@@ -503,6 +503,8 @@ search clearing in place. Escape in an empty or immutable field, and any key dur
 IME composition, reaches the host. A bounded task that closes on Escape claims it
 in capture on its own owner. `isImeKey` is the shared composition test for
 `isComposing` and the legacy `keyCode` 229.
+The field paints its focus ring on its frame. A popup whose only input keeps focus
+for the popup's whole life passes `ring={false}`; the caret then marks focus.
 `IconButton` requires either
 `aria-label` or `aria-labelledby`; `title` only overrides the tooltip.
 `CodeFrame` opts into the shared viewport-height budget with `bounded`; its

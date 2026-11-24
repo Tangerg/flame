@@ -50446,6 +50446,19 @@ atoms sheet: `Today` and `✓ Approved` render as single quiet lines. Web
 typecheck and the Lab build pass. Not observed in a live transcript, because
 no Lab agent state carries a settled approval or a date boundary.
 
+### Model picker without a rail rule or a resting ring (2026-11-24)
+
+The Composer model picker drew a vertical rule between its provider rail and
+the model list, and its search field opened inside an accent focus ring. The
+field is the popup's only input and holds focus until the popup closes, so
+the ring only restated that the popup was open; the rule restated the gap
+the rail already has. `SearchField` gains `ring` (default on) and the
+catalog picker passes `ring={false}`; panel toolbars, where focus moves
+between controls, keep the ring. The rail loses its border. Native
+`agent` idle: the picker opens on a plain filled field with its caret, the
+rail icons beside it, and Down keeps the highlighted model. `@flame/ui`
+and Web typecheck pass.
+
 ### Footnotes without a rule (2026-11-24)
 
 Generated footnotes opened with a full-width divider above a muted, smaller

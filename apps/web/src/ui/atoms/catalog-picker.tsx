@@ -89,9 +89,6 @@ const styles = stylex.create({
     gap: space.s0_5,
     overflowY: "auto",
     scrollbarWidth: "none",
-    borderRightWidth: "var(--control-edge-width)",
-    borderRightStyle: "solid",
-    borderRightColor: surface.divider,
     padding: space.s1,
   },
   railBody: { display: "flex", maxHeight: "min(280px, var(--available-height))", minHeight: 0 },
@@ -217,6 +214,7 @@ function CatalogSearch({
           value={value}
           onClear={onClear}
           clearLabel={clearLabel}
+          ring={false}
           styles={styles.searchBox}
         />
       }

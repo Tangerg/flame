@@ -234,6 +234,9 @@ export type SearchFieldProps = Omit<
   value: string;
   defaultValue?: never;
   size?: FieldSize;
+  // A popup's only input holds focus for the popup's whole life, so its caret
+  // already marks focus and a ring would only restate that the popup is open.
+  ring?: boolean;
 } & (
     | { onClear: () => void; clearLabel: string }
     | { onClear?: never; clearLabel?: never }
@@ -248,6 +251,7 @@ export function SearchField({
   styles: extra,
   ref,
   onKeyDown,
+  ring = true,
   ...props
 }: SearchFieldProps) {
   const element = useRef<HTMLInputElement>(null);
@@ -288,7 +292,11 @@ export function SearchField({
     extra,
   );
   return (
-    <div data-focus-proxy="" {...box} className={cn(box.className, className)}>
+    <div
+      data-focus-proxy={ring ? "" : undefined}
+      {...box}
+      className={cn(box.className, className)}
+    >
       <Icon
         glyph={Search}
         size={SEARCH_GLYPH[size]}
