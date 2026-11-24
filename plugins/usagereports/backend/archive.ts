@@ -1,5 +1,5 @@
-import { DatabaseSync, type SQLOutputValue } from "node:sqlite";
-import { Database } from "@flame/backend-sdk/sqlite";
+import type { SQLOutputValue } from "node:sqlite";
+import { openPrivateDatabase, type Database } from "@flame/backend-sdk/sqlite";
 import { Temporal } from "@js-temporal/polyfill";
 import {
   Capability,
@@ -128,62 +128,7 @@ export class Archive {
         method,
       ]),
     );
-    const db = new DatabaseSync(path, {
-      allowExtension: false,
-      enableDoubleQuotedStringLiterals: false,
-      readBigInts: true,
-      timeout: 0,
-    });
-    try {
-      // EXCLUSIVE retains the SQLite file lock between transactions. Admission
-      // survives a lost callback without holding a SQL transaction over await.
-      db.exec(
-        "PRAGMA locking_mode=EXCLUSIVE; PRAGMA synchronous=FULL; BEGIN EXCLUSIVE",
-      );
-      try {
-        const stored = db
-          .prepare(
-            "SELECT name, sql FROM sqlite_schema WHERE sql IS NOT NULL AND name NOT GLOB 'sqlite_*'",
-          )
-          .all();
-        if (stored.length) {
-          if (
-            stored.length !== Object.keys(schemas).length ||
-            stored.some(
-              (row) =>
-                typeof row.name !== "string" ||
-                !Object.hasOwn(schemas, row.name) ||
-                row.sql !== schemas[row.name as keyof typeof schemas],
-            )
-          )
-            throw new Error(
-              "usage reports: incompatible archive schema; use a fresh private data directory",
-            );
-        } else for (const sql of Object.values(schemas)) db.exec(sql);
-        db.exec("COMMIT");
-      } catch (error) {
-        try {
-          if (db.isTransaction) db.exec("ROLLBACK");
-        } catch (rollback) {
-          throw new AggregateError(
-            [error, rollback],
-            "usage reports: archive startup rollback is unconfirmed",
-          );
-        }
-        throw error;
-      }
-    } catch (error) {
-      try {
-        db.close();
-      } catch (close) {
-        throw new AggregateError(
-          [error, close],
-          "usage reports: archive startup cleanup failed",
-        );
-      }
-      throw error;
-    }
-    this.#db = new Database(db);
+    this.#db = openPrivateDatabase(path, "usage reports", { objects: schemas });
   }
 
   #command(id: string): Row | undefined {

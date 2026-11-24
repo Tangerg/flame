@@ -1,5 +1,5 @@
-import { DatabaseSync, type SQLOutputValue } from "node:sqlite";
-import { Database } from "@flame/backend-sdk/sqlite";
+import type { SQLOutputValue } from "node:sqlite";
+import { openPrivateDatabase, type Database } from "@flame/backend-sdk/sqlite";
 import { isAbsolute } from "node:path";
 import {
   Refusal,
@@ -85,55 +85,14 @@ export class Archive {
   constructor(path: string) {
     if (!isAbsolute(path))
       throw new Error("deliverables: absolute archive path is required");
-    const db = new DatabaseSync(path, {
-      allowExtension: false,
-      enableDoubleQuotedStringLiterals: false,
-      readBigInts: true,
-      timeout: 0,
+    this.#db = openPrivateDatabase(path, "deliverables", {
+      objects: tables,
+      pragmas: [
+        "PRAGMA foreign_keys=ON",
+        "PRAGMA auto_vacuum=FULL",
+        "PRAGMA max_page_count=262144",
+      ],
     });
-    try {
-      db.exec(
-        "PRAGMA foreign_keys=ON; PRAGMA locking_mode=EXCLUSIVE; PRAGMA synchronous=FULL; PRAGMA auto_vacuum=FULL; PRAGMA max_page_count=262144; BEGIN EXCLUSIVE",
-      );
-      const existing = db
-        .prepare(
-          "SELECT name,sql FROM sqlite_schema WHERE sql IS NOT NULL AND name NOT GLOB 'sqlite_*'",
-        )
-        .all();
-      if (existing.length) {
-        if (
-          existing.length !== Object.keys(tables).length ||
-          existing.some(
-            (row) =>
-              typeof row.name !== "string" ||
-              !Object.hasOwn(tables, row.name) ||
-              row.sql !== tables[row.name as keyof typeof tables],
-          )
-        )
-          throw new Error(
-            "deliverables: incompatible archive schema; preserve the original data directory",
-          );
-      } else for (const sql of Object.values(tables)) db.exec(sql);
-      db.exec("COMMIT");
-    } catch (cause) {
-      const failures = [cause];
-      try {
-        if (db.isTransaction) db.exec("ROLLBACK");
-      } catch (rollback) {
-        failures.push(rollback);
-      }
-      try {
-        db.close();
-      } catch (close) {
-        failures.push(close);
-      }
-      if (failures.length === 1) throw cause;
-      throw new AggregateError(
-        failures,
-        "deliverables: archive startup cleanup failed",
-      );
-    }
-    this.#db = new Database(db);
   }
 
   #writing(): void {

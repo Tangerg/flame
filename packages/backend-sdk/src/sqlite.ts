@@ -1,4 +1,4 @@
-import type { DatabaseSync, StatementSync } from "node:sqlite";
+import { DatabaseSync, type StatementSync } from "node:sqlite";
 
 export class Database {
   readonly #connection: DatabaseSync;
@@ -66,4 +66,75 @@ export class Database {
   close(): void {
     if (this.#connection.isOpen) this.#connection.close();
   }
+}
+
+export interface PrivateDatabaseSchema {
+  // Each owned schema object's exact CREATE statement, keyed by object name.
+  readonly objects: Readonly<Record<string, string>>;
+  readonly pragmas?: readonly string[];
+}
+
+// Opens a SQLite file that one plugin process owns alone. EXCLUSIVE keeps the
+// file lock between transactions, so admission survives a lost callback without
+// holding a transaction over an await. An empty file receives the schema; any
+// other file must already carry exactly that schema.
+export function openPrivateDatabase(
+  path: string,
+  owner: string,
+  { objects, pragmas = [] }: PrivateDatabaseSchema,
+): Database {
+  const db = new DatabaseSync(path, {
+    allowExtension: false,
+    enableDoubleQuotedStringLiterals: false,
+    readBigInts: true,
+    timeout: 0,
+  });
+  try {
+    db.exec(
+      [
+        ...pragmas,
+        "PRAGMA locking_mode=EXCLUSIVE",
+        "PRAGMA synchronous=FULL",
+        "BEGIN EXCLUSIVE",
+      ].join("; "),
+    );
+    const stored = db
+      .prepare(
+        "SELECT name,sql FROM sqlite_schema WHERE sql IS NOT NULL AND name NOT GLOB 'sqlite_*'",
+      )
+      .all();
+    if (stored.length) {
+      if (
+        stored.length !== Object.keys(objects).length ||
+        stored.some(
+          (row) =>
+            typeof row.name !== "string" ||
+            !Object.hasOwn(objects, row.name) ||
+            row.sql !== objects[row.name],
+        )
+      )
+        throw new Error(
+          `${owner}: incompatible private database schema; preserve the existing data directory`,
+        );
+    } else for (const sql of Object.values(objects)) db.exec(sql);
+    db.exec("COMMIT");
+  } catch (cause) {
+    const failures = [cause];
+    try {
+      if (db.isTransaction) db.exec("ROLLBACK");
+    } catch (rollback) {
+      failures.push(rollback);
+    }
+    try {
+      db.close();
+    } catch (close) {
+      failures.push(close);
+    }
+    if (failures.length === 1) throw cause;
+    throw new AggregateError(
+      failures,
+      `${owner}: private database startup cleanup failed`,
+    );
+  }
+  return new Database(db);
 }

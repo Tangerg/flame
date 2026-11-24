@@ -1,5 +1,5 @@
-import { DatabaseSync, type SQLOutputValue } from "node:sqlite";
-import { Database } from "@flame/backend-sdk/sqlite";
+import type { SQLOutputValue } from "node:sqlite";
+import { openPrivateDatabase, type Database } from "@flame/backend-sdk/sqlite";
 import { isAbsolute } from "node:path";
 import {
   Refusal,
@@ -203,51 +203,9 @@ export class Receipts {
     )
       throw new Error("computer: positive finite receipt budgets are required");
     this.#limits = Object.freeze({ ...limits });
-    const db = new DatabaseSync(path, {
-      allowExtension: false,
-      enableDoubleQuotedStringLiterals: false,
-      readBigInts: true,
-      timeout: 0,
+    this.#db = openPrivateDatabase(path, "computer", {
+      objects: { commands: schema },
     });
-    try {
-      db.exec(
-        "PRAGMA locking_mode=EXCLUSIVE; PRAGMA synchronous=FULL; BEGIN EXCLUSIVE",
-      );
-      const existing = db
-        .prepare(
-          "SELECT name,sql FROM sqlite_schema WHERE sql IS NOT NULL AND name NOT GLOB 'sqlite_*'",
-        )
-        .all();
-      if (existing.length) {
-        if (
-          existing.length !== 1 ||
-          existing[0]?.name !== "commands" ||
-          existing[0]?.sql !== schema
-        )
-          throw new Error(
-            "computer: incompatible receipt schema; preserve the original data directory",
-          );
-      } else db.exec(schema);
-      db.exec("COMMIT");
-    } catch (cause) {
-      const failures = [cause];
-      try {
-        if (db.isTransaction) db.exec("ROLLBACK");
-      } catch (rollback) {
-        failures.push(rollback);
-      }
-      try {
-        db.close();
-      } catch (close) {
-        failures.push(close);
-      }
-      if (failures.length === 1) throw cause;
-      throw new AggregateError(
-        failures,
-        "computer: receipt startup cleanup failed",
-      );
-    }
-    this.#db = new Database(db);
   }
 
   #decode(row: Row): ReceiptRecord {
