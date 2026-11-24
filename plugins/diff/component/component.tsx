@@ -8,6 +8,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type RefObject,
 } from "react";
 import {
   failureText,
@@ -120,6 +121,145 @@ function focusMovedFromOrigin(
   return active !== origin && (active !== body || origin?.isConnected === true);
 }
 
+interface DiffFocusTargets {
+  pending: RefObject<PendingFocus | null>;
+  last: RefObject<HTMLElement | null>;
+  refreshButton: RefObject<HTMLButtonElement | null>;
+  search: RefObject<HTMLInputElement | null>;
+  heading: RefObject<HTMLHeadingElement | null>;
+  list: RefObject<HTMLElement | null>;
+  bodyViewport: RefObject<HTMLDivElement | null>;
+  overviewScroll: RefObject<number>;
+}
+
+// Switching between the overview and the reader replaces the element that held
+// focus; this returns focus to the control that matches the requested move.
+function useDiffFocusRestoration(
+  targets: DiffFocusTargets,
+  state: {
+    file: unknown;
+    showingReader: boolean;
+    accepted: Read["accepted"];
+    hasFiles: boolean;
+    selection: Selection;
+    error: unknown;
+  },
+) {
+  useLayoutEffect(() => {
+    const pending = targets.pending.current;
+    const active = document.activeElement;
+    const fallback =
+      state.accepted && !state.hasFiles
+        ? targets.refreshButton.current
+        : targets.search.current;
+    const lostFocus = targets.last.current?.isConnected === false;
+    if (lostFocus) targets.last.current = null;
+    if (!pending) {
+      if (!state.showingReader && active === document.body && lostFocus)
+        fallback?.focus();
+      return;
+    }
+    const navigation = pending.target === "navigation" ? pending.active : null;
+    // Disabling the activated navigation button can blur it to the body.
+    const lostNavigationFocus =
+      state.showingReader && navigation?.disabled && active === document.body;
+    if (
+      !lostNavigationFocus &&
+      focusMovedFromOrigin(active, pending.active, document.body)
+    ) {
+      targets.pending.current = null;
+      return;
+    }
+    if (
+      pending.target === "list" &&
+      pending.query &&
+      state.accepted?.query !== pending.query
+    ) {
+      // Refresh keeps focus while the requested overview is pending, even
+      // when an earlier scoped result still provides visible rows.
+      if (
+        active === document.body &&
+        pending.active?.isConnected === false &&
+        targets.refreshButton.current
+      ) {
+        targets.refreshButton.current.focus();
+        targets.pending.current = {
+          ...pending,
+          active: targets.refreshButton.current,
+        };
+      }
+      return;
+    }
+    targets.pending.current = null;
+    if (pending.target !== "list" && state.showingReader) {
+      if (!navigation?.isConnected || navigation.disabled) {
+        targets.heading.current?.focus();
+      }
+    } else {
+      if (targets.bodyViewport.current)
+        targets.bodyViewport.current.scrollTop = targets.overviewScroll.current;
+      restoreFileOverview(targets.list.current, fallback, state.selection.path);
+    }
+    // The targets are stable refs; only the presented state reruns the restoration.
+  }, [
+    state.file,
+    state.showingReader,
+    state.accepted,
+    state.hasFiles,
+    state.selection,
+    state.error,
+  ]);
+}
+
+function DiffReadStatus({
+  t,
+  read,
+  query,
+}: {
+  t: Translate;
+  read: Read;
+  query: Query;
+}) {
+  const accepted = read.accepted;
+  const settled = !read.loading && !read.error;
+  return (
+    <>
+      {read.loading && (
+        <Metadata role="status">
+          {t("status.reading", {
+            name: comparisonName(t, query.mode).toLocaleLowerCase(),
+          })}
+        </Metadata>
+      )}
+      {read.error && (
+        <Metadata role="alert">
+          {t("status.error", {
+            name: comparisonName(t, query.mode).toLocaleLowerCase(),
+            error: failureText(read.error.cause, t("read.failed")),
+          })}
+        </Metadata>
+      )}
+      {accepted && (!settled || accepted.query !== query) && (
+        <Metadata
+          role="status"
+          className={accepted.query.mode !== query.mode ? undefined : "sr-only"}
+        >
+          {t("status.stale", {
+            name: comparisonName(t, accepted.query.mode).toLocaleLowerCase(),
+          })}
+        </Metadata>
+      )}
+      {accepted && settled && accepted.query === query && (
+        <Metadata role="status" className="sr-only">
+          {t("status.loaded", {
+            name: comparisonName(t, accepted.query.mode).toLocaleLowerCase(),
+          })}
+        </Metadata>
+      )}
+    </>
+  );
+}
+
 export function WorkspaceDiff({ context }: { context: ComponentContext }) {
   const t = useTranslator(CATALOGS, context.locale);
   const {
@@ -222,8 +362,6 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
     unwrap: t("patch.unwrap"),
   };
   const copyPatch = useCopy(accepted?.diff.visual.patch ?? "", t("patch.copy"));
-  const staleComparison =
-    accepted !== undefined && accepted.query.mode !== query.mode;
   const showingReader = file !== undefined;
   const returnsToFiles =
     selection.view === "file" && selection.returnTo === "files";
@@ -283,57 +421,19 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
       bodyViewport.current.scrollTop = 0;
     }
   }, [filePath]);
-  useLayoutEffect(() => {
-    const pending = pendingFocus.current;
-    const active = document.activeElement;
-    const fallback =
-      accepted && !hasFiles ? refreshButton.current : search.current;
-    const lostFocus = lastFocus.current?.isConnected === false;
-    if (lostFocus) lastFocus.current = null;
-    if (!pending) {
-      if (!showingReader && active === document.body && lostFocus)
-        fallback?.focus();
-      return;
-    }
-    const navigation = pending.target === "navigation" ? pending.active : null;
-    // Disabling the activated navigation button can blur it to the body.
-    const lostNavigationFocus =
-      showingReader && navigation?.disabled && active === document.body;
-    if (
-      !lostNavigationFocus &&
-      focusMovedFromOrigin(active, pending.active, document.body)
-    ) {
-      pendingFocus.current = null;
-      return;
-    }
-    if (
-      pending.target === "list" &&
-      pending.query &&
-      accepted?.query !== pending.query
-    ) {
-      // Refresh keeps focus while the requested overview is pending, even
-      // when an earlier scoped result still provides visible rows.
-      if (
-        active === document.body &&
-        pending.active?.isConnected === false &&
-        refreshButton.current
-      ) {
-        refreshButton.current.focus();
-        pendingFocus.current = { ...pending, active: refreshButton.current };
-      }
-      return;
-    }
-    pendingFocus.current = null;
-    if (pending.target !== "list" && showingReader) {
-      if (!navigation?.isConnected || navigation.disabled) {
-        heading.current?.focus();
-      }
-    } else {
-      if (bodyViewport.current)
-        bodyViewport.current.scrollTop = overviewScroll.current;
-      restoreFileOverview(list.current, fallback, selection.path);
-    }
-  }, [file, showingReader, accepted, hasFiles, selection, read.error]);
+  useDiffFocusRestoration(
+    {
+      pending: pendingFocus,
+      last: lastFocus,
+      refreshButton,
+      search,
+      heading,
+      list,
+      bodyViewport,
+      overviewScroll,
+    },
+    { file, showingReader, accepted, hasFiles, selection, error: read.error },
+  );
 
   return (
     <Panel
@@ -530,43 +630,9 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
         </>
       }
     >
-      {read.loading && (
-        <Metadata role="status">
-          {t("status.reading", {
-            name: comparisonName(t, query.mode).toLocaleLowerCase(),
-          })}
-        </Metadata>
-      )}
-      {read.error && (
-        <Metadata role="alert">
-          {t("status.error", {
-            name: comparisonName(t, query.mode).toLocaleLowerCase(),
-            error: failureText(read.error.cause, t("read.failed")),
-          })}
-        </Metadata>
-      )}
-      {accepted && (read.loading || read.error || accepted.query !== query) && (
-        <Metadata
-          role="status"
-          className={staleComparison ? undefined : "sr-only"}
-        >
-          {t("status.stale", {
-            name: comparisonName(t, accepted.query.mode).toLocaleLowerCase(),
-          })}
-        </Metadata>
-      )}
+      <DiffReadStatus t={t} read={read} query={query} />
       {accepted && (
         <>
-          {!read.loading && !read.error && accepted.query === query && (
-            <Metadata role="status" className="sr-only">
-              {t("status.loaded", {
-                name: comparisonName(
-                  t,
-                  accepted.query.mode,
-                ).toLocaleLowerCase(),
-              })}
-            </Metadata>
-          )}
           {truncated && hasFiles && (
             <Metadata role="note">{t("partial")}</Metadata>
           )}

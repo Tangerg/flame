@@ -45,7 +45,7 @@ import { color, face, space, type as typeStep } from "@flame/ui/tokens.stylex";
 
 import { openLocalFile, revealLocalFile } from "@/features/workspace/application/localFileActions";
 
-import { useT } from "@/lib/i18n/index";
+import { useT, type Translate } from "@/lib/i18n/index";
 import { parseFileLineNumber } from "@/features/workspace/ui/files/fileLineNumber";
 import { FileView } from "@/features/workspace/ui/files/FileView";
 import { WorkspaceViewLayout } from "@/features/workspace/ui/WorkspaceViewLayout";
@@ -298,6 +298,237 @@ function FilePreviewMode({
   );
 }
 
+// A page or line jump keeps the exact read it replaces on screen until its own read
+// is accepted, so paging never flashes an empty reader.
+function useFileReadWindow(
+  workspace: ActiveSessionWorkspaceSelection,
+  viewer: WorkspaceFileViewer,
+  scrollPort: RefObject<HTMLDivElement | null>,
+) {
+  const workspaceAccess = useWorkspace();
+  const cwd = resolvedWorkspaceCwd(workspace);
+  const [transitionFor, setTransitionFor] = useState<{
+    viewer: WorkspaceFileViewer;
+    window?: AdjacentLineWindow;
+    previous?: { request: WorkspaceReadFileQuery; viewer: WorkspaceFileViewer };
+  }>();
+  const transition = transitionFor?.viewer === viewer ? transitionFor : undefined;
+  const page = transition?.window;
+  const lineWindow = page ?? initialWindow(viewer.line);
+  const resolving = isWorkspaceResolving(workspace);
+  const request = resolving ? undefined : { cwd, path: viewer.path, ...lineWindow };
+  const read = useWorkspaceReadFile(request);
+  const acceptedData = read.isPlaceholderData ? undefined : read.data;
+  const previousRead = acceptedData === undefined ? transition?.previous : undefined;
+  // The exact origin is authoritative even if the query observer still has a placeholder.
+  const previousData = useCachedWorkspaceReadFile(previousRead?.request);
+  const data = previousRead ? previousData : read.data;
+  const displayedRead =
+    previousData !== undefined ? previousRead : acceptedData && request && { request, viewer };
+  const retainedPending = previousData !== undefined && read.isFetching;
+  const firstShown = data?.startLine ?? 1;
+  const lastShown = data?.endLine ?? 0;
+  const laterCount = Math.min(WINDOW_RADIUS, Math.max(0, (data?.totalLines ?? 0) - lastShown));
+
+  // A default arrival starts at the top like its initial window; FileView places line targets.
+  useLayoutEffect(() => {
+    const host = scrollPort.current;
+    if (host && viewer.line <= 0) host.scrollTop = 0;
+  }, [scrollPort, viewer]);
+
+  const arrivedPage = useRef<AdjacentLineWindow>(null);
+  useLayoutEffect(() => {
+    const host = scrollPort.current;
+    if (!host || acceptedData === undefined) return;
+    if (page && arrivedPage.current !== page) {
+      host.scrollTop = 0;
+      arrivedPage.current = page;
+    }
+    if (transition?.previous) {
+      const settled = page ? { viewer, window: page } : undefined;
+      setTransitionFor((current) => (current === transition ? settled : current));
+    }
+  }, [acceptedData, page, scrollPort, transition, viewer]);
+
+  const loadPage = (control: HTMLElement, window: AdjacentLineWindow) => {
+    if (!displayedRead) return;
+    if (control.ownerDocument.activeElement === control) {
+      scrollPort.current?.focus({ preventScroll: true });
+    }
+    setTransitionFor({ viewer, window, previous: displayedRead });
+  };
+
+  return {
+    cwd,
+    resolving,
+    read,
+    page,
+    lineWindow,
+    acceptedData,
+    previousRead,
+    previousData,
+    data,
+    displayedRead,
+    displayedViewer: displayedRead?.viewer ?? viewer,
+    retainedPending,
+    pagePending: page !== undefined && retainedPending,
+    pagingUnavailable: read.isPlaceholderData || retainedPending,
+    firstShown,
+    laterCount,
+    moreBefore: firstShown > 1,
+    moreAfter: laterCount > 0,
+    loadEarlier: (event: MouseEvent<HTMLElement>) =>
+      loadPage(event.currentTarget, {
+        startLine: Math.max(1, firstShown - WINDOW_RADIUS),
+        endLine: firstShown - 1,
+        fromEnd: true,
+      }),
+    loadLater: (event: MouseEvent<HTMLElement>) =>
+      loadPage(event.currentTarget, { startLine: lastShown + 1, endLine: lastShown + laterCount }),
+    goToLine: (line: number) => {
+      const nextViewer = openWorkspaceFile(workspaceAccess, viewer.path, line);
+      setTransitionFor(displayedRead ? { viewer: nextViewer, previous: displayedRead } : undefined);
+    },
+  };
+}
+
+function FileEdgeLoader({
+  pending,
+  disabled,
+  label,
+  onLoad,
+}: {
+  pending: boolean;
+  disabled: boolean;
+  label: string;
+  onLoad: (event: MouseEvent<HTMLElement>) => void;
+}) {
+  const t = useT();
+  return (
+    <div {...stylex.props(fp.edge)}>
+      {pending ? (
+        <span aria-hidden="true" {...stylex.props(typeStep.uiMd, vocab.muted)}>
+          {t("common.loading")}
+        </span>
+      ) : (
+        <TextButton tone="accent" size="sm" disabled={disabled} onClick={onLoad}>
+          {label}
+        </TextButton>
+      )}
+    </div>
+  );
+}
+
+function FileDirectory({ directory }: { directory: string }) {
+  return (
+    <span dir="ltr" {...stylex.props(fp.directory, face.mono)}>
+      {/* Prefer directory boundaries before emergency wrapping without changing the path text. */}
+      {directory.split("/").map((component, index) => (
+        <Fragment key={index}>
+          {index > 0 && (
+            <>
+              /<wbr />
+            </>
+          )}
+          {component}
+        </Fragment>
+      ))}
+    </span>
+  );
+}
+
+function describeFileRead(
+  t: Translate,
+  read: {
+    page: AdjacentLineWindow | undefined;
+    targetLine: number;
+    error: unknown;
+    invalidRequest: boolean;
+    retained: boolean;
+    retainedPrevious: boolean;
+    awaitingPrevious: boolean;
+    retainedPending: boolean;
+    placeholderFetching: boolean;
+  },
+) {
+  const jump = !read.page && read.targetLine > 0;
+  const invalidLine = jump && read.invalidRequest;
+  const rejectedJump = invalidLine && read.retainedPrevious;
+  const jumpFailureTitle =
+    !read.page && read.retainedPrevious && read.error != null
+      ? t("file.error.requestedLine", { line: read.targetLine })
+      : undefined;
+  const jumpPending =
+    jump && (read.awaitingPrevious ? read.retainedPending : read.placeholderFetching);
+  return {
+    rejectedJump,
+    rejectedInitialLine: invalidLine && !read.retained,
+    jumpFailureTitle,
+    jumpLabel: rejectedJump
+      ? jumpFailureTitle
+      : jumpPending
+        ? t("file.goToLine.pending", { line: read.targetLine })
+        : undefined,
+    pageError:
+      read.page && read.awaitingPrevious && read.error != null
+        ? {
+            title: t("file.error.requestedRange", {
+              start: read.page.startLine,
+              end: read.page.endLine,
+            }),
+            sub: "",
+            size: "compact" as const,
+          }
+        : undefined,
+  };
+}
+
+function FileReadFeedback({
+  error,
+  fetching,
+  pageErrorTitle,
+  jumpFailureTitle,
+  icon,
+  retryRef,
+  focusTarget,
+  onRetry,
+}: {
+  error: unknown;
+  fetching: boolean;
+  pageErrorTitle: string | undefined;
+  jumpFailureTitle: string | undefined;
+  icon: ReturnType<typeof fileIconName>;
+  retryRef: Ref<HTMLDivElement>;
+  focusTarget: RefObject<HTMLDivElement | null>;
+  onRetry: () => unknown;
+}) {
+  const t = useT();
+  if (fetching) return <SkeletonList count={1} variant="compact" label={t("common.loading")} />;
+  if (pageErrorTitle !== undefined && !isUnsupportedMethod(error))
+    return (
+      <SystemMessage
+        ref={retryRef}
+        role="group"
+        variant="error"
+        hideIcon
+        action={{ label: t("common.retry"), variant: "outline", onClick: () => void onRetry() }}
+      >
+        {pageErrorTitle}
+      </SystemMessage>
+    );
+  return (
+    <DataError
+      failure={error}
+      focusTarget={focusTarget}
+      unsupported={{ icon, sub: t("file.readRefreshError.sub"), size: "compact" }}
+      onRetry={onRetry}
+      title={jumpFailureTitle ?? t("file.readRefreshError.title")}
+      sub={t("file.readRefreshError.sub")}
+      size="compact"
+    />
+  );
+}
+
 function FilePreview({
   workspace,
   viewer,
@@ -316,49 +547,31 @@ function FilePreview({
 
   const t = useT();
   const copy = useCopy(viewer.path, t("file.copyPath"));
-  const cwd = resolvedWorkspaceCwd(workspace);
   const targetLine = viewer.line;
-  const [transitionFor, setTransitionFor] = useState<{
-    viewer: WorkspaceFileViewer;
-    window?: AdjacentLineWindow;
-    previous?: { request: WorkspaceReadFileQuery; viewer: WorkspaceFileViewer };
-  }>();
-  const transition = transitionFor?.viewer === viewer ? transitionFor : undefined;
-  const page = transition?.window;
-  const lineWindow = page ?? initialWindow(targetLine);
-  const resolving = isWorkspaceResolving(workspace);
-  const request = resolving ? undefined : { cwd, path: viewer.path, ...lineWindow };
+  const scrollPort = useRef<HTMLDivElement>(null);
   const {
-    data: response,
-    isPlaceholderData,
-    isPending,
-    isFetching,
-    error,
-    refetch,
-  } = useWorkspaceReadFile(request);
-  const acceptedData = isPlaceholderData ? undefined : response;
-  const previousRead = acceptedData === undefined ? transition?.previous : undefined;
-  // The exact origin is authoritative even if the query observer still has a placeholder.
-  const previousData = useCachedWorkspaceReadFile(previousRead?.request);
-  const data = previousRead ? previousData : response;
-  const displayedRead =
-    previousData !== undefined ? previousRead : acceptedData && request && { request, viewer };
-  const displayedViewer = displayedRead?.viewer ?? viewer;
-
-  const retainedPending = previousData !== undefined && isFetching;
-  const pagePending = page !== undefined && retainedPending;
-  const pagingUnavailable = isPlaceholderData || retainedPending;
-  const pageLoadingLabel = t("common.loading");
-  const pageLoadingStatus = (
-    <span aria-hidden="true" {...stylex.props(typeStep.uiMd, vocab.muted)}>
-      {pageLoadingLabel}
-    </span>
-  );
-  const firstShown = data?.startLine ?? 1;
-  const lastShown = data?.endLine ?? 0;
-  const moreBefore = firstShown > 1;
-  const laterCount = Math.min(WINDOW_RADIUS, Math.max(0, (data?.totalLines ?? 0) - lastShown));
-  const moreAfter = laterCount > 0;
+    cwd,
+    resolving,
+    read: { isPlaceholderData, isPending, isFetching, error, refetch },
+    page,
+    lineWindow,
+    acceptedData,
+    previousRead,
+    previousData,
+    data,
+    displayedRead,
+    displayedViewer,
+    retainedPending,
+    pagePending,
+    pagingUnavailable,
+    firstShown,
+    laterCount,
+    moreBefore,
+    moreAfter,
+    loadEarlier,
+    loadLater,
+    goToLine,
+  } = useFileReadWindow(workspace, viewer, scrollPort);
 
   const renderers = useExtensionPoint(WORKSPACE_FILE_RENDERER);
   const extension = fileExtension(viewer.path);
@@ -379,47 +592,6 @@ function FilePreview({
   const mode = modeFor.intent === displayedViewer ? modeFor.mode : defaultMode;
   const setMode = (mode: "rendered" | "source") => setModeFor({ intent: displayedViewer, mode });
   const showRendered = renderer !== undefined && wholeFile && mode === "rendered";
-
-  const scrollPort = useRef<HTMLDivElement>(null);
-  // A default arrival starts at the top like its initial window; FileView places line targets.
-  useLayoutEffect(() => {
-    const host = scrollPort.current;
-    if (host && viewer.line <= 0) host.scrollTop = 0;
-  }, [viewer]);
-
-  const arrivedPage = useRef<AdjacentLineWindow>(null);
-  useLayoutEffect(() => {
-    const host = scrollPort.current;
-    if (!host || acceptedData === undefined) return;
-    if (page && arrivedPage.current !== page) {
-      host.scrollTop = 0;
-      arrivedPage.current = page;
-    }
-    if (transition?.previous) {
-      const settled = page ? { viewer, window: page } : undefined;
-      setTransitionFor((current) => (current === transition ? settled : current));
-    }
-  }, [acceptedData, page, transition, viewer]);
-
-  const loadPage = (control: HTMLElement, window: AdjacentLineWindow) => {
-    if (!displayedRead) return;
-    if (control.ownerDocument.activeElement === control) {
-      scrollPort.current?.focus({ preventScroll: true });
-    }
-    setTransitionFor({ viewer, window, previous: displayedRead });
-  };
-  const loadEarlier = (event: MouseEvent<HTMLElement>) =>
-    loadPage(event.currentTarget, {
-      startLine: Math.max(1, firstShown - WINDOW_RADIUS),
-      endLine: firstShown - 1,
-      fromEnd: true,
-    });
-  const loadLater = (event: MouseEvent<HTMLElement>) =>
-    loadPage(event.currentTarget, { startLine: lastShown + 1, endLine: lastShown + laterCount });
-  const goToLine = (line: number) => {
-    const nextViewer = openWorkspaceFile(workspaceAccess, viewer.path, line);
-    setTransitionFor(displayedRead ? { viewer: nextViewer, previous: displayedRead } : undefined);
-  };
 
   // Set only while FileView presents the source, including as a renderer's fallback;
   // rendered content keeps the browser's formatted copy and editable fields stay native.
@@ -484,61 +656,18 @@ function FilePreview({
   const kind = fileKind(viewer.path);
   const icon = fileIconName(viewer.path);
   const { name, directory } = splitFilePath(viewer.path);
-  const invalidLine = !page && targetLine > 0 && workspaceAccess.errors.isInvalidReadRequest(error);
-  const rejectedJump = invalidLine && previousData !== undefined;
-  const rejectedInitialLine = invalidLine && !retained;
-  const jumpFailureTitle =
-    !page && previousData !== undefined && error != null
-      ? t("file.error.requestedLine", { line: targetLine })
-      : undefined;
-  const jumpPending =
-    !page && targetLine > 0 && (previousRead ? retainedPending : isPlaceholderData && isFetching);
-  const jumpLabel = rejectedJump
-    ? jumpFailureTitle
-    : jumpPending
-      ? t("file.goToLine.pending", { line: targetLine })
-      : undefined;
-  const pageError =
-    page && previousRead && error != null
-      ? {
-          title: t("file.error.requestedRange", {
-            start: page.startLine,
-            end: page.endLine,
-          }),
-          sub: "",
-          size: "compact" as const,
-        }
-      : undefined;
-  const readFeedback =
-    retained && error != null && !retainedPending && !rejectedJump ? (
-      isFetching ? (
-        <SkeletonList count={1} variant="compact" label={t("common.loading")} />
-      ) : pageError && !isUnsupportedMethod(error) ? (
-        <SystemMessage
-          ref={readingControlRef}
-          role="group"
-          variant="error"
-          hideIcon
-          action={{
-            label: t("common.retry"),
-            variant: "outline",
-            onClick: () => void refetch(),
-          }}
-        >
-          {pageError.title}
-        </SystemMessage>
-      ) : (
-        <DataError
-          failure={error}
-          focusTarget={scrollPort}
-          unsupported={{ icon, sub: t("file.readRefreshError.sub"), size: "compact" }}
-          onRetry={refetch}
-          title={jumpFailureTitle ?? t("file.readRefreshError.title")}
-          sub={t("file.readRefreshError.sub")}
-          size="compact"
-        />
-      )
-    ) : undefined;
+  const { rejectedJump, rejectedInitialLine, jumpFailureTitle, jumpLabel, pageError } =
+    describeFileRead(t, {
+      page,
+      targetLine,
+      error,
+      invalidRequest: workspaceAccess.errors.isInvalidReadRequest(error),
+      retained,
+      retainedPrevious: previousData !== undefined,
+      awaitingPrevious: previousRead !== undefined,
+      retainedPending,
+      placeholderFetching: isPlaceholderData && isFetching,
+    });
 
   const lineSummary =
     data && !unsupported
@@ -546,25 +675,10 @@ function FilePreview({
         ? t("file.range", { start: data.startLine, end: data.endLine, total: data.totalLines })
         : t("file.lines", { count: data.totalLines })
       : undefined;
-  const location = directory && (
-    <span dir="ltr" {...stylex.props(fp.directory, face.mono)}>
-      {/* Prefer directory boundaries before emergency wrapping without changing the path text. */}
-      {directory.split("/").map((component, index) => (
-        <Fragment key={index}>
-          {index > 0 && (
-            <>
-              /<wbr />
-            </>
-          )}
-          {component}
-        </Fragment>
-      ))}
-    </span>
-  );
   const sub =
-    location || lineSummary ? (
+    directory || lineSummary ? (
       <>
-        {location}
+        {directory && <FileDirectory directory={directory} />}
         {lineSummary}
         {jumpLabel && " "}
         <span
@@ -586,9 +700,22 @@ function FilePreview({
       notice={
         <>
           <span role="status" className="sr-only">
-            {pagePending ? pageLoadingLabel : undefined}
+            {pagePending ? t("common.loading") : undefined}
           </span>
-          <div role="status">{readFeedback}</div>
+          <div role="status">
+            {retained && error != null && !retainedPending && !rejectedJump && (
+              <FileReadFeedback
+                error={error}
+                fetching={isFetching}
+                pageErrorTitle={pageError?.title}
+                jumpFailureTitle={jumpFailureTitle}
+                icon={icon}
+                retryRef={readingControlRef}
+                focusTarget={scrollPort}
+                onRetry={refetch}
+              />
+            )}
+          </div>
           {<LocalFileFeedback actions={fileActions} focusTarget={scrollPort} />}
         </>
       }
@@ -668,88 +795,60 @@ function FilePreview({
               : { title: t("file.error.title"), sub: t("file.error.sub") })
           }
         >
-          {(items) => (
-            <div ref={displayed}>
-              {moreBefore && !showRendered && (
-                <div {...stylex.props(fp.edge)}>
-                  {pagePending && lineWindow.fromEnd ? (
-                    pageLoadingStatus
-                  ) : (
-                    <TextButton
-                      tone="accent"
-                      size="sm"
-                      disabled={
-                        pagingUnavailable || (pageError !== undefined && !!lineWindow.fromEnd)
-                      }
-                      onClick={loadEarlier}
+          {(items) => {
+            const recorded = (
+              <FileView
+                ref={source}
+                selectionContentRef={selectionContentRef}
+                sourceScrollRef={sourceScrollRef}
+                path={viewer.path}
+                content={items[0]!.content}
+                startLine={items[0]!.startLine}
+                endLine={items[0]!.endLine}
+                targetLine={displayedViewer.line}
+                intent={displayedRead?.viewer ?? null}
+              />
+            );
+            const Renderer = showRendered ? renderer?.component : undefined;
+            return (
+              <div ref={displayed}>
+                {moreBefore && !showRendered && (
+                  <FileEdgeLoader
+                    pending={pagePending && !!lineWindow.fromEnd}
+                    disabled={
+                      pagingUnavailable || (pageError !== undefined && !!lineWindow.fromEnd)
+                    }
+                    label={t("file.loadEarlier", {
+                      count: Math.min(WINDOW_RADIUS, firstShown - 1),
+                    })}
+                    onLoad={loadEarlier}
+                  />
+                )}
+                {Renderer && renderer ? (
+                  <div ref={readingControlRef} {...stylex.props(fp.preview)}>
+                    <PluginBoundary
+                      key={renderer.id}
+                      plugin={renderer.id}
+                      label={renderer.title}
+                      fallback={recorded}
                     >
-                      {t("file.loadEarlier", { count: Math.min(WINDOW_RADIUS, firstShown - 1) })}
-                    </TextButton>
-                  )}
-                </div>
-              )}
-              {showRendered && renderer ? (
-                (() => {
-                  const Renderer = renderer.component;
-                  const recorded = (
-                    <FileView
-                      ref={source}
-                      selectionContentRef={selectionContentRef}
-                      sourceScrollRef={sourceScrollRef}
-                      path={viewer.path}
-                      content={items[0]!.content}
-                      startLine={items[0]!.startLine}
-                      endLine={items[0]!.endLine}
-                      targetLine={displayedViewer.line}
-                      intent={displayedRead?.viewer ?? null}
-                    />
-                  );
-                  return (
-                    <div ref={readingControlRef} {...stylex.props(fp.preview)}>
-                      <PluginBoundary
-                        key={renderer.id}
-                        plugin={renderer.id}
-                        label={renderer.title}
-                        fallback={recorded}
-                      >
-                        <Renderer cwd={cwd} path={viewer.path} {...items[0]!} fallback={recorded} />
-                      </PluginBoundary>
-                    </div>
-                  );
-                })()
-              ) : (
-                <FileView
-                  ref={source}
-                  selectionContentRef={selectionContentRef}
-                  sourceScrollRef={sourceScrollRef}
-                  path={viewer.path}
-                  content={items[0]!.content}
-                  startLine={items[0]!.startLine}
-                  endLine={items[0]!.endLine}
-                  targetLine={displayedViewer.line}
-                  intent={displayedRead?.viewer ?? null}
-                />
-              )}
-              {moreAfter && !showRendered && (
-                <div {...stylex.props(fp.edge)}>
-                  {pagePending && !lineWindow.fromEnd ? (
-                    pageLoadingStatus
-                  ) : (
-                    <TextButton
-                      tone="accent"
-                      size="sm"
-                      disabled={
-                        pagingUnavailable || (pageError !== undefined && !lineWindow.fromEnd)
-                      }
-                      onClick={loadLater}
-                    >
-                      {t("file.loadLater", { count: laterCount })}
-                    </TextButton>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
+                      <Renderer cwd={cwd} path={viewer.path} {...items[0]!} fallback={recorded} />
+                    </PluginBoundary>
+                  </div>
+                ) : (
+                  recorded
+                )}
+                {moreAfter && !showRendered && (
+                  <FileEdgeLoader
+                    pending={pagePending && !lineWindow.fromEnd}
+                    disabled={pagingUnavailable || (pageError !== undefined && !lineWindow.fromEnd)}
+                    label={t("file.loadLater", { count: laterCount })}
+                    onLoad={loadLater}
+                  />
+                )}
+              </div>
+            );
+          }}
         </DataView>
       )}
     </WorkspaceViewLayout>

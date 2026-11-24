@@ -688,117 +688,31 @@ function Reconcile({
 
 export type DraftUpdate = (current: Draft | undefined) => Draft | undefined;
 
-// The workspace owns drafts by document, so reading another revision (which
-// unmounts this view while it loads) never discards unsubmitted intent.
-export function SlideStudio({
-  state,
-  document,
-  draft,
-  onDraft,
-  t,
-}: {
-  state: DeliverablesState;
-  document: DocumentRead;
-  draft: Draft | undefined;
-  onDraft(update: DraftUpdate): void;
-  t: Translate;
-}) {
+// The draft records intent against the revision it was read from; edits apply only
+// while that revision is the head, and saving re-checks it as the precondition.
+function useSlideDraft(
+  state: DeliverablesState,
+  document: DocumentRead,
+  draft: Draft | undefined,
+  onDraft: (update: DraftUpdate) => void,
+) {
   const documentId = document.document.id;
   const head = document.document.head;
   const viewed = document.revision.id;
   const setDraft = (next: Draft | undefined | DraftUpdate) =>
     onDraft(typeof next === "function" ? next : () => next);
   const [saving, setSaving] = useState(false);
-  const [slideId, setSlideId] = useState<string>();
-  const [elementId, setElementId] = useState<string>();
-  const [removal, setRemoval] = useState<string>();
-  const [handoff, setHandoff] = useState<
-    "handed" | "stale" | "copied" | "failed"
-  >();
-  const composer = state.context.composer;
-  // Hosts without a Composer collaborator still let the user carry the
-  // reference by hand.
-  const hand = (reference: string) => {
-    if (composer) {
-      setHandoff(composer.append(`${reference}\n\n`) ? "handed" : "stale");
-      return;
-    }
-    void copyText(reference).then((done) =>
-      setHandoff(done ? "copied" : "failed"),
-    );
-  };
-  const pending =
-    draft && draft.base !== viewed && draft.operations.length
-      ? draft.base
-      : undefined;
+  const stale = draft !== undefined && draft.base !== viewed;
   useEffect(() => {
-    if (draft && draft.base !== viewed && !draft.operations.length)
-      setDraft(undefined);
+    if (stale && !draft.operations.length) setDraft(undefined);
   }, [draft, viewed]);
-  const layouts = useLayouts(
-    state,
-    documentId,
-    pending ? [viewed, pending] : [viewed],
-  );
-  const read = layouts.get(viewed);
-  const baseRead = pending ? layouts.get(pending) : undefined;
-  const editing = draft?.base === viewed;
+  const editedDraft = draft?.base === viewed ? draft : undefined;
   const editable =
-    viewed === head && !state.blocked && !saving && (!draft || editing);
-  const layout = useMemo(
-    () =>
-      read?.value && editing
-        ? preview(read.value, draft.operations)
-        : read?.value,
-    [read?.value, editing, draft?.operations],
-  );
-  const slide =
-    layout?.slides.find((entry) => entry.id === slideId) ?? layout?.slides[0];
-  const element = slide?.elements.find((entry) => entry.id === elementId);
-  const original = read?.value?.slides
-    .flatMap((entry) => entry.elements)
-    .find((entry) => entry.id === elementId);
+    viewed === head &&
+    !state.blocked &&
+    !saving &&
+    (!draft || editedDraft !== undefined);
   const dirty = !!draft?.operations.length;
-  const changed = (target: ElementView) =>
-    !!draft?.operations.some(
-      (operation) =>
-        operation.id === target.id ||
-        target.text.some((run) => run.id === operation.id),
-    );
-
-  const change = (operation: DraftOperation, target?: ElementView) => {
-    if (!editable) return;
-    setDraft((current) =>
-      record(
-        current ?? { base: viewed, operations: [], undo: [] },
-        operation,
-        target,
-      ),
-    );
-  };
-  const setFrame = (target: ElementView, frame: Frame) => {
-    const source = read?.value?.slides
-      .flatMap((entry) => entry.elements)
-      .find((entry) => entry.id === target.id)?.frame;
-    if (source)
-      change({ type: "setFrame", id: target.id, expect: source, frame });
-  };
-  const setText = (id: string, expect: string, text: string) =>
-    change({ type: "replaceText", id, expect, text });
-  const remove = (target: ElementView) => {
-    change({ type: "deleteElement", id: target.id }, target);
-    setElementId(undefined);
-  };
-  const undo = () =>
-    setDraft((current) =>
-      current?.undo.length
-        ? {
-            base: current.base,
-            operations: current.undo.at(-1)!,
-            undo: current.undo.slice(0, -1),
-          }
-        : current,
-    );
 
   const save = async () => {
     if (!draft || !dirty || !editable) return;
@@ -825,18 +739,141 @@ export function SlideStudio({
       setSaving(false);
     }
   };
-  const restructure = (operations: unknown[]) => {
-    if (!editable || dirty) return;
-    const captured = { id: documentId, revision: viewed };
-    void state.run(
-      METHODS.edit,
-      {
-        id: documentId,
-        expectedRevision: viewed,
-        operationsJSON: JSON.stringify({ operations }),
-      },
-      (value) => state.selectRevision(value, captured),
+
+  return {
+    documentId,
+    head,
+    viewed,
+    setDraft,
+    saving,
+    pending: stale && draft.operations.length ? draft.base : undefined,
+    editedDraft,
+    editable,
+    dirty,
+    change: (operation: DraftOperation, target?: ElementView) => {
+      if (!editable) return;
+      setDraft((current) =>
+        record(
+          current ?? { base: viewed, operations: [], undo: [] },
+          operation,
+          target,
+        ),
+      );
+    },
+    undo: () =>
+      setDraft((current) =>
+        current?.undo.length
+          ? {
+              base: current.base,
+              operations: current.undo.at(-1)!,
+              undo: current.undo.slice(0, -1),
+            }
+          : current,
+      ),
+    save,
+    restructure: (operations: unknown[]) => {
+      if (!editable || dirty) return;
+      const captured = { id: documentId, revision: viewed };
+      void state.run(
+        METHODS.edit,
+        {
+          id: documentId,
+          expectedRevision: viewed,
+          operationsJSON: JSON.stringify({ operations }),
+        },
+        (value) => state.selectRevision(value, captured),
+      );
+    },
+  };
+}
+
+// The workspace owns drafts by document, so reading another revision (which
+// unmounts this view while it loads) never discards unsubmitted intent.
+export function SlideStudio({
+  state,
+  document,
+  draft,
+  onDraft,
+  t,
+}: {
+  state: DeliverablesState;
+  document: DocumentRead;
+  draft: Draft | undefined;
+  onDraft(update: DraftUpdate): void;
+  t: Translate;
+}) {
+  const {
+    documentId,
+    head,
+    viewed,
+    setDraft,
+    saving,
+    pending,
+    editedDraft,
+    editable,
+    dirty,
+    change,
+    undo,
+    save,
+    restructure,
+  } = useSlideDraft(state, document, draft, onDraft);
+  const [slideId, setSlideId] = useState<string>();
+  const [elementId, setElementId] = useState<string>();
+  const [removal, setRemoval] = useState<string>();
+  const [handoff, setHandoff] = useState<
+    "handed" | "stale" | "copied" | "failed"
+  >();
+  const composer = state.context.composer;
+  // Hosts without a Composer collaborator still let the user carry the
+  // reference by hand.
+  const hand = (reference: string) => {
+    if (composer) {
+      setHandoff(composer.append(`${reference}\n\n`) ? "handed" : "stale");
+      return;
+    }
+    void copyText(reference).then((done) =>
+      setHandoff(done ? "copied" : "failed"),
     );
+  };
+  const layouts = useLayouts(
+    state,
+    documentId,
+    pending ? [viewed, pending] : [viewed],
+  );
+  const read = layouts.get(viewed);
+  const baseRead = pending ? layouts.get(pending) : undefined;
+  const layout = useMemo(
+    () =>
+      read?.value && editedDraft
+        ? preview(read.value, editedDraft.operations)
+        : read?.value,
+    [read?.value, editedDraft],
+  );
+  const slide =
+    layout?.slides.find((entry) => entry.id === slideId) ?? layout?.slides[0];
+  const element = slide?.elements.find((entry) => entry.id === elementId);
+  const original = read?.value?.slides
+    .flatMap((entry) => entry.elements)
+    .find((entry) => entry.id === elementId);
+  const changed = (target: ElementView) =>
+    !!draft?.operations.some(
+      (operation) =>
+        operation.id === target.id ||
+        target.text.some((run) => run.id === operation.id),
+    );
+
+  const setFrame = (target: ElementView, frame: Frame) => {
+    const source = read?.value?.slides
+      .flatMap((entry) => entry.elements)
+      .find((entry) => entry.id === target.id)?.frame;
+    if (source)
+      change({ type: "setFrame", id: target.id, expect: source, frame });
+  };
+  const setText = (id: string, expect: string, text: string) =>
+    change({ type: "replaceText", id, expect, text });
+  const remove = (target: ElementView) => {
+    change({ type: "deleteElement", id: target.id }, target);
+    setElementId(undefined);
   };
   const move = (offset: number) => {
     if (!layout || !slide) return;
@@ -853,7 +890,7 @@ export function SlideStudio({
       {viewed !== head && !draft && (
         <Callout kind="note">{t("slides.historical")}</Callout>
       )}
-      {editing && head !== viewed && (
+      {editedDraft && head !== viewed && (
         <Callout kind="warning">
           {t("slides.newer")}{" "}
           <Button
@@ -1039,7 +1076,7 @@ export function SlideStudio({
                     {t("slides.delete")}
                   </Button>
                   <Button
-                    disabled={!editing || !changed(element) || !original}
+                    disabled={!editedDraft || !changed(element) || !original}
                     onClick={() => {
                       if (original)
                         setDraft(
@@ -1166,16 +1203,16 @@ export function SlideStudio({
           </div>
         </div>
       )}
-      {editing && (
+      {editedDraft && (
         <Toolbar label={t("slides.draft")}>
           <Metadata role="status">
             {saving
               ? t("slides.saving")
               : dirty
-                ? t("slides.unsaved", { count: draft.operations.length })
+                ? t("slides.unsaved", { count: editedDraft.operations.length })
                 : t("slides.clean")}
           </Metadata>
-          <Button disabled={!draft.undo.length || saving} onClick={undo}>
+          <Button disabled={!editedDraft.undo.length || saving} onClick={undo}>
             {t("slides.undo")}
           </Button>
           <Button disabled={saving} onClick={() => setDraft(undefined)}>

@@ -10,6 +10,7 @@ import {
   useLayoutEffect,
   useRef,
   useState,
+  type FocusEvent,
   type ReactNode,
   type Ref,
   type RefObject,
@@ -65,7 +66,7 @@ import { RunStatusPill } from "@/features/shell/workbench/panel/RunStatusPill";
 import { SessionIdentity } from "@/features/shell/workbench/panel/SessionIdentity";
 import { WorkspaceViewBody } from "@/features/shell/workbench/panel/WorkspaceViewBody";
 import { WorkspaceWindowHeader } from "@/features/shell/workbench/panel/WorkspaceWindowHeader";
-import { useT } from "@/lib/i18n/index";
+import { useT, type Translate } from "@/lib/i18n/index";
 import { canPresentDock } from "@/lib/shellGeometry";
 import { shellStyles as sh } from "@/features/shell/workbench/shellStyles";
 import { useInspectionFocus } from "@/features/shell/workbench/panel/useInspectionFocus";
@@ -277,6 +278,67 @@ const PANEL_SIZES = {
   closed: { conversation: { minSize: 440 }, dock: { minSize: 0, maxSize: 0 } },
 } as const;
 
+// Capacity commits can resize body portals and start ancestor observers, so the row
+// publishes its width from animation frames before ResizeObserver delivery.
+function useDockRowWidth() {
+  const [rowWidth, setRowWidth] = useState<number | null>(null);
+  const dockRowRef = useCallback((row: HTMLDivElement | null) => {
+    if (!row) return;
+    const view = row.ownerDocument.defaultView!;
+    let width = row.clientWidth;
+    let capacity = canPresentDock(width);
+    let frame = 0;
+    let retired = false;
+    setRowWidth(width);
+    const sample = () => {
+      if (retired) return;
+      frame = 0;
+      const next = row.clientWidth;
+      if (next !== width) {
+        width = next;
+        const nextCapacity = canPresentDock(width);
+        if (nextCapacity !== capacity) {
+          capacity = nextCapacity;
+          flushSync(() => setRowWidth(width));
+        } else {
+          setRowWidth(width);
+        }
+      }
+      if (!retired) frame = view.requestAnimationFrame(sample);
+    };
+    frame = view.requestAnimationFrame(sample);
+    return () => {
+      retired = true;
+      view.cancelAnimationFrame(frame);
+    };
+  }, []);
+  return [rowWidth, dockRowRef] as const;
+}
+
+function returnActionLabel(
+  t: Translate,
+  inspection: NonNullable<ReturnType<typeof useWorkspaceInspection>>,
+  viewsById: ReadonlyMap<string, { title: string }>,
+): string {
+  const returnViewId = inspection.returnViewId ?? inspection.returnDockId;
+  if (returnViewId === "subagents" && inspection.returnSubagentRunId)
+    return t("dock.action.returnToTask");
+  if (returnViewId === WORKSPACE_DOCK_CATALOG) return t("dock.action.returnToCatalog");
+  const returnTitle = returnViewId ? viewsById.get(returnViewId)?.title : undefined;
+  return returnTitle
+    ? t("dock.action.returnToView", { view: t(returnTitle) })
+    : t("dock.action.returnToConversation");
+}
+
+function applyComposerReadingLimit({ currentTarget, target }: FocusEvent<HTMLElement>) {
+  // Portaled menus keep their opener's reading context through native focus handoffs.
+  if (!currentTarget.contains(target)) return;
+  const editing = target.closest('[data-slot="composer-scrollport"]');
+  // Jump navigates the current frame without changing its editing or reading budget.
+  if (!editing && target.closest('[data-slot="composer-overlay"]')) return;
+  currentTarget.style.setProperty("--composer-reading-limit", editing ? "100%" : "calc(100% / 3)");
+}
+
 export function ChatPanel({ onSend, ref }: Props) {
   const pickerRef = useRef<HTMLButtonElement>(null);
   const composerAccess = useComposer();
@@ -292,7 +354,7 @@ export function ChatPanel({ onSend, ref }: Props) {
   const activeSessionId = useActiveSessionId();
   const t = useT();
   const inspection = useWorkspaceInspection();
-  const [rowWidth, setRowWidth] = useState<number | null>(null);
+  const [rowWidth, dockRowRef] = useDockRowWidth();
   const measuredWidth = rowWidth ?? 0;
   const dockAvailable = canPresentDock(measuredWidth);
 
@@ -333,54 +395,9 @@ export function ChatPanel({ onSend, ref }: Props) {
   );
   useImperativeHandle(ref, () => ({ focusComposer: requestComposerFocus }));
 
-  const dockRowRef = useCallback((row: HTMLDivElement | null) => {
-    if (!row) return;
-    const view = row.ownerDocument.defaultView!;
-    let width = row.clientWidth;
-    let capacity = canPresentDock(width);
-    let frame = 0;
-    let retired = false;
-    setRowWidth(width);
-    // Capacity commits can resize body portals and start ancestor observers. Publish before
-    // ResizeObserver delivery so those effects can settle before the same paint.
-    const sample = () => {
-      if (retired) return;
-      frame = 0;
-      const next = row.clientWidth;
-      if (next !== width) {
-        width = next;
-        const nextCapacity = canPresentDock(width);
-        if (nextCapacity !== capacity) {
-          capacity = nextCapacity;
-          flushSync(() => setRowWidth(width));
-        } else {
-          setRowWidth(width);
-        }
-      }
-      if (!retired) frame = view.requestAnimationFrame(sample);
-    };
-    frame = view.requestAnimationFrame(sample);
-    return () => {
-      retired = true;
-      view.cancelAnimationFrame(frame);
-    };
-  }, []);
-
   const viewsById = new Map(views.map((view) => [view.id, view]));
-  const returnViewId = inspection?.returnViewId ?? inspection?.returnDockId;
-  const returnTitle = returnViewId ? viewsById.get(returnViewId)?.title : undefined;
   const returnAction = inspection
-    ? {
-        label:
-          returnViewId === "subagents" && inspection.returnSubagentRunId
-            ? t("dock.action.returnToTask")
-            : returnViewId === WORKSPACE_DOCK_CATALOG
-              ? t("dock.action.returnToCatalog")
-              : returnTitle
-                ? t("dock.action.returnToView", { view: t(returnTitle) })
-                : t("dock.action.returnToConversation"),
-        onReturn: returnToSource,
-      }
+    ? { label: returnActionLabel(t, inspection, viewsById), onReturn: returnToSource }
     : undefined;
 
   const dockTabs = ownedDockViewIds.map((id) => {
@@ -404,8 +421,7 @@ export function ChatPanel({ onSend, ref }: Props) {
   if (activeMainView !== null) openViewIds.add(activeMainView);
   const presentedMain = fullPaneViewId !== null;
   const panelSizes = PANEL_SIZES[presentedMain ? "main" : dockVisible ? "dock" : "closed"];
-  const mountedViewIds = new Set(ownedDockViewIds);
-  if (activeMainView !== null) mountedViewIds.add(activeMainView);
+  const mountedViewIds = new Set(openViewIds);
   for (let source = inspection; source; source = source.previous) {
     if (source.returnViewId && source.returnViewId !== source.viewId) {
       mountedViewIds.add(source.returnViewId);
@@ -418,17 +434,7 @@ export function ChatPanel({ onSend, ref }: Props) {
   return (
     <AgentContentCard
       label={t("shell.region.workspace")}
-      onFocusCapture={({ currentTarget, target }) => {
-        // Portaled menus keep their opener's reading context through native focus handoffs.
-        if (!currentTarget.contains(target)) return;
-        const editing = target.closest('[data-slot="composer-scrollport"]');
-        // Jump navigates the current frame without changing its editing or reading budget.
-        if (!editing && target.closest('[data-slot="composer-overlay"]')) return;
-        currentTarget.style.setProperty(
-          "--composer-reading-limit",
-          editing ? "100%" : "calc(100% / 3)",
-        );
-      }}
+      onFocusCapture={applyComposerReadingLimit}
     >
       {presentedMain && (
         <WorkspaceWindowHeader
