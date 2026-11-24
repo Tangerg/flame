@@ -34,20 +34,7 @@ export function onItemStarted(
   ) {
     return state;
   }
-  switch (item.type) {
-    case "userMessage":
-      return appendUserMessage(state, item);
-    case "agentMessage":
-      return foldAgentMessage(state, item, blockStatus(item.status));
-    case "reasoning":
-      return foldReasoning(state, item, blockStatus(item.status));
-    case "toolCall":
-      return writeToolCall(state, item, source);
-    case "question":
-      return foldQuestion(state, item, blockStatus(item.status));
-    case "compaction":
-      return foldCompaction(state, item);
-  }
+  return foldItem(state, item, source);
 }
 
 interface ProjectedItemIdentity {
@@ -159,6 +146,14 @@ export function onItemCompleted(
       `agent.fold.itemCompletedRequiresTerminalStatus:item=${item.id};run=${item.runId};status=${item.status}`,
     );
   }
+  return foldItem(state, item, source);
+}
+
+function foldItem(
+  state: AgentSessionView,
+  item: AgentItem,
+  source: AgentFoldSource,
+): AgentSessionView {
   switch (item.type) {
     case "userMessage":
       return appendUserMessage(state, item);

@@ -50,15 +50,8 @@ interface Pending {
 export const providerResource = (id: string) =>
   JSON.stringify(["provider", id]);
 
-export class ProviderSettings {
-  readonly #runtimeIdentity: object;
-  readonly #component: ComponentSource["component"];
-  readonly #signal: AbortSignal;
-  readonly #listeners = new Set<() => void>();
-  readonly #pending = new Map<string, Pending>();
-  readonly #draftEdits = new Map<string, object>();
-  readonly #reads = new Map<ReadKey, AbortController>();
-  #snapshot: Snapshot = {
+function loadingSnapshot(): Snapshot {
+  return {
     providers: { phase: "loading" },
     models: { phase: "loading" },
     utility: { phase: "loading" },
@@ -68,6 +61,17 @@ export class ProviderSettings {
     feedback: new Map(),
     probing: new Set(),
   };
+}
+
+export class ProviderSettings {
+  readonly #runtimeIdentity: object;
+  readonly #component: ComponentSource["component"];
+  readonly #signal: AbortSignal;
+  readonly #listeners = new Set<() => void>();
+  readonly #pending = new Map<string, Pending>();
+  readonly #draftEdits = new Map<string, object>();
+  readonly #reads = new Map<ReadKey, AbortController>();
+  #snapshot = loadingSnapshot();
 
   constructor(source: ComponentSource) {
     source.signal.throwIfAborted();
@@ -81,16 +85,7 @@ export class ProviderSettings {
         this.#draftEdits.clear();
         for (const controller of this.#reads.values()) controller.abort();
         this.#reads.clear();
-        this.#snapshot = {
-          providers: { phase: "loading" },
-          models: { phase: "loading" },
-          utility: { phase: "loading" },
-          embedding: { phase: "loading" },
-          drafts: new Map(),
-          commands: new Map(),
-          feedback: new Map(),
-          probing: new Set(),
-        };
+        this.#snapshot = loadingSnapshot();
         this.#publish();
       },
       { once: true },

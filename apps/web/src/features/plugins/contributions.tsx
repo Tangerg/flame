@@ -179,34 +179,36 @@ function createPackageReconciler(
         };
         const compose = compositions.renderer(lifetime, [component]);
         const binding = operationBinding(installation, entry);
+        const loadRendering = async () => {
+          const loaded = await modules.component(
+            moduleScope,
+            client,
+            endpoint,
+            generation,
+            installation,
+            entry,
+          );
+          return {
+            entry: loaded.component,
+            reload: loaded.reload,
+            component,
+            generation,
+            compose,
+            saveFile,
+            resources: loaded.signal,
+            runtime: client,
+            binding,
+            lifetime,
+          };
+        };
         if (placement === "fileRenderer") {
           if (!entry.selector || entry.selector.type !== "fileExtension")
             throw new Error("File component requires an extension selector");
           const File = lazy(async () => {
-            const loaded = await modules.component(
-              moduleScope,
-              client,
-              endpoint,
-              generation,
-              installation,
-              entry,
-            );
+            const rendering = await loadRendering();
             return {
               default: ({ file, fallback }: { file: CapturedFile; fallback: ReactNode }) => (
-                <InstalledFileComponent
-                  entry={loaded.component}
-                  reload={loaded.reload}
-                  component={component}
-                  generation={generation}
-                  compose={compose}
-                  saveFile={saveFile}
-                  resources={loaded.signal}
-                  runtime={client}
-                  binding={binding}
-                  lifetime={lifetime}
-                  file={file}
-                  fallback={fallback}
-                />
+                <InstalledFileComponent {...rendering} file={file} fallback={fallback} />
               ),
             };
           });
@@ -237,14 +239,7 @@ function createPackageReconciler(
           if (!entry.selector || entry.selector.type === "fileExtension")
             throw new Error("Tool result component requires a result selector");
           const Result = lazy(async () => {
-            const loaded = await modules.component(
-              moduleScope,
-              client,
-              endpoint,
-              generation,
-              installation,
-              entry,
-            );
+            const rendering = await loadRendering();
             return {
               default: ({
                 toolResult,
@@ -254,16 +249,7 @@ function createPackageReconciler(
                 fallback: ReactNode;
               }) => (
                 <InstalledToolResultComponent
-                  entry={loaded.component}
-                  reload={loaded.reload}
-                  component={component}
-                  generation={generation}
-                  compose={compose}
-                  saveFile={saveFile}
-                  resources={loaded.signal}
-                  runtime={client}
-                  binding={binding}
-                  lifetime={lifetime}
+                  {...rendering}
                   toolResult={toolResult}
                   fallback={fallback}
                 />
@@ -298,29 +284,10 @@ function createPackageReconciler(
         }
         if (placement === "sessionAction") {
           const Action = lazy(async () => {
-            const loaded = await modules.component(
-              moduleScope,
-              client,
-              endpoint,
-              generation,
-              installation,
-              entry,
-            );
+            const rendering = await loadRendering();
             return {
               default: ({ session }: { session: CapturedSession }) => (
-                <InstalledSessionActionComponent
-                  entry={loaded.component}
-                  reload={loaded.reload}
-                  component={component}
-                  generation={generation}
-                  compose={compose}
-                  saveFile={saveFile}
-                  resources={loaded.signal}
-                  runtime={client}
-                  binding={binding}
-                  lifetime={lifetime}
-                  session={session}
-                />
+                <InstalledSessionActionComponent {...rendering} session={session} />
               ),
             };
           });
@@ -338,27 +305,7 @@ function createPackageReconciler(
           continue;
         }
         const View = lazy(async () => {
-          const loaded = await modules.component(
-            moduleScope,
-            client,
-            endpoint,
-            generation,
-            installation,
-            entry,
-          );
-          const rendering = {
-            placement,
-            entry: loaded.component,
-            reload: loaded.reload,
-            component,
-            generation,
-            compose,
-            saveFile,
-            resources: loaded.signal,
-            runtime: client,
-            binding,
-            lifetime,
-          };
+          const rendering = { placement, ...(await loadRendering()) };
           if (placement === "messageAction")
             return { default: () => <InstalledMessageAction {...rendering} /> };
           if (placement === "workspaceChangesAction")
