@@ -188,8 +188,8 @@ export function PackageManager() {
           )}
         </DataView>
       </PanelSection>
-      {operations && (
-        <ProviderSelections installations={catalog.data ?? []} operations={operations} />
+      {operations && catalog.data && (
+        <ProviderSelections installations={catalog.data} operations={operations} />
       )}
       {operations && <PendingCommands operations={operations} />}
     </>
