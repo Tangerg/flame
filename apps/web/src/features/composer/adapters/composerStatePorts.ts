@@ -298,9 +298,11 @@ export function createComposer(
     activate: activateComposerStorage,
     hasUnconfirmedDrafts: owner.hasUnconfirmedDrafts,
     subscribePersistence: owner.subscribePersistence,
-    start() {
+    // The caller's lifetime owns only this session sync; the composer itself belongs to
+    // whoever created it, so a restarted plugin cannot dispose drafts the UI still reads.
+    start(): () => void {
       if (disposed) throw new Error("Composer is disposed");
-      if (!stopSessionSync) installComposerSessionSync(sessions, endpoint, scope);
+      return installComposerSessionSync(sessions, endpoint, scope);
     },
     dispose,
   };

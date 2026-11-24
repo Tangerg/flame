@@ -7,8 +7,7 @@ export function createComposerBootstrap(composer: ComposerOwner) {
     name: "flame.builtin.composer-bootstrap",
     requires: { sessions: AGENT_SESSIONS, scope: RUNTIME_SERVER_SCOPE, stream: RUNTIME_STREAM },
     setup(ctx) {
-      composer.start();
-      ctx.lifetime.defer(composer.dispose);
+      ctx.lifetime.defer(composer.start());
     },
   });
 }

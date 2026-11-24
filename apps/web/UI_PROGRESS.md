@@ -56833,7 +56833,25 @@ and native command focus.” Choose fresh task evidence before selecting a repai
 
 ### Open observations from the 2026-11-24 rounds
 
-- **`dock-feature-off` never becomes ready in WebKit.** Native captures show a blank window, then the Lab error `fixture surfaces or draft storage did not settle before the readiness deadline`. A temporary, reverted diagnostic reported `{"child":true,"drafts":true,"pending":[]}`. No surface is pending, and the composer's `persistenceState` stays `loading`. `dock-review` in the same host settles, and Chromium renders `dock-feature-off` fully. A second reverted diagnostic logged `create#0 → hydrate#0 → dispose#0`. There is one composer store, it is disposed only after the readiness failure, and `DraftDatabase.read` never settles (no `read-done`). The stall reproduces with a fresh WebKit data store, so stale storage is ruled out. The draft database is the only IndexedDB user. The remaining cause is inside WebKit's handling of this scene's read and needs Web Inspector on the WKWebView before any owner changes.
+- **`dock-feature-off` in WebKit: composer disposal fixed, loader stall open.**
+  Temporary, reverted probes traced two faults. (1) Two owners disposed the
+  composer. `main.tsx` (and the Lab client) creates and disposes it, but
+  `createComposerBootstrap` also deferred `composer.dispose` on its plugin
+  lifetime. When that lifetime ended mid-hydration, the draft database closed
+  under the in-flight read (`open-ok closed=true`), the store stayed `loading`
+  and the readiness deadline failed. `start()` now returns the session-sync
+  stop, and the bootstrap lifetime owns only that. Disposal stays with the
+  creator. With the fix the deadline passes, and a typed draft survives a
+  native host relaunch. (2) Still open: in WKWebView only, 42 of 44 plugins
+  are torn down about 0.7 s after setup and never set up again. The two
+  survivors are `flame.visual.runtime-stream-ports` and
+  `flame.builtin.installed-plugin-loader`. Chromium keeps all 44. This points
+  to an installed-plugin generation reload in this capability set that never
+  completes under WebKit, leaving the main surface unmounted. Next step:
+  trace the installed-plugin loader's generation replacement under WebKit.
+  Other bootstraps (agent, workspace, navigation, notifications, installed
+  plugins, connection) also defer disposal of objects `main.tsx` owns. Review
+  them under the same ownership rule before relying on plugin restarts.
 - **Full-pane entry ring.** Settings and full-width views focus their named region on entry. WebKit treats the programmatic focus after a direct load or keyboard entry as focus-visible and frames the whole pane in the accent ring. This matches the panel focus border of keyboard-first editors, and the Lab cannot exercise mouse entry (the shell fixture's Settings row does not route). Keep it unless a mouse-entry capture shows the frame.
 
 ## Working and maintenance practice
