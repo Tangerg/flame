@@ -104,40 +104,11 @@ func Run(ctx context.Context, cfg Config) (runErr error) {
 	}
 	programConfig := program.ScreenConfig{
 		Build: func(loop *program.Runtime) (scene.Element, error) {
-			var buildErr error
-			active, buildErr = newApp(loop, appConfig{
-				context: ctx, runtime: cfg.Runtime, runtimeProfile: prepared.runtimeProfile, replayPolicy: prepared.replayPolicy,
-				workspaces: cfg.Workspaces, changes: cfg.Changes, transfers: cfg.Transfers,
-				usage: cfg.Usage, modelConfig: cfg.ModelConfig, goals: cfg.Goals, skills: cfg.Skills,
-				mcp: cfg.MCP, plugins: cfg.Plugins,
-				diagnosticTools: cfg.DiagnosticTools, authoringContext: cfg.AuthoringContext,
-				hooks: cfg.Hooks, feedback: cfg.Feedback,
-				snapshot: prepared.opened, clientVersion: cfg.ClientVersion,
-				pluginHost: extensionHost, pluginIssues: discovered.Issues,
-				attachments: prepared.attachments,
-				settings:    prepared.settings,
-				options:     prepared.options, keyBindings: prepared.keyBindings, queue: prompts,
-				workbench: prepared.workbench, initialDraft: prepared.draft, editor: prepared.editor,
-				recoveredSteers: prepared.recoveryIssues.steers.Accepted,
-				localDirectory:  cfg.LocalDirectory, detachOnExit: cfg.DetachOnExit,
-			})
-			if buildErr != nil {
-				return scene.Element{}, buildErr
-			}
-			var rollbackNotice string
-			if prepared.rollbackRecovery != nil {
-				rollbackNotice = rollbackRecoveryNotice(*prepared.rollbackRecovery)
-			}
-			active.announceStartup(
-				rollbackNotice,
-				active.steering.refusedSteersNotice(prepared.recoveryIssues.steers.Refused),
-				unloadedPluginsNotice(results, discovered.Issues),
-				pendingInstalledCommandsNotice(prepared.workbench),
-			)
-			active.reportWorkbenchIssue(workbenchSteerOutbox, prepared.recoveryIssues.steer)
-			if err := loop.Dispatcher().Post(func() { active.shell.FocusPrompt() }); err != nil {
+			started, err := startApp(ctx, loop, cfg, prepared, extensionHost, discovered, results, prompts)
+			if err != nil {
 				return scene.Element{}, err
 			}
+			active = started
 			return active.Element(), nil
 		},
 		Config: program.Config{Terminal: term.Features{Probe: true, Mouse: prepared.settings.UI.Mouse, Focus: true, Keyboard: term.KeyboardCompatible}, Host: cfg.Host},
@@ -169,6 +140,55 @@ func Run(ctx context.Context, cfg Config) (runErr error) {
 		return terminalUnavailableError{cause: err}
 	}
 	return err
+}
+
+// startApp builds the terminal app and reports what startup recovered: an
+// interrupted rollback, refused steers, unloaded plugins and unconfirmed
+// installed commands.
+func startApp(
+	ctx context.Context,
+	loop *program.Runtime,
+	cfg Config,
+	prepared preparedSession,
+	extensionHost *extensions.Host,
+	discovered extensions.Discovery,
+	results []extensions.LifecycleResult,
+	prompts *workbench.Queue,
+) (*app, error) {
+	active, err := newApp(loop, appConfig{
+		context: ctx, runtime: cfg.Runtime, runtimeProfile: prepared.runtimeProfile, replayPolicy: prepared.replayPolicy,
+		workspaces: cfg.Workspaces, changes: cfg.Changes, transfers: cfg.Transfers,
+		usage: cfg.Usage, modelConfig: cfg.ModelConfig, goals: cfg.Goals, skills: cfg.Skills,
+		mcp: cfg.MCP, plugins: cfg.Plugins,
+		diagnosticTools: cfg.DiagnosticTools, authoringContext: cfg.AuthoringContext,
+		hooks: cfg.Hooks, feedback: cfg.Feedback,
+		snapshot: prepared.opened, clientVersion: cfg.ClientVersion,
+		pluginHost: extensionHost, pluginIssues: discovered.Issues,
+		attachments: prepared.attachments,
+		settings:    prepared.settings,
+		options:     prepared.options, keyBindings: prepared.keyBindings, queue: prompts,
+		workbench: prepared.workbench, initialDraft: prepared.draft, editor: prepared.editor,
+		recoveredSteers: prepared.recoveryIssues.steers.Accepted,
+		localDirectory:  cfg.LocalDirectory, detachOnExit: cfg.DetachOnExit,
+	})
+	if err != nil {
+		return nil, err
+	}
+	var rollbackNotice string
+	if prepared.rollbackRecovery != nil {
+		rollbackNotice = rollbackRecoveryNotice(*prepared.rollbackRecovery)
+	}
+	active.announceStartup(
+		rollbackNotice,
+		active.steering.refusedSteersNotice(prepared.recoveryIssues.steers.Refused),
+		unloadedPluginsNotice(results, discovered.Issues),
+		pendingInstalledCommandsNotice(prepared.workbench),
+	)
+	active.reportWorkbenchIssue(workbenchSteerOutbox, prepared.recoveryIssues.steer)
+	if err := loop.Dispatcher().Post(func() { active.shell.FocusPrompt() }); err != nil {
+		return nil, err
+	}
+	return active, nil
 }
 
 func pendingInstalledCommandsNotice(store *workbench.Store) string {

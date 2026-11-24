@@ -194,8 +194,12 @@ func (m *mcpScreens) showMCPFormStep(flow *mcpFormFlow) {
 	}
 	form.Behavior.Keys = base.DefaultFormKeys()
 	var dialog *presentationDialog
+	// A step's callbacks act only while this step is the one presented.
+	superseded := func() bool {
+		return m.form != flow || flow.dialog != dialog || flow.state != mcpFormEditing
+	}
 	form.Behavior.Submit = func(base.SubmissionID) (scene.ActionState, error) {
-		if m.form != flow || flow.dialog != dialog || flow.state != mcpFormEditing {
+		if superseded() {
 			return scene.Unchanged, nil
 		}
 		capture()
@@ -207,7 +211,7 @@ func (m *mcpScreens) showMCPFormStep(flow *mcpFormFlow) {
 		return scene.Applied, nil
 	}
 	leave := func() {
-		if m.form != flow || flow.dialog != dialog || flow.state != mcpFormEditing {
+		if superseded() {
 			return
 		}
 		capture()
@@ -218,19 +222,10 @@ func (m *mcpScreens) showMCPFormStep(flow *mcpFormFlow) {
 		m.closeMCPForm(flow)
 	}
 	body := kit.NewForm(form)
-	title := "Create MCP server"
-	switch flow.mode {
-	case mcpFormProbe:
-		title = "Test MCP candidate"
-	case mcpFormUpdate:
-		title = "Configure MCP server · " + mcp.ServerLabel(flow.server.ID)
-	case mcpFormCreate:
-	}
-	step, total, label := flow.progress()
-	title += fmt.Sprintf(" · %d/%d", step, total)
+	_, _, label := flow.progress()
 	dialog = newPresentationDialog(m.stack, kit.DialogConfig{
 		Behavior: base.DialogConfig{
-			Title:   title,
+			Title:   flow.title(),
 			Content: formNavigation(body.Element(), leave),
 		},
 		Theme:  m.theme,
@@ -241,6 +236,19 @@ func (m *mcpScreens) showMCPFormStep(flow *mcpFormFlow) {
 	flow.dialog = dialog
 	flow.view = body
 	dialog.Show()
+}
+
+func (f *mcpFormFlow) title() string {
+	title := "Create MCP server"
+	switch f.mode {
+	case mcpFormProbe:
+		title = "Test MCP candidate"
+	case mcpFormUpdate:
+		title = "Configure MCP server · " + mcp.ServerLabel(f.server.ID)
+	case mcpFormCreate:
+	}
+	step, total, _ := f.progress()
+	return title + fmt.Sprintf(" · %d/%d", step, total)
 }
 
 func (m *mcpScreens) submitMCPForm(flow *mcpFormFlow) {
