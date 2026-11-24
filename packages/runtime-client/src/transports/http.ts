@@ -122,6 +122,33 @@ async function feedEventStreamText(
   return true;
 }
 
+// Resolves false when the caller abandons the stream before its consumer
+// settles the delivered event; a consumer failure still rejects.
+function consumedBeforeAbort(delivery: Promise<void>, signal?: AbortSignal): Promise<boolean> {
+  return new Promise<boolean>((resolve, reject) => {
+    const abort = () => {
+      cleanup();
+      resolve(false);
+    };
+    const cleanup = () => signal?.removeEventListener("abort", abort);
+    void delivery.then(
+      () => {
+        cleanup();
+        resolve(true);
+      },
+      (error: unknown) => {
+        cleanup();
+        reject(error);
+      },
+    );
+    if (signal?.aborted) {
+      resolve(false);
+      return;
+    }
+    signal?.addEventListener("abort", abort, { once: true });
+  });
+}
+
 export function createHttpTransport(config: HttpTransportConfig): Transport {
   const { localToken, maximumEventStreamFrameBytes } = config;
   const documentLimit = responseDocumentLimit(config.maximumResponseBytes);
@@ -243,31 +270,7 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
         if (consumption) {
           const delivery = consumption;
           consumption = undefined;
-          if (
-            !(await new Promise<boolean>((resolve, reject) => {
-              const abort = () => {
-                cleanup();
-                resolve(false);
-              };
-              const cleanup = () => signal?.removeEventListener("abort", abort);
-              void delivery.then(
-                () => {
-                  cleanup();
-                  resolve(true);
-                },
-                (error: unknown) => {
-                  cleanup();
-                  reject(error);
-                },
-              );
-              if (signal?.aborted) {
-                resolve(false);
-                return;
-              }
-              signal?.addEventListener("abort", abort, { once: true });
-            }))
-          )
-            return false;
+          if (!(await consumedBeforeAbort(delivery, signal))) return false;
         }
         return signal?.aborted !== true;
       })();
@@ -369,17 +372,7 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
       ? AbortSignal.any([signal, closeController.signal])
       : closeController.signal;
 
-    const headers = requestHeaders({
-      [HTTP_HEADERS.contentType]: RPC_HTTP.documentMediaType,
-      [HTTP_HEADERS.method]: method,
-      Accept: `${RPC_HTTP.documentMediaType}, ${RPC_HTTP.streamMediaType}`,
-    });
-    if (options.idempotencyKey) headers[HTTP_HEADERS.idempotencyKey] = options.idempotencyKey;
-    if (options.idempotencyNamespace) {
-      headers[HTTP_HEADERS.idempotencyNamespace] = options.idempotencyNamespace;
-    }
-    if (options.lastEventId) headers[HTTP_HEADERS.lastEventId] = options.lastEventId;
-    requireExactHeaderValues(headers);
+    const headers = rpcHeaders(method, options);
     const span = tracer.startSpan(`rpc ${method}`, {
       kind: SpanKind.CLIENT,
       attributes: { "rpc.system": "jsonrpc", "rpc.method": method },
@@ -417,37 +410,8 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
     }
 
     const mediaType = responseMediaType(res);
-    if (res.ok && mediaType === RPC_HTTP.streamMediaType) {
-      if (!isWireStreamingMethodName(method)) {
-        const err = new RpcProtocolError(
-          "RPC response",
-          [{ path: "$", detail: `must not be an event stream for non-streaming method ${method}` }],
-          metadata.requestId,
-        );
-        return refuseResponse(res, span, err);
-      }
-      if (!res.body) {
-        const err = new RpcTransportError(
-          "event-stream response has no body",
-          undefined,
-          metadata.requestId,
-        );
-        endSpan(span, err);
-        throw err;
-      }
-      endSpan(span);
-      const draining = drainStream(res.body, rpcId, method, metadata, requestSignal);
-      activeDrains.add(draining);
-      void draining.then(
-        () => activeDrains.delete(draining),
-        (cause: unknown) => {
-          cleanupFailures.set(draining, cause);
-          activeDrains.delete(draining);
-        },
-      );
-      return;
-    }
-
+    if (res.ok && mediaType === RPC_HTTP.streamMediaType)
+      return acceptStream(res, span, rpcId, method, metadata, requestSignal);
     if (res.ok && mediaType !== RPC_HTTP.documentMediaType) {
       return refuseResponse(
         res,
@@ -459,6 +423,73 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
         ),
       );
     }
+    return acceptDocument(res, span, msg, metadata, requestSignal);
+  }
+
+  function rpcHeaders(
+    method: TransportRequest["method"],
+    options: TransportSendOptions,
+  ): Record<string, string> {
+    const headers = requestHeaders({
+      [HTTP_HEADERS.contentType]: RPC_HTTP.documentMediaType,
+      [HTTP_HEADERS.method]: method,
+      Accept: `${RPC_HTTP.documentMediaType}, ${RPC_HTTP.streamMediaType}`,
+    });
+    if (options.idempotencyKey) headers[HTTP_HEADERS.idempotencyKey] = options.idempotencyKey;
+    if (options.idempotencyNamespace) {
+      headers[HTTP_HEADERS.idempotencyNamespace] = options.idempotencyNamespace;
+    }
+    if (options.lastEventId) headers[HTTP_HEADERS.lastEventId] = options.lastEventId;
+    requireExactHeaderValues(headers);
+    return headers;
+  }
+
+  // The stream's response and events are delivered by the drain, which the
+  // transport joins on close.
+  async function acceptStream(
+    res: Response,
+    span: Span,
+    rpcId: RpcId,
+    method: TransportRequest["method"],
+    metadata: TransportResponseMetadata,
+    requestSignal: AbortSignal,
+  ): Promise<void> {
+    if (!isWireStreamingMethodName(method)) {
+      const err = new RpcProtocolError(
+        "RPC response",
+        [{ path: "$", detail: `must not be an event stream for non-streaming method ${method}` }],
+        metadata.requestId,
+      );
+      return refuseResponse(res, span, err);
+    }
+    if (!res.body) {
+      const err = new RpcTransportError(
+        "event-stream response has no body",
+        undefined,
+        metadata.requestId,
+      );
+      endSpan(span, err);
+      throw err;
+    }
+    endSpan(span);
+    const draining = drainStream(res.body, rpcId, method, metadata, requestSignal);
+    activeDrains.add(draining);
+    void draining.then(
+      () => activeDrains.delete(draining),
+      (cause: unknown) => {
+        cleanupFailures.set(draining, cause);
+        activeDrains.delete(draining);
+      },
+    );
+  }
+
+  async function acceptDocument(
+    res: Response,
+    span: Span,
+    msg: TransportRequest,
+    metadata: TransportResponseMetadata,
+    requestSignal: AbortSignal,
+  ): Promise<void> {
     let text: string;
     try {
       text = await readResponseDocument(
@@ -497,7 +528,7 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
       !(await channel.send({
         type: "message",
         message: inbound,
-        requestRpcId: rpcId,
+        requestRpcId: msg.id,
         metadata,
       }))
     ) {
