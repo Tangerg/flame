@@ -19,6 +19,13 @@ export const MIME: Readonly<Record<Format, string>> = Object.freeze({
   pdf: "application/pdf",
 });
 
+export const ASSET_MIME = Object.freeze({
+  pdf: MIME.pdf,
+  png: "image/png",
+  csv: "text/csv;charset=utf-8",
+  zip: "application/zip",
+} as const);
+
 export function filename(title: string, extension: string): string {
   const cleaned = title
     .replace(/[\p{Cc}<>:"/\\|?*]/gu, "_")

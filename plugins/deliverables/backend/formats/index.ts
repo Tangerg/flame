@@ -31,6 +31,7 @@ import {
 } from "./workbook";
 
 export { encodeArchive } from "./archive";
+export { hasPNGSignature } from "./images";
 export type { Format, OfficeFormat, Inspection } from "../../contracts/content";
 
 export async function createFile(

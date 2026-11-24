@@ -28,6 +28,7 @@ import {
 } from "./confinement";
 import { runProcess, UnconfirmedProcessExit } from "./process";
 import { Office } from "./office";
+import { ASSET_MIME } from "./document";
 
 type Tool = "office" | "pdfinfo" | "pdftoppm" | "pdftotext";
 type InstalledTools = Omit<Record<Tool, string>, "office"> & {
@@ -348,7 +349,7 @@ export class Engine {
         const files: RenderFile[] = [
           {
             filename: "rendered.pdf",
-            mime: "application/pdf",
+            mime: ASSET_MIME.pdf,
             bytes: pdfBytes,
           },
         ];
@@ -383,7 +384,7 @@ export class Engine {
           png(image);
           size += image.byteLength;
           const filename = `${name}.png`;
-          files.push({ filename, mime: "image/png", bytes: image });
+          files.push({ filename, mime: ASSET_MIME.png, bytes: image });
           pages.push({ number, filename });
           await rm(`${prefix}.png`);
         }

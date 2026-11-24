@@ -14,6 +14,7 @@ import descriptor, {
   definitions,
 } from "../contracts/capability";
 import { Archive } from "./archive";
+import { ASSET_MIME } from "./document";
 import {
   commandProjection,
   modelDescriptions,
@@ -27,7 +28,11 @@ import { Formats } from "./format-process";
 import manifest from "../package/plugin.json";
 import { z } from "zod";
 
-const projectScoped: ReadonlySet<string> = new Set(["list", "create", "import"]);
+const projectScoped: ReadonlySet<string> = new Set([
+  "list",
+  "create",
+  "import",
+]);
 
 function runProject(context: CallContext): { project?: string } {
   if (!context.toolContext)
@@ -173,7 +178,7 @@ export function createBackend(
       return {
         content: [
           { type: "text", text: canonicalJSON(result.metadata) },
-          { type: "image", data: result.base64, mimeType: "image/png" },
+          { type: "image", data: result.base64, mimeType: ASSET_MIME.png },
         ],
         structuredContent: result.metadata,
       };

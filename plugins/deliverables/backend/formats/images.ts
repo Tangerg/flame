@@ -17,10 +17,16 @@ function admitDimensions(width: number, height: number): void {
     throw new Error("image pixel dimensions exceed the supported limits");
 }
 
+export function hasPNGSignature(bytes: Uint8Array): boolean {
+  return Buffer.from(bytes.subarray(0, pngSignature.length)).equals(
+    pngSignature,
+  );
+}
+
 function decodePNG(bytes: Buffer): void {
   if (
     bytes.length < 33 ||
-    !bytes.subarray(0, 8).equals(pngSignature) ||
+    !hasPNGSignature(bytes) ||
     bytes.readUInt32BE(8) !== 13 ||
     bytes.toString("latin1", 12, 16) !== "IHDR"
   )
