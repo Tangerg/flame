@@ -2681,6 +2681,12 @@ Composer's folder and goal trays keep their reference-matched shoulder: their
 box sits on the Composer's text edge with the chip inside it, and the goal
 editor dialog already aligns its label, icon tile and field text.
 
+Optical step: a plain `Disclosure` chevron (`Accounting details`, `Record
+details`, `Comparison details`, `Filters`) drew its stroke 6/16 into a 12 px
+box, about 4 px right of the column edge. It now pulls back by that bearing
+(`--icon-xs × 5/16`), so the stroke, not the box, starts on the line; native
+Usage shows the chevron on `Usage breakdown`'s edge.
+
 ### Composer suggestions open where they can be read (2026-11-24)
 
 Typing `@` or `/` in a Session's Composer opened Lexical's typeahead below

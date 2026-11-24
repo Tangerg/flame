@@ -46,6 +46,9 @@ const styles = stylex.create({
     paddingBlock: space.s1,
     paddingInline: 0,
   },
+  // The chevron drawing starts 6/16 into its box; pull it back so the stroke,
+  // not the box, sits on the column edge the label's column starts from.
+  leadGlyph: { marginInlineStart: "calc(var(--icon-xs, 12px) * -0.3125)" },
   glyph: {
     flexShrink: 0,
     transform: {
@@ -130,7 +133,7 @@ export function Disclosure({
             <Icon
               glyph={ChevronRight}
               size="xs"
-              {...stylex.props(styles.glyph)}
+              {...stylex.props(styles.glyph, styles.leadGlyph)}
             />
           )}
           <span {...stylex.props(styles.title, type.uiSm)}>{title}</span>
