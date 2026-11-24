@@ -2790,6 +2790,12 @@ Dock and Files step (2026-11-25):
   boxed field: fills share the edge and the text lands within 2 px of the
   label.
 
+- `ActionMenu` aligned every popup to its trigger's end, right for a row's
+  trailing `···`, but Schedules' `Templates ▾` in the leading toolbar
+  opened 50 px left of its label. A labeled trigger now opens from its
+  start: the menu's edge meets the trigger's fill and its items start
+  within 2 px of `Templates`.
+
 Native `dock-files`, `dock-file` and `dock-schedules` show the tab label,
 chevrons or field glyphs and panel text on one line; the chat header's
 `scope` and `+25 −9` meet the prose and bubble edges. The full-width file

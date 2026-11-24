@@ -70,7 +70,9 @@ export function ActionMenu({
       </MenuPrimitive.Trigger>
       <MenuPrimitive.Portal ref={portalRef}>
         <MenuPrimitive.Positioner
-          align="end"
+          // A "more" glyph sits on a row's trailing edge, so its menu ends there; a
+          // labeled trigger opens like a pop-up button, its items starting under its label.
+          align={triggerContent === undefined ? "end" : "start"}
           sideOffset={4}
           {...stylex.props(FLOATING_LAYER)}
         >

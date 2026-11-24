@@ -292,7 +292,9 @@ scrolling popup can leave its options unpainted in WKWebView at native page zoom
 The surface keeps the same background, blur token, corners, shadow and motion.
 `ActionMenu` owns secondary action presentation, keyboard behavior and focus return; each command
 receives its actual trigger as the opener for an inline editor. `triggerContent`
-replaces the default ellipsis with a text trigger for named action menus.
+replaces the default ellipsis with a text trigger for named action menus; an
+ellipsis menu ends on its trigger's trailing edge, a named one opens from its
+trigger's start so its items begin under the label.
 `finalFocus` delegates a task handoff to Base UI's popup focus lifecycle, for
 example when admitting a command disables its original trigger. Omitting it
 retains the ordinary trigger return. Hidden owners suppress the handoff as well
