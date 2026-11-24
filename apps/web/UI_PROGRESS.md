@@ -2626,9 +2626,30 @@ Diff files, Trajectory, Diagnostics, Saved usage reports, the panel catalog
 and Settings Appearance/Plugins read headings, row text, search glyphs and
 segment or select text on one line, with every leading fill on the line
 12 px outside it. Visible cards (Usage totals, Brand tiles, code wells) keep
-their box on E. Form fields and choice lists in Settings still start their
-fill on E; they are the next step. `@flame/ui` and Web typecheck, plugin
-typecheck, `check-plugin-modules` and published resource checks pass.
+their box on E. `@flame/ui` and Web typecheck, plugin typecheck,
+`check-plugin-modules` and published resource checks pass.
+
+Second step, forms and choices:
+
+- A boxed `TextField` or `Select` under a `FormField` label hangs by the
+  same 12 px (`--field-hang`, set by the field body), so a field's text starts
+  on its label's edge. `FormRow` widens its column gap by that inset so a
+  second column's fill keeps the original gap to the first.
+- A borderless (ghost) button that starts a `Toolbar` lead or a
+  `FormActions` auxiliary group is shifted by its own inset
+  (`--button-inset`, `--ghost-hang`); it is offset rather than given a
+  negative margin so its group keeps its width (a margin made `Remove stored
+  key` wrap).
+- `ChoiceList` bleeds its rows by their 8 px inset, so radio and check marks
+  sit on the column edge with the selected fill outside it.
+- The Shortcuts filter and the Plugins install path use `Hang`.
+
+Native Settings → Connection (URL and token text on their labels, `Reset to
+default` on the edge), Model providers (both columns, `Remove stored key`),
+Approvals (radios on `Mode`'s edge), Keyboard shortcuts (search glyph on the
+row edge) and Plugins (install path on `Install a plugin`). The first
+borderless action now sits a few pixels further from its neighbour than the
+others; the shift keeps every group's width intact.
 
 ### Composer suggestions open where they can be read (2026-11-24)
 

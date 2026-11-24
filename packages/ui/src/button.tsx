@@ -69,24 +69,28 @@ const styles = stylex.create({
     borderRadius: radius.button,
     paddingBlock: space.s0_5,
     paddingInline: INSET_XS,
+    "--button-inset": INSET_XS,
   },
   sm: {
     minHeight: "max(var(--control-height-sm), var(--control-target-min))",
     borderRadius: radius.button,
     paddingBlock: space.s0_5,
     paddingInline: INSET_SM,
+    "--button-inset": INSET_SM,
   },
   md: {
     minHeight: "max(var(--control-height-md), var(--control-target-min))",
     borderRadius: radius.button,
     paddingBlock: space.s0_5,
     paddingInline: INSET_MD,
+    "--button-inset": INSET_MD,
   },
   lg: {
     minHeight: "max(var(--control-height-lg), var(--control-target-min))",
     borderRadius: radius.button,
     paddingBlock: space.s0_5,
     paddingInline: INSET_LG,
+    "--button-inset": INSET_LG,
   },
   iconXs: {
     height: "var(--control-height-xs)",
@@ -135,6 +139,15 @@ const styles = stylex.create({
   },
 
   ghost: {
+    // A borderless button that starts a column (a layout sets --ghost-hang: 1)
+    // keeps its label on the column edge; its hover fill bleeds instead. It is
+    // shifted, not given a negative margin, so its group keeps its own width.
+    position: { default: null, ":first-child": "relative" },
+    insetInlineStart: {
+      default: null,
+      ":first-child":
+        "calc(-1 * var(--ghost-hang, 0) * var(--button-inset, 0px))",
+    },
     backgroundColor: {
       default: "transparent",
       ":hover:not(:disabled, [aria-disabled=true], [data-disabled])": {

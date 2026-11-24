@@ -122,6 +122,7 @@ const styles = stylex.create({
     minWidth: 0,
   },
   toolbarLead: {
+    "--ghost-hang": 1,
     display: "flex",
     flexWrap: "wrap",
     alignItems: "center",

@@ -44,6 +44,18 @@ const styles = stylex.create({
     },
   },
   bare: { borderWidth: 0, backgroundColor: "transparent" },
+  // Under a form label (FormField sets --field-hang) the fill bleeds so the
+  // field's text starts on the label's edge.
+  hang: {
+    marginInlineStart: {
+      default: 0,
+      ":first-child": "calc(-1 * var(--field-hang, 0px))",
+    },
+    width: {
+      default: "100%",
+      ":first-child": "calc(100% + var(--field-hang, 0px))",
+    },
+  },
   inline: {
     borderWidth: 0,
     borderRadius: radius.xs,
@@ -117,7 +129,7 @@ type SharedProps = {
 
 function edge(variant: FieldEdge, invalid: boolean) {
   return [
-    variant === "boxed" ? FIELD_SURFACE.face : styles[variant],
+    variant === "boxed" ? [FIELD_SURFACE.face, styles.hang] : styles[variant],
     invalid && variant !== "boxed" && styles.invalidBare,
   ];
 }

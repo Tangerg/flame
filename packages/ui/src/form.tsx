@@ -8,7 +8,7 @@ import {
 import { clsx } from "clsx";
 import { CARD_SURFACE } from "./control-surface";
 import { Metadata } from "./panel";
-import { color, layout, type, weight } from "./tokens.stylex";
+import { color, layout, space, type, weight } from "./tokens.stylex";
 
 const styles = stylex.create({
   actions: {
@@ -29,6 +29,8 @@ const styles = stylex.create({
     alignContent: "start",
     gap: layout.labelGap,
     minWidth: 0,
+    // The leading field's fill bleeds by the row inset (see TextField `hang`).
+    "--field-hang": space.s3,
   },
   fieldLabel: { color: color.fgSoft, fontWeight: weight.medium },
   form: {
@@ -38,6 +40,8 @@ const styles = stylex.create({
     minWidth: 0,
   },
   formActionGroup: { maxWidth: "100%" },
+  // Auxiliary actions start the row, so a borderless one keeps the column edge.
+  auxiliary: { "--ghost-hang": 1 },
   formActions: {
     display: "flex",
     alignItems: "center",
@@ -62,7 +66,10 @@ const styles = stylex.create({
     display: "grid",
     gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,12rem),1fr))",
     alignItems: "start",
-    gap: layout.fieldGap,
+    rowGap: layout.fieldGap,
+    // Each column's field fill hangs by the row inset; widen the gap by it so
+    // neighbouring fills keep the field gap between them.
+    columnGap: `calc(${layout.fieldGap} + ${space.s3})`,
     minWidth: 0,
   },
   formSection: { margin: 0, padding: 0, borderWidth: 0, minWidth: 0 },
@@ -126,7 +133,13 @@ export function FormActions({
     >
       <div {...stylex.props(styles.formActions)}>
         {auxiliaryAction && (
-          <div {...stylex.props(styles.actions, styles.formActionGroup)}>
+          <div
+            {...stylex.props(
+              styles.actions,
+              styles.formActionGroup,
+              styles.auxiliary,
+            )}
+          >
             {auxiliaryAction}
           </div>
         )}

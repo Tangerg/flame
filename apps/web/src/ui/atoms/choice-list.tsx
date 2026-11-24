@@ -9,7 +9,13 @@ import { Radio as RadioPrimitive } from "@base-ui/react/radio";
 import { Checkbox as CheckboxPrimitive } from "@base-ui/react/checkbox";
 
 const styles = stylex.create({
-  list: { display: "flex", flexDirection: "column", gap: space.s1 },
+  // Rows bleed by their inset so the mark starts on the column edge.
+  list: {
+    display: "flex",
+    flexDirection: "column",
+    gap: space.s1,
+    marginInline: `calc(-1 * ${space.s2})`,
+  },
   row: {
     display: "flex",
     minHeight: space.s8,

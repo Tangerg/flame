@@ -23,6 +23,7 @@ import {
   CodeBlock,
   Disclosure,
   Facts,
+  Hang,
   ListRow,
   PanelSection,
   RecordGroup,
@@ -107,20 +108,22 @@ export function PackageManager() {
     <>
       <PanelSection title={t("packages.installTitle")} description={t("packages.trust")}>
         <div {...stylex.props(styles.install)}>
-          <TextField
-            aria-label={t("packages.source")}
-            placeholder={t("packages.source")}
-            value={source}
-            onChange={(event) => {
-              reset();
-              setInstalled(undefined);
-              setDraft({ signal: operations?.signal, source: event.target.value });
-            }}
-            autoCapitalize="none"
-            autoCorrect="off"
-            spellCheck={false}
-            pending={busy}
-          />
+          <Hang>
+            <TextField
+              aria-label={t("packages.source")}
+              placeholder={t("packages.source")}
+              value={source}
+              onChange={(event) => {
+                reset();
+                setInstalled(undefined);
+                setDraft({ signal: operations?.signal, source: event.target.value });
+              }}
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              pending={busy}
+            />
+          </Hang>
           <Button
             variant="primary"
             pending={busy}

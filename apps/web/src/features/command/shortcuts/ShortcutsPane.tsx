@@ -3,7 +3,7 @@ import * as stylex from "@stylexjs/stylex";
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Kbd } from "@/ui/index";
 import { TextButton } from "@/ui/index";
-import { Button, EmptyState, SearchField, TextField, useContentVisible } from "@flame/ui";
+import { Button, EmptyState, Hang, SearchField, TextField, useContentVisible } from "@flame/ui";
 import { useT } from "@/lib/i18n/index";
 import { normalizeHotkey, areHotkeysEqual, formatForDisplay } from "@tanstack/hotkeys";
 import { useHotkeyRecorder } from "@tanstack/react-hotkeys";
@@ -19,6 +19,7 @@ import { SettingsGroup } from "@/ui/settings/SettingsGroup";
 const sc = stylex.create({
   pane: { display: "flex", flexDirection: "column", gap: layout.contentGap },
   toolbar: { display: "flex", flexWrap: "wrap", alignItems: "center", gap: layout.controlGap },
+  search: { flex: "1 1 16rem", minWidth: 0 },
   keys: {
     display: "inline-flex",
     flexWrap: "wrap",
@@ -269,17 +270,21 @@ export function ShortcutsPane() {
   return (
     <div {...stylex.props(sc.pane)}>
       <div {...stylex.props(sc.toolbar)}>
-        <SearchField
-          ref={filter}
-          size="lg"
-          disabled={recordingActive}
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          onClear={() => setQuery("")}
-          clearLabel={t("common.clearSearch")}
-          placeholder={t("shortcuts.filter")}
-          aria-label={t("shortcuts.filterAria")}
-        />
+        <div {...stylex.props(sc.search)}>
+          <Hang>
+            <SearchField
+              ref={filter}
+              size="lg"
+              disabled={recordingActive}
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              onClear={() => setQuery("")}
+              clearLabel={t("common.clearSearch")}
+              placeholder={t("shortcuts.filter")}
+              aria-label={t("shortcuts.filterAria")}
+            />
+          </Hang>
+        </div>
         {Object.keys(overrides).length > 0 && (
           <Button
             variant="ghost"

@@ -37,6 +37,10 @@ const styles = stylex.create({
   value: { minWidth: 0, flex: "1 1 auto", overflowWrap: "anywhere" },
   indicator: { flexShrink: 0 },
   trigger: {
+    marginInlineStart: {
+      default: 0,
+      ":first-child": "calc(-1 * var(--field-hang, 0px))",
+    },
     justifySelf: "stretch",
     width: "auto",
     maxWidth: "100%",
