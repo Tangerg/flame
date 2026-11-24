@@ -26103,6 +26103,13 @@ instruction (use an operator console outside the controlled desktop).
 `fixture=computer` opens on the title and Refresh status. Plugin
 typecheck, `check-i18n` and published resource checks pass.
 
+Follow-up: Original outcomes drew disabled `Previous page` / `Next page`
+under an empty history, and badged every settled outcome `Settled`. The page
+toolbar now renders only when a previous or next page exists. Only an
+`Unknown outcome` keeps its warning badge; the result facts still state
+settlement. Native `fixture=computer` ends at `No commands have been
+recorded.` The `images` variant lists three outcomes without badges.
+
 The same audit over every plugin `PanelHeader` finds one more tagline: the
 icon gallery's `Original drawings, shown at their canonical 24 px optical
 size.` It is removed from the header and all eight catalogs. Other plugin

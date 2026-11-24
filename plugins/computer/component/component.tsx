@@ -581,9 +581,9 @@ function ConsoleHistory({
               }}
               actions={
                 <>
-                  <Badge tone={entry.settled ? "neutral" : "warning"}>
-                    {t(entry.settled ? "history.settled" : "history.unknown")}
-                  </Badge>
+                  {!entry.settled && (
+                    <Badge tone="warning">{t("history.unknown")}</Badge>
+                  )}
                   {result && (
                     <Button
                       focusableWhenDisabled
@@ -620,20 +620,22 @@ function ConsoleHistory({
           </RecordGroup>
         );
       })}
-      <Toolbar label={t("history.pages")}>
-        <Button
-          disabled={!state.hasPrevious || state.history?.loading}
-          onClick={() => void state.previousPage()}
-        >
-          {t("history.previous")}
-        </Button>
-        <Button
-          disabled={!state.history?.value?.next || state.history.loading}
-          onClick={() => void state.nextPage()}
-        >
-          {t("history.next")}
-        </Button>
-      </Toolbar>
+      {(state.hasPrevious || state.history?.value?.next) && (
+        <Toolbar label={t("history.pages")}>
+          <Button
+            disabled={!state.hasPrevious || state.history?.loading}
+            onClick={() => void state.previousPage()}
+          >
+            {t("history.previous")}
+          </Button>
+          <Button
+            disabled={!state.history?.value?.next || state.history.loading}
+            onClick={() => void state.nextPage()}
+          >
+            {t("history.next")}
+          </Button>
+        </Toolbar>
+      )}
     </PanelSection>
   );
 }
