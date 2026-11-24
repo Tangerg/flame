@@ -309,11 +309,7 @@ function DiffOverview({
       }
     >
       {!matching.length && (
-        <EmptyState
-          size="compact"
-          title={t("nomatch.title")}
-          sub={t("nomatch.sub")}
-        />
+        <EmptyState size="compact" title={t("nomatch.title")} />
       )}
       <DiffFileList
         ref={listRef}
@@ -889,7 +885,6 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
               icon={FileDiffIcon}
               size="compact"
               title={t(truncated ? "budget.empty" : "empty.title")}
-              sub={truncated ? undefined : t("empty.sub")}
             />
           )}
           {selection.path && !selected && (

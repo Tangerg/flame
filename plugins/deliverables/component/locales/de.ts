@@ -180,8 +180,6 @@ export const de = {
   "list.format": "Nach Format filtern",
   "list.all": "Alle Formate",
   "list.empty": "Keine passenden Arbeitsergebnisse",
-  "list.emptyHelp":
-    "Dokument erstellen oder importieren, oder Seitenfilter anpassen.",
   "list.paging": "Ergebnisseiten",
   "history.title": "Revisionsverlauf",
   "history.choose": "Genaue Revision auswählen",

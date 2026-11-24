@@ -168,7 +168,6 @@ export const zh = {
   "list.format": "按格式筛选",
   "list.all": "全部格式",
   "list.empty": "没有匹配的成果",
-  "list.emptyHelp": "创建或导入文档，或调整本页筛选条件。",
   "list.paging": "成果分页",
   "history.title": "版本历史",
   "history.choose": "选择确切版本",

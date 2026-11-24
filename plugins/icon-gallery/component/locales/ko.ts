@@ -10,5 +10,4 @@ export const ko: Record<string, string> = {
   "section.count_other": "아이콘 {{count}}개",
   "section.aria": "{{category}} 아이콘 드로잉",
   "empty.title": "일치하는 아이콘 없음",
-  "empty.sub": "다른 이름이나 카테고리를 시도해 보세요.",
 };

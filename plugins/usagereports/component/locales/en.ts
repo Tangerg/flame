@@ -34,7 +34,6 @@ export const en: Record<string, string> = {
   "archive.error.retained":
     "The archive could not be read: {{error}}. The last accepted archive remains shown.",
   "archive.empty.title": "No saved reports",
-  "archive.empty.sub": "Choose a period and save the current core report.",
   "archive.list.label": "Saved reports",
   "report.view": "View report",
   "report.view.aria": "View report: {{title}}",

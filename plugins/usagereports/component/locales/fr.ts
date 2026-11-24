@@ -38,8 +38,6 @@ export const fr: Record<string, string> = {
   "archive.error.retained":
     "Les archives n’ont pas pu être lues : {{error}}. Les dernières archives acceptées restent affichées.",
   "archive.empty.title": "Aucun rapport enregistré",
-  "archive.empty.sub":
-    "Choisissez une période et enregistrez le rapport principal actuel.",
   "archive.list.label": "Rapports enregistrés",
   "report.view": "Voir le rapport",
   "report.view.aria": "Voir le rapport : {{title}}",

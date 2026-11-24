@@ -34,7 +34,6 @@ export const ja: Record<string, string> = {
   "archive.error.retained":
     "アーカイブを読み込めませんでした：{{error}}。前回受け入れたアーカイブを引き続き表示します。",
   "archive.empty.title": "保存済みレポートはありません",
-  "archive.empty.sub": "期間を選択し、現在のコアレポートを保存してください。",
   "archive.list.label": "保存済みレポート",
   "report.view": "レポートを表示",
   "report.view.aria": "レポートを表示：{{title}}",

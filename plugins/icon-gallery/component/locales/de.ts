@@ -11,5 +11,4 @@ export const de: Record<string, string> = {
   "section.count_other": "{{count}} Symbole",
   "section.aria": "{{category}}-Symbolzeichnungen",
   "empty.title": "Keine passenden Symbole",
-  "empty.sub": "Versuche einen anderen Namen oder eine andere Kategorie.",
 };

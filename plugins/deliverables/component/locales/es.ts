@@ -176,7 +176,6 @@ export const es = {
   "list.format": "Filtrar por formato",
   "list.all": "Todos los formatos",
   "list.empty": "No hay entregables coincidentes",
-  "list.emptyHelp": "Crea o importa un documento, o ajusta los filtros.",
   "list.paging": "Páginas de entregables",
   "history.title": "Historial de revisiones",
   "history.choose": "Elegir revisión exacta",

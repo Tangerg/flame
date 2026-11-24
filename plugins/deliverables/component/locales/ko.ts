@@ -174,7 +174,6 @@ export const ko = {
   "list.format": "형식별 필터",
   "list.all": "모든 형식",
   "list.empty": "일치하는 결과물이 없습니다",
-  "list.emptyHelp": "문서를 만들거나 가져오거나 이 페이지 필터를 조정하세요.",
   "list.paging": "결과물 페이지",
   "history.title": "버전 기록",
   "history.choose": "정확한 버전 선택",

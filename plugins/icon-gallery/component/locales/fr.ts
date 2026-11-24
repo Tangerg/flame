@@ -12,5 +12,4 @@ export const fr: Record<string, string> = {
   "section.count_other": "{{count}} icônes",
   "section.aria": "Dessins d’icônes {{category}}",
   "empty.title": "Aucune icône correspondante",
-  "empty.sub": "Essayez un autre nom ou une autre catégorie.",
 };

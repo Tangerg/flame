@@ -113,9 +113,7 @@ export function Gallery({ context }: { context: ComponentContext }) {
           </PanelSection>
         );
       })}
-      {!visible.length && (
-        <EmptyState title={t("empty.title")} sub={t("empty.sub")} />
-      )}
+      {!visible.length && <EmptyState title={t("empty.title")} />}
     </Panel>
   );
 }

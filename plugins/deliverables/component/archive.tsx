@@ -162,7 +162,7 @@ export function ArchiveList({
         ))}
       </RecordGroup>
       {state.list?.value && !entries.length && (
-        <EmptyState title={t("list.empty")} sub={t("list.emptyHelp")} />
+        <EmptyState title={t("list.empty")} />
       )}
       <ArchivePaging state={state} page="list" t={t} />
     </PanelSection>

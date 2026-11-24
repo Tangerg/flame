@@ -34,7 +34,6 @@ export const ko: Record<string, string> = {
   "archive.error.retained":
     "아카이브를 읽을 수 없습니다: {{error}}. 마지막으로 수락된 아카이브가 계속 표시됩니다.",
   "archive.empty.title": "저장된 보고서 없음",
-  "archive.empty.sub": "기간을 선택하고 현재 핵심 보고서를 저장하세요.",
   "archive.list.label": "저장된 보고서",
   "report.view": "보고서 보기",
   "report.view.aria": "보고서 보기: {{title}}",

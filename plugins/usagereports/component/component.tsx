@@ -796,10 +796,7 @@ function ArchiveCatalog({
         </Metadata>
       )}
       {headers && !headers.length && (
-        <EmptyState
-          title={t("archive.empty.title")}
-          sub={t("archive.empty.sub")}
-        />
+        <EmptyState title={t("archive.empty.title")} />
       )}
       {headers && headers.length > 0 && (
         <RecordGroup variant="list" aria-label={t("archive.list.label")}>

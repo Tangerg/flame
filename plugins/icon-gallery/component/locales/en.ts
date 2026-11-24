@@ -11,5 +11,4 @@ export const en: Record<string, string> = {
   "section.count_other": "{{count}} icons",
   "section.aria": "{{category}} icon drawings",
   "empty.title": "No matching icons",
-  "empty.sub": "Try another name or category.",
 };

@@ -10,5 +10,4 @@ export const zh: Record<string, string> = {
   "section.count_other": "{{count}} 个图标",
   "section.aria": "{{category}} 图标绘制",
   "empty.title": "没有匹配的图标",
-  "empty.sub": "尝试其他名称或分类。",
 };

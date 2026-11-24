@@ -176,7 +176,6 @@ export const ja = {
   "list.format": "形式で絞り込み",
   "list.all": "すべての形式",
   "list.empty": "一致する成果物はありません",
-  "list.emptyHelp": "文書を作成・取り込むか、絞り込みを変更してください。",
   "list.paging": "成果物のページ",
   "history.title": "版の履歴",
   "history.choose": "正確な版を選択",

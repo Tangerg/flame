@@ -178,7 +178,6 @@ export const fr = {
   "list.format": "Filtrer par format",
   "list.all": "Tous les formats",
   "list.empty": "Aucun livrable correspondant",
-  "list.emptyHelp": "Créez ou importez un document, ou ajustez les filtres.",
   "list.paging": "Pages de livrables",
   "history.title": "Historique des révisions",
   "history.choose": "Choisir la révision exacte",

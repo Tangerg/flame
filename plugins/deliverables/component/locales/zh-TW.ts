@@ -168,7 +168,6 @@ export const zhTW = {
   "list.format": "依格式篩選",
   "list.all": "所有格式",
   "list.empty": "沒有符合的成果",
-  "list.emptyHelp": "建立或匯入文件，或調整本頁篩選條件。",
   "list.paging": "成果分頁",
   "history.title": "版本歷程",
   "history.choose": "選擇確切版本",

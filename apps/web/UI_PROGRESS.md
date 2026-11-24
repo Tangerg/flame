@@ -2745,6 +2745,14 @@ Dock and Files step (2026-11-25):
   the short status only when retained files are shown under the alert (and
   the reader keeps it, where the alert can be scrolled away).
 
+- Empty states no longer restate the controls right above them: Workspace
+  diff's `Choose another comparison or refresh…` and `Clear the filter…`,
+  the icon gallery's `Try another name or category`, Saved usage reports'
+  `Choose a period and save…` and Deliverables' `Create or import…` are
+  removed with their catalog entries in all eight locales. Hints that carry
+  a fact the layout cannot (search matches titles only, hook file locations,
+  why a file has no preview, why providers are empty) stay.
+
 Native `dock-files`, `dock-file` and `dock-schedules` show the tab label,
 chevrons or field glyphs and panel text on one line; the chat header's
 `scope` and `+25 −9` meet the prose and bubble edges. The full-width file

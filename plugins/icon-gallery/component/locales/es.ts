@@ -12,5 +12,4 @@ export const es: Record<string, string> = {
   "section.count_other": "{{count}} iconos",
   "section.aria": "Dibujos de iconos de {{category}}",
   "empty.title": "No hay iconos coincidentes",
-  "empty.sub": "Prueba con otro nombre o categoría.",
 };

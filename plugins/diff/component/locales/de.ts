@@ -44,10 +44,7 @@ export const de: Record<string, string> = {
   "files.match_other": "{{count}} von {{total}} Dateien stimmen überein",
   "stat.title": "Zeilenänderungen in enthaltenen Textdateien",
   "empty.title": "Keine Änderungen in diesem Vergleich.",
-  "empty.sub":
-    "Wähle einen anderen Vergleich oder aktualisiere nach dem Bearbeiten einer Datei.",
   "nomatch.title": "Keine übereinstimmenden Dateien.",
-  "nomatch.sub": "Filter löschen, um geänderte Dateien anzuzeigen.",
   "files.region": "Geänderte Dateien",
   "file.changes": "Änderungen in {{path}}",
   "file.renamed": "Umbenannt von",

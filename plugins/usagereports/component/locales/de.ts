@@ -36,8 +36,6 @@ export const de: Record<string, string> = {
   "archive.error.retained":
     "Das Archiv konnte nicht gelesen werden: {{error}}. Das zuletzt akzeptierte Archiv wird weiterhin angezeigt.",
   "archive.empty.title": "Keine gespeicherten Berichte",
-  "archive.empty.sub":
-    "Wähle einen Zeitraum und speichere den aktuellen Kernbericht.",
   "archive.list.label": "Gespeicherte Berichte",
   "report.view": "Bericht anzeigen",
   "report.view.aria": "Bericht anzeigen: {{title}}",

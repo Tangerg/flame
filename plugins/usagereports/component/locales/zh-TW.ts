@@ -32,7 +32,6 @@ export const zhTW: Record<string, string> = {
   "archive.error": "無法讀取封存：{{error}}。",
   "archive.error.retained": "無法讀取封存：{{error}}。仍顯示上次接受的封存。",
   "archive.empty.title": "沒有已儲存的報告",
-  "archive.empty.sub": "選擇一個週期並儲存目前的核心報告。",
   "archive.list.label": "已儲存的報告",
   "report.view": "檢視報告",
   "report.view.aria": "檢視報告：{{title}}",

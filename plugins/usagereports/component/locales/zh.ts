@@ -32,7 +32,6 @@ export const zh: Record<string, string> = {
   "archive.error": "无法读取归档：{{error}}。",
   "archive.error.retained": "无法读取归档：{{error}}。仍显示上次接受的归档。",
   "archive.empty.title": "没有已保存的报告",
-  "archive.empty.sub": "选择一个周期并保存当前核心报告。",
   "archive.list.label": "已保存的报告",
   "report.view": "查看报告",
   "report.view.aria": "查看报告：{{title}}",

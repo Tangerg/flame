@@ -38,7 +38,6 @@ export const es: Record<string, string> = {
   "archive.error.retained":
     "No se pudo leer el archivo: {{error}}. Se sigue mostrando el último archivo aceptado.",
   "archive.empty.title": "No hay informes guardados",
-  "archive.empty.sub": "Elige un periodo y guarda el informe base actual.",
   "archive.list.label": "Informes guardados",
   "report.view": "Ver informe",
   "report.view.aria": "Ver informe: {{title}}",

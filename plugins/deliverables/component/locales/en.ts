@@ -176,8 +176,6 @@ export const en = {
   "list.format": "Filter by format",
   "list.all": "All formats",
   "list.empty": "No matching deliverables",
-  "list.emptyHelp":
-    "Create or import a document, or adjust this page’s filters.",
   "list.paging": "Deliverable pages",
   "history.title": "Revision history",
   "history.choose": "Choose exact revision",

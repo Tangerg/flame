@@ -10,5 +10,4 @@ export const ja: Record<string, string> = {
   "section.count_other": "{{count}} 個のアイコン",
   "section.aria": "{{category}} のアイコン描画",
   "empty.title": "一致するアイコンがありません",
-  "empty.sub": "別の名前またはカテゴリをお試しください。",
 };
