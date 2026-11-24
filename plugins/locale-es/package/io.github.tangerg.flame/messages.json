@@ -569,7 +569,7 @@
   "folders.empty.title": "Sin carpetas",
   "folders.empty.sub": "Inicia una sesión en una carpeta para verla aquí.",
   "folders.error.title": "No se pudieron cargar las carpetas",
-  "folders.error.sub": "Comprueba la conexión con Runtime y vuelve a abrir el índice de trabajo.",
+  "folders.error.sub": "Comprueba la conexión con Runtime y vuelve a intentarlo.",
   "convExport.import": "Importar conversación desde JSON",
   "convExport.unsupported": "Este Runtime no admite la exportación ni la importación de sesiones.",
   "convExport.readFailed": "No se pudo leer el archivo seleccionado. Vuelve a seleccionarlo o elige otro archivo JSON.",

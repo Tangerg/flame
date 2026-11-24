@@ -553,7 +553,7 @@
   "folders.empty.title": "フォルダーなし",
   "folders.empty.sub": "フォルダでセッションを始めると、ここに表示されます。",
   "folders.error.title": "フォルダーを読み込めませんでした",
-  "folders.error.sub": "Runtime 接続を確認してから、ワークインデックスを開き直してください。",
+  "folders.error.sub": "Runtime 接続を確認してから、再試行してください。",
   "convExport.import": "JSON から会話をインポート",
   "convExport.unsupported": "この Runtime はセッションのエクスポートとインポートをサポートしていません。",
   "convExport.readFailed": "選択したファイルを読み取れませんでした。もう一度選択するか、別の JSON ファイルを選択してください。",

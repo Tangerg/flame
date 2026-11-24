@@ -569,7 +569,7 @@
   "folders.empty.title": "Aucun dossier",
   "folders.empty.sub": "Démarrez une session dans un dossier pour l’afficher ici.",
   "folders.error.title": "Impossible de charger les dossiers",
-  "folders.error.sub": "Vérifiez la connexion au Runtime, puis rouvrez l’index de travail.",
+  "folders.error.sub": "Vérifiez la connexion au Runtime, puis réessayez.",
   "convExport.import": "Importer une conversation depuis JSON",
   "convExport.unsupported": "Ce Runtime ne prend pas en charge l'exportation ni l'importation de session.",
   "convExport.readFailed": "Impossible de lire le fichier sélectionné. Sélectionnez-le à nouveau ou choisissez un autre fichier JSON.",

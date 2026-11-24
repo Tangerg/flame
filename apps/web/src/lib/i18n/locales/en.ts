@@ -649,7 +649,7 @@ export const en: Record<string, string> = {
   "folders.empty.title": "No folders",
   "folders.empty.sub": "Start a session in a folder to list it here.",
   "folders.error.title": "Couldn't load folders",
-  "folders.error.sub": "Check the Runtime connection, then reopen the work index.",
+  "folders.error.sub": "Check the Runtime connection, then retry.",
   "convExport.import": "Import conversation from JSON",
   "convExport.importSuccess": "Imported “{{title}}”.",
   "convExport.unsupported": "This Runtime doesn't support session export or import.",

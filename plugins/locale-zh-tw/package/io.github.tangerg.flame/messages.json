@@ -572,7 +572,7 @@
   "folders.empty.title": "無資料夾",
   "folders.empty.sub": "在資料夾中開始一個工作階段，它就會顯示在這裡。",
   "folders.error.title": "無法載入資料夾",
-  "folders.error.sub": "請檢查 Runtime 連線，然後重新開啟工作索引。",
+  "folders.error.sub": "請檢查 Runtime 連線，然後重試。",
   "convExport.import": "從 JSON 匯入對話",
   "convExport.unsupported": "此 Runtime 不支援工作階段匯出與匯入。",
   "convExport.readFailed": "無法讀取所選檔案。請重新選取該檔案，或選擇其他 JSON 檔案。",

@@ -561,7 +561,7 @@
   "folders.empty.title": "Keine Ordner",
   "folders.empty.sub": "Starte eine Sitzung in einem Ordner, um ihn hier aufzulisten.",
   "folders.error.title": "Ordner konnten nicht geladen werden",
-  "folders.error.sub": "Prüfe die Runtime-Verbindung und öffne anschließend den Arbeitsindex erneut.",
+  "folders.error.sub": "Prüfe die Runtime-Verbindung und versuche es dann erneut.",
   "convExport.import": "Konversation aus JSON importieren",
   "convExport.unsupported": "Diese Runtime unterstützt keinen Sitzungsexport oder -import.",
   "convExport.readFailed": "Die ausgewählte Datei konnte nicht gelesen werden. Wähle sie erneut aus oder wähle eine andere JSON-Datei.",

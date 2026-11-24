@@ -50955,6 +50955,15 @@ no effects/timers/listeners leak. One real mental-model gap was fixed:
   (`session.title.trim() || t("session.untitled")`), so the target object is
   unambiguous — directly serving the brief's "which object does this act on" axis.
 
+### Sidebar load failure without internal jargon (2026-11-24)
+
+When folders could not load, the sidebar said `Check the Runtime
+connection, then reopen the work index.` "Work index" is the region's
+internal name and nothing in the product reopens it; Retry sits right
+below. `folders.error.sub` now reads `Check the Runtime connection, then
+retry.` in all eight catalogs. Native Chinese `fixture=shell&state=error`
+reads `请检查 Runtime 连接，然后重试。` above 重试. `check:locales` passes.
+
 ### Project counts only while folded (2026-11-24)
 
 Every project row ended in a faint mono session count, also while open,

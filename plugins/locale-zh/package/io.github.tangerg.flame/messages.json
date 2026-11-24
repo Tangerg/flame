@@ -598,7 +598,7 @@
   "folders.empty.title": "无文件夹",
   "folders.empty.sub": "在文件夹里开始一个会话，它就会显示在这里。",
   "folders.error.title": "无法加载文件夹",
-  "folders.error.sub": "请检查 Runtime 连接，然后重新打开工作索引。",
+  "folders.error.sub": "请检查 Runtime 连接，然后重试。",
   "convExport.import": "从 JSON 导入对话",
   "convExport.unsupported": "此 Runtime 不支持会话导出与导入。",
   "convExport.readFailed": "无法读取所选文件。请重新选择该文件，或选择其他 JSON 文件。",
