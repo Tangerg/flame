@@ -75,7 +75,9 @@ generation emits the Core caller's compiled projection. The calling operation
 allocates two calls for extraction plus curation or query plus corpus embedding.
 The published `SearchToolName` identifies the only model Tool that receives this
 embedding grant. Memory management receives its captured workspace without model
-authority and does not resolve an embedder. Installed Memory Tool completion,
+authority and does not resolve an embedder. Its component lists and adds project
+memory under `context.project` when the active Session has one, and under the
+folder otherwise. Installed Memory Tool completion,
 including an unconfirmed reply, invalidates human reads so they reread the owner.
 The shared callback endpoint imposes no Memory policy. The reference carries no Runtime bearer
 or provider credential and expires when the owning call or backend generation

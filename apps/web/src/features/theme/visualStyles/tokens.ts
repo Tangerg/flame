@@ -54,7 +54,7 @@ type VisualStyleTokenName =
   | "surface-emphasis"
   | "app-composer-surface"
   | "app-composer-tray-surface"
-  | "app-composer-project-tray-surface"
+  | "app-composer-folder-tray-surface"
   | "app-floating-surface"
   | "composer-backdrop"
   | "composer-tray-backdrop"
@@ -139,7 +139,7 @@ const WORKBENCH_TOKENS: VisualStyleTokens = {
   "app-composer-surface": "color-mix(in oklab, var(--app-content-surface) 86%, transparent)",
   "composer-backdrop": "blur(20px) saturate(1.4)",
   "app-composer-tray-surface": "color-mix(in oklab, var(--app-content-surface) 70%, transparent)",
-  "app-composer-project-tray-surface":
+  "app-composer-folder-tray-surface":
     "color-mix(in srgb, var(--color-text) 4%, var(--app-content-surface))",
   "composer-tray-backdrop": "blur(8px)",
   "composer-tray-edge-color": "color-mix(in oklab, var(--color-border) 80%, transparent)",

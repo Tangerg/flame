@@ -29,6 +29,13 @@ export { isErrorType } from "@flame/runtime-client";
 export { scrollPositions, type ScrollPosition } from "./scroll";
 export { failureText } from "./errorText";
 
+// The active Session's Project. Project-scoped plugins key their records on it
+// rather than on the Session's folder.
+export interface CapturedProject {
+  readonly id: string;
+  readonly name: string;
+}
+
 export interface WorkspaceContext {
   readonly ref: Readonly<WorkspaceRef>;
   readonly focus?: Readonly<{ path: string; revision: bigint }>;
@@ -213,6 +220,7 @@ export interface ComponentContext {
   readonly runtime: FlameClient;
   readonly telemetry: ClientTelemetry;
   readonly workspace?: Readonly<WorkspaceContext>;
+  readonly project?: Readonly<CapturedProject>;
   readonly sessionId?: string;
   readonly sessionTarget?: CapturedSession;
   readonly binding?: Readonly<PluginOperationBinding>;

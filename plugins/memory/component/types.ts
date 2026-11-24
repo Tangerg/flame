@@ -12,7 +12,7 @@ export type Accepted = {
   page: MemoryPage;
   cursors: string[];
   scope: Scope;
-  cwd: string;
+  target: string;
 };
 export type Read = { loading: boolean; accepted?: Accepted; error?: string };
 export type Edit = (

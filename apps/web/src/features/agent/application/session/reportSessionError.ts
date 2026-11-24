@@ -1,6 +1,6 @@
 import { t } from "@/lib/i18n/index";
 import { type NotificationFeed } from "@/features/notifications/public/notifications";
-type SessionMutation = "create" | "delete" | "fork" | "favorite" | "relocate";
+type SessionMutation = "create" | "delete" | "fork" | "favorite" | "relocate" | "project";
 
 export function reportSessionError(
   notifications: NotificationFeed,

@@ -4,6 +4,7 @@ import { AGENT_SESSIONS_KEY } from "@/features/agent/public/session";
 
 import { APPROVAL_MODE_KEY, APPROVAL_RULES_KEY } from "@/features/agent/public/approvalPolicy";
 import { MODELS_KEY, PROVIDERS_KEY } from "@/features/providers/public/queries";
+import { PROJECTS_KEY } from "@/features/projects/public/projects";
 import {
   WORKSPACE_FILES_CHANGED_KEY,
   WORKSPACE_LIST_FILES_KEY,
@@ -25,6 +26,7 @@ const QUERY_KEYS: Record<
   fileRead: WORKSPACE_READ_FILE_KEY,
   filesChanged: WORKSPACE_FILES_CHANGED_KEY,
   models: MODELS_KEY,
+  projects: PROJECTS_KEY,
   providers: PROVIDERS_KEY,
   sessions: AGENT_SESSIONS_KEY,
 };

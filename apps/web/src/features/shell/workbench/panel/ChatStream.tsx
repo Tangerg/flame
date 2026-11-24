@@ -18,7 +18,7 @@ import { readingColumn as rc } from "@/features/chat/public/message/rendering";
 import { CwdMissingBanner } from "@/features/shell/workbench/panel/CwdMissingBanner";
 import { MessageStream } from "@/features/shell/workbench/panel/MessageStream";
 import { RunErrorBanner } from "@/features/shell/workbench/panel/RunErrorBanner";
-import { EmptyChatHeading } from "@/features/shell/workbench/panel/ProjectSelector";
+import { EmptyChatHeading } from "@/features/shell/workbench/panel/FolderSelector";
 import { pendingQuestionRequest } from "@/features/chat/public/message/rendering";
 import { QuestionCard } from "@/features/chat/public/message/rendering";
 import { shellStyles as sh } from "@/features/shell/workbench/shellStyles";

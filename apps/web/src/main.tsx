@@ -16,6 +16,8 @@ import { createWorkspace } from "@/features/workspace/adapters/workspace";
 import { WorkspaceProvider } from "@/features/workspace/public/workspace";
 import { createWorkingDirectoryPicker } from "@/features/navigation/adapters/workingDirectorySelection";
 import { WorkingDirectoryProvider } from "@/features/navigation/public/workingDirectory";
+import { createProjects } from "@/features/projects/index";
+import { ProjectsProvider } from "@/features/projects/public/projects";
 import { ImageSaveProvider } from "@/features/chat/public/imageSave";
 import { createAppNavigation } from "@/router";
 import { createRuntimeMutationJournalStorage } from "@/features/connection/adapters/runtimeMutationJournalStorage";
@@ -102,6 +104,7 @@ function startClient(messages: NotificationFeed, render: (content: ReactNode) =>
     connection.access,
     messages,
   );
+  const projects = createProjects(connection.client, workspace.access);
   const directory = createWorkingDirectoryPicker(
     () => host.chooseWorkingDirectory(),
     connection.localWorkspaceAvailable,
@@ -161,17 +164,19 @@ function startClient(messages: NotificationFeed, render: (content: ReactNode) =>
                 <ComposerProvider value={composer.access}>
                   <WorkspaceProvider value={workspace.access}>
                     <WorkingDirectoryProvider value={directory.access}>
-                      <ImageSaveProvider
-                        saveImage={(source) =>
-                          createImageExport(IMAGE_FILENAME_STEM, host.saveFile)(source)
-                        }
-                      >
-                        <NotificationProvider value={notifications.access}>
-                          <InstalledPluginsProvider value={installedPlugins.access}>
-                            {children}
-                          </InstalledPluginsProvider>
-                        </NotificationProvider>
-                      </ImageSaveProvider>
+                      <ProjectsProvider value={projects.access}>
+                        <ImageSaveProvider
+                          saveImage={(source) =>
+                            createImageExport(IMAGE_FILENAME_STEM, host.saveFile)(source)
+                          }
+                        >
+                          <NotificationProvider value={notifications.access}>
+                            <InstalledPluginsProvider value={installedPlugins.access}>
+                              {children}
+                            </InstalledPluginsProvider>
+                          </NotificationProvider>
+                        </ImageSaveProvider>
+                      </ProjectsProvider>
                     </WorkingDirectoryProvider>
                   </WorkspaceProvider>
                 </ComposerProvider>

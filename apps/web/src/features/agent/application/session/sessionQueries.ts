@@ -19,6 +19,7 @@ export interface AgentSessionSummary {
   model: string;
   reasoningEffort?: string;
   workspace: AgentSessionWorkspace;
+  projectId?: string;
   favorite?: boolean;
   time: string;
 }

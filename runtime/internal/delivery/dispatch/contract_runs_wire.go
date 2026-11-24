@@ -91,26 +91,32 @@ func registerEventUnions(s *Shapes) {
 		},
 	})
 
-	s.union(UnionSpec{
-		GoType: typeOf[protocol.RuntimeEvent](),
-		Variants: []VariantSpec{
-			{Tag: string(protocol.RuntimeFilesChanged), Required: []string{"sequence", "paths"}, Optional: []string{"watchId", "workspace"}},
-			{Tag: string(protocol.RuntimeSkillsChanged), Required: []string{"sequence"}, Optional: []string{"names"}},
-			{Tag: string(protocol.RuntimePluginsChanged), Required: []string{"sequence"}},
-			{Tag: string(protocol.RuntimeMCPChanged), Required: []string{"sequence"}, Optional: []string{"servers"}},
-			{Tag: string(protocol.RuntimePluginDataChanged), Required: []string{"sequence"}},
-			{Tag: string(protocol.RuntimeSessionsChanged), Required: []string{"sequence"}, Optional: []string{"sessionIds"}},
-			{Tag: string(protocol.RuntimeRunsChanged), Required: []string{"sequence"}, Optional: []string{"runIds", "sessionIds"}},
-			{Tag: string(protocol.RuntimePlanChanged), Required: []string{"sequence"}, Optional: []string{"sessionIds"}},
-			{Tag: string(protocol.RuntimeGoalsChanged), Required: []string{"sequence"}, Optional: []string{"sessionIds"}},
-			{Tag: string(protocol.RuntimeInterruptsChanged), Required: []string{"sequence"}, Optional: []string{"runIds", "sessionIds"}},
-			{Tag: string(protocol.RuntimeHooksChanged), Required: []string{"sequence"}},
-			{Tag: string(protocol.RuntimeModelsChanged), Required: []string{"sequence"}},
-			{Tag: string(protocol.RuntimeApprovalsChanged), Required: []string{"sequence"}},
+	runtimeEvents := []VariantSpec{
+		{Tag: string(protocol.RuntimeFilesChanged), Required: []string{"sequence", "paths"}, Optional: []string{"watchId", "workspace"}},
+		{Tag: string(protocol.RuntimeSkillsChanged), Required: []string{"sequence"}, Optional: []string{"names"}},
+		{Tag: string(protocol.RuntimePluginsChanged), Required: []string{"sequence"}},
+		{Tag: string(protocol.RuntimeMCPChanged), Required: []string{"sequence"}, Optional: []string{"servers"}},
+		{Tag: string(protocol.RuntimePluginDataChanged), Required: []string{"sequence"}},
+		{Tag: string(protocol.RuntimeSessionsChanged), Required: []string{"sequence"}, Optional: []string{"sessionIds"}},
+		{Tag: string(protocol.RuntimeRunsChanged), Required: []string{"sequence"}, Optional: []string{"runIds", "sessionIds"}},
+		{Tag: string(protocol.RuntimePlanChanged), Required: []string{"sequence"}, Optional: []string{"sessionIds"}},
+		{Tag: string(protocol.RuntimeGoalsChanged), Required: []string{"sequence"}, Optional: []string{"sessionIds"}},
+		{Tag: string(protocol.RuntimeInterruptsChanged), Required: []string{"sequence"}, Optional: []string{"runIds", "sessionIds"}},
+		{Tag: string(protocol.RuntimeHooksChanged), Required: []string{"sequence"}},
+		{Tag: string(protocol.RuntimeModelsChanged), Required: []string{"sequence"}},
+		{Tag: string(protocol.RuntimeApprovalsChanged), Required: []string{"sequence"}},
+		{Tag: string(protocol.RuntimeProjectsChanged), Required: []string{"sequence"}},
 
-			{Tag: string(protocol.RuntimeResync), Required: []string{"sequence", "topics"}, Optional: []string{"watchIds"}},
-		},
-	})
+		{Tag: string(protocol.RuntimeResync), Required: []string{"sequence", "topics"}, Optional: []string{"watchIds"}},
+	}
+	// Clients reject an event without a variant and drop the whole stream, so a
+	// topic cannot ship without one.
+	for _, topic := range protocol.RuntimeTopics() {
+		if !slices.ContainsFunc(runtimeEvents, func(variant VariantSpec) bool { return variant.Tag == string(topic) }) {
+			panic("dispatch: runtime topic " + string(topic) + " has no event variant")
+		}
+	}
+	s.union(UnionSpec{GoType: typeOf[protocol.RuntimeEvent](), Variants: runtimeEvents})
 }
 
 func registerRunConditions(s *Shapes) {

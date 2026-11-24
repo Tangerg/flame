@@ -2004,6 +2004,7 @@ export type RuntimeEvent =
   | { type: "hooks.changed"; sequence: number }
   | { type: "models.changed"; sequence: number }
   | { type: "approvals.changed"; sequence: number }
+  | { type: "projects.changed"; sequence: number }
   | { type: "resync"; sequence: number; topics: RuntimeTopic[]; watchIds?: string[] };
 
 export interface RuntimeEventNotification {

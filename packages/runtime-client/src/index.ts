@@ -34,6 +34,7 @@ export type {
   FeatureCapability,
   RequestMeta,
   DiscoverResponse,
+  Project,
   Session,
   WorkspaceSummary,
   SessionArtifact,

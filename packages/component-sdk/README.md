@@ -234,6 +234,13 @@ signal ends. It never sends anything: the user edits and submits the message,
 and Runtime and Session ownership of input stay unchanged. Hosts without a
 Composer omit the field; components fall back to copying the text, for example.
 
+Client and workspace components receive `context.project`, the frozen `{ id, name }`
+of the active Session's Project, when it has one. A changed Project remounts the
+instance. Project-scoped components key their reads and writes on it instead of the
+Session's folder; the Host renders a loading state rather than an instance that
+could fall back to the folder while that Project's read is pending. Memory is the
+concrete consumer.
+
 Contextual Session actions receive `context.sessionTarget`, a frozen `CapturedSession`
 projection of the accepted row's ID, title and revision at interaction time. The action
 placement is local metadata; offering a menu does not activate code or query a backend.

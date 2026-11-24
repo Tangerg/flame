@@ -58,7 +58,7 @@ export function SessionList({
           tone="faint"
           className={stylex.props(sl.more, indented && sl.moreNested).className}
         >
-          {hidden > 0 ? t("projects.showMore", { count: hidden }) : t("projects.showLess")}
+          {hidden > 0 ? t("workIndex.showMore", { count: hidden }) : t("workIndex.showLess")}
         </TextButton>
       )}
     </div>

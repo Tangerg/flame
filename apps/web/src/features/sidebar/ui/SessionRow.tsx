@@ -18,6 +18,7 @@ import { useLocale, useT } from "@/lib/i18n/index";
 import { formatRelative } from "@/lib/i18n/relativeTime";
 import { type WorkSession } from "@/features/navigation/public/workIndex";
 import { sessionDisplayTitle } from "@/features/agent/public/session";
+import { MoveToProjectDialog } from "@/features/projects/public/projects";
 import {
   sessionIsRunning,
   sessionIsWaiting,
@@ -61,6 +62,7 @@ export function SessionRow({
   const contributedActions = useExtensionPoint(SESSION_ACTION);
   const [action, setAction] = useState<{ entry: SessionActionSpec; session: CapturedSession }>();
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [moving, setMoving] = useState(false);
   const t = useT();
   const locale = useLocale();
   const attentionLabel = sessionIsRunning(session)
@@ -99,6 +101,12 @@ export function SessionRow({
           },
         ]
       : []),
+    {
+      id: "project",
+      icon: "blocks" as const,
+      label: t("session.action.moveToProject"),
+      run: () => setMoving(true),
+    },
     ...contributedActions.map((entry) => ({
       id: entry.id,
       icon: "blocks" as const,
@@ -122,34 +130,33 @@ export function SessionRow({
       : []),
   ];
 
-  const more =
-    menu.length > 0 ? (
-      <DropdownMenu.Root>
-        <DropdownMenu.Trigger
-          render={
-            <IconButton
-              icon={iconGlyph("more")}
-              size="sm"
-              data-chrome-focus=""
-              aria-label={t("session.row.more", { title })}
-            />
-          }
-        />
-        <DropdownMenu.Content align="start" sideOffset={4}>
-          {menu.map((item) => (
-            <DropdownMenu.Item
-              key={item.id}
-              layout="glyph"
-              onClick={item.run}
-              destructive={item.destructive}
-            >
-              <Icon name={item.icon} size="md" />
-              <span {...stylex.props(vocab.truncate)}>{item.label}</span>
-            </DropdownMenu.Item>
-          ))}
-        </DropdownMenu.Content>
-      </DropdownMenu.Root>
-    ) : undefined;
+  const more = (
+    <DropdownMenu.Root>
+      <DropdownMenu.Trigger
+        render={
+          <IconButton
+            icon={iconGlyph("more")}
+            size="sm"
+            data-chrome-focus=""
+            aria-label={t("session.row.more", { title })}
+          />
+        }
+      />
+      <DropdownMenu.Content align="start" sideOffset={4}>
+        {menu.map((item) => (
+          <DropdownMenu.Item
+            key={item.id}
+            layout="glyph"
+            onClick={item.run}
+            destructive={item.destructive}
+          >
+            <Icon name={item.icon} size="md" />
+            <span {...stylex.props(vocab.truncate)}>{item.label}</span>
+          </DropdownMenu.Item>
+        ))}
+      </DropdownMenu.Content>
+    </DropdownMenu.Root>
+  );
 
   const row = (
     <div {...stylex.props(sr.host)}>
@@ -191,7 +198,6 @@ export function SessionRow({
     </div>
   );
 
-  if (menu.length === 0) return row;
   return (
     <>
       <ContextMenu.Root>
@@ -215,6 +221,13 @@ export function SessionRow({
           session={action.session}
           finalFocus={rowRef}
           close={() => setAction(undefined)}
+        />
+      )}
+      {moving && (
+        <MoveToProjectDialog
+          session={session}
+          finalFocus={rowRef}
+          onClose={() => setMoving(false)}
         />
       )}
       {onDelete && (

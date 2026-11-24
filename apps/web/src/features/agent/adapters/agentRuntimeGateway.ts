@@ -66,8 +66,15 @@ class RuntimeAgentGateway implements AgentRuntimeGateway {
   async createSession(input: Parameters<AgentRuntimeGateway["createSession"]>[0]) {
     const client = this.runtimeClient();
     const session = await this.#sessionMutations.settle(
-      JSON.stringify(["sessions.create", input.cwd]),
-      (signal) => client.sessions.create({ workspace: { path: input.cwd } }, signal),
+      JSON.stringify(["sessions.create", input.cwd, input.projectId ?? null]),
+      (signal) =>
+        client.sessions.create(
+          {
+            workspace: { path: input.cwd },
+            ...(input.projectId ? { projectId: input.projectId } : {}),
+          },
+          signal,
+        ),
     );
     return toAgentSessionSummary(session);
   }

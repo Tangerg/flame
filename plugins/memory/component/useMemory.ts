@@ -77,14 +77,19 @@ export function useMemory(context: ComponentContext) {
   const [origin, setOrigin] = useState("all");
   const [pinned, setPinned] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const cwd = scope === "project" ? context.workspace?.ref.path : "";
+  // A Session in a Project keeps project memory under that Project, never under
+  // the folder it happens to run in.
+  const project = scope === "project" ? context.project : undefined;
+  const cwd =
+    scope === "project" && !project ? context.workspace?.ref.path : "";
+  const target = project ? project.id : cwd;
   const focusSource = useRef({
     runtime: context.runtime,
     binding: context.binding,
     track: context.track,
     signal: context.signal,
     scope,
-    cwd,
+    target,
   });
   useLayoutEffect(() => {
     focusSource.current = {
@@ -93,7 +98,7 @@ export function useMemory(context: ComponentContext) {
       track: context.track,
       signal: context.signal,
       scope,
-      cwd,
+      target,
     };
   });
   const canRestoreFocus = () => {
@@ -105,12 +110,12 @@ export function useMemory(context: ComponentContext) {
       current.track === context.track &&
       current.signal === context.signal &&
       current.scope === scope &&
-      current.cwd === cwd
+      current.target === target
     );
   };
   const [read, setRead] = useState<Read>({ loading: false });
   const current =
-    read.accepted?.scope === scope && read.accepted.cwd === cwd
+    read.accepted?.scope === scope && read.accepted.target === target
       ? read.accepted
       : undefined;
   const [edit, setEdit] = useState<Edit>();
@@ -156,7 +161,7 @@ export function useMemory(context: ComponentContext) {
       reading.current?.abort();
       if (pageControl && summary.current)
         handoffFocus(pageControl, summary.current);
-      if (cwd === undefined) {
+      if (target === undefined) {
         setRead((previous) => ({
           ...previous,
           loading: false,
@@ -174,13 +179,17 @@ export function useMemory(context: ComponentContext) {
           "flame.memory/list.v3",
           {
             scope,
-            cwd,
+            cwd: cwd ?? "",
+            ...(project ? { project: project.id } : {}),
             cursor: cursors.at(-1)!,
           },
           signal,
         );
         if (!signal.aborted) {
-          setRead({ loading: false, accepted: { page, cursors, scope, cwd } });
+          setRead({
+            loading: false,
+            accepted: { page, cursors, scope, target },
+          });
         }
       } catch (error) {
         if (!signal.aborted)
@@ -191,7 +200,7 @@ export function useMemory(context: ComponentContext) {
           }));
       }
     },
-    [context, operations, scope, cwd, t],
+    [context, operations, scope, cwd, project, target, t],
   );
   const refreshAccepted = useEffectEvent((signal: AbortSignal) => {
     void load(signal, current?.cursors);
@@ -206,7 +215,7 @@ export function useMemory(context: ComponentContext) {
     context.track,
     context.signal,
     scope,
-    cwd,
+    target,
   ]);
   useEffect(() => {
     // Revalidating a display context must not retire an accepted command's observer.
@@ -305,7 +314,7 @@ export function useMemory(context: ComponentContext) {
     source: CommandSource = "record",
   ) {
     const owner = observerSignal();
-    if (!owner || command.phase !== "idle" || cwd === undefined) return;
+    if (!owner || command.phase !== "idle" || target === undefined) return;
     try {
       const original = {
         promise: operations.command(method, input),
@@ -349,6 +358,7 @@ export function useMemory(context: ComponentContext) {
     editorElement,
     scope,
     cwd,
+    project,
     read,
     pending,
     observerSignal,

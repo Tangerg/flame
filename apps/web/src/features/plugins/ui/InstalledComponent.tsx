@@ -15,6 +15,7 @@ import { failureDiagnostics } from "@/lib/diagnostics";
 import {
   type CapturedFile,
   type CapturedComposer,
+  type CapturedProject,
   type CapturedSession,
   type CapturedToolResult,
   type CapturedMessage,
@@ -34,6 +35,7 @@ import {
 import { tupleKey } from "@/lib/tupleKey";
 import { useWorkspaceFileFocus } from "@/features/workspace/public/navigation";
 import { useAgent, type AgentAccess } from "@/features/agent/public/agent";
+import { useActiveSessionProject } from "@/features/projects/public/projects";
 import {
   useNotifications,
   type NotificationAccess,
@@ -231,6 +233,7 @@ class ComponentInstance {
               : undefined,
           })
         : undefined,
+      project: this.sources.project ? Object.freeze({ ...this.sources.project }) : undefined,
       binding: this.sources.binding ? structuredClone(this.sources.binding) : undefined,
       openSession: openSession
         ? (sessionId: string) => {
@@ -348,6 +351,7 @@ export function RenderingComponent(
     lifetime,
     resources,
     workspace,
+    project,
     sessionId,
     file,
     message,
@@ -368,6 +372,7 @@ export function RenderingComponent(
         lifetime,
         resources,
         workspace,
+        project,
         sessionId,
         file,
         message,
@@ -390,6 +395,7 @@ export function RenderingComponent(
       lifetime,
       resources,
       workspace,
+      project,
       sessionId,
       file,
       message,
@@ -452,6 +458,7 @@ type ComponentSources = Pick<
   | "placement"
 > & {
   workspace?: WorkspaceContext;
+  project?: CapturedProject;
   sessionId?: string;
   message?: CapturedMessage;
   file?: CapturedFile;
@@ -470,6 +477,7 @@ function WorkspaceComponent(props: ComponentProps) {
   const composer = useComposer();
   const selection = useActiveSessionWorkspace();
   const focus = useWorkspaceFileFocus();
+  const active = useActiveSessionProject();
   const cwd = resolvedWorkspaceCwd(selection);
   const workspace = useMemo(
     () =>
@@ -478,10 +486,10 @@ function WorkspaceComponent(props: ComponentProps) {
         : undefined,
     [cwd, focus.path, focus.revision],
   );
-  if (!workspace)
+  if (!workspace || active.pending)
     return (
       <p role="status">
-        {isWorkspaceResolving(selection)
+        {isWorkspaceResolving(selection) || active.pending
           ? t("packages.module.resolvingWorkspace")
           : t("packages.module.selectWorkspace")}
       </p>
@@ -491,23 +499,34 @@ function WorkspaceComponent(props: ComponentProps) {
     props.placement === "workspaceChangesAction"
       ? workspace.ref.path
       : tupleKey(workspace.ref.path, workspace.focus.revision.toString(), workspace.focus.path);
-  return <RenderingComponent key={key} {...props} workspace={workspace} composer={composer} />;
+  return (
+    <RenderingComponent
+      key={tupleKey(key, active.project?.id ?? "")}
+      {...props}
+      workspace={workspace}
+      project={active.project}
+      composer={composer}
+    />
+  );
 }
 
 function ClientComponent(props: ComponentProps) {
   const composer = useComposer();
   const selection = useActiveSessionWorkspace();
   const sessionId = useActiveSessionId();
+  const active = useActiveSessionProject();
   const cwd = resolvedWorkspaceCwd(selection);
   const workspace = useMemo<WorkspaceContext | undefined>(
     () => (cwd ? { ref: { path: cwd } } : undefined),
     [cwd],
   );
+  if (active.pending) return props.fallback ?? <ComponentLoading />;
   return (
     <RenderingComponent
-      key={JSON.stringify([sessionId, cwd])}
+      key={JSON.stringify([sessionId, cwd, active.project?.id ?? null])}
       {...props}
       workspace={workspace}
+      project={active.project}
       sessionId={sessionId ?? undefined}
       composer={composer}
     />

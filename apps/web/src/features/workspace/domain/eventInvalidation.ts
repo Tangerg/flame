@@ -7,6 +7,7 @@ export type WorkspaceInvalidationTarget =
   | "fileRead"
   | "filesChanged"
   | "models"
+  | "projects"
   | "providers"
   | "sessionUsage"
   | "sessions";
@@ -146,7 +147,7 @@ export function workspaceInvalidations(ev: WorkspaceEventLike): WorkspaceInvalid
     case "plugins.dataChanged":
       return [];
     case "projects.changed":
-      return [];
+      return ["projects"];
     case "resync": {
       if (!ev.topics?.length) return ["all"];
       const targets = new Set<WorkspaceInvalidationTarget>();

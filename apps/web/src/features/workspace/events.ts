@@ -3,7 +3,7 @@ import { type RuntimeAccess } from "@/features/connection/public/runtime";
 import { type FlameClient } from "@flame/runtime-client";
 import { definePlugin } from "@/extensions/definePlugin";
 import { AGENT_SESSIONS } from "@/features/agent/public/services";
-import { installProjectIndexRefresh } from "@/features/workspace/adapters/projectIndexRefresh";
+import { installFolderIndexRefresh } from "@/features/workspace/adapters/folderIndexRefresh";
 import {
   invalidateWorkspaceEvent,
   invalidateWorkspaceEverything,
@@ -51,7 +51,7 @@ export function createWorkspaceEventsPlugin(
         },
       });
 
-      ctx.lifetime.defer(installProjectIndexRefresh());
+      ctx.lifetime.defer(installFolderIndexRefresh());
       ctx.lifetime.defer(installWorkspaceFocusRefresh());
       ctx.lifetime.defer(
         ctx.dependencies.serverScope.subscribeReplacement(

@@ -13,6 +13,7 @@ export function toAgentSessionSummary(session: Session): AgentSessionSummary {
       path: session.workspace.ref.path,
       availability: session.workspace.availability,
     },
+    ...(session.projectId ? { projectId: session.projectId } : {}),
     ...(session.favorite !== undefined ? { favorite: session.favorite } : {}),
     time: session.updatedAt || session.createdAt,
   };

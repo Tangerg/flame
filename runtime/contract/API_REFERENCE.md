@@ -506,6 +506,7 @@ Forbidden on every variant: `durable`.
 | `hooks.changed` | `sequence` | — |
 | `models.changed` | `sequence` | — |
 | `approvals.changed` | `sequence` | — |
+| `projects.changed` | `sequence` | — |
 | `resync` | `sequence`, `topics` | `watchIds` |
 
 ### `ArtifactOutcome`

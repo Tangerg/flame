@@ -81,8 +81,10 @@ export interface AgentUnresolvedSteer {
   retry(): AgentSteerSubmission;
 }
 
+export type AgentSessionProjectChange = { type: "set"; projectId: string } | { type: "clear" };
+
 export interface AgentRuntimeGateway {
-  createSession(input: { cwd: string }): Promise<AgentSessionSummary>;
+  createSession(input: { cwd: string; projectId?: string }): Promise<AgentSessionSummary>;
   deleteSession(sessionId: string): Promise<void>;
   updateSession(input: {
     sessionId: string;
@@ -90,6 +92,7 @@ export interface AgentRuntimeGateway {
     title?: string;
     favorite?: boolean;
     cwd?: string;
+    project?: AgentSessionProjectChange;
   }): Promise<AgentSessionSummary>;
   forkSession(input: { sessionId: string; fromRunId?: string }): Promise<{ id: string }>;
   loadSessionSnapshot(

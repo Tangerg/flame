@@ -25,6 +25,7 @@ const SUBSCRIBED_TOPICS: readonly RuntimeTopic[] = [
   "hooks.changed",
   "models.changed",
   "approvals.changed",
+  "projects.changed",
 ];
 
 export function canSubscribeWorkspaceEvents(runtimeAccess: RuntimeAccess): boolean {

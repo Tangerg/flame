@@ -14,6 +14,7 @@ import { reportSessionError } from "@/features/agent/application/session/reportS
 import { type AgentCommandOwner } from "@/features/agent/application/agentCommandOwner";
 interface CreateSessionOptions {
   cwd: string;
+  projectId?: string;
   reuseEmptySession?: boolean;
 }
 
@@ -22,12 +23,13 @@ async function createAndOpen({
   runtime,
   state,
   cwd,
+  projectId,
 }: CreateSessionOptions & {
   owner: AgentCommandOwner;
   runtime: AgentRuntimeGateway;
   state: AgentSessionStatePort;
 }): Promise<string> {
-  const session = await owner.settle(runtime.createSession({ cwd }));
+  const session = await owner.settle(runtime.createSession({ cwd, projectId }));
   owner.assertCurrent();
   commitCreatedAgentSession(session);
   state.selectSession(session.id);
@@ -35,7 +37,7 @@ async function createAndOpen({
 }
 
 function joinKey(opts: CreateSessionOptions): string {
-  return `cwd:${opts.cwd}`;
+  return JSON.stringify([opts.cwd, opts.projectId ?? null]);
 }
 
 function alreadyOnAnEmptySession(
@@ -74,9 +76,10 @@ export function createSession(agentAccess: AgentDependencies): Promise<string | 
   const sessionId = agentAccess.state.getActiveSessionId();
   if (!sessionId) return Promise.resolve(null);
   const sessions = queryClient.getQueryData<AgentSessionSummary[]>([AGENT_SESSIONS_KEY]);
-  const cwd = sessions?.find((session) => session.id === sessionId)?.workspace.path;
+  const active = sessions?.find((session) => session.id === sessionId);
+  const cwd = active?.workspace.path;
   if (!cwd || cwd.trim() === "") return Promise.resolve(null);
-  return doCreate(agentAccess, { cwd, reuseEmptySession: true });
+  return doCreate(agentAccess, { cwd, projectId: active.projectId, reuseEmptySession: true });
 }
 
 export function useCreateSession(): (opts: CreateSessionOptions) => Promise<string | null> {

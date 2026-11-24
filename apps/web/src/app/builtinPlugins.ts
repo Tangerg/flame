@@ -60,7 +60,9 @@ import contextUsage from "@/features/chat/context-usage/index";
 import shortcuts from "@/features/command/shortcuts/index";
 import { sidebarActions } from "@/features/sidebar/index";
 import { sidebarFooter } from "@/features/sidebar/index";
+import { sidebarFolders } from "@/features/sidebar/index";
 import { sidebarProjects } from "@/features/sidebar/index";
+import { createProjectsPlugin } from "@/features/projects/index";
 import { sidebarRecents } from "@/features/sidebar/index";
 import slashHints from "@/features/composer/slash-hints/index";
 import { createSystemNotificationsPlugin } from "@/features/notifications/index";
@@ -136,6 +138,7 @@ export function createBuiltinPlugins(
     connectionSettings,
     pluginManagementPane,
     createProviderCatalogPlugin(runtimeClient),
+    createProjectsPlugin(runtimeClient),
     fileView,
     subagentsView,
   ];
@@ -146,7 +149,13 @@ export function createBuiltinPlugins(
     workbenchSettings(workspaceAccess),
   ];
 
-  const sidebar: AnyPlugin[] = [sidebarActions, sidebarProjects, sidebarRecents, sidebarFooter];
+  const sidebar: AnyPlugin[] = [
+    sidebarActions,
+    sidebarProjects,
+    sidebarFolders,
+    sidebarRecents,
+    sidebarFooter,
+  ];
 
   const overlays: AnyPlugin[] = [
     toaster,

@@ -21,7 +21,13 @@ export {
   type WorkIndexActions,
 } from "@/features/navigation/application/workIndexActions";
 export { useWorkIndex } from "@/features/navigation/application/useWorkIndex";
-export type { WorkGroup, WorkProject, WorkSession } from "@/features/navigation/domain/workIndex";
+export type {
+  WorkGroup,
+  WorkFolder,
+  WorkProject,
+  WorkProjectGroup,
+  WorkSession,
+} from "@/features/navigation/domain/workIndex";
 export {
   sessionIsRunning,
   sessionIsWaiting,

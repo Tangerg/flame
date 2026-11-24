@@ -1,5 +1,6 @@
 import { useMemo } from "react";
-import { useWorkspaceProjects } from "@/features/workspace/public/queries";
+import { useWorkspaceFolders } from "@/features/workspace/public/queries";
+import { useProjects } from "@/features/projects/public/projects";
 import {
   resolvedWorkspaceCwd,
   useActiveSessionWorkspace,
@@ -12,25 +13,27 @@ import { buildWorkIndex } from "@/features/navigation/application/buildWorkIndex
 const EMPTY_SESSIONS: AgentSessionSummary[] = [];
 
 export function useWorkIndex(): WorkIndex {
-  const projects = useWorkspaceProjects();
+  const folders = useWorkspaceFolders();
+  const projects = useProjects();
   const { data: sessions = EMPTY_SESSIONS } = useAgentSessions();
   const activeSessionId = useActiveSessionId();
   const workspace = useActiveSessionWorkspace();
   const activeCwd = resolvedWorkspaceCwd(workspace);
 
   const content = useMemo(
-    () => buildWorkIndex({ projects: projects.data, sessions }),
-    [projects.data, sessions],
+    () => buildWorkIndex({ folders: folders.data, projects: projects.data, sessions }),
+    [folders.data, projects.data, sessions],
   );
   const groups = content?.groups;
 
   return {
     groups,
+    projects: content?.projects,
     recents: content?.recents,
     activeSessionId,
     activeCwd,
-    isLoading: projects.isPending && groups === undefined,
-    error: projects.isError && groups === undefined ? projects.error : undefined,
-    retry: () => void projects.refetch(),
+    isLoading: folders.isPending && groups === undefined,
+    error: folders.isError && groups === undefined ? folders.error : undefined,
+    retry: () => void folders.refetch(),
   };
 }

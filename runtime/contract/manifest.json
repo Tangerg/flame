@@ -3360,6 +3360,9 @@
       "type": "approvals.changed"
     },
     {
+      "type": "projects.changed"
+    },
+    {
       "type": "resync"
     }
   ],
@@ -4893,6 +4896,12 @@
         },
         {
           "tag": "approvals.changed",
+          "required": [
+            "sequence"
+          ]
+        },
+        {
+          "tag": "projects.changed",
           "required": [
             "sequence"
           ]

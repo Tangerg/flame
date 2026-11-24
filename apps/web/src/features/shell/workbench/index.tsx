@@ -12,7 +12,7 @@ import { COMMAND } from "@/features/command/public/extensionPoints";
 import { WORKSPACE_VIEW } from "@/features/workspace/public/views";
 import { WORKSPACE_SETTINGS_VIEW, openWorkspaceView } from "@/features/workspace/public/navigation";
 import { useDefaultChatSession } from "@/features/agent/public/defaultSession";
-import { ComposerProjectTray } from "@/features/shell/workbench/panel/ProjectSelector";
+import { ComposerFolderTray } from "@/features/shell/workbench/panel/FolderSelector";
 function WorkbenchChat({ panel }: { panel: RefObject<ChatPanelHandle | null> }) {
   useWarmMarkdownRenderer();
   useReconcilePersistedAgentSessions();
@@ -38,9 +38,9 @@ export const workbenchChat = definePlugin({
       component: InstalledWorkbenchChat,
     });
     contributeLayout(ctx.contributions, "composer.overlay.top", {
-      id: "project",
+      id: "folder",
       order: -10,
-      component: ComposerProjectTray,
+      component: ComposerFolderTray,
     });
     ctx.contributions.add(COMMAND, {
       id: "composer.focus",

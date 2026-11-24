@@ -56,8 +56,8 @@ import { definePlugin } from "@/extensions/definePlugin";
 import { visualNavigationBootstrap, visualRuntimeStream } from "./visualRuntimePorts";
 import { visualToolResults } from "./visualToolResults";
 import {
-  WORKSPACE_PROJECTS_KEY,
-  type WorkspaceProjectSummary,
+  WORKSPACE_FOLDERS_KEY,
+  type WorkspaceFolderSummary,
 } from "@/features/workspace/public/queries";
 import {
   WORKSPACE_LIST_FILES_KEY,
@@ -287,14 +287,14 @@ export async function installVisualAgentFixture(
   });
   visual.navigation.go({ session: projectless ? "" : VISUAL_SESSION_ID });
   queryClient.setQueryDefaults([AGENT_SESSIONS_KEY], { staleTime: Infinity });
-  queryClient.setQueryDefaults([WORKSPACE_PROJECTS_KEY], { staleTime: Infinity });
+  queryClient.setQueryDefaults([WORKSPACE_FOLDERS_KEY], { staleTime: Infinity });
   queryClient.setQueryDefaults([MODELS_KEY], { staleTime: Infinity });
   queryClient.setQueryDefaults([APPROVAL_MODE_KEY], { staleTime: Infinity });
   queryClient.setQueryData(
     [AGENT_SESSIONS_KEY],
     projectless ? [] : [visualSession(state, snapshot)],
   );
-  queryClient.setQueryData<WorkspaceProjectSummary[]>([WORKSPACE_PROJECTS_KEY], []);
+  queryClient.setQueryData<WorkspaceFolderSummary[]>([WORKSPACE_FOLDERS_KEY], []);
   queryClient.setQueryData(
     [MODELS_KEY],
     VISUAL_MODELS.map(

@@ -608,13 +608,21 @@ adding a Tab stop; cancellation returns to the original action. The shared
 trigger ignores events from portaled descendants outside its DOM, so a nested
 Copy menu retains its own keyboard, pointer and dismissal scope.
 
-The work index treats a first pending project read as loading even when its
-network request is paused. The sidebar and project menu use that one navigation
+Projects come first in the work index. A Session in a Project appears only under
+that Project; folder groups and recents keep the rest, and a folder whose Sessions
+all joined Projects drops out. Opening a Project shows its home: name, instructions
+for later Runs, member Sessions and archive. Archived Projects fold under one row
+and keep their Sessions. Moving a Session in or out goes through `sessions.update`
+against the row's revision. A new Session in a Project starts in the folder its
+latest Session used, and asks for one when the Project has none.
+
+The work index treats a first pending folder read as loading even when its
+network request is paused. The sidebar and folder menu use that one navigation
 projection. A known empty snapshot can show the empty state; accepted content
-stays available during a background read or failure. Project groups remain
-unknown until a project snapshot exists, even when recent Sessions arrive first.
-Their recent rows remain available beside the project's loading or error state. Query
-retries and canonical project/Session data retain their existing owners.
+stays available during a background read or failure. Folder groups remain
+unknown until a folder snapshot exists, even when recent Sessions arrive first.
+Their recent rows remain available beside the folder's loading or error state. Query
+retries and canonical folder/Session data retain their existing owners.
 
 The named work index is also the surviving programmatic focus destination when
 its focused Retry action retires into loading. The existing DataError handoff
@@ -947,9 +955,9 @@ When Runtime rejects an initial line request as invalid, Files names the line
 and offers Open from start. The action reads the same current path and keeps
 the return to the original inspection source.
 
-Project choices retain complete wrapping names. When projects share a display
-name, both the new-conversation tray and active-project menu show their full
-folder paths in the same row. Unique names keep their compact row. The current
+Folder choices retain complete wrapping names. When folders share a display
+name, both the new-conversation tray and active-folder menu show their full
+paths in the same row. Unique names keep their compact row. The current
 folder carries `aria-current`; exact folder actions, availability and Session
 draft ownership retain their existing owners.
 

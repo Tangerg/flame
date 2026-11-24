@@ -5,9 +5,11 @@ export interface DirectorySelection {
   readonly path: string;
   readonly busy: boolean;
   readonly error: string | null;
+  // The Project the created Session joins, captured when the picker opened.
+  readonly projectId?: string;
 }
 export interface WorkingDirectoryAccess {
-  open(): void;
+  open(projectId?: string): void;
   browse(expectedOwner: object): Promise<void>;
   useSelection(): DirectorySelection | null;
   selection(): DirectorySelection | null;

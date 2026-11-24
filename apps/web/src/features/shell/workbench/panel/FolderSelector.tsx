@@ -10,7 +10,7 @@ import { Icon } from "@/ui/index";
 import { Button, vocab } from "@flame/ui";
 import { AgentComposerTopTraySurface } from "@/ui/agent/index";
 import { face, space, type as typeStep } from "@flame/ui/tokens.stylex";
-interface ProjectMenuContentProps {
+interface FolderMenuContentProps {
   groups: readonly WorkGroup[] | undefined;
   activeCwd: string | undefined;
   loading: boolean;
@@ -30,7 +30,7 @@ const pl = stylex.create({
     marginInline: space.s3,
     marginBottom: "-18px",
     width: "calc(100% - 24px)",
-    backgroundColor: "var(--app-composer-project-tray-surface)",
+    backgroundColor: "var(--app-composer-folder-tray-surface)",
     paddingInline: space.s1_5,
     paddingTop: space.s1_5,
     paddingBottom: "27px",
@@ -39,7 +39,7 @@ const pl = stylex.create({
   },
   chooseLabel: { maxWidth: "240px" },
   full: { maxWidth: "100%" },
-  projectIdentity: {
+  folderIdentity: {
     display: "grid",
     minWidth: 0,
     gap: space.s0_5,
@@ -48,7 +48,7 @@ const pl = stylex.create({
   },
 });
 
-function ProjectMenuContent({
+function FolderMenuContent({
   groups,
   activeCwd,
   loading,
@@ -56,11 +56,11 @@ function ProjectMenuContent({
   onSelect,
   onAdd,
   align,
-}: ProjectMenuContentProps) {
+}: FolderMenuContentProps) {
   const t = useT();
   const nameCounts = new Map<string, number>();
-  for (const { project } of groups ?? [])
-    nameCounts.set(project.name, (nameCounts.get(project.name) ?? 0) + 1);
+  for (const { folder } of groups ?? [])
+    nameCounts.set(folder.name, (nameCounts.get(folder.name) ?? 0) + 1);
   return (
     <DropdownMenu.Content
       side="top"
@@ -74,27 +74,27 @@ function ProjectMenuContent({
           <span>{t("common.loading")}</span>
         </DropdownMenu.Item>
       ) : (
-        groups?.map(({ project }) => (
+        groups?.map(({ folder }) => (
           <DropdownMenu.Item
-            key={project.id}
-            disabled={project.cwdMissing || !canCreate}
-            aria-current={project.id === activeCwd ? "true" : undefined}
+            key={folder.id}
+            disabled={folder.cwdMissing || !canCreate}
+            aria-current={folder.id === activeCwd ? "true" : undefined}
             onClick={() => {
-              if (project.id !== activeCwd) onSelect(project.id);
+              if (folder.id !== activeCwd) onSelect(folder.id);
             }}
-            title={project.cwdMissing ? t("project.row.missing") : project.id}
+            title={folder.cwdMissing ? t("folder.row.missing") : folder.id}
             layout="pick"
           >
             <Icon name="folder" size="sm" className={stylex.props(vocab.muted).className} />
-            <span {...stylex.props(pl.projectIdentity)}>
-              <span>{project.name}</span>
-              {nameCounts.get(project.name)! > 1 && (
+            <span {...stylex.props(pl.folderIdentity)}>
+              <span>{folder.name}</span>
+              {nameCounts.get(folder.name)! > 1 && (
                 <span dir="ltr" {...stylex.props(face.mono, typeStep.uiXs, vocab.muted)}>
-                  {project.id}
+                  {folder.id}
                 </span>
               )}
             </span>
-            {project.id === activeCwd ? (
+            {folder.id === activeCwd ? (
               <Icon name="check" size="xs" className={stylex.props(vocab.accent).className} />
             ) : (
               <span aria-hidden />
@@ -105,13 +105,13 @@ function ProjectMenuContent({
       {((loading && !groups) || Boolean(groups?.length)) && <DropdownMenu.Separator />}
       <DropdownMenu.Item disabled={!canCreate} onClick={onAdd} layout="glyph">
         <Icon name="plus" size="sm" className={stylex.props(vocab.muted).className} />
-        <span>{t("composer.project.add")}</span>
+        <span>{t("composer.folder.add")}</span>
       </DropdownMenu.Item>
     </DropdownMenu.Content>
   );
 }
 
-export function ComposerProjectTray() {
+export function ComposerFolderTray() {
   const t = useT();
   const workIndex = useWorkIndex();
   const actions = useWorkIndexActions();
@@ -122,7 +122,7 @@ export function ComposerProjectTray() {
       data-tray="attached"
       className={stylex.props(pl.traySurface).className}
     >
-      <div data-slot="project-selector-tray" {...stylex.props(pl.tray)}>
+      <div data-slot="folder-selector-tray" {...stylex.props(pl.tray)}>
         <DropdownMenu.Root>
           <DropdownMenu.Trigger
             disabled={!actions.canCreateSessionInFolder}
@@ -132,17 +132,17 @@ export function ComposerProjectTray() {
                 size="sm"
                 variant="ghost"
                 press="none"
-                aria-label={t("composer.project.choose")}
+                aria-label={t("composer.folder.choose")}
                 className={stylex.props(vocab.min).className}
               >
                 <Icon name="folder" size="sm" className={stylex.props(vocab.hold).className} />
                 <span {...stylex.props(pl.chooseLabel, vocab.truncate)}>
-                  {t("composer.project.choose")}
+                  {t("composer.folder.choose")}
                 </span>
               </Button>
             }
           />
-          <ProjectMenuContent
+          <FolderMenuContent
             groups={workIndex.groups}
             activeCwd={workIndex.activeCwd}
             loading={workIndex.isLoading}
@@ -157,13 +157,7 @@ export function ComposerProjectTray() {
   );
 }
 
-function ProjectNameTrigger({
-  projectName,
-  children,
-}: {
-  projectName: string;
-  children?: ReactNode;
-}) {
+function FolderNameTrigger({ folderName, children }: { folderName: string; children?: ReactNode }) {
   const t = useT();
   return (
     <DropdownMenu.Trigger
@@ -171,7 +165,7 @@ function ProjectNameTrigger({
         <Button
           type="button"
           variant="link"
-          aria-label={t("composer.project.change", { project: projectName })}
+          aria-label={t("composer.folder.change", { folder: folderName })}
           className={stylex.props(pl.full).className}
         >
           {children}
@@ -191,18 +185,18 @@ export function EmptyChatHeading() {
     return <>{t("welcome.title")}</>;
   }
 
-  const projectName =
-    workIndex.groups?.find(({ project }) => project.id === activeCwd)?.project.name ??
+  const folderName =
+    workIndex.groups?.find(({ folder }) => folder.id === activeCwd)?.folder.name ??
     basename(activeCwd);
 
   return (
     <DropdownMenu.Root>
       <Trans
-        i18nKey="welcome.projectTitle"
-        values={{ project: projectName }}
-        components={{ projectSelect: <ProjectNameTrigger projectName={projectName} /> }}
+        i18nKey="welcome.folderTitle"
+        values={{ folder: folderName }}
+        components={{ folderSelect: <FolderNameTrigger folderName={folderName} /> }}
       />
-      <ProjectMenuContent
+      <FolderMenuContent
         groups={workIndex.groups}
         activeCwd={activeCwd}
         loading={workIndex.isLoading}

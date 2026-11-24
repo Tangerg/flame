@@ -44,7 +44,7 @@ export function createWorkingDirectoryPicker(
       const path = await chooseDirectory();
       if (path) updateWorkingDirectorySelection(current, { path });
     },
-    open() {
+    open(projectId) {
       const current = useWorkingDirectorySelection.getState().selection;
       if (current && current.owner === currentOwner) return;
       currentOwner = {};
@@ -56,6 +56,7 @@ export function createWorkingDirectoryPicker(
           path: "",
           busy: false,
           error: null,
+          ...(projectId ? { projectId } : {}),
         },
       });
     },

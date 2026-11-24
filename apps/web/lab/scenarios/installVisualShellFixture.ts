@@ -12,15 +12,15 @@ import { useCommandMenuStore } from "@/features/command/menu/application/command
 import { defaultCommands } from "@/features/command/defaultCommands";
 import { sidebarActions } from "@/features/sidebar/index";
 import { sidebarFooter } from "@/features/sidebar/index";
-import { sidebarProjects } from "@/features/sidebar/index";
+import { sidebarFolders } from "@/features/sidebar/index";
 import { sidebarRecents } from "@/features/sidebar/index";
 import { builtinVisualStyles } from "@/features/theme/visualStyles/index";
 import flameDark from "@/features/theme/themes/flame-dark";
 import flameLight from "@/features/theme/themes/flame-light";
 import { defaultAccents } from "@/features/theme/defaultAccents";
 import {
-  WORKSPACE_PROJECTS_KEY,
-  type WorkspaceProjectSummary,
+  WORKSPACE_FOLDERS_KEY,
+  type WorkspaceFolderSummary,
 } from "@/features/workspace/public/queries";
 import { DATA_PROVIDER } from "@/extensions/dataProvider";
 import { SESSION_ACTION } from "@/features/navigation/public/sessionActions";
@@ -37,7 +37,7 @@ import { visualComponentProps } from "./installedComponentProps";
 import { visualNavigationBootstrap, visualRuntimeStream } from "./visualRuntimePorts";
 const ACTIVE_SESSION_ID = "visual-shell-active";
 
-const PROJECTS: WorkspaceProjectSummary[] = [
+const FOLDERS: WorkspaceFolderSummary[] = [
   {
     id: "/Users/visual/scope",
     name: "scope",
@@ -141,13 +141,13 @@ function dataProviderPlugin(state: VisualWorkIndexState): AnyPlugin {
     name: "flame.visual.work-index-data",
     setup(ctx) {
       ctx.contributions.add(DATA_PROVIDER, {
-        key: WORKSPACE_PROJECTS_KEY,
+        key: WORKSPACE_FOLDERS_KEY,
         fetcher: async () => {
-          if (state === "loading") return pending<WorkspaceProjectSummary[]>();
+          if (state === "loading") return pending<WorkspaceFolderSummary[]>();
           if (state === "error") {
             throw new Error("Visual fixture Runtime connection unavailable");
           }
-          return state === "empty" ? [] : PROJECTS;
+          return state === "empty" ? [] : FOLDERS;
         },
       });
       ctx.contributions.add(DATA_PROVIDER, {
@@ -187,7 +187,7 @@ export async function installVisualShellFixture(
   overlay: VisualShellOverlay | null = null,
 ): Promise<void> {
   queryClient.clear();
-  queryClient.setQueryDefaults([WORKSPACE_PROJECTS_KEY], { retry: false });
+  queryClient.setQueryDefaults([WORKSPACE_FOLDERS_KEY], { retry: false });
   queryClient.setQueryDefaults([AGENT_SESSIONS_KEY], { retry: false });
 
   installVisualRuntimeServiceStatusPort(visual);
@@ -223,7 +223,7 @@ export async function installVisualShellFixture(
     ),
     commandMenu,
     sidebarActions,
-    sidebarProjects,
+    sidebarFolders,
     sidebarRecents,
     sidebarFooter,
   );

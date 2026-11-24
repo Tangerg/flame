@@ -335,7 +335,7 @@ read models, fetchers, Runtime translation, and registration belong to the
 feature that understands the data:
 
 - Agent registers Session and model-invocation reads.
-- Workspace registers projects and files. Installed Memory and Skill components read their own generated publisher contracts through release-bound operations; drafts, pending command observation and accepted pages belong to those components. Workspace has no parallel business cache, mutation gateway or catalog page.
+- Workspace registers folders and files. Installed Memory and Skill components read their own generated publisher contracts through release-bound operations; drafts, pending command observation and accepted pages belong to those components. Workspace has no parallel business cache, mutation gateway or catalog page.
 - Providers registers only the provider/model catalogs needed by basic composition.
 - Installed Provider, MCP and Hook settings components read their own public Runtime projections; they have no compiled feature gateway or global presenter.
 

@@ -5,7 +5,7 @@ import {
   createParameterizedDataQuery,
   useCachedParameterizedData,
 } from "@/extensions/dataQuery";
-export interface WorkspaceProjectSummary {
+export interface WorkspaceFolderSummary {
   id: string;
   name: string;
   sessionCount: number;
@@ -64,7 +64,7 @@ export interface WorkspaceFileContent {
   truncated?: boolean;
 }
 
-export const WORKSPACE_PROJECTS_KEY = "projects";
+export const WORKSPACE_FOLDERS_KEY = "folders";
 
 export const WORKSPACE_FILES_CHANGED_KEY = "files-changed";
 
@@ -72,8 +72,7 @@ export const WORKSPACE_LIST_FILES_KEY = "list-files";
 
 export const WORKSPACE_READ_FILE_KEY = "read-file";
 
-export const useWorkspaceProjects =
-  createDataQuery<WorkspaceProjectSummary[]>(WORKSPACE_PROJECTS_KEY);
+export const useWorkspaceFolders = createDataQuery<WorkspaceFolderSummary[]>(WORKSPACE_FOLDERS_KEY);
 
 export const useWorkspaceFileChanges = createParameterizedDataQuery<
   WorkspaceFileChangesQuery,

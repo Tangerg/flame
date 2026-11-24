@@ -41,6 +41,7 @@ export function Memory({ context }: { context: ComponentContext }) {
     editorElement,
     scope,
     cwd,
+    project,
     read,
     pending,
     observerSignal,
@@ -109,6 +110,7 @@ export function Memory({ context }: { context: ComponentContext }) {
           title={t("panel.title")}
           context={
             scope === "project" &&
+            !project &&
             !cwd && <Metadata>{t("scope.none")}</Metadata>
           }
         />
@@ -124,7 +126,7 @@ export function Memory({ context }: { context: ComponentContext }) {
                   aria-label={t("refresh")}
                   size="md"
                   pending={read.loading}
-                  disabled={cwd === undefined || pending}
+                  disabled={(!project && cwd === undefined) || pending}
                   onClick={() => {
                     const owner = observerSignal();
                     if (owner) void load(owner, current?.cursors);
@@ -133,7 +135,7 @@ export function Memory({ context }: { context: ComponentContext }) {
                 <Button
                   variant={edit ? "outline" : "primary"}
                   size="md"
-                  disabled={locked || cwd === undefined || Boolean(edit)}
+                  disabled={locked || (!project && cwd === undefined) || Boolean(edit)}
                   focusableWhenDisabled
                   onClick={(event) => {
                     beginEdit({
@@ -319,7 +321,8 @@ export function Memory({ context }: { context: ComponentContext }) {
                             "flame.memory/add.v3",
                             {
                               scope,
-                              cwd: cwd!,
+                              cwd: cwd ?? "",
+                              ...(project ? { project: project.id } : {}),
                               content: edit.content.trim(),
                             },
                             { action: "add", scope },

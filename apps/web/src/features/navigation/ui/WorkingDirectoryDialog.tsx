@@ -59,7 +59,7 @@ export function WorkingDirectoryDialog() {
     )
       return;
     directoryAccess.update(selection, { busy: true, error: null });
-    const session = await create({ cwd: selection.path.trim() });
+    const session = await create({ cwd: selection.path.trim(), projectId: selection.projectId });
     if (session) {
       if (directoryAccess.update(selection, null)) focusComposer(composerAccess);
     } else directoryAccess.update(selection, { busy: false, error: t("session.error.create") });

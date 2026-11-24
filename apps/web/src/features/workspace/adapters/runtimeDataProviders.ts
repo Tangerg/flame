@@ -6,7 +6,7 @@ import {
   type WorkspaceSummary as RpcWorkspaceSummary,
 } from "@flame/runtime-client";
 import {
-  WORKSPACE_PROJECTS_KEY,
+  WORKSPACE_FOLDERS_KEY,
   WORKSPACE_FILES_CHANGED_KEY,
   WORKSPACE_LIST_FILES_KEY,
   WORKSPACE_READ_FILE_KEY,
@@ -14,7 +14,7 @@ import {
   type WorkspaceListFilesQuery,
   type WorkspaceReadFileQuery,
   type WorkspaceFileChange as WorkspaceFileChangeSummary,
-  type WorkspaceProjectSummary,
+  type WorkspaceFolderSummary,
 } from "@/features/workspace/application/workspaceQueries";
 export function registerWorkspaceDataProviders(
   ctx: Contributor,
@@ -23,9 +23,9 @@ export function registerWorkspaceDataProviders(
   const workspace = (cwd: string | undefined, signal: AbortSignal | undefined) =>
     runtimeClient().workspaces.open(cwd ? { path: cwd } : undefined, signal);
   ctx.add(DATA_PROVIDER, {
-    key: WORKSPACE_PROJECTS_KEY,
+    key: WORKSPACE_FOLDERS_KEY,
     fetcher: async (_params, signal) =>
-      (await pageData(runtimeClient().workspaces.list(signal))).map(toWorkspaceProjectSummary),
+      (await pageData(runtimeClient().workspaces.list(signal))).map(toWorkspaceFolderSummary),
   });
   ctx.add(DATA_PROVIDER, {
     key: WORKSPACE_FILES_CHANGED_KEY,
@@ -83,7 +83,7 @@ export function registerWorkspaceDataProviders(
   });
 }
 
-function toWorkspaceProjectSummary(summary: RpcWorkspaceSummary): WorkspaceProjectSummary {
+function toWorkspaceFolderSummary(summary: RpcWorkspaceSummary): WorkspaceFolderSummary {
   return {
     id: summary.workspace.ref.path,
     name: summary.name,
