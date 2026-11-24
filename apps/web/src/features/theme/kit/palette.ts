@@ -1,7 +1,7 @@
 import { type Scheme } from "@/lib/appearance";
 import { type ColorThemeSpec } from "@/features/theme/public/types";
 import { type AppearancePreference } from "@/features/theme/kit/appearance";
-import { interpolate, rgbColor } from "@/lib/color";
+import { interpolate, rgbColor } from "@/features/theme/kit/color";
 import {
   WCAG_AA_TEXT,
   compositeColor,

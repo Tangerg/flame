@@ -1,4 +1,4 @@
-import { formatHex, formatHex8, rgbColor } from "@/lib/color";
+import { formatHex, formatHex8, rgbColor } from "@/features/theme/kit/color";
 import { type Scheme } from "@/lib/appearance";
 import { THEME_PAINT_STORAGE_KEY } from "@/features/theme/kit/documentTheme";
 

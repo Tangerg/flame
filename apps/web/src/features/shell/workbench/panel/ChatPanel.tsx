@@ -70,7 +70,7 @@ import { SessionIdentity } from "@/features/shell/workbench/panel/SessionIdentit
 import { WorkspaceViewBody } from "@/features/shell/workbench/panel/WorkspaceViewBody";
 import { WorkspaceWindowHeader } from "@/features/shell/workbench/panel/WorkspaceWindowHeader";
 import { useT, type Translate } from "@/lib/i18n/index";
-import { canPresentDock } from "@/lib/shellGeometry";
+import { canPresentDock } from "@/features/shell/workbench/panel/shellGeometry";
 import { shellStyles as sh } from "@/features/shell/workbench/shellStyles";
 import { useInspectionFocus } from "@/features/shell/workbench/panel/useInspectionFocus";
 export interface ChatPanelHandle {

@@ -2,7 +2,7 @@ import { parseJSON } from "@frame/sdk/json";
 import { type Translate } from "@/lib/i18n/index";
 import { type ToolCall } from "@/features/agent/public/sessionView";
 import { fmtDuration } from "@/lib/format";
-import { toolVerbId } from "@/lib/toolFamilies";
+import { toolVerbId } from "@/features/agent/domain/toolFamilies";
 import { builtinToolName } from "@/features/agent/domain/toolCategory";
 export type ToolDetail = { kind: "path" | "machine" | "prose"; value: string };
 

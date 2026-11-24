@@ -1,4 +1,4 @@
-import { TOOL_ICON_BY_NAME } from "@/lib/toolFamilies";
+import { TOOL_ICON_BY_NAME } from "@/features/agent/domain/toolFamilies";
 interface ToolIconContribution {
   key: string;
   icon: string;

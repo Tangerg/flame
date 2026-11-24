@@ -1,5 +1,5 @@
 import { type Translate } from "@/lib/i18n/index";
-import { toolSourceLabel } from "@/lib/toolSource";
+import { toolSourceLabel } from "@/features/agent/presentation/toolSource";
 import {
   type ApprovalGate,
   type ApprovalMode,

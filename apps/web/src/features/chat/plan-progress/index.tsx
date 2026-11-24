@@ -1,4 +1,4 @@
-import { toolFamilyNames } from "@/lib/toolFamilies";
+import { toolFamilyNames } from "@/features/agent/public/toolFamilies";
 import { contributeLayout } from "@/extensions/contributeHelpers";
 import { definePlugin } from "@/extensions/definePlugin";
 import { TOOL_STANDING_SURFACE } from "@/features/chat/public/tools/types";

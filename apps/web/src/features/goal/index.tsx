@@ -2,7 +2,7 @@ import { GOAL_WORKFLOW, type WorkflowProviders } from "@/features/plugins/public
 import { type AgentAccess } from "@/features/agent/public/agent";
 import { type ComposerAccess } from "@/features/composer/public/composer";
 import { type RuntimeAccess } from "@/features/connection/public/runtime";
-import { toolFamilyNames } from "@/lib/toolFamilies";
+import { toolFamilyNames } from "@/features/agent/public/toolFamilies";
 import { type FlameClient } from "@flame/runtime-client";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { contributeLayout } from "@/extensions/contributeHelpers";

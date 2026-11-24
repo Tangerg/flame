@@ -1,4 +1,4 @@
-import { rgbColor } from "@/lib/color";
+import { rgbColor } from "@/features/theme/kit/color";
 import { type AppearancePreference } from "@/features/theme/kit/appearance";
 import { type PaletteTheme } from "@/features/theme/kit/palette";
 

@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import { useId } from "react";
 import { prettyJSON } from "@frame/sdk/json";
-import { toolFamilyId } from "@/lib/toolFamilies";
+import { toolFamilyId } from "@/features/agent/public/toolFamilies";
 import { toolIconFor } from "@/features/agent/public/toolIcon";
 import { type ApprovalDecision } from "@/features/agent/public/hitl";
 import { type RememberScope } from "@/features/agent/public/hitl";

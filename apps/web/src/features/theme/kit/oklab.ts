@@ -1,4 +1,4 @@
-import { clampChroma, formatHex, interpolate, oklchColor } from "@/lib/color";
+import { clampChroma, formatHex, interpolate, oklchColor } from "@/features/theme/kit/color";
 
 export interface Oklch {
   l: number;

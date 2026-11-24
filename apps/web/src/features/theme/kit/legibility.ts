@@ -1,4 +1,4 @@
-import { blend, rgbColor, wcagContrast, wcagLuminance } from "@/lib/color";
+import { blend, rgbColor, wcagContrast, wcagLuminance } from "@/features/theme/kit/color";
 import { type Rgb } from "culori/fn";
 import { mixOklab } from "@/features/theme/kit/oklab";
 export const WCAG_AA_TEXT = 4.5;
