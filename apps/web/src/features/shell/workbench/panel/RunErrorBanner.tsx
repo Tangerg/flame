@@ -16,7 +16,7 @@ import { useActiveSessionProblem } from "@/features/agent/public/run";
 import { useT } from "@/lib/i18n/index";
 import { useMotion } from "@/lib/motion";
 import { describeActiveRunRefusal, describeErrorType } from "@/lib/rpcErrors";
-import { openDiagnosticsView } from "@/features/workspace/public/deeplinks";
+import { openWorkspaceClientDiagnostics } from "@/features/workspace/public/deeplinks";
 import { showWorkspaceDock } from "@/features/workspace/public/navigation";
 import { useRuntimeCommandsAvailable } from "@/features/connection/public/serviceStatus";
 import { type AgentProblem } from "@/features/agent/public/sessionView";
@@ -139,7 +139,9 @@ export function RunErrorBanner() {
               />
               <BannerAction
                 label={t("runError.action.diagnostics")}
-                onClick={(event) => openDiagnosticsView(workspaceAccess, event.currentTarget)}
+                onClick={(event) =>
+                  openWorkspaceClientDiagnostics(workspaceAccess, event.currentTarget)
+                }
               />
             </div>
           </div>

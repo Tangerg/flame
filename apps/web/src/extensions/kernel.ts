@@ -127,13 +127,9 @@ export function contributionsTo<T>(point: ExtensionPoint<T>): ReadonlyArray<Cont
   return resolved as ReadonlyArray<Contribution<T>>;
 }
 
-function subscribe(onChange: () => void): () => void {
+export function subscribeContributions(onChange: () => void): () => void {
   const subscription = publication.view.subscribe(onChange);
   return () => subscription[disposeSymbol]();
-}
-
-export function subscribeContributions(listener: () => void): () => void {
-  return subscribe(listener);
 }
 
 function installedSnapshot(): ReadonlyArray<string> {
@@ -154,12 +150,12 @@ function installedSnapshot(): ReadonlyArray<string> {
 }
 
 export function useLoadedPluginNames(): ReadonlyArray<string> {
-  return useSyncExternalStore(subscribe, installedSnapshot, () => EMPTY_NAMES);
+  return useSyncExternalStore(subscribeContributions, installedSnapshot, () => EMPTY_NAMES);
 }
 
 export function useContributions<T>(point: ExtensionPoint<T>): ReadonlyArray<Contribution<T>> {
   return useSyncExternalStore(
-    subscribe,
+    subscribeContributions,
     () => contributionsTo(point),
     () => NOTHING as ReadonlyArray<Contribution<T>>,
   );

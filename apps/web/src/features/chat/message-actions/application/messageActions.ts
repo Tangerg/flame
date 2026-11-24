@@ -140,5 +140,5 @@ function restoreCopy(restoreType: RestoreType): string {
 export function forkFromMessage(agentAccess: AgentAccess, msg: Message): void {
   const conversation = agentAccess.activeAgentConversation();
   if (!conversation || !canForkMessage(msg)) return;
-  void agentAccess.forkAgentSessionAtRun(conversation.sessionId, msg.runId);
+  void agentAccess.forkAgentSession(conversation.sessionId, msg.runId);
 }

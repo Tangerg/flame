@@ -9,7 +9,6 @@ import {
   selectRootNarrativeMessages,
   selectRootRollbackBoundary,
 } from "@/features/agent/application/view/runTree";
-import { forkSessionAt } from "@/features/agent/application/session/forkSession";
 import { rehydrateSessionView } from "@/features/agent/application/session/rehydrateSession";
 import { projectAgentSessionSnapshot } from "@/features/agent/application/session/sessionSnapshot";
 import { type AgentCommandOwner } from "@/features/agent/application/agentCommandOwner";
@@ -118,12 +117,4 @@ async function rollbackBeforeRun(
   owner.assertCurrent();
   const userInput = result.droppedRuns.find((dropped) => dropped.runId === runId)?.userInput;
   return { status: "committed", ...(userInput ? { userInput } : {}) };
-}
-
-export function forkAgentSessionAtRun(
-  agentAccess: AgentDependencies,
-  sessionId: string,
-  runId: string,
-): Promise<void> {
-  return forkSessionAt(agentAccess, sessionId, runId);
 }

@@ -6,7 +6,7 @@ import { AGENT_SESSIONS } from "@/features/agent/public/services";
 import { installFolderIndexRefresh } from "@/features/workspace/adapters/folderIndexRefresh";
 import {
   invalidateWorkspaceEvent,
-  invalidateWorkspaceEverything,
+  replaceWorkspaceReadModels,
   replaceWorkspaceServerScope,
   retireWorkspaceReadModels,
 } from "@/features/workspace/adapters/queryInvalidation";
@@ -45,7 +45,7 @@ export function createWorkspaceEventsPlugin(
         subscribe: ({ target, signal }) =>
           subscribeRuntimeWorkspaceEvents(runtimeAccess, runtimeClient, target, signal),
         handleEvent: invalidateWorkspaceEvent.bind(null, agentAccess),
-        invalidateAll: invalidateWorkspaceEverything.bind(null, agentAccess),
+        invalidateAll: replaceWorkspaceReadModels.bind(null, agentAccess),
         reportDisconnect: (connectionGeneration) => {
           ctx.dependencies.runtime.reportConnectionLoss(connectionGeneration);
         },

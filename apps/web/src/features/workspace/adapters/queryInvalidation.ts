@@ -69,10 +69,6 @@ export function invalidateWorkspaceEvent(agentAccess: AgentAccess, ev: Workspace
   invalidateWorkspaceTargets(agentAccess, workspaceInvalidations(ev), ev);
 }
 
-export function invalidateWorkspaceEverything(agentAccess: AgentAccess): void {
-  replaceWorkspaceReadModels(agentAccess);
-}
-
 export function retireWorkspaceReadModels(agentAccess: AgentAccess): void {
   agentAccess.synchronizeMountedAgentSessions({ ownership: "retire-live" });
   void queryClient.cancelQueries({ predicate: workspaceReadModels(agentAccess) });
@@ -83,7 +79,7 @@ export function replaceWorkspaceServerScope(agentAccess: AgentAccess): void {
   void queryClient.resetQueries({ predicate: workspaceReadModels(agentAccess) });
 }
 
-function replaceWorkspaceReadModels(agentAccess: AgentAccess): void {
+export function replaceWorkspaceReadModels(agentAccess: AgentAccess): void {
   agentAccess.synchronizeMountedAgentSessions({ ownership: "replace-live" });
   void replaceCachedRead({ predicate: workspaceReadModels(agentAccess) });
 }

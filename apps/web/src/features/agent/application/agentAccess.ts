@@ -11,10 +11,10 @@ import {
 import { createSession } from "./session/createSession";
 import {
   activeAgentConversation,
-  forkAgentSessionAtRun,
   rollbackSessionToBeforeRun,
   regenerateSessionRun,
 } from "./session/historyActions";
+import { forkSessionAt } from "./session/forkSession";
 import { rehydrateSessionView } from "./session/rehydrateSession";
 import {
   synchronizeMountedAgentSession,
@@ -46,7 +46,7 @@ export function createAgentAccess(dependencies: AgentDependencies) {
     subscribeActiveSessionId: subscribeActiveSessionId.bind(undefined, dependencies),
     createSession: createSession.bind(undefined, dependencies),
     activeAgentConversation: activeAgentConversation.bind(undefined, dependencies),
-    forkAgentSessionAtRun: forkAgentSessionAtRun.bind(undefined, dependencies),
+    forkAgentSession: forkSessionAt.bind(undefined, dependencies),
     rollbackSessionToBeforeRun: rollbackSessionToBeforeRun.bind(undefined, dependencies),
     regenerateSessionRun: regenerateSessionRun.bind(undefined, dependencies),
     rehydrateSessionView: rehydrateSessionView.bind(undefined, dependencies),
