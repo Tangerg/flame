@@ -31,16 +31,12 @@ export const runId = (row: TrajectoryEntry) =>
       : row.type === "endpoint"
         ? (row.endpoint.runId ?? "")
         : row.item.runId;
+// A denied or canceled tool call reads as a normal end but still deserves a look.
 function needsAttention(row: TrajectoryEntry): boolean {
-  if (row.type === "model" || row.type === "endpoint") {
-    const source = row.type === "model" ? row.model : row.endpoint;
-    return source.state === "failed" || source.state === "unknown";
+  if (row.type !== "item") {
+    const tone = statusTone(row);
+    return tone === "warning" || tone === "negative";
   }
-  if (row.type === "run")
-    return (
-      row.run.status === "waiting" ||
-      ["failed", "timedOut", "lost"].includes(row.run.outcome?.type ?? "")
-    );
   return (
     row.item.status === "incomplete" ||
     (row.item.type === "toolCall" &&
