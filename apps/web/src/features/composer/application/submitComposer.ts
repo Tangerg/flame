@@ -36,12 +36,13 @@ export function submitComposer({ draft, sendInput, canSend, restoreFocus }: Subm
     hasReferences: references.length > 0,
   };
   let settled = false;
-  const consume = (record: boolean) => {
+  const consume = (history: "record" | "skip") => {
     if (settled) return;
     settled = true;
-    if (draft.consume(record ? intent.historyText || undefined : undefined)) restoreFocus();
+    if (draft.consume(history === "record" ? intent.historyText || undefined : undefined))
+      restoreFocus();
   };
-  const accept = () => consume(true);
+  const accept = () => consume("record");
 
   for (const mode of lookupExtensionPoint(COMPOSER_SUBMIT_MODE)) {
     const owner = lookupExtensionOwner(COMPOSER_SUBMIT_MODE, mode.id) ?? "unknown";
@@ -58,7 +59,7 @@ export function submitComposer({ draft, sendInput, canSend, restoreFocus }: Subm
       reportPluginError(owner, "command", error, `composer.submitMode:${mode.id}`);
     try {
       void Promise.resolve(
-        mode.submit({ ...modeDraft, accept, clear: () => consume(false) }),
+        mode.submit({ ...modeDraft, accept, clear: () => consume("skip") }),
       ).catch(report);
     } catch (error) {
       report(error);

@@ -134,7 +134,11 @@ export class Session {
       );
   }
 
-  retired(reason: Reason, clean: boolean): void {
-    this.#phase = { state: clean ? "closed" : "faulted", reason };
+  closed(reason: Reason): void {
+    this.#phase = { state: "closed", reason };
+  }
+
+  faulted(reason: Reason): void {
+    this.#phase = { state: "faulted", reason };
   }
 }

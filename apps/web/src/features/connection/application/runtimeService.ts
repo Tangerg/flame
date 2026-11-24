@@ -78,11 +78,11 @@ export function createRuntimeServiceController<Capabilities>(
     scheduled = setTimeout(() => {
       scheduled = undefined;
       if (kind === "poll") failures = 0;
-      void inspect(false);
+      void inspect("quiet");
     }, delay);
   };
 
-  const inspect = (announce: boolean): Promise<void> => {
+  const inspect = (presence: "announce" | "quiet"): Promise<void> => {
     if (!active) return Promise.resolve();
     if (attempt) return attempt.promise;
     clearSchedule();
@@ -108,7 +108,7 @@ export function createRuntimeServiceController<Capabilities>(
       deadlineSettled = true;
       resolveDeadline();
     };
-    if (announce) sink.checking();
+    if (presence === "announce") sink.checking();
     let inspection: Promise<RuntimeConnectionInspection<Capabilities>>;
     try {
       inspection = inspector.inspect(controller.signal);
@@ -159,16 +159,16 @@ export function createRuntimeServiceController<Capabilities>(
     start() {
       if (!active || monitoring) return;
       monitoring = true;
-      void inspect(true);
+      void inspect("announce");
     },
     refresh() {
-      return inspect(true);
+      return inspect("announce");
     },
     replace() {
       if (!active) return Promise.resolve();
       retireInspection();
       failures = 0;
-      return inspect(false);
+      return inspect("quiet");
     },
     recover() {
       if (!active) return;

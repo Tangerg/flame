@@ -433,9 +433,9 @@ export class Control {
         }
         await engine?.close();
         await resource.work?.catch(() => {});
-        resource.session.retired(reason, true);
+        resource.session.closed(reason);
       } catch (cause) {
-        resource.session.retired("cleanup", false);
+        resource.session.faulted("cleanup");
         this.#failure = cause;
         throw cause;
       } finally {

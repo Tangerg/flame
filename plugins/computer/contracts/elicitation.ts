@@ -91,10 +91,10 @@ const propertyDefinition = z.union([
 function bounds(
   minimum: number | undefined,
   maximum: number | undefined,
-  count = false,
+  kind: "number" | "count" = "number",
 ): void {
   if (
-    (count &&
+    (kind === "count" &&
       [minimum, maximum].some(
         (value) =>
           value !== undefined && (!Number.isSafeInteger(value) || value < 0),
@@ -226,7 +226,7 @@ function stringSchema(field: FieldDefinition<"string">): z.ZodType {
   bounds(
     "minLength" in field ? field.minLength : undefined,
     "maxLength" in field ? field.maxLength : undefined,
-    true,
+    "count",
   );
   let schema = z.string();
   if ("minLength" in field && field.minLength !== undefined)
@@ -253,7 +253,7 @@ function stringSchema(field: FieldDefinition<"string">): z.ZodType {
 }
 
 function arraySchema(field: FieldDefinition<"array">): z.ZodType {
-  bounds(field.minItems, field.maxItems, true);
+  bounds(field.minItems, field.maxItems, "count");
   const choices = distinctValues(arrayChoices(field));
   if (field.minItems !== undefined && field.minItems > choices.length)
     throw new InvalidPermission(
