@@ -212,148 +212,129 @@ function httpResponseRow(
   };
 }
 
-export function resultContent(
-  renderer: string,
+type Renderer = (
+  source: string,
   tool: CapturedToolResult,
   t: Translate,
-): ResultContent {
-  const source = tool.result ?? "";
-  switch (renderer) {
-    case "shell":
-    case "read-shell-output":
-      return { kind: "output", text: source };
-    case "read":
-      return {
-        kind: "rows",
-        label: t("caption.source"),
-        rows: sourceRows(source.replace(/\n$/, ""), tool.range?.start ?? 1),
-      };
-    case "ask-user":
-      return {
-        kind: "rows",
-        label: t("caption.answer"),
-        rows: proseRows(source),
-      };
-    case "load-skill":
-    case "read-skill-resource": {
-      const page = skillPage(source, "content");
-      const body = page?.content ?? source;
-      const rows =
-        renderer === "load-skill" ? proseRows(body) : sourceRows(body);
-      return {
-        kind: "rows",
-        label: t(
-          renderer === "load-skill" ? "caption.instructions" : "caption.result",
-        ),
-        rows: page ? skillPageRows(page, rows) : rows,
-        continues: page?.next_cursor !== undefined,
-      };
-    }
-    case "search-memory":
-      return {
-        kind: "rows",
-        label: t("caption.memories"),
-        rows: proseRows(source),
-      };
-    case "list-skills": {
-      const page = skillPage(source, "skills");
-      return {
-        kind: "rows",
-        label: t("caption.skills"),
-        rows: page
-          ? skillPageRows(
-              page,
-              page.skills!.map((skill) => ({
-                kind: "entry",
-                title: skill.name,
-                body: skill.description,
-              })),
-            )
-          : sourceRows(source),
-        continues: page?.next_cursor !== undefined,
-        emptyMessage: t("skills.empty"),
-      };
-    }
-    case "read-tool-result":
-    case "search-tools":
-    case "lsp":
-    case "stop-shell":
-    case "propose-skill":
-    case "delegate-task":
-      return {
-        kind: "rows",
-        label: t("caption.result"),
-        rows: sourceRows(source),
-      };
-  }
-  const result = parsed(source);
-  if (renderer === "run-script") return scriptContent(result, source, t);
-  if (renderer === "http-request") {
-    const response = httpResponseRow(result, t);
-    return response
-      ? {
-          kind: "rows",
-          label: t("caption.response"),
-          rows: [response],
-        }
-      : { kind: "rows", label: t("caption.result"), rows: sourceRows(source) };
-  }
-  if (renderer === "web-fetch" || renderer === "web-browse") {
-    const page = webPage(result);
-    return page
-      ? {
-          kind: "rows",
-          label: page.format,
-          continues: page.nextOffset !== undefined,
-          rows: [
-            { kind: "located", location: page.url, body: page.content },
-            {
-              kind: "located",
-              location: "snapshotId / offset / totalRunes / nextOffset",
-              body: JSON.stringify(
-                {
-                  snapshotId: page.snapshotId,
-                  offset: page.offset,
-                  totalRunes: page.totalRunes,
-                  ...(page.nextOffset === undefined
-                    ? {}
-                    : { nextOffset: page.nextOffset }),
-                },
-                null,
-                2,
-              ),
-            },
-          ],
-        }
-      : { kind: "rows", label: t("caption.result"), rows: sourceRows(source) };
-  }
-  if (renderer === "web-search" && Array.isArray(result.results))
+) => ResultContent;
+
+function resultRows(source: string, t: Translate): ResultContent {
+  return { kind: "rows", label: t("caption.result"), rows: sourceRows(source) };
+}
+
+const outputRenderer: Renderer = (source) => ({ kind: "output", text: source });
+
+const sourceRenderer: Renderer = (source, _tool, t) => resultRows(source, t);
+
+function proseRenderer(label: string): Renderer {
+  return (source, _tool, t) => ({
+    kind: "rows",
+    label: t(label),
+    rows: proseRows(source),
+  });
+}
+
+function skillDocumentRenderer(
+  label: string,
+  rowsOf: (body: string) => Row[],
+): Renderer {
+  return (source, _tool, t) => {
+    const page = skillPage(source, "content");
+    const rows = rowsOf(page?.content ?? source);
     return {
       kind: "rows",
-      label: t("caption.results"),
-      rows: result.results.map((hit) => {
-        const value = record(hit);
-        const title = text(value.title).trim();
-        const url = text(value.url);
-        const context = [
-          title && title !== url ? url : undefined,
-          typeof value.source === "string" ? value.source : undefined,
-          typeof value.published_time === "string"
-            ? value.published_time
-            : undefined,
-        ]
-          .filter((part) => part !== undefined)
-          .join("\n");
-        return {
-          kind: "entry",
-          title: title || url,
-          context: context || undefined,
-          body: value.snippet === undefined ? undefined : text(value.snippet),
-        };
-      }),
+      label: t(label),
+      rows: page ? skillPageRows(page, rows) : rows,
+      continues: page?.next_cursor !== undefined,
     };
-  // A shape-selected result renders by the shape its tool declared; member
-  // names alone never decide what a result means.
+  };
+}
+
+const listSkills: Renderer = (source, _tool, t) => {
+  const page = skillPage(source, "skills");
+  return {
+    kind: "rows",
+    label: t("caption.skills"),
+    rows: page
+      ? skillPageRows(
+          page,
+          page.skills!.map((skill) => ({
+            kind: "entry",
+            title: skill.name,
+            body: skill.description,
+          })),
+        )
+      : sourceRows(source),
+    continues: page?.next_cursor !== undefined,
+    emptyMessage: t("skills.empty"),
+  };
+};
+
+const httpRequest: Renderer = (source, _tool, t) => {
+  const response = httpResponseRow(parsed(source), t);
+  return response
+    ? { kind: "rows", label: t("caption.response"), rows: [response] }
+    : resultRows(source, t);
+};
+
+const webDocument: Renderer = (source, _tool, t) => {
+  const page = webPage(parsed(source));
+  if (!page) return resultRows(source, t);
+  const position = {
+    snapshotId: page.snapshotId,
+    offset: page.offset,
+    totalRunes: page.totalRunes,
+    ...(page.nextOffset === undefined ? {} : { nextOffset: page.nextOffset }),
+  };
+  return {
+    kind: "rows",
+    label: page.format,
+    continues: page.nextOffset !== undefined,
+    rows: [
+      { kind: "located", location: page.url, body: page.content },
+      {
+        kind: "located",
+        location: Object.keys(position).join(" / "),
+        body: JSON.stringify(position, null, 2),
+      },
+    ],
+  };
+};
+
+function searchHit(hit: unknown): Row {
+  const value = record(hit);
+  const title = text(value.title).trim();
+  const url = text(value.url);
+  const context = [
+    title && title !== url ? url : undefined,
+    typeof value.source === "string" ? value.source : undefined,
+    typeof value.published_time === "string" ? value.published_time : undefined,
+  ]
+    .filter((part) => part !== undefined)
+    .join("\n");
+  return {
+    kind: "entry",
+    title: title || url,
+    context: context || undefined,
+    body: value.snippet === undefined ? undefined : text(value.snippet),
+  };
+}
+
+const webSearch: Renderer = (source, tool, t) => {
+  const result = parsed(source);
+  return Array.isArray(result.results)
+    ? {
+        kind: "rows",
+        label: t("caption.results"),
+        rows: result.results.map(searchHit),
+      }
+    : declaredShape(source, tool, t);
+};
+
+// A shape-selected result renders by the shape its tool declared; member
+// names alone never decide what a result means.
+const declaredShape: Renderer = (source, tool, t) => {
+  const result = parsed(source);
   switch (tool.resultShape) {
     case "patch":
       if (Array.isArray(result.changes))
@@ -366,14 +347,51 @@ export function resultContent(
     }
     case "command":
       if (typeof result.output === "string")
-        return {
-          kind: "rows",
-          label: t("caption.result"),
-          rows: sourceRows(result.output),
-        };
+        return resultRows(result.output, t);
       break;
   }
-  return { kind: "rows", label: t("caption.result"), rows: sourceRows(source) };
+  return resultRows(source, t);
+};
+
+// Keyed by the component ids the package declares; a declared id without an
+// entry renders by its tool's result shape.
+const RENDERERS: Readonly<Record<string, Renderer>> = {
+  shell: outputRenderer,
+  "read-shell-output": outputRenderer,
+  read: (source, tool, t) => ({
+    kind: "rows",
+    label: t("caption.source"),
+    rows: sourceRows(source.replace(/\n$/, ""), tool.range?.start ?? 1),
+  }),
+  "ask-user": proseRenderer("caption.answer"),
+  "search-memory": proseRenderer("caption.memories"),
+  "load-skill": skillDocumentRenderer("caption.instructions", proseRows),
+  "read-skill-resource": skillDocumentRenderer("caption.result", (body) =>
+    sourceRows(body),
+  ),
+  "list-skills": listSkills,
+  "read-tool-result": sourceRenderer,
+  "search-tools": sourceRenderer,
+  lsp: sourceRenderer,
+  "stop-shell": sourceRenderer,
+  "propose-skill": sourceRenderer,
+  "delegate-task": sourceRenderer,
+  "http-request": httpRequest,
+  "web-fetch": webDocument,
+  "web-browse": webDocument,
+  "web-search": webSearch,
+  "run-script": (source, _tool, t) => scriptContent(parsed(source), source, t),
+};
+
+export function resultContent(
+  renderer: string,
+  tool: CapturedToolResult,
+  t: Translate,
+): ResultContent {
+  const render = Object.hasOwn(RENDERERS, renderer)
+    ? RENDERERS[renderer]!
+    : declaredShape;
+  return render(tool.result ?? "", tool, t);
 }
 
 const SCRIPT_CALL_STATUSES = new Set([
