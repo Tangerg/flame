@@ -15,6 +15,7 @@ import {
   mutationSettlementIsUnknown,
   type ComponentContext,
   useTranslator,
+  watchRuntimeTopics,
 } from "@flame/component-sdk";
 import {
   CAPABILITY_JSON,
@@ -226,17 +227,12 @@ export function useMemory(
     const signal = AbortSignal.any([context.signal, controller.signal]);
     const watch = async () => {
       try {
-        const subscription = await context.runtime.runtimeEvents.subscribe(
+        await watchRuntimeTopics(
+          context.runtime,
           { topics: ["plugins.dataChanged"] },
           signal,
+          () => refreshAccepted(signal),
         );
-        if (signal.aborted) return;
-        refreshAccepted(signal);
-        for await (const event of subscription.events) {
-          if (signal.aborted) break;
-          if (event.type === "plugins.dataChanged" || event.type === "resync")
-            refreshAccepted(signal);
-        }
       } catch (error) {
         if (!signal.aborted)
           setRead((previous) => ({

@@ -11,6 +11,7 @@ import {
   type ComponentContext,
   type Translate,
   useTranslator,
+  watchRuntimeTopics,
 } from "@flame/component-sdk";
 import * as token from "@flame/ui/tokens.stylex";
 import { type MutationPromise } from "@flame/runtime-client";
@@ -102,7 +103,8 @@ export function Hooks({ context }: { context: ComponentContext }) {
     const signal = AbortSignal.any([componentSignal, controller.signal]);
     void track(async () => {
       try {
-        const subscription = await runtime.runtimeEvents.subscribe(
+        await watchRuntimeTopics(
+          runtime,
           {
             topics: ["hooks.changed", "plugins.changed", "files.changed"],
             watches: [
@@ -110,19 +112,8 @@ export function Hooks({ context }: { context: ComponentContext }) {
             ],
           },
           signal,
+          refreshFromEvent,
         );
-        if (signal.aborted) return;
-        refreshFromEvent();
-        for await (const event of subscription.events) {
-          if (signal.aborted) break;
-          if (
-            event.type === "hooks.changed" ||
-            event.type === "plugins.changed" ||
-            event.type === "files.changed" ||
-            event.type === "resync"
-          )
-            refreshFromEvent();
-        }
       } catch (error) {
         if (!signal.aborted) setObservationError(failureText(error));
       }

@@ -2,6 +2,7 @@ import {
   mutationSettlementIsUnknown,
   type ComponentContext,
   type ComponentSource,
+  watchRuntimeTopics,
 } from "@flame/component-sdk";
 import type { FlameClient, MutationPromise } from "@flame/runtime-client";
 import type {
@@ -110,21 +111,12 @@ export class ProviderSettings {
     this.refresh(context, signal);
     void context.track(async () => {
       try {
-        const subscription = await context.runtime.runtimeEvents.subscribe(
+        await watchRuntimeTopics(
+          context.runtime,
           { topics: ["models.changed", "plugins.changed"] },
           signal,
+          () => this.refresh(context, signal),
         );
-        if (signal.aborted) return;
-        this.refresh(context, signal);
-        for await (const event of subscription.events) {
-          if (signal.aborted) break;
-          if (
-            event.type === "models.changed" ||
-            event.type === "plugins.changed" ||
-            event.type === "resync"
-          )
-            this.refresh(context, signal);
-        }
       } catch (error) {
         if (!signal.aborted) {
           this.#snapshot = { ...this.#snapshot, observationFailure: { error } };

@@ -14,6 +14,7 @@ import {
   failureText as failure,
   type ComponentContext,
   useTranslator,
+  watchRuntimeTopics,
 } from "@flame/component-sdk";
 import { type MutationPromise } from "@flame/runtime-client";
 import {
@@ -206,7 +207,8 @@ export function useSkills(context: ComponentContext) {
     setObservationError(undefined);
     const observeChanges = async () => {
       try {
-        const subscription = await runtime.runtimeEvents.subscribe(
+        await watchRuntimeTopics(
+          runtime,
           {
             topics: [
               "skills.changed",
@@ -222,19 +224,8 @@ export function useSkills(context: ComponentContext) {
               : {}),
           },
           signal,
+          refreshOwners,
         );
-        if (signal.aborted) return;
-        refreshOwners();
-        for await (const event of subscription.events) {
-          if (signal.aborted) break;
-          if (
-            event.type === "skills.changed" ||
-            event.type === "plugins.changed" ||
-            event.type === "files.changed" ||
-            event.type === "resync"
-          )
-            refreshOwners();
-        }
       } catch (error) {
         if (!signal.aborted) setObservationError(failure(error));
       }

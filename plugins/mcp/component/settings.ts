@@ -3,6 +3,7 @@ import {
   isErrorType,
   type ComponentContext,
   type ComponentSource,
+  watchRuntimeTopics,
 } from "@flame/component-sdk";
 import type { MutationPromise } from "@flame/runtime-client";
 import type {
@@ -123,16 +124,12 @@ export class MCPSettings {
         this.#poll(context, attempt, signal);
     void context.track(async () => {
       try {
-        const subscription = await context.runtime.runtimeEvents.subscribe(
+        await watchRuntimeTopics(
+          context.runtime,
           { topics: ["mcp.changed", "plugins.changed", "approvals.changed"] },
           signal,
+          () => this.refresh(context, signal),
         );
-        if (signal.aborted) return;
-        this.refresh(context, signal);
-        for await (const _event of subscription.events) {
-          if (signal.aborted) break;
-          this.refresh(context, signal);
-        }
       } catch (error) {
         if (!signal.aborted) {
           this.#snapshot = { ...this.#snapshot, observationFailure: { error } };

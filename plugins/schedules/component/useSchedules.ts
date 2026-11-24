@@ -14,6 +14,7 @@ import {
   failureText as failure,
   type ComponentContext,
   useTranslator,
+  watchRuntimeTopics,
 } from "@flame/component-sdk";
 import { type Model } from "@flame/runtime-client/wire";
 import {
@@ -162,17 +163,12 @@ export function useSchedules(context: ComponentContext) {
     const signal = AbortSignal.any([context.signal, controller.signal]);
     const watch = async () => {
       try {
-        const subscription = await context.runtime.runtimeEvents.subscribe(
+        await watchRuntimeTopics(
+          context.runtime,
           { topics: ["plugins.dataChanged"] },
           signal,
+          () => void refresh(),
         );
-        if (signal.aborted) return;
-        void refresh();
-        for await (const event of subscription.events) {
-          if (signal.aborted) break;
-          if (event.type === "plugins.dataChanged" || event.type === "resync")
-            void refresh();
-        }
       } catch (error) {
         if (!signal.aborted) setLiveError(failure(error));
       }

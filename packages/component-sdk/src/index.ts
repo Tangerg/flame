@@ -15,6 +15,7 @@ import type {
   Target,
   WorkspaceRef,
   PluginPointReference,
+  RuntimeSubscribeRequest,
 } from "@flame/runtime-client/wire";
 export type {
   ClientTelemetry,
@@ -532,4 +533,23 @@ export function bindOperations<
         );
       }),
   };
+}
+
+// Calls changed once the subscription is live, so a reader catches up on what
+// happened before it subscribed, and again on every event of the subscribed
+// topics or a resync. Rejects when the observation fails.
+export async function watchRuntimeTopics(
+  runtime: Pick<FlameClient, "runtimeEvents">,
+  request: RuntimeSubscribeRequest,
+  signal: AbortSignal,
+  changed: () => void,
+): Promise<void> {
+  const subscription = await runtime.runtimeEvents.subscribe(request, signal);
+  if (signal.aborted) return;
+  changed();
+  const topics = new Set<string>(request.topics);
+  for await (const event of subscription.events) {
+    if (signal.aborted) return;
+    if (event.type === "resync" || topics.has(event.type)) changed();
+  }
 }
