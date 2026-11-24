@@ -1,7 +1,5 @@
 export const de: Record<string, string> = {
   "panel.title": "Gespeicherte Nutzungsberichte",
-  "panel.description":
-    "Unveränderliche Kopien der Kernabrechnungsberichte. Die Live-Abrechnung bleibt unberührt.",
   "period.daily.label": "Täglich",
   "period.daily.window": "letzte 24 Stunden",
   "period.weekly.label": "Wöchentlich",

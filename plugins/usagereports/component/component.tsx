@@ -451,12 +451,7 @@ function Archive({ context }: { context: BoundContext }) {
     <Panel
       ref={panel}
       label={t("panel.title")}
-      header={
-        <PanelHeader
-          title={t("panel.title")}
-          description={opened ? undefined : t("panel.description")}
-        />
-      }
+      header={<PanelHeader title={t("panel.title")} />}
       controls={
         opened ? (
           <>

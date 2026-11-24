@@ -85,7 +85,7 @@ export function Brand({ context }: { context: ComponentContext }) {
             : `${t("downloadFailed")} ${failure.detail}`}
         </p>
       )}
-      <PanelSection title={t("assets")} description={t("description")}>
+      <PanelSection title={t("assets")}>
         <TileGrid aria-label={t("title")}>
           {assets.map((asset) => (
             <Tile

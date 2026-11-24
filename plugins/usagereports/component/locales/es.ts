@@ -1,7 +1,5 @@
 export const es: Record<string, string> = {
   "panel.title": "Informes de uso guardados",
-  "panel.description":
-    "Copias inmutables de los informes de contabilidad base. La contabilidad en vivo no se ve afectada.",
   "period.daily.label": "Diario",
   "period.daily.window": "últimas 24 horas",
   "period.weekly.label": "Semanal",

@@ -26124,6 +26124,14 @@ rules precedence note, the Connection reconnect note and the token storage
 hint. Native Settings → Approvals shows `Mode` directly above Safe, Balanced
 and Auto.
 
+Two more surfaces: the Brand assets section drops `A little flame with a
+curious, friendly presence.` and Saved usage reports drops `Immutable copies
+of core accounting reports. Live accounting is unaffected.` Both restated
+what the cards and the archive show. Kept: the rolling-window note (the
+daily and weekly reports cover the last 24 hours or 7 days, not a calendar
+day or week), which changes how a report is read. Native Settings → Brand
+opens on `Brand assets` and the cards; the Dock opens on the cadence control.
+
 ### Captured source reading and visible context
 
 At `3cc13e9a8`, Computer's separate `Source` pre bypasses the shared reader's

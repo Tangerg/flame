@@ -1,6 +1,5 @@
 export const zh: Record<string, string> = {
   title: "品牌形象",
-  description: "一枚圆润的小火苗，带着好奇与亲近感。",
   assets: "品牌资源",
   "mark.title": "主 logo",
   "mark.description": "圆润火苗与两颗好奇的眼睛，适用于图标、头像和导航。",

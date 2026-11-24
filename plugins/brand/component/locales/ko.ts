@@ -1,6 +1,5 @@
 export const ko: Record<string, string> = {
   title: "브랜드 아이덴티티",
-  description: "호기심과 친근함을 담은 작고 둥근 불꽃입니다.",
   assets: "브랜드 자료",
   "mark.title": "기본 로고",
   "mark.description":

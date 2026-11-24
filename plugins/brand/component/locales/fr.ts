@@ -1,6 +1,5 @@
 export const fr: Record<string, string> = {
   title: "Identité de marque",
-  description: "Une petite flamme à la présence curieuse et chaleureuse.",
   assets: "Ressources de marque",
   "mark.title": "Logo principal",
   "mark.description":

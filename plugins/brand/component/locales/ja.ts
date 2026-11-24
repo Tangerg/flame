@@ -1,6 +1,5 @@
 export const ja: Record<string, string> = {
   title: "ブランド",
-  description: "好奇心と親しみやすさを感じる、小さく丸い炎。",
   assets: "ブランド素材",
   "mark.title": "メインロゴ",
   "mark.description":

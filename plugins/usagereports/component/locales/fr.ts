@@ -1,7 +1,5 @@
 export const fr: Record<string, string> = {
   "panel.title": "Rapports d’utilisation enregistrés",
-  "panel.description":
-    "Copies immuables des rapports de comptabilité principale. La comptabilité en direct n’est pas affectée.",
   "period.daily.label": "Quotidien",
   "period.daily.window": "dernières 24 heures",
   "period.weekly.label": "Hebdomadaire",

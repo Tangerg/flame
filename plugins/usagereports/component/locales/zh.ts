@@ -1,6 +1,5 @@
 export const zh: Record<string, string> = {
   "panel.title": "已保存的用量报告",
-  "panel.description": "核心核算报告的不可变副本。实时核算不受影响。",
   "period.daily.label": "每日",
   "period.daily.window": "最近 24 小时",
   "period.weekly.label": "每周",

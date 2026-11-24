@@ -1,7 +1,5 @@
 export const ko: Record<string, string> = {
   "panel.title": "저장된 사용량 보고서",
-  "panel.description":
-    "핵심 정산 보고서의 불변 복사본입니다. 실시간 정산은 영향을 받지 않습니다.",
   "period.daily.label": "일간",
   "period.daily.window": "최근 24시간",
   "period.weekly.label": "주간",

@@ -1,7 +1,5 @@
 export const ja: Record<string, string> = {
   "panel.title": "保存済みの使用量レポート",
-  "panel.description":
-    "コア会計レポートの不変コピー。ライブ会計には影響しません。",
   "period.daily.label": "日次",
   "period.daily.window": "過去 24 時間",
   "period.weekly.label": "週次",

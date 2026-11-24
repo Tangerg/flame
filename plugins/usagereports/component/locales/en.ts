@@ -1,7 +1,5 @@
 export const en: Record<string, string> = {
   "panel.title": "Saved usage reports",
-  "panel.description":
-    "Immutable copies of core accounting reports. Live accounting is unaffected.",
   "period.daily.label": "Daily",
   "period.daily.window": "last 24 hours",
   "period.weekly.label": "Weekly",

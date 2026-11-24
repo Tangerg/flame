@@ -1,6 +1,5 @@
 export const en: Record<string, string> = {
   title: "Brand identity",
-  description: "A little flame with a curious, friendly presence.",
   assets: "Brand assets",
   "mark.title": "Primary logo",
   "mark.description":
