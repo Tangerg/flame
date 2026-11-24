@@ -20,7 +20,7 @@ const styles = stylex.create({
     display: "flex",
     minHeight: space.s8,
     width: "100%",
-    alignItems: "center",
+    alignItems: "flex-start",
     gap: space.s2,
     borderRadius: radius.row,
     paddingInline: space.s2,
@@ -51,6 +51,8 @@ const styles = stylex.create({
     },
   },
 
+  // The mark centers on the label's first line, not on a wrapped label or its description.
+  markLine: { display: "flex", height: "1lh", flexShrink: 0, alignItems: "center" },
   dot: { display: "block", height: space.s1_5, width: space.s1_5, backgroundColor: "currentColor" },
 });
 
@@ -170,27 +172,28 @@ export function ChoiceOption({
 
   const content = (
     <>
-      <span
-        aria-hidden
-        {...stylex.props(
-          CHOICE_SURFACE.mark,
-          type.uiXs,
-          multiple ? CHOICE_SURFACE.square : corner.pill,
-          selected && CHOICE_SURFACE.selected,
-        )}
-      >
-        {multiple ? (
-          <CheckboxPrimitive.Indicator>
-            <Icon name="check" size="xs" />
-          </CheckboxPrimitive.Indicator>
-        ) : (
-          <>
-            {!selected && ordinal !== undefined && <span>{ordinal}</span>}
-            <RadioPrimitive.Indicator>
-              <span {...stylex.props(styles.dot, corner.pill)} />
-            </RadioPrimitive.Indicator>
-          </>
-        )}
+      <span aria-hidden {...stylex.props(styles.markLine)}>
+        <span
+          {...stylex.props(
+            CHOICE_SURFACE.mark,
+            type.uiXs,
+            multiple ? CHOICE_SURFACE.square : corner.pill,
+            selected && CHOICE_SURFACE.selected,
+          )}
+        >
+          {multiple ? (
+            <CheckboxPrimitive.Indicator>
+              <Icon name="check" size="xs" />
+            </CheckboxPrimitive.Indicator>
+          ) : (
+            <>
+              {!selected && ordinal !== undefined && <span>{ordinal}</span>}
+              <RadioPrimitive.Indicator>
+                <span {...stylex.props(styles.dot, corner.pill)} />
+              </RadioPrimitive.Indicator>
+            </>
+          )}
+        </span>
       </span>
       {children}
     </>

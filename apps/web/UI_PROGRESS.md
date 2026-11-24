@@ -2771,6 +2771,14 @@ Dock and Files step (2026-11-25):
   two quiet lines' text started 2 px apart; the outcome line now uses the
   mark's gap.
 
+- Question card's custom-answer row used its own 20 px mark inside an
+  unbled 8 px inset, so its pencil sat 10 px right of the choice marks and
+  its text 10 px right of their labels. It now shares `ChoiceList`'s row
+  geometry (18 px mark, bleed, gap): mark on the marks, text on the labels.
+- `ChoiceList` centered each mark on the whole row, so a mark sat beside a
+  wrapped label's second line or between a label and its description. Marks
+  now center on the label's first line (question cards, Approvals mode).
+
 Native `dock-files`, `dock-file` and `dock-schedules` show the tab label,
 chevrons or field glyphs and panel text on one line; the chat header's
 `scope` and `+25 −9` meet the prose and bubble edges. The full-width file

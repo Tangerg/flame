@@ -102,8 +102,11 @@ const qc = stylex.create({
   optionDescription: { flexBasis: "100%", minWidth: 0, overflowWrap: "anywhere" },
   field: { paddingInline: space.s2, paddingBlock: space.s1_5 },
   textArea: { maxHeight: "calc(var(--spacing) * 40)" },
+  // Shares ChoiceList's row geometry, so the mark sits on the choice marks and the text on
+  // their labels.
   freeRow: {
     display: "flex",
+    marginInline: `calc(-1 * ${space.s2})`,
     minHeight: space.s8,
     borderRadius: radius.field,
     alignItems: "center",
@@ -117,8 +120,8 @@ const qc = stylex.create({
   },
   freeMark: {
     display: "grid",
-    height: space.s5,
-    width: space.s5,
+    height: "var(--control-mark-size)",
+    width: "var(--control-mark-size)",
     flexShrink: 0,
     placeItems: "center",
     borderWidth: "var(--control-edge-width)",
