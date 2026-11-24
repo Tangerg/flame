@@ -15,7 +15,6 @@ export const zh: Record<string, string> = {
   "section.review": "技能提议",
   "section.library": "个人技能库",
   "section.library.description": "安装提供的技能随其包一起管理。",
-  "section.workspace.path": "工作区：{{path}}",
   "section.selectWorkspace": "选择一个工作区以查看可用技能与提议。",
   "summary.available_other": "{{count}} 个可用技能",
   "summary.review_other": "{{count}} 项待处理提议",

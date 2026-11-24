@@ -2,7 +2,6 @@ export const ja: Record<string, string> = {
   "panel.title": "Agent メモリ",
   "scope.user": "ユーザーメモリ",
   "scope.project": "プロジェクトメモリ",
-  "scope.project.path": "プロジェクトメモリ · {{path}}",
   "scope.none":
     "ワークスペースを持つ Session を選択するか、ユーザーメモリを選択してください。",
   "nav.label": "メモリのナビゲーション",

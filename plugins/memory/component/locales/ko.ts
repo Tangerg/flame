@@ -2,7 +2,6 @@ export const ko: Record<string, string> = {
   "panel.title": "Agent 메모리",
   "scope.user": "사용자 메모리",
   "scope.project": "프로젝트 메모리",
-  "scope.project.path": "프로젝트 메모리 · {{path}}",
   "scope.none":
     "작업 공간이 있는 Session을 선택하거나 사용자 메모리를 선택하세요.",
   "nav.label": "메모리 탐색",

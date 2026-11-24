@@ -17,7 +17,6 @@ export const ja: Record<string, string> = {
   "section.library": "個人スキルライブラリ",
   "section.library.description":
     "インストールが提供するスキルはそのパッケージで管理されます。",
-  "section.workspace.path": "ワークスペース：{{path}}",
   "section.selectWorkspace":
     "利用可能なスキルと提案を確認するワークスペースを選択してください。",
   "summary.available_other": "{{count}} 件の利用可能なスキル",

@@ -16,7 +16,6 @@ export const zhTW: Record<string, string> = {
   "section.review": "技能提議",
   "section.library": "個人技能庫",
   "section.library.description": "安裝提供的技能隨其套件一起管理。",
-  "section.workspace.path": "工作區：{{path}}",
   "section.selectWorkspace": "選擇一個工作區以檢視可用技能與提議。",
   "summary.available_other": "{{count}} 個可用技能",
   "summary.review_other": "{{count}} 項待處理提議",

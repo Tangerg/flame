@@ -404,13 +404,9 @@ export function Skills({ context }: { context: ComponentContext }) {
         <PanelSection
           title={summary ?? title}
           description={
-            <>
-              {target === "library"
-                ? t("section.library.description")
-                : workspace
-                  ? t("section.workspace.path", { path: workspace.ref.path })
-                  : t("section.selectWorkspace")}
-            </>
+            target === "library"
+              ? t("section.library.description")
+              : !workspace && t("section.selectWorkspace")
           }
         >
           <Metadata role="status" className="sr-only">

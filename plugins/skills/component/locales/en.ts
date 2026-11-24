@@ -17,7 +17,6 @@ export const en: Record<string, string> = {
   "section.library": "Personal Skill library",
   "section.library.description":
     "Installation-provided Skills are managed with their package.",
-  "section.workspace.path": "Workspace: {{path}}",
   "section.selectWorkspace":
     "Select a workspace to inspect available Skills and proposals.",
   "summary.available_one": "{{count}} available Skill",

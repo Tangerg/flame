@@ -2,7 +2,6 @@ export const es: Record<string, string> = {
   "panel.title": "Memoria del agente",
   "scope.user": "Memoria de usuario",
   "scope.project": "Memoria de proyecto",
-  "scope.project.path": "Memoria de proyecto · {{path}}",
   "scope.none":
     "Elige una Session con un espacio de trabajo o selecciona la memoria de usuario.",
   "nav.label": "Navegación de memoria",

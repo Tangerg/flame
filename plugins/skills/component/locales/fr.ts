@@ -17,7 +17,6 @@ export const fr: Record<string, string> = {
   "section.library": "Bibliothèque de Skills personnelle",
   "section.library.description":
     "Les Skills fournis par l’installation sont gérés avec leur paquet.",
-  "section.workspace.path": "Espace de travail : {{path}}",
   "section.selectWorkspace":
     "Sélectionnez un espace de travail pour inspecter les Skills disponibles et les propositions.",
   "summary.available_one": "{{count}} Skill disponible",

@@ -108,13 +108,8 @@ export function Memory({ context }: { context: ComponentContext }) {
           size="md"
           title={t("panel.title")}
           context={
-            <Metadata>
-              {scope === "user"
-                ? t("scope.user")
-                : cwd
-                  ? t("scope.project.path", { path: cwd })
-                  : t("scope.none")}
-            </Metadata>
+            scope === "project" &&
+            !cwd && <Metadata>{t("scope.none")}</Metadata>
           }
         />
       }

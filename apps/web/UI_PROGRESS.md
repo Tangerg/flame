@@ -28190,6 +28190,17 @@ the export file name. Native `dock-runs` opens on search, the observation and
 Run filters, then the page summary. Plugin typecheck and published resource
 checks pass.
 
+The same rule covers the workspace-scoped panels, which are keyed to the
+active Session's workspace. Agent memory's header read `Project memory ·
+/Users/visual/scope` above a `Current project | User` switch that already
+names the scope; Skills described its list as `Workspace: /Users/visual/
+scope`. Memory now shows a header line only for project scope without a
+workspace (`Choose a Session with a workspace, or select User memory.`), and
+Skills describes the list only for the library or a missing workspace.
+`scope.project.path` and `section.workspace.path` leave all eight catalogs;
+Skill details keep the Workspace fact. Native `dock-skills` and
+`dock-agent-memory-recorded` open on their scope controls.
+
 ### Trajectory page and failure continuity across display languages (2026-11-13)
 
 Changing the display language now keeps the accepted page, captured descendant

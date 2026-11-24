@@ -2,7 +2,6 @@ export const zh: Record<string, string> = {
   "panel.title": "Agent 记忆",
   "scope.user": "用户记忆",
   "scope.project": "项目记忆",
-  "scope.project.path": "项目记忆 · {{path}}",
   "scope.none": "请选择包含工作区的 Session，或选择用户记忆。",
   "nav.label": "记忆导航",
   refresh: "刷新",
