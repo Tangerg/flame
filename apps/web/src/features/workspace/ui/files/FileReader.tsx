@@ -29,12 +29,18 @@ import {
   vocab,
 } from "@flame/ui";
 import { useT } from "@/lib/i18n/index";
-import { parseFileLineNumber } from "@/features/workspace/ui/files/fileLineNumber";
 import { FileView } from "@/features/workspace/ui/files/FileView";
 import { type WorkspaceFileContent } from "@/features/workspace/application/workspaceQueries";
 import { type WorkspaceFileViewer } from "@/features/workspace/application/navigationState";
 import { fileRendererCandidates } from "@/features/workspace/application/fileRenderer";
 import { type FileReadPaging } from "@/features/workspace/ui/files/fileReadWindow";
+
+function parseFileLineNumber(value: string): number | null {
+  const text = value.trim();
+  if (!/^[0-9\uFF10-\uFF19]+$/.test(text)) return null;
+  const line = Number(text.normalize("NFKC"));
+  return Number.isSafeInteger(line) && line > 0 ? line : null;
+}
 
 const styles = stylex.create({
   edge: { display: "flex", justifyContent: "center", paddingBlock: space.s1_5 },
