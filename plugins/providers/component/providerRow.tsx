@@ -16,6 +16,8 @@ import { providerResource, type ProviderSettings } from "./settings";
 import { EndpointField } from "./endpointField";
 import { CommandFeedback } from "./feedback";
 const literal = { whiteSpace: "pre-wrap", overflowWrap: "anywhere" } as const;
+const mono = { fontFamily: "var(--font-mono)" } as const;
+const MASKED = "\u0000";
 
 function ProviderCredentialBadge({
   provider,
@@ -33,12 +35,16 @@ function ProviderCredentialBadge({
     );
   if (!provider.configured)
     return <Badge tone="neutral">{t("providers.notConfigured")}</Badge>;
+  if (!credential) return <Badge tone="success">{t("providers.ready")}</Badge>;
+  // Only the masked key is data; the surrounding words keep the body face.
+  const [before = "", after = ""] = t("providers.key", {
+    masked: MASKED,
+  }).split(MASKED);
   return (
-    // Only the masked key is data; the surrounding words keep the body face.
-    <Badge tone="success" face={credential ? "mono" : undefined}>
-      {credential
-        ? t("providers.key", { masked: credential.masked })
-        : t("providers.ready")}
+    <Badge tone="success">
+      {before}
+      <span style={mono}>{credential.masked}</span>
+      {after}
     </Badge>
   );
 }

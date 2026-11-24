@@ -20977,6 +20977,15 @@ deletion; rerunning with its exact digest passed all source, artifact, native,
 publication and ownership checks. This documentation receipt changes no tested
 source. The primary checkout and its parallel work remain untouched.
 
+### Only the masked key in mono (2026-11-24)
+
+The Providers credential badge set its whole text in mono (`Key sk-…7F2A`,
+`キー sk-…7F2A`) while its comment said only the masked key is data. The
+badge now keeps the localized word in the body face and sets just the
+masked value in mono; `Ready` and the env/unset badges are unchanged.
+Native Japanese `pane=providers` reads `キー` in the body face beside a mono
+`sk-…7F2A`. Plugin typecheck and published resource checks pass.
+
 ### Running reads in one tone (2026-11-24)
 
 Delegated runs paired the running dot's accent with info-blue text, so a
