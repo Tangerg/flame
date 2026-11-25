@@ -10,6 +10,9 @@ import {
 } from "@/features/agent/public/runPresentation";
 export interface DelegatedRunSummary {
   label: string;
+  // The delegation names the run; sibling counts only tell runs of one delegation apart.
+  title: string;
+  sibling: string | null;
   statusLabel: string;
   dotTone: DotTone;
   ink: Tone;
@@ -63,6 +66,8 @@ export function delegatedRunSummary(
       : t("agent.runTree.delegated.many", { index: ordinal, count: siblingCount });
   return {
     label: taskLabel ? (siblingCount === 1 ? taskLabel : `${taskLabel} · ${identity}`) : identity,
+    title: taskLabel ?? identity,
+    sibling: taskLabel && siblingCount > 1 ? identity : null,
     statusLabel: t(statusView.labelKey),
     dotTone: statusView.dotTone,
     ink: statusView.ink,

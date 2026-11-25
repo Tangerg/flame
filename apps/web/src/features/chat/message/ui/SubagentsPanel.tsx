@@ -286,24 +286,23 @@ export function SubagentsPanel() {
             onClick={() => openWorkspaceSubagentRun(workspaceAccess, null)}
           />
           {summary && (
-            <div {...stylex.props(styles.summary)}>
+            <div id={summaryId} {...stylex.props(styles.summary)}>
               <ScrollArea
                 tabIndex={0}
                 role="group"
                 aria-label={summary.label}
                 className={stylex.props(styles.identity).className}
               >
-                <span
-                  id={summaryId}
-                  data-slot="subagent-identity"
-                  {...stylex.props(styles.name, typeStep.uiSm)}
-                >
-                  {summary.label}
+                <span data-slot="subagent-identity" {...stylex.props(styles.name, typeStep.uiSm)}>
+                  {summary.title}
                 </span>
               </ScrollArea>
-              <span {...stylex.props(vocab.line, vocab.hold, toneInk[summary.ink], typeStep.uiXs)}>
-                <StatusDot tone={summary.dotTone} />
-                {summary.statusLabel}
+              <span {...stylex.props(vocab.line, vocab.hold, typeStep.uiXs)}>
+                {summary.sibling && <span {...stylex.props(vocab.muted)}>{summary.sibling}</span>}
+                <span {...stylex.props(vocab.line, vocab.hold, toneInk[summary.ink])}>
+                  <StatusDot tone={summary.dotTone} />
+                  {summary.statusLabel}
+                </span>
               </span>
             </div>
           )}
