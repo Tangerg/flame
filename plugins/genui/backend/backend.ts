@@ -3,14 +3,15 @@ import { Backend, Refusal } from "@flame/backend-sdk/mcp";
 import {
   InvalidPresentation,
   Presentation,
-  documentJSONSchema,
-  requestJSONSchema,
-  parseDocument,
+  PresentationRequest,
+  documentSchema,
+  requestSchema,
 } from "../contracts/document";
 import manifest from "../package/plugin.json";
 import { OperationCatalog } from "./operationCatalog";
 import { catalog as trustedCatalog } from "../contracts/catalog";
 import { Schemas } from "@a2ui/web_core/v1_0";
+import { z } from "zod/mini";
 
 const PRESENT_TOOL = "ui_present";
 const CATALOG_TOOL = "ui_catalog";
@@ -31,8 +32,12 @@ export function createBackend(): Backend {
         "subsequent data updates write only below /data. Events call declared captured operations with explicit context. " +
         "Business commands require user review; followup sends only {message,payload} to the original conversation. " +
         "Recorded rendering never replays operations. No older interface format is accepted.",
-      inputSchema: requestJSONSchema,
-      outputSchema: documentJSONSchema,
+      inputSchema: z.toJSONSchema(requestSchema, { io: "input" }) as {
+        type: "object";
+      },
+      outputSchema: z.toJSONSchema(documentSchema, { io: "input" }) as {
+        type: "object";
+      },
       annotations: {
         readOnlyHint: true,
         destructiveHint: false,
@@ -44,12 +49,13 @@ export function createBackend(): Backend {
       context.signal.throwIfAborted();
       let presentation: Presentation;
       try {
-        const request = parseDocument(input);
-        const contributions = request.operations.length
+        const request = PresentationRequest.parse(input);
+        const operations = request.operations();
+        const contributions = operations.length
           ? new OperationCatalog(
               (await (await runtime(context)).plugins.list(context.signal))
                 .data,
-            ).capture(request.operations)
+            ).capture(operations)
           : [];
         presentation = Presentation.accept(request, contributions);
       } catch (cause) {

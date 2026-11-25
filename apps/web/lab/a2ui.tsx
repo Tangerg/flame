@@ -7,7 +7,10 @@ import { createFlameClient } from "@flame/runtime-client";
 import { createMemoryTransport } from "@flame/runtime-client/testing";
 import { type ComponentContext, type ComponentDefinition } from "@flame/component-sdk";
 import { Button, ContentVisibility, ReadingList, type ReadingListHandle } from "@flame/ui";
-import { Presentation } from "../../../plugins/genui/contracts/document";
+import {
+  Presentation,
+  PresentationRequest,
+} from "../../../plugins/genui/contracts/document";
 import { interfaceRequest } from "../../../plugins/genui/contracts/fixture";
 import { createLabEnvironment } from "./environment";
 import { unavailableComponentNotifications } from "@/test/unavailableNotifications";
@@ -31,7 +34,10 @@ const component = {
 };
 const GenUI = definition.create({ runtimeIdentity: runtime, component, signal: lifetime.signal });
 const request = interfaceRequest();
-const result = Presentation.accept(request, []).json();
+const result = Presentation.accept(
+  PresentationRequest.parse(request),
+  [],
+).json();
 const environment = await createLabEnvironment({
   theme: "light",
   locale: "en",

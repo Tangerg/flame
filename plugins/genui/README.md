@@ -6,6 +6,8 @@ Markdown packages' declared dependency ranges. The protocol parser, message
 processor, graph validation, dynamic bindings, functions and surface model
 belong to A2UI. The host renders catalog components with `@flame/ui`.
 A2UI catalog schemas use Zod 3 through the `zod3` dependency.
+GenUI derives the tool's request and result declarations from its Zod 4 document
+schemas. A2UI parses the messages and validates their graph before acceptance.
 
 ## Discovery and presentation
 

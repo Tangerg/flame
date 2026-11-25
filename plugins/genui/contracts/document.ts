@@ -1,5 +1,6 @@
 import {
   STRICT_VALIDATION,
+  SpecVersion,
   MessageProcessor,
   type ActionPayload,
 } from "@a2ui/web_core";
@@ -15,7 +16,7 @@ import {
   type FrozenJSONValue,
 } from "@frame/sdk/json";
 import type { CallPluginRequest } from "@flame/runtime-client/wire";
-import { z } from "zod3";
+import { z } from "zod/mini";
 import { CATALOG_ID, catalog, functions } from "./catalog";
 
 export class InvalidPresentation extends Error {
@@ -34,100 +35,71 @@ const builtinActionNames: ReadonlySet<string> = new Set(
 
 export const limits = {
   bytes: 512 * 1024,
-  nodes: 512,
+  messages: 512,
   operations: 32,
+  titleLength: 256,
+  routeLength: 1024,
+  jsonNodes: 20_000,
+  jsonDepth: 48,
   followupBytes: 16 * 1024,
 };
-const routeText = z.string().min(1).max(1024);
-const operationSchema = z
-  .object({
-    id: routeText,
-    installationId: routeText,
-    contribution: routeText,
-    method: routeText,
-    target: z
-      .object({ scope: routeText, reference: routeText })
-      .strict()
-      .optional(),
-  })
-  .strict();
-export type OperationRequest = z.infer<typeof operationSchema>;
-export type CapturedContribution = Pick<
-  CallPluginRequest,
-  "contract" | "contribution" | "digest" | "installationId"
->;
-const capturedContributionSchema = z
-  .object({
-    contract: z.string().min(1).max(limits.bytes),
-    contribution: routeText,
-    digest: routeText,
-    installationId: routeText,
-  })
-  .strict();
-export const requestSchema = z
-  .object({
-    title: z.string().min(1).max(256),
-    messages: z.array(AgentToRendererMessageSchema).min(1).max(limits.nodes),
-    operations: z.array(operationSchema).max(limits.operations),
-  })
-  .strict();
-export type UiDocument = z.infer<typeof requestSchema>;
-const documentSchema = requestSchema.extend({
-  contributions: z.array(capturedContributionSchema).max(limits.operations),
+const routeText = z
+  .string()
+  .check(z.minLength(1), z.maxLength(limits.routeLength));
+const operationSchema = z.strictObject({
+  id: routeText,
+  installationId: routeText,
+  contribution: routeText,
+  method: routeText,
+  target: z.optional(
+    z.strictObject({ scope: routeText, reference: routeText }),
+  ),
 });
-export type AcceptedDocument = z.infer<typeof documentSchema>;
-export const requestJSONSchema = {
-  type: "object" as const,
-  properties: {
-    title: { type: "string", minLength: 1, maxLength: 256 },
-    messages: {
-      type: "array",
-      minItems: 1,
-      maxItems: limits.nodes,
-      items: {
-        type: "object",
-        properties: { version: { const: "1.0" } },
-        required: ["version"],
-      },
-      description:
-        "Official A2UI 1.0 messages. Get the complete protocol and trusted catalog with ui_catalog.",
-    },
-    operations: {
-      type: "array",
-      maxItems: limits.operations,
-      items: {
-        type: "object",
-        properties: {
-          id: { type: "string" },
-          installationId: { type: "string" },
-          contribution: { type: "string" },
-          method: { type: "string" },
-          target: {
-            type: "object",
-            properties: {
-              scope: { type: "string" },
-              reference: { type: "string" },
-            },
-            required: ["scope", "reference"],
-            additionalProperties: false,
-          },
-        },
-        required: ["id", "installationId", "contribution", "method"],
-        additionalProperties: false,
-      },
-    },
-  },
-  required: ["title", "messages", "operations"],
-  additionalProperties: false,
-};
-export const documentJSONSchema = {
-  ...requestJSONSchema,
-  properties: {
-    ...requestJSONSchema.properties,
-    contributions: { type: "array", items: { type: "object" } },
-  },
-  required: [...requestJSONSchema.required, "contributions"],
-};
+export type OperationRequest = z.infer<typeof operationSchema>;
+const capturedContributions = z
+  .array(
+    z.strictObject({
+      contract: z.string().check(z.minLength(1), z.maxLength(limits.bytes)),
+      contribution: routeText,
+      digest: routeText,
+      installationId: routeText,
+    }),
+  )
+  .check(z.maxLength(limits.operations));
+export type CapturedContribution = z.infer<
+  typeof capturedContributions
+>[number];
+
+// Keep A2UI's protocol discoverable through ui_catalog so each tool listing
+// can carry the small envelope while the official parser owns message shape.
+const messageSchema = z.pipe(
+  z.looseObject({ version: z.literal(SpecVersion.V1_0) }),
+  z.transform((message, context) => {
+    const parsed = AgentToRendererMessageSchema.safeParse(message);
+    if (!parsed.success) {
+      context.issues.push({
+        code: "custom",
+        input: message,
+        message: parsed.error.message,
+      });
+      return z.NEVER;
+    }
+    return parsed.data;
+  }),
+);
+
+export const requestSchema = z.strictObject({
+  title: z.string().check(z.minLength(1), z.maxLength(limits.titleLength)),
+  messages: z
+    .array(messageSchema)
+    .check(z.minLength(1), z.maxLength(limits.messages)),
+  operations: z.array(operationSchema).check(z.maxLength(limits.operations)),
+});
+type UiDocument = z.infer<typeof requestSchema>;
+export const documentSchema = z.extend(requestSchema, {
+  contributions: capturedContributions,
+});
+type AcceptedDocument = z.infer<typeof documentSchema>;
 
 function normalize(value: unknown): unknown {
   try {
@@ -141,7 +113,7 @@ function bounded(value: unknown): unknown {
     throw new InvalidPresentation("interface exceeds content capacity");
   let nodes = 0;
   function visit(item: unknown, depth: number) {
-    if (++nodes > 20000 || depth > 48)
+    if (++nodes > limits.jsonNodes || depth > limits.jsonDepth)
       throw new InvalidPresentation("interface exceeds structural capacity");
     if (Array.isArray(item)) item.forEach((child) => visit(child, depth + 1));
     else if (item && typeof item === "object")
@@ -252,7 +224,7 @@ function admit(document: UiDocument): void {
       walk(message.updateComponents.components);
   }
   const processor = new MessageProcessor([catalog], undefined, {
-    version: "1.0",
+    version: SpecVersion.V1_0,
     validationConfig: STRICT_VALIDATION,
   });
   try {
@@ -263,42 +235,71 @@ function admit(document: UiDocument): void {
     processor.dispose();
   }
 }
-export function parseDocument(value: unknown): UiDocument {
-  const parsed = requestSchema.safeParse(bounded(value));
-  if (!parsed.success)
-    throw new InvalidPresentation(
-      "expected an A2UI 1.0 interface; older interface formats must be exported as raw history",
-      parsed.error,
-    );
-  admit(parsed.data);
-  return parsed.data;
+export class PresentationRequest {
+  readonly #document: UiDocument;
+  private constructor(document: UiDocument) {
+    this.#document = document;
+  }
+
+  static parse(value: unknown): PresentationRequest {
+    const parsed = requestSchema.safeParse(bounded(value));
+    if (!parsed.success)
+      throw new InvalidPresentation(
+        "expected an A2UI 1.0 interface; older interface formats must be exported as raw history",
+        parsed.error,
+      );
+    admit(parsed.data);
+    return new PresentationRequest(parsed.data);
+  }
+
+  operations(): readonly OperationRequest[] {
+    return structuredClone(this.#document.operations);
+  }
+
+  snapshot(): UiDocument {
+    return structuredClone(this.#document);
+  }
 }
+
+function validateBindings(document: AcceptedDocument): void {
+  const captured = new Map(
+    document.contributions.map((entry) => [bindingKey(entry), entry]),
+  );
+  if (captured.size !== document.contributions.length)
+    throw new InvalidPresentation("duplicate interface identity");
+  const requested = new Set(document.operations.map(bindingKey));
+  if (captured.size !== requested.size)
+    throw new InvalidPresentation(
+      "captured contributions must match declared operations",
+    );
+  for (const request of document.operations) {
+    const entry = captured.get(bindingKey(request));
+    if (!entry) throw new InvalidPresentation("missing captured contribution");
+    binding(request, entry);
+  }
+}
+
 export class Presentation {
   readonly #document: AcceptedDocument;
+
   private constructor(document: AcceptedDocument) {
-    this.#document = structuredClone(document);
+    validateBindings(document);
+    this.#document = document;
   }
-  static accept(value: unknown, contributions: CapturedContribution[] = []) {
-    const document = parseDocument(value);
-    const captured = z.array(capturedContributionSchema).parse(contributions);
-    unique(captured.map(bindingKey));
-    const requested = new Set(document.operations.map(bindingKey));
-    if (
-      captured.length !== requested.size ||
-      captured.some((entry) => !requested.has(bindingKey(entry)))
-    )
+  static accept(
+    request: PresentationRequest,
+    contributions: CapturedContribution[],
+  ) {
+    const captured = capturedContributions.safeParse(contributions);
+    if (!captured.success)
       throw new InvalidPresentation(
-        "captured contributions must match declared operations",
+        "invalid captured contributions",
+        captured.error,
       );
-    for (const request of document.operations) {
-      const entry = captured.find(
-        (entry) => bindingKey(entry) === bindingKey(request),
-      );
-      if (!entry)
-        throw new InvalidPresentation("missing captured contribution");
-      binding(request, entry);
-    }
-    return new Presentation({ ...document, contributions: captured });
+    return new Presentation({
+      ...request.snapshot(),
+      contributions: captured.data,
+    });
   }
   static read(source: string) {
     const parsed = documentSchema.safeParse(bounded(parseJSON(source)));
@@ -307,8 +308,8 @@ export class Presentation {
         "unsupported interface history; export its raw tool result",
         parsed.error,
       );
-    const { contributions, ...document } = parsed.data;
-    return Presentation.accept(document, contributions);
+    admit(parsed.data);
+    return new Presentation(parsed.data);
   }
   snapshot(): AcceptedDocument {
     return structuredClone(this.#document);
