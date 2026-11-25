@@ -42,7 +42,7 @@ import {
 import {
   coversWholeFile,
   describeFileRead,
-  fileLineSummary,
+  fileRangeSummary,
   useFileReadWindow,
 } from "@/features/workspace/ui/files/fileReadWindow";
 
@@ -256,7 +256,7 @@ function fileSubline(
     rejectedJump,
   }: {
     directory: string;
-    lines: Parameters<typeof fileLineSummary>[1] | undefined;
+    lines: Parameters<typeof fileRangeSummary>[1] | undefined;
     partial: boolean;
     jumpLabel: string | undefined;
     rejectedJump: boolean;
@@ -266,7 +266,7 @@ function fileSubline(
   return (
     <>
       {directory && <FileDirectory directory={directory} />}
-      {lines && fileLineSummary(t, lines, partial)}
+      {lines && partial && fileRangeSummary(t, lines)}
       <FileJumpStatus label={jumpLabel} rejected={rejectedJump} />
     </>
   );

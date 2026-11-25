@@ -561,7 +561,6 @@
   "role.assistant": "助手",
   "role.system": "系統",
   "composer.removeImage": "移除圖片",
-  "file.lines_other": "{{count}} 行",
   "file.backToFiles": "返回檔案列表",
   "file.empty.title": "沒有檔案",
   "file.refreshError.title": "檔案重新整理失敗",

@@ -638,8 +638,6 @@ export const en = {
   "role.assistant": "Assistant",
   "role.system": "System",
   "composer.removeImage": "Remove image",
-  "file.lines_one": "{{count}} line",
-  "file.lines_other": "{{count}} lines",
   "file.backToFiles": "Back to files",
   "file.empty.title": "No files",
 
