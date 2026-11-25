@@ -12,6 +12,11 @@ export type { MethodDescriptor } from "@frame/sdk/node";
 export type Method = ReturnType<PortableCapability["method"]>;
 export const PROTOCOL = wire.constants.protocol;
 
+export function assertProtocol(params: Record<string, unknown>): void {
+  if (params.protocol !== PROTOCOL)
+    throw new Error("plugin: current backend protocol is required");
+}
+
 export interface CapabilityDescriptor {
   readonly protocol: string;
   readonly reference: string;

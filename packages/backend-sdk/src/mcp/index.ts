@@ -15,7 +15,8 @@ export {
   stringifyJSON,
   type JSONNumber,
 } from "@frame/sdk/json";
-export { Backend, type StreamFrame } from "./backend.ts";
+export { Backend } from "./backend.ts";
+export { type StreamFrame } from "./stream.ts";
 export {
   decodeReceipt,
   type CallContext,

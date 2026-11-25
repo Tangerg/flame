@@ -1,6 +1,15 @@
 import { Lifetime, type Cleanup, type Release } from "@frame/sdk";
-import { exactFields, validCommand, validName } from "./contract.ts";
-import { type CallbackRef, type Invocation } from "./callback.ts";
+import { isJSONNumber } from "@frame/sdk/json";
+import {
+  canonicalJSON,
+  digestJSON,
+  exactFields,
+  freezeJSON,
+  validCommand,
+  validName,
+} from "./contract.ts";
+import { callbackRef, type CallbackRef, type Invocation } from "./callback.ts";
+import wire from "./protocol.generated.json";
 
 // The calling owner's Run scope on a model Tool call; Project is empty when the
 // Run's Session belongs to none.
@@ -76,4 +85,50 @@ export function decodeReceipt(value: unknown): ReceiptRequest {
   )
     throw new Error("plugin: invalid receipt identity");
   return request;
+}
+
+export function callMetadata(
+  params: Record<string, unknown>,
+): Record<string, unknown> {
+  const meta: unknown = freezeJSON(params._meta ?? {});
+  if (
+    meta === null ||
+    typeof meta !== "object" ||
+    Array.isArray(meta) ||
+    isJSONNumber(meta)
+  )
+    throw new Error("plugin: metadata must be an object");
+  return meta as Record<string, unknown>;
+}
+
+export function callContext(
+  params: Record<string, unknown>,
+  owner: Lifetime,
+  target?: string,
+): CallContext {
+  const meta = callMetadata(params);
+  const invocation = admittedInvocation(
+    meta[wire.constants.invocationMetadataKey!],
+    target,
+  );
+  const ref =
+    meta[wire.constants.callbackMetadataKey!] === undefined
+      ? undefined
+      : callbackRef(meta[wire.constants.callbackMetadataKey!]);
+  const toolContext = admittedToolContext(
+    meta[wire.constants.toolContextMetadataKey!],
+  );
+  const lifetime = owner.signal;
+  return Object.freeze({
+    signal: lifetime,
+    commandId: params.commandId as string | undefined,
+    invocation,
+    toolContext,
+    callback: ref,
+    requestInput: canonicalJSON(params.input),
+    inputDigest: digestJSON(params.input),
+    lifetime: owner,
+    defer: (cleanup: () => void | Release | Promise<void | Release>) =>
+      owner.cleanup(cleanup),
+  });
 }

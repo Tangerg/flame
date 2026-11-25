@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import type { RequestHandlerExtra } from "@modelcontextprotocol/sdk/shared/protocol.js";
@@ -13,34 +12,30 @@ import {
   ToolSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
-import { isJSONNumber, parseJSON } from "@frame/sdk/json";
-import {
-  Lifetime,
-  FrameError,
-  type Release,
-  type CloseOutcome,
-} from "@frame/sdk";
+import { parseJSON } from "@frame/sdk/json";
+import { Lifetime, FrameError, type CloseOutcome } from "@frame/sdk";
 import {
   Capability,
+  assertProtocol,
   declareMethod,
   type Method,
   PROTOCOL,
   canonicalJSON,
   compareTokens,
-  digestJSON,
   exactFields,
   freezeJSON,
   validName,
 } from "./contract.ts";
-import { callbackRef, callHost, Refusal, streamDelivery } from "./callback.ts";
+import { callbackRef, Refusal } from "./callback.ts";
 import wire from "./protocol.generated.json";
 import {
   type CallContext,
   type ReceiptRequest,
-  admittedInvocation,
-  admittedToolContext,
+  callContext,
+  callMetadata,
   decodeReceipt,
 } from "./invocation.ts";
+import { deliverStream, type StreamFrame } from "./stream.ts";
 import {
   type ActivationResource,
   type SetupContribution,
@@ -48,9 +43,6 @@ import {
   assertBackground,
   validateRequirements,
 } from "./setup.ts";
-
-export type StreamFrame<C, R> =
-  { kind: "chunk"; value: C } | { kind: "result"; value: R };
 
 type Decoder<P> = (value: unknown, source: string) => P;
 
@@ -68,6 +60,10 @@ interface BoundMethod {
 }
 
 type Extra = RequestHandlerExtra<Request, Notification>;
+
+function decodeAdmitted(bound: BoundMethod, admitted: unknown): unknown {
+  return bound.decode(admitted, canonicalJSON(admitted));
+}
 
 export class Backend {
   readonly #server: Server;
@@ -105,174 +101,193 @@ export class Backend {
         this.#start = undefined;
       }
     });
-    this.#receive("tools/list", (params) => {
-      exactFields(params, [], ["cursor", "_meta"]);
-      if (params.cursor !== undefined)
-        throw new Error("plugin: unsupported tool cursor");
-      return {
-        tools: [...this.#tools.values()].map((tool) => tool.descriptor),
-      };
-    });
-    this.#receive("tools/call", async (params, extra) => {
-      exactFields(params, ["name"], ["arguments", "_meta"]);
-      const tool = this.#tools.get(params.name as string);
-      if (!tool) throw new Error("plugin: tool is not published");
-      const input = tool.admitInput(params.arguments ?? {});
-      const call = this.#call(extra.signal);
-      try {
-        const context = this.#context({ input, _meta: params._meta }, call);
-        context.signal.throwIfAborted();
-        let output: CallToolResult;
-        try {
-          output = await call.run(() => tool.handler(context, input));
-        } catch (cause) {
-          if (cause instanceof Refusal)
-            return {
-              isError: true,
-              content: [
-                { type: "text", text: cause.code + ": " + cause.message },
-              ],
-            };
-          throw new Error("plugin: tool outcome could not be confirmed", {
-            cause,
-          });
-        }
-        const captured = CallToolResultSchema.parse(freezeJSON(output));
-        if (tool.admitOutput && !captured.isError)
-          return CallToolResultSchema.parse({
-            ...captured,
-            structuredContent: tool.admitOutput(captured.structuredContent),
-          });
-        return captured;
-      } finally {
-        await closeOwned(call);
-      }
-    });
-    this.#receive(wire.constants.describeMethod!, (params) => {
-      exactFields(params, ["protocol"], ["_meta"]);
-      this.#protocol(params);
-      return {
-        value: {
-          protocol: PROTOCOL,
-          methods: [...this.#methods.values()]
-            .map(({ method }) => method.descriptor)
-            .sort((a, b) => compareTokens(a.name, b.name)),
-          capabilities: [...this.#capabilities]
-            .map(([name, contract]) => ({
-              name,
-              contract: contract.descriptor,
-            }))
-            .sort((a, b) => compareTokens(a.name, b.name)),
-        },
-      };
-    });
-    this.#receive(wire.constants.validateMethod!, (params) => {
-      const bound = this.#resolve(params);
-      if (params.commandId !== undefined)
-        throw new Error("plugin: validation cannot carry a command identity");
-      try {
-        this.#decode(bound, bound.method.admitInput(params.input));
-        return { value: "" };
-      } catch {
-        return { value: "plugin: input is not structurally admitted" };
-      }
-    });
-    this.#receive(wire.constants.invokeMethod!, async (params, extra) => {
-      const bound = this.#resolve(params);
-      const input = this.#decode(
-        bound,
-        bound.method.admitInvocation(params.input, params.commandId),
-      );
-      const call = this.#call(extra.signal);
-      try {
-        const context = this.#context(
-          params,
-          call,
-          bound.method.descriptor.name === wire.constants.receiptMethod!
-            ? undefined
-            : bound.method.descriptor.target,
-        );
-        context.signal.throwIfAborted();
-        let value: unknown;
-        try {
-          value = await call.run(() =>
-            bound.stream
-              ? this.#deliver(
-                  bound,
-                  context,
-                  input,
-                  this.#metadata(params)[wire.constants.streamMetadataKey!],
-                )
-              : bound.handler!(context, input),
-          );
-        } catch (error) {
-          if (error instanceof Refusal)
-            return { failure: { code: error.code, message: error.message } };
-          throw new Error("plugin: operation could not be confirmed", {
-            cause: error,
-          });
-        }
-        return { value: bound.method.admitOutput(value) };
-      } finally {
-        await closeOwned(call);
-      }
-    });
-    this.#receive(wire.constants.setupMethod!, async (params, extra) => {
-      exactFields(params, ["protocol", "contributions"], ["_meta"]);
-      this.#protocol(params);
-      if (this.#setupResult || !Array.isArray(params.contributions))
-        throw new Error("plugin: setup is invalid or already supplied");
-      const contributions: unknown = freezeJSON(params.contributions);
-      this.#validateSetup(contributions);
-      const metadata = this.#metadata(params);
-      const ref =
-        metadata[wire.constants.callbackMetadataKey!] === undefined
-          ? undefined
-          : callbackRef(metadata[wire.constants.callbackMetadataKey!]);
-      const abort = () => this.#activation.beginClose();
-      extra.signal.throwIfAborted();
-      extra.signal.addEventListener("abort", abort, { once: true });
-      let resource: ActivationResource | undefined;
-      this.#activation.cleanup(() => resource?.close(), "activation-resource");
-      this.#setupResult = this.#activation.run(async () => {
-        resource =
-          (await this.#setup?.({
-            signal: this.#activation.signal,
-            lifetime: this.#activation,
-            contributions,
-            callback: ref,
-            defer: (cleanup) => this.#activation.cleanup(cleanup),
-          })) || undefined;
-        this.#activation.signal.throwIfAborted();
-        if (contributions.some((value) => value.background) && !resource?.start)
-          throw new Error(
-            "plugin: background setup requires an activation resource",
-          );
-        return resource;
-      });
-      try {
-        await this.#setupResult;
-        return { value: true };
-      } catch (error) {
-        await closeOwned(this.#activation);
-        throw new Error("plugin: setup failed", { cause: error });
-      } finally {
-        extra.signal.removeEventListener("abort", abort);
-      }
-    });
-    this.#receive(wire.constants.activateMethod!, async (params) => {
-      exactFields(params, ["protocol"], ["_meta"]);
-      this.#protocol(params);
-      if (!this.#setupResult)
-        throw new Error("plugin: setup is required before activation");
-      const resource = await this.#setupResult;
-      this.#lifetime.signal.throwIfAborted();
-      this.#start ??= this.#activation.run(() => resource?.start?.());
-      await this.#start;
-      return { value: true };
-    });
+    this.#receive("tools/list", (params) => this.#listTools(params));
+    this.#receive("tools/call", (params, extra) =>
+      this.#callTool(params, extra),
+    );
+    this.#receive(wire.constants.describeMethod!, (params) =>
+      this.#describe(params),
+    );
+    this.#receive(wire.constants.validateMethod!, (params) =>
+      this.#validate(params),
+    );
+    this.#receive(wire.constants.invokeMethod!, (params, extra) =>
+      this.#invoke(params, extra),
+    );
+    this.#receive(wire.constants.setupMethod!, (params, extra) =>
+      this.#supplySetup(params, extra),
+    );
+    this.#receive(wire.constants.activateMethod!, (params) =>
+      this.#activate(params),
+    );
   }
 
+  #listTools(params: Record<string, unknown>) {
+    exactFields(params, [], ["cursor", "_meta"]);
+    if (params.cursor !== undefined)
+      throw new Error("plugin: unsupported tool cursor");
+    return {
+      tools: [...this.#tools.values()].map((tool) => tool.descriptor),
+    };
+  }
+  async #callTool(params: Record<string, unknown>, extra: Extra) {
+    exactFields(params, ["name"], ["arguments", "_meta"]);
+    const tool = this.#tools.get(params.name as string);
+    if (!tool) throw new Error("plugin: tool is not published");
+    const input = tool.admitInput(params.arguments ?? {});
+    const call = this.#call(extra.signal);
+    try {
+      const context = callContext({ input, _meta: params._meta }, call);
+      context.signal.throwIfAborted();
+      let output: CallToolResult;
+      try {
+        output = await call.run(() => tool.handler(context, input));
+      } catch (cause) {
+        if (cause instanceof Refusal)
+          return {
+            isError: true,
+            content: [
+              { type: "text", text: cause.code + ": " + cause.message },
+            ],
+          };
+        throw new Error("plugin: tool outcome could not be confirmed", {
+          cause,
+        });
+      }
+      const captured = CallToolResultSchema.parse(freezeJSON(output));
+      if (tool.admitOutput && !captured.isError)
+        return CallToolResultSchema.parse({
+          ...captured,
+          structuredContent: tool.admitOutput(captured.structuredContent),
+        });
+      return captured;
+    } finally {
+      await closeOwned(call);
+    }
+  }
+  #describe(params: Record<string, unknown>) {
+    exactFields(params, ["protocol"], ["_meta"]);
+    assertProtocol(params);
+    return {
+      value: {
+        protocol: PROTOCOL,
+        methods: [...this.#methods.values()]
+          .map(({ method }) => method.descriptor)
+          .sort((a, b) => compareTokens(a.name, b.name)),
+        capabilities: [...this.#capabilities]
+          .map(([name, contract]) => ({
+            name,
+            contract: contract.descriptor,
+          }))
+          .sort((a, b) => compareTokens(a.name, b.name)),
+      },
+    };
+  }
+  #validate(params: Record<string, unknown>) {
+    const bound = this.#resolve(params);
+    if (params.commandId !== undefined)
+      throw new Error("plugin: validation cannot carry a command identity");
+    try {
+      decodeAdmitted(bound, bound.method.admitInput(params.input));
+      return { value: "" };
+    } catch {
+      return { value: "plugin: input is not structurally admitted" };
+    }
+  }
+  async #invoke(params: Record<string, unknown>, extra: Extra) {
+    const bound = this.#resolve(params);
+    const input = decodeAdmitted(
+      bound,
+      bound.method.admitInvocation(params.input, params.commandId),
+    );
+    const call = this.#call(extra.signal);
+    try {
+      const context = callContext(
+        params,
+        call,
+        bound.method.descriptor.name === wire.constants.receiptMethod!
+          ? undefined
+          : bound.method.descriptor.target,
+      );
+      context.signal.throwIfAborted();
+      let value: unknown;
+      try {
+        value = await call.run(() =>
+          bound.stream
+            ? deliverStream(
+                () => bound.stream!(context, input),
+                bound.method,
+                context,
+                callMetadata(params)[wire.constants.streamMetadataKey!],
+              )
+            : bound.handler!(context, input),
+        );
+      } catch (error) {
+        if (error instanceof Refusal)
+          return { failure: { code: error.code, message: error.message } };
+        throw new Error("plugin: operation could not be confirmed", {
+          cause: error,
+        });
+      }
+      return { value: bound.method.admitOutput(value) };
+    } finally {
+      await closeOwned(call);
+    }
+  }
+  async #supplySetup(params: Record<string, unknown>, extra: Extra) {
+    exactFields(params, ["protocol", "contributions"], ["_meta"]);
+    assertProtocol(params);
+    if (this.#setupResult || !Array.isArray(params.contributions))
+      throw new Error("plugin: setup is invalid or already supplied");
+    const contributions: unknown = freezeJSON(params.contributions);
+    this.#validateSetup(contributions);
+    const metadata = callMetadata(params);
+    const ref =
+      metadata[wire.constants.callbackMetadataKey!] === undefined
+        ? undefined
+        : callbackRef(metadata[wire.constants.callbackMetadataKey!]);
+    const abort = () => this.#activation.beginClose();
+    extra.signal.throwIfAborted();
+    extra.signal.addEventListener("abort", abort, { once: true });
+    let resource: ActivationResource | undefined;
+    this.#activation.cleanup(() => resource?.close(), "activation-resource");
+    this.#setupResult = this.#activation.run(async () => {
+      resource =
+        (await this.#setup?.({
+          signal: this.#activation.signal,
+          lifetime: this.#activation,
+          contributions,
+          callback: ref,
+          defer: (cleanup) => this.#activation.cleanup(cleanup),
+        })) || undefined;
+      this.#activation.signal.throwIfAborted();
+      if (contributions.some((value) => value.background) && !resource?.start)
+        throw new Error(
+          "plugin: background setup requires an activation resource",
+        );
+      return resource;
+    });
+    try {
+      await this.#setupResult;
+      return { value: true };
+    } catch (error) {
+      await closeOwned(this.#activation);
+      throw new Error("plugin: setup failed", { cause: error });
+    } finally {
+      extra.signal.removeEventListener("abort", abort);
+    }
+  }
+  async #activate(params: Record<string, unknown>) {
+    exactFields(params, ["protocol"], ["_meta"]);
+    assertProtocol(params);
+    if (!this.#setupResult)
+      throw new Error("plugin: setup is required before activation");
+    const resource = await this.#setupResult;
+    this.#lifetime.signal.throwIfAborted();
+    this.#start ??= this.#activation.run(() => resource?.start?.());
+    await this.#start;
+    return { value: true };
+  }
   #receive(
     name: string,
     handler: (
@@ -302,17 +317,13 @@ export class Backend {
       },
     );
   }
-  #protocol(params: Record<string, unknown>): void {
-    if (params.protocol !== PROTOCOL)
-      throw new Error("plugin: current backend protocol is required");
-  }
   #resolve(params: Record<string, unknown>): BoundMethod {
     exactFields(
       params,
       ["protocol", "method", "contract", "input"],
       ["export", "capability", "commandId", "_meta"],
     );
-    this.#protocol(params);
+    assertProtocol(params);
     const bound =
       typeof params.method === "string"
         ? this.#methods.get(params.method)
@@ -345,51 +356,6 @@ export class Backend {
     )
       throw new Error("plugin: capability member requires its export");
     return bound;
-  }
-  #decode(bound: BoundMethod, admitted: unknown): unknown {
-    return bound.decode(admitted, canonicalJSON(admitted));
-  }
-  #metadata(params: Record<string, unknown>): Record<string, unknown> {
-    const meta: unknown = freezeJSON(params._meta ?? {});
-    if (
-      meta === null ||
-      typeof meta !== "object" ||
-      Array.isArray(meta) ||
-      isJSONNumber(meta)
-    )
-      throw new Error("plugin: metadata must be an object");
-    return meta as Record<string, unknown>;
-  }
-  #context(
-    params: Record<string, unknown>,
-    owner: Lifetime,
-    target?: string,
-  ): CallContext {
-    const meta = this.#metadata(params);
-    const invocation = admittedInvocation(
-      meta[wire.constants.invocationMetadataKey!],
-      target,
-    );
-    const ref =
-      meta[wire.constants.callbackMetadataKey!] === undefined
-        ? undefined
-        : callbackRef(meta[wire.constants.callbackMetadataKey!]);
-    const toolContext = admittedToolContext(
-      meta[wire.constants.toolContextMetadataKey!],
-    );
-    const lifetime = owner.signal;
-    return Object.freeze({
-      signal: lifetime,
-      commandId: params.commandId as string | undefined,
-      invocation,
-      toolContext,
-      callback: ref,
-      requestInput: canonicalJSON(params.input),
-      inputDigest: digestJSON(params.input),
-      lifetime: owner,
-      defer: (cleanup: () => void | Release | Promise<void | Release>) =>
-        owner.cleanup(cleanup),
-    });
   }
   #validateSetup(
     contributions: unknown,
@@ -537,44 +503,6 @@ export class Backend {
         throw new AggregateError(failures, "plugin: backend service failed");
       }
     })();
-  }
-  async #deliver(
-    bound: BoundMethod,
-    context: CallContext,
-    input: unknown,
-    reference: unknown,
-  ): Promise<unknown> {
-    const ref = callbackRef(reference);
-    let final: { value: unknown } | undefined;
-    let sequence = 0n;
-    for await (const frame of bound.stream!(context, input)) {
-      context.signal.throwIfAborted();
-      exactFields(frame, ["kind", "value"]);
-      if (final)
-        throw new Error("plugin: stream continued after its final result");
-      if (frame.kind === "result") {
-        final = { value: bound.method.admitOutput(frame.value) };
-      } else if (frame.kind === "chunk") {
-        const value = bound.method.admitChunk!(frame.value);
-        if (sequence === 18446744073709551615n)
-          throw new Error("plugin: stream sequence exhausted");
-        sequence++;
-        const acknowledged = await callHost(
-          ref,
-          streamDelivery,
-          { sequence, value },
-          context.signal,
-          context.invocation,
-          randomUUID(),
-        );
-        if (acknowledged !== true)
-          throw new Error(
-            "plugin: stream consumer did not acknowledge its chunk",
-          );
-      } else throw new Error("plugin: invalid stream frame kind");
-    }
-    if (!final) throw new Error("plugin: stream final result is unconfirmed");
-    return final.value;
   }
   #call(signal: AbortSignal): Lifetime {
     const owner = this.#lifetime.branch("call");
