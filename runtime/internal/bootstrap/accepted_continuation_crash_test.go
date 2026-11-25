@@ -50,11 +50,11 @@ func acceptedCrashModel(t *testing.T, home string) chat.Model {
 }
 
 func TestAcceptedContinuationCrashHelper(t *testing.T) {
-	phase := os.Getenv("FLAME_TEST_ACCEPTED_CRASH")
-	if phase == "" {
+	phase := acceptedCrashPoint(os.Getenv("FLAME_TEST_ACCEPTED_CRASH"))
+	if phase == noAcceptedCrash {
 		return
 	}
-	predicate := acceptedTreeCrashPredicate(phase)
+	predicate := phase.treePredicate()
 	if predicate != "" {
 		if err := modernsqlite.RegisterScalarFunction("test_accepted_release_crash", 0, func(_ *modernsqlite.FunctionContext, _ []driver.Value) (driver.Value, error) {
 			os.Exit(commandCrashExit)
@@ -77,7 +77,7 @@ func TestAcceptedContinuationCrashHelper(t *testing.T) {
 				if err := apply(txCtx); err != nil {
 					return err
 				}
-				if phase == "rollback" {
+				if phase == crashAtRollback {
 					bindings, err := stores.AcceptedContinuations.List(txCtx)
 					if err != nil {
 						return err
@@ -98,8 +98,8 @@ func TestAcceptedContinuationCrashHelper(t *testing.T) {
 			if err != nil {
 				return err
 			}
-			if len(bindings) > 0 && (phase == "acceptance" || phase == "cold_acceptance") {
-				if phase == "cold_acceptance" {
+			if len(bindings) > 0 && (phase == crashAtAcceptance || phase == crashAtColdAcceptance) {
+				if phase == crashAtColdAcceptance {
 					current, found, err := stores.ExecutorCheckpoints.LoadExecutionTree(ctx, waitingHead.SessionID, waitingHead.RootID)
 					if err != nil || !found || !waitingHead.SameCommit(current) {
 						return fmt.Errorf("writer changed before acceptance: found=%t, error=%v", found, err)
@@ -137,7 +137,7 @@ func TestAcceptedContinuationCrashHelper(t *testing.T) {
 	if err != nil || len(pending.Data) != 1 || len(pending.Data[0].Interrupts) != 1 {
 		t.Fatalf("pending=%+v, %v", pending, err)
 	}
-	if phase == "cold_acceptance" {
+	if phase == crashAtColdAcceptance {
 		if err := host.Close(); err != nil {
 			t.Fatal(err)
 		}
@@ -186,15 +186,31 @@ func TestAcceptedContinuationCrashHelper(t *testing.T) {
 	t.Fatalf("accepted crash was not reached: %v", result.Failure)
 }
 
-func acceptedTreeCrashPredicate(phase string) string {
+// acceptedCrashPoint is where the helper process exits abruptly; the parent
+// passes it through FLAME_TEST_ACCEPTED_CRASH.
+type acceptedCrashPoint string
+
+const (
+	noAcceptedCrash           acceptedCrashPoint = ""
+	crashAtAcceptance         acceptedCrashPoint = "acceptance"
+	crashAtColdAcceptance     acceptedCrashPoint = "cold_acceptance"
+	crashAtRelease            acceptedCrashPoint = "release"
+	crashAfterResumeCommitted acceptedCrashPoint = "resume_committed"
+	crashAtToolSettlement     acceptedCrashPoint = "tool_settlement"
+	crashAtRollback           acceptedCrashPoint = "rollback"
+)
+
+// treePredicate selects the execution-tree write that triggers the crash; an
+// empty predicate leaves the tree untouched.
+func (phase acceptedCrashPoint) treePredicate() string {
 	const resumeCommitted = `EXISTS (SELECT 1 FROM json_each(CAST(OLD.payload AS TEXT), '$.log.entries')
 		WHERE json_extract(value, '$.kind') = 'control_requested' AND json_extract(value, '$.body.kind') = 'resume')`
 	switch phase {
-	case "release":
+	case crashAtRelease:
 		return `instr(CAST(OLD.payload AS TEXT), 'answer:') > 0`
-	case "resume_committed":
+	case crashAfterResumeCommitted:
 		return resumeCommitted
-	case "tool_settlement":
+	case crashAtToolSettlement:
 		return resumeCommitted + ` AND json_extract(CAST(NEW.payload AS TEXT), '$.log.entries[#-1].kind') = 'effect_settled'`
 	default:
 		return ""
@@ -218,13 +234,13 @@ func acceptedCrashContext(t *testing.T) context.Context {
 }
 
 func TestAcceptedContinuationSurvivesAbruptRestart(t *testing.T) {
-	for _, phase := range []string{"acceptance", "cold_acceptance", "release", "resume_committed"} {
-		t.Run(phase, func(t *testing.T) { testAcceptedContinuationSurvivesRestart(t, phase) })
+	for _, phase := range []acceptedCrashPoint{crashAtAcceptance, crashAtColdAcceptance, crashAtRelease, crashAfterResumeCommitted} {
+		t.Run(string(phase), func(t *testing.T) { testAcceptedContinuationSurvivesRestart(t, phase) })
 	}
 }
 
 func TestAcceptedContinuationDoesNotRepeatAnUnacknowledgedTool(t *testing.T) {
-	home, stores := acceptedCrashStores(t, "tool_settlement")
+	home, stores := acceptedCrashStores(t, crashAtToolSettlement)
 	bindings, err := stores.AcceptedContinuations.List(t.Context())
 	if err != nil || len(bindings) != 1 {
 		t.Fatalf("accepted continuation count=%d, error=%v", len(bindings), err)
@@ -255,7 +271,7 @@ func TestAcceptedContinuationDoesNotRepeatAnUnacknowledgedTool(t *testing.T) {
 	assertExecutedOnce()
 }
 
-func testAcceptedContinuationSurvivesRestart(t *testing.T, phase string) {
+func testAcceptedContinuationSurvivesRestart(t *testing.T, phase acceptedCrashPoint) {
 	home, stores := acceptedCrashStores(t, phase)
 	bindings, err := stores.AcceptedContinuations.List(t.Context())
 	if err != nil || len(bindings) != 1 {
@@ -343,20 +359,20 @@ func testAcceptedContinuationSurvivesRestart(t *testing.T, phase string) {
 	}
 }
 
-func acceptedCrashStores(t *testing.T, phase string) (string, *persistence.Bundle) {
+func acceptedCrashStores(t *testing.T, phase acceptedCrashPoint) (string, *persistence.Bundle) {
 	t.Helper()
 	home := t.TempDir()
 	t.Setenv("FLAME_HOME", home)
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 	command := exec.CommandContext(ctx, os.Args[0], "-test.run=^TestAcceptedContinuationCrashHelper$")
-	command.Env = append(os.Environ(), "FLAME_TEST_ACCEPTED_CRASH="+phase)
+	command.Env = append(os.Environ(), "FLAME_TEST_ACCEPTED_CRASH="+string(phase))
 	output, err := command.CombinedOutput()
 	var exit *exec.ExitError
 	if !errors.As(err, &exit) || exit.ExitCode() != commandCrashExit {
 		t.Fatalf("crash: %v\n%s", err, output)
 	}
-	if acceptedTreeCrashPredicate(phase) != "" {
+	if phase.treePredicate() != "" {
 		directory, err := localruntime.DataDirectoryAt(home)
 		if err != nil {
 			t.Fatal(err)
@@ -379,7 +395,7 @@ func acceptedCrashStores(t *testing.T, phase string) (string, *persistence.Bundl
 }
 
 func TestResumeAcceptanceRollbackSurvivesAbruptRestart(t *testing.T) {
-	home, stores := acceptedCrashStores(t, "rollback")
+	home, stores := acceptedCrashStores(t, crashAtRollback)
 	bindings, err := stores.AcceptedContinuations.List(t.Context())
 	if err != nil || len(bindings) != 0 {
 		t.Fatalf("rollback kept acceptance: %+v,%v", bindings, err)

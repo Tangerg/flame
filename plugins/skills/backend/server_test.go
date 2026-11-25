@@ -83,9 +83,40 @@ func learningInvocation(t *testing.T, id string) context.Context {
 	return ctx
 }
 
+// learningSettlement is how a mining command settles for one model reply.
+type learningSettlement int
+
+const (
+	// unsettledDraft replies prove nothing, so the command fails without a receipt.
+	unsettledDraft learningSettlement = iota
+	proposedDraft
+	// refusedDraft replies are well-formed but not a skill; the refusal is retained.
+	refusedDraft
+)
+
+type learningReply struct {
+	name string
+	// lost fails the model call instead of replying.
+	lost    bool
+	finish  chat.FinishReason
+	text    string
+	settles learningSettlement
+}
+
+var learningReplies = []learningReply{
+	{name: "completed", finish: chat.FinishReasonStop, text: testSkill, settles: proposedDraft},
+	{name: "response lost", lost: true},
+	{name: "incomplete", finish: chat.FinishReasonLength, text: testSkill},
+	{name: "refused", finish: chat.FinishReasonRefusal, text: testSkill},
+	{name: "malformed document", finish: chat.FinishReasonStop, text: "```markdown\n" + testSkill, settles: refusedDraft},
+	{name: "malformed revision", finish: chat.FinishReasonStop, text: "REVISE: run-tests\ntrailing commentary", settles: refusedDraft},
+	{name: "blank", finish: chat.FinishReasonStop, text: " \n\t ", settles: refusedDraft},
+	{name: "invalid response", finish: chat.FinishReasonStop, text: ""},
+}
+
 func TestLearningReceiptsSurviveRestartWithoutRepeatingModelCalls(t *testing.T) {
-	for _, outcome := range []string{"completed", "response lost", "incomplete", "refused", "malformed document", "malformed revision", "blank", "invalid response"} {
-		t.Run(outcome, func(t *testing.T) {
+	for _, reply := range learningReplies {
+		t.Run(reply.name, func(t *testing.T) {
 			path := filepath.Join(t.TempDir(), "learning.db")
 			session, mine, closeBackend := connectLearning(t, path)
 			callbacks := pluginmcp.NewCallbacks()
@@ -96,29 +127,11 @@ func TestLearningReceiptsSurviveRestartWithoutRepeatingModelCalls(t *testing.T) 
 			var modelCalls atomic.Int32
 			model, err := pluginsdk.NewModelCallback(func(context.Context, pluginmcp.Command[scopewire.Request]) (*chat.Response, error) {
 				modelCalls.Add(1)
-				if outcome == "response lost" {
+				if reply.lost {
 					return nil, errors.New("model reply lost")
 				}
-				finish := chat.FinishReasonStop
-				if outcome == "incomplete" {
-					finish = chat.FinishReasonLength
-				}
-				if outcome == "refused" {
-					finish = chat.FinishReasonRefusal
-				}
-				text := testSkill
-				switch outcome {
-				case "malformed document":
-					text = "```markdown\n" + testSkill
-				case "malformed revision":
-					text = "REVISE: run-tests\ntrailing commentary"
-				case "blank":
-					text = " \n\t "
-				case "invalid response":
-					text = ""
-				}
-				message := chat.NewAssistantMessage(chat.NewTextPart(text))
-				return chat.NewResponse(&chat.Output{Message: &message, FinishReason: finish}, nil)
+				message := chat.NewAssistantMessage(chat.NewTextPart(reply.text))
+				return chat.NewResponse(&chat.Output{Message: &message, FinishReason: reply.finish}, nil)
 			})
 			if err != nil {
 				t.Fatal(err)
@@ -163,8 +176,8 @@ func TestLearningReceiptsSurviveRestartWithoutRepeatingModelCalls(t *testing.T) 
 				}
 			}
 			value, err := mine.InvokeWithMetadata(ctx, "due", input, metadata)
-			complete := outcome == "completed"
-			invalidDraft := outcome == "malformed document" || outcome == "malformed revision" || outcome == "blank"
+			complete := reply.settles == proposedDraft
+			invalidDraft := reply.settles == refusedDraft
 			if complete != (err == nil) {
 				t.Fatalf("mining outcome = %s, %v", value.Bytes(), err)
 			}

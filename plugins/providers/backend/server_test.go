@@ -104,15 +104,19 @@ func writeChatReply(w http.ResponseWriter) {
 
 func TestOriginalChatOutcomesAndCredentialSnapshotSurviveRestart(t *testing.T) {
 	binary := buildProviderBackend(t)
-	for _, outcome := range []string{"completed", "reply-lost"} {
-		t.Run(outcome, func(t *testing.T) {
+	for _, exchange := range []struct {
+		name string
+		// replyLost drops the connection after the upstream accepted the request.
+		replyLost bool
+	}{{name: "completed"}, {name: "reply-lost", replyLost: true}} {
+		t.Run(exchange.name, func(t *testing.T) {
 			var calls atomic.Int32
 			upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				calls.Add(1)
 				if r.Header.Get("Authorization") != "Bearer captured-key" {
 					t.Error("captured credential changed")
 				}
-				if outcome == "reply-lost" {
+				if exchange.replyLost {
 					connection, _, err := w.(http.Hijacker).Hijack()
 					if err != nil {
 						t.Error(err)
@@ -140,10 +144,10 @@ func TestOriginalChatOutcomesAndCredentialSnapshotSurviveRestart(t *testing.T) {
 			request := providerRequest(opened.Handle)
 			result, err := providerMethod(t, session, method).CallCommand(providerContext(t), "exchange", request)
 			initialCalls := calls.Load()
-			if err != nil || result.Validate() != nil || initialCalls == 0 || (outcome == "completed" && initialCalls != 1) {
+			if err != nil || result.Validate() != nil || initialCalls == 0 || (!exchange.replyLost && initialCalls != 1) {
 				t.Fatalf("provider exchange = %+v %v, calls=%d", result, err, calls.Load())
 			}
-			if outcome == "completed" {
+			if !exchange.replyLost {
 				if result.Failure != nil || result.Response.Metadata.Usage.InputTokens != 7 || result.Response.Metadata.Model != "served-model" {
 					t.Fatalf("provider evidence lost: %+v", result)
 				}

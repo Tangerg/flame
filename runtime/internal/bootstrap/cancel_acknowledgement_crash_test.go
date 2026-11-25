@@ -69,7 +69,7 @@ func TestParkedCancellationAcknowledgementCrashHelper(t *testing.T) {
 		questionCrashDatabase(t, home, `CREATE TRIGGER cancel_ack_crash BEFORE UPDATE OF payload ON idempotency_records
 			WHEN NEW.kind <> OLD.kind BEGIN SELECT test_crash_cancel_ack(); END`)
 	case cancelReceiptCommit:
-		crashStore = commandCrashStore{ReplayStore: stores.Idempotency, phase: commandCrashReceipt}
+		crashStore = commandCrashStore{ReplayStore: stores.Idempotency, phase: crashAfterReceipt}
 	default:
 		t.Fatalf("unknown parked cancellation cut %q", cut)
 	}

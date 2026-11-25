@@ -220,21 +220,18 @@ func TestMemoryToolsReviewProposalsAndFenceTheCapturedProject(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, name := range []string{"update_memory", "delete_memory", "review_memory"} {
-		item := map[string]any{"scope": "project", "id": foreign.ID().String(), "expected_revision": foreign.Revision()}
-		input := item
-		if name != "delete_memory" {
-			input = map[string]any{"item": item}
-		}
-		if name == "update_memory" {
-			input["content"] = "cross-project overwrite"
-		}
-		if name == "review_memory" {
-			input["decision"] = "reject"
-		}
-		result, _ := callMemoryModelTool(t, session, project, "foreign-"+name, name, input)
+	item := map[string]any{"scope": "project", "id": foreign.ID().String(), "expected_revision": foreign.Revision()}
+	for _, attempt := range []struct {
+		tool  string
+		input map[string]any
+	}{
+		{tool: "update_memory", input: map[string]any{"item": item, "content": "cross-project overwrite"}},
+		{tool: "delete_memory", input: item},
+		{tool: "review_memory", input: map[string]any{"item": item, "decision": "reject"}},
+	} {
+		result, _ := callMemoryModelTool(t, session, project, "foreign-"+attempt.tool, attempt.tool, attempt.input)
 		if !result.IsError {
-			t.Fatalf("%s escaped its captured project", name)
+			t.Fatalf("%s escaped its captured project", attempt.tool)
 		}
 	}
 	stored, found, err := store.Get(t.Context(), foreign.ID())

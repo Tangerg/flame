@@ -21,9 +21,19 @@ import (
 
 const steerCrashKey = "original-steer-crash"
 
+// steerCrashStep is the helper process's role, passed through FLAME_TEST_STEER_CRASH:
+// the first process dies after committing the steer, the second reads it cold.
+type steerCrashStep string
+
+const (
+	noSteerCrash     steerCrashStep = ""
+	steerCommitCrash steerCrashStep = "commit"
+	steerColdQuery   steerCrashStep = "query"
+)
+
 func TestSteerAcceptanceCrashHelper(t *testing.T) {
-	phase := os.Getenv("FLAME_TEST_STEER_CRASH")
-	if phase == "" {
+	phase := steerCrashStep(os.Getenv("FLAME_TEST_STEER_CRASH"))
+	if phase == noSteerCrash {
 		return
 	}
 	home := os.Getenv("FLAME_HOME")
@@ -33,14 +43,14 @@ func TestSteerAcceptanceCrashHelper(t *testing.T) {
 	}
 	entered := make(chan struct{}, 1)
 	model := delegateRestartModel{chat.ModelFunc(func(ctx context.Context, _ *chat.Request) (*chat.Response, error) {
-		if phase != "commit" {
+		if phase != steerCommitCrash {
 			t.Error("original command query dispatched model work")
 		}
 		entered <- struct{}{}
 		<-ctx.Done()
 		return nil, ctx.Err()
 	})}
-	if phase == "commit" {
+	if phase == steerCommitCrash {
 		tx := stores.Transactor
 		stores.Transactor = func(ctx context.Context, apply func(context.Context) error) error {
 			if err := tx(ctx, apply); err != nil {
@@ -70,7 +80,7 @@ func TestSteerAcceptanceCrashHelper(t *testing.T) {
 	options := acceptedCommandOptions()
 	options.IdempotencyKey = steerCrashKey
 	input := []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "retain this original steer"}}
-	if phase == "commit" {
+	if phase == steerCommitCrash {
 		session, err := api.CreateSession(t.Context(), protocol.CreateSessionRequest{Workspace: &protocol.WorkspaceRef{Path: home}})
 		if err != nil {
 			t.Fatal(err)
@@ -110,13 +120,13 @@ func TestSteerAcceptanceCrashHelper(t *testing.T) {
 
 func TestSteerAcceptanceSurvivesCommitBeforeResponseCrash(t *testing.T) {
 	t.Setenv("FLAME_HOME", t.TempDir())
-	for _, phase := range []string{"commit", "query"} {
+	for _, phase := range []steerCrashStep{steerCommitCrash, steerColdQuery} {
 		ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 		command := exec.CommandContext(ctx, os.Args[0], "-test.run=^TestSteerAcceptanceCrashHelper$")
-		command.Env = append(os.Environ(), "FLAME_TEST_STEER_CRASH="+phase)
+		command.Env = append(os.Environ(), "FLAME_TEST_STEER_CRASH="+string(phase))
 		output, err := command.CombinedOutput()
 		cancel()
-		if phase == "commit" {
+		if phase == steerCommitCrash {
 			var exit *exec.ExitError
 			if !errors.As(err, &exit) || exit.ExitCode() != commandCrashExit {
 				t.Fatalf("crash: %v\n%s", err, output)

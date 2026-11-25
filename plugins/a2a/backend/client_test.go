@@ -16,21 +16,40 @@ import (
 	"github.com/a2aproject/a2a-go/v2/a2a"
 )
 
+// endpointAttack is one way a remote agent card tries to route a command to an
+// endpoint the user did not approve.
+type endpointAttack struct {
+	name string
+	// redirectsCard serves the card itself through a redirect.
+	redirectsCard bool
+	// externalRPC advertises an RPC endpoint on another origin.
+	externalRPC bool
+	// redirectsRPC approves the external origin, so the command is dispatched
+	// before the RPC endpoint redirects it.
+	redirectsRPC bool
+}
+
+var endpointAttacks = []endpointAttack{
+	{name: "card redirect", redirectsCard: true},
+	{name: "RPC origin", externalRPC: true},
+	{name: "RPC redirect", redirectsRPC: true},
+}
+
 func TestEndpointAuthorityAndRedirectsAreEnforcedBeforeFollowing(t *testing.T) {
-	for _, mode := range []string{"card redirect", "RPC origin", "RPC redirect"} {
-		t.Run(mode, func(t *testing.T) {
+	for _, attack := range endpointAttacks {
+		t.Run(attack.name, func(t *testing.T) {
 			var externalCalls, rpcCalls atomic.Int32
 			external := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { externalCalls.Add(1) }))
 			defer external.Close()
 			var server *httptest.Server
 			server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path == "/card" {
-					if mode == "card redirect" {
+					if attack.redirectsCard {
 						http.Redirect(w, r, external.URL, http.StatusFound)
 						return
 					}
 					endpoint := server.URL + "/rpc"
-					if mode == "RPC origin" {
+					if attack.externalRPC {
 						endpoint = external.URL
 					}
 					if err := json.MarshalWrite(w, a2a.AgentCard{SupportedInterfaces: []*a2a.AgentInterface{{URL: endpoint, ProtocolBinding: a2a.TransportProtocolJSONRPC, ProtocolVersion: a2a.Version}}}); err != nil {
@@ -43,7 +62,7 @@ func TestEndpointAuthorityAndRedirectsAreEnforcedBeforeFollowing(t *testing.T) {
 			}))
 			defer server.Close()
 			spec := agentSpec{Name: "remote", CardURL: server.URL + "/card"}
-			if mode == "RPC redirect" {
+			if attack.redirectsRPC {
 				spec.AllowedRPCOrigins = []string{external.URL}
 			}
 			c := newTestConnector(t, filepath.Join(t.TempDir(), "a2a.db"), spec)
@@ -54,7 +73,7 @@ func TestEndpointAuthorityAndRedirectsAreEnforcedBeforeFollowing(t *testing.T) {
 				t.Fatal("unauthorized routing was accepted")
 			}
 			_, retryErr := c.send(t.Context(), contracts.Send.Name(), "request", input)
-			if mode == "RPC redirect" {
+			if attack.redirectsRPC {
 				if !errors.Is(retryErr, pluginstorage.ErrCommandUnconfirmed) || rpcCalls.Load() != 1 {
 					t.Fatalf("redirect lost mutation evidence: %v calls=%d", retryErr, rpcCalls.Load())
 				}

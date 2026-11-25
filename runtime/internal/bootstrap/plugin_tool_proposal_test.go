@@ -90,10 +90,41 @@ func waitCallContributorState(t *testing.T, r *poMCPRuntime, installation string
 	}
 }
 
+// contributorLoss is what happens to the captured proposal contributor while
+// its approval waits across a restart.
+type contributorLoss int
+
+const (
+	keptContributor contributorLoss = iota
+	withdrawnContributor
+	failedContributor
+)
+
+type proposalCase struct {
+	name string
+	// contributor is the call contributor fixture's mode.
+	contributor string
+	// approvable proposals are admitted and reach approval; others never do.
+	approvable bool
+	loss       contributorLoss
+}
+
+var proposalCases = []proposalCase{
+	{name: "proposal", contributor: "proposal", approvable: true},
+	{name: "invalid-proposal", contributor: "invalid-proposal"},
+	{name: "withdrawn-proposal", contributor: "proposal", approvable: true, loss: withdrawnContributor},
+	{name: "failed-proposal", contributor: "gated-proposal", approvable: true, loss: failedContributor},
+}
+
+// executes reports whether the approved proposal runs against the owner.
+func (c proposalCase) executes() bool {
+	return c.approvable && c.loss == keptContributor
+}
+
 func TestInstalledToolProposalIsApprovedExecutedAndRetainedWithoutTransformReplay(t *testing.T) {
 	binary := buildCallContributor(t)
-	for _, mode := range []string{"proposal", "invalid-proposal", "withdrawn-proposal", "failed-proposal"} {
-		t.Run(mode, func(t *testing.T) {
+	for _, test := range proposalCases {
+		t.Run(test.name, func(t *testing.T) {
 			var transformations atomic.Int32
 			var sourceAvailable atomic.Bool
 			sourceAvailable.Store(true)
@@ -143,13 +174,7 @@ func TestInstalledToolProposalIsApprovedExecutedAndRetainedWithoutTransformRepla
 			if err != nil {
 				t.Fatal(err)
 			}
-			contributorMode := mode
-			if mode == "withdrawn-proposal" {
-				contributorMode = "proposal"
-			} else if mode == "failed-proposal" {
-				contributorMode = "gated-proposal"
-			}
-			contributor := installCallContributor(t, r, binary, contributorMode, trace.URL, contract)
+			contributor := installCallContributor(t, r, binary, test.contributor, trace.URL, contract)
 			r.must(delivery.PluginsSetComposition, protocol.SetPluginCompositionRequest{Contract: contract.Identity().String(), Members: []protocol.PluginCompositionMember{{InstallationID: contributor.ID, Contribution: "contributor"}}}, "select-proposals")
 			session := r.must(delivery.SessionsCreate, protocol.CreateSessionRequest{Title: "public proposal"}, "session").(*protocol.Session)
 			meta := protocol.RequestMeta{ProtocolVersion: protocol.Version, ClientCapabilities: &protocol.ClientCapabilities{InterruptTypes: []protocol.InterruptType{protocol.InterruptApproval}}}
@@ -173,7 +198,7 @@ func TestInstalledToolProposalIsApprovedExecutedAndRetainedWithoutTransformRepla
 			}
 			pending := interrupts.Value.(*protocol.Page[protocol.PendingInterruptSet])
 			var approvedArguments map[string]any
-			if mode != "invalid-proposal" {
+			if test.approvable {
 				encoded, err := json.Marshal(pending)
 				if err != nil || len(pending.Data) != 1 || len(pending.Data[0].Interrupts) != 1 {
 					t.Fatalf("approval does not contain the final installed proposal: %s, %v", encoded, err)
@@ -183,21 +208,21 @@ func TestInstalledToolProposalIsApprovedExecutedAndRetainedWithoutTransformRepla
 					t.Fatalf("approval retained original or unrelated arguments: %s", encoded)
 				}
 				approvedArguments = payload.Tool.Arguments
-				if mode == "withdrawn-proposal" {
+				if test.loss == withdrawnContributor {
 					r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: contributor.ID, Enabled: false}, "withdraw-captured-contributor")
 				}
-				if mode == "failed-proposal" {
+				if test.loss == failedContributor {
 					sourceAvailable.Store(false)
 				}
 				r = reopenPluginRuntime(t, r, &cfg)
 				r.poMCPTools(server, func(tools []protocol.MCPTool) bool { return len(tools) == 3 })
-				if mode == "failed-proposal" {
+				if test.loss == failedContributor {
 					waitCallContributorState(t, r, contributor.ID, protocol.MCPServerFailed)
 					if err := r.host.application.workers.recovery.ReconcileStartup(t.Context()); err != nil {
 						t.Fatal(err)
 					}
 				}
-				if mode == "withdrawn-proposal" || mode == "failed-proposal" {
+				if test.loss != keptContributor {
 					lost := r.must(delivery.RunsGet, protocol.GetRunRequest{RunID: started.RunID}, "").(*protocol.RunRef)
 					if lost.Status != protocol.RunStatusFinished || lost.Outcome == nil || lost.Outcome.Type != protocol.OutcomeLost {
 						t.Fatalf("withdrawn captured contributor blocked or silently changed waiting recovery: %+v", lost)
@@ -220,11 +245,11 @@ func TestInstalledToolProposalIsApprovedExecutedAndRetainedWithoutTransformRepla
 					continue
 				}
 				found = true
-				if mode == "proposal" && !reflect.DeepEqual(item.Tool.Arguments, approvedArguments) {
+				if test.executes() && !reflect.DeepEqual(item.Tool.Arguments, approvedArguments) {
 					t.Fatalf("executed/history arguments differ from approval: approved=%+v executed=%+v", approvedArguments, item.Tool.Arguments)
 				}
 				encoded, err := json.Marshal(item.Tool)
-				if err != nil || (mode == "proposal" && (item.Status != protocol.ItemStatusCompleted || !strings.Contains(string(encoded), `resolved`) || !strings.Contains(string(encoded), `updated`))) || (mode != "proposal" && item.Status == protocol.ItemStatusCompleted) {
+				if err != nil || (test.executes() && (item.Status != protocol.ItemStatusCompleted || !strings.Contains(string(encoded), `resolved`) || !strings.Contains(string(encoded), `updated`))) || (!test.executes() && item.Status == protocol.ItemStatusCompleted) {
 					t.Fatalf("executed/history outcome differs from final admission: %+v, %s, %v", item, encoded, err)
 				}
 			}
@@ -245,7 +270,7 @@ func TestInstalledToolProposalIsApprovedExecutedAndRetainedWithoutTransformRepla
 				t.Fatalf("private owner read failed: %s, %v", read.Output, err)
 			}
 			expectedRevision, expectedStatus := int64(2), "resolved"
-			if mode != "proposal" {
+			if !test.executes() {
 				expectedRevision, expectedStatus = 1, "open"
 			}
 			if current.Reviews[0].Revision != expectedRevision || current.Reviews[0].Status != expectedStatus {

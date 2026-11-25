@@ -17,7 +17,17 @@ import (
 )
 
 const commandCrashExit = 73
-const commandCrashReceipt = "receipt"
+
+// commandCrashPoint is where the helper process exits abruptly; the parent
+// passes it through FLAME_TEST_COMMAND_CRASH.
+type commandCrashPoint string
+
+const (
+	noCommandCrash    commandCrashPoint = ""
+	crashAfterClaim   commandCrashPoint = "claim"
+	crashInBusiness   commandCrashPoint = "business"
+	crashAfterReceipt commandCrashPoint = "receipt"
+)
 
 type atomicReceiptCommitCrashStore struct{ operation.ReplayStore }
 
@@ -32,12 +42,12 @@ func (s atomicReceiptCommitCrashStore) Transact(ctx context.Context, write func(
 type commandCrashStore struct {
 	operation.ReplayStore
 
-	phase string
+	phase commandCrashPoint
 }
 
 func (s commandCrashStore) Claim(ctx context.Context, claim operation.ReplayClaim) (operation.ReplayRecord, bool, error) {
 	record, claimed, err := s.ReplayStore.Claim(ctx, claim)
-	if err == nil && claimed && s.phase == "claim" {
+	if err == nil && claimed && s.phase == crashAfterClaim {
 		os.Exit(commandCrashExit)
 	}
 	return record, claimed, err
@@ -45,7 +55,7 @@ func (s commandCrashStore) Claim(ctx context.Context, claim operation.ReplayClai
 
 func (s commandCrashStore) Complete(ctx context.Context, record operation.ReplayRecord) (operation.ReplayRecord, error) {
 	settled, err := s.ReplayStore.Complete(ctx, record)
-	if err == nil && s.phase == commandCrashReceipt {
+	if err == nil && s.phase == crashAfterReceipt {
 		os.Exit(commandCrashExit)
 	}
 	return settled, err
@@ -53,14 +63,14 @@ func (s commandCrashStore) Complete(ctx context.Context, record operation.Replay
 
 type commandCrashExecutor struct {
 	effects *sql.DB
-	phase   string
+	phase   commandCrashPoint
 }
 
 func (s commandCrashExecutor) SetEmbeddingRole(ctx context.Context, role protocol.EmbeddingRole) (*protocol.EmbeddingRole, error) {
 	if _, err := s.effects.ExecContext(ctx, `INSERT INTO command_crash_effects (item_id) VALUES ('item_crash')`); err != nil {
 		return nil, err
 	}
-	if s.phase == "business" {
+	if s.phase == crashInBusiness {
 		os.Exit(commandCrashExit)
 	}
 	return &role, nil
@@ -68,7 +78,7 @@ func (s commandCrashExecutor) SetEmbeddingRole(ctx context.Context, role protoco
 
 var crashRole = protocol.EmbeddingRole{Provider: "test", Model: "crash-embedding"}
 
-func crashCommand(t *testing.T, db *persistencefixture.Stores, effects *sql.DB, phase string) (*protocol.EmbeddingRole, error) {
+func crashCommand(t *testing.T, db *persistencefixture.Stores, effects *sql.DB, phase commandCrashPoint) (*protocol.EmbeddingRole, error) {
 	t.Helper()
 	namespace := db.IdempotencyNamespace
 	endpoint, err := delivery.NewEndpoint(commandCrashExecutor{effects: effects, phase: phase}, delivery.EndpointConfig{
@@ -84,8 +94,8 @@ func crashCommand(t *testing.T, db *persistencefixture.Stores, effects *sql.DB, 
 }
 
 func TestCommandCrashHelper(t *testing.T) {
-	phase := os.Getenv("FLAME_TEST_COMMAND_CRASH")
-	if phase == "" {
+	phase := commandCrashPoint(os.Getenv("FLAME_TEST_COMMAND_CRASH"))
+	if phase == noCommandCrash {
 		return
 	}
 	db, err := persistencefixture.Open(t, t.Context(), filepath.Dir(os.Getenv("FLAME_TEST_COMMAND_DB")))
@@ -101,14 +111,14 @@ func TestCommandCrashHelper(t *testing.T) {
 }
 
 func TestCommandReceiptSurvivesAbruptProcessExit(t *testing.T) {
-	for _, phase := range []string{"claim", "business", commandCrashReceipt} {
-		t.Run(phase, func(t *testing.T) {
+	for _, phase := range []commandCrashPoint{crashAfterClaim, crashInBusiness, crashAfterReceipt} {
+		t.Run(string(phase), func(t *testing.T) {
 			path := filepath.Join(t.TempDir(), "flame.db")
 			effectsPath := filepath.Join(t.TempDir(), "effects.db")
 			ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 			defer cancel()
 			command := exec.CommandContext(ctx, os.Args[0], "-test.run=^TestCommandCrashHelper$")
-			command.Env = append(os.Environ(), "FLAME_TEST_COMMAND_CRASH="+phase, "FLAME_TEST_COMMAND_DB="+path, "FLAME_TEST_COMMAND_EFFECTS="+effectsPath)
+			command.Env = append(os.Environ(), "FLAME_TEST_COMMAND_CRASH="+string(phase), "FLAME_TEST_COMMAND_DB="+path, "FLAME_TEST_COMMAND_EFFECTS="+effectsPath)
 			output, err := command.CombinedOutput()
 			var exit *exec.ExitError
 			if !errors.As(err, &exit) || exit.ExitCode() != commandCrashExit {
@@ -121,8 +131,8 @@ func TestCommandReceiptSurvivesAbruptProcessExit(t *testing.T) {
 			t.Cleanup(func() { _ = db.Close() })
 			effects := openCommandEffects(t, effectsPath)
 			for range 2 {
-				response, err := crashCommand(t, db, effects, "")
-				if phase == commandCrashReceipt {
+				response, err := crashCommand(t, db, effects, noCommandCrash)
+				if phase == crashAfterReceipt {
 					if err != nil || response == nil || *response != crashRole {
 						t.Fatalf("durable receipt lost its identity: %+v, %v", response, err)
 					}
@@ -135,7 +145,7 @@ func TestCommandReceiptSurvivesAbruptProcessExit(t *testing.T) {
 				t.Fatal(err)
 			}
 			want := 1
-			if phase == "claim" {
+			if phase == crashAfterClaim {
 				want = 0
 			}
 			if executions != want {

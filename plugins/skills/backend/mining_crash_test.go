@@ -19,6 +19,15 @@ const miningCrashExit = 93
 const miningCrashPhase = "FLAME_TEST_MINING_CRASH_PHASE"
 const miningCrashDB = "FLAME_TEST_MINING_CRASH_DB"
 
+// miningCrashPoint places the helper's exit around the mining transaction commit.
+type miningCrashPoint string
+
+const (
+	noMiningCrash           miningCrashPoint = ""
+	crashBeforeMiningCommit miningCrashPoint = "before-commit"
+	crashAfterMiningCommit  miningCrashPoint = "after-commit"
+)
+
 func TestMiningCrashAtomicallyPreservesProposalAndOriginalReceipt(t *testing.T) {
 	method, err := skilllearning.MineMethod()
 	if err != nil {
@@ -31,7 +40,7 @@ func TestMiningCrashAtomicallyPreservesProposalAndOriginalReceipt(t *testing.T) 
 	}
 	const id = "original-mining-command"
 	result := skilllearning.MineResult{Proposal: &skilllearning.Proposal{Skill: skilllearning.Skill{Name: "captured", Description: "Check the workspace.", Instructions: "Run the checks."}}}
-	if phase := os.Getenv(miningCrashPhase); phase != "" {
+	if phase := miningCrashPoint(os.Getenv(miningCrashPhase)); phase != noMiningCrash {
 		l, err := openLearner(t.Context(), os.Getenv(miningCrashDB))
 		if err != nil {
 			t.Fatal(err)
@@ -49,7 +58,7 @@ func TestMiningCrashAtomicallyPreservesProposalAndOriginalReceipt(t *testing.T) 
 				if err := persist(ctx); err != nil {
 					return err
 				}
-				if phase == "before-commit" {
+				if phase == crashBeforeMiningCommit {
 					os.Exit(miningCrashExit)
 				}
 				return nil
@@ -60,11 +69,11 @@ func TestMiningCrashAtomicallyPreservesProposalAndOriginalReceipt(t *testing.T) 
 		}
 		os.Exit(miningCrashExit)
 	}
-	for _, phase := range []string{"before-commit", "after-commit"} {
-		t.Run(phase, func(t *testing.T) {
+	for _, phase := range []miningCrashPoint{crashBeforeMiningCommit, crashAfterMiningCommit} {
+		t.Run(string(phase), func(t *testing.T) {
 			path := filepath.Join(t.TempDir(), "skills.db")
 			child := exec.Command(os.Args[0], "-test.run=^TestMiningCrashAtomicallyPreservesProposalAndOriginalReceipt$")
-			child.Env = append(os.Environ(), miningCrashPhase+"="+phase, miningCrashDB+"="+path)
+			child.Env = append(os.Environ(), miningCrashPhase+"="+string(phase), miningCrashDB+"="+path)
 			out, err := child.CombinedOutput()
 			e, ok := errors.AsType[*exec.ExitError](err)
 			if !ok || e.ExitCode() != miningCrashExit {
@@ -83,7 +92,7 @@ func TestMiningCrashAtomicallyPreservesProposalAndOriginalReceipt(t *testing.T) 
 			if err != nil {
 				t.Fatal(err)
 			}
-			if phase == "before-commit" {
+			if phase == crashBeforeMiningCommit {
 				if len(reply) != 0 || command == nil || command.NewlyAdmitted() || len(pending.Proposals) != 0 {
 					t.Fatal("uncommitted mining exposed a proposal or authorized a second model call")
 				}

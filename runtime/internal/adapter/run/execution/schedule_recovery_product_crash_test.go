@@ -42,6 +42,56 @@ import (
 
 const scheduleCrashKey = "schedule-crash-start"
 
+// scheduleCut is one SIGKILL placement around the original create and the
+// recovery outcome it must produce. Phases name the message-loss probe's stages.
+type scheduleCut struct {
+	name string
+	// edited approves the create with an edited title before the first cut.
+	edited bool
+	// recutAt kills the recovering Runtime once more at that stage.
+	recutAt string
+	// settled marks a recut that lands after Scope committed the resolution,
+	// so recovery must not query the receipt again.
+	settled bool
+	// disables withdraws the schedules installation before recovery.
+	disables bool
+	// inconclusive receipts leave the original create Unknown, never completed.
+	inconclusive bool
+}
+
+var scheduleCuts = []scheduleCut{
+	{name: "commit"},
+	{name: "query", recutAt: "query"},
+	{name: "resolution", recutAt: "resolution", settled: true},
+	{name: "edited", edited: true},
+	{name: "absent", inconclusive: true},
+	{name: "conflict", inconclusive: true},
+	{name: "malformed", inconclusive: true},
+	{name: "disabled", disables: true, inconclusive: true},
+}
+
+func (c scheduleCut) initialPhase() string {
+	if c.edited {
+		return "edited"
+	}
+	return "commit"
+}
+
+// finalPhase lets an inconclusive cut keep faulting the receipt it recovers through.
+func (c scheduleCut) finalPhase() string {
+	if c.inconclusive {
+		return c.name
+	}
+	return "finish"
+}
+
+func (c scheduleCut) title() string {
+	if c.edited {
+		return "edited title"
+	}
+	return "original title"
+}
+
 func TestScheduleCreateRecoversAcrossSIGKILLCuts(t *testing.T) {
 	module, err := filepath.Abs("../../../..")
 	if err != nil {
@@ -64,8 +114,8 @@ func TestScheduleCreateRecoversAcrossSIGKILLCuts(t *testing.T) {
 		t.Fatalf("build real backends: %v\n%s", err, output)
 	}
 
-	for _, cut := range []string{"commit", "query", "resolution", "edited", "absent", "conflict", "malformed", "disabled"} {
-		t.Run(cut, func(t *testing.T) {
+	for _, cut := range scheduleCuts {
+		t.Run(cut.name, func(t *testing.T) {
 			home := testsupport.TempDirectory(t)
 			processRunner, err := runner.NewDaemon(runner.DaemonConfig{
 				Executable: filepath.Join(distribution, "frame-runner"),
@@ -103,7 +153,7 @@ func TestScheduleCreateRecoversAcrossSIGKILLCuts(t *testing.T) {
 				defer cancel()
 				command := exec.CommandContext(ctx, binary, "-test.run=^TestScheduleRecoveryCrashHelper$", "-test.timeout=35s")
 				command.Env = append(os.Environ(), localruntime.ProductRootVariable+"="+home, "FLAME_TEST_SCHEDULE_CRASH="+phase, "FLAME_TEST_SCHEDULE_SOURCE="+source, "FLAME_TEST_SCHEDULE_EVIDENCE="+evidence, "FLAME_TEST_FIRST_PARTY_DIRECTORY="+packages)
-				if cut == "edited" {
+				if cut.edited {
 					command.Env = append(command.Env, "FLAME_TEST_SCHEDULE_EDITED=1")
 				}
 				var output bytes.Buffer
@@ -150,10 +200,7 @@ func TestScheduleCreateRecoversAcrossSIGKILLCuts(t *testing.T) {
 					t.Fatalf("fresh Runtime: %v\n%s", err, output.String())
 				}
 			}
-			initial := "commit"
-			if cut == "edited" {
-				initial = "edited"
-			}
+			initial := cut.initialPhase()
 			invoke(initial, true)
 			stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: home, ValidateDirectory: persistencefixture.UnleasedDirectory})
 			if err != nil {
@@ -201,24 +248,12 @@ func TestScheduleCreateRecoversAcrossSIGKILLCuts(t *testing.T) {
 			}
 			var originalEffect scoperun.EffectID
 			var originalEffects []scoperun.EffectID
-			for _, entry := range originalTree.Entries {
-				stepped, ok := entry.Record.(scoperun.Stepped)
-				if !ok || stepped.Process != originalTree.Root {
-					continue
+			for _, intent := range createIntents(t, originalTree, originalTree.Root) {
+				if intent.continuationOf != originalEffect {
+					t.Fatal("original create call has multiple independent effect intents")
 				}
-				for _, intent := range stepped.Intents() {
-					call, tool, err := interaction.ToolCallFromEffect(intent.Effect)
-					if err != nil {
-						t.Fatal(err)
-					}
-					if tool && call.Call.Name == "schedules_create_schedule" {
-						if call.ContinuationOf != originalEffect {
-							t.Fatal("original create call has multiple independent effect intents")
-						}
-						originalEffect = intent.ID
-						originalEffects = append(originalEffects, intent.ID)
-					}
-				}
+				originalEffect = intent.id
+				originalEffects = append(originalEffects, intent.id)
 			}
 			if !originalEffect.Valid() {
 				t.Fatal("original create effect is unavailable")
@@ -226,21 +261,16 @@ func TestScheduleCreateRecoversAcrossSIGKILLCuts(t *testing.T) {
 			if err := stores.Close(); err != nil {
 				t.Fatal(err)
 			}
-			if cut == "disabled" {
+			if cut.disables {
 				invoke("disable", false)
 			}
-			negative := cut == "absent" || cut == "conflict" || cut == "malformed" || cut == "disabled"
-			if cut == "query" || cut == "resolution" {
-				invoke(cut, true)
+			if cut.recutAt != "" {
+				invoke(cut.recutAt, true)
 			}
-			if cut == "resolution" {
+			if cut.settled {
 				assertScheduleResolutionCommitted(t, home, checkpoint.SessionID.String(), checkpoint.RootMemberID, originalEffect)
 			}
-			phase := "finish"
-			if negative {
-				phase = cut
-			}
-			invoke(phase, false)
+			invoke(cut.finalPhase(), false)
 			stores, err = persistence.Open(t.Context(), persistence.Config{DataDirectory: home, ValidateDirectory: persistencefixture.UnleasedDirectory})
 			if err != nil {
 				t.Fatal(err)
@@ -251,7 +281,7 @@ func TestScheduleCreateRecoversAcrossSIGKILLCuts(t *testing.T) {
 				t.Fatalf("recovery changed opening identity: %+v,%v", current, err)
 			}
 			steps := 3
-			if negative {
+			if cut.inconclusive {
 				steps = 2
 			}
 			if current.CurrentRun.Metrics().Steps() != steps {
@@ -261,7 +291,7 @@ func TestScheduleCreateRecoversAcrossSIGKILLCuts(t *testing.T) {
 			if err != nil {
 				t.Fatalf("final head: %t,%v", found, err)
 			}
-			if cut == "disabled" {
+			if cut.disables {
 				_, contextErr := stores.ExecutorCheckpoints.LoadCheckpoint(t.Context(), scopeRoot.String())
 				if found || !errors.Is(contextErr, runs.ErrExecutorCheckpointNotFound) {
 					t.Fatalf("unrecoverable execution retained a continuation: head=%t error=%v", found, contextErr)
@@ -275,23 +305,11 @@ func TestScheduleCreateRecoversAcrossSIGKILLCuts(t *testing.T) {
 					t.Fatal(err)
 				}
 				var retained []scoperun.EffectID
-				for _, entry := range finalTree.Entries {
-					stepped, ok := entry.Record.(scoperun.Stepped)
-					if !ok || stepped.Process != originalTree.Root {
-						continue
+				for _, intent := range createIntents(t, finalTree, originalTree.Root) {
+					if !slices.Contains(originalEffects, intent.id) {
+						t.Fatal("recovery prepared another create effect")
 					}
-					for _, intent := range stepped.Intents() {
-						call, tool, err := interaction.ToolCallFromEffect(intent.Effect)
-						if err != nil {
-							t.Fatal(err)
-						}
-						if tool && call.Call.Name == "schedules_create_schedule" {
-							if !slices.Contains(originalEffects, intent.ID) {
-								t.Fatal("recovery prepared another create effect")
-							}
-							retained = append(retained, intent.ID)
-						}
-					}
+					retained = append(retained, intent.id)
 				}
 				if !slices.Equal(retained, originalEffects) || finalTree.Root != originalTree.Root {
 					t.Fatal("recovery replaced the original effect or process tree")
@@ -303,7 +321,7 @@ func TestScheduleCreateRecoversAcrossSIGKILLCuts(t *testing.T) {
 			}
 			count := 0
 			wantStatus := transcript.ItemCompleted
-			if negative {
+			if cut.inconclusive {
 				wantStatus = transcript.ItemIncomplete
 			}
 			for _, item := range items {
@@ -346,8 +364,8 @@ func TestScheduleCreateRecoversAcrossSIGKILLCuts(t *testing.T) {
 			if createdID != witness.Response.Result.StructuredContent.Schedule.ID {
 				t.Fatalf("recovery changed the original creation: original ID=%q current ID=%q", witness.Response.Result.StructuredContent.Schedule.ID, createdID)
 			}
-			if negative {
-				if cut != "disabled" && len(current.CurrentRun.UnresolvedEffects()) != 1 {
+			if cut.inconclusive {
+				if !cut.disables && len(current.CurrentRun.UnresolvedEffects()) != 1 {
 					t.Fatalf("inconclusive proof lost its Unknown Effect: %+v", current.CurrentRun.UnresolvedEffects())
 				}
 				if _, err := os.Stat(filepath.Join(home, "recovered-model-result.json")); !errors.Is(err, os.ErrNotExist) {
@@ -365,17 +383,13 @@ func TestScheduleCreateRecoversAcrossSIGKILLCuts(t *testing.T) {
 					Title string `json:"title"`
 				} `json:"schedule"`
 			}
-			title := "original title"
-			if cut == "edited" {
-				title = "edited title"
-			}
-			if err := json.Unmarshal(result, &view); err != nil || view.Schedule.Title != title || view.Schedule.ID == "" {
+			if err := json.Unmarshal(result, &view); err != nil || view.Schedule.Title != cut.title() || view.Schedule.ID == "" {
 				t.Fatalf("original model result: %s,%v", result, err)
 			}
 			if createdID != view.Schedule.ID {
 				t.Fatalf("model recovery changed the original result: owner ID=%q recovered ID=%q", createdID, view.Schedule.ID)
 			}
-			if cut == "resolution" {
+			if cut.settled {
 				if _, err := os.Stat(evidence + ".finish"); !errors.Is(err, os.ErrNotExist) {
 					t.Fatalf("a committed Scope settlement was queried again: %v", err)
 				}
@@ -493,6 +507,33 @@ func readScheduleOwner(t *testing.T, packages, dataDirectory string, original sd
 		t.Fatalf("receipt differs from original creation: %s, %v", encoded, err)
 	}
 	return page.Rows[0].Id
+}
+
+type createIntent struct {
+	id, continuationOf scoperun.EffectID
+}
+
+// createIntents lists the create_schedule effect intents the root process
+// stepped, in log order.
+func createIntents(t *testing.T, tree scoperun.Log, root scoperun.ProcessID) []createIntent {
+	t.Helper()
+	var intents []createIntent
+	for _, entry := range tree.Entries {
+		stepped, ok := entry.Record.(scoperun.Stepped)
+		if !ok || stepped.Process != root {
+			continue
+		}
+		for _, intent := range stepped.Intents() {
+			call, tool, err := interaction.ToolCallFromEffect(intent.Effect)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if tool && call.Call.Name == "schedules_create_schedule" {
+				intents = append(intents, createIntent{id: intent.ID, continuationOf: call.ContinuationOf})
+			}
+		}
+	}
+	return intents
 }
 
 func storedScopeLog(payload []byte) (scoperun.Log, error) {

@@ -19,21 +19,54 @@ import (
 	framecall "github.com/Tangerg/frame/call"
 )
 
+// standaloneAuthor is a first-party plugin re-exported as an independent
+// author project and driven through one private command.
+type standaloneAuthor struct {
+	name string
+	// typescript authors package with npm under the manifest's release name;
+	// Go authors relocate their module and build with the Go kit.
+	typescript bool
+	// contribution carries the author's contract and receives the command.
+	contribution string
+	// publishedContract, when set, is the host contract the author must keep.
+	publishedContract string
+	method, input     string
+	// memoryProvider authors become the selected Memory provider.
+	memoryProvider bool
+}
+
+var standaloneAuthors = []standaloneAuthor{
+	{
+		name: "guardrails", contribution: "guardrails-policy",
+		method: GuardrailsReplacePolicyV1Method, input: `{"expectedRevision":1,"phrases":["private phrase"]}`,
+	},
+	{
+		name: "memory", contribution: "memory-provider", publishedContract: memorycontract.CapabilityJSON,
+		method: memorycontract.AddV3Method, input: `{"scope":"user","cwd":"","content":"independent author fact"}`,
+		memoryProvider: true,
+	},
+	{
+		name: "usagereports", typescript: true, contribution: "usage-reports", publishedContract: UsageReportsCapabilityJSON,
+		method: UsageReportsCaptureV1Method, input: `{"period":"daily"}`,
+	},
+}
+
 func TestStandalonePluginArchiveRetainsItsContractAndPrivateCommandOwner(t *testing.T) {
-	for _, name := range []string{"guardrails", "memory", "usagereports"} {
-		t.Run(name, func(t *testing.T) {
-			verifyStandalonePlugin(t, name)
+	for _, author := range standaloneAuthors {
+		t.Run(author.name, func(t *testing.T) {
+			verifyStandalonePlugin(t, author)
 		})
 	}
 }
 
-func verifyStandalonePlugin(t *testing.T, name string) {
+func verifyStandalonePlugin(t *testing.T, author standaloneAuthor) {
+	name := author.name
 	t.Setenv("FLAME_PROVIDER", "anthropic")
 	t.Setenv("FLAME_MODEL", "claude-opus-5")
 	t.Setenv("FLAME_A2A_AGENTS", "")
 	t.Setenv("FLAME_A2A_RPC_ORIGINS", "")
 	root := t.TempDir()
-	author := filepath.Join(root, "author project 作者")
+	project := filepath.Join(root, "author project 作者")
 	_, file, _, _ := runtime.Caller(0)
 	repository := filepath.Clean(filepath.Join(filepath.Dir(file), "../.."))
 	execute := func(directory string, env []string, command string, args ...string) {
@@ -44,23 +77,23 @@ func verifyStandalonePlugin(t *testing.T, name string) {
 			t.Fatalf("%s %v: %v\n%s", command, args, err, output)
 		}
 	}
-	export := []string{"plugins/scripts/build-author-kit.mjs", "--plugin", name, "--output", author, "--offline"}
-	if name != "usagereports" {
+	export := []string{"plugins/scripts/build-author-kit.mjs", "--plugin", name, "--output", project, "--offline"}
+	if !author.typescript {
 		export = append(export, "--module-path", "example.com/flame-author/"+name)
 	}
 	execute(repository, os.Environ(), "node", export...)
 	env := append(os.Environ(), "GOWORK=off", "GOTOOLCHAIN=local", "GOPROXY=off", "GONOPROXY=none", "GOSUMDB=off", "GOFLAGS=-mod=vendor", "GOMODCACHE="+filepath.Join(root, "module-cache"))
 	output, archives := filepath.Join(root, "package"), filepath.Join(root, "archives")
-	if name == "usagereports" {
-		execute(author, env, "npm", "run", "package", "--", "--output", output, "--archives", archives)
+	if author.typescript {
+		execute(project, env, "npm", "run", "package", "--", "--output", output, "--archives", archives)
 	} else {
-		execute(author, env, "node", "build.mjs", "--source", author, "--os", runtime.GOOS, "--arch", runtime.GOARCH, "--output", output, "--archives", archives)
+		execute(project, env, "node", "build.mjs", "--source", project, "--os", runtime.GOOS, "--arch", runtime.GOARCH, "--output", output, "--archives", archives)
 	}
 	files, err := filepath.Glob(filepath.Join(archives, "*.zip"))
 	if err != nil || len(files) != 1 {
 		t.Fatalf("release archive = %v, %v", files, err)
 	}
-	if name == "usagereports" {
+	if author.typescript {
 		manifest, err := os.ReadFile(filepath.Join(repository, "plugins", name, "package", "plugin.json"))
 		if err != nil {
 			t.Fatal(err)
@@ -125,22 +158,24 @@ func verifyStandalonePlugin(t *testing.T, name string) {
 	waitForAuthorBackend()
 	contract := ""
 	for _, contribution := range installed.Selected.Contributions {
-		if contribution.ID == name+"-policy" || contribution.ID == name+"-provider" || name == "usagereports" && contribution.ID == "usage-reports" {
+		if contribution.ID == author.contribution {
 			contract = contribution.Contract
 		}
 	}
 	if contract == "" {
 		t.Fatal("author did not publish its own contract")
 	}
-	request := protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "guardrails-policy", Contract: contract, Method: GuardrailsReplacePolicyV1Method, Input: `{"expectedRevision":1,"phrases":["private phrase"]}`, Target: framecall.Target{Scope: "installation", Reference: installed.ID}}
-	if name == "memory" {
-		published, err := plugincontract.ParseCapability([]byte(memorycontract.CapabilityJSON))
+	if author.publishedContract != "" {
+		published, err := plugincontract.ParseCapability([]byte(author.publishedContract))
 		if err != nil {
 			t.Fatal(err)
 		}
 		if contract != published.Identity().String() {
-			t.Fatal("module relocation changed the host's Memory contract")
+			t.Fatal("standalone author changed the contract its host publishes")
 		}
+	}
+	request := protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: author.contribution, Contract: contract, Method: author.method, Input: author.input, Target: framecall.Target{Scope: "installation", Reference: installed.ID}}
+	if author.memoryProvider {
 		if len(installed.Selected.Components) == 0 {
 			t.Fatal("author release lost its component")
 		}
@@ -148,19 +183,6 @@ func verifyStandalonePlugin(t *testing.T, name string) {
 		if err != nil || selected.InstallationID != installed.ID {
 			t.Fatalf("select independent Memory: %+v, %v", selected, err)
 		}
-		request.Contribution = "memory-provider"
-		request.Method = memorycontract.AddV3Method
-		request.Input = `{"scope":"user","cwd":"","content":"independent author fact"}`
-	}
-	if name == "usagereports" {
-		published, err := plugincontract.ParseCapability([]byte(UsageReportsCapabilityJSON))
-		if err != nil {
-			t.Fatal(err)
-		}
-		if published.Identity().String() != contract {
-			t.Fatal("independent TypeScript author changed the original usage contract")
-		}
-		request.Contribution, request.Method, request.Input = "usage-reports", UsageReportsCaptureV1Method, `{"period":"daily"}`
 	}
 	options := protocol.PluginCallOptions{IdempotencyKey: "standalone-command"}
 	original, err := host.CallPlugin(t.Context(), request, options)
@@ -179,7 +201,7 @@ func verifyStandalonePlugin(t *testing.T, name string) {
 	if err != nil || recovered.Failure != nil || recovered.Output != original.Output {
 		t.Fatalf("original command changed after restart: %+v, %v", recovered, err)
 	}
-	if name == "memory" {
+	if author.memoryProvider {
 		providers, err := host.ListPluginProviders(t.Context(), protocol.CallOptions{})
 		if err != nil {
 			t.Fatal(err)
@@ -210,7 +232,7 @@ func verifyStandalonePlugin(t *testing.T, name string) {
 		if err := json.Unmarshal([]byte(original.Output), &added, json.RejectUnknownMembers(true)); err != nil {
 			t.Fatal(err)
 		}
-		if added.Item == nil || string(page.Rows[0].ID) != string(added.Item.ID) {
+		if added.Item == nil || string(page.Rows[0].Id) != string(added.Item.Id) {
 			t.Fatal("original command created another item")
 		}
 	}
