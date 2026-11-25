@@ -53,9 +53,6 @@ func (s *segmentPump) bindTreeRoot(update ExecutionTreeUpdate) error {
 		if err != nil || route != s.routes.root {
 			return errors.Join(errors.New("runs: tree activation has no product root"), err)
 		}
-		if err := s.owner.bindExecutorMember(route.runID, member.MemberID); err != nil {
-			return err
-		}
 	}
 	if update.Head.SessionID != s.spec.SessionID || update.Head.RootID != s.routes.root.member.MemberID {
 		return fmt.Errorf("runs: foreign execution tree")
@@ -189,7 +186,6 @@ func (s *segmentPump) settleChildStarts(children []*managedChildStart, startedRo
 		prepared := managed.prepared
 		if startedRoutes[prepared.member.MemberID] == nil {
 			managed.outcome = ChildRunStartAborted
-			prepared.releaseBinding(s.owner)
 			continue
 		}
 		managed.outcome = ChildRunStarted

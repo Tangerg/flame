@@ -82,7 +82,6 @@ func childRunStartReservationRecord(
 		ExecutorID:      reservation.ExecutorID,
 		ParentMemberID:  reservation.Member.ParentID,
 		SpawnCallID:     reservation.Member.SpawnCallID,
-		RunID:           reservation.Binding.RunID,
 		ParentRunID:     reservation.Binding.ParentRunID,
 		SegmentID:       reservation.SegmentID,
 		SpawnedByItemID: reservation.SpawnedByItemID,
@@ -92,7 +91,7 @@ func childRunStartReservationRecord(
 		return persistence.ChildRunStartReservationRecord{}, fmt.Errorf("segment: encode child Run start reservation: %w", err)
 	}
 	return persistence.ChildRunStartReservationRecord{
-		MemberID: reservation.Member.MemberID, SessionID: reservation.SessionID,
+		MemberID: reservation.Member.MemberID, RunID: reservation.Binding.RunID, SessionID: reservation.SessionID,
 		Payload: payload, CreatedAt: reservation.ReservedAt.UTC(),
 	}, nil
 }
@@ -101,7 +100,6 @@ type childRunStartReservationPayload struct {
 	ExecutorID      string             `json:"executorId"`
 	ParentMemberID  string             `json:"parentMemberId"`
 	SpawnCallID     string             `json:"spawnCallId"`
-	RunID           identity.RunID     `json:"runId"`
 	ParentRunID     identity.RunID     `json:"parentRunId"`
 	SegmentID       identity.SegmentID `json:"segmentId"`
 	SpawnedByItemID identity.ItemID    `json:"spawnedByItemId"`

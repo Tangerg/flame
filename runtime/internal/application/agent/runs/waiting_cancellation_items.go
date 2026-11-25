@@ -2,23 +2,25 @@ package runs
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 
+	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
-func (c *Cancellations) loadWaitingCancellationItems(ctx context.Context, plan *cancellationPlan) error {
-	if plan == nil {
-		return errors.New("runs: waiting cancellation plan is required")
-	}
-	if err := c.loadWaitingCancellationSpawningItem(ctx, plan); err != nil {
+func (c *Cancellations) loadWaitingCancellationItems(ctx context.Context, plan *waitingCancellationPlan) error {
+	itemsByID, err := pendingItems(ctx, c.items, plan.pending)
+	if err != nil {
 		return err
 	}
-	itemsByID, err := pendingItems(ctx, c.items, *plan.pending)
-	if err != nil {
+	spawningItemID := plan.target.Lineage().SpawnedByItemID()
+	spawningItem, found := itemsByID[spawningItemID]
+	if !found {
+		return fmt.Errorf("runs: waiting child Run %q spawning Item %q is missing from Pending", plan.target.ID(), spawningItemID)
+	}
+	if err := validateWaitingCancellationSpawningItem(*plan, spawningItem); err != nil {
 		return err
 	}
 	interrupts, err := plan.pending.ProjectInterrupts(itemsByID)
@@ -62,51 +64,25 @@ func pendingItems(ctx context.Context, items ItemProjection, pending Pending) (m
 	return itemsByID, nil
 }
 
-func (c *Cancellations) loadWaitingCancellationSpawningItem(
-	ctx context.Context,
-	plan *cancellationPlan,
-) error {
-	item, found, err := c.items.Item(ctx, plan.target.run.Lineage().SpawnedByItemID())
-	if err != nil {
-		return fmt.Errorf(
-			"runs: read spawning Item %q: %w",
-			plan.target.run.Lineage().SpawnedByItemID(),
-			err,
-		)
-	}
-	if !found {
-		return fmt.Errorf(
-			"runs: waiting child Run %q spawning Item %q is missing",
-			plan.target.run.ID(),
-			plan.target.run.Lineage().SpawnedByItemID(),
-		)
-	}
-	if err := validateWaitingCancellationSpawningItem(*plan, item); err != nil {
-		return err
-	}
-	plan.spawningItem = &item
-	return nil
-}
-
-func cancellationTargetRunIDs(subtree []cancellationRun) map[identity.RunID]struct{} {
+func cancellationTargetRunIDs(subtree []rundomain.Run) map[identity.RunID]struct{} {
 	targetRunIDs := make(map[identity.RunID]struct{}, len(subtree))
 	for _, member := range subtree {
-		targetRunIDs[member.run.ID()] = struct{}{}
+		targetRunIDs[member.ID()] = struct{}{}
 	}
 	return targetRunIDs
 }
 
-func validateWaitingCancellationSpawningItem(plan cancellationPlan, item transcript.Item) error {
-	if err := item.ValidateSpawns(plan.root.run.SessionID(), plan.target.run.Lineage().ParentRunID()); err != nil {
-		return fmt.Errorf("runs: waiting child Run %q: %w", plan.target.run.ID(), err)
+func validateWaitingCancellationSpawningItem(plan waitingCancellationPlan, item transcript.Item) error {
+	if err := item.ValidateSpawns(plan.root.SessionID(), plan.target.Lineage().ParentRunID()); err != nil {
+		return fmt.Errorf("runs: waiting child Run %q: %w", plan.target.ID(), err)
 	}
 	switch {
-	case item.ID() != plan.target.run.Lineage().SpawnedByItemID():
+	case item.ID() != plan.target.Lineage().SpawnedByItemID():
 		return fmt.Errorf(
 			"runs: waiting child Run %q resolved spawning Item %q, want %q",
-			plan.target.run.ID(),
+			plan.target.ID(),
 			item.ID(),
-			plan.target.run.Lineage().SpawnedByItemID(),
+			plan.target.Lineage().SpawnedByItemID(),
 		)
 	case item.Status() != transcript.ItemRunning:
 		return fmt.Errorf(

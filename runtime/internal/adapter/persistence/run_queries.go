@@ -105,6 +105,39 @@ func (r *RunStore) Run(ctx context.Context, runID identity.RunID) (rundomain.Run
 	return r.readRun(ctx, "read Run", runID, scanRun)
 }
 
+func (r *RunStore) CancellationTarget(ctx context.Context, runID identity.RunID) (runs.CancellationTarget, bool, error) {
+	return scopedPair(ctx, r.db.read, func(ctx context.Context) (runs.CancellationTarget, bool, error) {
+		target, found, err := r.Run(ctx, runID)
+		if err != nil || !found {
+			return runs.CancellationTarget{}, false, err
+		}
+		address := runs.CancellationTarget{Run: target, Root: target}
+		if !target.Lineage().IsChild() {
+			return address, true, nil
+		}
+		root, found, err := r.Run(ctx, target.Lineage().RootRunID())
+		if err != nil {
+			return runs.CancellationTarget{}, false, err
+		}
+		if !found {
+			return runs.CancellationTarget{}, false, fmt.Errorf("sqlite: Run %q has no root Run %q", runID, target.Lineage().RootRunID())
+		}
+		address.Root = root
+		if root.State() != rundomain.Running || target.State().IsTerminal() {
+			return address, true, nil
+		}
+		err = r.db.connection(ctx).QueryRowContext(ctx, `
+			SELECT member_id FROM child_run_start_reservations
+			WHERE run_id = ? AND session_id = ? AND state = ?`,
+			runID, target.SessionID(), runs.ChildRunStarted,
+		).Scan(&address.MemberID)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return runs.CancellationTarget{}, false, fmt.Errorf("sqlite: read admitted member for Run %q: %w", runID, err)
+		}
+		return address, true, nil
+	})
+}
+
 func (r *RunStore) CompletedRunWork(ctx context.Context, sessionID identity.SessionID, rootRunID identity.RunID) (completedToolCalls int64, compacted bool, err error) {
 	const operation = "read completed Run work"
 	if err := validateResource(operation, sessionID); err != nil {

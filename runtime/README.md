@@ -1846,6 +1846,9 @@ A reservation that reaches storage after the Run finished records
 `run_finished` before a control can be issued. A committed Scope Control records
 admission, and a committed Exit proves termination.
 
+The child start reservation stores its Run ID as the unique lookup key for its
+admitted Scope member. Use a fresh Runtime data directory for this schema.
+
 A live child cancellation retains the request through the Scope control
 acknowledgement and the settlement of the original spawning Tool Item. The
 confirmed child Exit identifies the request whose response commits with that

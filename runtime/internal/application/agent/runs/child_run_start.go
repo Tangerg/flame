@@ -185,16 +185,8 @@ type preparedChildStart struct {
 	reservation  ChildRunStartReservation
 }
 
-func (p *preparedChildStart) releaseBinding(owner *runTreeOwner) {
-	if p == nil || p.route == nil || owner == nil {
-		return
-	}
-	owner.unbindExecutorMember(p.route.runID, p.member.MemberID)
-}
-
 func (c *Segments) prepareChildStart(
 	spec segmentSpec,
-	owner *runTreeOwner,
 	routes *executorRoutes,
 	member ExecutorMember,
 ) (*preparedChildStart, error) {
@@ -231,15 +223,6 @@ func (c *Segments) prepareChildStart(
 		rootRunID: parent.rootRunID,
 		lineage:   lineage,
 	}
-	if bindExecutorMemberErr := owner.bindExecutorMember(child.runID, member.MemberID); bindExecutorMemberErr != nil {
-		return nil, bindExecutorMemberErr
-	}
-	release := true
-	defer func() {
-		if release {
-			owner.unbindExecutorMember(child.runID, member.MemberID)
-		}
-	}()
 	reservation := ChildRunStartReservation{
 		SessionID: spec.SessionID, ExecutorID: spec.ExecutorID, Member: member,
 		Binding: ChildRunBinding{
@@ -251,7 +234,6 @@ func (c *Segments) prepareChildStart(
 	if err := reservation.Validate(); err != nil {
 		return nil, err
 	}
-	release = false
 	return &preparedChildStart{
 		member: member, parent: parent, spawningItem: spawningItem,
 		route: child, reservation: reservation,

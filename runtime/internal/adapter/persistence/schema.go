@@ -258,6 +258,7 @@ func currentSchema() []string {
 			END`, startedModelInvocationPredicate()),
 		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS child_run_start_reservations (
 			member_id  TEXT PRIMARY KEY,
+			run_id     TEXT NOT NULL UNIQUE,
 			session_id TEXT NOT NULL,
 			payload    BLOB NOT NULL,
 			created_at INTEGER NOT NULL,

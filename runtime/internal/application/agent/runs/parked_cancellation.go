@@ -10,34 +10,6 @@ import (
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 )
 
-func (c *Cancellations) cancelWithoutLiveSegment(ctx context.Context, cmd CancelCommand, value rundomain.Run) (CancelResult, error) {
-	if value.State() == rundomain.Waiting {
-		cleanupCtx, cancel := runCleanupContext(ctx)
-		defer cancel()
-		return c.cancelParkedRun(cleanupCtx, cmd, value)
-	}
-	refreshed, found, err := c.runs.Run(ctx, cmd.RunID)
-	switch {
-	case err != nil:
-		return CancelResult{}, err
-	case !found:
-		return CancelResult{}, fmt.Errorf("runs: run %q disappeared after it was resolved", cmd.RunID)
-	case refreshed.State().IsTerminal():
-		return CancelResult{}, fmt.Errorf("%w: %q completed as %s", ErrRunFinished, cmd.RunID, refreshed.State())
-	case refreshed.State() == rundomain.Waiting:
-		cleanupCtx, cancel := runCleanupContext(ctx)
-		defer cancel()
-		return c.cancelParkedRun(cleanupCtx, cmd, refreshed)
-	case refreshed.State() == rundomain.Running:
-		return CancelResult{}, fmt.Errorf(
-			"runs: run %q is running segment %q with no live owner",
-			cmd.RunID, refreshed.ActiveSegmentID(),
-		)
-	default:
-		return CancelResult{}, fmt.Errorf("runs: run %q has unknown state %q", cmd.RunID, refreshed.State())
-	}
-}
-
 // Claiming the Session before resolving the open interrupt linearizes cancel
 // against resume: whichever command owns the Session decides the one durable
 // transition.

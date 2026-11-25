@@ -91,8 +91,12 @@ type DrainedTool struct {
 }
 
 func (p Pending) RootContinuation() (Continuation, bool) {
+	return p.continuationForRun(p.RootRunID)
+}
+
+func (p Pending) continuationForRun(runID identity.RunID) (Continuation, bool) {
 	for _, continuation := range p.Continuations {
-		if continuation.RunID == p.RootRunID {
+		if continuation.RunID == runID {
 			return continuation, true
 		}
 	}

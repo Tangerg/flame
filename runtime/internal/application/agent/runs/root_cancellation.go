@@ -38,17 +38,18 @@ type rootCancellationClaim struct {
 	dispatch      bool
 }
 
-func (c *Cancellations) cancelLiveRoot(cmd CancelCommand, plan cancellationPlan, owner *runTreeOwner) (CancelResult, error) {
+func (c *Cancellations) cancelLiveRoot(cmd CancelCommand, root run.Run, ref ExecutorRef, owner *runTreeOwner) (CancelResult, error) {
 	intent := &rootCancellation{id: newCancellationID(), reason: cmd.Reason, receipt: cmd.Receipt}
 	return c.awaitLiveCancellation(owner, cmd.Receipt, func(ctx context.Context) (CancelResult, error) {
-		return c.settleLiveRootCancellation(ctx, cmd, plan, owner, intent)
+		return c.settleLiveRootCancellation(ctx, cmd, root, ref, owner, intent)
 	})
 }
 
 func (c *Cancellations) settleLiveRootCancellation(
 	ctx context.Context,
 	cmd CancelCommand,
-	plan cancellationPlan,
+	root run.Run,
+	ref ExecutorRef,
 	owner *runTreeOwner,
 	intent *rootCancellation,
 ) (CancelResult, error) {
@@ -63,11 +64,11 @@ func (c *Cancellations) settleLiveRootCancellation(
 		if err := owner.wait(ctx); err != nil {
 			return CancelResult{}, &CancellationSettlementError{Cause: err}
 		}
-		return c.cancelKnownParkedRun(ctx, cmd, plan.root.run, plan.executor)
+		return c.cancelKnownParkedRun(ctx, cmd, root, ref)
 	}
 	var requestErr error
 	if claim.dispatch {
-		requestErr = c.rootCancellation.RequestRootCancellation(ctx, plan.executor, intent.id)
+		requestErr = c.rootCancellation.RequestRootCancellation(ctx, ref, intent.id)
 	}
 	if err := owner.wait(ctx); err != nil {
 		return CancelResult{}, &CancellationSettlementError{Cause: errors.Join(requestErr, err)}

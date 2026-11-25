@@ -130,14 +130,14 @@ type waitingCancellationTransformation struct {
 }
 
 type waitingCancellationBuilder struct {
-	plan       cancellationPlan
+	plan       waitingCancellationPlan
 	reason     string
 	finishedAt time.Time
 	prepared   PreparedWaitingSubtreeCancellation
 }
 
 func prepareWaitingCancellationTransformation(
-	plan cancellationPlan,
+	plan waitingCancellationPlan,
 	reason string,
 	finishedAt time.Time,
 	prepared PreparedWaitingSubtreeCancellation,
@@ -190,26 +190,14 @@ func (w waitingCancellationBuilder) build() (waitingCancellationTransformation, 
 		remaining:      remaining,
 		continuation:   continuation,
 		checkpoint:     w.prepared.checkpoint.Clone(),
-		parked:         w.plan.treeRuns(),
-		targetRunID:    w.plan.target.run.ID(),
+		parked:         w.plan.tree,
+		targetRunID:    w.plan.target.ID(),
 		canceledRunIDs: canceledRunIDs,
 	}, nil
 }
 
 func (w waitingCancellationBuilder) validate() error {
-	switch {
-	case w.plan.treeState() != rundomain.Waiting:
-		return fmt.Errorf(
-			"runs: waiting cancellation plan is %s",
-			w.plan.treeState(),
-		)
-	case !w.plan.target.run.Lineage().IsChild():
-		return errors.New("runs: waiting cancellation target is not a child Run")
-	case w.plan.pending == nil:
-		return errors.New("runs: waiting cancellation plan has no pending set")
-	case w.plan.spawningItem == nil:
-		return errors.New("runs: waiting cancellation plan has no spawning Item")
-	case w.finishedAt.IsZero():
+	if w.finishedAt.IsZero() {
 		return errors.New("runs: waiting cancellation finish time is required")
 	}
 	rootContinuation, ok := w.plan.pending.RootContinuation()
@@ -218,7 +206,7 @@ func (w waitingCancellationBuilder) validate() error {
 	}
 	if err := w.prepared.checkpoint.ValidateOwnership(
 		rootContinuation.MemberID,
-		w.plan.root.run.SessionID(),
+		w.plan.root.SessionID(),
 	); err != nil {
 		return fmt.Errorf("runs: invalid prepared waiting subtree checkpoint ownership: %w", err)
 	}
@@ -228,43 +216,27 @@ func (w waitingCancellationBuilder) validate() error {
 func (w waitingCancellationBuilder) terminalProjection(
 	canceledMembers map[string]struct{},
 ) ([]rundomain.Replacement, []identity.RunID, error) {
-	expectedProcesses := make(map[string]struct{})
+	if len(canceledMembers) != len(w.plan.targetSubtree) {
+		return nil, nil, fmt.Errorf(
+			"runs: prepared waiting cancellation removed %d members, Run subtree requires %d",
+			len(canceledMembers), len(w.plan.targetSubtree),
+		)
+	}
 	var terminalRuns []rundomain.Replacement
 	var canceledRunIDs []identity.RunID
 	for _, member := range w.plan.targetSubtree {
-		if member.run.State().IsTerminal() {
-			continue
+		continuation, _ := w.plan.pending.continuationForRun(member.ID())
+		if _, canceled := canceledMembers[continuation.MemberID]; !canceled {
+			return nil, nil, fmt.Errorf("runs: prepared waiting cancellation did not remove member %q", continuation.MemberID)
 		}
-		if !member.hasMember {
-			return nil, nil, fmt.Errorf(
-				"runs: waiting cancellation target Run %q has no executor member",
-				member.run.ID(),
-			)
-		}
-		expectedProcesses[member.memberID] = struct{}{}
-		replacement, err := member.run.Replace().Terminate(rundomain.Termination{
+		replacement, err := member.Replace().Terminate(rundomain.Termination{
 			Ending: rundomain.Canceled{Detail: w.reason}, FinishedAt: w.finishedAt,
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("runs: cancel waiting Run %q: %w", member.run.ID(), err)
+			return nil, nil, fmt.Errorf("runs: cancel waiting Run %q: %w", member.ID(), err)
 		}
 		terminalRuns = append(terminalRuns, replacement)
-		canceledRunIDs = append(canceledRunIDs, member.run.ID())
-	}
-	if len(canceledMembers) != len(expectedProcesses) {
-		return nil, nil, fmt.Errorf(
-			"runs: prepared waiting cancellation removed %d members, Run subtree requires %d",
-			len(canceledMembers),
-			len(expectedProcesses),
-		)
-	}
-	for memberID := range expectedProcesses {
-		if _, canceled := canceledMembers[memberID]; !canceled {
-			return nil, nil, fmt.Errorf(
-				"runs: prepared waiting cancellation did not remove member %q",
-				memberID,
-			)
-		}
+		canceledRunIDs = append(canceledRunIDs, member.ID())
 	}
 	return terminalRuns, canceledRunIDs, nil
 }
@@ -274,7 +246,7 @@ func (w waitingCancellationBuilder) settleWaitingItems(
 ) ([]transcript.Replacement, []Continuation, error) {
 	// The spawning Tool is deliberately left open: only the executor can place its
 	// result in the parent's round call order.
-	parentItem := w.plan.spawningItem
+	spawningItemID := w.plan.target.Lineage().SpawnedByItemID()
 	terminalItems := make([]transcript.Replacement, 0, len(w.plan.targetInterruptItems)+len(w.plan.targetDrainedItems))
 	toolItems := slices.Clone(w.plan.targetDrainedItems)
 	for _, item := range w.plan.targetInterruptItems {
@@ -294,7 +266,7 @@ func (w waitingCancellationBuilder) settleWaitingItems(
 		terminalItems = append(terminalItems, itemReplacement)
 	}
 
-	continuations := make([]Continuation, 0, len(w.plan.survivingTree))
+	continuations := make([]Continuation, 0, len(w.plan.survivingRuns))
 	parentToolRetained := false
 	for _, continuation := range w.plan.pending.Continuations {
 		if _, canceled := canceledMembers[continuation.MemberID]; canceled {
@@ -302,10 +274,10 @@ func (w waitingCancellationBuilder) settleWaitingItems(
 		}
 		clone := continuation
 		clone.DrainedTools = slices.Clone(continuation.DrainedTools)
-		if continuation.RunID == w.plan.target.run.Lineage().ParentRunID() {
+		if continuation.RunID == w.plan.target.Lineage().ParentRunID() {
 			var matches []DrainedTool
 			for _, tool := range clone.DrainedTools {
-				if tool.ItemID == parentItem.ID() {
+				if tool.ItemID == spawningItemID {
 					matches = append(matches, tool)
 				}
 			}
@@ -314,7 +286,7 @@ func (w waitingCancellationBuilder) settleWaitingItems(
 					"runs: parent Run %q continuation has %d drained tools for spawning Item %q",
 					continuation.RunID,
 					len(matches),
-					parentItem.ID(),
+					spawningItemID,
 				)
 			}
 			parentToolRetained = true
@@ -324,7 +296,7 @@ func (w waitingCancellationBuilder) settleWaitingItems(
 	if !parentToolRetained {
 		return nil, nil, fmt.Errorf(
 			"runs: waiting cancellation lost the drained spawning Item %q",
-			parentItem.ID(),
+			spawningItemID,
 		)
 	}
 	return terminalItems, continuations, nil
@@ -413,7 +385,7 @@ func (w waitingCancellationBuilder) treeContinuation(
 	continuation := &treeContinuation{
 		rootRunID:     w.plan.pending.RootRunID,
 		continuations: slices.Clone(continuations),
-		runs:          parkedRunsByID(w.plan.survivingRuns()),
+		runs:          parkedRunsByID(w.plan.survivingRuns),
 		items:         maps.Clone(w.plan.items),
 	}
 	if err := continuation.validate(); err != nil {
@@ -433,7 +405,7 @@ func (w waitingCancellationBuilder) remainingPending(
 	if len(interrupts) == 0 {
 		return nil, nil
 	}
-	reduced := *w.plan.pending
+	reduced := w.plan.pending
 	reduced.Interrupts = interrupts
 	reduced.Bindings = bindings
 	reduced.Continuations = continuations

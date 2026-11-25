@@ -167,22 +167,7 @@ func (c *Segments) prepareSegmentStartup(
 	if err != nil {
 		return nil, startup.abort(err)
 	}
-	if err := startup.bindExecutorMembers(); err != nil {
-		return nil, startup.abort(err)
-	}
 	return startup, nil
-}
-
-func (s *segmentStartup) bindExecutorMembers() error {
-	for _, route := range s.routes.admissionOrder {
-		if route.member.MemberID == "" {
-			continue
-		}
-		if err := s.treeOwner.bindExecutorMember(route.runID, route.member.MemberID); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 func (s *segmentStartup) abort(cause error) error {

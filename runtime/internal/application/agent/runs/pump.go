@@ -174,15 +174,12 @@ func (s *segmentPump) handleChildRunReservation(
 		return true
 	}
 	prepared, err := s.segments.prepareChildStart(
-		s.spec, s.owner, s.routes, event.Member,
+		s.spec, s.routes, event.Member,
 	)
 	if err == nil {
 		err = s.segments.childStarts.ReserveChildRunStart(s.ownerCtx, prepared.reservation)
 	}
 	if err != nil {
-		if prepared != nil {
-			prepared.releaseBinding(s.owner)
-		}
 		claimed.refuse(err)
 		return true
 	}
@@ -201,7 +198,6 @@ func (s *segmentPump) abortPreparedChildStart(prepared *preparedChildStart) {
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(s.ownerCtx), runCleanupTimeout)
 	defer cancel()
 	recordRunCleanupError(ctx, s.segments.childStarts.AbortChildRunStart(ctx, prepared.reservation))
-	prepared.releaseBinding(s.owner)
 }
 
 func (s *segmentPump) authoritativeRoute(member ExecutorMember, fact ExecutionFact) (*executorRoute, error) {
@@ -211,11 +207,6 @@ func (s *segmentPump) authoritativeRoute(member ExecutorMember, fact ExecutionFa
 	}
 	if prepared, ok := fact.(ToolCallPrepared); ok {
 		if err := prepared.Context.ValidateOwnership(s.routes.root.member.MemberID, s.spec.SessionID); err != nil {
-			return nil, err
-		}
-	}
-	if route.member.MemberID != "" {
-		if err := s.owner.bindExecutorMember(route.runID, route.member.MemberID); err != nil {
 			return nil, err
 		}
 	}
@@ -305,11 +296,6 @@ func (s *segmentPump) handleExecutionFact(member ExecutorMember, executionFact E
 	route, err := s.routes.resolve(member)
 	if err != nil {
 		return false, err
-	}
-	if route.member.MemberID != "" {
-		if bindExecutorMemberErr := s.owner.bindExecutorMember(route.runID, route.member.MemberID); bindExecutorMemberErr != nil {
-			return false, bindExecutorMemberErr
-		}
 	}
 	if route.reducer == nil {
 		return false, fmt.Errorf("runs: admitted child run %q has no segment reducer", route.runID)

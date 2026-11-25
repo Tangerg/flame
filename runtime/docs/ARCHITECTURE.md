@@ -147,6 +147,8 @@ Framework observations are wake-ups, not durable commits. Runtime reconciles aut
 
 The live registry fences opening commits together with owner registration. A consumer that has read a durable Running Run waits for that handoff before resolving its stream or cancellation owner. Waiting-state cancellation does not join the opening fence: a competing resume must still be rejected through Session admission without waiting for its commit. Failed openings leave any existing owner untouched.
 
+Running cancellation resolves the targeted Run and its root in one durable read. A targeted child gets its Scope member from its concluded start reservation, which owns that association across Segments. Scope applies cancellation to the selected subtree. Parked child cancellation reads the full Run tree, Pending and Items under Session admission, where the operation replaces that durable state as a unit.
+
 Cold stream recovery uses `runs.subscribe` with `snapshot: true`. The tree owner fences its durable commits and event publication while the Session use case reads material and the successor tail attaches. The reply contains both the snapshot and its tail head; a replay cursor is mutually exclusive with this mode. Ordinary replay retains the consumed cursor. Waiting for the fence revalidates the addressed Segment so a replacement cannot be paired with an old tail.
 
 Usage accumulates across the execution tree for accounting. Each member retains its own terminal outcome.

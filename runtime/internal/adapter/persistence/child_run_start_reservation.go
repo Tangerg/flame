@@ -33,17 +33,22 @@ func parseStoredChildRunStart(raw string) (outcome runs.ChildRunStartOutcome, co
 
 type ChildRunStartReservationRecord struct {
 	MemberID  string
+	RunID     identity.RunID
 	SessionID identity.SessionID
 	Payload   []byte
 	CreatedAt time.Time
 }
 
 func (c ChildRunStartReservationRecord) same(other ChildRunStartReservationRecord) bool {
-	return c.MemberID == other.MemberID && c.SessionID == other.SessionID && c.CreatedAt.Equal(other.CreatedAt) && bytes.Equal(c.Payload, other.Payload)
+	return c.MemberID == other.MemberID && c.RunID == other.RunID && c.SessionID == other.SessionID &&
+		c.CreatedAt.Equal(other.CreatedAt) && bytes.Equal(c.Payload, other.Payload)
 }
 
 func (c ChildRunStartReservationRecord) validate() error {
 	if err := runs.ValidateMember(c.MemberID); err != nil {
+		return fmt.Errorf("%w: %w", errInvalidChildRunStartReservation, err)
+	}
+	if err := c.RunID.Validate(); err != nil {
 		return fmt.Errorf("%w: %w", errInvalidChildRunStartReservation, err)
 	}
 	if err := c.SessionID.Validate(); err != nil {
@@ -75,9 +80,9 @@ func (c *ChildRunStartReservationStore) Reserve(ctx context.Context, record Chil
 			return err
 		}
 		result, err := c.db.connection(ctx).ExecContext(ctx, `
-		INSERT INTO child_run_start_reservations(member_id, session_id, payload, created_at, state)
-		VALUES (?, ?, ?, ?, ?)
-		ON CONFLICT(member_id) DO NOTHING`, record.MemberID, record.SessionID, record.Payload, record.CreatedAt.UTC().UnixNano(), reservedState)
+		INSERT INTO child_run_start_reservations(member_id, run_id, session_id, payload, created_at, state)
+		VALUES (?, ?, ?, ?, ?, ?)
+		ON CONFLICT(member_id) DO NOTHING`, record.MemberID, record.RunID, record.SessionID, record.Payload, record.CreatedAt.UTC().UnixNano(), reservedState)
 		if err != nil {
 			return fmt.Errorf("sqlite: reserve child Run start: %w", err)
 		}
@@ -179,9 +184,9 @@ func (c *ChildRunStartReservationStore) load(ctx context.Context, memberID strin
 		var createdAt int64
 		var state string
 		err := c.db.connection(ctx).QueryRowContext(ctx, `
-		SELECT member_id, session_id, payload, created_at, state
+		SELECT member_id, run_id, session_id, payload, created_at, state
 		FROM child_run_start_reservations
-		WHERE member_id = ?`, memberID).Scan(&record.MemberID, &record.SessionID, &record.Payload, &createdAt, &state)
+		WHERE member_id = ?`, memberID).Scan(&record.MemberID, &record.RunID, &record.SessionID, &record.Payload, &createdAt, &state)
 		if err != nil {
 			return ChildRunStartReservationRecord{}, "", false, err
 		}

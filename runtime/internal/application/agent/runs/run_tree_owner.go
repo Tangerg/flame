@@ -16,19 +16,18 @@ import (
 const runCleanupTimeout = 5 * time.Second
 
 type runTreeOwner struct {
-	observation     sync.Mutex
-	mu              sync.Mutex
-	cancel          context.CancelFunc
-	taskContext     context.Context
-	hub             *journal
-	done            chan struct{}
-	completionErr   error
-	terminalRuns    map[identity.RunID]terminalRun
-	executorMembers map[identity.RunID]string
-	childCancel     *childCancellation
-	rootCancel      *rootCancellation
-	activation      segmentActivation
-	interrupt       interruptBoundary
+	observation   sync.Mutex
+	mu            sync.Mutex
+	cancel        context.CancelFunc
+	taskContext   context.Context
+	hub           *journal
+	done          chan struct{}
+	completionErr error
+	terminalRuns  map[identity.RunID]terminalRun
+	childCancel   *childCancellation
+	rootCancel    *rootCancellation
+	activation    segmentActivation
+	interrupt     interruptBoundary
 }
 
 type terminalRun struct {
@@ -53,12 +52,11 @@ type segmentActivation struct {
 
 func newRunTreeOwner(cancel context.CancelFunc, taskContext context.Context, hub *journal) *runTreeOwner {
 	return &runTreeOwner{
-		cancel:          cancel,
-		taskContext:     taskContext,
-		hub:             hub,
-		done:            make(chan struct{}),
-		activation:      segmentActivation{done: make(chan struct{})},
-		executorMembers: make(map[identity.RunID]string),
+		cancel:      cancel,
+		taskContext: taskContext,
+		hub:         hub,
+		done:        make(chan struct{}),
+		activation:  segmentActivation{done: make(chan struct{})},
 	}
 }
 

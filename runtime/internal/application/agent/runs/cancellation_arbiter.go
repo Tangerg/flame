@@ -12,25 +12,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
-func (r *runTreeOwner) admitCancellation(root rundomain.Run, record Record) error {
-	if record.ID != root.ID() || record.ExecutorID == "" {
-		return fmt.Errorf("runs: cancellation root %q has an invalid live executor binding", root.ID())
-	}
-	r.mu.Lock()
-	parking := r.interrupt.committed || r.interrupt.active != nil
-	r.mu.Unlock()
-	if root.State() == rundomain.Waiting && parking {
-		return fmt.Errorf("%w: Run %q is completing parked maintenance", rundomain.ErrSessionBusy, root.ID())
-	}
-	if !root.Executes(record.SegmentID) {
-		return fmt.Errorf(
-			"runs: cancellation root %q durable segment %q differs from live owner %q",
-			root.ID(), root.ActiveSegmentID(), record.SegmentID,
-		)
-	}
-	return nil
-}
-
 type childCancellation struct {
 	id             CancellationID
 	targetRunID    identity.RunID
@@ -54,32 +35,18 @@ func (c *childCancellation) finished() bool {
 }
 
 func (r *runTreeOwner) beginChildCancellation(
-	plan cancellationPlan,
+	target CancellationTarget,
+	ref ExecutorRef,
 	cmd CancelCommand,
 ) (*childCancellation, error) {
-	if !plan.target.run.Lineage().IsChild() {
-		return nil, fmt.Errorf("runs: cancellation target %q is not a child Run", plan.target.run.ID())
-	}
-	if plan.treeState() != rundomain.Running {
-		return nil, fmt.Errorf(
-			"runs: live child cancellation requires a running tree, got %s",
-			plan.treeState(),
-		)
-	}
-	if !plan.target.hasMember {
-		return nil, fmt.Errorf(
-			"runs: child cancellation target %q has no executor member binding",
-			plan.target.run.ID(),
-		)
-	}
 	attempt := &childCancellation{
 		id:             newCancellationID(),
-		targetRunID:    plan.target.run.ID(),
-		parentRunID:    plan.target.run.Lineage().ParentRunID(),
-		spawningItemID: plan.target.run.Lineage().SpawnedByItemID(),
+		targetRunID:    target.Run.ID(),
+		parentRunID:    target.Run.Lineage().ParentRunID(),
+		spawningItemID: target.Run.Lineage().SpawnedByItemID(),
 		reason:         cmd.Reason,
-		root:           plan.root.run,
-		executor:       plan.executor,
+		root:           target.Root,
+		executor:       ref,
 		receipt:        cmd.Receipt,
 		done:           make(chan struct{}),
 	}
@@ -91,7 +58,7 @@ func (r *runTreeOwner) beginChildCancellation(
 		return nil, fmt.Errorf(
 			"%w: root Run %q cancellation owns the tree",
 			rundomain.ErrSessionBusy,
-			plan.root.run.ID(),
+			target.Root.ID(),
 		)
 	case r.childCancel != nil:
 		return nil, fmt.Errorf(

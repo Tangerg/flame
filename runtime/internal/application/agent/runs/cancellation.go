@@ -9,7 +9,6 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/application/ownership"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/samber/lo"
 )
 
@@ -24,6 +23,18 @@ func (e *CancellationSettlementError) Error() string {
 
 func (e *CancellationSettlementError) Unwrap() error { return e.Cause }
 
+type CancellationTarget struct {
+	Run      rundomain.Run
+	Root     rundomain.Run
+	MemberID string
+}
+
+type cancellationProjection interface {
+	CancellationTarget(context.Context, identity.RunID) (CancellationTarget, bool, error)
+	Run(context.Context, identity.RunID) (rundomain.Run, bool, error)
+	Tree(context.Context, identity.RunID) ([]rundomain.Run, error)
+}
+
 type Cancellations struct {
 	rootCancellation                   RunningRootCancellationRequester
 	runningSubtreeCanceler             RunningSubtreeCanceler
@@ -37,7 +48,7 @@ type Cancellations struct {
 	checkpoints                        WaitingCheckpointReader
 	releases                           ExecutionReleaser
 	segments                           *Segments
-	runs                               Projection
+	runs                               cancellationProjection
 	items                              ItemProjection
 	admission                          *ownership.Gate
 }
@@ -55,7 +66,7 @@ type CancellationDependencies struct {
 	Checkpoints                        WaitingCheckpointReader
 	Releases                           ExecutionReleaser
 	Segments                           *Segments
-	Runs                               Projection
+	Runs                               cancellationProjection
 	Items                              ItemProjection
 	Admissions                         *ownership.Gate
 }
@@ -111,41 +122,79 @@ func (c *Cancellations) Cancel(ctx context.Context, cmd CancelCommand) (CancelRe
 	if err != nil {
 		return CancelResult{}, err
 	}
-	plan, entry, live, err := c.cancellationPlanFor(ctx, cmd)
+	target, found, err := c.runs.CancellationTarget(ctx, cmd.RunID)
 	if err != nil {
 		return CancelResult{}, err
 	}
-	child := plan.target.run.Lineage().IsChild()
-	usesLiveOwner := live && (!child || plan.treeState() == rundomain.Running)
-	if usesLiveOwner && cmd.Receipt != nil {
-		if err := cmd.Receipt.ReserveForRun(ctx, plan.target.run.ID()); err != nil {
+	if !found {
+		return CancelResult{}, fmt.Errorf("%w: %q", ErrRunNotFound, cmd.RunID)
+	}
+	child := target.Run.Lineage().IsChild()
+	if child && !cmd.AllowChildRun {
+		return CancelResult{}, fmt.Errorf("%w: %q", ErrChildRunNotAllowed, cmd.RunID)
+	}
+	if target.Run.State().IsTerminal() {
+		return CancelResult{}, fmt.Errorf("%w: %q", ErrRunFinished, cmd.RunID)
+	}
+	if target.Run.State() != target.Root.State() {
+		return CancelResult{}, fmt.Errorf(
+			"runs: Run %q is %s while root Run %q is %s",
+			cmd.RunID, target.Run.State(), target.Root.ID(), target.Root.State(),
+		)
+	}
+	switch target.Root.State() {
+	case rundomain.Waiting:
+		if child {
+			return c.cancelWaitingChild(ctx, cmd, target.Root.SessionID())
+		}
+		cleanup, cancel := runCleanupContext(ctx)
+		defer cancel()
+		return c.cancelParkedRun(cleanup, cmd, target.Root)
+	case rundomain.Running:
+	default:
+		return CancelResult{}, fmt.Errorf(
+			"runs: open Run %q belongs to root %q in state %s",
+			cmd.RunID, target.Root.ID(), target.Root.State(),
+		)
+	}
+	if child && target.MemberID == "" {
+		return CancelResult{}, fmt.Errorf("runs: running child Run %q has no admitted executor member", cmd.RunID)
+	}
+	live, err := c.liveCancellationSegment(ctx, target)
+	if err != nil {
+		return CancelResult{}, err
+	}
+	if cmd.Receipt != nil {
+		if err := cmd.Receipt.ReserveForRun(ctx, cmd.RunID); err != nil {
 			return CancelResult{}, err
 		}
 	}
+	ref := ExecutorRef{SessionID: target.Root.SessionID(), ExecutorID: live.record.ExecutorID}
 	if child {
-		switch plan.treeState() {
-		case rundomain.Running:
-			if !live {
-				return CancelResult{}, fmt.Errorf(
-					"runs: running child Run %q has no live root owner",
-					cmd.RunID,
-				)
-			}
-			return c.cancelLiveChild(cmd, plan, entry.owner)
-		case rundomain.Waiting:
-			return c.cancelWaitingChild(ctx, cmd, plan)
-		default:
-			return CancelResult{}, fmt.Errorf(
-				"runs: child Run %q belongs to a tree in state %s",
-				cmd.RunID,
-				plan.treeState(),
-			)
-		}
+		return c.cancelLiveChild(cmd, target, ref, live.owner)
 	}
-	if !live {
-		return c.cancelWithoutLiveSegment(ctx, cmd, plan.root.run)
+	return c.cancelLiveRoot(cmd, target.Root, ref, live.owner)
+}
+
+func (c *Cancellations) liveCancellationSegment(ctx context.Context, target CancellationTarget) (liveSegment, error) {
+	live, found := c.segments.registry.Running(target.Root.ID())
+	if found && target.Root.Executes(live.record.SegmentID) {
+		return live, nil
 	}
-	return c.cancelLiveRoot(cmd, plan, entry.owner)
+	// A retiring owner can leave the registry after the durable snapshot.
+	current, exists, err := c.runs.Run(ctx, target.Run.ID())
+	switch {
+	case err != nil:
+		return liveSegment{}, err
+	case !exists:
+		return liveSegment{}, fmt.Errorf("%w: %q", ErrRunNotFound, target.Run.ID())
+	case current.State().IsTerminal():
+		return liveSegment{}, fmt.Errorf("%w: %q", ErrRunFinished, current.ID())
+	case !current.Executes(target.Run.ActiveSegmentID()):
+		return liveSegment{}, fmt.Errorf("%w: Run %q changed segments during cancellation", rundomain.ErrSessionBusy, current.ID())
+	default:
+		return liveSegment{}, fmt.Errorf("runs: root Run %q has no live owner for segment %q", target.Root.ID(), target.Root.ActiveSegmentID())
+	}
 }
 
 type liveCancellationResult struct {
@@ -219,31 +268,33 @@ func (t terminalRun) refuseCancellation() error {
 
 func (c *Cancellations) cancelLiveChild(
 	cmd CancelCommand,
-	plan cancellationPlan,
+	target CancellationTarget,
+	ref ExecutorRef,
 	owner *runTreeOwner,
 ) (CancelResult, error) {
 	return c.awaitLiveCancellation(owner, cmd.Receipt, func(ctx context.Context) (CancelResult, error) {
-		return c.settleLiveChildCancellation(ctx, cmd, plan, owner)
+		return c.settleLiveChildCancellation(ctx, cmd, target, ref, owner)
 	})
 }
 
 func (c *Cancellations) settleLiveChildCancellation(
 	ctx context.Context,
 	cmd CancelCommand,
-	plan cancellationPlan,
+	target CancellationTarget,
+	ref ExecutorRef,
 	owner *runTreeOwner,
 ) (CancelResult, error) {
 	if err := owner.awaitActivation(ctx); err != nil {
 		return CancelResult{}, err
 	}
-	attempt, err := owner.beginChildCancellation(plan, cmd)
+	attempt, err := owner.beginChildCancellation(target, ref, cmd)
 	if err != nil {
 		return CancelResult{}, err
 	}
 	requestErr := c.runningSubtreeCanceler.CancelRunningSubtree(
 		ctx,
-		plan.executor,
-		plan.target.memberID,
+		ref,
+		target.MemberID,
 		attempt.id,
 	)
 	if errors.Is(requestErr, ErrExecutorParking) {
@@ -251,7 +302,7 @@ func (c *Cancellations) settleLiveChildCancellation(
 			return CancelResult{}, &CancellationSettlementError{Cause: err}
 		}
 		if owner.interruptCommitted() {
-			return c.cancelWaitingChild(ctx, cmd, plan)
+			return c.cancelWaitingChild(ctx, cmd, ref.SessionID)
 		}
 	}
 	if requestErr != nil && ctx.Err() == nil && owner.rejectChildCancellation(attempt, requestErr) {
@@ -262,296 +313,6 @@ func (c *Cancellations) settleLiveChildCancellation(
 		return CancelResult{}, &CancellationSettlementError{Cause: errors.Join(requestErr, err)}
 	}
 	return result, err
-}
-
-func (c *Cancellations) cancelWaitingChild(
-	ctx context.Context,
-	cmd CancelCommand,
-	initial cancellationPlan,
-) (result CancelResult, err error) {
-	sess, err := c.sessionReader.Get(ctx, initial.root.run.SessionID())
-	if err != nil {
-		return CancelResult{}, err
-	}
-	runAdmission, ok, leaseErr := c.admission.AcquireRun(ctx, sess.ID(), sess.Workspace().Path())
-	if leaseErr != nil {
-		return CancelResult{}, leaseErr
-	}
-	if !ok {
-		return CancelResult{}, fmt.Errorf(
-			"%w: session %q or working tree %q has a run or mutation in flight",
-			rundomain.ErrSessionBusy,
-			sess.ID(),
-			sess.Workspace().Path(),
-		)
-	}
-	defer runAdmission.Release()
-
-	cleanupCtx, cancelCleanup := runCleanupContext(ctx)
-	defer cancelCleanup()
-
-	plan, err := c.resolveClaimedWaitingChildCancellation(cleanupCtx, cmd)
-	if err != nil {
-		return CancelResult{}, err
-	}
-
-	continuation, err := c.waitingChildCancellationContinuation(cleanupCtx, sess, plan)
-	if err != nil {
-		return CancelResult{}, err
-	}
-	request, err := newWaitingSubtreeCancellationRequest(
-		continuation,
-		plan.target.memberID,
-		cmd.Reason,
-	)
-	if err != nil {
-		return CancelResult{}, fmt.Errorf("runs: prepare waiting child cancellation request: %w", err)
-	}
-	prepared, err := c.waitingSubtreeCancellationPreparer.PrepareWaitingSubtreeCancellation(
-		cleanupCtx,
-		request,
-	)
-	if err != nil {
-		return CancelResult{}, err
-	}
-	defer func() {
-		if discardErr := prepared.Discard(); discardErr != nil {
-			result = CancelResult{}
-			err = errors.Join(
-				err,
-				fmt.Errorf("runs: discard waiting subtree change: %w", discardErr),
-			)
-		}
-	}()
-
-	transformation, err := prepareWaitingCancellationTransformation(
-		plan,
-		cmd.Reason,
-		c.segments.publications.nowUTC(),
-		prepared,
-	)
-	if err != nil {
-		return CancelResult{}, err
-	}
-	if transformation.remaining != nil {
-		return c.commitWaitingChildCancellation(cleanupCtx, plan, transformation, prepared, cmd.Receipt)
-	}
-	return c.resumeAfterWaitingChildCancellation(
-		cleanupCtx,
-		sess,
-		plan,
-		transformation,
-		prepared,
-		&runAdmission,
-		cmd.Receipt,
-	)
-}
-
-func (c *Cancellations) resolveClaimedWaitingChildCancellation(
-	ctx context.Context,
-	cmd CancelCommand,
-) (cancellationPlan, error) {
-	// Resolved again under admission so Resume or a sibling mutation cannot leave this
-	// command acting on stale Pending or Item facts.
-	plan, entry, live, err := c.cancellationPlanFor(ctx, cmd)
-	if err != nil {
-		return cancellationPlan{}, err
-	}
-	if live {
-		if entry.owner == nil {
-			return cancellationPlan{}, fmt.Errorf(
-				"runs: waiting child Run %q has a live registry entry without an owner",
-				cmd.RunID,
-			)
-		}
-		// A just-committed park releases admission immediately before its pump
-		// removes the live registry entry. Join that already-terminal boundary and
-		// then resolve the now-authoritative parked facts.
-		if waitErr := entry.owner.wait(ctx); waitErr != nil {
-			return cancellationPlan{}, waitErr
-		}
-		plan, _, live, err = c.cancellationPlanFor(ctx, cmd)
-		if err != nil {
-			return cancellationPlan{}, err
-		}
-		if live {
-			return cancellationPlan{}, fmt.Errorf(
-				"runs: waiting child Run %q retained a live segment after its parked boundary completed",
-				cmd.RunID,
-			)
-		}
-	}
-	if plan.treeState() != rundomain.Waiting || !plan.target.run.Lineage().IsChild() {
-		return cancellationPlan{}, fmt.Errorf(
-			"runs: waiting child cancellation for %q resolved a %s root/child state",
-			cmd.RunID,
-			plan.treeState(),
-		)
-	}
-	return plan, nil
-}
-
-func (c *Cancellations) waitingChildCancellationContinuation(
-	ctx context.Context,
-	sess session.Session,
-	plan cancellationPlan,
-) (ExecutionContinuation, error) {
-	rootContinuation, ok := plan.pending.RootContinuation()
-	if !ok {
-		return ExecutionContinuation{}, errors.New("runs: waiting subtree Pending has no root continuation")
-	}
-	checkpoint, err := c.checkpoints.ReadWaitingCheckpoint(ctx, rootContinuation.MemberID)
-	if err != nil {
-		if !errors.Is(err, ErrExecutorStateLost) && !errors.Is(err, ErrExecutorCheckpointNotFound) {
-			return ExecutionContinuation{}, err
-		}
-		lostErr := c.terminations.ApplyRunLost(
-			ctx,
-			plan.root.run.SessionID(),
-			plan.root.run.ID(),
-			c.segments.publications.nowUTC(),
-		)
-		if lostErr != nil {
-			return ExecutionContinuation{}, errors.Join(
-				err,
-				fmt.Errorf("runs: recover lost waiting tree %q: %w", plan.root.run.ID(), lostErr),
-			)
-		}
-		return ExecutionContinuation{}, fmt.Errorf("%w: %w", ErrRunNotFound, err)
-	}
-	return waitingContinuationFromPending(*plan.pending, checkpoint, plan.treeRuns(), sess)
-}
-
-func (c *Cancellations) commitWaitingChildCancellation(
-	ctx context.Context,
-	plan cancellationPlan,
-	transformation waitingCancellationTransformation,
-	change waitingSubtreeChange,
-	receipt CancellationReceipt,
-) (CancelResult, error) {
-	durable, err := transformation.durableCommit(*plan.pending, newRunCommitID())
-	if err != nil {
-		return CancelResult{}, err
-	}
-	result, err := c.waitingSubtreeCancellations.CommitWaitingSubtreeCancellation(
-		ctx,
-		durable,
-		receipt,
-	)
-	if err != nil {
-		return CancelResult{}, err
-	}
-	if err := change.Apply(WaitingSubtreeStaysWaiting); err != nil {
-		return CancelResult{}, &CancellationSettlementError{Cause: err}
-	}
-	if err := c.acceptedSubtreeCancellations.DeleteSubtreeCancellation(ctx, plan.root.run.ID(), plan.target.run.ID()); err != nil {
-		return CancelResult{}, &CancellationSettlementError{Cause: err}
-	}
-	c.publishWaitingChildCancellation(plan, transformation)
-	return CancelResult{Run: result.TargetRun, RootRun: &result.RootRun}, nil
-}
-
-func (c *Cancellations) resumeAfterWaitingChildCancellation(
-	ctx context.Context,
-	sess session.Session,
-	plan cancellationPlan,
-	transformation waitingCancellationTransformation,
-	change waitingSubtreeChange,
-	runAdmission *ownership.RunAdmission,
-	receipt CancellationReceipt,
-) (CancelResult, error) {
-	segmentID := c.segments.newSegmentID()
-	var committed WaitingSubtreeCancellationResult
-	_, err := c.segments.openSegment(ctx, segmentSpec{
-		RunID:        plan.root.run.ID(),
-		SegmentID:    segmentID,
-		SessionID:    plan.root.run.SessionID(),
-		WorkspaceCWD: sess.Workspace().Path(),
-		Isolated:     sess.Isolated(),
-		ExecutorID:   plan.executor.ExecutorID,
-		admission:    runAdmission,
-		Opening: treeResumption{Continuation: transformation.continuation, CommitOpening: func(commitCtx context.Context, opening OpeningCommit) error {
-			_, admitting := opening.Admission()
-			resume, resuming := opening.Resume()
-			if admitting || !resuming {
-				return errors.New("runs: waiting child continuation produced an invalid opening disposition")
-			}
-			durable, durableErr := transformation.resumedDurableCommit(
-				*plan.pending, opening.CommitID(), resume, opening.Events(),
-			)
-			if durableErr != nil {
-				return durableErr
-			}
-			result, commitErr := c.waitingSubtreeCancellations.CommitWaitingSubtreeCancellation(commitCtx, durable, receipt)
-			if commitErr == nil {
-				committed = result
-			}
-			return commitErr
-		}},
-		BeginExecution: func(beginCtx context.Context) error {
-			if err := change.Apply(WaitingSubtreeResumesRunning); err != nil {
-				return fmt.Errorf(
-					"runs: apply committed cancellation of waiting child Run %q in root Run %q: %w",
-					plan.target.run.ID(),
-					plan.root.run.ID(),
-					err,
-				)
-			}
-			if err := change.Continue(beginCtx); err != nil {
-				return fmt.Errorf(
-					"runs: continue root Run %q after canceling final waiting child Run %q: %w",
-					plan.root.run.ID(),
-					plan.target.run.ID(),
-					err,
-				)
-			}
-			return nil
-		},
-	})
-	if err != nil {
-		if !committed.TargetRun.ID().IsZero() {
-			return CancelResult{}, &CancellationSettlementError{Cause: err}
-		}
-		return CancelResult{}, err
-	}
-	if err := c.acceptedSubtreeCancellations.DeleteSubtreeCancellation(ctx, plan.root.run.ID(), plan.target.run.ID()); err != nil {
-		return CancelResult{}, &CancellationSettlementError{Cause: err}
-	}
-	c.publishWaitingChildCancellation(plan, transformation)
-	return CancelResult{Run: committed.TargetRun, RootRun: &committed.RootRun}, nil
-}
-
-func (c *Cancellations) publishWaitingChildCancellation(
-	plan cancellationPlan,
-	transformation waitingCancellationTransformation,
-) {
-	affected := make([]identity.RunID, 0, len(transformation.canceledRunIDs)+len(plan.survivingTree)+2)
-	seen := make(map[identity.RunID]struct{}, cap(affected))
-	appendRunID := func(runID identity.RunID) {
-		if runID.IsZero() {
-			return
-		}
-		if _, duplicate := seen[runID]; duplicate {
-			return
-		}
-		seen[runID] = struct{}{}
-		affected = append(affected, runID)
-	}
-	for _, runID := range transformation.canceledRunIDs {
-		appendRunID(runID)
-	}
-	appendRunID(plan.target.run.Lineage().ParentRunID())
-	if transformation.remaining == nil {
-		for _, continuation := range transformation.continuation.continuations {
-			appendRunID(continuation.RunID)
-		}
-	}
-	appendRunID(plan.root.run.ID())
-	c.segments.publications.publishWaitingSubtreeCanceled(
-		plan.root.run.SessionID(),
-		plan.root.run.ID(),
-		affected,
-	)
 }
 
 func rootCancelResult(value rundomain.Run) (CancelResult, error) {
