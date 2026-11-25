@@ -15,7 +15,7 @@ import {
   useHiddenPopupRelease,
   useHiddenRootRetirement,
 } from "./popup-visibility";
-import { space, type } from "./tokens.stylex";
+import { color, space, type } from "./tokens.stylex";
 
 const styles = stylex.create({
   popup: {
@@ -35,7 +35,8 @@ const styles = stylex.create({
     overflowWrap: "anywhere",
   },
   value: { minWidth: 0, flex: "1 1 auto", overflowWrap: "anywhere" },
-  indicator: { flexShrink: 0 },
+  // The selected mark uses the accent ink every menu check uses.
+  indicator: { flexShrink: 0, color: color.accentText },
   trigger: {
     marginInlineStart: {
       default: 0,
