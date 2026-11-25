@@ -1,6 +1,7 @@
 export const en: Record<string, string> = {
   "worktree.open": "Review working tree changes ({{count}})",
-  "worktree.files": "Files: {{count}}",
+  "worktree.files_one": "{{count}} file",
+  "worktree.files_other": "{{count}} files",
   "panel.title": "Workspace diff",
   refresh: "Refresh",
   "scope.label": "Comparison scope",
