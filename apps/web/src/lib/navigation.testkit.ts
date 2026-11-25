@@ -56,6 +56,15 @@ export function createMemoryNavigator(initial: Partial<AppLocation> = {}): Memor
     go(patch: LocationPatch, options) {
       commit(applyPatch(current(), patch), options?.replace === true);
     },
+    href: (patch) => {
+      const next = applyPatch(current(), patch);
+      const params = new URLSearchParams(
+        Object.entries(next).flatMap(([key, value]) =>
+          typeof value === "string" && value ? [[key, value]] : [],
+        ),
+      );
+      return `memory:/?${params.toString()}`;
+    },
     back: () => step(-1),
     forward: () => step(1),
     reset(location = {}) {

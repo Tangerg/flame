@@ -1018,6 +1018,13 @@ Schedules retains its accepted manual Session/Run reference and uses this action
 to open the corresponding conversation. Normal scope retirement still applies
 when switching Sessions.
 
+Installed components also receive `context.views` for their own plugin's
+workspace views. The URL's `target` parameter belongs to the view it shows
+(`view`, else `dock`) and is dropped when another view is shown; the view's
+component interprets it through `subscribeTarget`, without a remount, so its
+drafts and reading position stay. `href` builds a link without a Session, so a
+deliverable or other plugin object opens on its own.
+
 Expanded Tool cards and grouped members wrap complete machine and prose labels
 in their existing header. Collapsed summaries stay compact; path labels continue
 to use FilePath.

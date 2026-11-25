@@ -386,6 +386,12 @@ export const zh = {
   "slides.op.deleteElement": "删除 {{name}}",
   "slides.op.setChartData": "{{name}} 的数据",
   "handoff.add": "交给 Agent",
+  "link.copy": "复制链接",
+  "link.copied": "已复制链接。",
+  "link.failed": "无法复制链接。",
+  "link.unavailable": "无法打开这个链接。",
+  "link.result": "成果结果",
+  "link.open": "打开",
   "handoff.handed": "已放入对话框。写下要改什么，然后发送。",
   "handoff.stale": "对话已切换，引用没有放入。请再试一次。",
 } satisfies Record<keyof typeof en, string>;

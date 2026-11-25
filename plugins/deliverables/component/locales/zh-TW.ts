@@ -386,6 +386,12 @@ export const zhTW = {
   "slides.op.deleteElement": "刪除 {{name}}",
   "slides.op.setChartData": "{{name}} 的資料",
   "handoff.add": "交給 Agent",
+  "link.copy": "複製連結",
+  "link.copied": "已複製連結。",
+  "link.failed": "無法複製連結。",
+  "link.unavailable": "無法開啟這個連結。",
+  "link.result": "成果結果",
+  "link.open": "開啟",
   "handoff.handed": "已放入對話框。寫下要改什麼，然後傳送。",
   "handoff.stale": "對話已切換，引用沒有放入。請再試一次。",
 } satisfies Record<keyof typeof en, string>;

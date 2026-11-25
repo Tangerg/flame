@@ -72,7 +72,10 @@ export interface WorkspaceNavigationPort {
   toggleSidebar(): void;
   selectChat(presentation?: WorkspaceChatPresentation): void;
   openView(id: string, origin?: HTMLElement): void;
-  openViewInDock(id: string, origin?: HTMLElement): void;
+  openViewInDock(id: string, origin?: HTMLElement, target?: string): void;
+  // Calls the listener with each target the view is shown with, the current one first.
+  subscribeViewTarget(id: string, listener: (target: string) => void): () => void;
+  viewHref(id: string, target?: string): string;
   selectDockView(id: string): void;
   closeDockView(id: string): void;
   closeOtherDockViews(id: string): void;

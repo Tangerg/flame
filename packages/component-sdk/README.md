@@ -229,6 +229,16 @@ readable without offering that action. Session navigation follows the existing
 scope lifetimes above and may retire the source component. It does not promise
 an exact Run reading anchor or retain another Session's local page filters.
 
+The graphical Host also supplies optional `context.views` for a plugin's own
+workspace views. `open(componentId, target?, origin?)` shows one beside the
+conversation, `href(componentId, target?)` returns a link that opens it on its
+own, and `subscribeTarget(listener)` delivers each target the component's own
+view is shown with, the current one first. A target is an opaque string the
+view's component defines and validates, such as a document and an object in
+it; the Host only carries it in the URL and drops it when another view is
+shown. Showing a view does not remount it, so a target is a request to locate
+something, not the view's state.
+
 Client, workspace and Session components can receive optional `context.composer`,
 a frozen `CapturedComposer` bound to the Composer draft that was current when the
 context was captured. `addReference({ label, text })` attaches a reference to

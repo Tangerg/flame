@@ -409,6 +409,12 @@ export const en = {
   "slides.op.deleteElement": "Delete {{name}}",
   "slides.op.setChartData": "Data of {{name}}",
   "handoff.add": "Hand to Agent",
+  "link.copy": "Copy link",
+  "link.copied": "Link copied.",
+  "link.failed": "The link could not be copied.",
+  "link.unavailable": "This link cannot be opened.",
+  "link.result": "Deliverable result",
+  "link.open": "Open",
   "handoff.handed": "Added to your message. Describe the change, then send it.",
   "handoff.stale":
     "The conversation changed, so the reference was not added. Try again.",

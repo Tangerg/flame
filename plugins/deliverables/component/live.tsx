@@ -26,6 +26,12 @@ import {
 } from "@flame/ui";
 import { METHODS } from "../contracts/methods";
 import type { DocumentRead, Revision } from "./types";
+import {
+  DELIVERABLES_VIEW,
+  encodeTarget,
+  type Focus,
+  type ViewTarget,
+} from "./targets";
 import type { DeliverablesState } from "./useDeliverables";
 import {
   operationsJSON,
@@ -540,4 +546,63 @@ export function useHandoff(state: LiveState, t: Translate) {
       <Metadata role="status">{t(`handoff.${handoff}`)}</Metadata>
     ),
   };
+}
+
+// A link addresses the shown object. It pins the revision when the editor
+// shows an earlier one or the object's identity is a position, so a link to
+// the head otherwise keeps following it.
+export function CopyLink({
+  state,
+  live,
+  object,
+  pinned = false,
+  t,
+}: {
+  state: LiveState;
+  live: { documentId: string; viewed: string; head: string };
+  object?: string;
+  pinned?: boolean;
+  t: Translate;
+}) {
+  const [copied, setCopied] = useState<boolean>();
+  const views = state.context.views;
+  if (!views) return null;
+  const target: ViewTarget = {
+    document: live.documentId,
+    ...(live.viewed === live.head && !pinned ? {} : { revision: live.viewed }),
+    ...(object ? { object } : {}),
+  };
+  return (
+    <>
+      <Button
+        onClick={() =>
+          void copyText(
+            views.href(DELIVERABLES_VIEW, encodeTarget(target)),
+          ).then(setCopied)
+        }
+      >
+        {t("link.copy")}
+      </Button>
+      {copied !== undefined && (
+        <Metadata role="status">
+          {t(copied ? "link.copied" : "link.failed")}
+        </Metadata>
+      )}
+    </>
+  );
+}
+
+// A link's object is located once the editor shows the revision it opened.
+export function useFocus(
+  focus: Focus | undefined,
+  shown: string | undefined,
+  locate: (object: string) => void,
+) {
+  const located = useRef<number>(undefined);
+  useEffect(() => {
+    if (!focus?.object || shown !== focus.revision) return;
+    if (located.current === focus.key) return;
+    located.current = focus.key;
+    locate(focus.object);
+  }, [focus, shown]);
 }

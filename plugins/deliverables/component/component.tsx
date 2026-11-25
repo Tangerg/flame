@@ -1,5 +1,9 @@
-import { useLayoutEffect, useMemo, useRef, useState } from "react";
-import { type ComponentContext, useTranslator } from "@flame/component-sdk";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import {
+  failureText,
+  type ComponentContext,
+  useTranslator,
+} from "@flame/component-sdk";
 import {
   Button,
   Callout,
@@ -25,19 +29,14 @@ import type { Draft, DraftUpdate } from "./live-draft";
 import type { SlideOperation } from "./slides-draft";
 import { useDeliverables, type DeliverablesState } from "./useDeliverables";
 import type { DocumentRead } from "./types";
-import { en } from "./locales/en";
-import { zh } from "./locales/zh";
-import { zhTW } from "./locales/zh-TW";
-import { ja } from "./locales/ja";
-import { ko } from "./locales/ko";
-import { es } from "./locales/es";
-import { fr } from "./locales/fr";
-import { de } from "./locales/de";
+import { catalogs } from "./catalogs";
 import { Capabilities, inspectRevision, readCatalog } from "./capabilities";
 import { Notices, PendingCommands } from "./notices";
 import { Inspector } from "./inspector";
+import { METHODS } from "../contracts/methods";
+import { parseTarget, type Focus } from "./targets";
 
-const catalogs = { en, zh, "zh-TW": zhTW, ja, ko, es, fr, de };
+export { DeliverableResult } from "./tool-result";
 
 function Workspace({
   context: initialContext,
@@ -57,6 +56,7 @@ function Workspace({
     [locale],
   );
   const state = useDeliverables(context);
+  const link = useLink(context, state);
   const slideDrafts = useDrafts<SlideOperation>();
   const sheetDrafts = useDrafts<CellOperation>();
   const docDrafts = useDrafts<DocOperation>();
@@ -169,6 +169,11 @@ function Workspace({
       }
     >
       <Notices state={state} onOpen={openForReading} t={t} />
+      {link.error && (
+        <Callout kind="warning">
+          {t("link.unavailable")} {link.error}
+        </Callout>
+      )}
       <PendingCommands state={state} t={t} />
       {catalogError && <Callout kind="warning">{catalogError}</Callout>}
       <Disclosure title={t("author.new")} keepMounted>
@@ -202,6 +207,7 @@ function Workspace({
           document={studioDocument}
           draft={slideDrafts.get(studioDocument.document.id)}
           onDraft={slideDrafts.update(studioDocument.document.id)}
+          link={link.shown(studioDocument)}
           dateTime={dateTime}
           t={t}
         />
@@ -213,6 +219,7 @@ function Workspace({
           document={studioDocument}
           draft={docDrafts.get(studioDocument.document.id)}
           onDraft={docDrafts.update(studioDocument.document.id)}
+          link={link.shown(studioDocument)}
           dateTime={dateTime}
           t={t}
         />
@@ -224,6 +231,7 @@ function Workspace({
           document={studioDocument}
           draft={sheetDrafts.get(studioDocument.document.id)}
           onDraft={sheetDrafts.update(studioDocument.document.id)}
+          link={link.shown(studioDocument)}
           dateTime={dateTime}
           t={t}
         />
@@ -247,6 +255,51 @@ function Workspace({
       />
     </Panel>
   );
+}
+
+// Each target the view is opened with selects its document and revision; a
+// target without a revision opens the newest one, which is the head because
+// revisions only append.
+function useLink(context: ComponentContext, state: DeliverablesState) {
+  const [link, setLink] = useState<Focus & { document: string }>();
+  const [error, setError] = useState<string>();
+  useEffect(
+    () =>
+      context.views?.subscribeTarget((value) => {
+        const target = parseTarget(value);
+        if (!target) {
+          setError(value);
+          return;
+        }
+        void (async () => {
+          try {
+            const revision =
+              target.revision ??
+              (
+                await state.operations.query(
+                  METHODS.history,
+                  { id: target.document, limit: 1 },
+                  state.signal,
+                )
+              ).entries[0]!.id;
+            state.open({ id: target.document, revision });
+            setError(undefined);
+            setLink((current) => ({
+              document: target.document,
+              revision,
+              ...(target.object ? { object: target.object } : {}),
+              key: (current?.key ?? 0) + 1,
+            }));
+          } catch (cause) {
+            if (!state.signal.aborted) setError(failureText(cause));
+          }
+        })();
+      }),
+    [context.views, state.open, state.operations, state.signal],
+  );
+  const shown = (document: DocumentRead) =>
+    link?.document === document.document.id ? link : undefined;
+  return { error, shown };
 }
 
 // An editor keeps the revision it shows while another revision of the same

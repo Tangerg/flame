@@ -34,6 +34,111 @@
       "export": "Deliverables",
       "contribution": "deliverables",
       "material": "document"
+    },
+    {
+      "id": "result-create",
+      "title": "Deliverable result",
+      "localizedTitles": {
+        "zh": "成果结果",
+        "zh-TW": "成果結果",
+        "de": "Ergebnis",
+        "fr": "Résultat du livrable",
+        "es": "Resultado del entregable",
+        "ja": "成果物の結果",
+        "ko": "결과물 결과"
+      },
+      "scope": "toolResult",
+      "placement": "toolResultRenderer",
+      "selector": {
+        "type": "toolName",
+        "name": "deliverables_create"
+      },
+      "entry": "io.github.tangerg.flame/components/component.js",
+      "export": "DeliverableResult"
+    },
+    {
+      "id": "result-import",
+      "title": "Deliverable result",
+      "localizedTitles": {
+        "zh": "成果结果",
+        "zh-TW": "成果結果",
+        "de": "Ergebnis",
+        "fr": "Résultat du livrable",
+        "es": "Resultado del entregable",
+        "ja": "成果物の結果",
+        "ko": "결과물 결과"
+      },
+      "scope": "toolResult",
+      "placement": "toolResultRenderer",
+      "selector": {
+        "type": "toolName",
+        "name": "deliverables_import"
+      },
+      "entry": "io.github.tangerg.flame/components/component.js",
+      "export": "DeliverableResult"
+    },
+    {
+      "id": "result-edit",
+      "title": "Deliverable result",
+      "localizedTitles": {
+        "zh": "成果结果",
+        "zh-TW": "成果結果",
+        "de": "Ergebnis",
+        "fr": "Résultat du livrable",
+        "es": "Resultado del entregable",
+        "ja": "成果物の結果",
+        "ko": "결과물 결과"
+      },
+      "scope": "toolResult",
+      "placement": "toolResultRenderer",
+      "selector": {
+        "type": "toolName",
+        "name": "deliverables_edit"
+      },
+      "entry": "io.github.tangerg.flame/components/component.js",
+      "export": "DeliverableResult"
+    },
+    {
+      "id": "result-recalculate",
+      "title": "Deliverable result",
+      "localizedTitles": {
+        "zh": "成果结果",
+        "zh-TW": "成果結果",
+        "de": "Ergebnis",
+        "fr": "Résultat du livrable",
+        "es": "Resultado del entregable",
+        "ja": "成果物の結果",
+        "ko": "결과물 결과"
+      },
+      "scope": "toolResult",
+      "placement": "toolResultRenderer",
+      "selector": {
+        "type": "toolName",
+        "name": "deliverables_recalculate"
+      },
+      "entry": "io.github.tangerg.flame/components/component.js",
+      "export": "DeliverableResult"
+    },
+    {
+      "id": "result-restore",
+      "title": "Deliverable result",
+      "localizedTitles": {
+        "zh": "成果结果",
+        "zh-TW": "成果結果",
+        "de": "Ergebnis",
+        "fr": "Résultat du livrable",
+        "es": "Resultado del entregable",
+        "ja": "成果物の結果",
+        "ko": "결과물 결과"
+      },
+      "scope": "toolResult",
+      "placement": "toolResultRenderer",
+      "selector": {
+        "type": "toolName",
+        "name": "deliverables_restore"
+      },
+      "entry": "io.github.tangerg.flame/components/component.js",
+      "export": "DeliverableResult"
     }
   ],
   "inputs": [
