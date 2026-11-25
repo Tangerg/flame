@@ -1,31 +1,24 @@
 import { useMemo, useState } from "react";
-import { type ComposerReference, type Translate } from "@flame/component-sdk";
-import {
-  Badge,
-  Button,
-  Metadata,
-  PanelSection,
-  RecordGroup,
-  Toolbar,
-  copyText,
-} from "@flame/ui";
-import { type ElementView, type Frame } from "../contracts/content";
+import { type Translate } from "@flame/component-sdk";
+import { Badge, Button, PanelSection, RecordGroup } from "@flame/ui";
+import { type Frame } from "../contracts/content";
+import { slideLayoutSchema, type ElementView } from "../contracts/layouts";
+import { METHODS } from "../contracts/methods";
 import * as token from "@flame/ui/tokens.stylex";
 import type { DocumentRead } from "./types";
-import { preview, revert, type Draft } from "./slides-draft";
-import { label } from "./slides-presentation";
+import type { Draft, DraftUpdate } from "./live-draft";
 import {
-  type Handoff,
+  DraftToolbar,
   RevisionNotices,
-  savedElement,
-} from "./slides-revisions";
+  useHandoff,
+  useLiveDraft,
+  useProjection,
+  type LiveState,
+} from "./live";
+import { preview, record, revert, type SlideOperation } from "./slides-draft";
+import { label } from "./slides-presentation";
+import { SlideReconcile, savedElement } from "./slides-revisions";
 import { Canvas } from "./slides-canvas";
-import {
-  type DraftUpdate,
-  type SlideStudioState,
-  useLayouts,
-  useSlideDraft,
-} from "./useSlideDraft";
 import {
   ElementInspector,
   SlideInspector,
@@ -33,49 +26,6 @@ import {
   selectionReference,
 } from "./slides-inspector";
 
-function DraftToolbar({
-  t,
-  draft,
-  saving,
-  dirty,
-  editable,
-  onUndo,
-  onDiscard,
-  onSave,
-}: {
-  t: Translate;
-  draft: Draft;
-  saving: boolean;
-  dirty: boolean;
-  editable: boolean;
-  onUndo(): void;
-  onDiscard(): void;
-  onSave(): void;
-}) {
-  return (
-    <Toolbar label={t("slides.draft")}>
-      <Metadata role="status">
-        {saving
-          ? t("slides.saving")
-          : dirty
-            ? t("slides.unsaved", { count: draft.operations.length })
-            : t("slides.clean")}
-      </Metadata>
-      <Button disabled={!draft.undo.length || saving} onClick={onUndo}>
-        {t("slides.undo")}
-      </Button>
-      <Button disabled={saving} onClick={onDiscard}>
-        {t("slides.discard")}
-      </Button>
-      <Button variant="primary" disabled={!dirty || !editable} onClick={onSave}>
-        {t("slides.save")}
-      </Button>
-    </Toolbar>
-  );
-}
-
-// The workspace owns drafts by document, so reading another revision (which
-// unmounts this view while it loads) never discards unsubmitted intent.
 export function SlideStudio({
   state,
   document,
@@ -83,10 +33,10 @@ export function SlideStudio({
   onDraft,
   t,
 }: {
-  state: SlideStudioState;
+  state: LiveState;
   document: DocumentRead;
-  draft: Draft | undefined;
-  onDraft(update: DraftUpdate): void;
+  draft: Draft<SlideOperation> | undefined;
+  onDraft(update: DraftUpdate<SlideOperation>): void;
   t: Translate;
 }) {
   const {
@@ -99,30 +49,22 @@ export function SlideStudio({
     editedDraft,
     editable,
     dirty,
-    change,
+    apply,
     undo,
     save,
     restructure,
-  } = useSlideDraft(state, document, draft, onDraft);
+  } = useLiveDraft(state, document, draft, onDraft);
+  const change = (operation: SlideOperation, target?: ElementView) =>
+    apply((current) => record(current, operation, target));
   const [slideId, setSlideId] = useState<string>();
   const [elementId, setElementId] = useState<string>();
-  const [handoff, setHandoff] = useState<Handoff>();
-  const composer = state.context.composer;
-  // Hosts without a Composer collaborator still let the user carry the
-  // reference by hand.
-  const hand = (reference: ComposerReference) => {
-    if (composer) {
-      setHandoff(composer.addReference(reference) ? "handed" : "stale");
-      return;
-    }
-    void copyText(reference.text).then((done) =>
-      setHandoff(done ? "copied" : "failed"),
-    );
-  };
-  const layouts = useLayouts(
+  const handoff = useHandoff(state, t);
+  const layouts = useProjection(
     state,
     documentId,
     pending ? [viewed, pending] : [viewed],
+    METHODS.slides,
+    slideLayoutSchema,
   );
   const read = layouts.get(viewed);
   const baseRead = pending ? layouts.get(pending) : undefined;
@@ -174,10 +116,10 @@ export function SlideStudio({
       disabled={dirty || !savedSlide || (element !== undefined && !original)}
       onClick={() => {
         if (savedSlide)
-          hand(selectionReference(document, savedSlide, original, t));
+          handoff.hand(selectionReference(document, savedSlide, original, t));
       }}
     >
-      {t(composer ? "slides.handoff" : "slides.reference")}
+      {handoff.label}
     </Button>
   );
 
@@ -185,6 +127,7 @@ export function SlideStudio({
     <PanelSection title={t("slides.title")} description={t("slides.help")}>
       <RevisionNotices
         t={t}
+        loading={t("slides.loading")}
         viewed={viewed}
         head={head}
         draft={draft}
@@ -192,9 +135,19 @@ export function SlideStudio({
         pending={pending}
         read={read}
         baseRead={baseRead}
+        reconcile={(base, current) =>
+          draft && (
+            <SlideReconcile
+              base={base}
+              head={{ id: head, layout: current }}
+              draft={draft}
+              onRebase={setDraft}
+              onDiscard={() => setDraft(undefined)}
+              t={t}
+            />
+          )
+        }
         onOpen={(revision) => state.open({ id: documentId, revision })}
-        onRebase={setDraft}
-        onDiscard={() => setDraft(undefined)}
         onRetry={() => {
           if (read?.error) layouts.retry(viewed);
           if (pending && baseRead?.error) layouts.retry(pending);
@@ -249,7 +202,7 @@ export function SlideStudio({
               editable={editable}
               onSelect={(id) => {
                 setElementId(id);
-                setHandoff(undefined);
+                handoff.clear();
               }}
               onFrame={setFrame}
               onDelete={remove}
@@ -263,7 +216,7 @@ export function SlideStudio({
                   aria-pressed={entry.id === element?.id}
                   onClick={() => {
                     setElementId(entry.id);
-                    setHandoff(undefined);
+                    handoff.clear();
                   }}
                 >
                   {t(`slides.kind.${entry.kind}`)} · {label(entry, t)}
@@ -309,11 +262,7 @@ export function SlideStudio({
                 onRestructure={restructure}
               />
             )}
-            {handoff && (
-              <Metadata role="status">
-                {t(`slides.reference.${handoff}`)}
-              </Metadata>
-            )}
+            {handoff.status}
           </div>
         </div>
       )}

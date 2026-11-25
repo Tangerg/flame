@@ -128,6 +128,14 @@
     "output": "schema.json#/$defs/ReviewV1Output"
   },
   {
+    "name": "flame.deliverables/sheets.v1",
+    "kind": "query",
+    "target": "installation",
+    "description": "Project an XLSX revision's sheets and cells from its native bytes: each cell's exact setCell expect, shown value and reproducing setCell value, plus locked ranges setCell refuses. Omitting revision reads the current head once.",
+    "input": "schema.json#/$defs/SheetsV1Input",
+    "output": "schema.json#/$defs/SheetsV1Output"
+  },
+  {
     "name": "flame.deliverables/slides.v1",
     "kind": "query",
     "target": "installation",

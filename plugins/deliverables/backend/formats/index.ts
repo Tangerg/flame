@@ -12,8 +12,8 @@ import {
   type FormatCatalog,
   type Inspection,
   type OfficeFormat,
-  type SlideLayout,
 } from "../../contracts/content";
+import { type SlideLayout, type WorkbookLayout } from "../../contracts/layouts";
 import { OfficePackage } from "./archive";
 import { createDocument, editDocument, inspectDocument } from "./document";
 import { editPDF, inspectPDF } from "./pdf";
@@ -26,6 +26,7 @@ import { slideLayout } from "./slides";
 import { inspectWorkbook, workbookCSV } from "./workbook";
 import { createWorkbook } from "./workbook-authoring";
 import { editWorkbook } from "./workbook-editing";
+import { workbookLayout } from "./workbook-layout";
 
 export { encodeArchive } from "./zip";
 export { hasPNGSignature } from "./images";
@@ -92,6 +93,10 @@ export async function editFile(
 
 export function layoutFile(bytes: Uint8Array): SlideLayout {
   return slideLayout(OfficePackage.open("pptx", bytes));
+}
+
+export function sheetsFile(bytes: Uint8Array): WorkbookLayout {
+  return workbookLayout(OfficePackage.open("xlsx", bytes));
 }
 
 export function exportCSV(bytes: Uint8Array, sheetPart: string): Uint8Array {
@@ -272,6 +277,7 @@ export function catalog(): FormatCatalog {
           ...officeLimits,
           `Creates typed cells, local formulas, cell styles, comments, tables, merges, freeze panes and editable native bar/line/pie charts. At most ${contentLimits.cells} authored cells, ${contentLimits.authoredRows} rows and ${contentLimits.authoredColumns} authored columns.`,
           "Excel numbers use floating-point arithmetic and approximately 15 decimal digits. Inputs that cannot be projected exactly are refused; use string cells for exact identifiers or decimal text, and explicit rounding/unit policies for numerical models. Imported numbers outside exact JavaScript projection are reported as native_decimal text; CSV preserves native numeric lexemes.",
+          "Read the sheets query for each sheet's cells of an exact revision: the exact setCell expect, the shown value (a formula's calculated result) and, where one exists, the setCell value that reproduces the cell. Locked ranges list merged, table-structure and formula-region cells that setCell refuses.",
           "Native setCell preserves cell style and unrelated parts. Shared/array/data-table formula regions cannot be edited. Every edit invalidates workbook formula results, chart caches and the calculation chain.",
           "Formula caches cannot be supplied during creation or editing. CSV export requires existing calculated results and refuses spreadsheet errors; formula-like string values receive an apostrophe to prevent spreadsheet formula injection.",
         ],

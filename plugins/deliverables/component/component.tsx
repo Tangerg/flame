@@ -17,7 +17,10 @@ import {
 } from "./archive";
 import { ImportForm } from "./importing";
 import { SlideStudio } from "./slides";
-import type { Draft } from "./slides-draft";
+import { WorkbookStudio } from "./sheets";
+import type { CellOperation } from "./sheets-draft";
+import type { Draft, DraftUpdate } from "./live-draft";
+import type { SlideOperation } from "./slides-draft";
 import { useDeliverables } from "./useDeliverables";
 import { en } from "./locales/en";
 import { zh } from "./locales/zh";
@@ -51,7 +54,8 @@ function Workspace({
     [locale],
   );
   const state = useDeliverables(context);
-  const [slideDrafts, setSlideDrafts] = useState<Record<string, Draft>>({});
+  const slideDrafts = useDrafts<SlideOperation>();
+  const sheetDrafts = useDrafts<CellOperation>();
   const bodyViewport = useRef<HTMLDivElement>(null);
   const archiveSearchField = useRef<HTMLInputElement>(null);
   const archiveOrigin = useRef<{
@@ -188,15 +192,18 @@ function Workspace({
           key={document.document.id}
           state={state}
           document={document}
-          draft={slideDrafts[document.document.id]}
-          onDraft={(update) => {
-            const id = document.document.id;
-            setSlideDrafts((all) => {
-              const { [id]: current, ...rest } = all;
-              const next = update(current);
-              return next ? { ...rest, [id]: next } : rest;
-            });
-          }}
+          draft={slideDrafts.get(document.document.id)}
+          onDraft={slideDrafts.update(document.document.id)}
+          t={t}
+        />
+      )}
+      {document?.revision.format === "xlsx" && (
+        <WorkbookStudio
+          key={document.document.id}
+          state={state}
+          document={document}
+          draft={sheetDrafts.get(document.document.id)}
+          onDraft={sheetDrafts.update(document.document.id)}
           t={t}
         />
       )}
@@ -219,6 +226,21 @@ function Workspace({
       />
     </Panel>
   );
+}
+
+// The workspace owns drafts by document, so reading another revision (which
+// unmounts an editor while it loads) never discards unsubmitted intent.
+function useDrafts<Operation>() {
+  const [drafts, setDrafts] = useState<Record<string, Draft<Operation>>>({});
+  return {
+    get: (id: string) => drafts[id],
+    update: (id: string) => (update: DraftUpdate<Operation>) =>
+      setDrafts((all) => {
+        const { [id]: current, ...rest } = all;
+        const next = update(current);
+        return next ? { ...rest, [id]: next } : rest;
+      }),
+  };
 }
 
 export function Deliverables({ context }: { context: ComponentContext }) {

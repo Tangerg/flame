@@ -237,31 +237,49 @@ export const es = {
   "image.zoomIn": "Ampliar imagen",
   "image.zoomOut": "Reducir imagen",
   "image.description": "Descripción de la imagen",
+  "sheets.title": "Editor de libros",
+  "sheets.help":
+    "Selecciona celdas y escribe para cambiarlas. Los cambios quedan en un borrador local hasta que los guardes como una revisión nueva.",
+  "sheets.loading": "Leyendo hojas…",
+  "sheets.list": "Hojas",
+  "sheets.grid": "Celdas de {{name}}",
+  "sheets.formula": "Contenido de {{ref}}",
+  "sheets.locked.merge":
+    "Forma parte de un rango combinado. Edita su primera celda.",
+  "sheets.locked.table":
+    "Los encabezados, totales y columnas calculadas de una tabla no se pueden editar aquí.",
+  "sheets.locked.formulaRegion":
+    "Forma parte de una fórmula compartida o matricial. Edítala en Excel.",
+  "sheets.pending": "Los resultados de las fórmulas aparecen tras recalcular.",
+  "sheets.op.setCell": "{{sheet}} · {{ref}}",
+  "sheets.keyboard":
+    "Las flechas mueven, Intro o escribir edita, Supr vacía y Esc cancela.",
+  "sheets.actions": "Acciones de la selección",
   "slides.title": "Editor de diapositivas",
   "slides.help":
     "Mueve, redimensiona y edita los elementos de la diapositiva. Los cambios quedan en un borrador local hasta que los guardes como una revisión nueva.",
   "slides.loading": "Leyendo diapositivas…",
-  "slides.retry": "Reintentar",
-  "slides.historical":
+  "draft.retry": "Reintentar",
+  "draft.historical":
     "Es una revisión anterior. Abre la revisión actual para editarla.",
-  "slides.newer":
+  "draft.newer":
     "Hay una revisión más reciente. Compárala con tu borrador antes de guardar.",
-  "slides.compare": "Comparar con la actual",
-  "slides.draftElsewhere": "Tu borrador se basa en otra revisión.",
-  "slides.openDraft": "Abrir la revisión del borrador",
-  "slides.reconcile.help":
+  "draft.compare": "Comparar con la actual",
+  "draft.elsewhere": "Tu borrador se basa en otra revisión.",
+  "draft.openDraft": "Abrir la revisión del borrador",
+  "draft.reconcile.help":
     "Cada cambio se compara con la revisión actual. Elige qué conservar donde ambos cambiaron.",
-  "slides.reconcile.choice": "Versión que se conserva",
-  "slides.reconcile.actions": "Acciones de comparación",
-  "slides.status.clean": "Se aplica sin conflicto",
-  "slides.status.applied": "Ya está en la actual",
-  "slides.status.conflict": "Cambiado en ambos lados",
-  "slides.status.missing": "El destino ya no existe",
-  "slides.mine": "Mío",
-  "slides.theirs": "Actual",
-  "slides.keepMine": "Conservar el mío",
-  "slides.keepCurrent": "Conservar el actual",
-  "slides.rebase": "Reaplicar sobre la revisión actual",
+  "draft.reconcile.choice": "Versión que se conserva",
+  "draft.reconcile.actions": "Acciones de comparación",
+  "draft.status.clean": "Se aplica sin conflicto",
+  "draft.status.applied": "Ya está en la actual",
+  "draft.status.conflict": "Cambiado en ambos lados",
+  "draft.status.missing": "El destino ya no existe",
+  "draft.mine": "Mío",
+  "draft.theirs": "Actual",
+  "draft.keepMine": "Conservar el mío",
+  "draft.keepCurrent": "Conservar el actual",
+  "draft.rebase": "Reaplicar sobre la revisión actual",
   "slides.list": "Diapositivas",
   "slides.slide": "Diapositiva {{number}}",
   "slides.hidden": "Oculta",
@@ -307,11 +325,10 @@ export const es = {
   "slides.elementActions": "Acciones del elemento",
   "slides.delete": "Eliminar elemento",
   "slides.revert": "Deshacer cambios del elemento",
-  "slides.reference": "Copiar referencia para el Agent",
-  "slides.reference.copied":
-    "Referencia copiada. Pégala en tu mensaje al Agent.",
-  "slides.reference.failed": "No se pudo copiar la referencia.",
-  "slides.reference.unsaved":
+  "handoff.copy": "Copiar referencia para el Agent",
+  "handoff.copied": "Referencia copiada. Pégala en tu mensaje al Agent.",
+  "handoff.failed": "No se pudo copiar la referencia.",
+  "handoff.unsaved":
     "Guarda o descarta el borrador antes de pasarlo al Agent; una referencia solo nombra revisiones guardadas.",
   "slides.slideActions": "Acciones de diapositiva",
   "slides.moveUp": "Mover antes",
@@ -322,20 +339,19 @@ export const es = {
     "¿Eliminar la diapositiva {{number}}? La nueva revisión quita sus notas y gráficos; las anteriores los conservan.",
   "slides.structureBlocked":
     "Guarda o descarta el borrador antes de cambiar diapositivas o pasarlas al Agent.",
-  "slides.draft": "Borrador",
-  "slides.clean": "Sin cambios sin guardar",
-  "slides.unsaved": "Cambios sin guardar: {{count}}",
-  "slides.saving": "Guardando…",
-  "slides.undo": "Deshacer",
-  "slides.discard": "Descartar borrador",
-  "slides.save": "Guardar como revisión nueva",
+  "draft.title": "Borrador",
+  "draft.clean": "Sin cambios sin guardar",
+  "draft.unsaved": "Cambios sin guardar: {{count}}",
+  "draft.saving": "Guardando…",
+  "draft.undo": "Deshacer",
+  "draft.discard": "Descartar borrador",
+  "draft.save": "Guardar como revisión nueva",
   "slides.op.setFrame": "Posición de {{name}}",
   "slides.op.replaceText": "Texto «{{text}}»",
   "slides.op.deleteElement": "Eliminar {{name}}",
   "slides.op.setChartData": "Datos de {{name}}",
-  "slides.handoff": "Pasar al Agent",
-  "slides.reference.handed":
-    "Añadido a tu mensaje. Describe el cambio y envíalo.",
-  "slides.reference.stale":
+  "handoff.add": "Pasar al Agent",
+  "handoff.handed": "Añadido a tu mensaje. Describe el cambio y envíalo.",
+  "handoff.stale":
     "La conversación cambió y la referencia no se añadió. Inténtalo de nuevo.",
 } satisfies Record<keyof typeof en, string>;

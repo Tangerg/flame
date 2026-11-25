@@ -1,9 +1,9 @@
+import { type Frame } from "../../contracts/content";
 import {
   slideLayoutSchema,
   type ElementView,
-  type Frame,
   type SlideLayout,
-} from "../../contracts/content";
+} from "../../contracts/layouts";
 import {
   OfficePackage,
   relations,

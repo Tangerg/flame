@@ -1,29 +1,14 @@
-import { canonicalJSON } from "@frame/sdk/json";
-import type {
-  ChartData,
-  ElementView,
-  Frame,
-  SlideLayout,
-} from "../contracts/content";
+import type { ChartData, Frame } from "../contracts/content";
+import type { ElementView, SlideLayout } from "../contracts/layouts";
+import { edited, same, type Draft, type Reconciliation } from "./live-draft";
 
-export type DraftOperation =
+export type SlideOperation =
   | { type: "setFrame"; id: string; expect: Frame; frame: Frame }
   | { type: "replaceText"; id: string; expect: string; text: string }
   | { type: "deleteElement"; id: string }
   | { type: "setChartData"; id: string; expect: ChartData; data: ChartData };
 
-// The draft owns only unsubmitted intent; the native revision named by base
-// remains the authority that every expect value was read from.
-export interface Draft {
-  base: string;
-  operations: DraftOperation[];
-  undo: DraftOperation[][];
-}
-
-const same = (left: unknown, right: unknown) =>
-  canonicalJSON(left) === canonicalJSON(right);
-
-function target(operation: DraftOperation): unknown {
+function target(operation: SlideOperation): unknown {
   switch (operation.type) {
     case "setFrame":
       return operation.frame;
@@ -36,15 +21,15 @@ function target(operation: DraftOperation): unknown {
   }
 }
 
-function expected(operation: DraftOperation): unknown {
+function expected(operation: SlideOperation): unknown {
   return "expect" in operation ? operation.expect : undefined;
 }
 
 export function record(
-  draft: Draft,
-  next: DraftOperation,
+  draft: Draft<SlideOperation>,
+  next: SlideOperation,
   element?: ElementView,
-): Draft {
+): Draft<SlideOperation> {
   let operations = draft.operations;
   if (next.type === "deleteElement" && element) {
     const runs = new Set(element.text.map((run) => run.id));
@@ -57,37 +42,35 @@ export function record(
   );
   const merged = (
     prior && "expect" in prior ? { ...next, expect: prior.expect } : next
-  ) as DraftOperation;
+  ) as SlideOperation;
   const remaining = operations.filter((operation) => operation !== prior);
   const unchanged =
     merged.type !== "deleteElement" && same(expected(merged), target(merged));
-  return {
-    base: draft.base,
-    operations: unchanged ? remaining : [...remaining, merged],
-    undo: [...draft.undo, draft.operations],
-  };
+  return edited(draft, unchanged ? remaining : [...remaining, merged]);
 }
 
-export function revert(draft: Draft, element: ElementView): Draft {
+export function revert(
+  draft: Draft<SlideOperation>,
+  element: ElementView,
+): Draft<SlideOperation> {
   const runs = new Set(element.text.map((run) => run.id));
-  return {
-    base: draft.base,
-    operations: draft.operations.filter(
+  return edited(
+    draft,
+    draft.operations.filter(
       (operation) => operation.id !== element.id && !runs.has(operation.id),
     ),
-    undo: [...draft.undo, draft.operations],
-  };
+  );
 }
 
 export function preview(
   layout: SlideLayout,
-  operations: DraftOperation[],
+  operations: SlideOperation[],
 ): SlideLayout {
-  const by = <T extends DraftOperation["type"]>(type: T) =>
+  const by = <T extends SlideOperation["type"]>(type: T) =>
     new Map(
       operations
         .filter(
-          (operation): operation is Extract<DraftOperation, { type: T }> =>
+          (operation): operation is Extract<SlideOperation, { type: T }> =>
             operation.type === type,
         )
         .map((operation) => [operation.id, operation]),
@@ -162,21 +145,13 @@ function elementOf(layout: SlideLayout, id: string) {
   }
 }
 
-export type Reconciliation = {
-  operation: DraftOperation;
-  status: "clean" | "applied" | "conflict" | "missing";
-  // The operation re-addressed to the current revision, when it has a target there.
-  rebased?: DraftOperation;
-  current?: unknown;
-};
-
 export function reconcile(
   base: SlideLayout,
   head: SlideLayout,
-  operations: DraftOperation[],
-): Reconciliation[] {
+  operations: SlideOperation[],
+): Reconciliation<SlideOperation>[] {
   const baseRuns = runOwners(base);
-  return operations.map((operation): Reconciliation => {
+  return operations.map((operation): Reconciliation<SlideOperation> => {
     if (operation.type === "replaceText") {
       const owner = baseRuns.get(operation.id);
       const run = owner && runsOf(head, owner.owner)?.[owner.index];
@@ -212,25 +187,11 @@ export function reconcile(
   });
 }
 
-// Keeping mine re-reads the current value as the new precondition, so the
-// authoritative write still refuses anything that changes after this choice.
-export function rebase(
-  head: string,
-  reconciliations: Reconciliation[],
-  keepMine: ReadonlySet<number>,
-): Draft {
-  const operations = reconciliations.flatMap(
-    ({ status, rebased, current }, index): DraftOperation[] => {
-      if (!rebased || status === "applied" || status === "missing") return [];
-      if (status === "clean") return [rebased];
-      if (!keepMine.has(index)) return [];
-      if (rebased.type === "deleteElement") return [rebased];
-      return [{ ...rebased, expect: current } as DraftOperation];
-    },
-  );
-  return { base: head, operations, undo: [] };
-}
-
-export function operationsJSON(operations: DraftOperation[]): string {
-  return canonicalJSON({ operations });
+export function withCurrent(
+  operation: SlideOperation,
+  current: unknown,
+): SlideOperation {
+  return operation.type === "deleteElement"
+    ? operation
+    : ({ ...operation, expect: current } as SlideOperation);
 }

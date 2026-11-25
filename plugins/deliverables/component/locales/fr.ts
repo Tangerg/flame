@@ -239,31 +239,50 @@ export const fr = {
   "image.zoomIn": "Agrandir l’image",
   "image.zoomOut": "Réduire l’image",
   "image.description": "Description de l’image",
+  "sheets.title": "Éditeur de classeur",
+  "sheets.help":
+    "Sélectionnez des cellules et tapez pour les modifier. Les changements restent dans un brouillon local jusqu’à leur enregistrement comme nouvelle révision.",
+  "sheets.loading": "Lecture des feuilles…",
+  "sheets.list": "Feuilles",
+  "sheets.grid": "Cellules de {{name}}",
+  "sheets.formula": "Contenu de {{ref}}",
+  "sheets.locked.merge":
+    "Fait partie d’une plage fusionnée. Modifiez sa première cellule.",
+  "sheets.locked.table":
+    "Les en-têtes, totaux et colonnes calculées d’un tableau ne se modifient pas ici.",
+  "sheets.locked.formulaRegion":
+    "Fait partie d’une formule partagée ou matricielle. Modifiez-la dans Excel.",
+  "sheets.pending":
+    "Les résultats des formules apparaissent après le recalcul.",
+  "sheets.op.setCell": "{{sheet}} · {{ref}}",
+  "sheets.keyboard":
+    "Les flèches déplacent, Entrée ou la saisie modifie, Suppr vide et Échap annule.",
+  "sheets.actions": "Actions sur la sélection",
   "slides.title": "Éditeur de diapositives",
   "slides.help":
     "Déplacez, redimensionnez et modifiez directement les éléments. Les changements restent dans un brouillon local jusqu’à leur enregistrement comme nouvelle révision.",
   "slides.loading": "Lecture des diapositives…",
-  "slides.retry": "Réessayer",
-  "slides.historical":
+  "draft.retry": "Réessayer",
+  "draft.historical":
     "Révision antérieure. Ouvrez la révision actuelle pour la modifier.",
-  "slides.newer":
+  "draft.newer":
     "Une révision plus récente existe. Comparez-la à votre brouillon avant d’enregistrer.",
-  "slides.compare": "Comparer à l’actuelle",
-  "slides.draftElsewhere": "Votre brouillon repose sur une autre révision.",
-  "slides.openDraft": "Ouvrir la révision du brouillon",
-  "slides.reconcile.help":
+  "draft.compare": "Comparer à l’actuelle",
+  "draft.elsewhere": "Votre brouillon repose sur une autre révision.",
+  "draft.openDraft": "Ouvrir la révision du brouillon",
+  "draft.reconcile.help":
     "Chaque changement est comparé à la révision actuelle. Choisissez quoi garder là où les deux ont changé.",
-  "slides.reconcile.choice": "Version à garder",
-  "slides.reconcile.actions": "Actions de comparaison",
-  "slides.status.clean": "S’applique sans conflit",
-  "slides.status.applied": "Déjà dans l’actuelle",
-  "slides.status.conflict": "Modifié des deux côtés",
-  "slides.status.missing": "Cible supprimée",
-  "slides.mine": "Le mien",
-  "slides.theirs": "Actuel",
-  "slides.keepMine": "Garder le mien",
-  "slides.keepCurrent": "Garder l’actuel",
-  "slides.rebase": "Réappliquer sur la révision actuelle",
+  "draft.reconcile.choice": "Version à garder",
+  "draft.reconcile.actions": "Actions de comparaison",
+  "draft.status.clean": "S’applique sans conflit",
+  "draft.status.applied": "Déjà dans l’actuelle",
+  "draft.status.conflict": "Modifié des deux côtés",
+  "draft.status.missing": "Cible supprimée",
+  "draft.mine": "Le mien",
+  "draft.theirs": "Actuel",
+  "draft.keepMine": "Garder le mien",
+  "draft.keepCurrent": "Garder l’actuel",
+  "draft.rebase": "Réappliquer sur la révision actuelle",
   "slides.list": "Diapositives",
   "slides.slide": "Diapositive {{number}}",
   "slides.hidden": "Masquée",
@@ -309,11 +328,10 @@ export const fr = {
   "slides.elementActions": "Actions sur l’élément",
   "slides.delete": "Supprimer l’élément",
   "slides.revert": "Annuler les changements de l’élément",
-  "slides.reference": "Copier la référence pour l’Agent",
-  "slides.reference.copied":
-    "Référence copiée. Collez-la dans votre message à l’Agent.",
-  "slides.reference.failed": "Impossible de copier la référence.",
-  "slides.reference.unsaved":
+  "handoff.copy": "Copier la référence pour l’Agent",
+  "handoff.copied": "Référence copiée. Collez-la dans votre message à l’Agent.",
+  "handoff.failed": "Impossible de copier la référence.",
+  "handoff.unsaved":
     "Enregistrez ou abandonnez le brouillon avant de le transmettre à l’Agent ; une référence ne désigne que des révisions enregistrées.",
   "slides.slideActions": "Actions sur la diapositive",
   "slides.moveUp": "Avancer",
@@ -324,20 +342,20 @@ export const fr = {
     "Supprimer la diapositive {{number}} ? La nouvelle révision retire ses notes et graphiques ; les précédentes les conservent.",
   "slides.structureBlocked":
     "Enregistrez ou abandonnez le brouillon avant de modifier les diapositives ou de les transmettre à l’Agent.",
-  "slides.draft": "Brouillon",
-  "slides.clean": "Aucun changement non enregistré",
-  "slides.unsaved": "Changements non enregistrés : {{count}}",
-  "slides.saving": "Enregistrement…",
-  "slides.undo": "Annuler",
-  "slides.discard": "Abandonner le brouillon",
-  "slides.save": "Enregistrer comme nouvelle révision",
+  "draft.title": "Brouillon",
+  "draft.clean": "Aucun changement non enregistré",
+  "draft.unsaved": "Changements non enregistrés : {{count}}",
+  "draft.saving": "Enregistrement…",
+  "draft.undo": "Annuler",
+  "draft.discard": "Abandonner le brouillon",
+  "draft.save": "Enregistrer comme nouvelle révision",
   "slides.op.setFrame": "Position de {{name}}",
   "slides.op.replaceText": "Texte « {{text}} »",
   "slides.op.deleteElement": "Supprimer {{name}}",
   "slides.op.setChartData": "Données de {{name}}",
-  "slides.handoff": "Transmettre à l’Agent",
-  "slides.reference.handed":
+  "handoff.add": "Transmettre à l’Agent",
+  "handoff.handed":
     "Ajouté à votre message. Décrivez la modification, puis envoyez-le.",
-  "slides.reference.stale":
+  "handoff.stale":
     "La conversation a changé ; la référence n’a pas été ajoutée. Réessayez.",
 } satisfies Record<keyof typeof en, string>;

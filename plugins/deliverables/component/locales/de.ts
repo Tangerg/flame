@@ -241,31 +241,49 @@ export const de = {
   "image.zoomIn": "Bild vergrößern",
   "image.zoomOut": "Bild verkleinern",
   "image.description": "Bildbeschreibung",
+  "sheets.title": "Arbeitsmappen-Editor",
+  "sheets.help":
+    "Zellen auswählen und tippen, um sie zu ändern. Änderungen bleiben im lokalen Entwurf, bis du sie als neue Revision speicherst.",
+  "sheets.loading": "Tabellenblätter werden gelesen…",
+  "sheets.list": "Tabellenblätter",
+  "sheets.grid": "Zellen von {{name}}",
+  "sheets.formula": "Inhalt von {{ref}}",
+  "sheets.locked.merge":
+    "Teil eines verbundenen Bereichs. Bearbeite seine erste Zelle.",
+  "sheets.locked.table":
+    "Tabellenkopf, Ergebniszeilen und berechnete Spalten lassen sich hier nicht bearbeiten.",
+  "sheets.locked.formulaRegion":
+    "Teil einer gemeinsamen oder Matrixformel. Bearbeite sie in Excel.",
+  "sheets.pending": "Formelergebnisse erscheinen nach der Neuberechnung.",
+  "sheets.op.setCell": "{{sheet}} · {{ref}}",
+  "sheets.keyboard":
+    "Pfeiltasten bewegen, Eingabe oder Tippen bearbeitet, Entf leert, Esc bricht ab.",
+  "sheets.actions": "Aktionen für die Auswahl",
   "slides.title": "Folieneditor",
   "slides.help":
     "Elemente direkt verschieben, skalieren und bearbeiten. Änderungen bleiben im lokalen Entwurf, bis du sie als neue Revision speicherst.",
   "slides.loading": "Folien werden gelesen…",
-  "slides.retry": "Erneut versuchen",
-  "slides.historical":
+  "draft.retry": "Erneut versuchen",
+  "draft.historical":
     "Dies ist eine frühere Revision. Öffne die aktuelle Revision, um sie zu bearbeiten.",
-  "slides.newer":
+  "draft.newer":
     "Es gibt eine neuere Revision. Vergleiche sie vor dem Speichern mit deinem Entwurf.",
-  "slides.compare": "Mit aktueller vergleichen",
-  "slides.draftElsewhere": "Dein Entwurf basiert auf einer anderen Revision.",
-  "slides.openDraft": "Revision des Entwurfs öffnen",
-  "slides.reconcile.help":
+  "draft.compare": "Mit aktueller vergleichen",
+  "draft.elsewhere": "Dein Entwurf basiert auf einer anderen Revision.",
+  "draft.openDraft": "Revision des Entwurfs öffnen",
+  "draft.reconcile.help":
     "Jede Änderung wird mit der aktuellen Revision verglichen. Wähle, was bei beidseitigen Änderungen bleibt.",
-  "slides.reconcile.choice": "Beizubehaltende Version",
-  "slides.reconcile.actions": "Vergleichsaktionen",
-  "slides.status.clean": "Konfliktfrei anwendbar",
-  "slides.status.applied": "Bereits enthalten",
-  "slides.status.conflict": "Auf beiden Seiten geändert",
-  "slides.status.missing": "Ziel entfernt",
-  "slides.mine": "Meins",
-  "slides.theirs": "Aktuell",
-  "slides.keepMine": "Meins behalten",
-  "slides.keepCurrent": "Aktuelles behalten",
-  "slides.rebase": "Auf aktuelle Revision erneut anwenden",
+  "draft.reconcile.choice": "Beizubehaltende Version",
+  "draft.reconcile.actions": "Vergleichsaktionen",
+  "draft.status.clean": "Konfliktfrei anwendbar",
+  "draft.status.applied": "Bereits enthalten",
+  "draft.status.conflict": "Auf beiden Seiten geändert",
+  "draft.status.missing": "Ziel entfernt",
+  "draft.mine": "Meins",
+  "draft.theirs": "Aktuell",
+  "draft.keepMine": "Meins behalten",
+  "draft.keepCurrent": "Aktuelles behalten",
+  "draft.rebase": "Auf aktuelle Revision erneut anwenden",
   "slides.list": "Folien",
   "slides.slide": "Folie {{number}}",
   "slides.hidden": "Ausgeblendet",
@@ -311,11 +329,11 @@ export const de = {
   "slides.elementActions": "Elementaktionen",
   "slides.delete": "Element löschen",
   "slides.revert": "Änderungen am Element verwerfen",
-  "slides.reference": "Verweis für den Agent kopieren",
-  "slides.reference.copied":
+  "handoff.copy": "Verweis für den Agent kopieren",
+  "handoff.copied":
     "Verweis kopiert. Füge ihn in deine Nachricht an den Agent ein.",
-  "slides.reference.failed": "Der Verweis konnte nicht kopiert werden.",
-  "slides.reference.unsaved":
+  "handoff.failed": "Der Verweis konnte nicht kopiert werden.",
+  "handoff.unsaved":
     "Speichere oder verwirf den Entwurf, bevor du ihn an den Agent übergibst; ein Verweis nennt nur gespeicherte Revisionen.",
   "slides.slideActions": "Folienaktionen",
   "slides.moveUp": "Nach vorne",
@@ -326,20 +344,20 @@ export const de = {
     "Folie {{number}} löschen? Die neue Revision entfernt Notizen und Diagramme; frühere Revisionen behalten sie.",
   "slides.structureBlocked":
     "Speichere oder verwirf den Entwurf, bevor du Folien änderst oder an den Agent übergibst.",
-  "slides.draft": "Entwurf",
-  "slides.clean": "Keine ungespeicherten Änderungen",
-  "slides.unsaved": "Ungespeicherte Änderungen: {{count}}",
-  "slides.saving": "Wird gespeichert…",
-  "slides.undo": "Rückgängig",
-  "slides.discard": "Entwurf verwerfen",
-  "slides.save": "Als neue Revision speichern",
+  "draft.title": "Entwurf",
+  "draft.clean": "Keine ungespeicherten Änderungen",
+  "draft.unsaved": "Ungespeicherte Änderungen: {{count}}",
+  "draft.saving": "Wird gespeichert…",
+  "draft.undo": "Rückgängig",
+  "draft.discard": "Entwurf verwerfen",
+  "draft.save": "Als neue Revision speichern",
   "slides.op.setFrame": "Position von {{name}}",
   "slides.op.replaceText": "Text „{{text}}“",
   "slides.op.deleteElement": "{{name}} löschen",
   "slides.op.setChartData": "Daten von {{name}}",
-  "slides.handoff": "An den Agent übergeben",
-  "slides.reference.handed":
+  "handoff.add": "An den Agent übergeben",
+  "handoff.handed":
     "Zur Nachricht hinzugefügt. Beschreibe die Änderung und sende sie.",
-  "slides.reference.stale":
+  "handoff.stale":
     "Die Unterhaltung hat gewechselt; der Verweis wurde nicht hinzugefügt. Bitte erneut versuchen.",
 } satisfies Record<keyof typeof en, string>;

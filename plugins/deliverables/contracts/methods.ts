@@ -5,6 +5,7 @@ export const METHODS = Object.freeze({
   assessment: "flame.deliverables/assessment.v1",
   history: "flame.deliverables/history.v1",
   slides: "flame.deliverables/slides.v1",
+  sheets: "flame.deliverables/sheets.v1",
   create: "flame.deliverables/create.v1",
   edit: "flame.deliverables/edit.v1",
   upload: "flame.deliverables/upload.v1",

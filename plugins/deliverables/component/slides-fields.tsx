@@ -8,11 +8,8 @@ import {
   TextArea,
   TextField,
 } from "@flame/ui";
-import {
-  type ChartData,
-  type ElementView,
-  type Frame,
-} from "../contracts/content";
+import { type ChartData, type Frame } from "../contracts/content";
+import { type ElementView } from "../contracts/layouts";
 import { EMU_PER_INCH, inches } from "./slides-presentation";
 
 export function FrameFields({

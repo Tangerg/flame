@@ -2193,6 +2193,100 @@
       }
     },
     {
+      "name": "flame.deliverables/sheets.v1",
+      "kind": "query",
+      "target": "installation",
+      "description": "Project an XLSX revision's sheets and cells from its native bytes: each cell's exact setCell expect, shown value and reproducing setCell value, plus locked ranges setCell refuses. Omitting revision reads the current head once.",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "revision": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "document": {
+            "additionalProperties": false,
+            "properties": {
+              "createdAt": {
+                "maxLength": 40,
+                "minLength": 1,
+                "type": "string"
+              },
+              "format": {
+                "enum": [
+                  "docx",
+                  "xlsx",
+                  "pptx",
+                  "pdf"
+                ],
+                "type": "string"
+              },
+              "head": {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              "id": {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              "project": {
+                "maxLength": 256,
+                "minLength": 1,
+                "type": "string"
+              },
+              "title": {
+                "maxLength": 180,
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "title",
+              "format",
+              "head",
+              "createdAt"
+            ],
+            "type": "object"
+          },
+          "layoutJSON": {
+            "maxLength": 1048576,
+            "type": "string"
+          },
+          "revision": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "sourceSha256": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "document",
+          "revision",
+          "sourceSha256",
+          "layoutJSON"
+        ],
+        "type": "object"
+      }
+    },
+    {
       "name": "flame.deliverables/slides.v1",
       "kind": "query",
       "target": "installation",

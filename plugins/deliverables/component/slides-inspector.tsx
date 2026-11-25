@@ -9,12 +9,8 @@ import {
   RecordGroup,
   Toolbar,
 } from "@flame/ui";
-import {
-  type ChartData,
-  type ElementView,
-  type Frame,
-  type SlideView,
-} from "../contracts/content";
+import { type ChartData, type Frame } from "../contracts/content";
+import { type ElementView, type SlideView } from "../contracts/layouts";
 import type { DocumentRead } from "./types";
 import { label } from "./slides-presentation";
 import { ChartFields, FrameFields, RunField } from "./slides-fields";
@@ -135,7 +131,7 @@ export function ElementInspector({
         </Button>
         {reference}
       </Toolbar>
-      {dirty && <Metadata>{t("slides.reference.unsaved")}</Metadata>}
+      {dirty && <Metadata>{t("handoff.unsaved")}</Metadata>}
     </RecordGroup>
   );
 }

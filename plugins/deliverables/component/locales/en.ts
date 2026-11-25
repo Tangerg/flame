@@ -237,31 +237,48 @@ export const en = {
   "image.zoomIn": "Zoom in image",
   "image.zoomOut": "Zoom out image",
   "image.description": "Image description",
+  "sheets.title": "Workbook editor",
+  "sheets.help":
+    "Select cells and type to change them. Changes stay in a local draft until you save them as a new revision.",
+  "sheets.loading": "Reading sheets…",
+  "sheets.list": "Sheets",
+  "sheets.grid": "Cells of {{name}}",
+  "sheets.formula": "Contents of {{ref}}",
+  "sheets.locked.merge": "Part of a merged range. Edit its first cell.",
+  "sheets.locked.table":
+    "Table headers, totals and calculated columns can't be edited here.",
+  "sheets.locked.formulaRegion":
+    "Part of a shared or array formula. Edit it in Excel.",
+  "sheets.pending": "Formula results appear after recalculation.",
+  "sheets.op.setCell": "{{sheet}} · {{ref}}",
+  "sheets.keyboard":
+    "Arrow keys move, Enter or typing edits, Delete clears and Escape cancels.",
+  "sheets.actions": "Selection actions",
   "slides.title": "Slide editor",
   "slides.help":
     "Move, resize and edit slide elements directly. Changes stay in a local draft until you save them as a new revision.",
   "slides.loading": "Reading slides…",
-  "slides.retry": "Try again",
-  "slides.historical":
+  "draft.retry": "Try again",
+  "draft.historical":
     "This is an earlier revision. Open the current revision to edit it.",
-  "slides.newer":
+  "draft.newer":
     "A newer revision exists. Compare your draft with it before saving.",
-  "slides.compare": "Compare with current",
-  "slides.draftElsewhere": "Your draft is based on another revision.",
-  "slides.openDraft": "Open draft revision",
-  "slides.reconcile.help":
+  "draft.compare": "Compare with current",
+  "draft.elsewhere": "Your draft is based on another revision.",
+  "draft.openDraft": "Open draft revision",
+  "draft.reconcile.help":
     "Each change is checked against the current revision. Choose which side to keep where both changed.",
-  "slides.reconcile.choice": "Version to keep",
-  "slides.reconcile.actions": "Draft comparison actions",
-  "slides.status.clean": "Applies cleanly",
-  "slides.status.applied": "Already in current",
-  "slides.status.conflict": "Changed on both sides",
-  "slides.status.missing": "Target removed",
-  "slides.mine": "Mine",
-  "slides.theirs": "Current",
-  "slides.keepMine": "Keep mine",
-  "slides.keepCurrent": "Keep current",
-  "slides.rebase": "Reapply on current revision",
+  "draft.reconcile.choice": "Version to keep",
+  "draft.reconcile.actions": "Draft comparison actions",
+  "draft.status.clean": "Applies cleanly",
+  "draft.status.applied": "Already in current",
+  "draft.status.conflict": "Changed on both sides",
+  "draft.status.missing": "Target removed",
+  "draft.mine": "Mine",
+  "draft.theirs": "Current",
+  "draft.keepMine": "Keep mine",
+  "draft.keepCurrent": "Keep current",
+  "draft.rebase": "Reapply on current revision",
   "slides.list": "Slides",
   "slides.slide": "Slide {{number}}",
   "slides.hidden": "Hidden",
@@ -306,11 +323,11 @@ export const en = {
   "slides.elementActions": "Element actions",
   "slides.delete": "Delete element",
   "slides.revert": "Undo changes to this element",
-  "slides.reference": "Copy reference for Agent",
-  "slides.reference.copied":
+  "handoff.copy": "Copy reference for Agent",
+  "handoff.copied":
     "Reference copied. Paste it into your message to the Agent.",
-  "slides.reference.failed": "The reference could not be copied.",
-  "slides.reference.unsaved":
+  "handoff.failed": "The reference could not be copied.",
+  "handoff.unsaved":
     "Save or discard the draft before handing it to the Agent; a reference names saved revisions only.",
   "slides.slideActions": "Slide actions",
   "slides.moveUp": "Move earlier",
@@ -321,20 +338,19 @@ export const en = {
     "Delete slide {{number}}? The new revision drops its notes and charts; earlier revisions keep them.",
   "slides.structureBlocked":
     "Save or discard the draft before changing slides or handing them to the Agent.",
-  "slides.draft": "Draft",
-  "slides.clean": "No unsaved changes",
-  "slides.unsaved": "Unsaved changes: {{count}}",
-  "slides.saving": "Saving…",
-  "slides.undo": "Undo",
-  "slides.discard": "Discard draft",
-  "slides.save": "Save as new revision",
+  "draft.title": "Draft",
+  "draft.clean": "No unsaved changes",
+  "draft.unsaved": "Unsaved changes: {{count}}",
+  "draft.saving": "Saving…",
+  "draft.undo": "Undo",
+  "draft.discard": "Discard draft",
+  "draft.save": "Save as new revision",
   "slides.op.setFrame": "Position of {{name}}",
   "slides.op.replaceText": "Text “{{text}}”",
   "slides.op.deleteElement": "Delete {{name}}",
   "slides.op.setChartData": "Data of {{name}}",
-  "slides.handoff": "Hand to Agent",
-  "slides.reference.handed":
-    "Added to your message. Describe the change, then send it.",
-  "slides.reference.stale":
+  "handoff.add": "Hand to Agent",
+  "handoff.handed": "Added to your message. Describe the change, then send it.",
+  "handoff.stale":
     "The conversation changed, so the reference was not added. Try again.",
 } as const;

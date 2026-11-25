@@ -237,31 +237,48 @@ export const ja = {
   "image.zoomIn": "画像を拡大",
   "image.zoomOut": "画像を縮小",
   "image.description": "画像の説明",
+  "sheets.title": "ブック編集",
+  "sheets.help":
+    "セルを選んで入力すると変更できます。変更は保存して新しいリビジョンにするまでローカルの下書きに残ります。",
+  "sheets.loading": "シートを読み込み中…",
+  "sheets.list": "シート",
+  "sheets.grid": "{{name}} のセル",
+  "sheets.formula": "{{ref}} の内容",
+  "sheets.locked.merge": "結合セルの一部です。先頭のセルを編集してください。",
+  "sheets.locked.table":
+    "テーブルの見出し行、集計行、計算列はここでは編集できません。",
+  "sheets.locked.formulaRegion":
+    "共有数式または配列数式の一部です。Excel で編集してください。",
+  "sheets.pending": "数式の結果は再計算後に表示されます。",
+  "sheets.op.setCell": "{{sheet}} · {{ref}}",
+  "sheets.keyboard":
+    "矢印キーで移動、Enter または入力で編集、Delete で消去、Esc で取り消し。",
+  "sheets.actions": "選択範囲の操作",
   "slides.title": "スライド編集",
   "slides.help":
     "スライドの要素を直接移動・サイズ変更・編集できます。変更は保存して新しいリビジョンにするまでローカルの下書きに残ります。",
   "slides.loading": "スライドを読み込み中…",
-  "slides.retry": "再試行",
-  "slides.historical":
+  "draft.retry": "再試行",
+  "draft.historical":
     "これは以前のリビジョンです。編集するには現在のリビジョンを開いてください。",
-  "slides.newer":
+  "draft.newer":
     "新しいリビジョンがあります。保存する前に下書きと比較してください。",
-  "slides.compare": "現在のリビジョンと比較",
-  "slides.draftElsewhere": "下書きは別のリビジョンに基づいています。",
-  "slides.openDraft": "下書きのリビジョンを開く",
-  "slides.reconcile.help":
+  "draft.compare": "現在のリビジョンと比較",
+  "draft.elsewhere": "下書きは別のリビジョンに基づいています。",
+  "draft.openDraft": "下書きのリビジョンを開く",
+  "draft.reconcile.help":
     "各変更を現在のリビジョンと照合しました。双方が変更した箇所はどちらを残すか選んでください。",
-  "slides.reconcile.choice": "残すバージョン",
-  "slides.reconcile.actions": "下書きの比較操作",
-  "slides.status.clean": "そのまま適用可能",
-  "slides.status.applied": "現在のリビジョンに反映済み",
-  "slides.status.conflict": "双方で変更",
-  "slides.status.missing": "対象が削除済み",
-  "slides.mine": "自分",
-  "slides.theirs": "現在",
-  "slides.keepMine": "自分の変更を残す",
-  "slides.keepCurrent": "現在を残す",
-  "slides.rebase": "現在のリビジョンに再適用",
+  "draft.reconcile.choice": "残すバージョン",
+  "draft.reconcile.actions": "下書きの比較操作",
+  "draft.status.clean": "そのまま適用可能",
+  "draft.status.applied": "現在のリビジョンに反映済み",
+  "draft.status.conflict": "双方で変更",
+  "draft.status.missing": "対象が削除済み",
+  "draft.mine": "自分",
+  "draft.theirs": "現在",
+  "draft.keepMine": "自分の変更を残す",
+  "draft.keepCurrent": "現在を残す",
+  "draft.rebase": "現在のリビジョンに再適用",
   "slides.list": "スライド",
   "slides.slide": "スライド {{number}}",
   "slides.hidden": "非表示",
@@ -305,11 +322,11 @@ export const ja = {
   "slides.elementActions": "要素の操作",
   "slides.delete": "要素を削除",
   "slides.revert": "この要素の変更を取り消す",
-  "slides.reference": "Agent 用の参照をコピー",
-  "slides.reference.copied":
+  "handoff.copy": "Agent 用の参照をコピー",
+  "handoff.copied":
     "参照をコピーしました。Agent へのメッセージに貼り付けてください。",
-  "slides.reference.failed": "参照をコピーできませんでした。",
-  "slides.reference.unsaved":
+  "handoff.failed": "参照をコピーできませんでした。",
+  "handoff.unsaved":
     "Agent に渡す前に下書きを保存または破棄してください。参照は保存済みのリビジョンだけを指します。",
   "slides.slideActions": "スライドの操作",
   "slides.moveUp": "前へ移動",
@@ -320,20 +337,20 @@ export const ja = {
     "スライド {{number}} を削除しますか？新しいリビジョンではノートとグラフも削除され、以前のリビジョンには残ります。",
   "slides.structureBlocked":
     "スライドの変更や Agent に渡す前に、下書きを保存または破棄してください。",
-  "slides.draft": "下書き",
-  "slides.clean": "未保存の変更はありません",
-  "slides.unsaved": "未保存の変更：{{count}}",
-  "slides.saving": "保存中…",
-  "slides.undo": "元に戻す",
-  "slides.discard": "下書きを破棄",
-  "slides.save": "新しいリビジョンとして保存",
+  "draft.title": "下書き",
+  "draft.clean": "未保存の変更はありません",
+  "draft.unsaved": "未保存の変更：{{count}}",
+  "draft.saving": "保存中…",
+  "draft.undo": "元に戻す",
+  "draft.discard": "下書きを破棄",
+  "draft.save": "新しいリビジョンとして保存",
   "slides.op.setFrame": "{{name}} の位置",
   "slides.op.replaceText": "テキスト「{{text}}」",
   "slides.op.deleteElement": "{{name}} を削除",
   "slides.op.setChartData": "{{name}} のデータ",
-  "slides.handoff": "Agent に渡す",
-  "slides.reference.handed":
+  "handoff.add": "Agent に渡す",
+  "handoff.handed":
     "メッセージに追加しました。変更内容を書いて送信してください。",
-  "slides.reference.stale":
+  "handoff.stale":
     "会話が切り替わったため、参照は追加されませんでした。もう一度お試しください。",
 } satisfies Record<keyof typeof en, string>;

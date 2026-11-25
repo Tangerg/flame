@@ -12,6 +12,7 @@ import {
   Toolbar,
 } from "@flame/ui";
 import { METHODS } from "../contracts/methods";
+import { recalculate } from "./sheets";
 import {
   renderReportSchema,
   reviewReportSchema,
@@ -232,17 +233,7 @@ export function EvidencePanel({
             disabled={
               state.blocked || document.document.head !== document.revision.id
             }
-            onClick={() => {
-              const captured = {
-                id: document.document.id,
-                revision: document.revision.id,
-              };
-              void state.run(
-                METHODS.recalculate,
-                { id: captured.id, expectedRevision: captured.revision },
-                (value) => state.selectRevision(value, captured),
-              );
-            }}
+            onClick={() => recalculate(state, document)}
           >
             {t("preview.recalculate")}
           </Button>

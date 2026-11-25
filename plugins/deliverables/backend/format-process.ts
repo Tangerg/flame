@@ -3,11 +3,13 @@ import { tmpdir } from "node:os";
 import { dirname, isAbsolute, join } from "node:path";
 import { Refusal } from "@flame/backend-sdk/mcp";
 import { z } from "zod";
+import { inspectionSchema } from "../contracts/content";
 import {
-  inspectionSchema,
   slideLayoutSchema,
+  workbookLayoutSchema,
   type SlideLayout,
-} from "../contracts/content";
+  type WorkbookLayout,
+} from "../contracts/layouts";
 import { LIMITS } from "../contracts/limits";
 import {
   createFile,
@@ -15,6 +17,7 @@ import {
   inspectFile,
   exportCSV,
   layoutFile,
+  sheetsFile,
   type Inspection,
 } from "./formats";
 import type { Format } from "../contracts/content";
@@ -26,6 +29,7 @@ type Request =
   | { operation: "inspect"; format: Format; base64: string }
   | { operation: "csv"; base64: string; sheetPart: string }
   | { operation: "slides"; base64: string }
+  | { operation: "sheets"; base64: string }
   | {
       operation: "edit";
       format: Format;
@@ -38,6 +42,7 @@ const responseSchema = z.union([
   z.strictObject({ bytes: z.string().min(1).max(packetBytes) }),
   z.strictObject({ inspection: inspectionSchema }),
   z.strictObject({ layout: slideLayoutSchema }),
+  z.strictObject({ sheets: workbookLayoutSchema }),
   z.strictObject({
     failure: z.strictObject({
       code: z.string().min(1).max(100),
@@ -103,6 +108,8 @@ export async function serveFormatProcess(): Promise<never> {
       };
     else if (input.operation === "slides")
       response = { layout: layoutFile(unpack(input.base64)) };
+    else if (input.operation === "sheets")
+      response = { sheets: sheetsFile(unpack(input.base64)) };
     else if (input.operation === "csv")
       response = {
         bytes: Buffer.from(
@@ -361,6 +368,21 @@ export class Formats {
       }
     }
     if (this.#cleanupFailure) throw this.#cleanupFailure;
+  }
+
+  async sheets(
+    bytes: Uint8Array,
+    signal: AbortSignal,
+  ): Promise<WorkbookLayout> {
+    const result = await this.#call(
+      { operation: "sheets", base64: Buffer.from(bytes).toString("base64") },
+      signal,
+    );
+    if (!("sheets" in result))
+      throw new Error(
+        "deliverables: sheet projection did not return a workbook layout",
+      );
+    return result.sheets;
   }
 
   async slides(bytes: Uint8Array, signal: AbortSignal): Promise<SlideLayout> {

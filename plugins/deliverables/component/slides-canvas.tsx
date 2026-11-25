@@ -1,12 +1,12 @@
 import * as token from "@flame/ui/tokens.stylex";
 import { useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
 import { type Translate } from "@flame/component-sdk";
+import { type Frame } from "../contracts/content";
 import {
   type ElementView,
-  type Frame,
   type SlideLayout,
   type SlideView,
-} from "../contracts/content";
+} from "../contracts/layouts";
 import { EMU_PER_INCH, label } from "./slides-presentation";
 
 const NUDGE = EMU_PER_INCH / 10;

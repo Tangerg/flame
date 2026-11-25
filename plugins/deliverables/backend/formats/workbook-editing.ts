@@ -20,6 +20,7 @@ import {
   workbookSheets,
   xlsxBounds,
   type CellAddress,
+  type CellRange,
 } from "./workbook-cells";
 import {
   attribute,
@@ -194,37 +195,42 @@ function worksheetRows(sheetData: XmlNode): Map<number, XmlNode> {
   return rows;
 }
 
-function assertOutsideMergedCells(
+export type ProtectionReason = "merge" | "table" | "formulaRegion";
+
+// Cells that setCell refuses to change. A merged range stays editable at its anchor.
+export interface ProtectedRegion {
+  range: CellRange;
+  reason: ProtectionReason;
+  anchor?: CellAddress;
+}
+
+const protectionRefusals: Record<ProtectionReason, string> = {
+  merge: "only the anchor cell of a merged range can be edited",
+  table:
+    "table headers, totals and calculated columns require a table-aware edit and cannot be changed with setCell",
+  formulaRegion:
+    "editing a shared, array or data-table formula region is not supported",
+};
+
+export function protectedRegions(
+  archive: OfficePackage,
+  part: string,
   document: XmlDocument,
-  points: CellAddress[],
-): void {
+  cells: Map<string, XmlNode>,
+): ProtectedRegion[] {
+  const regions: ProtectedRegion[] = [];
   for (const merge of document.nodes.filter((node) =>
     isSheetElement(node, "mergeCell"),
   )) {
     const range = cellRange(merge.attributes.ref!);
-    if (
-      points.some(
-        (point) =>
-          rangeContains(range, point) &&
-          (point.row !== range.start.row ||
-            point.column !== range.start.column),
-      )
-    )
-      throw new Error("only the anchor cell of a merged range can be edited");
+    regions.push({ range, reason: "merge", anchor: range.start });
   }
-}
-
-function assertOutsideTableStructure(
-  archive: OfficePackage,
-  part: string,
-  document: XmlDocument,
-  points: CellAddress[],
-): void {
   const tableParts = document.nodes.filter((node) =>
     isSheetElement(node, "tablePart"),
   );
-  if (!tableParts.length) return;
-  const relations = archive.xml(relationshipsPath(part)).root.children;
+  const relations = tableParts.length
+    ? archive.xml(relationshipsPath(part)).root.children
+    : [];
   for (const tablePart of tableParts) {
     const relation = relations.find(
       (node) =>
@@ -236,35 +242,42 @@ function assertOutsideTableStructure(
     const table = archive.xml(
       relationshipTarget(part, relation.attributes.Target!),
     );
-    const range = cellRange(table.root.attributes.ref!);
+    const { start, end } = cellRange(table.root.attributes.ref!);
     const headerCount = Number(table.root.attributes.headerRowCount ?? "1");
     const totalsCount = Number(table.root.attributes.totalsRowCount ?? "0");
-    const calculated = table.nodes
+    if (headerCount > 0)
+      regions.push({
+        range: {
+          start,
+          end: { row: start.row + headerCount - 1, column: end.column },
+        },
+        reason: "table",
+      });
+    if (totalsCount > 0)
+      regions.push({
+        range: {
+          start: { row: end.row - totalsCount + 1, column: start.column },
+          end,
+        },
+        reason: "table",
+      });
+    table.nodes
       .filter((node) => isSheetElement(node, "tableColumn"))
-      .map((node) =>
-        node.children.some(
-          (child) => child.local === "calculatedColumnFormula",
-        ),
-      );
-    if (
-      points.some(
-        (point) =>
-          rangeContains(range, point) &&
-          (point.row < range.start.row + headerCount ||
-            point.row > range.end.row - totalsCount ||
-            calculated[point.column - range.start.column]),
-      )
-    )
-      throw new Error(
-        "table headers, totals and calculated columns require a table-aware edit and cannot be changed with setCell",
-      );
+      .forEach((node, offset) => {
+        if (
+          node.children.some(
+            (child) => child.local === "calculatedColumnFormula",
+          )
+        )
+          regions.push({
+            range: {
+              start: { row: start.row, column: start.column + offset },
+              end: { row: end.row, column: start.column + offset },
+            },
+            reason: "table",
+          });
+      });
   }
-}
-
-function assertOutsideFormulaRegions(
-  cells: Map<string, XmlNode>,
-  points: CellAddress[],
-): void {
   for (const cell of cells.values()) {
     const formula = cell.children.find((node) => isSheetElement(node, "f"));
     const ref = formula?.attributes.ref;
@@ -273,12 +286,32 @@ function assertOutsideFormulaRegions(
       !["shared", "array", "dataTable"].includes(formula.attributes.t ?? "")
     )
       continue;
-    const range = cellRange(ref.includes(":") ? ref : `${ref}:${ref}`);
-    if (points.some((point) => rangeContains(range, point)))
-      throw new Error(
-        "editing a shared, array or data-table formula region is not supported",
-      );
+    regions.push({
+      range: cellRange(ref.includes(":") ? ref : `${ref}:${ref}`),
+      reason: "formulaRegion",
+    });
   }
+  return regions;
+}
+
+function protects(region: ProtectedRegion, point: CellAddress): boolean {
+  return (
+    rangeContains(region.range, point) &&
+    !(
+      region.anchor &&
+      region.anchor.row === point.row &&
+      region.anchor.column === point.column
+    )
+  );
+}
+
+function assertUnprotected(
+  regions: ProtectedRegion[],
+  points: CellAddress[],
+): void {
+  for (const region of regions)
+    if (points.some((point) => protects(region, point)))
+      throw new Error(protectionRefusals[region.reason]);
 }
 
 function joinByPosition(entries: Map<number, string>): string {
@@ -327,9 +360,7 @@ function editWorksheet(
   if (!sheetData) throw new Error("worksheet has no sheet data");
   const rows = worksheetRows(sheetData);
   const points = edits.map((edit) => edit.position);
-  assertOutsideMergedCells(document, points);
-  assertOutsideTableStructure(archive, part, document, points);
-  assertOutsideFormulaRegions(cells, points);
+  assertUnprotected(protectedRegions(archive, part, document, cells), points);
   const updated = new Map<number, Map<number, string>>();
   for (const { reference, position, expect, value } of edits) {
     const existing = cells.get(reference);

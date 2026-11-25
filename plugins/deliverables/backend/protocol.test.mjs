@@ -396,9 +396,9 @@ it(
         })),
         details: output.structuredContent,
       });
-      expect(
-        await backend.tool("create", input, id, project[format]),
-      ).toEqual(output);
+      expect(await backend.tool("create", input, id, project[format])).toEqual(
+        output,
+      );
     }
     const formatsIn = (entries) => entries.map((entry) => entry.format);
     const listed = await backend.tool(
@@ -480,6 +480,125 @@ it(
   scenarioTimeoutMilliseconds,
 );
 it(
+  "live sheet edits keep independent concurrent cells, refuse stale and locked cells and project the native workbook",
+  async ({ backend }) => {
+    const created = await backend.invoke(METHODS.create, {
+      title: "Regional revenue",
+      format: "xlsx",
+      contentJSON: JSON.stringify({
+        title: "Regional revenue",
+        sheets: [
+          {
+            name: "Revenue",
+            cells: [
+              { address: "A1", value: { type: "string", value: "Region" } },
+              { address: "B1", value: { type: "string", value: "Revenue" } },
+              { address: "A2", value: { type: "string", value: "North" } },
+              { address: "B2", value: { type: "number", value: 100 } },
+              { address: "A3", value: { type: "string", value: "South" } },
+              { address: "B3", value: { type: "number", value: 200 } },
+              {
+                address: "B4",
+                value: { type: "formula", value: "=SUM(B2:B3)" },
+              },
+              { address: "D1", value: { type: "string", value: "Note" } },
+            ],
+            merges: ["D1:E1"],
+            freezeRows: 1,
+          },
+        ],
+      }),
+      provenance,
+    });
+    const id = created.documentId;
+    const sheets = async (revision) =>
+      JSON.parse(
+        (await backend.invoke(METHODS.sheets, { id, revision })).layoutJSON,
+      ).sheets;
+    const edit = (expectedRevision, operations, command) =>
+      backend.invoke(
+        METHODS.edit,
+        {
+          id,
+          expectedRevision,
+          operationsJSON: JSON.stringify({ operations }),
+        },
+        command,
+      );
+    const [sheet] = await sheets(created.id);
+    const cell = (view, ref) => view.cells.find((entry) => entry.ref === ref);
+    expect(sheet).toMatchObject({
+      name: "Revenue",
+      rows: 4,
+      columns: 5,
+      frozen: { rows: 1, columns: 0 },
+      locked: [{ range: "D1:E1", reason: "merge", anchor: "D1" }],
+    });
+    expect(cell(sheet, "B2")).toMatchObject({
+      shown: { type: "number", value: 100 },
+      input: { type: "number", value: 100 },
+    });
+    expect(cell(sheet, "B4").input).toEqual({
+      type: "formula",
+      value: "=SUM(B2:B3)",
+    });
+    const setCell = (view, ref, value) => ({
+      type: "setCell",
+      id: `${view.id}!${ref}`,
+      expect: cell(view, ref)?.expect ?? "",
+      value,
+    });
+
+    const byHuman = await edit(
+      created.id,
+      [setCell(sheet, "B2", { type: "number", value: 150 })],
+      "human-cell",
+    );
+    const byAgent = await edit(
+      byHuman.id,
+      [
+        setCell(sheet, "A3", { type: "string", value: "South (revised)" }),
+        setCell(sheet, "C2", { type: "string", value: "checked" }),
+      ],
+      "agent-cells",
+    );
+    const [current] = await sheets(byAgent.id);
+    expect(cell(current, "B2").shown).toEqual({ type: "number", value: 150 });
+    expect(cell(current, "A3").shown).toEqual({
+      type: "string",
+      value: "South (revised)",
+    });
+    expect(cell(current, "C2").input).toEqual({
+      type: "string",
+      value: "checked",
+    });
+    expect(cell(current, "B4").shown).toEqual({ type: "blank" });
+    await expect(
+      edit(
+        byAgent.id,
+        [setCell(sheet, "B2", { type: "number", value: 999 })],
+        "stale-cell",
+      ),
+    ).rejects.toMatchObject({ code: "invalid_native" });
+    await expect(
+      edit(
+        byAgent.id,
+        [setCell(current, "E1", { type: "string", value: "inside merge" })],
+        "locked-cell",
+      ),
+    ).rejects.toMatchObject({ code: "invalid_native" });
+    expect(await sheets()).toEqual([current]);
+
+    const outline = await backend.tool("sheets", { id });
+    expect(outline.isError, JSON.stringify(outline)).not.toBe(true);
+    expect(JSON.parse(outline.content[0].text).value).toMatchObject({
+      revision: byAgent.id,
+      sheets: [{ id: sheet.id, name: "Revenue", cells: current.cells.length }],
+    });
+  },
+  scenarioTimeoutMilliseconds,
+);
+it(
   "live slide edits keep independent concurrent changes, refuse stale ones and leave valid native packages",
   async ({ backend }) => {
     const created = await backend.invoke(METHODS.create, {
@@ -538,7 +657,11 @@ it(
     const edit = (expectedRevision, operations, command) =>
       backend.invoke(
         METHODS.edit,
-        { id, expectedRevision, operationsJSON: JSON.stringify({ operations }) },
+        {
+          id,
+          expectedRevision,
+          operationsJSON: JSON.stringify({ operations }),
+        },
         command,
       );
     const native = async (revision) => {
@@ -624,7 +747,9 @@ it(
     expect(original.id).toBe(slide.id);
     expect(copy.id).not.toBe(slide.id);
     expect(copy.notes.map((run) => run.text)).toEqual(["Explain the growth"]);
-    const copiedChart = copy.elements.find((element) => element.kind === "chart");
+    const copiedChart = copy.elements.find(
+      (element) => element.kind === "chart",
+    );
     const independent = await edit(
       duplicated.id,
       [
@@ -659,9 +784,15 @@ it(
       (part) => !after.parts.has(part),
     );
     expect(gone).toContain(slide.id);
-    expect(gone.filter((part) => part.startsWith("ppt/charts/chart"))).toHaveLength(1);
-    expect(gone.filter((part) => part.startsWith("ppt/embeddings/"))).toHaveLength(1);
-    expect(gone.filter((part) => part.startsWith("ppt/notesSlides/notesSlide"))).toHaveLength(1);
+    expect(
+      gone.filter((part) => part.startsWith("ppt/charts/chart")),
+    ).toHaveLength(1);
+    expect(
+      gone.filter((part) => part.startsWith("ppt/embeddings/")),
+    ).toHaveLength(1);
+    expect(
+      gone.filter((part) => part.startsWith("ppt/notesSlides/notesSlide")),
+    ).toHaveLength(1);
     await expect(
       edit(removed.id, [{ type: "deleteSlide", id: copy.id }], "delete-last"),
     ).rejects.toMatchObject({ code: "invalid_native" });

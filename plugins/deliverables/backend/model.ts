@@ -6,11 +6,8 @@ import {
   type Assessment,
   type Revision,
 } from "../contracts/capability";
-import {
-  formatCatalogSchema,
-  inspectionSchema,
-  slideLayoutSchema,
-} from "../contracts/content";
+import { formatCatalogSchema, inspectionSchema } from "../contracts/content";
+import { slideLayoutSchema, workbookLayoutSchema } from "../contracts/layouts";
 import { renderReportSchema, reviewReportSchema } from "../contracts/evidence";
 import { MODEL_LIMITS } from "../contracts/limits";
 import type { Application, Operation } from "./application";
@@ -46,6 +43,14 @@ export const modelInputs = {
         "For a layout path, supply the sourceSha256 returned with the selected revision; a mismatch is refused.",
       ),
   }),
+  sheets: schemas.readInput.extend({
+    ...selection,
+    sourceSha256: schemas.asset.shape.sha256
+      .optional()
+      .describe(
+        "For a sheet path, supply the sourceSha256 returned with the selected revision; a mismatch is refused.",
+      ),
+  }),
 };
 
 export const modelDescriptions: Partial<Record<Operation, string>> = {
@@ -54,6 +59,8 @@ export const modelDescriptions: Partial<Record<Operation, string>> = {
   read: 'Read a native revision summary with its exact revision and sourceSha256. To inspect original content, supply both returned identities and path (for example ["inspection","items"] or ["revision","provenance"]). Paths address document, revision, inspection, processing and assessments. Document head and the append-ordered assessment list are current projections; native inspection and revision content are immutable. Append an entry\'s key to inspect it; continue at nextOffset with the same revision and hash. Text positions count Unicode code points. Retained inspection truncation is reported separately from projection paging.',
   slides:
     'Read a PPTX revision\'s slide outline with its exact revision and sourceSha256. To inspect slides, supply both identities and a path such as ["slides","0","elements"] or ["slides","0","notes"]. Elements carry ids for setFrame/deleteElement/setChartData, frames in EMUs (914400 per inch), text runs with replaceText ids, and chart data with workbook "none", "chart" (editable) or "mixed" (refused). Copy current values into expect exactly.',
+  sheets:
+    'Read an XLSX revision\'s sheet outline with its exact revision and sourceSha256. To inspect cells, supply both identities and a path such as ["sheets","0","cells"] or ["sheets","0","locked"]. A cell carries its ref, the exact setCell expect, its shown value (a formula\'s calculated result, blank until recalculation) and, when one exists, the setCell input that reproduces it. Address a cell for setCell as "<sheet id>!<ref>" and copy expect exactly; an absent cell\'s expect is "".',
   assessment:
     'Read an exact render/review summary. Use path=["report","pages"], ["report","checks"], ["report","extractedText"], ["report","notes"] or ["assets"] for original evidence. Append an entry\'s key to inspect it and continue at nextOffset. The page tool returns a real PNG for visual review.',
 };
@@ -374,6 +381,61 @@ async function slidesProjection(
   };
 }
 
+async function sheetsProjection(
+  application: QuerySource,
+  input: Record<string, unknown>,
+  signal: AbortSignal,
+): Promise<QueryProjection> {
+  const request = modelInputs.sheets.parse(input);
+  selectedPath(request);
+  if (
+    request.path !== undefined &&
+    (request.revision === undefined || request.sourceSha256 === undefined)
+  )
+    throw new Refusal(
+      "revision_required",
+      "read an outline first, then pin its exact revision and sourceSha256 for sheet paging",
+    );
+  const retained = schemas.sheets.parse(
+    await application.query(
+      "sheets",
+      { id: request.id, revision: request.revision },
+      signal,
+    ),
+  );
+  if (
+    request.sourceSha256 !== undefined &&
+    request.sourceSha256 !== retained.sourceSha256
+  )
+    throw new Refusal(
+      "source_conflict",
+      "the retained revision differs from the expected source SHA-256",
+    );
+  const layout = workbookLayoutSchema.parse(
+    projectNumbers(parseJSON(retained.layoutJSON)),
+  );
+  return {
+    retained,
+    model: {
+      documentId: retained.document.id,
+      revision: retained.revision,
+      sourceSha256: retained.sourceSha256,
+      ...(request.path === undefined
+        ? {
+            sheets: layout.sheets.map((sheet) => ({
+              id: sheet.id,
+              name: sheet.name,
+              rows: sheet.rows,
+              columns: sheet.columns,
+              cells: sheet.cells.length,
+              locked: sheet.locked.length,
+            })),
+          }
+        : { view: project(layout, request) }),
+    },
+  };
+}
+
 export async function queryProjection(
   application: QuerySource,
   operation: Operation,
@@ -389,6 +451,8 @@ export async function queryProjection(
       return assessmentProjection(application, input, signal);
     case "slides":
       return slidesProjection(application, input, signal);
+    case "sheets":
+      return sheetsProjection(application, input, signal);
     case "history": {
       const retained = schemas.history.parse(
         await application.query(operation, input, signal),

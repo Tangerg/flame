@@ -154,8 +154,10 @@ export const cellValueSchema = z.discriminatedUnion("type", [
   z.strictObject({ type: z.literal("blank") }),
 ]);
 export type CellValue = z.infer<typeof cellValueSchema>;
-const address = z.string().regex(/^[A-Z]{1,3}[1-9][0-9]{0,6}$/u);
-const range = z
+export const cellAddressSchema = z
+  .string()
+  .regex(/^[A-Z]{1,3}[1-9][0-9]{0,6}$/u);
+export const cellRangeSchema = z
   .string()
   .regex(/^[A-Z]{1,3}[1-9][0-9]{0,6}:[A-Z]{1,3}[1-9][0-9]{0,6}$/u);
 export const cellStyleSchema = z.strictObject({
@@ -172,18 +174,18 @@ export const cellStyleSchema = z.strictObject({
 export const workbookChartSchema = z.strictObject({
   type: z.enum(["bar", "line", "pie"]),
   title: shortText,
-  categories: range,
+  categories: cellRangeSchema,
   series: z
     .array(
       z.strictObject({
         name: shortText,
-        values: range,
+        values: cellRangeSchema,
         color: color.optional(),
       }),
     )
     .min(1)
     .max(20),
-  anchor: address,
+  anchor: cellAddressSchema,
   width: positive.max(2000).optional(),
   height: positive.max(2000).optional(),
 });
@@ -202,7 +204,7 @@ export const workbookContentSchema = z.strictObject({
         cells: z
           .array(
             z.strictObject({
-              address,
+              address: cellAddressSchema,
               value: cellValueSchema,
               style: cellStyleSchema.optional(),
               note: shortText.optional(),
@@ -220,13 +222,13 @@ export const workbookContentSchema = z.strictObject({
           .optional(),
         freezeRows: z.number().int().min(0).max(1000).optional(),
         freezeColumns: z.number().int().min(0).max(100).optional(),
-        autoFilter: range.optional(),
-        merges: z.array(range).max(1000).optional(),
+        autoFilter: cellRangeSchema.optional(),
+        merges: z.array(cellRangeSchema).max(1000).optional(),
         tables: z
           .array(
             z.strictObject({
               name: z.string().regex(/^[A-Za-z_][A-Za-z0-9_]{0,63}$/u),
-              range,
+              range: cellRangeSchema,
             }),
           )
           .max(100)
@@ -360,12 +362,12 @@ export type PresentationContent = z.infer<typeof presentationContentSchema>;
 
 // DrawingML coordinates are whole EMUs (914400 per inch) within ST_Coordinate.
 const coordinate = z.number().int().min(-27273042316900).max(27273042316900);
-const extent = z.number().int().min(0).max(27273042316900);
+export const extentSchema = z.number().int().min(0).max(27273042316900);
 export const frameSchema = z.strictObject({
   x: coordinate,
   y: coordinate,
-  width: extent,
-  height: extent,
+  width: extentSchema,
+  height: extentSchema,
 });
 export type Frame = z.infer<typeof frameSchema>;
 export const chartDataSchema = z.strictObject({
@@ -393,56 +395,6 @@ export const CHART_TYPES = [
   "area3D",
   "radar",
 ] as const;
-const textRunSchema = z.strictObject({
-  id: z.string().min(1).max(1024),
-  text: z.string(),
-});
-export const slideLayoutSchema = z.strictObject({
-  width: extent,
-  height: extent,
-  slides: z.array(
-    z.strictObject({
-      id: z.string().min(1).max(1024),
-      number: z.number().int().min(1),
-      name: z.string(),
-      hidden: z.boolean(),
-      elements: z.array(
-        z.strictObject({
-          id: z.string().min(1).max(1024),
-          kind: z.enum([
-            "text",
-            "shape",
-            "picture",
-            "chart",
-            "table",
-            "group",
-            "connector",
-            "other",
-          ]),
-          name: z.string(),
-          frame: frameSchema.optional(),
-          frameSource: z.enum(["slide", "layout", "master"]).optional(),
-          rotation: z.number().finite().optional(),
-          text: z.array(textRunSchema),
-          chart: z
-            .strictObject({
-              type: z.enum(CHART_TYPES),
-              // "chart": the embedded workbook holds only these ranges and is
-              // rewritten with the data; "mixed": it holds more, so edits are refused.
-              workbook: z.enum(["none", "chart", "mixed"]),
-              data: chartDataSchema,
-            })
-            .optional(),
-        }),
-      ),
-      notes: z.array(textRunSchema),
-    }),
-  ),
-});
-export type SlideLayout = z.infer<typeof slideLayoutSchema>;
-export type SlideView = SlideLayout["slides"][number];
-export type ElementView = SlideView["elements"][number];
-
 const replaceText = z.strictObject({
   type: z.literal("replaceText"),
   id: z.string().min(1).max(1024),

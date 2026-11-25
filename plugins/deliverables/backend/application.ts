@@ -109,33 +109,18 @@ export class Application {
         const value = schemas.historyInput.parse(input);
         return this.#archive.history(value.id, value.before, value.limit);
       }
-      case "slides": {
-        const value = schemas.readInput.parse(input);
-        const header = this.#archive.document(value.id).snapshot();
-        const source = this.#archive.revision(
-          value.id,
-          value.revision ?? header.head,
+      case "slides":
+        return schemas.slides.parse(
+          await this.#projection(input, "pptx", "slide", (bytes) =>
+            this.#formats.slides(bytes, signal),
+          ),
         );
-        if (source.metadata.format !== "pptx")
-          throw new Refusal(
-            "invalid_format",
-            "slide projection requires a native PPTX revision",
-          );
-        const layoutJSON = canonicalJSON(
-          await this.#formats.slides(source.bytes, signal),
+      case "sheets":
+        return schemas.sheets.parse(
+          await this.#projection(input, "xlsx", "sheet", (bytes) =>
+            this.#formats.sheets(bytes, signal),
+          ),
         );
-        if (Buffer.byteLength(layoutJSON) > LIMITS.reportBytes)
-          throw new Refusal(
-            "report_capacity",
-            "slide projection exceeds its report capacity",
-          );
-        return schemas.slides.parse({
-          document: header,
-          revision: source.metadata.id,
-          sourceSha256: source.metadata.sha256,
-          layoutJSON,
-        });
-      }
       case "uploads":
         return this.#archive.uploads();
       case "download": {
@@ -300,5 +285,37 @@ export class Application {
       default:
         throw new Error("deliverables: operation is not a command");
     }
+  }
+
+  // Projections derive from one native revision on each read and are never stored.
+  async #projection(
+    input: unknown,
+    format: "pptx" | "xlsx",
+    noun: string,
+    project: (bytes: Uint8Array) => Promise<unknown>,
+  ) {
+    const value = schemas.readInput.parse(input);
+    const header = this.#archive.document(value.id).snapshot();
+    const source = this.#archive.revision(
+      value.id,
+      value.revision ?? header.head,
+    );
+    if (source.metadata.format !== format)
+      throw new Refusal(
+        "invalid_format",
+        `${noun} projection requires a native ${format.toUpperCase()} revision`,
+      );
+    const layoutJSON = canonicalJSON(await project(source.bytes));
+    if (Buffer.byteLength(layoutJSON) > LIMITS.reportBytes)
+      throw new Refusal(
+        "report_capacity",
+        `${noun} projection exceeds its report capacity`,
+      );
+    return {
+      document: header,
+      revision: source.metadata.id,
+      sourceSha256: source.metadata.sha256,
+      layoutJSON,
+    };
   }
 }
