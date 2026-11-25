@@ -153,6 +153,21 @@ function trackTableScroll(viewport: HTMLElement) {
   viewport.addEventListener("focusin", onFocusIn);
   viewport.addEventListener("focusout", onFocusOut);
 
+  // A width change keeps the first visible body row where it was.
+  const anchoredTop = (table: HTMLTableElement | null, currentTop: number) => {
+    if (table && anchor && table.contains(anchor.row))
+      return anchoredScrollTop(viewport, table, anchor) ?? currentTop;
+    anchor = firstVisibleBodyRow(table);
+    return currentTop;
+  };
+  const focusRevealingTop = (table: HTMLTableElement | null, plannedTop: number) => {
+    if (!focused) return plannedTop;
+    if (table && table.contains(focused) && focused === viewport.ownerDocument.activeElement)
+      return revealedFocusTop(viewport, table, focused, plannedTop);
+    focused = null;
+    return plannedTop;
+  };
+
   return {
     measure() {
       const nextClientWidth = viewport.clientWidth;
@@ -173,21 +188,10 @@ function trackTableScroll(viewport: HTMLElement) {
       const left = widthChanged && atEnd && viewport.scrollLeft !== edge ? edge : undefined;
       const table = inlineTable(viewport);
       const currentTop = viewport.scrollTop;
-      let plannedTop = currentTop;
-      if (widthChanged) {
-        if (table && anchor && table.contains(anchor.row)) {
-          plannedTop = anchoredScrollTop(viewport, table, anchor) ?? currentTop;
-        } else {
-          anchor = firstVisibleBodyRow(table);
-        }
-      }
-      if (focused) {
-        if (table && table.contains(focused) && focused === viewport.ownerDocument.activeElement) {
-          plannedTop = revealedFocusTop(viewport, table, focused, plannedTop);
-        } else {
-          focused = null;
-        }
-      }
+      const plannedTop = focusRevealingTop(
+        table,
+        widthChanged ? anchoredTop(table, currentTop) : currentTop,
+      );
       const top =
         Math.abs(plannedTop - currentTop) > SCROLL_EDGE_TOLERANCE ? plannedTop : undefined;
       if (left !== undefined || top !== undefined) {

@@ -26,6 +26,18 @@ function initialWindow(line: number): LineWindow {
   return line > 0 ? { startLine: line, endLine: line + WINDOW_RADIUS } : {};
 }
 
+// What the accepted read shows and how many lines each adjacent page may add.
+function shownLines(data: { startLine: number; endLine: number; totalLines: number } | undefined) {
+  const first = data?.startLine ?? 1;
+  const last = data?.endLine ?? 0;
+  return {
+    first,
+    last,
+    earlier: Math.min(WINDOW_RADIUS, first - 1),
+    later: Math.min(WINDOW_RADIUS, Math.max(0, (data?.totalLines ?? 0) - last)),
+  };
+}
+
 export function coversWholeFile(
   file: { truncated?: boolean },
   moreBefore: boolean,
@@ -62,9 +74,7 @@ export function useFileReadWindow(
   const displayedRead =
     previousData !== undefined ? previousRead : acceptedData && request && { request, viewer };
   const retainedPending = previousData !== undefined && read.isFetching;
-  const firstShown = data?.startLine ?? 1;
-  const lastShown = data?.endLine ?? 0;
-  const laterCount = Math.min(WINDOW_RADIUS, Math.max(0, (data?.totalLines ?? 0) - lastShown));
+  const lines = shownLines(data);
 
   // A default arrival starts at the top like its initial window; FileView places line targets.
   useLayoutEffect(() => {
@@ -108,24 +118,24 @@ export function useFileReadWindow(
     displayedViewer: displayedRead?.viewer ?? viewer,
     retainedPending,
     pagePending,
-    moreBefore: firstShown > 1,
-    moreAfter: laterCount > 0,
+    moreBefore: lines.first > 1,
+    moreAfter: lines.later > 0,
     paging: {
-      earlier: Math.min(WINDOW_RADIUS, firstShown - 1),
-      later: laterCount,
+      earlier: lines.earlier,
+      later: lines.later,
       pending: pagePending,
       unavailable: read.isPlaceholderData || retainedPending,
       fromEnd: Boolean(lineWindow.fromEnd),
       loadEarlier: (event: MouseEvent<HTMLElement>) =>
         loadPage(event.currentTarget, {
-          startLine: Math.max(1, firstShown - WINDOW_RADIUS),
-          endLine: firstShown - 1,
+          startLine: Math.max(1, lines.first - WINDOW_RADIUS),
+          endLine: lines.first - 1,
           fromEnd: true,
         }),
       loadLater: (event: MouseEvent<HTMLElement>) =>
         loadPage(event.currentTarget, {
-          startLine: lastShown + 1,
-          endLine: lastShown + laterCount,
+          startLine: lines.last + 1,
+          endLine: lines.last + lines.later,
         }),
     },
     goToLine: (line: number) => {
@@ -181,17 +191,19 @@ export function describeFileRead(
         ? t("file.goToLine.pending", { line: read.targetLine })
         : undefined,
     pageError,
-    // The reader's own failure: a failed page, a rejected opening line, or the file.
-    readError:
-      pageError ??
-      (rejectedInitialLine
-        ? {
-            title: t("file.error.requestedLine", { line: read.targetLine }),
-            sub: "",
-            retryLabel: t("file.openFromStart"),
-          }
-        : { title: t("file.error.title"), sub: t("file.error.sub") }),
+    readError: pageError ?? openingError(t, rejectedInitialLine, read.targetLine),
   };
+}
+
+// The reader's own failure when no page failed: a rejected opening line or the file.
+function openingError(t: Translate, rejectedLine: boolean, line: number) {
+  return rejectedLine
+    ? {
+        title: t("file.error.requestedLine", { line }),
+        sub: "",
+        retryLabel: t("file.openFromStart"),
+      }
+    : { title: t("file.error.title"), sub: t("file.error.sub") };
 }
 
 export function fileLineSummary(

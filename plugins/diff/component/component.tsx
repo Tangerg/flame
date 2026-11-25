@@ -5,30 +5,19 @@ import {
   type WorkspaceChangesActionInput,
   useTranslator,
 } from "@flame/component-sdk";
-import {
-  ArrowLeft,
-  Copy,
-  FileDiff as FileDiffIcon,
-  List,
-  Refresh,
-} from "@flame/icons/react";
+import { Copy } from "@flame/icons/react";
 import {
   Button,
   CodeWrapButton,
   DiffFileHeader,
-  DiffFilePath,
   DiffStat,
-  EmptyState,
   FilterBar,
-  Icon,
   IconButton,
   isImeKey,
-  Metadata,
   Panel,
   PanelHeader,
   SearchField,
   Select,
-  Toolbar,
   useCopy,
 } from "@flame/ui";
 import { en } from "./locales/en";
@@ -41,21 +30,21 @@ import { fr } from "./locales/fr";
 import { de } from "./locales/de";
 import {
   type Query,
+  type Selection,
   diffWorkspace,
   fileNavigation,
+  presentDiff,
   useDiffRead,
 } from "./diffRead";
-import {
-  type PendingFocus,
-  type Selection,
-  useDiffFocusRestoration,
-} from "./diffFocus";
+import { type PendingFocus, useDiffFocusRestoration } from "./diffFocus";
 import {
   DiffDetails,
   DiffFileReader,
   DiffOverview,
+  DiffManifestNotices,
   DiffReadStatus,
   DiffReaderNavigation,
+  DiffReaderToolbar,
   DiffScopeToolbar,
   fileSummary,
 } from "./diffViews";
@@ -117,28 +106,27 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
     },
   });
 
-  const accepted = read.accepted;
-  const files = accepted?.diff.visual.manifest ?? [];
-  const hasFiles = files.length > 0;
-  const truncated = accepted?.diff.visual.truncated === true;
-  const selected = files.find((file) => file.path === selection.path);
-  const file = selection.view === "file" ? selected : undefined;
+  const {
+    accepted,
+    files,
+    hasFiles,
+    truncated,
+    selected,
+    file,
+    readableRendering,
+    returnsToFiles,
+    readingOverview,
+    scoped,
+    refreshFailed,
+  } = presentDiff(read, selection, query);
   const filePath = file?.path;
   const fileChanges = file ? t("file.changes", { path: file.path }) : undefined;
-  const rendered = file ? accepted?.rendered.get(file.path) : undefined;
-  const readable = rendered !== undefined && rendered.file.hunks.length > 0;
   const patchActions = {
     wrap: t("patch.wrap"),
     unwrap: t("patch.unwrap"),
   };
   const copyPatch = useCopy(accepted?.diff.visual.patch ?? "", t("patch.copy"));
   const showingReader = file !== undefined;
-  const returnsToFiles =
-    selection.view === "file" && selection.returnTo === "files";
-  const readingOverview =
-    read.loading &&
-    query.path === undefined &&
-    accepted?.query.path !== undefined;
   const { matching, navigationFiles, index } = fileNavigation(
     files,
     filter,
@@ -222,11 +210,11 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
           {!showingReader && (
             <DiffScopeToolbar
               t={t}
-              scoped={Boolean(query.path || accepted?.query.path)}
+              scoped={scoped}
               mode={query.mode}
               readingOverview={readingOverview}
               loading={read.loading}
-              failed={Boolean(read.error && accepted)}
+              failed={refreshFailed}
               refreshRef={refreshButton}
               onShowFiles={showFiles}
               onMode={(mode) =>
@@ -239,48 +227,29 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
           )}
           {showingReader ? (
             <>
-              <Toolbar
-                label={t("navigation.label")}
-                actions={
-                  <>
-                    {file && (
-                      <DiffReaderNavigation
-                        t={t}
-                        files={navigationFiles}
-                        index={index}
-                        filtered={
-                          Boolean(filter) && navigationFiles === matching
-                        }
-                        changes={fileChanges}
-                        onOpen={openFile}
-                      />
-                    )}
-                    {read.error && <Metadata>{t("read.failedShort")}</Metadata>}
-                    <IconButton
-                      icon={Refresh}
-                      aria-label={t("refresh")}
-                      size="sm"
-                      pending={read.loading}
-                      onClick={() => void refresh()}
+              <DiffReaderToolbar
+                t={t}
+                navigation={
+                  file && (
+                    <DiffReaderNavigation
+                      t={t}
+                      files={navigationFiles}
+                      index={index}
+                      filtered={Boolean(filter) && navigationFiles === matching}
+                      changes={fileChanges}
+                      onOpen={openFile}
                     />
-                  </>
+                  )
                 }
-              >
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  aria-label={
-                    returnsToFiles ? t("files.back") : t("files.show")
-                  }
-                  onClick={showFiles}
-                >
-                  <Icon glyph={returnsToFiles ? ArrowLeft : List} size="sm" />
-                  {t("files.button")}
-                </Button>
-              </Toolbar>
+                failed={Boolean(read.error)}
+                loading={read.loading}
+                returnsToFiles={returnsToFiles}
+                onShowFiles={showFiles}
+                onRefresh={() => void refresh()}
+              />
               {file && (
                 <DiffFileHeader ref={heading} file={fileSummary(t, file)}>
-                  {!file.binary && readable && (
+                  {!file.binary && readableRendering && (
                     <>
                       <Select
                         size="sm"
@@ -328,21 +297,12 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
       <DiffReadStatus t={t} read={read} query={query} />
       {accepted && (
         <>
-          {truncated && hasFiles && (
-            <Metadata role="note">{t("partial")}</Metadata>
-          )}
-          {!hasFiles && (
-            <EmptyState
-              icon={FileDiffIcon}
-              size="compact"
-              title={t(truncated ? "budget.empty" : "empty.title")}
-            />
-          )}
-          {selection.path && !selected && (
-            <Metadata>
-              {t("missing")} <DiffFilePath path={selection.path} />
-            </Metadata>
-          )}
+          <DiffManifestNotices
+            t={t}
+            truncated={truncated}
+            hasFiles={hasFiles}
+            missingPath={selected ? undefined : (selection.path ?? undefined)}
+          />
           {hasFiles && (
             <div hidden={showingReader}>
               <DiffOverview
@@ -361,7 +321,7 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
             <DiffFileReader
               t={t}
               file={file}
-              rendered={readable ? rendered : undefined}
+              rendered={readableRendering}
               layout={layout}
               label={fileChanges}
             />

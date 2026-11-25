@@ -112,97 +112,81 @@ const REFUSED_METHODS: ReadonlySet<string> = new Set([
   "mcp.tools.setExposure",
 ]);
 
+type RecordedResponse = (
+  params: unknown,
+  facts: VisualRuntimeFacts,
+  signal?: AbortSignal,
+) => unknown;
+
+const RECORDED_RESPONSES: Partial<Record<TransportRequest["method"], RecordedResponse>> = {
+  "workspaces.resolve": (params) => {
+    const ref = (params as ResolveWorkspaceRequest | undefined)?.ref;
+    if (ref !== undefined && ref.path !== VISUAL_WORKSPACE_PATH)
+      throw new Error(`Visual Runtime has no recorded workspace "${ref.path}"`);
+    return {
+      ref: { path: VISUAL_WORKSPACE_PATH },
+      repositoryRoot: VISUAL_WORKSPACE_PATH,
+      availability: "available",
+    } satisfies WorkspaceInfo;
+  },
+  "workspace.diff.get": (params, { readDiff }, signal) =>
+    readDiff(signal, params as GetDiffRequest),
+  "runtime.discover": (_, { capabilities }) => ({ ...discovery, capabilities }),
+  "sessions.trajectory": (_, { snapshot }) => ({ data: visualTrajectory(snapshot) }),
+  "usage.summary": () => VISUAL_USAGE,
+  "skills.discovered.list": (_, { skillDocuments }) => visualSkillDiscovery(skillDocuments),
+  "skills.discovered.get": (params, { skillDocuments }) => {
+    const { name } = params as SkillDetailRequest;
+    const document = skillDocuments.find((item) => item.name === name);
+    if (!document) throw new Error(`Visual Skills has no document named "${name}"`);
+    return document;
+  },
+  "skills.library.list": () => VISUAL_SKILL_LIBRARY,
+  "providers.list": (_, { models }) => ({ data: models.providers }),
+  "models.list": (params, { models }) => {
+    const { provider } = params as ListModelsRequest;
+    return { data: models.models.filter((model) => model.provider === provider) };
+  },
+  "models.getUtilityRole": (_, { models }) => models.utility,
+  "models.getEmbeddingRole": (_, { models }) => models.embedding,
+  "mcp.servers.list": (_, { mcpServers }) => ({ data: mcpServers }),
+  "mcp.tools.list": (params) => ({
+    data: [
+      {
+        server: (params as { server: MCPServerID }).server,
+        name: "read_workspace_files",
+        description: "Read files from the current workspace without changing them.",
+        modelName: "read_workspace_files",
+        nameConflicts: [],
+      },
+    ],
+  }),
+  "mcp.tools.exposure": (params) => ({
+    server: (params as { server: MCPServerID }).server,
+    disabledTools: [],
+  }),
+  "plugins.list": () => ({ data: VISUAL_PACKAGES }),
+  "plugins.listProviders": () => ({ data: VISUAL_PLUGIN_PROVIDERS }),
+  "approval.listRules": () => ({ rules: [] }),
+  "approval.getMode": (_, { approval }) => ({ ...approval }),
+  "approval.setMode": (params, { approval }) => {
+    approval.mode = (params as SetApprovalModeRequest).mode;
+    return { ...approval };
+  },
+  "hooks.list": () => structuredClone(VISUAL_HOOKS),
+  "runtime.subscribe": () => ({}),
+  "plugins.call": (params, { memoryPages }) =>
+    pluginCallResult(params as CallPluginRequest, memoryPages),
+};
+
 function resultFor(
   request: TransportRequest,
-  {
-    snapshot,
-    capabilities,
-    approval,
-    models,
-    mcpServers,
-    skillDocuments,
-    memoryPages,
-    readDiff,
-  }: VisualRuntimeFacts,
+  facts: VisualRuntimeFacts,
   signal?: AbortSignal,
 ): unknown {
-  switch (request.method) {
-    case "workspaces.resolve": {
-      const ref = (request.params as ResolveWorkspaceRequest | undefined)?.ref;
-      if (ref !== undefined && ref.path !== VISUAL_WORKSPACE_PATH)
-        throw new Error(`Visual Runtime has no recorded workspace "${ref.path}"`);
-      return {
-        ref: { path: VISUAL_WORKSPACE_PATH },
-        repositoryRoot: VISUAL_WORKSPACE_PATH,
-        availability: "available",
-      } satisfies WorkspaceInfo;
-    }
-    case "workspace.diff.get":
-      return readDiff(signal, request.params as GetDiffRequest);
-    case "runtime.discover":
-      return { ...discovery, capabilities };
-    case "sessions.trajectory":
-      return { data: visualTrajectory(snapshot) };
-    case "usage.summary":
-      return VISUAL_USAGE;
-    case "skills.discovered.list":
-      return visualSkillDiscovery(skillDocuments);
-    case "skills.discovered.get": {
-      const { name } = request.params as SkillDetailRequest;
-      const document = skillDocuments.find((item) => item.name === name);
-      if (!document) throw new Error(`Visual Skills has no document named "${name}"`);
-      return document;
-    }
-    case "skills.library.list":
-      return VISUAL_SKILL_LIBRARY;
-    case "providers.list":
-      return { data: models.providers };
-    case "models.list": {
-      const { provider } = request.params as ListModelsRequest;
-      return { data: models.models.filter((model) => model.provider === provider) };
-    }
-    case "models.getUtilityRole":
-      return models.utility;
-    case "models.getEmbeddingRole":
-      return models.embedding;
-    case "mcp.servers.list":
-      return { data: mcpServers };
-    case "mcp.tools.list": {
-      const { server } = request.params as { server: MCPServerID };
-      return {
-        data: [
-          {
-            server,
-            name: "read_workspace_files",
-            description: "Read files from the current workspace without changing them.",
-            modelName: "read_workspace_files",
-            nameConflicts: [],
-          },
-        ],
-      };
-    }
-    case "mcp.tools.exposure":
-      return { server: (request.params as { server: MCPServerID }).server, disabledTools: [] };
-    case "plugins.list":
-      return { data: VISUAL_PACKAGES };
-    case "plugins.listProviders":
-      return { data: VISUAL_PLUGIN_PROVIDERS };
-    case "approval.listRules":
-      return { rules: [] };
-    case "approval.getMode":
-      return { ...approval };
-    case "approval.setMode":
-      approval.mode = (request.params as SetApprovalModeRequest).mode;
-      return { ...approval };
-    case "hooks.list":
-      return structuredClone(VISUAL_HOOKS);
-    case "runtime.subscribe":
-      return {};
-    case "plugins.call":
-      return pluginCallResult(request.params as CallPluginRequest, memoryPages);
-    default:
-      throw new Error(`Visual Runtime has no response for "${request.method}"`);
-  }
+  const respond = RECORDED_RESPONSES[request.method];
+  if (!respond) throw new Error(`Visual Runtime has no response for "${request.method}"`);
+  return respond(request.params, facts, signal);
 }
 
 export function createVisualRuntimeTransport(

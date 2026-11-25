@@ -17,6 +17,10 @@ export type Read = {
   error?: { cause: unknown };
 };
 
+export type Selection =
+  | { view: "files"; path: string | null }
+  | { view: "file"; path: string; returnTo: "files" | "source" };
+
 export type DiffFile = NonNullable<
   Read["accepted"]
 >["diff"]["visual"]["manifest"][number];
@@ -32,6 +36,32 @@ export function diffWorkspace(captured: ComponentContext["workspace"]) {
   return {
     ref: captured.ref,
     focusPath: path.startsWith(prefix) ? path.slice(prefix.length) : path,
+  };
+}
+
+// What the accepted read presents for the current selection and query.
+export function presentDiff(read: Read, selection: Selection, query: Query) {
+  const accepted = read.accepted;
+  const files = accepted?.diff.visual.manifest ?? [];
+  const selected = files.find((file) => file.path === selection.path);
+  const file = selection.view === "file" ? selected : undefined;
+  const rendered = file ? accepted?.rendered.get(file.path) : undefined;
+  const readable = rendered !== undefined && rendered.file.hunks.length > 0;
+  return {
+    accepted,
+    files,
+    hasFiles: files.length > 0,
+    truncated: accepted?.diff.visual.truncated === true,
+    selected,
+    file,
+    readableRendering: readable ? rendered : undefined,
+    returnsToFiles: selection.view === "file" && selection.returnTo === "files",
+    readingOverview:
+      read.loading &&
+      query.path === undefined &&
+      accepted?.query.path !== undefined,
+    scoped: Boolean(query.path || accepted?.query.path),
+    refreshFailed: Boolean(read.error && accepted),
   };
 }
 

@@ -121,6 +121,23 @@ function keywordEnd(source: string, start: number): number {
   return streamEnd + "endstream".length;
 }
 
+// Where one PDF token ends and how it changes dictionary or array nesting.
+function nextToken(
+  source: string,
+  index: number,
+): { end: number; nesting: -1 | 0 | 1 } {
+  const char = source[index]!;
+  if (char === "%") return { end: commentEnd(source, index), nesting: 0 };
+  if (char === "(") return { end: literalStringEnd(source, index), nesting: 0 };
+  if (source.startsWith("<<", index)) return { end: index + 2, nesting: 1 };
+  if (source.startsWith(">>", index)) return { end: index + 2, nesting: -1 };
+  if (char === "[") return { end: index + 1, nesting: 1 };
+  if (char === "]") return { end: index + 1, nesting: -1 };
+  if (char === "<") return { end: hexStringEnd(source, index), nesting: 0 };
+  if (char === "/") return { end: admittedNameEnd(source, index), nesting: 0 };
+  return { end: keywordEnd(source, index), nesting: 0 };
+}
+
 function preflightPDF(bytes: Uint8Array): void {
   if (bytes.byteLength > contentLimits.fileBytes)
     throw new Error("PDF exceeds the byte limit");
@@ -138,23 +155,9 @@ function preflightPDF(bytes: Uint8Array): void {
     }
     if (++tokens > contentLimits.structureNodes)
       throw new Error("PDF token count exceeds the limit");
-    if (char === "%") {
-      index = commentEnd(source, index);
-      continue;
-    }
-    if (char === "(") {
-      index = literalStringEnd(source, index);
-      continue;
-    }
-    if (source.startsWith("<<", index) || source.startsWith(">>", index)) {
-      depth += char === "<" ? 1 : -1;
-      index += 2;
-    } else if (char === "[" || char === "]") {
-      depth += char === "[" ? 1 : -1;
-      index++;
-    } else if (char === "<") index = hexStringEnd(source, index);
-    else if (char === "/") index = admittedNameEnd(source, index);
-    else index = keywordEnd(source, index);
+    const token = nextToken(source, index);
+    index = token.end;
+    depth += token.nesting;
     if (depth < 0 || depth > contentLimits.nestingDepth)
       throw new Error("PDF dictionary or array nesting exceeds the limit");
   }

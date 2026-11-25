@@ -32,14 +32,14 @@ import {
 import { useContextDockCatalog } from "@/features/workspace/public/contextDockCatalog";
 import { useWorkspaceViews } from "@/features/workspace/public/views";
 import { useDockLayout } from "@/features/workspace/public/sidebarDrawer";
-import { useT, labelText } from "@/lib/i18n/index";
+import { useT, labelText, type Label, type Translate } from "@/lib/i18n/index";
 import { canPresentDock } from "@/features/shell/workbench/panel/shellGeometry";
 import { useInspectionFocus } from "@/features/shell/workbench/panel/useInspectionFocus";
 import {
   CATALOG_VIEW,
   applyComposerReadingLimit,
-  mountedWorkspaceViews,
-  returnActionLabel,
+  fullPanePickable,
+  returnAction,
   toggleChatDock,
   workspacePresentation,
 } from "@/features/shell/workbench/panel/workspacePresentation";
@@ -139,6 +139,15 @@ function useDockTabs(
   });
 }
 
+function dockLabel(
+  viewsById: ReadonlyMap<string, { title: Label }>,
+  activeViewId: string | null,
+  t: Translate,
+): string {
+  const active = activeViewId === null ? undefined : viewsById.get(activeViewId);
+  return active ? labelText(active.title, t) : t("dock.tabs.label");
+}
+
 export function ChatPanel({ onSend, ref }: Props) {
   const pickerRef = useRef<HTMLButtonElement>(null);
   const composerAccess = useComposer();
@@ -164,6 +173,14 @@ export function ChatPanel({ onSend, ref }: Props) {
     ownedDockViewIds,
     fullPaneViewId,
     inspectedFullPane,
+    presentation,
+    presentedViewId,
+    panelLayout,
+    dockChromeVisible,
+    dockToggleAvailable,
+    dockOwnsMaterialKeys,
+    openViewIds,
+    mountedViewIds,
   } = workspacePresentation({ activeSessionId, dock, activeMainView, inspection, rowWidth });
   const conversationReady = sessions !== undefined;
   const viewsReady = conversationReady || activeMainView !== null || dock.open;
@@ -192,36 +209,27 @@ export function ChatPanel({ onSend, ref }: Props) {
   useImperativeHandle(ref, () => ({ focusComposer: requestComposerFocus }));
 
   const viewsById = new Map(views.map((view) => [view.id, view]));
-  const returnAction = inspection
-    ? { label: returnActionLabel(t, inspection, viewsById), onReturn: returnToSource }
-    : undefined;
+  const dockReturn = returnAction(t, inspection, viewsById, returnToSource);
 
   const dockTabs = useDockTabs(ownedDockViewIds, viewsById, dock.activeViewId);
-  const openViewIds = new Set(ownedDockViewIds);
-  if (activeMainView !== null) openViewIds.add(activeMainView);
-  const presentedMain = fullPaneViewId !== null;
-  const panelSizes = PANEL_SIZES[presentedMain ? "main" : dockVisible ? "dock" : "closed"];
-  const mountedViewIds = mountedWorkspaceViews(openViewIds, inspection);
-  const presentedViewId = presentedMain ? fullPaneViewId : dock.activeViewId;
+  const panelSizes = PANEL_SIZES[panelLayout];
 
   return (
     <AgentContentCard
       label={t("shell.region.workspace")}
       onFocusCapture={applyComposerReadingLimit}
     >
-      {presentedMain && (
+      {fullPaneViewId !== null && (
         <FullPaneHeader
           viewId={fullPaneViewId}
           view={
             fullPaneViewId === WORKSPACE_DOCK_CATALOG ? CATALOG_VIEW : viewsById.get(fullPaneViewId)
           }
-          returnAction={inspectedFullPane ? returnAction : undefined}
+          returnAction={inspectedFullPane ? dockReturn : undefined}
           dockAvailable={dockAvailable}
           onKeyDown={inspectedFullPane ? onMaterialKeyDown : undefined}
           picker={
-            hasDockOwner &&
-            fullPaneViewId !== WORKSPACE_DOCK_CATALOG &&
-            viewsById.get(fullPaneViewId)?.dock !== undefined && (
+            fullPanePickable(fullPaneViewId, hasDockOwner, viewsById) && (
               <WorkspaceViewPicker
                 triggerRef={pickerRef}
                 key={activeSessionId}
@@ -234,11 +242,7 @@ export function ChatPanel({ onSend, ref }: Props) {
           }
         />
       )}
-      <AgentDockRow
-        ref={dockRowRef}
-        open={dockVisible}
-        presentation={presentedMain ? "main" : "dock"}
-      >
+      <AgentDockRow ref={dockRowRef} open={dockVisible} presentation={presentation}>
         <Group
           orientation="horizontal"
           defaultLayout={initialDockLayout}
@@ -250,14 +254,14 @@ export function ChatPanel({ onSend, ref }: Props) {
           <Panel id="conversation" {...panelSizes.conversation}>
             <ConversationPane
               ref={conversationRef}
-              hidden={presentedMain}
+              hidden={presentation === "main"}
               fallbackFocus={presentationRef}
               ready={conversationReady}
               sessionId={activeSessionId}
               onSend={onSend}
             />
           </Panel>
-          {!presentedMain && dockVisible && <AgentDockSeparator label={t("dock.action.resize")} />}
+          {dockChromeVisible && <AgentDockSeparator label={t("dock.action.resize")} />}
           <Panel id="dock" defaultSize={480} {...panelSizes.dock}>
             {viewsReady && (
               <SessionOwnedWorkspaceState sessionId={activeSessionId}>
@@ -267,33 +271,24 @@ export function ChatPanel({ onSend, ref }: Props) {
                     if (id !== null) workspaceAccess.navigation.selectDockView(id);
                   }}
                   ref={dockRef}
-                  role={presentedMain ? "presentation" : undefined}
-                  tabIndex={presentedMain ? undefined : -1}
-                  aria-label={
-                    presentedMain
-                      ? undefined
-                      : (() => {
-                          const active = viewsById.get(dock.activeViewId ?? "");
-                          return active ? labelText(active.title, t) : t("dock.tabs.label");
-                        })()
-                  }
+                  {...(presentation === "main"
+                    ? { role: "presentation" }
+                    : { tabIndex: -1, "aria-label": dockLabel(viewsById, dock.activeViewId, t) })}
                   data-focus-inset=""
-                  onKeyDown={
-                    activeMainView === null || inspectedFullPane ? onMaterialKeyDown : undefined
-                  }
+                  onKeyDown={dockOwnsMaterialKeys ? onMaterialKeyDown : undefined}
                 >
-                  {!presentedMain && dockVisible && (
+                  {dockChromeVisible && (
                     <DockHeader
                       key={activeSessionId}
                       tabs={dockTabs}
                       groups={catalog}
                       openViewIds={openViewIds}
-                      returnAction={returnAction}
+                      returnAction={dockReturn}
                     />
                   )}
                   <WorkspaceViewStack
-                    presentation={presentedMain ? "main" : "dock"}
-                    shown={presentedMain || dockVisible}
+                    presentation={presentation}
+                    shown={presentation === "main" || dockVisible}
                     presentedViewId={presentedViewId}
                     fullPaneViewId={fullPaneViewId}
                     addressable={activeMainView === null}
@@ -308,7 +303,7 @@ export function ChatPanel({ onSend, ref }: Props) {
             )}
           </Panel>
         </Group>
-        {viewsReady && !presentedMain && hasDockOwner && (
+        {viewsReady && dockToggleAvailable && (
           <AgentDockToggle
             open={dockVisible}
             onToggle={() => toggleChatDock(workspaceAccess, dockAvailable, dockOpen)}

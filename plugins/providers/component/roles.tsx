@@ -102,6 +102,65 @@ function roleOptions(
   return options;
 }
 
+function RoleNotes({
+  t,
+  kind,
+  stale,
+  unavailable,
+  choiceCount,
+  embeddingProviderCount,
+}: {
+  t: Translate;
+  kind: RoleKind;
+  stale: boolean;
+  unavailable: boolean;
+  choiceCount: number;
+  embeddingProviderCount: number;
+}) {
+  return (
+    <>
+      {stale && <Metadata>{t("providers.role.stale")}</Metadata>}
+      {unavailable && <Metadata>{t("providers.notConfigured")}</Metadata>}
+      {kind === "embedding" && choiceCount === 0 && (
+        <Metadata>
+          {t(
+            embeddingProviderCount
+              ? "providers.embedding.noPreset"
+              : "providers.embedding.none",
+          )}
+        </Metadata>
+      )}
+    </>
+  );
+}
+
+function RolePending({
+  t,
+  title,
+  failed,
+  onRetry,
+}: {
+  t: Translate;
+  title: string;
+  failed: boolean;
+  onRetry(): void;
+}) {
+  if (!failed)
+    return (
+      <Button variant="outline" disabled aria-label={title}>
+        {t("reading")}
+      </Button>
+    );
+  return (
+    <>
+      <p role="alert">{t("providers.role.loadError")}</p>
+      <Button aria-label={`${t("retry")} · ${title}`} onClick={onRetry}>
+        {t("retry")}
+      </Button>
+    </>
+  );
+}
+
 export function RoleSection({
   kind,
   context,
@@ -134,8 +193,7 @@ export function RoleSection({
   const options = roleOptions(choices, t(labels.unset), saved);
   const command = state.commands.get(kind);
   const feedback = state.feedback.get(kind);
-  const unknownFailure =
-    !known && (read.phase === "failed" || state.providers.phase === "failed");
+  const failed = read.phase === "failed" || state.providers.phase === "failed";
   const pick = (value: string) => {
     const choice = choices.find((choice) => choiceKey(choice) === value);
     if (value === "default" || choice)
@@ -155,39 +213,28 @@ export function RoleSection({
           <div style={column}>
             <strong>{title}</strong>
             <RecordBody>{t(labels.description)}</RecordBody>
-            {(read.phase === "failed" || state.providers.phase === "failed") &&
-              known && <Metadata>{t("providers.role.stale")}</Metadata>}
-            {unavailable && <Metadata>{t("providers.notConfigured")}</Metadata>}
-            {kind === "embedding" && known && choices.length === 0 && (
-              <Metadata>
-                {t(
-                  embeddingProviders.length
-                    ? "providers.embedding.noPreset"
-                    : "providers.embedding.none",
-                )}
-              </Metadata>
+            {known && (
+              <RoleNotes
+                t={t}
+                kind={kind}
+                stale={failed}
+                unavailable={unavailable}
+                choiceCount={choices.length}
+                embeddingProviderCount={embeddingProviders.length}
+              />
             )}
           </div>
           <div style={control}>
             {!known ? (
-              unknownFailure ? (
-                <>
-                  <p role="alert">{t("providers.role.loadError")}</p>
-                  <Button
-                    aria-label={`${t("retry")} · ${title}`}
-                    onClick={() => {
-                      settings.refreshRead(context, kind);
-                      settings.refreshRead(context, "providers");
-                    }}
-                  >
-                    {t("retry")}
-                  </Button>
-                </>
-              ) : (
-                <Button variant="outline" disabled aria-label={title}>
-                  {t("reading")}
-                </Button>
-              )
+              <RolePending
+                t={t}
+                title={title}
+                failed={failed}
+                onRetry={() => {
+                  settings.refreshRead(context, kind);
+                  settings.refreshRead(context, "providers");
+                }}
+              />
             ) : (
               <>
                 <Select

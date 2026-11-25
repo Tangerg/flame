@@ -11,7 +11,7 @@ import { Segmented } from "@flame/ui";
 import { Icon, fileIconName } from "@/ui/index";
 import { Button, EmptyState, IconButton, useContentVisible, useCopy } from "@flame/ui";
 import { face } from "@flame/ui/tokens.stylex";
-import { useT } from "@/lib/i18n/index";
+import { useT, type Translate } from "@/lib/i18n/index";
 import { WorkspaceViewLayout } from "@/features/workspace/ui/WorkspaceViewLayout";
 import { type ActiveSessionWorkspaceSelection } from "@/features/agent/public/session";
 import { closeWorkspaceFile } from "@/features/workspace/public/navigation";
@@ -225,6 +225,52 @@ function FilePreviewActions({
   );
 }
 
+// A renderer presents only a whole file the reader can read.
+function renderedPresentation({
+  rendererAvailable,
+  wholeFile,
+  mode,
+  unsupported,
+}: {
+  rendererAvailable: boolean;
+  wholeFile: boolean;
+  mode: ReturnType<typeof usePreviewMode>[0];
+  unsupported: boolean;
+}) {
+  const canRender = wholeFile && !unsupported;
+  return {
+    canRender,
+    modeSwitch: canRender && rendererAvailable,
+    showRendered: rendererAvailable && wholeFile && mode === "rendered",
+  };
+}
+
+function fileSubline(
+  t: Translate,
+  {
+    directory,
+    lines,
+    partial,
+    jumpLabel,
+    rejectedJump,
+  }: {
+    directory: string;
+    lines: Parameters<typeof fileLineSummary>[1] | undefined;
+    partial: boolean;
+    jumpLabel: string | undefined;
+    rejectedJump: boolean;
+  },
+): ReactNode {
+  if (!directory && !lines) return undefined;
+  return (
+    <>
+      {directory && <FileDirectory directory={directory} />}
+      {lines && fileLineSummary(t, lines, partial)}
+      <FileJumpStatus label={jumpLabel} rejected={rejectedJump} />
+    </>
+  );
+}
+
 export function FilePreview({
   workspace,
   viewer,
@@ -270,15 +316,18 @@ export function FilePreview({
     extension,
     fileRendererCandidates(renderers, extension),
   );
-  const wholeFile = !!data && coversWholeFile(data, moreBefore, moreAfter);
   const [mode, setMode] = usePreviewMode(displayedViewer);
-  const showRendered = renderer !== undefined && wholeFile && mode === "rendered";
 
   const { onKeyDown, onCopy, ...reader } = useFileReaderInput(data?.content);
 
   const unsupported = workspaceAccess.errors.isUnsupportedFile(error);
   const retained = shown && !unsupported;
-  const canRender = wholeFile && !unsupported;
+  const { canRender, modeSwitch, showRendered } = renderedPresentation({
+    rendererAvailable: renderer !== undefined,
+    wholeFile: !!data && coversWholeFile(data, moreBefore, moreAfter),
+    mode,
+    unsupported,
+  });
   const readingControlRef = useRetiringControlFocus(scrollPort, visible && retained);
 
   const icon = fileIconName(viewer.path);
@@ -351,17 +400,15 @@ export function FilePreview({
           {name}
         </span>
       }
-      sub={
-        directory || readable ? (
-          <>
-            {directory && <FileDirectory directory={directory} />}
-            {readable && fileLineSummary(t, data, moreBefore || moreAfter)}
-            <FileJumpStatus label={jumpLabel} rejected={rejectedJump} />
-          </>
-        ) : undefined
-      }
+      sub={fileSubline(t, {
+        directory,
+        lines: readable ? data : undefined,
+        partial: moreBefore || moreAfter,
+        jumpLabel,
+        rejectedJump,
+      })}
       controls={
-        canRender && renderer !== undefined ? (
+        modeSwitch ? (
           <FilePreviewMode ref={readingControlRef} mode={mode} onChange={setMode} />
         ) : undefined
       }

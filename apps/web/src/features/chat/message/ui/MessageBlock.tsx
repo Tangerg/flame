@@ -155,6 +155,64 @@ function useStreamFocusReclaim(column: RefObject<HTMLDivElement | null>) {
   };
 }
 
+function MessageContentBody({ user, children }: { user: boolean; children: ReactNode }) {
+  const body = <AnimatePresence initial={false}>{children}</AnimatePresence>;
+  return (
+    <div
+      data-user-message-bubble={user ? "" : undefined}
+      {...MESSAGE_QUOTE_SOURCE}
+      className={cn(
+        MESSAGE_CONTENT_CLASS,
+        stylex.props(
+          messageStyles.body,
+          typeStep.prose,
+          user && messageStyles.bubble,
+          user && corner.bubble,
+        ).className,
+      )}
+    >
+      {user ? <UserMessageFold>{body}</UserMessageFold> : body}
+    </div>
+  );
+}
+
+function UserInputStatus({
+  message,
+  feedback,
+}: {
+  message: TranscriptRow["message"];
+  feedback: TranscriptRow["inputFeedback"];
+}) {
+  const t = useT();
+  return (
+    <>
+      <SteerInputStatus feedback={feedback} messageId={message.id} />
+      {!message.steer && message.runId === null && <Badge>{t("agent.inputNotApplied")}</Badge>}
+    </>
+  );
+}
+
+function MessageActionsRow({
+  visibility,
+  user,
+}: {
+  visibility: Exclude<MessageActionsVisibility, "absent">;
+  user: boolean;
+}) {
+  return (
+    <div
+      data-reveal={visibility === "hover" ? "hover" : undefined}
+      {...stylex.props(
+        messageStyles.actions,
+        ACTIONS_VISIBILITY[visibility],
+        user ? messageStyles.actionsOutdentEnd : messageStyles.actionsOutdentStart,
+      )}
+    >
+      <Slot name="message.actions" />
+    </div>
+  );
+}
+
 function MessageBlockInner({
   row,
   ctx,
@@ -240,30 +298,6 @@ function MessageBlockInner({
 
   if (content.length === 0) return terminalFooter ?? null;
 
-  const messageContent = (
-    <div
-      data-user-message-bubble={isUser ? "" : undefined}
-      {...MESSAGE_QUOTE_SOURCE}
-      className={cn(
-        MESSAGE_CONTENT_CLASS,
-        stylex.props(
-          messageStyles.body,
-          typeStep.prose,
-          isUser && messageStyles.bubble,
-          isUser && corner.bubble,
-        ).className,
-      )}
-    >
-      {isUser ? (
-        <UserMessageFold>
-          <AnimatePresence initial={false}>{content}</AnimatePresence>
-        </UserMessageFold>
-      ) : (
-        <AnimatePresence initial={false}>{content}</AnimatePresence>
-      )}
-    </div>
-  );
-
   const messageColumn = (
     <div
       ref={columnRef}
@@ -274,20 +308,10 @@ function MessageBlockInner({
       <h2 className={cn("sr-only", stylex.props(messageStyles.unselectable).className)}>
         {roleLabel}
       </h2>
-      {messageContent}
-      {isUser && <SteerInputStatus feedback={row.inputFeedback} messageId={msg.id} />}
-      {isUser && !msg.steer && msg.runId === null && <Badge>{t("agent.inputNotApplied")}</Badge>}
+      <MessageContentBody user={isUser}>{content}</MessageContentBody>
+      {isUser && <UserInputStatus message={msg} feedback={row.inputFeedback} />}
       {actionsVisibility !== "absent" && (
-        <div
-          data-reveal={actionsVisibility === "hover" ? "hover" : undefined}
-          {...stylex.props(
-            messageStyles.actions,
-            ACTIONS_VISIBILITY[actionsVisibility],
-            isUser ? messageStyles.actionsOutdentEnd : messageStyles.actionsOutdentStart,
-          )}
-        >
-          <Slot name="message.actions" />
-        </div>
+        <MessageActionsRow visibility={actionsVisibility} user={isUser} />
       )}
     </div>
   );

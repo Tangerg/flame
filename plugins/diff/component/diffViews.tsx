@@ -1,6 +1,13 @@
-import { type RefObject } from "react";
+import { type ReactNode, type RefObject } from "react";
 import { failureText, type Translate } from "@flame/component-sdk";
-import { ChevronLeft, ChevronRight, List, Refresh } from "@flame/icons/react";
+import {
+  ArrowLeft,
+  ChevronLeft,
+  ChevronRight,
+  FileDiff as FileDiffIcon,
+  List,
+  Refresh,
+} from "@flame/icons/react";
 import type { DiffMode, WorkspaceFileChange } from "@flame/runtime-client/wire";
 import {
   Button,
@@ -266,6 +273,83 @@ export function DiffScopeToolbar({
         />
       </Hang>
     </Toolbar>
+  );
+}
+
+export function DiffReaderToolbar({
+  t,
+  navigation,
+  failed,
+  loading,
+  returnsToFiles,
+  onShowFiles,
+  onRefresh,
+}: {
+  t: Translate;
+  navigation: ReactNode;
+  failed: boolean;
+  loading: boolean;
+  returnsToFiles: boolean;
+  onShowFiles(): void;
+  onRefresh(): void;
+}) {
+  return (
+    <Toolbar
+      label={t("navigation.label")}
+      actions={
+        <>
+          {navigation}
+          {failed && <Metadata>{t("read.failedShort")}</Metadata>}
+          <IconButton
+            icon={Refresh}
+            aria-label={t("refresh")}
+            size="sm"
+            pending={loading}
+            onClick={onRefresh}
+          />
+        </>
+      }
+    >
+      <Button
+        variant="ghost"
+        size="sm"
+        aria-label={returnsToFiles ? t("files.back") : t("files.show")}
+        onClick={onShowFiles}
+      >
+        <Icon glyph={returnsToFiles ? ArrowLeft : List} size="sm" />
+        {t("files.button")}
+      </Button>
+    </Toolbar>
+  );
+}
+
+export function DiffManifestNotices({
+  t,
+  truncated,
+  hasFiles,
+  missingPath,
+}: {
+  t: Translate;
+  truncated: boolean;
+  hasFiles: boolean;
+  missingPath: string | undefined;
+}) {
+  return (
+    <>
+      {truncated && hasFiles && <Metadata role="note">{t("partial")}</Metadata>}
+      {!hasFiles && (
+        <EmptyState
+          icon={FileDiffIcon}
+          size="compact"
+          title={t(truncated ? "budget.empty" : "empty.title")}
+        />
+      )}
+      {missingPath && (
+        <Metadata>
+          {t("missing")} <DiffFilePath path={missingPath} />
+        </Metadata>
+      )}
+    </>
   );
 }
 

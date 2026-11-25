@@ -12,7 +12,17 @@ import { type Translate, labelText, type Label } from "@/lib/i18n/index";
 import { canPresentDock } from "@/features/shell/workbench/panel/shellGeometry";
 import { useInspectionFocus } from "@/features/shell/workbench/panel/useInspectionFocus";
 
-export function returnActionLabel(
+export function returnAction(
+  t: Translate,
+  inspection: ReturnType<typeof useWorkspaceInspection>,
+  viewsById: ReadonlyMap<string, { title: Label }>,
+  onReturn: () => void,
+): { label: string; onReturn: () => void } | undefined {
+  if (!inspection) return undefined;
+  return { label: returnLabel(t, inspection, viewsById), onReturn };
+}
+
+function returnLabel(
   t: Translate,
   inspection: NonNullable<ReturnType<typeof useWorkspaceInspection>>,
   viewsById: ReadonlyMap<string, { title: Label }>,
@@ -58,9 +68,23 @@ type WorkspaceDock = ReturnType<typeof useWorkspaceDock>;
 
 type WorkspaceInspection = ReturnType<typeof useWorkspaceInspection>;
 
-// Which view the workspace presents, and where: a main view wins; otherwise a
-// dock too narrow to sit beside the conversation shows an inspected view full
-// pane instead.
+// A dock too narrow to sit beside the conversation shows its inspected view full pane.
+function narrowDockView(
+  dock: WorkspaceDock,
+  dockOpen: boolean,
+  rowWidth: number | null,
+  inspection: WorkspaceInspection,
+): string | null {
+  const narrow = rowWidth !== null && !canPresentDock(rowWidth);
+  return dockOpen && narrow && inspection?.viewId === dock.activeViewId ? dock.activeViewId : null;
+}
+
+function panelLayout(main: boolean, dockVisible: boolean): "main" | "dock" | "closed" {
+  if (main) return "main";
+  return dockVisible ? "dock" : "closed";
+}
+
+// Which view the workspace presents, and where: a main view wins over the dock.
 export function workspacePresentation({
   activeSessionId,
   dock,
@@ -74,23 +98,45 @@ export function workspacePresentation({
   inspection: WorkspaceInspection;
   rowWidth: number | null;
 }) {
-  const dockAvailable = canPresentDock(rowWidth ?? 0);
   const hasDockOwner = activeSessionId !== "";
   const showingCatalog = dock.activeViewId === WORKSPACE_DOCK_CATALOG;
   const dockOpen = hasDockOwner && dock.open && (showingCatalog || dock.viewIds.length > 0);
-  const fullPaneViewId =
-    activeMainView ??
-    (dockOpen && rowWidth !== null && !dockAvailable && inspection?.viewId === dock.activeViewId
-      ? dock.activeViewId
-      : null);
+  const fullPaneViewId = activeMainView ?? narrowDockView(dock, dockOpen, rowWidth, inspection);
+  const main = fullPaneViewId !== null;
+  const dockVisible = dockOpen && canPresentDock(rowWidth ?? 0);
+  const ownedDockViewIds = hasDockOwner ? dock.viewIds : [];
+  const openViewIds = new Set(ownedDockViewIds);
+  if (activeMainView !== null) openViewIds.add(activeMainView);
+  const inspectedFullPane = main && inspection?.viewId === fullPaneViewId;
   return {
     hasDockOwner,
     dockOpen,
-    dockVisible: dockOpen && dockAvailable,
-    ownedDockViewIds: hasDockOwner ? dock.viewIds : [],
+    dockVisible,
+    ownedDockViewIds,
+    openViewIds,
+    mountedViewIds: mountedWorkspaceViews(openViewIds, inspection),
     fullPaneViewId,
-    inspectedFullPane: fullPaneViewId !== null && inspection?.viewId === fullPaneViewId,
+    inspectedFullPane,
+    presentation: main ? ("main" as const) : ("dock" as const),
+    presentedViewId: fullPaneViewId ?? dock.activeViewId,
+    panelLayout: panelLayout(main, dockVisible),
+    // The dock's tabs and resize handle show only beside the conversation.
+    dockChromeVisible: !main && dockVisible,
+    dockToggleAvailable: !main && hasDockOwner,
+    // Material keys reach the dock unless a main view outside inspection owns them.
+    dockOwnsMaterialKeys: activeMainView === null || inspectedFullPane,
   };
+}
+
+// A full-pane view offers the view picker when it can return to the dock.
+export function fullPanePickable(
+  viewId: string,
+  hasDockOwner: boolean,
+  viewsById: ReadonlyMap<string, { dock?: unknown }>,
+): boolean {
+  return (
+    hasDockOwner && viewId !== WORKSPACE_DOCK_CATALOG && viewsById.get(viewId)?.dock !== undefined
+  );
 }
 
 // Views stay mounted while open or while an inspection can return to them, so

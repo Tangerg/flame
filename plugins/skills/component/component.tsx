@@ -1,4 +1,4 @@
-import { useId, useRef } from "react";
+import { useId, useRef, type RefObject } from "react";
 import { ArrowLeft, BookOpen, Refresh } from "@flame/icons/react";
 import { type ComponentContext, type Translate } from "@flame/component-sdk";
 
@@ -32,10 +32,13 @@ import {
 } from "@flame/ui";
 import {
   type CommandIntent,
+  type CommandState,
   type Notice,
+  type SkillRecord,
   type SkillSnapshot,
   type Target,
 } from "./types";
+import { type SkillDetail } from "@flame/runtime-client/wire";
 import { SkillRow } from "./SkillRow";
 import { useSkills, SECTION_VALUES } from "./useSkills";
 const reviewPresentation = {
@@ -336,6 +339,85 @@ function SkillReviewForm({
   );
 }
 
+// Archive and restore feedback sits on the row it concerns while that row is listed.
+function feedbackRowName(
+  command: CommandState | undefined,
+  notice: Notice | undefined,
+  snapshot: SkillSnapshot | undefined,
+  matching: readonly SkillRecord[],
+): string | undefined {
+  const intent = command?.command.intent ?? notice?.intent;
+  if (intent?.action !== "archive" && intent?.action !== "restore") return;
+  if (snapshot?.type !== "library") return;
+  return matching.some((item) => item.name === intent.name)
+    ? intent.name
+    : undefined;
+}
+
+function catalogDescription(
+  t: Translate,
+  target: Target,
+  workspace: unknown,
+): string | false {
+  if (target === "library") return t("section.library.description");
+  return !workspace && t("section.selectWorkspace");
+}
+
+function SkillEmptyState({
+  t,
+  type,
+  filtered,
+}: {
+  t: Translate;
+  type: Target;
+  filtered: boolean;
+}) {
+  const review = type === "review";
+  const state = filtered ? "filtered" : "none";
+  return (
+    <EmptyState
+      icon={BookOpen}
+      size="compact"
+      title={t(review ? `empty.review.${state}.title` : `empty.${state}.title`)}
+      sub={review ? undefined : t(`empty.${state}.sub`)}
+    />
+  );
+}
+
+function SkillDocument({
+  t,
+  document,
+  instructionsRef,
+}: {
+  t: Translate;
+  document: SkillDetail;
+  instructionsRef: RefObject<HTMLElement | null>;
+}) {
+  return (
+    <>
+      {document.description && <RecordBody>{document.description}</RecordBody>}
+      <section
+        ref={instructionsRef}
+        aria-label={t("instructions.for", { name: document.name })}
+      >
+        <DocumentBody>
+          <RecordBody>{document.instructions}</RecordBody>
+        </DocumentBody>
+      </section>
+      <Disclosure title={t("document.source")}>
+        <Facts
+          values={[
+            [t("fact.sourcePath"), document.path],
+            [t("fact.revision"), document.revision],
+            [t("fact.installation"), document.installation?.installationId],
+            [t("fact.release"), document.installation?.digest],
+          ]}
+        />
+      </Disclosure>
+    </>
+  );
+}
+
 type SkillsState = ReturnType<typeof useSkills>;
 
 export function Skills({ context }: { context: ComponentContext }) {
@@ -372,16 +454,7 @@ export function Skills({ context }: { context: ComponentContext }) {
   const summary = catalogSummary(snapshot, matching.length, rows.length, t);
   const documentTitleId = useId();
   const instructions = useRef<HTMLElement>(null);
-  const feedbackIntent = command?.command.intent ?? notice?.intent;
-  const feedbackName =
-    feedbackIntent?.action === "archive" || feedbackIntent?.action === "restore"
-      ? feedbackIntent.name
-      : undefined;
-  const feedbackRow =
-    snapshot?.type === "library" &&
-    matching.some((item) => item.name === feedbackName)
-      ? feedbackName
-      : undefined;
+  const feedbackRow = feedbackRowName(command, notice, snapshot, matching);
   const feedback = (
     <SkillCommandFeedback
       command={command}
@@ -459,41 +532,16 @@ export function Skills({ context }: { context: ComponentContext }) {
         />
       )}
       {skillDocument && (
-        <>
-          {skillDocument.description && (
-            <RecordBody>{skillDocument.description}</RecordBody>
-          )}
-          <section
-            ref={instructions}
-            aria-label={t("instructions.for", { name: skillDocument.name })}
-          >
-            <DocumentBody>
-              <RecordBody>{skillDocument.instructions}</RecordBody>
-            </DocumentBody>
-          </section>
-          <Disclosure title={t("document.source")}>
-            <Facts
-              values={[
-                [t("fact.sourcePath"), skillDocument.path],
-                [t("fact.revision"), skillDocument.revision],
-                [
-                  t("fact.installation"),
-                  skillDocument.installation?.installationId,
-                ],
-                [t("fact.release"), skillDocument.installation?.digest],
-              ]}
-            />
-          </Disclosure>
-        </>
+        <SkillDocument
+          t={t}
+          document={skillDocument}
+          instructionsRef={instructions}
+        />
       )}
       <div hidden={Boolean(opened)}>
         <PanelSection
           title={summary ?? title}
-          description={
-            target === "library"
-              ? t("section.library.description")
-              : !workspace && t("section.selectWorkspace")
-          }
+          description={catalogDescription(t, target, workspace)}
         >
           <Metadata role="status" className="sr-only">
             {summary ?? t("summary.none")}
@@ -566,29 +614,10 @@ export function Skills({ context }: { context: ComponentContext }) {
               </SkillRow>
             ))}
             {!matching.length && !read.loading && snapshot && (
-              <EmptyState
-                icon={BookOpen}
-                size="compact"
-                title={
-                  rows.length
-                    ? t(
-                        snapshot.type === "review"
-                          ? "empty.review.filtered.title"
-                          : "empty.filtered.title",
-                      )
-                    : t(
-                        snapshot.type === "review"
-                          ? "empty.review.none.title"
-                          : "empty.none.title",
-                      )
-                }
-                sub={
-                  snapshot.type === "review"
-                    ? undefined
-                    : rows.length
-                      ? t("empty.filtered.sub")
-                      : t("empty.none.sub")
-                }
+              <SkillEmptyState
+                t={t}
+                type={snapshot.type}
+                filtered={rows.length > 0}
               />
             )}
           </RecordGroup>

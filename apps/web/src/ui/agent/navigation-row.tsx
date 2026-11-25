@@ -111,6 +111,49 @@ interface AgentRowProps extends Omit<ButtonProps, "children" | "variant" | "size
   children?: ReactNode;
 }
 
+function AgentRowLabel({
+  overflowText,
+  trailing,
+  actioned,
+  detail,
+  children,
+}: {
+  overflowText: string | undefined;
+  trailing: ReactNode;
+  actioned: boolean;
+  detail: ReactNode;
+  children: ReactNode;
+}) {
+  const label = stylex.props(rowStyles.label);
+  const detailBox = stylex.props(rowStyles.detail, typeStep.uiXs);
+  return (
+    <span {...stylex.props(rowStyles.stack)}>
+      <span {...stylex.props(rowStyles.line, detail ? rowStyles.lineStacked : rowStyles.lineAlone)}>
+        {overflowText ? (
+          <AgentOverflowLabel text={overflowText} />
+        ) : (
+          <span {...label} className={cn(label.className, "truncate-fade")}>
+            {children}
+          </span>
+        )}{" "}
+        {trailing && (
+          <span
+            data-reveal={actioned ? "rest" : undefined}
+            className={stylex.props(rowStyles.trailing, actioned ? RESTING_GLYPH : null).className}
+          >
+            {trailing}
+          </span>
+        )}
+      </span>{" "}
+      {detail != null && (
+        <span {...detailBox} className={cn(detailBox.className, "truncate-fade")}>
+          {detail}
+        </span>
+      )}
+    </span>
+  );
+}
+
 export function AgentRow({
   active,
   icon,
@@ -129,8 +172,6 @@ export function AgentRow({
   const trackItem = useHoverTrackItem();
   const track = look === "search" ? null : trackItem;
   const overflowText = revealOverflow && typeof children === "string" ? children : undefined;
-  const label = stylex.props(rowStyles.label);
-  const detailBox = stylex.props(rowStyles.detail, typeStep.uiXs);
   const button = (
     <Button
       data-chrome-focus={look === "search" ? undefined : ""}
@@ -165,32 +206,14 @@ export function AgentRow({
           {...stylex.props(rowStyles.glyph, detail ? rowStyles.glyphStacked : null)}
         />
       )}
-      <span {...stylex.props(rowStyles.stack)}>
-        <span
-          {...stylex.props(rowStyles.line, detail ? rowStyles.lineStacked : rowStyles.lineAlone)}
-        >
-          {overflowText ? (
-            <AgentOverflowLabel text={overflowText} />
-          ) : (
-            <span {...label} className={cn(label.className, "truncate-fade")}>
-              {children}
-            </span>
-          )}{" "}
-          {trailing && (
-            <span
-              data-reveal={action ? "rest" : undefined}
-              className={stylex.props(rowStyles.trailing, action ? RESTING_GLYPH : null).className}
-            >
-              {trailing}
-            </span>
-          )}
-        </span>{" "}
-        {detail != null && (
-          <span {...detailBox} className={cn(detailBox.className, "truncate-fade")}>
-            {detail}
-          </span>
-        )}
-      </span>
+      <AgentRowLabel
+        overflowText={overflowText}
+        trailing={trailing}
+        actioned={Boolean(action)}
+        detail={detail}
+      >
+        {children}
+      </AgentRowLabel>
     </Button>
   );
   const row = overflowText ? (

@@ -25,55 +25,66 @@ export function needsAttention(row: TrajectoryEntry): boolean {
   );
 }
 
+type RunRow = Extract<TrajectoryEntry, { type: "run" }>["run"];
+type ObservationState =
+  | Extract<TrajectoryEntry, { type: "model" }>["model"]["state"]
+  | Extract<TrajectoryEntry, { type: "endpoint" }>["endpoint"]["state"];
+type ItemRow = Extract<TrajectoryEntry, { type: "item" }>["item"];
+type ItemStatus = ItemRow["status"];
+type ToolCallFailure = NonNullable<
+  Extract<ItemRow, { type: "toolCall" }>["error"]
+>["type"];
+
+const RUN_TONE = {
+  running: "accent",
+  waiting: "warning",
+  failed: "negative",
+  timedOut: "negative",
+  lost: "negative",
+  completed: "neutral",
+  canceled: "neutral",
+  finished: "neutral",
+} as const satisfies Record<
+  NonNullable<RunRow["outcome"]>["type"] | RunRow["status"],
+  Tone
+>;
+const OBSERVATION_TONE = {
+  started: "accent",
+  completed: "neutral",
+  failed: "negative",
+  unknown: "warning",
+} as const satisfies Record<ObservationState, Tone>;
+const ITEM_TONE = {
+  running: "accent",
+  completed: "neutral",
+  incomplete: "warning",
+} as const satisfies Record<ItemStatus, Tone>;
+// The user or a parent ended these calls on purpose; they are not failures.
+const DELIBERATE_TOOL_ENDS = new Set<ToolCallFailure>([
+  "denied_by_user",
+  "tool_canceled",
+  "child_run_canceled",
+]);
+
 export function statusTone(row: TrajectoryEntry): Tone {
-  if (row.type === "run") {
-    switch (row.run.outcome?.type ?? row.run.status) {
-      case "running":
-        return "accent";
-      case "waiting":
-        return "warning";
-      case "failed":
-      case "timedOut":
-      case "lost":
-        return "negative";
-      case "completed":
-      case "canceled":
-      case "finished":
-        return "neutral";
-    }
-  }
-  if (row.type === "model" || row.type === "endpoint") {
-    const source = row.type === "model" ? row.model : row.endpoint;
-    switch (source.state) {
-      case "started":
-        return "accent";
-      case "completed":
-        return "neutral";
-      case "failed":
-        return "negative";
-      case "unknown":
-        return "warning";
-    }
+  switch (row.type) {
+    case "run":
+      return RUN_TONE[row.run.outcome?.type ?? row.run.status];
+    case "model":
+      return OBSERVATION_TONE[row.model.state];
+    case "endpoint":
+      return OBSERVATION_TONE[row.endpoint.state];
   }
   const item = row.item;
   if (item.type === "toolCall") {
     if (
       item.approvalDecision === "deny" ||
-      item.error?.type === "denied_by_user" ||
-      item.error?.type === "tool_canceled" ||
-      item.error?.type === "child_run_canceled"
+      (item.error !== undefined && DELIBERATE_TOOL_ENDS.has(item.error.type))
     )
       return "neutral";
     if (item.error) return "negative";
   }
-  switch (item.status) {
-    case "running":
-      return "accent";
-    case "completed":
-      return "neutral";
-    case "incomplete":
-      return "warning";
-  }
+  return ITEM_TONE[item.status];
 }
 
 export function evidence(row: TrajectoryEntry): TrajectoryEntry {

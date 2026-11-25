@@ -116,46 +116,19 @@ export function Memory({ context }: { context: ComponentContext }) {
       }
       controls={
         <>
-          <Toolbar
-            label={t("nav.label")}
-            actions={
-              <>
-                <IconButton
-                  icon={Refresh}
-                  aria-label={t("refresh")}
-                  size="md"
-                  pending={read.loading}
-                  disabled={noTarget || pending}
-                  onClick={() => showPage(current?.cursors)}
-                />
-                <Button
-                  variant={edit ? "outline" : "primary"}
-                  size="md"
-                  disabled={locked || noTarget || Boolean(edit)}
-                  focusableWhenDisabled
-                  onClick={(event) => addItem(event.currentTarget)}
-                >
-                  <Icon glyph={Plus} size="sm" /> {t("add")}
-                </Button>
-              </>
-            }
-          >
-            <Hang>
-              <Segmented
-                ariaLabel={t("segment.label")}
-                value={scope}
-                options={[
-                  {
-                    value: "project",
-                    label: t(`segment.${scopeLabel("project")}`),
-                  },
-                  { value: "user", label: t("segment.user") },
-                ]}
-                onChange={(value) => changeScope(value as Scope)}
-                disabled={locked || Boolean(edit)}
-              />
-            </Hang>
-          </Toolbar>
+          <MemoryToolbar
+            t={t}
+            scope={scope}
+            scopeLabel={scopeLabel}
+            loading={read.loading}
+            noTarget={noTarget}
+            pending={pending}
+            locked={locked}
+            editing={Boolean(edit)}
+            onRefresh={() => showPage(current?.cursors)}
+            onAdd={addItem}
+            onScope={changeScope}
+          />
           <MemoryFilters
             t={t}
             filters={filters}
@@ -239,6 +212,72 @@ export function Memory({ context }: { context: ComponentContext }) {
         </>
       )}
     </Panel>
+  );
+}
+
+function MemoryToolbar({
+  t,
+  scope,
+  scopeLabel,
+  loading,
+  noTarget,
+  pending,
+  locked,
+  editing,
+  onRefresh,
+  onAdd,
+  onScope,
+}: {
+  t: MemoryState["t"];
+  scope: Scope;
+  scopeLabel: (scope: Scope) => string;
+  loading: boolean;
+  noTarget: boolean;
+  pending: boolean;
+  locked: boolean;
+  editing: boolean;
+  onRefresh(): void;
+  onAdd(opener: HTMLElement): void;
+  onScope(scope: Scope): void;
+}) {
+  return (
+    <Toolbar
+      label={t("nav.label")}
+      actions={
+        <>
+          <IconButton
+            icon={Refresh}
+            aria-label={t("refresh")}
+            size="md"
+            pending={loading}
+            disabled={noTarget || pending}
+            onClick={onRefresh}
+          />
+          <Button
+            variant={editing ? "outline" : "primary"}
+            size="md"
+            disabled={locked || noTarget || editing}
+            focusableWhenDisabled
+            onClick={(event) => onAdd(event.currentTarget)}
+          >
+            <Icon glyph={Plus} size="sm" /> {t("add")}
+          </Button>
+        </>
+      }
+    >
+      <Hang>
+        <Segmented
+          ariaLabel={t("segment.label")}
+          value={scope}
+          options={[
+            { value: "project", label: t(`segment.${scopeLabel("project")}`) },
+            { value: "user", label: t("segment.user") },
+          ]}
+          onChange={(value) => onScope(value as Scope)}
+          disabled={locked || editing}
+        />
+      </Hang>
+    </Toolbar>
   );
 }
 
