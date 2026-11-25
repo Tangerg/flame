@@ -7,22 +7,51 @@ import (
 	json "encoding/json/v2"
 	"errors"
 	"fmt"
-
-	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
-	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
-
-	framecall "github.com/Tangerg/frame/call"
-	sdk "github.com/Tangerg/go-sdk/mcp"
-
+	"io"
 	"os"
 	"os/exec"
 	"os/signal"
 	"strings"
 	"sync"
 	"syscall"
+
+	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+
+	framecall "github.com/Tangerg/frame/call"
+	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
-const replaceResponse = "replace-response"
+// faultMode is how the probe disturbs the stdio stream between Runtime and
+// the managed backend it launches.
+type faultMode string
+
+const (
+	withholdRequest  faultMode = "request"
+	withholdResponse faultMode = "response"
+	durableCut       faultMode = "durable"
+	replaceResponse  faultMode = "replace-response"
+)
+
+// stage is the durable cut the test selects in the "<evidence>.phase" file
+// before each Runtime process it starts.
+type stage string
+
+const (
+	commitCut          stage = "commit"
+	editedCut          stage = "edited"
+	queryCut           stage = "query"
+	absentReceipt      stage = "absent"
+	conflictingReceipt stage = "conflict"
+	malformedReceipt   stage = "malformed"
+)
+
+const (
+	callToolMethod     = "tools/call"
+	createScheduleTool = "create_schedule"
+)
+
+var errUsage = errors.New("message probe requires a file, backend, method, tool and fault mode")
 
 func main() {
 	if err := run(); err != nil {
@@ -32,12 +61,13 @@ func main() {
 }
 
 func run() (err error) {
-	if len(os.Args) != 6 || (os.Args[5] != "request" && os.Args[5] != "response" && os.Args[5] != "durable" && os.Args[5] != replaceResponse) {
-		return fmt.Errorf("message probe requires a file, backend, method, tool and fault mode")
+	probe, err := newProbe(os.Args[1:])
+	if err != nil {
+		return err
 	}
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
-	command := exec.CommandContext(ctx, os.Args[2])
+	command := exec.CommandContext(ctx, probe.backend)
 	command.Stderr = os.Stderr
 	input, err := command.StdinPipe()
 	if err != nil {
@@ -55,141 +85,17 @@ func run() (err error) {
 		_ = input.Close()
 		err = errors.Join(err, command.Wait())
 	}()
-	var updates sync.Map
 	forwarded := make(chan error, 1)
 	go func() {
-		scanner := bufio.NewScanner(os.Stdin)
-		scanner.Buffer(nil, sdk.DefaultMaxLineLength)
-		for scanner.Scan() {
-			line := append([]byte(nil), scanner.Bytes()...)
-			var request struct {
-				ID     jsontext.Value `json:"id"`
-				Method string         `json:"method"`
-				Params struct {
-					Name   string `json:"name"`
-					Method string `json:"method"`
-				} `json:"params"`
-			}
-			if err := json.Unmarshal(line, &request); err != nil {
-				forwarded <- err
-				cancel()
-				return
-			}
-			semantic := request.Method
-			if semantic == pluginmcp.InvokeMethod {
-				semantic = request.Params.Method
-			}
-			matched := semantic == os.Args[3] && (os.Args[4] == "" || request.Params.Name == os.Args[4])
-			stage := ""
-			if os.Args[5] == "durable" {
-				phase, err := os.ReadFile(os.Args[1] + ".phase")
-				if err != nil {
-					forwarded <- err
-					cancel()
-					return
-				}
-				stage = strings.TrimSpace(string(phase))
-				matched = (stage == "commit" || stage == "edited") && request.Method == "tools/call" && request.Params.Name == "create_schedule" || stage == "query" && semantic == pluginsdk.ToolReceiptMethod
-			}
-			if matched {
-				if os.Args[5] == "request" {
-					withheld, err := withhold(line, nil)
-					if err != nil || withheld {
-						forwarded <- errors.Join(err, errors.New("message loss probe withheld request"))
-						cancel()
-						return
-					}
-				} else {
-					updates.Store(string(request.ID), jsontext.Value(line))
-				}
-			}
-			if os.Args[5] == "durable" && semantic == pluginsdk.ToolReceiptMethod && stage != "commit" && stage != "edited" {
-				updates.Store(string(request.ID), jsontext.Value(line))
-			}
-			if _, err := fmt.Fprintln(input, string(line)); err != nil {
-				forwarded <- err
-				cancel()
-				return
-			}
-		}
-		forwarded <- errors.Join(scanner.Err(), input.Close())
-		if os.Args[5] == "durable" {
+		err := probe.forwardRequests(input)
+		forwarded <- err
+		// A SIGKILLed Runtime reaches the probe only as stdin EOF; cancelling
+		// releases a halted cut and stops the backend.
+		if err != nil || probe.mode == durableCut {
 			cancel()
 		}
 	}()
-	responses := bufio.NewScanner(output)
-	responses.Buffer(nil, sdk.DefaultMaxLineLength)
-	for responses.Scan() {
-		line := responses.Bytes()
-		var response struct {
-			ID jsontext.Value `json:"id"`
-		}
-		if err := json.Unmarshal(line, &response); err != nil {
-			return err
-		}
-		if request, ok := updates.LoadAndDelete(string(response.ID)); ok {
-			if os.Args[5] == "durable" {
-				phase, err := os.ReadFile(os.Args[1] + ".phase")
-				if err != nil {
-					return err
-				}
-				stage := strings.TrimSpace(string(phase))
-				line, err = receiptFault(stage, line)
-				if err != nil {
-					return err
-				}
-				record, err := json.Marshal(struct {
-					Request       jsontext.Value `json:"request"`
-					Response      jsontext.Value `json:"response"`
-					DataDirectory string         `json:"dataDirectory"`
-				}{request.(jsontext.Value), jsontext.Value(line), os.Getenv("PLUGIN_DATA")})
-				if err != nil {
-					return err
-				}
-				if err := os.WriteFile(os.Args[1]+"."+strings.TrimSpace(string(phase)), record, 0600); err != nil {
-					return err
-				}
-				if strings.TrimSpace(string(phase)) != "commit" && strings.TrimSpace(string(phase)) != "edited" && strings.TrimSpace(string(phase)) != "query" {
-					if _, err := fmt.Fprintln(os.Stdout, string(line)); err != nil {
-						return err
-					}
-					continue
-				}
-				ready, err := os.OpenFile(os.Args[1]+".ready", os.O_WRONLY, 0600)
-				if err != nil {
-					return err
-				}
-				_, writeErr := ready.WriteString("ready\n")
-				if err := errors.Join(writeErr, ready.Close()); err != nil {
-					return err
-				}
-				<-ctx.Done()
-				return context.Cause(ctx)
-			}
-			if os.Args[5] == replaceResponse {
-				replacement, err := os.ReadFile(os.Args[1])
-				if err != nil {
-					return err
-				}
-				line, err = replaceReply(line, replacement)
-				if err != nil {
-					return err
-				}
-			} else {
-				withheld, err := withhold(request.(jsontext.Value), line)
-				if err != nil {
-					return err
-				}
-				if withheld {
-					return errors.New("message loss probe withheld committed response")
-				}
-			}
-		}
-		if _, err := fmt.Fprintln(os.Stdout, string(line)); err != nil {
-			return err
-		}
-	}
-	if err := responses.Err(); err != nil {
+	if err := probe.relayResponses(ctx, output); err != nil {
 		return err
 	}
 	select {
@@ -200,7 +106,191 @@ func run() (err error) {
 	}
 }
 
-func withhold(request, response jsontext.Value) (bool, error) {
+type probe struct {
+	evidence string
+	backend  string
+	method   string
+	tool     string
+	mode     faultMode
+	// retained holds each matched request line until its response arrives.
+	retained sync.Map
+}
+
+func newProbe(args []string) (*probe, error) {
+	if len(args) != 5 {
+		return nil, errUsage
+	}
+	mode := faultMode(args[4])
+	switch mode {
+	case withholdRequest, withholdResponse, durableCut, replaceResponse:
+	default:
+		return nil, errUsage
+	}
+	return &probe{evidence: args[0], backend: args[1], method: args[2], tool: args[3], mode: mode}, nil
+}
+
+type request struct {
+	ID     jsontext.Value `json:"id"`
+	Method string         `json:"method"`
+	Params struct {
+		Name   string `json:"name"`
+		Method string `json:"method"`
+	} `json:"params"`
+}
+
+// semantic unwraps Flame's invoke envelope to the method the backend implements.
+func (r request) semantic() string {
+	if r.Method == pluginmcp.InvokeMethod {
+		return r.Params.Method
+	}
+	return r.Method
+}
+
+func (p *probe) matches(r request) bool {
+	return r.semantic() == p.method && (p.tool == "" || r.Params.Name == p.tool)
+}
+
+func (p *probe) forwardRequests(backend io.WriteCloser) error {
+	scanner := bufio.NewScanner(os.Stdin)
+	scanner.Buffer(nil, sdk.DefaultMaxLineLength)
+	for scanner.Scan() {
+		if err := p.forward(backend, append([]byte(nil), scanner.Bytes()...)); err != nil {
+			return err
+		}
+	}
+	return errors.Join(scanner.Err(), backend.Close())
+}
+
+func (p *probe) forward(backend io.Writer, line []byte) error {
+	var message request
+	if err := json.Unmarshal(line, &message); err != nil {
+		return err
+	}
+	switch p.mode {
+	case withholdRequest:
+		if p.matches(message) {
+			withheld, err := p.withhold(line, nil)
+			if err != nil || withheld {
+				return errors.Join(err, errors.New("message loss probe withheld request"))
+			}
+		}
+	case durableCut:
+		cut, err := p.stage()
+		if err != nil {
+			return err
+		}
+		if cut.retains(message) {
+			p.retained.Store(string(message.ID), jsontext.Value(line))
+		}
+	default:
+		if p.matches(message) {
+			p.retained.Store(string(message.ID), jsontext.Value(line))
+		}
+	}
+	_, err := fmt.Fprintln(backend, string(line))
+	return err
+}
+
+func (p *probe) relayResponses(ctx context.Context, backend io.Reader) error {
+	responses := bufio.NewScanner(backend)
+	responses.Buffer(nil, sdk.DefaultMaxLineLength)
+	for responses.Scan() {
+		line, err := p.relay(ctx, responses.Bytes())
+		if err != nil {
+			return err
+		}
+		if _, err := fmt.Fprintln(os.Stdout, string(line)); err != nil {
+			return err
+		}
+	}
+	return responses.Err()
+}
+
+func (p *probe) relay(ctx context.Context, line []byte) ([]byte, error) {
+	var response struct {
+		ID jsontext.Value `json:"id"`
+	}
+	if err := json.Unmarshal(line, &response); err != nil {
+		return nil, err
+	}
+	retained, ok := p.retained.LoadAndDelete(string(response.ID))
+	if !ok {
+		return line, nil
+	}
+	original := retained.(jsontext.Value)
+	switch p.mode {
+	case durableCut:
+		return p.cut(ctx, original, line)
+	case replaceResponse:
+		replacement, err := os.ReadFile(p.evidence)
+		if err != nil {
+			return nil, err
+		}
+		return replaceReply(line, replacement)
+	default:
+		withheld, err := p.withhold(original, line)
+		if err != nil {
+			return nil, err
+		}
+		if withheld {
+			return nil, errors.New("message loss probe withheld committed response")
+		}
+		return line, nil
+	}
+}
+
+// cut records the exchange at the selected stage. A halting stage then parks
+// the probe so the test can SIGKILL Runtime after the backend committed.
+func (p *probe) cut(ctx context.Context, original jsontext.Value, line []byte) ([]byte, error) {
+	cut, err := p.stage()
+	if err != nil {
+		return nil, err
+	}
+	line, err = cut.fault(line)
+	if err != nil {
+		return nil, err
+	}
+	record, err := json.Marshal(struct {
+		Request       jsontext.Value `json:"request"`
+		Response      jsontext.Value `json:"response"`
+		DataDirectory string         `json:"dataDirectory"`
+	}{original, jsontext.Value(line), os.Getenv("PLUGIN_DATA")})
+	if err != nil {
+		return nil, err
+	}
+	if err := os.WriteFile(p.evidence+"."+string(cut), record, 0600); err != nil {
+		return nil, err
+	}
+	if !cut.halts() {
+		return line, nil
+	}
+	if err := p.signalReady(); err != nil {
+		return nil, err
+	}
+	<-ctx.Done()
+	return nil, context.Cause(ctx)
+}
+
+func (p *probe) stage() (stage, error) {
+	phase, err := os.ReadFile(p.evidence + ".phase")
+	if err != nil {
+		return "", err
+	}
+	return stage(strings.TrimSpace(string(phase))), nil
+}
+
+func (p *probe) signalReady() error {
+	ready, err := os.OpenFile(p.evidence+".ready", os.O_WRONLY, 0600)
+	if err != nil {
+		return err
+	}
+	_, writeErr := ready.WriteString("ready\n")
+	return errors.Join(writeErr, ready.Close())
+}
+
+// withhold claims the evidence file exclusively, so only the first matching
+// message is lost and every later one, including after a restart, passes.
+func (p *probe) withhold(request, response jsontext.Value) (bool, error) {
 	evidence, err := json.Marshal(struct {
 		DataDirectory string         `json:"dataDirectory"`
 		Request       jsontext.Value `json:"request"`
@@ -209,7 +299,7 @@ func withhold(request, response jsontext.Value) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	file, err := os.OpenFile(os.Args[1], os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
+	file, err := os.OpenFile(p.evidence, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
 	if errors.Is(err, os.ErrExist) {
 		return false, nil
 	}
@@ -220,22 +310,41 @@ func withhold(request, response jsontext.Value) (bool, error) {
 	return true, errors.Join(writeErr, file.Close())
 }
 
-func receiptFault(stage string, response []byte) ([]byte, error) {
+// cutsCreate reports whether the stage interrupts the create call itself
+// rather than the receipt query that recovers it.
+func (s stage) cutsCreate() bool {
+	return s == commitCut || s == editedCut
+}
+
+func (s stage) halts() bool {
+	return s.cutsCreate() || s == queryCut
+}
+
+func (s stage) retains(r request) bool {
+	if s.cutsCreate() {
+		return r.Method == callToolMethod && r.Params.Name == createScheduleTool
+	}
+	return r.semantic() == pluginsdk.ToolReceiptMethod
+}
+
+// fault rewrites the receipt reply the way a negative stage requires; every
+// other stage forwards the backend's reply intact.
+func (s stage) fault(response []byte) ([]byte, error) {
 	var result jsontext.Value
-	switch stage {
-	case "absent":
+	switch s {
+	case absentReceipt:
 		encoded, err := pluginmcp.EncodeReply(pluginsdk.ToolReceipt{}, nil, nil)
 		if err != nil {
 			return nil, err
 		}
 		result = encoded.Bytes()
-	case "conflict":
+	case conflictingReceipt:
 		encoded, err := pluginmcp.EncodeReply(pluginsdk.ToolReceipt{}, framecall.ErrConflict, nil)
 		if err != nil {
 			return nil, err
 		}
 		result = encoded.Bytes()
-	case "malformed":
+	case malformedReceipt:
 		result = jsontext.Value(`{"unexpected":"result"}`)
 	default:
 		return response, nil

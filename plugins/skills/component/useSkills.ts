@@ -427,3 +427,5 @@ export function useSkills(context: ComponentContext) {
     openDocument,
   };
 }
+
+export type SkillsState = ReturnType<typeof useSkills>;
