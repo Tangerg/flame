@@ -259,7 +259,14 @@ export class Application {
           command,
           now,
           (source) => this.#preparation.recalculate(source, context.signal),
-          "recalculate",
+          { operation: "recalculate" },
+        );
+      case "restore":
+        return this.#preparation.prepareRestore(
+          context,
+          schemas.restore.parse(input),
+          command,
+          now,
         );
       case "render":
         return this.#preparation.prepareRender(

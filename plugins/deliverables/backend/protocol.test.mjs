@@ -335,11 +335,42 @@ it(
     expect(
       (await next.invoke(METHODS.read, { id: created.documentId })).revision.id,
     ).toBe(changed.id);
+    const restore = {
+      id: created.documentId,
+      expectedRevision: changed.id,
+      revision: created.id,
+    };
+    const restored = await next.invoke(
+      METHODS.restore,
+      restore,
+      "restore-report",
+    );
+    expect(restored).toMatchObject({
+      operation: "restore",
+      parent: changed.id,
+      restored: created.id,
+      sha256: created.sha256,
+    });
+    await expect(
+      next.invoke(METHODS.restore, restore, "stale-restore"),
+    ).rejects.toMatchObject({ code: "revision_conflict" });
+    await expect(
+      next.invoke(
+        METHODS.restore,
+        { ...restore, expectedRevision: restored.id },
+        "current-restore",
+      ),
+    ).rejects.toMatchObject({ code: "invalid_restore" });
+    expect(
+      (
+        await next.invoke(METHODS.history, { id: created.documentId, limit: 8 })
+      ).entries.map((entry) => entry.id),
+    ).toEqual([restored.id, changed.id, created.id]);
     await next.invoke(
       METHODS.remove,
       {
         id: created.documentId,
-        expectedRevision: changed.id,
+        expectedRevision: restored.id,
       },
       "remove-report",
     );

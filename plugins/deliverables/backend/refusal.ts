@@ -43,6 +43,7 @@ export type RefusalCode =
   | "invalid_format"
   | "invalid_page"
   | "invalid_projection"
+  | "invalid_restore"
   | "invalid_review"
   | "process_failed"
   | "process_input_failed"

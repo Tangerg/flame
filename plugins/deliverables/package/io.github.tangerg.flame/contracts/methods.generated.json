@@ -128,6 +128,14 @@
     "output": "schema.json#/$defs/RenderV1Output"
   },
   {
+    "name": "flame.deliverables/restore.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Make an earlier revision of the same deliverable current again as a new revision with its exact native bytes. The exact current revision is required; history is kept, and the new revision has no inherited render or review.",
+    "input": "schema.json#/$defs/RestoreV1Input",
+    "output": "schema.json#/$defs/RestoreV1Output"
+  },
+  {
     "name": "flame.deliverables/review.v1",
     "kind": "command",
     "target": "installation",

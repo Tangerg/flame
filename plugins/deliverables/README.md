@@ -9,10 +9,12 @@ capability. Its workspace component and model tools use that same application.
 An immutable revision's native DOCX, XLSX, PPTX or PDF bytes own its content.
 The document aggregate owns its identity and current revision. A change requires
 the exact expected current revision and creates a new revision; it never rewrites
-history. Structured creation instructions are command evidence, not a second
-editable document. Imported packages are edited by explicit, bounded operations
-on selected parts. Unsupported edits are refused rather than round-tripped
-through a lossy reconstruction.
+history. Restoring an earlier revision is such a change: the new revision
+carries that revision's exact native bytes and names it, and every revision in
+between stays in history. Structured creation instructions are command
+evidence, not a second editable document. Imported packages are edited by
+explicit, bounded operations on selected parts. Unsupported edits are refused
+rather than round-tripped through a lossy reconstruction.
 
 The private SQLite archive owns revisions, derivative assets and original command
 receipts. Receipts bind the validated canonical input by digest, so retired upload
@@ -223,6 +225,11 @@ observations remain with that capture. Replacing its Runtime, component namespac
 callable binding, tracking function, cancellation signal or save capability
 retires the old workspace and its observers; it does not replay or retract a
 command.
+
+A historical revision in the revision history can be restored. The restoration
+expects the head that the reader shows, so a newer head refuses it; the editor
+then follows the restored head, and its Changes list shows what restoring
+changed.
 
 Document and revision-history pagination keeps its controls focusable while a
 read is pending and at page boundaries. Pending controls reject repeat activation;

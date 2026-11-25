@@ -29,6 +29,8 @@ function commandLabel(method: CommandMethod, t: Translate): string {
       return t("preview.render");
     case METHODS.recalculate:
       return t("preview.recalculate");
+    case METHODS.restore:
+      return t("history.restore");
     case METHODS.review:
       return t("review.submit");
     case METHODS.export:

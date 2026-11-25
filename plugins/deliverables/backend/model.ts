@@ -87,6 +87,7 @@ function revisionSummary(value: Revision) {
     ...(value.parent === undefined ? {} : { parent: value.parent }),
     createdAt: value.createdAt,
     operation: value.operation,
+    ...(value.operation === "restore" ? { restored: value.restored } : {}),
     format: value.format,
     sha256: value.sha256,
     size: value.size,
@@ -127,7 +128,9 @@ function assessmentSummary(value: Assessment) {
 }
 
 export function commandProjection(operation: string, value: unknown): unknown {
-  if (["create", "edit", "import", "recalculate"].includes(operation))
+  if (
+    ["create", "edit", "import", "recalculate", "restore"].includes(operation)
+  )
     return revisionSummary(schemas.revision.parse(value));
   if (operation === "render" || operation === "review")
     return assessmentSummary(schemas.assessment.parse(value));

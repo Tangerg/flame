@@ -414,45 +414,289 @@
       },
       "output": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "additionalProperties": false,
-        "properties": {
-          "createdAt": {
-            "maxLength": 40,
-            "minLength": 1,
-            "type": "string"
-          },
-          "documentId": {
-            "pattern": "^[a-f0-9]{64}$",
-            "type": "string"
-          },
-          "format": {
-            "enum": [
-              "docx",
-              "xlsx",
-              "pptx",
-              "pdf"
-            ],
-            "type": "string"
-          },
-          "id": {
-            "pattern": "^[a-f0-9]{64}$",
-            "type": "string"
-          },
-          "native": {
+        "oneOf": [
+          {
             "additionalProperties": false,
             "properties": {
-              "filename": {
-                "maxLength": 240,
+              "createdAt": {
+                "maxLength": 40,
                 "minLength": 1,
+                "type": "string"
+              },
+              "documentId": {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              "format": {
+                "enum": [
+                  "docx",
+                  "xlsx",
+                  "pptx",
+                  "pdf"
+                ],
                 "type": "string"
               },
               "id": {
                 "pattern": "^[a-f0-9]{64}$",
                 "type": "string"
               },
-              "mime": {
-                "maxLength": 100,
+              "native": {
+                "additionalProperties": false,
+                "properties": {
+                  "filename": {
+                    "maxLength": 240,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "id": {
+                    "pattern": "^[a-f0-9]{64}$",
+                    "type": "string"
+                  },
+                  "mime": {
+                    "maxLength": 100,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "sha256": {
+                    "pattern": "^[a-f0-9]{64}$",
+                    "type": "string"
+                  },
+                  "size": {
+                    "maximum": 100663296,
+                    "minimum": 1,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "id",
+                  "filename",
+                  "mime",
+                  "size",
+                  "sha256"
+                ],
+                "type": "object"
+              },
+              "operation": {
+                "enum": [
+                  "create",
+                  "import",
+                  "edit",
+                  "recalculate"
+                ],
+                "type": "string"
+              },
+              "parent": {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              "provenance": {
+                "additionalProperties": false,
+                "properties": {
+                  "assumptions": {
+                    "items": {
+                      "maxLength": 2000,
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "maxItems": 64,
+                    "type": "array"
+                  },
+                  "reproduction": {
+                    "maxLength": 12000,
+                    "type": "string"
+                  },
+                  "sources": {
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "note": {
+                          "maxLength": 2000,
+                          "type": "string"
+                        },
+                        "title": {
+                          "maxLength": 300,
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        "uri": {
+                          "maxLength": 2048,
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "title",
+                        "uri",
+                        "note"
+                      ],
+                      "type": "object"
+                    },
+                    "maxItems": 64,
+                    "type": "array"
+                  },
+                  "units": {
+                    "maxLength": 2000,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "sources",
+                  "assumptions",
+                  "units",
+                  "reproduction"
+                ],
+                "type": "object"
+              },
+              "sha256": {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              "size": {
+                "maximum": 33554432,
+                "minimum": 1,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "id",
+              "documentId",
+              "createdAt",
+              "format",
+              "sha256",
+              "size",
+              "provenance",
+              "native",
+              "operation"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "createdAt": {
+                "maxLength": 40,
                 "minLength": 1,
+                "type": "string"
+              },
+              "documentId": {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              "format": {
+                "enum": [
+                  "docx",
+                  "xlsx",
+                  "pptx",
+                  "pdf"
+                ],
+                "type": "string"
+              },
+              "id": {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              "native": {
+                "additionalProperties": false,
+                "properties": {
+                  "filename": {
+                    "maxLength": 240,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "id": {
+                    "pattern": "^[a-f0-9]{64}$",
+                    "type": "string"
+                  },
+                  "mime": {
+                    "maxLength": 100,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "sha256": {
+                    "pattern": "^[a-f0-9]{64}$",
+                    "type": "string"
+                  },
+                  "size": {
+                    "maximum": 100663296,
+                    "minimum": 1,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "id",
+                  "filename",
+                  "mime",
+                  "size",
+                  "sha256"
+                ],
+                "type": "object"
+              },
+              "operation": {
+                "const": "restore",
+                "type": "string"
+              },
+              "parent": {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              "provenance": {
+                "additionalProperties": false,
+                "properties": {
+                  "assumptions": {
+                    "items": {
+                      "maxLength": 2000,
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "maxItems": 64,
+                    "type": "array"
+                  },
+                  "reproduction": {
+                    "maxLength": 12000,
+                    "type": "string"
+                  },
+                  "sources": {
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "note": {
+                          "maxLength": 2000,
+                          "type": "string"
+                        },
+                        "title": {
+                          "maxLength": 300,
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        "uri": {
+                          "maxLength": 2048,
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "title",
+                        "uri",
+                        "note"
+                      ],
+                      "type": "object"
+                    },
+                    "maxItems": 64,
+                    "type": "array"
+                  },
+                  "units": {
+                    "maxLength": 2000,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "sources",
+                  "assumptions",
+                  "units",
+                  "reproduction"
+                ],
+                "type": "object"
+              },
+              "restored": {
+                "pattern": "^[a-f0-9]{64}$",
                 "type": "string"
               },
               "sha256": {
@@ -460,112 +704,27 @@
                 "type": "string"
               },
               "size": {
-                "maximum": 100663296,
+                "maximum": 33554432,
                 "minimum": 1,
                 "type": "integer"
               }
             },
             "required": [
               "id",
-              "filename",
-              "mime",
+              "documentId",
+              "createdAt",
+              "format",
+              "sha256",
               "size",
-              "sha256"
+              "provenance",
+              "native",
+              "parent",
+              "operation",
+              "restored"
             ],
             "type": "object"
-          },
-          "operation": {
-            "enum": [
-              "create",
-              "import",
-              "edit",
-              "recalculate"
-            ],
-            "type": "string"
-          },
-          "parent": {
-            "pattern": "^[a-f0-9]{64}$",
-            "type": "string"
-          },
-          "provenance": {
-            "additionalProperties": false,
-            "properties": {
-              "assumptions": {
-                "items": {
-                  "maxLength": 2000,
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "maxItems": 64,
-                "type": "array"
-              },
-              "reproduction": {
-                "maxLength": 12000,
-                "type": "string"
-              },
-              "sources": {
-                "items": {
-                  "additionalProperties": false,
-                  "properties": {
-                    "note": {
-                      "maxLength": 2000,
-                      "type": "string"
-                    },
-                    "title": {
-                      "maxLength": 300,
-                      "minLength": 1,
-                      "type": "string"
-                    },
-                    "uri": {
-                      "maxLength": 2048,
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "title",
-                    "uri",
-                    "note"
-                  ],
-                  "type": "object"
-                },
-                "maxItems": 64,
-                "type": "array"
-              },
-              "units": {
-                "maxLength": 2000,
-                "type": "string"
-              }
-            },
-            "required": [
-              "sources",
-              "assumptions",
-              "units",
-              "reproduction"
-            ],
-            "type": "object"
-          },
-          "sha256": {
-            "pattern": "^[a-f0-9]{64}$",
-            "type": "string"
-          },
-          "size": {
-            "maximum": 33554432,
-            "minimum": 1,
-            "type": "integer"
           }
-        },
-        "required": [
-          "id",
-          "documentId",
-          "createdAt",
-          "operation",
-          "format",
-          "sha256",
-          "size",
-          "provenance",
-          "native"
-        ],
-        "type": "object"
+        ]
       }
     },
     {
@@ -723,45 +882,289 @@
       },
       "output": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "additionalProperties": false,
-        "properties": {
-          "createdAt": {
-            "maxLength": 40,
-            "minLength": 1,
-            "type": "string"
-          },
-          "documentId": {
-            "pattern": "^[a-f0-9]{64}$",
-            "type": "string"
-          },
-          "format": {
-            "enum": [
-              "docx",
-              "xlsx",
-              "pptx",
-              "pdf"
-            ],
-            "type": "string"
-          },
-          "id": {
-            "pattern": "^[a-f0-9]{64}$",
-            "type": "string"
-          },
-          "native": {
+        "oneOf": [
+          {
             "additionalProperties": false,
             "properties": {
-              "filename": {
-                "maxLength": 240,
+              "createdAt": {
+                "maxLength": 40,
                 "minLength": 1,
+                "type": "string"
+              },
+              "documentId": {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              "format": {
+                "enum": [
+                  "docx",
+                  "xlsx",
+                  "pptx",
+                  "pdf"
+                ],
                 "type": "string"
               },
               "id": {
                 "pattern": "^[a-f0-9]{64}$",
                 "type": "string"
               },
-              "mime": {
-                "maxLength": 100,
+              "native": {
+                "additionalProperties": false,
+                "properties": {
+                  "filename": {
+                    "maxLength": 240,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "id": {
+                    "pattern": "^[a-f0-9]{64}$",
+                    "type": "string"
+                  },
+                  "mime": {
+                    "maxLength": 100,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "sha256": {
+                    "pattern": "^[a-f0-9]{64}$",
+                    "type": "string"
+                  },
+                  "size": {
+                    "maximum": 100663296,
+                    "minimum": 1,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "id",
+                  "filename",
+                  "mime",
+                  "size",
+                  "sha256"
+                ],
+                "type": "object"
+              },
+              "operation": {
+                "enum": [
+                  "create",
+                  "import",
+                  "edit",
+                  "recalculate"
+                ],
+                "type": "string"
+              },
+              "parent": {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              "provenance": {
+                "additionalProperties": false,
+                "properties": {
+                  "assumptions": {
+                    "items": {
+                      "maxLength": 2000,
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "maxItems": 64,
+                    "type": "array"
+                  },
+                  "reproduction": {
+                    "maxLength": 12000,
+                    "type": "string"
+                  },
+                  "sources": {
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "note": {
+                          "maxLength": 2000,
+                          "type": "string"
+                        },
+                        "title": {
+                          "maxLength": 300,
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        "uri": {
+                          "maxLength": 2048,
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "title",
+                        "uri",
+                        "note"
+                      ],
+                      "type": "object"
+                    },
+                    "maxItems": 64,
+                    "type": "array"
+                  },
+                  "units": {
+                    "maxLength": 2000,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "sources",
+                  "assumptions",
+                  "units",
+                  "reproduction"
+                ],
+                "type": "object"
+              },
+              "sha256": {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              "size": {
+                "maximum": 33554432,
+                "minimum": 1,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "id",
+              "documentId",
+              "createdAt",
+              "format",
+              "sha256",
+              "size",
+              "provenance",
+              "native",
+              "operation"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "createdAt": {
+                "maxLength": 40,
                 "minLength": 1,
+                "type": "string"
+              },
+              "documentId": {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              "format": {
+                "enum": [
+                  "docx",
+                  "xlsx",
+                  "pptx",
+                  "pdf"
+                ],
+                "type": "string"
+              },
+              "id": {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              "native": {
+                "additionalProperties": false,
+                "properties": {
+                  "filename": {
+                    "maxLength": 240,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "id": {
+                    "pattern": "^[a-f0-9]{64}$",
+                    "type": "string"
+                  },
+                  "mime": {
+                    "maxLength": 100,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "sha256": {
+                    "pattern": "^[a-f0-9]{64}$",
+                    "type": "string"
+                  },
+                  "size": {
+                    "maximum": 100663296,
+                    "minimum": 1,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "id",
+                  "filename",
+                  "mime",
+                  "size",
+                  "sha256"
+                ],
+                "type": "object"
+              },
+              "operation": {
+                "const": "restore",
+                "type": "string"
+              },
+              "parent": {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              "provenance": {
+                "additionalProperties": false,
+                "properties": {
+                  "assumptions": {
+                    "items": {
+                      "maxLength": 2000,
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "maxItems": 64,
+                    "type": "array"
+                  },
+                  "reproduction": {
+                    "maxLength": 12000,
+                    "type": "string"
+                  },
+                  "sources": {
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "note": {
+                          "maxLength": 2000,
+                          "type": "string"
+                        },
+                        "title": {
+                          "maxLength": 300,
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        "uri": {
+                          "maxLength": 2048,
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "title",
+                        "uri",
+                        "note"
+                      ],
+                      "type": "object"
+                    },
+                    "maxItems": 64,
+                    "type": "array"
+                  },
+                  "units": {
+                    "maxLength": 2000,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "sources",
+                  "assumptions",
+                  "units",
+                  "reproduction"
+                ],
+                "type": "object"
+              },
+              "restored": {
+                "pattern": "^[a-f0-9]{64}$",
                 "type": "string"
               },
               "sha256": {
@@ -769,112 +1172,27 @@
                 "type": "string"
               },
               "size": {
-                "maximum": 100663296,
+                "maximum": 33554432,
                 "minimum": 1,
                 "type": "integer"
               }
             },
             "required": [
               "id",
-              "filename",
-              "mime",
+              "documentId",
+              "createdAt",
+              "format",
+              "sha256",
               "size",
-              "sha256"
+              "provenance",
+              "native",
+              "parent",
+              "operation",
+              "restored"
             ],
             "type": "object"
-          },
-          "operation": {
-            "enum": [
-              "create",
-              "import",
-              "edit",
-              "recalculate"
-            ],
-            "type": "string"
-          },
-          "parent": {
-            "pattern": "^[a-f0-9]{64}$",
-            "type": "string"
-          },
-          "provenance": {
-            "additionalProperties": false,
-            "properties": {
-              "assumptions": {
-                "items": {
-                  "maxLength": 2000,
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "maxItems": 64,
-                "type": "array"
-              },
-              "reproduction": {
-                "maxLength": 12000,
-                "type": "string"
-              },
-              "sources": {
-                "items": {
-                  "additionalProperties": false,
-                  "properties": {
-                    "note": {
-                      "maxLength": 2000,
-                      "type": "string"
-                    },
-                    "title": {
-                      "maxLength": 300,
-                      "minLength": 1,
-                      "type": "string"
-                    },
-                    "uri": {
-                      "maxLength": 2048,
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "title",
-                    "uri",
-                    "note"
-                  ],
-                  "type": "object"
-                },
-                "maxItems": 64,
-                "type": "array"
-              },
-              "units": {
-                "maxLength": 2000,
-                "type": "string"
-              }
-            },
-            "required": [
-              "sources",
-              "assumptions",
-              "units",
-              "reproduction"
-            ],
-            "type": "object"
-          },
-          "sha256": {
-            "pattern": "^[a-f0-9]{64}$",
-            "type": "string"
-          },
-          "size": {
-            "maximum": 33554432,
-            "minimum": 1,
-            "type": "integer"
           }
-        },
-        "required": [
-          "id",
-          "documentId",
-          "createdAt",
-          "operation",
-          "format",
-          "sha256",
-          "size",
-          "provenance",
-          "native"
-        ],
-        "type": "object"
+        ]
       }
     },
     {
@@ -989,45 +1307,289 @@
         "properties": {
           "entries": {
             "items": {
-              "additionalProperties": false,
-              "properties": {
-                "createdAt": {
-                  "maxLength": 40,
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "documentId": {
-                  "pattern": "^[a-f0-9]{64}$",
-                  "type": "string"
-                },
-                "format": {
-                  "enum": [
-                    "docx",
-                    "xlsx",
-                    "pptx",
-                    "pdf"
-                  ],
-                  "type": "string"
-                },
-                "id": {
-                  "pattern": "^[a-f0-9]{64}$",
-                  "type": "string"
-                },
-                "native": {
+              "oneOf": [
+                {
                   "additionalProperties": false,
                   "properties": {
-                    "filename": {
-                      "maxLength": 240,
+                    "createdAt": {
+                      "maxLength": 40,
                       "minLength": 1,
+                      "type": "string"
+                    },
+                    "documentId": {
+                      "pattern": "^[a-f0-9]{64}$",
+                      "type": "string"
+                    },
+                    "format": {
+                      "enum": [
+                        "docx",
+                        "xlsx",
+                        "pptx",
+                        "pdf"
+                      ],
                       "type": "string"
                     },
                     "id": {
                       "pattern": "^[a-f0-9]{64}$",
                       "type": "string"
                     },
-                    "mime": {
-                      "maxLength": 100,
+                    "native": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "filename": {
+                          "maxLength": 240,
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        "id": {
+                          "pattern": "^[a-f0-9]{64}$",
+                          "type": "string"
+                        },
+                        "mime": {
+                          "maxLength": 100,
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        "sha256": {
+                          "pattern": "^[a-f0-9]{64}$",
+                          "type": "string"
+                        },
+                        "size": {
+                          "maximum": 100663296,
+                          "minimum": 1,
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "filename",
+                        "mime",
+                        "size",
+                        "sha256"
+                      ],
+                      "type": "object"
+                    },
+                    "operation": {
+                      "enum": [
+                        "create",
+                        "import",
+                        "edit",
+                        "recalculate"
+                      ],
+                      "type": "string"
+                    },
+                    "parent": {
+                      "pattern": "^[a-f0-9]{64}$",
+                      "type": "string"
+                    },
+                    "provenance": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "assumptions": {
+                          "items": {
+                            "maxLength": 2000,
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "maxItems": 64,
+                          "type": "array"
+                        },
+                        "reproduction": {
+                          "maxLength": 12000,
+                          "type": "string"
+                        },
+                        "sources": {
+                          "items": {
+                            "additionalProperties": false,
+                            "properties": {
+                              "note": {
+                                "maxLength": 2000,
+                                "type": "string"
+                              },
+                              "title": {
+                                "maxLength": 300,
+                                "minLength": 1,
+                                "type": "string"
+                              },
+                              "uri": {
+                                "maxLength": 2048,
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "title",
+                              "uri",
+                              "note"
+                            ],
+                            "type": "object"
+                          },
+                          "maxItems": 64,
+                          "type": "array"
+                        },
+                        "units": {
+                          "maxLength": 2000,
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "sources",
+                        "assumptions",
+                        "units",
+                        "reproduction"
+                      ],
+                      "type": "object"
+                    },
+                    "sha256": {
+                      "pattern": "^[a-f0-9]{64}$",
+                      "type": "string"
+                    },
+                    "size": {
+                      "maximum": 33554432,
+                      "minimum": 1,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "documentId",
+                    "createdAt",
+                    "format",
+                    "sha256",
+                    "size",
+                    "provenance",
+                    "native",
+                    "operation"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "createdAt": {
+                      "maxLength": 40,
                       "minLength": 1,
+                      "type": "string"
+                    },
+                    "documentId": {
+                      "pattern": "^[a-f0-9]{64}$",
+                      "type": "string"
+                    },
+                    "format": {
+                      "enum": [
+                        "docx",
+                        "xlsx",
+                        "pptx",
+                        "pdf"
+                      ],
+                      "type": "string"
+                    },
+                    "id": {
+                      "pattern": "^[a-f0-9]{64}$",
+                      "type": "string"
+                    },
+                    "native": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "filename": {
+                          "maxLength": 240,
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        "id": {
+                          "pattern": "^[a-f0-9]{64}$",
+                          "type": "string"
+                        },
+                        "mime": {
+                          "maxLength": 100,
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        "sha256": {
+                          "pattern": "^[a-f0-9]{64}$",
+                          "type": "string"
+                        },
+                        "size": {
+                          "maximum": 100663296,
+                          "minimum": 1,
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "filename",
+                        "mime",
+                        "size",
+                        "sha256"
+                      ],
+                      "type": "object"
+                    },
+                    "operation": {
+                      "const": "restore",
+                      "type": "string"
+                    },
+                    "parent": {
+                      "pattern": "^[a-f0-9]{64}$",
+                      "type": "string"
+                    },
+                    "provenance": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "assumptions": {
+                          "items": {
+                            "maxLength": 2000,
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "maxItems": 64,
+                          "type": "array"
+                        },
+                        "reproduction": {
+                          "maxLength": 12000,
+                          "type": "string"
+                        },
+                        "sources": {
+                          "items": {
+                            "additionalProperties": false,
+                            "properties": {
+                              "note": {
+                                "maxLength": 2000,
+                                "type": "string"
+                              },
+                              "title": {
+                                "maxLength": 300,
+                                "minLength": 1,
+                                "type": "string"
+                              },
+                              "uri": {
+                                "maxLength": 2048,
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "title",
+                              "uri",
+                              "note"
+                            ],
+                            "type": "object"
+                          },
+                          "maxItems": 64,
+                          "type": "array"
+                        },
+                        "units": {
+                          "maxLength": 2000,
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "sources",
+                        "assumptions",
+                        "units",
+                        "reproduction"
+                      ],
+                      "type": "object"
+                    },
+                    "restored": {
+                      "pattern": "^[a-f0-9]{64}$",
                       "type": "string"
                     },
                     "sha256": {
@@ -1035,112 +1597,27 @@
                       "type": "string"
                     },
                     "size": {
-                      "maximum": 100663296,
+                      "maximum": 33554432,
                       "minimum": 1,
                       "type": "integer"
                     }
                   },
                   "required": [
                     "id",
-                    "filename",
-                    "mime",
+                    "documentId",
+                    "createdAt",
+                    "format",
+                    "sha256",
                     "size",
-                    "sha256"
+                    "provenance",
+                    "native",
+                    "parent",
+                    "operation",
+                    "restored"
                   ],
                   "type": "object"
-                },
-                "operation": {
-                  "enum": [
-                    "create",
-                    "import",
-                    "edit",
-                    "recalculate"
-                  ],
-                  "type": "string"
-                },
-                "parent": {
-                  "pattern": "^[a-f0-9]{64}$",
-                  "type": "string"
-                },
-                "provenance": {
-                  "additionalProperties": false,
-                  "properties": {
-                    "assumptions": {
-                      "items": {
-                        "maxLength": 2000,
-                        "minLength": 1,
-                        "type": "string"
-                      },
-                      "maxItems": 64,
-                      "type": "array"
-                    },
-                    "reproduction": {
-                      "maxLength": 12000,
-                      "type": "string"
-                    },
-                    "sources": {
-                      "items": {
-                        "additionalProperties": false,
-                        "properties": {
-                          "note": {
-                            "maxLength": 2000,
-                            "type": "string"
-                          },
-                          "title": {
-                            "maxLength": 300,
-                            "minLength": 1,
-                            "type": "string"
-                          },
-                          "uri": {
-                            "maxLength": 2048,
-                            "type": "string"
-                          }
-                        },
-                        "required": [
-                          "title",
-                          "uri",
-                          "note"
-                        ],
-                        "type": "object"
-                      },
-                      "maxItems": 64,
-                      "type": "array"
-                    },
-                    "units": {
-                      "maxLength": 2000,
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "sources",
-                    "assumptions",
-                    "units",
-                    "reproduction"
-                  ],
-                  "type": "object"
-                },
-                "sha256": {
-                  "pattern": "^[a-f0-9]{64}$",
-                  "type": "string"
-                },
-                "size": {
-                  "maximum": 33554432,
-                  "minimum": 1,
-                  "type": "integer"
                 }
-              },
-              "required": [
-                "id",
-                "documentId",
-                "createdAt",
-                "operation",
-                "format",
-                "sha256",
-                "size",
-                "provenance",
-                "native"
-              ],
-              "type": "object"
+              ]
             },
             "maxItems": 32,
             "type": "array"
@@ -1256,45 +1733,289 @@
       },
       "output": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "additionalProperties": false,
-        "properties": {
-          "createdAt": {
-            "maxLength": 40,
-            "minLength": 1,
-            "type": "string"
-          },
-          "documentId": {
-            "pattern": "^[a-f0-9]{64}$",
-            "type": "string"
-          },
-          "format": {
-            "enum": [
-              "docx",
-              "xlsx",
-              "pptx",
-              "pdf"
-            ],
-            "type": "string"
-          },
-          "id": {
-            "pattern": "^[a-f0-9]{64}$",
-            "type": "string"
-          },
-          "native": {
+        "oneOf": [
+          {
             "additionalProperties": false,
             "properties": {
-              "filename": {
-                "maxLength": 240,
+              "createdAt": {
+                "maxLength": 40,
                 "minLength": 1,
+                "type": "string"
+              },
+              "documentId": {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              "format": {
+                "enum": [
+                  "docx",
+                  "xlsx",
+                  "pptx",
+                  "pdf"
+                ],
                 "type": "string"
               },
               "id": {
                 "pattern": "^[a-f0-9]{64}$",
                 "type": "string"
               },
-              "mime": {
-                "maxLength": 100,
+              "native": {
+                "additionalProperties": false,
+                "properties": {
+                  "filename": {
+                    "maxLength": 240,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "id": {
+                    "pattern": "^[a-f0-9]{64}$",
+                    "type": "string"
+                  },
+                  "mime": {
+                    "maxLength": 100,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "sha256": {
+                    "pattern": "^[a-f0-9]{64}$",
+                    "type": "string"
+                  },
+                  "size": {
+                    "maximum": 100663296,
+                    "minimum": 1,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "id",
+                  "filename",
+                  "mime",
+                  "size",
+                  "sha256"
+                ],
+                "type": "object"
+              },
+              "operation": {
+                "enum": [
+                  "create",
+                  "import",
+                  "edit",
+                  "recalculate"
+                ],
+                "type": "string"
+              },
+              "parent": {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              "provenance": {
+                "additionalProperties": false,
+                "properties": {
+                  "assumptions": {
+                    "items": {
+                      "maxLength": 2000,
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "maxItems": 64,
+                    "type": "array"
+                  },
+                  "reproduction": {
+                    "maxLength": 12000,
+                    "type": "string"
+                  },
+                  "sources": {
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "note": {
+                          "maxLength": 2000,
+                          "type": "string"
+                        },
+                        "title": {
+                          "maxLength": 300,
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        "uri": {
+                          "maxLength": 2048,
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "title",
+                        "uri",
+                        "note"
+                      ],
+                      "type": "object"
+                    },
+                    "maxItems": 64,
+                    "type": "array"
+                  },
+                  "units": {
+                    "maxLength": 2000,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "sources",
+                  "assumptions",
+                  "units",
+                  "reproduction"
+                ],
+                "type": "object"
+              },
+              "sha256": {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              "size": {
+                "maximum": 33554432,
+                "minimum": 1,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "id",
+              "documentId",
+              "createdAt",
+              "format",
+              "sha256",
+              "size",
+              "provenance",
+              "native",
+              "operation"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "createdAt": {
+                "maxLength": 40,
                 "minLength": 1,
+                "type": "string"
+              },
+              "documentId": {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              "format": {
+                "enum": [
+                  "docx",
+                  "xlsx",
+                  "pptx",
+                  "pdf"
+                ],
+                "type": "string"
+              },
+              "id": {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              "native": {
+                "additionalProperties": false,
+                "properties": {
+                  "filename": {
+                    "maxLength": 240,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "id": {
+                    "pattern": "^[a-f0-9]{64}$",
+                    "type": "string"
+                  },
+                  "mime": {
+                    "maxLength": 100,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "sha256": {
+                    "pattern": "^[a-f0-9]{64}$",
+                    "type": "string"
+                  },
+                  "size": {
+                    "maximum": 100663296,
+                    "minimum": 1,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "id",
+                  "filename",
+                  "mime",
+                  "size",
+                  "sha256"
+                ],
+                "type": "object"
+              },
+              "operation": {
+                "const": "restore",
+                "type": "string"
+              },
+              "parent": {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              "provenance": {
+                "additionalProperties": false,
+                "properties": {
+                  "assumptions": {
+                    "items": {
+                      "maxLength": 2000,
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "maxItems": 64,
+                    "type": "array"
+                  },
+                  "reproduction": {
+                    "maxLength": 12000,
+                    "type": "string"
+                  },
+                  "sources": {
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "note": {
+                          "maxLength": 2000,
+                          "type": "string"
+                        },
+                        "title": {
+                          "maxLength": 300,
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        "uri": {
+                          "maxLength": 2048,
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "title",
+                        "uri",
+                        "note"
+                      ],
+                      "type": "object"
+                    },
+                    "maxItems": 64,
+                    "type": "array"
+                  },
+                  "units": {
+                    "maxLength": 2000,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "sources",
+                  "assumptions",
+                  "units",
+                  "reproduction"
+                ],
+                "type": "object"
+              },
+              "restored": {
+                "pattern": "^[a-f0-9]{64}$",
                 "type": "string"
               },
               "sha256": {
@@ -1302,112 +2023,27 @@
                 "type": "string"
               },
               "size": {
-                "maximum": 100663296,
+                "maximum": 33554432,
                 "minimum": 1,
                 "type": "integer"
               }
             },
             "required": [
               "id",
-              "filename",
-              "mime",
+              "documentId",
+              "createdAt",
+              "format",
+              "sha256",
               "size",
-              "sha256"
+              "provenance",
+              "native",
+              "parent",
+              "operation",
+              "restored"
             ],
             "type": "object"
-          },
-          "operation": {
-            "enum": [
-              "create",
-              "import",
-              "edit",
-              "recalculate"
-            ],
-            "type": "string"
-          },
-          "parent": {
-            "pattern": "^[a-f0-9]{64}$",
-            "type": "string"
-          },
-          "provenance": {
-            "additionalProperties": false,
-            "properties": {
-              "assumptions": {
-                "items": {
-                  "maxLength": 2000,
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "maxItems": 64,
-                "type": "array"
-              },
-              "reproduction": {
-                "maxLength": 12000,
-                "type": "string"
-              },
-              "sources": {
-                "items": {
-                  "additionalProperties": false,
-                  "properties": {
-                    "note": {
-                      "maxLength": 2000,
-                      "type": "string"
-                    },
-                    "title": {
-                      "maxLength": 300,
-                      "minLength": 1,
-                      "type": "string"
-                    },
-                    "uri": {
-                      "maxLength": 2048,
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "title",
-                    "uri",
-                    "note"
-                  ],
-                  "type": "object"
-                },
-                "maxItems": 64,
-                "type": "array"
-              },
-              "units": {
-                "maxLength": 2000,
-                "type": "string"
-              }
-            },
-            "required": [
-              "sources",
-              "assumptions",
-              "units",
-              "reproduction"
-            ],
-            "type": "object"
-          },
-          "sha256": {
-            "pattern": "^[a-f0-9]{64}$",
-            "type": "string"
-          },
-          "size": {
-            "maximum": 33554432,
-            "minimum": 1,
-            "type": "integer"
           }
-        },
-        "required": [
-          "id",
-          "documentId",
-          "createdAt",
-          "operation",
-          "format",
-          "sha256",
-          "size",
-          "provenance",
-          "native"
-        ],
-        "type": "object"
+        ]
       }
     },
     {
@@ -1666,6 +2302,356 @@
             "type": "string"
           },
           "revision": {
+            "oneOf": [
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "createdAt": {
+                    "maxLength": 40,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "documentId": {
+                    "pattern": "^[a-f0-9]{64}$",
+                    "type": "string"
+                  },
+                  "format": {
+                    "enum": [
+                      "docx",
+                      "xlsx",
+                      "pptx",
+                      "pdf"
+                    ],
+                    "type": "string"
+                  },
+                  "id": {
+                    "pattern": "^[a-f0-9]{64}$",
+                    "type": "string"
+                  },
+                  "native": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "filename": {
+                        "maxLength": 240,
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "id": {
+                        "pattern": "^[a-f0-9]{64}$",
+                        "type": "string"
+                      },
+                      "mime": {
+                        "maxLength": 100,
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "sha256": {
+                        "pattern": "^[a-f0-9]{64}$",
+                        "type": "string"
+                      },
+                      "size": {
+                        "maximum": 100663296,
+                        "minimum": 1,
+                        "type": "integer"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "filename",
+                      "mime",
+                      "size",
+                      "sha256"
+                    ],
+                    "type": "object"
+                  },
+                  "operation": {
+                    "enum": [
+                      "create",
+                      "import",
+                      "edit",
+                      "recalculate"
+                    ],
+                    "type": "string"
+                  },
+                  "parent": {
+                    "pattern": "^[a-f0-9]{64}$",
+                    "type": "string"
+                  },
+                  "provenance": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "assumptions": {
+                        "items": {
+                          "maxLength": 2000,
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        "maxItems": 64,
+                        "type": "array"
+                      },
+                      "reproduction": {
+                        "maxLength": 12000,
+                        "type": "string"
+                      },
+                      "sources": {
+                        "items": {
+                          "additionalProperties": false,
+                          "properties": {
+                            "note": {
+                              "maxLength": 2000,
+                              "type": "string"
+                            },
+                            "title": {
+                              "maxLength": 300,
+                              "minLength": 1,
+                              "type": "string"
+                            },
+                            "uri": {
+                              "maxLength": 2048,
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "title",
+                            "uri",
+                            "note"
+                          ],
+                          "type": "object"
+                        },
+                        "maxItems": 64,
+                        "type": "array"
+                      },
+                      "units": {
+                        "maxLength": 2000,
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "sources",
+                      "assumptions",
+                      "units",
+                      "reproduction"
+                    ],
+                    "type": "object"
+                  },
+                  "sha256": {
+                    "pattern": "^[a-f0-9]{64}$",
+                    "type": "string"
+                  },
+                  "size": {
+                    "maximum": 33554432,
+                    "minimum": 1,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "id",
+                  "documentId",
+                  "createdAt",
+                  "format",
+                  "sha256",
+                  "size",
+                  "provenance",
+                  "native",
+                  "operation"
+                ],
+                "type": "object"
+              },
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "createdAt": {
+                    "maxLength": 40,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "documentId": {
+                    "pattern": "^[a-f0-9]{64}$",
+                    "type": "string"
+                  },
+                  "format": {
+                    "enum": [
+                      "docx",
+                      "xlsx",
+                      "pptx",
+                      "pdf"
+                    ],
+                    "type": "string"
+                  },
+                  "id": {
+                    "pattern": "^[a-f0-9]{64}$",
+                    "type": "string"
+                  },
+                  "native": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "filename": {
+                        "maxLength": 240,
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "id": {
+                        "pattern": "^[a-f0-9]{64}$",
+                        "type": "string"
+                      },
+                      "mime": {
+                        "maxLength": 100,
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "sha256": {
+                        "pattern": "^[a-f0-9]{64}$",
+                        "type": "string"
+                      },
+                      "size": {
+                        "maximum": 100663296,
+                        "minimum": 1,
+                        "type": "integer"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "filename",
+                      "mime",
+                      "size",
+                      "sha256"
+                    ],
+                    "type": "object"
+                  },
+                  "operation": {
+                    "const": "restore",
+                    "type": "string"
+                  },
+                  "parent": {
+                    "pattern": "^[a-f0-9]{64}$",
+                    "type": "string"
+                  },
+                  "provenance": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "assumptions": {
+                        "items": {
+                          "maxLength": 2000,
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        "maxItems": 64,
+                        "type": "array"
+                      },
+                      "reproduction": {
+                        "maxLength": 12000,
+                        "type": "string"
+                      },
+                      "sources": {
+                        "items": {
+                          "additionalProperties": false,
+                          "properties": {
+                            "note": {
+                              "maxLength": 2000,
+                              "type": "string"
+                            },
+                            "title": {
+                              "maxLength": 300,
+                              "minLength": 1,
+                              "type": "string"
+                            },
+                            "uri": {
+                              "maxLength": 2048,
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "title",
+                            "uri",
+                            "note"
+                          ],
+                          "type": "object"
+                        },
+                        "maxItems": 64,
+                        "type": "array"
+                      },
+                      "units": {
+                        "maxLength": 2000,
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "sources",
+                      "assumptions",
+                      "units",
+                      "reproduction"
+                    ],
+                    "type": "object"
+                  },
+                  "restored": {
+                    "pattern": "^[a-f0-9]{64}$",
+                    "type": "string"
+                  },
+                  "sha256": {
+                    "pattern": "^[a-f0-9]{64}$",
+                    "type": "string"
+                  },
+                  "size": {
+                    "maximum": 33554432,
+                    "minimum": 1,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "id",
+                  "documentId",
+                  "createdAt",
+                  "format",
+                  "sha256",
+                  "size",
+                  "provenance",
+                  "native",
+                  "parent",
+                  "operation",
+                  "restored"
+                ],
+                "type": "object"
+              }
+            ]
+          }
+        },
+        "required": [
+          "document",
+          "revision",
+          "inspectionJSON",
+          "assessments"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "flame.deliverables/recalculate.v1",
+      "kind": "command",
+      "target": "installation",
+      "description": "Recalculate an XLSX through confined LibreOffice into a new native revision. Conversion may change Office formatting; the exact original is retained. Inspect resulting formula errors and missing caches.",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "expectedRevision": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "expectedRevision"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "oneOf": [
+          {
             "additionalProperties": false,
             "properties": {
               "createdAt": {
@@ -1810,90 +2796,143 @@
               "id",
               "documentId",
               "createdAt",
-              "operation",
               "format",
               "sha256",
               "size",
               "provenance",
-              "native"
+              "native",
+              "operation"
             ],
             "type": "object"
-          }
-        },
-        "required": [
-          "document",
-          "revision",
-          "inspectionJSON",
-          "assessments"
-        ],
-        "type": "object"
-      }
-    },
-    {
-      "name": "flame.deliverables/recalculate.v1",
-      "kind": "command",
-      "target": "installation",
-      "description": "Recalculate an XLSX through confined LibreOffice into a new native revision. Conversion may change Office formatting; the exact original is retained. Inspect resulting formula errors and missing caches.",
-      "input": {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "additionalProperties": false,
-        "properties": {
-          "expectedRevision": {
-            "pattern": "^[a-f0-9]{64}$",
-            "type": "string"
           },
-          "id": {
-            "pattern": "^[a-f0-9]{64}$",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "expectedRevision"
-        ],
-        "type": "object"
-      },
-      "output": {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "additionalProperties": false,
-        "properties": {
-          "createdAt": {
-            "maxLength": 40,
-            "minLength": 1,
-            "type": "string"
-          },
-          "documentId": {
-            "pattern": "^[a-f0-9]{64}$",
-            "type": "string"
-          },
-          "format": {
-            "enum": [
-              "docx",
-              "xlsx",
-              "pptx",
-              "pdf"
-            ],
-            "type": "string"
-          },
-          "id": {
-            "pattern": "^[a-f0-9]{64}$",
-            "type": "string"
-          },
-          "native": {
+          {
             "additionalProperties": false,
             "properties": {
-              "filename": {
-                "maxLength": 240,
+              "createdAt": {
+                "maxLength": 40,
                 "minLength": 1,
+                "type": "string"
+              },
+              "documentId": {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              "format": {
+                "enum": [
+                  "docx",
+                  "xlsx",
+                  "pptx",
+                  "pdf"
+                ],
                 "type": "string"
               },
               "id": {
                 "pattern": "^[a-f0-9]{64}$",
                 "type": "string"
               },
-              "mime": {
-                "maxLength": 100,
-                "minLength": 1,
+              "native": {
+                "additionalProperties": false,
+                "properties": {
+                  "filename": {
+                    "maxLength": 240,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "id": {
+                    "pattern": "^[a-f0-9]{64}$",
+                    "type": "string"
+                  },
+                  "mime": {
+                    "maxLength": 100,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "sha256": {
+                    "pattern": "^[a-f0-9]{64}$",
+                    "type": "string"
+                  },
+                  "size": {
+                    "maximum": 100663296,
+                    "minimum": 1,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "id",
+                  "filename",
+                  "mime",
+                  "size",
+                  "sha256"
+                ],
+                "type": "object"
+              },
+              "operation": {
+                "const": "restore",
+                "type": "string"
+              },
+              "parent": {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              "provenance": {
+                "additionalProperties": false,
+                "properties": {
+                  "assumptions": {
+                    "items": {
+                      "maxLength": 2000,
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "maxItems": 64,
+                    "type": "array"
+                  },
+                  "reproduction": {
+                    "maxLength": 12000,
+                    "type": "string"
+                  },
+                  "sources": {
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "note": {
+                          "maxLength": 2000,
+                          "type": "string"
+                        },
+                        "title": {
+                          "maxLength": 300,
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        "uri": {
+                          "maxLength": 2048,
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "title",
+                        "uri",
+                        "note"
+                      ],
+                      "type": "object"
+                    },
+                    "maxItems": 64,
+                    "type": "array"
+                  },
+                  "units": {
+                    "maxLength": 2000,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "sources",
+                  "assumptions",
+                  "units",
+                  "reproduction"
+                ],
+                "type": "object"
+              },
+              "restored": {
+                "pattern": "^[a-f0-9]{64}$",
                 "type": "string"
               },
               "sha256": {
@@ -1901,112 +2940,27 @@
                 "type": "string"
               },
               "size": {
-                "maximum": 100663296,
+                "maximum": 33554432,
                 "minimum": 1,
                 "type": "integer"
               }
             },
             "required": [
               "id",
-              "filename",
-              "mime",
+              "documentId",
+              "createdAt",
+              "format",
+              "sha256",
               "size",
-              "sha256"
+              "provenance",
+              "native",
+              "parent",
+              "operation",
+              "restored"
             ],
             "type": "object"
-          },
-          "operation": {
-            "enum": [
-              "create",
-              "import",
-              "edit",
-              "recalculate"
-            ],
-            "type": "string"
-          },
-          "parent": {
-            "pattern": "^[a-f0-9]{64}$",
-            "type": "string"
-          },
-          "provenance": {
-            "additionalProperties": false,
-            "properties": {
-              "assumptions": {
-                "items": {
-                  "maxLength": 2000,
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "maxItems": 64,
-                "type": "array"
-              },
-              "reproduction": {
-                "maxLength": 12000,
-                "type": "string"
-              },
-              "sources": {
-                "items": {
-                  "additionalProperties": false,
-                  "properties": {
-                    "note": {
-                      "maxLength": 2000,
-                      "type": "string"
-                    },
-                    "title": {
-                      "maxLength": 300,
-                      "minLength": 1,
-                      "type": "string"
-                    },
-                    "uri": {
-                      "maxLength": 2048,
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "title",
-                    "uri",
-                    "note"
-                  ],
-                  "type": "object"
-                },
-                "maxItems": 64,
-                "type": "array"
-              },
-              "units": {
-                "maxLength": 2000,
-                "type": "string"
-              }
-            },
-            "required": [
-              "sources",
-              "assumptions",
-              "units",
-              "reproduction"
-            ],
-            "type": "object"
-          },
-          "sha256": {
-            "pattern": "^[a-f0-9]{64}$",
-            "type": "string"
-          },
-          "size": {
-            "maximum": 33554432,
-            "minimum": 1,
-            "type": "integer"
           }
-        },
-        "required": [
-          "id",
-          "documentId",
-          "createdAt",
-          "operation",
-          "format",
-          "sha256",
-          "size",
-          "provenance",
-          "native"
-        ],
-        "type": "object"
+        ]
       }
     },
     {
@@ -2145,6 +3099,350 @@
           "assets"
         ],
         "type": "object"
+      }
+    },
+    {
+      "name": "flame.deliverables/restore.v1",
+      "kind": "command",
+      "target": "installation",
+      "description": "Make an earlier revision of the same deliverable current again as a new revision with its exact native bytes. The exact current revision is required; history is kept, and the new revision has no inherited render or review.",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "expectedRevision": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "revision": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "expectedRevision",
+          "revision"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "oneOf": [
+          {
+            "additionalProperties": false,
+            "properties": {
+              "createdAt": {
+                "maxLength": 40,
+                "minLength": 1,
+                "type": "string"
+              },
+              "documentId": {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              "format": {
+                "enum": [
+                  "docx",
+                  "xlsx",
+                  "pptx",
+                  "pdf"
+                ],
+                "type": "string"
+              },
+              "id": {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              "native": {
+                "additionalProperties": false,
+                "properties": {
+                  "filename": {
+                    "maxLength": 240,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "id": {
+                    "pattern": "^[a-f0-9]{64}$",
+                    "type": "string"
+                  },
+                  "mime": {
+                    "maxLength": 100,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "sha256": {
+                    "pattern": "^[a-f0-9]{64}$",
+                    "type": "string"
+                  },
+                  "size": {
+                    "maximum": 100663296,
+                    "minimum": 1,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "id",
+                  "filename",
+                  "mime",
+                  "size",
+                  "sha256"
+                ],
+                "type": "object"
+              },
+              "operation": {
+                "enum": [
+                  "create",
+                  "import",
+                  "edit",
+                  "recalculate"
+                ],
+                "type": "string"
+              },
+              "parent": {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              "provenance": {
+                "additionalProperties": false,
+                "properties": {
+                  "assumptions": {
+                    "items": {
+                      "maxLength": 2000,
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "maxItems": 64,
+                    "type": "array"
+                  },
+                  "reproduction": {
+                    "maxLength": 12000,
+                    "type": "string"
+                  },
+                  "sources": {
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "note": {
+                          "maxLength": 2000,
+                          "type": "string"
+                        },
+                        "title": {
+                          "maxLength": 300,
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        "uri": {
+                          "maxLength": 2048,
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "title",
+                        "uri",
+                        "note"
+                      ],
+                      "type": "object"
+                    },
+                    "maxItems": 64,
+                    "type": "array"
+                  },
+                  "units": {
+                    "maxLength": 2000,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "sources",
+                  "assumptions",
+                  "units",
+                  "reproduction"
+                ],
+                "type": "object"
+              },
+              "sha256": {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              "size": {
+                "maximum": 33554432,
+                "minimum": 1,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "id",
+              "documentId",
+              "createdAt",
+              "format",
+              "sha256",
+              "size",
+              "provenance",
+              "native",
+              "operation"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "createdAt": {
+                "maxLength": 40,
+                "minLength": 1,
+                "type": "string"
+              },
+              "documentId": {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              "format": {
+                "enum": [
+                  "docx",
+                  "xlsx",
+                  "pptx",
+                  "pdf"
+                ],
+                "type": "string"
+              },
+              "id": {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              "native": {
+                "additionalProperties": false,
+                "properties": {
+                  "filename": {
+                    "maxLength": 240,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "id": {
+                    "pattern": "^[a-f0-9]{64}$",
+                    "type": "string"
+                  },
+                  "mime": {
+                    "maxLength": 100,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "sha256": {
+                    "pattern": "^[a-f0-9]{64}$",
+                    "type": "string"
+                  },
+                  "size": {
+                    "maximum": 100663296,
+                    "minimum": 1,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "id",
+                  "filename",
+                  "mime",
+                  "size",
+                  "sha256"
+                ],
+                "type": "object"
+              },
+              "operation": {
+                "const": "restore",
+                "type": "string"
+              },
+              "parent": {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              "provenance": {
+                "additionalProperties": false,
+                "properties": {
+                  "assumptions": {
+                    "items": {
+                      "maxLength": 2000,
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "maxItems": 64,
+                    "type": "array"
+                  },
+                  "reproduction": {
+                    "maxLength": 12000,
+                    "type": "string"
+                  },
+                  "sources": {
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "note": {
+                          "maxLength": 2000,
+                          "type": "string"
+                        },
+                        "title": {
+                          "maxLength": 300,
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        "uri": {
+                          "maxLength": 2048,
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "title",
+                        "uri",
+                        "note"
+                      ],
+                      "type": "object"
+                    },
+                    "maxItems": 64,
+                    "type": "array"
+                  },
+                  "units": {
+                    "maxLength": 2000,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "sources",
+                  "assumptions",
+                  "units",
+                  "reproduction"
+                ],
+                "type": "object"
+              },
+              "restored": {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              "sha256": {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              "size": {
+                "maximum": 33554432,
+                "minimum": 1,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "id",
+              "documentId",
+              "createdAt",
+              "format",
+              "sha256",
+              "size",
+              "provenance",
+              "native",
+              "parent",
+              "operation",
+              "restored"
+            ],
+            "type": "object"
+          }
+        ]
       }
     },
     {

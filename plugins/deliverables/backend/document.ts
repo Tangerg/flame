@@ -28,17 +28,22 @@ export function filename(title: string, extension: string): string {
   return `${stem}.${extension}`;
 }
 
-export function revision(input: {
-  command: string;
-  documentId: string;
-  title: string;
-  format: Format;
-  parent?: string;
-  operation: Revision["operation"];
-  createdAt: string;
-  bytes: Uint8Array;
-  provenance: Provenance;
-}): Revision {
+export type Origin =
+  | { operation: Exclude<Revision["operation"], "restore"> }
+  | { operation: "restore"; restored: string };
+
+export function revision(
+  input: Origin & {
+    command: string;
+    documentId: string;
+    title: string;
+    format: Format;
+    parent?: string;
+    createdAt: string;
+    bytes: Uint8Array;
+    provenance: Provenance;
+  },
+): Revision {
   const hash = digest(input.bytes);
   const id = digest(
     canonicalJSON({
@@ -54,6 +59,7 @@ export function revision(input: {
     ...(input.parent ? { parent: input.parent } : {}),
     createdAt: input.createdAt,
     operation: input.operation,
+    ...(input.operation === "restore" ? { restored: input.restored } : {}),
     format: input.format,
     sha256: hash,
     size: input.bytes.byteLength,
@@ -108,7 +114,7 @@ export class Document {
       next.documentId !== this.#header.id ||
       next.parent !== expected ||
       next.format !== this.#header.format ||
-      !["edit", "recalculate"].includes(next.operation) ||
+      !["edit", "recalculate", "restore"].includes(next.operation) ||
       next.id === expected
     )
       throw new Error(
