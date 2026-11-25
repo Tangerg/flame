@@ -56,15 +56,9 @@ func (a *activeDurationClock) elapsed(at time.Time) time.Duration {
 	return a.carried + current
 }
 
-func (r *runs) startRun(commandID authoring.CommandID, message authoring.Message, options authoring.RunOptions, status string) bool {
-	input := authoring.StartRun{CommandID: commandID, SessionID: r.session.current.ID, Message: message.Clone(), Options: options.Clone()}
-	pending, ok := pendingRunByCommandID(r.workbench.PendingRuns(input.SessionID), input.CommandID)
-	if !ok {
-		r.fail(errors.New("run is absent from the durable outbox"))
-		return false
-	}
-	if pending.State != workbench.PendingRunQueued {
-		return r.startPreparedRun(input, nil, status)
+func (r *runs) startQueuedRun(pending workbench.PendingRun, status string) bool {
+	if pending.Dispatch != nil {
+		return r.startPreparedRun(pending, nil, status)
 	}
 	started := r.tasks.sessionFence(inputPreparationOperation,
 		func(ctx context.Context) (*workbench.PreparedInput, error) {
@@ -75,10 +69,10 @@ func (r *runs) startRun(commandID authoring.CommandID, message authoring.Message
 			return r.workbench.PrepareInput(ctx, pending.Command.Message, blocks)
 		},
 		func(prepared *workbench.PreparedInput, err error) {
-			if err == nil && r.startPreparedRun(input, prepared, status) {
+			if err == nil && r.startPreparedRun(pending, prepared, status) {
 				return
 			}
-			r.queue.ReleaseDispatch(input.SessionID)
+			r.queue.ReleasePreparation(pending.Command.SessionID)
 			r.syncQueue()
 			r.prompt.SetBusy(r.runAdmissionBlocked())
 			if err != nil {
@@ -93,15 +87,29 @@ func (r *runs) startRun(commandID authoring.CommandID, message authoring.Message
 	return started
 }
 
-func (r *runs) startPreparedRun(input authoring.StartRun, prepared *workbench.PreparedInput, status string) bool {
-	if !r.prepareRunStart(&input, prepared) {
+func (r *runs) startPreparedRun(pending workbench.PendingRun, prepared *workbench.PreparedInput, status string) bool {
+	if err := r.execution.conversation.Starting(); err != nil {
+		r.fail(err)
 		return false
 	}
-	pending, ok := pendingRunByCommandID(r.workbench.PendingRuns(input.SessionID), input.CommandID)
-	if !ok {
-		r.fail(errors.New("dispatching run disappeared from the durable outbox"))
-		return false
+	if pending.Dispatch == nil {
+		replay, err := r.replayPolicy.NewGuard()
+		if err != nil {
+			r.fail(errors.Join(err, r.execution.conversation.StopStarting()))
+			return false
+		}
+		command := pending.Command
+		pending, err = r.queue.PrepareDispatch(command.SessionID, command.CommandID, replay, prepared)
+		if err != nil {
+			r.link.message("run start blocked: save dispatching run: " + err.Error())
+			if rollbackErr := r.execution.conversation.StopStarting(); rollbackErr != nil {
+				r.fail(errors.Join(err, rollbackErr))
+			}
+			return false
+		}
 	}
+	input := pending.Command
+
 	r.presentRunStart(status)
 	r.followOpening(func(ctx context.Context) (conversation.SegmentStream, error) {
 		opened, err := runworkflow.OpenPendingStart(ctx, r.runtime, r.workbench, pending, r.replayPolicy)
@@ -140,42 +148,6 @@ func (r *runs) startPreparedRun(input authoring.StartRun, prepared *workbench.Pr
 	return true
 }
 
-func (r *runs) prepareRunStart(input *authoring.StartRun, prepared *workbench.PreparedInput) bool {
-	pending, ok := pendingRunByCommandID(r.workbench.PendingRuns(input.SessionID), input.CommandID)
-	if !ok {
-		r.fail(errors.New("run is absent from the durable outbox"))
-		return false
-	}
-	*input = pending.Command.Clone()
-	if err := r.execution.conversation.Starting(); err != nil {
-		r.fail(err)
-		return false
-	}
-	if pending.State != workbench.PendingRunQueued {
-		return true
-	}
-	replayGuard, err := r.replayPolicy.NewGuard()
-	if err != nil {
-		r.fail(errors.Join(err, r.execution.conversation.StopStarting()))
-		return false
-	}
-	if err := r.workbench.MarkPendingRunDispatching(input.SessionID, input.CommandID, replayGuard, prepared); err != nil {
-		rollbackErr := r.execution.conversation.StopStarting()
-		r.link.message("run start blocked: save dispatching run: " + err.Error())
-		if rollbackErr != nil {
-			r.fail(errors.Join(err, rollbackErr))
-		}
-		return false
-	}
-	pending, ok = pendingRunByCommandID(r.workbench.PendingRuns(input.SessionID), input.CommandID)
-	if !ok {
-		r.fail(errors.New("dispatching run disappeared from the durable outbox"))
-		return false
-	}
-	*input = pending.Command.Clone()
-	return true
-}
-
 func (r *runs) presentRunStart(status string) {
 	r.execution.trustProjection()
 	r.transcript().Follow()
@@ -189,17 +161,18 @@ func (r *runs) presentRunStart(status string) {
 
 func (r *runs) acceptStartedRun(input authoring.StartRun, opened conversation.SegmentStream) {
 	r.execution.opening = &openingReceipt{RunID: opened.RunID, CommandID: input.CommandID}
-	pending := r.workbench.PendingRuns(input.SessionID)
-	if len(pending) == 0 || pending[0].Command.CommandID != input.CommandID {
+	pending, found := r.queue.Head(input.SessionID)
+	if !found || pending.Command.CommandID != input.CommandID {
 		return
 	}
-	if pending[0].State != workbench.PendingRunCanceling {
+	cancellation := pending.Cancellation()
+	if cancellation == nil {
 		r.settleQueuedDispatch(input.CommandID)
 		return
 	}
 	r.status.active(statusCanceling)
 	r.requestRuntimeCancellation(conversation.CancelRun{
-		CommandID: pending[0].CancelCommandID,
+		CommandID: cancellation.CommandID,
 		RunID:     opened.RunID,
 		Reason:    unconfirmedStartCancellationReason,
 	}, applyRuntimeSettlement)

@@ -179,7 +179,7 @@ func (s *Store) StageSessionRollback(pending PendingSessionRollback) error {
 		return errors.New("another session rollback is already pending")
 	}
 	return s.saveSessionStateRecord(
-		pending.SessionID, s.drafts[pending.SessionID], s.pendingRuns[pending.SessionID],
+		pending.SessionID, s.drafts[pending.SessionID], s.queue.bySession[pending.SessionID],
 		s.pendingResumePointer(pending.SessionID), &pending, s.pendingSteerPointer(pending.SessionID),
 	)
 }
@@ -199,7 +199,7 @@ func (s *Store) ConfirmSessionRollback(sessionID string, commandID authoring.Com
 	}
 	pending.Phase = CommandConfirmed
 	return s.saveSessionStateRecord(
-		sessionID, s.drafts[sessionID], s.pendingRuns[sessionID],
+		sessionID, s.drafts[sessionID], s.queue.bySession[sessionID],
 		s.pendingResumePointer(sessionID), &pending, s.pendingSteerPointer(sessionID),
 	)
 }
@@ -218,7 +218,7 @@ func (s *Store) RejectSessionRollback(sessionID string, commandID authoring.Comm
 		return errors.New("session rollback journal does not match the rejected command")
 	}
 	return s.saveSessionStateRecord(
-		sessionID, s.drafts[sessionID], s.pendingRuns[sessionID],
+		sessionID, s.drafts[sessionID], s.queue.bySession[sessionID],
 		s.pendingResumePointer(sessionID), nil, s.pendingSteerPointer(sessionID),
 	)
 }
@@ -255,7 +255,7 @@ func (s *Store) ActivateSessionDraft(sessionID string, incoming authoring.Messag
 		rollback = &cloned
 	}
 	if err := s.saveSessionStateRecord(
-		sessionID, draft, s.pendingRuns[sessionID], s.pendingResumePointer(sessionID), rollback,
+		sessionID, draft, s.queue.bySession[sessionID], s.pendingResumePointer(sessionID), rollback,
 		s.pendingSteerPointer(sessionID),
 	); err != nil {
 		return SessionDraftActivation{}, err

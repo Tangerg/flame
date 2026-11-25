@@ -131,10 +131,8 @@ func (r *runs) planShutdown(detach, stageable bool) (runShutdown, error) {
 		return runShutdown{}, nil
 	}
 	if detach {
-		for _, pending := range r.workbench.PendingRuns(r.session.current.ID) {
-			if pending.State == workbench.PendingRunCanceling {
-				return runShutdown{owes: shutdownCancelsStart, pendingStart: pending}, nil
-			}
+		if pending, found := r.queue.Head(r.session.current.ID); found && pending.Cancellation() != nil {
+			return runShutdown{owes: shutdownCancelsStart, pendingStart: pending}, nil
 		}
 		return runShutdown{}, nil
 	}

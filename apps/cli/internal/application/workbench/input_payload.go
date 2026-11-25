@@ -117,8 +117,11 @@ func (s *Store) readInput(digest inputDigest) ([]protocol.ContentBlock, error) {
 }
 
 func (p PendingRun) ReplayCommand() (authoring.StartRun, error) {
-	if p.inputFailure != nil {
-		return authoring.StartRun{}, p.inputFailure
+	if p.Dispatch == nil {
+		return authoring.StartRun{}, errors.New("queued run has no replayable dispatch")
+	}
+	if p.Dispatch.inputFailure != nil {
+		return authoring.StartRun{}, p.Dispatch.inputFailure
 	}
 	if _, err := p.Command.Message.PreparedInput(p.Command.Input); err != nil {
 		return authoring.StartRun{}, err

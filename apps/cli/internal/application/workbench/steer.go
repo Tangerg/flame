@@ -167,7 +167,7 @@ func (s *Store) StagePendingSteer(pending PendingSteer, sourceDraft authoring.Me
 		return PendingSteer{}, errors.New("session draft changed before steer attachment transfer")
 	}
 	if err := s.saveSessionStateRecord(
-		pending.sessionID, authoring.Message{}, s.pendingRuns[pending.sessionID],
+		pending.sessionID, authoring.Message{}, s.queue.bySession[pending.sessionID],
 		s.pendingResumePointer(pending.sessionID), s.pendingRollbackPointer(pending.sessionID), &pending,
 	); err != nil {
 		return PendingSteer{}, err
@@ -202,7 +202,7 @@ func (s *Store) AcknowledgePendingSteer(sessionID string, commandID authoring.Co
 		return err
 	}
 	return s.saveSessionStateRecord(
-		sessionID, s.drafts[sessionID], s.pendingRuns[sessionID],
+		sessionID, s.drafts[sessionID], s.queue.bySession[sessionID],
 		s.pendingResumePointer(sessionID), s.pendingRollbackPointer(sessionID), nil,
 	)
 }
@@ -237,7 +237,7 @@ func (s *Store) RejectPendingSteer(
 	}
 	recovered := MergeSteerAttachments(currentDraft, pending.command.Message.Attachments)
 	if err := s.saveSessionStateRecord(
-		sessionID, recovered, s.pendingRuns[sessionID],
+		sessionID, recovered, s.queue.bySession[sessionID],
 		s.pendingResumePointer(sessionID), s.pendingRollbackPointer(sessionID), nil,
 	); err != nil {
 		return authoring.Message{}, err

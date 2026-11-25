@@ -232,7 +232,7 @@ func (s *Store) advanceDraftTransferSide(sessionID string, before, after authori
 		return errors.New("draft no longer matches its transfer precondition")
 	}
 	return s.saveSessionStateRecordUnfenced(
-		sessionID, after, s.pendingRuns[sessionID], s.pendingResumePointer(sessionID),
+		sessionID, after, s.queue.bySession[sessionID], s.pendingResumePointer(sessionID),
 		s.pendingRollbackPointer(sessionID), s.pendingSteerPointer(sessionID),
 	)
 }

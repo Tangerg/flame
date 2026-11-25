@@ -25,7 +25,10 @@ func OpenPendingStart(ctx context.Context, source OpeningSource, store *workbenc
 	if store == nil {
 		return conversation.SegmentStream{}, workbench.ErrUnavailable
 	}
-	return openStartCommand(ctx, source, pending.Command, pending.Replay, policy, replayPending(ctx, store, pending.ReplayCommand, source.StartRun))
+	if pending.Dispatch == nil {
+		return conversation.SegmentStream{}, fmt.Errorf("queued prompt %q has no dispatch", pending.EntryID)
+	}
+	return openStartCommand(ctx, source, pending.Command, pending.Dispatch.Replay, policy, replayPending(ctx, store, pending.ReplayCommand, source.StartRun))
 }
 
 func replayPending[C any](ctx context.Context, store *workbench.Store, replay func() (C, error), send func(context.Context, C) (conversation.SegmentStream, error)) func() (conversation.SegmentStream, error) {

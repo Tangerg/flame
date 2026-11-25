@@ -194,7 +194,9 @@ func (s *Store) restoreSessionState(name string, state sessionState) error {
 	}
 	for index := range state.PendingRuns {
 		pending := &state.PendingRuns[index]
-		pending.Command.Input, pending.inputFailure = s.readInput(pending.InputDigest)
+		if pending.Dispatch != nil {
+			pending.Command.Input, pending.Dispatch.inputFailure = s.readInput(pending.Dispatch.InputDigest)
+		}
 	}
 	if state.PendingResume != nil {
 		if err := state.PendingResume.validate(); err != nil {
@@ -379,9 +381,9 @@ func (s *Store) dispatchReadyLocked() error {
 func (s *Store) CancellationReady(commandID authoring.CommandID) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	for _, commands := range s.pendingRuns {
+	for _, commands := range s.queue.bySession {
 		for _, pending := range commands {
-			if pending.CancelCommandID == commandID && commandID != "" {
+			if cancellation := pending.Cancellation(); cancellation != nil && cancellation.CommandID == commandID {
 				return s.dispatchReadyLocked()
 			}
 		}
@@ -408,10 +410,7 @@ func (s *Store) installSessionState(
 	if !draft.IsEmpty() {
 		s.drafts[sessionID] = draft.Clone()
 	}
-	delete(s.pendingRuns, sessionID)
-	if len(pending) > 0 {
-		s.pendingRuns[sessionID] = clonePendingRunSlice(pending)
-	}
+	s.queue.install(sessionID, pending)
 	delete(s.pendingResumes, sessionID)
 	if resume != nil {
 		s.pendingResumes[sessionID] = clonePendingResume(*resume)

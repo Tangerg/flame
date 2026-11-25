@@ -17,33 +17,30 @@ func (r *runs) restoreSessionOutbox() {
 }
 
 func (r *runs) restorePendingRuns() {
-	pending := r.workbench.PendingRuns(r.session.current.ID)
-	if len(pending) == 0 {
+	r.syncQueue()
+	head, found := r.queue.Head(r.session.current.ID)
+	if !found {
 		return
 	}
-	if pending[0].State != workbench.PendingRunQueued && !r.replayPolicy.SameStore(pending[0].Replay) {
+	if head.Dispatch == nil {
+		if !r.execution.conversation.Busy() {
+			r.drainQueue()
+		}
+		return
+	}
+	if !r.replayPolicy.SameStore(head.Dispatch.Replay) {
 		r.fail(errors.New("recover pending run: command belongs to another runtime"))
 		return
 	}
-	if err := r.restorePendingQueue(); err != nil {
-		r.fail(err)
+	if head.Cancellation() != nil {
+		r.reconcileCanceledStart(head)
 		return
 	}
-	if pending[0].State == workbench.PendingRunCanceling {
-		r.reconcileCanceledStart(pending[0])
+	if r.execution.conversation.Busy() {
+		r.reconcilePendingRun(head)
 		return
 	}
-	if pending[0].State == workbench.PendingRunDispatching {
-		if r.execution.conversation.Busy() {
-			r.reconcilePendingRun(pending[0])
-			return
-		}
-		r.replayPendingRun(pending[0])
-		return
-	}
-	if !r.execution.conversation.Busy() {
-		r.drainQueue()
-	}
+	r.startQueuedRun(head, "recovering queued prompt")
 }
 
 func (r *runs) restorePendingResume() {
@@ -115,23 +112,6 @@ func sameInterrupts(left, right []conversation.Interrupt) bool {
 		}
 	}
 	return true
-}
-
-func (r *runs) restorePendingQueue() error {
-	if err := r.queue.Restore(r.session.current.ID); err != nil {
-		return fmt.Errorf("restore pending runs: %w", err)
-	}
-	r.syncQueue()
-	return nil
-}
-
-func (r *runs) replayPendingRun(pending workbench.PendingRun) {
-	entry, ok := r.queue.Dispatching(pending.Command.SessionID)
-	if !ok || entry.CommandID != pending.Command.CommandID {
-		r.fail(errors.New("replay pending run: dispatch reservation is unavailable"))
-		return
-	}
-	r.startRun(entry.CommandID, entry.Message, entry.Options, "recovering queued prompt")
 }
 
 func (r *runs) reconcilePendingRun(pending workbench.PendingRun) {

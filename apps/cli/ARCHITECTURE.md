@@ -203,7 +203,20 @@ and durability from actual I/O.
 
 Persistence reports uncommitted, visible, or durable writes with the original I/O error. Workbench publishes each record into memory at the visible commit boundary, including on a later directory-sync failure. A failure cannot roll back a committed record or mint a replacement identity. Unconfirmed durability fences subsequent writes and every external mutation that depends on retained intent, including retries that skip staging. Read-only Runtime receipt reconciliation remains available. Reopening first confirms the actual files, directories and ancestor links, then loads and recovers the visible records before admitting delivery. Stash compensation applies only before a step commits; a committed failure leaves the journal for forward recovery. Session tombstones hide retired state immediately, and cleanup failures remain explicit until recovery succeeds.
 
-The authoring Domain owns prompt values, deterministic FIFO and reservation transitions, and exact replay identities and guards. Workbench owns the live queue's transaction with the durable outbox: enqueue transfers the draft before dispatch, edits restore the prior FIFO only when their write did not commit, and acknowledgement commits history and outbox retirement before releasing the opening reservation. A partial history commit is retried under the same command identity. A definitive refusal publishes its replacement identity before returning the command to the FIFO; an unconfirmed publication still fences delivery. Terminal controllers issue these Workbench commands and render detached queue snapshots; they do not persist queue ordering, restore transactional state, or settle the outbox themselves.
+The Workbench queue owns prompt order, entry identity and the exact Start
+command. Enqueue transfers the draft in the same write, and edits publish with
+that Session record. Each prompt keeps its entry identity when a definitive
+refusal or an edit gives it a new command identity. Preparation and editing
+claims live only in the current workbench. A durable dispatch captures the input
+and replay guard, and can carry the original cancellation request and its own
+guard. Acknowledgement commits history and retires the original command. A
+partial history commit is retried under the same identity. Terminal controllers
+read the committed queue through detached snapshots.
+
+Pending queue records now contain the stable entry identity and the captured
+dispatch. Use a fresh CLI workbench directory for this build and retain the
+prior directory for any outstanding commands.
+
 
 Drafts and queued prompts keep attachment paths editable. Before the first mutation dispatch, the binding adapter materializes those paths into Runtime content under the existing per-file size and encoding limits. Start binds that content when it leaves the queue; Steer and a Resume carrying additional input bind it before staging. Every later attempt uses the same prepared content, command identity, and replay guard without reopening the original paths. Plain text already lives completely in the immutable command and needs no external materialization. The terminal uses its existing operation owner to prepare and save content in the background. Only a current UI callback can publish the small session journal before starting delivery; cancellation or editing the source draft discards the prepared result. Input encoding and blob persistence run outside the authoring mutex. The filesystem Store serializes rooted I/O with Close so its directory lease covers active writes. A live filesystem Store stays bound to its original physical state directory: replacing that directory requires reopening the workbench as a new owner, with the original directory retained for reconciliation. Temporarily blocking the path and then restoring the same directory allows the original owner to continue.
 
@@ -231,7 +244,7 @@ A package must own a coherent CLI vocabulary, local aggregate, workflow lifecycl
 | User delivery       | `delivery/cmd`, `delivery/terminal`                  | Cobra commands with private output renderers, Oolong interaction, rendering and view lifetimes                                                     |
 | Process composition | CLI root package                                     | Immutable Runtime target, lazy Workbench factory, port wiring and shutdown                                                                         |
 
-`agent`, `integration` and `filesystem` are sparse namespace directories. They contain no facade package. The Workbench Store retains clocks, randomness and persistence in Application; moving its pure queue transitions to Domain does not move filesystem or process lifetime there. Conversation is a CLI projection owner and does not become a second Runtime Session or Run state machine.
+`agent`, `integration` and `filesystem` are sparse namespace directories. They contain no facade package. The Workbench Store retains its queue, clocks, randomness and persistence in Application. Conversation is a CLI projection owner and does not become a second Runtime Session or Run state machine.
 
 Do not create packages for individual actions, interfaces, or DTOs. Merge a single-consumer forwarding package into the consumer unless the package owns an external translation or reusable technical mechanism. Do not create broad `service`, `manager`, `backend`, `common`, or `helpers` packages.
 

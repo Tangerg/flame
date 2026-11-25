@@ -98,10 +98,7 @@ func Run(ctx context.Context, cfg Config) (runErr error) {
 	}
 
 	var active *app
-	prompts, err := workbench.NewQueue(prepared.workbench)
-	if err != nil {
-		return err
-	}
+	prompts := prepared.workbench.Queue()
 	programConfig := program.ScreenConfig{
 		Build: func(loop *program.Runtime) (scene.Element, error) {
 			started, err := startApp(ctx, loop, cfg, prepared, extensionHost, discovered, results, prompts)

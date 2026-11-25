@@ -137,13 +137,13 @@ func (r *runs) drainQueue() bool {
 		r.tasks.operations.Active(sessionChangeOperation) || r.tasks.operations.Active(pendingRunRecoveryOperation) {
 		return false
 	}
-	entry, ok := r.queue.BeginDispatch(r.session.current.ID)
+	pending, ok := r.queue.BeginDispatch(r.session.current.ID)
 	if !ok {
 		return false
 	}
 	r.syncQueue()
-	if !r.startRun(entry.CommandID, entry.Message, entry.Options, "starting queued follow-up") {
-		r.queue.ReleaseDispatch(r.session.current.ID)
+	if !r.startQueuedRun(pending, "starting queued follow-up") {
+		r.queue.ReleasePreparation(r.session.current.ID)
 		r.syncQueue()
 		return false
 	}
@@ -273,15 +273,6 @@ func (r *runs) finishAuthoringSettlementRecovery() {
 		r.settleCurrentRunStatus()
 		r.syncAnimation()
 	}
-}
-
-func pendingRunByCommandID(pending []workbench.PendingRun, commandID authoring.CommandID) (workbench.PendingRun, bool) {
-	for _, candidate := range pending {
-		if candidate.Command.CommandID == commandID {
-			return candidate, true
-		}
-	}
-	return workbench.PendingRun{}, false
 }
 
 func (r *runs) queueSendBlocked() error {

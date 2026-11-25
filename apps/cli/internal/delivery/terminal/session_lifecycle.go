@@ -341,20 +341,11 @@ func (l *sessionLifecycle) reportRetiredSessionState(discarded int, err error) {
 }
 
 func (l *sessionLifecycle) retireSessionState(sessionID string) (int, error) {
-	if l.workbench != nil {
-		if err := l.workbench.RetireSessionState(sessionID); err != nil {
-			discarded := 0
-			if l.queue != nil {
-				before := len(l.queue.Snapshot(sessionID).Entries)
-				err = errors.Join(err, l.queue.Restore(sessionID))
-				discarded = before - len(l.queue.Snapshot(sessionID).Entries)
-			}
-			return discarded, fmt.Errorf("discard session authoring state: %w", err)
-		}
-	}
-	discarded := 0
-	if l.queue != nil {
-		discarded = l.queue.ForgetSession(sessionID)
+	before := len(l.queue.Snapshot(sessionID).Entries)
+	err := l.workbench.RetireSessionState(sessionID)
+	discarded := before - len(l.queue.Snapshot(sessionID).Entries)
+	if err != nil {
+		return discarded, fmt.Errorf("discard session authoring state: %w", err)
 	}
 	return discarded, nil
 }
@@ -388,7 +379,7 @@ func (l *sessionLifecycle) install(s sessionInstallation) {
 	l.runs.dropStream()
 	l.root.dismissCompletion()
 	l.setActiveSession(s.snapshot.Session)
-	l.queue.ReleaseDispatch(previousSessionID)
+	l.queue.ReleasePreparation(previousSessionID)
 	l.runs.switchProjection(s.projection.conversation)
 	l.composer.attachments = s.attachments
 	previousTranscript := l.root.presentTranscript(s.projection.transcript)

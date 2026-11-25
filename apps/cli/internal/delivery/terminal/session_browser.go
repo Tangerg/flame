@@ -33,7 +33,6 @@ type sessionBrowser struct {
 
 	runtime      Runtime
 	workbench    *workbench.Store
-	queue        *workbench.Queue
 	replayPolicy mutation.ReplayPolicy
 	session      *sessionState
 	tasks        taskRunner
@@ -319,14 +318,8 @@ func (b *sessionBrowser) deleteSessionFromCenter(id string) {
 				return
 			}
 			if err := session.ConfirmDeletion(b.workbench, result); err != nil {
-				if b.queue != nil {
-					err = errors.Join(err, b.queue.Restore(result.Request.SessionID))
-				}
 				b.notify("deleted session; local state cleanup failed: " + err.Error())
 				return
-			}
-			if b.queue != nil {
-				b.queue.ForgetSession(result.Request.SessionID)
 			}
 			b.pane.Remove(id)
 			b.notify("deleted session")

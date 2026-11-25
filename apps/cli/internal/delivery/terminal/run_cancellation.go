@@ -26,12 +26,7 @@ func (r *runs) cancel() {
 	}
 	if r.tasks.operations.Active(inputPreparationOperation) {
 		r.tasks.operations.Cancel(inputPreparationOperation)
-		if entry, reserved := r.queue.Dispatching(r.session.current.ID); reserved {
-			pending, found := pendingRunByCommandID(r.workbench.PendingRuns(r.session.current.ID), entry.CommandID)
-			if found && pending.State == workbench.PendingRunQueued {
-				r.queue.ReleaseDispatch(r.session.current.ID)
-			}
-		}
+		r.queue.ReleasePreparation(r.session.current.ID)
 		r.syncQueue()
 		r.prompt.SetBusy(r.runAdmissionBlocked())
 		r.link.message("input preparation canceled; the prompt remains editable")
@@ -71,29 +66,20 @@ func (r *runs) cancel() {
 }
 
 func (r *runs) stageOpeningCancellation() (workbench.PendingRun, bool, error) {
-	entry, ok := r.queue.Dispatching(r.session.current.ID)
-	if !ok {
+	sessionID := r.session.current.ID
+	head, found := r.queue.Head(sessionID)
+	if !found || head.Dispatch == nil {
 		return workbench.PendingRun{}, false, nil
 	}
-	if entry.CommandID == "" {
-		return workbench.PendingRun{}, false, errors.New("dispatching queue entry is no longer available")
+	if head.Cancellation() != nil {
+		return head, true, nil
 	}
-	if pending, found := pendingRunByCommandID(r.workbench.PendingRuns(r.session.current.ID), entry.CommandID); found &&
-		pending.State == workbench.PendingRunQueued {
-		return workbench.PendingRun{}, false, nil
-	}
-	cancelReplay, err := r.replayPolicy.NewGuard()
+	replay, err := r.replayPolicy.NewGuard()
 	if err != nil {
 		return workbench.PendingRun{}, false, err
 	}
-	if _, err := r.workbench.MarkPendingRunCanceling(r.session.current.ID, entry.CommandID, cancelReplay); err != nil {
-		return workbench.PendingRun{}, false, err
-	}
-	pending, ok := pendingRunByCommandID(r.workbench.PendingRuns(r.session.current.ID), entry.CommandID)
-	if !ok {
-		return workbench.PendingRun{}, false, errors.New("canceling run start disappeared from the durable outbox")
-	}
-	return pending, true, nil
+	pending, err := r.queue.StageCancellation(sessionID, head.Command.CommandID, replay)
+	return pending, err == nil, err
 }
 
 func (r *runs) reconcileCanceledStart(pending workbench.PendingRun) {
@@ -139,7 +125,7 @@ func (r *runs) reconcileCanceledStart(pending workbench.PendingRun) {
 				r.link.message("runtime returned an invalid start receipt; canceling accepted run: " + receiptErr.Error())
 			}
 			r.requestRuntimeCancellation(conversation.CancelRun{
-				CommandID: pending.CancelCommandID,
+				CommandID: pending.Cancellation().CommandID,
 				RunID:     observed.RunID,
 				Reason:    unconfirmedStartCancellationReason,
 			}, recoverCanceledOpening)
@@ -221,31 +207,30 @@ func (r *runs) requestRuntimeCancellation(target conversation.CancelRun, policy 
 		commandID := mutation.NewCommandID()
 		target.CommandID = commandID
 	}
-	var replayGuard authoring.ReplayGuard
-	if current := r.execution.pendingCancel; current != nil && current.request.CommandID == target.CommandID {
-		replayGuard = current.replay
-	} else {
+	pending := pendingCancellation{
+		request: target, openingCommandID: r.openingCommandForRun(target.RunID), policy: policy,
+	}
+	head, _ := r.queue.Head(r.session.current.ID)
+	current := r.execution.pendingCancel
+	switch original := head.Cancellation(); {
+	case original != nil && original.CommandID == target.CommandID:
+		pending.openingCommandID = head.Command.CommandID
+		pending.replay = original.Replay
+	case current != nil && current.request.CommandID == target.CommandID:
+		pending.openingCommandID = current.openingCommandID
+		pending.replay = current.replay
+	default:
 		guard, err := r.replayPolicy.NewGuard()
 		if err != nil {
 			r.link.message("could not cancel run: " + err.Error())
 			return
 		}
-		replayGuard = guard
+		pending.replay = guard
 	}
-	pending := pendingCancellation{
-		request: target, openingCommandID: r.openingCommandForRun(target.RunID), policy: policy, replay: replayGuard,
+	if pending.openingCommandID == "" && current != nil && current.request.RunID == target.RunID {
+		pending.openingCommandID = current.openingCommandID
 	}
-	if pending.openingCommandID == "" && r.execution.pendingCancel != nil && r.execution.pendingCancel.request.RunID == target.RunID {
-		pending.openingCommandID = r.execution.pendingCancel.openingCommandID
-	}
-	if pending.openingCommandID == "" && r.workbench != nil {
-		outbox := r.workbench.PendingRuns(r.session.current.ID)
-		if len(outbox) > 0 && outbox[0].State == workbench.PendingRunCanceling &&
-			outbox[0].CancelCommandID == target.CommandID {
-			pending.openingCommandID = outbox[0].Command.CommandID
-			pending.replay = outbox[0].CancelReplay
-		}
-	}
+
 	r.execution.pendingCancel = &pending
 	r.tasks.operations.Go(cancelRunOperation, func(ownerCtx context.Context, lease operationLease) {
 		err := r.cancelRootRun(ownerCtx, target, pending.replay)
@@ -406,10 +391,10 @@ func (r *runs) cancelOpeningRunNow(ownerCtx context.Context, pending workbench.P
 		)
 	}
 	cancelErr := r.cancelRuntimeNow(ctx, conversation.CancelRun{
-		CommandID: pending.CancelCommandID,
+		CommandID: pending.Cancellation().CommandID,
 		RunID:     opened.RunID,
 		Reason:    unconfirmedStartCancellationReason,
-	}, pending.CancelReplay)
+	}, pending.Cancellation().Replay)
 	if cancelErr != nil {
 		return errors.Join(err, validationErr, fmt.Errorf("cancel run opened during terminal close: %w", cancelErr))
 	}

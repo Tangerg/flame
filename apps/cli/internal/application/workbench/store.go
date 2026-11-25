@@ -116,7 +116,7 @@ type Store struct {
 	drafts            map[string]authoring.Message
 	stashes           []Stash
 	workspaces        []Workspace
-	pendingRuns       map[string][]PendingRun
+	queue             Queue
 	pendingResumes    map[string]PendingResume
 	pendingRollbacks  map[string]PendingSessionRollback
 	pendingSteers     map[string]PendingSteer
@@ -172,13 +172,13 @@ func newStore(storage Persistence, config Config) (*Store, error) {
 		now:               config.Now,
 		random:            config.Random,
 		drafts:            make(map[string]authoring.Message),
-		pendingRuns:       make(map[string][]PendingRun),
 		pendingResumes:    make(map[string]PendingResume),
 		pendingRollbacks:  make(map[string]PendingSessionRollback),
 		pendingSteers:     make(map[string]PendingSteer),
 		sessionDeletions:  make(map[string]PendingSessionDeletion),
 		installedCommands: make(map[string]PendingInstalledCommand),
 	}
+	store.queue = Queue{store: store, bySession: make(map[string][]PendingRun)}
 	if store.now == nil {
 		store.now = time.Now
 	}
@@ -187,6 +187,8 @@ func newStore(storage Persistence, config Config) (*Store, error) {
 	}
 	return store, nil
 }
+
+func (s *Store) Queue() *Queue { return &s.queue }
 
 func (s *Store) Close() error {
 	s.mu.Lock()
@@ -245,7 +247,7 @@ func (s *Store) SaveDraft(sessionID string, message authoring.Message) error {
 	if (present && current.Equal(message)) || (!present && message.IsEmpty()) {
 		return nil
 	}
-	return s.saveSessionState(sessionID, message, s.pendingRuns[sessionID])
+	return s.saveSessionState(sessionID, message, s.queue.bySession[sessionID])
 }
 
 func (s *Store) newStash(message authoring.Message) (Stash, error) {
@@ -314,7 +316,7 @@ func (s *Store) StashDraft(sessionID string, message authoring.Message) (Stash, 
 		}
 		return Stash{}, err
 	}
-	if err := s.saveSessionState(sessionID, authoring.Message{}, s.pendingRuns[sessionID]); err != nil {
+	if err := s.saveSessionState(sessionID, authoring.Message{}, s.queue.bySession[sessionID]); err != nil {
 		return Stash{}, s.undoStash(err, previous, next)
 	}
 
@@ -380,7 +382,7 @@ func (s *Store) recoverStashTransfer() error {
 			}
 		}
 		if present {
-			if err := s.saveSessionState(transfer.SessionID, authoring.Message{}, s.pendingRuns[transfer.SessionID]); err != nil {
+			if err := s.saveSessionState(transfer.SessionID, authoring.Message{}, s.queue.bySession[transfer.SessionID]); err != nil {
 				return fmt.Errorf("retire recovered session draft: %w", err)
 			}
 		}
@@ -508,7 +510,7 @@ func (s *Store) recordPromptHistoryLocked(commandID authoring.CommandID, message
 
 func (s *Store) trimHistory(history []historyEntry) []historyEntry {
 	pinned := make(map[authoring.CommandID]struct{})
-	for _, commands := range s.pendingRuns {
+	for _, commands := range s.queue.bySession {
 		for _, pending := range commands {
 			pinned[pending.Command.CommandID] = struct{}{}
 		}
@@ -559,20 +561,9 @@ func cloneHistory(history []historyEntry) []historyEntry {
 func clonePendingRunSlice(commands []PendingRun) []PendingRun {
 	out := make([]PendingRun, len(commands))
 	for index, command := range commands {
-		out[index] = clonePendingRun(command)
+		out[index] = command.clone()
 	}
 	return out
-}
-
-func clonePendingRun(command PendingRun) PendingRun {
-	command.Command = command.Command.Clone()
-	return command
-}
-
-func pendingRunEqual(left, right PendingRun) bool {
-	return left.State == right.State && left.Replay == right.Replay &&
-		left.CancelCommandID == right.CancelCommandID && left.CancelReplay == right.CancelReplay &&
-		left.Command.Equal(right.Command)
 }
 
 func pendingResumeEqual(left, right PendingResume) bool {
@@ -584,10 +575,6 @@ func clonePendingResume(pending PendingResume) PendingResume {
 	pending.Command = pending.Command.Clone()
 	pending.Interrupts = conversation.CloneInterrupts(pending.Interrupts)
 	return pending
-}
-
-func pendingRunIndex(commands []PendingRun, commandID authoring.CommandID) int {
-	return slices.IndexFunc(commands, func(command PendingRun) bool { return command.Command.CommandID == commandID })
 }
 
 func cloneStash(stash Stash) Stash {

@@ -417,7 +417,7 @@ func (a *app) wireTranscript(transcript *transcriptView) {
 
 func (a *app) buildSessionPicker(theme kit.Theme, glyphs kit.Glyphs, replayPolicy mutation.ReplayPolicy) {
 	a.sessions = newSessionBrowser(sessionBrowserConfig{browser: sessionBrowser{
-		runtime: a.runtime, workbench: a.workbench, queue: a.queue, replayPolicy: replayPolicy,
+		runtime: a.runtime, workbench: a.workbench, replayPolicy: replayPolicy,
 		session: &a.lifecycle.state, tasks: a.tasks, status: a.status, stack: &a.stack, theme: theme, glyphs: glyphs,
 		clipboard: a.loop.Clipboard(), notify: a.message, observing: a.runs.observing, adoptCurrent: func(session conversation.Session) { a.lifecycle.setActiveSession(session) },
 		catalogChanged: func() { a.lifecycle.reloadSessionCatalog() },
@@ -515,12 +515,12 @@ func (a *app) sendNextQueuedIfBusy() {
 	if !a.runs.blocksAdmission() {
 		return
 	}
-	state := a.queue.State(a.lifecycle.state.current.ID)
+	state := a.queue.Snapshot(a.lifecycle.state.current.ID)
 	if len(state.Entries) == 0 {
 		return
 	}
 	index := 0
-	if _, dispatching := state.DispatchingID(); dispatching {
+	if state.Dispatching != nil {
 		index = 1
 	}
 	if index >= len(state.Entries) || state.Entries[index].Held {
