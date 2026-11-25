@@ -28,5 +28,7 @@ func registerHooks(registry *Registry) {
 		SetHookTrust(context.Context, protocol.SetHookTrustRequest) error
 	}, ctx context.Context, request protocol.SetHookTrustRequest) error {
 		return service.SetHookTrust(ctx, request)
-	})
+	}).withOwnedReplay(atomicReplay((interface {
+		commitHookTrust(context.Context, protocol.SetHookTrustRequest, atomicOutcome) error
+	}).commitHookTrust))
 }

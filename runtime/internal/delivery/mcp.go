@@ -30,7 +30,9 @@ func registerMCP(registry *Registry) {
 		SetMCPToolExposure(context.Context, protocol.SetMCPToolExposureRequest) error
 	}, ctx context.Context, request protocol.SetMCPToolExposureRequest) error {
 		return service.SetMCPToolExposure(ctx, request)
-	})
+	}).withOwnedReplay(atomicReplay((interface {
+		commitMCPToolExposure(context.Context, protocol.SetMCPToolExposureRequest, atomicOutcome) error
+	}).commitMCPToolExposure))
 
 	registry.query(MethodMeta{
 		Name: MCPServersList, GoName: "ListMCPServers",

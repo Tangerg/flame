@@ -7,6 +7,7 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 )
@@ -194,9 +195,17 @@ func (s *Handler) GetMCPToolExposure(ctx context.Context, in protocol.MCPServerR
 }
 
 func (s *Handler) SetMCPToolExposure(ctx context.Context, in protocol.SetMCPToolExposureRequest) error {
+	return s.setMCPToolExposure(ctx, in, operation.DirectReply(new(struct{})))
+}
+
+func (s *Handler) commitMCPToolExposure(ctx context.Context, in protocol.SetMCPToolExposureRequest, outcome atomicOutcome) error {
+	return outcome.settleRefusal(ctx, s.setMCPToolExposure(ctx, in, outcome.acknowledgement()))
+}
+
+func (s *Handler) setMCPToolExposure(ctx context.Context, in protocol.SetMCPToolExposureRequest, complete operation.Reply[struct{}]) error {
 	ref, err := toolRefFromWire(protocol.ToolRef{Type: protocol.ToolRefMCP, Server: &in.Server, Name: in.Name})
 	if err != nil {
 		return protocol.NewFailure(protocol.ErrInvalidParams, err.Error(), err)
 	}
-	return wireMCPError(s.mcp.SetToolExposure(ctx, ref, in.Disabled))
+	return wireMCPError(s.mcp.SetToolExposure(ctx, ref, in.Disabled, complete))
 }

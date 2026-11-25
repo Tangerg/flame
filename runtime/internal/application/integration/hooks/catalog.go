@@ -6,6 +6,7 @@ import (
 
 	hookdata "github.com/Tangerg/flame/packages/go-sdk/hook"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/samber/lo"
 )
 
@@ -81,19 +82,20 @@ func (h *Catalog) Inspect(ctx context.Context, cwd string) (CatalogView, error) 
 	return resolved, nil
 }
 
-func (h *Catalog) SetRepositoryTrust(ctx context.Context, repositoryRoot string, trusted bool) error {
+func (h *Catalog) SetRepositoryTrust(ctx context.Context, repositoryRoot string, trusted bool, complete operation.Reply[struct{}]) error {
 	root, err := h.roots.ResolveRoot(repositoryRoot)
 	if err != nil {
 		return err
 	}
-	var changeErr error
+	change := h.trust.Untrust
 	if trusted {
-		changeErr = h.trust.Trust(ctx, root)
-	} else {
-		changeErr = h.trust.Untrust(ctx, root)
+		change = h.trust.Trust
 	}
-	if changeErr == nil {
-		h.invalidations.Notify(invalidation.Notice{Resource: invalidation.Hooks})
+	if err := complete(ctx, func(tx context.Context) (struct{}, error) {
+		return struct{}{}, change(tx, root)
+	}); err != nil {
+		return err
 	}
-	return changeErr
+	h.invalidations.Notify(invalidation.Notice{Resource: invalidation.Hooks})
+	return nil
 }

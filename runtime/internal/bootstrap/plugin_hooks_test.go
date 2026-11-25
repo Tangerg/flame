@@ -137,8 +137,20 @@ func TestInstalledHooksAbsenceTrustAndDisablementThroughRuntime(t *testing.T) {
 	if _, err := r.api.ListHooks(protocolLifecycleContext(t.Context()), protocol.ListHooksRequest{}); err == nil {
 		t.Fatal("management inspection silently discarded malformed project configuration")
 	}
-	r.must(delivery.Name("hooks.setTrust"), protocol.SetHookTrustRequest{RepositoryRoot: cfg.defaultWorkspacePath, Trusted: true}, "trust-hook-project")
 	writeHookSource(t, cfg.defaultWorkspacePath, `{"hooks":[{"event":"UserPromptSubmit","inject":"trusted project"}]}`)
+	const trustMethod delivery.Name = "hooks.setTrust"
+	const trustKey = "trust-hook-project"
+	trust := protocol.SetHookTrustRequest{RepositoryRoot: cfg.defaultWorkspacePath, Trusted: true}
+	allowReceipt := refuseCommandReceipt(t, cfg.stores.DataDirectory)
+	refused := r.endpoint.Invoke(t.Context(), trustMethod, trust, protocol.CallMetadata{IdempotencyKey: trustKey})
+	allowReceipt()
+	if refused.Failure == nil {
+		t.Fatal("trusted the repository despite a refused command receipt")
+	}
+	if view, err := r.api.ListHooks(protocolLifecycleContext(t.Context()), protocol.ListHooksRequest{}); err != nil || view == nil || view.RepositoryTrusted {
+		t.Fatalf("repository trust after a refused receipt = %+v, %v, want untrusted", view, err)
+	}
+	r.must(trustMethod, trust, trustKey)
 	view, err := r.api.ListHooks(protocolLifecycleContext(t.Context()), protocol.ListHooksRequest{})
 	if err != nil || !view.RepositoryTrusted || len(view.Hooks) != 2 {
 		t.Fatalf("installed rules lost Runtime trust: %+v %v", view, err)

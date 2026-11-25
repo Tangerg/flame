@@ -6,6 +6,7 @@ import (
 
 	hookdata "github.com/Tangerg/flame/packages/go-sdk/hook"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
 )
 
 func (s *Handler) ListHooks(ctx context.Context, in protocol.ListHooksRequest) (*protocol.HooksListResult, error) {
@@ -79,5 +80,13 @@ func presentHookScope(scope hookdata.Scope) (protocol.HookScope, bool) {
 }
 
 func (s *Handler) SetHookTrust(ctx context.Context, in protocol.SetHookTrustRequest) error {
-	return wireWorkspaceError(s.hooks.SetRepositoryTrust(ctx, in.RepositoryRoot, in.Trusted))
+	return s.setHookTrust(ctx, in, operation.DirectReply(new(struct{})))
+}
+
+func (s *Handler) commitHookTrust(ctx context.Context, in protocol.SetHookTrustRequest, outcome atomicOutcome) error {
+	return outcome.settleRefusal(ctx, s.setHookTrust(ctx, in, outcome.acknowledgement()))
+}
+
+func (s *Handler) setHookTrust(ctx context.Context, in protocol.SetHookTrustRequest, complete operation.Reply[struct{}]) error {
+	return wireWorkspaceError(s.hooks.SetRepositoryTrust(ctx, in.RepositoryRoot, in.Trusted, complete))
 }

@@ -78,7 +78,7 @@ func (c *Coordinator) UpdateServer(ctx context.Context, name mcpserver.ID, patch
 }
 
 func (c *Coordinator) commitServer(write *mutationScope, accepted mcpserver.Server, previous *mcpserver.Server) (Server, error) {
-	settle, err := c.store.Save(write.requestCtx, accepted)
+	settle, err := c.directory.Save(write.requestCtx, accepted)
 	if err != nil {
 		return Server{}, err
 	}
@@ -122,7 +122,7 @@ func (c *Coordinator) DeleteServer(ctx context.Context, name mcpserver.ID) error
 	} else if !found {
 		return ErrUnknownServer
 	}
-	settle, err := c.store.Remove(write.requestCtx, current)
+	settle, err := c.directory.Remove(write.requestCtx, current)
 	if err != nil {
 		return err
 	}

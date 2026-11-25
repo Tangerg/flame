@@ -289,7 +289,8 @@ type integrationAssembly struct {
 func assembleIntegrations(cfg assemblyConfig, lifetime *runtimeLifetime, policy policyComposition, execution executionComposition) (integrationAssembly, error) {
 	mcpCoordinator, err := mcpapp.New(mcpapp.Config{
 		Registry:      policy.registry,
-		Store:         policy.framework.external,
+		Directory:     policy.framework.external,
+		ExposureStore: cfg.stores.MCPServers,
 		External:      policy.framework.external,
 		Connections:   execution.tools.mcp,
 		ToolCatalog:   execution.tools.tools.Resolver,

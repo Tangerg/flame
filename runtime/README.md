@@ -1926,6 +1926,8 @@ An unset utility role uses the Runtime composition's default model selection. It
 
 Keyed utility and embedding role changes save their original receipts with the
 durable selection. Live model resolvers and change notices follow the commit.
+Repository hook trust and MCP tool exposure use the same receipt boundary for
+their local policy writes.
 
 ## Automatic Skill learning
 

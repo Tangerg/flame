@@ -20,7 +20,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 
 	"github.com/Tangerg/frame"
 
@@ -35,8 +34,6 @@ type grantVault interface {
 	OpenGrant(context.Context, identity.InstallationID, mcpserver.ServerName, string) (mcpserver.Connection, bool, error)
 	ConfirmPendingGrant(context.Context, identity.InstallationID, mcpserver.ServerName, string) error
 	RetireGrants(context.Context, identity.InstallationID, mcpserver.ServerName, string) error
-	ListExposure(context.Context) ([]tool.Ref, error)
-	SetToolExposure(context.Context, tool.Ref, bool) error
 }
 
 type ExternalConnector struct {
@@ -346,14 +343,6 @@ func (c *ExternalConnector) reconcileGrant(ctx context.Context, u *connectorUse,
 	default:
 		return mcpapp.ErrInvalidServerConfiguration
 	}
-}
-
-func (c *ExternalConnector) ListExposure(ctx context.Context) ([]tool.Ref, error) {
-	return c.vault.ListExposure(ctx)
-}
-
-func (c *ExternalConnector) SetToolExposure(ctx context.Context, ref tool.Ref, disabled bool) error {
-	return c.vault.SetToolExposure(ctx, ref, disabled)
 }
 
 func (c *ExternalConnector) Affected(ctx context.Context, servers []mcpserver.ID) (bool, error) {

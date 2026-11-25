@@ -7,6 +7,7 @@ import (
 	"sync/atomic"
 
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 )
@@ -77,7 +78,7 @@ func (c *Coordinator) ToolExposure(ctx context.Context, server mcpserver.ID) ([]
 	} else if !found {
 		return nil, ErrUnknownServer
 	}
-	refs, err := c.store.ListExposure(ctx)
+	refs, err := c.exposureStore.ListExposure(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -90,7 +91,7 @@ func (c *Coordinator) ToolExposure(ctx context.Context, server mcpserver.ID) ([]
 	return selected, nil
 }
 
-func (c *Coordinator) SetToolExposure(ctx context.Context, ref tool.Ref, disabled bool) error {
+func (c *Coordinator) SetToolExposure(ctx context.Context, ref tool.Ref, disabled bool, complete operation.Reply[struct{}]) error {
 	server, _, ok := ref.MCP()
 	if !ok {
 		return fmt.Errorf("%w: exposure requires an MCP reference", ErrInvalidServerConfiguration)
@@ -105,7 +106,9 @@ func (c *Coordinator) SetToolExposure(ctx context.Context, ref tool.Ref, disable
 	} else if !found {
 		return ErrUnknownServer
 	}
-	if err := c.store.SetToolExposure(write.requestCtx, ref, disabled); err != nil {
+	if err := complete(write.requestCtx, func(tx context.Context) (struct{}, error) {
+		return struct{}{}, c.exposureStore.SetToolExposure(tx, ref, disabled)
+	}); err != nil {
 		return err
 	}
 	c.exposure.setToolDisabled(ref, disabled)

@@ -40,9 +40,12 @@ type registry interface {
 // releasing the lease that admitted the write.
 type DirectorySettlement func(context.Context) error
 
-type store interface {
+type directoryStore interface {
 	Save(ctx context.Context, server mcpserver.Server) (DirectorySettlement, error)
 	Remove(ctx context.Context, current mcpserver.Server) (DirectorySettlement, error)
+}
+
+type exposureStore interface {
 	ListExposure(ctx context.Context) ([]tool.Ref, error)
 	SetToolExposure(ctx context.Context, ref tool.Ref, disabled bool) error
 }
@@ -59,7 +62,8 @@ type ExternalWorkflow interface {
 type Coordinator struct {
 	// Network and interactive OAuth waits never hold mutationMu.
 	registry                registry
-	store                   store
+	directory               directoryStore
+	exposureStore           exposureStore
 	toolCatalog             toolCatalog
 	connections             Connections
 	exposure                *ExposureState
@@ -76,7 +80,8 @@ type Coordinator struct {
 type Config struct {
 	External      ExternalWorkflow
 	Registry      registry
-	Store         store
+	Directory     directoryStore
+	ExposureStore exposureStore
 	ToolCatalog   toolCatalog
 	Connections   Connections
 	Exposure      *ExposureState
@@ -88,7 +93,8 @@ func New(cfg Config) (*Coordinator, error) {
 		name  string
 		value any
 	}{
-		{"registry", cfg.Registry}, {"store", cfg.Store}, {"external workflow", cfg.External},
+		{"registry", cfg.Registry}, {"directory", cfg.Directory}, {"exposure store", cfg.ExposureStore},
+		{"external workflow", cfg.External},
 		{"live connections", cfg.Connections}, {"tool catalog", cfg.ToolCatalog},
 		{"invalidations", cfg.Invalidations},
 	} {
@@ -102,7 +108,8 @@ func New(cfg Config) (*Coordinator, error) {
 	coordinator := &Coordinator{
 		external:                cfg.External,
 		registry:                cfg.Registry,
-		store:                   cfg.Store,
+		directory:               cfg.Directory,
+		exposureStore:           cfg.ExposureStore,
 		toolCatalog:             cfg.ToolCatalog,
 		connections:             cfg.Connections,
 		exposure:                cfg.Exposure,
