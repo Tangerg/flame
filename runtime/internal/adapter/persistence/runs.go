@@ -208,7 +208,7 @@ func (r *RunStore) Suspend(ctx context.Context, value rundomain.Run, segmentID i
 		if n == 0 {
 			return fmt.Errorf("sqlite: suspend run %q: Segment %q is no longer the running Segment", value.ID(), segmentID)
 		}
-		return nil
+		return r.captureGoalBoundary(ctx, value, segmentID)
 	})
 }
 
@@ -397,8 +397,8 @@ func (r *RunStore) requireAdvance(ctx context.Context, operation string, state r
 	return nil
 }
 
-// This CAS is the only place a Run reaches terminal, so the root's Plan boundary
-// is stamped here; that is how no terminal root lacks a recorded boundary.
+// The Plan boundary and Goal receipt share this terminal CAS so recovery sees
+// the Run outcome and its downstream inputs together.
 func (r *RunStore) finish(ctx context.Context, op string, value rundomain.Run, marker *runCommitMarker, winningCancellationKey string, fence string, fenceArgs ...any) error {
 	ending, finished := value.Ending()
 	if !finished {
@@ -444,6 +444,9 @@ func (r *RunStore) finish(ctx context.Context, op string, value rundomain.Run, m
 		}
 		if value.Lineage().IsChild() {
 			return nil
+		}
+		if err := r.captureGoalBoundary(ctx, value, identity.SegmentID{}); err != nil {
+			return err
 		}
 		return newPlanStore(r.db).CaptureBoundary(ctx, value.SessionID(), value.ID())
 	})

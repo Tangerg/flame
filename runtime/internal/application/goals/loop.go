@@ -191,7 +191,8 @@ func (d *Driver) driveRun(ctx context.Context, g *goal.Goal) (settlement runSett
 	}
 	recordTerminalRunAttributes(span, finished)
 
-	// Re-read: the model may have reported completed/blocked mid-Run.
+	// The committed boundary and any decision reported by the model determine
+	// whether this incarnation can admit another Run.
 	settlement, owned, err := d.observeOwned(ctx, g, span)
 	if err != nil || !owned {
 		return runSettlement{}, err
@@ -334,11 +335,9 @@ func (d *Driver) resolveTerminalRun(
 		return settlement, nil
 	}
 	if finished.State() == run.Waiting {
-		settlement, err := d.pauseOwned(ctx, g, goal.ReasonAwaitingInput)
-		if err != nil {
-			return runSettlement{}, driveFailure(ctx, err)
-		}
-		return settlement, nil
+		// A later boundary may already have replaced this park. A continued
+		// drive still needs to acquire the next Session slot.
+		return settledAs(goal.StatusActive), nil
 	}
 
 	_, err := outcomeOf(finished)
@@ -351,9 +350,7 @@ func (d *Driver) resolveTerminalRun(
 		}
 		return settlement, nil
 	}
-	// The terminal Run transaction has already recorded this Run's usage (and
-	// derived any pause) under the Goal incarnation. Do not reconstruct that
-	// durable fact from the stream; accounting must share the terminal commit.
+	// The committed Run already owns its usage and the evidence for any pause.
 	return settledAs(goal.StatusActive), nil
 }
 

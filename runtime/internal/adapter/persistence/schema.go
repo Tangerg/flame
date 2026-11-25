@@ -462,10 +462,11 @@ func currentSchema() []string {
 		)`,
 		`CREATE TABLE IF NOT EXISTS goal_run_receipts (
 			run_id TEXT PRIMARY KEY REFERENCES runs(run_id) ON DELETE CASCADE,
+			parked_segment_id TEXT NOT NULL,
+			parked_at INTEGER,
 			expected_revision INTEGER NOT NULL CHECK(expected_revision>0),
-			consumed INTEGER NOT NULL DEFAULT 0 CHECK(consumed IN (0,1))
+			CHECK ((parked_segment_id <> '') = (parked_at IS NOT NULL))
 		)`,
-		`CREATE INDEX IF NOT EXISTS pending_goal_run_receipts ON goal_run_receipts(run_id) WHERE consumed=0`,
 		`CREATE TABLE IF NOT EXISTS goals (
 			session_id TEXT    PRIMARY KEY REFERENCES sessions(id) ON DELETE CASCADE,
 			objective  TEXT    NOT NULL,

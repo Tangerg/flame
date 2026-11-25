@@ -1,14 +1,17 @@
 package bootstrap
 
 import (
+	"database/sql/driver"
 	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/goalworkflow"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/pluginservices"
 	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
+	modernsqlite "modernc.org/sqlite"
 
 	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
@@ -17,6 +20,101 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
+
+func TestGoalRecoversUnsettledRunBoundary(t *testing.T) {
+	attempted := make(chan struct{}, 1)
+	if err := modernsqlite.RegisterScalarFunction("test_goal_pause_attempted", 0,
+		func(*modernsqlite.FunctionContext, []driver.Value) (driver.Value, error) {
+			select {
+			case attempted <- struct{}{}:
+			default:
+			}
+			return nil, nil
+		}); err != nil {
+		t.Fatal(err)
+	}
+	t.Run("waiting", func(t *testing.T) {
+		before, after := recoverUnsettledGoal(t, attempted, false)
+		if after.Goal.Reason.Code != protocol.GoalReasonAwaitingInput || after.Goal.Used.Runs != 0 {
+			t.Fatalf("Goal after restart = %s, usage %+v; want awaiting input without charging a Run", after.Goal.Reason.Code, after.Goal.Used)
+		}
+		if after.Runs[0].Status != protocol.RunStatusWaiting ||
+			len(after.Interrupts) != 1 || len(after.Interrupts[0].Interrupts) != 1 ||
+			after.Interrupts[0].Interrupts[0].ItemID != before.Interrupts[0].Interrupts[0].ItemID {
+			t.Fatalf("Run after restart = %+v, interrupts = %+v; want the same committed question", after.Runs[0], after.Interrupts)
+		}
+	})
+	t.Run("canceled", func(t *testing.T) {
+		_, after := recoverUnsettledGoal(t, attempted, true)
+		if after.Goal.Reason.Code != protocol.GoalReasonRunNotCompleted ||
+			after.Goal.Reason.RunOutcome != protocol.OutcomeCanceled || after.Goal.Used.Runs != 1 {
+			t.Fatalf("Goal after restart = %+v, usage %+v; want the canceled Run charged once", after.Goal.Reason, after.Goal.Used)
+		}
+		if after.Runs[0].Outcome == nil || after.Runs[0].Outcome.Type != protocol.OutcomeCanceled || len(after.Interrupts) != 0 {
+			t.Fatalf("Run after restart = %+v, interrupts = %+v; want the canceled Run and no open question", after.Runs[0], after.Interrupts)
+		}
+	})
+}
+
+func recoverUnsettledGoal(t *testing.T, attempted <-chan struct{}, cancelWaiting bool) (*protocol.SessionSnapshot, *protocol.SessionSnapshot) {
+	t.Helper()
+	home := testsupport.TempDirectory(t)
+	t.Setenv("FLAME_HOME", home)
+	model := newLifecycleModel()
+	host, api := openProtocolRuntime(t, model)
+	original := &poMCPRuntime{t: t, host: host, api: api, endpoint: host.Endpoint()}
+	t.Cleanup(original.close)
+	poMCPActivate(original, filepath.Join(firstPartyPackages, "goals"))
+	questionCrashDatabase(t, home, `CREATE TRIGGER refuse_goal_pause BEFORE UPDATE OF status ON goals
+		BEGIN
+			SELECT test_goal_pause_attempted();
+			SELECT RAISE(ABORT, 'test interrupted Goal pause');
+		END`)
+	ctx := protocolLifecycleContext(t.Context())
+	session, err := api.CreateSession(ctx, protocol.CreateSessionRequest{
+		Workspace: &protocol.WorkspaceRef{Path: t.TempDir()},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := api.StartGoal(ctx, protocol.StartGoalRequest{
+		SessionID: session.ID, Objective: "Ask before proceeding.",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	waitForSignal(t, model.firstCallStarted, "the Goal model call")
+	close(model.releaseFirstCall)
+	waitForSignal(t, attempted, "the original Goal pause attempt")
+	request := protocol.GetSessionSnapshotRequest{SessionID: session.ID}
+	before, err := api.GetSessionSnapshot(ctx, request)
+	if err != nil || before.Goal == nil || before.Goal.Status != protocol.GoalActive ||
+		len(before.Runs) != 1 || before.Runs[0].Status != protocol.RunStatusWaiting ||
+		len(before.Interrupts) != 1 || len(before.Interrupts[0].Interrupts) != 1 {
+		t.Fatalf("Session before restart = %+v, %v; want an active Goal with a committed question", before, err)
+	}
+	if cancelWaiting {
+		if _, err := api.CancelRun(ctx, protocol.CancelRunRequest{
+			RunID: before.Runs[0].ID, Reason: "the question is no longer needed",
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	original.close()
+	questionCrashDatabase(t, home, `DROP TRIGGER refuse_goal_pause`)
+
+	restarted, recovered := openProtocolRuntime(t, newReplyStub("resume the original question"))
+	t.Cleanup(func() {
+		if err := restarted.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	after, err := recovered.GetSessionSnapshot(ctx, request)
+	if err != nil || after.Goal == nil || after.Goal.Status != protocol.GoalPaused || after.Goal.Reason == nil ||
+		len(after.Runs) != 1 || after.Runs[0].ID != before.Runs[0].ID {
+		t.Fatalf("Session after restart = %+v, %v; want the original Run and a paused Goal", after, err)
+	}
+	return before, after
+}
 
 func TestGoalOwnedRunLostOnRestartIsChargedOnceAndHandedBackToTheUser(t *testing.T) {
 	cfg := runtimeConfigWithRequiredDeps(t)

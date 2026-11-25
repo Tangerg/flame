@@ -120,27 +120,36 @@ func TestExistingWorkflowsRetainTheirOriginalAuthors(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		finish := now.Add(time.Second)
-		raw := testsupport.MustRestoreRun(run.Snapshot{
-			SessionID: testsupport.MustSessionID(session.ID), ID: testsupport.MustRunID("run_original_receipt"),
-			GoalIncarnationID: original.IncarnationID(), CreatedAt: now, UpdatedAt: finish,
-			Lifecycle: run.Termination{
-				Ending:     run.Failed{Failure: run.Failure{Kind: run.FailureInternal}},
-				FinishedAt: finish, MessageMark: run.MessageMarkAt(0),
-			},
+		draft := run.Draft{
+			SessionID: original.SessionID(), RunID: testsupport.MustRunID("run_original_receipt"),
+			SegmentID:         testsupport.MustSegmentID("seg_original_receipt"),
+			ModelSelection:    testsupport.MustModelSelection("anthropic", "claude-test"),
+			GoalIncarnationID: original.IncarnationID(), CreatedAt: now,
+		}
+		started, err := run.Admit(draft)
+		if err != nil {
+			t.Fatal(err)
+		}
+		finished, err := started.Replace().Terminate(run.Termination{
+			Ending:      run.Failed{Failure: run.Failure{Kind: run.FailureInternal}},
+			FinishedAt:  now.Add(time.Second),
+			MessageMark: run.MessageMarkAt(0),
 		})
+		if err != nil {
+			t.Fatal(err)
+		}
 		if err := cfg.stores.Transactor(ctx, func(ctx context.Context) error {
-			if err := cfg.stores.Runs.Restore(ctx, raw); err != nil {
+			if err := cfg.stores.Runs.Admit(ctx, draft); err != nil {
 				return err
 			}
-			return store.CaptureGoalRun(ctx, raw)
+			return cfg.stores.Runs.Terminalize(ctx, finished, "")
 		}); err != nil {
 			t.Fatal(err)
 		}
 		if err := settler.Drain(ctx, store, calls, testsupport.MustSessionID(session.ID)); !errors.Is(err, plugin.ErrUnavailable) {
 			t.Fatalf("substitute consumed a pending receipt: %v", err)
 		}
-		if p, found, err := store.PendingGoalRun(ctx, testsupport.MustSessionID(session.ID)); err != nil || !found || !p.Owns(original) {
+		if p, found, err := store.PendingGoalRun(ctx, original.SessionID()); err != nil || !found || !p.Owns(original.Version()) {
 			t.Fatalf("lost original receipt: %+v %t %v", p, found, err)
 		}
 		created, err := calls.DecideGoal(ctx, unbound, create)
@@ -159,8 +168,8 @@ func TestExistingWorkflowsRetainTheirOriginalAuthors(t *testing.T) {
 		if !found || paused.IncarnationID() != original.IncarnationID() || paused.Revision() != 2 || paused.Status() != goal.StatusPaused || paused.Reason().Code() != goal.ReasonRunNotCompleted || paused.Used().Runs != 1 {
 			t.Fatalf("the original author did not consume its own terminal evidence: %+v", paused.Snapshot())
 		}
-		if err := store.CaptureGoalRun(ctx, raw); err != nil {
-			t.Fatal(err)
+		if err := cfg.stores.Runs.Terminalize(ctx, finished, ""); err == nil {
+			t.Fatal("the same Run boundary committed twice")
 		}
 		if _, pending, err := store.PendingGoalRun(ctx, testsupport.MustSessionID(session.ID)); err != nil || pending {
 			t.Fatalf("the same receipt was payable twice: %t %v", pending, err)

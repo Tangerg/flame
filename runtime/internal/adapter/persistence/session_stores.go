@@ -422,10 +422,7 @@ func (s *SessionStores) ApplyTerminal(ctx context.Context, terminal sessions.Ter
 		); err != nil {
 			return err
 		}
-		if err := s.terminalizeParkedRuns(ctx, runs, root.ID(), winningCancellationKey); err != nil {
-			return err
-		}
-		return s.recordGoalTerminalRun(ctx, root)
+		return s.terminalizeParkedRuns(ctx, runs, root.ID(), winningCancellationKey)
 	})
 }
 
@@ -495,16 +492,6 @@ func (s *SessionStores) terminalizeParkedRuns(ctx context.Context, runs []rundom
 		default:
 			return fmt.Errorf("persistence: unsupported parked terminal outcome %s", outcome)
 		}
-	}
-	return nil
-}
-
-func (s *SessionStores) recordGoalTerminalRun(ctx context.Context, root rundomain.Run) error {
-	if root.GoalIncarnationID().IsZero() {
-		return nil
-	}
-	if err := s.goals.CaptureGoalRun(ctx, root); err != nil {
-		return fmt.Errorf("persistence: record Goal Run for Run %q: %w", root.ID(), err)
 	}
 	return nil
 }

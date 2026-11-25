@@ -14,33 +14,39 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 )
 
-func (g *GoalStore) CaptureGoalRun(ctx context.Context, value run.Run) error {
-	return g.db.write(ctx, func(ctx context.Context) error {
-		if value.GoalIncarnationID().IsZero() {
-			return nil
-		}
-		if _, terminal := value.Outcome(); !terminal {
-			return errors.New("goal: cannot capture a nonterminal Run")
-		}
-		_, err := g.db.connection(ctx).ExecContext(ctx, `INSERT INTO goal_run_receipts(run_id,expected_revision)
-		SELECT r.run_id,g.revision FROM runs r JOIN goals g ON g.session_id=r.session_id AND g.incarnation_id=r.goal_incarnation_id
-		WHERE r.run_id=? AND r.session_id=? AND r.goal_incarnation_id=? AND r.state=?
-		ON CONFLICT(run_id) DO NOTHING`, value.ID(), value.SessionID(), value.GoalIncarnationID().String(), run.Finished)
-		if err != nil {
-			return fmt.Errorf("sqlite: capture Goal Run receipt: %w", err)
-		}
+// A parked Segment can disappear from the Run before its Goal author
+// responds. A newer boundary replaces the pending decision for that Run.
+func (r *RunStore) captureGoalBoundary(ctx context.Context, value run.Run, parkedSegmentID identity.SegmentID) error {
+	if value.GoalIncarnationID().IsZero() {
 		return nil
-	})
+	}
+	_, err := r.db.connection(ctx).ExecContext(ctx, `INSERT INTO goal_run_receipts(run_id,parked_segment_id,parked_at,expected_revision)
+	SELECT r.run_id, ?, CASE WHEN r.state=? THEN r.updated_at END, g.revision
+	FROM runs r JOIN goals g ON g.session_id=r.session_id AND g.incarnation_id=r.goal_incarnation_id
+	WHERE r.run_id=?
+	ON CONFLICT(run_id) DO UPDATE SET
+		parked_segment_id=excluded.parked_segment_id,
+		parked_at=excluded.parked_at,
+		expected_revision=excluded.expected_revision`, parkedSegmentID, run.Waiting, value.ID())
+	if err != nil {
+		return fmt.Errorf("sqlite: capture Goal Run %q receipt: %w", value.ID(), err)
+	}
+	return nil
 }
 
 func (g *GoalStore) PendingGoalRun(ctx context.Context, sessionID identity.SessionID) (goal.RunReceipt, bool, error) {
 	return scopedPair(ctx, g.db.read, func(ctx context.Context) (goal.RunReceipt, bool, error) {
 		var r goal.RunReceipt
 		var incarnation string
-		var finished int64
-		err := g.db.connection(ctx).QueryRowContext(ctx, `SELECT r.run_id,r.session_id,r.goal_incarnation_id,receipt.expected_revision,r.outcome,r.finished_at
+		var parkedSegmentID identity.SegmentID
+		var outcome string
+		var occurred int64
+		err := g.db.connection(ctx).QueryRowContext(ctx, `SELECT r.run_id,r.session_id,r.goal_incarnation_id,receipt.expected_revision,
+			receipt.parked_segment_id,r.outcome,COALESCE(receipt.parked_at,r.finished_at) AS occurred_at
 		FROM goal_run_receipts receipt JOIN runs r ON r.run_id=receipt.run_id
-		WHERE r.session_id=? AND receipt.consumed=0 ORDER BY r.finished_at,r.run_id LIMIT 1`, sessionID).Scan(&r.RunID, &r.SessionID, &incarnation, &r.Revision, &r.Outcome, &finished)
+		WHERE r.session_id=?
+		ORDER BY occurred_at,r.run_id LIMIT 1`, sessionID).
+			Scan(&r.RunID, &r.SessionID, &incarnation, &r.Revision, &parkedSegmentID, &outcome, &occurred)
 		if errors.Is(err, sql.ErrNoRows) {
 			return goal.RunReceipt{}, false, nil
 		}
@@ -50,30 +56,37 @@ func (g *GoalStore) PendingGoalRun(ctx context.Context, sessionID identity.Sessi
 		if r.IncarnationID, err = goalref.ParseIncarnation(incarnation); err != nil {
 			return goal.RunReceipt{}, false, fmt.Errorf("sqlite: decode Goal Run receipt incarnation: %w", err)
 		}
-		r.FinishedAt = time.Unix(0, finished).UTC()
+		r.OccurredAt = time.Unix(0, occurred).UTC()
+		if !parkedSegmentID.IsZero() {
+			r.Boundary = goal.RunPark{SegmentID: parkedSegmentID}
+			return r, true, nil
+		}
+		ending, valid := run.ParseOutcome(outcome)
+		if !valid {
+			return goal.RunReceipt{}, false, fmt.Errorf("sqlite: Goal Run %q receipt has invalid outcome %q", r.RunID, outcome)
+		}
+		r.Boundary = goal.RunEnd{Outcome: ending}
 		return r, true, nil
 	})
 }
 
-func (g *GoalStore) SettleGoalRun(ctx context.Context, receipt goal.RunReceipt, change *goal.Replacement) error {
-	return g.db.write(ctx, func(ctx context.Context) error {
-		result, err := g.db.connection(ctx).ExecContext(ctx, `UPDATE goal_run_receipts SET consumed=1
-			WHERE run_id=? AND expected_revision=? AND consumed=0 AND EXISTS(
-				SELECT 1 FROM runs r WHERE r.run_id=goal_run_receipts.run_id AND r.session_id=? AND r.goal_incarnation_id=?)`, receipt.RunID, receipt.Revision, receipt.SessionID, receipt.IncarnationID.String())
+func (g *GoalStore) SettleGoalRun(ctx context.Context, receipt goal.RunReceipt, change *goal.Replacement) (bool, error) {
+	if change != nil && !receipt.Owns(change.ExpectedVersion()) {
+		return false, errors.New("goal: receipt and decision address different versions")
+	}
+	parked, _ := receipt.Boundary.(goal.RunPark)
+	return scopedValue(ctx, g.db.write, func(ctx context.Context) (bool, error) {
+		result, err := g.db.connection(ctx).ExecContext(ctx, `DELETE FROM goal_run_receipts
+			WHERE run_id=? AND parked_segment_id=? AND expected_revision=? AND EXISTS(
+				SELECT 1 FROM runs r WHERE r.run_id=goal_run_receipts.run_id AND r.session_id=? AND r.goal_incarnation_id=?)`,
+			receipt.RunID, parked.SegmentID, receipt.Revision, receipt.SessionID, receipt.IncarnationID.String())
 		if err != nil {
-			return err
+			return false, fmt.Errorf("sqlite: consume Goal Run %q receipt: %w", receipt.RunID, err)
 		}
-		n, err := result.RowsAffected()
-		if err != nil || n == 0 || change == nil {
-			return err
+		consumed, err := rowsAffected(result)
+		if err != nil || !consumed || change == nil {
+			return false, err
 		}
-		expected := change.ExpectedVersion()
-		id, exists := expected.IncarnationID()
-		revision, ok := expected.Revision()
-		if !exists || !ok || expected.SessionID() != receipt.SessionID || id != receipt.IncarnationID || revision != receipt.Revision {
-			return errors.New("goal: receipt and decision address different versions")
-		}
-		_, err = g.Save(ctx, *change)
-		return err
+		return g.Save(ctx, *change)
 	})
 }

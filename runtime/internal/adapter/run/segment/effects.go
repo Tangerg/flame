@@ -31,10 +31,6 @@ type commandAcceptanceStore interface {
 	Lookup(context.Context, string) (runs.CommandAcceptanceRecord, error)
 }
 
-type goalRunRecorder interface {
-	CaptureGoalRun(ctx context.Context, value run.Run) error
-}
-
 type InterruptStore interface {
 	Open(ctx context.Context, p runs.Pending) error
 	Consume(ctx context.Context, rootRunID identity.RunID) (runs.Pending, bool, error)
@@ -128,7 +124,6 @@ type Config struct {
 	Sessions              SessionStore
 	ActorAuthority        actorAuthority
 	CommandAcceptances    commandAcceptanceStore
-	GoalRuns              goalRunRecorder
 	Transcript            TranscriptStore
 	ItemReplacer          ItemReplacer
 	ModelInvocations      modelInvocationJournal
@@ -152,7 +147,6 @@ type Effects struct {
 	sessions              SessionStore
 	actorAuthority        actorAuthority
 	commandAcceptances    commandAcceptanceStore
-	goalRuns              goalRunRecorder
 	transcript            TranscriptStore
 	itemReplacer          ItemReplacer
 	modelInvocations      modelInvocationJournal
@@ -202,7 +196,6 @@ func New(cfg Config) (*Effects, error) {
 		{"child run start store", cfg.ChildRunStarts},
 		{"actor authority", cfg.ActorAuthority},
 		{"command acceptance store", cfg.CommandAcceptances},
-		{"goal run recorder", cfg.GoalRuns},
 		{"transactor", cfg.Tx},
 		{"plugin binding transactor", cfg.PluginBindings},
 	}
@@ -217,7 +210,6 @@ func New(cfg Config) (*Effects, error) {
 		sessions:              cfg.Sessions,
 		actorAuthority:        cfg.ActorAuthority,
 		commandAcceptances:    cfg.CommandAcceptances,
-		goalRuns:              cfg.GoalRuns,
 		transcript:            cfg.Transcript,
 		itemReplacer:          cfg.ItemReplacer,
 		modelInvocations:      cfg.ModelInvocations,

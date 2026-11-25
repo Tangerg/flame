@@ -22,7 +22,6 @@ type RecoveryStore struct {
 	interrupts          *InterruptStore
 	transcript          *TranscriptStore
 	messages            *ConversationStore
-	goalRuns            *GoalStore
 	executorCheckpoints *ExecutorCheckpointStore
 	modelInvocations    *ModelInvocationStore
 	toolInvocations     *ToolInvocationStore
@@ -37,7 +36,6 @@ func (b *Bundle) Recovery() *RecoveryStore {
 		interrupts:          b.Interrupts,
 		transcript:          b.Transcript,
 		messages:            b.Conversations,
-		goalRuns:            b.Goals,
 		executorCheckpoints: b.ExecutorCheckpoints,
 		modelInvocations:    b.ModelInvocations,
 		toolInvocations:     b.ToolInvocations,
@@ -114,9 +112,6 @@ func (p *RecoveryStore) applyRecovery(ctx context.Context, commit runs.RecoveryC
 	if err := p.recoverLostRuns(ctx, commit); err != nil {
 		return err
 	}
-	if err := p.recordGoalRuns(ctx, commit); err != nil {
-		return err
-	}
 	if err := p.deleteInterrupts(ctx, commit); err != nil {
 		return err
 	}
@@ -186,15 +181,6 @@ func (p *RecoveryStore) recoverLostRuns(ctx context.Context, commit runs.Recover
 	for _, replacement := range commit.LostRuns() {
 		if err := p.runs.RecoverLost(ctx, replacement); err != nil {
 			return fmt.Errorf("recovery: recover lost Run %q: %w", replacement.State().ID(), err)
-		}
-	}
-	return nil
-}
-
-func (p *RecoveryStore) recordGoalRuns(ctx context.Context, commit runs.RecoveryCommit) error {
-	for _, charged := range commit.GoalRuns() {
-		if err := p.goalRuns.CaptureGoalRun(ctx, charged); err != nil {
-			return fmt.Errorf("recovery: record Goal Run for Run %q: %w", charged.ID(), err)
 		}
 	}
 	return nil

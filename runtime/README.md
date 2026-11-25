@@ -124,6 +124,11 @@ before admitting its first Run. The stop receipt includes usage from the origina
 Run's terminal write. The `Revise` workflow signal edits the captured objective in
 one decision, including while the Goal is active.
 
+A Goal-owned Run records its pending workflow decision in the same transaction
+that parks or finishes the Run. A later boundary of the same Run replaces its
+pending decision. After restart, the original author can pause the Goal for
+a question that still awaits input or settle the Run's terminal outcome.
+
 MCP catalog restoration rechecks each original binding through its current
 business owner under Frame admission. If that owner has already settled, its
 earlier catalog snapshot requires no restoration and cannot authorize original

@@ -60,7 +60,6 @@ func assembleRuns(
 	if err != nil {
 		return composedRuns{}, err
 	}
-	runSegmentConfig.GoalRuns = cfg.stores.Goals
 	runSegmentConfig.RememberedRules = cfg.stores.ApprovalRules
 	runSegmentConfig.AcceptedContinuations = cfg.stores.AcceptedContinuations
 	runSegmentEffects, err := segment.New(runSegmentConfig)

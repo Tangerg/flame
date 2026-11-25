@@ -31,7 +31,6 @@ func (e *Effects) applyCommit(ctx context.Context, commit runs.EventCommit) erro
 		e.applyProgress,
 		e.applyState,
 		recordChildCancellation,
-		e.captureGoalRun,
 		e.recordRunCommit,
 	} {
 		if err := apply(ctx, commit); err != nil {
@@ -106,16 +105,6 @@ func (e *Effects) applyConversation(ctx context.Context, commit runs.EventCommit
 func recordChildCancellation(ctx context.Context, commit runs.EventCommit) error {
 	if err := commit.RecordChildCancellation(ctx); err != nil {
 		return fmt.Errorf("segment: record confirmed active child cancellation: %w", err)
-	}
-	return nil
-}
-
-func (e *Effects) captureGoalRun(ctx context.Context, commit runs.EventCommit) error {
-	if !commit.ChargesGoal() {
-		return nil
-	}
-	if err := e.goalRuns.CaptureGoalRun(ctx, *commit.Run); err != nil {
-		return fmt.Errorf("segment: record Goal Run: %w", err)
 	}
 	return nil
 }
