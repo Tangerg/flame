@@ -34,6 +34,31 @@ function commandNotice(
   return { kind: "command", method };
 }
 
+type PageDirection = "next" | "previous";
+
+// Paging keeps a stack of the cursors that opened each earlier page; a page
+// still loading or without a further cursor does not move.
+function pageCursor(
+  direction: PageDirection,
+  prior: { loading: boolean; value?: { next?: string } } | undefined,
+  pages: ReadonlyArray<string | undefined>,
+): { before?: string } | undefined {
+  if (prior?.loading) return undefined;
+  if (direction === "next")
+    return prior?.value?.next ? { before: prior.value.next } : undefined;
+  if (!pages.length) return undefined;
+  const before = pages.at(-1);
+  return before ? { before } : {};
+}
+
+function movedPages(
+  pages: Array<string | undefined>,
+  direction: PageDirection,
+  openedBy: string | undefined,
+): Array<string | undefined> {
+  return direction === "next" ? [...pages, openedBy] : pages.slice(0, -1);
+}
+
 function sameSelection(a?: Selection, b?: Selection): boolean {
   return a?.id === b?.id && a?.revision === b?.revision;
 }
@@ -167,44 +192,35 @@ export function useDeliverables(context: ComponentContext) {
   const assets = useAssetSave(context, operations, signal, tell);
 
   const page = useCallback(
-    async (kind: "list" | "history", direction: "next" | "previous") => {
+    async (kind: "list" | "history", direction: PageDirection) => {
       if (kind === "list") {
         const prior = values[METHODS.list];
-        if (prior?.loading) return;
-        const before =
-          direction === "next" ? prior?.value?.next : listPages.at(-1);
-        if (direction === "next" ? !before : !listPages.length) return;
-        if (
-          await query(METHODS.list, {
-            limit: LIMITS.pageSize,
-            ...scoped,
-            ...(before ? { before } : {}),
-          })
-        )
-          setListPages((pages) =>
-            direction === "next"
-              ? [...pages, prior?.input.before]
-              : pages.slice(0, -1),
-          );
-      } else {
-        const captured = current.current;
-        const prior = values[METHODS.history];
-        if (!captured || prior?.loading) return;
-        const before =
-          direction === "next" ? prior?.value?.next : historyPages.at(-1);
-        if (direction === "next" ? !before : !historyPages.length) return;
-        const result = await query(METHODS.history, {
-          id: captured.id,
+        const cursor = pageCursor(direction, prior, listPages);
+        if (!cursor) return;
+        const result = await query(METHODS.list, {
           limit: LIMITS.pageSize,
-          ...(before ? { before } : {}),
+          ...scoped,
+          ...cursor,
         });
-        if (result && current.current?.id === captured.id)
-          setHistoryPages((pages) =>
-            direction === "next"
-              ? [...pages, prior?.input.before]
-              : pages.slice(0, -1),
+        if (result)
+          setListPages((pages) =>
+            movedPages(pages, direction, prior?.input.before),
           );
+        return;
       }
+      const captured = current.current;
+      const prior = values[METHODS.history];
+      const cursor = captured && pageCursor(direction, prior, historyPages);
+      if (!captured || !cursor) return;
+      const result = await query(METHODS.history, {
+        id: captured.id,
+        limit: LIMITS.pageSize,
+        ...cursor,
+      });
+      if (result && current.current?.id === captured.id)
+        setHistoryPages((pages) =>
+          movedPages(pages, direction, prior?.input.before),
+        );
     },
     [historyPages, listPages, query, scoped, values],
   );

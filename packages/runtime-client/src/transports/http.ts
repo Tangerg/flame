@@ -202,6 +202,35 @@ function consumedBeforeAbort(delivery: Promise<void>, signal?: AbortSignal): Pro
   });
 }
 
+// A read failure the owner did not cause by aborting becomes the stream's error.
+function streamReadError(
+  err: unknown,
+  signal: AbortSignal | undefined,
+  requestId: string | undefined,
+): Error | undefined {
+  if (signal && isExpectedAbort(err, signal)) return undefined;
+  const error =
+    err instanceof RpcTransportError || err instanceof RpcProtocolError
+      ? err
+      : new RpcConnectionError(errorMessage(err), requestId);
+  if (error !== err) error.cause = err;
+  return error;
+}
+
+function withCleanupFailure(
+  streamError: Error | undefined,
+  cancelError: unknown,
+  requestId: string | undefined,
+): Error {
+  if (streamError) {
+    retainCleanupFailure(streamError, cancelError);
+    return streamError;
+  }
+  const error = new RpcConnectionError("response body cancellation failed", requestId);
+  error.cause = cancelError;
+  return error;
+}
+
 export function createHttpTransport(config: HttpTransportConfig): Transport {
   const { localToken, maximumEventStreamFrameBytes } = config;
   const documentLimit = responseDocumentLimit(config.maximumResponseBytes);
@@ -324,13 +353,7 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
       if (!(await feedEventStreamText(parser, decodeChunk(), deliverParsedEvent))) return;
     } catch (err) {
       readFailure = { error: err };
-      if (!signal || !isExpectedAbort(err, signal)) {
-        streamError =
-          err instanceof RpcTransportError || err instanceof RpcProtocolError
-            ? err
-            : new RpcConnectionError(errorMessage(err), metadata.requestId);
-        if (streamError !== err) streamError.cause = err;
-      }
+      streamError = streamReadError(err, signal, metadata.requestId);
     } finally {
       try {
         if (!bodyComplete || cancellation.started) await cancellation.cancel(streamError);
@@ -338,14 +361,7 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
         // An errored ReadableStream rejects cancel with its original read failure.
         if (!readFailure || !isPrimaryFailure(readFailure.error, cancelError)) {
           cleanupFailures.set(cancellation, cancelError);
-          if (streamError) retainCleanupFailure(streamError, cancelError);
-          else {
-            streamError = new RpcConnectionError(
-              "response body cancellation failed",
-              metadata.requestId,
-            );
-            streamError.cause = cancelError;
-          }
+          streamError = withCleanupFailure(streamError, cancelError, metadata.requestId);
         }
       }
       readers.delete(reader);

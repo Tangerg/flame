@@ -222,6 +222,41 @@ export function useReportArchive(context: BoundContext) {
     setOpened(undefined);
   }
 
+  function settleSaved(
+    saved: Header,
+    active: Element | null,
+    signal: AbortSignal,
+  ) {
+    const current = activeElement();
+    // A later completion opens the saved report only while the user
+    // remains where the command started.
+    if (current === active || current === current?.ownerDocument.body) {
+      setOutcome({ kind: "saved" });
+      open(saved, undefined, active);
+    } else setOutcome({ kind: "savedArchived", header: saved });
+    void refresh(signal);
+  }
+
+  async function settleRemoval(
+    removed: Header | undefined,
+    active: Element | null,
+    signal: AbortSignal,
+  ) {
+    setOutcome({ kind: removed ? "removed" : "removalConfirmed" });
+    const accepted = await refresh(signal);
+    if (signal.aborted) return;
+    // A recovered removal reports success without its original target. Only
+    // the captured target or fresh canonical membership can retire the open
+    // report; an unread archive keeps it.
+    const current = shown.current;
+    if (
+      current &&
+      (current.header.id === removed?.id ||
+        (accepted && !accepted.some(({ id }) => id === current.header.id)))
+    )
+      leave(active, "archive");
+  }
+
   async function observe(
     started: Action,
     command: Promise<Header | boolean>,
@@ -235,30 +270,8 @@ export function useReportArchive(context: BoundContext) {
       const result = await command;
       if (signal.aborted) return;
       if (started.kind === "check") recoveryReturn.current = active;
-      if (typeof result !== "boolean") {
-        const current = activeElement();
-        // A later completion opens the saved report only while the user
-        // remains where the command started.
-        if (current === active || current === current?.ownerDocument.body) {
-          setOutcome({ kind: "saved" });
-          open(result, undefined, active);
-        } else setOutcome({ kind: "savedArchived", header: result });
-        void refresh(signal);
-        return;
-      }
-      setOutcome({ kind: removed ? "removed" : "removalConfirmed" });
-      const accepted = await refresh(signal);
-      if (signal.aborted) return;
-      // A recovered removal reports success without its original target. Only
-      // the captured target or fresh canonical membership can retire the open
-      // report; an unread archive keeps it.
-      const current = shown.current;
-      if (
-        current &&
-        (current.header.id === removed?.id ||
-          (accepted && !accepted.some(({ id }) => id === current.header.id)))
-      )
-        leave(active, "archive");
+      if (typeof result !== "boolean") settleSaved(result, active, signal);
+      else await settleRemoval(removed, active, signal);
     } catch (error) {
       if (!signal.aborted)
         setOutcome(

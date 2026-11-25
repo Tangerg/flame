@@ -216,32 +216,36 @@ export function readerSelectionLines(content: Element | null): number[] {
   });
 }
 
-function sourceOffset(
+// A boundary between lines sits at the source start, end, or the next line.
+function boundaryOffset(
   content: Element,
   text: string,
   node: Node,
   offset: number,
 ): number | null {
-  const line = lineAt(content, node);
-  if (!line) {
-    if (
-      node !== content &&
-      !(
-        node.nodeType === Node.ELEMENT_NODE &&
-        (node as Element).hasAttribute(SOURCE)
-      )
-    )
-      return null;
-    if (offset === 0) return 0;
-    if (offset === node.childNodes.length) return text.length;
-    const next = node.childNodes[offset];
-    if (!next || next.nodeType !== Node.ELEMENT_NODE) return null;
-    const element = next as Element;
-    const nextLine = element.matches(`[${LINE}]`)
-      ? element
-      : element.querySelector(`[${LINE}]`);
-    return nextLine ? sourceOffset(content, text, nextLine, 0) : null;
-  }
+  const source =
+    node === content ||
+    (node.nodeType === Node.ELEMENT_NODE &&
+      (node as Element).hasAttribute(SOURCE));
+  if (!source) return null;
+  if (offset === 0) return 0;
+  if (offset === node.childNodes.length) return text.length;
+  const next = node.childNodes[offset];
+  if (!next || next.nodeType !== Node.ELEMENT_NODE) return null;
+  const element = next as Element;
+  const nextLine = element.matches(`[${LINE}]`)
+    ? element
+    : element.querySelector(`[${LINE}]`);
+  return nextLine ? sourceOffset(content, text, nextLine, 0) : null;
+}
+
+function lineOffset(
+  content: Element,
+  text: string,
+  line: Element,
+  node: Node,
+  offset: number,
+): number {
   const index = lineIndex(line);
   const lines = text.split("\n");
   if (
@@ -261,6 +265,27 @@ function sourceOffset(
   return start + within;
 }
 
+function sourceOffset(
+  content: Element,
+  text: string,
+  node: Node,
+  offset: number,
+): number | null {
+  const line = lineAt(content, node);
+  return line
+    ? lineOffset(content, text, line, node, offset)
+    : boundaryOffset(content, text, node, offset);
+}
+
+function selectsWholeContent(range: Range, content: Element): boolean {
+  return (
+    range.startContainer === content &&
+    range.startOffset === 0 &&
+    range.endContainer === content &&
+    range.endOffset === content.childNodes.length
+  );
+}
+
 // Marked virtual lines contain exactly their presented text. DOM UTF-16 offsets
 // therefore address the same source, including styled spans, Unicode and blank lines.
 export function copyReaderSelection(
@@ -277,20 +302,16 @@ export function copyReaderSelection(
     return;
   const range = selectedRange(content);
   if (!range || range.collapsed) return;
-  const whole =
-    range.startContainer === content &&
-    range.startOffset === 0 &&
-    range.endContainer === content &&
-    range.endOffset === content.childNodes.length;
+  const whole = selectsWholeContent(range, content);
   if (!whole && !content.matches(MARKED) && !content.querySelector(MARKED))
     return;
   event.preventDefault();
-  const start = whole
-    ? 0
-    : sourceOffset(content, text, range.startContainer, range.startOffset);
-  const end = whole
-    ? text.length
-    : sourceOffset(content, text, range.endContainer, range.endOffset);
+  const [start, end] = whole
+    ? [0, text.length]
+    : [
+        sourceOffset(content, text, range.startContainer, range.startOffset),
+        sourceOffset(content, text, range.endContainer, range.endOffset),
+      ];
   if (start === null || end === null || start > end) {
     throw new Error("reader selection does not map to its presented source");
   }

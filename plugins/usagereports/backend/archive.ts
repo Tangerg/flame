@@ -153,19 +153,23 @@ export class Archive {
     const input = method.admitInput(parseJSON(row.input));
     if (canonicalJSON(input) !== row.input || digestJSON(input) !== row.digest)
       throw new Error("usage reports: corrupt original command evidence");
-    if (row.reply !== null) {
-      const reply = this.#reply(method, row.reply as string) as RecordValue;
-      if (
-        method === this.#capture &&
-        Object.hasOwn(reply, "value") &&
-        (reply.value as Header).period !== (input as { period: Period }).period
-      )
-        throw new Error(
-          "usage reports: saved outcome differs from its original period",
-        );
-    }
+    if (row.reply !== null)
+      this.#assertReplyMatches(method, row.reply as string, input);
     return row;
   }
+  // A saved capture reply reports the period its original command requested.
+  #assertReplyMatches(method: Method, raw: string, input: unknown): void {
+    const reply = this.#reply(method, raw) as RecordValue;
+    if (
+      method === this.#capture &&
+      Object.hasOwn(reply, "value") &&
+      (reply.value as Header).period !== (input as { period: Period }).period
+    )
+      throw new Error(
+        "usage reports: saved outcome differs from its original period",
+      );
+  }
+
   #reply(method: Method, raw: string): unknown {
     const reply = parseJSON(raw);
     if (canonicalJSON(reply) !== raw)

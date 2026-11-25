@@ -47,6 +47,53 @@ interface ControlChannel {
   readonly control: HTTPControl;
 }
 
+// A component unit exports exactly the published component contract and imports nothing.
+function assertComponentPlan(unit: PlannedUnit, contract: Service<SourceComponent>["ref"]): void {
+  if (
+    unit.imports.length ||
+    unit.exports.length !== 1 ||
+    unit.exports[0]!.name !== componentExport ||
+    !sameContract(unit.exports[0]!.contract, contract)
+  )
+    throw new FrameError(
+      "contract_mismatch",
+      "Flame component plan differs from its published native component contract",
+    );
+}
+
+// Shared imports must come from this host's module profile, so the component
+// renders with the host's React, SDK and UI instances.
+function componentConfiguration(configurationJson: string): { export: string } {
+  const configuration = parseJSON(configurationJson) as {
+    export?: unknown;
+    moduleProfile?: unknown;
+    sharedModules?: unknown;
+  };
+  if (!configuration || typeof configuration.export !== "string" || !configuration.export)
+    throw new FrameError(
+      "contract_mismatch",
+      "Flame component configuration omitted its declared export",
+    );
+  const { sharedModules, moduleProfile } = configuration;
+  const profileMatches =
+    moduleProfile === hostModuleProfile ||
+    (moduleProfile === undefined && Array.isArray(sharedModules) && sharedModules.length === 0);
+  if (
+    !Array.isArray(sharedModules) ||
+    !profileMatches ||
+    sharedModules.some(
+      (specifier) =>
+        typeof specifier !== "string" ||
+        !hostModuleSpecifiers.some((approved) => approved === specifier),
+    )
+  )
+    throw new FrameError(
+      "contract_mismatch",
+      "component shared imports differ from the current native host module profile",
+    );
+  return { export: configuration.export };
+}
+
 // This adapter owns the actual window bootstrap. Frame owns plugin objects, work,
 // dependency protection and proofs; the private UI kernel only presents them.
 export class ComponentModules {
@@ -138,51 +185,13 @@ export class ComponentModules {
             control,
             proofCapacity: session.proofCapacity,
             load: async (unit, owner, plan) => {
-              if (
-                unit.imports.length ||
-                unit.exports.length !== 1 ||
-                unit.exports[0]!.name !== componentExport ||
-                !sameContract(unit.exports[0]!.contract, contract.ref)
-              )
-                throw new FrameError(
-                  "contract_mismatch",
-                  "Flame component plan differs from its published native component contract",
-                );
+              assertComponentPlan(unit, contract.ref);
               if (!HTMLScriptElement.supports("importmap"))
                 throw new FrameError(
                   "unavailable",
                   "this client cannot share installed component modules",
                 );
-              const configuration = parseJSON(unit.configurationJson) as {
-                export?: unknown;
-                moduleProfile?: unknown;
-                sharedModules?: unknown;
-              };
-              if (
-                !configuration ||
-                typeof configuration.export !== "string" ||
-                !configuration.export
-              )
-                throw new FrameError(
-                  "contract_mismatch",
-                  "Flame component configuration omitted its declared export",
-                );
-              if (
-                !Array.isArray(configuration.sharedModules) ||
-                (configuration.moduleProfile !== undefined &&
-                  configuration.moduleProfile !== hostModuleProfile) ||
-                (configuration.sharedModules.length > 0 &&
-                  configuration.moduleProfile !== hostModuleProfile) ||
-                configuration.sharedModules.some(
-                  (specifier) =>
-                    typeof specifier !== "string" ||
-                    !hostModuleSpecifiers.some((approved) => approved === specifier),
-                )
-              )
-                throw new FrameError(
-                  "contract_mismatch",
-                  "component shared imports differ from the current native host module profile",
-                );
+              const configuration = componentConfiguration(unit.configurationJson);
               const exports = await this.#modules.evaluate(unit, owner, plan);
               const component = exports[configuration.export];
               if (!component || (typeof component !== "function" && typeof component !== "object"))

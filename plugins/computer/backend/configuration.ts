@@ -43,6 +43,45 @@ function enabled(value: string | undefined, label: string): boolean {
   throw new Error(`computer: ${label} must be true or false`);
 }
 
+type DesktopOverrides = Partial<
+  Record<(typeof desktopVariables)[number], string>
+>;
+
+function desktopOverrides(encoded: string): DesktopOverrides {
+  if (Buffer.byteLength(encoded) > 64 * 1024)
+    throw new Error("computer: desktop environment exceeds its bound");
+  try {
+    const value = parseJSON(encoded);
+    if (
+      value &&
+      typeof value === "object" &&
+      Object.keys(value).some(
+        (key) => !(desktopVariables as readonly string[]).includes(key),
+      )
+    )
+      throw new Error("unsupported desktop variable");
+    return desktopEnvironment.parse(value);
+  } catch (cause) {
+    throw new Error("computer: invalid desktop environment", { cause });
+  }
+}
+
+// An override wins over the Runtime's own value for each desktop variable.
+function desktopSelection(
+  overrides: DesktopOverrides,
+  environment: NodeJS.ProcessEnv,
+): Record<string, string> {
+  const selected: Record<string, string> = {};
+  for (const name of desktopVariables) {
+    const value = overrides[name] ?? environment[name];
+    if (value === undefined) continue;
+    if (value.includes("\0") || value.startsWith("()"))
+      throw new Error("computer: invalid desktop environment");
+    selected[name] = value;
+  }
+  return selected;
+}
+
 export function configuration(
   environment: NodeJS.ProcessEnv,
   data: string,
@@ -55,33 +94,10 @@ export function configuration(
       throw new Error("computer: options require a selected CUA application");
     return undefined;
   }
-  const encoded = environment.FLAME_COMPUTER_DESKTOP_ENVIRONMENT ?? "{}";
-  if (Buffer.byteLength(encoded) > 64 * 1024)
-    throw new Error("computer: desktop environment exceeds its bound");
-  let overrides: Partial<Record<(typeof desktopVariables)[number], string>>;
-  try {
-    const value = parseJSON(encoded);
-    if (
-      value &&
-      typeof value === "object" &&
-      Object.keys(value).some(
-        (key) => !(desktopVariables as readonly string[]).includes(key),
-      )
-    )
-      throw new Error("unsupported desktop variable");
-    overrides = desktopEnvironment.parse(value);
-  } catch (cause) {
-    throw new Error("computer: invalid desktop environment", { cause });
-  }
-  const selected: Record<string, string> = {};
-  for (const name of desktopVariables) {
-    const value = overrides[name] ?? environment[name];
-    if (value !== undefined) {
-      if (value.includes("\0") || value.startsWith("()"))
-        throw new Error("computer: invalid desktop environment");
-      selected[name] = value;
-    }
-  }
+  const selected = desktopSelection(
+    desktopOverrides(environment.FLAME_COMPUTER_DESKTOP_ENVIRONMENT ?? "{}"),
+    environment,
+  );
   return Object.freeze({
     application: absolute(application, "CUA application"),
     packageRoot: absolute(environment.PLUGIN_ROOT, "plugin root"),

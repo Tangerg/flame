@@ -162,6 +162,33 @@ function commandReply(value: unknown): asserts value is CommandReply {
     throw new Error("computer: receipt refusal is invalid");
 }
 
+interface ReceiptRow {
+  id: string;
+  kind: "tool" | "command";
+  method: string;
+  input: string;
+  digest: string;
+  invocation: string;
+  admitted_at: string;
+  dispatched: 0n | 1n;
+  outcome: string | null;
+}
+
+function assertReceiptRow(row: Row): asserts row is Row & ReceiptRow {
+  if (
+    typeof row.id !== "string" ||
+    (row.kind !== "tool" && row.kind !== "command") ||
+    typeof row.method !== "string" ||
+    typeof row.input !== "string" ||
+    typeof row.digest !== "string" ||
+    typeof row.invocation !== "string" ||
+    typeof row.admitted_at !== "string" ||
+    (row.dispatched !== 0n && row.dispatched !== 1n) ||
+    (row.outcome !== null && typeof row.outcome !== "string")
+  )
+    throw new Error("computer: receipt storage is corrupt");
+}
+
 function summary(row: Row): ReceiptSummary {
   if (
     typeof row.id !== "string" ||
@@ -209,18 +236,7 @@ export class Receipts {
   }
 
   #decode(row: Row): ReceiptRecord {
-    if (
-      typeof row.id !== "string" ||
-      (row.kind !== "tool" && row.kind !== "command") ||
-      typeof row.method !== "string" ||
-      typeof row.input !== "string" ||
-      typeof row.digest !== "string" ||
-      typeof row.invocation !== "string" ||
-      typeof row.admitted_at !== "string" ||
-      (row.dispatched !== 0n && row.dispatched !== 1n) ||
-      (row.outcome !== null && typeof row.outcome !== "string")
-    )
-      throw new Error("computer: receipt storage is corrupt");
+    assertReceiptRow(row);
     const owner = parseJSON(row.invocation);
     invocation(owner);
     if (canonicalJSON(owner) !== row.invocation)

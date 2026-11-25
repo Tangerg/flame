@@ -334,6 +334,60 @@ export function commandProjection(operation: string, value: unknown): unknown {
 type QuerySource = Pick<Application, "query">;
 type QueryProjection = { retained: unknown; model: unknown };
 
+type RetainedCatalog = ReturnType<typeof schemas.catalog.parse>;
+type CatalogFormat = ReturnType<
+  typeof formatCatalogSchema.parse
+>["formats"][number];
+type CatalogSection = NonNullable<
+  ReturnType<typeof modelInputs.catalog.parse>["section"]
+>;
+
+// The overview may narrow to one format; engine and limit views never select
+// one; schemas and examples always belong to exactly one format.
+function catalogSource(
+  section: CatalogSection,
+  format: CatalogFormat | undefined,
+  formats: readonly CatalogFormat[],
+  retained: RetainedCatalog,
+): unknown {
+  if (section === "overview")
+    return {
+      formats: (format ? [format] : formats).map((format) => ({
+        format: format.format,
+        canCreate: format.createSchemaJSON !== undefined,
+        limitations: format.limitations,
+      })),
+      engines: JSON.parse(retained.enginesJSON),
+      limits: JSON.parse(retained.limitsJSON),
+    };
+  if (section === "engines" || section === "limits") {
+    if (format)
+      throw new Refusal(
+        "invalid_projection",
+        "engine and limit views do not select a format",
+      );
+    return parseJSON(
+      section === "engines" ? retained.enginesJSON : retained.limitsJSON,
+    );
+  }
+  if (!format)
+    throw new Refusal(
+      "invalid_projection",
+      "select one format before reading its schema or example",
+    );
+  const original = {
+    create: format.createSchemaJSON,
+    edit: format.editSchemaJSON,
+    example: format.exampleJSON,
+  }[section];
+  if (original === undefined)
+    throw new Refusal(
+      "unsupported_format_operation",
+      "the selected format does not define this operation",
+    );
+  return parseJSON(original);
+}
+
 async function catalogProjection(
   application: QuerySource,
   input: Record<string, unknown>,
@@ -355,45 +409,7 @@ async function catalogProjection(
       "unsupported_format",
       "format is not in the original catalog",
     );
-  let source: unknown;
-  if (section === "overview") {
-    source = {
-      formats: (format ? [format] : formats).map((format) => ({
-        format: format.format,
-        canCreate: format.createSchemaJSON !== undefined,
-        limitations: format.limitations,
-      })),
-      engines: JSON.parse(retained.enginesJSON),
-      limits: JSON.parse(retained.limitsJSON),
-    };
-  } else if (section === "engines" || section === "limits") {
-    if (format)
-      throw new Refusal(
-        "invalid_projection",
-        "engine and limit views do not select a format",
-      );
-    source = parseJSON(
-      section === "engines" ? retained.enginesJSON : retained.limitsJSON,
-    );
-  } else {
-    if (!format)
-      throw new Refusal(
-        "invalid_projection",
-        "select one format before reading its schema or example",
-      );
-    const original =
-      section === "create"
-        ? format.createSchemaJSON
-        : section === "edit"
-          ? format.editSchemaJSON
-          : format.exampleJSON;
-    if (original === undefined)
-      throw new Refusal(
-        "unsupported_format_operation",
-        "the selected format does not define this operation",
-      );
-    source = parseJSON(original);
-  }
+  const source = catalogSource(section, format, formats, retained);
   return {
     retained,
     model: {

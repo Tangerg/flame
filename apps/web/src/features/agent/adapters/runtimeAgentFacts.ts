@@ -245,20 +245,24 @@ export function runtimeItem(item: Item): AgentItem {
         question: runtimeQuestion(item.question),
       };
     case "toolCall":
-      return {
-        type: item.type,
-        id: item.id,
-        runId: item.runId,
-        status: item.status,
-        startedAt: item.startedAt,
-        ...(item.finishedAt !== undefined ? { finishedAt: item.finishedAt } : {}),
-        ...(item.durationMillis !== undefined ? { durationMillis: item.durationMillis } : {}),
-        ...(item.safetyClass !== undefined ? { safetyClass: item.safetyClass } : {}),
-        ...(item.approvalDecision !== undefined ? { approvalDecision: item.approvalDecision } : {}),
-        ...(item.error ? { error: runProblem(item.error) } : {}),
-        tool: runtimeTool(item.tool),
-      };
+      return runtimeToolCall(item);
   }
+}
+
+function runtimeToolCall(item: Extract<Item, { type: "toolCall" }>): AgentItem {
+  return {
+    type: item.type,
+    id: item.id,
+    runId: item.runId,
+    status: item.status,
+    startedAt: item.startedAt,
+    ...(item.finishedAt !== undefined ? { finishedAt: item.finishedAt } : {}),
+    ...(item.durationMillis !== undefined ? { durationMillis: item.durationMillis } : {}),
+    ...(item.safetyClass !== undefined ? { safetyClass: item.safetyClass } : {}),
+    ...(item.approvalDecision !== undefined ? { approvalDecision: item.approvalDecision } : {}),
+    ...(item.error ? { error: runProblem(item.error) } : {}),
+    tool: runtimeTool(item.tool),
+  };
 }
 
 function runtimeItemDelta(delta: ItemDelta): AgentItemDelta {

@@ -27,13 +27,28 @@ export function createRunStreamReattach(
     position: RunStreamPosition,
     signal: AbortSignal,
   ): Promise<RunStreamReattachment | null> {
-    if (isCancelled() || signal.aborted) return null;
+    const retired = () => isCancelled() || signal.aborted;
+    if (retired()) return null;
     const target = {
       runId: asRunId(position.runId),
       segmentId: asSegmentId(position.segmentId),
     };
+    // A retired owner, a lost run or a lost connection ends this reattachment;
+    // every other failure belongs to the caller.
+    const absorbed = async (error: unknown): Promise<boolean> => {
+      if (retired()) return true;
+      if (agentAccess.runtime.isRunGone(error)) {
+        await recoverProjection(signal);
+        return true;
+      }
+      if (error instanceof RpcConnectionError) {
+        onConnectionLost();
+        return true;
+      }
+      return false;
+    };
     const recoverAndTail = async (): Promise<RunStreamReattachment | null> => {
-      if (isCancelled() || signal.aborted) return null;
+      if (retired()) return null;
       try {
         const tail = await snapshotRunStream(
           agentAccess,
@@ -42,10 +57,10 @@ export function createRunStreamReattach(
           target.runId,
           target.segmentId,
           signal,
-          () => !isCancelled() && !signal.aborted,
+          () => !retired(),
         );
         if (!tail) return null;
-        if (isCancelled() || signal.aborted) {
+        if (retired()) {
           retireRunStream(tail);
           return null;
         }
@@ -55,15 +70,7 @@ export function createRunStreamReattach(
           cursor: tail.result.headEventId ?? null,
         };
       } catch (tailErr) {
-        if (!isCancelled() && !signal.aborted && agentAccess.runtime.isRunGone(tailErr)) {
-          await recoverProjection(signal);
-          return null;
-        }
-        if (isCancelled() || signal.aborted) return null;
-        if (tailErr instanceof RpcConnectionError) {
-          onConnectionLost();
-          return null;
-        }
+        if (await absorbed(tailErr)) return null;
         throw tailErr;
       }
     };
@@ -77,7 +84,7 @@ export function createRunStreamReattach(
         signal,
       );
       if (!stream) return null;
-      if (isCancelled() || signal.aborted) {
+      if (retired()) {
         retireRunStream(stream);
         return null;
       }
@@ -87,17 +94,8 @@ export function createRunStreamReattach(
         cursor: position.lastEventId ?? stream.result.headEventId ?? null,
       };
     } catch (err) {
-      if (isCancelled() || signal.aborted) return null;
-      if (agentAccess.runtime.isRunGone(err)) {
-        await recoverProjection(signal);
-        return null;
-      }
-      if (err instanceof RpcConnectionError) {
-        onConnectionLost();
-        return null;
-      }
-      if (err instanceof RpcProtocolError) throw err;
-      if (!agentAccess.runtime.isReplayLost(err)) throw err;
+      if (await absorbed(err)) return null;
+      if (err instanceof RpcProtocolError || !agentAccess.runtime.isReplayLost(err)) throw err;
       return recoverAndTail();
     }
   };

@@ -46,6 +46,38 @@ export function coversWholeFile(
   return !file.truncated && !moreBefore && !moreAfter;
 }
 
+type DisplayedRead = { request: WorkspaceReadFileQuery; viewer: WorkspaceFileViewer };
+
+// Which read the reader shows: the exact previous read while its replacement is
+// pending, otherwise the accepted read for this request.
+function retainedFileRead({
+  read,
+  request,
+  viewer,
+  acceptedData,
+  previousRead,
+  previousData,
+  resolving,
+}: {
+  read: ReturnType<typeof useWorkspaceReadFile>;
+  request: WorkspaceReadFileQuery | undefined;
+  viewer: WorkspaceFileViewer;
+  acceptedData: ReturnType<typeof useWorkspaceReadFile>["data"];
+  previousRead: DisplayedRead | undefined;
+  previousData: ReturnType<typeof useCachedWorkspaceReadFile>;
+  resolving: boolean;
+}) {
+  const retained = previousData !== undefined;
+  const data = previousRead ? previousData : read.data;
+  const accepted = acceptedData && request && { request, viewer };
+  return {
+    data,
+    displayedRead: retained ? previousRead : accepted,
+    retainedPending: retained && read.isFetching,
+    loading: resolving || (data === undefined && (read.isPending || read.isPlaceholderData)),
+  };
+}
+
 // A page or line jump keeps the exact read it replaces on screen until its own read
 // is accepted, so paging never flashes an empty reader.
 export function useFileReadWindow(
@@ -70,10 +102,15 @@ export function useFileReadWindow(
   const previousRead = acceptedData === undefined ? transition?.previous : undefined;
   // The exact origin is authoritative even if the query observer still has a placeholder.
   const previousData = useCachedWorkspaceReadFile(previousRead?.request);
-  const data = previousRead ? previousData : read.data;
-  const displayedRead =
-    previousData !== undefined ? previousRead : acceptedData && request && { request, viewer };
-  const retainedPending = previousData !== undefined && read.isFetching;
+  const { data, displayedRead, retainedPending, loading } = retainedFileRead({
+    read,
+    request,
+    viewer,
+    acceptedData,
+    previousRead,
+    previousData,
+    resolving,
+  });
   const lines = shownLines(data);
 
   // A default arrival starts at the top like its initial window; FileView places line targets.
@@ -110,7 +147,7 @@ export function useFileReadWindow(
     read,
     page,
     data,
-    loading: resolving || (data === undefined && (read.isPending || read.isPlaceholderData)),
+    loading,
     shown: acceptedData !== undefined || previousData !== undefined,
     retainedPrevious: previousData !== undefined,
     awaitingPrevious: previousRead !== undefined,
@@ -145,53 +182,58 @@ export function useFileReadWindow(
   };
 }
 
-export function describeFileRead(
-  t: Translate,
-  read: {
-    page: AdjacentLineWindow | undefined;
-    targetLine: number;
-    error: unknown;
-    invalidRequest: boolean;
-    retained: boolean;
-    retainedPrevious: boolean;
-    awaitingPrevious: boolean;
-    retainedPending: boolean;
-    placeholderFetching: boolean;
-  },
-) {
+interface FileReadFacts {
+  page: AdjacentLineWindow | undefined;
+  targetLine: number;
+  error: unknown;
+  invalidRequest: boolean;
+  retained: boolean;
+  retainedPrevious: boolean;
+  awaitingPrevious: boolean;
+  retainedPending: boolean;
+  placeholderFetching: boolean;
+}
+
+// A line jump either waits, is rejected while the previous read stays, or fails.
+function describeJump(t: Translate, read: FileReadFacts) {
   const jump = !read.page && read.targetLine > 0;
   const invalidLine = jump && read.invalidRequest;
   const rejectedJump = invalidLine && read.retainedPrevious;
-  const jumpFailureTitle =
+  const failureTitle =
     !read.page && read.retainedPrevious && read.error != null
       ? t("file.error.requestedLine", { line: read.targetLine })
       : undefined;
-  const jumpPending =
-    jump && (read.awaitingPrevious ? read.retainedPending : read.placeholderFetching);
-  const rejectedInitialLine = invalidLine && !read.retained;
-  const pageError =
-    read.page && read.awaitingPrevious && read.error != null
-      ? {
-          title: t("file.error.requestedRange", {
-            start: read.page.startLine,
-            end: read.page.endLine,
-          }),
-          sub: "",
-          size: "compact" as const,
-        }
-      : undefined;
+  const pending = jump && (read.awaitingPrevious ? read.retainedPending : read.placeholderFetching);
+  const pendingLabel = pending ? t("file.goToLine.pending", { line: read.targetLine }) : undefined;
   return {
-    refreshFailed: read.retained && read.error != null && !read.retainedPending && !rejectedJump,
     rejectedJump,
-    rejectedInitialLine,
-    jumpFailureTitle,
-    jumpLabel: rejectedJump
-      ? jumpFailureTitle
-      : jumpPending
-        ? t("file.goToLine.pending", { line: read.targetLine })
-        : undefined,
+    rejectedInitialLine: invalidLine && !read.retained,
+    jumpFailureTitle: failureTitle,
+    jumpLabel: rejectedJump ? failureTitle : pendingLabel,
+  };
+}
+
+function pageFailure(t: Translate, read: FileReadFacts) {
+  if (!read.page || !read.awaitingPrevious || read.error == null) return undefined;
+  return {
+    title: t("file.error.requestedRange", {
+      start: read.page.startLine,
+      end: read.page.endLine,
+    }),
+    sub: "",
+    size: "compact" as const,
+  };
+}
+
+export function describeFileRead(t: Translate, read: FileReadFacts) {
+  const jump = describeJump(t, read);
+  const pageError = pageFailure(t, read);
+  return {
+    ...jump,
+    refreshFailed:
+      read.retained && read.error != null && !read.retainedPending && !jump.rejectedJump,
     pageError,
-    readError: pageError ?? openingError(t, rejectedInitialLine, read.targetLine),
+    readError: pageError ?? openingError(t, jump.rejectedInitialLine, read.targetLine),
   };
 }
 

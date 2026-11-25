@@ -30,6 +30,45 @@ type Download = (
   signal: AbortSignal,
 ) => Promise<MethodOutputs[typeof METHODS.download]>;
 
+const BASE64 =
+  /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/u;
+
+// A chunk belongs to the captured asset at the requested offset and advances
+// the transfer contiguously by at most the requested length.
+function admittedChunk(
+  chunk: Awaited<ReturnType<Download>>,
+  asset: Asset,
+  size: number,
+  offset: number,
+  length: number,
+): { binary: string; next: number } {
+  if (
+    chunk.asset.id !== asset.id ||
+    chunk.asset.sha256 !== asset.sha256 ||
+    chunk.asset.filename !== asset.filename ||
+    chunk.asset.mime !== asset.mime ||
+    boundedInteger(chunk.asset.size, LIMITS.renderBytes) !== size ||
+    boundedInteger(chunk.offset, size) !== offset ||
+    chunk.base64.length > Math.ceil(length / 3) * 4 ||
+    !BASE64.test(chunk.base64)
+  )
+    throw new Error(
+      "deliverables: download differs from the captured asset or offset",
+    );
+  const binary = atob(chunk.base64);
+  const next = boundedInteger(chunk.next, size);
+  if (
+    !binary.length ||
+    binary.length > length ||
+    next !== offset + binary.length ||
+    chunk.done !== (next === size)
+  )
+    throw new Error(
+      "deliverables: download is not a contiguous bounded transfer",
+    );
+  return { binary, next };
+}
+
 /** One bounded allocation, contiguous acknowledgements, and the exact native hash. */
 export async function downloadAsset(
   download: Download,
@@ -47,32 +86,7 @@ export async function downloadAsset(
     const length = Math.min(LIMITS.chunkBytes, size - offset);
     const chunk = await download({ assetId: asset.id, offset, length }, signal);
     signal.throwIfAborted();
-    if (
-      chunk.asset.id !== asset.id ||
-      chunk.asset.sha256 !== asset.sha256 ||
-      chunk.asset.filename !== asset.filename ||
-      chunk.asset.mime !== asset.mime ||
-      boundedInteger(chunk.asset.size, LIMITS.renderBytes) !== size ||
-      boundedInteger(chunk.offset, size) !== offset ||
-      chunk.base64.length > Math.ceil(length / 3) * 4 ||
-      !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/u.test(
-        chunk.base64,
-      )
-    )
-      throw new Error(
-        "deliverables: download differs from the captured asset or offset",
-      );
-    const binary = atob(chunk.base64);
-    const next = boundedInteger(chunk.next, size);
-    if (
-      !binary.length ||
-      binary.length > length ||
-      next !== offset + binary.length ||
-      chunk.done !== (next === size)
-    )
-      throw new Error(
-        "deliverables: download is not a contiguous bounded transfer",
-      );
+    const { binary, next } = admittedChunk(chunk, asset, size, offset, length);
     for (let index = 0; index < binary.length; index++)
       bytes[offset + index] = binary.charCodeAt(index);
     offset = next;

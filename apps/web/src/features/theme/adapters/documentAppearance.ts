@@ -22,6 +22,12 @@ type UiEffectStore<T extends AppearancePreference> = Pick<StoreApi<T>, "getState
 
 const documentPainters = new WeakMap<Document, () => void>();
 
+// The preference settings each document paint reads; a change to any repaints it.
+const COLOR_SETTINGS = ["theme", "accent", "contrast"] as const;
+const PAPER_SETTINGS = ["paperTexture", "paperTextureStrength", "theme"] as const;
+const FONT_SETTINGS = ["uiFont", "codeFont", "fontSize", "codeFontSize", "fontSmoothing"] as const;
+const SHAPE_SETTINGS = ["density", "radiusScale", "motionScale"] as const;
+
 export function installDocumentAppearance<T extends AppearancePreference>(
   document: Document,
   window: Window,
@@ -155,30 +161,16 @@ export function installDocumentAppearance<T extends AppearancePreference>(
   applyPaperTexture(initial);
 
   const unsubscribeUi = store.subscribe((state, previous) => {
-    if (
-      state.theme !== previous.theme ||
-      state.accent !== previous.accent ||
-      state.contrast !== previous.contrast
-    ) {
+    const changed = (keys: readonly (keyof AppearancePreference)[]) =>
+      keys.some((key) => state[key] !== previous[key]);
+    if (changed(COLOR_SETTINGS)) {
       applyColorTheme(state.theme, state.contrast);
       applyVisualStyle(state.visualStyle);
-    } else if (state.visualStyle !== previous.visualStyle) {
+    } else if (changed(["visualStyle"])) {
       applyVisualStyle(state.visualStyle);
     }
-    if (
-      state.paperTexture !== previous.paperTexture ||
-      state.paperTextureStrength !== previous.paperTextureStrength ||
-      state.theme !== previous.theme
-    ) {
-      applyPaperTexture(state);
-    }
-    if (
-      state.uiFont !== previous.uiFont ||
-      state.codeFont !== previous.codeFont ||
-      state.fontSize !== previous.fontSize ||
-      state.codeFontSize !== previous.codeFontSize ||
-      state.fontSmoothing !== previous.fontSmoothing
-    ) {
+    if (changed(PAPER_SETTINGS)) applyPaperTexture(state);
+    if (changed(FONT_SETTINGS)) {
       applyFonts(
         state.uiFont,
         state.codeFont,
@@ -187,13 +179,7 @@ export function installDocumentAppearance<T extends AppearancePreference>(
         state.fontSmoothing,
       );
     }
-    if (
-      state.density !== previous.density ||
-      state.radiusScale !== previous.radiusScale ||
-      state.motionScale !== previous.motionScale
-    ) {
-      applyShape(state.density, state.radiusScale, state.motionScale);
-    }
+    if (changed(SHAPE_SETTINGS)) applyShape(state.density, state.radiusScale, state.motionScale);
   });
 
   const unsubscribePlugins = subscribeContributions(() => {

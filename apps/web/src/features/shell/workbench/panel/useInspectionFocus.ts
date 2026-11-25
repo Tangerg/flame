@@ -25,6 +25,27 @@ interface ComposerRequest {
   readonly focus: () => void;
 }
 
+// An inspection's source is presented again once its main view, its dock view,
+// or the conversation is back, for the same subagent run when it came from one.
+function returnSourcePresented(
+  request: WorkspaceInspection,
+  presented: {
+    returnDockId: string | null | undefined;
+    mainViewId: string | null;
+    presentedViewId: string | null;
+    subagentRunId: string | null | undefined;
+  },
+): boolean {
+  const back = request.returnViewId
+    ? presented.mainViewId === request.returnViewId
+    : presented.returnDockId
+      ? presented.presentedViewId === presented.returnDockId
+      : presented.mainViewId === null;
+  const fromSubagents =
+    request.returnViewId === "subagents" || request.returnDockId === "subagents";
+  return back && (!fromSubagents || presented.subagentRunId === request.returnSubagentRunId);
+}
+
 export function useInspectionFocus({
   sessionId,
   inspection,
@@ -121,16 +142,12 @@ export function useInspectionFocus({
     const returnDockId = resolveInspectionReturnDock(request, dockViewIds);
     const presentedViewId = fullPaneViewId ?? (dockVisible ? dockViewId : null);
     if (
-      request.returnViewId
-        ? mainViewId !== request.returnViewId
-        : returnDockId
-          ? presentedViewId !== returnDockId
-          : mainViewId !== null
-    )
-      return;
-    if (
-      (request.returnViewId === "subagents" || request.returnDockId === "subagents") &&
-      subagentRunId !== request.returnSubagentRunId
+      !returnSourcePresented(request, {
+        returnDockId,
+        mainViewId,
+        presentedViewId,
+        subagentRunId,
+      })
     )
       return;
     const doc = request.origin.ownerDocument;

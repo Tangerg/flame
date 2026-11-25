@@ -160,35 +160,45 @@ function labelSource(tool: AgentToolInvocation): LabelSource {
   return { ...source, text: oneLine(source.text) };
 }
 
+type ToolArguments = Record<string, unknown>;
+
+// How each tool category names a call when its declaration gives no label.
+const CATEGORY_LABELS: Partial<
+  Record<
+    NonNullable<AgentToolInvocation["category"]>,
+    (tool: AgentToolInvocation, a: ToolArguments) => LabelSource | undefined
+  >
+> = {
+  shell: (tool, a) => {
+    const description = asString(a.description);
+    return description
+      ? { text: description, kind: "prose" }
+      : { text: asString(a.command) || tool.name || "command", kind: "machine" };
+  },
+  edit: (tool, a) => {
+    const path = asString(a.path) || patchToolResult(tool.result)?.changes?.[0]?.path;
+    return path ? { text: path, kind: "path" } : undefined;
+  },
+  search: (_, a) => ({
+    text: asString(a.query) || asString(a.pattern) || "search",
+    kind: "machine",
+  }),
+  read: (_, a) => {
+    const path = asString(a.path);
+    return path === undefined ? undefined : { text: path, kind: "path" };
+  },
+  task: (_, a) => {
+    const summary = asString(a.summary) || firstLine(a.instructions);
+    return summary ? { text: summary, kind: "prose" } : undefined;
+  },
+};
+
 function rawLabelSource(tool: AgentToolInvocation): LabelSource {
   const byName = nameLabel(tool);
   if (byName) return byName;
-  const a = tool.arguments ?? {};
-  const named = { text: tool.name, kind: "machine" as const };
-  switch (tool.category) {
-    case "shell": {
-      const description = asString(a.description);
-      return description
-        ? { text: description, kind: "prose" }
-        : { text: asString(a.command) || tool.name || "command", kind: "machine" };
-    }
-    case "edit": {
-      const path = asString(a.path) || patchToolResult(tool.result)?.changes?.[0]?.path;
-      return path ? { text: path, kind: "path" } : named;
-    }
-    case "search":
-      return { text: asString(a.query) || asString(a.pattern) || "search", kind: "machine" };
-    case "read": {
-      const path = asString(a.path);
-      return path === undefined ? named : { text: path, kind: "path" };
-    }
-    case "task": {
-      const summary = asString(a.summary) || firstLine(a.instructions);
-      return summary ? { text: summary, kind: "prose" } : named;
-    }
-    default:
-      return { text: tool.name || "tool", kind: "machine" };
-  }
+  const label = tool.category && CATEGORY_LABELS[tool.category];
+  if (!label) return { text: tool.name || "tool", kind: "machine" };
+  return label(tool, tool.arguments ?? {}) ?? { text: tool.name, kind: "machine" };
 }
 
 function toolFields(tool: AgentToolInvocation): Partial<ToolCall> {

@@ -43,36 +43,43 @@ export function createGoalComposerSubmitMode(
   };
 }
 
+// Goal mode accepts plain text for an active Session whose Goal can start or resume.
+function admitGoalSubmission(
+  owner: GoalComposerModeOwner,
+  dependencies: GoalComposerSubmitDependencies,
+  context: ComposerSubmitModeContext,
+) {
+  const sessionId = dependencies.getActiveSessionId();
+  const state =
+    sessionId && !owner.retired && dependencies.runtimeAvailable()
+      ? dependencies.goalState(sessionId)
+      : undefined;
+  if (!sessionId || state?.available !== true) {
+    dependencies.reportUnavailable();
+    return undefined;
+  }
+  if (context.hasImages || context.hasPastes || context.hasReferences) {
+    dependencies.reportUnsupportedAttachments();
+    return undefined;
+  }
+  if (!goalCanEnterComposerMode(state.goal)) {
+    dependencies.reportUnavailable();
+    return undefined;
+  }
+  return { sessionId, existing: state.goal };
+}
+
 function submitGoalComposerMode(
   owner: GoalComposerModeOwner,
   dependencies: GoalComposerSubmitDependencies,
   context: ComposerSubmitModeContext,
 ): void {
-  const sessionId = dependencies.getActiveSessionId();
-  if (!sessionId || owner.retired || !dependencies.runtimeAvailable()) {
-    dependencies.reportUnavailable();
-    return;
-  }
-
-  const state = dependencies.goalState(sessionId);
-  if (state?.available !== true) {
-    dependencies.reportUnavailable();
-    return;
-  }
-
-  if (context.hasImages || context.hasPastes || context.hasReferences) {
-    dependencies.reportUnsupportedAttachments();
-    return;
-  }
-
+  const admitted = admitGoalSubmission(owner, dependencies, context);
+  if (!admitted) return;
+  const { sessionId, existing } = admitted;
   const slash = context.slash;
   const goalCommand = slash?.command === GOAL_SLASH_COMMAND;
   const objective = (goalCommand ? slash.args : context.text).trim();
-  const existing = state.goal;
-  if (!goalCanEnterComposerMode(existing)) {
-    dependencies.reportUnavailable();
-    return;
-  }
 
   if (goalCommand && !owner.active(sessionId) && !owner.activate(sessionId)) return;
 

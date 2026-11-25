@@ -31,12 +31,18 @@ async function openExternal(url: string): Promise<void> {
   await Browser.OpenURL(url);
 }
 
-function externalDestination(document: Document, event: MouseEvent): string | null {
+// The link a plain primary or middle click activates, unless it downloads.
+function activatedLink(event: MouseEvent): Element | null {
   if (event.defaultPrevented || event.altKey) return null;
   if (event.button !== (event.type === "auxclick" ? 1 : 0)) return null;
   if (!(event.target instanceof Element)) return null;
   const anchor = event.target.closest("a[href]");
-  if (!anchor || anchor.hasAttribute("download")) return null;
+  return anchor && !anchor.hasAttribute("download") ? anchor : null;
+}
+
+function externalDestination(document: Document, event: MouseEvent): string | null {
+  const anchor = activatedLink(event);
+  if (!anchor) return null;
   let url: URL;
   try {
     url = new URL(anchor.getAttribute("href")!, document.baseURI);
@@ -45,12 +51,9 @@ function externalDestination(document: Document, event: MouseEvent): string | nu
     throw error;
   }
   if (!EXTERNAL_PROTOCOLS.has(url.protocol) || url.username || url.password) return null;
-  if (
+  const sameOriginInPlace =
     url.protocol !== "mailto:" &&
     url.origin === new URL(document.URL).origin &&
-    anchor.getAttribute("target")?.toLowerCase() !== "_blank"
-  ) {
-    return null;
-  }
-  return url.href;
+    anchor.getAttribute("target")?.toLowerCase() !== "_blank";
+  return sameOriginInPlace ? null : url.href;
 }

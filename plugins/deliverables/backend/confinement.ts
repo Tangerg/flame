@@ -42,15 +42,16 @@ export const SYSTEM_FILES = [
   "/var/cache/fontconfig",
 ] as const;
 
-export function confinedPlan(
-  platform: "linux" | "darwin",
-  directory: PrivateDirectory,
-  roots: readonly string[],
-  executable: string,
-  args: readonly string[],
-  bounds: ProcessBounds,
-  environment: Readonly<Record<string, string>> = {},
-): ProcessPlan {
+interface PlanInput {
+  directory: PrivateDirectory;
+  roots: readonly string[];
+  executable: string;
+  args: readonly string[];
+  bounds: ProcessBounds;
+  env: Record<string, string>;
+}
+
+function assertBounds(bounds: ProcessBounds): void {
   const { writable, ...resources } = bounds;
   if (typeof writable !== "boolean")
     throw new TypeError("deliverables: process write authority is required");
@@ -60,7 +61,13 @@ export function confinedPlan(
       value < (name === "maximumFileBytes" ? 0 : 1)
     )
       throw new RangeError(`deliverables: invalid process bound ${name}`);
-  const env = {
+}
+
+function confinedEnvironment(
+  directory: PrivateDirectory,
+  environment: Readonly<Record<string, string>>,
+): Record<string, string> {
+  return {
     ...environment,
     HOME: directory.home,
     TMPDIR: directory.temporary,
@@ -72,85 +79,103 @@ export function confinedPlan(
     LC_ALL: "C.UTF-8",
     TZ: "UTC",
   };
-  if (platform === "linux") {
-    const commandArgs = [
-      "--unshare-all",
-      "--die-with-parent",
-      "--new-session",
-      "--cap-drop",
-      "ALL",
-      // Dynamic loaders resolve $ORIGIN through /proc/self/exe. This read-only
-      // procfs exposes only the processes in the unshared PID namespace.
-      "--proc",
-      LINUX_PROCFS,
-      "--remount-ro",
-      LINUX_PROCFS,
-      "--dev",
-      "/dev",
-      "--tmpfs",
-      "/tmp",
-      "--dir",
-      "/etc",
-    ];
-    for (const root of [...SYSTEM_ROOTS.linux, ...SYSTEM_FILES])
-      commandArgs.push("--ro-bind-try", root, root);
-    for (const root of roots) commandArgs.push("--ro-bind", root, root);
-    commandArgs.push(
-      writable ? "--bind" : "--ro-bind",
-      directory.root,
-      directory.root,
-      "--ro-bind",
-      directory.input,
-      directory.input,
-      "--chdir",
-      directory.root,
-      "--clearenv",
-    );
-    if (!writable)
-      for (const root of ["/", "/tmp", "/dev"])
-        commandArgs.push("--remount-ro", root);
-    for (const [name, value] of Object.entries(env))
-      commandArgs.push("--setenv", name, value);
-    commandArgs.push(
-      "--",
-      "/usr/bin/prlimit",
-      `--as=${bounds.memoryBytes}`,
-      `--fsize=${bounds.maximumFileBytes}`,
-      `--cpu=${bounds.cpuSeconds}`,
-      ...(bounds.openFiles === undefined
-        ? []
-        : [`--nofile=${bounds.openFiles}`]),
-      "--core=0",
-      "--",
-      executable,
-      ...args,
-    );
-    return {
-      command: "/usr/bin/bwrap",
-      args: commandArgs,
-      cwd: directory.root,
-      env,
-      containment: { kind: "namespace" },
-    };
-  }
-  const quote = (value: string) => JSON.stringify(value);
-  const readRoots = [
-    ...SYSTEM_ROOTS.darwin,
-    ...SYSTEM_FILES,
-    ...roots,
-    directory.root,
+}
+
+function linuxPlan({
+  directory,
+  roots,
+  executable,
+  args,
+  bounds,
+  env,
+}: PlanInput): ProcessPlan {
+  const commandArgs = [
+    "--unshare-all",
+    "--die-with-parent",
+    "--new-session",
+    "--cap-drop",
+    "ALL",
+    // Dynamic loaders resolve $ORIGIN through /proc/self/exe. This read-only
+    // procfs exposes only the processes in the unshared PID namespace.
+    "--proc",
+    LINUX_PROCFS,
+    "--remount-ro",
+    LINUX_PROCFS,
+    "--dev",
+    "/dev",
+    "--tmpfs",
+    "/tmp",
+    "--dir",
+    "/etc",
   ];
+  for (const root of [...SYSTEM_ROOTS.linux, ...SYSTEM_FILES])
+    commandArgs.push("--ro-bind-try", root, root);
+  for (const root of roots) commandArgs.push("--ro-bind", root, root);
+  commandArgs.push(
+    bounds.writable ? "--bind" : "--ro-bind",
+    directory.root,
+    directory.root,
+    "--ro-bind",
+    directory.input,
+    directory.input,
+    "--chdir",
+    directory.root,
+    "--clearenv",
+  );
+  if (!bounds.writable)
+    for (const root of ["/", "/tmp", "/dev"])
+      commandArgs.push("--remount-ro", root);
+  for (const [name, value] of Object.entries(env))
+    commandArgs.push("--setenv", name, value);
+  commandArgs.push(
+    "--",
+    "/usr/bin/prlimit",
+    `--as=${bounds.memoryBytes}`,
+    `--fsize=${bounds.maximumFileBytes}`,
+    `--cpu=${bounds.cpuSeconds}`,
+    ...(bounds.openFiles === undefined ? [] : [`--nofile=${bounds.openFiles}`]),
+    "--core=0",
+    "--",
+    executable,
+    ...args,
+  );
+  return {
+    command: "/usr/bin/bwrap",
+    args: commandArgs,
+    cwd: directory.root,
+    env,
+    containment: { kind: "namespace" },
+  };
+}
+
+// Canonical path resolution needs ancestor metadata, without sibling data.
+function ancestorDirectories(paths: readonly string[]): string[] {
   const ancestors = new Set<string>();
-  for (const root of readRoots)
+  for (const path of paths)
     for (
-      let parent = dirname(root);
+      let parent = dirname(path);
       !ancestors.has(parent);
       parent = dirname(parent)
     ) {
       ancestors.add(parent);
       if (parent === "/") break;
     }
-  const profile = [
+  return [...ancestors];
+}
+
+function darwinProfile(
+  readRoots: readonly string[],
+  executable: string,
+  directory: PrivateDirectory,
+  writable: boolean,
+): string {
+  const quote = (value: string) => JSON.stringify(value);
+  const writableRoots = writable
+    ? [directory.output, directory.home, directory.temporary]
+        .map((root) => `(subpath ${quote(root)})`)
+        .join(" ")
+    : "";
+  return [
     "(version 1)",
     "(deny default)",
     "(deny network*)",
@@ -162,22 +187,41 @@ export function confinedPlan(
     "(allow sysctl-read)",
     // dyld reads the root directory itself during startup, not its descendants.
     '(allow file-read-data (literal "/"))',
-    // Canonical path resolution needs ancestor metadata, without sibling data.
-    `(allow file-read-metadata ${[...ancestors].map((root) => `(literal ${quote(root)})`).join(" ")})`,
+    `(allow file-read-metadata ${ancestorDirectories(readRoots)
+      .map((root) => `(literal ${quote(root)})`)
+      .join(" ")})`,
     `(allow file-read* ${readRoots.map((root) => `(subpath ${quote(root)})`).join(" ")} (literal "/dev/null") (literal "/dev/urandom"))`,
-    `(allow file-write* ${
-      writable
-        ? [directory.output, directory.home, directory.temporary]
-            .map((root) => `(subpath ${quote(root)})`)
-            .join(" ")
-        : ""
-    } (literal "/dev/null"))`,
+    `(allow file-write* ${writableRoots} (literal "/dev/null"))`,
   ].join("\n");
+}
+
+function darwinPlan({
+  directory,
+  roots,
+  executable,
+  args,
+  bounds,
+  env,
+}: PlanInput): ProcessPlan {
+  const readRoots = [
+    ...SYSTEM_ROOTS.darwin,
+    ...SYSTEM_FILES,
+    ...roots,
+    directory.root,
+  ];
+  const profile = darwinProfile(
+    readRoots,
+    executable,
+    directory,
+    bounds.writable,
+  );
   // Only fixed shell builtins are used. All tool paths/arguments remain separate
   // positional arguments, including the user-profile URI.
   // Darwin's shared mappings exceed the working-memory budget before execution.
   // The process owner measures RSS instead of applying an unusable RLIMIT_AS.
-  const limits = `ulimit -f ${Math.floor(bounds.maximumFileBytes / 1024)}; ulimit -t ${bounds.cpuSeconds}; ${bounds.openFiles === undefined ? "" : `ulimit -n ${bounds.openFiles}; `}ulimit -c 0; exec "$@"`;
+  const openFiles =
+    bounds.openFiles === undefined ? "" : `ulimit -n ${bounds.openFiles}; `;
+  const limits = `ulimit -f ${Math.floor(bounds.maximumFileBytes / 1024)}; ulimit -t ${bounds.cpuSeconds}; ${openFiles}ulimit -c 0; exec "$@"`;
   return {
     command: "/usr/bin/sandbox-exec",
     args: [
@@ -195,4 +239,25 @@ export function confinedPlan(
     env,
     containment: { kind: "single", residentLimitBytes: bounds.memoryBytes },
   };
+}
+
+export function confinedPlan(
+  platform: "linux" | "darwin",
+  directory: PrivateDirectory,
+  roots: readonly string[],
+  executable: string,
+  args: readonly string[],
+  bounds: ProcessBounds,
+  environment: Readonly<Record<string, string>> = {},
+): ProcessPlan {
+  assertBounds(bounds);
+  const input = {
+    directory,
+    roots,
+    executable,
+    args,
+    bounds,
+    env: confinedEnvironment(directory, environment),
+  };
+  return platform === "linux" ? linuxPlan(input) : darwinPlan(input);
 }

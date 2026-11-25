@@ -106,6 +106,168 @@ interface Pending {
   reject: (err: unknown) => void;
 }
 
+type ErrorPayload = Extract<RpcResponse, { error: unknown }>["error"];
+
+function protocolFailure(
+  subject: string,
+  detail: string,
+  requestId: string | undefined,
+  cause: unknown,
+): RpcProtocolError {
+  const error = new RpcProtocolError(subject, [{ path: "$", detail }], requestId);
+  error.cause = cause;
+  return error;
+}
+
+// A problem response must name a declared problem type with its own code.
+function problemViolations(method: WireMethodName, payload: ErrorPayload) {
+  const violations = validateWire("ProblemData", payload.data);
+  if (violations.length > 0) return violations;
+  const problem = payload.data as ProblemData;
+  const expectedCode = PROBLEM_CODES[problem.type as keyof typeof PROBLEM_CODES];
+  if (
+    expectedCode !== undefined &&
+    payload.code === expectedCode &&
+    payload.message === problem.type
+  )
+    return violations;
+  return [
+    {
+      path: `${method}.error`,
+      detail: "code and message must identify the declared problem type",
+    },
+  ];
+}
+
+function rejectWithProblem(
+  entry: Pending,
+  payload: ErrorPayload,
+  requestId: string | undefined,
+): void {
+  const violations = problemViolations(entry.method, payload);
+  if (violations.length > 0) {
+    entry.reject(new RpcProtocolError(`${entry.method} error`, violations, requestId));
+    return;
+  }
+  let problem: ProblemData;
+  try {
+    problem = projectWire("ProblemData", payload.data) as ProblemData;
+  } catch (cause) {
+    entry.reject(
+      protocolFailure(
+        `${entry.method} error`,
+        "number cannot be represented by the typed wire projection",
+        requestId,
+        cause,
+      ),
+    );
+    return;
+  }
+  entry.reject(
+    new RpcError({ code: payload.code, message: payload.message, data: problem }, requestId),
+  );
+}
+
+function settleResult(entry: Pending, result: unknown, requestId: string | undefined): void {
+  let violations;
+  try {
+    violations = validateMethodResult(entry.method, result);
+  } catch (cause) {
+    entry.reject(
+      protocolFailure(
+        `${entry.method} result`,
+        "numeric evidence cannot be validated",
+        requestId,
+        cause,
+      ),
+    );
+    return;
+  }
+  if (violations.length > 0) {
+    entry.reject(new RpcProtocolError(`${entry.method} result`, violations, requestId));
+    return;
+  }
+  const mismatch = entry.acknowledgement?.(result);
+  if (mismatch !== undefined) {
+    entry.reject(
+      new RpcProtocolError(
+        `${entry.method} result`,
+        [{ path: `${entry.method}.result.${mismatch}`, detail: "must match the request" }],
+        requestId,
+      ),
+    );
+    return;
+  }
+  try {
+    entry.resolve(
+      entry.delivery === "json"
+        ? canonicalJSON(result)
+        : wireMethodReturnsValue(entry.method)
+          ? projectMethodResult(entry.method, result)
+          : undefined,
+    );
+  } catch (cause) {
+    entry.reject(
+      protocolFailure(
+        `${entry.method} result`,
+        "number cannot be represented by the typed wire projection",
+        requestId,
+        cause,
+      ),
+    );
+  }
+}
+
+// The options a call carries must fit its method: exact JSON only for unary
+// queries, idempotency only for commands, replay cursors only where accepted.
+function assertCallOptions<M extends WireMethodName>(
+  method: M,
+  params: WireParams<M>,
+  callOptions: RpcCallOptions,
+  delivery: ResultDelivery,
+): void {
+  const requiresIdempotency = requestRequiresIdempotency(method, params);
+  if (
+    delivery === "json" &&
+    (requiresIdempotency || isWireStreamingMethodName(method) || !wireMethodReturnsValue(method))
+  )
+    throw new TypeError("exact JSON delivery requires a unary query result");
+  if (callOptions.idempotencyKey !== undefined && !requiresIdempotency) {
+    throw new TypeError(`${method} does not accept an idempotency key`);
+  }
+  if (callOptions.idempotencyNamespace !== undefined && callOptions.idempotencyKey === undefined) {
+    throw new TypeError("An idempotency namespace requires an idempotency key");
+  }
+  if (callOptions.lastEventId !== undefined)
+    assertReplayCursor(
+      method,
+      requiresIdempotency,
+      callOptions.idempotencyKey,
+      callOptions.lastEventId,
+    );
+}
+
+function assertReplayCursor(
+  method: WireMethodName,
+  requiresIdempotency: boolean,
+  idempotencyKey: string | undefined,
+  lastEventId: string,
+): void {
+  if (!wireMethodAcceptsReplayCursor(method)) {
+    throw new TypeError(`${method} does not accept a run replay cursor`);
+  }
+  if (requiresIdempotency && idempotencyKey === undefined) {
+    throw new TypeError("A run command replay cursor requires an idempotency key");
+  }
+  if (lastEventId === "") return;
+  if (lastEventId.length > MAXIMUM_RUN_EVENT_ID_CHARACTERS) {
+    throw new TypeError(`Run replay cursor exceeds ${MAXIMUM_RUN_EVENT_ID_CHARACTERS} characters`);
+  }
+  if (!lastEventId.startsWith(RUN_EVENT_ID_PREFIX)) {
+    throw new TypeError("Run replay cursor has invalid event-id framing");
+  }
+}
+
 export function createRpcClient(transport: Transport, options: RpcClientOptions = {}): RpcClient {
   let lastRequestId = 0n;
   const pending = new Map<RpcId, Pending>();
@@ -202,98 +364,8 @@ export function createRpcClient(transport: Transport, options: RpcClientOptions 
       );
       return;
     }
-    if (isErrorResponse(msg)) {
-      const payload = msg.error;
-      const violations = validateWire("ProblemData", payload.data);
-      if (violations.length === 0) {
-        const problem = payload.data as ProblemData;
-        const expectedCode = PROBLEM_CODES[problem.type as keyof typeof PROBLEM_CODES];
-        if (
-          expectedCode === undefined ||
-          payload.code !== expectedCode ||
-          payload.message !== problem.type
-        ) {
-          violations.push({
-            path: `${entry.method}.error`,
-            detail: "code and message must identify the declared problem type",
-          });
-        }
-      }
-      if (violations.length > 0) {
-        entry.reject(new RpcProtocolError(`${entry.method} error`, violations, requestId));
-        return;
-      }
-      let problem: ProblemData;
-      try {
-        problem = projectWire("ProblemData", payload.data) as ProblemData;
-      } catch (cause) {
-        const error = new RpcProtocolError(
-          `${entry.method} error`,
-          [{ path: "$", detail: "number cannot be represented by the typed wire projection" }],
-          requestId,
-        );
-        error.cause = cause;
-        entry.reject(error);
-        return;
-      }
-      entry.reject(
-        new RpcError(
-          {
-            code: payload.code,
-            message: payload.message,
-            data: problem,
-          },
-          requestId,
-        ),
-      );
-    } else {
-      const result = msg.result;
-      let violations;
-      try {
-        violations = validateMethodResult(entry.method, result);
-      } catch (cause) {
-        const error = new RpcProtocolError(
-          `${entry.method} result`,
-          [{ path: "$", detail: "numeric evidence cannot be validated" }],
-          requestId,
-        );
-        error.cause = cause;
-        entry.reject(error);
-        return;
-      }
-      if (violations.length > 0) {
-        entry.reject(new RpcProtocolError(`${entry.method} result`, violations, requestId));
-        return;
-      }
-      const mismatch = entry.acknowledgement?.(result);
-      if (mismatch !== undefined) {
-        entry.reject(
-          new RpcProtocolError(
-            `${entry.method} result`,
-            [{ path: `${entry.method}.result.${mismatch}`, detail: "must match the request" }],
-            requestId,
-          ),
-        );
-        return;
-      }
-      try {
-        entry.resolve(
-          entry.delivery === "json"
-            ? canonicalJSON(result)
-            : wireMethodReturnsValue(entry.method)
-              ? projectMethodResult(entry.method, result)
-              : undefined,
-        );
-      } catch (cause) {
-        const error = new RpcProtocolError(
-          `${entry.method} result`,
-          [{ path: "$", detail: "number cannot be represented by the typed wire projection" }],
-          requestId,
-        );
-        error.cause = cause;
-        entry.reject(error);
-      }
-    }
+    if (isErrorResponse(msg)) rejectWithProblem(entry, msg.error, requestId);
+    else settleResult(entry, msg.result, requestId);
   }
 
   function dispatchMessage(
@@ -376,39 +448,7 @@ export function createRpcClient(transport: Transport, options: RpcClientOptions 
     delivery: ResultDelivery = "value",
   ): Promise<WireResult<M> | string> {
     requireOpen();
-    const requiresIdempotency = requestRequiresIdempotency(method, params);
-    if (
-      delivery === "json" &&
-      (requiresIdempotency || isWireStreamingMethodName(method) || !wireMethodReturnsValue(method))
-    )
-      throw new TypeError("exact JSON delivery requires a unary query result");
-    if (callOptions.idempotencyKey !== undefined && !requiresIdempotency) {
-      throw new TypeError(`${method} does not accept an idempotency key`);
-    }
-    if (
-      callOptions.idempotencyNamespace !== undefined &&
-      callOptions.idempotencyKey === undefined
-    ) {
-      throw new TypeError("An idempotency namespace requires an idempotency key");
-    }
-    if (callOptions.lastEventId !== undefined) {
-      if (!wireMethodAcceptsReplayCursor(method)) {
-        throw new TypeError(`${method} does not accept a run replay cursor`);
-      }
-      if (requiresIdempotency && callOptions.idempotencyKey === undefined) {
-        throw new TypeError("A run command replay cursor requires an idempotency key");
-      }
-      if (callOptions.lastEventId !== "") {
-        if (callOptions.lastEventId.length > MAXIMUM_RUN_EVENT_ID_CHARACTERS) {
-          throw new TypeError(
-            `Run replay cursor exceeds ${MAXIMUM_RUN_EVENT_ID_CHARACTERS} characters`,
-          );
-        }
-        if (!callOptions.lastEventId.startsWith(RUN_EVENT_ID_PREFIX)) {
-          throw new TypeError("Run replay cursor has invalid event-id framing");
-        }
-      }
-    }
+    assertCallOptions(method, params, callOptions, delivery);
     const requestMeta =
       callOptions.requestMeta === undefined ? options.requestMeta?.() : callOptions.requestMeta;
     checkRequest(method, params, requestMeta);

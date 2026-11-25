@@ -247,6 +247,63 @@ function pending<T>(signal?: AbortSignal): Promise<T> {
   });
 }
 
+type DirectoryPhase = "initial" | "accepted" | "notified" | "failed";
+
+// The recorded listing for each directory state, or undefined for the plain listing.
+function visualDirectoryState(
+  directoryState: VisualDirectoryState,
+  phase: DirectoryPhase,
+  request: WorkspaceListFilesQuery,
+  signal: AbortSignal | undefined,
+) {
+  if (directoryState === "loading") return pending<never>(signal);
+  if (directoryState === "empty") return visualFilePage([]);
+  if (directoryState === "budget" && !request.cursor)
+    return {
+      data: [],
+      nextCursor: "apps-budget",
+      complete: false,
+      coverage: { scannedEntries: 400, excludedEntries: 400, budgetExhausted: true },
+    };
+  if (directoryState === "paged") return pagedDirectory(request.cursor);
+  if (
+    (directoryState === "error" && phase === "initial") ||
+    (directoryState === "refresh-error" && phase === "notified")
+  )
+    throw new Error("Visual fixture could not list apps");
+  return undefined;
+}
+
+function pagedDirectory(cursor: string | undefined) {
+  const start = cursor ? 101 : 1;
+  const count = cursor ? 20 : 100;
+  return {
+    data: Array.from({ length: count }, (_, index): WorkspaceFileEntry => {
+      const name = `page-${String(start + index).padStart(3, "0")}.txt`;
+      return { name, path: `${VISUAL_DIRECTORY_PATH}/${name}`, type: "file" };
+    }),
+    ...(cursor ? {} : { nextCursor: "apps-next" }),
+    complete: Boolean(cursor),
+    coverage: { scannedEntries: count, excludedEntries: 0, budgetExhausted: false },
+  };
+}
+
+// A base comparison reads the recorded branch review unless a scaled or
+// focused review replaces it, which keeps its own files under the branch baseline.
+function reviewComparison(
+  input: Pick<GetDiffRequest, "mode" | "path">,
+  reviewFiles: number | undefined,
+  reviewPath: string | undefined,
+) {
+  const selection = { firstPath: reviewPath, path: input.path };
+  const captured =
+    reviewFiles === undefined ? reviewDiff(selection) : scaledReview(reviewFiles, selection);
+  if (input.mode !== "base") return captured;
+  return reviewFiles === undefined && !reviewPath
+    ? branchReviewDiff(input.path)
+    : { ...captured, baseline: BRANCH_REVIEW_DIFF.baseline };
+}
+
 function workspaceDataPlugin(
   readDiff: (signal?: AbortSignal) => Promise<Diff>,
   runtimeClient: () => FlameClient,
@@ -519,7 +576,7 @@ function workspaceDataPlugin(
           }));
         },
       });
-      let directoryPhase: "initial" | "accepted" | "notified" | "failed" = "initial";
+      let directoryPhase: DirectoryPhase = "initial";
       let directoryQuery: Query | undefined;
       if (directoryState === "refresh-error") {
         const notify = () => {
@@ -569,33 +626,8 @@ function workspaceDataPlugin(
                 queryKey: [WORKSPACE_LIST_FILES_KEY, { ...request, cursor: undefined }, "pages"],
                 exact: true,
               });
-              if (directoryState === "loading") return pending<never>(signal);
-              if (directoryState === "empty") return visualFilePage([]);
-              if (directoryState === "budget" && !request.cursor)
-                return {
-                  data: [],
-                  nextCursor: "apps-budget",
-                  complete: false,
-                  coverage: { scannedEntries: 400, excludedEntries: 400, budgetExhausted: true },
-                };
-              if (directoryState === "paged") {
-                const start = request.cursor ? 101 : 1;
-                const count = request.cursor ? 20 : 100;
-                return {
-                  data: Array.from({ length: count }, (_, index): WorkspaceFileEntry => {
-                    const name = `page-${String(start + index).padStart(3, "0")}.txt`;
-                    return { name, path: `${VISUAL_DIRECTORY_PATH}/${name}`, type: "file" };
-                  }),
-                  ...(request.cursor ? {} : { nextCursor: "apps-next" }),
-                  complete: Boolean(request.cursor),
-                  coverage: { scannedEntries: count, excludedEntries: 0, budgetExhausted: false },
-                };
-              }
-              if (
-                (directoryState === "error" && directoryPhase === "initial") ||
-                (directoryState === "refresh-error" && directoryPhase === "notified")
-              )
-                throw new Error("Visual fixture could not list apps");
+              const page = visualDirectoryState(directoryState, directoryPhase, request, signal);
+              if (page) return page;
             }
             return visualFilePage([
               {
@@ -741,15 +773,7 @@ export function visualWorkspaceRuntime(
     }
     if (state === "dock-diff-budget") return request ? budgetDiff() : evidenceDiff();
     if (state === "dock-diff-large") return largeFileDiff(input.path);
-    const selection = { firstPath: reviewPath, path: input.path };
-    const captured =
-      reviewFiles === undefined ? reviewDiff(selection) : scaledReview(reviewFiles, selection);
-    const comparison =
-      input.mode === "base"
-        ? reviewFiles === undefined && !reviewPath
-          ? branchReviewDiff(input.path)
-          : { ...captured, baseline: BRANCH_REVIEW_DIFF.baseline }
-        : captured;
+    const comparison = reviewComparison(input, reviewFiles, reviewPath);
     return state === "dock-empty"
       ? { ...comparison, visual: { ...comparison.visual, manifest: [], patch: "" } }
       : comparison;

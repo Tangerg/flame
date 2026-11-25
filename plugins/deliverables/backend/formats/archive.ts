@@ -585,40 +585,48 @@ export class OfficePackage {
       throw new Error("orphan Office relationships part");
     const ids = new Set<string>();
     let main = 0;
-    for (const relation of xml.root.children) {
-      const {
-        Id: id,
-        Type: type,
-        Target: target,
-        TargetMode: mode,
-      } = relation.attributes;
-      if (
-        relation.local !== "Relationship" ||
-        relation.uri !== namespaces.relationships ||
-        !id ||
-        !type ||
-        !target ||
-        ids.has(id)
-      )
-        throw new Error("invalid or duplicate Office relationship");
-      ids.add(id);
-      if (activeRelationship.test(type))
-        throw new Error("active Office relationship is not admitted");
-      if (mode === "External") {
-        assertHyperlink(type, target);
-        continue;
-      }
-      if (mode && mode !== "Internal")
-        throw new Error("invalid Office relationship mode");
-      const destination = relationshipTarget(source, target);
-      if (!this.parts.has(destination))
-        throw new Error("Office relationship targets a missing part");
-      if (source || type !== officeDocumentRelationship) continue;
-      if (destination !== MAIN_PARTS[this.format])
-        throw new Error("Office root relationship has an unexpected main part");
-      main++;
-    }
+    for (const relation of xml.root.children)
+      if (this.admitRelationship(source, relation, ids)) main++;
     return main;
+  }
+
+  // Returns whether this root relationship names the package's main part.
+  private admitRelationship(
+    source: string,
+    relation: XmlNode,
+    ids: Set<string>,
+  ): boolean {
+    const {
+      Id: id,
+      Type: type,
+      Target: target,
+      TargetMode: mode,
+    } = relation.attributes;
+    if (
+      relation.local !== "Relationship" ||
+      relation.uri !== namespaces.relationships ||
+      !id ||
+      !type ||
+      !target ||
+      ids.has(id)
+    )
+      throw new Error("invalid or duplicate Office relationship");
+    ids.add(id);
+    if (activeRelationship.test(type))
+      throw new Error("active Office relationship is not admitted");
+    if (mode === "External") {
+      assertHyperlink(type, target);
+      return false;
+    }
+    if (mode && mode !== "Internal")
+      throw new Error("invalid Office relationship mode");
+    const destination = relationshipTarget(source, target);
+    if (!this.parts.has(destination))
+      throw new Error("Office relationship targets a missing part");
+    if (source || type !== officeDocumentRelationship) return false;
+    if (destination !== MAIN_PARTS[this.format])
+      throw new Error("Office root relationship has an unexpected main part");
+    return true;
   }
 
   private assertInert(path: string, xml: XmlDocument): void {

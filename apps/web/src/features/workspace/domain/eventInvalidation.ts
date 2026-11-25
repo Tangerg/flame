@@ -64,29 +64,42 @@ export function workspaceQueryAffected(
   if (!FILE_TARGETS.has(target)) return true;
   if (event.type !== "files.changed" && event.type !== "resync") return true;
   const roots = affectedWorkspaces(event);
-  if (roots && params?.cwd === undefined) {
-    const defaultWorkspace = event.watchScopes?.find((scope) => scope.cwd === undefined);
-    if (defaultWorkspace && !roots.includes(defaultWorkspace.workspace.path)) return false;
-  }
-  if (roots && params?.cwd !== undefined) {
-    const matches = roots.some(
-      (root) =>
-        params.cwd === root ||
-        event.watchScopes?.some(
-          (scope) => scope.workspace.path === root && scope.cwd === params.cwd,
-        ),
-    );
-    if (!matches) return false;
-  }
+  if (roots && !workspaceInScope(roots, params?.cwd, event)) return false;
   if (target !== "fileRead" && target !== "fileList") return true;
+  return pathInScope(target, params?.path, event);
+}
+
+// A query without its own folder reads the default watched workspace.
+function workspaceInScope(
+  roots: readonly string[],
+  cwd: string | undefined,
+  event: WorkspaceEventLike,
+): boolean {
+  if (cwd === undefined) {
+    const defaultWorkspace = event.watchScopes?.find((scope) => scope.cwd === undefined);
+    return !defaultWorkspace || roots.includes(defaultWorkspace.workspace.path);
+  }
+  return roots.some(
+    (root) =>
+      cwd === root ||
+      event.watchScopes?.some((scope) => scope.workspace.path === root && scope.cwd === cwd),
+  );
+}
+
+// A read is affected by changes at or below its path; a listing also by its ancestors.
+function pathInScope(
+  target: "fileRead" | "fileList",
+  queryPath: string | undefined,
+  event: WorkspaceEventLike,
+): boolean {
   if (!event.paths?.length) return true;
-  const queryPath = relativePath(params?.path ?? ".", event.workspace?.path);
+  const query = relativePath(queryPath ?? ".", event.workspace?.path);
   const paths = event.paths.map((path) => relativePath(path, event.workspace?.path));
-  if (queryPath === undefined || paths.includes(undefined)) return true;
+  if (query === undefined || paths.includes(undefined)) return true;
   return paths.some(
     (path) =>
       path !== undefined &&
-      (atOrBelow(queryPath, path) || (target !== "fileRead" && atOrBelow(path, queryPath))),
+      (atOrBelow(query, path) || (target === "fileList" && atOrBelow(path, query))),
   );
 }
 
@@ -118,49 +131,34 @@ function atOrBelow(path: string, parent: string): boolean {
   return parent === "." || path === parent || path.startsWith(`${parent}/`);
 }
 
+const TOPIC_INVALIDATIONS = {
+  "files.changed": ["filesChanged", "fileList", "fileRead"],
+  "skills.changed": [],
+  "plugins.changed": ["approvalRules"],
+  "mcp.changed": ["approvalRules"],
+  "sessions.changed": ["sessions"],
+  "runs.changed": ["sessionUsage", "agentSessionProjection"],
+  "interrupts.changed": ["agentSessionProjection"],
+  "goals.changed": ["agentSessionProjection"],
+  "plan.changed": ["agentSessionProjection"],
+  "hooks.changed": [],
+  "models.changed": ["providers", "models"],
+  "approvals.changed": ["approvalMode", "approvalRules"],
+  "plugins.dataChanged": [],
+  "projects.changed": ["projects"],
+} as const satisfies Record<
+  WorkspaceTopic,
+  readonly WorkspaceInvalidationTarget[]
+>;
+
 export function workspaceInvalidations(ev: WorkspaceEventLike): WorkspaceInvalidationTarget[] {
-  switch (ev.type) {
-    case "files.changed":
-      return ["filesChanged", "fileList", "fileRead"];
-    case "skills.changed":
-      return [];
-    case "plugins.changed":
-      return ["approvalRules"];
-    case "mcp.changed":
-      return ["approvalRules"];
-    case "sessions.changed":
-      return ["sessions"];
-    case "runs.changed":
-      return ["sessionUsage", "agentSessionProjection"];
-    case "interrupts.changed":
-      return ["agentSessionProjection"];
-    case "goals.changed":
-      return ["agentSessionProjection"];
-    case "plan.changed":
-      return ["agentSessionProjection"];
-    case "hooks.changed":
-      return [];
-    case "models.changed":
-      return ["providers", "models"];
-    case "approvals.changed":
-      return ["approvalMode", "approvalRules"];
-    case "plugins.dataChanged":
-      return [];
-    case "projects.changed":
-      return ["projects"];
-    case "resync": {
-      if (!ev.topics?.length) return ["all"];
-      const targets = new Set<WorkspaceInvalidationTarget>();
-      for (const topic of ev.topics) {
-        for (const target of workspaceInvalidations({ type: topic, sequence: ev.sequence })) {
-          targets.add(target);
-        }
-      }
-      return [...targets];
-    }
-    default: {
-      const unhandled: never = ev.type;
-      return unhandled;
+  if (ev.type !== "resync") return [...TOPIC_INVALIDATIONS[ev.type]];
+  if (!ev.topics?.length) return ["all"];
+  const targets = new Set<WorkspaceInvalidationTarget>();
+  for (const topic of ev.topics) {
+    for (const target of workspaceInvalidations({ type: topic, sequence: ev.sequence })) {
+      targets.add(target);
     }
   }
+  return [...targets];
 }

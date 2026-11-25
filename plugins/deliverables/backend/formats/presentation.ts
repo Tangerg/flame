@@ -449,6 +449,85 @@ function referencedRelationships(node: XmlNode, found = new Set<string>()) {
   return found;
 }
 
+// A deleted element releases the relationships only it referenced; its own
+// text cannot also be edited in the same revision.
+function stageDeletions(
+  archive: OfficePackage,
+  deletions: Operation<"deleteElement">[],
+  patches: Map<string, XmlPatch[]>,
+  add: (part: string, patch: XmlPatch) => void,
+) {
+  const deleted = new Set<string>();
+  const released = new Map<string, Set<string>>();
+  for (const operation of deletions) {
+    const { part, element } = resolveElement(archive, operation.id);
+    if (
+      (patches.get(part) ?? []).some(
+        (patch) =>
+          patch.start >= element.node.start && patch.end <= element.node.end,
+      )
+    )
+      throw new Error("a deleted element cannot also be edited");
+    deleted.add(operation.id);
+    add(part, { start: element.node.start, end: element.node.end, value: "" });
+    released.set(
+      part,
+      referencedRelationships(element.node, released.get(part)),
+    );
+  }
+  return { deleted, released };
+}
+
+function releaseRelationships(
+  archive: OfficePackage,
+  released: Map<string, Set<string>>,
+): void {
+  for (const [part, candidates] of released) {
+    const remaining = referencedRelationships(archive.xml(part).root);
+    archive.patch(
+      relationshipsPath(part),
+      relations(archive, part)
+        .filter(
+          (relation) =>
+            candidates.has(relation.id) && !remaining.has(relation.id),
+        )
+        .map((relation) => ({
+          start: relation.node.start,
+          end: relation.node.end,
+          value: "",
+        })),
+    );
+  }
+}
+
+function reorderSlides(
+  archive: OfficePackage,
+  reorders: Operation<"reorderSlides">[],
+): void {
+  if (reorders.length > 1)
+    throw new Error("slides may be reordered only once per revision");
+  const reorder = reorders[0];
+  if (!reorder) return;
+  const { document, list, slides } = slideList(archive);
+  assertPermutation(
+    slides.map((slide) => slide.id),
+    reorder.ids,
+  );
+  const values = new Map(
+    slides.map((slide) => [
+      slide.id,
+      document.source.slice(slide.node.start, slide.node.end),
+    ]),
+  );
+  archive.patch(MAIN_PARTS.pptx, [
+    {
+      start: list.openEnd,
+      end: list.closeStart,
+      value: reorder.ids.map((id) => values.get(id)!).join(""),
+    },
+  ]);
+}
+
 // Every identifier names the exact source revision; one revision applies the
 // whole set or none of it.
 export async function editPresentation(
@@ -479,24 +558,12 @@ export async function editPresentation(
   const patches = textPatches(archive, of("replaceText"));
   const add = (part: string, patch: XmlPatch) =>
     patches.set(part, [...(patches.get(part) ?? []), patch]);
-  const deleted = new Set<string>();
-  const released = new Map<string, Set<string>>();
-  for (const operation of of("deleteElement")) {
-    const { part, element } = resolveElement(archive, operation.id);
-    if (
-      (patches.get(part) ?? []).some(
-        (patch) =>
-          patch.start >= element.node.start && patch.end <= element.node.end,
-      )
-    )
-      throw new Error("a deleted element cannot also be edited");
-    deleted.add(operation.id);
-    add(part, { start: element.node.start, end: element.node.end, value: "" });
-    released.set(
-      part,
-      referencedRelationships(element.node, released.get(part)),
-    );
-  }
+  const { deleted, released } = stageDeletions(
+    archive,
+    of("deleteElement"),
+    patches,
+    add,
+  );
   for (const operation of of("setFrame")) {
     if (deleted.has(operation.id))
       throw new Error("a deleted element cannot also be edited");
@@ -515,45 +582,8 @@ export async function editPresentation(
   for (const [part, edits] of patches) archive.patch(part, edits);
   for (const { chart, operation } of charts)
     await setChartData(archive, chart, operation.expect, operation.data);
-  for (const [part, candidates] of released) {
-    const remaining = referencedRelationships(archive.xml(part).root);
-    archive.patch(
-      relationshipsPath(part),
-      relations(archive, part)
-        .filter(
-          (relation) =>
-            candidates.has(relation.id) && !remaining.has(relation.id),
-        )
-        .map((relation) => ({
-          start: relation.node.start,
-          end: relation.node.end,
-          value: "",
-        })),
-    );
-  }
+  releaseRelationships(archive, released);
   if (reachable) pruneParts(archive, reachable);
-  const reorders = of("reorderSlides");
-  if (reorders.length > 1)
-    throw new Error("slides may be reordered only once per revision");
-  if (reorders[0]) {
-    const { document, list, slides } = slideList(archive);
-    assertPermutation(
-      slides.map((slide) => slide.id),
-      reorders[0].ids,
-    );
-    const values = new Map(
-      slides.map((slide) => [
-        slide.id,
-        document.source.slice(slide.node.start, slide.node.end),
-      ]),
-    );
-    archive.patch(MAIN_PARTS.pptx, [
-      {
-        start: list.openEnd,
-        end: list.closeStart,
-        value: reorders[0].ids.map((id) => values.get(id)!).join(""),
-      },
-    ]);
-  }
+  reorderSlides(archive, of("reorderSlides"));
   return archive.save();
 }

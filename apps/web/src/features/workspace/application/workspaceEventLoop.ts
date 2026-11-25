@@ -1,9 +1,8 @@
 import {
   ASYNC_OWNERSHIP_RETIRED as ABORTED,
   disposeAsyncIterable,
-  disposeAsyncIterator,
+  drainUntilAbort,
   settleBeforeAbort,
-  settleWithinNextTask,
 } from "@/lib/asyncOwnership";
 import { type WorkspaceEventLike } from "@/features/workspace/domain/eventInvalidation";
 import { type RuntimeConnectionGeneration } from "@/features/connection/public/services";
@@ -90,6 +89,23 @@ export function createWorkspaceEventLoop(deps: WorkspaceEventLoopDeps): Workspac
   };
 }
 
+// Delivers events in sequence order; a gap invalidates every query once.
+async function consumeEvents(
+  deps: WorkspaceEventLoopDeps,
+  events: AsyncIterable<WorkspaceEventLike>,
+  signal: AbortSignal,
+): Promise<void> {
+  deps.invalidateAll();
+  let lastSequence = 0;
+  await drainUntilAbort(events, signal, (ev) => {
+    if (ev.sequence <= lastSequence) return true;
+    if (ev.sequence > lastSequence + 1) deps.invalidateAll();
+    lastSequence = ev.sequence;
+    deps.handleEvent(ev);
+    return true;
+  });
+}
+
 async function subscribeLoop(
   deps: WorkspaceEventLoopDeps,
   signal: AbortSignal,
@@ -112,34 +128,7 @@ async function subscribeLoop(
       );
       if (events === ABORTED) continue;
       if (iter.signal.aborted) continue;
-      const iterator = events[Symbol.asyncIterator]();
-      let iteratorDone = false;
-      try {
-        deps.invalidateAll();
-        let lastSequence = 0;
-        while (!iter.signal.aborted) {
-          const pendingNext = Promise.resolve(iterator.next());
-          const next = await settleBeforeAbort(pendingNext, iter.signal);
-          if (next === ABORTED) {
-            const lateNext = await settleWithinNextTask(pendingNext);
-            if (lateNext.status === "fulfilled" && lateNext.value.done) iteratorDone = true;
-            break;
-          }
-          if (next.done) {
-            iteratorDone = true;
-            break;
-          }
-          const ev = next.value;
-          if (ev.sequence <= lastSequence) continue;
-          if (ev.sequence > lastSequence + 1) {
-            deps.invalidateAll();
-          }
-          lastSequence = ev.sequence;
-          deps.handleEvent(ev);
-        }
-      } finally {
-        if (!iteratorDone) await disposeAsyncIterator(iterator);
-      }
+      await consumeEvents(deps, events, iter.signal);
     } catch (error) {
       if (!signal.aborted && iter.signal.reason !== RETARGET) failure = error;
     } finally {

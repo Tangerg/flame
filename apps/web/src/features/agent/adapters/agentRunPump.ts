@@ -1,8 +1,8 @@
 import {
   ASYNC_OWNERSHIP_RETIRED as ABORTED,
   disposeAsyncIterator,
+  drainUntilAbort,
   settleBeforeAbort,
-  settleWithinNextTask,
 } from "@/lib/asyncOwnership";
 import { delayUntilAborted } from "@/lib/abortableDelay";
 import {
@@ -243,35 +243,26 @@ export function createAgentRunPump({
     let finished = false;
     let recovery: "replay" | "cold" = "replay";
     let error: unknown;
-    const iterator = events[Symbol.asyncIterator]();
-    let iteratorDone = false;
     try {
-      while (!signal.aborted && !isCancelled()) {
-        const pendingNext = Promise.resolve(iterator.next());
-        const next = await settleBeforeAbort(pendingNext, signal);
-        if (next === ABORTED) {
-          const lateNext = await settleWithinNextTask(pendingNext);
-          if (lateNext.status === "fulfilled" && lateNext.value.done) iteratorDone = true;
-          return { finished: true, recovery };
-        }
-        if (next.done) {
-          iteratorDone = true;
-          break;
-        }
-        if (isCancelled() || signal.aborted) return { finished: true, recovery };
-        const ev = next.value;
-        eventBatcher.enqueue(ev);
-        if (ev.segmentId === rootSegmentId && ev.event.type === "segment.finished") {
-          finished = true;
-        }
-      }
+      const outcome = await drainUntilAbort(
+        events,
+        signal,
+        (ev) => {
+          if (isCancelled() || signal.aborted) return false;
+          eventBatcher.enqueue(ev);
+          if (ev.segmentId === rootSegmentId && ev.event.type === "segment.finished")
+            finished = true;
+          return true;
+        },
+        () => !isCancelled(),
+      );
+      // A pull interrupted by the owner, or a value read after cancellation, ends this drain.
+      if (outcome === "interrupted" || outcome === "stopped") return { finished: true, recovery };
     } catch (err) {
       error = err;
       if (err instanceof RpcProtocolError) recovery = "cold";
       if (!isCancelled() && !signal.aborted && !(err instanceof RpcConnectionError))
         console.warn("[agent] run stream ended early:", sessionId, err);
-    } finally {
-      if (!iteratorDone) await disposeAsyncIterator(iterator);
     }
     return { finished, recovery, error };
   }

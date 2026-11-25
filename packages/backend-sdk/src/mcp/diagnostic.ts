@@ -14,6 +14,30 @@ const truncated = "  [diagnostic truncated]\n";
 const sourceFrame =
   /^\s+at (?:.* \()?((?:file:\/\/\/|\/|[A-Za-z]:[\\/]|node:)[^()\r\n]+):(\d+):(\d+)\)?$/;
 
+// Only frame locations leave the stack; a source that could forge log lines is withheld.
+function sourceFrames(error: Error): string[] {
+  const heading = error.message
+    ? `${error.name}: ${error.message}\n`
+    : `${error.name}\n`;
+  const stack = error.stack;
+  if (typeof stack !== "string" || !stack.startsWith(heading)) return [];
+  // Removing the entire heading also removes multiline exception messages.
+  return stack
+    .slice(heading.length, heading.length + maximumDiagnosticBytes)
+    .split("\n")
+    .slice(0, maximumFrames)
+    .flatMap((frame) => {
+      const location = sourceFrame.exec(frame);
+      if (!location) return [];
+      const source = location[1]!.startsWith("file:///")
+        ? location[1]!.split(/[?#]/, 1)[0]!
+        : location[1]!;
+      return /[\p{Cc}\p{Surrogate}\p{Zl}\p{Zp}]/u.test(source)
+        ? ["    at [unprintable source]\n"]
+        : [`    at ${source}:${location[2]}:${location[3]}\n`];
+    });
+}
+
 // Exception text and arbitrary properties can contain requests or credentials.
 // Only error categories, codes and source locations cross this log boundary.
 export function failureDiagnostic(
@@ -52,30 +76,7 @@ export function failureDiagnostic(
     const category = errorCategory(value);
     append(`  ${relation}: ${category}\n`);
 
-    const heading = value.message
-      ? `${value.name}: ${value.message}\n`
-      : `${value.name}\n`;
-    const stack = value.stack;
-    if (typeof stack === "string" && stack.startsWith(heading)) {
-      // Removing the entire heading also removes multiline exception messages.
-      const frames = stack
-        .slice(heading.length, heading.length + maximumDiagnosticBytes)
-        .split("\n")
-        .slice(0, maximumFrames);
-      for (const frame of frames) {
-        const location = sourceFrame.exec(frame);
-        if (location) {
-          const source = location[1]!.startsWith("file:///")
-            ? location[1]!.split(/[?#]/, 1)[0]!
-            : location[1]!;
-          if (/[\p{Cc}\p{Surrogate}\p{Zl}\p{Zp}]/u.test(source)) {
-            append("    at [unprintable source]\n");
-          } else {
-            append(`    at ${source}:${location[2]}:${location[3]}\n`);
-          }
-        }
-      }
-    }
+    for (const frame of sourceFrames(value)) append(frame);
     const cause = Object.getOwnPropertyDescriptor(value, "cause");
     if (cause && "value" in cause) visit(cause.value, "caused by");
     const members: unknown = Object.getOwnPropertyDescriptor(

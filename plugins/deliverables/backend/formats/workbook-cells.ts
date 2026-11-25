@@ -103,6 +103,18 @@ type CellProjection =
   | { type: "error"; value: string }
   | { type: "number"; value: string; representation: "native_decimal" };
 
+function booleanCell(value: string | undefined): CellProjection {
+  if (value !== "0" && value !== "1")
+    throw new Error("invalid spreadsheet boolean value");
+  return { type: "boolean", value: value === "1" };
+}
+
+function numberOrBlankCell(value: string | undefined): CellProjection {
+  return value === undefined || value === ""
+    ? { type: "blank" }
+    : numericCell(value);
+}
+
 export function cellValue(cell: XmlNode, strings: string[]): CellProjection {
   const value = cell.children.find((node) => isSheetElement(node, "v"))?.text;
   switch (cell.attributes.t) {
@@ -114,9 +126,7 @@ export function cellValue(cell: XmlNode, strings: string[]): CellProjection {
     case "s":
       return { type: "string", value: sharedString(value, strings) };
     case "b":
-      if (value !== "0" && value !== "1")
-        throw new Error("invalid spreadsheet boolean value");
-      return { type: "boolean", value: value === "1" };
+      return booleanCell(value);
     case "e":
       return { type: "error", value: value ?? "" };
     case "str":
@@ -124,9 +134,7 @@ export function cellValue(cell: XmlNode, strings: string[]): CellProjection {
       return { type: "string", value: value ?? "" };
     case undefined:
     case "n":
-      return value === undefined || value === ""
-        ? { type: "blank" }
-        : numericCell(value);
+      return numberOrBlankCell(value);
     default:
       throw new Error("unsupported spreadsheet cell value type");
   }

@@ -140,27 +140,39 @@ function restorePortable(
   if (Object.hasOwn(restored, MCP_CONTENT_KEY))
     throw new Error("computer: portable metadata cannot nest an MCP envelope");
   if (Object.keys(restored).length) part.metadata = restored;
+  restoreMedia(part, content, portable);
+  restoreCitations(part, portable.citations);
+}
+
+function restoreMedia(
+  part: ToolContent,
+  content: ContentBlock,
+  portable: JSONRecord,
+): void {
   const name = portable.name === undefined ? "" : string(portable.name);
   const id = portable.media_id === undefined ? "" : string(portable.media_id);
   const mediaMetadata = metadata(portable.media_metadata);
-  if ((name || id || Object.keys(mediaMetadata).length) && !part.media)
-    throw new Error("computer: text cannot carry portable media attributes");
+  const hasMetadata = Object.keys(mediaMetadata).length > 0;
+  if (!part.media) {
+    if (name || id || hasMetadata)
+      throw new Error("computer: text cannot carry portable media attributes");
+    return;
+  }
   if (name && content.type === "resource_link")
     throw new Error("computer: portable metadata cannot replace the link name");
-  if (part.media) {
-    if (name) part.media.name = name;
-    if (id) part.media.id = id;
-    if (Object.keys(mediaMetadata).length) part.media.metadata = mediaMetadata;
-  }
-  if (portable.citations !== undefined) {
-    if (!Array.isArray(portable.citations))
-      throw new Error("computer: tool citations must be an array");
-    if (portable.citations.length) {
-      if (part.kind !== "text")
-        throw new Error("computer: citations require text content");
-      part.citations = portable.citations.map(portableCitation);
-    }
-  }
+  if (name) part.media.name = name;
+  if (id) part.media.id = id;
+  if (hasMetadata) part.media.metadata = mediaMetadata;
+}
+
+function restoreCitations(part: ToolContent, citations: unknown): void {
+  if (citations === undefined) return;
+  if (!Array.isArray(citations))
+    throw new Error("computer: tool citations must be an array");
+  if (!citations.length) return;
+  if (part.kind !== "text")
+    throw new Error("computer: citations require text content");
+  part.citations = citations.map(portableCitation);
 }
 
 type ContentOf<T extends ContentBlock["type"]> = Extract<

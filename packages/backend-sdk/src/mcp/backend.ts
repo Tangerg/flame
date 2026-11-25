@@ -203,6 +203,16 @@ function admittedToolContext(value: unknown): ToolContext | undefined {
   return toolContext;
 }
 
+function assertBackground(background: unknown): void {
+  exactFields(background, ["scope", "reference"]);
+  if (
+    background.scope !== "installation" ||
+    typeof background.reference !== "string" ||
+    !validName(background.reference)
+  )
+    throw new Error("plugin: background must identify its installation");
+}
+
 export class Backend {
   readonly #server: Server;
   readonly #methods = new Map<string, BoundMethod>();
@@ -543,15 +553,7 @@ export class Backend {
       )
         throw new Error("plugin: invalid setup contribution");
       ids.add(value.id);
-      if (value.background !== undefined) {
-        exactFields(value.background, ["scope", "reference"]);
-        if (
-          value.background.scope !== "installation" ||
-          typeof value.background.reference !== "string" ||
-          !validName(value.background.reference)
-        )
-          throw new Error("plugin: background must identify its installation");
-      }
+      if (value.background !== undefined) assertBackground(value.background);
       if ((value.requires.length || value.background) && !this.#setup)
         throw new Error("plugin: declared collaborators require setup");
       validateRequirements(value.requires);

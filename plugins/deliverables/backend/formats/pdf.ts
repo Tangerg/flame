@@ -416,6 +416,18 @@ export async function inspectPDF(bytes: Uint8Array): Promise<Inspection> {
 
 type FieldValue = Extract<PDFOperation, { type: "fillField" }>["value"];
 
+// A choice field selects only declared options, and several only when it allows that.
+function selectChoices(
+  field: PDFDropdown | PDFOptionList,
+  values: readonly string[],
+): void {
+  if (values.some((choice) => !field.getOptions().includes(choice)))
+    throw new Error("PDF choice is not a declared field option");
+  if (values.length > 1 && !field.isMultiselect())
+    throw new Error("PDF field does not allow multiple selections");
+  field.select([...values]);
+}
+
 function fillField(field: PDFField, value: FieldValue): void {
   if (field instanceof PDFTextField && typeof value === "string")
     field.setText(value);
@@ -426,12 +438,7 @@ function fillField(field: PDFField, value: FieldValue): void {
     (field instanceof PDFDropdown || field instanceof PDFOptionList) &&
     typeof value !== "boolean"
   ) {
-    const values = typeof value === "string" ? [value] : value;
-    if (values.some((choice) => !field.getOptions().includes(choice)))
-      throw new Error("PDF choice is not a declared field option");
-    if (values.length > 1 && !field.isMultiselect())
-      throw new Error("PDF field does not allow multiple selections");
-    field.select(values);
+    selectChoices(field, typeof value === "string" ? [value] : value);
   } else if (
     field instanceof PDFRadioGroup &&
     typeof value === "string" &&

@@ -176,6 +176,16 @@ function binding(
     throw new InvalidPresentation("captured target differs from its method");
   return { ...captured, method: request.method, target };
 }
+// Editable controls write only below /draft, the surface's own state.
+function assertDraftBinding(value: unknown): void {
+  const path =
+    value && typeof value === "object" && "@path" in value
+      ? value["@path"]
+      : undefined;
+  if (typeof path !== "string" || !path.startsWith("/draft/"))
+    throw new InvalidPresentation("editable values must bind below /draft");
+}
+
 function admit(document: UiDocument): void {
   unique(document.operations.map(({ id }) => id));
   const names = new Set([
@@ -185,13 +195,7 @@ function admit(document: UiDocument): void {
   if (document.operations.some(({ id }) => builtinActionNames.has(id)))
     throw new InvalidPresentation("reserved action name");
   const knownFunctions = new Set(functions.map(({ name }) => name));
-  function walk(value: unknown) {
-    if (Array.isArray(value)) {
-      value.forEach(walk);
-      return;
-    }
-    if (!value || typeof value !== "object") return;
-    const record = value as Record<string, unknown>;
+  function admitNode(record: Record<string, unknown>) {
     const call = record["@call"] ?? record.call;
     if (typeof call === "string" && !knownFunctions.has(call))
       throw new InvalidPresentation(
@@ -199,22 +203,25 @@ function admit(document: UiDocument): void {
       );
     if (record.catalogId !== undefined && record.catalogId !== CATALOG_ID)
       throw new InvalidPresentation("catalog is not admitted");
+    const event = record.event;
     if (
-      record.event &&
-      typeof record.event === "object" &&
-      "name" in record.event &&
-      !names.has(String(record.event.name))
+      event &&
+      typeof event === "object" &&
+      "name" in event &&
+      !names.has(String(event.name))
     )
       throw new InvalidPresentation("action is not declared");
-    if (record.component === "TextField" || record.component === "CheckBox") {
-      const value = record.value;
-      const path =
-        value && typeof value === "object" && "@path" in value
-          ? value["@path"]
-          : undefined;
-      if (typeof path !== "string" || !path.startsWith("/draft/"))
-        throw new InvalidPresentation("editable values must bind below /draft");
+    if (record.component === "TextField" || record.component === "CheckBox")
+      assertDraftBinding(record.value);
+  }
+  function walk(value: unknown) {
+    if (Array.isArray(value)) {
+      value.forEach(walk);
+      return;
     }
+    if (!value || typeof value !== "object") return;
+    const record = value as Record<string, unknown>;
+    admitNode(record);
     Object.values(record).forEach(walk);
   }
   const surfaces = new Set<string>();

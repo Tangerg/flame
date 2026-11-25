@@ -75,6 +75,42 @@ export async function disposeAsyncIterator<T>(iterator: AsyncIterator<T>): Promi
   } catch {}
 }
 
+// "interrupted": the signal aborted during a pull; "inactive": the loop guard
+// failed before the next pull; "stopped": the receiver declined a value.
+export type DrainOutcome = "ended" | "interrupted" | "inactive" | "stopped";
+
+// Pulls values until the stream ends, the signal aborts, `active` turns false
+// or `receive` declines one. The iterator is closed unless it ended on its own;
+// a pull racing an abort gets one task to report that it ended.
+export async function drainUntilAbort<T>(
+  iterable: AsyncIterable<T>,
+  signal: AbortSignal,
+  receive: (value: T) => boolean,
+  active: () => boolean = () => true,
+): Promise<DrainOutcome> {
+  const iterator = iterable[Symbol.asyncIterator]();
+  let ended = false;
+  try {
+    while (!signal.aborted && active()) {
+      const pendingNext = Promise.resolve(iterator.next());
+      const next = await settleBeforeAbort(pendingNext, signal);
+      if (next === ASYNC_OWNERSHIP_RETIRED) {
+        const late = await settleWithinNextTask(pendingNext);
+        ended = late.status === "fulfilled" && late.value.done === true;
+        return "interrupted";
+      }
+      if (next.done) {
+        ended = true;
+        return "ended";
+      }
+      if (!receive(next.value)) return "stopped";
+    }
+    return "inactive";
+  } finally {
+    if (!ended) await disposeAsyncIterator(iterator);
+  }
+}
+
 export async function disposeAsyncIterable<T>(iterable: AsyncIterable<T>): Promise<void> {
   let iterator: AsyncIterator<T>;
   try {

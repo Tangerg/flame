@@ -49,6 +49,14 @@ function collectTextFlows(messageRoot: HTMLElement): FlowText[][] {
     flow = [];
   };
 
+  // Pele can position several runs separately at the same y; a new y is a new line.
+  const followDiagramLine = (element: Element, line: { y: string | null }) => {
+    if (!element.matches("tspan[x][y]")) return;
+    const y = element.getAttribute("y");
+    if (line.y !== y) endFlow();
+    line.y = y;
+  };
+
   const visit = (node: Node, collapseSpace = false, diagramLine?: { y: string | null }) => {
     if (node.nodeType === Node.TEXT_NODE) {
       flow.push({ node: node as Text, collapseSpace });
@@ -65,17 +73,10 @@ function collectTextFlows(messageRoot: HTMLElement): FlowText[][] {
     }
 
     const line = isMermaidDiagramText(element) ? { y: element.getAttribute("y") } : diagramLine;
-    if (line && element.matches("tspan[x][y]")) {
-      const y = element.getAttribute("y");
-      // Pele can position several runs separately at the same y.
-      if (line.y !== y) endFlow();
-      line.y = y;
-    }
+    if (line) followDiagramLine(element, line);
 
     // Formatting splits text nodes without splitting a phrase.
-    const inline =
-      element !== messageRoot &&
-      (style.display === "contents" || style.display.startsWith("inline"));
+    const inline = element !== messageRoot && inlineDisplay(style);
     const collapseChildren = collapsesHorizontalSpace(style) && !element.closest("code, pre");
     if (!inline) endFlow();
     for (const child of element.childNodes) visit(child, collapseChildren, line);
@@ -84,6 +85,10 @@ function collectTextFlows(messageRoot: HTMLElement): FlowText[][] {
 
   visit(messageRoot);
   return flows;
+}
+
+function inlineDisplay(style: CSSStyleDeclaration): boolean {
+  return style.display === "contents" || style.display.startsWith("inline");
 }
 
 function findFlowRanges(flow: FlowText[], pattern: RegExp, ranges: Range[]): void {

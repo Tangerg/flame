@@ -79,25 +79,19 @@ interface Reference {
   range: SheetRange;
 }
 
-function reference(container: XmlNode | undefined): Reference {
-  const owner = container?.children.find(
-    (entry) => entry.uri === namespaces.chart && entry.local in REFERENCES,
+// Multi-level category caches are editable only with a single level.
+function cachedPoints(cache: XmlNode, kind: keyof typeof REFERENCES): XmlNode {
+  if (kind !== "multiLvlStrRef") return cache;
+  const levels = cache.children.filter(
+    (entry) => entry.uri === namespaces.chart && entry.local === "lvl",
   );
-  if (!owner)
-    throw new Error("chart series data must reference worksheet cells");
-  const kind = owner.local as keyof typeof REFERENCES;
-  const formula = chartChild(owner, "f")?.text;
-  const cache = chartChild(owner, REFERENCES[kind]);
-  if (!formula || !cache) throw new Error("chart reference has no cached data");
-  let points = cache;
-  if (kind === "multiLvlStrRef") {
-    const levels = cache.children.filter(
-      (entry) => entry.uri === namespaces.chart && entry.local === "lvl",
-    );
-    if (levels.length !== 1)
-      throw new Error("multi-level chart categories are not editable");
-    points = levels[0]!;
-  }
+  if (levels.length !== 1)
+    throw new Error("multi-level chart categories are not editable");
+  return levels[0]!;
+}
+
+// Each declared point index appears at most once; absent indexes stay missing.
+function cachedValues(cache: XmlNode, points: XmlNode) {
   const count = chartChild(cache, "ptCount")?.attributes.val ?? "";
   if (!/^(?:0|[1-9][0-9]{0,3})$/u.test(count) || Number(count) > 1000)
     throw new Error("chart cache has an invalid point count");
@@ -116,6 +110,21 @@ function reference(container: XmlNode | undefined): Reference {
     values[Number(index)] = chartChild(point, "v")?.text ?? "";
     missing[Number(index)] = false;
   }
+  return { values, missing };
+}
+
+function reference(container: XmlNode | undefined): Reference {
+  const owner = container?.children.find(
+    (entry) => entry.uri === namespaces.chart && entry.local in REFERENCES,
+  );
+  if (!owner)
+    throw new Error("chart series data must reference worksheet cells");
+  const kind = owner.local as keyof typeof REFERENCES;
+  const formula = chartChild(owner, "f")?.text;
+  const cache = chartChild(owner, REFERENCES[kind]);
+  if (!formula || !cache) throw new Error("chart reference has no cached data");
+  const points = cachedPoints(cache, kind);
+  const { values, missing } = cachedValues(cache, points);
   const range = sheetRange(formula);
   if (range.addresses.length !== values.length)
     throw new Error("chart cache and its worksheet range differ in size");
@@ -207,6 +216,22 @@ function embeddedWorkbook(
   const relation = relations(archive, part).find((entry) => entry.id === id);
   if (relation?.type !== "package" || !relation.target)
     throw new Error("chart external data is not an embedded workbook");
+  try {
+    const workbook = OfficePackage.open(
+      "xlsx",
+      archive.parts.get(relation.target)!,
+    );
+    return workbookHoldsOnlySeries(workbook, referencedCells(series))
+      ? { kind: "chart", part: relation.target }
+      : { kind: "mixed", part: relation.target };
+  } catch {
+    return { kind: "mixed", part: relation.target };
+  }
+}
+
+function referencedCells(
+  series: ChartModel["series"],
+): Map<string, Set<string>> {
   const referenced = new Map<string, Set<string>>();
   for (const entry of series)
     for (const { range } of [entry.name, entry.categories, entry.values]) {
@@ -214,42 +239,42 @@ function embeddedWorkbook(
       for (const address of range.addresses) cells.add(address);
       referenced.set(range.sheet, cells);
     }
-  try {
-    const workbook = OfficePackage.open(
-      "xlsx",
-      archive.parts.get(relation.target)!,
-    );
-    const strings = sharedStrings(workbook);
-    const sheets = workbookSheets(workbook);
-    if (
-      [...referenced.keys()].some(
-        (name) => !sheets.some((sheet) => sheet.name === name),
-      )
+  return referenced;
+}
+
+// A chart owns its workbook only when every sheet the series name exists and
+// no other formula or value is stored there.
+function workbookHoldsOnlySeries(
+  workbook: OfficePackage,
+  referenced: Map<string, Set<string>>,
+): boolean {
+  const strings = sharedStrings(workbook);
+  const sheets = workbookSheets(workbook);
+  if (
+    [...referenced.keys()].some(
+      (name) => !sheets.some((sheet) => sheet.name === name),
     )
-      return { kind: "mixed", part: relation.target };
-    for (const sheet of sheets) {
-      const allowed = referenced.get(sheet.name);
-      for (const [address, cell] of worksheetCells(workbook.xml(sheet.part))) {
-        if (
-          cell.children.some(
-            (node) => node.uri === namespaces.sheet && node.local === "f",
-          )
+  )
+    return false;
+  for (const sheet of sheets) {
+    const allowed = referenced.get(sheet.name);
+    for (const [address, cell] of worksheetCells(workbook.xml(sheet.part))) {
+      if (
+        cell.children.some(
+          (node) => node.uri === namespaces.sheet && node.local === "f",
         )
-          return { kind: "mixed", part: relation.target };
-        const value = cellValue(cell, strings);
-        if (
-          value.type === "blank" ||
-          (value.type === "string" && value.value === "")
-        )
-          continue;
-        if (!allowed?.has(address))
-          return { kind: "mixed", part: relation.target };
-      }
+      )
+        return false;
+      const value = cellValue(cell, strings);
+      if (
+        value.type === "blank" ||
+        (value.type === "string" && value.value === "")
+      )
+        continue;
+      if (!allowed?.has(address)) return false;
     }
-  } catch {
-    return { kind: "mixed", part: relation.target };
   }
-  return { kind: "chart", part: relation.target };
+  return true;
 }
 
 function cachePatch(

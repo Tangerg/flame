@@ -23,20 +23,9 @@ export function hasPNGSignature(bytes: Uint8Array): boolean {
   );
 }
 
-function decodePNG(bytes: Buffer): void {
-  if (
-    bytes.length < 33 ||
-    !hasPNGSignature(bytes) ||
-    bytes.readUInt32BE(8) !== 13 ||
-    bytes.toString("latin1", 12, 16) !== "IHDR"
-  )
-    throw new Error("image does not match PNG format");
-  const width = bytes.readUInt32BE(16);
-  const height = bytes.readUInt32BE(20);
-  admitDimensions(width, height);
-  // pngjs bounds ordinary scanlines internally. Its Adam7 path inflates the
-  // entire stream, so bound the same compressed payload before invoking it.
-  const interlaced = bytes[28] === 1;
+// Walks the chunks after IHDR to a terminal IEND and returns the image data
+// an interlaced image would inflate.
+function pngImageData(bytes: Buffer, interlaced: boolean): Buffer[] {
   const compressed: Buffer[] = [];
   let ended = false;
   for (let offset = 33; offset < bytes.length;) {
@@ -56,6 +45,24 @@ function decodePNG(bytes: Buffer): void {
     offset = end;
   }
   if (!ended) throw new Error("missing PNG end");
+  return compressed;
+}
+
+function decodePNG(bytes: Buffer): void {
+  if (
+    bytes.length < 33 ||
+    !hasPNGSignature(bytes) ||
+    bytes.readUInt32BE(8) !== 13 ||
+    bytes.toString("latin1", 12, 16) !== "IHDR"
+  )
+    throw new Error("image does not match PNG format");
+  const width = bytes.readUInt32BE(16);
+  const height = bytes.readUInt32BE(20);
+  admitDimensions(width, height);
+  // pngjs bounds ordinary scanlines internally. Its Adam7 path inflates the
+  // entire stream, so bound the same compressed payload before invoking it.
+  const interlaced = bytes[28] === 1;
+  const compressed = pngImageData(bytes, interlaced);
   if (interlaced) {
     // At most eight sample bytes per pixel and one filter byte per nonempty
     // pass row; each such row contains at least one of the image's pixels.

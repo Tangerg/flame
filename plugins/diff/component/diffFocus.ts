@@ -46,6 +46,22 @@ interface DiffFocusState {
   error: unknown;
 }
 
+// A deliberate focus move supersedes the pending restoration; disabling the
+// activated navigation button only blurs it to the body.
+function userMovedFocus(
+  pending: PendingFocus,
+  showingReader: boolean,
+  active: Element | null,
+): boolean {
+  const navigation = pending.target === "navigation" ? pending.active : null;
+  const lostNavigationFocus =
+    showingReader && navigation?.disabled && active === document.body;
+  return (
+    !lostNavigationFocus &&
+    focusMovedFromOrigin(active, pending.active, document.body)
+  );
+}
+
 // Refresh keeps focus while the requested overview is pending, even when an
 // earlier scoped result still provides visible rows.
 function holdRefreshFocus(
@@ -102,14 +118,7 @@ export function useDiffFocusRestoration(
         fallback?.focus();
       return;
     }
-    const navigation = pending.target === "navigation" ? pending.active : null;
-    // Disabling the activated navigation button can blur it to the body.
-    const lostNavigationFocus =
-      state.showingReader && navigation?.disabled && active === document.body;
-    if (
-      !lostNavigationFocus &&
-      focusMovedFromOrigin(active, pending.active, document.body)
-    ) {
+    if (userMovedFocus(pending, state.showingReader, active)) {
       targets.pending.current = null;
       return;
     }
