@@ -111,6 +111,9 @@ function ShortcutRow({
   });
   const { startRecording, stopRecording } = recorder;
   const active = mine !== null;
+  // Keys sit beside the row's actions so bindings read as one column; an unbound
+  // command shows none, and the recorder replaces them while it captures.
+  const keys = !mine && row.combo ? <Keys combo={row.combo} /> : null;
   useEffect(() => {
     if (active) startRecording();
     return stopRecording;
@@ -128,11 +131,7 @@ function ShortcutRow({
           <span role="status" id={statusId}>
             {t("shortcuts.recording")}
           </span>
-        ) : row.combo ? (
-          <Keys combo={row.combo} />
-        ) : (
-          t("shortcuts.unbound")
-        )
+        ) : undefined
       }
     >
       {row.editable ? (
@@ -147,6 +146,7 @@ function ShortcutRow({
           }}
           {...stylex.props(sc.controls)}
         >
+          {keys}
           {mine && (
             <TextField
               readOnly
@@ -197,7 +197,9 @@ function ShortcutRow({
             </TextButton>
           )}
         </div>
-      ) : undefined}
+      ) : (
+        keys
+      )}
     </SettingRow>
   );
 }

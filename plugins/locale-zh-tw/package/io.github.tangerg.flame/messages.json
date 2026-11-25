@@ -869,7 +869,6 @@
   "shortcuts.recording": "按下新的組合鍵 · Esc 取消",
   "shortcuts.conflict": "已被「{{action}}」使用",
   "shortcuts.replace": "改為在此使用",
-  "shortcuts.unbound": "無快速鍵",
   "composer.reasoningEffort": "推理強度",
   "model.effort.none": "關閉",
   "model.effort.minimal": "極低",

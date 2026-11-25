@@ -869,7 +869,6 @@
   "shortcuts.recording": "새 키를 누르세요 · Esc로 취소",
   "shortcuts.conflict": "{{action}}에서 이미 사용 중",
   "shortcuts.replace": "여기에 대신 사용",
-  "shortcuts.unbound": "단축키 없음",
   "composer.reasoningEffort": "추론 강도",
   "model.effort.none": "끔",
   "model.effort.minimal": "최소",

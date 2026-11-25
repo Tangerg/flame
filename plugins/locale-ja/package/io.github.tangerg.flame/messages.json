@@ -866,7 +866,6 @@
   "shortcuts.recording": "新しいキーを押す · Esc でキャンセル",
   "shortcuts.conflict": "「{{action}}」で使用中",
   "shortcuts.replace": "こちらで使う",
-  "shortcuts.unbound": "ショートカットなし",
   "composer.reasoningEffort": "推論の強さ",
   "model.effort.none": "オフ",
   "model.effort.minimal": "最小",

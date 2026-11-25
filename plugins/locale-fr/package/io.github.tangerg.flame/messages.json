@@ -915,7 +915,6 @@
   "shortcuts.recording": "Appuyez sur les nouvelles touches · Échap pour annuler",
   "shortcuts.conflict": "Déjà utilisé par {{action}}",
   "shortcuts.replace": "L’utiliser ici",
-  "shortcuts.unbound": "Aucun raccourci",
   "composer.reasoningEffort": "Effort de raisonnement",
   "model.effort.none": "Désactivé",
   "model.effort.minimal": "Minimal",
