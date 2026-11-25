@@ -201,7 +201,10 @@ and controls within the group can wrap on their own line. The consumer supplies 
 path-only patch results may omit state/count evidence rather than invent it.
 `DiffFilePath` allows complete directory segments to wrap. Selection and source-return history belong to the consumer;
 these components do not query files or own a second navigation model.
-`RecordSummary` owns the optional identity mark, copy and state alignment.
+`RecordSummary` owns the optional identity mark, copy and state alignment. Its
+`size` (`md` by default, `sm` for a record nested under a quieter row) sets one
+type step for the title line, so a plain-text state matches the title; the
+description sits one step below. Badges keep their own size.
 `RecordBody` preserves recorded line breaks and allows selecting its complete text.
 `PanelHost` always means the surrounding chrome already shows the view identity:
 the `PanelHeader` title stays in the accessible outline without repeating a
@@ -526,6 +529,9 @@ The field paints its focus ring on its frame. A popup whose only input keeps foc
 for the popup's whole life passes `ring={false}`; the caret then marks focus.
 `IconButton` requires either
 `aria-label` or `aria-labelledby`; `title` only overrides the tooltip.
+`BackButton` is the small left-chevron `IconButton` that returns from a detail
+view. It requires `aria-label`, and its chevron stroke, not its button, starts
+the header's text edge.
 `CodeFrame` opts into the shared viewport-height budget with `bounded`; its
 caption measurement owns that geometry for bounded literal code. Workspace diffs
 leave vertical reading with their enclosing viewport.

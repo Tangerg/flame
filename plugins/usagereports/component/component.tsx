@@ -23,18 +23,8 @@ export function UsageReports({ context }: { context: ComponentContext }) {
 
 function Archive({ context }: { context: BoundContext }) {
   const archive = useReportArchive(context);
-  const {
-    t,
-    locale,
-    fmt,
-    busy,
-    outcome,
-    refs,
-    catalog,
-    report,
-    removal,
-    recovery,
-  } = archive;
+  const { t, fmt, busy, outcome, refs, catalog, report, removal, recovery } =
+    archive;
   const opened = report.opened;
   return (
     <Panel
@@ -47,7 +37,7 @@ function Archive({ context }: { context: BoundContext }) {
         <Metadata role="status">
           {outcome.kind === "savedArchived"
             ? t("message.savedArchived", {
-                title: reportTitle(outcome.header, t, locale),
+                title: reportTitle(outcome.header, t, fmt),
               })
             : "error" in outcome
               ? t(`message.${outcome.kind}`, { error: outcome.error })
@@ -62,7 +52,6 @@ function Archive({ context }: { context: BoundContext }) {
           pending={busy || recovery.commands.length > 0}
           remove={removal.request}
           t={t}
-          locale={locale}
           fmt={fmt}
         />
       )}
@@ -70,7 +59,7 @@ function Archive({ context }: { context: BoundContext }) {
         <ArchiveCatalog
           archive={catalog.read}
           t={t}
-          locale={locale}
+          fmt={fmt}
           onOpen={catalog.open}
         />
       </div>

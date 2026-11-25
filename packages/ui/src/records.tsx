@@ -325,29 +325,37 @@ export function RecordTitle({ children }: { children: ReactNode }) {
   const Tag = useHeadingTag();
   return <Tag {...stylex.props(styles.title, type.displaySm)}>{children}</Tag>;
 }
+const SUMMARY_TYPE = {
+  sm: { line: type.uiSm, description: type.uiXs },
+  md: { line: type.uiMd, description: type.uiSm },
+} as const;
 export function RecordSummary({
   title,
   description,
   status,
   icon,
+  size = "md",
 }: {
   title: ReactNode;
   description?: ReactNode;
   status?: ReactNode;
   icon?: IconGlyph;
+  size?: "sm" | "md";
 }) {
+  const step = SUMMARY_TYPE[size];
   return (
     <span {...stylex.props(styles.summary)}>
       {icon && (
         <Icon glyph={icon} size="md" {...stylex.props(styles.summaryGlyph)} />
       )}
       <span {...stylex.props(styles.summaryCopy)}>
-        <span {...stylex.props(styles.headingLine)}>
-          <span {...stylex.props(styles.summaryTitle, type.uiMd)}>{title}</span>
+        {/* The line owns the step so a plain-text status matches the title. */}
+        <span {...stylex.props(styles.headingLine, step.line)}>
+          <span {...stylex.props(styles.summaryTitle)}>{title}</span>
           {status}
         </span>
         {description && (
-          <span {...stylex.props(styles.summaryDescription, type.uiSm)}>
+          <span {...stylex.props(styles.summaryDescription, step.description)}>
             {description}
           </span>
         )}

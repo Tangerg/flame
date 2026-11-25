@@ -1,14 +1,12 @@
 import { type RefObject } from "react";
-import { ArrowLeft, Refresh } from "@flame/icons/react";
+import { Refresh } from "@flame/icons/react";
 import { type Translate } from "@flame/component-sdk";
 import {
-  Button,
-  Badge,
+  BackButton,
   IconButton,
   DocumentBody,
   Disclosure,
   Facts,
-  Icon,
   PanelTitle,
   RecordBody,
   Toolbar,
@@ -20,14 +18,12 @@ export function SkillDocumentToolbar({
   t,
   opened,
   titleId,
-  scope,
   onRefresh,
   onBack,
 }: {
   t: Translate;
   opened: NonNullable<SkillsState["opened"]>;
   titleId: string;
-  scope: string | undefined;
   onRefresh(): void;
   onBack(): void;
 }) {
@@ -44,19 +40,10 @@ export function SkillDocumentToolbar({
         />
       }
     >
-      <Button
-        variant="ghost"
-        size="sm"
-        aria-label={t("document.back")}
-        onClick={onBack}
-      >
-        <Icon glyph={ArrowLeft} size="sm" />
-        {t("section.available")}
-      </Button>
+      <BackButton aria-label={t("document.back")} onClick={onBack} />
       <PanelTitle id={titleId} size="sm" aria-level={2}>
         {opened.name}
       </PanelTitle>
-      {scope && <Badge>{t(`scope.${scope}`)}</Badge>}
     </Toolbar>
   );
 }
@@ -84,6 +71,7 @@ export function SkillDocument({
       <Disclosure title={t("document.source")}>
         <Facts
           values={[
+            [t("fact.scope"), t(`scope.${document.scope}`)],
             [t("fact.sourcePath"), document.path],
             [t("fact.revision"), document.revision],
             [t("fact.installation"), document.installation?.installationId],

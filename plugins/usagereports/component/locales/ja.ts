@@ -7,7 +7,7 @@ export const ja: Record<string, string> = {
   "report.title": "{{period}}レポート · {{observed}}",
   "row.title": "{{period}} · {{observed}}",
   "period.windowed": "{{label}} · {{window}}",
-  "row.description": "{{window}} · 開始 {{since}}",
+  "row.description": "開始 {{since}}",
   "report.scope.label": "保存済みレポート",
   "report.refresh": "レポートを更新",
   "report.back": "アーカイブに戻る",
@@ -27,16 +27,12 @@ export const ja: Record<string, string> = {
   "archive.title": "アーカイブ",
   "archive.count_other":
     "保存済みレポート {{count}} 件。容量は {{capacity}} 件です。",
-  "archive.capture.note":
-    "キャプチャは実行前に {{daily}}（日次）または {{weekly}}（週次）のコア会計をコピーします。暦日や暦週ではありません。",
   "archive.reading": "保存済みレポートを読み込み中…",
   "archive.error": "アーカイブを読み込めませんでした：{{error}}。",
   "archive.error.retained":
     "アーカイブを読み込めませんでした：{{error}}。前回受け入れたアーカイブを引き続き表示します。",
   "archive.empty.title": "保存済みレポートはありません",
   "archive.list.label": "保存済みレポート",
-  "report.view": "レポートを表示",
-  "report.view.aria": "レポートを表示：{{title}}",
   "removal.title": "{{title}} を削除しますか？",
   "removal.description":
     "この保存済みコピーのみが削除されます。コア会計の証跡と合計は変わらず、コピーは復元できません。",
@@ -45,17 +41,13 @@ export const ja: Record<string, string> = {
   "report.remove": "保存済みレポートを削除",
   "removal.removing": "レポートを削除中…",
   "fact.period": "期間",
-  "fact.observation": "コア観測",
-  "fact.lowerBound": "実際の下限",
-  "report.saved.note":
-    "コア会計レポートの保存済みコピーです。ライブ会計が変化しても更新されません。",
+  "fact.observation": "キャプチャ日時",
+  "fact.lowerBound": "開始",
   "report.reading": "保存済みレポートを読み込み中…",
   "report.error.refresh":
     "保存済みレポートを更新できませんでした：{{error}}。前回受け入れたレポートを引き続き表示します。",
   "report.error.read": "保存済みレポートを読み込めませんでした：{{error}}。",
-  "report.totals.title": "保存済みのコア合計",
-  "report.totals.description":
-    "値は保存済みのコア応答です。不明な使用量と価格はコアの意味を保持します。",
+  "report.totals.title": "合計",
   "fact.attempts": "モデル試行",
   "fact.inputTokens": "既知の入力トークン",
   "fact.outputTokens": "既知の出力トークン",
@@ -64,7 +56,7 @@ export const ja: Record<string, string> = {
   "fact.usageRecorded": "使用量を記録",
   "fact.pricedAttempts": "価格確定の試行",
   "fact.outcomeUnknown": "結果不明",
-  "report.breakdown.title": "日次コア内訳",
+  "report.breakdown.title": "日別",
   "report.breakdown.row_other": "{{attempts}} 件の試行 · 既知 {{cost}} USD",
   "report.identity.title": "レポートの正確な識別情報",
   "fact.reportId": "レポート ID",

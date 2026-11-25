@@ -31,7 +31,7 @@ import { ScrollArea } from "@/ui/index";
 import { SectionLabel } from "@/ui/index";
 import { StatusDot } from "@/ui/index";
 import { ContentVisibility, useContentVisible } from "@/ui/index";
-import { EmptyState, IconButton, RecordBody, toneInk, vocab, isConcealed } from "@flame/ui";
+import { BackButton, EmptyState, RecordBody, toneInk, vocab, isConcealed } from "@flame/ui";
 import { AgentJumpToBottom } from "@/ui/agent/index";
 import { AgentWorkspaceView } from "@/ui/agent/index";
 import { space, type as typeStep, weight } from "@flame/ui/tokens.stylex";
@@ -93,6 +93,11 @@ const styles = stylex.create({
     containerType: "inline-size",
     containerName: "conversation",
     "--transcript-jump-gap": space.s4,
+  },
+  // In the Dock the transcript starts on the Dock's text edge, not the conversation's.
+  dockGutter: {
+    "--reading-gutter": "var(--layout-compact-gutter)",
+    "--reading-gutter-wide": "var(--layout-compact-gutter)",
   },
   // Keeping the layout box preserves WebKit's retained scroll position.
   inactiveReader: { visibility: "hidden" },
@@ -274,10 +279,8 @@ export function SubagentsPanel() {
     >
       {selectedId && (
         <header data-slot="subagent-header" {...stylex.props(styles.header)}>
-          <IconButton
+          <BackButton
             ref={backRef}
-            icon={iconGlyph("chevron-left")}
-            size="sm"
             aria-label={t("subagents.all")}
             data-chrome-focus=""
             onClick={() => openWorkspaceSubagentRun(workspaceAccess, null)}
@@ -455,7 +458,11 @@ function SubagentTranscript({
       data-slot="subagent-transcript"
       inert={!active}
       aria-hidden={!active || undefined}
-      {...stylex.props(styles.reader, !active && styles.inactiveReader)}
+      {...stylex.props(
+        styles.reader,
+        !fullWidth && styles.dockGutter,
+        !active && styles.inactiveReader,
+      )}
     >
       <MessageTranscript
         initialEndLayoutReady

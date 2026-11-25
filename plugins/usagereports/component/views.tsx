@@ -1,20 +1,22 @@
 import { type Ref } from "react";
-import { ArrowLeft, Refresh } from "@flame/icons/react";
+import { Refresh } from "@flame/icons/react";
 import { type Translate } from "@flame/component-sdk";
 import {
+  BackButton,
   Button,
   Disclosure,
   EmptyState,
   Facts,
-  Icon,
   IconButton,
   ListRow,
   Metadata,
   ModalDialog,
   PanelSection,
   PanelTitle,
+  RecordButton,
   RecordGroup,
   RecordHeading,
+  RecordSummary,
   Hang,
   Select,
   Toolbar,
@@ -34,7 +36,7 @@ import {
 import { type ReportArchive } from "./useReportArchive";
 
 export function ArchiveControls({
-  archive: { t, locale, busy, action, refs, catalog, report, recovery },
+  archive: { t, fmt, busy, action, refs, catalog, report, recovery },
 }: {
   archive: ReportArchive;
 }) {
@@ -57,17 +59,13 @@ export function ArchiveControls({
           />
         }
       >
-        <Button
+        <BackButton
           ref={backButton}
-          variant="ghost"
-          size="sm"
+          aria-label={t("report.back")}
           onClick={report.back}
-        >
-          <Icon glyph={ArrowLeft} size="sm" />
-          {t("report.back")}
-        </Button>
+        />
         <PanelTitle ref={heading} tabIndex={-1} size="sm" aria-level={2}>
-          {reportTitle(opened.header, t, locale)}
+          {reportTitle(opened.header, t, fmt)}
         </PanelTitle>
       </Toolbar>
     </>
@@ -143,7 +141,7 @@ export function PendingCommands({
 }
 
 export function RemovalDialog({
-  archive: { t, locale, busy, action, refs, removal },
+  archive: { t, fmt, busy, action, refs, removal },
 }: {
   archive: ReportArchive;
 }) {
@@ -154,7 +152,7 @@ export function RemovalDialog({
       open
       role="alertdialog"
       title={t("removal.title", {
-        title: reportTitle(removing, t, locale),
+        title: reportTitle(removing, t, fmt),
       })}
       description={t("removal.description")}
       closeLabel={t("removal.close")}
@@ -198,8 +196,8 @@ export function RemovalDialog({
               window: t(`period.${removing.period}.window`),
             }),
           ],
-          [t("fact.observation"), observed(removing, locale)],
-          [t("fact.lowerBound"), lowerBound(removing, t, locale)],
+          [t("fact.observation"), observed(removing, fmt)],
+          [t("fact.lowerBound"), lowerBound(removing, t, fmt)],
         ]}
       />
     </ModalDialog>
@@ -212,7 +210,6 @@ export function SavedReport({
   pending,
   remove,
   t,
-  locale,
   fmt,
 }: {
   opened: OpenedReport;
@@ -220,14 +217,12 @@ export function SavedReport({
   pending: boolean;
   remove: () => void;
   t: Translate;
-  locale: string;
   fmt: Formatters;
 }) {
   const { header, accepted: report } = opened;
   const summary = report?.summary;
   return (
     <>
-      <Metadata>{t("report.saved.note")}</Metadata>
       <Facts
         values={[
           [
@@ -237,8 +232,8 @@ export function SavedReport({
               window: t(`period.${header.period}.window`),
             }),
           ],
-          [t("fact.observation"), observed(header, locale)],
-          [t("fact.lowerBound"), lowerBound(header, t, locale)],
+          [t("fact.observation"), observed(header, fmt)],
+          [t("fact.lowerBound"), lowerBound(header, t, fmt)],
         ]}
       />
       {opened.loading && (
@@ -252,10 +247,7 @@ export function SavedReport({
         </Metadata>
       )}
       {summary && (
-        <PanelSection
-          title={t("report.totals.title")}
-          description={t("report.totals.description")}
-        >
+        <PanelSection title={t("report.totals.title")}>
           <Facts
             values={[
               [t("fact.attempts"), fmt.count(summary.coverage.calls)],
@@ -325,12 +317,12 @@ export function SavedReport({
 export function ArchiveCatalog({
   archive,
   t,
-  locale,
+  fmt,
   onOpen,
 }: {
   archive: ArchiveRead;
   t: Translate;
-  locale: string;
+  fmt: Formatters;
   onOpen(header: Header, opener: HTMLElement): void;
 }) {
   const headers = archive.accepted;
@@ -345,12 +337,6 @@ export function ArchiveCatalog({
         })
       }
     >
-      <Metadata>
-        {t("archive.capture.note", {
-          daily: t("period.daily.window"),
-          weekly: t("period.weekly.window"),
-        })}
-      </Metadata>
       {archive.loading && !headers && (
         <Metadata role="status">{t("archive.reading")}</Metadata>
       )}
@@ -367,30 +353,20 @@ export function ArchiveCatalog({
       {headers && headers.length > 0 && (
         <RecordGroup variant="list" aria-label={t("archive.list.label")}>
           {headers.map((header) => (
-            <ListRow key={header.id}>
-              <RecordHeading
+            <RecordButton
+              key={header.id}
+              onClick={(event) => onOpen(header, event.currentTarget)}
+            >
+              <RecordSummary
                 title={t("row.title", {
                   period: t(`period.${header.period}.label`),
-                  observed: observed(header, locale),
+                  observed: observed(header, fmt),
                 })}
                 description={t("row.description", {
-                  window: t(`period.${header.period}.window`),
-                  since: lowerBound(header, t, locale),
+                  since: lowerBound(header, t, fmt),
                 })}
-                actions={
-                  <Button
-                    aria-label={t("report.view.aria", {
-                      title: reportTitle(header, t, locale),
-                    })}
-                    onClick={(event) => {
-                      onOpen(header, event.currentTarget);
-                    }}
-                  >
-                    {t("report.view")}
-                  </Button>
-                }
               />
-            </ListRow>
+            </RecordButton>
           ))}
         </RecordGroup>
       )}

@@ -7,7 +7,7 @@ export const fr: Record<string, string> = {
   "report.title": "Rapport {{period}} · {{observed}}",
   "row.title": "{{period}} · {{observed}}",
   "period.windowed": "{{label}} · {{window}}",
-  "row.description": "{{window}} · Début {{since}}",
+  "row.description": "Début {{since}}",
   "report.scope.label": "Rapport enregistré",
   "report.refresh": "Actualiser le rapport",
   "report.back": "Retour aux archives",
@@ -31,16 +31,12 @@ export const fr: Record<string, string> = {
     "{{count}} rapports enregistrés. La capacité est de {{capacity}}.",
   "archive.count_other":
     "{{count}} rapports enregistrés. La capacité est de {{capacity}}.",
-  "archive.capture.note":
-    "Une capture copie la comptabilité principale des {{daily}} (quotidien) ou des {{weekly}} (hebdomadaire) avant son exécution, et non un jour ou une semaine calendaires.",
   "archive.reading": "Lecture des rapports enregistrés…",
   "archive.error": "Les archives n’ont pas pu être lues : {{error}}.",
   "archive.error.retained":
     "Les archives n’ont pas pu être lues : {{error}}. Les dernières archives acceptées restent affichées.",
   "archive.empty.title": "Aucun rapport enregistré",
   "archive.list.label": "Rapports enregistrés",
-  "report.view": "Voir le rapport",
-  "report.view.aria": "Voir le rapport : {{title}}",
   "removal.title": "Supprimer {{title}} ?",
   "removal.description":
     "Seule cette copie enregistrée est supprimée. Les preuves et les totaux de la comptabilité principale restent inchangés, et la copie ne peut pas être restaurée.",
@@ -49,17 +45,13 @@ export const fr: Record<string, string> = {
   "report.remove": "Supprimer le rapport enregistré",
   "removal.removing": "Suppression du rapport…",
   "fact.period": "Période",
-  "fact.observation": "Observation principale",
-  "fact.lowerBound": "Limite inférieure réelle",
-  "report.saved.note":
-    "Copie enregistrée d’un rapport de comptabilité principale. Elle ne se met pas à jour lorsque la comptabilité en direct change.",
+  "fact.observation": "Capturé",
+  "fact.lowerBound": "Début",
   "report.reading": "Lecture du rapport enregistré…",
   "report.error.refresh":
     "Le rapport enregistré n’a pas pu être actualisé : {{error}}. Le dernier rapport accepté reste visible.",
   "report.error.read": "Le rapport enregistré n’a pas pu être lu : {{error}}.",
-  "report.totals.title": "Totaux principaux enregistrés",
-  "report.totals.description":
-    "Les valeurs correspondent à la réponse principale enregistrée. L’utilisation et les prix inconnus conservent leur signification principale.",
+  "report.totals.title": "Totaux",
   "fact.attempts": "Tentatives de modèle",
   "fact.inputTokens": "Tokens d’entrée connus",
   "fact.outputTokens": "Tokens de sortie connus",
@@ -68,7 +60,7 @@ export const fr: Record<string, string> = {
   "fact.usageRecorded": "Utilisation enregistrée",
   "fact.pricedAttempts": "Tentatives tarifées",
   "fact.outcomeUnknown": "Résultat inconnu",
-  "report.breakdown.title": "Détail principal quotidien",
+  "report.breakdown.title": "Par jour",
   "report.breakdown.row_one":
     "{{attempts}} tentative · coût connu {{cost}} USD",
   "report.breakdown.row_many":

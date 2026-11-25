@@ -1,4 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
+import { ChevronLeft } from "@flame/icons/react";
 import type { IconSize } from "./icon-scale";
 import { color, corner, space, surface, type, weight } from "./tokens.stylex";
 import { Icon, type IconGlyph } from "./font-scale";
@@ -6,7 +7,7 @@ import { Button, type ButtonProps, type ButtonSize } from "./button";
 import { GlyphSwap } from "./glyph-swap";
 import { Tooltip } from "./tooltip";
 
-type IconButtonProps = Omit<
+type IconButtonOwnProps = Omit<
   ButtonProps,
   "children" | "size" | "aria-label" | "aria-labelledby"
 > & {
@@ -16,7 +17,10 @@ type IconButtonProps = Omit<
   iconSize?: IconSize | number;
   title?: string;
   badge?: string | number;
-} & (
+};
+
+type IconButtonProps = IconButtonOwnProps &
+  (
     | { "aria-label": string; "aria-labelledby"?: never }
     | { "aria-label"?: never; "aria-labelledby": string }
   );
@@ -52,6 +56,12 @@ const styles = stylex.create({
     fontFamily: "var(--font-mono)",
     fontWeight: weight.semibold,
     color: color.ctaText,
+  },
+  // The back chevron's stroke, not its button, starts the header's column edge (as
+  // Disclosure's does); its hover fill bleeds like a row's.
+  back: {
+    marginInlineStart:
+      "calc((var(--icon-sm) - var(--control-height-sm)) / 2 - var(--icon-sm) * 0.3125)",
   },
 });
 
@@ -90,5 +100,15 @@ export function IconButton({
         )}
       </Button>
     </Tooltip>
+  );
+}
+
+export function BackButton(
+  props: Omit<IconButtonOwnProps, "icon" | "size" | "styles"> & {
+    "aria-label": string;
+  },
+) {
+  return (
+    <IconButton {...props} icon={ChevronLeft} size="sm" styles={styles.back} />
   );
 }

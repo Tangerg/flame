@@ -42,7 +42,7 @@ export {
   SearchField,
 } from "./text-field";
 export { GlyphSwap } from "./glyph-swap";
-export { IconButton } from "./icon-button";
+export { BackButton, IconButton } from "./icon-button";
 export { type EmptyStateSize, EmptyState } from "./empty-state";
 export { HeadingLevel } from "./heading-level";
 export {

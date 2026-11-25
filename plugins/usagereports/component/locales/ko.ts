@@ -7,7 +7,7 @@ export const ko: Record<string, string> = {
   "report.title": "{{period}} 보고서 · {{observed}}",
   "row.title": "{{period}} · {{observed}}",
   "period.windowed": "{{label}} · {{window}}",
-  "row.description": "{{window}} · 시작 {{since}}",
+  "row.description": "시작 {{since}}",
   "report.scope.label": "저장된 보고서",
   "report.refresh": "보고서 새로 고침",
   "report.back": "아카이브로 돌아가기",
@@ -27,16 +27,12 @@ export const ko: Record<string, string> = {
   "archive.title": "아카이브",
   "archive.count_other":
     "저장된 보고서 {{count}}개. 용량은 {{capacity}}개입니다.",
-  "archive.capture.note":
-    "캡처는 실행 전에 {{daily}}(일간) 또는 {{weekly}}(주간)의 핵심 정산을 복사하며, 달력상의 하루나 한 주가 아닙니다.",
   "archive.reading": "저장된 보고서를 읽는 중…",
   "archive.error": "아카이브를 읽을 수 없습니다: {{error}}.",
   "archive.error.retained":
     "아카이브를 읽을 수 없습니다: {{error}}. 마지막으로 수락된 아카이브가 계속 표시됩니다.",
   "archive.empty.title": "저장된 보고서 없음",
   "archive.list.label": "저장된 보고서",
-  "report.view": "보고서 보기",
-  "report.view.aria": "보고서 보기: {{title}}",
   "removal.title": "{{title}}을(를) 삭제할까요?",
   "removal.description":
     "이 저장된 복사본만 삭제됩니다. 핵심 정산 증거와 합계는 변경되지 않으며, 복사본은 복원할 수 없습니다.",
@@ -45,17 +41,13 @@ export const ko: Record<string, string> = {
   "report.remove": "저장된 보고서 삭제",
   "removal.removing": "보고서를 삭제하는 중…",
   "fact.period": "기간",
-  "fact.observation": "핵심 관측",
-  "fact.lowerBound": "실제 하한",
-  "report.saved.note":
-    "핵심 정산 보고서의 저장된 복사본입니다. 실시간 정산이 변경되어도 업데이트되지 않습니다.",
+  "fact.observation": "캡처 시각",
+  "fact.lowerBound": "시작",
   "report.reading": "저장된 보고서를 읽는 중…",
   "report.error.refresh":
     "저장된 보고서를 새로 고칠 수 없습니다: {{error}}. 마지막으로 수락된 보고서가 계속 표시됩니다.",
   "report.error.read": "저장된 보고서를 읽을 수 없습니다: {{error}}.",
-  "report.totals.title": "저장된 핵심 합계",
-  "report.totals.description":
-    "값은 저장된 핵심 응답입니다. 알 수 없는 사용량과 가격은 핵심 의미를 유지합니다.",
+  "report.totals.title": "합계",
   "fact.attempts": "모델 시도",
   "fact.inputTokens": "알려진 입력 토큰",
   "fact.outputTokens": "알려진 출력 토큰",
@@ -64,7 +56,7 @@ export const ko: Record<string, string> = {
   "fact.usageRecorded": "사용량 기록됨",
   "fact.pricedAttempts": "가격 책정된 시도",
   "fact.outcomeUnknown": "결과 알 수 없음",
-  "report.breakdown.title": "일간 핵심 내역",
+  "report.breakdown.title": "일별",
   "report.breakdown.row_other": "{{attempts}}건 시도 · 알려진 {{cost}} USD",
   "report.identity.title": "정확한 보고서 식별 정보",
   "fact.reportId": "보고서 ID",

@@ -71,12 +71,14 @@ export function DelegatedRunLink({
   siblingCount,
   taskLabel,
   onOpen,
+  size = "md",
 }: {
   run: AgentRunView;
   ordinal: number;
   siblingCount: number;
   taskLabel?: string;
   onOpen?: () => void;
+  size?: "sm" | "md";
 }) {
   const workspaceAccess = useWorkspace();
 
@@ -84,6 +86,7 @@ export function DelegatedRunLink({
   const summaryId = useId();
   const current = useWorkspaceSubagentRunId() === run.id;
   const model = delegatedRunSummary(t, run, ordinal, siblingCount, taskLabel);
+  const firstLine = size === "sm" ? typeStep.uiSm : typeStep.uiMd;
   return (
     <div
       data-slot="delegated-run-link"
@@ -99,6 +102,7 @@ export function DelegatedRunLink({
       >
         <span {...stylex.props(styles.detail)}>
           <RecordSummary
+            size={size}
             title={
               <span id={summaryId} title={model.label}>
                 {model.label}
@@ -121,7 +125,7 @@ export function DelegatedRunLink({
           data-reveal={current ? undefined : "hover"}
           {...stylex.props(
             vocab.firstLine,
-            typeStep.uiMd,
+            firstLine,
             reveal.shown,
             styles.openHint,
             current && styles.currentHint,
@@ -131,7 +135,7 @@ export function DelegatedRunLink({
         </span>
       </ButtonPrimitive>
       {model.cancelable && (
-        <span {...stylex.props(styles.cancel, vocab.firstLine, typeStep.uiMd)}>
+        <span {...stylex.props(styles.cancel, vocab.firstLine, firstLine)}>
           <SubagentStopButton run={run} summaryId={summaryId} />
         </span>
       )}
