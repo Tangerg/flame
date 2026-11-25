@@ -4,7 +4,6 @@ export const ko: Record<string, string> = {
   "providers.apiKey.clear.title": "저장된 키를 제거할까요?",
   "providers.apiKey.clear.body":
     "{{provider}}의 저장된 API 키가 사라집니다. 다시 연결하려면 키를 다시 붙여넣어야 합니다.",
-  "providers.apiKey.placeholder": "API 키",
   "providers.apiKey.aria": "{{provider}} API 키",
   "providers.baseUrl.mount":
     "게이트웨이 마운트 주소를 입력하세요. SDK가 {{suffix}}를 추가합니다.",
@@ -18,7 +17,6 @@ export const ko: Record<string, string> = {
   "providers.baseUrl.aria": "{{provider}} 기본 URL",
   "providers.key": "키 {{masked}}",
   "providers.ready": "사용 가능",
-  "providers.notConfigured": "미설정",
   "providers.save": "저장",
   "providers.saving": "저장 중…",
   "providers.test": "테스트",
@@ -56,8 +54,6 @@ export const ko: Record<string, string> = {
     "이 설정을 불러올 수 없어 현재 값을 알 수 없습니다.",
   "providers.role.stale":
     "마지막으로 확인된 값을 표시 중입니다 — 새로 고침에 실패했습니다.",
-  "providers.setup.steps":
-    "공급자 하나를 고르고 API 키를 붙여넣은 뒤 ‘저장 후 테스트’를 누르세요. 시작하려면 이것만 하면 됩니다.",
   "providers.setup.done":
     "공급자가 준비되었습니다. 설정을 닫고 돌아가면 초안이 그대로 있습니다.",
   "providers.roles.heading": "모델 역할",

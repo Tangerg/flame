@@ -4,7 +4,6 @@ export const de: Record<string, string> = {
   "providers.apiKey.clear.title": "Gespeicherten Schlüssel entfernen?",
   "providers.apiKey.clear.body":
     "{{provider}} verliert seinen gespeicherten API-Schlüssel. Zum erneuten Verbinden musst du ihn wieder einfügen.",
-  "providers.apiKey.placeholder": "API-Schlüssel",
   "providers.apiKey.aria": "{{provider}} API-Schlüssel",
   "providers.baseUrl.mount":
     "Gib den Gateway-Pfad an. Das SDK hängt {{suffix}} an.",
@@ -18,7 +17,6 @@ export const de: Record<string, string> = {
   "providers.baseUrl.aria": "{{provider}} Basis-URL",
   "providers.key": "Schlüssel {{masked}}",
   "providers.ready": "Bereit",
-  "providers.notConfigured": "Nicht konfiguriert",
   "providers.save": "Speichern",
   "providers.saving": "Speichern…",
   "providers.test": "Testen",
@@ -60,8 +58,6 @@ export const de: Record<string, string> = {
     "Diese Einstellung konnte nicht geladen werden, ihr aktueller Wert ist unbekannt.",
   "providers.role.stale":
     "Zeigt den zuletzt bekannten Wert – die Aktualisierung ist fehlgeschlagen.",
-  "providers.setup.steps":
-    "Wähle einen Anbieter, füge seinen API-Schlüssel ein und klicke auf „Speichern & testen“. Mehr brauchst du zum Starten nicht.",
   "providers.setup.done":
     "Ein Anbieter ist bereit. Schließe die Einstellungen, um zurückzukehren – dein Entwurf ist noch da.",
   "providers.roles.heading": "Modellrollen",

@@ -4,7 +4,6 @@ export const ja: Record<string, string> = {
   "providers.apiKey.clear.title": "保存済みキーを削除しますか？",
   "providers.apiKey.clear.body":
     "{{provider}} の保存済み API キーが失われます。再接続するには貼り付け直す必要があります。",
-  "providers.apiKey.placeholder": "API キー",
   "providers.apiKey.aria": "{{provider}} の API キー",
   "providers.baseUrl.mount":
     "ゲートウェイのマウント先を入力してください。SDK は {{suffix}} を追加します。",
@@ -19,7 +18,6 @@ export const ja: Record<string, string> = {
   "providers.baseUrl.aria": "{{provider}} のベース URL",
   "providers.key": "キー {{masked}}",
   "providers.ready": "利用可能",
-  "providers.notConfigured": "未設定",
   "providers.save": "保存",
   "providers.saving": "保存中…",
   "providers.test": "テスト",
@@ -61,8 +59,6 @@ export const ja: Record<string, string> = {
     "この設定を読み込めないため、現在の値は不明です。",
   "providers.role.stale":
     "最後に取得した値を表示しています（更新に失敗しました）。",
-  "providers.setup.steps":
-    "プロバイダーを 1 つ選び、API キーを貼り付けて「保存してテスト」を押してください。始めるにはこれだけで十分です。",
   "providers.setup.done":
     "プロバイダーの準備ができました。設定を閉じると戻れます。下書きはそのままです。",
   "providers.roles.heading": "モデルの役割",

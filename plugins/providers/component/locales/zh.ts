@@ -4,7 +4,6 @@ export const zh: Record<string, string> = {
   "providers.apiKey.clear.title": "移除已保存的密钥？",
   "providers.apiKey.clear.body":
     "{{provider}} 将失去已保存的 API 密钥，需要重新粘贴才能再次连接。",
-  "providers.apiKey.placeholder": "API 密钥",
   "providers.apiKey.envPlaceholder": "正在使用环境变量密钥 — 输入以覆盖",
   "providers.apiKey.aria": "{{provider}} API 密钥",
   "providers.baseUrl.mount": "填写网关挂载地址。SDK 会追加 {{suffix}}。",
@@ -18,7 +17,6 @@ export const zh: Record<string, string> = {
   "providers.key": "密钥 {{masked}}",
   "providers.ready": "就绪",
   "providers.fromEnv": "来自环境变量",
-  "providers.notConfigured": "未配置",
   "providers.save": "保存",
   "providers.saving": "保存中…",
   "providers.test": "测试",
@@ -50,8 +48,6 @@ export const zh: Record<string, string> = {
   "providers.saved": "已保存",
   "providers.role.loadError": "无法加载此设置，当前值未知。",
   "providers.role.stale": "显示的是最后已知的值——刷新失败。",
-  "providers.setup.steps":
-    "选一个提供方，粘贴它的 API 密钥，然后点“保存并测试”。开始使用只需要这一步。",
   "providers.setup.done": "提供方已就绪。关闭设置即可返回——你的草稿仍在。",
   "providers.roles.heading": "模型角色",
   "rpcError.invalid_credentials":

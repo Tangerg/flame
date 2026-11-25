@@ -4,7 +4,6 @@ export const en: Record<string, string> = {
   "providers.apiKey.clear.title": "Remove the stored key?",
   "providers.apiKey.clear.body":
     "{{provider}} loses its saved API key. You'll need to paste it again to reconnect.",
-  "providers.apiKey.placeholder": "API key",
   "providers.apiKey.envPlaceholder": "Using environment key — type to override",
   "providers.apiKey.aria": "{{provider}} API key",
   "providers.baseUrl.mount":
@@ -20,7 +19,6 @@ export const en: Record<string, string> = {
   "providers.key": "Key {{masked}}",
   "providers.ready": "Ready",
   "providers.fromEnv": "From environment",
-  "providers.notConfigured": "Not configured",
   "providers.save": "Save",
   "providers.saving": "Saving…",
   "providers.test": "Test",
@@ -57,8 +55,6 @@ export const en: Record<string, string> = {
     "Couldn’t load this setting, so its current value is unknown.",
   "providers.role.stale":
     "Showing the last known value — refreshing it failed.",
-  "providers.setup.steps":
-    "Pick one provider, paste its API key, then Save & test. That is all you need to start.",
   "providers.setup.done":
     "A provider is ready. Close Settings to return — your draft is still there.",
   "providers.roles.heading": "Model roles",

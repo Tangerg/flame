@@ -30,10 +30,12 @@ settlement leaves later credential editing and focus with that field.
 
 A Save with an accepted or unknown outcome keeps the same unavailable action
 focusable through the shared Button contract. Completion retains its current
-focus without moving focus from a later field. Initial unedited and invalid
-drafts keep native disabled behavior; editing retires the saved feedback through
-the existing draft owner and enables the next valid Save. Repeated activation
-cannot submit the completed or unconfirmed draft again.
+focus without moving focus from a later field. An unconfigured provider shows
+Test and Save only once it has a draft, a command or feedback, so the actions
+never unmount under a Save that settled. Invalid drafts keep native disabled
+behavior; editing retires the saved feedback through the existing draft owner
+and enables the next valid Save. Repeated activation cannot submit the completed
+or unconfirmed draft again.
 
 A focused original-command recovery stays mounted through its pending and known
 outcome until focus leaves. The confirmed label means the original outcome is

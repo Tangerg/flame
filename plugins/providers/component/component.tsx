@@ -15,7 +15,6 @@ import {
   EmptyState,
   IconButton,
   PanelSection,
-  RecordBody,
   RecordGroup,
   Toolbar,
 } from "@flame/ui";
@@ -81,7 +80,6 @@ function ProvidersPane({
       >
         {null}
       </Toolbar>
-      {unset && <RecordBody>{t("providers.setup.steps")}</RecordBody>}
       {onboarding.settings === settings &&
         onboarding.cameUnset &&
         providers !== undefined &&
