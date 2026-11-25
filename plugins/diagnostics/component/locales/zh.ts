@@ -36,9 +36,6 @@ export const zh: Record<string, string> = {
   "attributes.title": "属性",
   "raw.title": "原始观测记录",
   "raw.label": "本地观测记录详情",
-  "about.title": "关于客户端诊断",
-  "about.note":
-    "仅显示此客户端的本地缓冲区。刷新会读取其最新内容；清除会移除本地观测记录。Runtime 计量和远程遥测不受影响。 较早的观测记录可能已被淘汰。",
   "read.failed": "无法读取本地观测记录。",
   "clear.failed": "无法清除本地观测记录。",
 };

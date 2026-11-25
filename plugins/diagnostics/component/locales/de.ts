@@ -37,9 +37,6 @@ export const de: Record<string, string> = {
   "attributes.title": "Attribute",
   "raw.title": "Rohbeobachtung",
   "raw.label": "Details der lokalen Beobachtung",
-  "about.title": "Über die Client-Diagnose",
-  "about.note":
-    "Es wird nur der lokale Puffer dieses Clients angezeigt. Aktualisieren liest den neuesten Inhalt; Löschen entfernt lokale Beobachtungen. Die Runtime-Abrechnung und die Remote-Telemetrie bleiben unverändert. Ältere Beobachtungen wurden möglicherweise verdrängt.",
   "read.failed": "Lokale Beobachtungen konnten nicht gelesen werden.",
   "clear.failed": "Lokale Beobachtungen konnten nicht gelöscht werden.",
 };

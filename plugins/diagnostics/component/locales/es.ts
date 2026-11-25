@@ -36,9 +36,6 @@ export const es: Record<string, string> = {
   "attributes.title": "Atributos",
   "raw.title": "Observación sin procesar",
   "raw.label": "Detalles de la observación local",
-  "about.title": "Acerca del diagnóstico del cliente",
-  "about.note":
-    "Solo se muestra el búfer local de este cliente. Actualizar lee su contenido más reciente; Borrar elimina las observaciones locales. El recuento de Runtime y la telemetría remota no cambian. Es posible que se hayan descartado observaciones más antiguas.",
   "read.failed": "No se pudieron leer las observaciones locales.",
   "clear.failed": "No se pudieron borrar las observaciones locales.",
 };

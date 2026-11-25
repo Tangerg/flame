@@ -49,8 +49,13 @@ function title(row: Observation, t: Translate, clock: Intl.DateTimeFormat) {
     return (
       <RecordSummary
         title={row.name}
-        description={t("span.meta", { ms: row.durationMillis, kind: row.kind })}
-        // OK and unset are a span's ordinary ends; only an error is named.
+        // Internal is OpenTelemetry's default kind and OK/unset a span's ordinary ends;
+        // only other kinds and an error are named.
+        description={
+          row.kind === "internal"
+            ? t("duration.ms", { ms: row.durationMillis })
+            : t("span.meta", { ms: row.durationMillis, kind: row.kind })
+        }
         status={
           row.status === "error" && (
             <Badge tone="negative">{t("span.status.error")}</Badge>
@@ -314,9 +319,6 @@ export function Diagnostics({ context }: { context: ComponentContext }) {
           />
         </>
       )}
-      <Disclosure title={t("about.title")}>
-        <Metadata>{t("about.note")}</Metadata>
-      </Disclosure>
     </Panel>
   );
 }

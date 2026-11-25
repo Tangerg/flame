@@ -36,9 +36,6 @@ export const fr: Record<string, string> = {
   "attributes.title": "Attributs",
   "raw.title": "Observation brute",
   "raw.label": "Détails de l’observation locale",
-  "about.title": "À propos du diagnostic du client",
-  "about.note":
-    "Seul le tampon local de ce client est affiché. Actualiser lit son contenu le plus récent ; Effacer supprime les observations locales. Le décompte du Runtime et la télémétrie distante restent inchangés. Les observations plus anciennes ont pu être supprimées.",
   "read.failed": "Impossible de lire les observations locales.",
   "clear.failed": "Impossible d’effacer les observations locales.",
 };

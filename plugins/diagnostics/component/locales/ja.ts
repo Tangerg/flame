@@ -36,9 +36,6 @@ export const ja: Record<string, string> = {
   "attributes.title": "属性",
   "raw.title": "生の観測記録",
   "raw.label": "ローカル観測記録の詳細",
-  "about.title": "クライアント診断について",
-  "about.note":
-    "表示されるのはこのクライアントのローカルバッファのみです。更新で最新の内容を読み取り、消去でローカル観測記録を削除します。Runtime の集計とリモートテレメトリは変更されません。 古い観測記録は破棄されている場合があります。",
   "read.failed": "ローカル観測記録を読み取れませんでした。",
   "clear.failed": "ローカル観測記録を消去できませんでした。",
 };
