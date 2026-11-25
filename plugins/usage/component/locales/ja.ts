@@ -54,7 +54,7 @@ export const ja: Record<string, string> = {
   "bucket.byScope.unattached": "関連付けなし",
   "bucket.costUsd": "{{cost}} USD",
   "bucket.attempts_other": "{{calls}} 件の試行",
-  "bucket.knownInput_other": "{{tokens}} 既知の入力",
+  "bucket.knownInput_other": "{{tokens}} 既知の入力トークン",
   "bucket.knownOutput_other": "{{tokens}} 既知の出力トークン",
   "bucket.details": "トークンとカバレッジの詳細",
   "fact.knownCost": "既知コスト (USD)",

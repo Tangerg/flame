@@ -18,8 +18,6 @@ export const en: Record<string, string> = {
   "observations.stale": "Showing the last accepted read.",
   "observations.empty.title": "No local observations in this read.",
   "span.meta": "{{ms}} ms · {{kind}}",
-  "span.status.unset": "Not set",
-  "span.status.ok": "OK",
   "span.status.error": "Error",
   "fact.started": "Started",
   "fact.duration": "Duration",

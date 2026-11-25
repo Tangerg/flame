@@ -54,7 +54,7 @@ export const ko: Record<string, string> = {
   "bucket.byScope.unattached": "연결 없음",
   "bucket.costUsd": "{{cost}} USD",
   "bucket.attempts_other": "{{calls}}건 시도",
-  "bucket.knownInput_other": "{{tokens}} 알려진 입력",
+  "bucket.knownInput_other": "{{tokens}} 알려진 입력 토큰",
   "bucket.knownOutput_other": "{{tokens}} 알려진 출력 토큰",
   "bucket.details": "토큰 및 커버리지 세부 정보",
   "fact.knownCost": "알려진 비용 (USD)",

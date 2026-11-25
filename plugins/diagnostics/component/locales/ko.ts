@@ -18,8 +18,6 @@ export const ko: Record<string, string> = {
   "observations.stale": "마지막으로 읽은 내용을 표시합니다.",
   "observations.empty.title": "이번 읽기에는 로컬 관측 기록이 없습니다.",
   "span.meta": "{{ms}} ms · {{kind}}",
-  "span.status.unset": "미설정",
-  "span.status.ok": "정상",
   "span.status.error": "오류",
   "fact.started": "시작 시각",
   "fact.duration": "지속 시간",

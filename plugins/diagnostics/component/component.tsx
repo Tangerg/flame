@@ -50,10 +50,11 @@ function title(row: Observation, t: Translate, clock: Intl.DateTimeFormat) {
       <RecordSummary
         title={row.name}
         description={t("span.meta", { ms: row.durationMillis, kind: row.kind })}
+        // OK and unset are a span's ordinary ends; only an error is named.
         status={
-          <Badge tone={row.status === "error" ? "negative" : "neutral"}>
-            {t(`span.status.${row.status}`)}
-          </Badge>
+          row.status === "error" && (
+            <Badge tone="negative">{t("span.status.error")}</Badge>
+          )
         }
       />
     );
