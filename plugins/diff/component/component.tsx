@@ -337,7 +337,8 @@ export function WorktreeChanges({
     <Button
       size="sm"
       chip
-      face="mono"
+      // Line counts are figures; a file count is a phrase in the body face.
+      face={counted ? "mono" : "text"}
       title={t("worktree.open", { count: summary.files })}
       aria-labelledby={`${labelId} ${labelId}-value`}
       onClick={(event) => {
