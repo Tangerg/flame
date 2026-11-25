@@ -19,13 +19,13 @@ export const fr: Record<string, string> = {
   "read.errorRetained":
     "Impossible de lire les planifications. La dernière page acceptée est conservée. Utilisez Actualiser pour réessayer.",
   "live.error":
-    "L'actualisation en direct est indisponible. Utilisez Actualiser pour lire les planifications actuelles.",
+    "L’actualisation en direct est indisponible. Utilisez Actualiser pour lire les planifications actuelles.",
   "command.status.label": "Statut de la commande de planification",
   "command.uncertain":
-    "Le résultat d'origine n'est pas confirmé. Rapprochez-le avant d'émettre une autre commande.",
+    "Le résultat d’origine n’est pas confirmé. Rapprochez-le avant d’émettre une autre commande.",
   "command.progress": "{{label}}…",
-  "command.original": "Commande d'origine : {{key}}",
-  "command.reconcile": "Rapprocher la commande d'origine",
+  "command.original": "Commande d’origine : {{key}}",
+  "command.reconcile": "Rapprocher la commande d’origine",
   "command.save": "Enregistrer la planification",
   "command.create": "Créer la planification",
   "command.delete": "Supprimer la planification",
@@ -35,14 +35,14 @@ export const fr: Record<string, string> = {
   "editor.new.title": "Nouvelle planification",
   "editor.edit.title": "Modifier {{title}}",
   "editor.edit.untitled": "planification",
-  "editor.close": "Fermer l'éditeur de planification",
+  "editor.close": "Fermer l’éditeur de planification",
   "editor.section.timing.title": "Horaire et espace de travail",
   "editor.section.execution.title": "Exécution",
   "field.title": "Titre",
   "field.instructions": "Instructions",
   "field.cron": "Expression cron",
   "field.timeZone": "Fuseau horaire",
-  "field.workspace": "Chemin de l'espace de travail",
+  "field.workspace": "Chemin de l’espace de travail",
   "field.workspace.placeholder": "Vide utilise la valeur par défaut du Runtime",
   "field.model": "Modèle",
   "field.reasoning": "Intensité du raisonnement",
@@ -58,7 +58,7 @@ export const fr: Record<string, string> = {
   cancel: "Annuler",
   "delete.title": "Supprimer {{name}} ?",
   "delete.description":
-    "Les déclenchements futurs s'arrêteront. Le travail capturé et les exécutions acceptées sont conservés.",
+    "Les déclenchements futurs s’arrêteront. Le travail capturé et les exécutions acceptées sont conservés.",
   "delete.close": "Fermer la confirmation de suppression",
   "delete.confirm": "Confirmer la suppression",
   "catalog.title": "Planifications enregistrées",
@@ -73,7 +73,7 @@ export const fr: Record<string, string> = {
   "empty.none.title": "Aucune planification enregistrée.",
   "empty.page.title": "Aucune planification sur cette page.",
   untitled: "Planification sans titre",
-  "actions.more": "Plus d'actions pour {{name}}",
+  "actions.more": "Plus d’actions pour {{name}}",
   "action.runNow": "Exécuter maintenant",
   "action.edit": "Modifier",
   "action.enable": "Activer",
@@ -96,21 +96,21 @@ export const fr: Record<string, string> = {
   "pages.next": "Suivant",
   "pages.current": "Page {{page}}",
   "notice.accepted":
-    "Le Runtime a accepté l'exécution {{run}} dans la session {{session}}.",
+    "Le Runtime a accepté l’exécution {{run}} dans la session {{session}}.",
   "notice.openSession": "Ouvrir la conversation",
   "notice.completed": "{{label}} terminé.",
   "notice.revision":
-    "La planification a changé. Lisez sa dernière révision et ouvrez une nouvelle modification avant d'enregistrer.",
+    "La planification a changé. Lisez sa dernière révision et ouvrez une nouvelle modification avant d’enregistrer.",
   "template.hourly.title": "Vérification horaire de la progression",
   "template.hourly.instructions":
-    "Inspectez l'espace de travail actuel et résumez les progrès récents, le travail en attente et les éventuels blocages.",
+    "Inspectez l’espace de travail actuel et résumez les progrès récents, le travail en attente et les éventuels blocages.",
   "template.daily.title": "Revue quotidienne",
   "template.daily.instructions":
-    "Passez en revue les changements récents dans l'espace de travail actuel et résumez les risques, les résultats des tests et les prochaines étapes.",
+    "Passez en revue les changements récents dans l’espace de travail actuel et résumez les risques, les résultats des tests et les prochaines étapes.",
   "template.weekdays.title": "Planification des jours de semaine",
   "template.weekdays.instructions":
-    "Passez en revue l'espace de travail actuel et proposez les prochaines étapes les plus utiles pour aujourd'hui.",
+    "Passez en revue l’espace de travail actuel et proposez les prochaines étapes les plus utiles pour aujourd’hui.",
   "template.weekly.title": "Revue de maintenance hebdomadaire",
   "template.weekly.instructions":
-    "Passez en revue l'espace de travail actuel pour le travail de maintenance et résumez les améliorations concrètes et leur priorité.",
+    "Passez en revue l’espace de travail actuel pour le travail de maintenance et résumez les améliorations concrètes et leur priorité.",
 };

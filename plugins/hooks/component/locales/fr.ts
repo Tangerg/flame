@@ -4,7 +4,7 @@ export const fr: Record<string, string> = {
   title: "Hooks du cycle de vie",
   trust: "Faire confiance aux hooks de ce dépôt",
   "trust.sub":
-    "Les hooks de ce dépôt exécutent des commandes shell sur votre machine. N'activez que pour des dépôts de confiance. Effectif au prochain tour.",
+    "Les hooks de ce dépôt exécutent des commandes shell sur votre machine. N’activez que pour des dépôts de confiance. Effectif au prochain tour.",
   "trust.aria": "Faire confiance aux hooks de ce dépôt",
   matcher: "Filtre d'outils",
   "kind.inject": "inject",

@@ -1,7 +1,7 @@
 export const fr: Record<string, string> = {
   "settings.completionSound": "Son de fin",
   "settings.completionSound.sub":
-    "Jouer un son lorsqu'une exécution se termine alors que l'application est en arrière-plan.",
+    "Jouer un son lorsqu’une exécution se termine alors que l’application est en arrière-plan.",
   "settings.notifications": "Notifications système",
   "settings.notifications.authorization.granted":
     "Affichées quand une exécution se termine, échoue ou vous attend pendant que Flame est en arrière-plan.",

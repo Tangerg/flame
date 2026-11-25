@@ -46,19 +46,19 @@ export const fr: Record<string, string> = {
     "La cible du processus a changé. Saisissez un nouvel environnement ou supprimez les valeurs enregistrées.",
   "mcp.form.dir.aria": "Répertoire de travail",
   "mcp.form.url.aria": "URL du serveur",
-  "mcp.form.auth.placeholder": "Jeton d'autorisation (facultatif)",
+  "mcp.form.auth.placeholder": "Jeton d’autorisation (facultatif)",
   "mcp.form.auth.keep": "Laissez vide pour conserver le jeton enregistré",
   "mcp.form.auth.clear": "Supprimer l’autorisation enregistrée",
   "mcp.form.auth.originChanged":
     "L’origine du point de terminaison a changé. Saisissez une nouvelle autorisation ou supprimez la valeur enregistrée.",
-  "mcp.form.auth.aria": "Jeton d'autorisation",
+  "mcp.form.auth.aria": "Jeton d’autorisation",
   "mcp.form.headers": "En-têtes (objet JSON)",
   "mcp.form.headers.keep":
     "Laissez vide pour conserver les en-têtes enregistrés",
   "mcp.form.headers.clear": "Supprimer les en-têtes enregistrés",
   "mcp.form.headers.originChanged":
     "L’origine du point de terminaison a changé. Saisissez de nouveaux en-têtes ou supprimez les valeurs enregistrées.",
-  "mcp.form.timeout": "Délai d'expiration (secondes)",
+  "mcp.form.timeout": "Délai d’expiration (secondes)",
   "mcp.form.timeout.none": "Aucune limite",
   "mcp.form.timeout.invalid":
     "Saisissez un nombre entier positif de secondes, ou laissez vide pour ne fixer aucune limite de temps.",
@@ -73,7 +73,7 @@ export const fr: Record<string, string> = {
   "mcp.import.partial_one": "{{count}} serveur sur {{total}} importé.",
   "mcp.import.partial_many": "{{count}} serveurs sur {{total}} importés.",
   "mcp.import.partial_other": "{{count}} serveurs sur {{total}} importés.",
-  "mcp.import.error": "Impossible d'importer cette configuration.",
+  "mcp.import.error": "Impossible d’importer cette configuration.",
   "mcp.import.invalidJson": "Saisissez un JSON valide.",
   "mcp.import.invalidShape":
     "Utilisez une configuration MCP valide avec un objet « mcpServers ».",
@@ -91,10 +91,10 @@ export const fr: Record<string, string> = {
   "mcp.tools.label": "{{tools}} de {{server}}",
   "mcp.tools.enabled": "Activé",
   "mcp.tools.autoApprove": "Approbation automatique",
-  "mcp.tools.empty": "Ce serveur n'expose aucun outil",
+  "mcp.tools.empty": "Ce serveur n’expose aucun outil",
   "mcp.tools.enable.aria": "Activer {{tool}}",
   "mcp.tools.autoApprove.aria": "Approuver automatiquement {{tool}}",
-  "mcp.error.save": "Impossible d'enregistrer le serveur.",
+  "mcp.error.save": "Impossible d’enregistrer le serveur.",
   "mcp.error.remove": "Impossible de supprimer le serveur.",
   "mcp.error.toggle": "Impossible de modifier le serveur.",
   "mcp.error.signIn": "Échec de la connexion.",
@@ -104,22 +104,22 @@ export const fr: Record<string, string> = {
   "mcp.error.loadToolVisibility":
     "Impossible de charger la visibilité des outils",
   "mcp.error.loadAutoApproveRules":
-    "Impossible de charger les règles d'approbation automatique",
+    "Impossible de charger les règles d’approbation automatique",
   "mcp.testOutcome.timedOut":
-    "Le serveur n'a pas répondu à temps — vérifiez la commande ou l'URL et réessayez.",
+    "Le serveur n’a pas répondu à temps — vérifiez la commande ou l’URL et réessayez.",
   "mcp.testOutcome.failed":
     "Le serveur ne s’est pas connecté ou n’a pas fourni de liste d’outils valide. Vérifiez ses réglages et réessayez.",
   "mcp.import.config": "Configuration JSON",
   "mcpStatus.mcp_authorization_required":
     "Ce serveur demande une connexion avant de pouvoir servir.",
   "mcpStatus.mcp_authorization_failed":
-    "La connexion n'a pas abouti. Réessaie.",
+    "La connexion n’a pas abouti. Réessayez.",
   "mcpStatus.mcp_tool_discovery_failed":
-    "Connecté, mais ce serveur n'a pas renvoyé de liste d'outils utilisable. Vérifiez le serveur et réessayez.",
+    "Connecté, mais ce serveur n’a pas renvoyé de liste d’outils utilisable. Vérifiez le serveur et réessayez.",
   "mcpStatus.mcp_configuration_failed":
-    "La configuration ou les identifiants enregistrés de ce serveur n'ont pas pu être utilisés. Vérifiez ses réglages et réessayez.",
+    "La configuration ou les identifiants enregistrés de ce serveur n’ont pas pu être utilisés. Vérifiez ses réglages et réessayez.",
   "mcpStatus.mcp_dial_failed":
-    "Impossible de joindre ce serveur — vérifie la commande ou l'URL et réessaie.",
+    "Impossible de joindre ce serveur — vérifiez la commande ou l’URL et réessayez.",
   "common.cancel": "Annuler",
   "common.close": "Fermer",
   "command.uncertain":
@@ -128,13 +128,13 @@ export const fr: Record<string, string> = {
   "command.confirmed": "Résultat d’origine confirmé",
   "read.retained": "La dernière lecture acceptée est conservée.",
   "mcp.form.args.invalid":
-    "Saisis un tableau JSON de chaînes, ou laisse ce champ vide pour ne passer aucun argument.",
+    "Saisissez un tableau JSON de chaînes, ou laissez ce champ vide pour ne passer aucun argument.",
   "mcp.form.env.invalid":
-    "Saisis un objet JSON non vide dont les valeurs sont des chaînes.",
+    "Saisissez un objet JSON non vide dont les valeurs sont des chaînes.",
   "mcp.form.headers.invalid":
-    "Saisis un objet JSON non vide dont les valeurs sont des chaînes.",
+    "Saisissez un objet JSON non vide dont les valeurs sont des chaînes.",
   "mcp.import.unsupportedTransport":
-    "Le « type » du serveur « {{server}} » n’est pas pris en charge. Utilise « stdio » ou « streamableHttp ».",
+    "Le « type » du serveur « {{server}} » n’est pas pris en charge. Utilisez « stdio » ou « streamableHttp ».",
   "mcp.import.headerConflict":
     "Le serveur « {{server}} » déclare « {{header}} » plusieurs fois. Garde une seule déclaration.",
   title: "Serveurs MCP",

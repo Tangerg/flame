@@ -22,7 +22,7 @@ export const fr: Record<string, string> = {
   "providers.test": "Tester",
   "providers.testing": "Test…",
   "providers.connectionOk": "Connexion OK",
-  "providers.error.save": "Échec de l'enregistrement",
+  "providers.error.save": "Échec de l’enregistrement",
   "providers.error.test": "Échec du test",
   "providers.models.error": "Impossible de charger les modèles.",
   "providers.models.refresh": "Actualiser les modèles",
@@ -30,22 +30,22 @@ export const fr: Record<string, string> = {
   "providers.empty.sub":
     "Le Runtime ne signale aucun fournisseur LLM pris en charge.",
   "providers.apiKey.envPlaceholder":
-    "Clé d'environnement utilisée — saisissez pour la remplacer",
-  "providers.fromEnv": "Depuis l'environnement",
+    "Clé d’environnement utilisée — saisissez pour la remplacer",
+  "providers.fromEnv": "Depuis l’environnement",
   "providers.utility.title": "Modèle utilitaire",
   "providers.utility.desc":
     "Modèle pour les résumés, titres et extractions de faits.",
   "providers.utility.main": "Utiliser le modèle par défaut de Runtime",
   "providers.utility.error": "Impossible de définir le modèle utilitaire.",
-  "providers.embedding.title": "Modèle d'embedding",
+  "providers.embedding.title": "Modèle d’embedding",
   "providers.embedding.desc":
-    "Améliore facultativement le classement d'Agent Memory.",
+    "Améliore facultativement le classement d’Agent Memory.",
   "providers.embedding.off": "Désactivé",
   "providers.embedding.none":
-    "Aucun fournisseur compatible embedding pour l'instant — ajoutez-en un ci-dessus (par ex. OpenAI).",
-  "providers.embedding.error": "Impossible de définir le modèle d'embedding.",
+    "Aucun fournisseur compatible embedding pour l’instant — ajoutez-en un ci-dessus (par ex. OpenAI).",
+  "providers.embedding.error": "Impossible de définir le modèle d’embedding.",
   "providers.testOutcome.notConfigured":
-    "Terminez d'abord la configuration du fournisseur.",
+    "Terminez d’abord la configuration du fournisseur.",
   "providers.testOutcome.failed":
     "Le fournisseur était injoignable, ou il a refusé la requête de test.",
   "providers.apiKey.label": "Clé API",
