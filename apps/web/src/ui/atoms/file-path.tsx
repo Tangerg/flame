@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { Fragment } from "react";
-import { cn } from "@/lib/classNames";
+import { clsx } from "clsx";
 import { splitFilePath } from "@/lib/path";
 import { vocab } from "@flame/ui";
 import { color } from "@flame/ui/tokens.stylex";
@@ -36,7 +36,7 @@ export function FilePath({
     return (
       <span
         dir="ltr"
-        className={cn(stylex.props(styles.wrapped).className, className)}
+        className={clsx(stylex.props(styles.wrapped).className, className)}
         title={path}
       >
         {segments.length > 0 && (
@@ -58,7 +58,7 @@ export function FilePath({
   const root = stylex.props(styles.root);
 
   return (
-    <span {...root} className={cn(root.className, className)} title={path}>
+    <span {...root} className={clsx(root.className, className)} title={path}>
       {directory !== "" && (
         <span dir="rtl" {...stylex.props(styles.directory, styles.directoryInk, vocab.truncate)}>
           <span dir="ltr">{directory}</span>

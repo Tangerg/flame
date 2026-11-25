@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { type ComponentPropsWithRef } from "react";
-import { cn } from "@/lib/classNames";
+import { clsx } from "clsx";
 import { CARD_SURFACE } from "@flame/ui";
 import { layout, radius, space, surface } from "@flame/ui/tokens.stylex";
 type SurfaceVariant = "card" | "prompt";
@@ -37,7 +37,7 @@ export function Surface({
     INSET[inset],
   );
   return (
-    <div {...props} {...styled} className={cn(styled.className, className)}>
+    <div {...props} {...styled} className={clsx(styled.className, className)}>
       {children}
     </div>
   );

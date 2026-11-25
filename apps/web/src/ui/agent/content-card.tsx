@@ -1,5 +1,5 @@
 import { type ComponentPropsWithoutRef } from "react";
-import { cn } from "@/lib/classNames";
+import { clsx } from "clsx";
 export function AgentContentCard({
   label,
   className,
@@ -7,7 +7,7 @@ export function AgentContentCard({
   ...props
 }: ComponentPropsWithoutRef<"main"> & { label: string }) {
   return (
-    <main aria-label={label} {...props} className={cn("agent-content-card", className)}>
+    <main aria-label={label} {...props} className={clsx("agent-content-card", className)}>
       {children}
     </main>
   );

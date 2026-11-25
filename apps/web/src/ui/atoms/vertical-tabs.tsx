@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
-import { cn } from "@/lib/classNames";
+import { clsx } from "clsx";
 import {
   color,
   leading,
@@ -212,7 +212,7 @@ export function VerticalTabs({
         onValueChange={(next) => onValueChange(next ? String(next) : undefined)}
         {...stylex.props(styles.frame)}
       >
-        <div data-split-side="end" {...rail} className={cn(rail.className, "pane-split")}>
+        <div data-split-side="end" {...rail} className={clsx(rail.className, "pane-split")}>
           {railHeader}
           <TabsPrimitive.List
             ref={listRef}

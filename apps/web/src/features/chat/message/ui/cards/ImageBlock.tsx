@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { cn } from "@/lib/classNames";
+import { clsx } from "clsx";
 import { useMemo, useState } from "react";
 import { useT } from "@/lib/i18n/index";
 import { ImagePreviewGallery } from "@/features/chat/message/ui/ImagePreviewGallery";
@@ -48,7 +48,7 @@ export function ImageBlock({ mime, data }: { mime: string; data: string }) {
             width={size?.width}
             height={size?.height}
             onError={() => setFailedSource(src)}
-            className={cn("media-edge", stylex.props(ib.image).className)}
+            className={clsx("media-edge", stylex.props(ib.image).className)}
           />
         </ButtonPrimitive>
       )}

@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { cn } from "@/lib/classNames";
+import { clsx } from "clsx";
 import { type CSSProperties } from "react";
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
 interface OverflowLabelStyle extends CSSProperties {
@@ -54,12 +54,12 @@ export function AgentOverflowLabel({ text }: Props) {
   return (
     <span
       ref={viewportRef}
-      className={cn("agent-overflow-label truncate-fade", stylex.props(styles.label).className)}
+      className={clsx("agent-overflow-label truncate-fade", stylex.props(styles.label).className)}
       data-overflowing={geometry.distance > 0 ? "" : undefined}
     >
       <span
         ref={trackRef}
-        className={cn("agent-overflow-track", stylex.props(styles.track).className)}
+        className={clsx("agent-overflow-track", stylex.props(styles.track).className)}
         data-overflowing={geometry.distance > 0 ? "" : undefined}
         style={style}
       >

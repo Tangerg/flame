@@ -5,7 +5,7 @@ import {
   type ReactNode,
   type Ref,
 } from "react";
-import { cn } from "@/lib/classNames";
+import { clsx } from "clsx";
 const styles = stylex.create({
   port: { minHeight: 0, flex: 1, overflowY: "auto", overscrollBehavior: "contain" },
   // Content clips at the padding edge, before the inset focus perimeter.
@@ -30,7 +30,7 @@ interface Props {
 export function ScrollArea({ className, children, ref, ...attributes }: Props) {
   const styled = stylex.props(styles.port, attributes.tabIndex !== undefined && styles.focusable);
   return (
-    <div ref={ref} {...attributes} {...styled} className={cn(styled.className, className)}>
+    <div ref={ref} {...attributes} {...styled} className={clsx(styled.className, className)}>
       {children}
     </div>
   );

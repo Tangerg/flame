@@ -8,7 +8,7 @@ import {
   ButtonPrimitive,
   type ButtonPrimitiveProps,
 } from "@flame/ui";
-import { cn } from "@/lib/classNames";
+import { clsx } from "clsx";
 import { color, space, type, weight } from "@flame/ui/tokens.stylex";
 import { Icon } from "@/ui/icons/index";
 
@@ -63,7 +63,7 @@ export function SelectTrigger({
       type={props.type ?? "button"}
       aria-label={`${label}, ${purpose}`}
       {...styled}
-      className={cn(styled.className, className)}
+      className={clsx(styled.className, className)}
     >
       {lead}
       <span title={label} {...stylex.props(styles.label, vocab.truncate)}>

@@ -12,7 +12,7 @@ import {
   type Ref,
   type RefObject,
 } from "react";
-import { cn } from "@/lib/classNames";
+import { clsx } from "clsx";
 import { color, motion, space, surface, type, weight } from "@flame/ui/tokens.stylex";
 import { ContextMenu } from "@/ui/atoms/menu";
 import { IconButton } from "@flame/ui/icon-button";
@@ -180,7 +180,7 @@ export function AgentContextDock({
     <TabsPrimitive.Root
       value={value}
       onValueChange={onValueChange}
-      render={<aside {...props} className={cn("agent-context-dock", className)} />}
+      render={<aside {...props} className={clsx("agent-context-dock", className)} />}
     >
       {children}
     </TabsPrimitive.Root>
@@ -274,7 +274,7 @@ export function AgentDockRow({
   return (
     <div
       ref={ref}
-      className={cn("agent-dock-row", stylex.props(styles.row).className)}
+      className={clsx("agent-dock-row", stylex.props(styles.row).className)}
       data-dock={open ? "open" : "collapsed"}
       data-presentation={presentation}
     >

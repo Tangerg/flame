@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { type ReactNode } from "react";
-import { cn } from "@/lib/classNames";
+import { clsx } from "clsx";
 import { vocab } from "@flame/ui";
 import { color, space, type } from "@flame/ui/tokens.stylex";
 const styles = stylex.create({
@@ -37,7 +37,7 @@ export function SectionLabel({
 }) {
   const row = stylex.props(styles.row, type.uiXs);
   return (
-    <div {...row} className={cn(row.className, className)}>
+    <div {...row} className={clsx(row.className, className)}>
       <span {...stylex.props(styles.label, vocab.truncate)}>{children}</span>
       {trailing != null && <span {...stylex.props(styles.trailing)}>{trailing}</span>}
     </div>

@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { type ComponentProps, type ReactNode } from "react";
-import { cn } from "@/lib/classNames";
+import { clsx } from "clsx";
 import { color, layout, leading, radius, space, surface, type } from "@flame/ui/tokens.stylex";
 import { Icon, type IconName } from "@/ui/icons/index";
 import { Button, type ButtonProps } from "@flame/ui/button";
@@ -80,7 +80,7 @@ export function SystemMessage({
   const styled = stylex.props(styles.banner, styles[shape], TONE[variant]);
 
   return (
-    <div role={role} {...styled} className={cn(styled.className, className)} {...props}>
+    <div role={role} {...styled} className={clsx(styled.className, className)} {...props}>
       <div {...stylex.props(styles.body)}>
         {!hideIcon && (
           <span {...stylex.props(styles.glyph)}>

@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { type ReactNode } from "react";
-import { cn } from "@/lib/classNames";
+import { clsx } from "clsx";
 import { color, motion, radius, space, surface, type } from "@flame/ui/tokens.stylex";
 import { ButtonPrimitive } from "@flame/ui";
 import { type ButtonPrimitiveProps } from "@flame/ui";
@@ -82,7 +82,7 @@ export function TextButton({
 }: TextButtonProps) {
   const styled = stylex.props(styles.base, SIZE[size], TONE[tone], styles[shape]);
   return (
-    <ButtonPrimitive {...props} {...styled} className={cn(styled.className, className)}>
+    <ButtonPrimitive {...props} {...styled} className={clsx(styled.className, className)}>
       {children}
     </ButtonPrimitive>
   );

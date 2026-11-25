@@ -2,7 +2,7 @@ import * as stylex from "@stylexjs/stylex";
 import { motion } from "motion/react";
 import { type ComponentProps } from "react";
 import { space } from "@flame/ui/tokens.stylex";
-import { cn } from "@/lib/classNames";
+import { clsx } from "clsx";
 import { useMotion } from "@/lib/motion";
 import { type Message } from "@/features/agent/public/sessionView";
 import { MessageBlock } from "@/features/chat/message/ui/MessageBlock";
@@ -33,7 +33,7 @@ export function MessageTurn({
   return (
     <motion.div
       {...enterUp}
-      className={cn(
+      className={clsx(
         stylex.props(styles.turn, previous && (continuation ? styles.continuation : styles.next))
           .className,
         className,

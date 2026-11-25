@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { clamp01 } from "@/lib/clamp";
-import { cn } from "@/lib/classNames";
+import { clsx } from "clsx";
 const CIRCUMFERENCE = 2 * Math.PI * 6;
 
 const styles = stylex.create({
@@ -29,7 +29,7 @@ export function Gauge({
       aria-label={label}
       viewBox="0 0 16 16"
       {...dial}
-      className={cn(dial.className, className)}
+      className={clsx(dial.className, className)}
     >
       <circle
         cx="8"

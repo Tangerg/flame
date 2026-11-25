@@ -2,7 +2,7 @@ import * as stylex from "@stylexjs/stylex";
 import { type ReactNode, type Ref } from "react";
 import { CodeBody, CodeCaption, CodeFrame } from "@flame/ui";
 import { useT } from "@/lib/i18n/index";
-import { cn } from "@/lib/classNames";
+import { clsx } from "clsx";
 import { space } from "@flame/ui/tokens.stylex";
 import { artifactFrame } from "@/ui/atoms/artifact-frame";
 import { reveal } from "@/ui/atoms/reveal";
@@ -65,7 +65,7 @@ export function CodeArtifact({
       data-markdown-copy="code-block"
       data-markdown-copy-text={code}
       styles={[artifactFrame.frame, scrollLabel !== undefined && styles.embedded]}
-      className={cn("code-artifact", isPreview && stylex.props(reveal.host).className)}
+      className={clsx("code-artifact", isPreview && stylex.props(reveal.host).className)}
     >
       <CodeCaption
         data-markdown-copy="exclude"

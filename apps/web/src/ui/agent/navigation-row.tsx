@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { type ReactNode } from "react";
-import { cn } from "@/lib/classNames";
+import { clsx } from "clsx";
 import { Icon, type IconName } from "@/ui/index";
 import { reveal } from "@/ui/index";
 import { Button, type ButtonProps } from "@flame/ui";
@@ -154,7 +154,7 @@ function AgentRowLabel({
         {overflowText ? (
           <AgentOverflowLabel text={overflowText} />
         ) : (
-          <span {...label} className={cn(label.className, "truncate-fade")}>
+          <span {...label} className={clsx(label.className, "truncate-fade")}>
             {children}
           </span>
         )}{" "}
@@ -168,7 +168,7 @@ function AgentRowLabel({
         )}
       </span>{" "}
       {detail != null && (
-        <span {...detailBox} className={cn(detailBox.className, "truncate-fade")}>
+        <span {...detailBox} className={clsx(detailBox.className, "truncate-fade")}>
           {detail}
         </span>
       )}
@@ -212,7 +212,7 @@ export function AgentRow({
         track ? rowStyles.tracked : null,
         callerStyles,
       ]}
-      className={cn("agent-row", className)}
+      className={clsx("agent-row", className)}
     >
       {track?.hovered && <ItemHighlight layoutId={track.layoutId} />}
       {icon && (

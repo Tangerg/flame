@@ -136,20 +136,11 @@ func unchangedModelContextResult(
 	)
 }
 
-type modelContextCounter executionadapter.ModelContextCompaction
-
 func newModelContextCounter(request executionadapter.ModelContextCompaction) modelContextInputTokenCounter {
 	if !request.HasInputTokenCounter() {
 		return nil
 	}
-	return modelContextCounter(request)
-}
-
-func (m modelContextCounter) CountInputTokens(
-	ctx context.Context,
-	messages []chat.Message,
-) (int64, error) {
-	return executionadapter.ModelContextCompaction(m).CountInputTokens(ctx, messages)
+	return request
 }
 
 func (c *Compactor) materializeModelContextPlan(

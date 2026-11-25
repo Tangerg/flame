@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { type DotTone } from "@/lib/tone";
-import { cn } from "@/lib/classNames";
+import { clsx } from "clsx";
 import { color, corner, motion, space } from "@flame/ui/tokens.stylex";
 const styles = stylex.create({
   base: {
@@ -41,5 +41,5 @@ export function StatusDot({
   const a11y = label
     ? { role: "img" as const, "aria-label": label, title: label }
     : { "aria-hidden": "true" as const };
-  return <span {...a11y} {...styled} className={cn(styled.className, className)} />;
+  return <span {...a11y} {...styled} className={clsx(styled.className, className)} />;
 }

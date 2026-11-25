@@ -12,7 +12,7 @@ import {
 } from "react";
 import { TextLink } from "@/ui/index";
 import { CodeArtifact } from "@/ui/index";
-import { cn } from "@/lib/classNames";
+import { clsx } from "clsx";
 import { FileRefLink } from "@/features/workspace/public/FileRefLink";
 import { parseWorkspaceFileHref } from "@/features/agent/public/fileRefs";
 import { MarkdownImage } from "@/features/chat/message/ui/markdown/MarkdownImage";
@@ -229,7 +229,10 @@ export const markdownComponents: Components = {
   td({ children, className, align, colSpan, rowSpan, style }) {
     return (
       <td
-        className={cn(className, NUMERIC_CELL.test(visibleText(children).trim()) && NUMERIC_CLASS)}
+        className={clsx(
+          className,
+          NUMERIC_CELL.test(visibleText(children).trim()) && NUMERIC_CLASS,
+        )}
         align={align}
         colSpan={colSpan}
         rowSpan={rowSpan}

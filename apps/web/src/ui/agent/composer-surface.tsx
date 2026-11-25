@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import { motion, radius, space } from "@flame/ui/tokens.stylex";
 import { type ComponentPropsWithoutRef, type ReactNode, type Ref } from "react";
-import { cn } from "@/lib/classNames";
+import { clsx } from "clsx";
 const styles = stylex.create({
   surface: {
     position: "relative",
@@ -38,7 +38,7 @@ export function AgentComposerSurface({
     <div
       {...props}
       ref={ref}
-      className={cn("agent-composer-glass", stylex.props(styles.surface).className, className)}
+      className={clsx("agent-composer-glass", stylex.props(styles.surface).className, className)}
     >
       {children}
     </div>
@@ -49,7 +49,7 @@ export function AgentComposerFooter({ children }: { children: ReactNode }) {
   return (
     <div
       data-slot="composer-footer"
-      className={cn("agent-composer-footer", stylex.props(styles.footer).className)}
+      className={clsx("agent-composer-footer", stylex.props(styles.footer).className)}
     >
       {children}
     </div>

@@ -2,7 +2,7 @@ import * as stylex from "@stylexjs/stylex";
 import { reveal } from "@/ui/atoms/reveal";
 import { type ComponentPropsWithoutRef, type ReactNode } from "react";
 import { Children, useId, useState } from "react";
-import { cn } from "@/lib/classNames";
+import { clsx } from "clsx";
 import { color, leading, motion, radius, space, surface, type } from "@flame/ui/tokens.stylex";
 import { vocab, ButtonPrimitive, ContentVisibility } from "@flame/ui";
 import { Collapsible } from "@base-ui/react/collapsible";
@@ -224,12 +224,12 @@ export function AgentActivityDisclosure({
       data-slot="agent-activity-disclosure"
       data-tone={tone}
       data-shell={shell}
-      className={cn(stylex.props(styles.frame, skin.frame).className, className)}
+      className={clsx(stylex.props(styles.frame, skin.frame).className, className)}
     >
       <div
         data-slot="agent-activity-header"
         data-focus-unit=""
-        className={cn(
+        className={clsx(
           stylex.props(
             reveal.host,
             styles.header,
@@ -410,7 +410,7 @@ function ActivityPanel({
     >
       <div {...stylex.props(SHELL_SKINS[shell].body)}>
         <div
-          className={cn(
+          className={clsx(
             stylex.props(contentInset === "rows" && styles.bodyRows).className,
             contentClassName,
           )}

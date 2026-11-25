@@ -1,6 +1,6 @@
 import { iconGlyph } from "@/ui/icons/index";
 import { type ComponentPropsWithoutRef } from "react";
-import { cn } from "@/lib/classNames";
+import { clsx } from "clsx";
 import { IconButton } from "@flame/ui";
 type AgentHeaderCorner = "window" | "drawer";
 
@@ -20,7 +20,7 @@ export function AgentSurfaceHeader({
     <div
       {...props}
       data-window-corner={corner === "window" ? "" : undefined}
-      className={cn(
+      className={clsx(
         "agent-surface-header",
         corner === "drawer" && "agent-drawer-header",
         divider && "agent-surface-divider",

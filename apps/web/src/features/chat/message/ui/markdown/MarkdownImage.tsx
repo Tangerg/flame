@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { useState } from "react";
-import { cn } from "@/lib/classNames";
+import { clsx } from "clsx";
 import { useT } from "@/lib/i18n/index";
 
 import { ImagePreviewGallery } from "@/features/chat/message/ui/ImagePreviewGallery";
@@ -68,7 +68,7 @@ export function MarkdownImage({
         alt={alt}
         title={title}
         onError={() => setFailedSource(src)}
-        className={cn(
+        className={clsx(
           "media-edge",
           stylex.props(mi.image, layout === "paragraph" ? mi.wide : mi.measured).className,
         )}
@@ -98,7 +98,7 @@ export function MarkdownImage({
             alt={alt}
             title={title}
             onError={() => setFailedSource(src)}
-            className={cn("media-edge", stylex.props(mi.image).className)}
+            className={clsx("media-edge", stylex.props(mi.image).className)}
           />
         </ButtonPrimitive>
       )}

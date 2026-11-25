@@ -1,6 +1,6 @@
 import { SYSTEM_THEME } from "@/features/theme/kit/appearance";
 import * as stylex from "@stylexjs/stylex";
-import { cn } from "@/lib/classNames";
+import { clsx } from "clsx";
 import { type ReactNode } from "react";
 import { type Scheme } from "@/lib/appearance";
 import { type ColorThemeSpec } from "@/features/theme/public/types";
@@ -62,7 +62,7 @@ const th = stylex.create({
 function ThemeSwatch({ bg, surface, accent }: { bg: string; surface: string; accent: string }) {
   return (
     <span
-      className={cn("media-edge", stylex.props(th.swatch).className)}
+      className={clsx("media-edge", stylex.props(th.swatch).className)}
       style={{ background: bg }}
     >
       <span {...stylex.props(th.swatchPane)} style={{ background: surface }} />

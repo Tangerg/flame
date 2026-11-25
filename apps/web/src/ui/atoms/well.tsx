@@ -1,7 +1,7 @@
 import { WELL_SURFACE } from "@flame/ui/well-surface";
 import * as stylex from "@stylexjs/stylex";
 import { type ReactNode } from "react";
-import { cn } from "@/lib/classNames";
+import { clsx } from "clsx";
 import { color, type, weight } from "@flame/ui/tokens.stylex";
 import { useScrollReach } from "@/ui/atoms/use-scroll-reach";
 const styles = stylex.create({
@@ -51,7 +51,7 @@ export function Well({
       {...props}
       {...useScrollReach()}
       {...styled}
-      className={cn(styled.className, className)}
+      className={clsx(styled.className, className)}
     />
   );
 }

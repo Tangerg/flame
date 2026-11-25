@@ -25,7 +25,7 @@ import {
 import { useComposer } from "@/features/composer/public/composer";
 import { useNotifications } from "@/features/notifications/public/notifier";
 import { messageActionMaterialization } from "@/features/chat/message/application/messageBlockModel";
-import { cn } from "@/lib/classNames";
+import { clsx } from "clsx";
 import { useT, type MessageKey } from "@/lib/i18n/index";
 import { MESSAGE_CONTENT_CLASS } from "@/features/chat/message/ui/messageContent";
 import { MessageContextMenu } from "@/features/chat/message/ui/MessageContextMenu";
@@ -161,7 +161,7 @@ function MessageContentBody({ user, children }: { user: boolean; children: React
     <div
       data-user-message-bubble={user ? "" : undefined}
       {...MESSAGE_QUOTE_SOURCE}
-      className={cn(
+      className={clsx(
         MESSAGE_CONTENT_CLASS,
         stylex.props(
           messageStyles.body,
@@ -305,7 +305,7 @@ function MessageBlockInner({
       {...focusReclaim}
       {...stylex.props(reveal.host, messageStyles.column, isUser && messageStyles.columnUser)}
     >
-      <h2 className={cn("sr-only", stylex.props(messageStyles.unselectable).className)}>
+      <h2 className={clsx("sr-only", stylex.props(messageStyles.unselectable).className)}>
         {roleLabel}
       </h2>
       <MessageContentBody user={isUser}>{content}</MessageContentBody>

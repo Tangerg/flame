@@ -2,7 +2,7 @@ import { useRef } from "react";
 import * as stylex from "@stylexjs/stylex";
 import { color, layout, space, type, weight } from "@flame/ui/tokens.stylex";
 import { CatalogList, type CatalogPickerGroup } from "@/ui/atoms/index";
-import { cn } from "@/lib/classNames";
+import { clsx } from "clsx";
 const styles = stylex.create({
   root: {
     display: "flex",
@@ -47,7 +47,7 @@ export function AgentDockCatalog({
   const heading = stylex.props(styles.title, type.uiMd);
   return (
     <div {...stylex.props(styles.root)}>
-      <h2 {...heading} className={cn(heading.className, titleHidden && "sr-only")}>
+      <h2 {...heading} className={clsx(heading.className, titleHidden && "sr-only")}>
         {title}
       </h2>
       <div {...stylex.props(styles.catalog)}>

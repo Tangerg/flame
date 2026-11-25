@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import { radius } from "@flame/ui/tokens.stylex";
 import { type ComponentPropsWithoutRef } from "react";
-import { cn } from "@/lib/classNames";
+import { clsx } from "clsx";
 const styles = stylex.create({
   surface: {
     position: "relative",
@@ -22,7 +22,7 @@ export function AgentComposerTopTraySurface({
     <div
       {...props}
       data-slot="composer-top-tray-surface"
-      className={cn(styled.className, className)}
+      className={clsx(styled.className, className)}
     >
       {children}
     </div>

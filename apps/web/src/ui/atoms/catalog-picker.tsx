@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import { type ReactElement, type ReactNode, type Ref, useEffect, useRef, useState } from "react";
 import { SearchField, ButtonPrimitive } from "@flame/ui";
-import { cn } from "@/lib/classNames";
+import { clsx } from "clsx";
 import { color, motion, radius, space, surface, type, weight } from "@flame/ui/tokens.stylex";
 import { Combobox as ComboboxPrimitive } from "@base-ui/react/combobox";
 import { Icon } from "@/ui/icons/index";
@@ -186,7 +186,7 @@ function CatalogTrigger({
       data-slot="button"
       data-variant="ghost"
       {...trig}
-      className={cn(trig.className, className)}
+      className={clsx(trig.className, className)}
     >
       <Icon name="plus" size="sm" />
     </Popover.Trigger>
@@ -374,7 +374,7 @@ export function CatalogPicker({
         align={align}
         side={side}
         sideOffset={6}
-        className={cn(stylex.props(styles.stackedPopup).className, contentClassName)}
+        className={clsx(stylex.props(styles.stackedPopup).className, contentClassName)}
       >
         <CatalogList
           groups={groups}
@@ -459,7 +459,7 @@ export function RailCatalogPicker({
         align={align}
         side={side}
         sideOffset={8}
-        className={cn(stylex.props(styles.splitPopup).className, contentClassName)}
+        className={clsx(stylex.props(styles.splitPopup).className, contentClassName)}
       >
         <ComboboxPrimitive.Root<CatalogPickerItem>
           items={items}

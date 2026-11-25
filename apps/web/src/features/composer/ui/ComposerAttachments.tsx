@@ -1,7 +1,7 @@
 import { iconGlyph } from "@/ui/icons/index";
 import * as stylex from "@stylexjs/stylex";
 import { type RefObject, useRef, useState } from "react";
-import { cn } from "@/lib/classNames";
+import { clsx } from "clsx";
 import {
   type ComposerDraftReference,
   type ComposerImage,
@@ -134,7 +134,7 @@ function ImageThumb({ image, onRemove }: { image: ComposerImage; onRemove: () =>
   const src = `data:${image.mime};base64,${image.data}`;
   const name = image.name ?? t("composer.image.preview");
   return (
-    <div className={cn("media-edge", stylex.props(reveal.host, composerStyles.thumb).className)}>
+    <div className={clsx("media-edge", stylex.props(reveal.host, composerStyles.thumb).className)}>
       <LightboxDialog
         open={open}
         onOpenChange={setOpen}

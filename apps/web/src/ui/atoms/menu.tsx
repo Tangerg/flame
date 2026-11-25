@@ -2,7 +2,7 @@ import * as stylex from "@stylexjs/stylex";
 import { type StyleXStyles } from "@stylexjs/stylex";
 import { type ComponentProps, type ReactNode } from "react";
 import { MENU_SURFACE, useHiddenPopupRelease, useHiddenRootRetirement, vocab } from "@flame/ui";
-import { cn } from "@/lib/classNames";
+import { clsx } from "clsx";
 import { space, surface } from "@flame/ui/tokens.stylex";
 import { Icon, type IconName } from "@/ui/icons/index";
 import { type ProductIconSize } from "@/lib/productIconScale";
@@ -99,7 +99,7 @@ function DropdownContent({
           finalFocus={visible ? finalFocus : false}
           data-chrome-focus=""
           {...content}
-          className={cn(content.className, className)}
+          className={clsx(content.className, className)}
         >
           {children}
         </MenuPrimitive.Popup>
@@ -136,7 +136,7 @@ function ContextContent({
           finalFocus={visible ? finalFocus : false}
           data-chrome-focus=""
           {...content}
-          className={cn(content.className, className)}
+          className={clsx(content.className, className)}
         >
           {children}
         </ContextMenuPrimitive.Popup>
@@ -154,7 +154,7 @@ function DropdownSeparator({
     <MenuPrimitive.Separator
       {...props}
       {...separator}
-      className={cn(separator.className, className)}
+      className={clsx(separator.className, className)}
     />
   );
 }
@@ -168,7 +168,7 @@ function ContextSeparator({
     <ContextMenuPrimitive.Separator
       {...props}
       {...separator}
-      className={cn(separator.className, className)}
+      className={clsx(separator.className, className)}
     />
   );
 }
@@ -183,7 +183,7 @@ function DropdownItem({
   ...props
 }: DropdownItemProps & RowRefinement & { destructive?: boolean }) {
   const item = stylex.props(menuItem(layout), destructive && floatingRowStyles.destructive, styles);
-  return <MenuPrimitive.Item {...props} {...item} className={cn(item.className, className)} />;
+  return <MenuPrimitive.Item {...props} {...item} className={clsx(item.className, className)} />;
 }
 
 function DropdownRadioGroup({
@@ -192,7 +192,7 @@ function DropdownRadioGroup({
 }: ComponentProps<typeof MenuPrimitive.RadioGroup>) {
   const group = stylex.props(menuStyles.rows);
   return (
-    <MenuPrimitive.RadioGroup {...props} {...group} className={cn(group.className, className)} />
+    <MenuPrimitive.RadioGroup {...props} {...group} className={clsx(group.className, className)} />
   );
 }
 
@@ -209,7 +209,7 @@ function DropdownRadioItem({
       {...props}
       closeOnClick={closeOnClick}
       {...item}
-      className={cn(item.className, className)}
+      className={clsx(item.className, className)}
     />
   );
 }
@@ -221,7 +221,11 @@ function DropdownSubmenuTrigger({
 }: DropdownSubmenuTriggerProps & { layout?: RowLayout }) {
   const item = stylex.props(menuItem(layout));
   return (
-    <MenuPrimitive.SubmenuTrigger {...props} {...item} className={cn(item.className, className)} />
+    <MenuPrimitive.SubmenuTrigger
+      {...props}
+      {...item}
+      className={clsx(item.className, className)}
+    />
   );
 }
 
@@ -234,7 +238,7 @@ function ContextItem({
 }: ContextItemProps & RowRefinement & { destructive?: boolean }) {
   const item = stylex.props(menuItem(layout), destructive && floatingRowStyles.destructive, styles);
   return (
-    <ContextMenuPrimitive.Item {...props} {...item} className={cn(item.className, className)} />
+    <ContextMenuPrimitive.Item {...props} {...item} className={clsx(item.className, className)} />
   );
 }
 
@@ -248,7 +252,7 @@ function ContextSubmenuTrigger({
     <ContextMenuPrimitive.SubmenuTrigger
       {...props}
       {...item}
-      className={cn(item.className, className)}
+      className={clsx(item.className, className)}
     />
   );
 }

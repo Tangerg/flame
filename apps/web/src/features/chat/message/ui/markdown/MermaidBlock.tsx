@@ -18,7 +18,7 @@ import { IconButton } from "@flame/ui";
 import { measureMermaidRender } from "@/lib/metrics";
 import { useT } from "@/lib/i18n/index";
 import { useContentVisible, useCopy } from "@flame/ui";
-import { cn } from "@/lib/classNames";
+import { clsx } from "clsx";
 import { motion, radius, space, surface } from "@flame/ui/tokens.stylex";
 import { artifactFrame } from "@/ui/atoms/artifact-frame";
 import { MermaidViewer } from "@/features/chat/message/ui/markdown/MermaidViewer";
@@ -203,7 +203,7 @@ export function MermaidBlock({ code }: Props) {
           />
         </div>
         <span className="sr-only">{t("message.mermaid.source")}</span>
-        <pre className={cn("sr-only", stylex.props(mb.sourceText).className)}>{code}</pre>
+        <pre className={clsx("sr-only", stylex.props(mb.sourceText).className)}>{code}</pre>
       </div>
     );
   }

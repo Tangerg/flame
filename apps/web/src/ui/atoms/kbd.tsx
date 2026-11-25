@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { type ComponentPropsWithoutRef } from "react";
-import { cn } from "@/lib/classNames";
+import { clsx } from "clsx";
 import { color, radius, space, surface, type, weight } from "@flame/ui/tokens.stylex";
 type KbdVariant = "cap" | "inline";
 
@@ -42,5 +42,5 @@ export function Kbd({
   ...props
 }: ComponentPropsWithoutRef<"kbd"> & { variant?: KbdVariant }) {
   const styled = stylex.props(styles.base, styles[variant], SIZE[variant]);
-  return <kbd {...props} {...styled} className={cn(styled.className, className)} />;
+  return <kbd {...props} {...styled} className={clsx(styled.className, className)} />;
 }

@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { type ReactNode } from "react";
-import { cn } from "@/lib/classNames";
+import { clsx } from "clsx";
 import { HoverTrack } from "@flame/ui";
 import { ScrollArea } from "@/ui/atoms/scroll-area";
 const styles = stylex.create({
@@ -29,7 +29,7 @@ const styles = stylex.create({
 
 export function AgentWorkIndexBody({ children }: { children: ReactNode }) {
   return (
-    <ScrollArea className={cn("agent-index-scroll", stylex.props(styles.scroll).className)}>
+    <ScrollArea className={clsx("agent-index-scroll", stylex.props(styles.scroll).className)}>
       <HoverTrack styles={styles.sections}>{children}</HoverTrack>
     </ScrollArea>
   );
@@ -46,7 +46,7 @@ export function AgentWorkIndexGroupList({
   children: ReactNode;
   className?: string;
 }) {
-  return <div className={cn(stylex.props(styles.group).className, className)}>{children}</div>;
+  return <div className={clsx(stylex.props(styles.group).className, className)}>{children}</div>;
 }
 
 export function AgentWorkIndexFooter({ children }: { children: ReactNode }) {
