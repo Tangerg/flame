@@ -121,8 +121,8 @@ export function AccentSection() {
               key={swatch.id}
               type="button"
               onClick={() => setAccent(swatch.color)}
-              title={`${t("settings.accent")}: ${swatch.label}`}
-              aria-label={`${t("settings.accent")}: ${swatch.label}`}
+              title={`${t("settings.accent")}: ${t(swatch.label)}`}
+              aria-label={`${t("settings.accent")}: ${t(swatch.label)}`}
               aria-pressed={selected}
               className={stylex.props(a.target, a.noPad, corner.pill).className}
             >

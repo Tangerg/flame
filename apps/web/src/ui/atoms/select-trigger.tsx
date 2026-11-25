@@ -20,9 +20,8 @@ const styles = stylex.create({
     alignItems: "center",
     justifyContent: "space-between",
     gap: space.s2,
-    paddingBlock: space.s1_5,
     textAlign: "start",
-    fontWeight: weight.medium,
+    fontWeight: weight.regular,
   },
   label: {
     minWidth: 0,

@@ -78,9 +78,11 @@ filter includes them; unknown outcome and failure remain visible. Counts are rec
 counts, not additive billing totals.
 
 Status tones project recorded severity independently of the attention filter and
-counts. Settled neutral states read as quiet summary metadata; running, waiting,
-warning and failure states keep a toned badge beside the title. The recorded state
-has a localized label in both neutral metadata and toned badges. Closed approval
+counts. An ordinary end (completed, finished) is not repeated on every row; other
+settled neutral states, such as canceled, read as quiet summary metadata; running,
+waiting, warning and failure states keep a toned badge beside the title. The
+recorded state stays searchable by its localized label and visible in Recorded
+evidence. Closed approval
 decisions use the same localized label in the summary and expanded facts,
 independently of execution status. Raw state/decision values remain unchanged in
 Recorded evidence and exports. Opaque caller origins, provider/model/Tool

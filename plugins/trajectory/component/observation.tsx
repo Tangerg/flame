@@ -39,7 +39,7 @@ export function title(
             ? row.item.tool.name
             : t(`item.${row.item.type}`);
   const tone = statusTone(row);
-  const { state: label, approvalInline } = readable(row, t);
+  const { state: label, ordinary, approvalInline } = readable(row, t);
   return (
     <RecordSummary
       icon={
@@ -56,7 +56,7 @@ export function title(
       title={title}
       description={
         <RecordMeta>
-          {tone === "neutral" && <span>{label}</span>}
+          {tone === "neutral" && !ordinary && <span>{label}</span>}
           {row.type === "run" && <code>{row.run.id}</code>}
           <time dateTime={row.occurredAt}>
             {clock.format(new Date(row.occurredAt))}

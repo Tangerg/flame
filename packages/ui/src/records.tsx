@@ -65,19 +65,21 @@ const styles = stylex.create({
   cards: {
     gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,20rem),1fr))",
   },
+  // Actions sit beside the title and description, so a tall control does not push
+  // the description away from its title; in a narrow column they wrap below.
   heading: {
-    display: "grid",
-    gap: space.s2,
-    minWidth: 0,
-  },
-  headingRow: {
     display: "flex",
     alignItems: "center",
     gap: layout.contentGap,
     flexWrap: "wrap",
     minWidth: 0,
   },
-  headingIdentity: { flex: "1 1 12rem", minWidth: 0 },
+  headingCopy: {
+    display: "grid",
+    flex: "1 1 12rem",
+    gap: space.s1,
+    minWidth: 0,
+  },
   headingLine: {
     display: "flex",
     alignItems: "center",
@@ -287,18 +289,18 @@ export function RecordHeading({
   const Tag = useHeadingTag();
   return (
     <div {...stylex.props(styles.heading)}>
-      <div {...stylex.props(styles.headingRow)}>
-        <div {...stylex.props(styles.headingLine, styles.headingIdentity)}>
+      <div {...stylex.props(styles.headingCopy)}>
+        <div {...stylex.props(styles.headingLine)}>
           <Tag {...stylex.props(styles.title, type.uiMd)}>{title}</Tag>
           {status}
         </div>
-        {actions && <div {...stylex.props(styles.actions)}>{actions}</div>}
+        {description && (
+          <p {...stylex.props(styles.summaryDescription, type.uiSm)}>
+            {description}
+          </p>
+        )}
       </div>
-      {description && (
-        <p {...stylex.props(styles.summaryDescription, type.uiSm)}>
-          {description}
-        </p>
-      )}
+      {actions && <div {...stylex.props(styles.actions)}>{actions}</div>}
     </div>
   );
 }
