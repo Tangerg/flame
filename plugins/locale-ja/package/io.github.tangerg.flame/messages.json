@@ -477,7 +477,6 @@
   "cwdMissing.action.cancel": "キャンセル",
   "cwdMissing.placeholder": "新しい絶対パス",
   "runError.unknown": "実行が失敗しました。",
-  "runError.title": "Agent エラー",
   "runError.action.context": "コンテキストを確認",
   "runError.action.diagnostics": "診断",
   "runError.action.dismiss": "閉じる",

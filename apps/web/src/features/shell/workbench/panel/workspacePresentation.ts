@@ -41,7 +41,7 @@ export function applyComposerReadingLimit({ currentTarget, target }: FocusEvent<
   // Portaled menus keep their opener's reading context through native focus handoffs.
   if (!currentTarget.contains(target)) return;
   const region = composerFocusRegion(target);
-  // Jump navigates the current frame without changing its editing or reading budget.
+  // Jump and the notices act on the current frame without changing its editing or reading budget.
   if (region === "overlay") return;
   currentTarget.style.setProperty(
     "--composer-reading-limit",

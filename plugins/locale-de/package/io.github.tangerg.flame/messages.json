@@ -484,7 +484,6 @@
   "cwdMissing.action.cancel": "Abbrechen",
   "cwdMissing.placeholder": "Neuer absoluter Pfad",
   "runError.unknown": "Der Lauf ist fehlgeschlagen.",
-  "runError.title": "Agent-Fehler",
   "runError.action.context": "Kontext ansehen",
   "runError.action.diagnostics": "Diagnose",
   "runError.action.dismiss": "Schließen",

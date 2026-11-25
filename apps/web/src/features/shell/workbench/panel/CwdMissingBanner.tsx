@@ -7,7 +7,6 @@ import { useRelocateSession } from "@/features/agent/public/session";
 import { BannerAction } from "@/features/shell/workbench/panel/BannerAction";
 import { useT } from "@/lib/i18n/index";
 import { useRuntimeCapability } from "@/features/connection/public/capabilities";
-import { shellStyles as sh } from "@/features/shell/workbench/shellStyles";
 import { color, face, space, type as typeStep, weight } from "@flame/ui/tokens.stylex";
 const cw = stylex.create({
   title: { marginBottom: space.s0_5, color: color.warning, fontWeight: weight.semibold },
@@ -53,7 +52,7 @@ export function CwdMissingBanner() {
   };
 
   return (
-    <SystemMessage variant="warning" shape="form" className={stylex.props(sh.banner).className}>
+    <SystemMessage variant="warning" shape="form">
       <div {...stylex.props(vocab.min)}>
         <div {...stylex.props(cw.title, typeStep.uiMd)}>{t("cwdMissing.title")}</div>
         <div {...stylex.props(cw.body, typeStep.uiMd)}>

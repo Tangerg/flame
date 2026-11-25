@@ -477,7 +477,6 @@
   "cwdMissing.action.cancel": "취소",
   "cwdMissing.placeholder": "새 절대 경로",
   "runError.unknown": "실행이 실패했습니다.",
-  "runError.title": "Agent 오류",
   "runError.action.context": "컨텍스트 확인",
   "runError.action.diagnostics": "진단",
   "runError.action.dismiss": "닫기",

@@ -556,7 +556,6 @@ export const en = {
   "cwdMissing.action.cancel": "Cancel",
   "cwdMissing.placeholder": "New absolute path",
   "runError.unknown": "The run failed.",
-  "runError.title": "Agent error",
   "runError.action.retryIn": "Retry in {{seconds}}s",
   "runError.action.context": "Inspect context",
   "runError.action.diagnostics": "Diagnostics",

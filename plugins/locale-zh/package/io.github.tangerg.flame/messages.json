@@ -514,7 +514,6 @@
   "cwdMissing.action.cancel": "取消",
   "cwdMissing.placeholder": "新的绝对路径",
   "runError.unknown": "运行失败。",
-  "runError.title": "Agent 报错",
   "runError.action.retryIn": "{{seconds}} 秒后可重试",
   "runError.action.context": "查看上下文",
   "runError.action.diagnostics": "诊断",

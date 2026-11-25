@@ -491,7 +491,6 @@
   "cwdMissing.action.cancel": "Annuler",
   "cwdMissing.placeholder": "Nouveau chemin absolu",
   "runError.unknown": "L'exécution a échoué.",
-  "runError.title": "Erreur d'agent",
   "runError.action.context": "Examiner le contexte",
   "runError.action.diagnostics": "Diagnostics",
   "runError.action.dismiss": "Fermer",

@@ -21,7 +21,6 @@ export const shellStyles = stylex.create({
 
   spacer: { minWidth: space.s4, flex: 1 },
   toEnd: { marginInlineStart: "auto" },
-  banner: { marginBlock: space.s2_5 },
   // Shares SystemMessage's icon size and gap so every banner's text starts on one line.
   bannerCard: {
     display: "grid",
@@ -32,13 +31,6 @@ export const shellStyles = stylex.create({
     backgroundColor: surface.negativeWash,
     paddingInline: space.s3,
     paddingBlock: space.s2_5,
-  },
-  bannerHead: {
-    marginBottom: space.s0_5,
-    display: "flex",
-    flexWrap: "wrap",
-    alignItems: "baseline",
-    columnGap: space.s2,
   },
   bannerBody: {
     whiteSpace: "pre-wrap",
