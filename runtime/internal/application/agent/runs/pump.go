@@ -267,7 +267,7 @@ func (s *segmentPump) attachCompactionPlan(rewrite conversation.Compaction, batc
 	if err != nil {
 		return err
 	}
-	plan, err := PlanConversationCompaction(s.spec.SessionID, rewrite, current)
+	plan, err := planConversationCompaction(s.spec.SessionID, rewrite, current)
 	if err != nil {
 		return err
 	}

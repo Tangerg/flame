@@ -285,7 +285,7 @@ func invocationCompaction(invocation modelCallSource, input ModelContextCompacti
 		if pending {
 			input.ProtectedTail = max(input.ProtectedTail, trailingUserMessageCount(input.Candidate))
 		}
-		return NewDurableModelContextCompaction(input)
+		return newDurableModelContextCompaction(input)
 	}
 	if invocation.sequence == 1 {
 		input.ProtectedTail = len(input.Candidate)

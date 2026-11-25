@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	ErrInvalid  = errors.New("conversation: invalid")
+	errInvalid  = errors.New("conversation: invalid")
 	ErrNotEmpty = errors.New("conversation: seed requires an empty conversation")
 )
 
@@ -21,7 +21,7 @@ type Conversation struct {
 func ValidateMessages(messages []chat.Message) error {
 	for index, message := range messages {
 		if err := message.Validate(); err != nil {
-			return fmt.Errorf("%w: message[%d]: %w", ErrInvalid, index, err)
+			return fmt.Errorf("%w: message[%d]: %w", errInvalid, index, err)
 		}
 	}
 	return nil
@@ -144,7 +144,7 @@ func (calls *openToolCalls) close(
 	if id, unexpected := completed.first(); unexpected {
 		return nil, fmt.Errorf(
 			"%w: completed ToolResult %q has no unresolved ToolCall",
-			ErrInvalid,
+			errInvalid,
 			id,
 		)
 	}
@@ -159,7 +159,7 @@ func newCompletedToolResults(results []chat.ToolResult) (completedToolResults, e
 		if _, duplicate := completed[result.ID]; duplicate {
 			return nil, fmt.Errorf(
 				"%w: completed ToolResult %q is repeated",
-				ErrInvalid,
+				errInvalid,
 				result.ID,
 			)
 		}
@@ -178,7 +178,7 @@ func (results completedToolResults) resolve(
 		if result.Name != call.Name {
 			return chat.ToolResult{}, fmt.Errorf(
 				"%w: completed ToolResult %q names %q, want %q",
-				ErrInvalid,
+				errInvalid,
 				result.ID,
 				result.Name,
 				call.Name,

@@ -10,7 +10,7 @@ const (
 	MaximumPageRows = 100
 )
 
-var ErrInvalidPageSize = errors.New("catalog page size is invalid")
+var errInvalidPageSize = errors.New("catalog page size is invalid")
 
 type pageSizeKind uint8
 
@@ -28,7 +28,7 @@ func DefaultPageSize() PageSize { return PageSize{kind: defaultPageSize} }
 
 func NewPageSize(rows int) (PageSize, error) {
 	if rows <= 0 || rows > MaximumPageRows {
-		return PageSize{}, fmt.Errorf("%w: rows must be between 1 and %d", ErrInvalidPageSize, MaximumPageRows)
+		return PageSize{}, fmt.Errorf("%w: rows must be between 1 and %d", errInvalidPageSize, MaximumPageRows)
 	}
 	return PageSize{kind: explicitPageSize, rows: rows}, nil
 }
@@ -41,15 +41,15 @@ func (p PageSize) Rows() (int, error) {
 	switch p.kind {
 	case defaultPageSize:
 		if p.rows != 0 {
-			return 0, fmt.Errorf("%w: default carries rows", ErrInvalidPageSize)
+			return 0, fmt.Errorf("%w: default carries rows", errInvalidPageSize)
 		}
 		return DefaultPageRows, nil
 	case explicitPageSize:
 		if p.rows <= 0 || p.rows > MaximumPageRows {
-			return 0, fmt.Errorf("%w: explicit rows must be between 1 and %d", ErrInvalidPageSize, MaximumPageRows)
+			return 0, fmt.Errorf("%w: explicit rows must be between 1 and %d", errInvalidPageSize, MaximumPageRows)
 		}
 		return p.rows, nil
 	default:
-		return 0, fmt.Errorf("%w: kind is unknown", ErrInvalidPageSize)
+		return 0, fmt.Errorf("%w: kind is unknown", errInvalidPageSize)
 	}
 }

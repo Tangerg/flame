@@ -69,7 +69,7 @@ func ResolvePoint(ctx context.Context, host framehost.Host, store Store, contrac
 }
 
 func capturePointComposition(ctx context.Context, host framehost.Host, contract *plugincontract.Point, order []PointReference) ([]PointBinding, framehost.BindingPlan, error) {
-	point, err := DataPoint(contract)
+	point, err := portableDataPoint(contract)
 	if err != nil {
 		return nil, framehost.BindingPlan{}, err
 	}

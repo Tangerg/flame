@@ -20,7 +20,7 @@ func (e *Endpoint) enforceCapabilities(ctx context.Context, meta MethodMeta, par
 			return projectError(err)
 		}
 		if len(missing) != 0 {
-			return projectError(NewCapabilityGapError(missing...))
+			return projectError(newCapabilityGapError(missing...))
 		}
 	}
 	return nil

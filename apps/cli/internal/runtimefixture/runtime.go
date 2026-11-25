@@ -26,24 +26,9 @@ const (
 	defaultModel    = "balanced"
 )
 
-type FaultKind string
-
-const (
-	FaultDisconnect FaultKind = "disconnect"
-	FaultDuplicate  FaultKind = "duplicate"
-	FaultConflict   FaultKind = "conflict"
-)
-
-type SubscriptionFault struct {
-	Kind  FaultKind
-	After int
-}
-
 type Runtime struct {
-	ToolModelNames map[string]string
-	Instant        bool
-	Script         func(authoredPrompt string) Script
-	Faults         []SubscriptionFault
+	Instant bool
+	Script  func(authoredPrompt string) Script
 
 	mu           sync.Mutex
 	sessions     map[string]*sessionState
@@ -51,7 +36,6 @@ type Runtime struct {
 	runOrder     []string
 	rules        []storedRule
 	approvalMode protocol.ApprovalMode
-	fault        int
 	identities   mockIdentitySequence
 	now          func() time.Time
 	openings     map[string]protocol.RunAcceptance

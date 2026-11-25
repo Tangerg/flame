@@ -49,7 +49,7 @@ func wireCancellationError(err error) error {
 	case errors.Is(err, runs.ErrInvalidCancellationReason):
 		return protocol.NewFailure(protocol.ErrInvalidParams, err.Error(), err)
 	case errors.Is(err, runs.ErrChildRunNotAllowed):
-		return NewCapabilityGapError(protocol.CapabilityRequirement{
+		return newCapabilityGapError(protocol.CapabilityRequirement{
 			Type: protocol.RequirementFeature,
 			Name: protocol.FeatureChildRuns,
 		})

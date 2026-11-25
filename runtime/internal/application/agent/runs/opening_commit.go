@@ -46,7 +46,7 @@ type SessionSave struct{ Replacement session.Replacement }
 func (SessionInsert) openingSessionWrite() {}
 func (SessionSave) openingSessionWrite()   {}
 
-func NewAdmissionOpeningCommit(
+func newAdmissionOpeningCommit(
 	commitID CommitID,
 	admit run.Draft,
 	sessionWrite OpeningSessionWrite,
@@ -73,7 +73,7 @@ func (o OpeningCommit) WithCommandAcceptance(acceptance CommandAcceptance) (Open
 	return next, nil
 }
 
-func NewResumeOpeningCommit(
+func newResumeOpeningCommit(
 	commitID CommitID,
 	resume run.TreeResumeDraft,
 	events []EventCommit,
@@ -182,7 +182,7 @@ func (o OpeningCommit) validateCommandAcceptance() error {
 	if admission, ok := o.action.(admissionOpening); ok && admission.draft.Lineage().IsChild() {
 		return errors.New("runs: child opening carries root admission facts")
 	}
-	expected, err := AcceptCommand(o.commandAcceptance.Key, o.commandAcceptance.Fingerprint, o)
+	expected, err := acceptCommand(o.commandAcceptance.Key, o.commandAcceptance.Fingerprint, o)
 	if err != nil {
 		return err
 	}

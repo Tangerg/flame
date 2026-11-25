@@ -57,7 +57,7 @@ func (r *reducer) projectFact(reduced factReduction) (reductionBatch, error) {
 		if batch.parkCommit == nil {
 			return reductionBatch{}, fmt.Errorf("%w: parked Items have no park boundary", errReducerInvariant)
 		}
-		batch.parkCommit.Items = append(batch.parkCommit.Items, NewItemWrites(reduced.parkItems...)...)
+		batch.parkCommit.Items = append(batch.parkCommit.Items, newItemWrites(reduced.parkItems...)...)
 		if err := validateReductionBatch(batch); err != nil {
 			return reductionBatch{}, err
 		}
@@ -128,7 +128,7 @@ func (r *reducer) attachDurableItems(batch *reductionBatch, items []transcript.I
 		return fmt.Errorf("%w: durable Items have no ordinary reduction", errReducerInvariant)
 	}
 	commit := r.ensureLastEventCommit(batch)
-	commit.Items = append(commit.Items, NewItemWrites(items...)...)
+	commit.Items = append(commit.Items, newItemWrites(items...)...)
 	return validateReductionBatch(*batch)
 }
 
@@ -237,9 +237,9 @@ func (r *reducer) projectOne(event ProjectionEvent) (reduction, error) {
 	switch e := event.(type) {
 	case ItemCompleted:
 		if e.settlement != nil {
-			commit.Items = []ItemWrite{SettlementWrite(*e.settlement)}
+			commit.Items = []ItemWrite{settlementWrite(*e.settlement)}
 		} else {
-			commit.Items = NewItemWrites(e.Item)
+			commit.Items = newItemWrites(e.Item)
 		}
 		// An isolated Run's tools write into a scratch copy, so the workspace is
 		// unchanged; announcing it would send subscribers to re-read an unchanged tree.

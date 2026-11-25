@@ -49,9 +49,6 @@
         "available": {
           "type": "boolean"
         },
-        "cpuAndMemoryQuotas": {
-          "type": "boolean"
-        },
         "maxScriptBytes": {
           "allOf": [
             {
@@ -88,17 +85,16 @@
         "platform",
         "maxScriptBytes",
         "maxTimeoutMillis",
-        "retainedBytesPerStream",
-        "cpuAndMemoryQuotas"
+        "retainedBytesPerStream"
       ],
       "type": "object"
     },
-    "LimitsV1Input": {
+    "LimitsV2Input": {
       "additionalProperties": false,
       "properties": {},
       "type": "object"
     },
-    "LimitsV1Output": {
+    "LimitsV2Output": {
       "$ref": "#/$defs/Limits"
     },
     "Output": {

@@ -153,12 +153,10 @@ func (i *Isolator) Close() error {
 	return errors.Join(errs...)
 }
 
-var ErrIsolationDisabled = errors.New("isolation: no sandbox directory is configured")
-
 type NoIsolation struct{}
 
 func (NoIsolation) Workspace(context.Context, identity.SessionID, string) (string, error) {
-	return "", ErrIsolationDisabled
+	return "", errors.New("isolation: no sandbox directory is configured")
 }
 
 func (NoIsolation) Discard(identity.SessionID) error { return nil }

@@ -153,7 +153,7 @@ func (c *Coordinator) LookupCommandAcceptance(ctx context.Context, key string) (
 	return c.commandAcceptances.Lookup(ctx, key)
 }
 
-func AcceptCommand(key, requestFingerprint string, opening OpeningCommit) (CommandAcceptance, error) {
+func acceptCommand(key, requestFingerprint string, opening OpeningCommit) (CommandAcceptance, error) {
 	acceptance := CommandAcceptance{
 		Key:         key,
 		Fingerprint: requestFingerprint,

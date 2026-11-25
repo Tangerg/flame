@@ -57,7 +57,7 @@ type discoveryResult struct {
 	Message string   `json:"message"`
 }
 
-func NewDiscovery(withheld []toolcontract.Tool) (*Discovery, error) {
+func newDiscovery(withheld []toolcontract.Tool) (*Discovery, error) {
 	if len(withheld) == 0 {
 		return nil, errors.New("discovery: withheld Tools are required")
 	}

@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-var ErrInvalidBackoff = errors.New("retry backoff is invalid")
+var errInvalidBackoff = errors.New("retry backoff is invalid")
 
 // The zero value is unconfigured: a schedule with no floor would busy-spin.
 type Backoff struct {
@@ -25,14 +25,14 @@ func NewBackoff(base, maximum time.Duration) (Backoff, error) {
 
 func (b Backoff) Validate() error {
 	if b.base <= 0 || b.maximum < b.base {
-		return fmt.Errorf("%w: require 0 < base <= maximum", ErrInvalidBackoff)
+		return fmt.Errorf("%w: require 0 < base <= maximum", errInvalidBackoff)
 	}
 	return nil
 }
 
 func (b Backoff) Delay(failure int) (time.Duration, error) {
 	if failure <= 0 {
-		return 0, fmt.Errorf("%w: failure number must be positive", ErrInvalidBackoff)
+		return 0, fmt.Errorf("%w: failure number must be positive", errInvalidBackoff)
 	}
 	if err := b.Validate(); err != nil {
 		return 0, err

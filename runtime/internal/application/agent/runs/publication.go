@@ -304,7 +304,7 @@ func (t treePublisher) publishTreeBarrier(
 			return err
 		}
 		projection = prepared
-		commit, commitErr := NewTreeBarrierCommit(
+		commit, commitErr := newTreeBarrierCommit(
 			newRunCommitID(), projection.pending, projection.commits, barrier.Checkpoint(),
 		)
 		if commitErr != nil {

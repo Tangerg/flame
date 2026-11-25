@@ -21,7 +21,7 @@ func (r *Runtime) StartRun(ctx context.Context, in authoring.StartRun) (conversa
 	}
 	build := r.Script
 	if build == nil {
-		build = DefaultScript
+		build = defaultScript
 	}
 	script, err := buildScriptSafely(build, in.Message.Text)
 	if err != nil {
@@ -39,11 +39,6 @@ func (r *Runtime) StartRun(ctx context.Context, in authoring.StartRun) (conversa
 		return conversation.SegmentStream{}, fmt.Errorf("%w: %s", conversation.ErrSessionHasActiveRun, in.SessionID)
 	}
 	if err := session.requireRevisionCapacity(startRunRevisionChanges(session)); err != nil {
-		r.mu.Unlock()
-		return conversation.SegmentStream{}, err
-	}
-	fault, err := r.takeFaultLocked()
-	if err != nil {
 		r.mu.Unlock()
 		return conversation.SegmentStream{}, err
 	}
@@ -80,7 +75,7 @@ func (r *Runtime) StartRun(ctx context.Context, in authoring.StartRun) (conversa
 		r.mu.Unlock()
 		return conversation.SegmentStream{}, err
 	}
-	stream := r.bindSegmentLocked(ctx, run, segment, 0, 0, userItemID, fault)
+	stream := r.bindSegmentLocked(ctx, run, segment, 0, 0, userItemID)
 	r.recordOpeningLocked(in.CommandID, protocol.RunCommandStart, stream, run.sessionID)
 	r.mu.Unlock()
 
@@ -210,10 +205,6 @@ func (r *Runtime) activateResumeLocked(ctx context.Context, message *authoring.M
 	if err := session.requireRevisionCapacity(resumeRunRevisionChanges(session, message, len(answeredQuestions)+len(approvalEvents))); err != nil {
 		return conversation.SegmentStream{}, err
 	}
-	fault, err := r.takeFaultLocked()
-	if err != nil {
-		return conversation.SegmentStream{}, err
-	}
 	r.recordAnswersLocked(run, prepared.answers)
 	for _, block := range answeredQuestions {
 		persistBlock(session, run.id, block)
@@ -239,7 +230,7 @@ func (r *Runtime) activateResumeLocked(ctx context.Context, message *authoring.M
 	if err := r.emitAllLocked(run, approvalEvents); err != nil {
 		return conversation.SegmentStream{}, err
 	}
-	return r.bindSegmentLocked(ctx, run, segment, 0, 0, userItemID, fault), nil
+	return r.bindSegmentLocked(ctx, run, segment, 0, 0, userItemID), nil
 }
 
 func resumeRunRevisionChanges(session *sessionState, message *authoring.Message, itemEvents int) sessionRevisionChanges {

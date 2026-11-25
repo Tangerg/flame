@@ -44,7 +44,7 @@ type TerminalPlan struct {
 	checkpointRootID runsapp.MemberID
 }
 
-func NewTerminalPlan(
+func newTerminalPlan(
 	runs []rundomain.Replacement,
 	items []transcript.Replacement,
 	messages []chat.Message,

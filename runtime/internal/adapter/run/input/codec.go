@@ -16,7 +16,7 @@ import (
 	scoperun "github.com/Tangerg/scope/agent/run"
 )
 
-func EncodePrompt(prompt runs.Interrupt) (jsontext.Value, error) {
+func encodePrompt(prompt runs.Interrupt) (jsontext.Value, error) {
 	if err := prompt.Validate(); err != nil {
 		return nil, err
 	}

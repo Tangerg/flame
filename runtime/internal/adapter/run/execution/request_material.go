@@ -94,7 +94,7 @@ func (t *requestMaterial) observeInput(source modelCallSource, reportedTokens in
 	if prepared.estimatedTokens == 0 {
 		return nil
 	}
-	calibration, err := NewModelContextTokenCalibration(reportedTokens, prepared.estimatedTokens)
+	calibration, err := newModelContextTokenCalibration(reportedTokens, prepared.estimatedTokens)
 	if err != nil {
 		return err
 	}

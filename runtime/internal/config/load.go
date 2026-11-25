@@ -58,9 +58,9 @@ func Load(configDirectories []string) (Settings, error) {
 
 	// Viper applies FLAME_APIKEY over yaml `apiKey`; recover that source here so
 	// later composition cannot mistake a process-scoped secret for durable input.
-	apiKey := FileAPIKey(source.APIKey)
+	apiKey := fileAPIKey(source.APIKey)
 	if environmentKey := apiKeyEnvironment.Value(); environmentKey != "" {
-		apiKey = EnvironmentAPIKey(environmentKey)
+		apiKey = environmentAPIKey(environmentKey)
 	}
 
 	var offloadThreshold *int

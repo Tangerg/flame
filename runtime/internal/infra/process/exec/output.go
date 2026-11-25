@@ -50,7 +50,7 @@ func (s *Shell) Write(p []byte) (int, error) {
 		err = io.ErrShortWrite
 	}
 	if allowed < int64(len(p)) && err == nil {
-		err = ErrShellOutputLimit
+		err = errors.New("exec: shell output spool capacity reached; command stopped with retained output")
 	}
 	if err != nil {
 		s.outputErr = fmt.Errorf("exec: record shell output: %w", err)

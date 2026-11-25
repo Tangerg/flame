@@ -65,7 +65,7 @@ func Restore(invocation toolcontract.Invocation) (Continuation, bool, error) {
 	if err != nil {
 		return Continuation{}, true, fmt.Errorf("run input: restore prompt: %w", err)
 	}
-	canonicalPrompt, err := EncodePrompt(prompt)
+	canonicalPrompt, err := encodePrompt(prompt)
 	if err != nil {
 		return Continuation{}, true, fmt.Errorf("run input: normalize restored prompt: %w", err)
 	}
@@ -116,7 +116,7 @@ func Require(ctx context.Context, invocation toolcontract.Invocation, prompt run
 }
 
 func admitRequirement(ctx context.Context, prompt runs.Interrupt) (jsontext.Value, error) {
-	promptJSON, err := EncodePrompt(prompt)
+	promptJSON, err := encodePrompt(prompt)
 	if err != nil {
 		return nil, err
 	}
@@ -141,7 +141,7 @@ func restoredResolution(
 	if continued.Key != key {
 		return run.InterruptResolution{}, errors.New("run input: continuation addresses another request")
 	}
-	storedJSON, err := EncodePrompt(continued.Interrupt)
+	storedJSON, err := encodePrompt(continued.Interrupt)
 	if err != nil || !bytes.Equal(storedJSON, promptJSON) {
 		return run.InterruptResolution{}, errors.New("run input: prompt changed during continuation")
 	}

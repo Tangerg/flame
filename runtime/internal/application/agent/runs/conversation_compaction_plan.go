@@ -59,7 +59,7 @@ type ConversationCompactionStore interface {
 	ApplyCompaction(context.Context, ConversationCompactionPlan) error
 }
 
-func PlanConversationCompaction(sessionID identity.SessionID, compaction conversation.Compaction, current []run.Run) (ConversationCompactionPlan, error) {
+func planConversationCompaction(sessionID identity.SessionID, compaction conversation.Compaction, current []run.Run) (ConversationCompactionPlan, error) {
 	planned := make([]run.Replacement, len(current))
 	for index, value := range current {
 		replacement, err := value.Replace().RebaseConversation(compaction)

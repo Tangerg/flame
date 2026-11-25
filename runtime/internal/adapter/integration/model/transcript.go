@@ -167,7 +167,7 @@ func HeadTailCut(s string, kept int) (head, tailStart int) {
 	return head, max(head, tailStart)
 }
 
-func HeadTail(s string, limit int, marker func(elided int) string) string {
+func headTail(s string, limit int, marker func(elided int) string) string {
 	if limit <= 0 || len(s) <= limit {
 		return s
 	}
@@ -190,7 +190,7 @@ func HeadTail(s string, limit int, marker func(elided int) string) string {
 }
 
 func capText(s string, limit int) string {
-	return HeadTail(s, limit, func(elided int) string {
+	return headTail(s, limit, func(elided int) string {
 		return fmt.Sprintf("\n…[%d bytes elided for auxiliary model input]…\n", elided)
 	})
 }

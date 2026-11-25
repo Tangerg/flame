@@ -345,7 +345,7 @@ func (c *Segments) commitOpening(ctx context.Context, spec segmentSpec, routes *
 		return nil, err
 	}
 	if spec.CommandAcceptance != nil {
-		acceptance, err := AcceptCommand(spec.CommandAcceptance.Key, spec.CommandAcceptance.Fingerprint, opening)
+		acceptance, err := acceptCommand(spec.CommandAcceptance.Key, spec.CommandAcceptance.Fingerprint, opening)
 		if err != nil {
 			return nil, err
 		}
@@ -394,7 +394,7 @@ func (c *Segments) openingCommit(spec segmentSpec, ordered []*executorRoute, eve
 	commitID := newRunCommitID()
 	switch value := spec.Opening.(type) {
 	case rootOpening:
-		opening, err := NewAdmissionOpeningCommit(
+		opening, err := newAdmissionOpeningCommit(
 			commitID, value.draft(spec), value.SessionWrite, value.Actor, events,
 		)
 		return opening, c.publications.openings.CommitOpening, err
@@ -406,7 +406,7 @@ func (c *Segments) openingCommit(spec segmentSpec, ordered []*executorRoute, eve
 			}
 			resume.Runs = append(resume.Runs, *route.resumed)
 		}
-		opening, err := NewResumeOpeningCommit(commitID, resume, events)
+		opening, err := newResumeOpeningCommit(commitID, resume, events)
 		if err == nil && value.ResumeAcceptance != nil {
 			opening, err = opening.WithResumeAcceptance(*value.ResumeAcceptance)
 		}

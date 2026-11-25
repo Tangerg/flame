@@ -228,7 +228,7 @@ func (s *Handler) SubscribeRun(ctx context.Context, in protocol.SubscribeRunRequ
 	request := runs.SubscribeRequest{
 		RunID:              runID,
 		SegmentID:          segmentID,
-		Cursor:             strings.TrimPrefix(AfterEventIDFrom(ctx), protocol.IDPrefixEvent),
+		Cursor:             strings.TrimPrefix(afterEventIDFrom(ctx), protocol.IDPrefixEvent),
 		CallerCapabilities: caller,
 	}
 	var snapshot *protocol.SessionSnapshot

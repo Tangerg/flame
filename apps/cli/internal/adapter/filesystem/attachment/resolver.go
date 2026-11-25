@@ -29,9 +29,7 @@ const (
 )
 
 var (
-	ErrNotRegular      = errors.New("attachment is not a regular file")
-	ErrTooLarge        = errors.New("attachment is too large")
-	ErrUnsupportedType = errors.New("attachment must be text or an image")
+	errTooLarge = errors.New("attachment is too large")
 )
 
 type Resolver struct {
@@ -93,16 +91,16 @@ func attachmentOpenError(input string, maximumBytes int64, err error) error {
 	case errors.Is(err, filesystem.ErrChanged):
 		return fmt.Errorf("attachment: %q changed while it was being opened", input)
 	case errors.Is(err, filesystem.ErrNotRegular):
-		return fmt.Errorf("%w: %s", ErrNotRegular, input)
+		return fmt.Errorf("attachment is not a regular file: %s", input)
 	case errors.Is(err, filesystem.ErrFileTooLarge):
 		var limit filesystem.FileSizeLimitError
 		if errors.As(err, &limit) {
 			return fmt.Errorf(
 				"%w: %s is %s (limit %s)",
-				ErrTooLarge, input, formatByteSize(limit.Size), formatByteSize(maximumBytes),
+				errTooLarge, input, formatByteSize(limit.Size), formatByteSize(maximumBytes),
 			)
 		}
-		return fmt.Errorf("%w: %s exceeds %s", ErrTooLarge, input, formatByteSize(maximumBytes))
+		return fmt.Errorf("%w: %s exceeds %s", errTooLarge, input, formatByteSize(maximumBytes))
 	default:
 		return fmt.Errorf("attachment: open %q: %w", input, err)
 	}
@@ -124,7 +122,7 @@ func (r *Resolver) project(canonical string, info fs.FileInfo, header []byte) (a
 	format := attachmentFormatFor(canonical, header)
 	mimeType, kind := format.mime, format.kind
 	if kind == "" {
-		return authoring.Attachment{}, fmt.Errorf("%w: %s (%s)", ErrUnsupportedType, canonical, mimeType)
+		return authoring.Attachment{}, fmt.Errorf("attachment must be text or an image: %s (%s)", canonical, mimeType)
 	}
 	name := filepath.Base(canonical)
 	if relative, ok := r.relative(canonical); ok {

@@ -15,7 +15,7 @@ var (
 	)
 	remoteToolNameExpression = regexp.MustCompile(remoteToolNamePattern)
 
-	ErrInvalidRemoteToolName = errors.New("mcpserver: invalid remote tool name")
+	errInvalidRemoteToolName = errors.New("mcpserver: invalid remote tool name")
 )
 
 type RemoteToolName struct {
@@ -26,7 +26,7 @@ func ParseRemoteToolName(raw string) (RemoteToolName, error) {
 	if !remoteToolNameExpression.MatchString(raw) {
 		return RemoteToolName{}, fmt.Errorf(
 			"%w: %q must match %s and contain at most %d characters",
-			ErrInvalidRemoteToolName,
+			errInvalidRemoteToolName,
 			raw,
 			remoteToolNamePattern,
 			MaximumRemoteToolNameCharacters,
@@ -37,7 +37,7 @@ func ParseRemoteToolName(raw string) (RemoteToolName, error) {
 
 func (n RemoteToolName) Validate() error {
 	if !remoteToolNameExpression.MatchString(n.value) {
-		return fmt.Errorf("%w: zero or malformed value", ErrInvalidRemoteToolName)
+		return fmt.Errorf("%w: zero or malformed value", errInvalidRemoteToolName)
 	}
 	return nil
 }

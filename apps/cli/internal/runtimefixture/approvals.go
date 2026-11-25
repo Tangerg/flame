@@ -1,15 +1,12 @@
 package runtimefixture
 
 import (
-	"reflect"
-
 	"context"
 	"errors"
 	"fmt"
 	"slices"
 	"strings"
 
-	"github.com/Tangerg/flame/apps/cli/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 
@@ -195,41 +192,4 @@ func approvalRuleParts(approval conversation.Approval) (tool, subject string) {
 		subject = approval.Tool.Summary
 	}
 	return tool, strings.TrimSpace(subject)
-}
-
-func (r *Runtime) SetApprovalRule(ctx context.Context, request protocol.SetApprovalRuleRequest) error {
-	if err := context.Cause(ctx); err != nil {
-		return err
-	}
-	if err := protocol.ValidateWireTree(request); err != nil {
-		return err
-	}
-	source, err := mcp.ToolLabel(request.Tool)
-	if err != nil {
-		return err
-	}
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	name, found := r.ToolModelNames[source]
-	if !found {
-		return fmt.Errorf("fixture: tool source has no configured model name: %v", request.Tool)
-	}
-	workspaceDir := ""
-	if request.Scope == protocol.ApprovalRuleScopeWorkspace {
-		session := r.sessions[request.SessionID]
-		if session == nil {
-			return conversation.ErrSessionNotFound
-		}
-		workspaceDir = session.meta.Workspace.RepositoryRoot
-	}
-	for i := range r.rules {
-		stored := &r.rules[i]
-		if reflect.DeepEqual(stored.view.Tool, request.Tool) && stored.view.Scope == request.Scope && stored.view.Subject == request.Subject && stored.view.Dir == workspaceDir && stored.sessionID == request.SessionID {
-			stored.view.Decision = request.Decision
-			stored.view.ModelName = name
-			return nil
-		}
-	}
-	r.rules = append(r.rules, storedRule{view: protocol.ApprovalRule{ID: r.identities.next(ruleIdentity), Tool: request.Tool, ModelName: name, Scope: request.Scope, Dir: workspaceDir, Subject: request.Subject, Decision: request.Decision}, sessionID: request.SessionID})
-	return nil
 }

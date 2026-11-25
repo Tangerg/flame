@@ -16,7 +16,6 @@ type Limits struct {
 	MaxScriptBytes         int    `json:"maxScriptBytes"`
 	MaxTimeoutMillis       int    `json:"maxTimeoutMillis"`
 	RetainedBytesPerStream int    `json:"retainedBytesPerStream"`
-	CPUAndMemoryQuotas     bool   `json:"cpuAndMemoryQuotas"`
 }
 
 func (ExecuteInput) JSONSchemaConstraints() jsonschema.Constraints {

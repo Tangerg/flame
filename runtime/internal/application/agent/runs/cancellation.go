@@ -299,7 +299,7 @@ func (c *Cancellations) cancelWaitingChild(
 	if err != nil {
 		return CancelResult{}, err
 	}
-	request, err := NewWaitingSubtreeCancellationRequest(
+	request, err := newWaitingSubtreeCancellationRequest(
 		continuation,
 		plan.target.memberID,
 		cmd.Reason,

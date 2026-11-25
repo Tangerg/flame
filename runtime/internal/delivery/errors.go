@@ -13,7 +13,7 @@ type CapabilityGapError struct {
 	Requirements []protocol.CapabilityRequirement
 }
 
-func NewCapabilityGapError(requirements ...protocol.CapabilityRequirement) *CapabilityGapError {
+func newCapabilityGapError(requirements ...protocol.CapabilityRequirement) *CapabilityGapError {
 	slices.SortStableFunc(requirements, func(a, b protocol.CapabilityRequirement) int {
 		if a.Type != b.Type {
 			return cmp.Compare(requirementOrder(a.Type), requirementOrder(b.Type))

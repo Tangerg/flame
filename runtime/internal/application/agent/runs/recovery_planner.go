@@ -181,7 +181,7 @@ func (r *recoveryPlanner) plan() (RecoveryCommit, int, error) {
 	slices.SortFunc(r.commit.ToolInvocations, compareToolInvocationRecoveries)
 	slices.SortFunc(r.commit.PreservedSessionIDs, identity.SessionID.Compare)
 	slices.SortFunc(r.commit.DeleteCheckpointSessionIDs, identity.SessionID.Compare)
-	commit, err := NewRecoveryCommit(r.commit)
+	commit, err := newRecoveryCommit(r.commit)
 	if err != nil {
 		return RecoveryCommit{}, 0, err
 	}

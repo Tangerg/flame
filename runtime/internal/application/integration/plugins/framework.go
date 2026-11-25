@@ -87,7 +87,7 @@ func BackendServer(unit framehost.UnitID) (mcpserver.ServerName, error) {
 	return mcpserver.ParseServerName(value)
 }
 
-func RequirementSlot(contribution, requirement plugin.ContributionID) string {
+func requirementSlot(contribution, requirement plugin.ContributionID) string {
 	return contribution.String() + "/" + requirement.String()
 }
 
@@ -153,7 +153,7 @@ func capabilityContract(contract *plugincontract.Capability) (framehost.Contract
 	return framehost.NewPortableContract[any]("1", contract.Service())
 }
 
-func CapabilityPoint(contract *plugincontract.Capability) (framehost.Point[framevalue.JSON, any], error) {
+func capabilityPoint(contract *plugincontract.Capability) (framehost.Point[framevalue.JSON, any], error) {
 	value, err := capabilityContract(contract)
 	if err != nil {
 		return framehost.Point[framevalue.JSON, any]{}, err
@@ -161,7 +161,7 @@ func CapabilityPoint(contract *plugincontract.Capability) (framehost.Point[frame
 	return framehost.NewPortablePoint[framevalue.JSON](contract.Descriptor().Reference, "1", []byte(`{"type":"null"}`), value)
 }
 
-func DataPoint(contract *plugincontract.Point) (framehost.Point[framevalue.JSON, framevalue.JSON], error) {
+func portableDataPoint(contract *plugincontract.Point) (framehost.Point[framevalue.JSON, framevalue.JSON], error) {
 	if contract == nil {
 		return framehost.Point[framevalue.JSON, framevalue.JSON]{}, plugin.ErrInvalid
 	}
@@ -234,7 +234,7 @@ func (p frameworkProjection) capability(encoded framevalue.JSON) (framehost.Cont
 	if err != nil {
 		return framehost.ContractRef{}, err
 	}
-	point, err := CapabilityPoint(contract)
+	point, err := capabilityPoint(contract)
 	if err != nil {
 		return framehost.ContractRef{}, err
 	}
@@ -269,7 +269,7 @@ func (p frameworkProjection) backendUnit(declaration plugin.Declaration, server 
 			if err != nil {
 				return framehost.Unit{}, err
 			}
-			unit.Imports = append(unit.Imports, framehost.ImportDeclaration{Slot: RequirementSlot(contribution.ID, requirement.ID), Contract: ref, Optional: requirement.Optional})
+			unit.Imports = append(unit.Imports, framehost.ImportDeclaration{Slot: requirementSlot(contribution.ID, requirement.ID), Contract: ref, Optional: requirement.Optional})
 		}
 	}
 	return framehost.Unit{Declaration: unit}, nil
@@ -319,7 +319,7 @@ func dataPointDeclarations(encoded framevalue.JSON) (framehost.Point[framevalue.
 	if err != nil {
 		return point, value, err
 	}
-	point, err = DataPoint(contract)
+	point, err = portableDataPoint(contract)
 	if err != nil {
 		return point, value, err
 	}
@@ -332,7 +332,7 @@ func ContributionSource(binding ContributionBinding) (framehost.ExportRef, error
 	if err != nil {
 		return framehost.ExportRef{}, err
 	}
-	point, err := CapabilityPoint(contract)
+	point, err := capabilityPoint(contract)
 	if err != nil {
 		return framehost.ExportRef{}, err
 	}

@@ -46,7 +46,7 @@ type ForkBoundary struct {
 	RunID    identity.RunID
 }
 
-func ResolveForkBoundary(msgs []chat.Message, runs []run.Run, fromRunID identity.RunID) (ForkBoundary, error) {
+func resolveForkBoundary(msgs []chat.Message, runs []run.Run, fromRunID identity.RunID) (ForkBoundary, error) {
 	for _, run := range runs {
 		if !run.State().IsTerminal() || !run.Lineage().IsRoot() {
 			continue
@@ -86,7 +86,7 @@ func (c *Coordinator) PrepareFork(ctx context.Context, spec ForkSpec) (Creation,
 	if err != nil {
 		return Creation{}, err
 	}
-	boundary, err := ResolveForkBoundary(source.Messages, source.Runs, spec.FromRunID)
+	boundary, err := resolveForkBoundary(source.Messages, source.Runs, spec.FromRunID)
 	if err != nil {
 		return Creation{}, err
 	}

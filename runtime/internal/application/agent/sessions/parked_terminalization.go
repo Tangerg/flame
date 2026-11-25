@@ -59,7 +59,7 @@ func (p parkedRunTerminalization) build() (TerminalPlan, error) {
 			p.pending.RootRunID,
 		)
 	}
-	plan, err := NewTerminalPlan(terminalRuns, items, conversationMessages, root.MemberID)
+	plan, err := newTerminalPlan(terminalRuns, items, conversationMessages, root.MemberID)
 	if err != nil {
 		return TerminalPlan{}, err
 	}

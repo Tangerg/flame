@@ -14,7 +14,7 @@ import (
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
-func NewRecoveryCommit(input RecoveryCommitInput) (RecoveryCommit, error) {
+func newRecoveryCommit(input RecoveryCommitInput) (RecoveryCommit, error) {
 	state := cloneRecoveryCommitInput(input)
 	commit := RecoveryCommit{state: state}
 	if err := commit.Validate(); err != nil {

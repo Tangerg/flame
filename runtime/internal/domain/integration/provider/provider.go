@@ -14,7 +14,6 @@ import (
 var (
 	errIDRequired      = errors.New("provider: id is required")
 	errIDInvalid       = errors.New("provider: id is invalid")
-	ErrAPIKeyRequired  = errors.New("provider: API key is required")
 	errAPIKeyInvalid   = errors.New("provider: API key cannot have surrounding whitespace or contain control characters")
 	errBaseURLInvalid  = errors.New("provider: base URL must be an absolute HTTP(S) URL without credentials, query, or fragment")
 	errChangeCorrupted = errors.New("provider: change is corrupted")
@@ -27,7 +26,7 @@ type APIKey struct {
 
 func NewAPIKey(value string) (APIKey, error) {
 	if strings.TrimSpace(value) == "" {
-		return APIKey{}, ErrAPIKeyRequired
+		return APIKey{}, errors.New("provider: API key is required")
 	}
 	if strings.TrimSpace(value) != value || strings.IndexFunc(value, unicode.IsControl) >= 0 {
 		return APIKey{}, errAPIKeyInvalid

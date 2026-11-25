@@ -23,8 +23,8 @@ var (
 		MaximumServerNameCharacters-1,
 	))
 
-	ErrInvalidServerName = errors.New("mcpserver: invalid server name")
-	ErrInvalidOrigin     = errors.New("mcpserver: invalid server origin")
+	errInvalidServerName = errors.New("mcpserver: invalid server name")
+	errInvalidOrigin     = errors.New("mcpserver: invalid server origin")
 )
 
 func ServerNamePattern() string { return serverNameExpression.String() }
@@ -37,7 +37,7 @@ func ParseServerName(raw string) (ServerName, error) {
 	if !serverNameExpression.MatchString(raw) {
 		return ServerName{}, fmt.Errorf(
 			"%w: must match %s and contain at most %d characters",
-			ErrInvalidServerName,
+			errInvalidServerName,
 			ServerNamePattern(),
 			MaximumServerNameCharacters,
 		)
@@ -62,7 +62,7 @@ func (n *ServerName) UnmarshalText(text []byte) error {
 
 func (n ServerName) Validate() error {
 	if n.text == "" {
-		return ErrInvalidServerName
+		return errInvalidServerName
 	}
 	return nil
 }
@@ -83,7 +83,7 @@ func UserOrigin() Origin { return Origin{kind: OriginUser} }
 
 func InstallationOrigin(installation identity.InstallationID) (Origin, error) {
 	if err := installation.Validate(); err != nil {
-		return Origin{}, fmt.Errorf("%w: %w", ErrInvalidOrigin, err)
+		return Origin{}, fmt.Errorf("%w: %w", errInvalidOrigin, err)
 	}
 	return Origin{kind: OriginInstallation, installation: installation}, nil
 }
@@ -103,7 +103,7 @@ func (o Origin) rank() int {
 
 func (o Origin) Validate() error {
 	if o.kind == "" {
-		return fmt.Errorf("%w: origin is unset", ErrInvalidOrigin)
+		return fmt.Errorf("%w: origin is unset", errInvalidOrigin)
 	}
 	return nil
 }
@@ -174,13 +174,13 @@ func InstallationSource(installation identity.InstallationID, release, authority
 		return Source{}, fmt.Errorf("mcpserver: installation source: %w", err)
 	}
 	if err := release.Validate(); err != nil {
-		return Source{}, fmt.Errorf("%w: release: %w", ErrInvalidOrigin, err)
+		return Source{}, fmt.Errorf("%w: release: %w", errInvalidOrigin, err)
 	}
 	if err := authority.Validate(); err != nil {
-		return Source{}, fmt.Errorf("%w: authority: %w", ErrInvalidOrigin, err)
+		return Source{}, fmt.Errorf("%w: authority: %w", errInvalidOrigin, err)
 	}
 	if err := recipient.Validate(); err != nil {
-		return Source{}, fmt.Errorf("%w: credential recipient: %w", ErrInvalidOrigin, err)
+		return Source{}, fmt.Errorf("%w: credential recipient: %w", errInvalidOrigin, err)
 	}
 	return Source{origin: origin, release: release, authority: authority, recipient: recipient}, nil
 }

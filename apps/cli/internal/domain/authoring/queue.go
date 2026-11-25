@@ -12,11 +12,9 @@ import (
 )
 
 var (
-	ErrEntryNotFound     = errors.New("prompt queue: entry not found")
-	ErrEntryHeld         = errors.New("prompt queue: entry is already held")
-	ErrEntryDispatching  = errors.New("prompt queue: entry is being dispatched")
-	ErrMoveUnavailable   = errors.New("prompt queue: move unavailable")
-	ErrSessionIDRequired = errors.New("prompt queue: session id is empty")
+	ErrEntryNotFound    = errors.New("prompt queue: entry not found")
+	errEntryDispatching = errors.New("prompt queue: entry is being dispatched")
+	ErrMoveUnavailable  = errors.New("prompt queue: move unavailable")
 )
 
 type QueueEntry struct {
@@ -269,7 +267,7 @@ func (q *Queue) Hold(sessionID string, id QueueEntryID) error {
 		return err
 	}
 	if entry.Held {
-		return ErrEntryHeld
+		return errors.New("prompt queue: entry is already held")
 	}
 	entry.Held = true
 	return nil
@@ -295,7 +293,7 @@ func (q *Queue) waitingEntry(sessionID string, id QueueEntryID) (*QueueEntry, er
 		return nil, ErrEntryNotFound
 	}
 	if dispatching, exists := q.dispatching[sessionID]; exists && dispatching == id {
-		return nil, ErrEntryDispatching
+		return nil, errEntryDispatching
 	}
 	return &entries[index], nil
 }
@@ -311,7 +309,7 @@ func (q *Queue) Update(sessionID string, id QueueEntryID, message Message, comma
 		return err
 	}
 	if dispatching, exists := q.dispatching[sessionID]; exists && dispatching == id {
-		return ErrEntryDispatching
+		return errEntryDispatching
 	}
 	if q.entries[sessionID][index].CommandID == commandID {
 		return errors.New("prompt queue: an edit requires a new command identity")
@@ -363,7 +361,7 @@ func (q *Queue) Remove(sessionID string, id QueueEntryID) (QueueEntry, error) {
 		return QueueEntry{}, ErrEntryNotFound
 	}
 	if dispatching, exists := q.dispatching[sessionID]; exists && dispatching == id {
-		return QueueEntry{}, ErrEntryDispatching
+		return QueueEntry{}, errEntryDispatching
 	}
 	removed := cloneEntry(entries[index])
 	q.removeAt(sessionID, index)
@@ -401,7 +399,7 @@ func (q *Queue) Promote(sessionID string, id QueueEntryID) error {
 	target := 0
 	if dispatching, exists := q.dispatching[sessionID]; exists {
 		if entries[from].ID == dispatching {
-			return ErrEntryDispatching
+			return errEntryDispatching
 		}
 		target = 1
 	}
@@ -454,7 +452,7 @@ func validateEntry(commandID CommandID, sessionID string, message Message, optio
 		return fmt.Errorf("prompt queue: %w", err)
 	}
 	if err := protocol.ValidateSessionID(sessionID); err != nil {
-		return fmt.Errorf("%w: %w", ErrSessionIDRequired, err)
+		return fmt.Errorf("prompt queue: session id is empty: %w", err)
 	}
 	if err := message.Validate(); err != nil {
 		return fmt.Errorf("prompt queue: %w", err)

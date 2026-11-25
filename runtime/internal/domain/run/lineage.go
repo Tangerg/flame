@@ -7,7 +7,7 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 )
 
-var ErrInvalidLineage = errors.New("run: invalid lineage")
+var errInvalidLineage = errors.New("run: invalid lineage")
 
 type Lineage struct {
 	spawnedByItemID identity.ItemID
@@ -31,7 +31,7 @@ func (l Lineage) RootRunID() identity.RunID { return l.rootRunID }
 
 func (l Lineage) Validate(runID identity.RunID) error {
 	if err := runID.Validate(); err != nil {
-		return fmt.Errorf("%w: %w", ErrInvalidLineage, err)
+		return fmt.Errorf("%w: %w", errInvalidLineage, err)
 	}
 	if err := l.validateShape(); err != nil {
 		return err
@@ -40,9 +40,9 @@ func (l Lineage) Validate(runID identity.RunID) error {
 	case l.IsRoot():
 		return nil
 	case l.parentRunID == runID:
-		return fmt.Errorf("%w: child run %q is its own parent", ErrInvalidLineage, runID)
+		return fmt.Errorf("%w: child run %q is its own parent", errInvalidLineage, runID)
 	case l.rootRunID == runID:
-		return fmt.Errorf("%w: child run %q is its own root", ErrInvalidLineage, runID)
+		return fmt.Errorf("%w: child run %q is its own root", errInvalidLineage, runID)
 	default:
 		return nil
 	}
@@ -53,16 +53,16 @@ func (l Lineage) validateShape() error {
 		return nil
 	}
 	if l.spawnedByItemID.IsZero() || l.parentRunID.IsZero() || l.rootRunID.IsZero() {
-		return fmt.Errorf("%w: a child requires spawnedByItemId, parentRunId, and rootRunId together", ErrInvalidLineage)
+		return fmt.Errorf("%w: a child requires spawnedByItemId, parentRunId, and rootRunId together", errInvalidLineage)
 	}
 	if err := l.spawnedByItemID.Validate(); err != nil {
-		return fmt.Errorf("%w: spawned-by %w", ErrInvalidLineage, err)
+		return fmt.Errorf("%w: spawned-by %w", errInvalidLineage, err)
 	}
 	if err := l.parentRunID.Validate(); err != nil {
-		return fmt.Errorf("%w: parent %w", ErrInvalidLineage, err)
+		return fmt.Errorf("%w: parent %w", errInvalidLineage, err)
 	}
 	if err := l.rootRunID.Validate(); err != nil {
-		return fmt.Errorf("%w: root %w", ErrInvalidLineage, err)
+		return fmt.Errorf("%w: root %w", errInvalidLineage, err)
 	}
 	return nil
 }

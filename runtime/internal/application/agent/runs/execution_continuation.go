@@ -22,7 +22,7 @@ func (r WaitingSubtreeCancellationRequest) executorRef() ExecutorRef {
 	return ExecutorRef{SessionID: r.continuation.SessionID, ExecutorID: r.continuation.ExecutorID}
 }
 
-func NewWaitingSubtreeCancellationRequest(
+func newWaitingSubtreeCancellationRequest(
 	continuation ExecutionContinuation,
 	targetMemberID string,
 	reason string,

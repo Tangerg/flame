@@ -238,7 +238,7 @@ func capturedRequirement(root plugin.Snapshot, declaration plugin.Contribution, 
 			continue
 		}
 		for _, slot := range unit.Imports {
-			if slot.Slot == RequirementSlot(declaration.ID, required.ID) {
+			if slot.Slot == requirementSlot(declaration.ID, required.ID) {
 				chosen, found = slot, true
 				break
 			}
@@ -301,7 +301,7 @@ func (c requirementCatalog) plan(ctx context.Context, host framehost.Host, root 
 				continue
 			}
 			for _, required := range contribution.Requires {
-				choice := framehost.BindingChoice{Unit: current, Slot: RequirementSlot(contribution.ID, required.ID), Providers: []framehost.ExportRef{}}
+				choice := framehost.BindingChoice{Unit: current, Slot: requirementSlot(contribution.ID, required.ID), Providers: []framehost.ExportRef{}}
 				path := next.path + current.String() + " requires " + choice.Slot
 				providers, err := c.candidates(required)
 				if err != nil {

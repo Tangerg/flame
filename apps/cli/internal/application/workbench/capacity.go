@@ -8,7 +8,7 @@ type Capacity struct {
 	value int
 }
 
-func NewCapacity(value int) (Capacity, error) {
+func newCapacity(value int) (Capacity, error) {
 	if value <= 0 {
 		return Capacity{}, errors.New("workbench capacity is not positive")
 	}
@@ -24,7 +24,7 @@ func (c Capacity) Validate() error {
 
 func resolveCapacity(configured *Capacity, fallback int) (int, error) {
 	if configured == nil {
-		defaultCapacity, err := NewCapacity(fallback)
+		defaultCapacity, err := newCapacity(fallback)
 		if err != nil {
 			return 0, err
 		}

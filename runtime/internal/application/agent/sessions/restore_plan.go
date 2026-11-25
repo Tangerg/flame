@@ -16,7 +16,7 @@ type RestorePlan struct {
 	retirement         *ResourceRetirement
 }
 
-func NewRestorePlan(
+func newRestorePlan(
 	snapshot Snapshot,
 	sessionReplacement session.Replacement,
 	planReplacement *plan.Replacement,

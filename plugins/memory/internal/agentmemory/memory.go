@@ -58,7 +58,7 @@ var ErrNotVisible = errors.New("agentmemory: item is not visible")
 
 var ErrTargetFull = errors.New("agentmemory: target is full")
 
-var ErrInvalidRevision = errors.New("agentmemory: revision must be a positive exact integer")
+var errInvalidRevision = errors.New("agentmemory: revision must be a positive exact integer")
 
 var ErrRevisionConflict = errors.New("agentmemory: item revision changed")
 

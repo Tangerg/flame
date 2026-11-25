@@ -214,7 +214,7 @@ func (s *Handler) subscribedTopics(requested []protocol.RuntimeTopic) (map[proto
 	topics := make(map[protocol.RuntimeTopic]bool, len(requested))
 	for _, topic := range requested {
 		if !slices.Contains(advertised, topic) {
-			return nil, NewCapabilityGapError(protocol.CapabilityRequirement{
+			return nil, newCapabilityGapError(protocol.CapabilityRequirement{
 				Type: protocol.RequirementRuntimeTopic, Name: string(topic),
 			})
 		}

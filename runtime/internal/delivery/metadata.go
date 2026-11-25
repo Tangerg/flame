@@ -32,7 +32,7 @@ func withAfterEventID(ctx context.Context, eventID string) context.Context {
 	return context.WithValue(ctx, afterEventIDKey{}, eventID)
 }
 
-func AfterEventIDFrom(ctx context.Context) string {
+func afterEventIDFrom(ctx context.Context) string {
 	eventID, _ := ctx.Value(afterEventIDKey{}).(string)
 	return eventID
 }

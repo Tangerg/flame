@@ -30,7 +30,6 @@ var (
 	ErrSessionBusy          = errors.New("session is busy")
 	ErrPluginChanged        = errors.New("plugin changed while the run was being prepared")
 	ErrRevisionConflict     = errors.New("revision conflict")
-	ErrEventConflict        = errors.New("event identity conflict")
 	ErrCommandInProgress    = errors.New("command is still committing")
 	ErrCommandConflict      = errors.New("command identity conflict")
 	ErrCommandStoreMismatch = errors.New("command belongs to another runtime idempotency store")

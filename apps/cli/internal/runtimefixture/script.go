@@ -64,11 +64,11 @@ func finishStep(finish Finish) Step {
 	return Step{Delay: beat, Finish: &finish}
 }
 
-func Emit(delay time.Duration, event conversation.Event) Step {
+func emitStep(delay time.Duration, event conversation.Event) Step {
 	return Step{Delay: delay, Event: event}
 }
 
-func ReplacePlan(delay time.Duration, steps []protocol.PlanStep) Step {
+func replacePlanStep(delay time.Duration, steps []protocol.PlanStep) Step {
 	cloned := slices.Clone(steps)
 	var err error
 	for index, step := range cloned {
@@ -283,7 +283,7 @@ const (
 	silentCompletionDelay = 3 * beat
 )
 
-func DefaultScript(_ string) Script {
+func defaultScript(_ string) Script {
 	return newDefaultScenario().script()
 }
 
@@ -339,7 +339,7 @@ func newDefaultScenario() defaultScenario {
 
 func (d defaultScenario) prelude() []Step {
 	prelude := make([]Step, 0, 32)
-	prelude = append(prelude, ReplacePlan(beat, []protocol.PlanStep{
+	prelude = append(prelude, replacePlanStep(beat, []protocol.PlanStep{
 		{ID: "1", Description: "Reproduce the flake", Status: protocol.PlanStatusInProgress},
 		{ID: "2", Description: "Find what the test is really waiting for", Status: protocol.PlanStatusPending},
 		{ID: "3", Description: "Replace the sleep and re-run", Status: protocol.PlanStatusPending},
@@ -348,7 +348,7 @@ func (d defaultScenario) prelude() []Step {
 	prelude = append(prelude, shellTool("tool_1",
 		"go test ./internal/store -run TestCacheExpiry -count=5",
 		d.testOutput, 3*time.Second+412*time.Millisecond)...)
-	prelude = append(prelude, ReplacePlan(beat, []protocol.PlanStep{
+	prelude = append(prelude, replacePlanStep(beat, []protocol.PlanStep{
 		{ID: "1", Description: "Reproduce the flake", Status: protocol.PlanStatusCompleted},
 		{ID: "2", Description: "Find what the test is really waiting for", Status: protocol.PlanStatusCompleted},
 		{ID: "3", Description: "Replace the sleep and re-run", Status: protocol.PlanStatusInProgress},
@@ -383,7 +383,7 @@ func (d defaultScenario) approved() []Step {
 
 func (d defaultScenario) denied() []Step {
 	denied := make([]Step, 0, 16)
-	denied = append(denied, Emit(beat, conversation.BlockCompleted{Block: conversation.Block{
+	denied = append(denied, emitStep(beat, conversation.BlockCompleted{Block: conversation.Block{
 		ID: "note_1", Kind: conversation.BlockNotice, Text: "Edit declined — " + demoTestFile + " left unchanged.",
 	}}))
 	denied = append(denied, stream("msg_3", conversation.BlockAssistant, d.declined)...)
@@ -424,11 +424,11 @@ func (d defaultScenario) script() Script {
 }
 
 func stream(id string, kind conversation.BlockKind, text string) []Step {
-	steps := []Step{Emit(beat, conversation.BlockStarted{Block: conversation.Block{ID: id, Kind: kind}})}
+	steps := []Step{emitStep(beat, conversation.BlockStarted{Block: conversation.Block{ID: id, Kind: kind}})}
 	for _, w := range words(text) {
-		steps = append(steps, Emit(tick, conversation.BlockDelta{BlockID: id, Text: w}))
+		steps = append(steps, emitStep(tick, conversation.BlockDelta{BlockID: id, Text: w}))
 	}
-	return append(steps, Emit(0, conversation.BlockCompleted{Block: conversation.Block{ID: id, Kind: kind, Text: text}}))
+	return append(steps, emitStep(0, conversation.BlockCompleted{Block: conversation.Block{ID: id, Kind: kind, Text: text}}))
 }
 
 func shellTool(id, command, output string, d time.Duration) []Step {
@@ -440,17 +440,17 @@ func shellTool(id, command, output string, d time.Duration) []Step {
 		Kind: builtin.CategoryShell, Name: string(builtin.Shell), Summary: command, Command: command,
 		Status: conversation.ToolOK, Output: output, Duration: d, ExitCode: &exitCode,
 	}}
-	steps := []Step{Emit(beat, conversation.BlockStarted{Block: running})}
+	steps := []Step{emitStep(beat, conversation.BlockStarted{Block: running})}
 	for _, chunk := range strings.SplitAfter(output, "\n") {
 		if chunk != "" {
-			steps = append(steps, Emit(outputChunkDelay, conversation.BlockDelta{BlockID: id, Text: chunk}))
+			steps = append(steps, emitStep(outputChunkDelay, conversation.BlockDelta{BlockID: id, Text: chunk}))
 		}
 	}
 	completionDelay := silentCompletionDelay
 	if output != "" {
 		completionDelay = beat
 	}
-	return append(steps, Emit(completionDelay, conversation.BlockCompleted{Block: done}))
+	return append(steps, emitStep(completionDelay, conversation.BlockCompleted{Block: done}))
 }
 
 func words(text string) []string {

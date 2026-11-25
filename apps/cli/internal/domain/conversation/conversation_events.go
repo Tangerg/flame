@@ -14,11 +14,11 @@ func (c *Conversation) ApplyRunEvent(envelope RunEvent) (EventAcceptance, error)
 	newStreamSegment := c.segmentID != streamSegmentID
 	if newStreamSegment {
 		if _, ok := envelope.Event.(SegmentStarted); !ok {
-			return EventAcceptance{}, fmt.Errorf("%w: event stream segment %s does not match active stream segment %s", ErrInvalidTransition, streamSegmentID, c.segmentID)
+			return EventAcceptance{}, fmt.Errorf("%w: event stream segment %s does not match active stream segment %s", errInvalidTransition, streamSegmentID, c.segmentID)
 		}
 	} else if known, duplicate := c.seen[envelope.EventID]; duplicate {
 		if !known.Equal(envelope) {
-			return EventAcceptance{}, fmt.Errorf("%w: event %s changed on replay", ErrEventConflict, envelope.EventID)
+			return EventAcceptance{}, fmt.Errorf("event identity conflict: event %s changed on replay", envelope.EventID)
 		}
 		return EventAcceptance{}, nil
 	}
@@ -53,7 +53,7 @@ func (c *Conversation) alreadyProjected(envelope RunEvent) (bool, error) {
 	if item, ok := event.(PlanChanged); ok {
 		state, stateErr := committedPlanState(&item.Plan)
 		if stateErr != nil {
-			return false, fmt.Errorf("%w: %w", ErrInvalidTransition, stateErr)
+			return false, fmt.Errorf("%w: %w", errInvalidTransition, stateErr)
 		}
 		// The Runtime repeats the final Plan before segment.finished and persists a
 		// revision before publishing it, so a snapshot may already hold it.
@@ -145,18 +145,18 @@ func (c *Conversation) applyRootSegmentStarted(run, previous Run, exists bool) e
 		previousUsage = Usage{}
 	case Waiting:
 		if c.runID != run.ID {
-			return fmt.Errorf("%w: cannot resume %s while %s is waiting", ErrInvalidTransition, run.ID, c.runID)
+			return fmt.Errorf("%w: cannot resume %s while %s is waiting", errInvalidTransition, run.ID, c.runID)
 		}
 	case Running:
 		if c.runID != "" && (!exists || previous.Status == protocol.RunStatusRunning) {
-			return fmt.Errorf("%w: cannot start root segment while %s is running", ErrInvalidTransition, c.runID)
+			return fmt.Errorf("%w: cannot start root segment while %s is running", errInvalidTransition, c.runID)
 		}
 	}
 	if c.runID != "" && c.runID != run.ID {
-		return fmt.Errorf("%w: root run changed from %s to %s", ErrInvalidTransition, c.runID, run.ID)
+		return fmt.Errorf("%w: root run changed from %s to %s", errInvalidTransition, c.runID, run.ID)
 	}
 	if err := validateUsageProgress(previousUsage, run.Usage); err != nil {
-		return fmt.Errorf("%w: root segment started: %w", ErrInvalidTransition, err)
+		return fmt.Errorf("%w: root segment started: %w", errInvalidTransition, err)
 	}
 	c.runID = run.ID
 	c.starting = false
@@ -166,20 +166,20 @@ func (c *Conversation) applyRootSegmentStarted(run, previous Run, exists bool) e
 
 func (c *Conversation) applyChildSegmentStarted(run, previous Run, exists bool) error {
 	if c.runID == "" || run.Lineage.RootRunID() != c.runID {
-		return fmt.Errorf("%w: child run %s has no active root", ErrInvalidTransition, run.ID)
+		return fmt.Errorf("%w: child run %s has no active root", errInvalidTransition, run.ID)
 	}
 	if _, parentExists := c.runs[run.Lineage.ParentRunID()]; !parentExists {
-		return fmt.Errorf("%w: child run %s has unknown parent %s", ErrInvalidTransition, run.ID, run.Lineage.ParentRunID())
+		return fmt.Errorf("%w: child run %s has unknown parent %s", errInvalidTransition, run.ID, run.Lineage.ParentRunID())
 	}
 	if exists && previous.Lineage != run.Lineage {
-		return fmt.Errorf("%w: child run %s changed lineage", ErrInvalidTransition, run.ID)
+		return fmt.Errorf("%w: child run %s changed lineage", errInvalidTransition, run.ID)
 	}
 	if exists && previous.Status == protocol.RunStatusRunning {
-		return fmt.Errorf("%w: child run %s started twice", ErrInvalidTransition, run.ID)
+		return fmt.Errorf("%w: child run %s started twice", errInvalidTransition, run.ID)
 	}
 	if exists {
 		if err := validateUsageProgress(previous.Usage, run.Usage); err != nil {
-			return fmt.Errorf("%w: child segment started: %w", ErrInvalidTransition, err)
+			return fmt.Errorf("%w: child segment started: %w", errInvalidTransition, err)
 		}
 	}
 	return nil
@@ -199,24 +199,24 @@ func (c *Conversation) applyBlockDelta(runID string, event BlockDelta) error {
 	key := BlockKey(runID, event.BlockID)
 	at, ok := c.index[key]
 	if !ok {
-		return fmt.Errorf("%w: %s", ErrUnknownBlock, event.BlockID)
+		return fmt.Errorf("%w: %s", errUnknownBlock, event.BlockID)
 	}
 	if c.blocks[at].Status != BlockStatusRunning {
-		return fmt.Errorf("%w: block %s is already complete", ErrInvalidTransition, event.BlockID)
+		return fmt.Errorf("%w: block %s is already complete", errInvalidTransition, event.BlockID)
 	}
 	block := &c.blocks[at]
 	switch block.Kind {
 	case BlockAssistant, BlockReasoning:
 		stream, err := c.textStreams[key].Append(event)
 		if err != nil {
-			return fmt.Errorf("%w: block %s: %w", ErrInvalidTransition, event.BlockID, err)
+			return fmt.Errorf("%w: block %s: %w", errInvalidTransition, event.BlockID, err)
 		}
 		c.textStreams[key] = stream
 		block.Text = stream.String()
 	case BlockTool:
 		block.Tool.Output += event.Text
 	default:
-		return fmt.Errorf("%w: block %s of kind %s cannot stream", ErrInvalidTransition, event.BlockID, block.Kind)
+		return fmt.Errorf("%w: block %s of kind %s cannot stream", errInvalidTransition, event.BlockID, block.Kind)
 	}
 	return nil
 }
@@ -228,11 +228,11 @@ func (c *Conversation) applyToolArgumentsDelta(runID string, event ToolArguments
 	key := BlockKey(runID, event.BlockID)
 	at, exists := c.index[key]
 	if !exists {
-		return fmt.Errorf("%w: %s", ErrUnknownBlock, event.BlockID)
+		return fmt.Errorf("%w: %s", errUnknownBlock, event.BlockID)
 	}
 	block := c.blocks[at]
 	if block.Status != BlockStatusRunning || block.Kind != BlockTool {
-		return fmt.Errorf("%w: block %s cannot stream tool arguments", ErrInvalidTransition, event.BlockID)
+		return fmt.Errorf("%w: block %s cannot stream tool arguments", errInvalidTransition, event.BlockID)
 	}
 	return nil
 }
@@ -254,7 +254,7 @@ func (c *Conversation) applyRunProgress(runID string, event RunProgress) error {
 		usage.Steps = *event.Step
 	}
 	if err := validateUsageProgress(run.Usage, usage); err != nil {
-		return fmt.Errorf("%w: run progress: %w", ErrInvalidTransition, err)
+		return fmt.Errorf("%w: run progress: %w", errInvalidTransition, err)
 	}
 	run.Usage = usage
 	c.runs[runID] = run
@@ -287,7 +287,7 @@ func answersQuestion(current, completed Block) bool {
 
 func (c *Conversation) applyPlanChanged(runID string, event PlanChanged) error {
 	if runID != c.runID {
-		return fmt.Errorf("%w: child run %s cannot change session plan", ErrInvalidTransition, runID)
+		return fmt.Errorf("%w: child run %s cannot change session plan", errInvalidTransition, runID)
 	}
 	if err := c.requireRunRunning(runID, "change the plan"); err != nil {
 		return err
@@ -295,7 +295,7 @@ func (c *Conversation) applyPlanChanged(runID string, event PlanChanged) error {
 	if event.Plan.SessionID != c.runs[runID].SessionID {
 		return fmt.Errorf(
 			"%w: plan belongs to session %q, want %q",
-			ErrInvalidTransition,
+			errInvalidTransition,
 			event.Plan.SessionID,
 			c.runs[runID].SessionID,
 		)
@@ -310,13 +310,13 @@ func (c *Conversation) applySegmentFinished(runID string, event SegmentFinished)
 	}
 	previous := c.runs[runID]
 	if event.Run.ID != runID {
-		return fmt.Errorf("%w: segment of run %s finished run %s", ErrInvalidTransition, runID, event.Run.ID)
+		return fmt.Errorf("%w: segment of run %s finished run %s", errInvalidTransition, runID, event.Run.ID)
 	}
 	if event.Run.Lineage != previous.Lineage {
-		return fmt.Errorf("%w: run %s changed lineage", ErrInvalidTransition, runID)
+		return fmt.Errorf("%w: run %s changed lineage", errInvalidTransition, runID)
 	}
 	if err := validateUsageProgress(previous.Usage, event.Run.Usage); err != nil {
-		return fmt.Errorf("%w: segment finished: %w", ErrInvalidTransition, err)
+		return fmt.Errorf("%w: segment finished: %w", errInvalidTransition, err)
 	}
 	var err error
 	if event.Run.Status == protocol.RunStatusFinished {
@@ -338,7 +338,7 @@ func (c *Conversation) parkRun(runID string, interrupts []Interrupt) error {
 	if len(interrupts) == 0 {
 		if runID == c.runID {
 			if err := ValidateInterrupts(c.interrupts); err != nil {
-				return fmt.Errorf("%w: root run suspended without a valid tree interrupt: %w", ErrInvalidTransition, err)
+				return fmt.Errorf("%w: root run suspended without a valid tree interrupt: %w", errInvalidTransition, err)
 			}
 		}
 		return nil
@@ -347,15 +347,15 @@ func (c *Conversation) parkRun(runID string, interrupts []Interrupt) error {
 		itemID := InterruptItemID(interrupt)
 		at, exists := c.index[BlockKey(runID, itemID)]
 		if !exists {
-			return fmt.Errorf("%w: interrupt references unknown item %s", ErrInvalidTransition, itemID)
+			return fmt.Errorf("%w: interrupt references unknown item %s", errInvalidTransition, itemID)
 		}
 		if err := validateInterruptItem(interrupt, c.blocks[at]); err != nil {
-			return fmt.Errorf("%w: %w", ErrInvalidTransition, err)
+			return fmt.Errorf("%w: %w", errInvalidTransition, err)
 		}
 	}
 	pending := append(CloneInterrupts(c.interrupts), CloneInterrupts(interrupts)...)
 	if err := ValidateInterrupts(pending); err != nil {
-		return fmt.Errorf("%w: tree interrupt set: %w", ErrInvalidTransition, err)
+		return fmt.Errorf("%w: tree interrupt set: %w", errInvalidTransition, err)
 	}
 	c.interrupts = pending
 	return nil
@@ -363,14 +363,14 @@ func (c *Conversation) parkRun(runID string, interrupts []Interrupt) error {
 
 func (c *Conversation) validateRunFinished(runID string) error {
 	if c.hasOpenBlocksForRun(runID) {
-		return fmt.Errorf("%w: run %s finished with open blocks", ErrInvalidTransition, runID)
+		return fmt.Errorf("%w: run %s finished with open blocks", errInvalidTransition, runID)
 	}
 	if runID != c.runID {
 		return nil
 	}
 	for memberID, member := range c.runs {
 		if memberID != runID && member.Lineage.RootRunID() == runID && member.Status != protocol.RunStatusFinished {
-			return fmt.Errorf("%w: root run finished while child %s is %s", ErrInvalidTransition, memberID, member.Status)
+			return fmt.Errorf("%w: root run finished while child %s is %s", errInvalidTransition, memberID, member.Status)
 		}
 	}
 	return nil

@@ -433,7 +433,7 @@ func decodeInteractionModelContexts(
 		if _, found := processes[processID]; !found {
 			return nil, errors.New("model context names a foreign Process")
 		}
-		calibration, err := NewModelContextTokenCalibration(
+		calibration, err := newModelContextTokenCalibration(
 			value.ReportedTokens,
 			value.EstimatedTokens,
 		)

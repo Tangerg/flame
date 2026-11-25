@@ -17,7 +17,7 @@ func define() (*plugincontract.Capability, error) {
 	if err != nil {
 		return nil, err
 	}
-	limits, err := pluginmcp.NewMethod[struct{}, wire.Limits](frame.MethodConfig{Name: "flame.sandbox/limits.v1", Kind: frame.Query, Target: extension.ScopeInstallation, Description: "Inspect native backend availability and the actual script, timeout and retained-output limits. Availability does not substitute for successful confinement at execution."})
+	limits, err := pluginmcp.NewMethod[struct{}, wire.Limits](frame.MethodConfig{Name: "flame.sandbox/limits.v2", Kind: frame.Query, Target: extension.ScopeInstallation, Description: "Inspect native backend availability and the actual script, timeout and retained-output limits. Availability does not substitute for successful confinement at execution."})
 	if err != nil {
 		return nil, err
 	}

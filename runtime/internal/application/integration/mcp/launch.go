@@ -16,7 +16,6 @@ type Launch struct {
 	Server        mcpserver.Server
 	Stdio         *Stdio
 	Retire        io.Closer
-	Exports       map[string]framevalue.JSON
 	Requirements  *plugin.RequiredBindings
 	Contributions []plugin.Contribution
 }

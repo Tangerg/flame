@@ -69,7 +69,7 @@ func (c ItemChange) DiscardsEmbedding() bool { return c.kind == itemContentAutho
 func RestoreItem(snapshot ItemSnapshot) (Item, error) {
 	revision, err := exactint.Restore(snapshot.Revision)
 	if err != nil || revision.IsZero() {
-		return Item{}, ErrInvalidRevision
+		return Item{}, errInvalidRevision
 	}
 	item := Item{
 		id: snapshot.ID, revision: revision, scope: snapshot.Scope, project: snapshot.Project, content: snapshot.Content,
@@ -292,7 +292,7 @@ func (i Item) ValidateVisible() error {
 
 func (i Item) CheckRevision(expected uint64) error {
 	if expected == 0 || expected > exactint.Maximum {
-		return ErrInvalidRevision
+		return errInvalidRevision
 	}
 	if expected != i.revision.Value() {
 		return ErrRevisionConflict

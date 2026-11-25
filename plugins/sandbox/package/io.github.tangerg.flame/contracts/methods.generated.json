@@ -8,11 +8,11 @@
     "output": "schema.json#/$defs/ExecuteV1Output"
   },
   {
-    "name": "flame.sandbox/limits.v1",
+    "name": "flame.sandbox/limits.v2",
     "kind": "query",
     "target": "installation",
     "description": "Inspect native backend availability and the actual script, timeout and retained-output limits. Availability does not substitute for successful confinement at execution.",
-    "input": "schema.json#/$defs/LimitsV1Input",
-    "output": "schema.json#/$defs/LimitsV1Output"
+    "input": "schema.json#/$defs/LimitsV2Input",
+    "output": "schema.json#/$defs/LimitsV2Output"
   }
 ]

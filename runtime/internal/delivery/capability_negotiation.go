@@ -25,7 +25,7 @@ func (s *Handler) negotiateCapabilities(ctx context.Context) (run.Capabilities, 
 		}
 		published, known := protocol.LookupFeature(key)
 		if !known || !advertised[key].Enabled {
-			return run.Capabilities{}, NewCapabilityGapError(protocol.CapabilityRequirement{
+			return run.Capabilities{}, newCapabilityGapError(protocol.CapabilityRequirement{
 				Type: protocol.RequirementFeature, Name: key,
 			})
 		}
@@ -71,7 +71,7 @@ func (s *Handler) requireFeature(ctx context.Context, feature string) error {
 	if len(missing) == 0 {
 		return nil
 	}
-	return NewCapabilityGapError(missing...)
+	return newCapabilityGapError(missing...)
 }
 
 func (s *Handler) requestCanUseFeature(ctx context.Context, feature string) bool {
@@ -91,7 +91,7 @@ func capabilityGap(missing run.Capabilities) *CapabilityGapError {
 			Type: protocol.RequirementInterruptType, Name: string(presentInterruptType(kind)),
 		})
 	}
-	return NewCapabilityGapError(requirements...)
+	return newCapabilityGapError(requirements...)
 }
 
 func interruptTypeFromWire(kind protocol.InterruptType) (run.InterruptType, bool) {

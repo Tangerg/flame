@@ -7,7 +7,7 @@ type ItemWrite struct {
 	settlement *transcript.Replacement
 }
 
-func NewItemWrites(items ...transcript.Item) []ItemWrite {
+func newItemWrites(items ...transcript.Item) []ItemWrite {
 	writes := make([]ItemWrite, len(items))
 	for index, item := range items {
 		writes[index] = ItemWrite{item: item}
@@ -15,7 +15,7 @@ func NewItemWrites(items ...transcript.Item) []ItemWrite {
 	return writes
 }
 
-func SettlementWrite(settlement transcript.Replacement) ItemWrite {
+func settlementWrite(settlement transcript.Replacement) ItemWrite {
 	return ItemWrite{item: settlement.State(), settlement: &settlement}
 }
 

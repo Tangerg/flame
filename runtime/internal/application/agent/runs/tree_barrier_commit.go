@@ -16,7 +16,7 @@ type TreeBarrierCommit struct {
 	checkpoint ExecutorCheckpoint
 }
 
-func NewTreeBarrierCommit(
+func newTreeBarrierCommit(
 	commitID CommitID,
 	pending Pending,
 	runs []EventCommit,

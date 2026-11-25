@@ -18,6 +18,10 @@ import (
 // service refuses, and no change-feed topic is supported.
 var errUnsupported = errors.ErrUnsupported
 
+func (*Runtime) SetApprovalRule(context.Context, protocol.SetApprovalRuleRequest) error {
+	return errUnsupported
+}
+
 func (*Runtime) Changes(context.Context, string) (_ []workspace.Change, err error) {
 	err = errUnsupported
 	return

@@ -14,7 +14,7 @@ const (
 	fixtureWatchDirectoryEntries       = 1024
 )
 
-func Discovery() *protocol.DiscoverResponse {
+func fixtureDiscovery() *protocol.DiscoverResponse {
 	return &protocol.DiscoverResponse{
 		ProtocolVersion: protocol.Version,
 		ServerInfo: protocol.ServerInfo{
@@ -38,7 +38,7 @@ func Discovery() *protocol.DiscoverResponse {
 }
 
 func CompleteDiscovery() (*protocol.DiscoverResponse, *protocol.ClientCapabilities) {
-	discovery := Discovery()
+	discovery := fixtureDiscovery()
 	client := &protocol.ClientCapabilities{Features: map[string]protocol.FeaturePreference{}}
 	for _, feature := range protocol.Features() {
 		discovery.Capabilities.Features[feature.Key] = protocol.FeatureCapability{

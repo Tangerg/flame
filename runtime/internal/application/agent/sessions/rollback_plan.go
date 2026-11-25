@@ -20,7 +20,7 @@ type RollbackPlan struct {
 	planReplacement   *plan.Replacement
 }
 
-func NewRollbackPlan(
+func newRollbackPlan(
 	sessionID identity.SessionID,
 	boundary transcript.Boundary,
 	checkpointRootIDs []string,

@@ -30,7 +30,7 @@ type Recurrence struct {
 	schedule cron.Schedule
 }
 
-func NewRecurrence(spec, timeZone string) (Recurrence, error) {
+func newRecurrence(spec, timeZone string) (Recurrence, error) {
 	if spec == "" {
 		return Recurrence{}, errCronRequired
 	}

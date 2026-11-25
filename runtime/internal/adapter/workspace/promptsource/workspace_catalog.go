@@ -25,7 +25,7 @@ func NewSkills(userDir string, packages SkillSources) (Skills, error) {
 var _ workspaceapp.SkillCatalog = Skills{}
 
 func (w Skills) List(ctx context.Context, cwd string) (workspaceapp.SkillDiscovery, error) {
-	return ListSkills(ctx, cwd, w.userDir, w.packages)
+	return listSkills(ctx, cwd, w.userDir, w.packages)
 }
 
 func (w Skills) Get(ctx context.Context, cwd, name string) (workspaceapp.SkillDetail, error) {

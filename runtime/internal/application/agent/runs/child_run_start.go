@@ -87,7 +87,7 @@ type StartedChildRun struct {
 	opening     OpeningCommit
 }
 
-func NewStartedChildRun(
+func newStartedChildRun(
 	reservation ChildRunStartReservation,
 	model flamemodel.Selection,
 	startedAt time.Time,
@@ -96,7 +96,7 @@ func NewStartedChildRun(
 	if err := reservation.Validate(); err != nil {
 		return StartedChildRun{}, err
 	}
-	opening, err := NewAdmissionOpeningCommit(
+	opening, err := newAdmissionOpeningCommit(
 		newRunCommitID(), reservation.draft(model, startedAt), nil, nil, events,
 	)
 	if err != nil {
@@ -266,7 +266,7 @@ func (p *preparedChildStart) openingEvents(sessionID identity.SessionID, project
 		RunID:     p.parent.runID,
 		SessionID: sessionID,
 		SegmentID: p.parent.segmentID,
-		Items:     NewItemWrites(p.spawningItem),
+		Items:     newItemWrites(p.spawningItem),
 	}}
 	for _, reduced := range projected.events {
 		if reduced.Event.Terminal() || reduced.Nudge != nil {
@@ -316,7 +316,7 @@ func (c *Segments) finalizeChildOpening(
 	if err := validateRouteReductionBatch(child, spec.SessionID, projected); err != nil {
 		return err
 	}
-	started, err := NewStartedChildRun(prepared.reservation, model, startedAt, events)
+	started, err := newStartedChildRun(prepared.reservation, model, startedAt, events)
 	if err != nil {
 		return fmt.Errorf("runs: child member %q opening: %w", prepared.member.MemberID, err)
 	}

@@ -25,7 +25,7 @@ func NewContracts() (Contracts, error) {
 	c := Contracts{
 		Capability: capability,
 		Execute:    pluginmcp.Implement[wire.ExecuteInput, sandbox.Result](methods, contracts.ExecuteV1Method),
-		Limits:     pluginmcp.Implement[struct{}, wire.Limits](methods, contracts.LimitsV1Method),
+		Limits:     pluginmcp.Implement[struct{}, wire.Limits](methods, contracts.LimitsV2Method),
 	}
 	if err := methods.Err(); err != nil {
 		return Contracts{}, err

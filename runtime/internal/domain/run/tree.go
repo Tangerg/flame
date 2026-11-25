@@ -8,7 +8,7 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 )
 
-var ErrInvalidTree = errors.New("run: invalid tree")
+var errInvalidTree = errors.New("run: invalid tree")
 
 type TreeMember struct {
 	RunID   identity.RunID
@@ -41,10 +41,10 @@ type Tree struct {
 
 func NewTree(rootRunID identity.RunID, members []TreeMember) (Tree, error) {
 	if err := rootRunID.Validate(); err != nil {
-		return Tree{}, fmt.Errorf("%w: root %w", ErrInvalidTree, err)
+		return Tree{}, fmt.Errorf("%w: root %w", errInvalidTree, err)
 	}
 	if len(members) == 0 {
-		return Tree{}, fmt.Errorf("%w: tree has no members", ErrInvalidTree)
+		return Tree{}, fmt.Errorf("%w: tree has no members", errInvalidTree)
 	}
 
 	builder := newRunTreeBuilder(rootRunID, len(members))
@@ -54,7 +54,7 @@ func NewTree(rootRunID identity.RunID, members []TreeMember) (Tree, error) {
 		}
 	}
 	if _, rootFound := builder.lineages[rootRunID]; !rootFound {
-		return Tree{}, fmt.Errorf("%w: root run %q is missing", ErrInvalidTree, rootRunID)
+		return Tree{}, fmt.Errorf("%w: root run %q is missing", errInvalidTree, rootRunID)
 	}
 	if err := builder.validateParents(); err != nil {
 		return Tree{}, err
@@ -79,14 +79,14 @@ func (r *runTreeBuilder) addMember(index int, member TreeMember) error {
 	if err := member.Lineage.Validate(member.RunID); err != nil {
 		return fmt.Errorf(
 			"%w: member[%d] run %q lineage: %w",
-			ErrInvalidTree,
+			errInvalidTree,
 			index,
 			member.RunID,
 			err,
 		)
 	}
 	if _, duplicate := r.lineages[member.RunID]; duplicate {
-		return fmt.Errorf("%w: duplicate run %q", ErrInvalidTree, member.RunID)
+		return fmt.Errorf("%w: duplicate run %q", errInvalidTree, member.RunID)
 	}
 	r.lineages[member.RunID] = member.Lineage
 
@@ -94,7 +94,7 @@ func (r *runTreeBuilder) addMember(index int, member TreeMember) error {
 		if member.RunID != r.rootRunID {
 			return fmt.Errorf(
 				"%w: run %q has root lineage, want only %q",
-				ErrInvalidTree,
+				errInvalidTree,
 				member.RunID,
 				r.rootRunID,
 			)
@@ -104,14 +104,14 @@ func (r *runTreeBuilder) addMember(index int, member TreeMember) error {
 	if member.RunID == r.rootRunID {
 		return fmt.Errorf(
 			"%w: root run %q carries child lineage",
-			ErrInvalidTree,
+			errInvalidTree,
 			r.rootRunID,
 		)
 	}
 	if member.Lineage.RootRunID() != r.rootRunID {
 		return fmt.Errorf(
 			"%w: child run %q names root %q, want %q",
-			ErrInvalidTree,
+			errInvalidTree,
 			member.RunID,
 			member.Lineage.RootRunID(),
 			r.rootRunID,
@@ -132,7 +132,7 @@ func (r *runTreeBuilder) validateParents() error {
 		if _, exists := r.lineages[lineage.ParentRunID()]; !exists {
 			return fmt.Errorf(
 				"%w: child run %q names unknown parent %q",
-				ErrInvalidTree,
+				errInvalidTree,
 				runID,
 				lineage.ParentRunID(),
 			)
@@ -164,7 +164,7 @@ func (r *runTreeBuilder) build() (Tree, error) {
 				}
 			}
 		}
-		return Tree{}, fmt.Errorf("%w: tree contains a Run disconnected from root %q", ErrInvalidTree, r.rootRunID)
+		return Tree{}, fmt.Errorf("%w: tree contains a Run disconnected from root %q", errInvalidTree, r.rootRunID)
 	}
 	return r.tree, nil
 }
@@ -172,7 +172,7 @@ func (r *runTreeBuilder) build() (Tree, error) {
 func (r *runTreeBuilder) visit(runID identity.RunID) error {
 	switch r.states[runID] {
 	case runTreeVisiting:
-		return fmt.Errorf("%w: tree contains a cycle at run %q", ErrInvalidTree, runID)
+		return fmt.Errorf("%w: tree contains a cycle at run %q", errInvalidTree, runID)
 	case runTreeVisited:
 		return nil
 	}
@@ -203,23 +203,23 @@ func (t Tree) SubtreePostorder(runID identity.RunID) ([]identity.RunID, bool) {
 
 func (t Tree) CheckCancellation(targetID identity.RunID, members map[identity.RunID]Run) error {
 	if len(t.postorder) == 0 || len(t.postorder) != len(members) {
-		return fmt.Errorf("%w: incomplete cancellation tree", ErrInvalidTree)
+		return fmt.Errorf("%w: incomplete cancellation tree", errInvalidTree)
 	}
 	root := members[t.postorder[len(t.postorder)-1]]
 	if !root.State().AdvanceProgress() {
-		return fmt.Errorf("%w: root Run %q is %s", ErrInvalidTree, root.ID(), root.State())
+		return fmt.Errorf("%w: root Run %q is %s", errInvalidTree, root.ID(), root.State())
 	}
 	target, found := members[targetID]
 	if !found || target.State().IsTerminal() {
-		return fmt.Errorf("%w: target Run %q is missing or finished", ErrInvalidTree, targetID)
+		return fmt.Errorf("%w: target Run %q is missing or finished", errInvalidTree, targetID)
 	}
 	for _, id := range t.postorder {
 		member, found := members[id]
 		if !found || member.ID() != id {
-			return fmt.Errorf("%w: missing Run %q", ErrInvalidTree, id)
+			return fmt.Errorf("%w: missing Run %q", errInvalidTree, id)
 		}
 		if !member.State().IsTerminal() && member.State() != root.State() {
-			return fmt.Errorf("%w: non-terminal Run %q is %s while root %q is %s", ErrInvalidTree, id, member.State(), root.ID(), root.State())
+			return fmt.Errorf("%w: non-terminal Run %q is %s while root %q is %s", errInvalidTree, id, member.State(), root.ID(), root.State())
 		}
 	}
 	return nil

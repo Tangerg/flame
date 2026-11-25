@@ -27,7 +27,7 @@ type ModelContextTokenCalibration struct {
 	estimated int
 }
 
-func NewModelContextTokenCalibration(
+func newModelContextTokenCalibration(
 	reported int64,
 	estimated int,
 ) (ModelContextTokenCalibration, error) {
@@ -120,7 +120,7 @@ type ModelContextCompactionInput struct {
 	PreCompact    func(context.Context) (bool, error)
 }
 
-func NewDurableModelContextCompaction(input ModelContextCompactionInput) (ModelContextCompaction, error) {
+func newDurableModelContextCompaction(input ModelContextCompactionInput) (ModelContextCompaction, error) {
 	return newModelContextCompaction(modelContextDurable, input)
 }
 

@@ -19,14 +19,14 @@ type APIKeyInput struct {
 	source apiKeySource
 }
 
-func FileAPIKey(value string) APIKeyInput {
+func fileAPIKey(value string) APIKeyInput {
 	if value == "" {
 		return APIKeyInput{}
 	}
 	return APIKeyInput{value: value, source: apiKeyFromFile}
 }
 
-func EnvironmentAPIKey(value string) APIKeyInput {
+func environmentAPIKey(value string) APIKeyInput {
 	if value == "" {
 		return APIKeyInput{}
 	}

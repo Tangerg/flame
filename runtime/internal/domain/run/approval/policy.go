@@ -15,10 +15,8 @@ import (
 var (
 	ErrInvalidMode            = errors.New("approval: invalid mode")
 	ErrInvalidSessionMode     = errors.New("approval: invalid session mode")
-	ErrInvalidQuery           = errors.New("approval: invalid query")
 	ErrInvalidRule            = errors.New("approval: invalid rule")
 	ErrSourceAuthorityChanged = errors.New("approval: source authority changed")
-	ErrRuleCapacity           = errors.New("approval: visible rule capacity exceeded")
 )
 
 const MaximumVisibleRules = 2_048

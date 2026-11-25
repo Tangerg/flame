@@ -21,7 +21,7 @@ var canonicalJSON = json.JoinOptions(
 
 var (
 	ErrInvalidArguments = errors.New("tool: invalid arguments")
-	ErrInvalidResult    = errors.New("tool: invalid result")
+	errInvalidResult    = errors.New("tool: invalid result")
 )
 
 type Arguments struct {
@@ -102,22 +102,22 @@ type Result struct {
 func NewResult(value any) (Result, error) {
 	encoded, err := json.Marshal(value, canonicalJSON)
 	if err != nil {
-		return Result{}, fmt.Errorf("%w: %w", ErrInvalidResult, err)
+		return Result{}, fmt.Errorf("%w: %w", errInvalidResult, err)
 	}
 	return ParseResult(encoded)
 }
 
 func ParseResult(data []byte) (Result, error) {
 	if len(bytes.TrimSpace(data)) == 0 {
-		return Result{}, fmt.Errorf("%w: empty JSON document", ErrInvalidResult)
+		return Result{}, fmt.Errorf("%w: empty JSON document", errInvalidResult)
 	}
 	var value any
 	if err := decodeValue(data, &value); err != nil {
-		return Result{}, fmt.Errorf("%w: %w", ErrInvalidResult, err)
+		return Result{}, fmt.Errorf("%w: %w", errInvalidResult, err)
 	}
 	encoded, err := json.Marshal(value, canonicalJSON)
 	if err != nil {
-		return Result{}, fmt.Errorf("%w: normalize: %w", ErrInvalidResult, err)
+		return Result{}, fmt.Errorf("%w: normalize: %w", errInvalidResult, err)
 	}
 	return Result{raw: string(encoded)}, nil
 }

@@ -48,7 +48,6 @@ var (
 	errShellsClosed           = errors.New("exec: shells closed")
 	ErrShellNotFound          = errors.New("exec: shell not found")
 	errShellIdentityExhausted = errors.New("exec: shell identity sequence exhausted")
-	ErrShellOutputLimit       = errors.New("exec: shell output spool capacity reached; command stopped with retained output")
 	errShellCapacity          = errors.New("exec: retained shell capacity reached; read completed output or stop owned shells")
 )
 

@@ -21,8 +21,7 @@ func Decide(rules []Rule, q Query) (Decision, bool, error) {
 func ValidateVisibleRules(rules []Rule, sessionID identity.SessionID, workspaceDir string) error {
 	if len(rules) > MaximumVisibleRules {
 		return fmt.Errorf(
-			"%w: got %d rules, maximum %d",
-			ErrRuleCapacity,
+			"approval: visible rule capacity exceeded: got %d rules, maximum %d",
 			len(rules),
 			MaximumVisibleRules,
 		)
@@ -54,16 +53,16 @@ type RuleScope struct {
 	key  string
 }
 
-func GlobalScope() RuleScope { return RuleScope{kind: ScopeGlobal} }
+func globalScope() RuleScope { return RuleScope{kind: ScopeGlobal} }
 
-func SessionScope(sessionID identity.SessionID) (RuleScope, error) {
+func sessionScope(sessionID identity.SessionID) (RuleScope, error) {
 	if err := sessionID.Validate(); err != nil {
 		return RuleScope{}, fmt.Errorf("%w: session scope: %w", ErrInvalidRule, err)
 	}
 	return RuleScope{kind: ScopeSession, key: sessionID.String()}, nil
 }
 
-func WorkspaceScope(dir string) (RuleScope, error) {
+func workspaceScope(dir string) (RuleScope, error) {
 	if strings.TrimSpace(dir) == "" {
 		return RuleScope{}, fmt.Errorf("%w: workspace scope requires a directory", ErrInvalidRule)
 	}
@@ -77,14 +76,14 @@ func RestoreRuleScope(kind Scope, key string) (RuleScope, error) {
 		if err != nil {
 			return RuleScope{}, fmt.Errorf("%w: session scope: %w", ErrInvalidRule, err)
 		}
-		return SessionScope(sessionID)
+		return sessionScope(sessionID)
 	case ScopeWorkspace:
-		return WorkspaceScope(key)
+		return workspaceScope(key)
 	case ScopeGlobal:
 		if key != "" {
 			return RuleScope{}, fmt.Errorf("%w: global scope cannot carry a key", ErrInvalidRule)
 		}
-		return GlobalScope(), nil
+		return globalScope(), nil
 	default:
 		return RuleScope{}, fmt.Errorf("%w: unknown scope %q", ErrInvalidRule, kind)
 	}
@@ -132,7 +131,7 @@ func (r Rule) specificity() [2]int {
 
 func (q Query) Validate() error {
 	if err := q.Tool.ValidateFingerprint(q.SourceFingerprint); err != nil {
-		return fmt.Errorf("%w: %w", ErrInvalidQuery, err)
+		return fmt.Errorf("approval: invalid query: %w", err)
 	}
 	return nil
 }
@@ -174,11 +173,11 @@ func (r RememberRequest) Rule() (Rule, error) {
 	var err error
 	switch r.Scope {
 	case ScopeSession:
-		scope, err = SessionScope(r.SessionID)
+		scope, err = sessionScope(r.SessionID)
 	case ScopeWorkspace:
-		scope, err = WorkspaceScope(r.WorkspaceDir)
+		scope, err = workspaceScope(r.WorkspaceDir)
 	case ScopeGlobal:
-		scope = GlobalScope()
+		scope = globalScope()
 	default:
 		err = fmt.Errorf("%w: unknown scope %q", ErrInvalidRule, r.Scope)
 	}

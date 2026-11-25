@@ -8,11 +8,6 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
-type RunReference struct {
-	SessionID string
-	RunID     string
-}
-
 type Run struct {
 	ID              string
 	SessionID       string

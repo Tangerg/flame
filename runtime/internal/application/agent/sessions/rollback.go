@@ -136,7 +136,7 @@ func (c *Coordinator) applyRollback(ctx context.Context, sessionID identity.Sess
 	if err != nil {
 		return err
 	}
-	rollback, err := NewRollbackPlan(
+	rollback, err := newRollbackPlan(
 		sessionID,
 		boundary,
 		parkedCheckpointRootIDs(parked),

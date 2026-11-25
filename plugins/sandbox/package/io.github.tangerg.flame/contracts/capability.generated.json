@@ -211,7 +211,7 @@
       }
     },
     {
-      "name": "flame.sandbox/limits.v1",
+      "name": "flame.sandbox/limits.v2",
       "kind": "query",
       "target": "installation",
       "description": "Inspect native backend availability and the actual script, timeout and retained-output limits. Availability does not substitute for successful confinement at execution.",
@@ -227,9 +227,6 @@
             "additionalProperties": false,
             "properties": {
               "available": {
-                "type": "boolean"
-              },
-              "cpuAndMemoryQuotas": {
                 "type": "boolean"
               },
               "maxScriptBytes": {
@@ -268,8 +265,7 @@
               "platform",
               "maxScriptBytes",
               "maxTimeoutMillis",
-              "retainedBytesPerStream",
-              "cpuAndMemoryQuotas"
+              "retainedBytesPerStream"
             ],
             "type": "object"
           }
@@ -278,9 +274,6 @@
         "additionalProperties": false,
         "properties": {
           "available": {
-            "type": "boolean"
-          },
-          "cpuAndMemoryQuotas": {
             "type": "boolean"
           },
           "maxScriptBytes": {
@@ -319,8 +312,7 @@
           "platform",
           "maxScriptBytes",
           "maxTimeoutMillis",
-          "retainedBytesPerStream",
-          "cpuAndMemoryQuotas"
+          "retainedBytesPerStream"
         ],
         "type": "object"
       }

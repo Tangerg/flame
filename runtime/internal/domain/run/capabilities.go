@@ -7,18 +7,12 @@ import (
 	"strings"
 )
 
-var ErrInsufficientCapabilities = errors.New("run: caller capabilities are insufficient")
-
 type InsufficientCapabilitiesError struct {
 	Missing Capabilities
 }
 
 func (i *InsufficientCapabilitiesError) Error() string {
-	return fmt.Sprintf("%s: requires %s", ErrInsufficientCapabilities, i.Missing)
-}
-
-func (i *InsufficientCapabilitiesError) Is(target error) bool {
-	return target == ErrInsufficientCapabilities
+	return fmt.Sprintf("run: caller capabilities are insufficient: requires %s", i.Missing)
 }
 
 type Capabilities struct {

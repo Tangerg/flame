@@ -9,8 +9,8 @@ import (
 )
 
 var (
-	ErrUnknownBlock      = errors.New("unknown transcript block")
-	ErrInvalidTransition = errors.New("invalid conversation transition")
+	errUnknownBlock      = errors.New("unknown transcript block")
+	errInvalidTransition = errors.New("invalid conversation transition")
 )
 
 type EventAcceptance struct{ Applied bool }
@@ -164,7 +164,7 @@ func (c *Conversation) MatchesSnapshot(snapshot SessionSnapshot) bool {
 
 func (c *Conversation) Starting() error {
 	if c.Busy() {
-		return fmt.Errorf("%w: conversation is already busy", ErrInvalidTransition)
+		return fmt.Errorf("%w: conversation is already busy", errInvalidTransition)
 	}
 	c.starting = true
 	c.runID = ""
@@ -178,7 +178,7 @@ func (c *Conversation) Starting() error {
 
 func (c *Conversation) StopStarting() error {
 	if c.runID != "" || !c.starting {
-		return fmt.Errorf("%w: conversation is not starting", ErrInvalidTransition)
+		return fmt.Errorf("%w: conversation is not starting", errInvalidTransition)
 	}
 	c.starting = false
 	return nil
@@ -199,7 +199,7 @@ func (c *Conversation) startBlock(block Block) error {
 	c.ensureStorage()
 	key := BlockKey(block.RunID, block.ID)
 	if _, started := c.index[key]; started {
-		return fmt.Errorf("%w: block %s started twice", ErrInvalidTransition, block.ID)
+		return fmt.Errorf("%w: block %s started twice", errInvalidTransition, block.ID)
 	}
 	c.appendBlock(key, block)
 	if block.Kind == BlockAssistant || block.Kind == BlockReasoning {
@@ -217,7 +217,7 @@ func (c *Conversation) completeBlock(block Block) error {
 		return nil
 	}
 	if c.blocks[at].Status != BlockStatusRunning {
-		return fmt.Errorf("%w: block %s completed twice", ErrInvalidTransition, block.ID)
+		return fmt.Errorf("%w: block %s completed twice", errInvalidTransition, block.ID)
 	}
 	if err := validateBlockIdentity(c.blocks[at], block); err != nil {
 		return err
@@ -234,16 +234,16 @@ func (c *Conversation) appendBlock(key string, block Block) {
 
 func validateBlockIdentity(started, completed Block) error {
 	if started.Kind != completed.Kind {
-		return fmt.Errorf("%w: block %s changed kind from %s to %s", ErrInvalidTransition, completed.ID, started.Kind, completed.Kind)
+		return fmt.Errorf("%w: block %s changed kind from %s to %s", errInvalidTransition, completed.ID, started.Kind, completed.Kind)
 	}
 	if started.Kind != BlockTool {
 		return nil
 	}
 	if started.Tool.Kind != completed.Tool.Kind {
-		return fmt.Errorf("%w: tool block %s changed kind from %s to %s", ErrInvalidTransition, completed.ID, started.Tool.Kind, completed.Tool.Kind)
+		return fmt.Errorf("%w: tool block %s changed kind from %s to %s", errInvalidTransition, completed.ID, started.Tool.Kind, completed.Tool.Kind)
 	}
 	if started.Tool.Name != completed.Tool.Name {
-		return fmt.Errorf("%w: tool block %s changed name from %q to %q", ErrInvalidTransition, completed.ID, started.Tool.Name, completed.Tool.Name)
+		return fmt.Errorf("%w: tool block %s changed name from %q to %q", errInvalidTransition, completed.ID, started.Tool.Name, completed.Tool.Name)
 	}
 	return nil
 }
@@ -294,7 +294,7 @@ func (c *Conversation) hasOpenBlocksForRun(runID string) bool {
 func (c *Conversation) requireRunRunning(runID, action string) error {
 	run, exists := c.runs[runID]
 	if !exists || run.Status != protocol.RunStatusRunning {
-		return fmt.Errorf("%w: cannot %s without active run %s", ErrInvalidTransition, action, runID)
+		return fmt.Errorf("%w: cannot %s without active run %s", errInvalidTransition, action, runID)
 	}
 	return nil
 }

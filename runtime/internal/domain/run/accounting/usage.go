@@ -242,7 +242,7 @@ func NewCost(usd float64) (Cost, error) {
 	return Cost{nanoUSD: int64(nano), available: true}, nil
 }
 
-func CostFromNanoUSD(nanoUSD int64) (Cost, error) {
+func costFromNanoUSD(nanoUSD int64) (Cost, error) {
 	if nanoUSD < 0 {
 		return Cost{}, errors.New("accounting: cost must be non-negative")
 	}
@@ -253,7 +253,7 @@ func CostFromOptionalNanoUSD(nanoUSD *int64) (Cost, error) {
 	if nanoUSD == nil {
 		return Cost{}, nil
 	}
-	return CostFromNanoUSD(*nanoUSD)
+	return costFromNanoUSD(*nanoUSD)
 }
 
 func CostFromOptional(usd *float64) (Cost, error) {

@@ -116,7 +116,7 @@ func (i installedSettlement) settle(_ context.Context, status AuthorizationAttem
 }
 
 func (c *Coordinator) AuthorizationAttempt(ctx context.Context, id string) (AuthorizationAttempt, error) {
-	parsed, err := ParseAuthorizationAttemptID(id)
+	parsed, err := parseAuthorizationAttemptID(id)
 	if err != nil {
 		return AuthorizationAttempt{}, ErrAuthorizationAttemptNotFound
 	}

@@ -39,11 +39,7 @@ func (r *Runtime) SubscribeRun(ctx context.Context, in conversation.SubscribeRun
 		}
 		start = at + 1
 	}
-	fault, err := r.takeFaultLocked()
-	if err != nil {
-		return conversation.SegmentStream{}, err
-	}
-	stream := r.bindSegmentLocked(ctx, run, segment, start, head, "", fault)
+	stream := r.bindSegmentLocked(ctx, run, segment, start, head, "")
 	if in.Snapshot {
 		snapshot, err := r.sessionSnapshotLocked(in.SessionID)
 		if err != nil {
@@ -77,7 +73,6 @@ func (r *Runtime) bindSegmentLocked(
 	start int,
 	replayUntil int,
 	userItemID string,
-	fault SubscriptionFault,
 ) conversation.SegmentStream {
 	headEventID := ""
 	for _, event := range slices.Backward(segment.events) {
@@ -88,7 +83,7 @@ func (r *Runtime) bindSegmentLocked(
 	}
 	subscription := &segmentSubscription{
 		runtime: r, ctx: ctx, run: run, segment: segment,
-		next: start, replayUntil: replayUntil, fault: fault,
+		next: start, replayUntil: replayUntil,
 	}
 	return conversation.SegmentStream{
 		RunID: run.id, SegmentID: segment.id, UserItemID: userItemID,
@@ -103,8 +98,6 @@ type segmentSubscription struct {
 	segment           *segmentState
 	next              int
 	replayUntil       int
-	fault             SubscriptionFault
-	position          int
 	terminalDelivered bool
 }
 
@@ -112,7 +105,7 @@ func (s *segmentSubscription) stream(yield func(conversation.RunEvent, error) bo
 	for {
 		next, closed, changed, terminalErr := s.nextEvent()
 		if next != nil {
-			if !s.deliver(*next, yield) {
+			if !yield(*next, nil) {
 				return
 			}
 			continue
@@ -147,30 +140,6 @@ func (s *segmentSubscription) nextEvent() (*conversation.RunEvent, bool, <-chan 
 	return nil, s.segment.closed, s.segment.changed, nil
 }
 
-func (s *segmentSubscription) deliver(next conversation.RunEvent, yield func(conversation.RunEvent, error) bool) bool {
-	s.position++
-	if !yield(next, nil) {
-		return false
-	}
-	if s.position == s.fault.After {
-		switch s.fault.Kind {
-		case FaultDuplicate:
-			if !yield(next, nil) {
-				return false
-			}
-		case FaultConflict:
-			conflict := next.Clone()
-			conflict.Event = conversation.BlockCompleted{Block: conversation.Block{ID: "conflict", RunID: next.RunID, Status: conversation.BlockStatusCompleted, Kind: conversation.BlockNotice, Text: "conflicting replay"}}
-			yield(conflict, nil)
-			return false
-		case FaultDisconnect:
-			yield(conversation.RunEvent{}, fmt.Errorf("%w after event %s", conversation.ErrDisconnected, next.EventID))
-			return false
-		}
-	}
-	return true
-}
-
 func (s *segmentSubscription) awaitChange(changed <-chan struct{}, yield func(conversation.RunEvent, error) bool) bool {
 	select {
 	case <-changed:
@@ -178,22 +147,5 @@ func (s *segmentSubscription) awaitChange(changed <-chan struct{}, yield func(co
 	case <-s.ctx.Done():
 		yield(conversation.RunEvent{}, context.Cause(s.ctx))
 		return false
-	}
-}
-
-func (r *Runtime) takeFaultLocked() (SubscriptionFault, error) {
-	if r.fault >= len(r.Faults) {
-		return SubscriptionFault{}, nil
-	}
-	fault := r.Faults[r.fault]
-	if fault.After < 1 {
-		fault.After = 1
-	}
-	switch fault.Kind {
-	case FaultDisconnect, FaultDuplicate, FaultConflict:
-		r.fault++
-		return fault, nil
-	default:
-		return SubscriptionFault{}, fmt.Errorf("mock: unknown subscription fault %q", fault.Kind)
 	}
 }

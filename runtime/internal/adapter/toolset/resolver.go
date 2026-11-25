@@ -439,7 +439,7 @@ func (m *manifestBuilder) bindDiscovery(retained *Retained) error {
 	if len(m.deferred) == 0 {
 		return nil
 	}
-	search, err := NewDiscovery(m.deferred)
+	search, err := newDiscovery(m.deferred)
 	if err != nil {
 		return fmt.Errorf("toolset: resolve search_tools: %w", err)
 	}

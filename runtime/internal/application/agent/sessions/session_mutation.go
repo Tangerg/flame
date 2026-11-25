@@ -94,7 +94,7 @@ func (c *Coordinator) RestorePortableSession(ctx context.Context, portable Porta
 				if err != nil {
 					return err
 				}
-				restore, err = NewRestorePlan(snapshot, replacement, planReplacement)
+				restore, err = newRestorePlan(snapshot, replacement, planReplacement)
 				if err != nil {
 					return err
 				}

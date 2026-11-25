@@ -37,7 +37,7 @@ func (d Draft) Validate() error {
 	if err := validateInstructions(d.Instructions); err != nil {
 		return err
 	}
-	_, err := NewRecurrence(d.Cron, d.TimeZone)
+	_, err := newRecurrence(d.Cron, d.TimeZone)
 	return err
 }
 
@@ -86,7 +86,7 @@ func New(id string, draft Draft, createdAt time.Time) (Schedule, error) {
 	if err := validateInstructions(draft.Instructions); err != nil {
 		return Schedule{}, err
 	}
-	recurrence, err := NewRecurrence(draft.Cron, draft.TimeZone)
+	recurrence, err := newRecurrence(draft.Cron, draft.TimeZone)
 	if err != nil {
 		return Schedule{}, err
 	}
@@ -108,7 +108,7 @@ func Restore(snapshot Snapshot) (Schedule, error) {
 	if err != nil {
 		return Schedule{}, errRevisionExhausted
 	}
-	recurrence, err := NewRecurrence(snapshot.Cron, snapshot.TimeZone)
+	recurrence, err := newRecurrence(snapshot.Cron, snapshot.TimeZone)
 	if err != nil {
 		return Schedule{}, err
 	}
@@ -177,7 +177,7 @@ func (r Recurrence) patched(cron, timeZone *string) (Recurrence, bool, error) {
 	if nextCron == r.Cron() && nextZone == r.TimeZone() {
 		return r, false, nil
 	}
-	recurrence, err := NewRecurrence(nextCron, nextZone)
+	recurrence, err := newRecurrence(nextCron, nextZone)
 	return recurrence, err == nil, err
 }
 

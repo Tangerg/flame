@@ -23,7 +23,7 @@ const (
 
 func RefKinds() []RefKind { return []RefKind{BuiltInKind, MCPKind} }
 
-var ErrInvalidRef = errors.New("tool: invalid reference")
+var errInvalidRef = errors.New("tool: invalid reference")
 var modelNameExpression = regexp.MustCompile(fmt.Sprintf(`^[A-Za-z0-9_-]{1,%d}$`, maximumModelNameBytes))
 
 func ModelNamePattern() string { return modelNameExpression.String() }
@@ -37,17 +37,17 @@ type Ref struct {
 
 func BuiltIn(name builtincontract.Name) (Ref, error) {
 	if !name.Valid() {
-		return Ref{}, fmt.Errorf("%w: unknown built-in %q", ErrInvalidRef, name)
+		return Ref{}, fmt.Errorf("%w: unknown built-in %q", errInvalidRef, name)
 	}
 	return Ref{kind: BuiltInKind, name: string(name)}, nil
 }
 
 func MCP(server mcpserver.ID, remote mcpserver.RemoteToolName) (Ref, error) {
 	if err := server.Validate(); err != nil {
-		return Ref{}, fmt.Errorf("%w: %w", ErrInvalidRef, err)
+		return Ref{}, fmt.Errorf("%w: %w", errInvalidRef, err)
 	}
 	if err := remote.Validate(); err != nil {
-		return Ref{}, fmt.Errorf("%w: %w", ErrInvalidRef, err)
+		return Ref{}, fmt.Errorf("%w: %w", errInvalidRef, err)
 	}
 	return Ref{kind: MCPKind, server: server, remote: remote}, nil
 }
@@ -67,7 +67,7 @@ func (r Ref) MCP() (server mcpserver.ID, remote mcpserver.RemoteToolName, ok boo
 
 func (r Ref) Validate() error {
 	if r.kind == "" {
-		return fmt.Errorf("%w: reference is unset", ErrInvalidRef)
+		return fmt.Errorf("%w: reference is unset", errInvalidRef)
 	}
 	return nil
 }
@@ -123,13 +123,13 @@ func ParseRef(text string) (Ref, error) {
 	case len(parts) >= 4 && RefKind(parts[0]) == MCPKind:
 		r, err = parseMCPRef(parts[1:])
 	default:
-		return Ref{}, fmt.Errorf("%w: unknown reference kind", ErrInvalidRef)
+		return Ref{}, fmt.Errorf("%w: unknown reference kind", errInvalidRef)
 	}
 	if err != nil {
 		return Ref{}, fmt.Errorf("tool: parse reference: %w", err)
 	}
 	if r.String() != text {
-		return Ref{}, fmt.Errorf("%w: noncanonical spelling", ErrInvalidRef)
+		return Ref{}, fmt.Errorf("%w: noncanonical spelling", errInvalidRef)
 	}
 	return r, nil
 }
@@ -142,26 +142,26 @@ func parseMCPRef(parts []string) (Ref, error) {
 	case len(parts) == 4 && mcpserver.OriginKind(parts[0]) == mcpserver.OriginInstallation:
 		installation, err := identity.ParseInstallation(parts[1])
 		if err != nil {
-			return Ref{}, fmt.Errorf("%w: server origin: %w", ErrInvalidRef, err)
+			return Ref{}, fmt.Errorf("%w: server origin: %w", errInvalidRef, err)
 		}
 		if origin, err = mcpserver.InstallationOrigin(installation); err != nil {
-			return Ref{}, fmt.Errorf("%w: %w", ErrInvalidRef, err)
+			return Ref{}, fmt.Errorf("%w: %w", errInvalidRef, err)
 		}
 		parts = parts[1:]
 	default:
-		return Ref{}, fmt.Errorf("%w: server origin", ErrInvalidRef)
+		return Ref{}, fmt.Errorf("%w: server origin", errInvalidRef)
 	}
 	name, err := mcpserver.ParseServerName(parts[1])
 	if err != nil {
-		return Ref{}, fmt.Errorf("%w: server: %w", ErrInvalidRef, err)
+		return Ref{}, fmt.Errorf("%w: server: %w", errInvalidRef, err)
 	}
 	server, err := mcpserver.NewID(origin, name)
 	if err != nil {
-		return Ref{}, fmt.Errorf("%w: server: %w", ErrInvalidRef, err)
+		return Ref{}, fmt.Errorf("%w: server: %w", errInvalidRef, err)
 	}
 	remote, err := mcpserver.ParseRemoteToolName(parts[2])
 	if err != nil {
-		return Ref{}, fmt.Errorf("%w: tool name: %w", ErrInvalidRef, err)
+		return Ref{}, fmt.Errorf("%w: tool name: %w", errInvalidRef, err)
 	}
 	return MCP(server, remote)
 }

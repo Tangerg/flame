@@ -44,7 +44,7 @@ func OverlaySkillSource(ctx context.Context, workspaceRoot, userDir string, pack
 	return &runtimeSkillOverlay{selected: selected, decorateUser: decorateUser}, selected.dependencies(), nil
 }
 
-func ListSkills(ctx context.Context, workspaceRoot, userDir string, packages SkillSources) (workspaceapp.SkillDiscovery, error) {
+func listSkills(ctx context.Context, workspaceRoot, userDir string, packages SkillSources) (workspaceapp.SkillDiscovery, error) {
 	selected, err := resolveSkills(ctx, workspaceRoot, userDir, packages, nil)
 	if err != nil {
 		return workspaceapp.SkillDiscovery{}, err
