@@ -137,12 +137,9 @@ func (s *manualRunScript) Call(_ context.Context, request *chat.Request) (*chat.
 	if s.issued.Load() || len(request.Tools) == 0 {
 		return completedTextResponse("scheduled work finished"), nil
 	}
-	call := chat.ToolCall{ID: "discover-manual", Name: "search_tools", Arguments: `{"query":"select:` + s.modelName + `"}`}
-	for _, definition := range request.Tools {
-		if definition.Name == s.modelName {
-			s.issued.Store(true)
-			call = chat.ToolCall{ID: "manual-schedule-call", Name: s.modelName, Arguments: `{"id":"` + s.scheduleID + `"}`}
-		}
+	call := deferredToolCall(request, "discover-manual", chat.ToolCall{ID: "manual-schedule-call", Name: s.modelName, Arguments: `{"id":"` + s.scheduleID + `"}`})
+	if call.Name == s.modelName {
+		s.issued.Store(true)
 	}
 	message := chat.NewAssistantMessage(chat.NewToolCallPart(call))
 	return chat.NewResponse(&chat.Output{Message: &message, FinishReason: chat.FinishReasonToolCalls}, nil)

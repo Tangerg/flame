@@ -91,41 +91,8 @@ func TestProtocolPreservesToolPreparationFailuresAcrossRestart(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(home, ".flame", "hooks.json"), []byte(hooks), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	var calls atomic.Int32
-	var observed, recovered atomic.Pointer[[]chat.ToolResult]
-	model := delegateRestartModel{chat.ModelFunc(func(_ context.Context, request *chat.Request) (*chat.Response, error) {
-		call := calls.Add(1)
-		if call == 3 || call == 4 {
-			var results []chat.ToolResult
-			for _, message := range request.Messages {
-				for _, part := range message.Parts {
-					if part.ToolResult == nil {
-						continue
-					}
-					result := *part.ToolResult
-					result.Output = result.Output.Clone()
-					results = append(results, result)
-				}
-			}
-			if call == 3 {
-				observed.Store(&results)
-			} else {
-				recovered.Store(&results)
-			}
-		}
-		message := chat.NewAssistantMessage(chat.NewTextPart("The hook prevented execution."))
-		finish := chat.FinishReasonStop
-		if call < 3 {
-			message = chat.NewAssistantMessage(chat.NewToolCallPart(chat.ToolCall{
-				ID: fmt.Sprintf("shell_prepare_%d", call), Name: "shell",
-				Arguments: `{"command":"touch tool-executed","description":"Mark tool execution"}`,
-			}))
-			finish = chat.FinishReasonToolCalls
-		}
-		return chat.NewResponse(&chat.Output{Message: &message, FinishReason: finish}, &chat.ResponseMetadata{
-			Model: "claude-test", Usage: &chat.Usage{InputTokens: 2, OutputTokens: 1},
-		})
-	})}
+	script := &preparationFailureScript{}
+	model := delegateRestartModel{chat.ModelFunc(script.Call)}
 	host, api := openProtocolRuntime(t, model)
 	t.Cleanup(func() {
 		if err := host.Close(); err != nil {
@@ -148,11 +115,11 @@ func TestProtocolPreservesToolPreparationFailuresAcrossRestart(t *testing.T) {
 	}
 	waitForRunEvents(t, collectRunEvents(events), "tool preparation failures")
 	finished, err := api.GetRun(ctx, protocol.GetRunRequest{RunID: started.RunID})
-	if err != nil || finished.Outcome == nil || finished.Outcome.Type != protocol.OutcomeCompleted || calls.Load() != 3 {
+	if err != nil || finished.Outcome == nil || finished.Outcome.Type != protocol.OutcomeCompleted || script.calls.Load() != 3 {
 		diagnostic, _ := json.Marshal(finished)
-		t.Fatalf("preparation failure stopped continuation: calls=%d, run=%s, error=%v", calls.Load(), diagnostic, err)
+		t.Fatalf("preparation failure stopped continuation: calls=%d, run=%s, error=%v", script.calls.Load(), diagnostic, err)
 	}
-	before := observed.Load()
+	before := script.observed.Load()
 	if before == nil || len(*before) != 2 || !(*before)[0].IsError || !(*before)[1].IsError {
 		t.Fatalf("model did not receive both preparation failures: %+v", before)
 	}
@@ -196,9 +163,58 @@ func TestProtocolPreservesToolPreparationFailuresAcrossRestart(t *testing.T) {
 		t.Fatal(err)
 	}
 	waitForRunEvents(t, collectRunEvents(events), "recovered preparation failures")
-	if calls.Load() != 4 || !reflect.DeepEqual(before, recovered.Load()) {
+	if script.calls.Load() != 4 || !reflect.DeepEqual(before, script.recovered.Load()) {
 		prior, _ := json.Marshal(before)
-		after, _ := json.Marshal(recovered.Load())
-		t.Fatalf("preparation results changed across restart: calls=%d, before=%s, after=%s", calls.Load(), prior, after)
+		after, _ := json.Marshal(script.recovered.Load())
+		t.Fatalf("preparation results changed across restart: calls=%d, before=%s, after=%s", script.calls.Load(), prior, after)
 	}
+}
+
+// preparationFailureScript proposes two shell calls the hook makes unexecutable,
+// then records the tool results its third call observed and the fourth call,
+// after restart, recovered.
+type preparationFailureScript struct {
+	calls               atomic.Int32
+	observed, recovered atomic.Pointer[[]chat.ToolResult]
+}
+
+func (s *preparationFailureScript) Call(_ context.Context, request *chat.Request) (*chat.Response, error) {
+	call := s.calls.Add(1)
+	switch call {
+	case 3:
+		results := clonedToolResults(request)
+		s.observed.Store(&results)
+	case 4:
+		results := clonedToolResults(request)
+		s.recovered.Store(&results)
+	}
+	message := chat.NewAssistantMessage(chat.NewTextPart("The hook prevented execution."))
+	finish := chat.FinishReasonStop
+	if call < 3 {
+		message = chat.NewAssistantMessage(chat.NewToolCallPart(chat.ToolCall{
+			ID: fmt.Sprintf("shell_prepare_%d", call), Name: "shell",
+			Arguments: `{"command":"touch tool-executed","description":"Mark tool execution"}`,
+		}))
+		finish = chat.FinishReasonToolCalls
+	}
+	return chat.NewResponse(&chat.Output{Message: &message, FinishReason: finish}, &chat.ResponseMetadata{
+		Model: "claude-test", Usage: &chat.Usage{InputTokens: 2, OutputTokens: 1},
+	})
+}
+
+// clonedToolResults copies every tool result the request carries, so later
+// requests cannot alias what the test inspects.
+func clonedToolResults(request *chat.Request) []chat.ToolResult {
+	var results []chat.ToolResult
+	for _, message := range request.Messages {
+		for _, part := range message.Parts {
+			if part.ToolResult == nil {
+				continue
+			}
+			result := *part.ToolResult
+			result.Output = result.Output.Clone()
+			results = append(results, result)
+		}
+	}
+	return results
 }

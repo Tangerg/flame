@@ -322,33 +322,9 @@ func TestPluginAcceptanceMCPSameNameAcrossOriginsPublishesDistinctToolAliases(t 
 func TestMCPInstallationAndExternalServerWithdrawIndependently(t *testing.T) {
 	cfg := poMCPConfig(t)
 	const proof = "installed-tool-still-executes"
-	var target atomic.Value
-	target.Store("")
-	var executed atomic.Bool
-	model, err := chatclient.New(delegateRestartModel{chat.ModelFunc(func(_ context.Context, req *chat.Request) (*chat.Response, error) {
-		name := target.Load().(string)
-		if name == "" || len(req.Tools) == 0 {
-			return completedTextResponse("ready"), nil
-		}
-		for _, msg := range req.Messages {
-			for _, part := range msg.Parts {
-				if part.ToolResult != nil && part.ToolResult.Name == name {
-					reply, err := json.Marshal(part.ToolResult.Output)
-					if err != nil {
-						return nil, err
-					}
-					executed.Store(!part.ToolResult.IsError && bytes.Contains(reply, []byte(proof)))
-					return completedTextResponse("finished"), nil
-				}
-			}
-		}
-		call := chat.ToolCall{ID: "find-independent-tool", Name: "search_tools", Arguments: `{"query":"select:` + name + `"}`}
-		if slices.ContainsFunc(req.Tools, func(d toolcontract.Definition) bool { return d.Name == name }) {
-			call = chat.ToolCall{ID: "invoke-independent-tool", Name: name, Arguments: `{"value":"` + proof + `"}`}
-		}
-		msg := chat.NewAssistantMessage(chat.NewToolCallPart(call))
-		return chat.NewResponse(&chat.Output{Message: &msg, FinishReason: chat.FinishReasonToolCalls}, nil)
-	})})
+	script := &independentToolScript{proof: proof}
+	script.target.Store("")
+	model, err := chatclient.New(delegateRestartModel{chat.ModelFunc(script.Call)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -373,33 +349,13 @@ func TestMCPInstallationAndExternalServerWithdrawIndependently(t *testing.T) {
 	backend := protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installation.ID}, Name: name}
 	expectOwners := func(expected ...protocol.MCPServerID) {
 		t.Helper()
-		current.poMCPTools(nil, func(tools []protocol.MCPTool) bool {
-			var owners []protocol.MCPServerID
-			for _, tool := range tools {
-				if tool.Server.Name != name || tool.Name != "record" {
-					continue
-				}
-				if len(expected) == 1 && len(tool.NameConflicts) > 0 {
-					return false
-				}
-				owners = append(owners, tool.Server)
-			}
-			if len(owners) != len(expected) {
-				return false
-			}
-			for _, owner := range expected {
-				if !slices.Contains(owners, owner) {
-					return false
-				}
-			}
-			return true
-		})
+		current.poMCPTools(nil, func(tools []protocol.MCPTool) bool { return recordToolOwnedBy(tools, name, expected) })
 	}
 	expectOwners(external, backend)
 	current.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: connector.ID, Enabled: false}, "withdraw-external-connector")
 	expectOwners(backend)
 	modelTools := current.poMCPTools(&backend, func(tools []protocol.MCPTool) bool { return len(tools) == 1 })
-	target.Store(modelTools[0].ModelName)
+	script.target.Store(modelTools[0].ModelName)
 	ctx := protocolLifecycleContext(t.Context())
 	session, err := current.api.CreateSession(ctx, protocol.CreateSessionRequest{})
 	if err != nil {
@@ -410,7 +366,7 @@ func TestMCPInstallationAndExternalServerWithdrawIndependently(t *testing.T) {
 		t.Fatal(err)
 	}
 	waitForRunEvents(t, collectRunEvents(events), "tool call with external connector disabled")
-	if !executed.Load() {
+	if !script.executed.Load() {
 		t.Fatal("installed tool did not return its original result")
 	}
 	current = reopenPluginRuntime(t, current, &cfg)
@@ -495,4 +451,54 @@ func TestExternalConnectorKeepsLaunchSecretsOutOfPluginAndRestoresAuthorizationR
 	if err != nil || files == 0 {
 		t.Fatalf("connector data separation: files=%d, error=%v", files, err)
 	}
+}
+
+// independentToolScript discovers and invokes the tool the test targets, and
+// records whether its result carried the proof the backend echoes.
+type independentToolScript struct {
+	proof    string
+	target   atomic.Value
+	executed atomic.Bool
+}
+
+func (s *independentToolScript) Call(_ context.Context, req *chat.Request) (*chat.Response, error) {
+	name := s.target.Load().(string)
+	if name == "" || len(req.Tools) == 0 {
+		return completedTextResponse("ready"), nil
+	}
+	if result := toolResultNamed(req, name); result != nil {
+		reply, err := json.Marshal(result.Output)
+		if err != nil {
+			return nil, err
+		}
+		s.executed.Store(!result.IsError && bytes.Contains(reply, []byte(s.proof)))
+		return completedTextResponse("finished"), nil
+	}
+	call := deferredToolCall(req, "find-independent-tool", chat.ToolCall{ID: "invoke-independent-tool", Name: name, Arguments: `{"value":"` + s.proof + `"}`})
+	msg := chat.NewAssistantMessage(chat.NewToolCallPart(call))
+	return chat.NewResponse(&chat.Output{Message: &msg, FinishReason: chat.FinishReasonToolCalls}, nil)
+}
+
+// recordToolOwnedBy reports whether exactly the expected servers own the
+// "record" tool of the named server, with no conflict left for a sole owner.
+func recordToolOwnedBy(tools []protocol.MCPTool, name string, expected []protocol.MCPServerID) bool {
+	var owners []protocol.MCPServerID
+	for _, tool := range tools {
+		if tool.Server.Name != name || tool.Name != "record" {
+			continue
+		}
+		if len(expected) == 1 && len(tool.NameConflicts) > 0 {
+			return false
+		}
+		owners = append(owners, tool.Server)
+	}
+	if len(owners) != len(expected) {
+		return false
+	}
+	for _, owner := range expected {
+		if !slices.Contains(owners, owner) {
+			return false
+		}
+	}
+	return true
 }

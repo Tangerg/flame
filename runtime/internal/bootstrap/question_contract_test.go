@@ -19,23 +19,7 @@ import (
 func TestQuestionContractRejectsTheSameFieldAndPersistsExplicitSkips(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("FLAME_HOME", home)
-	model := chat.ModelFunc(func(_ context.Context, request *chat.Request) (*chat.Response, error) {
-		for _, message := range request.Messages {
-			for _, part := range message.Parts {
-				if part.ToolResult != nil {
-					if len(part.ToolResult.Output.Content) != 1 || !strings.Contains(part.ToolResult.Output.Content[0].Text, "custom, one") {
-						return nil, errors.New("question result changed the literal custom value")
-					}
-					message := chat.NewAssistantMessage(chat.NewTextPart("completed"))
-					return chat.NewResponse(&chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}, &chat.ResponseMetadata{Model: "claude-test"})
-				}
-			}
-		}
-		message := chat.NewAssistantMessage(chat.NewToolCallPart(chat.ToolCall{
-			ID: "contract_question", Name: "ask_user", Arguments: `{"questions":[{"question":"Context"},{"question":"Platform","options":[{"label":"linux"},{"label":"darwin"}]},{"question":"Checks","options":[{"label":"unit"},{"label":"integration"}],"multi_select":true}]}`,
-		}))
-		return chat.NewResponse(&chat.Output{Message: &message, FinishReason: chat.FinishReasonToolCalls}, &chat.ResponseMetadata{Model: "claude-test"})
-	})
+	model := chat.ModelFunc(questionContractScript)
 	stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: home, ValidateDirectory: persistencefixture.UnleasedDirectory})
 	if err != nil {
 		t.Fatal(err)
@@ -183,4 +167,25 @@ func TestQuestionContractRejectsTheSameFieldAndPersistsExplicitSkips(t *testing.
 		t.Fatal(err)
 	}
 	assertItems(cold, protocol.ItemListScope{Type: protocol.ItemScopeSession, SessionID: imported.Session.ID})
+}
+
+// questionContractScript asks one text, one single-choice and one multi-select
+// question, then finishes once the answer kept the literal custom value.
+func questionContractScript(_ context.Context, request *chat.Request) (*chat.Response, error) {
+	for _, message := range request.Messages {
+		for _, part := range message.Parts {
+			if part.ToolResult == nil {
+				continue
+			}
+			if len(part.ToolResult.Output.Content) != 1 || !strings.Contains(part.ToolResult.Output.Content[0].Text, "custom, one") {
+				return nil, errors.New("question result changed the literal custom value")
+			}
+			message := chat.NewAssistantMessage(chat.NewTextPart("completed"))
+			return chat.NewResponse(&chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}, &chat.ResponseMetadata{Model: "claude-test"})
+		}
+	}
+	message := chat.NewAssistantMessage(chat.NewToolCallPart(chat.ToolCall{
+		ID: "contract_question", Name: "ask_user", Arguments: `{"questions":[{"question":"Context"},{"question":"Platform","options":[{"label":"linux"},{"label":"darwin"}]},{"question":"Checks","options":[{"label":"unit"},{"label":"integration"}],"multi_select":true}]}`,
+	}))
+	return chat.NewResponse(&chat.Output{Message: &message, FinishReason: chat.FinishReasonToolCalls}, &chat.ResponseMetadata{Model: "claude-test"})
 }

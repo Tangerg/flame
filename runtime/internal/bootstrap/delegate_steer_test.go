@@ -18,42 +18,8 @@ func TestSteeringARootMidDelegationLandsAfterTheChildResult(t *testing.T) {
 	t.Setenv("FLAME_HOME", home)
 	childEntered := make(chan struct{}, 1)
 	releaseChild := make(chan struct{})
-	var mu sync.Mutex
-	var parentContinuation []chat.Message
-
-	model := delegateRestartModel{chat.ModelFunc(func(ctx context.Context, request *chat.Request) (*chat.Response, error) {
-		delegated, hasResult := false, false
-		for _, message := range request.Messages {
-			hasResult = hasResult || message.Role == chat.RoleTool
-			if message.Role == chat.RoleUser && strings.Contains(message.Text(), "child work") {
-				delegated = true
-			}
-		}
-		meta := &chat.ResponseMetadata{Model: "claude-test", Usage: &chat.Usage{InputTokens: 2, OutputTokens: 1}}
-		switch {
-		case delegated:
-			childEntered <- struct{}{}
-			select {
-			case <-releaseChild:
-			case <-ctx.Done():
-				return nil, ctx.Err()
-			}
-			done := chat.NewAssistantMessage(chat.NewTextPart("child done"))
-			return chat.NewResponse(&chat.Output{Message: &done, FinishReason: chat.FinishReasonStop}, meta)
-		case hasResult:
-			mu.Lock()
-			parentContinuation = append([]chat.Message(nil), request.Messages...)
-			mu.Unlock()
-			stop := chat.NewAssistantMessage(chat.NewTextPart("parent done"))
-			return chat.NewResponse(&chat.Output{Message: &stop, FinishReason: chat.FinishReasonStop}, meta)
-		default:
-			call := chat.NewAssistantMessage(chat.NewToolCallPart(chat.ToolCall{
-				ID: "delegate_child", Name: "delegate_task",
-				Arguments: `{"summary":"child","instructions":"child work"}`,
-			}))
-			return chat.NewResponse(&chat.Output{Message: &call, FinishReason: chat.FinishReasonToolCalls}, meta)
-		}
-	})}
+	script := &steerDelegationScript{childEntered: childEntered, releaseChild: releaseChild}
+	model := delegateRestartModel{chat.ModelFunc(script.Call)}
 
 	ctx := delivery.WithRequestMeta(t.Context(), protocol.RequestMeta{
 		ProtocolVersion: protocol.Version,
@@ -104,9 +70,9 @@ func TestSteeringARootMidDelegationLandsAfterTheChildResult(t *testing.T) {
 	observed := waitForRunEvents(t, collected, "steered delegation tree")
 	waitForProtocolRunTerminal(t, ctx, api, started.RunID)
 
-	mu.Lock()
-	continuation := parentContinuation
-	mu.Unlock()
+	script.mu.Lock()
+	continuation := script.parentContinuation
+	script.mu.Unlock()
 	if len(continuation) == 0 {
 		t.Fatal("the root never made a model request carrying the child's result")
 	}
@@ -142,5 +108,48 @@ func TestSteeringARootMidDelegationLandsAfterTheChildResult(t *testing.T) {
 	})
 	if !errors.Is(steerErr, protocol.ErrRunNotRoot) {
 		t.Fatalf("steering a child Run = %v, want run_not_root", steerErr)
+	}
+}
+
+// steerDelegationScript delegates one child that waits for the test's release,
+// and records the parent's continuation request once the child result lands.
+type steerDelegationScript struct {
+	childEntered       chan<- struct{}
+	releaseChild       <-chan struct{}
+	mu                 sync.Mutex
+	parentContinuation []chat.Message
+}
+
+func (s *steerDelegationScript) Call(ctx context.Context, request *chat.Request) (*chat.Response, error) {
+	delegated, hasResult := false, false
+	for _, message := range request.Messages {
+		hasResult = hasResult || message.Role == chat.RoleTool
+		if message.Role == chat.RoleUser && strings.Contains(message.Text(), "child work") {
+			delegated = true
+		}
+	}
+	meta := &chat.ResponseMetadata{Model: "claude-test", Usage: &chat.Usage{InputTokens: 2, OutputTokens: 1}}
+	switch {
+	case delegated:
+		s.childEntered <- struct{}{}
+		select {
+		case <-s.releaseChild:
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+		done := chat.NewAssistantMessage(chat.NewTextPart("child done"))
+		return chat.NewResponse(&chat.Output{Message: &done, FinishReason: chat.FinishReasonStop}, meta)
+	case hasResult:
+		s.mu.Lock()
+		s.parentContinuation = append([]chat.Message(nil), request.Messages...)
+		s.mu.Unlock()
+		stop := chat.NewAssistantMessage(chat.NewTextPart("parent done"))
+		return chat.NewResponse(&chat.Output{Message: &stop, FinishReason: chat.FinishReasonStop}, meta)
+	default:
+		call := chat.NewAssistantMessage(chat.NewToolCallPart(chat.ToolCall{
+			ID: "delegate_child", Name: "delegate_task",
+			Arguments: `{"summary":"child","instructions":"child work"}`,
+		}))
+		return chat.NewResponse(&chat.Output{Message: &call, FinishReason: chat.FinishReasonToolCalls}, meta)
 	}
 }

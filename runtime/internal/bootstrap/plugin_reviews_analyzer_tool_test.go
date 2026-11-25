@@ -16,26 +16,7 @@ import (
 
 func TestInstalledToolEntryReachesDeclaredAnalyzerDependency(t *testing.T) {
 	cfg := poMCPConfig(t)
-	model := delegateRestartModel{chat.ModelFunc(func(_ context.Context, request *chat.Request) (*chat.Response, error) {
-		if len(request.Tools) == 0 {
-			return completedTextResponse("analyzed"), nil
-		}
-		const name = "reviews_analyze_review"
-		conversation := withoutDeferredCatalog(request)
-		for _, part := range conversation[len(conversation)-1].Parts {
-			if part.ToolResult != nil && part.ToolResult.Name == name {
-				return completedTextResponse("observed"), nil
-			}
-		}
-		call := chat.ToolCall{ID: "analyze-call", Name: "search_tools", Arguments: `{"query":"select:` + name + `"}`}
-		for _, definition := range request.Tools {
-			if definition.Name == name {
-				call.Name, call.Arguments = name, `{}`
-			}
-		}
-		message := chat.NewAssistantMessage(chat.NewToolCallPart(call))
-		return chat.NewResponse(&chat.Output{Message: &message, FinishReason: chat.FinishReasonToolCalls}, &chat.ResponseMetadata{Model: "claude-test", Usage: &chat.Usage{InputTokens: 2, OutputTokens: 1}})
-	})}
+	model := delegateRestartModel{chat.ModelFunc(analyzeReviewScript)}
 	client, err := chatclient.New(model)
 	if err != nil {
 		t.Fatal(err)
@@ -146,4 +127,22 @@ func TestInstalledToolEntryReachesDeclaredAnalyzerDependency(t *testing.T) {
 	if result.Findings[0].Code != "unresolvedReview" || result.Findings[0].ReviewID != result.Review.ID {
 		t.Fatalf("analyzer finding differs from the inspected review: %s", encoded)
 	}
+}
+
+// analyzeReviewScript discovers and calls the installed analyzer tool, then
+// finishes once its latest message carries the analyzer's result.
+func analyzeReviewScript(_ context.Context, request *chat.Request) (*chat.Response, error) {
+	if len(request.Tools) == 0 {
+		return completedTextResponse("analyzed"), nil
+	}
+	const name = "reviews_analyze_review"
+	conversation := withoutDeferredCatalog(request)
+	for _, part := range conversation[len(conversation)-1].Parts {
+		if part.ToolResult != nil && part.ToolResult.Name == name {
+			return completedTextResponse("observed"), nil
+		}
+	}
+	call := deferredToolCall(request, "analyze-call", chat.ToolCall{ID: "analyze-call", Name: name, Arguments: `{}`})
+	message := chat.NewAssistantMessage(chat.NewToolCallPart(call))
+	return chat.NewResponse(&chat.Output{Message: &message, FinishReason: chat.FinishReasonToolCalls}, &chat.ResponseMetadata{Model: "claude-test", Usage: &chat.Usage{InputTokens: 2, OutputTokens: 1}})
 }

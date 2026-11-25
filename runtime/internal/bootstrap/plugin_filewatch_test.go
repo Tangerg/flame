@@ -45,33 +45,8 @@ func TestFilewatchInstalledIngressReconcilesLostOpeningAcrossDisableAndRestart(t
 	}
 	cfg.modelProviders = testChatResolver(client)
 	opening := make(chan protocol.StartRunResponse, 1)
-	var withheld atomic.Bool
-	r := poMCPOpenWithCallbackRPC(t, cfg, func(handler http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
-			body, err := io.ReadAll(request.Body)
-			if err != nil {
-				t.Error(err)
-				return
-			}
-			request.Body = io.NopCloser(bytes.NewReader(body))
-			var envelope struct {
-				Method string `json:"method"`
-			}
-			if err := json.Unmarshal(body, &envelope); err != nil {
-				t.Error(err)
-				return
-			}
-			if envelope.Method == "runs.getAcceptance" && withheld.Load() {
-				http.Error(w, "fixture: acceptance observation withheld", http.StatusServiceUnavailable)
-				return
-			}
-			if envelope.Method == "runs.start" && withheld.CompareAndSwap(false, true) {
-				handler.ServeHTTP(lostOpeningWriter{ResponseWriter: w, opening: opening}, request)
-				return
-			}
-			handler.ServeHTTP(w, request)
-		})
-	})
+	fault := &lostOpeningFault{t: t, opening: opening}
+	r := poMCPOpenWithCallbackRPC(t, cfg, fault.wrap)
 	installed := poMCPActivate(r, filepath.Join(firstPartyPackages, "filewatch"))
 	waitCallContributorState(t, r, installed.ID, protocol.MCPServerConnected)
 	contracts, err := plugincontract.ParseCapability([]byte(testsupport.FilewatchCapabilityJSON))
@@ -196,4 +171,38 @@ func TestFilewatchInstalledIngressReconcilesLostOpeningAcrossDisableAndRestart(t
 		return len(values) == 2 && values[0].Accepted && values[0].RunId != original.RunId
 	})
 	wait(func() bool { return calls.Load() == 2 })
+}
+
+// lostOpeningFault loses the response of the first runs.start that crosses the
+// callback RPC, and then withholds acceptance reads while the test needs it to.
+type lostOpeningFault struct {
+	t        *testing.T
+	opening  chan protocol.StartRunResponse
+	withheld atomic.Bool
+}
+
+func (f *lostOpeningFault) wrap(handler http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+		body, err := io.ReadAll(request.Body)
+		if err != nil {
+			f.t.Error(err)
+			return
+		}
+		request.Body = io.NopCloser(bytes.NewReader(body))
+		var envelope struct {
+			Method string `json:"method"`
+		}
+		if err := json.Unmarshal(body, &envelope); err != nil {
+			f.t.Error(err)
+			return
+		}
+		switch {
+		case envelope.Method == "runs.getAcceptance" && f.withheld.Load():
+			http.Error(w, "fixture: acceptance observation withheld", http.StatusServiceUnavailable)
+		case envelope.Method == "runs.start" && f.withheld.CompareAndSwap(false, true):
+			handler.ServeHTTP(lostOpeningWriter{ResponseWriter: w, opening: f.opening}, request)
+		default:
+			handler.ServeHTTP(w, request)
+		}
+	})
 }

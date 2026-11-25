@@ -284,22 +284,7 @@ func (g *goalAndPlanLongContextModel) Call(
 
 	switch {
 	case call == 1:
-		g.openingCallArrivedOnce.Do(func() { close(g.openingCallArrived) })
-		select {
-		case <-g.openingCallRelease:
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		}
-		g.recordCheck(func(checks *goalAndPlanStateChecks) {
-			checks.openingGoalAndPlan = requestContainsText(request, goalAcrossCompactionObjective) &&
-				requestContainsText(request, "Status: active") &&
-				requestContainsText(request, stalePlanText)
-		})
-		return toolCallResponse(chat.ToolCall{
-			ID:        "call_goal_set_current_plan",
-			Name:      string(builtincontract.SetPlan),
-			Arguments: `{"steps":[{"description":"` + currentPlanText + `","status":"in_progress"}]}`,
-		}, modelContextPressurePayload), nil
+		return g.opening(ctx, request)
 	case call <= modelCallsBeforeMidRunCompaction:
 		if call == 2 {
 			g.recordCheck(func(checks *goalAndPlanStateChecks) {
@@ -329,6 +314,27 @@ func (g *goalAndPlanLongContextModel) Call(
 		})
 		return completedTextResponse("The autonomous Goal is complete after compaction."), nil
 	}
+}
+
+// opening announces the first call, waits for the test's release, records that
+// the Goal and the stale Plan reached the model, and replaces the Plan.
+func (g *goalAndPlanLongContextModel) opening(ctx context.Context, request *chat.Request) (*chat.Response, error) {
+	g.openingCallArrivedOnce.Do(func() { close(g.openingCallArrived) })
+	select {
+	case <-g.openingCallRelease:
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+	g.recordCheck(func(checks *goalAndPlanStateChecks) {
+		checks.openingGoalAndPlan = requestContainsText(request, goalAcrossCompactionObjective) &&
+			requestContainsText(request, "Status: active") &&
+			requestContainsText(request, stalePlanText)
+	})
+	return toolCallResponse(chat.ToolCall{
+		ID:        "call_goal_set_current_plan",
+		Name:      string(builtincontract.SetPlan),
+		Arguments: `{"steps":[{"description":"` + currentPlanText + `","status":"in_progress"}]}`,
+	}, modelContextPressurePayload), nil
 }
 
 func (g *goalAndPlanLongContextModel) Stream(

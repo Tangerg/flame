@@ -69,19 +69,7 @@ func TestScopeRootCompletionCrashHelper(t *testing.T) {
 	}
 	cut := os.Getenv(rootCompletionCrashCut)
 	if cut == rootCompletionTx {
-		err := modernsqlite.RegisterScalarFunction("test_exit_during_root_completion", 1,
-			func(_ *modernsqlite.FunctionContext, args []driver.Value) (driver.Value, error) {
-				payload, ok := args[0].([]byte)
-				if !ok {
-					return nil, errors.New("the Run transaction had no Scope head")
-				}
-				log, err := waitingChildScopeLog(payload)
-				if err != nil || !scopeRootCompleted(log) {
-					return nil, errors.Join(err, errors.New("the Run transaction did not see the original Scope completion"))
-				}
-				os.Exit(commandCrashExit)
-				return nil, nil
-			})
+		err := modernsqlite.RegisterScalarFunction("test_exit_during_root_completion", 1, exitDuringRootCompletion)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -94,14 +82,7 @@ func TestScopeRootCompletionCrashHelper(t *testing.T) {
 	}
 	release := make(chan struct{})
 	reply := newReplyStub(rootCompletionReply)
-	model := delegateRestartModel{chat.ModelFunc(func(ctx context.Context, request *chat.Request) (*chat.Response, error) {
-		select {
-		case <-release:
-			return reply.Call(ctx, request)
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		}
-	})}
+	model := delegateRestartModel{chat.ModelFunc(releasedReply{release: release, reply: reply}.Call)}
 	cfg := protocolRuntimeConfig(t, stores, model)
 	if cut == rootCompletionMaintain || cut == rootCompletionCancel {
 		cfg.maintenance = crashAtRootMaintenance{}
@@ -299,4 +280,34 @@ func scopeRootCompleted(log scoperun.Log) bool {
 		}
 	}
 	return false
+}
+
+// exitDuringRootCompletion exits the process inside the Run transaction once
+// it can see the original Scope completion in the same commit.
+func exitDuringRootCompletion(_ *modernsqlite.FunctionContext, args []driver.Value) (driver.Value, error) {
+	payload, ok := args[0].([]byte)
+	if !ok {
+		return nil, errors.New("the Run transaction had no Scope head")
+	}
+	log, err := waitingChildScopeLog(payload)
+	if err != nil || !scopeRootCompleted(log) {
+		return nil, errors.Join(err, errors.New("the Run transaction did not see the original Scope completion"))
+	}
+	os.Exit(commandCrashExit)
+	return nil, nil
+}
+
+// releasedReply answers with its stub only after the test releases the call.
+type releasedReply struct {
+	release <-chan struct{}
+	reply   *replyStub
+}
+
+func (r releasedReply) Call(ctx context.Context, request *chat.Request) (*chat.Response, error) {
+	select {
+	case <-r.release:
+		return r.reply.Call(ctx, request)
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
 }

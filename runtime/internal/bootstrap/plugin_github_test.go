@@ -148,12 +148,7 @@ func (s *githubRefusalScript) Call(_ context.Context, request *chat.Request) (*c
 		}
 		return completedTextResponse("resource refused"), nil
 	}
-	call := chat.ToolCall{ID: "discover-github", Name: "search_tools", Arguments: `{"query":"select:` + target + `"}`}
-	for _, definition := range request.Tools {
-		if definition.Name == target {
-			call = chat.ToolCall{ID: "github-" + target, Name: target, Arguments: s.arguments.Load().(string)}
-		}
-	}
+	call := deferredToolCall(request, "discover-github", chat.ToolCall{ID: "github-" + target, Name: target, Arguments: s.arguments.Load().(string)})
 	message := chat.NewAssistantMessage(chat.NewToolCallPart(call))
 	return chat.NewResponse(&chat.Output{Message: &message, FinishReason: chat.FinishReasonToolCalls}, nil)
 }

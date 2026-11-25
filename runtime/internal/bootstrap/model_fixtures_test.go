@@ -79,3 +79,14 @@ func (l *lifecycleModel) Call(ctx context.Context, _ *chat.Request) (*chat.Respo
 func (l *lifecycleModel) Stream(ctx context.Context, request *chat.Request) iter.Seq2[*chat.ResponseDelta, error] {
 	return testsupport.StreamResponse(l.Call(ctx, request))
 }
+
+// deferredToolCall makes call once the request offers its tool, and until then
+// asks search_tools to select that deferred tool.
+func deferredToolCall(request *chat.Request, discoveryID string, call chat.ToolCall) chat.ToolCall {
+	for _, definition := range request.Tools {
+		if definition.Name == call.Name {
+			return call
+		}
+	}
+	return chat.ToolCall{ID: discoveryID, Name: "search_tools", Arguments: `{"query":"select:` + call.Name + `"}`}
+}

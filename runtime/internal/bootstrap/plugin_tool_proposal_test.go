@@ -125,41 +125,12 @@ func TestInstalledToolProposalIsApprovedExecutedAndRetainedWithoutTransformRepla
 	binary := buildCallContributor(t)
 	for _, test := range proposalCases {
 		t.Run(test.name, func(t *testing.T) {
-			var transformations atomic.Int32
-			var sourceAvailable atomic.Bool
-			sourceAvailable.Store(true)
-			trace := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
-				if request.Method == http.MethodGet {
-					if !sourceAvailable.Load() {
-						w.WriteHeader(http.StatusServiceUnavailable)
-					}
-					return
-				}
-				transformations.Add(1)
-				w.WriteHeader(http.StatusNoContent)
-			}))
+			source := &proposalTraceSource{}
+			source.available.Store(true)
+			trace := httptest.NewServer(source)
 			defer trace.Close()
 			cfg := poMCPConfig(t)
-			model := delegateRestartModel{chat.ModelFunc(func(_ context.Context, request *chat.Request) (*chat.Response, error) {
-				for _, message := range request.Messages {
-					for _, part := range message.Parts {
-						if part.ToolResult != nil && part.ToolResult.Name == "reviews_update_review" {
-							return completedTextResponse("observed"), nil
-						}
-					}
-				}
-				if len(request.Tools) == 0 {
-					return completedTextResponse("auxiliary"), nil
-				}
-				call := chat.ToolCall{ID: "provider-proposal", Name: "search_tools", Arguments: `{"query":"select:reviews_update_review"}`}
-				for _, definition := range request.Tools {
-					if definition.Name == "reviews_update_review" {
-						call.Name, call.Arguments = definition.Name, `{"id":"example-review","expectedRevision":1,"status":"open"}`
-					}
-				}
-				message := chat.NewAssistantMessage(chat.NewToolCallPart(call))
-				return chat.NewResponse(&chat.Output{Message: &message, FinishReason: chat.FinishReasonToolCalls}, nil)
-			})}
+			model := delegateRestartModel{chat.ModelFunc(reviewProposalScript)}
 			client, err := chatclient.New(model)
 			if err != nil {
 				t.Fatal(err)
@@ -212,7 +183,7 @@ func TestInstalledToolProposalIsApprovedExecutedAndRetainedWithoutTransformRepla
 					r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: contributor.ID, Enabled: false}, "withdraw-captured-contributor")
 				}
 				if test.loss == failedContributor {
-					sourceAvailable.Store(false)
+					source.available.Store(false)
 				}
 				r = reopenPluginRuntime(t, r, &cfg)
 				r.poMCPTools(server, func(tools []protocol.MCPTool) bool { return len(tools) == 3 })
@@ -253,8 +224,8 @@ func TestInstalledToolProposalIsApprovedExecutedAndRetainedWithoutTransformRepla
 					t.Fatalf("executed/history outcome differs from final admission: %+v, %s, %v", item, encoded, err)
 				}
 			}
-			if !found || transformations.Load() != 1 {
-				t.Fatalf("proposal missing or replayed across approval/restart: found=%v transformations=%d", found, transformations.Load())
+			if !found || source.transformations.Load() != 1 {
+				t.Fatalf("proposal missing or replayed across approval/restart: found=%v transformations=%d", found, source.transformations.Load())
 			}
 			read := r.must(delivery.PluginsCall, protocol.CallPluginRequest{InstallationID: reviews.ID, Digest: reviews.Selected.Digest, Contribution: "review-operations", Contract: reviews.Selected.Contributions[0].Contract, Method: "io.github.tangerg.flame.examples/reviews.list", Input: `{}`, Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: reviews.ID}}, "").(*protocol.CallPluginResponse)
 			var current struct {
@@ -278,4 +249,41 @@ func TestInstalledToolProposalIsApprovedExecutedAndRetainedWithoutTransformRepla
 			}
 		})
 	}
+}
+
+// proposalTraceSource is the call contributor's trace server: GET reports
+// whether the contributor's source is available, and every POST records one
+// proposal transformation.
+type proposalTraceSource struct {
+	available       atomic.Bool
+	transformations atomic.Int32
+}
+
+func (s *proposalTraceSource) ServeHTTP(w http.ResponseWriter, request *http.Request) {
+	if request.Method == http.MethodGet {
+		if !s.available.Load() {
+			w.WriteHeader(http.StatusServiceUnavailable)
+		}
+		return
+	}
+	s.transformations.Add(1)
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// reviewProposalScript discovers the review update tool and proposes reopening
+// the review; the contributor transforms that proposal before approval.
+func reviewProposalScript(_ context.Context, request *chat.Request) (*chat.Response, error) {
+	for _, message := range request.Messages {
+		for _, part := range message.Parts {
+			if part.ToolResult != nil && part.ToolResult.Name == "reviews_update_review" {
+				return completedTextResponse("observed"), nil
+			}
+		}
+	}
+	if len(request.Tools) == 0 {
+		return completedTextResponse("auxiliary"), nil
+	}
+	call := deferredToolCall(request, "provider-proposal", chat.ToolCall{ID: "provider-proposal", Name: "reviews_update_review", Arguments: `{"id":"example-review","expectedRevision":1,"status":"open"}`})
+	message := chat.NewAssistantMessage(chat.NewToolCallPart(call))
+	return chat.NewResponse(&chat.Output{Message: &message, FinishReason: chat.FinishReasonToolCalls}, nil)
 }

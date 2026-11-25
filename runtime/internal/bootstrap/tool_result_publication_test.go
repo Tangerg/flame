@@ -2,6 +2,7 @@ package bootstrap
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -38,31 +39,7 @@ func TestOffloadedToolResultCommitsWithItsItem(t *testing.T) {
 	probe := openCommandEffects(t, directory.DatabasePath())
 	var sessionID atomic.Value
 	var detachedBody atomic.Bool
-	transact := stores.Transactor
-	stores.Transactor = func(ctx context.Context, apply func(context.Context) error) error {
-		if owner, active := sessionID.Load().(string); active {
-			var bodies int
-			if err := probe.QueryRowContext(ctx, `SELECT COUNT(*) FROM tool_result_blobs WHERE session_id = ?`, owner).Scan(&bodies); err != nil {
-				return err
-			}
-			if bodies > 0 {
-				items, err := stores.Transcript.ListStored(ctx, testsupport.MustSessionID(owner))
-				if err != nil {
-					return err
-				}
-				var named int
-				for _, item := range items {
-					if call, ok := item.ToolCall(); ok && call.Invocation.Offload != nil {
-						named++
-					}
-				}
-				if bodies > named {
-					detachedBody.Store(true)
-				}
-			}
-		}
-		return transact(ctx, apply)
-	}
+	watchDetachedToolBodies(stores, probe, &sessionID, &detachedBody)
 	model := delegateRestartModel{chat.ModelFunc(func(_ context.Context, request *chat.Request) (*chat.Response, error) {
 		call := chat.ToolCall{ID: "read_original", Name: string(builtin.Read), Arguments: `{"path":"large.txt"}`}
 		for _, message := range slices.Backward(request.Messages) {
@@ -166,4 +143,42 @@ func TestOffloadedToolResultCommitsWithItsItem(t *testing.T) {
 	}
 	assertRemoved(session.ID)
 	assertOriginal(forked.ID)
+}
+
+// watchDetachedToolBodies flags, before every transaction of the watched
+// session, any stored Tool result body that no committed Tool Item names yet.
+func watchDetachedToolBodies(stores *persistence.Bundle, probe *sql.DB, sessionID *atomic.Value, detached *atomic.Bool) {
+	transact := stores.Transactor
+	stores.Transactor = func(ctx context.Context, apply func(context.Context) error) error {
+		if owner, active := sessionID.Load().(string); active {
+			if err := flagDetachedBodies(ctx, stores, probe, owner, detached); err != nil {
+				return err
+			}
+		}
+		return transact(ctx, apply)
+	}
+}
+
+func flagDetachedBodies(ctx context.Context, stores *persistence.Bundle, probe *sql.DB, owner string, detached *atomic.Bool) error {
+	var bodies int
+	if err := probe.QueryRowContext(ctx, `SELECT COUNT(*) FROM tool_result_blobs WHERE session_id = ?`, owner).Scan(&bodies); err != nil {
+		return err
+	}
+	if bodies == 0 {
+		return nil
+	}
+	items, err := stores.Transcript.ListStored(ctx, testsupport.MustSessionID(owner))
+	if err != nil {
+		return err
+	}
+	var named int
+	for _, item := range items {
+		if call, ok := item.ToolCall(); ok && call.Invocation.Offload != nil {
+			named++
+		}
+	}
+	if bodies > named {
+		detached.Store(true)
+	}
+	return nil
 }

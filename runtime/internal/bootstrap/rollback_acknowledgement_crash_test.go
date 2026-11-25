@@ -105,33 +105,13 @@ func testRollbackAcknowledgementCrash(t *testing.T, cut string, scope protocol.R
 	const originalFile = "Retained checkpoint\n"
 	const laterFile = "Later working-tree edit\n"
 	const newFile = "Edit after the rollback committed\n"
-	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch {
-		case strings.HasSuffix(r.URL.Path, "/responses/input_tokens"):
-			w.Header().Set("Content-Type", "application/json")
-			_, _ = fmt.Fprint(w, `{"object":"response.input_tokens","input_tokens":16}`)
-		case strings.HasSuffix(r.URL.Path, "/responses"):
-			w.Header().Set("Content-Type", "text/event-stream")
-			_, _ = fmt.Fprintf(w, "data: %s\n\n", `{"type":"response.output_text.delta","item_id":"message","output_index":0,"content_index":0,"delta":"completed"}`)
-			_, _ = fmt.Fprintf(w, "data: %s\n\n", fmt.Sprintf(`{"type":"response.completed","response":{"id":"response","model":%q,"status":"completed","output":[{"type":"message","id":"message","role":"assistant","content":[{"type":"output_text","text":"completed"}]}],"usage":{"input_tokens":7,"output_tokens":3}}}`, rollbackCrashModel))
-		default:
-			http.NotFound(w, r)
-		}
-	}))
+	upstream := httptest.NewServer(http.HandlerFunc(serveRollbackCrashUpstream))
 	t.Cleanup(upstream.Close)
 	cfg := poMCPConfig(t)
 	cfg.maintenance = noMaintenance{}
 	var material string
 	if scope != protocol.RestoreHistory {
-		cfg.maintenance = nil
-		cfg.checkpointDir = filepath.Join(cfg.stores.DataDirectory, "checkpoints")
-		if output, err := exec.CommandContext(t.Context(), "git", "-C", cfg.defaultWorkspacePath, "init", "--quiet").CombinedOutput(); err != nil {
-			t.Fatalf("initialize disposable workspace: %v\n%s", err, output)
-		}
-		material = filepath.Join(cfg.defaultWorkspacePath, "material.txt")
-		if err := os.WriteFile(material, []byte(originalFile), 0600); err != nil {
-			t.Fatal(err)
-		}
+		material = prepareRollbackWorkspace(t, &cfg, originalFile)
 	}
 	cfg.modelProviders = nil
 	cfg.defaultSelection = testsupport.MustModelSelection(rollbackCrashProvider, rollbackCrashModel)
@@ -183,15 +163,9 @@ func testRollbackAcknowledgementCrash(t *testing.T, cut string, scope protocol.R
 	if exit, ok := errors.AsType[*exec.ExitError](err); !ok || exit.ExitCode() != commandCrashExit {
 		t.Fatalf("rollback process did not reach the receipt cut: %v\n%s", err, output)
 	}
-	wantRuns := 1
-	if scope == protocol.RestoreFiles {
-		wantRuns = 2
-	}
+	wantRuns := runsAfterRollbackCut(cut, scope)
 	if cut == rollbackReceiptWrite {
 		questionCrashDatabase(t, home, "DROP TRIGGER rollback_ack_crash")
-		if scope == protocol.RestoreHistory {
-			wantRuns = 2
-		}
 	}
 	if material != "" {
 		got, err := os.ReadFile(material)
@@ -238,15 +212,10 @@ func testRollbackAcknowledgementCrash(t *testing.T, cut string, scope protocol.R
 	}
 	for range 2 {
 		receipt, err := restarted.endpoint.Call[protocol.RollbackSessionRequest, *protocol.RollbackSessionResponse](ctx, rollbackCrashMethod, request, meta)
-		if err != nil || receipt == nil || receipt.Session == nil || receipt.Session.ID != session.ID || len(receipt.DroppedRuns) != wantDropped {
-			t.Fatalf("rollback could not recover its original receipt: %+v, %v", receipt, err)
+		if err != nil {
+			t.Fatalf("rollback could not recover its original receipt: %v", err)
 		}
-		if wantDropped != 0 {
-			dropped := receipt.DroppedRuns[0]
-			if dropped.Run.ID != runIDs[1] || len(dropped.UserInput) != 1 || dropped.UserInput[0].Text != discardedInput {
-				t.Fatalf("rollback receipt changed the dropped original input: %+v", dropped)
-			}
-		}
+		checkRollbackReceipt(t, receipt, session.ID, wantDropped, runIDs[1], discardedInput)
 	}
 	changed := request
 	changed.ToRunID = runIDs[1]
@@ -261,5 +230,62 @@ func testRollbackAcknowledgementCrash(t *testing.T, cut string, scope protocol.R
 		if got, err := os.ReadFile(material); err != nil || string(got) != newFile {
 			t.Fatalf("a receipt replay performed another checkout: %q, %v", got, err)
 		}
+	}
+}
+
+// serveRollbackCrashUpstream is a Responses API provider that completes every
+// turn with the same short answer.
+func serveRollbackCrashUpstream(w http.ResponseWriter, r *http.Request) {
+	switch {
+	case strings.HasSuffix(r.URL.Path, "/responses/input_tokens"):
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = fmt.Fprint(w, `{"object":"response.input_tokens","input_tokens":16}`)
+	case strings.HasSuffix(r.URL.Path, "/responses"):
+		w.Header().Set("Content-Type", "text/event-stream")
+		_, _ = fmt.Fprintf(w, "data: %s\n\n", `{"type":"response.output_text.delta","item_id":"message","output_index":0,"content_index":0,"delta":"completed"}`)
+		_, _ = fmt.Fprintf(w, "data: %s\n\n", fmt.Sprintf(`{"type":"response.completed","response":{"id":"response","model":%q,"status":"completed","output":[{"type":"message","id":"message","role":"assistant","content":[{"type":"output_text","text":"completed"}]}],"usage":{"input_tokens":7,"output_tokens":3}}}`, rollbackCrashModel))
+	default:
+		http.NotFound(w, r)
+	}
+}
+
+// prepareRollbackWorkspace gives a file-restoring rollback a git workspace with
+// checkpoints and returns the file the scenario edits.
+func prepareRollbackWorkspace(t *testing.T, cfg *assemblyConfig, original string) string {
+	t.Helper()
+	cfg.maintenance = nil
+	cfg.checkpointDir = filepath.Join(cfg.stores.DataDirectory, "checkpoints")
+	if output, err := exec.CommandContext(t.Context(), "git", "-C", cfg.defaultWorkspacePath, "init", "--quiet").CombinedOutput(); err != nil {
+		t.Fatalf("initialize disposable workspace: %v\n%s", err, output)
+	}
+	material := filepath.Join(cfg.defaultWorkspacePath, "material.txt")
+	if err := os.WriteFile(material, []byte(original), 0600); err != nil {
+		t.Fatal(err)
+	}
+	return material
+}
+
+// runsAfterRollbackCut is the number of Runs the restarted Runtime must list
+// before the original rollback is replayed.
+func runsAfterRollbackCut(cut string, scope protocol.RestoreType) int {
+	if scope == protocol.RestoreFiles || cut == rollbackReceiptWrite && scope == protocol.RestoreHistory {
+		return 2
+	}
+	return 1
+}
+
+// checkRollbackReceipt requires the replayed receipt to name the original
+// session and, when a Run was dropped, the dropped Run with its exact input.
+func checkRollbackReceipt(t *testing.T, receipt *protocol.RollbackSessionResponse, sessionID string, wantDropped int, droppedRunID, droppedInput string) {
+	t.Helper()
+	if receipt == nil || receipt.Session == nil || receipt.Session.ID != sessionID || len(receipt.DroppedRuns) != wantDropped {
+		t.Fatalf("rollback could not recover its original receipt: %+v", receipt)
+	}
+	if wantDropped == 0 {
+		return
+	}
+	dropped := receipt.DroppedRuns[0]
+	if dropped.Run.ID != droppedRunID || len(dropped.UserInput) != 1 || dropped.UserInput[0].Text != droppedInput {
+		t.Fatalf("rollback receipt changed the dropped original input: %+v", dropped)
 	}
 }

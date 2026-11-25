@@ -69,48 +69,7 @@ func TestAcceptedContinuationCrashHelper(t *testing.T) {
 		t.Fatal(err)
 	}
 	var waitingHead runsapp.ExecutionTreeHead
-	installCrash := func() {
-		tx := stores.Transactor
-		stores.Transactor = func(ctx context.Context, apply func(context.Context) error) error {
-			rollback := errors.New("test acceptance rollback")
-			err := tx(ctx, func(txCtx context.Context) error {
-				if err := apply(txCtx); err != nil {
-					return err
-				}
-				if phase == crashAtRollback {
-					bindings, err := stores.AcceptedContinuations.List(txCtx)
-					if err != nil {
-						return err
-					}
-					if len(bindings) > 0 {
-						return rollback
-					}
-				}
-				return nil
-			})
-			if errors.Is(err, rollback) {
-				os.Exit(commandCrashExit)
-			}
-			if err != nil {
-				return err
-			}
-			bindings, err := stores.AcceptedContinuations.List(ctx)
-			if err != nil {
-				return err
-			}
-			if len(bindings) > 0 && (phase == crashAtAcceptance || phase == crashAtColdAcceptance) {
-				if phase == crashAtColdAcceptance {
-					current, found, err := stores.ExecutorCheckpoints.LoadExecutionTree(ctx, waitingHead.SessionID, waitingHead.RootID)
-					if err != nil || !found || !waitingHead.SameCommit(current) {
-						return fmt.Errorf("writer changed before acceptance: found=%t, error=%v", found, err)
-					}
-				}
-				os.Exit(commandCrashExit)
-			}
-			return nil
-		}
-	}
-	installCrash()
+	installAcceptedCrash(stores, phase, &waitingHead)
 	cfg := protocolRuntimeConfig(t, stores, acceptedCrashModel(t, home))
 	cfg.approvalMode = approval.ModeSafe
 	host, api := buildProtocolRuntime(t, cfg, home)
@@ -145,7 +104,7 @@ func TestAcceptedContinuationCrashHelper(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		installCrash()
+		installAcceptedCrash(stores, phase, &waitingHead)
 		cfg = protocolRuntimeConfig(t, stores, acceptedCrashModel(t, home))
 		cfg.approvalMode = approval.ModeSafe
 		host, api = buildProtocolRuntime(t, cfg, home)
@@ -162,18 +121,7 @@ func TestAcceptedContinuationCrashHelper(t *testing.T) {
 		}
 	}
 	if predicate != "" {
-		directory, err := localruntime.DataDirectoryAt(home)
-		if err != nil {
-			t.Fatal(err)
-		}
-		db, err := sql.Open("sqlite", directory.DatabasePath())
-		if err != nil {
-			t.Fatal(err)
-		}
-		_, err = db.ExecContext(t.Context(), `CREATE TRIGGER accepted_release_crash BEFORE UPDATE ON execution_trees WHEN `+predicate+` BEGIN SELECT test_accepted_release_crash(); END`)
-		if err := errors.Join(err, db.Close()); err != nil {
-			t.Fatal(err)
-		}
+		installAcceptedTreeCrashTrigger(t, home, predicate)
 	}
 	result := endpoint.Invoke(ctx, delivery.RunsResume, acceptedResumeRequest(started.RunID, pending.Data[0].Interrupts[0].ItemID), acceptedCommandOptions())
 	if predicate != "" && result.Failure == nil {
@@ -417,5 +365,70 @@ func TestResumeAcceptanceRollbackSurvivesAbruptRestart(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(home, "effect.txt")); !os.IsNotExist(err) {
 		t.Fatalf("rollback executed Tool: %v", err)
+	}
+}
+
+// installAcceptedCrash exits the process right after the transaction that
+// commits an accepted continuation, or rolls that transaction back first for
+// the rollback crash point. A cold acceptance must commit against the waiting
+// head the test captured.
+func installAcceptedCrash(stores *persistence.Bundle, phase acceptedCrashPoint, waitingHead *runsapp.ExecutionTreeHead) {
+	tx := stores.Transactor
+	stores.Transactor = func(ctx context.Context, apply func(context.Context) error) error {
+		rollback := errors.New("test acceptance rollback")
+		err := tx(ctx, func(txCtx context.Context) error {
+			if err := apply(txCtx); err != nil {
+				return err
+			}
+			if phase == crashAtRollback {
+				bindings, err := stores.AcceptedContinuations.List(txCtx)
+				if err != nil {
+					return err
+				}
+				if len(bindings) > 0 {
+					return rollback
+				}
+			}
+			return nil
+		})
+		if errors.Is(err, rollback) {
+			os.Exit(commandCrashExit)
+		}
+		if err != nil {
+			return err
+		}
+		bindings, err := stores.AcceptedContinuations.List(ctx)
+		if err != nil {
+			return err
+		}
+		if len(bindings) > 0 && (phase == crashAtAcceptance || phase == crashAtColdAcceptance) {
+			if phase == crashAtColdAcceptance {
+				current, found, err := stores.ExecutorCheckpoints.LoadExecutionTree(ctx, waitingHead.SessionID, waitingHead.RootID)
+				if err != nil || !found || !waitingHead.SameCommit(current) {
+					return fmt.Errorf("writer changed before acceptance: found=%t, error=%v", found, err)
+				}
+			}
+			os.Exit(commandCrashExit)
+		}
+		return nil
+	}
+
+}
+
+// installAcceptedTreeCrashTrigger makes the selected execution-tree write call
+// the crash function registered with SQLite.
+func installAcceptedTreeCrashTrigger(t *testing.T, home, predicate string) {
+	t.Helper()
+	directory, err := localruntime.DataDirectoryAt(home)
+	if err != nil {
+		t.Fatal(err)
+	}
+	db, err := sql.Open("sqlite", directory.DatabasePath())
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = db.ExecContext(t.Context(), `CREATE TRIGGER accepted_release_crash BEFORE UPDATE ON execution_trees WHEN `+predicate+` BEGIN SELECT test_accepted_release_crash(); END`)
+	if err := errors.Join(err, db.Close()); err != nil {
+		t.Fatal(err)
 	}
 }

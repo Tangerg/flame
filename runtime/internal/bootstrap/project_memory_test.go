@@ -27,54 +27,8 @@ func TestProjectsInOneWorkspaceKeepInstructionsAndMemoryApart(t *testing.T) {
 		projectFact   = "payments vendor shortlist"
 		instructions  = "Answer as the payments review lead."
 	)
-	var (
-		mu       sync.Mutex
-		systems  = map[string]string{}
-		searched string
-	)
-	model := delegateRestartModel{chat.ModelFunc(func(_ context.Context, request *chat.Request) (*chat.Response, error) {
-		task := ""
-		for _, message := range request.Messages {
-			if message.Role == chat.RoleUser && task == "" {
-				task = message.Text()
-			}
-		}
-		mu.Lock()
-		systems[task] = request.Messages[0].Text()
-		mu.Unlock()
-		name, arguments := "memory_add_memory", `{"scope":"project","content":"`+projectFact+`"}`
-		if strings.Contains(task, "search") {
-			name, arguments = "memory_"+memorycontract.SearchToolName, `{"query":"payments vendor shortlist directory release checklist"}`
-		}
-		for _, message := range request.Messages {
-			for _, part := range message.Parts {
-				if part.ToolResult == nil || part.ToolResult.Name != name {
-					continue
-				}
-				encoded, err := json.Marshal(part.ToolResult.Output)
-				if err != nil || part.ToolResult.IsError {
-					return nil, fmt.Errorf("%s failed: %s: %v", name, encoded, err)
-				}
-				if name != "memory_add_memory" {
-					mu.Lock()
-					searched = string(encoded)
-					mu.Unlock()
-				}
-				return completedTextResponse("done"), nil
-			}
-		}
-		if len(request.Tools) == 0 {
-			return completedTextResponse("no tools"), nil
-		}
-		call := chat.ToolCall{ID: "discover", Name: "search_tools", Arguments: `{"query":"select:` + name + `"}`}
-		for _, definition := range request.Tools {
-			if definition.Name == name {
-				call = chat.ToolCall{ID: "call", Name: name, Arguments: arguments}
-			}
-		}
-		message := chat.NewAssistantMessage(chat.NewToolCallPart(call))
-		return chat.NewResponse(&chat.Output{Message: &message, FinishReason: chat.FinishReasonToolCalls}, nil)
-	})}
+	script := &projectMemoryScript{projectFact: projectFact, systems: map[string]string{}}
+	model := delegateRestartModel{chat.ModelFunc(script.Call)}
 	client, err := chatclient.New(model)
 	if err != nil {
 		t.Fatal(err)
@@ -114,16 +68,16 @@ func TestProjectsInOneWorkspaceKeepInstructionsAndMemoryApart(t *testing.T) {
 	run(payments, "remember the vendor shortlist")
 	run(compliance, "search what this project knows")
 
-	mu.Lock()
-	defer mu.Unlock()
-	if !strings.Contains(systems["remember the vendor shortlist"], instructions) {
-		t.Fatalf("Project instructions missing from its Run: %q", systems["remember the vendor shortlist"])
+	script.mu.Lock()
+	defer script.mu.Unlock()
+	if !strings.Contains(script.systems["remember the vendor shortlist"], instructions) {
+		t.Fatalf("Project instructions missing from its Run: %q", script.systems["remember the vendor shortlist"])
 	}
-	if strings.Contains(systems["search what this project knows"], instructions) {
+	if strings.Contains(script.systems["search what this project knows"], instructions) {
 		t.Fatal("another Project's instructions reached this Run")
 	}
-	if searched == "" || strings.Contains(searched, projectFact) || strings.Contains(searched, directoryFact) {
-		t.Fatalf("a Project searched another scope's memory: %s", searched)
+	if script.searched == "" || strings.Contains(script.searched, projectFact) || strings.Contains(script.searched, directoryFact) {
+		t.Fatalf("a Project script.searched another scope's memory: %s", script.searched)
 	}
 	listed := func(input memorycontract.ListInput) []string {
 		t.Helper()
@@ -139,4 +93,50 @@ func TestProjectsInOneWorkspaceKeepInstructionsAndMemoryApart(t *testing.T) {
 	if got := listed(memorycontract.ListInput{Scope: memorycontract.ListInputScopeProject, Cwd: cfg.defaultWorkspacePath}); !slices.Equal(got, []string{directoryFact}) {
 		t.Fatalf("directory memory after Project work = %v", got)
 	}
+}
+
+// projectMemoryScript adds the project fact in one Run and searches memory in
+// another, recording each task's system prompt and the search result.
+type projectMemoryScript struct {
+	projectFact string
+	mu          sync.Mutex
+	systems     map[string]string
+	searched    string
+}
+
+func (s *projectMemoryScript) Call(_ context.Context, request *chat.Request) (*chat.Response, error) {
+	task := ""
+	for _, message := range request.Messages {
+		if message.Role == chat.RoleUser && task == "" {
+			task = message.Text()
+		}
+	}
+	s.mu.Lock()
+	s.systems[task] = request.Messages[0].Text()
+	s.mu.Unlock()
+	call := chat.ToolCall{ID: "call", Name: "memory_add_memory", Arguments: `{"scope":"project","content":"` + s.projectFact + `"}`}
+	if strings.Contains(task, "search") {
+		call = chat.ToolCall{ID: "call", Name: "memory_" + memorycontract.SearchToolName, Arguments: `{"query":"payments vendor shortlist directory release checklist"}`}
+	}
+	if result := toolResultNamed(request, call.Name); result != nil {
+		return s.settle(call.Name, result)
+	}
+	if len(request.Tools) == 0 {
+		return completedTextResponse("no tools"), nil
+	}
+	message := chat.NewAssistantMessage(chat.NewToolCallPart(deferredToolCall(request, "discover", call)))
+	return chat.NewResponse(&chat.Output{Message: &message, FinishReason: chat.FinishReasonToolCalls}, nil)
+}
+
+func (s *projectMemoryScript) settle(name string, result *chat.ToolResult) (*chat.Response, error) {
+	encoded, err := json.Marshal(result.Output)
+	if err != nil || result.IsError {
+		return nil, fmt.Errorf("%s failed: %s: %v", name, encoded, err)
+	}
+	if name != "memory_add_memory" {
+		s.mu.Lock()
+		s.searched = string(encoded)
+		s.mu.Unlock()
+	}
+	return completedTextResponse("done"), nil
 }
