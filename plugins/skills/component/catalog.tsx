@@ -97,8 +97,8 @@ export function catalogDescription(
   target: Target,
   workspace: unknown,
 ): string | false {
-  if (target === "library") return t("section.library.description");
-  return !workspace && t("section.selectWorkspace");
+  // The personal library is read without a workspace.
+  return target !== "library" && !workspace && t("section.selectWorkspace");
 }
 
 export function SkillEmptyState({
