@@ -39,7 +39,7 @@ export const ja: Record<string, string> = {
   "providers.utility.error": "補助モデルを設定できませんでした。",
   "providers.embedding.title": "埋め込みモデル",
   "providers.embedding.desc":
-    "Agent Memory のランキングを必要に応じて改善します。",
+    "エージェントメモリのランキングを必要に応じて改善します。",
   "providers.embedding.off": "オフ",
   "providers.embedding.none":
     "埋め込み対応のプロバイダーがまだ設定されていません — 上で追加してください（例：OpenAI）。",

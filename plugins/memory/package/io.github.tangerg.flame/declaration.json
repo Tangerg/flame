@@ -18,8 +18,8 @@
         "de": "Agent-Memory",
         "fr": "Mémoire de l’agent",
         "es": "Memoria del agente",
-        "ja": "Agent メモリ",
-        "ko": "Agent 메모리"
+        "ja": "エージェントメモリ",
+        "ko": "에이전트 메모리"
       },
       "scope": "client",
       "placement": "workspaceView",

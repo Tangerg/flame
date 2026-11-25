@@ -1,5 +1,5 @@
 export const ko: Record<string, string> = {
-  "panel.title": "Agent 메모리",
+  "panel.title": "에이전트 메모리",
   "scope.user": "사용자 메모리",
   "scope.project": "프로젝트 메모리",
   "scope.folder": "폴더 메모리",

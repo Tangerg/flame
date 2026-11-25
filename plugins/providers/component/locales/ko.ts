@@ -36,7 +36,7 @@ export const ko: Record<string, string> = {
   "providers.utility.main": "Runtime 기본 모델 사용",
   "providers.utility.error": "보조 모델을 설정할 수 없습니다.",
   "providers.embedding.title": "임베딩 모델",
-  "providers.embedding.desc": "Agent Memory 순위를 선택적으로 개선합니다.",
+  "providers.embedding.desc": "에이전트 메모리 순위를 선택적으로 개선합니다.",
   "providers.embedding.off": "끄기",
   "providers.embedding.none":
     "임베딩을 지원하는 제공자가 아직 없습니다 — 위에서 하나 추가하세요(예: OpenAI).",

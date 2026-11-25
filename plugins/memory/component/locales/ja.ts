@@ -1,5 +1,5 @@
 export const ja: Record<string, string> = {
-  "panel.title": "Agent メモリ",
+  "panel.title": "エージェントメモリ",
   "scope.user": "ユーザーメモリ",
   "scope.project": "プロジェクトメモリ",
   "scope.folder": "フォルダメモリ",
