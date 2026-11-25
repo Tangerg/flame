@@ -121,6 +121,19 @@ selects the object once the editor shows that revision. A completed create,
 import, edit, recalculate or restore tool call shows its revision in the
 conversation with "Open", which opens that exact revision beside it.
 
+"Comments" holds threads anchored where they were made: the revision, the
+editor's object (a slide or element, a cell or a block) and that object's text
+then. A thread is listed under the object as the shown revision names it; when
+that revision no longer has the object, the thread says so and keeps its quote.
+Block identities are positions, so on another revision a block counts as the
+anchored one only while its text still matches. People open, reply to, resolve
+and reopen threads; the model reads them with `threads` and answers with
+`reply`, optionally naming the revision that addresses the comment, and never
+resolves one. "Hand to Agent" carries a thread's identity and its first
+comment. Each message records its author's original invocation, not a name.
+The archive owns threads with their document, so removing the document removes
+them, and they count toward the archive's capacity.
+
 "Changes" lists what the shown revision changed since an earlier revision of
 the same document, by default its parent. The list is derived in the component
 from both revisions' projections, so it covers what the editors show: slides

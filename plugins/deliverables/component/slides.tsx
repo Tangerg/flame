@@ -23,7 +23,13 @@ import {
   type LiveState,
 } from "./live";
 import { preview, record, revert, type SlideOperation } from "./slides-draft";
-import { label, slideTarget } from "./slides-presentation";
+import {
+  describeSlideObject,
+  label,
+  slideComment,
+  slideTarget,
+} from "./slides-presentation";
+import { Comments } from "./comments";
 import { SlideReconcile, savedElement } from "./slides-revisions";
 import { RevisionChanges, SlideChanges } from "./changes";
 import { Canvas } from "./slides-canvas";
@@ -223,6 +229,20 @@ export function SlideStudio({
           />
         )}
       </RevisionChanges>
+      {savedLayout && savedSlide && (
+        <Comments
+          state={state}
+          document={live.document}
+          selection={slideComment(savedSlide, element?.id, t)}
+          describe={(anchor) =>
+            describeSlideObject(savedLayout, anchor.object!, t)
+          }
+          onLocate={locate}
+          handoff={handoff}
+          dateTime={dateTime}
+          t={t}
+        />
+      )}
       {layout && slide && (
         <div
           ref={editor}

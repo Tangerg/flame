@@ -50,6 +50,7 @@ import {
   type Point,
 } from "./sheets-grid";
 import { RevisionChanges, SheetChanges } from "./changes";
+import { Comments } from "./comments";
 import * as token from "@flame/ui/tokens.stylex";
 
 const REFERENCE_CELLS = 200;
@@ -145,6 +146,34 @@ function SheetReconcile({
       onDiscard={onDiscard}
       t={t}
     />
+  );
+}
+
+// A comment on a cell quotes what it shows; sheet identities survive revisions.
+function cellComment(sheet: SheetView, ref: string, t: Translate) {
+  const cell = sheet.cells.find((entry) => entry.ref === ref);
+  return {
+    object: cellId(sheet.id, ref),
+    quote: cell ? shownText(cell.shown) : "",
+    label: t("sheets.op.setCell", { sheet: sheet.name, ref }),
+  };
+}
+
+function describeCell(
+  layout: WorkbookLayout,
+  object: string,
+  t: Translate,
+): string | undefined {
+  const separator = object.lastIndexOf("!");
+  const sheet = layout.sheets.find(
+    (entry) => entry.id === object.slice(0, separator),
+  );
+  return (
+    sheet &&
+    t("sheets.op.setCell", {
+      sheet: sheet.name,
+      ref: object.slice(separator + 1),
+    })
   );
 }
 
@@ -335,6 +364,18 @@ export function WorkbookStudio({
           />
         )}
       </RevisionChanges>
+      {layout && sheet && (
+        <Comments
+          state={state}
+          document={live.document}
+          selection={cellComment(sheet, focusRef, t)}
+          describe={(anchor) => describeCell(layout, anchor.object!, t)}
+          onLocate={locate}
+          handoff={handoff}
+          dateTime={dateTime}
+          t={t}
+        />
+      )}
       {layout && sheet && (
         <div
           ref={editor}

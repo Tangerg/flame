@@ -55,6 +55,7 @@ export type LiveState = Pick<
   | "selection"
   | "selectRevision"
   | "signal"
+  | "threads"
 >;
 
 export type ProjectionRead<T> = { value?: T; error?: string };

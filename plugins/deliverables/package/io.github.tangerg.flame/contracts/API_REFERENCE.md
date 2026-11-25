@@ -8,6 +8,7 @@ Generated from the feature's Go-owned method contracts.
 | `flame.deliverables/assessment.v1` | query | installation | Read one exact render or review report. List headers are projections and do not carry another mutable assessment. |
 | `flame.deliverables/blocks.v1` | query | installation | Project a DOCX revision's body blocks from its native bytes: paragraphs with style, list and alignment facts and their text runs, tables and other blocks, each with the block id and exact-XML expect that block edits name. Omitting revision reads the current head once. |
 | `flame.deliverables/catalog.v1` | query | installation | Read the exact supported native creation/edit schemas, format limits and configured rendering engines before creating or editing deliverables. |
+| `flame.deliverables/comment.v1` | command | installation | Open a comment thread anchored to an exact revision and optionally an object in it, with the object's text then. |
 | `flame.deliverables/create.v1` | command | installation | Create an editable DOCX, XLSX or PPTX from the catalog's content schema. Author provenance is not independently verified evidence. Formula results require explicit recalculation. |
 | `flame.deliverables/discard.v1` | command | installation | Discard the specified staging upload. This does not remove a published deliverable. |
 | `flame.deliverables/download.v1` | query | installation | Read bounded bytes from an exact immutable asset. Verify the complete size and SHA-256 before saving; file saving is a separate host operation. |
@@ -20,10 +21,14 @@ Generated from the feature's Go-owned method contracts.
 | `flame.deliverables/recalculate.v1` | command | installation | Recalculate an XLSX through confined LibreOffice into a new native revision. Conversion may change Office formatting; the exact original is retained. Inspect resulting formula errors and missing caches. |
 | `flame.deliverables/remove.v1` | command | installation | Remove one deliverable and its native/derived bytes only if the expected current revision still matches. Original receipts remain and cannot resurrect removed content. |
 | `flame.deliverables/render.v1` | command | installation | Render the exact native revision through configured confined LibreOffice/Poppler. Record actual engine versions, PDF/page hashes and extraction checks; successful rendering does not establish visual correctness. |
+| `flame.deliverables/reopen.v1` | command | installation | Reopen a resolved comment thread. |
+| `flame.deliverables/reply.v1` | command | installation | Reply to a comment thread, optionally naming the revision that addresses it. Replying never resolves a thread; the person who asked decides. |
+| `flame.deliverables/resolve.v1` | command | installation | Resolve an open comment thread. |
 | `flame.deliverables/restore.v1` | command | installation | Make an earlier revision of the same deliverable current again as a new revision with its exact native bytes. The exact current revision is required; history is kept, and the new revision has no inherited render or review. |
 | `flame.deliverables/review.v1` | command | installation | Record the caller's visual review of enumerated pages from an exact render. This is attributed review evidence, not an automatic quality certification or approval to publish. |
 | `flame.deliverables/sheets.v1` | query | installation | Project an XLSX revision's sheets and cells from its native bytes: each cell's exact setCell expect, shown value and reproducing setCell value, plus locked ranges setCell refuses. Omitting revision reads the current head once. |
 | `flame.deliverables/slides.v1` | query | installation | Project a PPTX revision's slides, element identities, frames, text runs, notes, chart data and the slide layouts insertSlide accepts from its native bytes. Omitting revision reads the current head once. Use these identities with expect values in catalog-defined presentation edits. |
+| `flame.deliverables/threads.v1` | query | installation | List a deliverable's comment threads, newest first: each anchor (the revision, object identity and quoted text it was made on), status and messages. A thread whose object no longer exists keeps its anchor and quote. |
 | `flame.deliverables/upload.v1` | command | installation | Reserve a bounded native-file upload for the exact size and SHA-256. No host path or URL is read. |
 | `flame.deliverables/uploads.v1` | query | installation | Read admitted staging uploads and their current acknowledged offsets. Reselect only bytes matching the declared SHA-256 to resume. |
 

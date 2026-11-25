@@ -10,6 +10,7 @@ export type DocumentRead = MethodOutputs[typeof METHODS.read];
 export type Header = MethodOutputs[typeof METHODS.list]["entries"][number];
 export type Revision = DocumentRead["revision"];
 export type Assessment = MethodOutputs[typeof METHODS.assessment];
+export type Thread = MethodOutputs[typeof METHODS.threads]["entries"][number];
 export type Asset = Revision["native"];
 export type Upload = MethodOutputs[typeof METHODS.upload];
 export type Provenance = MethodInputs[typeof METHODS.create]["provenance"];

@@ -34,7 +34,12 @@ original call Lifetime before discovery starts. It does not create another
 resource owner.
 
 `@flame/backend-sdk/sqlite` supplies `Database` for synchronous private SQLite
-transactions. Admit the plugin's schema first, then transfer the original idle
+transactions. A file receives the declared objects it lacks, in the same
+exclusive transaction that admits it, so a newer plugin can add a table and keep
+existing data; an object the file already holds must be declared with exactly
+the same statement, and a changed or unknown object refuses the file. Changing
+an existing object needs a new object and an explicit data move. Admit the
+plugin's schema first, then transfer the original idle
 `node:sqlite` connection to this owner and register `close` with the setup Lifetime.
 Use its statements immediately; do not retain statements or use the original
 connection after transfer. Business rules and receipt formats stay with the plugin.

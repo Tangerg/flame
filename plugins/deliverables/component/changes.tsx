@@ -357,7 +357,7 @@ export function SheetChanges({
   return <ChangeList items={items} onOpen={onOpen} t={t} />;
 }
 
-function blockTitle(block: BlockView, t: Translate): string {
+export function blockTitle(block: BlockView, t: Translate): string {
   if (block.kind === "table") return t("docs.table");
   if (block.kind === "other")
     return t("docs.other", { element: block.element });

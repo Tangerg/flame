@@ -6,6 +6,9 @@ export const FIELD_LIMITS = Object.freeze({
   units: 2000,
   reproduction: 12000,
   reviewNotes: 12000,
+  // A page of threads stays within one frame at these sizes.
+  comment: 2000,
+  quote: 500,
   sheetName: 31,
 } as const);
 
@@ -19,6 +22,8 @@ export const LIMITS = Object.freeze({
   documents: 256,
   revisions: 2048,
   assessments: 64,
+  threads: 128,
+  threadMessages: 32,
   provenanceSources: 64,
   uploads: 8,
   pageSize: 32,

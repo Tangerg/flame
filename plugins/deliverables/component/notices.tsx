@@ -13,32 +13,28 @@ import { type OpenForReading } from "./archive";
 import type { CommandMethod } from "./types";
 import type { DeliverablesState } from "./useDeliverables";
 
-function commandLabel(method: CommandMethod, t: Translate): string {
-  switch (method) {
-    case METHODS.create:
-      return t("author.create");
-    case METHODS.edit:
-      return t("edit.apply");
-    case METHODS.upload:
-    case METHODS.append:
-    case METHODS.import:
-      return t("import.submit");
-    case METHODS.discard:
-      return t("import.discard");
-    case METHODS.render:
-      return t("preview.render");
-    case METHODS.recalculate:
-      return t("preview.recalculate");
-    case METHODS.restore:
-      return t("history.restore");
-    case METHODS.review:
-      return t("review.submit");
-    case METHODS.export:
-      return t("export.prepare");
-    case METHODS.remove:
-      return t("remove.action");
-  }
-}
+// The label of the control that starts each command.
+const COMMAND_LABELS: Record<CommandMethod, string> = {
+  [METHODS.create]: "author.create",
+  [METHODS.edit]: "edit.apply",
+  [METHODS.upload]: "import.submit",
+  [METHODS.append]: "import.submit",
+  [METHODS.import]: "import.submit",
+  [METHODS.discard]: "import.discard",
+  [METHODS.render]: "preview.render",
+  [METHODS.recalculate]: "preview.recalculate",
+  [METHODS.restore]: "history.restore",
+  [METHODS.comment]: "comments.add",
+  [METHODS.reply]: "comments.reply",
+  [METHODS.resolve]: "comments.resolve",
+  [METHODS.reopen]: "comments.reopen",
+  [METHODS.review]: "review.submit",
+  [METHODS.export]: "export.prepare",
+  [METHODS.remove]: "remove.action",
+};
+
+const commandLabel = (method: CommandMethod, t: Translate) =>
+  t(COMMAND_LABELS[method]);
 
 export function PendingCommands({
   state,

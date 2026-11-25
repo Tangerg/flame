@@ -14,6 +14,7 @@ export type ViewMethod =
   | typeof METHODS.list
   | typeof METHODS.read
   | typeof METHODS.history
+  | typeof METHODS.threads
   | typeof METHODS.uploads;
 type Projection<K extends ViewMethod> = {
   input: MethodInputs[K];
@@ -51,7 +52,7 @@ export function useProjections(
           method === METHODS.list ||
           method === METHODS.catalog ||
           method === METHODS.uploads ||
-          (method === METHODS.history &&
+          ((method === METHODS.history || method === METHODS.threads) &&
             prior &&
             "id" in prior.input &&
             "id" in input &&

@@ -2,7 +2,12 @@ import { ASSET_MIME } from "../contracts/media";
 import { canonicalJSON, type CallContext } from "@flame/backend-sdk/mcp";
 import { toolCommandId } from "@flame/backend-sdk";
 import { z } from "zod";
-import { schemas, METHODS, type DocumentRead } from "../contracts/capability";
+import {
+  schemas,
+  METHODS,
+  type DocumentRead,
+  type ThreadMessage,
+} from "../contracts/capability";
 import { LIMITS } from "../contracts/limits";
 import { projectNumbers, type FrozenJSONValue } from "@frame/sdk/json";
 import { engineCatalogSchema } from "../contracts/evidence";
@@ -13,6 +18,7 @@ import { catalog, hasPNGSignature } from "./formats";
 import { Formats } from "./format-process";
 import { RevisionPreparation, retainedJSON } from "./revision-preparation";
 import { refusal } from "./refusal";
+import { Thread } from "./thread";
 
 type Input = Record<string, unknown>;
 export type Operation = keyof typeof METHODS;
@@ -33,6 +39,11 @@ function base64(value: string): Uint8Array {
     );
   return result;
 }
+
+const DISCUSSIONS = ["comment", "reply", "resolve", "reopen"] as const;
+type Discussion = (typeof DISCUSSIONS)[number];
+const isDiscussion = (operation: Operation): operation is Discussion =>
+  (DISCUSSIONS as readonly string[]).includes(operation);
 
 export class Application {
   readonly #archive: Archive;
@@ -106,6 +117,15 @@ export class Application {
       case "history": {
         const value = schemas.historyInput.parse(input);
         return this.#archive.history(value.id, value.before, value.limit);
+      }
+      case "threads": {
+        const value = schemas.threadsInput.parse(input);
+        return this.#archive.threads(
+          value.id,
+          value.status,
+          value.before,
+          value.limit,
+        );
       }
       case "slides":
         return schemas.slides.parse(
@@ -200,6 +220,8 @@ export class Application {
     command: string,
   ): Promise<() => unknown> {
     const now = new Date().toISOString();
+    if (isDiscussion(operation))
+      return this.#discuss(context, operation, input, command, now);
     switch (operation) {
       case "create":
         return this.#preparation.prepareCreate(
@@ -295,6 +317,59 @@ export class Application {
       }
       default:
         throw new Error("deliverables: operation is not a command");
+    }
+  }
+
+  // Each transition applies to the thread as the publication transaction reads
+  // it, so concurrent replies append instead of replacing each other.
+  #discuss(
+    context: CallContext,
+    operation: Discussion,
+    input: Input,
+    command: string,
+    now: string,
+  ): () => unknown {
+    const author = {
+      origin: context.invocation!.origin,
+      invocationId: context.invocation!.id,
+    };
+    const message = (body: string, revision?: string): ThreadMessage => ({
+      id: digest(`message:${command}`),
+      author,
+      body,
+      createdAt: now,
+      ...(revision ? { revision } : {}),
+    });
+    switch (operation) {
+      case "comment": {
+        const { id, body, ...anchor } = schemas.comment.parse(input);
+        return () => {
+          this.#archive.revision(id, anchor.revision);
+          return this.#archive.openThread(
+            Thread.open(digest(`thread:${command}`), id, anchor, message(body)),
+          );
+        };
+      }
+      case "reply": {
+        const value = schemas.reply.parse(input);
+        return () => {
+          if (value.revision) this.#archive.revision(value.id, value.revision);
+          return this.#archive.saveThread(
+            this.#archive
+              .thread(value.id, value.thread)
+              .reply(message(value.body, value.revision)),
+          );
+        };
+      }
+      default: {
+        const value = schemas.threadTarget.parse(input);
+        return () => {
+          const thread = this.#archive.thread(value.id, value.thread);
+          return this.#archive.saveThread(
+            operation === "resolve" ? thread.resolve(now) : thread.reopen(now),
+          );
+        };
+      }
     }
   }
 

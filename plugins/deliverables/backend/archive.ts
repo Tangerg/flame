@@ -16,8 +16,10 @@ import {
   type Assessment,
   type Header,
   type Revision,
+  type ThreadValue,
 } from "../contracts/capability";
 import { Document, digest } from "./document";
+import { Thread } from "./thread";
 import { refusal } from "./refusal";
 
 export interface Original {
@@ -47,6 +49,8 @@ const tables = Object.freeze({
     "CREATE TABLE uploads (id TEXT PRIMARY KEY, size INTEGER NOT NULL, digest TEXT NOT NULL)",
   upload_chunks:
     "CREATE TABLE upload_chunks (upload_id TEXT NOT NULL REFERENCES uploads(id) ON DELETE CASCADE, offset INTEGER NOT NULL, bytes BLOB NOT NULL, PRIMARY KEY(upload_id,offset)) WITHOUT ROWID",
+  threads:
+    "CREATE TABLE threads (sequence INTEGER PRIMARY KEY, id TEXT UNIQUE NOT NULL, document_id TEXT NOT NULL REFERENCES documents(id) ON DELETE CASCADE, status TEXT NOT NULL CHECK(status IN ('open','resolved')), thread TEXT NOT NULL CHECK(json_valid(thread)))",
 });
 
 // The last immutable chunk owns the received offset; reading a header never loads its payload.
@@ -107,6 +111,7 @@ export class Archive {
       (SELECT coalesce(sum(length(bytes)+length(CAST(inspection AS BLOB))+length(CAST(metadata AS BLOB))+coalesce(length(CAST(processing AS BLOB)),0)),0) FROM revisions) +
       (SELECT coalesce(sum(length(bytes)+length(CAST(metadata AS BLOB))),0) FROM assets) +
       (SELECT coalesce(sum(length(CAST(payload AS BLOB))),0) FROM assessments) +
+      (SELECT coalesce(sum(length(CAST(thread AS BLOB))),0) FROM threads) +
       (SELECT coalesce(sum(size),0) FROM uploads) AS used`,
       )
       .get()!;
@@ -451,6 +456,86 @@ export class Archive {
       entries,
       ...(rows.length > limit ? { next: entries.at(-1)!.id } : {}),
     };
+  }
+
+  threads(
+    documentId: string,
+    status: ThreadValue["status"] | undefined,
+    before: string | undefined,
+    limit: number,
+  ): { entries: ThreadValue[]; next?: string } {
+    this.document(documentId);
+    const cursor = before
+      ? this.#db
+          .prepare("SELECT sequence FROM threads WHERE id=? AND document_id=?")
+          .get(before, documentId)
+      : undefined;
+    if (before && !cursor)
+      throw refusal(
+        "cursor_not_found",
+        "thread cursor was not found in this deliverable",
+      );
+    const rows = this.#db
+      .prepare(
+        "SELECT thread FROM threads WHERE document_id=? AND (? IS NULL OR status=?) AND sequence < ? ORDER BY sequence DESC LIMIT ?",
+      )
+      .all(
+        documentId,
+        status ?? null,
+        status ?? null,
+        cursor ? cursor.sequence! : Number.MAX_SAFE_INTEGER,
+        limit + 1,
+      );
+    const entries = rows
+      .slice(0, limit)
+      .map((row) => schemas.thread.parse(json(row.thread)));
+    return {
+      entries,
+      ...(rows.length > limit ? { next: entries.at(-1)!.id } : {}),
+    };
+  }
+
+  thread(documentId: string, id: string): Thread {
+    const row = this.#db
+      .prepare("SELECT thread FROM threads WHERE document_id=? AND id=?")
+      .get(documentId, id);
+    if (!row)
+      throw refusal(
+        "thread_not_found",
+        "comment thread was not found in this deliverable",
+      );
+    return new Thread(schemas.thread.parse(json(row.thread)));
+  }
+
+  openThread(thread: Thread): ThreadValue {
+    this.#writing();
+    const value = thread.snapshot();
+    this.document(value.documentId);
+    const count = this.#db
+      .prepare("SELECT count(*) AS n FROM threads WHERE document_id=?")
+      .get(value.documentId)!.n as bigint;
+    if (count >= BigInt(LIMITS.threads))
+      throw refusal(
+        "thread_capacity",
+        "the deliverable holds its maximum number of comment threads",
+      );
+    this.#db
+      .prepare(
+        "INSERT INTO threads(id,document_id,status,thread) VALUES(?,?,?,?)",
+      )
+      .run(value.id, value.documentId, value.status, canonicalJSON(value));
+    return value;
+  }
+
+  saveThread(thread: Thread): ThreadValue {
+    this.#writing();
+    const value = thread.snapshot();
+    this.#db
+      .prepare(
+        "UPDATE threads SET status=?, thread=? WHERE document_id=? AND id=?",
+      )
+      .run(value.status, canonicalJSON(value), value.documentId, value.id);
+    return value;
   }
 
   assessments(documentId: string, revisionId: string): Assessment[] {
