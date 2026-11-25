@@ -4,7 +4,7 @@ import { definePlugin } from "@/extensions/definePlugin";
 import { t } from "@/lib/i18n/index";
 import { AGENT_SOURCE } from "@/features/agent/adapters/runtimeSources";
 
-import { runtimeRunsGateway } from "@/features/agent/adapters/runtimeRunsGateway";
+import { RuntimeRunsGateway } from "@/features/agent/adapters/runtimeRunsGateway";
 import { rpcAgentSource } from "@/features/agent/adapters/rpcAgentSource";
 import { RUNTIME_STREAM, followRuntimeGeneration } from "@/features/connection/public/services";
 export function createRpcAgentPlugin(agentAccess: AgentAccess, runtimeClient: () => FlameClient) {
@@ -12,7 +12,7 @@ export function createRpcAgentPlugin(agentAccess: AgentAccess, runtimeClient: ()
     name: "flame.builtin.rpc-agent",
     requires: { runtime: RUNTIME_STREAM },
     setup(ctx) {
-      const gateway = runtimeRunsGateway(runtimeClient);
+      const gateway = new RuntimeRunsGateway(runtimeClient);
       ctx.lifetime.defer(() => gateway.dispose());
       ctx.lifetime.defer(
         followRuntimeGeneration(ctx.dependencies.runtime, () => gateway.replaceRuntimeGeneration()),

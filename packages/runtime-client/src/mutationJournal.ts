@@ -40,25 +40,6 @@ export interface MutationReservation {
   track<T>(create: () => MutationPromise<T>): MutationPromise<T>;
 }
 
-export interface MutationJournal {
-  pendingPluginCommands(): PendingPluginCommand[];
-  capturePluginCommand(
-    intent: string,
-    input: PluginCommandInput,
-    prepare: () => Promise<PluginCommandBinding>,
-    requestMeta?: () => RequestMeta | undefined,
-    signal?: AbortSignal,
-  ): Promise<{ request: CallPluginRequest; reservation: MutationReservation }>;
-  pendingCommands(): PendingRunCommand[];
-  reserve(
-    method: string,
-    params: unknown,
-    preferredKey?: string,
-    requestMeta?: RequestMeta | null,
-  ): MutationReservation;
-  dispose(): void;
-}
-
 export interface PendingPluginCommand {
   readonly idempotencyKey: string;
   readonly namespace: string;
@@ -138,7 +119,7 @@ function trackedMutation<T>(
   }) as MutationPromise<T>;
 }
 
-class MutationAuthority implements MutationJournal {
+export class MutationJournal {
   readonly #journal: DurableMutationJournal;
   readonly #claims = new Map<string, DurableMutationIdentity>();
   readonly #preparing = new Set<string>();
@@ -362,7 +343,7 @@ export function createMutationJournal(options: MutationJournalOptions): Mutation
     remove: (key: string) => void values.delete(key),
     keys: () => [...values.keys()],
   };
-  return new MutationAuthority(
+  return new MutationJournal(
     openDurableMutationJournal({ ...options, storage, now: options.now ?? Date.now }),
   );
 }

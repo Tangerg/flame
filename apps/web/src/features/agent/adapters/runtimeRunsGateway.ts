@@ -17,12 +17,7 @@ function runOpeningIdentity(method: "start" | "resume", params: unknown): string
   return stringifyJSON([`runs.${method}`, params]);
 }
 
-interface RuntimeRunsGateway extends RpcRunsGateway {
-  replaceRuntimeGeneration(): void;
-  dispose(): void;
-}
-
-class DefaultRuntimeRunsGateway implements RuntimeRunsGateway {
+export class RuntimeRunsGateway implements RpcRunsGateway {
   constructor(private readonly runtimeClient: () => FlameClient) {}
 
   #openings = createMutationSettler({ acceptedAttempt: "retained" });
@@ -68,10 +63,6 @@ class DefaultRuntimeRunsGateway implements RuntimeRunsGateway {
   dispose(): void {
     this.#openings.dispose();
   }
-}
-
-export function runtimeRunsGateway(runtimeClient: () => FlameClient): RuntimeRunsGateway {
-  return new DefaultRuntimeRunsGateway(runtimeClient);
 }
 
 function brandStartedRun(result: StartRunResponse) {
