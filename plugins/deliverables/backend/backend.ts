@@ -33,6 +33,7 @@ const projectScoped: ReadonlySet<string> = new Set([
   "list",
   "create",
   "import",
+  "copy",
 ]);
 
 function runProject(context: CallContext): { project?: string } {

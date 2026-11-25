@@ -17,6 +17,7 @@ export const METHODS = Object.freeze({
   render: "flame.deliverables/render.v1",
   recalculate: "flame.deliverables/recalculate.v1",
   restore: "flame.deliverables/restore.v1",
+  copy: "flame.deliverables/copy.v1",
   review: "flame.deliverables/review.v1",
   export: "flame.deliverables/export.v1",
   download: "flame.deliverables/download.v1",

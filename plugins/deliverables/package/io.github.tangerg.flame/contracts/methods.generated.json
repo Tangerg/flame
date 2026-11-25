@@ -40,6 +40,14 @@
     "output": "schema.json#/$defs/CommentV1Output"
   },
   {
+    "name": "flame.deliverables/copy.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Start a new deliverable from an exact revision of another, such as a template. Its first revision carries that revision's native bytes, including masters, layouts, theme, styles and sample content, and records the source revision and its hash as processing evidence; later changes to the source do not affect it.",
+    "input": "schema.json#/$defs/CopyV1Input",
+    "output": "schema.json#/$defs/CopyV1Output"
+  },
+  {
     "name": "flame.deliverables/create.v1",
     "kind": "command",
     "target": "installation",

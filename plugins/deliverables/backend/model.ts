@@ -129,7 +129,9 @@ function assessmentSummary(value: Assessment) {
 
 export function commandProjection(operation: string, value: unknown): unknown {
   if (
-    ["create", "edit", "import", "recalculate", "restore"].includes(operation)
+    ["create", "edit", "import", "recalculate", "restore", "copy"].includes(
+      operation,
+    )
   )
     return revisionSummary(schemas.revision.parse(value));
   if (operation === "render" || operation === "review")

@@ -50,7 +50,7 @@ const revision = z.discriminatedUnion("operation", [
   z.strictObject({
     ...revisionFacts,
     parent: id.optional(),
-    operation: z.enum(["create", "import", "edit", "recalculate"]),
+    operation: z.enum(["create", "import", "copy", "edit", "recalculate"]),
   }),
   z.strictObject({
     ...revisionFacts,
@@ -187,6 +187,7 @@ export const schemas = Object.freeze({
   }),
   edit: expected.extend({ operationsJSON: json }),
   restore: expected.extend({ revision: id }),
+  copy: selected.extend({ title, project: project.optional() }),
   upload: z.strictObject({
     size: z.number().int().min(1).max(LIMITS.fileBytes),
     sha256: id,
@@ -430,6 +431,14 @@ export const definitions = [
     "command",
     "Make an earlier revision of the same deliverable current again as a new revision with its exact native bytes. The exact current revision is required; history is kept, and the new revision has no inherited render or review.",
     schemas.restore,
+    revision,
+    "model",
+  ),
+  method(
+    "copy",
+    "command",
+    "Start a new deliverable from an exact revision of another, such as a template. Its first revision carries that revision's native bytes, including masters, layouts, theme, styles and sample content, and records the source revision and its hash as processing evidence; later changes to the source do not affect it.",
+    schemas.copy,
     revision,
     "model",
   ),

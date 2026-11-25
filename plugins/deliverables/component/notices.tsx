@@ -24,6 +24,7 @@ const COMMAND_LABELS: Record<CommandMethod, string> = {
   [METHODS.render]: "preview.render",
   [METHODS.recalculate]: "preview.recalculate",
   [METHODS.restore]: "history.restore",
+  [METHODS.copy]: "copy.action",
   [METHODS.comment]: "comments.add",
   [METHODS.reply]: "comments.reply",
   [METHODS.resolve]: "comments.resolve",

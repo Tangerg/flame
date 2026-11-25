@@ -12,7 +12,14 @@ const producedSchema = z.object({
   value: z.object({
     id,
     documentId: id,
-    operation: z.enum(["create", "import", "edit", "recalculate", "restore"]),
+    operation: z.enum([
+      "create",
+      "import",
+      "copy",
+      "edit",
+      "recalculate",
+      "restore",
+    ]),
     format: z.enum(["docx", "xlsx", "pptx", "pdf"]),
   }),
 });

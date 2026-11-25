@@ -268,6 +268,13 @@ export class Application {
         const value = schemas.uploadId.parse(input);
         return () => this.#archive.discardUpload(value.uploadId);
       }
+      case "copy":
+        return this.#preparation.prepareCopy(
+          context,
+          schemas.copy.parse(input),
+          command,
+          now,
+        );
       case "import":
         return this.#preparation.prepareImport(
           context,

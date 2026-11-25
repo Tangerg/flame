@@ -430,6 +430,349 @@
       ],
       "type": "object"
     },
+    "CopyV1Input": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "project": {
+          "maxLength": 256,
+          "minLength": 1,
+          "type": "string"
+        },
+        "revision": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 180,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "revision",
+        "title"
+      ],
+      "type": "object"
+    },
+    "CopyV1Output": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "createdAt": {
+              "maxLength": 40,
+              "minLength": 1,
+              "type": "string"
+            },
+            "documentId": {
+              "pattern": "^[a-f0-9]{64}$",
+              "type": "string"
+            },
+            "format": {
+              "enum": [
+                "docx",
+                "xlsx",
+                "pptx",
+                "pdf"
+              ],
+              "type": "string"
+            },
+            "id": {
+              "pattern": "^[a-f0-9]{64}$",
+              "type": "string"
+            },
+            "native": {
+              "additionalProperties": false,
+              "properties": {
+                "filename": {
+                  "maxLength": 240,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "id": {
+                  "pattern": "^[a-f0-9]{64}$",
+                  "type": "string"
+                },
+                "mime": {
+                  "maxLength": 100,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "sha256": {
+                  "pattern": "^[a-f0-9]{64}$",
+                  "type": "string"
+                },
+                "size": {
+                  "maximum": 100663296,
+                  "minimum": 1,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "id",
+                "filename",
+                "mime",
+                "size",
+                "sha256"
+              ],
+              "type": "object"
+            },
+            "operation": {
+              "enum": [
+                "create",
+                "import",
+                "copy",
+                "edit",
+                "recalculate"
+              ],
+              "type": "string"
+            },
+            "parent": {
+              "pattern": "^[a-f0-9]{64}$",
+              "type": "string"
+            },
+            "provenance": {
+              "additionalProperties": false,
+              "properties": {
+                "assumptions": {
+                  "items": {
+                    "maxLength": 2000,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "maxItems": 64,
+                  "type": "array"
+                },
+                "reproduction": {
+                  "maxLength": 12000,
+                  "type": "string"
+                },
+                "sources": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "note": {
+                        "maxLength": 2000,
+                        "type": "string"
+                      },
+                      "title": {
+                        "maxLength": 300,
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "uri": {
+                        "maxLength": 2048,
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "title",
+                      "uri",
+                      "note"
+                    ],
+                    "type": "object"
+                  },
+                  "maxItems": 64,
+                  "type": "array"
+                },
+                "units": {
+                  "maxLength": 2000,
+                  "type": "string"
+                }
+              },
+              "required": [
+                "sources",
+                "assumptions",
+                "units",
+                "reproduction"
+              ],
+              "type": "object"
+            },
+            "sha256": {
+              "pattern": "^[a-f0-9]{64}$",
+              "type": "string"
+            },
+            "size": {
+              "maximum": 33554432,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "id",
+            "documentId",
+            "createdAt",
+            "format",
+            "sha256",
+            "size",
+            "provenance",
+            "native",
+            "operation"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "createdAt": {
+              "maxLength": 40,
+              "minLength": 1,
+              "type": "string"
+            },
+            "documentId": {
+              "pattern": "^[a-f0-9]{64}$",
+              "type": "string"
+            },
+            "format": {
+              "enum": [
+                "docx",
+                "xlsx",
+                "pptx",
+                "pdf"
+              ],
+              "type": "string"
+            },
+            "id": {
+              "pattern": "^[a-f0-9]{64}$",
+              "type": "string"
+            },
+            "native": {
+              "additionalProperties": false,
+              "properties": {
+                "filename": {
+                  "maxLength": 240,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "id": {
+                  "pattern": "^[a-f0-9]{64}$",
+                  "type": "string"
+                },
+                "mime": {
+                  "maxLength": 100,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "sha256": {
+                  "pattern": "^[a-f0-9]{64}$",
+                  "type": "string"
+                },
+                "size": {
+                  "maximum": 100663296,
+                  "minimum": 1,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "id",
+                "filename",
+                "mime",
+                "size",
+                "sha256"
+              ],
+              "type": "object"
+            },
+            "operation": {
+              "const": "restore",
+              "type": "string"
+            },
+            "parent": {
+              "pattern": "^[a-f0-9]{64}$",
+              "type": "string"
+            },
+            "provenance": {
+              "additionalProperties": false,
+              "properties": {
+                "assumptions": {
+                  "items": {
+                    "maxLength": 2000,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "maxItems": 64,
+                  "type": "array"
+                },
+                "reproduction": {
+                  "maxLength": 12000,
+                  "type": "string"
+                },
+                "sources": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "note": {
+                        "maxLength": 2000,
+                        "type": "string"
+                      },
+                      "title": {
+                        "maxLength": 300,
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "uri": {
+                        "maxLength": 2048,
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "title",
+                      "uri",
+                      "note"
+                    ],
+                    "type": "object"
+                  },
+                  "maxItems": 64,
+                  "type": "array"
+                },
+                "units": {
+                  "maxLength": 2000,
+                  "type": "string"
+                }
+              },
+              "required": [
+                "sources",
+                "assumptions",
+                "units",
+                "reproduction"
+              ],
+              "type": "object"
+            },
+            "restored": {
+              "pattern": "^[a-f0-9]{64}$",
+              "type": "string"
+            },
+            "sha256": {
+              "pattern": "^[a-f0-9]{64}$",
+              "type": "string"
+            },
+            "size": {
+              "maximum": 33554432,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "id",
+            "documentId",
+            "createdAt",
+            "format",
+            "sha256",
+            "size",
+            "provenance",
+            "native",
+            "parent",
+            "operation",
+            "restored"
+          ],
+          "type": "object"
+        }
+      ]
+    },
     "CreateV1Input": {
       "additionalProperties": false,
       "properties": {
@@ -589,6 +932,7 @@
               "enum": [
                 "create",
                 "import",
+                "copy",
                 "edit",
                 "recalculate"
               ],
@@ -1033,6 +1377,7 @@
               "enum": [
                 "create",
                 "import",
+                "copy",
                 "edit",
                 "recalculate"
               ],
@@ -1442,6 +1787,7 @@
                     "enum": [
                       "create",
                       "import",
+                      "copy",
                       "edit",
                       "recalculate"
                     ],
@@ -1860,6 +2206,7 @@
               "enum": [
                 "create",
                 "import",
+                "copy",
                 "edit",
                 "recalculate"
               ],
@@ -2413,6 +2760,7 @@
                   "enum": [
                     "create",
                     "import",
+                    "copy",
                     "edit",
                     "recalculate"
                   ],
@@ -2753,6 +3101,7 @@
               "enum": [
                 "create",
                 "import",
+                "copy",
                 "edit",
                 "recalculate"
               ],
@@ -3629,6 +3978,7 @@
               "enum": [
                 "create",
                 "import",
+                "copy",
                 "edit",
                 "recalculate"
               ],

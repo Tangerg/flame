@@ -1214,6 +1214,59 @@ it(
   scenarioTimeoutMilliseconds,
 );
 it(
+  "a copy starts a new deliverable with its source revision's exact bytes and keeps them when the source changes",
+  async ({ backend }) => {
+    const template = await backend.invoke(METHODS.create, {
+      title: "Template",
+      format: "docx",
+      contentJSON: JSON.stringify({
+        title: "Template",
+        blocks: [{ type: "paragraph", runs: [{ text: "Quarter title" }] }],
+      }),
+      provenance,
+    });
+    const copied = await backend.tool("copy", {
+      id: template.documentId,
+      revision: template.id,
+      title: "Q4 report",
+    });
+    expect(copied.isError, JSON.stringify(copied)).not.toBe(true);
+    const copy = copied.structuredContent.value;
+    expect(copy).toMatchObject({
+      operation: "copy",
+      sha256: template.sha256,
+    });
+    expect(copy.documentId).not.toBe(template.documentId);
+    expect(copy.parent).toBeUndefined();
+    const [block] = JSON.parse(
+      (await backend.invoke(METHODS.blocks, { id: template.documentId }))
+        .layoutJSON,
+    ).blocks;
+    await backend.invoke(METHODS.edit, {
+      id: template.documentId,
+      expectedRevision: template.id,
+      operationsJSON: JSON.stringify({
+        operations: [
+          {
+            type: "replaceText",
+            id: block.runs[0].id,
+            expect: "Quarter title",
+            text: "Template v2",
+          },
+        ],
+      }),
+    });
+    const read = await backend.invoke(METHODS.read, { id: copy.documentId });
+    expect(read.revision.sha256).toBe(template.sha256);
+    expect(JSON.parse(read.processingJSON)).toEqual({
+      copiedDocument: template.documentId,
+      copiedRevision: template.id,
+      sourceSha256: template.sha256,
+    });
+  },
+  scenarioTimeoutMilliseconds,
+);
+it(
   "open editors reading a revision while the model edits it all succeed",
   async ({ backend }) => {
     const created = await backend.invoke(METHODS.create, {

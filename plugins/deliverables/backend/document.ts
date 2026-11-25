@@ -82,7 +82,10 @@ export class Document {
   }
 
   static create(title: string, initial: Revision, project?: string): Document {
-    if (initial.parent || !["create", "import"].includes(initial.operation))
+    if (
+      initial.parent ||
+      !["create", "import", "copy"].includes(initial.operation)
+    )
       throw new Error(
         "deliverables: initial revision requires a creation or import",
       );
