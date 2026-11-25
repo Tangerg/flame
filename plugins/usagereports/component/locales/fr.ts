@@ -25,12 +25,9 @@ export const fr: Record<string, string> = {
   "pending.checking": "Vérification de la commande d’origine…",
   "pending.retiring": "Retrait de la commande d’origine…",
   "archive.title": "Archives",
-  "archive.count_one":
-    "{{count}} rapport enregistré. La capacité est de {{capacity}}.",
-  "archive.count_many":
-    "{{count}} rapports enregistrés. La capacité est de {{capacity}}.",
-  "archive.count_other":
-    "{{count}} rapports enregistrés. La capacité est de {{capacity}}.",
+  "archive.count_one": "{{count}} sur {{capacity}} enregistré",
+  "archive.count_many": "{{count}} sur {{capacity}} enregistrés",
+  "archive.count_other": "{{count}} sur {{capacity}} enregistrés",
   "archive.reading": "Lecture des rapports enregistrés…",
   "archive.error": "Les archives n’ont pas pu être lues : {{error}}.",
   "archive.error.retained":

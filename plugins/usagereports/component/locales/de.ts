@@ -25,10 +25,8 @@ export const de: Record<string, string> = {
   "pending.checking": "Ursprünglicher Befehl wird geprüft…",
   "pending.retiring": "Ursprünglicher Befehl wird zurückgezogen…",
   "archive.title": "Archiv",
-  "archive.count_one":
-    "{{count}} gespeicherter Bericht. Die Kapazität beträgt {{capacity}}.",
-  "archive.count_other":
-    "{{count}} gespeicherte Berichte. Die Kapazität beträgt {{capacity}}.",
+  "archive.count_one": "{{count}} von {{capacity}} gespeichert",
+  "archive.count_other": "{{count}} von {{capacity}} gespeichert",
   "archive.reading": "Gespeicherte Berichte werden gelesen…",
   "archive.error": "Das Archiv konnte nicht gelesen werden: {{error}}.",
   "archive.error.retained":

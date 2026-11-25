@@ -25,8 +25,7 @@ export const ko: Record<string, string> = {
   "pending.checking": "원래 명령을 확인하는 중…",
   "pending.retiring": "원래 명령을 취소하는 중…",
   "archive.title": "아카이브",
-  "archive.count_other":
-    "저장된 보고서 {{count}}개. 용량은 {{capacity}}개입니다.",
+  "archive.count_other": "{{count}} / {{capacity}}개 저장됨",
   "archive.reading": "저장된 보고서를 읽는 중…",
   "archive.error": "아카이브를 읽을 수 없습니다: {{error}}.",
   "archive.error.retained":

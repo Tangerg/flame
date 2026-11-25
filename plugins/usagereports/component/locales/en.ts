@@ -25,8 +25,8 @@ export const en: Record<string, string> = {
   "pending.checking": "Checking original command…",
   "pending.retiring": "Retiring original command…",
   "archive.title": "Archive",
-  "archive.count_one": "{{count}} saved report. Capacity is {{capacity}}.",
-  "archive.count_other": "{{count}} saved reports. Capacity is {{capacity}}.",
+  "archive.count_one": "{{count}} of {{capacity}} saved",
+  "archive.count_other": "{{count}} of {{capacity}} saved",
   "archive.reading": "Reading saved reports…",
   "archive.error": "The archive could not be read: {{error}}.",
   "archive.error.retained":

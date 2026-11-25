@@ -25,7 +25,7 @@ export const zh: Record<string, string> = {
   "pending.checking": "正在检查原始命令…",
   "pending.retiring": "正在撤销原始命令…",
   "archive.title": "归档",
-  "archive.count_other": "已保存 {{count}} 份报告。容量为 {{capacity}}。",
+  "archive.count_other": "已保存 {{count}} / {{capacity}}",
   "archive.reading": "正在读取已保存的报告…",
   "archive.error": "无法读取归档：{{error}}。",
   "archive.error.retained": "无法读取归档：{{error}}。仍显示上次接受的归档。",
