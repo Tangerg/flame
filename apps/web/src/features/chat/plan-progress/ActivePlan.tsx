@@ -18,6 +18,7 @@ import {
   space,
   type as typeStep,
   motion as motionToken,
+  weight,
 } from "@flame/ui/tokens.stylex";
 const ap = stylex.create({
   pill: {
@@ -79,6 +80,7 @@ const ap = stylex.create({
     maxWidth: "calc(var(--spacing) * 72)",
     overflowWrap: "break-word",
   },
+  currentStep: { color: color.fg, fontWeight: weight.medium },
 });
 
 export function ActivePlan() {
@@ -160,7 +162,9 @@ function PlanPill({ steps, progress }: { steps: readonly PlanStep[]; progress: A
                     <span
                       {...stylex.props(
                         ap.stepText,
-                        step.status === "done" ? vocab.muted : vocab.soft,
+                        step.status === "done" && vocab.muted,
+                        step.status === "active" && ap.currentStep,
+                        step.status === "pending" && vocab.soft,
                         typeStep.uiSm,
                       )}
                     >
