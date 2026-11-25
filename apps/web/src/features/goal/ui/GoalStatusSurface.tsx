@@ -235,7 +235,6 @@ function GoalRow({ goal, writable }: { goal: GoalReadModel; writable: boolean })
       <ModalDialog
         open={readerOpen}
         onOpenChange={setReaderOpen}
-        icon={<Icon name="target" size="lg" className={stylex.props(vocab.muted).className} />}
         title={t("goal.edit.label")}
         closeLabel={t("common.close")}
         initialFocus={readerRef}
@@ -386,7 +385,6 @@ function GoalEditorDialog({
     <TextEditorDialog
       open={open}
       onOpenChange={editor.changeOpen}
-      icon={<Icon name="target" size="lg" className={stylex.props(vocab.muted).className} />}
       title={t("goal.edit.title")}
       closeLabel={t("common.close")}
       value={editor.draft}

@@ -13,7 +13,6 @@ import {
 } from "react";
 import { ContentVisibilityContext } from "./content-visibility";
 import { IconButton } from "./icon-button";
-import { IconMark } from "./icon-mark";
 import { isImeKey } from "./keyboard";
 import { MODAL_SCRIM, modalPanel } from "./floating-surface";
 import { useFieldVisibility } from "./field-visibility";
@@ -90,7 +89,6 @@ export function ModalDialog({
   title,
   description,
   closeLabel,
-  icon,
   children,
   footer,
   auxiliaryAction,
@@ -111,7 +109,6 @@ export function ModalDialog({
   title: ReactNode;
   description?: ReactNode;
   closeLabel?: string;
-  icon?: ReactNode;
   children?: ReactNode;
   footer?: ReactNode;
   auxiliaryAction?: ReactNode;
@@ -180,7 +177,6 @@ export function ModalDialog({
             )}
           >
             <header {...stylex.props(styles.header)}>
-              {icon && <IconMark>{icon}</IconMark>}
               <div {...stylex.props(styles.heading)}>
                 <Dialog.Title
                   id={titleId}

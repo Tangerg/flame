@@ -16,7 +16,6 @@ import { LightboxDialog, ButtonPrimitive, ModalDialog } from "@flame/ui";
 import { TextEditorDialog } from "@/ui/index";
 import { reveal } from "@/ui/index";
 import { IconButton } from "@flame/ui";
-import { Icon } from "@/ui/icons/index";
 import { useT } from "@/lib/i18n/index";
 import { composerStyles } from "@/features/composer/ui/composerStyles";
 import { face, type as typeStep } from "@flame/ui/tokens.stylex";
@@ -190,7 +189,6 @@ function ReferenceChip({
       <ModalDialog
         open={open}
         onOpenChange={setOpen}
-        icon={<Icon name="crosshair" size="md" />}
         title={reference.label}
         closeLabel={t("common.close")}
         bodyStyles={[composerStyles.referenceText, face.mono, typeStep.code]}
@@ -257,7 +255,6 @@ function PasteChip({
           exit.current = { origin: document.activeElement, returnTo: "chip" };
           setDraft(null);
         }}
-        icon={<Icon name="file-text" size="md" />}
         title={t("composer.paste.title")}
         closeLabel={t("common.close")}
         finalFocus={finalFocus}

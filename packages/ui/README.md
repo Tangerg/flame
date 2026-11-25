@@ -493,10 +493,10 @@ named checkbox marker. Its caller supplies the captured checked state and primar
 visible label; paragraphs and nested lists remain selectable document content.
 The marker follows the reading font size and does not enter the keyboard path.
 Its primitive projects document semantics without registering a form control.
-`IconMark` owns the decorative identity frame used by centred empty states and
-modal headers. They keep the default accent emphasis derived from the host
-accent, so changing the accent recolors those marks and selected rows together;
-semantic tones keep their existing fills.
+`IconMark` owns the decorative identity frame of centred empty states. It keeps
+the default accent emphasis derived from the host accent, so changing the accent
+recolors those marks and selected rows together; semantic tones keep their
+existing fills. Modal headers carry their title alone.
 `EmptyState` centres a whole-surface empty result by default. An empty result
 inside a start-aligned flow uses `align="start"` and sits on the column edge:
 a bare glyph at the title's size, in faint ink or its tone's ink, leads the

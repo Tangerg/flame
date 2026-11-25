@@ -20,7 +20,6 @@ interface TextEditorDialogProps extends Pick<
 > {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  icon?: ReactNode;
   title: string;
   description?: ReactNode;
   closeLabel: string;
@@ -45,7 +44,6 @@ interface TextEditorDialogProps extends Pick<
 export function TextEditorDialog({
   open,
   onOpenChange,
-  icon,
   title,
   description,
   closeLabel,
@@ -112,7 +110,6 @@ export function TextEditorDialog({
       dismissible={!busy}
       title={title}
       description={description}
-      icon={icon}
       closeLabel={closeLabel}
       initialFocus={editorRef}
       finalFocus={finalFocus}
