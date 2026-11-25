@@ -58,7 +58,7 @@ there is no claim of arbitrary Office feature support.
 
 | Format | Native creation                                                                                        | Revision operations                                                                                    |
 | ------ | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------ |
-| DOCX   | Rich text, headings, lists, tables, PNG/JPEG images, headers, footers, page numbers and references     | Replace exact text runs; append paragraphs                                                             |
+| DOCX   | Rich text, headings, lists, tables, PNG/JPEG images, headers, footers, page numbers and references     | Replace exact text runs; append or insert paragraphs; delete body blocks; set paragraph styles         |
 | XLSX   | Typed cells, formulas, styles, comments, tables, merges, freeze panes and editable bar/line/pie charts | Set exact cells; invalidate dependent caches; recalculate through LibreOffice; export one sheet as CSV |
 | PPTX   | Editable text, shapes, tables, charts, images, notes and masters                                       | Replace exact text; set element frames; delete elements; replace chart data; reorder, duplicate or delete slides |
 | PDF    | Produced by the actual Office renderer                                                                 | Import passive classic-xref PDFs; rotate/reorder pages; fill supported AcroForm fields                 |
@@ -89,16 +89,12 @@ returns an actual retained PNG so a model can examine the render it is reviewing
 Every method declaration explicitly selects its `model` or `host` audience;
 adding a new method cannot silently expose a new transfer operation to the model.
 
-### Slide editor
+### Live editors
 
-A PPTX revision opens in the slide editor. Each element's native frame is drawn
-as a selectable box; this is an editing surface, not a rendering, and actual page
-images remain the render evidence. Elements can be dragged, resized, nudged with
-the arrow keys (Shift moves an inch) or reached from the element list, which also
-lists elements without a frame. Frame, text, chart-data and deletion changes
-collect in a local draft with undo; saving submits one edit against the draft's
-base revision. Reordering, duplicating and deleting slides submit immediately and
-need an empty draft.
+A PPTX, XLSX or DOCX revision opens in its format's editor. Each editor reads
+the revision's projection (`slides`, `sheets` or `blocks`) and collects changes
+in a local draft with undo; saving submits one edit against the draft's base
+revision. The draft belongs to the component until it is saved.
 
 When the current revision moves past the draft's base, the draft is compared
 operation by operation. Clean changes are re-addressed to the current revision,
@@ -107,12 +103,37 @@ current value unless the user keeps theirs, which then carries the current value
 as its precondition. The native write still refuses anything that changed after
 that choice.
 
-"Hand to Agent" appends the saved revision's document, revision, slide and
-element identities to the conversation's Composer draft through
-`context.composer`. The user adds the instruction and sends it, and the model
-resolves the identities with `slides`. A reference names saved revisions only,
-so the action waits until the draft is saved or discarded. Hosts without a
-Composer collaborator get "Copy reference for Agent" instead.
+"Hand to Agent" appends the saved revision's document, revision and selected
+identities to the conversation's Composer draft through `context.composer`. The
+user adds the instruction and sends it, and the model resolves the identities
+with the same projection. A reference names saved revisions only, so the action
+waits until the draft is saved or discarded. Hosts without a Composer
+collaborator get "Copy reference for Agent" instead.
+
+**Slides.** Each element's native frame is drawn as a selectable box; this is an
+editing surface, not a rendering, and actual page images remain the render
+evidence. Elements can be dragged, resized, nudged with the arrow keys (Shift
+moves an inch) or reached from the element list, which also lists elements
+without a frame. Frame, text, chart-data and deletion changes go to the draft.
+Reordering, duplicating and deleting slides submit immediately and need an empty
+draft.
+
+**Workbooks.** A sheet is a cell grid with spreadsheet keyboard behaviour: arrows
+and Tab move, Shift extends the range, Enter, F2 or typing edits, Delete clears
+the range in one undo step. Entries become typed `setCell` values; a number that
+the exact numeric codec cannot hold stays text. Cells in merges, tables and
+shared-formula regions are locked with their reason, except a merge's anchor. A
+formula shows its formula until the workbook is recalculated, because cached
+results are never authored.
+
+**Documents.** Body paragraphs render with their style, list and alignment;
+tables and other blocks are read-only here. Editing a paragraph's text changes
+only the runs the edit touches, so untouched runs keep their formatting.
+Paragraphs can take a Normal or Heading 1–3 style, be inserted after a block or
+at the start, and be deleted and restored. Block identities are positions, so
+every block operation carries the hash of the block's exact XML and is refused
+once that block changed or moved. Text boxes, headers and footers remain
+reachable through inspection items.
 
 ### Bounded model inspection
 
@@ -130,6 +151,13 @@ notes and chart data. It is derived on each read and never stored, so every
 existing revision has it. A placeholder without its own frame reports the
 layout or master frame it inherits. Element identities are the slide part plus
 the element's `cNvPr` id; text-run identities remain the `replaceText` ids.
+
+`sheets` projects an XLSX revision's sheets: dimensions, frozen panes, locked
+ranges with their reason, and each cell's shown value, exact `setCell`
+precondition and, when one exists, the input that reproduces it. Formula results
+are blank until recalculation. `blocks` projects a DOCX body: paragraphs with
+style, list and alignment facts and their text runs, table cell text, and every
+block's identity and precondition hash. Both are derived per read like `slides`.
 
 Element edits name the exact source revision. `setFrame` and `setChartData`
 carry the value they replace as `expect`, so a stale value is refused instead
