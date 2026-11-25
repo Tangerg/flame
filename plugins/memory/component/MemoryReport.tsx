@@ -159,27 +159,6 @@ export function MemoryReport({
                           <MemoryAction
                             result={resultFocus}
                             canRestoreFocus={canRestoreFocus}
-                            variant="soft"
-                            size="md"
-                            disabled={disabled}
-                            focusableWhenDisabled
-                            onClick={() =>
-                              command(
-                                METHODS.review,
-                                {
-                                  id: item.id,
-                                  expectedRevision: item.revision,
-                                  decision: "approve",
-                                },
-                                { action: "approve", id: item.id },
-                              )
-                            }
-                          >
-                            {t("approve")}
-                          </MemoryAction>
-                          <MemoryAction
-                            result={resultFocus}
-                            canRestoreFocus={canRestoreFocus}
                             variant="wash"
                             tone="negative"
                             size="md"
@@ -198,6 +177,27 @@ export function MemoryReport({
                             }
                           >
                             {t("reject")}
+                          </MemoryAction>
+                          <MemoryAction
+                            result={resultFocus}
+                            canRestoreFocus={canRestoreFocus}
+                            variant="soft"
+                            size="md"
+                            disabled={disabled}
+                            focusableWhenDisabled
+                            onClick={() =>
+                              command(
+                                METHODS.review,
+                                {
+                                  id: item.id,
+                                  expectedRevision: item.revision,
+                                  decision: "approve",
+                                },
+                                { action: "approve", id: item.id },
+                              )
+                            }
+                          >
+                            {t("approve")}
                           </MemoryAction>
                         </>
                       ) : (

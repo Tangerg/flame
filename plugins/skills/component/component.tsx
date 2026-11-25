@@ -204,7 +204,7 @@ export function Skills({ context }: { context: ComponentContext }) {
                   <Toolbar label={t("proposal.actions", { name: item.name })}>
                     {(["reject", "approve"] as const).map((decision) => (
                       <Button
-                        variant={decision === "approve" ? "outline" : "wash"}
+                        variant={decision === "approve" ? "soft" : "wash"}
                         tone={decision === "reject" ? "negative" : undefined}
                         size="md"
                         key={decision}
