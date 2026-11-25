@@ -1,7 +1,7 @@
 package agentmemory
 
 type FoldPlan struct {
-	InsertContents []string
+	InsertContents []Content
 	PruneIDs       []ItemID
 }
 
@@ -24,7 +24,7 @@ func (p Publication) Fold(existing []Item) (FoldPlan, error) {
 		digest := Digest(content)
 		desired[digest] = struct{}{}
 		if _, seen := present[digest]; !seen {
-			plan.InsertContents = append(plan.InsertContents, content)
+			plan.InsertContents = append(plan.InsertContents, Content{text: content})
 		}
 	}
 

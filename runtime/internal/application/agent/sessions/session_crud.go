@@ -8,6 +8,7 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 
 	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
@@ -93,7 +94,7 @@ func (c Creation) apply(ctx context.Context) (session.Session, error) {
 }
 
 func (c *Coordinator) PrepareCreate(ctx context.Context, title, cwd string, project identity.ProjectID) (Creation, error) {
-	created, _, err := c.prepareInitial(ctx, c.newID(), title, cwd, project, flamemodel.Selection{})
+	created, _, err := c.prepareInitial(ctx, initialSession{id: c.newID(), title: title, cwd: cwd, project: project})
 	if err != nil {
 		return Creation{}, err
 	}
@@ -104,42 +105,40 @@ func (c *Coordinator) PrepareCreate(ctx context.Context, title, cwd string, proj
 	return Creation{value: created, View: view, write: func(tx context.Context) error { return c.sessions.Insert(tx, created) }, publish: func() { c.publishSessionMoved(created.ID()) }}, nil
 }
 
-func (c *Coordinator) PrepareOpening(
-	ctx context.Context,
-	id identity.SessionID,
-	title, cwd string,
-	project identity.ProjectID,
-	selection flamemodel.Selection,
-) (current session.Session, initial *session.Session, err error) {
-	_, err = c.Get(ctx, id)
+func (c *Coordinator) PrepareOpening(ctx context.Context, opening runs.SessionOpening, selection flamemodel.Selection) (current session.Session, initial *session.Session, err error) {
+	_, err = c.Get(ctx, opening.SessionID)
 	if err == nil {
 		return session.Session{}, nil, fmt.Errorf("%w: new opening Session already exists", session.ErrInvalid)
 	}
 	if !errors.Is(err, session.ErrNotFound) {
 		return session.Session{}, nil, err
 	}
-	return c.prepareInitial(ctx, id, title, cwd, project, selection)
+	return c.prepareInitial(ctx, initialSession{id: opening.SessionID, title: opening.Title, cwd: opening.CWD, project: opening.Project, selection: selection})
 }
 
 func (c *Coordinator) DefaultModelSelection() flamemodel.Selection {
 	return c.defaultModelSelection
 }
 
-func (c *Coordinator) prepareInitial(
-	ctx context.Context,
-	id identity.SessionID,
-	title string,
-	cwd string,
-	project identity.ProjectID,
-	selection flamemodel.Selection,
-) (session.Session, *session.Session, error) {
-	workspace, err := c.resolveSessionWorkspace(cwd)
+// Unlike session.Draft, the workspace is still an unresolved path and the
+// model selection may be unset until prepareInitial resolves both.
+type initialSession struct {
+	id        identity.SessionID
+	title     string
+	cwd       string
+	project   identity.ProjectID
+	selection flamemodel.Selection
+}
+
+func (c *Coordinator) prepareInitial(ctx context.Context, request initialSession) (session.Session, *session.Session, error) {
+	workspace, err := c.resolveSessionWorkspace(request.cwd)
 	if err != nil {
 		return session.Session{}, nil, err
 	}
-	if err := c.requireProject(ctx, project); err != nil {
+	if err := c.requireProject(ctx, request.project); err != nil {
 		return session.Session{}, nil, err
 	}
+	selection := request.selection
 	if !selection.Configured() {
 		selection = c.defaultModelSelection
 	}
@@ -150,7 +149,7 @@ func (c *Coordinator) prepareInitial(
 		return session.Session{}, nil, fmt.Errorf("sessions: initial model selection is not admitted: %w", admitErr)
 	}
 	created, err := session.New(session.Draft{
-		ID: id, Title: title, Workspace: workspace, Project: project, Selection: selection, CreatedAt: c.now(),
+		ID: request.id, Title: request.title, Workspace: workspace, Project: request.project, Selection: selection, CreatedAt: c.now(),
 	})
 	if err != nil {
 		return session.Session{}, nil, err

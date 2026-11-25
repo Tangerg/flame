@@ -7,9 +7,7 @@ import (
 	"strings"
 
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
-	"github.com/Tangerg/flame/plugins/memory/internal/agentmemory"
 	"github.com/Tangerg/scope/core/jsonschema"
-	"github.com/samber/lo"
 
 	toolcontract "github.com/Tangerg/scope/core/tool"
 
@@ -38,18 +36,11 @@ func (a agentMemorySearchRequest) normalized() (query string, limit int, err err
 	return query, limit, nil
 }
 
-type agentMemorySearch interface {
-	Search(ctx context.Context, query string, topK int) ([]agentmemory.Item, error)
-}
-
 type agentMemorySearcher struct {
-	search agentMemorySearch
+	search toolSearch
 }
 
-func newAgentMemorySearch(search agentMemorySearch) (toolcontract.Tool, error) {
-	if lo.IsNil(search) {
-		return nil, errors.New("memory: tool searcher is required")
-	}
+func newAgentMemorySearch(search toolSearch) (toolcontract.Tool, error) {
 	return toolcontract.NewFunc[agentMemorySearchRequest, memoryResults](agentMemorySearchDefinition(), (&agentMemorySearcher{search: search}).run)
 }
 

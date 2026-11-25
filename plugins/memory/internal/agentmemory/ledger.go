@@ -58,7 +58,7 @@ func (l LedgerFact) Validate() error {
 	if err != nil || day.Format(time.DateOnly) != l.Day {
 		return fmt.Errorf("agentmemory: invalid ledger day %q", l.Day)
 	}
-	content, err := NormalizeContent(l.Content)
+	content, err := normalizeContent(l.Content)
 	if err != nil {
 		return fmt.Errorf("agentmemory: ledger fact content: %w", err)
 	}
@@ -97,7 +97,7 @@ func normalizeFactList(input []string, maximum int, collection string) ([]string
 	seen := make(map[string]struct{})
 	for _, fact := range input {
 		var err error
-		fact, err = NormalizeContent(fact)
+		fact, err = normalizeContent(fact)
 		if err != nil {
 			return nil, fmt.Errorf("%w: invalid %s item: %w", ErrInvalidFacts, collection, err)
 		}

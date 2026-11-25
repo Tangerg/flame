@@ -3,7 +3,6 @@ import { isBuiltin } from "node:module";
 import { dirname, extname, join, resolve } from "node:path";
 import { parseSync, transform } from "rolldown/utils";
 
-// The AST field that names the module each import or export form loads.
 const SPECIFIER_FIELDS = new Map([
   ["ImportDeclaration", "source"],
   ["ExportAllDeclaration", "source"],

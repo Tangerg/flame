@@ -26,7 +26,23 @@ const (
 	MaxRejectedPerTarget = 2048
 )
 
-func NormalizeContent(content string) (string, error) {
+// Content is canonical item text. ParseContent is the one place caller text is
+// normalized; constructors and stores take the parsed value as given.
+type Content struct{ text string }
+
+func ParseContent(raw string) (Content, error) {
+	text, err := normalizeContent(raw)
+	if err != nil {
+		return Content{}, err
+	}
+	return Content{text: text}, nil
+}
+
+func (c Content) String() string { return c.text }
+
+func (c Content) Digest() string { return Digest(c.text) }
+
+func normalizeContent(content string) (string, error) {
 	content = strings.TrimSpace(content)
 	if content == "" {
 		return "", errors.New("agentmemory: item content is required")
@@ -44,7 +60,7 @@ func NormalizeContent(content string) (string, error) {
 }
 
 func Digest(content string) string {
-	sum := sha256.Sum256([]byte(strings.TrimSpace(content)))
+	sum := sha256.Sum256([]byte(content))
 	return hex.EncodeToString(sum[:])
 }
 

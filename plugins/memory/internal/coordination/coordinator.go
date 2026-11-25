@@ -23,9 +23,9 @@ type Store interface {
 	Get(ctx context.Context, id agentmemory.ItemID) (agentmemory.Item, bool, error)
 	List(ctx context.Context, scope agentmemory.Scope, project string) ([]agentmemory.Item, error)
 	PrepareReview(ctx context.Context, id agentmemory.ItemID, expectedRevision uint64, decision agentmemory.ReviewDecision, now time.Time) (management.Mutation, error)
-	PrepareUpdate(ctx context.Context, id agentmemory.ItemID, expectedRevision uint64, content *string, pinned *bool, now time.Time) (management.Mutation, error)
+	PrepareUpdate(ctx context.Context, id agentmemory.ItemID, expectedRevision uint64, content *agentmemory.Content, pinned *bool, now time.Time) (management.Mutation, error)
 	PrepareDelete(ctx context.Context, id agentmemory.ItemID, expectedRevision uint64) (management.Mutation, error)
-	PrepareAdd(ctx context.Context, scope agentmemory.Scope, project, content string, now time.Time) (management.Mutation, error)
+	PrepareAdd(ctx context.Context, scope agentmemory.Scope, project string, content agentmemory.Content, now time.Time) (management.Mutation, error)
 }
 
 type Config struct {
@@ -89,14 +89,15 @@ func (c *Coordinator) PrepareUpdate(ctx context.Context, id string, expectedRevi
 	if err != nil {
 		return management.Mutation{}, errors.Join(ErrInvalidInput, err)
 	}
+	var parsed *agentmemory.Content
 	if content != nil {
-		canonical, err := agentmemory.NormalizeContent(*content)
+		value, err := agentmemory.ParseContent(*content)
 		if err != nil {
 			return management.Mutation{}, errors.Join(ErrInvalidInput, err)
 		}
-		content = &canonical
+		parsed = &value
 	}
-	return c.store.PrepareUpdate(ctx, itemID, expectedRevision, content, pinned, c.now())
+	return c.store.PrepareUpdate(ctx, itemID, expectedRevision, parsed, pinned, c.now())
 }
 
 func (c *Coordinator) PrepareDelete(ctx context.Context, id string, expectedRevision uint64) (management.Mutation, error) {
@@ -112,11 +113,11 @@ func (c *Coordinator) PrepareAdd(ctx context.Context, scope agentmemory.Scope, l
 	if err != nil {
 		return management.Mutation{}, err
 	}
-	content, err = agentmemory.NormalizeContent(content)
+	parsed, err := agentmemory.ParseContent(content)
 	if err != nil {
 		return management.Mutation{}, errors.Join(ErrInvalidInput, err)
 	}
-	return c.store.PrepareAdd(ctx, scope, project, content, c.now())
+	return c.store.PrepareAdd(ctx, scope, project, parsed, c.now())
 }
 
 func (c *Coordinator) project(scope agentmemory.Scope, location Location) (string, error) {

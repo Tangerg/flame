@@ -427,10 +427,7 @@ func (c *Openings) resolveSession(
 	selection flamemodel.Selection,
 ) (session.Session, *session.Session, error) {
 	if cmd.NewSession != nil {
-		return c.sessionCreator.PrepareOpening(
-			ctx, cmd.NewSession.SessionID, cmd.NewSession.Title,
-			cmd.NewSession.CWD, cmd.NewSession.Project, selection,
-		)
+		return c.sessionCreator.PrepareOpening(ctx, *cmd.NewSession, selection)
 	}
 	sess, err := c.sessionReader.Get(ctx, cmd.SessionID)
 	return sess, nil, err

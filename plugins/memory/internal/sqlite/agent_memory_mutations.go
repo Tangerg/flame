@@ -24,14 +24,14 @@ func (a *AgentMemoryStore) mutate(ctx context.Context, prepare func(context.Cont
 	return mutation, nil
 }
 
-func (a *AgentMemoryStore) Add(ctx context.Context, scope agentmemory.Scope, project, content string, now time.Time) (agentmemory.Item, bool, error) {
+func (a *AgentMemoryStore) Add(ctx context.Context, scope agentmemory.Scope, project string, content agentmemory.Content, now time.Time) (agentmemory.Item, bool, error) {
 	mutation, err := a.mutate(ctx, func(ctx context.Context) (management.Mutation, error) {
 		return a.PrepareAdd(ctx, scope, project, content, now)
 	})
 	return mutation.Item(), mutation.Changed(), err
 }
 
-func (a *AgentMemoryStore) Update(ctx context.Context, id agentmemory.ItemID, expectedRevision uint64, content *string, pinned *bool, now time.Time) (agentmemory.Item, error) {
+func (a *AgentMemoryStore) Update(ctx context.Context, id agentmemory.ItemID, expectedRevision uint64, content *agentmemory.Content, pinned *bool, now time.Time) (agentmemory.Item, error) {
 	mutation, err := a.mutate(ctx, func(ctx context.Context) (management.Mutation, error) {
 		return a.PrepareUpdate(ctx, id, expectedRevision, content, pinned, now)
 	})

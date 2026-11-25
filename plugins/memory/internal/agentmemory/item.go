@@ -168,21 +168,17 @@ func ValidateEmbeddingVector(vector []float32) error {
 	return nil
 }
 
-func NewProposal(id ItemID, project, content string, now time.Time) (Item, error) {
+func NewProposal(id ItemID, project string, content Content, now time.Time) (Item, error) {
 	return newItem(id, ScopeProject, project, content, OriginAuto, StatusPending, now)
 }
 
-func NewUserItem(id ItemID, scope Scope, project, content string, now time.Time) (Item, error) {
+func NewUserItem(id ItemID, scope Scope, project string, content Content, now time.Time) (Item, error) {
 	return newItem(id, scope, project, content, OriginUser, StatusActive, now)
 }
 
-func (i Item) ActivateFromUser(content string, now time.Time) (ItemChange, error) {
+func (i Item) ActivateFromUser(content Content, now time.Time) (ItemChange, error) {
 	if i.status == StatusActive {
 		return ItemChange{}, errors.New("agentmemory: active item cannot be activated again")
-	}
-	content, err := NormalizeContent(content)
-	if err != nil {
-		return ItemChange{}, err
 	}
 	now = now.UTC()
 	if now.IsZero() || now.Before(i.updatedAt) {
@@ -191,17 +187,18 @@ func (i Item) ActivateFromUser(content string, now time.Time) (ItemChange, error
 	if err := instant.Validate(now); err != nil {
 		return ItemChange{}, fmt.Errorf("agentmemory: activation time: %w", err)
 	}
-	i.revision, err = i.revision.Next()
+	revision, err := i.revision.Next()
 	if err != nil {
 		return ItemChange{}, err
 	}
-	i = i.withUserContent(content, now)
+	i.revision = revision
+	i = i.withUserContent(content.text, now)
 	i.pinned = false
 	i.updatedAt = now
 	return ItemChange{item: i, kind: itemContentAuthored}, nil
 }
 
-func (i Item) Edit(expectedRevision uint64, content *string, pinned *bool, now time.Time) (ItemChange, error) {
+func (i Item) Edit(expectedRevision uint64, content *Content, pinned *bool, now time.Time) (ItemChange, error) {
 	if err := i.CheckRevision(expectedRevision); err != nil {
 		return ItemChange{}, err
 	}
@@ -210,11 +207,7 @@ func (i Item) Edit(expectedRevision uint64, content *string, pinned *bool, now t
 	}
 	canonicalContent := i.content
 	if content != nil {
-		canonical, err := NormalizeContent(*content)
-		if err != nil {
-			return ItemChange{}, err
-		}
-		canonicalContent = canonical
+		canonicalContent = content.text
 	}
 	contentChanged := canonicalContent != i.content
 	pinChanged := pinned != nil && i.pinned != *pinned
@@ -307,14 +300,10 @@ func (i Item) ValidateRemoval(expectedRevision uint64) error {
 	return i.ValidateVisible()
 }
 
-func newItem(id ItemID, scope Scope, project, content string, origin Origin, status Status, now time.Time) (Item, error) {
-	content, err := NormalizeContent(content)
-	if err != nil {
-		return Item{}, err
-	}
+func newItem(id ItemID, scope Scope, project string, content Content, origin Origin, status Status, now time.Time) (Item, error) {
 	now = now.UTC()
 	item := Item{
-		id: id, revision: exactint.First(), scope: scope, project: project, content: content, origin: origin, status: status,
+		id: id, revision: exactint.First(), scope: scope, project: project, content: content.text, origin: origin, status: status,
 		day: now.Format(time.DateOnly), createdAt: now, updatedAt: now,
 	}
 	if err := item.validate(); err != nil {
@@ -330,7 +319,7 @@ func (i Item) validate() error {
 	if err := ValidateTarget(i.scope, i.project); err != nil {
 		return err
 	}
-	content, err := NormalizeContent(i.content)
+	content, err := normalizeContent(i.content)
 	if err != nil {
 		return err
 	}

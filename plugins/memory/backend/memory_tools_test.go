@@ -216,7 +216,11 @@ func TestMemoryToolsReviewProposalsAndFenceTheCapturedProject(t *testing.T) {
 			t.Fatalf("review receipt is unavailable: %+v, %v", output, err)
 		}
 	}
-	foreign, _, err := store.Add(t.Context(), agentmemory.ScopeProject, other, "foreign fact", now)
+	foreignContent, err := agentmemory.ParseContent("foreign fact")
+	if err != nil {
+		t.Fatal(err)
+	}
+	foreign, _, err := store.Add(t.Context(), agentmemory.ScopeProject, other, foreignContent, now)
 	if err != nil {
 		t.Fatal(err)
 	}

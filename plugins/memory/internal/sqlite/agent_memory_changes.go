@@ -11,7 +11,7 @@ import (
 	"github.com/Tangerg/flame/plugins/memory/internal/management"
 )
 
-func (a *AgentMemoryStore) PrepareUpdate(ctx context.Context, id agentmemory.ItemID, expectedRevision uint64, content *string, pinned *bool, now time.Time) (management.Mutation, error) {
+func (a *AgentMemoryStore) PrepareUpdate(ctx context.Context, id agentmemory.ItemID, expectedRevision uint64, content *agentmemory.Content, pinned *bool, now time.Time) (management.Mutation, error) {
 	current, found, err := a.Get(ctx, id)
 	if err != nil {
 		return management.Mutation{}, err
@@ -105,12 +105,8 @@ func (a *AgentMemoryStore) PrepareDelete(ctx context.Context, id agentmemory.Ite
 	}), nil
 }
 
-func (a *AgentMemoryStore) PrepareAdd(ctx context.Context, scope agentmemory.Scope, project, content string, now time.Time) (management.Mutation, error) {
-	content, err := agentmemory.NormalizeContent(content)
-	if err != nil {
-		return management.Mutation{}, fmt.Errorf("sqlite: add agent memory: %w", err)
-	}
-	existing, found, err := a.itemByDigest(ctx, scope, project, agentmemory.Digest(content))
+func (a *AgentMemoryStore) PrepareAdd(ctx context.Context, scope agentmemory.Scope, project string, content agentmemory.Content, now time.Time) (management.Mutation, error) {
+	existing, found, err := a.itemByDigest(ctx, scope, project, content.Digest())
 	if err != nil {
 		return management.Mutation{}, err
 	}
