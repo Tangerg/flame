@@ -386,16 +386,16 @@ export function DiffManifestNotices({
   hasFiles: boolean;
   missingPath: string | undefined;
 }) {
-  // A complete read for one file that returns nothing means that file is unchanged,
-  // not that the whole comparison is clean.
-  if (!hasFiles && !truncated && missingPath)
+  // A read for one file that returns nothing speaks for that file: unchanged when
+  // complete, over budget when truncated, never a clean comparison.
+  if (!hasFiles && missingPath)
     return (
       <>
         <EmptyState
           icon={FileDiffIcon}
           size="compact"
           align="start"
-          title={t("file.unchanged")}
+          title={t(truncated ? "file.overBudget" : "file.unchanged")}
         />
         <Metadata>
           <DiffFilePath path={missingPath} />
@@ -415,7 +415,7 @@ export function DiffManifestNotices({
       )}
       {missingPath && (
         <Metadata>
-          {t(truncated ? "missing" : "file.unchanged")}{" "}
+          {t(truncated ? "file.overBudget" : "file.unchanged")}{" "}
           <DiffFilePath path={missingPath} />
         </Metadata>
       )}

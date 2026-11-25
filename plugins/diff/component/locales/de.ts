@@ -36,7 +36,6 @@ export const de: Record<string, string> = {
   "filter.clear": "Filter löschen",
   partial:
     "Teilweiser Diff. Es werden nur die enthaltenen Dateien und Zeilenänderungen angezeigt.",
-  missing: "Die angeforderte Datei ist in diesem Lesevorgang nicht enthalten:",
   "files.changed_one": "{{count}} geänderte Datei",
   "files.changed_other": "{{count}} geänderte Dateien",
   "files.included_one": "{{count}} enthaltene Datei",
@@ -46,6 +45,7 @@ export const de: Record<string, string> = {
   "stat.title": "Zeilenänderungen in enthaltenen Textdateien",
   "empty.title": "Keine Änderungen in diesem Vergleich.",
   "file.unchanged": "Keine Änderungen an dieser Datei in diesem Vergleich.",
+  "file.overBudget": "Diese Datei passt nicht in das Leselimit.",
   "nomatch.title": "Keine übereinstimmenden Dateien.",
   "files.region": "Geänderte Dateien",
   "file.changes": "Änderungen in {{path}}",

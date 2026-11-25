@@ -37,7 +37,6 @@ export const fr: Record<string, string> = {
   "filter.clear": "Effacer le filtre",
   partial:
     "Diff partiel. Seuls les fichiers inclus et les modifications de lignes sont affichés.",
-  missing: "Le fichier demandé n’est pas inclus dans cette lecture :",
   "files.changed_one": "{{count}} fichier modifié",
   "files.changed_many": "{{count}} fichiers modifiés",
   "files.changed_other": "{{count}} fichiers modifiés",
@@ -50,6 +49,7 @@ export const fr: Record<string, string> = {
   "stat.title": "Modifications de lignes dans les fichiers texte inclus",
   "empty.title": "Aucune modification dans cette comparaison.",
   "file.unchanged": "Aucune modification de ce fichier dans cette comparaison.",
+  "file.overBudget": "Ce fichier ne tient pas dans la limite de cette lecture.",
   "nomatch.title": "Aucun fichier correspondant.",
   "files.region": "Fichiers modifiés",
   "file.changes": "Modifications dans {{path}}",

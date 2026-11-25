@@ -1,5 +1,5 @@
 import { iconGlyph } from "@/ui/icons/index";
-import { type ReactNode, type RefObject } from "react";
+import { type CSSProperties, type ReactNode, type RefObject } from "react";
 import { type IconName } from "@/ui/icons/index";
 import { useT } from "@/lib/i18n/index";
 import { EmptyState, type EmptyStateAlign, type EmptyStateSize } from "@flame/ui/empty-state";
@@ -11,6 +11,7 @@ interface EmptyConfig {
   sub?: string;
   size?: EmptyStateSize;
   align?: EmptyStateAlign;
+  style?: CSSProperties;
 }
 
 interface Props<T> {

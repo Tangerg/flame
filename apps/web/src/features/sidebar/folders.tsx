@@ -4,7 +4,7 @@ import { useState } from "react";
 import { DataView } from "@/ui/index";
 import { SectionLabel } from "@/ui/index";
 import { IconButton, vocab } from "@flame/ui";
-import { AgentWorkIndexGroupList } from "@/ui/agent/index";
+import { AGENT_WORK_INDEX_EMPTY_INSET, AgentWorkIndexGroupList } from "@/ui/agent/index";
 import { FolderRow } from "@/features/sidebar/ui/FolderRow";
 import { SessionList } from "@/features/sidebar/ui/SessionList";
 import { useT } from "@/lib/i18n/index";
@@ -103,7 +103,12 @@ function FoldersSection() {
         empty={
           workIndex.projects?.length
             ? undefined
-            : { title: t("folders.empty.title"), size: "compact", align: "start" }
+            : {
+                title: t("folders.empty.title"),
+                size: "compact",
+                align: "start",
+                style: AGENT_WORK_INDEX_EMPTY_INSET,
+              }
         }
         error={{
           title: t("folders.error.title"),
