@@ -42,7 +42,7 @@ export const en: Record<string, string> = {
   "change.modified": "Edited",
   "change.moved": "Moved",
   "change.deleted": "Deleted",
-  "skills.empty": "No skills were returned.",
+  "skills.empty": "No Skills were returned.",
   "http.truncated": "Truncated",
   "caption.source": "Source",
   "caption.answer": "Answer",

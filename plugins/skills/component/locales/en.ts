@@ -64,7 +64,7 @@ export const en: Record<string, string> = {
   "review.label": "Confirm proposal decision",
   "review.title.approve": "Approve · {{name}}",
   "review.title.reject": "Reject · {{name}}",
-  "review.proposed": "Proposed skill",
+  "review.proposed": "Proposed Skill",
   "review.target": "Review target",
   "review.confirmation": "Proposal confirmation",
   "confirm.approve": "Confirm approve",
@@ -86,6 +86,6 @@ export const en: Record<string, string> = {
   "fact.release": "Release",
   "fact.sourcePath": "Source path",
   "fact.origin": "Origin",
-  "fact.sourceSession": "Source Session",
+  "fact.sourceSession": "Source session",
   "fact.revises": "Revises an existing Skill",
 };

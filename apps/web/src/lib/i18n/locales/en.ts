@@ -20,7 +20,7 @@ export const en = {
   "packages.module.reload": "Reload window",
   "packages.reloadRequired": "The Runtime restarted. Reload the window to restore plugins.",
   "packages.module.resolvingWorkspace": "Resolving the current workspace…",
-  "packages.module.selectWorkspace": "Choose a Session with a workspace to view this page.",
+  "packages.module.selectWorkspace": "Choose a session with a workspace to view this page.",
   "packages.providers.title": "Provider selections",
   "packages.providers.refresh": "Refresh selections",
   "packages.providers.future":
@@ -743,9 +743,9 @@ export const en = {
   "rpcError.internal_error":
     "Something broke inside the Runtime — retry, and check diagnostics if it keeps happening.",
   "rpcError.mcp_authorization_attempt_not_found": "This sign-in attempt expired. Start again.",
-  "rpcError.skill_not_found": "That skill is no longer in the library.",
+  "rpcError.skill_not_found": "That Skill is no longer in the library.",
   "rpcError.skill_unavailable":
-    "That skill's document can't be read — check the file it resolves to.",
+    "That Skill's document can't be read — check the file it resolves to.",
   "rpcError.revision_conflict": "Someone changed this first — reload and try again.",
   "rpcError.mcp_server_not_found": "That server is no longer configured.",
   "rpcError.mcp_server_already_exists": "A server with that name is already configured.",
@@ -967,7 +967,7 @@ export const en = {
   "file.change.del": "Deleted in the working tree",
   "file.change.renamed": "Renamed from {{path}}",
   "file.change.below": "Contains working-tree changes",
-  "packages.module.selectSession": "Select a Session to view this page.",
+  "packages.module.selectSession": "Select a session to view this page.",
   "packages.loading": "Loading…",
   "packages.trust":
     "Approving a release trusts its exact code. Local executables run with your OS permissions. Review its source, digest and inputs before approval. Selecting another release requires a new approval.",
@@ -1002,7 +1002,7 @@ export const en = {
   "packages.component.contribution": "Contribution “{{name}}”",
   "packages.component.mcp": "The MCP configuration",
   "packages.component.mcpServer": "MCP server “{{name}}”",
-  "packages.component.skills": "The skills directory",
+  "packages.component.skills": "The Skills directory",
   "packages.component.skill": "Skill “{{name}}”",
   "packages.diagnostic.unknownField": "{{component}} isn't recognized and was ignored.",
   "packages.diagnostic.invalidDeclaration": "{{component}} is invalid and was disabled.",

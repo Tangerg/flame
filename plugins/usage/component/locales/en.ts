@@ -46,8 +46,8 @@ export const en: Record<string, string> = {
   "fact.pricedAttempts": "Priced attempts",
   "fact.inProgress": "In progress",
   "fact.outcomeUnknown": "Outcome unknown",
-  "fact.sessions": "Associated Sessions",
-  "fact.runs": "Associated Runs",
+  "fact.sessions": "Associated sessions",
+  "fact.runs": "Associated runs",
   "accounting.title": "Accounting details",
   "accounting.note":
     "Token totals include reported usage only. Unknown outcomes and unreported usage may add consumption. The known price subtotal includes priced attempts only; total cost requires every attempt to be priced. Deleted or never recorded calls cannot be reconstructed. Zero tokens are recorded values. “Not reported” means there is no complete price for that total or bucket.",

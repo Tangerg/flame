@@ -57,7 +57,7 @@ export const en: Record<string, string> = {
   cancel: "Cancel",
   "delete.title": "Delete {{name}}?",
   "delete.description":
-    "Future firings will stop. Captured work and accepted Runs are retained.",
+    "Future firings will stop. Captured work and accepted runs are retained.",
   "delete.close": "Close deletion confirmation",
   "delete.confirm": "Confirm deletion",
   "catalog.title": "Saved schedules",
@@ -92,7 +92,7 @@ export const en: Record<string, string> = {
   "pages.previous": "Previous",
   "pages.next": "Next",
   "pages.current": "Page {{page}}",
-  "notice.accepted": "Runtime accepted Run {{run}} in Session {{session}}.",
+  "notice.accepted": "Runtime accepted run {{run}} in session {{session}}.",
   "notice.openSession": "Open conversation",
   "notice.completed": "{{label}} completed.",
   "notice.revision":

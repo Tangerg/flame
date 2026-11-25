@@ -84,8 +84,8 @@ export const en: Record<string, string> = {
   "fact.parentOperation": "Parent operation",
   "fact.origin": "Origin",
   "fact.costUsd": "Cost (USD)",
-  "fact.rootRunId": "Root Run ID",
-  "fact.parentRunId": "Parent Run ID",
+  "fact.rootRunId": "Root run ID",
+  "fact.parentRunId": "Parent run ID",
   "fact.delegatingItemId": "Delegating Item ID",
   "fact.executionDurationMs": "Execution duration (ms)",
   "fact.approval": "Approval",
@@ -99,7 +99,7 @@ export const en: Record<string, string> = {
   "rename.section": "Session details",
   "rename.titleLabel": "Session title",
   "rename.failure":
-    "{{message}} The captured revision remains unchanged; reopen this action to inspect the current Session.",
+    "{{message}} The captured revision remains unchanged; reopen this action to inspect the current session.",
   "rename.unconfirmed":
     "The change is unconfirmed. Reconcile the original command before submitting another edit.",
   "rename.checking": "Checking original command…",
