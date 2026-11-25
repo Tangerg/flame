@@ -48,7 +48,7 @@ func (c *Coordinator) CreateServer(ctx context.Context, input ServerInput) (Serv
 	if err != nil {
 		return Server{}, err
 	}
-	return c.commitServer(write, srv, true)
+	return c.commitServer(write, srv, nil)
 }
 
 func (c *Coordinator) UpdateServer(ctx context.Context, name mcpserver.ID, patch ServerPatch) (Server, error) {
@@ -74,38 +74,35 @@ func (c *Coordinator) UpdateServer(ctx context.Context, name mcpserver.ID, patch
 	if err != nil {
 		return Server{}, err
 	}
-	return c.commitServer(write, updated, !current.Enabled || !current.SameConnection(updated))
+	return c.commitServer(write, updated, &current)
 }
 
-func (c *Coordinator) commitServer(write *mutationScope, srv mcpserver.Server, reconnect bool) (Server, error) {
-	if err := c.store.Save(write.requestCtx, srv); err != nil {
+func (c *Coordinator) commitServer(write *mutationScope, accepted mcpserver.Server, previous *mcpserver.Server) (Server, error) {
+	if err := c.store.Save(write.requestCtx, accepted); err != nil {
 		return Server{}, err
 	}
-	committed, found, err := c.registry.Definition(write.requestCtx, srv.ID())
-	if err != nil {
-		return Server{}, err
+
+	// A later directory read could fail or observe a different selection
+	// after the connector has already committed these values.
+	id := accepted.ID()
+	c.exposure.setServer(accepted)
+	var connectionErr error
+	switch {
+	case !accepted.Enabled:
+		connectionErr = c.connections.Detach(id)
+	case previous == nil || !previous.Enabled || !previous.SameConnection(accepted):
+		start := make(chan struct{})
+		defer close(start)
+		connectionErr = c.dispatchConnection(write.ownerCtx, id, c.connections.BeginConnect, start, nil, nil)
 	}
-	if !found {
-		return Server{}, ErrUnknownServer
-	}
-	srv = committed
-	reconcileErr := c.applyRegistryChange(srv)
-	var redialErr error
-	start := make(chan struct{})
-	defer close(start)
-	if srv.Enabled && reconnect && reconcileErr == nil {
-		redialErr = c.dispatchConnection(write.ownerCtx, srv.ID(), c.connections.BeginConnect, start, nil, nil)
-	}
-	event := c.statusQueue.prepare(srv.ID())
+	view, viewErr := serverView(accepted, c.statusesByName()[id])
+	event := c.statusQueue.prepare(id)
 	write.unlock()
 	c.statusQueue.publish(event)
-	if reconcileErr != nil {
-		return Server{}, reconcileErr
+	if err := errors.Join(connectionErr, viewErr); err != nil {
+		return Server{}, err
 	}
-	if redialErr != nil {
-		return Server{}, redialErr
-	}
-	return serverView(srv, c.statusesByName()[srv.ID()])
+	return view, nil
 }
 
 func (c *Coordinator) DeleteServer(ctx context.Context, name mcpserver.ID) error {
@@ -188,15 +185,6 @@ func (m *mutationScope) close() {
 	m.unlock()
 	m.finish()
 	m.finish = nil
-}
-
-func (c *Coordinator) applyRegistryChange(srv mcpserver.Server) error {
-	var err error
-	if !srv.Enabled {
-		err = c.connections.Detach(srv.ID())
-	}
-	c.exposure.setServer(srv)
-	return err
 }
 
 func (c *Coordinator) TestServer(ctx context.Context, input ServerInput) (result TestResult, err error) {

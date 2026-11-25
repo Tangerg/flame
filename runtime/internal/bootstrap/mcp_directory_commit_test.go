@@ -1,0 +1,76 @@
+package bootstrap
+
+import (
+	"context"
+	"database/sql/driver"
+	"sync"
+	"testing"
+	"time"
+
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/runtime/internal/delivery"
+	modernsqlite "modernc.org/sqlite"
+)
+
+func TestAcceptedMCPDisableSurvivesCallerCancellation(t *testing.T) {
+	waiting, resume := make(chan struct{}), make(chan struct{})
+	release := sync.OnceFunc(func() { close(resume) })
+	defer release()
+	if err := modernsqlite.RegisterScalarFunction("test_mcp_grant_confirmation", 0,
+		func(*modernsqlite.FunctionContext, []driver.Value) (driver.Value, error) {
+			close(waiting)
+			<-resume
+			return nil, nil
+		}); err != nil {
+		t.Fatal(err)
+	}
+
+	remote := poMCPRemote(t, "record")
+	cfg := poMCPConfig(t)
+	runtime := poMCPOpen(t, cfg)
+	installExternalConnector(runtime)
+	created := runtime.must(delivery.MCPServersCreate, protocol.MCPServerCandidate{
+		Name: "disable-after-commit", Enabled: true,
+		Connection:       protocol.MCPConnectionInput{Type: protocol.MCPTransportStreamableHTTP, URL: remote},
+		HandshakeTimeout: protocol.MCPHandshakeTimeout{Type: protocol.MCPHandshakeUnbounded},
+	}, "create-before-disable").(*protocol.MCPServer)
+	runtime.poMCPTools(&created.ID, func(tools []protocol.MCPTool) bool { return len(tools) == 1 })
+	questionCrashDatabase(t, cfg.stores.DataDirectory, `CREATE TRIGGER pause_mcp_grant_confirmation
+		BEFORE UPDATE OF proposal ON mcp_launch_grants
+		WHEN NEW.proposal IS NULL
+		BEGIN SELECT test_mcp_grant_confirmation(); END`)
+
+	const updateServer delivery.Name = "mcp.servers.update"
+	request := protocol.UpdateMCPServerRequest{Server: created.ID, Enabled: new(false)}
+	options := protocol.CallMetadata{
+		IdempotencyKey: "disable-once", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version},
+	}
+	callCtx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	done := make(chan protocol.OperationResult, 1)
+	go func() { done <- runtime.endpoint.Invoke(callCtx, updateServer, request, options) }()
+	select {
+	case <-waiting:
+	case result := <-done:
+		t.Fatalf("disable finished before grant confirmation: %+v", result)
+	case <-time.After(lifecycleWaitBudget(t)):
+		t.Fatal("disable did not reach grant confirmation")
+	}
+	cancel()
+	release()
+	select {
+	case <-done:
+	case <-time.After(lifecycleWaitBudget(t)):
+		t.Fatal("committed disable did not settle")
+	}
+
+	recorded := runtime.endpoint.Invoke(t.Context(), updateServer, request, options)
+	server, accepted := recorded.Value.(*protocol.MCPServer)
+	if recorded.Failure != nil || !accepted || server.Status.Type != protocol.MCPServerDisabled {
+		t.Errorf("replayed disable = %+v, %v", recorded.Value, recorded.Failure)
+	}
+	tools := runtime.must(delivery.MCPToolsList, protocol.MCPListToolsRequest{Server: &created.ID}, "").(*protocol.Page[protocol.MCPTool])
+	if len(tools.Data) != 0 {
+		t.Errorf("disabled server still advertises tools: %+v", tools.Data)
+	}
+}
