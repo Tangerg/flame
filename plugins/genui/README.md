@@ -21,8 +21,10 @@ restricted to the registered basic functions; external navigation is excluded.
 `1.0`. Each initial `createSurface` names the trusted catalog and sets
 `sendDataModel: false`. Component graphs and bindings are validated strictly by
 the official processor before the result is accepted. Admission bounds message
-count, operation count, JSON depth and bytes. No generated JavaScript, HTML,
-arbitrary component imports or renderer RPC is accepted.
+count, operation count, JSON depth and bytes. The accepted result includes its
+captured contributions within the same capacity used to read history.
+No generated JavaScript, HTML, arbitrary component imports or renderer RPC is
+accepted.
 
 Editable controls bind under `/draft`. Subsequent recorded `updateDataModel`
 messages may write only under `/data/`. Operation results are published under

@@ -8,6 +8,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { rolldown } from "rolldown";
 import { expect, it } from "vitest";
+import { limits, Presentation } from "../contracts/document";
 import { interfaceRequest } from "../contracts/fixture";
 
 const presentationTool = "ui_present";
@@ -90,6 +91,32 @@ it(
         ...request,
         contributions: [],
       });
+
+      const data = request.messages[0].createSurface.dataModel.data;
+      data.padding = "";
+      const bytes = Buffer.byteLength(
+        JSON.stringify({ ...request, contributions: [] }),
+      );
+      data.padding = "x".repeat(limits.bytes - bytes);
+      const atCapacity = await client.callTool({
+        name: presentationTool,
+        arguments: request,
+      });
+      expect(atCapacity.isError).not.toBe(true);
+      const recorded = JSON.stringify(atCapacity.structuredContent);
+      expect(Buffer.byteLength(recorded)).toBe(limits.bytes);
+      expect(Presentation.read(recorded).snapshot()).toEqual(
+        atCapacity.structuredContent,
+      );
+      data.padding += "x";
+      const overCapacity = await client.callTool({
+        name: presentationTool,
+        arguments: request,
+      });
+      expect(overCapacity.isError).toBe(true);
+      expect(overCapacity.content[0].text).toMatch(
+        /interface exceeds content capacity/,
+      );
     } finally {
       try {
         await client.close();

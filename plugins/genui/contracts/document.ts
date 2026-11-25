@@ -108,9 +108,7 @@ function normalize(value: unknown): unknown {
     throw new InvalidPresentation("use strings for exact quantities", cause);
   }
 }
-function bounded(value: unknown): unknown {
-  if (new TextEncoder().encode(canonicalJSON(value)).byteLength > limits.bytes)
-    throw new InvalidPresentation("interface exceeds content capacity");
+function validateContentCapacity(value: unknown): void {
   let nodes = 0;
   function visit(item: unknown, depth: number) {
     if (++nodes > limits.jsonNodes || depth > limits.jsonDepth)
@@ -120,6 +118,12 @@ function bounded(value: unknown): unknown {
       Object.values(item).forEach((child) => visit(child, depth + 1));
   }
   visit(value, 0);
+  if (new TextEncoder().encode(canonicalJSON(value)).byteLength > limits.bytes)
+    throw new InvalidPresentation("interface exceeds content capacity");
+}
+
+function bounded(value: unknown): unknown {
+  validateContentCapacity(value);
   return normalize(value);
 }
 function unique(values: readonly string[]) {
@@ -296,10 +300,12 @@ export class Presentation {
         "invalid captured contributions",
         captured.error,
       );
-    return new Presentation({
+    const document = {
       ...request.snapshot(),
       contributions: captured.data,
-    });
+    };
+    validateContentCapacity(document);
+    return new Presentation(document);
   }
   static read(source: string) {
     const parsed = documentSchema.safeParse(bounded(parseJSON(source)));
