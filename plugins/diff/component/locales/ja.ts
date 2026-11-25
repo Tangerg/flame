@@ -40,6 +40,7 @@ export const ja: Record<string, string> = {
   "files.match_other": "{{total}} 件中 {{count}} 件のファイルが一致",
   "stat.title": "含まれるテキストファイルの行の変更",
   "empty.title": "この比較に変更はありません。",
+  "file.unchanged": "この比較でこのファイルに変更はありません。",
   "nomatch.title": "一致するファイルはありません。",
   "files.region": "変更されたファイル",
   "file.changes": "{{path}} の変更",

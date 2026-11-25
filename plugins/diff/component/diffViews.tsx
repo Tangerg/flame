@@ -386,6 +386,22 @@ export function DiffManifestNotices({
   hasFiles: boolean;
   missingPath: string | undefined;
 }) {
+  // A complete read for one file that returns nothing means that file is unchanged,
+  // not that the whole comparison is clean.
+  if (!hasFiles && !truncated && missingPath)
+    return (
+      <>
+        <EmptyState
+          icon={FileDiffIcon}
+          size="compact"
+          align="start"
+          title={t("file.unchanged")}
+        />
+        <Metadata>
+          <DiffFilePath path={missingPath} />
+        </Metadata>
+      </>
+    );
   return (
     <>
       {truncated && hasFiles && <Metadata role="note">{t("partial")}</Metadata>}
@@ -399,7 +415,8 @@ export function DiffManifestNotices({
       )}
       {missingPath && (
         <Metadata>
-          {t("missing")} <DiffFilePath path={missingPath} />
+          {t(truncated ? "missing" : "file.unchanged")}{" "}
+          <DiffFilePath path={missingPath} />
         </Metadata>
       )}
     </>

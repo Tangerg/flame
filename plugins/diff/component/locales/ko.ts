@@ -39,6 +39,7 @@ export const ko: Record<string, string> = {
   "files.match_other": "{{total}}개 파일 중 {{count}}개 일치",
   "stat.title": "포함된 텍스트 파일의 행 변경 사항",
   "empty.title": "이 비교에 변경 사항이 없습니다.",
+  "file.unchanged": "이 비교에서 이 파일에는 변경 사항이 없습니다.",
   "nomatch.title": "일치하는 파일이 없습니다.",
   "files.region": "변경된 파일",
   "file.changes": "{{path}}의 변경 사항",
