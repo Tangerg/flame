@@ -232,8 +232,6 @@ type Event struct {
 	WatchID    string
 	Workspace  string
 	Paths      []string
-	Names      []string
-	Servers    []protocol.MCPServerID
 	SessionIDs []string
 	RunIDs     []string
 	Topics     []protocol.RuntimeTopic

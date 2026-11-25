@@ -130,7 +130,6 @@ func (p *interruptPrompts) setApprovalForm(initial approvalAction) {
 	value, ok := initial.Normalize(rememberable)
 	if !ok {
 		p.approvalDraft = nil
-		p.approvalForm = nil
 		p.approvalPane.setForm(nil, nil)
 		p.run.message("invalid approval action")
 		return
@@ -165,7 +164,6 @@ func (p *interruptPrompts) setApprovalForm(initial approvalAction) {
 		Glyphs: p.approvalPane.glyphs,
 		Hints:  []keymap.Action{base.Submit, base.Cancel},
 	})
-	p.approvalForm = dressed.Controller()
 	p.approvalPane.setForm(dressed, func() {
 		if capture() {
 			p.backOrCancelApproval()
@@ -356,7 +354,6 @@ func (p *interruptPrompts) clearApprovalProjection() {
 	p.approvalOverride = nil
 	p.approvalSections = nil
 	p.dismissApprovalEditor()
-	p.approvalForm = nil
 	p.approvalPane.setForm(nil, nil)
 }
 

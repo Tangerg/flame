@@ -86,9 +86,8 @@ func (r *Connection) Subscribe(ctx context.Context, subscription changefeed.Subs
 func projectRuntimeEvent(event protocol.RuntimeEvent) changefeed.Event {
 	projected := changefeed.Event{
 		Type: event.Type, Sequence: event.Sequence, WatchID: event.WatchID,
-		Paths: slices.Clone(event.Paths), Names: slices.Clone(event.Names), Servers: slices.Clone(event.Servers),
-		SessionIDs: slices.Clone(event.SessionIDs),
-		RunIDs:     slices.Clone(event.RunIDs), Topics: slices.Clone(event.Topics), WatchIDs: slices.Clone(event.WatchIDs),
+		Paths: slices.Clone(event.Paths), SessionIDs: slices.Clone(event.SessionIDs),
+		RunIDs: slices.Clone(event.RunIDs), Topics: slices.Clone(event.Topics), WatchIDs: slices.Clone(event.WatchIDs),
 	}
 	if event.Workspace != nil {
 		projected.Workspace = event.Workspace.Path

@@ -22,7 +22,6 @@ type Method struct {
 	Meta        MethodMeta
 	invoke      func(any, context.Context, any) rawResult
 	prepare     func(any, context.Context, any) (*Method, error)
-	classify    func(any) (OperationKind, error)
 	ownedReplay ownedReplay
 }
 
@@ -177,13 +176,6 @@ func (r *Registry) registerExtension[Capability, Params any](meta MethodMeta, cl
 	meta.Params = reflect.TypeFor[Params]()
 	r.add(meta, nil)
 	registered := r.byName[meta.Name]
-	registered.classify = func(parameters any) (OperationKind, error) {
-		request, ok := parameters.(Params)
-		if !ok {
-			return "", fmt.Errorf("operation: %s received invalid parameters", meta.Name)
-		}
-		return classify(request)
-	}
 	registered.prepare = func(target any, ctx context.Context, parameters any) (*Method, error) {
 		capability, request, err := bound[Capability, Params](meta, target, parameters)
 		if err != nil {

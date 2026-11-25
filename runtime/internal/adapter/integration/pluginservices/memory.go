@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
-	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 
@@ -92,10 +91,7 @@ func (m *Memory) Items(ctx context.Context, scope memorycontract.ItemsInputScope
 		if item == nil || item.Status != memorycontract.ItemsV3OutputContractItemStatusActive || item.Scope != memorycontract.ItemsV3OutputContractItemScope(scope) || item.Project != project {
 			return nil, errors.New("memory: backend returned items outside the requested active target")
 		}
-		items[index], err = memoryPromptItem(string(item.Id), item.Content, item.Pinned, string(item.UpdatedAt))
-		if err != nil {
-			return nil, err
-		}
+		items[index] = execution.MemoryPromptItem{ID: string(item.Id), Content: item.Content, Pinned: item.Pinned}
 	}
 	return items, nil
 }
@@ -157,11 +153,7 @@ func searchPromptItems(values []*memorycontract.SearchV3OutputContractItem, proj
 		if item.Status != memorycontract.SearchV3OutputContractItemStatusActive || !visibleTarget {
 			return nil, errors.New("memory: backend returned search outside the active target")
 		}
-		prompt, err := memoryPromptItem(string(item.Id), item.Content, item.Pinned, string(item.UpdatedAt))
-		if err != nil {
-			return nil, err
-		}
-		items[index] = prompt
+		items[index] = execution.MemoryPromptItem{ID: string(item.Id), Content: item.Content, Pinned: item.Pinned}
 	}
 	return items, nil
 }
@@ -211,12 +203,4 @@ func (m *Memory) MaintainMemory(ctx context.Context, input execution.RunMaintena
 		}, nil
 	})
 	return err
-}
-
-func memoryPromptItem(id, content string, pinned bool, updated string) (execution.MemoryPromptItem, error) {
-	instant, err := time.Parse(time.RFC3339Nano, updated)
-	if err != nil || instant.IsZero() {
-		return execution.MemoryPromptItem{}, errors.New("memory: published prompt item has no valid ordering time")
-	}
-	return execution.MemoryPromptItem{ID: id, Content: content, Pinned: pinned, UpdatedAt: instant}, nil
 }

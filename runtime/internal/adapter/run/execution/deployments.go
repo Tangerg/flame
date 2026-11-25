@@ -33,7 +33,6 @@ type interactionDeploymentSet struct {
 	toolContracts map[scoperun.ProgramRef]map[domaintool.Ref]toolcontract.Contract
 	toolSets      map[scoperun.ProgramRef]interaction.ToolSet
 	observedTools map[scoperun.ProgramRef]map[domaintool.Ref]*observedInteractionTool
-	treeLimits    scoperun.TreeLimits
 }
 
 type compiledInteraction struct {
@@ -153,7 +152,6 @@ func (i *InteractionExecutor) newInteractionDeploymentBuilder(
 			observedTools:       make(map[scoperun.ProgramRef]map[domaintool.Ref]*observedInteractionTool),
 			delegatesByParent:   make(map[scoperun.ProgramRef]map[string]scoperun.Program[scoperun.Payload, scoperun.Payload]),
 			managedChildren:     make(map[scoperun.ProgramRef]struct{}),
-			treeLimits:          interactionTreeLimits(start),
 		},
 	}
 	defer func() {

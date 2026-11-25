@@ -9,7 +9,6 @@ import (
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
-	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/application/ownership"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
@@ -34,8 +33,7 @@ type runtimeApplication struct {
 }
 
 type runtimeWorkers struct {
-	recovery      *ownership.RecoveryCoordinator
-	invalidations invalidation.Publish
+	recovery *ownership.RecoveryCoordinator
 }
 
 type workerJoins struct {

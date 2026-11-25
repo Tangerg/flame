@@ -47,10 +47,9 @@ type toolEnvironment struct {
 }
 
 type toolEnvironmentDependencies struct {
-	framework      frameworkComposition
-	callbacks      *pluginmcp.Callbacks
-	workspaceScope *workspace.Scope
-	conversation   interface {
+	framework    frameworkComposition
+	callbacks    *pluginmcp.Callbacks
+	conversation interface {
 		Read(context.Context, identity.SessionID) ([]chat.Message, error)
 	}
 	publish        invalidation.Publish
@@ -87,7 +86,7 @@ func (environment *toolEnvironment) composeModels(ctx context.Context, deps tool
 	if err != nil {
 		return err
 	}
-	environment.callComposition, err = pluginservices.NewCallComposition(commandCalls, deps.callbacks, environment.admission)
+	environment.callComposition, err = pluginservices.NewCallComposition(commandCalls, environment.admission)
 	if err != nil {
 		return err
 	}
@@ -141,8 +140,8 @@ func (environment *toolEnvironment) composeSkills(deps toolEnvironmentDependenci
 func buildToolEnvironment(ctx context.Context, deps toolEnvironmentDependencies) (toolEnvironment, error) {
 	cfg := deps.config
 	admission := cfg.stores.Admission
-	commands, callers := deps.framework.commands, deps.framework.callers
-	mcpPool, err := mcp.Open(ctx, deps.lifetime, deps.mcp.servers, cfg.stores.MCPAuthorization(), deps.registry, deps.callbacks, deps.publish, callers, deps.framework.installed)
+	commands := deps.framework.commands
+	mcpPool, err := mcp.Open(ctx, deps.lifetime, deps.mcp.servers, cfg.stores.MCPAuthorization(), deps.registry, deps.callbacks, deps.publish, deps.framework.installed)
 	if err != nil {
 		return toolEnvironment{}, fmt.Errorf("runtime: open MCP connections: %w", err)
 	}

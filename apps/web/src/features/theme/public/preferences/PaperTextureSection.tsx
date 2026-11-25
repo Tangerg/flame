@@ -5,7 +5,6 @@ import {
   PAPER_TEXTURES,
   useAppearance,
   useAppearanceEdit,
-  type PaperTexture,
 } from "@/features/theme/public/appearance";
 import { SettingRow } from "@/ui/settings/SettingRow";
 import { type as typeStep } from "@flame/ui/tokens.stylex";

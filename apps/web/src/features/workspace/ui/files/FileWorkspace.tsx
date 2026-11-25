@@ -4,7 +4,6 @@ import * as stylex from "@stylexjs/stylex";
 import { useLayoutEffect, useRef, type Ref } from "react";
 import { SkeletonList } from "@/ui/index";
 import { ContentVisibility } from "@flame/ui";
-import { color, space } from "@flame/ui/tokens.stylex";
 import { openLocalFile, revealLocalFile } from "@/features/workspace/application/localFileActions";
 import { useT } from "@/lib/i18n/index";
 import { WorkspaceViewLayout } from "@/features/workspace/ui/WorkspaceViewLayout";

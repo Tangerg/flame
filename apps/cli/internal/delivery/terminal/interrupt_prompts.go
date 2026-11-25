@@ -38,7 +38,6 @@ type interruptPrompts struct {
 	approvalOverride  *conversation.ToolArgumentOverride
 	approvalSections  []toolSection
 	approvalEditor    *contextEditorSession
-	approvalForm      *base.Form
 	approvalPane      approvalPane
 	approvalDialog    *presentationDialog
 

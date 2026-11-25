@@ -14,8 +14,7 @@ import (
 )
 
 type Fixture struct {
-	Host  framehost.Host
-	store *persistence.Bundle
+	Host framehost.Host
 }
 
 func New(t testing.TB, store *persistence.Bundle) *Fixture {
@@ -63,7 +62,7 @@ func New(t testing.TB, store *persistence.Bundle) *Fixture {
 	if err := host.Restore(context.Background(), definitions); err != nil {
 		t.Fatal(err)
 	}
-	return &Fixture{Host: host, store: store}
+	return &Fixture{Host: host}
 }
 
 type refusalDriver struct{ profile framehost.Profile }

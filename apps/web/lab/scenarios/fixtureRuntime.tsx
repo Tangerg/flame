@@ -1,7 +1,7 @@
 import { type NotificationFeed } from "@/features/notifications/public/notifications";
 import { WindowNotifications } from "@/features/notifications/toaster/window";
 import { bindClientPageLifecycle } from "@/app/pageLifecycle";
-import { createVisualClient, type VisualClient } from "./client";
+import { createVisualClient } from "./client";
 import { disposeOnHmr } from "@/lib/hmr";
 import { createFlameClient, type FlameClient } from "@flame/runtime-client";
 import {
@@ -129,8 +129,6 @@ function fixtureSelection(query: URLSearchParams) {
   };
 }
 
-let visualClient: VisualClient;
-
 function fixtureAppearance(query: URLSearchParams) {
   const requestedFontSize = query.get("font-size");
   const fontSize = requestedFontSize === null ? undefined : Number(requestedFontSize);
@@ -163,7 +161,6 @@ function startFixture(messages: NotificationFeed, render: (node: ReactNode) => v
     if (!currentRuntimeClient) throw new Error("Visual Runtime client is not configured");
     return currentRuntimeClient;
   }, messages);
-  visualClient = client;
 
   let retired = false;
   async function initialize() {

@@ -65,7 +65,6 @@ type readerPane struct {
 	content          *base.Transcript
 	scroll           *base.Scroll
 	selection        *base.Selection
-	view             *kit.Transcript
 	group            *scene.Group
 	body             *scene.Group
 	blocks           []base.Block
@@ -191,7 +190,7 @@ func (r *readerPane) resetContent(blocks []base.Block, placement readerPlacement
 		r.content.Close()
 	}
 	view := kit.NewTranscript(kit.TranscriptConfig{Behavior: base.TranscriptConfig{Key: "reader-window", MaxItems: max(len(blocks), 1), Keys: r.keys}, Theme: r.theme, Glyphs: r.glyphs})
-	r.view, r.content, r.blocks = view, view.Controller(), blocks
+	r.content, r.blocks = view.Controller(), blocks
 	r.scroll, r.selection = r.content.Scroll(), r.content.Selection()
 	r.scroll.SetWheel(r.wheel)
 	for _, block := range blocks {

@@ -25,7 +25,7 @@ func (i *interactionEffectFailures) record(id scoperun.EffectID, cause error) {
 		i.causes = make(map[scoperun.EffectID]effectObservation)
 	}
 	if _, exists := i.causes[id]; !exists {
-		observation := effectObservation{ID: id.String(), Detail: run.Diagnostic(cause)}
+		observation := effectObservation{Detail: run.Diagnostic(cause)}
 		if evidence, found := errors.AsType[*toolcontract.CallError](cause); found && evidence.Validate() == nil {
 			observation.Output = new(evidence.Evidence())
 		}
@@ -33,23 +33,17 @@ func (i *interactionEffectFailures) record(id scoperun.EffectID, cause error) {
 	}
 }
 
-func (i *interactionEffectFailures) observations(ids []scoperun.EffectID) []effectObservation {
+func (i *interactionEffectFailures) observation(id scoperun.EffectID) effectObservation {
 	i.mu.Lock()
 	defer i.mu.Unlock()
-	effects := make([]effectObservation, len(ids))
-	for index, id := range ids {
-		observation := i.causes[id]
-		observation.ID = id.String()
-		if observation.Output != nil {
-			observation.Output = new(observation.Output.Clone())
-		}
-		effects[index] = observation
+	observation := i.causes[id]
+	if observation.Output != nil {
+		observation.Output = new(observation.Output.Clone())
 	}
-	return effects
+	return observation
 }
 
 type effectObservation struct {
-	ID     string
 	Detail string
 	Output *toolcontract.Output
 }

@@ -122,7 +122,7 @@ func (i *interactionSession) unresolvedEvidence(owner scoperun.ProcessID, ids []
 		if source, found := i.memberOwner(id.Process); !found || source != owner {
 			continue
 		}
-		observation := i.effectFailures.observations([]scoperun.EffectID{id})[0]
+		observation := i.effectFailures.observation(id)
 		if observation.Detail == "" {
 			observation.Detail = why.fallbackDetail
 		}

@@ -39,14 +39,12 @@ const (
 
 type frameworkComposition struct {
 	host      framehost.Host
-	process   *process.Driver
 	installed *mcpadapter.Installed
 	registry  *plugins.Registry
 	external  *mcpadapter.ExternalConnector
 	browser   *browseradapter.Service
 	control   http.Handler
 	commands  *plugins.Commands
-	callers   *pluginservices.CallerRestorer
 	ready     <-chan struct{}
 }
 
@@ -210,7 +208,7 @@ func buildFramework(ctx context.Context, cfg assemblyConfig, lifetime *runtimeLi
 		bridge.Handler().ServeHTTP(writer, request)
 		_ = recovery.restore(request.Context())
 	})
-	return frameworkComposition{host: host, process: profile, registry: registry, external: external, installed: installed, browser: browser, control: control, commands: commands, callers: callers, ready: recovery.ready}, nil
+	return frameworkComposition{host: host, registry: registry, external: external, installed: installed, browser: browser, control: control, commands: commands, ready: recovery.ready}, nil
 }
 
 func restoreFramework(ctx context.Context, stores *persistence.Bundle, host framehost.Host, backendProfile framehost.Profile) error {

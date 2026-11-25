@@ -121,7 +121,6 @@ type installedObservation struct {
 	recordID   string
 	instanceID string
 	session    *sdk.ClientSession
-	projection processProjection
 }
 
 func (s *Installed) acquire(ctx context.Context, id mcpserver.ID) (_ *installedSession, err error) {
@@ -285,7 +284,7 @@ func (s *installedSession) release(ctx context.Context) error { _, err := s.use.
 func (s *installedSession) actor() operation.Actor            { return s.projection.actor }
 
 func (s *installedSession) observe() *installedObservation {
-	return &installedObservation{owner: s.owner, id: s.id, binding: s.use.Binding(), plan: s.plan, recordID: s.recordID, instanceID: s.instanceID, session: s.session, projection: s.projection}
+	return &installedObservation{owner: s.owner, id: s.id, binding: s.use.Binding(), plan: s.plan, recordID: s.recordID, instanceID: s.instanceID, session: s.session}
 }
 
 func (s *installedObservation) activation() (plugin.Activation, error) {

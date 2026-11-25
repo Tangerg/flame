@@ -4,7 +4,7 @@ import {
   presentationEditSchema,
 } from "../../contracts/content";
 import { OfficePackage } from "./archive";
-import { textNodes, textParts } from "./inspection";
+import { parseTextRunId, textNodes, textParts } from "./inspection";
 import { escapeXML, openTag, type XmlPatch } from "./xml";
 
 type ReplaceText = Extract<
@@ -27,15 +27,15 @@ export function textPatches(
         "one native text run may be changed only once per revision",
       );
     seen.add(operation.id);
-    const match = /^(.*)#text:(0|[1-9][0-9]*)$/u.exec(operation.id);
-    if (!match || !parts.has(match[1]!))
+    const target = parseTextRunId(operation.id);
+    if (!target || !parts.has(target.part))
       throw new Error(
         "native text identifier does not belong to this document",
       );
-    const part = match[1]!;
+    const { part } = target;
     const nodes = runs.get(part) ?? textNodes(archive, part).nodes;
     runs.set(part, nodes);
-    const node = nodes[Number(match[2])];
+    const node = nodes[target.index];
     if (!node || node.children.length || node.text !== operation.expect)
       throw new Error(
         "native text precondition does not match the exact revision",

@@ -27,17 +27,11 @@ const callbackPayloadBytes = 4 << 20
 var callbackPayloadLimits = pluginmcp.CallbackLimits{MaxRequestBytes: callbackPayloadBytes, MaxResponseBytes: callbackPayloadBytes}
 
 type Pool struct {
-	commands  invocationRestorer
 	registry  sourceRegistry
 	inner     *connections
 	publish   invalidation.Publish
-	lifetime  context.Context
 	callbacks *pluginmcp.Callbacks
 	installed *Installed
-}
-
-type invocationRestorer interface {
-	RestoreInvocation(context.Context, framecall.Invocation) (context.Context, error)
 }
 
 var _ mcpapp.Connections = (*Pool)(nil)
@@ -49,16 +43,16 @@ func Open(
 	oauthSessions oauthSessionStore, registry sourceRegistry,
 	callbacks *pluginmcp.Callbacks,
 	publish invalidation.Publish,
-	commands invocationRestorer, installed *Installed,
+	installed *Installed,
 ) (*Pool, error) {
-	if lo.IsNil(registry) || lo.IsNil(commands) || installed == nil || publish == nil {
-		return nil, errors.New("mcp connection: source registry, invocation restorer and installed backends are required")
+	if lo.IsNil(registry) || installed == nil || publish == nil {
+		return nil, errors.New("mcp connection: source registry and installed backends are required")
 	}
 	configs := make([]ServerConfig, len(servers))
 	for index, server := range servers {
 		configs[index] = ServerConfig{Server: server}
 	}
-	pool := &Pool{commands: commands, registry: registry, publish: publish, lifetime: lifetime, callbacks: callbacks, installed: installed}
+	pool := &Pool{registry: registry, publish: publish, callbacks: callbacks, installed: installed}
 	inner, err := newConnections(ctx, lifetime, configs, oauthSessions, callbacks)
 	if err != nil {
 		return nil, err
@@ -110,7 +104,7 @@ func (p *Pool) connectionLaunch(ctx context.Context, name mcpserver.ID) (*launch
 		if !found {
 			return nil, errors.Join(ErrUnavailable, value.close())
 		}
-		return &launchPermit{claim: &launchClaim{pending: &launch{config: ServerConfig{Server: server}, managed: value, retire: value.close, admission: admission{Bindings: value.projection.bindings}}}}, nil
+		return &launchPermit{claim: &launchClaim{pending: &launch{config: ServerConfig{Server: server}, managed: value, retire: value.close}}}, nil
 	}
 	connection, err := p.registry.Connection(ctx, name)
 	if err != nil {

@@ -31,7 +31,6 @@ type LifecycleResult struct {
 type Status struct {
 	ID           string
 	Version      string
-	APIVersion   int
 	Requires     []string
 	Capabilities []Capability
 	Phase        LifecyclePhase
@@ -133,8 +132,7 @@ func (h *Host) statusLocked(id string) Status {
 		detail = state.Err.Error()
 	}
 	return Status{
-		ID: plugin.ID, Version: plugin.Version, APIVersion: plugin.APIVersion,
-		Requires: slices.Clone(plugin.Requires), Capabilities: slices.Clone(plugin.Capabilities),
+		ID: plugin.ID, Version: plugin.Version, Requires: slices.Clone(plugin.Requires), Capabilities: slices.Clone(plugin.Capabilities),
 		Phase: state.Phase, Detail: detail,
 	}
 }

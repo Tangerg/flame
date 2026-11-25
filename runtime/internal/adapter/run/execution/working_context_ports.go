@@ -2,7 +2,6 @@ package execution
 
 import (
 	"context"
-	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 
@@ -25,10 +24,9 @@ type interactionModelContextState interface {
 }
 
 type MemoryPromptItem struct {
-	ID        string
-	Content   string
-	Pinned    bool
-	UpdatedAt time.Time
+	ID      string
+	Content string
+	Pinned  bool
 }
 
 type agentMemoryReader interface {

@@ -1,4 +1,4 @@
-import { UI_DENSITY_MODES, type UiDensity } from "@/features/theme/public/appearance";
+import { UI_DENSITY_MODES } from "@/features/theme/public/appearance";
 import { Segmented } from "@flame/ui";
 import { useT, type MessageKey } from "@/lib/i18n/index";
 import { useAppearance, useAppearanceEdit } from "@/features/theme/public/appearance";

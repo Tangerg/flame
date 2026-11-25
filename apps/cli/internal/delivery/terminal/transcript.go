@@ -31,7 +31,6 @@ type transcriptView struct {
 	content          *base.Transcript
 	scroll           *base.Scroll
 	selection        *base.Selection
-	view             *kit.Transcript
 	group            *scene.Group
 	order            []transcriptEntryID
 	nextEntry        transcriptEntryID
@@ -69,14 +68,12 @@ type transcriptView struct {
 const transcriptPrompt keymap.Action = "prompt"
 
 type liveTool struct {
-	runID  string
 	ids    []transcriptEntryID
 	blocks []trackedTool
 	group  *trackedToolGroup
 }
 
 type liveText struct {
-	runID    string
 	kind     conversation.BlockKind
 	document *content.StreamDocument
 	block    *markdownBlock

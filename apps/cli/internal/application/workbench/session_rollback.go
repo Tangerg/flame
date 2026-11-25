@@ -135,7 +135,6 @@ func validateRunIDs(name string, ids []string) error {
 }
 
 type SessionRollbackRecovery struct {
-	Draft         authoring.Message
 	DroppedCount  int
 	OpeningImages int
 	Merged        bool
@@ -243,7 +242,7 @@ func (s *Store) ActivateSessionDraft(sessionID string, incoming authoring.Messag
 		var merged bool
 		draft, merged = MergeSessionRollbackDraft(draft, pending)
 		recovery = &SessionRollbackRecovery{
-			Draft: draft.Clone(), DroppedCount: len(pending.BeforeRunIDs) - len(pending.AfterRunIDs),
+			DroppedCount:  len(pending.BeforeRunIDs) - len(pending.AfterRunIDs),
 			OpeningImages: pending.OpeningImages, Merged: merged,
 		}
 	}

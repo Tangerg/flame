@@ -195,7 +195,7 @@ func (l *sessionLifecycle) applyRollbackSettlement(settlement rollbackSettlement
 		}
 		recovered, merged := workbench.MergeSessionRollbackDraft(current, result.Pending)
 		recovery = &workbench.SessionRollbackRecovery{
-			Draft: recovered, DroppedCount: len(result.Pending.BeforeRunIDs) - len(result.Pending.AfterRunIDs),
+			DroppedCount:  len(result.Pending.BeforeRunIDs) - len(result.Pending.AfterRunIDs),
 			OpeningImages: result.Pending.OpeningImages, Merged: merged,
 		}
 		if persistErr := l.composer.recoverDraft(recovered); persistErr != nil {

@@ -281,7 +281,7 @@ func restoreManagedDelegateCall(
 	if !managed || target.ProgramRef() != childSnapshot.Program {
 		return nil, fmt.Errorf("delegate child %s changed exact deployment", child.ProcessID())
 	}
-	input, arguments, err := decodeDelegateCall(child.ToolCall(), target.Descriptor())
+	arguments, err := decodeDelegateCall(child.ToolCall(), target.Descriptor())
 	if err != nil {
 		return nil, fmt.Errorf("decode Delegate child %s input: %w", child.ProcessID(), err)
 	}
@@ -314,7 +314,6 @@ func restoreManagedDelegateCall(
 		parentRelation:    parentSnapshot.ID,
 		target:            target.ProgramRef(),
 		call:              child.ToolCall(),
-		input:             input,
 		arguments:         arguments,
 		modelCallSequence: child.ModelCallSequence(),
 		toolCallIndex:     child.ToolCallIndex(),

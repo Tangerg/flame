@@ -66,7 +66,7 @@ func (t *transcriptView) begin(block conversation.Block) error {
 	if err != nil {
 		return err
 	}
-	live := &liveText{runID: block.RunID, kind: block.Kind, document: document, block: &markdownBlock{theme: t.theme, speaker: speaker}}
+	live := &liveText{kind: block.Kind, document: document, block: &markdownBlock{theme: t.theme, speaker: speaker}}
 	if err := document.Append([]byte(block.Text)); err != nil {
 		return err
 	}

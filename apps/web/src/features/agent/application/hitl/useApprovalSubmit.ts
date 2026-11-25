@@ -1,9 +1,5 @@
 import { useCallback } from "react";
-import {
-  type ApprovalDecision,
-  type InterruptRef,
-  type RememberScope,
-} from "@/features/agent/domain/hitl";
+import { type ApprovalDecision, type RememberScope } from "@/features/agent/domain/hitl";
 import { useInterruptResume } from "@/features/agent/application/hitl/useInterruptResume";
 import { useAgentDependencies } from "@/features/agent/application/agentContext";
 import { type ApprovalActions } from "@/features/agent/application/hitl/approvalActions";

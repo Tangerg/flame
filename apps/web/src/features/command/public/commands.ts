@@ -1,4 +1,4 @@
-import { type Label, type MessageKey } from "@/lib/i18n/index";
+import { type Label } from "@/lib/i18n/index";
 import { service } from "dougong";
 import { COMMAND } from "@/features/command/public/extensionPoints";
 import { lookupExtensionByKey } from "@/extensions/selectors/extensions";

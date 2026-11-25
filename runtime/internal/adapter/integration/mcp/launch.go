@@ -9,7 +9,6 @@ import (
 	"sync"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
-	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/secret"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
@@ -29,8 +28,7 @@ type stdioLaunch struct {
 }
 
 type admission struct {
-	Run      func(context.Context, *sdk.ClientSession) error
-	Bindings *plugin.RequiredBindings
+	Run func(context.Context, *sdk.ClientSession) error
 }
 
 type launch struct {

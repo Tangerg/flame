@@ -30,7 +30,6 @@ type managedDelegateCall struct {
 	source             tool.Ref
 	target             scoperun.ProgramRef
 	call               corechat.ToolCall
-	input              delegateInput
 	arguments          tool.Arguments
 	modelCallSequence  uint64
 	toolCallIndex      uint32
@@ -150,7 +149,7 @@ func (i *interactionSession) registerDelegateCalls(
 			toolCallIndex++
 			continue
 		}
-		input, arguments, err := decodeDelegateCall(call, target.Descriptor())
+		arguments, err := decodeDelegateCall(call, target.Descriptor())
 		if err != nil {
 			// Agent Framework applies the same Descriptor contract before creating a child
 			// Effect and returns an ordinary Tool error for malformed input.
@@ -173,7 +172,7 @@ func (i *interactionSession) registerDelegateCalls(
 		managedCall := &managedDelegateCall{
 			source:   deployments.delegateSource,
 			identity: identity, parentRelation: invocation.process, target: target.ProgramRef(),
-			call: call, input: input, arguments: arguments,
+			call: call, arguments: arguments,
 			modelCallSequence: invocation.sequence, toolCallIndex: toolCallIndex,
 			callID: callID,
 		}
@@ -192,23 +191,18 @@ func (i *interactionSession) registerDelegateCalls(
 	return nil
 }
 
-func decodeDelegateCall(call corechat.ToolCall, descriptor scoperun.Descriptor) (delegateInput, tool.Arguments, error) {
+func decodeDelegateCall(call corechat.ToolCall, descriptor scoperun.Descriptor) (tool.Arguments, error) {
 	erased, err := scoperun.ParsePayload([]byte(call.Arguments))
 	if err != nil {
-		return delegateInput{}, tool.Arguments{}, err
+		return tool.Arguments{}, err
 	}
 	if err := descriptor.ValidateInput(erased); err != nil {
-		return delegateInput{}, tool.Arguments{}, err
+		return tool.Arguments{}, err
 	}
-	input, err := erased.Decode[delegateInput]()
-	if err != nil {
-		return delegateInput{}, tool.Arguments{}, err
+	if _, err := erased.Decode[delegateInput](); err != nil {
+		return tool.Arguments{}, err
 	}
-	arguments, err := tool.ParseArguments(string(erased.JSON()))
-	if err != nil {
-		return delegateInput{}, tool.Arguments{}, err
-	}
-	return input, arguments, nil
+	return tool.ParseArguments(string(erased.JSON()))
 }
 
 func (i *interactionSession) executorMember(processID scoperun.ProcessID) runs.ExecutorMember {

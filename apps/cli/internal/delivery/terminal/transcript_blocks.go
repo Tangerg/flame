@@ -73,12 +73,12 @@ func (t *transcriptView) beginTool(block conversation.Block) error {
 	if tool, grouped := groupedTool(rendered); grouped {
 		group := t.addGroupedTool(block.RunID, tool)
 		tracked := trackedTool{id: group.id, block: tool}
-		t.tools[key] = liveTool{runID: block.RunID, blocks: []trackedTool{tracked}, group: group}
+		t.tools[key] = liveTool{blocks: []trackedTool{tracked}, group: group}
 		t.refreshSearch()
 		return nil
 	}
 	t.sealToolGroup()
-	live := liveTool{runID: block.RunID}
+	live := liveTool{}
 	for _, item := range rendered {
 		mutable, isMutable := item.(mutableToolBlock)
 		if isMutable {

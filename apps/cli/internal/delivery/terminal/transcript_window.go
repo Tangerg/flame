@@ -118,7 +118,7 @@ func (t *transcriptView) installWindow(intent transcriptReadingIntent) {
 	view := kit.NewTranscript(kit.TranscriptConfig{
 		Behavior: base.TranscriptConfig{Key: "conversation-window", MaxItems: max(len(t.order), 1)}, Theme: t.theme, Glyphs: t.glyphs,
 	})
-	t.view, t.content = view, view.Controller()
+	t.content = view.Controller()
 	t.scroll, t.selection = t.content.Scroll(), t.content.Selection()
 	t.scroll.SetWheel(t.wheel)
 	t.nativeEntries = make(map[base.BlockID]transcriptEntryID, len(t.order))

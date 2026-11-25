@@ -288,8 +288,7 @@ func (c *Openings) startRoot(ctx context.Context, cmd StartCommand) (result Star
 		userItemID = identity.ItemID{}
 	}
 	return StartResult{
-		RunID: runID, SegmentID: segmentID, SessionID: preparation.session.ID(),
-		UserItemID: userItemID, Events: events,
+		RunID: runID, SegmentID: segmentID, UserItemID: userItemID, Events: events,
 	}, nil
 }
 

@@ -26,10 +26,8 @@ func (r *Connection) SessionUsage(ctx context.Context, sessionID string) (conver
 		return conversation.SessionUsageReport{}, runtimeContractViolation("session usage returned nil")
 	}
 	return conversation.SessionUsageReport{
-		SessionID: request.SessionID,
-		Total:     result.Total,
-		Coverage:  result.Coverage, RecordedCostUSD: result.RecordedCostUSD,
-		ByModel: result.ByModel,
+		Total:    result.Total,
+		Coverage: result.Coverage, RecordedCostUSD: result.RecordedCostUSD,
 	}, nil
 }
 

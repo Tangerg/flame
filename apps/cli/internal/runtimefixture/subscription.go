@@ -82,7 +82,7 @@ func (r *Runtime) bindSegmentLocked(
 		}
 	}
 	subscription := &segmentSubscription{
-		runtime: r, ctx: ctx, run: run, segment: segment,
+		runtime: r, ctx: ctx, segment: segment,
 		next: start, replayUntil: replayUntil,
 	}
 	return conversation.SegmentStream{
@@ -94,7 +94,6 @@ func (r *Runtime) bindSegmentLocked(
 type segmentSubscription struct {
 	runtime           *Runtime
 	ctx               context.Context
-	run               *runState
 	segment           *segmentState
 	next              int
 	replayUntil       int

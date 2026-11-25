@@ -21,17 +21,16 @@ import (
 
 type CallComposition struct {
 	calls     *CommandCalls
-	callbacks *pluginmcp.Callbacks
 	admission framehost.Admission
 	mu        sync.Mutex
 	captures  map[*modelCapture]struct{}
 }
 
-func NewCallComposition(calls *CommandCalls, callbacks *pluginmcp.Callbacks, admission framehost.Admission) (*CallComposition, error) {
-	if calls == nil || callbacks == nil || !admission.Valid() {
-		return nil, errors.New("model composition: installed calls and callbacks are required")
+func NewCallComposition(calls *CommandCalls, admission framehost.Admission) (*CallComposition, error) {
+	if calls == nil || !admission.Valid() {
+		return nil, errors.New("model composition: installed calls and admission are required")
 	}
-	return &CallComposition{calls: calls, callbacks: callbacks, admission: admission, captures: make(map[*modelCapture]struct{})}, nil
+	return &CallComposition{calls: calls, admission: admission, captures: make(map[*modelCapture]struct{})}, nil
 }
 
 func (o *CallComposition) Resolve(ctx context.Context) ([]plugins.ContributionBinding, error) {

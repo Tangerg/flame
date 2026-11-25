@@ -185,7 +185,6 @@ func buildExecutionComposition(
 		approvalPolicy: policy.approvals,
 		mcp:            policy.mcp,
 		callbacks:      callbacks,
-		workspaceScope: workspaceServices.scope,
 		conversation:   conversation.store,
 		publish:        policy.invalidations.publish,
 		goalReader:     policy.goalReader,

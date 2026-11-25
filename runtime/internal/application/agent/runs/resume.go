@@ -179,7 +179,7 @@ func (c *Coordinator) openResumedSegment(
 		}
 	}
 	c.segments.publications.publishWaitingMoved(sessionID, parked.pending.RootRunID)
-	result := StartResult{RunID: cmd.RunID, SegmentID: segmentID, SessionID: sessionID, Events: events}
+	result := StartResult{RunID: cmd.RunID, SegmentID: segmentID, Events: events}
 	if committedInput != nil {
 		result.UserItemID = committedInput.ItemID
 	}

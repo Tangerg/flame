@@ -61,7 +61,6 @@ type contextEditorRequest struct {
 
 type contextEditorSession struct {
 	dialog    *presentationDialog
-	editor    *contextEditor
 	dismissed func()
 	closed    bool
 }
@@ -175,7 +174,7 @@ func (e *contextEditing) open(request contextEditorRequest) *contextEditorSessio
 	}
 	editor := newContextEditor(e.theme, e.clipboard, request.Content, request.Placeholder)
 	var dialog *presentationDialog
-	session := &contextEditorSession{editor: editor}
+	session := &contextEditorSession{}
 	session.dismissed = func() {
 		if e.active == session {
 			e.active = nil

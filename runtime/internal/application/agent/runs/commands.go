@@ -324,7 +324,6 @@ const (
 type StartResult struct {
 	RunID      identity.RunID
 	SegmentID  identity.SegmentID
-	SessionID  identity.SessionID
 	UserItemID identity.ItemID
 	Events     iter.Seq[Event]
 	Opening    Opening

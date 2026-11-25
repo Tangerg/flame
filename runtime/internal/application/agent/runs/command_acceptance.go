@@ -194,8 +194,7 @@ func lookupAcceptedCommand(ctx context.Context, acceptances commandAcceptanceRea
 	}
 	accepted := record.Acceptance
 	return StartResult{
-		RunID: accepted.RunID, SegmentID: accepted.SegmentID, SessionID: accepted.SessionID,
-		UserItemID: accepted.UserItemID, Opening: reopening(record),
+		RunID: accepted.RunID, SegmentID: accepted.SegmentID, UserItemID: accepted.UserItemID, Opening: reopening(record),
 	}, true, nil
 }
 

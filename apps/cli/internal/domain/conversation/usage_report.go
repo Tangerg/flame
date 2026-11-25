@@ -3,11 +3,9 @@ package conversation
 import "github.com/Tangerg/flame/packages/go-sdk/protocol"
 
 type SessionUsageReport struct {
-	SessionID       string
 	Total           protocol.ModelUsage
 	Coverage        protocol.UsageCoverage
 	RecordedCostUSD *float64
-	ByModel         []protocol.UsageBucket
 }
 
 type UsageSummary struct {

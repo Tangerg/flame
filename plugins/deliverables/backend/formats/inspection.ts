@@ -123,6 +123,19 @@ export function textNodes(archive: OfficePackage, part: string) {
   };
 }
 
+// Text edits address a native run by its part and its position among that
+// part's text nodes, so every producer and the parser share this one spelling.
+export function textRunId(part: string, index: number): string {
+  return `${part}#text:${index}`;
+}
+
+export function parseTextRunId(
+  id: string,
+): { part: string; index: number } | undefined {
+  const match = /^(.*)#text:(0|[1-9][0-9]*)$/u.exec(id);
+  return match ? { part: match[1]!, index: Number(match[2]) } : undefined;
+}
+
 export function inspectOfficeText(
   archive: OfficePackage,
   report: InspectionReport,
@@ -131,7 +144,7 @@ export function inspectOfficeText(
   for (const part of textParts(archive)) {
     const { nodes } = textNodes(archive, part);
     nodes.forEach((node, index) =>
-      report.item(`${part}#text:${index}`, "text", node.text),
+      report.item(textRunId(part, index), "text", node.text),
     );
     runs += nodes.length;
   }

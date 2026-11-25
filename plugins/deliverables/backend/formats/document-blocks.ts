@@ -5,7 +5,7 @@ import type {
   ParagraphView,
 } from "../../contracts/layouts";
 import { MAIN_PARTS, OfficePackage } from "./archive";
-import { textNodes } from "./inspection";
+import { textNodes, textRunId } from "./inspection";
 import { attribute, namespaces, type XmlDocument, type XmlNode } from "./xml";
 
 const isWord = (node: XmlNode, local: string) =>
@@ -72,7 +72,7 @@ function paragraphRuns(paragraph: XmlNode, index: Map<XmlNode, number>) {
     if (isWord(node, "t")) {
       const properties = run?.children.find((child) => isWord(child, "rPr"));
       runs.push({
-        id: `${MAIN_PARTS.docx}#text:${index.get(node)}`,
+        id: textRunId(MAIN_PARTS.docx, index.get(node)!),
         text: node.text,
         bold: switchedOn(properties, "b"),
         italic: switchedOn(properties, "i"),

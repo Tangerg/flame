@@ -184,8 +184,7 @@ func buildAssemblyCore(
 			retirer:    retirer,
 			admissions: admissionGate,
 			workers: runtimeWorkers{
-				recovery:      ownershipRecovery,
-				invalidations: policy.invalidations.publish,
+				recovery: ownershipRecovery,
 			},
 			idempotencyStore:           cfg.stores.Idempotency,
 			callbacks:                  execution.models.callbacks,

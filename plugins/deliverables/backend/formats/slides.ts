@@ -11,7 +11,7 @@ import {
   MAIN_PARTS,
 } from "./archive";
 import { readChart } from "./charts";
-import { textNodes } from "./inspection";
+import { textNodes, textRunId } from "./inspection";
 import { attribute, namespaces, type XmlDocument, type XmlNode } from "./xml";
 
 const POWERPOINT_2010 =
@@ -86,10 +86,7 @@ export interface SlideElement {
   name: string;
 }
 
-function slideElements(
-  part: string,
-  document: XmlDocument,
-): SlideElement[] {
+function slideElements(part: string, document: XmlDocument): SlideElement[] {
   return shapeTree(document).children.flatMap((node) => {
     if (
       node.uri === namespaces.presentation &&
@@ -299,7 +296,7 @@ function runsWithin(
 ): ElementView["text"] {
   return runs.flatMap((run, index) =>
     run.start >= node.start && run.end <= node.end && !run.children.length
-      ? [{ id: `${part}#text:${index}`, text: run.text }]
+      ? [{ id: textRunId(part, index), text: run.text }]
       : [],
   );
 }

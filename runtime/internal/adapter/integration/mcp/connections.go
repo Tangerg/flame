@@ -69,7 +69,6 @@ type ownedSession struct {
 	closeFn     func() error
 	managed     *installedObservation
 	close       *sessionCloseAttempt
-	bindings    *plugin.RequiredBindings
 	end         *sessionEnd
 	toolChanges chan struct{}
 	toolVersion uint64
@@ -142,7 +141,7 @@ func (c *connections) current(name mcpserver.ID, session *sdk.ClientSession, too
 	return configuredServer != nil && configuredServer.session == session && owned != nil && owned.close == nil && owned.toolVersion == toolVersion
 }
 
-func (c *connections) ownSessionLocked(session *sdk.ClientSession, cleanup sessionCleanup, bindings *plugin.RequiredBindings) error {
+func (c *connections) ownSessionLocked(session *sdk.ClientSession, cleanup sessionCleanup) error {
 	if session == nil {
 		return nil
 	}
@@ -151,7 +150,7 @@ func (c *connections) ownSessionLocked(session *sdk.ClientSession, cleanup sessi
 		if c.callbacks != nil {
 			err = c.callbacks.AdmitSession(session)
 		}
-		owned := &ownedSession{bindings: bindings, toolChanges: make(chan struct{}, 1), end: &sessionEnd{done: make(chan struct{})}, closeFn: func() error {
+		owned := &ownedSession{toolChanges: make(chan struct{}, 1), end: &sessionEnd{done: make(chan struct{})}, closeFn: func() error {
 			if c.callbacks != nil {
 				c.callbacks.RevokeSession(session)
 			}

@@ -30,6 +30,10 @@ type installedPackages interface {
 	Server(context.Context, plugin.Installation, plugin.Release, mcpserver.ServerName, plugins.Reach) (mcpserver.Server, bool, error)
 }
 
+type invocationRestorer interface {
+	RestoreInvocation(context.Context, framecall.Invocation) (context.Context, error)
+}
+
 type ProcessSource struct {
 	installations plugins.Store
 	packages      installedPackages
@@ -44,7 +48,6 @@ type processProjection struct {
 	session     *sdk.ClientSession
 	actor       operation.Actor
 	fingerprint framevalue.Digest
-	bindings    *plugin.RequiredBindings
 }
 
 func NewProcessSource(installations plugins.Store, packages installedPackages, callbacks *pluginmcp.Callbacks, commands invocationRestorer) (*ProcessSource, error) {
@@ -155,7 +158,7 @@ func (s *ProcessSource) Configure(ctx context.Context, setup framehost.Setup, se
 		return nil, sdk.ParamsBase{}, err
 	}
 	actor = actor.WithBindings(bindings)
-	if err := s.admitProcess(setup, session, actor, server, bindings); err != nil {
+	if err := s.admitProcess(setup, session, actor, server); err != nil {
 		return nil, sdk.ParamsBase{}, err
 	}
 	if !background && len(bindings.Snapshot()) == 0 {
@@ -169,9 +172,9 @@ func (s *ProcessSource) Configure(ctx context.Context, setup framehost.Setup, se
 	return contributions, metadata, err
 }
 
-func (s *ProcessSource) admitProcess(setup framehost.Setup, session *sdk.ClientSession, actor operation.Actor, server mcpserver.Server, bindings *plugin.RequiredBindings) error {
+func (s *ProcessSource) admitProcess(setup framehost.Setup, session *sdk.ClientSession, actor operation.Actor, server mcpserver.Server) error {
 	s.mu.Lock()
-	s.projections[setup.InstanceID()] = processProjection{source: setup.Binding().Source, session: session, actor: actor, fingerprint: server.AuthorityFingerprint(), bindings: bindings}
+	s.projections[setup.InstanceID()] = processProjection{source: setup.Binding().Source, session: session, actor: actor, fingerprint: server.AuthorityFingerprint()}
 	s.mu.Unlock()
 	releaseAuthority := func() error {
 		s.mu.Lock()

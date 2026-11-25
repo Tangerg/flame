@@ -26,8 +26,7 @@ func (w WorkingTreeAdmission) Release() {
 }
 
 type Admission struct {
-	SessionID identity.SessionID
-	release   *releaseOnce
+	release *releaseOnce
 }
 
 func (a Admission) Release() {
@@ -49,8 +48,7 @@ func (r *releaseOnce) run() {
 
 func heldSessionAdmission(sessionID identity.SessionID, release func()) Admission {
 	return Admission{
-		SessionID: sessionID,
-		release:   newReleaseOnce(release),
+		release: newReleaseOnce(release),
 	}
 }
 

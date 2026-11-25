@@ -115,7 +115,6 @@ export function Memory({ context }: { context: ComponentContext }) {
     edit,
     locked,
     closeEditor,
-    editorElement,
     scope,
     cwd,
     project,
