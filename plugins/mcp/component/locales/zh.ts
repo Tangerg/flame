@@ -102,7 +102,7 @@ export const zh: Record<string, string> = {
     "已连接，但该服务器没有返回可用的工具列表。请检查服务器后重试。",
   "mcpStatus.mcp_configuration_failed":
     "无法使用该服务器的配置或已保存的凭据。请检查设置后重试。",
-  "mcpStatus.mcp_dial_failed": "连不上这个服务器 —— 检查命令或 URL 后重试。",
+  "mcpStatus.mcp_dial_failed": "连不上这个服务器——检查命令或 URL 后重试。",
   "common.cancel": "取消",
   "common.close": "关闭",
   "command.uncertain":

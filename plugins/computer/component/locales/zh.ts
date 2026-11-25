@@ -57,7 +57,7 @@ export const zh = {
   "execute.help":
     "请按已捕获的 Runtime 指引和准确工具结构，将代码及其他参数输入为一个 JSON 对象，并在执行前核对目标。",
   "execute.tool": "工具",
-  "execute.arguments": "工具参数（JSON）",
+  "execute.arguments": "工具参数 (JSON)",
   "execute.object": "工具参数必须是 JSON 对象。",
   "execute.review": "检查待执行操作",
   "execute.actions": "已检查操作的执行选项",

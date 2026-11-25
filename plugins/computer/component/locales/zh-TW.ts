@@ -57,7 +57,7 @@ export const zhTW = {
   "execute.help":
     "請依已擷取的 Runtime 指引和準確工具結構，將程式碼及其他參數輸入為一個 JSON 物件，並在執行前核對目標。",
   "execute.tool": "工具",
-  "execute.arguments": "工具參數（JSON）",
+  "execute.arguments": "工具參數 (JSON)",
   "execute.object": "工具參數必須是 JSON 物件。",
   "execute.review": "檢查待執行操作",
   "execute.actions": "已檢查操作的執行選項",

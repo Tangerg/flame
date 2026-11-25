@@ -101,7 +101,7 @@ export const zhTW: Record<string, string> = {
     "已連線，但這個伺服器沒有回傳可用的工具清單。請檢查伺服器後重試。",
   "mcpStatus.mcp_configuration_failed":
     "無法使用這個伺服器的設定或已儲存的憑證。請檢查設定後重試。",
-  "mcpStatus.mcp_dial_failed": "連不上這個伺服器 —— 檢查命令或 URL 後重試。",
+  "mcpStatus.mcp_dial_failed": "連不上這個伺服器——檢查命令或 URL 後重試。",
   "common.cancel": "取消",
   "common.close": "關閉",
   "command.uncertain":

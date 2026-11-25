@@ -26,7 +26,7 @@ export const zhTW: Record<string, string> = {
   "providers.models.refresh": "重新整理模型清單",
   "providers.empty": "尚無供應商",
   "providers.empty.sub": "Runtime 回報沒有受支援的 LLM 供應商。",
-  "providers.apiKey.envPlaceholder": "正在使用環境變數金鑰 —— 輸入即可覆寫",
+  "providers.apiKey.envPlaceholder": "正在使用環境變數金鑰——輸入即可覆寫",
   "providers.fromEnv": "來自環境變數",
   "providers.utility.title": "輔助模型",
   "providers.utility.desc": "用於摘要、標題和事實擷取。",
@@ -52,7 +52,7 @@ export const zhTW: Record<string, string> = {
   "providers.roles.heading": "模型角色",
   "rpcError.invalid_credentials":
     "供應方拒絕了該 API key —— 請在供應方設定裡檢查。",
-  "rpcError.timeout": "請求模型供應方逾時 —— 檢查網路後重試。",
+  "rpcError.timeout": "請求模型供應方逾時——檢查網路後重試。",
   title: "模型供應商",
   cancel: "取消",
   reading: "載入中",
