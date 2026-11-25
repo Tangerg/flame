@@ -1,5 +1,14 @@
 import { z } from "zod";
+import type { InvocationOrigin } from "@flame/backend-sdk/mcp";
 import { FIELD_LIMITS, LIMITS } from "./limits";
+
+// The component bundle cannot load the Node-only SDK, so the reviewer's origin
+// mirrors its vocabulary under a compile-time check.
+const INVOCATION_ORIGINS: typeof InvocationOrigin = {
+  Human: "human",
+  Model: "model",
+  Automatic: "automatic",
+};
 
 const hash = z.string().regex(/^[a-f0-9]{64}$/);
 export const checkSchema = z.strictObject({
@@ -44,13 +53,12 @@ export const reviewReportSchema = z.strictObject({
   verdict: z.enum(["accepted", "changes_requested"]),
   notes: z.string().min(1).max(FIELD_LIMITS.reviewNotes),
   reviewer: z.strictObject({
-    origin: z.enum(["human", "model", "automatic"]),
+    origin: z.enum(INVOCATION_ORIGINS),
     invocationId: z.string(),
   }),
 });
 export type Check = z.infer<typeof checkSchema>;
 export type RenderReport = z.infer<typeof renderReportSchema>;
-export type ReviewReport = z.infer<typeof reviewReportSchema>;
 export type EngineCatalog = z.infer<typeof engineCatalogSchema>;
 
 export interface EngineRenderReport {

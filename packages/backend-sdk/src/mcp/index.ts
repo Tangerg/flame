@@ -18,6 +18,7 @@ export {
 export { Backend } from "./backend.ts";
 export { type StreamFrame } from "./stream.ts";
 export {
+  admittedInvocation,
   decodeReceipt,
   type CallContext,
   type ToolContext,

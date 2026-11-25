@@ -320,7 +320,7 @@ function validatePDFObjects(document: PDFDocument): void {
   }
 }
 
-export async function loadPDF(bytes: Uint8Array): Promise<PDFDocument> {
+async function loadPDF(bytes: Uint8Array): Promise<PDFDocument> {
   preflightPDF(bytes);
   const document = await PDFDocument.load(bytes, {
     ignoreEncryption: false,

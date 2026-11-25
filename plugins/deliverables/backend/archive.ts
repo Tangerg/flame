@@ -6,12 +6,9 @@ import {
   invocationConflictCode,
   canonicalJSON,
   decodeReply,
-  digestJSON,
-  parseJSON,
   type ReceiptRequest,
   type Invocation,
 } from "@flame/backend-sdk/mcp";
-import { validCommand } from "@flame/backend-sdk/mcp/contract";
 import { LIMITS } from "../contracts/limits";
 import {
   schemas,
@@ -119,35 +116,6 @@ export class Archive {
       );
   }
 
-  #original(original: Original): void {
-    if (
-      !validCommand(original.id) ||
-      !validCommand(original.method) ||
-      !["tool", "command"].includes(original.kind) ||
-      !validCommand(original.invocation.id) ||
-      !["human", "model", "automatic"].includes(original.invocation.origin)
-    )
-      throw new Error(
-        "deliverables: trusted original command identity is required",
-      );
-    const input = parseJSON(original.input);
-    if (
-      canonicalJSON(input) !== original.input ||
-      digestJSON(input) !== original.inputDigest
-    )
-      throw new Error(
-        "deliverables: original command evidence differs from its digest",
-      );
-    if (
-      Buffer.byteLength(original.input) >
-      LIMITS.inputBytes + LIMITS.chunkBytes
-    )
-      throw new Refusal(
-        "input_capacity",
-        "original input exceeds the deliverable command capacity",
-      );
-  }
-
   #reply(row: Row): Reply | undefined {
     if (row.reply === null) return undefined;
     const reply = json(row.reply) as Reply;
@@ -175,7 +143,14 @@ export class Archive {
     capacity: "ordinary" | "reclaim" = "ordinary",
   ): Promise<unknown> {
     signal.throwIfAborted();
-    this.#original(original);
+    if (
+      Buffer.byteLength(original.input) >
+      LIMITS.inputBytes + LIMITS.chunkBytes
+    )
+      throw new Refusal(
+        "input_capacity",
+        "original input exceeds the deliverable command capacity",
+      );
     const admission = this.#db.transaction(() => {
       const previous = this.#db
         .prepare("SELECT * FROM commands WHERE id=?")

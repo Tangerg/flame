@@ -42,7 +42,7 @@ const creationSchemas = {
 // Guided authoring fills a format's layout; advanced authoring takes raw content JSON.
 const AUTHORING_MODES = ["guided", "advanced"] as const;
 type AuthoringMode = (typeof AUTHORING_MODES)[number];
-export function guidedContent(
+function guidedContent(
   format: OfficeFormat,
   title: string,
   body: string,

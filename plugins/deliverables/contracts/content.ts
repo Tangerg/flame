@@ -28,7 +28,7 @@ export const officeFormatSchema = formatSchema.exclude(["pdf"]);
 export const OFFICE_FORMATS = officeFormatSchema.options;
 export type OfficeFormat = z.infer<typeof officeFormatSchema>;
 // Each format owner reports its document through these item kinds.
-export const inspectionItemKindSchema = z.enum([
+const inspectionItemKindSchema = z.enum([
   "text",
   "slide",
   "page",
@@ -87,7 +87,7 @@ const url = z
     }
   }, "expected an http, https or mailto URL without credentials");
 
-export const imageSchema = z.strictObject({
+const imageSchema = z.strictObject({
   mime: z.enum(["image/png", "image/jpeg"]),
   base64: z.string().max(12 * 1024 * 1024),
   alt: shortText,
@@ -173,7 +173,7 @@ export const cellAddressSchema = z
 export const cellRangeSchema = z
   .string()
   .regex(/^[A-Z]{1,3}[1-9][0-9]{0,6}:[A-Z]{1,3}[1-9][0-9]{0,6}$/u);
-export const cellStyleSchema = z.strictObject({
+const cellStyleSchema = z.strictObject({
   bold: z.boolean().optional(),
   italic: z.boolean().optional(),
   fontSize: positive.max(144).optional(),
@@ -184,7 +184,7 @@ export const cellStyleSchema = z.strictObject({
   wrap: z.boolean().optional(),
   border: z.boolean().optional(),
 });
-export const workbookChartSchema = z.strictObject({
+const workbookChartSchema = z.strictObject({
   type: z.enum(["bar", "line", "pie"]),
   title: shortText,
   categories: cellRangeSchema,

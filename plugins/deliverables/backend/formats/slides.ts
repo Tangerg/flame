@@ -86,7 +86,7 @@ export interface SlideElement {
   name: string;
 }
 
-export function slideElements(
+function slideElements(
   part: string,
   document: XmlDocument,
 ): SlideElement[] {
@@ -149,7 +149,7 @@ export function transformNode(node: XmlNode): XmlNode | undefined {
   return child(propertiesNode(node), namespaces.drawing, "xfrm");
 }
 
-export function frameOf(transform: XmlNode | undefined): Frame | undefined {
+function frameOf(transform: XmlNode | undefined): Frame | undefined {
   const offset = child(transform, namespaces.drawing, "off");
   const extent = child(transform, namespaces.drawing, "ext");
   if (!offset || !extent) return;

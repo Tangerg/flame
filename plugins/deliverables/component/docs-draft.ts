@@ -53,7 +53,7 @@ function changedSpan(current: string, next: string) {
 // The first touched run takes the new text and later touched runs empty, so
 // untouched runs keep their formatting. Typing at a run boundary continues the
 // run before it.
-export function runTexts(runs: string[], next: string): string[] {
+function runTexts(runs: string[], next: string): string[] {
   const span = changedSpan(runs.join(""), next);
   const stops = runs.map((_, index) =>
     runs.slice(0, index + 1).reduce((total, text) => total + text.length, 0),

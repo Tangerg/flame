@@ -146,7 +146,6 @@ export type Surface = z.infer<typeof surface>;
 export type ExecuteInput = z.infer<typeof execute>;
 export type ExecutionResult = z.infer<typeof executionResult>;
 export type ReplyInput = z.infer<typeof reply>;
-export type HistoryEntry = z.infer<typeof summary>;
 export type HistoryPage = z.infer<typeof schemas.historyPage>;
 export type OperationRecord = z.infer<typeof record>;
 

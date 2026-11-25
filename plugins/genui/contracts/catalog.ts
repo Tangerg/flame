@@ -23,7 +23,7 @@ export const DialogApi = {
     .object({ label: DynamicStringSchema, child: componentId() })
     .strict(),
 };
-export const componentApis = [
+const componentApis = [
   TextApi,
   RowApi,
   ColumnApi,

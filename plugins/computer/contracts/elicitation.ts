@@ -19,7 +19,7 @@ import { LIMITS } from "./limits";
 
 export class InvalidPermission extends Error {}
 
-export const PERMISSION_PERSISTENCE = ["session", "always"] as const;
+const PERMISSION_PERSISTENCE = ["session", "always"] as const;
 export type PermissionPersistence = (typeof PERMISSION_PERSISTENCE)[number];
 
 export interface NativePermission {

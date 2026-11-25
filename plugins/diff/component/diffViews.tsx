@@ -36,7 +36,7 @@ const COMPARISONS: DiffMode[] = ["worktree", "base"];
 const comparisonName = (t: Translate, mode: DiffMode) =>
   t(`comparison.${mode}`);
 
-export const fileSummary = (
+const fileSummary = (
   t: Translate,
   file: WorkspaceFileChange,
 ): DiffFileSummary => ({

@@ -72,7 +72,7 @@ export const requestSchema = z
   })
   .strict();
 export type UiDocument = z.infer<typeof requestSchema>;
-export const documentSchema = requestSchema.extend({
+const documentSchema = requestSchema.extend({
   contributions: z.array(capturedContributionSchema).max(limits.operations),
 });
 export type AcceptedDocument = z.infer<typeof documentSchema>;

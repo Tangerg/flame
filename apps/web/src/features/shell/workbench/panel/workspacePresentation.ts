@@ -181,7 +181,7 @@ export function fullPanePickable(
 
 // Views stay mounted while open or while an inspection can return to them, so
 // a return finds the reader where it was left.
-export function mountedWorkspaceViews(
+function mountedWorkspaceViews(
   openViewIds: ReadonlySet<string>,
   inspection: WorkspaceInspection,
 ): Set<string> {

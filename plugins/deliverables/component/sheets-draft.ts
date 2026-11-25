@@ -17,7 +17,7 @@ function split(id: string) {
   return { sheet: id.slice(0, separator), ref: id.slice(separator + 1) };
 }
 
-export function cellOf(
+function cellOf(
   layout: WorkbookLayout,
   id: string,
 ): SheetCellView | undefined {

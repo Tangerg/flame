@@ -12,8 +12,8 @@ import { OperationCatalog } from "./operationCatalog";
 import { catalog as trustedCatalog } from "../contracts/catalog";
 import { Schemas } from "@a2ui/web_core/v1_0";
 
-export const PRESENT_TOOL = "ui_present";
-export const CATALOG_TOOL = "ui_catalog";
+const PRESENT_TOOL = "ui_present";
+const CATALOG_TOOL = "ui_catalog";
 const INVALID_PRESENTATION = "invalid_presentation";
 
 export function createBackend(): Backend {

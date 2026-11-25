@@ -3,7 +3,9 @@ import { openPrivateDatabase, type Database } from "@flame/backend-sdk/sqlite";
 import { isAbsolute } from "node:path";
 import {
   Refusal,
+  admittedInvocation,
   invocationConflictCode,
+  InvocationScope,
   canonicalJSON,
   digestJSON,
   parseJSON,
@@ -85,49 +87,12 @@ function object(value: unknown): asserts value is Record<string, unknown> {
     throw new Error("computer: receipt evidence must be an object");
 }
 
-function invocation(value: unknown): asserts value is Invocation {
-  object(value);
-  object(value.target);
-  if (
-    Object.keys(value).some(
-      (key) => !["id", "origin", "parent", "target"].includes(key),
-    ) ||
-    Object.keys(value.target).some(
-      (key) => !["scope", "reference"].includes(key),
-    ) ||
-    !validCommand(value.id) ||
-    /[\p{White_Space}\p{Cc}]/u.test(value.id) ||
-    !["human", "model", "automatic"].includes(String(value.origin)) ||
-    (value.parent !== undefined &&
-      (!validCommand(value.parent) ||
-        /[\p{White_Space}\p{Cc}]/u.test(value.parent) ||
-        value.parent === value.id)) ||
-    !validCommand(value.target.scope) ||
-    /[\p{White_Space}\p{Cc}]/u.test(value.target.scope) ||
-    typeof value.target.reference !== "string" ||
-    !value.target.reference ||
-    /[\p{Cc}\p{Surrogate}]/u.test(value.target.reference)
-  )
-    throw new Error("computer: trusted receipt invocation is required");
-}
-
-function admitted(
+// Callers pass originals built from SDK-admitted call context; only the
+// receipt's own capacity remains to be enforced.
+function evidence(
   original: OriginalCommand,
   limits: ReceiptLimits,
 ): { owner: string; bytes: number } {
-  invocation(original.invocation);
-  if (
-    !validCommand(original.id) ||
-    !validCommand(original.method) ||
-    !["tool", "command"].includes(original.kind) ||
-    typeof original.input !== "string" ||
-    !/^[a-f0-9]{64}$/.test(original.inputDigest) ||
-    typeof original.admittedAt !== "string" ||
-    !/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$/.test(original.admittedAt) ||
-    !Number.isFinite(Date.parse(original.admittedAt)) ||
-    new Date(original.admittedAt).toISOString() !== original.admittedAt
-  )
-    throw new Error("computer: original command evidence is invalid");
   const owner = canonicalJSON(original.invocation);
   const bytes = evidenceBytes({ ...original, invocation: owner });
   if (bytes > limits.maxInputBytes)
@@ -135,13 +100,37 @@ function admitted(
       "input_capacity",
       "computer input capacity exceeded by original command evidence",
     );
-  const input = parseJSON(original.input);
-  if (
-    canonicalJSON(input) !== original.input ||
-    digestJSON(input) !== original.inputDigest
-  )
-    throw new Error("computer: original input differs from its digest");
   return { owner, bytes };
+}
+
+function storedOriginal(row: ReceiptRow): OriginalCommand {
+  const invocation = admittedInvocation(
+    parseJSON(row.invocation),
+    InvocationScope.Installation,
+  );
+  const input = parseJSON(row.input);
+  if (
+    !invocation ||
+    canonicalJSON(invocation) !== row.invocation ||
+    !validCommand(row.id) ||
+    !validCommand(row.method) ||
+    !/^[a-f0-9]{64}$/.test(row.digest) ||
+    !/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$/.test(row.admitted_at) ||
+    !Number.isFinite(Date.parse(row.admitted_at)) ||
+    new Date(row.admitted_at).toISOString() !== row.admitted_at ||
+    canonicalJSON(input) !== row.input ||
+    digestJSON(input) !== row.digest
+  )
+    throw new Error("computer: stored receipt evidence is invalid");
+  return {
+    id: row.id,
+    kind: row.kind,
+    method: row.method,
+    input: row.input,
+    inputDigest: row.digest,
+    invocation,
+    admittedAt: row.admitted_at,
+  };
 }
 
 function commandReply(value: unknown): asserts value is CommandReply {
@@ -237,20 +226,7 @@ export class Receipts {
 
   #decode(row: Row): ReceiptRecord {
     assertReceiptRow(row);
-    const owner = parseJSON(row.invocation);
-    invocation(owner);
-    if (canonicalJSON(owner) !== row.invocation)
-      throw new Error("computer: stored invocation is not canonical");
-    const original: OriginalCommand = {
-      id: row.id,
-      kind: row.kind,
-      method: row.method,
-      input: row.input,
-      inputDigest: row.digest,
-      invocation: owner,
-      admittedAt: row.admitted_at,
-    };
-    admitted(original, this.#limits);
+    const original = storedOriginal(row);
     const base = { ...original, dispatched: row.dispatched === 1n };
     if (row.outcome === null) return { ...base, state: "pending" };
     const outcome = parseJSON(row.outcome);
@@ -295,7 +271,7 @@ export class Receipts {
     original: OriginalCommand,
     admission: "ordinary" | "reserved" = "ordinary",
   ): ReceiptAdmission {
-    const { owner, bytes } = admitted(original, this.#limits);
+    const { owner, bytes } = evidence(original, this.#limits);
     return this.#db.transaction(() => {
       const previous = this.read(original.id);
       if (previous) {

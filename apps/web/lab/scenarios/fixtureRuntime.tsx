@@ -129,7 +129,7 @@ function fixtureSelection(query: URLSearchParams) {
   };
 }
 
-export let visualClient: VisualClient;
+let visualClient: VisualClient;
 
 function fixtureAppearance(query: URLSearchParams) {
   const requestedFontSize = query.get("font-size");

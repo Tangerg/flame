@@ -2,7 +2,7 @@ import { type AccentSpec } from "@/features/theme/public/types";
 import { DEFAULT_ACCENT } from "@/features/theme/kit/appearance";
 import { definePlugin } from "@/extensions/definePlugin";
 import { ACCENT } from "@/features/theme/public/extensionPoints";
-export const DEFAULT_ACCENTS: AccentSpec[] = [
+const DEFAULT_ACCENTS: AccentSpec[] = [
   {
     id: "flame",
     label: "Flame",

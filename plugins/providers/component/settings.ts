@@ -32,7 +32,7 @@ interface Results {
 }
 type ReadKey = keyof Results;
 
-export const ROLE_KINDS = ["utility", "embedding"] as const;
+const ROLE_KINDS = ["utility", "embedding"] as const;
 export type RoleKind = (typeof ROLE_KINDS)[number];
 
 function isRoleKind(resource: string): resource is RoleKind {

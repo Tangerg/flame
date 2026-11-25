@@ -6,7 +6,7 @@ import { catalogs } from "./catalogs";
 
 type Format = "md" | "json" | "trajectory";
 
-export async function saveSessionExport(
+async function saveSessionExport(
   context: ComponentContext,
   sessionId: string,
   format: Format,

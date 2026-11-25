@@ -164,10 +164,6 @@ export function openTag(node: XmlNode, attributes = node.attributes): string {
     .join("")}>`;
 }
 
-export function nodeText(node: XmlNode): string {
-  return node.text + node.children.map(nodeText).join("");
-}
-
 export function attribute(
   node: XmlNode,
   uri: string,

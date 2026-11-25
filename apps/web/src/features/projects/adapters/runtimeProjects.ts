@@ -8,7 +8,7 @@ import {
 } from "@/features/projects/application/projectQueries";
 import { type ProjectCommands } from "@/features/projects/application/projectCommands";
 
-export function toProjectSummary(project: Project): ProjectSummary {
+function toProjectSummary(project: Project): ProjectSummary {
   return {
     id: project.id,
     name: project.name,
