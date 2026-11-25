@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"sync/atomic"
 	"testing"
 
@@ -103,5 +104,54 @@ func TestAzureProviderVerifiesTheResourceAndRunsTheSelectedDeployment(t *testing
 	result, err = runtime.api.TestProvider(ctx, providerID)
 	if err != nil || result.Outcome != protocol.ProviderTestInvalidCredentials || modelReads.Load() != 2 || generations.Load() != 1 {
 		t.Fatalf("Azure credential rejection = %+v, %v, model reads = %d, generations = %d", result, err, modelReads.Load(), generations.Load())
+	}
+}
+
+func TestAzureDeploymentDirectoryMatchesCanonicalResource(t *testing.T) {
+	const providerID = "azureopenai"
+	const deployment = "team-chat"
+	const declaredResource = "https://MODEL-GATEWAY.example:443/team/openai/v1"
+
+	cfg := poMCPConfig(t)
+	cfg.modelProviders = nil
+	runtime := poMCPOpen(t, cfg)
+	installed := activateModelProviders(runtime)
+	directory, err := json.Marshal(map[string][]string{declaredResource: {deployment}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	runtime.must(delivery.PluginsConfigure, protocol.ConfigurePluginRequest{
+		InstallationID: installed.ID,
+		Digest:         installed.Selected.Digest,
+		ValueChanges: map[string]protocol.PluginValueChange{
+			"azure-deployments": {Type: protocol.PluginValueSet, Value: new(string(directory))},
+		},
+	}, "declare-azure-deployment")
+
+	ctx := protocolLifecycleContext(t.Context())
+	for _, test := range []struct {
+		resource string
+		want     []string
+	}{
+		{resource: "https://model-gateway.example/team/openai/v1", want: []string{deployment}},
+		{resource: "https://model-gateway.example/other/openai/v1"},
+		{resource: "https://model-gateway.example:8443/team/openai/v1"},
+	} {
+		runtime.must(delivery.ProvidersUpdate, protocol.UpdateProviderRequest{
+			Provider: providerID,
+			APIKey:   &protocol.ProviderConfigChange{Type: protocol.ProviderConfigSet, Value: new("resource-test-key")},
+			BaseURL:  &protocol.ProviderConfigChange{Type: protocol.ProviderConfigSet, Value: &test.resource},
+		}, test.resource)
+		catalog, err := runtime.api.ListModels(ctx, protocol.ListModelsRequest{Provider: providerID})
+		if err != nil {
+			t.Fatal(err)
+		}
+		var discovered []string
+		for _, model := range catalog.Data {
+			discovered = append(discovered, model.ID)
+		}
+		if !slices.Equal(discovered, test.want) {
+			t.Fatalf("deployments for %s = %v, want %v", test.resource, discovered, test.want)
+		}
 	}
 }

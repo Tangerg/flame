@@ -51,8 +51,8 @@ model and configured endpoint, with credential rotation excluded.
 
 Connection probes use the capabilities declared by the released Scope binding.
 A binding with model discovery verifies credentials through that read. A
-stream-only binding, including DeepSeek, verifies one ordinary exchange with its
-default model; Flame does not infer discovery from the underlying wire protocol.
+successful empty catalog still confirms reachability. A stream-only binding,
+including DeepSeek, verifies one ordinary exchange with its default model.
 Both Anthropic Messages bindings send the configured API key as a bearer
 credential. The `anthropic-compatible` binding uses the `2023-06-01` Messages
 revision, accepts its sampling controls, and scopes signed thinking to that
@@ -107,4 +107,9 @@ provider and model explicitly.
 
 The configuration screens render the base URL example and path policy published by the installed provider profile. Preserve the gateway mount path. Anthropic and Google append their API version to that mount. OpenAI-compatible gateways take a versioned API base, and Azure uses the resource-specific `/openai/v1` base with a deployment name.
 
-For Azure, set the optional installation input `azure-deployments` to an object such as `{"https://resource.openai.azure.com/openai/v1":["team-chat"]}`. Discovery lists the declared deployment names for the selected resource. Credential verification reads the resource's `/openai/v1/models` endpoint. [Azure OpenAI REST reference](https://learn.microsoft.com/en-us/rest/api/aifoundry/azureopenai/models)
+For Azure, set the optional installation input `azure-deployments` to an object
+such as `{"https://resource.openai.azure.com/openai/v1":["team-chat"]}`.
+Discovery matches the normalized HTTP origin and escaped mount path. Hostname
+case, the default port and trailing slashes denote the same resource, which can
+be declared once. Credential verification reads the resource's
+`/openai/v1/models` endpoint. [Azure OpenAI REST reference](https://learn.microsoft.com/en-us/rest/api/aifoundry/azureopenai/models)

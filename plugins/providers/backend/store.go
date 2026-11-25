@@ -68,19 +68,16 @@ func openStore(ctx context.Context, path string) (*store, error) {
 }
 
 func constructClient(ctx context.Context, kind clientKind, input modelprovider.Open) (*client, error) {
-	if err := input.Validate(); err != nil {
-		return nil, err
-	}
 	spec, err := newClientSpec(input.Connection)
 	if err != nil {
 		return nil, err
 	}
 	result := &client{modelID: input.Model}
 	if kind == embeddingClient {
-		result.embed, err = buildEmbeddingModel(ctx, spec, input.Model)
+		result.embed, err = spec.openEmbedding(ctx, input.Model)
 		return result, err
 	}
-	raw, err := buildModel(ctx, spec, input.Model)
+	raw, err := spec.openChat(ctx, input.Model)
 	if err != nil {
 		return nil, err
 	}

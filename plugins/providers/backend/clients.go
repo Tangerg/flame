@@ -36,11 +36,16 @@ const (
 )
 
 type clientSpec struct {
-	connection modelprovider.Connection
+	profile    providerProfile
+	apiKey     string
+	baseURL    string
 	httpClient *http.Client
 }
 
-func (s clientSpec) Format(state fmt.State, _ rune) { s.connection.Format(state, 'v') }
+func (s clientSpec) Format(state fmt.State, _ rune) {
+	_, _ = fmt.Fprintf(state, "clientSpec{Provider:%q, CredentialPresent:%t, EndpointPresent:%t}",
+		s.profile.metadata.ID, s.apiKey != "", s.baseURL != "")
+}
 
 func newClientSpec(connection modelprovider.Connection) (clientSpec, error) {
 	if err := connection.Validate(); err != nil {
@@ -50,16 +55,18 @@ func newClientSpec(connection modelprovider.Connection) (clientSpec, error) {
 	if !ok {
 		return clientSpec{}, errors.New("model provider: unsupported provider")
 	}
-	if profile.profile.Authentication == modelprovider.KeyRequired && connection.APIKey == "" {
+	if profile.metadata.Authentication == modelprovider.KeyRequired && connection.APIKey == "" {
 		return clientSpec{}, errors.New("model provider: API key is required")
 	}
-	if err := profile.profile.Endpoint.ValidateOverride(connection.BaseURL); err != nil {
+	if err := profile.metadata.Endpoint.ValidateOverride(connection.BaseURL); err != nil {
 		return clientSpec{}, err
 	}
-	if profile.profile.EndpointRequired && connection.BaseURL == "" {
+	if profile.metadata.EndpointRequired && connection.BaseURL == "" {
 		return clientSpec{}, errors.New("model provider: endpoint is required")
 	}
-	return clientSpec{connection: connection, httpClient: newModelHTTPClient()}, nil
+	return clientSpec{
+		profile: profile, apiKey: connection.APIKey, baseURL: connection.BaseURL, httpClient: newModelHTTPClient(),
+	}, nil
 }
 
 type buildFunc func(context.Context, clientSpec, chat.Options) (chat.Model, error)
@@ -83,50 +90,50 @@ var providers = mustProviderCatalog(
 	bundledProvider(providerOpenAI, apiMount, defaultOpenAIModel, buildOpenAIResponsesModel).
 		withEmbedding(defaultOpenAIEmbeddingModel, buildOpenAIEmbeddingModel),
 	bundledProvider(providerGoogle, googleMount, google.ModelGemini36Flash, func(ctx context.Context, s clientSpec, o chat.Options) (chat.Model, error) {
-		return google.NewChat(ctx, google.ChatConfig{APIKey: s.connection.APIKey, DefaultOptions: o, BaseURL: s.connection.BaseURL, HTTPClient: s.httpClient})
+		return google.NewChat(ctx, google.ChatConfig{APIKey: s.apiKey, DefaultOptions: o, BaseURL: s.baseURL, HTTPClient: s.httpClient})
 	}).withEmbedding(google.ModelGeminiEmbedding2, buildGoogleEmbeddingModel),
 
 	bundledProvider(providerMoonshot, apiMount, moonshot.ModelK3, func(ctx context.Context, s clientSpec, o chat.Options) (chat.Model, error) {
-		return moonshot.NewChatCompletions(ctx, moonshot.ChatCompletionsConfig{APIKey: s.connection.APIKey, DefaultOptions: o, BaseURL: s.connection.BaseURL, HTTPClient: s.httpClient})
+		return moonshot.NewChatCompletions(ctx, moonshot.ChatCompletionsConfig{APIKey: s.apiKey, DefaultOptions: o, BaseURL: s.baseURL, HTTPClient: s.httpClient})
 	}),
 	bundledProvider(providerDeepSeek, apiMount, deepseek.ModelFlash, func(ctx context.Context, s clientSpec, o chat.Options) (chat.Model, error) {
-		return deepseek.NewChatCompletions(ctx, deepseek.ChatCompletionsConfig{APIKey: s.connection.APIKey, DefaultOptions: o, BaseURL: s.connection.BaseURL, HTTPClient: s.httpClient})
+		return deepseek.NewChatCompletions(ctx, deepseek.ChatCompletionsConfig{APIKey: s.apiKey, DefaultOptions: o, BaseURL: s.baseURL, HTTPClient: s.httpClient})
 	}),
 	bundledProvider(providerAlibaba, apiMount, alibaba.ModelQwen37Plus, func(ctx context.Context, s clientSpec, o chat.Options) (chat.Model, error) {
-		return alibaba.NewChatCompletions(ctx, alibaba.ChatCompletionsConfig{APIKey: s.connection.APIKey, DefaultOptions: o, BaseURL: s.connection.BaseURL, HTTPClient: s.httpClient})
+		return alibaba.NewChatCompletions(ctx, alibaba.ChatCompletionsConfig{APIKey: s.apiKey, DefaultOptions: o, BaseURL: s.baseURL, HTTPClient: s.httpClient})
 	}).withEmbedding(alibaba.ModelEmbeddingV4, buildAlibabaEmbeddingModel),
 	bundledProvider(providerFireworks, apiMount, fireworks.ModelGPTOSS120B, func(ctx context.Context, s clientSpec, o chat.Options) (chat.Model, error) {
-		return fireworks.NewChatCompletions(ctx, fireworks.ChatCompletionsConfig{APIKey: s.connection.APIKey, DefaultOptions: o, BaseURL: s.connection.BaseURL, HTTPClient: s.httpClient})
+		return fireworks.NewChatCompletions(ctx, fireworks.ChatCompletionsConfig{APIKey: s.apiKey, DefaultOptions: o, BaseURL: s.baseURL, HTTPClient: s.httpClient})
 	}),
 	bundledProvider(providerGroq, apiMount, groq.ModelGPTOSS20B, func(ctx context.Context, s clientSpec, o chat.Options) (chat.Model, error) {
-		return groq.NewChatCompletions(ctx, groq.ChatCompletionsConfig{APIKey: s.connection.APIKey, DefaultOptions: o, BaseURL: s.connection.BaseURL, HTTPClient: s.httpClient})
+		return groq.NewChatCompletions(ctx, groq.ChatCompletionsConfig{APIKey: s.apiKey, DefaultOptions: o, BaseURL: s.baseURL, HTTPClient: s.httpClient})
 	}),
 	bundledProvider(providerHuggingface, apiMount, huggingface.ModelGPTOSS120B, func(ctx context.Context, s clientSpec, o chat.Options) (chat.Model, error) {
-		return huggingface.NewChatCompletions(ctx, huggingface.ChatCompletionsConfig{APIKey: s.connection.APIKey, DefaultOptions: o, BaseURL: s.connection.BaseURL, HTTPClient: s.httpClient})
+		return huggingface.NewChatCompletions(ctx, huggingface.ChatCompletionsConfig{APIKey: s.apiKey, DefaultOptions: o, BaseURL: s.baseURL, HTTPClient: s.httpClient})
 	}),
 	bundledProvider(providerMinimax, apiMount, minimax.ModelM3, func(ctx context.Context, s clientSpec, o chat.Options) (chat.Model, error) {
-		return minimax.NewChatCompletions(ctx, minimax.ChatCompletionsConfig{APIKey: s.connection.APIKey, DefaultOptions: o, BaseURL: s.connection.BaseURL, HTTPClient: s.httpClient})
+		return minimax.NewChatCompletions(ctx, minimax.ChatCompletionsConfig{APIKey: s.apiKey, DefaultOptions: o, BaseURL: s.baseURL, HTTPClient: s.httpClient})
 	}),
 	bundledProvider(providerMistral, apiMount, mistral.ModelSmall, func(ctx context.Context, s clientSpec, o chat.Options) (chat.Model, error) {
-		return mistral.NewChat(ctx, mistral.ChatConfig{APIKey: s.connection.APIKey, DefaultOptions: o, BaseURL: s.connection.BaseURL, HTTPClient: s.httpClient})
+		return mistral.NewChat(ctx, mistral.ChatConfig{APIKey: s.apiKey, DefaultOptions: o, BaseURL: s.baseURL, HTTPClient: s.httpClient})
 	}).withEmbedding(mistral.ModelEmbed, buildMistralEmbeddingModel),
 	bundledProvider(providerOpenRouter, apiMount, openrouter.ModelAuto, func(ctx context.Context, s clientSpec, o chat.Options) (chat.Model, error) {
-		return openrouter.NewChatCompletions(ctx, openrouter.ChatCompletionsConfig{APIKey: s.connection.APIKey, DefaultOptions: o, BaseURL: s.connection.BaseURL, HTTPClient: s.httpClient})
+		return openrouter.NewChatCompletions(ctx, openrouter.ChatCompletionsConfig{APIKey: s.apiKey, DefaultOptions: o, BaseURL: s.baseURL, HTTPClient: s.httpClient})
 	}),
 	endpointProvider(providerPerplexity, apiMount, providerEndpoint, func(ctx context.Context, s clientSpec, o chat.Options) (chat.Model, error) {
-		return perplexity.NewResponses(ctx, perplexity.ResponsesConfig{APIKey: s.connection.APIKey, DefaultOptions: o, BaseURL: s.connection.BaseURL, HTTPClient: s.httpClient})
+		return perplexity.NewResponses(ctx, perplexity.ResponsesConfig{APIKey: s.apiKey, DefaultOptions: o, BaseURL: s.baseURL, HTTPClient: s.httpClient})
 	}),
 	bundledProvider(providerTogether, apiMount, together.ModelGPTOSS120B, func(ctx context.Context, s clientSpec, o chat.Options) (chat.Model, error) {
-		return together.NewChatCompletions(ctx, together.ChatCompletionsConfig{APIKey: s.connection.APIKey, DefaultOptions: o, BaseURL: s.connection.BaseURL, HTTPClient: s.httpClient})
+		return together.NewChatCompletions(ctx, together.ChatCompletionsConfig{APIKey: s.apiKey, DefaultOptions: o, BaseURL: s.baseURL, HTTPClient: s.httpClient})
 	}),
 	bundledProvider(providerXAI, apiMount, xai.ModelGrok45, func(ctx context.Context, s clientSpec, o chat.Options) (chat.Model, error) {
-		return xai.NewChatCompletions(ctx, xai.ChatCompletionsConfig{APIKey: s.connection.APIKey, DefaultOptions: o, BaseURL: s.connection.BaseURL, HTTPClient: s.httpClient})
+		return xai.NewChatCompletions(ctx, xai.ChatCompletionsConfig{APIKey: s.apiKey, DefaultOptions: o, BaseURL: s.baseURL, HTTPClient: s.httpClient})
 	}),
 	bundledProvider(providerXiaomi, apiMount, xiaomi.ModelV25Pro, func(ctx context.Context, s clientSpec, o chat.Options) (chat.Model, error) {
-		return xiaomi.NewChatCompletions(ctx, xiaomi.ChatCompletionsConfig{APIKey: s.connection.APIKey, DefaultOptions: o, BaseURL: s.connection.BaseURL, HTTPClient: s.httpClient})
+		return xiaomi.NewChatCompletions(ctx, xiaomi.ChatCompletionsConfig{APIKey: s.apiKey, DefaultOptions: o, BaseURL: s.baseURL, HTTPClient: s.httpClient})
 	}),
 	bundledProvider(providerZhipu, apiMount, zhipu.ModelGLM52, func(ctx context.Context, s clientSpec, o chat.Options) (chat.Model, error) {
-		return zhipu.NewChatCompletions(ctx, zhipu.ChatCompletionsConfig{APIKey: s.connection.APIKey, DefaultOptions: o, BaseURL: s.connection.BaseURL, HTTPClient: s.httpClient})
+		return zhipu.NewChatCompletions(ctx, zhipu.ChatCompletionsConfig{APIKey: s.apiKey, DefaultOptions: o, BaseURL: s.baseURL, HTTPClient: s.httpClient})
 	}).withEmbedding(zhipu.ModelEmbedding3, buildZhipuEmbeddingModel),
 
 	// Azure: the base URL is the complete per-resource /openai/v1 endpoint;
@@ -160,18 +167,18 @@ func buildAnthropicModel(ctx context.Context, spec clientSpec, opts chat.Options
 		return nil, err
 	}
 	return anthropic.NewMessages(ctx, anthropic.MessagesConfig{
-		APIKey:         spec.connection.APIKey,
+		APIKey:         spec.apiKey,
 		DefaultOptions: options,
-		BaseURL:        spec.connection.BaseURL,
+		BaseURL:        spec.baseURL,
 		HTTPClient:     spec.httpClient,
 	})
 }
 
 func buildAnthropicCompatibleModel(ctx context.Context, spec clientSpec, opts chat.Options) (chat.Model, error) {
 	return anthropicprotocol.NewMessages(ctx, anthropicprotocol.MessagesConfig{
-		APIKey:         spec.connection.APIKey,
+		APIKey:         spec.apiKey,
 		DefaultOptions: opts,
-		BaseURL:        spec.connection.BaseURL,
+		BaseURL:        spec.baseURL,
 		HTTPClient:     spec.httpClient,
 	}, anthropicprotocol.Dialect{
 		Provider:         string(providerAnthropicCompatible),
@@ -188,9 +195,9 @@ func singleAttempt() *int { return new(0) }
 
 func buildOpenAIResponsesModel(ctx context.Context, spec clientSpec, opts chat.Options) (chat.Model, error) {
 	return openai.NewResponses(ctx, openai.ChatModelConfig{
-		APIKey:         spec.connection.APIKey,
+		APIKey:         spec.apiKey,
 		DefaultOptions: opts,
-		BaseURL:        spec.connection.BaseURL,
+		BaseURL:        spec.baseURL,
 		HTTPClient:     spec.httpClient,
 		MaxRetries:     singleAttempt(),
 	})
@@ -198,9 +205,9 @@ func buildOpenAIResponsesModel(ctx context.Context, spec clientSpec, opts chat.O
 
 func buildAzureOpenAIModel(ctx context.Context, spec clientSpec, opts chat.Options) (chat.Model, error) {
 	return openaiprotocol.NewChatCompletions(ctx, openaiprotocol.ChatModelConfig{
-		APIKey:         spec.connection.APIKey,
+		APIKey:         spec.apiKey,
 		DefaultOptions: opts,
-		BaseURL:        spec.connection.BaseURL,
+		BaseURL:        spec.baseURL,
 		HTTPClient:     spec.httpClient,
 		MaxRetries:     singleAttempt(),
 	}, openaiprotocol.DialectConfig{
@@ -211,9 +218,9 @@ func buildAzureOpenAIModel(ctx context.Context, spec clientSpec, opts chat.Optio
 
 func buildOpenAICompatibleModel(ctx context.Context, spec clientSpec, opts chat.Options) (chat.Model, error) {
 	return openaiprotocol.NewChatCompletions(ctx, openaiprotocol.ChatModelConfig{
-		APIKey:         spec.connection.APIKey,
+		APIKey:         spec.apiKey,
 		DefaultOptions: opts,
-		BaseURL:        spec.connection.BaseURL,
+		BaseURL:        spec.baseURL,
 		HTTPClient:     spec.httpClient,
 		MaxRetries:     singleAttempt(),
 	}, openaiprotocol.DialectConfig{
@@ -223,14 +230,10 @@ func buildOpenAICompatibleModel(ctx context.Context, spec clientSpec, opts chat.
 	})
 }
 
-func buildModel(ctx context.Context, spec clientSpec, modelID string) (chat.Model, error) {
+func (s clientSpec) openChat(ctx context.Context, modelID string) (chat.Model, error) {
 	identity, err := flamemodel.NewModelIdentity(modelID)
 	if err != nil {
 		return nil, err
 	}
-	profile, ok := providers.lookup(Provider(spec.connection.Provider))
-	if !ok {
-		return nil, errors.New("model provider: unsupported provider")
-	}
-	return profile.chatBuilder(ctx, spec, chat.Options{Model: identity.String()})
+	return s.profile.chatBuilder(ctx, s, chat.Options{Model: identity.String()})
 }

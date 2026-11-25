@@ -23,32 +23,30 @@ type modelLister interface {
 	ListModels(context.Context, int, int64) ([]string, error)
 }
 
-func listModels(ctx context.Context, spec clientSpec, deployments azureDeployments) ([]string, error) {
-	if Provider(spec.connection.Provider) == providerAzureOpenAI {
-		return deployments.forEndpoint(spec.connection.BaseURL), nil
+func (s clientSpec) listModels(ctx context.Context, deployments azureDeployments) ([]string, error) {
+	if s.profile.metadata.ID == string(providerAzureOpenAI) {
+		return deployments.forEndpoint(s.baseURL)
 	}
-	profile, _ := providers.lookup(Provider(spec.connection.Provider))
-	if profile.profile.ModelSource != modelprovider.EndpointModels {
+	if s.profile.metadata.ModelSource != modelprovider.EndpointModels {
 		return nil, errors.New("model: provider uses the published model catalog")
 	}
 	ctx, cancel := context.WithTimeout(ctx, probeTimeout)
 	defer cancel()
-	model, err := profile.chatBuilder(ctx, spec, chat.Options{})
+	model, err := s.profile.chatBuilder(ctx, s, chat.Options{})
 	if err != nil {
 		return nil, err
 	}
 	discovery, ok := model.(modelLister)
 	if !ok {
-		return nil, fmt.Errorf("model: provider %q has no model discovery capability", spec.connection.Provider)
+		return nil, fmt.Errorf("model: provider %q has no model discovery capability", s.profile.metadata.ID)
 	}
 	return advertisedModels(ctx, discovery)
 }
 
 // A capped generation is refused by reasoning models whose minimum output exceeds
 // the cap, so a model listing proves the connection where the binding has one.
-func verifyConnection(ctx context.Context, spec clientSpec) error {
-	profile, _ := providers.lookup(Provider(spec.connection.Provider))
-	model, err := profile.chatBuilder(ctx, spec, chat.Options{Model: profile.profile.DefaultModel})
+func (s clientSpec) verify(ctx context.Context) error {
+	model, err := s.profile.chatBuilder(ctx, s, chat.Options{Model: s.profile.metadata.DefaultModel})
 	if err != nil {
 		return err
 	}
@@ -61,14 +59,8 @@ func verifyConnection(ctx context.Context, spec clientSpec) error {
 	}
 	ctx, cancel := context.WithTimeout(ctx, probeTimeout)
 	defer cancel()
-	ids, err := advertisedModels(ctx, discovery)
-	if err != nil {
-		return err
-	}
-	if profile.profile.ModelSource == modelprovider.EndpointModels && Provider(profile.profile.ID) != providerAzureOpenAI && len(ids) == 0 {
-		return errors.New("model: provider advertised no models")
-	}
-	return nil
+	_, err = advertisedModels(ctx, discovery)
+	return err
 }
 
 func advertisedModels(ctx context.Context, discovery modelLister) ([]string, error) {

@@ -104,7 +104,7 @@ func (d discovery) remoteModels(ctx context.Context, _ *sdk.ServerSession, comma
 	if err != nil {
 		return nil, invalidConnection()
 	}
-	values, err := listModels(ctx, spec, d.deployments)
+	values, err := spec.listModels(ctx, d.deployments)
 	if err != nil {
 		return nil, &framecall.Refusal{Code: string(failure(err).Kind), Message: "model provider: model discovery failed"}
 	}
@@ -116,7 +116,7 @@ func (d discovery) verify(ctx context.Context, _ *sdk.ServerSession, command plu
 	if err != nil {
 		return struct{}{}, invalidConnection()
 	}
-	if err := verifyConnection(ctx, spec); err != nil {
+	if err := spec.verify(ctx); err != nil {
 		return struct{}{}, &framecall.Refusal{Code: string(failure(err).Kind), Message: "model provider: connection verification failed"}
 	}
 	return struct{}{}, nil

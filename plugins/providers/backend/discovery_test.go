@@ -12,7 +12,7 @@ import (
 
 func probeModels(t *testing.T, baseURL, apiKey string, provider Provider) ([]string, error) {
 	t.Helper()
-	return listModels(t.Context(), mustClientSpec(t, provider, apiKey, baseURL), nil)
+	return mustClientSpec(t, provider, apiKey, baseURL).listModels(t.Context(), nil)
 }
 
 func TestListRemoteModelsBlocksCredentialRedirectAcrossOrigins(t *testing.T) {
