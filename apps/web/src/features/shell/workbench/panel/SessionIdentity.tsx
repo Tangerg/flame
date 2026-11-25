@@ -11,12 +11,6 @@ import { color, space, type as typeStep, weight } from "@flame/ui/tokens.stylex"
 const si = stylex.create({
   bar: { display: "flex", minWidth: 0, flexShrink: 1, alignItems: "center", gap: space.s2 },
   fill: { flex: 1 },
-  // The run status renders nothing while idle; its padding must not leave a blank band.
-  menuDetail: {
-    display: { default: "block", ":empty": "none" },
-    paddingInline: space.s2,
-    paddingBlock: space.s1_5,
-  },
   summary: {
     display: "flex",
     minWidth: 0,
@@ -118,7 +112,6 @@ export function SessionIdentity({ sessionId, title, workspacePath, detail }: Pro
       <ContextMenu.Root>
         <ContextMenu.Trigger render={identity} />
         <ContextMenu.Content aria-label={title}>
-          {detail && <div {...stylex.props(si.menuDetail)}>{detail}</div>}
           {copies.map((item) => (
             <ContextMenu.Item key={item.id} layout="pickPlain" onClick={item.copy}>
               <span {...stylex.props(vocab.truncate)}>{item.label}</span>
@@ -137,7 +130,6 @@ export function SessionIdentity({ sessionId, title, workspacePath, detail }: Pro
           }
         />
         <DropdownMenu.Content align="start" sideOffset={4} aria-label={title}>
-          {detail && <div {...stylex.props(si.menuDetail)}>{detail}</div>}
           {/* Every entry copies, as its label says; a shared copy glyph would add nothing. */}
           {copies.map((item) => (
             <DropdownMenu.Item key={item.id} layout="pickPlain" onClick={item.copy}>
