@@ -34,8 +34,7 @@ function ProviderCredentialBadge({
         {t("providers.fromEnv")}
       </Badge>
     );
-  if (!provider.configured)
-    return <Badge tone="neutral">{t("providers.notConfigured")}</Badge>;
+  if (!provider.configured) return null;
   if (!credential) return <Badge tone="success">{t("providers.ready")}</Badge>;
   // Only the masked key is data; the surrounding words keep the body face.
   const [before = "", after = ""] = t("providers.key", {
@@ -51,12 +50,10 @@ function ProviderCredentialBadge({
 }
 
 // An environment key cannot be replaced here; a stored key can.
-function apiKeyPlaceholder(provider: Provider) {
+function apiKeyPlaceholder(provider: Provider, t: Translate) {
   if (provider.credential?.source === "env")
-    return "providers.apiKey.envPlaceholder";
-  return provider.credential
-    ? "providers.apiKey.replace"
-    : "providers.apiKey.placeholder";
+    return t("providers.apiKey.envPlaceholder");
+  return provider.credential ? t("providers.apiKey.replace") : undefined;
 }
 
 // An unsaved edit is saved before it is tested.
@@ -87,6 +84,9 @@ export function ProviderRow({
   const [confirmingClear, setConfirmingClear] = useState(false);
   const feedbackId = useId();
   const dirty = draft.dirty(provider);
+  // An untouched, unconfigured row has nothing to save, test or report yet.
+  const idle =
+    !provider.configured && !dirty && !busy && feedback === undefined;
   const error = draft.endpointError(provider);
   const valid = error === undefined;
   const describedBy =
@@ -119,7 +119,7 @@ export function ProviderRow({
             aria-describedby={describedBy}
             value={draft.apiKey}
             onChange={(event) => change(draft.withAPIKey(event.target.value))}
-            placeholder={t(apiKeyPlaceholder(provider))}
+            placeholder={apiKeyPlaceholder(provider, t)}
           />
         </FormField>
         <EndpointField
@@ -131,42 +131,48 @@ export function ProviderRow({
           t={t}
         />
       </FormRow>
-      <FormActions
-        label={t("providers.save")}
-        auxiliaryAction={
-          provider.credential?.source === "stored" && (
-            <Button
-              variant="ghost"
-              size="sm"
-              disabled={busy}
-              onClick={() => setConfirmingClear(true)}
-            >
-              {t("providers.apiKey.clear")}
-            </Button>
-          )
-        }
-      >
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={Boolean(command) || (dirty ? !valid : !provider.configured)}
-          pending={probing}
-          onClick={() => void settings.test(context, provider, draft)}
+      {!idle && (
+        <FormActions
+          label={t("providers.save")}
+          auxiliaryAction={
+            provider.credential?.source === "stored" && (
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={busy}
+                onClick={() => setConfirmingClear(true)}
+              >
+                {t("providers.apiKey.clear")}
+              </Button>
+            )
+          }
         >
-          {t(testLabel(dirty, probing))}
-        </Button>
-        <Button
-          variant="primary"
-          size="sm"
-          disabled={!dirty || !valid || probing || command?.phase === "unknown"}
-          pending={command?.phase === "running"}
-          onClick={() => void settings.save(context, provider, draft)}
-        >
-          {command?.phase === "running"
-            ? t("providers.saving")
-            : t("providers.save")}
-        </Button>
-      </FormActions>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={
+              Boolean(command) || (dirty ? !valid : !provider.configured)
+            }
+            pending={probing}
+            onClick={() => void settings.test(context, provider, draft)}
+          >
+            {t(testLabel(dirty, probing))}
+          </Button>
+          <Button
+            variant="primary"
+            size="sm"
+            disabled={
+              !dirty || !valid || probing || command?.phase === "unknown"
+            }
+            pending={command?.phase === "running"}
+            onClick={() => void settings.save(context, provider, draft)}
+          >
+            {command?.phase === "running"
+              ? t("providers.saving")
+              : t("providers.save")}
+          </Button>
+        </FormActions>
+      )}
       <div id={feedbackId}>
         <CommandFeedback
           context={context}

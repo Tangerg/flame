@@ -4,7 +4,6 @@ export const fr: Record<string, string> = {
   "providers.apiKey.clear.title": "Supprimer la clé enregistrée ?",
   "providers.apiKey.clear.body":
     "{{provider}} perd sa clé API enregistrée. Vous devrez la recoller pour vous reconnecter.",
-  "providers.apiKey.placeholder": "Clé API",
   "providers.apiKey.aria": "Clé API {{provider}}",
   "providers.baseUrl.mount":
     "Saisissez le chemin de la passerelle. Le SDK ajoute {{suffix}}.",
@@ -18,7 +17,6 @@ export const fr: Record<string, string> = {
   "providers.baseUrl.aria": "URL de base {{provider}}",
   "providers.key": "Clé {{masked}}",
   "providers.ready": "Prêt",
-  "providers.notConfigured": "Non configuré",
   "providers.save": "Enregistrer",
   "providers.saving": "Enregistrement…",
   "providers.test": "Tester",
@@ -61,8 +59,6 @@ export const fr: Record<string, string> = {
     "Impossible de charger ce réglage : sa valeur actuelle est inconnue.",
   "providers.role.stale":
     "Dernière valeur connue affichée — l’actualisation a échoué.",
-  "providers.setup.steps":
-    "Choisissez un fournisseur, collez sa clé API puis « Enregistrer et tester ». C’est tout ce qu’il faut pour commencer.",
   "providers.setup.done":
     "Un fournisseur est prêt. Fermez les paramètres pour revenir : votre brouillon est toujours là.",
   "providers.roles.heading": "Rôles des modèles",

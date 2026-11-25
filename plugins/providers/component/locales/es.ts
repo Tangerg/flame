@@ -4,7 +4,6 @@ export const es: Record<string, string> = {
   "providers.apiKey.clear.title": "¿Quitar la clave guardada?",
   "providers.apiKey.clear.body":
     "{{provider}} pierde su clave de API guardada. Tendrás que volver a pegarla para reconectar.",
-  "providers.apiKey.placeholder": "Clave de API",
   "providers.apiKey.aria": "Clave de API de {{provider}}",
   "providers.baseUrl.mount":
     "Introduce la ruta de la pasarela. El SDK añade {{suffix}}.",
@@ -18,7 +17,6 @@ export const es: Record<string, string> = {
   "providers.baseUrl.aria": "URL base de {{provider}}",
   "providers.key": "Clave {{masked}}",
   "providers.ready": "Listo",
-  "providers.notConfigured": "Sin configurar",
   "providers.save": "Guardar",
   "providers.saving": "Guardando…",
   "providers.test": "Probar",
@@ -61,8 +59,6 @@ export const es: Record<string, string> = {
     "No se pudo cargar este ajuste, así que su valor actual es desconocido.",
   "providers.role.stale":
     "Se muestra el último valor conocido: la actualización falló.",
-  "providers.setup.steps":
-    "Elige un proveedor, pega su clave de API y pulsa «Guardar y probar». Es todo lo que necesitas para empezar.",
   "providers.setup.done":
     "Hay un proveedor listo. Cierra Ajustes para volver: tu borrador sigue ahí.",
   "providers.roles.heading": "Funciones de modelo",

@@ -4,7 +4,6 @@ export const zhTW: Record<string, string> = {
   "providers.apiKey.clear.title": "移除已儲存的金鑰？",
   "providers.apiKey.clear.body":
     "{{provider}} 將失去已儲存的 API 金鑰，需要重新貼上才能再次連線。",
-  "providers.apiKey.placeholder": "API 金鑰",
   "providers.apiKey.aria": "{{provider}} API 金鑰",
   "providers.baseUrl.mount": "請填寫閘道掛載位址。SDK 會加上 {{suffix}}。",
   "providers.baseUrl.apiBase": "請填寫完整 API 基址，包含閘道使用的版本路徑。",
@@ -16,7 +15,6 @@ export const zhTW: Record<string, string> = {
   "providers.baseUrl.aria": "{{provider}} Base URL",
   "providers.key": "金鑰 {{masked}}",
   "providers.ready": "就緒",
-  "providers.notConfigured": "未設定",
   "providers.save": "儲存",
   "providers.saving": "儲存中…",
   "providers.test": "測試",
@@ -50,8 +48,6 @@ export const zhTW: Record<string, string> = {
   "providers.saved": "已儲存",
   "providers.role.loadError": "無法載入此設定，目前的值未知。",
   "providers.role.stale": "顯示的是最後已知的值——重新整理失敗。",
-  "providers.setup.steps":
-    "選一個供應商，貼上它的 API 金鑰，然後按「儲存並測試」。開始使用只需要這一步。",
   "providers.setup.done": "供應商已就緒。關閉設定即可返回——你的草稿仍在。",
   "providers.roles.heading": "模型角色",
   "rpcError.invalid_credentials":
