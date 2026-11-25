@@ -19,7 +19,8 @@ import { type FormatCatalog, type Inspection } from "../contracts/content";
 import { METHODS } from "../contracts/methods";
 import { RevisionEditor } from "./revisionEditor";
 import { formatTimestamp, type OpenForReading } from "./archive";
-import { EvidencePanel, Findings } from "./evidence";
+import { EvidencePanel } from "./evidence";
+import { Findings } from "./renderedPages";
 import { type DeliverablesState } from "./useDeliverables";
 import type { DocumentRead } from "./types";
 
