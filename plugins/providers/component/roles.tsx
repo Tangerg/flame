@@ -12,6 +12,7 @@ import {
   ListRow,
   Metadata,
   RecordBody,
+  RecordHeading,
   Select,
 } from "@flame/ui";
 import type { ProviderSettings, Read, RoleKind } from "./settings";
@@ -213,8 +214,7 @@ export function RoleSection({
       <div data-focus-unit="">
         <FormRow>
           <div style={column}>
-            <strong>{title}</strong>
-            <RecordBody>{t(labels.description)}</RecordBody>
+            <RecordHeading title={title} description={t(labels.description)} />
             {known && (
               <RoleNotes
                 t={t}
