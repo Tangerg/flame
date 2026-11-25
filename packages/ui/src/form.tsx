@@ -198,9 +198,16 @@ export function FormField({
   label,
   children,
 }: {
-  label: string;
+  label?: string;
   children: ReactNode;
 }) {
+  // A sole field its surface's title already names keeps the labelled alignment.
+  if (label === undefined)
+    return (
+      <div data-slot="form-field" {...stylex.props(styles.fieldBody)}>
+        {children}
+      </div>
+    );
   return (
     <label data-slot="form-field" {...stylex.props(styles.field)}>
       <span {...stylex.props(styles.fieldLabel, type.uiSm)}>{label}</span>

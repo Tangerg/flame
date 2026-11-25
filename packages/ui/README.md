@@ -693,7 +693,9 @@ Boxed single-line and multiline fields share `FIELD_SIZE` text insets and reset
 native WebKit appearance; focus and invalid borders remain with `FIELD_SURFACE`.
 Under a `FormField` or `FormGroup` label a boxed field, `Select` or `Segmented` hangs by the row bleed: its
 text starts on the label's edge, its fill starts outside it, and its end edge
-stays on the column's end.
+stays on the column's end. A `FormField` without a label holds a sole field that
+its surface's title already names, such as a text editor dialog's; the field
+keeps the same hang onto the title's edge and carries its own accessible name.
 Provider, MCP, and hook lists consume `RecordGroup` and `ListRow`, while inline
 editors consume `RecordForm`, `FormField`, and `FormActions` rather than defining
 another set of row insets, field spacing, and footer alignment.

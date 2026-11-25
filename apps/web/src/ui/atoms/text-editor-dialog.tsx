@@ -83,26 +83,6 @@ export function TextEditorDialog({
     }
   };
 
-  const editor = (
-    <TextArea
-      ref={editorRef}
-      rows={4}
-      autosize
-      styles={styles.editor}
-      font={font}
-      aria-label={label ?? title}
-      aria-describedby={error ? errorId : undefined}
-      invalid={invalid}
-      autoCapitalize={autoCapitalize}
-      autoCorrect={autoCorrect}
-      spellCheck={spellCheck}
-      value={value}
-      pending={busy}
-      onKeyDown={submitShortcut}
-      onChange={(event) => onChange(event.target.value)}
-    />
-  );
-
   return (
     <ModalDialog
       open={open}
@@ -133,7 +113,25 @@ export function TextEditorDialog({
         </>
       }
     >
-      {label ? <FormField label={label}>{editor}</FormField> : editor}
+      <FormField label={label}>
+        <TextArea
+          ref={editorRef}
+          rows={4}
+          autosize
+          styles={styles.editor}
+          font={font}
+          aria-label={label ?? title}
+          aria-describedby={error ? errorId : undefined}
+          invalid={invalid}
+          autoCapitalize={autoCapitalize}
+          autoCorrect={autoCorrect}
+          spellCheck={spellCheck}
+          value={value}
+          pending={busy}
+          onKeyDown={submitShortcut}
+          onChange={(event) => onChange(event.target.value)}
+        />
+      </FormField>
       {error && (
         <SystemMessage ref={errorRef} id={errorId} variant="error">
           {error}
