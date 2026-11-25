@@ -128,20 +128,8 @@ func TestRevokedCurationJoinsModelsAndRestoresPendingLedgerWithoutOverwritingHum
 	}
 	curating := make(chan struct{})
 	joined := make(chan struct{})
-	var calls atomic.Int32
-	grant, release, err := openTestModel(ctx, broker, session, textResponseModel(func(ctx context.Context, _ *chat.Request) (string, error) {
-		switch calls.Add(1) {
-		case 1:
-			return `["automatic proposal"]`, nil
-		case 2:
-		default:
-			return "", errors.New("unexpected model call")
-		}
-		close(curating)
-		<-ctx.Done()
-		close(joined)
-		return "", ctx.Err()
-	}))
+	model := &curationRevocationModel{curating: curating, joined: joined}
+	grant, release, err := openTestModel(ctx, broker, session, textResponseModel(model.reply))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -203,13 +191,8 @@ func TestRevokedCurationJoinsModelsAndRestoresPendingLedgerWithoutOverwritingHum
 	if err == nil {
 		t.Fatal("new backend generation reused a revoked model grant")
 	}
-	var recoveryCalls atomic.Int32
-	fresh, releaseFresh, err := openTestModel(ctx, broker, session, textResponseModel(func(_ context.Context, request *chat.Request) (string, error) {
-		if recoveryCalls.Add(1) != 1 || len(request.Messages) != 2 || !strings.Contains(request.Messages[1].Text(), "automatic proposal") {
-			return "", errors.New("pending recovery did not curate the original ledger")
-		}
-		return `["automatic proposal"]`, nil
-	}))
+	recovery := &ledgerRecoveryModel{}
+	fresh, releaseFresh, err := openTestModel(ctx, broker, session, textResponseModel(recovery.reply))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -219,8 +202,8 @@ func TestRevokedCurationJoinsModelsAndRestoresPendingLedgerWithoutOverwritingHum
 	if err != nil || !published.Published {
 		t.Fatalf("pending recovery=%+v %v", published, err)
 	}
-	if recoveryCalls.Load() != 1 {
-		t.Fatalf("pending recovery model calls=%d", recoveryCalls.Load())
+	if recovery.calls.Load() != 1 {
+		t.Fatalf("pending recovery model calls=%d", recovery.calls.Load())
 	}
 	recovered, err := store.State(ctx, project)
 	if err != nil || recovered.Watermark != pending[0].Sequence {
@@ -345,4 +328,35 @@ func receiptMemoryCapability[P, R any](ctx context.Context, session *sdk.ClientS
 	}
 	err = json.Unmarshal(result.Bytes(), &zero, json.RejectUnknownMembers(true))
 	return zero, true, err
+}
+
+// curationRevocationModel extracts one proposal, then parks the curation call
+// until revocation cancels it and records that the call was joined.
+type curationRevocationModel struct {
+	calls            atomic.Int32
+	curating, joined chan struct{}
+}
+
+func (m *curationRevocationModel) reply(ctx context.Context, _ *chat.Request) (string, error) {
+	switch m.calls.Add(1) {
+	case 1:
+		return `["automatic proposal"]`, nil
+	case 2:
+		close(m.curating)
+		<-ctx.Done()
+		close(m.joined)
+		return "", ctx.Err()
+	default:
+		return "", errors.New("unexpected model call")
+	}
+}
+
+// ledgerRecoveryModel accepts exactly one curation of the original pending ledger.
+type ledgerRecoveryModel struct{ calls atomic.Int32 }
+
+func (m *ledgerRecoveryModel) reply(_ context.Context, request *chat.Request) (string, error) {
+	if m.calls.Add(1) != 1 || len(request.Messages) != 2 || !strings.Contains(request.Messages[1].Text(), "automatic proposal") {
+		return "", errors.New("pending recovery did not curate the original ledger")
+	}
+	return `["automatic proposal"]`, nil
 }

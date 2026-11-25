@@ -10,6 +10,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
@@ -38,7 +40,7 @@ func TestDeliverablesInstalledNativeRevisionsAndReceiptsSurviveRuntimeRestart(t 
 		if err != nil {
 			t.Fatal(err)
 		}
-		return r.must(delivery.PluginsCall, protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "deliverables", Contract: contract.Identity().String(), Method: "flame.deliverables/" + method + ".v1", Input: value.String(), Target: framecall.Target{Scope: "installation", Reference: installed.ID}}, key).(*protocol.CallPluginResponse)
+		return r.must(delivery.PluginsCall, protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "deliverables", Contract: contract.Identity().String(), Method: "flame.deliverables/" + method + ".v1", Input: value.String(), Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: installed.ID}}, key).(*protocol.CallPluginResponse)
 	}
 	type nativeRevision struct {
 		ID         string `json:"id"`

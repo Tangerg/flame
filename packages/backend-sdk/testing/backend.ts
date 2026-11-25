@@ -27,11 +27,25 @@ const receipts = new Map<
   string,
   { method: string; digest: string; reply: unknown }
 >();
-type Input = { mode: string; value: unknown };
-const decode = (value: unknown) => value as Input;
+// The Go conformance test selects each fixture behavior through the input mode.
+const MODES = [
+  "echo",
+  "empty-refusal",
+  "invalid",
+  "host",
+  "mutated-final",
+  "missing",
+  "late",
+  "wait",
+] as const;
+type Input = { mode: (typeof MODES)[number]; value: unknown };
+const decode = (value: unknown): Input => {
+  const input = value as Input;
+  if (!(MODES as readonly string[]).includes(input.mode))
+    throw new Error(`fixture: unknown mode ${String(input.mode)}`);
+  return input;
+};
 const result = async (context: CallContext, input: Input) => {
-  if (input.mode === "refuse")
-    throw new Refusal("fixture_refused", "fixture refused the operation");
   if (input.mode === "empty-refusal") throw new Refusal("fixture_refused", "");
   const value =
     input.mode === "host"

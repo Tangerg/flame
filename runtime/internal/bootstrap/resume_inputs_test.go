@@ -24,63 +24,10 @@ func TestQueuedUserInputsReachTheRootModelAfterRestart(t *testing.T) {
 	expectedInputs := append([]string{steer}, inputs...)
 	childEntered := make(chan struct{}, 1)
 	releaseChild := make(chan struct{})
-	model := delegateRestartModel{chat.ModelFunc(func(ctx context.Context, request *chat.Request) (*chat.Response, error) {
-		var child, delegateFinished bool
-		var answered int
-		var received []string
-		for _, message := range request.Messages {
-			if message.Role == chat.RoleUser {
-				child = child || strings.Contains(message.Text(), task)
-				if slices.Contains(expectedInputs, message.Text()) {
-					received = append(received, message.Text())
-				}
-			}
-			for _, part := range message.Parts {
-				if part.ToolResult == nil {
-					continue
-				}
-				switch part.ToolResult.Name {
-				case "ask_user":
-					answered++
-				case "delegate_task":
-					delegateFinished = true
-				}
-			}
-		}
-		var call chat.ToolCall
-		switch {
-		case child && len(received) != 0:
-			return nil, fmt.Errorf("child model received root inputs %v", received)
-		case child && answered == questions:
-			return completedTextResponse("All questions were answered."), nil
-		case child:
-			if answered == 0 {
-				select {
-				case childEntered <- struct{}{}:
-				case <-ctx.Done():
-					return nil, ctx.Err()
-				}
-				select {
-				case <-releaseChild:
-				case <-ctx.Done():
-					return nil, ctx.Err()
-				}
-			}
-			call = chat.ToolCall{ID: fmt.Sprintf("question_%d", answered), Name: "ask_user",
-				Arguments: fmt.Sprintf(`{"questions":[{"question":"Answer question %d"}]}`, answered+1)}
-		case delegateFinished:
-			if !slices.Equal(received, expectedInputs) {
-				return nil, fmt.Errorf("root model received queued inputs %v", received)
-			}
-			return completedTextResponse("The inputs arrived in order."), nil
-		default:
-			call = chat.ToolCall{ID: "delegate_questions", Name: "delegate_task",
-				Arguments: fmt.Sprintf(`{"summary":"Three questions","instructions":%q}`, task)}
-		}
-		message := chat.NewAssistantMessage(chat.NewToolCallPart(call))
-		return chat.NewResponse(&chat.Output{Message: &message, FinishReason: chat.FinishReasonToolCalls},
-			&chat.ResponseMetadata{Model: "claude-test", Usage: &chat.Usage{InputTokens: 2, OutputTokens: 1}})
-	})}
+	model := delegateRestartModel{chat.ModelFunc(queuedInputsScript{
+		task: task, questions: questions, expectedInputs: expectedInputs,
+		childEntered: childEntered, releaseChild: releaseChild,
+	}.Call)}
 	ctx := delivery.WithRequestMeta(t.Context(), protocol.RequestMeta{
 		ProtocolVersion: protocol.Version,
 		ClientCapabilities: &protocol.ClientCapabilities{
@@ -194,5 +141,92 @@ func TestQueuedUserInputsReachTheRootModelAfterRestart(t *testing.T) {
 	}
 	if !slices.Equal(applied, expectedInputs) {
 		t.Fatalf("durable conversation retained queued inputs %v", applied)
+	}
+}
+
+// queuedInputsScript is the root and child model of the queued inputs scenario:
+// the root delegates, the child asks its questions one at a time and must never
+// see root inputs, and the root then needs every queued input in order.
+type queuedInputsScript struct {
+	task           string
+	questions      int
+	expectedInputs []string
+	childEntered   chan<- struct{}
+	releaseChild   <-chan struct{}
+}
+
+type queuedTranscript struct {
+	child, delegateFinished bool
+	answered                int
+	received                []string
+}
+
+func (s queuedInputsScript) read(request *chat.Request) queuedTranscript {
+	var seen queuedTranscript
+	for _, message := range request.Messages {
+		if message.Role == chat.RoleUser {
+			seen.child = seen.child || strings.Contains(message.Text(), s.task)
+			if slices.Contains(s.expectedInputs, message.Text()) {
+				seen.received = append(seen.received, message.Text())
+			}
+		}
+		for _, part := range message.Parts {
+			if part.ToolResult == nil {
+				continue
+			}
+			switch part.ToolResult.Name {
+			case "ask_user":
+				seen.answered++
+			case "delegate_task":
+				seen.delegateFinished = true
+			}
+		}
+	}
+	return seen
+}
+
+func (s queuedInputsScript) Call(ctx context.Context, request *chat.Request) (*chat.Response, error) {
+	seen := s.read(request)
+	var call chat.ToolCall
+	switch {
+	case seen.child && len(seen.received) != 0:
+		return nil, fmt.Errorf("child model received root inputs %v", seen.received)
+	case seen.child && seen.answered == s.questions:
+		return completedTextResponse("All questions were answered."), nil
+	case seen.child:
+		if seen.answered == 0 {
+			if err := s.holdChild(ctx); err != nil {
+				return nil, err
+			}
+		}
+		call = chat.ToolCall{ID: fmt.Sprintf("question_%d", seen.answered), Name: "ask_user",
+			Arguments: fmt.Sprintf(`{"questions":[{"question":"Answer question %d"}]}`, seen.answered+1)}
+	case seen.delegateFinished:
+		if !slices.Equal(seen.received, s.expectedInputs) {
+			return nil, fmt.Errorf("root model received queued inputs %v", seen.received)
+		}
+		return completedTextResponse("The inputs arrived in order."), nil
+	default:
+		call = chat.ToolCall{ID: "delegate_questions", Name: "delegate_task",
+			Arguments: fmt.Sprintf(`{"summary":"Three questions","instructions":%q}`, s.task)}
+	}
+	message := chat.NewAssistantMessage(chat.NewToolCallPart(call))
+	return chat.NewResponse(&chat.Output{Message: &message, FinishReason: chat.FinishReasonToolCalls},
+		&chat.ResponseMetadata{Model: "claude-test", Usage: &chat.Usage{InputTokens: 2, OutputTokens: 1}})
+}
+
+// holdChild announces the child's first call and waits for the test to steer
+// the root before letting it ask.
+func (s queuedInputsScript) holdChild(ctx context.Context) error {
+	select {
+	case s.childEntered <- struct{}{}:
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+	select {
+	case <-s.releaseChild:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
 	}
 }

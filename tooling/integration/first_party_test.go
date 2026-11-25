@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	localruntime "github.com/Tangerg/flame/packages/local-runtime"
@@ -42,31 +44,18 @@ func TestFirstPartyInitializationAndRestartPreserveUserDecisions(t *testing.T) {
 		t.Fatalf("default catalog installed %d of %d supplied packages", len(initial.Data), len(sources))
 	}
 	ids := map[string]string{}
+	installed := map[string]protocol.PluginInstallation{}
 	backendCount := 0
-	var memory, diagnostics, usage, scheduling, reports protocol.PluginInstallation
 	for _, item := range initial.Data {
 		ids[item.Selected.Name] = item.ID
+		installed[item.Selected.Name] = item
 		backendCount += len(item.Selected.Servers)
-		if item.Selected.Name == "flame.schedules" {
-			scheduling = item
-		}
 		if item.Enabled != true || item.Presentation != protocol.PluginPresentationAdmitted {
 			t.Fatalf("default installation = %+v", item)
 		}
-
-		if item.Selected.Name == "flame.usagereports" {
-			reports = item
-		}
-		if item.Selected.Name == "flame.memory" {
-			memory = item
-		}
-		if item.Selected.Name == "flame.diagnostics" {
-			diagnostics = item
-		}
-		if item.Selected.Name == "flame.usage" {
-			usage = item
-		}
 	}
+	memory, diagnostics, usage := installed["flame.memory"], installed["flame.diagnostics"], installed["flame.usage"]
+	scheduling, reports := installed["flame.schedules"], installed["flame.usagereports"]
 	for _, item := range []protocol.PluginInstallation{memory, scheduling, reports} {
 		if len(item.Selected.TerminalViews) != 1 || len(item.Selected.Diagnostics) != 0 {
 			t.Fatalf("%s terminal views = %+v, diagnostics = %+v", item.Selected.Name, item.Selected.TerminalViews, item.Selected.Diagnostics)
@@ -80,29 +69,7 @@ func TestFirstPartyInitializationAndRestartPreserveUserDecisions(t *testing.T) {
 	if scheduling.ID == "" {
 		t.Fatal("default schedule backend is absent")
 	}
-	deadline := time.Now().Add(10 * time.Second)
-	for {
-		servers, err := current.ListMCPServers(t.Context(), protocol.CallOptions{})
-		if err != nil {
-			t.Fatal(err)
-		}
-		ready := 0
-		for _, server := range servers.Data {
-			if server.Status.Type == protocol.MCPServerFailed || server.Status.Type == protocol.MCPServerNeedsAuth {
-				t.Fatalf("default backend failed: %+v", server)
-			}
-			if server.Status.Type == protocol.MCPServerConnected {
-				ready++
-			}
-		}
-		if ready == backendCount {
-			break
-		}
-		if time.Now().After(deadline) {
-			t.Fatalf("default backends did not connect: %+v", servers)
-		}
-		time.Sleep(10 * time.Millisecond)
-	}
+	waitForDefaultBackends(t, current, backendCount)
 	checkUsageReportsList(t, current, reports)
 	contract, err := plugincontract.ParseCapability([]byte(SchedulesCapabilityJSON))
 	if err != nil {
@@ -112,7 +79,7 @@ func TestFirstPartyInitializationAndRestartPreserveUserDecisions(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	reply, err := current.CallPlugin(t.Context(), protocol.CallPluginRequest{InstallationID: scheduling.ID, Digest: scheduling.Selected.Digest, Contribution: "schedules-provider", Contract: string(contract.Identity().Bytes()), Method: SchedulesListV2Method, Input: string(input), Target: framecall.Target{Scope: "installation", Reference: scheduling.ID}}, protocol.PluginCallOptions{})
+	reply, err := current.CallPlugin(t.Context(), protocol.CallPluginRequest{InstallationID: scheduling.ID, Digest: scheduling.Selected.Digest, Contribution: "schedules-provider", Contract: string(contract.Identity().Bytes()), Method: SchedulesListV2Method, Input: string(input), Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: scheduling.ID}}, protocol.PluginCallOptions{})
 	if err != nil || reply.Failure != nil {
 		t.Fatalf("default schedule backend: %+v, %v", reply, err)
 	}
@@ -212,7 +179,7 @@ func checkUsageReportsList(t *testing.T, current *flameruntime.Runtime, reports 
 	reply, err := current.CallPlugin(t.Context(), protocol.CallPluginRequest{
 		InstallationID: reports.ID, Digest: reports.Selected.Digest, Contribution: view.Contribution,
 		Contract: contract.Identity().String(), Method: view.List.Method, Input: "{}",
-		Target: framecall.Target{Scope: "installation", Reference: reports.ID},
+		Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: reports.ID},
 	}, protocol.PluginCallOptions{})
 	if err != nil || reply.Failure != nil {
 		t.Fatalf("terminal archive list: %+v, %v", reply, err)
@@ -220,5 +187,34 @@ func checkUsageReportsList(t *testing.T, current *flameruntime.Runtime, reports 
 	var output UsageReportsListV2Output
 	if err := json.Unmarshal([]byte(reply.Output), &output); err != nil || output.Reports == nil || len(output.Reports) != 0 {
 		t.Fatalf("fresh report archive: %+v, %v", output, err)
+	}
+}
+
+// waitForDefaultBackends polls until every default backend connects, failing at
+// once if any of them fails or needs authorization.
+func waitForDefaultBackends(t *testing.T, current *flameruntime.Runtime, backendCount int) {
+	t.Helper()
+	deadline := time.Now().Add(10 * time.Second)
+	for {
+		servers, err := current.ListMCPServers(t.Context(), protocol.CallOptions{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		ready := 0
+		for _, server := range servers.Data {
+			if server.Status.Type == protocol.MCPServerFailed || server.Status.Type == protocol.MCPServerNeedsAuth {
+				t.Fatalf("default backend failed: %+v", server)
+			}
+			if server.Status.Type == protocol.MCPServerConnected {
+				ready++
+			}
+		}
+		if ready == backendCount {
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("default backends did not connect: %+v", servers)
+		}
+		time.Sleep(10 * time.Millisecond)
 	}
 }

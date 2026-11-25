@@ -27,8 +27,23 @@ import (
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
+// fixtureMode selects the TypeScript fixture backend's behavior; the backend
+// rejects any mode outside this vocabulary.
+type fixtureMode string
+
+const (
+	echoMode          fixtureMode = "echo"
+	emptyRefusalMode  fixtureMode = "empty-refusal"
+	invalidOutputMode fixtureMode = "invalid"
+	hostMode          fixtureMode = "host"
+	mutatedFinalMode  fixtureMode = "mutated-final"
+	missingFinalMode  fixtureMode = "missing"
+	lateChunkMode     fixtureMode = "late"
+	waitMode          fixtureMode = "wait"
+)
+
 type typescriptInput struct {
-	Mode  string         `json:"mode"`
+	Mode  fixtureMode    `json:"mode"`
 	Value jsontext.Value `json:"value"`
 }
 type typescriptOutput struct {
@@ -75,39 +90,31 @@ func TestTypeScriptBackendImplementsPublishedGoContract(t *testing.T) {
 	if output, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("build backend: %s: %v", output, err)
 	}
-	read, err := pluginmcp.NewMethod[typescriptInput, typescriptOutput](frame.MethodConfig{Name: "fixture.read", Kind: frame.Query, Target: "installation", Description: "Read exact original input."})
+	read, err := pluginmcp.NewMethod[typescriptInput, typescriptOutput](frame.MethodConfig{Name: "fixture.read", Kind: frame.Query, Target: extension.ScopeInstallation, Description: "Read exact original input."})
 	if err != nil {
 		t.Fatal(err)
 	}
-	write, err := pluginmcp.NewMethod[typescriptInput, typescriptOutput](frame.MethodConfig{Name: "fixture.write", Kind: frame.Command, Target: "installation", Description: "Commit one original outcome."})
+	write, err := pluginmcp.NewMethod[typescriptInput, typescriptOutput](frame.MethodConfig{Name: "fixture.write", Kind: frame.Command, Target: extension.ScopeInstallation, Description: "Commit one original outcome."})
 	if err != nil {
 		t.Fatal(err)
 	}
-	queryStream, err := pluginmcp.NewStreamingMethod[typescriptInput, jsontext.Value, typescriptOutput](frame.MethodConfig{Name: "fixture.query-stream", Kind: frame.Query, Target: "installation", Description: "Read exact chunks and final."})
+	queryStream, err := pluginmcp.NewStreamingMethod[typescriptInput, jsontext.Value, typescriptOutput](frame.MethodConfig{Name: "fixture.query-stream", Kind: frame.Query, Target: extension.ScopeInstallation, Description: "Read exact chunks and final."})
 	if err != nil {
 		t.Fatal(err)
 	}
-	commandStream, err := pluginmcp.NewStreamingMethod[typescriptInput, jsontext.Value, typescriptOutput](frame.MethodConfig{Name: "fixture.command-stream", Kind: frame.Command, Target: "installation", Description: "Commit streamed final."})
+	commandStream, err := pluginmcp.NewStreamingMethod[typescriptInput, jsontext.Value, typescriptOutput](frame.MethodConfig{Name: "fixture.command-stream", Kind: frame.Command, Target: extension.ScopeInstallation, Description: "Commit streamed final."})
 	if err != nil {
 		t.Fatal(err)
 	}
-	contract, err := plugincontract.NewCapability(plugincontract.CapabilityConfig{Reference: "flame.test.typescript", Composition: plugincontract.Collection, Scope: "installation"}, read.Descriptor(), write.Descriptor(), queryStream.Descriptor(), commandStream.Descriptor())
+	contract, err := plugincontract.NewCapability(plugincontract.CapabilityConfig{Reference: "flame.test.typescript", Composition: plugincontract.Collection, Scope: extension.ScopeInstallation}, read.Descriptor(), write.Descriptor(), queryStream.Descriptor(), commandStream.Descriptor())
 	if err != nil {
 		t.Fatal(err)
 	}
-	hostMethod, err := pluginmcp.NewMethod[typescriptHostInput, typescriptHostInput](frame.MethodConfig{Name: "fixture.host", Kind: frame.Query, Target: "installation", Description: "Read through the original calling owner."})
+	hostMethod, err := pluginmcp.NewMethod[typescriptHostInput, typescriptHostInput](frame.MethodConfig{Name: "fixture.host", Kind: frame.Query, Target: extension.ScopeInstallation, Description: "Read through the original calling owner."})
 	if err != nil {
 		t.Fatal(err)
 	}
-	for name, value := range map[string]any{"contract.json": contract.Descriptor(), "host.json": hostMethod.Descriptor()} {
-		data, err := json.Marshal(value)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if err := os.WriteFile(filepath.Join(packageDirectory, name), data, 0600); err != nil {
-			t.Fatal(err)
-		}
-	}
+	writeFixtureDescriptors(t, packageDirectory, map[string]any{"contract.json": contract.Descriptor(), "host.json": hostMethod.Descriptor()})
 	command := exec.Command(node.Command(), node.Arguments(filepath.Join(packageDirectory, "start.mjs"))...)
 	command.Env = []string{"PATH="}
 	var diagnostics typescriptDiagnostics
@@ -139,7 +146,7 @@ func TestTypeScriptBackendImplementsPublishedGoContract(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	input := typescriptInput{Mode: "echo", Value: jsontext.Value(`{"wide":9007199254740993,"decimal":1.0,"exponent":1e+25}`)}
+	input := typescriptInput{Mode: echoMode, Value: jsontext.Value(`{"wide":9007199254740993,"decimal":1.0,"exponent":1e+25}`)}
 	exact, err := framevalue.ParseJSON(input.Value)
 	if err != nil {
 		t.Fatal(err)
@@ -153,7 +160,7 @@ func TestTypeScriptBackendImplementsPublishedGoContract(t *testing.T) {
 	if err != nil || output.Source != original.String() {
 		t.Fatalf("original evidence changed: %s, %v", output.Source, err)
 	}
-	_, err = readBinding.Call(t.Context(), typescriptInput{Mode: "empty-refusal", Value: input.Value})
+	_, err = readBinding.Call(t.Context(), typescriptInput{Mode: emptyRefusalMode, Value: input.Value})
 	if refusal, ok := errors.AsType[*framecall.Refusal](err); !ok || refusal.Code != "fixture_refused" || refusal.Message != "" {
 		t.Fatalf("empty-message business refusal lost its category: %v", err)
 	}
@@ -161,7 +168,7 @@ func TestTypeScriptBackendImplementsPublishedGoContract(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	input.Mode = "invalid"
+	input.Mode = invalidOutputMode
 	if _, err := writeBinding.CallCommand(t.Context(), "original", input); err == nil {
 		t.Fatal("committed invalid output became success")
 	}
@@ -180,7 +187,7 @@ func TestTypeScriptBackendImplementsPublishedGoContract(t *testing.T) {
 	}
 	invocation := framecall.Invocation{
 		ID: "调用-😀", Origin: extension.Model, Parent: "父调用",
-		Target: framecall.Target{Scope: "installation", Reference: "original-target/café/工作区/😀"},
+		Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: "original-target/café/工作区/😀"},
 	}
 	ctx, err := pluginmcp.WithInvocation(t.Context(), invocation)
 	if err != nil {
@@ -208,12 +215,12 @@ func TestTypeScriptBackendImplementsPublishedGoContract(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	input.Mode = "host"
+	input.Mode = hostMode
 	output, err = readBinding.CallWithMetadata(ctx, input, metadata)
 	if err != nil || string(output.Value) != string(input.Value) {
 		t.Fatalf("host callback: %s, %v", output.Value, err)
 	}
-	_, err = readBinding.CallWithMetadata(ctx, typescriptInput{Mode: "host", Value: jsontext.Value(`"empty-refusal"`)}, metadata)
+	_, err = readBinding.CallWithMetadata(ctx, typescriptInput{Mode: hostMode, Value: jsontext.Value(`"empty-refusal"`)}, metadata)
 	if refusal, ok := errors.AsType[*framecall.Refusal](err); !ok || refusal.Code != "fixture_refused" || refusal.Message != "" {
 		t.Fatalf("host refusal changed across Go and TypeScript: %v", err)
 	}
@@ -245,7 +252,7 @@ func TestTypeScriptBackendImplementsPublishedGoContract(t *testing.T) {
 		t.Fatal(err)
 	}
 	limits := pluginmcp.CallbackLimits{MaxRequestBytes: 1 << 20, MaxResponseBytes: 1 << 20}
-	for _, mode := range []string{"echo", "mutated-final", "missing", "late"} {
+	for _, mode := range []fixtureMode{echoMode, mutatedFinalMode, missingFinalMode, lateChunkMode} {
 		input.Mode = mode
 		original, err := framevalue.EncodeJSON(input)
 		if err != nil {
@@ -270,7 +277,7 @@ func TestTypeScriptBackendImplementsPublishedGoContract(t *testing.T) {
 				}
 			}
 		}
-		complete := mode == "echo" || mode == "mutated-final"
+		complete := mode == echoMode || mode == mutatedFinalMode
 		if chunks != 1 || complete && (finals != 1 || failures != 0) || !complete && (finals != 0 || failures != 1) {
 			t.Fatalf("stream %s: chunks=%d finals=%d failures=%d", mode, chunks, finals, failures)
 		}
@@ -279,7 +286,7 @@ func TestTypeScriptBackendImplementsPublishedGoContract(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	input.Mode = "late"
+	input.Mode = lateChunkMode
 	for _, err := range commandStream.StreamWithMetadata(t.Context(), commandBinding, host, limits, "stream-original", input, sdk.ParamsBase{}) {
 		if err == nil {
 			continue
@@ -293,7 +300,7 @@ func TestTypeScriptBackendImplementsPublishedGoContract(t *testing.T) {
 	if err != nil || !found || !strings.Contains(settled.String(), "9007199254740993") {
 		t.Fatalf("interrupted command stream lost its original final receipt: %s, %v, %v", settled, found, err)
 	}
-	input.Mode = "wait"
+	input.Mode = waitMode
 	for frame, err := range queryStream.StreamWithMetadata(t.Context(), queryBinding, host, limits, "", input, sdk.ParamsBase{}) {
 		if err != nil {
 			t.Fatal(err)
@@ -311,5 +318,20 @@ func TestTypeScriptBackendImplementsPublishedGoContract(t *testing.T) {
 			t.Fatal("withdrawn stream did not cancel and close its source")
 		}
 		time.Sleep(time.Millisecond)
+	}
+}
+
+// writeFixtureDescriptors gives the TypeScript fixture the Go-published
+// descriptors it must implement.
+func writeFixtureDescriptors(t *testing.T, directory string, descriptors map[string]any) {
+	t.Helper()
+	for name, value := range descriptors {
+		data, err := json.Marshal(value)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(directory, name), data, 0600); err != nil {
+			t.Fatal(err)
+		}
 	}
 }

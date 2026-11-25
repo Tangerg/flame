@@ -77,7 +77,7 @@ func TestTypedToolAndContextEntriesRetrieveThroughTheSameHostEmbedding(t *testin
 	if err != nil {
 		t.Fatal(err)
 	}
-	owner, err := pluginmcp.WithInvocation(t.Context(), framecall.Invocation{ID: "knowledge-entry", Origin: extension.Human, Target: framecall.Target{Scope: "installation", Reference: "knowledge"}})
+	owner, err := pluginmcp.WithInvocation(t.Context(), framecall.Invocation{ID: "knowledge-entry", Origin: extension.Human, Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: "knowledge"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -125,7 +125,7 @@ func TestTypedToolAndContextEntriesRetrieveThroughTheSameHostEmbedding(t *testin
 		t.Fatal(err)
 	}
 	toolMeta := maps.Clone(metadata.Meta)
-	if err := toolMeta.Set(pluginmcp.InvocationMetadataKey, framecall.Invocation{ID: "model-search", Origin: extension.Model, Target: framecall.Target{Scope: "installation", Reference: "knowledge"}}); err != nil {
+	if err := toolMeta.Set(pluginmcp.InvocationMetadataKey, framecall.Invocation{ID: "model-search", Origin: extension.Model, Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: "knowledge"}}); err != nil {
 		t.Fatal(err)
 	}
 	if err := toolMeta.Set(pluginmcp.ToolContextMetadataKey, pluginsdk.ToolContext{CWD: t.TempDir()}); err != nil {
@@ -153,7 +153,7 @@ func TestTypedToolAndContextEntriesRetrieveThroughTheSameHostEmbedding(t *testin
 		t.Fatalf("typed original read: %+v %v", read, err)
 	}
 	var readMeta sdk.Meta
-	if err := readMeta.Set(pluginmcp.InvocationMetadataKey, framecall.Invocation{ID: "model-read", Origin: extension.Model, Target: framecall.Target{Scope: "installation", Reference: "knowledge"}}); err != nil {
+	if err := readMeta.Set(pluginmcp.InvocationMetadataKey, framecall.Invocation{ID: "model-read", Origin: extension.Model, Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: "knowledge"}}); err != nil {
 		t.Fatal(err)
 	}
 	if err := readMeta.Set(pluginmcp.ToolContextMetadataKey, pluginsdk.ToolContext{CWD: t.TempDir()}); err != nil {

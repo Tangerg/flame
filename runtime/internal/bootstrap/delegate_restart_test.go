@@ -55,50 +55,9 @@ func testProtocolSiblingRestart(t *testing.T, delegateCalls []chat.ToolCall, can
 		expectedResults[index] = call.ID
 		parts[index] = chat.NewToolCallPart(call)
 	}
-	model := delegateRestartModel{chat.ModelFunc(func(ctx context.Context, request *chat.Request) (*chat.Response, error) {
-		calls.Add(1)
-		var hasResult, waitingChild, completedChild bool
-		var resultIDs []string
-		for _, message := range request.Messages {
-			hasResult = hasResult || message.Role == chat.RoleTool
-			for _, part := range message.Parts {
-				if part.ToolResult != nil {
-					resultIDs = append(resultIDs, part.ToolResult.ID)
-				}
-			}
-			if message.Role == chat.RoleUser {
-				waitingChild = waitingChild || strings.Contains(message.Text(), "waiting sibling A")
-				completedChild = completedChild || strings.Contains(message.Text(), "completed sibling B")
-			}
-		}
-		message := chat.NewAssistantMessage(chat.NewTextPart("continued"))
-		finish := chat.FinishReasonStop
-		switch {
-		case hasResult:
-			if !waitingChild && !completedChild &&
-				!slices.Equal(resultIDs, expectedResults) {
-				return nil, fmt.Errorf("continued parent received tool results %v in place of both ordered siblings", resultIDs)
-			}
-		case waitingChild:
-			select {
-			case <-releaseA:
-			case <-ctx.Done():
-				return nil, ctx.Err()
-			}
-			message = chat.NewAssistantMessage(chat.NewToolCallPart(chat.ToolCall{
-				ID: "ask_a", Name: "ask_user", Arguments: `{"questions":[{"question":"Continue sibling A?"}]}`,
-			}))
-			finish = chat.FinishReasonToolCalls
-		case completedChild:
-			message = chat.NewAssistantMessage(chat.NewTextPart("sibling B completed"))
-		default:
-			message = chat.NewAssistantMessage(parts...)
-			finish = chat.FinishReasonToolCalls
-		}
-		return chat.NewResponse(&chat.Output{Message: &message, FinishReason: finish}, &chat.ResponseMetadata{
-			Model: "claude-test", Usage: &chat.Usage{InputTokens: 2, OutputTokens: 1},
-		})
-	})}
+	model := delegateRestartModel{chat.ModelFunc(siblingRestartScript{
+		delegations: parts, expectedResults: expectedResults, releaseA: releaseA, calls: &calls,
+	}.Call)}
 	ctx := delivery.WithRequestMeta(t.Context(), protocol.RequestMeta{
 		ProtocolVersion: protocol.Version,
 		ClientCapabilities: &protocol.ClientCapabilities{
@@ -125,17 +84,7 @@ func testProtocolSiblingRestart(t *testing.T, delegateCalls []chat.ToolCall, can
 		t.Fatal(err)
 	}
 	bCompleted := make(chan string, 1)
-	initialDone := collectRunEvents(func(yield func(protocol.RunEvent, error) bool) {
-		for event, err := range events {
-			if err == nil && event.RunID != started.RunID && event.Event.Type == protocol.StreamSegmentFinished &&
-				event.Event.Run.Outcome != nil && event.Event.Run.Outcome.Type == protocol.OutcomeCompleted {
-				bCompleted <- event.RunID
-			}
-			if !yield(event, err) {
-				return
-			}
-		}
-	})
+	initialDone := collectRunEvents(reportCompletedChildren(events, started.RunID, bCompleted))
 	var bRunID string
 	select {
 	case bRunID = <-bCompleted:
@@ -253,6 +202,93 @@ func waitForProtocolRunTerminal(t *testing.T, ctx context.Context, api *delivery
 			t.Fatal("continued Run did not reach its terminal state")
 		}
 	}
+}
+
+// siblingRestartScript is the parent and child model of the sibling restart
+// scenario: the parent delegates both siblings, A asks a question once the test
+// releases it, B completes at once, and the parent continues only with both
+// ordered tool results.
+type siblingRestartScript struct {
+	delegations     []chat.Part
+	expectedResults []string
+	releaseA        <-chan struct{}
+	calls           *atomic.Int32
+}
+
+type siblingTranscript struct {
+	hasResult, waitingChild, completedChild bool
+	resultIDs                               []string
+}
+
+func readSiblingTranscript(request *chat.Request) siblingTranscript {
+	var seen siblingTranscript
+	for _, message := range request.Messages {
+		seen.hasResult = seen.hasResult || message.Role == chat.RoleTool
+		for _, part := range message.Parts {
+			if part.ToolResult != nil {
+				seen.resultIDs = append(seen.resultIDs, part.ToolResult.ID)
+			}
+		}
+		if message.Role == chat.RoleUser {
+			seen.waitingChild = seen.waitingChild || strings.Contains(message.Text(), "waiting sibling A")
+			seen.completedChild = seen.completedChild || strings.Contains(message.Text(), "completed sibling B")
+		}
+	}
+	return seen
+}
+
+func (s siblingRestartScript) Call(ctx context.Context, request *chat.Request) (*chat.Response, error) {
+	s.calls.Add(1)
+	message, finish, err := s.reply(ctx, readSiblingTranscript(request))
+	if err != nil {
+		return nil, err
+	}
+	return chat.NewResponse(&chat.Output{Message: &message, FinishReason: finish}, &chat.ResponseMetadata{
+		Model: "claude-test", Usage: &chat.Usage{InputTokens: 2, OutputTokens: 1},
+	})
+}
+
+func (s siblingRestartScript) reply(ctx context.Context, seen siblingTranscript) (chat.Message, chat.FinishReason, error) {
+	switch {
+	case seen.hasResult:
+		if !seen.waitingChild && !seen.completedChild && !slices.Equal(seen.resultIDs, s.expectedResults) {
+			return chat.Message{}, "", fmt.Errorf("continued parent received tool results %v in place of both ordered siblings", seen.resultIDs)
+		}
+		return chat.NewAssistantMessage(chat.NewTextPart("continued")), chat.FinishReasonStop, nil
+	case seen.waitingChild:
+		select {
+		case <-s.releaseA:
+		case <-ctx.Done():
+			return chat.Message{}, "", ctx.Err()
+		}
+		return chat.NewAssistantMessage(chat.NewToolCallPart(chat.ToolCall{
+			ID: "ask_a", Name: "ask_user", Arguments: `{"questions":[{"question":"Continue sibling A?"}]}`,
+		})), chat.FinishReasonToolCalls, nil
+	case seen.completedChild:
+		return chat.NewAssistantMessage(chat.NewTextPart("sibling B completed")), chat.FinishReasonStop, nil
+	default:
+		return chat.NewAssistantMessage(s.delegations...), chat.FinishReasonToolCalls, nil
+	}
+}
+
+// reportCompletedChildren forwards a run stream and reports each child run of
+// root whose segment finishes completed.
+func reportCompletedChildren(events iter.Seq2[protocol.RunEvent, error], root string, completed chan<- string) iter.Seq2[protocol.RunEvent, error] {
+	return func(yield func(protocol.RunEvent, error) bool) {
+		for event, err := range events {
+			if err == nil && completedChild(event, root) {
+				completed <- event.RunID
+			}
+			if !yield(event, err) {
+				return
+			}
+		}
+	}
+}
+
+func completedChild(event protocol.RunEvent, root string) bool {
+	return event.RunID != root && event.Event.Type == protocol.StreamSegmentFinished &&
+		event.Event.Run.Outcome != nil && event.Event.Run.Outcome.Type == protocol.OutcomeCompleted
 }
 
 type delegateRestartModel struct{ chat.Model }

@@ -27,82 +27,102 @@ func writePackage(t *testing.T, files map[string]string) string {
 	directory := t.TempDir()
 	for name, body := range files {
 		if name == "plugin.json" {
-			var object map[string]jsontext.Value
-			if json.Unmarshal([]byte(body), &object) == nil && object != nil {
-				if _, exists := object["version"]; !exists {
-					object["version"] = jsontext.Value(`"1.0.0"`)
-					encoded, _ := json.Marshal(object)
-					body = string(encoded)
-				}
-			}
+			body = versionedManifest(body)
 		}
-		destination := filepath.Join(directory, name)
-		if err := os.MkdirAll(filepath.Dir(destination), 0700); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.WriteFile(destination, []byte(body), 0600); err != nil {
-			t.Fatal(err)
+		writeFixtureFile(t, directory, name, []byte(body))
+	}
+	markServerCommandsExecutable(t, directory, files)
+	for name, body := range files {
+		if strings.HasSuffix(name, "declaration.json") {
+			writeComponentGraphs(t, directory, files, body)
 		}
 	}
+	return directory
+}
+
+// versionedManifest gives a fixture manifest the version every release requires
+// unless the fixture states its own.
+func versionedManifest(body string) string {
+	var object map[string]jsontext.Value
+	if json.Unmarshal([]byte(body), &object) != nil || object == nil {
+		return body
+	}
+	if _, exists := object["version"]; exists {
+		return body
+	}
+	object["version"] = jsontext.Value(`"1.0.0"`)
+	encoded, _ := json.Marshal(object)
+	return string(encoded)
+}
+
+func writeFixtureFile(t *testing.T, directory, name string, body []byte) {
+	t.Helper()
+	destination := filepath.Join(directory, name)
+	if err := os.MkdirAll(filepath.Dir(destination), 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(destination, body, 0600); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func markServerCommandsExecutable(t *testing.T, directory string, files map[string]string) {
+	t.Helper()
 	var mcp struct {
 		Servers map[string]struct {
 			Command string `json:"command"`
 		} `json:"mcpServers"`
 	}
-	if json.Unmarshal([]byte(files["mcp.json"]), &mcp) == nil {
-		for _, server := range mcp.Servers {
-			command, ok := strings.CutPrefix(server.Command, "./")
-			if !ok || !plugin.ValidResourcePath(command) {
-				continue
-			}
-			if _, exists := files[command]; !exists {
-				continue
-			}
-			if err := os.Chmod(filepath.Join(directory, command), 0700); err != nil {
-				t.Fatal(err)
-			}
+	if json.Unmarshal([]byte(files["mcp.json"]), &mcp) != nil {
+		return
+	}
+	for _, server := range mcp.Servers {
+		command, ok := strings.CutPrefix(server.Command, "./")
+		if !ok || !plugin.ValidResourcePath(command) {
+			continue
+		}
+		if _, exists := files[command]; !exists {
+			continue
+		}
+		if err := os.Chmod(filepath.Join(directory, command), 0700); err != nil {
+			t.Fatal(err)
 		}
 	}
+}
+
+// writeComponentGraphs synthesizes the single-module graph each declared
+// component entry needs, unless the fixture supplies that graph itself.
+func writeComponentGraphs(t *testing.T, directory string, files map[string]string, declarationBody string) {
+	t.Helper()
 	var declaration struct {
 		Components []struct {
 			Entry  string `json:"entry"`
 			Export string `json:"export"`
 		} `json:"components"`
 	}
-	for name, body := range files {
-		if !strings.HasSuffix(name, "declaration.json") {
-			continue
-		}
-		if json.Unmarshal([]byte(body), &declaration) != nil {
-			continue
-		}
-		graphs := map[string]*moduleGraph{}
-		for _, component := range declaration.Components {
-			if !plugin.ValidResourcePath(component.Entry) || component.Export == "" {
-				continue
-			}
-			graphPath := path.Join(path.Dir(component.Entry), moduleGraphFilename)
-			graph := graphs[graphPath]
-			if graph == nil {
-				graph = &moduleGraph{SchemaVersion: moduleGraphSchemaVersion, Entry: path.Base(component.Entry), Modules: []moduleEntry{{Path: path.Base(component.Entry), Imports: []string{}, DynamicImports: []string{}, Exports: []string{}}}, SharedSpecifiers: []string{}}
-				graphs[graphPath] = graph
-			}
-			graph.Modules[0].Exports = append(graph.Modules[0].Exports, component.Export)
-		}
-		for name, graph := range graphs {
-			if _, exists := files[name]; exists {
-				continue
-			}
-			encoded, _ := json.Marshal(graph)
-			if err := os.MkdirAll(filepath.Dir(filepath.Join(directory, name)), 0700); err != nil {
-				t.Fatal(err)
-			}
-			if err := os.WriteFile(filepath.Join(directory, name), encoded, 0600); err != nil {
-				t.Fatal(err)
-			}
-		}
+	if json.Unmarshal([]byte(declarationBody), &declaration) != nil {
+		return
 	}
-	return directory
+	graphs := map[string]*moduleGraph{}
+	for _, component := range declaration.Components {
+		if !plugin.ValidResourcePath(component.Entry) || component.Export == "" {
+			continue
+		}
+		graphPath := path.Join(path.Dir(component.Entry), moduleGraphFilename)
+		graph := graphs[graphPath]
+		if graph == nil {
+			graph = &moduleGraph{SchemaVersion: moduleGraphSchemaVersion, Entry: path.Base(component.Entry), Modules: []moduleEntry{{Path: path.Base(component.Entry), Imports: []string{}, DynamicImports: []string{}, Exports: []string{}}}, SharedSpecifiers: []string{}}
+			graphs[graphPath] = graph
+		}
+		graph.Modules[0].Exports = append(graph.Modules[0].Exports, component.Export)
+	}
+	for name, graph := range graphs {
+		if _, exists := files[name]; exists {
+			continue
+		}
+		encoded, _ := json.Marshal(graph)
+		writeFixtureFile(t, directory, name, encoded)
+	}
 }
 
 func testReleases(t *testing.T) *Releases { releases, _, _ := testReleaseStore(t); return releases }

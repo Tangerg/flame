@@ -11,6 +11,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
+
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	memorycontract "github.com/Tangerg/flame/packages/go-sdk/plugin/memory"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
@@ -126,36 +128,7 @@ func verifyStandalonePlugin(t *testing.T, author standaloneAuthor) {
 	if _, err := host.SetPluginEnablement(t.Context(), protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, protocol.CommandOptions{}); err != nil {
 		t.Fatal(err)
 	}
-	waitForAuthorBackend := func() {
-		t.Helper()
-		deadline := time.Now().Add(10 * time.Second)
-		for {
-			servers, err := host.ListMCPServers(t.Context(), protocol.CallOptions{})
-			if err != nil {
-				t.Fatal(err)
-			}
-			for _, server := range servers.Data {
-				if server.ID.Origin.InstallationID == installed.ID && server.Status.Type == protocol.MCPServerConnected {
-					return
-				}
-			}
-			if time.Now().After(deadline) {
-				for _, server := range servers.Data {
-					if server.ID.Origin.InstallationID != installed.ID {
-						continue
-					}
-					status, err := json.Marshal(server.Status)
-					if err != nil {
-						t.Fatalf("encode author connection status: %v", err)
-					}
-					t.Logf("author connection status: %s", status)
-				}
-				t.Fatalf("author backend did not connect for installation %s", installed.ID)
-			}
-			time.Sleep(10 * time.Millisecond)
-		}
-	}
-	waitForAuthorBackend()
+	waitForAuthorBackend(t, host, installed.ID)
 	contract := ""
 	for _, contribution := range installed.Selected.Contributions {
 		if contribution.ID == author.contribution {
@@ -174,7 +147,7 @@ func verifyStandalonePlugin(t *testing.T, author standaloneAuthor) {
 			t.Fatal("standalone author changed the contract its host publishes")
 		}
 	}
-	request := protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: author.contribution, Contract: contract, Method: author.method, Input: author.input, Target: framecall.Target{Scope: "installation", Reference: installed.ID}}
+	request := protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: author.contribution, Contract: contract, Method: author.method, Input: author.input, Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: installed.ID}}
 	if author.memoryProvider {
 		if len(installed.Selected.Components) == 0 {
 			t.Fatal("author release lost its component")
@@ -196,7 +169,7 @@ func verifyStandalonePlugin(t *testing.T, author standaloneAuthor) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	waitForAuthorBackend()
+	waitForAuthorBackend(t, host, installed.ID)
 	recovered, err := host.CallPlugin(t.Context(), request, options)
 	if err != nil || recovered.Failure != nil || recovered.Output != original.Output {
 		t.Fatalf("original command changed after restart: %+v, %v", recovered, err)
@@ -235,5 +208,37 @@ func verifyStandalonePlugin(t *testing.T, author standaloneAuthor) {
 		if added.Item == nil || string(page.Rows[0].Id) != string(added.Item.Id) {
 			t.Fatal("original command created another item")
 		}
+	}
+}
+
+// waitForAuthorBackend polls until the installation's MCP backend connects, and
+// logs every server status of the installation if it never does.
+func waitForAuthorBackend(t *testing.T, host *flameruntime.Runtime, installationID string) {
+	t.Helper()
+	deadline := time.Now().Add(10 * time.Second)
+	for {
+		servers, err := host.ListMCPServers(t.Context(), protocol.CallOptions{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, server := range servers.Data {
+			if server.ID.Origin.InstallationID == installationID && server.Status.Type == protocol.MCPServerConnected {
+				return
+			}
+		}
+		if time.Now().After(deadline) {
+			for _, server := range servers.Data {
+				if server.ID.Origin.InstallationID != installationID {
+					continue
+				}
+				status, err := json.Marshal(server.Status)
+				if err != nil {
+					t.Fatalf("encode author connection status: %v", err)
+				}
+				t.Logf("author connection status: %s", status)
+			}
+			t.Fatalf("author backend did not connect for installation %s", installationID)
+		}
+		time.Sleep(10 * time.Millisecond)
 	}
 }
