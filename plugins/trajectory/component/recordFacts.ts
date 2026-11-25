@@ -117,29 +117,37 @@ function searchable(row: TrajectoryEntry): string {
   return stringifyJSON({ ...recorded, item: { ...item, content } });
 }
 
+// The ordinary end of a record; rows name only the states that differ from it.
+const ORDINARY_END = new Set(["completed", "finished"]);
+
 export function readable(
   row: TrajectoryEntry,
   t: Translate,
-): { state: string; approval?: string; approvalInline?: string } {
-  const state = t(
-    `state.${
-      row.type === "run"
-        ? (row.run.outcome?.type ?? row.run.status)
-        : row.type === "model"
-          ? row.model.state
-          : row.type === "endpoint"
-            ? row.endpoint.state
-            : row.item.status
-    }`,
-  );
+): {
+  state: string;
+  ordinary: boolean;
+  approval?: string;
+  approvalInline?: string;
+} {
+  const key =
+    row.type === "run"
+      ? (row.run.outcome?.type ?? row.run.status)
+      : row.type === "model"
+        ? row.model.state
+        : row.type === "endpoint"
+          ? row.endpoint.state
+          : row.item.status;
+  const state = t(`state.${key}`);
+  const ordinary = ORDINARY_END.has(key);
   const decision =
     row.type === "item" && row.item.type === "toolCall"
       ? row.item.approvalDecision
       : undefined;
-  if (!decision) return { state };
+  if (!decision) return { state, ordinary };
   const approval = t(`approval.${decision}`);
   return {
     state,
+    ordinary,
     approval,
     approvalInline: t("approval.inline", { decision: approval }),
   };
