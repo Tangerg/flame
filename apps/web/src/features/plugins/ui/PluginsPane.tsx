@@ -17,7 +17,6 @@ import {
   color,
   face,
   leading,
-  motion,
   radius,
   space,
   surface,
@@ -27,12 +26,6 @@ import {
 import { SettingsGroup } from "@/ui/settings/SettingsGroup";
 import { settingStyles as ss } from "@/ui/settings/settingStyles";
 const pp = stylex.create({
-  plugin: {
-    backgroundColor: { default: null, ":hover": surface.hover },
-    transitionProperty: "background-color",
-    transitionDuration: motion.color,
-    transitionTimingFunction: motion.easeState,
-  },
   faulted: { backgroundColor: surface.negativeWash },
   name: { overflowWrap: "anywhere" },
   head: {
@@ -131,7 +124,7 @@ export function PluginsPane() {
                 key={name}
                 role="group"
                 aria-label={name}
-                {...stylex.props(pp.plugin, errCount > 0 && pp.faulted)}
+                {...stylex.props(errCount > 0 && pp.faulted)}
               >
                 <div {...stylex.props(pp.head)}>
                   <div {...stylex.props(vocab.min)}>
