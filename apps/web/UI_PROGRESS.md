@@ -30,7 +30,7 @@ The selected-item check had two inks: menus, the folder picker, the composer's m
 
 ## Settings grouped by what a pane configures (2026-11-26)
 
-Every installed settings pane was filed under Extensions, so Model providers (the agent's core configuration) sat between Brand identity and MCP servers, the Models group never appeared, and Integrations held only Plugins. Installed panes already declare a host-known `settingsIntent`; `settingsGroupForIntent` in `features/settings/public/intent.ts` is now the one rule placing `model-providers` under Models and `mcp-servers` under Integrations, with any other installed pane under Extensions. The plugin contribution mapping and the Lab fixture both use it. Native EN and ZH rails read General · Models (Model providers) · Agent · Integrations (Plugins, MCP servers) · Extensions (Brand identity, Lifecycle hooks). Web typecheck and Prettier pass; the component-sdk README states the placement.
+Every installed settings pane was filed under Extensions, so Model providers (the agent's core configuration) sat between Brand identity and MCP servers, the Models group never appeared, and Integrations held only Plugins. Installed panes already declare a host-known `settingsIntent`; `settingsGroupForIntent` in `features/settings/public/intent.ts` is now the one rule placing `model-providers` under Models and `mcp-servers` under Integrations, with any other installed pane under Extensions. The plugin contribution mapping and the Lab fixture both use it. Native EN and ZH rails read General · Models (Model providers) · Agent · Integrations (Plugins, MCP servers) · Extensions (Brand identity, Lifecycle hooks). Web typecheck and Prettier pass; the component-sdk README states the placement. Follow-up in the live product: the Notifications pane (declared intent `notifications`) also sat under Extensions; it now joins General after Keyboard shortcuts. Checked in the real embedded product on an isolated Runtime (`FLAME_HOME` under `/tmp`, `FLAME_LOCAL_RUNTIME_URL`): the ZH rail reads 通用 (外观, 连接, 键盘快捷键, 通知) · 模型 · 代理 · 集成 (插件, MCP 服务器) · 扩展 (生命周期钩子, 品牌标识).
 
 ## The folder name in the body face (2026-11-26)
 
@@ -57487,7 +57487,7 @@ and native command focus.” Choose fresh task evidence before selecting a repai
   and expansion is user-owned state in `ChatStream`. Opening it inline needs a
   declared presentation intent on the renderer contribution (a plugin
   contract change), not a client special case for one tool name.
-- **Full-pane entry ring.** Settings and full-width views focus their named region on entry. WebKit treats the programmatic focus after a direct load or keyboard entry as focus-visible and frames the whole pane in the accent ring. This matches the panel focus border of keyboard-first editors, and the Lab cannot exercise mouse entry (the shell fixture's Settings row does not route). Keep it unless a mouse-entry capture shows the frame.
+- **Full-pane entry ring (qualified 2026-11-26).** Settings and full-width views focus their named region on entry. WebKit treats the programmatic focus after a direct load or keyboard entry as focus-visible and frames the whole pane in the accent ring. In the real embedded product on an isolated Runtime, opening Settings with the mouse from the sidebar shows no frame, so the ring appears only for keyboard or direct entry, as intended. Closed.
 
 ## Working and maintenance practice
 

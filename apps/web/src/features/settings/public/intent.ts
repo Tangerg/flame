@@ -9,6 +9,7 @@ export function useSettingsPaneForIntent(intent: string): string {
 // An installed pane that declares a host-known intent sits with the settings it
 // configures; any other installed pane is an extension.
 const INTENT_GROUP: Readonly<Record<string, string>> = {
+  notifications: "general",
   "model-providers": "models",
   "mcp-servers": "integrations",
 };
