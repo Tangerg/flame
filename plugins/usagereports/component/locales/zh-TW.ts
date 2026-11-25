@@ -25,7 +25,7 @@ export const zhTW: Record<string, string> = {
   "pending.checking": "正在檢查原始命令…",
   "pending.retiring": "正在撤銷原始命令…",
   "archive.title": "封存",
-  "archive.count_other": "已儲存 {{count}} 份報告。容量為 {{capacity}}。",
+  "archive.count_other": "已儲存 {{count}} / {{capacity}}",
   "archive.reading": "正在讀取已儲存的報告…",
   "archive.error": "無法讀取封存：{{error}}。",
   "archive.error.retained": "無法讀取封存：{{error}}。仍顯示上次接受的封存。",

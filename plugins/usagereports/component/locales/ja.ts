@@ -25,8 +25,7 @@ export const ja: Record<string, string> = {
   "pending.checking": "元のコマンドを確認中…",
   "pending.retiring": "元のコマンドを取り下げ中…",
   "archive.title": "アーカイブ",
-  "archive.count_other":
-    "保存済みレポート {{count}} 件。容量は {{capacity}} 件です。",
+  "archive.count_other": "{{count}} / {{capacity}} 件保存済み",
   "archive.reading": "保存済みレポートを読み込み中…",
   "archive.error": "アーカイブを読み込めませんでした：{{error}}。",
   "archive.error.retained":
