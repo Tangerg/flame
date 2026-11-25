@@ -442,6 +442,13 @@ export const fr = {
   "comments.resolve": "Résoudre",
   "comments.reopen": "Rouvrir",
   "comments.locate": "Afficher",
+  "suggestions.title": "Suggestions de l’Agent · {{count}}",
+  "suggestions.revision": "Faite sur la révision {{id}}",
+  "suggestions.elsewhere":
+    "Votre brouillon non enregistré porte sur une autre révision. Enregistrez-le ou abandonnez-le pour adopter cette suggestion.",
+  "suggestions.actions": "Actions de la suggestion",
+  "suggestions.adopt": "Adopter dans le brouillon",
+  "suggestions.dismiss": "Ignorer",
   "handoff.handed":
     "Ajouté à votre message. Décrivez la modification, puis envoyez-le.",
   "handoff.stale":

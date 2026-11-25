@@ -438,6 +438,13 @@ export const en = {
   "comments.resolve": "Resolve",
   "comments.reopen": "Reopen",
   "comments.locate": "Show",
+  "suggestions.title": "Agent suggestions · {{count}}",
+  "suggestions.revision": "Made on revision {{id}}",
+  "suggestions.elsewhere":
+    "Your unsaved draft is on another revision. Save or discard it to adopt this suggestion.",
+  "suggestions.actions": "Suggestion actions",
+  "suggestions.adopt": "Adopt into draft",
+  "suggestions.dismiss": "Dismiss",
   "handoff.handed": "Added to your message. Describe the change, then send it.",
   "handoff.stale":
     "The conversation changed, so the reference was not added. Try again.",

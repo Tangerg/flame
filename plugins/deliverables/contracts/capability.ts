@@ -103,6 +103,19 @@ const thread = z.strictObject({
   messages: z.array(threadMessage).min(1).max(LIMITS.threadMessages),
 });
 const threadTarget = z.strictObject({ id, thread: id });
+// Edits proposed against the exact revision their author read. Adopting them
+// into a draft and saving is the person's decision; settling records it.
+const suggestion = z.strictObject({
+  id,
+  documentId: id,
+  revision: id,
+  note: z.string().max(FIELD_LIMITS.comment),
+  operationsJSON: json,
+  author: authorSchema,
+  createdAt: timestamp,
+  status: z.enum(["pending", "adopted", "dismissed"]),
+  settledAt: timestamp.optional(),
+});
 // A layout derived from one native revision on each read.
 const projection = z.strictObject({
   document: header,
@@ -206,6 +219,26 @@ export const schemas = Object.freeze({
     next: id.optional(),
   }),
   comment: anchor.extend({ id, body: comment }),
+  suggestion,
+  suggestionsInput: page.extend({
+    id,
+    status: z.enum(["pending", "adopted", "dismissed"]).optional(),
+  }),
+  suggestions: z.strictObject({
+    entries: z.array(suggestion).max(LIMITS.pageSize),
+    next: id.optional(),
+  }),
+  suggest: z.strictObject({
+    id,
+    revision: id,
+    note: z.string().max(FIELD_LIMITS.comment),
+    operationsJSON: json,
+  }),
+  settle: z.strictObject({
+    id,
+    suggestion: id,
+    outcome: z.enum(["adopted", "dismissed"]),
+  }),
   reply: threadTarget.extend({ body: comment, revision: id.optional() }),
   review: selected.extend({
     renderId: id,
@@ -242,6 +275,7 @@ export type Assessment = z.infer<typeof assessment>;
 export type DocumentRead = z.infer<typeof schemas.read>;
 export type ThreadValue = z.infer<typeof thread>;
 export type ThreadMessage = z.infer<typeof threadMessage>;
+export type SuggestionValue = z.infer<typeof suggestion>;
 
 function method(
   operation: keyof typeof METHODS,
@@ -461,6 +495,30 @@ export const definitions = [
     "Reopen a resolved comment thread.",
     threadTarget,
     thread,
+    "host",
+  ),
+  method(
+    "suggestions",
+    "query",
+    "List a deliverable's suggested edits newest first, with the revision each was made against and whether the person adopted or dismissed it.",
+    schemas.suggestionsInput,
+    schemas.suggestions,
+    "model",
+  ),
+  method(
+    "suggest",
+    "command",
+    "Propose catalog-defined edits to an exact revision for the person to review in its open editor. Nothing changes until they adopt the edits into their draft and save it. A suggestion holds only edits an editor stages: PPTX replaceText, setFrame, setChartData and deleteElement; XLSX setCell; DOCX replaceText, insertParagraph, deleteBlock and setParagraphStyle. The edits must apply to that revision. Use edit to change the document directly.",
+    schemas.suggest,
+    suggestion,
+    "model",
+  ),
+  method(
+    "settle",
+    "command",
+    "Record that the person adopted a pending suggestion into their draft or dismissed it.",
+    schemas.settle,
+    suggestion,
     "host",
   ),
   method(

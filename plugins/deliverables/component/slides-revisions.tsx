@@ -7,7 +7,7 @@ import { Reconcile } from "./live";
 import { reconcile, withCurrent, type SlideOperation } from "./slides-draft";
 import { chartText, frameText, label } from "./slides-presentation";
 
-function describe(
+export function describeSlideOperation(
   operation: SlideOperation,
   base: SlideLayout | undefined,
   t: Translate,
@@ -51,7 +51,7 @@ export function SlideReconcile({
     <Reconcile
       results={results}
       head={head.id}
-      describe={(operation) => describe(operation, base, t)}
+      describe={(operation) => describeSlideOperation(operation, base, t)}
       mine={(operation) =>
         operation.type === "deleteElement"
           ? t("slides.kind.deleted")

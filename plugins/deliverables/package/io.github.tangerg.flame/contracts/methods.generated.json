@@ -176,6 +176,14 @@
     "output": "schema.json#/$defs/ReviewV1Output"
   },
   {
+    "name": "flame.deliverables/settle.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Record that the person adopted a pending suggestion into their draft or dismissed it.",
+    "input": "schema.json#/$defs/SettleV1Input",
+    "output": "schema.json#/$defs/SettleV1Output"
+  },
+  {
     "name": "flame.deliverables/sheets.v1",
     "kind": "query",
     "target": "installation",
@@ -190,6 +198,22 @@
     "description": "Project a PPTX revision's slides, element identities, frames, text runs, notes, chart data and the slide layouts insertSlide accepts from its native bytes. Omitting revision reads the current head once. Use these identities with expect values in catalog-defined presentation edits.",
     "input": "schema.json#/$defs/SlidesV1Input",
     "output": "schema.json#/$defs/SlidesV1Output"
+  },
+  {
+    "name": "flame.deliverables/suggest.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Propose catalog-defined edits to an exact revision for the person to review in its open editor. Nothing changes until they adopt the edits into their draft and save it. A suggestion holds only edits an editor stages: PPTX replaceText, setFrame, setChartData and deleteElement; XLSX setCell; DOCX replaceText, insertParagraph, deleteBlock and setParagraphStyle. The edits must apply to that revision. Use edit to change the document directly.",
+    "input": "schema.json#/$defs/SuggestV1Input",
+    "output": "schema.json#/$defs/SuggestV1Output"
+  },
+  {
+    "name": "flame.deliverables/suggestions.v1",
+    "kind": "query",
+    "target": "installation",
+    "description": "List a deliverable's suggested edits newest first, with the revision each was made against and whether the person adopted or dismissed it.",
+    "input": "schema.json#/$defs/SuggestionsV1Input",
+    "output": "schema.json#/$defs/SuggestionsV1Output"
   },
   {
     "name": "flame.deliverables/threads.v1",

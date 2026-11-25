@@ -28,6 +28,8 @@ const COMMAND_LABELS: Record<CommandMethod, string> = {
   [METHODS.reply]: "comments.reply",
   [METHODS.resolve]: "comments.resolve",
   [METHODS.reopen]: "comments.reopen",
+  [METHODS.suggest]: "suggestions.adopt",
+  [METHODS.settle]: "suggestions.adopt",
   [METHODS.review]: "review.submit",
   [METHODS.export]: "export.prepare",
   [METHODS.remove]: "remove.action",

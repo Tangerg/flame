@@ -1123,6 +1123,97 @@ it(
   scenarioTimeoutMilliseconds,
 );
 it(
+  "a suggestion changes nothing until the person settles it, and only edits that apply to its revision are suggested",
+  async ({ backend }) => {
+    const created = await backend.invoke(METHODS.create, {
+      title: "Budget",
+      format: "xlsx",
+      contentJSON: JSON.stringify({
+        title: "Budget",
+        sheets: [
+          {
+            name: "Plan",
+            cells: [{ address: "B2", value: { type: "number", value: 100 } }],
+          },
+        ],
+      }),
+      provenance,
+    });
+    const id = created.documentId;
+    const [sheet] = JSON.parse(
+      (await backend.invoke(METHODS.sheets, { id })).layoutJSON,
+    ).sheets;
+    const cell = sheet.cells.find((entry) => entry.ref === "B2");
+    const edit = (expect) =>
+      JSON.stringify({
+        operations: [
+          {
+            type: "setCell",
+            id: `${sheet.id}!B2`,
+            expect,
+            value: { type: "number", value: 150 },
+          },
+        ],
+      });
+    const suggested = await backend.tool("suggest", {
+      id,
+      revision: created.id,
+      note: "Raise the plan to 150.",
+      operationsJSON: edit(cell.expect),
+    });
+    expect(suggested.isError, JSON.stringify(suggested)).not.toBe(true);
+    const stale = await backend.tool("suggest", {
+      id,
+      revision: created.id,
+      note: "",
+      operationsJSON: edit("not the cell's precondition"),
+    });
+    expect(stale.isError).toBe(true);
+    const unstaged = await backend.tool("suggest", {
+      id,
+      revision: created.id,
+      note: "",
+      operationsJSON: JSON.stringify({
+        operations: [{ type: "recalculate" }],
+      }),
+    });
+    expect(JSON.parse(unstaged.content[0].text).failure.code).toBe(
+      "invalid_suggestion",
+    );
+    expect((await backend.invoke(METHODS.read, { id })).revision.id).toBe(
+      created.id,
+    );
+    const [pending] = (
+      await backend.invoke(METHODS.suggestions, {
+        id,
+        status: "pending",
+        limit: 8,
+      })
+    ).entries;
+    expect(pending).toMatchObject({
+      revision: created.id,
+      note: "Raise the plan to 150.",
+      author: { origin: "model" },
+    });
+    await backend.invoke(
+      METHODS.settle,
+      { id, suggestion: pending.id, outcome: "adopted" },
+      "adopt",
+    );
+    await expect(
+      backend.invoke(
+        METHODS.settle,
+        { id, suggestion: pending.id, outcome: "dismissed" },
+        "dismiss",
+      ),
+    ).rejects.toMatchObject({ code: "suggestion_state" });
+    expect(
+      (await backend.invoke(METHODS.suggestions, { id, limit: 8 })).entries,
+    ).toMatchObject([{ id: pending.id, status: "adopted" }]);
+  },
+  scenarioTimeoutMilliseconds,
+);
+it(
   "open editors reading a revision while the model edits it all succeed",
   async ({ backend }) => {
     const created = await backend.invoke(METHODS.create, {

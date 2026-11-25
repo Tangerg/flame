@@ -445,6 +445,13 @@ export const de = {
   "comments.resolve": "Erledigen",
   "comments.reopen": "Wieder öffnen",
   "comments.locate": "Anzeigen",
+  "suggestions.title": "Vorschläge des Agent · {{count}}",
+  "suggestions.revision": "Zu Revision {{id}}",
+  "suggestions.elsewhere":
+    "Dein ungespeicherter Entwurf gehört zu einer anderen Revision. Speichere oder verwirf ihn, um diesen Vorschlag zu übernehmen.",
+  "suggestions.actions": "Vorschlagsaktionen",
+  "suggestions.adopt": "In den Entwurf übernehmen",
+  "suggestions.dismiss": "Verwerfen",
   "handoff.handed":
     "Zur Nachricht hinzugefügt. Beschreibe die Änderung und sende sie.",
   "handoff.stale":

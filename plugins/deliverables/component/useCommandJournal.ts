@@ -65,6 +65,8 @@ export const COMMAND_EFFECTS: Record<CommandMethod, CommandEffect> = {
   [METHODS.reply]: { announced: false, reload: "views" },
   [METHODS.resolve]: { announced: false, reload: "views" },
   [METHODS.reopen]: { announced: false, reload: "views" },
+  [METHODS.suggest]: { announced: false, reload: "views" },
+  [METHODS.settle]: { announced: false, reload: "views" },
   [METHODS.export]: { result: "asset", announced: true, reload: "none" },
   [METHODS.render]: { announced: true, reload: "views" },
   [METHODS.review]: { announced: true, reload: "views" },

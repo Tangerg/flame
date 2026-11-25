@@ -415,6 +415,13 @@ export const zh = {
   "comments.resolve": "解决",
   "comments.reopen": "重新打开",
   "comments.locate": "定位",
+  "suggestions.title": "Agent 建议 · {{count}} 条",
+  "suggestions.revision": "基于修订 {{id}}",
+  "suggestions.elsewhere":
+    "当前未保存的草稿基于另一个修订。先保存或放弃它，再采用这条建议。",
+  "suggestions.actions": "建议操作",
+  "suggestions.adopt": "采用到草稿",
+  "suggestions.dismiss": "忽略",
   "handoff.handed": "已放入对话框。写下要改什么，然后发送。",
   "handoff.stale": "对话已切换，引用没有放入。请再试一次。",
 } satisfies Record<keyof typeof en, string>;

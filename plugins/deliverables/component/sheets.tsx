@@ -51,6 +51,7 @@ import {
 } from "./sheets-grid";
 import { RevisionChanges, SheetChanges } from "./changes";
 import { Comments } from "./comments";
+import { Suggestions } from "./suggestions";
 import * as token from "@flame/ui/tokens.stylex";
 
 const REFERENCE_CELLS = 200;
@@ -103,6 +104,21 @@ export function recalculate(
   );
 }
 
+export function describeCellOperation(
+  layout: WorkbookLayout | undefined,
+  operation: CellOperation,
+  t: Translate,
+) {
+  const separator = operation.id.lastIndexOf("!");
+  const sheet = layout?.sheets.find(
+    (entry) => entry.id === operation.id.slice(0, separator),
+  );
+  return t("sheets.op.setCell", {
+    sheet: sheet?.name ?? "",
+    ref: operation.id.slice(separator + 1),
+  });
+}
+
 function SheetReconcile({
   head,
   layout,
@@ -122,21 +138,11 @@ function SheetReconcile({
     () => reconcile(layout, draft.operations),
     [layout, draft.operations],
   );
-  const describe = (operation: CellOperation) => {
-    const separator = operation.id.lastIndexOf("!");
-    const sheet = layout.sheets.find(
-      (entry) => entry.id === operation.id.slice(0, separator),
-    );
-    return t("sheets.op.setCell", {
-      sheet: sheet?.name ?? "",
-      ref: operation.id.slice(separator + 1),
-    });
-  };
   return (
     <Reconcile
       results={results}
       head={head}
-      describe={describe}
+      describe={(operation) => describeCellOperation(layout, operation, t)}
       mine={(operation) => entryText(operation.value)}
       theirs={(result) =>
         entryText((result.current as { input?: CellValue }).input)
@@ -353,6 +359,15 @@ export function WorkbookStudio({
             />
           )
         }
+      />
+      <Suggestions
+        state={state}
+        live={live}
+        describe={(operation) =>
+          `${describeCellOperation(layout, operation, t)} = ${entryText(operation.value)}`
+        }
+        dateTime={dateTime}
+        t={t}
       />
       <RevisionChanges live={live} dateTime={dateTime} t={t}>
         {(before, after) => (

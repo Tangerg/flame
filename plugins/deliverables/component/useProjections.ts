@@ -15,6 +15,7 @@ export type ViewMethod =
   | typeof METHODS.read
   | typeof METHODS.history
   | typeof METHODS.threads
+  | typeof METHODS.suggestions
   | typeof METHODS.uploads;
 type Projection<K extends ViewMethod> = {
   input: MethodInputs[K];
@@ -23,6 +24,12 @@ type Projection<K extends ViewMethod> = {
   error?: string;
 };
 type Projections = { [K in ViewMethod]?: Projection<K> };
+// Reads of one document's pages keep their value while the same document reads again.
+const PER_DOCUMENT = new Set<ViewMethod>([
+  METHODS.history,
+  METHODS.threads,
+  METHODS.suggestions,
+]);
 
 export function useProjections(
   context: ComponentContext,
@@ -52,7 +59,7 @@ export function useProjections(
           method === METHODS.list ||
           method === METHODS.catalog ||
           method === METHODS.uploads ||
-          ((method === METHODS.history || method === METHODS.threads) &&
+          (PER_DOCUMENT.has(method) &&
             prior &&
             "id" in prior.input &&
             "id" in input &&

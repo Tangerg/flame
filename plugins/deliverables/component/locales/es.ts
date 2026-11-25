@@ -439,6 +439,13 @@ export const es = {
   "comments.resolve": "Resolver",
   "comments.reopen": "Reabrir",
   "comments.locate": "Mostrar",
+  "suggestions.title": "Sugerencias del Agent · {{count}}",
+  "suggestions.revision": "Hecha sobre la revisión {{id}}",
+  "suggestions.elsewhere":
+    "Tu borrador sin guardar está en otra revisión. Guárdalo o descártalo para adoptar esta sugerencia.",
+  "suggestions.actions": "Acciones de la sugerencia",
+  "suggestions.adopt": "Adoptar en el borrador",
+  "suggestions.dismiss": "Descartar",
   "handoff.handed": "Añadido a tu mensaje. Describe el cambio y envíalo.",
   "handoff.stale":
     "La conversación cambió y la referencia no se añadió. Inténtalo de nuevo.",

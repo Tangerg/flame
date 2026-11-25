@@ -30,7 +30,12 @@ import {
   slideTarget,
 } from "./slides-presentation";
 import { Comments } from "./comments";
-import { SlideReconcile, savedElement } from "./slides-revisions";
+import {
+  SlideReconcile,
+  describeSlideOperation,
+  savedElement,
+} from "./slides-revisions";
+import { Suggestions } from "./suggestions";
 import { RevisionChanges, SlideChanges } from "./changes";
 import { Canvas } from "./slides-canvas";
 import { SlideAdditions, useInsertion } from "./slides-additions";
@@ -218,6 +223,15 @@ export function SlideStudio({
             />
           )
         }
+      />
+      <Suggestions
+        state={state}
+        live={live}
+        describe={(operation) =>
+          describeSlideOperation(operation, savedLayout, t)
+        }
+        dateTime={dateTime}
+        t={t}
       />
       <RevisionChanges live={live} dateTime={dateTime} t={t}>
         {(before, after) => (

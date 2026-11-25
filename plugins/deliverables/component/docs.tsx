@@ -34,6 +34,7 @@ import {
 import { InsertedBlock, SavedBlock, type Selection } from "./docs-blocks";
 import { BlockChanges, RevisionChanges, blockTitle } from "./changes";
 import { Comments, quoteOf, type Anchor } from "./comments";
+import { Suggestions } from "./suggestions";
 import { editableTarget } from "./slides-inspector";
 
 function blockReference(
@@ -61,6 +62,23 @@ function blockReference(
   };
 }
 
+export function describeDocOperation(operation: DocOperation, t: Translate) {
+  switch (operation.type) {
+    case "replaceText":
+      return t("docs.op.replaceText", { text: operation.text.slice(0, 60) });
+    case "insertParagraph":
+      return t("docs.op.insertParagraph", {
+        text: operation.text.slice(0, 60),
+      });
+    case "setParagraphStyle":
+      return t("docs.op.setParagraphStyle", {
+        style: t(`docs.style.${operation.style}`),
+      });
+    case "deleteBlock":
+      return t("docs.op.deleteBlock");
+  }
+}
+
 function DocReconcile({
   head,
   layout,
@@ -80,22 +98,8 @@ function DocReconcile({
     () => reconcile(layout, draft.operations),
     [layout, draft.operations],
   );
-  const describe = (operation: DocOperation) => {
-    switch (operation.type) {
-      case "replaceText":
-        return t("docs.op.replaceText", { text: operation.text.slice(0, 60) });
-      case "insertParagraph":
-        return t("docs.op.insertParagraph", {
-          text: operation.text.slice(0, 60),
-        });
-      case "setParagraphStyle":
-        return t("docs.op.setParagraphStyle", {
-          style: t(`docs.style.${operation.style}`),
-        });
-      case "deleteBlock":
-        return t("docs.op.deleteBlock");
-    }
-  };
+  const describe = (operation: DocOperation) =>
+    describeDocOperation(operation, t);
   return (
     <Reconcile
       results={results}
@@ -242,6 +246,13 @@ export function DocumentStudio({
             />
           )
         }
+      />
+      <Suggestions
+        state={state}
+        live={live}
+        describe={(operation) => describeDocOperation(operation, t)}
+        dateTime={dateTime}
+        t={t}
       />
       <RevisionChanges live={live} dateTime={dateTime} t={t}>
         {(before, after) => (

@@ -437,6 +437,13 @@ export const ja = {
   "comments.resolve": "解決",
   "comments.reopen": "再開",
   "comments.locate": "表示",
+  "suggestions.title": "Agent の提案 · {{count}} 件",
+  "suggestions.revision": "リビジョン {{id}} に基づく",
+  "suggestions.elsewhere":
+    "保存していない下書きは別のリビジョンに基づいています。保存または破棄してからこの提案を採用してください。",
+  "suggestions.actions": "提案の操作",
+  "suggestions.adopt": "下書きに採用",
+  "suggestions.dismiss": "無視",
   "handoff.handed":
     "メッセージに追加しました。変更内容を書いて送信してください。",
   "handoff.stale":

@@ -434,6 +434,13 @@ export const ko = {
   "comments.resolve": "해결",
   "comments.reopen": "다시 열기",
   "comments.locate": "위치로 이동",
+  "suggestions.title": "Agent 제안 · {{count}}개",
+  "suggestions.revision": "수정본 {{id}} 기준",
+  "suggestions.elsewhere":
+    "저장하지 않은 초안이 다른 수정본을 기준으로 합니다. 저장하거나 버린 뒤 이 제안을 채택하세요.",
+  "suggestions.actions": "제안 작업",
+  "suggestions.adopt": "초안에 채택",
+  "suggestions.dismiss": "무시",
   "handoff.handed": "메시지에 추가했습니다. 바꿀 내용을 적고 보내세요.",
   "handoff.stale": "대화가 바뀌어 참조를 추가하지 않았습니다. 다시 시도하세요.",
 } satisfies Record<keyof typeof en, string>;

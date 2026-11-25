@@ -24,6 +24,7 @@ export const LIMITS = Object.freeze({
   assessments: 64,
   threads: 128,
   threadMessages: 32,
+  suggestions: 128,
   provenanceSources: 64,
   uploads: 8,
   pageSize: 32,

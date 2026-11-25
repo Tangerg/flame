@@ -415,6 +415,13 @@ export const zhTW = {
   "comments.resolve": "解決",
   "comments.reopen": "重新開啟",
   "comments.locate": "定位",
+  "suggestions.title": "Agent 建議 · {{count}} 則",
+  "suggestions.revision": "基於修訂 {{id}}",
+  "suggestions.elsewhere":
+    "目前未儲存的草稿基於另一個修訂。先儲存或捨棄它，再採用這則建議。",
+  "suggestions.actions": "建議操作",
+  "suggestions.adopt": "採用到草稿",
+  "suggestions.dismiss": "忽略",
   "handoff.handed": "已放入對話框。寫下要改什麼，然後傳送。",
   "handoff.stale": "對話已切換，引用沒有放入。請再試一次。",
 } satisfies Record<keyof typeof en, string>;

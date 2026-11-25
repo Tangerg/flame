@@ -26,4 +26,7 @@ export const METHODS = Object.freeze({
   reply: "flame.deliverables/reply.v1",
   resolve: "flame.deliverables/resolve.v1",
   reopen: "flame.deliverables/reopen.v1",
+  suggestions: "flame.deliverables/suggestions.v1",
+  suggest: "flame.deliverables/suggest.v1",
+  settle: "flame.deliverables/settle.v1",
 } as const);

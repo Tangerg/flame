@@ -55,6 +55,7 @@ export type LiveState = Pick<
   | "selection"
   | "selectRevision"
   | "signal"
+  | "suggestions"
   | "threads"
 >;
 
