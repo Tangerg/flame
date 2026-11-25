@@ -2,6 +2,7 @@ import {
   contentLimits,
   type Format,
   type Inspection,
+  type InspectionItemKind,
 } from "../../contracts/content";
 import { OfficePackage } from "./archive";
 import { namespaces } from "./xml";
@@ -20,7 +21,7 @@ export class InspectionReport {
     };
   }
 
-  item(id: string, kind: string, text: string): void {
+  item(id: string, kind: InspectionItemKind, text: string): void {
     if (text.length > contentLimits.itemText) {
       this.result.truncated = true;
       return;

@@ -23,6 +23,7 @@ import {
   type FormatCatalog,
   type Inspection,
   type CellValue,
+  CELL_VALUE_TYPES,
 } from "../contracts/content";
 import { LIMITS } from "../contracts/limits";
 import { METHODS } from "../contracts/methods";
@@ -193,15 +194,12 @@ export function RevisionEditor({
                 label={t("edit.valueType")}
                 value={valueType}
                 disabled={disabled}
-                options={[
-                  "string",
-                  "number",
-                  "boolean",
-                  "formula",
-                  "blank",
-                ].map((value) => ({ value, label: t(`cell.${value}`) }))}
+                options={CELL_VALUE_TYPES.map((value) => ({
+                  value,
+                  label: t(`cell.${value}`),
+                }))}
                 onValueChange={(value) => {
-                  setValueType(value as CellValue["type"]);
+                  setValueType(value);
                   if (value === "boolean") setText("false");
                 }}
               />

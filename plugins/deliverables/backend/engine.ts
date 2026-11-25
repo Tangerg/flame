@@ -1,3 +1,4 @@
+import { ASSET_MIME } from "../contracts/media";
 import { lstat, mkdtemp, realpath, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { Refusal } from "@flame/backend-sdk/mcp";
@@ -16,7 +17,7 @@ import {
 } from "./confinement";
 import { runProcess, UnconfirmedProcessExit } from "./process";
 import { Office } from "./office";
-import { ASSET_MIME } from "./document";
+
 import {
   type Configuration,
   type InstalledTools,

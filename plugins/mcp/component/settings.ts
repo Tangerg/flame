@@ -59,6 +59,9 @@ interface Batch {
   steps: Step[];
   next: number;
   original?: MutationPromise<unknown>;
+  // The initiating workflow continues once every step settled, including
+  // after a recovered unknown outcome.
+  settled?(context: ComponentContext): void;
 }
 const ADD = "add";
 export const IMPORT = "import";
@@ -420,6 +423,11 @@ export class MCPSettings {
           },
         },
       ],
+      (context) => {
+        const attempt = this.#snapshot.authorizations.get(key);
+        if (!context.signal.aborted && attempt?.status.type === "pending")
+          this.#poll(context, attempt, context.signal);
+      },
     );
   }
   async test(context: ComponentContext, key: string, draft: MCPServerEdit) {
@@ -497,6 +505,10 @@ export class MCPSettings {
           };
         },
       })),
+      () => {
+        this.#feedback(IMPORT, { kind: "imported", count: parsed.length });
+        this.#publish();
+      },
     );
   }
   busy(resource: string): boolean {
@@ -516,6 +528,7 @@ export class MCPSettings {
     key: string,
     resources: string[],
     steps: Step[],
+    settled?: Batch["settled"],
   ) {
     this.#assert(context);
     if (
@@ -528,7 +541,7 @@ export class MCPSettings {
     )
       return Promise.resolve(false);
     this.#feedback(key);
-    const batch: Batch = { resources, steps, next: 0 };
+    const batch: Batch = { resources, steps, next: 0, settled };
     this.#batches.set(key, batch);
     return this.#run(context, key, batch);
   }
@@ -552,19 +565,8 @@ export class MCPSettings {
       }
       this.#batches.delete(key);
       this.#command(key);
-      if (key === IMPORT && this.#import) {
-        this.#feedback(key, {
-          kind: "imported",
-          count: this.#import.length,
-        });
-        this.#publish();
-      }
-      if (!context.signal.aborted) {
-        this.refresh(context);
-        const attempt = this.#snapshot.authorizations.get(key);
-        if (attempt?.status.type === "pending")
-          this.#poll(context, attempt, context.signal);
-      }
+      if (!context.signal.aborted) this.refresh(context);
+      batch.settled?.(context);
       return true;
     } catch (error) {
       if (this.#source.signal.aborted || this.#batches.get(key) !== batch)
@@ -725,13 +727,17 @@ export class MCPSettings {
     for (const listener of this.#listeners) listener();
   }
 }
+// The user completes OAuth in their browser; the panel rereads the attempt at a
+// pace that notices completion promptly without flooding the Runtime.
+const AUTHORIZATION_POLL_MILLISECONDS = 500;
+
 function pollDelay(signal: AbortSignal): Promise<void> {
   signal.throwIfAborted();
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
       signal.removeEventListener("abort", abort);
       resolve();
-    }, 500);
+    }, AUTHORIZATION_POLL_MILLISECONDS);
     function abort() {
       clearTimeout(timer);
       reject(signal.reason);

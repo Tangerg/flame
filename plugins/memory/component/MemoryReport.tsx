@@ -1,3 +1,8 @@
+import {
+  keeps,
+  type OriginFilter,
+  type StatusFilter,
+} from "./useMemoryFilters";
 import { type ReactNode, type Ref, type RefObject, useState } from "react";
 import { type Translate } from "@flame/component-sdk";
 import { type MethodInputs } from "../package/io.github.tangerg.flame/contracts/methods.generated";
@@ -56,8 +61,8 @@ export function MemoryReport({
   remove(item: MemoryItem, opener: HTMLElement): void;
   command: RecordCommand;
   search: string;
-  status: string;
-  origin: string;
+  status: StatusFilter;
+  origin: OriginFilter;
   pinned: boolean;
   clearSearchAndFilters(): void;
   feedback: ReactNode;
@@ -68,8 +73,8 @@ export function MemoryReport({
   const rows = page?.rows ?? [];
   const matching = rows.filter(
     (item) =>
-      (status === "all" || item.status === status) &&
-      (origin === "all" || item.origin === origin) &&
+      keeps(status, item.status) &&
+      keeps(origin, item.origin) &&
       (!pinned || item.pinned) &&
       `${item.id} ${item.content} ${item.sessionId ?? ""}`
         .toLocaleLowerCase()

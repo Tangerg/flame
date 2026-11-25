@@ -6,8 +6,7 @@ import type {
 } from "@flame/runtime-client/wire";
 import { createPushPullChannel, type PushPullChannel } from "./channel";
 import { RpcConnectionError } from "./errors";
-import type { StreamingResult } from "./methods";
-import { iterableOf, MAXIMUM_BUFFERED_RUNTIME_EVENTS } from "./stream";
+import { iterableOf, MAXIMUM_BUFFERED_RUNTIME_EVENTS, type StreamingResult } from "./stream";
 
 type RuntimeEventSubscription = StreamingResult<RuntimeSubscribeResponse, RuntimeEvent>;
 

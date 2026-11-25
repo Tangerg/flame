@@ -1,6 +1,10 @@
 import { Lifetime, type Cleanup, type Release } from "@frame/sdk";
 import { Capability, exactFields, validName } from "./contract.ts";
-import { type CallbackRef, type Invocation } from "./callback.ts";
+import {
+  InvocationScope,
+  type CallbackRef,
+  type Invocation,
+} from "./callback.ts";
 
 export interface SetupBinding {
   readonly installationId: string;
@@ -90,7 +94,7 @@ export type SetupHandler = (
 export function assertBackground(background: unknown): void {
   exactFields(background, ["scope", "reference"]);
   if (
-    background.scope !== "installation" ||
+    background.scope !== InvocationScope.Installation ||
     typeof background.reference !== "string" ||
     !validName(background.reference)
   )

@@ -1,3 +1,4 @@
+import { SYSTEM_THEME } from "@/features/theme/kit/appearance";
 import * as stylex from "@stylexjs/stylex";
 import { cn } from "@/lib/classNames";
 import { type ReactNode } from "react";
@@ -101,7 +102,7 @@ export function ThemeSection() {
   const theme = useAppearance((s) => s.theme);
   const { setTheme } = useAppearanceEdit();
 
-  const isSystem = theme === "system";
+  const isSystem = theme === SYSTEM_THEME;
   const activeSpec = themes.find((s) => s.id === theme);
   const triggerLabel = isSystem || !activeSpec ? t("settings.theme.system") : activeSpec.label;
   const triggerSwatch =
@@ -124,7 +125,7 @@ export function ThemeSection() {
             <ThemeItem
               swatch={<SystemSwatch />}
               label={t("settings.theme.system")}
-              value="system"
+              value={SYSTEM_THEME}
             />
             {themes.map((spec) => (
               <ThemeItem

@@ -53,6 +53,17 @@ export const selection = (model?: Model, reasoningEffort = "") => ({
   model: model?.id ?? "",
   reasoningEffort,
 });
+// The schedules backend refuses a stale expected revision with this code.
+const REVISION_CONFLICT = "revision";
+
+// The unset model or reasoning choice: the Run uses the Runtime default.
+export const DEFAULT_CHOICE = "default";
+
+// "all" lifts the status filter; the others keep schedules in that state.
+export const UNFILTERED = "all";
+export const SCHEDULE_FILTERS = [UNFILTERED, "enabled", "disabled"] as const;
+export type ScheduleFilter = (typeof SCHEDULE_FILTERS)[number];
+
 export function useSchedules(context: ComponentContext) {
   const t = useTranslator(CATALOGS, context.locale);
   const dateTime = useMemo(
@@ -75,7 +86,7 @@ export function useSchedules(context: ComponentContext) {
   const [read, setRead] = useState<Read>({ loading: true });
   const reading = useRef<AbortController>(undefined);
   const [search, setSearch] = useState("");
-  const [status, setStatus] = useState("all");
+  const [status, setStatus] = useState<ScheduleFilter>(UNFILTERED);
   const modelSource = useMemo(
     () => ({
       runtime: context.runtime,
@@ -259,11 +270,11 @@ export function useSchedules(context: ComponentContext) {
       } else {
         setCommand(undefined);
         setNotice(
-          error instanceof OperationFailure && error.code === "revision"
+          error instanceof OperationFailure && error.code === REVISION_CONFLICT
             ? t("notice.revision")
             : failure(error),
         );
-        if (error instanceof OperationFailure && error.code === "revision") {
+        if (error instanceof OperationFailure && error.code === REVISION_CONFLICT) {
           taskOpener.current = searchElement.current;
           setEdit(undefined);
         }
@@ -434,7 +445,7 @@ export function useSchedules(context: ComponentContext) {
     setEdit(undefined);
     setDeleting(undefined);
   }
-  function filterPage(nextSearch: string, nextStatus = status) {
+  function filterPage(nextSearch: string, nextStatus: ScheduleFilter = status) {
     if (nextSearch === search && nextStatus === status) return;
     setSearch(nextSearch);
     setStatus(nextStatus);
@@ -445,7 +456,7 @@ export function useSchedules(context: ComponentContext) {
   const rows = page?.rows ?? [];
   const matching = rows.filter(
     (item) =>
-      (status === "all" ||
+      (status === UNFILTERED ||
         (enabled(item) ? "enabled" : "disabled") === status) &&
       `${item.id} ${item.title} ${item.instructions} ${item.cron} ${item.cwd}`
         .toLocaleLowerCase()
@@ -472,7 +483,7 @@ export function useSchedules(context: ComponentContext) {
           edit.draft.modelSelection.provider,
           edit.draft.modelSelection.model,
         )
-      : "default";
+      : DEFAULT_CHOICE;
   return {
     t,
     dateTime,

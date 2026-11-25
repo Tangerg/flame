@@ -39,6 +39,9 @@ const creationSchemas = {
   pptx: presentationContentSchema,
 };
 
+// Guided authoring fills a format's layout; advanced authoring takes raw content JSON.
+const AUTHORING_MODES = ["guided", "advanced"] as const;
+type AuthoringMode = (typeof AUTHORING_MODES)[number];
 export function guidedContent(
   format: OfficeFormat,
   title: string,
@@ -118,7 +121,7 @@ export function CreateForm({
 }) {
   const [title, setTitle] = useState("");
   const [format, setFormat] = useState<OfficeFormat>("docx");
-  const [mode, setMode] = useState("guided");
+  const [mode, setMode] = useState<AuthoringMode>("guided");
   const [bodies, setBodies] = useState<Record<OfficeFormat, string>>({
     docx: "",
     xlsx: "",
@@ -211,10 +214,10 @@ export function CreateForm({
         label={t("author.mode")}
         value={mode}
         disabled={busy}
-        options={[
-          { value: "guided", label: t("author.guided") },
-          { value: "advanced", label: t("author.advanced") },
-        ]}
+        options={AUTHORING_MODES.map((value) => ({
+          value,
+          label: t(`author.${value}`),
+        }))}
         onValueChange={setMode}
       />
       {mode === "guided" ? (

@@ -1,9 +1,10 @@
+import { type Message } from "@/features/agent/public/sessionView";
 import { iconGlyph, type IconName } from "@/ui/icons/index";
 import { IconButton, type ButtonTone } from "@flame/ui";
 import { type MouseEventHandler } from "react";
 interface MessageActionButtonProps {
   icon: IconName;
-  role: string;
+  role: Message["role"];
   title?: string;
   onClick?: MouseEventHandler<HTMLButtonElement>;
   tone?: ButtonTone;

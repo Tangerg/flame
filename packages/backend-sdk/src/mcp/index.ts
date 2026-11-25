@@ -35,5 +35,7 @@ export {
   decodeReply,
   callHost,
   type CallbackRef,
+  InvocationOrigin,
+  InvocationScope,
   type Invocation,
 } from "./callback.ts";

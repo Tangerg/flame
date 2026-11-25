@@ -1,3 +1,4 @@
+import { ASSET_MIME } from "../contracts/media";
 import {
   Refusal,
   canonicalJSON,
@@ -13,7 +14,7 @@ import {
 import { LIMITS } from "../contracts/limits";
 import { renderReportSchema, reviewReportSchema } from "../contracts/evidence";
 import { Archive } from "./archive";
-import { ASSET_MIME, Document, digest, filename, revision } from "./document";
+import { Document, digest, filename, revision } from "./document";
 import { Engine } from "./engine";
 import { encodeArchive, type Format } from "./formats";
 import { Formats } from "./format-process";

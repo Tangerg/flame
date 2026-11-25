@@ -1,6 +1,7 @@
+import { INSTALLATION_SCOPE, type PluginComposition } from "@flame/runtime-client";
 type PointMetadata = {
   reference: string;
-  composition: "collection" | "selection" | "decoration";
+  composition: PluginComposition;
   scope: string;
   ordering: "canonicalKeys" | "explicitList";
   optional: boolean;
@@ -12,4 +13,9 @@ export function pointMetadata(contract: string): PointMetadata {
     contract,
   ) as PointMetadata;
   return { reference, composition, scope, ordering, optional };
+}
+
+// An installation-scoped point addresses the installation that provides it.
+export function defaultPointReference(metadata: PointMetadata, installationId: string): string {
+  return metadata.scope === INSTALLATION_SCOPE ? installationId : "";
 }

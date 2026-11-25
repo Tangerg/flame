@@ -333,3 +333,20 @@ export function streamRuntimeEvents(
     dispose: lifecycle.close,
   };
 }
+
+export interface StreamingResult<R, E> {
+  result: R;
+  events: AsyncIterable<E>;
+}
+
+export async function callOrDispose<R>(
+  stream: { dispose: () => void },
+  call: () => Promise<R>,
+): Promise<R> {
+  try {
+    return await call();
+  } catch (err) {
+    stream.dispose();
+    throw err;
+  }
+}

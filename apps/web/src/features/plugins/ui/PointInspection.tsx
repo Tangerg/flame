@@ -21,7 +21,7 @@ import { SystemMessage } from "@/ui/index";
 import { useT } from "@/lib/i18n/index";
 import { useCodeActionLabels } from "@/ui/index";
 import { type PackageOperations } from "@/features/plugins/adapters/packages";
-import { pointMetadata } from "@/features/plugins/adapters/pointContracts";
+import { defaultPointReference, pointMetadata } from "@/features/plugins/adapters/pointContracts";
 type Read = {
   operations: PackageOperations;
   accepted?: { request: ResolvePluginPointRequest; bindings: PluginPointBinding[] };
@@ -58,8 +58,8 @@ function InspectPoint({
   const t = useT();
   const codeLabels = useCodeActionLabels();
   const metadata = pointMetadata(point.contract);
-  const [reference, setReference] = useState(
-    metadata.scope === "installation" ? installation.id : "",
+  const [reference, setReference] = useState(() =>
+    defaultPointReference(metadata, installation.id),
   );
   const [attributes, setAttributes] = useState("{}");
   const [order, setOrder] = useState("[]");

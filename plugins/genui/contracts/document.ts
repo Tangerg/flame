@@ -7,7 +7,7 @@ import {
   AgentToRendererMessageSchema,
   type AgentToRendererMessage,
 } from "@a2ui/web_core/v1_0";
-import { pluginMethod } from "@flame/runtime-client";
+import { INSTALLATION_SCOPE, pluginMethod } from "@flame/runtime-client";
 import {
   canonicalJSON,
   parseJSON,
@@ -163,8 +163,8 @@ function binding(
 ): Omit<CallPluginRequest, "input"> {
   const method = pluginMethod({ ...captured, method: request.method });
   const target =
-    method.target === "installation"
-      ? { scope: "installation", reference: captured.installationId }
+    method.target === INSTALLATION_SCOPE
+      ? { scope: INSTALLATION_SCOPE, reference: captured.installationId }
       : request.target;
   if (
     !target ||

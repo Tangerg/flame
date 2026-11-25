@@ -1,3 +1,4 @@
+import { ASSET_MIME } from "../contracts/media";
 import { useEffect, useState } from "react";
 import { failureText, type Translate } from "@flame/component-sdk";
 import {
@@ -192,7 +193,7 @@ export function RenderedPages({
   const valid =
     selected &&
     asset &&
-    asset.mime === "image/png" &&
+    asset.mime === ASSET_MIME.png &&
     asset.sha256 === selected.sha256;
   return (
     <RecordGroup>

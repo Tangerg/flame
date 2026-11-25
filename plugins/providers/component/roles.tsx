@@ -14,7 +14,7 @@ import {
   RecordBody,
   Select,
 } from "@flame/ui";
-import type { ProviderSettings, Read } from "./settings";
+import type { ProviderSettings, Read, RoleKind } from "./settings";
 import { CommandFeedback } from "./feedback";
 const column = {
   display: "grid",
@@ -42,7 +42,6 @@ function modelChoice(model: Model): Choice {
 const choiceLabel = (value: Choice) =>
   `${value.label} · ${value.provider}${value.label === value.model ? "" : ` / ${value.model}`}`;
 
-type RoleKind = "utility" | "embedding";
 type Snapshot = ReturnType<ProviderSettings["getSnapshot"]>;
 
 const ROLES = {
@@ -76,6 +75,9 @@ function roleChoices(kind: RoleKind, state: Snapshot): Choice[] {
     }));
 }
 
+// The unset choice: the Runtime falls back to its configured default model.
+const DEFAULT_ROLE = "default";
+
 // A saved role that is no longer offered stays visible, disabled, under its
 // saved name rather than silently reading as unset.
 function roleOptions(
@@ -84,7 +86,7 @@ function roleOptions(
   saved: { provider: string; model: string } | undefined,
 ) {
   const options: { value: string; label: string; disabled?: boolean }[] = [
-    { value: "default", label: unsetLabel },
+    { value: DEFAULT_ROLE, label: unsetLabel },
     ...choices.map((choice) => ({
       value: choiceKey(choice),
       label: choiceLabel(choice),
@@ -189,14 +191,14 @@ export function RoleSection({
     (provider) => provider.embeddingCapable,
   );
   const choices = roleChoices(kind, state);
-  const value = saved ? choiceKey(saved) : "default";
+  const value = saved ? choiceKey(saved) : DEFAULT_ROLE;
   const options = roleOptions(choices, t(labels.unset), saved);
   const command = state.commands.get(kind);
   const feedback = state.feedback.get(kind);
   const failed = read.phase === "failed" || state.providers.phase === "failed";
   const pick = (value: string) => {
     const choice = choices.find((choice) => choiceKey(choice) === value);
-    if (value === "default" || choice)
+    if (value === DEFAULT_ROLE || choice)
       void settings.setRole(
         context,
         kind,

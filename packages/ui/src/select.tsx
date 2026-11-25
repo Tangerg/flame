@@ -57,7 +57,7 @@ const styles = stylex.create({
   },
 });
 
-export function Select({
+export function Select<T extends string>({
   value,
   onValueChange,
   options,
@@ -69,9 +69,9 @@ export function Select({
   "aria-describedby": describedBy,
   size = "md",
 }: {
-  value: string | null;
-  onValueChange: (value: string) => void;
-  options: readonly { value: string; label: string; disabled?: boolean }[];
+  value: T | null;
+  onValueChange: (value: T) => void;
+  options: readonly { value: T; label: string; disabled?: boolean }[];
   label: string;
   id?: string;
   disabled?: boolean;
@@ -93,7 +93,7 @@ export function Select({
       value={value}
       disabled={disabled}
       onValueChange={(next) => {
-        if (next !== null) onValueChange(next);
+        if (next !== null) onValueChange(next as T);
       }}
       {...retirement}
     >

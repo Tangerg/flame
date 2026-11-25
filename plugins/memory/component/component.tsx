@@ -31,7 +31,12 @@ import { MemoryDeleteConfirmation } from "./MemoryDeleteConfirmation";
 import { MemoryReport } from "./MemoryReport";
 import { MemoryFeedback } from "./MemoryFeedback";
 import { useMemory } from "./useMemory";
-import { useMemoryFilters, type MemoryFilterState } from "./useMemoryFilters";
+import {
+  useMemoryFilters,
+  type MemoryFilterState,
+  ORIGIN_FILTERS,
+  STATUS_FILTERS,
+} from "./useMemoryFilters";
 // Installed component bundles use host UI styles without StyleX compilation.
 const EDITOR_STYLE = { maxHeight: "40dvh" };
 type MemoryState = ReturnType<typeof useMemory>;
@@ -433,21 +438,19 @@ function MemoryFilters({
             label={t("status.label")}
             value={status}
             onValueChange={setStatus}
-            options={[
-              { value: "all", label: t("status.all") },
-              { value: "pending", label: t("status.pending") },
-              { value: "active", label: t("status.active") },
-            ]}
+            options={STATUS_FILTERS.map((value) => ({
+              value,
+              label: t(`status.${value}`),
+            }))}
           />
           <Select
             label={t("origin.label")}
             value={origin}
             onValueChange={setOrigin}
-            options={[
-              { value: "all", label: t("origin.all") },
-              { value: "auto", label: t("origin.auto") },
-              { value: "user", label: t("origin.user") },
-            ]}
+            options={ORIGIN_FILTERS.map((value) => ({
+              value,
+              label: t(`origin.${value}`),
+            }))}
           />
           <Checkbox
             checked={pinned}

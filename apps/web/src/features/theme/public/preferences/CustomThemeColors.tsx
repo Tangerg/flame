@@ -7,7 +7,7 @@ import {
   useAppearanceEdit,
 } from "@/features/theme/public/appearance";
 import { type AppearancePreference } from "@/features/theme/kit/appearance";
-import { customPalette } from "@/features/theme/kit/customPalette";
+import { customPalette, CUSTOM_THEME } from "@/features/theme/kit/customPalette";
 import { paletteThemePreview } from "@/features/theme/kit/palette";
 import { WCAG_AA_TEXT } from "@/features/theme/kit/legibility";
 import { SettingRow } from "@/ui/settings/SettingRow";
@@ -71,7 +71,7 @@ function ColorRow({
 
 export function CustomThemeColors() {
   const theme = useAppearance((s) => s.theme);
-  return theme === "custom" ? <ColorEditor /> : null;
+  return theme === CUSTOM_THEME ? <ColorEditor /> : null;
 }
 
 function ColorEditor() {

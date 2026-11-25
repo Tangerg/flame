@@ -45,6 +45,13 @@ export function requestRequiresIdempotency<M extends WireMethodName>(
 
 // This projection reads routing metadata without re-encoding the feature's
 // canonical source. Runtime alone admits the complete callable contract.
+export const PLUGIN_COMPOSITIONS = ["collection", "selection", "decoration"] as const;
+export type PluginComposition = (typeof PLUGIN_COMPOSITIONS)[number];
+
+function isPluginComposition(value: unknown): value is PluginComposition {
+  return (PLUGIN_COMPOSITIONS as readonly unknown[]).includes(value);
+}
+
 export function pluginContract(text: string) {
   const contract = parseJSON(text);
   if (
@@ -55,7 +62,7 @@ export function pluginContract(text: string) {
     !("reference" in contract) ||
     typeof contract.reference !== "string" ||
     !("composition" in contract) ||
-    typeof contract.composition !== "string" ||
+    !isPluginComposition(contract.composition) ||
     !("scope" in contract) ||
     typeof contract.scope !== "string"
   )
@@ -93,9 +100,19 @@ export function pluginMethod(request: Pick<CallPluginRequest, "contract" | "meth
   } as const;
 }
 
+// Frame's installation target scope: the method addresses the installation that
+// provides it, so callers bind that installation as the target reference.
+export const INSTALLATION_SCOPE = "installation";
+
+export type PluginDeliveryMethod = "plugins.call" | "plugins.stream";
+
+export function isPluginDeliveryMethod(method: string): method is PluginDeliveryMethod {
+  return method === "plugins.call" || method === "plugins.stream";
+}
+
 export function pluginDeliveryMethod(
   request: Pick<CallPluginRequest, "contract" | "method">,
-): "plugins.call" | "plugins.stream" {
+): PluginDeliveryMethod {
   const method = pluginMethod(request);
   if (!method.streaming) return "plugins.call";
   return "plugins.stream";

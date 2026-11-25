@@ -62,9 +62,12 @@ export interface AppearanceEdit {
   setPaperTextureStrength: (strength: number) => void;
 }
 
+// The theme that follows the operating system's light or dark scheme.
+export const SYSTEM_THEME = "system";
+
 export function defaultAppearance(): AppearancePreference {
   return {
-    theme: "system",
+    theme: SYSTEM_THEME,
     visualStyle: "flame",
     accent: DEFAULT_ACCENT,
     customTheme: { ...DEFAULT_CUSTOM_THEME },

@@ -127,7 +127,7 @@ export interface CapturedMessage {
   readonly sessionId: string;
   readonly itemId: string;
   readonly runId?: string;
-  readonly role: string;
+  readonly role: "user" | "assistant" | "system";
 }
 
 export type CapturedSession = Readonly<

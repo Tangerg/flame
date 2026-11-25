@@ -15,6 +15,20 @@ import {
 import { type ExpandedRecord, Observation, title } from "./observation";
 import { matches, needsAttention, recordKey, runId } from "./recordFacts";
 
+// "all" lifts a filter. Kinds are trajectory categories plus the "attention"
+// and "message" groupings; runs are the run ids present on the page.
+export const UNFILTERED = "all";
+export const KIND_FILTERS = [
+  UNFILTERED,
+  "run",
+  "model",
+  "endpoint",
+  "toolCall",
+  "message",
+  "attention",
+] as const;
+export type KindFilter = (typeof KIND_FILTERS)[number];
+
 export function TrajectoryReport({
   page,
   pageNumber,
@@ -29,7 +43,7 @@ export function TrajectoryReport({
 }: {
   page: Page<TrajectoryEntry>;
   pageNumber: number;
-  kind: string;
+  kind: KindFilter;
   run: string;
   search: string;
   stale?: boolean;
@@ -80,14 +94,14 @@ export function TrajectoryReport({
   const matching = rows.filter((row) => {
     const category = row.type === "item" ? row.item.type : row.type;
     const matchesKind =
-      kind === "all" ||
+      kind === UNFILTERED ||
       kind === category ||
       (kind === "attention" && needsAttention(row)) ||
       (kind === "message" &&
         ["userMessage", "agentMessage", "reasoning"].includes(category));
     return (
       matchesKind &&
-      (run === "all" || runId(row) === run) &&
+      (run === UNFILTERED || runId(row) === run) &&
       matches(row, query, t)
     );
   });
@@ -170,7 +184,7 @@ export function TrajectoryReport({
               rows.length ? t("empty.filtered.title") : t("empty.none.title")
             }
             action={
-              (kind !== "all" || run !== "all" || search !== "") && (
+              (kind !== UNFILTERED || run !== UNFILTERED || search !== "") && (
                 <Button variant="outline" onClick={onClearFilters}>
                   {t("filters.clear")}
                 </Button>

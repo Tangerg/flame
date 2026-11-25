@@ -1,3 +1,4 @@
+import { ASSET_MIME } from "../contracts/media";
 import {
   Refusal,
   canonicalJSON,
@@ -10,7 +11,7 @@ import { LIMITS } from "../contracts/limits";
 import { projectNumbers, type FrozenJSONValue } from "@frame/sdk/json";
 import { engineCatalogSchema } from "../contracts/evidence";
 import { Archive } from "./archive";
-import { ASSET_MIME, digest } from "./document";
+import { digest } from "./document";
 import { Engine } from "./engine";
 import { catalog, hasPNGSignature } from "./formats";
 import { Formats } from "./format-process";

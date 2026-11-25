@@ -12,7 +12,11 @@ import {
   Toolbar,
 } from "@flame/ui";
 import { templates } from "./templates";
-import { type ScheduleState, type Translate } from "./useSchedules";
+import {
+  type ScheduleState,
+  type Translate,
+  SCHEDULE_FILTERS,
+} from "./useSchedules";
 
 export function ScheduleControls({
   t,
@@ -86,11 +90,10 @@ export function ScheduleControls({
         label={t("status.label")}
         value={status}
         onValueChange={(value) => filterPage(search, value)}
-        options={[
-          { value: "all", label: t("status.all") },
-          { value: "enabled", label: t("status.enabled") },
-          { value: "disabled", label: t("status.disabled") },
-        ]}
+        options={SCHEDULE_FILTERS.map((value) => ({
+          value,
+          label: t(`status.${value}`),
+        }))}
       />
       <IconButton
         icon={Refresh}

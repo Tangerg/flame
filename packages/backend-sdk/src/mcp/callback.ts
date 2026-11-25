@@ -22,9 +22,24 @@ export interface CallbackRef {
   readonly call: string;
   readonly maxResponseBytes: number | bigint;
 }
+// The Runtime's closed vocabulary for who started a call, mirroring the Go
+// SDK's extension.Human, Model and Automatic.
+export const InvocationOrigin = {
+  Human: "human",
+  Model: "model",
+  Automatic: "automatic",
+} as const;
+export type InvocationOrigin =
+  (typeof InvocationOrigin)[keyof typeof InvocationOrigin];
+
+export const InvocationScope = {
+  Call: "call",
+  Installation: "installation",
+} as const;
+
 export interface Invocation {
   readonly id: string;
-  readonly origin: string;
+  readonly origin: InvocationOrigin;
   readonly parent?: string;
   readonly target: { readonly scope: string; readonly reference: string };
 }

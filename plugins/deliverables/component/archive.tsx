@@ -16,7 +16,11 @@ import {
   Select,
   Toolbar,
 } from "@flame/ui";
-import { formatSchema, type Inspection } from "../contracts/content";
+import {
+  formatSchema,
+  type Format,
+  type Inspection,
+} from "../contracts/content";
 import { Source } from "./provenance";
 import type { DeliverablesState } from "./useDeliverables";
 import type { DocumentRead } from "./types";
@@ -111,6 +115,7 @@ function ArchivePaging({
   );
 }
 
+const ALL_FORMATS = "all";
 export function ArchiveList({
   state,
   dateTime,
@@ -122,11 +127,13 @@ export function ArchiveList({
   searchFieldRef: Ref<HTMLInputElement>;
 }) {
   const [search, setSearch] = useState("");
-  const [format, setFormat] = useState("all");
+  const [format, setFormat] = useState<Format | typeof ALL_FORMATS>(
+    ALL_FORMATS,
+  );
   const entries =
     state.list?.value?.entries.filter(
       (entry) =>
-        (format === "all" || entry.format === format) &&
+        (format === ALL_FORMATS || entry.format === format) &&
         entry.title.toLocaleLowerCase().includes(search.toLocaleLowerCase()),
     ) ?? [];
   return (
@@ -145,7 +152,7 @@ export function ArchiveList({
           value={format}
           onValueChange={setFormat}
           options={[
-            { value: "all", label: t("list.all") },
+            { value: ALL_FORMATS, label: t("list.all") },
             ...formatSchema.options.map((value) => ({
               value,
               label: t(`format.${value}`),

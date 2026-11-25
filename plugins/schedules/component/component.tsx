@@ -6,7 +6,12 @@ import {
   RecordBody,
   RecordGroup,
 } from "@flame/ui";
-import { useSchedules, enabled, type ScheduleState } from "./useSchedules";
+import {
+  useSchedules,
+  enabled,
+  type ScheduleState,
+  UNFILTERED,
+} from "./useSchedules";
 import { ScheduleDeletion, ScheduleFeedback, ScheduleRow } from "./rows";
 import {
   ScheduleCatalogEmpty,
@@ -144,7 +149,7 @@ export function Schedules({ context }: { context: ComponentContext }) {
               filtered={rows.length > 0}
               paginated={paginated}
               onClearFilters={() => {
-                filterPage("", "all");
+                filterPage("", UNFILTERED);
                 searchElement.current?.focus();
               }}
             />

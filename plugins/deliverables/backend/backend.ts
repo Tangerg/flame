@@ -1,3 +1,4 @@
+import { ASSET_MIME } from "../contracts/media";
 import { mkdirSync, lstatSync, realpathSync } from "node:fs";
 import { isAbsolute, join } from "node:path";
 import {
@@ -14,7 +15,7 @@ import descriptor, {
   definitions,
 } from "../contracts/capability";
 import { Archive } from "./archive";
-import { ASSET_MIME } from "./document";
+
 import {
   commandProjection,
   modelDescriptions,

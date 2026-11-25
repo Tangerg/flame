@@ -14,6 +14,10 @@ const KINDS: ReadonlySet<string> = new Set<QuoteKind>([
   "tool-output",
 ]);
 
+function isQuoteKind(value: string): value is QuoteKind {
+  return KINDS.has(value);
+}
+
 // Readers in the host and in installed components declare where quoted text came
 // from; the quote command reads the same attributes back from the selection.
 export function quoteSourceProps(source: QuoteSource): Record<string, string> {
@@ -45,10 +49,9 @@ export function quotedReaderOf(node: Node): QuotedReader | null {
   const host = declaringElement(node)?.closest<HTMLElement>(`[${SOURCE}]`);
   if (!host) return null;
   const kind = host.getAttribute(SOURCE)!;
-  if (!KINDS.has(kind))
+  if (!isQuoteKind(kind))
     throw new Error(`quote source: unknown reader kind ${kind}`);
-  if (kind !== "file")
-    return { host, source: { kind: kind as Exclude<QuoteKind, "file"> } };
+  if (kind !== "file") return { host, source: { kind } };
   const path = host.getAttribute(PATH);
   if (!path) throw new Error("quote source: a file reader requires its path");
   return { host, source: { kind, path } };

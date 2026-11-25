@@ -8,7 +8,12 @@ import {
   validCommand,
   validName,
 } from "./contract.ts";
-import { callbackRef, type CallbackRef, type Invocation } from "./callback.ts";
+import {
+  callbackRef,
+  InvocationOrigin,
+  type CallbackRef,
+  type Invocation,
+} from "./callback.ts";
 import wire from "./protocol.generated.json";
 
 // The calling owner's Run scope on a model Tool call; Project is empty when the
@@ -47,7 +52,7 @@ export function admittedInvocation(
   exactFields(invocation.target, ["scope", "reference"]);
   if (
     !validName(invocation.id) ||
-    !validName(invocation.origin) ||
+    !Object.values<string>(InvocationOrigin).includes(invocation.origin) ||
     (invocation.parent !== undefined &&
       (!validName(invocation.parent) || invocation.parent === invocation.id)) ||
     !validName(invocation.target.scope) ||

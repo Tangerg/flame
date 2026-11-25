@@ -3,6 +3,8 @@ import { toolCommandId } from "@flame/backend-sdk";
 import { randomUUID } from "node:crypto";
 import { hostname } from "node:os";
 import {
+  InvocationOrigin,
+  InvocationScope,
   declareMethod,
   type Method,
   Refusal,
@@ -70,14 +72,14 @@ type Resource = {
 };
 
 function installationInvocation(context: CallContext): Invocation | undefined {
-  return context.invocation?.target.scope === "installation"
+  return context.invocation?.target.scope === InvocationScope.Installation
     ? context.invocation
     : undefined;
 }
 
 function capturedCaller(context: CallContext): Invocation {
   const invocation = installationInvocation(context);
-  if (!invocation || invocation.origin === "automatic")
+  if (!invocation || invocation.origin === InvocationOrigin.Automatic)
     throw new Refusal(
       "invocation_required",
       "computer control requires a captured model or human caller",
@@ -87,7 +89,7 @@ function capturedCaller(context: CallContext): Invocation {
 
 function humanCaller(context: CallContext): Invocation {
   const invocation = installationInvocation(context);
-  if (!invocation || invocation.origin !== "human")
+  if (!invocation || invocation.origin !== InvocationOrigin.Human)
     throw new Refusal(
       "human_required",
       "computer control requires the original human caller",
@@ -305,7 +307,7 @@ export class Control {
     operationId?: string,
   ): "ordinary" | "reserved" {
     const resource = this.#resource;
-    return context.invocation?.origin === "human" &&
+    return context.invocation?.origin === InvocationOrigin.Human &&
       resource &&
       !resource.disposal &&
       resource.session.canRevoke(sessionId, operationId)

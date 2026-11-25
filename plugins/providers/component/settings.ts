@@ -31,6 +31,13 @@ interface Results {
   embedding: EmbeddingRole;
 }
 type ReadKey = keyof Results;
+
+export const ROLE_KINDS = ["utility", "embedding"] as const;
+export type RoleKind = (typeof ROLE_KINDS)[number];
+
+function isRoleKind(resource: string): resource is RoleKind {
+  return (ROLE_KINDS as readonly string[]).includes(resource);
+}
 interface Snapshot {
   readonly providers: Read<Provider[]>;
   readonly models: Read<Model[]>;
@@ -128,7 +135,7 @@ export class ProviderSettings {
   }
 
   refresh(context: ComponentContext, signal = context.signal) {
-    for (const key of ["providers", "models", "utility", "embedding"] as const)
+    for (const key of ["providers", "models", ...ROLE_KINDS] as const)
       this.refreshRead(context, key, signal);
   }
 
@@ -242,7 +249,7 @@ export class ProviderSettings {
 
   setRole(
     context: ComponentContext,
-    kind: "utility" | "embedding",
+    kind: RoleKind,
     value: UtilityRole | EmbeddingRole,
   ) {
     return this.#command(
@@ -360,8 +367,7 @@ export class ProviderSettings {
       this.#pending.delete(resource);
       pending.accept(result);
       this.#setCommand(resource);
-      if (resource === "utility" || resource === "embedding")
-        this.refreshRead(context, resource);
+      if (isRoleKind(resource)) this.refreshRead(context, resource);
       else {
         this.refreshRead(context, "providers");
         this.refreshRead(context, "models");

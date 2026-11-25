@@ -1,4 +1,9 @@
-import { TrajectoryReport } from "./report";
+import {
+  TrajectoryReport,
+  KIND_FILTERS,
+  UNFILTERED,
+  type KindFilter,
+} from "./report";
 import { runId } from "./recordFacts";
 import {
   useCallback,
@@ -59,8 +64,8 @@ export function Trajectory({ context }: { context: ComponentContext }) {
   if (!sessionId)
     throw new Error("Session trajectory requires a Session context");
   const t = useTranslator(catalogs, context.locale);
-  const [kind, setKind] = useState("all");
-  const [run, setRun] = useState("all");
+  const [kind, setKind] = useState<KindFilter>(UNFILTERED);
+  const [run, setRun] = useState<string>(UNFILTERED);
   const [search, setSearch] = useState("");
   const [read, setRead] = useState<Read>({ loading: true });
   const reading = useRef<AbortController>(undefined);
@@ -130,9 +135,9 @@ export function Trajectory({ context }: { context: ComponentContext }) {
   }, [accepted]);
   const rows = accepted?.page.data ?? [];
   const runOptions = [
-    { value: "all", label: t("run.all") },
+    { value: UNFILTERED, label: t("run.all") },
     ...Array.from(
-      new Set([...rows.map(runId), ...(run === "all" ? [] : [run])]),
+      new Set([...rows.map(runId), ...(run === UNFILTERED ? [] : [run])]),
     ).map((id) => ({
       value: id,
       label: id || t("value.sessionOnly"),
@@ -179,15 +184,10 @@ export function Trajectory({ context }: { context: ComponentContext }) {
             label={t("kind.label")}
             value={kind}
             onValueChange={setKind}
-            options={[
-              { value: "all", label: t("kind.all") },
-              { value: "run", label: t("kind.run") },
-              { value: "model", label: t("kind.model") },
-              { value: "endpoint", label: t("kind.endpoint") },
-              { value: "toolCall", label: t("kind.toolCall") },
-              { value: "message", label: t("kind.message") },
-              { value: "attention", label: t("kind.attention") },
-            ]}
+            options={KIND_FILTERS.map((value) => ({
+              value,
+              label: t(`kind.${value}`),
+            }))}
           />
           <Select
             size="lg"
@@ -221,8 +221,8 @@ export function Trajectory({ context }: { context: ComponentContext }) {
             search={search}
             stale={Boolean(read.error)}
             onClearFilters={() => {
-              setKind("all");
-              setRun("all");
+              setKind(UNFILTERED);
+              setRun(UNFILTERED);
               setSearch("");
               searchElement.current?.focus();
             }}

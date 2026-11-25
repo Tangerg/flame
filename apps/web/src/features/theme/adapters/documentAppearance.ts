@@ -1,10 +1,6 @@
 import { THEME_CLASS_PREFIX } from "@/features/theme/kit/documentTheme";
 import { type StoreApi } from "zustand";
-import {
-  type AppearancePreference,
-  type ColorThemeId,
-  type VisualStyleId,
-} from "@/features/theme/kit/appearance";
+import { type AppearancePreference, type ColorThemeId, type VisualStyleId, SYSTEM_THEME } from "@/features/theme/kit/appearance";
 import { type AppearancePublisher } from "@/lib/appearance";
 import { densityCssVariables } from "@/features/theme/kit/density";
 import { productIconScaleCssVariables } from "@/lib/productIconScale";
@@ -55,7 +51,7 @@ export function installDocumentAppearance<T extends AppearancePreference>(
   function applyColorTheme(theme: ColorThemeId, contrast: number): void {
     const root = document.documentElement;
     const scheme = resolveThemeScheme(system, theme);
-    const spec = lookupExtensionByKey(COLOR_THEME, theme === "system" ? scheme : theme);
+    const spec = lookupExtensionByKey(COLOR_THEME, theme === SYSTEM_THEME ? scheme : theme);
 
     root.classList.remove(`${THEME_CLASS_PREFIX}light`, `${THEME_CLASS_PREFIX}dark`);
     root.classList.add(`${THEME_CLASS_PREFIX}${scheme}`);
@@ -68,7 +64,7 @@ export function installDocumentAppearance<T extends AppearancePreference>(
     appearance.publishScheme(scheme);
     const background = window.getComputedStyle(root).getPropertyValue("--color-bg").trim();
     root.style.backgroundColor = background;
-    if (spec && theme !== "system")
+    if (spec && theme !== SYSTEM_THEME)
       rememberThemePaint(() => window.localStorage, theme, scheme, background);
     else forgetThemePaint(() => window.localStorage);
   }
@@ -191,7 +187,7 @@ export function installDocumentAppearance<T extends AppearancePreference>(
 
   const unsubscribeScheme = system.subscribe(() => {
     const current = store.getState();
-    if (current.theme !== "system") return;
+    if (current.theme !== SYSTEM_THEME) return;
     applyColorTheme(current.theme, current.contrast);
     applyVisualStyle(current.visualStyle);
     applyPaperTexture(current);

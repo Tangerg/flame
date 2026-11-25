@@ -27,6 +27,16 @@ export type Format = z.infer<typeof formatSchema>;
 export const officeFormatSchema = formatSchema.exclude(["pdf"]);
 export const OFFICE_FORMATS = officeFormatSchema.options;
 export type OfficeFormat = z.infer<typeof officeFormatSchema>;
+// Each format owner reports its document through these item kinds.
+export const inspectionItemKindSchema = z.enum([
+  "text",
+  "slide",
+  "page",
+  "field",
+  "sheet",
+  "cell",
+]);
+export type InspectionItemKind = z.infer<typeof inspectionItemKindSchema>;
 export const inspectionSchema = z.strictObject({
   format: formatSchema,
   title: z.string().max(256).optional(),
@@ -34,7 +44,7 @@ export const inspectionSchema = z.strictObject({
     .array(
       z.strictObject({
         id: z.string(),
-        kind: z.string(),
+        kind: inspectionItemKindSchema,
         text: z.string().max(contentLimits.itemText),
       }),
     )
@@ -153,6 +163,9 @@ export const cellValueSchema = z.discriminatedUnion("type", [
   }),
   z.strictObject({ type: z.literal("blank") }),
 ]);
+export const CELL_VALUE_TYPES = cellValueSchema.options.map(
+  (option) => option.shape.type.value,
+);
 export type CellValue = z.infer<typeof cellValueSchema>;
 export const cellAddressSchema = z
   .string()

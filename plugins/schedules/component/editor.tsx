@@ -11,7 +11,7 @@ import {
   TextArea,
   TextField,
 } from "@flame/ui";
-import { selection, modelKey } from "./useSchedules";
+import { selection, modelKey, DEFAULT_CHOICE } from "./useSchedules";
 import { type Edit } from "./types";
 import { type ScheduleState, type Translate } from "./useSchedules";
 
@@ -25,7 +25,7 @@ function modelOptions(
   saved: Edit["draft"]["modelSelection"],
 ) {
   const options = [
-    { value: "default", label: t("model.default") },
+    { value: DEFAULT_CHOICE, label: t("model.default") },
     ...models
       .filter((model) => !model.deprecated)
       .map((model) => ({
@@ -33,7 +33,10 @@ function modelOptions(
         label: `${model.provider} / ${model.displayName ?? model.id}`,
       })),
   ];
-  if (selectedKey !== "default" && (!selectedModel || selectedModel.deprecated))
+  if (
+    selectedKey !== DEFAULT_CHOICE &&
+    (!selectedModel || selectedModel.deprecated)
+  )
     options.push({
       value: selectedKey,
       label: t("model.existing", {
@@ -54,7 +57,7 @@ function reasoningOptions(
 ) {
   const levels = selectedModel?.capabilities?.reasoningLevels ?? [];
   const options = [
-    { value: "default", label: t("reasoning.default") },
+    { value: DEFAULT_CHOICE, label: t("reasoning.default") },
     ...levels.map((value) => ({ value, label: value })),
   ];
   if (effort && !levels.includes(effort))
@@ -228,7 +231,7 @@ export function ScheduleEditor({
             <Select
               size="lg"
               label={t("field.reasoning")}
-              value={draft.modelSelection.reasoningEffort || "default"}
+              value={draft.modelSelection.reasoningEffort || DEFAULT_CHOICE}
               disabled={busy || !draft.modelSelection.model}
               options={reasoningOptions(
                 t,
@@ -238,7 +241,7 @@ export function ScheduleEditor({
               onValueChange={(value) =>
                 patch("modelSelection", {
                   ...draft.modelSelection,
-                  reasoningEffort: value === "default" ? "" : value,
+                  reasoningEffort: value === DEFAULT_CHOICE ? "" : value,
                 })
               }
             />

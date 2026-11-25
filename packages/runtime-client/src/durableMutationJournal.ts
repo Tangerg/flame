@@ -4,6 +4,7 @@ import {
   checkRequest,
   requestRequiresIdempotency,
   pluginDeliveryMethod,
+  isPluginDeliveryMethod,
 } from "./request";
 import type { RequestMeta } from "./generated/wire.generated";
 import { cloneJSON } from "@frame/sdk/json";
@@ -317,11 +318,7 @@ export function openDurableMutationJournal(
     },
     pendingPluginCommands() {
       return loadEntries(options.storage)
-        .filter(
-          (entry) =>
-            (entry.method === "plugins.call" || entry.method === "plugins.stream") &&
-            entry.installed !== undefined,
-        )
+        .filter((entry) => isPluginDeliveryMethod(entry.method) && entry.installed !== undefined)
         .map((entry) => ({ entry }));
     },
     validatePluginCommand(identity, request) {
@@ -368,13 +365,12 @@ export function openDurableMutationJournal(
         if (entries.length >= MAX_ENTRIES) {
           throw new MutationJournalCapacityError("Runtime mutation journal capacity is exhausted");
         }
-        const installed =
-          method === "plugins.call" || method === "plugins.stream"
-            ? (() => {
-                const { input: _, ...route } = checkRequest(method, cloneJSON(params), requestMeta);
-                return { intent: null, route };
-              })()
-            : undefined;
+        const installed = isPluginDeliveryMethod(method)
+          ? (() => {
+              const { input: _, ...route } = checkRequest(method, cloneJSON(params), requestMeta);
+              return { intent: null, route };
+            })()
+          : undefined;
         entry = createEntry(
           method,
           params,

@@ -1,3 +1,4 @@
+import { SYSTEM_THEME } from "@/features/theme/kit/appearance";
 import { type Scheme } from "@/lib/appearance";
 import { COLOR_THEME } from "@/features/theme/public/extensionPoints";
 import { lookupExtensionByKey, lookupExtensionPoint } from "@/extensions/selectors/extensions";
@@ -5,7 +6,7 @@ import { type SystemAppearance } from "@/features/theme/application/systemAppear
 import { type ThemeAccess } from "@/features/theme/application/themeAccess";
 import { type AppearancePreferencePort } from "@/features/theme/application/appearancePreference";
 export function resolveThemeScheme(system: SystemAppearance, themeId: string): Scheme {
-  if (themeId === "system") return system.scheme();
+  if (themeId === SYSTEM_THEME) return system.scheme();
   return lookupExtensionByKey(COLOR_THEME, themeId)?.scheme ?? system.scheme();
 }
 
@@ -16,7 +17,7 @@ export function retainThemeSelection(
 ): void {
   const current = preference.read().theme;
   if (current.startsWith(sourcePrefix) && !available.includes(current))
-    preference.edit().setTheme("system");
+    preference.edit().setTheme(SYSTEM_THEME);
 }
 
 export function isLightTheme(theme: ThemeAccess, themeId: string): boolean {

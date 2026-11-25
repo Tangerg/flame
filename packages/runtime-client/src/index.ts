@@ -16,14 +16,14 @@ export type { PluginCommandRecovery } from "./pluginCommand";
 export type { PluginCommandInput, PluginCommandBinding } from "./mutationJournal";
 export { createMutationSettler } from "./mutationSettlement";
 export type { MutationSettler } from "./mutationSettlement";
+export type { Methods } from "./methods";
+export type { StreamingResult } from "./stream";
 export type {
-  Methods,
-  StreamingResult,
   RunOpeningResult,
   RunCommandRecovery,
   SteerCommandResult,
   SteerMutationPromise,
-} from "./methods";
+} from "./runCommands";
 export { createFlameClient } from "./sdk";
 export type { FlameClient, FlameClientOptions } from "./sdk";
 export { HTTP_ENDPOINTS, PROTOCOL_VERSION } from "@flame/runtime-client/wire";
@@ -102,7 +102,13 @@ export { JSONRPC_VERSION } from "./types";
 export { endpointAcceptsBearer, normalizeRuntimeEndpoint } from "./endpoint";
 
 export { errorMessage } from "./errors";
-export { checkRequest, pluginContract, pluginMethod } from "./request";
+export {
+  checkRequest,
+  pluginContract,
+  pluginMethod,
+  INSTALLATION_SCOPE,
+  type PluginComposition,
+} from "./request";
 export { RUNTIME_SUBSCRIBE_METHOD } from "./transport";
 export type {
   Transport,
