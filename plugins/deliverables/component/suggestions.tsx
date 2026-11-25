@@ -105,10 +105,12 @@ function SuggestionCard<T, Operation>({
           disabled={state.blocked || elsewhere || !chosen.size}
           onClick={() => {
             const adopted = operations.filter((_, index) => chosen.has(index));
-            live.setDraft((current) =>
-              merge(current, suggestion.revision, adopted),
+            const applied = live.setDraft((current) =>
+              current?.operations.length && current.base !== suggestion.revision
+                ? current
+                : merge(current, suggestion.revision, adopted),
             );
-            void settle("adopted");
+            if (applied) void settle("adopted");
           }}
         >
           {t("suggestions.adopt")}

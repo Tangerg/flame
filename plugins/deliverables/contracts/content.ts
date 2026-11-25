@@ -544,13 +544,31 @@ export const presentationEditSchema = z.strictObject({
 export type PresentationOperation = z.infer<
   typeof presentationEditSchema
 >["operations"][number];
+
+export const editorEditSchemas = {
+  pptx: presentationEditSchema,
+  xlsx: workbookEditSchema,
+  docx: documentEditSchema,
+};
+export type DraftFormat = keyof typeof editorEditSchemas;
+export type EditorOperation<Format extends DraftFormat = DraftFormat> = z.infer<
+  (typeof editorEditSchemas)[Format]
+>["operations"][number];
+
 // The edits an editor stages in its local draft. A suggestion carries only
 // these, so the person can adopt it into a draft before anything is saved.
 export const STAGED_OPERATIONS = {
   pptx: ["replaceText", "setFrame", "setChartData", "deleteElement"],
   xlsx: ["setCell"],
   docx: ["replaceText", "insertParagraph", "deleteBlock", "setParagraphStyle"],
-} as const;
+} as const satisfies {
+  [Format in DraftFormat]: readonly EditorOperation<Format>["type"][];
+};
+
+export type DraftOperation<Format extends DraftFormat> = Extract<
+  EditorOperation<Format>,
+  { type: (typeof STAGED_OPERATIONS)[Format][number] }
+>;
 
 export const PAGE_ROTATIONS = [0, 90, 180, 270] as const;
 

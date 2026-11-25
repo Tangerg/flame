@@ -1,4 +1,11 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import {
   failureText,
   type ComponentContext,
@@ -22,11 +29,7 @@ import {
 import { ImportForm } from "./importing";
 import { SlideStudio } from "./slides";
 import { DocumentStudio } from "./docs";
-import type { DocOperation } from "./docs-draft";
 import { WorkbookStudio } from "./sheets";
-import type { CellOperation } from "./sheets-draft";
-import type { Draft, DraftUpdate } from "./live-draft";
-import type { SlideOperation } from "./slides-draft";
 import { useDeliverables, type DeliverablesState } from "./useDeliverables";
 import type { DocumentRead } from "./types";
 import { catalogs } from "./catalogs";
@@ -35,7 +38,9 @@ import { Notices, PendingCommands } from "./notices";
 import { Inspector } from "./inspector";
 import { METHODS } from "../contracts/methods";
 import { parseTarget, type Focus } from "./targets";
-import { readDrafts, writeDrafts, type DraftFormat } from "./draft-storage";
+import type { DraftFormat, DraftOperation } from "../contracts/content";
+import { DraftStore } from "./draft-storage";
+import type { DraftUpdate } from "./live-draft";
 
 export { DeliverableResult } from "./tool-result";
 
@@ -58,9 +63,6 @@ function Workspace({
   );
   const state = useDeliverables(context);
   const link = useLink(context, state);
-  const slideDrafts = useDrafts<SlideOperation>(context, "pptx");
-  const sheetDrafts = useDrafts<CellOperation>(context, "xlsx");
-  const docDrafts = useDrafts<DocOperation>(context, "docx");
   const bodyViewport = useRef<HTMLDivElement>(null);
   const archiveSearchField = useRef<HTMLInputElement>(null);
   const archiveOrigin = useRef<{
@@ -141,6 +143,9 @@ function Workspace({
   );
   const document = state.read?.value;
   const studioDocument = useStudioDocument(state);
+  const slideDraft = useDocumentDraft(context, "pptx", studioDocument);
+  const sheetDraft = useDocumentDraft(context, "xlsx", studioDocument);
+  const docDraft = useDocumentDraft(context, "docx", studioDocument);
   const inspection = useMemo(
     () => inspectRevision(document),
     [document?.inspectionJSON, document?.revision.format],
@@ -206,8 +211,7 @@ function Workspace({
           key={studioDocument.document.id}
           state={state}
           document={studioDocument}
-          draft={slideDrafts.get(studioDocument.document.id)}
-          onDraft={slideDrafts.update(studioDocument.document.id)}
+          {...slideDraft}
           link={link.shown(studioDocument)}
           dateTime={dateTime}
           t={t}
@@ -218,8 +222,7 @@ function Workspace({
           key={studioDocument.document.id}
           state={state}
           document={studioDocument}
-          draft={docDrafts.get(studioDocument.document.id)}
-          onDraft={docDrafts.update(studioDocument.document.id)}
+          {...docDraft}
           link={link.shown(studioDocument)}
           dateTime={dateTime}
           t={t}
@@ -230,8 +233,7 @@ function Workspace({
           key={studioDocument.document.id}
           state={state}
           document={studioDocument}
-          draft={sheetDrafts.get(studioDocument.document.id)}
-          onDraft={sheetDrafts.update(studioDocument.document.id)}
+          {...sheetDraft}
           link={link.shown(studioDocument)}
           dateTime={dateTime}
           t={t}
@@ -315,23 +317,23 @@ function useStudioDocument(state: DeliverablesState): DocumentRead | undefined {
     : undefined;
 }
 
-// The workspace owns drafts by document, so reading another revision (which
-// unmounts an editor while it loads) never discards unsubmitted intent, and
-// keeps them in the browser so a reload does not either.
-function useDrafts<Operation>(context: ComponentContext, format: DraftFormat) {
-  const key = `flame.deliverables.drafts.${format}.${context.component.installationId}`;
-  const [drafts, setDrafts] = useState(() =>
-    readDrafts<Operation>(key, format),
+function useDocumentDraft<Format extends DraftFormat>(
+  context: ComponentContext,
+  format: Format,
+  document: DocumentRead | undefined,
+) {
+  const [store] = useState(
+    () => new DraftStore(context.component.installationId, format),
   );
-  useEffect(() => writeDrafts(key, drafts), [key, drafts]);
+  const id =
+    document?.revision.format === format ? document.document.id : undefined;
+  const draft = useSyncExternalStore(store.subscribe, () =>
+    id === undefined ? undefined : store.get(id),
+  );
   return {
-    get: (id: string) => drafts[id],
-    update: (id: string) => (update: DraftUpdate<Operation>) =>
-      setDrafts((all) => {
-        const { [id]: current, ...rest } = all;
-        const next = update(current);
-        return next ? { ...rest, [id]: next } : rest;
-      }),
+    draft,
+    onDraft: (update: DraftUpdate<DraftOperation<Format>>) =>
+      id !== undefined && store.update(id, update),
   };
 }
 

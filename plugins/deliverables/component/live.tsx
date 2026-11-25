@@ -218,7 +218,7 @@ export function useLiveEditor<T, Operation>(
   }: {
     document: DocumentRead;
     draft: Draft<Operation> | undefined;
-    onDraft(update: DraftUpdate<Operation>): void;
+    onDraft(update: DraftUpdate<Operation>): boolean;
     method: ProjectionMethod;
     schema: z.ZodType<T>;
     holding: boolean;
@@ -251,12 +251,13 @@ export function useLiveEditor<T, Operation>(
   const switching = state.selection?.revision !== viewed;
   const setDraft = (
     next: Draft<Operation> | undefined | DraftUpdate<Operation>,
-  ) => onDraft(typeof next === "function" ? next : () => next);
+  ) =>
+    onDraft(
+      typeof next === "function"
+        ? next
+        : (current) => (current === draft ? next : current),
+    );
   const [saving, setSaving] = useState(false);
-  useEffect(() => {
-    if (draft && draft.base !== viewed && !draft.operations.length)
-      setDraft(undefined);
-  }, [draft, viewed]);
   // A saved draft stays on screen until the editor shows the revision it
   // produced, so its edits do not vanish while that revision is read.
   const [settled, setSettled] = useState<Draft<Operation>>();
@@ -268,7 +269,7 @@ export function useLiveEditor<T, Operation>(
     !switching &&
     !state.blocked &&
     !saving &&
-    (!draft || editedDraft !== undefined);
+    pending === undefined;
   const dirty = !!draft?.operations.length;
   useFollowHead(state, documentId, viewed, head, dirty);
 
@@ -327,11 +328,16 @@ export function useLiveEditor<T, Operation>(
     retry,
     apply: (change: (draft: Draft<Operation>) => Draft<Operation>) => {
       if (!editable) return;
-      setDraft((current) =>
-        change(current ?? { base: viewed, operations: [], undo: [] }),
-      );
+      setDraft((current) => {
+        if (current?.base === viewed) return change(current);
+        if (current?.operations.length) return current;
+        return change({ base: viewed, operations: [], undo: [] });
+      });
     },
-    undo: () => setDraft((current) => current && undone(current)),
+    undo: () =>
+      setDraft((current) =>
+        current?.base === viewed ? undone(current) : current,
+      ),
     save,
     // Structural edits form their own revision, so they need an empty draft.
     restructure: (operations: unknown[]) => {

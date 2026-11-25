@@ -176,7 +176,7 @@ export function DocumentStudio({
   state: LiveState;
   document: DocumentRead;
   draft: Draft<DocOperation> | undefined;
-  onDraft(update: DraftUpdate<DocOperation>): void;
+  onDraft(update: DraftUpdate<DocOperation>): boolean;
   link?: Focus;
   dateTime: Intl.DateTimeFormat;
   t: Translate;

@@ -1,14 +1,9 @@
 import { parseJSON, projectNumber } from "@frame/sdk/json";
-import type { CellValue } from "../contracts/content";
+import type { CellValue, DraftOperation } from "../contracts/content";
 import type { SheetCellView, WorkbookLayout } from "../contracts/layouts";
 import { edited, same, type Draft, type Reconciliation } from "./live-draft";
 
-export type CellOperation = {
-  type: "setCell";
-  id: string;
-  expect: string;
-  value: CellValue;
-};
+export type CellOperation = DraftOperation<"xlsx">;
 
 export const cellId = (sheet: string, ref: string) => `${sheet}!${ref}`;
 

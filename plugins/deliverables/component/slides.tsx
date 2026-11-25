@@ -98,7 +98,7 @@ export function SlideStudio({
   state: LiveState;
   document: DocumentRead;
   draft: Draft<SlideOperation> | undefined;
-  onDraft(update: DraftUpdate<SlideOperation>): void;
+  onDraft(update: DraftUpdate<SlideOperation>): boolean;
   link?: Focus;
   dateTime: Intl.DateTimeFormat;
   t: Translate;
@@ -349,7 +349,11 @@ export function SlideStudio({
                 onDelete={() => remove(element)}
                 onRevert={() => {
                   if (original)
-                    setDraft((current) => current && revert(current, original));
+                    setDraft((current) =>
+                      current?.base === live.viewed
+                        ? revert(current, original)
+                        : current,
+                    );
                 }}
               />
             ) : (

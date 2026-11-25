@@ -1,6 +1,6 @@
 import {
   DEFAULT_PARAGRAPH_STYLE,
-  type DocumentOperation,
+  type DraftOperation,
 } from "../contracts/content";
 import type {
   BlockView,
@@ -9,10 +9,7 @@ import type {
 } from "../contracts/layouts";
 import { edited, same, type Draft, type Reconciliation } from "./live-draft";
 
-export type DocOperation = Exclude<
-  DocumentOperation,
-  { type: "appendParagraph" }
->;
+export type DocOperation = DraftOperation<"docx">;
 type Of<T extends DocOperation["type"]> = Extract<DocOperation, { type: T }>;
 export type InsertedParagraph = Of<"insertParagraph">;
 export type ParagraphStyle = Of<"setParagraphStyle">["style"];

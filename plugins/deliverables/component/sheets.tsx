@@ -248,7 +248,7 @@ export function WorkbookStudio({
   state: LiveState;
   document: DocumentRead;
   draft: Draft<CellOperation> | undefined;
-  onDraft(update: DraftUpdate<CellOperation>): void;
+  onDraft(update: DraftUpdate<CellOperation>): boolean;
   link?: Focus;
   dateTime: Intl.DateTimeFormat;
   t: Translate;

@@ -1,12 +1,8 @@
-import type { ChartData, Frame } from "../contracts/content";
+import type { DraftOperation } from "../contracts/content";
 import type { ElementView, SlideLayout } from "../contracts/layouts";
 import { edited, same, type Draft, type Reconciliation } from "./live-draft";
 
-export type SlideOperation =
-  | { type: "setFrame"; id: string; expect: Frame; frame: Frame }
-  | { type: "replaceText"; id: string; expect: string; text: string }
-  | { type: "deleteElement"; id: string }
-  | { type: "setChartData"; id: string; expect: ChartData; data: ChartData };
+export type SlideOperation = DraftOperation<"pptx">;
 
 function target(operation: SlideOperation): unknown {
   switch (operation.type) {
