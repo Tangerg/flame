@@ -3,7 +3,7 @@ import { paletteThemePlugin } from "@/features/theme/themes/paletteThemePlugin";
 export default function createThemePlugin(preference: AppearancePreferencePort) {
   return paletteThemePlugin(preference, "flame.builtin.color-theme-dark", () => ({
     id: "dark",
-    label: "Dark",
+    label: "settings.theme.dark",
     scheme: "dark",
     order: 0,
     palette: {},

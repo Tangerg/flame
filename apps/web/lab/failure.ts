@@ -71,7 +71,7 @@ export function failurePresentation(query: URLSearchParams, context: "lab" | "fi
       ? customPalette(preference.customTheme)
       : {
           id: selection.theme,
-          label: selection.theme,
+          label: `settings.theme.${selection.theme}`,
           scheme: selection.theme,
           palette: {},
         };

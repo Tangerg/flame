@@ -5,25 +5,25 @@ import { ACCENT } from "@/features/theme/public/extensionPoints";
 const DEFAULT_ACCENTS: AccentSpec[] = [
   {
     id: "flame",
-    label: "Flame",
+    label: "settings.accent.flame",
     color: DEFAULT_ACCENT,
     order: 0,
   },
   {
     id: "blue",
-    label: "Blue",
+    label: "settings.accent.blue",
     color: "#0485f7",
     order: 1,
   },
   {
     id: "purple",
-    label: "Purple",
+    label: "settings.accent.purple",
     color: "#7f52ff",
     order: 2,
   },
   {
     id: "green",
-    label: "Green",
+    label: "settings.accent.green",
     color: "#21a179",
     order: 3,
   },

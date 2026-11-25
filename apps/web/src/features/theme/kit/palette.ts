@@ -1,4 +1,5 @@
 import { type Scheme } from "@/lib/appearance";
+import { type Label } from "@/lib/i18n/index";
 import { type ColorThemeSpec } from "@/features/theme/public/types";
 import { type AppearancePreference } from "@/features/theme/kit/appearance";
 import { interpolate, rgbColor } from "@/features/theme/kit/color";
@@ -39,7 +40,7 @@ interface ThemePalette {
 
 export interface PaletteTheme {
   id: string;
-  label: string;
+  label: Label;
   scheme: Scheme;
   icon?: string;
   order?: number;

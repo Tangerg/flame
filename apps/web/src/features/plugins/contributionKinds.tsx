@@ -331,7 +331,7 @@ export function contributeThemes(
     const { background, foreground, accent, muted, border } = theme.colors;
     contributePaletteTheme(themeAccess.preference, lifetime, {
       id: packageScopedId(installation.id, theme.id),
-      label: `${release.name} · ${theme.title}`,
+      label: { text: `${release.name} · ${theme.title}` },
       scheme: theme.scheme,
       palette: { background, foreground, accent, muted, border },
     });

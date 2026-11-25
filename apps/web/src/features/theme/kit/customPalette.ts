@@ -8,7 +8,7 @@ export function customPalette(colors: AppearancePreference["customTheme"]): Pale
   const { r, g, b } = rgbColor(colors.bg)!;
   return {
     id: CUSTOM_THEME,
-    label: "Custom",
+    label: "settings.theme.custom",
     scheme: (299 * r + 587 * g + 114 * b) / 1000 < 0.5 ? "dark" : "light",
     icon: "palette",
     order: 99,

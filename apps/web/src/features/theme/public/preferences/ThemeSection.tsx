@@ -7,7 +7,7 @@ import { type ColorThemeSpec } from "@/features/theme/public/types";
 import { DropdownMenu } from "@/ui/index";
 import { SelectTrigger } from "@/ui/index";
 import { vocab } from "@flame/ui";
-import { useT } from "@/lib/i18n/index";
+import { labelText, useT } from "@/lib/i18n/index";
 import { COLOR_THEME } from "@/features/theme/public/extensionPoints";
 import { useExtensionPoint } from "@/extensions/selectors/extensions";
 import { DEFAULT_ACCENT } from "@/features/theme/public/appearance";
@@ -104,7 +104,8 @@ export function ThemeSection() {
 
   const isSystem = theme === SYSTEM_THEME;
   const activeSpec = themes.find((s) => s.id === theme);
-  const triggerLabel = isSystem || !activeSpec ? t("settings.theme.system") : activeSpec.label;
+  const triggerLabel =
+    isSystem || !activeSpec ? t("settings.theme.system") : labelText(activeSpec.label, t);
   const triggerSwatch =
     isSystem || !activeSpec ? <SystemSwatch /> : <ThemeSwatch {...previewTokens(activeSpec)} />;
 
@@ -131,7 +132,7 @@ export function ThemeSection() {
               <ThemeItem
                 key={spec.id}
                 swatch={<ThemeSwatch {...previewTokens(spec)} />}
-                label={spec.label}
+                label={labelText(spec.label, t)}
                 value={spec.id}
               />
             ))}
