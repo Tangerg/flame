@@ -103,7 +103,12 @@ function FoldersSection() {
         empty={
           workIndex.projects?.length
             ? undefined
-            : { title: t("folders.empty.title"), sub: t("folders.empty.sub"), size: "compact" }
+            : {
+                title: t("folders.empty.title"),
+                sub: t("folders.empty.sub"),
+                size: "compact",
+                align: "start",
+              }
         }
         error={{
           title: t("folders.error.title"),
