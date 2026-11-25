@@ -1200,8 +1200,9 @@ binary can reject them after source-only changes, including directory moves.
 Finish or cancel waiting executions before replacing their owning build. This
 does not require a migration of completed history or alter the public protocol.
 
-Run the built `flame-runtime` server in the foreground. Use Ctrl-C and wait for
-shutdown before replacing it. For isolated data, supply a new absolute
+Run the built `flame-runtime` server in the foreground. It reports its bound
+address after listening, including the assigned port when configured with port
+zero. Use Ctrl-C and wait for shutdown before replacing it. For isolated data, supply a new absolute
 `FLAME_HOME` to that process. Building does not remove or convert existing data.
 Data cleanup remains an explicit offline operation.
 

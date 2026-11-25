@@ -1,7 +1,8 @@
 import { spawn } from "node:child_process";
 import { mkdir, writeFile, copyFile } from "node:fs/promises";
-import { createConnection, createServer as createNetServer } from "node:net";
+import { createConnection } from "node:net";
 import { join } from "node:path";
+import { createInterface } from "node:readline";
 import { afterAll, beforeAll, beforeEach, expect, inject } from "vitest";
 import { createFlameClient, type FlameClient, createHttpTransport } from "@flame/runtime-client";
 import {
@@ -19,19 +20,8 @@ export const managedSkillName = "runtime-http-e2e";
 
 const runtimeFixtureStartupMilliseconds = 60_000;
 
-async function unusedLoopbackPort(): Promise<number> {
-  const server = createNetServer();
-  await new Promise<void>((resolve, reject) => {
-    server.once("error", reject);
-    server.listen(0, "127.0.0.1", resolve);
-  });
-  const address = server.address();
-  if (address === null || typeof address === "string") throw new Error("failed to allocate port");
-  await new Promise<void>((resolve, reject) =>
-    server.close((error) => (error ? reject(error) : resolve())),
-  );
-  return address.port;
-}
+const runtimeListen = "127.0.0.1:0";
+const listenerAnnouncement = "[flame] http listening on ";
 
 // One fixture per suite file: a runner, a Runtime and a scripted provider that
 // live for the whole file, with live accessors for state tests replace.
@@ -62,7 +52,6 @@ export function useRuntimeFixture(suite: string) {
   let processOutput = "";
   const runtimeExecutable = join(environmentRoot, "flame-e2e");
   const cliExecutable = join(environmentRoot, "flame-cli-e2e");
-  let runtimePort = 0;
   const managedOwners = new Map<
     "memory" | "schedules",
     Awaited<ReturnType<FlameClient["plugins"]["install"]>>
@@ -145,7 +134,7 @@ export function useRuntimeFixture(suite: string) {
     FLAME_BASEURL: providerBaseUrl,
     OPENAI_COMPATIBLE_API_KEY: "e2e-placeholder-key",
     OPENAI_API_KEY: "",
-    FLAME_SERVER_LISTEN: `127.0.0.1:${runtimePort}`,
+    FLAME_SERVER_LISTEN: runtimeListen,
     FLAME_SERVER_NOLOCALTOKEN: "true",
     OTEL_SDK_DISABLED: "true",
   });
@@ -218,20 +207,39 @@ export function useRuntimeFixture(suite: string) {
     processRunner = undefined;
   };
 
-  const startRuntimeProcess = async (readyBefore?: number) => {
+  const startRuntimeProcess = async (readyBefore = Date.now() + processStartupMilliseconds) => {
     processOutput = "";
-    runtime = spawn(runtimeExecutable, [], {
+    baseUrl = "";
+    const child = spawn(runtimeExecutable, [], {
       cwd: root,
       env: runtimeEnvironment(),
       stdio: ["ignore", "pipe", "pipe"],
     });
-    runtime.stdout?.on("data", (chunk: Buffer) => {
+    runtime = child;
+    const listener = Promise.withResolvers<string>();
+    child.stdout.on("data", (chunk: Buffer) => {
       processOutput += chunk.toString();
     });
-    runtime.stderr?.on("data", (chunk: Buffer) => {
-      processOutput += chunk.toString();
+    createInterface({ input: child.stderr }).on("line", (line) => {
+      processOutput += `${line}\n`;
+      if (line.startsWith(listenerAnnouncement))
+        listener.resolve(line.slice(listenerAnnouncement.length));
     });
-    await waitUntilReady(baseUrl, () => processOutput, readyBefore);
+    const stopped = new Promise<never>((_, reject) => {
+      child.once("error", reject);
+      child.once("close", (code, signal) => {
+        reject(new Error(`Runtime exited before readiness (${code}, ${signal}): ${processOutput}`));
+      });
+    });
+    const address = await within(
+      Promise.race([listener.promise, stopped]),
+      "Runtime's bound address",
+      readyBefore - Date.now(),
+    );
+    const url = new URL(`http://${address}`);
+    if (url.port === "0") throw new Error(`Runtime advertised the unbound listener ${address}`);
+    baseUrl = url.origin;
+    await Promise.race([waitUntilReady(baseUrl, () => processOutput, readyBefore), stopped]);
   };
 
   const stopRuntimeProcess = async () => {
@@ -335,8 +343,6 @@ export function useRuntimeFixture(suite: string) {
     providerBaseUrl = provider.baseUrl;
 
     await startRunnerProcess(readyBefore);
-    runtimePort = await unusedLoopbackPort();
-    baseUrl = `http://127.0.0.1:${runtimePort}`;
     await startRuntimeProcess(readyBefore);
     client = createRuntimeClient();
     negotiated = (await client.runtime.discover()).capabilities;

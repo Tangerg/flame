@@ -4,10 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"slices"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
@@ -32,9 +32,6 @@ type Server struct {
 	httpServer   *http.Server
 	handlerCtx   context.Context
 	stopHandlers context.CancelFunc
-
-	mu      sync.Mutex
-	started bool
 }
 
 type Config struct {
@@ -157,16 +154,15 @@ func (s *Server) withServerLifecycle(next http.Handler) http.Handler {
 	})
 }
 
-func (s *Server) Start() error {
-	s.mu.Lock()
-	if s.started {
-		s.mu.Unlock()
-		return errors.New("http: server already started")
+func (s *Server) Start(ctx context.Context) (net.Addr, <-chan error, error) {
+	var config net.ListenConfig
+	listener, err := config.Listen(ctx, "tcp", s.httpServer.Addr)
+	if err != nil {
+		return nil, nil, err
 	}
-	s.started = true
-	srv := s.httpServer
-	s.mu.Unlock()
-	return srv.ListenAndServe()
+	stopped := make(chan error, 1)
+	go func() { stopped <- s.httpServer.Serve(listener) }()
+	return listener.Addr(), stopped, nil
 }
 
 func (s *Server) Shutdown(ctx context.Context) error {
