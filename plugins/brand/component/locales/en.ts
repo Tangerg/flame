@@ -2,17 +2,9 @@ export const en: Record<string, string> = {
   title: "Brand identity",
   assets: "Brand assets",
   "mark.title": "Primary logo",
-  "mark.description":
-    "A rounded flame and two curious eyes for icons, avatars and navigation.",
   "companion.title": "3D companion",
-  "companion.description":
-    "A soft, dimensional companion for product introductions and larger illustrations.",
   "plush.title": "Plush character",
-  "plush.description":
-    "A warm, tactile companion for welcoming moments and brand storytelling.",
   "color.title": "Brand color",
-  "color.description":
-    "The fixed brand color stays the same across appearance themes.",
   "color.name": "Flame Orange",
   copyFailed: "Couldn't copy the color. Select the HEX value to copy it.",
   downloadPng: "Download PNG",

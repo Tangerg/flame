@@ -2,15 +2,9 @@ export const ja: Record<string, string> = {
   title: "ブランドアイデンティティ",
   assets: "ブランド素材",
   "mark.title": "メインロゴ",
-  "mark.description":
-    "丸い炎と好奇心のある2つの目。アイコン、アバター、ナビゲーションに使います。",
   "companion.title": "3Dキャラクター",
-  "companion.description":
-    "柔らかな立体感のある仲間。製品紹介や大きなイラストに使います。",
   "plush.title": "ぬいぐるみキャラクター",
-  "plush.description": "温かみのある仲間。歓迎画面やブランド紹介に使います。",
   "color.title": "ブランドカラー",
-  "color.description": "ブランドカラーは外観テーマにかかわらず一定です。",
   "color.name": "Flame オレンジ",
   copyFailed: "色をコピーできませんでした。HEX値を選択してコピーしてください。",
   downloadPng: "PNGをダウンロード",

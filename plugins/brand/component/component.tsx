@@ -13,7 +13,6 @@ import {
   Facts,
   Icon,
   PanelSection,
-  RecordBody,
   Tile,
   TileGrid,
   useCopy,
@@ -107,7 +106,6 @@ export function Brand({ context }: { context: ComponentContext }) {
               }
             >
               <strong>{t(`${asset.id}.title`)}</strong>
-              <RecordBody>{t(`${asset.id}.description`)}</RecordBody>
               <Button
                 variant="soft"
                 size="sm"
@@ -124,10 +122,7 @@ export function Brand({ context }: { context: ComponentContext }) {
           ))}
         </TileGrid>
       </PanelSection>
-      <PanelSection
-        title={t("color.title")}
-        description={t("color.description")}
-      >
+      <PanelSection title={t("color.title")}>
         <div
           style={{
             display: "flex",

@@ -2,17 +2,9 @@ export const de: Record<string, string> = {
   title: "Markenidentität",
   assets: "Markenmaterial",
   "mark.title": "Primäres Logo",
-  "mark.description":
-    "Eine runde Flamme mit zwei neugierigen Augen für Symbole, Avatare und Navigation.",
   "companion.title": "3D-Begleiter",
-  "companion.description":
-    "Ein weicher, plastischer Begleiter für Produktvorstellungen und größere Illustrationen.",
   "plush.title": "Plüschfigur",
-  "plush.description":
-    "Ein warmer, kuscheliger Begleiter für Begrüßungen und Markengeschichten.",
   "color.title": "Markenfarbe",
-  "color.description":
-    "Die feste Markenfarbe bleibt in allen Darstellungsthemen gleich.",
   "color.name": "Flame Orange",
   copyFailed:
     "Die Farbe konnte nicht kopiert werden. Wähle den HEX-Wert zum Kopieren aus.",

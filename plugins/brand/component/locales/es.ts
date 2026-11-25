@@ -2,17 +2,9 @@ export const es: Record<string, string> = {
   title: "Identidad de marca",
   assets: "Recursos de marca",
   "mark.title": "Logotipo principal",
-  "mark.description":
-    "Una llama redondeada y dos ojos curiosos para iconos, avatares y navegación.",
   "companion.title": "Compañero 3D",
-  "companion.description":
-    "Un compañero suave y con volumen para presentaciones de producto e ilustraciones grandes.",
   "plush.title": "Personaje de peluche",
-  "plush.description":
-    "Un compañero cálido y suave para dar la bienvenida y contar historias de la marca.",
   "color.title": "Color de marca",
-  "color.description":
-    "El color de marca se mantiene fijo en todos los temas de apariencia.",
   "color.name": "Naranja Flame",
   copyFailed:
     "No se pudo copiar el color. Selecciona el valor HEX para copiarlo.",
