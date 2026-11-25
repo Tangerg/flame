@@ -58,7 +58,7 @@ export const ja = {
   "execute.help":
     "取得した指示と正確なツール定義に従い、コードと引数を JSON オブジェクトで入力してください。実行前に対象を確認します。",
   "execute.tool": "ツール",
-  "execute.arguments": "ツール引数（JSON）",
+  "execute.arguments": "ツール引数 (JSON)",
   "execute.object": "ツール引数は JSON オブジェクトで入力してください。",
   "execute.review": "操作を確認",
   "execute.actions": "確認した操作のアクション",
