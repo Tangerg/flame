@@ -58,16 +58,20 @@ export function formatTimestamp(
     : value;
 }
 
+// A read that already shows a value reads again without a status line, so
+// background refreshes do not shift the page.
 export function ArchiveReadStatus({
   read,
   t,
 }: {
-  read?: { loading: boolean; error?: string };
+  read?: { loading: boolean; value?: unknown; error?: string };
   t: Translate;
 }) {
   return (
     <>
-      {read?.loading && <Metadata role="status">{t("reading")}</Metadata>}
+      {read?.loading && !read.value && (
+        <Metadata role="status">{t("reading")}</Metadata>
+      )}
       {read?.error && <Callout kind="warning">{read.error}</Callout>}
     </>
   );

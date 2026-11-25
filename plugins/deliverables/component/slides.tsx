@@ -11,8 +11,7 @@ import {
   DraftToolbar,
   RevisionNotices,
   useHandoff,
-  useLiveDraft,
-  useProjection,
+  useLiveEditor,
   type LiveState,
 } from "./live";
 import { preview, record, revert, type SlideOperation } from "./slides-draft";
@@ -39,36 +38,33 @@ export function SlideStudio({
   onDraft(update: DraftUpdate<SlideOperation>): void;
   t: Translate;
 }) {
+  // Slide and element identities survive revisions, so an open field carries
+  // over to the next revision.
+  const live = useLiveEditor(state, {
+    document,
+    draft,
+    onDraft,
+    method: METHODS.slides,
+    schema: slideLayoutSchema,
+    holding: false,
+  });
   const {
-    documentId,
     head,
-    viewed,
     setDraft,
     saving,
-    pending,
     editedDraft,
     editable,
     dirty,
     apply,
     undo,
-    save,
     restructure,
-  } = useLiveDraft(state, document, draft, onDraft);
+  } = live;
   const change = (operation: SlideOperation, target?: ElementView) =>
     apply((current) => record(current, operation, target));
   const [slideId, setSlideId] = useState<string>();
   const [elementId, setElementId] = useState<string>();
   const handoff = useHandoff(state, t);
-  const layouts = useProjection(
-    state,
-    documentId,
-    pending ? [viewed, pending] : [viewed],
-    METHODS.slides,
-    slideLayoutSchema,
-  );
-  const read = layouts.get(viewed);
-  const baseRead = pending ? layouts.get(pending) : undefined;
-  const savedLayout = read?.value;
+  const savedLayout = live.read?.value;
   const layout = useMemo(
     () =>
       savedLayout && editedDraft
@@ -116,7 +112,9 @@ export function SlideStudio({
       disabled={dirty || !savedSlide || (element !== undefined && !original)}
       onClick={() => {
         if (savedSlide)
-          handoff.hand(selectionReference(document, savedSlide, original, t));
+          handoff.hand(
+            selectionReference(live.document, savedSlide, original, t),
+          );
       }}
     >
       {handoff.label}
@@ -128,13 +126,7 @@ export function SlideStudio({
       <RevisionNotices
         t={t}
         loading={t("slides.loading")}
-        viewed={viewed}
-        head={head}
-        draft={draft}
-        editing={editedDraft !== undefined}
-        pending={pending}
-        read={read}
-        baseRead={baseRead}
+        live={live}
         reconcile={(base, current) =>
           draft && (
             <SlideReconcile
@@ -147,11 +139,6 @@ export function SlideStudio({
             />
           )
         }
-        onOpen={(revision) => state.open({ id: documentId, revision })}
-        onRetry={() => {
-          if (read?.error) layouts.retry(viewed);
-          if (pending && baseRead?.error) layouts.retry(pending);
-        }}
       />
       {layout && slide && (
         <div
@@ -275,7 +262,7 @@ export function SlideStudio({
           editable={editable}
           onUndo={undo}
           onDiscard={() => setDraft(undefined)}
-          onSave={() => void save()}
+          onSave={() => void live.save()}
         />
       )}
     </PanelSection>

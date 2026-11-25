@@ -23,7 +23,8 @@ import { WorkbookStudio } from "./sheets";
 import type { CellOperation } from "./sheets-draft";
 import type { Draft, DraftUpdate } from "./live-draft";
 import type { SlideOperation } from "./slides-draft";
-import { useDeliverables } from "./useDeliverables";
+import { useDeliverables, type DeliverablesState } from "./useDeliverables";
+import type { DocumentRead } from "./types";
 import { en } from "./locales/en";
 import { zh } from "./locales/zh";
 import { zhTW } from "./locales/zh-TW";
@@ -138,6 +139,7 @@ function Workspace({
     [state.catalog?.value],
   );
   const document = state.read?.value;
+  const studioDocument = useStudioDocument(state);
   const inspection = useMemo(
     () => inspectRevision(document),
     [document?.inspectionJSON, document?.revision.format],
@@ -189,34 +191,37 @@ function Workspace({
         entry={historyEntry}
         inspection={inspection.value}
       />
-      <ArchiveReadStatus read={state.read} t={t} />
-      {document?.revision.format === "pptx" && (
+      <ArchiveReadStatus
+        read={studioDocument === document ? state.read : undefined}
+        t={t}
+      />
+      {studioDocument?.revision.format === "pptx" && (
         <SlideStudio
-          key={document.document.id}
+          key={studioDocument.document.id}
           state={state}
-          document={document}
-          draft={slideDrafts.get(document.document.id)}
-          onDraft={slideDrafts.update(document.document.id)}
+          document={studioDocument}
+          draft={slideDrafts.get(studioDocument.document.id)}
+          onDraft={slideDrafts.update(studioDocument.document.id)}
           t={t}
         />
       )}
-      {document?.revision.format === "docx" && (
+      {studioDocument?.revision.format === "docx" && (
         <DocumentStudio
-          key={document.document.id}
+          key={studioDocument.document.id}
           state={state}
-          document={document}
-          draft={docDrafts.get(document.document.id)}
-          onDraft={docDrafts.update(document.document.id)}
+          document={studioDocument}
+          draft={docDrafts.get(studioDocument.document.id)}
+          onDraft={docDrafts.update(studioDocument.document.id)}
           t={t}
         />
       )}
-      {document?.revision.format === "xlsx" && (
+      {studioDocument?.revision.format === "xlsx" && (
         <WorkbookStudio
-          key={document.document.id}
+          key={studioDocument.document.id}
           state={state}
-          document={document}
-          draft={sheetDrafts.get(document.document.id)}
-          onDraft={sheetDrafts.update(document.document.id)}
+          document={studioDocument}
+          draft={sheetDrafts.get(studioDocument.document.id)}
+          onDraft={sheetDrafts.update(studioDocument.document.id)}
           t={t}
         />
       )}
@@ -239,6 +244,18 @@ function Workspace({
       />
     </Panel>
   );
+}
+
+// An editor keeps the revision it shows while another revision of the same
+// document is read, so it stays mounted and keeps its place.
+function useStudioDocument(state: DeliverablesState): DocumentRead | undefined {
+  const document = state.read?.value;
+  const [last, setLast] = useState(document);
+  if (document && document !== last) setLast(document);
+  if (document) return document;
+  return !state.read?.error && last?.document.id === state.selection?.id
+    ? last
+    : undefined;
 }
 
 // The workspace owns drafts by document, so reading another revision (which

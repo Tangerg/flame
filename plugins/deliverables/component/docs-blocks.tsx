@@ -212,6 +212,7 @@ const frame = (selected: boolean, deleted: boolean): CSSProperties => ({
 export function SavedBlock({
   item,
   selected,
+  editing,
   editable,
   dirty,
   apply,
@@ -223,26 +224,26 @@ export function SavedBlock({
 }: {
   item: Extract<DocItem, { source: "saved" }>;
   selected: boolean;
+  editing: boolean;
   editable: boolean;
   dirty: boolean;
   apply(change: (draft: Draft<DocOperation>) => Draft<DocOperation>): void;
-  onSelect(selection: Selection | undefined): void;
+  onSelect(selection: Selection | undefined, editing?: boolean): void;
   onInsert(after: BlockView): void;
   onHand(block: BlockView): void;
   handLabel: string;
   t: Translate;
 }) {
   const { block, saved, deleted } = item;
-  const [editing, setEditing] = useState(false);
-  const open = () => {
-    onSelect({ source: "saved", id: block.id });
-    setEditing(
+  const target = { source: "saved", id: block.id } as const;
+  const open = () =>
+    onSelect(
+      target,
       editable &&
         !deleted &&
         block.kind === "paragraph" &&
         block.runs.length > 0,
     );
-  };
   return (
     <div role="listitem" style={frame(selected, deleted)}>
       <div
@@ -260,18 +261,18 @@ export function SavedBlock({
           open();
         }}
       >
-        {editing && selected && block.kind === "paragraph" ? (
+        {editing && block.kind === "paragraph" ? (
           <ParagraphEditor
             text={textOf(block.runs)}
             style={block.style}
             alignment={block.alignment}
             label={t("docs.text")}
             onCommit={(text) => {
-              setEditing(false);
+              onSelect(target);
               saved.kind === "paragraph" &&
                 apply((draft) => editText(draft, saved, text));
             }}
-            onCancel={() => setEditing(false)}
+            onCancel={() => onSelect(target)}
           />
         ) : (
           <BlockContent block={block} t={t} />
@@ -362,6 +363,7 @@ export function InsertedBlock({
   index,
   paragraph,
   selected,
+  editing,
   editable,
   apply,
   onSelect,
@@ -370,14 +372,14 @@ export function InsertedBlock({
   index: number;
   paragraph: InsertedParagraph;
   selected: boolean;
+  editing: boolean;
   editable: boolean;
   apply(change: (draft: Draft<DocOperation>) => Draft<DocOperation>): void;
-  onSelect(selection: Selection | undefined): void;
+  onSelect(selection: Selection | undefined, editing?: boolean): void;
   t: Translate;
 }) {
   const style = paragraph.style ?? "Normal";
-  // A paragraph inserted from an action arrives selected, ready for typing.
-  const [editing, setEditing] = useState(selected && editable);
+  const target = { source: "inserted", index } as const;
   return (
     <div
       role="listitem"
@@ -390,21 +392,18 @@ export function InsertedBlock({
         role="button"
         tabIndex={0}
         aria-pressed={selected}
-        onClick={() => {
-          onSelect({ source: "inserted", index });
-          setEditing(editable);
-        }}
+        onClick={() => onSelect(target, editable)}
       >
-        {editing && selected ? (
+        {editing ? (
           <ParagraphEditor
             text={paragraph.text}
             style={style}
             label={t("docs.text")}
             onCommit={(text) => {
-              setEditing(false);
+              onSelect(target);
               apply((draft) => changeInserted(draft, index, { text }));
             }}
-            onCancel={() => setEditing(false)}
+            onCancel={() => onSelect(target)}
           />
         ) : (
           <p style={paragraphStyle(style)}>

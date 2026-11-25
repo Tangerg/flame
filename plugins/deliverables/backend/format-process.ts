@@ -152,9 +152,25 @@ async function write(response: Response): Promise<void> {
   );
 }
 
+// Resolves when its turn comes; a cancelled wait leaves its place in line.
+function turnOf(turn: Promise<void>, signal: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const abort = () => reject(signal.reason);
+    signal.addEventListener("abort", abort, { once: true });
+    void turn.then(() => {
+      signal.removeEventListener("abort", abort);
+      resolve();
+    });
+  });
+}
+
 export class Formats {
   readonly #entry: string;
   #active?: { cancel: () => void; done: Promise<unknown> };
+  // Operations run one confined process at a time in arrival order, so
+  // concurrent readers and edits wait instead of refusing each other.
+  #line: Promise<void> = Promise.resolve();
+  #admitted = 0;
   #closed = false;
   #cleanupFailure?: unknown;
 
@@ -168,17 +184,34 @@ export class Formats {
     signal.throwIfAborted();
     if (this.#closed)
       throw new Refusal("formats_closed", "format processing is closed");
-    if (this.#active)
-      throw new Refusal(
-        "formats_busy",
-        "another bounded format operation is active",
-      );
     const data = Buffer.from(JSON.stringify(input));
     if (data.byteLength > packetBytes)
       throw new Refusal(
         "format_capacity",
         "native format request exceeds its process budget",
       );
+    if (this.#admitted >= LIMITS.formatOperations)
+      throw new Refusal(
+        "formats_busy",
+        "too many native format operations are waiting",
+      );
+    this.#admitted++;
+    const turn = this.#line;
+    let leave!: () => void;
+    const left = new Promise<void>((resolve) => (leave = resolve));
+    this.#line = turn.then(() => left);
+    try {
+      await turnOf(turn, signal);
+      if (this.#closed)
+        throw new Refusal("formats_closed", "format processing is closed");
+      return await this.#run(data, signal);
+    } finally {
+      this.#admitted--;
+      leave();
+    }
+  }
+
+  #run(data: Uint8Array, signal: AbortSignal): Promise<Response> {
     const controller = new AbortController();
     const owned = AbortSignal.any([signal, controller.signal]);
     const active = {

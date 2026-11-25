@@ -338,7 +338,10 @@ observation. LibreOffice's rendering and conversion can differ from Microsoft
 Office; page images require actual visual review before claiming visual quality.
 
 Native package parsing runs in a separate single-operation managed Node process
-inside the same OS confinement boundary. Its invocation directory and packaged
+inside the same OS confinement boundary. Parsing operations run one at a time in
+arrival order, so open editors reading a revision and an edit of it wait for each
+other instead of being refused; at most eight are admitted at once, beyond which
+a call is refused as busy. Its invocation directory and packaged
 code are read-only, and the OS boundary isolates network access. Node permissions
 add a code-only filesystem grant and deny child-process creation; they do not own
 network isolation. Parsing has a 256 MiB JavaScript heap, a 2 GiB memory budget

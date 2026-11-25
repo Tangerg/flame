@@ -1,4 +1,11 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import type { z } from "zod/v4";
 import {
   failureText,
@@ -38,6 +45,7 @@ export type LiveState = Pick<
   | "operations"
   | "refresh"
   | "run"
+  | "selection"
   | "selectRevision"
   | "signal"
 >;
@@ -48,7 +56,7 @@ type ProjectionMethod = (typeof METHODS)["slides" | "sheets" | "blocks"];
 
 // The bounded format process admits one operation at a time, so revisions are
 // read in sequence rather than in parallel.
-export function useProjection<T>(
+function useProjection<T>(
   state: LiveState,
   documentId: string,
   wanted: string[],
@@ -91,32 +99,127 @@ export function useProjection<T>(
   };
 }
 
-// The draft records intent against the revision it was read from; edits apply only
-// while that revision is the head, and saving re-checks it as the precondition.
-export function useLiveDraft<Operation>(
+// An editor shows one revision with its projection. A newly read revision
+// replaces it once its projection is read and no text entry is open, so
+// following the head or saving keeps the editor's place.
+function useShownRevision<T>(
   state: LiveState,
-  document: DocumentRead,
-  draft: Draft<Operation> | undefined,
-  onDraft: (update: DraftUpdate<Operation>) => void,
+  incoming: DocumentRead,
+  draft: { base: string; operations: unknown[] } | undefined,
+  method: ProjectionMethod,
+  schema: z.ZodType<T>,
+  holding: boolean,
 ) {
-  const documentId = document.document.id;
-  const head = document.document.head;
-  const viewed = document.revision.id;
+  const [shown, setShown] = useState(incoming);
+  const viewed = shown.revision.id;
+  const pending =
+    draft && draft.base !== viewed && draft.operations.length
+      ? draft.base
+      : undefined;
+  const projections = useProjection(
+    state,
+    shown.document.id,
+    [...new Set([incoming.revision.id, viewed, ...(pending ? [pending] : [])])],
+    method,
+    schema,
+  );
+  if (incoming !== shown && !holding && projections.get(incoming.revision.id))
+    setShown(incoming);
+  const read = projections.get(viewed);
+  const baseRead = pending ? projections.get(pending) : undefined;
+  return {
+    shown,
+    pending,
+    read,
+    baseRead,
+    retry: () => {
+      if (read?.error) projections.retry(viewed);
+      if (pending && baseRead?.error) projections.retry(pending);
+    },
+  };
+}
+
+// The editor follows the head while it shows the head, or a head it followed,
+// and holds no unsaved draft. A revision the user opens that is not the head
+// stays put.
+function useFollowHead(
+  state: LiveState,
+  documentId: string,
+  viewed: string,
+  head: string,
+  dirty: boolean,
+) {
+  const tracking = useRef<{
+    viewed: string;
+    target?: string;
+    following: boolean;
+  }>({ viewed, following: viewed === head });
+  useLayoutEffect(() => {
+    const before = tracking.current;
+    const following =
+      viewed === before.viewed || viewed === before.target
+        ? before.following
+        : viewed === head;
+    const target = following && !dirty && head !== viewed ? head : undefined;
+    tracking.current = { viewed, target, following };
+    if (target) state.open({ id: documentId, revision: target });
+  }, [viewed, head, dirty]);
+}
+
+// The draft records intent against the shown revision; edits apply only while
+// it is the selected head, and saving re-checks it as the precondition.
+export function useLiveEditor<T, Operation>(
+  state: LiveState,
+  {
+    document,
+    draft,
+    onDraft,
+    method,
+    schema,
+    holding,
+  }: {
+    document: DocumentRead;
+    draft: Draft<Operation> | undefined;
+    onDraft(update: DraftUpdate<Operation>): void;
+    method: ProjectionMethod;
+    schema: z.ZodType<T>;
+    holding: boolean;
+  },
+) {
+  const { shown, pending, read, baseRead, retry } = useShownRevision(
+    state,
+    document,
+    draft,
+    method,
+    schema,
+    holding,
+  );
+  const documentId = shown.document.id;
+  const head = shown.document.head;
+  const viewed = shown.revision.id;
+  const switching = state.selection?.revision !== viewed;
   const setDraft = (
     next: Draft<Operation> | undefined | DraftUpdate<Operation>,
   ) => onDraft(typeof next === "function" ? next : () => next);
   const [saving, setSaving] = useState(false);
-  const stale = draft !== undefined && draft.base !== viewed;
   useEffect(() => {
-    if (stale && !draft.operations.length) setDraft(undefined);
+    if (draft && draft.base !== viewed && !draft.operations.length)
+      setDraft(undefined);
   }, [draft, viewed]);
-  const editedDraft = draft?.base === viewed ? draft : undefined;
+  // A saved draft stays on screen until the editor shows the revision it
+  // produced, so its edits do not vanish while that revision is read.
+  const [settled, setSettled] = useState<Draft<Operation>>();
+  if (settled && settled.base !== viewed) setSettled(undefined);
+  const settling = settled?.base === viewed ? settled : undefined;
+  const editedDraft = draft?.base === viewed ? draft : settling;
   const editable =
     viewed === head &&
+    !switching &&
     !state.blocked &&
     !saving &&
     (!draft || editedDraft !== undefined);
   const dirty = !!draft?.operations.length;
+  useFollowHead(state, documentId, viewed, head, dirty);
 
   const save = async () => {
     if (!draft || !dirty || !editable) return;
@@ -131,6 +234,7 @@ export function useLiveDraft<Operation>(
           operationsJSON: operationsJSON(captured.operations),
         },
         (value) => {
+          setSettled(captured);
           setDraft((current) => (current === captured ? undefined : current));
           state.selectRevision(value, {
             id: documentId,
@@ -145,15 +249,22 @@ export function useLiveDraft<Operation>(
   };
 
   return {
+    document: shown,
     documentId,
     head,
     viewed,
+    draft,
     setDraft,
-    saving,
-    pending: stale && draft.operations.length ? draft.base : undefined,
+    saving: saving || settling !== undefined,
+    pending,
+    switching,
     editedDraft,
     editable,
     dirty,
+    read,
+    baseRead,
+    open: (revision: string) => state.open({ id: documentId, revision }),
+    retry,
     apply: (change: (draft: Draft<Operation>) => Draft<Operation>) => {
       if (!editable) return;
       setDraft((current) =>
@@ -178,6 +289,10 @@ export function useLiveDraft<Operation>(
     },
   };
 }
+
+export type LiveEditor<T, Operation> = ReturnType<
+  typeof useLiveEditor<T, Operation>
+>;
 
 export function Reconcile<Operation>({
   results,
@@ -252,39 +367,24 @@ export function Reconcile<Operation>({
 export function RevisionNotices<T, Operation>({
   t,
   loading,
-  viewed,
-  head,
-  draft,
-  editing,
-  pending,
-  read,
-  baseRead,
+  live,
   reconcile,
-  onOpen,
-  onRetry,
 }: {
   t: Translate;
   loading: string;
-  viewed: string;
-  head: string;
-  draft: Draft<Operation> | undefined;
-  editing: boolean;
-  pending: string | undefined;
-  read: ProjectionRead<T> | undefined;
-  baseRead: ProjectionRead<T> | undefined;
+  live: LiveEditor<T, Operation>;
   reconcile(base: T, current: T): ReactNode;
-  onOpen(revision: string): void;
-  onRetry(): void;
 }) {
+  const { viewed, head, draft, pending, read, baseRead } = live;
   return (
     <>
-      {viewed !== head && !draft && (
+      {viewed !== head && !draft && !live.switching && (
         <Callout kind="note">{t("draft.historical")}</Callout>
       )}
-      {editing && head !== viewed && (
+      {live.editedDraft && head !== viewed && (
         <Callout kind="warning">
           {t("draft.newer")}{" "}
-          <Button onClick={() => onOpen(head)}>{t("draft.compare")}</Button>
+          <Button onClick={() => live.open(head)}>{t("draft.compare")}</Button>
         </Callout>
       )}
       {pending && draft && (
@@ -292,7 +392,7 @@ export function RevisionNotices<T, Operation>({
           {viewed !== head ? (
             <Callout kind="note">
               {t("draft.elsewhere")}{" "}
-              <Button onClick={() => onOpen(pending)}>
+              <Button onClick={() => live.open(pending)}>
                 {t("draft.openDraft")}
               </Button>
             </Callout>
@@ -306,7 +406,7 @@ export function RevisionNotices<T, Operation>({
       {(read?.error || baseRead?.error) && (
         <Callout kind="warning">
           {read?.error ?? baseRead?.error}{" "}
-          <Button onClick={onRetry}>{t("draft.retry")}</Button>
+          <Button onClick={live.retry}>{t("draft.retry")}</Button>
         </Callout>
       )}
       {!read && <Metadata role="status">{loading}</Metadata>}

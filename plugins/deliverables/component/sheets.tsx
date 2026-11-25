@@ -22,8 +22,7 @@ import {
   Reconcile,
   RevisionNotices,
   useHandoff,
-  useLiveDraft,
-  useProjection,
+  useLiveEditor,
   type LiveState,
 } from "./live";
 import {
@@ -208,35 +207,22 @@ export function WorkbookStudio({
   onDraft(update: DraftUpdate<CellOperation>): void;
   t: Translate;
 }) {
-  const {
-    documentId,
-    head,
-    viewed,
-    setDraft,
-    saving,
-    pending,
-    editedDraft,
-    editable,
-    dirty,
-    apply,
-    undo,
-    save,
-  } = useLiveDraft(state, document, draft, onDraft);
+  const [editing, setEditing] = useState<Entry>();
+  const live = useLiveEditor(state, {
+    document,
+    draft,
+    onDraft,
+    method: METHODS.sheets,
+    schema: workbookLayoutSchema,
+    holding: editing !== undefined,
+  });
+  const { head, setDraft, saving, editedDraft, editable, dirty, apply, undo } =
+    live;
   const handoff = useHandoff(state, t);
-  const projections = useProjection(
-    state,
-    documentId,
-    pending ? [viewed, pending] : [viewed],
-    METHODS.sheets,
-    workbookLayoutSchema,
-  );
-  const read = projections.get(viewed);
-  const baseRead = pending ? projections.get(pending) : undefined;
-  const layout = read?.value;
+  const layout = live.read?.value;
   const [sheetId, setSheetId] = useState<string>();
   const [anchor, setAnchor] = useState<Point>({ row: 1, column: 1 });
   const [focus, setFocus] = useState<Point>({ row: 1, column: 1 });
-  const [editing, setEditing] = useState<Entry>();
   const entry = useRef(editing);
   entry.current = editing;
   const sheet =
@@ -303,13 +289,7 @@ export function WorkbookStudio({
       <RevisionNotices
         t={t}
         loading={t("sheets.loading")}
-        viewed={viewed}
-        head={head}
-        draft={draft}
-        editing={editedDraft !== undefined}
-        pending={pending}
-        read={read}
-        baseRead={baseRead}
+        live={live}
         reconcile={(_base, current) =>
           draft && (
             <SheetReconcile
@@ -322,11 +302,6 @@ export function WorkbookStudio({
             />
           )
         }
-        onOpen={(revision) => state.open({ id: documentId, revision })}
-        onRetry={() => {
-          if (read?.error) projections.retry(viewed);
-          if (pending && baseRead?.error) projections.retry(pending);
-        }}
       />
       {layout && sheet && (
         <>
@@ -389,11 +364,11 @@ export function WorkbookStudio({
           <Metadata>{t("sheets.keyboard")}</Metadata>
           <SheetActions
             state={state}
-            document={document}
+            document={live.document}
             sheet={sheet}
             range={range}
             dirty={dirty}
-            current={viewed === head}
+            current={live.viewed === head && !live.switching}
             handoff={handoff}
             t={t}
           />
@@ -408,7 +383,7 @@ export function WorkbookStudio({
           editable={editable}
           onUndo={undo}
           onDiscard={() => setDraft(undefined)}
-          onSave={() => void save()}
+          onSave={() => void live.save()}
         />
       )}
     </PanelSection>

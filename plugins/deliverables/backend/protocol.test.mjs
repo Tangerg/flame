@@ -953,3 +953,40 @@ it(
   },
   scenarioTimeoutMilliseconds,
 );
+it(
+  "open editors reading a revision while the model edits it all succeed",
+  async ({ backend }) => {
+    const created = await backend.invoke(METHODS.create, {
+      title: "Status note",
+      format: "docx",
+      contentJSON: JSON.stringify({
+        title: "Status note",
+        blocks: [{ type: "paragraph", runs: [{ text: "On track." }] }],
+      }),
+      provenance,
+    });
+    const id = created.documentId;
+    const read = (revision) =>
+      backend
+        .invoke(METHODS.blocks, { id, revision })
+        .then((result) => JSON.parse(result.layoutJSON).blocks);
+    const [first, second, edited] = await Promise.all([
+      read(created.id),
+      read(created.id),
+      backend.invoke(METHODS.edit, {
+        id,
+        expectedRevision: created.id,
+        operationsJSON: JSON.stringify({
+          operations: [{ type: "appendParagraph", text: "Next: launch." }],
+        }),
+      }),
+    ]);
+    expect(first).toEqual(second);
+    expect(first).toHaveLength(1);
+    const after = await read(edited.id);
+    expect(
+      after.map((block) => block.runs.map((run) => run.text).join("")),
+    ).toEqual(["On track.", "Next: launch."]);
+  },
+  scenarioTimeoutMilliseconds,
+);

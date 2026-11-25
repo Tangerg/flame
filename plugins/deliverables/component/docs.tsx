@@ -14,8 +14,7 @@ import {
   Reconcile,
   RevisionNotices,
   useHandoff,
-  useLiveDraft,
-  useProjection,
+  useLiveEditor,
   type LiveState,
 } from "./live";
 import {
@@ -127,50 +126,51 @@ export function DocumentStudio({
   onDraft(update: DraftUpdate<DocOperation>): void;
   t: Translate;
 }) {
-  const live = useLiveDraft(state, document, draft, onDraft);
+  // Block identities are positions in one revision, so a selection ends when
+  // the editor shows another revision.
+  const [focus, setFocus] = useState<{
+    revision: string;
+    target: Selection;
+    editing: boolean;
+  }>();
+  const live = useLiveEditor(state, {
+    document,
+    draft,
+    onDraft,
+    method: METHODS.blocks,
+    schema: documentLayoutSchema,
+    holding: !!focus?.editing,
+  });
   const handoff = useHandoff(state, t);
-  const projections = useProjection(
-    state,
-    live.documentId,
-    live.pending ? [live.viewed, live.pending] : [live.viewed],
-    METHODS.blocks,
-    documentLayoutSchema,
-  );
-  const read = projections.get(live.viewed);
-  const baseRead = live.pending ? projections.get(live.pending) : undefined;
-  const layout = read?.value;
-  const [selection, setSelection] = useState<Selection>();
+  const layout = live.read?.value;
+  const current = focus?.revision === live.viewed ? focus : undefined;
   const items = useMemo(
     () => (layout ? preview(layout, live.editedDraft?.operations ?? []) : []),
     [layout, live.editedDraft],
   );
-  const select = (next: Selection | undefined) => {
-    setSelection(next);
+  const select = (target: Selection | undefined, editing = false) => {
+    setFocus(target && { revision: live.viewed, target, editing });
     handoff.clear();
   };
   const insertAfter = (after: BlockView | undefined) => {
     if (!live.editable) return;
     const index = live.editedDraft?.operations.length ?? 0;
-    live.apply((current) => insert(current, after));
-    select({ source: "inserted", index });
+    live.apply((draft) => insert(draft, after));
+    select({ source: "inserted", index }, true);
   };
-  const isSelected = (item: DocItem) =>
-    item.source === "saved"
-      ? selection?.source === "saved" && selection.id === item.block.id
-      : selection?.source === "inserted" && selection.index === item.index;
+  const isSelected = (item: DocItem) => {
+    const target = current?.target;
+    return item.source === "saved"
+      ? target?.source === "saved" && target.id === item.block.id
+      : target?.source === "inserted" && target.index === item.index;
+  };
 
   return (
     <PanelSection title={t("docs.title")} description={t("docs.help")}>
       <RevisionNotices
         t={t}
         loading={t("docs.loading")}
-        viewed={live.viewed}
-        head={live.head}
-        draft={draft}
-        editing={live.editedDraft !== undefined}
-        pending={live.pending}
-        read={read}
-        baseRead={baseRead}
+        live={live}
         reconcile={(_base, current) =>
           draft && (
             <DocReconcile
@@ -183,11 +183,6 @@ export function DocumentStudio({
             />
           )
         }
-        onOpen={(revision) => state.open({ id: live.documentId, revision })}
-        onRetry={() => {
-          if (read?.error) projections.retry(live.viewed);
-          if (live.pending && baseRead?.error) projections.retry(live.pending);
-        }}
       />
       {layout && (
         <div
@@ -227,13 +222,14 @@ export function DocumentStudio({
                   key={item.block.id}
                   item={item}
                   selected={isSelected(item)}
+                  editing={isSelected(item) && !!current?.editing}
                   editable={live.editable}
                   dirty={live.dirty}
                   apply={live.apply}
                   onSelect={select}
                   onInsert={insertAfter}
                   onHand={(block) =>
-                    handoff.hand(blockReference(document, block))
+                    handoff.hand(blockReference(live.document, block))
                   }
                   handLabel={handoff.label}
                   t={t}
@@ -244,6 +240,7 @@ export function DocumentStudio({
                   index={item.index}
                   paragraph={item.paragraph}
                   selected={isSelected(item)}
+                  editing={isSelected(item) && !!current?.editing}
                   editable={live.editable}
                   apply={live.apply}
                   onSelect={select}

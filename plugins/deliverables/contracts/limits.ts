@@ -32,6 +32,8 @@ export const LIMITS = Object.freeze({
   outputBytes: 256 * 1024,
   previewPixels: 1600,
   renderTextBytes: 128 * 1024,
+  // Running and waiting format operations; each holds its packet until it runs.
+  formatOperations: 8,
   formatMs: 60000,
   formatMemoryBytes: 2 * 1024 * 1024 * 1024,
   formatCpuSeconds: 45,

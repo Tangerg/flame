@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   failureText,
   useContextState,
+  watchRuntimeTopics,
   type ComponentContext,
 } from "@flame/component-sdk";
 import { METHODS } from "../contracts/methods";
@@ -164,6 +165,23 @@ export function useDeliverables(context: ComponentContext) {
   }, [query, scoped, values]);
   const refreshRef = useRef(refresh);
   refreshRef.current = refresh;
+  // Runtime announces plugin data changes, including the model's tool calls,
+  // without their content, so the open views read again.
+  useEffect(() => {
+    const controller = new AbortController();
+    const lifetime = AbortSignal.any([signal, controller.signal]);
+    void context.track(() =>
+      watchRuntimeTopics(
+        context.runtime,
+        { topics: ["plugins.dataChanged"] },
+        lifetime,
+        () => void refreshRef.current(),
+      ).catch((error: unknown) => {
+        if (!lifetime.aborted) fail(error);
+      }),
+    );
+    return () => controller.abort();
+  }, [context, signal, fail]);
 
   const settle = useCallback(
     (command: CommandObservation, result: unknown) => {
