@@ -9,6 +9,7 @@ export const en = {
   "packages.refreshError.title": "Couldn't refresh installed packages",
   "packages.refreshError.sub": "Showing the last loaded packages.",
   "packages.details": "Release details",
+  "packages.details.label": "Release details for {{name}} {{version}}",
   "packages.manifest": "Release manifest",
   "packages.actions": "Package actions",
   "packages.digest": "Release digest",
@@ -983,6 +984,7 @@ export const en = {
   "packages.trust":
     "Approving a release trusts its exact code. Local executables run with your OS permissions. Review its source, digest and inputs before approval. Selecting another release requires a new approval.",
   "packages.source": "Absolute package directory or ZIP path on the Runtime",
+  "packages.source.label": "Source",
   "packages.install": "Install",
   "packages.empty": "No Runtime packages installed",
   "packages.configure": "Configure inputs",

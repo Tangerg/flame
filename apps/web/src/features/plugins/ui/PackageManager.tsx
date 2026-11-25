@@ -334,7 +334,6 @@ function PackageRow({
     <ListRow>
       <RecordHeading
         title={installation.selected.name}
-        description={installation.selected.version}
         status={enabled ? undefined : <Badge tone="neutral">{t("packages.disabled")}</Badge>}
         actions={
           <Toolbar label={t("packages.actions")}>
@@ -411,11 +410,18 @@ function PackageRow({
           </Toolbar>
         }
       />
-      <Disclosure title={t("packages.details")}>
+      <Disclosure
+        title={identity.version || t("packages.details")}
+        label={
+          identity.version
+            ? t("packages.details.label", { name: identity.name, version: identity.version })
+            : undefined
+        }
+      >
         <Facts
           values={[
             [t("packages.digest"), request.digest],
-            [t("packages.source"), installation.source],
+            [t("packages.source.label"), installation.source],
           ]}
         />
         <ContributionRequirements installation={installation} operations={operations} />
