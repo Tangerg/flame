@@ -19,6 +19,7 @@ import { setChartData } from "./charts";
 import { HOUSE_STYLE } from "./style";
 import { imageBytes } from "./images";
 import { inspectOfficeText, officeReport } from "./inspection";
+import { additionPatches } from "./slide-additions";
 import {
   pruneParts,
   reachableParts,
@@ -539,11 +540,11 @@ export async function editPresentation(
     operations.filter((operation): operation is Operation<T> =>
       (types as string[]).includes(operation.type),
     );
-  const structural = of("duplicateSlide", "deleteSlide");
+  const structural = of("duplicateSlide", "deleteSlide", "insertSlide");
   if (structural.length) {
     if (structural.length !== operations.length)
       throw new Error(
-        "duplicateSlide and deleteSlide need a revision without other operation types",
+        "duplicateSlide, deleteSlide and insertSlide need a revision without other operation types",
       );
     restructureSlides(archive, structural);
     return archive.save();
@@ -564,6 +565,11 @@ export async function editPresentation(
     patches,
     add,
   );
+  for (const [part, patch] of additionPatches(
+    archive,
+    of("addText", "addShape"),
+  ))
+    add(part, patch);
   for (const operation of of("setFrame")) {
     if (deleted.has(operation.id))
       throw new Error("a deleted element cannot also be edited");

@@ -155,7 +155,7 @@
     "name": "flame.deliverables/slides.v1",
     "kind": "query",
     "target": "installation",
-    "description": "Project a PPTX revision's slides, element identities, frames, text runs, notes and chart data from its native bytes. Omitting revision reads the current head once. Use these identities with expect values in catalog-defined presentation edits.",
+    "description": "Project a PPTX revision's slides, element identities, frames, text runs, notes, chart data and the slide layouts insertSlide accepts from its native bytes. Omitting revision reads the current head once. Use these identities with expect values in catalog-defined presentation edits.",
     "input": "schema.json#/$defs/SlidesV1Input",
     "output": "schema.json#/$defs/SlidesV1Output"
   },

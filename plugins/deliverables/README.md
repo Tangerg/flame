@@ -62,7 +62,7 @@ there is no claim of arbitrary Office feature support.
 | ------ | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------ |
 | DOCX   | Rich text, headings, lists, tables, PNG/JPEG images, headers, footers, page numbers and references     | Replace exact text runs; append or insert paragraphs; delete body blocks; set paragraph styles         |
 | XLSX   | Typed cells, formulas, styles, comments, tables, merges, freeze panes and editable bar/line/pie charts | Set exact cells; invalidate dependent caches; recalculate through LibreOffice; export one sheet as CSV |
-| PPTX   | Editable text, shapes, tables, charts, images, notes and masters                                       | Replace exact text; set element frames; delete elements; replace chart data; reorder, duplicate or delete slides |
+| PPTX   | Editable text, shapes, tables, charts, images, notes and masters                                       | Replace exact text; set element frames; add text boxes and shapes; delete elements; replace chart data; insert slides from a layout; reorder, duplicate or delete slides |
 | PDF    | Produced by the actual Office renderer                                                                 | Import passive classic-xref PDFs; rotate/reorder pages; fill supported AcroForm fields                 |
 
 The catalog is the executable schema and limitation reference. Imported PDF object
@@ -127,8 +127,10 @@ editing surface, not a rendering, and actual page images remain the render
 evidence. Elements can be dragged, resized, nudged with the arrow keys (Shift
 moves an inch) or reached from the element list, which also lists elements
 without a frame. Frame, text, chart-data and deletion changes go to the draft.
-Reordering, duplicating and deleting slides submit immediately and need an empty
-draft.
+Inserting, reordering, duplicating and deleting slides and adding a text box or
+shape submit immediately and need an empty draft; the editor then selects what
+was added. A new slide takes its layout's title and body placeholders, each
+with one empty run, so the same text editing fills them.
 
 **Workbooks.** A sheet is a cell grid with spreadsheet keyboard behaviour: arrows
 and Tab move, Shift extends the range, Enter, F2 or typing edits, Delete clears
@@ -159,7 +161,7 @@ recovery. Actual page images remain image content, outside this text budget.
 
 `slides` projects one PPTX revision from its native bytes in the confined format
 process: slide order, top-level element identities, frames in EMUs, text runs,
-notes and chart data. It is derived on each read and never stored, so every
+notes, chart data and the slide layouts `insertSlide` accepts. It is derived on each read and never stored, so every
 existing revision has it. A placeholder without its own frame reports the
 layout or master frame it inherits. Element identities are the slide part plus
 the element's `cNvPr` id; text-run identities remain the `replaceText` ids.

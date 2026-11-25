@@ -61,7 +61,7 @@ export function sectionEntries(document: XmlDocument, slideId: string) {
   );
 }
 
-function shapeTree(document: XmlDocument): XmlNode {
+export function shapeTree(document: XmlDocument): XmlNode {
   const tree = child(
     child(document.root, namespaces.presentation, "cSld"),
     namespaces.presentation,
@@ -166,7 +166,7 @@ function frameOf(transform: XmlNode | undefined): Frame | undefined {
   return { x, y, width, height };
 }
 
-function placeholder(node: XmlNode) {
+export function placeholder(node: XmlNode) {
   const properties = node.children.find(
     (entry) =>
       entry.uri === namespaces.presentation && entry.local.startsWith("nv"),
@@ -312,6 +312,29 @@ function notes(archive: OfficePackage, slidePart: string) {
   );
 }
 
+// Layouts are reached through the masters the presentation lists.
+export function slideLayouts(archive: OfficePackage) {
+  const layouts = new Map<string, string>();
+  for (const master of relations(archive, MAIN_PARTS.pptx))
+    if (master.type === "slideMaster" && master.target)
+      for (const layout of relations(archive, master.target))
+        if (
+          layout.type === "slideLayout" &&
+          layout.target &&
+          archive.parts.has(layout.target) &&
+          !layouts.has(layout.target)
+        )
+          layouts.set(
+            layout.target,
+            child(
+              archive.xml(layout.target).root,
+              namespaces.presentation,
+              "cSld",
+            )?.attributes.name ?? "",
+          );
+  return [...layouts].map(([id, name]) => ({ id, name }));
+}
+
 export function slideLayout(archive: OfficePackage): SlideLayout {
   const size = child(
     archive.xml(MAIN_PARTS.pptx).root,
@@ -367,6 +390,7 @@ export function slideLayout(archive: OfficePackage): SlideLayout {
   return slideLayoutSchema.parse({
     width: Number(size?.attributes.cx),
     height: Number(size?.attributes.cy),
+    layouts: slideLayouts(archive),
     slides,
   });
 }

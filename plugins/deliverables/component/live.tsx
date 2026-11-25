@@ -329,7 +329,7 @@ export function useLiveEditor<T, Operation>(
     restructure: (operations: unknown[]) => {
       if (!editable || dirty) return;
       const captured = { id: documentId, revision: viewed };
-      void state.run(
+      return state.run(
         METHODS.edit,
         {
           id: documentId,

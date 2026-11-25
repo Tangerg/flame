@@ -6,9 +6,19 @@ import {
   CONTENT_TYPES_PART,
   MAIN_PARTS,
 } from "./archive";
-import { relativeTarget, sectionEntries, slideList } from "./slides";
+import type { PresentationOperation } from "../../contracts/content";
+import {
+  child,
+  placeholder,
+  relativeTarget,
+  sectionEntries,
+  shapeTree,
+  slideLayouts,
+  slideList,
+} from "./slides";
 import {
   attribute,
+  escapeXML,
   namespaces,
   openTag,
   type XmlNode,
@@ -149,23 +159,32 @@ function nextRelationshipId(archive: OfficePackage, part: string): string {
     if (!used.has(`rId${number}`)) return `rId${number}`;
 }
 
-function duplicateSlide(archive: OfficePackage, slide: string): void {
+// Lists a new slide part after another slide, or first; it joins that slide's
+// sections.
+function listSlide(
+  archive: OfficePackage,
+  part: string,
+  after: string | undefined,
+): void {
   const { document, slides } = slideList(archive);
-  const source = slides.find((entry) => entry.id === slide)!;
-  const copy = copyPart(archive, slide, new Map());
+  const anchor =
+    after === undefined
+      ? undefined
+      : slides.find((entry) => entry.id === after)!;
+  const template = anchor ?? slides[0]!;
   const relationship = nextRelationshipId(archive, MAIN_PARTS.pptx);
   const relationships = archive.xml("ppt/_rels/presentation.xml.rels");
-  const template = relations(archive, MAIN_PARTS.pptx).find(
-    (relation) => relation.id === source.relation,
+  const relation = relations(archive, MAIN_PARTS.pptx).find(
+    (candidate) => candidate.id === template.relation,
   )!.node;
   archive.patch("ppt/_rels/presentation.xml.rels", [
     {
       start: relationships.root.closeStart,
       end: relationships.root.closeStart,
-      value: emptyTag(template, {
-        ...template.attributes,
+      value: emptyTag(relation, {
+        ...relation.attributes,
         Id: relationship,
-        Target: relativeTarget(MAIN_PARTS.pptx, copy),
+        Target: relativeTarget(MAIN_PARTS.pptx, part),
       }),
     },
   ]);
@@ -173,27 +192,80 @@ function duplicateSlide(archive: OfficePackage, slide: string): void {
   let identity = Math.max(255, ...used) + 1;
   if (identity >= 2147483648)
     for (identity = 256; used.has(identity); identity++);
-  const reference = Object.keys(source.node.attributes).find(
+  const reference = Object.keys(template.node.attributes).find(
     (name) =>
       name !== "id" &&
-      source.node.attributes[name] ===
-        attribute(source.node, namespaces.officeRelationships, "id"),
+      template.node.attributes[name] ===
+        attribute(template.node, namespaces.officeRelationships, "id"),
   )!;
+  const at = (node: XmlNode) => (anchor ? node.end : node.start);
   archive.patch(MAIN_PARTS.pptx, [
     {
-      start: source.node.end,
-      end: source.node.end,
-      value: emptyTag(source.node, {
+      start: at(template.node),
+      end: at(template.node),
+      value: emptyTag(template.node, {
         id: String(identity),
         [reference]: relationship,
       }),
     },
-    ...sectionEntries(document, source.node.attributes.id!).map((entry) => ({
-      start: entry.end,
-      end: entry.end,
+    ...sectionEntries(document, template.node.attributes.id!).map((entry) => ({
+      start: at(entry),
+      end: at(entry),
       value: emptyTag(entry, { ...entry.attributes, id: String(identity) }),
     })),
   ]);
+}
+
+function duplicateSlide(archive: OfficePackage, slide: string): void {
+  listSlide(archive, copyPart(archive, slide, new Map()), slide);
+}
+
+// A new slide takes its layout's title and body placeholders, as PowerPoint
+// does, each with one empty run so replaceText can fill it; date, footer and
+// number placeholders stay on the layout.
+const INSTANTIATED = new Set(["title", "ctrTitle", "subTitle", "body", "obj"]);
+const PLACEHOLDER_ATTRIBUTES = ["type", "orient", "sz", "idx"];
+
+function insertSlide(
+  archive: OfficePackage,
+  layout: string,
+  after: string | undefined,
+): string {
+  const { slides } = slideList(archive);
+  const part = freshPart(archive, "ppt/slides/slide1.xml");
+  let identity = 1;
+  const shapes = shapeTree(archive.xml(layout)).children.flatMap((node) => {
+    const kind = placeholder(node)?.type;
+    if (node.local !== "sp" || !kind || !INSTANTIATED.has(kind)) return [];
+    const properties = child(node, namespaces.presentation, "nvSpPr");
+    const ph = child(
+      child(properties, namespaces.presentation, "nvPr"),
+      namespaces.presentation,
+      "ph",
+    )!;
+    const name = child(properties, namespaces.presentation, "cNvPr")?.attributes
+      .name;
+    const attributes = PLACEHOLDER_ATTRIBUTES.flatMap((key) =>
+      ph.attributes[key] === undefined
+        ? []
+        : [` ${key}="${escapeXML(ph.attributes[key])}"`],
+    ).join("");
+    identity++;
+    return [
+      `<p:sp><p:nvSpPr><p:cNvPr id="${identity}" name="${escapeXML(name ?? `Placeholder ${identity}`)}"/><p:cNvSpPr><a:spLocks noGrp="1"/></p:cNvSpPr><p:nvPr><p:ph${attributes}/></p:nvPr></p:nvSpPr><p:spPr/><p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:r><a:t></a:t></a:r></a:p></p:txBody></p:sp>`,
+    ];
+  });
+  archive.setXML(
+    part,
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<p:sld xmlns:a="${namespaces.drawing}" xmlns:r="${namespaces.officeRelationships}" xmlns:p="${namespaces.presentation}"><p:cSld><p:spTree><p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/><a:chOff x="0" y="0"/><a:chExt cx="0" cy="0"/></a:xfrm></p:grpSpPr>${shapes.join("")}</p:spTree></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr></p:sld>`,
+  );
+  archive.setXML(
+    relationshipsPath(part),
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Relationships xmlns="${namespaces.relationships}"><Relationship Id="rId1" Type="${namespaces.officeRelationships}/slideLayout" Target="${relativeTarget(part, layout)}"/></Relationships>`,
+  );
+  copyContentType(archive, slides[0]!.id, part);
+  listSlide(archive, part, after);
+  return part;
 }
 
 function incomingLinks(archive: OfficePackage, slide: string, notes?: string) {
@@ -241,27 +313,55 @@ function deleteSlide(archive: OfficePackage, slide: string): void {
   ]);
 }
 
+type Restructure = Extract<
+  PresentationOperation,
+  { type: "duplicateSlide" | "deleteSlide" | "insertSlide" }
+>;
+
 export function restructureSlides(
   archive: OfficePackage,
-  operations: Array<{ type: "duplicateSlide" | "deleteSlide"; id: string }>,
+  operations: Restructure[],
 ): void {
-  const targets = operations.map((operation) => operation.id);
+  const targets = operations.flatMap((operation) =>
+    operation.type === "insertSlide" ? [] : [operation.id],
+  );
   if (new Set(targets).size !== targets.length)
     throw new Error(
       "one slide may be duplicated or deleted only once per revision",
     );
   const { slides } = slideList(archive);
-  if (targets.some((id) => !slides.some((slide) => slide.id === id)))
-    throw new Error("slide identifier does not belong to this presentation");
+  const known = (id: string) => slides.some((slide) => slide.id === id);
+  const layouts = new Set(slideLayouts(archive).map((layout) => layout.id));
+  for (const operation of operations)
+    if (operation.type === "insertSlide") {
+      if (operation.after !== undefined && !known(operation.after))
+        throw new Error(
+          "slide identifier does not belong to this presentation",
+        );
+      if (!layouts.has(operation.layout))
+        throw new Error("slide layout does not belong to this presentation");
+    } else if (!known(operation.id))
+      throw new Error("slide identifier does not belong to this presentation");
   const deletions = operations.filter(
     (operation) => operation.type === "deleteSlide",
   );
   if (deletions.length >= slides.length)
     throw new Error("a presentation must retain at least one slide");
   const before = reachableParts(archive);
+  // Slides inserted after the same slide keep their operation order.
+  const inserted = new Map<string | undefined, string>();
   for (const operation of operations)
     if (operation.type === "duplicateSlide")
       duplicateSlide(archive, operation.id);
+    else if (operation.type === "insertSlide")
+      inserted.set(
+        operation.after,
+        insertSlide(
+          archive,
+          operation.layout,
+          inserted.get(operation.after) ?? operation.after,
+        ),
+      );
   for (const operation of deletions) deleteSlide(archive, operation.id);
   pruneParts(archive, before);
 }

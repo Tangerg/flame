@@ -981,6 +981,39 @@ it(
       revision: removed.id,
       slides: [{ id: copy.id, elements: copy.elements.length }],
     });
+
+    const [blank] = remaining.layouts;
+    const grown = await edit(
+      removed.id,
+      [{ type: "insertSlide", after: copy.id, layout: blank.id }],
+      "insert-slide",
+    );
+    const inserted = (await layout(grown.id)).slides[1];
+    expect(inserted.id).not.toBe(copy.id);
+    const frame = { x: 914400, y: 914400, width: 3657600, height: 914400 };
+    const labelled = await edit(
+      grown.id,
+      [
+        { type: "addText", slide: inserted.id, frame, text: "Next steps" },
+        {
+          type: "addShape",
+          slide: inserted.id,
+          frame: { ...frame, y: 2743200 },
+          shape: "roundRect",
+          text: "Owner",
+        },
+      ],
+      "add-elements",
+    );
+    expect(
+      (await layout(labelled.id)).slides[1].elements.map((element) => [
+        element.frame,
+        element.text.map((run) => run.text),
+      ]),
+    ).toEqual([
+      [frame, ["Next steps"]],
+      [{ ...frame, y: 2743200 }, ["Owner"]],
+    ]);
   },
   scenarioTimeoutMilliseconds,
 );
