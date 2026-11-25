@@ -2322,6 +2322,8 @@ Standing allow and deny decisions live only in approval rules and retain the
 source authority fingerprint. Endpoint changes make existing rules stale;
 credential rotation does not. MCP exposure is configured separately through
 `mcp.tools.setExposure`; `approval.setRule` owns remembered decisions.
+Keyed approval mode and rule changes commit their original replies with the
+policy write. Subscribers observe changes only after that transaction commits.
 A rule is keyed by scope, scope key, source reference, subject type, and subject value. A
 source reference is a closed union: built-in name or MCP server identity
 plus remote tool name; each variant's data is reachable only through that variant. Remembering the

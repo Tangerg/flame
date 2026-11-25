@@ -6,6 +6,7 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 
@@ -68,15 +69,13 @@ func (r *RuntimePolicy) DefaultMode(ctx context.Context) (approval.Mode, error) 
 	return mode, nil
 }
 
-func (r *RuntimePolicy) SetDefaultMode(ctx context.Context, mode approval.Mode) error {
+func (r *RuntimePolicy) SetDefaultMode(ctx context.Context, mode approval.Mode, complete operation.Reply[struct{}]) error {
 	if !mode.ValidDefault() {
 		return fmt.Errorf("%w: %q", approval.ErrInvalidMode, mode)
 	}
-	if err := r.modeStore.SetDefaultMode(ctx, mode); err != nil {
-		return err
-	}
-	r.invalidations.Notify(invalidation.Notice{Resource: invalidation.Approvals})
-	return nil
+	return r.commitPolicyChange(ctx, complete, func(tx context.Context) error {
+		return r.modeStore.SetDefaultMode(tx, mode)
+	})
 }
 
 func (r *RuntimePolicy) Mode(ctx context.Context, sessionID identity.SessionID) (approval.Mode, error) {
@@ -151,8 +150,10 @@ func (r *RuntimePolicy) PrepareRule(ctx context.Context, req approval.RememberRe
 	return rule, nil
 }
 
-func (r *RuntimePolicy) put(ctx context.Context, rule approval.Rule) error {
-	if err := r.store.Put(ctx, rule); err != nil {
+func (r *RuntimePolicy) commitPolicyChange(ctx context.Context, complete operation.Reply[struct{}], write func(context.Context) error) error {
+	if err := complete(ctx, func(tx context.Context) (struct{}, error) {
+		return struct{}{}, write(tx)
+	}); err != nil {
 		return err
 	}
 	r.invalidations.Notify(invalidation.Notice{Resource: invalidation.Approvals})
@@ -209,7 +210,7 @@ func (r *RuntimePolicy) ListRules(ctx context.Context, sessionID identity.Sessio
 	return view, nil
 }
 
-func (r *RuntimePolicy) SetRule(ctx context.Context, change RuleChange) error {
+func (r *RuntimePolicy) SetRule(ctx context.Context, change RuleChange, complete operation.Reply[struct{}]) error {
 	workspaceDir := ""
 	if change.Scope != approval.ScopeGlobal {
 		sess, err := r.sessions.Get(ctx, change.SessionID)
@@ -229,7 +230,9 @@ func (r *RuntimePolicy) SetRule(ctx context.Context, change RuleChange) error {
 	if err != nil {
 		return err
 	}
-	return r.put(ctx, rule)
+	return r.commitPolicyChange(ctx, complete, func(tx context.Context) error {
+		return r.store.Put(tx, rule)
+	})
 }
 
 func (r *RuntimePolicy) visibleRules(ctx context.Context, sessionID identity.SessionID, workspaceDir string) ([]approval.Rule, error) {
@@ -243,13 +246,11 @@ func (r *RuntimePolicy) visibleRules(ctx context.Context, sessionID identity.Ses
 	return rules, nil
 }
 
-func (r *RuntimePolicy) ForgetRule(ctx context.Context, id string) error {
+func (r *RuntimePolicy) ForgetRule(ctx context.Context, id string, complete operation.Reply[struct{}]) error {
 	if id == "" {
 		return fmt.Errorf("%w: id is required", approval.ErrInvalidRule)
 	}
-	if err := r.store.Delete(ctx, id); err != nil {
-		return err
-	}
-	r.invalidations.Notify(invalidation.Notice{Resource: invalidation.Approvals})
-	return nil
+	return r.commitPolicyChange(ctx, complete, func(tx context.Context) error {
+		return r.store.Delete(tx, id)
+	})
 }

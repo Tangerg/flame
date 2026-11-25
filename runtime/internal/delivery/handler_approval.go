@@ -7,6 +7,7 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/approvals"
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 )
@@ -20,18 +21,33 @@ func (s *Handler) GetApprovalMode(ctx context.Context) (*protocol.ApprovalModeRe
 	if !ok {
 		return nil, fmt.Errorf("delivery: %w: %q", approval.ErrInvalidMode, m)
 	}
-	return &protocol.ApprovalModeResult{Mode: mode, Modes: presentApprovalModePolicies()}, nil
+	return approvalModeResult(mode), nil
 }
 
 func (s *Handler) SetApprovalMode(ctx context.Context, in protocol.SetApprovalModeRequest) (*protocol.ApprovalModeResult, error) {
-	mode, ok := approvalModeFromWire(in.Mode)
-	if !ok {
-		return nil, protocol.NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("unknown approval mode %q", in.Mode))
-	}
-	if err := s.approvals.SetDefaultMode(ctx, mode); err != nil {
+	if err := s.setApprovalMode(ctx, in, directReply(new(struct{}))); err != nil {
 		return nil, err
 	}
-	return &protocol.ApprovalModeResult{Mode: in.Mode, Modes: presentApprovalModePolicies()}, nil
+	return approvalModeResult(in.Mode), nil
+}
+
+func (s *Handler) commitApprovalMode(ctx context.Context, in protocol.SetApprovalModeRequest, outcome atomicOutcome) error {
+	reply := atomicReply(outcome.complete, func(struct{}) ([]byte, error) {
+		return encodeAtomicResult(outcome.method, approvalModeResult(in.Mode))
+	})
+	return outcome.settleRefusal(ctx, s.setApprovalMode(ctx, in, reply))
+}
+
+func (s *Handler) setApprovalMode(ctx context.Context, in protocol.SetApprovalModeRequest, complete operation.Reply[struct{}]) error {
+	mode, ok := approvalModeFromWire(in.Mode)
+	if !ok {
+		return protocol.NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("unknown approval mode %q", in.Mode))
+	}
+	return s.approvals.SetDefaultMode(ctx, mode, complete)
+}
+
+func approvalModeResult(mode protocol.ApprovalMode) *protocol.ApprovalModeResult {
+	return &protocol.ApprovalModeResult{Mode: mode, Modes: presentApprovalModePolicies()}
 }
 
 func (s *Handler) ListApprovalRules(ctx context.Context, in protocol.ListApprovalRulesRequest) (*protocol.ListApprovalRulesResult, error) {
@@ -55,7 +71,11 @@ func (s *Handler) ListApprovalRules(ctx context.Context, in protocol.ListApprova
 }
 
 func (s *Handler) ForgetApprovalRule(ctx context.Context, in protocol.ForgetApprovalRuleRequest) error {
-	return s.approvals.ForgetRule(ctx, in.ID)
+	return s.approvals.ForgetRule(ctx, in.ID, directReply(new(struct{})))
+}
+
+func (s *Handler) commitForgetApprovalRule(ctx context.Context, in protocol.ForgetApprovalRuleRequest, outcome atomicOutcome) error {
+	return outcome.settleRefusal(ctx, s.approvals.ForgetRule(ctx, in.ID, outcome.acknowledgement()))
 }
 
 func presentApprovalRule(r approvals.RuleView) (protocol.ApprovalRule, error) {
@@ -168,6 +188,14 @@ func approvalModeFromWire(m protocol.ApprovalMode) (approval.Mode, bool) {
 }
 
 func (s *Handler) SetApprovalRule(ctx context.Context, in protocol.SetApprovalRuleRequest) error {
+	return s.setApprovalRule(ctx, in, directReply(new(struct{})))
+}
+
+func (s *Handler) commitApprovalRule(ctx context.Context, in protocol.SetApprovalRuleRequest, outcome atomicOutcome) error {
+	return outcome.settleRefusal(ctx, s.setApprovalRule(ctx, in, outcome.acknowledgement()))
+}
+
+func (s *Handler) setApprovalRule(ctx context.Context, in protocol.SetApprovalRuleRequest, complete operation.Reply[struct{}]) error {
 	sessionID, parseErr := optionalSessionParameter(in.SessionID)
 	if parseErr != nil {
 		return parseErr
@@ -182,7 +210,10 @@ func (s *Handler) SetApprovalRule(ctx context.Context, in protocol.SetApprovalRu
 	if !scopeKnown || !decisionKnown || !subjectKnown {
 		return protocol.NewFailure(protocol.ErrInvalidParams, "invalid approval rule")
 	}
-	err = s.approvals.SetRule(ctx, approvals.RuleChange{Tool: ref, Scope: scope, SessionID: sessionID, Subject: approval.Subject{Type: subject, Value: in.Subject.Value}, Decision: decision})
+	err = s.approvals.SetRule(ctx, approvals.RuleChange{
+		Tool: ref, Scope: scope, SessionID: sessionID,
+		Subject: approval.Subject{Type: subject, Value: in.Subject.Value}, Decision: decision,
+	}, complete)
 	if errors.Is(err, approval.ErrInvalidRule) {
 		return protocol.InvalidParameters(err)
 	}

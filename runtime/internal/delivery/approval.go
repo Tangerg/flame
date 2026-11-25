@@ -19,7 +19,9 @@ func registerApproval(registry *Registry) {
 		SetApprovalRule(context.Context, protocol.SetApprovalRuleRequest) error
 	}, ctx context.Context, request protocol.SetApprovalRuleRequest) error {
 		return service.SetApprovalRule(ctx, request)
-	})
+	}).withOwnedReplay(atomicReplay((interface {
+		commitApprovalRule(context.Context, protocol.SetApprovalRuleRequest, atomicOutcome) error
+	}).commitApprovalRule))
 
 	registry.query(MethodMeta{Name: approvalGetMode, GoName: "GetApprovalMode"},
 		func(service interface {
@@ -33,7 +35,9 @@ func registerApproval(registry *Registry) {
 			SetApprovalMode(context.Context, protocol.SetApprovalModeRequest) (*protocol.ApprovalModeResult, error)
 		}, ctx context.Context, request protocol.SetApprovalModeRequest) (*protocol.ApprovalModeResult, error) {
 			return service.SetApprovalMode(ctx, request)
-		})
+		}).withOwnedReplay(atomicReplay((interface {
+		commitApprovalMode(context.Context, protocol.SetApprovalModeRequest, atomicOutcome) error
+	}).commitApprovalMode))
 
 	registry.query(MethodMeta{Name: ApprovalListRules, GoName: "ListApprovalRules", Errors: []string{protocol.ErrSessionNotFound.Error()}},
 		func(service interface {
@@ -47,5 +51,7 @@ func registerApproval(registry *Registry) {
 			ForgetApprovalRule(context.Context, protocol.ForgetApprovalRuleRequest) error
 		}, ctx context.Context, request protocol.ForgetApprovalRuleRequest) error {
 			return service.ForgetApprovalRule(ctx, request)
-		})
+		}).withOwnedReplay(atomicReplay((interface {
+		commitForgetApprovalRule(context.Context, protocol.ForgetApprovalRuleRequest, atomicOutcome) error
+	}).commitForgetApprovalRule))
 }
