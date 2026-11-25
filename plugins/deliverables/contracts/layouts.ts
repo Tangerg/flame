@@ -17,6 +17,10 @@ const textRunSchema = z.strictObject({
 export const slideLayoutSchema = z.strictObject({
   width: extentSchema,
   height: extentSchema,
+  // The slide layouts insertSlide accepts, by part.
+  layouts: z.array(
+    z.strictObject({ id: z.string().min(1).max(1024), name: z.string() }),
+  ),
   slides: z.array(
     z.strictObject({
       id: z.string().min(1).max(1024),

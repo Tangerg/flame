@@ -239,7 +239,7 @@ export const definitions = [
   method(
     "slides",
     "query",
-    "Project a PPTX revision's slides, element identities, frames, text runs, notes and chart data from its native bytes. Omitting revision reads the current head once. Use these identities with expect values in catalog-defined presentation edits.",
+    "Project a PPTX revision's slides, element identities, frames, text runs, notes, chart data and the slide layouts insertSlide accepts from its native bytes. Omitting revision reads the current head once. Use these identities with expect values in catalog-defined presentation edits.",
     schemas.readInput,
     schemas.slides,
     "model",

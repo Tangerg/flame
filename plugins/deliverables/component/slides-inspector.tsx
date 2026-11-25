@@ -143,6 +143,7 @@ export function SlideInspector({
   editable,
   dirty,
   reference,
+  additions,
   onText,
   onMove,
   onRestructure,
@@ -154,6 +155,7 @@ export function SlideInspector({
   editable: boolean;
   dirty: boolean;
   reference: ReactNode;
+  additions: ReactNode;
   onText(id: string, expect: string, text: string): void;
   onMove(offset: number): void;
   onRestructure(operations: unknown[]): void;
@@ -205,6 +207,7 @@ export function SlideInspector({
         </Button>
         {reference}
       </Toolbar>
+      <Toolbar label={t("slides.additions")}>{additions}</Toolbar>
       {dirty && <Metadata>{t("slides.structureBlocked")}</Metadata>}
       {confirmingRemoval && (
         <RecordGroup>

@@ -419,6 +419,13 @@ const reorderSlides = z.strictObject({
   ids: z.array(z.string().min(1).max(1024)).min(1).max(2000),
 });
 const elementId = z.string().min(1).max(1024);
+export const ADDED_SHAPES = [
+  "rect",
+  "roundRect",
+  "ellipse",
+  "triangle",
+  "chevron",
+] as const;
 export const PARAGRAPH_STYLES = [
   "Normal",
   "Heading1",
@@ -508,6 +515,27 @@ export const presentationEditSchema = z.strictObject({
         }),
         z.strictObject({ type: z.literal("duplicateSlide"), id: elementId }),
         z.strictObject({ type: z.literal("deleteSlide"), id: elementId }),
+        // Without after, the slide opens the presentation.
+        z.strictObject({
+          type: z.literal("insertSlide"),
+          after: elementId.optional(),
+          layout: elementId,
+        }),
+        z.strictObject({
+          type: z.literal("addText"),
+          slide: elementId,
+          frame: frameSchema,
+          text: text.min(1),
+        }),
+        z.strictObject({
+          type: z.literal("addShape"),
+          slide: elementId,
+          frame: frameSchema,
+          shape: z.enum(ADDED_SHAPES),
+          fill: color.optional(),
+          line: color.optional(),
+          text: text.min(1).optional(),
+        }),
       ]),
     )
     .min(1)

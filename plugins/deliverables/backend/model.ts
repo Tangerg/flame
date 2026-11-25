@@ -416,6 +416,7 @@ export async function queryProjection(
         (layout) => ({
           width: layout.width,
           height: layout.height,
+          layouts: layout.layouts,
           slides: layout.slides.map((slide) => ({
             id: slide.id,
             number: slide.number,

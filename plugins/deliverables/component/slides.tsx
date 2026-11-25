@@ -19,6 +19,7 @@ import { label } from "./slides-presentation";
 import { SlideReconcile, savedElement } from "./slides-revisions";
 import { RevisionChanges, SlideChanges } from "./changes";
 import { Canvas } from "./slides-canvas";
+import { SlideAdditions, useInsertion } from "./slides-additions";
 import {
   ElementInspector,
   SlideInspector,
@@ -101,6 +102,19 @@ export function SlideStudio({
     change({ type: "deleteElement", id: target.id }, target);
     setElementId(undefined);
   };
+  const insert = useInsertion(live, savedLayout, (slide, added) => {
+    setSlideId(slide);
+    setElementId(added);
+  });
+  const additions = savedSlide && savedLayout && (
+    <SlideAdditions
+      layout={savedLayout}
+      slide={savedSlide}
+      disabled={!editable || dirty}
+      onInsert={insert}
+      t={t}
+    />
+  );
   const move = (offset: number) => {
     if (!layout || !slide) return;
     const ids = layout.slides.map((entry) => entry.id);
@@ -264,6 +278,7 @@ export function SlideStudio({
                 editable={editable}
                 dirty={dirty}
                 reference={reference}
+                additions={additions}
                 onText={setText}
                 onMove={move}
                 onRestructure={restructure}
