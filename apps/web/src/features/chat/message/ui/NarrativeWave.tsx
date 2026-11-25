@@ -39,7 +39,7 @@ export function NarrativeWave({ messageId, units, facts, ctx, renderUnit }: Prop
       contentInset="rows"
       icon={waveGlyph(units, tools)}
       label={summary}
-      detail={status && <ToolActivityStatus status={status} />}
+      detail={!open && status ? <ToolActivityStatus status={status} /> : undefined}
       detailPlacement="below"
       open={open}
       onOpenChange={setOpen}
