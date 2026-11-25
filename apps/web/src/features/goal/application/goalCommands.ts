@@ -9,11 +9,8 @@ import {
 export type GoalProjectionRepair = (sessionId: string) => Promise<unknown>;
 
 class GoalCommandSessionMismatchError extends Error {
-  constructor(
-    readonly expectedSessionId: string,
-    readonly actualSessionId: string,
-  ) {
-    super();
+  constructor(expectedSessionId: string, actualSessionId: string) {
+    super(`goal command committed to session ${actualSessionId}, expected ${expectedSessionId}`);
     this.name = "GoalCommandSessionMismatchError";
   }
 }

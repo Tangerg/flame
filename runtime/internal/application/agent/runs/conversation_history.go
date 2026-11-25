@@ -20,7 +20,6 @@ type conversationStore interface {
 	Read(ctx context.Context, sessionID identity.SessionID) ([]chat.Message, error)
 	Write(ctx context.Context, sessionID identity.SessionID, messages ...chat.Message) error
 	Count(ctx context.Context, sessionID identity.SessionID) (int, error)
-	Replace(ctx context.Context, sessionID identity.SessionID, messages ...chat.Message) error
 	Truncate(ctx context.Context, sessionID identity.SessionID, keepN int) error
 	Clear(ctx context.Context, sessionID identity.SessionID) error
 }

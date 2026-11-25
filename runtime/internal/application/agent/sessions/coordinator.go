@@ -102,7 +102,6 @@ type Snapshot struct {
 
 type WorkspaceCheckpoints interface {
 	Restore(ctx context.Context, sessionID identity.SessionID, cwd string, runID identity.RunID) error
-	DropSession(ctx context.Context, sessionID identity.SessionID) error
 }
 
 type sandboxDiscarder interface {

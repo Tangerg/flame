@@ -38,7 +38,6 @@ type Runtime interface {
 	StartRun(context.Context, authoring.StartRun) (conversation.SegmentStream, error)
 	ResumeRun(context.Context, conversation.ResumeRun) (conversation.SegmentStream, error)
 	SubscribeRun(context.Context, conversation.SubscribeRun) (conversation.SegmentStream, error)
-	SteerRun(context.Context, authoring.SteerRun) (protocol.SteerRunResponse, error)
 	CancelRun(context.Context, conversation.CancelRun) (conversation.RunCancellation, error)
 	ListApprovalRules(context.Context, string) ([]protocol.ApprovalRule, error)
 	DeleteApprovalRule(context.Context, string) error

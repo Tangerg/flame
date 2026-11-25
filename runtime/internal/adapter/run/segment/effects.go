@@ -84,7 +84,6 @@ type RunStore interface {
 	RecordResultPublication(ctx context.Context, sessionID identity.SessionID, runID identity.RunID, segmentID identity.SegmentID, publicationID, digest string, results []chat.ToolResult) error
 	runs.ToolResultPublications
 	runWriter
-	Run(ctx context.Context, runID identity.RunID) (run.Run, bool, error)
 	RunCommitCommitted(ctx context.Context, sessionID identity.SessionID, runID identity.RunID, segmentID identity.SegmentID, commitID runs.CommitID) (bool, error)
 }
 
