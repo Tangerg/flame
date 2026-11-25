@@ -39,8 +39,6 @@ const styles = stylex.create({
     color: color.fgFaint,
     minWidth: 0,
   },
-  // Stands in for a compact list row, so it keeps that row's inset.
-  inlineCompact: { paddingInline: space.s2, paddingBlock: space.s1_5 },
   inlineCopy: {
     display: "flex",
     flexDirection: "column",
@@ -115,13 +113,7 @@ export function EmptyState({
   );
   if (!centered) {
     return (
-      <div
-        {...stylex.props(
-          styles.inline,
-          size === "compact" && styles.inlineCompact,
-        )}
-        style={style}
-      >
+      <div {...stylex.props(styles.inline)} style={style}>
         {icon && (
           // Shares the title's type step so its 1lh box centres the glyph on the title line.
           <span

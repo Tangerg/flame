@@ -1,8 +1,9 @@
 import * as stylex from "@stylexjs/stylex";
-import { type ReactNode } from "react";
+import { type CSSProperties, type ReactNode } from "react";
 import { clsx } from "clsx";
 import { HoverTrack } from "@flame/ui";
 import { ScrollArea } from "@/ui/atoms/scroll-area";
+import { space } from "@flame/ui/tokens.stylex";
 const styles = stylex.create({
   scroll: {
     paddingInline: "var(--density-navigation-gutter)",
@@ -26,6 +27,12 @@ const styles = stylex.create({
     paddingTop: "calc(var(--spacing) * 2)",
   },
 });
+
+// An empty section stands in for a compact row, so it keeps that row's inset.
+export const AGENT_WORK_INDEX_EMPTY_INSET: CSSProperties = {
+  paddingInline: space.s2,
+  paddingBlock: space.s1_5,
+};
 
 export function AgentWorkIndexBody({ children }: { children: ReactNode }) {
   return (

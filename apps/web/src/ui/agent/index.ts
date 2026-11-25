@@ -24,6 +24,7 @@ export { AgentDockToggle, AgentSurfaceHeader } from "@/ui/agent/surface-header";
 export { AgentWorkspaceView } from "@/ui/agent/workspace-view";
 export { AgentJumpToBottom } from "@/ui/agent/jump-to-bottom";
 export {
+  AGENT_WORK_INDEX_EMPTY_INSET,
   AgentWorkIndexBody,
   AgentWorkIndexFooter,
   AgentWorkIndexGroupList,

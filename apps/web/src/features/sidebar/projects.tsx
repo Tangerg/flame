@@ -4,7 +4,7 @@ import { useState } from "react";
 import { DataView } from "@/ui/index";
 import { SectionLabel, TextButton } from "@/ui/index";
 import { IconButton, vocab } from "@flame/ui";
-import { AgentWorkIndexGroupList } from "@/ui/agent/index";
+import { AGENT_WORK_INDEX_EMPTY_INSET, AgentWorkIndexGroupList } from "@/ui/agent/index";
 import { ProjectRow } from "@/features/sidebar/ui/ProjectRow";
 import { SessionList } from "@/features/sidebar/ui/SessionList";
 import { useT } from "@/lib/i18n/index";
@@ -133,7 +133,12 @@ function ProjectsSection() {
         skeletonCount={2}
         skeletonVariant="compact"
         loadingLabel={t("common.loading")}
-        empty={{ title: t("projects.empty.title"), size: "compact", align: "start" }}
+        empty={{
+          title: t("projects.empty.title"),
+          size: "compact",
+          align: "start",
+          style: AGENT_WORK_INDEX_EMPTY_INSET,
+        }}
         error={{ title: t("projects.error.title"), size: "compact" }}
       >
         {render}
