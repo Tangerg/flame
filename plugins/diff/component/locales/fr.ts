@@ -49,6 +49,7 @@ export const fr: Record<string, string> = {
   "files.match_other": "{{count}} fichiers sur {{total}} correspondent",
   "stat.title": "Modifications de lignes dans les fichiers texte inclus",
   "empty.title": "Aucune modification dans cette comparaison.",
+  "file.unchanged": "Aucune modification de ce fichier dans cette comparaison.",
   "nomatch.title": "Aucun fichier correspondant.",
   "files.region": "Fichiers modifiés",
   "file.changes": "Modifications dans {{path}}",

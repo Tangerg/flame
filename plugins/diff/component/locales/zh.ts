@@ -40,6 +40,7 @@ export const zh: Record<string, string> = {
   "files.match_other": "{{count}} / {{total}} 个文件匹配",
   "stat.title": "包含的文本文件中的行更改",
   "empty.title": "此比较中没有更改。",
+  "file.unchanged": "此比较中该文件没有更改。",
   "nomatch.title": "没有匹配的文件。",
   "files.region": "已更改文件",
   "file.changes": "{{path}} 中的更改",

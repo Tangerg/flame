@@ -40,6 +40,7 @@ export const zhTW: Record<string, string> = {
   "files.match_other": "{{count}} / {{total}} 個檔案相符",
   "stat.title": "包含的文字檔中的行變更",
   "empty.title": "此比較中沒有變更。",
+  "file.unchanged": "此比較中該檔案沒有變更。",
   "nomatch.title": "沒有相符的檔案。",
   "files.region": "已變更檔案",
   "file.changes": "{{path}} 中的變更",
