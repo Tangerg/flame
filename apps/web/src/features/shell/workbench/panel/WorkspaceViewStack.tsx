@@ -51,7 +51,7 @@ export function WorkspaceViewStack({
           {...dockViewMarker(WORKSPACE_DOCK_CATALOG)}
           {...stylex.props(sh.overlay)}
         >
-          <DockCatalogPage groups={catalog} openViewIds={openViewIds} titleHidden={main} />
+          <DockCatalogPage groups={catalog} openViewIds={openViewIds} />
         </div>
       </Activity>
       {/* Moving retained readers with the tab strip can reset their WebKit scroll positions. */}

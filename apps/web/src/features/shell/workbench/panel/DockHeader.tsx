@@ -95,11 +95,9 @@ export function WorkspaceViewPicker({
 export function DockCatalogPage({
   groups,
   openViewIds,
-  titleHidden,
 }: {
   groups: ContextDockDestinationGroup[];
   openViewIds: ReadonlySet<string>;
-  titleHidden: boolean;
 }) {
   const workspaceAccess = useWorkspace();
 
@@ -108,7 +106,6 @@ export function DockCatalogPage({
     <AgentDockCatalog
       groups={useDockCatalogGroups(groups, openViewIds)}
       title={t("dock.catalog.title")}
-      titleHidden={titleHidden}
       placeholder={t("dock.picker.placeholder")}
       emptyLabel={t("dock.picker.empty")}
       clearLabel={t("common.clearSearch")}
