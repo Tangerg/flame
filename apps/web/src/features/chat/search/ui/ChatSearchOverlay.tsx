@@ -431,6 +431,31 @@ function holdMatch(list: ReadingListHandle, range: Range): void {
   list.anchorVisibleContent({ key: row.key });
 }
 
+// Scrolls each clipping reader inside the row until the match is visible;
+// false when the match has no layout to reveal.
+function revealWithinRow(
+  range: Range,
+  scroller: HTMLElement,
+  reason: "explicit" | "reflow",
+): boolean {
+  for (const element of clippingAncestors(range, scroller)) {
+    if (element === scroller) break;
+    if (revealUserMessageFold(element, reason === "explicit" ? range : undefined)) continue;
+    const word = rangeEdges(range);
+    if (!word) return false;
+    const clip = clipEdges(element);
+    const left = edgeDelta(word.left, word.right, clip.left, clip.right);
+    const top = edgeDelta(word.top, word.bottom, clip.top, clip.bottom);
+    if (left === 0 && top === 0) continue;
+    element.scrollTo({
+      left: element.scrollLeft + left,
+      top: element.scrollTop + top,
+      behavior: "instant",
+    });
+  }
+  return true;
+}
+
 // Row-internal readers scroll natively; the virtual list alone moves its own scrollport.
 function revealMatch(
   list: ReadingListHandle,
@@ -442,21 +467,7 @@ function revealMatch(
   const row = readingRow(list, range.startContainer);
   const item = row && list.getState().elementAtIndex(row.index);
   if (!scroller || !row || !item) return;
-  for (const element of clippingAncestors(range, scroller)) {
-    if (element === scroller) break;
-    if (revealUserMessageFold(element, reason === "explicit" ? range : undefined)) continue;
-    const word = rangeEdges(range);
-    if (!word) return;
-    const clip = clipEdges(element);
-    const left = edgeDelta(word.left, word.right, clip.left, clip.right);
-    const top = edgeDelta(word.top, word.bottom, clip.top, clip.bottom);
-    if (left === 0 && top === 0) continue;
-    element.scrollTo({
-      left: element.scrollLeft + left,
-      top: element.scrollTop + top,
-      behavior: "instant",
-    });
-  }
+  if (!revealWithinRow(range, scroller, reason)) return;
   const word = rangeEdges(range);
   if (!word) return;
   const length = word.bottom - word.top;

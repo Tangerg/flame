@@ -251,38 +251,8 @@ export function AgentActivityDisclosure({
           }
         >
           <ActivityMark icon={icon} leading={leading} tone={tone} shell={shell} />
-          <span
-            data-slot="agent-activity-label"
-            {...stylex.props(
-              styles.label,
-              vocab.truncate,
-              skin.text,
-              detail != null && !stackDetail && styles.labelBeforeDetail,
-            )}
-          >
-            {label}
-          </span>
-          {detail != null && (
-            <span
-              {...stylex.props(
-                styles.detail,
-                stackDetail ? stackedActivityDetail.detail : vocab.truncate,
-                skin.text,
-              )}
-            >
-              {detail}
-            </span>
-          )}
-          {disclosable && (
-            <span
-              aria-hidden
-              data-slot="agent-activity-chevron"
-              data-open={open ? "" : undefined}
-              {...stylex.props(chevron.base, styles.chevron, !open && chevron.shut)}
-            >
-              <Icon name="chevron-down" size="xs" />
-            </span>
-          )}
+          <ActivityHeading label={label} detail={detail} stacked={stackDetail} skin={skin} />
+          {disclosable && <ActivityChevron open={open} />}
           {preview == null && <span aria-hidden {...stylex.props(styles.spacer)} />}
           {trailing != null && (
             <span {...stylex.props(styles.trailing, type.uiXs)}>{trailing}</span>
@@ -323,6 +293,59 @@ export function AgentActivityDisclosure({
         </ActivityPanel>
       )}
     </Collapsible.Root>
+  );
+}
+
+function ActivityHeading({
+  label,
+  detail,
+  stacked,
+  skin,
+}: {
+  label: ReactNode;
+  detail: ReactNode;
+  stacked: boolean;
+  skin: (typeof SHELL_SKINS)[ActivityShell];
+}) {
+  const hasDetail = detail != null;
+  return (
+    <>
+      <span
+        data-slot="agent-activity-label"
+        {...stylex.props(
+          styles.label,
+          vocab.truncate,
+          skin.text,
+          hasDetail && !stacked && styles.labelBeforeDetail,
+        )}
+      >
+        {label}
+      </span>
+      {hasDetail && (
+        <span
+          {...stylex.props(
+            styles.detail,
+            stacked ? stackedActivityDetail.detail : vocab.truncate,
+            skin.text,
+          )}
+        >
+          {detail}
+        </span>
+      )}
+    </>
+  );
+}
+
+function ActivityChevron({ open }: { open: boolean | undefined }) {
+  return (
+    <span
+      aria-hidden
+      data-slot="agent-activity-chevron"
+      data-open={open ? "" : undefined}
+      {...stylex.props(chevron.base, styles.chevron, !open && chevron.shut)}
+    >
+      <Icon name="chevron-down" size="xs" />
+    </span>
   );
 }
 

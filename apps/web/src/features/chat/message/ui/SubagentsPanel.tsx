@@ -25,6 +25,7 @@ import {
   useExpandedWorkspaceToolIds,
   useSetWorkspaceToolExpanded,
   useWorkspaceInspection,
+  type WorkspaceInspection,
 } from "@/features/workspace/public/navigation";
 import { ScrollArea } from "@/ui/index";
 import { SectionLabel } from "@/ui/index";
@@ -199,6 +200,24 @@ class SubagentPanelLayout extends Component<
   }
 }
 
+// Returning from an inspection restores its own focus; the panel does not move it.
+function returnedFromInspection(
+  from: WorkspaceInspection | null,
+  current: WorkspaceInspection | null,
+  selectedId: string | null,
+): boolean {
+  return from?.previous === current && from.returnSubagentRunId === selectedId;
+}
+
+// Focus is the panel's to move when it rests on the body, inside the panel, or
+// on the link that opened the selected run.
+function panelOwnsFocus(panel: HTMLElement, selectedId: string | null): boolean {
+  const active = panel.ownerDocument.activeElement;
+  if (active === panel.ownerDocument.body || panel.contains(active)) return true;
+  const source = active ? closestDelegatedRun(active) : undefined;
+  return selectedId !== null && source?.runId === selectedId && source.opener === active;
+}
+
 export function SubagentsPanel() {
   const workspaceAccess = useWorkspace();
 
@@ -225,24 +244,10 @@ export function SubagentsPanel() {
     const fromInspection = previousInspection.current;
     previousRun.current = selectedId;
     previousInspection.current = inspection;
-    if (
-      !visible ||
-      fromRun === selectedId ||
-      (fromInspection &&
-        fromInspection.previous === inspection &&
-        fromInspection.returnSubagentRunId === selectedId)
-    )
-      return;
+    if (!visible || fromRun === selectedId) return;
+    if (returnedFromInspection(fromInspection, inspection, selectedId)) return;
     const panel = panelRef.current;
-    if (!panel) return;
-    const active = panel.ownerDocument.activeElement;
-    const source = active ? closestDelegatedRun(active) : undefined;
-    if (
-      active !== panel.ownerDocument.body &&
-      !panel.contains(active) &&
-      !(selectedId !== null && source?.runId === selectedId && source.opener === active)
-    )
-      return;
+    if (!panel || !panelOwnsFocus(panel, selectedId)) return;
     if (selectedId) {
       backRef.current?.focus({ preventScroll: true });
     } else if (fromRun) {

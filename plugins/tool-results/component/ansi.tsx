@@ -33,6 +33,23 @@ export function ansiText(input: string): string {
   return input.replace(ANSI_SEQUENCE, "");
 }
 
+// Select Graphic Rendition codes Flame presents; others leave the style unchanged.
+const SGR: Readonly<Record<number, (style: AnsiStyle) => AnsiStyle>> = {
+  0: () => ({}),
+  1: (style) => ({ ...style, bold: true }),
+  2: (style) => ({ ...style, dim: true }),
+  4: (style) => ({ ...style, underline: true }),
+  22: (style) => ({ ...style, bold: false, dim: false }),
+  24: (style) => ({ ...style, underline: false }),
+  39: (style) => ({ ...style, tone: undefined }),
+};
+
+function toneCode(code: number): keyof typeof INK | undefined {
+  if (code >= 30 && code <= 37) return tones[code - 30];
+  if (code >= 90 && code <= 97) return tones[code - 90];
+  return undefined;
+}
+
 function sgr(style: AnsiStyle, params: string): AnsiStyle {
   const codes =
     params === ""
@@ -41,17 +58,11 @@ function sgr(style: AnsiStyle, params: string): AnsiStyle {
   let next = { ...style };
   for (let index = 0; index < codes.length; index++) {
     const code = codes[index]!;
-    if (code === 0) next = {};
-    else if (code === 1) next.bold = true;
-    else if (code === 2) next.dim = true;
-    else if (code === 4) next.underline = true;
-    else if (code === 22) {
-      next.bold = false;
-      next.dim = false;
-    } else if (code === 24) next.underline = false;
-    else if (code === 39) next.tone = undefined;
-    else if (code >= 30 && code <= 37) next.tone = tones[code - 30];
-    else if (code >= 90 && code <= 97) next.tone = tones[code - 90];
+    const effect = SGR[code];
+    const tone = toneCode(code);
+    if (effect) next = effect(next);
+    else if (tone) next.tone = tone;
+    // Extended colours carry their own arguments: 5;n or 2;r;g;b.
     else if (code === 38 || code === 48)
       index += codes[index + 1] === 5 ? 2 : 4;
   }

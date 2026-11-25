@@ -36,7 +36,10 @@ import {
   useWorkspaceViewMemory,
 } from "@/features/workspace/application/navigation";
 import { useDirectory } from "@/features/workspace/application/fileTree";
-import type { WorkspaceFileEntry } from "@/features/workspace/application/workspaceQueries";
+import type {
+  WorkspaceFileChange,
+  WorkspaceFileEntry,
+} from "@/features/workspace/application/workspaceQueries";
 import { space, color, layout, radius, surface, type as typeStep } from "@flame/ui/tokens.stylex";
 const styles = stylex.create({
   // The virtualizer sizes rows to the scroller's full width, so the inline inset lives on rows.
@@ -215,17 +218,7 @@ function Item({
                 {t(`file.change.${change.change}`, { path: change.previousPath ?? entry.path })}
               </span>
             )}
-            {change && (
-              <span aria-hidden="true">
-                {change.change === "add"
-                  ? "A"
-                  : change.change === "del"
-                    ? "D"
-                    : change.change === "renamed"
-                      ? "R"
-                      : "M"}
-              </span>
-            )}
+            {change && <span aria-hidden="true">{CHANGE_MARK[change.change]}</span>}
           </div>
         )}
       </TreeItemContent>
@@ -349,6 +342,41 @@ function FileTreeViewport({
   );
 }
 
+// The status mark git uses for each recorded change.
+const CHANGE_MARK = {
+  add: "A",
+  del: "D",
+  renamed: "R",
+  mod: "M",
+} as const satisfies Record<WorkspaceFileChange["change"], string>;
+
+const TREE_KEYS = new Set(["Enter", "ArrowLeft", "ArrowRight"]);
+
+function plainTreeKey(event: KeyboardEvent<HTMLDivElement>): boolean {
+  return (
+    !event.defaultPrevented &&
+    event.cancelable &&
+    TREE_KEYS.has(event.key) &&
+    !event.altKey &&
+    !event.ctrlKey &&
+    !event.metaKey &&
+    !event.shiftKey &&
+    !isImeKey(event.nativeEvent)
+  );
+}
+
+// A focused file row of this tree; Enter on a directory row stays with React Aria.
+function focusedFileRow(event: KeyboardEvent<HTMLDivElement>, tree: HTMLElement | null): boolean {
+  const row = event.target;
+  return (
+    row instanceof HTMLElement &&
+    row.ownerDocument.activeElement === row &&
+    tree?.contains(row) === true &&
+    row.matches('[role="row"][data-file-path]') &&
+    !(event.key === "Enter" && row.hasAttribute("data-has-child-items"))
+  );
+}
+
 export function FileTree({
   cwd,
   ref,
@@ -389,23 +417,7 @@ export function FileTree({
     <span>{t("common.loading")}</span>
   );
   const onTreeRowKeyDownCapture = (event: KeyboardEvent<HTMLDivElement>) => {
-    const { key, target: row } = event;
-    if (
-      event.defaultPrevented ||
-      !event.cancelable ||
-      (key !== "Enter" && key !== "ArrowLeft" && key !== "ArrowRight") ||
-      event.altKey ||
-      event.ctrlKey ||
-      event.metaKey ||
-      event.shiftKey ||
-      isImeKey(event.nativeEvent) ||
-      !(row instanceof HTMLElement) ||
-      row.ownerDocument.activeElement !== row ||
-      !treeRef.current?.contains(row) ||
-      !row.matches('[role="row"][data-file-path]') ||
-      (key === "Enter" && row.hasAttribute("data-has-child-items"))
-    )
-      return;
+    if (!plainTreeKey(event) || !focusedFileRow(event, treeRef.current)) return;
 
     // Keep WebKit's retained Composer selection from receiving keys that React Aria owns.
     event.preventDefault();

@@ -38,6 +38,52 @@ const styles = stylex.create({
   delegatedRuns: { paddingInlineStart: space.s6 },
 });
 
+// The Run an awaitable item resumes, once the Session reports it waiting.
+function resumeRun(facts: TurnFacts, itemId: string | undefined): string | undefined {
+  return itemId === undefined ? undefined : facts.awaiting.get(itemId);
+}
+
+function recordedDecision(facts: TurnFacts, itemId: string | undefined) {
+  return itemId === undefined ? undefined : facts.toolCalls[itemId]?.approvalDecision;
+}
+
+function renderToolBlock(
+  block: Extract<ContentBlock, { kind: "tool" }>,
+  facts: TurnFacts,
+  ctx: BlockCtx,
+) {
+  const tool = facts.toolCalls[block.itemId];
+  if (!tool) return null;
+  const delegatedRuns = facts.delegatedRuns[block.itemId] ?? [];
+  const delegated = delegatedRuns.length > 0;
+  return (
+    <div
+      id={block.itemId}
+      key={block.itemId}
+      role={delegated ? "group" : undefined}
+      aria-label={delegated ? tool.fn : undefined}
+    >
+      <ToolCard
+        tool={tool}
+        expanded={ctx.expandedIds.has(block.itemId)}
+        onExpandedChange={(expanded) => ctx.onExpandedChange(block.itemId, expanded)}
+      />
+      {delegated && (
+        <div {...stylex.props(styles.delegatedRuns)}>
+          {delegatedRuns.map((narrative, index) => (
+            <DelegatedRunLink
+              key={narrative.run.id}
+              run={narrative.run}
+              ordinal={index + 1}
+              siblingCount={delegatedRuns.length}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function renderBlock(block: ContentBlock, key: number, facts: TurnFacts, ctx: BlockCtx) {
   switch (block.kind) {
     case "text":
@@ -53,37 +99,8 @@ export function renderBlock(block: ContentBlock, key: number, facts: TurnFacts, 
     case "reference":
       return <ReferenceBlock key={key} label={block.label} text={block.text} />;
 
-    case "tool": {
-      const tool = facts.toolCalls[block.itemId];
-      if (!tool) return null;
-      const delegatedRuns = facts.delegatedRuns[block.itemId] ?? [];
-      return (
-        <div
-          id={block.itemId}
-          key={block.itemId}
-          role={delegatedRuns.length > 0 ? "group" : undefined}
-          aria-label={delegatedRuns.length > 0 ? tool.fn : undefined}
-        >
-          <ToolCard
-            tool={tool}
-            expanded={ctx.expandedIds.has(block.itemId)}
-            onExpandedChange={(expanded) => ctx.onExpandedChange(block.itemId, expanded)}
-          />
-          {delegatedRuns.length > 0 && (
-            <div {...stylex.props(styles.delegatedRuns)}>
-              {delegatedRuns.map((narrative, index) => (
-                <DelegatedRunLink
-                  key={narrative.run.id}
-                  run={narrative.run}
-                  ordinal={index + 1}
-                  siblingCount={delegatedRuns.length}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-      );
-    }
+    case "tool":
+      return renderToolBlock(block, facts, ctx);
 
     case "reasoning":
       return <ReasoningBlock key={key} text={block.text} status={block.status} />;
@@ -93,10 +110,8 @@ export function renderBlock(block: ContentBlock, key: number, facts: TurnFacts, 
         <ApprovalCard
           key={block.itemId ?? key}
           sessionId={ctx.sessionId}
-          resumeRunId={block.itemId === undefined ? undefined : facts.awaiting.get(block.itemId)}
-          decision={
-            block.itemId === undefined ? undefined : facts.toolCalls[block.itemId]?.approvalDecision
-          }
+          resumeRunId={resumeRun(facts, block.itemId)}
+          decision={recordedDecision(facts, block.itemId)}
           toolName={block.toolName}
           category={block.category}
           cmd={block.command}
@@ -113,7 +128,7 @@ export function renderBlock(block: ContentBlock, key: number, facts: TurnFacts, 
           key={block.itemId ?? key}
           sessionId={ctx.sessionId}
           status={block.status}
-          resumeRunId={block.itemId === undefined ? undefined : facts.awaiting.get(block.itemId)}
+          resumeRunId={resumeRun(facts, block.itemId)}
           itemId={block.itemId}
           questions={block.questions}
           answered={block.answered}

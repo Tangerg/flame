@@ -14,7 +14,7 @@ import { StatusDot } from "@/ui/atoms/status-dot";
 import { IconButton, vocab } from "@flame/ui";
 import { type IconName } from "@/ui/icons/index";
 import { presentationTitle } from "@/lib/i18n/presentationTitle";
-import { useLocale, useT } from "@/lib/i18n/index";
+import { useLocale, useT, type Translate } from "@/lib/i18n/index";
 import { formatRelative } from "@/lib/i18n/relativeTime";
 import { type WorkSession } from "@/features/navigation/public/workIndex";
 import { sessionDisplayTitle } from "@/features/agent/public/session";
@@ -43,6 +43,93 @@ interface Props {
   onToggleFavorite?: (id: string, expectedRevision: number, favorite: boolean) => void;
 }
 
+interface SessionMenuItem {
+  id: string;
+  icon: IconName;
+  label: string;
+  destructive?: boolean;
+  run: () => void;
+}
+
+function sessionAttention(t: Translate, session: WorkSession): string | undefined {
+  if (sessionIsRunning(session)) return t("session.status.running");
+  if (sessionIsWaiting(session)) return t("session.status.waiting");
+  return undefined;
+}
+
+// Pinning, forking and deleting appear only where the owner supports them;
+// moving to a Project is always available, and installed actions follow it.
+function sessionMenu(
+  t: Translate,
+  session: WorkSession,
+  actions: Pick<Props, "onToggleFavorite" | "onFork" | "onDelete"> & {
+    contributed: SessionMenuItem[];
+    move: () => void;
+    confirmDelete: () => void;
+  },
+): SessionMenuItem[] {
+  const { onToggleFavorite, onFork, onDelete } = actions;
+  const items: SessionMenuItem[] = [];
+  if (onToggleFavorite)
+    items.push({
+      id: "pin",
+      icon: "star",
+      label: session.favorite ? t("session.action.unpin") : t("session.action.pin"),
+      run: () => onToggleFavorite(session.id, session.revision, !session.favorite),
+    });
+  if (onFork)
+    items.push({
+      id: "fork",
+      icon: "fork",
+      label: t("session.action.fork"),
+      run: () => onFork(session.id),
+    });
+  items.push(
+    {
+      id: "project",
+      icon: "blocks",
+      label: t("session.action.moveToProject"),
+      run: actions.move,
+    },
+    ...actions.contributed,
+  );
+  if (onDelete)
+    items.push({
+      id: "delete",
+      icon: "trash",
+      label: t("session.action.delete"),
+      destructive: true,
+      run: actions.confirmDelete,
+    });
+  return items;
+}
+
+function SessionRowTrailing({
+  session,
+  showTime,
+  when,
+  status,
+}: {
+  session: WorkSession;
+  showTime: boolean;
+  when: string;
+  status: string;
+}) {
+  const running = sessionIsRunning(session);
+  return (
+    <span {...stylex.props(sr.trailing)}>
+      {session.favorite && (
+        <Icon name="star" size="xs" className={stylex.props(sr.favorite).className} />
+      )}
+      {sessionNeedsAttention(session) ? (
+        <StatusDot tone={running ? "running" : "waiting"} ring={running} label={status} />
+      ) : (
+        showTime && <span {...stylex.props(sr.stamp, typeStep.uiXs)}>{when}</span>
+      )}
+    </span>
+  );
+}
+
 export function SessionRow({
   session,
   active,
@@ -65,49 +152,16 @@ export function SessionRow({
   const [moving, setMoving] = useState(false);
   const t = useT();
   const locale = useLocale();
-  const attentionLabel = sessionIsRunning(session)
-    ? t("session.status.running")
-    : sessionIsWaiting(session)
-      ? t("session.status.waiting")
-      : undefined;
+  const attentionLabel = sessionAttention(t, session);
   const when = formatRelative(session.time);
   const accessibleStatus = attentionLabel ? `${attentionLabel} · ${when}` : when;
   const title = sessionDisplayTitle(t, session.title);
 
-  const menu: {
-    id: string;
-    icon: IconName;
-    label: string;
-    destructive?: boolean;
-    run: () => void;
-  }[] = [
-    ...(onToggleFavorite
-      ? [
-          {
-            id: "pin",
-            icon: "star" as const,
-            label: session.favorite ? t("session.action.unpin") : t("session.action.pin"),
-            run: () => onToggleFavorite(session.id, session.revision, !session.favorite),
-          },
-        ]
-      : []),
-    ...(onFork
-      ? [
-          {
-            id: "fork",
-            icon: "fork" as const,
-            label: t("session.action.fork"),
-            run: () => onFork(session.id),
-          },
-        ]
-      : []),
-    {
-      id: "project",
-      icon: "blocks" as const,
-      label: t("session.action.moveToProject"),
-      run: () => setMoving(true),
-    },
-    ...contributedActions.map((entry) => ({
+  const menu = sessionMenu(t, session, {
+    onToggleFavorite,
+    onFork,
+    onDelete,
+    contributed: contributedActions.map((entry) => ({
       id: entry.id,
       icon: "blocks" as const,
       label: presentationTitle(entry.title, entry.localizedTitles, locale),
@@ -117,18 +171,9 @@ export function SessionRow({
           session: capturedSession,
         }),
     })),
-    ...(onDelete
-      ? [
-          {
-            id: "delete",
-            icon: "trash" as const,
-            label: t("session.action.delete"),
-            destructive: true,
-            run: () => setConfirmingDelete(true),
-          },
-        ]
-      : []),
-  ];
+    move: () => setMoving(true),
+    confirmDelete: () => setConfirmingDelete(true),
+  });
 
   const more = (
     <DropdownMenu.Root>
@@ -177,20 +222,12 @@ export function SessionRow({
         look="quiet"
         action={more}
         trailing={
-          <span {...stylex.props(sr.trailing)}>
-            {session.favorite && (
-              <Icon name="star" size="xs" className={stylex.props(sr.favorite).className} />
-            )}
-            {sessionNeedsAttention(session) ? (
-              <StatusDot
-                tone={sessionIsRunning(session) ? "running" : "waiting"}
-                ring={sessionIsRunning(session)}
-                label={accessibleStatus}
-              />
-            ) : (
-              showTime && <span {...stylex.props(sr.stamp, typeStep.uiXs)}>{when}</span>
-            )}
-          </span>
+          <SessionRowTrailing
+            session={session}
+            showTime={showTime}
+            when={when}
+            status={accessibleStatus}
+          />
         }
       >
         {title}

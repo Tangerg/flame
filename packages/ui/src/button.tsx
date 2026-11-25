@@ -479,7 +479,6 @@ export function dress({
   flex,
   face: textFace,
 }: ButtonVariants) {
-  const chipStep = chip && (size === "sm" || size === "md") ? size : null;
   const pressStep = press ?? pressFor({ variant, chip, shape, round, join });
   return [
     styles.base,
@@ -490,18 +489,19 @@ export function dress({
     join && [styles.joined, JOIN[join]],
     VARIANT[variant],
     tone && tonedFill(variant, tone),
-    chip && styles.chip,
-    chipStep && [
-      CHIP_INSET[chipStep],
-      chipStep === "md" ? type.uiMd : type.uiSm,
-    ],
-    quiet && styles.quiet,
-    quiet && tone && QUIET_TONE[tone],
+    chip && chipStyles(size),
+    quiet && [styles.quiet, tone && QUIET_TONE[tone]],
     active && styles.active,
     shape === "row" && styles.row,
     flex === "fill" && styles.fill,
     textFace && face[textFace],
   ];
+}
+
+// A chip insets its label only at the sizes it is designed for.
+function chipStyles(size: ButtonSize) {
+  if (size !== "sm" && size !== "md") return styles.chip;
+  return [styles.chip, CHIP_INSET[size], size === "md" ? type.uiMd : type.uiSm];
 }
 
 export type ButtonProps = Omit<

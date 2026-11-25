@@ -11,6 +11,25 @@ import { EMU_PER_INCH, label } from "./slides-presentation";
 
 const NUDGE = EMU_PER_INCH / 10;
 
+// Data-bearing and picture elements are tinted so their frames read apart from text.
+const ELEMENT_FILL: Partial<Record<ElementView["kind"], string>> = {
+  chart: token.surface.infoWash,
+  table: token.surface.infoWash,
+  picture: token.surface.sunken,
+  text: "transparent",
+};
+
+function selectionChrome(active: boolean) {
+  return {
+    border: `1px ${active ? "solid" : "dashed"} ${
+      active ? token.color.accent : token.surface.fieldStrong
+    }`,
+    outline: active ? `2px solid ${token.color.accent}` : "none",
+    outlineOffset: 1,
+    zIndex: active ? 1 : undefined,
+  };
+}
+
 export function Canvas({
   layout,
   slide,
@@ -171,20 +190,8 @@ export function Canvas({
               lineHeight: 1.25,
               color: token.color.fgSoft,
               cursor: editable && element.frame ? "move" : "pointer",
-              background:
-                element.kind === "chart" || element.kind === "table"
-                  ? token.surface.infoWash
-                  : element.kind === "picture"
-                    ? token.surface.sunken
-                    : element.kind === "text"
-                      ? "transparent"
-                      : token.surface.surface2,
-              border: `1px ${active ? "solid" : "dashed"} ${
-                active ? token.color.accent : token.surface.fieldStrong
-              }`,
-              outline: active ? `2px solid ${token.color.accent}` : "none",
-              outlineOffset: 1,
-              zIndex: active ? 1 : undefined,
+              background: ELEMENT_FILL[element.kind] ?? token.surface.surface2,
+              ...selectionChrome(active),
             }}
           >
             {label(element, t)}

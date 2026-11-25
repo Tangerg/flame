@@ -180,6 +180,20 @@ function captureComposer(composer: ComposerAccess, signal: AbortSignal): Capture
   });
 }
 
+function capturedFile(file: CapturedFile): CapturedFile {
+  return Object.freeze({
+    ...file,
+    workspace: file.workspace ? Object.freeze({ ...file.workspace }) : undefined,
+  });
+}
+
+function capturedWorkspace(workspace: WorkspaceContext): WorkspaceContext {
+  return Object.freeze({
+    ref: Object.freeze({ ...workspace.ref }),
+    focus: workspace.focus ? Object.freeze({ ...workspace.focus }) : undefined,
+  });
+}
+
 class ComponentInstance {
   private controller = new AbortController();
   private listeners = new Set<() => void>();
@@ -195,8 +209,6 @@ class ComponentInstance {
     ]);
     const track: ComponentContext["track"] = (operation) =>
       trackContributionIO(this.sources.lifetime, () => operation(signal));
-    const effect =
-      this.sources.placement === "clientEffect" || this.sources.placement === "sharedClientEffect";
     const openSession = this.sources.openSession;
     const component = Object.freeze({ ...this.sources.component });
     return Object.freeze({
@@ -219,22 +231,8 @@ class ComponentInstance {
               track,
             )
           : undefined,
-      file: this.sources.file
-        ? Object.freeze({
-            ...this.sources.file,
-            workspace: this.sources.file.workspace
-              ? Object.freeze({ ...this.sources.file.workspace })
-              : undefined,
-          })
-        : undefined,
-      workspace: this.sources.workspace
-        ? Object.freeze({
-            ref: Object.freeze({ ...this.sources.workspace.ref }),
-            focus: this.sources.workspace.focus
-              ? Object.freeze({ ...this.sources.workspace.focus })
-              : undefined,
-          })
-        : undefined,
+      file: this.sources.file && capturedFile(this.sources.file),
+      workspace: this.sources.workspace && capturedWorkspace(this.sources.workspace),
       project: this.sources.project ? Object.freeze({ ...this.sources.project }) : undefined,
       binding: this.sources.binding ? structuredClone(this.sources.binding) : undefined,
       openSession: openSession
@@ -243,27 +241,7 @@ class ComponentInstance {
             openSession(sessionId);
           }
         : undefined,
-      registerCommand: effect
-        ? createClientCommandRegistration(
-            this.sources.lifetime,
-            signal,
-            component,
-            this.sources.captureSessionId,
-            this.sources.notificationAccess.messages,
-          )
-        : () => {
-            throw new Error("Client command registration requires clientEffect placement.");
-          },
-      subscribeRootRunSettlements: effect
-        ? createComponentSettlementSubscription(
-            this.sources.lifetime,
-            signal,
-            component,
-            this.sources.subscribeRootRunSettlements,
-          )
-        : () => {
-            throw new Error("Root run observation requires clientEffect placement.");
-          },
+      ...this.effectCapabilities(signal, component),
       notifications: createComponentNotifications(
         this.sources.lifetime,
         signal,
@@ -278,6 +256,37 @@ class ComponentInstance {
       telemetry: captureClientTelemetry(signal),
       track,
     });
+  }
+  // Only client effects register commands and observe root Run settlements.
+  private effectCapabilities(
+    signal: AbortSignal,
+    component: ComponentContext["component"],
+  ): Pick<CapturedContext, "registerCommand" | "subscribeRootRunSettlements"> {
+    const placement = this.sources.placement;
+    if (placement !== "clientEffect" && placement !== "sharedClientEffect")
+      return {
+        registerCommand: () => {
+          throw new Error("Client command registration requires clientEffect placement.");
+        },
+        subscribeRootRunSettlements: () => {
+          throw new Error("Root run observation requires clientEffect placement.");
+        },
+      };
+    return {
+      registerCommand: createClientCommandRegistration(
+        this.sources.lifetime,
+        signal,
+        component,
+        this.sources.captureSessionId,
+        this.sources.notificationAccess.messages,
+      ),
+      subscribeRootRunSettlements: createComponentSettlementSubscription(
+        this.sources.lifetime,
+        signal,
+        component,
+        this.sources.subscribeRootRunSettlements,
+      ),
+    };
   }
   retire = () => this.controller.abort();
   getSnapshot = () => (this.context.signal.aborted ? null : this.context);

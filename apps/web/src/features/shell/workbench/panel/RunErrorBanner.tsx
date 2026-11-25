@@ -13,7 +13,7 @@ import { agentTextInput } from "@/features/agent/public/input";
 import { useCanSendToAgent, useChatSend } from "@/features/agent/public/input";
 
 import { useActiveSessionProblem } from "@/features/agent/public/run";
-import { useT } from "@/lib/i18n/index";
+import { useT, type Translate } from "@/lib/i18n/index";
 import { useMotion } from "@/lib/motion";
 import { describeActiveRunRefusal, describeErrorType } from "@/lib/rpcErrors";
 import { openWorkspaceClientDiagnostics } from "@/features/workspace/public/deeplinks";
@@ -40,6 +40,45 @@ interface RetryCountdown {
   remaining: number;
 }
 
+// Seconds left before a rate-limited Run may be retried, counted from when the
+// problem arrived.
+function useRetryCountdown(error: AgentProblem | null): number {
+  const retryAfter = error?.retryAfterSeconds ?? 0;
+  const [countdown, setCountdown] = useState<RetryCountdown>({
+    problem: null,
+    retryAfter: 0,
+    remaining: 0,
+  });
+  useEffect(() => {
+    if (retryAfter <= 0) return;
+    const started = performance.now();
+    const id = setInterval(() => {
+      const rem = Math.max(0, Math.ceil(retryAfter - (performance.now() - started) / 1000));
+      setCountdown({ problem: error, retryAfter, remaining: rem });
+      if (rem <= 0) clearInterval(id);
+    }, 250);
+    return () => clearInterval(id);
+  }, [error, retryAfter]);
+  return countdown.problem === error && countdown.retryAfter === retryAfter
+    ? countdown.remaining
+    : retryAfter;
+}
+
+// Retrying cannot help a stopped Run or one that needs new credentials.
+function retryRecovers(error: AgentProblem | null | undefined): boolean {
+  return error?.recovery !== "stop" && error?.recovery !== "reauthenticate";
+}
+
+function runProblemText(t: Translate, error: AgentProblem): string {
+  return (
+    describeActiveRunRefusal(error) ??
+    (error.lossReason ? t(`agent.loss.${error.lossReason}`) : undefined) ??
+    error.message ??
+    describeErrorType(error.code) ??
+    t("runError.unknown")
+  );
+}
+
 export function RunErrorBanner() {
   const { disclosureExitTransition, disclosureTransition } = useMotion();
   const agentAccess = useAgent();
@@ -52,26 +91,7 @@ export function RunErrorBanner() {
   const runtimeAvailable = useRuntimeCommandsAvailable();
   const canSend = hasSendAction && runtimeAvailable;
 
-  const retryAfter = error?.retryAfterSeconds ?? 0;
-  const [countdown, setCountdown] = useState<RetryCountdown>({
-    problem: null,
-    retryAfter: 0,
-    remaining: 0,
-  });
-  const retryIn =
-    countdown.problem === error && countdown.retryAfter === retryAfter
-      ? countdown.remaining
-      : retryAfter;
-  useEffect(() => {
-    if (retryAfter <= 0) return;
-    const started = performance.now();
-    const id = setInterval(() => {
-      const rem = Math.max(0, Math.ceil(retryAfter - (performance.now() - started) / 1000));
-      setCountdown({ problem: error, retryAfter, remaining: rem });
-      if (rem <= 0) clearInterval(id);
-    }, 250);
-    return () => clearInterval(id);
-  }, [error, retryAfter]);
+  const retryIn = useRetryCountdown(error);
 
   const retryText = error ? findLastUserText(agentAccess) : "";
 
@@ -81,11 +101,7 @@ export function RunErrorBanner() {
     agentAccess.dismissActiveSessionProblem();
   };
 
-  const canRetry =
-    canSend &&
-    Boolean(retryText) &&
-    error?.recovery !== "stop" &&
-    error?.recovery !== "reauthenticate";
+  const canRetry = canSend && Boolean(retryText) && retryRecovers(error);
 
   return (
     <AnimatePresence initial={false}>
@@ -110,13 +126,7 @@ export function RunErrorBanner() {
                 </span>
               )}
             </div>
-            <div {...stylex.props(sh.bannerBody, typeStep.uiMd)}>
-              {describeActiveRunRefusal(error) ??
-                (error.lossReason ? t(`agent.loss.${error.lossReason}`) : undefined) ??
-                error.message ??
-                describeErrorType(error.code) ??
-                t("runError.unknown")}
-            </div>
+            <div {...stylex.props(sh.bannerBody, typeStep.uiMd)}>{runProblemText(t, error)}</div>
             <div {...stylex.props(sh.bannerActions)}>
               {canRetry && (
                 <BannerAction

@@ -131,6 +131,23 @@ function selectedSourceText(
   return parts.length ? parts.join("") : undefined;
 }
 
+// Lines past the served read only display; they carry no quote or reader address.
+function markServedLine(line: HTMLElement, number: number, index: number, served: boolean): void {
+  if (served) {
+    markQuoteLine(line, number);
+    markReaderLine(line, index);
+    return;
+  }
+  line.removeAttribute("data-quote-line");
+  line.removeAttribute("data-reader-line");
+}
+
+function releaseReaderRefs(
+  ...refs: Array<RefObject<HTMLElement | Element | null> | undefined>
+): void {
+  for (const ref of refs) if (ref) ref.current = null;
+}
+
 export function PierreFile({
   presentation = "standalone",
   source,
@@ -182,8 +199,7 @@ export function PierreFile({
       onPostRender: (node, _instance, phase) => {
         if (phase === "unmount") {
           root.current = null;
-          if (selectionContentRef) selectionContentRef.current = null;
-          if (sourceScrollRef) sourceScrollRef.current = null;
+          releaseReaderRefs(selectionContentRef, sourceScrollRef);
           return;
         }
         const shadow = node.shadowRoot;
@@ -195,13 +211,7 @@ export function PierreFile({
           const index = rowNumber(line) - 1;
           const number = startLine + index;
           const isServed = endLine === undefined || number <= endLine;
-          if (isServed) {
-            markQuoteLine(line, number);
-            markReaderLine(line, index);
-          } else {
-            line.removeAttribute("data-quote-line");
-            line.removeAttribute("data-reader-line");
-          }
+          markServedLine(line, number, index, isServed);
           if (!isServed || number !== targetLine || !intent) {
             clearTargetLine(line);
             continue;

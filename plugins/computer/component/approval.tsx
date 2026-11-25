@@ -229,6 +229,39 @@ function PermissionField({
   );
 }
 
+// Number fields travel as JSON numbers; an empty number field is omitted.
+function submittedContent(
+  properties: Record<string, { type: string }>,
+  draft: Record<string, DraftValue>,
+): Record<string, unknown> {
+  const content: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(draft)) {
+    const numeric =
+      properties[key]!.type === "number" || properties[key]!.type === "integer";
+    if (!numeric) content[key] = value;
+    else if (value !== "") content[key] = parseJSON(String(value));
+  }
+  return content;
+}
+
+// Only an accepted form answer carries content; a URL request never does.
+function permissionResponse(
+  action: "accept" | "decline" | "cancel",
+  request: PermissionRequest["request"],
+  draft: Record<string, DraftValue>,
+  persist: PermissionPersistence | undefined,
+): string {
+  const content =
+    action === "accept" && request.mode !== "url"
+      ? submittedContent(request.requestedSchema.properties, draft)
+      : undefined;
+  return stringifyJSON({
+    action,
+    ...(content ? { content } : {}),
+    ...(persist ? { _meta: { persist } } : {}),
+  });
+}
+
 export function ApprovalForm({
   approval,
   pending,
@@ -263,21 +296,7 @@ export function ApprovalForm({
     if (disabled) return;
     setError(undefined);
     try {
-      const content: Record<string, unknown> = {};
-      if (action === "accept" && request.mode !== "url") {
-        for (const [key, value] of Object.entries(draft)) {
-          const field = request.requestedSchema.properties[key]!;
-          if (field.type === "number" || field.type === "integer") {
-            if (value === "") continue;
-            content[key] = parseJSON(String(value));
-          } else content[key] = value;
-        }
-      }
-      const responseJSON = stringifyJSON({
-        action,
-        ...(action === "accept" && request.mode !== "url" ? { content } : {}),
-        ...(persist ? { _meta: { persist } } : {}),
-      });
+      const responseJSON = permissionResponse(action, request, draft, persist);
       permission.reply(responseJSON);
       if (form.current) beforeRespond(form.current);
       if (
