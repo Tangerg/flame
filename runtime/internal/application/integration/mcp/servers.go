@@ -78,7 +78,8 @@ func (c *Coordinator) UpdateServer(ctx context.Context, name mcpserver.ID, patch
 }
 
 func (c *Coordinator) commitServer(write *mutationScope, accepted mcpserver.Server, previous *mcpserver.Server) (Server, error) {
-	if err := c.store.Save(write.requestCtx, accepted); err != nil {
+	settle, err := c.store.Save(write.requestCtx, accepted)
+	if err != nil {
 		return Server{}, err
 	}
 
@@ -96,10 +97,11 @@ func (c *Coordinator) commitServer(write *mutationScope, accepted mcpserver.Serv
 		connectionErr = c.dispatchConnection(write.ownerCtx, id, c.connections.BeginConnect, start, nil, nil)
 	}
 	view, viewErr := serverView(accepted, c.statusesByName()[id])
+	settlementErr := settle(write.ownerCtx)
 	event := c.statusQueue.prepare(id)
 	write.unlock()
 	c.statusQueue.publish(event)
-	if err := errors.Join(connectionErr, viewErr); err != nil {
+	if err := errors.Join(connectionErr, viewErr, settlementErr); err != nil {
 		return Server{}, err
 	}
 	return view, nil
@@ -120,15 +122,17 @@ func (c *Coordinator) DeleteServer(ctx context.Context, name mcpserver.ID) error
 	} else if !found {
 		return ErrUnknownServer
 	}
-	if err := c.store.Remove(write.requestCtx, current); err != nil {
+	settle, err := c.store.Remove(write.requestCtx, current)
+	if err != nil {
 		return err
 	}
-	projectionErr := c.connections.Detach(name)
 	c.exposure.removeServer(name)
+	projectionErr := c.connections.Detach(name)
+	settlementErr := settle(write.ownerCtx)
 	event := c.statusQueue.prepare(name)
 	write.unlock()
 	c.statusQueue.publish(event)
-	return projectionErr
+	return errors.Join(projectionErr, settlementErr)
 }
 
 type mutationScope struct {

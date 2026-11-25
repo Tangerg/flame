@@ -56,6 +56,14 @@ func TestAcceptedMCPDisableSurvivesCallerCancellation(t *testing.T) {
 	case <-time.After(lifecycleWaitBudget(t)):
 		t.Fatal("disable did not reach grant confirmation")
 	}
+	assertWithdrawn := func() {
+		t.Helper()
+		tools := runtime.must(delivery.MCPToolsList, protocol.MCPListToolsRequest{Server: &created.ID}, "").(*protocol.Page[protocol.MCPTool])
+		if len(tools.Data) != 0 {
+			t.Errorf("disabled server still advertises tools: %+v", tools.Data)
+		}
+	}
+	assertWithdrawn()
 	cancel()
 	release()
 	select {
@@ -69,8 +77,5 @@ func TestAcceptedMCPDisableSurvivesCallerCancellation(t *testing.T) {
 	if recorded.Failure != nil || !accepted || server.Status.Type != protocol.MCPServerDisabled {
 		t.Errorf("replayed disable = %+v, %v", recorded.Value, recorded.Failure)
 	}
-	tools := runtime.must(delivery.MCPToolsList, protocol.MCPListToolsRequest{Server: &created.ID}, "").(*protocol.Page[protocol.MCPTool])
-	if len(tools.Data) != 0 {
-		t.Errorf("disabled server still advertises tools: %+v", tools.Data)
-	}
+	assertWithdrawn()
 }

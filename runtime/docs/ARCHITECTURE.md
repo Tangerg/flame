@@ -213,6 +213,8 @@ MCP catalog validation, disabled-tool policy, discovery grouping, and automatic 
 
 MCP management reads, connected Tool counts, and execution publication derive from the same admitted Scope Tool snapshot. Listing never performs another remote discovery; reconnect replaces the snapshot for all three consumers. Scope Binding compiles each schema before a connection or probe succeeds, and Scope Registry admits the prospective catalog across connected servers. Runtime retains remote identity, description, and catalog-capacity policy. Diagnostic and MCP metadata carry Scope ToolDefinition directly; Delivery alone projects schemas to protocol objects while preserving exact numeric literals. Runtime has no parallel schema value type or parser.
 
+The external MCP connector owns directory acceptance. Runtime projects the accepted definition or removal before settling local grant retirement and release of the connector lease. A settlement error reaches the caller while the connector's committed definition governs tool exposure.
+
 An admitted MCP Tool call receives Runtime's existing logical call identity in
 request metadata under the compiled `pluginmcp.InvocationMetadataKey`, beside
 origin, parent and concrete target. `packages/go-sdk/plugin/mcp` owns this Flame business transport;

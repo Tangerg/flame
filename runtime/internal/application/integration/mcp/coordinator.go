@@ -36,9 +36,13 @@ type registry interface {
 	Definition(ctx context.Context, name mcpserver.ID) (mcpserver.Server, bool, error)
 }
 
+// Connector acceptance authorizes publication before retiring local grants and
+// releasing the lease that admitted the write.
+type DirectorySettlement func(context.Context) error
+
 type store interface {
-	Save(ctx context.Context, server mcpserver.Server) error
-	Remove(ctx context.Context, current mcpserver.Server) error
+	Save(ctx context.Context, server mcpserver.Server) (DirectorySettlement, error)
+	Remove(ctx context.Context, current mcpserver.Server) (DirectorySettlement, error)
 	ListExposure(ctx context.Context) ([]tool.Ref, error)
 	SetToolExposure(ctx context.Context, ref tool.Ref, disabled bool) error
 }

@@ -239,28 +239,33 @@ func (c *ExternalConnector) find(ctx context.Context, u *connectorUse, name mcps
 	return d.Entries[0], true, nil
 }
 
-func (c *ExternalConnector) Save(ctx context.Context, s mcpserver.Server) error {
+func (c *ExternalConnector) Save(ctx context.Context, s mcpserver.Server) (mcpapp.DirectorySettlement, error) {
 	return c.change(ctx, s, &s)
 }
 
-func (c *ExternalConnector) Remove(ctx context.Context, current mcpserver.Server) error {
+func (c *ExternalConnector) Remove(ctx context.Context, current mcpserver.Server) (mcpapp.DirectorySettlement, error) {
 	return c.change(ctx, current, nil)
 }
 
-func (c *ExternalConnector) change(ctx context.Context, current mcpserver.Server, s *mcpserver.Server) error {
-	selected, err := c.use(ctx, func(u *connectorUse) error { return c.applyChange(ctx, u, current, s) })
-	if err == nil && !selected {
-		return plugin.ErrUnavailable
+func (c *ExternalConnector) change(ctx context.Context, current mcpserver.Server, s *mcpserver.Server) (settle mcpapp.DirectorySettlement, err error) {
+	u, err := c.acquire(ctx)
+	if err != nil {
+		return nil, err
 	}
-	return err
-}
+	if u == nil {
+		return nil, plugin.ErrUnavailable
+	}
+	defer func() {
+		if settle == nil {
+			err = errors.Join(err, u.session.release(context.WithoutCancel(ctx)))
+		}
+	}()
 
-func (c *ExternalConnector) applyChange(ctx context.Context, u *connectorUse, current mcpserver.Server, s *mcpserver.Server) error {
 	name := current.Name
 	if current.DirectoryRevision != "" {
 		expected, err := mcpserver.ConnectorSource(u.source.InstallationID)
 		if err != nil || expected != current.Source {
-			return errors.Join(plugin.ErrStale, err)
+			return nil, errors.Join(plugin.ErrStale, err)
 		}
 	}
 	change := wire.Change{Name: name.String(), Expected: current.DirectoryRevision}
@@ -271,20 +276,20 @@ func (c *ExternalConnector) applyChange(ctx context.Context, u *connectorUse, cu
 		}
 		invocation, err := operation.Capture(ctx, framecall.Target{Scope: extension.ScopeInstallation, Reference: u.source.InstallationID.String()})
 		if err != nil {
-			return err
+			return nil, err
 		}
 		timeout, _ := s.HandshakeTimeout.Duration()
 		change.Replacement = &wire.Entry{Name: name.String(), Description: s.Description, Enabled: s.Enabled, HandshakeSeconds: int64(timeout / time.Second)}
 		proposal := mcpapp.GrantProposal{Source: u.source.ContributionSource(), Invocation: invocation, Change: change}
 		grant, err = c.vault.PrepareGrant(ctx, u.source.InstallationID, *s, proposal)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		change.Replacement.LaunchGrant = grant
 	}
 	decision, err := connectorCall(ctx, u, c.methods.Change, change)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if decision != wire.Applied {
 		refusal := plugin.ErrStale
@@ -292,11 +297,18 @@ func (c *ExternalConnector) applyChange(ctx context.Context, u *connectorUse, cu
 			refusal = mcpapp.ErrServerAlreadyExists
 		}
 		if grant != "" && decision == wire.Conflict {
-			return errors.Join(refusal, c.vault.RejectGrant(context.WithoutCancel(ctx), u.source.InstallationID, name, grant))
+			return nil, errors.Join(refusal, c.vault.RejectGrant(context.WithoutCancel(ctx), u.source.InstallationID, name, grant))
 		}
-		return refusal
+		return nil, refusal
 	}
-	return c.vault.RetireGrants(context.WithoutCancel(ctx), u.source.InstallationID, name, grant)
+	return func(ctx context.Context) error {
+		retireErr := c.vault.RetireGrants(ctx, u.source.InstallationID, name, grant)
+		releaseErr := u.session.release(context.WithoutCancel(ctx))
+		if err := errors.Join(retireErr, releaseErr); err != nil {
+			return fmt.Errorf("mcp: settle accepted directory change for %q: %w", name, err)
+		}
+		return nil
+	}, nil
 }
 
 func (c *ExternalConnector) reconcileGrant(ctx context.Context, u *connectorUse, name mcpserver.ServerName, token string) error {
