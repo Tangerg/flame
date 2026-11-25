@@ -369,7 +369,6 @@ export function useReportArchive(context: BoundContext) {
 
   return {
     t,
-    locale,
     fmt,
     busy,
     action,

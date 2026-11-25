@@ -7,7 +7,7 @@ export const de: Record<string, string> = {
   "report.title": "Bericht ({{period}}) · {{observed}}",
   "row.title": "{{period}} · {{observed}}",
   "period.windowed": "{{label}} · {{window}}",
-  "row.description": "{{window}} · Beginnt {{since}}",
+  "row.description": "Beginnt {{since}}",
   "report.scope.label": "Gespeicherter Bericht",
   "report.refresh": "Bericht aktualisieren",
   "report.back": "Zurück zum Archiv",
@@ -29,16 +29,12 @@ export const de: Record<string, string> = {
     "{{count}} gespeicherter Bericht. Die Kapazität beträgt {{capacity}}.",
   "archive.count_other":
     "{{count}} gespeicherte Berichte. Die Kapazität beträgt {{capacity}}.",
-  "archive.capture.note":
-    "Eine Erfassung kopiert vor ihrer Ausführung die Kernabrechnung der {{daily}} (täglich) oder der {{weekly}} (wöchentlich), nicht eines Kalendertags oder einer Kalenderwoche.",
   "archive.reading": "Gespeicherte Berichte werden gelesen…",
   "archive.error": "Das Archiv konnte nicht gelesen werden: {{error}}.",
   "archive.error.retained":
     "Das Archiv konnte nicht gelesen werden: {{error}}. Das zuletzt akzeptierte Archiv wird weiterhin angezeigt.",
   "archive.empty.title": "Keine gespeicherten Berichte",
   "archive.list.label": "Gespeicherte Berichte",
-  "report.view": "Bericht anzeigen",
-  "report.view.aria": "Bericht anzeigen: {{title}}",
   "removal.title": "{{title}} entfernen?",
   "removal.description":
     "Nur diese gespeicherte Kopie wird entfernt. Nachweise und Summen der Kernabrechnung bleiben unverändert, und die Kopie kann nicht wiederhergestellt werden.",
@@ -47,18 +43,14 @@ export const de: Record<string, string> = {
   "report.remove": "Gespeicherten Bericht entfernen",
   "removal.removing": "Bericht wird entfernt…",
   "fact.period": "Zeitraum",
-  "fact.observation": "Kernbeobachtung",
-  "fact.lowerBound": "Tatsächliche Untergrenze",
-  "report.saved.note":
-    "Gespeicherte Kopie eines Kernabrechnungsberichts. Sie wird nicht aktualisiert, wenn sich die Live-Abrechnung ändert.",
+  "fact.observation": "Erfasst",
+  "fact.lowerBound": "Beginn",
   "report.reading": "Gespeicherter Bericht wird gelesen…",
   "report.error.refresh":
     "Der gespeicherte Bericht konnte nicht aktualisiert werden: {{error}}. Der zuletzt akzeptierte Bericht bleibt sichtbar.",
   "report.error.read":
     "Der gespeicherte Bericht konnte nicht gelesen werden: {{error}}.",
-  "report.totals.title": "Gespeicherte Kernsummen",
-  "report.totals.description":
-    "Die Werte sind die gespeicherte Kernantwort. Unbekannte Nutzung und Preise behalten ihre Kernbedeutung.",
+  "report.totals.title": "Summen",
   "fact.attempts": "Modellversuche",
   "fact.inputTokens": "Bekannte Eingabe-Tokens",
   "fact.outputTokens": "Bekannte Ausgabe-Tokens",
@@ -67,7 +59,7 @@ export const de: Record<string, string> = {
   "fact.usageRecorded": "Nutzung erfasst",
   "fact.pricedAttempts": "Versuche mit Preis",
   "fact.outcomeUnknown": "Ergebnis unbekannt",
-  "report.breakdown.title": "Tägliche Kernaufschlüsselung",
+  "report.breakdown.title": "Pro Tag",
   "report.breakdown.row_one": "{{attempts}} Versuch · {{cost}} USD bekannt",
   "report.breakdown.row_other": "{{attempts}} Versuche · {{cost}} USD bekannt",
   "report.identity.title": "Genaue Berichtsidentität",

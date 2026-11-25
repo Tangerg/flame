@@ -84,7 +84,8 @@ catalog keeps its accepted snapshot, query and canonical reads while hidden. The
 catalog begins at its first result when the user changes or clears the query;
 refreshing an unchanged query preserves the current reading position. The
 catalog and document share the bounded Panel body. Search and catalog controls
-stay above it. The document header holds Back, the name, scope and Refresh. The
+stay above it. The document header holds Back, the name and Refresh; scope is
+shown once, among the source facts. The
 instructions use `DocumentBody` around `RecordBody`, preserving recorded line breaks.
 Within the open reader, Cmd/Ctrl+A selects only the accepted instructions, including
 when focus is in the document viewport or on the controls. Document identity,

@@ -98,7 +98,6 @@ export function Skills({ context }: { context: ComponentContext }) {
             t={t}
             opened={opened}
             titleId={documentTitleId}
-            scope={skillDocument?.scope}
             onRefresh={() => void readDocument(opened.name)}
             onBack={closeDocument}
           />

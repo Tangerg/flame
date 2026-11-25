@@ -7,7 +7,7 @@ export const es: Record<string, string> = {
   "report.title": "Informe {{period}} · {{observed}}",
   "row.title": "{{period}} · {{observed}}",
   "period.windowed": "{{label}} · {{window}}",
-  "row.description": "{{window}} · Comienza {{since}}",
+  "row.description": "Comienza {{since}}",
   "report.scope.label": "Informe guardado",
   "report.refresh": "Actualizar informe",
   "report.back": "Volver al archivo",
@@ -31,16 +31,12 @@ export const es: Record<string, string> = {
     "{{count}} informes guardados. La capacidad es {{capacity}}.",
   "archive.count_other":
     "{{count}} informes guardados. La capacidad es {{capacity}}.",
-  "archive.capture.note":
-    "Una captura copia la contabilidad base de las {{daily}} (diario) o los {{weekly}} (semanal) antes de ejecutarse, no un día o una semana del calendario.",
   "archive.reading": "Leyendo los informes guardados…",
   "archive.error": "No se pudo leer el archivo: {{error}}.",
   "archive.error.retained":
     "No se pudo leer el archivo: {{error}}. Se sigue mostrando el último archivo aceptado.",
   "archive.empty.title": "No hay informes guardados",
   "archive.list.label": "Informes guardados",
-  "report.view": "Ver informe",
-  "report.view.aria": "Ver informe: {{title}}",
   "removal.title": "¿Eliminar {{title}}?",
   "removal.description":
     "Solo se elimina esta copia guardada. La evidencia y los totales de la contabilidad base no cambian, y la copia no se puede restaurar.",
@@ -49,17 +45,13 @@ export const es: Record<string, string> = {
   "report.remove": "Eliminar informe guardado",
   "removal.removing": "Eliminando el informe…",
   "fact.period": "Periodo",
-  "fact.observation": "Observación base",
-  "fact.lowerBound": "Límite inferior real",
-  "report.saved.note":
-    "Copia guardada de un informe de contabilidad base. No se actualiza cuando cambia la contabilidad en vivo.",
+  "fact.observation": "Capturado",
+  "fact.lowerBound": "Inicio",
   "report.reading": "Leyendo el informe guardado…",
   "report.error.refresh":
     "No se pudo actualizar el informe guardado: {{error}}. El último informe aceptado sigue visible.",
   "report.error.read": "No se pudo leer el informe guardado: {{error}}.",
-  "report.totals.title": "Totales base guardados",
-  "report.totals.description":
-    "Los valores son la respuesta base guardada. El uso y los precios desconocidos conservan su significado base.",
+  "report.totals.title": "Totales",
   "fact.attempts": "Intentos de modelo",
   "fact.inputTokens": "Tokens de entrada conocidos",
   "fact.outputTokens": "Tokens de salida conocidos",
@@ -68,7 +60,7 @@ export const es: Record<string, string> = {
   "fact.usageRecorded": "Uso registrado",
   "fact.pricedAttempts": "Intentos con precio",
   "fact.outcomeUnknown": "Resultado desconocido",
-  "report.breakdown.title": "Desglose base diario",
+  "report.breakdown.title": "Por día",
   "report.breakdown.row_one":
     "{{attempts}} intento · coste conocido {{cost}} USD",
   "report.breakdown.row_many":

@@ -45,12 +45,17 @@ export const PERIODS = ["daily", "weekly"] as const satisfies readonly Period[];
 export type Formatters = {
   count: (value?: JSONNumber) => string;
   amount: (value?: JSONNumber) => string;
+  time: (iso: string) => string;
 };
 export function makeFormatters(locale: string, t: Translate): Formatters {
   const number = new Intl.NumberFormat(locale);
   const dollars = new Intl.NumberFormat(locale, { maximumFractionDigits: 6 });
   // Six places would round a nonzero sub-micro charge into a recorded zero.
   const tiny = new Intl.NumberFormat(locale, { maximumSignificantDigits: 6 });
+  const dateTime = new Intl.DateTimeFormat(locale, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
   const format = (
     value: JSONNumber | undefined,
     formatter: Intl.NumberFormat,
@@ -66,17 +71,16 @@ export function makeFormatters(locale: string, t: Translate): Formatters {
       typeof value === "number" && value !== 0 && Math.abs(value) < 0.000001
         ? tiny.format(value)
         : format(value, dollars),
+    time: (iso) => dateTime.format(new Date(iso)),
   };
 }
 export const failure = (error: unknown) => failureText(error, String(error));
-export const observed = (header: Header, locale: string) =>
-  new Date(header.observedAt).toLocaleString(locale);
-export const lowerBound = (header: Header, t: Translate, locale: string) =>
-  header.since
-    ? new Date(header.since).toLocaleString(locale)
-    : t("evidence.beginning");
-export const reportTitle = (header: Header, t: Translate, locale: string) =>
+export const observed = (header: Header, fmt: Formatters) =>
+  fmt.time(header.observedAt);
+export const lowerBound = (header: Header, t: Translate, fmt: Formatters) =>
+  header.since ? fmt.time(header.since) : t("evidence.beginning");
+export const reportTitle = (header: Header, t: Translate, fmt: Formatters) =>
   t("report.title", {
     period: t(`period.${header.period}.label`),
-    observed: observed(header, locale),
+    observed: observed(header, fmt),
   });
