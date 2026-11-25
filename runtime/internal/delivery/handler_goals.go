@@ -11,55 +11,69 @@ import (
 	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/goals"
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 )
 
 func (s *Handler) UpdateGoal(ctx context.Context, in protocol.UpdateGoalRequest) (*protocol.Goal, error) {
-	sessionID, parseErr := sessionParameter(in.SessionID)
-	if parseErr != nil {
-		return nil, parseErr
-	}
-	caller, err := s.negotiateCapabilities(ctx)
-	if err != nil {
-		return nil, err
-	}
-	g, err := s.goals.UpdateObjective(ctx, sessionID, in.Objective, caller)
-	if uncovered, ok := errors.AsType[*run.InsufficientCapabilitiesError](err); ok {
-		return nil, capabilityGap(uncovered.Missing)
-	}
-	if err != nil {
-		return nil, mapGoalErr(err)
-	}
-	return presentGoal(g)
+	return applyGoalCommand(func(complete operation.Reply[goal.Goal]) error { return s.updateGoal(ctx, in, complete) })
 }
 
-func (s *Handler) ClearGoal(ctx context.Context, in protocol.GoalRequest) error {
+func (s *Handler) commitUpdateGoal(ctx context.Context, in protocol.UpdateGoalRequest, outcome atomicOutcome) error {
+	return outcome.settleRefusal(ctx, s.updateGoal(ctx, in, outcome.goal()))
+}
+
+func (s *Handler) updateGoal(ctx context.Context, in protocol.UpdateGoalRequest, complete operation.Reply[goal.Goal]) error {
 	sessionID, parseErr := sessionParameter(in.SessionID)
 	if parseErr != nil {
 		return parseErr
 	}
-	return mapGoalErr(s.goals.Clear(ctx, sessionID))
+	caller, err := s.negotiateCapabilities(ctx)
+	if err != nil {
+		return err
+	}
+	return mapGoalErr(s.goals.UpdateObjective(ctx, sessionID, in.Objective, caller, complete))
+}
+
+func (s *Handler) ClearGoal(ctx context.Context, in protocol.GoalRequest) error {
+	return s.clearGoal(ctx, in, operation.DirectReply(new(struct{})))
+}
+
+func (s *Handler) commitClearGoal(ctx context.Context, in protocol.GoalRequest, outcome atomicOutcome) error {
+	return outcome.settleRefusal(ctx, s.clearGoal(ctx, in, outcome.acknowledgement()))
+}
+
+func (s *Handler) clearGoal(ctx context.Context, in protocol.GoalRequest, complete operation.Reply[struct{}]) error {
+	sessionID, parseErr := sessionParameter(in.SessionID)
+	if parseErr != nil {
+		return parseErr
+	}
+	return mapGoalErr(s.goals.Clear(ctx, sessionID, complete))
 }
 
 func (s *Handler) StartGoal(ctx context.Context, in protocol.StartGoalRequest) (*protocol.Goal, error) {
+	return applyGoalCommand(func(complete operation.Reply[goal.Goal]) error { return s.startGoal(ctx, in, complete) })
+}
+
+func (s *Handler) commitStartGoal(ctx context.Context, in protocol.StartGoalRequest, outcome atomicOutcome) error {
+	return outcome.settleRefusal(ctx, s.startGoal(ctx, in, outcome.goal()))
+}
+
+func (s *Handler) startGoal(ctx context.Context, in protocol.StartGoalRequest, complete operation.Reply[goal.Goal]) error {
 	sessionID, parseErr := sessionParameter(in.SessionID)
 	if parseErr != nil {
-		return nil, parseErr
+		return parseErr
 	}
 	selection, err := flamemodel.NewWithReasoningEffort(in.Provider, in.Model, in.ReasoningEffort)
 	if err != nil {
-		return nil, mapGoalErr(err)
+		return mapGoalErr(err)
 	}
 	capabilities, err := s.negotiateCapabilities(ctx)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	g, err := s.goals.Start(ctx, sessionID, in.Objective, selection, capabilities)
-	if err != nil {
-		return nil, mapGoalErr(err)
-	}
-	return presentGoal(g)
+	return mapGoalErr(s.goals.Start(ctx, sessionID, in.Objective, selection, capabilities, complete))
 }
 
 func (s *Handler) GetGoal(ctx context.Context, in protocol.GoalRequest) (*protocol.Goal, error) {
@@ -90,27 +104,49 @@ func (s *Handler) StopGoal(ctx context.Context, in protocol.GoalRequest) (*proto
 }
 
 func (s *Handler) ResumeGoal(ctx context.Context, in protocol.GoalRequest) (*protocol.Goal, error) {
+	return applyGoalCommand(func(complete operation.Reply[goal.Goal]) error { return s.resumeGoal(ctx, in, complete) })
+}
+
+func (s *Handler) commitResumeGoal(ctx context.Context, in protocol.GoalRequest, outcome atomicOutcome) error {
+	return outcome.settleRefusal(ctx, s.resumeGoal(ctx, in, outcome.goal()))
+}
+
+func (s *Handler) resumeGoal(ctx context.Context, in protocol.GoalRequest, complete operation.Reply[goal.Goal]) error {
 	sessionID, parseErr := sessionParameter(in.SessionID)
 	if parseErr != nil {
-		return nil, parseErr
+		return parseErr
 	}
 	caller, err := s.negotiateCapabilities(ctx)
 	if err != nil {
+		return err
+	}
+	return mapGoalErr(s.goals.Resume(ctx, sessionID, caller, complete))
+}
+
+func applyGoalCommand(command func(operation.Reply[goal.Goal]) error) (*protocol.Goal, error) {
+	var result goal.Goal
+	if err := command(operation.DirectReply(&result)); err != nil {
 		return nil, err
 	}
-	g, err := s.goals.Resume(ctx, sessionID, caller)
-	if uncovered, ok := errors.AsType[*run.InsufficientCapabilitiesError](err); ok {
-		return nil, capabilityGap(uncovered.Missing)
-	}
-	if err != nil {
-		return nil, mapGoalErr(err)
-	}
-	return presentGoal(g)
+	return presentGoal(result)
+}
+
+func (o atomicOutcome) goal() operation.Reply[goal.Goal] {
+	return atomicReply(o.complete, func(result goal.Goal) ([]byte, error) {
+		view, err := presentGoal(result)
+		if err != nil {
+			return nil, err
+		}
+		return encodeAtomicResult(o.method, view)
+	})
 }
 
 func mapGoalErr(err error) error {
 	if err == nil {
 		return nil
+	}
+	if uncovered, ok := errors.AsType[*run.InsufficientCapabilitiesError](err); ok {
+		return capabilityGap(uncovered.Missing)
 	}
 	switch {
 	case errors.Is(err, plugin.ErrUnavailable):

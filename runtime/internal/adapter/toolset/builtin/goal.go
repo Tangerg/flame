@@ -14,6 +14,7 @@ import (
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/application/goals"
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 
@@ -65,7 +66,7 @@ type GoalOutcomeReporter interface {
 }
 
 type goalStarter interface {
-	Start(ctx context.Context, sessionID identity.SessionID, objective string, selection flamemodel.Selection, capabilities run.Capabilities) (goal.Goal, error)
+	Start(ctx context.Context, sessionID identity.SessionID, objective string, selection flamemodel.Selection, capabilities run.Capabilities, complete operation.Reply[goal.Goal]) error
 }
 
 type creator struct{ goals goalStarter }
@@ -140,7 +141,8 @@ func (c *creator) create(ctx context.Context, args createArgs) (goalResult, erro
 	capabilities, _ := executionctx.RunCapabilities(ctx)
 	// Nobody chose a model for this Goal, so its Runs follow the Session's
 	// selection rather than a copy of the model this Run happens to use.
-	g, err := c.goals.Start(ctx, sessionID, args.Objective, flamemodel.Selection{}, capabilities)
+	var g goal.Goal
+	err := c.goals.Start(ctx, sessionID, args.Objective, flamemodel.Selection{}, capabilities, operation.DirectReply(&g))
 	if err != nil {
 		switch {
 		case errors.Is(err, goals.ErrGoalActive):

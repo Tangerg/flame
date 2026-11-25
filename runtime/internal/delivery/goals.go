@@ -23,7 +23,9 @@ func registerGoals(registry *Registry) {
 		StartGoal(context.Context, protocol.StartGoalRequest) (*protocol.Goal, error)
 	}, ctx context.Context, request protocol.StartGoalRequest) (*protocol.Goal, error) {
 		return service.StartGoal(ctx, request)
-	})
+	}).withOwnedReplay(atomicReplay((interface {
+		commitStartGoal(context.Context, protocol.StartGoalRequest, atomicOutcome) error
+	}).commitStartGoal))
 
 	registry.command(MethodMeta{
 		Name: goalsUpdate, GoName: "UpdateGoal", Errors: pluginProviderErrors(protocol.ErrSessionNotFound.Error(), protocol.ErrRevisionConflict.Error()),
@@ -32,7 +34,9 @@ func registerGoals(registry *Registry) {
 		UpdateGoal(context.Context, protocol.UpdateGoalRequest) (*protocol.Goal, error)
 	}, ctx context.Context, request protocol.UpdateGoalRequest) (*protocol.Goal, error) {
 		return service.UpdateGoal(ctx, request)
-	})
+	}).withOwnedReplay(atomicReplay((interface {
+		commitUpdateGoal(context.Context, protocol.UpdateGoalRequest, atomicOutcome) error
+	}).commitUpdateGoal))
 
 	registry.commandAck(MethodMeta{
 		Name: goalsClear, GoName: "ClearGoal", Errors: []string{protocol.ErrSessionNotFound.Error(), protocol.ErrRevisionConflict.Error()},
@@ -41,7 +45,9 @@ func registerGoals(registry *Registry) {
 		ClearGoal(context.Context, protocol.GoalRequest) error
 	}, ctx context.Context, request protocol.GoalRequest) error {
 		return service.ClearGoal(ctx, request)
-	})
+	}).withOwnedReplay(atomicReplay((interface {
+		commitClearGoal(context.Context, protocol.GoalRequest, atomicOutcome) error
+	}).commitClearGoal))
 
 	registry.query(MethodMeta{
 		Name: goalsGet, GoName: "GetGoal", Errors: []string{protocol.ErrSessionNotFound.Error()},
@@ -68,5 +74,7 @@ func registerGoals(registry *Registry) {
 		ResumeGoal(context.Context, protocol.GoalRequest) (*protocol.Goal, error)
 	}, ctx context.Context, request protocol.GoalRequest) (*protocol.Goal, error) {
 		return service.ResumeGoal(ctx, request)
-	})
+	}).withOwnedReplay(atomicReplay((interface {
+		commitResumeGoal(context.Context, protocol.GoalRequest, atomicOutcome) error
+	}).commitResumeGoal))
 }

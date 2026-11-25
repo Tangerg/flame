@@ -14,7 +14,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goalref"
 
 	"github.com/Tangerg/flame/packages/go-sdk/goalworkflow"
-	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/completion"
@@ -63,10 +62,10 @@ func (g *goalDrive) quiesce() {
 func (d *Driver) launchLocked(
 	parent context.Context,
 	sessionID identity.SessionID, incarnationID goalref.IncarnationID,
-) error {
+) {
 	owner, release, ok := d.tasks.Attach(parent)
 	if !ok {
-		return ErrClosed
+		panic("goals: drive launch crossed the shutdown admission boundary")
 	}
 	ctx, cancel := context.WithCancel(owner)
 	drive := &goalDrive{
@@ -107,7 +106,6 @@ func (d *Driver) launchLocked(
 		}
 	}()
 	d.joinRetiredDrive(parent, sessionID, previous)
-	return nil
 }
 
 func (d *Driver) retireDrive(ctx context.Context, sessionID identity.SessionID) {
@@ -119,25 +117,6 @@ func (d *Driver) joinRetiredDrive(ctx context.Context, sessionID identity.Sessio
 		trace.SpanFromContext(ctx).RecordError(err)
 		slog.ErrorContext(ctx, "goals: committed Goal drive retirement did not settle", telemetry.SessionID(sessionID), telemetry.Error(err))
 	}
-}
-
-func (d *Driver) ensureDriveLocked(ctx context.Context, sessionID identity.SessionID, incarnationID goalref.IncarnationID) error {
-	if d.tasks.Closed() {
-		return ErrClosed
-	}
-	if drive := d.mutations.activeDrive(sessionID); drive != nil {
-		if drive.incarnationID != incarnationID {
-			return ErrGoalConflict
-		}
-		if !drive.completed() {
-			return nil
-		}
-		if drive.err != nil && !errors.Is(drive.err, plugin.ErrUnavailable) {
-			return drive.err
-		}
-		d.mutations.forget(sessionID, drive)
-	}
-	return d.launchLocked(ctx, sessionID, incarnationID)
 }
 
 func (d *Driver) drive(ctx context.Context, sessionID identity.SessionID, incarnationID goalref.IncarnationID) error {
@@ -421,6 +400,7 @@ func (d *Driver) pauseOwned(
 			return runSettlement{}, err
 		}
 		if applied {
+			d.publishChange(current.SessionID())
 			*current = candidate
 			return settledAs(goal.StatusPaused), nil
 		}
@@ -451,6 +431,7 @@ func (d *Driver) settleOwned(ctx context.Context, current *goal.Goal) (runSettle
 				return runSettlement{}, err
 			}
 			if applied {
+				d.publishChange(current.SessionID())
 				return settledAs(goal.StatusComplete), nil
 			}
 			reread, ok, err := loadGoal(ctx, d.goals, current.SessionID())

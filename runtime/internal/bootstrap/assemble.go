@@ -111,6 +111,7 @@ func buildAssemblyCore(
 		runUseCases.cancellations,
 		cfg.stores.Sessions,
 		goalMutations,
+		policy.invalidations.publish,
 		execution.tools.pluginCalls, func(ctx context.Context, sessionID identity.SessionID) error {
 			return goalRuns.Drain(ctx, policy.goals, execution.tools.pluginCalls, sessionID)
 		},

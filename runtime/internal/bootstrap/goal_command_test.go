@@ -11,7 +11,8 @@ import (
 )
 
 func TestGoalCommandsSettleTheDriveAfterCommit(t *testing.T) {
-	t.Setenv("FLAME_HOME", testsupport.TempDirectory(t))
+	home := testsupport.TempDirectory(t)
+	t.Setenv("FLAME_HOME", home)
 	workspace := t.TempDir()
 	model := newLifecycleModel()
 	host, api := openProtocolRuntime(t, model)
@@ -27,10 +28,36 @@ func TestGoalCommandsSettleTheDriveAfterCommit(t *testing.T) {
 		t.Fatal(err)
 	}
 	request := protocol.GoalRequest{SessionID: session.ID}
+	invoke := func(method delivery.Name, params any, key string) protocol.OperationResult {
+		return runtime.endpoint.Invoke(ctx, method, params, protocol.CallMetadata{RequestMeta: meta, IdempotencyKey: key})
+	}
+	withRefusedReceipt := func(call func() protocol.OperationResult) {
+		t.Helper()
+		questionCrashDatabase(t, home, `CREATE TRIGGER refuse_goal_command_receipt
+			BEFORE UPDATE OF payload ON idempotency_records
+			BEGIN SELECT RAISE(ABORT, 'Goal command receipt refused'); END`)
+		defer questionCrashDatabase(t, home, "DROP TRIGGER refuse_goal_command_receipt")
+		if result := call(); result.Failure == nil {
+			t.Fatal("Goal command succeeded despite a refused receipt")
+		}
+	}
 	const original = "Keep working on the original objective."
-	started, err := api.StartGoal(ctx, protocol.StartGoalRequest{SessionID: session.ID, Objective: original})
-	if err != nil || started.Status != protocol.GoalActive {
-		t.Fatalf("start Goal = %+v, %v", started, err)
+	start := func() protocol.OperationResult {
+		return invoke("goals.start", protocol.StartGoalRequest{SessionID: session.ID, Objective: original}, "start-objective")
+	}
+	assertNoGoal := func() {
+		t.Helper()
+		current, err := api.GetGoal(ctx, request)
+		if err != nil || current != nil {
+			t.Fatalf("current Goal = %+v, %v, want none", current, err)
+		}
+	}
+	withRefusedReceipt(start)
+	assertNoGoal()
+	startResult := start()
+	started, ok := startResult.Value.(*protocol.Goal)
+	if startResult.Failure != nil || !ok || started.Status != protocol.GoalActive {
+		t.Fatalf("start Goal = %+v, %v", started, startResult.Failure)
 	}
 	waitForSignal(t, model.firstCallStarted, "original Goal Model call")
 	runs, err := api.ListRuns(ctx, protocol.ListRunsRequest{SessionID: session.ID})
@@ -40,9 +67,9 @@ func TestGoalCommandsSettleTheDriveAfterCommit(t *testing.T) {
 	originalRunID := runs.Data[0].ID
 
 	update := func(objective, key string) protocol.OperationResult {
-		return runtime.endpoint.Invoke(ctx, delivery.Name("goals.update"), protocol.UpdateGoalRequest{
+		return invoke("goals.update", protocol.UpdateGoalRequest{
 			SessionID: session.ID, Objective: objective,
-		}, protocol.CallMetadata{RequestMeta: meta, IdempotencyKey: key})
+		}, key)
 	}
 	assertOriginalDrive := func() {
 		t.Helper()
@@ -68,7 +95,10 @@ func TestGoalCommandsSettleTheDriveAfterCommit(t *testing.T) {
 	runtime.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: author.ID, Enabled: true}, "restore-author")
 
 	const edited = "Continue on the replacement objective."
-	result := update(edited, "edit-objective")
+	edit := func() protocol.OperationResult { return update(edited, "edit-objective") }
+	withRefusedReceipt(edit)
+	assertOriginalDrive()
+	result := edit()
 	changed, ok := result.Value.(*protocol.Goal)
 	if result.Failure != nil || !ok || changed.Status != protocol.GoalActive || changed.Objective != edited || changed.Used.Runs != 0 {
 		t.Fatalf("edit Goal = %+v, %v, want active replacement with no prior Runs", changed, result.Failure)
@@ -82,8 +112,30 @@ func TestGoalCommandsSettleTheDriveAfterCommit(t *testing.T) {
 	if err != nil || stopped.Status != protocol.GoalPaused || stopped.Reason == nil || stopped.Reason.Code != protocol.GoalReasonStoppedByUser || stopped.Used.Runs != 1 {
 		t.Fatalf("stop Goal = %+v, %v, want stopped by user with one settled Run", stopped, err)
 	}
-	current, err := api.GetGoal(ctx, request)
-	if err != nil || current == nil || current.Status != protocol.GoalPaused || current.Objective != edited || current.Used.Runs != 1 {
-		t.Fatalf("settled Goal = %+v, %v, want paused replacement with exactly one Run", current, err)
+	assertPaused := func() {
+		t.Helper()
+		current, err := api.GetGoal(ctx, request)
+		if err != nil || current == nil || current.Status != protocol.GoalPaused || current.Objective != edited || current.Used.Runs != 1 {
+			t.Fatalf("settled Goal = %+v, %v, want paused replacement with exactly one Run", current, err)
+		}
 	}
+	clear := func() protocol.OperationResult { return invoke("goals.clear", request, "clear-objective") }
+	resume := func() protocol.OperationResult { return invoke("goals.resume", request, "resume-objective") }
+	assertPaused()
+	withRefusedReceipt(clear)
+	assertPaused()
+	withRefusedReceipt(resume)
+	assertPaused()
+	resumeResult := resume()
+	resumed, ok := resumeResult.Value.(*protocol.Goal)
+	if resumeResult.Failure != nil || !ok || resumed.Status != protocol.GoalActive || resumed.Used.Runs != 1 {
+		t.Fatalf("resume Goal = %+v, %v, want active replacement with one settled Run", resumed, resumeResult.Failure)
+	}
+	if result := clear(); result.Failure != nil {
+		t.Fatal(result.Failure)
+	}
+	if result := edit(); result.Failure != nil {
+		t.Fatal(result.Failure)
+	}
+	assertNoGoal()
 }

@@ -54,7 +54,7 @@ func (s *Handler) GetProject(ctx context.Context, in protocol.GetProjectRequest)
 
 func (s *Handler) CreateProject(ctx context.Context, in protocol.CreateProjectRequest) (*protocol.Project, error) {
 	var created project.Project
-	if err := s.createProject(ctx, in, directReply(&created)); err != nil {
+	if err := s.createProject(ctx, in, operation.DirectReply(&created)); err != nil {
 		return nil, err
 	}
 	return presentProject(created), nil
@@ -70,7 +70,7 @@ func (s *Handler) createProject(ctx context.Context, in protocol.CreateProjectRe
 
 func (s *Handler) UpdateProject(ctx context.Context, in protocol.UpdateProjectRequest) (*protocol.Project, error) {
 	var updated project.Project
-	if err := s.updateProject(ctx, in, directReply(&updated)); err != nil {
+	if err := s.updateProject(ctx, in, operation.DirectReply(&updated)); err != nil {
 		return nil, err
 	}
 	return presentProject(updated), nil

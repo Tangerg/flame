@@ -25,7 +25,7 @@ func (s *Handler) GetApprovalMode(ctx context.Context) (*protocol.ApprovalModeRe
 }
 
 func (s *Handler) SetApprovalMode(ctx context.Context, in protocol.SetApprovalModeRequest) (*protocol.ApprovalModeResult, error) {
-	if err := s.setApprovalMode(ctx, in, directReply(new(struct{}))); err != nil {
+	if err := s.setApprovalMode(ctx, in, operation.DirectReply(new(struct{}))); err != nil {
 		return nil, err
 	}
 	return approvalModeResult(in.Mode), nil
@@ -71,7 +71,7 @@ func (s *Handler) ListApprovalRules(ctx context.Context, in protocol.ListApprova
 }
 
 func (s *Handler) ForgetApprovalRule(ctx context.Context, in protocol.ForgetApprovalRuleRequest) error {
-	return s.approvals.ForgetRule(ctx, in.ID, directReply(new(struct{})))
+	return s.approvals.ForgetRule(ctx, in.ID, operation.DirectReply(new(struct{})))
 }
 
 func (s *Handler) commitForgetApprovalRule(ctx context.Context, in protocol.ForgetApprovalRuleRequest, outcome atomicOutcome) error {
@@ -188,7 +188,7 @@ func approvalModeFromWire(m protocol.ApprovalMode) (approval.Mode, bool) {
 }
 
 func (s *Handler) SetApprovalRule(ctx context.Context, in protocol.SetApprovalRuleRequest) error {
-	return s.setApprovalRule(ctx, in, directReply(new(struct{})))
+	return s.setApprovalRule(ctx, in, operation.DirectReply(new(struct{})))
 }
 
 func (s *Handler) commitApprovalRule(ctx context.Context, in protocol.SetApprovalRuleRequest, outcome atomicOutcome) error {

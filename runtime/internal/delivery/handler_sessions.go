@@ -182,7 +182,7 @@ func (s *Handler) commitCreateSession(ctx context.Context, in protocol.CreateSes
 
 func (s *Handler) DeleteSession(ctx context.Context, id string) error {
 	var deleted struct{}
-	return s.deleteSession(ctx, id, directReply(&deleted))
+	return s.deleteSession(ctx, id, operation.DirectReply(&deleted))
 }
 
 func (s *Handler) deleteSession(ctx context.Context, id string, complete operation.Reply[struct{}]) error {
@@ -254,7 +254,7 @@ func sessionProjectChange(change *protocol.SessionProjectChange) (*identity.Proj
 
 func completeSessionView(command func(operation.Reply[sessions.View]) error) (*protocol.Session, error) {
 	var view sessions.View
-	if err := command(directReply(&view)); err != nil {
+	if err := command(operation.DirectReply(&view)); err != nil {
 		return nil, err
 	}
 	presented := presentSession(view)

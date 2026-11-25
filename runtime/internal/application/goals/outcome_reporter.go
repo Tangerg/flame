@@ -12,6 +12,7 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/goalworkflow"
 
+	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goalref"
 	"github.com/samber/lo"
@@ -56,16 +57,17 @@ const (
 )
 
 type OutcomeReporter struct {
-	workflow Workflow
-	goals    Store
-	now      func() time.Time
+	workflow      Workflow
+	goals         Store
+	invalidations invalidation.Publish
+	now           func() time.Time
 }
 
-func NewOutcomeReporter(store Store, workflow Workflow) (*OutcomeReporter, error) {
-	if lo.IsNil(store) || lo.IsNil(workflow) {
-		return nil, errors.New("goals: outcome store is required")
+func NewOutcomeReporter(store Store, workflow Workflow, invalidations invalidation.Publish) (*OutcomeReporter, error) {
+	if lo.IsNil(store) || lo.IsNil(workflow) || invalidations == nil {
+		return nil, errors.New("goals: outcome store, workflow and invalidations are required")
 	}
-	return &OutcomeReporter{workflow: workflow, goals: store, now: time.Now}, nil
+	return &OutcomeReporter{workflow: workflow, goals: store, invalidations: invalidations, now: time.Now}, nil
 }
 
 func (o *OutcomeReporter) Report(ctx context.Context, cmd ReportCommand) (ReportResult, error) {
@@ -113,5 +115,6 @@ func (o *OutcomeReporter) Report(ctx context.Context, cmd ReportCommand) (Report
 	if !applied {
 		return ReportConflict, nil
 	}
+	o.invalidations.Notify(invalidation.InSession(invalidation.Goals, cmd.SessionID))
 	return ReportApplied, nil
 }

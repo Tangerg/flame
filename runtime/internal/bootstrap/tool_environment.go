@@ -209,7 +209,7 @@ func buildToolEnvironment(ctx context.Context, deps toolEnvironmentDependencies)
 	buildConfig.PlanMode = deps.approvalPolicy
 	buildConfig.ToolResults = cfg.stores.ToolResults
 	buildConfig.GoalReader = deps.goalReader
-	buildConfig.GoalReporter, err = goals.NewOutcomeReporter(deps.goalStore, commandCalls)
+	buildConfig.GoalReporter, err = goals.NewOutcomeReporter(deps.goalStore, commandCalls, deps.publish)
 	if err != nil {
 		return environment, err
 	}

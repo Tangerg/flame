@@ -152,17 +152,6 @@ func (o atomicOutcome) commitFailure(ctx context.Context, cause error) error {
 	})
 }
 
-func directReply[T any](reply *T) operation.Reply[T] {
-	return func(ctx context.Context, write func(context.Context) (T, error)) error {
-		value, err := write(ctx)
-		if err != nil {
-			return err
-		}
-		*reply = value
-		return nil
-	}
-}
-
 func atomicReply[T any](complete *operation.AtomicCompletion, encode func(T) ([]byte, error)) operation.Reply[T] {
 	return func(ctx context.Context, write func(context.Context) (T, error)) error {
 		return complete.Commit(ctx, func(tx context.Context) ([]byte, error) {

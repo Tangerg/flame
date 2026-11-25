@@ -123,6 +123,8 @@ leaves the drive running. A replacement waits for the previous drive to finish
 before admitting its first Run. The stop receipt includes usage from the original
 Run's terminal write. The `Revise` workflow signal edits the captured objective in
 one decision, including while the Goal is active.
+Keyed Goal creation, revision, resumption and removal commit their replies with
+the Goal decision. Drive changes and Goal notifications follow that commit.
 
 A Goal-owned Run records its pending workflow decision in the same transaction
 that parks or finishes the Run. A later boundary of the same Run replaces its

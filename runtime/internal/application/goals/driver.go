@@ -15,6 +15,8 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/goalworkflow"
 	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/application/taskgroup"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
@@ -52,6 +54,7 @@ type Driver struct {
 	runs           AutonomousRuns
 	cancellations  RunCancellations
 	sessions       SessionExistence
+	invalidations  invalidation.Publish
 	tasks          *taskgroup.Group
 	now            func() time.Time
 	newIncarnation func() (goalref.IncarnationID, error)
@@ -65,6 +68,7 @@ func NewDriver(
 	cancellations RunCancellations,
 	sessions SessionExistence,
 	mutations *SessionMutations,
+	invalidations invalidation.Publish,
 	workflow Workflow, settle func(context.Context, identity.SessionID) error,
 ) (*Driver, error) {
 	if lo.IsNil(workflow) || settle == nil {
@@ -85,11 +89,15 @@ func NewDriver(
 	if mutations == nil {
 		return nil, errors.New("goals: shared session mutations are required")
 	}
+	if invalidations == nil {
+		return nil, errors.New("goals: invalidations are required")
+	}
 	return &Driver{workflow: workflow, settle: settle,
 		goals:          store,
 		runs:           autonomousRuns,
 		cancellations:  cancellations,
 		sessions:       sessions,
+		invalidations:  invalidations,
 		tasks:          &taskgroup.Group{},
 		now:            time.Now,
 		newIncarnation: func() (goalref.IncarnationID, error) { return goalref.ParseIncarnation(uuid.NewString()) },
@@ -102,37 +110,35 @@ func (d *Driver) Start(
 	sessionID identity.SessionID, objective string,
 	selection flamemodel.Selection,
 	capabilities run.Capabilities,
-) (goal.Goal, error) {
-	release, err := d.mutations.acquire(ctx, sessionID)
+	complete operation.Reply[goal.Goal],
+) error {
+	release, err := d.admitCommand(ctx, sessionID)
 	if err != nil {
-		return goal.Goal{}, err
+		return err
 	}
 	defer release()
-	if d.tasks.Closed() {
-		return goal.Goal{}, ErrClosed
-	}
 	exists, err := d.sessions.Exists(ctx, sessionID)
 	if err != nil {
-		return goal.Goal{}, err
+		return err
 	}
 	if !exists {
-		return goal.Goal{}, ErrNoSession
+		return ErrNoSession
 	}
 	if selection.Configured() {
 		if admissionErr := d.runs.AdmitSelection(ctx, selection); admissionErr != nil {
-			return goal.Goal{}, admissionErr
+			return admissionErr
 		}
 	}
 	existing, ok, err := loadGoal(ctx, d.goals, sessionID)
 	if err != nil {
-		return goal.Goal{}, err
+		return err
 	}
 	if ok && existing.Status() == goal.StatusActive {
-		return goal.Goal{}, ErrGoalActive
+		return ErrGoalActive
 	}
 	unwritten, err := goal.Unwritten(sessionID)
 	if err != nil {
-		return goal.Goal{}, err
+		return err
 	}
 	expected := unwritten.Version()
 	if ok {
@@ -140,9 +146,9 @@ func (d *Driver) Start(
 	}
 	g, err := d.beginGoal(ctx, sessionID, objective, selection, capabilities)
 	if err != nil {
-		return goal.Goal{}, err
+		return err
 	}
-	return d.commitCommand(ctx, expected, g)
+	return d.replaceAndDrive(ctx, expected, g, complete)
 }
 
 func (d *Driver) beginGoal(ctx context.Context, sessionID identity.SessionID, objective string, selection flamemodel.Selection, capabilities run.Capabilities) (goal.Goal, error) {
@@ -159,50 +165,65 @@ func (d *Driver) beginGoal(ctx context.Context, sessionID identity.SessionID, ob
 	return g, err
 }
 
-func (d *Driver) Resume(ctx context.Context, sessionID identity.SessionID, caller run.Capabilities) (goal.Goal, error) {
-	release, err := d.mutations.acquire(ctx, sessionID)
+func (d *Driver) Resume(ctx context.Context, sessionID identity.SessionID, caller run.Capabilities, complete operation.Reply[goal.Goal]) error {
+	release, err := d.admitCommand(ctx, sessionID)
 	if err != nil {
-		return goal.Goal{}, err
+		return err
 	}
 	defer release()
-	if d.tasks.Closed() {
-		return goal.Goal{}, ErrClosed
-	}
 	g, ok, err := loadGoal(ctx, d.goals, sessionID)
 	if err != nil {
-		return goal.Goal{}, err
+		return err
 	}
 	if !ok {
-		return goal.Goal{}, ErrNoGoal
+		return ErrNoGoal
 	}
 	if missing := g.Capabilities().MissingFrom(caller); !missing.IsEmpty() {
-		return goal.Goal{}, fmt.Errorf("goals: session %q: %w", sessionID, &run.InsufficientCapabilitiesError{Missing: missing})
+		return fmt.Errorf("goals: session %q: %w", sessionID, &run.InsufficientCapabilitiesError{Missing: missing})
 	}
 	if g.Status() == goal.StatusActive {
-		if err := d.workflow.RequireGoalAuthor(ctx, g.Snapshot().Author); err != nil {
-			return goal.Goal{}, err
-		}
-		if ensureDriveLockedErr := d.ensureDriveLocked(ctx, sessionID, g.IncarnationID()); ensureDriveLockedErr != nil {
-			return goal.Goal{}, ensureDriveLockedErr
-		}
-		return g, nil
+		return d.resumeActive(ctx, g, complete)
 	}
 	replacement, err := transition(ctx, d.workflow, g, goalworkflow.Request{Signal: goalworkflow.Resume}, g.IncarnationID(), d.now())
 	if err != nil {
-		return goal.Goal{}, err
+		return err
 	}
-	return d.commitCommand(ctx, g.Version(), replacement)
+	return d.replaceAndDrive(ctx, g.Version(), replacement, complete)
+}
+
+func (d *Driver) resumeActive(ctx context.Context, g goal.Goal, complete operation.Reply[goal.Goal]) error {
+	if err := d.workflow.RequireGoalAuthor(ctx, g.Snapshot().Author); err != nil {
+		return err
+	}
+	sessionID, incarnation := g.SessionID(), g.IncarnationID()
+	drive := d.mutations.activeDrive(sessionID)
+	restart := drive == nil || drive.completed()
+	if drive != nil {
+		if drive.incarnationID != incarnation {
+			return ErrGoalConflict
+		}
+		if restart && drive.err != nil && !errors.Is(drive.err, plugin.ErrUnavailable) {
+			return drive.err
+		}
+	}
+	if err := complete(ctx, func(context.Context) (goal.Goal, error) { return g, nil }); err != nil {
+		return err
+	}
+	if restart {
+		if drive != nil {
+			d.mutations.forget(sessionID, drive)
+		}
+		d.launchLocked(ctx, sessionID, incarnation)
+	}
+	return nil
 }
 
 func (d *Driver) Stop(ctx context.Context, sessionID identity.SessionID) (goal.Goal, error) {
-	release, err := d.mutations.acquire(ctx, sessionID)
+	release, err := d.admitCommand(ctx, sessionID)
 	if err != nil {
 		return goal.Goal{}, err
 	}
 	defer release()
-	if d.tasks.Closed() {
-		return goal.Goal{}, ErrClosed
-	}
 	current, present, err := loadGoal(ctx, d.goals, sessionID)
 	if err != nil {
 		return goal.Goal{}, err
@@ -218,7 +239,7 @@ func (d *Driver) Stop(ctx context.Context, sessionID identity.SessionID) (goal.G
 		if paused.Status() != goal.StatusPaused {
 			return goal.Goal{}, fmt.Errorf("%w: workflow stop must pause the Goal", goal.ErrInvalid)
 		}
-		if err := d.saveCommand(ctx, current.Version(), paused); err != nil {
+		if err := d.commitReplacement(ctx, current.Version(), paused, operation.DirectReply(new(goal.Goal))); err != nil {
 			return goal.Goal{}, err
 		}
 	}
@@ -243,96 +264,119 @@ func (d *Driver) UpdateObjective(
 	ctx context.Context,
 	sessionID identity.SessionID, objective string,
 	caller run.Capabilities,
-) (goal.Goal, error) {
-	release, err := d.mutations.acquire(ctx, sessionID)
+	complete operation.Reply[goal.Goal],
+) error {
+	release, err := d.admitCommand(ctx, sessionID)
 	if err != nil {
-		return goal.Goal{}, err
+		return err
 	}
 	defer release()
-	if d.tasks.Closed() {
-		return goal.Goal{}, ErrClosed
-	}
 	current, present, err := loadGoal(ctx, d.goals, sessionID)
 	if err != nil {
-		return goal.Goal{}, err
+		return err
 	}
 	if !present {
-		return goal.Goal{}, ErrNoGoal
+		return ErrNoGoal
 	}
 	if current.Status() == goal.StatusComplete {
-		return goal.Goal{}, goal.ErrNotEditable
+		return goal.ErrNotEditable
 	}
 	if current.Status() == goal.StatusActive {
 		if missing := current.Capabilities().MissingFrom(caller); !missing.IsEmpty() {
-			return goal.Goal{}, fmt.Errorf("goals: session %q: %w", sessionID, &run.InsufficientCapabilitiesError{Missing: missing})
+			return fmt.Errorf("goals: session %q: %w", sessionID, &run.InsufficientCapabilitiesError{Missing: missing})
 		}
 	}
 	incarnation, err := d.newIncarnation()
 	if err != nil {
-		return goal.Goal{}, err
+		return err
 	}
 	replacement, err := transition(ctx, d.workflow, current, goalworkflow.Request{Signal: goalworkflow.Revise, Objective: objective}, incarnation, d.now())
 	if err != nil {
-		return goal.Goal{}, err
+		return err
 	}
-	return d.commitCommand(ctx, current.Version(), replacement)
+	return d.replaceAndDrive(ctx, current.Version(), replacement, complete)
 }
 
-func (d *Driver) commitCommand(ctx context.Context, expected goal.Version, replacement goal.Goal) (goal.Goal, error) {
-	if err := d.saveCommand(ctx, expected, replacement); err != nil {
-		return goal.Goal{}, err
+func (d *Driver) replaceAndDrive(ctx context.Context, expected goal.Version, replacement goal.Goal, complete operation.Reply[goal.Goal]) error {
+	if err := d.commitReplacement(ctx, expected, replacement, complete); err != nil {
+		return err
 	}
 	sessionID := replacement.SessionID()
 	if replacement.Status() == goal.StatusActive {
-		if err := d.launchLocked(ctx, sessionID, replacement.IncarnationID()); err != nil {
-			panic("goals: command crossed the shutdown admission boundary")
-		}
+		d.launchLocked(ctx, sessionID, replacement.IncarnationID())
 	} else {
 		d.retireDrive(ctx, sessionID)
 	}
-	return replacement, nil
+	return nil
 }
 
-func (d *Driver) saveCommand(ctx context.Context, expected goal.Version, replacement goal.Goal) error {
+func (d *Driver) commitReplacement(ctx context.Context, expected goal.Version, replacement goal.Goal, complete operation.Reply[goal.Goal]) error {
 	change, err := goal.NewReplacement(expected, replacement)
 	if err != nil {
 		return err
 	}
-	applied, err := d.goals.Save(ctx, change)
-	if err != nil {
+	if err := complete(ctx, func(tx context.Context) (goal.Goal, error) {
+		applied, err := d.goals.Save(tx, change)
+		if err != nil {
+			return goal.Goal{}, err
+		}
+		if !applied {
+			return goal.Goal{}, ErrGoalConflict
+		}
+		return replacement, nil
+	}); err != nil {
 		return err
 	}
-	if !applied {
-		return ErrGoalConflict
-	}
+	d.publishChange(replacement.SessionID())
 	return nil
 }
 
-func (d *Driver) Clear(ctx context.Context, sessionID identity.SessionID) error {
-	release, err := d.mutations.acquire(ctx, sessionID)
+func (d *Driver) Clear(ctx context.Context, sessionID identity.SessionID, complete operation.Reply[struct{}]) error {
+	release, err := d.admitCommand(ctx, sessionID)
 	if err != nil {
 		return err
 	}
 	defer release()
-	if d.tasks.Closed() {
-		return ErrClosed
-	}
 	current, present, err := loadGoal(ctx, d.goals, sessionID)
 	if err != nil {
 		return err
 	}
-	if !present {
-		return nil
-	}
-	applied, err := d.goals.ClearIf(ctx, sessionID, current.Version())
-	if err != nil {
+	if err := complete(ctx, func(tx context.Context) (struct{}, error) {
+		if !present {
+			return struct{}{}, nil
+		}
+		applied, err := d.goals.ClearIf(tx, sessionID, current.Version())
+		if err != nil {
+			return struct{}{}, err
+		}
+		if !applied {
+			return struct{}{}, ErrGoalConflict
+		}
+		return struct{}{}, nil
+	}); err != nil {
 		return err
 	}
-	if !applied {
-		return ErrGoalConflict
+	if present {
+		d.publishChange(sessionID)
+		d.retireDrive(ctx, sessionID)
 	}
-	d.retireDrive(ctx, sessionID)
 	return nil
+}
+
+func (d *Driver) publishChange(sessionID identity.SessionID) {
+	d.invalidations.Notify(invalidation.InSession(invalidation.Goals, sessionID))
+}
+
+func (d *Driver) admitCommand(ctx context.Context, sessionID identity.SessionID) (func(), error) {
+	release, err := d.mutations.acquire(ctx, sessionID)
+	if err != nil {
+		return nil, err
+	}
+	if d.tasks.Closed() {
+		release()
+		return nil, ErrClosed
+	}
+	return release, nil
 }
 
 func (d *Driver) Current(ctx context.Context, sessionID identity.SessionID) (goal.Goal, bool, error) {
@@ -380,6 +424,9 @@ func (d *Driver) reconcileGoal(ctx context.Context, g goal.Goal) error {
 	switch {
 	case !exists || g.Status() == goal.StatusComplete:
 		applied, err = d.goals.ClearIf(ctx, g.SessionID(), g.Version())
+		if err == nil && applied {
+			d.publishChange(g.SessionID())
+		}
 	case g.Status() == goal.StatusActive:
 		applied, err = d.pauseAfterRestart(ctx, g)
 	default:
@@ -403,7 +450,11 @@ func (d *Driver) pauseAfterRestart(ctx context.Context, g goal.Goal) (bool, erro
 	if err != nil {
 		return false, err
 	}
-	return d.goals.Save(ctx, change)
+	applied, err := d.goals.Save(ctx, change)
+	if err == nil && applied {
+		d.publishChange(g.SessionID())
+	}
+	return applied, err
 }
 
 func (d *Driver) BeginShutdown() {

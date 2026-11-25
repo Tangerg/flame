@@ -167,6 +167,17 @@ func (r *Replay) persistOutcome(ctx context.Context, record ReplayRecord) (Repla
 
 type Reply[T any] func(ctx context.Context, write func(context.Context) (T, error)) error
 
+func DirectReply[T any](reply *T) Reply[T] {
+	return func(ctx context.Context, write func(context.Context) (T, error)) error {
+		value, err := write(ctx)
+		if err != nil {
+			return err
+		}
+		*reply = value
+		return nil
+	}
+}
+
 type AtomicCompletion struct {
 	commit    func(context.Context, func(context.Context) ([]byte, error)) error
 	attempted bool

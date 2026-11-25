@@ -30,7 +30,7 @@ func (s *Handler) RollbackSession(ctx context.Context, in protocol.RollbackSessi
 		return presentRollbackResult(result), nil
 	}
 	var result sessions.RollbackResult
-	if err := s.rollbackHistory(ctx, in, directReply(&result)); err != nil {
+	if err := s.rollbackHistory(ctx, in, operation.DirectReply(&result)); err != nil {
 		return nil, err
 	}
 	return presentRollbackResult(result), nil
