@@ -123,7 +123,7 @@ func (i *InteractionExecutor) assembleInteraction(
 	if err := validateModelOutputReservation(selected.TokenLimits(), start.Options); err != nil {
 		return nil, err
 	}
-	session := newInteractionSession(i.lifetime, ref, start, i.config, i.buildID, i.policy, telemetry)
+	session := i.newSession(ref, start, telemetry)
 	session.selectedChat = selected
 	transferred = true
 	i.sessions.own(session)

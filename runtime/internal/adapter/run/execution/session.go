@@ -11,6 +11,7 @@ import (
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
+	"github.com/Tangerg/flame/runtime/internal/application/taskgroup"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/keylock"
@@ -56,6 +57,7 @@ type interactionSession struct {
 	effectFailures         interactionEffectFailures
 	segmentClock           interactionSegmentClock
 	telemetry              *otelagent.Observer
+	observations           *taskgroup.Group
 }
 
 type interactionState struct {
@@ -120,22 +122,20 @@ const (
 	interactionBoundarySubtreeRecovery
 )
 
-func newInteractionSession(
-	lifetime context.Context,
+func (i *InteractionExecutor) newSession(
 	ref runs.ExecutorRef,
 	start runs.RootExecutionStart,
-	config InteractionExecutorConfig,
-	buildID runs.BuildID,
-	policy interactionExecutionPolicy,
 	telemetry *otelagent.Observer,
 ) *interactionSession {
+	config := i.config
 	return &interactionSession{
 		telemetry:       telemetry,
+		observations:    &i.observations,
 		deltaFlush:      make(chan chan struct{}),
 		steerAdmissions: keylock.NewSet(),
 		executionTrees:  config.ExecutionTrees,
 		toolResults:     config.OriginalToolResults,
-		ref:             ref, scope: rootExecutionScope(start), lifetime: newInteractionLifetime(lifetime),
+		ref:             ref, scope: rootExecutionScope(start), lifetime: newInteractionLifetime(i.lifetime),
 		rootID: interactionStartID(start.SessionID, start.RunID).Root(),
 		state: interactionState{
 			pendingSteers:    make(map[scoperun.SignalID]runs.PreparedSteer),
@@ -146,11 +146,11 @@ func newInteractionSession(
 		modelEvidence:       config.ModelEvidence,
 		callComposition:     config.CallComposition,
 		material:            newRequestMaterial(),
-		unknownPollInterval: policy.unknownEffectPollInterval,
-		statePollInterval:   policy.statePollInterval,
+		unknownPollInterval: i.policy.unknownEffectPollInterval,
+		statePollInterval:   i.policy.statePollInterval,
 		maintenance:         config.Maintenance,
 		compactionHook:      config.CompactionHook,
-		buildID:             buildID, start: start,
+		buildID:             i.buildID, start: start,
 	}
 }
 
@@ -234,7 +234,8 @@ func (i *interactionSession) startWorkers() {
 	default:
 	}
 	i.state.workersStarted = true
-	i.lifetime.start(i.awaitGuarded, i.reconcileUnknownEffectsGuarded, i.reconcileExecutionStateGuarded, i.consumeDeltas, i.consumeTelemetry, i.followOwnerLifetime)
+	i.lifetime.start(i.awaitGuarded, i.reconcileUnknownEffectsGuarded, i.reconcileExecutionStateGuarded, i.consumeDeltas, i.followOwnerLifetime)
+	i.observations.Start(i.lifetime.execution, i.consumeTelemetry)
 }
 
 func (i *interactionSession) followOwnerLifetime() {
@@ -421,18 +422,8 @@ func (i *interactionSession) closeExecution(ctx context.Context) error {
 			return err
 		}
 	}
-	if err := i.closeTelemetry(ctx); err != nil {
-		return err
-	}
 	i.state.mu.Lock()
 	deployments := i.state.deployments
 	i.state.mu.Unlock()
 	return errors.Join(deployments.close(), i.selectedChat.Close(context.WithoutCancel(ctx)))
-}
-
-func (i *interactionSession) closeTelemetry(ctx context.Context) error {
-	if i.telemetry != nil {
-		return i.telemetry.Close(ctx)
-	}
-	return nil
 }

@@ -161,6 +161,11 @@ committed terminal outcome. Notification delivery has its own completion path,
 so it cannot delay the Run's cancellation or continuation. The workspace
 checkpoint is captured before the Stop Hook can make its own changes.
 
+The execution adapter owns Scope log observation in a separate task group.
+After retirement, an observer follows a committed Scope terminal log to its
+end. Retiring a tree that still has no Scope exit stops its observer, and
+Runtime shutdown joins the observation group before closing persistence.
+
 Cold stream recovery uses `runs.subscribe` with `snapshot: true`. The tree owner fences its durable commits and event publication while the Session use case reads material and the successor tail attaches. The reply contains both the snapshot and its tail head; a replay cursor is mutually exclusive with this mode. Ordinary replay retains the consumed cursor. Waiting for the fence revalidates the addressed Segment so a replacement cannot be paired with an old tail.
 
 Usage accumulates across the execution tree for accounting. Each member retains its own terminal outcome.

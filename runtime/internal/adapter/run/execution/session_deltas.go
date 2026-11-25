@@ -104,13 +104,3 @@ func (i *interactionSession) consumeDeltas() {
 		}
 	}
 }
-
-func (i *interactionSession) consumeTelemetry() {
-	process := i.state.processHandle()
-	if process == nil {
-		return
-	}
-	if _, err := i.telemetry.Consume(i.lifetime.releasing, process, 0); err != nil && i.lifetime.releasing.Err() == nil {
-		slog.ErrorContext(i.lifetime.releasing, "execution: observe Interaction log", telemetry.Error(err))
-	}
-}

@@ -13,6 +13,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/application/taskgroup"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
@@ -90,7 +91,8 @@ type InteractionExecutor struct {
 	policy   interactionExecutionPolicy
 	buildID  runs.BuildID
 
-	sessions interactionSessions
+	sessions     interactionSessions
+	observations taskgroup.Group
 }
 
 func NewInteractionExecutor(config InteractionExecutorConfig) (*InteractionExecutor, error) {
@@ -197,6 +199,9 @@ func (i *InteractionExecutor) AwaitShutdown(ctx context.Context) error {
 			continue
 		}
 		i.sessions.remove(session)
+	}
+	if err := i.observations.Close(ctx); err != nil {
+		failures = append(failures, fmt.Errorf("execution: stop Interaction observations: %w", err))
 	}
 	return errors.Join(failures...)
 }
