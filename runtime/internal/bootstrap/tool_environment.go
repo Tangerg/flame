@@ -99,7 +99,7 @@ func (environment *toolEnvironment) composeModels(ctx context.Context, deps tool
 		return err
 	}
 	environment.modelCallbacks = append(environment.modelCallbacks, embedding)
-	utility, err := modeladapter.LiveUtilityModel(modelServices.chatResolver, cfg.defaultSelection, modelServices.utilityRoleState, environment.callComposition)
+	utility, err := modeladapter.LiveUtilityModel(modelServices.chatResolver, cfg.defaultSelection, modelServices.utilityRole, environment.callComposition)
 	if err != nil {
 		return err
 	}

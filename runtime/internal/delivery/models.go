@@ -34,7 +34,9 @@ func registerModels(registry *Registry) {
 			SetUtilityRole(context.Context, protocol.UtilityRole) (*protocol.UtilityRole, error)
 		}, ctx context.Context, request protocol.UtilityRole) (*protocol.UtilityRole, error) {
 			return service.SetUtilityRole(ctx, request)
-		})
+		}).withOwnedReplay(atomicReplay((interface {
+		commitUtilityRole(context.Context, protocol.UtilityRole, atomicOutcome) error
+	}).commitUtilityRole))
 
 	registry.query(MethodMeta{Name: modelsGetEmbeddingRole, GoName: "GetEmbeddingRole"},
 		func(service interface {
@@ -48,5 +50,7 @@ func registerModels(registry *Registry) {
 			SetEmbeddingRole(context.Context, protocol.EmbeddingRole) (*protocol.EmbeddingRole, error)
 		}, ctx context.Context, request protocol.EmbeddingRole) (*protocol.EmbeddingRole, error) {
 			return service.SetEmbeddingRole(ctx, request)
-		})
+		}).withOwnedReplay(atomicReplay((interface {
+		commitEmbeddingRole(context.Context, protocol.EmbeddingRole, atomicOutcome) error
+	}).commitEmbeddingRole))
 }

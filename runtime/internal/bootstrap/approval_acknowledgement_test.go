@@ -24,7 +24,7 @@ func TestApprovalModeAndItsReceiptCommitTogether(t *testing.T) {
 	if _, err := api.SetApprovalMode(ctx, initial); err != nil {
 		t.Fatal(err)
 	}
-	allowReceipt := refuseApprovalReceipt(t, home)
+	allowReceipt := refuseCommandReceipt(t, home)
 	request := protocol.SetApprovalModeRequest{Mode: protocol.ApprovalModeSafe}
 	meta := protocol.CallMetadata{IdempotencyKey: "original-approval-mode"}
 	if refused, err := original.Endpoint().Call[protocol.SetApprovalModeRequest, *protocol.ApprovalModeResult](ctx, setMode, request, meta); refused != nil || err == nil {
@@ -92,7 +92,7 @@ func TestApprovalRuleCreationAndRemovalCommitWithTheirReceipts(t *testing.T) {
 	add := func() protocol.OperationResult {
 		return host.Endpoint().Invoke(ctx, setRule, rule, protocol.CallMetadata{IdempotencyKey: "original-rule-addition"})
 	}
-	allowReceipt := refuseApprovalReceipt(t, home)
+	allowReceipt := refuseCommandReceipt(t, home)
 	if result := add(); result.Failure == nil {
 		t.Fatal("added a rule despite a refused receipt")
 	}
@@ -105,7 +105,7 @@ func TestApprovalRuleCreationAndRemovalCommitWithTheirReceipts(t *testing.T) {
 	remove := func() protocol.OperationResult {
 		return host.Endpoint().Invoke(ctx, forgetRule, forget, protocol.CallMetadata{IdempotencyKey: "original-rule-removal"})
 	}
-	allowReceipt = refuseApprovalReceipt(t, home)
+	allowReceipt = refuseCommandReceipt(t, home)
 	if result := remove(); result.Failure == nil {
 		t.Fatal("removed a rule despite a refused receipt")
 	}
@@ -125,15 +125,4 @@ func TestApprovalRuleCreationAndRemovalCommitWithTheirReceipts(t *testing.T) {
 		t.Fatal(result.Failure)
 	}
 	rules(1)
-}
-
-func refuseApprovalReceipt(t *testing.T, home string) func() {
-	t.Helper()
-	questionCrashDatabase(t, home, `CREATE TRIGGER refuse_approval_ack
-		BEFORE UPDATE OF payload ON idempotency_records
-		BEGIN SELECT RAISE(ABORT, 'approval receipt refused'); END`)
-	return func() {
-		t.Helper()
-		questionCrashDatabase(t, home, `DROP TRIGGER refuse_approval_ack`)
-	}
 }

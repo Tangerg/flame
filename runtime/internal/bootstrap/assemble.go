@@ -267,12 +267,10 @@ func assembleModels(cfg assemblyConfig, policy policyComposition, execution exec
 		Catalog:            modelCapabilities,
 		Prober:             modelCapabilities,
 		Lister:             modelCapabilities,
-		UtilityRoleState:   execution.models.utilityRoleState,
+		UtilityRole:        execution.models.utilityRole,
 		UtilityValidator:   execution.models.chatResolver,
-		UtilityStore:       cfg.stores.UtilityRole,
-		EmbeddingRoleState: execution.models.embeddingRoleState,
+		EmbeddingRole:      execution.models.embeddingRole,
 		EmbeddingValidator: execution.models.embeddingResolver,
-		EmbeddingStore:     cfg.stores.EmbeddingRole,
 		Invalidations:      policy.invalidations.publish,
 	})
 	if err != nil {

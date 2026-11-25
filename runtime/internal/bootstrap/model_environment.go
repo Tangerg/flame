@@ -2,6 +2,7 @@ package bootstrap
 
 import (
 	"context"
+	"fmt"
 
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
@@ -10,14 +11,14 @@ import (
 )
 
 type modelEnvironment struct {
-	chatResolver       *modeladapter.ObservedResolver
-	utilityRoleState   *models.RoleState
-	utilityModel       modeladapter.AuxiliaryResolver
-	embeddingRoleState *models.RoleState
-	embeddingResolver  *modeladapter.EmbeddingResolver
-	liveEmbedder       *modeladapter.RoleEmbedder
-	callbacks          *pluginmcp.Callbacks
-	capabilities       *modeladapter.Capabilities
+	chatResolver      *modeladapter.ObservedResolver
+	utilityRole       *models.RoleSetting
+	utilityModel      modeladapter.AuxiliaryResolver
+	embeddingRole     *models.RoleSetting
+	embeddingResolver *modeladapter.EmbeddingResolver
+	liveEmbedder      *modeladapter.RoleEmbedder
+	callbacks         *pluginmcp.Callbacks
+	capabilities      *modeladapter.Capabilities
 }
 
 func buildModelEnvironment(ctx context.Context, cfg assemblyConfig, callbacks *pluginmcp.Callbacks, providers modelProviderAdapters) (modelEnvironment, error) {
@@ -29,22 +30,20 @@ func buildModelEnvironment(ctx context.Context, cfg assemblyConfig, callbacks *p
 	if err != nil {
 		return modelEnvironment{}, err
 	}
-	utilityRole, err := loadRole(ctx, cfg.stores.UtilityRole, "utility")
+	utilityRole, err := models.LoadRoleSetting(ctx, cfg.stores.UtilityRole)
 	if err != nil {
-		return modelEnvironment{}, err
+		return modelEnvironment{}, fmt.Errorf("runtime: load utility role: %w", err)
 	}
-	utilityRoleState := models.NewRoleState(utilityRole)
 
-	embeddingRole, err := loadRole(ctx, cfg.stores.EmbeddingRole, "embedding")
+	embeddingRole, err := models.LoadRoleSetting(ctx, cfg.stores.EmbeddingRole)
 	if err != nil {
-		return modelEnvironment{}, err
+		return modelEnvironment{}, fmt.Errorf("runtime: load embedding role: %w", err)
 	}
-	embeddingRoleState := models.NewRoleState(embeddingRole)
 	embeddingResolver, err := modeladapter.NewEmbeddingResolver(cfg.providerRegistry, providers, cfg.stores.ModelInvocations)
 	if err != nil {
 		return modelEnvironment{}, err
 	}
-	liveEmbedder, err := modeladapter.NewRoleEmbedder(embeddingResolver, embeddingRoleState)
+	liveEmbedder, err := modeladapter.NewRoleEmbedder(embeddingResolver, embeddingRole)
 	if err != nil {
 		return modelEnvironment{}, err
 	}
@@ -54,11 +53,11 @@ func buildModelEnvironment(ctx context.Context, cfg assemblyConfig, callbacks *p
 		return modelEnvironment{}, err
 	}
 	environment := modelEnvironment{
-		chatResolver:       chatResolver,
-		utilityRoleState:   utilityRoleState,
-		embeddingRoleState: embeddingRoleState,
-		embeddingResolver:  embeddingResolver,
-		capabilities:       capabilities,
+		chatResolver:      chatResolver,
+		utilityRole:       utilityRole,
+		embeddingRole:     embeddingRole,
+		embeddingResolver: embeddingResolver,
+		capabilities:      capabilities,
 	}
 	environment.liveEmbedder = liveEmbedder
 	environment.callbacks = callbacks

@@ -4,13 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"sync"
 	"time"
 
 	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/samber/lo"
 )
 
@@ -51,10 +49,6 @@ type embeddingModelValidator interface {
 	ValidateEmbeddingModel(ctx context.Context, providerID, model string) error
 }
 
-type roleSaver interface {
-	Save(ctx context.Context, role modelref.Role) error
-}
-
 type Coordinator struct {
 	providers    ProviderRegistry
 	catalog      providerCatalog
@@ -62,15 +56,11 @@ type Coordinator struct {
 	lister       ProviderModelLister
 	probeTimeout time.Duration
 
-	utilityRoleState *RoleState
+	utilityRole      *RoleSetting
 	utilityValidator ChatModelValidator
-	utilityStore     roleSaver
-	utilityMu        sync.Mutex
 
-	embeddingRoleState *RoleState
+	embeddingRole      *RoleSetting
 	embeddingValidator embeddingModelValidator
-	embeddingStore     roleSaver
-	embeddingMu        sync.Mutex
 	invalidations      invalidation.Publish
 }
 
@@ -81,13 +71,11 @@ type Config struct {
 	Lister       ProviderModelLister
 	ProbeTimeout time.Duration
 
-	UtilityRoleState *RoleState
+	UtilityRole      *RoleSetting
 	UtilityValidator ChatModelValidator
-	UtilityStore     roleSaver
 
-	EmbeddingRoleState *RoleState
+	EmbeddingRole      *RoleSetting
 	EmbeddingValidator embeddingModelValidator
-	EmbeddingStore     roleSaver
 
 	Invalidations invalidation.Publish
 }
@@ -101,12 +89,10 @@ func New(cfg Config) (*Coordinator, error) {
 		{"catalog", cfg.Catalog},
 		{"prober", cfg.Prober},
 		{"lister", cfg.Lister},
-		{"utility role state", cfg.UtilityRoleState},
+		{"utility role", cfg.UtilityRole},
 		{"utility validator", cfg.UtilityValidator},
-		{"utility store", cfg.UtilityStore},
-		{"embedding role state", cfg.EmbeddingRoleState},
+		{"embedding role", cfg.EmbeddingRole},
 		{"embedding validator", cfg.EmbeddingValidator},
-		{"embedding store", cfg.EmbeddingStore},
 		{"invalidations", cfg.Invalidations},
 	} {
 		if lo.IsNil(required.value) {
@@ -122,12 +108,10 @@ func New(cfg Config) (*Coordinator, error) {
 		prober:             cfg.Prober,
 		lister:             cfg.Lister,
 		probeTimeout:       cfg.ProbeTimeout,
-		utilityRoleState:   cfg.UtilityRoleState,
+		utilityRole:        cfg.UtilityRole,
 		utilityValidator:   cfg.UtilityValidator,
-		utilityStore:       cfg.UtilityStore,
-		embeddingRoleState: cfg.EmbeddingRoleState,
+		embeddingRole:      cfg.EmbeddingRole,
 		embeddingValidator: cfg.EmbeddingValidator,
-		embeddingStore:     cfg.EmbeddingStore,
 		invalidations:      cfg.Invalidations,
 	}, nil
 }

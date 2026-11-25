@@ -33,10 +33,8 @@ func TestGoalCommandsSettleTheDriveAfterCommit(t *testing.T) {
 	}
 	withRefusedReceipt := func(call func() protocol.OperationResult) {
 		t.Helper()
-		questionCrashDatabase(t, home, `CREATE TRIGGER refuse_goal_command_receipt
-			BEFORE UPDATE OF payload ON idempotency_records
-			BEGIN SELECT RAISE(ABORT, 'Goal command receipt refused'); END`)
-		defer questionCrashDatabase(t, home, "DROP TRIGGER refuse_goal_command_receipt")
+		allowReceipt := refuseCommandReceipt(t, home)
+		defer allowReceipt()
 		if result := call(); result.Failure == nil {
 			t.Fatal("Goal command succeeded despite a refused receipt")
 		}

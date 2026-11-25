@@ -2,31 +2,30 @@ package bootstrap
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
+	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 )
 
 const commandCrashExit = 73
 
-// commandCrashPoint is where the helper process exits abruptly; the parent
-// passes it through FLAME_TEST_COMMAND_CRASH.
 type commandCrashPoint string
 
 const (
 	noCommandCrash    commandCrashPoint = ""
 	crashAfterClaim   commandCrashPoint = "claim"
-	crashInBusiness   commandCrashPoint = "business"
-	crashAfterReceipt commandCrashPoint = "receipt"
+	crashAfterReceipt commandCrashPoint = "receipt_write"
+	crashAfterCommit  commandCrashPoint = "receipt_commit"
 )
 
 type atomicReceiptCommitCrashStore struct{ operation.ReplayStore }
@@ -61,106 +60,146 @@ func (s commandCrashStore) Complete(ctx context.Context, record operation.Replay
 	return settled, err
 }
 
-type commandCrashExecutor struct {
-	effects *sql.DB
-	phase   commandCrashPoint
+const embeddingRoleCrashVariable = "FLAME_TEST_EMBEDDING_ROLE_CRASH"
+
+var originalEmbeddingRole = protocol.EmbeddingRole{Provider: "openai-compatible", Model: "original-embedding"}
+
+func clearEmbeddingRole(ctx context.Context, endpoint *delivery.Endpoint) (*protocol.EmbeddingRole, error) {
+	return endpoint.Call[protocol.EmbeddingRole, *protocol.EmbeddingRole](ctx, delivery.ModelsSetEmbeddingRole, protocol.EmbeddingRole{},
+		protocol.CallMetadata{IdempotencyKey: "clear-original-embedding-role"})
 }
 
-func (s commandCrashExecutor) SetEmbeddingRole(ctx context.Context, role protocol.EmbeddingRole) (*protocol.EmbeddingRole, error) {
-	if _, err := s.effects.ExecContext(ctx, `INSERT INTO command_crash_effects (item_id) VALUES ('item_crash')`); err != nil {
-		return nil, err
-	}
-	if s.phase == crashInBusiness {
-		os.Exit(commandCrashExit)
-	}
-	return &role, nil
-}
-
-var crashRole = protocol.EmbeddingRole{Provider: "test", Model: "crash-embedding"}
-
-func crashCommand(t *testing.T, db *persistencefixture.Stores, effects *sql.DB, phase commandCrashPoint) (*protocol.EmbeddingRole, error) {
-	t.Helper()
-	namespace := db.IdempotencyNamespace
-	endpoint, err := delivery.NewEndpoint(commandCrashExecutor{effects: effects, phase: phase}, delivery.EndpointConfig{
-		Lifetime: t.Context(), IdempotencyNamespace: namespace.String(),
-		IdempotencyStore: commandCrashStore{ReplayStore: db.Idempotency, phase: phase},
-		ValidateStorage:  db.ValidateDirectory,
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	return endpoint.Call[protocol.EmbeddingRole, *protocol.EmbeddingRole](t.Context(), delivery.ModelsSetEmbeddingRole, crashRole,
-		protocol.CallMetadata{IdempotencyKey: "crash-command", IdempotencyNamespace: namespace.String()})
-}
-
-func TestCommandCrashHelper(t *testing.T) {
-	phase := commandCrashPoint(os.Getenv("FLAME_TEST_COMMAND_CRASH"))
+func TestEmbeddingRoleCrashHelper(t *testing.T) {
+	phase := commandCrashPoint(os.Getenv(embeddingRoleCrashVariable))
 	if phase == noCommandCrash {
 		return
 	}
-	db, err := persistencefixture.Open(t, t.Context(), filepath.Dir(os.Getenv("FLAME_TEST_COMMAND_DB")))
+	home := os.Getenv("FLAME_HOME")
+	stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: home, ValidateDirectory: persistencefixture.UnleasedDirectory})
 	if err != nil {
 		t.Fatal(err)
 	}
-	effects := openCommandEffects(t, os.Getenv("FLAME_TEST_COMMAND_EFFECTS"))
-	if _, err := effects.ExecContext(t.Context(), `CREATE TABLE command_crash_effects (item_id TEXT NOT NULL)`); err != nil {
+	role, err := modelref.NewRole(originalEmbeddingRole.Provider, originalEmbeddingRole.Model)
+	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = crashCommand(t, db, effects, phase)
+	if err := stores.EmbeddingRole.Save(t.Context(), role); err != nil {
+		t.Fatal(err)
+	}
+	host := assembleTestRuntime(t, protocolRuntimeConfig(t, stores, newReplyStub("unused")))
+	api, err := protocolHandler(host, home)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var replay operation.ReplayStore
+	switch phase {
+	case crashAfterClaim, crashAfterReceipt:
+		replay = commandCrashStore{ReplayStore: stores.Idempotency, phase: phase}
+	case crashAfterCommit:
+		replay = atomicReceiptCommitCrashStore{ReplayStore: stores.Idempotency}
+	default:
+		t.Fatalf("unknown embedding role crash point %q", phase)
+	}
+	if err := startTestRuntimeWithReplayStore(t, host, api, stores, replay); err != nil {
+		t.Fatal(err)
+	}
+	_, err = clearEmbeddingRole(t.Context(), host.Endpoint())
 	t.Fatalf("crash point %s was not reached: %v", phase, err)
 }
 
-func TestCommandReceiptSurvivesAbruptProcessExit(t *testing.T) {
-	for _, phase := range []commandCrashPoint{crashAfterClaim, crashInBusiness, crashAfterReceipt} {
+func TestEmbeddingRoleAndItsReceiptSurviveAbruptProcessExit(t *testing.T) {
+	for _, phase := range []commandCrashPoint{crashAfterClaim, crashAfterReceipt, crashAfterCommit} {
 		t.Run(string(phase), func(t *testing.T) {
-			path := filepath.Join(t.TempDir(), "flame.db")
-			effectsPath := filepath.Join(t.TempDir(), "effects.db")
+			home := testsupport.TempDirectory(t)
+			t.Setenv("FLAME_HOME", home)
 			ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 			defer cancel()
-			command := exec.CommandContext(ctx, os.Args[0], "-test.run=^TestCommandCrashHelper$")
-			command.Env = append(os.Environ(), "FLAME_TEST_COMMAND_CRASH="+string(phase), "FLAME_TEST_COMMAND_DB="+path, "FLAME_TEST_COMMAND_EFFECTS="+effectsPath)
+			command := exec.CommandContext(ctx, os.Args[0], "-test.run=^TestEmbeddingRoleCrashHelper$")
+			command.Env = append(os.Environ(), embeddingRoleCrashVariable+"="+string(phase))
 			output, err := command.CombinedOutput()
-			var exit *exec.ExitError
-			if !errors.As(err, &exit) || exit.ExitCode() != commandCrashExit {
+			if exit, ok := errors.AsType[*exec.ExitError](err); !ok || exit.ExitCode() != commandCrashExit {
 				t.Fatalf("abrupt exit: %v\n%s", err, output)
 			}
-			db, err := persistencefixture.Open(t, t.Context(), filepath.Dir(path))
-			if err != nil {
-				t.Fatal(err)
-			}
-			t.Cleanup(func() { _ = db.Close() })
-			effects := openCommandEffects(t, effectsPath)
-			for range 2 {
-				response, err := crashCommand(t, db, effects, noCommandCrash)
-				if phase == crashAfterReceipt {
-					if err != nil || response == nil || *response != crashRole {
-						t.Fatalf("durable receipt lost its identity: %+v, %v", response, err)
-					}
-				} else if !errors.Is(err, protocol.ErrIdempotencyInProgress) || response != nil {
-					t.Fatalf("unresolved claim became a known outcome: %+v, %v", response, err)
+			host, api := openProtocolRuntime(t, newReplyStub("unused"))
+			t.Cleanup(func() {
+				if err := host.Close(); err != nil {
+					t.Error(err)
 				}
+			})
+			want := originalEmbeddingRole
+			if phase == crashAfterCommit {
+				want = protocol.EmbeddingRole{}
 			}
-			var executions int
-			if err := effects.QueryRowContext(t.Context(), `SELECT COUNT(*) FROM command_crash_effects`).Scan(&executions); err != nil {
-				t.Fatal(err)
+			if current, err := api.GetEmbeddingRole(t.Context()); err != nil || current == nil || *current != want {
+				t.Fatalf("embedding role after crash = %+v, %v, want %+v", current, err, want)
 			}
-			want := 1
-			if phase == crashAfterClaim {
-				want = 0
+			if phase == crashAfterCommit {
+				questionCrashDatabase(t, home, `CREATE TRIGGER refuse_repeated_embedding_change
+					BEFORE UPDATE ON embedding_role
+					BEGIN SELECT RAISE(ABORT, 'embedding role already settled'); END`)
 			}
-			if executions != want {
-				t.Fatalf("business executions = %d, want %d", executions, want)
+			if result, err := clearEmbeddingRole(t.Context(), host.Endpoint()); err != nil || result == nil || *result != (protocol.EmbeddingRole{}) {
+				t.Fatalf("original clear command = %+v, %v", result, err)
+			}
+			if current, err := api.GetEmbeddingRole(t.Context()); err != nil || current == nil || *current != (protocol.EmbeddingRole{}) {
+				t.Fatalf("embedding role after replay = %+v, %v, want unconfigured", current, err)
 			}
 		})
 	}
 }
 
-func openCommandEffects(t *testing.T, path string) *sql.DB {
-	t.Helper()
-	effects, err := sql.Open("sqlite", path)
-	if err != nil {
+func TestUtilityRolePublishesOnlyCommittedChanges(t *testing.T) {
+	const setRole delivery.Name = "models.setUtilityRole"
+	home := testsupport.TempDirectory(t)
+	t.Setenv("FLAME_HOME", home)
+	host, api := openProtocolRuntime(t, newReplyStub("unused"))
+	t.Cleanup(func() {
+		if err := host.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	ctx := t.Context()
+	original := protocol.UtilityRole{Provider: "anthropic", Model: "claude-opus-5"}
+	if _, err := api.SetUtilityRole(ctx, original); err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _ = effects.Close() })
-	return effects
+	clear := func() (*protocol.UtilityRole, error) {
+		return host.Endpoint().Call[protocol.UtilityRole, *protocol.UtilityRole](ctx, setRole, protocol.UtilityRole{},
+			protocol.CallMetadata{IdempotencyKey: "clear-original-utility-role"})
+	}
+	expectRole := func(want protocol.UtilityRole) {
+		t.Helper()
+		if current, err := api.GetUtilityRole(ctx); err != nil || current == nil || *current != want {
+			t.Fatalf("live utility role = %+v, %v, want %+v", current, err, want)
+		}
+	}
+	allowReceipt := refuseCommandReceipt(t, home)
+	result, err := clear()
+	allowReceipt()
+	if result != nil || err == nil {
+		t.Fatalf("clear utility role with a refused receipt = %+v, %v", result, err)
+	}
+	expectRole(original)
+	if result, err := clear(); err != nil || result == nil || *result != (protocol.UtilityRole{}) {
+		t.Fatalf("original clear command = %+v, %v", result, err)
+	}
+	expectRole(protocol.UtilityRole{})
+	if _, err := api.SetUtilityRole(ctx, original); err != nil {
+		t.Fatal(err)
+	}
+	if result, err := clear(); err != nil || result == nil || *result != (protocol.UtilityRole{}) {
+		t.Fatalf("replayed clear command = %+v, %v", result, err)
+	}
+	expectRole(original)
+}
+
+func refuseCommandReceipt(t *testing.T, home string) func() {
+	t.Helper()
+	questionCrashDatabase(t, home, `CREATE TRIGGER refuse_command_receipt
+		BEFORE UPDATE OF payload ON idempotency_records
+		BEGIN SELECT RAISE(ABORT, 'command receipt refused'); END`)
+	return func() {
+		t.Helper()
+		questionCrashDatabase(t, home, "DROP TRIGGER refuse_command_receipt")
+	}
 }

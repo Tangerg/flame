@@ -43,7 +43,7 @@ func seedConfiguredProvider(ctx context.Context, registry models.ProviderRegistr
 }
 
 type utilityRoleSeedStore interface {
-	roleLoader
+	Load(ctx context.Context) (modelref.Role, bool, error)
 	Save(ctx context.Context, role modelref.Role) error
 }
 

@@ -8,6 +8,8 @@ import (
 	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	modelapp "github.com/Tangerg/flame/runtime/internal/application/integration/models"
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
+	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 
 	"github.com/Tangerg/scope/models/catalog"
 )
@@ -28,29 +30,65 @@ func (s *Handler) ListModels(ctx context.Context, in protocol.ListModelsRequest)
 }
 
 func (s *Handler) GetUtilityRole(_ context.Context) (*protocol.UtilityRole, error) {
-	role := s.models.UtilityRole()
-	return &protocol.UtilityRole{Provider: role.Provider(), Model: role.Model()}, nil
+	return presentUtilityRole(s.models.UtilityRole()), nil
 }
 
 func (s *Handler) SetUtilityRole(ctx context.Context, in protocol.UtilityRole) (*protocol.UtilityRole, error) {
-	role, err := s.models.SetUtilityRole(ctx, in.Provider, in.Model)
-	if err != nil {
-		return nil, mapModelError(err)
+	var role modelref.Role
+	if err := s.setUtilityRole(ctx, in, operation.DirectReply(&role)); err != nil {
+		return nil, err
 	}
-	return &protocol.UtilityRole{Provider: role.Provider(), Model: role.Model()}, nil
+	return presentUtilityRole(role), nil
+}
+
+func (s *Handler) commitUtilityRole(ctx context.Context, in protocol.UtilityRole, outcome atomicOutcome) error {
+	reply := atomicReply(outcome.complete, func(role modelref.Role) ([]byte, error) {
+		return encodeAtomicResult(outcome.method, presentUtilityRole(role))
+	})
+	return outcome.settleRefusal(ctx, s.setUtilityRole(ctx, in, reply))
+}
+
+func (s *Handler) setUtilityRole(ctx context.Context, in protocol.UtilityRole, complete operation.Reply[modelref.Role]) error {
+	role, err := modelref.NewRole(in.Provider, in.Model)
+	if err != nil {
+		return mapModelError(err)
+	}
+	return mapModelError(s.models.SetUtilityRole(ctx, role, complete))
+}
+
+func presentUtilityRole(role modelref.Role) *protocol.UtilityRole {
+	return &protocol.UtilityRole{Provider: role.Provider(), Model: role.Model()}
 }
 
 func (s *Handler) GetEmbeddingRole(_ context.Context) (*protocol.EmbeddingRole, error) {
-	role := s.models.EmbeddingRole()
-	return &protocol.EmbeddingRole{Provider: role.Provider(), Model: role.Model()}, nil
+	return presentEmbeddingRole(s.models.EmbeddingRole()), nil
 }
 
 func (s *Handler) SetEmbeddingRole(ctx context.Context, in protocol.EmbeddingRole) (*protocol.EmbeddingRole, error) {
-	role, err := s.models.SetEmbeddingRole(ctx, in.Provider, in.Model)
-	if err != nil {
-		return nil, mapModelError(err)
+	var role modelref.Role
+	if err := s.setEmbeddingRole(ctx, in, operation.DirectReply(&role)); err != nil {
+		return nil, err
 	}
-	return &protocol.EmbeddingRole{Provider: role.Provider(), Model: role.Model()}, nil
+	return presentEmbeddingRole(role), nil
+}
+
+func (s *Handler) commitEmbeddingRole(ctx context.Context, in protocol.EmbeddingRole, outcome atomicOutcome) error {
+	reply := atomicReply(outcome.complete, func(role modelref.Role) ([]byte, error) {
+		return encodeAtomicResult(outcome.method, presentEmbeddingRole(role))
+	})
+	return outcome.settleRefusal(ctx, s.setEmbeddingRole(ctx, in, reply))
+}
+
+func (s *Handler) setEmbeddingRole(ctx context.Context, in protocol.EmbeddingRole, complete operation.Reply[modelref.Role]) error {
+	role, err := modelref.NewRole(in.Provider, in.Model)
+	if err != nil {
+		return mapModelError(err)
+	}
+	return mapModelError(s.models.SetEmbeddingRole(ctx, role, complete))
+}
+
+func presentEmbeddingRole(role modelref.Role) *protocol.EmbeddingRole {
+	return &protocol.EmbeddingRole{Provider: role.Provider(), Model: role.Model()}
 }
 
 func mapModelError(err error) error {

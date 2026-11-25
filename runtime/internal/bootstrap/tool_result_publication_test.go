@@ -16,7 +16,6 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	localruntime "github.com/Tangerg/flame/packages/local-runtime"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -32,11 +31,11 @@ func TestOffloadedToolResultCommitsWithItsItem(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	directory, err := localruntime.DataDirectoryAt(home)
+	probe, err := persistencefixture.OpenRawSQL(home)
 	if err != nil {
 		t.Fatal(err)
 	}
-	probe := openCommandEffects(t, directory.DatabasePath())
+	t.Cleanup(func() { _ = probe.Close() })
 	var sessionID atomic.Value
 	var detachedBody atomic.Bool
 	watchDetachedToolBodies(stores, probe, &sessionID, &detachedBody)
