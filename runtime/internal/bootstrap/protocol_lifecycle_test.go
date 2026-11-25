@@ -6,26 +6,18 @@ import (
 	json "encoding/json/v2"
 	"errors"
 	"fmt"
-	"iter"
 	"os"
 	"os/exec"
 	"strings"
-	"sync"
-	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
-	executionadapter "github.com/Tangerg/flame/runtime/internal/adapter/run/execution"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
-	"github.com/Tangerg/flame/runtime/internal/config"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
-	"github.com/Tangerg/scope/core/chat"
-	"github.com/Tangerg/scope/core/chatclient"
-	"github.com/Tangerg/scope/core/invocation"
 )
 
 func TestProtocolLifecycleSurvivesColdRestart(t *testing.T) {
@@ -466,169 +458,6 @@ func (p *protocolLifecycleFixture) closeFirstRuntime() {
 }
 
 const protocolLifecycleSteeringText = "Keep the resumed answer concise."
-
-type lifecycleModel struct {
-	calls              atomic.Int32
-	firstCallStarted   chan struct{}
-	releaseFirstCall   chan struct{}
-	resumedCallStarted chan struct{}
-	releaseResumedCall chan struct{}
-	firstStartedOnce   sync.Once
-	resumedStartedOnce sync.Once
-}
-
-func newLifecycleModel() *lifecycleModel {
-	return &lifecycleModel{
-		firstCallStarted:   make(chan struct{}),
-		releaseFirstCall:   make(chan struct{}),
-		resumedCallStarted: make(chan struct{}),
-		releaseResumedCall: make(chan struct{}),
-	}
-}
-
-func (l *lifecycleModel) Call(ctx context.Context, _ *chat.Request) (*chat.Response, error) {
-	switch l.calls.Add(1) {
-	case 1:
-		l.firstStartedOnce.Do(func() { close(l.firstCallStarted) })
-		select {
-		case <-l.releaseFirstCall:
-		case <-ctx.Done():
-			return nil, &invocation.Failure{Kind: invocation.FailureNotExecuted, Cause: ctx.Err()}
-		}
-		message := chat.NewAssistantMessage(chat.NewToolCallPart(chat.ToolCall{
-			ID:        "call_question",
-			Name:      "ask_user",
-			Arguments: `{"questions":[{"question":"Continue the lifecycle check?"}]}`,
-		}))
-		return chat.NewResponse(&chat.Output{
-			Message: &message, FinishReason: chat.FinishReasonToolCalls,
-		}, &chat.ResponseMetadata{Model: "claude-test", Usage: &chat.Usage{InputTokens: 2, OutputTokens: 1}})
-	default:
-		l.resumedStartedOnce.Do(func() { close(l.resumedCallStarted) })
-		select {
-		case <-l.releaseResumedCall:
-			message := chat.NewAssistantMessage(chat.NewTextPart("settled before cancellation"))
-			return chat.NewResponse(&chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}, &chat.ResponseMetadata{Model: "claude-test", Usage: &chat.Usage{InputTokens: 2, OutputTokens: 1}})
-		case <-ctx.Done():
-			return nil, &invocation.Failure{Kind: invocation.FailureNotExecuted, Cause: ctx.Err()}
-		}
-	}
-}
-
-func (l *lifecycleModel) Stream(ctx context.Context, request *chat.Request) iter.Seq2[*chat.ResponseDelta, error] {
-	return testsupport.StreamResponse(l.Call(ctx, request))
-}
-
-type noMaintenance struct{}
-
-func (noMaintenance) Maintain(
-	context.Context,
-	executionadapter.RunMaintenanceInput,
-) executionadapter.RunMaintenanceResult {
-	return executionadapter.RunMaintenanceResult{}
-}
-
-func openProtocolRuntime(t *testing.T, model chat.Model) (*Instance, *delivery.Handler) {
-	t.Helper()
-	dataDirectory := os.Getenv("FLAME_HOME")
-	stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: dataDirectory, ValidateDirectory: persistencefixture.UnleasedDirectory})
-	if err != nil {
-		t.Fatalf("open persistence: %v", err)
-	}
-	cfg := protocolRuntimeConfig(t, stores, model)
-	return buildProtocolRuntime(t, cfg, stores.DataDirectory)
-}
-
-func protocolRuntimeConfig(t *testing.T, stores *persistence.Bundle, model chat.Model) assemblyConfig {
-	t.Helper()
-	client, err := chatclient.New(model)
-	if err != nil {
-		_ = stores.Close()
-		t.Fatalf("build chat client: %v", err)
-	}
-	cfg := composeConfig(
-		config.Settings{DefaultSelection: testsupport.MustModelSelection("anthropic", "claude-test")},
-		stores,
-		stores.Providers,
-		"sha256:0000000000000000000000000000000000000000000000000000000000000000",
-	)
-	cfg.modelProviders = testChatResolver(client)
-	cfg.userHome = stores.DataDirectory
-	cfg.defaultWorkspacePath = stores.DataDirectory
-	cfg.maintenance = noMaintenance{}
-	cfg.processRunner = testProcessRunner(t)
-	return cfg
-}
-
-func buildProtocolRuntime(t *testing.T, cfg assemblyConfig, cwd string) (*Instance, *delivery.Handler) {
-	t.Helper()
-	host := assembleTestRuntime(t, cfg)
-	api, err := protocolHandler(host, cwd)
-	if err != nil {
-		_ = host.Close()
-		t.Fatalf("build protocol server: %v", err)
-	}
-	startTestRuntime(t, host, api, cfg.stores)
-	return host, api
-}
-
-func startTestRuntime(t *testing.T, host *Instance, api *delivery.Handler, stores *persistence.Bundle) {
-	t.Helper()
-	if err := startTestRuntimeWithReplayStore(t, host, api, stores, stores.Idempotency); err != nil {
-		t.Fatalf("recover uncertain executions: %v; close: %v", err, host.Close())
-	}
-}
-
-func startTestRuntimeWithReplayStore(t *testing.T, host *Instance, api *delivery.Handler, stores *persistence.Bundle, replayStore operation.ReplayStore) error {
-	t.Helper()
-	info, err := api.Discover(t.Context())
-	if err != nil {
-		t.Fatalf("discover Runtime: %v; close: %v", err, host.Close())
-	}
-	endpoint, err := delivery.NewEndpoint(api, delivery.EndpointConfig{
-		IdempotencyStore:     replayStore,
-		IdempotencyNamespace: info.Capabilities.Limits.Idempotency.Namespace,
-		Lifetime:             t.Context(),
-		ValidateStorage:      stores.ValidateDirectory,
-	})
-	if err != nil {
-		t.Fatalf("construct Runtime endpoint: %v; close: %v", err, host.Close())
-	}
-	host.lifetime.delivery = endpoint
-	if err := host.application.publishCallbacks(endpoint); err != nil {
-		t.Fatalf("publish Runtime callbacks: %v; close: %v", err, host.Close())
-	}
-	return host.application.recoverUncertainExecutions(t.Context())
-}
-
-func assembleTestRuntime(t *testing.T, cfg assemblyConfig) *Instance {
-	t.Helper()
-	host, err := assemble(t.Context(), cfg, newRuntimeLifetime(t.Context(), cfg.resources), buildToolEnvironment)
-	if err != nil {
-		t.Fatalf("build runtime: %v", err)
-	}
-	if recoverStartupErr := host.application.recoverStartup(t.Context()); recoverStartupErr != nil {
-		_ = host.Close()
-		t.Fatalf("recover runtime: %v", recoverStartupErr)
-	}
-	return host
-}
-
-func protocolHandler(host *Instance, cwd string) (*delivery.Handler, error) {
-	return host.application.newDeliveryHandler(protocol.ServerInfo{
-		Name: "conformance-test", Version: "0.0.0-test", InstanceID: testsupport.RuntimeInstanceID,
-		DefaultWorkspace: protocol.WorkspaceRef{Path: cwd}, Home: cwd,
-	}, testsupport.IdempotencyNamespace)
-}
-
-func waitForSignal(t *testing.T, signal <-chan struct{}, phase string) {
-	t.Helper()
-	select {
-	case <-signal:
-	case <-time.After(lifecycleWaitBudget(t)):
-		t.Fatalf("timed out waiting for %s", phase)
-	}
-}
 
 func hasUserText(items []protocol.Item, want string) bool {
 	for _, item := range items {

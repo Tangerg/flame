@@ -1,0 +1,538 @@
+package main
+
+import (
+	"bytes"
+	"context"
+	"errors"
+	"io"
+	"os"
+	"slices"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/Tangerg/flame/apps/cli/internal/adapter/runtimebinding"
+	"github.com/Tangerg/flame/apps/cli/internal/application/settings"
+	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
+	"github.com/Tangerg/flame/apps/cli/internal/delivery/terminal"
+	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
+	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
+	"github.com/Tangerg/flame/packages/go-sdk/builtin"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/oolong/ui/uitest/ptytest"
+)
+
+type terminalModeCase struct {
+	name         string
+	args         []string
+	environment  map[string]string
+	mouse        bool
+	keyboardMode bool
+}
+
+func TestInteractiveBinaryReturnsTheTerminalIntact(t *testing.T) {
+	if !ptytest.Supported() {
+		t.Skip("no pty on this platform")
+	}
+	binary := buildTestBinary(t)
+
+	for _, test := range []terminalModeCase{
+		{
+			name: "xterm truecolor", environment: map[string]string{
+				"TERM": "xterm-256color", "COLORTERM": "truecolor", "LANG": "en_US.UTF-8",
+			},
+			mouse: true, keyboardMode: true,
+		},
+		{
+			name: "screen ascii without mouse", args: []string{"--mouse=false", "--notifications=false"},
+			environment: map[string]string{
+				"TERM": "screen-256color", "COLORTERM": "", "LANG": "C", "LC_ALL": "C",
+			},
+			mouse: false, keyboardMode: true,
+		},
+		{
+			name: "vscode wsl keyboard guard", environment: map[string]string{
+				"TERM": "xterm-256color", "TERM_PROGRAM": "vscode", "WSL_INTEROP": "/run/WSL/1_interop",
+			},
+			mouse: true, keyboardMode: false,
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) { requireTerminalModeLifecycle(t, binary, test) })
+	}
+}
+
+func requireTerminalModeLifecycle(t *testing.T, binary string, test terminalModeCase) {
+	t.Helper()
+	session, err := ptytest.Start(t.Context(), ptytest.Config{
+		Size: ptytest.Size{Cols: 80, Rows: 24}, Env: terminalTestEnvironment(t, test.environment),
+	}, binary, testProcessArguments(test.args...)...)
+	if errors.Is(err, ptytest.ErrUnsupported) {
+		t.Skip("no pty on this platform")
+	}
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = session.Close() })
+	waitForVisibleTerminalText(t, session, "Ask flame")
+	if _, err := io.WriteString(session, "\x11"); err != nil {
+		t.Fatal(err)
+	}
+	waitForVisibleTerminalText(t, session, "repeat ctrl+q or ctrl+d to quit")
+	if _, err := io.WriteString(session, "\x11"); err != nil {
+		t.Fatal(err)
+	}
+	waitForInteractiveExit(t, session)
+
+	transcript := session.Transcript().Bytes()
+	ptytest.RequireContains(t, transcript, "\x1b[?25h")
+	ptytest.RequireSymmetricModes(t, transcript,
+		ptytest.Mode{Name: "alternate screen", On: "\x1b[?1049h", Off: "\x1b[?1049l"},
+		ptytest.Mode{Name: "focus", On: "\x1b[?1004h", Off: "\x1b[?1004l"},
+		ptytest.Mode{Name: "bracketed paste", On: "\x1b[?2004h", Off: "\x1b[?2004l"},
+	)
+	assertOptionalTerminalMode(t, transcript, test.mouse, ptytest.Mode{
+		Name: "mouse", On: "\x1b[?1003h\x1b[?1006h", Off: "\x1b[?1006l\x1b[?1003l",
+	})
+	assertOptionalTerminalMode(t, transcript, test.keyboardMode, ptytest.Mode{
+		Name: "keyboard", On: "\x1b[>5u", Off: "\x1b[<u",
+	})
+}
+
+type submittedInputCase struct {
+	name  string
+	input string
+	want  []string
+}
+
+func TestInteractiveBinaryPreservesSubmittedInputSequences(t *testing.T) {
+	if !ptytest.Supported() {
+		t.Skip("no pty on this platform")
+	}
+	binary := buildTestBinary(t)
+	size := ptytest.Size{Cols: 100, Rows: 30}
+
+	for _, test := range []submittedInputCase{
+		{
+			name:  "fast utf8 input followed by enter",
+			input: "contract-tail-你好终\r",
+			want:  []string{"contract-tail-你好终"},
+		},
+		{
+			name:  "long input burst preserves its unicode tail",
+			input: strings.Repeat("rapid-input-", 64) + "最后字符终\r",
+			want:  []string{"最后字符终"},
+		},
+		{
+			name:  "kitty associated text preserves one composed input event",
+			input: "associated-\x1b[120;1;20320:22909u-tail\r",
+			want:  []string{"associated-你好-tail"},
+		},
+		{
+			name:  "combining and zwj graphemes survive at the submission tail",
+			input: "grapheme-tail-e\u0301-👩\u200d💻\r",
+			want:  []string{"grapheme-tail-e\u0301-👩\u200d💻"},
+		},
+		{
+			name:  "kitty shift enter inserts a newline",
+			input: "kitty-first\x1b[13;2u第二行-kitty-tail\r",
+			want:  []string{"kitty-first", "第二行-kitty-tail"},
+		},
+		{
+			name:  "legacy alt enter inserts a newline",
+			input: "legacy-first\x1b\r第二行-legacy-tail\r",
+			want:  []string{"legacy-first", "第二行-legacy-tail"},
+		},
+		{
+			name:  "bracketed paste and trailing enter stay separate",
+			input: "\x1b[200~pasted-first\npasted-tail-终\x1b[201~\r",
+			want:  []string{"pasted-first", "pasted-tail-终"},
+		},
+		{
+			name:  "bracketed paste canonicalizes carriage-return line endings",
+			input: "\x1b[200~crlf-first\r\ncr-second\rcrlf-tail-终\x1b[201~\r",
+			want:  []string{"crlf-first", "cr-second", "crlf-tail-终"},
+		},
+		{
+			name:  "paste terminator trailing character and enter stay ordered",
+			input: "\x1b[200~paste-body\x1b[201~末\r",
+			want:  []string{"paste-body末"},
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) { requireSubmittedInputSequence(t, binary, size, test) })
+	}
+}
+
+func requireSubmittedInputSequence(t *testing.T, binary string, size ptytest.Size, test submittedInputCase) {
+	t.Helper()
+	session, err := ptytest.Start(t.Context(), ptytest.Config{
+		Size: size,
+		Env: terminalTestEnvironment(t, map[string]string{
+			"TERM": "xterm-256color", "COLORTERM": "truecolor", "LANG": "en_US.UTF-8",
+		}),
+	}, binary, testProcessArguments("--mouse=false", "--notifications=false")...)
+	if errors.Is(err, ptytest.ErrUnsupported) {
+		t.Skip("no pty on this platform")
+	}
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = session.Close() })
+	waitForVisibleTerminalText(t, session, "Ask flame")
+	if written, writeStringErr := io.WriteString(session, test.input); writeStringErr != nil || written != len(test.input) {
+		t.Fatalf("write input = (%d, %v), want %d bytes", written, writeStringErr, len(test.input))
+	}
+	waitForVisibleTerminalText(t, session, "Reproduce the flake")
+	quitInteractiveSession(t, session)
+	screen, err := session.Transcript().Screen()
+	if err != nil {
+		t.Fatalf("decode final screen: %v", err)
+	}
+	visible := strings.Join(screen.Rows(), "\n")
+	for _, token := range test.want {
+		if !strings.Contains(visible, token) {
+			t.Errorf("submitted screen does not contain %q:\n%s", token, visible)
+		}
+	}
+}
+
+func TestInteractiveBinarySurvivesResizeAndApprovalRoundTrip(t *testing.T) {
+	if !ptytest.Supported() {
+		t.Skip("no pty on this platform")
+	}
+	binary := buildTestBinary(t)
+	session, err := ptytest.Start(t.Context(), ptytest.Config{
+		Size: ptytest.Size{Cols: 96, Rows: 24},
+		Env: terminalTestEnvironment(t, map[string]string{
+			"TERM": "xterm-256color", "COLORTERM": "truecolor", "LANG": "en_US.UTF-8",
+		}),
+	}, binary, testProcessArguments("--mouse=false", "--notifications=false")...)
+	if errors.Is(err, ptytest.ErrUnsupported) {
+		t.Skip("no pty on this platform")
+	}
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = session.Close() })
+
+	waitForVisibleTerminalText(t, session, "Ask flame")
+	if _, err := io.WriteString(session, "resize-hitl-contract\r"); err != nil {
+		t.Fatal(err)
+	}
+	waitForVisibleTerminalText(t, session, "Tool approval")
+	narrowSize := ptytest.Size{Cols: 70, Rows: 18}
+	if err := session.Resize(narrowSize); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := io.WriteString(session, "\tNARROW_APPROVAL_MARKER"); err != nil {
+		t.Fatal(err)
+	}
+	narrow := waitForVisibleTerminalText(t, session, "Tool approval", "NARROW_APPROVAL_MARKER")
+	requireFullViewportDialog(t, narrow, "Tool approval")
+	wideSize := ptytest.Size{Cols: 128, Rows: 36}
+	if err := session.Resize(wideSize); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := io.WriteString(session, "_WIDE_MARKER"); err != nil {
+		t.Fatal(err)
+	}
+	waitForVisibleTerminalText(t, session, "Tool approval", "NARROW_APPROVAL_MARKER_WIDE_MARKER")
+	if _, err := io.WriteString(session, "\r"); err != nil {
+		t.Fatal(err)
+	}
+	waitForVisibleTerminalText(t, session, "Ran the test 50 times", "$0.0412", "complete")
+	quitInteractiveSession(t, session)
+}
+
+const (
+	mixedInterruptPTYScenario = "mixed-interrupt-contract"
+	cancelReentryPTYScenario  = "cancel-reentry-contract"
+)
+
+func TestInteractiveTerminalCompletesMixedInterruptReviewThroughPTY(t *testing.T) {
+	if !ptytest.Supported() {
+		t.Skip("no pty on this platform")
+	}
+	size := ptytest.Size{Cols: 96, Rows: 28}
+	session, err := ptytest.Start(t.Context(), ptytest.Config{
+		Size: size,
+		Env: terminalTestEnvironment(t, map[string]string{
+			"TERM": "xterm-256color", "COLORTERM": "truecolor", "LANG": "en_US.UTF-8",
+			"FLAME_PTY_TEST_SCENARIO": mixedInterruptPTYScenario,
+		}),
+	}, os.Args[0], "-test.run=^TestMixedInterruptPTYRuntime$")
+	if errors.Is(err, ptytest.ErrUnsupported) {
+		t.Skip("no pty on this platform")
+	}
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = session.Close() })
+
+	waitForVisibleTerminalText(t, session, "Ask flame")
+	writeTerminalInput(t, session, "exercise mixed interrupts\r")
+	waitForVisibleTerminalText(t, session, "Run contract checks", "Allow once")
+	writeTerminalInput(t, session, strings.Repeat("\x1b[B", 8)+"\r")
+	waitForVisibleTerminalText(t, session, "Edit tool arguments", `"command": "go test ./..."`)
+	writeTerminalInput(t, session, "\x1ba"+`{"command":"go test ./...","count":2}`+"\x13")
+	waitForVisibleTerminalText(t, session, "Edited arguments · one-shot", `"count": 2`)
+	writeTerminalInput(t, session, "\x1b[B\x1b[B\r")
+	waitForVisibleTerminalText(t, session, "Describe intent")
+	writeTerminalInput(t, session, "ship safely\r")
+	waitForVisibleTerminalText(t, session, "Choose platform", "Linux")
+	writeTerminalInput(t, session, "\x1b[B\r")
+	waitForVisibleTerminalText(t, session, "Choose checks", "Unit", "Integration")
+	writeTerminalInput(t, session, " \r")
+	waitForVisibleTerminalText(t, session, "Review interrupts")
+
+	minimal := ptytest.Size{Cols: 1, Rows: 1}
+	if err := session.Resize(minimal); err != nil {
+		t.Fatal(err)
+	}
+	restored := ptytest.Size{Cols: size.Cols + 4, Rows: size.Rows + 2}
+	if err := session.Resize(restored); err != nil {
+		t.Fatal(err)
+	}
+	waitForVisibleTerminalText(t, session, "Review interrupts", "Submit all decisions")
+	writeTerminalInput(t, session, "\x1b[B\r")
+	waitForVisibleTerminalText(t, session, "Choose checks", "Unit", "Integration")
+	writeTerminalInput(t, session, "\x1b[B \r")
+	waitForVisibleTerminalText(t, session, "Review interrupts")
+	writeTerminalInput(t, session, "\r")
+	waitForVisibleTerminalText(t, session, "PTY HITL contract accepted", "complete")
+	quitInteractiveSession(t, session)
+}
+
+func TestMixedInterruptPTYRuntime(t *testing.T) {
+	if os.Getenv("FLAME_PTY_TEST_SCENARIO") != mixedInterruptPTYScenario {
+		return
+	}
+	backend := runtimefixture.New()
+	backend.Instant = true
+	backend.Script = func(string) runtimefixture.Script { return mixedInterruptPTYScript() }
+	profile, err := runtimebinding.NewProfile(runtimefixture.CompleteDiscovery())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := terminal.Run(t.Context(), fixtureTerminalConfig(backend, profile, terminal.Config{
+		OpenWorkbench: func() (*workbench.Store, error) { return workbenchFactory("")("") },
+		Workspace:     t.TempDir(), Settings: settings.Default(),
+	})); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestInteractiveTerminalCanStartANewRunAfterCancelingInterruptReview(t *testing.T) {
+	if !ptytest.Supported() {
+		t.Skip("no pty on this platform")
+	}
+	size := ptytest.Size{Cols: 96, Rows: 28}
+	session, err := ptytest.Start(t.Context(), ptytest.Config{
+		Size: size,
+		Env: terminalTestEnvironment(t, map[string]string{
+			"TERM": "xterm-256color", "COLORTERM": "truecolor", "LANG": "en_US.UTF-8",
+			"FLAME_PTY_TEST_SCENARIO": cancelReentryPTYScenario,
+		}),
+	}, os.Args[0], "-test.run=^TestCancelReentryPTYRuntime$")
+	if errors.Is(err, ptytest.ErrUnsupported) {
+		t.Skip("no pty on this platform")
+	}
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = session.Close() })
+
+	waitForVisibleTerminalText(t, session, "Ask flame")
+	writeTerminalInput(t, session, "cancel interrupt review\r")
+	waitForVisibleTerminalText(t, session, "Run contract checks", "Allow once")
+	writeTerminalInput(t, session, "\r")
+	waitForVisibleTerminalText(t, session, "Describe intent")
+	writeTerminalInput(t, session, "cancel safely\r")
+	waitForVisibleTerminalText(t, session, "Choose platform", "Linux")
+	writeTerminalInput(t, session, "\r")
+	waitForVisibleTerminalText(t, session, "Choose checks", "Unit")
+	writeTerminalInput(t, session, " \r")
+	waitForVisibleTerminalText(t, session, "Review interrupts")
+	writeTerminalInput(t, session, "\x1b[B\x1b[B\r")
+	waitForVisibleTerminalText(t, session, "canceled", "Ask flame")
+
+	writeTerminalInput(t, session, "run after cancellation\r")
+	waitForVisibleTerminalText(t, session, "PTY cancellation reentry accepted", "complete")
+	if bytes.Contains(session.Transcript().Bytes(), []byte("PTY cancellation contract violated")) {
+		t.Fatal("canceling the interrupt review resumed the rejected decisions")
+	}
+	quitInteractiveSession(t, session)
+}
+
+func TestCancelReentryPTYRuntime(t *testing.T) {
+	if os.Getenv("FLAME_PTY_TEST_SCENARIO") != cancelReentryPTYScenario {
+		return
+	}
+	backend := runtimefixture.New()
+	backend.Instant = true
+	runs := 0
+	backend.Script = func(string) runtimefixture.Script {
+		runs++
+		if runs == 1 {
+			return cancelReentryPTYScript()
+		}
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{
+			{Event: conversation.BlockCompleted{Block: conversation.Block{
+				ID: "reentry", Kind: conversation.BlockNotice, Text: "PTY cancellation reentry accepted",
+			}}},
+			{Finish: &runtimefixture.Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}},
+		}}
+	}
+	profile, err := runtimebinding.NewProfile(runtimefixture.CompleteDiscovery())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := terminal.Run(t.Context(), fixtureTerminalConfig(backend, profile, terminal.Config{
+		OpenWorkbench: func() (*workbench.Store, error) { return workbenchFactory("")("") },
+		Workspace:     t.TempDir(), Settings: settings.Default(),
+	})); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func cancelReentryPTYScript() runtimefixture.Script {
+	return runtimefixture.Script{
+		Interrupts: mixedInterruptPTYInterrupts(),
+		Continue: func([]conversation.InterruptAnswer) []runtimefixture.Step {
+			return []runtimefixture.Step{
+				{Event: conversation.BlockCompleted{Block: conversation.Block{
+					ID: "violation", Kind: conversation.BlockError, Text: "PTY cancellation contract violated",
+				}}},
+				{Finish: &runtimefixture.Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeFailed}}},
+			}
+		},
+	}
+}
+
+func mixedInterruptPTYScript() runtimefixture.Script {
+	return runtimefixture.Script{
+		Interrupts: mixedInterruptPTYInterrupts(),
+		Continue: func(provided []conversation.InterruptAnswer) []runtimefixture.Step {
+			result := "PTY HITL contract rejected"
+			if mixedInterruptPTYAnswersMatch(provided) {
+				result = "PTY HITL contract accepted"
+			}
+			return []runtimefixture.Step{
+				{Event: conversation.BlockCompleted{Block: conversation.Block{ID: "result", Kind: conversation.BlockNotice, Text: result}}},
+				{Finish: &runtimefixture.Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}},
+			}
+		},
+	}
+}
+
+func mixedInterruptPTYInterrupts() []conversation.Interrupt {
+	return []conversation.Interrupt{
+		conversation.Approval{
+			ItemID: "approval", Title: "Run contract checks", Rememberable: true,
+			Tool: &conversation.ToolCall{
+				Kind: builtin.CategoryShell, Name: "shell", Command: "go test ./...", Status: conversation.ToolRunning,
+				ArgumentsJSON: []byte(`{"command":"go test ./...","count":1}`),
+			},
+		},
+		conversation.Question{
+			ItemID: "intent", Title: "Describe intent",
+			Fields: []conversation.QuestionField{{Prompt: "Intent", Kind: conversation.QuestionText}},
+		},
+		conversation.Question{
+			ItemID: "platform", Title: "Choose platform",
+			Fields: []conversation.QuestionField{{
+				Prompt: "Platform", Kind: conversation.QuestionSingle,
+				Options: []protocol.QuestionOption{{Label: "Linux"}, {Label: "Darwin"}},
+			}},
+		},
+		conversation.Question{
+			ItemID: "checks", Title: "Choose checks",
+			Fields: []conversation.QuestionField{{
+				Prompt: "Checks", Kind: conversation.QuestionMulti,
+				Options: []protocol.QuestionOption{{Label: "Unit"}, {Label: "Integration"}},
+			}},
+		},
+	}
+}
+
+func mixedInterruptPTYAnswersMatch(provided []conversation.InterruptAnswer) bool {
+	if len(provided) != 4 {
+		return false
+	}
+	approval, ok := provided[0].Answer.(conversation.ApprovalAnswer)
+	if !ok || approval.Decision != protocol.ApprovalApprove || approval.Remember != protocol.RememberWorkspace ||
+		approval.ArgumentOverride == nil ||
+		string(approval.ArgumentOverride.JSON()) != `{"command":"go test ./...","count":2}` {
+		return false
+	}
+	intent, ok := provided[1].Answer.(conversation.QuestionAnswer)
+	if !ok || len(intent.Values) != 1 || !slices.Equal(intent.Values[0], []string{"ship safely"}) {
+		return false
+	}
+	platform, ok := provided[2].Answer.(conversation.QuestionAnswer)
+	if !ok || len(platform.Values) != 1 || !slices.Equal(platform.Values[0], []string{"Darwin"}) {
+		return false
+	}
+	checks, ok := provided[3].Answer.(conversation.QuestionAnswer)
+	return ok && len(checks.Values) == 1 && slices.Equal(checks.Values[0], []string{"Unit", "Integration"})
+}
+
+func writeTerminalInput(t *testing.T, session *ptytest.Session, value string) {
+	t.Helper()
+	if written, err := io.WriteString(session, value); err != nil || written != len(value) {
+		t.Fatalf("write terminal input = (%d, %v), want %d bytes", written, err, len(value))
+	}
+}
+
+func requireFullViewportDialog(t *testing.T, screen *ptytest.Screen, title string) {
+	t.Helper()
+	rows := screen.Rows()
+	if len(rows) < 2 || !strings.HasPrefix(rows[0], "╭─"+title) || !strings.HasSuffix(rows[0], "╮") {
+		t.Fatalf("dialog does not own its top viewport edge:\n%s", strings.Join(rows, "\n"))
+	}
+	for index, row := range rows[1 : len(rows)-1] {
+		if !strings.HasPrefix(row, "│") || !strings.HasSuffix(row, "│") {
+			t.Fatalf("dialog row %d leaked the covered interface:\n%s", index+1, strings.Join(rows, "\n"))
+		}
+	}
+	if !strings.HasPrefix(rows[len(rows)-1], "╰") || !strings.HasSuffix(rows[len(rows)-1], "╯") {
+		t.Fatalf("dialog does not own its bottom viewport edge:\n%s", strings.Join(rows, "\n"))
+	}
+}
+
+func waitForVisibleTerminalText(t *testing.T, session *ptytest.Session, tokens ...string) *ptytest.Screen {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
+	defer cancel()
+	screen, err := session.Transcript().WaitForScreen(ctx, tokens...)
+	if err != nil {
+		t.Fatalf("terminal screen never showed %q: %v", tokens, err)
+	}
+	return screen
+}
+
+func quitInteractiveSession(t *testing.T, session *ptytest.Session) {
+	t.Helper()
+	if _, err := io.WriteString(session, "\x11\x11"); err != nil {
+		t.Fatal(err)
+	}
+	waitForInteractiveExit(t, session)
+}
+
+func waitForInteractiveExit(t *testing.T, session *ptytest.Session) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
+	defer cancel()
+	if err := session.Wait(ctx); err != nil {
+		t.Fatalf("flame did not exit cleanly: %v", err)
+	}
+}
+
+func assertOptionalTerminalMode(t *testing.T, transcript []byte, enabled bool, mode ptytest.Mode) {
+	t.Helper()
+	if enabled {
+		ptytest.RequireSymmetricModes(t, transcript, mode)
+		return
+	}
+	ptytest.RequireNotContains(t, transcript, mode.On)
+	ptytest.RequireNotContains(t, transcript, mode.Off)
+}
