@@ -15,18 +15,19 @@ export {
   stringifyJSON,
   type JSONNumber,
 } from "@frame/sdk/json";
+export { Backend, type StreamFrame } from "./backend.ts";
 export {
-  Backend,
   decodeReceipt,
   type CallContext,
   type ToolContext,
+  type ReceiptRequest,
+} from "./invocation.ts";
+export {
   type SetupContext,
   type SetupContribution,
   type SetupBinding,
   type ActivationResource,
-  type StreamFrame,
-  type ReceiptRequest,
-} from "./backend.ts";
+} from "./setup.ts";
 export {
   Refusal,
   invocationConflictCode,

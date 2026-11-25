@@ -2,7 +2,7 @@ import type { RpcClient } from "./client";
 import type { RpcId } from "./types";
 import { isErrorType, OperationFailure } from "./errors";
 import { MutationLookupError, mutationSettlementIsUnknown } from "./mutation";
-import { MutationJournalError } from "./durableMutationJournal";
+import { MutationJournalError } from "./mutationJournalErrors";
 import type {
   MutationReservation,
   PluginCommandInput,

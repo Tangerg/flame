@@ -23,14 +23,11 @@ import {
   inspectPresentation,
 } from "./presentation";
 import { slideLayout } from "./slides";
-import {
-  createWorkbook,
-  editWorkbook,
-  inspectWorkbook,
-  workbookCSV,
-} from "./workbook";
+import { inspectWorkbook, workbookCSV } from "./workbook";
+import { createWorkbook } from "./workbook-authoring";
+import { editWorkbook } from "./workbook-editing";
 
-export { encodeArchive } from "./archive";
+export { encodeArchive } from "./zip";
 export { hasPNGSignature } from "./images";
 export type { Format, OfficeFormat, Inspection } from "../../contracts/content";
 

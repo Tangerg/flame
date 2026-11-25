@@ -1,23 +1,24 @@
 import {
-  MutationJournalError,
-  MutationJournalOwnershipError,
   openDurableMutationJournal,
-  captureInstalledRoute,
-  captureRunCommand,
-  type DurableMutationIdentity,
   type DurableMutationJournal,
   type MutationJournalScope,
   type MutationJournalStorage,
+} from "./durableMutationJournal";
+import {
+  captureInstalledRoute,
+  captureRunCommand,
+  type DurableMutationIdentity,
   type RunCommand,
   type PluginCommandInput,
   type PluginCommandBinding,
-} from "./durableMutationJournal";
+} from "./mutationJournalEntry";
+import { MutationJournalError, MutationJournalOwnershipError } from "./mutationJournalErrors";
 import { MutationLookupError, mutationSettlementIsUnknown, type MutationPromise } from "./mutation";
 import type { CallPluginRequest } from "@flame/runtime-client/wire";
 import { RpcCancellationError } from "./errors";
 import { captureRequestMeta } from "./request";
 
-export type { PluginCommandInput, PluginCommandBinding } from "./durableMutationJournal";
+export type { PluginCommandInput, PluginCommandBinding } from "./mutationJournalEntry";
 import type { RequestMeta } from "./generated/wire.generated";
 
 export {
@@ -25,7 +26,7 @@ export {
   MutationJournalOwnershipError,
   MutationJournalScopeUnavailableError,
   MutationJournalStorageError,
-} from "./durableMutationJournal";
+} from "./mutationJournalErrors";
 export type { MutationJournalScope, MutationJournalStorage } from "./durableMutationJournal";
 
 export interface MutationReservation {

@@ -5,7 +5,8 @@ import {
   type ChartData,
 } from "../../contracts/content";
 import { OfficePackage, relations } from "./archive";
-import { createWorkbook, worksheetCells } from "./workbook";
+import { worksheetCells } from "./workbook";
+import { createWorkbook } from "./workbook-authoring";
 import {
   cellValue,
   rangeAddresses,

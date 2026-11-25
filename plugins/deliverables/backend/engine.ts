@@ -1,16 +1,5 @@
-import { constants } from "node:fs";
-import {
-  access,
-  lstat,
-  mkdir,
-  mkdtemp,
-  open,
-  realpath,
-  rm,
-  writeFile,
-} from "node:fs/promises";
-import { isAbsolute, join, relative, resolve, sep } from "node:path";
-import { createHash } from "node:crypto";
+import { lstat, mkdtemp, realpath, rm, writeFile } from "node:fs/promises";
+import { join } from "node:path";
 import { Refusal } from "@flame/backend-sdk/mcp";
 import { LIMITS } from "../contracts/limits";
 import { FORMATS, type Format } from "../contracts/content";
@@ -21,7 +10,6 @@ import type {
 } from "../contracts/evidence";
 import {
   confinedPlan,
-  DARWIN_SHELL,
   SYSTEM_FILES,
   SYSTEM_ROOTS,
   type PrivateDirectory,
@@ -29,291 +17,29 @@ import {
 import { runProcess, UnconfirmedProcessExit } from "./process";
 import { Office } from "./office";
 import { ASSET_MIME } from "./document";
-
-type Tool = "office" | "pdfinfo" | "pdftoppm" | "pdftotext";
-type InstalledTools = Omit<Record<Tool, string>, "office"> & {
-  office?: Office;
-};
-interface Configuration {
-  tools: Record<Tool, string>;
-  roots: string[];
-  issues: string[];
-}
-interface RenderFile {
-  filename: string;
-  mime: string;
-  bytes: Uint8Array;
-}
-
-const SETTINGS: Record<Tool, string> = {
-  office: "FLAME_DELIVERABLES_OFFICE",
-  pdfinfo: "FLAME_DELIVERABLES_PDFINFO",
-  pdftoppm: "FLAME_DELIVERABLES_PDFTOPPM",
-  pdftotext: "FLAME_DELIVERABLES_PDFTOTEXT",
-};
-const GENERAL_ROOTS = new Set([
-  "/",
-  "/home",
-  "/Users",
-  "/root",
-  "/workspace",
-  "/workspace/scratch",
-  "/tmp",
-  "/var",
-  "/private",
-  "/opt",
-  "/Applications",
-  "/etc",
-]);
-function within(root: string, path: string): boolean {
-  const suffix = relative(root, path);
-  return (
-    suffix === "" ||
-    (!suffix.startsWith(`..${sep}`) && suffix !== ".." && !isAbsolute(suffix))
-  );
-}
-
-function absolute(value: string): boolean {
-  return (
-    isAbsolute(value) &&
-    resolve(value) === value &&
-    !Array.from(value).some(
-      (character) =>
-        character.codePointAt(0)! < 32 || character.codePointAt(0) === 127,
-    )
-  );
-}
-
-function configuration(environment: NodeJS.ProcessEnv): Configuration {
-  const issues: string[] = [];
-  const tools = {} as Record<Tool, string>;
-  for (const [tool, setting] of Object.entries(SETTINGS) as Array<
-    [Tool, string]
-  >) {
-    const value = environment[setting] ?? "";
-    tools[tool] = value;
-    if (value && !absolute(value))
-      issues.push(`${setting} must be an absolute normalized executable path.`);
-  }
-  let roots: string[] = [];
-  if (environment.FLAME_DELIVERABLES_TOOL_ROOTS) {
-    try {
-      const value: unknown = JSON.parse(
-        environment.FLAME_DELIVERABLES_TOOL_ROOTS,
-      );
-      if (
-        !Array.isArray(value) ||
-        value.length > 16 ||
-        value.some(
-          (root) =>
-            typeof root !== "string" ||
-            !absolute(root) ||
-            GENERAL_ROOTS.has(root),
-        )
-      )
-        throw new Error("invalid roots");
-      roots = [...new Set(value as string[])].sort();
-    } catch {
-      issues.push(
-        "FLAME_DELIVERABLES_TOOL_ROOTS must name at most 16 specific absolute installation directories, never a general host root.",
-      );
-    }
-  }
-  return { tools, roots, issues };
-}
-
-function hasErrorCode(cause: unknown, ...codes: string[]): boolean {
-  return (
-    cause instanceof Error &&
-    "code" in cause &&
-    codes.includes(cause.code as string)
-  );
-}
-
-async function privateDirectory(path: string): Promise<void> {
-  await mkdir(path, { mode: 0o700 });
-}
-
-async function checkedDirectory(path: string): Promise<void> {
-  const info = await lstat(path);
-  if (
-    !info.isDirectory() ||
-    info.isSymbolicLink() ||
-    (await realpath(path)) !== path ||
-    (info.mode & 0o077) !== 0 ||
-    (process.getuid && info.uid !== process.getuid())
-  )
-    throw new Refusal(
-      "engine_private_directory",
-      "The rendering directory must be a canonical private directory owned by this process.",
-    );
-}
-
-async function readOutput(
-  path: string,
-  maximum: number,
-  expected: "content" | "maybeEmpty" = "content",
-): Promise<Uint8Array> {
-  let handle;
-  try {
-    // A FIFO can block open forever after its writer exits. Refuse special
-    // files first, and keep the descriptor nonblocking across the final check.
-    const entry = await lstat(path);
-    if (!entry.isFile() || entry.isSymbolicLink())
-      throw new Refusal(
-        "engine_output_missing",
-        "The rendering process did not produce the required regular output file.",
-      );
-    handle = await open(
-      path,
-      constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK,
-    );
-  } catch (cause) {
-    if (hasErrorCode(cause, "ENOENT", "ELOOP"))
-      throw new Refusal(
-        "engine_output_missing",
-        "The rendering process did not produce the required regular output file.",
-      );
-    throw cause;
-  }
-  try {
-    const info = await handle.stat();
-    if (
-      !info.isFile() ||
-      info.nlink !== 1 ||
-      (expected === "content" && info.size === 0) ||
-      info.size > maximum
-    )
-      throw new Refusal(
-        "engine_output_limit",
-        "The rendering output is empty, linked, or exceeds its admitted byte limit.",
-      );
-    const bytes = await handle.readFile();
-    if (bytes.byteLength !== info.size || bytes.byteLength > maximum)
-      throw new Refusal(
-        "engine_output_changed",
-        "The rendering output changed after its process exited.",
-      );
-    return bytes;
-  } finally {
-    await handle.close();
-  }
-}
-
-function pdf(bytes: Uint8Array): void {
-  if (Buffer.from(bytes.subarray(0, 5)).toString("ascii") !== "%PDF-")
-    throw new Refusal(
-      "engine_output_invalid",
-      "The renderer did not produce a PDF file.",
-    );
-}
-
-function png(bytes: Uint8Array): void {
-  const value = Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-  if (
-    value.length < 45 ||
-    !value
-      .subarray(0, 8)
-      .equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])) ||
-    value.readUInt32BE(8) !== 13 ||
-    value.toString("ascii", 12, 16) !== "IHDR" ||
-    value.toString("ascii", value.length - 8, value.length - 4) !== "IEND"
-  )
-    throw new Refusal(
-      "engine_preview_invalid",
-      "The renderer did not produce a complete PNG preview.",
-    );
-  const width = value.readUInt32BE(16),
-    height = value.readUInt32BE(20);
-  if (
-    !width ||
-    !height ||
-    width > LIMITS.previewPixels ||
-    height > LIMITS.previewPixels
-  )
-    throw new Refusal(
-      "engine_preview_limit",
-      "The page preview exceeds its admitted pixel dimensions.",
-    );
-}
-
-function digest(bytes: Uint8Array): string {
-  return createHash("sha256").update(bytes).digest("hex");
-}
-
-function pageCount(pdfinfo: string): number {
-  const match = /^Pages:\s+([1-9][0-9]*)\s*$/m.exec(pdfinfo);
-  const count = match ? Number(match[1]) : NaN;
-  if (!Number.isSafeInteger(count) || count < 1 || count > LIMITS.renderPages)
-    throw new Refusal(
-      "engine_page_limit",
-      `The PDF must contain between 1 and ${LIMITS.renderPages} pages.`,
-    );
-  return count;
-}
-
-function textChecks(text: string, truncated: boolean): Check[] {
-  const checks: Check[] = [];
-  if (truncated)
-    checks.push({
-      code: "text_truncated",
-      severity: "warning",
-      message:
-        "Extracted text exceeds the retained text limit; the page previews remain the complete visual evidence.",
-    });
-  if (!text.trim())
-    checks.push({
-      code: "text_empty",
-      severity: "warning",
-      message:
-        "No searchable text was observed; inspect the page previews for image-only or missing content.",
-    });
-  if (text.includes("\ufffd"))
-    checks.push({
-      code: "text_replacement_character",
-      severity: "warning",
-      message:
-        "Extracted text contains replacement characters; verify the corresponding glyphs on the page previews.",
-    });
-  return checks;
-}
-
-async function installedExecutable(
-  configured: string,
-  roots: readonly string[],
-): Promise<string | undefined> {
-  try {
-    const path = await realpath(configured);
-    const info = await lstat(path);
-    if (
-      !info.isFile() ||
-      info.isSymbolicLink() ||
-      !roots.some((root) => within(root, path))
-    )
-      return undefined;
-    await access(path, constants.X_OK);
-    return path;
-  } catch {
-    return undefined;
-  }
-}
-
-async function requireConfinement(): Promise<void> {
-  const confinement =
-    process.platform === "linux"
-      ? ["/usr/bin/bwrap", "/usr/bin/prlimit"]
-      : ["/usr/bin/sandbox-exec", DARWIN_SHELL, "/bin/ps"];
-  for (const path of confinement) {
-    try {
-      await access(path, constants.X_OK);
-    } catch {
-      throw new Refusal(
-        "engine_unavailable",
-        "The required native confinement or resource-limit tool is unavailable.",
-      );
-    }
-  }
-}
+import {
+  type Configuration,
+  type InstalledTools,
+  SETTINGS,
+  type Tool,
+  absolute,
+  configuration,
+  hasErrorCode,
+  installedExecutable,
+  requireConfinement,
+  within,
+} from "./engine-installation";
+import {
+  type RenderFile,
+  checkedDirectory,
+  digest,
+  pageCount,
+  pdf,
+  png,
+  privateDirectory,
+  readOutput,
+  textChecks,
+} from "./engine-output";
 
 export class Engine {
   readonly #configuration: Configuration;

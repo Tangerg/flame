@@ -4,7 +4,7 @@ import {
   MutationLookupError,
   mutationSettlementIsUnknown,
 } from "./mutation";
-import { MutationJournalError } from "./durableMutationJournal";
+import { MutationJournalError } from "./mutationJournalErrors";
 import type {
   PluginCommandInput,
   PluginCommandBinding,

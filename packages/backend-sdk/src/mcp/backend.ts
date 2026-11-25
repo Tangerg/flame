@@ -17,7 +17,6 @@ import { isJSONNumber, parseJSON } from "@frame/sdk/json";
 import {
   Lifetime,
   FrameError,
-  type Cleanup,
   type Release,
   type CloseOutcome,
 } from "@frame/sdk";
@@ -31,122 +30,30 @@ import {
   digestJSON,
   exactFields,
   freezeJSON,
-  validCommand,
   validName,
 } from "./contract.ts";
-import {
-  callbackRef,
-  callHost,
-  Refusal,
-  streamDelivery,
-  type CallbackRef,
-  type Invocation,
-} from "./callback.ts";
+import { callbackRef, callHost, Refusal, streamDelivery } from "./callback.ts";
 import wire from "./protocol.generated.json";
+import {
+  type CallContext,
+  type ReceiptRequest,
+  admittedInvocation,
+  admittedToolContext,
+  decodeReceipt,
+} from "./invocation.ts";
+import {
+  type ActivationResource,
+  type SetupContribution,
+  type SetupHandler,
+  assertBackground,
+  validateRequirements,
+} from "./setup.ts";
 
-// The calling owner's Run scope on a model Tool call; Project is empty when the
-// Run's Session belongs to none.
-export interface ToolContext {
-  readonly cwd: string;
-  readonly project?: string;
-  readonly embeddingSpace?: string;
-}
-export interface CallContext {
-  readonly signal: AbortSignal;
-  readonly commandId?: string;
-  readonly invocation?: Invocation;
-  readonly toolContext?: ToolContext;
-  readonly requestInput: string;
-  readonly inputDigest: string;
-  readonly callback?: CallbackRef;
-  readonly lifetime: Lifetime;
-  defer(cleanup: () => void | Release | Promise<void | Release>): Cleanup;
-}
-export interface SetupBinding {
-  readonly installationId: string;
-  readonly digest: string;
-  readonly contribution: string;
-  readonly contract: import("./contract.ts").CapabilityDescriptor;
-}
-export interface SetupContribution {
-  readonly id: string;
-  readonly export: string;
-  readonly background?: Invocation["target"];
-  readonly requires: ReadonlyArray<{
-    readonly id: string;
-    readonly contract: import("./contract.ts").CapabilityDescriptor;
-    readonly optional: boolean;
-    readonly bindings: readonly SetupBinding[];
-  }>;
-}
-function validateRequirements(
-  dependencies: SetupContribution["requires"],
-): void {
-  const requirements = new Set<string>();
-  for (const dependency of dependencies) {
-    exactFields(dependency, ["id", "contract", "optional", "bindings"]);
-    if (
-      typeof dependency.id !== "string" ||
-      !validName(dependency.id) ||
-      requirements.has(dependency.id) ||
-      typeof dependency.optional !== "boolean" ||
-      !Array.isArray(dependency.bindings)
-    )
-      throw new Error("plugin: invalid setup dependency");
-    requirements.add(dependency.id);
-    const contract = new Capability(dependency.contract);
-    if (
-      (!dependency.optional && !dependency.bindings.length) ||
-      (contract.descriptor.composition === "selection" &&
-        dependency.bindings.length > 1)
-    )
-      throw new Error("plugin: invalid dependency cardinality");
-    for (const binding of dependency.bindings)
-      validateSetupBinding(binding, contract);
-  }
-}
-
-function validateSetupBinding(
-  binding: SetupBinding,
-  contract: Capability,
-): void {
-  exactFields(binding, [
-    "installationId",
-    "digest",
-    "contribution",
-    "contract",
-  ]);
-  if (
-    typeof binding.installationId !== "string" ||
-    !validName(binding.installationId) ||
-    typeof binding.contribution !== "string" ||
-    !validName(binding.contribution) ||
-    typeof binding.digest !== "string" ||
-    !/^[a-f0-9]{64}$/.test(binding.digest) ||
-    new Capability(binding.contract).identity !== contract.identity
-  )
-    throw new Error("plugin: invalid captured dependency binding");
-}
-
-export interface ActivationResource {
-  close(): void | Promise<void>;
-  start?(): void | Promise<void>;
-}
-export interface ReceiptRequest {
-  id: string;
-  method: string;
-  inputDigest: string;
-}
-export interface SetupContext {
-  readonly signal: AbortSignal;
-  readonly contributions: readonly SetupContribution[];
-  readonly callback?: CallbackRef;
-  readonly lifetime: Lifetime;
-  defer(cleanup: () => void | Release | Promise<void | Release>): Cleanup;
-}
 export type StreamFrame<C, R> =
   { kind: "chunk"; value: C } | { kind: "result"; value: R };
+
 type Decoder<P> = (value: unknown, source: string) => P;
+
 interface BoundMethod {
   method: Method;
   decode: Decoder<unknown>;
@@ -159,59 +66,8 @@ interface BoundMethod {
     input: unknown,
   ) => AsyncIterable<StreamFrame<unknown, unknown>>;
 }
+
 type Extra = RequestHandlerExtra<Request, Notification>;
-type SetupHandler = (
-  context: SetupContext,
-) => void | ActivationResource | Promise<void | ActivationResource>;
-
-function admittedInvocation(
-  value: unknown,
-  target: string | undefined,
-): Invocation | undefined {
-  if (value === undefined) return undefined;
-  const invocation = value as Invocation;
-  exactFields(invocation, ["id", "origin", "target"], ["parent"]);
-  exactFields(invocation.target, ["scope", "reference"]);
-  if (
-    !validName(invocation.id) ||
-    !validName(invocation.origin) ||
-    (invocation.parent !== undefined &&
-      (!validName(invocation.parent) || invocation.parent === invocation.id)) ||
-    !validName(invocation.target.scope) ||
-    typeof invocation.target.reference !== "string" ||
-    !invocation.target.reference ||
-    /\p{Cc}/u.test(invocation.target.reference) ||
-    (target !== undefined && invocation.target.scope !== target)
-  )
-    throw new Error("plugin: invalid calling-owner invocation");
-  return invocation;
-}
-
-function admittedToolContext(value: unknown): ToolContext | undefined {
-  if (value === undefined) return undefined;
-  const toolContext = value as ToolContext;
-  exactFields(toolContext, ["cwd"], ["project", "embeddingSpace"]);
-  if (
-    typeof toolContext.cwd !== "string" ||
-    !toolContext.cwd.trim() ||
-    (toolContext.project !== undefined &&
-      typeof toolContext.project !== "string") ||
-    (toolContext.embeddingSpace !== undefined &&
-      typeof toolContext.embeddingSpace !== "string")
-  )
-    throw new Error("plugin: invalid captured Tool context");
-  return toolContext;
-}
-
-function assertBackground(background: unknown): void {
-  exactFields(background, ["scope", "reference"]);
-  if (
-    background.scope !== "installation" ||
-    typeof background.reference !== "string" ||
-    !validName(background.reference)
-  )
-    throw new Error("plugin: background must identify its installation");
-}
 
 export class Backend {
   readonly #server: Server;
@@ -738,17 +594,6 @@ export class Backend {
   wait(signal?: AbortSignal): Promise<CloseOutcome> {
     return this.#lifetime.wait(signal);
   }
-}
-
-export function decodeReceipt(value: unknown): ReceiptRequest {
-  const request = value as ReceiptRequest;
-  if (
-    !validCommand(request.id) ||
-    !validName(request.method) ||
-    !/^[a-f0-9]{64}$/.test(request.inputDigest)
-  )
-    throw new Error("plugin: invalid receipt identity");
-  return request;
 }
 
 async function closeOwned(owner: Lifetime): Promise<void> {

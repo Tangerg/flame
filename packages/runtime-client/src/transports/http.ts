@@ -1,4 +1,4 @@
-import { bodyCancellation, isExpectedAbort, isPrimaryFailure, retainCleanupFailure } from "./body";
+import { bodyCancellation, isExpectedAbort, isPrimaryFailure } from "./body";
 import { readResponseDocument, responseDocumentLimit } from "./document";
 import { endpointAcceptsBearer, requireRuntimeEndpoint } from "../endpoint";
 import {
@@ -9,7 +9,7 @@ import {
   SpanStatusCode,
   trace,
 } from "@opentelemetry/api";
-import { createParser, type EventSourceMessage } from "eventsource-parser";
+import { createParser } from "eventsource-parser";
 import { createPushPullChannel } from "../channel";
 import { stringifyJSON } from "@frame/sdk/json";
 import {
@@ -27,13 +27,21 @@ import {
   type TransportResponseMetadata,
   type TransportSendOptions,
 } from "../transport";
-import type { RpcId, RpcMessage, RpcResponse } from "../types";
+import type { RpcId, RpcResponse } from "../types";
 import { isResponse, parseRpcMessage } from "../types";
 import { HTTP_ENDPOINTS, HTTP_HEADERS, RPC_HTTP } from "@flame/runtime-client/wire";
 import {
   isWireStreamingMethodName,
   type WireStreamingMethodName,
 } from "@flame/runtime-client/methods";
+import {
+  admitStreamFrame,
+  consumedBeforeAbort,
+  feedEventStreamText,
+  streamReadError,
+  utf8StreamDecoder,
+  withCleanupFailure,
+} from "./eventStream";
 
 const MAXIMUM_EVENT_STREAM_FRAME_CHARACTERS = 128 * 1024 * 1024;
 
@@ -85,150 +93,12 @@ export interface HttpTransportConfig {
   maximumEventStreamFrameBytes?: number;
 }
 
-interface EventStreamTextParser {
-  feed(chunk: string): void;
-}
-
 function requireExactHeaderValues(headers: Record<string, string>): void {
   // Fetch's byte strings cannot retain the UTF-8 identity Runtime reads from non-ASCII text.
   for (const value of Object.values(headers)) {
     if (!/^[\t\x20-\x7e]*$/u.test(value) || value.trim() !== value)
       throw new TypeError("HTTP request headers must contain exact ASCII field values");
   }
-}
-
-// Plugin streams carry ephemeral messages only: a replay cursor or a named event
-// would promise a resumption the plugin channel cannot honour.
-function admitStreamFrame(
-  event: EventSourceMessage,
-  method: WireStreamingMethodName,
-  maximumFrameBytes: number | undefined,
-  requestId: string | undefined,
-): RpcMessage {
-  if (
-    maximumFrameBytes !== undefined &&
-    new TextEncoder().encode(event.data).byteLength + 1 > maximumFrameBytes
-  )
-    throw new RpcTransportError(
-      "event-stream frame exceeds its byte capacity",
-      undefined,
-      requestId,
-    );
-  if (
-    method === "plugins.stream" &&
-    (event.id || (event.event !== undefined && event.event !== "message"))
-  )
-    throw new RpcProtocolError(
-      "plugin stream",
-      [{ path: "$", detail: "requires ephemeral message frames without a replay cursor" }],
-      requestId,
-    );
-  const message = parseRpcMessage(event.data);
-  if (!message)
-    throw new RpcProtocolError(
-      "event stream",
-      [{ path: "$", detail: "must contain a valid JSON-RPC envelope" }],
-      requestId,
-    );
-  return message;
-}
-
-function utf8StreamDecoder(requestId: string | undefined): (chunk?: Uint8Array) => string {
-  const decoder = new TextDecoder("utf-8", { fatal: true });
-  return (chunk) => {
-    try {
-      return decoder.decode(chunk, { stream: chunk !== undefined });
-    } catch (cause) {
-      const error = new RpcProtocolError(
-        "event stream",
-        [{ path: "$", detail: "must contain valid UTF-8" }],
-        requestId,
-      );
-      error.cause = cause;
-      throw error;
-    }
-  };
-}
-
-async function feedEventStreamText(
-  parser: EventStreamTextParser,
-  text: string,
-  afterLine: () => Promise<boolean> | undefined,
-): Promise<boolean> {
-  let start = 0;
-  while (start < text.length) {
-    let lineEnd = start;
-    while (lineEnd < text.length && text[lineEnd] !== "\n" && text[lineEnd] !== "\r") {
-      lineEnd++;
-    }
-    if (lineEnd === text.length) {
-      parser.feed(text.slice(start));
-      const delivery = afterLine();
-      return delivery === undefined ? true : delivery;
-    }
-    if (text[lineEnd] === "\r" && text[lineEnd + 1] === "\n") lineEnd++;
-    parser.feed(text.slice(start, lineEnd + 1));
-    const delivery = afterLine();
-    if (delivery !== undefined && !(await delivery)) return false;
-    start = lineEnd + 1;
-  }
-  return true;
-}
-
-// Resolves false when the caller abandons the stream before its consumer
-// settles the delivered event; a consumer failure still rejects.
-function consumedBeforeAbort(delivery: Promise<void>, signal?: AbortSignal): Promise<boolean> {
-  return new Promise<boolean>((resolve, reject) => {
-    const abort = () => {
-      cleanup();
-      resolve(false);
-    };
-    const cleanup = () => signal?.removeEventListener("abort", abort);
-    void delivery.then(
-      () => {
-        cleanup();
-        resolve(true);
-      },
-      (error: unknown) => {
-        cleanup();
-        reject(error);
-      },
-    );
-    if (signal?.aborted) {
-      resolve(false);
-      return;
-    }
-    signal?.addEventListener("abort", abort, { once: true });
-  });
-}
-
-// A read failure the owner did not cause by aborting becomes the stream's error.
-function streamReadError(
-  err: unknown,
-  signal: AbortSignal | undefined,
-  requestId: string | undefined,
-): Error | undefined {
-  if (signal && isExpectedAbort(err, signal)) return undefined;
-  const error =
-    err instanceof RpcTransportError || err instanceof RpcProtocolError
-      ? err
-      : new RpcConnectionError(errorMessage(err), requestId);
-  if (error !== err) error.cause = err;
-  return error;
-}
-
-function withCleanupFailure(
-  streamError: Error | undefined,
-  cancelError: unknown,
-  requestId: string | undefined,
-): Error {
-  if (streamError) {
-    retainCleanupFailure(streamError, cancelError);
-    return streamError;
-  }
-  const error = new RpcConnectionError("response body cancellation failed", requestId);
-  error.cause = cancelError;
-  return error;
 }
 
 export function createHttpTransport(config: HttpTransportConfig): Transport {

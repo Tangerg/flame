@@ -1,4 +1,3 @@
-import { performance } from "node:perf_hooks";
 import { declareMethod } from "@flame/backend-sdk/mcp";
 import {
   cloneJSON,
@@ -34,6 +33,14 @@ import {
   type EngineTool,
 } from "../contracts/tools";
 import manifest from "../package/plugin.json";
+import {
+  CALL_MS,
+  CLEANUP_MS,
+  CONNECT_MS,
+  ExecutionDeadline,
+  MAX_TIMER_MS,
+  RESULT_MARGIN_MS,
+} from "./engineDeadline";
 
 export type { EngineConfig } from "./engineProcess";
 
@@ -86,22 +93,19 @@ export class EngineStartupFailure extends Error {
   }
 }
 
-const CONNECT_MS = 120_000;
-const CLEANUP_MS = 120_000;
-const CALL_MS = 120_000;
-const RESULT_MARGIN_MS = 30_000;
-const MAX_TIMER_MS = 2 ** 31 - 1;
-
 // SDK schemas admit the protocol; their parsed projections must not rewrite evidence.
 const originalToolResult = z.custom<CallToolResult>(
   (value) => CallToolResultSchema.safeParse(value).success,
 );
+
 const originalTools = z.custom<ListToolsResult>(
   (value) => ListToolsResultSchema.safeParse(value).success,
 );
+
 const originalElicitationParams = z.custom<ElicitRequest["params"]>(
   (value) => ElicitRequestParamsSchema.safeParse(value).success,
 );
+
 const originalElicitation = z.object({
   method: z.literal("elicitation/create"),
   params: originalElicitationParams,
@@ -124,67 +128,6 @@ function ownedIdentity(value: string): boolean {
       return code < 32 || code === 127;
     })
   );
-}
-
-class ExecutionDeadline {
-  readonly controller = new AbortController();
-  readonly #parent: AbortSignal;
-  #remaining: number;
-  #started = performance.now();
-  #timer?: ReturnType<typeof setTimeout>;
-  #paused = 0;
-  #closed = false;
-
-  constructor(milliseconds: number, parent: AbortSignal) {
-    this.#remaining = milliseconds;
-    this.#parent = parent;
-    if (parent.aborted) this.#abort();
-    else {
-      parent.addEventListener("abort", this.#abort, { once: true });
-      this.#resume();
-    }
-  }
-
-  readonly #abort = (): void => {
-    this.controller.abort(this.#parent.reason);
-    this.close();
-  };
-
-  #resume(): void {
-    if (this.#closed || this.#paused || this.controller.signal.aborted) return;
-    this.#started = performance.now();
-    this.#timer = setTimeout(
-      () => {
-        this.controller.abort(
-          new Error("computer: engine execution deadline elapsed"),
-        );
-        this.close();
-      },
-      Math.max(0, this.#remaining),
-    );
-  }
-
-  pause(): () => void {
-    if (this.#closed) return () => {};
-    if (this.#paused++ === 0) {
-      clearTimeout(this.#timer);
-      this.#remaining -= performance.now() - this.#started;
-    }
-    let resumed = false;
-    return () => {
-      if (resumed || this.#closed) return;
-      resumed = true;
-      this.#paused--;
-      this.#resume();
-    };
-  }
-
-  close(): void {
-    if (this.#closed) return;
-    this.#closed = true;
-    clearTimeout(this.#timer);
-    this.#parent.removeEventListener("abort", this.#abort);
-  }
 }
 
 interface ActiveCall {
