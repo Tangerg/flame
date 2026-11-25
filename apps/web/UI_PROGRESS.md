@@ -30,7 +30,7 @@ Two review lists decided the same kind of thing in opposite orders and styles: A
 
 ## Activity counts speak for folded rows (2026-11-26)
 
-A tool group or narrative wave put its status line (`● 1 in progress`, `2 issues`, `1 denied`) under its summary whether or not it was open, so an expanded running group said `1 in progress` above a row that already carried its own running dot. The status now shows only while the group is folded, where it is the only trace of those rows; open rows speak for themselves. Native Lab `agent` `answer-opening` (ZH): the auto-expanded group reads `读取 1 · 搜索 1` over its two rows without the count; folded in the browser pane on the same Lab page, it reads `● 1 项进行中` under the summary (native clicks did not toggle this disclosure in the host this round). Web typecheck and Prettier pass.
+A tool group or narrative wave put its status line (`● 1 in progress`, `2 issues`, `1 denied`) under its summary whether or not it was open, so an expanded running group said `1 in progress` above a row that already carried its own running dot. The status now shows only while the group is folded, where it is the only trace of those rows; open rows speak for themselves. Native Lab `agent` `answer-opening` (ZH): the auto-expanded group reads `读取 1 · 搜索 1` over its two rows without the count; folded in the browser pane on the same Lab page, it reads `● 1 项进行中` under the summary (a system memory dialog floating over the middle of the display swallowed native clicks on the transcript that round; an event probe showed none reached WebKit, so this was not a product fault). Web typecheck and Prettier pass.
 
 ## A missing folder said once (2026-11-26)
 
