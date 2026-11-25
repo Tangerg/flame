@@ -54,7 +54,7 @@ export const zhTW: Record<string, string> = {
   "bucket.byScope.unattached": "未關聯",
   "bucket.costUsd": "{{cost}} USD",
   "bucket.attempts_other": "{{calls}} 次嘗試",
-  "bucket.knownInput_other": "{{tokens}} 已知輸入",
+  "bucket.knownInput_other": "{{tokens}} 已知輸入權杖",
   "bucket.knownOutput_other": "{{tokens}} 已知輸出權杖",
   "bucket.details": "權杖與涵蓋明細",
   "fact.knownCost": "已知費用 (USD)",
