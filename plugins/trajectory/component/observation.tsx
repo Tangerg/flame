@@ -56,7 +56,6 @@ export function title(
       title={title}
       description={
         <RecordMeta>
-          {tone === "neutral" && !ordinary && <span>{label}</span>}
           {row.type === "run" && <code>{row.run.id}</code>}
           <time dateTime={row.occurredAt}>
             {clock.format(new Date(row.occurredAt))}
@@ -64,7 +63,7 @@ export function title(
           {approvalInline && <span>{approvalInline}</span>}
         </RecordMeta>
       }
-      status={tone !== "neutral" && <Badge tone={tone}>{label}</Badge>}
+      status={!ordinary && <Badge tone={tone}>{label}</Badge>}
     />
   );
 }
