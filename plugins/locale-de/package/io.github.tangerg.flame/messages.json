@@ -323,7 +323,6 @@
   "approvals.rules": "Gemerkte Regeln",
   "approvals.rules.sub": "Eine passende Ablehnung verhindert auch die automatische Freigabe.",
   "approvals.rules.empty": "Noch keine Regeln",
-  "approvals.rules.emptySub": "Beim Genehmigen/Ablehnen „nicht mehr fragen“ wählen, um eine hinzuzufügen.",
   "approvals.scope.session": "Sitzung",
   "approvals.scope.workspace": "Ordner",
   "approvals.scope.global": "Global",

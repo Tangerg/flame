@@ -384,7 +384,6 @@ export const en = {
   "approvals.rules": "Remembered rules",
   "approvals.rules.sub": "A matching denial still blocks automatic approval.",
   "approvals.rules.empty": "No rules yet",
-  "approvals.rules.emptySub": "Approve or deny with “don't ask again” to add one.",
   "approvals.scope.session": "Session",
   "approvals.scope.workspace": "Folder",
   "approvals.scope.global": "Global",

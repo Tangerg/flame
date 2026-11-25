@@ -102,7 +102,7 @@ export function RulesRow() {
     <SettingRow
       label={t("approvals.rules")}
       labelId={titleId}
-      sub={t("approvals.rules.sub")}
+      sub={data?.length ? t("approvals.rules.sub") : undefined}
       align="stacked"
     >
       <div ref={context} role="group" aria-labelledby={titleId} tabIndex={-1} data-focus-inset="">
@@ -113,9 +113,8 @@ export function RulesRow() {
           onRetry={refetch}
           unsupported={{ icon: "shield" }}
           empty={{
-            icon: "check",
+            icon: "shield",
             title: t("approvals.rules.empty"),
-            sub: t("approvals.rules.emptySub"),
             align: "start",
           }}
         >

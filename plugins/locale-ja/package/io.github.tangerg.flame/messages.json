@@ -318,7 +318,6 @@
   "approvals.rules": "記憶したルール",
   "approvals.rules.sub": "一致する拒否は自動承認でも適用されます。",
   "approvals.rules.empty": "ルールはまだありません",
-  "approvals.rules.emptySub": "承認・拒否時に「今後確認しない」を選ぶと追加されます。",
   "approvals.scope.session": "セッション",
   "approvals.scope.workspace": "フォルダ",
   "approvals.scope.global": "グローバル",

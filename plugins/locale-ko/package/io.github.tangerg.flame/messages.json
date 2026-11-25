@@ -318,7 +318,6 @@
   "approvals.rules": "기억된 규칙",
   "approvals.rules.sub": "일치하는 거부 규칙은 자동 승인도 차단합니다.",
   "approvals.rules.empty": "아직 규칙이 없습니다",
-  "approvals.rules.emptySub": "승인 또는 거부 시 '다시 묻지 않기'로 추가하세요.",
   "approvals.scope.session": "세션",
   "approvals.scope.workspace": "폴더",
   "approvals.scope.global": "전역",
