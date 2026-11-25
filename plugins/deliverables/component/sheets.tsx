@@ -46,6 +46,8 @@ import {
   type Entry,
   type Point,
 } from "./sheets-grid";
+import { RevisionChanges, SheetChanges } from "./changes";
+import * as token from "@flame/ui/tokens.stylex";
 
 const REFERENCE_CELLS = 200;
 
@@ -198,12 +200,14 @@ export function WorkbookStudio({
   document,
   draft,
   onDraft,
+  dateTime,
   t,
 }: {
   state: LiveState;
   document: DocumentRead;
   draft: Draft<CellOperation> | undefined;
   onDraft(update: DraftUpdate<CellOperation>): void;
+  dateTime: Intl.DateTimeFormat;
   t: Translate;
 }) {
   const [editing, setEditing] = useState<Entry>();
@@ -224,6 +228,7 @@ export function WorkbookStudio({
   const [focus, setFocus] = useState<Point>({ row: 1, column: 1 });
   const entry = useRef(editing);
   entry.current = editing;
+  const editor = useRef<HTMLDivElement>(null);
   const sheet =
     layout?.sheets.find((entry) => entry.id === sheetId) ?? layout?.sheets[0];
   const edits = useMemo(() => {
@@ -302,8 +307,30 @@ export function WorkbookStudio({
           )
         }
       />
+      <RevisionChanges live={live} dateTime={dateTime} t={t}>
+        {(before, after) => (
+          <SheetChanges
+            before={before}
+            after={after}
+            onOpen={(target) => {
+              setSheetId(target.sheet);
+              edit(undefined);
+              select(pointOf(target.ref), false);
+              editor.current?.scrollIntoView({ block: "nearest" });
+            }}
+            t={t}
+          />
+        )}
+      </RevisionChanges>
       {layout && sheet && (
-        <>
+        <div
+          ref={editor}
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: token.layout.contentGap,
+          }}
+        >
           {layout.sheets.length > 1 && (
             <Segmented
               ariaLabel={t("sheets.list")}
@@ -371,7 +398,7 @@ export function WorkbookStudio({
             handoff={handoff}
             t={t}
           />
-        </>
+        </div>
       )}
       {editedDraft && (
         <DraftToolbar

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import type { ComposerReference, Translate } from "@flame/component-sdk";
 import { Button, Metadata, PanelSection } from "@flame/ui";
 import {
@@ -29,6 +29,7 @@ import {
   type DocOperation,
 } from "./docs-draft";
 import { InsertedBlock, SavedBlock, type Selection } from "./docs-blocks";
+import { BlockChanges, RevisionChanges } from "./changes";
 import { editableTarget } from "./slides-inspector";
 
 function blockReference(
@@ -117,12 +118,14 @@ export function DocumentStudio({
   document,
   draft,
   onDraft,
+  dateTime,
   t,
 }: {
   state: LiveState;
   document: DocumentRead;
   draft: Draft<DocOperation> | undefined;
   onDraft(update: DraftUpdate<DocOperation>): void;
+  dateTime: Intl.DateTimeFormat;
   t: Translate;
 }) {
   // Block identities are positions in one revision, so a selection ends when
@@ -141,6 +144,7 @@ export function DocumentStudio({
     holding: !!focus?.editing,
   });
   const handoff = useHandoff(state, t);
+  const body = useRef<HTMLDivElement>(null);
   const layout = live.read?.value;
   const current = focus?.revision === live.viewed ? focus : undefined;
   const items = useMemo(
@@ -183,6 +187,21 @@ export function DocumentStudio({
           )
         }
       />
+      <RevisionChanges live={live} dateTime={dateTime} t={t}>
+        {(before, after) => (
+          <BlockChanges
+            before={before}
+            after={after}
+            onOpen={(id) => {
+              select({ source: "saved", id });
+              body.current
+                ?.querySelector(`[data-block="${CSS.escape(id)}"]`)
+                ?.scrollIntoView({ block: "center" });
+            }}
+            t={t}
+          />
+        )}
+      </RevisionChanges>
       {layout && (
         <div
           onKeyDown={(event) => {
@@ -203,6 +222,7 @@ export function DocumentStudio({
             {t("docs.insertStart")}
           </Button>
           <div
+            ref={body}
             role="list"
             aria-label={t("docs.body")}
             style={{

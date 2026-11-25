@@ -248,7 +248,7 @@ export function SavedBlock({
         block.runs.length > 0,
     );
   return (
-    <div role="listitem" style={frame(selected, deleted)}>
+    <div role="listitem" data-block={block.id} style={frame(selected, deleted)}>
       <div
         role="button"
         tabIndex={0}

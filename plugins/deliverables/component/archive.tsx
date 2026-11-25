@@ -193,6 +193,13 @@ export function ArchiveList({
   );
 }
 
+export const revisionLabel = (
+  revision: Revision,
+  dateTime: Intl.DateTimeFormat,
+  t: Translate,
+) =>
+  `${formatTimestamp(revision.createdAt, dateTime)} · ${t(`operation.${revision.operation}`)} · ${revision.id.slice(0, 12)}`;
+
 function revisionChoices(
   revisions: readonly Revision[],
   selected: string,
@@ -201,7 +208,7 @@ function revisionChoices(
 ) {
   const revisionOptions = revisions.map((revision) => ({
     value: revision.id,
-    label: `${formatTimestamp(revision.createdAt, dateTime)} · ${t(`operation.${revision.operation}`)} · ${revision.id.slice(0, 12)}`,
+    label: revisionLabel(revision, dateTime, t),
   }));
   if (!revisionOptions.some((option) => option.value === selected))
     revisionOptions.unshift({

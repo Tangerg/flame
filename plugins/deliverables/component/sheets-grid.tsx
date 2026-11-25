@@ -199,38 +199,38 @@ export function Grid({
   const range = bounds(anchor, focus);
   const columnList = Array.from({ length: columns }, (_, index) => index + 1);
   const grid = useRef<HTMLDivElement>(null);
-  const focusedCell = useRef<HTMLTableCellElement>(null);
-  // Rows are windowed, so vertical reveal is computed in move; columns are
-  // all rendered with content widths, so the focused cell is measured here.
+  // Rows are windowed, so the focused row may not be rendered yet; its
+  // position is computed, and its column is measured from the header row.
   useLayoutEffect(() => {
     const viewport = grid.current;
-    const cell = focusedCell.current;
-    if (!viewport || !cell) return;
-    const header = viewport.querySelector("th")?.offsetWidth ?? 0;
-    if (cell.offsetLeft - header < viewport.scrollLeft)
-      viewport.scrollLeft = cell.offsetLeft - header;
-    else if (
-      cell.offsetLeft + cell.offsetWidth >
-      viewport.scrollLeft + viewport.clientWidth
-    )
-      viewport.scrollLeft =
-        cell.offsetLeft + cell.offsetWidth - viewport.clientWidth;
-  }, [focus.column]);
-  const writable = (point: Point) => editable && !lockOf(sheet, point);
-
-  const move = (point: Point, extend = false) => {
-    const next = {
-      row: Math.min(Math.max(point.row, 1), 1048576),
-      column: Math.min(Math.max(point.column, 1), 16384),
-    };
-    onSelect(next, extend);
-    const viewport = grid.current;
     if (!viewport) return;
-    const top = (next.row - 1) * ROW_HEIGHT;
+    const top = (focus.row - 1) * ROW_HEIGHT;
     if (top < viewport.scrollTop) viewport.scrollTop = top;
     else if (top + ROW_HEIGHT * 2 > viewport.scrollTop + viewport.clientHeight)
       viewport.scrollTop = top + ROW_HEIGHT * 2 - viewport.clientHeight;
-  };
+    const headers = viewport.querySelectorAll<HTMLElement>("thead th");
+    const corner = headers[0]?.offsetWidth ?? 0;
+    const column = headers[focus.column];
+    if (!column) return;
+    if (column.offsetLeft - corner < viewport.scrollLeft)
+      viewport.scrollLeft = column.offsetLeft - corner;
+    else if (
+      column.offsetLeft + column.offsetWidth >
+      viewport.scrollLeft + viewport.clientWidth
+    )
+      viewport.scrollLeft =
+        column.offsetLeft + column.offsetWidth - viewport.clientWidth;
+  }, [focus.row, focus.column, sheet.id]);
+  const writable = (point: Point) => editable && !lockOf(sheet, point);
+
+  const move = (point: Point, extend = false) =>
+    onSelect(
+      {
+        row: Math.min(Math.max(point.row, 1), 1048576),
+        column: Math.min(Math.max(point.column, 1), 16384),
+      },
+      extend,
+    );
   const begin = (text: string) => {
     if (!writable(focus)) return;
     onEdit({ ref: refOf(focus), text, source: "cell" });
@@ -312,6 +312,9 @@ export function Grid({
         setScrollTop(event.currentTarget.scrollTop)
       }
       style={{
+        // Makes the grid the offset parent of its sticky headers, so their
+        // offsets are positions in its scrolled content.
+        position: "relative",
         maxHeight: ROW_HEIGHT * (VIEW_ROWS + 1),
         overflow: "auto",
         border: "1px solid var(--color-border)",
@@ -371,7 +374,6 @@ export function Grid({
                 return (
                   <td
                     key={column}
-                    ref={focused ? focusedCell : undefined}
                     role="gridcell"
                     aria-selected={selected}
                     aria-readonly={lock ? true : undefined}

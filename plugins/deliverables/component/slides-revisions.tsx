@@ -5,7 +5,7 @@ import { type ElementView, type SlideLayout } from "../contracts/layouts";
 import type { Draft } from "./live-draft";
 import { Reconcile } from "./live";
 import { reconcile, withCurrent, type SlideOperation } from "./slides-draft";
-import { inches, label } from "./slides-presentation";
+import { chartText, frameText, label } from "./slides-presentation";
 
 function describe(
   operation: SlideOperation,
@@ -22,23 +22,8 @@ function describe(
 }
 
 function show(operation: SlideOperation, value: unknown, t: Translate) {
-  if (operation.type === "setFrame") {
-    const frame = value as Frame;
-    return `${inches(frame.x)}, ${inches(frame.y)} · ${inches(frame.width)} × ${inches(frame.height)} in`;
-  }
-  if (operation.type === "setChartData") {
-    const data = value as ChartData;
-    return data.series
-      .map(
-        (series) =>
-          `${series.name}: ${data.categories
-            .map(
-              (category, point) => `${category} ${series.values[point] ?? "–"}`,
-            )
-            .join(" · ")}`,
-      )
-      .join("; ");
-  }
+  if (operation.type === "setFrame") return frameText(value as Frame);
+  if (operation.type === "setChartData") return chartText(value as ChartData);
   if (operation.type === "deleteElement") return label(value as ElementView, t);
   return String(value);
 }

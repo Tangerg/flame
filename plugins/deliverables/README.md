@@ -110,6 +110,16 @@ with the same projection. A reference names saved revisions only, so the action
 waits until the draft is saved or discarded. Hosts without a Composer
 collaborator get "Copy reference for Agent" instead.
 
+"Changes" lists what the shown revision changed since an earlier revision of
+the same document, by default its parent. The list is derived in the component
+from both revisions' projections, so it covers what the editors show: slides
+added, removed or moved and their element text, frame, chart-data and notes
+changes; cells by sheet; and document blocks. Block identities are positions,
+so blocks are aligned by their exact XML and paired by text. Text changes are
+marked word by word, and a change that still exists in the shown revision
+selects its target. A chosen earlier revision stays the base while the editor
+follows the head, so the list keeps everything since that revision.
+
 **Slides.** Each element's native frame is drawn as a selectable box; this is an
 editing surface, not a rendering, and actual page images remain the render
 evidence. Elements can be dragged, resized, nudged with the arrow keys (Shift

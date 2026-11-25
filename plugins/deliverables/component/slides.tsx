@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { type Translate } from "@flame/component-sdk";
 import { Badge, Button, PanelSection, RecordGroup } from "@flame/ui";
 import { type Frame } from "../contracts/content";
@@ -17,6 +17,7 @@ import {
 import { preview, record, revert, type SlideOperation } from "./slides-draft";
 import { label } from "./slides-presentation";
 import { SlideReconcile, savedElement } from "./slides-revisions";
+import { RevisionChanges, SlideChanges } from "./changes";
 import { Canvas } from "./slides-canvas";
 import {
   ElementInspector,
@@ -30,12 +31,14 @@ export function SlideStudio({
   document,
   draft,
   onDraft,
+  dateTime,
   t,
 }: {
   state: LiveState;
   document: DocumentRead;
   draft: Draft<SlideOperation> | undefined;
   onDraft(update: DraftUpdate<SlideOperation>): void;
+  dateTime: Intl.DateTimeFormat;
   t: Translate;
 }) {
   // Slide and element identities survive revisions, so an open field carries
@@ -64,6 +67,7 @@ export function SlideStudio({
   const [slideId, setSlideId] = useState<string>();
   const [elementId, setElementId] = useState<string>();
   const handoff = useHandoff(state, t);
+  const editor = useRef<HTMLDivElement>(null);
   const savedLayout = live.read?.value;
   const layout = useMemo(
     () =>
@@ -140,8 +144,24 @@ export function SlideStudio({
           )
         }
       />
+      <RevisionChanges live={live} dateTime={dateTime} t={t}>
+        {(before, after) => (
+          <SlideChanges
+            before={before}
+            after={after}
+            onOpen={(target) => {
+              setSlideId(target.slide);
+              setElementId(target.element);
+              handoff.clear();
+              editor.current?.scrollIntoView({ block: "nearest" });
+            }}
+            t={t}
+          />
+        )}
+      </RevisionChanges>
       {layout && slide && (
         <div
+          ref={editor}
           onKeyDown={(event) => {
             if (
               (event.metaKey || event.ctrlKey) &&

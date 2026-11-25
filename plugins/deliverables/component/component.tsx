@@ -202,6 +202,7 @@ function Workspace({
           document={studioDocument}
           draft={slideDrafts.get(studioDocument.document.id)}
           onDraft={slideDrafts.update(studioDocument.document.id)}
+          dateTime={dateTime}
           t={t}
         />
       )}
@@ -212,6 +213,7 @@ function Workspace({
           document={studioDocument}
           draft={docDrafts.get(studioDocument.document.id)}
           onDraft={docDrafts.update(studioDocument.document.id)}
+          dateTime={dateTime}
           t={t}
         />
       )}
@@ -222,6 +224,7 @@ function Workspace({
           document={studioDocument}
           draft={sheetDrafts.get(studioDocument.document.id)}
           onDraft={sheetDrafts.update(studioDocument.document.id)}
+          dateTime={dateTime}
           t={t}
         />
       )}

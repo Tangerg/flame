@@ -25,7 +25,7 @@ import {
   copyText,
 } from "@flame/ui";
 import { METHODS } from "../contracts/methods";
-import type { DocumentRead } from "./types";
+import type { DocumentRead, Revision } from "./types";
 import type { DeliverablesState } from "./useDeliverables";
 import {
   operationsJSON,
@@ -41,6 +41,7 @@ export type LiveState = Pick<
   DeliverablesState,
   | "blocked"
   | "context"
+  | "history"
   | "open"
   | "operations"
   | "refresh"
@@ -54,8 +55,8 @@ export type ProjectionRead<T> = { value?: T; error?: string };
 
 type ProjectionMethod = (typeof METHODS)["slides" | "sheets" | "blocks"];
 
-// The bounded format process admits one operation at a time, so revisions are
-// read in sequence rather than in parallel.
+// Revisions are read one at a time in the order wanted, so the shown revision
+// comes before draft and comparison bases and the format queue stays short.
 function useProjection<T>(
   state: LiveState,
   documentId: string,
@@ -109,6 +110,7 @@ function useShownRevision<T>(
   method: ProjectionMethod,
   schema: z.ZodType<T>,
   holding: boolean,
+  comparedWith: (revision: Revision) => string | undefined,
 ) {
   const [shown, setShown] = useState(incoming);
   const viewed = shown.revision.id;
@@ -116,10 +118,21 @@ function useShownRevision<T>(
     draft && draft.base !== viewed && draft.operations.length
       ? draft.base
       : undefined;
+  const compared = comparedWith(shown.revision);
   const projections = useProjection(
     state,
     shown.document.id,
-    [...new Set([incoming.revision.id, viewed, ...(pending ? [pending] : [])])],
+    [
+      ...new Set(
+        [
+          incoming.revision.id,
+          viewed,
+          pending,
+          compared,
+          comparedWith(incoming.revision),
+        ].filter((revision) => revision !== undefined),
+      ),
+    ],
     method,
     schema,
   );
@@ -127,16 +140,33 @@ function useShownRevision<T>(
     setShown(incoming);
   const read = projections.get(viewed);
   const baseRead = pending ? projections.get(pending) : undefined;
+  const comparedRead = compared ? projections.get(compared) : undefined;
   return {
     shown,
     pending,
     read,
     baseRead,
+    compared,
+    comparedRead,
     retry: () => {
-      if (read?.error) projections.retry(viewed);
-      if (pending && baseRead?.error) projections.retry(pending);
+      for (const [revision, entry] of [
+        [viewed, read],
+        [pending, baseRead],
+        [compared, comparedRead],
+      ] as const)
+        if (revision && entry?.error) projections.retry(revision);
     },
   };
+}
+
+// The revisions before one, nearest first. History is paged newest first, so
+// the chain ends where the loaded page does; the parent is always known.
+function lineage(revision: Revision, history: readonly Revision[]) {
+  const known = new Map(history.map((entry) => [entry.id, entry]));
+  const chain: { id: string; revision?: Revision }[] = [];
+  for (let id = revision.parent; id; id = known.get(id)?.parent)
+    chain.push({ id, revision: known.get(id) });
+  return chain;
 }
 
 // The editor follows the head while it shows the head, or a head it followed,
@@ -186,14 +216,27 @@ export function useLiveEditor<T, Operation>(
     holding: boolean;
   },
 ) {
-  const { shown, pending, read, baseRead, retry } = useShownRevision(
-    state,
-    document,
-    draft,
-    method,
-    schema,
-    holding,
-  );
+  // A chosen comparison base holds while it is older than the shown revision,
+  // so following the head keeps showing everything since that revision.
+  const [comparing, setComparing] = useState<{ open: boolean; base?: string }>({
+    open: false,
+  });
+  const history = state.history?.value?.entries ?? [];
+  const comparedWith = (revision: Revision) =>
+    comparing.open
+      ? (lineage(revision, history).find(({ id }) => id === comparing.base)
+          ?.id ?? revision.parent)
+      : undefined;
+  const { shown, pending, read, baseRead, compared, comparedRead, retry } =
+    useShownRevision(
+      state,
+      document,
+      draft,
+      method,
+      schema,
+      holding,
+      comparedWith,
+    );
   const documentId = shown.document.id;
   const head = shown.document.head;
   const viewed = shown.revision.id;
@@ -263,6 +306,15 @@ export function useLiveEditor<T, Operation>(
     dirty,
     read,
     baseRead,
+    comparison: {
+      open: comparing.open,
+      setOpen: (open: boolean) =>
+        setComparing((current) => ({ ...current, open })),
+      base: compared,
+      choices: lineage(shown.revision, history),
+      choose: (base: string) => setComparing({ open: true, base }),
+      read: comparedRead,
+    },
     open: (revision: string) => state.open({ id: documentId, revision }),
     retry,
     apply: (change: (draft: Draft<Operation>) => Draft<Operation>) => {
