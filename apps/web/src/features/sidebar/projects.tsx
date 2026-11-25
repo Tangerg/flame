@@ -133,7 +133,7 @@ function ProjectsSection() {
         skeletonCount={2}
         skeletonVariant="compact"
         loadingLabel={t("common.loading")}
-        empty={{ title: t("projects.empty.title"), size: "compact" }}
+        empty={{ title: t("projects.empty.title"), size: "compact", align: "start" }}
         error={{ title: t("projects.error.title"), size: "compact" }}
       >
         {render}

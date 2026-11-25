@@ -39,6 +39,8 @@ const styles = stylex.create({
     color: color.fgFaint,
     minWidth: 0,
   },
+  // Stands in for a compact list row, so it keeps that row's inset.
+  inlineCompact: { paddingInline: space.s2, paddingBlock: space.s1_5 },
   inlineCopy: {
     display: "flex",
     flexDirection: "column",
@@ -58,6 +60,7 @@ const styles = stylex.create({
     lineHeight: leading.body,
     color: color.fgMuted,
     overflowWrap: "break-word",
+    textWrap: "pretty",
   },
   centeredSub: { maxWidth: "min(100%,32ch)" },
   action: { marginTop: layout.labelGap },
@@ -68,6 +71,8 @@ const ROOT = {
   comfortable: styles.rootComfortable,
 } as const;
 const TITLE_TYPE = { compact: type.uiXs, comfortable: type.uiMd } as const;
+// A note never reads larger than the title it explains.
+const SUB_TYPE = { compact: type.uiXs, comfortable: type.uiSm } as const;
 const GLYPH_SIZE = { compact: "xs", comfortable: "sm" } as const;
 
 export function EmptyState({
@@ -97,7 +102,7 @@ export function EmptyState({
       {sub && (
         <div
           {...stylex.props(
-            type.uiSm,
+            SUB_TYPE[size],
             styles.sub,
             centered && styles.centeredSub,
           )}
@@ -110,7 +115,13 @@ export function EmptyState({
   );
   if (!centered) {
     return (
-      <div {...stylex.props(styles.inline)} style={style}>
+      <div
+        {...stylex.props(
+          styles.inline,
+          size === "compact" && styles.inlineCompact,
+        )}
+        style={style}
+      >
         {icon && (
           // Shares the title's type step so its 1lh box centres the glyph on the title line.
           <span
