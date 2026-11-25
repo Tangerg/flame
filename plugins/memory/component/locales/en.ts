@@ -63,7 +63,6 @@ export const en: Record<string, string> = {
   "catalog.empty.filtered.title": "No matching items on this page.",
   "catalog.empty.filtered.action": "Clear search and filters",
   "catalog.empty.none.title": "No memory items in this target.",
-  "catalog.empty.none.sub": "Use Add memory above to save a fact.",
   "record.details": "Record details",
   pinned: "Pinned",
   "actions.for": "Actions for {{id}}",

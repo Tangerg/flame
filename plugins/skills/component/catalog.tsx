@@ -117,7 +117,6 @@ export function SkillEmptyState({
       icon={BookOpen}
       size="compact"
       title={t(review ? `empty.review.${state}.title` : `empty.${state}.title`)}
-      sub={review ? undefined : t(`empty.${state}.sub`)}
     />
   );
 }

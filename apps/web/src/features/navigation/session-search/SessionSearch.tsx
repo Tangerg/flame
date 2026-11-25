@@ -49,7 +49,6 @@ export function SessionSearch() {
           icon={iconGlyph("chat")}
           size="compact"
           title={t("sessionSearch.empty.title")}
-          sub={t("sessionSearch.empty.sub")}
         />
       }
       options={(query) =>

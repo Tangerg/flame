@@ -146,7 +146,6 @@ export function ScheduleCatalogEmpty({
       icon={CalendarClock}
       size="compact"
       title={t("empty.none.title")}
-      sub={t("empty.none.sub")}
     />
   );
 }

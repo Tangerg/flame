@@ -65,7 +65,6 @@ export const zh: Record<string, string> = {
   "empty.filtered.action": "清除筛选",
   "empty.none.title": "尚未保存定时任务。",
   "empty.page.title": "本页没有定时任务。",
-  "empty.none.sub": "使用“添加定时任务”保存周期性工作。",
   untitled: "未命名定时任务",
   "actions.more": "{{name}} 的更多操作",
   "action.runNow": "立即运行",

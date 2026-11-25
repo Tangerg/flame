@@ -70,7 +70,6 @@ export const en: Record<string, string> = {
   "empty.filtered.action": "Clear filters",
   "empty.none.title": "No schedules saved.",
   "empty.page.title": "No schedules on this page.",
-  "empty.none.sub": "Use Add schedule to save recurring work.",
   untitled: "Untitled schedule",
   "actions.more": "More actions for {{name}}",
   "action.runNow": "Run now",

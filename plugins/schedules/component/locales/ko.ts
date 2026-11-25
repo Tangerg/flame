@@ -69,7 +69,6 @@ export const ko: Record<string, string> = {
   "empty.filtered.action": "필터 지우기",
   "empty.none.title": "저장된 스케줄이 없습니다.",
   "empty.page.title": "이 페이지에 스케줄이 없습니다.",
-  "empty.none.sub": "스케줄 추가를 사용하여 반복 작업을 저장하세요.",
   untitled: "제목 없는 스케줄",
   "actions.more": "{{name}}에 대한 추가 작업",
   "action.runNow": "지금 실행",

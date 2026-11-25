@@ -73,8 +73,6 @@ export const fr: Record<string, string> = {
   "empty.filtered.action": "Effacer les filtres",
   "empty.none.title": "Aucune planification enregistrée.",
   "empty.page.title": "Aucune planification sur cette page.",
-  "empty.none.sub":
-    "Utilisez Ajouter une planification pour enregistrer un travail récurrent.",
   untitled: "Planification sans titre",
   "actions.more": "Plus d'actions pour {{name}}",
   "action.runNow": "Exécuter maintenant",

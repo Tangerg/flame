@@ -69,7 +69,6 @@ export const ja: Record<string, string> = {
   "empty.filtered.action": "絞り込みをクリア",
   "empty.none.title": "スケジュールは保存されていません。",
   "empty.page.title": "このページにスケジュールはありません。",
-  "empty.none.sub": "「スケジュールを追加」で定期的な作業を保存します。",
   untitled: "無題のスケジュール",
   "actions.more": "{{name}} のその他の操作",
   "action.runNow": "今すぐ実行",

@@ -64,8 +64,6 @@ export const de: Record<string, string> = {
   "catalog.empty.filtered.title": "Keine passenden Einträge auf dieser Seite.",
   "catalog.empty.filtered.action": "Suche und Filter löschen",
   "catalog.empty.none.title": "Keine Memory-Einträge in diesem Ziel.",
-  "catalog.empty.none.sub":
-    "Nutze oben „Memory hinzufügen“, um einen Fakt zu speichern.",
   "record.details": "Eintragsdetails",
   pinned: "Angepinnt",
   "actions.for": "Aktionen für {{id}}",

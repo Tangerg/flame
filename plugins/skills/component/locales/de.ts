@@ -40,9 +40,6 @@ export const de: Record<string, string> = {
   "empty.none.title": "Keine Skills in diesem Katalog.",
   "empty.review.filtered.title": "Keine passenden Vorschläge.",
   "empty.review.none.title": "Keine ausstehenden Vorschläge.",
-  "empty.filtered.sub": "Lösche die Suche, um Skills anzuzeigen.",
-  "empty.none.sub":
-    "Wähle einen anderen Katalog oder aktualisiere nach dem Hinzufügen eines Skills.",
   "document.toolbar": "Skill-Dokument",
   "document.refresh": "Dokument aktualisieren",
   "document.back": "Zurück zu verfügbaren Skills",

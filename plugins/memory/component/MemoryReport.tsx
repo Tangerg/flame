@@ -120,7 +120,6 @@ export function MemoryReport({
                     ? t("catalog.empty.filtered.title")
                     : t("catalog.empty.none.title")
                 }
-                sub={rows.length ? undefined : t("catalog.empty.none.sub")}
                 action={
                   rows.length ? (
                     <Button

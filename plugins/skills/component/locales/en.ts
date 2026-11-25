@@ -38,8 +38,6 @@ export const en: Record<string, string> = {
   "empty.none.title": "No Skills in this catalog.",
   "empty.review.filtered.title": "No matching proposals.",
   "empty.review.none.title": "No pending proposals.",
-  "empty.filtered.sub": "Clear the search to show Skills.",
-  "empty.none.sub": "Choose another catalog or refresh after adding a Skill.",
   "document.toolbar": "Skill document",
   "document.refresh": "Refresh document",
   "document.back": "Back to available Skills",

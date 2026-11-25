@@ -31,9 +31,6 @@ export const ja: Record<string, string> = {
   "empty.none.title": "このカタログにスキルはありません。",
   "empty.review.filtered.title": "検索に一致する提案はありません。",
   "empty.review.none.title": "保留中の提案はありません。",
-  "empty.filtered.sub": "検索をクリアしてスキルを表示します。",
-  "empty.none.sub":
-    "別のカタログを選ぶか、スキルを追加してから更新してください。",
   "document.toolbar": "スキルドキュメント",
   "document.refresh": "ドキュメントを更新",
   "document.back": "利用可能なスキルに戻る",

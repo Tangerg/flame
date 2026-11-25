@@ -74,7 +74,6 @@ export const es: Record<string, string> = {
   "empty.filtered.action": "Borrar filtros",
   "empty.none.title": "No hay programaciones guardadas.",
   "empty.page.title": "No hay programaciones en esta página.",
-  "empty.none.sub": "Usa Agregar programación para guardar trabajo recurrente.",
   untitled: "Programación sin título",
   "actions.more": "Más acciones para {{name}}",
   "action.runNow": "Ejecutar ahora",

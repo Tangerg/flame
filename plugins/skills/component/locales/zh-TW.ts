@@ -29,8 +29,6 @@ export const zhTW: Record<string, string> = {
   "empty.none.title": "此目錄中沒有技能。",
   "empty.review.filtered.title": "沒有符合搜尋條件的提議。",
   "empty.review.none.title": "沒有待處理提議。",
-  "empty.filtered.sub": "清除搜尋以顯示技能。",
-  "empty.none.sub": "選擇其他目錄，或在新增技能後重新整理。",
   "document.toolbar": "技能文件",
   "document.refresh": "重新整理文件",
   "document.back": "返回可用技能",

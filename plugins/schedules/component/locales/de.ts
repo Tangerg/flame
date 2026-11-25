@@ -71,8 +71,6 @@ export const de: Record<string, string> = {
   "empty.filtered.action": "Filter zurücksetzen",
   "empty.none.title": "Keine Zeitpläne gespeichert.",
   "empty.page.title": "Keine Zeitpläne auf dieser Seite.",
-  "empty.none.sub":
-    "Verwende Zeitplan hinzufügen, um wiederkehrende Arbeit zu speichern.",
   untitled: "Unbenannter Zeitplan",
   "actions.more": "Weitere Aktionen für {{name}}",
   "action.runNow": "Jetzt ausführen",

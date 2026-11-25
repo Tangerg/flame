@@ -28,8 +28,6 @@ export const zh: Record<string, string> = {
   "empty.none.title": "此目录中没有技能。",
   "empty.review.filtered.title": "没有匹配的提议。",
   "empty.review.none.title": "没有待处理提议。",
-  "empty.filtered.sub": "清除搜索以显示技能。",
-  "empty.none.sub": "选择其他目录，或在添加技能后刷新。",
   "document.toolbar": "技能文档",
   "document.refresh": "刷新文档",
   "document.back": "返回可用技能",

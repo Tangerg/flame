@@ -61,7 +61,6 @@ export const ja: Record<string, string> = {
   "catalog.empty.filtered.title": "このページに一致する項目はありません。",
   "catalog.empty.filtered.action": "検索と絞り込みをクリア",
   "catalog.empty.none.title": "この対象にメモリ項目はありません。",
-  "catalog.empty.none.sub": "上部の「メモリを追加」で事実を保存します。",
   "record.details": "レコードの詳細",
   pinned: "ピン留め済み",
   "actions.for": "{{id}} の操作",

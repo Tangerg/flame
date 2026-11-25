@@ -65,7 +65,6 @@ export const zhTW: Record<string, string> = {
   "empty.filtered.action": "清除篩選",
   "empty.none.title": "尚未儲存排程。",
   "empty.page.title": "本頁沒有排程。",
-  "empty.none.sub": "使用「新增排程」儲存週期性工作。",
   untitled: "未命名排程",
   "actions.more": "{{name}} 的更多操作",
   "action.runNow": "立即執行",
