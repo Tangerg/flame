@@ -876,7 +876,6 @@
   "model.effort.max": "最大",
   "file.unsupported.image": "ここではまだ画像をプレビューできません",
   "file.unsupported.binary": "このファイルはテキストではありません",
-  "file.unsupported.sub": "Flame はワークスペースのファイルをテキストとして表示します。既定のアプリで開くか、Finder で表示してください。",
   "file.open": "開く",
   "file.openFailed": "{{path}} を開けませんでした。もう一度お試しください。",
   "file.revealFailed": "{{path}} を Finder に表示できませんでした。もう一度お試しください。",

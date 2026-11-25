@@ -20,7 +20,7 @@ export const en: Record<string, string> = {
   "kind.message": "Messages",
   "kind.attention": "Needs attention",
   "run.label": "Run filter",
-  "run.all": "All Runs",
+  "run.all": "All runs",
   "value.sessionOnly": "Session only",
   "value.unrecorded": "Unrecorded",
   "value.unpriced": "Unpriced",

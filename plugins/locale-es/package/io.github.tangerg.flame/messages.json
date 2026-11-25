@@ -925,7 +925,6 @@
   "model.effort.max": "Máximo",
   "file.unsupported.image": "Aún no hay vista previa de imágenes aquí",
   "file.unsupported.binary": "Este archivo no es texto",
-  "file.unsupported.sub": "Flame muestra los archivos del espacio de trabajo como texto. Ábrelo en su propia app o búscalo en Finder.",
   "file.open": "Abrir",
   "file.change.add": "Añadido en el árbol de trabajo",
   "file.change.mod": "Modificado en el árbol de trabajo",
