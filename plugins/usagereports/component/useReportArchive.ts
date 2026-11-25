@@ -213,9 +213,10 @@ export function useReportArchive(context: BoundContext) {
     void read(header.id);
   }
 
-  function leave(active: Element | null, returnToOpener: boolean) {
+  // A removed report's row is gone, so focus returns to the archive instead.
+  function leave(active: Element | null, returnTo: "opener" | "archive") {
     inspecting.current?.abort();
-    if (!returnToOpener && archiveReturn.current)
+    if (returnTo === "archive" && archiveReturn.current)
       archiveReturn.current.opener = undefined;
     pendingFocus.current = { target: "archive", active };
     setOpened(undefined);
@@ -257,7 +258,7 @@ export function useReportArchive(context: BoundContext) {
         (current.header.id === removed?.id ||
           (accepted && !accepted.some(({ id }) => id === current.header.id)))
       )
-        leave(active, false);
+        leave(active, "archive");
     } catch (error) {
       if (!signal.aborted)
         setOutcome(
@@ -383,7 +384,7 @@ export function useReportArchive(context: BoundContext) {
     report: {
       opened,
       refresh: (id: string) => void read(id),
-      back: () => leave(activeElement(), true),
+      back: () => leave(activeElement(), "opener"),
     },
     removal: {
       target: removing,

@@ -194,8 +194,9 @@ function masterType(type: string): string {
 function matchPlaceholder(
   document: XmlDocument,
   wanted: NonNullable<ReturnType<typeof placeholder>>,
-  master: boolean,
+  part: "layout" | "master",
 ): XmlNode | undefined {
+  const master = part === "master";
   const candidates = shapeTree(document).children.filter((node) =>
     placeholder(node),
   );
@@ -225,7 +226,7 @@ export function elementFrame(
     (relation) => relation.type === "slideLayout",
   )?.target;
   if (!layout) return;
-  const fromLayout = matchPlaceholder(archive.xml(layout), wanted, false);
+  const fromLayout = matchPlaceholder(archive.xml(layout), wanted, "layout");
   const layoutFrame = fromLayout && frameOf(transformNode(fromLayout));
   if (layoutFrame) return { frame: layoutFrame, source: "layout" };
   const master = relations(archive, layout).find(
@@ -235,7 +236,7 @@ export function elementFrame(
   const fromMaster = matchPlaceholder(
     archive.xml(master),
     (fromLayout && placeholder(fromLayout)) ?? wanted,
-    true,
+    "master",
   );
   const masterFrame = fromMaster && frameOf(transformNode(fromMaster));
   if (masterFrame) return { frame: masterFrame, source: "master" };

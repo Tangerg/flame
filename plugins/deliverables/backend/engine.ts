@@ -152,7 +152,7 @@ async function checkedDirectory(path: string): Promise<void> {
 async function readOutput(
   path: string,
   maximum: number,
-  allowEmpty = false,
+  expected: "content" | "maybeEmpty" = "content",
 ): Promise<Uint8Array> {
   let handle;
   try {
@@ -181,7 +181,7 @@ async function readOutput(
     if (
       !info.isFile() ||
       info.nlink !== 1 ||
-      (!allowEmpty && info.size === 0) ||
+      (expected === "content" && info.size === 0) ||
       info.size > maximum
     )
       throw new Refusal(
@@ -898,7 +898,7 @@ export class Engine {
       maximum,
     );
     // Empty text is a valid observation for an image-only PDF.
-    const bytes = await readOutput(textPath, maximum, true);
+    const bytes = await readOutput(textPath, maximum, "maybeEmpty");
     const truncated = bytes.byteLength > LIMITS.renderTextBytes;
     try {
       const text = new TextDecoder("utf-8", { fatal: true }).decode(

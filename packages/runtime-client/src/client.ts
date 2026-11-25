@@ -95,9 +95,12 @@ export interface RpcClient {
   close(): Promise<void>;
 }
 
+// A query result is delivered as its projected value or as its exact JSON text.
+type ResultDelivery = "value" | "json";
+
 interface Pending {
   method: WireMethodName;
-  exactJSON: boolean;
+  delivery: ResultDelivery;
   acknowledgement: ReturnType<typeof wireAcknowledgementCheck>;
   resolve: (value: unknown) => void;
   reject: (err: unknown) => void;
@@ -275,7 +278,7 @@ export function createRpcClient(transport: Transport, options: RpcClientOptions 
       }
       try {
         entry.resolve(
-          entry.exactJSON
+          entry.delivery === "json"
             ? canonicalJSON(result)
             : wireMethodReturnsValue(entry.method)
               ? projectMethodResult(entry.method, result)
@@ -370,12 +373,12 @@ export function createRpcClient(transport: Transport, options: RpcClientOptions 
     method: M,
     params: WireParams<M>,
     callOptions: RpcCallOptions = {},
-    exactJSON = false,
+    delivery: ResultDelivery = "value",
   ): Promise<WireResult<M> | string> {
     requireOpen();
     const requiresIdempotency = requestRequiresIdempotency(method, params);
     if (
-      exactJSON &&
+      delivery === "json" &&
       (requiresIdempotency || isWireStreamingMethodName(method) || !wireMethodReturnsValue(method))
     )
       throw new TypeError("exact JSON delivery requires a unary query result");
@@ -431,7 +434,7 @@ export function createRpcClient(transport: Transport, options: RpcClientOptions 
       const detach = () => signal?.removeEventListener("abort", onAbort);
       pending.set(id, {
         method,
-        exactJSON,
+        delivery,
         acknowledgement: wireAcknowledgementCheck(method, req.params),
         resolve: (value) => {
           detach();
@@ -478,7 +481,7 @@ export function createRpcClient(transport: Transport, options: RpcClientOptions 
     params: WireParams<M>,
     options?: Pick<RpcCallOptions, "signal" | "requestMeta">,
   ): Promise<string> {
-    return request(method, params, options, true) as Promise<string>;
+    return request(method, params, options, "json") as Promise<string>;
   }
 
   function subscribe<M extends WireNotificationName>(

@@ -121,12 +121,13 @@ export function Hooks({ context }: { context: ComponentContext }) {
     return () => controller.abort();
   }, [runtime, track, componentSignal, workspacePath, observationError]);
 
-  async function observe(original: MutationPromise<void>, recover: boolean) {
+  async function observe(
+    original: MutationPromise<void>,
+    settlement: () => Promise<void>,
+  ) {
     setCommand({ phase: "running", original });
     try {
-      await (recover
-        ? context.track(() => original.retry({ signal: context.signal }))
-        : original);
+      await settlement();
       if (context.signal.aborted) return;
       setCommand(undefined);
       await refresh();
@@ -148,7 +149,7 @@ export function Hooks({ context }: { context: ComponentContext }) {
       const original = context.track(() =>
         context.runtime.hooks.setTrust(root, trusted),
       );
-      void observe(original, false);
+      void observe(original, () => original);
     } catch (error) {
       setCommandError(failureText(error));
     }
@@ -197,7 +198,15 @@ export function Hooks({ context }: { context: ComponentContext }) {
         <div role="alert">
           <RecordBody>{t("command.uncertain")}</RecordBody>
           <RecordBody>{command.error}</RecordBody>
-          <Button onClick={() => void observe(command.original, true)}>
+          <Button
+            onClick={() =>
+              void observe(command.original, () =>
+                context.track(() =>
+                  command.original.retry({ signal: context.signal }),
+                ),
+              )
+            }
+          >
             {t("command.reconcile")}
           </Button>
         </div>

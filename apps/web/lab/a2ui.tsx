@@ -30,7 +30,7 @@ const component = {
   componentId: "report",
 };
 const GenUI = definition.create({ runtimeIdentity: runtime, component, signal: lifetime.signal });
-const request = interfaceRequest(true);
+const request = interfaceRequest();
 const result = Presentation.accept(request, []).json();
 const environment = await createLabEnvironment({
   theme: "light",

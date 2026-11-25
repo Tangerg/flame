@@ -1,14 +1,17 @@
 import { type AgentDependencies } from "@/features/agent/application/agentDependencies";
 import { type AgentSessionView } from "@/features/agent/public/sessionView";
 import { ASYNC_OWNERSHIP_RETIRED as ABORTED, settleBeforeAbort } from "@/lib/asyncOwnership";
-import { type SessionProjectionSynchronizationOwnership } from "@/features/agent/application/session/sessionAccess";
+import {
+  type QueuedRunEvents,
+  type SessionProjectionSynchronizationOwnership,
+} from "@/features/agent/application/session/sessionAccess";
 import { type AgentSessionMaterialRead } from "@/features/agent/application/runtimeGateway";
 
 import { projectAgentSessionSnapshot } from "@/features/agent/application/session/sessionSnapshot";
 import { reconcileSteerMessages } from "@/features/agent/application/view/viewMutations";
 import { restoreUnresolvedSteers } from "@/features/agent/application/input/steering";
 interface RefreshSessionProjectionOptions {
-  invalidateQueuedRunEvents?: boolean;
+  queued?: QueuedRunEvents;
   canCommit?: () => boolean;
   signal?: AbortSignal;
 }
@@ -47,7 +50,7 @@ export async function revalidateAgentSessionMaterial(
   options: RefreshSessionProjectionOptions = {},
 ): Promise<AgentSessionProjectionRevalidation | null> {
   const viewPort = agentAccess.view;
-  const token = viewPort.beginViewRefresh(sessionId, options.invalidateQueuedRunEvents ?? false);
+  const token = viewPort.beginViewRefresh(sessionId, options.queued ?? "retain");
   if (!token) return null;
 
   const read = readMaterial();

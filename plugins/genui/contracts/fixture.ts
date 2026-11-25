@@ -1,5 +1,5 @@
 import { CATALOG_ID } from "./catalog";
-export function interfaceRequest(withDialog = false) {
+export function interfaceRequest() {
   return {
     title: "Release review",
     operations: [],
@@ -18,12 +18,7 @@ export function interfaceRequest(withDialog = false) {
             {
               id: "root",
               component: "Column",
-              children: [
-                "title",
-                "note",
-                "send",
-                ...(withDialog ? ["dialog"] : []),
-              ],
+              children: ["title", "note", "send", "dialog"],
             },
             {
               id: "title",
@@ -51,22 +46,18 @@ export function interfaceRequest(withDialog = false) {
               },
             },
             { id: "caption", component: "Text", text: "Send review" },
-            ...(withDialog
-              ? [
-                  {
-                    id: "dialog",
-                    component: "Dialog",
-                    label: "Open captured dialog",
-                    child: "portalNote",
-                  },
-                  {
-                    id: "portalNote",
-                    component: "TextField",
-                    label: "Portal note",
-                    value: { "@path": "/draft/portal" },
-                  },
-                ]
-              : []),
+            {
+              id: "dialog",
+              component: "Dialog",
+              label: "Open captured dialog",
+              child: "portalNote",
+            },
+            {
+              id: "portalNote",
+              component: "TextField",
+              label: "Portal note",
+              value: { "@path": "/draft/portal" },
+            },
           ],
         },
       },

@@ -386,7 +386,7 @@ export async function installVisualAgentFixture(
 
   const store = visual.agent.projection.store.getState();
   store.ensureSession(VISUAL_SESSION_ID);
-  const refresh = store.beginViewRefresh(VISUAL_SESSION_ID, true);
+  const refresh = store.beginViewRefresh(VISUAL_SESSION_ID, "invalidate");
   if (!refresh || !store.commitViewRefresh(VISUAL_SESSION_ID, refresh, view)) {
     throw new Error(`Failed to install visual agent state "${state}"`);
   }
@@ -429,7 +429,7 @@ export async function installVisualAgentFixture(
         reduceAgentEvent,
         projectAgentSessionSnapshot(projectRuntimeAgentSnapshot(snapshot)),
       );
-      const refresh = store.beginViewRefresh(VISUAL_SESSION_ID, true);
+      const refresh = store.beginViewRefresh(VISUAL_SESSION_ID, "invalidate");
       if (!refresh || !store.commitViewRefresh(VISUAL_SESSION_ID, refresh, stoppedView)) {
         throw new Error("Failed to publish the captured root outcome");
       }
@@ -444,7 +444,7 @@ export async function installVisualAgentFixture(
       responses[0]?.response ?? null,
     );
     onSettled?.();
-    const refresh = store.beginViewRefresh(VISUAL_SESSION_ID, true);
+    const refresh = store.beginViewRefresh(VISUAL_SESSION_ID, "invalidate");
     if (
       !refresh ||
       !store.commitViewRefresh(
@@ -487,7 +487,7 @@ export async function installVisualAgentFixture(
         interrupts: pending.interrupts.filter((interrupt) => interrupt.runId !== runId),
       }))
       .filter((pending) => pending.interrupts.length > 0);
-    const refresh = store.beginViewRefresh(VISUAL_SESSION_ID, true);
+    const refresh = store.beginViewRefresh(VISUAL_SESSION_ID, "invalidate");
     if (
       !refresh ||
       !store.commitViewRefresh(

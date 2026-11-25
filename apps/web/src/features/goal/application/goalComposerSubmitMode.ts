@@ -126,10 +126,10 @@ async function startGoal(
 ): Promise<void> {
   try {
     await startCommand(input);
-    const committed = submission.finish(true);
+    const committed = submission.started();
     if (committed) context.accept();
   } catch (error) {
-    submission.finish(false);
+    submission.failed();
     if (!dependencies.retired(error)) dependencies.reportStartError(error);
   }
 }

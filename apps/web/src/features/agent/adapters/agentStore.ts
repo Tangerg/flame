@@ -12,6 +12,7 @@ import {
   type SendAgentInputAction,
   type StopCurrentRootRunAction,
   type SynchronizeSessionAction,
+  type QueuedRunEvents,
 } from "@/features/agent/application/session/sessionAccess";
 import {
   type AgentProblem,
@@ -63,10 +64,7 @@ interface AgentStore {
   ) => boolean;
   appendLocalMessage: (sessionId: string, message: Message) => void;
   ensureSession: (sessionId: string) => void;
-  beginViewRefresh: (
-    sessionId: string,
-    invalidateQueuedRunEvents: boolean,
-  ) => AgentViewRefreshToken | null;
+  beginViewRefresh: (sessionId: string, queued: QueuedRunEvents) => AgentViewRefreshToken | null;
   commitViewRefresh: (
     sessionId: string,
     token: AgentViewRefreshToken,
@@ -274,15 +272,16 @@ export function createAgentStore(sessionStore: AgentSessionStore) {
           projectionGenerationSequence: viewEpoch,
         };
       }),
-    beginViewRefresh: (sessionId, invalidateQueuedRunEvents) => {
+    beginViewRefresh: (sessionId, queued) => {
       let token: AgentViewRefreshToken | null = null;
       set((state) => {
         const entry = state.sessions[sessionId];
         if (!entry) return state;
         const requestSequence = advanceProjectionCounter(entry.refreshSequence);
-        const viewEpoch = invalidateQueuedRunEvents
-          ? advanceProjectionCounter(state.projectionGenerationSequence)
-          : entry.viewEpoch;
+        const viewEpoch =
+          queued === "invalidate"
+            ? advanceProjectionCounter(state.projectionGenerationSequence)
+            : entry.viewEpoch;
         token = {
           generation: viewEpoch,
           requestSequence,
@@ -294,7 +293,7 @@ export function createAgentStore(sessionStore: AgentSessionStore) {
         });
         return {
           sessions,
-          ...(invalidateQueuedRunEvents ? { projectionGenerationSequence: viewEpoch } : {}),
+          ...(queued === "invalidate" ? { projectionGenerationSequence: viewEpoch } : {}),
         };
       });
       return token;
@@ -445,9 +444,9 @@ export function createAgentStore(sessionStore: AgentSessionStore) {
       return owner;
     }
 
-    begin(sessionId: string, invalidateQueuedRunEvents: boolean): AgentViewRefreshToken | null {
+    begin(sessionId: string, queued: QueuedRunEvents): AgentViewRefreshToken | null {
       if (!this.#ownsGeneration()) return null;
-      return useAgentStore.getState().beginViewRefresh(sessionId, invalidateQueuedRunEvents);
+      return useAgentStore.getState().beginViewRefresh(sessionId, queued);
     }
 
     commit(

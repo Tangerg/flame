@@ -201,8 +201,8 @@ export async function runProcess(
     }
     awaitExit();
   };
-  const capture = (target: Buffer[], chunk: Buffer, isError: boolean) => {
-    if (isError) errorSize += chunk.byteLength;
+  const capture = (stream: "stdout" | "stderr", chunk: Buffer) => {
+    if (stream === "stderr") errorSize += chunk.byteLength;
     else outputSize += chunk.byteLength;
     if (outputSize > outputLimit || errorSize > errorLimit) {
       failure ??= new Refusal(
@@ -212,10 +212,10 @@ export async function runProcess(
       stop();
       return;
     }
-    target.push(Buffer.from(chunk));
+    (stream === "stderr" ? stderr : stdout).push(Buffer.from(chunk));
   };
-  child.stdout!.on("data", (chunk: Buffer) => capture(stdout, chunk, false));
-  child.stderr!.on("data", (chunk: Buffer) => capture(stderr, chunk, true));
+  child.stdout!.on("data", (chunk: Buffer) => capture("stdout", chunk));
+  child.stderr!.on("data", (chunk: Buffer) => capture("stderr", chunk));
   for (const stream of [child.stdout!, child.stderr!])
     stream.once("error", (cause: unknown) => {
       failure ??= Object.assign(

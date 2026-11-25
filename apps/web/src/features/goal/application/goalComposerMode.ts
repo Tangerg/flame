@@ -7,7 +7,8 @@ interface GoalComposerModeSnapshot {
 }
 
 export interface GoalComposerSubmission {
-  finish(succeeded: boolean): boolean;
+  started(): boolean;
+  failed(): boolean;
 }
 
 const INACTIVE: GoalComposerModeSnapshot = {
@@ -108,14 +109,14 @@ export class GoalComposerModeOwner {
       replacedObjective: null,
     };
     this.#publish(snapshot);
+    const settle = (next: GoalComposerModeSnapshot) => {
+      if (this.#disposed || this.#snapshot !== snapshot) return false;
+      this.#publish(next);
+      return true;
+    };
     return {
-      finish: (succeeded) => {
-        if (this.#disposed || this.#snapshot !== snapshot) return false;
-        this.#publish(
-          succeeded ? INACTIVE : { sessionId, phase: "armed", replacedObjective: null },
-        );
-        return true;
-      },
+      started: () => settle(INACTIVE),
+      failed: () => settle({ sessionId, phase: "armed", replacedObjective: null }),
     };
   }
 

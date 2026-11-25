@@ -69,17 +69,14 @@ export function InteractionFeedback({
           description={t("interaction.reviewDescription")}
           closeLabel={t("interaction.cancel")}
           onOpenChange={(open) => {
-            if (!open) view.review.decide(false);
+            if (!open) view.review.cancel();
           }}
           footer={
             <>
-              <Button onClick={() => view.review.decide(false)}>
+              <Button onClick={() => view.review.cancel()}>
                 {t("interaction.cancel")}
               </Button>
-              <Button
-                variant="primary"
-                onClick={() => view.review.decide(true)}
-              >
+              <Button variant="primary" onClick={() => view.review.approve()}>
                 {t("interaction.confirm")}
               </Button>
             </>

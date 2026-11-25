@@ -157,8 +157,7 @@ export function createAgentState(
           sessionId,
           localUserMessage(messageId, agentInputToContentBlocks(input)),
         ),
-    beginViewRefresh: (sessionId, invalidateQueuedRunEvents) =>
-      refreshOwner.begin(sessionId, invalidateQueuedRunEvents),
+    beginViewRefresh: (sessionId, queued) => refreshOwner.begin(sessionId, queued),
     commitViewRefresh: (sessionId, token, view, commands) =>
       refreshOwner.commit(sessionId, token, view, commands),
     retireProjectionGeneration: (sessionIds) => refreshOwner.retireProjectionGeneration(sessionIds),

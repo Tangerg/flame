@@ -16,6 +16,10 @@ import {
   type AgentInputSettlement,
   type AgentOpeningAcceptance,
 } from "@/features/agent/application/input/inputSubmission";
+
+// A refresh after an authoritative rewrite invalidates run events queued
+// against the replaced projection generation; an ordinary refresh retains them.
+export type QueuedRunEvents = "retain" | "invalidate";
 export type { AgentOpenSessions };
 
 export interface AgentSessionStatePort {
@@ -116,10 +120,7 @@ export interface AgentSessionViewPort {
     steer?: Required<Pick<NonNullable<Message["steer"]>, "runId" | "receipt">>,
   ): void;
   appendLocalUserMessage(sessionId: string, messageId: string, input: AgentInput): void;
-  beginViewRefresh(
-    sessionId: string,
-    invalidateQueuedRunEvents: boolean,
-  ): AgentViewRefreshToken | null;
+  beginViewRefresh(sessionId: string, queued: QueuedRunEvents): AgentViewRefreshToken | null;
   commitViewRefresh(
     sessionId: string,
     token: AgentViewRefreshToken,

@@ -1,15 +1,15 @@
 import { activeLocale, localeToBcp47, type Translate } from "@/lib/i18n/index";
 const formatters = new Map<string, Intl.NumberFormat>();
 
-function decimal(value: number, fractionDigits: number, exact = false): string {
+function decimal(value: number, maximumFractionDigits: number, minimumFractionDigits = 0): string {
   const locale = localeToBcp47(activeLocale());
-  const key = `${locale}/${fractionDigits}/${exact}`;
+  const key = `${locale}/${minimumFractionDigits}/${maximumFractionDigits}`;
   let formatter = formatters.get(key);
   if (!formatter) {
     formatter = new Intl.NumberFormat(locale, {
       useGrouping: false,
-      minimumFractionDigits: exact ? fractionDigits : 0,
-      maximumFractionDigits: fractionDigits,
+      minimumFractionDigits,
+      maximumFractionDigits,
     });
     formatters.set(key, formatter);
   }
@@ -19,7 +19,7 @@ function decimal(value: number, fractionDigits: number, exact = false): string {
 export function fmtTokens(n: number): string {
   if (n < 1000) return decimal(n, 0);
   if (n < 1_000_000) return `${decimal(n / 1000, 1)}k`;
-  return `${decimal(n / 1_000_000, 1, true)}M`;
+  return `${decimal(n / 1_000_000, 1, 1)}M`;
 }
 
 export function fmtDuration(ms: number): string {

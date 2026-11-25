@@ -13,7 +13,7 @@ export async function rehydrateSessionView(
       ? await synchronize("after-live")
       : Boolean(
           await refreshAgentSessionProjection(agentAccess, sessionId, {
-            invalidateQueuedRunEvents: true,
+            queued: "invalidate",
           }),
         );
     if (committed) return;

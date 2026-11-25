@@ -23,7 +23,8 @@ type Binding = Omit<CallPluginRequest, "input">;
 type Review = {
   binding: Binding;
   input: string;
-  decide(approved: boolean): void;
+  approve(): void;
+  cancel(): void;
 };
 type Recovery = { label: string; key?: string } & (
   { recover(): Promise<void> } | { error: unknown }
@@ -331,15 +332,17 @@ export class InteractionController {
     const approved = await new Promise<boolean>((resolve) => {
       const abort = () => resolve(false);
       this.#context.signal.addEventListener("abort", abort, { once: true });
+      const decide = (approved: boolean) => {
+        this.#context.signal.removeEventListener("abort", abort);
+        resolve(approved);
+      };
       this.#publish({
         status: "review",
         review: {
           binding,
           input,
-          decide: (value) => {
-            this.#context.signal.removeEventListener("abort", abort);
-            resolve(value);
-          },
+          approve: () => decide(true),
+          cancel: () => decide(false),
         },
       });
     });
