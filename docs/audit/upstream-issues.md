@@ -29,3 +29,17 @@ A browser Realm's executions and Uses are released only by the original page's `
 - **Shutdown wait.** Until the next restart the Bridge still holds the abandoned Realm's executions, so Runtime shutdown waits for exits that never arrive and fails with `context deadline exceeded` after its 10 s shutdown timeout.
 
 The smallest framework change is an explicit Realm-loss settlement: an authenticated, idempotent request through which the trusted host or a successor document holding the Realm's resume credential attests that the Realm's JavaScript heap no longer exists, after which the Bridge releases that Realm's executions and Uses with a distinct abandonment exit kind.
+
+## Scope retries inside Anthropic Messages calls (Scope v0.64.0)
+
+A model created with `NewMessages` sent three HTTP requests during one call
+against a loopback endpoint that always returned HTTP 503 (reproduced 2026-11-26
+with `anthropic-sdk-go/v2` v2.12.0). The native and compatible bindings share
+the same Anthropic protocol client. It inherits the SDK's two retries and its
+Messages configuration provides no retry setting. Flame records evidence around
+one Scope model call, so those additional requests have no separate attempts in
+the Run history. [Anthropic protocol client](https://github.com/Tangerg/scope/blob/da8f279591bdb46459dcae26b15ca0b76de083f1/models/protocol/anthropic/api.go)
+
+Expose the retry limit on both Messages configurations, as Scope does for
+OpenAI. Flame can then disable SDK retries so its Run attempt owner controls
+whether to send another request and records each decision.
