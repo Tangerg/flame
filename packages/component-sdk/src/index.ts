@@ -240,6 +240,7 @@ export interface ComponentContext {
   readonly sessionTarget?: CapturedSession;
   readonly binding?: Readonly<PluginOperationBinding>;
   readonly openSession?: (sessionId: string) => void;
+  readonly views?: ComponentViews;
   // Only clientEffect placements register global commands. IDs belong to the
   // installed component. Dispatch captures the current
   // Session before asynchronous work; withdrawal refuses new dispatches.
@@ -263,6 +264,16 @@ export interface ComponentContext {
   // its retry identity. The factory is invoked synchronously after admission.
   track<P extends Promise<unknown>>(operation: (signal: AbortSignal) => P): P;
   compose(composition: ComponentComposition): ReactNode;
+}
+
+// A plugin opens and links its own workspace views. A target addresses an
+// object inside a view in terms only that view's component interprets; the
+// host owns the URL that carries it.
+export interface ComponentViews {
+  open(componentId: string, target?: string, origin?: HTMLElement): void;
+  href(componentId: string, target?: string): string;
+  // Each target this component's view is shown with, the current one first.
+  subscribeTarget(listener: (target: string) => void): () => void;
 }
 
 export interface ComponentReference {

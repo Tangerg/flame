@@ -13,6 +13,7 @@ export {
   toolMetaItems,
 } from "@/features/agent/presentation/toolPresentation";
 export type {
+  ToolActivityCounts,
   ToolDetail,
   ToolIntent,
   ToolMetaItem,

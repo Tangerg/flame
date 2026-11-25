@@ -112,6 +112,15 @@ with the same projection. A reference names saved revisions only, so the action
 waits until the draft is saved or discarded. Hosts without a Composer
 collaborator get "Copy reference for Agent" instead.
 
+A link names a document, optionally a revision and an object: a slide or
+element, a sheet's cell or a document block. "Copy link" in each editor links
+the shown object and pins the revision when the editor shows an earlier one or
+the object is a document block, whose identity is a position; otherwise the link
+follows the head. Opening a link reads the head when it names no revision and
+selects the object once the editor shows that revision. A completed create,
+import, edit, recalculate or restore tool call shows its revision in the
+conversation with "Open", which opens that exact revision beside it.
+
 "Changes" lists what the shown revision changed since an earlier revision of
 the same document, by default its parent. The list is derived in the component
 from both revisions' projections, so it covers what the editors show: slides

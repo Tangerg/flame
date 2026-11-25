@@ -17,6 +17,7 @@ interface AppSearch {
   dock?: string;
   settings?: string;
   subagent?: string;
+  target?: string;
 }
 
 function locationFrom(read: (key: string) => unknown): AppLocation {
@@ -30,6 +31,7 @@ function locationFrom(read: (key: string) => unknown): AppLocation {
     dock: param("dock"),
     settings: param("settings"),
     subagent: param("subagent"),
+    target: param("target"),
   };
 }
 
@@ -48,6 +50,7 @@ export function createAppNavigation() {
       dock: location.dock ?? undefined,
       settings: location.settings ?? undefined,
       subagent: location.subagent ?? undefined,
+      target: location.target ?? undefined,
     };
   }
 
@@ -85,6 +88,7 @@ export function createAppNavigation() {
       if (options?.replace === true) history.replace(href);
       else history.push(href);
     },
+    href: (patch) => new URL(hrefOf(applyPatch(readLocation(), patch)), window.location.href).href,
     back: () => history.back(),
     forward: () => history.forward(),
   };
@@ -108,6 +112,17 @@ export function createAppNavigation() {
       routeTree: rootRoute.addChildren(routes),
       defaultPreload: "intent",
       history,
+      // Every search value is a plain string. The default JSON parsing would
+      // turn a JSON-shaped view target or a numeric id into another type.
+      parseSearch: (search) => Object.fromEntries(new URLSearchParams(search)),
+      stringifySearch: (search) => {
+        const query = new URLSearchParams(
+          Object.entries(search).filter(
+            (entry): entry is [string, string] => typeof entry[1] === "string",
+          ),
+        ).toString();
+        return query ? `?${query}` : "";
+      },
     });
   }
 

@@ -408,6 +408,12 @@ export const ja = {
   "slides.op.deleteElement": "{{name}} を削除",
   "slides.op.setChartData": "{{name}} のデータ",
   "handoff.add": "Agent に渡す",
+  "link.copy": "リンクをコピー",
+  "link.copied": "リンクをコピーしました。",
+  "link.failed": "リンクをコピーできませんでした。",
+  "link.unavailable": "このリンクは開けません。",
+  "link.result": "成果物の結果",
+  "link.open": "開く",
   "handoff.handed":
     "メッセージに追加しました。変更内容を書いて送信してください。",
   "handoff.stale":

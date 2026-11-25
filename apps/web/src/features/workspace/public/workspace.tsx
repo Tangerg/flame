@@ -11,6 +11,10 @@ export function WorkspaceProvider({
 }) {
   return <WorkspaceContext value={value}>{children}</WorkspaceContext>;
 }
+// Plugin components also render in hosts without a workspace, such as the UI lab.
+export function useOptionalWorkspace(): WorkspaceAccess | null {
+  return useContext(WorkspaceContext);
+}
 export function useWorkspace(): WorkspaceAccess {
   const value = useContext(WorkspaceContext);
   if (!value) throw new Error("WorkspaceProvider is missing");

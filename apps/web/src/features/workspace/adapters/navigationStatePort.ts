@@ -4,7 +4,7 @@ import {
   WORKSPACE_DOCK_CATALOG,
 } from "@/features/workspace/application/navigation";
 import { type ContextDockStore } from "@/features/workspace/adapters/contextDockStore";
-import { type Navigator } from "@/lib/navigation";
+import { type AppLocation, type Navigator } from "@/lib/navigation";
 import {
   type WorkspaceNavigationPort,
   type WorkspaceChatPresentation,
@@ -63,11 +63,23 @@ export function createWorkspaceNavigation(
     });
   }
 
-  function showDockView(id: string, arrival: DockArrival, origin?: HTMLElement): void {
+  function showDockView(
+    id: string,
+    arrival: DockArrival,
+    origin?: HTMLElement,
+    target?: string,
+  ): void {
     inspectFrom(id, origin);
     useContextDockStore.getState().adoptDockLocation(id);
-    navigation.go(arrival === "alone" ? { view: null, dock: id } : { dock: id });
+    navigation.go(
+      arrival === "alone"
+        ? { view: null, dock: id, ...(target === undefined ? {} : { target }) }
+        : { dock: id },
+    );
   }
+
+  const shownTarget = (id: string, location: AppLocation) =>
+    (location.view ?? location.dock) === id ? location.target : null;
 
   return {
     useActiveViewId: () => navigation.use((location) => location.view),
@@ -141,7 +153,17 @@ export function createWorkspaceNavigation(
       inspectFrom(id, origin);
       navigation.go({ view: id });
     },
-    openViewInDock: (id, origin) => showDockView(id, "alone", origin),
+    openViewInDock: (id, origin, target) => showDockView(id, "alone", origin, target),
+    subscribeViewTarget: (id, listener) => {
+      const current = shownTarget(id, navigation.get());
+      if (current !== null) listener(current);
+      return navigation.subscribe((location, previous) => {
+        const target = shownTarget(id, location);
+        if (target !== null && target !== shownTarget(id, previous)) listener(target);
+      });
+    },
+    viewHref: (id, target) =>
+      navigation.href({ session: "", view: id, dock: null, target: target ?? null }),
     selectDockView: (id) => {
       if (useContextDockStore.getState().dockViewIds.includes(id)) showDockView(id, "beside");
     },

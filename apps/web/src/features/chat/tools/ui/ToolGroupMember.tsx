@@ -13,7 +13,7 @@ import {
 } from "@/features/chat/tools/application/toolCardModel";
 import { toolCallIconFor } from "@/features/agent/public/toolIcon";
 import { ToolPreview } from "@/features/chat/tools/ui/ToolPreview";
-import { AgentActivityBody, stackedActivityDetail, ToolText } from "@/ui/agent/index";
+import { activityLine, AgentActivityBody, stackedActivityDetail, ToolText } from "@/ui/agent/index";
 import { color, space, type as typeStep } from "@flame/ui/tokens.stylex";
 import { toolMetaInk } from "@/features/chat/tools/ui/toolMetaInk";
 import {
@@ -37,7 +37,7 @@ const gm = stylex.create({
     display: "flex",
     minWidth: 0,
     flex: 1,
-    alignItems: "baseline",
+    alignItems: "center",
     gap: space.s2,
     paddingBlock: space.s0_5,
     textAlign: "left",
@@ -46,7 +46,6 @@ const gm = stylex.create({
   mark: {
     display: "grid",
     flexShrink: 0,
-    alignSelf: "center",
     placeItems: "center",
     width: space.s4,
     height: space.s4,
@@ -54,7 +53,6 @@ const gm = stylex.create({
   chevron: {
     pointerEvents: "none",
     display: "flex",
-    alignSelf: "center",
     marginInlineStart: "calc(var(--spacing) * -1)",
   },
   rowExpanded: { color: color.fg },
@@ -134,6 +132,7 @@ export function ToolGroupMember({ tool, expanded, onExpandedChange }: Props) {
   const stackDetail = disclosed && model.detail?.kind === "path";
   const rowClassName = stylex.props(
     gm.row,
+    activityLine.row,
     typeStep.uiSm,
     disclosed && gm.rowExpanded,
     stackDetail && stackedActivityDetail.trigger,

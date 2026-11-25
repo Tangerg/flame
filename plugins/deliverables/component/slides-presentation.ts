@@ -33,3 +33,14 @@ function excerpt(element: ElementView): string {
 export function label(element: ElementView, t: Translate): string {
   return excerpt(element) || element.name || t(`slides.kind.${element.kind}`);
 }
+
+// An element identity names its slide part before "#element:".
+export function slideTarget(object: string): {
+  slide: string;
+  element?: string;
+} {
+  const separator = object.indexOf("#element:");
+  return separator < 0
+    ? { slide: object }
+    : { slide: object.slice(0, separator), element: object };
+}

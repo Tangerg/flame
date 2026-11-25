@@ -33,7 +33,7 @@ export function MessageStream({ rows, ctx, sessionId }: Props) {
 
   return (
     <MessageTranscript
-      className="msg-scroll-viewport"
+      className="msg-scroll-viewport transcript-edges"
       rows={rows}
       renderAll={renderAll}
       initialEndLayoutReady={!draftLoading || ctx.questionInComposer !== undefined}

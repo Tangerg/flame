@@ -416,6 +416,12 @@ export const de = {
   "slides.op.deleteElement": "{{name}} löschen",
   "slides.op.setChartData": "Daten von {{name}}",
   "handoff.add": "An den Agent übergeben",
+  "link.copy": "Link kopieren",
+  "link.copied": "Link kopiert.",
+  "link.failed": "Der Link konnte nicht kopiert werden.",
+  "link.unavailable": "Dieser Link kann nicht geöffnet werden.",
+  "link.result": "Ergebnis",
+  "link.open": "Öffnen",
   "handoff.handed":
     "Zur Nachricht hinzugefügt. Beschreibe die Änderung und sende sie.",
   "handoff.stale":

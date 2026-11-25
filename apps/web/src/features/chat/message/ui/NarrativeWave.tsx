@@ -1,10 +1,10 @@
 import * as stylex from "@stylexjs/stylex";
 import { useState, type ReactNode } from "react";
 import { type MessageRenderUnit } from "@/features/agent/public/messagePresentation";
-import { summarizeActivity } from "@/features/agent/public/messagePresentation";
+import { summarizeActivity, toolActivityStatus } from "@/features/agent/public/messagePresentation";
 import { waveStepCount, waveToolCalls } from "@/features/agent/public/messagePresentation";
 import { AgentActivityDisclosure } from "@/ui/agent/index";
-import { ToolActivitySummary } from "@/features/chat/public/tools/rendering";
+import { ToolActivityStatus } from "@/features/chat/public/tools/rendering";
 import { ToolGroupRows } from "@/features/chat/public/tools/rendering";
 import { useT } from "@/lib/i18n/index";
 import { type TurnFacts } from "@/features/agent/public/conversation";
@@ -31,13 +31,16 @@ export function NarrativeWave({ messageId, units, facts, ctx, renderUnit }: Prop
   const [open, setOpen] = useState(false);
   const tools = waveToolCalls(units, facts.toolCalls);
   const summary = summarizeActivity(t, tools) || t("agent.steps", { count: waveStepCount(units) });
+  const status = toolActivityStatus(tools);
 
   return (
     <AgentActivityDisclosure
       shell="line"
       contentInset="rows"
       icon={waveGlyph(units, tools)}
-      label={<ToolActivitySummary label={summary} tools={tools} />}
+      label={summary}
+      detail={status && <ToolActivityStatus status={status} />}
+      detailPlacement="below"
       open={open}
       onOpenChange={setOpen}
     >

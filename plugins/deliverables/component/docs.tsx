@@ -10,14 +10,17 @@ import { METHODS } from "../contracts/methods";
 import type { DocumentRead } from "./types";
 import type { Draft, DraftUpdate } from "./live-draft";
 import {
+  CopyLink,
   DraftToolbar,
   Reconcile,
   RevisionNotices,
   selectionPreamble,
+  useFocus,
   useHandoff,
   useLiveEditor,
   type LiveState,
 } from "./live";
+import type { Focus } from "./targets";
 import {
   blockText,
   insert,
@@ -118,6 +121,7 @@ export function DocumentStudio({
   document,
   draft,
   onDraft,
+  link,
   dateTime,
   t,
 }: {
@@ -125,6 +129,7 @@ export function DocumentStudio({
   document: DocumentRead;
   draft: Draft<DocOperation> | undefined;
   onDraft(update: DraftUpdate<DocOperation>): void;
+  link?: Focus;
   dateTime: Intl.DateTimeFormat;
   t: Translate;
 }) {
@@ -161,6 +166,13 @@ export function DocumentStudio({
     live.apply((draft) => insert(draft, after));
     select({ source: "inserted", index }, true);
   };
+  const locate = (id: string) => {
+    select({ source: "saved", id });
+    body.current
+      ?.querySelector(`[data-block="${CSS.escape(id)}"]`)
+      ?.scrollIntoView({ block: "center" });
+  };
+  useFocus(link, layout && live.viewed, locate);
   const isSelected = (item: DocItem) => {
     const target = current?.target;
     return item.source === "saved"
@@ -189,17 +201,7 @@ export function DocumentStudio({
       />
       <RevisionChanges live={live} dateTime={dateTime} t={t}>
         {(before, after) => (
-          <BlockChanges
-            before={before}
-            after={after}
-            onOpen={(id) => {
-              select({ source: "saved", id });
-              body.current
-                ?.querySelector(`[data-block="${CSS.escape(id)}"]`)
-                ?.scrollIntoView({ block: "center" });
-            }}
-            t={t}
-          />
+          <BlockChanges before={before} after={after} onOpen={locate} t={t} />
         )}
       </RevisionChanges>
       {layout && (
@@ -271,6 +273,15 @@ export function DocumentStudio({
           <Metadata>{t("docs.keyboard")}</Metadata>
           {live.dirty && <Metadata>{t("handoff.unsaved")}</Metadata>}
           {handoff.status}
+          <CopyLink
+            state={state}
+            live={live}
+            object={
+              current?.target.source === "saved" ? current.target.id : undefined
+            }
+            pinned
+            t={t}
+          />
         </div>
       )}
       {live.editedDraft && (

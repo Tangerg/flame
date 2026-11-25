@@ -413,6 +413,12 @@ export const fr = {
   "slides.op.deleteElement": "Supprimer {{name}}",
   "slides.op.setChartData": "Données de {{name}}",
   "handoff.add": "Transmettre à l’Agent",
+  "link.copy": "Copier le lien",
+  "link.copied": "Lien copié.",
+  "link.failed": "Impossible de copier le lien.",
+  "link.unavailable": "Impossible d’ouvrir ce lien.",
+  "link.result": "Résultat du livrable",
+  "link.open": "Ouvrir",
   "handoff.handed":
     "Ajouté à votre message. Décrivez la modification, puis envoyez-le.",
   "handoff.stale":

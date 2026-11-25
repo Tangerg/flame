@@ -405,6 +405,12 @@ export const ko = {
   "slides.op.deleteElement": "{{name}} 삭제",
   "slides.op.setChartData": "{{name}}의 데이터",
   "handoff.add": "Agent에게 넘기기",
+  "link.copy": "링크 복사",
+  "link.copied": "링크를 복사했습니다.",
+  "link.failed": "링크를 복사할 수 없습니다.",
+  "link.unavailable": "이 링크를 열 수 없습니다.",
+  "link.result": "결과물 결과",
+  "link.open": "열기",
   "handoff.handed": "메시지에 추가했습니다. 바꿀 내용을 적고 보내세요.",
   "handoff.stale": "대화가 바뀌어 참조를 추가하지 않았습니다. 다시 시도하세요.",
 } satisfies Record<keyof typeof en, string>;

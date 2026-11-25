@@ -410,6 +410,12 @@ export const es = {
   "slides.op.deleteElement": "Eliminar {{name}}",
   "slides.op.setChartData": "Datos de {{name}}",
   "handoff.add": "Pasar al Agent",
+  "link.copy": "Copiar enlace",
+  "link.copied": "Enlace copiado.",
+  "link.failed": "No se pudo copiar el enlace.",
+  "link.unavailable": "No se puede abrir este enlace.",
+  "link.result": "Resultado del entregable",
+  "link.open": "Abrir",
   "handoff.handed": "Añadido a tu mensaje. Describe el cambio y envíalo.",
   "handoff.stale":
     "La conversación cambió y la referencia no se añadió. Inténtalo de nuevo.",

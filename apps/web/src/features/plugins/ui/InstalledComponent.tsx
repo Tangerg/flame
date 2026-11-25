@@ -24,9 +24,12 @@ import {
   type WorkspaceContext,
   type ComponentComposition,
   type ComponentReference,
+  type ComponentViews,
   type PluginComponent,
   type SaveFileRequest,
 } from "@flame/component-sdk";
+import { useOptionalWorkspace, type WorkspaceAccess } from "@/features/workspace/public/workspace";
+import { packageScopedId } from "@/features/plugins/adapters/packages";
 import {
   isWorkspaceResolving,
   resolvedWorkspaceCwd,
@@ -194,6 +197,38 @@ function capturedWorkspace(workspace: WorkspaceContext): WorkspaceContext {
   });
 }
 
+type ViewNavigation = Pick<
+  WorkspaceAccess["navigation"],
+  "openViewInDock" | "viewHref" | "subscribeViewTarget"
+>;
+
+// A component opens, links and follows only its own plugin's views.
+function captureViews(
+  navigation: ViewNavigation,
+  component: ComponentReference,
+  signal: AbortSignal,
+): ComponentViews {
+  const view = (componentId: string) => packageScopedId(component.installationId, componentId);
+  return Object.freeze({
+    open(componentId: string, target?: string, origin?: HTMLElement) {
+      signal.throwIfAborted();
+      navigation.openViewInDock(view(componentId), origin, target);
+    },
+    href: (componentId: string, target?: string) => navigation.viewHref(view(componentId), target),
+    subscribeTarget(listener: (target: string) => void) {
+      signal.throwIfAborted();
+      const stop = navigation.subscribeViewTarget(view(component.componentId), (target) => {
+        if (!signal.aborted) listener(target);
+      });
+      signal.addEventListener("abort", stop, { once: true });
+      return () => {
+        signal.removeEventListener("abort", stop);
+        stop();
+      };
+    },
+  });
+}
+
 class ComponentInstance {
   private controller = new AbortController();
   private listeners = new Set<() => void>();
@@ -241,6 +276,7 @@ class ComponentInstance {
             openSession(sessionId);
           }
         : undefined,
+      views: this.sources.views && captureViews(this.sources.views, component, signal),
       ...this.effectCapabilities(signal, component),
       notifications: createComponentNotifications(
         this.sources.lifetime,
@@ -356,6 +392,7 @@ export function RenderingComponent(
     subscribeRootRunSettlements,
   } = useAgent();
   const notificationAccess = useNotifications();
+  const views = useOptionalWorkspace()?.navigation;
   const {
     runtime,
     binding,
@@ -395,12 +432,14 @@ export function RenderingComponent(
         compose,
         saveFile,
         openSession,
+        views,
         captureSessionId,
         placement,
         notificationAccess,
         subscribeRootRunSettlements,
       }),
     [
+      views,
       runtime,
       binding,
       lifetime,
@@ -478,6 +517,7 @@ type ComponentSources = Pick<
   composer?: ComposerAccess;
   sessionTarget?: CapturedSession;
   openSession?: (sessionId: string) => void;
+  views?: ViewNavigation;
   captureSessionId: () => string | undefined;
   notificationAccess: NotificationAccess;
   subscribeRootRunSettlements: AgentAccess["subscribeRootRunSettlements"];

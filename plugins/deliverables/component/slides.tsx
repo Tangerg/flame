@@ -2,24 +2,33 @@ import { useMemo, useRef, useState } from "react";
 import { type Translate } from "@flame/component-sdk";
 import { Badge, Button, PanelSection, RecordGroup } from "@flame/ui";
 import { type Frame } from "../contracts/content";
-import { slideLayoutSchema, type ElementView } from "../contracts/layouts";
+import {
+  slideLayoutSchema,
+  type ElementView,
+  type SlideLayout,
+  type SlideView,
+} from "../contracts/layouts";
 import { METHODS } from "../contracts/methods";
 import * as token from "@flame/ui/tokens.stylex";
 import type { DocumentRead } from "./types";
 import type { Draft, DraftUpdate } from "./live-draft";
 import {
+  CopyLink,
   DraftToolbar,
   RevisionNotices,
+  useFocus,
   useHandoff,
   useLiveEditor,
+  type LiveEditor,
   type LiveState,
 } from "./live";
 import { preview, record, revert, type SlideOperation } from "./slides-draft";
-import { label } from "./slides-presentation";
+import { label, slideTarget } from "./slides-presentation";
 import { SlideReconcile, savedElement } from "./slides-revisions";
 import { RevisionChanges, SlideChanges } from "./changes";
 import { Canvas } from "./slides-canvas";
 import { SlideAdditions, useInsertion } from "./slides-additions";
+import type { Focus } from "./targets";
 import {
   ElementInspector,
   SlideInspector,
@@ -27,11 +36,51 @@ import {
   selectionReference,
 } from "./slides-inspector";
 
+// A reference always names the saved revision, never unsaved draft values.
+function SelectionActions({
+  state,
+  live,
+  handoff,
+  saved,
+  element,
+  original,
+  t,
+}: {
+  state: LiveState;
+  live: LiveEditor<SlideLayout, SlideOperation>;
+  handoff: ReturnType<typeof useHandoff>;
+  saved: SlideView | undefined;
+  element: ElementView | undefined;
+  original: ElementView | undefined;
+  t: Translate;
+}) {
+  return (
+    <>
+      <Button
+        disabled={live.dirty || !saved || (element !== undefined && !original)}
+        onClick={() => {
+          if (saved)
+            handoff.hand(selectionReference(live.document, saved, original, t));
+        }}
+      >
+        {handoff.label}
+      </Button>
+      <CopyLink
+        state={state}
+        live={live}
+        object={element?.id ?? saved?.id}
+        t={t}
+      />
+    </>
+  );
+}
+
 export function SlideStudio({
   state,
   document,
   draft,
   onDraft,
+  link,
   dateTime,
   t,
 }: {
@@ -39,6 +88,7 @@ export function SlideStudio({
   document: DocumentRead;
   draft: Draft<SlideOperation> | undefined;
   onDraft(update: DraftUpdate<SlideOperation>): void;
+  link?: Focus;
   dateTime: Intl.DateTimeFormat;
   t: Translate;
 }) {
@@ -124,19 +174,24 @@ export function SlideStudio({
     [ids[index], ids[target]] = [ids[target]!, ids[index]!];
     restructure([{ type: "reorderSlides", ids }]);
   };
-  // A reference always names the saved revision, never unsaved draft values.
+  const locate = (object: string) => {
+    const target = slideTarget(object);
+    setSlideId(target.slide);
+    setElementId(target.element);
+    handoff.clear();
+    editor.current?.scrollIntoView({ block: "nearest" });
+  };
+  useFocus(link, savedLayout && live.viewed, locate);
   const reference = (
-    <Button
-      disabled={dirty || !savedSlide || (element !== undefined && !original)}
-      onClick={() => {
-        if (savedSlide)
-          handoff.hand(
-            selectionReference(live.document, savedSlide, original, t),
-          );
-      }}
-    >
-      {handoff.label}
-    </Button>
+    <SelectionActions
+      state={state}
+      live={live}
+      handoff={handoff}
+      saved={savedSlide}
+      element={element}
+      original={original}
+      t={t}
+    />
   );
 
   return (
@@ -163,12 +218,7 @@ export function SlideStudio({
           <SlideChanges
             before={before}
             after={after}
-            onOpen={(target) => {
-              setSlideId(target.slide);
-              setElementId(target.element);
-              handoff.clear();
-              editor.current?.scrollIntoView({ block: "nearest" });
-            }}
+            onOpen={(target) => locate(target.element ?? target.slide)}
             t={t}
           />
         )}

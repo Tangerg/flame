@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, type ReactNode } from "react";
 import type { ComposerReference, Translate } from "@flame/component-sdk";
 import {
   Button,
@@ -18,14 +18,17 @@ import { METHODS } from "../contracts/methods";
 import type { DocumentRead } from "./types";
 import type { Draft, DraftUpdate } from "./live-draft";
 import {
+  CopyLink,
   DraftToolbar,
   Reconcile,
   RevisionNotices,
   selectionPreamble,
+  useFocus,
   useHandoff,
   useLiveEditor,
   type LiveState,
 } from "./live";
+import type { Focus } from "./targets";
 import {
   cellId,
   entryText,
@@ -154,6 +157,7 @@ function SheetActions({
   dirty,
   current,
   handoff,
+  copyLink,
   t,
 }: {
   state: LiveState;
@@ -163,6 +167,7 @@ function SheetActions({
   dirty: boolean;
   current: boolean;
   handoff: ReturnType<typeof useHandoff>;
+  copyLink: ReactNode;
   t: Translate;
 }) {
   const uncalculated = sheet.cells.some(
@@ -179,6 +184,7 @@ function SheetActions({
         >
           {handoff.label}
         </Button>
+        {copyLink}
         {uncalculated && (
           <Button
             disabled={dirty || state.blocked || !current}
@@ -200,6 +206,7 @@ export function WorkbookStudio({
   document,
   draft,
   onDraft,
+  link,
   dateTime,
   t,
 }: {
@@ -207,6 +214,7 @@ export function WorkbookStudio({
   document: DocumentRead;
   draft: Draft<CellOperation> | undefined;
   onDraft(update: DraftUpdate<CellOperation>): void;
+  link?: Focus;
   dateTime: Intl.DateTimeFormat;
   t: Translate;
 }) {
@@ -280,6 +288,16 @@ export function WorkbookStudio({
     entry.current = next;
     setEditing(next);
   };
+  // A cell identity names its sheet before the last "!".
+  const locate = (object: string) => {
+    const separator = object.lastIndexOf("!");
+    if (separator < 0) return;
+    setSheetId(object.slice(0, separator));
+    edit(undefined);
+    select(pointOf(object.slice(separator + 1)), false);
+    editor.current?.scrollIntoView({ block: "nearest" });
+  };
+  useFocus(link, layout && live.viewed, locate);
   const range = bounds(anchor, focus);
   const focusRef = refOf(focus);
   const barText =
@@ -312,12 +330,7 @@ export function WorkbookStudio({
           <SheetChanges
             before={before}
             after={after}
-            onOpen={(target) => {
-              setSheetId(target.sheet);
-              edit(undefined);
-              select(pointOf(target.ref), false);
-              editor.current?.scrollIntoView({ block: "nearest" });
-            }}
+            onOpen={(target) => locate(cellId(target.sheet, target.ref))}
             t={t}
           />
         )}
@@ -396,6 +409,14 @@ export function WorkbookStudio({
             dirty={dirty}
             current={live.viewed === head && !live.switching}
             handoff={handoff}
+            copyLink={
+              <CopyLink
+                state={state}
+                live={live}
+                object={cellId(sheet.id, focusRef)}
+                t={t}
+              />
+            }
             t={t}
           />
         </div>

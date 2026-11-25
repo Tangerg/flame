@@ -465,6 +465,7 @@ function SubagentTranscript({
       )}
     >
       <MessageTranscript
+        className="transcript-edges"
         initialEndLayoutReady
         onFollowChange={(list, atEnd) => setReader({ list, atEnd })}
         header={
