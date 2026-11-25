@@ -1,8 +1,4 @@
-import {
-  parseContent,
-  workbookEditSchema,
-  type CellValue,
-} from "../../contracts/content";
+import type { CellValue, EditorOperation } from "../../contracts/content";
 import {
   OfficePackage,
   relationshipTarget,
@@ -411,14 +407,14 @@ function editWorksheet(
   archive.setXML(part, patchXML(document.source, patches));
 }
 
-export function editWorkbook(archive: OfficePackage, json: string): Uint8Array {
-  const { operations } = parseContent(workbookEditSchema, json);
+export function editWorkbook(
+  archive: OfficePackage,
+  operations: EditorOperation<"xlsx">[],
+): Uint8Array {
   const sheets = new Set(workbookSheets(archive).map((sheet) => sheet.part));
   const strings = sharedStrings(archive);
   for (const [part, edits] of editsBySheet(operations, sheets))
     editWorksheet(archive, part, edits, strings);
   clearCalculation(archive);
-  const result = archive.save();
-  OfficePackage.open("xlsx", result);
-  return result;
+  return archive.save();
 }

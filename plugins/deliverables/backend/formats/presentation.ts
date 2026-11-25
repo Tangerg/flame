@@ -2,7 +2,6 @@ import PptxGenJS from "pptxgenjs";
 import {
   parseContent,
   presentationContentSchema,
-  presentationEditSchema,
   type Inspection,
   type PresentationOperation,
   type PresentationContent,
@@ -533,9 +532,8 @@ function reorderSlides(
 // whole set or none of it.
 export async function editPresentation(
   archive: OfficePackage,
-  json: string,
+  operations: PresentationOperation[],
 ): Promise<Uint8Array> {
-  const { operations } = parseContent(presentationEditSchema, json);
   const of = <T extends PresentationOperation["type"]>(...types: T[]) =>
     operations.filter((operation): operation is Operation<T> =>
       (types as string[]).includes(operation.type),

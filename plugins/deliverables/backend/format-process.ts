@@ -21,9 +21,10 @@ import {
   blocksFile,
   layoutFile,
   sheetsFile,
+  validateSuggestion,
   type Inspection,
 } from "./formats";
-import type { Format } from "../contracts/content";
+import type { Format, OfficeFormat } from "../contracts/content";
 import { confinedPlan, type PrivateDirectory } from "./confinement";
 import { runProcess, UnconfirmedProcessExit } from "./process";
 import { refusal } from "./refusal";
@@ -40,6 +41,12 @@ type Request =
       format: Format;
       base64: string;
       operationsJSON: string;
+    }
+  | {
+      operation: "validateSuggestion";
+      format: OfficeFormat;
+      base64: string;
+      operationsJSON: string;
     };
 const packetBytes =
   Math.ceil(LIMITS.fileBytes / 3) * 4 + LIMITS.inputBytes + LIMITS.reportBytes;
@@ -49,6 +56,7 @@ const responseSchema = z.union([
   z.strictObject({ layout: slideLayoutSchema }),
   z.strictObject({ sheets: workbookLayoutSchema }),
   z.strictObject({ blocks: documentLayoutSchema }),
+  z.strictObject({ validated: z.literal(true) }),
   z.strictObject({
     failure: z.strictObject({
       code: z.string().min(1).max(100),
@@ -112,7 +120,14 @@ export async function serveFormatProcess(): Promise<never> {
           ),
         ).toString("base64"),
       };
-    else if (input.operation === "slides")
+    else if (input.operation === "validateSuggestion") {
+      await validateSuggestion(
+        input.format,
+        unpack(input.base64),
+        input.operationsJSON,
+      );
+      response = { validated: true };
+    } else if (input.operation === "slides")
       response = { layout: layoutFile(unpack(input.base64)) };
     else if (input.operation === "sheets")
       response = { sheets: sheetsFile(unpack(input.base64)) };
@@ -395,6 +410,27 @@ export class Formats {
     if (!("bytes" in result))
       throw new Error("deliverables: format edit did not return native bytes");
     return unpack(result.bytes);
+  }
+
+  async validateSuggestion(
+    format: OfficeFormat,
+    bytes: Uint8Array,
+    operationsJSON: string,
+    signal: AbortSignal,
+  ): Promise<void> {
+    const result = await this.#call(
+      {
+        operation: "validateSuggestion",
+        format,
+        base64: Buffer.from(bytes).toString("base64"),
+        operationsJSON,
+      },
+      signal,
+    );
+    if (!("validated" in result))
+      throw new Error(
+        "deliverables: format process did not validate the suggestion",
+      );
   }
 
   async close(): Promise<void> {

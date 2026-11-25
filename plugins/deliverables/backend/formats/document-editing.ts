@@ -1,7 +1,5 @@
 import {
   DEFAULT_PARAGRAPH_STYLE,
-  documentEditSchema,
-  parseContent,
   type DocumentOperation,
 } from "../../contracts/content";
 import { MAIN_PARTS, OfficePackage } from "./archive";
@@ -156,8 +154,10 @@ function blockPatches(
   return patches;
 }
 
-export function editDocument(archive: OfficePackage, json: string): Uint8Array {
-  const { operations } = parseContent(documentEditSchema, json);
+export function editDocument(
+  archive: OfficePackage,
+  operations: DocumentOperation[],
+): Uint8Array {
   assertStylesDefined(
     archive,
     new Set(

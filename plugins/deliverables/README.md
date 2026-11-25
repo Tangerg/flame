@@ -125,10 +125,11 @@ import, edit, recalculate or restore tool call shows its revision in the
 conversation with "Open", which opens that exact revision beside it.
 
 "Agent suggestions" are edits the model proposed with `suggest` against the
-exact revision it read, instead of changing the document. The backend accepts
-only edits an editor stages in its draft and applies them to that revision in a
-trial whose bytes are discarded, so a suggestion that could not apply is
-refused. The person picks edits and adopts them into the local draft, where
+exact revision it read, instead of changing the document. The native format
+process admits the editor's staged operations and requires each text run to
+appear in that revision's editor projection. It then tests the complete edit
+against the native bytes without publishing a revision. The person picks edits
+and adopts them into the local draft, where
 they review and save as usual; adopting replaces the draft's own edit of the
 same target. A suggestion on an earlier revision becomes a draft on that
 revision and reaches the head through the draft's reconciliation; a draft on

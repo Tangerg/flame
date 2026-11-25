@@ -4845,7 +4845,7 @@
       "name": "flame.deliverables/suggest.v1",
       "kind": "command",
       "target": "installation",
-      "description": "Propose catalog-defined edits to an exact revision for the person to review in its open editor. Nothing changes until they adopt the edits into their draft and save it. A suggestion holds only edits an editor stages: PPTX replaceText, setFrame, setChartData and deleteElement; XLSX setCell; DOCX replaceText, insertParagraph, deleteBlock and setParagraphStyle. The edits must apply to that revision. Use edit to change the document directly.",
+      "description": "Propose edits the person can review in the live editor for an exact revision. Nothing changes until they adopt the edits into their draft and save it. The supported operations are PPTX replaceText, setFrame, setChartData, deleteElement. XLSX setCell. DOCX replaceText, insertParagraph, deleteBlock, setParagraphStyle. For replaceText, use a text run from the revision's slides or blocks projection. Use edit for direct changes, including text outside those projections.",
       "input": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,

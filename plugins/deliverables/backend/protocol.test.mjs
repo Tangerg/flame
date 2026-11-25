@@ -865,6 +865,23 @@ it(
       },
     });
     expect(slide.notes.map((run) => run.text)).toEqual(["Explain the growth"]);
+    const suggestion = await backend.tool("suggest", {
+      id,
+      revision: created.id,
+      note: "Review the slide wording and speaker notes.",
+      operationsJSON: JSON.stringify({
+        operations: [
+          { run: title.text[0], text: "Revenue grew 12%" },
+          { run: slide.notes[0], text: "Explain the quarter-on-quarter growth" },
+        ].map(({ run, text }) => ({
+          type: "replaceText",
+          id: run.id,
+          expect: run.text,
+          text,
+        })),
+      }),
+    });
+    expect(suggestion.isError, JSON.stringify(suggestion)).not.toBe(true);
 
     const moved = { ...shape.frame, x: shape.frame.x + 914400 };
     const human = [
@@ -1210,6 +1227,75 @@ it(
     expect(
       (await backend.invoke(METHODS.suggestions, { id, limit: 8 })).entries,
     ).toMatchObject([{ id: pending.id, status: "adopted" }]);
+  },
+  scenarioTimeoutMilliseconds,
+);
+it(
+  "suggestions contain only text edits visible in the exact live editor",
+  async ({ backend }) => {
+    const created = await backend.invoke(METHODS.create, {
+      title: "Report",
+      format: "docx",
+      contentJSON: JSON.stringify({
+        title: "Report",
+        header: "Monthly figures",
+        blocks: [{ type: "paragraph", runs: [{ text: "Revenue is 100." }] }],
+      }),
+      provenance,
+    });
+    const id = created.documentId;
+    const revision = created.id;
+    const read = await backend.invoke(METHODS.read, { id, revision });
+    const header = JSON.parse(read.inspectionJSON).items.find(
+      (entry) => entry.text === "Monthly figures",
+    );
+    const layout = JSON.parse(
+      (await backend.invoke(METHODS.blocks, { id, revision })).layoutJSON,
+    );
+    const body = layout.blocks
+      .flatMap((block) => block.runs ?? [])
+      .find((run) => run.text === "Revenue is 100.");
+    expect(header).toBeDefined();
+    expect(body).toBeDefined();
+    const replace = (run, text) => ({
+      type: "replaceText",
+      id: run.id,
+      expect: run.text,
+      text,
+    });
+    const editBody = replace(body, "Revenue is 112.");
+    const editHeader = replace(header, "Quarterly figures");
+    const operationsJSON = (...operations) => JSON.stringify({ operations });
+    const hidden = await backend.tool("suggest", {
+      id,
+      revision,
+      note: "Revise the title and the figure.",
+      operationsJSON: operationsJSON(editBody, editHeader),
+    });
+    expect(hidden.isError, JSON.stringify(hidden)).toBe(true);
+    expect(hidden.structuredContent.failure.code).toBe("invalid_suggestion");
+    const visible = await backend.tool("suggest", {
+      id,
+      revision,
+      note: "Revise the figure.",
+      operationsJSON: operationsJSON(editBody),
+    });
+    expect(visible.isError, JSON.stringify(visible)).not.toBe(true);
+    expect(
+      (await backend.invoke(METHODS.suggestions, { id, limit: 8 })).entries,
+    ).toMatchObject([{ note: "Revise the figure.", status: "pending" }]);
+    const changed = await backend.invoke(METHODS.edit, {
+      id,
+      expectedRevision: revision,
+      operationsJSON: operationsJSON(editHeader),
+    });
+    const updated = await backend.invoke(METHODS.read, {
+      id,
+      revision: changed.id,
+    });
+    expect(JSON.parse(updated.inspectionJSON).items).toContainEqual(
+      expect.objectContaining({ text: "Quarterly figures" }),
+    );
   },
   scenarioTimeoutMilliseconds,
 );

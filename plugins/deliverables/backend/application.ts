@@ -9,7 +9,6 @@ import {
   type SuggestionValue,
   type ThreadMessage,
 } from "../contracts/capability";
-import { STAGED_OPERATIONS } from "../contracts/content";
 import { LIMITS } from "../contracts/limits";
 import { projectNumbers, type FrozenJSONValue } from "@frame/sdk/json";
 import { engineCatalogSchema } from "../contracts/evidence";
@@ -346,8 +345,6 @@ export class Application {
     }
   }
 
-  // A suggestion holds only edits an editor stages, and they must apply to the
-  // revision it names; the trial result is discarded.
   async #suggest(
     context: CallContext,
     value: z.infer<typeof schemas.suggest>,
@@ -361,18 +358,7 @@ export class Application {
         "invalid_format",
         "suggestions require a PPTX, XLSX or DOCX revision",
       );
-    const staged: readonly string[] = STAGED_OPERATIONS[format];
-    const types = z
-      .object({ operations: z.array(z.object({ type: z.string() })) })
-      .parse(JSON.parse(value.operationsJSON))
-      .operations.map((operation) => operation.type);
-    const unstaged = types.filter((type) => !staged.includes(type));
-    if (unstaged.length)
-      throw refusal(
-        "invalid_suggestion",
-        `a ${format.toUpperCase()} suggestion holds only ${staged.join(", ")}; use edit for ${[...new Set(unstaged)].join(", ")}`,
-      );
-    await this.#formats.edit(
+    await this.#formats.validateSuggestion(
       format,
       source.bytes,
       value.operationsJSON,

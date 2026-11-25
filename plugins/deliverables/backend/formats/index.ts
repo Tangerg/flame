@@ -7,7 +7,10 @@ import {
   presentationEditSchema,
   workbookContentSchema,
   workbookEditSchema,
+  STAGED_OPERATIONS,
   contentLimits,
+  parseContent,
+  type EditorOperation,
   type Format,
   type FormatCatalog,
   type Inspection,
@@ -33,6 +36,7 @@ import { inspectWorkbook, workbookCSV } from "./workbook";
 import { createWorkbook } from "./workbook-authoring";
 import { editWorkbook } from "./workbook-editing";
 import { workbookLayout } from "./workbook-layout";
+import { refusal } from "../refusal";
 
 export { encodeArchive } from "./zip";
 export { hasPNGSignature } from "./images";
@@ -72,29 +76,119 @@ export async function inspectFile(
   }
 }
 
+function officeEdits<Edit extends EditorOperation>(
+  schema: z.ZodType<{ operations: Edit[] }>,
+  operationsJSON: string,
+  staged?: readonly Edit["type"][],
+): Edit[] {
+  let operations: Edit[];
+  try {
+    ({ operations } = parseContent(schema, operationsJSON));
+  } catch (error) {
+    if (!staged || !(error instanceof z.ZodError)) throw error;
+    throw refusal(
+      "invalid_suggestion",
+      `use the format's native edit schema for ${staged.join(", ")}`,
+    );
+  }
+  if (staged) {
+    const unstaged = operations.find(({ type }) => !staged.includes(type));
+    if (unstaged)
+      throw refusal(
+        "invalid_suggestion",
+        `the editor stages only ${staged.join(", ")}. Use edit for ${unstaged.type}`,
+      );
+  }
+  return operations;
+}
+
+function requireVisibleText(
+  operations: EditorOperation[],
+  runIds: () => string[],
+): void {
+  const edits = operations.filter((edit) => edit.type === "replaceText");
+  if (!edits.length) return;
+  const visible = new Set(runIds());
+  const hidden = edits.find(({ id }) => !visible.has(id));
+  if (hidden)
+    throw refusal(
+      "invalid_suggestion",
+      `text target ${hidden.id} is outside the live editor; use edit for that target`,
+    );
+}
+
+async function editOfficeFile(
+  format: OfficeFormat,
+  bytes: Uint8Array,
+  operationsJSON: string,
+  intent: "revision" | "suggestion",
+): Promise<Uint8Array> {
+  const archive = OfficePackage.open(format, bytes);
+  const suggesting = intent === "suggestion";
+  let result: Uint8Array;
+  switch (format) {
+    case "docx": {
+      const operations = officeEdits(
+        documentEditSchema,
+        operationsJSON,
+        suggesting ? STAGED_OPERATIONS.docx : undefined,
+      );
+      if (suggesting)
+        requireVisibleText(operations, () =>
+          documentLayout(archive).blocks.flatMap((block) =>
+            block.kind === "paragraph" ? block.runs.map(({ id }) => id) : [],
+          ),
+        );
+      result = editDocument(archive, operations);
+      break;
+    }
+    case "xlsx":
+      result = editWorkbook(
+        archive,
+        officeEdits(
+          workbookEditSchema,
+          operationsJSON,
+          suggesting ? STAGED_OPERATIONS.xlsx : undefined,
+        ),
+      );
+      break;
+    case "pptx": {
+      const operations = officeEdits(
+        presentationEditSchema,
+        operationsJSON,
+        suggesting ? STAGED_OPERATIONS.pptx : undefined,
+      );
+      if (suggesting)
+        requireVisibleText(operations, () =>
+          slideLayout(archive).slides.flatMap(({ elements, notes }) => [
+            ...notes.map(({ id }) => id),
+            ...elements.flatMap(({ text }) => text.map(({ id }) => id)),
+          ]),
+        );
+      result = await editPresentation(archive, operations);
+      break;
+    }
+  }
+  OfficePackage.open(format, result);
+  return result;
+}
+
 export async function editFile(
   format: Format,
   bytes: Uint8Array,
   operationsJSON: string,
 ): Promise<Uint8Array> {
-  if (format === "pdf") return editPDF(bytes, operationsJSON);
-  const archive = OfficePackage.open(format, bytes);
-  let result: Uint8Array;
-  switch (format) {
-    case "docx":
-      result = editDocument(archive, operationsJSON);
-      break;
-    case "xlsx":
-      result = editWorkbook(archive, operationsJSON);
-      break;
-    case "pptx":
-      result = await editPresentation(archive, operationsJSON);
-      break;
-    default:
-      throw new Error("unsupported native editing format");
-  }
-  OfficePackage.open(format, result);
-  return result;
+  return format === "pdf"
+    ? editPDF(bytes, operationsJSON)
+    : editOfficeFile(format, bytes, operationsJSON, "revision");
+}
+
+export async function validateSuggestion(
+  format: OfficeFormat,
+  bytes: Uint8Array,
+  operationsJSON: string,
+): Promise<void> {
+  await editOfficeFile(format, bytes, operationsJSON, "suggestion");
 }
 
 export function layoutFile(bytes: Uint8Array): SlideLayout {

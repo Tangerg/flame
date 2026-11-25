@@ -1,11 +1,15 @@
 import { z } from "zod";
 import { PROTOCOL, type CapabilityDescriptor } from "@flame/backend-sdk/mcp";
 import { FIELD_LIMITS, LIMITS } from "./limits";
-import { formatSchema, officeFormatSchema } from "./content";
+import { STAGED_OPERATIONS, formatSchema, officeFormatSchema } from "./content";
 import { authorSchema } from "./evidence";
 
 import { METHODS } from "./methods";
 export { METHODS } from "./methods";
+
+const stagedEdits = Object.entries(STAGED_OPERATIONS)
+  .map(([format, operations]) => `${format.toUpperCase()} ${operations.join(", ")}`)
+  .join(". ");
 
 const id = z.string().regex(/^[a-f0-9]{64}$/);
 // Runtime owns Project identity; a deliverable only records the one it was made in.
@@ -517,7 +521,7 @@ export const definitions = [
   method(
     "suggest",
     "command",
-    "Propose catalog-defined edits to an exact revision for the person to review in its open editor. Nothing changes until they adopt the edits into their draft and save it. A suggestion holds only edits an editor stages: PPTX replaceText, setFrame, setChartData and deleteElement; XLSX setCell; DOCX replaceText, insertParagraph, deleteBlock and setParagraphStyle. The edits must apply to that revision. Use edit to change the document directly.",
+    `Propose edits the person can review in the live editor for an exact revision. Nothing changes until they adopt the edits into their draft and save it. The supported operations are ${stagedEdits}. For replaceText, use a text run from the revision's slides or blocks projection. Use edit for direct changes, including text outside those projections.`,
     schemas.suggest,
     suggestion,
     "model",
