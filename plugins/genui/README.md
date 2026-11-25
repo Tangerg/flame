@@ -1,16 +1,11 @@
 # GenUI
 
 GenUI presents official Google A2UI 1.0 messages through a trusted Flame catalog.
-The component uses `@a2ui/react` and `@a2ui/web_core` 0.15.0. The protocol parser,
-message processor, graph validation, dynamic bindings, functions and surface
-model belong to A2UI. The host renders catalog components with `@flame/ui`.
-Zod 3 is isolated as the `zod3` dependency; other plugins keep Zod 4.
-
-The renderer and this plugin must share one `@a2ui/web_core` instance. The
-released `@a2ui/react` 0.15.0 depends on `@a2ui/markdown-it` 0.2.2, whose stale
-`^0.14.0` peer would otherwise install a second core. That package uses the core
-for types only, so the root manifest overrides only that peer edge to 0.15.0.
-Remove the override when a released `@a2ui/markdown-it` accepts the installed core.
+The renderer and plugin share one A2UI Web Core instance through the React and
+Markdown packages' declared dependency ranges. The protocol parser, message
+processor, graph validation, dynamic bindings, functions and surface model
+belong to A2UI. The host renders catalog components with `@flame/ui`.
+A2UI catalog schemas use Zod 3 through the `zod3` dependency.
 
 ## Discovery and presentation
 

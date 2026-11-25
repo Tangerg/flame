@@ -12,8 +12,8 @@
     "generate": "node scripts/generate-contracts.mjs && npm run build"
   },
   "dependencies": {
-    "@a2ui/react": "0.15.0",
-    "@a2ui/web_core": "0.15.0",
+    "@a2ui/react": "0.16.1",
+    "@a2ui/web_core": "0.16.1",
     "@flame/backend-sdk": "*",
     "@flame/brand-assets": "*",
     "@flame/component-sdk": "*",
