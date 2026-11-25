@@ -4,7 +4,7 @@ import { configDefaults, defineConfig } from "vitest/config";
 import path from "node:path";
 import { STYLEX_CONDITIONS, stylexTransform } from "./stylex.vite.mjs";
 
-const runtimeLifecycleTest = "tests/integration/runtime-http.e2e.test.ts";
+const runtimeSuite = "tests/integration/runtime-http/**";
 
 // The application config starts Wails/browser lifetimes that neither test host owns.
 export default defineConfig({
@@ -27,7 +27,7 @@ export default defineConfig({
           name: "contracts",
           environment: "node",
           include: ["tests/integration/**/*.test.ts"],
-          exclude: [...configDefaults.exclude, runtimeLifecycleTest],
+          exclude: [...configDefaults.exclude, runtimeSuite],
           sequence: { groupOrder: 0 },
         },
       },
@@ -36,8 +36,11 @@ export default defineConfig({
         test: {
           name: "runtime",
           environment: "node",
-          include: [runtimeLifecycleTest],
-          globalSetup: ["./tests/integration/runtime-http.setup.ts"],
+          include: ["tests/integration/runtime-http/*.e2e.test.ts"],
+          globalSetup: ["./tests/integration/runtime-http/globalSetup.ts"],
+          // Each file owns a Runtime, runner and provider; running them one at
+          // a time keeps their deadlines about the product, not contention.
+          fileParallelism: false,
           sequence: { groupOrder: 1 },
         },
       },

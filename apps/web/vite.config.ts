@@ -19,6 +19,58 @@ import { artifactGraph } from "./artifactGraph.vite.mjs";
 const webviewPort = process.env.WAILS_VITE_PORT;
 const host = "127.0.0.1";
 
+// Named chunks; the first rule with a matching path wins.
+const CHUNK_RULES: readonly (readonly [chunk: string, paths: readonly string[]])[] = [
+  // The Wails runtime, which has to stay OFF the startup path: importing it has
+  // side effects — it installs listeners and starts talking to a host — and this
+  // same bundle runs in a plain browser and in the visual fixtures, where there
+  // is no host. `platform/clientHost.ts` imports it dynamically for exactly that reason,
+  // and naming its chunk is what makes the split reliable instead of incidental:
+  // unnamed, it is a lone module Rolldown may fold into a big neighbour, which is
+  // how the entry acquired a monolith twice already.
+  ["wails-runtime", ["node_modules/@wailsio/runtime"]],
+  ["vendor", ["node_modules/react/", "node_modules/react-dom/", "node_modules/scheduler/"]],
+  ["vendor-motion", ["node_modules/motion"]],
+  ["vendor", ["node_modules/zustand"]],
+  ["base-ui", ["node_modules/@base-ui"]],
+  ["tanstack", ["node_modules/@tanstack"]],
+  // Brand marks are deliberately NOT named here. The composer pulls in the ten it
+  // draws with whatever imports them, and the icon gallery globs the whole catalogue
+  // behind a lazy route; naming the package would put that glob on the startup path,
+  // which is the one place its own laziness cannot reach.
+  // Markdown pipeline — eager: every rendered message goes through it.
+  [
+    "markdown",
+    [
+      "node_modules/react-markdown/",
+      "node_modules/remark-",
+      "node_modules/rehype-",
+      "node_modules/unist-",
+      "node_modules/mdast-",
+    ],
+  ],
+  // Syntax highlighting — lazy: dynamic-imported on the first code
+  // block. Kept out of "markdown" above for the reason stated there;
+  // sharing that chunk is how ~1.3 MB of grammars reached the startup
+  // path while still looking like a lazy feature in every report.
+  [
+    "shiki",
+    [
+      "node_modules/@shikijs/core/",
+      "node_modules/@shikijs/engine-javascript/",
+      "node_modules/@shikijs/vscode-textmate/",
+    ],
+  ],
+  // KaTeX JS is statically reachable through rehype-katex, while its
+  // stylesheet is a dependency of the lazy Markdown renderer. Giving
+  // both the same manual chunk name makes Rolldown attach the lazy CSS
+  // to the eager JS group and emit it in index.html. Keep the style on
+  // the renderer's lazy edge with a distinct identity.
+  ["katex-style", ["node_modules/katex/dist/katex.min.css"]],
+  ["katex", ["node_modules/katex/"]],
+  ["mermaid", ["node_modules/pele/dist/esm/lazy.js"]],
+];
+
 export default defineConfig({
   plugins: [react(), stylexPlugin(), pluginModules(), artifactGraph(), webArtifacts()],
   // Wails serves the webview through its OWN dev server on a different port, so the page
@@ -72,55 +124,8 @@ export default defineConfig({
             },
             {
               name(id: string) {
-                // The Wails runtime, which has to stay OFF the startup path: importing it has
-                // side effects — it installs listeners and starts talking to a host — and this
-                // same bundle runs in a plain browser and in the visual fixtures, where there
-                // is no host. `platform/clientHost.ts` imports it dynamically for exactly that reason,
-                // and naming its chunk is what makes the split reliable instead of incidental:
-                // unnamed, it is a lone module Rolldown may fold into a big neighbour, which is
-                // how the entry acquired a monolith twice already.
-                if (id.includes("node_modules/@wailsio/runtime")) return "wails-runtime";
-                if (
-                  id.includes("node_modules/react/") ||
-                  id.includes("node_modules/react-dom/") ||
-                  id.includes("node_modules/scheduler/")
-                )
-                  return "vendor";
-                if (id.includes("node_modules/motion")) return "vendor-motion";
-                if (id.includes("node_modules/zustand")) return "vendor";
-                if (id.includes("node_modules/@base-ui")) return "base-ui";
-                if (id.includes("node_modules/@tanstack")) return "tanstack";
-                // Brand marks are deliberately NOT named here. The composer pulls in the ten it
-                // draws with whatever imports them, and the icon gallery globs the whole catalogue
-                // behind a lazy route; naming the package would put that glob on the startup path,
-                // which is the one place its own laziness cannot reach.
-                // Markdown pipeline — eager: every rendered message goes through it.
-                if (
-                  id.includes("node_modules/react-markdown/") ||
-                  id.includes("node_modules/remark-") ||
-                  id.includes("node_modules/rehype-") ||
-                  id.includes("node_modules/unist-") ||
-                  id.includes("node_modules/mdast-")
-                )
-                  return "markdown";
-                // Syntax highlighting — lazy: dynamic-imported on the first code
-                // block. Kept out of "markdown" above for the reason stated there;
-                // sharing that chunk is how ~1.3 MB of grammars reached the startup
-                // path while still looking like a lazy feature in every report.
-                if (
-                  id.includes("node_modules/@shikijs/core/") ||
-                  id.includes("node_modules/@shikijs/engine-javascript/") ||
-                  id.includes("node_modules/@shikijs/vscode-textmate/")
-                )
-                  return "shiki";
-                // KaTeX JS is statically reachable through rehype-katex, while its
-                // stylesheet is a dependency of the lazy Markdown renderer. Giving
-                // both the same manual chunk name makes Rolldown attach the lazy CSS
-                // to the eager JS group and emit it in index.html. Keep the style on
-                // the renderer's lazy edge with a distinct identity.
-                if (id.includes("node_modules/katex/dist/katex.min.css")) return "katex-style";
-                if (id.includes("node_modules/katex/")) return "katex";
-                if (id.includes("node_modules/pele/dist/esm/lazy.js")) return "mermaid";
+                for (const [chunk, paths] of CHUNK_RULES)
+                  if (paths.some((path) => id.includes(path))) return chunk;
                 // OpenTelemetry, ONE CHUNK PER PACKAGE, which is not the tidy
                 // grouping it looks like it should be.
                 //
@@ -138,10 +143,8 @@ export default defineConfig({
                 // instead, and the SDKs fall off the entry: 122.8 KB to 12.2 KB.
                 // The extra chunk count costs nothing — these are read from a local
                 // disk, and only the startup path is a budget.
-                {
-                  const otel = /node_modules\/@opentelemetry\/([^/]+)/.exec(id);
-                  if (otel) return `otel-${otel[1]}`;
-                }
+                const otel = /node_modules\/@opentelemetry\/([^/]+)/.exec(id);
+                if (otel) return `otel-${otel[1]}`;
                 // Leave unrelated dependencies to Rollup's graph-aware chunking. A
                 // catch-all vendor bucket merged otherwise independent lazy features
                 // into one 9MB raw chunk and defeated the explicit boundaries above.

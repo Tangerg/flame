@@ -1,11 +1,10 @@
-import { projectNumber } from "@frame/sdk/json";
-import { parseJSON, stringifyJSON } from "@frame/sdk/json";
+import { projectNumber, parseJSON, stringifyJSON } from "@frame/sdk/json";
 import { type FlameClient } from "@flame/runtime-client";
 import {
   CAPABILITY_JSON,
   type MethodInputs,
   type MethodOutputs,
-} from "../../../../plugins/memory/package/io.github.tangerg.flame/contracts/methods.generated";
+} from "../../../../../plugins/memory/package/io.github.tangerg.flame/contracts/methods.generated";
 type MemoryScope = MethodInputs["flame.memory/list.v3"]["scope"];
 type MemoryRecord = MethodOutputs["flame.memory/list.v3"]["rows"][number];
 type MemoryOrigin = MemoryRecord["origin"];
@@ -61,57 +60,51 @@ export async function readInstalledMemory(
     );
     if (reply.failure) throw new Error(reply.failure.message);
     const page = parseJSON(reply.output!) as MemoryPage;
-    if (
-      !page ||
-      (typeof page.capacity !== "bigint" &&
-        (typeof page.capacity !== "number" || !Number.isSafeInteger(page.capacity)))
-    )
-      throw new Error("memory page has an invalid integer capacity");
-    const pageCapacity = BigInt(page.capacity);
-    if (
-      !page ||
-      !Array.isArray(page.rows) ||
-      typeof page.nextCursor !== "string" ||
-      pageCapacity <= 0n ||
-      (capacity !== undefined && capacity !== pageCapacity) ||
-      BigInt(pageCount) >= pageCapacity ||
-      BigInt(items.length + page.rows.length) > pageCapacity ||
-      (!page.rows.length && page.nextCursor)
-    )
-      throw new Error("memory page exceeds its declared traversal bounds");
-    capacity = pageCapacity;
+    capacity = admitMemoryPage(page, pageCount, items.length, capacity);
     for (const row of page.rows) {
-      const revision = projectNumber(row.revision);
-      if (
-        row.scope !== scope ||
-        seen.has(row.id) ||
-        !row.id ||
-        !Number.isSafeInteger(revision) ||
-        revision < 1 ||
-        !["active", "pending"].includes(row.status) ||
-        !["auto", "user"].includes(row.origin)
-      )
+      const item = decodeMemoryItem(row);
+      if (item.scope !== scope || seen.has(item.id))
         throw new Error("memory page has an invalid or repeated item");
-      seen.add(row.id);
-      items.push({
-        id: row.id,
-        revision,
-        scope,
-        content: row.content,
-        origin: row.origin as MemoryItem["origin"],
-        status: row.status as MemoryItem["status"],
-        pinned: row.pinned,
-        sessionId: row.sessionId,
-        day: row.day,
-        createdAt: row.createdAt,
-        updatedAt: row.updatedAt,
-      });
+      seen.add(item.id);
+      items.push(item);
     }
     if (!page.nextCursor) return items;
     if (cursors.has(page.nextCursor)) throw new Error("memory page repeats a cursor");
     cursors.add(page.nextCursor);
     cursor = page.nextCursor;
   }
+}
+
+function declaredCapacity(page: MemoryPage): bigint {
+  if (
+    !page ||
+    (typeof page.capacity !== "bigint" &&
+      (typeof page.capacity !== "number" || !Number.isSafeInteger(page.capacity)))
+  )
+    throw new Error("memory page has an invalid integer capacity");
+  return BigInt(page.capacity);
+}
+
+// Every page repeats the first page's capacity, and the traversal can neither
+// outgrow it nor continue past an empty page.
+function admitMemoryPage(
+  page: MemoryPage,
+  pageCount: number,
+  read: number,
+  capacity: bigint | undefined,
+): bigint {
+  const pageCapacity = declaredCapacity(page);
+  if (
+    !Array.isArray(page.rows) ||
+    typeof page.nextCursor !== "string" ||
+    pageCapacity <= 0n ||
+    (capacity !== undefined && capacity !== pageCapacity) ||
+    BigInt(pageCount) >= pageCapacity ||
+    BigInt(read + page.rows.length) > pageCapacity ||
+    (!page.rows.length && page.nextCursor)
+  )
+    throw new Error("memory page exceeds its declared traversal bounds");
+  return pageCapacity;
 }
 
 async function selectMemoryBinding(client: FlameClient, signal?: AbortSignal) {
@@ -227,27 +220,41 @@ export function updateInstalledMemory(
   );
 }
 
+type MemoryRow = MethodOutputs["flame.memory/update.v3"];
+
+// Enumerated fields carry only the values the memory contract publishes.
+function hasMemoryFacts(row: MemoryRow): boolean {
+  return (
+    typeof row.content === "string" &&
+    row.content.trim() !== "" &&
+    typeof row.pinned === "boolean" &&
+    typeof row.sessionId === "string" &&
+    typeof row.day === "string" &&
+    ["project", "user"].includes(row.scope) &&
+    ["active", "pending"].includes(row.status) &&
+    ["auto", "user"].includes(row.origin)
+  );
+}
+
+function hasOrderedTimes(row: MemoryRow): boolean {
+  const created = Date.parse(row.createdAt);
+  const updated = Date.parse(row.updatedAt);
+  return Number.isFinite(created) && Number.isFinite(updated) && updated >= created;
+}
+
+// One decoder owns the memory item shape, for list rows and acknowledgements alike.
 function decodeMemoryItem(output: unknown): MemoryItem {
-  const row = output as MethodOutputs["flame.memory/update.v3"];
+  const row = output as MemoryRow;
   const revision = projectNumber(row?.revision);
   if (
     !row ||
     !row.id ||
     !Number.isSafeInteger(revision) ||
     revision < 1 ||
-    typeof row.content !== "string" ||
-    !row.content.trim() ||
-    typeof row.pinned !== "boolean" ||
-    typeof row.sessionId !== "string" ||
-    typeof row.day !== "string" ||
-    !["project", "user"].includes(row.scope) ||
-    !["active", "pending"].includes(row.status) ||
-    !["auto", "user"].includes(row.origin) ||
-    !Number.isFinite(Date.parse(row.createdAt)) ||
-    !Number.isFinite(Date.parse(row.updatedAt)) ||
-    Date.parse(row.updatedAt) < Date.parse(row.createdAt)
+    !hasMemoryFacts(row) ||
+    !hasOrderedTimes(row)
   )
-    throw new Error("memory item acknowledgement is invalid");
+    throw new Error("memory item is invalid");
   return {
     id: row.id,
     revision,

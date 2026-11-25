@@ -14,7 +14,10 @@ declare module "vitest" {
 const execFileAsync = promisify(execFile);
 
 export default async function prepareRuntimeHttp(project: TestProject) {
-  const environmentRoot = await mkdtemp(join(tmpdir(), "flame-runtime-e2e-"));
+  // The runner's Unix control socket lives under this root and its absolute
+  // path must fit sun_path (104 bytes on macOS); os.tmpdir() there is too long.
+  const base = process.platform === "win32" ? tmpdir() : "/tmp";
+  const environmentRoot = await mkdtemp(join(base, "flame-e2e-"));
   const runtimeDirectory = resolve(project.config.root, "../../runtime");
   const os = process.platform === "win32" ? "windows" : process.platform;
   const arch = process.arch === "x64" ? "amd64" : process.arch;

@@ -103,8 +103,9 @@ diff. Run `git diff --check`. Do not change global Go/npm configuration.
 Use targeted race tests only for changed concurrent ownership. Use real PTY tests for terminal mode, input decoding, resize, focus, or restoration.
 
 Use the [UI lab](apps/web/lab/README.md) to inspect components and interactions.
-The Runtime HTTP suite builds and starts local Runtime, CLI and plugin processes
-to verify service behavior. [Runtime HTTP suite](apps/web/tests/integration/runtime-http.e2e.test.ts)
+The [Runtime HTTP suite](apps/web/tests/integration/runtime-http) builds local
+Runtime, CLI and plugin processes once; each of its files then starts its own
+Runtime, runner and scripted provider to verify one area of service behavior.
 
 Follow the [project test rules](PROJECT_RULES.md#tests) when adding, reviewing, or removing coverage.
 

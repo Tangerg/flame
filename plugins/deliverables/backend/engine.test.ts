@@ -101,6 +101,75 @@ function absent(): never {
   throw Object.assign(new Error("process absent"), { code: "ESRCH" });
 }
 
+// The office fixture checks the private profile it was confined to and writes
+// the output the current mode asks for.
+async function emulateOffice(
+  stdout: PassThrough,
+  executable: string,
+  argv: readonly string[],
+) {
+  const native = basename(executable) === "dsoffice";
+  const path = native ? argv[argv.indexOf("--input-path") + 1]! : argv.at(-1)!;
+  await readFile(path);
+  const profilePath = native
+    ? argv[argv.indexOf("--profile-directory") + 1]!
+    : fileURLToPath(
+        argv
+          .find((arg) => arg.startsWith("-env:UserInstallation="))!
+          .slice("-env:UserInstallation=".length),
+      );
+  const profileFile = join(profilePath, "user", "registrymodifications.xcu");
+  expect((await lstat(profilePath)).mode & 0o777).toBe(0o700);
+  expect((await lstat(profileFile)).mode & 0o777).toBe(0o600);
+  await readFile(profileFile, "utf8");
+  const format = argv[argv.indexOf(native ? "--format" : "--convert-to") + 1]!;
+  const output = native
+    ? argv[argv.indexOf("--output-path") + 1]!
+    : join(
+        argv[argv.indexOf("--outdir") + 1]!,
+        format === "pdf" ? "source.pdf" : "source.xlsx",
+      );
+  if (native)
+    stdout.write(
+      mode === "invalid-response"
+        ? '{"ok":false}'
+        : '{"ok":true,"missingFonts":[]}',
+    );
+  if (mode === "linked") await symlink(path, output);
+  else if (mode === "directory") await mkdir(output);
+  else if (mode !== "missing") {
+    await writeFile(output, format === "pdf" ? PDF : changedOutput);
+    if (mode === "oversized") await truncate(output, LIMITS.fileBytes + 1);
+  }
+}
+
+async function emulateTool(
+  stdout: PassThrough,
+  executable: string,
+  argv: readonly string[],
+) {
+  if (argv.includes("--version") || argv.includes("-v")) {
+    stdout.write(`${basename(executable)} 1.0\n`);
+    return;
+  }
+  switch (basename(executable)) {
+    case "office":
+    case "dsoffice":
+      return emulateOffice(stdout, executable, argv);
+    case "pdfinfo":
+      stdout.write(`Pages: ${pageCount}\nPage size: 612 x 792 pts\n`);
+      return;
+    case "pdftoppm":
+      await writeFile(`${argv.at(-1)}.png`, PNG);
+      return;
+    case "pdftotext":
+      await writeFile(argv.at(-1)!, text);
+      return;
+    default:
+      throw new Error("unexpected fixture executable");
+  }
+}
+
 function simulate(command: string, args: readonly string[]) {
   const child = new EventEmitter() as EventEmitter & {
     pid: number;
@@ -138,57 +207,7 @@ function simulate(command: string, args: readonly string[]) {
         finish(1);
         return;
       }
-      if (argv.includes("--version") || argv.includes("-v")) {
-        child.stdout.write(`${basename(executable)} 1.0\n`);
-      } else if (["office", "dsoffice"].includes(basename(executable))) {
-        const native = basename(executable) === "dsoffice";
-        const path = native
-          ? argv[argv.indexOf("--input-path") + 1]!
-          : argv.at(-1)!;
-        await readFile(path);
-        const profilePath = native
-          ? argv[argv.indexOf("--profile-directory") + 1]!
-          : fileURLToPath(
-              argv
-                .find((arg) => arg.startsWith("-env:UserInstallation="))!
-                .slice("-env:UserInstallation=".length),
-            );
-        const profileFile = join(
-          profilePath,
-          "user",
-          "registrymodifications.xcu",
-        );
-        expect((await lstat(profilePath)).mode & 0o777).toBe(0o700);
-        expect((await lstat(profileFile)).mode & 0o777).toBe(0o600);
-        await readFile(profileFile, "utf8");
-        const format =
-          argv[argv.indexOf(native ? "--format" : "--convert-to") + 1]!;
-        const output = native
-          ? argv[argv.indexOf("--output-path") + 1]!
-          : join(
-              argv[argv.indexOf("--outdir") + 1]!,
-              format === "pdf" ? "source.pdf" : "source.xlsx",
-            );
-        if (native)
-          child.stdout.write(
-            mode === "invalid-response"
-              ? '{"ok":false}'
-              : '{"ok":true,"missingFonts":[]}',
-          );
-        if (mode === "linked") await symlink(path, output);
-        else if (mode === "directory") await mkdir(output);
-        else if (mode !== "missing") {
-          await writeFile(output, format === "pdf" ? PDF : changedOutput);
-          if (mode === "oversized")
-            await truncate(output, LIMITS.fileBytes + 1);
-        }
-      } else if (basename(executable) === "pdfinfo") {
-        child.stdout.write(`Pages: ${pageCount}\nPage size: 612 x 792 pts\n`);
-      } else if (basename(executable) === "pdftoppm") {
-        await writeFile(`${argv.at(-1)}.png`, PNG);
-      } else if (basename(executable) === "pdftotext") {
-        await writeFile(argv.at(-1)!, text);
-      } else throw new Error("unexpected fixture executable");
+      await emulateTool(child.stdout, executable, argv);
       finish(0);
     })
     .catch((error: unknown) => {

@@ -62,6 +62,22 @@ if (request.nodePermissions || process.platform === "darwin") {
 process.stdout.write(JSON.stringify(result));
 `;
 
+// Node's permission model refuses before the OS confinement sees the call;
+// without it each platform's sandbox reports its own error. The child-process
+// probe has no Linux expectation outside Node's permission model.
+function expectedRefusals(nodePermissions: boolean) {
+  const darwin = process.platform === "darwin";
+  const nodeOr = (os: string) => (nodePermissions ? "ERR_ACCESS_DENIED" : os);
+  return {
+    privateRead: nodeOr(darwin ? "EPERM" : "ENOENT"),
+    write: nodeOr(darwin ? "EPERM" : "EROFS"),
+    network: darwin
+      ? ["EPERM", "EACCES"]
+      : ["ECONNREFUSED", "ENETUNREACH", "EHOSTUNREACH"],
+    child: nodePermissions || darwin ? nodeOr("EPERM") : undefined,
+  };
+}
+
 // The OS-only case prevents Node's filesystem checks from disguising a broken
 // mount policy. Both cases still enter the production OS confinement owner.
 native.each([false, true])(
@@ -162,28 +178,11 @@ native.each([false, true])(
         );
         expect(observed.procWrite).toBe("EROFS");
       }
-      expect(observed.privateRead).toBe(
-        nodePermissions
-          ? "ERR_ACCESS_DENIED"
-          : process.platform === "darwin"
-            ? "EPERM"
-            : "ENOENT",
-      );
-      expect(observed.write).toBe(
-        nodePermissions
-          ? "ERR_ACCESS_DENIED"
-          : process.platform === "darwin"
-            ? "EPERM"
-            : "EROFS",
-      );
-      expect(
-        process.platform === "darwin"
-          ? ["EPERM", "EACCES"]
-          : ["ECONNREFUSED", "ENETUNREACH", "EHOSTUNREACH"],
-      ).toContain(observed.network);
-      if (nodePermissions) expect(observed.child).toBe("ERR_ACCESS_DENIED");
-      else if (process.platform === "darwin")
-        expect(observed.child).toBe("EPERM");
+      const refused = expectedRefusals(nodePermissions);
+      expect(observed.privateRead).toBe(refused.privateRead);
+      expect(observed.write).toBe(refused.write);
+      expect(refused.network).toContain(observed.network);
+      if (refused.child) expect(observed.child).toBe(refused.child);
       expect(connections).toBe(1);
       expect(await readFile(target, "utf8")).toBe("unchanged");
       expect(await readFile(privateFile, "utf8")).toBe("private fixture");
