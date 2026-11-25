@@ -79,6 +79,18 @@ const FIELDS = [
   "reasoningTokens",
 ] as const;
 
+// Token totals sum reported usage only, so they are exact once every attempt reported.
+function tokensExact(coverage: { calls: number; reportedCalls: number }) {
+  return coverage.reportedCalls === coverage.calls;
+}
+
+function tokenFact(
+  field: (typeof FIELDS)[number],
+  coverage: { calls: number; reportedCalls: number },
+) {
+  return tokensExact(coverage) ? `fact.tokens.${field}` : `fact.known.${field}`;
+}
+
 const GROUPS = [
   "byProvider",
   "byModel",
@@ -147,11 +159,11 @@ function UsageReport({
               ? [t("fact.knownSubtotal"), fmt.cost(report.recordedCostUsd)]
               : [t("fact.totalCost"), fmt.cost(report.total.costUsd)],
             [
-              t("fact.known.inputTokens"),
+              t(tokenFact("inputTokens", report.coverage)),
               fmt.number(report.total.inputTokens ?? 0),
             ],
             [
-              t("fact.known.outputTokens"),
+              t(tokenFact("outputTokens", report.coverage)),
               fmt.number(report.total.outputTokens ?? 0),
             ],
           ]}
@@ -164,7 +176,7 @@ function UsageReport({
               ...FIELDS.map(
                 (key) =>
                   [
-                    t(`fact.known.${key}`),
+                    t(tokenFact(key, report.coverage)),
                     fmt.number(report.total[key] ?? 0),
                   ] as const,
               ),
@@ -224,16 +236,26 @@ function UsageReport({
                         })}
                       </span>
                       <span>
-                        {t("bucket.knownInput", {
-                          count: bucket.total.inputTokens ?? 0,
-                          tokens: fmt.number(bucket.total.inputTokens ?? 0),
-                        })}
+                        {t(
+                          tokensExact(bucket.coverage)
+                            ? "bucket.input"
+                            : "bucket.knownInput",
+                          {
+                            count: bucket.total.inputTokens ?? 0,
+                            tokens: fmt.number(bucket.total.inputTokens ?? 0),
+                          },
+                        )}
                       </span>
                       <span>
-                        {t("bucket.knownOutput", {
-                          count: bucket.total.outputTokens ?? 0,
-                          tokens: fmt.number(bucket.total.outputTokens ?? 0),
-                        })}
+                        {t(
+                          tokensExact(bucket.coverage)
+                            ? "bucket.output"
+                            : "bucket.knownOutput",
+                          {
+                            count: bucket.total.outputTokens ?? 0,
+                            tokens: fmt.number(bucket.total.outputTokens ?? 0),
+                          },
+                        )}
                       </span>
                     </RecordMeta>
                   }
@@ -261,7 +283,7 @@ function UsageReport({
                       ...FIELDS.map(
                         (key) =>
                           [
-                            t(`fact.known.${key}`),
+                            t(tokenFact(key, bucket.coverage)),
                             fmt.number(bucket.total[key] ?? 0),
                           ] as const,
                       ),

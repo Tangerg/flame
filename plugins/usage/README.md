@@ -41,8 +41,10 @@ explicitly select an updated release; an evaluated replacement requires window r
 Reports fold retained physical model attempts once, including auxiliary, active,
 Session-only and unattached calls. Run totals are not added again. Coverage counts
 distinguish reported usage/prices from missing evidence and expose started/unknown
-outcomes. Known price subtotal may be incomplete; total cost is exact only when
-every retained attempt is priced. Grouping by provider, served model, admission UTC
+outcomes. Token totals sum reported usage, so their labels say "known" only while
+some attempt in that total lacks it. Known price subtotal may be incomplete; total
+cost is exact only when every retained attempt is priced. Grouping by provider,
+served model, admission UTC
 day, calling origin or Session/Run association reconciles with the same sources.
 Deleted or never recorded calls cannot be reconstructed from an empty report.
 
