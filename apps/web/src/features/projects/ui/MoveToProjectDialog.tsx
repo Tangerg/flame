@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { useRef, useState, type RefObject } from "react";
-import { ModalDialog } from "@flame/ui";
+import { ModalDialog, vocab } from "@flame/ui";
 import { AgentRow } from "@/ui/agent/index";
 import { Icon } from "@/ui/index";
 import { useT } from "@/lib/i18n/index";
@@ -63,7 +63,9 @@ export function MoveToProjectDialog({
             disabled={busy}
             onClick={() => void choose(project.id)}
             trailing={
-              project.id === session.projectId ? <Icon name="check" size="xs" /> : undefined
+              project.id === session.projectId ? (
+                <Icon name="check" size="xs" className={stylex.props(vocab.accent).className} />
+              ) : undefined
             }
           >
             {project.name}
@@ -76,7 +78,11 @@ export function MoveToProjectDialog({
           icon="x"
           disabled={busy}
           onClick={() => void choose(null)}
-          trailing={!session.projectId ? <Icon name="check" size="xs" /> : undefined}
+          trailing={
+            !session.projectId ? (
+              <Icon name="check" size="xs" className={stylex.props(vocab.accent).className} />
+            ) : undefined
+          }
         >
           {t("projects.move.none")}
         </AgentRow>
