@@ -1,6 +1,6 @@
 import { type Translate } from "@flame/component-sdk";
 import type { ChartData, Frame } from "../contracts/content";
-import { type ElementView } from "../contracts/layouts";
+import type { ElementView, SlideLayout, SlideView } from "../contracts/layouts";
 
 export const EMU_PER_INCH = 914400;
 
@@ -43,4 +43,41 @@ export function slideTarget(object: string): {
   return separator < 0
     ? { slide: object }
     : { slide: object.slice(0, separator), element: object };
+}
+
+const slideName = (slide: SlideView, t: Translate) =>
+  [
+    t("slides.slide", { number: slide.number }),
+    ...(slide.name ? [slide.name] : []),
+  ].join(" · ");
+
+// A comment on the selection quotes the element's text, or the slide's name.
+export function slideComment(
+  slide: SlideView,
+  elementId: string | undefined,
+  t: Translate,
+) {
+  const name = slideName(slide, t);
+  const element = slide.elements.find((entry) => entry.id === elementId);
+  return element
+    ? {
+        object: element.id,
+        quote: element.text.map((run) => run.text).join(""),
+        label: `${name} · ${label(element, t)}`,
+      }
+    : { object: slide.id, quote: slide.name, label: name };
+}
+
+// Slide and element identities survive revisions, so an anchored object is
+// named wherever the shown revision still has it.
+export function describeSlideObject(
+  layout: SlideLayout,
+  object: string,
+  t: Translate,
+): string | undefined {
+  const target = slideTarget(object);
+  const slide = layout.slides.find((entry) => entry.id === target.slide);
+  if (!slide || !target.element) return slide && slideName(slide, t);
+  const element = slide.elements.find((entry) => entry.id === target.element);
+  return element && `${slideName(slide, t)} · ${label(element, t)}`;
 }

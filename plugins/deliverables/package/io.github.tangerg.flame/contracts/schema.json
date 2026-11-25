@@ -279,6 +279,157 @@
       ],
       "type": "object"
     },
+    "CommentV1Input": {
+      "additionalProperties": false,
+      "properties": {
+        "body": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "type": "string"
+        },
+        "id": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "object": {
+          "maxLength": 2048,
+          "minLength": 1,
+          "type": "string"
+        },
+        "quote": {
+          "maxLength": 500,
+          "type": "string"
+        },
+        "revision": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "revision",
+        "id",
+        "body"
+      ],
+      "type": "object"
+    },
+    "CommentV1Output": {
+      "additionalProperties": false,
+      "properties": {
+        "anchor": {
+          "additionalProperties": false,
+          "properties": {
+            "object": {
+              "maxLength": 2048,
+              "minLength": 1,
+              "type": "string"
+            },
+            "quote": {
+              "maxLength": 500,
+              "type": "string"
+            },
+            "revision": {
+              "pattern": "^[a-f0-9]{64}$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "revision"
+          ],
+          "type": "object"
+        },
+        "createdAt": {
+          "maxLength": 40,
+          "minLength": 1,
+          "type": "string"
+        },
+        "documentId": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "id": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "messages": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "author": {
+                "additionalProperties": false,
+                "properties": {
+                  "invocationId": {
+                    "type": "string"
+                  },
+                  "origin": {
+                    "enum": [
+                      "human",
+                      "model",
+                      "automatic"
+                    ],
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "origin",
+                  "invocationId"
+                ],
+                "type": "object"
+              },
+              "body": {
+                "maxLength": 2000,
+                "minLength": 1,
+                "type": "string"
+              },
+              "createdAt": {
+                "maxLength": 40,
+                "minLength": 1,
+                "type": "string"
+              },
+              "id": {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              "revision": {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "author",
+              "body",
+              "createdAt"
+            ],
+            "type": "object"
+          },
+          "maxItems": 32,
+          "minItems": 1,
+          "type": "array"
+        },
+        "status": {
+          "enum": [
+            "open",
+            "resolved"
+          ],
+          "type": "string"
+        },
+        "updatedAt": {
+          "maxLength": 40,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "documentId",
+        "anchor",
+        "status",
+        "createdAt",
+        "updatedAt",
+        "messages"
+      ],
+      "type": "object"
+    },
     "CreateV1Input": {
       "additionalProperties": false,
       "properties": {
@@ -2970,6 +3121,424 @@
       ],
       "type": "object"
     },
+    "ReopenV1Input": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "thread": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "thread"
+      ],
+      "type": "object"
+    },
+    "ReopenV1Output": {
+      "additionalProperties": false,
+      "properties": {
+        "anchor": {
+          "additionalProperties": false,
+          "properties": {
+            "object": {
+              "maxLength": 2048,
+              "minLength": 1,
+              "type": "string"
+            },
+            "quote": {
+              "maxLength": 500,
+              "type": "string"
+            },
+            "revision": {
+              "pattern": "^[a-f0-9]{64}$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "revision"
+          ],
+          "type": "object"
+        },
+        "createdAt": {
+          "maxLength": 40,
+          "minLength": 1,
+          "type": "string"
+        },
+        "documentId": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "id": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "messages": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "author": {
+                "additionalProperties": false,
+                "properties": {
+                  "invocationId": {
+                    "type": "string"
+                  },
+                  "origin": {
+                    "enum": [
+                      "human",
+                      "model",
+                      "automatic"
+                    ],
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "origin",
+                  "invocationId"
+                ],
+                "type": "object"
+              },
+              "body": {
+                "maxLength": 2000,
+                "minLength": 1,
+                "type": "string"
+              },
+              "createdAt": {
+                "maxLength": 40,
+                "minLength": 1,
+                "type": "string"
+              },
+              "id": {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              "revision": {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "author",
+              "body",
+              "createdAt"
+            ],
+            "type": "object"
+          },
+          "maxItems": 32,
+          "minItems": 1,
+          "type": "array"
+        },
+        "status": {
+          "enum": [
+            "open",
+            "resolved"
+          ],
+          "type": "string"
+        },
+        "updatedAt": {
+          "maxLength": 40,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "documentId",
+        "anchor",
+        "status",
+        "createdAt",
+        "updatedAt",
+        "messages"
+      ],
+      "type": "object"
+    },
+    "ReplyV1Input": {
+      "additionalProperties": false,
+      "properties": {
+        "body": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "type": "string"
+        },
+        "id": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "revision": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "thread": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "thread",
+        "body"
+      ],
+      "type": "object"
+    },
+    "ReplyV1Output": {
+      "additionalProperties": false,
+      "properties": {
+        "anchor": {
+          "additionalProperties": false,
+          "properties": {
+            "object": {
+              "maxLength": 2048,
+              "minLength": 1,
+              "type": "string"
+            },
+            "quote": {
+              "maxLength": 500,
+              "type": "string"
+            },
+            "revision": {
+              "pattern": "^[a-f0-9]{64}$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "revision"
+          ],
+          "type": "object"
+        },
+        "createdAt": {
+          "maxLength": 40,
+          "minLength": 1,
+          "type": "string"
+        },
+        "documentId": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "id": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "messages": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "author": {
+                "additionalProperties": false,
+                "properties": {
+                  "invocationId": {
+                    "type": "string"
+                  },
+                  "origin": {
+                    "enum": [
+                      "human",
+                      "model",
+                      "automatic"
+                    ],
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "origin",
+                  "invocationId"
+                ],
+                "type": "object"
+              },
+              "body": {
+                "maxLength": 2000,
+                "minLength": 1,
+                "type": "string"
+              },
+              "createdAt": {
+                "maxLength": 40,
+                "minLength": 1,
+                "type": "string"
+              },
+              "id": {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              "revision": {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "author",
+              "body",
+              "createdAt"
+            ],
+            "type": "object"
+          },
+          "maxItems": 32,
+          "minItems": 1,
+          "type": "array"
+        },
+        "status": {
+          "enum": [
+            "open",
+            "resolved"
+          ],
+          "type": "string"
+        },
+        "updatedAt": {
+          "maxLength": 40,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "documentId",
+        "anchor",
+        "status",
+        "createdAt",
+        "updatedAt",
+        "messages"
+      ],
+      "type": "object"
+    },
+    "ResolveV1Input": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "thread": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "thread"
+      ],
+      "type": "object"
+    },
+    "ResolveV1Output": {
+      "additionalProperties": false,
+      "properties": {
+        "anchor": {
+          "additionalProperties": false,
+          "properties": {
+            "object": {
+              "maxLength": 2048,
+              "minLength": 1,
+              "type": "string"
+            },
+            "quote": {
+              "maxLength": 500,
+              "type": "string"
+            },
+            "revision": {
+              "pattern": "^[a-f0-9]{64}$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "revision"
+          ],
+          "type": "object"
+        },
+        "createdAt": {
+          "maxLength": 40,
+          "minLength": 1,
+          "type": "string"
+        },
+        "documentId": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "id": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "messages": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "author": {
+                "additionalProperties": false,
+                "properties": {
+                  "invocationId": {
+                    "type": "string"
+                  },
+                  "origin": {
+                    "enum": [
+                      "human",
+                      "model",
+                      "automatic"
+                    ],
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "origin",
+                  "invocationId"
+                ],
+                "type": "object"
+              },
+              "body": {
+                "maxLength": 2000,
+                "minLength": 1,
+                "type": "string"
+              },
+              "createdAt": {
+                "maxLength": 40,
+                "minLength": 1,
+                "type": "string"
+              },
+              "id": {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              "revision": {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "author",
+              "body",
+              "createdAt"
+            ],
+            "type": "object"
+          },
+          "maxItems": 32,
+          "minItems": 1,
+          "type": "array"
+        },
+        "status": {
+          "enum": [
+            "open",
+            "resolved"
+          ],
+          "type": "string"
+        },
+        "updatedAt": {
+          "maxLength": 40,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "documentId",
+        "anchor",
+        "status",
+        "createdAt",
+        "updatedAt",
+        "messages"
+      ],
+      "type": "object"
+    },
     "RestoreV1Input": {
       "additionalProperties": false,
       "properties": {
@@ -3437,6 +4006,108 @@
       ],
       "type": "object"
     },
+    "SettleV1Input": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "outcome": {
+          "enum": [
+            "adopted",
+            "dismissed"
+          ],
+          "type": "string"
+        },
+        "suggestion": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "suggestion",
+        "outcome"
+      ],
+      "type": "object"
+    },
+    "SettleV1Output": {
+      "additionalProperties": false,
+      "properties": {
+        "author": {
+          "additionalProperties": false,
+          "properties": {
+            "invocationId": {
+              "type": "string"
+            },
+            "origin": {
+              "enum": [
+                "human",
+                "model",
+                "automatic"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "origin",
+            "invocationId"
+          ],
+          "type": "object"
+        },
+        "createdAt": {
+          "maxLength": 40,
+          "minLength": 1,
+          "type": "string"
+        },
+        "documentId": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "id": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "note": {
+          "maxLength": 2000,
+          "type": "string"
+        },
+        "operationsJSON": {
+          "maxLength": 2097152,
+          "minLength": 2,
+          "type": "string"
+        },
+        "revision": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "settledAt": {
+          "maxLength": 40,
+          "minLength": 1,
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "pending",
+            "adopted",
+            "dismissed"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "documentId",
+        "revision",
+        "note",
+        "operationsJSON",
+        "author",
+        "createdAt",
+        "status"
+      ],
+      "type": "object"
+    },
     "SheetsV1Input": {
       "additionalProperties": false,
       "properties": {
@@ -3606,6 +4277,400 @@
         "revision",
         "sourceSha256",
         "layoutJSON"
+      ],
+      "type": "object"
+    },
+    "SuggestV1Input": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "note": {
+          "maxLength": 2000,
+          "type": "string"
+        },
+        "operationsJSON": {
+          "maxLength": 2097152,
+          "minLength": 2,
+          "type": "string"
+        },
+        "revision": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "revision",
+        "note",
+        "operationsJSON"
+      ],
+      "type": "object"
+    },
+    "SuggestV1Output": {
+      "additionalProperties": false,
+      "properties": {
+        "author": {
+          "additionalProperties": false,
+          "properties": {
+            "invocationId": {
+              "type": "string"
+            },
+            "origin": {
+              "enum": [
+                "human",
+                "model",
+                "automatic"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "origin",
+            "invocationId"
+          ],
+          "type": "object"
+        },
+        "createdAt": {
+          "maxLength": 40,
+          "minLength": 1,
+          "type": "string"
+        },
+        "documentId": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "id": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "note": {
+          "maxLength": 2000,
+          "type": "string"
+        },
+        "operationsJSON": {
+          "maxLength": 2097152,
+          "minLength": 2,
+          "type": "string"
+        },
+        "revision": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "settledAt": {
+          "maxLength": 40,
+          "minLength": 1,
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "pending",
+            "adopted",
+            "dismissed"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "documentId",
+        "revision",
+        "note",
+        "operationsJSON",
+        "author",
+        "createdAt",
+        "status"
+      ],
+      "type": "object"
+    },
+    "SuggestionsV1Input": {
+      "additionalProperties": false,
+      "properties": {
+        "before": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "id": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "limit": {
+          "maximum": 32,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "status": {
+          "enum": [
+            "pending",
+            "adopted",
+            "dismissed"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "limit",
+        "id"
+      ],
+      "type": "object"
+    },
+    "SuggestionsV1Output": {
+      "additionalProperties": false,
+      "properties": {
+        "entries": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "author": {
+                "additionalProperties": false,
+                "properties": {
+                  "invocationId": {
+                    "type": "string"
+                  },
+                  "origin": {
+                    "enum": [
+                      "human",
+                      "model",
+                      "automatic"
+                    ],
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "origin",
+                  "invocationId"
+                ],
+                "type": "object"
+              },
+              "createdAt": {
+                "maxLength": 40,
+                "minLength": 1,
+                "type": "string"
+              },
+              "documentId": {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              "id": {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              "note": {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              "operationsJSON": {
+                "maxLength": 2097152,
+                "minLength": 2,
+                "type": "string"
+              },
+              "revision": {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              "settledAt": {
+                "maxLength": 40,
+                "minLength": 1,
+                "type": "string"
+              },
+              "status": {
+                "enum": [
+                  "pending",
+                  "adopted",
+                  "dismissed"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "documentId",
+              "revision",
+              "note",
+              "operationsJSON",
+              "author",
+              "createdAt",
+              "status"
+            ],
+            "type": "object"
+          },
+          "maxItems": 32,
+          "type": "array"
+        },
+        "next": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "entries"
+      ],
+      "type": "object"
+    },
+    "ThreadsV1Input": {
+      "additionalProperties": false,
+      "properties": {
+        "before": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "id": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "limit": {
+          "maximum": 32,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "status": {
+          "enum": [
+            "open",
+            "resolved"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "limit",
+        "id"
+      ],
+      "type": "object"
+    },
+    "ThreadsV1Output": {
+      "additionalProperties": false,
+      "properties": {
+        "entries": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "anchor": {
+                "additionalProperties": false,
+                "properties": {
+                  "object": {
+                    "maxLength": 2048,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "quote": {
+                    "maxLength": 500,
+                    "type": "string"
+                  },
+                  "revision": {
+                    "pattern": "^[a-f0-9]{64}$",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "revision"
+                ],
+                "type": "object"
+              },
+              "createdAt": {
+                "maxLength": 40,
+                "minLength": 1,
+                "type": "string"
+              },
+              "documentId": {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              "id": {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              "messages": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "author": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "invocationId": {
+                          "type": "string"
+                        },
+                        "origin": {
+                          "enum": [
+                            "human",
+                            "model",
+                            "automatic"
+                          ],
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "origin",
+                        "invocationId"
+                      ],
+                      "type": "object"
+                    },
+                    "body": {
+                      "maxLength": 2000,
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "createdAt": {
+                      "maxLength": 40,
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "id": {
+                      "pattern": "^[a-f0-9]{64}$",
+                      "type": "string"
+                    },
+                    "revision": {
+                      "pattern": "^[a-f0-9]{64}$",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "author",
+                    "body",
+                    "createdAt"
+                  ],
+                  "type": "object"
+                },
+                "maxItems": 32,
+                "minItems": 1,
+                "type": "array"
+              },
+              "status": {
+                "enum": [
+                  "open",
+                  "resolved"
+                ],
+                "type": "string"
+              },
+              "updatedAt": {
+                "maxLength": 40,
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "documentId",
+              "anchor",
+              "status",
+              "createdAt",
+              "updatedAt",
+              "messages"
+            ],
+            "type": "object"
+          },
+          "maxItems": 32,
+          "type": "array"
+        },
+        "next": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "entries"
       ],
       "type": "object"
     },

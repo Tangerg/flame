@@ -393,6 +393,7 @@ export function DiffManifestNotices({
         <EmptyState
           icon={FileDiffIcon}
           size="compact"
+          align="start"
           title={t(truncated ? "budget.empty" : "empty.title")}
         />
       )}

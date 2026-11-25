@@ -99,6 +99,16 @@ function DiagnosticsReport({
     () => new Intl.DateTimeFormat(locale, { timeStyle: "medium" }),
     [locale],
   );
+  if (!rows.length) {
+    return (
+      <EmptyState
+        icon={Activity}
+        size="compact"
+        align="start"
+        title={t("observations.empty.title")}
+      />
+    );
+  }
   return (
     <RecordGroup
       variant="list"
@@ -187,13 +197,6 @@ function DiagnosticsReport({
           </Disclosure>
         </Disclosure>
       ))}
-      {!rows.length && (
-        <EmptyState
-          icon={Activity}
-          size="compact"
-          title={t("observations.empty.title")}
-        />
-      )}
     </RecordGroup>
   );
 }

@@ -50,6 +50,8 @@ import {
   type Point,
 } from "./sheets-grid";
 import { RevisionChanges, SheetChanges } from "./changes";
+import { Comments } from "./comments";
+import { Suggestions } from "./suggestions";
 import * as token from "@flame/ui/tokens.stylex";
 
 const REFERENCE_CELLS = 200;
@@ -102,6 +104,21 @@ export function recalculate(
   );
 }
 
+export function describeCellOperation(
+  layout: WorkbookLayout | undefined,
+  operation: CellOperation,
+  t: Translate,
+) {
+  const separator = operation.id.lastIndexOf("!");
+  const sheet = layout?.sheets.find(
+    (entry) => entry.id === operation.id.slice(0, separator),
+  );
+  return t("sheets.op.setCell", {
+    sheet: sheet?.name ?? "",
+    ref: operation.id.slice(separator + 1),
+  });
+}
+
 function SheetReconcile({
   head,
   layout,
@@ -121,21 +138,11 @@ function SheetReconcile({
     () => reconcile(layout, draft.operations),
     [layout, draft.operations],
   );
-  const describe = (operation: CellOperation) => {
-    const separator = operation.id.lastIndexOf("!");
-    const sheet = layout.sheets.find(
-      (entry) => entry.id === operation.id.slice(0, separator),
-    );
-    return t("sheets.op.setCell", {
-      sheet: sheet?.name ?? "",
-      ref: operation.id.slice(separator + 1),
-    });
-  };
   return (
     <Reconcile
       results={results}
       head={head}
-      describe={describe}
+      describe={(operation) => describeCellOperation(layout, operation, t)}
       mine={(operation) => entryText(operation.value)}
       theirs={(result) =>
         entryText((result.current as { input?: CellValue }).input)
@@ -145,6 +152,34 @@ function SheetReconcile({
       onDiscard={onDiscard}
       t={t}
     />
+  );
+}
+
+// A comment on a cell quotes what it shows; sheet identities survive revisions.
+function cellComment(sheet: SheetView, ref: string, t: Translate) {
+  const cell = sheet.cells.find((entry) => entry.ref === ref);
+  return {
+    object: cellId(sheet.id, ref),
+    quote: cell ? shownText(cell.shown) : "",
+    label: t("sheets.op.setCell", { sheet: sheet.name, ref }),
+  };
+}
+
+function describeCell(
+  layout: WorkbookLayout,
+  object: string,
+  t: Translate,
+): string | undefined {
+  const separator = object.lastIndexOf("!");
+  const sheet = layout.sheets.find(
+    (entry) => entry.id === object.slice(0, separator),
+  );
+  return (
+    sheet &&
+    t("sheets.op.setCell", {
+      sheet: sheet.name,
+      ref: object.slice(separator + 1),
+    })
   );
 }
 
@@ -325,6 +360,15 @@ export function WorkbookStudio({
           )
         }
       />
+      <Suggestions
+        state={state}
+        live={live}
+        describe={(operation) =>
+          `${describeCellOperation(layout, operation, t)} = ${entryText(operation.value)}`
+        }
+        dateTime={dateTime}
+        t={t}
+      />
       <RevisionChanges live={live} dateTime={dateTime} t={t}>
         {(before, after) => (
           <SheetChanges
@@ -335,6 +379,18 @@ export function WorkbookStudio({
           />
         )}
       </RevisionChanges>
+      {layout && sheet && (
+        <Comments
+          state={state}
+          document={live.document}
+          selection={cellComment(sheet, focusRef, t)}
+          describe={(anchor) => describeCell(layout, anchor.object!, t)}
+          onLocate={locate}
+          handoff={handoff}
+          dateTime={dateTime}
+          t={t}
+        />
+      )}
       {layout && sheet && (
         <div
           ref={editor}

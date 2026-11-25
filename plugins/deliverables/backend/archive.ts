@@ -16,8 +16,11 @@ import {
   type Assessment,
   type Header,
   type Revision,
+  type SuggestionValue,
+  type ThreadValue,
 } from "../contracts/capability";
 import { Document, digest } from "./document";
+import { Thread } from "./thread";
 import { refusal } from "./refusal";
 
 export interface Original {
@@ -47,6 +50,10 @@ const tables = Object.freeze({
     "CREATE TABLE uploads (id TEXT PRIMARY KEY, size INTEGER NOT NULL, digest TEXT NOT NULL)",
   upload_chunks:
     "CREATE TABLE upload_chunks (upload_id TEXT NOT NULL REFERENCES uploads(id) ON DELETE CASCADE, offset INTEGER NOT NULL, bytes BLOB NOT NULL, PRIMARY KEY(upload_id,offset)) WITHOUT ROWID",
+  suggestions:
+    "CREATE TABLE suggestions (sequence INTEGER PRIMARY KEY, id TEXT UNIQUE NOT NULL, document_id TEXT NOT NULL REFERENCES documents(id) ON DELETE CASCADE, status TEXT NOT NULL CHECK(status IN ('pending','adopted','dismissed')), suggestion TEXT NOT NULL CHECK(json_valid(suggestion)))",
+  threads:
+    "CREATE TABLE threads (sequence INTEGER PRIMARY KEY, id TEXT UNIQUE NOT NULL, document_id TEXT NOT NULL REFERENCES documents(id) ON DELETE CASCADE, status TEXT NOT NULL CHECK(status IN ('open','resolved')), thread TEXT NOT NULL CHECK(json_valid(thread)))",
 });
 
 // The last immutable chunk owns the received offset; reading a header never loads its payload.
@@ -107,6 +114,8 @@ export class Archive {
       (SELECT coalesce(sum(length(bytes)+length(CAST(inspection AS BLOB))+length(CAST(metadata AS BLOB))+coalesce(length(CAST(processing AS BLOB)),0)),0) FROM revisions) +
       (SELECT coalesce(sum(length(bytes)+length(CAST(metadata AS BLOB))),0) FROM assets) +
       (SELECT coalesce(sum(length(CAST(payload AS BLOB))),0) FROM assessments) +
+      (SELECT coalesce(sum(length(CAST(thread AS BLOB))),0) FROM threads) +
+      (SELECT coalesce(sum(length(CAST(suggestion AS BLOB))),0) FROM suggestions) +
       (SELECT coalesce(sum(size),0) FROM uploads) AS used`,
       )
       .get()!;
@@ -451,6 +460,171 @@ export class Archive {
       entries,
       ...(rows.length > limit ? { next: entries.at(-1)!.id } : {}),
     };
+  }
+
+  // Threads and suggestions page newest first within one document.
+  #page<T extends { id: string }>(
+    table: "threads" | "suggestions",
+    documentId: string,
+    status: string | undefined,
+    before: string | undefined,
+    limit: number,
+    parse: (value: unknown) => T,
+  ): { entries: T[]; next?: string } {
+    this.document(documentId);
+    const cursor = before
+      ? this.#db
+          .prepare(`SELECT sequence FROM ${table} WHERE id=? AND document_id=?`)
+          .get(before, documentId)
+      : undefined;
+    if (before && !cursor)
+      throw refusal(
+        "cursor_not_found",
+        "cursor was not found in this deliverable",
+      );
+    const column = table === "threads" ? "thread" : "suggestion";
+    const rows = this.#db
+      .prepare(
+        `SELECT ${column} AS value FROM ${table} WHERE document_id=? AND (? IS NULL OR status=?) AND sequence < ? ORDER BY sequence DESC LIMIT ?`,
+      )
+      .all(
+        documentId,
+        status ?? null,
+        status ?? null,
+        cursor ? cursor.sequence! : Number.MAX_SAFE_INTEGER,
+        limit + 1,
+      );
+    const entries = rows.slice(0, limit).map((row) => parse(json(row.value)));
+    return {
+      entries,
+      ...(rows.length > limit ? { next: entries.at(-1)!.id } : {}),
+    };
+  }
+
+  threads(
+    documentId: string,
+    status: ThreadValue["status"] | undefined,
+    before: string | undefined,
+    limit: number,
+  ) {
+    return this.#page("threads", documentId, status, before, limit, (value) =>
+      schemas.thread.parse(value),
+    );
+  }
+
+  suggestions(
+    documentId: string,
+    status: SuggestionValue["status"] | undefined,
+    before: string | undefined,
+    limit: number,
+  ) {
+    return this.#page(
+      "suggestions",
+      documentId,
+      status,
+      before,
+      limit,
+      (value) => schemas.suggestion.parse(value),
+    );
+  }
+
+  addSuggestion(value: SuggestionValue): SuggestionValue {
+    this.#writing();
+    this.document(value.documentId);
+    const count = this.#db
+      .prepare("SELECT count(*) AS n FROM suggestions WHERE document_id=?")
+      .get(value.documentId)!.n as bigint;
+    if (count >= BigInt(LIMITS.suggestions))
+      throw refusal(
+        "suggestion_capacity",
+        "the deliverable holds its maximum number of suggestions",
+      );
+    this.#db
+      .prepare(
+        "INSERT INTO suggestions(id,document_id,status,suggestion) VALUES(?,?,?,?)",
+      )
+      .run(value.id, value.documentId, value.status, canonicalJSON(value));
+    return value;
+  }
+
+  // Only a pending suggestion settles, once.
+  settleSuggestion(
+    documentId: string,
+    id: string,
+    outcome: "adopted" | "dismissed",
+    at: string,
+  ): SuggestionValue {
+    this.#writing();
+    const row = this.#db
+      .prepare(
+        "SELECT suggestion FROM suggestions WHERE document_id=? AND id=?",
+      )
+      .get(documentId, id);
+    if (!row)
+      throw refusal(
+        "suggestion_not_found",
+        "suggestion was not found in this deliverable",
+      );
+    const current = schemas.suggestion.parse(json(row.suggestion));
+    if (current.status !== "pending")
+      throw refusal(
+        "suggestion_state",
+        `the suggestion is already ${current.status}`,
+      );
+    const value = schemas.suggestion.parse({
+      ...current,
+      status: outcome,
+      settledAt: at,
+    });
+    this.#db
+      .prepare(
+        "UPDATE suggestions SET status=?, suggestion=? WHERE document_id=? AND id=?",
+      )
+      .run(value.status, canonicalJSON(value), documentId, id);
+    return value;
+  }
+
+  thread(documentId: string, id: string): Thread {
+    const row = this.#db
+      .prepare("SELECT thread FROM threads WHERE document_id=? AND id=?")
+      .get(documentId, id);
+    if (!row)
+      throw refusal(
+        "thread_not_found",
+        "comment thread was not found in this deliverable",
+      );
+    return new Thread(schemas.thread.parse(json(row.thread)));
+  }
+
+  openThread(thread: Thread): ThreadValue {
+    this.#writing();
+    const value = thread.snapshot();
+    this.document(value.documentId);
+    const count = this.#db
+      .prepare("SELECT count(*) AS n FROM threads WHERE document_id=?")
+      .get(value.documentId)!.n as bigint;
+    if (count >= BigInt(LIMITS.threads))
+      throw refusal(
+        "thread_capacity",
+        "the deliverable holds its maximum number of comment threads",
+      );
+    this.#db
+      .prepare(
+        "INSERT INTO threads(id,document_id,status,thread) VALUES(?,?,?,?)",
+      )
+      .run(value.id, value.documentId, value.status, canonicalJSON(value));
+    return value;
+  }
+
+  saveThread(thread: Thread): ThreadValue {
+    this.#writing();
+    const value = thread.snapshot();
+    this.#db
+      .prepare(
+        "UPDATE threads SET status=?, thread=? WHERE document_id=? AND id=?",
+      )
+      .run(value.status, canonicalJSON(value), value.documentId, value.id);
+    return value;
   }
 
   assessments(documentId: string, revisionId: string): Assessment[] {

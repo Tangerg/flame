@@ -4,8 +4,11 @@ import { color, leading, layout, space, type, weight } from "./tokens.stylex";
 import { Icon, type IconGlyph } from "./font-scale";
 import { IconMark } from "./icon-mark";
 import type { Tone } from "./tone";
+import { toneInk } from "./tone-ink";
+import { vocab } from "./vocabulary";
 
 export type EmptyStateSize = "compact" | "comfortable";
+export type EmptyStateAlign = "center" | "start";
 
 const styles = stylex.create({
   root: {
@@ -27,6 +30,23 @@ const styles = stylex.create({
     paddingInline: layout.cardPadding,
     paddingBlock: space.s12,
   },
+  inline: {
+    display: "flex",
+    alignItems: "flex-start",
+    gap: space.s2,
+    paddingBlock: layout.rowPadding,
+    textAlign: "start",
+    color: color.fgFaint,
+    minWidth: 0,
+  },
+  inlineCopy: {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "flex-start",
+    gap: layout.labelGap,
+    flex: 1,
+    minWidth: 0,
+  },
   title: {
     fontWeight: weight.medium,
     letterSpacing: "normal",
@@ -35,11 +55,11 @@ const styles = stylex.create({
     textWrap: "balance",
   },
   sub: {
-    maxWidth: "min(100%,32ch)",
     lineHeight: leading.body,
     color: color.fgMuted,
     overflowWrap: "break-word",
   },
+  centeredSub: { maxWidth: "min(100%,32ch)" },
   action: { marginTop: layout.labelGap },
 });
 
@@ -48,6 +68,7 @@ const ROOT = {
   comfortable: styles.rootComfortable,
 } as const;
 const TITLE_TYPE = { compact: type.uiXs, comfortable: type.uiMd } as const;
+const GLYPH_SIZE = { compact: "xs", comfortable: "sm" } as const;
 
 export function EmptyState({
   icon,
@@ -55,6 +76,7 @@ export function EmptyState({
   sub,
   action,
   size = "comfortable",
+  align = "center",
   style,
   tone,
 }: {
@@ -63,9 +85,49 @@ export function EmptyState({
   sub?: string;
   action?: ReactNode;
   size?: EmptyStateSize;
+  align?: EmptyStateAlign;
   style?: CSSProperties;
   tone?: Tone;
 }) {
+  const centered = align === "center";
+  const copy = (
+    <>
+      {/* Preserve word boundaries when a containing control includes this feedback in its name. */}
+      <div {...stylex.props(TITLE_TYPE[size], styles.title)}>{title} </div>
+      {sub && (
+        <div
+          {...stylex.props(
+            type.uiSm,
+            styles.sub,
+            centered && styles.centeredSub,
+          )}
+        >
+          {sub}{" "}
+        </div>
+      )}
+      {action && <div {...stylex.props(styles.action)}>{action}</div>}
+    </>
+  );
+  if (!centered) {
+    return (
+      <div {...stylex.props(styles.inline)} style={style}>
+        {icon && (
+          // Shares the title's type step so its 1lh box centres the glyph on the title line.
+          <span
+            {...stylex.props(
+              TITLE_TYPE[size],
+              vocab.firstLine,
+              vocab.hold,
+              tone && toneInk[tone],
+            )}
+          >
+            <Icon glyph={icon} size={GLYPH_SIZE[size]} />
+          </span>
+        )}
+        <div {...stylex.props(styles.inlineCopy)}>{copy}</div>
+      </div>
+    );
+  }
   return (
     <div {...stylex.props(styles.root, ROOT[size])} style={style}>
       {icon && (
@@ -73,10 +135,7 @@ export function EmptyState({
           <Icon glyph={icon} size={size === "compact" ? "md" : "lg"} />
         </IconMark>
       )}
-      {/* Preserve word boundaries when a containing control includes this feedback in its name. */}
-      <div {...stylex.props(TITLE_TYPE[size], styles.title)}>{title} </div>
-      {sub && <div {...stylex.props(type.uiSm, styles.sub)}>{sub} </div>}
-      {action && <div {...stylex.props(styles.action)}>{action}</div>}
+      {copy}
     </div>
   );
 }

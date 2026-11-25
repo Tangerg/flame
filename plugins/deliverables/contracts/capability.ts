@@ -2,6 +2,7 @@ import { z } from "zod";
 import { PROTOCOL, type CapabilityDescriptor } from "@flame/backend-sdk/mcp";
 import { FIELD_LIMITS, LIMITS } from "./limits";
 import { formatSchema, officeFormatSchema } from "./content";
+import { authorSchema } from "./evidence";
 
 import { METHODS } from "./methods";
 export { METHODS } from "./methods";
@@ -74,6 +75,46 @@ const assessment = z.strictObject({
   kind: z.enum(["render", "review"]),
   reportJSON: z.string().max(LIMITS.reportBytes),
   assets: z.array(asset).max(LIMITS.renderPages + 2),
+});
+// A comment is anchored where it was made: the revision, the editor's object
+// identity (a slide or element, "sheet!A1" or a block) and the object's text
+// then, so the comment stays readable after the object changes or goes.
+const comment = z.string().trim().min(1).max(FIELD_LIMITS.comment);
+const anchor = z.strictObject({
+  revision: id,
+  object: z.string().min(1).max(2048).optional(),
+  quote: z.string().max(FIELD_LIMITS.quote).optional(),
+});
+const threadMessage = z.strictObject({
+  id,
+  author: authorSchema,
+  body: comment,
+  createdAt: timestamp,
+  // A revision the message points to, such as the one that addresses it.
+  revision: id.optional(),
+});
+const thread = z.strictObject({
+  id,
+  documentId: id,
+  anchor,
+  status: z.enum(["open", "resolved"]),
+  createdAt: timestamp,
+  updatedAt: timestamp,
+  messages: z.array(threadMessage).min(1).max(LIMITS.threadMessages),
+});
+const threadTarget = z.strictObject({ id, thread: id });
+// Edits proposed against the exact revision their author read. Adopting them
+// into a draft and saving is the person's decision; settling records it.
+const suggestion = z.strictObject({
+  id,
+  documentId: id,
+  revision: id,
+  note: z.string().max(FIELD_LIMITS.comment),
+  operationsJSON: json,
+  author: authorSchema,
+  createdAt: timestamp,
+  status: z.enum(["pending", "adopted", "dismissed"]),
+  settledAt: timestamp.optional(),
 });
 // A layout derived from one native revision on each read.
 const projection = z.strictObject({
@@ -166,6 +207,39 @@ export const schemas = Object.freeze({
     provenance,
     project: project.optional(),
   }),
+  thread,
+  threadMessage,
+  threadTarget,
+  threadsInput: page.extend({
+    id,
+    status: z.enum(["open", "resolved"]).optional(),
+  }),
+  threads: z.strictObject({
+    entries: z.array(thread).max(LIMITS.pageSize),
+    next: id.optional(),
+  }),
+  comment: anchor.extend({ id, body: comment }),
+  suggestion,
+  suggestionsInput: page.extend({
+    id,
+    status: z.enum(["pending", "adopted", "dismissed"]).optional(),
+  }),
+  suggestions: z.strictObject({
+    entries: z.array(suggestion).max(LIMITS.pageSize),
+    next: id.optional(),
+  }),
+  suggest: z.strictObject({
+    id,
+    revision: id,
+    note: z.string().max(FIELD_LIMITS.comment),
+    operationsJSON: json,
+  }),
+  settle: z.strictObject({
+    id,
+    suggestion: id,
+    outcome: z.enum(["adopted", "dismissed"]),
+  }),
+  reply: threadTarget.extend({ body: comment, revision: id.optional() }),
   review: selected.extend({
     renderId: id,
     pages: z
@@ -199,6 +273,9 @@ export type Revision = z.infer<typeof revision>;
 export type Header = z.infer<typeof header>;
 export type Assessment = z.infer<typeof assessment>;
 export type DocumentRead = z.infer<typeof schemas.read>;
+export type ThreadValue = z.infer<typeof thread>;
+export type ThreadMessage = z.infer<typeof threadMessage>;
+export type SuggestionValue = z.infer<typeof suggestion>;
 
 function method(
   operation: keyof typeof METHODS,
@@ -378,6 +455,70 @@ export const definitions = [
     "Read bounded bytes from an exact immutable asset. Verify the complete size and SHA-256 before saving; file saving is a separate host operation.",
     schemas.download,
     schemas.chunk,
+    "host",
+  ),
+  method(
+    "threads",
+    "query",
+    "List a deliverable's comment threads, newest first: each anchor (the revision, object identity and quoted text it was made on), status and messages. A thread whose object no longer exists keeps its anchor and quote.",
+    schemas.threadsInput,
+    schemas.threads,
+    "model",
+  ),
+  method(
+    "comment",
+    "command",
+    "Open a comment thread anchored to an exact revision and optionally an object in it, with the object's text then.",
+    schemas.comment,
+    thread,
+    "host",
+  ),
+  method(
+    "reply",
+    "command",
+    "Reply to a comment thread, optionally naming the revision that addresses it. Replying never resolves a thread; the person who asked decides.",
+    schemas.reply,
+    thread,
+    "model",
+  ),
+  method(
+    "resolve",
+    "command",
+    "Resolve an open comment thread.",
+    threadTarget,
+    thread,
+    "host",
+  ),
+  method(
+    "reopen",
+    "command",
+    "Reopen a resolved comment thread.",
+    threadTarget,
+    thread,
+    "host",
+  ),
+  method(
+    "suggestions",
+    "query",
+    "List a deliverable's suggested edits newest first, with the revision each was made against and whether the person adopted or dismissed it.",
+    schemas.suggestionsInput,
+    schemas.suggestions,
+    "model",
+  ),
+  method(
+    "suggest",
+    "command",
+    "Propose catalog-defined edits to an exact revision for the person to review in its open editor. Nothing changes until they adopt the edits into their draft and save it. A suggestion holds only edits an editor stages: PPTX replaceText, setFrame, setChartData and deleteElement; XLSX setCell; DOCX replaceText, insertParagraph, deleteBlock and setParagraphStyle. The edits must apply to that revision. Use edit to change the document directly.",
+    schemas.suggest,
+    suggestion,
+    "model",
+  ),
+  method(
+    "settle",
+    "command",
+    "Record that the person adopted a pending suggestion into their draft or dismissed it.",
+    schemas.settle,
+    suggestion,
     "host",
   ),
   method(

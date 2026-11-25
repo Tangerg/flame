@@ -134,6 +134,14 @@ export function commandProjection(operation: string, value: unknown): unknown {
     return revisionSummary(schemas.revision.parse(value));
   if (operation === "render" || operation === "review")
     return assessmentSummary(schemas.assessment.parse(value));
+  if (operation === "reply") {
+    const thread = schemas.thread.parse(value);
+    return {
+      id: thread.id,
+      status: thread.status,
+      messages: thread.messages.length,
+    };
+  }
   return value;
 }
 

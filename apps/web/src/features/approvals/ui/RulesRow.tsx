@@ -116,6 +116,7 @@ export function RulesRow() {
             icon: "check",
             title: t("approvals.rules.empty"),
             sub: t("approvals.rules.emptySub"),
+            align: "start",
           }}
         >
           {(rows) => (

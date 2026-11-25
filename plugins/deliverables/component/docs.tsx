@@ -32,7 +32,9 @@ import {
   type DocOperation,
 } from "./docs-draft";
 import { InsertedBlock, SavedBlock, type Selection } from "./docs-blocks";
-import { BlockChanges, RevisionChanges } from "./changes";
+import { BlockChanges, RevisionChanges, blockTitle } from "./changes";
+import { Comments, quoteOf, type Anchor } from "./comments";
+import { Suggestions } from "./suggestions";
 import { editableTarget } from "./slides-inspector";
 
 function blockReference(
@@ -60,6 +62,23 @@ function blockReference(
   };
 }
 
+export function describeDocOperation(operation: DocOperation, t: Translate) {
+  switch (operation.type) {
+    case "replaceText":
+      return t("docs.op.replaceText", { text: operation.text.slice(0, 60) });
+    case "insertParagraph":
+      return t("docs.op.insertParagraph", {
+        text: operation.text.slice(0, 60),
+      });
+    case "setParagraphStyle":
+      return t("docs.op.setParagraphStyle", {
+        style: t(`docs.style.${operation.style}`),
+      });
+    case "deleteBlock":
+      return t("docs.op.deleteBlock");
+  }
+}
+
 function DocReconcile({
   head,
   layout,
@@ -79,22 +98,8 @@ function DocReconcile({
     () => reconcile(layout, draft.operations),
     [layout, draft.operations],
   );
-  const describe = (operation: DocOperation) => {
-    switch (operation.type) {
-      case "replaceText":
-        return t("docs.op.replaceText", { text: operation.text.slice(0, 60) });
-      case "insertParagraph":
-        return t("docs.op.insertParagraph", {
-          text: operation.text.slice(0, 60),
-        });
-      case "setParagraphStyle":
-        return t("docs.op.setParagraphStyle", {
-          style: t(`docs.style.${operation.style}`),
-        });
-      case "deleteBlock":
-        return t("docs.op.deleteBlock");
-    }
-  };
+  const describe = (operation: DocOperation) =>
+    describeDocOperation(operation, t);
   return (
     <Reconcile
       results={results}
@@ -114,6 +119,49 @@ function DocReconcile({
       t={t}
     />
   );
+}
+
+// A block is named by its text, or by its kind when it has none.
+function blockLabel(block: BlockView, t: Translate): string {
+  const text = blockText(block);
+  if (!text) return blockTitle(block, t);
+  return text.length > 40 ? `“${text.slice(0, 40)}…”` : `“${text}”`;
+}
+
+function blockComment(
+  layout: DocumentLayout | undefined,
+  selection: Selection | undefined,
+  t: Translate,
+) {
+  const block =
+    selection?.source === "saved"
+      ? layout?.blocks.find((entry) => entry.id === selection.id)
+      : undefined;
+  return (
+    block && {
+      object: block.id,
+      quote: blockText(block),
+      label: blockLabel(block, t),
+    }
+  );
+}
+
+// Block identities are positions, so on another revision the block at the
+// anchored position is the same one only while its text still matches.
+function describeBlock(
+  layout: DocumentLayout,
+  viewed: string,
+  anchor: Anchor,
+  t: Translate,
+): string | undefined {
+  const block = layout.blocks.find((entry) => entry.id === anchor.object);
+  if (!block) return undefined;
+  if (
+    anchor.revision !== viewed &&
+    quoteOf(blockText(block)) !== (anchor.quote ?? "")
+  )
+    return undefined;
+  return blockLabel(block, t);
 }
 
 export function DocumentStudio({
@@ -199,11 +247,30 @@ export function DocumentStudio({
           )
         }
       />
+      <Suggestions
+        state={state}
+        live={live}
+        describe={(operation) => describeDocOperation(operation, t)}
+        dateTime={dateTime}
+        t={t}
+      />
       <RevisionChanges live={live} dateTime={dateTime} t={t}>
         {(before, after) => (
           <BlockChanges before={before} after={after} onOpen={locate} t={t} />
         )}
       </RevisionChanges>
+      {layout && (
+        <Comments
+          state={state}
+          document={live.document}
+          selection={blockComment(layout, current?.target, t)}
+          describe={(anchor) => describeBlock(layout, live.viewed, anchor, t)}
+          onLocate={locate}
+          handoff={handoff}
+          dateTime={dateTime}
+          t={t}
+        />
+      )}
       {layout && (
         <div
           onKeyDown={(event) => {

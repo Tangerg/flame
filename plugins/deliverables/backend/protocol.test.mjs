@@ -4,6 +4,7 @@ import { rolldown } from "rolldown";
 import { buildBackend } from "@flame/backend-sdk/build";
 import { randomUUID } from "node:crypto";
 import { mkdtemp, realpath, rm } from "node:fs/promises";
+import { DatabaseSync } from "node:sqlite";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -1014,6 +1015,201 @@ it(
       [frame, ["Next steps"]],
       [{ ...frame, y: 2743200 }, ["Owner"]],
     ]);
+  },
+  scenarioTimeoutMilliseconds,
+);
+it(
+  "comment threads keep their anchor, record who answered and arrive in an archive written before them",
+  async () => {
+    const first = await connect();
+    const created = await first.invoke(
+      METHODS.create,
+      {
+        title: "Notes",
+        format: "docx",
+        contentJSON: JSON.stringify({
+          title: "Notes",
+          blocks: [
+            { type: "paragraph", runs: [{ text: "Revenue is 100 USD." }] },
+            { type: "paragraph", runs: [{ text: "Costs are flat." }] },
+          ],
+        }),
+        provenance,
+      },
+      "create-notes",
+    );
+    await first.close();
+    const database = join(first.dataDirectory, "deliverables.db");
+    const before = new DatabaseSync(database);
+    before.exec("DROP TABLE threads");
+    before.close();
+
+    const next = await connect(first.dataDirectory);
+    const id = created.documentId;
+    expect((await next.invoke(METHODS.read, { id })).revision.id).toBe(
+      created.id,
+    );
+    const block = JSON.parse(
+      (await next.invoke(METHODS.blocks, { id })).layoutJSON,
+    ).blocks.find((entry) =>
+      entry.runs?.some((run) => run.text === "Revenue is 100 USD."),
+    );
+    const opened = await next.invoke(
+      METHODS.comment,
+      {
+        id,
+        revision: created.id,
+        object: block.id,
+        quote: "Revenue is 100 USD.",
+        body: "Show this in 10k CNY.",
+      },
+      "comment",
+    );
+    const edited = await next.invoke(
+      METHODS.edit,
+      {
+        id,
+        expectedRevision: created.id,
+        operationsJSON: JSON.stringify({
+          operations: [
+            { type: "deleteBlock", id: block.id, expect: block.expect },
+          ],
+        }),
+      },
+      "delete-block",
+    );
+    const replied = await next.tool("reply", {
+      id,
+      thread: opened.id,
+      body: "Removed the paragraph instead.",
+      revision: edited.id,
+    });
+    expect(replied.isError, JSON.stringify(replied)).not.toBe(true);
+    await next.invoke(METHODS.resolve, { id, thread: opened.id }, "resolve");
+    await expect(
+      next.invoke(METHODS.resolve, { id, thread: opened.id }, "resolve-again"),
+    ).rejects.toMatchObject({ code: "thread_state" });
+    expect(
+      (await next.invoke(METHODS.threads, { id, limit: 8 })).entries,
+    ).toMatchObject([
+      {
+        status: "resolved",
+        anchor: {
+          revision: created.id,
+          object: block.id,
+          quote: "Revenue is 100 USD.",
+        },
+        messages: [
+          { body: "Show this in 10k CNY.", author: { origin: "human" } },
+          {
+            body: "Removed the paragraph instead.",
+            author: { origin: "model" },
+            revision: edited.id,
+          },
+        ],
+      },
+    ]);
+
+    await next.invoke(
+      METHODS.remove,
+      { id, expectedRevision: edited.id },
+      "remove",
+    );
+    await next.close();
+    const after = new DatabaseSync(database);
+    expect(after.prepare("SELECT count(*) AS n FROM threads").get().n).toBe(0);
+    after.close();
+  },
+  scenarioTimeoutMilliseconds,
+);
+it(
+  "a suggestion changes nothing until the person settles it, and only edits that apply to its revision are suggested",
+  async ({ backend }) => {
+    const created = await backend.invoke(METHODS.create, {
+      title: "Budget",
+      format: "xlsx",
+      contentJSON: JSON.stringify({
+        title: "Budget",
+        sheets: [
+          {
+            name: "Plan",
+            cells: [{ address: "B2", value: { type: "number", value: 100 } }],
+          },
+        ],
+      }),
+      provenance,
+    });
+    const id = created.documentId;
+    const [sheet] = JSON.parse(
+      (await backend.invoke(METHODS.sheets, { id })).layoutJSON,
+    ).sheets;
+    const cell = sheet.cells.find((entry) => entry.ref === "B2");
+    const edit = (expect) =>
+      JSON.stringify({
+        operations: [
+          {
+            type: "setCell",
+            id: `${sheet.id}!B2`,
+            expect,
+            value: { type: "number", value: 150 },
+          },
+        ],
+      });
+    const suggested = await backend.tool("suggest", {
+      id,
+      revision: created.id,
+      note: "Raise the plan to 150.",
+      operationsJSON: edit(cell.expect),
+    });
+    expect(suggested.isError, JSON.stringify(suggested)).not.toBe(true);
+    const stale = await backend.tool("suggest", {
+      id,
+      revision: created.id,
+      note: "",
+      operationsJSON: edit("not the cell's precondition"),
+    });
+    expect(stale.isError).toBe(true);
+    const unstaged = await backend.tool("suggest", {
+      id,
+      revision: created.id,
+      note: "",
+      operationsJSON: JSON.stringify({
+        operations: [{ type: "recalculate" }],
+      }),
+    });
+    expect(JSON.parse(unstaged.content[0].text).failure.code).toBe(
+      "invalid_suggestion",
+    );
+    expect((await backend.invoke(METHODS.read, { id })).revision.id).toBe(
+      created.id,
+    );
+    const [pending] = (
+      await backend.invoke(METHODS.suggestions, {
+        id,
+        status: "pending",
+        limit: 8,
+      })
+    ).entries;
+    expect(pending).toMatchObject({
+      revision: created.id,
+      note: "Raise the plan to 150.",
+      author: { origin: "model" },
+    });
+    await backend.invoke(
+      METHODS.settle,
+      { id, suggestion: pending.id, outcome: "adopted" },
+      "adopt",
+    );
+    await expect(
+      backend.invoke(
+        METHODS.settle,
+        { id, suggestion: pending.id, outcome: "dismissed" },
+        "dismiss",
+      ),
+    ).rejects.toMatchObject({ code: "suggestion_state" });
+    expect(
+      (await backend.invoke(METHODS.suggestions, { id, limit: 8 })).entries,
+    ).toMatchObject([{ id: pending.id, status: "adopted" }]);
   },
   scenarioTimeoutMilliseconds,
 );

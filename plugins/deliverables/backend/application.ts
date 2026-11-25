@@ -2,7 +2,14 @@ import { ASSET_MIME } from "../contracts/media";
 import { canonicalJSON, type CallContext } from "@flame/backend-sdk/mcp";
 import { toolCommandId } from "@flame/backend-sdk";
 import { z } from "zod";
-import { schemas, METHODS, type DocumentRead } from "../contracts/capability";
+import {
+  schemas,
+  METHODS,
+  type DocumentRead,
+  type SuggestionValue,
+  type ThreadMessage,
+} from "../contracts/capability";
+import { STAGED_OPERATIONS } from "../contracts/content";
 import { LIMITS } from "../contracts/limits";
 import { projectNumbers, type FrozenJSONValue } from "@frame/sdk/json";
 import { engineCatalogSchema } from "../contracts/evidence";
@@ -13,6 +20,7 @@ import { catalog, hasPNGSignature } from "./formats";
 import { Formats } from "./format-process";
 import { RevisionPreparation, retainedJSON } from "./revision-preparation";
 import { refusal } from "./refusal";
+import { Thread } from "./thread";
 
 type Input = Record<string, unknown>;
 export type Operation = keyof typeof METHODS;
@@ -33,6 +41,19 @@ function base64(value: string): Uint8Array {
     );
   return result;
 }
+
+// Comments and suggestions annotate a document without changing a revision.
+const ANNOTATIONS = [
+  "comment",
+  "reply",
+  "resolve",
+  "reopen",
+  "suggest",
+  "settle",
+] as const;
+type Annotation = (typeof ANNOTATIONS)[number];
+const isAnnotation = (operation: Operation): operation is Annotation =>
+  (ANNOTATIONS as readonly string[]).includes(operation);
 
 export class Application {
   readonly #archive: Archive;
@@ -106,6 +127,24 @@ export class Application {
       case "history": {
         const value = schemas.historyInput.parse(input);
         return this.#archive.history(value.id, value.before, value.limit);
+      }
+      case "suggestions": {
+        const value = schemas.suggestionsInput.parse(input);
+        return this.#archive.suggestions(
+          value.id,
+          value.status,
+          value.before,
+          value.limit,
+        );
+      }
+      case "threads": {
+        const value = schemas.threadsInput.parse(input);
+        return this.#archive.threads(
+          value.id,
+          value.status,
+          value.before,
+          value.limit,
+        );
       }
       case "slides":
         return schemas.slides.parse(
@@ -200,6 +239,8 @@ export class Application {
     command: string,
   ): Promise<() => unknown> {
     const now = new Date().toISOString();
+    if (isAnnotation(operation))
+      return this.#annotate(context, operation, input, command, now);
     switch (operation) {
       case "create":
         return this.#preparation.prepareCreate(
@@ -295,6 +336,124 @@ export class Application {
       }
       default:
         throw new Error("deliverables: operation is not a command");
+    }
+  }
+
+  // A suggestion holds only edits an editor stages, and they must apply to the
+  // revision it names; the trial result is discarded.
+  async #suggest(
+    context: CallContext,
+    value: z.infer<typeof schemas.suggest>,
+    command: string,
+    now: string,
+  ): Promise<() => unknown> {
+    const source = this.#archive.revision(value.id, value.revision);
+    const format = source.metadata.format;
+    if (format === "pdf")
+      throw refusal(
+        "invalid_format",
+        "suggestions require a PPTX, XLSX or DOCX revision",
+      );
+    const staged: readonly string[] = STAGED_OPERATIONS[format];
+    const types = z
+      .object({ operations: z.array(z.object({ type: z.string() })) })
+      .parse(JSON.parse(value.operationsJSON))
+      .operations.map((operation) => operation.type);
+    const unstaged = types.filter((type) => !staged.includes(type));
+    if (unstaged.length)
+      throw refusal(
+        "invalid_suggestion",
+        `a ${format.toUpperCase()} suggestion holds only ${staged.join(", ")}; use edit for ${[...new Set(unstaged)].join(", ")}`,
+      );
+    await this.#formats.edit(
+      format,
+      source.bytes,
+      value.operationsJSON,
+      context.signal,
+    );
+    const suggestion: SuggestionValue = {
+      id: digest(`suggestion:${command}`),
+      documentId: value.id,
+      revision: value.revision,
+      note: value.note,
+      operationsJSON: value.operationsJSON,
+      author: {
+        origin: context.invocation!.origin,
+        invocationId: context.invocation!.id,
+      },
+      createdAt: now,
+      status: "pending",
+    };
+    return () => this.#archive.addSuggestion(suggestion);
+  }
+
+  // Each transition applies to the thread as the publication transaction reads
+  // it, so concurrent replies append instead of replacing each other.
+  async #annotate(
+    context: CallContext,
+    operation: Annotation,
+    input: Input,
+    command: string,
+    now: string,
+  ): Promise<() => unknown> {
+    const author = {
+      origin: context.invocation!.origin,
+      invocationId: context.invocation!.id,
+    };
+    const message = (body: string, revision?: string): ThreadMessage => ({
+      id: digest(`message:${command}`),
+      author,
+      body,
+      createdAt: now,
+      ...(revision ? { revision } : {}),
+    });
+    switch (operation) {
+      case "suggest":
+        return this.#suggest(
+          context,
+          schemas.suggest.parse(input),
+          command,
+          now,
+        );
+      case "settle": {
+        const value = schemas.settle.parse(input);
+        return () =>
+          this.#archive.settleSuggestion(
+            value.id,
+            value.suggestion,
+            value.outcome,
+            now,
+          );
+      }
+      case "comment": {
+        const { id, body, ...anchor } = schemas.comment.parse(input);
+        return () => {
+          this.#archive.revision(id, anchor.revision);
+          return this.#archive.openThread(
+            Thread.open(digest(`thread:${command}`), id, anchor, message(body)),
+          );
+        };
+      }
+      case "reply": {
+        const value = schemas.reply.parse(input);
+        return () => {
+          if (value.revision) this.#archive.revision(value.id, value.revision);
+          return this.#archive.saveThread(
+            this.#archive
+              .thread(value.id, value.thread)
+              .reply(message(value.body, value.revision)),
+          );
+        };
+      }
+      default: {
+        const value = schemas.threadTarget.parse(input);
+        return () => {
+          const thread = this.#archive.thread(value.id, value.thread);
+          return this.#archive.saveThread(
+            operation === "resolve" ? thread.resolve(now) : thread.reopen(now),
+          );
+        };
+      }
     }
   }
 

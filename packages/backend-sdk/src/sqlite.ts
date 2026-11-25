@@ -76,8 +76,9 @@ export interface PrivateDatabaseSchema {
 
 // Opens a SQLite file that one plugin process owns alone. EXCLUSIVE keeps the
 // file lock between transactions, so admission survives a lost callback without
-// holding a transaction over an await. An empty file receives the schema; any
-// other file must already carry exactly that schema.
+// holding a transaction over an await. A file receives the declared objects it
+// lacks, so a newer owner can add objects without touching existing data; every
+// object a file already holds must be declared with exactly the same statement.
 export function openPrivateDatabase(
   path: string,
   owner: string,
@@ -103,20 +104,20 @@ export function openPrivateDatabase(
         "SELECT name,sql FROM sqlite_schema WHERE sql IS NOT NULL AND name NOT GLOB 'sqlite_*'",
       )
       .all();
-    if (stored.length) {
-      if (
-        stored.length !== Object.keys(objects).length ||
-        stored.some(
-          (row) =>
-            typeof row.name !== "string" ||
-            !Object.hasOwn(objects, row.name) ||
-            row.sql !== objects[row.name],
-        )
+    if (
+      stored.some(
+        (row) =>
+          typeof row.name !== "string" ||
+          !Object.hasOwn(objects, row.name) ||
+          row.sql !== objects[row.name],
       )
-        throw new Error(
-          `${owner}: incompatible private database schema; preserve the existing data directory`,
-        );
-    } else for (const sql of Object.values(objects)) db.exec(sql);
+    )
+      throw new Error(
+        `${owner}: incompatible private database schema; preserve the existing data directory`,
+      );
+    const present = new Set(stored.map((row) => row.name));
+    for (const [name, sql] of Object.entries(objects))
+      if (!present.has(name)) db.exec(sql);
     db.exec("COMMIT");
   } catch (cause) {
     const failures = [cause];

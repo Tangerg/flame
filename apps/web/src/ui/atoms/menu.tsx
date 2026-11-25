@@ -21,7 +21,8 @@ const menuStyles = stylex.create({
     backgroundColor: surface.divider,
   },
   content: {
-    minWidth: "12rem",
+    // A menu opened from a select-like trigger is at least as wide as that trigger.
+    minWidth: "max(12rem, var(--anchor-width, 0px))",
     maxWidth: "min(var(--available-width), calc(100dvw - var(--spacing) * 8))",
     maxHeight: "min(380px, var(--available-height))",
     overflow: "hidden auto",

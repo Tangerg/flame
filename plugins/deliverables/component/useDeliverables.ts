@@ -132,8 +132,14 @@ export function useDeliverables(context: ComponentContext) {
     if (selection) void query(METHODS.read, selection);
   }, [query, selection?.id, selection?.revision]);
   useEffect(() => {
-    if (selection)
-      void query(METHODS.history, { id: selection.id, limit: LIMITS.pageSize });
+    if (!selection) return;
+    void query(METHODS.history, { id: selection.id, limit: LIMITS.pageSize });
+    void query(METHODS.threads, { id: selection.id, limit: LIMITS.pageSize });
+    void query(METHODS.suggestions, {
+      id: selection.id,
+      status: "pending",
+      limit: LIMITS.pageSize,
+    });
   }, [query, selection?.id]);
 
   const refresh = useCallback(async () => {
@@ -158,6 +164,12 @@ export function useDeliverables(context: ComponentContext) {
               values[METHODS.history]?.input.before
                 ? { before: values[METHODS.history]!.input.before }
                 : {}),
+            }),
+            query(METHODS.threads, { id: captured.id, limit: LIMITS.pageSize }),
+            query(METHODS.suggestions, {
+              id: captured.id,
+              status: "pending",
+              limit: LIMITS.pageSize,
             }),
           ]
         : []),
@@ -264,6 +276,14 @@ export function useDeliverables(context: ComponentContext) {
       values[METHODS.history]?.input.id === selection?.id
         ? values[METHODS.history]
         : undefined,
+    threads:
+      values[METHODS.threads]?.input.id === selection?.id
+        ? values[METHODS.threads]
+        : undefined,
+    suggestions:
+      values[METHODS.suggestions]?.input.id === selection?.id
+        ? values[METHODS.suggestions]
+        : undefined,
     listPrevious: listPages.length > 0,
     historyPrevious: historyPages.length > 0,
     ...journal,
@@ -274,6 +294,8 @@ export function useDeliverables(context: ComponentContext) {
       if (!signal.aborted && sameSelection(current.current, captured)) {
         abort(METHODS.read);
         abort(METHODS.history);
+        abort(METHODS.threads);
+        abort(METHODS.suggestions);
         current.current = undefined;
         setTarget(undefined);
       }

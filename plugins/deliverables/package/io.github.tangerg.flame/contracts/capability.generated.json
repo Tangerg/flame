@@ -315,6 +315,165 @@
       }
     },
     {
+      "name": "flame.deliverables/comment.v1",
+      "kind": "command",
+      "target": "installation",
+      "description": "Open a comment thread anchored to an exact revision and optionally an object in it, with the object's text then.",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "body": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "object": {
+            "maxLength": 2048,
+            "minLength": 1,
+            "type": "string"
+          },
+          "quote": {
+            "maxLength": 500,
+            "type": "string"
+          },
+          "revision": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "revision",
+          "id",
+          "body"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "anchor": {
+            "additionalProperties": false,
+            "properties": {
+              "object": {
+                "maxLength": 2048,
+                "minLength": 1,
+                "type": "string"
+              },
+              "quote": {
+                "maxLength": 500,
+                "type": "string"
+              },
+              "revision": {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              }
+            },
+            "required": [
+              "revision"
+            ],
+            "type": "object"
+          },
+          "createdAt": {
+            "maxLength": 40,
+            "minLength": 1,
+            "type": "string"
+          },
+          "documentId": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "messages": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "author": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "invocationId": {
+                      "type": "string"
+                    },
+                    "origin": {
+                      "enum": [
+                        "human",
+                        "model",
+                        "automatic"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "origin",
+                    "invocationId"
+                  ],
+                  "type": "object"
+                },
+                "body": {
+                  "maxLength": 2000,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "createdAt": {
+                  "maxLength": 40,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "id": {
+                  "pattern": "^[a-f0-9]{64}$",
+                  "type": "string"
+                },
+                "revision": {
+                  "pattern": "^[a-f0-9]{64}$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "author",
+                "body",
+                "createdAt"
+              ],
+              "type": "object"
+            },
+            "maxItems": 32,
+            "minItems": 1,
+            "type": "array"
+          },
+          "status": {
+            "enum": [
+              "open",
+              "resolved"
+            ],
+            "type": "string"
+          },
+          "updatedAt": {
+            "maxLength": 40,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "documentId",
+          "anchor",
+          "status",
+          "createdAt",
+          "updatedAt",
+          "messages"
+        ],
+        "type": "object"
+      }
+    },
+    {
       "name": "flame.deliverables/create.v1",
       "kind": "command",
       "target": "installation",
@@ -3102,6 +3261,448 @@
       }
     },
     {
+      "name": "flame.deliverables/reopen.v1",
+      "kind": "command",
+      "target": "installation",
+      "description": "Reopen a resolved comment thread.",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "thread": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "thread"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "anchor": {
+            "additionalProperties": false,
+            "properties": {
+              "object": {
+                "maxLength": 2048,
+                "minLength": 1,
+                "type": "string"
+              },
+              "quote": {
+                "maxLength": 500,
+                "type": "string"
+              },
+              "revision": {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              }
+            },
+            "required": [
+              "revision"
+            ],
+            "type": "object"
+          },
+          "createdAt": {
+            "maxLength": 40,
+            "minLength": 1,
+            "type": "string"
+          },
+          "documentId": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "messages": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "author": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "invocationId": {
+                      "type": "string"
+                    },
+                    "origin": {
+                      "enum": [
+                        "human",
+                        "model",
+                        "automatic"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "origin",
+                    "invocationId"
+                  ],
+                  "type": "object"
+                },
+                "body": {
+                  "maxLength": 2000,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "createdAt": {
+                  "maxLength": 40,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "id": {
+                  "pattern": "^[a-f0-9]{64}$",
+                  "type": "string"
+                },
+                "revision": {
+                  "pattern": "^[a-f0-9]{64}$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "author",
+                "body",
+                "createdAt"
+              ],
+              "type": "object"
+            },
+            "maxItems": 32,
+            "minItems": 1,
+            "type": "array"
+          },
+          "status": {
+            "enum": [
+              "open",
+              "resolved"
+            ],
+            "type": "string"
+          },
+          "updatedAt": {
+            "maxLength": 40,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "documentId",
+          "anchor",
+          "status",
+          "createdAt",
+          "updatedAt",
+          "messages"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "flame.deliverables/reply.v1",
+      "kind": "command",
+      "target": "installation",
+      "description": "Reply to a comment thread, optionally naming the revision that addresses it. Replying never resolves a thread; the person who asked decides.",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "body": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "revision": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "thread": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "thread",
+          "body"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "anchor": {
+            "additionalProperties": false,
+            "properties": {
+              "object": {
+                "maxLength": 2048,
+                "minLength": 1,
+                "type": "string"
+              },
+              "quote": {
+                "maxLength": 500,
+                "type": "string"
+              },
+              "revision": {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              }
+            },
+            "required": [
+              "revision"
+            ],
+            "type": "object"
+          },
+          "createdAt": {
+            "maxLength": 40,
+            "minLength": 1,
+            "type": "string"
+          },
+          "documentId": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "messages": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "author": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "invocationId": {
+                      "type": "string"
+                    },
+                    "origin": {
+                      "enum": [
+                        "human",
+                        "model",
+                        "automatic"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "origin",
+                    "invocationId"
+                  ],
+                  "type": "object"
+                },
+                "body": {
+                  "maxLength": 2000,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "createdAt": {
+                  "maxLength": 40,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "id": {
+                  "pattern": "^[a-f0-9]{64}$",
+                  "type": "string"
+                },
+                "revision": {
+                  "pattern": "^[a-f0-9]{64}$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "author",
+                "body",
+                "createdAt"
+              ],
+              "type": "object"
+            },
+            "maxItems": 32,
+            "minItems": 1,
+            "type": "array"
+          },
+          "status": {
+            "enum": [
+              "open",
+              "resolved"
+            ],
+            "type": "string"
+          },
+          "updatedAt": {
+            "maxLength": 40,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "documentId",
+          "anchor",
+          "status",
+          "createdAt",
+          "updatedAt",
+          "messages"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "flame.deliverables/resolve.v1",
+      "kind": "command",
+      "target": "installation",
+      "description": "Resolve an open comment thread.",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "thread": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "thread"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "anchor": {
+            "additionalProperties": false,
+            "properties": {
+              "object": {
+                "maxLength": 2048,
+                "minLength": 1,
+                "type": "string"
+              },
+              "quote": {
+                "maxLength": 500,
+                "type": "string"
+              },
+              "revision": {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              }
+            },
+            "required": [
+              "revision"
+            ],
+            "type": "object"
+          },
+          "createdAt": {
+            "maxLength": 40,
+            "minLength": 1,
+            "type": "string"
+          },
+          "documentId": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "messages": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "author": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "invocationId": {
+                      "type": "string"
+                    },
+                    "origin": {
+                      "enum": [
+                        "human",
+                        "model",
+                        "automatic"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "origin",
+                    "invocationId"
+                  ],
+                  "type": "object"
+                },
+                "body": {
+                  "maxLength": 2000,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "createdAt": {
+                  "maxLength": 40,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "id": {
+                  "pattern": "^[a-f0-9]{64}$",
+                  "type": "string"
+                },
+                "revision": {
+                  "pattern": "^[a-f0-9]{64}$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "author",
+                "body",
+                "createdAt"
+              ],
+              "type": "object"
+            },
+            "maxItems": 32,
+            "minItems": 1,
+            "type": "array"
+          },
+          "status": {
+            "enum": [
+              "open",
+              "resolved"
+            ],
+            "type": "string"
+          },
+          "updatedAt": {
+            "maxLength": 40,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "documentId",
+          "anchor",
+          "status",
+          "createdAt",
+          "updatedAt",
+          "messages"
+        ],
+        "type": "object"
+      }
+    },
+    {
       "name": "flame.deliverables/restore.v1",
       "kind": "command",
       "target": "installation",
@@ -3585,6 +4186,116 @@
       }
     },
     {
+      "name": "flame.deliverables/settle.v1",
+      "kind": "command",
+      "target": "installation",
+      "description": "Record that the person adopted a pending suggestion into their draft or dismissed it.",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "outcome": {
+            "enum": [
+              "adopted",
+              "dismissed"
+            ],
+            "type": "string"
+          },
+          "suggestion": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "suggestion",
+          "outcome"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "author": {
+            "additionalProperties": false,
+            "properties": {
+              "invocationId": {
+                "type": "string"
+              },
+              "origin": {
+                "enum": [
+                  "human",
+                  "model",
+                  "automatic"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "origin",
+              "invocationId"
+            ],
+            "type": "object"
+          },
+          "createdAt": {
+            "maxLength": 40,
+            "minLength": 1,
+            "type": "string"
+          },
+          "documentId": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "note": {
+            "maxLength": 2000,
+            "type": "string"
+          },
+          "operationsJSON": {
+            "maxLength": 2097152,
+            "minLength": 2,
+            "type": "string"
+          },
+          "revision": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "settledAt": {
+            "maxLength": 40,
+            "minLength": 1,
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "adopted",
+              "dismissed"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "documentId",
+          "revision",
+          "note",
+          "operationsJSON",
+          "author",
+          "createdAt",
+          "status"
+        ],
+        "type": "object"
+      }
+    },
+    {
       "name": "flame.deliverables/sheets.v1",
       "kind": "query",
       "target": "installation",
@@ -3768,6 +4479,424 @@
           "revision",
           "sourceSha256",
           "layoutJSON"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "flame.deliverables/suggest.v1",
+      "kind": "command",
+      "target": "installation",
+      "description": "Propose catalog-defined edits to an exact revision for the person to review in its open editor. Nothing changes until they adopt the edits into their draft and save it. A suggestion holds only edits an editor stages: PPTX replaceText, setFrame, setChartData and deleteElement; XLSX setCell; DOCX replaceText, insertParagraph, deleteBlock and setParagraphStyle. The edits must apply to that revision. Use edit to change the document directly.",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "note": {
+            "maxLength": 2000,
+            "type": "string"
+          },
+          "operationsJSON": {
+            "maxLength": 2097152,
+            "minLength": 2,
+            "type": "string"
+          },
+          "revision": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "revision",
+          "note",
+          "operationsJSON"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "author": {
+            "additionalProperties": false,
+            "properties": {
+              "invocationId": {
+                "type": "string"
+              },
+              "origin": {
+                "enum": [
+                  "human",
+                  "model",
+                  "automatic"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "origin",
+              "invocationId"
+            ],
+            "type": "object"
+          },
+          "createdAt": {
+            "maxLength": 40,
+            "minLength": 1,
+            "type": "string"
+          },
+          "documentId": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "note": {
+            "maxLength": 2000,
+            "type": "string"
+          },
+          "operationsJSON": {
+            "maxLength": 2097152,
+            "minLength": 2,
+            "type": "string"
+          },
+          "revision": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "settledAt": {
+            "maxLength": 40,
+            "minLength": 1,
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "adopted",
+              "dismissed"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "documentId",
+          "revision",
+          "note",
+          "operationsJSON",
+          "author",
+          "createdAt",
+          "status"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "flame.deliverables/suggestions.v1",
+      "kind": "query",
+      "target": "installation",
+      "description": "List a deliverable's suggested edits newest first, with the revision each was made against and whether the person adopted or dismissed it.",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "before": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "limit": {
+            "maximum": 32,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "adopted",
+              "dismissed"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "limit",
+          "id"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "entries": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "author": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "invocationId": {
+                      "type": "string"
+                    },
+                    "origin": {
+                      "enum": [
+                        "human",
+                        "model",
+                        "automatic"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "origin",
+                    "invocationId"
+                  ],
+                  "type": "object"
+                },
+                "createdAt": {
+                  "maxLength": 40,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "documentId": {
+                  "pattern": "^[a-f0-9]{64}$",
+                  "type": "string"
+                },
+                "id": {
+                  "pattern": "^[a-f0-9]{64}$",
+                  "type": "string"
+                },
+                "note": {
+                  "maxLength": 2000,
+                  "type": "string"
+                },
+                "operationsJSON": {
+                  "maxLength": 2097152,
+                  "minLength": 2,
+                  "type": "string"
+                },
+                "revision": {
+                  "pattern": "^[a-f0-9]{64}$",
+                  "type": "string"
+                },
+                "settledAt": {
+                  "maxLength": 40,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "status": {
+                  "enum": [
+                    "pending",
+                    "adopted",
+                    "dismissed"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "documentId",
+                "revision",
+                "note",
+                "operationsJSON",
+                "author",
+                "createdAt",
+                "status"
+              ],
+              "type": "object"
+            },
+            "maxItems": 32,
+            "type": "array"
+          },
+          "next": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "entries"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "flame.deliverables/threads.v1",
+      "kind": "query",
+      "target": "installation",
+      "description": "List a deliverable's comment threads, newest first: each anchor (the revision, object identity and quoted text it was made on), status and messages. A thread whose object no longer exists keeps its anchor and quote.",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "before": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "limit": {
+            "maximum": 32,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "status": {
+            "enum": [
+              "open",
+              "resolved"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "limit",
+          "id"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "entries": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "anchor": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "object": {
+                      "maxLength": 2048,
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "quote": {
+                      "maxLength": 500,
+                      "type": "string"
+                    },
+                    "revision": {
+                      "pattern": "^[a-f0-9]{64}$",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "revision"
+                  ],
+                  "type": "object"
+                },
+                "createdAt": {
+                  "maxLength": 40,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "documentId": {
+                  "pattern": "^[a-f0-9]{64}$",
+                  "type": "string"
+                },
+                "id": {
+                  "pattern": "^[a-f0-9]{64}$",
+                  "type": "string"
+                },
+                "messages": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "author": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "invocationId": {
+                            "type": "string"
+                          },
+                          "origin": {
+                            "enum": [
+                              "human",
+                              "model",
+                              "automatic"
+                            ],
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "origin",
+                          "invocationId"
+                        ],
+                        "type": "object"
+                      },
+                      "body": {
+                        "maxLength": 2000,
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "createdAt": {
+                        "maxLength": 40,
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "id": {
+                        "pattern": "^[a-f0-9]{64}$",
+                        "type": "string"
+                      },
+                      "revision": {
+                        "pattern": "^[a-f0-9]{64}$",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "author",
+                      "body",
+                      "createdAt"
+                    ],
+                    "type": "object"
+                  },
+                  "maxItems": 32,
+                  "minItems": 1,
+                  "type": "array"
+                },
+                "status": {
+                  "enum": [
+                    "open",
+                    "resolved"
+                  ],
+                  "type": "string"
+                },
+                "updatedAt": {
+                  "maxLength": 40,
+                  "minLength": 1,
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "documentId",
+                "anchor",
+                "status",
+                "createdAt",
+                "updatedAt",
+                "messages"
+              ],
+              "type": "object"
+            },
+            "maxItems": 32,
+            "type": "array"
+          },
+          "next": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "entries"
         ],
         "type": "object"
       }
