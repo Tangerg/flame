@@ -4105,7 +4105,7 @@ parameter; the registered Chinese locale is `zh`. Four valid native flows cover:
 - German/light/18 px: native **200%** and Window Move & Resize Left, about
   **1121 native points**, preserve the objective, wrapped status and actions.
   Keyboard entry reads the exact full objective; a temporary unsaved edit is
-  cancelled with Escape, returning focus to its summary. The retained Composer
+  canceled with Escape, returning focus to its summary. The retained Composer
   accepts further input. The browser's 320 px profile is separate coverage.
 - Chinese/dark/18 px/custom purple: Schedule instructions retain authored lines
   and the complete path. Native **200%** collapses the Dock into its full-width
@@ -11033,7 +11033,7 @@ current navigation setting; no local Tab workaround is added.
 `src/platform/externalLinks.ts` now owns desktop document link activation.
 One bubbling click/auxclick registration captures the resolved HTTP(S) or mailto
 address before yielding, cancels in-app navigation and uses the public Wails
-`Browser.OpenURL` API. Cancelled events, download anchors, local navigation,
+`Browser.OpenURL` API. Canceled events, download anchors, local navigation,
 unsupported protocols and credential-bearing destinations are not sent to the OS.
 Keyboard activation retains native anchor behavior. Browser mode adds no
 listener. Disposal removes both listeners and retires later error feedback;
@@ -11171,7 +11171,7 @@ add no asset or decorative treatment. **Approve** this bounded keyboard repair;
 whole-product and award-level acceptance remain unproven.
 
 - The original focused baseline passes **59 tests**. Four added regressions
-  expose **2 failures / 61 passes**, both cancelled vertical keys. The final
+  expose **2 failures / 61 passes**, both canceled vertical keys. The final
   **63 GenUI presentation tests** pass, covering unchanged selected content and
   focus, unconsumed vertical keys, horizontal wrapping/Home/End, retained drafts
   and both radio arrows. Final related Frontend verification passes **6 files /
@@ -11253,7 +11253,7 @@ No palette, locale key, dependency, schema, Runtime command, persistent state
 or draft owner is added. The installed GenUI resource is rebuilt normally.
 
 Native qualification of that layout first exposes a separate shared reading
-contract gap: a focused plot receives uncancelled Right but stays at zero, while
+contract gap: a focused plot receives uncanceled Right but stays at zero, while
 an unfocused sibling table can move under browser handling. Replacing SVG sizing
 with an HTML width wrapper does not repair it; that experiment is withdrawn.
 `packages/ui/src/scroll-region.tsx` now handles plain Left/Right only when the
@@ -13775,7 +13775,7 @@ Verification:
 - Four new rendered task cases cover English/Chinese × Project/User. Their query
   fixture returns genuinely distinct IDs, revisions and scope-qualified records.
   Each checks header/fact identity, an edit discarded without mutation, deletion
-  confirmation cancelled to its opener, then a saved edit against the original
+  confirmation canceled to its opener, then a saved edit against the original
   ID/revision. Accepted content and localized scope survive the read. Every target
   read retains its exact Scope/CWD/Cursor; update input stays ID/revision/content.
 - Replaying original MemoryReport alone fails all four cases on the raw fact value;
@@ -13814,9 +13814,9 @@ Native acceptance passes:
 
 - English/light/Flame Orange, 14px, wide split: Project detail, edit metadata and
   deletion confirmation show Project memory with the same complete ID. Editing and
-  deleting are cancelled with Escape, returning Edit and More respectively. User
+  deleting are canceled with Escape, returning Edit and More respectively. User
   selection reads its own item, whose detail/edit/confirmation say User memory.
-  Both cancelled drafts leave original content intact. Keyboard Save keeps its
+  Both canceled drafts leave original content intact. Keyboard Save keeps its
   pending focus, then completion returns to retained Search while the original
   opener is unavailable during the read. The User query `shared`, expanded facts,
   full ID and accepted edited content persist through Files → Memory. The original
@@ -16491,7 +16491,7 @@ covers unreadable underlying storage. The
 [HTML input cancellation event](https://developer.mozilla.org/en-US/docs/Web/API/HTMLInputElement/cancel_event)
 describes user cancellation separately. ZCode's actual
 `packages/desktop/src/main/desktopMainIpcPlatform.ts:118–150` similarly keeps
-cancelled native selection separate from selected paths; it supplies no Flame
+canceled native selection separate from selected paths; it supplies no Flame
 read-generation policy. HeroUI's actual
 `apps/docs/src/demos/en/toast/promise.tsx` and `toast/variants.tsx` separate
 failure feedback from successful work and name a recovery action. Flame retains
@@ -16523,7 +16523,7 @@ complete diff, translations, ownership and actual results.
 - Baseline: **2 files / 25 tests**, command **2.44 s**, test time **1.48 s**.
 - Accepted focused run: **2 files / 34 tests**, command **2.02 s**, test time
   **1.36 s**. Added cases expose exact read rejection, exact Unicode/empty text,
-  empty/cancelled selection, late completion/failure, another picker, real
+  empty/canceled selection, late completion/failure, another picker, real
   adapter-to-import feedback/retry and retired-generation rejection.
 - Negative control restores the two original production files under the new
   regressions/messages: **2 selected failures**, **32 filtered cases**, command
@@ -17089,7 +17089,7 @@ Actual Size was restored before Quit.
 
 All read retries above were explicit user actions; no automatic retry is claimed.
 The private transport refused and recorded zero Skill mutations. Returning
-cancelled the held transport, so native late-result delivery is not newly
+canceled the held transport, so native late-result delivery is not newly
 qualified. These are production component/SDK reads through the real Wails
 asset/IPC host, not a live installed-package, archive, proposal or filesystem
 acceptance. At that revision the RPC message `internal_error` remained literal;
@@ -19924,7 +19924,7 @@ observers:
 
 - **Original Providers, English/light/14px/Orange/full motion:** local invalid
   endpoint feedback and disabled Save/Test remain legible at normal size,
-  native 200% and actual narrower width. The stored-key decision is cancelled;
+  native 200% and actual narrower width. The stored-key decision is canceled;
   category changes and real Mod+, reopening retain the endpoint draft. Settings
   closes to the current Workspace diff region, and pointer return continues the
   original conversation draft. No original-Composer focus restoration is claimed.
@@ -21631,7 +21631,7 @@ for only its captured nonrecursive `apps` request. The refresh scene's fixed Not
 action uses the actual Workspace event plugin, mutation lifecycle, resolver and
 Runtime subscription. Subscription initialization and target changes remain
 successful; only that notification arms failure. A fixture-local phase observes
-the exact query's final non-manual success or non-cancelled error, so automatic
+the exact query's final non-manual success or non-canceled error, so automatic
 retries, stale cache values and cancellation cannot impersonate a manual Retry.
 Its observer and listeners retire with the provider. This replaces the initial
 prototype in which Notify had no production consumer; that baseline action is
@@ -30259,7 +30259,7 @@ the existing React, StyleX, Base UI and semantic-token workspace:
 | MEDIUM   | Writing       | plugins/deliverables/component/component.tsx:234, StructuredContent          | Closed inspected rows expose only kind and native path                                                | Bounded content excerpt above the complete native identity; fixed                                     | Readers can recognize an item before expanding it                                                       |
 | MEDIUM   | Accessibility | plugins/deliverables/component/component.tsx:259, local item pagination      | Reaching the last page natively disables the focused button and restarts Tab at the sidebar           | Shared focusable disabled boundaries reject unavailable activation and retain local focus; fixed      | Page changes must preserve the keyboard reading position                                                |
 | LOW      | Writing       | plugins/deliverables/component/component.tsx:205, content query              | A phrase spanning original whitespace does not match its inline preview                               | Search and preview share whitespace normalization; fixed                                              | The visible excerpt and its full-text search must agree                                                 |
-| MEDIUM   | Accessibility | Native pointer/reverse-Tab navigation; Deliverables and unchanged Disclosure | Pointer-origin Shift+Tab can stay at the clicked button despite an uncancelled Tab event              | Reproduced with plain controls in Wails and direct WKWebView; exact native cause remains open         | The independent reproduction does not justify component focus reassignment                              |
+| MEDIUM   | Accessibility | Native pointer/reverse-Tab navigation; Deliverables and unchanged Disclosure | Pointer-origin Shift+Tab can stay at the clicked button despite an uncanceled Tab event              | Reproduced with plain controls in Wails and direct WKWebView; exact native cause remains open         | The independent reproduction does not justify component focus reassignment                              |
 
 Verification (2026-10-29):
 
@@ -30981,7 +30981,7 @@ fixture. All UI input uses CUA native application actions.
 | Native buttons with default attributes and original host preferences | Reverse navigation reaches the preceding text field; ordinary Tab omits the buttons. This is not equivalent to the product's explicit tab stops.                         |
 | The same buttons with `tabindex="0"`                                 | Pointer-origin Shift+Tab can stay at the second button; keyboard-origin Shift+Tab moves to the first button. Coordinate input records actual pointer events.             |
 | Same explicit tab stops with only `TabFocusesLinks` enabled          | The mixed-input discrepancy remains; this candidate is rejected.                                                                                                         |
-| Original host preferences plus a read-only Cocoa event monitor       | Both paths deliver key code 48, Shift flag 131072 and Backtab character 25 to WKWebView. DOM Tab is uncancelled. This does not prove equivalence to a physical keyboard. |
+| Original host preferences plus a read-only Cocoa event monitor       | Both paths deliver key code 48, Shift flag 131072 and Backtab character 25 to WKWebView. DOM Tab is uncanceled. This does not prove equivalence to a physical keyboard. |
 
 Two independent AppKit/WKWebView launches repeat the paths with the same HTML,
 without Wails. Explicit tab stops reproduce the difference. A further variation
@@ -31038,7 +31038,7 @@ inside the button's left padding. After the text click, Shift+Tab stays on Butto
 B, including a repeated reverse step. After the padding click, the first reverse
 step reaches Button A. An accessibility-center click also stays on B. Forward
 Tab to the following field, then two Shift+Tabs, reaches B and A in order. All
-seven observed Tab events are trusted and uncancelled; **42 events** are recorded.
+seven observed Tab events are trusted and uncanceled; **42 events** are recorded.
 This adds a hit-position comparison to the earlier independent WKWebView result,
 not a physical-input equivalence claim. The requested physical-keyboard comparison
 received no result before the automated window was retired and remains unqualified.
@@ -37574,7 +37574,7 @@ are not accepted as final visual evidence.
 `goalPlanReading.browser.spec.ts` projects the existing Agent/Workspace variants
 through the catalog's preview URL. English/light/14 px and Chinese/dark/18 px
 verify keyboard opening, initial focus, three distinct Plan step states,
-cancelled Goal edits, restoration of the original objective, Escape/Cancel
+canceled Goal edits, restoration of the original objective, Escape/Cancel
 return and each document's independent Composer draft. The same document is
 resized from **1440 to 560 px**. Reading captures require a fully visible,
 fully opaque surface; no production debug route or second scenario owner is
@@ -40259,7 +40259,7 @@ retries. Each accepted at three reads; unrelated failed reads stayed at two
 until explicitly retried. The exact command draft `fixture-docs --draft 保留`
 survived all recoveries, accepted enabled/off values appeared, and focus stayed
 on the user's later Cancel. After real body scrolling exposed that control,
-Enter cancelled and restored Edit docs. Seven Shift-Tabs reached Close; Enter
+Enter canceled and restored Edit docs. Seven Shift-Tabs reached Close; Enter
 returned to the original Workspace diff, followed by exact native Composer
 input `Tool recovery draft 保留`.
 
@@ -47938,7 +47938,7 @@ Find entry: focus without implicit ancestor scrolling, then request native
 nearest/instant visibility using the host's existing CSS clearance. Both recorded
 readers use it for initial entry and their existing viewport shortcut. The shared
 FindField also handles repeated Ctrl/Cmd+F within the Find task. Handled shortcuts
-stay inside that result; already-cancelled and IME/229 events are left alone.
+stay inside that result; already-canceled and IME/229 events are left alone.
 Manual scrolling, ordinary keys, unchanged rerenders and later outside focus
 issue no reveal. Queries, filtered rows, match navigation, source copying,
 pagination and Escape keep their owners. The normal builder changes only the
@@ -49476,7 +49476,7 @@ For the reference Goal rail and keyboard Plan reading (2026-10-21):
 - An initial focused invocation overlapped icon regeneration and failed to import two suites; it is not behavioral evidence. Serial restaging removed that race. A new dialog-return test initially omitted focusing its opener; the harness was corrected to model keyboard activation, retaining its focus assertion. No production workaround, skipped check or weakened valid assertion was used.
 - Full checks first passed **385 files / 2,986 tests** on the earlier UI base. Primary then preserved the exact owned changes, fast-forwarded to main `5c6e2e3dc`, restored them with the two existing MCP import keys in all eight locales intact, and removed the temporary owned stash. The user's explicit latest-main request was followed by a fresh fetch confirming the same tip. Final serial `VITEST_MAX_WORKERS=2 npm run check --workspace @flame/web` passed **385 files / 2,990 tests** and every type/lint/format, boundary/contract/style/token/locale/resource, production-bundle and module-linkage gate. All eleven portable ESM resources remain unchanged.
 - Final `make check-native` passed Desktop tests/vet/build and the supported Wails build. Its binary is arm64 Mach-O, minimum macOS 13.0, SDK 26.5. All **19** accepted source/test/locale states, including the retired hook path, remained unchanged through native acceptance. Existing non-failing loopback diagnostics, fixture chunk-size and duplicate `-lobjc` warnings remain separate.
-- Actual English/light/14 px/Flame Orange at Actual Size matched the reference's strong status, quiet objective, 12 px inset and overlapping Composer shoulder, time/action alignment and circular Pause glyph. Pure keyboard Enter opened the Plan's actual scroll region; Page Down/End and a separate pointer-wheel pass reached the final bilingual condition. Escape returned to the same pill, Space reopened, and Tab left to Goal summary. Summary and expand/editor entry both exposed the full objective and returned to their own opener on cancellation. An edited objective was cancelled without submission; the original mixed-language Composer draft survived and accepted further text. One initial outside-click probe left the popup visible; independently repeated explicit open → outside click and open → wheel → outside click closed it and preserved input focus. That first probe is excluded from the closing conclusion, with no speculative component change.
+- Actual English/light/14 px/Flame Orange at Actual Size matched the reference's strong status, quiet objective, 12 px inset and overlapping Composer shoulder, time/action alignment and circular Pause glyph. Pure keyboard Enter opened the Plan's actual scroll region; Page Down/End and a separate pointer-wheel pass reached the final bilingual condition. Escape returned to the same pill, Space reopened, and Tab left to Goal summary. Summary and expand/editor entry both exposed the full objective and returned to their own opener on cancellation. An edited objective was canceled without submission; the original mixed-language Composer draft survived and accepted further text. One initial outside-click probe left the popup visible; independently repeated explicit open → outside click and open → wheel → outside click closed it and preserved input focus. That first probe is excluded from the closing conclusion, with no speculative component change.
 - English/dark/18 px/custom blue used the native Window → Move & Resize → Left action and keyboard Home to retain a **320 px Dock**. At **200%**, the Goal identity and trailing controls formed two readable rows, including circular Resume for the canonical paused Goal. The named Plan reader remained viewport-bounded and End reached its final condition. The complete Goal editor and Cancel/Save stayed reachable; cancellation restored Edit goal focus. Continued drafting and Actual Size restored the exact original text and 320 px Dock. One launch preceded completion of its profile build and still showed the old light URL; it was quit and excluded. The accepted dark instance was launched only after build/sign completion and its URL was checked.
 - Chinese/light/14 px/Orange matched the localized reference title and showed an explicit localized creation-age description. At **200%**, the Goal row retained readable truncation, duration and actions. After a user-change guard, primary refreshed the native state and restarted from an explicit closed/open Plan task; that interrupted probe is excluded. The localized reader's End reached the final bilingual condition, Escape returned to its pill, and Goal summary opened the full objective in the localized editor. Cancellation returned to the summary, followed by continued editing of the exact Chinese Composer draft. Zoom was reset before both enlarged instances quit.
 - Native acceptance uses the real Wails host and production presentation over private canonical memory Session/Plan inputs and the existing Goal fixture material. Only the long Plan and a recent Goal creation timestamp were varied before presentation. No live provider request, message submission, Goal lifecycle command, installation replacement or business mutation was issued. Paused/active layout and creation age are qualified natively; blocked/completing and timestamp/retirement boundaries retain unit coverage. Browser contracts were updated for explicit Plan activation and the intentional rail geometry, but browser/visual suites, performance benchmarks, VoiceOver, native OS IME composition, measured contrast, other-platform GUIs and unrelated root/CLI/SDK suites were not run. Runtime, protocol, stored schema, dependencies and shared UI package are unchanged by this batch.
@@ -49536,7 +49536,7 @@ For Composer model catalog recovery (2026-10-21):
 - Actual Wails English/light/14 px/Flame Orange qualified unknown action → keyboard open → no-result query → first Escape clears → second Escape cancels and returns to the model trigger. A temporary input-only long catalog qualified independent wheel scrolling; explicit GPT selection restored its exact identity and default Medium effort, with a mixed-language draft retained and editable. These native variants changed only fixture input facts, including a missing Session model and a later configured Alibaba catalog; no product transport or semantic owner changed.
 - English/dark/18 px/custom blue covered native Window → Move & Resize → Left and real keyboard resizing to a **320 px Dock**. Provider browsing did not choose a model until the user acted. Alibaba → keyboard Qwen selection updated the exact identity, removed inapplicable reasoning, and reopened in Alibaba. Cross-provider ID search selected a long OpenAI model with its default Medium effort. At **200%**, the existing workspace presentation retreated to the conversation; its model catalog, selected-row reveal, close return and subsequent Tab to reasoning remained usable.
 - Chinese/light/14 px/Orange at **200%** qualified the localized unknown action, two-stage query/cancel, explicit selection/default effort and keyboard return to the retained Composer draft. A final clean fixture used canonical catalog/Session responses, with no temporary input variants, gates, hotkeys, counters or scene links presented. Normal GPT selection retained an existing explicit High effort. Search/selection, reopen/cancel at 200%, model-trigger return and Shift-Tab back to continued draft editing all passed. Native zoom was reset before quitting.
-- The integrated `02ac171c8` source then repeated the dark/18 px/Blue narrow-window, 320 px Dock, long-list wheel, provider selection, query/cancel and 200% return paths, plus Chinese/14 px/Orange unknown selection and retained draft editing at 200%. A separate input-only explicit preference for `custom/authored-model` kept its full identity/provider/unavailable hint after search and cancellation; only deliberate GPT selection changed it and restored Medium. A final canonical clean scene retained High through model reselection, reopened/cancelled at 200%, returned to the Composer and kept its complete mixed-language draft while editing. Both final component/test hashes stayed unchanged across these repeated scenes.
+- The integrated `02ac171c8` source then repeated the dark/18 px/Blue narrow-window, 320 px Dock, long-list wheel, provider selection, query/cancel and 200% return paths, plus Chinese/14 px/Orange unknown selection and retained draft editing at 200%. A separate input-only explicit preference for `custom/authored-model` kept its full identity/provider/unavailable hint after search and cancellation; only deliberate GPT selection changed it and restored Medium. A final canonical clean scene retained High through model reselection, reopened/canceled at 200%, returned to the Composer and kept its complete mixed-language draft while editing. Both final component/test hashes stayed unchanged across these repeated scenes.
 - These are production components in the actual Wails host over an isolated memory transport. They do not certify live provider execution or credential changes; no draft or Run command was submitted. Unknown-default and pending-summary selection semantics remain qualified by deterministic owner tests, not injected native latency. VoiceOver, native OS composition, measured pixel contrast, other-platform GUIs, browser/visual suites, performance benchmarks and unrelated standalone root/CLI/SDK suites were not run. No Runtime, protocol, shared primitive, theme, stored schema, installed resource or package dependency changed; no migration is required.
 - Cleanup completed: owned CLI/check/build/native processes exited, the app was unregistered, and its bundle, isolated data, overlays, temporary sources/configuration, prompts/results and logs were removed. Newly created bundle-specific Caches/WebKit paths passed preexistence/UID/birth-time guards; HTTP storage, preferences and saved state were absent. Worktree-generated fixtures, Vite state, staging, icons/UI bundles and native outputs were removed after tracked-path checks. Installed dependencies, global compiler/package caches, reference artwork, user data and unrelated processes were retained.
 
@@ -49581,7 +49581,7 @@ For shortcut Space recording (2026-10-21):
 - Bounded Claude Code CLI added the map entry and two observable regressions. The original focused suite passed 27 tests; both new regressions failed against the original implementation. The final focused suite passed 29 tests across combo, pane and provider. The pane regression exercises recording-event suppression, stored/displayed Space, actual window-key dispatch, Reset and restored original dispatch with the real provider. Primary lint and typecheck also passed. No deadline, assertion or check was weakened.
 - Final `VITEST_MAX_WORKERS=2 npm run check --workspace @flame/web` passed **383 files / 2,897 tests** and every subsequent type/lint/format/unused-code, architecture/contract/style/token/locale/resource, bundle and production-module linkage gate. All 1,071 keys across eight locales and eleven component resources passed. Existing non-failing loopback `ECONNREFUSED` diagnostics remain unclassified. Serial `make check-native` passed Desktop tests/vet/build and the supported Wails beta.29 build; the binary is arm64 Mach-O, macOS 13.0 minimum, SDK 26.5. Duplicate `-lobjc` remained non-failing.
 - Actual final Wails used production recording, overrides, keymap and the product's single Slot-mounted provider. A temporary public command emitted one in-app acknowledgement per Space or Shift+Space activation. Recording itself emitted none. Conflict naming, Escape cancellation and source focus passed; filtering by Space then Reset returned focus to the surviving search, and Escape cleared it. The old Space binding stopped activating, and the original binding worked again. A duplicate provider in an earlier temporary scene was removed and these dispatch paths were repeated; it was never a product change.
-- English/light/14 px, English/dark/18 px/custom blue and Chinese/light/14 px/explicit Flame Orange qualified readable Space labels, recorder controls and existing focus rings. Native Window → Move & Resize → Left and twenty 0.05 zoom increments qualified the narrow 200% settings task. The final clean fixture omitted the synthetic command, extra provider and scene links. Its real Settings command was recorded as Space, used from the restored workspace to reopen Settings, cancelled and reset by keyboard in the narrow 200% view, then reopened with the restored `⌘,`. Native scrolling moved the settings content while its existing navigation remained independent. Accepted source hashes stayed unchanged.
+- English/light/14 px, English/dark/18 px/custom blue and Chinese/light/14 px/explicit Flame Orange qualified readable Space labels, recorder controls and existing focus rings. Native Window → Move & Resize → Left and twenty 0.05 zoom increments qualified the narrow 200% settings task. The final clean fixture omitted the synthetic command, extra provider and scene links. Its real Settings command was recorded as Space, used from the restored workspace to reopen Settings, canceled and reset by keyboard in the narrow 200% view, then reopened with the restored `⌘,`. Native scrolling moved the settings content while its existing navigation remained independent. Accepted source hashes stayed unchanged.
 - These are actual Wails/WebKit UI and command-registration paths over isolated fixture providers and disposable preferences. They do not qualify a live Runtime action, OS-reserved shortcut interception, other keyboard layouts/platform GUIs, VoiceOver, native IME or rendered contrast. Appearance-page testing was excluded because this fixture does not install the font-availability port; requested scenes used fixture-owned appearance inputs. Browser/visual suites, performance baselines and unrelated standalone author checks were not run. No shared component, Runtime, protocol or backend source changed.
 - Cleanup completed: all owned native/CLI/check/build processes exited; the app was unregistered and removed. New bundle-specific Caches/WebKit paths passed preexistence, UID and birth-time guards; HTTP storage, preferences and saved state were absent. The private acceptance root, disposable data, overlays, prompts/reports, logs and all worktree-generated fixture/production/native outputs were removed. Installed worktree dependencies and shared compiler/package caches remain for continuous work. Read-only references, user data, unrelated processes and main-checkout edits are preserved. Continue inspecting complete content/Dock tasks from current source and native evidence; do not reopen completed Space behavior as pending work.
 
@@ -49851,7 +49851,7 @@ For the oversized native editor investigation:
 
 For pasted-text review and return to authoring:
 
-- Actual baseline Wails used English/dark/18 px/custom blue with an isolated canonical Agent fixture. An 18-line CJK paste could be reviewed and cancelled back to its original chip. After replacing the editor with `Edited evidence · 修改后正文` and `Final line`, Put back instead appended the original 18 lines to `Typed prefix · 保留草稿`. Focus fell to the document and subsequent typing did nothing. This reproduced both the stale-text and lost-authoring-focus defects without a live Runtime write or Send action.
+- Actual baseline Wails used English/dark/18 px/custom blue with an isolated canonical Agent fixture. An 18-line CJK paste could be reviewed and canceled back to its original chip. After replacing the editor with `Edited evidence · 修改后正文` and `Final line`, Put back instead appended the original 18 lines to `Typed prefix · 保留草稿`. Focus fell to the document and subsequent typing did nothing. This reproduced both the stale-text and lost-authoring-focus defects without a live Runtime write or Send action.
 - The first regression baseline failed six cases and passed 34: edited/emptied put-back lost current text, and retiring attachments lost focus. The first repair then exposed three later-outside-focus failures across Cancel, Save and Put back. The revised composed tests cover those paths, surviving-chip returns, Session retirement, removed Composer targets and the synchronous owner-reported edit result. After primary review captured Save's exit before the owner change, the primary focused run passed 39 files and 305 tests. Existing accepted-submission, draft history/storage, Goal and plugin-editor checks remain included; assertions and deadlines were not weakened.
 - The complete frontend `VITEST_MAX_WORKERS=2 npm run check` passed 381 files and 2,834 tests, including its isolated Runtime lifecycle integration, followed by every type, lint, format, unused-code, architecture, style/token, locale, bootstrap, exact-resource, bundle and production React/JSX linkage gate. Recurring loopback `ECONNREFUSED` diagnostics remained non-failing and unclassified. The subsequent supported `wails3 task build` passed; `file` and `vtool` confirmed arm64 and macOS 13.0, with the existing non-failing duplicate `-lobjc` warning. Final native fixture assets were rebuilt serially after that build. No shared UI package, portable component resource, Runtime, CLI, SDK, dependency, protocol or persisted-data format changed. Private in-process callback signatures were migrated together. Standalone module suites were not rerun for unchanged sources; the preceding shared-UI results remain historical. No browser suite or performance benchmark was started.
 - Actual final Wails acceptance qualified English/dark/18 px/custom blue in a 1440-point window and Chinese/light/14 px/Flame Orange after native Move & Resize → Left produced a 1122 × 950 CSS viewport. The named editor, field focus and persistent footer remained readable. Edited CJK/English content returned exactly after the typed prefix, with the caret at the message end; post-close typing appended there. A separate large attachment remained intact. Saving blank text removed the last attachment and returned focus to the message. In the light scene, ordinary Save returned to the same chip, reopening showed the saved two-line text, and Cancel/Escape discarded later edits and restored that chip. Keyboard Tab/Return put back an empty review without resurrecting its old body, and Chinese typing continued at the prefix end.
@@ -49947,7 +49947,7 @@ For bounded Schedules editing and deletion, the earlier qualification remains:
 - The supported production Wails macOS arm64 build passed; `vtool` confirmed deployment floor 13.0. No production Go, Runtime, CLI, SDK or dependency source changed; earlier checks for those unchanged sources remain applicable.
 - The baseline Wails app placed Cancel/Save below the initial viewport and left both inline editing and deletion open on Escape. An intermediate native candidate exposed an expanded but obscured model menu; the shared modal portal now owns the correct local stacking context. A further native failure check exposed command feedback above the scrolled viewport; the existing persistent action zone now keeps the outcome and its next action with submission.
 - Actual Wails WKWebView acceptance checked Chinese/light/14 px/Flame Orange and English/dark/18 px/custom blue, normal 1440 px and approximately 1120 px windows, ordinary motion and a pointer-resized 320 px Dock. The dialog keeps its task title and Cancel/Save visible while fields scroll. Mixed CJK/English title/instructions, the complete long workspace-path value, grouped timing/model controls and reachable keyboard focus were exercised.
-- Native entry/return covered Add, existing-record Edit and a copied template. Cancel, close and local Escape restored the actual entry; the retained `nightly` query survived editing and deletion cancellation. A model popup was visible and keyboard-selectable; its first Escape returned to Model and the next cancelled the task. Deletion initially focused Cancel and returned to the originating record.
+- Native entry/return covered Add, existing-record Edit and a copied template. Cancel, close and local Escape restored the actual entry; the retained `nightly` query survived editing and deletion cancellation. A model popup was visible and keyboard-selectable; its first Escape returned to Model and the next canceled the task. Deletion initially focused Cancel and returned to the originating record.
 - Native writes used the existing isolated fixture's explicit unsupported-write failure, not a live backend command. That failure retained editable values, stayed visible in the fixed action zone after bottom-of-form submission and allowed cancellation back to the record. Starting a new task cleared the previous task's feedback. Acknowledgement success/refusal/uncertainty, removed-opener and IME variants are public-client/component regressions, not claimed native failure injection or OS input-method coverage. Schedules full-pane placement was not separately exercised.
 - No browser/visual suite, pixel comparison or performance benchmark was run. Existing browser assertions were migrated to the intentional dialog/alert-dialog and keyboard-reachability contracts, but are not reported as passing. Production Go, Runtime, CLI, SDK and dependency sources are unchanged.
 - The native app exited and its preview stopped. Its disposable data, app bundle, production/fixture binaries, overlays, logs, fixture output and owned WebKit/cache directories were removed. No owned preferences, saved application state or HTTP storage remained. Reference caches and unrelated resources were retained.
@@ -49971,17 +49971,17 @@ For literal search and local keyboard tasks:
 
 For Skills catalog, document and proposal tasks:
 
-- The final frontend `VITEST_MAX_WORKERS=2 npm run check` passed: 377 test files and 2754 tests, plus type, lint, formatting, unused-code, boundary, token/style, locale, bootstrap, resource, bundle and production-module checks. The 33 focused Skills/Diff/Usage/transport checks passed. New Skills regressions cover direct row entry, retained query/scroll/source focus, first-read and retained-read failures, cancelled/stale reads, row-removal fallback, local proposal cancellation and the original uncertain command identity/retry.
+- The final frontend `VITEST_MAX_WORKERS=2 npm run check` passed: 377 test files and 2754 tests, plus type, lint, formatting, unused-code, boundary, token/style, locale, bootstrap, resource, bundle and production-module checks. The 33 focused Skills/Diff/Usage/transport checks passed. New Skills regressions cover direct row entry, retained query/scroll/source focus, first-read and retained-read failures, canceled/stale reads, row-removal fallback, local proposal cancellation and the original uncertain command identity/retry.
 - Shared UI `npm run check` passed 38 tests and its independently packed UI/icons consumer. Portable build/check passed all ten exact resources; Skills ESM was rebuilt. `RecordButton` consolidates the actual Diff/Skills navigation-row presentation; the host and Runtime retain their previous navigation and business authority. A type error identified a now-impossible Lifecycle fact in the proposal disclosure after library rows became static; that obsolete fact was removed before the final gates.
 - The supported production Wails macOS arm64 build passed; `vtool` confirmed deployment floor 13.0. No production Go, Runtime, CLI, SDK or dependency source changed, so their earlier module results remain applicable.
 - Actual Wails WKWebView inspection first reproduced query loss, search focus on document entry, catalog filtering hiding instructions, lost return focus and crowded narrow-Dock reading. The final native scenes checked Chinese/light/14 px/Flame Orange and English/dark/18 px/custom blue, at normal and approximately 1120 px widths with a pointer-resized 320 px Dock. Named headings, compact scope, complete source/revision, mixed CJK/English literal instructions, long scrolling and persistent Back remained readable. Explicit Back and local Escape restored the retained query and source row; keyboard Return reopened that document. Main conversation scrolling stayed independent.
-- Native personal-library review confirmed direct lifecycle/Archive/Restore presentation without redundant disclosure. In the full-pane Skills view, local Escape cancelled proposal confirmation and restored Approve focus. A canonical isolated acceptance used the captured workspace/scope/revision, re-read the remaining proposal and returned focus to search when its row disappeared. Closing the full-pane view returned to the conversation. The shared Diff directory was visually rechecked; its existing selection and return regressions passed.
+- Native personal-library review confirmed direct lifecycle/Archive/Restore presentation without redundant disclosure. In the full-pane Skills view, local Escape canceled proposal confirmation and restored Approve focus. A canonical isolated acceptance used the captured workspace/scope/revision, re-read the remaining proposal and returned focus to search when its row disappeared. Closing the full-pane view returned to the conversation. The shared Diff directory was visually rechecked; its existing selection and return regressions passed.
 - Native acceptance used production components through the canonical in-memory fixture in the real Wails host. The fixture deliberately installs a no-op root workspace Escape shortcut; root event propagation is covered by the component regression, while native outer return used the explicit Close action. First document failure and uncertain acknowledgements were exercised in unit regressions rather than claimed as native failure injection. No visual/browser suite or performance benchmark was run.
 - The native app exited successfully. The owned preview, disposable data, bundle, binaries, logs, fixture output and WebKit caches were removed. User reference caches and unrelated resources were retained.
 
 For scope-first Diff review and Usage reports:
 
-- The final frontend `VITEST_MAX_WORKERS=2 npm run check` passed: 376 test files and 2745 tests, followed by type, lint, format, unused-code, boundary, token/style, locale, bootstrap, resource, bundle and production-module checks. The new presentation regressions exercise list/detail navigation, direct-source return, query/scroll/focus retention, scope changes, stale/cancelled reads, partial/binary/metadata-only files and truthful retained-report labels. Existing assertions were migrated only for the intentional task-flow changes.
+- The final frontend `VITEST_MAX_WORKERS=2 npm run check` passed: 376 test files and 2745 tests, followed by type, lint, format, unused-code, boundary, token/style, locale, bootstrap, resource, bundle and production-module checks. The new presentation regressions exercise list/detail navigation, direct-source return, query/scroll/focus retention, scope changes, stale/canceled reads, partial/binary/metadata-only files and truthful retained-report labels. Existing assertions were migrated only for the intentional task-flow changes.
 - Shared UI `npm run check` passed all 38 tests and its independently packed UI/icons consumer. Portable-plugin build/check passed all ten exact resource checks; Diff and Usage ESM resources were rebuilt. The final supported production Wails macOS arm64 build passed, with `vtool` confirming deployment floor 13.0. Go, Runtime and CLI sources are unchanged; their prior module results below remain applicable.
 - Actual Wails WKWebView inspection reproduced the former all-expanded Diff, then checked the new file overview, one-file reader, previous/next navigation, scope switching, direct Tool entry and the separate directory command. Chinese/light/14 px/Flame Orange and English/dark/18 px/custom accent scenes were checked, including approximately 1120 px windows and a pointer-resized 320 px Dock. Complete paths, Chinese rename provenance, binary content and metadata-only changes remain explicit. Native review caught an inapplicable layout selector on files with no code rows; the bounded Claude Code CLI fix was reviewed, covered by regressions and rechecked in the final native fixture.
 - Native keyboard review confirmed that a layout popup consumes Escape first, list-owned detail returns to its retained row, and directly entered detail returns to its actual narrative source. Heading focus follows explicit file navigation. Usage range controls precede local source filtering and grouping; filtering leaves totals intact, and native period selection returns focus to its trigger. The sidebar-matching seam, Composer, code/table, selection and theme owners remain in use.
@@ -53547,7 +53547,7 @@ Native search for `registration` finds Keyboard shortcuts without showing the
 implementation-oriented introduction or its overbroad anywhere-in-the-app claim.
 
 Fresh read-only ZCode
-`packages/ui/src/v4/composer/toolbarShortcuts.ts:101` rejects already-cancelled,
+`packages/ui/src/v4/composer/toolbarShortcuts.ts:101` rejects already-canceled,
 repeated and composing events in its actual toolbar resolver. That local resolver
 supports the ownership principle, without proving a global ZCode dispatcher
 contract. [MDN's defaultPrevented contract](https://developer.mozilla.org/en-US/docs/Web/API/Event/defaultPrevented)
@@ -53558,7 +53558,7 @@ The previously accepted reasoning-text treatment is explicitly retained.
 
 | Severity | Domain        | Location                   | Before                                               | After                                      | Why                                          |
 | -------- | ------------- | -------------------------- | ---------------------------------------------------- | ------------------------------------------ | -------------------------------------------- |
-| HIGH     | Accessibility | `ShortcutsProvider.tsx:41` | Local Select All also fires a rebound global command | Cancelled keys stay with their local owner | Reading focus and full-width context survive |
+| HIGH     | Accessibility | `ShortcutsProvider.tsx:41` | Local Select All also fires a rebound global command | Canceled keys stay with their local owner | Reading focus and full-width context survive |
 | LOW      | Writing       | `shortcuts/index.tsx:24`   | Repeated implementation-oriented introduction        | Filter and action rows lead the pane       | Task controls explain the available actions  |
 
 #### Verification
@@ -53850,7 +53850,7 @@ remain unqualified. **Approve for the inspected fixture fidelity and Escape task
 The diagnostic ZH/200% task separately narrows the reverse-Tab boundary: pure
 keyboard entry into expanded output reaches Copy output on Shift+Tab, whereas a
 pointer click back into its text leaves focus in the reader across six trusted,
-uncancelled Shift+Tab events. Forward Tab leaves to Arguments; keyboard return
+uncanceled Shift+Tab events. Forward Tab leaves to Arguments; keyboard return
 then reaches Copy output. The pointer-related navigation-starting-point model is
 only a lead. No Tab handler, focus workaround or production repair is added.
 On explicit resumption, reproduce that entry boundary in a minimal native control
@@ -53883,7 +53883,7 @@ finding. Plain text, nested selectable text and a native textarea have native
 focus targets and ordinary before/after buttons. Four passive key/focus/pointer
 observers update only an event-log text node. They do not change focus,
 selection, navigation, defaults or propagation. From a pointer entry, repeated
-trusted, uncancelled Shift+Tab stays in nested text; forward Tab leaves it, and
+trusted, uncanceled Shift+Tab stays in nested text; forward Tab leaves it, and
 keyboard return then permits reverse departure. Plain text and the textarea can
 leave. The minimal launch exits normally with terminal exit zero.
 
@@ -57032,7 +57032,7 @@ control, not a substitute for product acceptance.
 - The Dock receives `dragstart`, writes the expected `text/plain` view ID,
   requests `move` and commits its dragging row before the next frame. It
   receives neither destination `dragover` nor `drop`. Escape produces a
-  cancelled `dragend`. This does not support a stale React-state diagnosis.
+  canceled `dragend`. This does not support a stale React-state diagnosis.
 - The independent control shows the same initial failure. A second motion in
   its active native session delivers `dragenter` and `dragover` to the
   intended item; its handler prevents default and requests `move`. The

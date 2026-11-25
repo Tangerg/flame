@@ -28,7 +28,7 @@ Only a newly admitted command may execute. Result/refusal settlement is atomic;
 replay returns the original result, including its original duration. Missing
 settlement remains unknown after interruption/restart and never authorizes a
 second process. A crash may leave private scratch material and an unconfirmed
-command; it is not reported as a completed or safely cancelled execution.
+command; it is not reported as a completed or safely canceled execution.
 
 Typed and model receipts read that same private outcome. The model receipt only
 projects the original result through the Tool codec; it never executes code.

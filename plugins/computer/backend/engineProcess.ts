@@ -118,8 +118,7 @@ export class EngineProcess implements Transport {
   }
 
   async #launch(): Promise<void> {
-    if (this.#closing)
-      throw new Error("computer: engine startup was cancelled");
+    if (this.#closing) throw new Error("computer: engine startup was canceled");
     try {
       this.#ownership = await EngineOwnership.acquire(
         this.#config.ownershipPath,
@@ -128,8 +127,7 @@ export class EngineProcess implements Transport {
       this.#ownershipFailure = cause;
       throw cause;
     }
-    if (this.#closing)
-      throw new Error("computer: engine startup was cancelled");
+    if (this.#closing) throw new Error("computer: engine startup was canceled");
     if (this.#config.native) {
       this.#native = new NativeLifecycle(
         this.#config.native,
@@ -138,8 +136,7 @@ export class EngineProcess implements Transport {
       );
       Object.assign(this.#environment, await this.#native.start());
     }
-    if (this.#closing)
-      throw new Error("computer: engine startup was cancelled");
+    if (this.#closing) throw new Error("computer: engine startup was canceled");
     const child = spawn(this.#config.command, this.#config.args, {
       cwd: this.#config.cwd,
       env: this.#environment,

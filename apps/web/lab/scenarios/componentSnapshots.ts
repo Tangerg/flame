@@ -14,7 +14,10 @@ import { type MethodOutputs as MemoryOutputs } from "../../../../plugins/memory/
 import { type MethodOutputs as ScheduleOutputs } from "../../../../plugins/schedules/package/io.github.tangerg.flame/contracts/methods.generated";
 import { type MethodOutputs as UsageReportOutputs } from "../../../../plugins/usagereports/component/methods.generated";
 import { VISUAL_SESSION_ID } from "./agentSessionSnapshots";
-const visualMemory: MemoryOutputs["flame.memory/list.v3"]["rows"] = [
+import { METHODS as MEMORY_METHODS } from "../../../../plugins/memory/component/methods";
+import { METHODS as SCHEDULE_METHODS } from "../../../../plugins/schedules/component/methods";
+import { METHODS as USAGE_REPORT_METHODS } from "../../../../plugins/usagereports/contracts/methods";
+const visualMemory: MemoryOutputs[typeof MEMORY_METHODS.list]["rows"] = [
   {
     revision: 3,
     id: "mem_00000000000000000000000000000002",
@@ -45,13 +48,13 @@ const visualMemory: MemoryOutputs["flame.memory/list.v3"]["rows"] = [
   },
 ];
 
-export const VISUAL_MEMORY_PAGE: MemoryOutputs["flame.memory/list.v3"] = {
+export const VISUAL_MEMORY_PAGE: MemoryOutputs[typeof MEMORY_METHODS.list] = {
   rows: visualMemory,
   nextCursor: "",
   capacity: 512,
 };
 
-export const VISUAL_USER_MEMORY_PAGE: MemoryOutputs["flame.memory/list.v3"] = {
+export const VISUAL_USER_MEMORY_PAGE: MemoryOutputs[typeof MEMORY_METHODS.list] = {
   ...VISUAL_MEMORY_PAGE,
   rows: [
     {
@@ -71,7 +74,7 @@ export const VISUAL_USER_MEMORY_PAGE: MemoryOutputs["flame.memory/list.v3"] = {
   ],
 };
 
-type VisualMemoryRow = MemoryOutputs["flame.memory/list.v3"]["rows"][number];
+type VisualMemoryRow = MemoryOutputs[typeof MEMORY_METHODS.list]["rows"][number];
 
 const projectMemoryRecord: Pick<VisualMemoryRow, "scope" | "day" | "project"> = {
   scope: "project",
@@ -79,7 +82,7 @@ const projectMemoryRecord: Pick<VisualMemoryRow, "scope" | "day" | "project"> = 
   project: "",
 };
 
-export const VISUAL_LONG_MEMORY_PAGE: MemoryOutputs["flame.memory/list.v3"] = {
+export const VISUAL_LONG_MEMORY_PAGE: MemoryOutputs[typeof MEMORY_METHODS.list] = {
   ...VISUAL_MEMORY_PAGE,
   rows: [
     {
@@ -178,7 +181,7 @@ const userMemoryRecord: Pick<
   sessionId: "",
 };
 
-export const VISUAL_LONG_USER_MEMORY_PAGE: MemoryOutputs["flame.memory/list.v3"] = {
+export const VISUAL_LONG_USER_MEMORY_PAGE: MemoryOutputs[typeof MEMORY_METHODS.list] = {
   ...VISUAL_USER_MEMORY_PAGE,
   rows: [
     {
@@ -246,7 +249,7 @@ const VISUAL_SCHEDULE_INSTRUCTION_LINES = [
   `/Users/visual/${"retained-evidence-".repeat(8)}request.json`,
 ] as const;
 
-export const VISUAL_SCHEDULES_PAGE: ScheduleOutputs["flame.schedules/list.v2"] = {
+export const VISUAL_SCHEDULES_PAGE: ScheduleOutputs[typeof SCHEDULE_METHODS.list] = {
   rows: [
     {
       id: "sch_nightly",
@@ -377,37 +380,38 @@ const visualSavedDailyUsage = {
   },
 };
 
-export const VISUAL_USAGE_REPORTS: readonly UsageReportOutputs["flame.usage-reports/get.v1"][] = [
-  {
-    id: "b".repeat(64),
-    period: "weekly",
-    observedAt: "2026-10-20T09:00:00Z",
-    since: "2026-10-13T09:00:00Z",
-    summary: {
-      ...VISUAL_USAGE,
+export const VISUAL_USAGE_REPORTS: readonly UsageReportOutputs[typeof USAGE_REPORT_METHODS.get][] =
+  [
+    {
+      id: "b".repeat(64),
+      period: "weekly",
       observedAt: "2026-10-20T09:00:00Z",
       since: "2026-10-13T09:00:00Z",
+      summary: {
+        ...VISUAL_USAGE,
+        observedAt: "2026-10-20T09:00:00Z",
+        since: "2026-10-13T09:00:00Z",
+      },
     },
-  },
-  {
-    id: "a".repeat(64),
-    period: "daily",
-    observedAt: "2026-10-20T08:00:00Z",
-    since: "2026-10-19T08:00:00Z",
-    summary: {
+    {
+      id: "a".repeat(64),
+      period: "daily",
       observedAt: "2026-10-20T08:00:00Z",
       since: "2026-10-19T08:00:00Z",
-      ...visualSavedDailyUsage,
-      byProvider: [{ key: "anthropic", ...visualSavedDailyUsage }],
-      byModel: [{ key: "anthropic/claude-opus-5", ...visualSavedDailyUsage }],
-      byDay: [{ key: "2026-10-19", ...visualSavedDailyUsage }],
-      byOrigin: [{ key: "automatic", ...visualSavedDailyUsage }],
-      byScope: [{ key: "run", ...visualSavedDailyUsage }],
-      sessions: 2,
-      runs: 6,
+      summary: {
+        observedAt: "2026-10-20T08:00:00Z",
+        since: "2026-10-19T08:00:00Z",
+        ...visualSavedDailyUsage,
+        byProvider: [{ key: "anthropic", ...visualSavedDailyUsage }],
+        byModel: [{ key: "anthropic/claude-opus-5", ...visualSavedDailyUsage }],
+        byDay: [{ key: "2026-10-19", ...visualSavedDailyUsage }],
+        byOrigin: [{ key: "automatic", ...visualSavedDailyUsage }],
+        byScope: [{ key: "run", ...visualSavedDailyUsage }],
+        sessions: 2,
+        runs: 6,
+      },
     },
-  },
-];
+  ];
 
 const VISUAL_TRACE_ID = "0123456789abcdef0123456789abcdef";
 

@@ -100,7 +100,7 @@ export function MermaidBlock({ code }: Props) {
   });
   useEffect(() => {
     if (isSettling) return;
-    let cancelled = false;
+    let canceled = false;
     void Promise.resolve().then(async () => {
       let result: MermaidRenderResult;
       try {
@@ -111,10 +111,10 @@ export function MermaidBlock({ code }: Props) {
       } catch {
         result = { status: "error" };
       }
-      if (!cancelled) acceptRender(debouncedCode, result);
+      if (!canceled) acceptRender(debouncedCode, result);
     });
     return () => {
-      cancelled = true;
+      canceled = true;
     };
   }, [debouncedCode, isSettling, idPrefix]);
   const stage = useRef<HTMLDivElement>(null);

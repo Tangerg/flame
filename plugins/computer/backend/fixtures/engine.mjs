@@ -203,7 +203,7 @@ const SCRIPTS = {
       if (extra.signal.aborted) resolve();
       else extra.signal.addEventListener("abort", resolve, { once: true });
     });
-    log({ kind: "cancelled" });
+    log({ kind: "canceled" });
     return { content: [] };
   },
   "crash-after-effect": async () => {

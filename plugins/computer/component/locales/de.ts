@@ -48,7 +48,7 @@ export const de = {
   "reason.engine": "Engine-Fehler",
   "reason.cleanup": "Bereinigung unbestätigt",
   "reason.startup": "Start fehlgeschlagen",
-  "reason.cancelled": "Öffnen abgebrochen",
+  "reason.canceled": "Öffnen abgebrochen",
   "operation.id": "Aktionskennung",
   "operation.started": "Gestartet",
   "context.reading":

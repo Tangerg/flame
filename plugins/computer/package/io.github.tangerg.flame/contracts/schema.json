@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$defs": {
-    "CloseV1Input": {
+    "CloseV2Input": {
       "additionalProperties": false,
       "properties": {
         "sessionId": {
@@ -15,7 +15,7 @@
       ],
       "type": "object"
     },
-    "CloseV1Output": {
+    "CloseV2Output": {
       "additionalProperties": false,
       "properties": {
         "approval": {
@@ -97,7 +97,7 @@
             "engine",
             "cleanup",
             "startup",
-            "cancelled"
+            "canceled"
           ],
           "type": "string"
         },
@@ -356,7 +356,7 @@
       ],
       "type": "object"
     },
-    "OpenV1Input": {
+    "OpenV2Input": {
       "additionalProperties": false,
       "properties": {
         "leaseSeconds": {
@@ -370,7 +370,7 @@
       ],
       "type": "object"
     },
-    "OpenV1Output": {
+    "OpenV2Output": {
       "additionalProperties": false,
       "properties": {
         "approval": {
@@ -452,7 +452,7 @@
             "engine",
             "cleanup",
             "startup",
-            "cancelled"
+            "canceled"
           ],
           "type": "string"
         },
@@ -486,12 +486,12 @@
       ],
       "type": "object"
     },
-    "ReadV1Input": {
+    "ReadV2Input": {
       "additionalProperties": false,
       "properties": {},
       "type": "object"
     },
-    "ReadV1Output": {
+    "ReadV2Output": {
       "additionalProperties": false,
       "properties": {
         "configured": {
@@ -643,7 +643,7 @@
                 "engine",
                 "cleanup",
                 "startup",
-                "cancelled"
+                "canceled"
               ],
               "type": "string"
             },
@@ -783,7 +783,7 @@
       ],
       "type": "object"
     },
-    "StopV1Input": {
+    "StopV2Input": {
       "additionalProperties": false,
       "properties": {
         "operationId": {
@@ -803,7 +803,7 @@
       ],
       "type": "object"
     },
-    "StopV1Output": {
+    "StopV2Output": {
       "additionalProperties": false,
       "properties": {
         "approval": {
@@ -885,7 +885,7 @@
             "engine",
             "cleanup",
             "startup",
-            "cancelled"
+            "canceled"
           ],
           "type": "string"
         },
@@ -919,7 +919,7 @@
       ],
       "type": "object"
     },
-    "WatchV1Chunk": {
+    "WatchV2Chunk": {
       "additionalProperties": false,
       "properties": {
         "configured": {
@@ -1071,7 +1071,7 @@
                 "engine",
                 "cleanup",
                 "startup",
-                "cancelled"
+                "canceled"
               ],
               "type": "string"
             },
@@ -1113,12 +1113,12 @@
       ],
       "type": "object"
     },
-    "WatchV1Input": {
+    "WatchV2Input": {
       "additionalProperties": false,
       "properties": {},
       "type": "object"
     },
-    "WatchV1Output": {
+    "WatchV2Output": {
       "type": "boolean"
     }
   }

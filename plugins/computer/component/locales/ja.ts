@@ -46,7 +46,7 @@ export const ja = {
   "reason.engine": "エンジン障害",
   "reason.cleanup": "クリーンアップ未確認",
   "reason.startup": "起動失敗",
-  "reason.cancelled": "開始をキャンセル",
+  "reason.canceled": "開始をキャンセル",
   "operation.id": "操作 ID",
   "operation.started": "開始日時",
   "context.reading": "現在の Runtime の指示とツールを取得中…",

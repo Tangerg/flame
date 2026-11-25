@@ -47,18 +47,24 @@ import {
   VISUAL_SKILL_PROPOSALS,
   visualSkillDiscovery,
 } from "./skillSnapshots";
+import { METHODS as MEMORY_METHODS } from "../../../../plugins/memory/component/methods";
+import { METHODS as SCHEDULE_METHODS } from "../../../../plugins/schedules/component/methods";
+import { METHODS as USAGE_REPORT_METHODS } from "../../../../plugins/usagereports/contracts/methods";
 
 export const VISUAL_REMOVE_SCHEDULE_EVENT = "flame:visual-remove-schedule";
 
 type VisualMemoryPages = Readonly<
-  Record<MemoryInputs["flame.memory/list.v3"]["scope"], MemoryOutputs["flame.memory/list.v3"]>
+  Record<
+    MemoryInputs[typeof MEMORY_METHODS.list]["scope"],
+    MemoryOutputs[typeof MEMORY_METHODS.list]
+  >
 >;
 
 function pluginCallResult(call: CallPluginRequest, memoryPages: VisualMemoryPages) {
   switch (call.method) {
-    case "flame.memory/list.v3": {
+    case MEMORY_METHODS.list: {
       const input = JSON.parse(call.input ?? "") as Partial<
-        MemoryInputs["flame.memory/list.v3"]
+        MemoryInputs[typeof MEMORY_METHODS.list]
       > | null;
       const scope = input?.scope;
       if (scope === "project") return { output: JSON.stringify(memoryPages.project) };
@@ -66,7 +72,7 @@ function pluginCallResult(call: CallPluginRequest, memoryPages: VisualMemoryPage
       throw new Error(`Visual memory has no page for scope "${String(scope)}"`);
     }
     // stringifyJSON keeps bigint tokens exact and an absent cost absent.
-    case "flame.usage-reports/list.v2": {
+    case USAGE_REPORT_METHODS.list: {
       const reports = VISUAL_USAGE_REPORTS.map(({ id, period, observedAt, since }) => ({
         id,
         period,
@@ -75,9 +81,9 @@ function pluginCallResult(call: CallPluginRequest, memoryPages: VisualMemoryPage
       }));
       return { output: stringifyJSON({ reports }) };
     }
-    case "flame.usage-reports/get.v1": {
+    case USAGE_REPORT_METHODS.get: {
       const input = JSON.parse(call.input ?? "") as Partial<
-        UsageReportInputs["flame.usage-reports/get.v1"]
+        UsageReportInputs[typeof USAGE_REPORT_METHODS.get]
       > | null;
       const id = input?.id;
       const report = VISUAL_USAGE_REPORTS.find((candidate) => candidate.id === id);
@@ -281,7 +287,7 @@ export function createVisualRuntimeTransport(
       let result: unknown;
       if (
         request.method === "plugins.call" &&
-        (request.params as CallPluginRequest).method === "flame.schedules/list.v2"
+        (request.params as CallPluginRequest).method === SCHEDULE_METHODS.list
       ) {
         result = { output: JSON.stringify(schedules) };
       } else if (request.method === "skills.proposals.list") {

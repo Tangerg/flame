@@ -52,7 +52,7 @@ class Unconfirmed extends Error {
   }
 }
 
-class CancelledReview extends Error {}
+class CanceledReview extends Error {}
 
 export class InteractionController {
   readonly #context: ComponentContext;
@@ -173,7 +173,7 @@ export class InteractionController {
       if (this.#context.signal.aborted) return;
       if (error instanceof Unconfirmed)
         this.#publish({ status: "unknown", recoveries: [error.recovery] });
-      else if (error instanceof CancelledReview)
+      else if (error instanceof CanceledReview)
         this.#publish({ status: "idle" });
       else this.#publish({ status: "failed", error });
     }
@@ -347,7 +347,7 @@ export class InteractionController {
       });
     });
     this.#context.signal.throwIfAborted();
-    if (!approved) throw new CancelledReview();
+    if (!approved) throw new CanceledReview();
     this.#publish({ status: "running", label: binding.method });
   }
 

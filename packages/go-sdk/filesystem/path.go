@@ -113,7 +113,7 @@ func resolve(abs string, depth int) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		// A missing component can be cancelled by .. and expose an existing
+		// A missing component can be canceled by .. and expose an existing
 		// symlink later. Every remaining component still needs physical resolution.
 		if remaining := parts[index+1:]; len(remaining) > 0 {
 			target += separator + strings.Join(remaining, separator)

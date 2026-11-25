@@ -153,7 +153,7 @@ async function write(response: Response): Promise<void> {
   );
 }
 
-// Resolves when its turn comes; a cancelled wait leaves its place in line.
+// Resolves when its turn comes; a canceled wait leaves its place in line.
 function turnOf(turn: Promise<void>, signal: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
     const abort = () => reject(signal.reason);

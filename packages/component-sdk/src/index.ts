@@ -186,7 +186,7 @@ export interface SaveFileRequest {
 }
 
 /** Browser download dispatch is distinct from a completed native write. */
-export type FileSaveResult = "requested" | "saved" | "cancelled";
+export type FileSaveResult = "requested" | "saved" | "canceled";
 
 export interface ClientCommandInvocation {
   readonly sessionId?: string;

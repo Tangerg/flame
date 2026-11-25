@@ -144,7 +144,7 @@ func testCancelDelegatedTree(t *testing.T, confirmed bool) {
 	}
 }
 
-// cancelTreeScript delegates two children that block until cancelled; a
+// cancelTreeScript delegates two children that block until canceled; a
 // confirmed cancellation reports that the child's model call never executed.
 type cancelTreeScript struct {
 	childEntered chan<- string

@@ -216,8 +216,8 @@ export class Archive {
       const outcome =
         signal.aborted && cause === signal.reason
           ? refusal(
-              "cancelled",
-              "deliverable command cancelled before publication",
+              "canceled",
+              "deliverable command canceled before publication",
             )
           : cause;
       if (outcome instanceof Refusal)

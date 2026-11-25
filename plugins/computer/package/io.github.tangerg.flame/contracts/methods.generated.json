@@ -1,11 +1,11 @@
 [
   {
-    "name": "flame.computer/close.v1",
+    "name": "flame.computer/close.v2",
     "kind": "command",
     "target": "installation",
     "description": "Human-only: revoke the exact control session, cancel pending permissions and execution, and join its original engine. Already dispatched external effects cannot be undone.",
-    "input": "schema.json#/$defs/CloseV1Input",
-    "output": "schema.json#/$defs/CloseV1Output"
+    "input": "schema.json#/$defs/CloseV2Input",
+    "output": "schema.json#/$defs/CloseV2Output"
   },
   {
     "name": "flame.computer/context.v1",
@@ -32,26 +32,26 @@
     "output": "schema.json#/$defs/HistoryV1Output"
   },
   {
-    "name": "flame.computer/open.v1",
+    "name": "flame.computer/open.v2",
     "kind": "command",
     "target": "installation",
     "description": "Human-only: open one exclusive computer-control session on the Runtime host for the stated lease. Existing sessions are not replaced; expiry cancels and closes the engine.",
-    "input": "schema.json#/$defs/OpenV1Input",
-    "output": "schema.json#/$defs/OpenV1Output"
+    "input": "schema.json#/$defs/OpenV2Input",
+    "output": "schema.json#/$defs/OpenV2Output"
   },
   {
-    "name": "flame.computer/read.v1",
+    "name": "flame.computer/read.v2",
     "kind": "query",
     "target": "installation",
     "description": "Read the actual Runtime host, current computer-control session and original receipt capacity including reserved outcome bytes. This does not start an engine or authorize computer access.",
-    "input": "schema.json#/$defs/ReadV1Input",
-    "output": "schema.json#/$defs/ReadV1Output"
+    "input": "schema.json#/$defs/ReadV2Input",
+    "output": "schema.json#/$defs/ReadV2Output"
   },
   {
     "name": "flame.computer/reply.v1",
     "kind": "command",
     "target": "installation",
-    "description": "Human-only: answer the exact live upstream permission request. The original runtime owns allowed scopes; cancelled, settled or replaced requests cannot be answered.",
+    "description": "Human-only: answer the exact live upstream permission request. The original runtime owns allowed scopes; canceled, settled or replaced requests cannot be answered.",
     "input": "schema.json#/$defs/ReplyV1Input",
     "output": "schema.json#/$defs/ReplyV1Output"
   },
@@ -64,20 +64,20 @@
     "output": "schema.json#/$defs/ResultV1Output"
   },
   {
-    "name": "flame.computer/stop.v1",
+    "name": "flame.computer/stop.v2",
     "kind": "command",
     "target": "installation",
     "description": "Human-only: interrupt the exact current operation and retire its engine before any later operation can run. A missing original result remains unknown.",
-    "input": "schema.json#/$defs/StopV1Input",
-    "output": "schema.json#/$defs/StopV1Output"
+    "input": "schema.json#/$defs/StopV2Input",
+    "output": "schema.json#/$defs/StopV2Output"
   },
   {
-    "name": "flame.computer/watch.v1",
+    "name": "flame.computer/watch.v2",
     "kind": "query",
     "target": "installation",
     "description": "Observe bounded complete snapshots of the computer-control owner. Disconnecting this observation does not close the session.",
-    "input": "schema.json#/$defs/WatchV1Input",
-    "output": "schema.json#/$defs/WatchV1Output",
-    "stream": "schema.json#/$defs/WatchV1Chunk"
+    "input": "schema.json#/$defs/WatchV2Input",
+    "output": "schema.json#/$defs/WatchV2Output",
+    "stream": "schema.json#/$defs/WatchV2Chunk"
   }
 ]

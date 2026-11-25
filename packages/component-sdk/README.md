@@ -155,7 +155,7 @@ owned until its user choice and write settle. Composed components and their Fram
 Uses retain that same boundary.
 
 The result is `"requested"` after a browser download request, `"saved"` after a
-completed native write, or `"cancelled"` after native cancellation. A browser
+completed native write, or `"canceled"` after native cancellation. A browser
 cannot confirm a disk write. These transfer observations do not change a plugin's
 document revision, validation, approval or delivery facts. The producing plugin
 owns its exact content and format policy; the host owns only the destination and

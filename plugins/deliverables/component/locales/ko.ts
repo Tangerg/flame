@@ -204,7 +204,7 @@ export const ko = {
   "save.requested":
     "{{filename}} 다운로드를 요청했습니다. 브라우저는 디스크 쓰기를 확인할 수 없습니다.",
   "save.saved": "{{filename}}을 선택한 위치에 저장했습니다.",
-  "save.cancelled": "{{filename}} 저장을 취소했습니다.",
+  "save.canceled": "{{filename}} 저장을 취소했습니다.",
   "remove.title": "보관 문서 삭제",
   "remove.help":
     "삭제하면 문서의 보관 버전과 근거가 지워집니다. 정확한 현재 버전이 필요합니다.",

@@ -48,7 +48,7 @@ export const es = {
   "reason.engine": "Fallo del motor",
   "reason.cleanup": "Limpieza sin confirmar",
   "reason.startup": "Fallo al iniciar",
-  "reason.cancelled": "Apertura cancelada",
+  "reason.canceled": "Apertura cancelada",
   "operation.id": "Identidad de operación",
   "operation.started": "Inicio",
   "context.reading": "Leyendo instrucciones y herramientas…",

@@ -43,6 +43,7 @@ import { ko } from "./locales/ko";
 import { es } from "./locales/es";
 import { fr } from "./locales/fr";
 import { de } from "./locales/de";
+import { METHODS } from "./methods";
 const CATALOGS = { en, zh, "zh-TW": zhTW, ja, ko, es, fr, de };
 const IDLE: CommandState = { phase: "idle" };
 
@@ -176,7 +177,7 @@ export function useMemory(
       setRead((previous) => ({ ...previous, loading: true, error: undefined }));
       try {
         const page = await operations.query(
-          "flame.memory/list.v3",
+          METHODS.list,
           {
             scope,
             cwd: cwd ?? "",
@@ -347,7 +348,7 @@ export function useMemory(
     const content = edit.content.trim();
     if (edit.type === "add")
       change(
-        "flame.memory/add.v3",
+        METHODS.add,
         {
           scope,
           cwd: cwd ?? "",
@@ -359,7 +360,7 @@ export function useMemory(
       );
     else
       change(
-        "flame.memory/update.v3",
+        METHODS.update,
         { id: edit.item.id, expectedRevision: edit.item.revision, content },
         { action: "edit", id: edit.item.id },
         "editor",
@@ -368,7 +369,7 @@ export function useMemory(
   function deleteEdited() {
     if (edit?.type !== "delete") return;
     change(
-      "flame.memory/delete.v3",
+      METHODS.delete,
       { id: edit.item.id, expectedRevision: edit.item.revision },
       { action: "delete", id: edit.item.id },
       "editor",

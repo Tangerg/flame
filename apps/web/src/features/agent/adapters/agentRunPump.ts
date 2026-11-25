@@ -82,7 +82,7 @@ class ReattachPolicy {
 interface AgentRunPumpOptions {
   sessionId: string;
   onRunFinished: () => void;
-  isCancelled: () => boolean;
+  isCanceled: () => boolean;
   readEpoch: () => bigint;
   applyEvents: (events: RunEvent[]) => boolean;
   readRunSnapshot?: (runId: RunId, signal: AbortSignal) => Promise<RunRef>;
@@ -105,7 +105,7 @@ interface AgentRunPump {
 export function createAgentRunPump({
   sessionId,
   onRunFinished,
-  isCancelled,
+  isCanceled,
   readEpoch,
   applyEvents,
   readRunSnapshot,
@@ -122,7 +122,7 @@ export function createAgentRunPump({
   return {
     async pump(stream, signal) {
       const pumpLease = (currentPumpLease = {});
-      const superseded = () => currentPumpLease !== pumpLease || isCancelled() || signal.aborted;
+      const superseded = () => currentPumpLease !== pumpLease || isCanceled() || signal.aborted;
       const runId = stream.result.runId;
       currentRunId = runId;
       currentSegmentId = stream.result.segmentId;
@@ -216,19 +216,19 @@ export function createAgentRunPump({
     if (currentPumpLease !== pumpLease) return;
     const snapshot = await readFinalSnapshot(runId, signal);
     if (currentPumpLease !== pumpLease) return;
-    if (snapshot && !isCancelled() && !signal.aborted) applyRunSnapshot?.(snapshot);
+    if (snapshot && !isCanceled() && !signal.aborted) applyRunSnapshot?.(snapshot);
     currentRunId = null;
     currentSegmentId = null;
     onIdle?.();
   }
 
   async function readFinalSnapshot(runId: RunId, signal: AbortSignal) {
-    if (!readRunSnapshot || isCancelled() || signal.aborted) return undefined;
+    if (!readRunSnapshot || isCanceled() || signal.aborted) return undefined;
     try {
       const read = await settleBeforeAbort(readRunSnapshot(runId, signal), signal);
       return read === ABORTED ? undefined : read;
     } catch (error) {
-      if (!isCancelled() && !signal.aborted && !(error instanceof RpcConnectionError))
+      if (!isCanceled() && !signal.aborted && !(error instanceof RpcConnectionError))
         console.warn("[agent] exact run read failed:", sessionId, runId, error);
       return undefined;
     }
@@ -248,20 +248,20 @@ export function createAgentRunPump({
         events,
         signal,
         (ev) => {
-          if (isCancelled() || signal.aborted) return false;
+          if (isCanceled() || signal.aborted) return false;
           eventBatcher.enqueue(ev);
           if (ev.segmentId === rootSegmentId && ev.event.type === "segment.finished")
             finished = true;
           return true;
         },
-        () => !isCancelled(),
+        () => !isCanceled(),
       );
       // A pull interrupted by the owner, or a value read after cancellation, ends this drain.
       if (outcome === "interrupted" || outcome === "stopped") return { finished: true, recovery };
     } catch (err) {
       error = err;
       if (err instanceof RpcProtocolError) recovery = "cold";
-      if (!isCancelled() && !signal.aborted && !(err instanceof RpcConnectionError))
+      if (!isCanceled() && !signal.aborted && !(err instanceof RpcConnectionError))
         console.warn("[agent] run stream ended early:", sessionId, err);
     }
     return { finished, recovery, error };

@@ -48,7 +48,7 @@ export const en = {
   "reason.engine": "Engine failed",
   "reason.cleanup": "Cleanup could not be confirmed",
   "reason.startup": "Startup failed",
-  "reason.cancelled": "Opening was cancelled",
+  "reason.canceled": "Opening was canceled",
   "operation.id": "Operation identity",
   "operation.started": "Started",
   "context.reading": "Reading the current Runtime instructions and tools…",

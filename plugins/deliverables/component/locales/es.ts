@@ -206,7 +206,7 @@ export const es = {
   "save.requested":
     "Descarga solicitada: {{filename}}. El navegador no puede confirmar la escritura en disco.",
   "save.saved": "{{filename}} se escribió en el destino seleccionado.",
-  "save.cancelled": "Se canceló guardar {{filename}}.",
+  "save.canceled": "Se canceló guardar {{filename}}.",
   "remove.title": "Eliminar documento conservado",
   "remove.help":
     "Se eliminarán las revisiones y evidencias conservadas. Se exige la revisión actual exacta.",

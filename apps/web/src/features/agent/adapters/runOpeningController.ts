@@ -8,7 +8,7 @@ type RunOpening = { runId: RunId; segmentId: SegmentId };
 
 interface RunOpeningControllerOptions {
   sessionId: string;
-  isCancelled: () => boolean;
+  isCanceled: () => boolean;
   markInteracted: () => void;
   setAbortController: (controller: AbortController) => void;
   abortCurrent: () => void;
@@ -31,7 +31,7 @@ interface RunOpeningController {
 
 export function createRunOpeningController({
   sessionId,
-  isCancelled,
+  isCanceled,
   markInteracted,
   setAbortController,
   abortCurrent,
@@ -81,7 +81,7 @@ export function createRunOpeningController({
       void opening
         .then(
           async (opening) => {
-            if (isCancelled() || ctrl.signal.aborted || ownLease !== openingLease) {
+            if (isCanceled() || ctrl.signal.aborted || ownLease !== openingLease) {
               if (opening.observation.type === "stream") {
                 void disposeAsyncIterable(opening.observation.events);
               }
@@ -93,13 +93,13 @@ export function createRunOpeningController({
               span.setAttribute("flame.run_id", opening.result.runId);
               await observe(opening, ctrl.signal);
             } catch (err) {
-              if (isCancelled() || ctrl.signal.aborted || ownLease !== openingLease) return;
+              if (isCanceled() || ctrl.signal.aborted || ownLease !== openingLease) return;
               failure = err;
               console.error("[agent] accepted run stream failed:", sessionId, err);
             }
           },
           (err: unknown) => {
-            if (isCancelled() || ctrl.signal.aborted || ownLease !== openingLease) return;
+            if (isCanceled() || ctrl.signal.aborted || ownLease !== openingLease) return;
             releaseDraft();
             failure = err;
             console.error("[agent] run failed to start:", sessionId, err);

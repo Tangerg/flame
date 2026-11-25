@@ -118,7 +118,7 @@ for (const name of ["fixture.query-stream", "fixture.command-stream"])
         if (input.mode === "late") yield { kind: "chunk", value: "late" };
       } finally {
         if (input.mode === "wait")
-          writeFileSync(new URL("./cancelled.txt", import.meta.url), "joined");
+          writeFileSync(new URL("./canceled.txt", import.meta.url), "joined");
       }
     },
   );

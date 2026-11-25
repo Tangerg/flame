@@ -206,7 +206,7 @@ export const ja = {
   "save.requested":
     "{{filename}} のダウンロードを要求しました。ブラウザーはディスクへの保存を確認できません。",
   "save.saved": "{{filename}} を選択した場所に保存しました。",
-  "save.cancelled": "{{filename}} の保存をキャンセルしました。",
+  "save.canceled": "{{filename}} の保存をキャンセルしました。",
   "remove.title": "保存済み文書を削除",
   "remove.help":
     "削除すると、この文書の保存済み版と証跡が失われます。正確な現在の版が必要です。",

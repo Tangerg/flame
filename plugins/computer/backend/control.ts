@@ -361,7 +361,7 @@ export class Control {
       };
       this.#resource = resource;
       this.#changed();
-      const abort = () => this.#retire(resource, "cancelled");
+      const abort = () => this.#retire(resource, "canceled");
       context.signal.addEventListener("abort", abort, { once: true });
       void Promise.resolve()
         .then(() =>
@@ -399,7 +399,7 @@ export class Control {
       } catch (cause) {
         this.#retire(
           resource,
-          lifetime.signal.aborted ? "cancelled" : "startup",
+          lifetime.signal.aborted ? "canceled" : "startup",
         );
         await resource.disposal;
         const refused = refusal(

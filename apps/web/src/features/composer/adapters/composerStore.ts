@@ -183,12 +183,12 @@ export function createComposerStore() {
       read.target === owner &&
       (sessionId === undefined || read.sessionId === sessionId) &&
       (id === undefined || read.id === id);
-    const cancelled = [
+    const canceled = [
       ...reads.filter(matches),
       ...(activeRead && matches(activeRead) ? [activeRead] : []),
     ];
     for (let i = reads.length - 1; i >= 0; i--) if (matches(reads[i]!)) reads.splice(i, 1);
-    for (const read of cancelled) {
+    for (const read of canceled) {
       // Keep a removable failure when this endpoint is retained; it must never remain pending forever.
       owner.state = {
         ...owner.state,
@@ -198,7 +198,7 @@ export function createComposerStore() {
       };
       read.controller.abort();
     }
-    if (cancelled.length) present(owner);
+    if (canceled.length) present(owner);
   }
 
   const useComposerStore = create<ComposerState & ComposerActions>()((_set, get) => {

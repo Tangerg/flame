@@ -14,20 +14,20 @@ import { snapshotRunStream } from "@/features/agent/adapters/snapshotRunStream";
 interface RunStreamReattachOptions {
   sessionId: string;
   client: () => Pick<FlameClient, "runs">;
-  isCancelled: () => boolean;
+  isCanceled: () => boolean;
   recoverProjection: (signal: AbortSignal) => Promise<void>;
   onConnectionLost: () => void;
 }
 
 export function createRunStreamReattach(
   agentAccess: AgentDependencies,
-  { sessionId, client, isCancelled, recoverProjection, onConnectionLost }: RunStreamReattachOptions,
+  { sessionId, client, isCanceled, recoverProjection, onConnectionLost }: RunStreamReattachOptions,
 ) {
   return async function reattach(
     position: RunStreamPosition,
     signal: AbortSignal,
   ): Promise<RunStreamReattachment | null> {
-    const retired = () => isCancelled() || signal.aborted;
+    const retired = () => isCanceled() || signal.aborted;
     if (retired()) return null;
     const target = {
       runId: asRunId(position.runId),

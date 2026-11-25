@@ -3,13 +3,14 @@ import type {
   MethodInputs,
   MethodOutputs,
 } from "./methods.generated";
+import type { METHODS } from "../contracts/methods";
 
-export type Snapshot = MethodChunks["flame.computer/watch.v1"];
-export type Surface = MethodOutputs["flame.computer/context.v1"];
-export type HistoryPage = MethodOutputs["flame.computer/history.v1"];
-export type OperationRecord = MethodOutputs["flame.computer/result.v1"];
-export type ExecuteInput = MethodInputs["flame.computer/execute.v1"];
-export type ReplyInput = MethodInputs["flame.computer/reply.v1"];
+export type Snapshot = MethodChunks[typeof METHODS.watch];
+export type Surface = MethodOutputs[typeof METHODS.context];
+export type HistoryPage = MethodOutputs[typeof METHODS.history];
+export type OperationRecord = MethodOutputs[typeof METHODS.result];
+export type ExecuteInput = MethodInputs[typeof METHODS.execute];
+export type ReplyInput = MethodInputs[typeof METHODS.reply];
 export type Approval = NonNullable<
   NonNullable<Snapshot["session"]>["approval"]
 >;

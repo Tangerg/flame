@@ -67,7 +67,7 @@ export function useAgentSession(
     store().ensureSession(sessionId);
 
     const abortState: { value: AbortController | null } = { value: null };
-    const cancelledState = { value: false };
+    const canceledState = { value: false };
     const interactedState = { value: false };
     const commandsReadyState = { value: false };
     let projectionSynchronization: ReturnType<
@@ -87,7 +87,7 @@ export function useAgentSession(
       onRunFinished: () => {
         void queryClient.invalidateQueries({ queryKey: agentAccess.usage.queryKey(sessionId) });
       },
-      isCancelled: () => cancelledState.value,
+      isCanceled: () => canceledState.value,
       readEpoch: () => store().sessions[sessionId]?.viewEpoch ?? 0n,
       applyEvents: (events) => store().applyRunEvents(sessionId, events),
       readRunSnapshot: (runId, signal) => client().runs.get(runId, signal),
@@ -95,11 +95,11 @@ export function useAgentSession(
       reattach: createRunStreamReattach(agentAccess, {
         sessionId,
         client,
-        isCancelled: () => cancelledState.value,
+        isCanceled: () => canceledState.value,
         onConnectionLost: reportConnectionLoss,
         recoverProjection: (signal) =>
           refreshAgentSessionProjection(agentAccess, sessionId, {
-            canCommit: () => !cancelledState.value && !signal.aborted,
+            canCommit: () => !canceledState.value && !signal.aborted,
             signal,
           }).then(() => undefined),
       }),
@@ -117,7 +117,7 @@ export function useAgentSession(
           client: client(),
           sessionId,
           signal,
-          isCancelled: () => cancelledState.value,
+          isCanceled: () => canceledState.value,
           hasInteracted: () => guardInteraction && interactedState.value,
           isFollowing: runPump.isFollowing,
           setAbortController: (controller) => {
@@ -127,7 +127,7 @@ export function useAgentSession(
           pump: runPump.pump,
           onSynchronizationFailed: reportSynchronizationFailure,
         }).then((authoritativeView) => {
-          if (!cancelledState.value && !signal.aborted)
+          if (!canceledState.value && !signal.aborted)
             commandsReadyState.value = authoritativeView !== null;
           return authoritativeView !== null;
         });
@@ -138,7 +138,7 @@ export function useAgentSession(
 
     const runOpening = createRunOpeningController({
       sessionId,
-      isCancelled: () => cancelledState.value,
+      isCanceled: () => canceledState.value,
       markInteracted: () => {
         interactedState.value = true;
       },
@@ -169,9 +169,9 @@ export function useAgentSession(
           });
           const view = await refreshAgentSessionProjection(agentAccess, sessionId, {
             signal,
-            canCommit: () => !cancelledState.value && !signal.aborted,
+            canCommit: () => !canceledState.value && !signal.aborted,
           });
-          if (!cancelledState.value && !signal.aborted) commandsReadyState.value = view !== null;
+          if (!canceledState.value && !signal.aborted) commandsReadyState.value = view !== null;
           return;
         }
         if (observation.type === "stream") await disposeAsyncIterable(observation.events);
@@ -179,7 +179,7 @@ export function useAgentSession(
           client: client(),
           sessionId,
           signal,
-          isCancelled: () => cancelledState.value,
+          isCanceled: () => canceledState.value,
           hasInteracted: () => false,
           isFollowing: runPump.isFollowing,
           setAbortController: (controller) => {
@@ -188,9 +188,9 @@ export function useAgentSession(
           pump: runPump.pump,
           onSynchronizationFailed: reportSynchronizationFailure,
         });
-        if (!cancelledState.value && !signal.aborted) commandsReadyState.value = view !== null;
+        if (!canceledState.value && !signal.aborted) commandsReadyState.value = view !== null;
       } catch (error) {
-        if (!cancelledState.value && !signal.aborted) reportSynchronizationFailure(error);
+        if (!canceledState.value && !signal.aborted) reportSynchronizationFailure(error);
         throw error;
       }
     };
@@ -361,7 +361,7 @@ export function useAgentSession(
     store().setCancelRun(sessionId, cancelRun);
 
     return () => {
-      cancelledState.value = true;
+      canceledState.value = true;
       runOpening.retire();
       runCancellationState.value.retire();
       projectionSynchronization?.dispose();

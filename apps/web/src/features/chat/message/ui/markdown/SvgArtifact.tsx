@@ -41,16 +41,16 @@ export function SvgArtifact({ code, lang }: { code: string; lang: string }) {
   useEffect(() => {
     const image = new Image();
     image.src = src;
-    let cancelled = false;
+    let canceled = false;
     const settle = (decoded: boolean) => {
-      if (!cancelled) acceptDecode(src, decoded);
+      if (!canceled) acceptDecode(src, decoded);
     };
     void image.decode().then(
       () => settle(true),
       () => settle(false),
     );
     return () => {
-      cancelled = true;
+      canceled = true;
     };
   }, [src]);
 

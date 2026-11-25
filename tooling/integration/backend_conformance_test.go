@@ -311,7 +311,7 @@ func TestTypeScriptBackendImplementsPublishedGoContract(t *testing.T) {
 	}
 	deadline := time.Now().Add(2 * time.Second)
 	for {
-		if _, err := os.Stat(filepath.Join(packageDirectory, "cancelled.txt")); err == nil {
+		if _, err := os.Stat(filepath.Join(packageDirectory, "canceled.txt")); err == nil {
 			break
 		}
 		if time.Now().After(deadline) {

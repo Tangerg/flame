@@ -28,6 +28,7 @@ import {
   type MemoryPage,
   type MutationName,
 } from "./types";
+import { METHODS } from "./methods";
 type RecordCommand = <K extends MutationName>(
   method: K,
   input: MethodInputs[K],
@@ -164,7 +165,7 @@ export function MemoryReport({
                             focusableWhenDisabled
                             onClick={() =>
                               command(
-                                "flame.memory/review.v3",
+                                METHODS.review,
                                 {
                                   id: item.id,
                                   expectedRevision: item.revision,
@@ -186,7 +187,7 @@ export function MemoryReport({
                             focusableWhenDisabled
                             onClick={() =>
                               command(
-                                "flame.memory/review.v3",
+                                METHODS.review,
                                 {
                                   id: item.id,
                                   expectedRevision: item.revision,
@@ -285,7 +286,7 @@ function MemoryMenu({
           onSelect: () => {
             setSelectedCommand(true);
             command(
-              "flame.memory/update.v3",
+              METHODS.update,
               {
                 id: item.id,
                 expectedRevision: item.revision,

@@ -11,7 +11,7 @@ interface AgentSessionRecoveryOptions {
   client: Pick<FlameClient, "runs">;
   sessionId: string;
   signal: AbortSignal;
-  isCancelled: () => boolean;
+  isCanceled: () => boolean;
   hasInteracted: () => boolean;
   isFollowing: (runId: string, segmentId: string) => boolean;
   setAbortController: (controller: AbortController) => void;
@@ -24,13 +24,13 @@ export function startAgentSessionRecovery(
   options: AgentSessionRecoveryOptions,
 ): Promise<AgentSessionView | null> {
   return recover(agentAccess, options).catch((error: unknown) => {
-    if (!options.signal.aborted && !options.isCancelled()) options.onSynchronizationFailed(error);
+    if (!options.signal.aborted && !options.isCanceled()) options.onSynchronizationFailed(error);
     return null;
   });
 }
 
 function stale(options: AgentSessionRecoveryOptions): boolean {
-  return options.signal.aborted || options.isCancelled() || options.hasInteracted();
+  return options.signal.aborted || options.isCanceled() || options.hasInteracted();
 }
 
 async function recover(
@@ -86,13 +86,13 @@ async function attachRootRun(
       if (!opened) return;
       stream = opened;
     } catch (error) {
-      if (options.isCancelled() || controller.signal.aborted) return;
+      if (options.isCanceled() || controller.signal.aborted) return;
       if (agentAccess.runtime.isRunGone(error)) {
         await refreshAgentSessionProjection(agentAccess, options.sessionId, {
           canCommit: () => !stale(options),
           signal: options.signal,
         }).catch((readError: unknown) => {
-          if (options.isCancelled() || controller.signal.aborted) return;
+          if (options.isCanceled() || controller.signal.aborted) return;
           options.onSynchronizationFailed(readError);
         });
         return;
@@ -100,7 +100,7 @@ async function attachRootRun(
       options.onSynchronizationFailed(error);
       return;
     }
-    if (options.isCancelled() || controller.signal.aborted) {
+    if (options.isCanceled() || controller.signal.aborted) {
       retireRunStream(stream);
       return;
     }

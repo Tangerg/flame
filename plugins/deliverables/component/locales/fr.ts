@@ -208,7 +208,7 @@ export const fr = {
   "save.requested":
     "Téléchargement demandé : {{filename}}. Le navigateur ne peut pas confirmer l’écriture sur disque.",
   "save.saved": "{{filename}} a été écrit à l’emplacement choisi.",
-  "save.cancelled": "L’enregistrement de {{filename}} a été annulé.",
+  "save.canceled": "L’enregistrement de {{filename}} a été annulé.",
   "remove.title": "Supprimer le document conservé",
   "remove.help":
     "La suppression efface les révisions et preuves conservées. Elle exige la révision actuelle exacte.",

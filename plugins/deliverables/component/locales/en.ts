@@ -206,7 +206,7 @@ export const en = {
   "save.requested":
     "Download requested for {{filename}}. The browser cannot confirm a disk write.",
   "save.saved": "{{filename}} was written to the selected destination.",
-  "save.cancelled": "Saving {{filename}} was cancelled.",
+  "save.canceled": "Saving {{filename}} was canceled.",
   "remove.title": "Remove retained document",
   "remove.help":
     "Removal deletes this document’s retained revisions and evidence. It requires the exact current revision.",

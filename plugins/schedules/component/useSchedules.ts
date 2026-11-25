@@ -45,6 +45,7 @@ import {
   type ModelRead,
 } from "./types";
 import { isConcealed } from "@flame/ui";
+import { METHODS } from "./methods";
 export const enabled = (item: Schedule) => item.nextRunAt !== undefined;
 export const modelKey = (provider: string, model: string) =>
   JSON.stringify([provider, model]);
@@ -135,7 +136,7 @@ export function useSchedules(context: ComponentContext) {
       setRead((previous) => ({ ...previous, loading: true, error: undefined }));
       try {
         const page = await operations.query(
-          "flame.schedules/list.v2",
+          METHODS.list,
           { cursor: history.at(-1) ?? "" },
           signal,
         );
@@ -253,8 +254,8 @@ export function useSchedules(context: ComponentContext) {
         setEdit(undefined);
         setDeleting(undefined);
         setNotice(
-          captured.method === "flame.schedules/runNow.v2"
-            ? (output as MethodOutputs["flame.schedules/runNow.v2"])
+          captured.method === METHODS.runNow
+            ? (output as MethodOutputs[typeof METHODS.runNow])
             : t("notice.completed", { label: captured.label }),
         );
         void refresh();
@@ -274,7 +275,10 @@ export function useSchedules(context: ComponentContext) {
             ? t("notice.revision")
             : failure(error),
         );
-        if (error instanceof OperationFailure && error.code === REVISION_CONFLICT) {
+        if (
+          error instanceof OperationFailure &&
+          error.code === REVISION_CONFLICT
+        ) {
           taskOpener.current = searchElement.current;
           setEdit(undefined);
         }
@@ -379,19 +383,15 @@ export function useSchedules(context: ComponentContext) {
   }
   function deleteConfirmed() {
     if (deleting)
-      submit(
-        "flame.schedules/delete.v2",
-        { id: deleting.item.id },
-        t("command.delete"),
-      );
+      submit(METHODS.delete, { id: deleting.item.id }, t("command.delete"));
   }
   function runNow(item: Schedule) {
-    submit("flame.schedules/runNow.v2", { id: item.id }, t("command.runNow"));
+    submit(METHODS.runNow, { id: item.id }, t("command.runNow"));
   }
   function toggleEnabled(item: Schedule) {
     const next = !enabled(item);
     submit(
-      "flame.schedules/update.v2",
+      METHODS.update,
       {
         id: item.id,
         expectedRevision: item.revision,
@@ -420,7 +420,7 @@ export function useSchedules(context: ComponentContext) {
     };
     if (edit.basis)
       submit(
-        "flame.schedules/update.v2",
+        METHODS.update,
         {
           id: edit.basis.id,
           expectedRevision: edit.basis.revision,
@@ -434,7 +434,7 @@ export function useSchedules(context: ComponentContext) {
         },
         t("command.save"),
       );
-    else submit("flame.schedules/create.v2", draft, t("command.create"));
+    else submit(METHODS.create, draft, t("command.create"));
   }
   function cancelTask() {
     if (command) return;

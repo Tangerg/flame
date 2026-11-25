@@ -92,8 +92,8 @@ func withMutationGuard(inner toolcontract.Tool, tr *readTracker, root *filesyste
 }
 
 func beforeCallFailure(ctx context.Context, cause error) error {
-	if cancelled := errors.Join(ctx.Err(), context.Cause(ctx)); cancelled != nil {
-		return errors.Join(cause, cancelled)
+	if canceled := errors.Join(ctx.Err(), context.Cause(ctx)); canceled != nil {
+		return errors.Join(cause, canceled)
 	}
 	return pluginsdk.DefiniteToolFailure(cause)
 }

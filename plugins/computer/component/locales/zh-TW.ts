@@ -45,7 +45,7 @@ export const zhTW = {
   "reason.engine": "執行引擎故障",
   "reason.cleanup": "無法確認清理完成",
   "reason.startup": "啟動失敗",
-  "reason.cancelled": "開啟操作已取消",
+  "reason.canceled": "開啟操作已取消",
   "operation.id": "操作識別碼",
   "operation.started": "開始時間",
   "context.reading": "正在讀取目前 Runtime 指引和工具…",

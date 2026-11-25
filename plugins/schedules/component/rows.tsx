@@ -15,6 +15,7 @@ import {
 import { enabled } from "./useSchedules";
 import { type Schedule } from "./types";
 import { type ScheduleState } from "./useSchedules";
+import { METHODS } from "./methods";
 
 export function ScheduleDeletion({
   t,
@@ -107,7 +108,7 @@ export function ScheduleRow({
             label={t("actions.more", { name: title })}
             disabled={disabled}
             finalFocus={
-              command?.command.method === "flame.schedules/runNow.v2"
+              command?.command.method === METHODS.runNow
                 ? feedbackElement
                 : undefined
             }

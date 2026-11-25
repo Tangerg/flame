@@ -197,7 +197,7 @@ export const zhTW = {
   "export.savePrepared": "儲存已準備檔案",
   "save.requested": "已要求下載 {{filename}}。瀏覽器無法確認是否寫入磁碟。",
   "save.saved": "{{filename}} 已寫入所選位置。",
-  "save.cancelled": "已取消儲存 {{filename}}。",
+  "save.canceled": "已取消儲存 {{filename}}。",
   "remove.title": "移除保留的文件",
   "remove.help": "移除會刪除此文件保留的版本與證據，必須核對確切目前版本。",
   "remove.action": "移除文件…",

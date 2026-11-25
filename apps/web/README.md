@@ -10,7 +10,7 @@ Desktop web and mail links use one document activation adapter in
 `src/platform/externalLinks.ts`, installed by the composition root. It hands
 external HTTP(S) and mailto destinations to Wails' system-browser API while
 retaining native anchors, their captured addresses and ordinary keyboard
-activation. Cancelled events, downloads and local navigation keep their existing
+activation. Canceled events, downloads and local navigation keep their existing
 owners. Browser mode retains its native link behavior. A refused desktop open
 keeps a localized, dismissible error with its destination; it never retries or
 navigates the application to the external page. Teardown removes both listeners
@@ -287,7 +287,7 @@ even while another Session is active. Clearing, replacing or discarding that dra
 retires its pending selections. Reads run one at a time. Removing a selection,
 clearing/replacing/discarding its draft, endpoint replacement and disposal abort
 the active FileReader and remove queued reads. Returning to a retired endpoint
-retains ready images and shows cancelled pending images as removable failures;
+retains ready images and shows canceled pending images as removable failures;
 they cannot remain indefinitely preparing. Replacement at the same endpoint and
 ordinary Session navigation preserve authorized reads. Image bytes and read
 intents remain in memory; only draft text and pasted text are persisted.
@@ -357,7 +357,7 @@ ordinary lifetime, persistent errors and interaction pauses. All live messages r
 readable in the bounded notification band; Action and localized Close controls use
 normal keyboard order. The window's notification feed owns its separate in-memory
 history. Closing a Toast never marks history read, and clearing history never closes
-live feedback. Cancelled departure, visibility changes and persisted page transitions
+live feedback. Canceled departure, visibility changes and persisted page transitions
 retain this capability; actual window retirement revokes it before producer disposal.
 Feature presentations compose public Base UI primitives at their behavior owner;
 shared controls retain their token, accessibility and cross-host contracts.
@@ -782,7 +782,7 @@ command, retires the capture and its conflict without binding anything and
 without requesting focus. The query and saved overrides remain, the global recording
 guard is released so ordinary commands dispatch again, and reopening the pane
 does not resume the capture.
-A key a local owner has already cancelled, such as a focused reader's Select All,
+A key a local owner has already canceled, such as a focused reader's Select All,
 belongs to that owner; neither command nor direct shortcut bindings dispatch it.
 Shortcut settings start with their filter and action rows; the catalog description
 remains searchable without repeating an introduction above the controls.

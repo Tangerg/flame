@@ -312,8 +312,8 @@ export class Engine {
     ]);
     if (signal.aborted) return { action: "cancel" };
     const resume = active.deadline.pause();
-    const cancelled = Promise.withResolvers<ElicitResult>();
-    const abort = () => cancelled.resolve({ action: "cancel" });
+    const canceled = Promise.withResolvers<ElicitResult>();
+    const abort = () => canceled.resolve({ action: "cancel" });
     signal.addEventListener("abort", abort, { once: true });
     try {
       return await Promise.race([
@@ -325,7 +325,7 @@ export class Engine {
             },
           ),
         ),
-        cancelled.promise,
+        canceled.promise,
       ]);
     } catch (cause) {
       this.#retire(new Error("computer: engine elicitation failed", { cause }));
@@ -440,7 +440,7 @@ export class Engine {
       }
       if (active.scope.signal.aborted && !this.#lifetime.signal.aborted)
         this.#retire(
-          new Error("computer: control operation was cancelled", {
+          new Error("computer: control operation was canceled", {
             cause: active.scope.signal.reason,
           }),
         );

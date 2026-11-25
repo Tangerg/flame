@@ -44,7 +44,7 @@ const session = z.strictObject({
       "engine",
       "cleanup",
       "startup",
-      "cancelled",
+      "canceled",
     ])
     .optional(),
   operation: operation.optional(),
@@ -229,7 +229,7 @@ const descriptor: CapabilityDescriptor = {
     method(
       METHODS.reply,
       "command",
-      "Human-only: answer the exact live upstream permission request. The original runtime owns allowed scopes; cancelled, settled or replaced requests cannot be answered.",
+      "Human-only: answer the exact live upstream permission request. The original runtime owns allowed scopes; canceled, settled or replaced requests cannot be answered.",
       reply,
       z.boolean(),
     ),

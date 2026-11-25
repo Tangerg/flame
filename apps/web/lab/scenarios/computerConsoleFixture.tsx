@@ -20,6 +20,7 @@ import {
 } from "../../../../plugins/computer/backend/receiptEvidence";
 import { COMPUTER_FIXTURE_VARIANTS } from "./computerFixtureStates";
 import { COMPUTER_IMAGE_SAMPLES, createComputerFixtureImage } from "./computerFixtureImages";
+import { METHODS as COMPUTER_METHODS } from "../../../../plugins/computer/contracts/methods";
 
 const modules = import.meta.glob("../../../../plugins/computer/package/**/components/component.js");
 const installationId = "55667788-1234-4234-9234-123456789abc";
@@ -279,10 +280,10 @@ export async function createComputerConsoleFixture(locale: string, requestedStat
   }
   // The recorded owner answers each read from the fixture's current state.
   const queries: Record<string, ((input: Record<string, unknown>) => unknown) | undefined> = {
-    "flame.computer/read.v1": () => snapshot(),
-    "flame.computer/context.v1": () => surface(),
-    "flame.computer/history.v1": (input) => history(input),
-    "flame.computer/result.v1": (input) => {
+    [COMPUTER_METHODS.read]: () => snapshot(),
+    [COMPUTER_METHODS.context]: () => surface(),
+    [COMPUTER_METHODS.history]: (input) => history(input),
+    [COMPUTER_METHODS.result]: (input) => {
       const receipt = evidence.get(input.id as string);
       return receipt && record(receipt);
     },
@@ -346,7 +347,7 @@ export async function createComputerConsoleFixture(locale: string, requestedStat
       evidence.set(key, admitted);
       commands.set(key, params);
       let result: unknown;
-      if (method === "flame.computer/open.v1") {
+      if (method === COMPUTER_METHODS.open) {
         admitted.dispatched = true;
         publish({
           host,
@@ -361,7 +362,7 @@ export async function createComputerConsoleFixture(locale: string, requestedStat
           },
         });
         result = current.session;
-      } else if (method === "flame.computer/execute.v1") {
+      } else if (method === COMPUTER_METHODS.execute) {
         admitted.dispatched = true;
         publish({
           ...current,
@@ -395,7 +396,7 @@ export async function createComputerConsoleFixture(locale: string, requestedStat
             once: true,
           });
         });
-      } else if (method === "flame.computer/reply.v1") {
+      } else if (method === COMPUTER_METHODS.reply) {
         if (!pending || input.requestId !== current.session?.approval?.id) {
           const refusal = {
             failure: {
@@ -431,7 +432,7 @@ export async function createComputerConsoleFixture(locale: string, requestedStat
           }),
         );
         result = true;
-      } else if (method === "flame.computer/close.v1" || method === "flame.computer/stop.v1") {
+      } else if (method === COMPUTER_METHODS.close || method === COMPUTER_METHODS.stop) {
         admitted.dispatched = true;
         const { operation: _operation, approval: _approval, ...session } = current.session!;
         publish({ ...current, session: { ...session, state: "closed", reason: "user" } });

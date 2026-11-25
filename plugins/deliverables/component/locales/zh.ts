@@ -197,7 +197,7 @@ export const zh = {
   "export.savePrepared": "保存已准备文件",
   "save.requested": "已请求下载 {{filename}}。浏览器无法确认是否写入磁盘。",
   "save.saved": "{{filename}} 已写入所选位置。",
-  "save.cancelled": "已取消保存 {{filename}}。",
+  "save.canceled": "已取消保存 {{filename}}。",
   "remove.title": "移除保留的文档",
   "remove.help": "移除会删除此文档保留的版本和证据，须核对确切当前版本。",
   "remove.action": "移除文档…",

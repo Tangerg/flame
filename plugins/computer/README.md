@@ -286,7 +286,7 @@ strict supported flat form vocabulary includes strings, numeric fields,
 booleans, single/multiple selections and standard formats. URL-mode permissions
 require an explicit user action. Unknown constraints, fabricated persistence,
 stale request IDs, changed sessions and model/automatic replies are refused.
-Pending promises are short-lived; they are cancelled when their call, lease or
+Pending promises are short-lived; they are canceled when their call, lease or
 backend ends and cannot be resurrected after a restart.
 
 Before any external effect, SQLite commits the original command ID, method,

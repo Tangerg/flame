@@ -46,7 +46,7 @@ export const ko = {
   "reason.engine": "엔진 오류",
   "reason.cleanup": "정리 완료 확인 불가",
   "reason.startup": "시작 실패",
-  "reason.cancelled": "시작 취소됨",
+  "reason.canceled": "시작 취소됨",
   "operation.id": "작업 식별자",
   "operation.started": "시작 시간",
   "context.reading": "현재 Runtime 지침과 도구 읽는 중…",

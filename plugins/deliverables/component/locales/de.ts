@@ -210,7 +210,7 @@ export const de = {
   "save.requested":
     "Download für {{filename}} angefordert. Der Browser kann das Schreiben auf Datenträger nicht bestätigen.",
   "save.saved": "{{filename}} wurde am gewählten Ziel gespeichert.",
-  "save.cancelled": "Speichern von {{filename}} wurde abgebrochen.",
+  "save.canceled": "Speichern von {{filename}} wurde abgebrochen.",
   "remove.title": "Gespeichertes Dokument entfernen",
   "remove.help":
     "Das Entfernen löscht gespeicherte Revisionen und Nachweise. Die genaue aktuelle Revision ist erforderlich.",

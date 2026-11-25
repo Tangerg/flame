@@ -7,7 +7,7 @@ export type RefusalCode =
   | "assessment_capacity"
   | "assessment_not_found"
   | "asset_not_found"
-  | "cancelled"
+  | "canceled"
   | "cursor_not_found"
   | "document_capacity"
   | "document_not_found"

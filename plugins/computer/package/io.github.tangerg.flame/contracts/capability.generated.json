@@ -5,7 +5,7 @@
   "scope": "installation",
   "methods": [
     {
-      "name": "flame.computer/close.v1",
+      "name": "flame.computer/close.v2",
       "kind": "command",
       "target": "installation",
       "description": "Human-only: revoke the exact control session, cancel pending permissions and execution, and join its original engine. Already dispatched external effects cannot be undone.",
@@ -107,7 +107,7 @@
               "engine",
               "cleanup",
               "startup",
-              "cancelled"
+              "canceled"
             ],
             "type": "string"
           },
@@ -392,7 +392,7 @@
       }
     },
     {
-      "name": "flame.computer/open.v1",
+      "name": "flame.computer/open.v2",
       "kind": "command",
       "target": "installation",
       "description": "Human-only: open one exclusive computer-control session on the Runtime host for the stated lease. Existing sessions are not replaced; expiry cancels and closes the engine.",
@@ -494,7 +494,7 @@
               "engine",
               "cleanup",
               "startup",
-              "cancelled"
+              "canceled"
             ],
             "type": "string"
           },
@@ -530,7 +530,7 @@
       }
     },
     {
-      "name": "flame.computer/read.v1",
+      "name": "flame.computer/read.v2",
       "kind": "query",
       "target": "installation",
       "description": "Read the actual Runtime host, current computer-control session and original receipt capacity including reserved outcome bytes. This does not start an engine or authorize computer access.",
@@ -693,7 +693,7 @@
                   "engine",
                   "cleanup",
                   "startup",
-                  "cancelled"
+                  "canceled"
                 ],
                 "type": "string"
               },
@@ -740,7 +740,7 @@
       "name": "flame.computer/reply.v1",
       "kind": "command",
       "target": "installation",
-      "description": "Human-only: answer the exact live upstream permission request. The original runtime owns allowed scopes; cancelled, settled or replaced requests cannot be answered.",
+      "description": "Human-only: answer the exact live upstream permission request. The original runtime owns allowed scopes; canceled, settled or replaced requests cannot be answered.",
       "input": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
@@ -851,7 +851,7 @@
       }
     },
     {
-      "name": "flame.computer/stop.v1",
+      "name": "flame.computer/stop.v2",
       "kind": "command",
       "target": "installation",
       "description": "Human-only: interrupt the exact current operation and retire its engine before any later operation can run. A missing original result remains unknown.",
@@ -959,7 +959,7 @@
               "engine",
               "cleanup",
               "startup",
-              "cancelled"
+              "canceled"
             ],
             "type": "string"
           },
@@ -995,7 +995,7 @@
       }
     },
     {
-      "name": "flame.computer/watch.v1",
+      "name": "flame.computer/watch.v2",
       "kind": "query",
       "target": "installation",
       "description": "Observe bounded complete snapshots of the computer-control owner. Disconnecting this observation does not close the session.",
@@ -1162,7 +1162,7 @@
                   "engine",
                   "cleanup",
                   "startup",
-                  "cancelled"
+                  "canceled"
                 ],
                 "type": "string"
               },

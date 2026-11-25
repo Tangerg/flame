@@ -45,7 +45,7 @@ export const zh = {
   "reason.engine": "执行引擎故障",
   "reason.cleanup": "无法确认清理完成",
   "reason.startup": "启动失败",
-  "reason.cancelled": "打开操作已取消",
+  "reason.canceled": "打开操作已取消",
   "operation.id": "操作标识",
   "operation.started": "开始时间",
   "context.reading": "正在读取当前 Runtime 指引和工具…",

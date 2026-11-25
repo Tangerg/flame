@@ -47,17 +47,17 @@ async function saveExport(
   binding: DesktopHostBinding,
   filename: string,
   bytes: Uint8Array,
-): Promise<"saved" | "cancelled"> {
+): Promise<"saved" | "canceled"> {
   if (bytes.byteLength <= MAXIMUM_EXPORT_CHUNK_BYTES) {
     const result = await callDesktop(binding, "SaveFile", filename, exportChunk(bytes));
-    return DesktopMethods.SaveFile.result.parse(result) ? "saved" : "cancelled";
+    return DesktopMethods.SaveFile.result.parse(result) ? "saved" : "canceled";
   }
   // The picker yields. A plugin may reuse its buffer as soon as saveFile returns the promise.
   const snapshot = new Uint8Array(bytes);
   const transfer = DesktopMethods.BeginFileSave.result.parse(
     await callDesktop(binding, "BeginFileSave", filename, snapshot.byteLength),
   );
-  if (!transfer) return "cancelled";
+  if (!transfer) return "canceled";
   try {
     for (let offset = 0; offset < snapshot.byteLength; offset += MAXIMUM_EXPORT_CHUNK_BYTES) {
       const encoded = exportChunk(snapshot.subarray(offset, offset + MAXIMUM_EXPORT_CHUNK_BYTES));
