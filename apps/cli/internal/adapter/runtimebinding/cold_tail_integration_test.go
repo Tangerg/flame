@@ -136,35 +136,9 @@ func serveOverlappingChildren(ctx context.Context, w http.ResponseWriter, reques
 		case message.Role != "user":
 			continue
 		case strings.Contains(string(message.Content), coldTailPreview):
-			if !in.Stream {
-				http.Error(w, "expected a streaming preview", http.StatusBadRequest)
-				return errors.New("the preview provider was called without streaming")
-			}
-			if err := writeColdTailChunk(w, true, coldTailDelta{Role: "assistant", Content: coldTailFirstText}, nil); err != nil {
-				return err
-			}
-			if err := http.NewResponseController(w).Flush(); err != nil {
-				return err
-			}
-			select {
-			case <-allowPreviewTail:
-			case <-request.Context().Done():
-				return nil
-			case <-ctx.Done():
-				return nil
-			}
-			finish := "stop"
-			if err := writeColdTailChunk(w, true, coldTailDelta{Content: coldTailSecondText}, &finish); err != nil {
-				return err
-			}
-			_, err := fmt.Fprint(w, "data: [DONE]\n\n")
-			return err
+			return streamColdTailPreview(ctx, w, request, in.Stream, allowPreviewTail)
 		case strings.Contains(string(message.Content), coldTailSpawner):
-			select {
-			case <-allowNested:
-			case <-request.Context().Done():
-				return nil
-			case <-ctx.Done():
+			if !waitForColdTailRelease(ctx, request, allowNested) {
 				return nil
 			}
 			return writeColdTailCompletion(w, in.Stream, "", []coldTailToolCall{delegatedColdTailCall(0, coldTailNestedID, coldTailNested)})
@@ -177,6 +151,43 @@ func serveOverlappingChildren(ctx context.Context, w http.ResponseWriter, reques
 		}
 	}
 	return writeColdTailCompletion(w, in.Stream, "ok", nil)
+}
+
+// streamColdTailPreview streams the preview child's first text, then holds its
+// tail until the test releases it.
+func streamColdTailPreview(ctx context.Context, w http.ResponseWriter, request *http.Request, stream bool, allowTail <-chan struct{}) error {
+	if !stream {
+		http.Error(w, "expected a streaming preview", http.StatusBadRequest)
+		return errors.New("the preview provider was called without streaming")
+	}
+	if err := writeColdTailChunk(w, true, coldTailDelta{Role: "assistant", Content: coldTailFirstText}, nil); err != nil {
+		return err
+	}
+	if err := http.NewResponseController(w).Flush(); err != nil {
+		return err
+	}
+	if !waitForColdTailRelease(ctx, request, allowTail) {
+		return nil
+	}
+	finish := "stop"
+	if err := writeColdTailChunk(w, true, coldTailDelta{Content: coldTailSecondText}, &finish); err != nil {
+		return err
+	}
+	_, err := fmt.Fprint(w, "data: [DONE]\n\n")
+	return err
+}
+
+// waitForColdTailRelease reports whether the test released the gate before the
+// Runtime abandoned the request or the scenario ended.
+func waitForColdTailRelease(ctx context.Context, request *http.Request, gate <-chan struct{}) bool {
+	select {
+	case <-gate:
+		return true
+	case <-request.Context().Done():
+		return false
+	case <-ctx.Done():
+		return false
+	}
 }
 
 type coldTailToolCall struct {

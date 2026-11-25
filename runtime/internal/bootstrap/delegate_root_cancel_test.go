@@ -26,45 +26,7 @@ func testCancelDelegatedTree(t *testing.T, confirmed bool) {
 	home := t.TempDir()
 	t.Setenv("FLAME_HOME", home)
 	childEntered := make(chan string, 2)
-	model := delegateRestartModel{chat.ModelFunc(func(ctx context.Context, request *chat.Request) (*chat.Response, error) {
-		delegatedChild, hasResult := "", false
-		for _, message := range request.Messages {
-			hasResult = hasResult || message.Role == chat.RoleTool
-			if message.Role != chat.RoleUser {
-				continue
-			}
-			for _, name := range []string{"child work A", "child work B"} {
-				if strings.Contains(message.Text(), name) {
-					delegatedChild = name
-				}
-			}
-		}
-		meta := &chat.ResponseMetadata{Model: "claude-test", Usage: &chat.Usage{InputTokens: 2, OutputTokens: 1}}
-		switch {
-		case delegatedChild != "":
-			childEntered <- delegatedChild
-			<-ctx.Done()
-			if confirmed {
-				return nil, &invocation.Failure{Kind: invocation.FailureNotExecuted, Cause: ctx.Err()}
-			}
-			return nil, ctx.Err()
-		case hasResult:
-			stop := chat.NewAssistantMessage(chat.NewTextPart("parent done"))
-			return chat.NewResponse(&chat.Output{Message: &stop, FinishReason: chat.FinishReasonStop}, meta)
-		default:
-			call := chat.NewAssistantMessage(
-				chat.NewToolCallPart(chat.ToolCall{
-					ID: "delegate_a", Name: "delegate_task",
-					Arguments: `{"summary":"A","instructions":"child work A"}`,
-				}),
-				chat.NewToolCallPart(chat.ToolCall{
-					ID: "delegate_b", Name: "delegate_task",
-					Arguments: `{"summary":"B","instructions":"child work B"}`,
-				}),
-			)
-			return chat.NewResponse(&chat.Output{Message: &call, FinishReason: chat.FinishReasonToolCalls}, meta)
-		}
-	})}
+	model := delegateRestartModel{chat.ModelFunc(cancelTreeScript{childEntered: childEntered, confirmed: confirmed}.Call)}
 
 	ctx := delivery.WithRequestMeta(t.Context(), protocol.RequestMeta{
 		ProtocolVersion: protocol.Version,
@@ -180,4 +142,58 @@ func testCancelDelegatedTree(t *testing.T, confirmed bool) {
 	}); err != nil {
 		t.Fatalf("start after cancel = %v, want the Session slot freed", err)
 	}
+}
+
+// cancelTreeScript delegates two children that block until cancelled; a
+// confirmed cancellation reports that the child's model call never executed.
+type cancelTreeScript struct {
+	childEntered chan<- string
+	confirmed    bool
+}
+
+func (s cancelTreeScript) Call(ctx context.Context, request *chat.Request) (*chat.Response, error) {
+	delegatedChild, hasResult := delegatedChildOf(request)
+	meta := &chat.ResponseMetadata{Model: "claude-test", Usage: &chat.Usage{InputTokens: 2, OutputTokens: 1}}
+	switch {
+	case delegatedChild != "":
+		s.childEntered <- delegatedChild
+		<-ctx.Done()
+		if s.confirmed {
+			return nil, &invocation.Failure{Kind: invocation.FailureNotExecuted, Cause: ctx.Err()}
+		}
+		return nil, ctx.Err()
+	case hasResult:
+		stop := chat.NewAssistantMessage(chat.NewTextPart("parent done"))
+		return chat.NewResponse(&chat.Output{Message: &stop, FinishReason: chat.FinishReasonStop}, meta)
+	default:
+		call := chat.NewAssistantMessage(
+			chat.NewToolCallPart(chat.ToolCall{
+				ID: "delegate_a", Name: "delegate_task",
+				Arguments: `{"summary":"A","instructions":"child work A"}`,
+			}),
+			chat.NewToolCallPart(chat.ToolCall{
+				ID: "delegate_b", Name: "delegate_task",
+				Arguments: `{"summary":"B","instructions":"child work B"}`,
+			}),
+		)
+		return chat.NewResponse(&chat.Output{Message: &call, FinishReason: chat.FinishReasonToolCalls}, meta)
+	}
+}
+
+// delegatedChildOf names the child whose work the request carries, and reports
+// whether the request already holds a tool result.
+func delegatedChildOf(request *chat.Request) (string, bool) {
+	delegatedChild, hasResult := "", false
+	for _, message := range request.Messages {
+		hasResult = hasResult || message.Role == chat.RoleTool
+		if message.Role != chat.RoleUser {
+			continue
+		}
+		for _, name := range []string{"child work A", "child work B"} {
+			if strings.Contains(message.Text(), name) {
+				delegatedChild = name
+			}
+		}
+	}
+	return delegatedChild, hasResult
 }

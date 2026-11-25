@@ -17,6 +17,7 @@ import (
 
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
 	framecall "github.com/Tangerg/frame/call"
 	sdk "github.com/Tangerg/go-sdk/mcp"
@@ -35,15 +36,15 @@ const (
 
 // stage is the durable cut the test selects in the "<evidence>.phase" file
 // before each Runtime process it starts.
-type stage string
+type stage testsupport.ScheduleCrashPhase
 
 const (
-	commitCut          stage = "commit"
-	editedCut          stage = "edited"
-	queryCut           stage = "query"
-	absentReceipt      stage = "absent"
-	conflictingReceipt stage = "conflict"
-	malformedReceipt   stage = "malformed"
+	commitCut          = stage(testsupport.ScheduleCrashCommit)
+	editedCut          = stage(testsupport.ScheduleCrashEdited)
+	queryCut           = stage(testsupport.ScheduleCrashQuery)
+	absentReceipt      = stage(testsupport.ScheduleCrashAbsent)
+	conflictingReceipt = stage(testsupport.ScheduleCrashConflict)
+	malformedReceipt   = stage(testsupport.ScheduleCrashMalformed)
 )
 
 const (

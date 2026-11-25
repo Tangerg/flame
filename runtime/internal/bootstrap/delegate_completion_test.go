@@ -2,6 +2,7 @@ package bootstrap
 
 import (
 	"context"
+	"iter"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -15,31 +16,7 @@ func TestProtocolCompletesAllDelegates(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("FLAME_HOME", home)
 	var calls atomic.Int32
-	completedWithUsage := func(text string) *chat.Response {
-		response := completedTextResponse(text)
-		response.Metadata = &chat.ResponseMetadata{Model: "claude-test", Usage: &chat.Usage{InputTokens: 2, OutputTokens: 1}}
-		return response
-	}
-	model := delegateRestartModel{chat.ModelFunc(func(_ context.Context, request *chat.Request) (*chat.Response, error) {
-		calls.Add(1)
-		for _, message := range request.Messages {
-			if message.Role == chat.RoleTool {
-				return completedWithUsage("all done"), nil
-			}
-		}
-		for _, message := range request.Messages {
-			if message.Role == chat.RoleUser && strings.Contains(message.Text(), "finish child") {
-				return completedWithUsage("child completed"), nil
-			}
-		}
-		message := chat.NewAssistantMessage(
-			chat.NewToolCallPart(chat.ToolCall{ID: "delegate_a", Name: "delegate_task", Arguments: `{"summary":"A","instructions":"finish child A"}`}),
-			chat.NewToolCallPart(chat.ToolCall{ID: "delegate_b", Name: "delegate_task", Arguments: `{"summary":"B","instructions":"finish child B"}`}),
-		)
-		return chat.NewResponse(&chat.Output{Message: &message, FinishReason: chat.FinishReasonToolCalls}, &chat.ResponseMetadata{
-			Model: "claude-test", Usage: &chat.Usage{InputTokens: 2, OutputTokens: 1},
-		})
-	})}
+	model := delegateRestartModel{chat.ModelFunc(completeAllDelegatesScript{calls: &calls}.Call)}
 	ctx := t.Context()
 	options := protocol.CallMetadata{RequestMeta: protocol.RequestMeta{
 		ProtocolVersion: protocol.Version,
@@ -71,23 +48,7 @@ func TestProtocolCompletesAllDelegates(t *testing.T) {
 		t.Fatal(started.Failure)
 	}
 	rootRunID := started.Value.(*protocol.StartRunResponse).RunID
-	streamed := make(map[string]protocol.RunOutcomeType)
-	answers := make(map[string]int)
-	for value, err := range started.Events {
-		if err != nil {
-			t.Fatal(err)
-		}
-		event := value.(protocol.RunEvent)
-		if event.Event.Type == protocol.StreamItemCompleted && event.Event.Item.Type == protocol.ItemTypeAgentMessage {
-			answers[event.RunID]++
-		}
-		if event.Event.Type == protocol.StreamSegmentFinished && event.Event.Run.Outcome != nil {
-			if answers[event.RunID] != 1 {
-				t.Fatalf("Run %s ended with %d assistant answers, want one before its terminal", event.RunID, answers[event.RunID])
-			}
-			streamed[event.RunID] = event.Event.Run.Outcome.Type
-		}
-	}
+	streamed, answers := streamedDelegateOutcomes(t, started.Events)
 	listed := endpoint.Invoke(ctx, delivery.RunsList, protocol.ListRunsRequest{
 		SessionID: session.ID, IncludeDescendants: true,
 	}, options)
@@ -104,21 +65,11 @@ func TestProtocolCompletesAllDelegates(t *testing.T) {
 		if read.Failure != nil {
 			t.Fatal(read.Failure)
 		}
-		items := read.Value.(*protocol.ListItemsResponse)
 		want := "child completed"
 		if value.ID == rootRunID {
 			want = "all done"
 		}
-		var persistedAnswers int
-		for _, item := range items.Data {
-			if item.Type != protocol.ItemTypeAgentMessage {
-				continue
-			}
-			persistedAnswers++
-			if item.Status != protocol.ItemStatusCompleted || len(item.Content) != 1 || item.Content[0].Text != want {
-				t.Fatalf("Run %s lost its committed answer: %+v", value.ID, item)
-			}
-		}
+		persistedAnswers := committedAnswers(t, value.ID, read.Value.(*protocol.ListItemsResponse).Data, want)
 		if persistedAnswers != 1 || answers[value.ID] != 1 {
 			t.Fatalf("Run %s has %d durable and %d streamed answers, want one each", value.ID, persistedAnswers, answers[value.ID])
 		}
@@ -165,4 +116,77 @@ func TestProtocolCompletesAllDelegates(t *testing.T) {
 	if summary.Total.InputTokens != 8 || summary.Total.OutputTokens != 4 || summary.Runs != 3 || summary.Sessions != 1 {
 		t.Fatalf("summary lost process-owned usage: %+v", summary)
 	}
+}
+
+// completeAllDelegatesScript delegates two children that complete at once and
+// finishes the parent when their results arrive.
+type completeAllDelegatesScript struct{ calls *atomic.Int32 }
+
+func (s completeAllDelegatesScript) Call(_ context.Context, request *chat.Request) (*chat.Response, error) {
+	s.calls.Add(1)
+	for _, message := range request.Messages {
+		if message.Role == chat.RoleTool {
+			return completedWithUsage("all done"), nil
+		}
+	}
+	for _, message := range request.Messages {
+		if message.Role == chat.RoleUser && strings.Contains(message.Text(), "finish child") {
+			return completedWithUsage("child completed"), nil
+		}
+	}
+	message := chat.NewAssistantMessage(
+		chat.NewToolCallPart(chat.ToolCall{ID: "delegate_a", Name: "delegate_task", Arguments: `{"summary":"A","instructions":"finish child A"}`}),
+		chat.NewToolCallPart(chat.ToolCall{ID: "delegate_b", Name: "delegate_task", Arguments: `{"summary":"B","instructions":"finish child B"}`}),
+	)
+	return chat.NewResponse(&chat.Output{Message: &message, FinishReason: chat.FinishReasonToolCalls}, &chat.ResponseMetadata{
+		Model: "claude-test", Usage: &chat.Usage{InputTokens: 2, OutputTokens: 1},
+	})
+}
+
+func completedWithUsage(text string) *chat.Response {
+	response := completedTextResponse(text)
+	response.Metadata = &chat.ResponseMetadata{Model: "claude-test", Usage: &chat.Usage{InputTokens: 2, OutputTokens: 1}}
+	return response
+}
+
+// streamedDelegateOutcomes drains the tree's stream, requiring each Run to emit
+// exactly one assistant answer before its terminal, and returns every Run's
+// streamed outcome and answer count.
+func streamedDelegateOutcomes(t *testing.T, events iter.Seq2[any, error]) (map[string]protocol.RunOutcomeType, map[string]int) {
+	t.Helper()
+	streamed := make(map[string]protocol.RunOutcomeType)
+	answers := make(map[string]int)
+	for value, err := range events {
+		if err != nil {
+			t.Fatal(err)
+		}
+		event := value.(protocol.RunEvent)
+		if event.Event.Type == protocol.StreamItemCompleted && event.Event.Item.Type == protocol.ItemTypeAgentMessage {
+			answers[event.RunID]++
+		}
+		if event.Event.Type == protocol.StreamSegmentFinished && event.Event.Run.Outcome != nil {
+			if answers[event.RunID] != 1 {
+				t.Fatalf("Run %s ended with %d assistant answers, want one before its terminal", event.RunID, answers[event.RunID])
+			}
+			streamed[event.RunID] = event.Event.Run.Outcome.Type
+		}
+	}
+	return streamed, answers
+}
+
+// committedAnswers counts a Run's durable assistant answers, each of which must
+// be the completed text the Run produced.
+func committedAnswers(t *testing.T, runID string, items []protocol.Item, want string) int {
+	t.Helper()
+	answers := 0
+	for _, item := range items {
+		if item.Type != protocol.ItemTypeAgentMessage {
+			continue
+		}
+		answers++
+		if item.Status != protocol.ItemStatusCompleted || len(item.Content) != 1 || item.Content[0].Text != want {
+			t.Fatalf("Run %s lost its committed answer: %+v", runID, item)
+		}
+	}
+	return answers
 }

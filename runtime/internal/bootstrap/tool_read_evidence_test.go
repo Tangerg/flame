@@ -16,50 +16,15 @@ import (
 )
 
 func TestRuntimeMutationRequiresNewReadEvidenceAndKeepsRefusalDurable(t *testing.T) {
-	calls := []chat.ToolCall{
-		{ID: "directory_edit", Name: "edit", Arguments: `{"path":"folder","old_string":"before","new_string":"applied"}`},
-		{ID: "read_before", Name: "read", Arguments: `{"path":"notes.txt"}`},
-		{ID: "first_edit", Name: "edit", Arguments: `{"path":"notes.txt","old_string":"before","new_string":"applied"}`},
-		{ID: "unread_edit", Name: "edit", Arguments: `{"path":"notes.txt","old_string":"applied","new_string":"overwritten"}`},
-		{ID: "read_after", Name: "read", Arguments: `{"path":"notes.txt"}`},
-		{ID: "second_edit", Name: "edit", Arguments: `{"path":"notes.txt","old_string":"applied","new_string":"finished"}`},
-	}
-	var results []chat.ToolResult
-	model := delegateRestartModel{chat.ModelFunc(func(_ context.Context, request *chat.Request) (*chat.Response, error) {
-		if len(request.Tools) == 0 {
-			return completedTextResponse("read evidence"), nil
-		}
-		results = nil
-		for _, message := range request.Messages {
-			for _, part := range message.Parts {
-				if part.ToolResult != nil {
-					results = append(results, *part.ToolResult)
-				}
-			}
-		}
-		for index, result := range results {
-			if index >= len(calls) || result.ID != calls[index].ID || result.IsError != (index == 0 || index == 3) {
-				return nil, fmt.Errorf("read evidence result[%d] = %+v", index, result)
-			}
-			if index == 0 {
-				text, _ := result.Output.Text()
-				if !strings.Contains(text, "unsupported file mode") {
-					return nil, fmt.Errorf("missing directory refusal: %q", text)
-				}
-			}
-			if index == 3 {
-				text, _ := result.Output.Text()
-				if !strings.Contains(text, "must read") {
-					return nil, fmt.Errorf("missing fresh-read refusal: %q", text)
-				}
-			}
-		}
-		if len(results) == len(calls) {
-			return completedTextResponse("finished after reading the applied contents"), nil
-		}
-		message := chat.NewAssistantMessage(chat.NewToolCallPart(calls[len(results)]))
-		return chat.NewResponse(&chat.Output{Message: &message, FinishReason: chat.FinishReasonToolCalls}, nil)
-	})}
+	script := &readEvidenceScript{steps: []readEvidenceStep{
+		{call: chat.ToolCall{ID: "directory_edit", Name: "edit", Arguments: `{"path":"folder","old_string":"before","new_string":"applied"}`}, refusal: "unsupported file mode"},
+		{call: chat.ToolCall{ID: "read_before", Name: "read", Arguments: `{"path":"notes.txt"}`}},
+		{call: chat.ToolCall{ID: "first_edit", Name: "edit", Arguments: `{"path":"notes.txt","old_string":"before","new_string":"applied"}`}},
+		{call: chat.ToolCall{ID: "unread_edit", Name: "edit", Arguments: `{"path":"notes.txt","old_string":"applied","new_string":"overwritten"}`}, refusal: "must read"},
+		{call: chat.ToolCall{ID: "read_after", Name: "read", Arguments: `{"path":"notes.txt"}`}},
+		{call: chat.ToolCall{ID: "second_edit", Name: "edit", Arguments: `{"path":"notes.txt","old_string":"applied","new_string":"finished"}`}},
+	}}
+	model := delegateRestartModel{chat.ModelFunc(script.Call)}
 	stores, api, ctx, home := newSessionStateE2ERuntime(t, model)
 	if err := stores.ApprovalModes.SetDefaultMode(ctx, approval.ModeBalanced); err != nil {
 		t.Fatal(err)
@@ -83,8 +48,8 @@ func TestRuntimeMutationRequiresNewReadEvidenceAndKeepsRefusalDurable(t *testing
 	}
 	waitForRunEvents(t, collectRunEvents(events), "mutation read evidence")
 	ended, err := api.GetRun(ctx, protocol.GetRunRequest{RunID: started.RunID})
-	if err != nil || ended.Outcome == nil || ended.Outcome.Type != protocol.OutcomeCompleted || len(results) != len(calls) {
-		t.Fatalf("Run=%+v error=%v results=%+v", ended, err, results)
+	if err != nil || ended.Outcome == nil || ended.Outcome.Type != protocol.OutcomeCompleted || len(script.results) != len(script.steps) {
+		t.Fatalf("Run=%+v error=%v results=%+v", ended, err, script.results)
 	}
 	if content, err := os.ReadFile(path); err != nil || string(content) != "finished\n" {
 		t.Fatalf("workspace content = %q, %v", content, err)
@@ -101,12 +66,63 @@ func TestRuntimeMutationRequiresNewReadEvidenceAndKeepsRefusalDurable(t *testing
 			}
 		}
 	}
-	if len(durable) != len(results) {
+	if len(durable) != len(script.results) {
 		t.Fatalf("durable results = %+v", durable)
 	}
 	for index, result := range durable {
-		if !reflect.DeepEqual(result, results[index]) {
+		if !reflect.DeepEqual(result, script.results[index]) {
 			t.Fatalf("durable result[%d] differs from model input", index)
 		}
 	}
+}
+
+type readEvidenceStep struct {
+	call chat.ToolCall
+	// refusal is the text a refused step must carry; empty steps succeed.
+	refusal string
+}
+
+// readEvidenceScript issues each step once its predecessors' results arrived
+// in order, failing the Run if any result differs from its step's expectation.
+type readEvidenceScript struct {
+	steps   []readEvidenceStep
+	results []chat.ToolResult
+}
+
+func (s *readEvidenceScript) Call(_ context.Context, request *chat.Request) (*chat.Response, error) {
+	if len(request.Tools) == 0 {
+		return completedTextResponse("read evidence"), nil
+	}
+	s.results = nil
+	for _, message := range request.Messages {
+		for _, part := range message.Parts {
+			if part.ToolResult != nil {
+				s.results = append(s.results, *part.ToolResult)
+			}
+		}
+	}
+	for index, result := range s.results {
+		if err := s.check(index, result); err != nil {
+			return nil, err
+		}
+	}
+	if len(s.results) == len(s.steps) {
+		return completedTextResponse("finished after reading the applied contents"), nil
+	}
+	message := chat.NewAssistantMessage(chat.NewToolCallPart(s.steps[len(s.results)].call))
+	return chat.NewResponse(&chat.Output{Message: &message, FinishReason: chat.FinishReasonToolCalls}, nil)
+}
+
+func (s *readEvidenceScript) check(index int, result chat.ToolResult) error {
+	if index >= len(s.steps) {
+		return fmt.Errorf("read evidence result[%d] = %+v", index, result)
+	}
+	step := s.steps[index]
+	if result.ID != step.call.ID || result.IsError != (step.refusal != "") {
+		return fmt.Errorf("read evidence result[%d] = %+v", index, result)
+	}
+	if text, _ := result.Output.Text(); step.refusal != "" && !strings.Contains(text, step.refusal) {
+		return fmt.Errorf("missing refusal %q: %q", step.refusal, text)
+	}
+	return nil
 }

@@ -28,41 +28,9 @@ func TestScheduleModelManualRunUsesOriginalInstalledCallerAndRunAdmission(t *tes
 
 func scheduleModelManualRun(t *testing.T, lost bool) {
 	t.Helper()
-	var issued atomic.Bool
-	var exchanges atomic.Int32
-	var receipt atomic.Value
-	receipt.Store("")
-	var modelName, scheduleID string
-	model := delegateRestartModel{chat.ModelFunc(func(_ context.Context, request *chat.Request) (*chat.Response, error) {
-		exchanges.Add(1)
-		for _, message := range request.Messages {
-			for _, part := range message.Parts {
-				if part.ToolResult != nil && part.ToolResult.Name == modelName {
-					if part.ToolResult.IsError {
-						t.Errorf("installed manual Run was refused: %+v", part.ToolResult.Output)
-					}
-					text, ok := part.ToolResult.Output.Text()
-					if !ok {
-						t.Error("manual Run result lost its model-visible JSON output")
-					}
-					receipt.Store(text)
-					return completedTextResponse("manual work accepted"), nil
-				}
-			}
-		}
-		if issued.Load() || len(request.Tools) == 0 {
-			return completedTextResponse("scheduled work finished"), nil
-		}
-		call := chat.ToolCall{ID: "discover-manual", Name: "search_tools", Arguments: `{"query":"select:` + modelName + `"}`}
-		for _, definition := range request.Tools {
-			if definition.Name == modelName {
-				issued.Store(true)
-				call = chat.ToolCall{ID: "manual-schedule-call", Name: modelName, Arguments: `{"id":"` + scheduleID + `"}`}
-			}
-		}
-		message := chat.NewAssistantMessage(chat.NewToolCallPart(call))
-		return chat.NewResponse(&chat.Output{Message: &message, FinishReason: chat.FinishReasonToolCalls}, nil)
-	})}
+	script := &manualRunScript{t: t}
+	script.receipt.Store("")
+	model := delegateRestartModel{chat.ModelFunc(script.Call)}
 	client, err := chatclient.New(model)
 	if err != nil {
 		t.Fatal(err)
@@ -81,14 +49,14 @@ func scheduleModelManualRun(t *testing.T, lost bool) {
 	tools := r.poMCPTools(server, scheduleToolsReady)
 	for _, tool := range tools {
 		if tool.Name == "run_schedule" {
-			modelName = tool.ModelName
+			script.modelName = tool.ModelName
 		}
 	}
-	if modelName == "" {
+	if script.modelName == "" {
 		t.Fatal("manual schedule tool was not published")
 	}
 	definition := readScheduleCreate(r, scheduleCreateRequest(r, testsupport.SchedulesDraft{Instructions: "Run the captured fixture once", Cron: "0 * * * *", TimeZone: "UTC", Enabled: false}), "manual-definition")
-	scheduleID = definition.Id
+	script.scheduleID = definition.Id
 	session := r.must(delivery.SessionsCreate, protocol.CreateSessionRequest{Title: "Manual schedule caller"}, "manual-session").(*protocol.Session)
 	started := r.endpoint.Invoke(t.Context(), delivery.RunsStart, protocol.StartRunRequest{SessionID: session.ID, Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "Run this schedule once now."}}}, protocol.CallMetadata{IdempotencyKey: "manual-from-model", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 	if started.Failure != nil {
@@ -123,10 +91,10 @@ func scheduleModelManualRun(t *testing.T, lost bool) {
 			time.Sleep(10 * time.Millisecond)
 		}
 	} else {
-		if err := json.Unmarshal([]byte(receipt.Load().(string)), &accepted, json.RejectUnknownMembers(true)); err != nil || accepted.RunId == "" || accepted.SessionId == "" {
+		if err := json.Unmarshal([]byte(script.receipt.Load().(string)), &accepted, json.RejectUnknownMembers(true)); err != nil || accepted.RunId == "" || accepted.SessionId == "" {
 			root := r.must(delivery.RunsGet, protocol.GetRunRequest{RunID: started.Value.(*protocol.StartRunResponse).RunID}, "").(*protocol.RunRef)
 			encoded, _ := json.Marshal(root)
-			t.Fatalf("model did not receive original Run acceptance: %+v, %v; issued=%t exchanges=%d run=%s", accepted, err, issued.Load(), exchanges.Load(), encoded)
+			t.Fatalf("model did not receive original Run acceptance: %+v, %v; issued=%t exchanges=%d run=%s", accepted, err, script.issued.Load(), script.exchanges.Load(), encoded)
 		}
 	}
 	child := r.must(delivery.RunsGet, protocol.GetRunRequest{RunID: accepted.RunId}, "").(*protocol.RunRef)
@@ -141,4 +109,41 @@ func scheduleModelManualRun(t *testing.T, lost bool) {
 	if len(page.Data) != 1 || page.Data[0].Id != definition.Id || page.Data[0].LastRunAt == nil {
 		t.Fatalf("manual acceptance failed to settle its private definition: %+v", page)
 	}
+}
+
+// manualRunScript discovers the installed run_schedule tool, calls it once for
+// the captured schedule and keeps the model-visible receipt it returned.
+type manualRunScript struct {
+	t                     *testing.T
+	modelName, scheduleID string
+	issued                atomic.Bool
+	exchanges             atomic.Int32
+	receipt               atomic.Value
+}
+
+func (s *manualRunScript) Call(_ context.Context, request *chat.Request) (*chat.Response, error) {
+	s.exchanges.Add(1)
+	if result := toolResultNamed(request, s.modelName); result != nil {
+		if result.IsError {
+			s.t.Errorf("installed manual Run was refused: %+v", result.Output)
+		}
+		text, ok := result.Output.Text()
+		if !ok {
+			s.t.Error("manual Run result lost its model-visible JSON output")
+		}
+		s.receipt.Store(text)
+		return completedTextResponse("manual work accepted"), nil
+	}
+	if s.issued.Load() || len(request.Tools) == 0 {
+		return completedTextResponse("scheduled work finished"), nil
+	}
+	call := chat.ToolCall{ID: "discover-manual", Name: "search_tools", Arguments: `{"query":"select:` + s.modelName + `"}`}
+	for _, definition := range request.Tools {
+		if definition.Name == s.modelName {
+			s.issued.Store(true)
+			call = chat.ToolCall{ID: "manual-schedule-call", Name: s.modelName, Arguments: `{"id":"` + s.scheduleID + `"}`}
+		}
+	}
+	message := chat.NewAssistantMessage(chat.NewToolCallPart(call))
+	return chat.NewResponse(&chat.Output{Message: &message, FinishReason: chat.FinishReasonToolCalls}, nil)
 }

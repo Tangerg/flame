@@ -50,39 +50,8 @@ func TestProtocolPreservesUnsuccessfulApprovalResultsAcrossRestart(t *testing.T)
 		t.Run(test.name, func(t *testing.T) {
 			home := t.TempDir()
 			t.Setenv("FLAME_HOME", home)
-			var calls atomic.Int32
-			var recoveredToolResult atomic.Bool
-			model := delegateRestartModel{chat.ModelFunc(func(_ context.Context, request *chat.Request) (*chat.Response, error) {
-				call := calls.Add(1)
-				if call >= 2 {
-					matches := 0
-					for _, message := range request.Messages {
-						for _, part := range message.Parts {
-							if part.ToolResult != nil && part.ToolResult.ID == "shell_approval" && part.ToolResult.IsError {
-								matches++
-								if test.reason != "" && !reflect.DeepEqual(part.ToolResult.Output, toolcontract.NewTextOutput(test.reason)) {
-									return nil, fmt.Errorf("approval refusal lost its reason: %+v", part.ToolResult.Output)
-								}
-							}
-						}
-					}
-					if matches != 1 {
-						return nil, fmt.Errorf("model call %d has %d approval results, want one", call, matches)
-					}
-					recoveredToolResult.Store(call == 3)
-				}
-				message := chat.NewAssistantMessage(chat.NewTextPart("The edited tool could not execute."))
-				finish := chat.FinishReasonStop
-				if call == 1 {
-					message = chat.NewAssistantMessage(chat.NewToolCallPart(chat.ToolCall{
-						ID: "shell_approval", Name: "shell", Arguments: `{"command":"printf approved > approval-side-effect.txt","description":"Write approved"}`,
-					}))
-					finish = chat.FinishReasonToolCalls
-				}
-				return chat.NewResponse(&chat.Output{Message: &message, FinishReason: finish}, &chat.ResponseMetadata{
-					Model: "claude-test", Usage: &chat.Usage{InputTokens: 2, OutputTokens: 1},
-				})
-			})}
+			script := &approvalResultScript{reason: test.reason}
+			model := delegateRestartModel{chat.ModelFunc(script.Call)}
 			stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: home, ValidateDirectory: persistencefixture.UnleasedDirectory})
 			if err != nil {
 				t.Fatal(err)
@@ -142,7 +111,7 @@ func TestProtocolPreservesUnsuccessfulApprovalResultsAcrossRestart(t *testing.T)
 					t.Fatalf("invalid remember was accepted: %v", err)
 				}
 				after, err := api.GetSessionSnapshot(ctx, protocol.GetSessionSnapshotRequest{SessionID: session.ID})
-				if err != nil || !reflect.DeepEqual(before, after) || calls.Load() != 1 {
+				if err != nil || !reflect.DeepEqual(before, after) || script.calls.Load() != 1 {
 					t.Fatalf("invalid remember changed the prompt or executed work: %v", err)
 				}
 				current, found, err := stores.ExecutorCheckpoints.LoadExecutionTree(ctx, testsupport.MustSessionID(session.ID), member.MemberID)
@@ -164,8 +133,8 @@ func TestProtocolPreservesUnsuccessfulApprovalResultsAcrossRestart(t *testing.T)
 			if err != nil {
 				t.Fatal(err)
 			}
-			if len(snapshot.Runs) != 1 || snapshot.Runs[0].Status != protocol.RunStatusFinished || snapshot.Runs[0].Outcome == nil || snapshot.Runs[0].Outcome.Type != protocol.OutcomeCompleted || calls.Load() != 2 {
-				t.Fatalf("edited approval run did not settle: %+v, model calls=%d", snapshot.Runs, calls.Load())
+			if len(snapshot.Runs) != 1 || snapshot.Runs[0].Status != protocol.RunStatusFinished || snapshot.Runs[0].Outcome == nil || snapshot.Runs[0].Outcome.Type != protocol.OutcomeCompleted || script.calls.Load() != 2 {
+				t.Fatalf("edited approval run did not settle: %+v, model calls=%d", snapshot.Runs, script.calls.Load())
 			}
 			var settled protocol.Item
 			for _, item := range snapshot.Items {
@@ -204,8 +173,8 @@ func TestProtocolPreservesUnsuccessfulApprovalResultsAcrossRestart(t *testing.T)
 				t.Fatal(err)
 			}
 			waitForRunEvents(t, collectRunEvents(events), "next run after invalid edit")
-			if calls.Load() != 3 || !recoveredToolResult.Load() {
-				t.Fatalf("next Run lost the settled Tool result: model calls=%d, result=%t", calls.Load(), recoveredToolResult.Load())
+			if script.calls.Load() != 3 || !script.recoveredToolResult.Load() {
+				t.Fatalf("next Run lost the settled Tool result: model calls=%d, result=%t", script.calls.Load(), script.recoveredToolResult.Load())
 			}
 		})
 	}
@@ -313,4 +282,53 @@ func TestProtocolRemembersEditedApprovalAfterWaitingRestart(t *testing.T) {
 		rule.Scope != protocol.ApprovalRuleScopeGlobal || rule.Stale {
 		t.Fatalf("durable rule differs from confirmed invocation: %+v", rule)
 	}
+}
+
+// approvalResultScript proposes one shell call, then requires every later
+// request to carry exactly one unsuccessful approval result with the user's
+// reason, and records whether the third call received it after restart.
+type approvalResultScript struct {
+	reason              string
+	calls               atomic.Int32
+	recoveredToolResult atomic.Bool
+}
+
+func (s *approvalResultScript) Call(_ context.Context, request *chat.Request) (*chat.Response, error) {
+	call := s.calls.Add(1)
+	if call >= 2 {
+		if err := s.checkApprovalResult(request, call); err != nil {
+			return nil, err
+		}
+		s.recoveredToolResult.Store(call == 3)
+	}
+	message := chat.NewAssistantMessage(chat.NewTextPart("The edited tool could not execute."))
+	finish := chat.FinishReasonStop
+	if call == 1 {
+		message = chat.NewAssistantMessage(chat.NewToolCallPart(chat.ToolCall{
+			ID: "shell_approval", Name: "shell", Arguments: `{"command":"printf approved > approval-side-effect.txt","description":"Write approved"}`,
+		}))
+		finish = chat.FinishReasonToolCalls
+	}
+	return chat.NewResponse(&chat.Output{Message: &message, FinishReason: finish}, &chat.ResponseMetadata{
+		Model: "claude-test", Usage: &chat.Usage{InputTokens: 2, OutputTokens: 1},
+	})
+}
+
+func (s *approvalResultScript) checkApprovalResult(request *chat.Request, call int32) error {
+	matches := 0
+	for _, message := range request.Messages {
+		for _, part := range message.Parts {
+			if part.ToolResult == nil || part.ToolResult.ID != "shell_approval" || !part.ToolResult.IsError {
+				continue
+			}
+			matches++
+			if s.reason != "" && !reflect.DeepEqual(part.ToolResult.Output, toolcontract.NewTextOutput(s.reason)) {
+				return fmt.Errorf("approval refusal lost its reason: %+v", part.ToolResult.Output)
+			}
+		}
+	}
+	if matches != 1 {
+		return fmt.Errorf("model call %d has %d approval results, want one", call, matches)
+	}
+	return nil
 }

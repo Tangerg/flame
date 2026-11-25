@@ -23,36 +23,11 @@ import (
 )
 
 func TestGitHubInstalledSecretLifecycleAndModelWritesShareThePublishedOwner(t *testing.T) {
-	var name, arguments, refusalText atomic.Value
-	name.Store("")
-	arguments.Store(`{"repository":"../private","number":42}`)
-	refusalText.Store("")
-	model := delegateRestartModel{chat.ModelFunc(func(_ context.Context, request *chat.Request) (*chat.Response, error) {
-		if len(request.Tools) == 0 {
-			return completedTextResponse("github fixture"), nil
-		}
-		target := name.Load().(string)
-		for _, message := range request.Messages {
-			for _, part := range message.Parts {
-				if part.ToolResult != nil && part.ToolResult.Name == target {
-					if !part.ToolResult.IsError || len(part.ToolResult.Output.Content) != 1 {
-						t.Error("installed read lost its known refusal")
-					} else {
-						refusalText.Store(part.ToolResult.Output.Content[0].Text)
-					}
-					return completedTextResponse("resource refused"), nil
-				}
-			}
-		}
-		call := chat.ToolCall{ID: "discover-github", Name: "search_tools", Arguments: `{"query":"select:` + target + `"}`}
-		for _, definition := range request.Tools {
-			if definition.Name == target {
-				call = chat.ToolCall{ID: "github-" + target, Name: target, Arguments: arguments.Load().(string)}
-			}
-		}
-		message := chat.NewAssistantMessage(chat.NewToolCallPart(call))
-		return chat.NewResponse(&chat.Output{Message: &message, FinishReason: chat.FinishReasonToolCalls}, nil)
-	})}
+	script := &githubRefusalScript{t: t}
+	script.name.Store("")
+	script.arguments.Store(`{"repository":"../private","number":42}`)
+	script.refusalText.Store("")
+	model := delegateRestartModel{chat.ModelFunc(script.Call)}
 	client, err := chatclient.New(model)
 	if err != nil {
 		t.Fatal(err)
@@ -95,10 +70,10 @@ func TestGitHubInstalledSecretLifecycleAndModelWritesShareThePublishedOwner(t *t
 	tools := r.poMCPTools(server, ready)
 	for _, tool := range tools {
 		if tool.Name == "get_issue" {
-			name.Store(tool.ModelName)
+			script.name.Store(tool.ModelName)
 		}
 	}
-	if name.Load().(string) == "" {
+	if script.name.Load().(string) == "" {
 		t.Fatal("installed GitHub Tool is missing")
 	}
 	contracts, err := plugincontract.ParseCapability([]byte(testsupport.GitHubCapabilityJSON))
@@ -115,15 +90,15 @@ func TestGitHubInstalledSecretLifecycleAndModelWritesShareThePublishedOwner(t *t
 	} {
 		for _, tool := range tools {
 			if tool.Name == test.name {
-				name.Store(tool.ModelName)
+				script.name.Store(tool.ModelName)
 			}
 		}
 		input, err := framevalue.EncodeJSON(test.input)
 		if err != nil {
 			t.Fatal(err)
 		}
-		arguments.Store(input.String())
-		refusalText.Store("")
+		script.arguments.Store(input.String())
+		script.refusalText.Store("")
 		request := protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "github-operations", Contract: contracts.Identity().String(), Method: test.method, Input: input.String(), Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: installed.ID}}
 		typed := r.must(delivery.PluginsCall, request, test.key).(*protocol.CallPluginResponse)
 		if typed.Failure == nil || typed.Failure.Code != test.code {
@@ -147,8 +122,50 @@ func TestGitHubInstalledSecretLifecycleAndModelWritesShareThePublishedOwner(t *t
 		}
 		started := run.Value.(*protocol.StartRunResponse)
 		finished := r.must(delivery.RunsGet, protocol.GetRunRequest{RunID: started.RunID}, "").(*protocol.RunRef)
-		if finished.Outcome == nil || finished.Outcome.Type != protocol.OutcomeCompleted || refusalText.Load().(string) != typed.Failure.Message {
-			t.Fatalf("installed typed/Tool %s refusal diverged: outcome=%+v typed=%+v model=%s", test.name, finished.Outcome, typed.Failure, refusalText.Load())
+		if finished.Outcome == nil || finished.Outcome.Type != protocol.OutcomeCompleted || script.refusalText.Load().(string) != typed.Failure.Message {
+			t.Fatalf("installed typed/Tool %s refusal diverged: outcome=%+v typed=%+v model=%s", test.name, finished.Outcome, typed.Failure, script.refusalText.Load())
 		}
 	}
+}
+
+// githubRefusalScript discovers and calls the installed GitHub tool the test
+// names, with the arguments it sets, and keeps the refusal text the tool returns.
+type githubRefusalScript struct {
+	t                            *testing.T
+	name, arguments, refusalText atomic.Value
+}
+
+func (s *githubRefusalScript) Call(_ context.Context, request *chat.Request) (*chat.Response, error) {
+	if len(request.Tools) == 0 {
+		return completedTextResponse("github fixture"), nil
+	}
+	target := s.name.Load().(string)
+	if result := toolResultNamed(request, target); result != nil {
+		if !result.IsError || len(result.Output.Content) != 1 {
+			s.t.Error("installed read lost its known refusal")
+		} else {
+			s.refusalText.Store(result.Output.Content[0].Text)
+		}
+		return completedTextResponse("resource refused"), nil
+	}
+	call := chat.ToolCall{ID: "discover-github", Name: "search_tools", Arguments: `{"query":"select:` + target + `"}`}
+	for _, definition := range request.Tools {
+		if definition.Name == target {
+			call = chat.ToolCall{ID: "github-" + target, Name: target, Arguments: s.arguments.Load().(string)}
+		}
+	}
+	message := chat.NewAssistantMessage(chat.NewToolCallPart(call))
+	return chat.NewResponse(&chat.Output{Message: &message, FinishReason: chat.FinishReasonToolCalls}, nil)
+}
+
+// toolResultNamed returns the first result of the named tool in the request.
+func toolResultNamed(request *chat.Request, name string) *chat.ToolResult {
+	for _, message := range request.Messages {
+		for _, part := range message.Parts {
+			if part.ToolResult != nil && part.ToolResult.Name == name {
+				return part.ToolResult
+			}
+		}
+	}
+	return nil
 }

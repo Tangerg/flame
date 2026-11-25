@@ -62,7 +62,7 @@ func scheduleCrashModel(t *testing.T, home string) chat.Model {
 }
 
 func TestScheduleRecoveryCrashHelper(t *testing.T) {
-	phase := os.Getenv("FLAME_TEST_SCHEDULE_CRASH")
+	phase := testsupport.ScheduleCrashPhase(os.Getenv("FLAME_TEST_SCHEDULE_CRASH"))
 	if phase == "" {
 		return
 	}
@@ -72,101 +72,19 @@ func TestScheduleRecoveryCrashHelper(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if phase == "resolution" {
-		commit := stores.CommitPluginReferences
-		stores.CommitPluginReferences = func(ctx context.Context, host framehost.Host, identity string, checkpoint runs.ExecutorCheckpoint, apply func(context.Context) error) error {
-			if err := commit(ctx, host, identity, checkpoint, apply); err != nil {
-				return err
-			}
-			settled, err := scheduleResolutionCommitted(ctx, stores)
-			if err != nil || !settled {
-				return err
-			}
-			if err := scheduleCrashReady(os.Getenv("FLAME_TEST_SCHEDULE_EVIDENCE")); err != nil {
-				return err
-			}
-			<-ctx.Done()
-			return context.Cause(ctx)
-		}
+	if phase == testsupport.ScheduleCrashResolution {
+		parkAfterScheduleResolution(stores)
 	}
 
-	cfg := protocolRuntimeConfig(t, stores, scheduleCrashModel(t, home))
-	processRunner, err := runner.NewDaemon(runner.DaemonConfig{
-		Executable: testsupport.RunnerExecutable(t), Directory: filepath.Join(home, "runner"), StartTimeout: 10 * time.Second,
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	cfg.processRunner = processRunner
-	t.Cleanup(func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-		if err := processRunner.Close(ctx); err != nil {
-			t.Error(err)
-		}
-	})
-	cfg.approvalMode = approval.ModeYolo
-	if os.Getenv("FLAME_TEST_SCHEDULE_EDITED") == "1" {
-		cfg.approvalMode = approval.ModeSafe
-	}
-	executable, err := os.Open(os.Args[0])
-	if err != nil {
-		t.Fatal(err)
-	}
-	hash := sha256.New()
-	_, err = io.Copy(hash, executable)
-	if err := errors.Join(err, executable.Close()); err != nil {
-		t.Fatal(err)
-	}
-	var sum [sha256.Size]byte
-	copy(sum[:], hash.Sum(nil))
-	cfg.buildID = runs.BuildFromSHA256(sum).String()
-	if phase == "disable" {
+	cfg := scheduleCrashConfig(t, stores, home)
+	if phase == testsupport.ScheduleCrashDisable {
 		disableOriginalScheduleBinding(t, cfg)
 		return
 	}
 	host, api := buildProtocolRuntime(t, cfg, home)
 	defer host.Close()
-	endpoint := host.Endpoint()
-	if phase == "commit" || phase == "edited" {
-		r := &poMCPRuntime{t: t, host: host, api: api, endpoint: endpoint}
-		installed := poMCPActivate(r, os.Getenv("FLAME_TEST_SCHEDULE_SOURCE"))
-		server := &protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "schedules"}
-		r.poMCPTools(server, scheduleToolsReady)
-		session, err := api.CreateSession(t.Context(), protocol.CreateSessionRequest{Workspace: &protocol.WorkspaceRef{Path: home}})
-		if err != nil {
-			t.Fatal(err)
-		}
-		options := acceptedCommandOptions()
-		options.IdempotencyKey = scheduleCrashKey
-		started := endpoint.Invoke(t.Context(), delivery.RunsStart, protocol.StartRunRequest{SessionID: session.ID, Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "Create the recurring original progress inspection."}}}, options)
-		if started.Failure != nil {
-			t.Fatal(started.Failure)
-		}
-		for _, err := range started.Events {
-			if err != nil {
-				t.Fatal(err)
-			}
-		}
-		if phase == "edited" {
-			runID := started.Value.(*protocol.StartRunResponse).RunID
-			pending, err := api.ListInterrupts(acceptedCrashContext(t), protocol.ListInterruptsRequest{RootRunID: runID})
-			if err != nil || len(pending.Data) != 1 || len(pending.Data[0].Interrupts) != 1 {
-				t.Fatalf("approval: %+v,%v", pending, err)
-			}
-			request := protocol.ResumeRunRequest{RunID: runID, Responses: []protocol.InterruptResponse{{ItemID: pending.Data[0].Interrupts[0].ItemID, Response: protocol.InterruptResponseValue{Type: protocol.InterruptResponseApproval, Decision: protocol.ApprovalApprove, EditedArgs: map[string]any{"title": "edited title", "instructions": "inspect the original progress", "cron": "0 0 1 1 *"}}}}}
-			options := acceptedCommandOptions()
-			options.IdempotencyKey = "edited-resume"
-			resumed := endpoint.Invoke(t.Context(), delivery.RunsResume, request, options)
-			if resumed.Failure != nil {
-				t.Fatal(resumed.Failure)
-			}
-			for _, err := range resumed.Events {
-				if err != nil {
-					t.Fatal(err)
-				}
-			}
-		}
+	if phase == testsupport.ScheduleCrashCommit || phase == testsupport.ScheduleCrashEdited {
+		startOriginalScheduleCreate(t, host, api, home, phase)
 		t.Fatal("original result was not withheld")
 	}
 	receipt, err := stores.CommandAcceptances.Lookup(t.Context(), scheduleCrashKey)
@@ -190,11 +108,11 @@ func TestScheduleRecoveryCrashHelper(t *testing.T) {
 	}
 	value, err := api.GetRun(acceptedCrashContext(t), protocol.GetRunRequest{RunID: receipt.Acceptance.RunID.String()})
 	want := protocol.OutcomeCompleted
-	if phase == "absent" || phase == "conflict" || phase == "malformed" || phase == "disabled" {
+	if phase.Inconclusive() {
 		want = protocol.OutcomeLost
 	}
 	if err != nil || value.Outcome == nil || value.Outcome.Type != want {
-		lookup, _ := os.ReadFile(os.Getenv("FLAME_TEST_SCHEDULE_EVIDENCE") + ".finish")
+		lookup, _ := os.ReadFile(os.Getenv("FLAME_TEST_SCHEDULE_EVIDENCE") + "." + string(testsupport.ScheduleCrashFinish))
 		outcome, _ := json.Marshal(value.Outcome)
 		t.Fatalf("recovered Run: %+v, outcome=%s, error=%v, lookup=%s", value, outcome, err, lookup)
 	}
@@ -269,4 +187,107 @@ func scheduleCrashReady(evidence string) error {
 	}
 	_, err = ready.WriteString("ready\n")
 	return errors.Join(err, ready.Close())
+}
+
+// parkAfterScheduleResolution parks the Runtime right after Scope commits the
+// original create's resolution, so the parent can SIGKILL it there.
+func parkAfterScheduleResolution(stores *persistence.Bundle) {
+	commit := stores.CommitPluginReferences
+	stores.CommitPluginReferences = func(ctx context.Context, host framehost.Host, identity string, checkpoint runs.ExecutorCheckpoint, apply func(context.Context) error) error {
+		if err := commit(ctx, host, identity, checkpoint, apply); err != nil {
+			return err
+		}
+		settled, err := scheduleResolutionCommitted(ctx, stores)
+		if err != nil || !settled {
+			return err
+		}
+		if err := scheduleCrashReady(os.Getenv("FLAME_TEST_SCHEDULE_EVIDENCE")); err != nil {
+			return err
+		}
+		<-ctx.Done()
+		return context.Cause(ctx)
+	}
+}
+
+// scheduleCrashConfig assembles the helper Runtime with its own runner and the
+// build identity of this test binary, so every re-executed helper is one build.
+func scheduleCrashConfig(t *testing.T, stores *persistence.Bundle, home string) assemblyConfig {
+	t.Helper()
+	cfg := protocolRuntimeConfig(t, stores, scheduleCrashModel(t, home))
+	processRunner, err := runner.NewDaemon(runner.DaemonConfig{
+		Executable: testsupport.RunnerExecutable(t), Directory: filepath.Join(home, "runner"), StartTimeout: 10 * time.Second,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg.processRunner = processRunner
+	t.Cleanup(func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if err := processRunner.Close(ctx); err != nil {
+			t.Error(err)
+		}
+	})
+	cfg.approvalMode = approval.ModeYolo
+	if os.Getenv("FLAME_TEST_SCHEDULE_EDITED") == "1" {
+		cfg.approvalMode = approval.ModeSafe
+	}
+	executable, err := os.Open(os.Args[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	hash := sha256.New()
+	_, err = io.Copy(hash, executable)
+	if err := errors.Join(err, executable.Close()); err != nil {
+		t.Fatal(err)
+	}
+	var sum [sha256.Size]byte
+	copy(sum[:], hash.Sum(nil))
+	cfg.buildID = runs.BuildFromSHA256(sum).String()
+	return cfg
+}
+
+// startOriginalScheduleCreate installs the schedules package and starts the Run
+// whose create the probe cuts; an edited phase approves it with edited arguments.
+func startOriginalScheduleCreate(t *testing.T, host *Instance, api *delivery.Handler, home string, phase testsupport.ScheduleCrashPhase) {
+	t.Helper()
+	endpoint := host.Endpoint()
+	r := &poMCPRuntime{t: t, host: host, api: api, endpoint: endpoint}
+	installed := poMCPActivate(r, os.Getenv("FLAME_TEST_SCHEDULE_SOURCE"))
+	server := &protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "schedules"}
+	r.poMCPTools(server, scheduleToolsReady)
+	session, err := api.CreateSession(t.Context(), protocol.CreateSessionRequest{Workspace: &protocol.WorkspaceRef{Path: home}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	options := acceptedCommandOptions()
+	options.IdempotencyKey = scheduleCrashKey
+	started := endpoint.Invoke(t.Context(), delivery.RunsStart, protocol.StartRunRequest{SessionID: session.ID, Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "Create the recurring original progress inspection."}}}, options)
+	if started.Failure != nil {
+		t.Fatal(started.Failure)
+	}
+	for _, err := range started.Events {
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	if phase == testsupport.ScheduleCrashEdited {
+		runID := started.Value.(*protocol.StartRunResponse).RunID
+		pending, err := api.ListInterrupts(acceptedCrashContext(t), protocol.ListInterruptsRequest{RootRunID: runID})
+		if err != nil || len(pending.Data) != 1 || len(pending.Data[0].Interrupts) != 1 {
+			t.Fatalf("approval: %+v,%v", pending, err)
+		}
+		request := protocol.ResumeRunRequest{RunID: runID, Responses: []protocol.InterruptResponse{{ItemID: pending.Data[0].Interrupts[0].ItemID, Response: protocol.InterruptResponseValue{Type: protocol.InterruptResponseApproval, Decision: protocol.ApprovalApprove, EditedArgs: map[string]any{"title": "edited title", "instructions": "inspect the original progress", "cron": "0 0 1 1 *"}}}}}
+		options := acceptedCommandOptions()
+		options.IdempotencyKey = "edited-resume"
+		resumed := endpoint.Invoke(t.Context(), delivery.RunsResume, request, options)
+		if resumed.Failure != nil {
+			t.Fatal(resumed.Failure)
+		}
+		for _, err := range resumed.Events {
+			if err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
 }

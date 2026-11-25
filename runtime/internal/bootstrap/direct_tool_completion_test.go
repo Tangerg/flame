@@ -31,48 +31,7 @@ func TestProtocolCompletesDirectToolResults(t *testing.T) {
 			t.Setenv("FLAME_HOME", home)
 			var calls, executions atomic.Int32
 			want := []chat.ToolResult{{ID: "answer_once", Name: "fixture_answer", Output: toolcontract.NewTextOutput("exact answer")}}
-			model := delegateRestartModel{chat.ModelFunc(func(_ context.Context, request *chat.Request) (*chat.Response, error) {
-				if len(request.Tools) == 0 {
-					return completedTextResponse("title"), nil
-				}
-				sequence := calls.Add(1)
-				if delegated && sequence == 4 {
-					var results []chat.ToolResult
-					for _, message := range request.Messages {
-						for _, part := range message.Parts {
-							if part.ToolResult != nil && part.ToolResult.Name == "delegate_task" {
-								var output struct {
-									ModelResponse     *chat.Response    `json:"model_response"`
-									DirectToolResults []chat.ToolResult `json:"direct_tool_results"`
-									ModelCalls        uint64            `json:"model_calls"`
-								}
-								if err := json.Unmarshal(part.ToolResult.Output.Details, &output); err != nil {
-									return nil, err
-								}
-								if output.ModelResponse != nil || len(output.DirectToolResults) == 0 || output.ModelCalls != 2 {
-									return nil, fmt.Errorf("delegated completion changed: %+v", output)
-								}
-								results = output.DirectToolResults
-							}
-						}
-					}
-					if !reflect.DeepEqual(results, want) {
-						return nil, fmt.Errorf("delegated direct results changed: %+v", results)
-					}
-					return completedTextResponse("root completed"), nil
-				}
-				call := chat.ToolCall{ID: "discover", Name: "search_tools", Arguments: `{"query":"select:fixture_answer"}`}
-				for _, definition := range request.Tools {
-					if definition.Name == "fixture_answer" {
-						call = chat.ToolCall{ID: "answer_once", Name: "fixture_answer", Arguments: `{}`}
-					}
-				}
-				if delegated && sequence == 1 {
-					call = chat.ToolCall{ID: "delegate_once", Name: "delegate_task", Arguments: `{"summary":"answer","instructions":"return the direct answer"}`}
-				}
-				message := chat.NewAssistantMessage(chat.NewToolCallPart(call))
-				return &chat.Response{Output: &chat.Output{Message: &message, FinishReason: chat.FinishReasonToolCalls}}, nil
-			})}
+			model := delegateRestartModel{chat.ModelFunc((&directAnswerScript{delegated: delegated, want: want, calls: &calls}).Call)}
 			stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: home, ValidateDirectory: persistencefixture.UnleasedDirectory})
 			if err != nil {
 				t.Fatal(err)
@@ -177,4 +136,69 @@ func (directAnswerTool) SourceFingerprint() framevalue.Digest {
 func (directAnswerTool) SourceConfig() mcp.ServerConfig {
 	name, _ := mcpserver.ParseServerName("fixture")
 	return mcp.ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: name}}
+}
+
+// directAnswerScript discovers and calls the direct-answer tool; when delegated,
+// the root delegates first and its fourth call checks that the child returned
+// the tool's direct result instead of a model response.
+type directAnswerScript struct {
+	delegated bool
+	want      []chat.ToolResult
+	calls     *atomic.Int32
+}
+
+func (s *directAnswerScript) Call(_ context.Context, request *chat.Request) (*chat.Response, error) {
+	if len(request.Tools) == 0 {
+		return completedTextResponse("title"), nil
+	}
+	sequence := s.calls.Add(1)
+	if s.delegated && sequence == 4 {
+		return s.checkDelegatedResults(request)
+	}
+	call := chat.ToolCall{ID: "discover", Name: "search_tools", Arguments: `{"query":"select:fixture_answer"}`}
+	for _, definition := range request.Tools {
+		if definition.Name == "fixture_answer" {
+			call = chat.ToolCall{ID: "answer_once", Name: "fixture_answer", Arguments: `{}`}
+		}
+	}
+	if s.delegated && sequence == 1 {
+		call = chat.ToolCall{ID: "delegate_once", Name: "delegate_task", Arguments: `{"summary":"answer","instructions":"return the direct answer"}`}
+	}
+	message := chat.NewAssistantMessage(chat.NewToolCallPart(call))
+	return &chat.Response{Output: &chat.Output{Message: &message, FinishReason: chat.FinishReasonToolCalls}}, nil
+}
+
+func (s *directAnswerScript) checkDelegatedResults(request *chat.Request) (*chat.Response, error) {
+	var results []chat.ToolResult
+	for _, message := range request.Messages {
+		for _, part := range message.Parts {
+			if part.ToolResult == nil || part.ToolResult.Name != "delegate_task" {
+				continue
+			}
+			direct, err := delegatedDirectResults(part.ToolResult)
+			if err != nil {
+				return nil, err
+			}
+			results = direct
+		}
+	}
+	if !reflect.DeepEqual(results, s.want) {
+		return nil, fmt.Errorf("delegated direct results changed: %+v", results)
+	}
+	return completedTextResponse("root completed"), nil
+}
+
+func delegatedDirectResults(result *chat.ToolResult) ([]chat.ToolResult, error) {
+	var output struct {
+		ModelResponse     *chat.Response    `json:"model_response"`
+		DirectToolResults []chat.ToolResult `json:"direct_tool_results"`
+		ModelCalls        uint64            `json:"model_calls"`
+	}
+	if err := json.Unmarshal(result.Output.Details, &output); err != nil {
+		return nil, err
+	}
+	if output.ModelResponse != nil || len(output.DirectToolResults) == 0 || output.ModelCalls != 2 {
+		return nil, fmt.Errorf("delegated completion changed: %+v", output)
+	}
+	return output.DirectToolResults, nil
 }

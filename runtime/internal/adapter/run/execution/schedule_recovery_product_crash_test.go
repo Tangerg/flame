@@ -48,41 +48,38 @@ type scheduleCut struct {
 	name string
 	// edited approves the create with an edited title before the first cut.
 	edited bool
-	// recutAt kills the recovering Runtime once more at that stage.
-	recutAt string
+	// recutAt kills the recovering Runtime once more at that phase.
+	recutAt testsupport.ScheduleCrashPhase
 	// settled marks a recut that lands after Scope committed the resolution,
 	// so recovery must not query the receipt again.
 	settled bool
 	// disables withdraws the schedules installation before recovery.
 	disables bool
-	// inconclusive receipts leave the original create Unknown, never completed.
-	inconclusive bool
+	// final is the phase recovery finishes under; an inconclusive one keeps
+	// faulting the receipt it recovers through.
+	final testsupport.ScheduleCrashPhase
 }
 
 var scheduleCuts = []scheduleCut{
-	{name: "commit"},
-	{name: "query", recutAt: "query"},
-	{name: "resolution", recutAt: "resolution", settled: true},
-	{name: "edited", edited: true},
-	{name: "absent", inconclusive: true},
-	{name: "conflict", inconclusive: true},
-	{name: "malformed", inconclusive: true},
-	{name: "disabled", disables: true, inconclusive: true},
+	{name: "commit", final: testsupport.ScheduleCrashFinish},
+	{name: "query", recutAt: testsupport.ScheduleCrashQuery, final: testsupport.ScheduleCrashFinish},
+	{name: "resolution", recutAt: testsupport.ScheduleCrashResolution, settled: true, final: testsupport.ScheduleCrashFinish},
+	{name: "edited", edited: true, final: testsupport.ScheduleCrashFinish},
+	{name: "absent", final: testsupport.ScheduleCrashAbsent},
+	{name: "conflict", final: testsupport.ScheduleCrashConflict},
+	{name: "malformed", final: testsupport.ScheduleCrashMalformed},
+	{name: "disabled", disables: true, final: testsupport.ScheduleCrashDisabled},
 }
 
-func (c scheduleCut) initialPhase() string {
+func (c scheduleCut) initialPhase() testsupport.ScheduleCrashPhase {
 	if c.edited {
-		return "edited"
+		return testsupport.ScheduleCrashEdited
 	}
-	return "commit"
+	return testsupport.ScheduleCrashCommit
 }
 
-// finalPhase lets an inconclusive cut keep faulting the receipt it recovers through.
-func (c scheduleCut) finalPhase() string {
-	if c.inconclusive {
-		return c.name
-	}
-	return "finish"
+func (c scheduleCut) inconclusive() bool {
+	return c.final.Inconclusive()
 }
 
 func (c scheduleCut) title() string {
@@ -144,64 +141,12 @@ func TestScheduleCreateRecoversAcrossSIGKILLCuts(t *testing.T) {
 			}
 			defer ready.Close()
 
-			invoke := func(phase string, kill bool) {
-				t.Helper()
-				if err := os.WriteFile(evidence+".phase", []byte(phase), 0600); err != nil {
-					t.Fatal(err)
-				}
-				ctx, cancel := context.WithTimeout(t.Context(), 40*time.Second)
-				defer cancel()
-				command := exec.CommandContext(ctx, binary, "-test.run=^TestScheduleRecoveryCrashHelper$", "-test.timeout=35s")
-				command.Env = append(os.Environ(), localruntime.ProductRootVariable+"="+home, "FLAME_TEST_SCHEDULE_CRASH="+phase, "FLAME_TEST_SCHEDULE_SOURCE="+source, "FLAME_TEST_SCHEDULE_EVIDENCE="+evidence, "FLAME_TEST_FIRST_PARTY_DIRECTORY="+packages)
-				if cut.edited {
-					command.Env = append(command.Env, "FLAME_TEST_SCHEDULE_EDITED=1")
-				}
-				var output bytes.Buffer
-				command.Stdout, command.Stderr = &output, &output
-				if err := command.Start(); err != nil {
-					t.Fatal(err)
-				}
-				done := make(chan error, 1)
-				go func() { done <- command.Wait() }()
-				if kill {
-					barrier := make(chan error, 1)
-					go func() {
-						reader := bufio.NewReader(ready)
-						for {
-							if _, err := reader.ReadString('\n'); err != nil {
-								barrier <- err
-								return
-							}
-
-							barrier <- nil
-							return
-						}
-					}()
-					select {
-					case err := <-barrier:
-						if err != nil {
-							t.Fatal(err)
-						}
-					case err := <-done:
-						t.Fatalf("%s exited before its durable cut: %v\n%s", phase, err, output.String())
-					case <-ctx.Done():
-						_ = command.Process.Kill()
-						<-done
-						t.Fatalf("%s did not reach its durable cut\n%s", phase, output.String())
-					}
-					if err := command.Process.Kill(); err != nil {
-						t.Fatal(err)
-					}
-					var exit *exec.ExitError
-					if err := <-done; !errors.As(err, &exit) || exit.Sys().(syscall.WaitStatus).Signal() != syscall.SIGKILL {
-						t.Fatalf("%s was not killed: %v", phase, err)
-					}
-				} else if err := <-done; err != nil {
-					t.Fatalf("fresh Runtime: %v\n%s", err, output.String())
-				}
+			helper := scheduleCrashHelper{
+				binary: binary, home: home, source: source, evidence: evidence, packages: packages,
+				edited: cut.edited, ready: ready,
 			}
 			initial := cut.initialPhase()
-			invoke(initial, true)
+			helper.run(t, initial, true)
 			stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: home, ValidateDirectory: persistencefixture.UnleasedDirectory})
 			if err != nil {
 				t.Fatal(err)
@@ -216,18 +161,15 @@ func TestScheduleCreateRecoversAcrossSIGKILLCuts(t *testing.T) {
 			}
 			var originalTool identity.ItemID
 			var originalSource tool.Ref
-			for _, item := range items {
-				if invocation, ok := testsupport.ToolInvocationOf(item); ok && invocation.Name == "schedules_create_schedule" {
-					originalTool = item.ID()
-					originalSource = invocation.Source
-					server, remote, ok := originalSource.MCP()
-					_, installed := server.Origin().Installation()
-					if !ok || !installed || remote.String() != "create_schedule" {
-						t.Fatalf("original Tool lost its installed source: %v", originalSource)
-					}
-					if item.Status() != transcript.ItemRunning {
-						t.Fatalf("original Tool was already terminal: %+v", item)
-					}
+			for _, created := range createToolItems(items) {
+				originalTool, originalSource = created.item.ID(), created.invocation.Source
+				server, remote, ok := originalSource.MCP()
+				_, installed := server.Origin().Installation()
+				if !ok || !installed || remote.String() != "create_schedule" {
+					t.Fatalf("original Tool lost its installed source: %v", originalSource)
+				}
+				if created.item.Status() != transcript.ItemRunning {
+					t.Fatalf("original Tool was already terminal: %+v", created.item)
 				}
 			}
 			if originalTool.IsZero() {
@@ -262,15 +204,15 @@ func TestScheduleCreateRecoversAcrossSIGKILLCuts(t *testing.T) {
 				t.Fatal(err)
 			}
 			if cut.disables {
-				invoke("disable", false)
+				helper.run(t, testsupport.ScheduleCrashDisable, false)
 			}
 			if cut.recutAt != "" {
-				invoke(cut.recutAt, true)
+				helper.run(t, cut.recutAt, true)
 			}
 			if cut.settled {
 				assertScheduleResolutionCommitted(t, home, checkpoint.SessionID.String(), checkpoint.RootMemberID, originalEffect)
 			}
-			invoke(cut.finalPhase(), false)
+			helper.run(t, cut.final, false)
 			stores, err = persistence.Open(t.Context(), persistence.Config{DataDirectory: home, ValidateDirectory: persistencefixture.UnleasedDirectory})
 			if err != nil {
 				t.Fatal(err)
@@ -281,7 +223,7 @@ func TestScheduleCreateRecoversAcrossSIGKILLCuts(t *testing.T) {
 				t.Fatalf("recovery changed opening identity: %+v,%v", current, err)
 			}
 			steps := 3
-			if cut.inconclusive {
+			if cut.inconclusive() {
 				steps = 2
 			}
 			if current.CurrentRun.Metrics().Steps() != steps {
@@ -319,26 +261,23 @@ func TestScheduleCreateRecoversAcrossSIGKILLCuts(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			count := 0
 			wantStatus := transcript.ItemCompleted
-			if cut.inconclusive {
+			if cut.inconclusive() {
 				wantStatus = transcript.ItemIncomplete
 			}
-			for _, item := range items {
-				if invocation, ok := testsupport.ToolInvocationOf(item); ok && invocation.Name == "schedules_create_schedule" {
-					if invocation.Source != originalSource {
-						t.Fatalf("recovery replaced Tool source %v with %v", originalSource, invocation.Source)
-					}
-					count++
-					if item.ID() != originalTool || item.Status() != wantStatus {
-						t.Fatalf("recovery replaced the original Tool Item: %+v", item)
-					}
+			recovered := createToolItems(items)
+			for _, created := range recovered {
+				if created.invocation.Source != originalSource {
+					t.Fatalf("recovery replaced Tool source %v with %v", originalSource, created.invocation.Source)
+				}
+				if created.item.ID() != originalTool || created.item.Status() != wantStatus {
+					t.Fatalf("recovery replaced the original Tool Item: %+v", created.item)
 				}
 			}
-			if count != 1 {
-				t.Fatalf("canonical create Items=%d", count)
+			if len(recovered) != 1 {
+				t.Fatalf("canonical create Items=%d", len(recovered))
 			}
-			raw, err := os.ReadFile(evidence + "." + initial)
+			raw, err := os.ReadFile(evidence + "." + string(initial))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -364,7 +303,7 @@ func TestScheduleCreateRecoversAcrossSIGKILLCuts(t *testing.T) {
 			if createdID != witness.Response.Result.StructuredContent.Schedule.ID {
 				t.Fatalf("recovery changed the original creation: original ID=%q current ID=%q", witness.Response.Result.StructuredContent.Schedule.ID, createdID)
 			}
-			if cut.inconclusive {
+			if cut.inconclusive() {
 				if !cut.disables && len(current.CurrentRun.UnresolvedEffects()) != 1 {
 					t.Fatalf("inconclusive proof lost its Unknown Effect: %+v", current.CurrentRun.UnresolvedEffects())
 				}
@@ -390,11 +329,77 @@ func TestScheduleCreateRecoversAcrossSIGKILLCuts(t *testing.T) {
 				t.Fatalf("model recovery changed the original result: owner ID=%q recovered ID=%q", createdID, view.Schedule.ID)
 			}
 			if cut.settled {
-				if _, err := os.Stat(evidence + ".finish"); !errors.Is(err, os.ErrNotExist) {
+				if _, err := os.Stat(evidence + "." + string(testsupport.ScheduleCrashFinish)); !errors.Is(err, os.ErrNotExist) {
 					t.Fatalf("a committed Scope settlement was queried again: %v", err)
 				}
 			}
 		})
+	}
+}
+
+// scheduleCrashHelper re-executes the Runtime crash helper for one phase. A
+// killing run waits for the helper to report its durable cut on the ready
+// FIFO and then SIGKILLs it; any other run must exit cleanly.
+type scheduleCrashHelper struct {
+	binary, home, source, evidence, packages string
+	edited                                   bool
+	ready                                    *os.File
+}
+
+func (h scheduleCrashHelper) run(t *testing.T, phase testsupport.ScheduleCrashPhase, kill bool) {
+	t.Helper()
+	if err := os.WriteFile(h.evidence+".phase", []byte(string(phase)), 0600); err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithTimeout(t.Context(), 40*time.Second)
+	defer cancel()
+	command := exec.CommandContext(ctx, h.binary, "-test.run=^TestScheduleRecoveryCrashHelper$", "-test.timeout=35s")
+	command.Env = append(os.Environ(), localruntime.ProductRootVariable+"="+h.home, "FLAME_TEST_SCHEDULE_CRASH="+string(phase), "FLAME_TEST_SCHEDULE_SOURCE="+h.source, "FLAME_TEST_SCHEDULE_EVIDENCE="+h.evidence, "FLAME_TEST_FIRST_PARTY_DIRECTORY="+h.packages)
+	if h.edited {
+		command.Env = append(command.Env, "FLAME_TEST_SCHEDULE_EDITED=1")
+	}
+	var output bytes.Buffer
+	command.Stdout, command.Stderr = &output, &output
+	if err := command.Start(); err != nil {
+		t.Fatal(err)
+	}
+	done := make(chan error, 1)
+	go func() { done <- command.Wait() }()
+	if !kill {
+		if err := <-done; err != nil {
+			t.Fatalf("fresh Runtime: %v\n%s", err, output.String())
+		}
+		return
+	}
+	h.awaitCut(t, ctx, phase, command, done, &output)
+	if err := command.Process.Kill(); err != nil {
+		t.Fatal(err)
+	}
+	var exit *exec.ExitError
+	if err := <-done; !errors.As(err, &exit) || exit.Sys().(syscall.WaitStatus).Signal() != syscall.SIGKILL {
+		t.Fatalf("%s was not killed: %v", phase, err)
+	}
+}
+
+// awaitCut waits until the helper reports that it reached its durable cut.
+func (h scheduleCrashHelper) awaitCut(t *testing.T, ctx context.Context, phase testsupport.ScheduleCrashPhase, command *exec.Cmd, done <-chan error, output *bytes.Buffer) {
+	t.Helper()
+	barrier := make(chan error, 1)
+	go func() {
+		_, err := bufio.NewReader(h.ready).ReadString('\n')
+		barrier <- err
+	}()
+	select {
+	case err := <-barrier:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case err := <-done:
+		t.Fatalf("%s exited before its durable cut: %v\n%s", phase, err, output.String())
+	case <-ctx.Done():
+		_ = command.Process.Kill()
+		<-done
+		t.Fatalf("%s did not reach its durable cut\n%s", phase, output.String())
 	}
 }
 
@@ -507,6 +512,22 @@ func readScheduleOwner(t *testing.T, packages, dataDirectory string, original sd
 		t.Fatalf("receipt differs from original creation: %s, %v", encoded, err)
 	}
 	return page.Rows[0].Id
+}
+
+type createToolItem struct {
+	item       transcript.Item
+	invocation transcript.ToolInvocation
+}
+
+// createToolItems lists the transcript's create_schedule Tool Items in order.
+func createToolItems(items []transcript.Item) []createToolItem {
+	var created []createToolItem
+	for _, item := range items {
+		if invocation, ok := testsupport.ToolInvocationOf(item); ok && invocation.Name == "schedules_create_schedule" {
+			created = append(created, createToolItem{item: item, invocation: invocation})
+		}
+	}
+	return created
 }
 
 type createIntent struct {
