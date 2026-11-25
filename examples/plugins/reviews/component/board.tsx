@@ -13,6 +13,7 @@ import {
 import {
   bindOperations,
   mutationSettlementIsUnknown,
+  useContextState,
   type ComponentContext,
 } from "@flame/component-sdk";
 import {
@@ -47,7 +48,6 @@ type BoundContext = ComponentContext & {
   readonly binding: NonNullable<ComponentContext["binding"]>;
 };
 type Inspection = {
-  context: BoundContext;
   pending: boolean;
   reviews: Review[];
   analyzers: AnalyzerRead;
@@ -72,8 +72,7 @@ function ReviewsBoard({ context }: { context: BoundContext }) {
       }),
     [context],
   );
-  const [inspection, setInspection] = useState<Inspection>();
-  const current = inspection?.context === context ? inspection : undefined;
+  const [current, setInspection] = useContextState<Inspection>(context);
   const reviews = current?.reviews ?? [];
   const analyzers = current?.analyzers;
   const loading = current === undefined || current.pending;
@@ -119,7 +118,6 @@ function ReviewsBoard({ context }: { context: BoundContext }) {
           }
           if (signal.aborted) return;
           setInspection({
-            context,
             pending: false,
             reviews: result.reviews,
             analyzers,
@@ -131,29 +129,24 @@ function ReviewsBoard({ context }: { context: BoundContext }) {
               `The current review could not be read: ${failureMessage(error)}`,
             );
             setInspection((previous) => ({
-              context,
               pending: false,
-              reviews: previous?.context === context ? previous.reviews : [],
-              analyzers:
-                previous?.context === context
-                  ? previous.analyzers
-                  : { type: "ready", available: false },
+              reviews: previous?.reviews ?? [],
+              analyzers: previous?.analyzers ?? {
+                type: "ready",
+                available: false,
+              },
             }));
           }
         });
     },
-    [context, operations],
+    [context, operations, setInspection],
   );
 
   function reload(owner: AbortSignal) {
     setInspection((previous) => ({
-      context,
       pending: true,
-      reviews: previous?.context === context ? previous.reviews : [],
-      analyzers:
-        previous?.context === context
-          ? previous.analyzers
-          : { type: "ready", available: false },
+      reviews: previous?.reviews ?? [],
+      analyzers: previous?.analyzers ?? { type: "ready", available: false },
     }));
     return refresh(owner);
   }
