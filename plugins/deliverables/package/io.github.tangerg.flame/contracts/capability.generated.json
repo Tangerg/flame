@@ -4633,7 +4633,6 @@
           },
           "status": {
             "enum": [
-              "pending",
               "adopted",
               "dismissed"
             ],
@@ -4648,7 +4647,8 @@
           "operationsJSON",
           "author",
           "createdAt",
-          "status"
+          "status",
+          "settledAt"
         ],
         "type": "object"
       }
@@ -4927,17 +4927,8 @@
             "pattern": "^[a-f0-9]{64}$",
             "type": "string"
           },
-          "settledAt": {
-            "maxLength": 40,
-            "minLength": 1,
-            "type": "string"
-          },
           "status": {
-            "enum": [
-              "pending",
-              "adopted",
-              "dismissed"
-            ],
+            "const": "pending",
             "type": "string"
           }
         },
@@ -4997,80 +4988,151 @@
         "properties": {
           "entries": {
             "items": {
-              "additionalProperties": false,
-              "properties": {
-                "author": {
+              "oneOf": [
+                {
                   "additionalProperties": false,
                   "properties": {
-                    "invocationId": {
+                    "author": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "invocationId": {
+                          "type": "string"
+                        },
+                        "origin": {
+                          "enum": [
+                            "human",
+                            "model",
+                            "automatic"
+                          ],
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "origin",
+                        "invocationId"
+                      ],
+                      "type": "object"
+                    },
+                    "createdAt": {
+                      "maxLength": 40,
+                      "minLength": 1,
                       "type": "string"
                     },
-                    "origin": {
+                    "documentId": {
+                      "pattern": "^[a-f0-9]{64}$",
+                      "type": "string"
+                    },
+                    "id": {
+                      "pattern": "^[a-f0-9]{64}$",
+                      "type": "string"
+                    },
+                    "note": {
+                      "maxLength": 2000,
+                      "type": "string"
+                    },
+                    "operationsJSON": {
+                      "maxLength": 2097152,
+                      "minLength": 2,
+                      "type": "string"
+                    },
+                    "revision": {
+                      "pattern": "^[a-f0-9]{64}$",
+                      "type": "string"
+                    },
+                    "status": {
+                      "const": "pending",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "documentId",
+                    "revision",
+                    "note",
+                    "operationsJSON",
+                    "author",
+                    "createdAt",
+                    "status"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "author": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "invocationId": {
+                          "type": "string"
+                        },
+                        "origin": {
+                          "enum": [
+                            "human",
+                            "model",
+                            "automatic"
+                          ],
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "origin",
+                        "invocationId"
+                      ],
+                      "type": "object"
+                    },
+                    "createdAt": {
+                      "maxLength": 40,
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "documentId": {
+                      "pattern": "^[a-f0-9]{64}$",
+                      "type": "string"
+                    },
+                    "id": {
+                      "pattern": "^[a-f0-9]{64}$",
+                      "type": "string"
+                    },
+                    "note": {
+                      "maxLength": 2000,
+                      "type": "string"
+                    },
+                    "operationsJSON": {
+                      "maxLength": 2097152,
+                      "minLength": 2,
+                      "type": "string"
+                    },
+                    "revision": {
+                      "pattern": "^[a-f0-9]{64}$",
+                      "type": "string"
+                    },
+                    "settledAt": {
+                      "maxLength": 40,
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "status": {
                       "enum": [
-                        "human",
-                        "model",
-                        "automatic"
+                        "adopted",
+                        "dismissed"
                       ],
                       "type": "string"
                     }
                   },
                   "required": [
-                    "origin",
-                    "invocationId"
+                    "id",
+                    "documentId",
+                    "revision",
+                    "note",
+                    "operationsJSON",
+                    "author",
+                    "createdAt",
+                    "status",
+                    "settledAt"
                   ],
                   "type": "object"
-                },
-                "createdAt": {
-                  "maxLength": 40,
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "documentId": {
-                  "pattern": "^[a-f0-9]{64}$",
-                  "type": "string"
-                },
-                "id": {
-                  "pattern": "^[a-f0-9]{64}$",
-                  "type": "string"
-                },
-                "note": {
-                  "maxLength": 2000,
-                  "type": "string"
-                },
-                "operationsJSON": {
-                  "maxLength": 2097152,
-                  "minLength": 2,
-                  "type": "string"
-                },
-                "revision": {
-                  "pattern": "^[a-f0-9]{64}$",
-                  "type": "string"
-                },
-                "settledAt": {
-                  "maxLength": 40,
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "status": {
-                  "enum": [
-                    "pending",
-                    "adopted",
-                    "dismissed"
-                  ],
-                  "type": "string"
                 }
-              },
-              "required": [
-                "id",
-                "documentId",
-                "revision",
-                "note",
-                "operationsJSON",
-                "author",
-                "createdAt",
-                "status"
-              ],
-              "type": "object"
+              ]
             },
             "maxItems": 32,
             "type": "array"

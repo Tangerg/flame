@@ -6,7 +6,7 @@ import {
   schemas,
   METHODS,
   type DocumentRead,
-  type SuggestionValue,
+  type PendingSuggestion,
   type ThreadMessage,
 } from "../contracts/capability";
 import { LIMITS } from "../contracts/limits";
@@ -364,7 +364,7 @@ export class Application {
       value.operationsJSON,
       context.signal,
     );
-    const suggestion: SuggestionValue = {
+    const suggestion: PendingSuggestion = {
       id: digest(`suggestion:${command}`),
       documentId: value.id,
       revision: value.revision,

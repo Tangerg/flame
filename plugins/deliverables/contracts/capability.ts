@@ -97,11 +97,13 @@ const threadMessage = z.strictObject({
   // A revision the message points to, such as the one that addresses it.
   revision: id.optional(),
 });
+const threadStatus = z.enum(["open", "resolved"]);
+export const THREAD_STATUSES = threadStatus.options;
 const thread = z.strictObject({
   id,
   documentId: id,
   anchor,
-  status: z.enum(["open", "resolved"]),
+  status: threadStatus,
   createdAt: timestamp,
   updatedAt: timestamp,
   messages: z.array(threadMessage).min(1).max(LIMITS.threadMessages),
@@ -109,7 +111,7 @@ const thread = z.strictObject({
 const threadTarget = z.strictObject({ id, thread: id });
 // Edits proposed against the exact revision their author read. Adopting them
 // into a draft and saving is the person's decision; settling records it.
-const suggestion = z.strictObject({
+const suggestionFields = z.strictObject({
   id,
   documentId: id,
   revision: id,
@@ -117,9 +119,22 @@ const suggestion = z.strictObject({
   operationsJSON: json,
   author: authorSchema,
   createdAt: timestamp,
-  status: z.enum(["pending", "adopted", "dismissed"]),
-  settledAt: timestamp.optional(),
 });
+const pendingStatus = z.literal("pending");
+const suggestionOutcome = z.enum(["adopted", "dismissed"]);
+export const SUGGESTION_STATUSES = [
+  pendingStatus.value,
+  ...suggestionOutcome.options,
+] as const;
+const pendingSuggestion = suggestionFields.extend({ status: pendingStatus });
+const settledSuggestion = suggestionFields.extend({
+  status: suggestionOutcome,
+  settledAt: timestamp,
+});
+const suggestion = z.discriminatedUnion("status", [
+  pendingSuggestion,
+  settledSuggestion,
+]);
 // A layout derived from one native revision on each read.
 const projection = z.strictObject({
   document: header,
@@ -217,7 +232,7 @@ export const schemas = Object.freeze({
   threadTarget,
   threadsInput: page.extend({
     id,
-    status: z.enum(["open", "resolved"]).optional(),
+    status: threadStatus.optional(),
   }),
   threads: z.strictObject({
     entries: z.array(thread).max(LIMITS.pageSize),
@@ -225,9 +240,10 @@ export const schemas = Object.freeze({
   }),
   comment: anchor.extend({ id, body: comment }),
   suggestion,
+  settledSuggestion,
   suggestionsInput: page.extend({
     id,
-    status: z.enum(["pending", "adopted", "dismissed"]).optional(),
+    status: z.enum(SUGGESTION_STATUSES).optional(),
   }),
   suggestions: z.strictObject({
     entries: z.array(suggestion).max(LIMITS.pageSize),
@@ -242,7 +258,7 @@ export const schemas = Object.freeze({
   settle: z.strictObject({
     id,
     suggestion: id,
-    outcome: z.enum(["adopted", "dismissed"]),
+    outcome: suggestionOutcome,
   }),
   reply: threadTarget.extend({ body: comment, revision: id.optional() }),
   review: selected.extend({
@@ -281,6 +297,8 @@ export type DocumentRead = z.infer<typeof schemas.read>;
 export type ThreadValue = z.infer<typeof thread>;
 export type ThreadMessage = z.infer<typeof threadMessage>;
 export type SuggestionValue = z.infer<typeof suggestion>;
+export type PendingSuggestion = z.infer<typeof pendingSuggestion>;
+export type SettledSuggestion = z.infer<typeof settledSuggestion>;
 
 function method(
   operation: keyof typeof METHODS,
@@ -523,7 +541,7 @@ export const definitions = [
     "command",
     `Propose edits the person can review in the live editor for an exact revision. Nothing changes until they adopt the edits into their draft and save it. The supported operations are ${stagedEdits}. For replaceText, use a text run from the revision's slides or blocks projection. Use edit for direct changes, including text outside those projections.`,
     schemas.suggest,
-    suggestion,
+    pendingSuggestion,
     "model",
   ),
   method(
@@ -531,7 +549,7 @@ export const definitions = [
     "command",
     "Record that the person adopted a pending suggestion into their draft or dismissed it.",
     schemas.settle,
-    suggestion,
+    settledSuggestion,
     "host",
   ),
   method(

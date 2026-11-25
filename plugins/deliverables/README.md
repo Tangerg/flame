@@ -149,6 +149,10 @@ comment. Each message records its author's original invocation, not a name.
 The archive owns threads with their document, so removing the document removes
 them, and they count toward the archive's capacity.
 
+Each annotation is stored as one record. SQLite derives its document key,
+identity and filter state from that record. A settled suggestion always
+includes the time of the decision.
+
 "Changes" lists what the shown revision changed since an earlier revision of
 the same document, by default its parent. The list is derived in the component
 from both revisions' projections, so it covers what the editors show: slides
@@ -479,6 +483,8 @@ author-supplied provenance and remain distinguishable from observed checks.
 External sharing and messaging continue to belong to their existing connectors.
 
 ## Development
+
+The generated annotation fields require a fresh development archive.
 
 Install dependencies at the repository root. Generate contracts and components
 with `make generate`. Build and export through the ordinary first-party tooling:

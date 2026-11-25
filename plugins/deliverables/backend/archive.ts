@@ -12,10 +12,14 @@ import {
 import { LIMITS } from "../contracts/limits";
 import {
   schemas,
+  SUGGESTION_STATUSES,
+  THREAD_STATUSES,
   type Asset,
   type Assessment,
   type Header,
+  type PendingSuggestion,
   type Revision,
+  type SettledSuggestion,
   type SuggestionValue,
   type ThreadValue,
 } from "../contracts/capability";
@@ -35,6 +39,22 @@ export type Reply =
   { value: unknown } | { failure: { code: string; message: string } };
 type Row = Record<string, SQLOutputValue>;
 
+type AnnotationTable = "suggestions" | "threads";
+
+function annotationTable(
+  name: AnnotationTable,
+  statuses: readonly string[],
+): string {
+  const allowed = statuses.map((status) => `'${status}'`).join(",");
+  return `CREATE TABLE ${name} (
+    sequence INTEGER PRIMARY KEY,
+    payload TEXT NOT NULL CHECK(json_valid(payload)),
+    id TEXT GENERATED ALWAYS AS (json_extract(payload,'$.id')) STORED NOT NULL UNIQUE,
+    document_id TEXT GENERATED ALWAYS AS (json_extract(payload,'$.documentId')) STORED NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+    status TEXT GENERATED ALWAYS AS (json_extract(payload,'$.status')) STORED NOT NULL CHECK(status IN (${allowed}))
+  )`;
+}
+
 const tables = Object.freeze({
   commands:
     "CREATE TABLE commands (sequence INTEGER PRIMARY KEY, id TEXT UNIQUE NOT NULL, kind TEXT NOT NULL CHECK(kind IN ('command','tool')), method TEXT NOT NULL, digest TEXT NOT NULL CHECK(length(digest)=64), invocation TEXT NOT NULL CHECK(json_valid(invocation)), reply TEXT CHECK(reply IS NULL OR json_valid(reply)))",
@@ -50,10 +70,8 @@ const tables = Object.freeze({
     "CREATE TABLE uploads (id TEXT PRIMARY KEY, size INTEGER NOT NULL, digest TEXT NOT NULL)",
   upload_chunks:
     "CREATE TABLE upload_chunks (upload_id TEXT NOT NULL REFERENCES uploads(id) ON DELETE CASCADE, offset INTEGER NOT NULL, bytes BLOB NOT NULL, PRIMARY KEY(upload_id,offset)) WITHOUT ROWID",
-  suggestions:
-    "CREATE TABLE suggestions (sequence INTEGER PRIMARY KEY, id TEXT UNIQUE NOT NULL, document_id TEXT NOT NULL REFERENCES documents(id) ON DELETE CASCADE, status TEXT NOT NULL CHECK(status IN ('pending','adopted','dismissed')), suggestion TEXT NOT NULL CHECK(json_valid(suggestion)))",
-  threads:
-    "CREATE TABLE threads (sequence INTEGER PRIMARY KEY, id TEXT UNIQUE NOT NULL, document_id TEXT NOT NULL REFERENCES documents(id) ON DELETE CASCADE, status TEXT NOT NULL CHECK(status IN ('open','resolved')), thread TEXT NOT NULL CHECK(json_valid(thread)))",
+  suggestions: annotationTable("suggestions", SUGGESTION_STATUSES),
+  threads: annotationTable("threads", THREAD_STATUSES),
 });
 
 // The last immutable chunk owns the received offset; reading a header never loads its payload.
@@ -114,8 +132,8 @@ export class Archive {
       (SELECT coalesce(sum(length(bytes)+length(CAST(inspection AS BLOB))+length(CAST(metadata AS BLOB))+coalesce(length(CAST(processing AS BLOB)),0)),0) FROM revisions) +
       (SELECT coalesce(sum(length(bytes)+length(CAST(metadata AS BLOB))),0) FROM assets) +
       (SELECT coalesce(sum(length(CAST(payload AS BLOB))),0) FROM assessments) +
-      (SELECT coalesce(sum(length(CAST(thread AS BLOB))),0) FROM threads) +
-      (SELECT coalesce(sum(length(CAST(suggestion AS BLOB))),0) FROM suggestions) +
+      (SELECT coalesce(sum(length(CAST(payload AS BLOB))),0) FROM threads) +
+      (SELECT coalesce(sum(length(CAST(payload AS BLOB))),0) FROM suggestions) +
       (SELECT coalesce(sum(size),0) FROM uploads) AS used`,
       )
       .get()!;
@@ -464,7 +482,7 @@ export class Archive {
 
   // Threads and suggestions page newest first within one document.
   #page<T extends { id: string }>(
-    table: "threads" | "suggestions",
+    table: AnnotationTable,
     documentId: string,
     status: string | undefined,
     before: string | undefined,
@@ -482,10 +500,9 @@ export class Archive {
         "cursor_not_found",
         "cursor was not found in this deliverable",
       );
-    const column = table === "threads" ? "thread" : "suggestion";
     const rows = this.#db
       .prepare(
-        `SELECT ${column} AS value FROM ${table} WHERE document_id=? AND (? IS NULL OR status=?) AND sequence < ? ORDER BY sequence DESC LIMIT ?`,
+        `SELECT payload FROM ${table} WHERE document_id=? AND (? IS NULL OR status=?) AND sequence < ? ORDER BY sequence DESC LIMIT ?`,
       )
       .all(
         documentId,
@@ -494,7 +511,7 @@ export class Archive {
         cursor ? cursor.sequence! : Number.MAX_SAFE_INTEGER,
         limit + 1,
       );
-    const entries = rows.slice(0, limit).map((row) => parse(json(row.value)));
+    const entries = rows.slice(0, limit).map((row) => parse(json(row.payload)));
     return {
       entries,
       ...(rows.length > limit ? { next: entries.at(-1)!.id } : {}),
@@ -528,7 +545,7 @@ export class Archive {
     );
   }
 
-  addSuggestion(value: SuggestionValue): SuggestionValue {
+  addSuggestion(value: PendingSuggestion): PendingSuggestion {
     this.#writing();
     this.document(value.documentId);
     const count = this.#db
@@ -540,10 +557,8 @@ export class Archive {
         "the deliverable holds its maximum number of suggestions",
       );
     this.#db
-      .prepare(
-        "INSERT INTO suggestions(id,document_id,status,suggestion) VALUES(?,?,?,?)",
-      )
-      .run(value.id, value.documentId, value.status, canonicalJSON(value));
+      .prepare("INSERT INTO suggestions(payload) VALUES(?)")
+      .run(canonicalJSON(value));
     return value;
   }
 
@@ -551,13 +566,13 @@ export class Archive {
   settleSuggestion(
     documentId: string,
     id: string,
-    outcome: "adopted" | "dismissed",
+    outcome: SettledSuggestion["status"],
     at: string,
-  ): SuggestionValue {
+  ): SettledSuggestion {
     this.#writing();
     const row = this.#db
       .prepare(
-        "SELECT suggestion FROM suggestions WHERE document_id=? AND id=?",
+        "SELECT payload FROM suggestions WHERE document_id=? AND id=?",
       )
       .get(documentId, id);
     if (!row)
@@ -565,35 +580,35 @@ export class Archive {
         "suggestion_not_found",
         "suggestion was not found in this deliverable",
       );
-    const current = schemas.suggestion.parse(json(row.suggestion));
+    const current = schemas.suggestion.parse(json(row.payload));
     if (current.status !== "pending")
       throw refusal(
         "suggestion_state",
         `the suggestion is already ${current.status}`,
       );
-    const value = schemas.suggestion.parse({
+    const value = schemas.settledSuggestion.parse({
       ...current,
       status: outcome,
       settledAt: at,
     });
     this.#db
       .prepare(
-        "UPDATE suggestions SET status=?, suggestion=? WHERE document_id=? AND id=?",
+        "UPDATE suggestions SET payload=? WHERE document_id=? AND id=?",
       )
-      .run(value.status, canonicalJSON(value), documentId, id);
+      .run(canonicalJSON(value), documentId, id);
     return value;
   }
 
   thread(documentId: string, id: string): Thread {
     const row = this.#db
-      .prepare("SELECT thread FROM threads WHERE document_id=? AND id=?")
+      .prepare("SELECT payload FROM threads WHERE document_id=? AND id=?")
       .get(documentId, id);
     if (!row)
       throw refusal(
         "thread_not_found",
         "comment thread was not found in this deliverable",
       );
-    return new Thread(schemas.thread.parse(json(row.thread)));
+    return new Thread(json(row.payload));
   }
 
   openThread(thread: Thread): ThreadValue {
@@ -609,10 +624,8 @@ export class Archive {
         "the deliverable holds its maximum number of comment threads",
       );
     this.#db
-      .prepare(
-        "INSERT INTO threads(id,document_id,status,thread) VALUES(?,?,?,?)",
-      )
-      .run(value.id, value.documentId, value.status, canonicalJSON(value));
+      .prepare("INSERT INTO threads(payload) VALUES(?)")
+      .run(canonicalJSON(value));
     return value;
   }
 
@@ -621,9 +634,9 @@ export class Archive {
     const value = thread.snapshot();
     this.#db
       .prepare(
-        "UPDATE threads SET status=?, thread=? WHERE document_id=? AND id=?",
+        "UPDATE threads SET payload=? WHERE document_id=? AND id=?",
       )
-      .run(value.status, canonicalJSON(value), value.documentId, value.id);
+      .run(canonicalJSON(value), value.documentId, value.id);
     return value;
   }
 

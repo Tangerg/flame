@@ -1107,7 +1107,11 @@ it(
       next.invoke(METHODS.resolve, { id, thread: opened.id }, "resolve-again"),
     ).rejects.toMatchObject({ code: "thread_state" });
     expect(
-      (await next.invoke(METHODS.threads, { id, limit: 8 })).entries,
+      (await next.invoke(METHODS.threads, {
+        id,
+        status: "resolved",
+        limit: 8,
+      })).entries,
     ).toMatchObject([
       {
         status: "resolved",
@@ -1126,6 +1130,26 @@ it(
         ],
       },
     ]);
+    const reopenedThread = await next.invoke(
+      METHODS.reopen,
+      { id, thread: opened.id },
+      "reopen",
+    );
+    expect(reopenedThread).toMatchObject({ id: opened.id, status: "open" });
+    expect(
+      (await next.invoke(METHODS.threads, {
+        id,
+        status: "resolved",
+        limit: 8,
+      })).entries,
+    ).toEqual([]);
+    expect(
+      (await next.invoke(METHODS.threads, {
+        id,
+        status: "open",
+        limit: 8,
+      })).entries,
+    ).toEqual([reopenedThread]);
 
     await next.invoke(
       METHODS.remove,
@@ -1212,21 +1236,58 @@ it(
       note: "Raise the plan to 150.",
       author: { origin: "model" },
     });
-    await backend.invoke(
+    await backend.close();
+    const database = new DatabaseSync(
+      join(backend.dataDirectory, "deliverables.db"),
+    );
+    try {
+      expect(() =>
+        database
+          .prepare("UPDATE suggestions SET status=? WHERE id=?")
+          .run("dismissed", pending.id),
+      ).toThrow();
+    } finally {
+      database.close();
+    }
+    const reopened = await connect(backend.dataDirectory);
+    expect(
+      (await reopened.invoke(METHODS.suggestions, {
+        id,
+        status: "dismissed",
+        limit: 8,
+      })).entries,
+    ).toEqual([]);
+    const adopted = await reopened.invoke(
       METHODS.settle,
       { id, suggestion: pending.id, outcome: "adopted" },
       "adopt",
     );
+    expect(adopted).toMatchObject({
+      id: pending.id,
+      status: "adopted",
+      settledAt: expect.any(String),
+    });
     await expect(
-      backend.invoke(
+      reopened.invoke(
         METHODS.settle,
         { id, suggestion: pending.id, outcome: "dismissed" },
         "dismiss",
       ),
     ).rejects.toMatchObject({ code: "suggestion_state" });
     expect(
-      (await backend.invoke(METHODS.suggestions, { id, limit: 8 })).entries,
-    ).toMatchObject([{ id: pending.id, status: "adopted" }]);
+      (await reopened.invoke(METHODS.suggestions, {
+        id,
+        status: "adopted",
+        limit: 8,
+      })).entries,
+    ).toEqual([adopted]);
+    expect(
+      (await reopened.invoke(METHODS.suggestions, {
+        id,
+        status: "pending",
+        limit: 8,
+      })).entries,
+    ).toEqual([]);
   },
   scenarioTimeoutMilliseconds,
 );

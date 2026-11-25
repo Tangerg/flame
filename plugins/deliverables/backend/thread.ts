@@ -11,7 +11,7 @@ import { refusal } from "./refusal";
 export class Thread {
   readonly #value: ThreadValue;
 
-  constructor(value: ThreadValue) {
+  constructor(value: unknown) {
     this.#value = Object.freeze(schemas.thread.parse(value));
   }
 
