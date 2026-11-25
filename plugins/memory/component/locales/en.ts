@@ -82,7 +82,7 @@ export const en: Record<string, string> = {
   "feedback.unknown": "{{label}} · result unknown.",
   "feedback.refused": "{{label}} · request refused.",
   "feedback.confirmed": "{{label}} · completed.",
-  "feedback.original.label": "Original Memory command",
+  "feedback.original.label": "Original memory command",
   "feedback.original": "Original command: {{key}}",
   "feedback.check": "Check original result",
   "error.read": "Memory could not be read.",

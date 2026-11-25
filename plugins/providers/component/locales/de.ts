@@ -38,7 +38,7 @@ export const de: Record<string, string> = {
   "providers.utility.error": "Hilfsmodell konnte nicht gesetzt werden.",
   "providers.embedding.title": "Embedding-Modell",
   "providers.embedding.desc":
-    "Verbessert optional das Ranking des Agent Memory.",
+    "Verbessert optional das Ranking des Agent-Memory.",
   "providers.embedding.off": "Aus",
   "providers.embedding.none":
     "Noch kein Anbieter mit Embedding-Unterstützung konfiguriert — füge oben einen hinzu (z. B. OpenAI).",

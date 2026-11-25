@@ -86,7 +86,7 @@ export const en: Record<string, string> = {
   "fact.costUsd": "Cost (USD)",
   "fact.rootRunId": "Root run ID",
   "fact.parentRunId": "Parent run ID",
-  "fact.delegatingItemId": "Delegating Item ID",
+  "fact.delegatingItemId": "Delegating item ID",
   "fact.executionDurationMs": "Execution duration (ms)",
   "fact.approval": "Approval",
   "note.usageMissing": "Usage was not recorded for this call.",

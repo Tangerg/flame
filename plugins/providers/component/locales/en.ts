@@ -35,7 +35,7 @@ export const en: Record<string, string> = {
   "providers.utility.main": "Use Runtime default",
   "providers.utility.error": "Couldn't set the utility model.",
   "providers.embedding.title": "Embedding model",
-  "providers.embedding.desc": "Optionally improves Agent Memory ranking.",
+  "providers.embedding.desc": "Optionally improves Agent memory ranking.",
   "providers.embedding.off": "Off",
   "providers.embedding.none":
     "No embedding-capable provider configured yet — add one (e.g. OpenAI) above.",
