@@ -100,7 +100,9 @@ func registerMCP(registry *Registry) {
 		ReconnectMCPServer(context.Context, protocol.MCPServerID) error
 	}, ctx context.Context, request protocol.MCPServerRequest) error {
 		return service.ReconnectMCPServer(ctx, request.Server)
-	})
+	}).withOwnedReplay(atomicReplay((interface {
+		commitMCPReconnect(context.Context, protocol.MCPServerRequest, atomicOutcome) error
+	}).commitMCPReconnect))
 
 	registry.command(MethodMeta{
 		Name: mcpAuthorizationAttemptsCreate, GoName: "CreateMCPAuthorizationAttempt",

@@ -2229,6 +2229,9 @@ publishes connecting from that same owner. Startup, reconnect and authorization
 share this lifecycle; supersession and shutdown cancel and join preparation as well
 as dialing. The application coordinates durable configuration, exposure and ordered
 identity-only invalidations without storing a second connection phase or tombstone.
+A keyed reconnect commits its acknowledgement before the connection supervisor
+withdraws the previous session. The supervisor publishes the new transport
+outcome under the Runtime lifetime.
 Canceled connection and authorization admission, configuration reads and retirement
 waits retain both the standard cancellation category and the owner's cause, alongside
 concurrent I/O failures. Preparation shares the completion join rule; canceling its

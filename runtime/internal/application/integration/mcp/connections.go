@@ -7,11 +7,12 @@ import (
 	"log/slog"
 	"sync"
 
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/telemetry"
 )
 
-func (c *Coordinator) ReconnectServer(ctx context.Context, name mcpserver.ID) error {
+func (c *Coordinator) ReconnectServer(ctx context.Context, name mcpserver.ID, complete operation.Reply[struct{}]) error {
 	write, err := c.beginMutation(ctx)
 	if err != nil {
 		return err
@@ -20,11 +21,15 @@ func (c *Coordinator) ReconnectServer(ctx context.Context, name mcpserver.ID) er
 	if _, err := c.connectionTarget(write.requestCtx, name); err != nil {
 		return err
 	}
+	if err := complete(write.requestCtx, func(context.Context) (struct{}, error) { return struct{}{}, nil }); err != nil {
+		return err
+	}
 	start := make(chan struct{})
 	defer close(start)
 	var event *statusEvent
 	if err := c.dispatchConnection(write.ownerCtx, name, c.connections.BeginConnect, start, func() { c.statusQueue.publish(event) }, nil); err != nil {
-		return err
+		slog.ErrorContext(write.ownerCtx, "mcp: accepted reconnect could not start", telemetry.MCPServer(name.String()), telemetry.Error(err))
+		return nil
 	}
 	event = c.statusQueue.prepare(name)
 	write.unlock()

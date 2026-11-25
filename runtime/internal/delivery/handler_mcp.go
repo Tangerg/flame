@@ -120,11 +120,19 @@ func (s *Handler) ListMCPTools(ctx context.Context, in protocol.MCPListToolsRequ
 }
 
 func (s *Handler) ReconnectMCPServer(ctx context.Context, server protocol.MCPServerID) error {
+	return s.reconnectMCPServer(ctx, server, operation.DirectReply(new(struct{})))
+}
+
+func (s *Handler) commitMCPReconnect(ctx context.Context, in protocol.MCPServerRequest, outcome atomicOutcome) error {
+	return outcome.settleRefusal(ctx, s.reconnectMCPServer(ctx, in.Server, outcome.acknowledgement()))
+}
+
+func (s *Handler) reconnectMCPServer(ctx context.Context, server protocol.MCPServerID, complete operation.Reply[struct{}]) error {
 	name, err := mcpServerIDFromWire(server)
 	if err != nil {
 		return err
 	}
-	return wireMCPError(s.mcp.ReconnectServer(ctx, name))
+	return wireMCPError(s.mcp.ReconnectServer(ctx, name, complete))
 }
 
 func (s *Handler) CreateMCPAuthorizationAttempt(ctx context.Context, server protocol.MCPServerID) (*protocol.MCPAuthorizationAttempt, error) {
