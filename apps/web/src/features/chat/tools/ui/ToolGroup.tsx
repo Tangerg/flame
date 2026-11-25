@@ -38,7 +38,8 @@ export function ToolGroup({ tools, expandedIds, onExpandedChange, superseded }: 
       shell="line"
       contentInset="rows"
       label={model.summary}
-      detail={status && <ToolActivityStatus status={status} />}
+      // Open rows show their own running, failed and denied states; the count speaks for folded ones.
+      detail={!model.expanded && status ? <ToolActivityStatus status={status} /> : undefined}
       detailPlacement="below"
       open={model.expanded}
       onOpenChange={setPinned}
