@@ -222,8 +222,8 @@ func registerParkCommitGate(t *testing.T) (<-chan struct{}, func()) {
 
 func installParkCommitGate(t *testing.T, home string) {
 	t.Helper()
-	questionCrashDatabase(t, home, `CREATE TRIGGER gate_park_before_cancellation BEFORE UPDATE OF state ON runs
-		WHEN NEW.state = 'waiting'
+	questionCrashDatabase(t, home, `CREATE TRIGGER gate_park_before_cancellation BEFORE UPDATE OF active_segment_id ON runs
+		WHEN OLD.active_segment_id != '' AND NEW.active_segment_id = '' AND NEW.outcome = ''
 		BEGIN SELECT test_gate_park_before_cancellation(); END`)
 }
 

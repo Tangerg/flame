@@ -27,19 +27,13 @@ func (r *reducer) segmentEnd(e SegmentEnded) ([]ProjectionEvent, error) {
 	return append(out, terminal), nil
 }
 
-func (r *reducer) runRecord(state run.State) (run.Run, error) {
-	if state != run.Running && state != run.Waiting {
-		return run.Run{}, fmt.Errorf("reducer cannot project non-terminal state %s", state)
-	}
+func (r *reducer) parkedRun() (run.Run, error) {
 	updatedAt := r.now()
 	current, err := r.progressedRun(updatedAt)
 	if err != nil {
 		return run.Run{}, fmt.Errorf("project Run: %w", err)
 	}
-	if state == run.Waiting {
-		return current.Suspend(updatedAt)
-	}
-	return current, nil
+	return current.Suspend(updatedAt)
 }
 
 func (r *reducer) progressedRun(updatedAt time.Time) (run.Run, error) {
@@ -59,13 +53,14 @@ func (r *reducer) metrics() (run.Metrics, error) {
 }
 
 func (r *reducer) finishedRun(ending run.Ending, effects []run.UnresolvedEffect) (SegmentFinished, error) {
-	current, err := r.runRecord(run.Running)
+	finishedAt := r.now()
+	current, err := r.progressedRun(finishedAt)
 	if err != nil {
 		return SegmentFinished{}, err
 	}
 	terminal, err := current.Terminate(run.Termination{
 		Ending: ending, UnresolvedEffects: effects,
-		FinishedAt: r.now().UTC(), MessageMark: run.UnknownMessageMark(),
+		FinishedAt: finishedAt,
 	})
 	if err != nil {
 		return SegmentFinished{}, err

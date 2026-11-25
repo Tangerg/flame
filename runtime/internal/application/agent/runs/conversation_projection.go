@@ -20,8 +20,7 @@ func TerminalConversation(
 	publications ToolResultPublications,
 	sessionID identity.SessionID, runID identity.RunID,
 	messages []corechat.Message,
-	outcome run.Outcome,
-	detail string,
+	ending run.Ending,
 ) ([]corechat.Message, error) {
 	history, err := conversation.New(messages)
 	if err != nil {
@@ -34,26 +33,24 @@ func TerminalConversation(
 	if err != nil {
 		return nil, fmt.Errorf("runs: read exact Tool results for terminal Run %q: %w", runID, err)
 	}
-	_, appended, err := history.CloseOpenToolCallsWithResults(terminalToolResult(outcome, detail), completed)
+	_, appended, err := history.CloseOpenToolCallsWithResults(terminalToolResult(ending), completed)
 	return appended, err
 }
 
-func terminalToolResult(outcome run.Outcome, detail string) string {
-	var result string
-	switch outcome {
-	case run.OutcomeCanceled:
-		result = "tool call canceled before completion"
-	case run.OutcomeTimedOut:
-		result = "tool call did not complete before the run timed out"
-	case run.OutcomeLost:
-		result = lostToolResult
-	case run.OutcomeFailed:
-		result = "tool call did not complete because the run failed"
+func terminalToolResult(ending run.Ending) string {
+	switch ending := ending.(type) {
+	case run.Canceled:
+		if ending.Detail != "" {
+			return "tool call canceled before completion: " + ending.Detail
+		}
+		return "tool call canceled before completion"
+	case run.TimedOut:
+		return "tool call did not complete before the run timed out"
+	case run.Lost:
+		return lostToolResult
+	case run.Failed:
+		return "tool call did not complete because the run failed"
 	default:
-		result = "tool call ended without a result before the run finished"
+		return "tool call ended without a result before the run finished"
 	}
-	if detail != "" && outcome == run.OutcomeCanceled {
-		result += ": " + detail
-	}
-	return result
 }

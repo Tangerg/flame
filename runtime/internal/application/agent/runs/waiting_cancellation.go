@@ -242,7 +242,9 @@ func (w waitingCancellationBuilder) terminalProjection(
 			)
 		}
 		expectedProcesses[member.memberID] = struct{}{}
-		replacement, err := member.run.Replace().CancelWaiting(w.reason, w.finishedAt, rundomain.UnknownMessageMark())
+		replacement, err := member.run.Replace().Terminate(rundomain.Termination{
+			Ending: rundomain.Canceled{Detail: w.reason}, FinishedAt: w.finishedAt,
+		})
 		if err != nil {
 			return nil, nil, fmt.Errorf("runs: cancel waiting Run %q: %w", member.run.ID(), err)
 		}

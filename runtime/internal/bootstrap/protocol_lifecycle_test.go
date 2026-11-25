@@ -307,7 +307,8 @@ func (p *protocolLifecycleFixture) domainFailureDiagnostic(runID string) string 
 	if !found {
 		return "missing"
 	}
-	return fmt.Sprintf("%+v", value.Snapshot().Ending)
+	ending, _ := value.Ending()
+	return fmt.Sprintf("%+v", ending)
 }
 
 func (p *protocolLifecycleFixture) resumeAndCancel(question protocol.Interrupt) {

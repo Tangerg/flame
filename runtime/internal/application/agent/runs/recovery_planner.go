@@ -231,7 +231,8 @@ func (r *recoveryPlanner) planTree(rootRunID identity.RunID) error {
 	if err != nil {
 		return err
 	}
-	closure, err := TerminalConversation(r.ctx, r.store, tree.root.SessionID(), tree.root.ID(), history.Messages(), rundomain.OutcomeLost, "")
+	ending := rundomain.Lost{Loss: rundomain.Loss{Reason: loss}}
+	closure, err := TerminalConversation(r.ctx, r.store, tree.root.SessionID(), tree.root.ID(), history.Messages(), ending)
 	if err != nil {
 		return fmt.Errorf(
 			"runs: close recovery conversation for root Run %q: %w",
@@ -240,7 +241,7 @@ func (r *recoveryPlanner) planTree(rootRunID identity.RunID) error {
 		)
 	}
 	messageMark := history.Count() + len(closure)
-	lostRuns, replacements, err := recoverLostTree(tree, items, messageMark, r.finishedAt, loss, r.commit.ModelInvocations, r.independent)
+	lostRuns, replacements, err := recoverLostTree(tree, items, messageMark, r.finishedAt, ending, r.commit.ModelInvocations, r.independent)
 	if err != nil {
 		return err
 	}

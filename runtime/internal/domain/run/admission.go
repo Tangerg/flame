@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/packages/go-sdk/instant"
 	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goalref"
 )
@@ -37,9 +38,11 @@ func (d Draft) Validate() error {
 	if d.SegmentID.IsZero() {
 		return errors.New("run: opening Segment is required")
 	}
-	switch {
-	case d.CreatedAt.IsZero():
+	if d.CreatedAt.IsZero() {
 		return errors.New("run: admission time is required")
+	}
+	if err := instant.Validate(d.CreatedAt); err != nil {
+		return fmt.Errorf("run: %w", err)
 	}
 	lineage := d.Lineage()
 	if err := lineage.Validate(d.RunID); err != nil {

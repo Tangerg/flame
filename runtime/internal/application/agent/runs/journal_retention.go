@@ -29,20 +29,21 @@ func retainedBytes(event Event) int {
 }
 
 func retainedRunBytes(value run.Run) int {
-	snapshot := value.Snapshot()
+	lineage, selection := value.Lineage(), value.ModelSelection()
 	bytes := retainedRunHeaderBytes + stringsBytes(
-		snapshot.SessionID.String(),
-		snapshot.ID.String(),
-		snapshot.Lineage.SpawnedByItemID().String(),
-		snapshot.Lineage.ParentRunID().String(),
-		snapshot.Lineage.RootRunID().String(),
-		snapshot.GoalIncarnationID.String(),
-		snapshot.ActiveSegmentID.String(),
-		snapshot.ModelSelection.Provider(),
-		snapshot.ModelSelection.Model(),
-		snapshot.ModelSelection.ReasoningEffort(),
+		value.SessionID().String(),
+		value.ID().String(),
+		lineage.SpawnedByItemID().String(),
+		lineage.ParentRunID().String(),
+		lineage.RootRunID().String(),
+		value.GoalIncarnationID().String(),
+		value.ActiveSegmentID().String(),
+		selection.Provider(),
+		selection.Model(),
+		selection.ReasoningEffort(),
 	)
-	switch ending := snapshot.Ending.(type) {
+	ending, _ := value.Ending()
+	switch ending := ending.(type) {
 	case run.Canceled:
 		bytes += len(ending.Detail)
 	case run.TimedOut:
@@ -52,13 +53,14 @@ func retainedRunBytes(value run.Run) int {
 	case run.Lost:
 		bytes += len(ending.Loss.Detail)
 	}
-	bytes += cap(snapshot.UnresolvedEffects) * retainedEffectHeaderBytes
-	for _, effect := range snapshot.UnresolvedEffects {
+	effects := value.UnresolvedEffects()
+	bytes += cap(effects) * retainedEffectHeaderBytes
+	for _, effect := range effects {
 		bytes += stringsBytes(effect.ProcessID(), effect.EffectID(), effect.Reason(), effect.Detail(), effect.Output())
 	}
-	usage, _ := snapshot.Metrics.Usage()
+	usage, _ := value.Metrics().Usage()
 	bytes += retainedUsageBytes(&usage)
-	bytes += cap(snapshot.Capabilities.InterruptTypes) * retainedSliceEntryBytes
+	bytes += cap(value.Capabilities().InterruptTypes) * retainedSliceEntryBytes
 	return bytes
 }
 

@@ -62,13 +62,16 @@ func TestExportTrajectoryReopensCompleteEvidenceThroughBinding(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = db.Close() })
 	at := time.Now().UTC().Add(-time.Hour).Truncate(time.Millisecond)
+	finishedAt := at.Add(time.Minute)
 	root := testsupport.MustRestoreRun(run.Snapshot{
-		ID: testsupport.MustRunID("run_export_root"), SessionID: testsupport.MustSessionID(ses.ID), State: run.Finished,
-		Capabilities: run.Capabilities{ChildRuns: true}, CreatedAt: at, FinishedAt: at.Add(time.Minute),
+		ID: testsupport.MustRunID("run_export_root"), SessionID: testsupport.MustSessionID(ses.ID),
+		Lifecycle:    run.Termination{Ending: run.Completed{}, FinishedAt: finishedAt},
+		Capabilities: run.Capabilities{ChildRuns: true}, CreatedAt: at, UpdatedAt: finishedAt,
 	})
 	child := testsupport.MustRestoreRun(run.Snapshot{
-		ID: testsupport.MustRunID("run_export_child"), SessionID: testsupport.MustSessionID(ses.ID), State: run.Finished, Ending: testsupport.EndingFor(run.OutcomeCanceled),
-		CreatedAt: at, FinishedAt: at.Add(time.Minute),
+		ID: testsupport.MustRunID("run_export_child"), SessionID: testsupport.MustSessionID(ses.ID),
+		Lifecycle: run.Termination{Ending: run.Canceled{}, FinishedAt: finishedAt},
+		CreatedAt: at, UpdatedAt: finishedAt,
 		Lineage: testsupport.ChildLineage(testsupport.MustItemID("item_export_spawn"), root.ID(), root.ID()),
 	})
 	for _, value := range []run.Run{root, child} {

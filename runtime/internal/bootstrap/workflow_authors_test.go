@@ -121,7 +121,14 @@ func TestExistingWorkflowsRetainTheirOriginalAuthors(t *testing.T) {
 			t.Fatal(err)
 		}
 		finish := now.Add(time.Second)
-		raw := testsupport.MustRestoreRun(run.Snapshot{SessionID: testsupport.MustSessionID(session.ID), ID: testsupport.MustRunID("run_original_receipt"), GoalIncarnationID: original.IncarnationID(), Ending: testsupport.EndingFor(run.OutcomeFailed), CreatedAt: now, FinishedAt: finish, UpdatedAt: finish, MessageMark: run.MessageMarkAt(0)})
+		raw := testsupport.MustRestoreRun(run.Snapshot{
+			SessionID: testsupport.MustSessionID(session.ID), ID: testsupport.MustRunID("run_original_receipt"),
+			GoalIncarnationID: original.IncarnationID(), CreatedAt: now, UpdatedAt: finish,
+			Lifecycle: run.Termination{
+				Ending:     run.Failed{Failure: run.Failure{Kind: run.FailureInternal}},
+				FinishedAt: finish, MessageMark: run.MessageMarkAt(0),
+			},
+		})
 		if err := cfg.stores.Transactor(ctx, func(ctx context.Context) error {
 			if err := cfg.stores.Runs.Restore(ctx, raw); err != nil {
 				return err

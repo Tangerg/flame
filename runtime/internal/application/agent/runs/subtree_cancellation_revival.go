@@ -144,7 +144,7 @@ func (c *Cancellations) prepareAcceptedSubtreeRevival(ctx context.Context, reviv
 	if err != nil {
 		return err
 	}
-	revival.request, err = newWaitingSubtreeCancellationRequest(continuation, accepted.targetMemberID(), target.Detail())
+	revival.request, err = newWaitingSubtreeCancellationRequest(continuation, accepted.targetMemberID(), target.CancellationDetail())
 	if err != nil {
 		return err
 	}

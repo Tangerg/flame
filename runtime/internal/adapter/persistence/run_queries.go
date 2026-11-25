@@ -15,7 +15,7 @@ import (
 )
 
 const runColumns = `r.run_id, r.session_id, r.spawned_by_item_id, r.parent_run_id, r.root_run_id,
-	r.state, r.active_segment_id, r.outcome,
+	r.active_segment_id, r.outcome,
 	r.provider, r.model, r.reasoning_effort, r.goal_incarnation_id, r.ending,
 	r.steps, r.active_duration_ns, r.usage, r.context_tokens, r.unresolved_effects,
 	r.capabilities,

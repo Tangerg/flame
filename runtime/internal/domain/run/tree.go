@@ -206,7 +206,7 @@ func (t Tree) CheckCancellation(targetID identity.RunID, members map[identity.Ru
 		return fmt.Errorf("%w: incomplete cancellation tree", errInvalidTree)
 	}
 	root := members[t.postorder[len(t.postorder)-1]]
-	if !root.State().AdvanceProgress() {
+	if !root.State().IsOpen() {
 		return fmt.Errorf("%w: root Run %q is %s", errInvalidTree, root.ID(), root.State())
 	}
 	target, found := members[targetID]

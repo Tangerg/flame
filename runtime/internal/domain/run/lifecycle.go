@@ -1,6 +1,12 @@
 package run
 
-import "github.com/Tangerg/flame/packages/go-sdk/runoutcome"
+import (
+	"slices"
+	"time"
+
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/packages/go-sdk/runoutcome"
+)
 
 type State string
 
@@ -10,41 +16,36 @@ const (
 	Finished State = "finished"
 )
 
-func (s State) Valid() bool { return s == Running || s == Waiting || s == Finished }
+func (s State) Valid() bool { return s.IsOpen() || s.IsTerminal() }
 
 func (s State) IsTerminal() bool { return s == Finished }
 
-func (s State) Suspend() (State, bool) {
-	if s == Running {
-		return Waiting, true
-	}
-	return s, false
+func (s State) IsOpen() bool { return s == Running || s == Waiting }
+
+type Lifecycle interface {
+	state() State
 }
 
-func (s State) Resume() (State, bool) {
-	if s == Waiting {
-		return Running, true
-	}
-	return s, false
+type ActiveSegment struct {
+	ID identity.SegmentID
 }
 
-func (s State) AdvanceProgress() bool { return s == Running || s == Waiting }
+type Parked struct{}
 
-func (s State) Terminate(o Outcome) (State, bool) {
-	if !o.valid() {
-		return s, false
-	}
-	if s == Running || (s == Waiting && o == OutcomeCanceled) {
-		return Finished, true
-	}
-	return s, false
+type Termination struct {
+	Ending            Ending
+	UnresolvedEffects []UnresolvedEffect
+	FinishedAt        time.Time
+	MessageMark       MessageMark
 }
 
-func (s State) RecoverLost() (State, bool) {
-	if s == Running || s == Waiting {
-		return Finished, true
-	}
-	return s, false
+func (ActiveSegment) state() State { return Running }
+func (Parked) state() State        { return Waiting }
+func (Termination) state() State   { return Finished }
+
+func (t Termination) equal(other Termination) bool {
+	return t.Ending == other.Ending && t.FinishedAt.Equal(other.FinishedAt) &&
+		t.MessageMark == other.MessageMark && slices.Equal(t.UnresolvedEffects, other.UnresolvedEffects)
 }
 
 type Outcome string

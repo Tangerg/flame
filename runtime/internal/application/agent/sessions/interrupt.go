@@ -50,7 +50,7 @@ func (c *Coordinator) ApplyRunCancel(ctx context.Context, ref runs.ExecutorRef, 
 	if pending.ExecutorID != ref.ExecutorID {
 		return rundomain.Run{}, fmt.Errorf("sessions: parked Run %q changed executor: %w", runID, rundomain.ErrSessionBusy)
 	}
-	return c.terminalizePendingRun(ctx, ref.SessionID, pending, finishedAt, rundomain.OutcomeCanceled, reason, receipt)
+	return c.terminalizePendingRun(ctx, ref.SessionID, pending, finishedAt, rundomain.Canceled{Detail: reason}, receipt)
 }
 
 func (c *Coordinator) ApplyRunLost(ctx context.Context, sessionID identity.SessionID, runID identity.RunID, finishedAt time.Time) error {
@@ -58,7 +58,7 @@ func (c *Coordinator) ApplyRunLost(ctx context.Context, sessionID identity.Sessi
 	if err != nil {
 		return err
 	}
-	_, err = c.terminalizePendingRun(ctx, sessionID, pending, finishedAt, rundomain.OutcomeLost, "", nil)
+	_, err = c.terminalizePendingRun(ctx, sessionID, pending, finishedAt, rundomain.Lost{Loss: rundomain.Loss{Reason: rundomain.LossWaitingStateUnavailable}}, nil)
 	return err
 }
 
@@ -78,8 +78,7 @@ func (c *Coordinator) terminalizePendingRun(
 	sessionID identity.SessionID,
 	pending runs.Pending,
 	finishedAt time.Time,
-	outcome rundomain.Outcome,
-	detail string,
+	ending rundomain.Ending,
 	receipt runs.CancellationReceipt,
 ) (rundomain.Run, error) {
 	if finishedAt.IsZero() {
@@ -89,13 +88,13 @@ func (c *Coordinator) terminalizePendingRun(
 	if err != nil {
 		return rundomain.Run{}, err
 	}
-	messages, err := runs.TerminalConversation(ctx, c.runs, sessionID, pending.RootRunID, snapshot.Messages, outcome, detail)
+	messages, err := runs.TerminalConversation(ctx, c.runs, sessionID, pending.RootRunID, snapshot.Messages, ending)
 	if err != nil {
 		return rundomain.Run{}, err
 	}
 	plan, err := (parkedRunTerminalization{
 		sessionID: sessionID, finishedAt: finishedAt,
-		outcome: outcome, detail: detail, pending: pending, snapshot: snapshot,
+		ending: ending, pending: pending, snapshot: snapshot,
 		conversationMessages: messages,
 	}).build()
 	if err != nil {

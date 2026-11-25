@@ -57,8 +57,11 @@ func (e *Effects) closeTerminalConversation(ctx context.Context, commit runs.Eve
 	if err != nil {
 		return commit, fmt.Errorf("segment: read terminal conversation: %w", err)
 	}
-	outcome, _ := commit.Run.Outcome()
-	closure, err := runs.TerminalConversation(ctx, e.runState, commit.SessionID, commit.RunID, append(messages, commit.ConversationMessages...), outcome, commit.Run.Detail())
+	ending, finished := commit.Run.Ending()
+	if !finished {
+		return commit, fmt.Errorf("segment: terminal Run %q has no ending", commit.RunID)
+	}
+	closure, err := runs.TerminalConversation(ctx, e.runState, commit.SessionID, commit.RunID, append(messages, commit.ConversationMessages...), ending)
 	if err != nil {
 		return commit, err
 	}

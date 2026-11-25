@@ -79,7 +79,8 @@ func TestGoalOwnedRunLostOnRestartIsChargedOnceAndHandedBackToTheUser(t *testing
 		t.Fatalf("runs after recovery = (%+v, %v), want one", storedRuns, err)
 	}
 	if _, lost := storedRuns[0].Loss(); !storedRuns[0].State().IsTerminal() || !lost {
-		t.Fatalf("recovered Run = %+v, want a run_lost terminal", storedRuns[0].Snapshot())
+		ending, _ := storedRuns[0].Ending()
+		t.Fatalf("recovered Run %q is %s with ending %+v, want a run_lost terminal", storedRuns[0].ID(), storedRuns[0].State(), ending)
 	}
 
 	recovered, exists, err := readBootstrapGoal(ctx, cfg.stores.Goals, sessionID)

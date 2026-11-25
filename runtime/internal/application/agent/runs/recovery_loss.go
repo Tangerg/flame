@@ -41,7 +41,7 @@ func recoverLostTree(
 	items []transcript.Item,
 	messageMark int,
 	finishedAt time.Time,
-	loss rundomain.LossReason,
+	ending rundomain.Lost,
 	models []ModelInvocationRecovery,
 	independent []modelref.EndpointObservation,
 ) ([]rundomain.Replacement, []transcript.Replacement, error) {
@@ -64,7 +64,7 @@ func recoverLostTree(
 			replacements = append(replacements, itemReplacement)
 		}
 
-		replacement, err := recoverLostRun(active, models, independent, rundomain.Loss{Reason: loss}, finishedAt, messageMark)
+		replacement, err := recoverLostRun(active, models, independent, ending, finishedAt, messageMark)
 		if err != nil {
 			return nil, nil, fmt.Errorf("runs: recover lost Run %q: %w", active.ID(), err)
 		}
@@ -77,7 +77,7 @@ func recoverLostRun(
 	active rundomain.Run,
 	models []ModelInvocationRecovery,
 	independent []modelref.EndpointObservation,
-	loss rundomain.Loss,
+	ending rundomain.Lost,
 	finishedAt time.Time,
 	messageMark int,
 ) (rundomain.Replacement, error) {
@@ -115,5 +115,7 @@ func recoverLostRun(
 			return rundomain.Replacement{}, err
 		}
 	}
-	return replacement.RecoverLost(loss, finishedAt, active.Lineage().MessageMark(messageMark))
+	return replacement.Terminate(rundomain.Termination{
+		Ending: ending, FinishedAt: finishedAt, MessageMark: active.Lineage().MessageMark(messageMark),
+	})
 }

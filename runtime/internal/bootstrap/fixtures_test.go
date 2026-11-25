@@ -96,10 +96,9 @@ func insertBootstrapSession(t *testing.T, store *persistence.SessionStore, value
 }
 
 func restoredRun(sessionID, runID string, at time.Time) run.Run {
-	outcome := run.OutcomeCompleted
 	return testsupport.MustRestoreRun(run.Snapshot{
-		SessionID: testsupport.MustSessionID(sessionID), ID: testsupport.MustRunID(runID), State: run.Finished,
-		Ending:    testsupport.EndingFor(outcome),
-		CreatedAt: at, FinishedAt: at, UpdatedAt: at, MessageMark: run.MessageMarkAt(0),
+		SessionID: testsupport.MustSessionID(sessionID), ID: testsupport.MustRunID(runID),
+		Lifecycle: run.Termination{Ending: run.Completed{}, FinishedAt: at, MessageMark: run.MessageMarkAt(0)},
+		CreatedAt: at, UpdatedAt: at,
 	})
 }

@@ -122,20 +122,19 @@ func (p PortableSnapshot) CanonicalSnapshot() (Snapshot, error) {
 				ErrInvalidPortableSnapshot, portable.ID, portable.rootID())
 		}
 		restored, err := run.Restore(run.Snapshot{
-			SessionID:         portable.SessionID,
-			ID:                portable.ID,
-			Lineage:           lineage,
-			ModelSelection:    portable.Selection,
-			State:             run.Finished,
-			Ending:            portable.Ending,
-			UnresolvedEffects: portable.UnresolvedEffects,
-			Metrics:           portable.Metrics,
-			ContextTokens:     portable.ContextTokens,
-			Capabilities:      capabilitySets[portable.ID],
-			CreatedAt:         portable.CreatedAt,
-			FinishedAt:        portable.FinishedAt,
-			UpdatedAt:         portable.UpdatedAt,
-			MessageMark:       portable.MessageMark,
+			SessionID:      portable.SessionID,
+			ID:             portable.ID,
+			Lineage:        lineage,
+			ModelSelection: portable.Selection,
+			Lifecycle: run.Termination{
+				Ending: portable.Ending, UnresolvedEffects: portable.UnresolvedEffects,
+				FinishedAt: portable.FinishedAt, MessageMark: portable.MessageMark,
+			},
+			Metrics:       portable.Metrics,
+			ContextTokens: portable.ContextTokens,
+			Capabilities:  capabilitySets[portable.ID],
+			CreatedAt:     portable.CreatedAt,
+			UpdatedAt:     portable.UpdatedAt,
 		})
 		if err != nil {
 			return Snapshot{}, fmt.Errorf("%w: run %q: %w", ErrInvalidPortableSnapshot, portable.ID, err)

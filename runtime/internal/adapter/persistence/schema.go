@@ -116,7 +116,13 @@ func currentSchema() []string {
 			spawned_by_item_id TEXT    NOT NULL DEFAULT '',
 			parent_run_id      TEXT    NOT NULL DEFAULT '',
 			root_run_id        TEXT    NOT NULL DEFAULT '',
-			state              TEXT    NOT NULL,
+			state              TEXT    GENERATED ALWAYS AS (
+				CASE
+					WHEN outcome != '' THEN '%[3]s'
+					WHEN active_segment_id != '' THEN '%[1]s'
+					ELSE '%[2]s'
+				END
+			) VIRTUAL,
 			active_segment_id  TEXT    NOT NULL DEFAULT '',
 			commit_segment_id  TEXT    NOT NULL DEFAULT '',
 			commit_id          TEXT    NOT NULL DEFAULT '',
@@ -144,6 +150,7 @@ func currentSchema() []string {
 			),
 			CHECK (root_run_id = '' OR goal_incarnation_id = ''),
 			CHECK (root_run_id = '' OR message_mark IS NULL),
+			CHECK (outcome = '' OR active_segment_id = ''),
 			CHECK (
 				(commit_segment_id = '' AND commit_id = '') OR
 				(commit_id != '' AND (
@@ -243,12 +250,12 @@ func currentSchema() []string {
 		fmt.Sprintf(`CREATE INDEX IF NOT EXISTS idx_tool_invocations_open
 			ON tool_invocations(state) WHERE state = '%s'`, string(runs.ToolInvocationStarted)),
 		fmt.Sprintf(`CREATE TRIGGER IF NOT EXISTS require_settled_model_invocations
-			BEFORE UPDATE OF state ON runs
-			WHEN OLD.state != '%[1]s' AND NEW.state = '%[1]s'
-			 AND EXISTS (SELECT 1 FROM model_invocations WHERE run_id = NEW.run_id AND %[2]s)
+			BEFORE UPDATE OF outcome ON runs
+			WHEN OLD.outcome = '' AND NEW.outcome != ''
+			 AND EXISTS (SELECT 1 FROM model_invocations WHERE run_id = NEW.run_id AND %s)
 			BEGIN
 				SELECT RAISE(ABORT, 'model invocations must settle before run terminalization');
-			END`, string(run.Finished), startedModelInvocationPredicate()),
+			END`, startedModelInvocationPredicate()),
 		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS child_run_start_reservations (
 			member_id  TEXT PRIMARY KEY,
 			session_id TEXT NOT NULL,

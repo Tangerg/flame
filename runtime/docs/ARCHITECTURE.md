@@ -326,6 +326,11 @@ Runtime uses Scope's unlimited cumulative quotas for Interaction model calls, pr
 
 SQLite stores current Application and Domain state, not live framework objects, goroutines, contexts, SDK clients, or transport connections. Aggregate decoding is strict: unknown fields, invalid states, truncated values, and trailing content are rejected.
 
+A Run owns one lifecycle value. An active Run carries its Segment, a parked Run
+can accept a continuation, and a finished Run carries its ending, finish time,
+unresolved effects and conversation watermark. SQLite derives the status it uses
+for queries and constraints from the stored Segment and outcome.
+
 Checkpoint and waiting facts commit in the Application order required to recover the same logical Run. Terminalization and checkpoint cleanup preserve one durable winner. Recovery reconstructs from durable Runtime state and public framework checkpoints; it does not infer state from event delivery or client caches.
 
 Runtime decodes its execution-context envelope with the standard strict JSON decoder, rejecting duplicate and unknown members, including field-name aliases. Active and waiting cuts use one payload for frozen bindings, instructions, model options, accounting, calibration, input associations, and result presentation metadata. Scope alone decodes and validates its separate acknowledged execution-tree head; that tree is never copied into the context payload.

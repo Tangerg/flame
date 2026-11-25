@@ -54,9 +54,9 @@ func (r *RunStore) Admit(ctx context.Context, draft rundomain.Draft) error {
 		}
 		_, err = r.db.connection(ctx).ExecContext(ctx, `INSERT INTO runs(
 			   run_id, session_id, spawned_by_item_id, parent_run_id, root_run_id,
-			   state, active_segment_id, provider, model, reasoning_effort, goal_incarnation_id,
+			   active_segment_id, provider, model, reasoning_effort, goal_incarnation_id,
 			   capabilities, message_mark, created_at, updated_at)
-			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, admitted.ID(), admitted.SessionID(), lineage.SpawnedByItemID(), lineage.ParentRunID(), lineage.RootRunID(), string(rundomain.Running), admitted.ActiveSegmentID(), admitted.ModelSelection().Provider(), admitted.ModelSelection().Model(), admitted.ModelSelection().ReasoningEffort(), admitted.GoalIncarnationID().String(), capabilities, nil, now, now)
+			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, admitted.ID(), admitted.SessionID(), lineage.SpawnedByItemID(), lineage.ParentRunID(), lineage.RootRunID(), admitted.ActiveSegmentID(), admitted.ModelSelection().Provider(), admitted.ModelSelection().Model(), admitted.ModelSelection().ReasoningEffort(), admitted.GoalIncarnationID().String(), capabilities, nil, now, now)
 		switch {
 		case isPrimaryKeyViolation(err):
 			return fmt.Errorf("%w: run %q already exists", rundomain.ErrIdentityConflict, draft.RunID)
@@ -172,6 +172,9 @@ func (r *RunStore) validateChildPlacement(ctx context.Context, operation childPl
 }
 
 func (r *RunStore) Suspend(ctx context.Context, value rundomain.Run, segmentID identity.SegmentID, commitID runs.CommitID) error {
+	if value.State() != rundomain.Waiting {
+		return fmt.Errorf("sqlite: suspend Run %q: state is %s, want waiting", value.ID(), value.State())
+	}
 	if err := validateRunCoordinates("suspend Run", value.SessionID(), value.ID(), segmentID); err != nil {
 		return err
 	}
@@ -192,9 +195,9 @@ func (r *RunStore) Suspend(ctx context.Context, value rundomain.Run, segmentID i
 		if err := r.requireAdvance(ctx, "suspend", value); err != nil {
 			return err
 		}
-		res, err := r.db.connection(ctx).ExecContext(ctx, `UPDATE runs SET state = ?, active_segment_id = '', commit_segment_id = ?, commit_id = ?,
+		res, err := r.db.connection(ctx).ExecContext(ctx, `UPDATE runs SET active_segment_id = '', commit_segment_id = ?, commit_id = ?,
 		        steps = ?, active_duration_ns = ?, usage = ?, context_tokens = ?, updated_at = ?
-		 WHERE session_id = ? AND run_id = ? AND state = ? AND active_segment_id = ?`, string(value.State()), commitSegmentID, commitIDValue, metrics.steps, metrics.durationNs, metrics.usage, value.ContextTokens(), value.UpdatedAt().UTC().UnixNano(), value.SessionID(), value.ID(), string(rundomain.Running), segmentID)
+		 WHERE session_id = ? AND run_id = ? AND state = ? AND active_segment_id = ?`, commitSegmentID, commitIDValue, metrics.steps, metrics.durationNs, metrics.usage, value.ContextTokens(), value.UpdatedAt().UTC().UnixNano(), value.SessionID(), value.ID(), string(rundomain.Running), segmentID)
 		if err != nil {
 			return fmt.Errorf("sqlite: suspend run %q: %w", value.ID(), err)
 		}
@@ -214,6 +217,9 @@ func (r *RunStore) Resume(ctx context.Context, replacement rundomain.Replacement
 		return fmt.Errorf("sqlite: resume run: %w", err)
 	}
 	expected, next := replacement.Expected(), replacement.State()
+	if expected.State() != rundomain.Waiting || next.State() != rundomain.Running {
+		return fmt.Errorf("sqlite: resume Run %q: transition from %s to %s", expected.ID(), expected.State(), next.State())
+	}
 	metrics, err := runMetricsRow(next.Metrics())
 	if err != nil {
 		return fmt.Errorf("sqlite: resume run %q: %w", next.ID(), err)
@@ -225,9 +231,9 @@ func (r *RunStore) Resume(ctx context.Context, replacement rundomain.Replacement
 		if err := r.requireExpected(ctx, "resume", expected); err != nil {
 			return err
 		}
-		res, err := r.db.connection(ctx).ExecContext(ctx, `UPDATE runs SET state = ?, active_segment_id = ?, commit_segment_id = '', commit_id = '',
+		res, err := r.db.connection(ctx).ExecContext(ctx, `UPDATE runs SET active_segment_id = ?, commit_segment_id = '', commit_id = '',
 		        steps = ?, active_duration_ns = ?, usage = ?, context_tokens = ?, updated_at = ?
-		 WHERE session_id = ? AND run_id = ? AND state = ? AND updated_at = ?`, string(next.State()), next.ActiveSegmentID(), metrics.steps, metrics.durationNs, metrics.usage, next.ContextTokens(), next.UpdatedAt().UTC().UnixNano(), expected.SessionID(), expected.ID(), string(expected.State()), expected.UpdatedAt().UTC().UnixNano())
+		 WHERE session_id = ? AND run_id = ? AND state = ? AND updated_at = ?`, next.ActiveSegmentID(), metrics.steps, metrics.durationNs, metrics.usage, next.ContextTokens(), next.UpdatedAt().UTC().UnixNano(), expected.SessionID(), expected.ID(), string(expected.State()), expected.UpdatedAt().UTC().UnixNano())
 		if err != nil {
 			return fmt.Errorf("sqlite: resume run %q: %w", next.ID(), err)
 		}
@@ -394,6 +400,10 @@ func (r *RunStore) requireAdvance(ctx context.Context, operation string, state r
 // This CAS is the only place a Run reaches terminal, so the root's Plan boundary
 // is stamped here; that is how no terminal root lacks a recorded boundary.
 func (r *RunStore) finish(ctx context.Context, op string, value rundomain.Run, marker *runCommitMarker, winningCancellationKey string, fence string, fenceArgs ...any) error {
+	ending, finished := value.Ending()
+	if !finished {
+		return fmt.Errorf("sqlite: %s Run %q has no ending", op, value.ID())
+	}
 	if winningCancellationKey != "" && !value.Canceled() {
 		return errors.New("sqlite: a winning cancellation key requires a canceled Run")
 	}
@@ -405,18 +415,17 @@ func (r *RunStore) finish(ctx context.Context, op string, value rundomain.Run, m
 	if err != nil {
 		return err
 	}
-	ending, _ := value.Ending()
 	outcome, encodedEnding, err := encodeRunEnding(ending)
 	if err != nil {
 		return fmt.Errorf("sqlite: %s run %q: %w", op, value.ID(), err)
 	}
 	commitSegmentID, commitID := marker.databaseValues()
 	query := `UPDATE runs SET
-		   state = ?, active_segment_id = '', commit_segment_id = ?, commit_id = ?,
+		   active_segment_id = '', commit_segment_id = ?, commit_id = ?,
 		   outcome = ?, ending = ?, steps = ?, active_duration_ns = ?,
 		   usage = ?, context_tokens = ?, unresolved_effects = ?, message_mark = ?, finished_at = ?, updated_at = ?
 		 WHERE session_id = ? AND run_id = ? AND ` + fence
-	args := []any{string(value.State()), commitSegmentID, commitID, outcome, encodedEnding, metrics.steps, metrics.durationNs, metrics.usage, value.ContextTokens(), encodedEffects, messageMarkValue(value.MessageMark()), value.FinishedAt().UTC().UnixNano(), value.UpdatedAt().UTC().UnixNano(), value.SessionID(), value.ID()}
+	args := []any{commitSegmentID, commitID, outcome, encodedEnding, metrics.steps, metrics.durationNs, metrics.usage, value.ContextTokens(), encodedEffects, messageMarkValue(value.MessageMark()), value.FinishedAt().UTC().UnixNano(), value.UpdatedAt().UTC().UnixNano(), value.SessionID(), value.ID()}
 	args = append(args, fenceArgs...)
 	return r.db.write(ctx, func(ctx context.Context) error {
 		res, err := r.db.connection(ctx).ExecContext(ctx, query, args...)
@@ -444,7 +453,8 @@ func (r *RunStore) finish(ctx context.Context, op string, value rundomain.Run, m
 // so is refused.
 func (r *RunStore) Restore(ctx context.Context, value rundomain.Run) error {
 	return r.db.write(ctx, func(ctx context.Context) error {
-		if !value.State().IsTerminal() {
+		ending, finished := value.Ending()
+		if !finished {
 			return fmt.Errorf("sqlite: restore run %q: state is %s, want terminal", value.ID(), value.State())
 		}
 		lineage := value.Lineage()
@@ -461,7 +471,6 @@ func (r *RunStore) Restore(ctx context.Context, value rundomain.Run) error {
 		if err != nil {
 			return err
 		}
-		ending, _ := value.Ending()
 		outcome, encodedEnding, err := encodeRunEnding(ending)
 		if err != nil {
 			return fmt.Errorf("sqlite: restore run %q: %w", value.ID(), err)
@@ -473,10 +482,10 @@ func (r *RunStore) Restore(ctx context.Context, value rundomain.Run) error {
 		selection := value.ModelSelection()
 		_, err = r.db.connection(ctx).ExecContext(ctx, `INSERT INTO runs(
 		   run_id, session_id, spawned_by_item_id, parent_run_id, root_run_id,
-		   state, outcome, provider, model, reasoning_effort, goal_incarnation_id,
+		   outcome, provider, model, reasoning_effort, goal_incarnation_id,
 		   ending, steps, active_duration_ns, usage, context_tokens, unresolved_effects,
 		   capabilities, message_mark, created_at, finished_at, updated_at)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, value.ID(), value.SessionID(), lineage.SpawnedByItemID(), lineage.ParentRunID(), lineage.RootRunID(), string(value.State()), outcome, selection.Provider(), selection.Model(), selection.ReasoningEffort(), value.GoalIncarnationID().String(), encodedEnding, metrics.steps, metrics.durationNs, metrics.usage, value.ContextTokens(), encodedEffects, capabilities, messageMarkValue(value.MessageMark()), value.CreatedAt().UTC().UnixNano(), value.FinishedAt().UTC().UnixNano(), value.UpdatedAt().UTC().UnixNano())
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, value.ID(), value.SessionID(), lineage.SpawnedByItemID(), lineage.ParentRunID(), lineage.RootRunID(), outcome, selection.Provider(), selection.Model(), selection.ReasoningEffort(), value.GoalIncarnationID().String(), encodedEnding, metrics.steps, metrics.durationNs, metrics.usage, value.ContextTokens(), encodedEffects, capabilities, messageMarkValue(value.MessageMark()), value.CreatedAt().UTC().UnixNano(), value.FinishedAt().UTC().UnixNano(), value.UpdatedAt().UTC().UnixNano())
 		if isPrimaryKeyViolation(err) {
 			return fmt.Errorf("%w: run %q already exists", rundomain.ErrIdentityConflict, value.ID())
 		}

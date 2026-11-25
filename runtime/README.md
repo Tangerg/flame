@@ -1401,6 +1401,10 @@ and render valid text directly or retain binary output losslessly.
 
 ## Execution lifecycle
 
+Run status is derived from the stored active Segment and ending. This SQLite
+shape requires a fresh development data directory. Retain the previous directory
+and finish waiting Runs with their original executable.
+
 Replay windows and subscriber queues reuse one publication charge for the full
 Item snapshot, including accepted answers, rejected argument source, approval
 edits and reasons. The journal adds its assigned cursor before fanout. An event

@@ -42,17 +42,12 @@ type Run struct {
 	lineage           Lineage
 	modelSelection    flamemodel.Selection
 	goalIncarnationID goalref.IncarnationID
-	state             State
-	activeSegmentID   identity.SegmentID
-	ending            Ending
-	unresolvedEffects []UnresolvedEffect
+	lifecycle         Lifecycle
 	metrics           Metrics
 	contextTokens     int64
 	capabilities      Capabilities
 	createdAt         time.Time
-	finishedAt        time.Time
 	updatedAt         time.Time
-	messageMark       MessageMark
 }
 
 type Snapshot struct {
@@ -61,80 +56,82 @@ type Snapshot struct {
 	Lineage           Lineage
 	ModelSelection    flamemodel.Selection
 	GoalIncarnationID goalref.IncarnationID
-	State             State
-	ActiveSegmentID   identity.SegmentID
-	Ending            Ending
-	UnresolvedEffects []UnresolvedEffect
+	Lifecycle         Lifecycle
 	Metrics           Metrics
 	ContextTokens     int64
 	Capabilities      Capabilities
 	CreatedAt         time.Time
-	FinishedAt        time.Time
 	UpdatedAt         time.Time
-	MessageMark       MessageMark
 }
 
 func Admit(draft Draft) (Run, error) {
 	if err := draft.Validate(); err != nil {
 		return Run{}, err
 	}
-	return Restore(Snapshot{
-		SessionID: draft.SessionID, ID: draft.RunID, Lineage: draft.Lineage(),
-		ModelSelection: draft.ModelSelection, GoalIncarnationID: draft.GoalIncarnationID,
-		State: Running, ActiveSegmentID: draft.SegmentID,
-		Capabilities: draft.Capabilities, CreatedAt: draft.CreatedAt.UTC(),
-		UpdatedAt: draft.CreatedAt.UTC(), MessageMark: UnknownMessageMark(),
-	})
+	return Run{
+		sessionID: draft.SessionID, id: draft.RunID, lineage: draft.Lineage(),
+		modelSelection: draft.ModelSelection, goalIncarnationID: draft.GoalIncarnationID,
+		lifecycle: ActiveSegment{ID: draft.SegmentID}, capabilities: draft.Capabilities.Clone(),
+		createdAt: draft.CreatedAt.UTC(), updatedAt: draft.CreatedAt.UTC(),
+	}, nil
 }
 
 func Restore(snapshot Snapshot) (Run, error) {
 	run := Run{
 		sessionID: snapshot.SessionID, id: snapshot.ID, lineage: snapshot.Lineage,
 		modelSelection: snapshot.ModelSelection, goalIncarnationID: snapshot.GoalIncarnationID,
-		state: snapshot.State, activeSegmentID: snapshot.ActiveSegmentID,
-		ending: snapshot.Ending, unresolvedEffects: slices.Clone(snapshot.UnresolvedEffects), metrics: snapshot.Metrics,
-		contextTokens: snapshot.ContextTokens,
-		capabilities:  snapshot.Capabilities.Clone(),
-		createdAt:     snapshot.CreatedAt.UTC(), finishedAt: snapshot.FinishedAt.UTC(),
-		updatedAt: snapshot.UpdatedAt.UTC(), messageMark: snapshot.MessageMark,
+		metrics: snapshot.Metrics, contextTokens: snapshot.ContextTokens,
+		capabilities: snapshot.Capabilities.Clone(),
+		createdAt:    snapshot.CreatedAt.UTC(), updatedAt: snapshot.UpdatedAt.UTC(),
 	}
-	if err := run.validate(); err != nil {
+	if err := run.validateIdentity(); err != nil {
 		return Run{}, err
 	}
+	if err := run.validateAccrual(); err != nil {
+		return Run{}, err
+	}
+	if err := run.validateRootOwnership(); err != nil {
+		return Run{}, err
+	}
+	switch lifecycle := snapshot.Lifecycle.(type) {
+	case ActiveSegment:
+		if err := lifecycle.ID.Validate(); err != nil {
+			return Run{}, fmt.Errorf("run: active Segment: %w", err)
+		}
+	case Parked:
+	case Termination:
+		return run.withTermination(lifecycle)
+	default:
+		return Run{}, fmt.Errorf("run: invalid lifecycle %T", lifecycle)
+	}
+	run.lifecycle = snapshot.Lifecycle
 	return run, nil
 }
 
-func (r Run) Snapshot() Snapshot {
-	return Snapshot{
-		SessionID: r.sessionID, ID: r.id, Lineage: r.lineage,
-		ModelSelection: r.modelSelection, GoalIncarnationID: r.goalIncarnationID,
-		State: r.state, ActiveSegmentID: r.activeSegmentID,
-		Ending: r.ending, UnresolvedEffects: slices.Clone(r.unresolvedEffects), Metrics: r.metrics,
-		ContextTokens: r.contextTokens,
-		Capabilities:  r.capabilities.Clone(),
-		CreatedAt:     r.createdAt, FinishedAt: r.finishedAt,
-		UpdatedAt: r.updatedAt, MessageMark: r.messageMark,
-	}
-}
-
 func (r Run) Fork(sessionID identity.SessionID, id identity.RunID, lineage Lineage) (Run, error) {
-	if !r.state.IsTerminal() {
+	if !r.State().IsTerminal() {
 		return Run{}, errors.New("run: only a terminal Run can be forked")
 	}
 	if r.lineage.IsRoot() != lineage.IsRoot() {
 		return Run{}, errors.New("run: fork changes root/child lineage kind")
 	}
-	snapshot := r.Snapshot()
-	snapshot.SessionID = sessionID
-	snapshot.ID = id
-	snapshot.Lineage = lineage
-	snapshot.GoalIncarnationID = goalref.IncarnationID{}
-	return Restore(snapshot)
+	if err := sessionID.Validate(); err != nil {
+		return Run{}, fmt.Errorf("run: %w", err)
+	}
+	if err := id.Validate(); err != nil {
+		return Run{}, fmt.Errorf("run: %w", err)
+	}
+	if err := lineage.Validate(id); err != nil {
+		return Run{}, err
+	}
+	r.sessionID, r.id, r.lineage = sessionID, id, lineage
+	r.goalIncarnationID = goalref.IncarnationID{}
+	return r, nil
 }
 
 func (r Run) Equal(other Run) bool {
 	return r.sameIdentity(other) && r.sameProgress(other) &&
-		r.createdAt.Equal(other.createdAt) && r.finishedAt.Equal(other.finishedAt) && r.updatedAt.Equal(other.updatedAt)
+		r.createdAt.Equal(other.createdAt) && r.updatedAt.Equal(other.updatedAt)
 }
 
 func (r Run) sameIdentity(other Run) bool {
@@ -144,37 +141,14 @@ func (r Run) sameIdentity(other Run) bool {
 }
 
 func (r Run) sameProgress(other Run) bool {
-	return r.state == other.state && r.activeSegmentID == other.activeSegmentID && r.ending == other.ending &&
-		r.metrics.Equal(other.metrics) && r.contextTokens == other.contextTokens && r.messageMark == other.messageMark &&
-		slices.Equal(r.unresolvedEffects, other.unresolvedEffects)
-}
-
-func (r Run) validate() error {
-	if !r.state.Valid() {
-		return fmt.Errorf("run: invalid state %q", r.state)
+	if !r.metrics.Equal(other.metrics) || r.contextTokens != other.contextTokens {
+		return false
 	}
-	if err := r.validateIdentity(); err != nil {
-		return err
+	if terminal, ok := r.lifecycle.(Termination); ok {
+		otherTerminal, ok := other.lifecycle.(Termination)
+		return ok && terminal.equal(otherTerminal)
 	}
-	if err := r.validateAccrual(); err != nil {
-		return err
-	}
-	if err := r.validateRootOwnership(); err != nil {
-		return err
-	}
-	if (r.state == Running) == r.activeSegmentID.IsZero() {
-		return fmt.Errorf("run: %s Run has active Segment %q", r.state, r.activeSegmentID)
-	}
-	if err := validateUnresolvedEffects(r.unresolvedEffects); err != nil {
-		return err
-	}
-	if len(r.unresolvedEffects) > 0 && !r.state.IsTerminal() {
-		return errors.New("run: open run carries terminal effect evidence")
-	}
-	if r.state.IsTerminal() {
-		return r.validateTerminal()
-	}
-	return r.validateOpen()
+	return r.lifecycle == other.lifecycle
 }
 
 func (r Run) validateIdentity() error {
@@ -192,7 +166,7 @@ func (r Run) validateIdentity() error {
 	case r.updatedAt.Before(r.createdAt):
 		return errors.New("run: update time precedes creation")
 	}
-	if err := instant.Validate(r.createdAt, r.updatedAt, r.finishedAt); err != nil {
+	if err := instant.Validate(r.createdAt, r.updatedAt); err != nil {
 		return fmt.Errorf("run: %w", err)
 	}
 	if err := r.modelSelection.ValidateExact(); err != nil {
@@ -220,44 +194,41 @@ func (r Run) validateRootOwnership() error {
 		return errors.New("run: child carries a root Goal incarnation")
 	case !r.capabilities.IsEmpty():
 		return errors.New("run: child carries capabilities its root owns")
-	case r.messageMark != UnknownMessageMark():
-		return errors.New("run: child carries the conversation watermark its root owns")
 	}
 	return nil
 }
 
-func (r Run) validateOpen() error {
-	switch {
-	case r.ending != nil:
-		return fmt.Errorf("run: %s Run carries an ending", r.state)
-	case !r.finishedAt.IsZero():
-		return fmt.Errorf("run: %s Run carries finish time", r.state)
-	case r.messageMark != UnknownMessageMark():
-		return fmt.Errorf("run: %s Run carries message watermark %s", r.state, r.messageMark)
+func (r Run) withTermination(t Termination) (Run, error) {
+	if err := ValidateEnding(t.Ending); err != nil {
+		return Run{}, err
 	}
-	return nil
-}
-
-func (r Run) validateTerminal() error {
-	if err := ValidateEnding(r.ending); err != nil {
-		return err
+	if err := validateUnresolvedEffects(t.UnresolvedEffects); err != nil {
+		return Run{}, err
 	}
 	switch {
-	case r.finishedAt.IsZero():
-		return errors.New("run: terminal Run has no finish time")
-	case r.finishedAt.Before(r.createdAt):
-		return errors.New("run: finish time precedes creation")
-	case r.updatedAt.Before(r.finishedAt):
-		return errors.New("run: update time precedes finish")
-	case r.messageMark.known && r.messageMark.count < 0:
-		return fmt.Errorf("run: terminal Run has message watermark %s", r.messageMark)
+	case t.FinishedAt.IsZero():
+		return Run{}, errors.New("run: terminal Run has no finish time")
+	case t.FinishedAt.Before(r.createdAt):
+		return Run{}, errors.New("run: finish time precedes creation")
+	case r.updatedAt.Before(t.FinishedAt):
+		return Run{}, errors.New("run: update time precedes finish")
+	case t.MessageMark.known && t.MessageMark.count < 0:
+		return Run{}, fmt.Errorf("run: terminal Run has message watermark %s", t.MessageMark)
+	case t.MessageMark.known && r.lineage.IsChild():
+		return Run{}, errors.New("run: child carries the conversation watermark its root owns")
 	}
-	return nil
+	if err := instant.Validate(t.FinishedAt); err != nil {
+		return Run{}, fmt.Errorf("run: %w", err)
+	}
+	t.FinishedAt = t.FinishedAt.UTC()
+	t.UnresolvedEffects = slices.Clone(t.UnresolvedEffects)
+	r.lifecycle = t
+	return r, nil
 }
 
 func (r Run) AdvanceProgress(metrics Metrics, contextTokens int64, updatedAt time.Time) (Run, error) {
-	if !r.state.AdvanceProgress() {
-		return Run{}, fmt.Errorf("run: cannot advance progress from state %q", r.state)
+	if !r.State().IsOpen() {
+		return Run{}, fmt.Errorf("run: cannot advance progress from state %q", r.State())
 	}
 	if err := metrics.ValidateAdvanceFrom(r.metrics); err != nil {
 		return Run{}, err
@@ -277,85 +248,54 @@ func (r Run) AdvanceProgress(metrics Metrics, contextTokens int64, updatedAt tim
 }
 
 func (r Run) Suspend(updatedAt time.Time) (Run, error) {
-	next, ok := r.state.Suspend()
-	if !ok {
-		return Run{}, fmt.Errorf("run: cannot suspend %s Run", r.state)
+	if r.State() != Running {
+		return Run{}, fmt.Errorf("run: cannot suspend %s Run", r.State())
 	}
 	if err := r.validateTransitionTime(updatedAt); err != nil {
 		return Run{}, err
 	}
-	r.state, r.activeSegmentID, r.updatedAt = next, identity.SegmentID{}, updatedAt.UTC()
+	r.lifecycle, r.updatedAt = Parked{}, updatedAt.UTC()
 	return r, nil
 }
 
 func (r Run) Resume(segmentID identity.SegmentID, resumedAt time.Time) (Run, error) {
-	next, ok := r.state.Resume()
-	if !ok {
-		return Run{}, fmt.Errorf("run: cannot resume %s Run", r.state)
+	if r.State() != Waiting {
+		return Run{}, fmt.Errorf("run: cannot resume %s Run", r.State())
 	}
-	if segmentID.IsZero() {
-		return Run{}, errors.New("run: continuation Segment is required")
+	if err := segmentID.Validate(); err != nil {
+		return Run{}, fmt.Errorf("run: continuation Segment: %w", err)
 	}
 	if err := r.validateTransitionTime(resumedAt); err != nil {
 		return Run{}, err
 	}
-	r.state, r.activeSegmentID, r.updatedAt = next, segmentID, resumedAt.UTC()
+	r.lifecycle, r.updatedAt = ActiveSegment{ID: segmentID}, resumedAt.UTC()
 	return r, nil
-}
-
-type Termination struct {
-	Ending            Ending
-	UnresolvedEffects []UnresolvedEffect
-	FinishedAt        time.Time
-	MessageMark       MessageMark
 }
 
 func (r Run) Terminate(termination Termination) (Run, error) {
-	if err := ValidateEnding(termination.Ending); err != nil {
-		return Run{}, err
+	switch state := r.State(); state {
+	case Running:
+	case Waiting:
+		switch termination.Ending.(type) {
+		case Canceled, Lost:
+		default:
+			return Run{}, fmt.Errorf("run: %T cannot terminate a waiting Run", termination.Ending)
+		}
+	default:
+		return Run{}, fmt.Errorf("run: cannot terminate %s Run", state)
 	}
-	next, ok := r.state.Terminate(termination.Ending.Outcome())
-	if !ok {
-		return Run{}, fmt.Errorf("run: outcome %s cannot terminate %s Run", termination.Ending.Outcome(), r.state)
+	if !termination.FinishedAt.IsZero() && termination.FinishedAt.Before(r.updatedAt) {
+		return Run{}, errors.New("run: finish time precedes last update")
 	}
-	return r.finish(next, termination)
-}
-
-func (r Run) CancelWaiting(detail string, finishedAt time.Time, messageMark MessageMark) (Run, error) {
-	if r.state != Waiting {
-		return Run{}, fmt.Errorf("run: cannot cancel %s Run as waiting", r.state)
-	}
-	return r.finish(Finished, Termination{Ending: Canceled{Detail: detail}, FinishedAt: finishedAt, MessageMark: messageMark})
-}
-
-func (r Run) RecoverLost(loss Loss, finishedAt time.Time, messageMark MessageMark) (Run, error) {
-	next, ok := r.state.RecoverLost()
-	if !ok {
-		return Run{}, fmt.Errorf("run: cannot recover terminal %s Run as lost", r.state)
-	}
-	return r.finish(next, Termination{Ending: Lost{Loss: loss}, FinishedAt: finishedAt, MessageMark: messageMark})
-}
-
-func (r Run) finish(state State, termination Termination) (Run, error) {
-	if err := r.validateTransitionTime(termination.FinishedAt); err != nil {
-		return Run{}, err
-	}
-	r.state, r.activeSegmentID = state, identity.SegmentID{}
-	r.ending = termination.Ending
-	r.finishedAt, r.updatedAt = termination.FinishedAt.UTC(), termination.FinishedAt.UTC()
-	r.messageMark = termination.MessageMark
-	r.unresolvedEffects = slices.Clone(termination.UnresolvedEffects)
-	if err := r.validate(); err != nil {
-		return Run{}, err
-	}
-	return r, nil
+	r.updatedAt = termination.FinishedAt.UTC()
+	return r.withTermination(termination)
 }
 
 func (r Run) RebaseConversation(compaction conversation.Compaction) (Run, error) {
-	if !r.state.IsTerminal() || r.lineage.IsChild() {
+	if !r.State().IsTerminal() || r.lineage.IsChild() {
 		return r, nil
 	}
-	count, known := r.messageMark.Count()
+	count, known := r.MessageMark().Count()
 	if !known {
 		return Run{}, errors.New("run: terminal root Run has no message watermark")
 	}
@@ -370,16 +310,15 @@ func (r Run) WithMessageMark(messageMark int) (Run, error) {
 	if r.lineage.IsChild() {
 		return Run{}, errors.New("run: a child Run has no conversation watermark of its own")
 	}
-	if !r.state.IsTerminal() {
+	terminal, ok := r.lifecycle.(Termination)
+	if !ok {
 		return Run{}, errors.New("run: only terminal Run can resolve message watermark")
 	}
 	if messageMark < 0 {
 		return Run{}, errors.New("run: message watermark must not be negative")
 	}
-	r.messageMark = MessageMarkAt(messageMark)
-	if err := r.validate(); err != nil {
-		return Run{}, err
-	}
+	terminal.MessageMark = MessageMarkAt(messageMark)
+	r.lifecycle = terminal
 	return r, nil
 }
 
@@ -402,39 +341,57 @@ func (r Run) SessionID() identity.SessionID            { return r.sessionID }
 func (r Run) Lineage() Lineage                         { return r.lineage }
 func (r Run) ModelSelection() flamemodel.Selection     { return r.modelSelection }
 func (r Run) GoalIncarnationID() goalref.IncarnationID { return r.goalIncarnationID }
-func (r Run) State() State                             { return r.state }
-func (r Run) ActiveSegmentID() identity.SegmentID      { return r.activeSegmentID }
+func (r Run) State() State {
+	if r.lifecycle == nil {
+		return ""
+	}
+	return r.lifecycle.state()
+}
+
+func (r Run) ActiveSegmentID() identity.SegmentID {
+	active, _ := r.lifecycle.(ActiveSegment)
+	return active.ID
+}
 
 func (r Run) Executes(segmentID identity.SegmentID) bool {
-	return !segmentID.IsZero() && r.activeSegmentID == segmentID
+	return !segmentID.IsZero() && r.ActiveSegmentID() == segmentID
+}
+
+func (r Run) termination() Termination {
+	terminal, _ := r.lifecycle.(Termination)
+	return terminal
 }
 
 func (r Run) Outcome() (Outcome, bool) {
-	if r.ending == nil {
+	ending, ok := r.Ending()
+	if !ok {
 		return "", false
 	}
-	return r.ending.Outcome(), true
+	return ending.Outcome(), true
 }
 
-func (r Run) Ending() (Ending, bool) { return r.ending, r.ending != nil }
+func (r Run) Ending() (Ending, bool) {
+	terminal, ok := r.lifecycle.(Termination)
+	return terminal.Ending, ok
+}
 
-func (r Run) Detail() string {
-	canceled, _ := r.ending.(Canceled)
+func (r Run) CancellationDetail() string {
+	canceled, _ := r.termination().Ending.(Canceled)
 	return canceled.Detail
 }
 
 func (r Run) Canceled() bool {
-	_, canceled := r.ending.(Canceled)
+	_, canceled := r.termination().Ending.(Canceled)
 	return canceled
 }
 
 func (r Run) Failure() (Failure, bool) {
-	failed, ok := r.ending.(Failed)
+	failed, ok := r.termination().Ending.(Failed)
 	return failed.Failure, ok
 }
 
 func (r Run) Loss() (Loss, bool) {
-	lost, ok := r.ending.(Lost)
+	lost, ok := r.termination().Ending.(Lost)
 	return lost.Loss, ok
 }
 
@@ -443,11 +400,13 @@ func (r Run) ContextTokens() int64 { return r.contextTokens }
 
 func (r Run) Capabilities() Capabilities { return r.capabilities.Clone() }
 func (r Run) CreatedAt() time.Time       { return r.createdAt }
-func (r Run) FinishedAt() time.Time      { return r.finishedAt }
+func (r Run) FinishedAt() time.Time      { return r.termination().FinishedAt }
 func (r Run) UpdatedAt() time.Time       { return r.updatedAt }
-func (r Run) MessageMark() MessageMark   { return r.messageMark }
+func (r Run) MessageMark() MessageMark   { return r.termination().MessageMark }
 
-func (r Run) UnresolvedEffects() []UnresolvedEffect { return slices.Clone(r.unresolvedEffects) }
+func (r Run) UnresolvedEffects() []UnresolvedEffect {
+	return slices.Clone(r.termination().UnresolvedEffects)
+}
 
 func (r Run) CheckResumeCapabilities(caller Capabilities) error {
 	if gap := r.capabilities.MissingFrom(caller); !gap.IsEmpty() {

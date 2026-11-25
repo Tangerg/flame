@@ -79,78 +79,15 @@ func MustItemID(text string) identity.ItemID {
 }
 
 func MustRestoreRun(snapshot run.Snapshot) run.Run {
-	defaultRunIdentity(&snapshot)
-	defaultRunLifecycle(&snapshot)
-	defaultRunTimes(&snapshot)
+	if snapshot.ModelSelection.Provider() == "" && snapshot.ModelSelection.Model() == "" &&
+		snapshot.ModelSelection.ReasoningEffort() == "" {
+		snapshot.ModelSelection = DefaultModelSelection()
+	}
 	restored, err := run.Restore(snapshot)
 	if err != nil {
 		panic(err)
 	}
 	return restored
-}
-
-func defaultRunIdentity(snapshot *run.Snapshot) {
-	if snapshot.ID.IsZero() {
-		snapshot.ID = MustRunID(fixtureRunID)
-	}
-	if snapshot.SessionID.IsZero() {
-		snapshot.SessionID = MustSessionID(fixtureSessionID)
-	}
-	if snapshot.ModelSelection.Provider() == "" && snapshot.ModelSelection.Model() == "" &&
-		snapshot.ModelSelection.ReasoningEffort() == "" {
-		snapshot.ModelSelection = DefaultModelSelection()
-	}
-}
-
-func defaultRunLifecycle(snapshot *run.Snapshot) {
-	if snapshot.State == "" {
-		snapshot.State = run.Running
-	}
-	if snapshot.Ending != nil && snapshot.State == run.Running {
-		snapshot.State = run.Finished
-	}
-	if snapshot.State.IsTerminal() && snapshot.Ending == nil {
-		snapshot.Ending = run.Completed{}
-	}
-	if snapshot.State == run.Running && snapshot.ActiveSegmentID.IsZero() {
-		snapshot.ActiveSegmentID = MustSegmentID("segment_fixture")
-	}
-	if snapshot.State != run.Running {
-		snapshot.ActiveSegmentID = identity.SegmentID{}
-	}
-	if !snapshot.State.IsTerminal() || snapshot.Lineage.IsChild() {
-		snapshot.MessageMark = run.UnknownMessageMark()
-	}
-}
-
-func defaultRunTimes(snapshot *run.Snapshot) {
-	if snapshot.CreatedAt.IsZero() {
-		snapshot.CreatedAt = time.Unix(1, 0).UTC()
-	}
-	if snapshot.State.IsTerminal() && snapshot.FinishedAt.IsZero() {
-		snapshot.FinishedAt = snapshot.CreatedAt
-	}
-	if snapshot.UpdatedAt.IsZero() {
-		snapshot.UpdatedAt = snapshot.CreatedAt
-		if !snapshot.FinishedAt.IsZero() {
-			snapshot.UpdatedAt = snapshot.FinishedAt
-		}
-	}
-}
-
-func EndingFor(outcome run.Outcome) run.Ending {
-	switch outcome {
-	case run.OutcomeCanceled:
-		return run.Canceled{}
-	case run.OutcomeFailed:
-		return run.Failed{Failure: run.Failure{Kind: run.FailureInternal}}
-	case run.OutcomeTimedOut:
-		return run.TimedOut{}
-	case run.OutcomeLost:
-		return run.Lost{Loss: run.Loss{Reason: run.LossRestart}}
-	default:
-		return run.Completed{}
-	}
 }
 
 func Usage(total accounting.Totals, byModel map[string]accounting.Totals) *accounting.Usage {

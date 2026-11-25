@@ -9,7 +9,6 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
@@ -50,7 +49,7 @@ func (r *reducer) interrupt(requests []Interrupt, duration time.Duration) (factR
 	}
 
 	r.segmentDuration = duration
-	waiting, err := r.runRecord(run.Waiting)
+	waiting, err := r.parkedRun()
 	if err != nil {
 		return factReduction{}, err
 	}
@@ -169,7 +168,7 @@ func (r *reducer) suspend(duration time.Duration) (factReduction, error) {
 		parkItems = append(parkItems, ref.item)
 	}
 	r.segmentDuration = duration
-	waiting, err := r.runRecord(run.Waiting)
+	waiting, err := r.parkedRun()
 	if err != nil {
 		return factReduction{}, err
 	}

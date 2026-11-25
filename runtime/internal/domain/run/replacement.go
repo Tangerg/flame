@@ -32,12 +32,8 @@ func (r Replacement) Resume(segmentID identity.SegmentID, resumedAt time.Time) (
 	return r.advance(r.state.Resume(segmentID, resumedAt))
 }
 
-func (r Replacement) CancelWaiting(detail string, finishedAt time.Time, messageMark MessageMark) (Replacement, error) {
-	return r.advance(r.state.CancelWaiting(detail, finishedAt, messageMark))
-}
-
-func (r Replacement) RecoverLost(loss Loss, finishedAt time.Time, messageMark MessageMark) (Replacement, error) {
-	return r.advance(r.state.RecoverLost(loss, finishedAt, messageMark))
+func (r Replacement) Terminate(termination Termination) (Replacement, error) {
+	return r.advance(r.state.Terminate(termination))
 }
 
 func (r Replacement) RebaseConversation(compaction conversation.Compaction) (Replacement, error) {

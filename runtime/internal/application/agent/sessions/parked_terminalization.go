@@ -16,8 +16,7 @@ import (
 type parkedRunTerminalization struct {
 	sessionID            identity.SessionID
 	finishedAt           time.Time
-	outcome              rundomain.Outcome
-	detail               string
+	ending               rundomain.Ending
 	pending              runs.Pending
 	snapshot             Snapshot
 	conversationMessages []corechat.Message
@@ -29,14 +28,6 @@ func (p parkedRunTerminalization) build() (TerminalPlan, error) {
 			"sessions: terminalize parked Run tree %q: invalid Pending: %w",
 			p.pending.RootRunID,
 			err,
-		)
-	}
-	if p.outcome != rundomain.OutcomeCanceled &&
-		p.outcome != rundomain.OutcomeLost {
-		return TerminalPlan{}, fmt.Errorf(
-			"sessions: terminalize parked Run tree %q: unsupported outcome %s",
-			p.pending.RootRunID,
-			p.outcome,
 		)
 	}
 	runsByID, err := p.indexRuns()
@@ -132,14 +123,9 @@ func (p parkedRunTerminalization) terminalRuns(
 				run.ID(),
 			)
 		}
-		var replacement rundomain.Replacement
-		var err error
-		mark := run.Lineage().MessageMark(messageMark)
-		if p.outcome == rundomain.OutcomeLost {
-			replacement, err = run.Replace().RecoverLost(rundomain.Loss{Reason: rundomain.LossWaitingStateUnavailable}, p.finishedAt, mark)
-		} else {
-			replacement, err = run.Replace().CancelWaiting(p.detail, p.finishedAt, mark)
-		}
+		replacement, err := run.Replace().Terminate(rundomain.Termination{
+			Ending: p.ending, FinishedAt: p.finishedAt, MessageMark: run.Lineage().MessageMark(messageMark),
+		})
 		if err != nil {
 			return nil, fmt.Errorf("sessions: terminalize parked Run %q: %w", run.ID(), err)
 		}
@@ -311,7 +297,7 @@ func (p parkedRunTerminalization) terminalDrainedItem(item transcript.Item) (tra
 }
 
 func (p parkedRunTerminalization) abandonmentFailure() *tool.Failure {
-	if p.outcome != rundomain.OutcomeLost {
+	if _, lost := p.ending.(rundomain.Lost); !lost {
 		return nil
 	}
 	return &tool.Failure{
