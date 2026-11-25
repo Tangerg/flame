@@ -25,7 +25,6 @@ const si = stylex.create({
     minWidth: 0,
     maxWidth: "160px",
     flexShrink: 1,
-    fontFamily: "var(--font-mono)",
     color: color.fgFaint,
   },
   sep: {
