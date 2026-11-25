@@ -37,7 +37,6 @@ export const es: Record<string, string> = {
   "filter.clear": "Borrar filtro",
   partial:
     "Diff parcial. Solo se muestran los archivos incluidos y los cambios de línea.",
-  missing: "El archivo solicitado no está incluido en esta lectura:",
   "files.changed_one": "{{count}} archivo cambiado",
   "files.changed_many": "{{count}} archivos cambiados",
   "files.changed_other": "{{count}} archivos cambiados",
@@ -50,6 +49,7 @@ export const es: Record<string, string> = {
   "stat.title": "Cambios de línea en los archivos de texto incluidos",
   "empty.title": "No hay cambios en esta comparación.",
   "file.unchanged": "No hay cambios en este archivo en esta comparación.",
+  "file.overBudget": "Este archivo no cabe en el límite de esta lectura.",
   "nomatch.title": "No hay archivos coincidentes.",
   "files.region": "Archivos cambiados",
   "file.changes": "Cambios en {{path}}",
