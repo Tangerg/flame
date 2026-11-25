@@ -1,7 +1,6 @@
 import { ASSET_MIME } from "../contracts/media";
 import { lstat, mkdtemp, realpath, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { Refusal } from "@flame/backend-sdk/mcp";
 import { LIMITS } from "../contracts/limits";
 import { FORMATS, type Format } from "../contracts/content";
 import type {
@@ -41,6 +40,7 @@ import {
   readOutput,
   textChecks,
 } from "./engine-output";
+import { refusal } from "./refusal";
 
 export class Engine {
   readonly #configuration: Configuration;
@@ -101,7 +101,7 @@ export class Engine {
       signal,
       async (input, directory, tools, owned) => {
         if (!FORMATS.includes(format))
-          throw new Refusal(
+          throw refusal(
             "engine_format",
             "The requested rendering format is unsupported.",
           );
@@ -238,7 +238,7 @@ export class Engine {
         );
         const output = await readOutput(outputPath, LIMITS.fileBytes);
         if (output[0] !== 0x50 || output[1] !== 0x4b)
-          throw new Refusal(
+          throw refusal(
             "engine_output_invalid",
             "LibreOffice did not produce an XLSX package.",
           );
@@ -277,7 +277,7 @@ export class Engine {
 
   #required(tools: InstalledTools, names: Tool[]): void {
     if (names.some((name) => !tools[name]))
-      throw new Refusal(
+      throw refusal(
         "engine_not_configured",
         "The required rendering tools are not configured.",
       );
@@ -295,12 +295,12 @@ export class Engine {
   ): Promise<T> {
     signal.throwIfAborted();
     if (this.#closed || this.#cleanupFailure)
-      throw new Refusal(
+      throw refusal(
         "engine_closed",
         "The rendering owner is closed or its cleanup remains unconfirmed.",
       );
     if (this.#active)
-      throw new Refusal(
+      throw refusal(
         "engine_busy",
         "A rendering operation is already active; no second operation was queued.",
       );
@@ -309,17 +309,17 @@ export class Engine {
       !bytes.byteLength ||
       bytes.byteLength > LIMITS.fileBytes
     )
-      throw new Refusal(
+      throw refusal(
         "engine_input_limit",
         "The native source bytes exceed the rendering input limit.",
       );
     if (this.#configuration.issues.length)
-      throw new Refusal(
+      throw refusal(
         "engine_configuration",
         this.#configuration.issues.join(" "),
       );
     if (process.platform !== "linux" && process.platform !== "darwin")
-      throw new Refusal(
+      throw refusal(
         "engine_unavailable",
         "Native rendering confinement is unsupported on this platform.",
       );
@@ -397,7 +397,7 @@ export class Engine {
       signal.throwIfAborted();
       const path = await installedExecutable(tools[key], roots);
       if (!path)
-        throw new Refusal(
+        throw refusal(
           "engine_configuration",
           `${SETTINGS[key]} must identify an executable inside an admitted installation root.`,
         );
@@ -420,7 +420,7 @@ export class Engine {
     const configuredRoots = this.#configuration.roots;
     const data = await realpath(this.#data);
     if (data !== this.#data || !(await lstat(data)).isDirectory())
-      throw new Refusal(
+      throw refusal(
         "engine_private_directory",
         "The plugin data directory must be canonical.",
       );
@@ -440,7 +440,7 @@ export class Engine {
         (configured &&
           (canonical !== root || !(await lstat(root)).isDirectory()))
       )
-        throw new Refusal(
+        throw refusal(
           "engine_configuration",
           "An installation read root is noncanonical or overlaps private plugin data.",
         );
@@ -496,13 +496,13 @@ export class Engine {
     maximumFileBytes: number = LIMITS.fileBytes,
   ) {
     if (maximumFileBytes < 1)
-      throw new Refusal(
+      throw refusal(
         "engine_output_limit",
         "The rendered assets exceeded their aggregate byte limit.",
       );
     const platform = process.platform;
     if (platform !== "linux" && platform !== "darwin")
-      throw new Refusal(
+      throw refusal(
         "engine_unavailable",
         "Native rendering confinement is unsupported.",
       );
@@ -551,7 +551,7 @@ export class Engine {
       .map((line) => line.trim())
       .find(Boolean);
     if (!version || version.length > 512)
-      throw new Refusal(
+      throw refusal(
         "engine_version",
         "The confined tool did not report a bounded version identity.",
       );
@@ -634,7 +634,7 @@ export class Engine {
       );
       return { text, truncated };
     } catch {
-      throw new Refusal(
+      throw refusal(
         "engine_text_invalid",
         "The extracted text is not valid UTF-8.",
       );

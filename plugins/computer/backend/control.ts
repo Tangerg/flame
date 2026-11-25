@@ -46,6 +46,7 @@ import { Receipts, type OriginalCommand, type ReceiptRecord } from "./receipts";
 import { Session } from "./session";
 import type { Configuration } from "./configuration";
 import { Cua } from "./cua";
+import { refusal } from "./refusal";
 
 export type EngineConnection = Pick<Engine, "surface" | "call" | "close">;
 export type ConnectEngine = (
@@ -80,7 +81,7 @@ function installationInvocation(context: CallContext): Invocation | undefined {
 function capturedCaller(context: CallContext): Invocation {
   const invocation = installationInvocation(context);
   if (!invocation || invocation.origin === InvocationOrigin.Automatic)
-    throw new Refusal(
+    throw refusal(
       "invocation_required",
       "computer control requires a captured model or human caller",
     );
@@ -90,7 +91,7 @@ function capturedCaller(context: CallContext): Invocation {
 function humanCaller(context: CallContext): Invocation {
   const invocation = installationInvocation(context);
   if (!invocation || invocation.origin !== InvocationOrigin.Human)
-    throw new Refusal(
+    throw refusal(
       "human_required",
       "computer control requires the original human caller",
     );
@@ -207,10 +208,10 @@ export class Control {
   #current(id?: string): Resource {
     this.#signal.throwIfAborted();
     if (this.#closing)
-      throw new Refusal("computer_closed", "computer backend is closing");
+      throw refusal("computer_closed", "computer backend is closing");
     const resource = this.#resource;
     if (!resource)
-      throw new Refusal(
+      throw refusal(
         "session_required",
         "open a computer-control session from the human console first",
       );
@@ -232,7 +233,7 @@ export class Control {
       !["ready", "executing"].includes(session.state) ||
       resource.lifetime.signal.aborted
     )
-      throw new Refusal(
+      throw refusal(
         "computer_unavailable",
         "computer engine has no current usable surface",
       );
@@ -320,9 +321,9 @@ export class Control {
       humanCaller(context);
       this.#signal.throwIfAborted();
       if (this.#closing)
-        throw new Refusal("computer_closed", "computer backend is closing");
+        throw refusal("computer_closed", "computer backend is closing");
       if (!this.#config)
-        throw new Refusal(
+        throw refusal(
           "engine_unconfigured",
           "select an installed CUA application on the Runtime host first",
         );
@@ -330,12 +331,12 @@ export class Control {
         this.#resource &&
         this.#resource.session.snapshot().state !== "closed"
       )
-        throw new Refusal(
+        throw refusal(
           "session_active",
           "close the current computer-control session before opening another",
         );
       if (!schemas.open.safeParse({ leaseSeconds }).success)
-        throw new Refusal(
+        throw refusal(
           "invalid_lease",
           "computer lease is outside its declared bound",
         );
@@ -401,14 +402,14 @@ export class Control {
           lifetime.signal.aborted ? "cancelled" : "startup",
         );
         await resource.disposal;
-        const refusal = new Refusal(
+        const refused = refusal(
           "engine_unavailable",
           cause instanceof EngineStartupFailure
             ? cause.message
             : "computer engine could not start; inspect the configured installation and desktop prerequisites",
         );
-        refusal.cause = cause;
-        throw refusal;
+        refused.cause = cause;
+        throw refused;
       } finally {
         context.signal.removeEventListener("abort", abort);
       }
@@ -544,7 +545,7 @@ export class Control {
         pending.snapshot.id !== input.requestId ||
         resource.lifetime.signal.aborted
       )
-        throw new Refusal(
+        throw refusal(
           "permission_retired",
           "computer permission request is no longer pending",
         );
@@ -553,9 +554,9 @@ export class Control {
         response = pending.request.reply(input.responseJSON);
       } catch (cause) {
         if (!(cause instanceof InvalidPermission)) throw cause;
-        const refusal = new Refusal("invalid_permission", cause.message);
-        refusal.cause = cause;
-        throw refusal;
+        const refused = refusal("invalid_permission", cause.message);
+        refused.cause = cause;
+        throw refused;
       }
       this.#receipts.markDispatched(id);
       resource.permission = undefined;
@@ -587,18 +588,15 @@ export class Control {
         throw new Error("computer: upstream tool arguments must be an object");
       args = projected as Record<string, unknown>;
     } catch (cause) {
-      const refusal = new Refusal(
+      const refused = refusal(
         "invalid_arguments",
         "computer arguments do not satisfy the captured upstream tool contract",
       );
-      refusal.cause = cause;
-      throw refusal;
+      refused.cause = cause;
+      throw refused;
     }
     if (!engine || resource.lifetime.signal.aborted)
-      throw new Refusal(
-        "computer_unavailable",
-        "computer engine is not available",
-      );
+      throw refusal("computer_unavailable", "computer engine is not available");
     context.signal.throwIfAborted();
     resource.session.begin(input, {
       id,
@@ -609,7 +607,7 @@ export class Control {
     const work = Promise.resolve().then(() => {
       if (resource.session.expired(Date.now())) {
         this.#retire(resource, "expired");
-        throw new Refusal(
+        throw refusal(
           "lease_expired",
           "computer control lease expired before dispatch",
         );
@@ -701,10 +699,7 @@ export class Control {
   result(id: string): OperationRecord {
     const record = this.#receipts.read(id);
     if (!record)
-      throw new Refusal(
-        "operation_not_found",
-        "computer operation was not found",
-      );
+      throw refusal("operation_not_found", "computer operation was not found");
     return this.#record(record);
   }
 

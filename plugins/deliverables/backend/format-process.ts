@@ -26,6 +26,7 @@ import {
 import type { Format } from "../contracts/content";
 import { confinedPlan, type PrivateDirectory } from "./confinement";
 import { runProcess, UnconfirmedProcessExit } from "./process";
+import { refusal } from "./refusal";
 
 type Request =
   | { operation: "create"; format: Exclude<Format, "pdf">; contentJSON: string }
@@ -83,7 +84,7 @@ export async function serveFormatProcess(): Promise<never> {
       const bytes = Buffer.from(chunk as Uint8Array);
       length += bytes.byteLength;
       if (length > packetBytes)
-        throw new Refusal(
+        throw refusal(
           "format_capacity",
           "native format request exceeds its process budget",
         );
@@ -183,15 +184,15 @@ export class Formats {
   async #call(input: Request, signal: AbortSignal): Promise<Response> {
     signal.throwIfAborted();
     if (this.#closed)
-      throw new Refusal("formats_closed", "format processing is closed");
+      throw refusal("formats_closed", "format processing is closed");
     const data = Buffer.from(JSON.stringify(input));
     if (data.byteLength > packetBytes)
-      throw new Refusal(
+      throw refusal(
         "format_capacity",
         "native format request exceeds its process budget",
       );
     if (this.#admitted >= LIMITS.formatOperations)
-      throw new Refusal(
+      throw refusal(
         "formats_busy",
         "too many native format operations are waiting",
       );
@@ -203,7 +204,7 @@ export class Formats {
     try {
       await turnOf(turn, signal);
       if (this.#closed)
-        throw new Refusal("formats_closed", "format processing is closed");
+        throw refusal("formats_closed", "format processing is closed");
       return await this.#run(data, signal);
     } finally {
       this.#admitted--;
@@ -225,7 +226,7 @@ export class Formats {
     const timeout = setTimeout(
       () =>
         controller.abort(
-          new Refusal(
+          refusal(
             "format_timeout",
             "native format processing exceeded its deadline",
           ),
@@ -243,7 +244,7 @@ export class Formats {
   async #invoke(data: Uint8Array, signal: AbortSignal): Promise<Response> {
     const platform = process.platform;
     if (platform !== "linux" && platform !== "darwin")
-      throw new Refusal(
+      throw refusal(
         "format_platform",
         "bounded native format processing requires Linux or macOS",
       );
@@ -369,7 +370,7 @@ export class Formats {
     if (
       Buffer.byteLength(JSON.stringify(result.inspection)) > LIMITS.reportBytes
     )
-      throw new Refusal(
+      throw refusal(
         "report_capacity",
         "format inspection exceeds its evidence budget",
       );

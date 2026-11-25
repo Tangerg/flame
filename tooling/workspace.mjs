@@ -740,129 +740,138 @@ async function goMembers(native) {
     }
   }
 }
-async function main(command) {
-  switch (command) {
-    case "setup": {
-      const expected = JSON.parse(
-        run("go", ["work", "edit", "-json"], root, process.env, true),
-      ).Go;
-      const actual = run("go", ["env", "GOVERSION"], root, process.env, true)
-        .toString()
-        .trim();
-      if (actual !== `go${expected}`)
-        throw new Error(`Go ${expected} is required; found ${actual}`);
-      const artifacts = await moduleArtifacts();
-      const env = proxyEnvironment(artifacts.proxy);
-      run("npm", ["ci"], root);
-      await prepareGoDependencies(root, env);
-      await buildShared();
-      const target = JSON.parse(
-        run("go", ["env", "-json", "GOOS", "GOARCH"], root, process.env, true),
-      );
-      await stageNode({
-        os: target.GOOS,
-        arch: target.GOARCH,
-        output: join(root, "out/toolchains"),
-      });
-      return;
-    }
-    case "generate":
-      return generate();
-    case "check-generated":
-      return checkGenerated();
-    case "check":
-      await buildShared();
-      run("npm", ["run", "test:tooling"]);
-      run("node", ["tooling/check-boundaries.mjs"]);
-      await checkGenerated();
-      await goMembers(false);
-      for (const p of ordered(await workspaces())) {
-        const script = p.scripts?.check
-          ? "check"
-          : p.scripts?.typecheck
-            ? "typecheck"
-            : null;
-        if (script) run("npm", ["run", script], p.directory);
-      }
-      run("node", ["tooling/qualify-node.mjs"]);
-      return;
-    case "check-native":
-      if (process.platform !== "darwin")
-        throw new Error(
-          "native verification requires the supported macOS host",
-        );
-      run("wails3", ["task", "build"], join(root, "apps/desktop"));
-      await goMembers(true);
-      return;
-    case "check-author":
-      return run("node", ["tooling/check-author.mjs"]);
-    case "stage-web":
-      return stageWeb();
-    case "dev-web":
-      await buildShared();
-      return run("npm", ["run", "dev"], join(root, "apps/web"));
-    case "dev-desktop":
-      await buildShared();
-      return run("wails3", ["task", "dev"], join(root, "apps/desktop"));
-    case "package-desktop":
-      return run("wails3", ["task", "package"], join(root, "apps/desktop"));
-    case "build-runtime":
-    case "build-cli": {
-      const target = JSON.parse(
-        run("go", ["env", "-json", "GOOS", "GOARCH"], root, process.env, true),
-      );
-      const env = productBuildEnvironment();
-      const kind = command === "build-runtime" ? "runtime" : "cli",
-        directory = join(root, "out", kind, `${target.GOOS}-${target.GOARCH}`);
-      await mkdir(directory, { recursive: true });
-      await stageNode({
-        os: target.GOOS,
-        arch: target.GOARCH,
-        output: directory,
-        offline: true,
-      });
-      run(
-        "node",
-        [
-          "plugins/scripts/build-packages.mjs",
-          "--os",
-          target.GOOS,
-          "--arch",
-          target.GOARCH,
-          "--output",
-          join(directory, "plugins"),
-          "--replace",
-        ],
-        root,
-        env,
-      );
-      run(
-        "go",
-        [
-          "build",
-          "-trimpath",
-          "-o",
-          join(directory, "frame-runner"),
-          "github.com/Tangerg/frame/cmd/frame-runner",
-        ],
-        join(root, "runtime"),
-        env,
-      );
-      return run(
-        "go",
-        [
-          "build",
-          "-trimpath",
-          "-o",
-          join(directory, kind === "runtime" ? "flame-runtime" : "flame"),
-          kind === "runtime" ? "./cmd/flame-runtime" : ".",
-        ],
-        join(root, kind === "runtime" ? "runtime" : "apps/cli"),
-        env,
-      );
-    }
-    default:
-      throw new Error(`unknown workspace command: ${command}`);
+async function setup() {
+  const expected = JSON.parse(
+    run("go", ["work", "edit", "-json"], root, process.env, true),
+  ).Go;
+  const actual = run("go", ["env", "GOVERSION"], root, process.env, true)
+    .toString()
+    .trim();
+  if (actual !== `go${expected}`)
+    throw new Error(`Go ${expected} is required; found ${actual}`);
+  const artifacts = await moduleArtifacts();
+  const env = proxyEnvironment(artifacts.proxy);
+  run("npm", ["ci"], root);
+  await prepareGoDependencies(root, env);
+  await buildShared();
+  const target = hostTarget();
+  await stageNode({
+    os: target.GOOS,
+    arch: target.GOARCH,
+    output: join(root, "out/toolchains"),
+  });
+}
+
+async function check() {
+  await buildShared();
+  run("npm", ["run", "test:tooling"]);
+  run("node", ["tooling/check-boundaries.mjs"]);
+  await checkGenerated();
+  await goMembers(false);
+  for (const p of ordered(await workspaces())) {
+    const script = p.scripts?.check
+      ? "check"
+      : p.scripts?.typecheck
+        ? "typecheck"
+        : null;
+    if (script) run("npm", ["run", script], p.directory);
   }
+  run("node", ["tooling/qualify-node.mjs"]);
+}
+
+async function checkNative() {
+  if (process.platform !== "darwin")
+    throw new Error("native verification requires the supported macOS host");
+  run("wails3", ["task", "build"], join(root, "apps/desktop"));
+  await goMembers(true);
+}
+
+function hostTarget() {
+  return JSON.parse(
+    run("go", ["env", "-json", "GOOS", "GOARCH"], root, process.env, true),
+  );
+}
+
+const PRODUCTS = {
+  runtime: {
+    binary: "flame-runtime",
+    module: "runtime",
+    main: "./cmd/flame-runtime",
+  },
+  cli: { binary: "flame", module: "apps/cli", main: "." },
+};
+
+async function buildProduct(kind) {
+  const product = PRODUCTS[kind];
+  const target = hostTarget();
+  const env = productBuildEnvironment();
+  const directory = join(root, "out", kind, `${target.GOOS}-${target.GOARCH}`);
+  await mkdir(directory, { recursive: true });
+  await stageNode({
+    os: target.GOOS,
+    arch: target.GOARCH,
+    output: directory,
+    offline: true,
+  });
+  run(
+    "node",
+    [
+      "plugins/scripts/build-packages.mjs",
+      "--os",
+      target.GOOS,
+      "--arch",
+      target.GOARCH,
+      "--output",
+      join(directory, "plugins"),
+      "--replace",
+    ],
+    root,
+    env,
+  );
+  run(
+    "go",
+    [
+      "build",
+      "-trimpath",
+      "-o",
+      join(directory, "frame-runner"),
+      "github.com/Tangerg/frame/cmd/frame-runner",
+    ],
+    join(root, "runtime"),
+    env,
+  );
+  run(
+    "go",
+    ["build", "-trimpath", "-o", join(directory, product.binary), product.main],
+    join(root, product.module),
+    env,
+  );
+}
+
+async function develop(command, args, directory) {
+  await buildShared();
+  run(command, args, join(root, directory));
+}
+
+const COMMANDS = {
+  setup,
+  generate,
+  "check-generated": checkGenerated,
+  check,
+  "check-native": checkNative,
+  "check-author": () => run("node", ["tooling/check-author.mjs"]),
+  "stage-web": stageWeb,
+  "dev-web": () => develop("npm", ["run", "dev"], "apps/web"),
+  "dev-desktop": () => develop("wails3", ["task", "dev"], "apps/desktop"),
+  "package-desktop": () =>
+    run("wails3", ["task", "package"], join(root, "apps/desktop")),
+  "build-runtime": () => buildProduct("runtime"),
+  "build-cli": () => buildProduct("cli"),
+};
+
+async function main(name) {
+  const command = Object.hasOwn(COMMANDS, name) ? COMMANDS[name] : undefined;
+  if (!command) throw new Error(`unknown workspace command: ${name}`);
+  await command();
 }
 if (import.meta.main) await main(process.argv[2]);

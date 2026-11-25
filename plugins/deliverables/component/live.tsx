@@ -455,6 +455,16 @@ export function DraftToolbar<Operation>({
   );
 }
 
+// Every selection handed to the Composer opens with the same identity lines so
+// the model can address the exact document revision it was taken from.
+export function selectionPreamble(document: DocumentRead): string[] {
+  return [
+    "Flame deliverable selection",
+    `Document: ${JSON.stringify(document.document.title)} (${document.document.id})`,
+    `Revision: ${document.revision.id}`,
+  ];
+}
+
 type Handoff = "handed" | "stale" | "copied" | "failed";
 
 // Hosts without a Composer collaborator still let the user carry the

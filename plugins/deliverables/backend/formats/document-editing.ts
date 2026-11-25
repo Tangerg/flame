@@ -1,4 +1,5 @@
 import {
+  DEFAULT_PARAGRAPH_STYLE,
   documentEditSchema,
   parseContent,
   type DocumentOperation,
@@ -25,7 +26,7 @@ const isWord = (node: XmlNode, local: string) =>
   node.uri === namespaces.word && node.local === local;
 
 function assertStylesDefined(archive: OfficePackage, styles: Set<string>) {
-  styles.delete("Normal");
+  styles.delete(DEFAULT_PARAGRAPH_STYLE);
   if (!styles.size) return;
   const defined = new Set(
     archive.parts.has("word/styles.xml")
@@ -70,10 +71,10 @@ function stylePatch(paragraph: XmlNode, style: string): XmlPatch[] {
       {
         start: pStyle.start,
         end: pStyle.end,
-        value: style === "Normal" ? "" : markup,
+        value: style === DEFAULT_PARAGRAPH_STYLE ? "" : markup,
       },
     ];
-  if (style === "Normal") return [];
+  if (style === DEFAULT_PARAGRAPH_STYLE) return [];
   if (pPr && !pPr.selfClosing)
     return [{ start: pPr.openEnd, end: pPr.openEnd, value: markup }];
   const properties = `<${tagName(paragraph, "pPr")}>${markup}</${tagName(paragraph, "pPr")}>`;

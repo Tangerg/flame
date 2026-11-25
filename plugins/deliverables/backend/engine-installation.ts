@@ -1,9 +1,9 @@
 import { constants } from "node:fs";
 import { access, lstat, realpath } from "node:fs/promises";
 import { isAbsolute, relative, resolve, sep } from "node:path";
-import { Refusal } from "@flame/backend-sdk/mcp";
 import { DARWIN_SHELL } from "./confinement";
 import { Office } from "./office";
+import { refusal } from "./refusal";
 
 export type Tool = "office" | "pdfinfo" | "pdftoppm" | "pdftotext";
 
@@ -133,7 +133,7 @@ export async function requireConfinement(): Promise<void> {
     try {
       await access(path, constants.X_OK);
     } catch {
-      throw new Refusal(
+      throw refusal(
         "engine_unavailable",
         "The required native confinement or resource-limit tool is unavailable.",
       );

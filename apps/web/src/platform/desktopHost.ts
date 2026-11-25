@@ -1,6 +1,6 @@
 import { type NotificationAuthorization } from "@flame/component-sdk/notifications";
 import { normalizeRuntimeEndpoint } from "@flame/runtime-client";
-import { errorMessage, RpcTransportError } from "@flame/runtime-client";
+import { errorMessage } from "@flame/runtime-client";
 import { type ClientBootstrap, type ClientHost } from "@/platform/host";
 import {
   callDesktop,
@@ -23,11 +23,11 @@ async function readAuthorization(
   try {
     value = await callDesktop(host, method);
   } catch (error) {
-    throw new RpcTransportError(`desktop host notification check failed: ${errorMessage(error)}`);
+    throw new Error(`desktop host notification check failed: ${errorMessage(error)}`);
   }
   const parsed = DesktopMethods[method].result.safeParse(value);
   if (!parsed.success) {
-    throw new RpcTransportError(
+    throw new Error(
       `desktop host notification check returned an invalid shape: ${parsed.error.message}`,
     );
   }
@@ -88,19 +88,17 @@ export function createDesktopHostClient(binding: DesktopHostBinding): ClientHost
         try {
           value = await callDesktop(host, "Bootstrap");
         } catch (error) {
-          throw new RpcTransportError(`desktop host bootstrap failed: ${errorMessage(error)}`);
+          throw new Error(`desktop host bootstrap failed: ${errorMessage(error)}`);
         }
         const parsed = DesktopMethods.Bootstrap.result.safeParse(value);
         if (!parsed.success) {
-          throw new RpcTransportError(
+          throw new Error(
             `desktop host bootstrap returned an invalid shape: ${parsed.error.message}`,
           );
         }
         const endpoint = normalizeRuntimeEndpoint(parsed.data.localRuntime.endpoint);
         if (!endpoint) {
-          throw new RpcTransportError(
-            "desktop host bootstrap returned an invalid Runtime endpoint",
-          );
+          throw new Error("desktop host bootstrap returned an invalid Runtime endpoint");
         }
         return {
           runtime: { ...parsed.data.localRuntime, endpoint },
@@ -117,13 +115,11 @@ export function createDesktopHostClient(binding: DesktopHostBinding): ClientHost
       try {
         value = await callDesktop(host, "ChooseWorkingDirectory");
       } catch (error) {
-        throw new RpcTransportError(
-          `desktop host directory selection failed: ${errorMessage(error)}`,
-        );
+        throw new Error(`desktop host directory selection failed: ${errorMessage(error)}`);
       }
       const parsed = DesktopMethods.ChooseWorkingDirectory.result.safeParse(value);
       if (!parsed.success) {
-        throw new RpcTransportError(
+        throw new Error(
           `desktop host directory selection returned an invalid shape: ${parsed.error.message}`,
         );
       }
@@ -135,7 +131,7 @@ export function createDesktopHostClient(binding: DesktopHostBinding): ClientHost
       try {
         return await saveExport(binding, filename, bytes);
       } catch (error) {
-        throw new RpcTransportError(`desktop host file save failed: ${errorMessage(error)}`);
+        throw new Error(`desktop host file save failed: ${errorMessage(error)}`);
       }
     },
     async revealPath(path) {
@@ -144,7 +140,7 @@ export function createDesktopHostClient(binding: DesktopHostBinding): ClientHost
         await callDesktop(host, "RevealPath", path);
         return true;
       } catch (error) {
-        throw new RpcTransportError(`desktop host path reveal failed: ${errorMessage(error)}`);
+        throw new Error(`desktop host path reveal failed: ${errorMessage(error)}`);
       }
     },
     async openPath(path) {
@@ -153,7 +149,7 @@ export function createDesktopHostClient(binding: DesktopHostBinding): ClientHost
         await callDesktop(host, "OpenPath", path);
         return true;
       } catch (error) {
-        throw new RpcTransportError(`desktop host path open failed: ${errorMessage(error)}`);
+        throw new Error(`desktop host path open failed: ${errorMessage(error)}`);
       }
     },
     async notificationAuthorization() {
@@ -170,7 +166,7 @@ export function createDesktopHostClient(binding: DesktopHostBinding): ClientHost
         await callDesktop(host, "SendNotification", notification);
         return true;
       } catch (error) {
-        throw new RpcTransportError(`desktop host notification failed: ${errorMessage(error)}`);
+        throw new Error(`desktop host notification failed: ${errorMessage(error)}`);
       }
     },
     async onNotificationOpened(listener) {
@@ -186,7 +182,7 @@ export function createDesktopHostClient(binding: DesktopHostBinding): ClientHost
       try {
         await callDesktop(host, "RevealWindow");
       } catch (error) {
-        throw new RpcTransportError(`desktop host window reveal failed: ${errorMessage(error)}`);
+        throw new Error(`desktop host window reveal failed: ${errorMessage(error)}`);
       }
     },
     async windowChrome() {

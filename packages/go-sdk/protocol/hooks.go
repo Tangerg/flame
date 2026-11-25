@@ -35,8 +35,8 @@ type HookInfo struct {
 type HookScope string
 
 const (
-	HookScopeGlobal     HookScope = "global"
-	HookScopeRepository HookScope = "repository"
+	HookScopeGlobal     = HookScope(hook.ScopeGlobal)
+	HookScopeRepository = HookScope(hook.ScopeRepository)
 )
 
 type HooksListResult struct {

@@ -113,112 +113,122 @@ export async function readBuildPlan(source) {
     ),
   };
 }
-export async function buildPlugin({
-  source,
-  output,
-  os,
-  arch,
-  archives,
-  packageTool,
-}) {
-  await validateDestination(source, output);
-  const plan = await readBuildPlan(source);
-  const resources = join(source, "package");
-  const { manifest } = plan;
-  await mkdir(output);
-  await cp(resources, output, { recursive: true });
-  const mcp = join(output, "mcp.json");
-  if (plan.mcp) {
-    const descriptor = plan.mcp;
-    await mkdir(join(output, "bin"));
-    for (const [name, server] of Object.entries(descriptor.mcpServers)) {
-      if (!server.command) continue;
-      if (!/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$/.test(name))
-        throw new Error("invalid backend executable name");
-      const executable = name + (os === "windows" ? ".exe" : "");
-      await run(
-        "go",
-        [
-          "build",
-          "-trimpath",
-          "-ldflags=-s -w",
-          "-o",
-          join(output, "bin", executable),
-          "./backend",
-        ],
-        {
-          cwd: source,
-          env: { ...process.env, CGO_ENABLED: "0", GOOS: os, GOARCH: arch },
-          maxBuffer: 32 * 1024 * 1024,
-        },
-      );
-      server.command = `./bin/${executable}`;
-    }
-    await writeFile(mcp, JSON.stringify(descriptor, null, 2) + "\n");
-  }
-  if (plan.managed.length) {
-    const { default: protocol } = await import("@flame/backend-sdk/protocol", {
-      with: { type: "json" },
-    });
-    const { buildBackend } = await import("@flame/backend-sdk/build");
-    const { rolldown } = await import("rolldown");
-    for (const backend of plan.managed)
-      await buildBackend({
-        target: protocol.constants.nodeTarget,
-        maximumFrameBytes: protocol.constants.maximumFrameBytes,
-        compiler: rolldown,
-        input: join(source, backend.entry.slice(0, -4) + ".ts"),
-        directory: dirname(join(output, backend.entry)),
-        entryFileName: basename(backend.entry),
-      });
-  }
-  const packageArgs = ["--source", output];
-  if (plan.native) packageArgs.push("--os", os, "--arch", arch);
-  if (archives) {
-    await validateDestination(source, archives);
-    await mkdir(archives, { recursive: true });
-    for (const value of [manifest.name, manifest.version])
-      if (
-        typeof value !== "string" ||
-        !/^[a-zA-Z0-9][a-zA-Z0-9.+-]{0,127}$/.test(value)
-      )
-        throw new Error("plugin archive requires a bounded name and version");
-    packageArgs.push(
-      "--archive",
-      join(
-        archives,
-        `plugin-${manifest.name}-${manifest.version}${plan.native ? `-${os}-${arch}` : ""}.zip`,
-      ),
+// Go builds and pluginpack can report large diagnostics; keep them whole.
+const TOOL_OUTPUT_BYTES = 32 * 1024 * 1024;
+
+async function buildNativeBackends(descriptor, { source, output, os, arch }) {
+  await mkdir(join(output, "bin"));
+  for (const [name, server] of Object.entries(descriptor.mcpServers)) {
+    if (!server.command) continue;
+    if (!/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$/.test(name))
+      throw new Error("invalid backend executable name");
+    const executable = name + (os === "windows" ? ".exe" : "");
+    await run(
+      "go",
+      [
+        "build",
+        "-trimpath",
+        "-ldflags=-s -w",
+        "-o",
+        join(output, "bin", executable),
+        "./backend",
+      ],
+      {
+        cwd: source,
+        env: { ...process.env, CGO_ENABLED: "0", GOOS: os, GOARCH: arch },
+        maxBuffer: TOOL_OUTPUT_BYTES,
+      },
     );
+    server.command = `./bin/${executable}`;
   }
+  await writeFile(
+    join(output, "mcp.json"),
+    JSON.stringify(descriptor, null, 2) + "\n",
+  );
+}
+
+async function buildManagedBackends(backends, { source, output }) {
+  const { default: protocol } = await import("@flame/backend-sdk/protocol", {
+    with: { type: "json" },
+  });
+  const { buildBackend } = await import("@flame/backend-sdk/build");
+  const { rolldown } = await import("rolldown");
+  for (const backend of backends)
+    await buildBackend({
+      target: protocol.constants.nodeTarget,
+      maximumFrameBytes: protocol.constants.maximumFrameBytes,
+      compiler: rolldown,
+      input: join(source, backend.entry.slice(0, -4) + ".ts"),
+      directory: dirname(join(output, backend.entry)),
+      entryFileName: basename(backend.entry),
+    });
+}
+
+async function archiveArguments(plan, { source, archives, os, arch }) {
+  if (!archives) return [];
+  await validateDestination(source, archives);
+  await mkdir(archives, { recursive: true });
+  const { name, version } = plan.manifest;
+  for (const value of [name, version])
+    if (
+      typeof value !== "string" ||
+      !/^[a-zA-Z0-9][a-zA-Z0-9.+-]{0,127}$/.test(value)
+    )
+      throw new Error("plugin archive requires a bounded name and version");
+  const target = plan.native ? `-${os}-${arch}` : "";
+  return [
+    "--archive",
+    join(archives, `plugin-${name}-${version}${target}.zip`),
+  ];
+}
+
+async function runPackageTool(packageTool, args, source) {
   if (packageTool !== undefined && !isAbsolute(packageTool))
     throw new Error("package tool must be an absolute executable path");
+  const env = { ...process.env, GOOS: "", GOARCH: "" };
   const bundled = fileURLToPath(
     new URL(
       "./tools/pluginpack" + (process.platform === "win32" ? ".exe" : ""),
       import.meta.url,
     ),
   );
+  if (packageTool || (await exists(bundled))) {
+    await run(packageTool ?? bundled, args, {
+      cwd: source,
+      env,
+      maxBuffer: TOOL_OUTPUT_BYTES,
+    });
+    return;
+  }
   const runtimeModule = fileURLToPath(
     new URL("../../runtime/", import.meta.url),
   );
-  if (packageTool || (await exists(bundled))) {
-    await run(packageTool ?? bundled, packageArgs, {
-      cwd: source,
-      env: { ...process.env, GOOS: "", GOARCH: "" },
-      maxBuffer: 32 * 1024 * 1024,
-    });
-  } else {
-    if (!(await exists(join(runtimeModule, "cmd/pluginpack/main.go"))))
-      throw new Error(
-        "independent author builds require their prebuilt pluginpack tool",
-      );
-    await run("go", ["run", "./cmd/pluginpack", ...packageArgs], {
-      cwd: runtimeModule,
-      env: { ...process.env, GOOS: "", GOARCH: "" },
-      maxBuffer: 32 * 1024 * 1024,
-    });
-  }
+  if (!(await exists(join(runtimeModule, "cmd/pluginpack/main.go"))))
+    throw new Error(
+      "independent author builds require their prebuilt pluginpack tool",
+    );
+  await run("go", ["run", "./cmd/pluginpack", ...args], {
+    cwd: runtimeModule,
+    env,
+    maxBuffer: TOOL_OUTPUT_BYTES,
+  });
+}
+
+export async function buildPlugin(options) {
+  const { source, output, os, arch, packageTool } = options;
+  await validateDestination(source, output);
+  const plan = await readBuildPlan(source);
+  await mkdir(output);
+  await cp(join(source, "package"), output, { recursive: true });
+  if (plan.mcp) await buildNativeBackends(plan.mcp, options);
+  if (plan.managed.length) await buildManagedBackends(plan.managed, options);
+  const packageArgs = [
+    "--source",
+    output,
+    ...(plan.native ? ["--os", os, "--arch", arch] : []),
+    ...(await archiveArguments(plan, options)),
+  ];
+  await runPackageTool(packageTool, packageArgs, source);
 }
 if (
   process.argv[1] &&

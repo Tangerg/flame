@@ -26,12 +26,9 @@ function retryableTransportFailure(error: unknown): error is RpcTransportError {
 }
 
 class MutationObservationInterruptedError extends Error {
-  readonly lastObservation: unknown;
-
-  constructor(lastObservation: unknown, cause: unknown) {
+  constructor(cause: unknown) {
     super("mutation observation ended before settlement", { cause });
     this.name = "MutationObservationInterruptedError";
-    this.lastObservation = lastObservation;
   }
 }
 
@@ -94,7 +91,7 @@ async function settleMutation<T>(
           await waitForReplay(error.data.retryAfterSeconds, options.signal);
         } catch (cause) {
           // Stopping observation cannot settle the command already reserved by Runtime.
-          throw new MutationObservationInterruptedError(error, cause);
+          throw new MutationObservationInterruptedError(cause);
         }
         continue;
       }

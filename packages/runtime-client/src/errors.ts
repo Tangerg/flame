@@ -50,14 +50,12 @@ interface BusinessErrorPayload {
 export class RpcTransportError extends Error {
   readonly status?: number;
   readonly requestId?: string;
-  readonly problemType?: string;
 
-  constructor(message: string, status?: number, requestId?: string, problemType?: string) {
+  constructor(message: string, status?: number, requestId?: string) {
     super(message);
     this.name = "RpcTransportError";
     this.status = status;
     this.requestId = requestId;
-    this.problemType = problemType;
   }
 }
 
@@ -91,7 +89,6 @@ export class RpcProtocolError extends Error {
 }
 
 interface TransportProblem {
-  type?: string;
   detail?: string;
   requestId?: string;
 }
@@ -112,7 +109,6 @@ export function parseTransportProblem(
     const fields = value as Record<string, unknown>;
     if (fields.status !== response.status) return undefined;
     return {
-      type: typeof fields.type === "string" ? fields.type : undefined,
       detail: typeof fields.detail === "string" ? fields.detail : undefined,
       requestId: typeof fields.requestId === "string" ? fields.requestId : undefined,
     };

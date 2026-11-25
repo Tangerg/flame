@@ -3,10 +3,10 @@ import { createReadStream } from "node:fs";
 import { lstat, mkdir, readFile, realpath, writeFile } from "node:fs/promises";
 import { dirname, isAbsolute, join, relative, sep } from "node:path";
 import { pathToFileURL } from "node:url";
-import { Refusal } from "@flame/backend-sdk/mcp";
 import { LIMITS } from "../contracts/limits";
 import type { PrivateDirectory } from "./confinement";
 import release from "./office-release.json";
+import { refusal } from "./refusal";
 
 // DisableActiveContent stays unset: it blanks every chart, and admission already
 // refuses the active payloads it would block.
@@ -49,7 +49,7 @@ export class Office {
     const target =
       release.targets[process.arch as keyof typeof release.targets];
     if (!target)
-      throw new Refusal(
+      throw refusal(
         "engine_unavailable",
         "The macOS Office toolchain is unavailable for this architecture.",
       );
@@ -88,7 +88,7 @@ export class Office {
         throw new Error("release executable mismatch");
     } catch {
       signal.throwIfAborted();
-      throw new Refusal(
+      throw refusal(
         "engine_configuration",
         "macOS requires the verified LibreOfficeKit installation produced by tooling/office-toolchain.mjs, with its entire directory admitted as a tool installation root.",
       );
@@ -166,7 +166,7 @@ export class Office {
       )
         throw new Error("unsuccessful conversion response");
     } catch {
-      throw new Refusal(
+      throw refusal(
         "engine_output_invalid",
         "LibreOfficeKit did not confirm the conversion.",
       );

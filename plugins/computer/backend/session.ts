@@ -1,5 +1,5 @@
-import { Refusal } from "@flame/backend-sdk/mcp";
 import type { ControlSession, ExecuteInput } from "../contracts/capability";
+import { refusal } from "./refusal";
 
 type Reason = NonNullable<ControlSession["reason"]>;
 type Operation = NonNullable<ControlSession["operation"]>;
@@ -58,7 +58,7 @@ export class Session {
 
   assertCurrent(id: string): void {
     if (id !== this.id)
-      throw new Refusal(
+      throw refusal(
         "session_replaced",
         "computer control session is no longer current",
       );
@@ -81,7 +81,7 @@ export class Session {
   begin(input: ExecuteInput, operation: Operation): void {
     this.assertCurrent(input.sessionId);
     if (this.#phase.state !== "ready")
-      throw new Refusal(
+      throw refusal(
         "computer_unavailable",
         "computer control session is not ready for another operation",
       );
@@ -89,7 +89,7 @@ export class Session {
       input.workerId !== this.#workerId ||
       input.surfaceDigest !== this.#phase.surfaceDigest
     )
-      throw new Refusal(
+      throw refusal(
         "worker_replaced",
         "read the current computer context before using this worker",
       );
@@ -128,7 +128,7 @@ export class Session {
 
   assertOperation(id: string): void {
     if (this.#phase.state !== "executing" || this.#phase.operation.id !== id)
-      throw new Refusal(
+      throw refusal(
         "operation_retired",
         "computer operation is no longer current",
       );

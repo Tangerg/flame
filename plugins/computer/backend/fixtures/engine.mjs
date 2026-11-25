@@ -97,6 +97,187 @@ server.setRequestHandler(ListToolsRequestSchema, () => ({
       ? tools.filter((tool) => tool.name !== "js_reset")
       : tools,
 }));
+const SCRIPTS = {
+  increment: async () => {
+    return { content: [{ type: "text", text: String(++value) }] };
+  },
+  "exact-result": async (extra) => {
+    process.stdout.write(
+      `{"jsonrpc":"2.0","id":${JSON.stringify(extra.requestId)},"result":{"content":[{"type":"text","text":"exact","_meta":{"wide":9007199254740993},"extension":{"wide":9007199254740993}}],"structuredContent":{"wide":9007199254740993,"decimal":1.0000000000000001,"exponent":1e1000},"_meta":{"wide":9007199254740993,"negativeZero":-0}}}\n`,
+    );
+    return await new Promise(() => {});
+  },
+  "structured-output": async () => {
+    return { content: [], structuredContent: { value: 12 } };
+  },
+  "invalid-structured-output": async () => {
+    return { content: [], structuredContent: { value: "invalid" } };
+  },
+  "structured-tool-error": async () => {
+    return {
+      isError: true,
+      content: [{ type: "text", text: "known refusal" }],
+      structuredContent: { failure: "known refusal" },
+    };
+  },
+  media: async () => {
+    return {
+      content: [
+        { type: "text", text: "original content" },
+        { type: "image", data: "aW1hZ2U=", mimeType: "image/png" },
+        { type: "audio", data: "YXVkaW8=", mimeType: "audio/wav" },
+        {
+          type: "resource",
+          resource: {
+            uri: "file:///fixture.txt",
+            mimeType: "text/plain",
+            text: "resource body",
+          },
+        },
+        {
+          type: "resource_link",
+          uri: "https://example.invalid/fixture",
+          name: "fixture",
+        },
+      ],
+      structuredContent: { original: true },
+      _meta: { fixture: "retained" },
+    };
+  },
+  "known-error": async () => {
+    return {
+      content: [{ type: "text", text: "known original refusal" }],
+      isError: true,
+    };
+  },
+  "cleanup-fails": async () => {
+    rejectCleanup = true;
+    return { content: [{ type: "text", text: "effect confirmed" }] };
+  },
+  "cleanup-hangs": async () => {
+    hangCleanup = true;
+    return { content: [{ type: "text", text: "effect confirmed" }] };
+  },
+  "cleanup-delay": async () => {
+    delayedCleanup = true;
+    return { content: [{ type: "text", text: "effect confirmed" }] };
+  },
+  approval: async (extra) => {
+    const response = await server.elicitInput(
+      {
+        mode: "form",
+        message: "Allow the fixture to use its test window?",
+        requestedSchema: {
+          type: "object",
+          properties: { reason: { type: "string" } },
+          required: ["reason"],
+        },
+        _meta: { fixture: "original request", persist: ["session"] },
+      },
+      { signal: extra.signal, timeout: 2 ** 31 - 1 },
+    );
+    return { content: [{ type: "text", text: JSON.stringify(response) }] };
+  },
+  "restricted-approval": async (extra) => {
+    const response = await server.request(
+      {
+        method: "elicitation/create",
+        params: {
+          message:
+            "This original request includes a constraint outside the supported form vocabulary.",
+          requestedSchema: {
+            type: "object",
+            properties: { reason: { type: "string", pattern: "^required$" } },
+            required: ["reason"],
+          },
+          _meta: { fixture: "original restricted request" },
+        },
+      },
+      ElicitResultSchema,
+      { signal: extra.signal },
+    );
+    return { content: [{ type: "text", text: JSON.stringify(response) }] };
+  },
+  hold: async (extra) => {
+    await new Promise((resolve) => {
+      if (extra.signal.aborted) resolve();
+      else extra.signal.addEventListener("abort", resolve, { once: true });
+    });
+    log({ kind: "cancelled" });
+    return { content: [] };
+  },
+  "crash-after-effect": async () => {
+    log({ kind: "effect" });
+    process.exit(23);
+  },
+  "invalid-result": async () => {
+    return { content: [{ type: "image", data: "missing mime type" }] };
+  },
+  "oversized-result": async () => {
+    process.stdout.write("x".repeat(16 * 1024 * 1024 + 1));
+    return await new Promise(() => {});
+  },
+  "large-valid-result": async () => {
+    return {
+      content: [{ type: "text", text: "x".repeat(16 * 1024 * 1024 - 512) }],
+    };
+  },
+  drift: async () => {
+    await server.notification({ method: "notifications/tools/list_changed" });
+    return await new Promise(() => {});
+  },
+  environment: async () => {
+    return {
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify({
+            display: process.env.DISPLAY,
+            configured: process.env.COMPUTER_CONFIGURED,
+            ambient: process.env.COMPUTER_AMBIENT_SECRET,
+          }),
+        },
+      ],
+    };
+  },
+  "orphan-worker": async () => {
+    const worker = spawn(
+      process.execPath,
+      [
+        "-e",
+        `const {appendFileSync} = require('node:fs');
+process.on('SIGTERM', () => setTimeout(() => {
+  appendFileSync(process.env.COMPUTER_FIXTURE_LOG, JSON.stringify({kind:'orphan-ended',pid:process.pid})+'\\n');
+  process.exit(0);
+}, 50));
+process.stdout.write('ready\\n');
+setInterval(() => {}, 1000);`,
+      ],
+      {
+        stdio: ["ignore", "pipe", "ignore"],
+        env: { COMPUTER_FIXTURE_LOG: process.env.COMPUTER_FIXTURE_LOG },
+      },
+    );
+    await new Promise((resolve, reject) => {
+      worker.stdout.once("data", resolve);
+      worker.once("error", reject);
+    });
+    worker.stdout.destroy();
+    log({ kind: "orphan-worker", pid: worker.pid });
+    return { content: [{ type: "text", text: String(worker.pid) }] };
+  },
+  worker: async () => {
+    const worker = spawn(
+      process.execPath,
+      ["-e", "process.on('SIGTERM', () => {}); setInterval(() => {}, 1000)"],
+      { stdio: "inherit" },
+    );
+    workers.push(worker);
+    log({ kind: "worker", pid: worker.pid });
+    return { content: [{ type: "text", text: String(worker.pid) }] };
+  },
+};
+
 server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
   if (native) globalThis.nodeRepl.requestMeta = request.params._meta;
   log({
@@ -138,178 +319,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
       }, 100);
     return { content: [{ type: "text", text: result }] };
   }
-  if (code === "increment")
-    return { content: [{ type: "text", text: String(++value) }] };
-  if (code === "exact-result") {
-    process.stdout.write(
-      `{"jsonrpc":"2.0","id":${JSON.stringify(extra.requestId)},"result":{"content":[{"type":"text","text":"exact","_meta":{"wide":9007199254740993},"extension":{"wide":9007199254740993}}],"structuredContent":{"wide":9007199254740993,"decimal":1.0000000000000001,"exponent":1e1000},"_meta":{"wide":9007199254740993,"negativeZero":-0}}}\n`,
-    );
-    return await new Promise(() => {});
-  }
-  if (code === "structured-output")
-    return { content: [], structuredContent: { value: 12 } };
-  if (code === "invalid-structured-output")
-    return { content: [], structuredContent: { value: "invalid" } };
-  if (code === "structured-tool-error")
-    return {
-      isError: true,
-      content: [{ type: "text", text: "known refusal" }],
-      structuredContent: { failure: "known refusal" },
-    };
-  if (code === "media")
-    return {
-      content: [
-        { type: "text", text: "original content" },
-        { type: "image", data: "aW1hZ2U=", mimeType: "image/png" },
-        { type: "audio", data: "YXVkaW8=", mimeType: "audio/wav" },
-        {
-          type: "resource",
-          resource: {
-            uri: "file:///fixture.txt",
-            mimeType: "text/plain",
-            text: "resource body",
-          },
-        },
-        {
-          type: "resource_link",
-          uri: "https://example.invalid/fixture",
-          name: "fixture",
-        },
-      ],
-      structuredContent: { original: true },
-      _meta: { fixture: "retained" },
-    };
-  if (code === "known-error")
-    return {
-      content: [{ type: "text", text: "known original refusal" }],
-      isError: true,
-    };
-  if (code === "cleanup-fails") {
-    rejectCleanup = true;
-    return { content: [{ type: "text", text: "effect confirmed" }] };
-  }
-  if (code === "cleanup-hangs") {
-    hangCleanup = true;
-    return { content: [{ type: "text", text: "effect confirmed" }] };
-  }
-  if (code === "cleanup-delay") {
-    delayedCleanup = true;
-    return { content: [{ type: "text", text: "effect confirmed" }] };
-  }
-  if (code === "approval") {
-    const response = await server.elicitInput(
-      {
-        mode: "form",
-        message: "Allow the fixture to use its test window?",
-        requestedSchema: {
-          type: "object",
-          properties: { reason: { type: "string" } },
-          required: ["reason"],
-        },
-        _meta: { fixture: "original request", persist: ["session"] },
-      },
-      { signal: extra.signal, timeout: 2 ** 31 - 1 },
-    );
-    return { content: [{ type: "text", text: JSON.stringify(response) }] };
-  }
-  if (code === "restricted-approval") {
-    const response = await server.request(
-      {
-        method: "elicitation/create",
-        params: {
-          message:
-            "This original request includes a constraint outside the supported form vocabulary.",
-          requestedSchema: {
-            type: "object",
-            properties: { reason: { type: "string", pattern: "^required$" } },
-            required: ["reason"],
-          },
-          _meta: { fixture: "original restricted request" },
-        },
-      },
-      ElicitResultSchema,
-      { signal: extra.signal },
-    );
-    return { content: [{ type: "text", text: JSON.stringify(response) }] };
-  }
-  if (code === "hold") {
-    await new Promise((resolve) => {
-      if (extra.signal.aborted) resolve();
-      else extra.signal.addEventListener("abort", resolve, { once: true });
-    });
-    log({ kind: "cancelled" });
-    return { content: [] };
-  }
-  if (code === "crash-after-effect") {
-    log({ kind: "effect" });
-    process.exit(23);
-  }
-  if (code === "invalid-result")
-    return { content: [{ type: "image", data: "missing mime type" }] };
-  if (code === "oversized-result") {
-    process.stdout.write("x".repeat(16 * 1024 * 1024 + 1));
-    return await new Promise(() => {});
-  }
-  if (code === "large-valid-result")
-    return {
-      content: [{ type: "text", text: "x".repeat(16 * 1024 * 1024 - 512) }],
-    };
-  if (code === "drift") {
-    await server.notification({ method: "notifications/tools/list_changed" });
-    return await new Promise(() => {});
-  }
-  if (code === "environment")
-    return {
-      content: [
-        {
-          type: "text",
-          text: JSON.stringify({
-            display: process.env.DISPLAY,
-            configured: process.env.COMPUTER_CONFIGURED,
-            ambient: process.env.COMPUTER_AMBIENT_SECRET,
-          }),
-        },
-      ],
-    };
-  if (code === "orphan-worker") {
-    const worker = spawn(
-      process.execPath,
-      [
-        "-e",
-        `const {appendFileSync} = require('node:fs');
-process.on('SIGTERM', () => setTimeout(() => {
-  appendFileSync(process.env.COMPUTER_FIXTURE_LOG, JSON.stringify({kind:'orphan-ended',pid:process.pid})+'\\n');
-  process.exit(0);
-}, 50));
-process.stdout.write('ready\\n');
-setInterval(() => {}, 1000);`,
-      ],
-      {
-        stdio: ["ignore", "pipe", "ignore"],
-        env: { COMPUTER_FIXTURE_LOG: process.env.COMPUTER_FIXTURE_LOG },
-      },
-    );
-    await new Promise((resolve, reject) => {
-      worker.stdout.once("data", resolve);
-      worker.once("error", reject);
-    });
-    worker.stdout.destroy();
-    log({ kind: "orphan-worker", pid: worker.pid });
-    return { content: [{ type: "text", text: String(worker.pid) }] };
-  }
-  if (code === "worker") {
-    const worker = spawn(
-      process.execPath,
-      ["-e", "process.on('SIGTERM', () => {}); setInterval(() => {}, 1000)"],
-      { stdio: "inherit" },
-    );
-    workers.push(worker);
-    log({ kind: "worker", pid: worker.pid });
-    return { content: [{ type: "text", text: String(worker.pid) }] };
-  }
+  const script = Object.hasOwn(SCRIPTS, code) ? SCRIPTS[code] : undefined;
+  if (script) return await script(extra);
   return { content: [{ type: "text", text: code }] };
 });
-
 if (mode?.includes("stderr"))
   process.stderr.write(
     "permission denied: private-fixture-secret\n" + "x".repeat(8192),

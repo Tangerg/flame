@@ -13,6 +13,7 @@ import { type ChartData, type Frame } from "../contracts/content";
 import { type ElementView, type SlideView } from "../contracts/layouts";
 import type { DocumentRead } from "./types";
 import { label } from "./slides-presentation";
+import { selectionPreamble } from "./live";
 import { ChartFields, FrameFields, RunField } from "./slides-fields";
 
 export function selectionReference(
@@ -30,9 +31,7 @@ export function selectionReference(
     .replace(/\s+/gu, " ")
     .trim();
   const text = [
-    "Flame deliverable selection",
-    `Document: ${JSON.stringify(document.document.title)} (${document.document.id})`,
-    `Revision: ${document.revision.id}`,
+    ...selectionPreamble(document),
     `Slide ${slide.number}${slide.name ? ` ${JSON.stringify(slide.name)}` : ""}: ${slide.id}`,
     ...(element
       ? [

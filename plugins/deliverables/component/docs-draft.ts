@@ -1,4 +1,7 @@
-import type { DocumentOperation } from "../contracts/content";
+import {
+  DEFAULT_PARAGRAPH_STYLE,
+  type DocumentOperation,
+} from "../contracts/content";
 import type {
   BlockView,
   DocumentLayout,
@@ -13,15 +16,7 @@ export type DocOperation = Exclude<
 type Of<T extends DocOperation["type"]> = Extract<DocOperation, { type: T }>;
 export type InsertedParagraph = Of<"insertParagraph">;
 export type ParagraphStyle = Of<"setParagraphStyle">["style"];
-export const PARAGRAPH_STYLES: ParagraphStyle[] = [
-  "Normal",
-  "Heading1",
-  "Heading2",
-  "Heading3",
-];
-
-// A paragraph that names no style renders as Normal.
-export const styleOf = (style: string) => style || "Normal";
+export const styleOf = (style: string) => style || DEFAULT_PARAGRAPH_STYLE;
 
 export const textOf = (runs: { text: string }[]) =>
   runs.map((run) => run.text).join("");

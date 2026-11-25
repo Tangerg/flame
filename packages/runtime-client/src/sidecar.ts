@@ -76,7 +76,6 @@ export function createSidecarClient(config: SidecarClientConfig): SidecarClient 
         `sidecar ${path}: http ${res.status}: ${detail}`,
         res.status,
         requestId,
-        problem?.type,
       );
     }
     let json: unknown;

@@ -13,6 +13,7 @@ import {
   DraftToolbar,
   Reconcile,
   RevisionNotices,
+  selectionPreamble,
   useHandoff,
   useLiveEditor,
   type LiveState,
@@ -40,9 +41,7 @@ function blockReference(
       .join(" · ")
       .trim(),
     text: [
-      "Flame deliverable selection",
-      `Document: ${JSON.stringify(document.document.title)} (${document.document.id})`,
-      `Revision: ${document.revision.id}`,
+      ...selectionPreamble(document),
       `Block ${block.id} (${block.kind}${block.kind === "paragraph" ? `, style ${JSON.stringify(styleOf(block.style))}` : ""}), expect ${block.expect}`,
       ...(block.kind === "paragraph"
         ? [

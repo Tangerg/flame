@@ -37,35 +37,15 @@ export const SDK_PAGINATION_POLICY = createPaginationPolicy({
   maximumRetainedCursorCodeUnits: 1 * 1_024 * 1_024,
 });
 
-export const PaginationViolation = {
-  cursorCycle: "cursorCycle",
-  cursorTooLarge: "cursorTooLarge",
-  cursorRetentionExceeded: "cursorRetentionExceeded",
-  pageCapacityExceeded: "pageCapacityExceeded",
-  pageRowsExceeded: "pageRowsExceeded",
-  collectionCapacityExceeded: "collectionCapacityExceeded",
-} as const;
-
-export type PaginationViolation = (typeof PaginationViolation)[keyof typeof PaginationViolation];
-
-export class PaginationError extends Error {
-  readonly violation: PaginationViolation;
-  readonly cursor?: string;
-  readonly limit: number;
-  readonly observed: number;
-
-  constructor(
-    violation: PaginationViolation,
-    detail: string,
-    facts: { cursor?: string; limit: number; observed: number },
-  ) {
+class PaginationError extends Error {
+  constructor(detail: string) {
     super(`pagination ${detail}`);
     this.name = "PaginationError";
-    this.violation = violation;
-    this.cursor = facts.cursor;
-    this.limit = facts.limit;
-    this.observed = facts.observed;
   }
+}
+
+function capacityError(capacity: string, limit: number, observed: number): PaginationError {
+  return new PaginationError(`${capacity} capacity exceeded: ${observed} > ${limit}`);
 }
 
 export interface AutoPagingPromise<P extends CursorPage>
@@ -86,14 +66,7 @@ export function createAutoPagingPromise<P extends CursorPage>(
   const readPage = async (cursor?: string): Promise<P> => {
     const page = await fetchPage(cursor);
     if (page.data.length > validatedPolicy.maximumRowsPerPage) {
-      throw new PaginationError(
-        PaginationViolation.pageRowsExceeded,
-        "page row capacity exceeded",
-        {
-          limit: validatedPolicy.maximumRowsPerPage,
-          observed: page.data.length,
-        },
-      );
+      throw capacityError("page row", validatedPolicy.maximumRowsPerPage, page.data.length);
     }
     const cursorError = cursorSizeError(page.nextCursor, validatedPolicy);
     if (cursorError) throw cursorError;
@@ -119,35 +92,23 @@ export function createAutoPagingPromise<P extends CursorPage>(
         const cursor = page.nextCursor;
         if (cursor) {
           if (seen.has(cursor)) {
-            throw new PaginationError(
-              PaginationViolation.cursorCycle,
-              `cursor did not advance: ${JSON.stringify(cursor)}`,
-              { cursor, limit: seen.size, observed: seen.size + 1 },
-            );
+            throw new PaginationError(`cursor did not advance: ${JSON.stringify(cursor)}`);
           }
           if (pageRequests >= validatedPolicy.maximumPageRequests) {
-            throw new PaginationError(
-              PaginationViolation.pageCapacityExceeded,
-              "page request capacity exceeded",
-              {
-                cursor,
-                limit: validatedPolicy.maximumPageRequests,
-                observed: pageRequests + 1,
-              },
+            throw capacityError(
+              "page request",
+              validatedPolicy.maximumPageRequests,
+              pageRequests + 1,
             );
           }
           if (
             retainedCursorCodeUnits >
             validatedPolicy.maximumRetainedCursorCodeUnits - cursor.length
           ) {
-            throw new PaginationError(
-              PaginationViolation.cursorRetentionExceeded,
-              "retained cursor capacity exceeded",
-              {
-                cursor,
-                limit: validatedPolicy.maximumRetainedCursorCodeUnits,
-                observed: retainedCursorCodeUnits + cursor.length,
-              },
+            throw capacityError(
+              "retained cursor",
+              validatedPolicy.maximumRetainedCursorCodeUnits,
+              retainedCursorCodeUnits + cursor.length,
             );
           }
           seen.add(cursor);
@@ -171,13 +132,10 @@ export function createAutoPagingPromise<P extends CursorPage>(
     const result: PageItem<P>[] = [];
     for await (const page of pages()) {
       if (result.length > validatedPolicy.maximumCollectedRows - page.data.length) {
-        throw new PaginationError(
-          PaginationViolation.collectionCapacityExceeded,
-          "collection row capacity exceeded",
-          {
-            limit: validatedPolicy.maximumCollectedRows,
-            observed: result.length + page.data.length,
-          },
+        throw capacityError(
+          "collection row",
+          validatedPolicy.maximumCollectedRows,
+          result.length + page.data.length,
         );
       }
       result.push(...(page.data as PageItem<P>[]));
@@ -206,9 +164,5 @@ function cursorSizeError(
   policy: Readonly<PaginationPolicy>,
 ): PaginationError | undefined {
   if (cursor === undefined || cursor.length <= policy.maximumCursorCodeUnits) return undefined;
-  return new PaginationError(PaginationViolation.cursorTooLarge, "cursor capacity exceeded", {
-    cursor,
-    limit: policy.maximumCursorCodeUnits,
-    observed: cursor.length,
-  });
+  return capacityError("cursor", policy.maximumCursorCodeUnits, cursor.length);
 }

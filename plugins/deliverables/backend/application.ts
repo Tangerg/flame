@@ -1,9 +1,5 @@
 import { ASSET_MIME } from "../contracts/media";
-import {
-  Refusal,
-  canonicalJSON,
-  type CallContext,
-} from "@flame/backend-sdk/mcp";
+import { canonicalJSON, type CallContext } from "@flame/backend-sdk/mcp";
 import { toolCommandId } from "@flame/backend-sdk";
 import { z } from "zod";
 import { schemas, METHODS, type DocumentRead } from "../contracts/capability";
@@ -16,6 +12,7 @@ import { Engine } from "./engine";
 import { catalog, hasPNGSignature } from "./formats";
 import { Formats } from "./format-process";
 import { RevisionPreparation, retainedJSON } from "./revision-preparation";
+import { refusal } from "./refusal";
 
 type Input = Record<string, unknown>;
 export type Operation = keyof typeof METHODS;
@@ -30,7 +27,7 @@ export function decodeInput(schema: z.ZodType, value: unknown): unknown {
 function base64(value: string): Uint8Array {
   const result = Buffer.from(value, "base64");
   if (!result.byteLength || result.toString("base64") !== value)
-    throw new Refusal(
+    throw refusal(
       "invalid_chunk",
       "upload chunk requires nonempty canonical base64",
     );
@@ -100,7 +97,7 @@ export class Application {
           .assessments(value.id, value.revision)
           .find((entry) => entry.id === value.assessmentId);
         if (!result)
-          throw new Refusal(
+          throw refusal(
             "assessment_not_found",
             "assessment was not found for the exact native revision",
           );
@@ -159,7 +156,7 @@ export class Application {
       file.metadata.size > LIMITS.previewFileBytes ||
       !hasPNGSignature(file.bytes)
     )
-      throw new Refusal(
+      throw refusal(
         "invalid_page",
         "preview requires a retained PNG page of at most 4 MiB",
       );
@@ -308,13 +305,13 @@ export class Application {
       value.revision ?? header.head,
     );
     if (source.metadata.format !== format)
-      throw new Refusal(
+      throw refusal(
         "invalid_format",
         `${noun} projection requires a native ${format.toUpperCase()} revision`,
       );
     const layoutJSON = canonicalJSON(await project(source.bytes));
     if (Buffer.byteLength(layoutJSON) > LIMITS.reportBytes)
-      throw new Refusal(
+      throw refusal(
         "report_capacity",
         `${noun} projection exceeds its report capacity`,
       );

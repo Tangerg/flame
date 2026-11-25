@@ -17,6 +17,7 @@ import type { ToolReceipt } from "@flame/backend-sdk";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { admitToolResult, projectToolOutput } from "./tool-result";
 import { evidenceBytes, receiptUsageSQL } from "./receiptEvidence";
+import { refusal } from "./refusal";
 
 export interface ReceiptLimits {
   readonly maxRecords: number;
@@ -96,7 +97,7 @@ function evidence(
   const owner = canonicalJSON(original.invocation);
   const bytes = evidenceBytes({ ...original, invocation: owner });
   if (bytes > limits.maxInputBytes)
-    throw new Refusal(
+    throw refusal(
       "input_capacity",
       "computer input capacity exceeded by original command evidence",
     );
@@ -300,7 +301,7 @@ export class Receipts {
         BigInt(usage.count as bigint) >= BigInt(maxRecords) ||
         BigInt(usage.bytes as bigint) + BigInt(added) > BigInt(maxBytes)
       )
-        throw new Refusal(
+        throw refusal(
           "receipt_capacity",
           "computer receipt capacity exceeded; retained evidence was not removed",
         );
@@ -418,20 +419,14 @@ export class Receipts {
       input.limit > this.#limits.maxRecords ||
       (input.before !== undefined && !validCommand(input.before))
     )
-      throw new Refusal(
-        "invalid_receipt_page",
-        "receipt page bounds are invalid",
-      );
+      throw refusal("invalid_receipt_page", "receipt page bounds are invalid");
     const cursor = input.before
       ? this.#db
           .prepare("SELECT sequence FROM commands WHERE id=?")
           .get(input.before)
       : undefined;
     if (input.before && !cursor)
-      throw new Refusal(
-        "receipt_not_found",
-        "receipt page cursor does not exist",
-      );
+      throw refusal("receipt_not_found", "receipt page cursor does not exist");
     const headers =
       "id,kind,method,admitted_at,dispatched,outcome IS NOT NULL AS settled";
     const rows = cursor

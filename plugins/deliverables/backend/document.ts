@@ -1,6 +1,6 @@
 import { MIME } from "../contracts/media";
 import { createHash } from "node:crypto";
-import { Refusal, canonicalJSON } from "@flame/backend-sdk/mcp";
+import { canonicalJSON } from "@flame/backend-sdk/mcp";
 import {
   schemas,
   type Header,
@@ -8,6 +8,7 @@ import {
   type Provenance,
 } from "../contracts/capability";
 import type { Format } from "../contracts/content";
+import { refusal } from "./refusal";
 
 export function digest(bytes: Uint8Array | string): string {
   return createHash("sha256").update(bytes).digest("hex");
@@ -95,7 +96,7 @@ export class Document {
 
   requireHead(expected: string): void {
     if (this.#header.head !== expected)
-      throw new Refusal(
+      throw refusal(
         "revision_conflict",
         "the deliverable changed; inspect its current revision before editing",
       );

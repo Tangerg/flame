@@ -1,4 +1,4 @@
-import { canonicalJSON, parseJSON, Refusal } from "@flame/backend-sdk/mcp";
+import { canonicalJSON, parseJSON } from "@flame/backend-sdk/mcp";
 import { projectNumbers } from "@frame/sdk/json";
 import { z } from "zod";
 import {
@@ -17,6 +17,7 @@ import { MODEL_LIMITS } from "../contracts/limits";
 import type { Application, Operation } from "./application";
 import type { Reply } from "./archive";
 import { project, selectedPath, selection, size } from "./model-view";
+import { refusal } from "./refusal";
 
 // A model never names a Project; the Run's captured one scopes these calls.
 export const modelInputs = {
@@ -167,7 +168,7 @@ function catalogSource(
     };
   if (section === "engines" || section === "limits") {
     if (format)
-      throw new Refusal(
+      throw refusal(
         "invalid_projection",
         "engine and limit views do not select a format",
       );
@@ -176,7 +177,7 @@ function catalogSource(
     );
   }
   if (!format)
-    throw new Refusal(
+    throw refusal(
       "invalid_projection",
       "select one format before reading its schema or example",
     );
@@ -186,7 +187,7 @@ function catalogSource(
     example: format.exampleJSON,
   }[section];
   if (original === undefined)
-    throw new Refusal(
+    throw refusal(
       "unsupported_format_operation",
       "the selected format does not define this operation",
     );
@@ -210,7 +211,7 @@ async function catalogProjection(
     request.format &&
     formats.find((format) => format.format === request.format);
   if (request.format && !format)
-    throw new Refusal(
+    throw refusal(
       "unsupported_format",
       "format is not in the original catalog",
     );
@@ -236,7 +237,7 @@ async function documentProjection(
     request.path !== undefined &&
     (request.revision === undefined || request.sourceSha256 === undefined)
   )
-    throw new Refusal(
+    throw refusal(
       "revision_required",
       "read a summary first, then pin its exact revision and sourceSha256 for inspection paging",
     );
@@ -251,7 +252,7 @@ async function documentProjection(
     request.sourceSha256 !== undefined &&
     request.sourceSha256 !== retained.revision.sha256
   )
-    throw new Refusal(
+    throw refusal(
       "source_conflict",
       "the retained revision differs from the expected source SHA-256",
     );
@@ -339,7 +340,7 @@ async function assessmentProjection(
   };
 }
 
-type LayoutOperation = "slides" | "sheets" | "blocks";
+type LayoutOperation = Extract<Operation, "slides" | "sheets" | "blocks">;
 
 // A model reads an outline first, then pages one exact revision's layout by path.
 async function layoutProjection<T>(
@@ -356,7 +357,7 @@ async function layoutProjection<T>(
     request.path !== undefined &&
     (request.revision === undefined || request.sourceSha256 === undefined)
   )
-    throw new Refusal(
+    throw refusal(
       "revision_required",
       "read an outline first, then pin its exact revision and sourceSha256 for layout paging",
     );
@@ -371,7 +372,7 @@ async function layoutProjection<T>(
     request.sourceSha256 !== undefined &&
     request.sourceSha256 !== retained.sourceSha256
   )
-    throw new Refusal(
+    throw refusal(
       "source_conflict",
       "the retained revision differs from the expected source SHA-256",
     );

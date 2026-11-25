@@ -3,6 +3,16 @@ import { isBuiltin } from "node:module";
 import { dirname, extname, join, resolve } from "node:path";
 import { parseSync, transform } from "rolldown/utils";
 
+// The AST field that names the module each import or export form loads.
+const SPECIFIER_FIELDS = new Map([
+  ["ImportDeclaration", "source"],
+  ["ExportAllDeclaration", "source"],
+  ["ExportNamedDeclaration", "source"],
+  ["ImportExpression", "source"],
+  ["TSImportType", "source"],
+  ["TSExternalModuleReference", "expression"],
+]);
+
 function packageName(specifier) {
   if (isBuiltin(specifier) || specifier.startsWith(".")) return;
   const parts = specifier.split("/");
@@ -48,36 +58,22 @@ function fileDependencies(code, filename, lang, test = false) {
     const name = packageName(source.value);
     if (name) found.add(name);
   };
+  const requireSpecifier = (node) => {
+    if (
+      node.type !== "CallExpression" ||
+      node.callee.type !== "Identifier" ||
+      node.callee.name !== "require"
+    )
+      return undefined;
+    if (node.arguments.length !== 1)
+      throw new Error(`invalid author require: ${filename}`);
+    return node.arguments[0];
+  };
   function visit(node) {
     if (!node || typeof node !== "object") return;
-    switch (node.type) {
-      case "ImportDeclaration":
-      case "ExportAllDeclaration":
-        add(node.source);
-        break;
-      case "ExportNamedDeclaration":
-        if (node.source) add(node.source);
-        break;
-      case "ImportExpression":
-        add(node.source);
-        break;
-      case "TSImportType":
-        add(node.source);
-        break;
-      case "TSExternalModuleReference":
-        add(node.expression);
-        break;
-      case "CallExpression":
-        if (
-          node.callee.type === "Identifier" &&
-          node.callee.name === "require"
-        ) {
-          if (node.arguments.length !== 1)
-            throw new Error(`invalid author require: ${filename}`);
-          add(node.arguments[0]);
-        }
-        break;
-    }
+    const field = SPECIFIER_FIELDS.get(node.type);
+    const specifier = field ? node[field] : requireSpecifier(node);
+    if (specifier) add(specifier);
     for (const [key, child] of Object.entries(node)) {
       if (["loc", "start", "end"].includes(key)) continue;
       if (Array.isArray(child)) child.forEach(visit);

@@ -18,6 +18,7 @@ import {
   type Revision,
 } from "../contracts/capability";
 import { Document, digest } from "./document";
+import { refusal } from "./refusal";
 
 export interface Original {
   id: string;
@@ -110,7 +111,7 @@ export class Archive {
       )
       .get()!;
     if ((usage.used as bigint) > BigInt(LIMITS.archiveBytes))
-      throw new Refusal(
+      throw refusal(
         "archive_capacity",
         "deliverable archive capacity is exhausted; remove retained files or discard uploads",
       );
@@ -147,7 +148,7 @@ export class Archive {
       Buffer.byteLength(original.input) >
       LIMITS.inputBytes + LIMITS.chunkBytes
     )
-      throw new Refusal(
+      throw refusal(
         "input_capacity",
         "original input exceeds the deliverable command capacity",
       );
@@ -179,7 +180,7 @@ export class Archive {
         pending >=
         BigInt(LIMITS.pendingCommands - (capacity === "ordinary" ? 1 : 0))
       )
-        throw new Refusal(
+        throw refusal(
           "receipt_capacity",
           "too many pending deliverable operations",
         );
@@ -214,7 +215,7 @@ export class Archive {
     } catch (cause) {
       const outcome =
         signal.aborted && cause === signal.reason
-          ? new Refusal(
+          ? refusal(
               "cancelled",
               "deliverable command cancelled before publication",
             )
@@ -266,8 +267,7 @@ export class Archive {
     const row = this.#db
       .prepare("SELECT header FROM documents WHERE id=?")
       .get(id);
-    if (!row)
-      throw new Refusal("document_not_found", "deliverable was not found");
+    if (!row) throw refusal("document_not_found", "deliverable was not found");
     const owner = new Document(json(row.header) as Header);
     if (owner.snapshot().id !== id)
       throw new Error("deliverables: document identity is corrupt");
@@ -287,7 +287,7 @@ export class Archive {
       .prepare("SELECT * FROM revisions WHERE document_id=? AND id=?")
       .get(documentId, id);
     if (!row)
-      throw new Refusal(
+      throw refusal(
         "revision_not_found",
         "native revision was not found in this deliverable",
       );
@@ -334,7 +334,7 @@ export class Archive {
     const count = this.#db.prepare("SELECT count(*) AS n FROM revisions").get()!
       .n as bigint;
     if (count >= BigInt(LIMITS.revisions))
-      throw new Refusal(
+      throw refusal(
         "revision_capacity",
         "retained revision capacity is exhausted",
       );
@@ -355,7 +355,7 @@ export class Archive {
         (this.#db.prepare("SELECT count(*) AS n FROM documents").get()!
           .n as bigint) >= BigInt(LIMITS.documents)
       )
-        throw new Refusal(
+        throw refusal(
           "document_capacity",
           "retained deliverable capacity is exhausted",
         );
@@ -389,7 +389,7 @@ export class Archive {
           .get(before)
       : undefined;
     if (before && !cursor)
-      throw new Refusal(
+      throw refusal(
         "cursor_not_found",
         "deliverable cursor is no longer retained",
       );
@@ -429,7 +429,7 @@ export class Archive {
           .get(before, documentId)
       : undefined;
     if (before && !cursor)
-      throw new Refusal(
+      throw refusal(
         "cursor_not_found",
         "revision cursor was not found in this deliverable",
       );
@@ -473,7 +473,7 @@ export class Archive {
       source.metadata.sha256 !== value.sourceSha256 ||
       this.assessments(documentId, value.revision).length >= LIMITS.assessments
     )
-      throw new Refusal(
+      throw refusal(
         "assessment_capacity",
         "source identity differs or retained assessment capacity is exhausted",
       );
@@ -529,7 +529,7 @@ export class Archive {
       .prepare("SELECT metadata,bytes FROM assets WHERE id=?")
       .get(id);
     if (!row)
-      throw new Refusal(
+      throw refusal(
         "asset_not_found",
         "deliverable asset is no longer retained",
       );
@@ -555,7 +555,7 @@ export class Archive {
       )
       .all(offset + 1, length, id, offset + 1, length, id);
     if (!rows.length)
-      throw new Refusal(
+      throw refusal(
         "asset_not_found",
         "deliverable asset is no longer retained",
       );
@@ -568,7 +568,7 @@ export class Archive {
         "deliverables: chunk metadata differs from its byte owner",
       );
     if (offset > metadata.size)
-      throw new Refusal(
+      throw refusal(
         "download_offset",
         "download offset exceeds the exact asset size",
       );
@@ -595,10 +595,7 @@ export class Archive {
   #uploadHeader(id: string) {
     const row = this.#db.prepare(uploadHeaders + " WHERE u.id=?").get(id);
     if (!row)
-      throw new Refusal(
-        "upload_not_found",
-        "staging upload is no longer retained",
-      );
+      throw refusal("upload_not_found", "staging upload is no longer retained");
     return this.#uploadMetadata(row);
   }
 
@@ -630,7 +627,7 @@ export class Archive {
   beginUpload(id: string, size: number, hash: string) {
     this.#writing();
     if (this.uploads().length >= LIMITS.uploads)
-      throw new Refusal(
+      throw refusal(
         "upload_capacity",
         "discard a staging upload before starting another",
       );
@@ -644,7 +641,7 @@ export class Archive {
     this.#writing();
     const current = this.#uploadHeader(id);
     if (current.received !== offset)
-      throw new Refusal(
+      throw refusal(
         "upload_offset",
         "upload offset differs from its acknowledged bytes",
       );
@@ -653,7 +650,7 @@ export class Archive {
       content.byteLength > LIMITS.chunkBytes ||
       offset + content.byteLength > current.size
     )
-      throw new Refusal(
+      throw refusal(
         "upload_capacity",
         "chunk exceeds its declared upload capacity",
       );
@@ -670,10 +667,7 @@ export class Archive {
     if (
       this.#db.prepare("DELETE FROM uploads WHERE id=?").run(id).changes !== 1n
     )
-      throw new Refusal(
-        "upload_not_found",
-        "staging upload is no longer retained",
-      );
+      throw refusal("upload_not_found", "staging upload is no longer retained");
     return true;
   }
 

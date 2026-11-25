@@ -426,7 +426,6 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
         `http ${res.status}: ${detail}${requestId ? ` (request ${requestId})` : ""}`,
         res.status,
         requestId,
-        problem?.type,
       );
       endSpan(span, err);
       throw err;

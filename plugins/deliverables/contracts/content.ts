@@ -419,7 +419,15 @@ const reorderSlides = z.strictObject({
   ids: z.array(z.string().min(1).max(1024)).min(1).max(2000),
 });
 const elementId = z.string().min(1).max(1024);
-const paragraphStyle = z.enum(["Normal", "Heading1", "Heading2", "Heading3"]);
+export const PARAGRAPH_STYLES = [
+  "Normal",
+  "Heading1",
+  "Heading2",
+  "Heading3",
+] as const;
+// A paragraph that names no style is Normal, which OOXML leaves unwritten.
+export const DEFAULT_PARAGRAPH_STYLE = PARAGRAPH_STYLES[0];
+const paragraphStyle = z.enum(PARAGRAPH_STYLES);
 const blockId = z.string().min(1).max(1024);
 const blockExpect = z.string().regex(/^[0-9a-f]{64}$/u);
 export const documentEditSchema = z.strictObject({

@@ -21,6 +21,7 @@ import {
   DraftToolbar,
   Reconcile,
   RevisionNotices,
+  selectionPreamble,
   useHandoff,
   useLiveEditor,
   type LiveState,
@@ -70,9 +71,7 @@ function selectionReference(
       .replace(/\s+/gu, " ")
       .trim(),
     text: [
-      "Flame deliverable selection",
-      `Document: ${JSON.stringify(document.document.title)} (${document.document.id})`,
-      `Revision: ${document.revision.id}`,
+      ...selectionPreamble(document),
       `Sheet: ${JSON.stringify(sheet.name)} (${sheet.id})`,
       `Range: ${area}`,
       ...(listed.length

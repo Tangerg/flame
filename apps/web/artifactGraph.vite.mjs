@@ -22,6 +22,14 @@ function artifactPath(url, document = "index.html", base = "/") {
   return pathname.slice(prefix.length);
 }
 
+const EXECUTABLE_SCRIPT_TYPES = ["", "module", "text/javascript", "application/javascript"];
+const LINK_GROUPS = [
+  ["modulepreload", "modulepreloads"],
+  ["stylesheet", "stylesheets"],
+  ["preload", "preload"],
+  ["prefetch", "prefetch"],
+];
+
 export function artifactDocument(html, base = "/") {
   const document = {
     scripts: [],
@@ -31,38 +39,34 @@ export function artifactDocument(html, base = "/") {
     prefetch: [],
     imports: {},
   };
+  const path = (url) => artifactPath(url, "index.html", base);
+  const readScript = (node, attrs) => {
+    const type = (attrs.type ?? "").toLowerCase();
+    if (type === "importmap") {
+      Object.assign(
+        document.imports,
+        JSON.parse((node.childNodes ?? []).map((n) => n.value ?? "").join("")).imports,
+      );
+      return;
+    }
+    if (!EXECUTABLE_SCRIPT_TYPES.includes(type)) return;
+    if (!attrs.src) throw new Error("executable inline scripts need an emitted module graph");
+    document.scripts.push({ path: path(attrs.src), module: type === "module" });
+  };
+  const readLink = (attrs) => {
+    const rel = (attrs.rel ?? "").toLowerCase().split(/\s+/);
+    for (const [token, key] of LINK_GROUPS)
+      if (rel.includes(token)) document[key].push(path(attrs.href));
+  };
   const visit = (node) => {
     const attrs = Object.fromEntries((node.attrs ?? []).map(({ name, value }) => [name, value]));
-    if (node.tagName === "script") {
-      const type = (attrs.type ?? "").toLowerCase();
-      if (type === "importmap") {
-        Object.assign(
-          document.imports,
-          JSON.parse((node.childNodes ?? []).map((n) => n.value ?? "").join("")).imports,
-        );
-      } else if (["", "module", "text/javascript", "application/javascript"].includes(type)) {
-        if (!attrs.src) throw new Error("executable inline scripts need an emitted module graph");
-        document.scripts.push({
-          path: artifactPath(attrs.src, "index.html", base),
-          module: type === "module",
-        });
-      }
-    }
-    if (node.tagName === "link" && attrs.href) {
-      const rel = (attrs.rel ?? "").toLowerCase().split(/\s+/);
-      for (const [token, key] of [
-        ["modulepreload", "modulepreloads"],
-        ["stylesheet", "stylesheets"],
-        ["preload", "preload"],
-        ["prefetch", "prefetch"],
-      ])
-        if (rel.includes(token)) document[key].push(artifactPath(attrs.href, "index.html", base));
-    }
+    if (node.tagName === "script") readScript(node, attrs);
+    if (node.tagName === "link" && attrs.href) readLink(attrs);
     if (node.tagName !== "template") for (const child of node.childNodes ?? []) visit(child);
   };
   visit(parse(html));
   for (const [specifier, url] of Object.entries(document.imports))
-    document.imports[specifier] = artifactPath(url, "index.html", base);
+    document.imports[specifier] = path(url);
   return document;
 }
 
@@ -149,23 +153,25 @@ export function artifactGraph() {
         );
         const consumed = new Set();
         const imports = [];
-        const visit = (node) => {
-          if (!node || typeof node !== "object") return;
+        const annotate = (node) => {
           const source =
             node.type === "ImportDeclaration" || node.type === "ImportExpression"
               ? node.source
               : undefined;
-          if (source) {
-            const notes = markers.filter(
-              (comment) => comment.start >= node.start && comment.end <= source.start,
-            );
-            for (const comment of notes) {
-              if (notes.length !== 1 || source.type !== "StringLiteral")
-                throw new Error(`artifact annotation needs one literal import: ${id}`);
-              consumed.add(comment);
-              imports.push(artifactDeclaration(comment.value.trim(), node.type, source.value));
-            }
+          if (!source) return;
+          const notes = markers.filter(
+            (comment) => comment.start >= node.start && comment.end <= source.start,
+          );
+          for (const comment of notes) {
+            if (notes.length !== 1 || source.type !== "StringLiteral")
+              throw new Error(`artifact annotation needs one literal import: ${id}`);
+            consumed.add(comment);
+            imports.push(artifactDeclaration(comment.value.trim(), node.type, source.value));
           }
+        };
+        const visit = (node) => {
+          if (!node || typeof node !== "object") return;
+          annotate(node);
           for (const [key, child] of Object.entries(node)) {
             if (key === "loc" || key.endsWith("Comments") || key === "comments") continue;
             if (Array.isArray(child)) child.forEach(visit);

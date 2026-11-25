@@ -1,10 +1,10 @@
 import { constants } from "node:fs";
 import { lstat, mkdir, open, realpath } from "node:fs/promises";
 import { createHash } from "node:crypto";
-import { Refusal } from "@flame/backend-sdk/mcp";
 import { LIMITS } from "../contracts/limits";
 import type { Check } from "../contracts/evidence";
 import { hasErrorCode } from "./engine-installation";
+import { refusal } from "./refusal";
 
 export interface RenderFile {
   filename: string;
@@ -25,7 +25,7 @@ export async function checkedDirectory(path: string): Promise<void> {
     (info.mode & 0o077) !== 0 ||
     (process.getuid && info.uid !== process.getuid())
   )
-    throw new Refusal(
+    throw refusal(
       "engine_private_directory",
       "The rendering directory must be a canonical private directory owned by this process.",
     );
@@ -42,7 +42,7 @@ export async function readOutput(
     // files first, and keep the descriptor nonblocking across the final check.
     const entry = await lstat(path);
     if (!entry.isFile() || entry.isSymbolicLink())
-      throw new Refusal(
+      throw refusal(
         "engine_output_missing",
         "The rendering process did not produce the required regular output file.",
       );
@@ -52,7 +52,7 @@ export async function readOutput(
     );
   } catch (cause) {
     if (hasErrorCode(cause, "ENOENT", "ELOOP"))
-      throw new Refusal(
+      throw refusal(
         "engine_output_missing",
         "The rendering process did not produce the required regular output file.",
       );
@@ -66,13 +66,13 @@ export async function readOutput(
       (expected === "content" && info.size === 0) ||
       info.size > maximum
     )
-      throw new Refusal(
+      throw refusal(
         "engine_output_limit",
         "The rendering output is empty, linked, or exceeds its admitted byte limit.",
       );
     const bytes = await handle.readFile();
     if (bytes.byteLength !== info.size || bytes.byteLength > maximum)
-      throw new Refusal(
+      throw refusal(
         "engine_output_changed",
         "The rendering output changed after its process exited.",
       );
@@ -84,7 +84,7 @@ export async function readOutput(
 
 export function pdf(bytes: Uint8Array): void {
   if (Buffer.from(bytes.subarray(0, 5)).toString("ascii") !== "%PDF-")
-    throw new Refusal(
+    throw refusal(
       "engine_output_invalid",
       "The renderer did not produce a PDF file.",
     );
@@ -101,7 +101,7 @@ export function png(bytes: Uint8Array): void {
     value.toString("ascii", 12, 16) !== "IHDR" ||
     value.toString("ascii", value.length - 8, value.length - 4) !== "IEND"
   )
-    throw new Refusal(
+    throw refusal(
       "engine_preview_invalid",
       "The renderer did not produce a complete PNG preview.",
     );
@@ -113,7 +113,7 @@ export function png(bytes: Uint8Array): void {
     width > LIMITS.previewPixels ||
     height > LIMITS.previewPixels
   )
-    throw new Refusal(
+    throw refusal(
       "engine_preview_limit",
       "The page preview exceeds its admitted pixel dimensions.",
     );
@@ -127,7 +127,7 @@ export function pageCount(pdfinfo: string): number {
   const match = /^Pages:\s+([1-9][0-9]*)\s*$/m.exec(pdfinfo);
   const count = match ? Number(match[1]) : NaN;
   if (!Number.isSafeInteger(count) || count < 1 || count > LIMITS.renderPages)
-    throw new Refusal(
+    throw refusal(
       "engine_page_limit",
       `The PDF must contain between 1 and ${LIMITS.renderPages} pages.`,
     );

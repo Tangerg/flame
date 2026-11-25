@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/runoutcome"
 )
 
 //flame:enum
@@ -191,12 +192,12 @@ type ArtifactOutcome struct {
 type ArtifactOutcomeType string
 
 const (
-	ArtifactOutcomeCompleted ArtifactOutcomeType = "completed"
-	ArtifactOutcomeTimedOut  ArtifactOutcomeType = "timedOut"
-	ArtifactOutcomeFailed    ArtifactOutcomeType = "failed"
+	ArtifactOutcomeCompleted = ArtifactOutcomeType(runoutcome.Completed)
+	ArtifactOutcomeTimedOut  = ArtifactOutcomeType(runoutcome.TimedOut)
+	ArtifactOutcomeFailed    = ArtifactOutcomeType(runoutcome.Failed)
 
-	ArtifactOutcomeCanceled ArtifactOutcomeType = "canceled"
-	ArtifactOutcomeLost     ArtifactOutcomeType = "lost"
+	ArtifactOutcomeCanceled = ArtifactOutcomeType(runoutcome.Canceled)
+	ArtifactOutcomeLost     = ArtifactOutcomeType(runoutcome.Lost)
 )
 
 type ArtifactItem struct {

@@ -4,6 +4,7 @@ import { setTimeout as delay } from "node:timers/promises";
 import { Refusal } from "@flame/backend-sdk/mcp";
 import { LIMITS } from "../contracts/limits";
 import type { ProcessPlan } from "./confinement";
+import { refusal } from "./refusal";
 
 export class UnconfirmedProcessExit extends Error {}
 
@@ -83,7 +84,7 @@ function admittedInput(
 ): Buffer | undefined {
   if (input === undefined) return undefined;
   if (!(input instanceof Uint8Array) || input.byteLength > limit)
-    throw new Refusal(
+    throw refusal(
       "process_input_limit",
       "The confined process input exceeds its admitted byte limit.",
     );
@@ -104,7 +105,7 @@ async function watchResidentMemory(
       const bytes = await residentBytes(pid);
       if (signal.aborted) return;
       if (bytes > limit)
-        throw new Refusal(
+        throw refusal(
           "process_memory_limit",
           "The confined process exceeded its resident memory limit.",
         );
@@ -120,7 +121,7 @@ async function watchResidentMemory(
       cause instanceof Refusal
         ? cause
         : Object.assign(
-            new Refusal(
+            refusal(
               "process_resources_unavailable",
               "The confined process memory could not be measured.",
             ),
@@ -205,7 +206,7 @@ export async function runProcess(
     if (stream === "stderr") errorSize += chunk.byteLength;
     else outputSize += chunk.byteLength;
     if (outputSize > outputLimit || errorSize > errorLimit) {
-      failure ??= new Refusal(
+      failure ??= refusal(
         "process_output_limit",
         "The confined process exceeded its admitted stream byte limit.",
       );
@@ -219,7 +220,7 @@ export async function runProcess(
   for (const stream of [child.stdout!, child.stderr!])
     stream.once("error", (cause: unknown) => {
       failure ??= Object.assign(
-        new Refusal(
+        refusal(
           "process_output_failed",
           "The confined process output could not be read completely.",
         ),
@@ -229,7 +230,7 @@ export async function runProcess(
     });
   const closed = new Promise<number | null>((resolve) => {
     child.once("error", (cause) => {
-      failure ??= new Refusal(
+      failure ??= refusal(
         "process_unavailable",
         "The configured confinement tool could not be started.",
       );
@@ -268,7 +269,7 @@ export async function runProcess(
     child.stdin!.once("error", (cause: unknown) => {
       if (signal.aborted || exited) return;
       failure ??= Object.assign(
-        new Refusal(
+        refusal(
           "process_input_failed",
           "The confined process did not accept its complete input.",
         ),
@@ -289,12 +290,12 @@ export async function runProcess(
     if (failure) throw failure;
     signal.throwIfAborted();
     if (!inputFinished)
-      throw new Refusal(
+      throw refusal(
         "process_input_failed",
         "The confined process closed before its complete input was written.",
       );
     if (status !== 0)
-      throw new Refusal(
+      throw refusal(
         "process_failed",
         `The confined process failed (exit ${status ?? "signal"}).`,
       );

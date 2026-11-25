@@ -1,7 +1,8 @@
-import { canonicalJSON, Refusal } from "@flame/backend-sdk/mcp";
+import { canonicalJSON } from "@flame/backend-sdk/mcp";
 import { isJSONNumber } from "@frame/sdk/json";
 import { z } from "zod";
 import { LIMITS, MODEL_LIMITS } from "../contracts/limits";
+import { refusal } from "./refusal";
 
 export const selection = {
   path: z
@@ -74,7 +75,7 @@ function omitted(value: unknown) {
 export function selectedPath(selected: Selection): string[] {
   const path = selected.path ?? [];
   if (size(path) > MODEL_LIMITS.pathBytes)
-    throw new Refusal(
+    throw refusal(
       "projection_path_capacity",
       "inspection path exceeds its byte capacity",
     );
@@ -82,7 +83,7 @@ export function selectedPath(selected: Selection): string[] {
     selected.path === undefined &&
     (selected.offset !== undefined || selected.limit !== undefined)
   )
-    throw new Refusal(
+    throw refusal(
       "invalid_projection",
       "offset and limit require an explicit path",
     );
@@ -98,7 +99,7 @@ function atPath(value: unknown, path: string[]): unknown {
         !Number.isSafeInteger(Number(key)) ||
         Number(key) >= source.length
       )
-        throw new Refusal(
+        throw refusal(
           "inspection_path_not_found",
           "array index is outside the exact retained inspection",
         );
@@ -106,7 +107,7 @@ function atPath(value: unknown, path: string[]): unknown {
     } else if (record(source) && Object.hasOwn(source, key))
       source = source[key];
     else
-      throw new Refusal(
+      throw refusal(
         "inspection_path_not_found",
         "path is not present in the exact retained inspection",
       );
@@ -122,7 +123,7 @@ function textPage(
   const offset = selected.offset ?? 0;
   const characters = Array.from(source);
   if (offset > characters.length)
-    throw new Refusal(
+    throw refusal(
       "invalid_projection",
       "text offset exceeds the retained string",
     );
@@ -144,7 +145,7 @@ function textPage(
     if (size(result) <= MODEL_LIMITS.projectionBytes) return result;
     end -= 1;
   } while (end > offset);
-  throw new Refusal(
+  throw refusal(
     "projection_capacity",
     "one text position exceeds the model projection capacity",
   );
@@ -168,13 +169,13 @@ function collectionPage(
     : Object.keys(source).sort();
   const offset = selected.offset ?? 0;
   if (offset > keys.length)
-    throw new Refusal(
+    throw refusal(
       "invalid_projection",
       "collection offset exceeds the retained value",
     );
   const limit = selected.limit ?? MODEL_LIMITS.entries;
   if (limit > MODEL_LIMITS.maximumEntries)
-    throw new Refusal(
+    throw refusal(
       "invalid_projection",
       "collection pages admit at most 32 entries",
     );
@@ -204,7 +205,7 @@ function collectionPage(
       entries.pop();
       next -= 1;
       if (!entries.length)
-        throw new Refusal(
+        throw refusal(
           "projection_capacity",
           "one retained key exceeds the model projection capacity",
         );
@@ -224,6 +225,6 @@ export function project(
   if (Array.isArray(source) || record(source))
     return collectionPage(source, path, selected);
   if ((selected.offset ?? 0) !== 0 || selected.limit !== undefined)
-    throw new Refusal("invalid_projection", "a scalar has no page offsets");
+    throw refusal("invalid_projection", "a scalar has no page offsets");
   return { path, type: kind(source), value: source, complete: true };
 }

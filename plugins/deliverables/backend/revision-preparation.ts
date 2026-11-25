@@ -1,9 +1,5 @@
 import { ASSET_MIME } from "../contracts/media";
-import {
-  Refusal,
-  canonicalJSON,
-  type CallContext,
-} from "@flame/backend-sdk/mcp";
+import { canonicalJSON, type CallContext } from "@flame/backend-sdk/mcp";
 import { z } from "zod";
 import {
   schemas,
@@ -18,11 +14,12 @@ import { Document, digest, filename, revision } from "./document";
 import { Engine } from "./engine";
 import { encodeArchive, type Format } from "./formats";
 import { Formats } from "./format-process";
+import { refusal } from "./refusal";
 
 export function retainedJSON(value: unknown): string {
   const text = canonicalJSON(value);
   if (Buffer.byteLength(text) > LIMITS.reportBytes)
-    throw new Refusal(
+    throw refusal(
       "report_capacity",
       "inspection exceeds the retained evidence capacity",
     );
@@ -141,7 +138,7 @@ export class RevisionPreparation {
       staged.metadata.received !== staged.metadata.size ||
       digest(staged.bytes) !== staged.metadata.sha256
     )
-      throw new Refusal(
+      throw refusal(
         "incomplete_upload",
         "native upload is incomplete or differs from its declared SHA-256",
       );
@@ -161,7 +158,7 @@ export class RevisionPreparation {
     signal: AbortSignal,
   ): Promise<Derived> {
     if (source.format !== "xlsx")
-      throw new Refusal(
+      throw refusal(
         "invalid_format",
         "recalculation requires a native XLSX revision",
       );
@@ -298,7 +295,7 @@ export class RevisionPreparation {
           assessment.id === value.renderId && assessment.kind === "render",
       );
     if (!rendered)
-      throw new Refusal(
+      throw refusal(
         "render_not_found",
         "visual review requires an exact retained render for this revision",
       );
@@ -309,7 +306,7 @@ export class RevisionPreparation {
         (page) => !report.pages.some((entry) => entry.number === page),
       )
     )
-      throw new Refusal(
+      throw refusal(
         "invalid_review",
         "review pages must be unique and belong to the exact render",
       );
@@ -360,7 +357,7 @@ export class RevisionPreparation {
     const source = this.#archive.revision(value.id, value.revision);
     if (value.kind === "csv") {
       if (source.metadata.format !== "xlsx" || !value.sheetPart)
-        throw new Refusal(
+        throw refusal(
           "invalid_csv_source",
           "CSV export requires an XLSX revision and its inspected sheetPart",
         );
@@ -378,7 +375,7 @@ export class RevisionPreparation {
       return this.#attach(value, metadata, bytes);
     }
     if (value.sheetPart !== undefined)
-      throw new Refusal(
+      throw refusal(
         "invalid_export",
         "sheetPart is only meaningful for CSV export",
       );
@@ -393,7 +390,7 @@ export class RevisionPreparation {
       if (source.metadata.format === "pdf") return native;
       const pdf = render?.assets.find((file) => file.mime === ASSET_MIME.pdf);
       if (!pdf)
-        throw new Refusal(
+        throw refusal(
           "render_required",
           "render this exact native revision before exporting its PDF",
         );

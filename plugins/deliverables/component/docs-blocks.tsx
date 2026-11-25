@@ -1,10 +1,13 @@
 import { useRef, useState, type CSSProperties } from "react";
 import type { Translate } from "@flame/component-sdk";
 import { Badge, Button, Metadata, Segmented, Toolbar } from "@flame/ui";
+import {
+  DEFAULT_PARAGRAPH_STYLE,
+  PARAGRAPH_STYLES,
+} from "../contracts/content";
 import type { BlockView, ParagraphView } from "../contracts/layouts";
 import type { Draft } from "./live-draft";
 import {
-  PARAGRAPH_STYLES,
   changeInserted,
   editText,
   remove,
@@ -378,7 +381,7 @@ export function InsertedBlock({
   onSelect(selection: Selection | undefined, editing?: boolean): void;
   t: Translate;
 }) {
-  const style = paragraph.style ?? "Normal";
+  const style = paragraph.style ?? DEFAULT_PARAGRAPH_STYLE;
   const target = { source: "inserted", index } as const;
   return (
     <div
