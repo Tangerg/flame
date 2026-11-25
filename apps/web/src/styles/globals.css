@@ -112,7 +112,6 @@
   --shadow-cast: rgb(0 0 0 / 0.2);
 
   --color-scrim: #00000022;
-  --gauge-track: color-mix(in oklab, currentColor 22%, transparent);
   --scrollbar-thumb: var(--color-control-edge);
   --scrollbar-thumb-strong: var(--color-text);
 

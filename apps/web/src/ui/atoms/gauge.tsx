@@ -1,16 +1,25 @@
 import * as stylex from "@stylexjs/stylex";
 import { clamp01 } from "@/lib/clamp";
 import { clsx } from "clsx";
-const CIRCUMFERENCE = 2 * Math.PI * 6;
+const RING_RADIUS = 6.5;
+const PIE_RADIUS = 4.5;
 
 const styles = stylex.create({
   dial: {
     width: "var(--icon-sm)",
     height: "var(--icon-sm)",
     flexShrink: 0,
-    transform: "rotate(-90deg)",
   },
 });
+
+// A filled sector inside a ring reads as an amount; a stroked arc reads as a spinner.
+function sectorPath(ratio: number): string {
+  const angle = ratio * 2 * Math.PI;
+  const x = 8 + PIE_RADIUS * Math.sin(angle);
+  const y = 8 - PIE_RADIUS * Math.cos(angle);
+  const largeArc = angle > Math.PI ? 1 : 0;
+  return `M8 8 L8 ${8 - PIE_RADIUS} A${PIE_RADIUS} ${PIE_RADIUS} 0 ${largeArc} 1 ${x} ${y} Z`;
+}
 
 export function Gauge({
   value,
@@ -34,23 +43,17 @@ export function Gauge({
       <circle
         cx="8"
         cy="8"
-        r="6"
-        fill="none"
-        stroke="var(--gauge-track)"
-        strokeWidth="2.5"
-        vectorEffect="non-scaling-stroke"
-      />
-      <circle
-        cx="8"
-        cy="8"
-        r="6"
+        r={RING_RADIUS}
         fill="none"
         stroke="currentColor"
-        strokeWidth="2.5"
-        strokeLinecap="round"
-        strokeDasharray={`${ratio * CIRCUMFERENCE} ${CIRCUMFERENCE}`}
+        strokeWidth="1.25"
         vectorEffect="non-scaling-stroke"
       />
+      {ratio >= 1 ? (
+        <circle cx="8" cy="8" r={PIE_RADIUS} fill="currentColor" />
+      ) : ratio > 0 ? (
+        <path d={sectorPath(ratio)} fill="currentColor" />
+      ) : null}
     </svg>
   );
 }
