@@ -176,7 +176,6 @@ function UnsupportedFile({
     <EmptyState
       icon={iconGlyph(fileIconName(path))}
       title={t(fileKind(path) === "image" ? "file.unsupported.image" : "file.unsupported.binary")}
-      sub={t("file.unsupported.sub")}
       action={
         cwd &&
         workspaceAccess.local.available() && (

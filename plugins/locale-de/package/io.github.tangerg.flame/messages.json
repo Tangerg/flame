@@ -902,7 +902,6 @@
   "model.effort.max": "Maximal",
   "file.unsupported.image": "Hier noch keine Bildvorschau",
   "file.unsupported.binary": "Diese Datei ist kein Text",
-  "file.unsupported.sub": "Flame zeigt Arbeitsbereichsdateien als Text. Öffne sie in ihrer eigenen App oder zeige sie im Finder.",
   "file.open": "Öffnen",
   "file.change.add": "Im Arbeitsbaum hinzugefügt",
   "file.change.mod": "Im Arbeitsbaum geändert",

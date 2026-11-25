@@ -967,8 +967,6 @@ export const en = {
   "model.effort.max": "Max",
   "file.unsupported.image": "No image preview here yet",
   "file.unsupported.binary": "This file isn't text",
-  "file.unsupported.sub":
-    "Flame shows workspace files as text. Open it in its own app, or find it in Finder.",
   "file.open": "Open",
   "file.openFailed": "Couldn't open {{path}}. Try again.",
   "file.revealFailed": "Couldn't show {{path}} in Finder. Try again.",
