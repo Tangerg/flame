@@ -26,7 +26,6 @@ type RunMaintenanceResult struct {
 
 type interactionLifecycleHooks interface {
 	BeforeCompaction(ctx context.Context, sessionID identity.SessionID, cwd string) (bool, error)
-	NotifyWaiting(ctx context.Context, sessionID identity.SessionID, cwd string) error
 	NotifyStopped(ctx context.Context, sessionID identity.SessionID, cwd, reason string) error
 }
 

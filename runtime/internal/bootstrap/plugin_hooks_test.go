@@ -4,15 +4,21 @@ import (
 	"context"
 	json "encoding/json/v2"
 	"errors"
+	"io"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/hook"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	adapterhooks "github.com/Tangerg/flame/runtime/internal/adapter/integration/hooks"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	domainhooks "github.com/Tangerg/flame/runtime/internal/domain/integration/hooks"
+	"github.com/Tangerg/scope/core/chatclient"
+	"github.com/fsnotify/fsnotify"
+	"golang.org/x/sys/unix"
 )
 
 func activateHookProvider(t *testing.T, api *delivery.Handler) *protocol.PluginInstallation {
@@ -147,4 +153,116 @@ func TestInstalledHooksAbsenceTrustAndDisablementThroughRuntime(t *testing.T) {
 		t.Fatalf("disabled source or trust changed across restart: %+v %v", view, err)
 	}
 	r.must(delivery.SessionsGet, protocol.GetSessionRequest{SessionID: session.ID}, "")
+}
+
+func TestInstalledWaitingHookSurvivesCancelingTheParkedRun(t *testing.T) {
+	cfg := poMCPConfig(t)
+	model := newLifecycleModel()
+	client, err := chatclient.New(model)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg.modelProviders = testChatResolver(client)
+	const (
+		startedMarker  = "waiting-hook-started"
+		finishedMarker = "waiting-hook-finished"
+		releasePipe    = "waiting-hook-release"
+	)
+	workspace := cfg.defaultWorkspacePath
+	pipePath := filepath.Join(workspace, releasePipe)
+	if err := unix.Mkfifo(pipePath, 0600); err != nil {
+		t.Fatal(err)
+	}
+	pipe, err := os.OpenFile(pipePath, os.O_RDWR, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pipe.Close()
+	command := `printf 'started' > ` + startedMarker +
+		`; IFS= read -r release < ` + releasePipe +
+		`; printf 'finished' > ` + finishedMarker + `; printf '%s' '{}'`
+	rules, err := json.Marshal(map[string]any{"hooks": []any{map[string]string{
+		"event":   string(hook.Notification),
+		"command": command,
+	}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeHookSource(t, cfg.userHome, string(rules))
+	runtime := poMCPOpen(t, cfg)
+	releaseModel := sync.OnceFunc(func() { close(model.releaseFirstCall) })
+	t.Cleanup(releaseModel)
+	activateHookProvider(t, runtime.api)
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := watcher.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
+	if err := watcher.Add(workspace); err != nil {
+		t.Fatal(err)
+	}
+	ctx := protocolLifecycleContext(t.Context())
+	session, err := runtime.api.CreateSession(ctx, protocol.CreateSessionRequest{
+		Workspace: &protocol.WorkspaceRef{Path: workspace}, Title: "waiting notification",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	started, events, err := runtime.api.StartRun(ctx, protocol.StartRunRequest{
+		SessionID: session.ID, Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "Ask a question."}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	parked := collectRunEvents(events)
+	waitForSignal(t, model.firstCallStarted, "the first model call")
+	releaseModel()
+	waitForRunEvents(t, parked, "the completed park")
+	pending, err := runtime.api.ListInterrupts(ctx, protocol.ListInterruptsRequest{RootRunID: started.RunID})
+	if err != nil || len(pending.Data) != 1 || len(pending.Data[0].Interrupts) != 1 {
+		t.Fatalf("the notification has no committed interrupt: %+v, %v", pending, err)
+	}
+	awaitStart, cancelStart := context.WithTimeout(ctx, lifecycleWaitBudget(t))
+	defer cancelStart()
+	if !observeWaitingHook(t, awaitStart, watcher, filepath.Join(workspace, startedMarker)) {
+		t.Fatal("the committed waiting boundary did not reach the installed hook")
+	}
+
+	canceled, err := runtime.api.CancelRun(ctx, protocol.CancelRunRequest{
+		RunID: started.RunID, Reason: "Cancel the parked Run during its notification",
+	})
+	if err != nil || canceled.Run.Outcome == nil || canceled.Run.Outcome.Type != protocol.OutcomeCanceled {
+		t.Fatalf("the running notification blocked cancellation: %+v, %v", canceled, err)
+	}
+	if _, err := io.WriteString(pipe, "continue\n"); err != nil {
+		t.Fatal(err)
+	}
+	awaitFinishing, cancelFinishing := context.WithTimeout(ctx, 3*time.Second)
+	defer cancelFinishing()
+	if !observeWaitingHook(t, awaitFinishing, watcher, filepath.Join(workspace, finishedMarker)) {
+		t.Fatal("retiring the parked executor stopped delivery of its committed waiting notification")
+	}
+}
+
+func observeWaitingHook(t *testing.T, ctx context.Context, watcher *fsnotify.Watcher, marker string) bool {
+	t.Helper()
+	for {
+		if _, err := os.Stat(marker); !errors.Is(err, os.ErrNotExist) {
+			if err != nil {
+				t.Fatal(err)
+			}
+			return true
+		}
+		select {
+		case <-watcher.Events:
+		case err := <-watcher.Errors:
+			t.Fatalf("observe the installed waiting hook: %v", err)
+		case <-ctx.Done():
+			return false
+		}
+	}
 }

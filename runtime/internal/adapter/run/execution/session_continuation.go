@@ -4,10 +4,8 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"log/slog"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-	"github.com/Tangerg/flame/runtime/internal/telemetry"
 
 	scoperun "github.com/Tangerg/scope/agent/run"
 )
@@ -63,20 +61,10 @@ func (i *interactionSession) publishWaitingBoundary() bool {
 	i.state.waitingCheckpoint = checkpoint.Clone()
 	i.state.endBarrierCapture(captured)
 	i.state.mu.Unlock()
-	published := i.lifetime.send(runs.ExecutorEvent{
+	return i.lifetime.send(runs.ExecutorEvent{
 		Member:  i.executorMember(process.ID()),
 		Payload: barrier,
 	})
-	if published {
-		if err := i.lifecycleHooks.NotifyWaiting(
-			i.lifetime.execution, i.start.SessionID, i.start.WorkspaceCWD,
-		); err != nil {
-			slog.ErrorContext(i.lifetime.execution, "execution: notify waiting",
-				telemetry.SessionID(i.start.SessionID), telemetry.Error(err),
-			)
-		}
-	}
-	return published
 }
 
 func (i *interactionSession) stageAcceptedContinuation(checkpoint runs.ExecutorCheckpoint) error {

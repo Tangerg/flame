@@ -81,7 +81,6 @@ func (withoutHooks) AfterToolUse(context.Context, InteractionToolHookInput) erro
 func (withoutHooks) BeforeCompaction(context.Context, identity.SessionID, string) (bool, error) {
 	return true, nil
 }
-func (withoutHooks) NotifyWaiting(context.Context, identity.SessionID, string) error { return nil }
 func (withoutHooks) NotifyStopped(context.Context, identity.SessionID, string, string) error {
 	return nil
 }

@@ -24,6 +24,8 @@ import (
 
 var errPromptRejected = errors.New("execution: prompt rejected by lifecycle hook")
 
+const waitingHookReason = "interrupt"
+
 type WorkingContextConfig struct {
 	UserHome          string
 	Projects          projectReader
@@ -273,7 +275,7 @@ func (w *WorkingContextComposer) NotifyWaiting(
 	ctx context.Context,
 	sessionID identity.SessionID, cwd string,
 ) error {
-	return w.runObserveOnlyHook(ctx, hookdata.Notification, sessionID, cwd, "interrupt")
+	return w.runObserveOnlyHook(ctx, hookdata.Notification, sessionID, cwd, waitingHookReason)
 }
 
 func (w *WorkingContextComposer) NotifyStopped(

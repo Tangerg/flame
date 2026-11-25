@@ -68,11 +68,12 @@ func assembleRuns(
 		return composedRuns{}, fmt.Errorf("runtime: construct Run-segment effects: %w", err)
 	}
 	runFinalizer, err := segment.NewFinalizer(segment.FinalizerConfig{
-		Checkpoints: workspaceServices.checkpoints,
+		Checkpoints:          workspaceServices.checkpoints,
+		WaitingNotifications: execution.workingContexts,
+		Tasks:                runEffectTasks,
 		Titles: segment.TitleMaintenance{
 			Sessions: foundation.sessions,
 			Model:    execution.models.utilityModel,
-			Tasks:    runEffectTasks,
 		},
 	})
 	if err != nil {
