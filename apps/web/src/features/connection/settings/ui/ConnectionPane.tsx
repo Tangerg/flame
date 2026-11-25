@@ -20,6 +20,8 @@ import {
 import { settingStyles as ss } from "@/ui/settings/settingStyles";
 const cp = stylex.create({
   form: { display: "grid", gap: layout.fieldGap, minWidth: 0 },
+  notes: { display: "grid", minWidth: 0 },
+  pending: { margin: 0, marginBottom: { default: space.s1, ":empty": 0 } },
   status: {
     marginTop: space.s1,
     borderRadius: radius.card,
@@ -75,12 +77,6 @@ function rejectionMessage(reason: RuntimeEndpointRejection, translate: Translate
     case "invalid_token":
       return translate("connection.error.token");
   }
-}
-
-// A pending draft replaces the stored token on apply; otherwise report the stored one.
-function tokenStateKey(tokenDraft: string | null, stored: boolean) {
-  if (tokenDraft !== null) return "settings.connection.tokenPending";
-  return stored ? "settings.connection.tokenSet" : "settings.connection.tokenNotSet";
 }
 
 function RuntimeServiceStatus({
@@ -201,7 +197,7 @@ export function ConnectionPane() {
     tokenField.current?.focus();
   };
 
-  const tokenState = tokenStateKey(tokenDraft, hasRuntimeAccessToken());
+  const tokenStored = hasRuntimeAccessToken();
 
   const refresh = async () => {
     setRefreshing(true);
@@ -260,20 +256,28 @@ export function ConnectionPane() {
               onChange={(event) => {
                 setTokenDraft(event.target.value);
               }}
-              placeholder={t("settings.connection.tokenPlaceholder")}
+              // The masked field cannot show a stored token; its placeholder says one exists.
+              placeholder={
+                tokenDraft === null && tokenStored
+                  ? t("settings.connection.tokenReplace")
+                  : undefined
+              }
               spellCheck={false}
             />
           </FormField>
-          <p
-            id="runtime-token-state"
-            aria-live="polite"
-            {...stylex.props(vocab.muted, typeStep.uiSm)}
-          >
-            {t(tokenState)}
-          </p>
-          <p id="runtime-token-hint" {...stylex.props(vocab.muted, typeStep.uiSm)}>
-            {t("settings.connection.tokenHint")}
-          </p>
+          <div {...stylex.props(cp.notes)}>
+            {/* Stays mounted so a pending change is announced; empty, it takes no space. */}
+            <p
+              id="runtime-token-state"
+              aria-live="polite"
+              {...stylex.props(vocab.muted, typeStep.uiSm, cp.pending)}
+            >
+              {tokenDraft !== null && t("settings.connection.tokenPending")}
+            </p>
+            <p id="runtime-token-hint" {...stylex.props(vocab.muted, typeStep.uiSm)}>
+              {t("settings.connection.tokenHint")}
+            </p>
+          </div>
           <FormActions
             label={t("settings.connection.apply")}
             auxiliaryAction={
