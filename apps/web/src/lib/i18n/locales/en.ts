@@ -956,7 +956,6 @@ export const en = {
   "shortcuts.recording": "Press the new keys · Esc to cancel",
   "shortcuts.conflict": "Already used by {{action}}",
   "shortcuts.replace": "Use it here instead",
-  "shortcuts.unbound": "No shortcut",
   "composer.reasoningEffort": "Reasoning effort",
 
   "model.effort.none": "Off",
