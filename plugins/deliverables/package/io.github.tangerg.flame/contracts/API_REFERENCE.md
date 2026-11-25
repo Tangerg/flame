@@ -6,6 +6,7 @@ Generated from the feature's Go-owned method contracts.
 | --- | --- | --- | --- |
 | `flame.deliverables/append.v1` | command | installation | Append one canonical base64 chunk at the exact acknowledged upload offset. Reuse the original command receipt after transport loss, never invent a retry identity. |
 | `flame.deliverables/assessment.v1` | query | installation | Read one exact render or review report. List headers are projections and do not carry another mutable assessment. |
+| `flame.deliverables/blocks.v1` | query | installation | Project a DOCX revision's body blocks from its native bytes: paragraphs with style, list and alignment facts and their text runs, tables and other blocks, each with the block id and exact-XML expect that block edits name. Omitting revision reads the current head once. |
 | `flame.deliverables/catalog.v1` | query | installation | Read the exact supported native creation/edit schemas, format limits and configured rendering engines before creating or editing deliverables. |
 | `flame.deliverables/create.v1` | command | installation | Create an editable DOCX, XLSX or PPTX from the catalog's content schema. Author provenance is not independently verified evidence. Formula results require explicit recalculation. |
 | `flame.deliverables/discard.v1` | command | installation | Discard the specified staging upload. This does not remove a published deliverable. |

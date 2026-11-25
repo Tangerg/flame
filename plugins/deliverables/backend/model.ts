@@ -7,7 +7,11 @@ import {
   type Revision,
 } from "../contracts/capability";
 import { formatCatalogSchema, inspectionSchema } from "../contracts/content";
-import { slideLayoutSchema, workbookLayoutSchema } from "../contracts/layouts";
+import {
+  documentLayoutSchema,
+  slideLayoutSchema,
+  workbookLayoutSchema,
+} from "../contracts/layouts";
 import { renderReportSchema, reviewReportSchema } from "../contracts/evidence";
 import { MODEL_LIMITS } from "../contracts/limits";
 import type { Application, Operation } from "./application";
@@ -51,6 +55,14 @@ export const modelInputs = {
         "For a sheet path, supply the sourceSha256 returned with the selected revision; a mismatch is refused.",
       ),
   }),
+  blocks: schemas.readInput.extend({
+    ...selection,
+    sourceSha256: schemas.asset.shape.sha256
+      .optional()
+      .describe(
+        "For a block path, supply the sourceSha256 returned with the selected revision; a mismatch is refused.",
+      ),
+  }),
 };
 
 export const modelDescriptions: Partial<Record<Operation, string>> = {
@@ -61,6 +73,8 @@ export const modelDescriptions: Partial<Record<Operation, string>> = {
     'Read a PPTX revision\'s slide outline with its exact revision and sourceSha256. To inspect slides, supply both identities and a path such as ["slides","0","elements"] or ["slides","0","notes"]. Elements carry ids for setFrame/deleteElement/setChartData, frames in EMUs (914400 per inch), text runs with replaceText ids, and chart data with workbook "none", "chart" (editable) or "mixed" (refused). Copy current values into expect exactly.',
   sheets:
     'Read an XLSX revision\'s sheet outline with its exact revision and sourceSha256. To inspect cells, supply both identities and a path such as ["sheets","0","cells"] or ["sheets","0","locked"]. A cell carries its ref, the exact setCell expect, its shown value (a formula\'s calculated result, blank until recalculation) and, when one exists, the setCell input that reproduces it. Address a cell for setCell as "<sheet id>!<ref>" and copy expect exactly; an absent cell\'s expect is "".',
+  blocks:
+    'Read a DOCX revision\'s body outline (block counts and headings with their block index) with its exact revision and sourceSha256. To inspect blocks, supply both identities and a path such as ["blocks"] or ["blocks","12"]. A paragraph carries its block id, expect, style ("" when none), list and alignment facts and its text runs with replaceText ids; tables carry cell text. Copy a block\'s expect exactly into insertParagraph (after), deleteBlock or setParagraphStyle, and a run\'s text into replaceText expect.',
   assessment:
     'Read an exact render/review summary. Use path=["report","pages"], ["report","checks"], ["report","extractedText"], ["report","notes"] or ["assets"] for original evidence. Append an entry\'s key to inspect it and continue at nextOffset. The page tool returns a real PNG for visual review.',
 };
@@ -325,12 +339,18 @@ async function assessmentProjection(
   };
 }
 
-async function slidesProjection(
+type LayoutOperation = "slides" | "sheets" | "blocks";
+
+// A model reads an outline first, then pages one exact revision's layout by path.
+async function layoutProjection<T>(
   application: QuerySource,
+  operation: LayoutOperation,
   input: Record<string, unknown>,
   signal: AbortSignal,
+  schema: z.ZodType<T>,
+  outline: (layout: T) => Record<string, unknown>,
 ): Promise<QueryProjection> {
-  const request = modelInputs.slides.parse(input);
+  const request = modelInputs[operation].parse(input);
   selectedPath(request);
   if (
     request.path !== undefined &&
@@ -340,9 +360,9 @@ async function slidesProjection(
       "revision_required",
       "read an outline first, then pin its exact revision and sourceSha256 for layout paging",
     );
-  const retained = schemas.slides.parse(
+  const retained = schemas[operation].parse(
     await application.query(
-      "slides",
+      operation,
       { id: request.id, revision: request.revision },
       signal,
     ),
@@ -355,9 +375,7 @@ async function slidesProjection(
       "source_conflict",
       "the retained revision differs from the expected source SHA-256",
     );
-  const layout = slideLayoutSchema.parse(
-    projectNumbers(parseJSON(retained.layoutJSON)),
-  );
+  const layout = schema.parse(projectNumbers(parseJSON(retained.layoutJSON)));
   return {
     retained,
     model: {
@@ -365,72 +383,7 @@ async function slidesProjection(
       revision: retained.revision,
       sourceSha256: retained.sourceSha256,
       ...(request.path === undefined
-        ? {
-            width: layout.width,
-            height: layout.height,
-            slides: layout.slides.map((slide) => ({
-              id: slide.id,
-              number: slide.number,
-              name: slide.name,
-              elements: slide.elements.length,
-              notes: slide.notes.length,
-            })),
-          }
-        : { view: project(layout, request) }),
-    },
-  };
-}
-
-async function sheetsProjection(
-  application: QuerySource,
-  input: Record<string, unknown>,
-  signal: AbortSignal,
-): Promise<QueryProjection> {
-  const request = modelInputs.sheets.parse(input);
-  selectedPath(request);
-  if (
-    request.path !== undefined &&
-    (request.revision === undefined || request.sourceSha256 === undefined)
-  )
-    throw new Refusal(
-      "revision_required",
-      "read an outline first, then pin its exact revision and sourceSha256 for sheet paging",
-    );
-  const retained = schemas.sheets.parse(
-    await application.query(
-      "sheets",
-      { id: request.id, revision: request.revision },
-      signal,
-    ),
-  );
-  if (
-    request.sourceSha256 !== undefined &&
-    request.sourceSha256 !== retained.sourceSha256
-  )
-    throw new Refusal(
-      "source_conflict",
-      "the retained revision differs from the expected source SHA-256",
-    );
-  const layout = workbookLayoutSchema.parse(
-    projectNumbers(parseJSON(retained.layoutJSON)),
-  );
-  return {
-    retained,
-    model: {
-      documentId: retained.document.id,
-      revision: retained.revision,
-      sourceSha256: retained.sourceSha256,
-      ...(request.path === undefined
-        ? {
-            sheets: layout.sheets.map((sheet) => ({
-              id: sheet.id,
-              name: sheet.name,
-              rows: sheet.rows,
-              columns: sheet.columns,
-              cells: sheet.cells.length,
-              locked: sheet.locked.length,
-            })),
-          }
+        ? outline(layout)
         : { view: project(layout, request) }),
     },
   };
@@ -450,9 +403,69 @@ export async function queryProjection(
     case "assessment":
       return assessmentProjection(application, input, signal);
     case "slides":
-      return slidesProjection(application, input, signal);
+      return layoutProjection(
+        application,
+        operation,
+        input,
+        signal,
+        slideLayoutSchema,
+        (layout) => ({
+          width: layout.width,
+          height: layout.height,
+          slides: layout.slides.map((slide) => ({
+            id: slide.id,
+            number: slide.number,
+            name: slide.name,
+            elements: slide.elements.length,
+            notes: slide.notes.length,
+          })),
+        }),
+      );
     case "sheets":
-      return sheetsProjection(application, input, signal);
+      return layoutProjection(
+        application,
+        operation,
+        input,
+        signal,
+        workbookLayoutSchema,
+        (layout) => ({
+          sheets: layout.sheets.map((sheet) => ({
+            id: sheet.id,
+            name: sheet.name,
+            rows: sheet.rows,
+            columns: sheet.columns,
+            cells: sheet.cells.length,
+            locked: sheet.locked.length,
+          })),
+        }),
+      );
+    case "blocks":
+      return layoutProjection(
+        application,
+        operation,
+        input,
+        signal,
+        documentLayoutSchema,
+        (layout) => ({
+          blocks: layout.blocks.length,
+          paragraphs: layout.blocks.filter(
+            (block) => block.kind === "paragraph",
+          ).length,
+          tables: layout.blocks.filter((block) => block.kind === "table")
+            .length,
+          headings: layout.blocks.flatMap((block, index) =>
+            block.kind === "paragraph" && /^Heading[1-9]$/u.test(block.style)
+              ? [
+                  {
+                    index,
+                    style: block.style,
+                    text: block.runs.map((run) => run.text).join(""),
+                  },
+                ]
+              : [],
+          ),
+        }),
+      );
     case "history": {
       const retained = schemas.history.parse(
         await application.query(operation, input, signal),

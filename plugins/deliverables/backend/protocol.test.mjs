@@ -599,6 +599,153 @@ it(
   scenarioTimeoutMilliseconds,
 );
 it(
+  "live document edits keep independent concurrent blocks, refuse stale and overlapping ones and project the native body",
+  async ({ backend }) => {
+    const created = await backend.invoke(METHODS.create, {
+      title: "Launch brief",
+      format: "docx",
+      contentJSON: JSON.stringify({
+        title: "Launch brief",
+        blocks: [
+          { type: "paragraph", heading: 1, runs: [{ text: "Launch brief" }] },
+          {
+            type: "paragraph",
+            runs: [
+              { text: "Ship the " },
+              { text: "beta", bold: true },
+              { text: " in March." },
+            ],
+          },
+          {
+            type: "table",
+            headers: ["Owner", "Task"],
+            rows: [["Ana", "Docs"]],
+          },
+          { type: "paragraph", runs: [{ text: "Risks remain." }] },
+        ],
+      }),
+      provenance,
+    });
+    const id = created.documentId;
+    const blocks = async (revision) =>
+      JSON.parse(
+        (await backend.invoke(METHODS.blocks, { id, revision })).layoutJSON,
+      ).blocks;
+    const edit = (expectedRevision, operations, command) =>
+      backend.invoke(
+        METHODS.edit,
+        {
+          id,
+          expectedRevision,
+          operationsJSON: JSON.stringify({ operations }),
+        },
+        command,
+      );
+    const text = (block) => block.runs.map((run) => run.text).join("");
+    const paragraph = (view, value) =>
+      view.find((block) => block.kind === "paragraph" && text(block) === value);
+    const original = await blocks(created.id);
+    const heading = paragraph(original, "Launch brief");
+    const plan = paragraph(original, "Ship the beta in March.");
+    const risks = paragraph(original, "Risks remain.");
+    const table = original.find((block) => block.kind === "table");
+    expect(heading.style).toBe("Heading1");
+    expect(plan.runs.map((run) => [run.text, run.bold])).toEqual([
+      ["Ship the ", false],
+      ["beta", true],
+      [" in March.", false],
+    ]);
+    expect(table.rows).toEqual([
+      ["Owner", "Task"],
+      ["Ana", "Docs"],
+    ]);
+
+    const month = plan.runs[2];
+    const byHuman = await edit(
+      created.id,
+      [
+        {
+          type: "replaceText",
+          id: month.id,
+          expect: month.text,
+          text: " in April.",
+        },
+        {
+          type: "setParagraphStyle",
+          id: risks.id,
+          expect: risks.expect,
+          style: "Heading2",
+        },
+      ],
+      "human-blocks",
+    );
+    const byAgent = await edit(
+      byHuman.id,
+      [
+        {
+          type: "insertParagraph",
+          after: table.id,
+          expect: table.expect,
+          text: "Owners confirm by Friday.",
+        },
+        { type: "insertParagraph", text: "Draft", style: "Heading3" },
+      ],
+      "agent-blocks",
+    );
+    const current = await blocks(byAgent.id);
+    expect(
+      current.map((block) =>
+        block.kind === "paragraph" ? [block.style, text(block)] : block.kind,
+      ),
+    ).toEqual([
+      ["Heading3", "Draft"],
+      ["Heading1", "Launch brief"],
+      [expect.any(String), "Ship the beta in April."],
+      "table",
+      [expect.any(String), "Owners confirm by Friday."],
+      ["Heading2", "Risks remain."],
+    ]);
+    await expect(
+      edit(
+        byAgent.id,
+        [{ type: "deleteBlock", id: plan.id, expect: plan.expect }],
+        "stale-block",
+      ),
+    ).rejects.toMatchObject({ code: "invalid_native" });
+    const revised = paragraph(current, "Ship the beta in April.");
+    await expect(
+      edit(
+        byAgent.id,
+        [
+          { type: "deleteBlock", id: revised.id, expect: revised.expect },
+          {
+            type: "replaceText",
+            id: revised.runs[0].id,
+            expect: revised.runs[0].text,
+            text: "Launch the ",
+          },
+        ],
+        "overlapping-block",
+      ),
+    ).rejects.toMatchObject({ code: "invalid_native" });
+    expect(await blocks()).toEqual(current);
+
+    const outline = await backend.tool("blocks", { id });
+    expect(outline.isError, JSON.stringify(outline)).not.toBe(true);
+    expect(JSON.parse(outline.content[0].text).value).toMatchObject({
+      revision: byAgent.id,
+      blocks: current.length,
+      tables: 1,
+      headings: [
+        { index: 0, style: "Heading3", text: "Draft" },
+        { index: 1, style: "Heading1", text: "Launch brief" },
+        { index: 5, style: "Heading2", text: "Risks remain." },
+      ],
+    });
+  },
+  scenarioTimeoutMilliseconds,
+);
+it(
   "live slide edits keep independent concurrent changes, refuse stale ones and leave valid native packages",
   async ({ backend }) => {
     const created = await backend.invoke(METHODS.create, {

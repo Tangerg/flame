@@ -63,6 +63,13 @@ const assessment = z.strictObject({
   reportJSON: z.string().max(LIMITS.reportBytes),
   assets: z.array(asset).max(LIMITS.renderPages + 2),
 });
+// A layout derived from one native revision on each read.
+const projection = z.strictObject({
+  document: header,
+  revision: id,
+  sourceSha256: id,
+  layoutJSON: z.string().max(LIMITS.reportBytes),
+});
 const page = z.strictObject({
   before: id.optional(),
   limit: z.number().int().min(1).max(LIMITS.pageSize),
@@ -109,18 +116,9 @@ export const schemas = Object.freeze({
       .array(assessment.omit({ reportJSON: true }))
       .max(LIMITS.assessments),
   }),
-  slides: z.strictObject({
-    document: header,
-    revision: id,
-    sourceSha256: id,
-    layoutJSON: z.string().max(LIMITS.reportBytes),
-  }),
-  sheets: z.strictObject({
-    document: header,
-    revision: id,
-    sourceSha256: id,
-    layoutJSON: z.string().max(LIMITS.reportBytes),
-  }),
+  slides: projection,
+  sheets: projection,
+  blocks: projection,
   assessmentInput: selected.extend({ assessmentId: id }),
   historyInput: page.extend({ id }),
   history: z.strictObject({
@@ -239,6 +237,14 @@ export const definitions = [
     "Project an XLSX revision's sheets and cells from its native bytes: each cell's exact setCell expect, shown value and reproducing setCell value, plus locked ranges setCell refuses. Omitting revision reads the current head once.",
     schemas.readInput,
     schemas.sheets,
+    "model",
+  ),
+  method(
+    "blocks",
+    "query",
+    "Project a DOCX revision's body blocks from its native bytes: paragraphs with style, list and alignment facts and their text runs, tables and other blocks, each with the block id and exact-XML expect that block edits name. Omitting revision reads the current head once.",
+    schemas.readInput,
+    schemas.blocks,
     "model",
   ),
   method(

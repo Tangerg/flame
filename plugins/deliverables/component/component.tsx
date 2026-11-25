@@ -17,6 +17,8 @@ import {
 } from "./archive";
 import { ImportForm } from "./importing";
 import { SlideStudio } from "./slides";
+import { DocumentStudio } from "./docs";
+import type { DocOperation } from "./docs-draft";
 import { WorkbookStudio } from "./sheets";
 import type { CellOperation } from "./sheets-draft";
 import type { Draft, DraftUpdate } from "./live-draft";
@@ -56,6 +58,7 @@ function Workspace({
   const state = useDeliverables(context);
   const slideDrafts = useDrafts<SlideOperation>();
   const sheetDrafts = useDrafts<CellOperation>();
+  const docDrafts = useDrafts<DocOperation>();
   const bodyViewport = useRef<HTMLDivElement>(null);
   const archiveSearchField = useRef<HTMLInputElement>(null);
   const archiveOrigin = useRef<{
@@ -194,6 +197,16 @@ function Workspace({
           document={document}
           draft={slideDrafts.get(document.document.id)}
           onDraft={slideDrafts.update(document.document.id)}
+          t={t}
+        />
+      )}
+      {document?.revision.format === "docx" && (
+        <DocumentStudio
+          key={document.document.id}
+          state={state}
+          document={document}
+          draft={docDrafts.get(document.document.id)}
+          onDraft={docDrafts.update(document.document.id)}
           t={t}
         />
       )}

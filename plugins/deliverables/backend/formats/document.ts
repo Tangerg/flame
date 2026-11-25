@@ -20,7 +20,6 @@ import {
 } from "docx";
 import {
   documentContentSchema,
-  documentEditSchema,
   parseContent,
   type DocumentContent,
   type Inspection,
@@ -28,9 +27,8 @@ import {
 import { OfficePackage, MAIN_PARTS } from "./archive";
 import { imageBytes } from "./images";
 import { inspectOfficeText, officeReport } from "./inspection";
-import { replaceText } from "./text-edits";
 import { HOUSE_STYLE } from "./style";
-import { escapeXML, namespaces, patchXML, tagName } from "./xml";
+import { namespaces } from "./xml";
 
 type Block = DocumentContent["blocks"][number];
 type BlockOf<T extends Block["type"]> = Extract<Block, { type: T }>;
@@ -286,44 +284,4 @@ export function inspectDocument(archive: OfficePackage): Inspection {
     (node) => node.uri === namespaces.drawing && node.local === "blip",
   ).length;
   return report.finish();
-}
-
-export function editDocument(archive: OfficePackage, json: string): Uint8Array {
-  const { operations } = parseContent(documentEditSchema, json);
-  replaceText(
-    archive,
-    operations.filter((operation) => operation.type === "replaceText"),
-  );
-  const appended = operations.filter(
-    (operation) => operation.type === "appendParagraph",
-  );
-  if (appended.length) {
-    const document = archive.xml(MAIN_PARTS.docx);
-    const body = document.root.children.find(
-      (node) => node.uri === namespaces.word && node.local === "body",
-    );
-    if (!body || body.selfClosing)
-      throw new Error("document has no editable body");
-    const section = body.children.find(
-      (node) => node.uri === namespaces.word && node.local === "sectPr",
-    );
-    const p = tagName(body, "p");
-    const pPr = tagName(body, "pPr");
-    const pStyle = tagName(body, "pStyle");
-    const r = tagName(body, "r");
-    const t = tagName(body, "t");
-    const val = tagName(body, "val");
-    const value = appended
-      .map(
-        (operation) =>
-          `<${p}>${operation.style ? `<${pPr}><${pStyle} ${val}="${operation.style}"/></${pPr}>` : ""}<${r}><${t} xml:space="preserve">${escapeXML(operation.text)}</${t}></${r}></${p}>`,
-      )
-      .join("");
-    const position = section?.start ?? body.closeStart;
-    archive.setXML(
-      MAIN_PARTS.docx,
-      patchXML(document.source, [{ start: position, end: position, value }]),
-    );
-  }
-  return archive.save();
 }

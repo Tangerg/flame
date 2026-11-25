@@ -13,9 +13,15 @@ import {
   type Inspection,
   type OfficeFormat,
 } from "../../contracts/content";
-import { type SlideLayout, type WorkbookLayout } from "../../contracts/layouts";
+import {
+  type DocumentLayout,
+  type SlideLayout,
+  type WorkbookLayout,
+} from "../../contracts/layouts";
 import { OfficePackage } from "./archive";
-import { createDocument, editDocument, inspectDocument } from "./document";
+import { createDocument, inspectDocument } from "./document";
+import { documentLayout } from "./document-blocks";
+import { editDocument } from "./document-editing";
 import { editPDF, inspectPDF } from "./pdf";
 import {
   createPresentation,
@@ -97,6 +103,10 @@ export function layoutFile(bytes: Uint8Array): SlideLayout {
 
 export function sheetsFile(bytes: Uint8Array): WorkbookLayout {
   return workbookLayout(OfficePackage.open("xlsx", bytes));
+}
+
+export function blocksFile(bytes: Uint8Array): DocumentLayout {
+  return documentLayout(OfficePackage.open("docx", bytes));
 }
 
 export function exportCSV(bytes: Uint8Array, sheetPart: string): Uint8Array {
@@ -265,7 +275,8 @@ export function catalog(): FormatCatalog {
         exampleJSON: JSON.stringify(examples.docx),
         limitations: [
           ...officeLimits,
-          "Creates rich runs, headings, lists, tables, PNG/JPEG images, headers, footers, page numbers and explicit references. Native edits replace exact text runs or append simple paragraphs; automatic pagination and bibliography verification are renderer/author concerns.",
+          "Creates rich runs, headings, lists, tables, PNG/JPEG images, headers, footers, page numbers and explicit references. Native edits replace exact text runs, insert or append simple paragraphs, delete body blocks and set Normal/Heading1-3 paragraph styles; automatic pagination and bibliography verification are renderer/author concerns.",
+          "Read the blocks query for the body of an exact revision: each paragraph, table or other block with its block id and expect (the SHA-256 of its exact XML) for insertParagraph after it, deleteBlock and setParagraphStyle, and each paragraph's text runs with their replaceText ids. A block id is a position in that revision; text in text boxes, headers and footers is reached through inspection items.",
         ],
       },
       {

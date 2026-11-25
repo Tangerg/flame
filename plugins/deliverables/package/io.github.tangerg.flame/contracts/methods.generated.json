@@ -16,6 +16,14 @@
     "output": "schema.json#/$defs/AssessmentV1Output"
   },
   {
+    "name": "flame.deliverables/blocks.v1",
+    "kind": "query",
+    "target": "installation",
+    "description": "Project a DOCX revision's body blocks from its native bytes: paragraphs with style, list and alignment facts and their text runs, tables and other blocks, each with the block id and exact-XML expect that block edits name. Omitting revision reads the current head once.",
+    "input": "schema.json#/$defs/BlocksV1Input",
+    "output": "schema.json#/$defs/BlocksV1Output"
+  },
+  {
     "name": "flame.deliverables/catalog.v1",
     "kind": "query",
     "target": "installation",

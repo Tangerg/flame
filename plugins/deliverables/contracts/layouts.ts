@@ -110,3 +110,46 @@ export type SheetView = WorkbookLayout["sheets"][number];
 export type SheetCellView = SheetView["cells"][number];
 export type SlideView = SlideLayout["slides"][number];
 export type ElementView = SlideView["elements"][number];
+
+const blockIdentity = {
+  id: z.string().min(1).max(1024),
+  // SHA-256 of the block's exact XML: the precondition for block operations.
+  expect: z.string().regex(/^[0-9a-f]{64}$/u),
+};
+export const documentLayoutSchema = z.strictObject({
+  blocks: z.array(
+    z.discriminatedUnion("kind", [
+      z.strictObject({
+        kind: z.literal("paragraph"),
+        ...blockIdentity,
+        // The paragraph style id; "" when the paragraph names none.
+        style: z.string(),
+        list: z.boolean(),
+        alignment: z.string().optional(),
+        runs: z.array(
+          z.strictObject({
+            id: z.string().min(1).max(1024),
+            text: z.string(),
+            bold: z.boolean(),
+            italic: z.boolean(),
+            underline: z.boolean(),
+          }),
+        ),
+      }),
+      z.strictObject({
+        kind: z.literal("table"),
+        ...blockIdentity,
+        rows: z.array(z.array(z.string())),
+      }),
+      z.strictObject({
+        kind: z.literal("other"),
+        ...blockIdentity,
+        element: z.string(),
+        text: z.string(),
+      }),
+    ]),
+  ),
+});
+export type DocumentLayout = z.infer<typeof documentLayoutSchema>;
+export type BlockView = DocumentLayout["blocks"][number];
+export type ParagraphView = Extract<BlockView, { kind: "paragraph" }>;

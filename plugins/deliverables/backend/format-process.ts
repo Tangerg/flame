@@ -5,8 +5,10 @@ import { Refusal } from "@flame/backend-sdk/mcp";
 import { z } from "zod";
 import { inspectionSchema } from "../contracts/content";
 import {
+  documentLayoutSchema,
   slideLayoutSchema,
   workbookLayoutSchema,
+  type DocumentLayout,
   type SlideLayout,
   type WorkbookLayout,
 } from "../contracts/layouts";
@@ -16,6 +18,7 @@ import {
   editFile,
   inspectFile,
   exportCSV,
+  blocksFile,
   layoutFile,
   sheetsFile,
   type Inspection,
@@ -30,6 +33,7 @@ type Request =
   | { operation: "csv"; base64: string; sheetPart: string }
   | { operation: "slides"; base64: string }
   | { operation: "sheets"; base64: string }
+  | { operation: "blocks"; base64: string }
   | {
       operation: "edit";
       format: Format;
@@ -43,6 +47,7 @@ const responseSchema = z.union([
   z.strictObject({ inspection: inspectionSchema }),
   z.strictObject({ layout: slideLayoutSchema }),
   z.strictObject({ sheets: workbookLayoutSchema }),
+  z.strictObject({ blocks: documentLayoutSchema }),
   z.strictObject({
     failure: z.strictObject({
       code: z.string().min(1).max(100),
@@ -110,6 +115,8 @@ export async function serveFormatProcess(): Promise<never> {
       response = { layout: layoutFile(unpack(input.base64)) };
     else if (input.operation === "sheets")
       response = { sheets: sheetsFile(unpack(input.base64)) };
+    else if (input.operation === "blocks")
+      response = { blocks: blocksFile(unpack(input.base64)) };
     else if (input.operation === "csv")
       response = {
         bytes: Buffer.from(
@@ -368,6 +375,21 @@ export class Formats {
       }
     }
     if (this.#cleanupFailure) throw this.#cleanupFailure;
+  }
+
+  async blocks(
+    bytes: Uint8Array,
+    signal: AbortSignal,
+  ): Promise<DocumentLayout> {
+    const result = await this.#call(
+      { operation: "blocks", base64: Buffer.from(bytes).toString("base64") },
+      signal,
+    );
+    if (!("blocks" in result))
+      throw new Error(
+        "deliverables: block projection did not return a document layout",
+      );
+    return result.blocks;
   }
 
   async sheets(

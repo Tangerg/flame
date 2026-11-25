@@ -44,7 +44,7 @@ export type LiveState = Pick<
 
 export type ProjectionRead<T> = { value?: T; error?: string };
 
-type ProjectionMethod = (typeof METHODS)["slides" | "sheets"];
+type ProjectionMethod = (typeof METHODS)["slides" | "sheets" | "blocks"];
 
 // The bounded format process admits one operation at a time, so revisions are
 // read in sequence rather than in parallel.

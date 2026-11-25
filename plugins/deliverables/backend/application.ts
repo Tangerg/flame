@@ -121,6 +121,12 @@ export class Application {
             this.#formats.sheets(bytes, signal),
           ),
         );
+      case "blocks":
+        return schemas.blocks.parse(
+          await this.#projection(input, "docx", "block", (bytes) =>
+            this.#formats.blocks(bytes, signal),
+          ),
+        );
       case "uploads":
         return this.#archive.uploads();
       case "download": {
@@ -290,7 +296,7 @@ export class Application {
   // Projections derive from one native revision on each read and are never stored.
   async #projection(
     input: unknown,
-    format: "pptx" | "xlsx",
+    format: "docx" | "pptx" | "xlsx",
     noun: string,
     project: (bytes: Uint8Array) => Promise<unknown>,
   ) {

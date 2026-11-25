@@ -182,6 +182,100 @@
       }
     },
     {
+      "name": "flame.deliverables/blocks.v1",
+      "kind": "query",
+      "target": "installation",
+      "description": "Project a DOCX revision's body blocks from its native bytes: paragraphs with style, list and alignment facts and their text runs, tables and other blocks, each with the block id and exact-XML expect that block edits name. Omitting revision reads the current head once.",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "revision": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "document": {
+            "additionalProperties": false,
+            "properties": {
+              "createdAt": {
+                "maxLength": 40,
+                "minLength": 1,
+                "type": "string"
+              },
+              "format": {
+                "enum": [
+                  "docx",
+                  "xlsx",
+                  "pptx",
+                  "pdf"
+                ],
+                "type": "string"
+              },
+              "head": {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              "id": {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              "project": {
+                "maxLength": 256,
+                "minLength": 1,
+                "type": "string"
+              },
+              "title": {
+                "maxLength": 180,
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "title",
+              "format",
+              "head",
+              "createdAt"
+            ],
+            "type": "object"
+          },
+          "layoutJSON": {
+            "maxLength": 1048576,
+            "type": "string"
+          },
+          "revision": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "sourceSha256": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "document",
+          "revision",
+          "sourceSha256",
+          "layoutJSON"
+        ],
+        "type": "object"
+      }
+    },
+    {
       "name": "flame.deliverables/catalog.v1",
       "kind": "query",
       "target": "installation",

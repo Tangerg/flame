@@ -406,6 +406,9 @@ const reorderSlides = z.strictObject({
   ids: z.array(z.string().min(1).max(1024)).min(1).max(2000),
 });
 const elementId = z.string().min(1).max(1024);
+const paragraphStyle = z.enum(["Normal", "Heading1", "Heading2", "Heading3"]);
+const blockId = z.string().min(1).max(1024);
+const blockExpect = z.string().regex(/^[0-9a-f]{64}$/u);
 export const documentEditSchema = z.strictObject({
   operations: z
     .array(
@@ -414,15 +417,42 @@ export const documentEditSchema = z.strictObject({
         z.strictObject({
           type: z.literal("appendParagraph"),
           text,
-          style: z
-            .enum(["Normal", "Heading1", "Heading2", "Heading3"])
-            .optional(),
+          style: paragraphStyle.optional(),
+        }),
+        // Without after, the paragraph opens the body.
+        z
+          .strictObject({
+            type: z.literal("insertParagraph"),
+            after: blockId.optional(),
+            expect: blockExpect.optional(),
+            text,
+            style: paragraphStyle.optional(),
+          })
+          .refine(
+            (operation) =>
+              (operation.after === undefined) ===
+              (operation.expect === undefined),
+            "after and expect name a block together",
+          ),
+        z.strictObject({
+          type: z.literal("deleteBlock"),
+          id: blockId,
+          expect: blockExpect,
+        }),
+        z.strictObject({
+          type: z.literal("setParagraphStyle"),
+          id: blockId,
+          expect: blockExpect,
+          style: paragraphStyle,
         }),
       ]),
     )
     .min(1)
     .max(1000),
 });
+export type DocumentOperation = z.infer<
+  typeof documentEditSchema
+>["operations"][number];
 export const workbookEditSchema = z.strictObject({
   operations: z
     .array(
