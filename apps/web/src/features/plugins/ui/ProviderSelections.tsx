@@ -155,6 +155,7 @@ function ProviderRole({
       value.contribution === current.contribution,
   );
   const active = chosen && backendAvailable(chosen.installation, chosen.server);
+  const chosenKey = chosen ? candidateKey(chosen) : null;
   async function observe(mutation: MutationPromise<PluginProviderSelection>, signal: AbortSignal) {
     command.current = { operations, mutation };
     update({ busy: true, failure: undefined });
@@ -196,21 +197,22 @@ function ProviderRole({
   return (
     <SettingRow
       label={role}
+      // The select shows a usable selection itself; only an unread or unusable one needs a note.
       sub={
         !hasRead
           ? t("packages.providers.unread")
-          : current
-            ? t(active ? "packages.providers.current" : "packages.providers.unavailable", {
+          : current && !active
+            ? t("packages.providers.unavailable", {
                 name: chosen?.installation.selected.name ?? current.installationId,
                 contribution: current.contribution,
               })
-            : t("packages.providers.unselected")
+            : undefined
       }
     >
       <Toolbar label={role}>
         <Select
           label={t("packages.providers.choose")}
-          value={draft}
+          value={draft ?? chosenKey}
           options={candidates.map((value) => ({
             value: candidateKey(value),
             label: `${value.installation.selected.name} · ${value.contribution}${value.installation.enabled && !value.installation.disabledServers.includes(value.server) ? "" : ` · ${t("packages.disabled")}`}`,
@@ -218,7 +220,7 @@ function ProviderRole({
           onValueChange={(draft) => update({ draft })}
           disabled={busy || !!unknown}
         />
-        {candidate && (
+        {candidate && draft !== chosenKey && (
           <Button
             variant="soft"
             pending={busy}

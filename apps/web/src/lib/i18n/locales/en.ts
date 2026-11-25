@@ -26,9 +26,7 @@ export const en = {
   "packages.providers.future":
     "Selections apply to future activations. Existing execution keeps its captured bindings.",
   "packages.providers.none": "No provider has been selected.",
-  "packages.providers.current": "Selected: {{name}} · {{contribution}}",
   "packages.providers.unavailable": "Selected but unavailable: {{name}} · {{contribution}}",
-  "packages.providers.unselected": "No provider selected for this role.",
   "packages.providers.unread": "Selection not read.",
   "packages.providers.stale": "Showing the last read selections.",
   "packages.providers.choose": "Choose provider",
