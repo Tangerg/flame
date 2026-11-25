@@ -20,7 +20,6 @@ export const fr: Record<string, string> = {
   "notify.error.body": "L’exécution de l’agent a échoué.",
   "notify.canceled.title": "{{product}} s’est arrêté",
   "notify.canceled.body": "L’exécution de l’agent a été annulée.",
-  "panel.title": "Notifications",
   "settings.failed":
     "Impossible de mettre à jour les paramètres de notification.",
 };

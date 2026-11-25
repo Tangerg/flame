@@ -14,7 +14,7 @@ export const zh: Record<string, string> = {
   "inactive.hint": "信任此仓库以启用其钩子。",
   empty: "未配置钩子",
   "empty.sub":
-    "在 ~/.flame/hooks.json（全局）或 <仓库>/.flame/hooks.json 中添加钩子。",
+    "在 ~/.flame/hooks.json（全局）或仓库内的 .flame/hooks.json 中添加钩子。",
   "error.trust": "无法更改仓库钩子信任。",
   reading: "加载中",
   refresh: "刷新",

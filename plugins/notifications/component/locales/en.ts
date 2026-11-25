@@ -19,6 +19,5 @@ export const en: Record<string, string> = {
   "notify.error.body": "The agent run failed.",
   "notify.canceled.title": "{{product}} stopped",
   "notify.canceled.body": "The agent run was canceled.",
-  "panel.title": "Notifications",
   "settings.failed": "Notification settings could not be updated.",
 };

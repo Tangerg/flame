@@ -19,6 +19,5 @@ export const ko: Record<string, string> = {
   "notify.error.body": "에이전트 실행에 실패했습니다.",
   "notify.canceled.title": "{{product}} 중지됨",
   "notify.canceled.body": "에이전트 실행이 취소되었습니다.",
-  "panel.title": "알림",
   "settings.failed": "알림 설정을 업데이트하지 못했습니다.",
 };

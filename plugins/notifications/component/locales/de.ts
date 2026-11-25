@@ -19,7 +19,6 @@ export const de: Record<string, string> = {
   "notify.error.body": "Der Agentenlauf ist fehlgeschlagen.",
   "notify.canceled.title": "{{product}} wurde gestoppt",
   "notify.canceled.body": "Der Agentenlauf wurde abgebrochen.",
-  "panel.title": "Benachrichtigungen",
   "settings.failed":
     "Die Benachrichtigungseinstellungen konnten nicht aktualisiert werden.",
 };

@@ -11,11 +11,10 @@ import {
   useTranslator,
 } from "@flame/component-sdk";
 import {
-  Panel,
-  PanelHeader,
-  RecordGroup,
   ListRow,
   RecordBody,
+  RecordGroup,
+  RecordHeading,
   Switch,
 } from "@flame/ui";
 import { catalogs } from "./catalogs";
@@ -92,48 +91,45 @@ export function NotificationSettings({
   };
   const blocked = authorization === "denied" || authorization === "unsupported";
   return (
-    <Panel label={t("panel.title")}>
-      <PanelHeader title={t("panel.title")} />
+    <>
       {error && (
         <div role="alert">
           <RecordBody>{error}</RecordBody>
         </div>
       )}
       <RecordGroup variant="list">
-        <ListRow
-          data-focus-unit=""
-          style={{ display: "flex", alignItems: "center", gap: "1rem" }}
-        >
-          <div style={{ flex: 1 }}>
-            <strong>{t("settings.notifications")}</strong>
-            <RecordBody>
-              {t(`settings.notifications.authorization.${authorization}`)}
-            </RecordBody>
-          </div>
-          <Switch
-            checked={preferences.systemNotifications && !blocked}
-            disabled={blocked || requesting}
-            ariaLabel={t("settings.notifications")}
-            onCheckedChange={(value) => {
-              void system(value);
-            }}
+        <ListRow data-focus-unit="">
+          <RecordHeading
+            title={t("settings.notifications")}
+            description={t(
+              `settings.notifications.authorization.${authorization}`,
+            )}
+            actions={
+              <Switch
+                checked={preferences.systemNotifications && !blocked}
+                disabled={blocked || requesting}
+                ariaLabel={t("settings.notifications")}
+                onCheckedChange={(value) => {
+                  void system(value);
+                }}
+              />
+            }
           />
         </ListRow>
-        <ListRow
-          data-focus-unit=""
-          style={{ display: "flex", alignItems: "center", gap: "1rem" }}
-        >
-          <div style={{ flex: 1 }}>
-            <strong>{t("settings.completionSound")}</strong>
-            <RecordBody>{t("settings.completionSound.sub")}</RecordBody>
-          </div>
-          <Switch
-            checked={preferences.completionSound}
-            ariaLabel={t("settings.completionSound")}
-            onCheckedChange={(value) => change("completionSound", value)}
+        <ListRow data-focus-unit="">
+          <RecordHeading
+            title={t("settings.completionSound")}
+            description={t("settings.completionSound.sub")}
+            actions={
+              <Switch
+                checked={preferences.completionSound}
+                ariaLabel={t("settings.completionSound")}
+                onCheckedChange={(value) => change("completionSound", value)}
+              />
+            }
           />
         </ListRow>
       </RecordGroup>
-    </Panel>
+    </>
   );
 }

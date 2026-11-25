@@ -1,6 +1,6 @@
 export const zhTW: Record<string, string> = {
   "settings.completionSound": "完成提示音",
-  "settings.completionSound.sub": "當應用程式在背景時,執行結束時播放提示音。",
+  "settings.completionSound.sub": "當應用程式在背景時，執行結束時播放提示音。",
   "settings.notifications": "系統通知",
   "settings.notifications.authorization.granted":
     "Flame 在背景時，執行完成、失敗或需要你處理時會顯示通知。",
@@ -17,6 +17,5 @@ export const zhTW: Record<string, string> = {
   "notify.error.body": "代理執行失敗。",
   "notify.canceled.title": "{{product}} 已停止",
   "notify.canceled.body": "代理執行已取消。",
-  "panel.title": "通知",
   "settings.failed": "無法更新通知設定。",
 };

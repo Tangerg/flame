@@ -19,7 +19,6 @@ export const es: Record<string, string> = {
   "notify.error.body": "La ejecución del agente falló.",
   "notify.canceled.title": "{{product}} se detuvo",
   "notify.canceled.body": "La ejecución del agente se canceló.",
-  "panel.title": "Notificaciones",
   "settings.failed":
     "No se pudo actualizar la configuración de notificaciones.",
 };

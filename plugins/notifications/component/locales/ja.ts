@@ -19,6 +19,5 @@ export const ja: Record<string, string> = {
   "notify.error.body": "エージェントの実行に失敗しました。",
   "notify.canceled.title": "{{product}} が停止しました",
   "notify.canceled.body": "エージェントの実行はキャンセルされました。",
-  "panel.title": "通知",
   "settings.failed": "通知設定を更新できませんでした。",
 };

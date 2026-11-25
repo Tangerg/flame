@@ -1,6 +1,6 @@
 export const zh: Record<string, string> = {
   "settings.completionSound": "完成提示音",
-  "settings.completionSound.sub": "当应用在后台时,运行结束播放提示音。",
+  "settings.completionSound.sub": "当应用在后台时，运行结束播放提示音。",
   "settings.notifications": "系统通知",
   "settings.notifications.authorization.granted":
     "Flame 在后台时，运行完成、失败或需要你处理时会显示通知。",
@@ -17,6 +17,5 @@ export const zh: Record<string, string> = {
   "notify.error.body": "智能体运行失败。",
   "notify.canceled.title": "{{product}} 已停止",
   "notify.canceled.body": "智能体运行已取消。",
-  "panel.title": "通知",
   "settings.failed": "无法更新通知设置。",
 };

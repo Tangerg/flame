@@ -14,10 +14,10 @@ write only the chosen preference, and settlement handling reads the current
 records. No second in-memory preference store, synchronization or alternative
 storage decoder is installed.
 
-Each settings row is a focus unit. When keyboard focus reaches a switch, the
-shared Panel reveals the row's label, explanation and switch together if the row
-fits the visible body. An oversized row falls back to revealing only the focused
-switch.
+The settings pane renders inside the Settings column, so it uses the shared
+record rows (`RecordHeading` with the switch as its action) rather than a
+workspace `Panel`, whose page gutter would inset it from every other pane. Each
+row stays a focus unit.
 
 The effect observes only the Host's root settlement projection. It stays quiet
 while the document has focus, honors each channel's preference, requests OS
@@ -34,5 +34,5 @@ Each chime closes its audio context on completion or cancellation, including whe
 the audio clock is suspended. Playback and release failures keep their causes.
 
 Rebuild the public component SDK and graphical Host together, then select the
-current package bytes. Notification preferences now appear under Extensions in
+current package bytes. Notification preferences appear under General in
 Settings. Existing preference records keep their values.
