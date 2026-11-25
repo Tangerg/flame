@@ -60,6 +60,7 @@ export const COMMAND_EFFECTS: Record<CommandMethod, CommandEffect> = {
     announced: true,
     reload: "views",
   },
+  [METHODS.restore]: { result: "revision", announced: true, reload: "views" },
   [METHODS.export]: { result: "asset", announced: true, reload: "none" },
   [METHODS.render]: { announced: true, reload: "views" },
   [METHODS.review]: { announced: true, reload: "views" },

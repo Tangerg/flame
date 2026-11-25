@@ -21,6 +21,7 @@ import {
   type Format,
   type Inspection,
 } from "../contracts/content";
+import { METHODS } from "../contracts/methods";
 import { Source } from "./provenance";
 import type { DeliverablesState } from "./useDeliverables";
 import type { DocumentRead } from "./types";
@@ -28,6 +29,7 @@ import type { DocumentRead } from "./types";
 // The part of the deliverables state this view reads.
 type ArchiveState = Pick<
   DeliverablesState,
+  | "blocked"
   | "history"
   | "historyPrevious"
   | "list"
@@ -35,7 +37,9 @@ type ArchiveState = Pick<
   | "open"
   | "page"
   | "read"
+  | "run"
   | "selection"
+  | "selectRevision"
 >;
 
 type ArchiveProps = {
@@ -251,6 +255,12 @@ function RevisionDetails({
                 t("revision.parent"),
                 document.revision.parent ?? t("revision.first"),
               ],
+              [
+                t("revision.restored"),
+                document.revision.operation === "restore"
+                  ? document.revision.restored
+                  : undefined,
+              ],
               [t("file.hash"), document.revision.sha256],
             ]}
           />
@@ -314,6 +324,25 @@ export function RevisionHistory({
         onValueChange={(revision) => state.open({ id: selection.id, revision })}
         options={revisionChoices(revisions, selection.revision, dateTime, t)}
       />
+      {document && document.revision.id !== document.document.head && (
+        <Button
+          disabled={state.blocked}
+          onClick={() => {
+            const captured = { ...selection };
+            void state.run(
+              METHODS.restore,
+              {
+                id: captured.id,
+                expectedRevision: document.document.head,
+                revision: captured.revision,
+              },
+              (value) => state.selectRevision(value, captured),
+            );
+          }}
+        >
+          {t("history.restore")}
+        </Button>
+      )}
       <ArchivePaging state={state} page="history" t={t} />
       <RevisionDetails
         selection={selection}

@@ -10,7 +10,7 @@ import {
 import { LIMITS } from "../contracts/limits";
 import { renderReportSchema, reviewReportSchema } from "../contracts/evidence";
 import { Archive } from "./archive";
-import { Document, digest, filename, revision } from "./document";
+import { Document, digest, filename, revision, type Origin } from "./document";
 import { Engine } from "./engine";
 import { encodeArchive, type Format } from "./formats";
 import { Formats } from "./format-process";
@@ -180,7 +180,7 @@ export class RevisionPreparation {
     command: string,
     now: string,
     derive: (source: RevisionSource) => Promise<Derived>,
-    operation: "edit" | "recalculate" = "edit",
+    origin: Origin = { operation: "edit" },
   ) {
     const owner = this.#archive.document(value.id);
     owner.requireHead(value.expectedRevision);
@@ -203,7 +203,7 @@ export class RevisionPreparation {
       title: header.title,
       format: header.format,
       parent: source.metadata.id,
-      operation,
+      ...origin,
       createdAt: now,
       bytes,
       provenance: source.metadata.provenance,
@@ -218,6 +218,32 @@ export class RevisionPreparation {
         value.expectedRevision,
         processing,
       );
+  }
+
+  // Restoring publishes the earlier revision's exact bytes on top of the
+  // current one, so history keeps every revision in between.
+  prepareRestore(
+    context: CallContext,
+    value: z.infer<typeof schemas.restore>,
+    command: string,
+    now: string,
+  ) {
+    return this.prepareRevision(
+      context,
+      value,
+      command,
+      now,
+      async (source) => {
+        const restored = this.#archive.revision(value.id, value.revision);
+        if (restored.metadata.sha256 === source.sha256)
+          throw refusal(
+            "invalid_restore",
+            "the revision's content is already current",
+          );
+        return { bytes: restored.bytes };
+      },
+      { operation: "restore", restored: value.revision },
+    );
   }
 
   async prepareRender(

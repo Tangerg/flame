@@ -34,18 +34,30 @@ const asset = z.strictObject({
   size: z.number().int().min(1).max(LIMITS.renderBytes),
   sha256: id,
 });
-const revision = z.strictObject({
+const revisionFacts = {
   id,
   documentId: id,
-  parent: id.optional(),
   createdAt: timestamp,
-  operation: z.enum(["create", "import", "edit", "recalculate"]),
   format: formatSchema,
   sha256: id,
   size: z.number().int().min(1).max(LIMITS.fileBytes),
   provenance,
   native: asset,
-});
+};
+// A restoration names the earlier revision whose native bytes it carries.
+const revision = z.discriminatedUnion("operation", [
+  z.strictObject({
+    ...revisionFacts,
+    parent: id.optional(),
+    operation: z.enum(["create", "import", "edit", "recalculate"]),
+  }),
+  z.strictObject({
+    ...revisionFacts,
+    parent: id,
+    operation: z.literal("restore"),
+    restored: id,
+  }),
+]);
 const header = z.strictObject({
   id,
   title,
@@ -133,6 +145,7 @@ export const schemas = Object.freeze({
     project: project.optional(),
   }),
   edit: expected.extend({ operationsJSON: json }),
+  restore: expected.extend({ revision: id }),
   upload: z.strictObject({
     size: z.number().int().min(1).max(LIMITS.fileBytes),
     sha256: id,
@@ -332,6 +345,14 @@ export const definitions = [
     "command",
     "Recalculate an XLSX through confined LibreOffice into a new native revision. Conversion may change Office formatting; the exact original is retained. Inspect resulting formula errors and missing caches.",
     expected,
+    revision,
+    "model",
+  ),
+  method(
+    "restore",
+    "command",
+    "Make an earlier revision of the same deliverable current again as a new revision with its exact native bytes. The exact current revision is required; history is kept, and the new revision has no inherited render or review.",
+    schemas.restore,
     revision,
     "model",
   ),
