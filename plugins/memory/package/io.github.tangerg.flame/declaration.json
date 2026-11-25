@@ -13,8 +13,8 @@
       "id": "memory",
       "title": "Agent memory",
       "localizedTitles": {
-        "zh": "Agent 记忆",
-        "zh-TW": "Agent 記憶",
+        "zh": "智能体记忆",
+        "zh-TW": "代理記憶",
         "de": "Agent-Memory",
         "fr": "Mémoire de l’agent",
         "es": "Memoria del agente",

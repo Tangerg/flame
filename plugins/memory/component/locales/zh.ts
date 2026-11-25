@@ -1,5 +1,5 @@
 export const zh: Record<string, string> = {
-  "panel.title": "Agent 记忆",
+  "panel.title": "智能体记忆",
   "scope.user": "用户记忆",
   "scope.project": "项目记忆",
   "scope.folder": "文件夹记忆",
@@ -32,7 +32,7 @@ export const zh: Record<string, string> = {
   reading: "正在读取已记录的记忆…",
   "delete.confirm.label": "确认删除记忆",
   "delete.title": "删除这条记忆？",
-  "delete.notice": "该记忆将不再对 Agent 可用。",
+  "delete.notice": "该记忆将不再对智能体可用。",
   "delete.actions.label": "记忆删除确认",
   "delete.confirm": "删除记忆",
   cancel: "取消",

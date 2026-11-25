@@ -1,5 +1,5 @@
 export const zhTW: Record<string, string> = {
-  "panel.title": "Agent 記憶",
+  "panel.title": "代理記憶",
   "scope.user": "使用者記憶",
   "scope.project": "專案記憶",
   "scope.folder": "資料夾記憶",
@@ -32,7 +32,7 @@ export const zhTW: Record<string, string> = {
   reading: "正在讀取已記錄的記憶…",
   "delete.confirm.label": "確認刪除記憶",
   "delete.title": "刪除這條記憶？",
-  "delete.notice": "此記憶將不再提供給 Agent。",
+  "delete.notice": "此記憶將不再提供給代理。",
   "delete.actions.label": "記憶刪除確認",
   "delete.confirm": "刪除記憶",
   cancel: "取消",

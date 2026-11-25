@@ -33,7 +33,7 @@ export const zh: Record<string, string> = {
   "providers.utility.main": "使用 Runtime 默认模型",
   "providers.utility.error": "设置辅助模型失败。",
   "providers.embedding.title": "嵌入模型",
-  "providers.embedding.desc": "可选地改善 Agent 记忆的排序。",
+  "providers.embedding.desc": "可选地改善智能体记忆的排序。",
   "providers.embedding.off": "关闭",
   "providers.embedding.none":
     "尚未配置支持嵌入的提供方。先在上方添加一个，例如 OpenAI。",

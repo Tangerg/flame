@@ -33,7 +33,7 @@ export const zhTW: Record<string, string> = {
   "providers.utility.main": "使用 Runtime 預設模型",
   "providers.utility.error": "無法設定輔助模型。",
   "providers.embedding.title": "Embedding 模型",
-  "providers.embedding.desc": "可選擇改善 Agent Memory 排序。",
+  "providers.embedding.desc": "可選擇改善代理記憶的排序。",
   "providers.embedding.off": "關閉",
   "providers.embedding.none":
     "尚未設定任何支援 embedding 的供應商 —— 請先在上方新增一個（例如 OpenAI）。",

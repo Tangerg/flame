@@ -86,10 +86,10 @@ export const VISUAL_WORKSPACE_STATE_TITLES: Readonly<Record<VisualWorkspaceState
   "dock-files": { en: "Files", "zh-CN": "文件" },
   "dock-skills": { en: "Skills", "zh-CN": "技能" },
   "dock-skills-catalog": { en: "Skills · catalog", "zh-CN": "技能 · 目录" },
-  "dock-agent-memory": { en: "Agent memory", "zh-CN": "Agent 记忆" },
+  "dock-agent-memory": { en: "Agent memory", "zh-CN": "智能体记忆" },
   "dock-agent-memory-recorded": {
     en: "Agent memory · long records",
-    "zh-CN": "Agent 记忆 · 长记录",
+    "zh-CN": "智能体记忆 · 长记录",
   },
   "dock-schedules": { en: "Schedules", "zh-CN": "计划任务" },
   "dock-schedules-models": { en: "Schedules · model choices", "zh-CN": "计划任务 · 模型选择" },
