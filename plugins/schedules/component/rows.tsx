@@ -1,4 +1,4 @@
-import { type ReactNode } from "react";
+import { type CSSProperties, type ReactNode } from "react";
 import { type ComponentContext } from "@flame/component-sdk";
 import {
   Badge,
@@ -16,6 +16,15 @@ import { enabled } from "./useSchedules";
 import { type Schedule } from "./types";
 import { type ScheduleState } from "./useSchedules";
 import { METHODS } from "./methods";
+
+// The list reads a schedule by its title; its instructions show as a two-line
+// excerpt and in full under the schedule's details.
+const EXCERPT: CSSProperties = {
+  display: "-webkit-box",
+  WebkitBoxOrient: "vertical",
+  WebkitLineClamp: 2,
+  overflow: "hidden",
+};
 
 export function ScheduleDeletion({
   t,
@@ -103,6 +112,13 @@ export function ScheduleRow({
     <ListRow>
       <RecordHeading
         title={title}
+        description={
+          item.instructions && (
+            <span style={EXCERPT}>
+              {item.instructions.replace(/\s+/g, " ").trim()}
+            </span>
+          )
+        }
         actions={
           <ActionMenu
             label={t("actions.more", { name: title })}
@@ -135,7 +151,6 @@ export function ScheduleRow({
           enabled(item) ? undefined : <Badge>{t("status.disabled")}</Badge>
         }
       />
-      <RecordBody>{item.instructions}</RecordBody>
       {/* A disabled schedule says so in its status; "not scheduled" would only repeat it. */}
       {(enabled(item) || item.nextRunAt !== undefined) && (
         <Metadata>
@@ -150,6 +165,7 @@ export function ScheduleRow({
         </Metadata>
       )}
       <Disclosure title={t("details.title")}>
+        {item.instructions && <RecordBody>{item.instructions}</RecordBody>}
         <Facts
           values={[
             [t("fact.cron"), item.cron],

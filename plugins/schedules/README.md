@@ -227,6 +227,9 @@ Its read failure follows that same control in one named action group, so the
 dialog body reveals the result beside a still-focused Refresh above the
 persistent footer; focus that moved elsewhere is left alone.
 
+A catalog row names the schedule by its title with a two-line excerpt of its
+instructions; the full instructions read first under Schedule details.
+
 Add/edit is a bounded dialog with scrolling field groups and persistent task
 identity, Cancel and Save. Title and instructions lead directly into timing and
 execution fields; their visible labels carry the hierarchy without an introductory
