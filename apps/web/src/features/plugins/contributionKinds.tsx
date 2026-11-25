@@ -26,6 +26,7 @@ import { type ContributionScope } from "@/extensions/definePlugin";
 import { WORKSPACE_VIEW, WORKSPACE_FILE_RENDERER } from "@/features/workspace/public/views";
 import { SESSION_ACTION } from "@/features/navigation/public/sessionActions";
 import { SETTINGS_PANE } from "@/features/settings/public/panes";
+import { settingsGroupForIntent } from "@/features/settings/public/intent";
 import { RecordedFileComponent } from "@/features/plugins/ui/RecordedFileComponent";
 import { RecordedToolComponent } from "@/features/plugins/ui/RecordedToolComponent";
 import {
@@ -283,7 +284,7 @@ function contributePlacedComponent(
           keywords: [{ text: entry.title }, { text: entry.id }],
           material: entry.material,
           intent: entry.settingsIntent,
-          group: "extensions",
+          group: settingsGroupForIntent(entry.settingsIntent),
           component: PlacedComponent,
         },
         { key: id },

@@ -14,7 +14,9 @@ Disabling the installation removes its entry. Locale changes update the display
 projection while preserving accepted work and its original cancellation signal.
 The optional `settingsIntent` is a package-declared identifier. Clients can address any admitted intent, including `model-providers` for model
 configuration navigation and `mcp-servers` for the tools shortcut. The host opens a unique
-available entry; absence or ambiguity opens plugin management.
+available entry; absence or ambiguity opens plugin management. Those two intents also
+place the pane in Settings beside what it configures (Models, Integrations); any other
+installed pane is listed under Extensions.
 
 Components can declare static `localizedTitles` keyed by canonical locale tag.
 The English `title` owns the fallback. The installed catalogue can label and

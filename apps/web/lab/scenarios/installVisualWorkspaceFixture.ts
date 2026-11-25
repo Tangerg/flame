@@ -77,6 +77,7 @@ import {
 import { DATA_PROVIDER } from "@/extensions/dataProvider";
 import { contributeLayout } from "@/extensions/contributeHelpers";
 import { SETTINGS_PANE } from "@/features/settings/public/panes";
+import { settingsGroupForIntent } from "@/features/settings/public/intent";
 import { SHORTCUT } from "@/features/command/public/extensionPoints";
 import { WORKSPACE_VIEW } from "@/features/workspace/public/views";
 import { definePlugin } from "@/extensions/definePlugin";
@@ -324,7 +325,7 @@ function workspaceDataPlugin(
         label: { text: brandPane.title },
         localizedTitles: brandPane.localizedTitles,
         keywords: [{ text: brandPane.title }, { text: brandPane.id }],
-        group: "extensions",
+        group: settingsGroupForIntent(undefined),
         component: () =>
           createElement(InstalledComponent, {
             ...brandSources,
@@ -352,7 +353,7 @@ function workspaceDataPlugin(
         keywords: [{ text: providersPane.title }, { text: providersPane.id }],
         material: "providers",
         intent: "model-providers",
-        group: "extensions",
+        group: settingsGroupForIntent("model-providers"),
         component: () =>
           createElement(InstalledComponent, {
             ...providersSources,
@@ -374,7 +375,7 @@ function workspaceDataPlugin(
         localizedTitles: mcpPane.localizedTitles,
         keywords: [{ text: mcpPane.title }, { text: mcpPane.id }],
         intent: "mcp-servers",
-        group: "extensions",
+        group: settingsGroupForIntent("mcp-servers"),
         component: () =>
           createElement(InstalledComponent, {
             ...mcpSources,
@@ -390,7 +391,7 @@ function workspaceDataPlugin(
         label: { text: hooksPane.title },
         localizedTitles: hooksPane.localizedTitles,
         keywords: [{ text: hooksPane.title }, { text: hooksPane.id }],
-        group: "extensions",
+        group: settingsGroupForIntent(undefined),
         component: () =>
           createElement(InstalledComponent, { ...hooksSources, scope: "client", entry: Hooks }),
       });
