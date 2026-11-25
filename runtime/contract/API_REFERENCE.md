@@ -5,7 +5,7 @@
 > method the Runtime does not serve. The adjacent JSON artifacts are the
 > machine-readable contract; this file is its mechanical human-readable index.
 
-Protocol `2026-11-26.1` · 108 methods
+Protocol `2026-11-26.2` · 108 methods
 
 ## Methods
 
@@ -115,7 +115,7 @@ Protocol `2026-11-26.1` · 108 methods
 | `models.getEmbeddingRole` | query | unary | none | none | none | — | — | — |
 | `models.setEmbeddingRole` | command | unary | replayResponse | none | none | — | — | `plugin_unavailable`, `plugin_stale` |
 | `tools.list` | query | unary | none | none | none | — | — | — |
-| `tools.invoke` | command | unary | replayResponse | none | none | — | — | `workspace_unavailable`, `path_outside_root` |
+| `tools.invoke` | query | unary | none | none | none | — | — | `workspace_unavailable`, `path_outside_root` |
 | `usage.session` | query | unary | none | none | none | — | — | `session_not_found` |
 | `usage.summary` | query | unary | none | none | none | — | — | — |
 | `feedback.create` | command | unary | replayResponse | none | none | — | — | `plugin_unavailable`, `plugin_stale` |

@@ -19,7 +19,7 @@ func registerTools(registry *Registry) {
 			return service.ListTools(ctx)
 		})
 
-	registry.command(MethodMeta{
+	registry.query(MethodMeta{
 		Name: ToolsInvoke, GoName: "InvokeTool",
 		Errors: []string{protocol.ErrWorkspaceUnavailable.
 			Error(), protocol.ErrPathOutsideRoot.

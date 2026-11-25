@@ -35,6 +35,11 @@ Read-only Git status, diff and file listing compare the workspace against an iso
 
 Workspace filename suggestions use the optional `nameQuery` of `workspace.files.list`. The Runtime ranks the complete admitted file set before paging. Exact paths precede basename and path subsequences. The glob matcher compiles each bounded pattern once per listing.
 
+Core `2026-11-26.2` classifies `tools.invoke` as a query. Its direct `read`,
+`glob` and `grep` tools observe the current workspace on every call. Go callers
+use `CallOptions` and TypeScript callers can use `queryJSON`. Rebuild Runtime and
+clients together.
+
 Core `2026-10-30.2` admits client-scoped `clientEffect` components. Rebuild the
 graphical Host and public component SDK together, then select the current
 Trajectory package bytes to receive its installed export commands. Effects have

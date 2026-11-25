@@ -1161,9 +1161,9 @@ export const WIRE_METHOD_POLICY = {
     pagination: "none",
   },
   "tools.invoke": {
-    operation: "command",
+    operation: "query",
     response: "unary",
-    idempotency: "replayResponse",
+    idempotency: "none",
     replayCursor: "none",
     pagination: "none",
   },

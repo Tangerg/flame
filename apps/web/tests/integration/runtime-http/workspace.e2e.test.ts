@@ -20,6 +20,23 @@ const execFileAsync = promisify(execFile);
 describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: workspace", () => {
   const fixture = useRuntimeFixture("workspace");
 
+  it("reads current diagnostic tool output through the query binding", async () => {
+    const workspace = { path: join(fixture.root, "diagnostic-query") };
+    await mkdir(workspace.path);
+    const filename = "diagnostic-notes.txt";
+    const path = join(workspace.path, filename);
+    const read = () =>
+      fixture.client.queryJSON("tools.invoke", {
+        workspace,
+        name: "read",
+        arguments: { path: filename },
+      });
+    await writeFile(path, "original diagnostic text\n");
+    await expect(read()).resolves.toContain("original diagnostic text");
+    await writeFile(path, "current diagnostic text\n");
+    await expect(read()).resolves.toContain("current diagnostic text");
+  });
+
   it("reconciles an agent file write through files.changed", async () => {
     const workspaceRoot = join(fixture.root, "workspace-agent-write");
     await mkdir(workspaceRoot);

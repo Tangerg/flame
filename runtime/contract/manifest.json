@@ -1,5 +1,5 @@
 {
-  "protocolVersion": "2026-11-26.1",
+  "protocolVersion": "2026-11-26.2",
   "features": [
     "reasoning",
     "multimodal",
@@ -1702,8 +1702,8 @@
       "goName": "InvokeTool",
       "name": "tools.invoke",
       "kind": "unary",
-      "operation": "command",
-      "idempotency": "replayResponse",
+      "operation": "query",
+      "idempotency": "none",
       "replayCursor": "none",
       "pagination": "none",
       "errors": [

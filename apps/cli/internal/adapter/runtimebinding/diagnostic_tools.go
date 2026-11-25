@@ -13,7 +13,7 @@ import (
 
 type diagnosticToolBinding interface {
 	ListTools(context.Context, protocol.CallOptions) (*protocol.Page[protocol.ToolSpec], error)
-	InvokeTool(context.Context, protocol.InvokeToolRequest, protocol.CommandOptions) (any, error)
+	InvokeTool(context.Context, protocol.InvokeToolRequest, protocol.CallOptions) (any, error)
 }
 
 type DiagnosticTools struct{ runtime *Connection }
@@ -67,11 +67,10 @@ func (d *DiagnosticTools) Invoke(ctx context.Context, invocation workspace.Diagn
 	if err := json.Unmarshal(invocation.Arguments, &arguments, framevalue.Numbers()); err != nil {
 		return workspace.DiagnosticToolResult{}, fmt.Errorf("decode diagnostic tool arguments: %w", err)
 	}
-	options := r.commandOptions()
 	value, err := r.diagnosticTools.InvokeTool(ctx, protocol.InvokeToolRequest{
 		Name: invocation.Tool.Name, Arguments: arguments,
 		Workspace: &protocol.WorkspaceRef{Path: invocation.Workspace},
-	}, options)
+	}, r.callOptions())
 	if err != nil {
 		return workspace.DiagnosticToolResult{}, classifyError(err)
 	}

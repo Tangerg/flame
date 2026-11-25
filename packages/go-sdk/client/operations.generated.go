@@ -319,7 +319,7 @@ func (r *Client) SetEmbeddingRole(ctx context.Context, request protocol.Embeddin
 func (r *Client) ListTools(ctx context.Context, options protocol.CallOptions) (*protocol.Page[protocol.ToolSpec], error) {
 	return r.invoke[struct{}, *protocol.Page[protocol.ToolSpec]](ctx, "tools.list", struct{}{}, options.Metadata())
 }
-func (r *Client) InvokeTool(ctx context.Context, request protocol.InvokeToolRequest, options protocol.CommandOptions) (interface{}, error) {
+func (r *Client) InvokeTool(ctx context.Context, request protocol.InvokeToolRequest, options protocol.CallOptions) (interface{}, error) {
 	return r.invoke[protocol.InvokeToolRequest, interface{}](ctx, "tools.invoke", request, options.Metadata())
 }
 func (r *Client) GetSessionUsage(ctx context.Context, request protocol.SessionUsageRequest, options protocol.CallOptions) (*protocol.SessionUsage, error) {

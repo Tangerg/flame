@@ -111,7 +111,7 @@ var methodMetadata = map[string]methodMeta{
 	"models.getEmbeddingRole":          {Name: "models.getEmbeddingRole", Kind: unaryMethod, Operation: queryOperation, Result: reflect.TypeFor[*protocol.EmbeddingRole](), Event: nil, ResultNullable: false},
 	"models.setEmbeddingRole":          {Name: "models.setEmbeddingRole", Kind: unaryMethod, Operation: commandOperation, Result: reflect.TypeFor[*protocol.EmbeddingRole](), Event: nil, ResultNullable: false},
 	"tools.list":                       {Name: "tools.list", Kind: unaryMethod, Operation: queryOperation, Result: reflect.TypeFor[*protocol.Page[protocol.ToolSpec]](), Event: nil, ResultNullable: false},
-	"tools.invoke":                     {Name: "tools.invoke", Kind: unaryMethod, Operation: commandOperation, Result: reflect.TypeFor[interface{}](), Event: nil, ResultNullable: false},
+	"tools.invoke":                     {Name: "tools.invoke", Kind: unaryMethod, Operation: queryOperation, Result: reflect.TypeFor[interface{}](), Event: nil, ResultNullable: false},
 	"usage.session":                    {Name: "usage.session", Kind: unaryMethod, Operation: queryOperation, Result: reflect.TypeFor[*protocol.SessionUsage](), Event: nil, ResultNullable: false},
 	"usage.summary":                    {Name: "usage.summary", Kind: unaryMethod, Operation: queryOperation, Result: reflect.TypeFor[*protocol.UsageSummary](), Event: nil, ResultNullable: false},
 	"feedback.create":                  {Name: "feedback.create", Kind: unaryMethod, Operation: commandOperation, Result: reflect.TypeFor[struct{}](), Event: nil, ResultNullable: false},
