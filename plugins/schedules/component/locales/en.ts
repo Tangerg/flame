@@ -34,7 +34,6 @@ export const en: Record<string, string> = {
   "editor.new.title": "New schedule",
   "editor.edit.title": "Edit {{title}}",
   "editor.edit.untitled": "schedule",
-  "editor.edit.description": "Captured revision: {{revision}}",
   "editor.close": "Close schedule editor",
   "editor.section.timing.title": "Timing and workspace",
   "editor.section.execution.title": "Execution",

@@ -35,7 +35,6 @@ export const de: Record<string, string> = {
   "editor.new.title": "Neuer Zeitplan",
   "editor.edit.title": "{{title}} bearbeiten",
   "editor.edit.untitled": "Zeitplan",
-  "editor.edit.description": "Erfasste Revision: {{revision}}",
   "editor.close": "Zeitplan-Editor schließen",
   "editor.section.timing.title": "Zeitpunkt und Arbeitsbereich",
   "editor.section.execution.title": "Ausführung",

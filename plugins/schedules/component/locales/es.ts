@@ -35,7 +35,6 @@ export const es: Record<string, string> = {
   "editor.new.title": "Nueva programación",
   "editor.edit.title": "Editar {{title}}",
   "editor.edit.untitled": "programación",
-  "editor.edit.description": "Revisión capturada: {{revision}}",
   "editor.close": "Cerrar el editor de programación",
   "editor.section.timing.title": "Momento y espacio de trabajo",
   "editor.section.execution.title": "Ejecución",

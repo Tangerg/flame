@@ -32,7 +32,6 @@ export const zhTW: Record<string, string> = {
   "editor.new.title": "新增排程",
   "editor.edit.title": "編輯 {{title}}",
   "editor.edit.untitled": "排程",
-  "editor.edit.description": "擷取的修訂版本：{{revision}}",
   "editor.close": "關閉排程編輯器",
   "editor.section.timing.title": "時間與工作區",
   "editor.section.execution.title": "執行",

@@ -92,8 +92,12 @@ The accepted page number, matching/page record count, tool
 call and attention counts share one wrapping status line above the records.
 There is no separate loaded-count introduction or duplicate activity heading.
 Failed, timed-out and lost Runs are failures; canceled Runs and refused or
-canceled tools remain neutral. Attention includes timed-out Runs and retains
-incomplete, refused or errored tools without changing their recorded state.
+canceled tools remain neutral. An incomplete tool call names its cause: a
+refused call reads Denied, a canceled one Canceled and an errored one Failed; the
+summary does not repeat a denied approval beside Denied. Attention includes
+timed-out Runs
+and retains incomplete, refused or errored tools without changing their recorded
+state.
 
 The visible page summary identifies the last accepted cursor range. Refresh
 rereads that page and its captured descendant scope. Newer/Older navigation

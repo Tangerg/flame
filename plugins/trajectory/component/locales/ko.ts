@@ -42,9 +42,6 @@ export const ko: Record<string, string> = {
   "modelActivity.title": "모델 활동",
   "fact.logicalModelCalls": "논리적 모델 호출",
   "fact.modelEndpoints": "모델 엔드포인트",
-  "about.title": "이 레코드 정보",
-  "about.note":
-    "개수와 필터는 이 페이지에만 적용됩니다. 누락된 공급자 증거는 기록되지 않은 상태로 유지되며, 타임스탬프는 인과관계를 의미하지 않습니다. 전체 세션 궤적은 신뢰할 수 있는 명령 메뉴에서 내보내세요.",
   "title.run": "실행 · {{provider}}/{{model}}",
   "title.model": "모델 호출",
   "title.endpoint": "모델 엔드포인트 · {{provider}}/{{model}}",

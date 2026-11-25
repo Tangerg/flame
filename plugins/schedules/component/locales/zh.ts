@@ -32,7 +32,6 @@ export const zh: Record<string, string> = {
   "editor.new.title": "新建定时任务",
   "editor.edit.title": "编辑 {{title}}",
   "editor.edit.untitled": "定时任务",
-  "editor.edit.description": "捕获的修订版本：{{revision}}",
   "editor.close": "关闭定时任务编辑器",
   "editor.section.timing.title": "时间与工作区",
   "editor.section.execution.title": "执行",

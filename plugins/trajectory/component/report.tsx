@@ -207,9 +207,6 @@ export function TrajectoryReport({
           ]}
         />
       </Disclosure>
-      <Disclosure title={t("about.title")}>
-        <Metadata>{t("about.note")}</Metadata>
-      </Disclosure>
     </>
   );
 }

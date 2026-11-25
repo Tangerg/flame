@@ -35,7 +35,6 @@ export const ja: Record<string, string> = {
   "editor.new.title": "新しいスケジュール",
   "editor.edit.title": "{{title}} を編集",
   "editor.edit.untitled": "スケジュール",
-  "editor.edit.description": "取得したリビジョン：{{revision}}",
   "editor.close": "スケジュールエディターを閉じる",
   "editor.section.timing.title": "タイミングとワークスペース",
   "editor.section.execution.title": "実行",

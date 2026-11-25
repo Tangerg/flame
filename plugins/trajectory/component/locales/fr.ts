@@ -51,9 +51,6 @@ export const fr: Record<string, string> = {
   "modelActivity.title": "Activité du modèle",
   "fact.logicalModelCalls": "Appels logiques de modèle",
   "fact.modelEndpoints": "Points de terminaison de modèle",
-  "about.title": "À propos de ces enregistrements",
-  "about.note":
-    "Les décomptes et les filtres s’appliquent à cette page. Les preuves de fournisseur manquantes restent non enregistrées ; les horodatages n’impliquent pas de causalité. Exportez la trajectoire complète de la session depuis le menu de commandes de confiance.",
   "title.run": "Exécution · {{provider}}/{{model}}",
   "title.model": "Appel de modèle",
   "title.endpoint": "Point de terminaison de modèle · {{provider}}/{{model}}",

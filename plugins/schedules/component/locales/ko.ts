@@ -35,7 +35,6 @@ export const ko: Record<string, string> = {
   "editor.new.title": "새 스케줄",
   "editor.edit.title": "{{title}} 편집",
   "editor.edit.untitled": "스케줄",
-  "editor.edit.description": "캡처된 리비전: {{revision}}",
   "editor.close": "스케줄 편집기 닫기",
   "editor.section.timing.title": "시간 및 작업 공간",
   "editor.section.execution.title": "실행",

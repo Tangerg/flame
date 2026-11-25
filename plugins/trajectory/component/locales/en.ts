@@ -46,9 +46,6 @@ export const en: Record<string, string> = {
   "modelActivity.title": "Model activity",
   "fact.logicalModelCalls": "Logical model calls",
   "fact.modelEndpoints": "Model endpoints",
-  "about.title": "About these records",
-  "about.note":
-    "Counts and filters apply to this page. Missing provider evidence stays unrecorded; timestamps do not imply causality. Export complete Session trajectory from the trusted command menu.",
   "title.run": "Run · {{provider}}/{{model}}",
   "title.model": "Model call",
   "title.endpoint": "Model endpoint · {{provider}}/{{model}}",

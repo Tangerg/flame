@@ -35,7 +35,6 @@ export const fr: Record<string, string> = {
   "editor.new.title": "Nouvelle planification",
   "editor.edit.title": "Modifier {{title}}",
   "editor.edit.untitled": "planification",
-  "editor.edit.description": "Révision capturée : {{revision}}",
   "editor.close": "Fermer l'éditeur de planification",
   "editor.section.timing.title": "Horaire et espace de travail",
   "editor.section.execution.title": "Exécution",

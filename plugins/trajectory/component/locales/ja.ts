@@ -43,9 +43,6 @@ export const ja: Record<string, string> = {
   "modelActivity.title": "モデルのアクティビティ",
   "fact.logicalModelCalls": "論理モデル呼び出し",
   "fact.modelEndpoints": "モデルエンドポイント",
-  "about.title": "これらのレコードについて",
-  "about.note":
-    "カウントとフィルターはこのページにのみ適用されます。欠落したプロバイダーの証跡は未記録のままです。タイムスタンプは因果関係を示すものではありません。完全なセッション履歴は信頼できるコマンドメニューからエクスポートしてください。",
   "title.run": "実行 · {{provider}}/{{model}}",
   "title.model": "モデル呼び出し",
   "title.endpoint": "モデルエンドポイント · {{provider}}/{{model}}",

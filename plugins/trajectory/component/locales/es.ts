@@ -51,9 +51,6 @@ export const es: Record<string, string> = {
   "modelActivity.title": "Actividad del modelo",
   "fact.logicalModelCalls": "Llamadas lógicas de modelo",
   "fact.modelEndpoints": "Endpoints de modelo",
-  "about.title": "Acerca de estos registros",
-  "about.note":
-    "Los recuentos y filtros se aplican a esta página. La evidencia de proveedor ausente permanece sin registrar; las marcas de tiempo no implican causalidad. Exporta la trayectoria completa de la sesión desde el menú de comandos de confianza.",
   "title.run": "Ejecución · {{provider}}/{{model}}",
   "title.model": "Llamada de modelo",
   "title.endpoint": "Endpoint de modelo · {{provider}}/{{model}}",

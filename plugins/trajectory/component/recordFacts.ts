@@ -59,11 +59,14 @@ const ITEM_TONE = {
   completed: "neutral",
   incomplete: "warning",
 } as const satisfies Record<ItemStatus, Tone>;
-// The user or a parent ended these calls on purpose; they are not failures.
-const DELIBERATE_TOOL_ENDS = new Set<ToolCallFailure>([
-  "denied_by_user",
+const CANCELED_TOOL_ENDS = new Set<ToolCallFailure>([
   "tool_canceled",
   "child_run_canceled",
+]);
+// The user or a parent ended these calls on purpose; they are not failures.
+const DELIBERATE_TOOL_ENDS = new Set<ToolCallFailure>([
+  ...CANCELED_TOOL_ENDS,
+  "denied_by_user",
 ]);
 
 export function statusTone(row: TrajectoryEntry): Tone {
@@ -118,7 +121,17 @@ function searchable(row: TrajectoryEntry): string {
 }
 
 // The ordinary end of a record; rows name only the states that differ from it.
-const ORDINARY_END = new Set(["completed", "finished"]);
+const ORDINARY_END = new Set(["state.completed", "state.finished"]);
+
+// An incomplete tool call names its cause rather than its bare status.
+function itemStateKey(item: ItemRow): string {
+  if (item.type !== "toolCall" || item.status !== "incomplete" || !item.error)
+    return `state.${item.status}`;
+  if (item.error.type === "denied_by_user") return "approval.deny";
+  return CANCELED_TOOL_ENDS.has(item.error.type)
+    ? "state.canceled"
+    : "state.failed";
+}
 
 export function readable(
   row: TrajectoryEntry,
@@ -131,25 +144,30 @@ export function readable(
 } {
   const key =
     row.type === "run"
-      ? (row.run.outcome?.type ?? row.run.status)
+      ? `state.${row.run.outcome?.type ?? row.run.status}`
       : row.type === "model"
-        ? row.model.state
+        ? `state.${row.model.state}`
         : row.type === "endpoint"
-          ? row.endpoint.state
-          : row.item.status;
-  const state = t(`state.${key}`);
+          ? `state.${row.endpoint.state}`
+          : itemStateKey(row.item);
+  const state = t(key);
   const ordinary = ORDINARY_END.has(key);
   const decision =
     row.type === "item" && row.item.type === "toolCall"
       ? row.item.approvalDecision
       : undefined;
   if (!decision) return { state, ordinary };
-  const approval = t(`approval.${decision}`);
+  const approvalKey = `approval.${decision}`;
+  const approval = t(approvalKey);
   return {
     state,
     ordinary,
     approval,
-    approvalInline: t("approval.inline", { decision: approval }),
+    // A denial already named as the state is not repeated in the summary.
+    approvalInline:
+      approvalKey === key
+        ? undefined
+        : t("approval.inline", { decision: approval }),
   };
 }
 

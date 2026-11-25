@@ -42,9 +42,6 @@ export const zh: Record<string, string> = {
   "modelActivity.title": "模型活动",
   "fact.logicalModelCalls": "逻辑模型调用",
   "fact.modelEndpoints": "模型端点",
-  "about.title": "关于这些记录",
-  "about.note":
-    "计数和筛选仅适用于此页。缺失的提供者证据保持未记录；时间戳并不暗示因果关系。请从受信任的命令菜单导出完整的会话轨迹。",
   "title.run": "运行 · {{provider}}/{{model}}",
   "title.model": "模型调用",
   "title.endpoint": "模型端点 · {{provider}}/{{model}}",

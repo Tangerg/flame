@@ -42,9 +42,6 @@ export const zhTW: Record<string, string> = {
   "modelActivity.title": "模型活動",
   "fact.logicalModelCalls": "邏輯模型呼叫",
   "fact.modelEndpoints": "模型端點",
-  "about.title": "關於這些記錄",
-  "about.note":
-    "計數和篩選僅適用於此頁。缺少的提供者證據保持未記錄；時間戳記並不暗示因果關係。請從受信任的命令選單匯出完整的工作階段軌跡。",
   "title.run": "執行 · {{provider}}/{{model}}",
   "title.model": "模型呼叫",
   "title.endpoint": "模型端點 · {{provider}}/{{model}}",

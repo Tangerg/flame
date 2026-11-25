@@ -48,9 +48,6 @@ export const de: Record<string, string> = {
   "modelActivity.title": "Modellaktivität",
   "fact.logicalModelCalls": "Logische Modellaufrufe",
   "fact.modelEndpoints": "Modellendpunkte",
-  "about.title": "Über diese Datensätze",
-  "about.note":
-    "Zählungen und Filter gelten für diese Seite. Fehlende Anbieternachweise bleiben nicht erfasst; Zeitstempel implizieren keine Kausalität. Exportiere den vollständigen Sitzungsverlauf über das vertrauenswürdige Befehlsmenü.",
   "title.run": "Lauf · {{provider}}/{{model}}",
   "title.model": "Modellaufruf",
   "title.endpoint": "Modellendpunkt · {{provider}}/{{model}}",

@@ -111,13 +111,6 @@ export function ScheduleEditor({
             })
           : t("editor.new.title")
       }
-      description={
-        edit.basis
-          ? t("editor.edit.description", {
-              revision: String(edit.basis.revision),
-            })
-          : undefined
-      }
       closeLabel={t("editor.close")}
       size="lg"
       initialFocus={titleElement}
