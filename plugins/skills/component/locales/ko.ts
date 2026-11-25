@@ -15,8 +15,6 @@ export const ko: Record<string, string> = {
   "section.available": "사용 가능한 스킬",
   "section.review": "스킬 제안",
   "section.library": "개인 스킬 라이브러리",
-  "section.library.description":
-    "설치로 제공되는 스킬은 해당 패키지에서 관리됩니다.",
   "section.selectWorkspace":
     "사용 가능한 스킬과 제안을 확인하려면 작업 공간을 선택하세요.",
   "summary.available_other": "사용 가능한 스킬 {{count}}개",

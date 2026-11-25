@@ -15,8 +15,6 @@ export const es: Record<string, string> = {
   "section.available": "Skills disponibles",
   "section.review": "Propuestas de Skills",
   "section.library": "Biblioteca personal de Skills",
-  "section.library.description":
-    "Los Skills provistos por la instalación se gestionan con su paquete.",
   "section.selectWorkspace":
     "Selecciona un espacio de trabajo para inspeccionar los Skills disponibles y las propuestas.",
   "summary.available_one": "{{count}} Skill disponible",
