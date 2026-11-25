@@ -43,3 +43,17 @@ the Run history. [Anthropic protocol client](https://github.com/Tangerg/scope/bl
 Expose the retry limit on both Messages configurations, as Scope does for
 OpenAI. Flame can then disable SDK retries so its Run attempt owner controls
 whether to send another request and records each decision.
+
+## Scope child cancellation at publication (Scope Agent v0.64.0)
+
+Flame commits a child Run together with Scope's `Started` record. A Runtime
+probe held that transaction's acknowledgement after SQLite committed it
+(2026-11-26). `runs.list` returned the child as running and `runs.cancel` failed
+because its live Delegate binding was still being installed. Scope applies the
+same `Started` record locally after the append returns. Its public cancellation
+method currently requires a handle for the child process. [Scope append](https://github.com/Tangerg/scope/blob/379b392eca5226a01761810c1ff28c3c2ab26d68/agent/run/tree_runtime.go#L85-L104) [Process lookup](https://github.com/Tangerg/scope/blob/379b392eca5226a01761810c1ff28c3c2ab26d68/agent/run/runtime.go#L274-L296) [Cancellation handle](https://github.com/Tangerg/scope/blob/379b392eca5226a01761810c1ff28c3c2ab26d68/agent/run/handle.go#L146-L162)
+
+Let the live root handle submit a descendant cancellation by Process ID. Scope's
+tree queue can order the control after the in-progress append and resolve the
+target there. Flame can address the child using its durable start binding and
+use the Scope response as the control acknowledgement.
