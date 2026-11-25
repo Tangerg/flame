@@ -59,7 +59,8 @@ export const es: Record<string, string> = {
   "mcp.form.headers.clear": "Eliminar las cabeceras guardadas",
   "mcp.form.headers.originChanged":
     "El origen del endpoint cambió. Introduce cabeceras nuevas o elimina los valores guardados.",
-  "mcp.form.timeout": "Tiempo de espera (segundos) — opcional",
+  "mcp.form.timeout": "Tiempo de espera (segundos)",
+  "mcp.form.timeout.none": "Sin límite",
   "mcp.form.timeout.invalid":
     "Introduce un número entero positivo de segundos o déjalo en blanco para no fijar un límite de tiempo.",
   "mcp.form.description.aria": "Descripción",

@@ -81,9 +81,10 @@ const styles = stylex.create({
   },
   areaSm: { paddingBlock: space.s1_5 },
   areaMd: { paddingBlock: space.s2 },
+  // The border box includes the block padding, so two visible lines need it added.
   autosize: {
     resize: "vertical",
-    minHeight: "2lh",
+    minHeight: `calc(2lh + 2 * ${space.s2})`,
     maxHeight: "min(24lh, 60dvh)",
     overflowY: "auto",
     fieldSizing: {
@@ -91,6 +92,7 @@ const styles = stylex.create({
       "@supports (field-sizing: content)": "content",
     },
   },
+  autosizeSm: { minHeight: `calc(2lh + 2 * ${space.s1_5})` },
   searchBox: {
     display: "flex",
     width: "100%",
@@ -216,6 +218,7 @@ export function TextArea({
       : styles[size === "sm" ? "areaSm" : "areaMd"],
     well && [WELL_SURFACE.face, type.code],
     autosize && styles.autosize,
+    autosize && size === "sm" && styles.autosizeSm,
     extra,
   );
   return (

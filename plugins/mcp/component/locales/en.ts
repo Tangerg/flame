@@ -54,7 +54,8 @@ export const en: Record<string, string> = {
   "mcp.form.headers.clear": "Remove stored headers",
   "mcp.form.headers.originChanged":
     "The endpoint origin changed. Enter replacement headers or remove the stored values.",
-  "mcp.form.timeout": "Timeout (seconds) — optional",
+  "mcp.form.timeout": "Timeout (seconds)",
+  "mcp.form.timeout.none": "No limit",
   "mcp.form.timeout.invalid":
     "Enter positive whole seconds, or leave blank for no time limit.",
   "mcp.form.description.aria": "Description",

@@ -58,7 +58,8 @@ export const fr: Record<string, string> = {
   "mcp.form.headers.clear": "Supprimer les en-têtes enregistrés",
   "mcp.form.headers.originChanged":
     "L’origine du point de terminaison a changé. Saisissez de nouveaux en-têtes ou supprimez les valeurs enregistrées.",
-  "mcp.form.timeout": "Délai d'expiration (secondes) — facultatif",
+  "mcp.form.timeout": "Délai d'expiration (secondes)",
+  "mcp.form.timeout.none": "Aucune limite",
   "mcp.form.timeout.invalid":
     "Saisissez un nombre entier positif de secondes, ou laissez vide pour ne fixer aucune limite de temps.",
   "mcp.form.description.aria": "Description",

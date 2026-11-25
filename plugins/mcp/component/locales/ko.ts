@@ -55,7 +55,8 @@ export const ko: Record<string, string> = {
   "mcp.form.headers.clear": "저장된 헤더 제거",
   "mcp.form.headers.originChanged":
     "엔드포인트 출처가 변경되었습니다. 새 헤더를 입력하거나 저장된 값을 제거하세요.",
-  "mcp.form.timeout": "타임아웃(초) — 선택",
+  "mcp.form.timeout": "타임아웃(초)",
+  "mcp.form.timeout.none": "제한 없음",
   "mcp.form.timeout.invalid":
     "초 단위의 양의 정수를 입력하거나, 시간 제한을 두지 않으려면 비워 두세요.",
   "mcp.form.description.aria": "설명",

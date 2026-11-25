@@ -55,7 +55,8 @@ export const ja: Record<string, string> = {
   "mcp.form.headers.clear": "保存済みのヘッダーを削除",
   "mcp.form.headers.originChanged":
     "エンドポイントのオリジンが変わりました。新しいヘッダーを入力するか、保存済みの値を削除してください。",
-  "mcp.form.timeout": "タイムアウト（秒）— 任意",
+  "mcp.form.timeout": "タイムアウト（秒）",
+  "mcp.form.timeout.none": "無制限",
   "mcp.form.timeout.invalid":
     "正の整数で秒数を入力するか、時間制限なしにする場合は空欄のままにしてください。",
   "mcp.form.description.aria": "説明",

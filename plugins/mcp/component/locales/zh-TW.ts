@@ -53,7 +53,8 @@ export const zhTW: Record<string, string> = {
   "mcp.form.headers.clear": "移除已儲存的標頭",
   "mcp.form.headers.originChanged":
     "端點來源已變更，請輸入新的標頭或移除已儲存的值。",
-  "mcp.form.timeout": "逾時（秒）—— 選填",
+  "mcp.form.timeout": "逾時（秒）",
+  "mcp.form.timeout.none": "不限時",
   "mcp.form.timeout.invalid": "請輸入正整數秒數，或留空表示不限時。",
   "mcp.form.description.aria": "說明",
   "mcp.import": "從 JSON 匯入",

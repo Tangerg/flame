@@ -59,7 +59,8 @@ export const de: Record<string, string> = {
   "mcp.form.headers.clear": "Gespeicherte Header entfernen",
   "mcp.form.headers.originChanged":
     "Der Ursprung des Endpunkts hat sich geändert. Neue Header eingeben oder die gespeicherten Werte entfernen.",
-  "mcp.form.timeout": "Timeout (Sekunden) — optional",
+  "mcp.form.timeout": "Timeout (Sekunden)",
+  "mcp.form.timeout.none": "Kein Limit",
   "mcp.form.timeout.invalid":
     "Gib eine positive ganze Zahl an Sekunden ein oder lass das Feld leer für kein Zeitlimit.",
   "mcp.form.description.aria": "Beschreibung",

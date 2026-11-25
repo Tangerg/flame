@@ -30,7 +30,6 @@ export const EXAMPLE = {
   environment: JSON.stringify({ API_KEY: "…" }),
   url: "https://example.com/mcp",
   headers: JSON.stringify({ "X-API-Key": "…" }),
-  timeoutSeconds: "60",
 };
 
 // Credentials, commands and JSON are typed literally, never corrected.

@@ -48,7 +48,8 @@ export const zh: Record<string, string> = {
   "mcp.form.headers.clear": "移除已保存的请求头",
   "mcp.form.headers.originChanged":
     "端点来源已改变，请输入新的请求头或明确移除已保存的值。",
-  "mcp.form.timeout": "超时（秒）— 可选",
+  "mcp.form.timeout": "超时（秒）",
+  "mcp.form.timeout.none": "不限时",
   "mcp.form.timeout.invalid": "请输入正整数秒数，或留空表示不限时。",
   "mcp.form.description.aria": "描述",
   "mcp.import": "从 JSON 导入",
