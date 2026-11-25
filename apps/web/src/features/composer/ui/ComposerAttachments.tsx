@@ -260,7 +260,6 @@ function PasteChip({
         icon={<Icon name="file-text" size="md" />}
         title={t("composer.paste.title")}
         closeLabel={t("common.close")}
-        label={t("composer.paste.title")}
         finalFocus={finalFocus}
         value={draft ?? ""}
         onChange={setDraft}

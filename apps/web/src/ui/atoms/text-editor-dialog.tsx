@@ -21,10 +21,11 @@ interface TextEditorDialogProps extends Pick<
   open: boolean;
   onOpenChange: (open: boolean) => void;
   icon?: ReactNode;
-  title: ReactNode;
+  title: string;
   description?: ReactNode;
   closeLabel: string;
-  label: string;
+  /** A visible field label, only when it says more than the title; otherwise the title names the field. */
+  label?: string;
   value: string;
   onChange: (value: string) => void;
   cancelLabel: string;
@@ -84,6 +85,26 @@ export function TextEditorDialog({
     }
   };
 
+  const editor = (
+    <TextArea
+      ref={editorRef}
+      rows={4}
+      autosize
+      styles={styles.editor}
+      font={font}
+      aria-label={label ?? title}
+      aria-describedby={error ? errorId : undefined}
+      invalid={invalid}
+      autoCapitalize={autoCapitalize}
+      autoCorrect={autoCorrect}
+      spellCheck={spellCheck}
+      value={value}
+      pending={busy}
+      onKeyDown={submitShortcut}
+      onChange={(event) => onChange(event.target.value)}
+    />
+  );
+
   return (
     <ModalDialog
       open={open}
@@ -115,25 +136,7 @@ export function TextEditorDialog({
         </>
       }
     >
-      <FormField label={label}>
-        <TextArea
-          ref={editorRef}
-          rows={4}
-          autosize
-          styles={styles.editor}
-          font={font}
-          aria-label={label}
-          aria-describedby={error ? errorId : undefined}
-          invalid={invalid}
-          autoCapitalize={autoCapitalize}
-          autoCorrect={autoCorrect}
-          spellCheck={spellCheck}
-          value={value}
-          pending={busy}
-          onKeyDown={submitShortcut}
-          onChange={(event) => onChange(event.target.value)}
-        />
-      </FormField>
+      {label ? <FormField label={label}>{editor}</FormField> : editor}
       {error && (
         <SystemMessage ref={errorRef} id={errorId} variant="error">
           {error}

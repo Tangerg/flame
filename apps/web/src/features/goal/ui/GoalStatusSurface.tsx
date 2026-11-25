@@ -299,7 +299,7 @@ function GoalActions({
         <IconButton
           type="button"
           size="xs"
-          icon={iconGlyph("maximize")}
+          icon={iconGlyph("edit")}
           quiet
           aria-label={t("goal.action.edit")}
           disabled={disabled}
@@ -389,7 +389,6 @@ function GoalEditorDialog({
       icon={<Icon name="target" size="lg" className={stylex.props(vocab.muted).className} />}
       title={t("goal.edit.title")}
       closeLabel={t("common.close")}
-      label={t("goal.edit.label")}
       value={editor.draft}
       onChange={editor.edit}
       cancelLabel={t("common.cancel")}
