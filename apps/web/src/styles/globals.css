@@ -778,8 +778,13 @@ body:has([data-slot="notification-toast"])
 
 .msg-scroll-viewport {
   background: var(--app-content-surface);
-  --transcript-fade: 24px;
   --reading-frame-height: max(0px, calc(100cqh - 2 * var(--transcript-fade)));
+  scrollbar-gutter: stable both-edges;
+  overscroll-behavior: contain;
+}
+
+.transcript-edges {
+  --transcript-fade: 24px;
   -webkit-mask-image: linear-gradient(
     to bottom,
     transparent,
@@ -795,8 +800,6 @@ body:has([data-slot="notification-toast"])
     transparent
   );
   scroll-padding-block: var(--transcript-fade);
-  scrollbar-gutter: stable both-edges;
-  overscroll-behavior: contain;
 }
 
 .agent-composer-glass {

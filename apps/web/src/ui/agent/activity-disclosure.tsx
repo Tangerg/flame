@@ -46,7 +46,6 @@ const styles = stylex.create({
     flex: 1,
     alignItems: "center",
     textAlign: "left",
-    lineHeight: leading.body,
   },
   triggerFit: { flex: "0 1 auto" },
   triggerLine: {
@@ -55,10 +54,10 @@ const styles = stylex.create({
     // Trailing meta ends the row; keep it clear of the inset focus ring.
     paddingRight: space.s1,
     paddingLeft: 0,
-    minHeight: "max(var(--control-height-sm), var(--control-target-min))",
   },
   triggerCard: {
     gap: space.s3,
+    lineHeight: leading.body,
     paddingBlock: space.s1_5,
     paddingRight: space.s3,
     paddingLeft: space.s3,
@@ -133,6 +132,13 @@ const styles = stylex.create({
   bodyRows: { paddingBlock: space.s1_5 },
 });
 
+export const activityLine = stylex.create({
+  row: {
+    minHeight: "max(var(--control-height-sm), var(--control-target-min))",
+    lineHeight: leading.body,
+  },
+});
+
 export const stackedActivityDetail = stylex.create({
   header: { alignItems: "flex-start" },
   trigger: { flexWrap: "wrap", rowGap: space.s0_5 },
@@ -148,7 +154,7 @@ const TRAY_TONE = {
 const SHELL_SKINS = {
   line: {
     frame: styles.frameLine,
-    trigger: styles.triggerLine,
+    trigger: [styles.triggerLine, activityLine.row],
     mark: styles.markLine,
     text: type.uiSm,
     iconSize: "sm",
@@ -314,7 +320,8 @@ function ActivityHeading({
         data-slot="agent-activity-label"
         {...stylex.props(
           styles.label,
-          vocab.truncate,
+          // A stacked row already spans lines, so its label wraps instead of hiding counts.
+          stacked ? vocab.wrapText : vocab.truncate,
           skin.text,
           hasDetail && !stacked && styles.labelBeforeDetail,
         )}

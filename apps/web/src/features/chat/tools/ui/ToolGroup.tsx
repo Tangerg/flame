@@ -2,6 +2,7 @@ import * as stylex from "@stylexjs/stylex";
 import { type ComponentPropsWithoutRef, useState } from "react";
 import { type ToolCall } from "@/features/agent/public/sessionView";
 import { toolGroupIconFor } from "@/features/agent/public/toolIcon";
+import { toolActivityStatus } from "@/features/agent/public/messagePresentation";
 import { AgentActivityDisclosure } from "@/ui/agent/index";
 import { useT } from "@/lib/i18n/index";
 import {
@@ -9,7 +10,7 @@ import {
   type ToolGroupPinnedState,
 } from "@/features/chat/tools/application/toolGroupModel";
 import { ToolGroupMember } from "@/features/chat/tools/ui/ToolGroupMember";
-import { ToolActivitySummary } from "@/features/chat/tools/ui/ToolActivitySummary";
+import { ToolActivityStatus } from "@/features/chat/tools/ui/ToolActivityStatus";
 import { space } from "@flame/ui/tokens.stylex";
 interface ToolGroupRowsProps {
   tools: ToolCall[];
@@ -29,13 +30,16 @@ export function ToolGroup({ tools, expandedIds, onExpandedChange, superseded }: 
   const [pinned, setPinned] = useState<ToolGroupPinnedState>(null);
   const t = useT();
   const model = toolGroupModel(t, tools, pinned, superseded);
+  const status = toolActivityStatus(tools);
 
   return (
     <AgentActivityDisclosure
       icon={toolGroupIconFor(tools)}
       shell="line"
       contentInset="rows"
-      label={<ToolActivitySummary label={model.summary} tools={tools} />}
+      label={model.summary}
+      detail={status && <ToolActivityStatus status={status} />}
+      detailPlacement="below"
       open={model.expanded}
       onOpenChange={setPinned}
     >

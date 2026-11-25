@@ -1,5 +1,6 @@
 export { AgentAppShell, useAgentShellElement } from "@/ui/agent/app-shell";
 export {
+  activityLine,
   AgentActivityBody,
   AgentActivityDisclosure,
   stackedActivityDetail,
