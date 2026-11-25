@@ -161,13 +161,12 @@ type activeRunReader interface {
 	ActiveRun(ctx context.Context, sessionID identity.SessionID) (run.Run, bool, error)
 }
 
-type pendingInterruptReader interface {
-	LookupOpenInterrupt(ctx context.Context, runID identity.RunID) (Pending, bool, error)
+type pendingReader interface {
+	Get(ctx context.Context, rootRunID identity.RunID) (Pending, bool, error)
 }
 
 type terminationCommitter interface {
-	ApplyRunCancel(ctx context.Context, ref ExecutorRef, runID identity.RunID, reason string, finishedAt time.Time, receipt CancellationReceipt) (run.Run, error)
-	ApplyRunLost(ctx context.Context, sessionID identity.SessionID, runID identity.RunID, finishedAt time.Time) error
+	CommitParkedTermination(ctx context.Context, sessionID identity.SessionID, pending Pending, finishedAt time.Time, ending run.Ending, receipt CancellationReceipt) (run.Run, error)
 }
 
 type Projection interface {

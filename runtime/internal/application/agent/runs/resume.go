@@ -49,7 +49,7 @@ type parkedTree struct {
 }
 
 func (c *Coordinator) readParkedTree(ctx context.Context, cmd ResumeCommand) (parkedTree, error) {
-	pending, found, err := c.interrupts.LookupOpenInterrupt(ctx, cmd.RunID)
+	pending, found, err := c.interrupts.Get(ctx, cmd.RunID)
 	if err != nil {
 		return parkedTree{}, err
 	}

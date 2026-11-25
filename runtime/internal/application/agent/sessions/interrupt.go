@@ -38,42 +38,8 @@ func (c *Coordinator) ActiveRun(ctx context.Context, sessionID identity.SessionI
 	return rundomain.Run{}, false, nil
 }
 
-func (c *Coordinator) LookupOpenInterrupt(ctx context.Context, runID identity.RunID) (runs.Pending, bool, error) {
-	return c.interrupts.Get(ctx, runID)
-}
-
-func (c *Coordinator) ApplyRunCancel(ctx context.Context, ref runs.ExecutorRef, runID identity.RunID, reason string, finishedAt time.Time, receipt runs.CancellationReceipt) (rundomain.Run, error) {
-	pending, err := c.parkedRun(ctx, ref.SessionID, runID)
-	if err != nil {
-		return rundomain.Run{}, err
-	}
-	if pending.ExecutorID != ref.ExecutorID {
-		return rundomain.Run{}, fmt.Errorf("sessions: parked Run %q changed executor: %w", runID, rundomain.ErrSessionBusy)
-	}
-	return c.terminalizePendingRun(ctx, ref.SessionID, pending, finishedAt, rundomain.Canceled{Detail: reason}, receipt)
-}
-
-func (c *Coordinator) ApplyRunLost(ctx context.Context, sessionID identity.SessionID, runID identity.RunID, finishedAt time.Time) error {
-	pending, err := c.parkedRun(ctx, sessionID, runID)
-	if err != nil {
-		return err
-	}
-	_, err = c.terminalizePendingRun(ctx, sessionID, pending, finishedAt, rundomain.Lost{Loss: rundomain.Loss{Reason: rundomain.LossWaitingStateUnavailable}}, nil)
-	return err
-}
-
-func (c *Coordinator) parkedRun(ctx context.Context, sessionID identity.SessionID, runID identity.RunID) (runs.Pending, error) {
-	pending, found, err := c.interrupts.Get(ctx, runID)
-	if err != nil {
-		return runs.Pending{}, err
-	}
-	if !found {
-		return runs.Pending{}, fmt.Errorf("sessions: terminalize parked run %q: open interrupt not found for session %q", runID, sessionID)
-	}
-	return pending, nil
-}
-
-func (c *Coordinator) terminalizePendingRun(
+// The caller holds Session admission from the Pending read through publication.
+func (c *Coordinator) CommitParkedTermination(
 	ctx context.Context,
 	sessionID identity.SessionID,
 	pending runs.Pending,
@@ -81,9 +47,6 @@ func (c *Coordinator) terminalizePendingRun(
 	ending rundomain.Ending,
 	receipt runs.CancellationReceipt,
 ) (rundomain.Run, error) {
-	if finishedAt.IsZero() {
-		return rundomain.Run{}, fmt.Errorf("sessions: terminalize parked run %q: finished time is required", pending.RootRunID)
-	}
 	snapshot, err := c.snapshots.ReadSnapshot(ctx, sessionID)
 	if err != nil {
 		return rundomain.Run{}, err

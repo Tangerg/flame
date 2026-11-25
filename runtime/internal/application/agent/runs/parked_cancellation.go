@@ -13,8 +13,8 @@ import (
 // Claiming the Session before resolving the open interrupt linearizes cancel
 // against resume: whichever command owns the Session decides the one durable
 // transition.
-func (c *Cancellations) cancelParkedRun(ctx context.Context, cmd CancelCommand, value rundomain.Run) (CancelResult, error) {
-	releaseSession, ok, leaseErr := c.admission.AcquireSession(ctx, value.SessionID())
+func (c *Cancellations) cancelParkedRoot(ctx context.Context, cmd CancelCommand, sessionID identity.SessionID) (CancelResult, error) {
+	releaseSession, ok, leaseErr := c.admission.AcquireSession(ctx, sessionID)
 	if leaseErr != nil {
 		return CancelResult{}, leaseErr
 	}
@@ -23,7 +23,7 @@ func (c *Cancellations) cancelParkedRun(ctx context.Context, cmd CancelCommand, 
 	}
 	defer releaseSession()
 
-	pending, found, err := c.interrupts.LookupOpenInterrupt(ctx, cmd.RunID)
+	pending, found, err := c.interrupts.Get(ctx, cmd.RunID)
 	if err != nil {
 		return CancelResult{}, err
 	}
@@ -33,47 +33,20 @@ func (c *Cancellations) cancelParkedRun(ctx context.Context, cmd CancelCommand, 
 		case lookupErr != nil:
 			return CancelResult{}, lookupErr
 		case !exists:
-			return CancelResult{}, fmt.Errorf("runs: parked run %q disappeared while its session was claimed", cmd.RunID)
+			return CancelResult{}, fmt.Errorf("%w: %q", ErrRunNotFound, cmd.RunID)
 		case refreshed.State().IsTerminal():
-			return CancelResult{}, fmt.Errorf("%w: %q completed as %s", ErrRunFinished, cmd.RunID, refreshed.State())
+			return CancelResult{}, terminalCancellationRefusal{TerminalCancellationRefusal(refreshed)}
 		default:
 			return CancelResult{}, fmt.Errorf("runs: run %q is %s but has no open interrupt", cmd.RunID, refreshed.State())
 		}
 	}
-	return c.cancelClaimedParkedRun(ctx, cmd, ExecutorRef{
-		SessionID:  value.SessionID(),
-		ExecutorID: pending.ExecutorID,
-	})
-}
-
-func (c *Cancellations) cancelKnownParkedRun(
-	ctx context.Context,
-	cmd CancelCommand,
-	value rundomain.Run,
-	ref ExecutorRef,
-) (CancelResult, error) {
-	if ref.SessionID != value.SessionID() {
-		return CancelResult{}, fmt.Errorf(
-			"runs: Run %q belongs to Session %q but its live executor belongs to %q",
-			cmd.RunID, value.SessionID(), ref.SessionID,
-		)
-	}
-	releaseSession, ok, leaseErr := c.admission.AcquireSession(ctx, value.SessionID())
-	if leaseErr != nil {
-		return CancelResult{}, leaseErr
-	}
-	if !ok {
-		return CancelResult{}, rundomain.ErrSessionBusy
-	}
-	defer releaseSession()
-	return c.cancelClaimedParkedRun(ctx, cmd, ref)
-}
-
-func (c *Cancellations) cancelClaimedParkedRun(ctx context.Context, cmd CancelCommand, ref ExecutorRef) (CancelResult, error) {
-	terminal, err := c.terminations.ApplyRunCancel(ctx, ref, cmd.RunID, cmd.Reason, c.segments.publications.nowUTC(), cmd.Receipt)
+	terminal, err := c.terminations.CommitParkedTermination(
+		ctx, sessionID, pending, c.segments.publications.nowUTC(), rundomain.Canceled{Detail: cmd.Reason}, cmd.Receipt,
+	)
 	if err != nil {
 		return CancelResult{}, err
 	}
+	ref := ExecutorRef{SessionID: sessionID, ExecutorID: pending.ExecutorID}
 	if err := c.SettleRootCancellation(ctx, ref, cmd.RunID); err != nil {
 		return CancelResult{}, err
 	}

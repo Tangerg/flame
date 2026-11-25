@@ -187,6 +187,81 @@ func TestLiveRootCancellationJoinsAnInFlightPark(t *testing.T) {
 	}
 }
 
+func TestLiveRootCancellationReturnsTheParkedWinnersRefusal(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("FLAME_HOME", home)
+	model := newLifecycleModel()
+	host, api, stores := openProtocolRuntimeWithStores(t, model)
+	reserved, continueCancellation := make(chan struct{}), make(chan struct{})
+	releaseCancellation := sync.OnceFunc(func() { close(continueCancellation) })
+	releaseModel := sync.OnceFunc(func() { close(model.releaseFirstCall) })
+	t.Cleanup(func() {
+		releaseCancellation()
+		releaseModel()
+		if err := host.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	ctx := protocolLifecycleContext(t.Context())
+	session, err := api.CreateSession(ctx, protocol.CreateSessionRequest{
+		Workspace: &protocol.WorkspaceRef{Path: home}, Title: "cancel after the Run parks",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	started, events, err := api.StartRun(ctx, protocol.StartRunRequest{
+		SessionID: session.ID, Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "Begin a turn with a question."}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	parked := collectRunEvents(events)
+	waitForSignal(t, model.firstCallStarted, "the first model call")
+
+	endpoint, err := delivery.NewEndpoint(api, delivery.EndpointConfig{
+		Lifetime: t.Context(), IdempotencyNamespace: stores.IdempotencyNamespace.String(),
+		IdempotencyStore: cancellationReservationGate{stores.Idempotency, activeRootCancelKey, reserved, continueCancellation},
+		ValidateStorage:  stores.ValidateDirectory,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	original := protocol.CancelRunRequest{RunID: started.RunID, Reason: activeRootCancelReason}
+	originalKey := protocol.CallMetadata{IdempotencyKey: activeRootCancelKey}
+	firstReply := make(chan protocol.OperationResult, 1)
+	go func() { firstReply <- endpoint.Invoke(ctx, delivery.RunsCancel, original, originalKey) }()
+	waitForSignal(t, reserved, "the committed live cancellation reservation")
+	releaseModel()
+	waitForRunEvents(t, parked, "the Run's parked Segment")
+	waiting, err := api.GetRun(ctx, protocol.GetRunRequest{RunID: started.RunID})
+	if err != nil || waiting.Status != protocol.RunStatusWaiting {
+		t.Fatalf("expected the original Run to park: %+v, %v", waiting, err)
+	}
+
+	winner := protocol.CancelRunRequest{RunID: started.RunID, Reason: "Cancel while waiting for an answer"}
+	winnerKey := protocol.CallMetadata{IdempotencyKey: competingCancelKey}
+	canceled, err := host.Endpoint().Call[protocol.CancelRunRequest, *protocol.CancelRunResponse](ctx, delivery.RunsCancel, winner, winnerKey)
+	if err != nil {
+		t.Fatalf("the parked cancellation could not settle: %v", err)
+	}
+	if canceled.Run.Outcome == nil || canceled.Run.Outcome.Type != protocol.OutcomeCanceled ||
+		canceled.Run.Outcome.Detail != winner.Reason {
+		t.Fatalf("the parked cancellation did not own the terminal Run: %+v", canceled.Run)
+	}
+	releaseCancellation()
+	select {
+	case reply := <-firstReply:
+		if !errors.Is(reply.Failure, protocol.ErrRunFinished) {
+			t.Errorf("the first live reply did not report the committed refusal: %+v", reply)
+		}
+	case <-time.After(lifecycleWaitBudget(t)):
+		t.Fatal("the original cancellation did not return")
+	}
+	if replay := endpoint.Invoke(ctx, delivery.RunsCancel, original, originalKey); !errors.Is(replay.Failure, protocol.ErrRunFinished) {
+		t.Fatalf("the original refusal did not replay: %+v", replay)
+	}
+}
+
 type cancellationReservationGate struct {
 	operation.ReplayStore
 	key      string

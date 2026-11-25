@@ -44,7 +44,7 @@ type Cancellations struct {
 	subtreeCancellationRestorer        AcceptedSubtreeCancellationRestorer
 	terminations                       terminationCommitter
 	sessionReader                      sessionReader
-	interrupts                         pendingInterruptReader
+	interrupts                         pendingReader
 	checkpoints                        WaitingCheckpointReader
 	releases                           ExecutionReleaser
 	segments                           *Segments
@@ -62,7 +62,7 @@ type CancellationDependencies struct {
 	SubtreeCancellationRestorer        AcceptedSubtreeCancellationRestorer
 	Terminations                       terminationCommitter
 	Sessions                           sessionReader
-	Interrupts                         pendingInterruptReader
+	Interrupts                         pendingReader
 	Checkpoints                        WaitingCheckpointReader
 	Releases                           ExecutionReleaser
 	Segments                           *Segments
@@ -149,7 +149,7 @@ func (c *Cancellations) Cancel(ctx context.Context, cmd CancelCommand) (CancelRe
 		}
 		cleanup, cancel := runCleanupContext(ctx)
 		defer cancel()
-		return c.cancelParkedRun(cleanup, cmd, target.Root)
+		return c.cancelParkedRoot(cleanup, cmd, target.Root.SessionID())
 	case rundomain.Running:
 	default:
 		return CancelResult{}, fmt.Errorf(
@@ -173,7 +173,7 @@ func (c *Cancellations) Cancel(ctx context.Context, cmd CancelCommand) (CancelRe
 	if child {
 		return c.cancelLiveChild(cmd, target, ref, live.owner)
 	}
-	return c.cancelLiveRoot(cmd, target.Root, ref, live.owner)
+	return c.cancelLiveRoot(cmd, ref, live.owner)
 }
 
 func (c *Cancellations) liveCancellationSegment(ctx context.Context, target CancellationTarget) (liveSegment, error) {

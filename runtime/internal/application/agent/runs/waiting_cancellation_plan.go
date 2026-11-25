@@ -48,7 +48,7 @@ func (c *Cancellations) planWaitingChildCancellation(ctx context.Context, runID 
 			return waitingCancellationPlan{}, err
 		}
 	}
-	pending, found, err := c.interrupts.LookupOpenInterrupt(ctx, rootID)
+	pending, found, err := c.interrupts.Get(ctx, rootID)
 	if err != nil {
 		return waitingCancellationPlan{}, err
 	}

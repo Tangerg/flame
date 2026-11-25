@@ -155,7 +155,7 @@ func (c *Cancellations) prepareAcceptedSubtreeRevival(ctx context.Context, reviv
 }
 
 func (c *Cancellations) reviveWaitingSubtreeCancellation(ctx context.Context, revival acceptedSubtreeRevival) error {
-	pending, found, err := c.interrupts.LookupOpenInterrupt(ctx, revival.root.ID())
+	pending, found, err := c.interrupts.Get(ctx, revival.root.ID())
 	if err != nil {
 		return err
 	}

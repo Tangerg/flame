@@ -24,7 +24,7 @@ type Coordinator struct {
 	acceptedContinuations acceptedContinuationStore
 	steering              RunningExecutionSteerer
 	sessionReader         sessionReader
-	interrupts            pendingInterruptReader
+	interrupts            pendingReader
 	checkpoints           WaitingCheckpointReader
 	runs                  Projection
 	items                 ItemProjection
@@ -40,7 +40,7 @@ type Dependencies struct {
 	AcceptedContinuations acceptedContinuationStore
 	Steering              RunningExecutionSteerer
 	Sessions              sessionReader
-	Interrupts            pendingInterruptReader
+	Interrupts            pendingReader
 	Checkpoints           WaitingCheckpointReader
 	Segments              *Segments
 	Runs                  Projection

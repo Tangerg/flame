@@ -38,17 +38,16 @@ type rootCancellationClaim struct {
 	dispatch      bool
 }
 
-func (c *Cancellations) cancelLiveRoot(cmd CancelCommand, root run.Run, ref ExecutorRef, owner *runTreeOwner) (CancelResult, error) {
+func (c *Cancellations) cancelLiveRoot(cmd CancelCommand, ref ExecutorRef, owner *runTreeOwner) (CancelResult, error) {
 	intent := &rootCancellation{id: newCancellationID(), reason: cmd.Reason, receipt: cmd.Receipt}
 	return c.awaitLiveCancellation(owner, cmd.Receipt, func(ctx context.Context) (CancelResult, error) {
-		return c.settleLiveRootCancellation(ctx, cmd, root, ref, owner, intent)
+		return c.settleLiveRootCancellation(ctx, cmd, ref, owner, intent)
 	})
 }
 
 func (c *Cancellations) settleLiveRootCancellation(
 	ctx context.Context,
 	cmd CancelCommand,
-	root run.Run,
 	ref ExecutorRef,
 	owner *runTreeOwner,
 	intent *rootCancellation,
@@ -64,7 +63,7 @@ func (c *Cancellations) settleLiveRootCancellation(
 		if err := owner.wait(ctx); err != nil {
 			return CancelResult{}, &CancellationSettlementError{Cause: err}
 		}
-		return c.cancelKnownParkedRun(ctx, cmd, root, ref)
+		return c.cancelParkedRoot(ctx, cmd, ref.SessionID)
 	}
 	var requestErr error
 	if claim.dispatch {

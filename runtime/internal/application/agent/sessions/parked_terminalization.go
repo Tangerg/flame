@@ -23,13 +23,6 @@ type parkedRunTerminalization struct {
 }
 
 func (p parkedRunTerminalization) build() (TerminalPlan, error) {
-	if err := p.pending.Validate(); err != nil {
-		return TerminalPlan{}, fmt.Errorf(
-			"sessions: terminalize parked Run tree %q: invalid Pending: %w",
-			p.pending.RootRunID,
-			err,
-		)
-	}
 	runsByID, err := p.indexRuns()
 	if err != nil {
 		return TerminalPlan{}, err
@@ -43,13 +36,7 @@ func (p parkedRunTerminalization) build() (TerminalPlan, error) {
 	if err != nil {
 		return TerminalPlan{}, err
 	}
-	root, ok := p.pending.RootContinuation()
-	if !ok {
-		return TerminalPlan{}, fmt.Errorf(
-			"sessions: terminalize parked Run tree %q: root continuation is missing",
-			p.pending.RootRunID,
-		)
-	}
+	root, _ := p.pending.RootContinuation()
 	plan, err := newTerminalPlan(terminalRuns, items, conversationMessages, root.MemberID)
 	if err != nil {
 		return TerminalPlan{}, err

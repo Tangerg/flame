@@ -109,11 +109,13 @@ func (c *Cancellations) waitingChildCancellationContinuation(
 		if !errors.Is(err, ErrExecutorStateLost) && !errors.Is(err, ErrExecutorCheckpointNotFound) {
 			return ExecutionContinuation{}, err
 		}
-		lostErr := c.terminations.ApplyRunLost(
+		_, lostErr := c.terminations.CommitParkedTermination(
 			ctx,
 			plan.root.SessionID(),
-			plan.root.ID(),
+			plan.pending,
 			c.segments.publications.nowUTC(),
+			rundomain.Lost{Loss: rundomain.Loss{Reason: rundomain.LossWaitingStateUnavailable}},
+			nil,
 		)
 		if lostErr != nil {
 			return ExecutionContinuation{}, errors.Join(

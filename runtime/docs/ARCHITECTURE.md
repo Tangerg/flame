@@ -149,6 +149,12 @@ The live registry fences opening commits together with owner registration. A con
 
 Running cancellation resolves the targeted Run and its root in one durable read. A targeted child gets its Scope member from its concluded start reservation, which owns that association across Segments. Scope applies cancellation to the selected subtree. Parked child cancellation reads the full Run tree, Pending and Items under Session admission, where the operation replaces that durable state as a unit.
 
+A root cancellation that reaches a parked Run takes the same Session admission
+as one that began while the Run was parked. That claim pins the Pending used
+for terminal publication and executor release. When another command has already
+terminated the Run, its durable outcome determines the response to the caller
+and the refusal retained for the original request key.
+
 Cold stream recovery uses `runs.subscribe` with `snapshot: true`. The tree owner fences its durable commits and event publication while the Session use case reads material and the successor tail attaches. The reply contains both the snapshot and its tail head; a replay cursor is mutually exclusive with this mode. Ordinary replay retains the consumed cursor. Waiting for the fence revalidates the addressed Segment so a replacement cannot be paired with an old tail.
 
 Usage accumulates across the execution tree for accounting. Each member retains its own terminal outcome.
