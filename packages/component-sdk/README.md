@@ -38,6 +38,10 @@ Ordinary stateless exports remain React components.
 
 `context.signal` belongs to the mounted component. New I/O still enters that component's
 `context.track` boundary; source construction grants no additional execution path.
+The Host can replace the captured context of a component that stays mounted, for
+example on a locale or binding change. State derived from one context is kept with
+`useContextState(context)`, which reads as absent under a replacement context
+instead of presenting the replaced context's reads or notices as current.
 Rebuild components and their graphical Host together when changing this SDK.
 
 `clientEffect` placement requires client scope and has no navigation material or

@@ -1,110 +1,25 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  bindOperations,
   failureText,
-  isErrorType,
-  mutationSettlementIsUnknown,
-  OperationFailure,
+  useContextState,
   type ComponentContext,
 } from "@flame/component-sdk";
-import { stringifyJSON } from "@frame/sdk/json";
-import {
-  CAPABILITY_JSON,
-  METHODS as DECLARATIONS,
-  type MethodInputs,
-  type MethodOutputs,
-} from "./methods.generated";
 import { METHODS } from "../contracts/methods";
 import { LIMITS } from "../contracts/limits";
-import type { Asset, Revision } from "./types";
-import { downloadAsset } from "./transfer";
+import type { Asset, CommandMethod, Notice, Revision } from "./types";
+import { bindDeliverableOperations } from "./operations";
+import { useProjections } from "./useProjections";
+import {
+  COMMAND_EFFECTS,
+  useCommandJournal,
+  type CommandObservation,
+} from "./useCommandJournal";
+import { useAssetSave } from "./useAssetSave";
 
-export type CommandMethod = {
-  [
-    K in keyof typeof DECLARATIONS
-  ]: (typeof DECLARATIONS)[K]["kind"] extends "command" ? K : never;
-}[keyof typeof DECLARATIONS];
-const commandMethods = (
-  Object.keys(DECLARATIONS) as Array<keyof typeof DECLARATIONS>
-).filter(
-  (method): method is CommandMethod => DECLARATIONS[method].kind === "command",
-);
-type ViewMethod =
-  | typeof METHODS.catalog
-  | typeof METHODS.list
-  | typeof METHODS.read
-  | typeof METHODS.history
-  | typeof METHODS.uploads;
-type Projection<K extends ViewMethod> = {
-  input: MethodInputs[K];
-  value?: MethodOutputs[K];
-  loading: boolean;
-  error?: string;
-};
-type Projections = { [K in ViewMethod]?: Projection<K> };
 export interface Selection {
   id: string;
   revision: string;
 }
-export interface CommandObservation {
-  id: string;
-  method: CommandMethod;
-  status: "running" | "unknown";
-  error?: string;
-  recover?: () => Promise<unknown>;
-  retire?: () => Promise<void>;
-  settled?: (result: unknown) => void;
-}
-export type Notice =
-  | {
-      kind: "command";
-      method: CommandMethod;
-      asset?: Asset;
-      revision?: Revision;
-    }
-  | { kind: "error"; text: string }
-  | {
-      kind: "save";
-      result: "requested" | "saved" | "cancelled";
-      filename: string;
-    };
-
-interface CommandEffect {
-  // An announced result the notice offers to open.
-  result?: "asset" | "revision";
-  announced: boolean;
-  reload: "views" | "uploads" | "none";
-  // Commands that author a document carry the current project scope.
-  scoped?: true;
-}
-
-const COMMAND_EFFECTS: Record<CommandMethod, CommandEffect> = {
-  [METHODS.create]: {
-    result: "revision",
-    announced: true,
-    reload: "views",
-    scoped: true,
-  },
-  [METHODS.import]: {
-    result: "revision",
-    announced: true,
-    reload: "views",
-    scoped: true,
-  },
-  [METHODS.edit]: { result: "revision", announced: true, reload: "views" },
-  [METHODS.recalculate]: {
-    result: "revision",
-    announced: true,
-    reload: "views",
-  },
-  [METHODS.export]: { result: "asset", announced: true, reload: "none" },
-  [METHODS.render]: { announced: true, reload: "views" },
-  [METHODS.review]: { announced: true, reload: "views" },
-  [METHODS.remove]: { announced: true, reload: "views" },
-  [METHODS.discard]: { announced: true, reload: "uploads" },
-  [METHODS.upload]: { announced: false, reload: "uploads" },
-  [METHODS.append]: { announced: false, reload: "none" },
-};
 
 function commandNotice(
   method: CommandMethod,
@@ -119,36 +34,15 @@ function commandNotice(
   return { kind: "command", method };
 }
 
-// A failure that does not prove the command was refused leaves its outcome
-// open; the observation stays recoverable instead of reporting an error.
-function outcomeUnknown(error: unknown, recoverable: boolean): boolean {
-  return (
-    mutationSettlementIsUnknown(error) ||
-    (recoverable &&
-      !(error instanceof OperationFailure) &&
-      !isErrorType(error, "plugin_command_retired"))
-  );
-}
-
 function sameSelection(a?: Selection, b?: Selection): boolean {
   return a?.id === b?.id && a?.revision === b?.revision;
 }
 
 export function useDeliverables(context: ComponentContext) {
-  const operations = useMemo(() => {
-    if (!context.binding)
-      throw new Error(
-        "deliverables component requires its callable contribution",
-      );
-    return bindOperations<MethodInputs, MethodOutputs>(
-      context,
-      CAPABILITY_JSON,
-      {
-        scope: "installation",
-        reference: context.binding.installationId,
-      },
-    );
-  }, [context]);
+  const operations = useMemo(
+    () => bindDeliverableOperations(context),
+    [context],
+  );
   // Inside a Project the archive lists and records only that Project's documents.
   const project = context.project?.id;
   const scoped = useMemo(() => (project ? { project } : {}), [project]);
@@ -157,157 +51,41 @@ export function useDeliverables(context: ComponentContext) {
     () => AbortSignal.any([context.signal, owner.signal]),
     [context.signal, owner],
   );
-  const requests = useMemo(
-    () => new Map<ViewMethod, AbortController>(),
-    [context],
-  );
-  const [projections, setProjections] = useState<{
-    context: ComponentContext;
-    values: Projections;
-  }>();
-  const [target, setTarget] = useState<{
-    context: ComponentContext;
-    value: Selection;
-  }>();
-  const selection = target?.context === context ? target.value : undefined;
+  const { values, query, abort } = useProjections(context, operations, signal);
+  const [selection, setTarget] = useContextState<Selection>(context);
   const current = useRef(selection);
   current.current = selection;
   const [listPages, setListPages] = useState<Array<string | undefined>>([]);
   const [historyPages, setHistoryPages] = useState<Array<string | undefined>>(
     [],
   );
-  const [noticeState, setNotice] = useState<{
-    context: ComponentContext;
-    value: Notice;
-  }>();
-  const [commandState, setCommandState] = useState<{
-    context: ComponentContext;
-    values: CommandObservation[];
-  }>();
-  const [transfer, setTransfer] = useState<{
-    context: ComponentContext;
-    filename: string;
-    received: number;
-    total: number;
-  }>();
-  const saving = useMemo(
-    () => ({
-      active: false,
-      controller: undefined as AbortController | undefined,
-    }),
-    [context],
-  );
-  const commands = useMemo(() => {
-    const entries = new Map<string, CommandObservation>();
-    for (const method of commandMethods)
-      for (const original of operations.pendingCommands(method)) {
-        entries.set(original.idempotencyKey, {
-          id: original.idempotencyKey,
-          method,
-          status: "unknown",
-          recover: () => original.recover(signal),
-          retire: () => original.retire(signal),
-        });
-      }
-    return entries;
-  }, [operations, signal]);
-  const values = projections?.context === context ? projections.values : {};
-  const publish = useCallback(() => {
-    if (!signal.aborted)
-      setCommandState({ context, values: [...commands.values()] });
-  }, [commands, context, signal]);
+  const [notice, setNotice] = useContextState<Notice>(context);
   const tell = useCallback(
     (value: Notice) => {
-      if (!signal.aborted) setNotice({ context, value });
+      if (!signal.aborted) setNotice(value);
     },
-    [context, signal],
+    [setNotice, signal],
+  );
+  const fail = useCallback(
+    (error: unknown) => tell({ kind: "error", text: failureText(error) }),
+    [tell],
   );
 
   useEffect(() => () => owner.abort(), [owner]);
-  useEffect(publish, [publish]);
-
-  const query = useCallback(
-    async <K extends ViewMethod>(
-      method: K,
-      input: MethodInputs[K],
-    ): Promise<MethodOutputs[K] | undefined> => {
-      if (signal.aborted) return;
-      requests.get(method)?.abort();
-      const request = new AbortController();
-      requests.set(method, request);
-      const lifetime = AbortSignal.any([signal, request.signal]);
-      setProjections((previous) => {
-        const existing = previous?.context === context ? previous.values : {};
-        const prior = existing[method] as Projection<K> | undefined;
-        const retain =
-          method === METHODS.list ||
-          method === METHODS.catalog ||
-          method === METHODS.uploads ||
-          (method === METHODS.history &&
-            prior &&
-            "id" in prior.input &&
-            "id" in input &&
-            prior.input.id === input.id) ||
-          (prior && stringifyJSON(prior.input) === stringifyJSON(input));
-        return {
-          context,
-          values: {
-            ...existing,
-            [method]: {
-              input: retain && prior?.value ? prior.input : input,
-              value: retain ? prior?.value : undefined,
-              loading: true,
-            },
-          },
-        };
-      });
-      try {
-        const value = await operations.query(method, input, lifetime);
-        if (lifetime.aborted) return;
-        setProjections((previous) => ({
-          context,
-          values: {
-            ...(previous?.context === context ? previous.values : {}),
-            [method]: { input, value, loading: false },
-          },
-        }));
-        return value;
-      } catch (error) {
-        if (!lifetime.aborted)
-          setProjections((previous) => {
-            const existing =
-              previous?.context === context ? previous.values : {};
-            return {
-              context,
-              values: {
-                ...existing,
-                [method]: {
-                  ...existing[method],
-                  input: existing[method]?.input ?? input,
-                  loading: false,
-                  error: failureText(error),
-                },
-              },
-            };
-          });
-      }
-    },
-    [context, operations, requests, signal],
-  );
 
   const open = useCallback(
     (value: Selection) => {
       if (signal.aborted) return;
       if (sameSelection(current.current, value)) return;
-      requests.get(METHODS.read)?.abort();
+      abort(METHODS.read);
       if (current.current?.id !== value.id) {
-        requests.get(METHODS.history)?.abort();
+        abort(METHODS.history);
         setHistoryPages([]);
       }
       current.current = value;
-      setTarget({ context, value });
+      setTarget(value);
     },
-    [context, requests, signal],
+    [abort, setTarget, signal],
   );
   const selectRevision = useCallback(
     (revision: Revision, captured: Selection | undefined) => {
@@ -362,142 +140,31 @@ export function useDeliverables(context: ComponentContext) {
   const refreshRef = useRef(refresh);
   refreshRef.current = refresh;
 
-  const observe = useCallback(
-    async (
-      original: CommandObservation,
-      promise: Promise<unknown>,
-    ): Promise<unknown> => {
-      commands.set(original.id, {
-        ...original,
-        status: "running",
-        error: undefined,
-      });
-      publish();
+  const settle = useCallback(
+    (command: CommandObservation, result: unknown) => {
+      const announced = commandNotice(command.method, result);
+      if (announced) tell(announced);
+      // This callback belongs to the original authored action, never the current draft.
       try {
-        const result = await promise;
-        if (signal.aborted) return;
-        commands.delete(original.id);
-        const notice = commandNotice(original.method, result);
-        if (notice) tell(notice);
-        // This callback belongs to the original authored action, never the current draft.
-        try {
-          original.settled?.(result);
-        } catch (error) {
-          tell({ kind: "error", text: failureText(error) });
-        }
-        const { reload } = COMMAND_EFFECTS[original.method];
-        if (reload === "uploads") void query(METHODS.uploads, {});
-        else if (reload === "views") void refreshRef.current();
-        return result;
+        command.settled?.(result);
       } catch (error) {
-        if (signal.aborted) return;
-        const pending = operations
-          .pendingCommands(original.method)
-          .find((entry) => entry.idempotencyKey === original.id);
-        if (outcomeUnknown(error, original.recover !== undefined)) {
-          commands.set(original.id, {
-            ...original,
-            status: "unknown",
-            error: failureText(error),
-            recover: pending ? () => pending.recover(signal) : original.recover,
-            retire: pending ? () => pending.retire(signal) : original.retire,
-          });
-        } else {
-          commands.delete(original.id);
-          tell({ kind: "error", text: failureText(error) });
-        }
-      } finally {
-        publish();
+        fail(error);
       }
+      const { reload } = COMMAND_EFFECTS[command.method];
+      if (reload === "uploads") void query(METHODS.uploads, {});
+      else if (reload === "views") void refreshRef.current();
     },
-    [commands, operations, publish, query, signal, tell],
+    [fail, query, tell],
   );
-
-  const run = useCallback(
-    async <K extends CommandMethod>(
-      method: K,
-      input: MethodInputs[K],
-      settled?: (value: MethodOutputs[K]) => void,
-    ): Promise<MethodOutputs[K] | undefined> => {
-      if (
-        signal.aborted ||
-        (commands.size && method !== METHODS.discard) ||
-        [...commands.values()].some(
-          (entry) =>
-            entry.method === METHODS.discard && method === METHODS.discard,
-        )
-      )
-        return;
-      try {
-        const promise = operations.command(
-          method,
-          COMMAND_EFFECTS[method].scoped ? { ...input, ...scoped } : input,
-        );
-        return (await observe(
-          {
-            id: promise.idempotencyKey,
-            method,
-            status: "running",
-            settled: settled
-              ? (value) => settled(value as MethodOutputs[K])
-              : undefined,
-          },
-          promise,
-        )) as MethodOutputs[K] | undefined;
-      } catch (error) {
-        tell({ kind: "error", text: failureText(error) });
-      }
-    },
-    [commands, observe, operations, scoped, signal, tell],
-  );
-
-  const save = useCallback(
-    async (asset: Asset) => {
-      if (signal.aborted || saving.active) return;
-      const controller = new AbortController();
-      saving.controller = controller;
-      saving.active = true;
-      const lifetime = AbortSignal.any([signal, controller.signal]);
-      setTransfer({
-        context,
-        filename: asset.filename,
-        received: 0,
-        total: Number(asset.size),
-      });
-      try {
-        const bytes = await downloadAsset(
-          (input, owned) => operations.query(METHODS.download, input, owned),
-          asset,
-          lifetime,
-          (received, total) => {
-            if (!lifetime.aborted)
-              setTransfer({
-                context,
-                filename: asset.filename,
-                received,
-                total,
-              });
-          },
-        );
-        lifetime.throwIfAborted();
-        const result = await context.saveFile({
-          filename: asset.filename,
-          mime: asset.mime,
-          bytes,
-        });
-        if (!signal.aborted)
-          tell({ kind: "save", result, filename: asset.filename });
-      } catch (error) {
-        if (!lifetime.aborted)
-          tell({ kind: "error", text: failureText(error) });
-      } finally {
-        saving.active = false;
-        saving.controller = undefined;
-        if (!signal.aborted) setTransfer(undefined);
-      }
-    },
-    [context, operations, saving, signal, tell],
-  );
+  const journal = useCommandJournal({
+    context,
+    operations,
+    signal,
+    scoped,
+    settle,
+    fail,
+  });
+  const assets = useAssetSave(context, operations, signal, tell);
 
   const page = useCallback(
     async (kind: "list" | "history", direction: "next" | "previous") => {
@@ -549,7 +216,6 @@ export function useDeliverables(context: ComponentContext) {
     selection,
     open,
     selectRevision,
-    run,
     refresh,
     page,
     catalog: values[METHODS.catalog],
@@ -566,44 +232,14 @@ export function useDeliverables(context: ComponentContext) {
         : undefined,
     listPrevious: listPages.length > 0,
     historyPrevious: historyPages.length > 0,
-    commands:
-      commandState?.context === context
-        ? commandState.values
-        : [...commands.values()],
-    blocked: commands.size > 0,
-    notice: noticeState?.context === context ? noticeState.value : undefined,
+    ...journal,
+    notice,
     refreshUploads: () => query(METHODS.uploads, {}),
-    recover: (command: CommandObservation) => {
-      if (!signal.aborted && command.status === "unknown" && command.recover)
-        void observe(command, command.recover());
-    },
-    retire: async (command: CommandObservation) => {
-      if (signal.aborted || command.status !== "unknown" || !command.retire)
-        return;
-      commands.set(command.id, {
-        ...command,
-        status: "running",
-        error: undefined,
-      });
-      publish();
-      try {
-        await command.retire();
-        if (signal.aborted) return;
-        commands.delete(command.id);
-      } catch (error) {
-        if (!signal.aborted)
-          commands.set(command.id, { ...command, error: failureText(error) });
-      } finally {
-        publish();
-      }
-    },
-    save,
-    transfer: transfer?.context === context ? transfer : undefined,
-    cancelTransfer: () => saving.controller?.abort(),
+    ...assets,
     clearSelection: (captured: Selection) => {
       if (!signal.aborted && sameSelection(current.current, captured)) {
-        requests.get(METHODS.read)?.abort();
-        requests.get(METHODS.history)?.abort();
+        abort(METHODS.read);
+        abort(METHODS.history);
         current.current = undefined;
         setTarget(undefined);
       }

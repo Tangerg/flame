@@ -10,7 +10,8 @@ import {
 import { METHODS } from "../contracts/methods";
 import { Source } from "./provenance";
 import { type OpenForReading } from "./archive";
-import { type CommandMethod, type DeliverablesState } from "./useDeliverables";
+import type { CommandMethod } from "./types";
+import type { DeliverablesState } from "./useDeliverables";
 
 function commandLabel(method: CommandMethod, t: Translate): string {
   switch (method) {

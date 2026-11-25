@@ -6,6 +6,7 @@ import {
   isErrorType,
   mutationSettlementIsUnknown,
   OperationFailure,
+  useContextState,
   type ComponentContext,
 } from "@flame/component-sdk";
 import {
@@ -34,7 +35,6 @@ const commandMethods: readonly CommandMethod[] = [
 ];
 
 type Read<T> = {
-  context: ComponentContext;
   value?: T;
   loading: boolean;
   error?: string;
@@ -99,12 +99,12 @@ export function useComputer(context: ComponentContext) {
     () => AbortSignal.any([context.signal, owner.signal]),
     [context.signal, owner],
   );
-  const [inspection, setInspection] = useState<Read<Snapshot>>();
-  const [surfaceRead, setSurfaceRead] = useState<Read<Surface>>();
-  const [historyRead, setHistoryRead] = useState<Read<HistoryPage>>();
-  const [resultRead, setResultRead] = useState<
+  const [read, setInspection] = useContextState<Read<Snapshot>>(context);
+  const [surface, setSurfaceRead] = useContextState<Read<Surface>>(context);
+  const [history, setHistoryRead] = useContextState<Read<HistoryPage>>(context);
+  const [result, setResultRead] = useContextState<
     Read<OperationRecord> & { id: string }
-  >();
+  >(context);
   const [watchError, setWatchError] = useState<
     { kind: "ended" } | { kind: "failed"; message: string }
   >();
@@ -123,11 +123,7 @@ export function useComputer(context: ComponentContext) {
     [],
   );
 
-  const read = inspection?.context === context ? inspection : undefined;
   const snapshot = read?.value;
-  const surface = surfaceRead?.context === context ? surfaceRead : undefined;
-  const history = historyRead?.context === context ? historyRead : undefined;
-  const result = resultRead?.context === context ? resultRead : undefined;
 
   const refresh = useCallback(async () => {
     signal.throwIfAborted();
@@ -135,24 +131,19 @@ export function useComputer(context: ComponentContext) {
     const request = new AbortController();
     readRequest.current = request;
     const lifetime = AbortSignal.any([signal, request.signal]);
-    setInspection((previous) => ({
-      context,
-      value: previous?.context === context ? previous.value : undefined,
-      loading: true,
-    }));
+    setInspection((previous) => ({ value: previous?.value, loading: true }));
     try {
       const value = await operations.query(METHODS.read, {}, lifetime);
-      if (!lifetime.aborted) setInspection({ context, value, loading: false });
+      if (!lifetime.aborted) setInspection({ value, loading: false });
     } catch (error) {
       if (!lifetime.aborted)
         setInspection((previous) => ({
-          context,
-          value: previous?.context === context ? previous.value : undefined,
+          value: previous?.value,
           loading: false,
           error: failureText(error),
         }));
     }
-  }, [context, operations, signal]);
+  }, [operations, setInspection, signal]);
 
   const loadHistory = useCallback(
     async (before: string | undefined = cursor.current) => {
@@ -161,11 +152,7 @@ export function useComputer(context: ComponentContext) {
       const request = new AbortController();
       historyRequest.current = request;
       const lifetime = AbortSignal.any([signal, request.signal]);
-      setHistoryRead((previous) => ({
-        context,
-        value: previous?.context === context ? previous.value : undefined,
-        loading: true,
-      }));
+      setHistoryRead((previous) => ({ value: previous?.value, loading: true }));
       try {
         const value = await operations.query(
           METHODS.history,
@@ -174,21 +161,20 @@ export function useComputer(context: ComponentContext) {
         );
         if (!lifetime.aborted) {
           cursor.current = before;
-          setHistoryRead({ context, value, loading: false });
+          setHistoryRead({ value, loading: false });
           return true;
         }
         return false;
       } catch (error) {
         if (!lifetime.aborted)
           setHistoryRead((previous) => ({
-            context,
-            value: previous?.context === context ? previous.value : undefined,
+            value: previous?.value,
             loading: false,
             error: failureText(error),
           }));
       }
     },
-    [context, operations, signal],
+    [operations, setHistoryRead, signal],
   );
 
   const inspect = useCallback(
@@ -199,33 +185,24 @@ export function useComputer(context: ComponentContext) {
       resultRequest.current = request;
       const lifetime = AbortSignal.any([signal, request.signal]);
       setResultRead((previous) => ({
-        context,
         id,
-        value:
-          previous?.context === context && previous.id === id
-            ? previous.value
-            : undefined,
+        value: previous?.id === id ? previous.value : undefined,
         loading: true,
       }));
       try {
         const value = await operations.query(METHODS.result, { id }, lifetime);
-        if (!lifetime.aborted)
-          setResultRead({ context, id, value, loading: false });
+        if (!lifetime.aborted) setResultRead({ id, value, loading: false });
       } catch (error) {
         if (!lifetime.aborted)
           setResultRead((previous) => ({
-            context,
             id,
-            value:
-              previous?.context === context && previous.id === id
-                ? previous.value
-                : undefined,
+            value: previous?.id === id ? previous.value : undefined,
             loading: false,
             error: failureText(error),
           }));
       }
     },
-    [context, operations, signal],
+    [operations, setResultRead, signal],
   );
 
   const closeInspection = useCallback(() => {
@@ -239,11 +216,7 @@ export function useComputer(context: ComponentContext) {
     const request = new AbortController();
     const lifetime = AbortSignal.any([signal, request.signal]);
     setWatchError(undefined);
-    setInspection((previous) => ({
-      context,
-      value: previous?.context === context ? previous.value : undefined,
-      loading: true,
-    }));
+    setInspection((previous) => ({ value: previous?.value, loading: true }));
     void operations
       .queryStream(
         METHODS.watch,
@@ -252,7 +225,7 @@ export function useComputer(context: ComponentContext) {
           if (lifetime.aborted || chunkSignal.aborted) return;
           // A live owner snapshot supersedes an older point read in flight.
           readRequest.current?.abort();
-          setInspection({ context, value, loading: false });
+          setInspection({ value, loading: false });
         },
         lifetime,
       )
@@ -263,14 +236,13 @@ export function useComputer(context: ComponentContext) {
         if (!lifetime.aborted) {
           setWatchError({ kind: "failed", message: failureText(error) });
           setInspection((previous) => ({
-            context,
-            value: previous?.context === context ? previous.value : undefined,
+            value: previous?.value,
             loading: false,
           }));
         }
       });
     return () => request.abort();
-  }, [context, operations, signal, watchVersion]);
+  }, [operations, setInspection, signal, watchVersion]);
 
   const session = snapshot?.session;
   const sessionId = session?.id;
@@ -296,7 +268,7 @@ export function useComputer(context: ComponentContext) {
     }
     const request = new AbortController();
     const lifetime = AbortSignal.any([signal, request.signal]);
-    setSurfaceRead({ context, loading: true });
+    setSurfaceRead({ loading: true });
     void operations
       .query(METHODS.context, {}, lifetime)
       .then((value) => {
@@ -310,19 +282,15 @@ export function useComputer(context: ComponentContext) {
           void refresh();
           return;
         }
-        setSurfaceRead({ context, value, loading: false });
+        setSurfaceRead({ value, loading: false });
       })
       .catch((error: unknown) => {
         if (!lifetime.aborted)
-          setSurfaceRead({
-            context,
-            loading: false,
-            error: failureText(error),
-          });
+          setSurfaceRead({ loading: false, error: failureText(error) });
       });
     return () => request.abort();
   }, [
-    context,
+    setSurfaceRead,
     operations,
     signal,
     sessionId,

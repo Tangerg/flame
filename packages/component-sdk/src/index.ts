@@ -3,7 +3,14 @@ import { parseJSON, stringifyJSON } from "@frame/sdk/json";
 import { OperationFailure } from "@flame/runtime-client";
 import { pluginMethod } from "@flame/runtime-client";
 export { OperationFailure } from "@flame/runtime-client";
-import { useMemo, type ComponentType, type ReactNode } from "react";
+import {
+  useCallback,
+  useMemo,
+  useState,
+  type ComponentType,
+  type ReactNode,
+  type SetStateAction,
+} from "react";
 import type { FlameClient, MutationPromise } from "@flame/runtime-client";
 import type {
   CallPluginResponse,
@@ -360,6 +367,33 @@ export function useTranslator(
   locale: string,
 ): Translate {
   return useMemo(() => createTranslator(catalogs, locale), [catalogs, locale]);
+}
+
+// The Host can replace a mounted component's captured context; state produced
+// under the replaced context reads as absent instead of as the current context's.
+export function useContextState<T>(
+  context: ComponentContext,
+): readonly [T | undefined, (next: SetStateAction<T | undefined>) => void] {
+  const [state, setState] = useState<{
+    context: ComponentContext;
+    value: T | undefined;
+  }>();
+  const set = useCallback(
+    (next: SetStateAction<T | undefined>) =>
+      setState((previous) => {
+        const current =
+          previous?.context === context ? previous.value : undefined;
+        return {
+          context,
+          value:
+            typeof next === "function"
+              ? (next as (current: T | undefined) => T | undefined)(current)
+              : next,
+        };
+      }),
+    [context],
+  );
+  return [state?.context === context ? state.value : undefined, set];
 }
 
 function output<R>(reply: CallPluginResponse): R {
