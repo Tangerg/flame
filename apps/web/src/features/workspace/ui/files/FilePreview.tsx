@@ -17,7 +17,7 @@ import { WORKSPACE_FILE_RENDERER } from "@/features/workspace/public/views";
 import { DataError, DataView, SkeletonList } from "@/ui/index";
 import { Segmented } from "@flame/ui";
 import { Icon, fileIconName } from "@/ui/index";
-import { Button, EmptyState, IconButton, useContentVisible, useCopy } from "@flame/ui";
+import { BackButton, Button, EmptyState, IconButton, useContentVisible, useCopy } from "@flame/ui";
 import { face } from "@flame/ui/tokens.stylex";
 import { useT, type Translate } from "@/lib/i18n/index";
 import { WorkspaceViewLayout } from "@/features/workspace/ui/WorkspaceViewLayout";
@@ -47,12 +47,6 @@ import {
 } from "@/features/workspace/ui/files/fileReadWindow";
 
 const styles = stylex.create({
-  // The back chevron's stroke, not its button, starts the header's column edge (as
-  // Disclosure's does); its hover fill bleeds like a row's.
-  back: {
-    marginInlineStart:
-      "calc((var(--icon-sm) - var(--control-height-sm)) / 2 - var(--icon-sm) * 0.3125)",
-  },
   directory: { display: "block", overflowWrap: "anywhere" },
   // The header never shrinks, so a long name is bounded here; the directory below completes it.
   identityName: {
@@ -437,12 +431,9 @@ export function FilePreview({
         />
       }
       navigation={
-        <IconButton
+        <BackButton
           ref={backRef}
-          icon={iconGlyph("chevron-left")}
-          size="sm"
           aria-label={t("file.backToFiles")}
-          styles={styles.back}
           data-chrome-focus=""
           onClick={closeWorkspaceFile.bind(null, workspaceAccess)}
         />

@@ -76,6 +76,7 @@ function renderToolBlock(
               run={narrative.run}
               ordinal={index + 1}
               siblingCount={delegatedRuns.length}
+              size="sm"
             />
           ))}
         </div>
