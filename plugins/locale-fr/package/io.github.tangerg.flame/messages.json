@@ -164,7 +164,7 @@
   "dock.tabs.moved": "{{title}} déplacé à la position {{position}} sur {{total}}",
   "workspace.view.openBeside": "Ouvrir dans le dock de contexte",
   "workspace.view.unavailable.title": "Vue indisponible",
-  "workspace.view.unavailable.body": "La vue \"{{id}}\" n'est pas enregistrée. Fermez cet onglet ou réactivez son plugin.",
+  "workspace.view.unavailable.body": "La vue « {{id}} » n'est pas enregistrée. Fermez cet onglet ou réactivez son plugin.",
   "message.markdown.footnotes": "Notes de bas de page",
   "message.markdown.backReference": "Retour à la référence {{reference}}",
   "message.image.view": "Voir l'image jointe",

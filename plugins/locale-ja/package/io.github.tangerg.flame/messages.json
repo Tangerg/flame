@@ -164,7 +164,7 @@
   "dock.tabs.moved": "{{title}}を{{total}}件中{{position}}番目に移動しました",
   "workspace.view.openBeside": "コンテキストドックで開く",
   "workspace.view.unavailable.title": "ビューを利用できません",
-  "workspace.view.unavailable.body": "\"{{id}}\" ビューは登録されていません。このタブを閉じるか、プラグインを再度有効にしてください。",
+  "workspace.view.unavailable.body": "「{{id}}」ビューは登録されていません。このタブを閉じるか、プラグインを再度有効にしてください。",
   "message.markdown.footnotes": "脚注",
   "message.markdown.backReference": "参照 {{reference}} に戻る",
   "message.image.view": "添付画像を表示",

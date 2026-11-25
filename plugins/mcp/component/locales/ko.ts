@@ -10,7 +10,7 @@ export const ko: Record<string, string> = {
   "mcp.delete": "삭제",
   "mcp.delete.title": "이 서버를 삭제할까요?",
   "mcp.delete.body":
-    "'{{server}}'과 그 도구가 제거됩니다. 나중에 다시 추가할 수 있습니다.",
+    "“{{server}}”과 그 도구가 제거됩니다. 나중에 다시 추가할 수 있습니다.",
   "mcp.test": "테스트",
   "mcp.testing": "테스트 중…",
   "mcp.connectionOk": "연결 정상",

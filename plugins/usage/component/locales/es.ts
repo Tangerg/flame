@@ -53,7 +53,7 @@ export const es: Record<string, string> = {
   "fact.runs": "Ejecuciones asociadas",
   "accounting.title": "Detalles de contabilidad",
   "accounting.note":
-    "Los totales de tokens incluyen solo el uso informado. Los resultados desconocidos y el uso no informado pueden añadir consumo. El subtotal de precio conocido incluye solo los intentos con precio; el coste total requiere que todos los intentos tengan precio. Las llamadas eliminadas o nunca registradas no se pueden reconstruir. Cero tokens es un valor registrado. “No informado” significa que no hay un precio completo para ese total o grupo.",
+    "Los totales de tokens incluyen solo el uso informado. Los resultados desconocidos y el uso no informado pueden añadir consumo. El subtotal de precio conocido incluye solo los intentos con precio; el coste total requiere que todos los intentos tengan precio. Las llamadas eliminadas o nunca registradas no se pueden reconstruir. Cero tokens es un valor registrado. «No informado» significa que no hay un precio completo para ese total o grupo.",
   "empty.title": "No hay intentos de modelo retenidos en este periodo.",
   "breakdown.title": "Desglose de uso",
   "breakdown.group": "Uso registrado por fuente",
