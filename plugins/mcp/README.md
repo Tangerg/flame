@@ -84,7 +84,9 @@ interactive authorization attempts. An installation stores them in its private
 `external-servers.db`. Runtime issues each launch grant for one installation and server
 name. A grant identifies protected process or HTTP transport material and cannot be
 redeemed for a different source. A successful directory write commits the submitted
-server definition and assigns its revision in the connector. Runtime publishes
+server definition and assigns its revision in the connector. The connector
+serves the original command receipt so Runtime can confirm a pending launch grant
+after a crash. Runtime publishes
 tool exposure and connection changes from that acceptance before retiring local
 launch grants. A failed retirement is reported and the accepted disable or
 removal still withdraws the tools. OAuth tokens, environment values, request

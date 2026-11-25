@@ -62,6 +62,9 @@ func register(bound *pluginmcp.Backend, db sqlite.Database) error {
 	}); err != nil {
 		return err
 	}
+	if err := pluginstorage.RegisterReceipts(bound, db); err != nil {
+		return err
+	}
 	if err := bound.BindCapability(wire.Export, m.Contract); err != nil {
 		return err
 	}

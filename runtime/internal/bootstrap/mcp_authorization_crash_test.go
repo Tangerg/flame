@@ -26,7 +26,7 @@ const externalAuthorizationCrashHome = "FLAME_TEST_MCP_AUTH_CRASH_HOME"
 const externalAuthorizationCrashRunner = "FLAME_TEST_MCP_AUTH_CRASH_RUNNER"
 const externalAuthorizationCrashEndpoint = "FLAME_TEST_MCP_AUTH_CRASH_ENDPOINT"
 
-func externalAuthorizationConfig(t *testing.T, data, runnerDir string) assemblyConfig {
+func externalMCPRestartConfig(t *testing.T, data, runnerDir string) assemblyConfig {
 	t.Helper()
 	cfg := poMCPConfig(t)
 	store, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: data, ValidateDirectory: persistencefixture.UnleasedDirectory})
@@ -34,13 +34,13 @@ func externalAuthorizationConfig(t *testing.T, data, runnerDir string) assemblyC
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = store.Close() })
-	cfg.processRunner = externalAuthorizationRunner(t, runnerDir)
+	cfg.processRunner = externalMCPRunner(t, runnerDir)
 	cfg.stores = store
 	cfg.providerRegistry = store.Providers
 	return cfg
 }
 
-func externalAuthorizationRunner(t *testing.T, runnerDir string) *runner.Daemon {
+func externalMCPRunner(t *testing.T, runnerDir string) *runner.Daemon {
 	t.Helper()
 	daemon, err := runner.NewDaemon(runner.DaemonConfig{Executable: testsupport.RunnerExecutable(t), Directory: runnerDir, StartTimeout: 10 * time.Second})
 	if err != nil {
@@ -61,7 +61,7 @@ func TestExternalAuthorizationCrashChild(t *testing.T) {
 	if data == "" {
 		return
 	}
-	cfg := externalAuthorizationConfig(t, data, os.Getenv(externalAuthorizationCrashRunner))
+	cfg := externalMCPRestartConfig(t, data, os.Getenv(externalAuthorizationCrashRunner))
 	r := poMCPOpen(t, cfg)
 	installExternalConnector(r)
 	server := r.must(delivery.MCPServersCreate, protocol.MCPServerCandidate{
@@ -122,7 +122,7 @@ func TestCrashDuringExternalAuthorizationRestoresUnconfirmedReceipt(t *testing.T
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = os.RemoveAll(runnerDir) })
-	if _, err := externalAuthorizationRunner(t, runnerDir).Identity(t.Context()); err != nil {
+	if _, err := externalMCPRunner(t, runnerDir).Identity(t.Context()); err != nil {
 		t.Fatal(err)
 	}
 	var requests atomic.Int32
@@ -158,7 +158,7 @@ func TestCrashDuringExternalAuthorizationRestoresUnconfirmedReceipt(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	cfg := externalAuthorizationConfig(t, data, runnerDir)
+	cfg := externalMCPRestartConfig(t, data, runnerDir)
 	restored := poMCPOpen(t, cfg)
 	attempt, err := restored.api.GetMCPAuthorizationAttempt(t.Context(), string(id))
 	if err != nil {
