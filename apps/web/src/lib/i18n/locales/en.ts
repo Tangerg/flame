@@ -549,9 +549,9 @@ export const en = {
   "question.settled.noAnswer": "No answer provided",
   "question.settled.dismissed": "Closed without an answer",
   "question.freetext.placeholder": "Type a custom answer…",
-  "cwdMissing.title": "Working directory missing",
+  "cwdMissing.title": "The folder is gone from disk",
   "cwdMissing.body":
-    "The folder is gone from disk — the agent runs in plain-chat mode until it is restored or the session is relocated.",
+    "The agent runs in plain-chat mode until the folder is restored or the session is relocated.",
   "cwdMissing.action.relocate": "Relocate…",
   "cwdMissing.action.apply": "Apply",
   "cwdMissing.action.cancel": "Cancel",
