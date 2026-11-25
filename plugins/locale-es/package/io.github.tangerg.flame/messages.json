@@ -491,7 +491,6 @@
   "cwdMissing.action.cancel": "Cancelar",
   "cwdMissing.placeholder": "Nueva ruta absoluta",
   "runError.unknown": "La ejecución falló.",
-  "runError.title": "Error de agent",
   "runError.action.context": "Inspeccionar contexto",
   "runError.action.diagnostics": "Diagnóstico",
   "runError.action.dismiss": "Descartar",

@@ -32,13 +32,6 @@ export const shellStyles = stylex.create({
     paddingInline: space.s3,
     paddingBlock: space.s2_5,
   },
-  bannerHead: {
-    marginBottom: space.s0_5,
-    display: "flex",
-    flexWrap: "wrap",
-    alignItems: "baseline",
-    columnGap: space.s2,
-  },
   bannerBody: {
     whiteSpace: "pre-wrap",
     overflowWrap: "break-word",

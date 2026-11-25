@@ -21,7 +21,7 @@ import { showWorkspaceDock } from "@/features/workspace/public/navigation";
 import { useRuntimeCommandsAvailable } from "@/features/connection/public/serviceStatus";
 import { type AgentProblem } from "@/features/agent/public/sessionView";
 import { shellStyles as sh } from "@/features/shell/workbench/shellStyles";
-import { color, face, space, type as typeStep } from "@flame/ui/tokens.stylex";
+import { color, space, type as typeStep } from "@flame/ui/tokens.stylex";
 const reb = stylex.create({
   sans: { fontFamily: "var(--font-sans)" },
   glyph: { marginTop: space.s0_5, color: color.negative },
@@ -69,14 +69,17 @@ function retryRecovers(error: AgentProblem | null | undefined): boolean {
   return error?.recovery !== "stop" && error?.recovery !== "reauthenticate";
 }
 
-function runProblemText(t: Translate, error: AgentProblem): string {
-  return (
+// The localized cause leads; a provider's own message, when it adds something, follows it.
+function runProblemText(
+  t: Translate,
+  error: AgentProblem,
+): { headline: string; detail: string | undefined } {
+  const named =
     describeActiveRunRefusal(error) ??
     (error.lossReason ? t(`agent.loss.${error.lossReason}`) : undefined) ??
-    error.message ??
-    describeErrorType(error.code) ??
-    t("runError.unknown")
-  );
+    describeErrorType(error.code);
+  if (!named) return { headline: error.message ?? t("runError.unknown"), detail: undefined };
+  return { headline: named, detail: error.message !== named ? error.message : undefined };
 }
 
 export function RunErrorBanner() {
@@ -102,6 +105,7 @@ export function RunErrorBanner() {
   };
 
   const canRetry = canSend && Boolean(retryText) && retryRecovers(error);
+  const problem = error ? runProblemText(t, error) : null;
 
   return (
     <AnimatePresence initial={false}>
@@ -116,17 +120,14 @@ export function RunErrorBanner() {
         >
           <Icon name="alert" size="md" className={stylex.props(reb.glyph).className} />
           <div {...stylex.props(vocab.min)}>
-            <div {...stylex.props(sh.bannerHead)}>
-              <span {...stylex.props(vocab.negative, vocab.strong, typeStep.uiMd)}>
-                {t("runError.title")}
-              </span>
-              {error.code && (
-                <span {...stylex.props(vocab.faint, sh.selectable, typeStep.uiXs, face.mono)}>
-                  {error.code}
-                </span>
-              )}
+            <div {...stylex.props(sh.bannerBody, vocab.strong, typeStep.uiMd)}>
+              {problem?.headline}
             </div>
-            <div {...stylex.props(sh.bannerBody, typeStep.uiMd)}>{runProblemText(t, error)}</div>
+            {problem?.detail && (
+              <div {...stylex.props(sh.bannerBody, sh.selectable, vocab.muted, typeStep.uiSm)}>
+                {problem.detail}
+              </div>
+            )}
             <div {...stylex.props(sh.bannerActions)}>
               {canRetry && (
                 <BannerAction
