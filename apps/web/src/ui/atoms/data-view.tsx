@@ -2,7 +2,7 @@ import { iconGlyph } from "@/ui/icons/index";
 import { type ReactNode, type RefObject } from "react";
 import { type IconName } from "@/ui/icons/index";
 import { useT } from "@/lib/i18n/index";
-import { EmptyState, type EmptyStateSize } from "@flame/ui/empty-state";
+import { EmptyState, type EmptyStateAlign, type EmptyStateSize } from "@flame/ui/empty-state";
 import { DataError, type UnsupportedConfig } from "@/ui/atoms/data-error";
 import { SkeletonList, type SkeletonListVariant } from "@/ui/atoms/skeleton";
 interface EmptyConfig {
@@ -10,6 +10,7 @@ interface EmptyConfig {
   title: string;
   sub?: string;
   size?: EmptyStateSize;
+  align?: EmptyStateAlign;
 }
 
 interface Props<T> {

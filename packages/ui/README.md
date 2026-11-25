@@ -488,12 +488,17 @@ named checkbox marker. Its caller supplies the captured checked state and primar
 visible label; paragraphs and nested lists remain selectable document content.
 The marker follows the reading font size and does not enter the keyboard path.
 Its primitive projects document semantics without registering a form control.
-`IconMark` owns the decorative identity frame used by record summaries, empty
-states and modal headers. Record summaries use its quiet neutral tone: muted
-ink without a filled tile, keeping the same frame geometry and alignment beside
-the title. Empty states and modal headers keep the default accent emphasis
-derived from the host accent, so changing the accent recolors those marks and
-selected rows together; semantic tones keep their existing fills.
+`IconMark` owns the decorative identity frame used by centred empty states and
+modal headers. They keep the default accent emphasis derived from the host
+accent, so changing the accent recolors those marks and selected rows together;
+semantic tones keep their existing fills.
+`EmptyState` centres a whole-surface empty result by default. An empty result
+inside a start-aligned flow uses `align="start"` and sits on the column edge:
+a bare glyph at the title's size, in faint ink or its tone's ink, leads the
+title on one line; the sub and action start at the title's text edge. It keeps
+the size's type steps, a list row's block padding and no inline inset, so it
+belongs beside a `RecordGroup variant="list"`, whose bleed would offset it, not
+inside one.
 
 ## Review preview
 

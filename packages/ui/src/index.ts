@@ -43,7 +43,11 @@ export {
 } from "./text-field";
 export { GlyphSwap } from "./glyph-swap";
 export { BackButton, IconButton } from "./icon-button";
-export { type EmptyStateSize, EmptyState } from "./empty-state";
+export {
+  type EmptyStateAlign,
+  type EmptyStateSize,
+  EmptyState,
+} from "./empty-state";
 export { HeadingLevel } from "./heading-level";
 export {
   PanelHost,

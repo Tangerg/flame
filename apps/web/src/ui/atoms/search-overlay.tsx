@@ -198,7 +198,7 @@ function SearchOverlayContent({
             aria-label={placeholder}
             {...stylex.props(styles.input)}
           />
-          <Kbd>esc</Kbd>
+          <Kbd variant="inline">esc</Kbd>
         </div>
         <div {...stylex.props(styles.list)}>
           <Autocomplete.List aria-label={label} hidden={feedback != null}>
