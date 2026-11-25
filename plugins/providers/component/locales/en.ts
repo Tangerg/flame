@@ -3,7 +3,7 @@ export const en: Record<string, string> = {
   "providers.apiKey.clear": "Remove stored key",
   "providers.apiKey.clear.title": "Remove the stored key?",
   "providers.apiKey.clear.body":
-    "{{provider}} loses its saved API key. You'll need to paste it again to reconnect.",
+    "{{provider}} loses its saved API key. You’ll need to paste it again to reconnect.",
   "providers.apiKey.envPlaceholder": "Using environment key — type to override",
   "providers.apiKey.aria": "{{provider}} API key",
   "providers.baseUrl.mount":
@@ -26,24 +26,24 @@ export const en: Record<string, string> = {
   "providers.connectionOk": "Connection OK",
   "providers.error.save": "Save failed",
   "providers.error.test": "Test failed",
-  "providers.models.error": "Couldn't load models.",
+  "providers.models.error": "Couldn’t load models.",
   "providers.models.refresh": "Refresh models",
   "providers.empty": "No providers",
   "providers.empty.sub": "The Runtime reports no supported LLM providers.",
   "providers.utility.title": "Utility model",
   "providers.utility.desc": "Model for summaries, titles, and fact extraction.",
   "providers.utility.main": "Use Runtime default",
-  "providers.utility.error": "Couldn't set the utility model.",
+  "providers.utility.error": "Couldn’t set the utility model.",
   "providers.embedding.title": "Embedding model",
   "providers.embedding.desc": "Optionally improves Agent memory ranking.",
   "providers.embedding.off": "Off",
   "providers.embedding.none":
     "No embedding-capable provider configured yet — add one (e.g. OpenAI) above.",
-  "providers.embedding.error": "Couldn't set the embedding model.",
+  "providers.embedding.error": "Couldn’t set the embedding model.",
   "providers.testOutcome.notConfigured":
     "Finish configuring the provider first.",
   "providers.testOutcome.failed":
-    "The provider couldn't be reached, or it rejected the test request.",
+    "The provider couldn’t be reached, or it rejected the test request.",
   "providers.apiKey.label": "API key",
   "providers.baseUrl.label": "Base URL",
   "providers.baseUrl.labelRequired": "Base URL · required",
