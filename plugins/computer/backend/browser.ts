@@ -225,12 +225,17 @@ function absent(cause: unknown): boolean {
   );
 }
 
-/** Inspect original registration only. The engine remains the owner of live connections and site approval. */
-export async function validateBrowser(
+interface OriginalConnector {
+  information: z.infer<typeof metadata>;
+  host: string;
+  client: string;
+  root: string;
+}
+
+async function originalConnector(
   application: BrowserApplication,
-  environment: Readonly<Record<string, string>>,
   signal: AbortSignal,
-): Promise<void> {
+): Promise<OriginalConnector> {
   const plugin = join(
     application.resources,
     "plugins/openai-bundled/plugins/chrome",
@@ -246,7 +251,7 @@ export async function validateBrowser(
       { cause },
     );
   }
-  const sourceHost = join(
+  const host = join(
     plugin,
     "extension-host",
     application.platform === "darwin" ? "macos" : "linux",
@@ -255,25 +260,122 @@ export async function validateBrowser(
   );
   try {
     signal.throwIfAborted();
-    if (!(await stat(sourceHost)).isFile())
+    if (!(await stat(host)).isFile())
       throw new Error("computer: original browser host is not a regular file");
-    await access(sourceHost, constants.X_OK);
+    await access(host, constants.X_OK);
   } catch (cause) {
     throw new Error(
       "computer: selected CUA application is missing its executable original browser host",
       { cause },
     );
   }
-  const sourceClient = await realpath(
-    join(plugin, "scripts/browser-client.mjs"),
-  );
-  const sourceRoot = await realpath(plugin);
-  const acceptedHosts = new Set<string>();
-  const acceptedRoots = new Set<string>([sourceRoot]);
-  let sourceDigest: string | undefined;
+  const client = await realpath(join(plugin, "scripts/browser-client.mjs"));
+  const root = await realpath(plugin);
+  return { information, host, client, root };
+}
+
+// Hosts and copied connector trees already proven original are accepted once
+// per inspection, so several manifests naming one copy hash it once.
+class RegistrationInspection {
+  readonly #application: BrowserApplication;
+  readonly #source: OriginalConnector;
+  readonly #signal: AbortSignal;
+  readonly #hosts = new Set<string>();
+  readonly #roots: Set<string>;
+  #digest?: string;
+
+  constructor(
+    application: BrowserApplication,
+    source: OriginalConnector,
+    signal: AbortSignal,
+  ) {
+    this.#application = application;
+    this.#source = source;
+    this.#signal = signal;
+    this.#roots = new Set([source.root]);
+  }
+
+  async admit(value: unknown): Promise<void> {
+    const { information } = this.#source;
+    const registered = manifest.parse(value);
+    const origins = new Set(registered.allowed_origins);
+    if (
+      registered.name !== information.extensionHostName ||
+      origins.size !== information.extensionIds.length ||
+      information.extensionIds.some(
+        (id) => !origins.has(`chrome-extension://${id}/`),
+      )
+    )
+      throw new Error(
+        "computer: browser connector identity differs from the selected application",
+      );
+    const target = await realpath(registered.path);
+    await access(target, constants.X_OK);
+    if (this.#hosts.has(target)) return;
+    if (!(await sameFile(target, this.#source.host, this.#signal)))
+      throw new Error(
+        "computer: browser connector is not the original selected CUA host",
+      );
+    const config = hostConfiguration.parse(
+      await json(
+        join(dirname(target), "extension-host-config.json"),
+        this.#signal,
+      ),
+    );
+    for (const [configured, selected] of [
+      [config.nodePath, this.#application.node],
+      [config.nodeReplPath, this.#application.nodeRepl],
+      [config.codexCliPath, this.#application.codex],
+    ]) {
+      if ((await realpath(configured!)) !== (await realpath(selected!)))
+        throw new Error(
+          "computer: browser connector selects a different CUA installation",
+        );
+    }
+    const client = await realpath(config.browserClientPath);
+    if (client !== this.#source.client) await this.#admitCopiedClient(client);
+    // A copied host and client must belong to the same intact connector resources.
+    const clientRoot = dirname(dirname(client));
+    if (
+      target !== (await realpath(this.#source.host)) &&
+      !target.startsWith(resolve(clientRoot, "extension-host") + sep)
+    )
+      throw new Error(
+        "computer: browser connector host and client select different resources",
+      );
+    this.#hosts.add(target);
+  }
+
+  async #admitCopiedClient(client: string): Promise<void> {
+    if (
+      basename(client) !== "browser-client.mjs" ||
+      basename(dirname(client)) !== "scripts"
+    )
+      throw new Error(
+        "computer: browser connector has an unsupported client layout",
+      );
+    const root = dirname(dirname(client));
+    if (this.#roots.has(root)) return;
+    this.#digest ??= await treeDigest(this.#source.root, this.#signal);
+    if ((await treeDigest(root, this.#signal)) !== this.#digest)
+      throw new Error(
+        "computer: browser connector copy differs from the selected CUA resources",
+      );
+    this.#roots.add(root);
+  }
+}
+
+/** Inspect original registration only. The engine remains the owner of live connections and site approval. */
+export async function validateBrowser(
+  application: BrowserApplication,
+  environment: Readonly<Record<string, string>>,
+  signal: AbortSignal,
+): Promise<void> {
+  const source = await originalConnector(application, signal);
+  const inspection = new RegistrationInspection(application, source, signal);
   let found = false;
   for (const path of manifestPaths(
-    information,
+    source.information,
     application.platform,
     environment,
   )) {
@@ -287,79 +389,15 @@ export async function validateBrowser(
         { cause },
       );
     }
-    let registered: z.infer<typeof manifest>;
     try {
-      registered = manifest.parse(value);
-      const origins = new Set(registered.allowed_origins);
-      if (
-        registered.name !== information.extensionHostName ||
-        origins.size !== information.extensionIds.length ||
-        information.extensionIds.some(
-          (id) => !origins.has(`chrome-extension://${id}/`),
-        )
-      )
-        throw new Error(
-          "computer: browser connector identity differs from the selected application",
-        );
-      const target = await realpath(registered.path);
-      await access(target, constants.X_OK);
-      if (acceptedHosts.has(target)) {
-        found = true;
-        continue;
-      }
-      if (!(await sameFile(target, sourceHost, signal)))
-        throw new Error(
-          "computer: browser connector is not the original selected CUA host",
-        );
-      const config = hostConfiguration.parse(
-        await json(join(dirname(target), "extension-host-config.json"), signal),
-      );
-      for (const [configured, selected] of [
-        [config.nodePath, application.node],
-        [config.nodeReplPath, application.nodeRepl],
-        [config.codexCliPath, application.codex],
-      ]) {
-        if ((await realpath(configured!)) !== (await realpath(selected!)))
-          throw new Error(
-            "computer: browser connector selects a different CUA installation",
-          );
-      }
-      const client = await realpath(config.browserClientPath);
-      if (client !== sourceClient) {
-        if (
-          basename(client) !== "browser-client.mjs" ||
-          basename(dirname(client)) !== "scripts"
-        )
-          throw new Error(
-            "computer: browser connector has an unsupported client layout",
-          );
-        const root = dirname(dirname(client));
-        if (!acceptedRoots.has(root)) {
-          sourceDigest ??= await treeDigest(sourceRoot, signal);
-          if ((await treeDigest(root, signal)) !== sourceDigest)
-            throw new Error(
-              "computer: browser connector copy differs from the selected CUA resources",
-            );
-          acceptedRoots.add(root);
-        }
-      }
-      // A copied host and client must belong to the same intact connector resources.
-      const clientRoot = dirname(dirname(client));
-      if (
-        target !== (await realpath(sourceHost)) &&
-        !target.startsWith(resolve(clientRoot, "extension-host") + sep)
-      )
-        throw new Error(
-          "computer: browser connector host and client select different resources",
-        );
-      acceptedHosts.add(target);
-      found = true;
+      await inspection.admit(value);
     } catch (cause) {
       throw new Error(
         "computer: browser connector is incompatible; restore the original connector through the selected ChatGPT application before enabling browser control",
         { cause },
       );
     }
+    found = true;
   }
   if (!found)
     throw new Error(
