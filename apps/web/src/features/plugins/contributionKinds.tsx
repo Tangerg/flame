@@ -64,7 +64,6 @@ interface PackageComponent {
   installation: PluginInstallation;
   entry: ComponentEntry;
   id: string;
-  qualifiedTitle: string;
   failureScope: string;
   modules: ComponentModules;
   load: () => Promise<InstalledComponentProps>;
@@ -89,7 +88,6 @@ function contributeFileRenderer({
   lifetime,
   entry,
   id,
-  qualifiedTitle,
   failureScope,
   modules,
   load,
@@ -108,7 +106,7 @@ function contributeFileRenderer({
     WORKSPACE_FILE_RENDERER,
     {
       id,
-      title: { text: qualifiedTitle },
+      title: { text: entry.title },
       extension: entry.selector.name,
       component: (props) => (
         <ComponentBoundary
@@ -130,7 +128,6 @@ function contributeToolResultRenderer({
   lifetime,
   entry,
   id,
-  qualifiedTitle,
   failureScope,
   modules,
   load,
@@ -155,7 +152,7 @@ function contributeToolResultRenderer({
     TOOL_RESULT_RENDERER,
     {
       id,
-      title: { text: qualifiedTitle },
+      title: { text: entry.title },
       selector:
         entry.selector.type === "resultShape"
           ? { type: "resultShape", shape: entry.selector.shape }
@@ -176,7 +173,7 @@ function contributeToolResultRenderer({
   );
 }
 
-function contributeSessionAction({ lifetime, entry, id, qualifiedTitle, load }: PackageComponent) {
+function contributeSessionAction({ lifetime, entry, id, load }: PackageComponent) {
   const Action = lazy(async () => {
     const rendering = await load();
     return {
@@ -189,7 +186,7 @@ function contributeSessionAction({ lifetime, entry, id, qualifiedTitle, load }: 
     SESSION_ACTION,
     {
       id,
-      title: qualifiedTitle,
+      title: entry.title,
       localizedTitles: entry.localizedTitles,
       component: Action,
     },
@@ -206,16 +203,7 @@ const SURFACELESS_PLACEMENTS = new Set<ComponentEntry["placement"]>([
 ]);
 
 function contributePlacedComponent(
-  {
-    lifetime,
-    installation,
-    entry,
-    id,
-    qualifiedTitle,
-    failureScope,
-    modules,
-    load,
-  }: PackageComponent,
+  { lifetime, installation, entry, id, failureScope, modules, load }: PackageComponent,
   workspace: WorkspaceAccess,
 ) {
   const { placement } = entry;
@@ -312,7 +300,7 @@ function contributePlacedComponent(
     WORKSPACE_VIEW,
     {
       id,
-      title: { text: qualifiedTitle },
+      title: { text: entry.title },
       localizedTitles: entry.localizedTitles,
       material: entry.material,
       dock: entry.scope === "session" ? "session" : undefined,
