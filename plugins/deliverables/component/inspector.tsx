@@ -6,6 +6,7 @@ import {
   Disclosure,
   Facts,
   FormActions,
+  FormField,
   Metadata,
   PanelSection,
   RecordBody,
@@ -13,8 +14,10 @@ import {
   RecordSummary,
   SearchField,
   Select,
+  TextField,
   Toolbar,
 } from "@flame/ui";
+import { FIELD_LIMITS } from "../contracts/limits";
 import { type FormatCatalog, type Inspection } from "../contracts/content";
 import { METHODS } from "../contracts/methods";
 import { RevisionEditor } from "./revisionEditor";
@@ -167,6 +170,49 @@ function ProvenanceDisclosure({
           ],
         ]}
       />
+    </Disclosure>
+  );
+}
+
+// A copy starts a new document from this exact revision, keeping its masters,
+// theme and styles; the source document is unaffected.
+function CopyDisclosure({
+  state,
+  document,
+  t,
+}: {
+  state: DeliverablesState;
+  document: DocumentRead;
+  t: Translate;
+}) {
+  const [title, setTitle] = useState(
+    t("copy.defaultTitle", { title: document.document.title }),
+  );
+  return (
+    <Disclosure title={t("copy.title")}>
+      <FormField label={t("copy.name")}>
+        <TextField
+          value={title}
+          maxLength={FIELD_LIMITS.title}
+          onChange={(event) => setTitle(event.target.value)}
+        />
+      </FormField>
+      <Button
+        disabled={state.blocked || !title.trim()}
+        onClick={() =>
+          void state.run(
+            METHODS.copy,
+            {
+              id: document.document.id,
+              revision: document.revision.id,
+              title: title.trim(),
+            },
+            (value) => state.open({ id: value.documentId, revision: value.id }),
+          )
+        }
+      >
+        {t("copy.action")}
+      </Button>
     </Disclosure>
   );
 }
@@ -366,6 +412,7 @@ export function Inspector({
       )}
       <EvidencePanel state={state} document={document} t={t} />
       <ProvenanceDisclosure provenance={provenance} t={t} />
+      <CopyDisclosure state={state} document={document} t={t} />
       <RemovalDisclosure
         state={state}
         document={document}

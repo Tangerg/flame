@@ -46,8 +46,9 @@ interface InitialSource {
   format: Format;
   project?: string;
   provenance: Provenance;
-  operation: "create" | "import";
+  operation: "create" | "import" | "copy";
   bytes: Uint8Array;
+  processing?: unknown;
 }
 
 interface RevisionSource {
@@ -106,7 +107,14 @@ export class RevisionPreparation {
     });
     const document = Document.create(source.title, initial, source.project);
     return () =>
-      this.#archive.publish(document, initial, source.bytes, inspection);
+      this.#archive.publish(
+        document,
+        initial,
+        source.bytes,
+        inspection,
+        undefined,
+        source.processing,
+      );
   }
 
   async prepareCreate(
@@ -151,6 +159,30 @@ export class RevisionPreparation {
       this.#archive.discardUpload(value.uploadId);
       return publish();
     };
+  }
+
+  // A copy keeps the source's provenance with its content and records the
+  // exact source it started from as processing evidence.
+  async prepareCopy(
+    context: CallContext,
+    value: z.infer<typeof schemas.copy>,
+    command: string,
+    now: string,
+  ) {
+    const source = this.#archive.revision(value.id, value.revision);
+    return this.#initial(context, command, now, {
+      title: value.title,
+      format: source.metadata.format,
+      ...(value.project ? { project: value.project } : {}),
+      provenance: source.metadata.provenance,
+      operation: "copy",
+      bytes: source.bytes,
+      processing: {
+        copiedDocument: value.id,
+        copiedRevision: value.revision,
+        sourceSha256: source.metadata.sha256,
+      },
+    });
   }
 
   async recalculate(

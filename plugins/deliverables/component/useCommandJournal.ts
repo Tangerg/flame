@@ -54,6 +54,12 @@ export const COMMAND_EFFECTS: Record<CommandMethod, CommandEffect> = {
     reload: "views",
     scoped: true,
   },
+  [METHODS.copy]: {
+    result: "revision",
+    announced: true,
+    reload: "views",
+    scoped: true,
+  },
   [METHODS.edit]: { result: "revision", announced: true, reload: "views" },
   [METHODS.recalculate]: {
     result: "revision",

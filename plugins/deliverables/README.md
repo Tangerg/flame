@@ -265,6 +265,14 @@ callable binding, tracking function, cancellation signal or save capability
 retires the old workspace and its observers; it does not replay or retract a
 command.
 
+"New document from this revision" starts another deliverable from the shown
+revision, such as a template: its first revision is a copy of that revision's
+native bytes, so masters, layouts, theme, fonts and chart styles come with it,
+and the source document and revision are recorded as its processing evidence.
+Later changes to the source do not affect the copy, which then grows with the
+usual edits, including slides inserted from the template's layouts. The model
+does the same with `copy`.
+
 A historical revision in the revision history can be restored. The restoration
 expects the head that the reader shows, so a newer head refuses it; the editor
 then follows the restored head, and its Changes list shows what restoring
