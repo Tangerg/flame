@@ -1,7 +1,7 @@
 export const fr: Record<string, string> = {
   "providers.apiKey.replace": "Remplacer la clé API…",
   "providers.apiKey.clear": "Supprimer la clé enregistrée",
-  "providers.apiKey.clear.title": "Supprimer la clé enregistrée ?",
+  "providers.apiKey.clear.title": "Supprimer la clé enregistrée ?",
   "providers.apiKey.clear.body":
     "{{provider}} perd sa clé API enregistrée. Vous devrez la recoller pour vous reconnecter.",
   "providers.apiKey.aria": "Clé API {{provider}}",
@@ -56,11 +56,11 @@ export const fr: Record<string, string> = {
   "providers.saveAndTest": "Enregistrer et tester",
   "providers.saved": "Enregistré",
   "providers.role.loadError":
-    "Impossible de charger ce réglage : sa valeur actuelle est inconnue.",
+    "Impossible de charger ce réglage : sa valeur actuelle est inconnue.",
   "providers.role.stale":
     "Dernière valeur connue affichée — l’actualisation a échoué.",
   "providers.setup.done":
-    "Un fournisseur est prêt. Fermez les paramètres pour revenir : votre brouillon est toujours là.",
+    "Un fournisseur est prêt. Fermez les paramètres pour revenir : votre brouillon est toujours là.",
   "providers.roles.heading": "Rôles des modèles",
   "rpcError.invalid_credentials":
     "Le fournisseur a rejeté la clé API — vérifie-la dans les réglages du fournisseur.",

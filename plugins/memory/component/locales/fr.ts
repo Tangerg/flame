@@ -32,7 +32,7 @@ export const fr: Record<string, string> = {
   "pinned.only": "Épinglés seulement",
   reading: "Lecture de la mémoire enregistrée…",
   "delete.confirm.label": "Confirmer la suppression de la mémoire",
-  "delete.title": "Supprimer cette mémoire ?",
+  "delete.title": "Supprimer cette mémoire ?",
   "delete.notice": "Cette mémoire ne sera plus disponible pour l’agent.",
   "delete.actions.label": "Confirmation de suppression de la mémoire",
   "delete.confirm": "Supprimer la mémoire",
@@ -87,7 +87,7 @@ export const fr: Record<string, string> = {
   "feedback.refused": "{{label}} · la demande a été refusée.",
   "feedback.confirmed": "{{label}} · la demande est terminée.",
   "feedback.original.label": "Commande de mémoire d’origine",
-  "feedback.original": "Commande d’origine : {{key}}",
+  "feedback.original": "Commande d’origine : {{key}}",
   "feedback.check": "Vérifier le résultat d’origine",
   "error.read": "La mémoire n’a pas pu être lue.",
   "error.observe":

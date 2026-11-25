@@ -8,7 +8,7 @@ export const fr: Record<string, string> = {
   "period.7": "7 derniers jours",
   "status.reading": "Lecture de l’utilisation…",
   "read.failed": "Le rapport n’a pas pu être lu.",
-  "status.error": "Le rapport actuel n’a pas pu être lu : {{error}}",
+  "status.error": "Le rapport actuel n’a pas pu être lu : {{error}}",
   "status.stale": "Affichage de {{period}} depuis la dernière lecture réussie.",
   "status.loaded": "Utilisation enregistrée chargée. {{period}}.",
   "controls.label": "Contrôles d’utilisation",
@@ -53,7 +53,7 @@ export const fr: Record<string, string> = {
   "fact.runs": "Exécutions associées",
   "accounting.title": "Détails comptables",
   "accounting.note":
-    "Les totaux de tokens n’incluent que l’utilisation signalée. Les résultats inconnus et l’utilisation non signalée peuvent ajouter de la consommation. Le sous-total du prix connu n’inclut que les tentatives tarifées ; le coût total exige que chaque tentative soit tarifée. Les appels supprimés ou jamais enregistrés ne peuvent pas être reconstitués. Zéro token est une valeur enregistrée. « Non signalé » signifie qu’il n’y a pas de prix complet pour ce total ou ce groupe.",
+    "Les totaux de tokens n’incluent que l’utilisation signalée. Les résultats inconnus et l’utilisation non signalée peuvent ajouter de la consommation. Le sous-total du prix connu n’inclut que les tentatives tarifées ; le coût total exige que chaque tentative soit tarifée. Les appels supprimés ou jamais enregistrés ne peuvent pas être reconstitués. Zéro token est une valeur enregistrée. « Non signalé » signifie qu’il n’y a pas de prix complet pour ce total ou ce groupe.",
   "empty.title": "Aucune tentative de modèle conservée sur cette période.",
   "breakdown.title": "Détail de l’utilisation",
   "breakdown.group": "Utilisation enregistrée par source",

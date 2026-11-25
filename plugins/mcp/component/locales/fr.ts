@@ -1,14 +1,14 @@
 export const fr: Record<string, string> = {
   "mcp.error.toolPolicy": "Impossible de modifier la politique de l’outil.",
   "mcp.tools.policyHint":
-    "Enregistrement immédiat. La visibilité des outils s’applique aux nouvelles exécutions. L’approbation automatique définit une règle globale d’autorisation ; les règles plus précises restent applicables.",
+    "Enregistrement immédiat. La visibilité des outils s’applique aux nouvelles exécutions. L’approbation automatique définit une règle globale d’autorisation ; les règles plus précises restent applicables.",
   "mcp.tools.nameConflict":
     "Disponible sous le nom {{name}}. Le nom court est aussi utilisé par {{sources}}.",
   "mcp.add": "Ajouter un serveur",
   "mcp.save": "Enregistrer",
   "mcp.saving": "Enregistrement…",
   "mcp.delete": "Supprimer",
-  "mcp.delete.title": "Supprimer ce serveur ?",
+  "mcp.delete.title": "Supprimer ce serveur ?",
   "mcp.delete.body":
     "« {{server}} » et ses outils sont supprimés. Vous pourrez l’ajouter de nouveau plus tard.",
   "mcp.test": "Tester",
@@ -69,7 +69,7 @@ export const fr: Record<string, string> = {
   "mcp.import.ok_one": "{{count}} serveur importé",
   "mcp.import.ok_many": "{{count}} de serveurs importés",
   "mcp.import.ok_other": "{{count}} serveurs importés",
-  "mcp.import.renamed": "Renommés pour que le Runtime les accepte : {{names}}",
+  "mcp.import.renamed": "Renommés pour que le Runtime les accepte : {{names}}",
   "mcp.import.partial_one": "{{count}} serveur sur {{total}} importé.",
   "mcp.import.partial_many": "{{count}} serveurs sur {{total}} importés.",
   "mcp.import.partial_other": "{{count}} serveurs sur {{total}} importés.",

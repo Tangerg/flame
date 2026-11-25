@@ -25,7 +25,7 @@ export const fr: Record<string, string> = {
   "value.unrecorded": "Non enregistré",
   "value.unpriced": "Sans prix",
   "status.reading": "Lecture des observations enregistrées…",
-  "status.error": "La page demandée n’a pas pu être lue : {{error}}",
+  "status.error": "La page demandée n’a pas pu être lue : {{error}}",
   "read.failed": "Les observations enregistrées n’ont pas pu être lues.",
   "summary.stale": "Affichage de la dernière page acceptée.",
   "pages.label": "Pages de trajectoire",
@@ -59,7 +59,7 @@ export const fr: Record<string, string> = {
   "item.reasoning": "Raisonnement",
   "item.question": "Question",
   "item.compaction": "Compactage du contexte",
-  "approval.inline": "Approbation : {{decision}}",
+  "approval.inline": "Approbation : {{decision}}",
   "approval.approve": "Accordée",
   "approval.deny": "Refusée",
   "state.running": "En cours",
@@ -104,7 +104,7 @@ export const fr: Record<string, string> = {
   "rename.section": "Détails de la session",
   "rename.titleLabel": "Titre de la session",
   "rename.failure":
-    "{{message}} La révision capturée reste inchangée ; rouvrez cette action pour inspecter la session actuelle.",
+    "{{message}} La révision capturée reste inchangée ; rouvrez cette action pour inspecter la session actuelle.",
   "rename.unconfirmed":
     "La modification n’est pas confirmée. Réconciliez la commande d’origine avant de soumettre une autre modification.",
   "rename.checking": "Vérification de la commande d’origine…",

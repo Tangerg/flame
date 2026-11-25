@@ -16,7 +16,7 @@ export const fr: Record<string, string> = {
   "comparison.base": "Modifications de la branche",
   "read.failed": "Le diff n’a pas pu être lu.",
   "status.reading": "Lecture de {{name}}…",
-  "status.error": "Impossible de lire {{name}} : {{error}}",
+  "status.error": "Impossible de lire {{name}} : {{error}}",
   "status.stale": "Affichage de {{name}} depuis la dernière lecture réussie.",
   "status.loaded": "Affichage de {{name}}.",
   "navigation.label": "Navigation dans les fichiers modifiés",
@@ -70,8 +70,8 @@ export const fr: Record<string, string> = {
     "Modifications par rapport à HEAD, y compris les fichiers indexés, non indexés et non suivis.",
   "details.base":
     "Modifications suivies, validées et non validées, depuis l’ancêtre commun avec la branche par défaut. Les fichiers non suivis sont exclus.",
-  "baseline.emptyTree": "Base : arbre vide",
-  "baseline.label": "Base : {{ref}} · {{commit}}",
+  "baseline.emptyTree": "Base : arbre vide",
+  "baseline.label": "Base : {{ref}} · {{commit}}",
   "baseline.head": "HEAD",
   "baseline.mergeBase": "base de fusion",
   "budget.empty":

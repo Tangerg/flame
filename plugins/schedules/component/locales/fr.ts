@@ -24,7 +24,7 @@ export const fr: Record<string, string> = {
   "command.uncertain":
     "Le résultat d’origine n’est pas confirmé. Rapprochez-le avant d’émettre une autre commande.",
   "command.progress": "{{label}}…",
-  "command.original": "Commande d’origine : {{key}}",
+  "command.original": "Commande d’origine : {{key}}",
   "command.reconcile": "Rapprocher la commande d’origine",
   "command.save": "Enregistrer la planification",
   "command.create": "Créer la planification",
@@ -52,11 +52,11 @@ export const fr: Record<string, string> = {
   "model.unavailable": "indisponible",
   "reasoning.default": "Valeur par défaut du fournisseur",
   "reasoning.unavailable": "{{effort}} (indisponible)",
-  "models.error": "Impossible de lire les choix de modèle : {{error}}",
+  "models.error": "Impossible de lire les choix de modèle : {{error}}",
   "models.refresh": "Actualiser les choix de modèle",
   "models.refreshing": "Actualisation des choix de modèle…",
   cancel: "Annuler",
-  "delete.title": "Supprimer {{name}} ?",
+  "delete.title": "Supprimer {{name}} ?",
   "delete.description":
     "Les déclenchements futurs s’arrêteront. Le travail capturé et les exécutions acceptées sont conservés.",
   "delete.close": "Fermer la confirmation de suppression",

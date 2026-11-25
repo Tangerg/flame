@@ -92,14 +92,14 @@ export const fr = {
   "approval.sent": "La réponse à la demande d’origine a été acceptée.",
   "approval.original": "Demande d’origine",
   "approval.urlHelp":
-    "Ouvrez l’URL pour terminer l’étape externe. Cela n’envoie pas l’accord ; répondez ici ensuite.",
+    "Ouvrez l’URL pour terminer l’étape externe. Cela n’envoie pas l’accord ; répondez ici ensuite.",
   "command.title": "Commandes d’origine",
   "command.original": "État de la commande d’origine",
   "command.running": "Attente du résultat d’origine…",
   "command.unknown":
     "Le résultat est non confirmé. Retrouvez cette commande d’origine sans répéter ses actions.",
   "command.recover": "Vérifier le résultat d’origine",
-  "command.accepted": "{{action}} : la commande d’origine est terminée.",
+  "command.accepted": "{{action}} : la commande d’origine est terminée.",
   "receipts.title": "Capacité des preuves originales",
   "receipts.records": "Enregistrements conservés / limite",
   "receipts.bytes": "Octets comptabilisés / limite",
@@ -147,7 +147,7 @@ export const fr = {
   "result.invocation": "Autorité d’appel capturée",
   "result.original": "Résultat exact enregistré",
   "result.unknown":
-    "Aucun résultat d’origine confirmé. Des effets externes sont possibles ; cette vue ne relance jamais l’action.",
+    "Aucun résultat d’origine confirmé. Des effets externes sont possibles ; cette vue ne relance jamais l’action.",
   "result.toolError":
     "L’outil d’origine a signalé une erreur. Des effets antérieurs restent possibles.",
   "result.cleanup":
