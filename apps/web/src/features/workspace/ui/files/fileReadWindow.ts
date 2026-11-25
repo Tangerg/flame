@@ -248,12 +248,10 @@ function openingError(t: Translate, rejectedLine: boolean, line: number) {
     : { title: t("file.error.title"), sub: t("file.error.sub") };
 }
 
-export function fileLineSummary(
+// A whole file's length is already in its gutter; only a partial read needs its range named.
+export function fileRangeSummary(
   t: ReturnType<typeof useT>,
   data: { startLine: number; endLine: number; totalLines: number },
-  partial: boolean,
 ): string {
-  return partial
-    ? t("file.range", { start: data.startLine, end: data.endLine, total: data.totalLines })
-    : t("file.lines", { count: data.totalLines });
+  return t("file.range", { start: data.startLine, end: data.endLine, total: data.totalLines });
 }

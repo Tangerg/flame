@@ -648,7 +648,6 @@
   "settings.theme.dark": "ダーク",
   "settings.theme.custom": "カスタム",
   "runError.action.retryIn": "{{seconds}} 秒後に再試行",
-  "file.lines_other": "{{count}} 行",
   "file.backToFiles": "ファイル一覧に戻る",
   "file.empty.title": "ファイルはありません",
   "file.refreshError.title": "ファイルを更新できませんでした",
