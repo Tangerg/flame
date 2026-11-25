@@ -18,8 +18,6 @@ export const ja: Record<string, string> = {
   "observations.stale": "最後に読み取れた内容を表示しています。",
   "observations.empty.title": "この読み取りにはローカル観測記録がありません。",
   "span.meta": "{{ms}} ms · {{kind}}",
-  "span.status.unset": "未設定",
-  "span.status.ok": "正常",
   "span.status.error": "エラー",
   "fact.started": "開始時刻",
   "fact.duration": "継続時間",

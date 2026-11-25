@@ -18,8 +18,6 @@ export const zhTW: Record<string, string> = {
   "observations.stale": "目前顯示上次成功讀取的內容。",
   "observations.empty.title": "本次讀取沒有本機觀測記錄。",
   "span.meta": "{{ms}} ms · {{kind}}",
-  "span.status.unset": "未設定",
-  "span.status.ok": "正常",
   "span.status.error": "錯誤",
   "fact.started": "開始時間",
   "fact.duration": "持續時間",

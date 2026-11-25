@@ -19,8 +19,6 @@ export const de: Record<string, string> = {
   "observations.empty.title":
     "Keine lokalen Beobachtungen in diesem Lesevorgang.",
   "span.meta": "{{ms}} ms · {{kind}}",
-  "span.status.unset": "Nicht gesetzt",
-  "span.status.ok": "OK",
   "span.status.error": "Fehler",
   "fact.started": "Gestartet",
   "fact.duration": "Dauer",
