@@ -92,11 +92,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: run commands after lost respon
 
       await expect(
         callAfterCommitLoss("goals.stop", (faultClient) => faultClient.goals.stop(sessionId)),
-      ).resolves.toMatchObject({
-        status: "paused",
-        reason: { code: "stoppedByUser" },
-        used: { runs: 1 },
-      });
+      ).resolves.toBeUndefined();
       await within(
         firstGate.closed.promise,
         "the replay-stopped Goal provider connection to close",
@@ -140,11 +136,12 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: run commands after lost respon
       expect(resumedRuns.data.filter((run) => run.status === "running")).toHaveLength(1);
       expect(resumedRuns.data.filter((run) => run.outcome?.type === "lost")).toHaveLength(1);
 
-      await expect(fixture.client.goals.stop(sessionId)).resolves.toMatchObject({
+      await expect(fixture.client.goals.stop(sessionId)).resolves.toBeUndefined();
+      await within(resumedGate.closed.promise, "the cleanup Goal provider connection to close");
+      await expect(fixture.client.goals.get(sessionId)).resolves.toMatchObject({
         status: "paused",
         used: { runs: 2 },
       });
-      await within(resumedGate.closed.promise, "the cleanup Goal provider connection to close");
     } finally {
       firstGate.release.resolve();
       resumedGate?.release.resolve();

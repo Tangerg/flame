@@ -58,14 +58,16 @@ func registerGoals(registry *Registry) {
 		return service.GetGoal(ctx, request)
 	})
 
-	registry.command(MethodMeta{
+	registry.commandAck(MethodMeta{
 		Name: goalsStop, GoName: "StopGoal", Errors: pluginProviderErrors(protocol.ErrSessionNotFound.Error(), protocol.ErrRevisionConflict.Error()),
 		CapabilityRules: requires(protocol.FeatureGoals),
 	}, func(service interface {
-		StopGoal(context.Context, protocol.GoalRequest) (*protocol.Goal, error)
-	}, ctx context.Context, request protocol.GoalRequest) (*protocol.Goal, error) {
+		StopGoal(context.Context, protocol.GoalRequest) error
+	}, ctx context.Context, request protocol.GoalRequest) error {
 		return service.StopGoal(ctx, request)
-	})
+	}).withOwnedReplay(atomicReplay((interface {
+		commitStopGoal(context.Context, protocol.GoalRequest, atomicOutcome) error
+	}).commitStopGoal))
 
 	registry.command(MethodMeta{
 		Name: goalsResume, GoName: "ResumeGoal", Errors: pluginProviderErrors(protocol.ErrSessionNotFound.Error(), protocol.ErrRevisionConflict.Error()),

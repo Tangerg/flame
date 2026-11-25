@@ -88,7 +88,7 @@ func TestGoalCommandsSettleTheDriveAfterCommit(t *testing.T) {
 	assertOriginalDrive()
 
 	runtime.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: author.ID, Enabled: false}, "withdraw-author")
-	if _, err := api.StopGoal(ctx, request); !errors.Is(err, protocol.ErrPluginUnavailable) {
+	if err := api.StopGoal(ctx, request); !errors.Is(err, protocol.ErrPluginUnavailable) {
 		t.Fatalf("stop with unavailable author = %v, want plugin_unavailable", err)
 	}
 	assertOriginalDrive()
@@ -108,14 +108,20 @@ func TestGoalCommandsSettleTheDriveAfterCommit(t *testing.T) {
 	if err != nil || currentRun.Status != protocol.RunStatusFinished {
 		t.Fatalf("original Run when replacement starts = %+v, %v, want finished", currentRun, err)
 	}
-	stopped, err := api.StopGoal(ctx, request)
-	if err != nil || stopped.Status != protocol.GoalPaused || stopped.Reason == nil || stopped.Reason.Code != protocol.GoalReasonStoppedByUser || stopped.Used.Runs != 1 {
-		t.Fatalf("stop Goal = %+v, %v, want stopped by user with one settled Run", stopped, err)
+	stop := func() protocol.OperationResult { return invoke("goals.stop", request, "stop-objective") }
+	withRefusedReceipt(stop)
+	standing, err := api.GetGoal(ctx, request)
+	if err != nil || standing == nil || standing.Status != protocol.GoalActive || standing.Used.Runs != 0 {
+		t.Fatalf("Goal after refused Stop receipt = %+v, %v, want the replacement running", standing, err)
+	}
+	if result := stop(); result.Failure != nil || result.Value != (struct{}{}) {
+		t.Fatalf("stop acknowledgement = %+v, %v", result.Value, result.Failure)
 	}
 	assertPaused := func() {
 		t.Helper()
 		current, err := api.GetGoal(ctx, request)
-		if err != nil || current == nil || current.Status != protocol.GoalPaused || current.Objective != edited || current.Used.Runs != 1 {
+		if err != nil || current == nil || current.Status != protocol.GoalPaused || current.Objective != edited ||
+			current.Reason == nil || current.Reason.Code != protocol.GoalReasonStoppedByUser || current.Used.Runs != 1 {
 			t.Fatalf("settled Goal = %+v, %v, want paused replacement with exactly one Run", current, err)
 		}
 	}
@@ -130,6 +136,13 @@ func TestGoalCommandsSettleTheDriveAfterCommit(t *testing.T) {
 	resumed, ok := resumeResult.Value.(*protocol.Goal)
 	if resumeResult.Failure != nil || !ok || resumed.Status != protocol.GoalActive || resumed.Used.Runs != 1 {
 		t.Fatalf("resume Goal = %+v, %v, want active replacement with one settled Run", resumed, resumeResult.Failure)
+	}
+	if result := stop(); result.Failure != nil || result.Value != (struct{}{}) {
+		t.Fatalf("replayed stop acknowledgement = %+v, %v", result.Value, result.Failure)
+	}
+	standing, err = api.GetGoal(ctx, request)
+	if err != nil || standing == nil || standing.Status != protocol.GoalActive {
+		t.Fatalf("replayed Stop changed the resumed Goal = %+v, %v", standing, err)
 	}
 	if result := clear(); result.Failure != nil {
 		t.Fatal(result.Failure)

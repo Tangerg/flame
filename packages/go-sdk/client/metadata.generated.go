@@ -100,7 +100,7 @@ var methodMetadata = map[string]methodMeta{
 	"goals.update":                     {Name: "goals.update", Kind: unaryMethod, Operation: commandOperation, Result: reflect.TypeFor[*protocol.Goal](), Event: nil, ResultNullable: false},
 	"goals.clear":                      {Name: "goals.clear", Kind: unaryMethod, Operation: commandOperation, Result: reflect.TypeFor[struct{}](), Event: nil, ResultNullable: false},
 	"goals.get":                        {Name: "goals.get", Kind: unaryMethod, Operation: queryOperation, Result: reflect.TypeFor[*protocol.Goal](), Event: nil, ResultNullable: true},
-	"goals.stop":                       {Name: "goals.stop", Kind: unaryMethod, Operation: commandOperation, Result: reflect.TypeFor[*protocol.Goal](), Event: nil, ResultNullable: false},
+	"goals.stop":                       {Name: "goals.stop", Kind: unaryMethod, Operation: commandOperation, Result: reflect.TypeFor[struct{}](), Event: nil, ResultNullable: false},
 	"goals.resume":                     {Name: "goals.resume", Kind: unaryMethod, Operation: commandOperation, Result: reflect.TypeFor[*protocol.Goal](), Event: nil, ResultNullable: false},
 	"providers.list":                   {Name: "providers.list", Kind: unaryMethod, Operation: queryOperation, Result: reflect.TypeFor[*protocol.Page[protocol.Provider]](), Event: nil, ResultNullable: false},
 	"providers.update":                 {Name: "providers.update", Kind: unaryMethod, Operation: commandOperation, Result: reflect.TypeFor[*protocol.Provider](), Event: nil, ResultNullable: false},

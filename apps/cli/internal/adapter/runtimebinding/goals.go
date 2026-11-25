@@ -12,7 +12,7 @@ type goalBinding interface {
 	StartGoal(context.Context, protocol.StartGoalRequest, protocol.CommandOptions) (*protocol.Goal, error)
 	UpdateGoal(context.Context, protocol.UpdateGoalRequest, protocol.CommandOptions) (*protocol.Goal, error)
 	ClearGoal(context.Context, protocol.GoalRequest, protocol.CommandOptions) error
-	StopGoal(context.Context, protocol.GoalRequest, protocol.CommandOptions) (*protocol.Goal, error)
+	StopGoal(context.Context, protocol.GoalRequest, protocol.CommandOptions) error
 	ResumeGoal(context.Context, protocol.GoalRequest, protocol.CommandOptions) (*protocol.Goal, error)
 }
 
@@ -26,15 +26,22 @@ func (r *Connection) UpdateGoal(ctx context.Context, update protocol.UpdateGoalR
 }
 
 func (r *Connection) ClearGoal(ctx context.Context, sessionID string) error {
-	request, err := newGoalRequest("clear goal", sessionID)
+	return r.acknowledgeGoalChange(ctx, "clear goal", sessionID, r.goals.ClearGoal)
+}
+
+func (r *Connection) StopGoal(ctx context.Context, sessionID string) error {
+	return r.acknowledgeGoalChange(ctx, "stop goal", sessionID, r.goals.StopGoal)
+}
+
+func (r *Connection) acknowledgeGoalChange(
+	ctx context.Context, operation, sessionID string,
+	command func(context.Context, protocol.GoalRequest, protocol.CommandOptions) error,
+) error {
+	request, err := newGoalRequest(operation, sessionID)
 	if err != nil {
 		return err
 	}
-	options := r.commandOptions()
-	if err := r.goals.ClearGoal(ctx, request, options); err != nil {
-		return classifyError(err)
-	}
-	return nil
+	return classifyError(command(ctx, request, r.commandOptions()))
 }
 
 func (r *Connection) GetGoal(ctx context.Context, sessionID string) (protocol.Goal, bool, error) {
@@ -62,26 +69,13 @@ func (r *Connection) StartGoal(ctx context.Context, start protocol.StartGoalRequ
 	return goalResult("start goal", start.SessionID, result, err)
 }
 
-func (r *Connection) StopGoal(ctx context.Context, sessionID string) (protocol.Goal, error) {
-	return r.changeGoal(ctx, "stop goal", sessionID, r.goals.StopGoal)
-}
-
 func (r *Connection) ResumeGoal(ctx context.Context, sessionID string) (protocol.Goal, error) {
-	return r.changeGoal(ctx, "resume goal", sessionID, r.goals.ResumeGoal)
-}
-
-func (r *Connection) changeGoal(
-	ctx context.Context,
-	operation, sessionID string,
-	change func(context.Context, protocol.GoalRequest, protocol.CommandOptions) (*protocol.Goal, error),
-) (protocol.Goal, error) {
-	request, err := newGoalRequest(operation, sessionID)
+	request, err := newGoalRequest("resume goal", sessionID)
 	if err != nil {
 		return protocol.Goal{}, err
 	}
-	options := r.commandOptions()
-	result, err := change(ctx, request, options)
-	return goalResult(operation, sessionID, result, err)
+	result, err := r.goals.ResumeGoal(ctx, request, r.commandOptions())
+	return goalResult("resume goal", sessionID, result, err)
 }
 
 func newGoalRequest(operation, sessionID string) (protocol.GoalRequest, error) {

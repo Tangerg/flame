@@ -67,7 +67,7 @@ require (
 )
 
 require (
-	github.com/Tangerg/flame/packages/go-sdk v0.1.61-dev.20261125.t2d18cae74c89
+	github.com/Tangerg/flame/packages/go-sdk v0.1.62-dev.20261125.t58fc50e04ac3
 	github.com/Tangerg/frame v0.5.0
 	github.com/Tangerg/go-sdk v1.9.0-scope.1
 	github.com/Tangerg/scope/core v0.64.0

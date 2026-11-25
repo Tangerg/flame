@@ -120,11 +120,16 @@ resume.
 Goal commands commit the workflow author's decision against its captured Goal
 version before retiring the previous drive. A rejected or superseded decision
 leaves the drive running. A replacement waits for the previous drive to finish
-before admitting its first Run. The stop receipt includes usage from the original
-Run's terminal write. The `Revise` workflow signal edits the captured objective in
-one decision, including while the Goal is active.
+before admitting its first Run. The `Revise` workflow signal edits the captured
+objective in one decision, including while the Goal is active.
 Keyed Goal creation, revision, resumption and removal commit their replies with
 the Goal decision. Drive changes and Goal notifications follow that commit.
+Core `2026-11-26.1` makes `goals.stop` an acknowledgement. The pause and its
+receipt commit together before retiring the drive. Query `goals.get` or the
+Session snapshot for current usage, which is derived from the original Run's
+terminal write. Rebuild Runtime and clients together. Finish pending commands
+with their original build and retain that directory separately from fresh
+development data.
 
 A Goal-owned Run records its pending workflow decision in the same transaction
 that parks or finishes the Run. A later boundary of the same Run replaces its

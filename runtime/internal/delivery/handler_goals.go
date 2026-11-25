@@ -91,16 +91,20 @@ func (s *Handler) GetGoal(ctx context.Context, in protocol.GoalRequest) (*protoc
 	return presentGoal(g)
 }
 
-func (s *Handler) StopGoal(ctx context.Context, in protocol.GoalRequest) (*protocol.Goal, error) {
+func (s *Handler) StopGoal(ctx context.Context, in protocol.GoalRequest) error {
+	return s.stopGoal(ctx, in, operation.DirectReply(new(struct{})))
+}
+
+func (s *Handler) commitStopGoal(ctx context.Context, in protocol.GoalRequest, outcome atomicOutcome) error {
+	return outcome.settleRefusal(ctx, s.stopGoal(ctx, in, outcome.acknowledgement()))
+}
+
+func (s *Handler) stopGoal(ctx context.Context, in protocol.GoalRequest, complete operation.Reply[struct{}]) error {
 	sessionID, parseErr := sessionParameter(in.SessionID)
 	if parseErr != nil {
-		return nil, parseErr
+		return parseErr
 	}
-	g, err := s.goals.Stop(ctx, sessionID)
-	if err != nil {
-		return nil, mapGoalErr(err)
-	}
-	return presentGoal(g)
+	return mapGoalErr(s.goals.Stop(ctx, sessionID, complete))
 }
 
 func (s *Handler) ResumeGoal(ctx context.Context, in protocol.GoalRequest) (*protocol.Goal, error) {

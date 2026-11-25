@@ -112,7 +112,7 @@ func (*Runtime) StartGoal(context.Context, protocol.StartGoalRequest) (_ protoco
 	return
 }
 
-func (*Runtime) StopGoal(context.Context, string) (_ protocol.Goal, err error) {
+func (*Runtime) StopGoal(context.Context, string) (err error) {
 	err = errUnsupported
 	return
 }

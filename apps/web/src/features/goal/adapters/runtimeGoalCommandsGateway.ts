@@ -84,10 +84,10 @@ class RuntimeGoalCommandsGateway implements GoalCommandsGateway {
   }
 
   async stop(sessionId: string) {
-    const goal = await this.#mutations.settle(goalMutationIdentity("stop", sessionId), (signal) =>
+    await this.#mutations.settle(goalMutationIdentity("stop", sessionId), (signal) =>
       this.#client.goals.stop(asSessionId(sessionId), signal),
     );
-    return toGoalCommandReceipt(goal);
+    return { sessionId };
   }
 
   async resume(sessionId: string) {

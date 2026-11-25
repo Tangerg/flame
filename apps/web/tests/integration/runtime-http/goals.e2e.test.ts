@@ -166,15 +166,16 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: Goals", () => {
       ).resolves.toMatchObject({ status: "active", used: { runs: 0 } });
       await within(gate.arrived.promise, "the goal-owned model request");
 
-      await expect(fixture.client.goals.stop(sessionId)).resolves.toMatchObject({
+      await expect(fixture.client.goals.stop(sessionId)).resolves.toBeUndefined();
+      await within(gate.closed.promise, "the stopped goal provider connection to close");
+      gate.release.resolve();
+      fixture.providerGate = undefined;
+      await expect(fixture.client.goals.get(sessionId)).resolves.toMatchObject({
         sessionId: session.id,
         status: "paused",
         reason: { code: "stoppedByUser" },
         used: { runs: 1 },
       });
-      await within(gate.closed.promise, "the stopped goal provider connection to close");
-      gate.release.resolve();
-      fixture.providerGate = undefined;
       await expect(fixture.client.runs.list({ sessionId })).resolves.toMatchObject({
         data: [
           expect.objectContaining({

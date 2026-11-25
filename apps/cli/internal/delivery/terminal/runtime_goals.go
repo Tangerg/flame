@@ -94,13 +94,20 @@ func (g *goalScreens) UpdateGoal(objective string) error {
 }
 
 func (g *goalScreens) ClearGoal() error {
+	return g.acknowledgeGoalChange("clearing session goal", "goal · cleared", g.service.ClearGoal)
+}
+
+func (g *goalScreens) StopGoal() error {
+	return g.acknowledgeGoalChange("stopping session goal", "goal · stop accepted", g.service.StopGoal)
+}
+
+func (g *goalScreens) acknowledgeGoalChange(label, accepted string, change func(context.Context, string) error) error {
 	presentation := g.session.context
 	sessionID := g.session.current.ID
-	label := "clearing session goal"
 	g.status.note(label)
 	started := g.tasks.admissionMutation(goalOperation,
 		func(ctx context.Context) (struct{}, error) {
-			return struct{}{}, g.service.ClearGoal(ctx, sessionID)
+			return struct{}{}, change(ctx, sessionID)
 		},
 		func(_ struct{}, err error) {
 			if err != nil {
@@ -108,23 +115,15 @@ func (g *goalScreens) ClearGoal() error {
 				return
 			}
 			if g.session.context.current(presentation) {
-				g.header.SetGoal(nil)
-				g.reader.open(g.goalReaderQuery(), goalDocument(protocol.Goal{}, false))
+				g.ShowGoal()
 			}
-			g.status.note("goal · cleared")
+			g.status.note(accepted)
 		},
 	)
 	if !started {
 		return goalOperation.busy()
 	}
 	return nil
-}
-
-func (g *goalScreens) StopGoal() error {
-	sessionID := g.session.current.ID
-	return g.changeGoal("stopping session goal", func(ctx context.Context) (protocol.Goal, error) {
-		return g.service.StopGoal(ctx, sessionID)
-	})
 }
 
 func (g *goalScreens) ResumeGoal() error {

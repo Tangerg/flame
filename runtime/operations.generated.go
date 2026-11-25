@@ -287,8 +287,8 @@ func (r *Runtime) ClearGoal(ctx context.Context, request protocol.GoalRequest, o
 func (r *Runtime) GetGoal(ctx context.Context, request protocol.GoalRequest, options protocol.CallOptions) (*protocol.Goal, error) {
 	return r.invoke[protocol.GoalRequest, *protocol.Goal](ctx, delivery.Name("goals.get"), request, options.Metadata())
 }
-func (r *Runtime) StopGoal(ctx context.Context, request protocol.GoalRequest, options protocol.CommandOptions) (*protocol.Goal, error) {
-	return r.invoke[protocol.GoalRequest, *protocol.Goal](ctx, delivery.Name("goals.stop"), request, options.Metadata())
+func (r *Runtime) StopGoal(ctx context.Context, request protocol.GoalRequest, options protocol.CommandOptions) error {
+	return r.invokeAck[protocol.GoalRequest](ctx, delivery.Name("goals.stop"), request, options.Metadata())
 }
 func (r *Runtime) ResumeGoal(ctx context.Context, request protocol.GoalRequest, options protocol.CommandOptions) (*protocol.Goal, error) {
 	return r.invoke[protocol.GoalRequest, *protocol.Goal](ctx, delivery.Name("goals.resume"), request, options.Metadata())

@@ -218,44 +218,49 @@ func (d *Driver) resumeActive(ctx context.Context, g goal.Goal, complete operati
 	return nil
 }
 
-func (d *Driver) Stop(ctx context.Context, sessionID identity.SessionID) (goal.Goal, error) {
+func (d *Driver) Stop(ctx context.Context, sessionID identity.SessionID, complete operation.Reply[struct{}]) error {
 	release, err := d.admitCommand(ctx, sessionID)
 	if err != nil {
-		return goal.Goal{}, err
+		return err
 	}
 	defer release()
 	current, present, err := loadGoal(ctx, d.goals, sessionID)
 	if err != nil {
-		return goal.Goal{}, err
+		return err
 	}
 	if !present {
-		return goal.Goal{}, ErrNoGoal
+		return ErrNoGoal
 	}
+	var change *goal.Replacement
 	if current.Status() == goal.StatusActive {
 		paused, err := transition(ctx, d.workflow, current, goalworkflow.Request{Signal: goalworkflow.Stop}, current.IncarnationID(), d.now())
 		if err != nil {
-			return goal.Goal{}, err
+			return err
 		}
 		if paused.Status() != goal.StatusPaused {
-			return goal.Goal{}, fmt.Errorf("%w: workflow stop must pause the Goal", goal.ErrInvalid)
+			return fmt.Errorf("%w: workflow stop must pause the Goal", goal.ErrInvalid)
 		}
-		if err := d.commitReplacement(ctx, current.Version(), paused, operation.DirectReply(new(goal.Goal))); err != nil {
-			return goal.Goal{}, err
+		replacement, err := goal.NewReplacement(current.Version(), paused)
+		if err != nil {
+			return err
 		}
+		change = &replacement
+	}
+	if err := complete(ctx, func(tx context.Context) (struct{}, error) {
+		if change == nil {
+			return struct{}{}, nil
+		}
+		return struct{}{}, d.saveReplacement(tx, *change)
+	}); err != nil {
+		return err
+	}
+	if change != nil {
+		d.publishChange(sessionID)
 	}
 	settlement, cancel := context.WithTimeout(context.WithoutCancel(ctx), goalRunCleanupTimeout)
 	defer cancel()
-	if err := d.mutations.joinDrive(settlement, sessionID, d.mutations.quiesce(sessionID)); err != nil {
-		return goal.Goal{}, fmt.Errorf("goals: observe stopped Goal drive settlement: %w", err)
-	}
-	settled, present, err := loadGoal(settlement, d.goals, sessionID)
-	if err != nil {
-		return goal.Goal{}, fmt.Errorf("goals: read stopped Goal: %w", err)
-	}
-	if !present {
-		return goal.Goal{}, ErrNoGoal
-	}
-	return settled, nil
+	d.retireDrive(settlement, sessionID)
+	return nil
 }
 
 // A fresh incarnation so work admitted for the previous objective cannot decide or
@@ -316,18 +321,22 @@ func (d *Driver) commitReplacement(ctx context.Context, expected goal.Version, r
 		return err
 	}
 	if err := complete(ctx, func(tx context.Context) (goal.Goal, error) {
-		applied, err := d.goals.Save(tx, change)
-		if err != nil {
-			return goal.Goal{}, err
-		}
-		if !applied {
-			return goal.Goal{}, ErrGoalConflict
-		}
-		return replacement, nil
+		return replacement, d.saveReplacement(tx, change)
 	}); err != nil {
 		return err
 	}
 	d.publishChange(replacement.SessionID())
+	return nil
+}
+
+func (d *Driver) saveReplacement(ctx context.Context, change goal.Replacement) error {
+	applied, err := d.goals.Save(ctx, change)
+	if err != nil {
+		return err
+	}
+	if !applied {
+		return ErrGoalConflict
+	}
 	return nil
 }
 

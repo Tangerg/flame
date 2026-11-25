@@ -414,7 +414,7 @@ export interface Methods {
     ) => MutationPromise<Goal>;
     update: (params: UpdateGoalRequest, signal?: AbortSignal) => MutationPromise<Goal>;
     clear: (sessionId: SessionId, signal?: AbortSignal) => MutationPromise<void>;
-    stop: (sessionId: SessionId, signal?: AbortSignal) => MutationPromise<Goal>;
+    stop: (sessionId: SessionId, signal?: AbortSignal) => MutationPromise<void>;
     resume: (sessionId: SessionId, signal?: AbortSignal) => MutationPromise<Goal>;
   };
   feedback: {

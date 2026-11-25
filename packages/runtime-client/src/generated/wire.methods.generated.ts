@@ -394,7 +394,6 @@ const VALUE_METHOD_NAMES = [
   "goals.start",
   "goals.update",
   "goals.get",
-  "goals.stop",
   "goals.resume",
   "providers.list",
   "providers.update",
@@ -1571,7 +1570,7 @@ export interface WireShapes {
   "goals.update": { params: UpdateGoalRequest; result: Goal };
   "goals.clear": { params: GoalRequest };
   "goals.get": { params: GoalRequest; result: Goal | null };
-  "goals.stop": { params: GoalRequest; result: Goal };
+  "goals.stop": { params: GoalRequest };
   "goals.resume": { params: GoalRequest; result: Goal };
   "providers.list": { params: Record<string, never>; result: PageOfProvider };
   "providers.update": { params: UpdateProviderRequest; result: Provider };

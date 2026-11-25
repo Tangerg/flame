@@ -5139,7 +5139,7 @@ const METHOD_RESULTS: Record<WireMethodName, WireCheck> = {
   "goals.update": ref(() => CHECKS.Goal),
   "goals.clear": object({}, []),
   "goals.get": nullable(ref(() => CHECKS.Goal)),
-  "goals.stop": ref(() => CHECKS.Goal),
+  "goals.stop": object({}, []),
   "goals.resume": ref(() => CHECKS.Goal),
   "providers.list": ref(() => CHECKS.PageOfProvider),
   "providers.update": ref(() => CHECKS.Provider),

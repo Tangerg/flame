@@ -53,8 +53,12 @@ func TestGoalContinuesAfterEarlierManualQuestionIsCanceled(t *testing.T) {
 	if err != nil || len(page.Data) != 2 {
 		t.Fatalf("Runs after manual cancellation = %+v, %v; want the manual and Goal Runs", page, err)
 	}
-	stopped, err := api.StopGoal(ctx, protocol.GoalRequest{SessionID: session.ID})
-	if err != nil || stopped.Status != protocol.GoalPaused {
-		t.Fatalf("Goal stop = %+v, %v; want paused", stopped, err)
+	request := protocol.GoalRequest{SessionID: session.ID}
+	if err := api.StopGoal(ctx, request); err != nil {
+		t.Fatal(err)
+	}
+	stopped, err := api.GetGoal(ctx, request)
+	if err != nil || stopped == nil || stopped.Status != protocol.GoalPaused || stopped.Used.Runs != 1 {
+		t.Fatalf("Goal after Stop = %+v, %v; want paused with only the Goal-owned Run charged", stopped, err)
 	}
 }

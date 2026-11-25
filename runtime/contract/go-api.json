@@ -1104,7 +1104,7 @@
             },
             {
               "name": "StopGoal",
-              "signature": "func(ctx context.Context, request protocol.GoalRequest, options protocol.CommandOptions) (*protocol.Goal, error)"
+              "signature": "func(ctx context.Context, request protocol.GoalRequest, options protocol.CommandOptions) error"
             },
             {
               "name": "StreamPlugin",
@@ -10722,7 +10722,7 @@
         {
           "name": "Version",
           "type": "untyped string",
-          "value": "\"2026-10-30.2\""
+          "value": "\"2026-11-26.1\""
         },
         {
           "name": "WorkspaceAvailable",
@@ -20473,7 +20473,7 @@
             },
             {
               "name": "StopGoal",
-              "signature": "func(ctx context.Context, request protocol.GoalRequest, options protocol.CommandOptions) (*protocol.Goal, error)"
+              "signature": "func(ctx context.Context, request protocol.GoalRequest, options protocol.CommandOptions) error"
             },
             {
               "name": "StreamPlugin",
