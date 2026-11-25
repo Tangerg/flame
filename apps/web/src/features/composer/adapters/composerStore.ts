@@ -49,8 +49,8 @@ interface ComposerActions {
 interface Target {
   endpoint: string | null;
   state: ComposerState;
-  hydrated: boolean;
-  reading: boolean;
+  // A failed or abandoned read returns to unread so it can be retried.
+  hydration: "unread" | "reading" | "loaded";
   writing: boolean;
   authored: boolean;
   textTouched: Set<string>;
@@ -84,8 +84,7 @@ export function createComposerStore() {
   const target = (endpoint: string | null): Target => ({
     endpoint,
     state: emptyState(),
-    hydrated: endpoint === null,
-    reading: false,
+    hydration: endpoint === null ? "loaded" : "unread",
     writing: false,
     authored: false,
     textTouched: new Set(),
@@ -109,7 +108,7 @@ export function createComposerStore() {
     if (
       disposed ||
       owner.endpoint === null ||
-      !owner.hydrated ||
+      owner.hydration !== "loaded" ||
       owner.writing ||
       !owner.dirty.size ||
       owner.state.persistenceState.status === "failed" ||
@@ -131,13 +130,13 @@ export function createComposerStore() {
     if (!disposed && owner.state.persistenceState.status === "pending") void flush(owner);
   }
   async function hydrate(owner: Target) {
-    if (owner.endpoint === null || owner.reading) return;
-    owner.reading = true;
+    if (owner.endpoint === null || owner.hydration === "reading") return;
+    owner.hydration = "reading";
     persistence(owner, { status: "loading" });
     try {
       const loaded = await database.read(owner.endpoint);
       if (disposed) return;
-      owner.hydrated = true;
+      owner.hydration = "loaded";
       owner.state = {
         ...owner.state,
         composer: owner.state.composer.hydrateDrafts(loaded, owner.textTouched),
@@ -152,7 +151,7 @@ export function createComposerStore() {
           : { status: "failed", operation: "read", cause },
       );
     } finally {
-      owner.reading = false;
+      if (owner.hydration === "reading") owner.hydration = "unread";
     }
   }
   function settle(read: ImageRead, result: ImageReadResult) {
@@ -241,7 +240,7 @@ export function createComposerStore() {
           owner.textTouched.add(sessionId);
           owner.dirty.set(sessionId, after);
           if (
-            owner.hydrated &&
+            owner.hydration === "loaded" &&
             next.persistenceState.status !== "failed" &&
             next.persistenceState.status !== "recovery-required"
           )
@@ -411,7 +410,7 @@ export function createComposerStore() {
     }
     current = retained;
     present(current);
-    if (!current.hydrated && !current.reading && current.state.persistenceState.status === "saved")
+    if (current.hydration === "unread" && current.state.persistenceState.status === "saved")
       void hydrate(current);
     return true;
   }
