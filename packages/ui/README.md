@@ -253,13 +253,18 @@ Management filters use the shared `lg` size for both search and selection; compa
 workbench controls keep their own smaller roles.
 `Disclosure` keeps content lazy by default. A sustained reader can opt into
 `keepMounted` to preserve its local reading state; the primitive still hides
-the closed content from keyboard and accessibility navigation.
+the closed content from keyboard and accessibility navigation. When a repeated
+row's visible title leans on that row (a count under a server name), `label`
+gives the trigger an accessible name that contains the visible title and the
+row's identity.
 
 `RecordHeading` groups identity, state and the main action. The title and status
 form one wrapping group beside the actions on a center-aligned row, so they share
 the action control's center line; the actions wrap beneath once that group falls
 below its `12rem` basis. The description follows the row at full width and never
-moves the actions. `Disclosure` owns a
+moves the actions. Long prose in a description (schedule instructions, MCP tool
+descriptions) goes through `RecordExcerpt`: collapsed whitespace and two visible
+lines, with the whole text kept for assistive technology. `Disclosure` owns a
 full-width expanding panel with an optional adjacent action slot. The growing
 trigger carries the actions to the trailing edge while both fit on one row; once
 the actions wrap as a unit, they start at the leading edge beneath the trigger.

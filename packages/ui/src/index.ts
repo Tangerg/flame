@@ -85,6 +85,7 @@ export {
   type Fact,
   RecordGroup,
   RecordHeading,
+  RecordExcerpt,
   ShareBar,
   MetricValue,
   RecordMeta,

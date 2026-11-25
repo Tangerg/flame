@@ -86,6 +86,7 @@ const styles = stylex.create({
 });
 export function Disclosure({
   title,
+  label,
   children,
   open,
   defaultOpen,
@@ -97,6 +98,8 @@ export function Disclosure({
   ...props
 }: Omit<ComponentPropsWithRef<"section">, "title" | "onChange"> & {
   title: ReactNode;
+  // Names the trigger when its visible title leans on the surrounding row, as in repeated lists.
+  label?: string;
   open?: boolean;
   defaultOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
@@ -120,6 +123,7 @@ export function Disclosure({
     >
       <div data-focus-unit="" {...stylex.props(styles.header)}>
         <CollapsiblePrimitive.Trigger
+          aria-label={label}
           render={
             <Button
               variant="ghost"

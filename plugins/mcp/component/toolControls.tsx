@@ -7,6 +7,7 @@ import {
   EmptyState,
   ListRow,
   RecordBody,
+  RecordExcerpt,
   RecordGroup,
   RecordHeading,
   Switch,
@@ -98,7 +99,9 @@ export function ToolControls({
                   title={tool.name}
                   description={
                     <>
-                      {tool.description}
+                      {tool.description && (
+                        <RecordExcerpt>{tool.description}</RecordExcerpt>
+                      )}
                       {tool.nameConflicts.length > 0 && (
                         <span style={{ display: "block" }}>
                           {t("mcp.tools.nameConflict", {

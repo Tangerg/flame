@@ -31,7 +31,6 @@ export const ja: Record<string, string> = {
   "mcp.status.disabled": "無効",
   "mcp.status.disconnected": "未接続",
   "mcp.status.connecting": "接続中…",
-  "mcp.status.connected": "接続済み",
   "mcp.status.failed": "接続に失敗しました",
   "mcp.status.needsAuth": "サインインが必要です",
   "mcp.form.name.aria": "サーバー名",
@@ -83,6 +82,7 @@ export const ja: Record<string, string> = {
   "mcp.import.empty":
     "「mcpServers」の下にサーバーを 1 つ以上追加してください。",
   "mcp.tools.title": "{{server}} のツール",
+  "mcp.tools.label": "{{server}} の{{tools}}",
   "mcp.tools.enabled": "有効",
   "mcp.tools.autoApprove": "自動承認",
   "mcp.tools.empty": "このサーバーはツールを公開していません",

@@ -134,6 +134,12 @@ const styles = stylex.create({
     overflowWrap: "anywhere",
     fontWeight: weight.regular,
   },
+  excerpt: {
+    display: "-webkit-box",
+    WebkitBoxOrient: "vertical",
+    WebkitLineClamp: 2,
+    overflow: "hidden",
+  },
   body: {
     margin: 0,
     userSelect: "text",
@@ -302,6 +308,14 @@ export function RecordHeading({
       </div>
       {actions && <div {...stylex.props(styles.actions)}>{actions}</div>}
     </div>
+  );
+}
+// Long prose in a summary row reads as two lines; the clamp is visual, so assistive technology keeps the whole text.
+export function RecordExcerpt({ children }: { children: string }) {
+  return (
+    <span {...stylex.props(styles.excerpt)}>
+      {children.replace(/\s+/g, " ").trim()}
+    </span>
   );
 }
 export function ShareBar({ value, total }: { value: number; total: number }) {

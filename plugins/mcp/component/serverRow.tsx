@@ -18,9 +18,9 @@ import type { MCPSettings } from "./settings";
 import { ServerForm } from "./serverForm";
 import { ToolControls } from "./toolControls";
 import { CommandFeedback } from "./feedback";
-const TONES: Record<MCPServerSettings["status"], Tone> = {
+// Connected is the resting state; only the others are named.
+const TONES: Record<Exclude<MCPServerSettings["status"], "connected">, Tone> = {
   disabled: "neutral",
-  connected: "success",
   connecting: "accent",
   needsAuth: "warning",
   failed: "negative",
@@ -76,6 +76,10 @@ export function ServerRow({ context, settings, server, t }: ServerRowProps) {
   const panelId = useId();
   const authorization = state.authorizations.get(key);
   const signingIn = authorization?.status.type === "pending";
+  const tools =
+    server.toolCount === undefined
+      ? undefined
+      : t("mcp.toolCount", { count: server.toolCount });
   return (
     <ListRow>
       <RecordHeading
@@ -85,23 +89,15 @@ export function ServerRow({ context, settings, server, t }: ServerRowProps) {
           </span>
         }
         description={
-          <RecordMeta>
-            <Badge tone={TONES[server.status]}>
-              {t(`mcp.status.${server.status}`)}
-            </Badge>
-            <Badge>
-              {t(
-                server.type === "stdio"
-                  ? "mcp.transport.stdio"
-                  : "mcp.transport.http",
-              )}
-            </Badge>
-            {server.status === "connected" && (
-              <span>
-                {t("mcp.toolCount", { count: server.toolCount ?? 0 })}
-              </span>
-            )}
-          </RecordMeta>
+          server.status !== "connected" ? (
+            <RecordMeta>
+              <Badge tone={TONES[server.status]}>
+                {t(`mcp.status.${server.status}`)}
+              </Badge>
+            </RecordMeta>
+          ) : (
+            server.toolCount === 0 && tools
+          )
         }
         actions={
           <>
@@ -167,7 +163,12 @@ export function ServerRow({ context, settings, server, t }: ServerRowProps) {
         />
       )}
       {server.toolCount !== 0 && (
-        <Disclosure title={t("mcp.tools.title", { server: server.id.name })}>
+        <Disclosure
+          title={tools ?? t("mcp.tools.title", { server: server.id.name })}
+          label={
+            tools && t("mcp.tools.label", { tools, server: server.id.name })
+          }
+        >
           <ToolControls
             context={context}
             settings={settings}

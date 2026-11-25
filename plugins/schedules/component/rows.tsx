@@ -1,4 +1,4 @@
-import { type CSSProperties, type ReactNode } from "react";
+import { type ReactNode } from "react";
 import { type ComponentContext } from "@flame/component-sdk";
 import {
   Badge,
@@ -10,21 +10,13 @@ import {
   ActionMenu,
   Disclosure,
   RecordBody,
+  RecordExcerpt,
   RecordHeading,
 } from "@flame/ui";
 import { enabled } from "./useSchedules";
 import { type Schedule } from "./types";
 import { type ScheduleState } from "./useSchedules";
 import { METHODS } from "./methods";
-
-// The list reads a schedule by its title; its instructions show as a two-line
-// excerpt and in full under the schedule's details.
-const EXCERPT: CSSProperties = {
-  display: "-webkit-box",
-  WebkitBoxOrient: "vertical",
-  WebkitLineClamp: 2,
-  overflow: "hidden",
-};
 
 export function ScheduleDeletion({
   t,
@@ -113,10 +105,9 @@ export function ScheduleRow({
       <RecordHeading
         title={title}
         description={
+          // Instructions read in full under the schedule's details.
           item.instructions && (
-            <span style={EXCERPT}>
-              {item.instructions.replace(/\s+/g, " ").trim()}
-            </span>
+            <RecordExcerpt>{item.instructions}</RecordExcerpt>
           )
         }
         actions={

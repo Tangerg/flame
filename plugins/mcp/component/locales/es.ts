@@ -34,7 +34,6 @@ export const es: Record<string, string> = {
   "mcp.status.disabled": "Desactivado",
   "mcp.status.disconnected": "Desconectado",
   "mcp.status.connecting": "Conectando…",
-  "mcp.status.connected": "Conectado",
   "mcp.status.failed": "Error de conexión",
   "mcp.status.needsAuth": "Inicio de sesión necesario",
   "mcp.form.name.aria": "Nombre del servidor",
@@ -81,6 +80,7 @@ export const es: Record<string, string> = {
   "mcp.import.missingTransport":
     "Indica un comando o una URL para el servidor «{{server}}», pero no ambos.",
   "mcp.tools.title": "Herramientas de {{server}}",
+  "mcp.tools.label": "{{tools}} de {{server}}",
   "mcp.tools.enabled": "Activada",
   "mcp.tools.autoApprove": "Aprobar automáticamente",
   "mcp.tools.empty": "Este servidor no expone herramientas",
