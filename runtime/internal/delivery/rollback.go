@@ -45,7 +45,11 @@ func (s *Handler) rollbackHistory(ctx context.Context, in protocol.RollbackSessi
 	if err != nil {
 		return err
 	}
-	if err := s.sessions.RollbackHistory(ctx, sessionID, toRunID, complete); err != nil {
+	basis, err := rollbackBasis(in)
+	if err != nil {
+		return err
+	}
+	if err := s.sessions.RollbackHistory(ctx, sessionID, toRunID, basis, complete); err != nil {
 		return wireRollbackErr(err, sessionID)
 	}
 	return nil
@@ -60,14 +64,29 @@ func (s *Handler) rollbackWorkspace(ctx context.Context, in protocol.RollbackSes
 	if err != nil {
 		return sessions.RollbackResult{}, err
 	}
+	basis, err := rollbackBasis(in)
+	if err != nil {
+		return sessions.RollbackResult{}, err
+	}
 	result, err := s.sessions.RollbackWorkspace(ctx, sessions.WorkspaceRollbackSpec{
 		SessionID: sessionID, ToRunID: toRunID,
 		RestoreHistory: restoreType == protocol.RestoreBoth, Receipt: receipt,
-	})
+	}, basis)
 	if err != nil {
 		return sessions.RollbackResult{}, wireRollbackErr(err, sessionID)
 	}
 	return result, nil
+}
+
+func rollbackBasis(in protocol.RollbackSessionRequest) (sessions.RollbackBasis, error) {
+	lastRoot, err := wireIdentity("expectedLastRootRunId", in.ExpectedLastRootRunID, identity.ParseOptionalRun)
+	if err != nil {
+		return sessions.RollbackBasis{}, err
+	}
+	if in.ExpectedWorkspacePath == "" {
+		return sessions.RollbackBasis{}, protocol.NewFailure(protocol.ErrInvalidParams, "expectedWorkspacePath is required")
+	}
+	return sessions.RollbackBasis{LastRootRunID: lastRoot, WorkspacePath: in.ExpectedWorkspacePath}, nil
 }
 
 func (s *Handler) replayRollback(ctx context.Context, in protocol.RollbackSessionRequest, call keyedCall) protocol.OperationResult {

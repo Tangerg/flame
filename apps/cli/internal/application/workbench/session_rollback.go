@@ -2,7 +2,6 @@ package workbench
 
 import (
 	"errors"
-	"fmt"
 	"slices"
 	"strings"
 	"time"
@@ -13,18 +12,21 @@ import (
 )
 
 type PendingSessionRollback struct {
-	Phase          CommandPhase          `json:"phase"`
-	CommandID      authoring.CommandID   `json:"commandId"`
-	SessionID      string                `json:"sessionId"`
-	ToRunID        string                `json:"toRunId,omitzero"`
-	Scope          protocol.RestoreType  `json:"scope"`
-	BeforeRevision uint64                `json:"beforeRevision"`
-	BeforeRunIDs   []string              `json:"beforeRunIds"`
-	AfterRunIDs    []string              `json:"afterRunIds"`
-	OpeningText    string                `json:"openingText,omitzero"`
-	OpeningImages  int                   `json:"openingImages,omitzero"`
-	StagedAt       time.Time             `json:"stagedAt"`
-	Replay         authoring.ReplayGuard `json:"replay"`
+	CommandID             authoring.CommandID   `json:"commandId"`
+	SessionID             string                `json:"sessionId"`
+	ToRunID               string                `json:"toRunId,omitzero"`
+	Scope                 protocol.RestoreType  `json:"scope"`
+	ExpectedLastRootRunID string                `json:"expectedLastRootRunId"`
+	ExpectedWorkspacePath string                `json:"expectedWorkspacePath"`
+	StagedAt              time.Time             `json:"stagedAt"`
+	Replay                authoring.ReplayGuard `json:"replay"`
+	Restoration           *RollbackDraft        `json:"restoration,omitzero"`
+}
+
+type RollbackDraft struct {
+	DroppedCount  int    `json:"droppedCount"`
+	OpeningText   string `json:"openingText,omitzero"`
+	OpeningImages int    `json:"openingImages,omitzero"`
 }
 
 func (p PendingSessionRollback) Validate() error {
@@ -35,103 +37,44 @@ func (p PendingSessionRollback) Validate() error {
 	if request.CommandID == "" {
 		return errors.New("session rollback command id is empty")
 	}
-	if p.Phase != CommandPrepared && p.Phase != CommandConfirmed {
-		return fmt.Errorf("session rollback phase %q is invalid", p.Phase)
-	}
 	if p.StagedAt.IsZero() {
 		return errors.New("session rollback staging time is empty")
 	}
-	if p.OpeningImages < 0 {
-		return errors.New("session rollback opening image count is negative")
-	}
-	return errors.Join(p.validateProjections(request), p.validateBoundary(request), p.validateReplay(request))
-}
-
-func (p PendingSessionRollback) validateProjections(request conversation.RollbackSession) error {
-	if err := validateRunIDs("session rollback before projection", p.BeforeRunIDs); err != nil {
-		return err
-	}
-	if err := validateRunIDs("session rollback after projection", p.AfterRunIDs); err != nil {
-		return err
-	}
-	if request.FilesOnly() {
-		if !slices.Equal(p.BeforeRunIDs, p.AfterRunIDs) {
-			return errors.New("files-only rollback changes the history projection")
-		}
-		return nil
-	}
-	if len(p.AfterRunIDs) > len(p.BeforeRunIDs) || !slices.Equal(p.AfterRunIDs, p.BeforeRunIDs[:len(p.AfterRunIDs)]) {
-		return errors.New("session rollback after projection is not a prefix of its before projection")
-	}
-	return nil
-}
-
-func (p PendingSessionRollback) validateBoundary(request conversation.RollbackSession) error {
-	switch {
-	case p.ToRunID == "":
-		if !request.FilesOnly() && len(p.AfterRunIDs) != 0 {
-			return errors.New("full history rollback retains a run projection")
-		}
-	case request.FilesOnly():
-		if !slices.Contains(p.BeforeRunIDs, p.ToRunID) {
-			return errors.New("file rollback boundary is absent from its history projection")
-		}
-	case !slices.Contains(p.AfterRunIDs, p.ToRunID):
-		return errors.New("session rollback boundary is absent from its after projection")
-	}
-	return nil
-}
-
-func (p PendingSessionRollback) validateReplay(request conversation.RollbackSession) error {
 	if err := p.Replay.Validate(); err != nil {
 		return err
 	}
-	if request.RestoresFiles() {
-		if !p.Replay.Protected() || !p.Replay.Until().After(p.StagedAt) {
-			return errors.New("file rollback replay guarantee is incomplete")
-		}
-		return nil
+	if !p.Replay.Protected() || !p.Replay.Until().After(p.StagedAt) {
+		return errors.New("session rollback replay guarantee is incomplete")
 	}
-	if p.Replay.Protected() {
-		return errors.New("history-only rollback carries an unnecessary replay guarantee")
+	if value := p.Restoration; value != nil {
+		if value.DroppedCount < 0 || value.OpeningImages < 0 ||
+			(request.FilesOnly() && value.DroppedCount != 0) ||
+			(value.DroppedCount == 0 && (value.OpeningText != "" || value.OpeningImages != 0)) {
+			return errors.New("session rollback restoration contradicts the committed scope")
+		}
 	}
 	return nil
 }
 
 func (p PendingSessionRollback) Request() conversation.RollbackSession {
 	return conversation.RollbackSession{
-		CommandID: p.CommandID, SessionID: p.SessionID,
-		ToRunID: p.ToRunID, Scope: p.Scope,
+		RollbackTarget:        conversation.RollbackTarget{SessionID: p.SessionID, ToRunID: p.ToRunID, Scope: p.Scope},
+		CommandID:             p.CommandID,
+		ExpectedLastRootRunID: p.ExpectedLastRootRunID,
+		ExpectedWorkspacePath: p.ExpectedWorkspacePath,
 	}
 }
 
 func (p PendingSessionRollback) clone() PendingSessionRollback {
-	p.BeforeRunIDs = slices.Clone(p.BeforeRunIDs)
-	p.AfterRunIDs = slices.Clone(p.AfterRunIDs)
+	if p.Restoration != nil {
+		p.Restoration = new(*p.Restoration)
+	}
 	return p
 }
 
 func pendingSessionRollbackEqual(left, right PendingSessionRollback) bool {
-	return left.Phase == right.Phase && left.CommandID == right.CommandID &&
-		left.SessionID == right.SessionID && left.ToRunID == right.ToRunID && left.Scope == right.Scope &&
-		left.BeforeRevision == right.BeforeRevision && slices.Equal(left.BeforeRunIDs, right.BeforeRunIDs) &&
-		slices.Equal(left.AfterRunIDs, right.AfterRunIDs) && left.OpeningText == right.OpeningText &&
-		left.OpeningImages == right.OpeningImages && left.StagedAt.Equal(right.StagedAt) &&
-		left.Replay == right.Replay
-}
-
-func validateRunIDs(name string, ids []string) error {
-	seen := make(map[string]struct{}, len(ids))
-	for index, id := range ids {
-		if err := protocol.ValidateRunID(id); err != nil {
-			return fmt.Errorf("%s item %d: %w", name, index+1, err)
-		}
-		if _, duplicate := seen[id]; duplicate {
-			return fmt.Errorf("%s repeats %q", name, id)
-		}
-		seen[id] = struct{}{}
-	}
-	return nil
+	return left.Restoration == nil && right.Restoration == nil &&
+		left.Request() == right.Request() && left.StagedAt.Equal(right.StagedAt) && left.Replay == right.Replay
 }
 
 type SessionRollbackRecovery struct {
@@ -169,7 +112,9 @@ func (s *Store) StageSessionRollback(pending PendingSessionRollback) error {
 	if err := pending.Validate(); err != nil {
 		return err
 	}
-	pending = pending.clone()
+	if pending.Restoration != nil {
+		return errors.New("a new session rollback already carries a restoration")
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if current, exists := s.pendingRollbacks[pending.SessionID]; exists {
@@ -184,7 +129,7 @@ func (s *Store) StageSessionRollback(pending PendingSessionRollback) error {
 	)
 }
 
-func (s *Store) ConfirmSessionRollback(sessionID string, commandID authoring.CommandID) error {
+func (s *Store) ConfirmSessionRollback(sessionID string, commandID authoring.CommandID, restoration RollbackDraft) error {
 	if err := protocol.ValidateSessionID(sessionID); err != nil {
 		return err
 	}
@@ -194,10 +139,16 @@ func (s *Store) ConfirmSessionRollback(sessionID string, commandID authoring.Com
 	if !exists || pending.CommandID != commandID {
 		return errors.New("session rollback journal does not match the confirmed command")
 	}
-	if pending.Phase == CommandConfirmed {
+	if pending.Restoration != nil {
+		if *pending.Restoration != restoration {
+			return errors.New("session rollback already carries another restoration")
+		}
 		return nil
 	}
-	pending.Phase = CommandConfirmed
+	pending.Restoration = &restoration
+	if err := pending.Validate(); err != nil {
+		return err
+	}
 	return s.saveSessionStateRecord(
 		sessionID, s.drafts[sessionID], s.queue.bySession[sessionID],
 		s.pendingResumePointer(sessionID), &pending, s.pendingSteerPointer(sessionID),
@@ -214,7 +165,7 @@ func (s *Store) RejectSessionRollback(sessionID string, commandID authoring.Comm
 	if !exists {
 		return nil
 	}
-	if pending.Phase != CommandPrepared || pending.CommandID != commandID {
+	if pending.Restoration != nil || pending.CommandID != commandID {
 		return errors.New("session rollback journal does not match the rejected command")
 	}
 	return s.saveSessionStateRecord(
@@ -236,14 +187,15 @@ func (s *Store) ActivateSessionDraft(sessionID string, incoming authoring.Messag
 		return SessionDraftActivation{}, err
 	}
 	pending, exists := s.pendingRollbacks[sessionID]
-	confirmed := exists && pending.Phase == CommandConfirmed
+	confirmed := exists && pending.Restoration != nil
 	var recovery *SessionRollbackRecovery
 	if confirmed {
 		var merged bool
-		draft, merged = MergeSessionRollbackDraft(draft, pending)
+		draft, merged = mergeRollbackText(draft, pending.Restoration.OpeningText)
 		recovery = &SessionRollbackRecovery{
-			DroppedCount:  len(pending.BeforeRunIDs) - len(pending.AfterRunIDs),
-			OpeningImages: pending.OpeningImages, Merged: merged,
+			DroppedCount:  pending.Restoration.DroppedCount,
+			OpeningImages: pending.Restoration.OpeningImages,
+			Merged:        merged,
 		}
 	}
 	if current.Equal(draft) && !confirmed {
@@ -271,8 +223,8 @@ func (s *Store) pendingResumePointer(sessionID string) *PendingResume {
 	return &pending
 }
 
-func MergeSessionRollbackDraft(current authoring.Message, pending PendingSessionRollback) (authoring.Message, bool) {
-	recovered := authoring.Message{Text: pending.OpeningText}
+func mergeRollbackText(current authoring.Message, text string) (authoring.Message, bool) {
+	recovered := authoring.Message{Text: text}
 	current = current.Clone()
 	recovered = recovered.Clone()
 	if recovered.IsEmpty() {

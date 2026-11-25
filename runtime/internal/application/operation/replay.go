@@ -90,6 +90,11 @@ func (r *Replay) InvokeRecoverable(ctx context.Context, key, fingerprint string,
 	if err == nil || errors.Is(err, ErrOutcomePending) || errors.Is(err, ErrInProgress) || errors.Is(err, framecall.ErrConflict) {
 		return payload, err
 	}
+	// A durable intent may already have changed the workspace. An error on
+	// the way back to its owner cannot settle that intent as a refusal.
+	if found {
+		return nil, errors.Join(ErrOutcomePending, err)
+	}
 	payload, _, commitErr := r.commitOutcome(ctx, key, fingerprint, func(context.Context) ([]byte, error) {
 		return refuse(err)
 	})

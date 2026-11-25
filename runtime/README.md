@@ -1790,6 +1790,12 @@ checkout. The same path relation fences new and resumed Run admission against
 retained mutation intents after restart; recovery refuses an inconsistent set of
 overlapping retained intents instead of choosing an order that can erase work.
 
+Every `sessions.rollback` request carries the latest root Run ID and workspace
+path observed when preparing the rollback. An empty root ID describes an empty
+history. Runtime checks that basis under Session admission before a new command
+can change history or files. A keyed retry of a settled command reads its
+original receipt even after later Runs or a workspace change.
+
 `sessions.rollback` with `files` or `both` restores a Run's checkpoint for that
 Session and workspace. Checkpoints archive admitted regular files and symlinks,
 respect ignore rules for untracked paths, and exclude files larger than 2 MiB.

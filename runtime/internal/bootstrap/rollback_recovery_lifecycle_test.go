@@ -59,7 +59,33 @@ func TestFileRollbackRetriesTheOriginalIntent(t *testing.T) {
 		t.Fatal(err)
 	}
 	endpoint := host.Endpoint()
-	request := protocol.RollbackSessionRequest{SessionID: session.ID, ToRunID: runIDs[0], RestoreType: protocol.RestoreBoth}
+	request := protocol.RollbackSessionRequest{
+		SessionID: session.ID, ToRunID: runIDs[0], RestoreType: protocol.RestoreBoth,
+		ExpectedLastRootRunID: runIDs[2], ExpectedWorkspacePath: session.Workspace.Ref.Path,
+	}
+	for _, stale := range []struct {
+		name string
+		root string
+		path string
+	}{
+		{name: "history", root: runIDs[1], path: request.ExpectedWorkspacePath},
+		{name: "workspace", root: request.ExpectedLastRootRunID, path: t.TempDir()},
+	} {
+		unreviewed := request
+		unreviewed.ExpectedLastRootRunID = stale.root
+		unreviewed.ExpectedWorkspacePath = stale.path
+		if _, err := endpoint.Call[protocol.RollbackSessionRequest, *protocol.RollbackSessionResponse](
+			ctx, rollbackCrashMethod, unreviewed, protocol.CallMetadata{IdempotencyKey: "stale-rollback-" + stale.name},
+		); !errors.Is(err, protocol.ErrRevisionConflict) {
+			t.Fatalf("rollback with stale %s = %v, want revision_conflict", stale.name, err)
+		}
+	}
+	if got, err := os.ReadFile(material); err != nil || string(got) != "workspace edit" {
+		t.Fatalf("a refused rollback moved the working tree: %q, %v", got, err)
+	}
+	if history, err := api.ListRuns(ctx, protocol.ListRunsRequest{SessionID: session.ID}); err != nil || len(history.Data) != 3 {
+		t.Fatalf("a refused rollback removed history: %+v, %v", history, err)
+	}
 	exclude := filepath.Join(workspace, ".git", "info", "exclude")
 	if err := os.WriteFile(exclude, []byte("material.txt\n"), 0o600); err != nil {
 		t.Fatal(err)
@@ -92,6 +118,7 @@ func TestFileRollbackRetriesTheOriginalIntent(t *testing.T) {
 	}
 	if _, err := api.RollbackSession(ctx, protocol.RollbackSessionRequest{
 		SessionID: session.ID, ToRunID: runIDs[1], RestoreType: protocol.RestoreHistory,
+		ExpectedLastRootRunID: runIDs[2], ExpectedWorkspacePath: session.Workspace.Ref.Path,
 	}); !errors.Is(err, protocol.ErrSessionBusy) {
 		t.Fatalf("history-only rollback could displace the original draft: %v", err)
 	}
@@ -183,6 +210,7 @@ func TestUnfinishedFileRollbackFencesTheSessionUntilRecovery(t *testing.T) {
 	}
 	if _, err := api.RollbackSession(ctx, protocol.RollbackSessionRequest{
 		SessionID: session.ID, ToRunID: started.RunID, RestoreType: protocol.RestoreFiles,
+		ExpectedLastRootRunID: started.RunID, ExpectedWorkspacePath: session.Workspace.Ref.Path,
 	}); !errors.Is(err, protocol.ErrSessionBusy) {
 		t.Fatalf("a second rollback over an unrecovered tree = %v, want session_busy", err)
 	}

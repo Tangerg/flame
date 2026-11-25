@@ -28,8 +28,14 @@ export interface AgentSessionSnapshot {
   }>;
 }
 
+interface SessionRollbackBasis {
+  expectedLastRootRunId: string;
+  expectedWorkspacePath: string;
+}
+
 export interface AgentSessionMaterialRead {
   snapshot: AgentSessionSnapshot;
+  rollbackBasis: SessionRollbackBasis;
   projectAssociatedSharedMaterial(shared: Record<string, unknown>): Record<string, unknown>;
   acknowledgeRecoveredCommands?: () => void;
   unresolvedSteers?: AgentUnresolvedSteer[];
@@ -100,7 +106,7 @@ export interface AgentRuntimeGateway {
     signal?: AbortSignal,
   ): Promise<AgentSessionMaterialRead | null>;
   loadSessionUsage(sessionId: string, signal?: AbortSignal): Promise<AgentSessionUsage>;
-  rollbackSession(input: {
+  rollbackSession(input: SessionRollbackBasis & {
     sessionId: string;
     toRunId?: string;
     restoreType?: RestoreType;

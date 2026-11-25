@@ -21,7 +21,7 @@ Protocol `2026-10-30.2` · 108 methods
 | `sessions.update` | command | unary | replayResponse | none | none | — | `relocate`, `isolation` | `plugin_unavailable`, `plugin_stale`, `session_not_found`, `revision_conflict`, `workspace_unavailable`, `project_not_found`, `session_busy`, `capability_not_negotiated` |
 | `sessions.delete` | command | unary | replayResponse | none | none | — | — | `session_not_found` |
 | `sessions.fork` | command | unary | replayResponse | none | none | — | — | `plugin_unavailable`, `plugin_stale`, `session_not_found`, `run_not_found` |
-| `sessions.rollback` | command | unary | replayResponse | none | none | — | `checkpoints` | `session_not_found`, `run_not_found`, `session_busy`, `checkpoint_unavailable`, `checkpoint_conflict`, `capability_not_negotiated` |
+| `sessions.rollback` | command | unary | replayResponse | none | none | — | `checkpoints` | `session_not_found`, `run_not_found`, `session_busy`, `revision_conflict`, `checkpoint_unavailable`, `checkpoint_conflict`, `capability_not_negotiated` |
 | `sessions.export` | query | unary | none | none | none | — | `sessionExport` | `plugin_unavailable`, `plugin_stale`, `session_not_found`, `session_busy`, `export_too_large`, `capability_not_negotiated` |
 | `sessions.import` | command | unary | replayResponse | none | none | — | `sessionExport` | `session_busy`, `export_too_large`, `capability_not_negotiated` |
 | `projects.list` | query | unary | none | none | cursor | — | — | — |
@@ -620,6 +620,9 @@ TypeScript validator from this single registry projection.
 | `RollbackSessionRequest` | `sessionId` | `maxLength(256)` |
 | `RollbackSessionRequest` | `toRunId` | `identity` |
 | `RollbackSessionRequest` | `toRunId` | `maxLength(256)` |
+| `RollbackSessionRequest` | `expectedLastRootRunId` | `identity` |
+| `RollbackSessionRequest` | `expectedLastRootRunId` | `maxLength(256)` |
+| `RollbackSessionRequest` | `expectedWorkspacePath` | `nonEmpty` |
 | `UpdateSessionRequest` | `sessionId` | `nonEmpty` |
 | `UpdateSessionRequest` | `sessionId` | `identity` |
 | `UpdateSessionRequest` | `sessionId` | `maxLength(256)` |

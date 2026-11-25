@@ -120,7 +120,15 @@ func TestRefusedHistoryChangePreservesOriginalGeneratedTitle(t *testing.T) {
 		{
 			name: "rollback transaction failed", refuseWrite: true,
 			mutate: func(ctx context.Context, artifact protocol.SessionArtifact) error {
-				_, err := runtime.api.RollbackSession(ctx, protocol.RollbackSessionRequest{SessionID: artifact.Session.ID, RestoreType: protocol.RestoreHistory})
+				snapshot, err := runtime.api.GetSessionSnapshot(ctx, protocol.GetSessionSnapshotRequest{SessionID: artifact.Session.ID})
+				if err != nil {
+					return err
+				}
+				_, err = runtime.api.RollbackSession(ctx, protocol.RollbackSessionRequest{
+					SessionID: artifact.Session.ID, RestoreType: protocol.RestoreHistory,
+					ExpectedLastRootRunID: snapshot.Runs[len(snapshot.Runs)-1].ID,
+					ExpectedWorkspacePath: snapshot.Session.Workspace.Ref.Path,
+				})
 				return err
 			},
 		},

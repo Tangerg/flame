@@ -1856,6 +1856,8 @@ export interface ResumeRunResponse {
 }
 
 export interface RollbackSessionRequest {
+  expectedLastRootRunId: string;
+  expectedWorkspacePath: string;
   restoreType?: RestoreType;
   sessionId: string;
   toRunId?: string;

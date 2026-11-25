@@ -16692,6 +16692,16 @@
               "tag": "json:\"toRunId,omitempty\""
             },
             {
+              "name": "ExpectedLastRootRunID",
+              "type": "string",
+              "tag": "json:\"expectedLastRootRunId\""
+            },
+            {
+              "name": "ExpectedWorkspacePath",
+              "type": "string",
+              "tag": "json:\"expectedWorkspacePath\""
+            },
+            {
               "name": "RestoreType",
               "type": "RestoreType",
               "tag": "json:\"restoreType,omitempty\""

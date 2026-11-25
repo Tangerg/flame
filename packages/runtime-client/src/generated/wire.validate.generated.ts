@@ -3685,10 +3685,12 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   }, ["runId", "segmentId"]),
   RollbackSessionRequest: allOf([
     object({
+      expectedLastRootRunId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+      expectedWorkspacePath: allOf([text(), minLength(1)]),
       restoreType: ref(() => CHECKS.RestoreType),
       sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
       toRunId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
-    }, ["sessionId"]),
+    }, ["expectedLastRootRunId", "expectedWorkspacePath", "sessionId"]),
     ifThen(
       fields({
         restoreType: literal("files"),

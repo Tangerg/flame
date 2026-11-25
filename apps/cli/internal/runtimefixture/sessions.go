@@ -307,6 +307,16 @@ func (r *Runtime) RollbackSession(ctx context.Context, in conversation.RollbackS
 	if state == nil {
 		return conversation.RollbackResult{}, fmt.Errorf("%w: %s", conversation.ErrSessionNotFound, in.SessionID)
 	}
+	var lastRoot string
+	for _, id := range slices.Backward(state.runs) {
+		if r.runs[id].lineage.IsRoot() {
+			lastRoot = id
+			break
+		}
+	}
+	if in.ExpectedLastRootRunID != lastRoot || in.ExpectedWorkspacePath != state.meta.Workspace.Path {
+		return conversation.RollbackResult{}, conversation.ErrRevisionConflict
+	}
 	if state.active != "" {
 		return conversation.RollbackResult{}, fmt.Errorf("%w: %s", conversation.ErrSessionBusy, in.SessionID)
 	}

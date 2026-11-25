@@ -11,6 +11,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
+	"github.com/Tangerg/flame/runtime/internal/domain/session"
 )
 
 type DroppedRun struct {
@@ -23,17 +24,26 @@ type RollbackResult struct {
 	Dropped []DroppedRun
 }
 
-func (c *Coordinator) RollbackHistory(ctx context.Context, sessionID identity.SessionID, toRunID identity.RunID, complete operation.Reply[RollbackResult]) error {
+type RollbackBasis struct {
+	LastRootRunID identity.RunID
+	WorkspacePath string
+}
+
+func (c *Coordinator) RollbackHistory(ctx context.Context, sessionID identity.SessionID, toRunID identity.RunID, basis RollbackBasis, complete operation.Reply[RollbackResult]) error {
 	admission, err := c.ClaimSessionMutation(ctx, sessionID)
 	if err != nil {
 		return err
 	}
 	defer admission.Release()
-	if _, err := c.Get(ctx, sessionID); err != nil {
+	current, err := c.Get(ctx, sessionID)
+	if err != nil {
 		return err
 	}
 	boundary, err := c.resolveRollbackBoundary(ctx, sessionID, toRunID)
 	if err != nil {
+		return err
+	}
+	if err := boundary.requireBasis(basis, current.Workspace().Path()); err != nil {
 		return err
 	}
 	return c.completeRollback(ctx, sessionID, boundary, complete)
@@ -42,6 +52,20 @@ func (c *Coordinator) RollbackHistory(ctx context.Context, sessionID identity.Se
 type resolvedRollbackBoundary struct {
 	timeline transcript.Boundary
 	runs     []run.Run
+}
+
+func (r resolvedRollbackBoundary) requireBasis(basis RollbackBasis, workspacePath string) error {
+	var lastRoot identity.RunID
+	for _, value := range slices.Backward(r.runs) {
+		if value.Lineage().IsRoot() {
+			lastRoot = value.ID()
+			break
+		}
+	}
+	if lastRoot != basis.LastRootRunID || workspacePath != basis.WorkspacePath {
+		return session.ErrRevisionConflict
+	}
+	return nil
 }
 
 func (c *Coordinator) resolveRollbackBoundary(ctx context.Context, sessionID identity.SessionID, toRunID identity.RunID) (resolvedRollbackBoundary, error) {

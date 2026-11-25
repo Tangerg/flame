@@ -36,9 +36,10 @@ func TestGeneratedSessionTitleFollowsItsOriginalHistory(t *testing.T) {
 		},
 		{
 			name: "rollback history",
-			mutate: func(ctx context.Context, _ *testing.T, api *delivery.Handler, empty protocol.SessionArtifact, _ string) error {
+			mutate: func(ctx context.Context, _ *testing.T, api *delivery.Handler, empty protocol.SessionArtifact, originalRunID string) error {
 				_, err := api.RollbackSession(ctx, protocol.RollbackSessionRequest{
 					SessionID: empty.Session.ID, RestoreType: protocol.RestoreHistory,
+					ExpectedLastRootRunID: originalRunID, ExpectedWorkspacePath: empty.Session.Workspace.Path,
 				})
 				return err
 			},
@@ -46,7 +47,7 @@ func TestGeneratedSessionTitleFollowsItsOriginalHistory(t *testing.T) {
 		{
 			name: "rollback keeps original Run",
 			mutate: func(ctx context.Context, t *testing.T, api *delivery.Handler, empty protocol.SessionArtifact, originalRunID string) error {
-				_, events, err := api.StartRun(ctx, protocol.StartRunRequest{
+				followup, events, err := api.StartRun(ctx, protocol.StartRunRequest{
 					SessionID: empty.Session.ID,
 					Input:     []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "A follow-up to discard."}},
 				})
@@ -56,6 +57,7 @@ func TestGeneratedSessionTitleFollowsItsOriginalHistory(t *testing.T) {
 				waitForRunEvents(t, collectRunEvents(events), "follow-up Run to finish")
 				result, err := api.RollbackSession(ctx, protocol.RollbackSessionRequest{
 					SessionID: empty.Session.ID, ToRunID: originalRunID, RestoreType: protocol.RestoreHistory,
+					ExpectedLastRootRunID: followup.RunID, ExpectedWorkspacePath: empty.Session.Workspace.Path,
 				})
 				if err == nil && len(result.DroppedRuns) != 1 {
 					t.Fatalf("rollback dropped %d Runs, want one follow-up", len(result.DroppedRuns))

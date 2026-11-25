@@ -89,9 +89,11 @@ type ForkSessionRequest struct {
 }
 
 type RollbackSessionRequest struct {
-	SessionID   string      `json:"sessionId"`
-	ToRunID     string      `json:"toRunId,omitempty"`
-	RestoreType RestoreType `json:"restoreType,omitempty"`
+	SessionID             string      `json:"sessionId"`
+	ToRunID               string      `json:"toRunId,omitempty"`
+	ExpectedLastRootRunID string      `json:"expectedLastRootRunId"`
+	ExpectedWorkspacePath string      `json:"expectedWorkspacePath"`
+	RestoreType           RestoreType `json:"restoreType,omitempty"`
 }
 
 //flame:enum

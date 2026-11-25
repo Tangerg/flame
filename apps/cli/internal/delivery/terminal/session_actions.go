@@ -109,21 +109,13 @@ func (l *sessionLifecycle) prepareSessionRollback(argument string) error {
 }
 
 type rollbackPreview struct {
-	request    conversation.RollbackSession
+	request    conversation.RollbackTarget
 	settlement session.RollbackPreview
 }
 
-func previewRollback(snapshot conversation.SessionSnapshot, request conversation.RollbackSession) (rollbackPreview, error) {
+func previewRollback(snapshot conversation.SessionSnapshot, request conversation.RollbackTarget) (rollbackPreview, error) {
 	settlement, err := session.PreviewRollback(snapshot, request)
 	return rollbackPreview{request: request, settlement: settlement}, err
-}
-
-func (r rollbackPreview) ValidateCommit(snapshot conversation.SessionSnapshot) error {
-	return r.settlement.ValidateCommit(snapshot)
-}
-
-func (r rollbackPreview) ValidateApplied(snapshot conversation.SessionSnapshot) error {
-	return r.settlement.ValidateApplied(snapshot)
 }
 
 func (r rollbackPreview) Description() string {
@@ -152,7 +144,7 @@ func (l *sessionLifecycle) rollbackSession(preview rollbackPreview) {
 				ctx, l.runtime, l.workbench, preview.settlement,
 				l.replayPolicy, runtimeRecoveryBackoff,
 			)
-			if result.Pending.CommandID == "" {
+			if !result.Outcome.Valid() {
 				return rollbackSettlement{}, err
 			}
 			return rollbackSettlement{result: result, err: err}, nil
@@ -167,84 +159,53 @@ func (l *sessionLifecycle) applyRollbackSettlement(settlement rollbackSettlement
 	result := settlement.result
 	switch result.Outcome {
 	case mutation.Rejected:
-		if err := session.RejectRollback(l.workbench, result); err != nil {
-			l.root.message("rollback session failed; local intent cleanup failed: " + errors.Join(settlement.err, err).Error())
-			return nil
-		}
-		l.root.message("rollback session failed: " + settlement.err.Error())
+		l.root.message("rollback refused · " + errors.Join(result.Refusal, settlement.err).Error())
 		return nil
 	case mutation.Unknown:
-		l.root.message("rollback outcome is unknown; the original request is saved for recovery; inspect the session before issuing a new command: " + settlement.err.Error())
+		l.root.message("rollback outcome is unknown. The original command is saved for recovery. " + settlement.err.Error())
 		return nil
 	case mutation.Confirmed:
 	default:
 		return errors.New("rollback settlement returned an invalid outcome")
 	}
 
-	confirmationErr := session.ConfirmRollback(l.workbench, result)
+	if settlement.err != nil {
+		l.root.message("rollback committed. Local recovery is pending. " + settlement.err.Error())
+		return nil
+	}
 	installation, err := l.prepareSessionInstallation(result.Snapshot)
 	if err != nil {
-		return errors.Join(confirmationErr, err)
+		l.root.message("rollback committed. The Session could not be refreshed. " + err.Error())
+		return nil
 	}
 	l.install(installation)
 	recovery := installation.rollbackRecovery
-	if confirmationErr != nil {
-		current, _, draftErr := l.composer.draft()
-		if draftErr != nil {
-			return errors.Join(confirmationErr, draftErr)
-		}
-		recovered, merged := workbench.MergeSessionRollbackDraft(current, result.Pending)
-		recovery = &workbench.SessionRollbackRecovery{
-			DroppedCount:  len(result.Pending.BeforeRunIDs) - len(result.Pending.AfterRunIDs),
-			OpeningImages: result.Pending.OpeningImages, Merged: merged,
-		}
-		if persistErr := l.composer.recoverDraft(recovered); persistErr != nil {
-			label := fmt.Sprintf("rolled back %d runs; restored text was not saved: %v", recovery.DroppedCount, persistErr)
-			label = appendRollbackWarnings(label, recovery.OpeningImages, settlement.err, confirmationErr)
-			l.root.message(label)
-			return nil
-		}
-	}
 	if recovery == nil {
 		return errors.New("confirmed rollback did not produce local recovery state")
 	}
-	label := fmt.Sprintf("rolled back session · %d runs removed", recovery.DroppedCount)
-	if recovery.Merged {
-		label += "; restored opening text before the newer draft"
-	}
-	label = appendRollbackWarnings(label, recovery.OpeningImages, settlement.err, confirmationErr)
-	l.root.message(label)
+	l.root.message(describeRollbackDraft("rolled back session", *recovery))
 	return nil
 }
 
-func appendRollbackWarnings(label string, images int, cleanupErr, journalErr error) string {
-	if images > 0 {
-		label += fmt.Sprintf("; %d inline images must be reattached", images)
-	}
-	if cleanupErr != nil {
-		label += "; runtime cleanup warning: " + cleanupErr.Error()
-	}
-	if journalErr != nil {
-		label += "; local recovery journal warning: " + journalErr.Error()
-	}
-	return label
+func rollbackRecoveryNotice(recovery workbench.SessionRollbackRecovery) string {
+	return describeRollbackDraft("recovered rollback input", recovery)
 }
 
-func rollbackRecoveryNotice(recovery workbench.SessionRollbackRecovery) string {
-	label := fmt.Sprintf("recovered rollback input · %d runs removed", recovery.DroppedCount)
+func describeRollbackDraft(action string, recovery workbench.SessionRollbackRecovery) string {
+	label := fmt.Sprintf("%s · %d runs removed", action, recovery.DroppedCount)
 	if recovery.Merged {
-		label += "; restored opening text before the newer draft"
+		label += " · restored opening text before the newer draft"
 	}
 	if recovery.OpeningImages > 0 {
-		label += fmt.Sprintf("; %d inline images must be reattached", recovery.OpeningImages)
+		label += fmt.Sprintf(" · reattach %d inline images", recovery.OpeningImages)
 	}
 	return label
 }
 
-func parseRollbackArgument(sessionID, argument string) (conversation.RollbackSession, error) {
+func parseRollbackArgument(sessionID, argument string) (conversation.RollbackTarget, error) {
 	fields := strings.Fields(argument)
 	if len(fields) == 0 || len(fields) > 2 {
-		return conversation.RollbackSession{}, errors.New("usage: /rollback <run-id|all> [history|files|both]")
+		return conversation.RollbackTarget{}, errors.New("usage: /rollback <run-id|all> [history|files|both]")
 	}
 	boundary := fields[0]
 	if isAllArgument(boundary) {
@@ -254,9 +215,5 @@ func parseRollbackArgument(sessionID, argument string) (conversation.RollbackSes
 	if len(fields) == 2 {
 		scope = protocol.RestoreType(strings.ToLower(fields[1]))
 	}
-	request := conversation.RollbackSession{SessionID: sessionID, ToRunID: boundary, Scope: scope}
-	if err := request.Validate(); err != nil {
-		return conversation.RollbackSession{}, err
-	}
-	return request, nil
+	return conversation.RollbackTarget{SessionID: sessionID, ToRunID: boundary, Scope: scope}, nil
 }

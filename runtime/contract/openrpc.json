@@ -847,6 +847,23 @@
           }
         },
         {
+          "name": "expectedLastRootRunId",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "maxLength": 256,
+            "pattern": "^[^\\p{C}\\p{Z}]*$"
+          }
+        },
+        {
+          "name": "expectedWorkspacePath",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        {
           "name": "restoreType",
           "schema": {
             "$ref": "schema.json#/$defs/RestoreType"
@@ -877,6 +894,10 @@
         {
           "code": -32018,
           "message": "session_busy"
+        },
+        {
+          "code": -32019,
+          "message": "revision_conflict"
         },
         {
           "code": -32009,
@@ -930,6 +951,8 @@
           "_meta": {
             "$ref": "#/components/schemas/RequestMeta"
           },
+          "expectedLastRootRunId": {},
+          "expectedWorkspacePath": {},
           "restoreType": {},
           "sessionId": {},
           "toRunId": {}

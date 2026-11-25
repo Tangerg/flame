@@ -33,6 +33,11 @@ line-termination markers. `/diff --rows` renders Runtime's per-file rows with
 old/new line numbers, rename paths, binary changes and truncation feedback.
 The client does not parse raw patches into a second diff model.
 
+The terminal captures the latest root Run and workspace in the rollback
+confirmation. The Workbench retains the exact keyed command across a lost
+reply. The original Runtime receipt supplies the dropped input for draft
+recovery, including when the Session already contains later work.
+
 ## Configuration
 
 CLI preferences and Runtime configuration have separate owners.

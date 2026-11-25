@@ -31,6 +31,10 @@ export function runtimeSessionMaterial(
       })),
       ...(plan ? { plan } : {}),
     },
+    rollbackBasis: {
+      expectedLastRootRunId: snapshot.runs.findLast((run) => !run.parentRunId)?.id ?? "",
+      expectedWorkspacePath: snapshot.session.workspace.ref.path,
+    },
     projectAssociatedSharedMaterial: sharedMaterial.stage(sessionId, snapshot),
   };
 }

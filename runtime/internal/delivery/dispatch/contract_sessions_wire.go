@@ -65,8 +65,10 @@ func registerSessionValues(s *Shapes) {
 		Constraints: append(requiredResourceIdentity("sessionId"), resourceIdentity("fromRunId")...),
 	})
 	s.valueConstraint(FieldConstraintSpec{
-		GoType:      typeOf[protocol.RollbackSessionRequest](),
-		Constraints: append(requiredResourceIdentity("sessionId"), resourceIdentity("toRunId")...),
+		GoType: typeOf[protocol.RollbackSessionRequest](),
+		Constraints: append(append(append(requiredResourceIdentity("sessionId"),
+			resourceIdentity("toRunId")...), resourceIdentity("expectedLastRootRunId")...),
+			FieldConstraint{Field: "expectedWorkspacePath", Kind: ConstraintNonEmpty}),
 	})
 
 	constraints := append(requiredResourceIdentity("sessionId"), []FieldConstraint{

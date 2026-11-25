@@ -60,6 +60,7 @@ func TestSessionImportRetiresCheckpointsFromTheReplacedHistory(t *testing.T) {
 	}
 	rollback := protocol.RollbackSessionRequest{
 		SessionID: session.ID, ToRunID: started.RunID, RestoreType: protocol.RestoreFiles,
+		ExpectedLastRootRunID: started.RunID, ExpectedWorkspacePath: session.Workspace.Ref.Path,
 	}
 	if _, err := api.RollbackSession(ctx, rollback); err != nil {
 		t.Fatalf("original checkpoint is unavailable before import: %v", err)

@@ -77,9 +77,11 @@ func TestRollbackAcknowledgementCrashHelper(t *testing.T) {
 	}
 	meta := protocol.CallMetadata{IdempotencyKey: rollbackCrashKey}
 	result := endpoint.Invoke(t.Context(), rollbackCrashMethod, protocol.RollbackSessionRequest{
-		SessionID:   os.Getenv("FLAME_TEST_ROLLBACK_CRASH_SESSION"),
-		ToRunID:     os.Getenv("FLAME_TEST_ROLLBACK_CRASH_KEEP"),
-		RestoreType: restoreType,
+		SessionID:             os.Getenv("FLAME_TEST_ROLLBACK_CRASH_SESSION"),
+		ToRunID:               os.Getenv("FLAME_TEST_ROLLBACK_CRASH_KEEP"),
+		ExpectedLastRootRunID: os.Getenv("FLAME_TEST_ROLLBACK_CRASH_LAST"),
+		ExpectedWorkspacePath: os.Getenv("FLAME_TEST_ROLLBACK_CRASH_WORKSPACE"),
+		RestoreType:           restoreType,
 	}, meta)
 	if cut == rollbackReceiptCommit && restoreType != protocol.RestoreHistory && result.Failure == nil {
 		if response, ok := result.Value.(*protocol.RollbackSessionResponse); ok && response.Session != nil {
@@ -158,7 +160,8 @@ func testRollbackAcknowledgementCrash(t *testing.T, cut string, scope protocol.R
 	defer cancel()
 	command := exec.CommandContext(crashCtx, os.Args[0], "-test.run=^TestRollbackAcknowledgementCrashHelper$")
 	command.Env = append(os.Environ(), "FLAME_HOME="+home, "FLAME_TEST_ROLLBACK_CRASH_CUT="+cut,
-		"FLAME_TEST_ROLLBACK_CRASH_SESSION="+session.ID, "FLAME_TEST_ROLLBACK_CRASH_KEEP="+runIDs[0], "FLAME_TEST_ROLLBACK_CRASH_SCOPE="+string(scope))
+		"FLAME_TEST_ROLLBACK_CRASH_SESSION="+session.ID, "FLAME_TEST_ROLLBACK_CRASH_KEEP="+runIDs[0], "FLAME_TEST_ROLLBACK_CRASH_SCOPE="+string(scope),
+		"FLAME_TEST_ROLLBACK_CRASH_LAST="+runIDs[1], "FLAME_TEST_ROLLBACK_CRASH_WORKSPACE="+session.Workspace.Ref.Path)
 	output, err := command.CombinedOutput()
 	if exit, ok := errors.AsType[*exec.ExitError](err); !ok || exit.ExitCode() != commandCrashExit {
 		t.Fatalf("rollback process did not reach the receipt cut: %v\n%s", err, output)
@@ -194,7 +197,10 @@ func testRollbackAcknowledgementCrash(t *testing.T, cut string, scope protocol.R
 	if err != nil || len(beforeReplay.Data) != wantRuns {
 		t.Fatalf("history after %s = %+v, %v, want %d Runs", cut, beforeReplay, err, wantRuns)
 	}
-	request := protocol.RollbackSessionRequest{SessionID: session.ID, ToRunID: runIDs[0], RestoreType: scope}
+	request := protocol.RollbackSessionRequest{
+		SessionID: session.ID, ToRunID: runIDs[0], RestoreType: scope,
+		ExpectedLastRootRunID: runIDs[1], ExpectedWorkspacePath: session.Workspace.Ref.Path,
+	}
 	meta := protocol.CallMetadata{IdempotencyKey: rollbackCrashKey}
 	wantDropped := 1
 	if scope == protocol.RestoreFiles {

@@ -119,6 +119,7 @@ func registerSessions(registry *Registry) {
 		Errors: []string{protocol.ErrSessionNotFound.
 			Error(), protocol.ErrRunNotFound.
 			Error(), protocol.ErrSessionBusy.
+			Error(), protocol.ErrRevisionConflict.
 			Error(), protocol.ErrCheckpointUnavailable.
 			Error(), protocol.ErrCheckpointConflict.
 			Error(),

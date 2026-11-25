@@ -195,6 +195,7 @@
         "session_not_found",
         "run_not_found",
         "session_busy",
+        "revision_conflict",
         "checkpoint_unavailable",
         "checkpoint_conflict",
         "capability_not_negotiated"
@@ -2317,6 +2318,7 @@
           "goals.stop",
           "goals.update",
           "projects.update",
+          "sessions.rollback",
           "sessions.update",
           "skills.proposals.approve",
           "skills.proposals.reject"
@@ -7434,6 +7436,18 @@
         {
           "field": "toRunId",
           "constraint": "maxLength(256)"
+        },
+        {
+          "field": "expectedLastRootRunId",
+          "constraint": "identity"
+        },
+        {
+          "field": "expectedLastRootRunId",
+          "constraint": "maxLength(256)"
+        },
+        {
+          "field": "expectedWorkspacePath",
+          "constraint": "nonEmpty"
         }
       ]
     },

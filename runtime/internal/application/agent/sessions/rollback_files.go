@@ -29,7 +29,7 @@ const (
 	resumedAttempt
 )
 
-func (c *Coordinator) RollbackWorkspace(ctx context.Context, spec WorkspaceRollbackSpec) (RollbackResult, error) {
+func (c *Coordinator) RollbackWorkspace(ctx context.Context, spec WorkspaceRollbackSpec, basis RollbackBasis) (RollbackResult, error) {
 	if spec.ToRunID.IsZero() {
 		return RollbackResult{}, errors.New("sessions: file restore requires target Run")
 	}
@@ -58,6 +58,9 @@ func (c *Coordinator) RollbackWorkspace(ctx context.Context, spec WorkspaceRollb
 
 	boundary, err := c.resolveWorkspaceRollbackBoundary(ctx, spec)
 	if err != nil {
+		return RollbackResult{}, err
+	}
+	if err := boundary.requireBasis(basis, cwd); err != nil {
 		return RollbackResult{}, err
 	}
 	if surviving, found := boundary.survivingContinuation(); found {

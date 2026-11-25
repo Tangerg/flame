@@ -32,9 +32,7 @@ func (r *Connection) RollbackSession(ctx context.Context, input conversation.Rol
 	if err != nil {
 		return conversation.RollbackResult{}, err
 	}
-	response, err := r.sessions.RollbackSession(ctx, protocol.RollbackSessionRequest{
-		SessionID: input.SessionID, ToRunID: input.ToRunID, RestoreType: input.Scope,
-	}, options)
+	response, err := r.sessions.RollbackSession(ctx, input.Parameters(), options)
 	if err != nil {
 		return conversation.RollbackResult{}, classifyError(err)
 	}

@@ -395,6 +395,8 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: runs", () => {
     const rolledBack = await fixture.client.sessions.rollback({
       sessionId: asSessionId(source.id),
       toRunId: asRunId(first.result.runId),
+      expectedLastRootRunId: second.result.runId,
+      expectedWorkspacePath: source.workspace.ref.path,
       restoreType: "history",
     });
     expect(rolledBack.droppedRuns).toEqual([

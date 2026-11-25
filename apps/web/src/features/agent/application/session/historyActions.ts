@@ -108,6 +108,7 @@ async function rollbackBeforeRun(
   const result = await owner.settle(
     runtime.rollbackSession({
       sessionId,
+      ...material.rollbackBasis,
       ...(keep ? { toRunId: keep } : {}),
       ...(wantsFiles && keep ? { restoreType } : {}),
     }),

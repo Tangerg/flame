@@ -10,11 +10,33 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
-type RollbackSession struct {
-	CommandID authoring.CommandID
+type RollbackTarget struct {
 	SessionID string
 	ToRunID   string
 	Scope     protocol.RestoreType
+}
+
+func (r RollbackTarget) RestoresFiles() bool {
+	return r.Scope == protocol.RestoreFiles || r.Scope == protocol.RestoreBoth
+}
+
+func (r RollbackTarget) FilesOnly() bool { return r.Scope == protocol.RestoreFiles }
+
+type RollbackSession struct {
+	RollbackTarget
+	CommandID             authoring.CommandID
+	ExpectedLastRootRunID string
+	ExpectedWorkspacePath string
+}
+
+func (r RollbackSession) Parameters() protocol.RollbackSessionRequest {
+	return protocol.RollbackSessionRequest{
+		SessionID:             r.SessionID,
+		ToRunID:               r.ToRunID,
+		ExpectedLastRootRunID: r.ExpectedLastRootRunID,
+		ExpectedWorkspacePath: r.ExpectedWorkspacePath,
+		RestoreType:           r.Scope,
+	}
 }
 
 func (r RollbackSession) Validate() error {
@@ -24,25 +46,13 @@ func (r RollbackSession) Validate() error {
 			problems = append(problems, err)
 		}
 	}
-	if err := protocol.ValidateWireTree((protocol.RollbackSessionRequest{
-		SessionID: r.SessionID, ToRunID: r.ToRunID, RestoreType: r.Scope,
-	})); err != nil {
+	if err := protocol.ValidateWireTree(r.Parameters()); err != nil {
 		problems = append(problems, err)
 	}
 	if err := errors.Join(problems...); err != nil {
 		return fmt.Errorf("rollback session: %w", err)
 	}
 	return nil
-}
-
-func (r RollbackSession) RestoresFiles() bool {
-	return r.Scope == protocol.RestoreFiles || r.Scope == protocol.RestoreBoth
-}
-
-func (r RollbackSession) FilesOnly() bool { return r.Scope == protocol.RestoreFiles }
-
-func (r RollbackSession) HistoryOnly() bool {
-	return r.Scope == "" || r.Scope == protocol.RestoreHistory
 }
 
 type InputContent struct {

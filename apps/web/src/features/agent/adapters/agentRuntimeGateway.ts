@@ -190,6 +190,8 @@ class RuntimeAgentGateway implements AgentRuntimeGateway {
   async rollbackSession(input: Parameters<AgentRuntimeGateway["rollbackSession"]>[0]) {
     const response = await this.runtimeClient().sessions.rollback({
       sessionId: asSessionId(input.sessionId),
+      expectedLastRootRunId: input.expectedLastRootRunId,
+      expectedWorkspacePath: input.expectedWorkspacePath,
       ...(input.toRunId ? { toRunId: asRunId(input.toRunId) } : {}),
       ...(input.restoreType ? { restoreType: input.restoreType } : {}),
     });

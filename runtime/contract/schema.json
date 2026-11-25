@@ -10102,6 +10102,15 @@
     "RollbackSessionRequest": {
       "type": "object",
       "properties": {
+        "expectedLastRootRunId": {
+          "type": "string",
+          "maxLength": 256,
+          "pattern": "^[^\\p{C}\\p{Z}]*$"
+        },
+        "expectedWorkspacePath": {
+          "type": "string",
+          "minLength": 1
+        },
         "restoreType": {
           "$ref": "#/$defs/RestoreType"
         },
@@ -10118,6 +10127,8 @@
         }
       },
       "required": [
+        "expectedLastRootRunId",
+        "expectedWorkspacePath",
         "sessionId"
       ],
       "allOf": [

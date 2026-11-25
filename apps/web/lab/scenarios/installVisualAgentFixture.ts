@@ -117,6 +117,10 @@ function visualAgentRuntimeGateway(
     forkSession: async () => ({ id: `${VISUAL_SESSION_ID}_fork` }),
     loadSessionSnapshot: async () => ({
       snapshot: projectRuntimeAgentSnapshot(snapshot),
+      rollbackBasis: {
+        expectedLastRootRunId: snapshot.runs.findLast((run) => !run.parentRunId)?.id ?? "",
+        expectedWorkspacePath: session.workspace.path,
+      },
       projectAssociatedSharedMaterial: (shared) => shared,
     }),
     loadSessionUsage: async () => ({}),

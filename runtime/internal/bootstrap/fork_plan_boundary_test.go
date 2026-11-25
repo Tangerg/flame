@@ -146,7 +146,10 @@ func TestForkRetainsEveryCopiedRunPlanBoundary(t *testing.T) {
 		t.Fatalf("forked Plan borrowed a different author: %+v, %v", copied, err)
 	}
 	if _, err := endpoint.Call[protocol.RollbackSessionRequest, *protocol.RollbackSessionResponse](ctx, rollbackCrashMethod,
-		protocol.RollbackSessionRequest{SessionID: fork.ID, ToRunID: runs.Data[2].ID},
+		protocol.RollbackSessionRequest{
+			SessionID: fork.ID, ToRunID: runs.Data[2].ID,
+			ExpectedLastRootRunID: runs.Data[0].ID, ExpectedWorkspacePath: replayed.Workspace.Ref.Path,
+		},
 		protocol.CallMetadata{IdempotencyKey: "restore-recorded-empty-plan"}); err != nil {
 		t.Fatal(err)
 	}
