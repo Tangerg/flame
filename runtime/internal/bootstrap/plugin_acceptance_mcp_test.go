@@ -88,6 +88,12 @@ func (r *poMCPRuntime) must(method delivery.Name, input any, key string) any {
 	return result.Value
 }
 
+func (r *poMCPRuntime) createUserServer(candidate protocol.MCPServerCandidate, key string) protocol.MCPServerID {
+	r.t.Helper()
+	r.must(delivery.MCPServersCreate, candidate, key)
+	return protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginUser}, Name: candidate.Name}
+}
+
 func (r *poMCPRuntime) poMCPTools(server *protocol.MCPServerID, ready func([]protocol.MCPTool) bool) []protocol.MCPTool {
 	r.t.Helper()
 	deadline := time.Now().Add(10 * time.Second)
@@ -399,17 +405,17 @@ func TestExternalConnectorKeepsLaunchSecretsOutOfPluginAndRestoresAuthorizationR
 		w.WriteHeader(http.StatusServiceUnavailable)
 	}))
 	defer remote.Close()
-	server := r.must(delivery.MCPServersCreate, protocol.MCPServerCandidate{
+	serverID := r.createUserServer(protocol.MCPServerCandidate{
 		Name: "signed", Enabled: true,
 		Connection:       protocol.MCPConnectionInput{Type: protocol.MCPTransportStreamableHTTP, URL: remote.URL, Headers: &protocol.MCPHeadersChange{Type: protocol.MCPSecretSet, Value: map[string]string{"X-Fixture-Key": secret}}},
 		HandshakeTimeout: protocol.MCPHandshakeTimeout{Type: protocol.MCPHandshakeUnbounded},
-	}, "create-protected-remote").(*protocol.MCPServer)
+	}, "create-protected-remote")
 	select {
 	case <-seen:
 	case <-time.After(10 * time.Second):
 		t.Fatal("approved transport did not receive its header")
 	}
-	attempt, err := r.api.CreateMCPAuthorizationAttempt(t.Context(), server.ID)
+	attempt, err := r.api.CreateMCPAuthorizationAttempt(t.Context(), serverID)
 	if err != nil {
 		t.Fatal(err)
 	}

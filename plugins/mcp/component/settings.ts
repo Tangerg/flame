@@ -9,7 +9,6 @@ import type { MutationPromise } from "@flame/runtime-client";
 import type {
   ApprovalRule,
   MCPAuthorizationAttempt,
-  MCPServer,
   MCPServerID,
   MCPTool,
   MCPTestResult,
@@ -52,7 +51,7 @@ interface Snapshot {
 }
 interface Step {
   execute(context: ComponentContext): MutationPromise<unknown>;
-  accept(value: unknown): void;
+  accept?(value: unknown): void;
 }
 interface Batch {
   resources: string[];
@@ -238,8 +237,7 @@ export class MCPSettings {
             server
               ? context.runtime.mcp.update(updateRequest(server, update!))
               : context.runtime.mcp.create(candidate(input)),
-          accept: (value) => {
-            this.#acceptServer(value as MCPServer);
+          accept: () => {
             if (
               !this.#snapshot.drafts.has(key) ||
               this.#snapshot.drafts.get(key) === draft
@@ -263,16 +261,6 @@ export class MCPSettings {
         {
           execute: (context) => context.runtime.mcp.delete(server),
           accept: () => {
-            this.#cancelRead("servers");
-            const servers = this.#snapshot.servers.data;
-            if (servers)
-              this.#snapshot = {
-                ...this.#snapshot,
-                servers: {
-                  phase: "ready",
-                  data: servers.filter((s) => !sameMCPServer(s.id, server)),
-                },
-              };
             const drafts = new Map(this.#snapshot.drafts);
             drafts.delete(key);
             this.#snapshot = { ...this.#snapshot, drafts };
@@ -290,7 +278,6 @@ export class MCPSettings {
       [
         {
           execute: (context) => context.runtime.mcp.update({ server, enabled }),
-          accept: (value) => this.#acceptServer(value as MCPServer),
         },
       ],
     );
@@ -304,7 +291,6 @@ export class MCPSettings {
       [
         {
           execute: (context) => context.runtime.mcp.reconnect(server),
-          accept: () => {},
         },
       ],
     );
@@ -360,7 +346,6 @@ export class MCPSettings {
                 subject: { type: "all" },
                 decision: "allow",
               }),
-            accept: () => {},
           },
         ]
       : this.allowRules(server, name).map((rule) => ({
@@ -494,8 +479,7 @@ export class MCPSettings {
       parsed.slice(completed).map((s) => serverKey(userMCPServer(s.name))),
       parsed.slice(completed).map((input) => ({
         execute: (context) => context.runtime.mcp.create(candidate(input)),
-        accept: (value) => {
-          this.#acceptServer(value as MCPServer);
+        accept: () => {
           this.#snapshot = {
             ...this.#snapshot,
             importProgress: {
@@ -558,7 +542,7 @@ export class MCPSettings {
           : await (batch.original = context.track(() => step.execute(context)));
         if (this.#source.signal.aborted || this.#batches.get(key) !== batch)
           return false;
-        step.accept(result);
+        step.accept?.(result);
         batch.next++;
         batch.original = undefined;
         this.#publish();
@@ -678,21 +662,6 @@ export class MCPSettings {
         if (!signal.aborted) this.#publish();
       }
     });
-  }
-  #acceptServer(raw: MCPServer) {
-    this.#cancelRead("servers");
-    const saved = serverSettings(raw);
-    const current = this.#snapshot.servers.data;
-    if (current)
-      this.#snapshot = {
-        ...this.#snapshot,
-        servers: {
-          phase: "ready",
-          data: current.some((s) => sameMCPServer(s.id, saved.id))
-            ? current.map((s) => (sameMCPServer(s.id, saved.id) ? saved : s))
-            : [...current, saved],
-        },
-      };
   }
   #assert(context: ComponentContext) {
     this.#source.signal.throwIfAborted();

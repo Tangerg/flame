@@ -31,7 +31,6 @@ const (
 )
 
 type mcpFormResult struct {
-	server    protocol.MCPServer
 	probe     protocol.MCPTestOutcome
 	probeName string
 }
@@ -142,7 +141,7 @@ func (m *mcpFormFlow) prepare(service MCPManagement, policy mutation.ReplayPolic
 			return nil, err
 		}
 		return newMCPFormMutation("updating MCP server "+mcp.ServerLabel(update.Server), policy,
-			func(ctx context.Context, commandID authoring.CommandID) (protocol.MCPServer, error) {
+			func(ctx context.Context, commandID authoring.CommandID) error {
 				return service.UpdateServer(ctx, commandID, update)
 			})
 	}
@@ -160,12 +159,12 @@ func (m *mcpFormFlow) prepare(service MCPManagement, policy mutation.ReplayPolic
 		}, nil
 	}
 	return newMCPFormMutation("creating MCP server "+candidate.Name, policy,
-		func(ctx context.Context, commandID authoring.CommandID) (protocol.MCPServer, error) {
+		func(ctx context.Context, commandID authoring.CommandID) error {
 			return service.CreateServer(ctx, commandID, candidate)
 		})
 }
 
-func newMCPFormMutation(label string, policy mutation.ReplayPolicy, change func(context.Context, authoring.CommandID) (protocol.MCPServer, error)) (*mcpFormSubmission, error) {
+func newMCPFormMutation(label string, policy mutation.ReplayPolicy, change func(context.Context, authoring.CommandID) error) (*mcpFormSubmission, error) {
 	guard, err := policy.NewGuard()
 	if err != nil {
 		return nil, err
@@ -178,8 +177,7 @@ func newMCPFormMutation(label string, policy mutation.ReplayPolicy, change func(
 			if err := admit(); err != nil {
 				return mcpFormResult{}, err
 			}
-			server, err := change(ctx, commandID)
-			return mcpFormResult{server: server}, err
+			return mcpFormResult{}, change(ctx, commandID)
 		},
 	}, nil
 }

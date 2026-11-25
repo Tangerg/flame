@@ -157,11 +157,11 @@ func (r *Client) SetMCPToolExposure(ctx context.Context, request protocol.SetMCP
 func (r *Client) ListMCPServers(ctx context.Context, options protocol.CallOptions) (*protocol.Page[protocol.MCPServer], error) {
 	return r.invoke[struct{}, *protocol.Page[protocol.MCPServer]](ctx, "mcp.servers.list", struct{}{}, options.Metadata())
 }
-func (r *Client) CreateMCPServer(ctx context.Context, request protocol.MCPServerCandidate, options protocol.CommandOptions) (*protocol.MCPServer, error) {
-	return r.invoke[protocol.MCPServerCandidate, *protocol.MCPServer](ctx, "mcp.servers.create", request, options.Metadata())
+func (r *Client) CreateMCPServer(ctx context.Context, request protocol.MCPServerCandidate, options protocol.CommandOptions) error {
+	return r.invokeAck[protocol.MCPServerCandidate](ctx, "mcp.servers.create", request, options.Metadata())
 }
-func (r *Client) UpdateMCPServer(ctx context.Context, request protocol.UpdateMCPServerRequest, options protocol.CommandOptions) (*protocol.MCPServer, error) {
-	return r.invoke[protocol.UpdateMCPServerRequest, *protocol.MCPServer](ctx, "mcp.servers.update", request, options.Metadata())
+func (r *Client) UpdateMCPServer(ctx context.Context, request protocol.UpdateMCPServerRequest, options protocol.CommandOptions) error {
+	return r.invokeAck[protocol.UpdateMCPServerRequest](ctx, "mcp.servers.update", request, options.Metadata())
 }
 func (r *Client) DeleteMCPServer(ctx context.Context, request protocol.MCPServerRequest, options protocol.CommandOptions) error {
 	return r.invokeAck[protocol.MCPServerRequest](ctx, "mcp.servers.delete", request, options.Metadata())

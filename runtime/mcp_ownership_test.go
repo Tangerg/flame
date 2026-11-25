@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
@@ -25,21 +26,34 @@ func TestRuntimeRestartPreservesMCPResourceChanges(t *testing.T) {
 			t.Errorf("close runtime: %v", err)
 		}
 	})
-	created, err := runtime.CreateMCPServer(t.Context(), protocol.MCPServerCandidate{
-		Name:        "managed",
+	const credential = "Bearer resource-credential"
+	id := protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginUser}, Name: "managed"}
+	if err := runtime.CreateMCPServer(t.Context(), protocol.MCPServerCandidate{
+		Name:        id.Name,
 		Enabled:     false,
 		Description: "resource-owned configuration",
 		Connection: protocol.MCPConnectionInput{
 			Type: protocol.MCPTransportStreamableHTTP,
 			URL:  endpoint.URL + "/stored",
 			Authorization: &protocol.MCPAuthorizationChange{
-				Type: protocol.MCPSecretSet, Value: "Bearer resource-credential",
+				Type: protocol.MCPSecretSet, Value: credential,
 			},
 		},
 		HandshakeTimeout: protocol.MCPHandshakeTimeout{Type: protocol.MCPHandshakeUnbounded},
-	}, protocol.CommandOptions{IdempotencyKey: "create-managed-server"})
+	}, protocol.CommandOptions{IdempotencyKey: "create-managed-server"}); err != nil {
+		t.Fatal(err)
+	}
+	beforeRestart, err := runtime.ListMCPServers(t.Context(), protocol.CallOptions{})
 	if err != nil {
 		t.Fatal(err)
+	}
+	index := slices.IndexFunc(beforeRestart.Data, func(server protocol.MCPServer) bool { return server.ID == id })
+	if index < 0 {
+		t.Fatalf("server %v missing after creation", id)
+	}
+	created := beforeRestart.Data[index]
+	if masked := created.Connection.AuthorizationMasked; masked == "" || strings.Contains(masked, credential) {
+		t.Fatal("server query did not mask the authorization")
 	}
 	t.Setenv("FLAME_MCP_SERVERS", "managed="+endpoint.URL+"/environment")
 	t.Setenv("FLAME_MCP_MANAGED_TOKEN", "environment-credential")
@@ -67,12 +81,12 @@ func TestRuntimeRestartPreservesMCPResourceChanges(t *testing.T) {
 		t.Fatalf("servers after restart = %+v", servers.Data)
 	}
 	stored := servers.Data[0]
-	if stored.ID != created.ID || stored.Status.Type != protocol.MCPServerDisabled ||
+	if stored.ID != id || stored.Status.Type != protocol.MCPServerDisabled ||
 		stored.Description != created.Description || stored.Connection.URL != created.Connection.URL ||
 		stored.Connection.AuthorizationMasked != created.Connection.AuthorizationMasked {
 		t.Fatalf("restart changed resource configuration: got %+v, want %+v", stored, created)
 	}
-	if err := reopened.DeleteMCPServer(t.Context(), protocol.MCPServerRequest{Server: created.ID}, protocol.CommandOptions{
+	if err := reopened.DeleteMCPServer(t.Context(), protocol.MCPServerRequest{Server: id}, protocol.CommandOptions{
 		IdempotencyKey: "delete-managed-server",
 	}); err != nil {
 		t.Fatal(err)

@@ -2,7 +2,6 @@ package runtimebinding
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/integration/mcp"
@@ -15,8 +14,8 @@ type mcpBinding interface {
 	SetMCPToolExposure(context.Context, protocol.SetMCPToolExposureRequest, protocol.CommandOptions) error
 
 	ListMCPServers(context.Context, protocol.CallOptions) (*protocol.Page[protocol.MCPServer], error)
-	CreateMCPServer(context.Context, protocol.MCPServerCandidate, protocol.CommandOptions) (*protocol.MCPServer, error)
-	UpdateMCPServer(context.Context, protocol.UpdateMCPServerRequest, protocol.CommandOptions) (*protocol.MCPServer, error)
+	CreateMCPServer(context.Context, protocol.MCPServerCandidate, protocol.CommandOptions) error
+	UpdateMCPServer(context.Context, protocol.UpdateMCPServerRequest, protocol.CommandOptions) error
 	DeleteMCPServer(context.Context, protocol.MCPServerRequest, protocol.CommandOptions) error
 	TestMCPServer(context.Context, protocol.MCPServerCandidate, protocol.CallOptions) (*protocol.MCPTestResult, error)
 	ListMCPTools(context.Context, protocol.MCPListToolsRequest, protocol.CallOptions) (*protocol.Page[protocol.MCPTool], error)
@@ -37,38 +36,34 @@ func (r *Connection) Servers(ctx context.Context) ([]protocol.MCPServer, error) 
 	return values, nil
 }
 
-func (r *Connection) CreateServer(ctx context.Context, commandID authoring.CommandID, candidate mcp.Candidate) (protocol.MCPServer, error) {
+func (r *Connection) CreateServer(ctx context.Context, commandID authoring.CommandID, candidate mcp.Candidate) error {
 	if err := commandID.Validate(); err != nil {
-		return protocol.MCPServer{}, err
+		return err
 	}
 	if err := candidate.Validate(); err != nil {
-		return protocol.MCPServer{}, err
+		return err
 	}
 	request, err := projectMCPCandidate(candidate)
 	if err != nil {
-		return protocol.MCPServer{}, err
+		return err
 	}
 	options, err := r.commandOptionsFor(commandID)
 	if err != nil {
-		return protocol.MCPServer{}, err
+		return err
 	}
-	result, err := r.mcp.CreateMCPServer(ctx, request, options)
-	if err != nil {
-		return protocol.MCPServer{}, classifyError(err)
-	}
-	return mcpServerResult("create MCP server", mcp.UserServer(candidate.Name), result)
+	return classifyError(r.mcp.CreateMCPServer(ctx, request, options))
 }
 
-func (r *Connection) UpdateServer(ctx context.Context, commandID authoring.CommandID, update mcp.ServerUpdate) (protocol.MCPServer, error) {
+func (r *Connection) UpdateServer(ctx context.Context, commandID authoring.CommandID, update mcp.ServerUpdate) error {
 	if err := commandID.Validate(); err != nil {
-		return protocol.MCPServer{}, err
+		return err
 	}
 	if err := update.Validate(); err != nil {
-		return protocol.MCPServer{}, err
+		return err
 	}
 	options, err := r.commandOptionsFor(commandID)
 	if err != nil {
-		return protocol.MCPServer{}, err
+		return err
 	}
 	request := protocol.UpdateMCPServerRequest{
 		Server: update.Server, Enabled: update.Enabled, Description: update.Description,
@@ -82,25 +77,9 @@ func (r *Connection) UpdateServer(ctx context.Context, commandID authoring.Comma
 		request.Connection = &connection
 	}
 	if err := protocol.ValidateWireTree(request); err != nil {
-		return protocol.MCPServer{}, fmt.Errorf("MCP update %s violates runtime wire contract: %w", mcp.ServerLabel(update.Server), err)
+		return fmt.Errorf("MCP update %s violates runtime wire contract: %w", mcp.ServerLabel(update.Server), err)
 	}
-	result, err := r.mcp.UpdateMCPServer(ctx, request, options)
-	if err != nil {
-		return protocol.MCPServer{}, classifyError(err)
-	}
-	return mcpServerResult("update MCP server", update.Server, result)
-}
-
-func mcpServerResult(operation string, expected protocol.MCPServerID, result *protocol.MCPServer) (protocol.MCPServer, error) {
-	if result == nil {
-		return protocol.MCPServer{}, errors.Join(authoring.ErrCommandOutcomeUnknown, runtimeContractViolation("%s returned nil", operation))
-	}
-	if result.ID != expected {
-		return protocol.MCPServer{}, errors.Join(authoring.ErrCommandOutcomeUnknown, runtimeContractViolation(
-			"%s returned %s for %s", operation, mcp.ServerLabel(result.ID), mcp.ServerLabel(expected),
-		))
-	}
-	return *result, nil
+	return classifyError(r.mcp.UpdateMCPServer(ctx, request, options))
 }
 
 func (r *Connection) DeleteServer(ctx context.Context, server protocol.MCPServerID) error {

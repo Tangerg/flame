@@ -269,7 +269,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: configuration commits after lo
             name: server,
           }),
         ),
-      ).resolves.toMatchObject({ id: serverId, status: { type: "disabled" } });
+      ).resolves.toBeUndefined();
       await expect(nextUserMCPChange(events, server)).resolves.toMatchObject({
         servers: expect.arrayContaining([serverId]),
       });
@@ -284,13 +284,16 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: configuration commits after lo
             description: "MCP replay cutpoint updated",
           }),
         ),
-      ).resolves.toMatchObject({
+      ).resolves.toBeUndefined();
+      await expect(nextUserMCPChange(events, server)).resolves.toMatchObject({
+        servers: expect.arrayContaining([serverId]),
+      });
+      expect(
+        (await fixture.client.mcp.list()).data.find((entry) => entry.id.name === server),
+      ).toMatchObject({
         id: serverId,
         description: "MCP replay cutpoint updated",
         status: { type: "disabled" },
-      });
-      await expect(nextUserMCPChange(events, server)).resolves.toMatchObject({
-        servers: expect.arrayContaining([serverId]),
       });
 
       await callAfterCommitLoss("mcp.servers.delete", (faultClient) =>

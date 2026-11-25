@@ -162,7 +162,7 @@ func (*Runtime) Restore(context.Context, string) (err error) {
 	return
 }
 
-func (*Runtime) CreateServer(context.Context, authoring.CommandID, mcp.Candidate) (_ protocol.MCPServer, err error) {
+func (*Runtime) CreateServer(context.Context, authoring.CommandID, mcp.Candidate) (err error) {
 	err = errUnsupported
 	return
 }
@@ -212,7 +212,7 @@ func (*Runtime) Tools(context.Context, *protocol.MCPServerID) (_ []protocol.MCPT
 	return
 }
 
-func (*Runtime) UpdateServer(context.Context, authoring.CommandID, mcp.ServerUpdate) (_ protocol.MCPServer, err error) {
+func (*Runtime) UpdateServer(context.Context, authoring.CommandID, mcp.ServerUpdate) (err error) {
 	err = errUnsupported
 	return
 }

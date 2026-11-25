@@ -293,15 +293,9 @@ func (m *mcpScreens) submitMCPForm(flow *mcpFormFlow) {
 			m.message(message)
 			return
 		}
-		document, err := mcpServersDocument([]protocol.MCPServer{result.server})
-		if err != nil {
-			m.message(submission.label + " returned an invalid result: " + err.Error())
-			return
-		}
 		m.message(submission.label + " complete")
 		if m.session.context.current(presentation) {
-			m.reader.open(m.mcpServersReaderQuery(), document)
-			m.status.note("MCP server · " + mcp.ServerLabel(result.server.ID))
+			m.ShowMCPServers()
 		}
 	}
 	var started bool

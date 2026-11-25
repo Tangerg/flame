@@ -949,8 +949,9 @@ refuses these sources. Invalid server declarations are diagnosed independently.
 
 User MCP server membership and configuration belong exclusively to the durable resource
 commands: `mcp.servers.create`, `mcp.servers.update` and `mcp.servers.delete` (or the
-corresponding Go binding methods). Startup only restores these resources and realizes
-enabled connections. `FLAME_MCP_SERVERS` and `FLAME_MCP_<NAME>_TOKEN` no longer configure
+corresponding Go binding methods). Their acknowledgements confirm the directory write.
+The server list supplies current configuration and live connection status, including after
+replaying an older write. Startup restores these resources and realizes enabled connections. `FLAME_MCP_SERVERS` and `FLAME_MCP_<NAME>_TOKEN` no longer configure
 or seed servers. Configure new servers and credentials through the existing CLI or
 Desktop MCP controls, or the public Runtime binding. Previously persisted servers remain
 ordinary user resources; deleting one stays effective across restart.

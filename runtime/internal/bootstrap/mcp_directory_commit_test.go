@@ -3,6 +3,7 @@ package bootstrap
 import (
 	"context"
 	"database/sql/driver"
+	"slices"
 	"sync"
 	"testing"
 	"time"
@@ -29,19 +30,19 @@ func TestAcceptedMCPDisableSurvivesCallerCancellation(t *testing.T) {
 	cfg := poMCPConfig(t)
 	runtime := poMCPOpen(t, cfg)
 	installExternalConnector(runtime)
-	created := runtime.must(delivery.MCPServersCreate, protocol.MCPServerCandidate{
+	serverID := runtime.createUserServer(protocol.MCPServerCandidate{
 		Name: "disable-after-commit", Enabled: true,
 		Connection:       protocol.MCPConnectionInput{Type: protocol.MCPTransportStreamableHTTP, URL: remote},
 		HandshakeTimeout: protocol.MCPHandshakeTimeout{Type: protocol.MCPHandshakeUnbounded},
-	}, "create-before-disable").(*protocol.MCPServer)
-	runtime.poMCPTools(&created.ID, func(tools []protocol.MCPTool) bool { return len(tools) == 1 })
+	}, "create-before-disable")
+	runtime.poMCPTools(&serverID, func(tools []protocol.MCPTool) bool { return len(tools) == 1 })
 	questionCrashDatabase(t, cfg.stores.DataDirectory, `CREATE TRIGGER pause_mcp_grant_confirmation
 		BEFORE UPDATE OF proposal ON mcp_launch_grants
 		WHEN NEW.proposal IS NULL
 		BEGIN SELECT test_mcp_grant_confirmation(); END`)
 
 	const updateServer delivery.Name = "mcp.servers.update"
-	request := protocol.UpdateMCPServerRequest{Server: created.ID, Enabled: new(false)}
+	request := protocol.UpdateMCPServerRequest{Server: serverID, Enabled: new(false)}
 	options := protocol.CallMetadata{
 		IdempotencyKey: "disable-once", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version},
 	}
@@ -58,7 +59,7 @@ func TestAcceptedMCPDisableSurvivesCallerCancellation(t *testing.T) {
 	}
 	assertWithdrawn := func() {
 		t.Helper()
-		tools := runtime.must(delivery.MCPToolsList, protocol.MCPListToolsRequest{Server: &created.ID}, "").(*protocol.Page[protocol.MCPTool])
+		tools := runtime.must(delivery.MCPToolsList, protocol.MCPListToolsRequest{Server: &serverID}, "").(*protocol.Page[protocol.MCPTool])
 		if len(tools.Data) != 0 {
 			t.Errorf("disabled server still advertises tools: %+v", tools.Data)
 		}
@@ -73,9 +74,17 @@ func TestAcceptedMCPDisableSurvivesCallerCancellation(t *testing.T) {
 	}
 
 	recorded := runtime.endpoint.Invoke(t.Context(), updateServer, request, options)
-	server, accepted := recorded.Value.(*protocol.MCPServer)
-	if recorded.Failure != nil || !accepted || server.Status.Type != protocol.MCPServerDisabled {
-		t.Errorf("replayed disable = %+v, %v", recorded.Value, recorded.Failure)
+	if recorded.Failure != nil || recorded.Value != (struct{}{}) {
+		t.Fatalf("replayed disable = %+v, %v", recorded.Value, recorded.Failure)
+	}
+	servers, err := runtime.api.ListMCPServers(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.ContainsFunc(servers.Data, func(server protocol.MCPServer) bool {
+		return server.ID == serverID && server.Status.Type == protocol.MCPServerDisabled
+	}) {
+		t.Fatalf("disabled server missing from current directory: %+v", servers.Data)
 	}
 	assertWithdrawn()
 }

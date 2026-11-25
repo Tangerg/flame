@@ -42,25 +42,25 @@ func TestCommittedMCPWithdrawalDetachesToolsEvenIfGrantCleanupFails(t *testing.T
 			cfg := poMCPConfig(t)
 			runtime := poMCPOpen(t, cfg)
 			installExternalConnector(runtime)
-			server := runtime.must(delivery.MCPServersCreate, protocol.MCPServerCandidate{
+			serverID := runtime.createUserServer(protocol.MCPServerCandidate{
 				Name: "grant-cleanup-failure", Enabled: true,
 				Connection:       protocol.MCPConnectionInput{Type: protocol.MCPTransportStreamableHTTP, URL: url},
 				HandshakeTimeout: protocol.MCPHandshakeTimeout{Type: protocol.MCPHandshakeUnbounded},
-			}, "create-before-withdrawal").(*protocol.MCPServer)
-			runtime.poMCPTools(&server.ID, func(tools []protocol.MCPTool) bool { return len(tools) == 1 })
+			}, "create-before-withdrawal")
+			runtime.poMCPTools(&serverID, func(tools []protocol.MCPTool) bool { return len(tools) == 1 })
 			questionCrashDatabase(t, cfg.stores.DataDirectory, scenario.trigger)
 
 			options := protocol.CallMetadata{
 				IdempotencyKey: "withdraw-server", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version},
 			}
-			result := runtime.endpoint.Invoke(t.Context(), scenario.method, scenario.request(server.ID), options)
+			result := runtime.endpoint.Invoke(t.Context(), scenario.method, scenario.request(serverID), options)
 			if !errors.Is(result.Failure, protocol.ErrInternalError) {
 				t.Fatalf("withdrawal hid the local storage failure: %+v", result)
 			}
 			catalog := runtime.must(delivery.MCPServersList, struct{}{}, "").(*protocol.Page[protocol.MCPServer])
 			found := false
 			for _, stored := range catalog.Data {
-				if stored.ID == server.ID {
+				if stored.ID == serverID {
 					found = true
 					if stored.Status.Type != protocol.MCPServerDisabled {
 						t.Fatalf("the connector did not commit the disable: %+v", stored)
@@ -70,7 +70,7 @@ func TestCommittedMCPWithdrawalDetachesToolsEvenIfGrantCleanupFails(t *testing.T
 			if found == scenario.removed {
 				t.Fatalf("stored server present = %t after %s", found, scenario.method)
 			}
-			tools := runtime.must(delivery.MCPToolsList, protocol.MCPListToolsRequest{Server: &server.ID}, "").(*protocol.Page[protocol.MCPTool])
+			tools := runtime.must(delivery.MCPToolsList, protocol.MCPListToolsRequest{Server: &serverID}, "").(*protocol.Page[protocol.MCPTool])
 			if len(tools.Data) != 0 {
 				t.Errorf("withdrawn MCP server still advertises %d tools", len(tools.Data))
 			}

@@ -28,40 +28,24 @@ func (s *Handler) ListMCPServers(ctx context.Context) (*protocol.Page[protocol.M
 	return protocol.NewPage(out), nil
 }
 
-func (s *Handler) CreateMCPServer(ctx context.Context, in protocol.MCPServerCandidate) (*protocol.MCPServer, error) {
+func (s *Handler) CreateMCPServer(ctx context.Context, in protocol.MCPServerCandidate) error {
 	input, err := mcpServerInputFromCandidate(in)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	server, err := s.mcp.CreateServer(ctx, input)
-	if err != nil {
-		return nil, wireMCPError(err)
-	}
-	out, err := presentMCPServer(server)
-	if err != nil {
-		return nil, err
-	}
-	return &out, nil
+	return wireMCPError(s.mcp.CreateServer(ctx, input))
 }
 
-func (s *Handler) UpdateMCPServer(ctx context.Context, in protocol.UpdateMCPServerRequest) (*protocol.MCPServer, error) {
+func (s *Handler) UpdateMCPServer(ctx context.Context, in protocol.UpdateMCPServerRequest) error {
 	name, err := mcpServerIDFromWire(in.Server)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	patch, err := mcpServerPatchFromRequest(in)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	server, err := s.mcp.UpdateServer(ctx, name, patch)
-	if err != nil {
-		return nil, wireMCPError(err)
-	}
-	out, err := presentMCPServer(server)
-	if err != nil {
-		return nil, err
-	}
-	return &out, nil
+	return wireMCPError(s.mcp.UpdateServer(ctx, name, patch))
 }
 
 func (s *Handler) DeleteMCPServer(ctx context.Context, server protocol.MCPServerID) error {

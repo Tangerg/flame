@@ -26,14 +26,13 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: MCP", () => {
     const server = "http-e2e-disabled";
     const serverId = { origin: { type: "user" as const }, name: server };
 
-    const created = await fixture.client.mcp.create({
+    await expect(fixture.client.mcp.create({
       connection: { type: "stdio", command: "runtime-http-e2e-mcp" },
       description: "Disabled MCP E2E fixture",
       enabled: false,
       handshakeTimeout: { type: "unbounded" },
       name: server,
-    });
-    expect(created).toMatchObject({ id: serverId, status: { type: "disabled" } });
+    })).resolves.toBeUndefined();
     await expect(nextUserMCPChange(runtimeEvents, server)).resolves.toMatchObject({
       servers: expect.arrayContaining([serverId]),
     });
@@ -41,18 +40,24 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: MCP", () => {
       (await fixture.client.mcp.list()).data.filter((entry) => entry.id.origin.type === "user"),
     ).toEqual([expect.objectContaining({ id: serverId, status: { type: "disabled" } })]);
 
-    const updated = await fixture.client.mcp.update({
+    const updated = fixture.client.mcp.update({
       server: serverId,
       description: "Updated disabled MCP E2E fixture",
     });
-    expect(updated).toMatchObject({
-      id: serverId,
-      description: "Updated disabled MCP E2E fixture",
-      status: { type: "disabled" },
-    });
+    await expect(updated).resolves.toBeUndefined();
     await expect(nextUserMCPChange(runtimeEvents, server)).resolves.toMatchObject({
       servers: expect.arrayContaining([serverId]),
     });
+
+    const latestDescription = "Newer disabled MCP E2E fixture";
+    await fixture.client.mcp.update({ server: serverId, description: latestDescription });
+    await expect(nextUserMCPChange(runtimeEvents, server)).resolves.toMatchObject({
+      servers: expect.arrayContaining([serverId]),
+    });
+    await expect(updated.retry()).resolves.toBeUndefined();
+    expect(
+      (await fixture.client.mcp.list()).data.find((entry) => entry.id.name === server),
+    ).toMatchObject({ id: serverId, description: latestDescription, status: { type: "disabled" } });
 
     await fixture.client.mcp.delete(serverId);
     await expect(nextUserMCPChange(runtimeEvents, server)).resolves.toMatchObject({
@@ -159,7 +164,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: MCP", () => {
     await expect(fixture.client.mcp.test(candidate)).resolves.toEqual({ outcome: "reachable" });
 
     const connection = await watchRuntimeTopic(fixture.client, "mcp.changed");
-    await expect(fixture.client.mcp.create(candidate)).resolves.toMatchObject({ id: serverId });
+    await expect(fixture.client.mcp.create(candidate)).resolves.toBeUndefined();
 
     await expect(
       waitForUserMCPConnection(fixture.client, connection.events, server),

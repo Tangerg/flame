@@ -760,7 +760,7 @@
             },
             {
               "name": "CreateMCPServer",
-              "signature": "func(ctx context.Context, request protocol.MCPServerCandidate, options protocol.CommandOptions) (*protocol.MCPServer, error)"
+              "signature": "func(ctx context.Context, request protocol.MCPServerCandidate, options protocol.CommandOptions) error"
             },
             {
               "name": "CreateProject",
@@ -1136,7 +1136,7 @@
             },
             {
               "name": "UpdateMCPServer",
-              "signature": "func(ctx context.Context, request protocol.UpdateMCPServerRequest, options protocol.CommandOptions) (*protocol.MCPServer, error)"
+              "signature": "func(ctx context.Context, request protocol.UpdateMCPServerRequest, options protocol.CommandOptions) error"
             },
             {
               "name": "UpdateProject",
@@ -10722,7 +10722,7 @@
         {
           "name": "Version",
           "type": "untyped string",
-          "value": "\"2026-11-26.2\""
+          "value": "\"2026-11-26.3\""
         },
         {
           "name": "WorkspaceAvailable",
@@ -20129,7 +20129,7 @@
             },
             {
               "name": "CreateMCPServer",
-              "signature": "func(ctx context.Context, request protocol.MCPServerCandidate, options protocol.CommandOptions) (*protocol.MCPServer, error)"
+              "signature": "func(ctx context.Context, request protocol.MCPServerCandidate, options protocol.CommandOptions) error"
             },
             {
               "name": "CreateProject",
@@ -20505,7 +20505,7 @@
             },
             {
               "name": "UpdateMCPServer",
-              "signature": "func(ctx context.Context, request protocol.UpdateMCPServerRequest, options protocol.CommandOptions) (*protocol.MCPServer, error)"
+              "signature": "func(ctx context.Context, request protocol.UpdateMCPServerRequest, options protocol.CommandOptions) error"
             },
             {
               "name": "UpdateProject",

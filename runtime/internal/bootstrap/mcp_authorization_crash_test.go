@@ -19,7 +19,6 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
-	"github.com/Tangerg/flame/runtime/internal/delivery"
 )
 
 const externalAuthorizationCrashHome = "FLAME_TEST_MCP_AUTH_CRASH_HOME"
@@ -64,10 +63,10 @@ func TestExternalAuthorizationCrashChild(t *testing.T) {
 	cfg := externalMCPRestartConfig(t, data, os.Getenv(externalAuthorizationCrashRunner))
 	r := poMCPOpen(t, cfg)
 	installExternalConnector(r)
-	server := r.must(delivery.MCPServersCreate, protocol.MCPServerCandidate{
+	serverID := r.createUserServer(protocol.MCPServerCandidate{
 		Name: "interrupted", Enabled: true, Connection: protocol.MCPConnectionInput{Type: protocol.MCPTransportStreamableHTTP, URL: os.Getenv(externalAuthorizationCrashEndpoint)},
 		HandshakeTimeout: protocol.MCPHandshakeTimeout{Type: protocol.MCPHandshakeUnbounded},
-	}, "create-server").(*protocol.MCPServer)
+	}, "create-server")
 	deadline := time.Now().Add(10 * time.Second)
 	for time.Now().Before(deadline) {
 		row, err := r.api.ListMCPServers(t.Context())
@@ -76,7 +75,7 @@ func TestExternalAuthorizationCrashChild(t *testing.T) {
 		}
 		ready := false
 		for _, item := range row.Data {
-			if item.ID == server.ID {
+			if item.ID == serverID {
 				ready = item.Status.Type == protocol.MCPServerFailed
 			}
 		}
@@ -85,7 +84,7 @@ func TestExternalAuthorizationCrashChild(t *testing.T) {
 		}
 		time.Sleep(10 * time.Millisecond)
 	}
-	attempt, err := r.api.CreateMCPAuthorizationAttempt(t.Context(), server.ID)
+	attempt, err := r.api.CreateMCPAuthorizationAttempt(t.Context(), serverID)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -64,7 +64,6 @@ import type {
   MCPAuthorizationAttempt,
   MCPAuthorizationAttemptRequest,
   MCPListToolsRequest,
-  MCPServer,
   MCPServerCandidate,
   MCPServerRequest,
   MCPTestResult,
@@ -361,8 +360,6 @@ const VALUE_METHOD_NAMES = [
   "agentDocs.list",
   "mcp.tools.exposure",
   "mcp.servers.list",
-  "mcp.servers.create",
-  "mcp.servers.update",
   "mcp.servers.test",
   "mcp.tools.list",
   "mcp.authorizationAttempts.create",
@@ -1527,8 +1524,8 @@ export interface WireShapes {
   "mcp.tools.exposure": { params: MCPServerRequest; result: MCPToolExposure };
   "mcp.tools.setExposure": { params: SetMCPToolExposureRequest };
   "mcp.servers.list": { params: Record<string, never>; result: PageOfMCPServer };
-  "mcp.servers.create": { params: MCPServerCandidate; result: MCPServer };
-  "mcp.servers.update": { params: UpdateMCPServerRequest; result: MCPServer };
+  "mcp.servers.create": { params: MCPServerCandidate };
+  "mcp.servers.update": { params: UpdateMCPServerRequest };
   "mcp.servers.delete": { params: MCPServerRequest };
   "mcp.servers.test": { params: MCPServerCandidate; result: MCPTestResult };
   "mcp.tools.list": { params: MCPListToolsRequest; result: PageOfMCPTool };

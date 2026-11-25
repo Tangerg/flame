@@ -50,16 +50,16 @@ func TestMCPReconnectRequiresACommittedReceipt(t *testing.T) {
 	cfg := poMCPConfig(t)
 	host := poMCPOpen(t, cfg)
 	installExternalConnector(host)
-	server := host.must(delivery.MCPServersCreate, protocol.MCPServerCandidate{
+	serverID := host.createUserServer(protocol.MCPServerCandidate{
 		Name: "reconnect-receipt", Enabled: true,
 		Connection:       protocol.MCPConnectionInput{Type: protocol.MCPTransportStreamableHTTP, URL: upstream.URL},
 		HandshakeTimeout: protocol.MCPHandshakeTimeout{Type: protocol.MCPHandshakeUnbounded},
-	}, "create-reconnect-server").(*protocol.MCPServer)
+	}, "create-reconnect-server")
 	ready := func(tools []protocol.MCPTool) bool { return len(tools) == 1 && tools[0].Name == toolName }
-	host.poMCPTools(&server.ID, ready)
+	host.poMCPTools(&serverID, ready)
 	requireVisible := func(phase string) {
 		t.Helper()
-		tools := host.must(delivery.MCPToolsList, protocol.MCPListToolsRequest{Server: &server.ID}, "").(*protocol.Page[protocol.MCPTool])
+		tools := host.must(delivery.MCPToolsList, protocol.MCPListToolsRequest{Server: &serverID}, "").(*protocol.Page[protocol.MCPTool])
 		if !ready(tools.Data) {
 			t.Fatalf("%s tools = %+v, want the current connection", phase, tools.Data)
 		}
@@ -67,7 +67,7 @@ func TestMCPReconnectRequiresACommittedReceipt(t *testing.T) {
 
 	gate, release := blockTransport()
 	defer release()
-	request := protocol.MCPServerRequest{Server: server.ID}
+	request := protocol.MCPServerRequest{Server: serverID}
 	const key = "reconnect-original-server"
 	allowReceipt := refuseCommandReceipt(t, cfg.stores.DataDirectory)
 	refused := host.endpoint.Invoke(t.Context(), delivery.MCPServersReconnect, request, protocol.CallMetadata{IdempotencyKey: key})
@@ -80,7 +80,7 @@ func TestMCPReconnectRequiresACommittedReceipt(t *testing.T) {
 	host.must(delivery.MCPServersReconnect, request, key)
 	waitForSignal(t, gate.arrived, "the accepted reconnect transport")
 	release()
-	host.poMCPTools(&server.ID, ready)
+	host.poMCPTools(&serverID, ready)
 
 	_, releaseReplay := blockTransport()
 	defer releaseReplay()

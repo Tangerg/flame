@@ -43,23 +43,23 @@ func registerMCP(registry *Registry) {
 		return service.ListMCPServers(ctx)
 	})
 
-	registry.command(MethodMeta{
+	registry.commandAck(MethodMeta{
 		Name: MCPServersCreate, GoName: "CreateMCPServer",
 		Errors:          []string{protocol.ErrMCPServerAlreadyExists.Error(), protocol.ErrPluginUnavailable.Error()},
 		CapabilityRules: requires(protocol.FeatureMCP),
 	}, func(service interface {
-		CreateMCPServer(context.Context, protocol.MCPServerCandidate) (*protocol.MCPServer, error)
-	}, ctx context.Context, request protocol.MCPServerCandidate) (*protocol.MCPServer, error) {
+		CreateMCPServer(context.Context, protocol.MCPServerCandidate) error
+	}, ctx context.Context, request protocol.MCPServerCandidate) error {
 		return service.CreateMCPServer(ctx, request)
 	})
 
-	registry.command(MethodMeta{
+	registry.commandAck(MethodMeta{
 		Name: mcpServersUpdate, GoName: "UpdateMCPServer",
 		Errors:          []string{protocol.ErrMCPServerNotFound.Error()},
 		CapabilityRules: requires(protocol.FeatureMCP),
 	}, func(service interface {
-		UpdateMCPServer(context.Context, protocol.UpdateMCPServerRequest) (*protocol.MCPServer, error)
-	}, ctx context.Context, request protocol.UpdateMCPServerRequest) (*protocol.MCPServer, error) {
+		UpdateMCPServer(context.Context, protocol.UpdateMCPServerRequest) error
+	}, ctx context.Context, request protocol.UpdateMCPServerRequest) error {
 		return service.UpdateMCPServer(ctx, request)
 	})
 

@@ -295,8 +295,8 @@ export interface Methods {
   };
   mcp: {
     list: (signal?: AbortSignal) => Promise<Page<MCPServer>>;
-    create: (params: MCPServerCandidate) => MutationPromise<MCPServer>;
-    update: (params: UpdateMCPServerRequest) => MutationPromise<MCPServer>;
+    create: (params: MCPServerCandidate) => MutationPromise<void>;
+    update: (params: UpdateMCPServerRequest) => MutationPromise<void>;
     delete: (server: MCPServerID) => MutationPromise<void>;
     test: (params: MCPServerCandidate, signal?: AbortSignal) => Promise<MCPTestResult>;
     listTools: (server?: MCPServerID, signal?: AbortSignal) => Promise<Page<MCPTool>>;

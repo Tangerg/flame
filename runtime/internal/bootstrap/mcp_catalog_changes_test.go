@@ -64,13 +64,13 @@ func TestMCPNotificationUpdatesManagementAndSubsequentRunDiscovery(t *testing.T)
 	cfg.modelProviders = testChatResolver(client)
 	runtime := poMCPOpen(t, cfg)
 	installExternalConnector(runtime)
-	server := runtime.must(delivery.MCPServersCreate, protocol.MCPServerCandidate{
+	serverID := runtime.createUserServer(protocol.MCPServerCandidate{
 		Name: "catalog", Enabled: true, HandshakeTimeout: protocol.MCPHandshakeTimeout{Type: protocol.MCPHandshakeUnbounded},
 		Connection: protocol.MCPConnectionInput{Type: protocol.MCPTransportStreamableHTTP, URL: transport.URL},
-	}, "create-catalog").(*protocol.MCPServer)
+	}, "create-catalog")
 	ready := func(name string) {
 		t.Helper()
-		runtime.poMCPTools(&server.ID, func(tools []protocol.MCPTool) bool { return len(tools) == 1 && tools[0].Name == name })
+		runtime.poMCPTools(&serverID, func(tools []protocol.MCPTool) bool { return len(tools) == 1 && tools[0].Name == name })
 	}
 	ready("read")
 	session := runtime.must(delivery.SessionsCreate, protocol.CreateSessionRequest{Title: "changing tools"}, "create-session").(*protocol.Session)

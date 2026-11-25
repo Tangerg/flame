@@ -29,58 +29,58 @@ var ErrAuthorizationAttemptNotFound = errors.New("mcp: MCP authorization attempt
 
 var ErrAuthorizationUnsupported = errors.New("mcp: MCP authorization requires streamable HTTP")
 
-func (c *Coordinator) CreateServer(ctx context.Context, input ServerInput) (Server, error) {
+func (c *Coordinator) CreateServer(ctx context.Context, input ServerInput) error {
 	id, err := userServer(input.Name)
 	if err != nil {
-		return Server{}, err
+		return err
 	}
 	write, err := c.beginMutation(ctx)
 	if err != nil {
-		return Server{}, err
+		return err
 	}
 	defer write.close()
 	if _, found, getErr := c.registry.Definition(write.requestCtx, id); getErr != nil {
-		return Server{}, getErr
+		return getErr
 	} else if found {
-		return Server{}, ErrServerAlreadyExists
+		return ErrServerAlreadyExists
 	}
 	srv, err := serverCandidate(input, nil)
 	if err != nil {
-		return Server{}, err
+		return err
 	}
 	return c.commitServer(write, srv, nil)
 }
 
-func (c *Coordinator) UpdateServer(ctx context.Context, name mcpserver.ID, patch ServerPatch) (Server, error) {
+func (c *Coordinator) UpdateServer(ctx context.Context, name mcpserver.ID, patch ServerPatch) error {
 	if name.Origin().Kind() != mcpserver.OriginUser {
-		return Server{}, ErrOwnedByInstallation
+		return ErrOwnedByInstallation
 	}
 	if patch.Empty() {
-		return Server{}, fmt.Errorf("%w: update contains no changes", ErrInvalidServerConfiguration)
+		return fmt.Errorf("%w: update contains no changes", ErrInvalidServerConfiguration)
 	}
 	write, err := c.beginMutation(ctx)
 	if err != nil {
-		return Server{}, err
+		return err
 	}
 	defer write.close()
 	current, found, err := c.registry.Definition(write.requestCtx, name)
 	if err != nil {
-		return Server{}, err
+		return err
 	}
 	if !found {
-		return Server{}, ErrUnknownServer
+		return ErrUnknownServer
 	}
 	updated, err := applyServerPatch(current, patch)
 	if err != nil {
-		return Server{}, err
+		return err
 	}
 	return c.commitServer(write, updated, &current)
 }
 
-func (c *Coordinator) commitServer(write *mutationScope, accepted mcpserver.Server, previous *mcpserver.Server) (Server, error) {
+func (c *Coordinator) commitServer(write *mutationScope, accepted mcpserver.Server, previous *mcpserver.Server) error {
 	settle, err := c.directory.Save(write.requestCtx, accepted)
 	if err != nil {
-		return Server{}, err
+		return err
 	}
 
 	// A later directory read could fail or observe a different selection
@@ -96,15 +96,11 @@ func (c *Coordinator) commitServer(write *mutationScope, accepted mcpserver.Serv
 		defer close(start)
 		connectionErr = c.dispatchConnection(write.ownerCtx, id, c.connections.BeginConnect, start, nil, nil)
 	}
-	view, viewErr := serverView(accepted, c.statusesByName()[id])
 	settlementErr := settle(write.ownerCtx)
 	event := c.statusQueue.prepare(id)
 	write.unlock()
 	c.statusQueue.publish(event)
-	if err := errors.Join(connectionErr, viewErr, settlementErr); err != nil {
-		return Server{}, err
-	}
-	return view, nil
+	return errors.Join(connectionErr, settlementErr)
 }
 
 func (c *Coordinator) DeleteServer(ctx context.Context, name mcpserver.ID) error {

@@ -15,23 +15,23 @@ func TestMCPToolExposureAndItsReceiptCommitTogether(t *testing.T) {
 	cfg := poMCPConfig(t)
 	host := poMCPOpen(t, cfg)
 	installExternalConnector(host)
-	server := host.must(delivery.MCPServersCreate, protocol.MCPServerCandidate{
+	serverID := host.createUserServer(protocol.MCPServerCandidate{
 		Name: "exposure-commit", Enabled: true,
 		Connection:       protocol.MCPConnectionInput{Type: protocol.MCPTransportStreamableHTTP, URL: remote},
 		HandshakeTimeout: protocol.MCPHandshakeTimeout{Type: protocol.MCPHandshakeUnbounded},
-	}, "create-exposure-server").(*protocol.MCPServer)
-	host.poMCPTools(&server.ID, func(tools []protocol.MCPTool) bool {
+	}, "create-exposure-server")
+	host.poMCPTools(&serverID, func(tools []protocol.MCPTool) bool {
 		return len(tools) == 1 && tools[0].Name == toolName
 	})
 
 	exposure := func(want ...string) {
 		t.Helper()
-		result, err := host.api.GetMCPToolExposure(t.Context(), protocol.MCPServerRequest{Server: server.ID})
+		result, err := host.api.GetMCPToolExposure(t.Context(), protocol.MCPServerRequest{Server: serverID})
 		if err != nil || result == nil || !slices.Equal(result.DisabledTools, want) {
 			t.Fatalf("disabled tools = %+v, %v, want %v", result, err, want)
 		}
 	}
-	disable := protocol.SetMCPToolExposureRequest{Server: server.ID, Name: toolName, Disabled: true}
+	disable := protocol.SetMCPToolExposureRequest{Server: serverID, Name: toolName, Disabled: true}
 	const disableKey = "disable-original-tool"
 	allowReceipt := refuseCommandReceipt(t, cfg.stores.DataDirectory)
 	refused := host.endpoint.Invoke(t.Context(), setExposure, disable, protocol.CallMetadata{IdempotencyKey: disableKey})
@@ -43,7 +43,7 @@ func TestMCPToolExposureAndItsReceiptCommitTogether(t *testing.T) {
 	host.must(setExposure, disable, disableKey)
 	exposure(toolName)
 
-	host.must(setExposure, protocol.SetMCPToolExposureRequest{Server: server.ID, Name: toolName}, "enable-tool")
+	host.must(setExposure, protocol.SetMCPToolExposureRequest{Server: serverID, Name: toolName}, "enable-tool")
 	host.must(setExposure, disable, disableKey)
 	exposure()
 }
