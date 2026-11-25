@@ -5,19 +5,14 @@ import {
   type WorkspaceChangesActionInput,
   useTranslator,
 } from "@flame/component-sdk";
-import { Copy } from "@flame/icons/react";
 import {
   Button,
-  CodeWrapButton,
-  DiffFileHeader,
   DiffStat,
   FilterBar,
-  IconButton,
   isImeKey,
   Panel,
   PanelHeader,
   SearchField,
-  Select,
   useCopy,
 } from "@flame/ui";
 import { en } from "./locales/en";
@@ -44,9 +39,10 @@ import {
   DiffManifestNotices,
   DiffReadStatus,
   DiffReaderNavigation,
+  DiffReaderHeading,
   DiffReaderToolbar,
+  type DiffLayout,
   DiffScopeToolbar,
-  fileSummary,
 } from "./diffViews";
 
 const CATALOGS = { en, zh, "zh-TW": zhTW, ja, ko, es, fr, de };
@@ -72,7 +68,7 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
     [context.locale],
   );
   const [filter, setFilter] = useState("");
-  const [layout, setLayout] = useState<"unified" | "split">("unified");
+  const [layout, setLayout] = useState<DiffLayout>("unified");
   const [selection, setSelection] = useState<Selection>(() =>
     workspace.focusPath
       ? { view: "file", path: workspace.focusPath, returnTo: "source" }
@@ -248,31 +244,16 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
                 onRefresh={() => void refresh()}
               />
               {file && (
-                <DiffFileHeader ref={heading} file={fileSummary(t, file)}>
-                  {!file.binary && readableRendering && (
-                    <>
-                      <Select
-                        size="sm"
-                        label={t("layout.label")}
-                        value={layout}
-                        onValueChange={(value) =>
-                          setLayout(value as "unified" | "split")
-                        }
-                        options={[
-                          { value: "unified", label: t("layout.unified") },
-                          { value: "split", label: t("layout.split") },
-                        ]}
-                      />
-                      <CodeWrapButton labels={patchActions} size="sm" />
-                      <IconButton
-                        icon={Copy}
-                        size="sm"
-                        aria-label={t("patch.copy")}
-                        onClick={() => void copyPatch()}
-                      />
-                    </>
-                  )}
-                </DiffFileHeader>
+                <DiffReaderHeading
+                  t={t}
+                  file={file}
+                  heading={heading}
+                  readable={readableRendering !== undefined}
+                  layout={layout}
+                  onLayout={setLayout}
+                  patchActions={patchActions}
+                  onCopy={() => void copyPatch()}
+                />
               )}
             </>
           ) : hasFiles ? (

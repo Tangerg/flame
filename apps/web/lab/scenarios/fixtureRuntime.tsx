@@ -66,6 +66,69 @@ const container = document.getElementById("root");
 if (!container) throw new Error("Visual fixture root element is missing");
 const root = createRoot(container);
 
+// The fixture page selects its scenario from the URL; unknown values fall back
+// to each scenario's default state.
+function fixtureSelection(query: URLSearchParams) {
+  const requestedFileListState = query.get("file-list");
+  const fileListState: VisualFileListState | undefined =
+    requestedFileListState === "error" || requestedFileListState === "loading"
+      ? requestedFileListState
+      : undefined;
+  const requestedDirectoryState = query.get("directory-state");
+  const directoryState = isVisualDirectoryState(requestedDirectoryState)
+    ? requestedDirectoryState
+    : undefined;
+
+  const sidebarOpen = query.get("sidebar") !== "collapsed";
+
+  const requestedPane = query.get("pane");
+
+  const settingsPane: VisualSettingsPane = isVisualSettingsPane(requestedPane)
+    ? requestedPane
+    : "appearance";
+
+  const requestedOverlay = query.get("overlay");
+
+  const shellOverlay: VisualShellOverlay | null = isVisualShellOverlay(requestedOverlay)
+    ? requestedOverlay
+    : null;
+
+  const requestedFixture = query.get("fixture");
+
+  const fixture =
+    ["agent", "workspace", "shell", "computer", "composition", "atoms"].find(
+      (kind) => kind === requestedFixture,
+    ) ?? "foundation";
+
+  const requestedState = query.get("state");
+
+  const state: VisualAgentState = VISUAL_AGENT_STATES.includes(requestedState as VisualAgentState)
+    ? (requestedState as VisualAgentState)
+    : "running";
+
+  const workIndexState: VisualWorkIndexState = VISUAL_WORK_INDEX_STATES.includes(
+    requestedState as VisualWorkIndexState,
+  )
+    ? (requestedState as VisualWorkIndexState)
+    : "populated";
+
+  const workspaceState: VisualWorkspaceState = isVisualWorkspaceState(requestedState)
+    ? requestedState
+    : "dock-review";
+  return {
+    fileListState,
+    directoryState,
+    sidebarOpen,
+    settingsPane,
+    shellOverlay,
+    fixture,
+    requestedState,
+    state,
+    workIndexState,
+    workspaceState,
+  };
+}
+
 export let visualClient: VisualClient;
 
 function fixtureAppearance(query: URLSearchParams) {
@@ -106,55 +169,20 @@ function startFixture(messages: NotificationFeed, render: (node: ReactNode) => v
   async function initialize() {
     const visualClient = client;
     const query = new URLSearchParams(window.location.search);
-    const requestedFileListState = query.get("file-list");
-    const fileListState: VisualFileListState | undefined =
-      requestedFileListState === "error" || requestedFileListState === "loading"
-        ? requestedFileListState
-        : undefined;
-    const requestedDirectoryState = query.get("directory-state");
-    const directoryState = isVisualDirectoryState(requestedDirectoryState)
-      ? requestedDirectoryState
-      : undefined;
-
+    const {
+      fileListState,
+      directoryState,
+      sidebarOpen,
+      settingsPane,
+      shellOverlay,
+      fixture,
+      requestedState,
+      state,
+      workIndexState,
+      workspaceState,
+    } = fixtureSelection(query);
     const { colors, ...appearance } = fixtureAppearance(query);
     const { theme, motionScale } = appearance;
-
-    const sidebarOpen = query.get("sidebar") !== "collapsed";
-
-    const requestedPane = query.get("pane");
-
-    const settingsPane: VisualSettingsPane = isVisualSettingsPane(requestedPane)
-      ? requestedPane
-      : "appearance";
-
-    const requestedOverlay = query.get("overlay");
-
-    const shellOverlay: VisualShellOverlay | null = isVisualShellOverlay(requestedOverlay)
-      ? requestedOverlay
-      : null;
-
-    const requestedFixture = query.get("fixture");
-
-    const fixture =
-      ["agent", "workspace", "shell", "computer", "composition", "atoms"].find(
-        (kind) => kind === requestedFixture,
-      ) ?? "foundation";
-
-    const requestedState = query.get("state");
-
-    const state: VisualAgentState = VISUAL_AGENT_STATES.includes(requestedState as VisualAgentState)
-      ? (requestedState as VisualAgentState)
-      : "running";
-
-    const workIndexState: VisualWorkIndexState = VISUAL_WORK_INDEX_STATES.includes(
-      requestedState as VisualWorkIndexState,
-    )
-      ? (requestedState as VisualWorkIndexState)
-      : "populated";
-
-    const workspaceState: VisualWorkspaceState = isVisualWorkspaceState(requestedState)
-      ? requestedState
-      : "dock-review";
 
     const rootElement = document.documentElement;
 
@@ -279,6 +307,56 @@ function startFixture(messages: NotificationFeed, render: (node: ReactNode) => v
       return client;
     }
 
+    // Fixtures that render outside the workbench share the built-in themes.
+    async function standaloneFixtureNode(): Promise<ReactNode> {
+      const [
+        { default: flameLight },
+        { default: flameDark },
+        { builtinVisualStyles },
+        { defaultAccents },
+      ] = await Promise.all([
+        import("@/features/theme/themes/flame-light"),
+        import("@/features/theme/themes/flame-dark"),
+        import("@/features/theme/visualStyles/index"),
+        import("@/features/theme/defaultAccents"),
+      ]);
+      for (const plugin of [
+        flameLight(visualClient.theme.access.preference),
+        flameDark(visualClient.theme.access.preference),
+        defaultAccents,
+        ...builtinVisualStyles,
+      ]) {
+        await loadPluginsForTest(plugin);
+      }
+      if (fixture === "composition") {
+        const { createCompositionFixture } = await import("./compositionBaseline");
+        const composition = await createCompositionFixture(requestedState ?? "one", (children) => (
+          <FixturePresentation>{children}</FixturePresentation>
+        ));
+        currentRuntimeClient = composition.client;
+        return composition.node;
+      }
+      if (fixture === "computer") {
+        const { createComputerConsoleFixture } = await import("./computerConsoleFixture");
+        const computer = await createComputerConsoleFixture(requestedLocale, requestedState);
+        currentRuntimeClient = computer.client;
+        await loadPluginsForTest(
+          definePlugin({
+            name: "flame.visual.computer",
+            setup(ctx) {
+              ctx.lifetime.defer(computer.close);
+            },
+          }),
+        );
+        return computer.node;
+      }
+      if (fixture === "atoms") {
+        const { VisualAtomsFixture } = await import("./VisualAtomsFixture");
+        return <VisualAtomsFixture state={requestedState} />;
+      }
+      return <VisualFoundationFixture sidebarOpen={sidebarOpen} />;
+    }
+
     async function fixtureNode(): Promise<ReactNode> {
       if (
         fixture === "foundation" ||
@@ -286,53 +364,7 @@ function startFixture(messages: NotificationFeed, render: (node: ReactNode) => v
         fixture === "computer" ||
         fixture === "composition"
       ) {
-        const [
-          { default: flameLight },
-          { default: flameDark },
-          { builtinVisualStyles },
-          { defaultAccents },
-        ] = await Promise.all([
-          import("@/features/theme/themes/flame-light"),
-          import("@/features/theme/themes/flame-dark"),
-          import("@/features/theme/visualStyles/index"),
-          import("@/features/theme/defaultAccents"),
-        ]);
-        for (const plugin of [
-          flameLight(visualClient.theme.access.preference),
-          flameDark(visualClient.theme.access.preference),
-          defaultAccents,
-          ...builtinVisualStyles,
-        ]) {
-          await loadPluginsForTest(plugin);
-        }
-        if (fixture === "composition") {
-          const { createCompositionFixture } = await import("./compositionBaseline");
-          const composition = await createCompositionFixture(
-            requestedState ?? "one",
-            (children) => <FixturePresentation>{children}</FixturePresentation>,
-          );
-          currentRuntimeClient = composition.client;
-          return composition.node;
-        }
-        if (fixture === "computer") {
-          const { createComputerConsoleFixture } = await import("./computerConsoleFixture");
-          const computer = await createComputerConsoleFixture(requestedLocale, requestedState);
-          currentRuntimeClient = computer.client;
-          await loadPluginsForTest(
-            definePlugin({
-              name: "flame.visual.computer",
-              setup(ctx) {
-                ctx.lifetime.defer(computer.close);
-              },
-            }),
-          );
-          return computer.node;
-        }
-        if (fixture === "atoms") {
-          const { VisualAtomsFixture } = await import("./VisualAtomsFixture");
-          return <VisualAtomsFixture state={requestedState} />;
-        }
-        return <VisualFoundationFixture sidebarOpen={sidebarOpen} />;
+        return standaloneFixtureNode();
       }
       if (fixture === "workspace") {
         const [

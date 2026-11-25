@@ -36,6 +36,72 @@ import { useMemoryFilters, type MemoryFilterState } from "./useMemoryFilters";
 const EDITOR_STYLE = { maxHeight: "40dvh" };
 type MemoryState = ReturnType<typeof useMemory>;
 
+// The project scope keys on a Project or the Session's folder; with neither it reads nothing.
+function projectScopeUnresolved(
+  scope: Scope,
+  project: unknown,
+  cwd: string | undefined,
+): boolean {
+  return scope === "project" && !project && !cwd;
+}
+
+function MemoryReadStatus({
+  read,
+  t,
+}: {
+  read: MemoryState["read"];
+  t: MemoryState["t"];
+}) {
+  return (
+    <>
+      {read.loading && <p role="status">{t("reading")}</p>}
+      {read.error && <p role="alert">{read.error}</p>}
+    </>
+  );
+}
+
+function MemoryEditPane({
+  memory,
+  edit,
+  feedback,
+  recovering,
+  aborted,
+  scopeLabel,
+}: {
+  memory: MemoryState;
+  edit: NonNullable<MemoryState["edit"]>;
+  feedback: ReactNode;
+  recovering: boolean;
+  aborted: boolean;
+  scopeLabel: (scope: Scope) => string;
+}) {
+  if (edit.type !== "delete")
+    return (
+      <MemoryEditor
+        {...memory}
+        edit={edit}
+        feedback={feedback}
+        recovering={recovering}
+        aborted={aborted}
+        scopeLabel={scopeLabel}
+      />
+    );
+  return (
+    <MemoryDeleteConfirmation
+      ref={memory.editorElement}
+      item={edit.item}
+      feedback={feedback}
+      pending={memory.pending}
+      locked={memory.locked}
+      recovering={recovering}
+      aborted={aborted}
+      cancel={() => memory.closeEditor()}
+      confirm={recovering ? memory.reconcile : memory.deleteEdited}
+      t={memory.t}
+    />
+  );
+}
+
 export function Memory({ context }: { context: ComponentContext }) {
   const filters = useMemoryFilters();
   const memory = useMemory(context, filters);
@@ -54,7 +120,6 @@ export function Memory({ context }: { context: ComponentContext }) {
     addItem,
     editItem,
     removeItem,
-    deleteEdited,
     changeScope,
     editorFeedback,
     unknown,
@@ -108,9 +173,9 @@ export function Memory({ context }: { context: ComponentContext }) {
           size="md"
           title={t("panel.title")}
           context={
-            scope === "project" &&
-            !project &&
-            !cwd && <Metadata>{t("scope.none")}</Metadata>
+            projectScopeUnresolved(scope, project, cwd) && (
+              <Metadata>{t("scope.none")}</Metadata>
+            )
           }
         />
       }
@@ -137,31 +202,17 @@ export function Memory({ context }: { context: ComponentContext }) {
         </>
       }
     >
-      {read.loading && <p role="status">{t("reading")}</p>}
-      {read.error && <p role="alert">{read.error}</p>}
-      {edit?.type === "delete" ? (
-        <MemoryDeleteConfirmation
-          ref={editorElement}
-          item={edit.item}
-          feedback={editFeedback}
-          pending={pending}
-          locked={locked}
-          recovering={recovering}
-          aborted={context.signal.aborted}
-          cancel={() => closeEditor()}
-          confirm={recovering ? reconcile : deleteEdited}
-          t={t}
-        />
-      ) : edit ? (
-        <MemoryEditor
-          {...memory}
+      <MemoryReadStatus read={read} t={t} />
+      {edit && (
+        <MemoryEditPane
+          memory={memory}
           edit={edit}
           feedback={editFeedback}
           recovering={recovering}
           aborted={context.signal.aborted}
           scopeLabel={scopeLabel}
         />
-      ) : null}
+      )}
       {(current || recordFeedback || recordCommand) && (
         <>
           <MemoryReport

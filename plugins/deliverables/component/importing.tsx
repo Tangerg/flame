@@ -51,6 +51,126 @@ type Submission =
   | { kind: "finished" }
   | { kind: "failed"; error: string };
 
+type ChosenFile = Extract<FileSelection, { kind: "chosen" }>;
+
+// An interrupted import resumes its own upload; otherwise a new upload is
+// opened for the chosen bytes. Either way it must describe exactly those bytes.
+async function resolvedUpload(
+  state: ImportState,
+  current: Upload[],
+  captured: { uploadId: string | undefined; local: ChosenFile },
+  t: Translate,
+  opened: (uploadId: string) => void,
+): Promise<Upload | undefined> {
+  let upload: Upload | undefined;
+  if (captured.uploadId) {
+    upload = current.find((value) => value.id === captured.uploadId);
+    if (!upload) throw new Error(t("import.missing"));
+  } else {
+    upload = await state.run(
+      METHODS.upload,
+      { size: captured.local.file.size, sha256: captured.local.sha256 },
+      (value) => opened(value.id),
+    );
+    if (!upload) return undefined;
+  }
+  if (
+    upload.sha256 !== captured.local.sha256 ||
+    boundedInteger(upload.size, LIMITS.fileBytes) !== captured.local.file.size
+  )
+    throw new Error(t("import.mismatch"));
+  return upload;
+}
+
+// Appends the bytes the upload has not received, one acknowledged chunk at a
+// time; false when a chunk command did not run.
+async function appendRemaining(
+  state: ImportState,
+  upload: Upload,
+  local: ChosenFile,
+  progress: (received: number) => void,
+): Promise<boolean> {
+  const size = local.file.size;
+  let offset = boundedInteger(upload.received, size);
+  progress(offset);
+  while (offset < size) {
+    state.signal.throwIfAborted();
+    const bytes = new Uint8Array(
+      await local.file.slice(offset, offset + LIMITS.chunkBytes).arrayBuffer(),
+    );
+    state.signal.throwIfAborted();
+    const result = await state.run(
+      METHODS.append,
+      { uploadId: upload.id, offset, base64: encodeChunk(bytes) },
+      (value) => progress(boundedInteger(value.received, size)),
+    );
+    if (!result) return false;
+    const next = boundedInteger(result.received, size);
+    if (
+      result.id !== upload.id ||
+      result.sha256 !== local.sha256 ||
+      next !== offset + bytes.length
+    )
+      throw new Error(
+        "deliverables: upload acknowledgement differs from its captured bytes",
+      );
+    offset = next;
+  }
+  return true;
+}
+
+function SelectionStatus({
+  selection,
+  t,
+}: {
+  selection: FileSelection;
+  t: Translate;
+}) {
+  if (selection.kind === "hashing")
+    return <Metadata role="status">{t("import.hashing")}</Metadata>;
+  if (selection.kind !== "chosen") return null;
+  return (
+    <Facts
+      values={[
+        [t("import.filename"), selection.file.name],
+        [t("file.size"), String(selection.file.size)],
+        [t("file.hash"), selection.sha256],
+      ]}
+    />
+  );
+}
+
+function SubmissionFeedback({
+  error,
+  submission,
+  t,
+}: {
+  error: string | undefined;
+  submission: Submission;
+  t: Translate;
+}) {
+  return (
+    <>
+      {error && (
+        <Callout kind="warning">
+          <RecordBody>{error}</RecordBody>
+        </Callout>
+      )}
+      {submission.kind === "transferring" && submission.progress && (
+        <Metadata role="status">
+          {t("transfer.progress", {
+            received: submission.progress.received,
+            total: submission.progress.total,
+          })}
+        </Metadata>
+      )}
+      {submission.kind === "finished" && (
+        <Metadata role="status">{t("import.finished")}</Metadata>
+      )}
+    </>
+  );
+}
+
 export function ImportForm({ state, t }: { state: ImportState; t: Translate }) {
   const [title, setTitle] = useState("");
   const [format, setFormat] = useState<Format>("docx");
@@ -129,65 +249,21 @@ export function ImportForm({ state, t }: { state: ImportState; t: Translate }) {
       const current = await state.refreshUploads();
       state.signal.throwIfAborted();
       if (!current) throw new Error(t("import.readRequired"));
-      let upload: Upload | undefined;
-      if (captured.uploadId) {
-        upload = current.find((value) => value.id === captured.uploadId);
-        if (!upload) throw new Error(t("import.missing"));
-      } else {
-        upload = await state.run(
-          METHODS.upload,
-          { size: captured.local.file.size, sha256: captured.local.sha256 },
-          (value) => setUploadId(value.id),
-        );
-        if (!upload) return;
-      }
-      if (
-        upload.sha256 !== captured.local.sha256 ||
-        boundedInteger(upload.size, LIMITS.fileBytes) !==
-          captured.local.file.size
-      )
-        throw new Error(t("import.mismatch"));
-      let offset = boundedInteger(upload.received, captured.local.file.size);
-      setSubmission({
-        kind: "transferring",
-        progress: { received: offset, total: captured.local.file.size },
-      });
-      while (offset < captured.local.file.size) {
-        state.signal.throwIfAborted();
-        const bytes = new Uint8Array(
-          await captured.local.file
-            .slice(offset, offset + LIMITS.chunkBytes)
-            .arrayBuffer(),
-        );
-        state.signal.throwIfAborted();
-        const result = await state.run(
-          METHODS.append,
-          { uploadId: upload.id, offset, base64: encodeChunk(bytes) },
-          (value) => {
-            setSubmission({
-              kind: "transferring",
-              progress: {
-                received: boundedInteger(
-                  value.received,
-                  captured.local.file.size,
-                ),
-                total: captured.local.file.size,
-              },
-            });
-          },
-        );
-        if (!result) return;
-        const next = boundedInteger(result.received, captured.local.file.size);
-        if (
-          result.id !== upload.id ||
-          result.sha256 !== captured.local.sha256 ||
-          next !== offset + bytes.length
-        )
-          throw new Error(
-            "deliverables: upload acknowledgement differs from its captured bytes",
-          );
-        offset = next;
-      }
+      const upload = await resolvedUpload(state, current, captured, t, (id) =>
+        setUploadId(id),
+      );
+      if (!upload) return;
+      const sent = await appendRemaining(
+        state,
+        upload,
+        captured.local,
+        (received) =>
+          setSubmission({
+            kind: "transferring",
+            progress: { received, total: captured.local.file.size },
+          }),
+      );
+      if (!sent) return;
       await state.run(
         METHODS.import,
         {
@@ -257,18 +333,7 @@ export function ImportForm({ state, t }: { state: ImportState; t: Translate }) {
             />
           </FormGroup>
         </FormRow>
-        {selection.kind === "hashing" && (
-          <Metadata role="status">{t("import.hashing")}</Metadata>
-        )}
-        {selection.kind === "chosen" && (
-          <Facts
-            values={[
-              [t("import.filename"), selection.file.name],
-              [t("file.size"), String(selection.file.size)],
-              [t("file.hash"), selection.sha256],
-            ]}
-          />
-        )}
+        <SelectionStatus selection={selection} t={t} />
         {selected && (
           <Callout kind="note">
             {t("import.resuming", {
@@ -286,24 +351,7 @@ export function ImportForm({ state, t }: { state: ImportState; t: Translate }) {
         <FormActions
           label={t("import.actions")}
           feedback={
-            <>
-              {error && (
-                <Callout kind="warning">
-                  <RecordBody>{error}</RecordBody>
-                </Callout>
-              )}
-              {submission.kind === "transferring" && submission.progress && (
-                <Metadata role="status">
-                  {t("transfer.progress", {
-                    received: submission.progress.received,
-                    total: submission.progress.total,
-                  })}
-                </Metadata>
-              )}
-              {submission.kind === "finished" && (
-                <Metadata role="status">{t("import.finished")}</Metadata>
-              )}
-            </>
+            <SubmissionFeedback error={error} submission={submission} t={t} />
           }
         >
           {uploadId && (

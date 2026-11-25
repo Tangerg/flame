@@ -781,6 +781,21 @@ export function visualWorkspaceRuntime(
   return { agentState, snapshot, capabilities, readDiff };
 }
 
+// Each workspace state opens the file its scenario reads, or none.
+function visualFileViewer(state: VisualWorkspaceState) {
+  if (state === "dock-files" || state === "dock-catalog") return null;
+  if (state === "dock-file-error") return { path: "README.md", line: 0 };
+  if (state === "dock-file-unsupported") return { path: UNSUPPORTED_IMAGE.path, line: 0 };
+  return { path: ACTIVE_DIFF_FILE, line: 6 };
+}
+
+// The review scenario gives the dock its wider share; the catalog keeps the default layout.
+function visualDockLayout(state: VisualWorkspaceState) {
+  if (state === "dock-catalog") return null;
+  const dock = state === "dock-review" ? VISUAL_REVIEW_DOCK_WIDTH_RATIO : VISUAL_DOCK_WIDTH_RATIO;
+  return { dock: dock * 100, conversation: (1 - dock) * 100 };
+}
+
 export async function installVisualWorkspaceFixture(
   visual: VisualClient,
   runtimeClient: () => FlameClient,
@@ -816,14 +831,7 @@ export async function installVisualWorkspaceFixture(
     state === "dock-catalog"
       ? WORKSPACE_DOCK_CATALOG
       : (DOCK_VIEW_BY_STATE[state] ?? "package:visual:diff");
-  const fileViewer =
-    state === "dock-files" || state === "dock-catalog"
-      ? null
-      : state === "dock-file-error"
-        ? { path: "README.md", line: 0 }
-        : state === "dock-file-unsupported"
-          ? { path: UNSUPPORTED_IMAGE.path, line: 0 }
-          : { path: ACTIVE_DIFF_FILE, line: 6 };
+  const fileViewer = visualFileViewer(state);
   visual.workspace.dock.store.setState({
     activeSessionScopeId: VISUAL_SESSION_ID,
     sessionScopes: new Map(),
@@ -854,20 +862,7 @@ export async function installVisualWorkspaceFixture(
   visual.workspace.layout.setState({
     sidebarCollapsed: !sidebarOpen,
     sidebarLayout: null,
-    dockLayout:
-      state === "dock-catalog"
-        ? null
-        : {
-            dock:
-              (state === "dock-review" ? VISUAL_REVIEW_DOCK_WIDTH_RATIO : VISUAL_DOCK_WIDTH_RATIO) *
-              100,
-            conversation:
-              (1 -
-                (state === "dock-review"
-                  ? VISUAL_REVIEW_DOCK_WIDTH_RATIO
-                  : VISUAL_DOCK_WIDTH_RATIO)) *
-              100,
-          },
+    dockLayout: visualDockLayout(state),
   });
 
   await loadVisualPlugins([

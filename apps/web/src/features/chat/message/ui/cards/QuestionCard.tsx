@@ -16,6 +16,7 @@ import {
   questionDraftComplete,
   setQuestionOptions,
   setQuestionText,
+  type QuestionAnswers,
   type QuestionDraft,
 } from "@/features/agent/public/messagePresentation";
 import {
@@ -150,6 +151,54 @@ interface Props {
 
 const RECOMMENDED_SUFFIX = " (Recommended)";
 
+// A settled question shows what was asked and answered, or that it was dismissed.
+function SettledQuestions({
+  questions,
+  answers,
+  open,
+  onOpenChange,
+}: {
+  questions: Props["questions"];
+  answers: QuestionAnswers | undefined;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const t = useT();
+  if (!answers)
+    return (
+      <TranscriptMark icon={<Icon name="x" size="xs" />}>
+        {t("question.settled.dismissed")}
+      </TranscriptMark>
+    );
+  const countLabel = t("question.settled.question", { count: questions.length });
+  return (
+    <AgentActivityDisclosure
+      icon="question"
+      shell="line"
+      open={open}
+      onOpenChange={onOpenChange}
+      label={
+        <span {...stylex.props(qc.settledLine, vocab.truncate)}>
+          <span {...stylex.props(vocab.muted)}>{t("question.settled.asked")}</span>
+          <span {...stylex.props(vocab.faint)}>{countLabel}</span>
+        </span>
+      }
+      contentClassName={stylex.props(qc.askBody).className}
+    >
+      <div {...stylex.props(qc.settledList)}>
+        {questions.map((question, index) => (
+          <div key={index} {...stylex.props(qc.settledItem)}>
+            <div {...stylex.props(qc.settledAsk, typeStep.uiSm)}>{question.prompt}</div>
+            <div data-settled-answer="" {...stylex.props(qc.settledAnswer, typeStep.uiSm)}>
+              {questionAnswerText(answers, index) || t("question.settled.noAnswer")}
+            </div>
+          </div>
+        ))}
+      </div>
+    </AgentActivityDisclosure>
+  );
+}
+
 export function QuestionCard({
   sessionId,
   status,
@@ -221,42 +270,15 @@ export function QuestionCard({
     answers,
   });
 
-  if (settled.settled) {
-    const shown = settled.answers;
-    if (!shown)
-      return (
-        <TranscriptMark icon={<Icon name="x" size="xs" />}>
-          {t("question.settled.dismissed")}
-        </TranscriptMark>
-      );
-    const countLabel = t("question.settled.question", { count: questions.length });
+  if (settled.settled)
     return (
-      <AgentActivityDisclosure
-        icon="question"
-        shell="line"
+      <SettledQuestions
+        questions={questions}
+        answers={settled.answers}
         open={settledOpen}
         onOpenChange={setSettledOpen}
-        label={
-          <span {...stylex.props(qc.settledLine, vocab.truncate)}>
-            <span {...stylex.props(vocab.muted)}>{t("question.settled.asked")}</span>
-            <span {...stylex.props(vocab.faint)}>{countLabel}</span>
-          </span>
-        }
-        contentClassName={stylex.props(qc.askBody).className}
-      >
-        <div {...stylex.props(qc.settledList)}>
-          {questions.map((question, index) => (
-            <div key={index} {...stylex.props(qc.settledItem)}>
-              <div {...stylex.props(qc.settledAsk, typeStep.uiSm)}>{question.prompt}</div>
-              <div data-settled-answer="" {...stylex.props(qc.settledAnswer, typeStep.uiSm)}>
-                {questionAnswerText(shown, index) || t("question.settled.noAnswer")}
-              </div>
-            </div>
-          ))}
-        </div>
-      </AgentActivityDisclosure>
+      />
     );
-  }
 
   const actionsBlocked = actions.disabled || !runtimeAvailable;
 

@@ -31,6 +31,74 @@ interface Props {
   children: ReactNode;
 }
 
+type MenuModel = ReturnType<typeof messageContextMenuModel>;
+
+function RestoreSubmenu({ msg, options }: { msg: Message; options: MenuModel["user"] }) {
+  const t = useT();
+  const { messages } = useNotifications();
+  const agentAccess = useAgent();
+  return (
+    <ContextMenu.SubmenuRoot>
+      <ContextMenu.SubmenuTrigger layout="pick">
+        <Icon name="history" size="xs" />
+        <span {...stylex.props(vocab.truncate)}>{t("msgActions.restore")}</span>
+        <Icon name="chevron-right" size="xs" className={stylex.props(vocab.faint).className} />
+      </ContextMenu.SubmenuTrigger>
+      <ContextMenu.Content side="right" align="start" sideOffset={2} alignOffset={-4}>
+        <ContextMenu.IconItem
+          icon="skip-back"
+          onSelect={() => restoreCheckpoint(messages, agentAccess, msg, "history")}
+        >
+          {t("msgActions.restoreConversation")}
+        </ContextMenu.IconItem>
+        {options.restoreFiles && (
+          <ContextMenu.IconItem
+            icon="folder"
+            onSelect={() => restoreCheckpoint(messages, agentAccess, msg, "files")}
+          >
+            {t("msgActions.restoreFiles")}
+          </ContextMenu.IconItem>
+        )}
+        {options.restoreBoth && (
+          <ContextMenu.IconItem
+            icon="history"
+            onSelect={() => restoreCheckpoint(messages, agentAccess, msg, "both")}
+          >
+            {t("msgActions.restoreBoth")}
+          </ContextMenu.IconItem>
+        )}
+      </ContextMenu.Content>
+    </ContextMenu.SubmenuRoot>
+  );
+}
+
+function AssistantItems({ msg, options }: { msg: Message; options: MenuModel["assistant"] }) {
+  const t = useT();
+  const { messages } = useNotifications();
+  const agentAccess = useAgent();
+  return (
+    <>
+      <Separator />
+      {options.regenerate && (
+        <ContextMenu.IconItem
+          icon="loop"
+          onSelect={() => regenerateMessage(messages, agentAccess, msg)}
+        >
+          {t("msgActions.regenerate")}
+        </ContextMenu.IconItem>
+      )}
+      {options.regenerateRestore && (
+        <ContextMenu.IconItem
+          icon="history"
+          onSelect={() => regenerateMessage(messages, agentAccess, msg, { restoreFiles: true })}
+        >
+          {t("msgActions.regenerateRestore")}
+        </ContextMenu.IconItem>
+      )}
+    </>
+  );
+}
+
 export function MessageContextMenu({ msg, label, children }: Props) {
   const { messages } = useNotifications();
   const agentAccess = useAgent();
@@ -155,43 +223,7 @@ export function MessageContextMenu({ msg, label, children }: Props) {
                 {t("msgActions.editRerunRestore")}
               </ContextMenu.IconItem>
             )}
-            {menu.user.restore && (
-              <ContextMenu.SubmenuRoot>
-                <ContextMenu.SubmenuTrigger layout="pick">
-                  <Icon name="history" size="xs" />
-                  <span {...stylex.props(vocab.truncate)}>{t("msgActions.restore")}</span>
-                  <Icon
-                    name="chevron-right"
-                    size="xs"
-                    className={stylex.props(vocab.faint).className}
-                  />
-                </ContextMenu.SubmenuTrigger>
-                <ContextMenu.Content side="right" align="start" sideOffset={2} alignOffset={-4}>
-                  <ContextMenu.IconItem
-                    icon="skip-back"
-                    onSelect={() => restoreCheckpoint(messages, agentAccess, msg, "history")}
-                  >
-                    {t("msgActions.restoreConversation")}
-                  </ContextMenu.IconItem>
-                  {menu.user.restoreFiles && (
-                    <ContextMenu.IconItem
-                      icon="folder"
-                      onSelect={() => restoreCheckpoint(messages, agentAccess, msg, "files")}
-                    >
-                      {t("msgActions.restoreFiles")}
-                    </ContextMenu.IconItem>
-                  )}
-                  {menu.user.restoreBoth && (
-                    <ContextMenu.IconItem
-                      icon="history"
-                      onSelect={() => restoreCheckpoint(messages, agentAccess, msg, "both")}
-                    >
-                      {t("msgActions.restoreBoth")}
-                    </ContextMenu.IconItem>
-                  )}
-                </ContextMenu.Content>
-              </ContextMenu.SubmenuRoot>
-            )}
+            {menu.user.restore && <RestoreSubmenu msg={msg} options={menu.user} />}
             {menu.user.fork && (
               <ContextMenu.IconItem icon="fork" onSelect={() => forkFromMessage(agentAccess, msg)}>
                 {t("msgActions.fork")}
@@ -199,29 +231,7 @@ export function MessageContextMenu({ msg, label, children }: Props) {
             )}
           </>
         )}
-        {menu.assistant.visible && (
-          <>
-            <Separator />
-            {menu.assistant.regenerate && (
-              <ContextMenu.IconItem
-                icon="loop"
-                onSelect={() => regenerateMessage(messages, agentAccess, msg)}
-              >
-                {t("msgActions.regenerate")}
-              </ContextMenu.IconItem>
-            )}
-            {menu.assistant.regenerateRestore && (
-              <ContextMenu.IconItem
-                icon="history"
-                onSelect={() =>
-                  regenerateMessage(messages, agentAccess, msg, { restoreFiles: true })
-                }
-              >
-                {t("msgActions.regenerateRestore")}
-              </ContextMenu.IconItem>
-            )}
-          </>
-        )}
+        {menu.assistant.visible && <AssistantItems msg={msg} options={menu.assistant} />}
       </ContextMenu.Content>
     </ContextMenu.Root>
   );

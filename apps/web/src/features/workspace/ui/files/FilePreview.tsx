@@ -1,7 +1,15 @@
 import { useWorkspace } from "@/features/workspace/public/workspace";
 import { iconGlyph } from "@/ui/icons/index";
 import * as stylex from "@stylexjs/stylex";
-import { Fragment, useRef, useState, type Ref, type ReactNode, type RefObject } from "react";
+import {
+  Fragment,
+  useRef,
+  useState,
+  type ComponentProps,
+  type Ref,
+  type ReactNode,
+  type RefObject,
+} from "react";
 import { fileExtension, splitFilePath } from "@/lib/path";
 import { fileKind } from "@/lib/fileKind";
 import { useExtensionPoint } from "@/extensions/selectors/extensions";
@@ -271,6 +279,52 @@ function fileSubline(
   );
 }
 
+// A rejected opening line retries from the start; a failed read or page keeps
+// focus in the reader while it recovers.
+function readRecovery({
+  rejectedInitialLine,
+  pageFailed,
+  scrollPort,
+  onOpenFromStart,
+  refetch,
+}: {
+  rejectedInitialLine: boolean;
+  pageFailed: boolean;
+  scrollPort: RefObject<HTMLDivElement | null>;
+  onOpenFromStart: () => void;
+  refetch: () => unknown;
+}) {
+  return {
+    onRetry: rejectedInitialLine ? onOpenFromStart : refetch,
+    focusTarget: pageFailed || rejectedInitialLine ? scrollPort : undefined,
+  };
+}
+
+// Page loading is announced only to assistive technology; a failed refresh
+// keeps the read on screen with its own retry.
+function FileReadNotice({
+  pagePending,
+  feedback,
+  fileActions,
+  focusTarget,
+}: {
+  pagePending: boolean;
+  feedback: ComponentProps<typeof FileReadFeedback> | undefined;
+  fileActions: LocalFileActions;
+  focusTarget: RefObject<HTMLDivElement | null>;
+}) {
+  const t = useT();
+  return (
+    <>
+      <span role="status" className="sr-only">
+        {pagePending ? t("common.loading") : undefined}
+      </span>
+      <div role="status">{feedback && <FileReadFeedback {...feedback} />}</div>
+      <LocalFileFeedback actions={fileActions} focusTarget={focusTarget} />
+    </>
+  );
+}
+
 export function FilePreview({
   workspace,
   viewer,
@@ -362,26 +416,25 @@ export function FilePreview({
       onScrollKeyDown={onKeyDown}
       onScrollCopy={onCopy}
       notice={
-        <>
-          <span role="status" className="sr-only">
-            {pagePending ? t("common.loading") : undefined}
-          </span>
-          <div role="status">
-            {refreshFailed && (
-              <FileReadFeedback
-                error={error}
-                fetching={isFetching}
-                pageErrorTitle={pageError?.title}
-                jumpFailureTitle={jumpFailureTitle}
-                icon={icon}
-                retryRef={readingControlRef}
-                focusTarget={scrollPort}
-                onRetry={refetch}
-              />
-            )}
-          </div>
-          <LocalFileFeedback actions={fileActions} focusTarget={scrollPort} />
-        </>
+        <FileReadNotice
+          pagePending={pagePending}
+          feedback={
+            refreshFailed
+              ? {
+                  error,
+                  fetching: isFetching,
+                  pageErrorTitle: pageError?.title,
+                  jumpFailureTitle,
+                  icon,
+                  retryRef: readingControlRef,
+                  focusTarget: scrollPort,
+                  onRetry: refetch,
+                }
+              : undefined
+          }
+          fileActions={fileActions}
+          focusTarget={scrollPort}
+        />
       }
       navigation={
         <IconButton
@@ -429,8 +482,13 @@ export function FilePreview({
           items={data ? [data] : []}
           isLoading={loading}
           failure={retained ? undefined : error}
-          onRetry={rejectedInitialLine ? onOpenFromStart : refetch}
-          focusTarget={pageError || rejectedInitialLine ? scrollPort : undefined}
+          {...readRecovery({
+            rejectedInitialLine,
+            pageFailed: pageError !== undefined,
+            scrollPort,
+            onOpenFromStart,
+            refetch,
+          })}
           skeletonCount={12}
           error={readError}
         >

@@ -12,7 +12,11 @@ import {
   Toolbar,
 } from "@flame/ui";
 import { METHODS } from "../contracts/methods";
-import { renderReportSchema, reviewReportSchema } from "../contracts/evidence";
+import {
+  renderReportSchema,
+  reviewReportSchema,
+  type RenderReport,
+} from "../contracts/evidence";
 import type { Assessment, DocumentRead } from "./types";
 import { type EvidenceState, RenderedPages } from "./renderedPages";
 
@@ -121,6 +125,72 @@ function ReviewRecord({
   );
 }
 
+// A render report must describe the captured revision, numbering each page once.
+function renderReport(
+  assessment: Assessment,
+  revision: DocumentRead["revision"],
+):
+  | { report: RenderReport; error?: undefined }
+  | { report?: undefined; error: string } {
+  try {
+    if (assessment.kind !== "render")
+      throw new Error("deliverables: assessment is not a render");
+    const report = renderReportSchema.parse(JSON.parse(assessment.reportJSON));
+    if (
+      report.sourceRevision !== revision.id ||
+      report.sourceSha256 !== revision.sha256 ||
+      new Set(report.pages.map((entry) => entry.number)).size !==
+        report.pages.length
+    )
+      throw new Error(
+        "deliverables: render report differs from the captured revision",
+      );
+    return { report };
+  } catch (error) {
+    return { error: failureText(error) };
+  }
+}
+
+function ReviewHistory({
+  state,
+  document,
+  t,
+}: {
+  state: EvidenceState;
+  document: DocumentRead;
+  t: Translate;
+}) {
+  const [reviewId, setReviewId] = useState<string>();
+  const reviews = document.assessments.filter(
+    (entry) => entry.kind === "review",
+  );
+  return (
+    <Disclosure title={t("review.history")}>
+      {!reviews.length && <Metadata>{t("review.none")}</Metadata>}
+      {reviews.length > 0 && (
+        <Select
+          label={t("review.choose")}
+          value={reviewId ?? null}
+          onValueChange={setReviewId}
+          options={reviews.map((entry) => ({
+            value: entry.id,
+            label: `${entry.createdAt} · ${entry.id.slice(0, 12)}`,
+          }))}
+        />
+      )}
+      {reviewId && (
+        <ReviewRecord
+          key={reviewId}
+          state={state}
+          document={document}
+          id={reviewId}
+          t={t}
+        />
+      )}
+    </Disclosure>
+  );
+}
+
 export function EvidencePanel({
   state,
   document,
@@ -131,39 +201,17 @@ export function EvidencePanel({
   t: Translate;
 }) {
   const [renderId, setRenderId] = useState<string>();
-  const [reviewId, setReviewId] = useState<string>();
   const renders = document.assessments.filter(
     (entry) => entry.kind === "render",
-  );
-  const reviews = document.assessments.filter(
-    (entry) => entry.kind === "review",
   );
   useEffect(() => {
     if (!renderId && renders[0]) setRenderId(renders[0].id);
   }, [renderId, renders]);
   const read = useAssessment(state, document, renderId);
-  const parsed = useMemo(() => {
-    if (!read?.value) return;
-    try {
-      if (read.value.kind !== "render")
-        throw new Error("deliverables: assessment is not a render");
-      const report = renderReportSchema.parse(
-        JSON.parse(read.value.reportJSON),
-      );
-      if (
-        report.sourceRevision !== document.revision.id ||
-        report.sourceSha256 !== document.revision.sha256 ||
-        new Set(report.pages.map((entry) => entry.number)).size !==
-          report.pages.length
-      )
-        throw new Error(
-          "deliverables: render report differs from the captured revision",
-        );
-      return { report };
-    } catch (error) {
-      return { error: failureText(error) };
-    }
-  }, [read?.value, document.revision.id, document.revision.sha256]);
+  const parsed = useMemo(
+    () => read?.value && renderReport(read.value, document.revision),
+    [read?.value, document.revision],
+  );
   return (
     <RecordGroup>
       <Toolbar label={t("preview.actions")}>
@@ -226,29 +274,7 @@ export function EvidencePanel({
           t={t}
         />
       )}
-      <Disclosure title={t("review.history")}>
-        {!reviews.length && <Metadata>{t("review.none")}</Metadata>}
-        {reviews.length > 0 && (
-          <Select
-            label={t("review.choose")}
-            value={reviewId ?? null}
-            onValueChange={setReviewId}
-            options={reviews.map((entry) => ({
-              value: entry.id,
-              label: `${entry.createdAt} · ${entry.id.slice(0, 12)}`,
-            }))}
-          />
-        )}
-        {reviewId && (
-          <ReviewRecord
-            key={reviewId}
-            state={state}
-            document={document}
-            id={reviewId}
-            t={t}
-          />
-        )}
-      </Disclosure>
+      <ReviewHistory state={state} document={document} t={t} />
     </RecordGroup>
   );
 }

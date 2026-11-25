@@ -77,6 +77,77 @@ function rejectionMessage(reason: RuntimeEndpointRejection, translate: Translate
   }
 }
 
+// A pending draft replaces the stored token on apply; otherwise report the stored one.
+function tokenStateKey(tokenDraft: string | null, stored: boolean) {
+  if (tokenDraft !== null) return "settings.connection.tokenPending";
+  return stored ? "settings.connection.tokenSet" : "settings.connection.tokenNotSet";
+}
+
+function RuntimeServiceStatus({
+  service,
+  refreshing,
+  onRefresh,
+}: {
+  service: ReturnType<typeof useRuntimeServiceStatus>;
+  refreshing: boolean;
+  onRefresh(): void;
+}) {
+  const t = useT();
+  const unhealthyChecks = Object.entries(service.observation?.checks ?? {}).filter(
+    ([, health]) => health !== "ready",
+  );
+  return (
+    <div {...stylex.props(cp.status)}>
+      <div {...stylex.props(ss.split)} aria-live="polite">
+        <div {...stylex.props(vocab.line, vocab.min, vocab.muted, typeStep.uiMd)}>
+          <StatusDot tone={STATUS_TONE[service.phase]} />
+          <span>{t(STATUS_KEY[service.phase])}</span>
+        </div>
+        <Button
+          type="button"
+          variant="soft"
+          size="sm"
+          pending={refreshing || service.phase === "checking" || service.phase === "reconnecting"}
+          onClick={onRefresh}
+        >
+          {t("settings.connection.status.refresh")}
+        </Button>
+      </div>
+      {service.observation ? (
+        <dl {...stylex.props(cp.facts, typeStep.uiSm)}>
+          <dt {...stylex.props(vocab.faint)}>{t("settings.connection.status.server")}</dt>
+          <dd {...stylex.props(vocab.truncate, vocab.muted, face.mono)}>
+            {service.observation.server.name} {service.observation.server.version}
+          </dd>
+          <dt {...stylex.props(vocab.faint)}>{t("settings.connection.status.protocol")}</dt>
+          <dd {...stylex.props(vocab.truncate, vocab.muted, face.mono)}>
+            {service.observation.protocolVersion}
+          </dd>
+          {unhealthyChecks.length > 0 ? (
+            <>
+              <dt {...stylex.props(vocab.faint)}>{t("settings.connection.status.checks")}</dt>
+              <dd {...stylex.props(cp.checks, face.mono)}>
+                {unhealthyChecks.map(([name, health]) => (
+                  <span key={name}>
+                    {name} <span {...stylex.props(vocab.faint)}>{t(STATUS_KEY[health])}</span>
+                  </span>
+                ))}
+              </dd>
+            </>
+          ) : null}
+        </dl>
+      ) : null}
+      {service.failure ? (
+        <p {...stylex.props(cp.detail, typeStep.uiSm)}>
+          {service.failure.reason === "timeout"
+            ? t("settings.connection.status.timeout")
+            : service.failure.detail}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 export function ConnectionPane() {
   const runtime = useRuntime();
   const {
@@ -130,12 +201,7 @@ export function ConnectionPane() {
     tokenField.current?.focus();
   };
 
-  const tokenState =
-    tokenDraft !== null
-      ? "settings.connection.tokenPending"
-      : hasRuntimeAccessToken()
-        ? "settings.connection.tokenSet"
-        : "settings.connection.tokenNotSet";
+  const tokenState = tokenStateKey(tokenDraft, hasRuntimeAccessToken());
 
   const refresh = async () => {
     setRefreshing(true);
@@ -145,10 +211,6 @@ export function ConnectionPane() {
       setRefreshing(false);
     }
   };
-
-  const unhealthyChecks = Object.entries(service.observation?.checks ?? {}).filter(
-    ([, health]) => health !== "ready",
-  );
 
   return (
     <SettingsGroup>
@@ -273,56 +335,11 @@ export function ConnectionPane() {
               <span>{rejectionMessage(error, t)}</span>
             </div>
           ) : null}
-          <div {...stylex.props(cp.status)}>
-            <div {...stylex.props(ss.split)} aria-live="polite">
-              <div {...stylex.props(vocab.line, vocab.min, vocab.muted, typeStep.uiMd)}>
-                <StatusDot tone={STATUS_TONE[service.phase]} />
-                <span>{t(STATUS_KEY[service.phase])}</span>
-              </div>
-              <Button
-                type="button"
-                variant="soft"
-                size="sm"
-                pending={
-                  refreshing || service.phase === "checking" || service.phase === "reconnecting"
-                }
-                onClick={() => void refresh()}
-              >
-                {t("settings.connection.status.refresh")}
-              </Button>
-            </div>
-            {service.observation ? (
-              <dl {...stylex.props(cp.facts, typeStep.uiSm)}>
-                <dt {...stylex.props(vocab.faint)}>{t("settings.connection.status.server")}</dt>
-                <dd {...stylex.props(vocab.truncate, vocab.muted, face.mono)}>
-                  {service.observation.server.name} {service.observation.server.version}
-                </dd>
-                <dt {...stylex.props(vocab.faint)}>{t("settings.connection.status.protocol")}</dt>
-                <dd {...stylex.props(vocab.truncate, vocab.muted, face.mono)}>
-                  {service.observation.protocolVersion}
-                </dd>
-                {unhealthyChecks.length > 0 ? (
-                  <>
-                    <dt {...stylex.props(vocab.faint)}>{t("settings.connection.status.checks")}</dt>
-                    <dd {...stylex.props(cp.checks, face.mono)}>
-                      {unhealthyChecks.map(([name, health]) => (
-                        <span key={name}>
-                          {name} <span {...stylex.props(vocab.faint)}>{t(STATUS_KEY[health])}</span>
-                        </span>
-                      ))}
-                    </dd>
-                  </>
-                ) : null}
-              </dl>
-            ) : null}
-            {service.failure ? (
-              <p {...stylex.props(cp.detail, typeStep.uiSm)}>
-                {service.failure.reason === "timeout"
-                  ? t("settings.connection.status.timeout")
-                  : service.failure.detail}
-              </p>
-            ) : null}
-          </div>
+          <RuntimeServiceStatus
+            service={service}
+            refreshing={refreshing}
+            onRefresh={() => void refresh()}
+          />
         </div>
       </SettingRow>
     </SettingsGroup>

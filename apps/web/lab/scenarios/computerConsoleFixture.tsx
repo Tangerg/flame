@@ -277,6 +277,38 @@ export async function createComputerConsoleFixture(locale: string, requestedStat
       serverJSON: '{"name":"computer-browser-fixture","version":"1"}',
     };
   }
+  // The recorded owner answers each read from the fixture's current state.
+  const queries: Record<string, ((input: Record<string, unknown>) => unknown) | undefined> = {
+    "flame.computer/read.v1": () => snapshot(),
+    "flame.computer/context.v1": () => surface(),
+    "flame.computer/history.v1": (input) => history(input),
+    "flame.computer/result.v1": (input) => {
+      const receipt = evidence.get(input.id as string);
+      return receipt && record(receipt);
+    },
+  };
+  const streamResponse = (id: string | number, signal: AbortSignal | null | undefined) => {
+    let stream: ReadableStreamDefaultController<Uint8Array>;
+    const remove = () => {
+      if (subscribers.delete(stream)) stream.close();
+    };
+    return new Response(
+      new ReadableStream<Uint8Array>({
+        start(controller) {
+          stream = controller;
+          subscribers.add(controller);
+          controller.enqueue(encoder.encode(frame({ jsonrpc: "2.0", id, result: {} })));
+          publish(current);
+          signal?.addEventListener("abort", remove, { once: true });
+        },
+        cancel() {
+          subscribers.delete(stream);
+          signal?.removeEventListener("abort", remove);
+        },
+      }),
+      { headers: { "Content-Type": "text/event-stream" } },
+    );
+  };
   const transport = createHttpTransport({
     baseUrl: "https://computer-fixture.invalid",
     fetch: async (_url, init) => {
@@ -293,41 +325,13 @@ export async function createComputerConsoleFixture(locale: string, requestedStat
       if (request.method === "plugins.getCommand") {
         return success(commands.get((params as unknown as { key: string }).key));
       }
-      if (request.method === "plugins.stream") {
-        let stream: ReadableStreamDefaultController<Uint8Array>;
-        const remove = () => {
-          if (subscribers.delete(stream)) stream.close();
-        };
-        return new Response(
-          new ReadableStream<Uint8Array>({
-            start(controller) {
-              stream = controller;
-              subscribers.add(controller);
-              controller.enqueue(
-                encoder.encode(frame({ jsonrpc: "2.0", id: request.id, result: {} })),
-              );
-              publish(current);
-              init?.signal?.addEventListener("abort", remove, { once: true });
-            },
-            cancel() {
-              subscribers.delete(stream);
-              init?.signal?.removeEventListener("abort", remove);
-            },
-          }),
-          { headers: { "Content-Type": "text/event-stream" } },
-        );
-      }
+      if (request.method === "plugins.stream") return streamResponse(request.id, init?.signal);
       if (request.method !== "plugins.call")
         throw new Error("unsupported computer fixture request");
       const method = params.method;
       const input = JSON.parse(params.input) as Record<string, unknown>;
-      if (method === "flame.computer/read.v1") return output(snapshot());
-      if (method === "flame.computer/context.v1") return output(surface());
-      if (method === "flame.computer/history.v1") return output(history(input));
-      if (method === "flame.computer/result.v1") {
-        const receipt = evidence.get(input.id as string);
-        return output(receipt && record(receipt));
-      }
+      const query = queries[method];
+      if (query) return output(query(input));
       if (!key) throw new Error("fixture command omitted its identity");
       const admitted = await original(
         key,

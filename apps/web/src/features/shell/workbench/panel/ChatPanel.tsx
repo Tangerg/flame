@@ -177,13 +177,20 @@ export function ChatPanel({ onSend, ref }: Props) {
     presentedViewId,
     panelLayout,
     dockChromeVisible,
-    dockToggleAvailable,
+    dockToggleShown,
+    dockTabValue,
+    viewsReady,
     dockOwnsMaterialKeys,
     openViewIds,
     mountedViewIds,
-  } = workspacePresentation({ activeSessionId, dock, activeMainView, inspection, rowWidth });
-  const conversationReady = sessions !== undefined;
-  const viewsReady = conversationReady || activeMainView !== null || dock.open;
+  } = workspacePresentation({
+    activeSessionId,
+    dock,
+    activeMainView,
+    inspection,
+    rowWidth,
+    conversationReady: sessions !== undefined,
+  });
   const {
     dockRef,
     conversationRef,
@@ -225,9 +232,12 @@ export function ChatPanel({ onSend, ref }: Props) {
           view={
             fullPaneViewId === WORKSPACE_DOCK_CATALOG ? CATALOG_VIEW : viewsById.get(fullPaneViewId)
           }
-          returnAction={inspectedFullPane ? dockReturn : undefined}
           dockAvailable={dockAvailable}
-          onKeyDown={inspectedFullPane ? onMaterialKeyDown : undefined}
+          inspection={
+            inspectedFullPane
+              ? { returnAction: dockReturn, onKeyDown: onMaterialKeyDown }
+              : undefined
+          }
           picker={
             fullPanePickable(fullPaneViewId, hasDockOwner, viewsById) && (
               <WorkspaceViewPicker
@@ -256,7 +266,7 @@ export function ChatPanel({ onSend, ref }: Props) {
               ref={conversationRef}
               hidden={presentation === "main"}
               fallbackFocus={presentationRef}
-              ready={conversationReady}
+              ready={sessions !== undefined}
               sessionId={activeSessionId}
               onSend={onSend}
             />
@@ -266,7 +276,7 @@ export function ChatPanel({ onSend, ref }: Props) {
             {viewsReady && (
               <SessionOwnedWorkspaceState sessionId={activeSessionId}>
                 <AgentContextDock
-                  value={presentedViewId === WORKSPACE_DOCK_CATALOG ? null : presentedViewId}
+                  value={dockTabValue}
                   onValueChange={(id) => {
                     if (id !== null) workspaceAccess.navigation.selectDockView(id);
                   }}
@@ -303,7 +313,7 @@ export function ChatPanel({ onSend, ref }: Props) {
             )}
           </Panel>
         </Group>
-        {viewsReady && dockToggleAvailable && (
+        {dockToggleShown && (
           <AgentDockToggle
             open={dockVisible}
             onToggle={() => toggleChatDock(workspaceAccess, dockAvailable, dockOpen)}

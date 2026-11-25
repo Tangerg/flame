@@ -12,7 +12,7 @@ import {
   Toolbar,
 } from "@flame/ui";
 import { SystemMessage } from "@/ui/index";
-import { useT } from "@/lib/i18n/index";
+import { useT, type Translate } from "@/lib/i18n/index";
 import { useCodeActionLabels } from "@/ui/index";
 import { failureText } from "@/lib/rpcErrors";
 import { type PackageOperations } from "@/features/plugins/adapters/packages";
@@ -21,9 +21,39 @@ type Outcome =
   | { type: "retired"; key: string }
   | { type: "refused" | "unknown"; key: string; reason: string };
 
-export function PendingCommands({ operations }: { operations: PackageOperations }) {
+type PendingRead =
+  { type: "ready"; commands: PluginCommandRecovery[] } | { type: "failed"; reason: string };
+
+function pendingRead(operations: PackageOperations, t: Translate): PendingRead {
+  try {
+    return { type: "ready", commands: operations.pendingCommands() };
+  } catch (error) {
+    return { type: "failed", reason: failureText(error, t("packages.commands.failed")) };
+  }
+}
+
+function CommandOutcome({ outcome }: { outcome: Outcome }) {
   const t = useT();
   const codeLabels = useCodeActionLabels();
+  return (
+    <div>
+      <p role="status">{t(`packages.commands.${outcome.type}`, { id: outcome.key })}</p>
+      {outcome.type === "confirmed" ? (
+        <CodeBlock
+          label={t("packages.commands.confirmed", { id: outcome.key })}
+          labels={codeLabels}
+        >
+          {outcome.output}
+        </CodeBlock>
+      ) : outcome.type !== "retired" ? (
+        <SystemMessage variant="warning">{outcome.reason}</SystemMessage>
+      ) : null}
+    </div>
+  );
+}
+
+export function PendingCommands({ operations }: { operations: PackageOperations }) {
+  const t = useT();
   const [observation, setObservation] = useState<{
     operations: PackageOperations;
     checking?: string;
@@ -38,13 +68,7 @@ export function PendingCommands({ operations }: { operations: PackageOperations 
     [operations],
   );
 
-  let read:
-    { type: "ready"; commands: PluginCommandRecovery[] } | { type: "failed"; reason: string };
-  try {
-    read = { type: "ready", commands: operations.pendingCommands() };
-  } catch (error) {
-    read = { type: "failed", reason: failureText(error, t("packages.commands.failed")) };
-  }
+  const read = pendingRead(operations, t);
   const empty =
     read.type === "ready" && read.commands.length === 0 && !current?.checking && !current?.outcome;
 
@@ -149,23 +173,7 @@ export function PendingCommands({ operations }: { operations: PackageOperations 
           </RecordGroup>
         </>
       )}
-      {current?.outcome && (
-        <div>
-          <p role="status">
-            {t(`packages.commands.${current.outcome.type}`, { id: current.outcome.key })}
-          </p>
-          {current.outcome.type === "confirmed" ? (
-            <CodeBlock
-              label={t("packages.commands.confirmed", { id: current.outcome.key })}
-              labels={codeLabels}
-            >
-              {current.outcome.output}
-            </CodeBlock>
-          ) : current.outcome.type !== "retired" ? (
-            <SystemMessage variant="warning">{current.outcome.reason}</SystemMessage>
-          ) : null}
-        </div>
-      )}
+      {current?.outcome && <CommandOutcome outcome={current.outcome} />}
     </PanelSection>
   );
 }

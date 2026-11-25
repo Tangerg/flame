@@ -50,6 +50,21 @@ function ProviderCredentialBadge({
   );
 }
 
+// An environment key cannot be replaced here; a stored key can.
+function apiKeyPlaceholder(provider: Provider) {
+  if (provider.credential?.source === "env")
+    return "providers.apiKey.envPlaceholder";
+  return provider.credential
+    ? "providers.apiKey.replace"
+    : "providers.apiKey.placeholder";
+}
+
+// An unsaved edit is saved before it is tested.
+function testLabel(dirty: boolean, probing: boolean) {
+  if (dirty) return "providers.saveAndTest";
+  return probing ? "providers.testing" : "providers.test";
+}
+
 export function ProviderRow({
   context,
   settings,
@@ -74,7 +89,6 @@ export function ProviderRow({
   const dirty = draft.dirty(provider);
   const error = draft.endpointError(provider);
   const valid = error === undefined;
-  const fromEnv = provider.credential?.source === "env";
   const describedBy =
     feedback?.kind === "error" || command?.phase === "unknown"
       ? feedbackId
@@ -105,13 +119,7 @@ export function ProviderRow({
             aria-describedby={describedBy}
             value={draft.apiKey}
             onChange={(event) => change(draft.withAPIKey(event.target.value))}
-            placeholder={t(
-              fromEnv
-                ? "providers.apiKey.envPlaceholder"
-                : provider.credential
-                  ? "providers.apiKey.replace"
-                  : "providers.apiKey.placeholder",
-            )}
+            placeholder={t(apiKeyPlaceholder(provider))}
           />
         </FormField>
         <EndpointField
@@ -145,11 +153,7 @@ export function ProviderRow({
           pending={probing}
           onClick={() => void settings.test(context, provider, draft)}
         >
-          {dirty
-            ? t("providers.saveAndTest")
-            : probing
-              ? t("providers.testing")
-              : t("providers.test")}
+          {t(testLabel(dirty, probing))}
         </Button>
         <Button
           variant="primary"

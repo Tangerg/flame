@@ -131,6 +131,113 @@ function safeSource(uri: string): string | undefined {
   }
 }
 
+function ProvenanceDisclosure({
+  provenance,
+  t,
+}: {
+  provenance: DocumentRead["revision"]["provenance"];
+  t: Translate;
+}) {
+  return (
+    <Disclosure title={t("provenance.title")}>
+      <Metadata>{t("provenance.help")}</Metadata>
+      {provenance.sources.map((source, index) => (
+        <RecordGroup key={index}>
+          <RecordBody>{source.title}</RecordBody>
+          {safeSource(source.uri) ? (
+            <a href={safeSource(source.uri)} target="_blank" rel="noreferrer">
+              {source.uri}
+            </a>
+          ) : (
+            <RecordBody>{source.uri}</RecordBody>
+          )}
+          {source.note && <Metadata>{source.note}</Metadata>}
+        </RecordGroup>
+      ))}
+      <Facts
+        values={[
+          [
+            t("provenance.assumptions"),
+            provenance.assumptions.join("\n") || t("notRecorded"),
+          ],
+          [t("provenance.units"), provenance.units || t("notRecorded")],
+          [
+            t("provenance.reproduction"),
+            provenance.reproduction || t("notRecorded"),
+          ],
+        ]}
+      />
+    </Disclosure>
+  );
+}
+
+type Removal = { id: string; revision: string };
+
+// Removal confirms against the head it was offered for; a newer head cancels it.
+function RemovalDisclosure({
+  state,
+  document,
+  current,
+  removal,
+  setRemoval,
+  t,
+}: {
+  state: DeliverablesState;
+  document: DocumentRead;
+  current: boolean;
+  removal: Removal | undefined;
+  setRemoval: (removal: Removal | undefined) => void;
+  t: Translate;
+}) {
+  return (
+    <Disclosure title={t("remove.title")}>
+      <Metadata>{t("remove.help")}</Metadata>
+      {removal ? (
+        <RecordGroup>
+          <Callout kind="warning">
+            {t("remove.confirmation", { title: document.document.title })}
+          </Callout>
+          <FormActions label={t("remove.actions")}>
+            <Button
+              disabled={state.blocked}
+              onClick={() => setRemoval(undefined)}
+            >
+              {t("cancel")}
+            </Button>
+            <Button
+              disabled={
+                state.blocked || document.document.head !== removal.revision
+              }
+              onClick={() => {
+                const captured = removal;
+                void state.run(
+                  METHODS.remove,
+                  { id: captured.id, expectedRevision: captured.revision },
+                  () => state.clearSelection(captured),
+                );
+              }}
+            >
+              {t("remove.confirm")}
+            </Button>
+          </FormActions>
+        </RecordGroup>
+      ) : (
+        <Button
+          disabled={state.blocked || !current}
+          onClick={() =>
+            setRemoval({
+              id: document.document.id,
+              revision: document.revision.id,
+            })
+          }
+        >
+          {t("remove.action")}
+        </Button>
+      )}
+    </Disclosure>
+  );
+}
+
 export function Inspector({
   state,
   document,
@@ -148,7 +255,7 @@ export function Inspector({
   onOpen: OpenForReading;
   t: Translate;
 }) {
-  const [removal, setRemoval] = useState<{ id: string; revision: string }>();
+  const [removal, setRemoval] = useState<Removal>();
   const [csvSheet, setCSVSheet] = useState<string>();
   const current = document.document.head === document.revision.id;
   const provenance = document.revision.provenance;
@@ -258,80 +365,15 @@ export function Inspector({
         </>
       )}
       <EvidencePanel state={state} document={document} t={t} />
-      <Disclosure title={t("provenance.title")}>
-        <Metadata>{t("provenance.help")}</Metadata>
-        {provenance.sources.map((source, index) => (
-          <RecordGroup key={index}>
-            <RecordBody>{source.title}</RecordBody>
-            {safeSource(source.uri) ? (
-              <a href={safeSource(source.uri)} target="_blank" rel="noreferrer">
-                {source.uri}
-              </a>
-            ) : (
-              <RecordBody>{source.uri}</RecordBody>
-            )}
-            {source.note && <Metadata>{source.note}</Metadata>}
-          </RecordGroup>
-        ))}
-        <Facts
-          values={[
-            [
-              t("provenance.assumptions"),
-              provenance.assumptions.join("\n") || t("notRecorded"),
-            ],
-            [t("provenance.units"), provenance.units || t("notRecorded")],
-            [
-              t("provenance.reproduction"),
-              provenance.reproduction || t("notRecorded"),
-            ],
-          ]}
-        />
-      </Disclosure>
-      <Disclosure title={t("remove.title")}>
-        <Metadata>{t("remove.help")}</Metadata>
-        {removal ? (
-          <RecordGroup>
-            <Callout kind="warning">
-              {t("remove.confirmation", { title: document.document.title })}
-            </Callout>
-            <FormActions label={t("remove.actions")}>
-              <Button
-                disabled={state.blocked}
-                onClick={() => setRemoval(undefined)}
-              >
-                {t("cancel")}
-              </Button>
-              <Button
-                disabled={
-                  state.blocked || document.document.head !== removal.revision
-                }
-                onClick={() => {
-                  const captured = removal;
-                  void state.run(
-                    METHODS.remove,
-                    { id: captured.id, expectedRevision: captured.revision },
-                    () => state.clearSelection(captured),
-                  );
-                }}
-              >
-                {t("remove.confirm")}
-              </Button>
-            </FormActions>
-          </RecordGroup>
-        ) : (
-          <Button
-            disabled={state.blocked || !current}
-            onClick={() =>
-              setRemoval({
-                id: document.document.id,
-                revision: document.revision.id,
-              })
-            }
-          >
-            {t("remove.action")}
-          </Button>
-        )}
-      </Disclosure>
+      <ProvenanceDisclosure provenance={provenance} t={t} />
+      <RemovalDisclosure
+        state={state}
+        document={document}
+        current={current}
+        removal={removal}
+        setRemoval={setRemoval}
+        t={t}
+      />
     </PanelSection>
   );
 }

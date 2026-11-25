@@ -28,6 +28,7 @@ import {
   HttpFields,
   LITERAL_INPUT,
   StdioFields,
+  type TransportFieldsProps,
 } from "./transportFields";
 
 interface Props {
@@ -38,6 +39,47 @@ interface Props {
   returnFocus: HTMLElement;
   onDone(): void;
   onCancel(): void;
+}
+
+function saveLabel(t: Translate, saving: boolean, isEdit: boolean): string {
+  if (saving) return t("mcp.saving");
+  return isEdit ? t("mcp.save") : t("mcp.add");
+}
+
+// Each transport edits its own fields; stored secrets stay masked until replaced.
+function ServerTransportFields({
+  t,
+  edit,
+  busy,
+  firstField,
+  jsonErrorId,
+  stored,
+  updateDraft,
+}: TransportFieldsProps & { stored: ReturnType<typeof storedSecrets> }) {
+  if (edit.fields.transport === "stdio")
+    return (
+      <StdioFields
+        t={t}
+        edit={edit}
+        busy={busy}
+        firstField={firstField}
+        jsonErrorId={jsonErrorId}
+        environmentStored={stored.environment}
+        updateDraft={updateDraft}
+      />
+    );
+  return (
+    <HttpFields
+      t={t}
+      edit={edit}
+      busy={busy}
+      firstField={firstField}
+      jsonErrorId={jsonErrorId}
+      authorizationStored={stored.authorization}
+      headersStored={stored.headers}
+      updateDraft={updateDraft}
+    />
+  );
 }
 
 export function ServerForm({
@@ -79,11 +121,6 @@ export function ServerForm({
   const probing = state.probing.has(key);
   const jsonErrorId = useId();
   const [confirmingDelete, setConfirmingDelete] = useState(false);
-  const {
-    authorization: hasAuthStored,
-    headers: hasHeadersStored,
-    environment: hasEnvironmentStored,
-  } = storedSecrets(server);
   const updateDraft = <K extends keyof MCPServerFields>(
     key: K,
     value: MCPServerFields[K],
@@ -147,28 +184,15 @@ export function ServerForm({
         </FormGroup>
       </FormRow>
 
-      {draft.transport === "stdio" ? (
-        <StdioFields
-          t={t}
-          edit={edit}
-          busy={busy}
-          firstField={isEdit ? firstField : undefined}
-          jsonErrorId={jsonErrorId}
-          environmentStored={hasEnvironmentStored}
-          updateDraft={updateDraft}
-        />
-      ) : (
-        <HttpFields
-          t={t}
-          edit={edit}
-          busy={busy}
-          firstField={isEdit ? firstField : undefined}
-          jsonErrorId={jsonErrorId}
-          authorizationStored={hasAuthStored}
-          headersStored={hasHeadersStored}
-          updateDraft={updateDraft}
-        />
-      )}
+      <ServerTransportFields
+        t={t}
+        edit={edit}
+        busy={busy}
+        firstField={isEdit ? firstField : undefined}
+        jsonErrorId={jsonErrorId}
+        stored={storedSecrets(server)}
+        updateDraft={updateDraft}
+      />
 
       <FormRow>
         <FormField label={t("mcp.form.timeout")}>
@@ -188,9 +212,7 @@ export function ServerForm({
           />
           <FieldIssue
             id={timeoutErrorId}
-
             shown={timeoutInvalid}
-
             message={t("mcp.form.timeout.invalid")}
           />
         </FormField>
@@ -253,7 +275,7 @@ export function ServerForm({
           pending={saving}
           onClick={() => void onSave()}
         >
-          {saving ? t("mcp.saving") : isEdit ? t("mcp.save") : t("mcp.add")}
+          {saveLabel(t, saving, isEdit)}
         </Button>
       </FormActions>
       {server && (

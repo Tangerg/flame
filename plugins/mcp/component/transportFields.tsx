@@ -85,7 +85,7 @@ function ClearStoredSecret({
   );
 }
 
-interface TransportFieldsProps {
+export interface TransportFieldsProps {
   t: Translate;
   edit: MCPServerEdit;
   busy: boolean;

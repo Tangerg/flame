@@ -24,6 +24,41 @@ import { Source } from "./result";
 import { ENGINE_TOOLS } from "../contracts/tools";
 import { type ComputerView } from "./controls";
 
+// A reviewed call still targets the surface only while its session, worker and
+// digest are unchanged.
+function reviewTargetsSurface(
+  review: ExecuteInput | undefined,
+  surface: Surface | undefined,
+): boolean {
+  return (
+    review !== undefined &&
+    surface !== undefined &&
+    review.sessionId === surface.sessionId &&
+    review.workerId === surface.workerId &&
+    review.surfaceDigest === surface.surfaceDigest
+  );
+}
+
+function SurfaceContext({ surface, t }: { surface: Surface; t: Translate }) {
+  return (
+    <>
+      <Disclosure title={t("context.instructions")}>
+        <Source
+          t={t}
+          value={surface.instructions}
+          label={t("context.instructions")}
+        />
+      </Disclosure>
+      <Disclosure title={t("context.tools")}>
+        <Source value={surface.toolsJSON} label={t("context.tools")} t={t} />
+      </Disclosure>
+      <Disclosure title={t("context.server")}>
+        <Source value={surface.serverJSON} label={t("context.server")} t={t} />
+      </Disclosure>
+    </>
+  );
+}
+
 function ExecuteForm({
   surface,
   ready,
@@ -51,12 +86,7 @@ function ExecuteForm({
   useEffect(() => {
     if (review) cancel.current?.focus();
   }, [review]);
-  const current =
-    review &&
-    surface &&
-    review.sessionId === surface.sessionId &&
-    review.workerId === surface.workerId &&
-    review.surfaceDigest === surface.surfaceDigest;
+  const current = reviewTargetsSurface(review, surface);
   const editing = review === undefined && surface !== undefined;
 
   function closeReview() {
@@ -196,31 +226,7 @@ function ExecuteForm({
           {t("execute.review")}
         </Button>
       </RecordGroup>
-      {surface && (
-        <>
-          <Disclosure title={t("context.instructions")}>
-            <Source
-              t={t}
-              value={surface.instructions}
-              label={t("context.instructions")}
-            />
-          </Disclosure>
-          <Disclosure title={t("context.tools")}>
-            <Source
-              value={surface.toolsJSON}
-              label={t("context.tools")}
-              t={t}
-            />
-          </Disclosure>
-          <Disclosure title={t("context.server")}>
-            <Source
-              value={surface.serverJSON}
-              label={t("context.server")}
-              t={t}
-            />
-          </Disclosure>
-        </>
-      )}
+      {surface && <SurfaceContext surface={surface} t={t} />}
     </RecordGroup>
   );
 }

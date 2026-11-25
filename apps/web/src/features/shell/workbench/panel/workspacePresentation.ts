@@ -79,13 +79,18 @@ function narrowDockView(
   return dockOpen && narrow && inspection?.viewId === dock.activeViewId ? dock.activeViewId : null;
 }
 
+function dockTabValue(presentedViewId: string | null): string | null {
+  return presentedViewId === WORKSPACE_DOCK_CATALOG ? null : presentedViewId;
+}
+
 function panelLayout(main: boolean, dockVisible: boolean): "main" | "dock" | "closed" {
   if (main) return "main";
   return dockVisible ? "dock" : "closed";
 }
 
-// Which view the workspace presents, and where: a main view wins over the dock.
-export function workspacePresentation({
+// Where the dock can sit: it needs an owning Session and an open view, and a
+// main view or a too-narrow inspected dock takes the full pane instead.
+function dockPlacement({
   activeSessionId,
   dock,
   activeMainView,
@@ -102,12 +107,44 @@ export function workspacePresentation({
   const showingCatalog = dock.activeViewId === WORKSPACE_DOCK_CATALOG;
   const dockOpen = hasDockOwner && dock.open && (showingCatalog || dock.viewIds.length > 0);
   const fullPaneViewId = activeMainView ?? narrowDockView(dock, dockOpen, rowWidth, inspection);
+  return {
+    hasDockOwner,
+    dockOpen,
+    fullPaneViewId,
+    dockVisible: dockOpen && canPresentDock(rowWidth ?? 0),
+    inspectedFullPane: fullPaneViewId !== null && inspection?.viewId === fullPaneViewId,
+  };
+}
+
+// Which view the workspace presents, and where: a main view wins over the dock.
+export function workspacePresentation({
+  activeSessionId,
+  dock,
+  activeMainView,
+  inspection,
+  rowWidth,
+  conversationReady,
+}: {
+  activeSessionId: string;
+  dock: WorkspaceDock;
+  activeMainView: string | null;
+  inspection: WorkspaceInspection;
+  rowWidth: number | null;
+  conversationReady: boolean;
+}) {
+  const { hasDockOwner, dockOpen, fullPaneViewId, dockVisible, inspectedFullPane } = dockPlacement({
+    activeSessionId,
+    dock,
+    activeMainView,
+    inspection,
+    rowWidth,
+  });
   const main = fullPaneViewId !== null;
-  const dockVisible = dockOpen && canPresentDock(rowWidth ?? 0);
   const ownedDockViewIds = hasDockOwner ? dock.viewIds : [];
   const openViewIds = new Set(ownedDockViewIds);
   if (activeMainView !== null) openViewIds.add(activeMainView);
-  const inspectedFullPane = main && inspection?.viewId === fullPaneViewId;
+  // Views mount once a conversation, a main view or an open dock can show them.
+  const viewsReady = conversationReady || activeMainView !== null || dock.open;
   return {
     hasDockOwner,
     dockOpen,
@@ -119,10 +156,13 @@ export function workspacePresentation({
     inspectedFullPane,
     presentation: main ? ("main" as const) : ("dock" as const),
     presentedViewId: fullPaneViewId ?? dock.activeViewId,
+    // The catalog is no tab of its own, so the dock tabs show no selection for it.
+    dockTabValue: dockTabValue(fullPaneViewId ?? dock.activeViewId),
+    viewsReady,
     panelLayout: panelLayout(main, dockVisible),
     // The dock's tabs and resize handle show only beside the conversation.
     dockChromeVisible: !main && dockVisible,
-    dockToggleAvailable: !main && hasDockOwner,
+    dockToggleShown: viewsReady && !main && hasDockOwner,
     // Material keys reach the dock unless a main view outside inspection owns them.
     dockOwnsMaterialKeys: activeMainView === null || inspectedFullPane,
   };

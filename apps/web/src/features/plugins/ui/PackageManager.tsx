@@ -1,7 +1,7 @@
 import { useInstalledPlugins } from "@/features/plugins/context";
 import { checkRequest, pluginContract, RpcProtocolError } from "@flame/runtime-client";
 import { parseJSON } from "@frame/sdk/json";
-import { useRef, useState } from "react";
+import { useRef, useState, type RefObject } from "react";
 import * as stylex from "@stylexjs/stylex";
 import { z } from "zod";
 import {
@@ -11,7 +11,7 @@ import {
   type PluginReleaseRequest,
   type PluginRequest,
 } from "@flame/runtime-client/wire";
-import { useT, type MessageKey } from "@/lib/i18n/index";
+import { useT, type MessageKey, type Translate } from "@/lib/i18n/index";
 import { useCodeActionLabels } from "@/ui/index";
 import { DataError, DataView, SkeletonList } from "@/ui/index";
 import { SystemMessage } from "@/ui/index";
@@ -78,6 +78,55 @@ const EDIT_SAVE: Record<PackageEdit["type"], MessageKey> = {
   stage: "packages.stage",
 };
 
+function InstallFeedback({
+  error,
+  installed,
+  realization,
+}: {
+  error: string;
+  installed: string | undefined;
+  realization: ReturnType<ReturnType<typeof useInstalledPlugins>["useFailure"]>;
+}) {
+  const t = useT();
+  return (
+    <>
+      {error && <SystemMessage variant="warning">{error}</SystemMessage>}
+      {installed && <SystemMessage>{t("packages.installed", { name: installed })}</SystemMessage>}
+      {realization && <RealizationFailure failure={realization} />}
+    </>
+  );
+}
+
+// A failed refresh keeps the listed packages and offers a retry above them.
+function CatalogRefreshFailure({
+  catalog,
+  focusTarget,
+}: {
+  catalog: ReturnType<typeof usePackages>;
+  focusTarget: RefObject<HTMLSpanElement | null>;
+}) {
+  const t = useT();
+  if (catalog.isFetching)
+    return <SkeletonList count={1} variant="compact" label={t("common.loading")} />;
+  return (
+    <div role="status">
+      <DataError
+        failure={catalog.error}
+        focusTarget={focusTarget}
+        title={t("packages.refreshError.title")}
+        sub={t("packages.refreshError.sub")}
+        size="compact"
+        unsupported={{
+          icon: "blocks",
+          sub: t("packages.refreshError.sub"),
+          size: "compact",
+        }}
+        onRetry={catalog.refetch}
+      />
+    </div>
+  );
+}
+
 export function PackageManager() {
   const packages = useInstalledPlugins();
   const t = useT();
@@ -134,11 +183,11 @@ export function PackageManager() {
             {t("packages.install")}
           </Button>
         </div>
-        {error && <SystemMessage variant="warning">{error}</SystemMessage>}
-        {installed && installed.signal === operations?.signal && (
-          <SystemMessage>{t("packages.installed", { name: installed.name })}</SystemMessage>
-        )}
-        {realization && <RealizationFailure failure={realization} />}
+        <InstallFeedback
+          error={error}
+          installed={installed?.signal === operations?.signal ? installed?.name : undefined}
+          realization={realization}
+        />
       </PanelSection>
       <PanelSection
         title={
@@ -147,27 +196,9 @@ export function PackageManager() {
           </span>
         }
       >
-        {retained &&
-          catalog.error != null &&
-          (catalog.isFetching ? (
-            <SkeletonList count={1} variant="compact" label={t("common.loading")} />
-          ) : (
-            <div role="status">
-              <DataError
-                failure={catalog.error}
-                focusTarget={catalogTitle}
-                title={t("packages.refreshError.title")}
-                sub={t("packages.refreshError.sub")}
-                size="compact"
-                unsupported={{
-                  icon: "blocks",
-                  sub: t("packages.refreshError.sub"),
-                  size: "compact",
-                }}
-                onRetry={catalog.refetch}
-              />
-            </div>
-          ))}
+        {retained && catalog.error != null && (
+          <CatalogRefreshFailure catalog={catalog} focusTarget={catalogTitle} />
+        )}
         <DataView
           items={catalog.data ?? []}
           isLoading={catalog.isPending}
@@ -196,6 +227,59 @@ export function PackageManager() {
       {operations && <PendingCommands operations={operations} />}
     </>
   );
+}
+
+// The manifest projection shown for review: contracts by reference, plus the
+// installation's own configuration state.
+function manifestPreview(installation: PluginInstallation): string {
+  const selected = installation.selected;
+  return JSON.stringify(
+    {
+      contributions: selected.contributions.map((value) => ({
+        id: value.id,
+        server: value.server,
+        export: value.export,
+        contract: pluginContract(value.contract).reference,
+        composition: pluginContract(value.contract).composition,
+        requires: value.requires.map((required) => ({
+          id: required.id,
+          contract: pluginContract(required.contract).reference,
+          optional: required.optional,
+        })),
+      })),
+      components: selected.components,
+      locales: selected.locales,
+      points: selected.points.map((value) => ({
+        id: value.id,
+        ...pointMetadata(value.contract),
+      })),
+      pointValues: selected.pointValues.map((value) => ({
+        id: value.id,
+        contract: pointMetadata(value.contract).reference,
+      })),
+      servers: selected.servers,
+      inputs: selected.inputs,
+      skills: selected.skills,
+      inputStates: installation.inputStates,
+      disabledServers: installation.disabledServers,
+      disabledSkills: installation.disabledSkills,
+    },
+    null,
+    2,
+  );
+}
+
+function editTitle(t: Translate, edit: PackageEdit): string {
+  const action = t(EDIT_LABEL[edit.type]);
+  return edit.version
+    ? t("packages.editTitleVersion", { action, name: edit.name, version: edit.version })
+    : t("packages.editTitle", { action, name: edit.name });
+}
+
+function editContext(t: Translate, edit: PackageEdit): string {
+  return edit.type === "configure"
+    ? t("packages.configureContext", { digest: edit.target.digest })
+    : t("packages.stageContext");
 }
 
 function PackageRow({
@@ -227,40 +311,7 @@ function PackageRow({
       await refresh();
       return { ok: true };
     }, label);
-  const preview = JSON.stringify(
-    {
-      contributions: installation.selected.contributions.map((value) => ({
-        id: value.id,
-        server: value.server,
-        export: value.export,
-        contract: pluginContract(value.contract).reference,
-        composition: pluginContract(value.contract).composition,
-        requires: value.requires.map((required) => ({
-          id: required.id,
-          contract: pluginContract(required.contract).reference,
-          optional: required.optional,
-        })),
-      })),
-      components: installation.selected.components,
-      locales: installation.selected.locales,
-      points: installation.selected.points.map((value) => ({
-        id: value.id,
-        ...pointMetadata(value.contract),
-      })),
-      pointValues: installation.selected.pointValues.map((value) => ({
-        id: value.id,
-        contract: pointMetadata(value.contract).reference,
-      })),
-      servers: installation.selected.servers,
-      inputs: installation.selected.inputs,
-      skills: installation.selected.skills,
-      inputStates: installation.inputStates,
-      disabledServers: installation.disabledServers,
-      disabledSkills: installation.disabledSkills,
-    },
-    null,
-    2,
-  );
+  const preview = manifestPreview(installation);
   const save = () => {
     if (!edit) return;
     if (edit.type === "stage")
@@ -279,15 +330,6 @@ function PackageRow({
       setEdit((current) => current && { ...current, validationError });
     }
   };
-  const editTitle =
-    edit &&
-    (edit.version
-      ? t("packages.editTitleVersion", {
-          action: t(EDIT_LABEL[edit.type]),
-          name: edit.name,
-          version: edit.version,
-        })
-      : t("packages.editTitle", { action: t(EDIT_LABEL[edit.type]), name: edit.name }));
   return (
     <ListRow>
       <RecordHeading
@@ -404,13 +446,8 @@ function PackageRow({
         onOpenChange={(open) => {
           if (!open) setEdit(undefined);
         }}
-        title={editTitle ?? ""}
-        description={
-          edit &&
-          (edit.type === "configure"
-            ? t("packages.configureContext", { digest: edit.target.digest })
-            : t("packages.stageContext"))
-        }
+        title={edit ? editTitle(t, edit) : ""}
+        description={edit && editContext(t, edit)}
         closeLabel={t("common.close")}
         label={edit ? t(EDIT_INPUT[edit.type]) : ""}
         value={edit?.value ?? ""}
@@ -433,8 +470,6 @@ function PackageRow({
     </ListRow>
   );
 }
-
-type Translate = ReturnType<typeof useT>;
 
 function configurationErrorText(error: unknown, t: Translate): string {
   if (error instanceof SyntaxError) return t("packages.configureJson");

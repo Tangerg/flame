@@ -111,6 +111,28 @@ interface AgentRowProps extends Omit<ButtonProps, "children" | "variant" | "size
   children?: ReactNode;
 }
 
+function rowSkin({
+  stacked,
+  indent,
+  actioned,
+  look,
+}: {
+  stacked: boolean;
+  indent: NonNullable<AgentRowProps["indent"]>;
+  actioned: boolean;
+  look: NonNullable<AgentRowProps["look"]>;
+}) {
+  return [
+    rowStyles.base,
+    typeStep.uiMd,
+    stacked && rowStyles.stacked,
+    indent === "nested" && rowStyles.nested,
+    actioned && rowStyles.actioned,
+    look !== "row" && rowStyles.quiet,
+    look === "search" && rowStyles.search,
+  ];
+}
+
 function AgentRowLabel({
   overflowText,
   trailing,
@@ -186,13 +208,7 @@ export function AgentRow({
         track?.onPointerEnter();
       }}
       styles={[
-        rowStyles.base,
-        typeStep.uiMd,
-        detail ? rowStyles.stacked : null,
-        indent === "nested" && rowStyles.nested,
-        action ? rowStyles.actioned : null,
-        look !== "row" && rowStyles.quiet,
-        look === "search" && rowStyles.search,
+        rowSkin({ stacked: Boolean(detail), indent, actioned: Boolean(action), look }),
         track ? rowStyles.tracked : null,
         callerStyles,
       ]}

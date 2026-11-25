@@ -298,6 +298,74 @@ function rowStyle(
   };
 }
 
+// The leading cell: a source line number, a wrapped location, or an entry summary.
+function RowLead({ row, t }: { row: Row; t: Translate }) {
+  if (row.kind === "source")
+    return (
+      <span
+        style={{
+          color: token.color.fgFaint,
+          textAlign: "end",
+          userSelect: "none",
+          fontVariantNumeric: "tabular-nums",
+        }}
+      >
+        <span className="sr-only">{t("result.line")}</span>
+        {row.number}
+      </span>
+    );
+  if (row.kind === "located" && row.location !== undefined)
+    return (
+      <Metadata style={{ whiteSpace: "pre-wrap" }}>
+        {row.location.split("/").map((part, index) => (
+          <Fragment key={index}>
+            {index > 0 && "/"}
+            {index > 0 && <wbr />}
+            {part}
+          </Fragment>
+        ))}
+      </Metadata>
+    );
+  if (row.kind === "entry")
+    return (
+      <RecordSummary
+        title={<span style={{ whiteSpace: "pre-wrap" }}>{row.title}</span>}
+        description={
+          row.context === undefined ? undefined : (
+            <span style={{ whiteSpace: "pre-wrap" }}>{row.context}</span>
+          )
+        }
+      />
+    );
+  return null;
+}
+
+// Compiler-style diagnostics keep their severity colour in recorded output.
+function diagnosticInk(body: string): string | undefined {
+  if (/^error\b/.test(body)) return token.color.negative;
+  if (/^warning\b/.test(body)) return token.color.warning;
+  return undefined;
+}
+
+function RowBody({ row }: { row: Row }) {
+  if (row.kind === "notice") return <Metadata>{row.body}</Metadata>;
+  if (row.body === undefined) return null;
+  if (row.kind === "entry" || row.kind === "prose")
+    return <RecordBody>{row.body || " "}</RecordBody>;
+  return (
+    <pre
+      style={{
+        whiteSpace: "pre-wrap",
+        overflowWrap: "anywhere",
+        margin: 0,
+        color: diagnosticInk(row.body),
+      }}
+    >
+      {renderAnsi(row.body || " ")}
+    </pre>
+  );
+}
+
 function RecordedRow({
   ref,
   row,
@@ -313,66 +381,8 @@ function RecordedRow({
 }) {
   return (
     <div ref={ref} style={rowStyle(row, first, numberWidth)}>
-      {row.kind === "source" && (
-        <span
-          style={{
-            color: token.color.fgFaint,
-            textAlign: "end",
-            userSelect: "none",
-            fontVariantNumeric: "tabular-nums",
-          }}
-        >
-          <span className="sr-only">{t("result.line")}</span>
-          {row.number}
-        </span>
-      )}
-      {row.kind === "located" && row.location !== undefined && (
-        <Metadata
-          style={{
-            whiteSpace: "pre-wrap",
-          }}
-        >
-          {row.location.split("/").map((part, index) => (
-            <Fragment key={index}>
-              {index > 0 && "/"}
-              {index > 0 && <wbr />}
-              {part}
-            </Fragment>
-          ))}
-        </Metadata>
-      )}
-      {row.kind === "entry" && (
-        <RecordSummary
-          title={<span style={{ whiteSpace: "pre-wrap" }}>{row.title}</span>}
-          description={
-            row.context === undefined ? undefined : (
-              <span style={{ whiteSpace: "pre-wrap" }}>{row.context}</span>
-            )
-          }
-        />
-      )}
-      {row.body !== undefined &&
-        (row.kind === "entry" || row.kind === "prose") && (
-          <RecordBody>{row.body || " "}</RecordBody>
-        )}
-      {row.kind === "notice" && <Metadata>{row.body}</Metadata>}
-      {row.body !== undefined &&
-        (row.kind === "source" || row.kind === "located") && (
-          <pre
-            style={{
-              whiteSpace: "pre-wrap",
-              overflowWrap: "anywhere",
-              margin: 0,
-              color: /^error\b/.test(row.body)
-                ? token.color.negative
-                : /^warning\b/.test(row.body)
-                  ? token.color.warning
-                  : undefined,
-            }}
-          >
-            {renderAnsi(row.body || " ")}
-          </pre>
-        )}
+      <RowLead row={row} t={t} />
+      <RowBody row={row} />
     </div>
   );
 }

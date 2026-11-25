@@ -248,6 +248,14 @@ function readerKeyDown(
   }
 }
 
+// The first windowed list, before any complete render handed it an anchor.
+function freshWindow(windowed: {
+  generation: number;
+  anchor: { index: number; viewOffset: number } | null;
+}): boolean {
+  return windowed.generation === 0 && windowed.anchor === null;
+}
+
 export function ReadingList<T>({
   data,
   role = "region",
@@ -296,11 +304,7 @@ export function ReadingList<T>({
     currentList,
     waitForHostLayout: initialEndLayoutReady !== undefined && !ref,
     layoutReady: initialEndLayoutReady,
-    eligible:
-      visible &&
-      !renderAll &&
-      windowed.generation === 0 &&
-      windowed.anchor === null,
+    eligible: visible && !renderAll && freshWindow(windowed),
   });
   const waitingForInitialEnd = initialEnd.waiting;
   const releaseInitialEnd = initialEnd.release;
@@ -471,9 +475,7 @@ export function ReadingList<T>({
       <LegendList
         key={windowed.generation}
         ref={bind}
-        role={hasScrollStop ? role : undefined}
-        aria-label={hasScrollStop ? label : undefined}
-        tabIndex={hasScrollStop ? 0 : undefined}
+        {...(hasScrollStop ? { role, "aria-label": label, tabIndex: 0 } : {})}
         onKeyDown={(event) => readerKeyDown(event, currentList.current)}
         className={className}
         data={data}

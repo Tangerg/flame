@@ -100,22 +100,28 @@ export function ConversationPane({
 }
 
 // An inspected full-pane view returns to its source; any other closes.
+// An inspected full-pane view returns to its source and owns material keys;
+// any other full-pane view closes.
 export function FullPaneHeader({
   viewId,
   view,
-  returnAction,
+  inspection,
   dockAvailable,
-  onKeyDown,
   picker,
 }: {
   viewId: string;
   view: ComponentProps<typeof WorkspaceWindowHeader>["view"];
-  returnAction: { label: string; onReturn: () => void } | undefined;
+  inspection:
+    | {
+        returnAction: { label: string; onReturn: () => void } | undefined;
+        onKeyDown: (event: KeyboardEvent<HTMLElement>) => void;
+      }
+    | undefined;
   dockAvailable: boolean;
-  onKeyDown: ((event: KeyboardEvent<HTMLElement>) => void) | undefined;
   picker: ReactNode;
 }) {
   const workspaceAccess = useWorkspace();
+  const returnAction = inspection?.returnAction;
   return (
     <WorkspaceWindowHeader
       view={view}
@@ -127,7 +133,7 @@ export function FullPaneHeader({
       onOpenInDock={
         dockAvailable ? () => openWorkspaceViewInDock(workspaceAccess, viewId) : undefined
       }
-      onKeyDown={onKeyDown}
+      onKeyDown={inspection?.onKeyDown}
     >
       {picker}
     </WorkspaceWindowHeader>

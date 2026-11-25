@@ -6,7 +6,7 @@ import {
   RecordBody,
   RecordGroup,
 } from "@flame/ui";
-import { useSchedules, enabled } from "./useSchedules";
+import { useSchedules, enabled, type ScheduleState } from "./useSchedules";
 import { ScheduleDeletion, ScheduleFeedback, ScheduleRow } from "./rows";
 import {
   ScheduleCatalogEmpty,
@@ -14,6 +14,56 @@ import {
   SchedulePager,
 } from "./catalog";
 import { ScheduleEditor } from "./editor";
+
+function ScheduleReadStatus({
+  read,
+  liveError,
+  t,
+}: Pick<ScheduleState, "read" | "liveError" | "t">) {
+  return (
+    <>
+      {read.loading && <p role="status">{t("reading")}</p>}
+      {read.error && (
+        <div role="alert">
+          <p>{read.accepted ? t("read.errorRetained") : t("read.error")}</p>
+          <RecordBody>{read.error}</RecordBody>
+        </div>
+      )}
+      {liveError && (
+        <div role="alert">
+          <p>{t("live.error")}</p>
+          <RecordBody>{liveError}</RecordBody>
+        </div>
+      )}
+    </>
+  );
+}
+
+// The page number appears only once the catalog spans more than one page.
+function CatalogSummary({
+  summary,
+  page,
+  rows,
+  t,
+}: Pick<ScheduleState, "summary" | "rows" | "t"> & {
+  page: number | undefined;
+}) {
+  return (
+    <span ref={summary} tabIndex={-1}>
+      {page !== undefined && (
+        <>
+          {t("pages.current", { page })}
+          {" · "}
+        </>
+      )}
+      {t("catalog.enabled", { count: rows.filter(enabled).length })}
+      {" · "}
+      {t("catalog.disabled", {
+        count: rows.filter((item) => !enabled(item)).length,
+      })}
+    </span>
+  );
+}
 
 export function Schedules({ context }: { context: ComponentContext }) {
   const openSession = context.openSession;
@@ -57,19 +107,7 @@ export function Schedules({ context }: { context: ComponentContext }) {
       header={<PanelHeader title={t("panel.title")} />}
       controls={<ScheduleControls {...schedules} />}
     >
-      {read.loading && <p role="status">{t("reading")}</p>}
-      {read.error && (
-        <div role="alert">
-          <p>{read.accepted ? t("read.errorRetained") : t("read.error")}</p>
-          <RecordBody>{read.error}</RecordBody>
-        </div>
-      )}
-      {liveError && (
-        <div role="alert">
-          <p>{t("live.error")}</p>
-          <RecordBody>{liveError}</RecordBody>
-        </div>
-      )}
+      <ScheduleReadStatus read={read} liveError={liveError} t={t} />
       {!editorOpen && feedback}
       {edit && (
         <ScheduleEditor {...schedules} edit={edit} feedback={feedback} />
@@ -85,19 +123,12 @@ export function Schedules({ context }: { context: ComponentContext }) {
         title={t("catalog.title")}
         description={
           page && (
-            <span ref={summary} tabIndex={-1}>
-              {paginated && (
-                <>
-                  {t("pages.current", { page: history.length + 1 })}
-                  {" · "}
-                </>
-              )}
-              {t("catalog.enabled", { count: rows.filter(enabled).length })}
-              {" · "}
-              {t("catalog.disabled", {
-                count: rows.filter((item) => !enabled(item)).length,
-              })}
-            </span>
+            <CatalogSummary
+              summary={summary}
+              page={paginated ? history.length + 1 : undefined}
+              rows={rows}
+              t={t}
+            />
           )
         }
       >

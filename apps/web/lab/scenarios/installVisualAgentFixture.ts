@@ -246,6 +246,38 @@ function seedCommandOutput(
   }
 }
 
+type AgentProjectionStore = ReturnType<VisualClient["agent"]["projection"]["store"]["getState"]>;
+
+// A recorded view replaces the Session's projection the way a fresh read would.
+function publishVisualView(store: AgentProjectionStore, view: AgentSessionView, failure: string) {
+  const refresh = store.beginViewRefresh(VISUAL_SESSION_ID, "invalidate");
+  if (!refresh || !store.commitViewRefresh(VISUAL_SESSION_ID, refresh, view))
+    throw new Error(failure);
+}
+
+// Idle observes durable drafts; explicit scene seeds must retire pending restoration.
+function seedComposer(
+  composer: ReturnType<VisualClient["composer"]["store"]["getState"]>,
+  state: VisualAgentState,
+  fileListState: VisualFileListState | undefined,
+) {
+  const model = VISUAL_MODELS[0]!;
+  const reasoningEffort = model.capabilities?.reasoningDefaultLevel;
+  composer.setModel({
+    kind: "explicit",
+    provider: model.provider,
+    model: model.id,
+    ...(reasoningEffort ? { reasoningEffort } : {}),
+  });
+  if (state === "idle" && !fileListState) return;
+  composer.replaceDraft({ text: seededDraft(state, fileListState) });
+}
+
+function seededDraft(state: VisualAgentState, fileListState: VisualFileListState | undefined) {
+  if (fileListState) return VISUAL_FILE_MENTION_DRAFT;
+  return state === "steer" ? "Tighten the error copy and continue." : "";
+}
+
 export async function installVisualAgentFixture(
   visual: VisualClient,
   runtimeClient: () => FlameClient,
@@ -349,25 +381,7 @@ export async function installVisualAgentFixture(
     fileListProvider(fileListState),
   );
 
-  const composer = visual.composer.store.getState();
-  composer.setModel({
-    kind: "explicit",
-    provider: VISUAL_MODELS[0]!.provider,
-    model: VISUAL_MODELS[0]!.id,
-    ...(VISUAL_MODELS[0]!.capabilities?.reasoningDefaultLevel
-      ? { reasoningEffort: VISUAL_MODELS[0]!.capabilities?.reasoningDefaultLevel }
-      : {}),
-  });
-  // Idle observes durable drafts; explicit scene seeds must retire pending restoration.
-  if (state !== "idle" || fileListState) {
-    composer.replaceDraft({
-      text: fileListState
-        ? VISUAL_FILE_MENTION_DRAFT
-        : state === "steer"
-          ? "Tighten the error copy and continue."
-          : "",
-    });
-  }
+  seedComposer(visual.composer.store.getState(), state, fileListState);
 
   let view = projectAgentSessionSnapshot(projectRuntimeAgentSnapshot(snapshot));
   for (const event of AGENT_SESSION_TAIL_EVENTS[state]) {
@@ -386,10 +400,7 @@ export async function installVisualAgentFixture(
 
   const store = visual.agent.projection.store.getState();
   store.ensureSession(VISUAL_SESSION_ID);
-  const refresh = store.beginViewRefresh(VISUAL_SESSION_ID, "invalidate");
-  if (!refresh || !store.commitViewRefresh(VISUAL_SESSION_ID, refresh, view)) {
-    throw new Error(`Failed to install visual agent state "${state}"`);
-  }
+  publishVisualView(store, view, `Failed to install visual agent state "${state}"`);
   store.setSend(VISUAL_SESSION_ID, (input) => {
     document.documentElement.dataset.visualSentInput = JSON.stringify(input);
     return Promise.resolve({
@@ -429,10 +440,7 @@ export async function installVisualAgentFixture(
         reduceAgentEvent,
         projectAgentSessionSnapshot(projectRuntimeAgentSnapshot(snapshot)),
       );
-      const refresh = store.beginViewRefresh(VISUAL_SESSION_ID, "invalidate");
-      if (!refresh || !store.commitViewRefresh(VISUAL_SESSION_ID, refresh, stoppedView)) {
-        throw new Error("Failed to publish the captured root outcome");
-      }
+      publishVisualView(store, stoppedView, "Failed to publish the captured root outcome");
     }
     return true;
   });
@@ -444,17 +452,11 @@ export async function installVisualAgentFixture(
       responses[0]?.response ?? null,
     );
     onSettled?.();
-    const refresh = store.beginViewRefresh(VISUAL_SESSION_ID, "invalidate");
-    if (
-      !refresh ||
-      !store.commitViewRefresh(
-        VISUAL_SESSION_ID,
-        refresh,
-        projectAgentSessionSnapshot(projectRuntimeAgentSnapshot(snapshot)),
-      )
-    ) {
-      throw new Error("Failed to publish the visual Runtime response");
-    }
+    publishVisualView(
+      store,
+      projectAgentSessionSnapshot(projectRuntimeAgentSnapshot(snapshot)),
+      "Failed to publish the visual Runtime response",
+    );
     return true;
   });
   const cancelPresentation = new URLSearchParams(location.search).get("subagent-cancel");
@@ -487,17 +489,11 @@ export async function installVisualAgentFixture(
         interrupts: pending.interrupts.filter((interrupt) => interrupt.runId !== runId),
       }))
       .filter((pending) => pending.interrupts.length > 0);
-    const refresh = store.beginViewRefresh(VISUAL_SESSION_ID, "invalidate");
-    if (
-      !refresh ||
-      !store.commitViewRefresh(
-        VISUAL_SESSION_ID,
-        refresh,
-        projectAgentSessionSnapshot(projectRuntimeAgentSnapshot(snapshot)),
-      )
-    ) {
-      throw new Error("Failed to publish the captured subagent outcome");
-    }
+    publishVisualView(
+      store,
+      projectAgentSessionSnapshot(projectRuntimeAgentSnapshot(snapshot)),
+      "Failed to publish the captured subagent outcome",
+    );
   });
 
   return view;

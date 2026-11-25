@@ -2,6 +2,7 @@ import { type ReactNode, type RefObject } from "react";
 import { failureText, type Translate } from "@flame/component-sdk";
 import {
   ArrowLeft,
+  Copy,
   ChevronLeft,
   ChevronRight,
   FileDiff as FileDiffIcon,
@@ -11,7 +12,9 @@ import {
 import type { DiffMode, WorkspaceFileChange } from "@flame/runtime-client/wire";
 import {
   Button,
+  CodeWrapButton,
   DiffBody,
+  DiffFileHeader,
   DiffFileList,
   DiffFilePath,
   DiffStat,
@@ -320,6 +323,55 @@ export function DiffReaderToolbar({
         {t("files.button")}
       </Button>
     </Toolbar>
+  );
+}
+
+export type DiffLayout = "unified" | "split";
+
+// Layout, wrapping and copy apply only to a readable text patch.
+export function DiffReaderHeading({
+  t,
+  file,
+  heading,
+  readable,
+  layout,
+  onLayout,
+  patchActions,
+  onCopy,
+}: {
+  t: Translate;
+  file: DiffFile;
+  heading: RefObject<HTMLHeadingElement | null>;
+  readable: boolean;
+  layout: DiffLayout;
+  onLayout(layout: DiffLayout): void;
+  patchActions: { wrap: string; unwrap: string };
+  onCopy(): void;
+}) {
+  return (
+    <DiffFileHeader ref={heading} file={fileSummary(t, file)}>
+      {!file.binary && readable && (
+        <>
+          <Select
+            size="sm"
+            label={t("layout.label")}
+            value={layout}
+            onValueChange={(value) => onLayout(value as DiffLayout)}
+            options={[
+              { value: "unified", label: t("layout.unified") },
+              { value: "split", label: t("layout.split") },
+            ]}
+          />
+          <CodeWrapButton labels={patchActions} size="sm" />
+          <IconButton
+            icon={Copy}
+            size="sm"
+            aria-label={t("patch.copy")}
+            onClick={onCopy}
+          />
+        </>
+      )}
+    </DiffFileHeader>
   );
 }
 

@@ -64,25 +64,21 @@ const gm = stylex.create({
   meta: { flexShrink: 0, fontVariantNumeric: "tabular-nums" },
 });
 
-export function ToolGroupMember({ tool, expanded, onExpandedChange }: Props) {
-  const t = useT();
-  const model = toolCardModel(t, tool);
+function MemberSummary({
+  tool,
+  model,
+  disclosable,
+  disclosed,
+  stackDetail,
+}: {
+  tool: ToolCall;
+  model: ReturnType<typeof toolCardModel>;
+  disclosable: boolean;
+  disclosed: boolean;
+  stackDetail: boolean;
+}) {
   const headline = headlineToolMetaItem(model.metaItems);
-
-  const summaryId = useId();
-  const bodyId = useId();
-  const { controls: actions, feedback } = useToolRowActions(tool, summaryId);
-  const disclosable = model.disclosable;
-  const disclosed = disclosable && expanded;
-  const stackDetail = disclosed && model.detail?.kind === "path";
-  const rowClassName = stylex.props(
-    gm.row,
-    typeStep.uiSm,
-    disclosed && gm.rowExpanded,
-    stackDetail && stackedActivityDetail.trigger,
-  ).className;
-
-  const summary = (
+  return (
     <>
       <span aria-hidden {...stylex.props(gm.mark, vocab.faint)}>
         <Icon name={toolCallIconFor(tool)} size="sm" />
@@ -123,6 +119,34 @@ export function ToolGroupMember({ tool, expanded, onExpandedChange }: Props) {
       )}
       <ToolStatusMarks model={model} />
     </>
+  );
+}
+
+export function ToolGroupMember({ tool, expanded, onExpandedChange }: Props) {
+  const t = useT();
+  const model = toolCardModel(t, tool);
+
+  const summaryId = useId();
+  const bodyId = useId();
+  const { controls: actions, feedback } = useToolRowActions(tool, summaryId);
+  const disclosable = model.disclosable;
+  const disclosed = disclosable && expanded;
+  const stackDetail = disclosed && model.detail?.kind === "path";
+  const rowClassName = stylex.props(
+    gm.row,
+    typeStep.uiSm,
+    disclosed && gm.rowExpanded,
+    stackDetail && stackedActivityDetail.trigger,
+  ).className;
+
+  const summary = (
+    <MemberSummary
+      tool={tool}
+      model={model}
+      disclosable={disclosable}
+      disclosed={disclosed}
+      stackDetail={stackDetail}
+    />
   );
 
   return (
