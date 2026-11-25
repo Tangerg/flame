@@ -81,9 +81,6 @@ func (withoutHooks) AfterToolUse(context.Context, InteractionToolHookInput) erro
 func (withoutHooks) BeforeCompaction(context.Context, identity.SessionID, string) (bool, error) {
 	return true, nil
 }
-func (withoutHooks) NotifyStopped(context.Context, identity.SessionID, string, string) error {
-	return nil
-}
 
 type withoutMaintenance struct{}
 
@@ -126,8 +123,8 @@ func withRequiredCapabilities(config InteractionExecutorConfig) InteractionExecu
 	if config.ToolHooks == nil {
 		config.ToolHooks = withoutHooks{}
 	}
-	if config.LifecycleHooks == nil {
-		config.LifecycleHooks = withoutHooks{}
+	if config.CompactionHook == nil {
+		config.CompactionHook = withoutHooks{}
 	}
 	if config.Maintenance == nil {
 		config.Maintenance = withoutMaintenance{}

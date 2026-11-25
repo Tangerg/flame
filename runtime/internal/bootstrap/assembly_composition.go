@@ -263,7 +263,7 @@ func buildExecutionComposition(
 		Maintenance:            runMaintenance,
 		ModelContextCompactor:  modelContextCompactor,
 		ModelContextState:      workingContexts,
-		LifecycleHooks:         workingContexts,
+		CompactionHook:         workingContexts,
 		ToolResolver:           toolRuntime.tools.Resolver,
 		ToolResultOffloadBytes: cfg.toolResultOffloadThreshold,
 	}

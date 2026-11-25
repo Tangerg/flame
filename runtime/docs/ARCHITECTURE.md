@@ -155,9 +155,11 @@ for terminal publication and executor release. When another command has already
 terminated the Run, its durable outcome determines the response to the caller
 and the refusal retained for the original request key.
 
-A waiting Hook observes the committed park. Segment finalization hands it to
-the Runtime task group, where canceling or resuming the Run leaves notification
-delivery with that group.
+Segment finalization hands observe-only Hooks to the Runtime task group. A
+waiting Hook observes the committed park and a Stop Hook receives the Run's
+committed terminal outcome. Notification delivery has its own completion path,
+so it cannot delay the Run's cancellation or continuation. The workspace
+checkpoint is captured before the Stop Hook can make its own changes.
 
 Cold stream recovery uses `runs.subscribe` with `snapshot: true`. The tree owner fences its durable commits and event publication while the Session use case reads material and the successor tail attaches. The reply contains both the snapshot and its tail head; a replay cursor is mutually exclusive with this mode. Ordinary replay retains the consumed cursor. Waiting for the fence revalidates the addressed Segment so a replacement cannot be paired with an old tail.
 

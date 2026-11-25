@@ -78,7 +78,7 @@ type InteractionExecutorConfig struct {
 	Maintenance               RunMaintenance
 	ModelContextCompactor     ModelContextCompactor
 	ModelContextState         interactionModelContextState
-	LifecycleHooks            interactionLifecycleHooks
+	CompactionHook            compactionHook
 	ToolResultOffloadBytes    *int
 	UnknownEffectPollInterval *time.Duration
 	StatePollInterval         *time.Duration
@@ -116,7 +116,7 @@ func NewInteractionExecutor(config InteractionExecutorConfig) (*InteractionExecu
 		{name: "Run maintenance", value: config.Maintenance},
 		{name: "model-context compactor", value: config.ModelContextCompactor},
 		{name: "model-context state", value: config.ModelContextState},
-		{name: "lifecycle hooks", value: config.LifecycleHooks},
+		{name: "pre-compaction hook", value: config.CompactionHook},
 	} {
 		if lo.IsNil(capability.value) {
 			return nil, fmt.Errorf("execution: Interaction %s is required", capability.name)

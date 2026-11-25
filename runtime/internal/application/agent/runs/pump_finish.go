@@ -130,18 +130,27 @@ func (s *segmentPump) settleMaintenanceFence() {
 	if maintenanceHeld {
 		defer releaseMaintenance()
 	}
+	boundary := s.routes.root.boundary
 	entry, tracked := s.segments.registry.Get(s.spec.RunID)
-	if tracked && !s.routes.root.boundary.parked() {
+	if tracked && !boundary.parked() {
 		entry.owner.stop()
 	}
-	if !s.routes.root.boundary.finished() {
+	if !boundary.finished() {
 		return
 	}
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(s.ownerCtx), runCleanupTimeout)
 	defer cancel()
 	finish := Finish{
 		SessionID: s.spec.SessionID, RunID: s.spec.RunID, WorkspaceCWD: s.spec.WorkspaceCWD,
-		Parked: s.routes.root.boundary.parked(),
+	}
+	if !boundary.parked() {
+		terminal, _ := s.owner.committedRunTerminal(s.spec.RunID)
+		ending, recorded := terminal.run.Ending()
+		if !recorded {
+			recordRunCleanupError(ctx, fmt.Errorf("runs: finished root Run %q has no committed outcome", s.spec.RunID))
+			return
+		}
+		finish.ending = ending
 	}
 	if maintenanceHeld {
 		finish.OpeningUserText = s.spec.openingUserText()

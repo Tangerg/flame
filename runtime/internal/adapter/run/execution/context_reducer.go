@@ -170,7 +170,7 @@ func (i *interactionModelContextReducer) prepareContextView(ctx context.Context,
 
 func (i *interactionModelContextReducer) compactContext(calling context.Context, invocation modelCallSource, contextView modelRequestContext, candidate []corechat.Message, hasResumeInputs bool) ([]corechat.Message, error) {
 	preCompact := func(ctx context.Context) (bool, error) {
-		return i.session.lifecycleHooks.BeforeCompaction(ctx, i.start.SessionID, i.start.WorkspaceCWD)
+		return i.session.compactionHook.BeforeCompaction(ctx, i.start.SessionID, i.start.WorkspaceCWD)
 	}
 	calibration := i.session.material.calibration(invocation.process)
 

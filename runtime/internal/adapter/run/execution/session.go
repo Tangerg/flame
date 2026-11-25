@@ -41,7 +41,7 @@ type interactionSession struct {
 	unknownPollInterval    time.Duration
 	statePollInterval      time.Duration
 	maintenance            RunMaintenance
-	lifecycleHooks         interactionLifecycleHooks
+	compactionHook         compactionHook
 	buildID                runs.BuildID
 	start                  runs.RootExecutionStart
 	modelFailures          interactionModelFailures
@@ -149,7 +149,7 @@ func newInteractionSession(
 		unknownPollInterval: policy.unknownEffectPollInterval,
 		statePollInterval:   policy.statePollInterval,
 		maintenance:         config.Maintenance,
-		lifecycleHooks:      config.LifecycleHooks,
+		compactionHook:      config.CompactionHook,
 		buildID:             buildID, start: start,
 	}
 }
@@ -351,7 +351,6 @@ func (i *interactionSession) await() {
 		if ending.Outcome() == run.OutcomeCompleted {
 			i.maintainCompletedRoot()
 		}
-		i.notifyStopped(ending.Outcome())
 		if err := i.closeExecution(joinCtx); err != nil {
 			slog.ErrorContext(joinCtx, "execution: close settled Interaction", telemetry.Error(err))
 		}
@@ -359,18 +358,6 @@ func (i *interactionSession) await() {
 		i.publishProjectionFailure(err)
 	}
 	i.finish()
-}
-
-func (i *interactionSession) notifyStopped(outcome run.Outcome) {
-	ctx, cancel := context.WithTimeout(context.WithoutCancel(i.lifetime.execution), auxiliaryOperationTimeout)
-	defer cancel()
-	if err := i.lifecycleHooks.NotifyStopped(
-		ctx, i.start.SessionID, i.start.WorkspaceCWD, string(outcome),
-	); err != nil {
-		slog.ErrorContext(i.lifetime.execution, "execution: notify stopped",
-			telemetry.SessionID(i.start.SessionID), telemetry.Error(err),
-		)
-	}
 }
 
 func (i *interactionSession) reportProjectionFailure(err error) {

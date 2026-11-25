@@ -24,9 +24,8 @@ type RunMaintenanceResult struct {
 	Errors []error
 }
 
-type interactionLifecycleHooks interface {
+type compactionHook interface {
 	BeforeCompaction(ctx context.Context, sessionID identity.SessionID, cwd string) (bool, error)
-	NotifyStopped(ctx context.Context, sessionID identity.SessionID, cwd, reason string) error
 }
 
 func (i *interactionSession) maintainCompletedRoot() {

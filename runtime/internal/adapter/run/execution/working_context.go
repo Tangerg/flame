@@ -16,6 +16,7 @@ import (
 	apphooks "github.com/Tangerg/flame/runtime/internal/application/integration/hooks"
 	domainhooks "github.com/Tangerg/flame/runtime/internal/domain/integration/hooks"
 	"github.com/Tangerg/flame/runtime/internal/domain/project"
+	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/telemetry"
 	corechat "github.com/Tangerg/scope/core/chat"
@@ -280,9 +281,12 @@ func (w *WorkingContextComposer) NotifyWaiting(
 
 func (w *WorkingContextComposer) NotifyStopped(
 	ctx context.Context,
-	sessionID identity.SessionID, cwd, reason string,
+	sessionID identity.SessionID, cwd string,
+	outcome run.Outcome,
 ) error {
-	return w.runObserveOnlyHook(ctx, hookdata.Stop, sessionID, cwd, reason)
+	ctx, cancel := context.WithTimeout(ctx, auxiliaryOperationTimeout)
+	defer cancel()
+	return w.runObserveOnlyHook(ctx, hookdata.Stop, sessionID, cwd, string(outcome))
 }
 
 func (w *WorkingContextComposer) runObserveOnlyHook(
@@ -359,6 +363,6 @@ func (w *WorkingContextComposer) recallPart(
 var (
 	_ runs.WorkingContextComposer                    = (*WorkingContextComposer)(nil)
 	_ interactionToolHooks                           = (*WorkingContextComposer)(nil)
-	_ interactionLifecycleHooks                      = (*WorkingContextComposer)(nil)
+	_ compactionHook                                 = (*WorkingContextComposer)(nil)
 	_ interface{ ForgetSession(identity.SessionID) } = (*WorkingContextComposer)(nil)
 )

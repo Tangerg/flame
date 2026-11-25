@@ -13,6 +13,7 @@ import (
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
+	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/telemetry"
 	"github.com/samber/lo"
 	"go.opentelemetry.io/otel"
@@ -25,6 +26,7 @@ const (
 	titleMaintenance        = "title"
 	checkpointMaintenance   = "checkpoint"
 	waitingNotificationTask = "waiting_notification"
+	stoppedNotificationTask = "stopped_notification"
 )
 
 type sessionTitles interface {
@@ -39,8 +41,9 @@ type taskLauncher interface {
 	Start(parent context.Context, task func(context.Context)) bool
 }
 
-type waitingNotifier interface {
+type lifecycleNotifier interface {
 	NotifyWaiting(ctx context.Context, sessionID identity.SessionID, cwd string) error
+	NotifyStopped(ctx context.Context, sessionID identity.SessionID, cwd string, outcome run.Outcome) error
 }
 
 type TitleMaintenance struct {
@@ -49,17 +52,17 @@ type TitleMaintenance struct {
 }
 
 type FinalizerConfig struct {
-	Checkpoints          checkpoints
-	Titles               TitleMaintenance
-	WaitingNotifications waitingNotifier
-	Tasks                taskLauncher
+	Checkpoints   checkpoints
+	Titles        TitleMaintenance
+	Notifications lifecycleNotifier
+	Tasks         taskLauncher
 }
 
 type Finalizer struct {
 	checkpoints   checkpoints
 	sessionTitles sessionTitles
 	titles        titleGenerator
-	waiting       waitingNotifier
+	notifications lifecycleNotifier
 	tasks         taskLauncher
 }
 
@@ -73,7 +76,7 @@ func NewFinalizer(cfg FinalizerConfig) (*Finalizer, error) {
 		{"checkpoints", cfg.Checkpoints},
 		{"session titles", cfg.Titles.Sessions},
 		{"title model", cfg.Titles.Model},
-		{"waiting notifier", cfg.WaitingNotifications},
+		{"lifecycle notifier", cfg.Notifications},
 		{"task launcher", cfg.Tasks},
 	} {
 		if lo.IsNil(required.value) {
@@ -84,7 +87,7 @@ func NewFinalizer(cfg FinalizerConfig) (*Finalizer, error) {
 		checkpoints:   cfg.Checkpoints,
 		sessionTitles: cfg.Titles.Sessions,
 		titles:        titleGenerator{model: cfg.Titles.Model},
-		waiting:       cfg.WaitingNotifications,
+		notifications: cfg.Notifications,
 		tasks:         cfg.Tasks,
 	}, nil
 }
@@ -92,25 +95,21 @@ func NewFinalizer(cfg FinalizerConfig) (*Finalizer, error) {
 // The checkpoint is a sequencing fence: admission stays held until it completes so
 // a following run cannot write into this run's snapshot.
 func (f *Finalizer) Finish(ctx context.Context, fin runs.Finish) error {
-	needsSnapshot := !fin.Parked && fin.WorkspaceCWD != ""
+	needsSnapshot := !fin.Parked() && fin.WorkspaceCWD != ""
 	needsTitle := strings.TrimSpace(fin.OpeningUserText) != ""
-	if !fin.Parked && !needsSnapshot && !needsTitle {
-		return nil
-	}
 	ctx = executionctx.WithScope(ctx, runs.ExecutionScope{SessionID: fin.SessionID, CWD: fin.WorkspaceCWD, WorkspaceCWD: fin.WorkspaceCWD})
 	ctx = executionctx.WithInvocationOwner(ctx, "")
 	var errs []error
-	if fin.Parked {
-		if err := f.launchWaitingNotification(ctx, fin); err != nil {
-			errs = append(errs, err)
-		}
-	}
+	// The stop hook may write files that do not belong to this Run's checkpoint.
 	if needsSnapshot {
 		if err := observeSegmentMaintenance(ctx, fin, checkpointMaintenance, func(ctx context.Context) error {
 			return f.snapshot(ctx, fin.SessionID, fin.WorkspaceCWD, fin.RunID)
 		}); err != nil {
 			errs = append(errs, err)
 		}
+	}
+	if err := f.launchLifecycleNotification(ctx, fin); err != nil {
+		errs = append(errs, err)
 	}
 	if !needsTitle {
 		return errors.Join(errs...)
@@ -138,16 +137,24 @@ func (f *Finalizer) Finish(ctx context.Context, fin runs.Finish) error {
 	return errors.Join(errs...)
 }
 
-// A notification observes the committed park and may outlive its executor.
-func (f *Finalizer) launchWaitingNotification(ctx context.Context, fin runs.Finish) error {
+// A notification observes the committed Segment boundary and may outlive its executor.
+func (f *Finalizer) launchLifecycleNotification(ctx context.Context, fin runs.Finish) error {
+	operation := waitingNotificationTask
+	notify := func(ctx context.Context) error {
+		return f.notifications.NotifyWaiting(ctx, fin.SessionID, fin.WorkspaceCWD)
+	}
+	if outcome, terminal := fin.Outcome(); terminal {
+		operation = stoppedNotificationTask
+		notify = func(ctx context.Context) error {
+			return f.notifications.NotifyStopped(ctx, fin.SessionID, fin.WorkspaceCWD, outcome)
+		}
+	}
 	if !f.tasks.Start(ctx, func(ctx context.Context) {
-		if err := observeSegmentMaintenance(ctx, fin, waitingNotificationTask, func(ctx context.Context) error {
-			return f.waiting.NotifyWaiting(ctx, fin.SessionID, fin.WorkspaceCWD)
-		}); err != nil {
-			slog.WarnContext(ctx, "segment: notify waiting", telemetry.RunID(fin.RunID), telemetry.Error(err))
+		if err := observeSegmentMaintenance(ctx, fin, operation, notify); err != nil {
+			slog.WarnContext(ctx, "segment: lifecycle notification failed", telemetry.RunID(fin.RunID), telemetry.Error(err))
 		}
 	}) {
-		return fmt.Errorf("segment: waiting notification for Run %q was rejected during shutdown", fin.RunID)
+		return fmt.Errorf("segment: %s for Run %q was rejected during shutdown", operation, fin.RunID)
 	}
 	return nil
 }
@@ -159,7 +166,7 @@ func observeSegmentMaintenance(ctx context.Context, fin runs.Finish, operation s
 			telemetry.RunIDKey.String(fin.RunID.String()),
 			telemetry.SessionIDKey.String(fin.SessionID.String()),
 			attribute.String("maintenance.operation", operation),
-			attribute.Bool("run.parked", fin.Parked),
+			attribute.Bool("run.parked", fin.Parked()),
 		),
 	)
 	defer span.End()
