@@ -37,6 +37,13 @@ const fc = stylex.create({
     flexShrink: 0,
     flexDirection: "column",
   },
+  // A capped child bounds this item's flex basis, so notices and the scrollport shrink in proportion.
+  notices: {
+    pointerEvents: "auto",
+    display: "flex",
+    minHeight: 0,
+    flexDirection: "column",
+  },
   holder: {
     pointerEvents: "auto",
     position: "relative",
@@ -95,11 +102,13 @@ export function FloatingComposer({
   overlayRef,
   jumpRef,
   floating,
+  notices,
   children,
 }: {
   overlayRef: RefObject<HTMLDivElement | null>;
   jumpRef?: Ref<HTMLDivElement>;
   floating: boolean;
+  notices: ReactNode;
   children: ReactNode;
 }) {
   return (
@@ -111,6 +120,7 @@ export function FloatingComposer({
     >
       <div {...stylex.props(rc.gutter, fc.floor, floating && fc.floatingFloor)}>
         {floating && <JumpToBottomButton dockRef={jumpRef} />}
+        <div {...stylex.props(fc.notices)}>{notices}</div>
         <div data-slot="composer-scrollport" {...stylex.props(fc.holder, floating && fc.scroll)}>
           <ComposerStack>{children}</ComposerStack>
         </div>

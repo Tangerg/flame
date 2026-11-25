@@ -470,11 +470,12 @@ nor changes the draft or selection, and retires when the transcript starts or
 the view becomes hidden. Transcript reading and shared Panel focus retain their
 separate owners.
 
-The started conversation bounds its complete Composer stack with a normal-flow
-scrollport, so a standing Goal or connection notice cannot compress the editor
-and actions away in a short window. The jump control stays outside that clipping
-boundary. The floating editing surface caps its height against the externally
-sized conversation frame, leaving room for its footer while the editor shrinks.
+The started conversation bounds its Composer stack below the conversation
+notices with a normal-flow scrollport, so a standing Goal or connection notice
+cannot compress the editor and actions away in a short window. The jump control
+stays outside that clipping boundary. The floating editing surface caps its
+height against the externally sized conversation frame, leaving room for its
+footer while the editor shrinks.
 Its full editing budget is independent of the outer scrollport's reading limit.
 The Workspace card owns the Composer reading limit through its last contained
 focus. Reading outside the Composer scrollport caps the Composer at one-third
@@ -1118,11 +1119,15 @@ its turns from conversation data and their extents from the list's layout of eve
 row, and jumps by message key. The Find scope owns Escape and query navigation;
 zero-result navigation buttons keep focus while refusing activation.
 
-Conversation notices share one named keyboard reader, capped at 40% of their
-conversation pane. Long Run errors, working-directory notices and contributed
-content retain their complete text and actions while leaving room for the reply
-and Composer. An empty stack collapses; error recovery and dismissal retain their
-existing owners.
+Conversation notices open the Composer stack, above the connection notice and
+Composer trays, so a failed Run reads after its request and beside the Composer
+that retries it. They share one named keyboard reader, capped at 40% of the
+conversation frame. Within the Composer overlay's height budget the reader and
+the Composer scrollport shrink in proportion and each scrolls its own overflow,
+so a long Run error, working-directory notice or contributed content keeps its
+complete text and actions without pushing the Composer out of reach. Focus in a
+notice keeps the current editing or reading budget. An empty stack collapses;
+error recovery and dismissal retain their existing owners.
 
 Run-error Inspect context and Diagnostics actions capture their actual source
 button in the existing Workspace inspection path. Their selected material opens

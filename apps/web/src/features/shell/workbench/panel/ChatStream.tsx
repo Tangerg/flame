@@ -23,7 +23,7 @@ import { pendingQuestionRequest } from "@/features/chat/public/message/rendering
 import { QuestionCard } from "@/features/chat/public/message/rendering";
 import { shellStyles as sh } from "@/features/shell/workbench/shellStyles";
 import { color, space, type as typeStep, weight } from "@flame/ui/tokens.stylex";
-import { ScrollRegion, vocab, handoffFocus } from "@flame/ui";
+import { ScrollRegion, handoffFocus } from "@flame/ui";
 import { useContentVisible } from "@/ui/index";
 import { useAgentShellElement } from "@/ui/agent/index";
 import {
@@ -33,7 +33,14 @@ import {
 } from "@/features/shell/workbench/panel/notificationSpace";
 const cst = stylex.create({
   hideWhenEmpty: { display: { default: null, ":empty": "none" } },
-  notices: { maxHeight: "40%", paddingBlock: 0 },
+  notices: {
+    display: { default: "flex", ":empty": "none" },
+    maxHeight: "calc(var(--composer-frame-height, 100cqh) * 0.4)",
+    flexDirection: "column",
+    gap: space.s2,
+    marginBottom: space.s2,
+    paddingBlock: 0,
+  },
   queryable: {
     containerType: "inline-size",
     "--transcript-jump-gap": space.s2,
@@ -51,13 +58,6 @@ const cst = stylex.create({
     flexDirection: "column",
     display: { default: "none", "@container (min-width: 1152px)": "flex" },
     pointerEvents: "none",
-  },
-  tray: {
-    pointerEvents: "auto",
-    display: "flex",
-    flexDirection: "column",
-    gap: space.s1_5,
-    paddingBlock: space.s1_5,
   },
   empty: {
     display: "flex",
@@ -111,14 +111,10 @@ interface Props {
 const ChatBanners = memo(function ChatBanners({ sessionId }: { sessionId: string }) {
   const t = useT();
   return (
-    <ScrollRegion
-      label={t("chat.notices")}
-      data-focus-inset=""
-      styles={[rc.box, rc.gutter, vocab.hold, cst.notices, cst.hideWhenEmpty]}
-    >
+    <ScrollRegion label={t("chat.notices")} data-focus-inset="" styles={cst.notices}>
       <CwdMissingBanner key={sessionId} />
       <RunErrorBanner />
-      <Slot name="chat.banner.top" wrapper {...stylex.props(cst.tray)} />
+      <Slot name="chat.banner.top" />
     </ScrollRegion>
   );
 });
@@ -231,7 +227,6 @@ export function ChatStream({ onSend }: Props) {
 
   return (
     <div ref={paneRef} {...stylex.props(sh.paneAnchored, cst.queryable)}>
-      <ChatBanners sessionId={sessionId} />
       <div
         ref={layoutRef}
         {...stylex.props(sh.paneAnchored, cst.layoutFrame, !started && cst.emptyQuery)}
@@ -270,7 +265,12 @@ export function ChatStream({ onSend }: Props) {
               </div>
             </div>
           )}
-          <FloatingComposer overlayRef={composerOverlayRef} jumpRef={jumpRef} floating={started}>
+          <FloatingComposer
+            overlayRef={composerOverlayRef}
+            jumpRef={jumpRef}
+            floating={started}
+            notices={<ChatBanners sessionId={sessionId} />}
+          >
             {composer}
           </FloatingComposer>
           {!started && (

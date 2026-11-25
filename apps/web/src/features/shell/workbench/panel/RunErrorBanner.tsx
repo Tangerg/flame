@@ -108,11 +108,11 @@ export function RunErrorBanner() {
       {error && (
         <motion.div
           role="alert"
-          initial={{ opacity: 0, y: -6 }}
+          initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -6, transition: disclosureExitTransition }}
+          exit={{ opacity: 0, y: 6, transition: disclosureExitTransition }}
           transition={disclosureTransition}
-          className={stylex.props(sh.banner, sh.bannerCard, reb.sans, vocab.ink).className}
+          className={stylex.props(sh.bannerCard, reb.sans, vocab.ink).className}
         >
           <Icon name="alert" size="md" className={stylex.props(reb.glyph).className} />
           <div {...stylex.props(vocab.min)}>
