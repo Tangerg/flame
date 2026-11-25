@@ -41,6 +41,20 @@ export function record(
   return same(operations, draft.operations) ? draft : edited(draft, operations);
 }
 
+export function mergeSuggestion(
+  draft: Draft<CellOperation>,
+  layout: WorkbookLayout,
+  offered: CellOperation[],
+): Draft<CellOperation> {
+  return record(
+    draft,
+    offered.map((operation) => ({
+      operation,
+      original: cellOf(layout, operation.id),
+    })),
+  );
+}
+
 // Typed text follows spreadsheet entry: "=" starts a formula, a leading
 // apostrophe keeps the rest as text, and numbers and booleans are typed. A
 // number JavaScript cannot hold exactly, or one written with leading zeros,

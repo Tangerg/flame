@@ -105,12 +105,12 @@ export class DraftStore<Format extends DraftFormat> {
       : undefined;
   }
 
-  update(id: string, mutate: DraftUpdate<DraftOperation<Format>>): boolean {
+  update(id: string, mutate: DraftUpdate<DraftOperation<Format>>): void {
     // A command updates the latest value for this document. A render snapshot
     // can outlive a different window's edit or a delayed save acknowledgement.
     const current = this.get(id);
     const draft = draftOrAbsent(mutate(current));
-    if (draft === current) return false;
+    if (draft === current) return;
     const key = this.#prefix + id;
     const encoded = draft ? JSON.stringify(draft) : null;
     try {
@@ -122,6 +122,5 @@ export class DraftStore<Format extends DraftFormat> {
       this.#observed.set(id, { kind: "volatile", draft });
     }
     this.#publish();
-    return true;
   }
 }

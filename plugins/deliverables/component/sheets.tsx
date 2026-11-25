@@ -32,6 +32,7 @@ import type { Focus } from "./targets";
 import {
   cellId,
   entryText,
+  mergeSuggestion,
   parseEntry,
   reconcile,
   record,
@@ -248,7 +249,7 @@ export function WorkbookStudio({
   state: LiveState;
   document: DocumentRead;
   draft: Draft<CellOperation> | undefined;
-  onDraft(update: DraftUpdate<CellOperation>): boolean;
+  onDraft(update: DraftUpdate<CellOperation>): void;
   link?: Focus;
   dateTime: Intl.DateTimeFormat;
   t: Translate;
@@ -363,6 +364,7 @@ export function WorkbookStudio({
       <Suggestions
         state={state}
         live={live}
+        merge={mergeSuggestion}
         describe={(operation) =>
           `${describeCellOperation(layout, operation, t)} = ${entryText(operation.value)}`
         }

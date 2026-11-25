@@ -7,7 +7,15 @@ import type {
   DocumentLayout,
   ParagraphView,
 } from "../contracts/layouts";
-import { edited, same, type Draft, type Reconciliation } from "./live-draft";
+import {
+  edited,
+  fieldTarget,
+  mergeDraftEdits,
+  same,
+  type Draft,
+  type EditTarget,
+  type Reconciliation,
+} from "./live-draft";
 
 export type DocOperation = DraftOperation<"docx">;
 type Of<T extends DocOperation["type"]> = Extract<DocOperation, { type: T }>;
@@ -129,17 +137,45 @@ export function setStyle(
   );
 }
 
-// Deleting a block retires edits inside it, which would overlap the deletion.
+function mergeDocumentEdits(
+  draft: Draft<DocOperation>,
+  blocks: readonly BlockView[],
+  incoming: DocOperation[],
+): Draft<DocOperation> {
+  const parents = new Map(
+    blocks.flatMap((block): [string, string][] =>
+      block.kind === "paragraph"
+        ? block.runs.map((run) => [run.id, block.id])
+        : [],
+    ),
+  );
+  return mergeDraftEdits(draft, incoming, (operation): EditTarget | undefined => {
+    switch (operation.type) {
+      case "insertParagraph":
+        return undefined;
+      case "deleteBlock":
+        return { kind: "object", owner: operation.id };
+      case "replaceText":
+        return fieldTarget(operation, parents.get(operation.id));
+      case "setParagraphStyle":
+        return fieldTarget(operation);
+    }
+  });
+}
+
+export function mergeSuggestion(
+  draft: Draft<DocOperation>,
+  layout: DocumentLayout,
+  offered: DocOperation[],
+): Draft<DocOperation> {
+  return mergeDocumentEdits(draft, layout.blocks, offered);
+}
+
 export function remove(
   draft: Draft<DocOperation>,
   block: BlockView,
 ): Draft<DocOperation> {
-  const inside = (operation: DocOperation) =>
-    targets(operation, block.id) ||
-    (block.kind === "paragraph" &&
-      block.runs.some((run) => targets(operation, run.id)));
-  return commit(draft, [
-    ...draft.operations.filter((operation) => !inside(operation)),
+  return mergeDocumentEdits(draft, [block], [
     { type: "deleteBlock", id: block.id, expect: block.expect },
   ]);
 }

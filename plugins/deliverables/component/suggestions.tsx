@@ -17,34 +17,17 @@ import { edited, type Draft } from "./live-draft";
 import type { LiveEditor, LiveState } from "./live";
 import type { Suggestion } from "./types";
 
-// Adopted edits join the draft against the revision the suggestion was made
-// on, replacing the draft's own edit of the same target; a draft on another
-// revision has to be saved or discarded first.
-function merge<Operation>(
-  current: Draft<Operation> | undefined,
-  base: string,
-  adopted: Operation[],
-): Draft<Operation> {
-  if (!current?.operations.length)
-    return { base, operations: adopted, undo: [] };
-  const key = (operation: Operation) => {
-    const { type, id } = operation as { type: string; id?: string };
-    return id === undefined ? undefined : `${type} ${id}`;
-  };
-  const replaced = new Set(adopted.map(key));
-  return edited(current, [
-    ...current.operations.filter((operation) => {
-      const target = key(operation);
-      return target === undefined || !replaced.has(target);
-    }),
-    ...adopted,
-  ]);
-}
+type SuggestionMerge<Layout, Operation> = (
+  draft: Draft<Operation>,
+  layout: Layout,
+  offered: Operation[],
+) => Draft<Operation>;
 
 function SuggestionCard<T, Operation>({
   state,
   live,
   suggestion,
+  merge,
   describe,
   dateTime,
   t,
@@ -52,6 +35,7 @@ function SuggestionCard<T, Operation>({
   state: LiveState;
   live: LiveEditor<T, Operation>;
   suggestion: Suggestion;
+  merge: SuggestionMerge<T, Operation>;
   describe(operation: Operation): string;
   dateTime: Intl.DateTimeFormat;
   t: Translate;
@@ -71,6 +55,13 @@ function SuggestionCard<T, Operation>({
   const draft = live.draft;
   const elsewhere =
     !!draft?.operations.length && draft.base !== suggestion.revision;
+  const projection =
+    live.viewed === suggestion.revision
+      ? live.read?.value
+      : live.pending === suggestion.revision
+        ? live.baseRead?.value
+        : undefined;
+  const needsProjection = !!draft?.operations.length && projection === undefined;
   const settle = (outcome: "adopted" | "dismissed") =>
     state.run(METHODS.settle, {
       id: suggestion.documentId,
@@ -102,15 +93,24 @@ function SuggestionCard<T, Operation>({
       <Toolbar label={t("suggestions.actions")}>
         <Button
           variant="primary"
-          disabled={state.blocked || elsewhere || !chosen.size}
+          disabled={state.blocked || elsewhere || needsProjection || !chosen.size}
           onClick={() => {
-            const adopted = operations.filter((_, index) => chosen.has(index));
-            const applied = live.setDraft((current) =>
-              current?.operations.length && current.base !== suggestion.revision
-                ? current
-                : merge(current, suggestion.revision, adopted),
-            );
-            if (applied) void settle("adopted");
+            const offered = operations.filter((_, index) => chosen.has(index));
+            const base = suggestion.revision;
+            let accepted = false;
+            live.setDraft((current) => {
+              if (current?.operations.length) {
+                if (current.base !== base || projection === undefined)
+                  return current;
+                accepted = true;
+                return merge(current, projection, offered);
+              }
+              accepted = true;
+              return current?.base === base
+                ? edited(current, offered)
+                : { base, operations: offered, undo: [] };
+            });
+            if (accepted) void settle("adopted");
           }}
         >
           {t("suggestions.adopt")}
@@ -132,12 +132,14 @@ function SuggestionCard<T, Operation>({
 export function Suggestions<T, Operation>({
   state,
   live,
+  merge,
   describe,
   dateTime,
   t,
 }: {
   state: LiveState;
   live: LiveEditor<T, Operation>;
+  merge: SuggestionMerge<T, Operation>;
   describe(operation: Operation): string;
   dateTime: Intl.DateTimeFormat;
   t: Translate;
@@ -159,6 +161,7 @@ export function Suggestions<T, Operation>({
           state={state}
           live={live}
           suggestion={suggestion}
+          merge={merge}
           describe={describe}
           dateTime={dateTime}
           t={t}

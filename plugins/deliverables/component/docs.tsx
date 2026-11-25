@@ -24,6 +24,7 @@ import type { Focus } from "./targets";
 import {
   blockText,
   insert,
+  mergeSuggestion,
   preview,
   reconcile,
   styleOf,
@@ -176,7 +177,7 @@ export function DocumentStudio({
   state: LiveState;
   document: DocumentRead;
   draft: Draft<DocOperation> | undefined;
-  onDraft(update: DraftUpdate<DocOperation>): boolean;
+  onDraft(update: DraftUpdate<DocOperation>): void;
   link?: Focus;
   dateTime: Intl.DateTimeFormat;
   t: Translate;
@@ -250,6 +251,7 @@ export function DocumentStudio({
       <Suggestions
         state={state}
         live={live}
+        merge={mergeSuggestion}
         describe={(operation) => describeDocOperation(operation, t)}
         dateTime={dateTime}
         t={t}

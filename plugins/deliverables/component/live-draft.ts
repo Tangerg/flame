@@ -12,6 +12,42 @@ export type DraftUpdate<Operation> = (
   current: Draft<Operation> | undefined,
 ) => Draft<Operation> | undefined;
 
+export type EditTarget =
+  | { kind: "object"; owner: string }
+  | { kind: "field"; owner: string; type: string; id: string };
+
+export function fieldTarget(
+  edit: { type: string; id: string },
+  owner = edit.id,
+): EditTarget {
+  return { kind: "field", owner, type: edit.type, id: edit.id };
+}
+
+export function mergeDraftEdits<Operation>(
+  draft: Draft<Operation>,
+  incoming: Operation[],
+  targetOf: (operation: Operation) => EditTarget | undefined,
+): Draft<Operation> {
+  const targets = incoming.map(targetOf).filter((target) => target !== undefined);
+  const operations = [
+    ...draft.operations.filter((operation) => {
+      const prior = targetOf(operation);
+      return (
+        !prior ||
+        !targets.some(
+          (next) =>
+            next.owner === prior.owner &&
+            (next.kind === "object" ||
+              prior.kind === "object" ||
+              (next.type === prior.type && next.id === prior.id)),
+        )
+      );
+    }),
+    ...incoming,
+  ];
+  return same(operations, draft.operations) ? draft : edited(draft, operations);
+}
+
 export type ReconciliationStatus = "clean" | "applied" | "conflict" | "missing";
 
 export interface Reconciliation<Operation> {

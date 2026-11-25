@@ -129,9 +129,10 @@ exact revision it read, instead of changing the document. The native format
 process admits the editor's staged operations and requires each text run to
 appear in that revision's editor projection. It then tests the complete edit
 against the native bytes without publishing a revision. The person picks edits
-and adopts them into the local draft, where
-they review and save as usual; adopting replaces the draft's own edit of the
-same target. A suggestion on an earlier revision becomes a draft on that
+and adopts them into the local draft, where they review and save as usual.
+Adoption replaces overlapping edits at the exact revision. A deletion covers
+the entire object and its editable contents. Undo restores the previous draft.
+A suggestion on an earlier revision becomes a draft on that
 revision and reaches the head through the draft's reconciliation; a draft on
 another revision has to be saved or discarded first. Adopting or dismissing
 settles the suggestion once, and the model can read the outcome.

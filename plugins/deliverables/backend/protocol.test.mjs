@@ -25,6 +25,7 @@ import { digest } from "./document";
 import { inspectFile } from "./formats";
 import { OfficePackage } from "./formats/archive";
 import { LIMITS } from "../contracts/limits";
+import { mergeSuggestion as adoptDocumentSuggestion } from "../component/docs-draft";
 const bundlePreparationTimeoutMilliseconds = 60_000;
 const requestTimeoutMilliseconds = 90_000;
 const scenarioTimeoutMilliseconds = 90_000;
@@ -1288,6 +1289,77 @@ it(
         limit: 8,
       })).entries,
     ).toEqual([]);
+  },
+  scenarioTimeoutMilliseconds,
+);
+it(
+  "adopting a block deletion replaces its draft edits and keeps independent intent",
+  async ({ backend }) => {
+    const created = await backend.invoke(METHODS.create, {
+      title: "Meeting notes",
+      format: "docx",
+      contentJSON: JSON.stringify({
+        title: "Meeting notes",
+        blocks: [
+          { type: "paragraph", runs: [{ text: "Remove this paragraph." }] },
+          { type: "paragraph", runs: [{ text: "Keep this paragraph." }] },
+        ],
+      }),
+      provenance,
+    });
+    const id = created.documentId;
+    const revision = created.id;
+    const layout = JSON.parse(
+      (await backend.invoke(METHODS.blocks, { id, revision })).layoutJSON,
+    );
+    const removed = layout.blocks.find((block) =>
+      block.runs?.some((run) => run.text === "Remove this paragraph."),
+    );
+    const kept = layout.blocks.find((block) =>
+      block.runs?.some((run) => run.text === "Keep this paragraph."),
+    );
+    const replace = (run, text) => ({
+      type: "replaceText",
+      id: run.id,
+      expect: run.text,
+      text,
+    });
+    const draft = {
+      base: revision,
+      operations: [
+        replace(removed.runs[0], "Still editing the paragraph."),
+        replace(kept.runs[0], "Keep this independent draft edit."),
+      ],
+      undo: [],
+    };
+    const suggested = await backend.tool("suggest", {
+      id,
+      revision,
+      note: "Remove the first paragraph.",
+      operationsJSON: JSON.stringify({
+        operations: [
+          { type: "deleteBlock", id: removed.id, expect: removed.expect },
+        ],
+      }),
+    });
+    expect(suggested.isError, JSON.stringify(suggested)).not.toBe(true);
+    const operations = JSON.parse(
+      suggested.structuredContent.value.operationsJSON,
+    ).operations;
+    const adopted = adoptDocumentSuggestion(draft, layout, operations);
+    const saved = await backend.invoke(METHODS.edit, {
+      id,
+      expectedRevision: adopted.base,
+      operationsJSON: JSON.stringify({ operations: adopted.operations }),
+    });
+    expect(adopted.undo).toEqual([draft.operations]);
+    const updated = await backend.invoke(METHODS.blocks, { id, revision: saved.id });
+    const after = JSON.parse(updated.layoutJSON).blocks.flatMap(
+      (block) => block.runs?.map((run) => run.text) ?? [],
+    );
+    expect(after).toContain("Keep this independent draft edit.");
+    expect(after).not.toContain("Still editing the paragraph.");
+    expect(after).not.toContain("Remove this paragraph.");
   },
   scenarioTimeoutMilliseconds,
 );

@@ -332,8 +332,9 @@ function useDocumentDraft<Format extends DraftFormat>(
   );
   return {
     draft,
-    onDraft: (update: DraftUpdate<DraftOperation<Format>>) =>
-      id !== undefined && store.update(id, update),
+    onDraft: (update: DraftUpdate<DraftOperation<Format>>) => {
+      if (id !== undefined) store.update(id, update);
+    },
   };
 }
 

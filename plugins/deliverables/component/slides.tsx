@@ -22,7 +22,13 @@ import {
   type LiveEditor,
   type LiveState,
 } from "./live";
-import { preview, record, revert, type SlideOperation } from "./slides-draft";
+import {
+  mergeSuggestion,
+  preview,
+  record,
+  revert,
+  type SlideOperation,
+} from "./slides-draft";
 import {
   describeSlideObject,
   label,
@@ -98,7 +104,7 @@ export function SlideStudio({
   state: LiveState;
   document: DocumentRead;
   draft: Draft<SlideOperation> | undefined;
-  onDraft(update: DraftUpdate<SlideOperation>): boolean;
+  onDraft(update: DraftUpdate<SlideOperation>): void;
   link?: Focus;
   dateTime: Intl.DateTimeFormat;
   t: Translate;
@@ -227,6 +233,7 @@ export function SlideStudio({
       <Suggestions
         state={state}
         live={live}
+        merge={mergeSuggestion}
         describe={(operation) =>
           describeSlideOperation(operation, savedLayout, t)
         }

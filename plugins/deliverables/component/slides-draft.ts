@@ -1,6 +1,14 @@
 import type { DraftOperation } from "../contracts/content";
 import type { ElementView, SlideLayout } from "../contracts/layouts";
-import { edited, same, type Draft, type Reconciliation } from "./live-draft";
+import {
+  edited,
+  fieldTarget,
+  mergeDraftEdits,
+  same,
+  type Draft,
+  type EditTarget,
+  type Reconciliation,
+} from "./live-draft";
 
 export type SlideOperation = DraftOperation<"pptx">;
 
@@ -21,28 +29,44 @@ function expected(operation: SlideOperation): unknown {
   return "expect" in operation ? operation.expect : undefined;
 }
 
+function editTarget(operation: SlideOperation, parent?: string): EditTarget {
+  return operation.type === "deleteElement"
+    ? { kind: "object", owner: operation.id }
+    : fieldTarget(operation, parent);
+}
+
+export function mergeSuggestion(
+  draft: Draft<SlideOperation>,
+  layout: SlideLayout,
+  offered: SlideOperation[],
+): Draft<SlideOperation> {
+  const owners = runOwners(layout);
+  return mergeDraftEdits(draft, offered, (operation) =>
+    editTarget(operation, owners.get(operation.id)?.owner),
+  );
+}
+
 export function record(
   draft: Draft<SlideOperation>,
   next: SlideOperation,
   element?: ElementView,
 ): Draft<SlideOperation> {
-  let operations = draft.operations;
-  if (next.type === "deleteElement" && element) {
-    const runs = new Set(element.text.map((run) => run.id));
-    operations = operations.filter(
-      (operation) => operation.id !== element.id && !runs.has(operation.id),
-    );
-  }
-  const prior = operations.find(
+  const runs = new Set(element?.text.map((run) => run.id));
+  const prior = draft.operations.find(
     (operation) => operation.type === next.type && operation.id === next.id,
   );
   const merged = (
     prior && "expect" in prior ? { ...next, expect: prior.expect } : next
   ) as SlideOperation;
-  const remaining = operations.filter((operation) => operation !== prior);
   const unchanged =
     merged.type !== "deleteElement" && same(expected(merged), target(merged));
-  return edited(draft, unchanged ? remaining : [...remaining, merged]);
+  if (unchanged)
+    return prior
+      ? edited(draft, draft.operations.filter((operation) => operation !== prior))
+      : draft;
+  return mergeDraftEdits(draft, [merged], (operation) =>
+    editTarget(operation, runs.has(operation.id) ? element?.id : undefined),
+  );
 }
 
 export function revert(

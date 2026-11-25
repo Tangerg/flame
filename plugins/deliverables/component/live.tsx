@@ -218,7 +218,7 @@ export function useLiveEditor<T, Operation>(
   }: {
     document: DocumentRead;
     draft: Draft<Operation> | undefined;
-    onDraft(update: DraftUpdate<Operation>): boolean;
+    onDraft(update: DraftUpdate<Operation>): void;
     method: ProjectionMethod;
     schema: z.ZodType<T>;
     holding: boolean;
