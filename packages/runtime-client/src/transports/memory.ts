@@ -5,12 +5,12 @@ import type {
   TransportRequest,
   TransportResponseMetadata,
 } from "../transport";
-import type { WireMethodName, WireStreamingMethodName } from "@flame/runtime-client/methods";
+import type { WireMethodName } from "@flame/runtime-client/methods";
 import { isResponse, type RpcId, type RpcMessage } from "../types";
 
 export interface MemoryTransport extends Transport {
   inject(msg: RpcMessage, metadata?: TransportResponseMetadata, requestRpcId?: RpcId): void;
-  endStream(method: WireStreamingMethodName, requestRpcId: RpcId): void;
+  endStream(requestRpcId: RpcId): void;
   outbox(): TransportRequest[];
   waitForRequest<M extends WireMethodName>(
     method: M,
@@ -50,9 +50,9 @@ export function createMemoryTransport(): MemoryTransport {
         metadata,
       });
     },
-    endStream(method, requestRpcId) {
+    endStream(requestRpcId) {
       if (channel.closed) throw new Error("transport closed");
-      channel.push({ type: "streamEnd", method, requestRpcId });
+      channel.push({ type: "streamEnd", requestRpcId });
     },
     outbox() {
       return [...sent];

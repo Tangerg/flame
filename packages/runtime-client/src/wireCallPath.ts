@@ -29,7 +29,7 @@ import {
 type WirePerform = <M extends WireMethodName>(
   method: M,
   params: WireParams<M>,
-  options?: RpcCallOptions,
+  options?: RpcCallOptions<WireResult<M>>,
 ) => Promise<WireResult<M>>;
 
 type WireInvokeResult<M extends WireMethodName> = M extends WireMutationMethodName
@@ -39,7 +39,7 @@ type WireInvokeResult<M extends WireMethodName> = M extends WireMutationMethodNa
 type WireInvoke = <M extends WireMethodName>(
   method: M,
   params: WireParams<M>,
-  options?: RpcCallOptions,
+  options?: RpcCallOptions<WireResult<M>>,
 ) => WireInvokeResult<M>;
 
 type PaginatedWireCall<M extends WirePaginatedMethodName> =
@@ -54,7 +54,7 @@ type WireCallResult<M extends WireMethodName> = M extends WirePaginatedMethodNam
 export type WireCall = <M extends WireMethodName>(
   method: M,
   params: WireParams<M>,
-  options?: RpcCallOptions,
+  options?: RpcCallOptions<WireResult<M>>,
 ) => WireCallResult<M>;
 
 export interface MethodsOptions {
@@ -213,7 +213,7 @@ export function createWireCallPath(
   const invoke = (<M extends WireMethodName>(
     method: M,
     params: WireParams<M>,
-    callOptions?: RpcCallOptions,
+    callOptions?: RpcCallOptions<WireResult<M>>,
   ): WireInvokeResult<M> => {
     if (!requestRequiresIdempotency(method, params)) {
       return perform(method, params, callOptions) as WireInvokeResult<M>;
@@ -240,7 +240,7 @@ export function createWireCallPath(
   const call = (<M extends WireMethodName>(
     method: M,
     params: WireParams<M>,
-    callOptions?: RpcCallOptions,
+    callOptions?: RpcCallOptions<WireResult<M>>,
   ): WireCallResult<M> => {
     if (wireMethodIsPaginated(method)) {
       const query = checkRequest(method, cloneJSON(params));

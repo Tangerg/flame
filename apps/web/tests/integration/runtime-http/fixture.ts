@@ -274,8 +274,8 @@ export function useRuntimeFixture(suite: string) {
     await within(exited, "Runtime SIGKILL exit");
   };
 
-  const createRuntimeClient = () =>
-    createFlameClient(createHttpTransport({ baseUrl }), {
+  const createRuntimeClient = (fetch?: typeof globalThis.fetch) =>
+    createFlameClient(createHttpTransport({ baseUrl, fetch }), {
       capabilities: () => negotiated,
       requestMeta: () => ({
         protocolVersion: PROTOCOL_VERSION,

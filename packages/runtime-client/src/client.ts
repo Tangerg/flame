@@ -17,12 +17,7 @@ import {
   type ProblemData,
   type RequestMeta,
 } from "@flame/runtime-client/wire";
-import type {
-  Transport,
-  TransportEvent,
-  TransportRequest,
-  TransportResponseMetadata,
-} from "./transport";
+import type { Transport, TransportRequest, TransportResponseMetadata } from "./transport";
 import {
   wireAcknowledgementCheck,
   wireMethodAcceptsReplayCursor,
@@ -43,15 +38,82 @@ import {
   type WireNotificationName,
   type WireNotificationParams,
 } from "./generated/wire.validate.generated";
-import type { RpcId, RpcMessage, RpcResponse } from "./types";
+import type { RpcId, RpcMessage, RpcNotification, RpcResponse } from "./types";
 import { JSONRPC_VERSION, isErrorResponse, isNotification, isResponse } from "./types";
 
-export interface NotificationObserver<M extends WireNotificationName = WireNotificationName> {
-  next(params: WireNotificationParams[M], requestRpcId: RpcId): void | Promise<void>;
-  error(error: RpcProtocolError | RpcTransportError, requestRpcId?: RpcId): void;
+interface StreamConsumer<M extends WireNotificationName> {
+  next(params: WireNotificationParams[M]): void | Promise<void>;
+  fail(error: Error): void;
+  end(error?: Error): void;
 }
 
-export type StreamEndHandler = (event: Extract<TransportEvent, { type: "streamEnd" }>) => void;
+export interface StreamObservation {
+  deliver(message: RpcNotification, metadata?: TransportResponseMetadata): void | Promise<void>;
+  end(error?: Error): void;
+}
+
+export function observeNotifications<M extends WireNotificationName>(
+  method: M,
+  consumer: StreamConsumer<M>,
+): StreamObservation {
+  return {
+    deliver(message, metadata) {
+      if (!isWireNotificationName(message.method)) return;
+      if (message.method !== method) {
+        consumer.fail(
+          new RpcProtocolError(
+            method,
+            [{ path: "$.method", detail: "does not match the request's notification method" }],
+            metadata?.requestId,
+          ),
+        );
+        return;
+      }
+
+      let params: WireNotificationParams[M];
+      try {
+        const violations = validateNotificationParams(method, message.params);
+        if (violations.length > 0)
+          throw new RpcProtocolError(`${method} params`, violations, metadata?.requestId);
+        params = projectNotificationParams(method, message.params) as WireNotificationParams[M];
+      } catch (cause) {
+        const failure =
+          cause instanceof RpcProtocolError
+            ? cause
+            : protocolFailure(
+                `${method} params`,
+                "number cannot be represented by the typed wire projection",
+                metadata?.requestId,
+                cause,
+              );
+        if (
+          method === NOTIFICATIONS_RUN_EVENT &&
+          runEventReliability(notificationEventType(message.params)) === "ephemeral"
+        ) {
+          console.warn(`[rpc] dropping invalid ephemeral notification: ${failure.message}`);
+        } else {
+          consumer.fail(failure);
+        }
+        return;
+      }
+
+      const failDelivery = (cause: unknown) => {
+        const failure = new RpcConnectionError(
+          `notification consumer failed: ${errorMessage(cause)}`,
+          metadata?.requestId,
+        );
+        failure.cause = cause;
+        consumer.fail(failure);
+      };
+      try {
+        return consumer.next(params)?.catch(failDelivery);
+      } catch (cause) {
+        failDelivery(cause);
+      }
+    },
+    end: consumer.end,
+  };
+}
 
 function notificationEventType(params: unknown): unknown {
   if (params === null || typeof params !== "object" || Array.isArray(params)) return undefined;
@@ -64,47 +126,50 @@ export interface RpcClientOptions {
   requestMeta?: () => RequestMeta | undefined;
 }
 
-export interface RpcCallOptions {
+export interface RpcCallOptions<Result = unknown> {
   signal?: AbortSignal;
   idempotencyKey?: string;
   idempotencyNamespace?: string;
   lastEventId?: string;
   requestMeta?: RequestMeta | null;
-  onRequestRpcId?: (id: RpcId) => void;
+  observe?: (result: Result) => StreamObservation;
   // Durable command admission must finish before transport can observe the request.
   beforeDispatch?: () => void;
 }
 
 export interface RpcClient {
-  readonly closedSignal: AbortSignal;
   call<M extends WireMethodName>(
     method: M,
     params: WireParams<M>,
-    options?: RpcCallOptions,
+    options?: RpcCallOptions<WireResult<M>>,
   ): Promise<WireResult<M>>;
   callJSON<M extends WireMethodName>(
     method: M,
     params: WireParams<M>,
     options?: Pick<RpcCallOptions, "signal" | "requestMeta">,
   ): Promise<string>;
-  subscribe<M extends WireNotificationName>(
-    method: M,
-    observer: NotificationObserver<M>,
-  ): () => void;
-  onStreamEnd(handler: StreamEndHandler): () => void;
   close(): Promise<void>;
 }
 
 // A query result is delivered as its projected value or as its exact JSON text.
 type ResultDelivery = "value" | "json";
 
-interface Pending {
+interface AwaitingResponse {
+  state: "awaiting";
   method: WireMethodName;
   delivery: ResultDelivery;
   acknowledgement: ReturnType<typeof wireAcknowledgementCheck>;
   resolve: (value: unknown) => void;
   reject: (err: unknown) => void;
 }
+
+interface ObservingStream {
+  state: "observing";
+  observation: StreamObservation;
+  detach: () => void;
+}
+
+type RequestState = AwaitingResponse | ObservingStream;
 
 type ErrorPayload = Extract<RpcResponse, { error: unknown }>["error"];
 
@@ -140,7 +205,7 @@ function problemViolations(method: WireMethodName, payload: ErrorPayload) {
 }
 
 function rejectWithProblem(
-  entry: Pending,
+  entry: AwaitingResponse,
   payload: ErrorPayload,
   requestId: string | undefined,
 ): void {
@@ -168,7 +233,11 @@ function rejectWithProblem(
   );
 }
 
-function settleResult(entry: Pending, result: unknown, requestId: string | undefined): void {
+function settleResult(
+  entry: AwaitingResponse,
+  result: unknown,
+  requestId: string | undefined,
+): void {
   let violations;
   try {
     violations = validateMethodResult(entry.method, result);
@@ -223,7 +292,7 @@ function settleResult(entry: Pending, result: unknown, requestId: string | undef
 function assertCallOptions<M extends WireMethodName>(
   method: M,
   params: WireParams<M>,
-  callOptions: RpcCallOptions,
+  callOptions: RpcCallOptions<WireResult<M>>,
   delivery: ResultDelivery,
 ): void {
   const requiresIdempotency = requestRequiresIdempotency(method, params);
@@ -232,6 +301,8 @@ function assertCallOptions<M extends WireMethodName>(
     (requiresIdempotency || isWireStreamingMethodName(method) || !wireMethodReturnsValue(method))
   )
     throw new TypeError("exact JSON delivery requires a unary query result");
+  if (callOptions.observe && !isWireStreamingMethodName(method))
+    throw new TypeError("notification observation requires a streaming method");
   if (callOptions.idempotencyKey !== undefined && !requiresIdempotency) {
     throw new TypeError(`${method} does not accept an idempotency key`);
   }
@@ -270,43 +341,80 @@ function assertReplayCursor(
 
 export function createRpcClient(transport: Transport, options: RpcClientOptions = {}): RpcClient {
   let lastRequestId = 0n;
-  const pending = new Map<RpcId, Pending>();
-  const subscribers = new Map<WireNotificationName, Set<NotificationObserver>>();
-  const streamEndHandlers = new Set<StreamEndHandler>();
+  const requests = new Map<RpcId, RequestState>();
   const consumers = new Set<Promise<void>>();
   const observerFailures: unknown[] = [];
-  const connection = new AbortController();
+  let connectionFailure: RpcTransportError | undefined;
   let closePromise: Promise<void> | undefined;
 
   function requireOpen(): void {
-    if (connection.signal.aborted) throw new RpcTransportError("client closed");
+    if (connectionFailure) throw connectionFailure;
   }
 
-  function failAllPending(failure: RpcTransportError): void {
-    for (const { reject } of pending.values()) reject(failure);
-    pending.clear();
+  function endRequest(
+    request: RequestState,
+    error?: Error,
+    metadata?: TransportResponseMetadata,
+  ): void {
+    if (request.state === "awaiting") {
+      request.reject(
+        error ??
+          new RpcTransportError(
+            "event stream ended before the call's response",
+            undefined,
+            metadata?.requestId,
+          ),
+      );
+      return;
+    }
+    request.detach();
+    try {
+      request.observation.end(error);
+    } catch (cause) {
+      observerFailures.push(cause);
+    }
   }
 
   function failConnection(failure: RpcTransportError): void {
-    if (connection.signal.aborted) return;
-    const observers = [...subscribers.values()].flatMap((values) => [...values]);
-    subscribers.clear();
-    streamEndHandlers.clear();
-    connection.abort(failure);
-    failAllPending(failure);
-    for (const observer of observers) {
-      try {
-        observer.error(failure);
-      } catch (cause) {
-        observerFailures.push(cause);
-      }
-    }
+    if (connectionFailure) return;
+    connectionFailure = failure;
+    const outstanding = [...requests.values()];
+    requests.clear();
+    for (const request of outstanding) endRequest(request, failure);
   }
 
   const receiveLoop = (async () => {
     try {
       for await (const event of transport.recv()) {
-        dispatchInbound(event);
+        const request = requests.get(event.requestRpcId);
+        if (event.type === "streamEnd") {
+          if (request) {
+            requests.delete(event.requestRpcId);
+            endRequest(request, event.error, event.metadata);
+          }
+          continue;
+        }
+
+        let delivered: void | Promise<void>;
+        try {
+          delivered =
+            request && dispatchMessage(request, event.message, event.requestRpcId, event.metadata);
+        } catch (cause) {
+          event.consumed?.(Promise.reject(cause));
+          throw cause;
+        }
+        if (delivered) {
+          consumers.add(delivered);
+          void delivered.then(
+            () => consumers.delete(delivered),
+            () => consumers.delete(delivered),
+          );
+        }
+        if (event.consumed) event.consumed(delivered ?? Promise.resolve());
+        else if (delivered)
+          void delivered.catch((cause: unknown) =>
+            failConnection(new RpcConnectionError(errorMessage(cause))),
+          );
       }
       failConnection(new RpcTransportError("transport stream ended"));
     } catch (err) {
@@ -314,137 +422,55 @@ export function createRpcClient(transport: Transport, options: RpcClientOptions 
     }
   })();
 
-  function dispatchInbound(event: TransportEvent): void {
-    if (event.type === "requestError") {
-      const entry = pending.get(event.rpcId);
-      if (!entry) return;
-      pending.delete(event.rpcId);
-      entry.reject(event.error);
-      return;
-    }
-    if (event.type === "streamEnd") {
-      for (const handler of streamEndHandlers) handler(event);
-      return;
-    }
-    let delivery: Promise<void> | undefined;
-    try {
-      delivery = dispatchMessage(event.message, event.requestRpcId, event.metadata);
-    } catch (cause) {
-      event.consumed?.(Promise.reject(cause));
-      throw cause;
-    }
-    if (event.consumed) event.consumed(delivery ?? Promise.resolve());
-    else if (delivery)
-      void delivery.catch((cause: unknown) =>
-        failConnection(new RpcConnectionError(errorMessage(cause))),
-      );
-  }
-
-  function dispatchResponse(
-    msg: RpcResponse,
-    requestRpcId: RpcId,
-    metadata?: TransportResponseMetadata,
-  ): void {
-    const entry = pending.get(requestRpcId);
-    if (!entry) return;
-    pending.delete(requestRpcId);
-    const requestId = metadata?.requestId;
-    if (msg.id !== requestRpcId) {
-      entry.reject(
-        new RpcProtocolError(
-          `${entry.method} response`,
-          [
-            {
-              path: `${entry.method}.response.id`,
-              detail: `must match request id ${requestRpcId}`,
-            },
-          ],
-          requestId,
-        ),
-      );
-      return;
-    }
-    if (isErrorResponse(msg)) rejectWithProblem(entry, msg.error, requestId);
-    else settleResult(entry, msg.result, requestId);
-  }
-
   function dispatchMessage(
-    msg: RpcMessage,
+    request: RequestState,
+    message: RpcMessage,
     requestRpcId: RpcId,
     metadata?: TransportResponseMetadata,
-  ): Promise<void> | undefined {
-    if (isResponse(msg)) {
-      dispatchResponse(msg, requestRpcId, metadata);
+  ): void | Promise<void> {
+    if (isResponse(message)) {
+      if (request.state !== "awaiting") return;
+      if (message.id !== requestRpcId) {
+        request.reject(
+          new RpcProtocolError(
+            `${request.method} response`,
+            [
+              {
+                path: `${request.method}.response.id`,
+                detail: `must match request id ${requestRpcId}`,
+              },
+            ],
+            metadata?.requestId,
+          ),
+        );
+      } else if (isErrorResponse(message)) {
+        rejectWithProblem(request, message.error, metadata?.requestId);
+      } else {
+        settleResult(request, message.result, metadata?.requestId);
+      }
       return;
     }
-    if (isNotification(msg)) {
-      if (!isWireNotificationName(msg.method)) return;
-      const handlers = subscribers.get(msg.method);
-      if (!handlers) return;
-      let params: WireNotificationParams[typeof msg.method] | undefined;
-      let violations;
-      try {
-        violations = validateNotificationParams(msg.method, msg.params);
-        if (violations.length === 0)
-          params = projectNotificationParams(
-            msg.method,
-            msg.params,
-          ) as WireNotificationParams[typeof msg.method];
-      } catch {
-        violations = [
-          { path: "$", detail: "number cannot be represented by the typed wire projection" },
-        ];
-      }
-      if (violations.length > 0) {
-        const failure = new RpcProtocolError(
-          `${msg.method} params`,
-          violations,
-          metadata?.requestId,
+
+    if (isNotification(message)) {
+      if (request.state === "observing") return request.observation.deliver(message, metadata);
+      if (isWireStreamingMethodName(request.method) && isWireNotificationName(message.method)) {
+        request.reject(
+          new RpcProtocolError(
+            `${request.method} response`,
+            [{ path: "$", detail: "must precede stream notifications" }],
+            metadata?.requestId,
+          ),
         );
-        if (
-          msg.method === NOTIFICATIONS_RUN_EVENT &&
-          runEventReliability(notificationEventType(msg.params)) === "ephemeral"
-        ) {
-          console.warn(`[rpc] dropping invalid ephemeral notification: ${failure.message}`);
-          return;
-        }
-        for (const observer of handlers) observer.error(failure, requestRpcId);
-        return;
       }
-      const deliveries: Promise<void>[] = [];
-      for (const observer of handlers) {
-        try {
-          const delivery = observer.next(params!, requestRpcId);
-          if (delivery) {
-            const consumed = delivery.catch((cause: unknown) => {
-              observer.error(
-                new RpcConnectionError(`notification consumer failed: ${errorMessage(cause)}`),
-                requestRpcId,
-              );
-            });
-            consumers.add(consumed);
-            void consumed.then(
-              () => consumers.delete(consumed),
-              () => consumers.delete(consumed),
-            );
-            deliveries.push(consumed);
-          }
-        } catch (err) {
-          observer.error(
-            new RpcConnectionError(`notification consumer failed: ${errorMessage(err)}`),
-            requestRpcId,
-          );
-        }
-      }
-      return Promise.all(deliveries).then(() => undefined);
+      return;
     }
-    console.warn("[rpc] dropping unexpected server-initiated Request", msg);
+    console.warn("[rpc] dropping unexpected server-initiated Request", message);
   }
 
   async function request<M extends WireMethodName>(
     method: M,
     params: WireParams<M>,
-    callOptions: RpcCallOptions = {},
+    callOptions: RpcCallOptions<WireResult<M>> = {},
     delivery: ResultDelivery = "value",
   ): Promise<WireResult<M> | string> {
     requireOpen();
@@ -453,8 +479,6 @@ export function createRpcClient(transport: Transport, options: RpcClientOptions 
       callOptions.requestMeta === undefined ? options.requestMeta?.() : callOptions.requestMeta;
     checkRequest(method, params, requestMeta);
     const id = (++lastRequestId).toString();
-    callOptions.onRequestRpcId?.(id);
-    requireOpen();
     const req: TransportRequest = {
       jsonrpc: JSONRPC_VERSION,
       id,
@@ -463,27 +487,40 @@ export function createRpcClient(transport: Transport, options: RpcClientOptions 
     };
 
     return new Promise<WireResult<M> | string>((resolve, reject) => {
-      const { signal } = callOptions;
-      const rejectPending = (error: unknown) => {
-        const request = pending.get(id);
-        if (!request) return;
-        pending.delete(id);
-        request.reject(error);
-      };
-      const onAbort = () => rejectPending(new RpcCancellationError());
+      const { signal, observe } = callOptions;
       const detach = () => signal?.removeEventListener("abort", onAbort);
-      pending.set(id, {
+      const rejectAwaiting = (error: unknown) => {
+        requests.delete(id);
+        detach();
+        reject(error);
+      };
+      const onAbort = () => {
+        const request = requests.get(id);
+        if (request?.state === "awaiting") rejectAwaiting(new RpcCancellationError());
+        else requests.delete(id);
+      };
+      requests.set(id, {
+        state: "awaiting",
         method,
         delivery,
         acknowledgement: wireAcknowledgementCheck(method, req.params),
         resolve: (value) => {
-          detach();
+          if (observe) {
+            let observation: StreamObservation;
+            try {
+              observation = observe(value as WireResult<M>);
+            } catch (error) {
+              rejectAwaiting(error);
+              return;
+            }
+            requests.set(id, { state: "observing", observation, detach });
+          } else {
+            requests.delete(id);
+            detach();
+          }
           resolve(value as WireResult<M> | string);
         },
-        reject: (err) => {
-          detach();
-          reject(err);
-        },
+        reject: rejectAwaiting,
       });
 
       if (signal) {
@@ -494,6 +531,10 @@ export function createRpcClient(transport: Transport, options: RpcClientOptions 
         signal.addEventListener("abort", onAbort, { once: true });
       }
 
+      const sendFailed = (error: unknown) => {
+        const request = requests.get(id);
+        if (request?.state === "awaiting") request.reject(error);
+      };
       try {
         callOptions.beforeDispatch?.();
         void transport
@@ -502,9 +543,9 @@ export function createRpcClient(transport: Transport, options: RpcClientOptions 
             idempotencyNamespace: callOptions.idempotencyNamespace,
             lastEventId: callOptions.lastEventId,
           })
-          .catch(rejectPending);
+          .catch(sendFailed);
       } catch (error) {
-        rejectPending(error);
+        sendFailed(error);
       }
     });
   }
@@ -512,7 +553,7 @@ export function createRpcClient(transport: Transport, options: RpcClientOptions 
   function call<M extends WireMethodName>(
     method: M,
     params: WireParams<M>,
-    options?: RpcCallOptions,
+    options?: RpcCallOptions<WireResult<M>>,
   ): Promise<WireResult<M>> {
     return request(method, params, options) as Promise<WireResult<M>>;
   }
@@ -522,32 +563,6 @@ export function createRpcClient(transport: Transport, options: RpcClientOptions 
     options?: Pick<RpcCallOptions, "signal" | "requestMeta">,
   ): Promise<string> {
     return request(method, params, options, "json") as Promise<string>;
-  }
-
-  function subscribe<M extends WireNotificationName>(
-    method: M,
-    observer: NotificationObserver<M>,
-  ): () => void {
-    requireOpen();
-    const validatedObserver = observer as NotificationObserver;
-    let set = subscribers.get(method);
-    if (!set) {
-      set = new Set();
-      subscribers.set(method, set);
-    }
-    set.add(validatedObserver);
-    return () => {
-      const current = subscribers.get(method);
-      if (!current) return;
-      current.delete(validatedObserver);
-      if (current.size === 0) subscribers.delete(method);
-    };
-  }
-
-  function onStreamEnd(handler: StreamEndHandler): () => void {
-    requireOpen();
-    streamEndHandlers.add(handler);
-    return () => streamEndHandlers.delete(handler);
   }
 
   function close(): Promise<void> {
@@ -576,5 +591,5 @@ export function createRpcClient(transport: Transport, options: RpcClientOptions 
     return closePromise;
   }
 
-  return { call, callJSON, subscribe, onStreamEnd, close, closedSignal: connection.signal };
+  return { call, callJSON, close };
 }

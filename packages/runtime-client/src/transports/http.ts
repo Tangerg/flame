@@ -147,7 +147,6 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
     metadata: TransportResponseMetadata,
     signal?: AbortSignal,
   ): Promise<void> {
-    let responseSeen = false;
     let streamError: Error | undefined;
     let readFailure: { error: unknown } | undefined;
     let parsedEvent: TransportEvent | undefined;
@@ -161,9 +160,6 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
           maximumEventStreamFrameBytes,
           metadata.requestId,
         );
-        if (isResponse(msg) && msg.id === requestId) {
-          responseSeen = true;
-        }
         const consumed = method === "plugins.stream" ? Promise.withResolvers<void>() : undefined;
         consumption = consumed?.promise;
         parsedEvent = {
@@ -205,7 +201,7 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
       })();
     };
     const reader = body.getReader();
-    const cancellation = bodyCancellation(reader);
+    const cancellation = bodyCancellation(reader, signal);
     readers.set(reader, cancellation);
     const decodeChunk = utf8StreamDecoder(metadata.requestId);
     let bodyComplete = false;
@@ -236,42 +232,13 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
       }
       readers.delete(reader);
       reader.releaseLock();
-      await announceStreamEnd(requestId, method, metadata, {
-        unanswered: !responseSeen && signal?.aborted !== true,
-        error: streamError,
-      });
-    }
-  }
-
-  // Cancellation still ends an admitted stream. Resource owners join this
-  // notification after reader cleanup; silence would leave close pending.
-  async function announceStreamEnd(
-    requestId: RpcId,
-    method: WireStreamingMethodName,
-    metadata: TransportResponseMetadata,
-    end: { unanswered: boolean; error: Error | undefined },
-  ): Promise<void> {
-    if (channel.closed) return;
-    if (end.unanswered) {
       await channel.send({
-        type: "requestError",
-        rpcId: requestId,
-        error:
-          end.error ??
-          new RpcTransportError(
-            "event stream ended before the call's response",
-            undefined,
-            metadata.requestId,
-          ),
+        type: "streamEnd",
+        requestRpcId: requestId,
+        error: streamError,
+        metadata,
       });
     }
-    await channel.send({
-      type: "streamEnd",
-      method,
-      requestRpcId: requestId,
-      ...(end.error ? { error: end.error } : {}),
-      metadata,
-    });
   }
 
   async function sendRequest(

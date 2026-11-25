@@ -13,7 +13,6 @@ import type {
 } from "./mutationJournal";
 import type { CallPluginRequest } from "@flame/runtime-client/wire";
 import type { WireCallPath } from "./wireCallPath";
-import type { RpcClient } from "./client";
 import { deliverPluginStream } from "./pluginStream";
 import { pluginDeliveryMethod } from "./request";
 import { parseJSON } from "@frame/sdk/json";
@@ -28,7 +27,6 @@ export interface PluginCommandRecovery {
 
 export function pendingPluginCommand(
   command: PendingPluginCommand,
-  client: RpcClient,
   wire: Pick<WireCallPath, "perform">,
 ): PluginCommandRecovery {
   return {
@@ -63,7 +61,6 @@ export function pendingPluginCommand(
             }
             if (pluginDeliveryMethod(request) === "plugins.stream")
               return deliverPluginStream(
-                client,
                 wire,
                 request,
                 reservation,

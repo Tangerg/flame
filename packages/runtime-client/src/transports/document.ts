@@ -54,7 +54,7 @@ export async function readResponseDocument(
     return "";
   }
   const reader = response.body.getReader();
-  const cancellation = bodyCancellation(reader);
+  const cancellation = bodyCancellation(reader, signal);
   const { cancel } = cancellation;
   const abort = () => {
     // The finally block joins this same cancellation and preserves its rejection.

@@ -472,7 +472,6 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
   });
 
   const runCommands = createRunCommands(
-    client,
     { perform, openMutation },
     mutationJournal,
     options.capabilities,
@@ -548,11 +547,11 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
     },
     runtimeEvents: createRuntimeEventFeed(
       async (params, signal) => {
-        const stream = streamRuntimeEvents(client, signal);
+        const stream = streamRuntimeEvents(signal);
         const result = await callOrDispose(stream, () =>
           call(RUNTIME_SUBSCRIBE_METHOD, params, {
-            signal: stream.requestSignal,
-            onRequestRpcId: stream.bindRequest,
+            signal: stream.signal,
+            observe: stream.observe,
           }),
         );
         return { result, events: stream.events };
@@ -611,12 +610,11 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
       pendingCommands: () =>
         mutationJournal
           .pendingPluginCommands()
-          .map((command) => pendingPluginCommand(command, client, { perform })),
+          .map((command) => pendingPluginCommand(command, { perform })),
       queryStream: (request, consume, decode, signal) =>
-        queryPluginStream(client, { perform }, request, consume, decode, signal),
+        queryPluginStream({ perform }, request, consume, decode, signal),
       stream: (intent, input, prepare, consume, decode, signal) =>
         callPluginStream(
-          client,
           { perform, openMutation, capturePluginCommand },
           intent,
           input,

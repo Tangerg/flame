@@ -1,18 +1,13 @@
 import { createPushPullChannel, type PushPullChannel } from "./channel";
-import type { RpcClient } from "./client";
-import type { RpcId } from "./types";
+import { observeNotifications } from "./client";
 import {
   runEventIsReplayable,
   type RunEvent,
   type RunReplayLimits,
   type RuntimeEvent,
 } from "@flame/runtime-client/wire";
-import { RUNTIME_SUBSCRIBE_METHOD } from "./transport";
 import { NOTIFICATIONS_RUN_EVENT, NOTIFICATIONS_RUNTIME_EVENT } from "@flame/runtime-client/wire";
 import { RpcConnectionError } from "./errors";
-
-export const RUN_EVENT_METHOD = NOTIFICATIONS_RUN_EVENT;
-export const RUNTIME_EVENT_METHOD = NOTIFICATIONS_RUNTIME_EVENT;
 
 interface RunReplayBudget {
   maxEvents: number;
@@ -87,14 +82,6 @@ class RunEventInbox {
   }
 }
 
-class BoundRunResponse {
-  constructor(private readonly rootSegmentId: string) {}
-
-  isRootFinish(ev: RunEvent): boolean {
-    return ev.segmentId === this.rootSegmentId && ev.event.type === "segment.finished";
-  }
-}
-
 export function iterableOf<T>(channel: PushPullChannel<T>, cleanup: () => void): AsyncIterable<T> {
   return {
     [Symbol.asyncIterator]() {
@@ -123,78 +110,22 @@ export function iterableOf<T>(channel: PushPullChannel<T>, cleanup: () => void):
   };
 }
 
-interface StreamLifecycle {
-  cleanup(): void;
-  close(): void;
-  fail(error: unknown): void;
-  bind(unsub: () => void): void;
-}
-
-function createStreamLifecycle<T>(
-  channel: PushPullChannel<T>,
-  lifetime: StreamLifetime,
-): StreamLifecycle {
-  const signal = lifetime.signal;
-  let bound = false;
-  let cleanupRequested = false;
-  let cleaned = false;
-  let unsub: () => void = () => undefined;
-
-  const cleanup = () => {
-    if (cleaned) return;
-    if (!bound) {
-      cleanupRequested = true;
-      return;
-    }
-    cleaned = true;
-    unsub();
-    signal.removeEventListener("abort", onAbort);
-    lifetime.abort();
-  };
-  const onAbort = () => {
-    channel.close();
-    cleanup();
-  };
-
-  if (signal.aborted) onAbort();
-  else signal.addEventListener("abort", onAbort, { once: true });
-
-  return {
-    cleanup,
-    close: () => {
-      channel.close();
-      cleanup();
-    },
-    fail: (error) => {
-      channel.fail(error);
-      cleanup();
-    },
-    bind: (nextUnsub) => {
-      if (bound) throw new Error("stream lifecycle is already bound");
-      bound = true;
-      unsub = nextUnsub;
-      if (cleanupRequested) cleanup();
-    },
-  };
-}
-
-interface StreamLifetime {
-  signal: AbortSignal;
-  abort(): void;
-}
-
-function createStreamLifetime(parent?: AbortSignal): StreamLifetime {
+function eventStream<T>(channel: PushPullChannel<T>, parent?: AbortSignal) {
   const controller = new AbortController();
-  return {
-    signal: parent ? AbortSignal.any([parent, controller.signal]) : controller.signal,
-    abort: () => controller.abort(),
-  };
-}
+  const signal = parent ? AbortSignal.any([parent, controller.signal]) : controller.signal;
+  const dispose = () => controller.abort();
+  if (signal.aborted) channel.close();
+  else signal.addEventListener("abort", () => channel.close(), { once: true });
 
-export interface RunEventStream {
-  events: AsyncIterable<RunEvent>;
-  requestSignal: AbortSignal;
-  dispose: () => void;
+  return {
+    signal,
+    dispose,
+    events: iterableOf(channel, dispose),
+    fail(error: Error) {
+      channel.fail(error);
+      dispose();
+    },
+  };
 }
 
 export interface RunEventStreamOptions {
@@ -202,135 +133,61 @@ export interface RunEventStreamOptions {
   replayLimits?: RunReplayLimits;
 }
 
-export function streamRunEvents(
-  client: RpcClient,
-  options: RunEventStreamOptions = {},
-): RunEventStream & {
-  bindRequest: (requestRpcId: RpcId) => void;
-  bind: (rootSegmentId: string) => void;
-} {
-  const lifetime = createStreamLifetime(options.signal);
+export function streamRunEvents(options: RunEventStreamOptions = {}) {
   const inbox = new RunEventInbox(options.replayLimits);
-  const channel = inbox.channel;
-  let latestFinishedBeforeBind: string | undefined;
-  let endBeforeBind: Error | undefined;
-  let ownerRequestRpcId: RpcId | undefined;
-  let response: BoundRunResponse | null = null;
-  const lifecycle = createStreamLifecycle(channel, lifetime);
-
-  const unsubEvents = client.subscribe(RUN_EVENT_METHOD, {
-    next(event, requestRpcId) {
-      if (channel.closed || requestRpcId !== ownerRequestRpcId) return;
-      const admission = inbox.admit(event);
-      if (admission === "authoritativeOverflow") {
-        lifecycle.fail(
-          new RpcConnectionError(
-            "run event consumer exceeded its bounded inbox before an authoritative event",
-          ),
-        );
-        return;
-      }
-      if (admission !== "accepted" || event.event.type !== "segment.finished") return;
-      if (response === null) latestFinishedBeforeBind = event.segmentId;
-      else if (response.isRootFinish(event)) lifecycle.close();
-    },
-    error: (error, requestRpcId) => {
-      if (requestRpcId !== undefined && requestRpcId !== ownerRequestRpcId) return;
-      lifecycle.fail(error);
-    },
-  });
-  const unsubDown = client.onStreamEnd((event) => {
-    if (channel.closed || event.requestRpcId !== ownerRequestRpcId) return;
-    const failure =
-      event.error ??
-      new RpcConnectionError("run subscription ended before its root segment finished");
-    if (response === null && latestFinishedBeforeBind !== undefined) {
-      endBeforeBind = failure;
-      return;
-    }
-    lifecycle.fail(failure);
-  });
-
-  const bind = (rootSegmentId: string): void => {
-    if (response !== null) return;
-    response = new BoundRunResponse(rootSegmentId);
-    if (latestFinishedBeforeBind === rootSegmentId) lifecycle.close();
-    else if (endBeforeBind) lifecycle.fail(endBeforeBind);
-    latestFinishedBeforeBind = undefined;
-    endBeforeBind = undefined;
-  };
-
-  lifecycle.bind(() => {
-    unsubEvents();
-    unsubDown();
-  });
+  const stream = eventStream(inbox.channel, options.signal);
   return {
-    events: iterableOf(channel, lifecycle.cleanup),
-    requestSignal: lifetime.signal,
-    bindRequest: (requestRpcId) => {
-      if (ownerRequestRpcId !== undefined) {
-        throw new Error("run event stream is already bound to a request");
-      }
-      ownerRequestRpcId = requestRpcId;
-    },
-    bind,
-    dispose: lifecycle.close,
+    ...stream,
+    observe: ({ segmentId }: { segmentId: string }) =>
+      observeNotifications(NOTIFICATIONS_RUN_EVENT, {
+        next(event) {
+          const admission = inbox.admit(event);
+          if (admission === "authoritativeOverflow") {
+            stream.fail(
+              new RpcConnectionError(
+                "run event consumer exceeded its bounded inbox before an authoritative event",
+              ),
+            );
+          } else if (
+            admission === "accepted" &&
+            event.segmentId === segmentId &&
+            event.event.type === "segment.finished"
+          ) {
+            stream.dispose();
+          }
+        },
+        fail: stream.fail,
+        end: (error) =>
+          stream.fail(
+            error ??
+              new RpcConnectionError("run subscription ended before its root segment finished"),
+          ),
+      }),
   };
-}
-
-export interface RuntimeEventStream {
-  events: AsyncIterable<RuntimeEvent>;
-  requestSignal: AbortSignal;
-  dispose: () => void;
 }
 
 export const MAXIMUM_BUFFERED_RUNTIME_EVENTS = 64;
 
-export function streamRuntimeEvents(
-  client: RpcClient,
-  signal?: AbortSignal,
-): RuntimeEventStream & { bindRequest: (requestRpcId: RpcId) => void } {
-  const lifetime = createStreamLifetime(signal);
+export function streamRuntimeEvents(signal?: AbortSignal) {
   const channel = createPushPullChannel<RuntimeEvent>({
     capacity: MAXIMUM_BUFFERED_RUNTIME_EVENTS,
   });
-  let ownerRequestRpcId: RpcId | undefined;
-  const lifecycle = createStreamLifecycle(channel, lifetime);
-  const unsubEvents = client.subscribe(RUNTIME_EVENT_METHOD, {
-    next(params, requestRpcId) {
-      if (channel.closed || requestRpcId !== ownerRequestRpcId) return;
-      if (!channel.tryPush(params.event)) {
-        lifecycle.fail(new RpcConnectionError("runtime event consumer exceeded its bounded inbox"));
-      }
-    },
-    error: (error, requestRpcId) => {
-      if (requestRpcId !== undefined && requestRpcId !== ownerRequestRpcId) return;
-      lifecycle.fail(error);
-    },
-  });
-  const unsubDown = client.onStreamEnd((event) => {
-    if (channel.closed) return;
-    if (event.method !== RUNTIME_SUBSCRIBE_METHOD || event.requestRpcId !== ownerRequestRpcId) {
-      return;
-    }
-    lifecycle.fail(
-      event.error ?? new RpcConnectionError("runtime subscription ended unexpectedly"),
-    );
-  });
-  lifecycle.bind(() => {
-    unsubEvents();
-    unsubDown();
-  });
+  const stream = eventStream(channel, signal);
   return {
-    events: iterableOf(channel, lifecycle.cleanup),
-    requestSignal: lifetime.signal,
-    bindRequest: (requestRpcId) => {
-      if (ownerRequestRpcId !== undefined) {
-        throw new Error("runtime event stream is already bound to a request");
-      }
-      ownerRequestRpcId = requestRpcId;
-    },
-    dispose: lifecycle.close,
+    ...stream,
+    observe: () =>
+      observeNotifications(NOTIFICATIONS_RUNTIME_EVENT, {
+        next({ event }) {
+          if (!channel.tryPush(event)) {
+            stream.fail(
+              new RpcConnectionError("runtime event consumer exceeded its bounded inbox"),
+            );
+          }
+        },
+        fail: stream.fail,
+        end: (error) =>
+          stream.fail(error ?? new RpcConnectionError("runtime subscription ended unexpectedly")),
+      }),
   };
 }
 

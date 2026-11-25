@@ -11,8 +11,13 @@ const client = createFlameClient(createHttpTransport({ baseUrl: "http://127.0.0.
 const discovery = await client.runtime.discover();
 ```
 
-A successful streaming call requires a 200 SSE response. A 200 JSON document may carry
-its refusal. Both RPC and sidecar clients bound ordinary response documents with
+A successful streaming call requires a 200 SSE response with a valid
+acknowledgement before its notifications. The acknowledgement binds the
+observation to its request and, for a Run, to its root Segment. A transport
+reports the end of a stream once through `streamEnd`. The request state
+determines whether that end rejects the pending response or settles the active
+stream. A 200 JSON document may carry a streaming call's refusal.
+Both RPC and sidecar clients bound ordinary response documents with
 `maximumResponseBytes` (128 MiB by default), including error bodies without a length.
 HTTP transport captures its endpoint, credentials and resource limits on creation;
 later edits to the supplied configuration cannot change an admitted connection.
@@ -84,8 +89,8 @@ validated by command capture and receipt recovery. No raw intent or authored
 input is added to the persistent journal.
 
 Each client owns one mutation journal and retires it when `close()` begins.
-Closing also revokes notification registration, notifies each captured observer
-once and joins transport, receive and consumer work. A failed error observer
+Closing also settles each outstanding response or stream and joins transport,
+receive and consumer work. A failed error observer
 cannot prevent another observer's terminal delivery or resource release; shutdown
 preserves every observer and cleanup failure, including non-Error rejections.
 Consumers may supply `mutationStorage` to retain unresolved commands across

@@ -1,8 +1,16 @@
-export function bodyCancellation(reader: ReadableStreamDefaultReader<Uint8Array>) {
+export function bodyCancellation(
+  reader: ReadableStreamDefaultReader<Uint8Array>,
+  signal?: AbortSignal,
+) {
   let cancellation: Promise<void> | undefined;
   return {
     cancel(reason?: unknown): Promise<void> {
-      cancellation ??= Promise.resolve().then(() => reader.cancel(reason));
+      // Fetch can reject cancellation with the abort that already stopped the request.
+      cancellation ??= Promise.resolve()
+        .then(() => reader.cancel(reason))
+        .catch((error: unknown) => {
+          if (!signal || !isExpectedAbort(error, signal)) throw error;
+        });
       return cancellation;
     },
     get started(): boolean {

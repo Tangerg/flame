@@ -1,7 +1,7 @@
 import { cloneJSON } from "@frame/sdk/json";
 import { wireAcknowledgementCheck, type WireParams } from "@flame/runtime-client/methods";
 import { checkRequest } from "./request";
-import type { RpcCallOptions, RpcClient } from "./client";
+import type { RpcCallOptions } from "./client";
 import { MutationLookupError, type MutationPromise } from "./mutation";
 import { type MethodsOptions } from "./wireCallPath";
 import type {
@@ -71,7 +71,7 @@ export type RunCommandRecovery = CommandObservation &
 export interface RunCommands {
   attach<R extends { segmentId: string }>(
     signal: AbortSignal | undefined,
-    request: (options: Pick<RpcCallOptions, "signal" | "onRequestRpcId">) => Promise<R>,
+    request: (options: Pick<RpcCallOptions<R>, "signal" | "observe">) => Promise<R>,
   ): Promise<StreamingResult<R, RunEvent>>;
   open(
     method: "runs.start",
@@ -91,7 +91,6 @@ export interface RunCommands {
 // Runtime whether their original key was accepted, and only an unrecorded
 // command dispatches and attaches its event stream.
 export function createRunCommands(
-  client: RpcClient,
   { perform, openMutation }: Pick<WireCallPath, "perform" | "openMutation">,
   mutationJournal: MutationJournal,
   capabilities: MethodsOptions["capabilities"],
@@ -103,13 +102,12 @@ export function createRunCommands(
 
   const attachRunStream = async <R extends { segmentId: string }>(
     signal: AbortSignal | undefined,
-    request: (options: Pick<RpcCallOptions, "signal" | "onRequestRpcId">) => Promise<R>,
+    request: (options: Pick<RpcCallOptions<R>, "signal" | "observe">) => Promise<R>,
   ): Promise<StreamingResult<R, RunEvent>> => {
-    const stream = streamRunEvents(client, runEventStreamOptions(signal));
+    const stream = streamRunEvents(runEventStreamOptions(signal));
     const result = await callOrDispose(stream, () =>
-      request({ signal: stream.requestSignal, onRequestRpcId: stream.bindRequest }),
+      request({ signal: stream.signal, observe: stream.observe }),
     );
-    stream.bind(result.segmentId);
     return { result, events: stream.events };
   };
 
@@ -197,7 +195,7 @@ export function createRunCommands(
           };
         }
         const idempotencyNamespace = attempt.authorizeDispatch();
-        const opened = await attachRunStream(attempt.signal, (options) =>
+        const opened = await attachRunStream<ResumeRunResponse>(attempt.signal, (options) =>
           perform(method, preparedParams, {
             ...options,
             idempotencyKey,
