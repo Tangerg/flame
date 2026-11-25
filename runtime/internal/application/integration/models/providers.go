@@ -11,6 +11,7 @@ import (
 	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/secrets"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
 	"github.com/Tangerg/flame/runtime/internal/telemetry"
 	"go.opentelemetry.io/otel/trace"
@@ -31,12 +32,6 @@ type ProviderSummary struct {
 type ProviderCredentialSummary struct {
 	Masked string
 	Source provider.KeySource
-}
-
-type UpdateProviderCommand struct {
-	ID      string
-	APIKey  provider.Change[provider.APIKey]
-	BaseURL provider.Change[provider.BaseURL]
 }
 
 type ProviderTestOutcome string
@@ -74,41 +69,33 @@ func (c *Coordinator) ListProviders(ctx context.Context) ([]ProviderSummary, err
 	return out, nil
 }
 
-func (c *Coordinator) UpdateProvider(ctx context.Context, cmd UpdateProviderCommand) (ProviderSummary, error) {
-	profile, err := c.catalog.Profile(ctx, cmd.ID)
+func (c *Coordinator) UpdateProvider(ctx context.Context, id string, patch provider.Patch, complete operation.Reply[ProviderSummary]) error {
+	profile, err := c.catalog.Profile(ctx, id)
 	if err != nil {
-		return ProviderSummary{}, err
+		return err
 	}
-	patch := provider.Patch{APIKey: cmd.APIKey, BaseURL: cmd.BaseURL}
 	if patch.Empty() {
-		return ProviderSummary{}, fmt.Errorf("%w: provider %q has no changes", ErrProviderUpdateRequired, cmd.ID)
+		return fmt.Errorf("%w: provider %q has no changes", ErrProviderUpdateRequired, id)
 	}
-	if profile.Metadata.RequiresConfiguredEndpoint() || !cmd.BaseURL.Empty() {
-		existing, found, getErr := c.providers.Get(ctx, cmd.ID)
-		if getErr != nil {
-			return ProviderSummary{}, getErr
-		}
-		currentBaseURL := provider.BaseURL{}
-		if found {
-			currentBaseURL, _ = existing.BaseURL()
-		}
-		finalBaseURL, resolveErr := cmd.BaseURL.Resolve(currentBaseURL)
-		if resolveErr != nil {
-			return ProviderSummary{}, resolveErr
-		}
-		if err := profile.Endpoint.ValidateOverride(finalBaseURL.String()); err != nil {
+	if err := complete(ctx, func(tx context.Context) (ProviderSummary, error) {
+		entry, err := c.providers.Update(tx, id, patch, profile.validateEndpoint)
+		if err != nil {
 			return ProviderSummary{}, err
 		}
-		if profile.Metadata.RequiresConfiguredEndpoint() && !finalBaseURL.Present() {
-			return ProviderSummary{}, fmt.Errorf("%w: provider %q", ErrProviderBaseURLRequired, cmd.ID)
-		}
-	}
-	entry, err := c.providers.Update(ctx, cmd.ID, patch)
-	if err != nil {
-		return ProviderSummary{}, err
+		return providerSummary(profile, entry), nil
+	}); err != nil {
+		return err
 	}
 	c.invalidations.Notify(invalidation.Notice{Resource: invalidation.Models})
-	return providerSummary(profile, entry), nil
+	return nil
+}
+
+func (p ProviderProfile) validateEndpoint(entry provider.Provider) error {
+	endpoint, configured := entry.BaseURL()
+	if p.Metadata.RequiresConfiguredEndpoint() && !configured {
+		return fmt.Errorf("%w: provider %q", ErrProviderBaseURLRequired, entry.ID())
+	}
+	return p.Endpoint.ValidateOverride(endpoint.String())
 }
 
 func (c *Coordinator) TestProvider(ctx context.Context, id string) (ProviderTestOutcome, error) {

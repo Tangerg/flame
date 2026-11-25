@@ -95,34 +95,35 @@ func storedProviderValues(entry provider.Provider) (apiKey, baseURL any) {
 	return apiKey, baseURL
 }
 
-func (p *ProviderStore) Update(ctx context.Context, id string, patch provider.Patch) (provider.Provider, error) {
-	var updated provider.Provider
-	err := p.db.write(ctx, func(txCtx context.Context) error {
-		current, found, getErr := p.Get(txCtx, id)
-		if getErr != nil {
-			return getErr
+func (p *ProviderStore) Update(ctx context.Context, id string, patch provider.Patch, validate func(provider.Provider) error) (provider.Provider, error) {
+	return scopedValue(ctx, p.db.write, func(tx context.Context) (provider.Provider, error) {
+		current, found, err := p.Get(tx, id)
+		if err != nil {
+			return provider.Provider{}, err
 		}
 		if !found {
-			var newErr error
-			current, newErr = provider.New(id)
-			if newErr != nil {
-				return newErr
+			current, err = provider.New(id)
+			if err != nil {
+				return provider.Provider{}, err
 			}
 		}
-		var applyErr error
-		updated, applyErr = current.Apply(patch)
-		if applyErr != nil {
-			return applyErr
+		updated, err := current.Apply(patch)
+		if err != nil {
+			return provider.Provider{}, err
+		}
+		if validate != nil {
+			if err := validate(updated); err != nil {
+				return provider.Provider{}, err
+			}
 		}
 		apiKey, baseURL := storedProviderValues(updated)
-		_, writeErr := p.db.connection(txCtx).ExecContext(txCtx, `INSERT INTO providers (id, api_key, base_url) VALUES (?, ?, ?)
+		_, err = p.db.connection(tx).ExecContext(tx, `INSERT INTO providers (id, api_key, base_url) VALUES (?, ?, ?)
 			 ON CONFLICT(id) DO UPDATE SET
 			   api_key = excluded.api_key,
 			   base_url = excluded.base_url`, updated.ID(), apiKey, baseURL)
-		return writeErr
+		if err != nil {
+			return provider.Provider{}, fmt.Errorf("sqlite: update provider: %w", err)
+		}
+		return updated, nil
 	})
-	if err != nil {
-		return provider.Provider{}, fmt.Errorf("sqlite: update provider: %w", err)
-	}
-	return updated, nil
 }

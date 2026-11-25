@@ -9,5 +9,5 @@ import (
 type ProviderRegistry interface {
 	List(ctx context.Context) ([]provider.Provider, error)
 	Get(ctx context.Context, id string) (provider.Provider, bool, error)
-	Update(ctx context.Context, id string, patch provider.Patch) (provider.Provider, error)
+	Update(ctx context.Context, id string, patch provider.Patch, validate func(provider.Provider) error) (provider.Provider, error)
 }

@@ -100,8 +100,8 @@ func (e *environmentRegistry) List(ctx context.Context) ([]provider.Provider, er
 	return out, nil
 }
 
-func (e *environmentRegistry) Update(ctx context.Context, id string, patch provider.Patch) (provider.Provider, error) {
-	entry, err := e.inner.Update(ctx, id, patch)
+func (e *environmentRegistry) Update(ctx context.Context, id string, patch provider.Patch, validate func(provider.Provider) error) (provider.Provider, error) {
+	entry, err := e.inner.Update(ctx, id, patch, validate)
 	if err != nil {
 		return provider.Provider{}, err
 	}

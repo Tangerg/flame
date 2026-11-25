@@ -38,7 +38,7 @@ func seedConfiguredProvider(ctx context.Context, registry models.ProviderRegistr
 	if patch.Empty() {
 		return nil
 	}
-	_, err = registry.Update(ctx, id, patch)
+	_, err = registry.Update(ctx, id, patch, nil)
 	return err
 }
 

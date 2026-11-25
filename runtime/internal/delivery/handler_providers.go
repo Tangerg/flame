@@ -6,6 +6,7 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	modelapp "github.com/Tangerg/flame/runtime/internal/application/integration/models"
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
 )
 
@@ -26,27 +27,38 @@ func (s *Handler) ListProviders(ctx context.Context) (*protocol.Page[protocol.Pr
 }
 
 func (s *Handler) UpdateProvider(ctx context.Context, in protocol.UpdateProviderRequest) (*protocol.Provider, error) {
-	apiKey, err := providerConfigChange(in.APIKey, provider.NewAPIKey)
-	if err != nil {
+	var configured modelapp.ProviderSummary
+	if err := s.updateProvider(ctx, in, operation.DirectReply(&configured)); err != nil {
 		return nil, err
-	}
-	baseURL, err := providerConfigChange(in.BaseURL, provider.NewBaseURL)
-	if err != nil {
-		return nil, err
-	}
-	configured, err := s.models.UpdateProvider(ctx, modelapp.UpdateProviderCommand{
-		ID:      in.Provider,
-		APIKey:  apiKey,
-		BaseURL: baseURL,
-	})
-	if err != nil {
-		return nil, mapModelError(err)
 	}
 	out, err := presentProvider(configured)
 	if err != nil {
 		return nil, err
 	}
 	return &out, nil
+}
+
+func (s *Handler) commitProviderUpdate(ctx context.Context, in protocol.UpdateProviderRequest, outcome atomicOutcome) error {
+	reply := atomicReply(outcome.complete, func(configured modelapp.ProviderSummary) ([]byte, error) {
+		out, err := presentProvider(configured)
+		if err != nil {
+			return nil, err
+		}
+		return encodeAtomicResult(outcome.method, &out)
+	})
+	return outcome.settleRefusal(ctx, s.updateProvider(ctx, in, reply))
+}
+
+func (s *Handler) updateProvider(ctx context.Context, in protocol.UpdateProviderRequest, complete operation.Reply[modelapp.ProviderSummary]) error {
+	apiKey, err := providerConfigChange(in.APIKey, provider.NewAPIKey)
+	if err != nil {
+		return err
+	}
+	baseURL, err := providerConfigChange(in.BaseURL, provider.NewBaseURL)
+	if err != nil {
+		return err
+	}
+	return mapModelError(s.models.UpdateProvider(ctx, in.Provider, provider.Patch{APIKey: apiKey, BaseURL: baseURL}, complete))
 }
 
 func providerConfigChange[T any](change *protocol.ProviderConfigChange, parse func(string) (T, error)) (provider.Change[T], error) {
@@ -60,7 +72,7 @@ func providerConfigChange[T any](change *protocol.ProviderConfigChange, parse fu
 		}
 		value, err := parse(*change.Value)
 		if err != nil {
-			return provider.Change[T]{}, protocol.ErrInvalidParams
+			return provider.Change[T]{}, protocol.InvalidParameters(err)
 		}
 		return provider.Set(value), nil
 	case protocol.ProviderConfigClear:

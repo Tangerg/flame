@@ -1928,6 +1928,8 @@ Keyed utility and embedding role changes save their original receipts with the
 durable selection. Live model resolvers and change notices follow the commit.
 Repository hook trust and MCP tool exposure use the same receipt boundary for
 their local policy writes.
+Provider endpoint constraints apply to the configuration about to be saved.
+The resulting configuration and its masked acknowledgement commit together.
 
 ## Automatic Skill learning
 

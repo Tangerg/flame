@@ -25,7 +25,9 @@ func registerProviders(registry *Registry) {
 			UpdateProvider(context.Context, protocol.UpdateProviderRequest) (*protocol.Provider, error)
 		}, ctx context.Context, request protocol.UpdateProviderRequest) (*protocol.Provider, error) {
 			return service.UpdateProvider(ctx, request)
-		})
+		}).withOwnedReplay(atomicReplay((interface {
+		commitProviderUpdate(context.Context, protocol.UpdateProviderRequest, atomicOutcome) error
+	}).commitProviderUpdate))
 
 	registry.query(MethodMeta{Name: providersTest, GoName: "TestProvider", Errors: pluginProviderErrors()},
 		func(service interface {
