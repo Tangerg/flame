@@ -9,6 +9,8 @@ const styles = stylex.create({
     gap: layout.sectionGap,
     paddingInline: rowInset.inline,
     paddingBlock: layout.rowPadding,
+    // Rows with a switch or slider keep the pitch of rows holding an md field.
+    minHeight: `calc(2 * ${layout.rowPadding} + max(var(--control-height-md), var(--control-target-min)))`,
     minWidth: 0,
   },
   split: {
@@ -20,7 +22,7 @@ const styles = stylex.create({
   },
   stacked: { gap: layout.contentGap },
   top: { alignItems: "flex-start" },
-  centre: { alignItems: "center" },
+  centre: { alignContent: "center", alignItems: "center" },
   copy: { minWidth: 0, overflowWrap: "anywhere" },
   name: { color: color.fg, fontWeight: weight.medium },
   control: {

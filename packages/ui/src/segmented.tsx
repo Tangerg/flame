@@ -41,12 +41,12 @@ const styles = stylex.create({
   option: {
     position: "relative",
     isolation: "isolate",
-    minHeight: "max(var(--control-height-xs), var(--control-target-min))",
+    // With the root padding the whole control is one md control tall, like a Select.
+    minHeight: `calc(max(var(--control-height-md), var(--control-target-min)) - 2 * ${space.s0_5})`,
     borderRadius: radius.segment,
     borderWidth: 0,
     backgroundColor: "transparent",
     paddingInline: space.s3,
-    paddingBlock: space.s1,
     fontWeight: weight.medium,
     transitionProperty: "color",
     transitionDuration: motion.color,

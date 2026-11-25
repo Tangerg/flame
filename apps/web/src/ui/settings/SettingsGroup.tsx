@@ -2,7 +2,7 @@ import * as stylex from "@stylexjs/stylex";
 import { type ComponentPropsWithoutRef } from "react";
 import { RecordGroup } from "@flame/ui";
 const styles = stylex.create({
-  group: { width: "100%", containerType: "inline-size" },
+  group: { containerType: "inline-size" },
 });
 
 export function SettingsGroup({
