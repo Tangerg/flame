@@ -35,6 +35,7 @@ import { Notices, PendingCommands } from "./notices";
 import { Inspector } from "./inspector";
 import { METHODS } from "../contracts/methods";
 import { parseTarget, type Focus } from "./targets";
+import { readDrafts, writeDrafts, type DraftFormat } from "./draft-storage";
 
 export { DeliverableResult } from "./tool-result";
 
@@ -57,9 +58,9 @@ function Workspace({
   );
   const state = useDeliverables(context);
   const link = useLink(context, state);
-  const slideDrafts = useDrafts<SlideOperation>();
-  const sheetDrafts = useDrafts<CellOperation>();
-  const docDrafts = useDrafts<DocOperation>();
+  const slideDrafts = useDrafts<SlideOperation>(context, "pptx");
+  const sheetDrafts = useDrafts<CellOperation>(context, "xlsx");
+  const docDrafts = useDrafts<DocOperation>(context, "docx");
   const bodyViewport = useRef<HTMLDivElement>(null);
   const archiveSearchField = useRef<HTMLInputElement>(null);
   const archiveOrigin = useRef<{
@@ -315,9 +316,14 @@ function useStudioDocument(state: DeliverablesState): DocumentRead | undefined {
 }
 
 // The workspace owns drafts by document, so reading another revision (which
-// unmounts an editor while it loads) never discards unsubmitted intent.
-function useDrafts<Operation>() {
-  const [drafts, setDrafts] = useState<Record<string, Draft<Operation>>>({});
+// unmounts an editor while it loads) never discards unsubmitted intent, and
+// keeps them in the browser so a reload does not either.
+function useDrafts<Operation>(context: ComponentContext, format: DraftFormat) {
+  const key = `flame.deliverables.drafts.${format}.${context.component.installationId}`;
+  const [drafts, setDrafts] = useState(() =>
+    readDrafts<Operation>(key, format),
+  );
+  useEffect(() => writeDrafts(key, drafts), [key, drafts]);
   return {
     get: (id: string) => drafts[id],
     update: (id: string) => (update: DraftUpdate<Operation>) =>

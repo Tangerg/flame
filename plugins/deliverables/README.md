@@ -96,7 +96,11 @@ adding a new method cannot silently expose a new transfer operation to the model
 A PPTX, XLSX or DOCX revision opens in its format's editor. Each editor reads
 the revision's projection (`slides`, `sheets` or `blocks`) and collects changes
 in a local draft with undo; saving submits one edit against the draft's base
-revision. The draft belongs to the component until it is saved.
+revision. The draft belongs to the component until it is saved; it is kept in
+this browser per installation and document, so a reload or a later visit
+restores it, and a stored draft that no longer fits its format's edit
+vocabulary is dropped. Storage that is full or unavailable keeps the draft in
+the page only.
 
 When the current revision moves past the draft's base, the draft is compared
 operation by operation. Clean changes are re-addressed to the current revision,
