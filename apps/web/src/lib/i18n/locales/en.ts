@@ -125,9 +125,8 @@ export const en = {
   "composer.persistence.loading": "Loading saved drafts. New edits stay here while loading.",
   "composer.persistence.pending": "Saving draft changes on this device…",
   "composer.persistence.saveFailed":
-    "Draft changes aren’t saved on this device. Keep this window open and retry, or copy drafts.",
-  "composer.persistence.readFailed":
-    "Saved drafts couldn’t be read. Keep this window open and retry.",
+    "Draft changes aren’t saved on this device. Keep this window open.",
+  "composer.persistence.readFailed": "Saved drafts couldn’t be read. Keep this window open.",
   "composer.persistence.recoveryRequired":
     "Saved drafts couldn’t be read before editing. Copy drafts before reloading to recover saved drafts.",
   "composer.persistence.copy": "Copy draft text",
@@ -333,7 +332,7 @@ export const en = {
   "runtime.unsupported.title": "Not supported by this Runtime",
   "runtime.unsupported.sub": "The connected Runtime doesn’t expose this capability yet.",
   "dataView.error.title": "Couldn’t load",
-  "dataView.error.sub": "The Runtime didn’t answer this request. Check the connection and retry.",
+  "dataView.error.sub": "The Runtime didn’t answer this request. Check the connection.",
   "welcome.title": "What should we build?",
   "welcome.folderTitle": "What should we build in <folderSelect>{{folder}}?</folderSelect>",
   "composer.folder.choose": "Choose folder",
@@ -643,7 +642,7 @@ export const en = {
   "workIndex.showLess": "Show less",
   "folders.empty.title": "No folders",
   "folders.error.title": "Couldn’t load folders",
-  "folders.error.sub": "Check the Runtime connection, then retry.",
+  "folders.error.sub": "Check the Runtime connection.",
   "convExport.import": "Import conversation from JSON…",
   "convExport.importSuccess": "Imported “{{title}}”.",
   "convExport.unsupported": "This Runtime doesn’t support session export or import.",
@@ -883,8 +882,7 @@ export const en = {
   "startup.unsupported.browsers": "Supported browsers",
   "startup.unsupported.features": "Missing browser features",
   "startup.loadFailed.body": "The application couldn’t load. Reload this window to try again.",
-  "startup.failed.body":
-    "Something failed before the window was ready. Retry, or copy the diagnostics to report it.",
+  "startup.failed.body": "Something failed before the window was ready.",
   "startup.failed.copy": "Copy diagnostics",
 
   "plugins.renderFailed.details": "Details",

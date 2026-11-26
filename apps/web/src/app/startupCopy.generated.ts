@@ -60,7 +60,7 @@ export const startupCopy = {
       "이 브라우저에는 Flame에 필요한 기능이 없습니다. 브라우저를 업데이트하거나 macOS와 Safari를 업데이트한 다음 Flame을 다시 여세요.",
     "startup.unsupported.browsers": "지원 브라우저",
     "startup.unsupported.features": "누락된 브라우저 기능",
-    "startup.loadFailed.body": "앱을 불러오지 못했습니다. 이 창을 새로 고침한 뒤 다시 시도하세요.",
+    "startup.loadFailed.body": "앱을 불러오지 못했습니다. 이 창을 다시 로드하세요.",
     "plugins.renderFailed.details": "세부 정보",
     "common.retry": "다시 시도",
   },
