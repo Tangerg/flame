@@ -602,8 +602,58 @@ The private app, processes, profile, fixture, candidate package, logs,
 captures, caches and checkout build outputs are removed.
 
 One Escape from Exact report identity leaves the entire archive for the
-Conversation. Check that reading transition against the other archive
-readers in the next batch.
+Conversation. The [archive return repair](#escape-returns-from-a-report-to-its-archive-row-2026-11-27)
+qualifies that reading transition.
+
+### Escape returns from a report to its archive row (2026-11-27)
+
+In signed production Wails at `9df6081bd`, open the oldest Daily
+report in a private archive of 14 real reports. One Escape from
+Exact report identity closes the entire view and focuses the
+Composer. Skills and Diff already give the current detail its
+own Escape step.
+
+The saved report panel now handles an unclaimed Escape from its
+own detail by invoking the existing Back to archive action. That
+action aborts the report read and restores the captured row and
+scroll. The deletion dialog and focused Tooltip handle Escape
+first. The archive list keeps the workspace return path. This
+follows Better Accessibility and the existing workspace precedence
+for detail views and nested controls.
+
+- In Chinese/light/14 px/Flame Orange at 1120 × 728, native wheel
+  input brings the oldest Daily row from y=1044 to y=629. Pointer
+  entry exposes its original ID. Escape restores the focused row
+  at y=629. From the report's deletion confirmation, Escape first
+  returns to Delete saved report. The following Escape returns to
+  the archive. From Back to archive with its Tooltip visible, one
+  Escape closes the Tooltip and the next returns to the same row.
+- In English/dark/18 px/Blue (#0485F7) at 1280 × 800, hold only
+  the private Runtime just before opening a report. While
+  **Reading saved report…** is present, Escape restores its exact
+  row. The row retains focus when the real Runtime resumes.
+  Workspace Escape reaches the original Composer draft again.
+  Cmd+L continues it from `56825` to `568257`.
+- Stage and select the rebuilt package on the same private
+  installation across a Runtime restart. Runtime serves the
+  exact rebuilt component. All 14 original archive headers and
+  the inspected report's immutable ID and data still match.
+
+Plugin typecheck, 44 script tests, 24 source tests, catalog and
+resource verification, Web typecheck and bootstrap, scoped Prettier,
+production staging, Runtime and portable package builds, signed Wails
+and diff checks pass. Seven plugin source tests are skipped. Both
+native builds use Runtime `2026-11-26.10`. The private Session records
+zero Runs. VoiceOver and other platforms remain outside this check.
+Both Wails instances exit normally. The Runtime drains reach the
+existing deadline. The private app, processes, profile, fixtures,
+candidate package, logs, captures, caches and checkout outputs are
+removed.
+
+After workspace Escape returns native focus to the Composer, typing a
+digit leaves the draft unchanged until Cmd+L reactivates editing. The
+same behavior occurs in a separate return from Agent memory. The next
+batch traces that host return.
 
 ## Error notes leave retrying to their buttons (2026-11-26)
 

@@ -44,6 +44,11 @@ read; unmounting or retirement of the captured component signal ends local
 observation. Accepted commands keep their original Runtime identity and recovery
 path.
 
+Escape inside an open report follows Back to archive, including the saved
+scroll position and the original row's focus. The deletion dialog and focused
+tooltips handle their own Escape first. The archive list follows the workspace
+return path.
+
 Action feedback uses the current display locale, including after settlement.
 Saved-report titles normally display the capture minute in that locale. Reports
 of the same period with matching displayed minutes include seconds in their

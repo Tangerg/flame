@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { type ComponentContext } from "@flame/component-sdk";
-import { Metadata, Panel, PanelHeader } from "@flame/ui";
+import { isImeKey, Metadata, Panel, PanelHeader } from "@flame/ui";
 import { reportTitles, type BoundContext } from "./model";
 import { useReportArchive } from "./useReportArchive";
 import {
@@ -40,6 +40,20 @@ function Archive({ context }: { context: BoundContext }) {
     <Panel
       ref={refs.panel}
       label={t("panel.title")}
+      onKeyDown={(event) => {
+        if (
+          event.key !== "Escape" ||
+          event.defaultPrevented ||
+          isImeKey(event.nativeEvent) ||
+          !opened ||
+          removal.target ||
+          !event.currentTarget.contains(event.target as Node)
+        )
+          return;
+        event.preventDefault();
+        event.stopPropagation();
+        if (!event.repeat) report.back();
+      }}
       header={<PanelHeader title={t("panel.title")} />}
       controls={<ArchiveControls archive={archive} titleFor={titleFor} />}
     >
