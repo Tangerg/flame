@@ -189,12 +189,9 @@ export function Memory({ context }: { context: ComponentContext }) {
             t={t}
             scope={scope}
             scopeLabel={scopeLabel}
-            loading={read.loading}
             noTarget={noTarget}
-            pending={pending}
             locked={locked}
             editing={Boolean(edit)}
-            onRefresh={() => showPage(current?.cursors)}
             onAdd={addItem}
             onScope={changeScope}
           />
@@ -202,6 +199,16 @@ export function Memory({ context }: { context: ComponentContext }) {
             t={t}
             filters={filters}
             onClearFilters={clearFiltersAndFocusSearch}
+            refresh={
+              <IconButton
+                icon={Refresh}
+                aria-label={t("refresh")}
+                size="md"
+                pending={read.loading}
+                disabled={noTarget || pending}
+                onClick={() => showPage(current?.cursors)}
+              />
+            }
           />
         </>
       }
@@ -274,41 +281,23 @@ function MemoryToolbar({
   t,
   scope,
   scopeLabel,
-  loading,
   noTarget,
-  pending,
   locked,
   editing,
-  onRefresh,
   onAdd,
   onScope,
 }: {
   t: MemoryState["t"];
   scope: Scope;
   scopeLabel: (scope: Scope) => string;
-  loading: boolean;
   noTarget: boolean;
-  pending: boolean;
   locked: boolean;
   editing: boolean;
-  onRefresh(): void;
   onAdd(opener: HTMLElement): void;
   onScope(scope: Scope): void;
 }) {
   return (
-    <Toolbar
-      label={t("nav.label")}
-      actions={
-        <IconButton
-          icon={Refresh}
-          aria-label={t("refresh")}
-          size="md"
-          pending={loading}
-          disabled={noTarget || pending}
-          onClick={onRefresh}
-        />
-      }
-    >
+    <Toolbar label={t("nav.label")}>
       <Hang>
         <Segmented
           ariaLabel={t("segment.label")}
@@ -393,14 +382,17 @@ function MemoryFilters({
     setPinned,
   },
   onClearFilters,
+  refresh,
 }: {
   t: MemoryState["t"];
   filters: MemoryFilterState;
   onClearFilters(): void;
+  refresh: ReactNode;
 }) {
   return (
     <FilterBar
       label={t("controls.label")}
+      actions={refresh}
       search={
         <SearchField
           id="search"
