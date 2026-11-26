@@ -224,7 +224,9 @@ export function useInspectionFocus({
       previous.fullPaneViewId === WORKSPACE_SETTINGS_VIEW &&
       fullPaneViewId !== WORKSPACE_SETTINGS_VIEW &&
       (active === doc.body ||
-        (active && active === settingsReturning.activeElement && isConcealed(active))) &&
+        (active &&
+          active === settingsReturning.activeElement &&
+          (isConcealed(active) || active.closest('[data-slot="workspace-window-header"]')))) &&
       !settingsReturning.origin.closest("[aria-disabled='true']") &&
       handoffFocus(doc.body, settingsReturning.origin)
     )

@@ -399,6 +399,153 @@ private Runtime drain reaches the existing deadline. The test
 app, process, profile, Git fixture, logs, capture, caches and
 checkout build outputs are removed.
 
+### Memory keeps search focus when a saved row leaves the results (2026-11-27)
+
+In signed production Wails at `171583561`, open Agent memory from the
+command menu and add `2468` in User scope. Search for it, edit it to
+`1357`, and save with Return. Runtime confirms the change at revision
+2. The accepted list removes the row and leaves the query in place.
+Native focus falls to the Web area.
+
+`MemoryReport` observes which record row actually owns focus as React
+detaches it. After that row leaves the document, the existing focus
+handoff gives the retained search field focus if the document body owns
+it and the captured Memory source is live. The workspace field
+visibility behavior reveals the field. This follows Better
+Accessibility's focus continuity guidance for a disappearing control
+and the File reader's existing removal pattern.
+
+- In Chinese/light/14 px/Flame Orange at 1120 × 728, saving the edit
+  returns to the visible search field with `2468` in place and a
+  visible focus ring. Tab advances to Clear search. Pointer activation
+  of Clear search and filters shows `1357` and focuses search.
+- In English/dark/18 px/Blue (#0485F7) at 1280 × 800, Escape from an
+  edited draft returns to the exact Edit button. Saving `13579`
+  keeps that button focused under query `1357`. Hold only the private
+  Runtime briefly around a later Save and focus Back to conversation.
+  The acknowledged edit out of the filter keeps that header button
+  focused. The same record reads `9753` at revision 4 after three
+  accepted edits. Back to conversation resumes the unsent draft from
+  `5682` to `56825`.
+- A second record has 25 lines. Native wheel input brings its Edit
+  button from y=1026 to y=721 while the search field is above the
+  viewport. Pointer Edit and keyboard Save replace its content with
+  `8531`. Focus returns to Search this page at y=136 with the old
+  query intact. Clearing shows the same record at revision 2. The
+  first record and the conversation draft remain available.
+
+The candidate uses `31f16f651` and the same Runtime protocol
+`2026-11-26.10`. Runtime serves the regenerated installed Memory
+resource byte for byte. Plugin typecheck, 44 script tests, 24 source
+tests, catalog and resource checks, Web typecheck and bootstrap,
+scoped Prettier, production staging, Runtime packaging, signed Wails
+and diff checks pass. Seven plugin source tests are skipped. The
+private Session has no Run. After merging the shared event changes
+`a7b2c546a` and `138650246`, production staging, signed Wails, Web
+and Runtime client typechecks and Web bootstrap pass again. Both
+installed repeats preserve the same Memory resource and return focus
+to the search with the query intact. Clearing shows the original
+record at revision 2. VoiceOver and other platforms remain outside
+the check. Each Wails instance exits normally. The private Runtime
+drains reach the existing deadline. The private app,
+processes, profiles, fixtures, logs, captures, caches and checkout
+build outputs are removed.
+
+### Settings preserves an interrupted full-width view (2026-11-27)
+
+Signed production Wails at `a66fee407` opens Agent memory in User
+scope with query `2468` and unsaved edit `9724`. Cmd+, from the edit
+field opens Settings. Keyboard activation of Close returns to the
+Conversation. The next visit to Memory has an empty query and no
+editor. The isolated Runtime still has the original record at
+revision 1.
+
+Workspace navigation now captures the prior main view and target for
+one Settings visit in the same Session. The existing view stack
+keeps that source mounted, invisible and inert. A normal close
+restores the captured view and target. The existing focus handoff
+also recognizes the Settings header control when React reuses it
+during the return. This follows Better Accessibility and the
+retained reading pattern already used for Dock inspections.
+
+- At 1120 × 728 in Chinese/light/14 px/Flame Orange, Cmd+, from the
+  edit field hides Memory from the native accessibility tree. Return
+  on Settings Close restores the same field, User scope and query.
+  Pressing `5` changes `9724` to `97524`, preserving the insertion
+  point. The saved record still reads `2468`.
+- Open Settings again. Wheel input moves a keyboard shortcut action
+  from y=814 to y=279. Change to English/dark/18 px/Blue (#0485F7)
+  and resize to 1280 × 800. Cmd+W returns to the same editor.
+  Typing `7` produces `975724` with a visible focus ring. Escape
+  cancels the edit and returns to the original Edit button.
+- History Back from Settings reveals Memory with the retained
+  `2468` query. Forward shows Settings and Close follows the
+  normal Conversation path for that history visit. The Composer
+  draft continues from `5682` to `56825`. In a fresh Settings
+  visit from an editor, Cmd+L goes directly to that Composer.
+- Pointer entry into the actual `README.md` Files preview opens
+  its reader beside the conversation. From Go to line, open Settings
+  and focus Close. The first Escape dismisses its visible Tooltip.
+  The next returns to Go to line. Opening Settings from the Composer
+  and activating Close returns to the same draft and input.
+
+Production staging, Runtime packaging, signed Wails, Web typecheck,
+bootstrap, plugin resource verification, scoped Prettier and diff
+checks pass. Both Wails builds use the same isolated Runtime
+`2026-11-26.10`. The saved Memory remains at revision 1 and the
+private Session has no Run. VoiceOver, other platforms and an
+in-flight Memory write during Settings remain outside this check.
+Both Wails instances exit normally and the private Runtime drain
+reaches the existing deadline. The private app, processes, profile,
+fixture, logs, captures, caches and checkout build outputs are removed.
+
+### Branch Diff is reachable from the context dock (2026-11-27)
+
+The private Git fixture has a clean worktree and two committed changes
+on its review branch. In signed production Wails at `7405f0893`, the
+worktree summary is absent and the Dock catalog lists Files, Subagents
+and Session trajectory. The command menu opens the admitted Workspace
+diff full width, where Branch changes shows both files. The installed
+component's `workspace` scope already names its group. The captured
+component migration at `a8d757ec5` dropped the earlier Workspace
+registration while the Lab supplied its own.
+
+The installed workspace view now projects its workspace scope into
+the existing Dock group. The command menu checks the active Session
+when its choice is delivered. Full-width panels offer the side-by-side
+action when the Dock has a Session and room beside the conversation.
+This follows the existing grouped navigation contract and the
+workspace split used in the ZCode reference.
+
+- In Chinese/light/14 px/Flame Orange at 1120 × 728, opening the
+  command with an empty active Session leaves the full-width workspace
+  selection message and Back to conversation available.
+- In the private Session, the actual Workspace group includes
+  **工作区 diff**. Pointer selection opens it in the 320 px Dock beside
+  the conversation. Keyboard selection of Branch changes shows
+  `+53 −2` across the same two files as Git. Filter to `metrics`,
+  then open its row. Native wheel input moves the last evidence line
+  from y=1286 to y=628 while the filename keeps focus. Escape
+  restores the exact file row and the query.
+- In English/dark/18 px/Blue (#0485F7) at 1280 × 800, the Diff moves
+  from the Dock to full width and back with the same comparison and
+  query. Cmd+L continues the Composer draft from `5682` to `56825`.
+  The command menu opens the same Diff beside that conversation.
+- Close the Dock tab to return to the catalog. Disabling Diff through
+  the private Runtime removes its entry while Files stays available.
+  Enabling it restores the entry in Workspace. Git still reports a
+  clean worktree and the same two committed changes.
+
+Both production Wails builds use isolated Runtime `2026-11-26.10`.
+The installed Diff resource matches the tracked package byte for byte.
+Web typecheck, bootstrap, plugin resource verification, scoped
+Prettier, production staging, Runtime packaging, signed Wails and
+diff checks pass. The private Session records zero Runs. This check
+does not exercise VoiceOver or other platforms. Both Wails instances
+exit normally and the private Runtime drain reaches the existing
+deadline. The private app, processes, profile, Git fixture, logs,
+captures, caches and checkout build outputs are removed.
+
 ## Error notes leave retrying to their buttons (2026-11-26)
 
 Five error notes ended by narrating the buttons beside them. The sidebar's folder error said `Check the Runtime connection, then retry.` above `Retry`. The shared data-view error said `… Check the connection and retry.`, and every caller offers Retry except provider selections, whose section has its own Refresh selections. The draft notices said `Keep this window open and retry, or copy drafts.` above `Retry` and `Copy draft text`. The startup failure said `Retry, or copy the diagnostics to report it.` above `Retry` and `Copy diagnostics`. Each now stops at what the buttons can't say:

@@ -57,6 +57,7 @@ export function createWorkspace(
     dispose() {
       if (disposed) return;
       disposed = true;
+      navigationState.dispose();
       importGateway?.dispose();
       importGateway = null;
       dock.store.setState({ inspection: null });

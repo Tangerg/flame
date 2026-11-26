@@ -154,6 +154,7 @@ export function ChatPanel({ onSend, ref }: Props) {
   const workspaceAccess = useWorkspace();
 
   const activeMainView = useActiveWorkspaceViewId();
+  const settingsSourceViewId = workspaceAccess.navigation.useSettingsSourceViewId();
   const dock = useWorkspaceDock();
   const catalog = useContextDockCatalog();
   const views = useWorkspaceViews();
@@ -187,6 +188,7 @@ export function ChatPanel({ onSend, ref }: Props) {
     activeSessionId,
     dock,
     activeMainView,
+    settingsSourceViewId,
     inspection,
     rowWidth,
     conversationReady: sessions !== undefined,
@@ -232,7 +234,7 @@ export function ChatPanel({ onSend, ref }: Props) {
           view={
             fullPaneViewId === WORKSPACE_DOCK_CATALOG ? CATALOG_VIEW : viewsById.get(fullPaneViewId)
           }
-          dockAvailable={dockAvailable}
+          dockAvailable={hasDockOwner && dockAvailable}
           inspection={
             inspectedFullPane
               ? { returnAction: dockReturn, onKeyDown: onMaterialKeyDown }

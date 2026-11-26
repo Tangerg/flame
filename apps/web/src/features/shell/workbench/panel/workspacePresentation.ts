@@ -121,6 +121,7 @@ export function workspacePresentation({
   activeSessionId,
   dock,
   activeMainView,
+  settingsSourceViewId,
   inspection,
   rowWidth,
   conversationReady,
@@ -128,6 +129,7 @@ export function workspacePresentation({
   activeSessionId: string;
   dock: WorkspaceDock;
   activeMainView: string | null;
+  settingsSourceViewId: string | null;
   inspection: WorkspaceInspection;
   rowWidth: number | null;
   conversationReady: boolean;
@@ -151,7 +153,7 @@ export function workspacePresentation({
     dockVisible,
     ownedDockViewIds,
     openViewIds,
-    mountedViewIds: mountedWorkspaceViews(openViewIds, inspection),
+    mountedViewIds: mountedWorkspaceViews(openViewIds, inspection, settingsSourceViewId),
     fullPaneViewId,
     inspectedFullPane,
     presentation: main ? ("main" as const) : ("dock" as const),
@@ -179,13 +181,14 @@ export function fullPanePickable(
   );
 }
 
-// Views stay mounted while open or while an inspection can return to them, so
-// a return finds the reader where it was left.
+// Keep sources mounted so a return from inspection or Settings finds the reader as left.
 function mountedWorkspaceViews(
   openViewIds: ReadonlySet<string>,
   inspection: WorkspaceInspection,
+  settingsSourceViewId: string | null,
 ): Set<string> {
   const mounted = new Set(openViewIds);
+  if (settingsSourceViewId !== null) mounted.add(settingsSourceViewId);
   for (let source = inspection; source; source = source.previous) {
     if (source.returnViewId && source.returnViewId !== source.viewId)
       mounted.add(source.returnViewId);
