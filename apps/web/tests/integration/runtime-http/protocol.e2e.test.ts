@@ -262,36 +262,53 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: protocol delivery", () => {
     });
   });
 
-  it("leaves a plugin configuration key reusable after rejecting invalid component values", async () => {
-    const installation = await fixture.activateManagedOwner("schedules");
-    const release = { installationId: installation.id, digest: installation.selected.digest };
-    const configure = async (
-      serverChanges: Record<string, string>,
-      skillChanges: Record<string, string>,
-    ) => {
-      const response = await postRPC(
-        fixture.baseUrl,
-        "plugins.configure",
-        { ...release, valueChanges: {}, serverChanges, skillChanges },
-        { [HTTP_HEADERS.idempotencyKey]: "reusable-plugin-configuration" },
-      );
-      expect(response.status).toBe(RPC_HTTP.callStatus);
-      return response.json();
-    };
-
-    const invalid = await configure({ schedules: "restart" }, { demo: "" });
-    await expect(configure({ schedules: "enable" }, {})).resolves.toMatchObject({
-      result: release,
-    });
-    expect(invalid).toMatchObject({
-      error: {
-        data: {
-          type: "invalid_params",
-          errors: [{ field: 'serverChanges["schedules"]' }, { field: 'skillChanges["demo"]' }],
-        },
+  it.each([
+    {
+      label: "component values",
+      changes: { serverChanges: { schedules: "restart" }, skillChanges: { demo: "" } },
+      fields: ['serverChanges["schedules"]', 'skillChanges["demo"]'],
+    },
+    {
+      label: "component names",
+      changes: {
+        valueChanges: { Input: { type: "clear" } },
+        serverChanges: { Schedules: "enable" },
+        skillChanges: { "Invalid Skill": "disable" },
       },
-    });
-  });
+      fields: [
+        'serverChanges["Schedules"]',
+        'skillChanges["Invalid Skill"]',
+        'valueChanges["Input"]',
+      ],
+    },
+  ])(
+    "leaves a plugin configuration key reusable after rejecting $label",
+    async ({ changes, fields }) => {
+      const installation = await fixture.activateManagedOwner("schedules");
+      const release = { installationId: installation.id, digest: installation.selected.digest };
+      const key = crypto.randomUUID();
+      const configure = async (changes: object) => {
+        const response = await postRPC(
+          fixture.baseUrl,
+          "plugins.configure",
+          { ...release, valueChanges: {}, serverChanges: {}, skillChanges: {}, ...changes },
+          { [HTTP_HEADERS.idempotencyKey]: key },
+        );
+        expect(response.status).toBe(RPC_HTTP.callStatus);
+        return response.json();
+      };
+
+      const invalid = await configure(changes);
+      await expect(configure({ serverChanges: { schedules: "enable" } })).resolves.toMatchObject({
+        result: release,
+      });
+      expect(invalid).toMatchObject({
+        error: {
+          data: { type: "invalid_params", errors: fields.map((field) => ({ field })) },
+        },
+      });
+    },
+  );
 
   it("converges unary mutations across pre-admission and post-commit disconnects", async () => {
     const requestMeta = (): RequestMeta => ({

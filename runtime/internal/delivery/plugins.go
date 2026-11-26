@@ -160,7 +160,7 @@ func registerPlugins(r *Registry) {
 		ConfigurePlugin(context.Context, protocol.ConfigurePluginRequest) (*protocol.PluginReleaseRef, error)
 	}, ctx context.Context, in protocol.ConfigurePluginRequest) (*protocol.PluginReleaseRef, error) {
 		return s.ConfigurePlugin(ctx, in)
-	}).withOwnedReplay(atomicReplay((*Handler).commitPluginConfiguration))
+	}).withOwnedReplay((*Handler).replayPluginConfiguration)
 	r.command(MethodMeta{
 		Name: PluginsSetEnablement, GoName: "SetPluginEnablement",
 		CapabilityRules: requires(protocol.FeaturePlugins), Errors: pluginErrors(),

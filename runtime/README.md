@@ -36,6 +36,9 @@ retain the same identity accepted through either binding.
 Protocol admission checks enum values throughout each request, including plugin
 server and skill configuration maps, before creating a command receipt. A caller
 can correct an invalid enum and retry with the original key.
+Plugin configuration also admits the spelling of input IDs, MCP server names,
+and skill names before reserving a command receipt. The selected release owns
+whether a well-formed name exists in that installation.
 Protocol rules use the members in the received JSON document or the document
 produced by Go's JSON encoder. A Run start admits one Session target. An omitted
 Session export format selects JSON, and an explicitly empty format is invalid.

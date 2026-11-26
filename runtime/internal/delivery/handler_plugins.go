@@ -7,7 +7,6 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
-	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 
 	framevalue "github.com/Tangerg/frame/value"
@@ -193,48 +192,6 @@ func (s *Handler) selectPlugin(ctx context.Context, in protocol.PluginReleaseRef
 		return err
 	}
 	return wirePluginError(s.plugins.Select(ctx, id, digest, reply))
-}
-
-func (s *Handler) ConfigurePlugin(ctx context.Context, in protocol.ConfigurePluginRequest) (*protocol.PluginReleaseRef, error) {
-	var digest framevalue.Digest
-	if err := s.configurePlugin(ctx, in, operation.DirectReply(&digest)); err != nil {
-		return nil, err
-	}
-	return presentPluginReleaseRef(in.InstallationID, digest), nil
-}
-
-func (s *Handler) commitPluginConfiguration(ctx context.Context, in protocol.ConfigurePluginRequest, outcome atomicOutcome) error {
-	return outcome.settleRefusal(ctx, s.configurePlugin(ctx, in, outcome.pluginRelease(in.InstallationID)))
-}
-
-func (s *Handler) configurePlugin(ctx context.Context, in protocol.ConfigurePluginRequest, reply operation.Reply[framevalue.Digest]) error {
-	id, digest, err := parseInstallationRelease(in.InstallationID, in.Digest)
-	if err != nil {
-		return err
-	}
-	configuration := plugin.Configuration{
-		Values:           make(map[string]plugin.ValueChange, len(in.ValueChanges)),
-		ServerEnablement: make(map[mcpserver.ServerName]bool, len(in.ServerChanges)),
-		SkillEnablement:  make(map[string]bool, len(in.SkillChanges)),
-	}
-	for key, change := range in.ValueChanges {
-		if change.Type == protocol.PluginValueSet {
-			configuration.Values[key] = plugin.SetValue(*change.Value)
-		} else {
-			configuration.Values[key] = plugin.ClearValue()
-		}
-	}
-	for raw, change := range in.ServerChanges {
-		name, err := mcpserver.ParseServerName(raw)
-		if err != nil {
-			return protocol.InvalidParameters(err)
-		}
-		configuration.ServerEnablement[name] = change == protocol.PluginComponentEnable
-	}
-	for name, change := range in.SkillChanges {
-		configuration.SkillEnablement[name] = change == protocol.PluginComponentEnable
-	}
-	return wirePluginError(s.plugins.Configure(ctx, id, digest, configuration, reply))
 }
 
 func (s *Handler) SetPluginEnablement(ctx context.Context, in protocol.SetPluginEnablementRequest) (*protocol.PluginEnablement, error) {
