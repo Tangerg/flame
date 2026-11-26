@@ -68,6 +68,8 @@ export function DiffReaderNavigation({
   changes: string | undefined;
   onOpen: (path: string, navigation: HTMLButtonElement) => void;
 }) {
+  // A lone file has nowhere to step; its heading already carries its line changes.
+  if (files.length < 2) return null;
   return (
     <>
       <Metadata role="status">
