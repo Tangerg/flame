@@ -966,8 +966,9 @@ Runtime replacement without a provider change. Prior windows come from the
 current native cache; eviction retires an entry's eligibility to seed another read.
 
 Go to line is offered after a file read supplies text, including retained text
-during a refresh. A pending or failed first read does not establish line navigation;
-unsupported classification still removes it. Back and Copy path remain available
+during a refresh. Its visible text label leaves the range and request feedback
+readable when focus returns. A pending or failed first read does not establish
+line navigation. Unsupported classification still removes it. Back and Copy path remain available
 through that first result.
 When Runtime rejects an initial line request as invalid, Files names the line
 and offers Open from start. The action reads the same current path and keeps

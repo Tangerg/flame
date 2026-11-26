@@ -1,4 +1,3 @@
-import { iconGlyph } from "@/ui/icons/index";
 import * as stylex from "@stylexjs/stylex";
 import { color, space, type as typeStep } from "@flame/ui/tokens.stylex";
 import {
@@ -20,7 +19,6 @@ import { TextButton } from "@/ui/index";
 import {
   Button,
   copyReaderSelection,
-  IconButton,
   isImeKey,
   scrollReaderWithForeignSelection,
   scrollWithHorizontalArrow,
@@ -266,11 +264,7 @@ export function GoToLine({ onGo }: { onGo: (line: number) => void }) {
   };
   return (
     <Popover.Root open={open} onOpenChange={setOpen}>
-      <Popover.Trigger
-        render={
-          <IconButton icon={iconGlyph("crosshair")} size="sm" aria-label={t("file.goToLine")} />
-        }
-      />
+      <Popover.Trigger render={<Button size="sm">{t("file.goToLine")}</Button>} />
       <Popover.Content align="end" sideOffset={6}>
         <form onSubmit={submit} {...stylex.props(styles.goto)}>
           <div {...stylex.props(styles.gotoRow)}>
