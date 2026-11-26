@@ -713,8 +713,59 @@ outputs are removed.
 
 Dismissing the command menu still moves an existing Composer caret
 to zero without opening a view. A native key then inserts at the
-start of the draft. The next batch traces the modal's independent
-focus return.
+start of the draft. [Search overlay cancellation](#canceled-search-overlays-restore-the-composer-selection-2026-11-27)
+follows the modal's independent focus return.
+
+### Canceled search overlays restore the Composer selection (2026-11-27)
+
+In signed production Wails at `eba920829`, start in draft `2468`
+with the caret at two. Command menu and Session search both return
+native focus on Escape and move the caret to zero. The next digits
+prepend `5` and `6` in their respective probes.
+
+The shared SearchOverlay captures the actual opener and an optional
+return action for each opening. Both feature consumers use the
+Composer's existing editor and input-scope guard. Base UI completes its
+modal isolation cleanup before the canceled overlay restores the
+selection. Delivery requires the same opening, a presented source and
+unclaimed focus. Base UI handles ordinary openers, and a chosen row
+delivers its captured action and source once. This follows Better
+Accessibility's modal return guidance. ZCode's Command Center shows
+the same keyboard-first entry from an active composer.
+
+- In Chinese/light/14 px/Flame Orange at 1120 × 728, Command menu
+  Escape returns the caret to two and typing produces `24568`. Start
+  with the reverse selection of `45`, open Session search, and wheel
+  its last row from y=823 to y=411. Click the backdrop. The original
+  range returns at one with length two. A key replaces it to produce
+  `2768`. Cmd+Z restores `24568`.
+- After switching to English/dark/18 px/Blue (#0485F7) and resizing
+  to 1280 × 800, cancel the menu with its shortcut and Session search
+  with Escape. Keys insert at the original carets, producing
+  `245168` and `2451668`. The sidebar Search sessions trigger also
+  regains its own focus after ordinary cancellation.
+- Native text keys filter the command menu to Agent memory. Return
+  opens and focuses that view, then its Escape returns to the original
+  Composer caret. Pointer and keyboard choices switch between
+  the source Session and a distinct destination. Their separate
+  drafts `2451668` and `98` remain available on return.
+
+Web typecheck, 81 contract tests, bootstrap, production bundle checks,
+scoped Prettier and diff checks pass. Setup, production staging,
+Runtime packaging and two signed Wails builds pass. Both builds use
+the same private Runtime `2026-11-26.10`. All 22 private Sessions
+retain their IDs, titles and workspace, and record zero Runs.
+VoiceOver, IME composition and other platforms are outside this
+macOS keyboard, pointer and accessibility check.
+
+Both Wails instances exit normally. The private Runtime reaches its
+existing drain deadline. The app registration, processes, profile,
+fixtures, screenshots, logs, caches and checkout outputs are removed.
+
+An independent scroll probe leaves the first Session search choice
+highlighted at y=-347 while the visible last row is at y=410.
+Return opens that offscreen first Session. The next batch checks
+visibility before keyboard activation.
 
 ## Error notes leave retrying to their buttons (2026-11-26)
 
