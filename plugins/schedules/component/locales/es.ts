@@ -82,7 +82,7 @@ export const es: Record<string, string> = {
   "action.delete": "Eliminar",
   "nextFiring.label": "Próxima ejecución",
   "nextFiring.none": "Sin programar",
-  "details.title": "Detalles de la programación",
+  "details.title": "Detalles",
   "fact.cron": "Cron",
   "fact.timeZone": "Zona horaria",
   "fact.schedule": "Programación",

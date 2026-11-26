@@ -77,7 +77,7 @@ export const ja: Record<string, string> = {
   "action.delete": "削除",
   "nextFiring.label": "次回の実行",
   "nextFiring.none": "未スケジュール",
-  "details.title": "スケジュールの詳細",
+  "details.title": "詳細",
   "fact.cron": "Cron",
   "fact.timeZone": "タイムゾーン",
   "fact.schedule": "スケジュール",

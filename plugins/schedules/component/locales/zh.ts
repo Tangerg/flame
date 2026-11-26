@@ -73,7 +73,7 @@ export const zh: Record<string, string> = {
   "action.delete": "删除",
   "nextFiring.label": "下次触发",
   "nextFiring.none": "未排定",
-  "details.title": "定时任务详情",
+  "details.title": "详情",
   "fact.cron": "Cron",
   "fact.timeZone": "时区",
   "fact.schedule": "定时任务",

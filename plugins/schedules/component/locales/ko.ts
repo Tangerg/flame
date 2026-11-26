@@ -77,7 +77,7 @@ export const ko: Record<string, string> = {
   "action.delete": "삭제",
   "nextFiring.label": "다음 실행",
   "nextFiring.none": "예약되지 않음",
-  "details.title": "스케줄 세부 정보",
+  "details.title": "세부 정보",
   "fact.cron": "Cron",
   "fact.timeZone": "시간대",
   "fact.schedule": "스케줄",

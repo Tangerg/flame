@@ -81,7 +81,7 @@ export const fr: Record<string, string> = {
   "action.delete": "Supprimer",
   "nextFiring.label": "Prochain déclenchement",
   "nextFiring.none": "Non planifié",
-  "details.title": "Détails de la planification",
+  "details.title": "Détails",
   "fact.cron": "Cron",
   "fact.timeZone": "Fuseau horaire",
   "fact.schedule": "Planification",
