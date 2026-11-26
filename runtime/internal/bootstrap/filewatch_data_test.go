@@ -18,6 +18,7 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+	"github.com/Tangerg/flame/packages/go-sdk/plugin/skilllearning"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
@@ -41,6 +42,11 @@ func TestFilewatchResumesTheSamePartialDataMethodWithPinnedInputs(t *testing.T) 
 	fault := &repeatedFilewatchEvents{t: t}
 	r := poMCPOpenWithCallbackRPC(t, cfg, fault.wrap)
 	watch := poMCPActivate(r, filepath.Join(firstPartyPackages, "filewatch"))
+	skills := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: filepath.Join(firstPartyPackages, "skills")}, "install-skills").(*protocol.PluginInstallation)
+	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: skills.ID, Enabled: true}, "enable-skills")
+	r.must(delivery.PluginsSelectProvider, protocol.SelectPluginProviderRequest{Role: skilllearning.Reference, InstallationID: skills.ID, Contribution: "skill-learning"}, "select-skills")
+	trajectory := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: filepath.Join(firstPartyPackages, "trajectory")}, "install-trajectory").(*protocol.PluginInstallation)
+	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: trajectory.ID, Enabled: true}, "enable-trajectory")
 	artifact := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: filepath.Join(firstPartyPackages, "deliverables")}, "install-data-chart").(*protocol.PluginInstallation)
 	artifact = r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: artifact.ID, Enabled: true}, "enable-data-chart").(*protocol.PluginInstallation)
 	waitCallContributorState(t, r, watch.ID, protocol.MCPServerConnected)
@@ -117,6 +123,10 @@ func TestFilewatchResumesTheSamePartialDataMethodWithPinnedInputs(t *testing.T) 
 		return result
 	}
 	root := r.must(delivery.WorkspacesResolve, protocol.ResolveWorkspaceRequest{Ref: &protocol.WorkspaceRef{Path: cfg.defaultWorkspacePath}}, "").(*protocol.WorkspaceInfo)
+	discovered := r.must(delivery.SkillsDiscoveredList, protocol.WorkspaceQuery{Workspace: root.Ref}, "").(*protocol.SkillDiscovery)
+	if !slices.ContainsFunc(discovered.Skills, func(value protocol.Skill) bool { return value.Name == "inspect-history" }) {
+		t.Fatalf("default trajectory Skill unavailable: %+v", discovered)
+	}
 	session := r.must(delivery.SessionsCreate, protocol.CreateSessionRequest{Title: "P1 analysis", Workspace: &root.Ref}, "data-session").(*protocol.Session)
 	east := filepath.Join(root.Ref.Path, "east.csv")
 	west := filepath.Join(root.Ref.Path, "west.csv")
@@ -136,7 +146,18 @@ func TestFilewatchResumesTheSamePartialDataMethodWithPinnedInputs(t *testing.T) 
 	}, "follow-data", nil)
 	wait("active method", func() bool { return watchPhase(testsupport.FilewatchStatusPhaseWatching, "2") })
 	write(east, "P1,2\nP2,80")
-	wait("admission of D1", func() bool { values := events(); return len(values) == 1 && values[0].Accepted })
+	wait("admission of D1", func() bool {
+		values := events()
+		if len(values) == 1 && values[0].Accepted {
+			return true
+		}
+		var status testsupport.FilewatchStatus
+		watchCall(testsupport.FilewatchStatusV1Method, struct{}{}, "", &status)
+		if status.DispatchError != nil {
+			t.Fatalf("initial D1 dispatch failed: %s", *status.DispatchError)
+		}
+		return false
+	})
 	d1 := events()[0]
 	waitForProtocolRunTerminal(t, t.Context(), r.api, d1.RunId)
 	if run := r.must(delivery.RunsGet, protocol.GetRunRequest{RunID: d1.RunId}, "").(*protocol.RunRef); run.Outcome == nil || run.Outcome.Type != protocol.OutcomeCompleted {
