@@ -1159,7 +1159,9 @@ installed beside the code highlight provider in each presentation root. The host
 owns Pierre's reader labels and keeps its module-wide catalog on the display locale. Code appears as literal text at once
 and highlighting follows; changing source updates the same reader instead of
 creating a worker. The pool's workers are Blob module workers, which inherit the
-page CSP.
+page CSP. A code block clears Pierre's background and leading line inset, so its
+source sits on the frame's card at the caption's edge; file readers and diffs keep
+Pierre's opaque plane behind their sticky gutters.
 
 Tag renderers retain their component identity across Markdown updates, keeping an
 unchanged table's selection and open preview attached to its reader. Table copying
