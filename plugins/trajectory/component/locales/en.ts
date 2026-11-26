@@ -88,7 +88,6 @@ export const en: Record<string, string> = {
   "fact.delegatingItemId": "Delegating item ID",
   "fact.executionDurationMs": "Execution duration (ms)",
   "fact.approval": "Approval",
-  "note.usageMissing": "Usage wasn’t recorded for this call.",
   "note.outcomeUnobserved":
     "The final outcome wasn’t observed. Settlement time isn’t measured execution time.",
   "note.providerUnobserved":

@@ -93,7 +93,6 @@ export const fr: Record<string, string> = {
   "fact.delegatingItemId": "ID d’élément délégant",
   "fact.executionDurationMs": "Durée d’exécution (ms)",
   "fact.approval": "Approbation",
-  "note.usageMissing": "L’utilisation n’a pas été enregistrée pour cet appel.",
   "note.outcomeUnobserved":
     "Le résultat final n’a pas été observé. L’heure de résolution n’est pas le temps d’exécution mesuré.",
   "note.providerUnobserved":

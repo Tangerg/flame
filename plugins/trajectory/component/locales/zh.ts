@@ -84,7 +84,6 @@ export const zh: Record<string, string> = {
   "fact.delegatingItemId": "委派项 ID",
   "fact.executionDurationMs": "执行时长 (ms)",
   "fact.approval": "审批",
-  "note.usageMissing": "此次调用未记录用量。",
   "note.outcomeUnobserved": "未观测到最终结果。结算时间不是实测的执行时间。",
   "note.providerUnobserved": "未观测到提供方结果。缺失用量并不意味着零消耗。",
   "note.reasoningRedacted": "思考内容已被隐去。",

@@ -90,7 +90,6 @@ export const de: Record<string, string> = {
   "fact.delegatingItemId": "Delegierende Element-ID",
   "fact.executionDurationMs": "Ausführungsdauer (ms)",
   "fact.approval": "Genehmigung",
-  "note.usageMissing": "Für diesen Aufruf wurde keine Nutzung erfasst.",
   "note.outcomeUnobserved":
     "Das endgültige Ergebnis wurde nicht beobachtet. Die Abschlusszeit ist nicht die gemessene Ausführungszeit.",
   "note.providerUnobserved":

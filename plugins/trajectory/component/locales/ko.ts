@@ -84,7 +84,6 @@ export const ko: Record<string, string> = {
   "fact.delegatingItemId": "위임 항목 ID",
   "fact.executionDurationMs": "실행 시간 (ms)",
   "fact.approval": "승인",
-  "note.usageMissing": "이 호출의 사용량은 기록되지 않았습니다.",
   "note.outcomeUnobserved":
     "최종 결과가 관측되지 않았습니다. 정산 시간은 측정된 실행 시간이 아닙니다.",
   "note.providerUnobserved":

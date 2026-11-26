@@ -9,14 +9,20 @@ interface Findings {
   notes: ReactNode[];
 }
 
+type Moment = (iso: string) => ReactNode;
+
 function modelFindings(
   source: Extract<TrajectoryEntry, { type: "model" }>["model"],
   t: Translate,
+  moment: Moment,
   { facts, notes }: Findings,
 ): void {
   facts.push(
     [t("fact.segmentId"), source.segmentId],
-    [t("fact.settlement"), source.settledAt ?? t("value.unrecorded")],
+    [
+      t("fact.settlement"),
+      source.settledAt ? moment(source.settledAt) : t("value.unrecorded"),
+    ],
   );
   if (["completed", "failed"].includes(source.state) && source.settledAt) {
     const duration =
@@ -42,13 +48,13 @@ function modelFindings(
   ] as const)
     if (source.usage?.[key] !== undefined)
       facts.push([t(label), source.usage[key]]);
-  if (!source.usage) notes.push(t("note.usageMissing"));
   if (source.state === "unknown") notes.push(t("note.outcomeUnobserved"));
 }
 
 function endpointFindings(
   endpoint: Extract<TrajectoryEntry, { type: "endpoint" }>["endpoint"],
   t: Translate,
+  moment: Moment,
   { facts, notes }: Findings,
 ): void {
   facts.push(
@@ -59,7 +65,10 @@ function endpointFindings(
     ],
     [t("fact.origin"), endpoint.caller.origin],
     [t("fact.costUsd"), endpoint.costUsd ?? t("value.unpriced")],
-    [t("fact.settlement"), endpoint.settledAt ?? t("value.unrecorded")],
+    [
+      t("fact.settlement"),
+      endpoint.settledAt ? moment(endpoint.settledAt) : t("value.unrecorded"),
+    ],
   );
   if (endpoint.failure) notes.push(endpoint.failure);
   if (endpoint.state === "unknown") notes.push(t("note.providerUnobserved"));
@@ -80,6 +89,7 @@ function runFacts(
 export function observationFindings(
   row: TrajectoryEntry,
   t: Translate,
+  moment: Moment,
 ): Findings {
   const findings: Findings = {
     facts:
@@ -91,8 +101,9 @@ export function observationFindings(
           ],
     notes: [],
   };
-  if (row.type === "model") modelFindings(row.model, t, findings);
-  else if (row.type === "endpoint") endpointFindings(row.endpoint, t, findings);
+  if (row.type === "model") modelFindings(row.model, t, moment, findings);
+  else if (row.type === "endpoint")
+    endpointFindings(row.endpoint, t, moment, findings);
   else if (row.type === "run") runFacts(row.run, t, findings.facts);
   else if (row.item.type === "toolCall") {
     findings.facts.push([

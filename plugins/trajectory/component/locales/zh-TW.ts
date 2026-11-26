@@ -84,7 +84,6 @@ export const zhTW: Record<string, string> = {
   "fact.delegatingItemId": "委派項目 ID",
   "fact.executionDurationMs": "執行時長 (ms)",
   "fact.approval": "核准",
-  "note.usageMissing": "此次呼叫未記錄用量。",
   "note.outcomeUnobserved": "未觀測到最終結果。結算時間不是實測的執行時間。",
   "note.providerUnobserved": "未觀測到供應商結果。缺少用量並不代表零消耗。",
   "note.reasoningRedacted": "思考內容已被隱去。",

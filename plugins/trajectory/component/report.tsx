@@ -170,6 +170,7 @@ export function TrajectoryReport({
               <Observation
                 row={row}
                 t={t}
+                occurred={occurred}
                 expansion={expansion}
                 onEvidenceOpenChange={(open) => setEvidenceOpen(key, open)}
               />

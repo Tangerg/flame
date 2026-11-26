@@ -85,7 +85,6 @@ export const ja: Record<string, string> = {
   "fact.delegatingItemId": "委任アイテム ID",
   "fact.executionDurationMs": "実行時間 (ms)",
   "fact.approval": "承認",
-  "note.usageMissing": "この呼び出しの使用量は記録されませんでした。",
   "note.outcomeUnobserved":
     "最終結果は観測されませんでした。確定時刻は実測の実行時間ではありません。",
   "note.providerUnobserved":
