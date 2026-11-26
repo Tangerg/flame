@@ -46,7 +46,7 @@ func TestSkillDiscoveryRestoresOriginalReleaseAndRefusesForeignWorkspace(t *test
 	if err != nil || capture.Command == "" || len(result.Entries) != 1 {
 		t.Fatalf("capture = %+v %+v %v", capture, result, err)
 	}
-	second := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, "install-other").(*protocol.PluginInstallation)
+	second := r.installAndInspect(source, "install-other")
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: second.ID, Enabled: true}, "enable-other")
 	r.must(delivery.PluginsSelectProvider, protocol.SelectPluginProviderRequest{Role: skilllearning.Reference, InstallationID: second.ID, Contribution: "skill-learning"}, "select-other")
 	waitCallContributorState(t, r, second.ID, protocol.MCPServerConnected)

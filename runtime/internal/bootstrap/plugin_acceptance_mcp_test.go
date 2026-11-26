@@ -100,6 +100,16 @@ func (r *poMCPRuntime) pluginInstallation(id string) *protocol.PluginInstallatio
 	return nil
 }
 
+func (r *poMCPRuntime) installAndInspect(source, key string) *protocol.PluginInstallation {
+	r.t.Helper()
+	receipt := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, key).(*protocol.PluginReleaseRef)
+	installation := r.pluginInstallation(receipt.InstallationID)
+	if installation.Selected.Digest != receipt.Digest {
+		r.t.Fatalf("installation selected %s, receipt records %s", installation.Selected.Digest, receipt.Digest)
+	}
+	return installation
+}
+
 func (r *poMCPRuntime) createUserServer(candidate protocol.MCPServerCandidate, key string) protocol.MCPServerID {
 	r.t.Helper()
 	r.must(delivery.MCPServersCreate, candidate, key)
@@ -186,7 +196,7 @@ func poMCPConfig(t *testing.T) assemblyConfig {
 
 func installExternalConnector(r *poMCPRuntime) *protocol.PluginInstallation {
 	r.t.Helper()
-	installed := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: filepath.Join(firstPartyPackages, "mcp")}, "install-external-connector").(*protocol.PluginInstallation)
+	installed := r.installAndInspect(filepath.Join(firstPartyPackages, "mcp"), "install-external-connector")
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, "enable-external-connector")
 	r.must(delivery.PluginsSelectProvider, protocol.SelectPluginProviderRequest{Role: mcpconnector.Reference, InstallationID: installed.ID, Contribution: mcpconnector.Export}, "select-external-connector")
 	return installed
@@ -194,7 +204,7 @@ func installExternalConnector(r *poMCPRuntime) *protocol.PluginInstallation {
 
 func poMCPActivate(r *poMCPRuntime, source string) *protocol.PluginInstallation {
 	r.t.Helper()
-	installed := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, "install").(*protocol.PluginInstallation)
+	installed := r.installAndInspect(source, "install")
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, "enable")
 	installed = r.pluginInstallation(installed.ID)
 	for _, contribution := range installed.Selected.Contributions {

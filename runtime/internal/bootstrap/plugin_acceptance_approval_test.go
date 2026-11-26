@@ -111,7 +111,8 @@ func TestPluginAcceptanceApprovalStaleAfterReleaseChange(t *testing.T) {
 		"mcp.json":    `{"$schema":"https://agent-plugins.org/schemas/1.0.0/mcp.schema.json","mcpServers":{"reviews":` + testMCPServerJSON(t, server.URL) + `}}`,
 	})
 	authorPluginPackage(t, source)
-	installed := must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, "install").(*protocol.PluginInstallation)
+	fixture := &poMCPRuntime{t: t, host: host, api: api, endpoint: endpoint}
+	installed := fixture.installAndInspect(source, "install")
 	must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, "enable")
 	serverID := protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "reviews"}
 	awaitTool := func(phase string) protocol.MCPTool {

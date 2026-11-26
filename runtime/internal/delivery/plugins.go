@@ -139,10 +139,10 @@ func registerPlugins(r *Registry) {
 		return s.ListPlugins(ctx)
 	})
 	r.command(MethodMeta{Name: PluginsInstall, GoName: "InstallPlugin", CapabilityRules: requires(protocol.FeaturePlugins), Errors: pluginErrors()}, func(s interface {
-		InstallPlugin(context.Context, protocol.InstallPluginRequest) (*protocol.PluginInstallation, error)
-	}, ctx context.Context, in protocol.InstallPluginRequest) (*protocol.PluginInstallation, error) {
+		InstallPlugin(context.Context, protocol.InstallPluginRequest) (*protocol.PluginReleaseRef, error)
+	}, ctx context.Context, in protocol.InstallPluginRequest) (*protocol.PluginReleaseRef, error) {
 		return s.InstallPlugin(ctx, in)
-	})
+	}).withOwnedReplay(atomicReplay((*Handler).commitPluginInstall))
 	r.command(MethodMeta{Name: PluginsStage, GoName: "StagePlugin", CapabilityRules: requires(protocol.FeaturePlugins), Errors: pluginErrors()}, func(s interface {
 		StagePlugin(context.Context, protocol.StagePluginRequest) (*protocol.PluginReleaseRef, error)
 	}, ctx context.Context, in protocol.StagePluginRequest) (*protocol.PluginReleaseRef, error) {
@@ -154,10 +154,10 @@ func registerPlugins(r *Registry) {
 		return s.SelectPlugin(ctx, in)
 	}).withOwnedReplay(atomicReplay((*Handler).commitPluginSelection))
 	r.command(MethodMeta{Name: PluginsConfigure, GoName: "ConfigurePlugin", CapabilityRules: requires(protocol.FeaturePlugins), Errors: pluginErrors()}, func(s interface {
-		ConfigurePlugin(context.Context, protocol.ConfigurePluginRequest) (*protocol.PluginInstallation, error)
-	}, ctx context.Context, in protocol.ConfigurePluginRequest) (*protocol.PluginInstallation, error) {
+		ConfigurePlugin(context.Context, protocol.ConfigurePluginRequest) (*protocol.PluginReleaseRef, error)
+	}, ctx context.Context, in protocol.ConfigurePluginRequest) (*protocol.PluginReleaseRef, error) {
 		return s.ConfigurePlugin(ctx, in)
-	})
+	}).withOwnedReplay(atomicReplay((*Handler).commitPluginConfiguration))
 	r.command(MethodMeta{
 		Name: PluginsSetEnablement, GoName: "SetPluginEnablement",
 		CapabilityRules: requires(protocol.FeaturePlugins), Errors: pluginErrors(),

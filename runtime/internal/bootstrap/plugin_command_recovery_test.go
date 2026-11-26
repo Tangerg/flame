@@ -96,7 +96,7 @@ func TestObservedCommandNeverRetargetsToReplacementProvider(t *testing.T) {
 	request := memoryAddRequest(r, memorycontract.AddInput{Scope: memorycontract.AddInputScopeUser, Content: "original provider's fact"})
 	r.must(delivery.PluginsCall, request, "original-command")
 	r.must(delivery.PluginsUninstall, protocol.PluginRequest{InstallationID: first.ID}, "uninstall-observed")
-	second := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, "replacement-install").(*protocol.PluginInstallation)
+	second := r.installAndInspect(source, "replacement-install")
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: second.ID, Enabled: true}, "replacement-enable")
 	r.must(delivery.PluginsSelectProvider, protocol.SelectPluginProviderRequest{Role: "memory", InstallationID: second.ID, Contribution: "memory-provider"}, "replacement-provider")
 	r = reopenPluginRuntime(t, r, &cfg)

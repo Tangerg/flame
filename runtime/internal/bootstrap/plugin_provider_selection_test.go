@@ -16,7 +16,7 @@ func TestProviderChoiceDoesNotFollowEnablementAndNeverRetargetsOriginalCommand(t
 	cfg := poMCPConfig(t)
 	r := poMCPOpen(t, cfg)
 	install := func(source, key string) *protocol.PluginInstallation {
-		value := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, key+"-install").(*protocol.PluginInstallation)
+		value := r.installAndInspect(source, key+"-install")
 		r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: value.ID, Enabled: true}, key+"-enable")
 		return r.pluginInstallation(value.ID)
 	}

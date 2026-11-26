@@ -16,7 +16,7 @@ func TestClientComponentsRemainAvailableWithoutBackend(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			r := poMCPOpen(t, poMCPConfig(t))
 			source := filepath.Join(firstPartyPackages, name)
-			installed := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, "install").(*protocol.PluginInstallation)
+			installed := r.installAndInspect(source, "install")
 			if len(installed.Selected.Diagnostics) != 0 {
 				t.Fatalf("admission: %+v", installed.Selected)
 			}

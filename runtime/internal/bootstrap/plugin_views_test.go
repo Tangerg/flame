@@ -44,7 +44,7 @@ func TestTrajectoryComponentReadsInstalledBytesAndCanonicalHistory(t *testing.T)
 	cfg.modelProviders = testChatResolver(client)
 	r := poMCPOpen(t, cfg)
 	source := filepath.Join(firstPartyPackages, "trajectory")
-	installed := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, "install").(*protocol.PluginInstallation)
+	installed := r.installAndInspect(source, "install")
 	index := slices.IndexFunc(installed.Selected.Components, func(component protocol.PluginClientComponent) bool {
 		return component.ID == "trajectory"
 	})
@@ -160,7 +160,7 @@ func TestMemoryComponentUsesInstalledPublicOperationsAndPreservesPrivateFacts(t 
 	cfg := poMCPConfig(t)
 	r := poMCPOpen(t, cfg)
 	source := filepath.Join(firstPartyPackages, "memory")
-	installed := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, "install-memory").(*protocol.PluginInstallation)
+	installed := r.installAndInspect(source, "install-memory")
 	if len(installed.Selected.Diagnostics) != 0 || len(installed.Selected.Components) != 1 || installed.Selected.Components[0].Scope != "client" {
 		t.Fatalf("memory admission: %+v", installed.Selected)
 	}
@@ -220,7 +220,7 @@ func TestScheduleComponentUsesOwnBackendAndWithdrawalPreservesPrivateData(t *tes
 	cfg := poMCPConfig(t)
 	r := poMCPOpen(t, cfg)
 	source := filepath.Join(firstPartyPackages, "schedules")
-	installed := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, "install-schedules").(*protocol.PluginInstallation)
+	installed := r.installAndInspect(source, "install-schedules")
 	if len(installed.Selected.Diagnostics) != 0 || len(installed.Selected.Components) != 1 || installed.Selected.Components[0].Contribution != "schedules-provider" {
 		t.Fatalf("schedule admission: %+v", installed.Selected)
 	}
@@ -307,7 +307,7 @@ func TestUsageComponentUsesCanonicalSummaryAndUninstallPreservesUsage(t *testing
 	if err != nil {
 		t.Fatal(err)
 	}
-	installed := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, "install-usage").(*protocol.PluginInstallation)
+	installed := r.installAndInspect(source, "install-usage")
 	if len(installed.Selected.Diagnostics) != 0 || len(installed.Selected.Components) != 1 {
 		t.Fatalf("usage admission: %+v", installed.Selected)
 	}

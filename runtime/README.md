@@ -692,8 +692,9 @@ retirement and lost communication until that original execution is proved to
 have ended. A new runner's empty ledger is not exit evidence. Installed native
 code is trusted local code; this process profile does not establish an OS sandbox.
 
-A new installation starts disabled. Configure its required inputs, then enable
-it. Disablement withdraws new use without discarding the selected release or
+A new installation starts disabled. `plugins.install` commits its identity and
+selected release with the original acknowledgement. Configure its required inputs,
+then enable it. Disablement withdraws new use without discarding the selected release or
 standing Tool decisions. Configuration changes, release selection and uninstall
 respect the original business and execution protection under the shared
 Admission. Exact old bindings remain the authority for retained work; a current
@@ -776,8 +777,10 @@ retain their separate endpoint-bound OAuth authority; they are not installed
 package process variants. Configuration commands require
 the exact selected `digest` alongside `installationId`; a release switch rejects an
 older configuration as `plugin_stale` before changing inputs or component enablement.
-An omitted digest is invalid. Rebuild clients together; old unbound commands are not
-upgraded or replayed against the latest release. Runtime derives quiescence
+The configuration decision and its `installationId` and `digest` receipt commit
+together. When the proposed configuration already holds, the receipt confirms it
+inside an installation transaction. Configuration requires a digest and a client
+built against the current protocol. Runtime derives quiescence
 from the canonical union of owner-provided dependency projections: the installation ID and
 release digest set of every owned executable manifest, covering package Skills and
 installation MCP tools, and the same set stored relationally with each pending
@@ -905,9 +908,8 @@ transaction that removes the installation. Connection withdrawal uses the exact
 release removed by that transaction. Frame retains the installed execution resources
 and their original proofs until retirement completes. The MCP Pool withdraws its
 session observation as part of that retirement.
-Post-commit package preparation, reconciliation, and projection, including a new
-installation's first result, survive request cancellation and follow the Runtime's
-cancellation root. A reconciliation that cannot
+Post-commit package preparation and reconciliation survive request cancellation
+and follow the Runtime's cancellation root. A reconciliation that cannot
 start settles each still-enabled source as `mcp_configuration_failed` at the connection
 status owner; a removed source stays absent. The delivery endpoint
 joins these calls before closing their dependencies; shutdown does not undo the

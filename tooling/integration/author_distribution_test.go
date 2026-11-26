@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"testing"
 	"time"
 
@@ -121,14 +122,25 @@ func verifyStandalonePlugin(t *testing.T, author standaloneAuthor) {
 			t.Error(err)
 		}
 	})
-	installed, err := host.InstallPlugin(t.Context(), protocol.InstallPluginRequest{Source: files[0]}, protocol.CommandOptions{})
+	receipt, err := host.InstallPlugin(t.Context(), protocol.InstallPluginRequest{Source: files[0]}, protocol.CommandOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := host.SetPluginEnablement(t.Context(), protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, protocol.CommandOptions{}); err != nil {
+	if _, err := host.SetPluginEnablement(t.Context(), protocol.SetPluginEnablementRequest{InstallationID: receipt.InstallationID, Enabled: true}, protocol.CommandOptions{}); err != nil {
 		t.Fatal(err)
 	}
-	waitForAuthorBackend(t, host, installed.ID)
+	waitForAuthorBackend(t, host, receipt.InstallationID)
+	page, err := host.ListPlugins(t.Context(), protocol.CallOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	index := slices.IndexFunc(page.Data, func(value protocol.PluginInstallation) bool {
+		return value.ID == receipt.InstallationID
+	})
+	if index < 0 || page.Data[index].Selected.Digest != receipt.Digest {
+		t.Fatal("independent author did not retain its installed release")
+	}
+	installed := page.Data[index]
 	contract := ""
 	for _, contribution := range installed.Selected.Contributions {
 		if contribution.ID == author.contribution {

@@ -385,10 +385,10 @@ export interface Methods {
       options?: RpcCallOptions,
     ) => Promise<CallPluginResponse> | MutationPromise<CallPluginResponse>;
     list: (signal?: AbortSignal) => Promise<Page<PluginInstallation>>;
-    install: (params: InstallPluginRequest) => MutationPromise<PluginInstallation>;
+    install: (params: InstallPluginRequest) => MutationPromise<PluginReleaseRef>;
     stage: (params: StagePluginRequest) => MutationPromise<PluginReleaseRef>;
     select: (params: PluginReleaseRef) => MutationPromise<PluginReleaseRef>;
-    configure: (params: ConfigurePluginRequest) => MutationPromise<PluginInstallation>;
+    configure: (params: ConfigurePluginRequest) => MutationPromise<PluginReleaseRef>;
     setEnablement: (params: SetPluginEnablementRequest) => MutationPromise<PluginEnablement>;
     uninstall: (installationId: string) => MutationPromise<void>;
   };

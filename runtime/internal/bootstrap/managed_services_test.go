@@ -119,7 +119,7 @@ func TestMemoryServiceHasOneSelectedOwnerAndReenableRetainsItsPrivateFacts(t *te
 	}
 	r.poMCPTools(server(first.ID), memoryToolsReady)
 	fact := mustMemoryAdd(r, memoryAddRequest(r, memorycontract.AddInput{Scope: memorycontract.AddInputScopeUser, Content: "owned fact"}), "fact")
-	second := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, "second-install").(*protocol.PluginInstallation)
+	second := r.installAndInspect(source, "second-install")
 	invoke := func(method delivery.Name, input any, key string) protocol.OperationResult {
 		return r.endpoint.Invoke(t.Context(), method, input, protocol.CallMetadata{IdempotencyKey: key, RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 	}

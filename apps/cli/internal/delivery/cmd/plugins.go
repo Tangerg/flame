@@ -26,10 +26,10 @@ type pluginRuntime interface {
 	ListPluginProviders(context.Context) ([]protocol.PluginProviderSelection, error)
 	SelectPluginProvider(context.Context, protocol.SelectPluginProviderRequest, authoring.CommandID) (*protocol.PluginProviderSelection, error)
 	ListPlugins(context.Context) ([]protocol.PluginInstallation, error)
-	InstallPlugin(context.Context, protocol.InstallPluginRequest, authoring.CommandID) (*protocol.PluginInstallation, error)
+	InstallPlugin(context.Context, protocol.InstallPluginRequest, authoring.CommandID) (*protocol.PluginReleaseRef, error)
 	StagePlugin(context.Context, protocol.StagePluginRequest, authoring.CommandID) (*protocol.PluginReleaseRef, error)
 	SelectPlugin(context.Context, protocol.PluginReleaseRef, authoring.CommandID) (*protocol.PluginReleaseRef, error)
-	ConfigurePlugin(context.Context, protocol.ConfigurePluginRequest, authoring.CommandID) (*protocol.PluginInstallation, error)
+	ConfigurePlugin(context.Context, protocol.ConfigurePluginRequest, authoring.CommandID) (*protocol.PluginReleaseRef, error)
 	SetPluginEnablement(context.Context, protocol.SetPluginEnablementRequest, authoring.CommandID) (*protocol.PluginEnablement, error)
 	UninstallPlugin(context.Context, protocol.PluginRequest, authoring.CommandID) error
 }

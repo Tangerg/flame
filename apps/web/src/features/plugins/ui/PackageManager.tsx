@@ -144,16 +144,19 @@ export function PackageManager() {
   const [draft, setDraft] = useState({ signal: operations?.signal, source: "" });
   if (draft.signal !== operations?.signal) setDraft({ signal: operations?.signal, source: "" });
   const source = draft.source;
-  const [installed, setInstalled] = useState<{ signal: AbortSignal; name: string }>();
+  const [installed, setInstalled] = useState<{ signal: AbortSignal; installationId: string }>();
+  const installedId =
+    installed?.signal === operations?.signal ? installed?.installationId : undefined;
+  const installedName = catalog.data?.find((item) => item.id === installedId)?.selected.name;
   const { feedback, reset, run } = useAsyncFeedback(operations?.signal);
   const busy = feedback.state === "busy";
   const error = feedback.state === "error" ? feedback.reason : "";
   const install = () => {
     if (!operations) return;
     return run(async () => {
-      const installation = await operations.install({ source });
+      const receipt = await operations.install({ source });
       if (operations.signal.aborted) return { ok: true };
-      setInstalled({ signal: operations.signal, name: installation.selected.name });
+      setInstalled({ signal: operations.signal, installationId: receipt.installationId });
       setDraft({ signal: operations.signal, source: "" });
       await catalog.refetch();
       return { ok: true };
@@ -189,7 +192,7 @@ export function PackageManager() {
         </div>
         <InstallFeedback
           error={error}
-          installed={installed?.signal === operations?.signal ? installed?.name : undefined}
+          installed={installedName ?? installedId}
           realization={realization}
         />
       </PanelSection>

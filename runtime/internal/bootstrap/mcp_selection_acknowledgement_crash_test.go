@@ -152,8 +152,7 @@ func TestMCPConnectorKeepsItsConnectionsUntilAChoiceCommits(t *testing.T) {
 
 func enableReplacementConnector(r *poMCPRuntime) *protocol.PluginInstallation {
 	r.t.Helper()
-	replacement := r.must(delivery.PluginsInstall,
-		protocol.InstallPluginRequest{Source: filepath.Join(firstPartyPackages, "mcp")}, "install-replacement").(*protocol.PluginInstallation)
+	replacement := r.installAndInspect(filepath.Join(firstPartyPackages, "mcp"), "install-replacement")
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{
 		InstallationID: replacement.ID, Enabled: true,
 	}, "enable-replacement")

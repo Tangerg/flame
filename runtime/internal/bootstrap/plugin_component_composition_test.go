@@ -27,7 +27,7 @@ func TestIndependentComponentPackagesComposeThroughInstallationLifecycle(t *test
 				}
 				authorPluginPackage(t, source)
 				sources[name] = source
-				row := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, "install-"+name).(*protocol.PluginInstallation)
+				row := r.installAndInspect(source, "install-"+name)
 				if len(row.Selected.Diagnostics) != 0 || len(row.Selected.Servers) != 0 {
 					t.Fatalf("independent component admission: %+v", row.Selected)
 				}

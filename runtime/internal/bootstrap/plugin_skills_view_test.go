@@ -153,7 +153,7 @@ func TestSkillsComponentUsesCanonicalOwnersAndWithdrawalPreservesCuration(t *tes
 	proposal.Name = "pending"
 	outstanding := submit("pending", proposal)
 	outstandingRef := protocol.SkillProposalRef{Workspace: query.Workspace, Name: outstanding.Name, Revision: outstanding.Revision, Scope: protocol.SkillProposalScopeUser}
-	other := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, "install-alternative").(*protocol.PluginInstallation)
+	other := r.installAndInspect(source, "install-alternative")
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: other.ID, Enabled: true}, "enable-alternative")
 	r.must(delivery.PluginsSelectProvider, protocol.SelectPluginProviderRequest{Role: skilllearning.Reference, InstallationID: other.ID, Contribution: "skill-learning"}, "select-alternative")
 	waitCallContributorState(t, r, other.ID, protocol.MCPServerConnected)

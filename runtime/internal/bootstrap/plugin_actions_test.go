@@ -19,7 +19,7 @@ func TestSessionActionUsesCanonicalSessionRevisionAndDurableReplay(t *testing.T)
 	if err != nil {
 		t.Fatal(err)
 	}
-	installed := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, "install").(*protocol.PluginInstallation)
+	installed := r.installAndInspect(source, "install")
 	index := slices.IndexFunc(installed.Selected.Components, func(component protocol.PluginClientComponent) bool {
 		return component.ID == "rename-session"
 	})

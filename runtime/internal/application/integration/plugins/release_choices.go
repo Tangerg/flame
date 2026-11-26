@@ -21,14 +21,7 @@ func (c *Coordinator) Stage(ctx context.Context, id identity.InstallationID, sou
 	if err != nil {
 		return fmt.Errorf("plugins: materialize package: %w", err)
 	}
-	defer func() {
-		cleanupErr := candidate.Discard()
-		if err != nil {
-			err = errors.Join(err, cleanupErr)
-		} else if cleanupErr != nil {
-			slog.WarnContext(ctx, "committed plugin staging could not release its candidate", telemetry.InstallationID(id), telemetry.Error(cleanupErr))
-		}
-	}()
+	defer closeCandidate(ctx, candidate, id, &err)
 	published, err := candidate.Publish(ctx)
 	if err != nil {
 		return err
@@ -71,6 +64,11 @@ func (c *Coordinator) Select(ctx context.Context, id identity.InstallationID, di
 	if err != nil {
 		return err
 	}
+	return c.commitWithReleaseReceipt(ctx, before, installation, selected, reply)
+}
+
+func (c *Coordinator) commitWithReleaseReceipt(ctx context.Context, before plugin.Snapshot, installation plugin.Installation, selected plugin.Release, reply operation.Reply[framevalue.Digest]) error {
+	id, digest := installation.ID(), selected.Digest()
 	bound := withInstallationCommit(ctx, func(tx context.Context, change framehost.InstallationChange) error {
 		if change.After == nil || change.After.ID != id.Host() || change.After.Release != digest {
 			return plugin.ErrStale
@@ -85,4 +83,14 @@ func (c *Coordinator) Select(ctx context.Context, id identity.InstallationID, di
 	}
 	c.reconcileCommittedInstallation(ctx, id, reconcile, err)
 	return nil
+}
+
+func closeCandidate(ctx context.Context, candidate Candidate, id identity.InstallationID, outcome *error) {
+	if err := candidate.Discard(); err != nil {
+		if *outcome != nil {
+			*outcome = errors.Join(*outcome, err)
+			return
+		}
+		slog.WarnContext(ctx, "committed plugin command could not release its candidate", telemetry.InstallationID(id), telemetry.Error(err))
+	}
 }

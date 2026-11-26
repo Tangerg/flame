@@ -174,6 +174,12 @@ func (i Installation) ID() identity.InstallationID { return i.record.ID }
 func (i Installation) Selected() framevalue.Digest { return i.record.Selected }
 func (i Installation) Enabled() bool               { return i.record.Enabled }
 
+func (i Installation) SameConfiguration(other Installation) bool {
+	return maps.Equal(i.record.Values, other.record.Values) &&
+		slices.Equal(i.record.DisabledServers, other.record.DisabledServers) &&
+		slices.Equal(i.record.DisabledSkills, other.record.DisabledSkills)
+}
+
 func (i Installation) bound(release Release) error {
 	if release.Digest() != i.record.Selected {
 		return fmt.Errorf("%w: release %s is not selected %s", ErrStale, release.Digest(), i.record.Selected)

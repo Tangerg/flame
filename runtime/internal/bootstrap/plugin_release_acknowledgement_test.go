@@ -18,7 +18,7 @@ func releaseChoiceSource(t *testing.T, contents string) string {
 func TestPluginStagingCommitsWithItsOriginalAcknowledgement(t *testing.T) {
 	cfg := poMCPConfig(t)
 	r := poMCPOpen(t, cfg)
-	installed := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: releaseChoiceSource(t, "original")}, "install-for-staging").(*protocol.PluginInstallation)
+	installed := r.installAndInspect(releaseChoiceSource(t, "original"), "install-for-staging")
 	request := protocol.StagePluginRequest{InstallationID: installed.ID, Source: releaseChoiceSource(t, "first candidate")}
 	const key = "stage-original-candidate"
 	allowReceipt := refuseCommandReceipt(t, cfg.stores.DataDirectory)
@@ -49,7 +49,7 @@ func TestPluginStagingCommitsWithItsOriginalAcknowledgement(t *testing.T) {
 func TestPluginSelectionCommitsWithItsOriginalAcknowledgement(t *testing.T) {
 	cfg := poMCPConfig(t)
 	r := poMCPOpen(t, cfg)
-	installed := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: releaseChoiceSource(t, "original")}, "install-for-selection").(*protocol.PluginInstallation)
+	installed := r.installAndInspect(releaseChoiceSource(t, "original"), "install-for-selection")
 	stage := func(contents, key string) protocol.PluginReleaseRef {
 		t.Helper()
 		return *r.must(delivery.PluginsStage, protocol.StagePluginRequest{InstallationID: installed.ID, Source: releaseChoiceSource(t, contents)}, key).(*protocol.PluginReleaseRef)

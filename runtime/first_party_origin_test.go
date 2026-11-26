@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"testing"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
@@ -48,9 +49,23 @@ func TestBundledUsageKeepsItsContractAtAnIndependentInstallationSource(t *testin
 	if err := os.CopyFS(source, os.DirFS(filepath.Join(filepath.Dir(executable), "plugins", "usage"))); err != nil {
 		t.Fatal(err)
 	}
-	ordinary, err := current.InstallPlugin(t.Context(), protocol.InstallPluginRequest{Source: source}, protocol.CommandOptions{})
+	receipt, err := current.InstallPlugin(t.Context(), protocol.InstallPluginRequest{Source: source}, protocol.CommandOptions{})
 	if err != nil {
 		t.Fatal(err)
+	}
+	installed, err = current.ListPlugins(t.Context(), protocol.CallOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	index := slices.IndexFunc(installed.Data, func(value protocol.PluginInstallation) bool {
+		return value.ID == receipt.InstallationID
+	})
+	if index < 0 {
+		t.Fatal("independent installation is missing")
+	}
+	ordinary := &installed.Data[index]
+	if ordinary.Selected.Digest != receipt.Digest {
+		t.Fatal("independent installation selected a different release")
 	}
 	if ordinary.ID == bundled.ID || ordinary.Source == bundled.Source || !reflect.DeepEqual(ordinary.Selected, bundled.Selected) {
 		t.Fatalf("independent origin changed the contract or reused installation ownership: bundled=%+v ordinary=%+v", bundled, ordinary)

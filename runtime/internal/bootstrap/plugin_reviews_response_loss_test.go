@@ -101,7 +101,7 @@ func TestReviewCommandWithoutRunRecoversItsOriginalOwnerAcrossReplacementAndRest
 	}
 	installed = stageCommandReplacement(t, r, installed, source)
 	assertUnresolvedInstallationIsHeld(t, r, installed)
-	replacement := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: reviewExamplePackage(t)}, "install-replacement").(*protocol.PluginInstallation)
+	replacement := r.installAndInspect(reviewExamplePackage(t), "install-replacement")
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: replacement.ID, Enabled: true}, "enable-replacement")
 	replacement = r.pluginInstallation(replacement.ID)
 	replacementServer := protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: replacement.ID}, Name: "reviews"}

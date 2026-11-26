@@ -8,6 +8,7 @@ import { createFlameClient, type FlameClient, createHttpTransport } from "@flame
 import {
   PROTOCOL_VERSION,
   type MCPTool,
+  type PluginInstallation,
   type ServerCapabilities,
 } from "@flame/runtime-client/wire";
 import { fileURLToPath } from "node:url";
@@ -52,26 +53,33 @@ export function useRuntimeFixture(suite: string) {
   let processOutput = "";
   const runtimeExecutable = join(environmentRoot, "flame-e2e");
   const cliExecutable = join(environmentRoot, "flame-cli-e2e");
-  const managedOwners = new Map<
-    "memory" | "schedules",
-    Awaited<ReturnType<FlameClient["plugins"]["install"]>>
-  >();
+  const managedOwners = new Map<"memory" | "schedules", PluginInstallation>();
+
+  const getInstallation = async (id: string) => {
+    if (!client) throw new Error("runtime client was not initialized");
+    const installation = (await client.plugins.list()).data.find((item) => item.id === id);
+    if (!installation) throw new Error(`installation ${id} is unavailable`);
+    return installation;
+  };
 
   const activateManagedOwner = async (feature: "memory" | "schedules", readyBefore?: number) => {
     if (!client) throw new Error("runtime client was not initialized");
     let installation = (await client.plugins.list()).data.find(
       (item) => item.selected.name === `flame.${feature}`,
     );
-    if (!installation)
-      installation = await client.plugins.install({
+    if (!installation) {
+      const receipt = await client.plugins.install({
         source: join(environmentRoot, "plugins", feature),
       });
+      installation = await getInstallation(receipt.installationId);
+      expect(installation.selected.digest).toBe(receipt.digest);
+    }
     expect(installation.selected.diagnostics).toEqual([]);
     if (!installation.enabled) {
       const id = installation.id;
       await client.plugins.setEnablement({ installationId: id, enabled: true });
-      installation = (await client.plugins.list()).data.find((item) => item.id === id);
-      if (!installation?.enabled) throw new Error("managed owner did not enable");
+      installation = await getInstallation(id);
+      if (!installation.enabled) throw new Error("managed owner did not enable");
     }
     if (feature === "memory")
       await client.plugins.selectProvider({
@@ -412,6 +420,7 @@ export function useRuntimeFixture(suite: string) {
       providerGate = gate;
     },
     activateManagedOwner,
+    getInstallation,
     awaitMCPTools,
     awaitManagedOwners,
     startRuntimeProcess,

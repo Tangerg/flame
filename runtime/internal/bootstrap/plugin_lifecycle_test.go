@@ -71,6 +71,7 @@ func TestPluginReleaseUsesExistingMCPPolicySkillsAndReplay(t *testing.T) {
 	}
 	cleanup(host)
 	endpoint := host.Endpoint()
+	fixture := &poMCPRuntime{t: t, host: host, api: api, endpoint: endpoint}
 	options := protocol.CallMetadata{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}}
 	invoke := func(method delivery.Name, input any, key string) protocol.OperationResult {
 		t.Helper()
@@ -118,12 +119,12 @@ func TestPluginReleaseUsesExistingMCPPolicySkillsAndReplay(t *testing.T) {
 		}
 	}
 	authorPluginPackage(t, source)
-	installed := must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, "install-release").(*protocol.PluginInstallation)
+	installed := fixture.installAndInspect(source, "install-release")
 	if installed.Enabled != false || len(installed.Selected.Skills) != 1 {
 		t.Fatalf("unexpected admission: %+v", installed)
 	}
-	replayed := must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, "install-release").(*protocol.PluginInstallation)
-	if replayed.ID != installed.ID {
+	replayed := must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, "install-release").(*protocol.PluginReleaseRef)
+	if replayed.InstallationID != installed.ID || replayed.Digest != installed.Selected.Digest {
 		t.Fatal("install replay changed identity")
 	}
 	release := protocol.PluginReleaseRef{InstallationID: installed.ID, Digest: installed.Selected.Digest}
@@ -155,7 +156,6 @@ func TestPluginReleaseUsesExistingMCPPolicySkillsAndReplay(t *testing.T) {
 	if refused.Failure == nil || !errors.Is(refused.Failure, protocol.ErrMCPOwnedByInstallation) {
 		t.Fatalf("installation server CRUD: %v", refused.Failure)
 	}
-	fixture := &poMCPRuntime{t: t, host: host, api: api, endpoint: endpoint}
 	skills := poMCPActivate(fixture, filepath.Join(firstPartyPackages, "skills"))
 	waitCallContributorState(t, fixture, skills.ID, protocol.MCPServerConnected)
 	discovered := must(delivery.SkillsDiscoveredList, protocol.WorkspaceQuery{Workspace: protocol.WorkspaceRef{Path: cfg.defaultWorkspacePath}}, "").(*protocol.SkillDiscovery)
@@ -193,8 +193,8 @@ func TestPluginReleaseUsesExistingMCPPolicySkillsAndReplay(t *testing.T) {
 	host, api = buildPluginProtocolRuntime(t, cfg)
 	cleanup(host)
 	endpoint = host.Endpoint()
-	replayed = must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, "install-release").(*protocol.PluginInstallation)
-	if replayed.ID != installed.ID {
+	replayed = must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, "install-release").(*protocol.PluginReleaseRef)
+	if replayed.InstallationID != installed.ID || replayed.Digest != installed.Selected.Digest {
 		t.Fatal("cold replay created another installation")
 	}
 	blocked = invoke(delivery.PluginsSelect, *staged, "select-after-restart")

@@ -51,7 +51,8 @@ func TestGitHubInstalledSecretLifecycleAndModelWritesShareThePublishedOwner(t *t
 		if value != nil {
 			change = protocol.PluginValueChange{Type: protocol.PluginValueSet, Value: value}
 		}
-		return r.must(delivery.PluginsConfigure, protocol.ConfigurePluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, ValueChanges: map[string]protocol.PluginValueChange{"token": change}}, key).(*protocol.PluginInstallation)
+		r.must(delivery.PluginsConfigure, protocol.ConfigurePluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, ValueChanges: map[string]protocol.PluginValueChange{"token": change}}, key)
+		return r.pluginInstallation(installed.ID)
 	}
 	token := "private-github-installation-fixture-token"
 	configured := configure(&token, "configure-github-token")

@@ -7,7 +7,6 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
@@ -109,13 +108,6 @@ func wirePluginError(err error) error {
 	}
 }
 
-func presentPluginResult(inspection plugins.Inspection, err error) (*protocol.PluginInstallation, error) {
-	if err != nil {
-		return nil, wirePluginError(err)
-	}
-	return presentInstallation(inspection)
-}
-
 func (s *Handler) ListPlugins(ctx context.Context) (*protocol.Page[protocol.PluginInstallation], error) {
 	records, err := s.plugins.List(ctx)
 	if err != nil {
@@ -132,8 +124,19 @@ func (s *Handler) ListPlugins(ctx context.Context) (*protocol.Page[protocol.Plug
 	return protocol.NewPage(result), nil
 }
 
-func (s *Handler) InstallPlugin(ctx context.Context, in protocol.InstallPluginRequest) (*protocol.PluginInstallation, error) {
-	return presentPluginResult(s.plugins.Install(ctx, in.Source))
+func (s *Handler) InstallPlugin(ctx context.Context, in protocol.InstallPluginRequest) (*protocol.PluginReleaseRef, error) {
+	var installation plugin.Installation
+	if err := s.plugins.Install(ctx, in.Source, operation.DirectReply(&installation)); err != nil {
+		return nil, wirePluginError(err)
+	}
+	return presentPluginReleaseRef(installation.ID().String(), installation.Selected()), nil
+}
+
+func (s *Handler) commitPluginInstall(ctx context.Context, in protocol.InstallPluginRequest, outcome atomicOutcome) error {
+	reply := atomicReply(outcome.complete, func(installation plugin.Installation) ([]byte, error) {
+		return encodeAtomicResult(outcome.method, presentPluginReleaseRef(installation.ID().String(), installation.Selected()))
+	})
+	return outcome.settleRefusal(ctx, wirePluginError(s.plugins.Install(ctx, in.Source, reply)))
 }
 
 func (s *Handler) StagePlugin(ctx context.Context, in protocol.StagePluginRequest) (*protocol.PluginReleaseRef, error) {
@@ -160,7 +163,17 @@ func (s *Handler) stagePlugin(ctx context.Context, in protocol.StagePluginReques
 }
 
 func presentStagedRelease(staged plugin.StagedRelease) *protocol.PluginReleaseRef {
-	return &protocol.PluginReleaseRef{InstallationID: staged.InstallationID().String(), Digest: staged.Digest().String()}
+	return presentPluginReleaseRef(staged.InstallationID().String(), staged.Digest())
+}
+
+func presentPluginReleaseRef(installationID string, digest framevalue.Digest) *protocol.PluginReleaseRef {
+	return &protocol.PluginReleaseRef{InstallationID: installationID, Digest: digest.String()}
+}
+
+func (o atomicOutcome) pluginRelease(installationID string) operation.Reply[framevalue.Digest] {
+	return atomicReply(o.complete, func(digest framevalue.Digest) ([]byte, error) {
+		return encodeAtomicResult(o.method, presentPluginReleaseRef(installationID, digest))
+	})
 }
 
 func (s *Handler) SelectPlugin(ctx context.Context, in protocol.PluginReleaseRef) (*protocol.PluginReleaseRef, error) {
@@ -168,14 +181,11 @@ func (s *Handler) SelectPlugin(ctx context.Context, in protocol.PluginReleaseRef
 	if err := s.selectPlugin(ctx, in, operation.DirectReply(&digest)); err != nil {
 		return nil, err
 	}
-	return &protocol.PluginReleaseRef{InstallationID: in.InstallationID, Digest: digest.String()}, nil
+	return presentPluginReleaseRef(in.InstallationID, digest), nil
 }
 
 func (s *Handler) commitPluginSelection(ctx context.Context, in protocol.PluginReleaseRef, outcome atomicOutcome) error {
-	reply := atomicReply(outcome.complete, func(digest framevalue.Digest) ([]byte, error) {
-		return encodeAtomicResult(outcome.method, &protocol.PluginReleaseRef{InstallationID: in.InstallationID, Digest: digest.String()})
-	})
-	return outcome.settleRefusal(ctx, s.selectPlugin(ctx, in, reply))
+	return outcome.settleRefusal(ctx, s.selectPlugin(ctx, in, outcome.pluginRelease(in.InstallationID)))
 }
 
 func (s *Handler) selectPlugin(ctx context.Context, in protocol.PluginReleaseRef, reply operation.Reply[framevalue.Digest]) error {
@@ -186,10 +196,22 @@ func (s *Handler) selectPlugin(ctx context.Context, in protocol.PluginReleaseRef
 	return wirePluginError(s.plugins.Select(ctx, id, digest, reply))
 }
 
-func (s *Handler) ConfigurePlugin(ctx context.Context, in protocol.ConfigurePluginRequest) (*protocol.PluginInstallation, error) {
+func (s *Handler) ConfigurePlugin(ctx context.Context, in protocol.ConfigurePluginRequest) (*protocol.PluginReleaseRef, error) {
+	var digest framevalue.Digest
+	if err := s.configurePlugin(ctx, in, operation.DirectReply(&digest)); err != nil {
+		return nil, err
+	}
+	return presentPluginReleaseRef(in.InstallationID, digest), nil
+}
+
+func (s *Handler) commitPluginConfiguration(ctx context.Context, in protocol.ConfigurePluginRequest, outcome atomicOutcome) error {
+	return outcome.settleRefusal(ctx, s.configurePlugin(ctx, in, outcome.pluginRelease(in.InstallationID)))
+}
+
+func (s *Handler) configurePlugin(ctx context.Context, in protocol.ConfigurePluginRequest, reply operation.Reply[framevalue.Digest]) error {
 	id, digest, err := parseInstallationRelease(in.InstallationID, in.Digest)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	configuration := plugin.Configuration{
 		Values:  make(map[string]plugin.ValueChange, len(in.ValueChanges)),
@@ -203,26 +225,26 @@ func (s *Handler) ConfigurePlugin(ctx context.Context, in protocol.ConfigurePlug
 		case change.Type == protocol.PluginValueClear && change.Value == nil:
 			configuration.Values[key] = plugin.ClearValue()
 		default:
-			return nil, protocol.InvalidParameters(fmt.Errorf("plugin input %q change", key))
+			return protocol.InvalidParameters(fmt.Errorf("plugin input %q change", key))
 		}
 	}
 	for raw, change := range in.ServerChanges {
 		name, err := mcpserver.ParseServerName(raw)
 		if err != nil {
-			return nil, protocol.InvalidParameters(err)
+			return protocol.InvalidParameters(err)
 		}
 		configuration.Servers[name], err = parseComponentChange(change)
 		if err != nil {
-			return nil, err
+			return err
 		}
 	}
 	for name, change := range in.SkillChanges {
 		configuration.Skills[name], err = parseComponentChange(change)
 		if err != nil {
-			return nil, err
+			return err
 		}
 	}
-	return presentPluginResult(s.plugins.Configure(ctx, id, digest, configuration))
+	return wirePluginError(s.plugins.Configure(ctx, id, digest, configuration, reply))
 }
 
 func parseComponentChange(change protocol.PluginComponentChange) (plugin.ComponentChange, error) {

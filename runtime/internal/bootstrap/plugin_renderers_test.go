@@ -18,7 +18,7 @@ func TestToolComponentUsesSelectedImmutableBytes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	installed := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, "install-tool-component").(*protocol.PluginInstallation)
+	installed := r.installAndInspect(source, "install-tool-component")
 	if len(installed.Selected.Diagnostics) != 0 {
 		t.Fatalf("admission: %+v", installed.Selected)
 	}
@@ -90,7 +90,7 @@ func TestInlineToolResultPresentationSurvivesRestart(t *testing.T) {
 	cfg := poMCPConfig(t)
 	r := poMCPOpen(t, cfg)
 	source := filepath.Join(firstPartyPackages, "genui")
-	installed := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, "install-genui-component").(*protocol.PluginInstallation)
+	installed := r.installAndInspect(source, "install-genui-component")
 
 	assertPresentation := func(release protocol.PluginRelease) {
 		t.Helper()
@@ -123,7 +123,7 @@ func TestFileComponentUsesSelectedImmutableBytes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	installed := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, "install-file-component").(*protocol.PluginInstallation)
+	installed := r.installAndInspect(source, "install-file-component")
 	if len(installed.Selected.Diagnostics) != 0 || len(installed.Selected.Components) != 3 {
 		t.Fatalf("file component admission: %+v", installed.Selected)
 	}

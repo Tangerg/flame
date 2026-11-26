@@ -24,7 +24,7 @@ import (
 
 func activateModelProviders(r *poMCPRuntime) *protocol.PluginInstallation {
 	r.t.Helper()
-	installed := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: filepath.Join(firstPartyPackages, "providers")}, "provider-install").(*protocol.PluginInstallation)
+	installed := r.installAndInspect(filepath.Join(firstPartyPackages, "providers"), "provider-install")
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, "provider-enable")
 	installed = r.pluginInstallation(installed.ID)
 	for _, contribution := range installed.Selected.Contributions {
@@ -162,7 +162,7 @@ func TestSelectedModelAdaptersCoexistPerProvider(t *testing.T) {
 	cfg.modelProviders = nil
 	r := poMCPOpen(t, cfg)
 	first := activateModelProviders(r)
-	other := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: filepath.Join(firstPartyPackages, "providers")}, "other-install").(*protocol.PluginInstallation)
+	other := r.installAndInspect(filepath.Join(firstPartyPackages, "providers"), "other-install")
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: other.ID, Enabled: true}, "other-enable")
 	r.must(delivery.PluginsSelectProvider, protocol.SelectPluginProviderRequest{Role: extension.ModelProviderRole("openai"), InstallationID: other.ID, Contribution: "model-provider"}, "other-openai")
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: first.ID, Enabled: false}, "withdraw-first")
@@ -305,7 +305,7 @@ func TestInstalledModelStreamRequiresMatchingReceipt(t *testing.T) {
 	cfg.defaultSelection = testsupport.MustModelSelection(providerID, "model-test")
 	cfg.maintenance = noMaintenance{}
 	runtime := poMCPOpen(t, cfg)
-	installed := runtime.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, "install-provider").(*protocol.PluginInstallation)
+	installed := runtime.installAndInspect(source, "install-provider")
 	runtime.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, "enable-provider")
 	runtime.must(delivery.PluginsSelectProvider, protocol.SelectPluginProviderRequest{
 		Role: extension.ModelProviderRole(providerID), InstallationID: installed.ID, Contribution: "model-provider",

@@ -22,12 +22,13 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: plugins", () => {
       installationId: defaultTrajectory.id,
       enabled: false,
     });
-    const installed = await fixture.client.plugins.install({
+    const target = await fixture.client.plugins.install({
       source: join(fixture.environmentRoot, "plugins", "trajectory"),
     });
-    const target = { installationId: installed.id, digest: installed.selected.digest };
     const reader = fixture.createSharedClient();
     try {
+      const installed = await fixture.getInstallation(target.installationId);
+      expect(installed.selected.digest).toBe(target.digest);
       expect(installed.enabled).toBe(false);
       expect(installed.selected.diagnostics).toEqual([]);
       expect(installed.selected.themes).toHaveLength(1);
@@ -82,7 +83,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: plugins", () => {
       ).toBe(false);
     } finally {
       await reader.close();
-      await fixture.client.plugins.uninstall(installed.id);
+      await fixture.client.plugins.uninstall(target.installationId);
       await fixture.client.plugins.setEnablement({
         installationId: defaultTrajectory.id,
         enabled: true,

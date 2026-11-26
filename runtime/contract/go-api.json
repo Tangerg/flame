@@ -748,7 +748,7 @@
             },
             {
               "name": "ConfigurePlugin",
-              "signature": "func(ctx context.Context, request protocol.ConfigurePluginRequest, options protocol.CommandOptions) (*protocol.PluginInstallation, error)"
+              "signature": "func(ctx context.Context, request protocol.ConfigurePluginRequest, options protocol.CommandOptions) (*protocol.PluginReleaseRef, error)"
             },
             {
               "name": "CreateFeedback",
@@ -872,7 +872,7 @@
             },
             {
               "name": "InstallPlugin",
-              "signature": "func(ctx context.Context, request protocol.InstallPluginRequest, options protocol.CommandOptions) (*protocol.PluginInstallation, error)"
+              "signature": "func(ctx context.Context, request protocol.InstallPluginRequest, options protocol.CommandOptions) (*protocol.PluginReleaseRef, error)"
             },
             {
               "name": "InvokeTool",
@@ -10756,7 +10756,7 @@
         {
           "name": "Version",
           "type": "untyped string",
-          "value": "\"2026-11-26.8\""
+          "value": "\"2026-11-26.9\""
         },
         {
           "name": "WorkspaceAvailable",
@@ -20172,7 +20172,7 @@
             },
             {
               "name": "ConfigurePlugin",
-              "signature": "func(ctx context.Context, request protocol.ConfigurePluginRequest, options protocol.CommandOptions) (*protocol.PluginInstallation, error)"
+              "signature": "func(ctx context.Context, request protocol.ConfigurePluginRequest, options protocol.CommandOptions) (*protocol.PluginReleaseRef, error)"
             },
             {
               "name": "CreateFeedback",
@@ -20296,7 +20296,7 @@
             },
             {
               "name": "InstallPlugin",
-              "signature": "func(ctx context.Context, request protocol.InstallPluginRequest, options protocol.CommandOptions) (*protocol.PluginInstallation, error)"
+              "signature": "func(ctx context.Context, request protocol.InstallPluginRequest, options protocol.CommandOptions) (*protocol.PluginReleaseRef, error)"
             },
             {
               "name": "InvokeTool",

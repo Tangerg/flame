@@ -28,13 +28,13 @@ func activateHookProvider(t *testing.T, api *delivery.Handler) string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := api.SetPluginEnablement(ctx, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}); err != nil {
+	if _, err := api.SetPluginEnablement(ctx, protocol.SetPluginEnablementRequest{InstallationID: installed.InstallationID, Enabled: true}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := api.SelectPluginProvider(ctx, protocol.SelectPluginProviderRequest{Role: "flame.hooks.v1", InstallationID: installed.ID, Contribution: "hook-provider"}); err != nil {
+	if _, err := api.SelectPluginProvider(ctx, protocol.SelectPluginProviderRequest{Role: "flame.hooks.v1", InstallationID: installed.InstallationID, Contribution: "hook-provider"}); err != nil {
 		t.Fatal(err)
 	}
-	return installed.ID
+	return installed.InstallationID
 }
 
 func writeHookSource(t *testing.T, root string, rules string) {

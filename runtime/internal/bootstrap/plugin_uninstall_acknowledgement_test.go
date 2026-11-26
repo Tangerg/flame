@@ -42,7 +42,7 @@ func TestPluginUninstallCommitsWithItsOriginalAcknowledgement(t *testing.T) {
 		t.Fatalf("uninstalling an absent installation returned %v", missing.Failure)
 	}
 
-	replacement := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, "install-after-uninstall").(*protocol.PluginInstallation)
+	replacement := r.installAndInspect(source, "install-after-uninstall")
 	if replacement.ID == installed.ID {
 		t.Fatal("a new installation reused the removed installation's identity")
 	}

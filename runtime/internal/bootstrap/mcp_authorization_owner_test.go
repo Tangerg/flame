@@ -31,8 +31,7 @@ func TestMCPAuthorizationReadsTheOriginalConnector(t *testing.T) {
 		t.Fatalf("the original connector did not accept the result: %+v", accepted)
 	}
 
-	replacement := r.must(delivery.PluginsInstall,
-		protocol.InstallPluginRequest{Source: filepath.Join(firstPartyPackages, "mcp")}, "install-replacement-connector").(*protocol.PluginInstallation)
+	replacement := r.installAndInspect(filepath.Join(firstPartyPackages, "mcp"), "install-replacement-connector")
 	if replacement.ID == original.ID {
 		t.Fatal("replacement must have a separate private directory")
 	}

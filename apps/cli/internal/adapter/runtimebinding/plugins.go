@@ -23,10 +23,10 @@ type pluginBinding interface {
 	ListPluginProviders(context.Context, protocol.CallOptions) (*protocol.Page[protocol.PluginProviderSelection], error)
 	SelectPluginProvider(context.Context, protocol.SelectPluginProviderRequest, protocol.CommandOptions) (*protocol.PluginProviderSelection, error)
 	ListPlugins(context.Context, protocol.CallOptions) (*protocol.Page[protocol.PluginInstallation], error)
-	InstallPlugin(context.Context, protocol.InstallPluginRequest, protocol.CommandOptions) (*protocol.PluginInstallation, error)
+	InstallPlugin(context.Context, protocol.InstallPluginRequest, protocol.CommandOptions) (*protocol.PluginReleaseRef, error)
 	StagePlugin(context.Context, protocol.StagePluginRequest, protocol.CommandOptions) (*protocol.PluginReleaseRef, error)
 	SelectPlugin(context.Context, protocol.PluginReleaseRef, protocol.CommandOptions) (*protocol.PluginReleaseRef, error)
-	ConfigurePlugin(context.Context, protocol.ConfigurePluginRequest, protocol.CommandOptions) (*protocol.PluginInstallation, error)
+	ConfigurePlugin(context.Context, protocol.ConfigurePluginRequest, protocol.CommandOptions) (*protocol.PluginReleaseRef, error)
 	SetPluginEnablement(context.Context, protocol.SetPluginEnablementRequest, protocol.CommandOptions) (*protocol.PluginEnablement, error)
 	UninstallPlugin(context.Context, protocol.PluginRequest, protocol.CommandOptions) error
 }
@@ -199,13 +199,19 @@ func (r *Connection) ListPlugins(ctx context.Context) ([]protocol.PluginInstalla
 	return installations, nil
 }
 
-func (r *Connection) InstallPlugin(ctx context.Context, request protocol.InstallPluginRequest, commandID authoring.CommandID) (*protocol.PluginInstallation, error) {
+func (r *Connection) InstallPlugin(ctx context.Context, request protocol.InstallPluginRequest, commandID authoring.CommandID) (*protocol.PluginReleaseRef, error) {
 	options, err := r.commandOptionsFor(commandID)
 	if err != nil {
 		return nil, err
 	}
 	value, err := r.plugins.InstallPlugin(ctx, request, options)
-	return pluginResult("install plugin", "", value, err)
+	if err != nil {
+		return nil, classifyError(err)
+	}
+	if value == nil || value.InstallationID == "" || value.Digest == "" {
+		return nil, runtimeContractViolation("install plugin returned no release identity")
+	}
+	return value, nil
 }
 
 func (r *Connection) StagePlugin(ctx context.Context, request protocol.StagePluginRequest, commandID authoring.CommandID) (*protocol.PluginReleaseRef, error) {
@@ -238,13 +244,19 @@ func (r *Connection) SelectPlugin(ctx context.Context, request protocol.PluginRe
 	return value, nil
 }
 
-func (r *Connection) ConfigurePlugin(ctx context.Context, request protocol.ConfigurePluginRequest, commandID authoring.CommandID) (*protocol.PluginInstallation, error) {
+func (r *Connection) ConfigurePlugin(ctx context.Context, request protocol.ConfigurePluginRequest, commandID authoring.CommandID) (*protocol.PluginReleaseRef, error) {
 	options, err := r.commandOptionsFor(commandID)
 	if err != nil {
 		return nil, err
 	}
 	value, err := r.plugins.ConfigurePlugin(ctx, request, options)
-	return pluginResult("configure plugin", request.InstallationID, value, err)
+	if err != nil {
+		return nil, classifyError(err)
+	}
+	if value == nil || value.InstallationID != request.InstallationID || value.Digest != request.Digest {
+		return nil, runtimeContractViolation("configure plugin returned a different release")
+	}
+	return value, nil
 }
 
 func (r *Connection) SetPluginEnablement(ctx context.Context, request protocol.SetPluginEnablementRequest, commandID authoring.CommandID) (*protocol.PluginEnablement, error) {
@@ -268,21 +280,4 @@ func (r *Connection) UninstallPlugin(ctx context.Context, request protocol.Plugi
 		return err
 	}
 	return classifyError(r.plugins.UninstallPlugin(ctx, request, options))
-}
-
-func pluginResult(
-	operation, expectedID string,
-	result *protocol.PluginInstallation,
-	err error,
-) (*protocol.PluginInstallation, error) {
-	if err != nil {
-		return nil, classifyError(err)
-	}
-	if result == nil {
-		return nil, runtimeContractViolation("%s returned nil", operation)
-	}
-	if err := requireIdentity(operation, result.ID, expectedID); err != nil {
-		return nil, err
-	}
-	return result, nil
 }

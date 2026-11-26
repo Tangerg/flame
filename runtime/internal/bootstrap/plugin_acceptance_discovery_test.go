@@ -147,9 +147,9 @@ func TestPluginAcceptanceDiscoveryMidSessionActivationKeepsPrefix(t *testing.T) 
 		}
 	}
 	authorPluginPackage(t, source)
-	installed := must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, "install").(*protocol.PluginInstallation)
-	must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, "enable")
-	reviews := protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "reviews"}
+	installed := must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, "install").(*protocol.PluginReleaseRef)
+	must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.InstallationID, Enabled: true}, "enable")
+	reviews := protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.InstallationID}, Name: "reviews"}
 	deadline := time.Now().Add(5 * time.Second)
 	for modelName.Load().(string) == "" {
 		tools := must(delivery.MCPToolsList, protocol.MCPListToolsRequest{Server: &reviews}, "").(*protocol.Page[protocol.MCPTool])

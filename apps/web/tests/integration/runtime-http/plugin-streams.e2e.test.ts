@@ -62,18 +62,17 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: plugin streams", () => {
     const reader = fixture.createRuntimeClient();
     try {
       await fixture.client.plugins.setEnablement({
-        installationId: installation.id,
+        installationId: installation.installationId,
         enabled: true,
       });
       await waitUntilReady(fixture.baseUrl, () => fixture.processOutput);
       const request = {
-        installationId: installation.id,
-        digest: installation.selected.digest,
+        ...installation,
         contribution: "stream",
         contract,
         method: "example.records/read.v1",
         input: "{}",
-        target: { scope: INSTALLATION_SCOPE, reference: installation.id },
+        target: { scope: INSTALLATION_SCOPE, reference: installation.installationId },
       };
       const order: unknown[] = [];
       const release = Promise.withResolvers<void>();
@@ -119,7 +118,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: plugin streams", () => {
       try {
         await reader.close();
       } finally {
-        await fixture.client.plugins.uninstall(installation.id);
+        await fixture.client.plugins.uninstall(installation.installationId);
       }
     }
   }, 30_000);
