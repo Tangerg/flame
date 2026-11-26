@@ -4,6 +4,7 @@ import { type ToolCall } from "@/features/agent/public/sessionView";
 import { fmtDuration } from "@/lib/format";
 import { toolVerbId } from "@/features/agent/domain/toolFamilies";
 import { builtinToolName } from "@/features/agent/domain/toolCategory";
+import { type BuiltinToolName } from "@/foundation/protocolValues.generated";
 export type ToolDetail = { kind: "path" | "machine" | "prose"; value: string };
 
 export interface ToolIntent {
@@ -127,16 +128,28 @@ const ACTIVITY_FAMILIES = ["read", "search", "write", "run", "fetch", "call"] as
 
 type ActivityFamily = (typeof ACTIVITY_FAMILIES)[number];
 
-// Runtime classes every plugin and MCP tool as exec so approval fails closed; that
-// says nothing about what the tool does, so only built-in exec tools are commands.
+// A family names what a built-in tool does. Safety classes only decide approval:
+// Runtime classes plugin and MCP tools as exec so approval fails closed.
+const BUILTIN_ACTIVITY: Partial<Record<BuiltinToolName, ActivityFamily>> = {
+  read: "read",
+  read_shell_output: "read",
+  read_tool_result: "read",
+  read_skill_resource: "read",
+  load_skill: "read",
+  list_skills: "read",
+  grep: "search",
+  glob: "search",
+  search_tools: "search",
+  shell: "run",
+  stop_shell: "run",
+  run_script: "run",
+};
+
 function activityFamily(tool: ToolCall): ActivityFamily {
-  const builtin = builtinToolName(tool);
-  if (builtin === "read") return "read";
   if (tool.safetyClass === "write") return "write";
   if (tool.safetyClass === "network") return "fetch";
-  if (builtin === undefined) return "call";
-  if (tool.safetyClass === "exec") return "run";
-  return "search";
+  const builtin = builtinToolName(tool);
+  return (builtin && BUILTIN_ACTIVITY[builtin]) ?? "call";
 }
 
 export function summarizeActivity(t: Translate, tools: readonly ToolCall[]): string {
