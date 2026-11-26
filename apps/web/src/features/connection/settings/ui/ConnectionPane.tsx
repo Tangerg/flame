@@ -1,13 +1,19 @@
 import * as stylex from "@stylexjs/stylex";
 import { useRef, useState } from "react";
 import { StatusDot } from "@/ui/index";
-import { Button, FormActions, FormField, isImeKey, TextField, vocab } from "@flame/ui";
+import {
+  Button,
+  FormActions,
+  FormField,
+  isImeKey,
+  PanelSection,
+  TextField,
+  vocab,
+} from "@flame/ui";
 import { useT, type Translate, type MessageKey } from "@/lib/i18n/index";
 import { useRuntime, type RuntimeEndpointRejection } from "@/features/connection/public/endpoint";
 import { useRuntimeServiceStatus } from "@/features/connection/public/serviceStatus";
 import { type RuntimeServicePhase } from "@/features/connection/public/serviceStatus";
-import { SettingRow } from "@/ui/settings/SettingRow";
-import { SettingsGroup } from "@/ui/settings/SettingsGroup";
 import {
   color,
   face,
@@ -211,135 +217,131 @@ export function ConnectionPane() {
   };
 
   return (
-    <SettingsGroup>
-      <SettingRow label={t("settings.connection.title")} align="stacked">
-        <div {...stylex.props(cp.form)}>
-          <FormField label={t("settings.connection.url")}>
-            <TextField
-              font="mono"
-              id="runtime-base-url"
-              type="text"
-              invalid={error !== null && error !== "invalid_token"}
-              aria-label={t("settings.connection.url")}
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              aria-describedby={
-                error && error !== "invalid_token" ? "runtime-connection-error" : undefined
-              }
-              onKeyDown={(e) => {
-                if (e.key !== "Enter" || isImeKey(e.nativeEvent)) return;
-                e.preventDefault();
-                if (apply()) e.currentTarget.blur();
-              }}
-              placeholder={defaultEndpoint}
-              spellCheck={false}
-            />
-          </FormField>
-          <FormField label={t("settings.connection.token")}>
-            <TextField
-              ref={tokenField}
-              id="runtime-local-token"
-              type="password"
-              autoComplete="off"
-              aria-label={t("settings.connection.token")}
-              invalid={error === "invalid_token"}
-              aria-describedby={[
-                "runtime-token-state",
-                "runtime-token-hint",
-                error === "invalid_token" ? "runtime-connection-error" : null,
-              ]
-                .filter(Boolean)
-                .join(" ")}
-              value={tokenDraft ?? ""}
-              onChange={(event) => {
-                setTokenDraft(event.target.value);
-              }}
-              // The masked field cannot show a stored token; its placeholder says one exists.
-              placeholder={
-                tokenDraft === null && tokenStored
-                  ? t("settings.connection.tokenReplace")
-                  : undefined
-              }
-              spellCheck={false}
-            />
-          </FormField>
-          <div {...stylex.props(cp.notes)}>
-            {/* Stays mounted so a pending change is announced; empty, it takes no space. */}
-            <p
-              id="runtime-token-state"
-              aria-live="polite"
-              {...stylex.props(vocab.muted, typeStep.uiSm, cp.pending)}
-            >
-              {tokenDraft !== null && t("settings.connection.tokenPending")}
-            </p>
-            <p id="runtime-token-hint" {...stylex.props(vocab.muted, typeStep.uiSm)}>
-              {t("settings.connection.tokenHint")}
-            </p>
-          </div>
-          <FormActions
-            label={t("settings.connection.apply")}
-            auxiliaryAction={
-              <>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="md"
-                  disabled={isDefault}
-                  focusableWhenDisabled
-                  onClick={reset}
-                  styles={vocab.hold}
-                >
-                  {t("settings.connection.reset")}
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  disabled={!tokenDraft && !hasRuntimeAccessToken()}
-                  focusableWhenDisabled
-                  onClick={() => {
-                    setTokenDraft("");
-                  }}
-                  styles={vocab.hold}
-                >
-                  {t("settings.connection.clearToken")}
-                </Button>
-                {tokenDraft !== null && (
-                  <Button type="button" variant="ghost" onClick={discardToken} styles={vocab.hold}>
-                    {t("settings.connection.discardToken")}
-                  </Button>
-                )}
-              </>
+    <PanelSection title={t("settings.connection.title")}>
+      <div {...stylex.props(cp.form)}>
+        <FormField label={t("settings.connection.url")}>
+          <TextField
+            font="mono"
+            id="runtime-base-url"
+            type="text"
+            invalid={error !== null && error !== "invalid_token"}
+            aria-label={t("settings.connection.url")}
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            aria-describedby={
+              error && error !== "invalid_token" ? "runtime-connection-error" : undefined
             }
-          >
-            <Button
-              type="button"
-              variant="primary"
-              size="md"
-              disabled={!dirty}
-              focusableWhenDisabled
-              onClick={() => void apply()}
-              styles={vocab.hold}
-            >
-              {t("settings.connection.apply")}
-            </Button>
-          </FormActions>
-          {error ? (
-            <div
-              id="runtime-connection-error"
-              role="alert"
-              {...stylex.props(vocab.lineTight, vocab.negative, typeStep.uiSm)}
-            >
-              <StatusDot tone="err" />
-              <span>{rejectionMessage(error, t)}</span>
-            </div>
-          ) : null}
-          <RuntimeServiceStatus
-            service={service}
-            refreshing={refreshing}
-            onRefresh={() => void refresh()}
+            onKeyDown={(e) => {
+              if (e.key !== "Enter" || isImeKey(e.nativeEvent)) return;
+              e.preventDefault();
+              if (apply()) e.currentTarget.blur();
+            }}
+            placeholder={defaultEndpoint}
+            spellCheck={false}
           />
+        </FormField>
+        <FormField label={t("settings.connection.token")}>
+          <TextField
+            ref={tokenField}
+            id="runtime-local-token"
+            type="password"
+            autoComplete="off"
+            aria-label={t("settings.connection.token")}
+            invalid={error === "invalid_token"}
+            aria-describedby={[
+              "runtime-token-state",
+              "runtime-token-hint",
+              error === "invalid_token" ? "runtime-connection-error" : null,
+            ]
+              .filter(Boolean)
+              .join(" ")}
+            value={tokenDraft ?? ""}
+            onChange={(event) => {
+              setTokenDraft(event.target.value);
+            }}
+            // The masked field cannot show a stored token; its placeholder says one exists.
+            placeholder={
+              tokenDraft === null && tokenStored ? t("settings.connection.tokenReplace") : undefined
+            }
+            spellCheck={false}
+          />
+        </FormField>
+        <div {...stylex.props(cp.notes)}>
+          {/* Stays mounted so a pending change is announced; empty, it takes no space. */}
+          <p
+            id="runtime-token-state"
+            aria-live="polite"
+            {...stylex.props(vocab.muted, typeStep.uiSm, cp.pending)}
+          >
+            {tokenDraft !== null && t("settings.connection.tokenPending")}
+          </p>
+          <p id="runtime-token-hint" {...stylex.props(vocab.muted, typeStep.uiSm)}>
+            {t("settings.connection.tokenHint")}
+          </p>
         </div>
-      </SettingRow>
-    </SettingsGroup>
+        <FormActions
+          label={t("settings.connection.apply")}
+          auxiliaryAction={
+            <>
+              <Button
+                type="button"
+                variant="ghost"
+                size="md"
+                disabled={isDefault}
+                focusableWhenDisabled
+                onClick={reset}
+                styles={vocab.hold}
+              >
+                {t("settings.connection.reset")}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={!tokenDraft && !hasRuntimeAccessToken()}
+                focusableWhenDisabled
+                onClick={() => {
+                  setTokenDraft("");
+                }}
+                styles={vocab.hold}
+              >
+                {t("settings.connection.clearToken")}
+              </Button>
+              {tokenDraft !== null && (
+                <Button type="button" variant="ghost" onClick={discardToken} styles={vocab.hold}>
+                  {t("settings.connection.discardToken")}
+                </Button>
+              )}
+            </>
+          }
+        >
+          <Button
+            type="button"
+            variant="primary"
+            size="md"
+            disabled={!dirty}
+            focusableWhenDisabled
+            onClick={() => void apply()}
+            styles={vocab.hold}
+          >
+            {t("settings.connection.apply")}
+          </Button>
+        </FormActions>
+        {error ? (
+          <div
+            id="runtime-connection-error"
+            role="alert"
+            {...stylex.props(vocab.lineTight, vocab.negative, typeStep.uiSm)}
+          >
+            <StatusDot tone="err" />
+            <span>{rejectionMessage(error, t)}</span>
+          </div>
+        ) : null}
+        <RuntimeServiceStatus
+          service={service}
+          refreshing={refreshing}
+          onRefresh={() => void refresh()}
+        />
+      </div>
+    </PanelSection>
   );
 }
