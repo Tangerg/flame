@@ -14,7 +14,11 @@ import {
   relationshipsPath,
   MAIN_PARTS,
 } from "./archive";
-import { chartLegendPatch, setChartData } from "./charts";
+import {
+  chartLegendPatch,
+  setChartData,
+  writeAuthoredChartWorkbooks,
+} from "./charts";
 import { HOUSE_STYLE } from "./style";
 import { imageBytes } from "./images";
 import { inspectOfficeText, officeReport } from "./inspection";
@@ -358,6 +362,7 @@ export async function createPresentation(json: string): Promise<Uint8Array> {
   if (!(result instanceof Uint8Array))
     throw new Error("presentation encoder returned an unexpected result");
   const archive = OfficePackage.open("pptx", result);
+  await writeAuthoredChartWorkbooks(archive);
   nameSlides(archive, content.slides);
   return archive.save();
 }

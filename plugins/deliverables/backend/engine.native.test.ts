@@ -3,6 +3,8 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { expect, it } from "vitest";
 import { Engine } from "./engine";
+import { OfficePackage } from "./formats/archive";
+import { cellRange } from "./formats/workbook-cells";
 import {
   catalog,
   createFile,
@@ -152,6 +154,18 @@ native(
         }),
       );
       const [first, second] = layoutFile(created).slides;
+      const bundle = OfficePackage.open("pptx", created);
+      const workbooks = [...bundle.parts.entries()].filter(([part]) =>
+        part.endsWith(".xlsx"),
+      );
+      expect(workbooks).toHaveLength(1);
+      const workbook = OfficePackage.open("xlsx", workbooks[0]![1]);
+      for (const part of workbook.parts.keys()) {
+        if (/^xl\/tables\/[^/]+\.xml$/u.test(part))
+          expect(() =>
+            cellRange(workbook.xml(part).root.attributes.ref!),
+          ).not.toThrow();
+      }
       const title = first!.elements.find((element) => element.kind === "text")!;
       const chart = first!.elements.find(
         (element) => element.kind === "chart",

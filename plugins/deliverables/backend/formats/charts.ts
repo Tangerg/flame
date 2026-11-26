@@ -308,6 +308,39 @@ function workbookHoldsOnlySeries(
   return true;
 }
 
+// PptxGenJS emits an invalid table range in its chart workbooks. Recreate the
+// generated worksheets through the same XLSX author as subsequent data edits.
+export async function writeAuthoredChartWorkbooks(
+  presentation: OfficePackage,
+): Promise<void> {
+  for (const [part, bytes] of presentation.parts) {
+    if (!/^ppt\/embeddings\/[^/]+\.xlsx$/u.test(part)) continue;
+    const source = OfficePackage.open("xlsx", bytes);
+    const strings = sharedStrings(source);
+    const sheets = workbookSheets(source).map((sheet) => ({
+      name: sheet.name,
+      cells: Array.from(
+        worksheetCells(source.xml(sheet.part)),
+        ([address, cell]) => {
+          const value = cellValue(cell, strings);
+          // Authored chart numbers came from finite JavaScript numbers.
+          return {
+            address,
+            value:
+              value.type === "number"
+                ? { type: "number", value: Number(value.value) }
+                : value,
+          };
+        },
+      ),
+    }));
+    presentation.parts.set(
+      part,
+      await createWorkbook(JSON.stringify({ title: "Chart data", sheets })),
+    );
+  }
+}
+
 function cachePatch(
   source: string,
   reference: Reference,

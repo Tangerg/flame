@@ -223,6 +223,9 @@ block's identity and precondition hash. Both are derived per read like `slides`.
 Element edits name the exact source revision. `setFrame` and `setChartData`
 carry the value they replace as `expect`, so a stale value is refused instead
 of overwritten, while edits to other properties still apply on a later revision.
+New PPTX charts use the workbook author for their embedded data worksheets.
+Their existing series ranges and values carry through to readers such as Keynote.
+
 `setChartData` keeps category and series counts. It regenerates an embedded chart
 workbook only when that workbook holds nothing but the chart's ranges; otherwise
 the edit is refused so Office's "Edit Data" cannot revert the chart. Duplicating
