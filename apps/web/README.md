@@ -747,7 +747,9 @@ does not mutate the role. Explicit model choices, recent models, reasoning optio
 Runtime default and role writes retain their existing owners. The shared rail
 picker owns only presentation: feedback sits outside options, recovery stays in a
 bounded footer, an arriving preferred group respects later explicit browsing,
-and the complete popup fits the available height.
+and the complete popup fits the available height. Composer gives model labels the
+row width in single-provider Recent and search. With multiple available providers,
+Recent and search include their source captions.
 
 The shared Composer chip owns the accessible name for its current choice and
 localized action. Callers provide `label` and `actionLabel`; the current value

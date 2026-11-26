@@ -24,19 +24,6 @@ function modelItemId(model: SelectableModel): string {
 
 const RECENT_GROUP_ID = "__recent";
 
-function modelItem(model: SelectableModel, selection: Selection | undefined, t: Translate) {
-  const active = model.provider === selection?.provider && model.id === selection.modelId;
-  return {
-    id: modelItemId(model),
-    label: model.label,
-    caption: providerDisplayName(model.provider),
-    title: modelCapabilities(model, t) || undefined,
-    leading: <ProviderIcon provider={model.provider} size="md" />,
-    keywords: [model.provider, model.id],
-    active,
-  };
-}
-
 function modelGroups(
   models: readonly SelectableModel[],
   selection: Selection | undefined,
@@ -50,6 +37,17 @@ function modelGroups(
     else byProvider.set(model.provider, [model]);
   }
 
+  const showProvider = byProvider.size > 1;
+  const modelItem = (model: SelectableModel) => ({
+    id: modelItemId(model),
+    label: model.label,
+    caption: showProvider ? providerDisplayName(model.provider) : undefined,
+    title: modelCapabilities(model, t) || undefined,
+    leading: <ProviderIcon provider={model.provider} size="md" />,
+    keywords: [model.provider, model.id],
+    active: model.provider === selection?.provider && model.id === selection.modelId,
+  });
+
   const shelf = recent
     .map((entry) =>
       models.find((model) => model.provider === entry.provider && model.id === entry.id),
@@ -61,7 +59,7 @@ function modelGroups(
     label: providerDisplayName(provider),
     leading: <ProviderIcon provider={provider} size="md" />,
     count: items.length,
-    items: items.map((model) => modelItem(model, selection, t)),
+    items: items.map(modelItem),
   }));
 
   return shelf.length > 0
@@ -71,7 +69,7 @@ function modelGroups(
           label: t("composer.model.recent"),
           leading: <Icon name="history" size="md" />,
           count: shelf.length,
-          items: shelf.map((model) => modelItem(model, selection, t)),
+          items: shelf.map(modelItem),
         },
         ...providers,
       ]
