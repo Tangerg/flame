@@ -516,7 +516,7 @@
   "agent.runTree.status.canceled": "已取消",
   "agent.unresolved.summary": "本次執行已結束，以下外部操作的結果仍未確認。",
   "agent.unresolved.operation": "未確認的操作 {{index}}",
-  "agent.unresolved.processId": "Process ID",
+  "agent.unresolved.processId": "處理程序 ID",
   "agent.unresolved.effectId": "Effect ID",
   "agent.unresolved.cause": "未確認的時機",
   "agent.unresolved.causes.termination": "執行結束時",
