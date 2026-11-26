@@ -26,6 +26,7 @@ import { useRuntimeCommandsAvailable } from "@/features/connection/public/servic
 import {
   color,
   corner,
+  edge,
   leading,
   motion,
   radius,
@@ -124,7 +125,7 @@ const qc = stylex.create({
     width: "var(--control-mark-size)",
     flexShrink: 0,
     placeItems: "center",
-    borderWidth: "var(--control-edge-width)",
+    borderWidth: edge.control,
     borderStyle: "solid",
   },
   freeMarkOn: { borderColor: color.fg, backgroundColor: color.fg, color: surface.canvas },

@@ -69,7 +69,7 @@ const styles = stylex.create({
   invalidBare: { boxShadow: `inset 0 0 0 1px ${color.negative}` },
   numeric: { fontVariantNumeric: "tabular-nums" },
   faceMono: { fontFamily: font.mono },
-  faceSans: { fontFamily: "var(--font-sans)" },
+  faceSans: { fontFamily: font.sans },
   input: { lineHeight: leading.tight },
   area: {
     resize: "vertical",

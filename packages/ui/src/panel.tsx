@@ -11,13 +11,14 @@ import { HeadingLevel, useHeadingTag } from "./heading-level";
 import { clsx } from "clsx";
 import {
   color,
-  leading,
+  font,
   layout,
+  leading,
+  rowInset,
   space,
   surface,
   type,
   weight,
-  rowInset,
 } from "./tokens.stylex";
 
 const styles = stylex.create({
@@ -34,7 +35,7 @@ const styles = stylex.create({
       default: null,
       ":is([data-paper-texture] *)": surface.texture,
     },
-    fontFamily: "var(--font-sans)",
+    fontFamily: font.sans,
     lineHeight: leading.body,
     minWidth: 0,
     overflowWrap: "anywhere",

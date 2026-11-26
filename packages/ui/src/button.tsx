@@ -5,7 +5,9 @@ import { clsx as cn } from "clsx";
 import {
   color,
   corner,
+  edge,
   face,
+  font,
   leading,
   motion,
   radius,
@@ -41,10 +43,10 @@ const styles = stylex.create({
     gap: space.s1_5,
     whiteSpace: "normal",
     overflowWrap: "anywhere",
-    borderWidth: "var(--control-edge-width)",
+    borderWidth: edge.control,
     borderStyle: "solid",
     borderColor: "transparent",
-    fontFamily: "var(--font-sans)",
+    fontFamily: font.sans,
     fontWeight: weight.medium,
     lineHeight: leading.snug,
     transitionProperty:

@@ -84,7 +84,7 @@ const styles = stylex.create({
     paddingBlock: space.s1,
     paddingInlineStart: space.s3,
     paddingInlineEnd: space.s1_5,
-    fontFamily: "var(--font-sans)",
+    fontFamily: font.sans,
   },
   language: {
     flex: "1 0 auto",

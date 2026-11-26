@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import { type DotTone } from "@/lib/tone";
 import { clsx } from "clsx";
-import { color, corner, motion, space } from "@flame/ui/tokens.stylex";
+import { color, corner, edge, motion, space } from "@flame/ui/tokens.stylex";
 const styles = stylex.create({
   base: {
     display: "inline-block",
@@ -19,7 +19,7 @@ const styles = stylex.create({
   ok: { backgroundColor: color.success },
   err: { backgroundColor: color.negative },
   ring: {
-    borderWidth: "var(--control-edge-width)",
+    borderWidth: edge.control,
     borderStyle: "solid",
     borderColor: color.accentText,
     animation: motion.pulseDot,

@@ -1,11 +1,19 @@
 import * as stylex from "@stylexjs/stylex";
-import { color, layout, motion, radius, space, surface } from "./tokens.stylex";
+import {
+  color,
+  edge,
+  layout,
+  motion,
+  radius,
+  space,
+  surface,
+} from "./tokens.stylex";
 
 export const FIELD_SURFACE = stylex.create({
   face: {
     appearance: "none",
     borderRadius: radius.field,
-    borderWidth: "var(--control-edge-width)",
+    borderWidth: edge.control,
     borderStyle: "solid",
     borderColor: {
       default: "var(--field-border)",
@@ -70,7 +78,7 @@ export const CARD_SURFACE = stylex.create({
   face: {
     borderRadius: radius.card,
     backgroundColor: surface.card,
-    borderWidth: "var(--control-edge-width)",
+    borderWidth: edge.control,
     borderStyle: "solid",
     borderColor: "transparent",
     boxShadow: "var(--shadow-surface-card)",
@@ -84,7 +92,7 @@ export const CHOICE_SURFACE = stylex.create({
     width: "var(--control-mark-size)",
     flexShrink: 0,
     placeItems: "center",
-    borderWidth: "var(--control-edge-width)",
+    borderWidth: edge.control,
     borderStyle: "solid",
     borderColor: surface.controlEdge,
     backgroundColor: surface.canvas,

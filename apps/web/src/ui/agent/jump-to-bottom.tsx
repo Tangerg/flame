@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import { type Ref } from "react";
 import { IconButton } from "@flame/ui";
-import { space } from "@flame/ui/tokens.stylex";
+import { layout, space } from "@flame/ui/tokens.stylex";
 import { useT } from "@/lib/i18n/index";
 import { iconGlyph } from "@/ui/icons/index";
 type JumpDockPlacement = "above-composer" | "reader-footer";
@@ -19,7 +19,7 @@ const styles = stylex.create({
     justifyContent: "center",
     alignItems: "center",
     flexShrink: 0,
-    paddingBlockStart: "var(--layout-control-gap)",
+    paddingBlockStart: layout.controlGap,
     paddingBlockEnd: "var(--transcript-jump-gap)",
   },
   shown: { translate: "0 0", opacity: 1, pointerEvents: "auto" },

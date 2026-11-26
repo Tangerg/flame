@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { clsx as cn } from "clsx";
-import { color, corner, space, surface } from "./tokens.stylex";
+import { color, corner, edge, space, surface } from "./tokens.stylex";
 import { Slider as SliderPrimitive } from "@base-ui/react/slider";
 
 const styles = stylex.create({
@@ -31,7 +31,7 @@ const styles = stylex.create({
     display: "block",
     height: "var(--control-mark-size)",
     width: "var(--control-mark-size)",
-    borderWidth: "var(--control-edge-width)",
+    borderWidth: edge.control,
     borderStyle: "solid",
     borderColor: surface.controlEdge,
     backgroundColor: surface.thumb,

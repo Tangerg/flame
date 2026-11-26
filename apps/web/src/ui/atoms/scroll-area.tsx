@@ -6,11 +6,12 @@ import {
   type Ref,
 } from "react";
 import { clsx } from "clsx";
+import { edge } from "@flame/ui/tokens.stylex";
 const styles = stylex.create({
   port: { minHeight: 0, flex: 1, overflowY: "auto", overscrollBehavior: "contain" },
   // Content clips at the padding edge, before the inset focus perimeter.
   focusable: {
-    borderWidth: "var(--focus-inset-edge)",
+    borderWidth: edge.focusInset,
     borderStyle: "solid",
     borderColor: "transparent",
   },
