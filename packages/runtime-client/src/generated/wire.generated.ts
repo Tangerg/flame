@@ -149,6 +149,7 @@ export const PROBLEM_CODES = {
   "stale_segment": -32026,
   "unsupported_mime": -32011,
   "vcs_unavailable": -32017,
+  "workspace_file_not_found": -32049,
   "workspace_unavailable": -32005,
 } as const satisfies Partial<Record<ProblemData['type'], number>>;
 
@@ -202,6 +203,7 @@ export const PROBLEM_RECOVERY = {
   "stale_segment": "refetch",
   "unsupported_mime": "promptUser",
   "vcs_unavailable": "promptUser",
+  "workspace_file_not_found": "refetch",
   "workspace_unavailable": "promptUser",
 } as const satisfies Partial<Record<ProblemData['type'], RecoveryAction>>;
 
@@ -1702,6 +1704,7 @@ export type ProblemData =
   | { type: "tool_failed"; detail?: string; docUrl?: string }
   | { type: "unsupported_mime"; detail?: string; docUrl?: string }
   | { type: "vcs_unavailable"; detail?: string; docUrl?: string }
+  | { type: "workspace_file_not_found"; detail?: string; docUrl?: string }
   | { type: "workspace_unavailable"; detail?: string; docUrl?: string }
   | { detail?: string; docUrl?: string; retryAfterSeconds?: number; type: `plugin:${string}/${string}` };
 

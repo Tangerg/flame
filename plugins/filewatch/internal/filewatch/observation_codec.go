@@ -20,6 +20,7 @@ type captureProjection struct {
 	SessionID  string               `json:"sessionId"`
 	RunID      string               `json:"runId"`
 	Invocation framecall.Invocation `json:"invocation"`
+	Partitions []Partition          `json:"partitions,omitempty"`
 }
 
 func (Capture) JSONSchemaModel() any { return captureProjection{} }
@@ -72,5 +73,32 @@ func (h *Header) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	*h = Header(decoded)
+	return nil
+}
+
+type eventProjection struct {
+	Capture       Capture `json:"capture"`
+	Accepted      bool    `json:"accepted"`
+	AdmittedRunID string  `json:"admittedRunId,omitempty"`
+}
+
+func (Event) JSONSchemaModel() any { return eventProjection{} }
+
+func (event Event) MarshalJSON() ([]byte, error) {
+	type native Event
+	return json.Marshal(native(event))
+}
+
+func (event *Event) UnmarshalJSON(data []byte) error {
+	var projection eventProjection
+	if err := value.DecodeValue(data, &projection, "file observation event"); err != nil {
+		return err
+	}
+	type native Event
+	var decoded native
+	if err := json.Unmarshal(data, &decoded, json.RejectUnknownMembers(true)); err != nil {
+		return err
+	}
+	*event = Event(decoded)
 	return nil
 }

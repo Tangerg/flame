@@ -88,7 +88,7 @@ func registerWorkspace(registry *Registry) {
 		Name: workspaceFilesRead, GoName: "ReadWorkspaceFile",
 		Errors: []string{protocol.ErrWorkspaceUnavailable.
 			Error(), protocol.ErrPathOutsideRoot.
-			Error(), protocol.ErrUnsupportedMime.
+			Error(), protocol.ErrWorkspaceFileNotFound.Error(), protocol.ErrUnsupportedMime.
 			Error(),
 		},
 	}, func(service interface {

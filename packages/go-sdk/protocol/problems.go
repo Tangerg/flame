@@ -49,6 +49,7 @@ var problemSpecs = mustProblemSpecs([]problemSpec{
 	declaredProblem(ErrSessionHasActiveRun, RecoveryPromptUser),
 	declaredProblem(ErrCapabilityNotNeg, RecoveryPromptUser),
 	declaredProblem(ErrWorkspaceUnavailable, RecoveryPromptUser),
+	declaredProblem(ErrWorkspaceFileNotFound, RecoveryRefetch),
 	declaredProblem(ErrCheckpointUnavailable, RecoveryPromptUser),
 	declaredProblem(ErrCheckpointConflict, RecoveryPromptUser),
 	declaredProblem(ErrPromptSourceTooLarge, RecoveryPromptUser),

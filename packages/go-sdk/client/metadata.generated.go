@@ -191,6 +191,7 @@ var problemCodes = map[string]int{
 	"stale_segment":                       -32026,
 	"unsupported_mime":                    -32011,
 	"vcs_unavailable":                     -32017,
+	"workspace_file_not_found":            -32049,
 	"workspace_unavailable":               -32005,
 }
 var refusalProblems = map[string]int{
