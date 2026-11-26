@@ -74,7 +74,6 @@ function McpServersPane({
           />
         }
       >
-        <JsonImport context={context} settings={settings} t={t} />
         <Button
           variant="primary"
           size="sm"
@@ -87,6 +86,7 @@ function McpServersPane({
           <Icon glyph={Plus} size="sm" />
           {t("mcp.add")}
         </Button>
+        <JsonImport context={context} settings={settings} t={t} />
       </Toolbar>
       {adding && (
         <div id={panelId}>
