@@ -170,5 +170,5 @@ func registerPlugins(r *Registry) {
 		UninstallPlugin(context.Context, protocol.PluginRequest) error
 	}, ctx context.Context, in protocol.PluginRequest) error {
 		return s.UninstallPlugin(ctx, in)
-	})
+	}).withOwnedReplay(atomicReplay((*Handler).commitPluginUninstall))
 }

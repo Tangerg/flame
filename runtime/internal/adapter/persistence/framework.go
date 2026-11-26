@@ -74,31 +74,33 @@ func (o *frameworkOwner) references(ctx context.Context, executor sqlite.Reader,
 
 func (o *frameworkOwner) projectInstallation(ctx context.Context, executor sqlite.Executor, change framehost.InstallationChange) error {
 	return o.db.withExecutor(ctx, executor, func(ctx context.Context) error {
-		if change.After == nil {
-			if change.Before == nil {
-				return plugin.ErrInvalid
-			}
-			_, err := executor.ExecContext(ctx, `DELETE FROM plugin_installations WHERE id=?`, change.Before.ID)
+		if err := o.writeInstallationProjection(ctx, executor, change); err != nil {
 			return err
 		}
-		record, err := plugins.DecodeFrameworkConfiguration(*change.After)
+		return plugins.SettleInstallationCommit(ctx, change)
+	})
+}
+
+func (o *frameworkOwner) writeInstallationProjection(ctx context.Context, executor sqlite.Executor, change framehost.InstallationChange) error {
+	if change.After == nil {
+		if change.Before == nil {
+			return plugin.ErrInvalid
+		}
+		_, err := executor.ExecContext(ctx, `DELETE FROM plugin_installations WHERE id=?`, change.Before.ID)
+		return err
+	}
+	record, err := plugins.DecodeFrameworkConfiguration(*change.After)
+	if err != nil {
+		return err
+	}
+	if change.Before != nil && change.Before.Release == change.After.Release {
+		staged, err := stagedRelease(ctx, executor, record.ID.String())
 		if err != nil {
 			return err
 		}
-		if change.Before != nil && change.Before.Release == change.After.Release {
-			staged, err := stagedRelease(ctx, executor, record.ID.String())
-			if err != nil {
-				return err
-			}
-			if staged != nil {
-				record.Staged = staged
-			}
-		}
-		if err := o.installations.projectRecord(ctx, record); err != nil {
-			return err
-		}
-		return plugins.SettleInstallationEnablement(ctx, record)
-	})
+		record.Staged = staged
+	}
+	return o.installations.projectRecord(ctx, record)
 }
 
 func stagedRelease(ctx context.Context, executor sqlite.Executor, installationID string) (*framevalue.Digest, error) {

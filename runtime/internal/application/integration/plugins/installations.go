@@ -362,28 +362,6 @@ func (c *Coordinator) realizeInstallationChange(ctx context.Context, id identity
 	return committed, withdrawErr
 }
 
-func (c *Coordinator) Uninstall(ctx context.Context, id identity.InstallationID) error {
-	snapshot, err := c.installationSnapshot(ctx, id)
-	if err != nil {
-		return err
-	}
-	servers, err := snapshot.Installation.ServerIDs(snapshot.Selected)
-	if err != nil {
-		return err
-	}
-	if err := c.framework.Uninstall(ctx, id.Host()); err != nil {
-		return FrameworkError(err)
-	}
-	withdrawErr := c.connections.WithdrawInstallation(ctx, servers)
-	c.publish.Notify(invalidation.Notice{Resource: invalidation.Plugins}, invalidation.Notice{Resource: invalidation.Skills})
-	realizationCtx, finish := c.realizationContext(ctx)
-	defer finish()
-	if err := c.connections.ReconcileInstallation(realizationCtx, servers); err != nil {
-		slog.WarnContext(ctx, "removed plugin reconciliation failed", telemetry.InstallationID(id), telemetry.Error(err))
-	}
-	return errors.Join(withdrawErr, c.Reclaim(realizationCtx))
-}
-
 // A committed change must survive request cancellation; shutdown retires its I/O
 // through the Runtime's cancellation root.
 func (c *Coordinator) realizationContext(request context.Context) (context.Context, func()) {

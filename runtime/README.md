@@ -888,7 +888,7 @@ release bytes fail verification, otherwise `{type: "available", unavailableBacke
 naming declared servers whose backend directory cannot be realized now. A backend whose
 preparation failed therefore stays visible in every later `plugins.list` until repaired,
 not only in the command that attempted it. Each connection's own outcome is the MCP
-supervisor's status (below). Every installation read and command result also carries
+supervisor's status (below). An installation inspection also carries
 `presentation`, the Runtime's closed decision whether the selected release's declarative
 presentation contributions (themes) are shown now: `admitted` exactly when the
 installation is active and its release is available, otherwise `withheld`. Clients
@@ -896,10 +896,11 @@ present admitted themes only and never rebuild that decision from `state` or
 `realization`. Uninstall requires
 the same quiescence as a release switch and returns `plugin_in_use` while an active or
 waiting execution or unresolved command depends on the installation; disablement remains available to withdraw its
-authority while in use. Uninstall is an acknowledgement without a result: it durably removes
-admission before asynchronous retirement. Frame retains the installed execution
-resources and their original proofs until retirement completes; the MCP Pool
-withdraws its session observation without claiming process exit.
+authority while in use. `plugins.uninstall` commits its acknowledgement in the
+transaction that removes the installation. Connection withdrawal uses the exact
+release removed by that transaction. Frame retains the installed execution resources
+and their original proofs until retirement completes. The MCP Pool withdraws its
+session observation as part of that retirement.
 Post-commit package preparation, reconciliation, and projection, including a new
 installation's first result, survive request cancellation and follow the Runtime's
 cancellation root. A reconciliation that cannot

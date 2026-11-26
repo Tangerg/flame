@@ -203,21 +203,21 @@ func parseComponentChange(change protocol.PluginComponentChange) (plugin.Compone
 }
 
 func (s *Handler) SetPluginEnablement(ctx context.Context, in protocol.SetPluginEnablementRequest) (*protocol.PluginEnablement, error) {
-	var record plugin.Record
-	if err := s.setPluginEnablement(ctx, in, operation.DirectReply(&record)); err != nil {
+	var enabled bool
+	if err := s.setPluginEnablement(ctx, in, operation.DirectReply(&enabled)); err != nil {
 		return nil, err
 	}
-	return presentPluginEnablement(record), nil
+	return presentPluginEnablement(in.InstallationID, enabled), nil
 }
 
 func (s *Handler) commitPluginEnablement(ctx context.Context, in protocol.SetPluginEnablementRequest, outcome atomicOutcome) error {
-	reply := atomicReply(outcome.complete, func(record plugin.Record) ([]byte, error) {
-		return encodeAtomicResult(outcome.method, presentPluginEnablement(record))
+	reply := atomicReply(outcome.complete, func(enabled bool) ([]byte, error) {
+		return encodeAtomicResult(outcome.method, presentPluginEnablement(in.InstallationID, enabled))
 	})
 	return outcome.settleRefusal(ctx, s.setPluginEnablement(ctx, in, reply))
 }
 
-func (s *Handler) setPluginEnablement(ctx context.Context, in protocol.SetPluginEnablementRequest, reply operation.Reply[plugin.Record]) error {
+func (s *Handler) setPluginEnablement(ctx context.Context, in protocol.SetPluginEnablementRequest, reply operation.Reply[bool]) error {
 	id, err := parseInstallationID(in.InstallationID)
 	if err != nil {
 		return err
@@ -225,14 +225,22 @@ func (s *Handler) setPluginEnablement(ctx context.Context, in protocol.SetPlugin
 	return wirePluginError(s.plugins.SetEnablement(ctx, id, in.Enabled, reply))
 }
 
-func presentPluginEnablement(record plugin.Record) *protocol.PluginEnablement {
-	return &protocol.PluginEnablement{InstallationID: record.ID.String(), Enabled: record.Enabled}
+func presentPluginEnablement(installationID string, enabled bool) *protocol.PluginEnablement {
+	return &protocol.PluginEnablement{InstallationID: installationID, Enabled: enabled}
 }
 
 func (s *Handler) UninstallPlugin(ctx context.Context, in protocol.PluginRequest) error {
+	return s.uninstallPlugin(ctx, in, operation.DirectReply(new(struct{})))
+}
+
+func (s *Handler) commitPluginUninstall(ctx context.Context, in protocol.PluginRequest, outcome atomicOutcome) error {
+	return outcome.settleRefusal(ctx, s.uninstallPlugin(ctx, in, outcome.acknowledgement()))
+}
+
+func (s *Handler) uninstallPlugin(ctx context.Context, in protocol.PluginRequest, reply operation.Reply[struct{}]) error {
 	id, err := parseInstallationID(in.InstallationID)
 	if err != nil {
 		return err
 	}
-	return wirePluginError(s.plugins.Uninstall(ctx, id))
+	return wirePluginError(s.plugins.Uninstall(ctx, id, reply))
 }

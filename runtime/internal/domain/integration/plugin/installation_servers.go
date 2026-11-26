@@ -28,13 +28,14 @@ func (i Installation) ServerID(server mcpserver.ServerName) (mcpserver.ID, error
 	return id, nil
 }
 
-func (i Installation) ServerIDs(release Release) ([]mcpserver.ID, error) {
-	if err := i.bound(release); err != nil {
+func (r Release) InstallationServerIDs(installation identity.InstallationID) ([]mcpserver.ID, error) {
+	origin, err := mcpserver.InstallationOrigin(installation)
+	if err != nil {
 		return nil, err
 	}
-	result := make([]mcpserver.ID, 0, len(release.declaration.Servers))
-	for _, server := range release.declaration.Servers {
-		id, err := i.ServerID(server.Name)
+	result := make([]mcpserver.ID, 0, len(r.declaration.Servers))
+	for _, server := range r.declaration.Servers {
+		id, err := mcpserver.NewID(origin, server.Name)
 		if err != nil {
 			return nil, err
 		}
