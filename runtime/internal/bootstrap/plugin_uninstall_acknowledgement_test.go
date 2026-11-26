@@ -14,6 +14,7 @@ func TestPluginUninstallCommitsWithItsOriginalAcknowledgement(t *testing.T) {
 	r := poMCPOpen(t, cfg)
 	source := filepath.Join(firstPartyPackages, "guardrails")
 	installed := poMCPActivate(r, source)
+	waitCallContributor(t, r, installed.ID)
 	request := protocol.PluginRequest{InstallationID: installed.ID}
 	const key = "uninstall-original-installation"
 
