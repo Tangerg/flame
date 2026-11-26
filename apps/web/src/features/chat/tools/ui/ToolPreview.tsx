@@ -12,8 +12,11 @@ import { useContentVisible } from "@flame/ui";
 import { space } from "@flame/ui/tokens.stylex";
 import { ToolText } from "@/ui/agent/index";
 import { type ToolCall } from "@/features/agent/public/sessionView";
-import { labelText, useT } from "@/lib/i18n/index";
-import { useRendererChoice, useRendererResolver } from "@/features/plugins/public/renderers";
+import {
+  useRendererChoice,
+  useRendererResolver,
+  useRendererTitle,
+} from "@/features/plugins/public/renderers";
 import {
   toolRendererCandidates,
   toolRendererTarget,
@@ -56,13 +59,13 @@ function RenderToolResult({
   renderer,
   fallback,
 }: ToolPreviewProps & { renderer: ToolResultRendererSpec; fallback: ReactNode }) {
-  const t = useT();
+  const titleFor = useRendererTitle();
   const Result = renderer.component;
   return (
     <PluginBoundary
       key={renderer.id}
       plugin={renderer.id}
-      label={labelText(renderer.title, t)}
+      label={titleFor(renderer)}
       fallback={fallback}
     >
       <Result tool={tool} fallback={fallback} />
@@ -74,10 +77,10 @@ export function InlineToolResult({
   tool,
   renderer,
 }: ToolPreviewProps & { renderer: ToolResultRendererSpec }) {
-  const t = useT();
+  const titleFor = useRendererTitle();
   const visible = useContentVisible();
   return (
-    <ToolResultLayout tool={tool} label={labelText(renderer.title, t)} visible={visible}>
+    <ToolResultLayout tool={tool} label={titleFor(renderer)} visible={visible}>
       <RenderToolResult tool={tool} renderer={renderer} fallback={null} />
     </ToolResultLayout>
   );

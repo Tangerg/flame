@@ -144,9 +144,10 @@ The returned resource matches the existing ESM byte for byte.
   survive switching and restart. The provider counter stays at three
   requests and one successful report.
 - The Runtime returns the alternate's declared Chinese title, `记录结果`.
-  In the Chinese client the picker still uses `Recorded result`.
-  Both installed file and tool renderer contributions currently drop
-  the localized title metadata. This is the next repair.
+  The picker in this build still uses `Recorded result`. Both installed
+  file and tool renderer contributions dropped the title metadata.
+  [The renderer title fix](#installed-renderers-use-their-declared-titles-2026-11-27)
+  qualifies both paths with installed packages.
 
 Production staging, Runtime packaging, `pluginpack`, resource comparison,
 the signed Wails build and diff checks pass. External providers and
@@ -154,6 +155,51 @@ VoiceOver remain outside the check. Both Runtime shutdowns after Wails
 exit reach the existing drain deadline. The owned apps, listeners,
 temporary package, profiles, logs, caches and checkout build outputs
 are removed.
+
+### Installed renderers use their declared titles (2026-11-27)
+
+Both renderer registrations carry the installed component's
+`localizedTitles` through `contributionKinds.tsx`. The renderer picker,
+file and tool boundary labels, and inline report label use
+`useRendererTitle` in `RendererChoice.tsx`. It follows the Dock's
+existing locale, base language and declared title fallback. The picker
+compares the displayed titles when disambiguating candidates. The
+existing component ID remains the selection and mount identity.
+
+- Signed production Wails v3.1.0 and isolated Runtime
+  `2026-11-26.7` use source at `3b3476324` plus this change.
+  Runtime admits and enables two archives made with `pluginpack`.
+  They contribute an exact `genui_ui_present` renderer and an
+  `.md` renderer. The installed ESM resources match the repository
+  RecordedResult and Markdown resources byte for byte.
+- Chinese/light/14 px/Flame Orange at 1120 × 728 uses pointer selection
+  to show **记录结果** beside the recorded report and **Markdown 预览**
+  in Files. The file row opens with the keyboard and the preview reads
+  the fixture `README.md`.
+- Change Appearance to English with Dark, 18 px and Blue (#0485F7).
+  The same report, open file and renderer selections show **Recorded
+  result** and **Markdown preview**. Keyboard selection returns to
+  **Generated interface**, including the edited `5682` note. The
+  picker has a visible focus ring at y=411–444 before and after a
+  resize to 1280 × 800. A wheel scroll moves Tool details up 50 px
+  while the file heading stays at y=216. Composer accepts an unsent
+  draft with the same file preview still open.
+- Runtime reads confirm the same Run, Item, result hash and three
+  provider requests after the language and renderer changes. This
+  is a synthetic loopback provider through the actual Runtime.
+  Live inference, VoiceOver and other locales are outside this check.
+
+Web typecheck, production staging, bootstrap, Runtime packaging,
+both fixture packages, signed Wails, scoped Prettier and diff checks
+pass. The native app closes normally. The isolated Runtime again
+reaches the existing drain deadline after Wails exit. The owned
+processes, installation fixtures, profiles, logs, captures, caches
+and checkout build outputs are removed.
+
+Closing Settings with Escape after opening it from the Files renderer
+picker leaves the exact file and preview open. Focus returns to the
+Files region and the next Tab reaches Back to panel list. The next
+batch traces how Settings can return to the control focused before entry.
 
 ## Error notes leave retrying to their buttons (2026-11-26)
 

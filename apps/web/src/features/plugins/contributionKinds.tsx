@@ -107,6 +107,7 @@ function contributeFileRenderer({
     {
       id,
       title: { text: entry.title },
+      localizedTitles: entry.localizedTitles,
       extension: entry.selector.name,
       component: (props) => (
         <ComponentBoundary
@@ -153,6 +154,7 @@ function contributeToolResultRenderer({
     {
       id,
       title: { text: entry.title },
+      localizedTitles: entry.localizedTitles,
       inlineResult: entry.inlineResult,
       selector:
         entry.selector.type === "resultShape"
