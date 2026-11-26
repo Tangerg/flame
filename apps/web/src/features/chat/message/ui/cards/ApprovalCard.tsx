@@ -21,8 +21,11 @@ import { approvalHeadline } from "@/features/chat/message/ui/cards/approvalHeadl
 import { HitlSettledRow } from "@/features/chat/message/ui/cards/HitlCard";
 import { type as typeStep } from "@flame/ui/tokens.stylex";
 import { messageStyles as ms } from "@/features/chat/message/ui/messageStyles";
+export const SETTLED_APPROVAL_SLOT = "approval-settled";
+
 const ac = stylex.create({
   actionLabel: { display: "flex", alignItems: "center" },
+  settled: { inlineSize: "fit-content" },
 });
 
 interface Props {
@@ -74,19 +77,24 @@ export function ApprovalCard({
     runtimeAvailable,
   });
 
-  if (decision === "approve") {
-    return (
-      <div role="status">
-        <HitlSettledRow label={t("approval.settled.approved")} />
-      </div>
+  if (decision === "approve" || decision === "deny") {
+    const label = t(
+      decision === "approve" ? "approval.settled.approved" : "approval.settled.declined",
     );
-  }
-  if (decision === "deny") {
     return (
-      <div role="status">
-        <TranscriptMark icon={<Icon name="x" size="xs" />}>
-          {t("approval.settled.declined")}
-        </TranscriptMark>
+      <div
+        role="status"
+        aria-label={label}
+        tabIndex={-1}
+        data-slot={SETTLED_APPROVAL_SLOT}
+        data-focus-outset=""
+        {...stylex.props(ac.settled)}
+      >
+        {decision === "approve" ? (
+          <HitlSettledRow label={label} />
+        ) : (
+          <TranscriptMark icon={<Icon name="x" size="xs" />}>{label}</TranscriptMark>
+        )}
       </div>
     );
   }
