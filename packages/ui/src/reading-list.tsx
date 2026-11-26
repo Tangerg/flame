@@ -369,6 +369,7 @@ export function ReadingList<T>({
   const compact = useEffectEvent(() => {
     const node = root.current;
     if (
+      !visible ||
       !renderedAll.current ||
       renderAll ||
       !node ||
@@ -378,7 +379,6 @@ export function ReadingList<T>({
       return;
     const active = node.ownerDocument.activeElement;
     if (
-      visible &&
       active &&
       (node.contains(active) || focusOwner.current?.target === active)
     )
@@ -402,7 +402,10 @@ export function ReadingList<T>({
   });
   useLayoutEffect(() => {
     if (renderAll) renderedAll.current = true;
-    else compact();
+  }, [renderAll]);
+  useEffect(() => {
+    // A revealed reader can get its original focus back in a parent layout effect.
+    compact();
   }, [renderAll, list, visible]);
   const selectionChanged = useEffectEvent(() => {
     const node = root.current;

@@ -25016,6 +25016,17 @@ artwork supplies no keyboard evidence.
 
 ## Conversation Find and reading return
 
+### Keep the found file reference through full-width reading (2026-11-26)
+
+Find located one file reference in turn 12 of a 40-turn conversation. The side-by-side Files inspection kept Find active. Full-width reading closed Find as intended. On the original native run, that also replaced the complete 80-row transcript with a 7-row window while it was hidden. The captured link disconnected, so Back to conversation could only focus the conversation region.
+
+`ReadingList` keeps its filled rows while concealed. After reveal, the windowing release check runs after the layout-time focus handoff. The original link can receive focus before the list decides whether that reader still owns focus. Moving to the Composer releases the complete render through the existing anchor. The recovery follows the source-return and focus guidance already used by Conversation Find. [Workspace design](DESIGN.md)
+
+- **EN/light/18 px/Flame Orange, normal motion.** Actual Size and 1120 × 728. `store.go` found one match. Return from full-width Files focused the same DOM reference at the 4009 px scroll offset. Find stayed closed and a new Find started empty. Moving focus to the Composer reduced the mounted rows from 80 to 7 while keeping the link within one pixel of its reading position. Escape from the fresh Find focused the Composer with the `5682` draft intact.
+- **ZH/dark/18 px/`#3B82F6`, motion off.** With the full-width file open, native resize from 1120 × 728 to 1280 × 800 preserved the return link and offset. A native wheel moved the transcript to 4114 px. The later move to the Composer restored the 7-row window at the same reading line. The draft and empty fresh Find also passed.
+
+The private Wails v3.1.0 Lab build added a single file reference to the existing long-conversation recording. The temporary recording edit was reverted after the probe. Shared UI build and packed-consumer check, production staging, Web typecheck and bootstrap, Lab, Prettier and diff checks passed. The app, preview, profile, probes and worktree build outputs were retired.
+
 ### Distinguish the current Find match (2026-11-26)
 
 In the native report scene, `review` produced six matches. With a light theme and a `#FFD600` custom accent, the active and inactive fills differed by about 1.25:1. The current match now adds a double underline through the shared CSS highlight rule. Plain text and underlined links keep the same text measure while the additional shape identifies the active match. The decoration uses the existing on-accent ink. [CSS highlight styling](https://drafts.csswg.org/css-pseudo-4/#highlight-styling) · [WCAG use of color](https://www.w3.org/WAI/WCAG22/Understanding/use-of-color.html)
