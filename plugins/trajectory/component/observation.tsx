@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import type { ReactNode, RefObject } from "react";
 import type { Translate } from "@flame/component-sdk";
-import { Activity, Cpu, Terminal, FileText, Server } from "@flame/icons/react";
+import { Activity, Cpu, FileText, Server, Wrench } from "@flame/icons/react";
 import type { TrajectoryEntry } from "@flame/runtime-client/wire";
 import { prettyJSON } from "@frame/sdk/json";
 import {
@@ -50,7 +50,7 @@ export function title(
             : row.type === "endpoint"
               ? Server
               : row.item.type === "toolCall"
-                ? Terminal
+                ? Wrench
                 : FileText
       }
       title={title}
