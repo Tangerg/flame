@@ -604,7 +604,9 @@ result with the same wash and a leading accent rule, preserving its ANSI ink and
 fixed row height. Each consumer retains its own query, matching and navigation.
 
 `TextArea autosize` uses progressive CSS `field-sizing: content` with native rows
-as the fallback on hosts without support. Native controls own caret, selection,
+as the fallback on hosts without support. Because content sizing ignores the
+`rows` attribute, the requested `rows` (two by default) set the visible minimum
+height. Native controls own caret, selection,
 composition and scrolling. There is no JavaScript height or caret mirror.
 
 Focus return is delegated to Base UI for popups. Explicit removal actions may

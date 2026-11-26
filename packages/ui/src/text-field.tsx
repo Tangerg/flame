@@ -82,10 +82,8 @@ const styles = stylex.create({
   },
   areaSm: { paddingBlock: space.s1_5 },
   areaMd: { paddingBlock: space.s2 },
-  // The border box includes the block padding, so two visible lines need it added.
   autosize: {
     resize: "vertical",
-    minHeight: `calc(2lh + 2 * ${space.s2})`,
     maxHeight: "min(24lh, 60dvh)",
     overflowY: "auto",
     fieldSizing: {
@@ -93,7 +91,6 @@ const styles = stylex.create({
       "@supports (field-sizing: content)": "content",
     },
   },
-  autosizeSm: { minHeight: `calc(2lh + 2 * ${space.s1_5})` },
   searchBox: {
     display: "flex",
     width: "100%",
@@ -219,12 +216,20 @@ export function TextArea({
       : styles[size === "sm" ? "areaSm" : "areaMd"],
     well && [WELL_SURFACE.face, type.code],
     autosize && styles.autosize,
-    autosize && size === "sm" && styles.autosizeSm,
     extra,
   );
+  // field-sizing ignores the rows attribute, so the requested rows (two by
+  // default) set the visible minimum; the border box adds the block padding.
+  const minRows = props.rows ?? 2;
+  const padding = size === "sm" ? space.s1_5 : space.s2;
   return (
     <textarea
       {...props}
+      style={
+        autosize
+          ? { minHeight: `calc(${minRows}lh + 2 * ${padding})`, ...props.style }
+          : props.style
+      }
       ref={ref}
       rows={props.rows ?? (autosize ? 4 : undefined)}
       aria-invalid={invalid || undefined}
