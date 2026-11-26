@@ -24,6 +24,8 @@ Native (private Wails host on the Lab dev server, Actual Size): EN/light/14 px `
 
 A search for labels built by joining translated fragments found two that broke outside English. The Dock tab's close button joined `Close` and the panel title (`${close} ${title}`), and its `IconButton` shows that label as a tooltip, so Japanese read `閉じる ファイル`, Korean `닫기 파일`, German `Schließen Dateien` and Chinese `关闭 文件` with a stray space; it now uses one phrase, `dock.tabs.close`, written the way each catalog writes `dock.tabs.reorder` (`关闭“{{title}}”`, `「{{title}}」を閉じる`, `{{title}} 닫기`, `{{title}} schließen`). The accent swatches each prefixed `Accent: ` to their colour with an English colon; they now sit in a group named by the row's `Accent` label and each names only its colour (`蓝色`, `Flame`). The other joins (Brand download names, provider retry, the turn rail's position) use separators that read correctly in every catalog.
 
+Also reviewed and kept: sentence joins that put a translated sentence before a Runtime error detail (Brand download, Hooks trust, provider models, Skills read) keep their space, because the detail is English and every CJK catalog spaces Latin text from CJK; English says `the agent` in lowercase throughout; Chinese usage-report dates keep the engine's `2026年10月20日 17:00`; the Lab's Shortcuts rows are fixed, so the recorder state needs the product's editable commands to review.
+
 Native Lab: on JA `dock-files`, hovering the Files tab exposes the close button as `「ファイル」を閉じる`; ZH Appearance exposes the swatches as a `强调色` group of `Flame`, `蓝色`…. Web typecheck, `check:locales`, `check:bootstrap`, plugin `check:resources` and Prettier pass.
 
 ## Source lines read in each language's order (2026-11-26)
