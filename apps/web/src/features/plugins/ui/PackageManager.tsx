@@ -8,7 +8,7 @@ import {
   type PluginDiagnostic,
   type PluginInstallation,
   type PluginRealization,
-  type PluginReleaseRequest,
+  type PluginReleaseRef,
   type PluginRequest,
 } from "@flame/runtime-client/wire";
 import { useT, type MessageKey, type Translate } from "@/lib/i18n/index";
@@ -66,7 +66,7 @@ const styles = stylex.create({
 // The dialog presents the identity captured when the edit opened, so a live
 // catalog replacement cannot relabel a task that still submits the old target.
 type PackageEdit = { name: string; version?: string; value: string; validationError?: string } & (
-  { type: "configure"; target: PluginReleaseRequest } | { type: "stage"; target: PluginRequest }
+  { type: "configure"; target: PluginReleaseRef } | { type: "stage"; target: PluginRequest }
 );
 
 const EDIT_LABEL: Record<PackageEdit["type"], MessageKey> = {

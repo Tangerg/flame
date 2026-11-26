@@ -87,7 +87,7 @@ func TestPreparedInstalledCommandRetiresAfterRestartWithoutBackendDispatch(t *te
 	if result := r.endpoint.Invoke(t.Context(), delivery.PluginsGetCommand, lookup, protocol.CallMetadata{}); !errors.Is(result.Failure, protocol.ErrPluginCommandRetired) {
 		t.Fatalf("retirement not publicly observable: %+v", result)
 	}
-	r.must(delivery.PluginsSelect, protocol.PluginReleaseRequest{InstallationID: installed.ID, Digest: installed.Staged.Digest}, "select-after-retirement")
+	r.must(delivery.PluginsSelect, protocol.PluginReleaseRef{InstallationID: installed.ID, Digest: installed.Staged.Digest}, "select-after-retirement")
 	r = reopenPluginRuntime(t, r, &cfg)
 	if result := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, options); !errors.Is(result.Failure, protocol.ErrPluginCommandRetired) {
 		t.Fatalf("retired command was replayed: %+v", result)

@@ -20,7 +20,7 @@ import (
 type Store interface {
 	List(context.Context) ([]plugin.Snapshot, error)
 	Get(context.Context, identity.InstallationID) (plugin.Snapshot, bool, error)
-	Stage(context.Context, identity.InstallationID, framevalue.Digest) error
+	Stage(context.Context, plugin.StagedRelease) error
 }
 type packageSources interface {
 	Definitions(context.Context, plugin.Installation, plugin.Release) ([]mcpserver.Server, error)

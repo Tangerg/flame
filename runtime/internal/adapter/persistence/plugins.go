@@ -8,6 +8,7 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+	framesqlite "github.com/Tangerg/frame/sqlite"
 	framevalue "github.com/Tangerg/frame/value"
 )
 
@@ -174,16 +175,11 @@ func (s *InstallationStore) restore(ctx context.Context, record plugin.Record) (
 	})
 }
 
-func (s *InstallationStore) projectRecord(ctx context.Context, record plugin.Record) error {
+func (s *InstallationStore) projectRecord(ctx context.Context, record plugin.Record, selectedBefore *framevalue.Digest) error {
 	id := record.ID.String()
-	var staged any
-	if record.Staged != nil {
-		staged = record.Staged.String()
-	}
 	return s.db.write(ctx, func(ctx context.Context) error {
 		db := s.db.connection(ctx)
-		if _, err := db.ExecContext(ctx, `INSERT INTO plugin_installations(id,source,selected_digest,staged_digest,enabled) VALUES(?,?,?,?,?)
-		 ON CONFLICT(id) DO UPDATE SET source=excluded.source,selected_digest=excluded.selected_digest,staged_digest=excluded.staged_digest,enabled=excluded.enabled`, id, record.Source, record.Selected.String(), staged, record.Enabled); err != nil {
+		if err := projectInstallationRow(ctx, db, record, selectedBefore); err != nil {
 			return err
 		}
 		for _, table := range []string{"plugin_installation_values", "plugin_installation_disabled"} {
@@ -216,6 +212,30 @@ func (s *InstallationStore) projectRecord(ctx context.Context, record plugin.Rec
 	})
 }
 
+func projectInstallationRow(ctx context.Context, db framesqlite.Executor, record plugin.Record, selectedBefore *framevalue.Digest) error {
+	id, selected := record.ID.String(), record.Selected.String()
+	var result sql.Result
+	var err error
+	switch {
+	case selectedBefore == nil:
+		_, err = db.ExecContext(ctx, `INSERT INTO plugin_installations(id,source,selected_digest,enabled) VALUES(?,?,?,?)`, id, record.Source, selected, record.Enabled)
+		return err
+	case *selectedBefore == record.Selected:
+		result, err = db.ExecContext(ctx, `UPDATE plugin_installations SET source=?,enabled=? WHERE id=? AND selected_digest=?`, record.Source, record.Enabled, id, selected)
+	default:
+		result, err = db.ExecContext(ctx, `UPDATE plugin_installations SET source=?,selected_digest=?,staged_digest=NULL,enabled=?
+			WHERE id=? AND selected_digest=? AND staged_digest=?`, record.Source, selected, record.Enabled, id, selectedBefore.String(), selected)
+	}
+	if err != nil {
+		return err
+	}
+	changed, err := result.RowsAffected()
+	if err == nil && changed != 1 {
+		return plugin.ErrStale
+	}
+	return err
+}
+
 func (s *InstallationStore) Initialized(ctx context.Context) (bool, error) {
 	return scopedValue(ctx, s.db.read, func(ctx context.Context) (bool, error) {
 		var initialized bool
@@ -231,12 +251,9 @@ func (s *InstallationStore) MarkInitialized(ctx context.Context) error {
 	})
 }
 
-func (s *InstallationStore) Stage(ctx context.Context, id identity.InstallationID, digest framevalue.Digest) error {
+func (s *InstallationStore) Stage(ctx context.Context, candidate plugin.StagedRelease) error {
 	return s.db.write(ctx, func(ctx context.Context) error {
-		if err := digest.Validate(); err != nil {
-			return err
-		}
-		result, err := s.db.connection(ctx).ExecContext(ctx, `UPDATE plugin_installations SET staged_digest=? WHERE id=?`, digest.String(), id.String())
+		result, err := s.db.connection(ctx).ExecContext(ctx, `UPDATE plugin_installations SET staged_digest=? WHERE id=?`, candidate.Digest().String(), candidate.InstallationID().String())
 		if err != nil {
 			return err
 		}

@@ -126,7 +126,7 @@ func TestPluginReleaseUsesExistingMCPPolicySkillsAndReplay(t *testing.T) {
 	if replayed.ID != installed.ID {
 		t.Fatal("install replay changed identity")
 	}
-	release := protocol.PluginReleaseRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest}
+	release := protocol.PluginReleaseRef{InstallationID: installed.ID, Digest: installed.Selected.Digest}
 	staleConfiguration := invoke(delivery.PluginsConfigure, protocol.ConfigurePluginRequest{InstallationID: installed.ID, Digest: strings.Repeat("0", 64)}, "configure-other-release")
 	if staleConfiguration.Failure == nil || !errors.Is(staleConfiguration.Failure, protocol.ErrPluginStale) {
 		t.Fatalf("stale configuration: %v", staleConfiguration.Failure)
@@ -177,11 +177,12 @@ func TestPluginReleaseUsesExistingMCPPolicySkillsAndReplay(t *testing.T) {
 		t.Fatal(err)
 	}
 	authorPluginPackage(t, source)
-	staged := must(delivery.PluginsStage, protocol.StagePluginRequest{InstallationID: installed.ID, Source: source}, "stage-while-waiting").(*protocol.PluginInstallation)
-	if staged.Staged == nil || staged.Selected.Digest != release.Digest {
+	staged := must(delivery.PluginsStage, protocol.StagePluginRequest{InstallationID: installed.ID, Source: source}, "stage-while-waiting").(*protocol.PluginReleaseRef)
+	current := fixture.pluginInstallation(installed.ID)
+	if staged.InstallationID != installed.ID || current.Selected.Digest != release.Digest || current.Staged == nil || current.Staged.Digest != staged.Digest {
 		t.Fatal("staging changed executable selection")
 	}
-	blocked := invoke(delivery.PluginsSelect, protocol.PluginReleaseRequest{InstallationID: installed.ID, Digest: staged.Staged.Digest}, "select-while-waiting")
+	blocked := invoke(delivery.PluginsSelect, *staged, "select-while-waiting")
 	if blocked.Failure == nil || !errors.Is(blocked.Failure, protocol.ErrPluginInUse) {
 		t.Fatalf("waiting dependency switch: %v", blocked.Failure)
 	}
@@ -196,7 +197,7 @@ func TestPluginReleaseUsesExistingMCPPolicySkillsAndReplay(t *testing.T) {
 	if replayed.ID != installed.ID {
 		t.Fatal("cold replay created another installation")
 	}
-	blocked = invoke(delivery.PluginsSelect, protocol.PluginReleaseRequest{InstallationID: installed.ID, Digest: staged.Staged.Digest}, "select-after-restart")
+	blocked = invoke(delivery.PluginsSelect, *staged, "select-after-restart")
 	if blocked.Failure == nil || !errors.Is(blocked.Failure, protocol.ErrPluginInUse) {
 		t.Fatalf("cold waiting dependency switch: %v", blocked.Failure)
 	}

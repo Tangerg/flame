@@ -24,8 +24,8 @@ type pluginBinding interface {
 	SelectPluginProvider(context.Context, protocol.SelectPluginProviderRequest, protocol.CommandOptions) (*protocol.PluginProviderSelection, error)
 	ListPlugins(context.Context, protocol.CallOptions) (*protocol.Page[protocol.PluginInstallation], error)
 	InstallPlugin(context.Context, protocol.InstallPluginRequest, protocol.CommandOptions) (*protocol.PluginInstallation, error)
-	StagePlugin(context.Context, protocol.StagePluginRequest, protocol.CommandOptions) (*protocol.PluginInstallation, error)
-	SelectPlugin(context.Context, protocol.PluginReleaseRequest, protocol.CommandOptions) (*protocol.PluginInstallation, error)
+	StagePlugin(context.Context, protocol.StagePluginRequest, protocol.CommandOptions) (*protocol.PluginReleaseRef, error)
+	SelectPlugin(context.Context, protocol.PluginReleaseRef, protocol.CommandOptions) (*protocol.PluginReleaseRef, error)
 	ConfigurePlugin(context.Context, protocol.ConfigurePluginRequest, protocol.CommandOptions) (*protocol.PluginInstallation, error)
 	SetPluginEnablement(context.Context, protocol.SetPluginEnablementRequest, protocol.CommandOptions) (*protocol.PluginEnablement, error)
 	UninstallPlugin(context.Context, protocol.PluginRequest, protocol.CommandOptions) error
@@ -208,22 +208,34 @@ func (r *Connection) InstallPlugin(ctx context.Context, request protocol.Install
 	return pluginResult("install plugin", "", value, err)
 }
 
-func (r *Connection) StagePlugin(ctx context.Context, request protocol.StagePluginRequest, commandID authoring.CommandID) (*protocol.PluginInstallation, error) {
+func (r *Connection) StagePlugin(ctx context.Context, request protocol.StagePluginRequest, commandID authoring.CommandID) (*protocol.PluginReleaseRef, error) {
 	options, err := r.commandOptionsFor(commandID)
 	if err != nil {
 		return nil, err
 	}
 	value, err := r.plugins.StagePlugin(ctx, request, options)
-	return pluginResult("stage plugin", request.InstallationID, value, err)
+	if err != nil {
+		return nil, classifyError(err)
+	}
+	if value == nil || value.InstallationID != request.InstallationID {
+		return nil, runtimeContractViolation("stage plugin returned a different installation")
+	}
+	return value, nil
 }
 
-func (r *Connection) SelectPlugin(ctx context.Context, request protocol.PluginReleaseRequest, commandID authoring.CommandID) (*protocol.PluginInstallation, error) {
+func (r *Connection) SelectPlugin(ctx context.Context, request protocol.PluginReleaseRef, commandID authoring.CommandID) (*protocol.PluginReleaseRef, error) {
 	options, err := r.commandOptionsFor(commandID)
 	if err != nil {
 		return nil, err
 	}
 	value, err := r.plugins.SelectPlugin(ctx, request, options)
-	return pluginResult("select plugin", request.InstallationID, value, err)
+	if err != nil {
+		return nil, classifyError(err)
+	}
+	if value == nil || *value != request {
+		return nil, runtimeContractViolation("select plugin returned a different release")
+	}
+	return value, nil
 }
 
 func (r *Connection) ConfigurePlugin(ctx context.Context, request protocol.ConfigurePluginRequest, commandID authoring.CommandID) (*protocol.PluginInstallation, error) {

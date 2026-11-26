@@ -758,11 +758,15 @@ inputs and a staged release from another package fail installation reads. Valid 
 keep their format; invalid records fail reads without automatic conversion or repair.
 
 Staging never switches running code. An already selected digest cannot be staged
-again. Selecting a distinct staged release requires execution to be quiescent. It is one
-explicit trust decision that preserves desired enablement. A candidate whose retained
-configuration lacks inputs required by an enabled installation is refused before any
-selection or configuration changes. Disable first when new credentials are needed,
-select the candidate, configure it and enable it explicitly.
+again. `plugins.stage` commits the candidate and its `installationId` and `digest`
+receipt together. Selecting a distinct staged release requires execution to be quiescent.
+`plugins.select` consumes only the exact candidate still staged at commit, together
+with the selection receipt. Use `plugins.list` to inspect the current selected and
+staged releases. Selection is an explicit trust decision that preserves desired enablement.
+A candidate whose retained configuration lacks inputs required by an enabled
+installation is refused before any selection or configuration changes. When new
+credentials are required, disable the installation before selecting the candidate.
+Configure and enable the new release explicitly.
 It retains what the candidate declares unchanged: input values whose input keeps its
 server, target, key and secrecy, and disabled servers and Skills that are still declared.
 An installed process secret follows its executable recipient: the original

@@ -70,7 +70,7 @@ func bindMethod(binding PluginBinding, descriptor frame.MethodDescriptor) (bound
 	if binding.Target.Scope != required.Descriptor().Target {
 		return boundMethod{}, errors.New("runtime: plugin target differs from its method contract")
 	}
-	if err := protocol.ValidateWireTree(protocol.PluginReleaseRequest{InstallationID: binding.InstallationID, Digest: binding.Digest}); err != nil {
+	if err := protocol.ValidateWireTree(protocol.PluginReleaseRef{InstallationID: binding.InstallationID, Digest: binding.Digest}); err != nil {
 		return boundMethod{}, err
 	}
 	if err := protocol.ValidateWireTree(protocol.SelectPluginProviderRequest{InstallationID: binding.InstallationID, Contribution: binding.Contribution, Role: binding.Contract.Descriptor().Reference}); err != nil {

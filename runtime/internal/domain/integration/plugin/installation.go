@@ -174,13 +174,6 @@ func (i Installation) ID() identity.InstallationID { return i.record.ID }
 func (i Installation) Selected() framevalue.Digest { return i.record.Selected }
 func (i Installation) Enabled() bool               { return i.record.Enabled }
 
-func (i Installation) Staged() (framevalue.Digest, bool) {
-	if i.record.Staged == nil {
-		return framevalue.Digest{}, false
-	}
-	return *i.record.Staged, true
-}
-
 func (i Installation) bound(release Release) error {
 	if release.Digest() != i.record.Selected {
 		return fmt.Errorf("%w: release %s is not selected %s", ErrStale, release.Digest(), i.record.Selected)
@@ -188,17 +181,22 @@ func (i Installation) bound(release Release) error {
 	return nil
 }
 
-func (i Installation) Stage(selected, candidate Release) (Installation, error) {
+type StagedRelease struct {
+	installation identity.InstallationID
+	digest       framevalue.Digest
+}
+
+func (s StagedRelease) InstallationID() identity.InstallationID { return s.installation }
+func (s StagedRelease) Digest() framevalue.Digest               { return s.digest }
+
+func (i Installation) Stage(selected, candidate Release) (StagedRelease, error) {
 	if err := i.bound(selected); err != nil {
-		return Installation{}, err
+		return StagedRelease{}, err
 	}
 	if err := validateStaged(selected, candidate); err != nil {
-		return Installation{}, err
+		return StagedRelease{}, err
 	}
-	next := clone(i.record)
-	digest := candidate.Digest()
-	next.Staged = &digest
-	return Installation{record: next}, nil
+	return StagedRelease{installation: i.ID(), digest: candidate.Digest()}, nil
 }
 
 func validateStaged(selected, candidate Release) error {

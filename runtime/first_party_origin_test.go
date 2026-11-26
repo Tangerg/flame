@@ -61,9 +61,9 @@ func TestBundledUsageKeepsItsContractAtAnIndependentInstallationSource(t *testin
 	read := func(installation protocol.PluginInstallation) *protocol.PluginResource {
 		t.Helper()
 		resource, err := current.ReadPluginResource(t.Context(), protocol.ReadPluginResourceRequest{
-			PluginReleaseRequest: protocol.PluginReleaseRequest{InstallationID: installation.ID, Digest: installation.Selected.Digest},
-			ComponentID:          "usage",
-			Path:                 installation.Selected.Components[0].Entry,
+			PluginReleaseRef: protocol.PluginReleaseRef{InstallationID: installation.ID, Digest: installation.Selected.Digest},
+			ComponentID:      "usage",
+			Path:             installation.Selected.Components[0].Entry,
 		}, protocol.CallOptions{})
 		if err != nil {
 			t.Fatal(err)

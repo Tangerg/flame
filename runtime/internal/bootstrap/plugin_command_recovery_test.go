@@ -76,8 +76,9 @@ func stageCommandReplacement(t *testing.T, r *poMCPRuntime, installed *protocol.
 		t.Fatal(err)
 	}
 	authorPluginPackage(t, candidate)
-	staged := r.must(delivery.PluginsStage, protocol.StagePluginRequest{InstallationID: installed.ID, Source: candidate}, "stage-candidate").(*protocol.PluginInstallation)
-	if staged.Staged == nil || staged.Staged.Digest == installed.Selected.Digest {
+	receipt := r.must(delivery.PluginsStage, protocol.StagePluginRequest{InstallationID: installed.ID, Source: candidate}, "stage-candidate").(*protocol.PluginReleaseRef)
+	staged := r.pluginInstallation(installed.ID)
+	if receipt.InstallationID != installed.ID || staged.Staged == nil || staged.Staged.Digest != receipt.Digest || staged.Staged.Digest == installed.Selected.Digest {
 		t.Fatal("fixture did not stage distinct bytes")
 	}
 	return staged

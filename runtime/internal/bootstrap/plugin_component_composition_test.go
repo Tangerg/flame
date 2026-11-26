@@ -81,7 +81,7 @@ func TestIndependentComponentPackagesComposeThroughInstallationLifecycle(t *test
 			if len(r.must(delivery.PluginsResolvePoint, summary, "").(*protocol.Page[protocol.PluginPointBinding]).Data) != 1 {
 				t.Fatal("selection failed")
 			}
-			resource := protocol.ReadPluginResourceRequest{PluginReleaseRequest: protocol.PluginReleaseRequest{InstallationID: provider.ID, Digest: provider.Selected.Digest}, ComponentID: "panel", Path: "io.github.tangerg.flame/components/component.js"}
+			resource := protocol.ReadPluginResourceRequest{PluginReleaseRef: protocol.PluginReleaseRef{InstallationID: provider.ID, Digest: provider.Selected.Digest}, ComponentID: "panel", Path: "io.github.tangerg.flame/components/component.js"}
 			r.must(delivery.PluginsReadResource, resource, "")
 			refused := func(method delivery.Name, input any, want error) {
 				t.Helper()
@@ -100,12 +100,12 @@ func TestIndependentComponentPackagesComposeThroughInstallationLifecycle(t *test
 			if resolve("consumer", "panels", 1).Data[0].Digest != provider.Selected.Digest {
 				t.Fatal("staging advanced selected membership")
 			}
-			selected := r.must(delivery.PluginsSelect, protocol.PluginReleaseRequest{InstallationID: provider.ID, Digest: staged.Staged.Digest}, "select-provider").(*protocol.PluginInstallation)
-			if resolve("consumer", "panels", 1).Data[0].Digest != selected.Selected.Digest {
+			selected := r.must(delivery.PluginsSelect, protocol.PluginReleaseRef{InstallationID: provider.ID, Digest: staged.Staged.Digest}, "select-provider").(*protocol.PluginReleaseRef)
+			if resolve("consumer", "panels", 1).Data[0].Digest != selected.Digest {
 				t.Fatal("selected upgrade did not replace the binding")
 			}
 			refused(delivery.PluginsReadResource, resource, protocol.ErrPluginStale)
-			resource.Digest = selected.Selected.Digest
+			resource.Digest = selected.Digest
 			r.must(delivery.PluginsReadResource, resource, "")
 			r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: consumer.ID}, "disable-consumer")
 			refused(delivery.PluginsResolvePoint, request("consumer", "panels"), protocol.ErrPluginUnavailable)

@@ -205,7 +205,7 @@ type PluginLocale struct {
 }
 
 type ReadPluginLocaleRequest struct {
-	PluginReleaseRequest
+	PluginReleaseRef
 	Tag string `json:"tag"`
 }
 
@@ -279,7 +279,7 @@ type StagePluginRequest struct {
 type PluginRequest struct {
 	InstallationID string `json:"installationId"`
 }
-type PluginReleaseRequest struct {
+type PluginReleaseRef struct {
 	InstallationID string `json:"installationId"`
 	Digest         string `json:"digest"`
 }
@@ -461,7 +461,7 @@ type PluginTerminalFormField struct {
 }
 
 type ReadPluginResourceRequest struct {
-	PluginReleaseRequest
+	PluginReleaseRef
 	ComponentID string `json:"componentId"`
 	Path        string `json:"path"`
 }

@@ -200,15 +200,16 @@ func TestPluginAcceptanceApprovalStaleAfterReleaseChange(t *testing.T) {
 		t.Fatal(err)
 	}
 	authorPluginPackage(t, source)
-	staged := must(delivery.PluginsStage, protocol.StagePluginRequest{InstallationID: installed.ID, Source: source}, "stage").(*protocol.PluginInstallation)
-	if staged.Staged == nil || staged.Staged.Digest == installed.Selected.Digest {
-		t.Fatalf("staged release = %+v", staged.Staged)
+	staged := must(delivery.PluginsStage, protocol.StagePluginRequest{InstallationID: installed.ID, Source: source}, "stage").(*protocol.PluginReleaseRef)
+	if staged.InstallationID != installed.ID || staged.Digest == installed.Selected.Digest {
+		t.Fatalf("staged release = %+v", staged)
 	}
 	must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: false}, "disable-for-update")
 	before := sessions.Load()
-	selected := must(delivery.PluginsSelect, protocol.PluginReleaseRequest{InstallationID: installed.ID, Digest: staged.Staged.Digest}, "select").(*protocol.PluginInstallation)
-	if selected.Selected.Digest != staged.Staged.Digest || selected.Enabled != false || selected.Presentation != protocol.PluginPresentationWithheld {
-		t.Fatalf("release switch changed explicit disablement: %+v", selected)
+	selected := must(delivery.PluginsSelect, *staged, "select").(*protocol.PluginReleaseRef)
+	page := must(delivery.PluginsList, struct{}{}, "").(*protocol.Page[protocol.PluginInstallation])
+	if *selected != *staged || len(page.Data) != 1 || page.Data[0].Selected.Digest != staged.Digest || page.Data[0].Enabled || page.Data[0].Presentation != protocol.PluginPresentationWithheld {
+		t.Fatalf("release switch changed explicit disablement: %+v", page.Data)
 	}
 	rules = must(delivery.ApprovalListRules, protocol.ListApprovalRulesRequest{SessionID: session.ID}, "").(*protocol.ListApprovalRulesResult)
 	if len(rules.Rules) != 1 || !rules.Rules[0].Stale {

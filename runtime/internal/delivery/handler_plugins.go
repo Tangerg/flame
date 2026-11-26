@@ -136,20 +136,54 @@ func (s *Handler) InstallPlugin(ctx context.Context, in protocol.InstallPluginRe
 	return presentPluginResult(s.plugins.Install(ctx, in.Source))
 }
 
-func (s *Handler) StagePlugin(ctx context.Context, in protocol.StagePluginRequest) (*protocol.PluginInstallation, error) {
-	id, err := parseInstallationID(in.InstallationID)
-	if err != nil {
+func (s *Handler) StagePlugin(ctx context.Context, in protocol.StagePluginRequest) (*protocol.PluginReleaseRef, error) {
+	var staged plugin.StagedRelease
+	if err := s.stagePlugin(ctx, in, operation.DirectReply(&staged)); err != nil {
 		return nil, err
 	}
-	return presentPluginResult(s.plugins.Stage(ctx, id, in.Source))
+	return presentStagedRelease(staged), nil
 }
 
-func (s *Handler) SelectPlugin(ctx context.Context, in protocol.PluginReleaseRequest) (*protocol.PluginInstallation, error) {
-	id, digest, err := parseInstallationRelease(in.InstallationID, in.Digest)
+func (s *Handler) commitPluginStage(ctx context.Context, in protocol.StagePluginRequest, outcome atomicOutcome) error {
+	reply := atomicReply(outcome.complete, func(staged plugin.StagedRelease) ([]byte, error) {
+		return encodeAtomicResult(outcome.method, presentStagedRelease(staged))
+	})
+	return outcome.settleRefusal(ctx, s.stagePlugin(ctx, in, reply))
+}
+
+func (s *Handler) stagePlugin(ctx context.Context, in protocol.StagePluginRequest, reply operation.Reply[plugin.StagedRelease]) error {
+	id, err := parseInstallationID(in.InstallationID)
 	if err != nil {
+		return err
+	}
+	return wirePluginError(s.plugins.Stage(ctx, id, in.Source, reply))
+}
+
+func presentStagedRelease(staged plugin.StagedRelease) *protocol.PluginReleaseRef {
+	return &protocol.PluginReleaseRef{InstallationID: staged.InstallationID().String(), Digest: staged.Digest().String()}
+}
+
+func (s *Handler) SelectPlugin(ctx context.Context, in protocol.PluginReleaseRef) (*protocol.PluginReleaseRef, error) {
+	var digest framevalue.Digest
+	if err := s.selectPlugin(ctx, in, operation.DirectReply(&digest)); err != nil {
 		return nil, err
 	}
-	return presentPluginResult(s.plugins.Select(ctx, id, digest))
+	return &protocol.PluginReleaseRef{InstallationID: in.InstallationID, Digest: digest.String()}, nil
+}
+
+func (s *Handler) commitPluginSelection(ctx context.Context, in protocol.PluginReleaseRef, outcome atomicOutcome) error {
+	reply := atomicReply(outcome.complete, func(digest framevalue.Digest) ([]byte, error) {
+		return encodeAtomicResult(outcome.method, &protocol.PluginReleaseRef{InstallationID: in.InstallationID, Digest: digest.String()})
+	})
+	return outcome.settleRefusal(ctx, s.selectPlugin(ctx, in, reply))
+}
+
+func (s *Handler) selectPlugin(ctx context.Context, in protocol.PluginReleaseRef, reply operation.Reply[framevalue.Digest]) error {
+	id, digest, err := parseInstallationRelease(in.InstallationID, in.Digest)
+	if err != nil {
+		return err
+	}
+	return wirePluginError(s.plugins.Select(ctx, id, digest, reply))
 }
 
 func (s *Handler) ConfigurePlugin(ctx context.Context, in protocol.ConfigurePluginRequest) (*protocol.PluginInstallation, error) {

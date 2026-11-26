@@ -93,27 +93,9 @@ func (o *frameworkOwner) writeInstallationProjection(ctx context.Context, execut
 	if err != nil {
 		return err
 	}
-	if change.Before != nil && change.Before.Release == change.After.Release {
-		staged, err := stagedRelease(ctx, executor, record.ID.String())
-		if err != nil {
-			return err
-		}
-		record.Staged = staged
+	var selectedBefore *framevalue.Digest
+	if change.Before != nil {
+		selectedBefore = &change.Before.Release
 	}
-	return o.installations.projectRecord(ctx, record)
-}
-
-func stagedRelease(ctx context.Context, executor sqlite.Executor, installationID string) (*framevalue.Digest, error) {
-	var staged *string
-	if err := executor.QueryRowContext(ctx, `SELECT staged_digest FROM plugin_installations WHERE id=?`, installationID).Scan(&staged); err != nil {
-		return nil, err
-	}
-	if staged == nil {
-		return nil, nil
-	}
-	digest, err := framevalue.ParseDigest(*staged)
-	if err != nil {
-		return nil, err
-	}
-	return &digest, nil
+	return o.installations.projectRecord(ctx, record, selectedBefore)
 }

@@ -144,15 +144,15 @@ func registerPlugins(r *Registry) {
 		return s.InstallPlugin(ctx, in)
 	})
 	r.command(MethodMeta{Name: PluginsStage, GoName: "StagePlugin", CapabilityRules: requires(protocol.FeaturePlugins), Errors: pluginErrors()}, func(s interface {
-		StagePlugin(context.Context, protocol.StagePluginRequest) (*protocol.PluginInstallation, error)
-	}, ctx context.Context, in protocol.StagePluginRequest) (*protocol.PluginInstallation, error) {
+		StagePlugin(context.Context, protocol.StagePluginRequest) (*protocol.PluginReleaseRef, error)
+	}, ctx context.Context, in protocol.StagePluginRequest) (*protocol.PluginReleaseRef, error) {
 		return s.StagePlugin(ctx, in)
-	})
+	}).withOwnedReplay(atomicReplay((*Handler).commitPluginStage))
 	r.command(MethodMeta{Name: PluginsSelect, GoName: "SelectPlugin", CapabilityRules: requires(protocol.FeaturePlugins), Errors: pluginErrors()}, func(s interface {
-		SelectPlugin(context.Context, protocol.PluginReleaseRequest) (*protocol.PluginInstallation, error)
-	}, ctx context.Context, in protocol.PluginReleaseRequest) (*protocol.PluginInstallation, error) {
+		SelectPlugin(context.Context, protocol.PluginReleaseRef) (*protocol.PluginReleaseRef, error)
+	}, ctx context.Context, in protocol.PluginReleaseRef) (*protocol.PluginReleaseRef, error) {
 		return s.SelectPlugin(ctx, in)
-	})
+	}).withOwnedReplay(atomicReplay((*Handler).commitPluginSelection))
 	r.command(MethodMeta{Name: PluginsConfigure, GoName: "ConfigurePlugin", CapabilityRules: requires(protocol.FeaturePlugins), Errors: pluginErrors()}, func(s interface {
 		ConfigurePlugin(context.Context, protocol.ConfigurePluginRequest) (*protocol.PluginInstallation, error)
 	}, ctx context.Context, in protocol.ConfigurePluginRequest) (*protocol.PluginInstallation, error) {

@@ -19,7 +19,7 @@ type PluginBrowserSession struct {
 }
 
 type AcquirePluginComponentRequest struct {
-	PluginReleaseRequest
+	PluginReleaseRef
 	OperationID string             `json:"operationId"`
 	ParentUseID string             `json:"parentUseId,omitzero"`
 	Realm       PluginBrowserRealm `json:"realm"`

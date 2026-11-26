@@ -147,14 +147,6 @@ func (c *Coordinator) inspect(ctx context.Context, snapshot plugin.Snapshot) (In
 	return inspection, nil
 }
 
-func (c *Coordinator) named(ctx context.Context, digest framevalue.Digest) (plugin.Release, error) {
-	release, err := c.catalog.Get(ctx, digest)
-	if errors.Is(err, plugin.ErrNotFound) {
-		return plugin.Release{}, fmt.Errorf("%w: release %s is not admitted", plugin.ErrStale, digest)
-	}
-	return release, err
-}
-
 func (c *Coordinator) Install(ctx context.Context, source string) (_ Inspection, err error) {
 	candidate, err := c.packages.Materialize(ctx, source)
 	if err != nil {
@@ -200,63 +192,11 @@ func (c *Coordinator) Install(ctx context.Context, source string) (_ Inspection,
 	return inspection, nil
 }
 
-func (c *Coordinator) Stage(ctx context.Context, id identity.InstallationID, source string) (_ Inspection, err error) {
-	candidate, err := c.packages.Materialize(ctx, source)
-	if err != nil {
-		return Inspection{}, fmt.Errorf("plugins: materialize package: %w", err)
-	}
-	defer func() { err = errors.Join(err, candidate.Discard()) }()
-	published, err := candidate.Publish(ctx)
-	if err != nil {
-		return Inspection{}, err
-	}
-	err = c.transact(ctx, func(admitted context.Context) error {
-		snapshot, err := c.installationSnapshot(admitted, id)
-		if err != nil {
-			return err
-		}
-		if _, err := snapshot.Installation.Stage(snapshot.Selected, published); err != nil {
-			return err
-		}
-		return c.store.Stage(admitted, id, published.Digest())
-	})
-	if err != nil {
-		return Inspection{}, err
-	}
-	c.publish.Notify(invalidation.Notice{Resource: invalidation.Plugins})
-	snapshot, err := c.installationSnapshot(ctx, id)
-	if err != nil {
-		return Inspection{}, err
-	}
-	inspection, err := c.inspect(ctx, snapshot)
-	return inspection, errors.Join(err, c.Reclaim(ctx))
-}
-
 func (c *Coordinator) Reclaim(ctx context.Context) error {
 	if err := c.packages.Reclaim(ctx); err != nil {
 		return fmt.Errorf("plugins: reclaim releases: %w", err)
 	}
 	return nil
-}
-
-func (c *Coordinator) Select(ctx context.Context, id identity.InstallationID, digest framevalue.Digest) (Inspection, error) {
-	return c.change(ctx, id, func(ctx context.Context, i plugin.Installation, selected plugin.Release) (plugin.Installation, error) {
-		staged, err := c.named(ctx, digest)
-		if err != nil {
-			return plugin.Installation{}, err
-		}
-		return i.Select(selected, staged)
-	})
-}
-
-func (c *Coordinator) Configure(ctx context.Context, id identity.InstallationID, digest framevalue.Digest, configuration plugin.Configuration) (Inspection, error) {
-	return c.change(ctx, id, func(ctx context.Context, i plugin.Installation, _ plugin.Release) (plugin.Installation, error) {
-		release, err := c.named(ctx, digest)
-		if err != nil {
-			return plugin.Installation{}, err
-		}
-		return i.Configure(release, configuration)
-	})
 }
 
 func (c *Coordinator) currentFrameworkInstallation(snapshot plugin.Snapshot) (framehost.InstallationRecord, error) {
@@ -290,16 +230,19 @@ func changedServerIDs(installation plugin.Installation, before plugin.Snapshot, 
 	return ids, nil
 }
 
-func (c *Coordinator) change(ctx context.Context, id identity.InstallationID, transition func(context.Context, plugin.Installation, plugin.Release) (plugin.Installation, error)) (Inspection, error) {
+func (c *Coordinator) Configure(ctx context.Context, id identity.InstallationID, digest framevalue.Digest, configuration plugin.Configuration) (Inspection, error) {
 	snapshot, err := c.installationSnapshot(ctx, id)
 	if err != nil {
 		return Inspection{}, err
 	}
-	installation, err := transition(ctx, snapshot.Installation, snapshot.Selected)
+	if snapshot.Selected.Digest() != digest {
+		return Inspection{}, fmt.Errorf("%w: release %s is not selected", plugin.ErrStale, digest)
+	}
+	installation, err := snapshot.Installation.Configure(snapshot.Selected, configuration)
 	if err != nil {
 		return Inspection{}, err
 	}
-	reconcile, err := c.commitInstallationChange(ctx, snapshot, installation)
+	reconcile, err := c.commitInstallationChange(ctx, snapshot, installation, snapshot.Selected)
 	if err != nil {
 		return Inspection{}, err
 	}
@@ -313,17 +256,10 @@ func (c *Coordinator) change(ctx context.Context, id identity.InstallationID, tr
 	return inspection, errors.Join(err, c.Reclaim(ownerCtx))
 }
 
-func (c *Coordinator) commitInstallationChange(ctx context.Context, before plugin.Snapshot, installation plugin.Installation) ([]mcpserver.ID, error) {
+func (c *Coordinator) commitInstallationChange(ctx context.Context, before plugin.Snapshot, installation plugin.Installation, after plugin.Release) ([]mcpserver.ID, error) {
 	expected, err := c.currentFrameworkInstallation(before)
 	if err != nil {
 		return nil, err
-	}
-	after := before.Selected
-	if installation.Selected() != after.Digest() {
-		after, err = c.catalog.Get(ctx, installation.Selected())
-		if err != nil {
-			return nil, err
-		}
 	}
 	reconcile, err := changedServerIDs(installation, before, after)
 	if err != nil {
@@ -342,6 +278,15 @@ func (c *Coordinator) commitInstallationChange(ctx context.Context, before plugi
 	}
 	err = c.framework.Update(ctx, expected, framehost.InstallationConfig{ID: expected.ID, Plugin: projection.Plugin, Configuration: configuration, Enabled: installation.Enabled()})
 	return reconcile, FrameworkError(err)
+}
+
+func (c *Coordinator) reconcileCommittedInstallation(ctx context.Context, id identity.InstallationID, servers []mcpserver.ID, commitErr error) {
+	ownerCtx, finish := c.realizationContext(ctx)
+	defer finish()
+	_, realizationErr := c.realizeInstallationChange(ownerCtx, id, servers)
+	if err := errors.Join(commitErr, realizationErr, c.Reclaim(ownerCtx)); err != nil {
+		slog.WarnContext(ownerCtx, "committed plugin update could not fully reconcile", telemetry.InstallationID(id), telemetry.Error(err))
+	}
 }
 
 func (c *Coordinator) realizeInstallationChange(ctx context.Context, id identity.InstallationID, reconcile []mcpserver.ID) (plugin.Snapshot, error) {

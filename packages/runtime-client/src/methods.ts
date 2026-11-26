@@ -31,7 +31,7 @@ import type {
   PluginEnablement,
   InstallPluginRequest,
   StagePluginRequest,
-  PluginReleaseRequest,
+  PluginReleaseRef,
   ConfigurePluginRequest,
   SetPluginEnablementRequest,
   MCPServerID,
@@ -386,8 +386,8 @@ export interface Methods {
     ) => Promise<CallPluginResponse> | MutationPromise<CallPluginResponse>;
     list: (signal?: AbortSignal) => Promise<Page<PluginInstallation>>;
     install: (params: InstallPluginRequest) => MutationPromise<PluginInstallation>;
-    stage: (params: StagePluginRequest) => MutationPromise<PluginInstallation>;
-    select: (params: PluginReleaseRequest) => MutationPromise<PluginInstallation>;
+    stage: (params: StagePluginRequest) => MutationPromise<PluginReleaseRef>;
+    select: (params: PluginReleaseRef) => MutationPromise<PluginReleaseRef>;
     configure: (params: ConfigurePluginRequest) => MutationPromise<PluginInstallation>;
     setEnablement: (params: SetPluginEnablementRequest) => MutationPromise<PluginEnablement>;
     uninstall: (installationId: string) => MutationPromise<void>;

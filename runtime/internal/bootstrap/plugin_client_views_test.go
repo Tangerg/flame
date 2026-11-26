@@ -20,7 +20,7 @@ func TestClientComponentsRemainAvailableWithoutBackend(t *testing.T) {
 			if len(installed.Selected.Diagnostics) != 0 {
 				t.Fatalf("admission: %+v", installed.Selected)
 			}
-			release := protocol.PluginReleaseRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest}
+			release := protocol.PluginReleaseRef{InstallationID: installed.ID, Digest: installed.Selected.Digest}
 			if len(installed.Selected.Servers) != 0 {
 				changes := make(map[string]protocol.PluginComponentChange)
 				for _, server := range installed.Selected.Servers {
@@ -38,7 +38,7 @@ func TestClientComponentsRemainAvailableWithoutBackend(t *testing.T) {
 			component := installed.Selected.Components[0]
 			path := component.Entry
 			operation := delivery.PluginsReadResource
-			request := protocol.ReadPluginResourceRequest{PluginReleaseRequest: release, ComponentID: component.ID, Path: path}
+			request := protocol.ReadPluginResourceRequest{PluginReleaseRef: release, ComponentID: component.ID, Path: path}
 			resource := r.must(operation, request, "").(*protocol.PluginResource)
 			body, err := base64.StdEncoding.DecodeString(resource.Body)
 			if err != nil {

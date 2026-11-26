@@ -238,11 +238,11 @@ func (r *Client) ListPlugins(ctx context.Context, options protocol.CallOptions) 
 func (r *Client) InstallPlugin(ctx context.Context, request protocol.InstallPluginRequest, options protocol.CommandOptions) (*protocol.PluginInstallation, error) {
 	return r.invoke[protocol.InstallPluginRequest, *protocol.PluginInstallation](ctx, "plugins.install", request, options.Metadata())
 }
-func (r *Client) StagePlugin(ctx context.Context, request protocol.StagePluginRequest, options protocol.CommandOptions) (*protocol.PluginInstallation, error) {
-	return r.invoke[protocol.StagePluginRequest, *protocol.PluginInstallation](ctx, "plugins.stage", request, options.Metadata())
+func (r *Client) StagePlugin(ctx context.Context, request protocol.StagePluginRequest, options protocol.CommandOptions) (*protocol.PluginReleaseRef, error) {
+	return r.invoke[protocol.StagePluginRequest, *protocol.PluginReleaseRef](ctx, "plugins.stage", request, options.Metadata())
 }
-func (r *Client) SelectPlugin(ctx context.Context, request protocol.PluginReleaseRequest, options protocol.CommandOptions) (*protocol.PluginInstallation, error) {
-	return r.invoke[protocol.PluginReleaseRequest, *protocol.PluginInstallation](ctx, "plugins.select", request, options.Metadata())
+func (r *Client) SelectPlugin(ctx context.Context, request protocol.PluginReleaseRef, options protocol.CommandOptions) (*protocol.PluginReleaseRef, error) {
+	return r.invoke[protocol.PluginReleaseRef, *protocol.PluginReleaseRef](ctx, "plugins.select", request, options.Metadata())
 }
 func (r *Client) ConfigurePlugin(ctx context.Context, request protocol.ConfigurePluginRequest, options protocol.CommandOptions) (*protocol.PluginInstallation, error) {
 	return r.invoke[protocol.ConfigurePluginRequest, *protocol.PluginInstallation](ctx, "plugins.configure", request, options.Metadata())

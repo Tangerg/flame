@@ -177,7 +177,7 @@ func TestReviewCommandWithoutRunRecoversItsOriginalOwnerAcrossReplacementAndRest
 	if len(runs.Data) != 0 {
 		t.Fatalf("human recovery manufactured a Run: %+v", runs.Data)
 	}
-	r.must(delivery.PluginsSelect, protocol.PluginReleaseRequest{InstallationID: installed.ID, Digest: installed.Staged.Digest}, "select-after-receipt")
+	r.must(delivery.PluginsSelect, protocol.PluginReleaseRef{InstallationID: installed.ID, Digest: installed.Staged.Digest}, "select-after-receipt")
 }
 
 func TestReviewCapabilityCommittedResponseLossRestoresOriginalExportWithoutResending(t *testing.T) {

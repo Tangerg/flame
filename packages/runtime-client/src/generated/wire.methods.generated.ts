@@ -102,7 +102,7 @@ import type {
   PluginInstallation,
   PluginLocaleCatalog,
   PluginProviderSelection,
-  PluginReleaseRequest,
+  PluginReleaseRef,
   PluginRequest,
   PluginResource,
   Project,
@@ -1552,8 +1552,8 @@ export interface WireShapes {
   "plugins.resolveComposition": { params: ResolvePluginCompositionRequest; result: PageOfPluginOperationBinding };
   "plugins.list": { params: Record<string, never>; result: PageOfPluginInstallation };
   "plugins.install": { params: InstallPluginRequest; result: PluginInstallation };
-  "plugins.stage": { params: StagePluginRequest; result: PluginInstallation };
-  "plugins.select": { params: PluginReleaseRequest; result: PluginInstallation };
+  "plugins.stage": { params: StagePluginRequest; result: PluginReleaseRef };
+  "plugins.select": { params: PluginReleaseRef; result: PluginReleaseRef };
   "plugins.configure": { params: ConfigurePluginRequest; result: PluginInstallation };
   "plugins.setEnablement": { params: SetPluginEnablementRequest; result: PluginEnablement };
   "plugins.uninstall": { params: PluginRequest };

@@ -66,17 +66,12 @@ func (c *Coordinator) SetEnablement(ctx context.Context, id identity.Installatio
 			return change.After.Enabled, nil
 		})
 	})
-	reconcile, err := c.commitInstallationChange(bound, before, installation)
+	reconcile, err := c.commitInstallationChange(bound, before, installation, before.Selected)
 	if framehost.InstallationConclusion(err) != framehost.Committed {
 		return err
 	}
 
-	ownerCtx, finish := c.realizationContext(ctx)
-	defer finish()
-	_, realizationErr := c.realizeInstallationChange(ownerCtx, id, reconcile)
-	if err := errors.Join(err, realizationErr, c.Reclaim(ownerCtx)); err != nil {
-		slog.WarnContext(ownerCtx, "committed plugin enablement could not fully reconcile", telemetry.InstallationID(id), telemetry.Error(err))
-	}
+	c.reconcileCommittedInstallation(ctx, id, reconcile, err)
 	return nil
 }
 

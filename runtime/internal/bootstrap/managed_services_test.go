@@ -292,7 +292,7 @@ func assertUnresolvedInstallationIsHeld(t *testing.T, r *poMCPRuntime, installed
 		}
 	}
 	if installed.Staged != nil {
-		result := r.endpoint.Invoke(t.Context(), delivery.PluginsSelect, protocol.PluginReleaseRequest{InstallationID: installed.ID, Digest: installed.Staged.Digest}, protocol.CallMetadata{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
+		result := r.endpoint.Invoke(t.Context(), delivery.PluginsSelect, protocol.PluginReleaseRef{InstallationID: installed.ID, Digest: installed.Staged.Digest}, protocol.CallMetadata{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 		if result.Failure == nil || !errors.Is(result.Failure, protocol.ErrPluginInUse) {
 			t.Fatalf("unresolved command did not pin its release: %v", result.Failure)
 		}

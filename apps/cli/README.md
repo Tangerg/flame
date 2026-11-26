@@ -334,8 +334,8 @@ desired enablement and refuses a candidate missing required retained inputs befo
 `install`, `stage`, `select`, `configure`, `set-enablement`, and `uninstall`
 accept their exact Runtime JSON request through `--request`. Source paths refer to the
 Runtime machine. Each mutation prints its command identity to stderr. The
-`install`, `stage`, `select` and `configure` commands print the resulting
-installation as JSON.
+`install` and `configure` commands print an installation inspection.
+`stage` and `select` print the acknowledged `installationId` and release `digest`.
 `set-enablement` prints the original decision's `installationId` and `enabled`.
 Use `flame plugins list` for current state. `uninstall` prints nothing on success.
 Retain the identity and use
