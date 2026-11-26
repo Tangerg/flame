@@ -1764,6 +1764,71 @@ The next review follows an earlier message edit while the
 current unsent draft already contains a reference, including
 the cancellation path and the draft's retained meaning.
 
+### Editing an earlier message protects unsent references
+
+Signed Wails at `477e644c0` displayed an imported historical
+message, `48204`, with source references on lines 4 and 12.
+A separate draft held `2468` and the literal Files selection
+`note.txt:1`. Keyboard Edit immediately loaded the older
+text and both of its references, replacing the current
+draft without a confirmation.
+
+The Composer state port includes references in the shared
+draft replacement gate alongside images and pastes. The
+pencil and message context menu use the existing confirmation.
+The captured draft object, Session and storage generation
+still determine whether the approved replacement can apply.
+ZCode's `ConversationComposer.tsx` keeps draft and attachments
+within the workspace scope. The Radix pattern supports clear
+Cancel and confirmation actions, with focus returning to the
+source on dismissal. [Radix Alert Dialog](https://www.radix-ui.com/primitives/docs/components/alert-dialog)
+
+- Chinese/light/14 px/Flame in a 1120 × 728 Wails window with
+  Files beside Conversation. Keyboard Edit opens with Cancel
+  focused. Escape returns to the exact Edit button. The
+  retained `note.txt:1` preview contains `A short source note`,
+  and Cmd+L resumes `2468` at caret 2. Typing 5 produces
+  `24568`. Undo restores the draft text and caret.
+- English/dark/18 px/Blue at 1280 × 800 with Files beside
+  Conversation. Pointer Edit in composer opens the dialog
+  and Cancel returns to the historical message, where the
+  native focus report identifies its first sent reference.
+  Cmd+L resumes the same draft at caret 2.
+- In that wider window, the draft with only `note.txt:1`
+  also requests confirmation. Replace draft focuses the
+  Composer with `48204` at caret 5 and exactly the two
+  historical references. The `:12` preview opens its literal
+  line. Editing from a text-only draft loads the older
+  message immediately.
+
+One portable Session and completed Run were admitted by the
+private Runtime, and the workspace was set using the imported
+revision. An incomplete seed request was refused before the
+single import. Session, Items, Runs and two source digests
+match before and after a private Runtime restart. The provider
+served nine catalog reads and zero generations. Native
+qualification covers ordinary local editing, with separate
+acceptance needed for history rewind, screen reader speech
+and other platforms.
+
+The focused regression fails on the baseline and passes
+with the new gate. Web typecheck, 84 contracts, bootstrap,
+scoped Prettier and diff checks pass. Production Web staging,
+Runtime packaging and strict Wails signatures pass. The
+English native flow is replayed on `c92a5977c`, which includes
+the intervening Run event change. The publication parent
+adds HTTP error correlation and passes the scoped Web checks
+again with identical Composer and regression files.
+
+Three Wails hosts exit normally. Both private Runtime instances
+reach the existing drain deadline. The owned provider,
+listeners, app registration, scratch profile, fixture,
+screenshots, logs, checkout outputs and caches are removed.
+
+The next review follows the draft caret when quoting from a
+file in the Dock. The qualification above sets its caret
+after the quote has been attached.
+
 ## Error notes leave retrying to their buttons (2026-11-26)
 
 Five error notes ended by narrating the buttons beside them. The sidebar's folder error said `Check the Runtime connection, then retry.` above `Retry`. The shared data-view error said `… Check the connection and retry.`, and every caller offers Retry except provider selections, whose section has its own Refresh selections. The draft notices said `Keep this window open and retry, or copy drafts.` above `Retry` and `Copy draft text`. The startup failure said `Retry, or copy the diagnostics to report it.` above `Retry` and `Copy diagnostics`. Each now stops at what the buttons can't say:
