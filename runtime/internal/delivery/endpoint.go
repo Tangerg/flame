@@ -62,10 +62,7 @@ func (e *Endpoint) BeginShutdown() {
 }
 
 func (e *Endpoint) AwaitShutdown(ctx context.Context) error {
-	if err := e.invocations.AwaitShutdown(ctx); err != nil {
-		return err
-	}
-	return e.idempotency.FlushPending(ctx)
+	return e.invocations.AwaitShutdown(ctx)
 }
 
 func (e *Endpoint) Invoke(ctx context.Context, name Name, parameters any, options protocol.CallMetadata) protocol.OperationResult {

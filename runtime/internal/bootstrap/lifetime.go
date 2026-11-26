@@ -189,8 +189,6 @@ func (l *runtimeLifetime) joinWork(ownerCtx context.Context, components []shutdo
 	if err := errors.Join(errs...); err != nil {
 		return err
 	}
-	// Run tasks can finish a keyed cancellation after its invocation returns.
-	// Join those producers before flushing delivery's known outcomes.
 	if l.delivery != nil {
 		if err := l.delivery.AwaitShutdown(ownerCtx); err != nil {
 			return err

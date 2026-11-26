@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -191,6 +192,52 @@ func TestSkillReviewAcknowledgementSurvivesAbruptExit(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestCommittedSkillReviewAllowsShutdownBeforeAcknowledgement(t *testing.T) {
+	cfg := poMCPConfig(t)
+	home := cfg.stores.DataDirectory
+	cfg.skillsUserDir = filepath.Join(home, "skills")
+	r := poMCPOpen(t, cfg)
+	installed := poMCPActivate(r, filepath.Join(firstPartyPackages, "skills"))
+	waitCallContributorState(t, r, installed.ID, protocol.MCPServerConnected)
+	const instructions = "Preserve the committed review after a Runtime restart."
+	ref := stageSkillReview(t, r, cfg, "shutdown-proposal", instructions)
+
+	const key = "approve-before-shutdown"
+	questionCrashDatabase(t, home, `CREATE TRIGGER refuse_review_acknowledgement
+		BEFORE UPDATE OF payload ON idempotency_records
+		WHEN OLD.key = '`+key+`' AND NEW.kind = 'response'
+		BEGIN SELECT RAISE(ABORT, 'review acknowledgement refused'); END`)
+	allowReceipt := sync.OnceFunc(func() {
+		questionCrashDatabase(t, home, "DROP TRIGGER refuse_review_acknowledgement")
+	})
+	defer allowReceipt()
+	result := r.endpoint.Invoke(t.Context(), delivery.SkillsProposalsApprove, ref, protocol.CallMetadata{IdempotencyKey: key})
+	if result.Failure == nil || !errors.Is(result.Failure, protocol.ErrIdempotencyInProgress) {
+		t.Fatalf("approval with a refused acknowledgement = %+v", result)
+	}
+	path := filepath.Join(cfg.skillsUserDir, ref.Name, skillspec.SkillFile)
+	published, err := os.ReadFile(path)
+	if err != nil || !strings.Contains(string(published), instructions) {
+		t.Fatalf("committed Skill was not published: %q, %v", published, err)
+	}
+
+	if err := r.host.Close(); err != nil {
+		t.Fatalf("Runtime shutdown depends on a recoverable review acknowledgement: %v", err)
+	}
+	r.closed = true
+	allowReceipt()
+	r = reopenPluginRuntime(t, r, &cfg)
+	waitCallContributorState(t, r, installed.ID, protocol.MCPServerConnected)
+	r.must(delivery.SkillsProposalsApprove, ref, key)
+	query := protocol.WorkspaceQuery{Workspace: ref.Workspace}
+	if remaining := r.must(delivery.SkillsProposalsList, query, "").(*protocol.Page[protocol.SkillProposal]); len(remaining.Data) != 0 {
+		t.Fatalf("replay reopened the original review: %+v", remaining.Data)
+	}
+	if current, err := os.ReadFile(path); err != nil || string(current) != string(published) {
+		t.Fatalf("replay changed the published Skill: %q, %v", current, err)
 	}
 }
 

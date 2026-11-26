@@ -407,7 +407,7 @@ them, and the model boundary appends the batch to Conversation.
 ## Data directory ownership
 
 One Runtime exclusively owns a physical data directory from before initialization
-through execution drain, receipt flush and store close. A second Open, including
+through execution drain and store close. A second Open, including
 through a directory alias, fails immediately. Close may time out while shutdown
 continues; the directory remains leased until all owned resources have closed.
 Clients share this Runtime through its protocol. Embedded hosts must explicitly
@@ -1953,13 +1953,15 @@ Calendar cron expressions use UTC unless they declare `CRON_TZ`. Creation,
 editing, and recurrence use that same rule regardless of the caller's local
 timezone. An expression with no reachable occurrence is invalid.
 
-Abrupt process-exit tests exercise claim, business commit, and receipt commit separately against a temporary SQLite database. A committed receipt replays the same identity without executing again. A claim without a receipt remains unresolved, including when the business effect committed: restart and elapsed time do not prove success or failure. Keep the original key and store namespace, inspect authoritative session state, and do not issue a fresh command to bypass the reservation. There is no general automatic reconciliation across command receipts and arbitrary business or external effects.
+Process-exit tests interrupt claim, business commit and receipt commit in a
+temporary SQLite store. A completed receipt replays the original response.
+A deferred command can recover from its staged record and the original owner's
+evidence. A canceled Run retains its terminal decision, and a Skill review
+retains the original provider's decision. An unresolved claim keeps its key and
+store namespace until the owner can settle it. Keep that identity when retrying.
 
-While the Endpoint retains a known execution result, a retry or graceful shutdown
-can persist only that exact result into its original reservation. An acknowledgement
-lost after the write is confirmed by the same completion. A missing reservation or
-a conflicting stored payload is an internal failure; the Endpoint retains its evidence
-and refuses shutdown settlement instead of recreating a claim or adopting another outcome.
+Graceful shutdown drains active work before closing the store. Staged settlements
+remain available for retry after restart.
 
 For an existing Session, omitting both provider and model uses that Session's stored selection. An explicit pair overrides it for the Run. Global defaults do not silently replace an existing Session's selection.
 

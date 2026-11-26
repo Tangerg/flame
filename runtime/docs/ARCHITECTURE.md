@@ -53,11 +53,10 @@ from Scope's Effect identity. Physical provider-call identity belongs to
 identities are not public SDK contracts.
 
 `application/operation` owns replay admission, the durable replay-store port,
-retention, namespace grammar and pending receipt settlement. Delivery projects
-wire requests and replies through that owner. Endpoint construction requires a
-complete store; volatile replay storage exists only in tests. A completed result
-whose receipt has not been acknowledged remains owned until settlement succeeds,
-including after admission closes.
+retention, namespace grammar and receipt settlement. Delivery projects wire
+requests and replies through that owner. Endpoint construction requires a durable
+store. A deferred command resumes from its persisted staged record and the
+original workflow's evidence, including after Runtime restart.
 
 `adapter/integration/model` owns bounded transcript and Tool-output rendering.
 The public model package owns complete-request token estimation shared by real

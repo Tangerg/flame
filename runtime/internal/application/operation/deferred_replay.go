@@ -94,9 +94,6 @@ func (r *Replay) InvokeDeferred(
 		return nil, err
 	}
 	defer release()
-	if payload, pending, err := r.finishPending(ctx, key, fingerprint); pending {
-		return payload, err
-	}
 	previous, found, err := r.store.Lookup(ctx, key, fingerprint)
 	if err != nil {
 		return nil, err

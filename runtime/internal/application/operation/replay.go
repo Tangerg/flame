@@ -5,8 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"slices"
-	"sync"
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
@@ -56,17 +54,15 @@ type ReplayStore interface {
 }
 
 type Replay struct {
-	store     ReplayStore
-	inFlight  *keylock.Set
-	pendingMu sync.Mutex
-	pending   map[string]ReplayRecord
+	store    ReplayStore
+	inFlight *keylock.Set
 }
 
 func NewReplay(store ReplayStore) (*Replay, error) {
 	if lo.IsNil(store) {
 		return nil, errors.New("idempotency: durable store is required")
 	}
-	return &Replay{store: store, inFlight: keylock.NewSet(), pending: make(map[string]ReplayRecord)}, nil
+	return &Replay{store: store, inFlight: keylock.NewSet()}, nil
 }
 
 func (r *Replay) Serialize(ctx context.Context, key string) (func(), error) {
@@ -113,23 +109,6 @@ func (r *Replay) InvokeRecoverable(ctx context.Context, key, fingerprint string,
 	return payload, err
 }
 
-func (r *Replay) finishPending(ctx context.Context, key, fingerprint string) ([]byte, bool, error) {
-	record, pending := r.pendingCompletion(key)
-	if !pending {
-		return nil, false, nil
-	}
-	if record.Fingerprint != fingerprint {
-		return nil, true, framecall.ErrConflict
-	}
-	settled, err := r.completeWithin(context.WithoutCancel(ctx), record)
-	if err != nil {
-		return nil, true, settlementError(err)
-	}
-	r.forgetPendingCompletion(key, fingerprint)
-	payload, err := settledPayload(settled)
-	return payload, true, err
-}
-
 func (r *Replay) finishRecord(ctx context.Context, record ReplayRecord) ([]byte, error) {
 	settled, err := r.persistOutcome(ctx, record)
 	if err != nil {
@@ -139,16 +118,11 @@ func (r *Replay) finishRecord(ctx context.Context, record ReplayRecord) ([]byte,
 }
 
 func (r *Replay) persistOutcome(ctx context.Context, record ReplayRecord) (ReplayRecord, error) {
-	settled, err := r.completeWithin(context.WithoutCancel(ctx), record)
+	writeCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), replayWriteTimeout)
+	defer cancel()
+	settled, err := r.store.Complete(writeCtx, record)
 	if err != nil {
-		if errors.Is(err, framecall.ErrConflict) {
-			return ReplayRecord{}, err
-		}
-		failure := settlementError(err)
-		if errors.Is(failure, ErrOutcomePending) {
-			r.rememberPendingCompletion(record)
-		}
-		return ReplayRecord{}, failure
+		return ReplayRecord{}, settlementError(err)
 	}
 	return settled, nil
 }
@@ -261,69 +235,4 @@ func settlementError(err error) error {
 		return fmt.Errorf("idempotency: persist execution outcome: %w", err)
 	}
 	return errors.Join(ErrOutcomePending, err)
-}
-
-func (r *Replay) completeWithin(ctx context.Context, record ReplayRecord) (ReplayRecord, error) {
-	writeContext, cancel := context.WithTimeout(ctx, replayWriteTimeout)
-	defer cancel()
-	return r.store.Complete(writeContext, record)
-}
-
-func (r *Replay) FlushPending(ctx context.Context) error {
-	if ctx == nil {
-		return errors.New("idempotency: flush context is required")
-	}
-	var errs []error
-	for _, key := range r.pendingKeys() {
-		release, err := r.inFlight.Acquire(ctx, key)
-		if err != nil {
-			errs = append(errs, fmt.Errorf("idempotency: flush pending outcome: %w", err))
-			continue
-		}
-		if pending, ok := r.pendingCompletion(key); ok {
-			if _, err := r.completeWithin(ctx, pending); err != nil {
-				errs = append(errs, fmt.Errorf("idempotency: flush pending outcome: %w", err))
-			} else {
-				r.forgetPendingCompletion(key, pending.Fingerprint)
-			}
-		}
-		release()
-	}
-	return errors.Join(errs...)
-}
-
-func (r *Replay) pendingCompletion(key string) (ReplayRecord, bool) {
-	r.pendingMu.Lock()
-	defer r.pendingMu.Unlock()
-	record, ok := r.pending[key]
-	record.Payload = bytes.Clone(record.Payload)
-	record.Settlement = bytes.Clone(record.Settlement)
-	return record, ok
-}
-
-func (r *Replay) rememberPendingCompletion(record ReplayRecord) {
-	record.Payload = bytes.Clone(record.Payload)
-	record.Settlement = bytes.Clone(record.Settlement)
-	r.pendingMu.Lock()
-	r.pending[record.Key] = record
-	r.pendingMu.Unlock()
-}
-
-func (r *Replay) forgetPendingCompletion(key, fingerprint string) {
-	r.pendingMu.Lock()
-	if r.pending[key].Fingerprint == fingerprint {
-		delete(r.pending, key)
-	}
-	r.pendingMu.Unlock()
-}
-
-func (r *Replay) pendingKeys() []string {
-	r.pendingMu.Lock()
-	keys := make([]string, 0, len(r.pending))
-	for key := range r.pending {
-		keys = append(keys, key)
-	}
-	r.pendingMu.Unlock()
-	slices.Sort(keys)
-	return keys
 }
