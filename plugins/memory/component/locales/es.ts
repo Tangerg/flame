@@ -68,7 +68,7 @@ export const es: Record<string, string> = {
     "No hay elementos coincidentes en esta página.",
   "catalog.empty.filtered.action": "Borrar búsqueda y filtros",
   "catalog.empty.none.title": "No hay elementos de memoria en este destino.",
-  "record.details": "Detalles del registro",
+  "record.details": "Detalles",
   pinned: "Fijado",
   "actions.for": "Acciones para {{id}}",
   approve: "Aprobar",

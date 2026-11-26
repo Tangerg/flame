@@ -61,7 +61,7 @@ export const ko: Record<string, string> = {
   "catalog.empty.filtered.title": "이 페이지에 일치하는 항목이 없습니다.",
   "catalog.empty.filtered.action": "검색 및 필터 지우기",
   "catalog.empty.none.title": "이 대상에 메모리 항목이 없습니다.",
-  "record.details": "레코드 세부 정보",
+  "record.details": "세부 정보",
   pinned: "고정됨",
   "actions.for": "{{id}} 작업",
   approve: "승인",

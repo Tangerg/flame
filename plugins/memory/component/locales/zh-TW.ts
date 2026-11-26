@@ -60,7 +60,7 @@ export const zhTW: Record<string, string> = {
   "catalog.empty.filtered.title": "本頁沒有相符的項目。",
   "catalog.empty.filtered.action": "清除搜尋和篩選",
   "catalog.empty.none.title": "此目標中沒有記憶項目。",
-  "record.details": "記錄詳情",
+  "record.details": "詳情",
   pinned: "已置頂",
   "actions.for": "{{id}} 的操作",
   approve: "核准",

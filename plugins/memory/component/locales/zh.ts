@@ -60,7 +60,7 @@ export const zh: Record<string, string> = {
   "catalog.empty.filtered.title": "本页没有匹配的条目。",
   "catalog.empty.filtered.action": "清除搜索和筛选",
   "catalog.empty.none.title": "此目标中没有记忆条目。",
-  "record.details": "记录详情",
+  "record.details": "详情",
   pinned: "已置顶",
   "actions.for": "{{id}} 的操作",
   approve: "批准",

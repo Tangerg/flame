@@ -67,7 +67,7 @@ export const fr: Record<string, string> = {
   "catalog.empty.filtered.title": "Aucun élément correspondant sur cette page.",
   "catalog.empty.filtered.action": "Effacer la recherche et les filtres",
   "catalog.empty.none.title": "Aucun élément de mémoire dans cette cible.",
-  "record.details": "Détails de l’enregistrement",
+  "record.details": "Détails",
   pinned: "Épinglé",
   "actions.for": "Actions pour {{id}}",
   approve: "Approuver",
