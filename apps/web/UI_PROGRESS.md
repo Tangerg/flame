@@ -12,6 +12,13 @@ This user-requested file is the maintained progress and handoff record for the d
 
 The command menu and session search ended their query row with a static `esc` key cap. It was a hard-coded lowercase literal while the Keyboard shortcuts pane writes the key `Esc`, and Escape closes every dialog, so the hint only restated a convention. `SearchOverlay` drops it; the query row is the search glyph and the field. Also scanned this round and found clean: catalog strings left identical to English (only `Flame Orange` and `Streamable HTTP`, which are names), three-period ellipses (none; all use `…`), German Appearance at 18 px (no overflow) and the running activity line (its status dot starts on the summary's text edge).
 
+Later the same day, these checks found nothing to change:
+- Every interactive native AX element has a name in `agent` idle and question, and in `workspace` `dock-review`, `dock-files`, `dock-schedules` and Settings → Plugins (30–64 controls each; only the window's traffic-light buttons are unnamed).
+- French catalogs put a no-break space before every `?`, `!`, `:` and `;`.
+- No Chinese or Japanese string puts half-width `,:;!?()` next to CJK text.
+- Session trajectory, Run tree, Client diagnostics, Agent memory and Saved usage reports (EN, light and dark) keep row glyphs and text on one edge.
+- The question card pairs an outline Skip with the primary Next.
+
 Native Lab (`shell`, `overlay=commands|finder`): EN/light first showed `esc` beside `Run a command…` and `Search sessions…`; JA/dark now shows `コマンドを実行…` alone in the query row above the commands. Web typecheck and Prettier pass.
 
 ## The folder banner reads like the run error banner (2026-11-26)
