@@ -1694,8 +1694,75 @@ its existing drain deadline. The owned provider, app
 registration, profile, fixtures, captures, logs, listeners,
 checkout outputs and caches are removed.
 
-The next review checks how a pointer user distinguishes
-two clipped sent-reference labels before opening either one.
+[Clipped sent references show their full labels](#clipped-sent-references-show-their-full-labels-2026-11-27)
+checks which line the user will open.
+
+### Clipped sent references show their full labels (2026-11-27)
+
+Ordinary signed Wails at `b8d9ad6bf` reads an imported
+private Runtime message with two same-path references,
+`quarterly-release-evidence-for-reviewers-with-identical-prefixes.txt:4`
+and `:12`. At 1120 × 728 in Chinese/light/14 px/Flame with
+a 364 px Dock, both captions end at the same `.tx` prefix.
+Their native button names contain the full values. Hovering
+either button leaves the line range unreadable on screen
+until the review is opened.
+
+ReferenceBlock opts into the full-label tooltip.
+AgentActivityDisclosure measures the existing label span
+through `useClampedText` and uses the same Collapsible
+button as the Tooltip trigger. Tooltip availability follows
+the measured text, and the disclosure supplies its own
+expansion state and labelled region. The existing clipped
+attachment, Files and Diff patterns use the same measurement
+and bounded tooltip. Better Typography and Better
+Accessibility guide the exact visible label at its action.
+
+- The signed candidate keeps the two buttons at y=101 and
+  y=143 with the same 462 × 32 px bounds. Pointer hover
+  reveals the distinct `:4` and `:12` suffixes. The first
+  tooltip wraps into 233 × 33 px of text and stays visible
+  when the pointer enters it.
+- Shift+Tab reaches the line-12 button, reads its full
+  tooltip and Escape dismisses it with the same button
+  focused. Return opens the exact excerpt and closes it
+  again. Shift+Tab goes straight to the line-4 trigger.
+  Space opens and closes its labelled region.
+- Hiding the Dock and widening to 1280 × 800 gives the
+  fitting 506 × 32 px button its complete caption. Hover
+  leaves the caption visible by itself. Reopening the Dock
+  and returning to 1120 × 728 restores the full tooltip
+  for the newly clipped text. Cmd+L continues `2468` at
+  caret 2, typing 5 gives `24568` and Undo restores
+  `2468`.
+- English/dark/18 px/Blue at 1280 × 800 with a 427 px Dock
+  also shows both complete labels on hover. Pointer
+  activation on line 12 opens its original excerpt.
+  Return closes it and Cmd+L resumes the same caret.
+
+The portable import and its revision-checked workspace
+update are both admitted by the private Runtime. The first
+scratch assertion compares a raw workspace reference to
+the returned WorkspaceInfo. The next read checks its
+canonical ref and records the single imported message.
+The complete Session, message items and two file digests
+match throughout, and the provider serves eleven catalog
+reads and zero generations.
+
+Web typecheck, 83 contracts, bootstrap, scoped Prettier,
+diff checks, production staging, Runtime packaging and
+signed Wails builds pass. Native qualification covers
+macOS pointer, keys, focus and window changes. VoiceOver
+speech and other platforms remain outside this review.
+
+Both Wails hosts exit normally. The private Runtime reaches
+its existing drain deadline. The owned provider, app
+registration, profile, fixtures, captures, logs, listeners,
+checkout outputs and caches are removed.
+
+The next review follows an earlier message edit while the
+current unsent draft already contains a reference, including
+the cancellation path and the draft's retained meaning.
 
 ## Error notes leave retrying to their buttons (2026-11-26)
 

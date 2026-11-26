@@ -1,7 +1,12 @@
 import * as stylex from "@stylexjs/stylex";
 import { reveal } from "@/ui/atoms/reveal";
-import { type ComponentPropsWithoutRef, type ReactNode } from "react";
-import { Children, useId, useState } from "react";
+import {
+  type ComponentProps,
+  type ComponentPropsWithoutRef,
+  type ReactNode,
+  type Ref,
+} from "react";
+import { Children, useId, useRef, useState } from "react";
 import { clsx } from "clsx";
 import {
   color,
@@ -13,7 +18,7 @@ import {
   surface,
   type,
 } from "@flame/ui/tokens.stylex";
-import { vocab, ButtonPrimitive, ContentVisibility } from "@flame/ui";
+import { vocab, ButtonPrimitive, ContentVisibility, Tooltip, useClampedText } from "@flame/ui";
 import { Collapsible } from "@base-ui/react/collapsible";
 
 import { ProgressBar } from "@flame/ui";
@@ -184,6 +189,7 @@ const SHELL_SKINS = {
 type AgentActivityDisclosureProps = Omit<ComponentPropsWithoutRef<"div">, "children"> &
   ActivityLeading & {
     label: ReactNode;
+    revealClippedLabel?: true;
     detail?: ReactNode;
     detailPlacement?: "inline" | "below";
     preview?: ReactNode;
@@ -206,6 +212,7 @@ export function AgentActivityDisclosure({
   icon,
   leading,
   label,
+  revealClippedLabel,
   detail,
   detailPlacement = "inline",
   preview,
@@ -230,6 +237,10 @@ export function AgentActivityDisclosure({
   const triggerId = summaryId ?? ownSummaryId;
   const disclosable = children != null;
   const stackDetail = detail != null && detailPlacement === "below";
+  const tooltipLabel =
+    disclosable && revealClippedLabel && typeof label === "string" ? label : undefined;
+  const labelRef = useRef<HTMLSpanElement>(null);
+  const labelClipped = useClampedText(labelRef, tooltipLabel ?? "");
   return (
     <Collapsible.Root
       {...props}
@@ -256,6 +267,7 @@ export function AgentActivityDisclosure({
         <TriggerShell
           disclosable={disclosable}
           id={triggerId}
+          tooltip={tooltipLabel ? { label: tooltipLabel, disabled: !labelClipped } : undefined}
           className={
             stylex.props(
               styles.trigger,
@@ -266,7 +278,13 @@ export function AgentActivityDisclosure({
           }
         >
           <ActivityMark icon={icon} leading={leading} tone={tone} shell={shell} />
-          <ActivityHeading label={label} detail={detail} stacked={stackDetail} skin={skin} />
+          <ActivityHeading
+            label={label}
+            labelRef={tooltipLabel ? labelRef : undefined}
+            detail={detail}
+            stacked={stackDetail}
+            skin={skin}
+          />
           {disclosable && <ActivityChevron open={open} />}
           {preview == null && <span aria-hidden {...stylex.props(styles.spacer)} />}
           {trailing != null && (
@@ -313,11 +331,13 @@ export function AgentActivityDisclosure({
 
 function ActivityHeading({
   label,
+  labelRef,
   detail,
   stacked,
   skin,
 }: {
   label: ReactNode;
+  labelRef?: Ref<HTMLSpanElement>;
   detail: ReactNode;
   stacked: boolean;
   skin: (typeof SHELL_SKINS)[ActivityShell];
@@ -326,6 +346,7 @@ function ActivityHeading({
   return (
     <>
       <span
+        ref={labelRef}
         data-slot="agent-activity-label"
         {...stylex.props(
           styles.label,
@@ -441,11 +462,13 @@ function ActivityPanel({
 function TriggerShell({
   disclosable,
   id,
+  tooltip,
   className,
   children,
 }: {
   disclosable: boolean;
   id: string;
+  tooltip?: Pick<ComponentProps<typeof Tooltip>, "label" | "disabled">;
   className?: string;
   children: ReactNode;
 }) {
@@ -456,7 +479,7 @@ function TriggerShell({
       </div>
     );
   }
-  return (
+  const trigger = (
     <Collapsible.Trigger
       render={<ButtonPrimitive />}
       id={id}
@@ -467,6 +490,7 @@ function TriggerShell({
       {children}
     </Collapsible.Trigger>
   );
+  return tooltip ? <Tooltip {...tooltip}>{trigger}</Tooltip> : trigger;
 }
 
 export function AgentActivityBody({ open, children }: { open: boolean; children: ReactNode }) {

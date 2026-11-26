@@ -21,6 +21,7 @@ export function ReferenceBlock({ label, text }: { label: string; text: string })
       icon="crosshair"
       shell="line"
       label={label}
+      revealClippedLabel
       open={open}
       onOpenChange={setOpen}
       contentClassName={stylex.props(rb.text, face.mono, typeStep.code).className}
