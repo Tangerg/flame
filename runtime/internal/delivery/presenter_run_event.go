@@ -93,9 +93,13 @@ func presentPlanStatus(status plan.Status) protocol.PlanStatus {
 	}
 }
 
-func mapRunEvents(in iter.Seq[runs.Event]) iter.Seq2[protocol.RunEvent, error] {
+func mapRunEvents(in iter.Seq2[runs.Event, error]) iter.Seq2[protocol.RunEvent, error] {
 	return func(yield func(protocol.RunEvent, error) bool) {
-		for event := range in {
+		for event, observationErr := range in {
+			if observationErr != nil {
+				yield(protocol.RunEvent{}, wireLiveSegmentError(observationErr))
+				return
+			}
 			presented, err := presentedRunEvent(event.Payload)
 			if err != nil {
 				yield(protocol.RunEvent{}, err)

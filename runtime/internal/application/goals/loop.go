@@ -161,12 +161,15 @@ func (d *Driver) driveRun(ctx context.Context, g *goal.Goal) (settlement runSett
 	if result.Reopened() {
 		return runSettlement{}, nil
 	}
-	finished := drainRootBoundary(result.Events, result.RunID)
+	finished, observationErr := drainRootBoundary(result.Events, result.RunID)
 	if ctx.Err() != nil {
 		if finished == nil {
 			return runSettlement{}, d.cancelRun(ctx, result.RunID)
 		}
 		return runSettlement{}, nil
+	}
+	if observationErr != nil {
+		span.RecordError(observationErr)
 	}
 	recordTerminalRunAttributes(span, finished)
 
@@ -351,15 +354,18 @@ func (d *Driver) command(ctx context.Context, g goal.Goal) (runs.StartCommand, e
 	}, nil
 }
 
-func drainRootBoundary(events iter.Seq[runs.Event], rootRunID identity.RunID) *run.Run {
+func drainRootBoundary(events iter.Seq2[runs.Event, error], rootRunID identity.RunID) (*run.Run, error) {
 	var finished *run.Run
-	for ev := range events {
+	for ev, err := range events {
+		if err != nil {
+			return finished, err
+		}
 		if seg, ok := ev.Payload.(runs.SegmentFinished); ok && ev.RunID == rootRunID {
 			run := seg.Run
 			finished = &run
 		}
 	}
-	return finished
+	return finished, nil
 }
 
 func outcomeOf(run *run.Run) (run.Outcome, error) {

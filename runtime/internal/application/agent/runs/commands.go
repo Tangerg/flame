@@ -310,7 +310,7 @@ func (s SubscribeRequest) clone() SubscribeRequest {
 type Subscription struct {
 	Record     Record
 	HeadCursor string
-	Events     iter.Seq[Event]
+	Events     iter.Seq2[Event, error]
 }
 
 type Opening uint8
@@ -325,7 +325,7 @@ type StartResult struct {
 	RunID      identity.RunID
 	SegmentID  identity.SegmentID
 	UserItemID identity.ItemID
-	Events     iter.Seq[Event]
+	Events     iter.Seq2[Event, error]
 	Opening    Opening
 }
 

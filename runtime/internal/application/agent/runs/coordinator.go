@@ -92,7 +92,7 @@ func NewCoordinator(deps Dependencies) (*Coordinator, error) {
 
 func (c *Segments) ReplayRetention() Retention { return c.retention }
 
-func (c *Segments) openSegment(reqCtx context.Context, spec segmentSpec) (iter.Seq[Event], error) {
+func (c *Segments) openSegment(reqCtx context.Context, spec segmentSpec) (iter.Seq2[Event, error], error) {
 	startup, err := c.prepareSegmentStartup(reqCtx, spec)
 	if err != nil {
 		return nil, err
@@ -177,7 +177,7 @@ func (s *segmentStartup) abort(cause error) error {
 	return cause
 }
 
-func (s *segmentStartup) activate(requestContext context.Context) (iter.Seq[Event], error) {
+func (s *segmentStartup) activate(requestContext context.Context) (iter.Seq2[Event, error], error) {
 	spec := s.spec
 	s.treeOwner.observation.Lock()
 	var openings []routeOpening
@@ -206,7 +206,7 @@ func (s *segmentStartup) activate(requestContext context.Context) (iter.Seq[Even
 	s.markSegmentsStarted()
 	// Attach before publishing so this opening stream has no gap; a fresh journal
 	// has no earlier events to replay.
-	subscription := s.journal.tail()
+	subscription := s.journal.tail(requestContext)
 	publicationErr := s.publishOpenings(openings)
 	s.treeOwner.observation.Unlock()
 	if publicationErr != nil {
@@ -243,15 +243,7 @@ func (s *segmentStartup) activate(requestContext context.Context) (iter.Seq[Even
 		subscription.Cancel()
 		return nil, nil
 	}
-	return openingStream(requestContext, subscription), nil
-}
-
-func openingStream(requestContext context.Context, subscription subscription) iter.Seq[Event] {
-	stopUnsubscribe := context.AfterFunc(requestContext, subscription.Cancel)
-	return func(yield func(Event) bool) {
-		defer stopUnsubscribe()
-		subscription.Events(yield)
-	}
+	return subscription.Events, nil
 }
 
 func (s *segmentStartup) publishOpenings(openings []routeOpening) error {
@@ -441,18 +433,11 @@ func (c *Segments) SubscribeSnapshot(ctx context.Context, req SubscribeRequest, 
 }
 
 func subscribeLiveSegment(ctx context.Context, live liveSegment, req SubscribeRequest) (Subscription, error) {
-	attached, err := live.owner.hub.attach(req.Cursor)
+	attached, err := live.owner.hub.attach(ctx, req.Cursor)
 	if err != nil {
 		return Subscription{}, err
 	}
-	stopUnsubscribe := context.AfterFunc(ctx, attached.Cancel)
-	return Subscription{
-		Record: live.record, HeadCursor: attached.HeadCursor,
-		Events: func(yield func(Event) bool) {
-			defer stopUnsubscribe()
-			attached.Events(yield)
-		},
-	}, nil
+	return Subscription{Record: live.record, HeadCursor: attached.HeadCursor, Events: attached.Events}, nil
 }
 
 func (c *Segments) addressSubscription(ctx context.Context, req SubscribeRequest) (liveSegment, error) {

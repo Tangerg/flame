@@ -1,6 +1,7 @@
 package runs
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"iter"
@@ -53,7 +54,7 @@ func newStreamScope(epoch replayEpoch, runID identity.RunID, segmentID identity.
 }
 
 type subscription struct {
-	Events     iter.Seq[Event]
+	Events     iter.Seq2[Event, error]
 	Cancel     func()
 	HeadCursor string
 }
@@ -175,35 +176,30 @@ func (j *journal) close() error {
 		j.closeEvent = nil
 	}
 	j.closed = true
-	subscribers := make([]*journalSubscriber, 0, len(j.subs))
 	for subscriber := range j.subs {
-		subscribers = append(subscribers, subscriber)
+		subscriber.finish()
 		delete(j.subs, subscriber)
 	}
 	j.mu.Unlock()
-
-	for _, subscriber := range subscribers {
-		subscriber.finish()
-	}
 	return closeErr
 }
 
 // Capturing the head and attaching happen under one lock so nothing is published
 // in between.
-func (j *journal) tail() subscription {
+func (j *journal) tail(ctx context.Context) subscription {
 	j.mu.Lock()
 	head := j.headCursorLocked()
-	return j.attachLocked(nil, head)
+	return j.attachLocked(ctx, nil, head)
 }
 
-func (j *journal) attach(token string) (subscription, error) {
+func (j *journal) attach(ctx context.Context, token string) (subscription, error) {
 	if token == "" {
-		return j.tail(), nil
+		return j.tail(ctx), nil
 	}
-	return j.replay(token)
+	return j.replay(ctx, token)
 }
 
-func (j *journal) replay(token string) (subscription, error) {
+func (j *journal) replay(ctx context.Context, token string) (subscription, error) {
 	from, err := decodeReplayCursor(token)
 	if err != nil {
 		return subscription{}, fmt.Errorf("%w: %w", ErrReplayCursorInvalid, err)
@@ -232,39 +228,37 @@ func (j *journal) replay(token string) (subscription, error) {
 			backlog = append(backlog, retained)
 		}
 	}
-	return j.attachLocked(backlog, j.headCursorLocked()), nil
+	return j.attachLocked(ctx, backlog, j.headCursorLocked()), nil
 }
 
 func (j *journal) headCursorLocked() string {
 	return j.headCursor
 }
 
-func (j *journal) attachLocked(backlog []chargedEvent, head string) subscription {
-	if j.closed {
-		j.mu.Unlock()
-		subscriber := newJournalSubscriber(backlog, j.retention)
-		subscriber.finish()
-		return subscription{Events: subscriber.events(), Cancel: func() {}, HeadCursor: head}
-	}
-
+func (j *journal) attachLocked(ctx context.Context, backlog []chargedEvent, head string) subscription {
 	subscriber := newJournalSubscriber(backlog, j.retention)
-	j.subs[subscriber] = struct{}{}
+	if j.closed {
+		subscriber.finish()
+	} else {
+		j.subs[subscriber] = struct{}{}
+	}
 	j.mu.Unlock()
 
-	var cancelOnce sync.Once
-	cancel := func() {
-		cancelOnce.Do(func() {
-			j.mu.Lock()
-			delete(j.subs, subscriber)
-			j.mu.Unlock()
-			subscriber.abort()
-		})
+	detach := func(cause error) {
+		j.mu.Lock()
+		delete(j.subs, subscriber)
+		subscriber.abort(cause)
+		j.mu.Unlock()
 	}
-	events := subscriber.events()
+	stop := context.AfterFunc(ctx, func() { detach(ctx.Err()) })
+	cancel := func() {
+		stop()
+		detach(nil)
+	}
 	return subscription{
-		Events: func(yield func(Event) bool) {
+		Events: func(yield func(Event, error) bool) {
 			defer cancel()
-			events(yield)
+			subscriber.observe(yield)
 		},
 		Cancel:     cancel,
 		HeadCursor: head,
@@ -286,6 +280,7 @@ type journalSubscriber struct {
 	queuedReplayable int
 	queuedBytes      int
 	phase            subscriberPhase
+	abortCause       error
 }
 
 type subscriberPhase uint8
@@ -313,20 +308,18 @@ func newJournalSubscriber(backlog []chargedEvent, retention Retention) *journalS
 // wrong state undetectably, so authoritative overflow disconnects instead.
 func (j *journalSubscriber) enqueue(ev Event, size int) bool {
 	j.mu.Lock()
+	defer j.mu.Unlock()
 	if j.phase != subscriberOpen {
-		j.mu.Unlock()
 		return false
 	}
 	if !ev.Replayable() {
 		if j.queuedLive >= liveHeadroom {
-			j.mu.Unlock()
 			return true
 		}
 		j.queuedLive++
 	} else {
 		if j.queuedReplayable >= j.retention.MaxEvents || j.queuedBytes+size > j.retention.MaxBytes {
-			j.mu.Unlock()
-			j.abort()
+			j.abortLocked(ErrReplayUnavailable)
 			return false
 		}
 		j.queuedReplayable++
@@ -340,7 +333,6 @@ func (j *journalSubscriber) enqueue(ev Event, size int) bool {
 	}
 	j.queue = append(j.queue, chargedEvent{event: ev, bytes: size})
 	j.ready.Signal()
-	j.mu.Unlock()
 	return true
 }
 
@@ -353,9 +345,18 @@ func (j *journalSubscriber) finish() {
 	j.mu.Unlock()
 }
 
-func (j *journalSubscriber) abort() {
+func (j *journalSubscriber) abort(cause error) {
 	j.mu.Lock()
+	defer j.mu.Unlock()
+	j.abortLocked(cause)
+}
+
+func (j *journalSubscriber) abortLocked(cause error) {
+	if j.phase == subscriberAborted || j.phase == subscriberFinishing && j.head == len(j.queue) {
+		return
+	}
 	j.phase = subscriberAborted
+	j.abortCause = cause
 	clear(j.queue[j.head:])
 	j.queue = nil
 	j.head = 0
@@ -363,31 +364,29 @@ func (j *journalSubscriber) abort() {
 	j.queuedReplayable = 0
 	j.queuedBytes = 0
 	j.ready.Broadcast()
-	j.mu.Unlock()
 }
 
-func (j *journalSubscriber) events() iter.Seq[Event] {
-	return func(yield func(Event) bool) {
-		for {
-			ev, ok := j.next()
-			if !ok {
-				return
-			}
-			if !yield(ev) {
-				return
-			}
+func (j *journalSubscriber) observe(yield func(Event, error) bool) {
+	for {
+		ev, err, ok := j.next()
+		if err != nil {
+			yield(Event{}, err)
+			return
+		}
+		if !ok || !yield(ev, nil) {
+			return
 		}
 	}
 }
 
-func (j *journalSubscriber) next() (Event, bool) {
+func (j *journalSubscriber) next() (Event, error, bool) {
 	j.mu.Lock()
 	defer j.mu.Unlock()
 	for j.head == len(j.queue) && j.phase == subscriberOpen {
 		j.ready.Wait()
 	}
-	if j.phase == subscriberAborted || (j.head == len(j.queue) && j.phase == subscriberFinishing) {
-		return Event{}, false
+	if j.head == len(j.queue) {
+		return Event{}, j.abortCause, false
 	}
 	queued := j.queue[j.head]
 	j.queue[j.head] = chargedEvent{}
@@ -406,5 +405,5 @@ func (j *journalSubscriber) next() (Event, bool) {
 		j.queuedReplayable--
 		j.queuedBytes -= queued.bytes
 	}
-	return queued.event, true
+	return queued.event, nil, true
 }

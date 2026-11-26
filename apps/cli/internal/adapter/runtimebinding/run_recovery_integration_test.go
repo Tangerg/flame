@@ -3,6 +3,7 @@ package runtimebinding
 import (
 	"bytes"
 	"context"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -25,7 +26,7 @@ func TestRunningTreeRecoveryUsesTheRuntimeSnapshotAndSuccessorTail(t *testing.T)
 	childEntered := make(chan struct{})
 	releaseChild := make(chan struct{})
 	var entered, release sync.Once
-	t.Cleanup(func() { release.Do(func() { close(releaseChild) }) })
+	defer release.Do(func() { close(releaseChild) })
 	provider := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
 		body, err := io.ReadAll(request.Body)
 		if err != nil {
@@ -47,11 +48,12 @@ func TestRunningTreeRecoveryUsesTheRuntimeSnapshotAndSuccessorTail(t *testing.T)
 	t.Setenv("FLAME_PROVIDER", "deepseek")
 	t.Setenv("FLAME_MODEL", "deepseek-chat")
 	t.Setenv("FLAME_BASEURL", provider.URL)
-	connection := openIntegrationRuntime(t, runtimefixture.TempDirectory(t))
+	workspace := runtimefixture.TempDirectory(t)
+	connection := openIntegrationRuntime(t, workspace)
 	if _, err := connection.SetApprovalMode(t.Context(), protocol.ApprovalModeYolo); err != nil {
 		t.Fatal(err)
 	}
-	session, err := connection.CreateSession(t.Context(), conversation.CreateSession{Workspace: runtimefixture.TempDirectory(t)})
+	session, err := connection.CreateSession(t.Context(), conversation.CreateSession{Workspace: workspace})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,6 +71,24 @@ func TestRunningTreeRecoveryUsesTheRuntimeSnapshotAndSuccessorTail(t *testing.T)
 	case <-ctx.Done():
 		t.Fatal(ctx.Err())
 	}
+	observer, stopObserving := context.WithCancel(ctx)
+	defer stopObserving()
+	interrupted, err := runworkflow.RecoverSegment(observer, connection, session.ID, opened.RunID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	stopObserving()
+	var observationErr error
+	for _, err := range interrupted.Stream.Events {
+		if err != nil {
+			observationErr = err
+			break
+		}
+	}
+	if !errors.Is(observationErr, context.Canceled) {
+		t.Fatalf("canceling the observation returned %v", observationErr)
+	}
+
 	recovered, err := runworkflow.RecoverSegment(ctx, connection, session.ID, opened.RunID)
 	if err != nil {
 		t.Fatal(err)

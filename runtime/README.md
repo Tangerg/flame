@@ -14,6 +14,11 @@ Delivery selects an operation problem's registered kind explicitly. Diagnostic
 causes cannot reclassify an output defect as a caller error; cancellation stays
 observable beside the original public failure for in-process callers.
 
+A Run observer can stop independently of the executing Run. In-process streams
+report the observer's cancellation. When a subscriber falls behind the retained
+authoritative events, its stream reports `replay_unavailable` so the caller can
+attach again from a coherent snapshot.
+
 A configured Web distribution must include its current build policy. The shared
 `local-runtime/webassets` delivery verifies registered artifact bytes, applies
 nonce-based script CSP and main-document embedding denial, and keeps HTML
