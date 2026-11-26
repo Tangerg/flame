@@ -52,11 +52,11 @@ operations.
   beside the report after resizing to 1280 × 800. Back returns to the
   matching file row. The Composer accepts a new unsent draft, which
   survives wheel scrolling in the conversation.
-- Approval focus still needs work. When Allow once leaves the transcript,
-  `MessageBlock` reclaims focus to the activity's entire message column.
-  The full-column focus outline spans the report, and the next Tab goes
-  back to the earlier discovery control. The next pass should keep the
-  settled approval's focus in the relevant tool context.
+- When Allow once leaves the original transcript, `MessageBlock`
+  reclaims focus to the activity's entire message column. The full-column
+  outline spans the report and the next Tab goes back to the earlier
+  discovery control. The repair and acceptance are recorded in
+  [Keep approval focus at the settled decision](#keep-approval-focus-at-the-settled-decision-2026-11-27).
 
 Production Web staging, Runtime packaging and the signed Wails build pass.
 The initial fixture missed the authored prompt behind Runtime context.
@@ -68,6 +68,44 @@ existing drain deadline and exit with status 1. The Wails app, Runtime,
 loopback provider, profiles, fixtures, caches, logs and checkout build
 outputs are removed. One accidental Copy arguments action overwrites
 the system clipboard. Its matching synthetic text is cleared.
+
+### Keep approval focus at the settled decision (2026-11-27)
+
+`MessageBlock`'s existing stream focus recovery remembers the focused
+element and its rendered block. When a focused approval control leaves
+that retained block, recovery can focus the newly rendered status in
+`ApprovalCard` with the same name it displays. The status fits the
+decision text and uses the shared outward focus ring. Its programmatic
+focus keeps the normal Tab order. This is the local continuity pattern
+from Better Accessibility. The existing message target covers recovery
+when the original block or a focusable status is unavailable.
+
+- Signed production Wails v3.1.0 and isolated Runtime at `6a159a956`
+  execute the real GenUI approval in a loopback Messages Run.
+  Chinese/light/14 px/Flame Orange at 1120 × 728 returns keyboard Allow
+  once to the named approval status. The next Tab reaches the following
+  reply's Copy message control.
+- The final staged build repeats approval in English/dark/18 px/Blue
+  (#0485F7) at 1120 × 728. Approved keeps focus through the appearance of
+  the report and the final reply. After resizing to 1280 × 800, keyboard
+  Deny leads to the named Declined status and the next reply control.
+  Runtime records the matching approval or denial and one completed Run
+  in each private Session.
+- With Runtime held briefly before acknowledgement, moving to Message
+  composer keeps that exact focus through settlement, and it accepts
+  an unsent draft. Pointer entry into Tool details and Result and wheel
+  input in the result leave the draft present. The provider records one
+  outcome per Run across three approvals and one denial.
+
+Web typecheck, bootstrap, production staging, Runtime packaging, the
+signed Wails build, scoped Prettier and diff checks pass. After merging
+the independent plugin enablement update at `55bd8a99e`, Web typecheck
+and bootstrap pass again. The native sequence above uses the earlier
+production pair. The private model serves synthetic stream events.
+External inference and VoiceOver remain outside this check. The
+isolated Runtime again exits with the existing drain deadline after
+the Wails app closes. Both clients, the Runtime, provider, private
+data, logs, caches and checkout build outputs are removed.
 
 ### Keep the result renderer picker in view (2026-11-26)
 

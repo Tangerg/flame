@@ -25,11 +25,13 @@ import {
 import { useComposer } from "@/features/composer/public/composer";
 import { useNotifications } from "@/features/notifications/public/notifier";
 import { messageActionMaterialization } from "@/features/chat/message/application/messageBlockModel";
+import { BLOCK_ANCHOR_ATTR } from "@/features/chat/message/application/renderUnitAnchor";
 import { clsx } from "clsx";
 import { useT, type MessageKey } from "@/lib/i18n/index";
 import { MESSAGE_CONTENT_CLASS } from "@/features/chat/message/ui/messageContent";
 import { MessageContextMenu } from "@/features/chat/message/ui/MessageContextMenu";
 import { renderBlock, renderMessageBlocks } from "@/features/chat/message/ui/BlockRenderer";
+import { SETTLED_APPROVAL_SLOT } from "@/features/chat/message/ui/cards/ApprovalCard";
 import { type StandaloneToolResultFor } from "@/features/chat/public/tools/rendering";
 import {
   MessageVisibleMaterialOwner,
@@ -131,27 +133,29 @@ function DraftReplacementDialog({
 // Reclaim only the focus the stream took: a child that had focus and is now
 // unmounted. One still in the DOM means the user blurred to body on purpose.
 function useStreamFocusReclaim(column: RefObject<HTMLDivElement | null>) {
-  const heldFocus = useRef(false);
-  const lastFocused = useRef<HTMLElement | null>(null);
+  const lastFocused = useRef<{ element: Element; block: Element | null } | null>(null);
   useEffect(() => {
-    if (!heldFocus.current) return;
-    if (document.activeElement !== document.body) return;
+    const node = column.current;
     const prior = lastFocused.current;
-    heldFocus.current = false;
+    if (!node || !prior) return;
+    const doc = node.ownerDocument;
+    if (doc.activeElement !== doc.body) return;
     lastFocused.current = null;
-    if (prior?.isConnected) return;
-    column.current?.focus({ preventScroll: true });
+    if (prior.element.isConnected) return;
+    if (prior.block && node.contains(prior.block))
+      prior.block
+        .querySelector<HTMLElement>(`[data-slot="${SETTLED_APPROVAL_SLOT}"]`)
+        ?.focus({ preventScroll: true });
+    if (doc.activeElement === doc.body) node.focus({ preventScroll: true });
   });
   return {
     onFocusCapture: (event: FocusEvent<HTMLDivElement>) => {
-      heldFocus.current = true;
-      lastFocused.current = event.target as HTMLElement;
+      const element = event.target;
+      const block = element.closest(`[${BLOCK_ANCHOR_ATTR}]`);
+      lastFocused.current = { element, block: event.currentTarget.contains(block) ? block : null };
     },
     onBlurCapture: (event: FocusEvent<HTMLDivElement>) => {
-      if (event.relatedTarget) {
-        heldFocus.current = false;
-        lastFocused.current = null;
-      }
+      if (event.relatedTarget) lastFocused.current = null;
     },
   };
 }
