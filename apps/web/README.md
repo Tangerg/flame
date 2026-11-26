@@ -1434,7 +1434,10 @@ shortcut, `Ctrl+Shift+Q` by default. A message menu offers Quote in message
 when its target and the selection endpoints share one visible source. It appends
 to the captured Composer after the menu closes. An attachment review button
 uses its visible chip value as its name. The remove button includes its
-localized action and the same value.
+localized action and the same value. A clipped chip shows its full value in
+the tooltip. An inline sent-reference disclosure can grow a message that
+fits its preview. An explicitly folded long message keeps its preview cap.
+A clipped sent-reference trigger shows its full label on hover or focus.
 
 GenUI renders official A2UI 1.0 through a trusted Flame catalog; its
 processor lifetime is outside virtual rows. Highlights remains deferred under the

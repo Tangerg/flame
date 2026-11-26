@@ -1513,9 +1513,256 @@ processes stop on their owned termination signals. The app
 registration, private profile, fixtures, captures, logs,
 listeners, checkout outputs and caches are removed.
 
-The next review follows two clipped quote labels in the
-narrow Composer and checks how a pointer user can inspect the
-full path and line range before choosing which chip to remove.
+[A clipped attachment tooltip shows its full value](#a-clipped-attachment-tooltip-shows-its-full-value-2026-11-27)
+checks the label before review and removal.
+
+### A clipped attachment tooltip shows its full value (2026-11-27)
+
+Signed Wails at `a99dcef34` and the private Runtime
+read `quarterly-release-evidence-for-reviewers-with-identical-prefixes.txt`.
+Quotes from lines 4 and 12 yield the same visible ellipsis
+in a 1120 × 728 Chinese/light/14 px/Flame window with a
+320 px Dock. Hovering either 238 × 21 px review button
+shows 查看引用 alone. Identifying the exact line by pointer
+requires opening its review.
+
+Chip now measures its existing value span and gives the full
+value to the same Tooltip when that text is clipped. A fitting
+value uses its configured purpose tooltip, and the shared
+trigger stays mounted through measurement and availability changes.
+`useClampedText` reads width and height overflow with its
+existing box and font observations. Files and Diff retain
+their wrapping header callers. The open and remove buttons
+both reference their original visible value.
+
+ZCode's actual selection-reference details expose the source
+identity next to the excerpt. HeroUI and Arc use bounded
+hover content at a stable trigger. Better Typography and
+Better Accessibility inform retaining the compact caption
+and making its expansion reachable and dismissible.
+[Radix Tooltip](https://www.radix-ui.com/primitives/docs/components/tooltip)
+[Content on Hover or Focus](https://www.w3.org/WAI/WCAG22/Understanding/content-on-hover-or-focus.html)
+
+- The signed candidate on `0d30057dd` keeps the two narrow
+  chip positions at [275, 383] and [275, 417]. Mouse movement
+  between them displays the complete path and each distinct
+  suffix. The first full tooltip wraps into 233 × 34 px of
+  text and remains readable when the pointer moves into it.
+  Moving away clears it. Hovering the fitting `note.txt:1`
+  keeps 查看引用.
+- Shift+Tab reaches the full value for line 12 and opens
+  its tooltip. Enter opens the named review containing the
+  captured excerpt. Enter on Close restores that button.
+  In the separate focus pass, Escape dismisses the tooltip
+  with the same button focused. Cmd+L resumes `2468` at caret 2.
+- English/dark/18 px/Blue at 1280 × 800 with a 378 px Dock.
+  Hovering each clipped label reveals its exact line before
+  pointer removal of the line 12 chip. Line 4 and
+  `note.txt:1` remain. Typing 5 gives `24568` at the
+  restored caret, and Undo returns to `2468`. Files opens
+  the long source with a two-line title. Back focuses its
+  exact row and Cmd+L resumes the same caret.
+
+A preliminary synthetic drag inherited the Control modifier
+from the previous shortcut and opened the context menu. Its
+accepted second reference is the word `Second` on line 12.
+The scratch pointer driver clears the modifier flags for the
+subsequent ordinary pointer events. Both selected objects
+retain their actual absolute labels.
+
+Shared UI typecheck and its packed consumer check pass.
+Web typecheck, 83 contracts, bootstrap, scoped Prettier, diff
+checks, production staging, Runtime packaging and signed
+Wails builds pass. Both private file digests and the complete
+Session match. The provider serves eight catalog reads and
+zero generations, and there are no Runs. Native acceptance
+covers macOS pointer, keyboard and accessibility state.
+VoiceOver speech and other platforms remain outside this
+review.
+
+Both Wails hosts exit normally. The private Runtime reaches
+its existing drain deadline. The owned provider, app
+registration, profile, fixtures, captures, logs, listeners,
+checkout outputs and caches are removed.
+
+[Escape dismisses the visible reference review tooltip](#escape-dismisses-the-visible-reference-review-tooltip-2026-11-27)
+identifies which control handles the first key.
+
+### Escape dismisses the visible reference review tooltip (2026-11-27)
+
+Ordinary signed Wails at `968df8b54` follows a Runtime file
+selection into its Composer reference review. The keyboard
+opens the dialog on Close, its first Tab stop. The shared
+IconButton uses the action name for its visible tooltip.
+Escape follows the existing priority for a visible tooltip
+inside the active focus boundary.
+
+- Chinese/light/14 px/Flame at 1120 × 728 with a 364 px
+  Dock. Shift+Tab reaches the long line-4 chip and displays its
+  full value. Enter opens the exact review and shows 关闭 above
+  the focused Close button. The first Escape removes that
+  visible tooltip and leaves Close focused. The second Escape
+  returns to the same chip.
+- Dismissing the chip's own tooltip before Enter produces the
+  same two steps inside the review. In a separate keyboard
+  opening, Tab reaches the labelled review body and the Close
+  tooltip leaves. One Escape returns to the exact chip.
+  Pointer opening also returns in one Escape.
+- English/dark/18 px/Blue at 1280 × 800 with a 427 px Dock.
+  Keyboard entry displays the visible Close tooltip above
+  its focus ring. The two Escape steps restore the same
+  reference. Pointer entry returns with one Escape. Cmd+L
+  restores `2468` at caret 2, typing 5 gives `24568` and
+  Undo restores `2468`.
+
+The evidence resolves the earlier two-Escape observation
+using the current shared Tooltip and ModalDialog behavior.
+This accompanies the established Settings and report
+tooltip priority. Production staging, Runtime packaging,
+signing and diff checks pass. Both private file digests and
+the complete Session match, and the provider records four
+catalog reads and zero generations. Native qualification
+covers macOS accessibility state, pointer and keys. VoiceOver
+speech and other platforms remain outside this review.
+
+Wails exits normally. The private Runtime reaches the
+existing drain deadline. The owned provider, app
+registration, profile, fixtures, captures, logs, listeners,
+checkout outputs and caches are removed.
+
+[One disclosure opens a sent reference](#one-disclosure-opens-a-sent-reference-2026-11-27)
+checks reading, return and the saved Composer caret.
+
+### One disclosure opens a sent reference (2026-11-27)
+
+Ordinary signed Wails at `473e8f99b` sends `39104` with
+two literal references to the same private file. They cover
+1–26 and line 4. The original short user message fits its
+preview. Opening 1–26 by pointer or keyboard leaves its
+trigger at y=101 and marks it expanded. UserMessageFold then
+clips and fades the new details into its seven-line preview.
+The first two source rows are readable, and Show full message
+is needed before the conversation can scroll to row 26.
+
+ReferenceBlock marks its existing disclosure root. An open
+or exiting reference panel can lift the height cap of a
+preview that already fits. The fold's existing measurement
+continues to identify long messages. This uses the present
+Base UI panel state and the existing fold attribute.
+Better Layout and Better Accessibility guide the single
+reveal action. HeroUI's Disclosure and the read-only ZCode
+selection-reference details place the source with its report.
+
+- Chinese/light/14 px/Flame at 1120 × 728 with a 364 px Dock.
+  The first reference still enters at y=101. One pointer
+  activation and wheel scrolling reach row 26. Return on the
+  same trigger closes it and restores the compact message
+  at y=101. Keyboard reopening followed by Tab brings the
+  line-4 trigger into view at y=375. Both references can be
+  open, and closing each returns to its own trigger.
+  Cmd+L continues `2468` at caret 2, typing 5 gives `24568`
+  and Undo restores `2468`.
+- English/dark/18 px/Blue at 1280 × 800 with a 427 px Dock.
+  Pointer entry reaches row 26 in the conversation scrollport.
+  Return on its trigger closes the reference. The same draft
+  and caret remain available.
+- A separate portable Session with only long prose opens
+  and closes using Show full message and Show less on the
+  baseline and candidate. Another imported long message
+  includes the saved 1–26 reference. After Show full message
+  and opening that reference, the user can still activate
+  Show less to return to the folded prose. The same
+  Show full message control holds focus. These controls
+  use actual Runtime imports with fixture content. The first
+  verification expected the import to carry a workspace
+  path. A Session-list read finds the single imported control
+  and checks its text.
+
+Production staging, Runtime packaging, signing, Web
+typecheck, 83 contract tests, bootstrap, scoped Prettier
+and diff checks pass. The immutable live Run and both
+messages match their receipt in each pass. The provider
+receives the exact two reference bodies and the single
+draft. It serves ten catalog reads and one generation.
+Both private file digests match. Native qualification covers
+pointer, keys, scroll and accessibility state on macOS.
+Frame-by-frame motion, VoiceOver speech and other platforms
+remain outside this review.
+
+Both Wails hosts exit normally. The private Runtime reaches
+its existing drain deadline. The owned provider, app
+registration, profile, fixtures, captures, logs, listeners,
+checkout outputs and caches are removed.
+
+[Clipped sent references show their full labels](#clipped-sent-references-show-their-full-labels-2026-11-27)
+checks which line the user will open.
+
+### Clipped sent references show their full labels (2026-11-27)
+
+Ordinary signed Wails at `b8d9ad6bf` reads an imported
+private Runtime message with two same-path references,
+`quarterly-release-evidence-for-reviewers-with-identical-prefixes.txt:4`
+and `:12`. At 1120 × 728 in Chinese/light/14 px/Flame with
+a 364 px Dock, both captions end at the same `.tx` prefix.
+Their native button names contain the full values. Hovering
+either button leaves the line range unreadable on screen
+until the review is opened.
+
+ReferenceBlock opts into the full-label tooltip.
+AgentActivityDisclosure measures the existing label span
+through `useClampedText` and uses the same Collapsible
+button as the Tooltip trigger. Tooltip availability follows
+the measured text, and the disclosure supplies its own
+expansion state and labelled region. The existing clipped
+attachment, Files and Diff patterns use the same measurement
+and bounded tooltip. Better Typography and Better
+Accessibility guide the exact visible label at its action.
+
+- The signed candidate keeps the two buttons at y=101 and
+  y=143 with the same 462 × 32 px bounds. Pointer hover
+  reveals the distinct `:4` and `:12` suffixes. The first
+  tooltip wraps into 233 × 33 px of text and stays visible
+  when the pointer enters it.
+- Shift+Tab reaches the line-12 button, reads its full
+  tooltip and Escape dismisses it with the same button
+  focused. Return opens the exact excerpt and closes it
+  again. Shift+Tab goes straight to the line-4 trigger.
+  Space opens and closes its labelled region.
+- Hiding the Dock and widening to 1280 × 800 gives the
+  fitting 506 × 32 px button its complete caption. Hover
+  leaves the caption visible by itself. Reopening the Dock
+  and returning to 1120 × 728 restores the full tooltip
+  for the newly clipped text. Cmd+L continues `2468` at
+  caret 2, typing 5 gives `24568` and Undo restores
+  `2468`.
+- English/dark/18 px/Blue at 1280 × 800 with a 427 px Dock
+  also shows both complete labels on hover. Pointer
+  activation on line 12 opens its original excerpt.
+  Return closes it and Cmd+L resumes the same caret.
+
+The portable import and its revision-checked workspace
+update are both admitted by the private Runtime. The first
+scratch assertion compares a raw workspace reference to
+the returned WorkspaceInfo. The next read checks its
+canonical ref and records the single imported message.
+The complete Session, message items and two file digests
+match throughout, and the provider serves eleven catalog
+reads and zero generations.
+
+Web typecheck, 83 contracts, bootstrap, scoped Prettier,
+diff checks, production staging, Runtime packaging and
+signed Wails builds pass. Native qualification covers
+macOS pointer, keys, focus and window changes. VoiceOver
+speech and other platforms remain outside this review.
+
+Both Wails hosts exit normally. The private Runtime reaches
+its existing drain deadline. The owned provider, app
+registration, profile, fixtures, captures, logs, listeners,
+checkout outputs and caches are removed.
+
+The next review follows an earlier message edit while the
+current unsent draft already contains a reference, including
+the cancellation path and the draft's retained meaning.
 
 ## Error notes leave retrying to their buttons (2026-11-26)
 

@@ -12,7 +12,11 @@ const FADE_MASK = `linear-gradient(to bottom, #000 calc(100% - ${FADE_LINES}lh),
 const styles = stylex.create({
   frame: { position: "relative" },
   folded: {
-    maxHeight: `${FOLDED_LINES}lh`,
+    maxHeight: {
+      default: `${FOLDED_LINES}lh`,
+      ':not([data-folded]):has([data-message-reference] > [role="region"]:is([data-open], [data-ending-style]))':
+        "none",
+    },
     overflow: "hidden",
   },
   fade: {
