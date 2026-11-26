@@ -5204,14 +5204,6 @@ export function projectHTTPSidecarResponse(endpoint: Wire.HTTPSidecarEndpointNam
   return projectWireValue(HTTP_RESPONSES[endpoint], value);
 }
 
-export const WIRE_NOTIFICATION_NAMES = [
-  "notifications.plugin.stream",
-  "notifications.run.event",
-  "notifications.runtime.event",
-] as const;
-
-export type WireNotificationName = (typeof WIRE_NOTIFICATION_NAMES)[number];
-
 /** The validated params carried by each downstream notification. */
 export interface WireNotificationParams {
   "notifications.plugin.stream": Wire.PluginStreamEvent;
@@ -5219,16 +5211,13 @@ export interface WireNotificationParams {
   "notifications.runtime.event": Wire.RuntimeEventNotification;
 }
 
+export type WireNotificationName = keyof WireNotificationParams;
+
 const NOTIFICATION_PARAMS: Record<WireNotificationName, WireCheck> = {
   "notifications.plugin.stream": ref(() => CHECKS.PluginStreamEvent),
   "notifications.run.event": ref(() => CHECKS.RunEvent),
   "notifications.runtime.event": ref(() => CHECKS.RuntimeEventNotification),
 };
-
-/** True when a method is one of the runtime's published downstream notifications. */
-export function isWireNotificationName(name: string): name is WireNotificationName {
-  return (WIRE_NOTIFICATION_NAMES as readonly string[]).includes(name);
-}
 
 /** Validate the params carried by one published downstream notification. */
 export function validateNotificationParams(

@@ -175,12 +175,6 @@ export function projectMethodResult(method: WireMethodName, value: unknown): unk
 func (c *checkEmitter) notifications(shapes *dispatch.Shapes) string {
 	notifications := shapes.Notifications()
 	var out strings.Builder
-	out.WriteString("\nexport const WIRE_NOTIFICATION_NAMES = [\n")
-	for _, notification := range notifications {
-		fmt.Fprintf(&out, "  %s,\n", wiregen.Literal(notification.Name))
-	}
-	out.WriteString("] as const;\n")
-	out.WriteString("\nexport type WireNotificationName = (typeof WIRE_NOTIFICATION_NAMES)[number];\n")
 	out.WriteString("\n/** The validated params carried by each downstream notification. */\n")
 	out.WriteString("export interface WireNotificationParams {\n")
 	for _, notification := range notifications {
@@ -192,6 +186,7 @@ func (c *checkEmitter) notifications(shapes *dispatch.Shapes) string {
 		fmt.Fprintf(&out, "  %s: Wire.%s;\n", wiregen.Literal(notification.Name), name)
 	}
 	out.WriteString("}\n")
+	out.WriteString("\nexport type WireNotificationName = keyof WireNotificationParams;\n")
 	out.WriteString("\nconst NOTIFICATION_PARAMS: Record<WireNotificationName, WireCheck> = {\n")
 	for _, notification := range notifications {
 		fmt.Fprintf(
@@ -203,11 +198,6 @@ func (c *checkEmitter) notifications(shapes *dispatch.Shapes) string {
 	}
 	out.WriteString("};\n")
 	out.WriteString(`
-/** True when a method is one of the runtime's published downstream notifications. */
-export function isWireNotificationName(name: string): name is WireNotificationName {
-  return (WIRE_NOTIFICATION_NAMES as readonly string[]).includes(name);
-}
-
 /** Validate the params carried by one published downstream notification. */
 export function validateNotificationParams(
   method: WireNotificationName,

@@ -33,7 +33,6 @@ import {
   type WireResult,
 } from "@flame/runtime-client/methods";
 import {
-  isWireNotificationName,
   projectMethodResult,
   projectNotificationParams,
   projectWire,
@@ -72,7 +71,6 @@ export function observeNotifications<M extends WireNotificationName>(
 ): StreamObservation {
   return {
     deliver(message, metadata) {
-      if (!isWireNotificationName(message.method)) return;
       if (message.method !== method) {
         consumer.fail(
           new RpcProtocolError(

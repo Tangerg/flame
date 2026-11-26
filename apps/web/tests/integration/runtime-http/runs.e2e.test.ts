@@ -34,6 +34,13 @@ const unconfirmedModelOutcome = {
 
 const sseCursorLine = /^id: .+\n/m;
 
+function patchSSEEnvelope(frame: string, fields: Record<string, JSONValue>): string {
+  return frame.replace(/^data: (.+)$/m, (_, encoded) => {
+    const notification = parseJSON(encoded) as Record<string, JSONValue>;
+    return `data: ${stringifyJSON({ ...notification, ...fields })}`;
+  });
+}
+
 describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: runs", () => {
   const fixture = useRuntimeFixture("runs");
 
@@ -184,11 +191,12 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: runs", () => {
     {
       fault: "an undeclared JSON-RPC field",
       path: "$",
-      change: (frame: string) =>
-        frame.replace(/^data: (.+)$/m, (_, encoded) => {
-          const notification = parseJSON(encoded) as Record<string, JSONValue>;
-          return `data: ${stringifyJSON({ ...notification, undeclared: true })}`;
-        }),
+      change: (frame: string) => patchSSEEnvelope(frame, { undeclared: true }),
+    },
+    {
+      fault: "an unknown notification method",
+      path: "$.method",
+      change: (frame: string) => patchSSEEnvelope(frame, { method: "notifications.unrecognized" }),
     },
   ] as const)(
     "refuses a Run's terminal SSE frame with $fault",
