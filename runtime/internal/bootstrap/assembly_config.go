@@ -31,6 +31,7 @@ type modelProviderAdapters interface {
 type assemblyConfig struct {
 	stores              *persistence.Bundle
 	processRunner       process.Runner
+	closeProcessRunner  func(context.Context) error
 	firstPartyDirectory string
 
 	buildID string

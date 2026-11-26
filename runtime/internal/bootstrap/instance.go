@@ -86,6 +86,7 @@ func OpenInstance(ctx context.Context, cfg InstanceConfig) (_ *Instance, _ confi
 	}
 	assemblyConfig := composeConfig(settings, stores, providers, buildID)
 	assemblyConfig.processRunner = processRunner
+	assemblyConfig.closeProcessRunner = processRunner.Close
 	assemblyConfig.firstPartyDirectory = cfg.FirstPartyDirectory
 	// Resources close in reverse acquisition order; the directory stays leased even
 	// when a constructor's bounded shutdown wait expires.
@@ -100,7 +101,6 @@ func OpenInstance(ctx context.Context, cfg InstanceConfig) (_ *Instance, _ confi
 		}
 	}()
 	ownedLifetime := newRuntimeLifetime(runtimeContext, assemblyConfig.resources)
-	ownedLifetime.toolResources = append(ownedLifetime.toolResources, terminalStep(func(ctx context.Context) error { return processRunner.Close(ctx) }))
 	directoryOwned = false
 	storesOwned = false
 	host, err := assemble(ctx, assemblyConfig, ownedLifetime, buildToolEnvironment)

@@ -165,7 +165,14 @@ func buildFramework(ctx context.Context, cfg assemblyConfig, lifetime *runtimeLi
 	if err != nil {
 		return frameworkComposition{}, err
 	}
-	profile, err := process.New(process.Config{Runner: cfg.processRunner, Store: cfg.stores.Frame, Source: source, CloseTimeout: pluginProcessCloseTimeout, Protocol: source, MaxFrameBytes: sdk.DefaultMaxLineLength})
+	owner := frame.NewLifetime(context.WithoutCancel(lifetime.context))
+	programs := process.Source(source)
+	var runnerPrograms *runnerProgramSource
+	if cfg.closeProcessRunner != nil {
+		runnerPrograms = &runnerProgramSource{source: source, owner: owner}
+		programs = runnerPrograms
+	}
+	profile, err := process.New(process.Config{Runner: cfg.processRunner, Store: cfg.stores.Frame, Source: programs, CloseTimeout: pluginProcessCloseTimeout, Protocol: source, MaxFrameBytes: sdk.DefaultMaxLineLength})
 	if err != nil {
 		return frameworkComposition{}, err
 	}
@@ -173,7 +180,12 @@ func buildFramework(ctx context.Context, cfg assemblyConfig, lifetime *runtimeLi
 	if err != nil {
 		return frameworkComposition{}, err
 	}
-	owner := frame.NewLifetime(context.WithoutCancel(lifetime.context))
+	if runnerPrograms != nil {
+		runnerPrograms.runner, err = ownProcessRunner(owner, profile, cfg.closeProcessRunner)
+		if err != nil {
+			return frameworkComposition{}, err
+		}
+	}
 	host, err := startFrameworkHost(ctx, cfg.stores, lifetime, owner, permission, profile)
 	if err != nil {
 		return frameworkComposition{}, err
@@ -189,7 +201,7 @@ func buildFramework(ctx context.Context, cfg assemblyConfig, lifetime *runtimeLi
 	if err := restoreFramework(ctx, cfg.stores, host, profile.Profile()); err != nil {
 		return frameworkComposition{}, err
 	}
-	recovery := &frameworkRecovery{stores: cfg.stores, process: profile, pending: true, ready: make(chan struct{})}
+	recovery := &frameworkRecovery{stores: cfg.stores, process: profile, owner: owner, pending: true, ready: make(chan struct{})}
 	if err := recovery.restore(ctx); err != nil && !errors.Is(err, framehost.ErrRecoveryRequired) {
 		return frameworkComposition{}, err
 	}
@@ -246,6 +258,7 @@ type frameworkRecovery struct {
 	mu      sync.Mutex
 	stores  *persistence.Bundle
 	process *process.Driver
+	owner   frame.Lifetime
 	pending bool
 	ready   chan struct{}
 }
@@ -256,6 +269,12 @@ func (r *frameworkRecovery) restore(ctx context.Context) error {
 	if !r.pending {
 		return nil
 	}
+	work, err := r.owner.Enter(ctx)
+	if err != nil {
+		return err
+	}
+	defer work.Finish()
+	ctx = work.Context()
 	if err := r.process.Recover(ctx); err != nil {
 		r.stores.Admission.RequireRecovery(err)
 		return errors.Join(framehost.ErrRecoveryRequired, err)
@@ -264,7 +283,7 @@ func (r *frameworkRecovery) restore(ctx context.Context) error {
 	// Realms resume with cleanup-only credentials and cannot admit work, and a
 	// reloaded or closed window never sends their original proofs. Their execution
 	// protection still retains the release content they were planned from.
-	err := r.stores.Admission.Recover(ctx, func() error {
+	err = r.stores.Admission.Recover(ctx, func() error {
 		pending, err := r.stores.PluginUses.Pending(ctx)
 		if err != nil {
 			return err

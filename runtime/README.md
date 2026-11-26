@@ -1106,6 +1106,9 @@ Dependencies close only after their calls and components have returned.
 If the caller's close wait expires while a Frame resource remains unconfirmed,
 the error retains both the timeout and the original cleanup cause. Frame's
 release proof still controls when storage, content and the directory lease close.
+The Frame graph releases the owned Runner after its process instances and
+durable process recovery settle. A disconnected browser can retain its original
+execution protection while the independently released Runner exits.
 Once Frame admits a local process creation, Runtime joins that original runner
 request before cleanup. Host cancellation cannot discard its acknowledgement
 and turn a normal shutdown into an unknown creation. Pre-dispatch cancellation
