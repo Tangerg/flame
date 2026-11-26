@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   bindOperations,
   failureText,
@@ -181,6 +181,7 @@ function Research({
   const [refresh, setRefresh] = useState(0);
   const [retry, setRetry] = useState<() => void>();
   const [file, setFile] = useState<File>();
+  const fileControl = useRef<HTMLInputElement>(null);
   const [title, setTitle] = useState("");
   const [statement, setStatement] = useState("");
   const [reason, setReason] = useState("");
@@ -319,6 +320,7 @@ function Research({
         }),
         (header) => {
           setFile(undefined);
+          if (fileControl.current) fileControl.current.value = "";
           setTitle("");
           setMaterial({
             ...scope,
@@ -382,6 +384,7 @@ function Research({
         </RecordGroup>
         <FormField label={t("file")}>
           <input
+            ref={fileControl}
             type="file"
             accept=".txt,.md,text/plain,text/markdown"
             disabled={mutable}
