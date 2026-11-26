@@ -25,7 +25,49 @@ ZH/dark/18 px/`#3B82F6`/motion off, resized to 1120 × 728 with Files open: the 
 
 Verification includes the Wails build and native host tests (`make check-native`), Lab build, Web and plugin typechecks, locale and bootstrap checks, plugin module and resource checks, `make check-generated`, workspace boundaries, and three isolated Runtime bootstrap tests. The Runtime regression installs GenUI and checks its inline declaration again after restarting the same Runtime. Prettier and `git diff --check` pass.
 
-The native flow uses a disposable Wails profile and the built Lab fixture. The real Runtime test covers artifact admission and restart. Live provider execution, VoiceOver and switching renderers in a running installation remain open. Retired the private Wails app, preview, profile, logs and worktree build outputs. The isolated picker round trip and report-specific Find are qualified in [Keep the result renderer picker in view](#keep-the-result-renderer-picker-in-view-2026-11-26) and [Distinguish the current Find match](#distinguish-the-current-find-match-2026-11-26).
+The earlier native flow uses a disposable Wails profile and the built Lab fixture. The real Runtime test covers artifact admission and restart. The installed flow below covers a streamed Run with a loopback provider. External model providers, VoiceOver and switching renderers in a running installation remain open. Retired the private Wails app, preview, profile, logs and worktree build outputs. The isolated picker round trip and report-specific Find are qualified in [Keep the result renderer picker in view](#keep-the-result-renderer-picker-in-view-2026-11-26) and [Distinguish the current Find match](#distinguish-the-current-find-match-2026-11-26).
+
+### An installed report generated and reread through Runtime (2026-11-27)
+
+Signed production Wails v3.1.0 and Runtime at `f402be7c6` use the
+installed GenUI and Anthropic provider components, a private repository
+and a loopback Messages endpoint. The endpoint streams synthetic events
+for the exact report prompt. It finds the authored message before
+Runtime's later context messages and discovers the deferred GenUI tool
+through the ordinary `search_tools` call. The draft report declares no
+operations.
+
+- At 1120 × 728 in Chinese/light/14 px/Flame Orange, submit from the
+  Composer and choose Allow once on `genui_ui_present`. A single completed
+  Run records the discovery, successful report result and final reply.
+  The endpoint sees three requests and one successful report result.
+  The report title and final reply share x=296. The trusted Dialog returns
+  keyboard focus to its opener and retains its edited field on reopen.
+  Opening and closing Tool details retains the in-report note.
+- Restart both Runtime and Wails and reopen the same Session. The Run
+  and Item IDs, canonical result hash and all provider counters remain
+  identical. In English/dark/18 px/Blue (#0485F7), the captured report
+  opens on the reading column with its initial note. Result and Arguments
+  open independently. In Files, the actual `docs/review.md` preview fits
+  beside the report after resizing to 1280 × 800. Back returns to the
+  matching file row. The Composer accepts a new unsent draft, which
+  survives wheel scrolling in the conversation.
+- Approval focus still needs work. When Allow once leaves the transcript,
+  `MessageBlock` reclaims focus to the activity's entire message column.
+  The full-column focus outline spans the report, and the next Tab goes
+  back to the earlier discovery control. The next pass should keep the
+  settled approval's focus in the relevant tool context.
+
+Production Web staging, Runtime packaging and the signed Wails build pass.
+The initial fixture missed the authored prompt behind Runtime context.
+The successful repeat uses a fresh isolated Session and records one complete
+Run. The native sequence uses a real provider adapter and local synthetic
+responses. External inference and VoiceOver remain outside this check.
+`git diff --check` passes. Both Runtime stops after Wails exit report the
+existing drain deadline and exit with status 1. The Wails app, Runtime,
+loopback provider, profiles, fixtures, caches, logs and checkout build
+outputs are removed. One accidental Copy arguments action overwrites
+the system clipboard. Its matching synthetic text is cleared.
 
 ### Keep the result renderer picker in view (2026-11-26)
 
