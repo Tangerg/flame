@@ -70,7 +70,19 @@ export function ArchiveControls({
       </Toolbar>
     </>
   ) : (
-    <Toolbar label={t("archive.actions.label")}>
+    <Toolbar
+      label={t("archive.actions.label")}
+      actions={
+        <IconButton
+          ref={refreshButton}
+          icon={Refresh}
+          aria-label={t("archive.refresh")}
+          size="md"
+          pending={archive.loading}
+          onClick={catalog.refresh}
+        />
+      }
+    >
       <Hang>
         <Select
           label={t("capture.period.label")}
@@ -87,6 +99,7 @@ export function ArchiveControls({
       </Hang>
       <Button
         ref={saveButton}
+        variant="primary"
         disabled={busy || unknown.length > 0}
         focusableWhenDisabled
         pending={action?.kind === "capture"}
@@ -95,14 +108,6 @@ export function ArchiveControls({
       >
         {action?.kind === "capture" ? t("capture.saving") : t("capture.save")}
       </Button>
-      <IconButton
-        ref={refreshButton}
-        icon={Refresh}
-        aria-label={t("archive.refresh")}
-        size="md"
-        pending={archive.loading}
-        onClick={catalog.refresh}
-      />
     </Toolbar>
   );
 }
