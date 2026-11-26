@@ -113,30 +113,6 @@ func (r *Replay) InvokeRecoverable(ctx context.Context, key, fingerprint string,
 	return payload, err
 }
 
-func (r *Replay) Invoke(ctx context.Context, key, fingerprint string, execute func() ([]byte, error)) ([]byte, error) {
-	release, err := r.inFlight.Acquire(ctx, key)
-	if err != nil {
-		return nil, err
-	}
-	defer release()
-	if payload, pending, err := r.finishPending(ctx, key, fingerprint); pending {
-		return payload, err
-	}
-	record, claimed, err := r.store.Claim(ctx, ReplayClaim{Key: key, Fingerprint: fingerprint})
-	if err != nil {
-		return nil, fmt.Errorf("idempotency: claim replay key: %w", err)
-	}
-	if !claimed {
-		return settledPayload(record)
-	}
-	payload, err := execute()
-	if err != nil {
-		return nil, err
-	}
-	record.Payload = payload
-	return r.finishRecord(ctx, record)
-}
-
 func (r *Replay) finishPending(ctx context.Context, key, fingerprint string) ([]byte, bool, error) {
 	record, pending := r.pendingCompletion(key)
 	if !pending {

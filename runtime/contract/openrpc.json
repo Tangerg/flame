@@ -2,7 +2,7 @@
   "openrpc": "1.3.2",
   "info": {
     "title": "Flame Runtime Protocol",
-    "version": "2026-11-26.9",
+    "version": "2026-11-26.10",
     "description": "Generated from the Contract Registry. Shapes live in schema.json; this document is the method surface."
   },
   "methods": [
@@ -5375,13 +5375,17 @@
       },
       "errors": [
         {
+          "code": -32045,
+          "message": "plugin_unavailable"
+        },
+        {
           "code": -32006,
           "message": "capability_not_negotiated"
         }
       ],
       "x-flame-kind": "unary",
-      "x-flame-operation": "command",
-      "x-flame-idempotency": "replayResponse",
+      "x-flame-operation": "notice",
+      "x-flame-idempotency": "none",
       "x-flame-replayCursor": "none",
       "x-flame-pagination": "none",
       "x-flame-features": [

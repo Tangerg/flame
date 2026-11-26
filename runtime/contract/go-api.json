@@ -980,7 +980,7 @@
             },
             {
               "name": "NotifyPluginChange",
-              "signature": "func(ctx context.Context, request protocol.PluginChangeNotice, options protocol.CommandOptions) error"
+              "signature": "func(ctx context.Context, request protocol.PluginChangeNotice, options protocol.CallOptions) error"
             },
             {
               "name": "OpenPluginBrowserRealm",
@@ -10756,7 +10756,7 @@
         {
           "name": "Version",
           "type": "untyped string",
-          "value": "\"2026-11-26.9\""
+          "value": "\"2026-11-26.10\""
         },
         {
           "name": "WorkspaceAvailable",
@@ -20404,7 +20404,7 @@
             },
             {
               "name": "NotifyPluginChange",
-              "signature": "func(ctx context.Context, request protocol.PluginChangeNotice, options protocol.CommandOptions) error"
+              "signature": "func(ctx context.Context, request protocol.PluginChangeNotice, options protocol.CallOptions) error"
             },
             {
               "name": "OpenPluginBrowserRealm",

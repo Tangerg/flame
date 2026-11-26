@@ -52,16 +52,24 @@ func (m *Method) withOwnedReplay[Capability, Params any](settle func(Capability,
 	if m.Meta.Params != reflect.TypeFor[Params]() || m.Meta.Idempotency != idempotencyReplayResponse {
 		panic(fmt.Sprintf("operation: %s cannot settle its own replay for %s", m.Meta.Name, reflect.TypeFor[Params]()))
 	}
+	if m.ownedReplay != nil {
+		panic(fmt.Sprintf("operation: %s already has a replay owner", m.Meta.Name))
+	}
 	m.ownedReplay = func(target any, ctx context.Context, parameters any, call keyedCall) protocol.OperationResult {
-		capability, ok := target.(Capability)
-		if !ok {
-			return failed(projectError(fmt.Errorf("operation: target cannot settle %s", m.Meta.Name)))
-		}
-		params, ok := parameters.(Params)
-		if !ok {
-			return failed(projectError(fmt.Errorf("operation: %s received %T parameters", m.Meta.Name, parameters)))
+		capability, params, err := bound[Capability, Params](m.Meta, target, parameters)
+		if err != nil {
+			return failed(projectError(err))
 		}
 		return settle(capability, ctx, params, call)
+	}
+}
+
+func (r *Registry) requireReplayOwners() {
+	for _, name := range r.names {
+		method := r.byName[name]
+		if method.Meta.Idempotency == idempotencyReplayResponse && method.ownedReplay == nil {
+			panic(fmt.Sprintf("operation: %s has no replay owner", name))
+		}
 	}
 }
 
@@ -236,11 +244,27 @@ func (r *Registry) commandAck[Capability, Params any](
 	meta MethodMeta,
 	call func(Capability, context.Context, Params) error,
 ) *Method {
-	meta.Kind = kindUnary
 	meta.Operation = OperationCommand
 	if meta.Idempotency == "" {
 		meta.Idempotency = idempotencyReplayResponse
 	}
+	return r.registerAck(meta, call)
+}
+
+func (r *Registry) notice[Capability, Params any](
+	meta MethodMeta,
+	call func(Capability, context.Context, Params) error,
+) {
+	meta.Operation = OperationNotice
+	meta.Idempotency = idempotencyNone
+	r.registerAck(meta, call)
+}
+
+func (r *Registry) registerAck[Capability, Params any](
+	meta MethodMeta,
+	call func(Capability, context.Context, Params) error,
+) *Method {
+	meta.Kind = kindUnary
 	meta.ReplayCursor = replayCursorNone
 	meta.Pagination = paginationNone
 	meta.Params = reflect.TypeFor[Params]()

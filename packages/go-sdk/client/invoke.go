@@ -47,6 +47,7 @@ type operation uint8
 const (
 	queryOperation operation = iota + 1
 	commandOperation
+	noticeOperation
 	subscriptionOperation
 	extensionOperation
 )

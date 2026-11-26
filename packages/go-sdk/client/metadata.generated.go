@@ -71,7 +71,7 @@ var methodMetadata = map[string]methodMeta{
 	"plugins.getCommand":               {Name: "plugins.getCommand", Kind: unaryMethod, Operation: queryOperation, Result: reflect.TypeFor[*protocol.CallPluginRequest](), Event: nil, ResultNullable: false},
 	"plugins.retireCommand":            {Name: "plugins.retireCommand", Kind: unaryMethod, Operation: commandOperation, Result: reflect.TypeFor[struct{}](), Event: nil, ResultNullable: false},
 	"plugins.stream":                   {Name: "plugins.stream", Kind: streamMethod, Operation: extensionOperation, Result: reflect.TypeFor[struct{}](), Event: reflect.TypeFor[protocol.PluginStreamEvent](), ResultNullable: false},
-	"plugins.notifyChange":             {Name: "plugins.notifyChange", Kind: unaryMethod, Operation: commandOperation, Result: reflect.TypeFor[struct{}](), Event: nil, ResultNullable: false},
+	"plugins.notifyChange":             {Name: "plugins.notifyChange", Kind: unaryMethod, Operation: noticeOperation, Result: reflect.TypeFor[struct{}](), Event: nil, ResultNullable: false},
 	"plugins.readResource":             {Name: "plugins.readResource", Kind: unaryMethod, Operation: queryOperation, Result: reflect.TypeFor[*protocol.PluginResource](), Event: nil, ResultNullable: false},
 	"plugins.readLocale":               {Name: "plugins.readLocale", Kind: unaryMethod, Operation: queryOperation, Result: reflect.TypeFor[*protocol.PluginLocaleCatalog](), Event: nil, ResultNullable: false},
 	"plugins.resolvePoint":             {Name: "plugins.resolvePoint", Kind: unaryMethod, Operation: queryOperation, Result: reflect.TypeFor[*protocol.Page[protocol.PluginPointBinding]](), Event: nil, ResultNullable: false},

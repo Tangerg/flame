@@ -312,8 +312,8 @@ are deleted. A pending manual entry resumes its existing private command and exa
 original JSON, then commits private acceptance and the original runNow receipt in
 one transaction. Recovery never rereads an edited/deleted definition or creates a
 new command. Cron acceptance uses the existing private occurrence owner. The backend
-publishes an authenticated contribution notice through plugins.notifyChange; current
-readers receive plugins.dataChanged and reread rather than infer success.
+publishes an authenticated contribution notice through `plugins.notifyChange`.
+Current readers receive `plugins.dataChanged` and reread the backend's stored state.
 
 Core .19 uses this generic plugin-data topic for command dispatch/recovery,
 authenticated background notices and installed Tool calls. No first-party contract

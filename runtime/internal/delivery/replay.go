@@ -43,31 +43,13 @@ type ownedReplay func(target any, ctx context.Context, parameters any, call keye
 
 var errIdempotencyRebound = errors.New("idempotency key is already bound to another operation")
 
-func (e *Endpoint) replayOperation(ctx context.Context, method *Method, parameters any, key string, execute func() protocol.OperationResult) protocol.OperationResult {
+func (e *Endpoint) replayOperation(ctx context.Context, method *Method, parameters any, key string) protocol.OperationResult {
 	fingerprint, err := operationFingerprint(method.Meta.Name, parameters)
 	if err != nil {
 		return failed(projectError(fmt.Errorf("idempotency: fingerprint operation: %w", err)))
 	}
 	call := keyedCall{replay: e.idempotency, method: method, key: key, fingerprint: fingerprint}
-	if method.ownedReplay != nil {
-		return method.ownedReplay(e.target, ctx, parameters, call)
-	}
-	var result protocol.OperationResult
-	executed := false
-	payload, err := e.idempotency.Invoke(ctx, key, fingerprint, func() ([]byte, error) {
-		result = execute()
-		executed = true
-		return encodeStoredOutcome(result)
-	})
-	if executed {
-		if err == nil {
-			return result
-		}
-		if !errors.Is(err, operation.ErrOutcomePending) {
-			call.reportUnconfirmed(ctx, err)
-		}
-	}
-	return call.result(ctx, payload, err)
+	return method.ownedReplay(e.target, ctx, parameters, call)
 }
 
 func (c keyedCall) result(ctx context.Context, payload []byte, err error) protocol.OperationResult {

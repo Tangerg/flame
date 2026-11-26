@@ -275,4 +275,32 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: plugins", () => {
       fixture.managedOwners.delete("memory");
     }
   }, 30_000);
+
+  it("does not reserve an idempotency key for a change notice", async () => {
+    const send = async (method: string, params: object, key?: string) => {
+      const response = await fetch(`${fixture.baseUrl}/v2/rpc`, {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+          ...(key === undefined ? {} : { "Idempotency-Key": key }),
+        },
+        body: JSON.stringify({ jsonrpc: "2.0", id: method, method, params }),
+      });
+      expect(response.status).toBe(200);
+      return response.json();
+    };
+
+    const key = "transient-plugin-change";
+    const change = { contribution: "filewatch-operations" };
+    const notice = await send("plugins.notifyChange", change, key);
+    const title = "Session with an unclaimed key";
+    await expect(
+      send("sessions.create", { workspace: { path: fixture.root }, title }, key),
+    ).resolves.toMatchObject({ result: { title } });
+    expect(notice).toMatchObject({ error: { data: { type: "invalid_params" } } });
+    await expect(send("plugins.notifyChange", change)).resolves.toMatchObject({
+      error: { data: { type: "plugin_unavailable" } },
+    });
+  });
 });

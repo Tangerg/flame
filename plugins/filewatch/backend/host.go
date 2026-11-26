@@ -83,5 +83,5 @@ func (h *runHost) Admit(ctx context.Context, namespace string, observation filew
 }
 
 func (h *runHost) Notify(ctx context.Context, contribution string) error {
-	return h.client.NotifyPluginChange(ctx, protocol.PluginChangeNotice{Contribution: contribution}, protocol.CommandOptions{})
+	return h.client.NotifyPluginChange(ctx, protocol.PluginChangeNotice{Contribution: contribution}, protocol.CallOptions{})
 }

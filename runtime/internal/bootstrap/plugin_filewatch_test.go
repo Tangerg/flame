@@ -110,6 +110,7 @@ func TestFilewatchInstalledIngressReconcilesLostOpeningAcrossDisableAndRestart(t
 	draft.Instructions, draft.Provider, draft.Model = "Inspect the original observed source.", cfg.defaultSelection.Provider(), cfg.defaultSelection.Model()
 	configured := call(testsupport.FilewatchConfigureV1Method, testsupport.FilewatchConfigureInput{ExpectedRevision: generatedNumber(t, "1"), Trigger: &draft}, "configure-source")
 	wait(func() bool { return status(testsupport.FilewatchStatusPhaseWatching, 2) })
+	changed := managedServiceChange(t, r, protocol.TopicPluginDataChanged)
 	if err := os.WriteFile(path, []byte("external source edit"), 0600); err != nil {
 		t.Fatal(err)
 	}
@@ -119,6 +120,7 @@ func TestFilewatchInstalledIngressReconcilesLostOpeningAcrossDisableAndRestart(t
 	case <-time.After(10 * time.Second):
 		t.Fatal("external file edit did not reach canonical Run admission")
 	}
+	requireManagedServiceChange(t, changed)
 	var original *testsupport.FilewatchCapture
 	wait(func() bool {
 		values := events()

@@ -1,5 +1,5 @@
 {
-  "protocolVersion": "2026-11-26.9",
+  "protocolVersion": "2026-11-26.10",
   "features": [
     "reasoning",
     "multimodal",
@@ -1041,11 +1041,12 @@
       "goName": "NotifyPluginChange",
       "name": "plugins.notifyChange",
       "kind": "unary",
-      "operation": "command",
-      "idempotency": "replayResponse",
+      "operation": "notice",
+      "idempotency": "none",
       "replayCursor": "none",
       "pagination": "none",
       "errors": [
+        "plugin_unavailable",
         "capability_not_negotiated"
       ],
       "features": [
@@ -2244,6 +2245,7 @@
           "plugins.list",
           "plugins.listCompositions",
           "plugins.listProviders",
+          "plugins.notifyChange",
           "plugins.openBrowserRealm",
           "plugins.readLocale",
           "plugins.readResource",

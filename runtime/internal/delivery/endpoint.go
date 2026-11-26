@@ -154,22 +154,19 @@ func (e *Endpoint) bind(ctx context.Context, method *Method, parameters any, opt
 }
 
 func (e *Endpoint) dispatch(ctx context.Context, method *Method, parameters any, key string) protocol.OperationResult {
-	execute := func() protocol.OperationResult { return e.execute(ctx, method, parameters) }
-	switch {
-	case key == "":
-		return execute()
-	case method.Meta.Idempotency == IdempotencyOwnerRun:
-		releaseKey, err := e.idempotency.Serialize(ctx, key)
-		if err != nil {
-			return failed(projectError(err))
+	if key != "" {
+		switch method.Meta.Idempotency {
+		case IdempotencyOwnerRun:
+			releaseKey, err := e.idempotency.Serialize(ctx, key)
+			if err != nil {
+				return failed(projectError(err))
+			}
+			defer releaseKey()
+		case idempotencyReplayResponse:
+			return e.replayOperation(ctx, method, parameters, key)
 		}
-		defer releaseKey()
-		return execute()
-	case method.Meta.Idempotency == idempotencyReplayResponse:
-		return e.replayOperation(ctx, method, parameters, key, execute)
-	default:
-		return execute()
 	}
+	return e.execute(ctx, method, parameters)
 }
 
 func (e *Endpoint) execute(ctx context.Context, method *Method, parameters any) protocol.OperationResult {

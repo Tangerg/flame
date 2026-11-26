@@ -200,7 +200,7 @@ func (r *Runtime) RetirePluginCommand(ctx context.Context, request protocol.Plug
 func (r *Runtime) StreamPlugin(ctx context.Context, request protocol.CallPluginRequest, options protocol.PluginCallOptions) (struct{}, iter.Seq2[protocol.PluginStreamEvent, error], error) {
 	return r.invokeStream[protocol.CallPluginRequest, struct{}, protocol.PluginStreamEvent](ctx, delivery.Name("plugins.stream"), request, options.Metadata())
 }
-func (r *Runtime) NotifyPluginChange(ctx context.Context, request protocol.PluginChangeNotice, options protocol.CommandOptions) error {
+func (r *Runtime) NotifyPluginChange(ctx context.Context, request protocol.PluginChangeNotice, options protocol.CallOptions) error {
 	return r.invokeAck[protocol.PluginChangeNotice](ctx, delivery.Name("plugins.notifyChange"), request, options.Metadata())
 }
 func (r *Runtime) ReadPluginResource(ctx context.Context, request protocol.ReadPluginResourceRequest, options protocol.CallOptions) (*protocol.PluginResource, error) {

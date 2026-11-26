@@ -43,12 +43,18 @@ const (
 	operationUnspecified  OperationKind = ""
 	OperationQuery        OperationKind = "query"
 	OperationCommand      OperationKind = "command"
+	OperationNotice       OperationKind = "notice"
 	OperationSubscription OperationKind = "subscription"
 	OperationExtension    OperationKind = "extension"
 )
 
 func (o OperationKind) Valid() bool {
-	return o == OperationQuery || o == OperationCommand || o == OperationSubscription || o == OperationExtension
+	switch o {
+	case OperationQuery, OperationCommand, OperationNotice, OperationSubscription, OperationExtension:
+		return true
+	default:
+		return false
+	}
 }
 
 func (o OperationKind) String() string {
@@ -221,18 +227,8 @@ func (m MethodMeta) validateIdentity() error {
 			m.Name, m.Kind, kindUnary, KindStream,
 		)
 	}
-	switch m.Operation {
-	case OperationQuery, OperationCommand, OperationSubscription, OperationExtension:
-	default:
-		return fmt.Errorf(
-			"%s: invalid operation kind %s; expected %s, %s, %s or %s",
-			m.Name,
-			m.Operation,
-			OperationQuery,
-			OperationCommand,
-			OperationSubscription,
-			OperationExtension,
-		)
+	if !m.Operation.Valid() {
+		return fmt.Errorf("%s: invalid operation kind %q", m.Name, string(m.Operation))
 	}
 	switch m.Idempotency {
 	case idempotencyNone, idempotencyReplayResponse,
@@ -313,6 +309,10 @@ func (m MethodMeta) validateIdempotency() error {
 	case OperationQuery:
 		if m.Idempotency != idempotencyNone {
 			return fmt.Errorf("%s: a query must not keep an idempotency replay", m.Name)
+		}
+	case OperationNotice:
+		if m.Kind != kindUnary || m.Result != nil || m.Idempotency != idempotencyNone {
+			return fmt.Errorf("%s: a notice must only acknowledge admission", m.Name)
 		}
 	case OperationSubscription:
 		if m.Kind != KindStream || m.Idempotency != idempotencyNone {

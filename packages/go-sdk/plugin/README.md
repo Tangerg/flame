@@ -438,9 +438,10 @@ resources; `pluginmcp.Activate` starts owned business work once per session only
 after successful setup.
 The connection supervisor joins resources after failed setup/start or withdrawal.
 A lost activation acknowledgement cannot issue Start twice in the same lifetime.
-Managed background owners can call NotifyPluginChange for their own declared
-contribution. It publishes plugins.dataChanged through the existing invalidation
-owner; no new event bus or plugin business store is created.
+Managed background owners call `NotifyPluginChange` with `protocol.CallOptions`
+for their own declared contribution. Runtime authorizes every notice against the
+active contribution and publishes `plugins.dataChanged` through its invalidation
+owner. Subscribers reread the plugin's stored state.
 
 Workspace observation sources use the ordinary Runtime client's `SubscribeRuntime`
 with `files.changed` and exact `WatchSpec` paths. Start the subscription from the

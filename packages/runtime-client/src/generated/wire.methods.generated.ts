@@ -414,7 +414,7 @@ export function wireMethodReturnsValue(
   return (VALUE_METHOD_NAMES as readonly string[]).includes(method);
 }
 
-export type WireOperationKind = "command" | "extension" | "query" | "subscription";
+export type WireOperationKind = "command" | "extension" | "notice" | "query" | "subscription";
 export type WireResponseKind = "stream" | "unary";
 export type WireIdempotencyPolicy = "none" | "ownerResponse" | "ownerRun" | "replayResponse";
 export type WireReplayCursorPolicy = "none" | "run";
@@ -878,9 +878,9 @@ export const WIRE_METHOD_POLICY = {
     pagination: "none",
   },
   "plugins.notifyChange": {
-    operation: "command",
+    operation: "notice",
     response: "unary",
-    idempotency: "replayResponse",
+    idempotency: "none",
     replayCursor: "none",
     pagination: "none",
   },

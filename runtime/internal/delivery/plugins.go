@@ -76,7 +76,10 @@ func registerPlugins(r *Registry) {
 	}, ctx context.Context, in protocol.CallPluginRequest) (OperationKind, func(context.Context) (struct{}, iter.Seq2[protocol.PluginStreamEvent, error], error), error) {
 		return s.PreparePluginStream(ctx, in)
 	})
-	r.commandAck(MethodMeta{Name: pluginsNotifyChange, GoName: "NotifyPluginChange", CapabilityRules: requires(protocol.FeaturePlugins)}, func(service interface {
+	r.notice(MethodMeta{
+		Name: pluginsNotifyChange, GoName: "NotifyPluginChange", CapabilityRules: requires(protocol.FeaturePlugins),
+		Errors: []string{protocol.ErrPluginUnavailable.Error()},
+	}, func(service interface {
 		NotifyPluginChange(context.Context, protocol.PluginChangeNotice) error
 	}, ctx context.Context, request protocol.PluginChangeNotice) error {
 		return service.NotifyPluginChange(ctx, request)

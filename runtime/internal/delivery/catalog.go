@@ -25,6 +25,7 @@ func buildContract() *Registry {
 	registerTools(registry)
 	registerUsage(registry)
 	registerFeedback(registry)
+	registry.requireReplayOwners()
 	return registry
 }
 
