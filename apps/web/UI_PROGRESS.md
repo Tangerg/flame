@@ -24471,6 +24471,17 @@ removes three registrations, six private Library directories,
 ten checkout outputs and the scratch tree. Verify the same
 reading path with a real repository filename in Chinese next.
 
+### Return to the same reading position after full-width file inspection (2026-11-26)
+
+The conversation link opened line 4 of `runtime/internal/session/store.go` while the changed-file comparison was available. An ordinary Dock round trip restored the exact link and its position. Full-width reading collapsed the mounted conversation viewport from 561 px to zero. In the fresh native scene that discarded its 125 px scroll offset before returning focus. A temporary width retained only while hidden preserved the offset until reveal, when the link received focus before the panel had a width again.
+
+`ChatPanel` applies each positive width reported by the conversation Panel to its content. The zero-width interval retains the last reading width, including the first returning focus. The Panel clips its content during that interval. The transcript lists and Workspace navigation retain their existing responsibilities. This follows the existing source-return contract and the Better Layout guidance to preserve content geometry across presentation changes. [Workspace design](DESIGN.md)
+
+- **ZH/dark/18 px/`#3B82F6`, motion off.** At Actual Size and 1120 × 728, the identified conversation link opened the captured source and its highlighted line 4. Opening full width and pressing 返回对话 kept the same link node, its visible outline, the 125 px offset and y280 position. The Dock retained the current file for continued reading.
+- **EN/light/18 px/Flame Orange, normal motion.** Starting at 1120 × 728, the user selected `store.go` in Workspace diff, opened the conversation reference and expanded Files. Resizing the native window to 1370 × 820 while reading full width kept the hidden width at 561 px. Returning used the actual 710 px width and kept the 125 px offset and the same focused link. Wheel scrolling advanced to 285 px. The `draft` text survived. The Dock arrows returned to the same Diff detail, then Back restored the `store.go` query and focused file row.
+
+The original and counterfactual measurements use the built Lab's recorded messages and file window. Native Wails v3.1.0 requalified both routes after integrating main `d6276a93f`. Setup, production staging, Web typecheck and bootstrap, Lab build, native host build, scoped Prettier and diff checks passed. The private app, preview, profile, logs and generated outputs were retired.
+
 ### Keep Unicode spelling in an inline source address (2026-11-20)
 
 In signed Chinese Wails on `c671d9dc5`, inline references to
@@ -46276,9 +46287,7 @@ Live tool execution, spoken VoiceOver, physical IME and other
 native platforms remain outside this scope. Four witnessed app
 launches and the three preview sessions are retired. Cleanup
 removes three private registrations, six Library directories,
-ten checkout outputs and the scratch tree. For a separate task,
-review the point where a conversation link opens a changed file
-and returns to the original turn.
+ten checkout outputs and the scratch tree. The [changed-file round trip](#return-to-the-same-reading-position-after-full-width-file-inspection-2026-11-26) qualifies opening the source from the conversation and returning to its original turn.
 
 ### Canonical tool-evidence qualification
 
