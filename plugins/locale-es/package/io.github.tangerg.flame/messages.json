@@ -303,7 +303,7 @@
   "runtime.unsupported.sub": "El Runtime conectado aún no expone esta función.",
   "dataView.error.title": "No se pudo cargar",
   "dataView.error.sub": "El Runtime no respondió a esta petición. Comprueba la conexión y reinténtalo.",
-  "welcome.title": "¿Qué quieres construir hoy?",
+  "welcome.title": "¿Qué quieres construir?",
   "welcome.folderTitle": "¿Qué quieres construir en <folderSelect>{{folder}}</folderSelect>?",
   "composer.folder.choose": "Elegir carpeta",
   "composer.folder.change": "Cambiar carpeta: {{folder}}",

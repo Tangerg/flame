@@ -303,7 +303,7 @@
   "runtime.unsupported.sub": "Le Runtime connecté n’expose pas encore cette fonctionnalité.",
   "dataView.error.title": "Échec du chargement",
   "dataView.error.sub": "Le Runtime n’a pas répondu à cette requête. Vérifiez la connexion et réessayez.",
-  "welcome.title": "Que voulez-vous construire aujourd’hui ?",
+  "welcome.title": "Que voulez-vous construire ?",
   "welcome.folderTitle": "Que voulez-vous construire dans <folderSelect>{{folder}}</folderSelect> ?",
   "composer.folder.choose": "Choisir un dossier",
   "composer.folder.change": "Changer de dossier : {{folder}}",

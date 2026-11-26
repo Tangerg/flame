@@ -293,7 +293,7 @@
   "runtime.unsupported.sub": "接続中の Runtime はこの機能にまだ対応していません。",
   "dataView.error.title": "読み込めませんでした",
   "dataView.error.sub": "Runtime がこのリクエストに応答しませんでした。接続を確認して再試行してください。",
-  "welcome.title": "今日は何を作りましょうか？",
+  "welcome.title": "何を作りましょうか？",
   "welcome.folderTitle": "<folderSelect>{{folder}}</folderSelect> で何を作りましょうか？",
   "composer.folder.choose": "フォルダーを選択",
   "composer.folder.change": "フォルダーを変更：{{folder}}",

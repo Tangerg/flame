@@ -298,7 +298,7 @@
   "runtime.unsupported.sub": "Die verbundene Runtime stellt diese Funktion noch nicht bereit.",
   "dataView.error.title": "Laden fehlgeschlagen",
   "dataView.error.sub": "Die Runtime hat auf diese Anfrage nicht geantwortet. Prüfe die Verbindung und versuche es erneut.",
-  "welcome.title": "Was möchtest du heute bauen?",
+  "welcome.title": "Was möchtest du bauen?",
   "welcome.folderTitle": "Was möchtest du in <folderSelect>{{folder}}</folderSelect> bauen?",
   "composer.folder.choose": "Ordner auswählen",
   "composer.folder.change": "Ordner wechseln: {{folder}}",

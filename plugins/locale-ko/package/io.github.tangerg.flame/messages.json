@@ -293,7 +293,7 @@
   "runtime.unsupported.sub": "연결된 Runtime이 아직 이 기능을 제공하지 않습니다.",
   "dataView.error.title": "불러오지 못함",
   "dataView.error.sub": "Runtime이 이 요청에 응답하지 않았습니다. 연결을 확인하고 다시 시도하세요.",
-  "welcome.title": "오늘은 무엇을 만들까요?",
+  "welcome.title": "무엇을 만들까요?",
   "welcome.folderTitle": "<folderSelect>{{folder}}</folderSelect>에서 무엇을 만들까요?",
   "composer.folder.choose": "폴더 선택",
   "composer.folder.change": "폴더 변경: {{folder}}",

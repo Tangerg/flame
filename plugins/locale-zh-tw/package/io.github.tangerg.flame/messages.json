@@ -299,7 +299,7 @@
   "runtime.unsupported.sub": "已連線的 Runtime 尚未提供此功能。",
   "dataView.error.title": "載入失敗",
   "dataView.error.sub": "Runtime 未回應此請求。請檢查連線後重試。",
-  "welcome.title": "今天想建立什麼？",
+  "welcome.title": "我們應該建立什麼？",
   "welcome.folderTitle": "想在 <folderSelect>{{folder}}</folderSelect> 中建立什麼？",
   "composer.folder.choose": "選擇資料夾",
   "composer.folder.change": "變更資料夾：{{folder}}",
