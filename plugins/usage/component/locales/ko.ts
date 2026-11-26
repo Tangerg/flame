@@ -50,7 +50,7 @@ export const ko: Record<string, string> = {
   "accounting.title": "정산 세부 정보",
   "accounting.note":
     "토큰 합계에는 보고된 사용량만 포함됩니다. 알 수 없는 결과와 보고되지 않은 사용량으로 소비가 늘어날 수 있습니다. 알려진 가격 소계에는 가격이 책정된 시도만 포함됩니다. 총비용은 모든 시도에 가격이 책정되어야 합니다. 삭제되었거나 기록되지 않은 호출은 복원할 수 없습니다. 0 토큰도 기록된 값입니다. “보고되지 않음”은 해당 합계 또는 버킷에 완전한 가격이 없음을 의미합니다.",
-  "empty.title": "이 기간에 보존된 모델 시도가 없습니다.",
+  "empty.title": "이 기간에 보존된 모델 시도가 없습니다",
   "breakdown.title": "사용량 내역",
   "breakdown.group": "소스별 기록된 사용량",
   "bucket.byOrigin.human": "사용자",
@@ -69,6 +69,6 @@ export const ko: Record<string, string> = {
   "fact.knownCost": "알려진 비용(USD)",
   "fact.usagePerAttempts": "사용량 / 시도",
   "fact.pricedPerAttempts": "가격 책정 / 시도",
-  "breakdown.empty.title": "일치하는 행이 없습니다.",
+  "breakdown.empty.title": "일치하는 행이 없습니다",
   "cost.notReported": "보고되지 않음",
 };

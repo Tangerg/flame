@@ -15,7 +15,7 @@ export const ja: Record<string, string> = {
   "observations.title": "ローカル観測記録",
   "observations.accepted": "直近のバッファ読み取り",
   "observations.stale": "最後に読み取れた内容を表示しています。",
-  "observations.empty.title": "この読み取りにはローカル観測記録がありません。",
+  "observations.empty.title": "この読み取りにはローカル観測記録がありません",
   "span.meta": "{{ms}} ms · {{kind}}",
   "span.status.error": "エラー",
   "fact.started": "開始時刻",

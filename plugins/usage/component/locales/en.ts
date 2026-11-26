@@ -53,7 +53,7 @@ export const en: Record<string, string> = {
   "accounting.title": "Accounting details",
   "accounting.note":
     "Token totals include reported usage only. Unknown outcomes and unreported usage may add consumption. The known price subtotal includes priced attempts only; total cost requires every attempt to be priced. Deleted or never recorded calls can’t be reconstructed. Zero tokens are recorded values. “Not reported” means there is no complete price for that total or bucket.",
-  "empty.title": "No retained model attempts in this period.",
+  "empty.title": "No retained model attempts in this period",
   "breakdown.title": "Usage breakdown",
   "breakdown.group": "Recorded usage by source",
   "bucket.byOrigin.human": "Human",
@@ -77,6 +77,6 @@ export const en: Record<string, string> = {
   "fact.knownCost": "Known cost (USD)",
   "fact.usagePerAttempts": "Usage / attempts",
   "fact.pricedPerAttempts": "Priced / attempts",
-  "breakdown.empty.title": "No matching rows.",
+  "breakdown.empty.title": "No matching rows",
   "cost.notReported": "Not reported",
 };

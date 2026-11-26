@@ -109,7 +109,7 @@ export const fr = {
   "history.title": "Résultats d’origine",
   "history.refresh": "Actualiser les résultats",
   "history.reading": "Lecture des preuves d’origine…",
-  "history.empty": "Aucune commande enregistrée.",
+  "history.empty": "Aucune commande enregistrée",
   "history.identity": "Identité de commande",
   "history.method": "Opération",
   "history.time": "Date d’admission",

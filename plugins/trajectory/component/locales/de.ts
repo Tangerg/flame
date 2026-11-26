@@ -42,8 +42,8 @@ export const de: Record<string, string> = {
   attention_one: "{{count}} erfordert Aufmerksamkeit",
   attention_other: "{{count}} erfordern Aufmerksamkeit",
   "empty.filtered.title":
-    "Kein Datensatz auf dieser Seite entspricht diesem Filter.",
-  "empty.none.title": "Keine Datensätze auf dieser Seite.",
+    "Kein Datensatz auf dieser Seite entspricht diesem Filter",
+  "empty.none.title": "Keine Datensätze auf dieser Seite",
   "modelActivity.title": "Modellaktivität",
   "fact.logicalModelCalls": "Logische Modellaufrufe",
   "fact.modelEndpoints": "Modellendpunkte",

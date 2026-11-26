@@ -45,8 +45,8 @@ export const fr: Record<string, string> = {
   attention_many: "{{count}} nécessitent une attention",
   attention_other: "{{count}} nécessitent une attention",
   "empty.filtered.title":
-    "Aucun enregistrement de cette page ne correspond à ce filtre.",
-  "empty.none.title": "Aucun enregistrement sur cette page.",
+    "Aucun enregistrement de cette page ne correspond à ce filtre",
+  "empty.none.title": "Aucun enregistrement sur cette page",
   "modelActivity.title": "Activité du modèle",
   "fact.logicalModelCalls": "Appels logiques de modèle",
   "fact.modelEndpoints": "Points de terminaison de modèle",

@@ -104,7 +104,7 @@ export const zh = {
   "history.title": "原始操作结果",
   "history.refresh": "刷新操作结果",
   "history.reading": "正在读取原始证据…",
-  "history.empty": "尚无命令记录。",
+  "history.empty": "尚无命令记录",
   "history.identity": "命令标识",
   "history.method": "操作",
   "history.time": "接收时间",

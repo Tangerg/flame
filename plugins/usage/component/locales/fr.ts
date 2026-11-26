@@ -59,7 +59,7 @@ export const fr: Record<string, string> = {
   "accounting.title": "Détails comptables",
   "accounting.note":
     "Les totaux de tokens n’incluent que l’utilisation signalée. Les résultats inconnus et l’utilisation non signalée peuvent ajouter de la consommation. Le sous-total du prix connu n’inclut que les tentatives tarifées ; le coût total exige que chaque tentative soit tarifée. Les appels supprimés ou jamais enregistrés ne peuvent pas être reconstitués. Zéro token est une valeur enregistrée. « Non signalé » signifie qu’il n’y a pas de prix complet pour ce total ou ce groupe.",
-  "empty.title": "Aucune tentative de modèle conservée sur cette période.",
+  "empty.title": "Aucune tentative de modèle conservée sur cette période",
   "breakdown.title": "Détail de l’utilisation",
   "breakdown.group": "Utilisation enregistrée par source",
   "bucket.byOrigin.human": "Humain",
@@ -88,6 +88,6 @@ export const fr: Record<string, string> = {
   "fact.knownCost": "Coût connu (USD)",
   "fact.usagePerAttempts": "Utilisation / tentatives",
   "fact.pricedPerAttempts": "Tarifées / tentatives",
-  "breakdown.empty.title": "Aucune ligne correspondante.",
+  "breakdown.empty.title": "Aucune ligne correspondante",
   "cost.notReported": "Non signalé",
 };

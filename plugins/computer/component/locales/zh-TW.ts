@@ -104,7 +104,7 @@ export const zhTW = {
   "history.title": "原始操作結果",
   "history.refresh": "重新整理操作結果",
   "history.reading": "正在讀取原始證據…",
-  "history.empty": "尚無命令記錄。",
+  "history.empty": "尚無命令記錄",
   "history.identity": "命令識別碼",
   "history.method": "操作",
   "history.time": "接收時間",

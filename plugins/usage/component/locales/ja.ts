@@ -50,7 +50,7 @@ export const ja: Record<string, string> = {
   "accounting.title": "会計の詳細",
   "accounting.note":
     "トークンの合計には報告された使用量のみが含まれます。不明な結果や未報告の使用量により消費が増える場合があります。既知価格の小計には価格確定の試行のみが含まれます。合計コストにはすべての試行の価格確定が必要です。削除された、または記録されなかった呼び出しは再構築できません。ゼロトークンも記録された値です。「未報告」は、その合計またはバケットに完全な価格がないことを意味します。",
-  "empty.title": "この期間に保持されたモデル試行はありません。",
+  "empty.title": "この期間に保持されたモデル試行はありません",
   "breakdown.title": "使用量の内訳",
   "breakdown.group": "ソース別の記録使用量",
   "bucket.byOrigin.human": "ユーザー",
@@ -69,6 +69,6 @@ export const ja: Record<string, string> = {
   "fact.knownCost": "既知コスト (USD)",
   "fact.usagePerAttempts": "使用量 / 試行",
   "fact.pricedPerAttempts": "価格確定 / 試行",
-  "breakdown.empty.title": "一致する行はありません。",
+  "breakdown.empty.title": "一致する行はありません",
   "cost.notReported": "未報告",
 };

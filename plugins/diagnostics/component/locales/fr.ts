@@ -15,7 +15,7 @@ export const fr: Record<string, string> = {
   "observations.title": "Observations locales",
   "observations.accepted": "Dernière lecture du tampon",
   "observations.stale": "Dernière lecture acceptée affichée.",
-  "observations.empty.title": "Aucune observation locale dans cette lecture.",
+  "observations.empty.title": "Aucune observation locale dans cette lecture",
   "span.meta": "{{ms}} ms · {{kind}}",
   "span.status.error": "Erreur",
   "fact.started": "Début",

@@ -50,7 +50,7 @@ export const zh: Record<string, string> = {
   "accounting.title": "核算明细",
   "accounting.note":
     "标记合计仅包含已报告的用量。未知结果与未报告的用量可能增加消耗。已知价格小计仅包含已计价的尝试；总费用需要每次尝试都已计价。已删除或从未记录的调用无法重建。零标记是已记录的值。“未报告”表示该合计或分组没有完整价格。",
-  "empty.title": "此时间段内没有保留的模型尝试。",
+  "empty.title": "此时间段内没有保留的模型尝试",
   "breakdown.title": "用量明细",
   "breakdown.group": "按来源记录的用量",
   "bucket.byOrigin.human": "用户",
@@ -69,6 +69,6 @@ export const zh: Record<string, string> = {
   "fact.knownCost": "已知费用 (USD)",
   "fact.usagePerAttempts": "用量 / 尝试",
   "fact.pricedPerAttempts": "已计价 / 尝试",
-  "breakdown.empty.title": "没有匹配的行。",
+  "breakdown.empty.title": "没有匹配的行",
   "cost.notReported": "未报告",
 };

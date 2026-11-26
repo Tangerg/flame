@@ -15,7 +15,7 @@ export const zh: Record<string, string> = {
   "observations.title": "本地观测记录",
   "observations.accepted": "最近一次读取",
   "observations.stale": "当前显示上次成功读取的内容。",
-  "observations.empty.title": "本次读取没有本地观测记录。",
+  "observations.empty.title": "本次读取没有本地观测记录",
   "span.meta": "{{ms}} ms · {{kind}}",
   "span.status.error": "错误",
   "fact.started": "开始时间",

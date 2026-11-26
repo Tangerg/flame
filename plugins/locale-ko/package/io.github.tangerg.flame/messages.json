@@ -20,7 +20,7 @@
   "packages.providers.title": "공급자 선택",
   "packages.providers.refresh": "선택 새로 고침",
   "packages.providers.future": "선택은 이후 활성화에 적용됩니다. 기존 실행은 이미 연결된 공급자를 유지합니다.",
-  "packages.providers.none": "선택된 공급자가 없습니다.",
+  "packages.providers.none": "선택된 공급자가 없습니다",
   "packages.providers.unavailable": "선택되었지만 사용할 수 없음: {{name}} · {{contribution}}",
   "packages.providers.unread": "선택을 아직 읽지 않았습니다.",
   "packages.providers.stale": "마지막으로 읽은 선택을 표시합니다.",

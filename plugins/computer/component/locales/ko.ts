@@ -107,7 +107,7 @@ export const ko = {
   "history.title": "원래 작업 결과",
   "history.refresh": "결과 새로 고침",
   "history.reading": "원래 증거 읽는 중…",
-  "history.empty": "기록된 명령이 없습니다.",
+  "history.empty": "기록된 명령이 없습니다",
   "history.identity": "명령 식별자",
   "history.method": "작업",
   "history.time": "접수 시간",

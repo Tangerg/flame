@@ -15,7 +15,7 @@ export const en: Record<string, string> = {
   "observations.title": "Local observations",
   "observations.accepted": "Last buffer read",
   "observations.stale": "Showing the last accepted read.",
-  "observations.empty.title": "No local observations in this read.",
+  "observations.empty.title": "No local observations in this read",
   "span.meta": "{{ms}} ms · {{kind}}",
   "span.status.error": "Error",
   "fact.started": "Started",

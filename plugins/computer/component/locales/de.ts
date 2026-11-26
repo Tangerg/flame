@@ -111,7 +111,7 @@ export const de = {
   "history.title": "Ursprüngliche Ergebnisse",
   "history.refresh": "Ergebnisse aktualisieren",
   "history.reading": "Ursprüngliche Belege werden gelesen…",
-  "history.empty": "Keine Befehle aufgezeichnet.",
+  "history.empty": "Keine Befehle aufgezeichnet",
   "history.identity": "Befehlskennung",
   "history.method": "Aktion",
   "history.time": "Angenommen am",

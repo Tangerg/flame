@@ -37,8 +37,8 @@ export const ja: Record<string, string> = {
   toolCalls_other: "{{count}} 件のツール呼び出し",
   attention_other: "{{count}} 件が要対応",
   "empty.filtered.title":
-    "このページにこのフィルターに一致するレコードはありません。",
-  "empty.none.title": "このページに記録はありません。",
+    "このページにこのフィルターに一致するレコードはありません",
+  "empty.none.title": "このページに記録はありません",
   "modelActivity.title": "モデルのアクティビティ",
   "fact.logicalModelCalls": "論理モデル呼び出し",
   "fact.modelEndpoints": "モデルエンドポイント",

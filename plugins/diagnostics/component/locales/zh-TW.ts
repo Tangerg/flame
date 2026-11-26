@@ -15,7 +15,7 @@ export const zhTW: Record<string, string> = {
   "observations.title": "本機觀測記錄",
   "observations.accepted": "最近一次讀取",
   "observations.stale": "目前顯示上次成功讀取的內容。",
-  "observations.empty.title": "本次讀取沒有本機觀測記錄。",
+  "observations.empty.title": "本次讀取沒有本機觀測記錄",
   "span.meta": "{{ms}} ms · {{kind}}",
   "span.status.error": "錯誤",
   "fact.started": "開始時間",

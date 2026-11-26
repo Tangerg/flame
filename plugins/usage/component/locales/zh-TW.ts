@@ -50,7 +50,7 @@ export const zhTW: Record<string, string> = {
   "accounting.title": "核算明細",
   "accounting.note":
     "權杖合計僅包含已回報的用量。未知結果與未回報的用量可能增加消耗。已知價格小計僅包含已計價的嘗試；總費用需要每次嘗試都已計價。已刪除或從未記錄的呼叫無法重建。零權杖是已記錄的值。「未回報」表示該合計或分組沒有完整價格。",
-  "empty.title": "此時間範圍內沒有保留的模型嘗試。",
+  "empty.title": "此時間範圍內沒有保留的模型嘗試",
   "breakdown.title": "用量明細",
   "breakdown.group": "依來源記錄的用量",
   "bucket.byOrigin.human": "使用者",
@@ -69,6 +69,6 @@ export const zhTW: Record<string, string> = {
   "fact.knownCost": "已知費用 (USD)",
   "fact.usagePerAttempts": "用量 / 嘗試",
   "fact.pricedPerAttempts": "已計價 / 嘗試",
-  "breakdown.empty.title": "沒有相符的資料列。",
+  "breakdown.empty.title": "沒有相符的資料列",
   "cost.notReported": "未回報",
 };

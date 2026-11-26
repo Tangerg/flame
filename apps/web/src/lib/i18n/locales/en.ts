@@ -25,7 +25,7 @@ export const en = {
   "packages.providers.refresh": "Refresh selections",
   "packages.providers.future":
     "Selections apply to future activations. Existing execution keeps its captured bindings.",
-  "packages.providers.none": "No provider has been selected.",
+  "packages.providers.none": "No provider has been selected",
   "packages.providers.unavailable": "Selected but unavailable: {{name}} · {{contribution}}",
   "packages.providers.unread": "Selection not read.",
   "packages.providers.stale": "Showing the last read selections.",

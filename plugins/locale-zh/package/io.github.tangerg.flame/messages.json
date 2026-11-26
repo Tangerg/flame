@@ -20,7 +20,7 @@
   "packages.providers.title": "提供者选择",
   "packages.providers.refresh": "刷新选择",
   "packages.providers.future": "选择用于后续激活；已有执行保留其已绑定的提供者。",
-  "packages.providers.none": "尚未选择提供者。",
+  "packages.providers.none": "尚未选择提供者",
   "packages.providers.unavailable": "已选择但不可用：{{name}} · {{contribution}}",
   "packages.providers.unread": "尚未读取选择结果。",
   "packages.providers.stale": "显示上次读取的选择结果。",

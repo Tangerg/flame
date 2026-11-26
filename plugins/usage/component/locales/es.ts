@@ -58,7 +58,7 @@ export const es: Record<string, string> = {
   "accounting.title": "Detalles de contabilidad",
   "accounting.note":
     "Los totales de tokens incluyen solo el uso informado. Los resultados desconocidos y el uso no informado pueden añadir consumo. El subtotal de precio conocido incluye solo los intentos con precio; el coste total requiere que todos los intentos tengan precio. Las llamadas eliminadas o nunca registradas no se pueden reconstruir. Cero tokens es un valor registrado. «No informado» significa que no hay un precio completo para ese total o grupo.",
-  "empty.title": "No hay intentos de modelo retenidos en este periodo.",
+  "empty.title": "No hay intentos de modelo retenidos en este periodo",
   "breakdown.title": "Desglose de uso",
   "breakdown.group": "Uso registrado por fuente",
   "bucket.byOrigin.human": "Persona",
@@ -87,6 +87,6 @@ export const es: Record<string, string> = {
   "fact.knownCost": "Coste conocido (USD)",
   "fact.usagePerAttempts": "Uso / intentos",
   "fact.pricedPerAttempts": "Con precio / intentos",
-  "breakdown.empty.title": "No hay filas coincidentes.",
+  "breakdown.empty.title": "No hay filas coincidentes",
   "cost.notReported": "No informado",
 };

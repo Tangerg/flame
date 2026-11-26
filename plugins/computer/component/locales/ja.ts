@@ -107,7 +107,7 @@ export const ja = {
   "history.title": "元の操作結果",
   "history.refresh": "結果を更新",
   "history.reading": "元の記録を取得中…",
-  "history.empty": "コマンドの記録はありません。",
+  "history.empty": "コマンドの記録はありません",
   "history.identity": "コマンド ID",
   "history.method": "操作",
   "history.time": "受付日時",

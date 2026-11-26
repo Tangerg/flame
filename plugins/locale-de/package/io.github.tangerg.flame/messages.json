@@ -20,7 +20,7 @@
   "packages.providers.title": "Anbieterauswahl",
   "packages.providers.refresh": "Auswahl aktualisieren",
   "packages.providers.future": "Die Auswahl gilt für künftige Aktivierungen. Bestehende Ausführungen behalten ihre Bindungen.",
-  "packages.providers.none": "Kein Anbieter ausgewählt.",
+  "packages.providers.none": "Kein Anbieter ausgewählt",
   "packages.providers.unavailable": "Ausgewählt, aber nicht verfügbar: {{name}} · {{contribution}}",
   "packages.providers.unread": "Auswahl noch nicht eingelesen.",
   "packages.providers.stale": "Die zuletzt gelesene Auswahl wird angezeigt.",

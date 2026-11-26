@@ -16,7 +16,7 @@ export const de: Record<string, string> = {
   "observations.accepted": "Letzter Pufferstand",
   "observations.stale": "Letzter erfolgreich gelesener Stand.",
   "observations.empty.title":
-    "Keine lokalen Beobachtungen in diesem Lesevorgang.",
+    "Keine lokalen Beobachtungen in diesem Lesevorgang",
   "span.meta": "{{ms}} ms · {{kind}}",
   "span.status.error": "Fehler",
   "fact.started": "Gestartet",

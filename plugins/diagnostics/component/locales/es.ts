@@ -15,7 +15,7 @@ export const es: Record<string, string> = {
   "observations.title": "Observaciones locales",
   "observations.accepted": "Última lectura del búfer",
   "observations.stale": "Se muestra la última lectura aceptada.",
-  "observations.empty.title": "No hay observaciones locales en esta lectura.",
+  "observations.empty.title": "No hay observaciones locales en esta lectura",
   "span.meta": "{{ms}} ms · {{kind}}",
   "span.status.error": "Error",
   "fact.started": "Inicio",

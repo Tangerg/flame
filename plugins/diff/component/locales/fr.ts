@@ -55,10 +55,10 @@ export const fr: Record<string, string> = {
   "files.match_many": "{{count}} fichiers sur {{total}} correspondent",
   "files.match_other": "{{count}} fichiers sur {{total}} correspondent",
   "stat.title": "Modifications de lignes dans les fichiers texte inclus",
-  "empty.title": "Aucune modification dans cette comparaison.",
+  "empty.title": "Aucune modification dans cette comparaison",
   "file.unchanged": "Aucune modification de ce fichier dans cette comparaison.",
   "file.overBudget": "Ce fichier ne tient pas dans la limite de cette lecture.",
-  "nomatch.title": "Aucun fichier correspondant.",
+  "nomatch.title": "Aucun fichier correspondant",
   "files.region": "Fichiers modifiés",
   "file.changes": "Modifications dans {{path}}",
   "file.renamed": "Renommé depuis",
@@ -83,5 +83,5 @@ export const fr: Record<string, string> = {
   "baseline.head": "HEAD",
   "baseline.mergeBase": "base de fusion",
   "budget.empty":
-    "Aucun fichier complet ne tient dans la limite de cette lecture.",
+    "Aucun fichier complet ne tient dans la limite de cette lecture",
 };

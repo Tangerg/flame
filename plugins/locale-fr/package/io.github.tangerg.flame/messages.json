@@ -20,7 +20,7 @@
   "packages.providers.title": "Sélection des fournisseurs",
   "packages.providers.refresh": "Actualiser les sélections",
   "packages.providers.future": "Les sélections concernent les prochaines activations. Les exécutions en cours conservent leurs liaisons.",
-  "packages.providers.none": "Aucun fournisseur sélectionné.",
+  "packages.providers.none": "Aucun fournisseur sélectionné",
   "packages.providers.unavailable": "Sélectionné mais indisponible : {{name}} · {{contribution}}",
   "packages.providers.unread": "Sélection non lue.",
   "packages.providers.stale": "Les dernières sélections lues sont affichées.",

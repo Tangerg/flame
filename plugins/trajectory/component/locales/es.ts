@@ -45,8 +45,8 @@ export const es: Record<string, string> = {
   attention_many: "{{count}} requieren atención",
   attention_other: "{{count}} requieren atención",
   "empty.filtered.title":
-    "Ningún registro de esta página coincide con este filtro.",
-  "empty.none.title": "No hay registros en esta página.",
+    "Ningún registro de esta página coincide con este filtro",
+  "empty.none.title": "No hay registros en esta página",
   "modelActivity.title": "Actividad del modelo",
   "fact.logicalModelCalls": "Llamadas lógicas de modelo",
   "fact.modelEndpoints": "Endpoints de modelo",

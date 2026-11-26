@@ -56,7 +56,7 @@ export const de: Record<string, string> = {
   "accounting.title": "Abrechnungsdetails",
   "accounting.note":
     "Token-Summen umfassen nur die gemeldete Nutzung. Unbekannte Ergebnisse und nicht gemeldete Nutzung können den Verbrauch erhöhen. Die Zwischensumme bekannter Preise umfasst nur Versuche mit Preis; die Gesamtkosten erfordern, dass jeder Versuch einen Preis hat. Gelöschte oder nie erfasste Aufrufe können nicht rekonstruiert werden. Null Tokens sind erfasste Werte. „Nicht gemeldet“ bedeutet, dass es für diese Summe oder Gruppe keinen vollständigen Preis gibt.",
-  "empty.title": "Keine behaltenen Modellversuche in diesem Zeitraum.",
+  "empty.title": "Keine behaltenen Modellversuche in diesem Zeitraum",
   "breakdown.title": "Nutzungsaufschlüsselung",
   "breakdown.group": "Erfasste Nutzung nach Quelle",
   "bucket.byOrigin.human": "Mensch",
@@ -80,6 +80,6 @@ export const de: Record<string, string> = {
   "fact.knownCost": "Bekannte Kosten (USD)",
   "fact.usagePerAttempts": "Nutzung / Versuche",
   "fact.pricedPerAttempts": "Mit Preis / Versuche",
-  "breakdown.empty.title": "Keine passenden Zeilen.",
+  "breakdown.empty.title": "Keine passenden Zeilen",
   "cost.notReported": "Nicht gemeldet",
 };

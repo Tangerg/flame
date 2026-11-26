@@ -109,7 +109,7 @@ export const es = {
   "history.title": "Resultados originales",
   "history.refresh": "Actualizar resultados",
   "history.reading": "Leyendo pruebas originales…",
-  "history.empty": "No hay órdenes registradas.",
+  "history.empty": "No hay órdenes registradas",
   "history.identity": "Identidad de orden",
   "history.method": "Operación",
   "history.time": "Fecha de admisión",

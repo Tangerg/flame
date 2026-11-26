@@ -109,7 +109,7 @@ export const en = {
   "history.title": "Original outcomes",
   "history.refresh": "Refresh outcomes",
   "history.reading": "Reading original evidence…",
-  "history.empty": "No commands have been recorded.",
+  "history.empty": "No commands have been recorded",
   "history.identity": "Command identity",
   "history.method": "Operation",
   "history.time": "Admitted at",
