@@ -252,7 +252,8 @@ unavailable during that read. If the read fails, the reader offers to retry the
 requested line range and keeps the previous page while it is cached. If a retry
 removes the focused action while that page stays visible, focus returns to the
 reader. An accepted page starts at its top, while a refresh retains that page's
-reading position.
+reading position. The earlier action stays above the scrollport and comes before
+it in keyboard order. The later action follows the source at the bottom.
 Source selection and copy refer only to the presented page. Partial pages stay
 in source mode, and the header shows their actual served line range. For a whole
 file the header shows its line count. The Source gutter numbers the served lines

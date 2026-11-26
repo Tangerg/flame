@@ -43,6 +43,7 @@ import {
 } from "@/features/workspace/ui/files/LocalFileFeedback";
 import {
   FileJumpStatus,
+  FilePageAction,
   FileReadingBody,
   GoToLine,
   useFileReaderInput,
@@ -411,6 +412,11 @@ export function FilePreview({
   });
 
   const readable = data !== undefined && !unsupported;
+  const failure = retained ? undefined : error;
+  const sourcePaging =
+    readable && !loading && failure == null && !showRendered
+      ? { ...paging, failed: pageError !== undefined }
+      : undefined;
 
   return (
     <WorkspaceViewLayout
@@ -419,26 +425,29 @@ export function FilePreview({
       scrollLabel={viewer.path}
       onScrollKeyDown={onKeyDown}
       onScrollCopy={onCopy}
-      notice={
-        <FileReadNotice
-          pagePending={pagePending}
-          feedback={
-            refreshFailed
-              ? {
-                  error,
-                  fetching: isFetching,
-                  pageErrorTitle: pageError?.title,
-                  jumpFailureTitle,
-                  icon,
-                  retryRef: readingControlRef,
-                  focusTarget: scrollPort,
-                  onRetry: refetch,
-                }
-              : undefined
-          }
-          fileActions={fileActions}
-          focusTarget={scrollPort}
-        />
+      beforeScroll={
+        <>
+          <FileReadNotice
+            pagePending={pagePending}
+            feedback={
+              refreshFailed
+                ? {
+                    error,
+                    fetching: isFetching,
+                    pageErrorTitle: pageError?.title,
+                    jumpFailureTitle,
+                    icon,
+                    retryRef: readingControlRef,
+                    focusTarget: scrollPort,
+                    onRetry: refetch,
+                  }
+                : undefined
+            }
+            fileActions={fileActions}
+            focusTarget={scrollPort}
+          />
+          <FilePageAction edge="earlier" paging={sourcePaging} />
+        </>
       }
       navigation={
         <BackButton
@@ -490,7 +499,7 @@ export function FilePreview({
         <DataView
           items={data ? [data] : []}
           isLoading={loading}
-          failure={retained ? undefined : error}
+          failure={failure}
           {...readRecovery({
             rejectedInitialLine,
             pageFailed: pageError !== undefined,
@@ -511,7 +520,7 @@ export function FilePreview({
               reader={reader}
               renderer={showRendered ? renderer : undefined}
               previewRef={readingControlRef}
-              paging={showRendered ? undefined : { ...paging, failed: pageError !== undefined }}
+              paging={sourcePaging}
             />
           )}
         </DataView>

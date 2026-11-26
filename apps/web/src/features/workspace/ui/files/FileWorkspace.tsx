@@ -139,7 +139,7 @@ function FileBrowser({
     <WorkspaceViewLayout
       scrollRef={scrollPort}
       scrollInset="flush"
-      notice={<LocalFileFeedback actions={fileActions} focusTarget={treeRef} />}
+      beforeScroll={<LocalFileFeedback actions={fileActions} focusTarget={treeRef} />}
     >
       {isWorkspaceResolving(workspace) ? (
         <SkeletonList count={8} label={t("common.loading")} />

@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { color, space, type as typeStep } from "@flame/ui/tokens.stylex";
+import { color, space, surface, type as typeStep } from "@flame/ui/tokens.stylex";
 import {
   useCallback,
   useId,
@@ -9,7 +9,6 @@ import {
   type ClipboardEventHandler,
   type FormEvent,
   type KeyboardEventHandler,
-  type MouseEvent,
   type Ref,
   type RefObject,
 } from "react";
@@ -43,6 +42,11 @@ function parseFileLineNumber(value: string): number | null {
 
 const styles = stylex.create({
   edge: { display: "flex", justifyContent: "center", paddingBlock: space.s1_5 },
+  earlierEdge: {
+    flexShrink: 0,
+    backgroundColor: surface.canvas,
+    backgroundImage: { default: null, ":is([data-paper-texture] *)": surface.texture },
+  },
   goto: {
     display: "flex",
     width: "220px",
@@ -57,27 +61,33 @@ const styles = stylex.create({
   preview: { display: "contents" },
 });
 
-function FileEdgeLoader({
-  pending,
-  disabled,
-  label,
-  onLoad,
+type SourcePaging = FileReadPaging & { failed: boolean };
+
+export function FilePageAction({
+  edge,
+  paging,
 }: {
-  pending: boolean;
-  disabled: boolean;
-  label: string;
-  onLoad: (event: MouseEvent<HTMLElement>) => void;
+  edge: "earlier" | "later";
+  paging: SourcePaging | undefined;
 }) {
   const t = useT();
+  if (!paging || paging[edge] <= 0) return null;
+  const earlier = edge === "earlier";
+  const requestedEdge = paging.fromEnd === earlier;
   return (
-    <div {...stylex.props(styles.edge)}>
-      {pending ? (
+    <div {...stylex.props(styles.edge, earlier && styles.earlierEdge)}>
+      {paging.pending && requestedEdge ? (
         <span aria-hidden="true" {...stylex.props(typeStep.uiMd, vocab.muted)}>
           {t("common.loading")}
         </span>
       ) : (
-        <TextButton tone="accent" size="sm" disabled={disabled} onClick={onLoad}>
-          {label}
+        <TextButton
+          tone="accent"
+          size="sm"
+          disabled={paging.unavailable || (paging.failed && requestedEdge)}
+          onClick={earlier ? paging.loadEarlier : paging.loadLater}
+        >
+          {t(earlier ? "file.loadEarlier" : "file.loadLater", { count: paging[edge] })}
         </TextButton>
       )}
     </div>
@@ -167,7 +177,6 @@ export function FileJumpStatus({
   );
 }
 
-// `fromEnd` names the edge whose page is pending or failed.
 export function FileReadingBody({
   file,
   path,
@@ -187,9 +196,8 @@ export function FileReadingBody({
   reader: Omit<ReturnType<typeof useFileReaderInput>, "onKeyDown" | "onCopy">;
   renderer: ReturnType<typeof fileRendererCandidates>[number] | undefined;
   previewRef: Ref<HTMLDivElement>;
-  paging: (FileReadPaging & { failed: boolean }) | undefined;
+  paging: SourcePaging | undefined;
 }) {
-  const t = useT();
   const titleFor = useRendererTitle();
   const recorded = (
     <FileView
@@ -207,14 +215,6 @@ export function FileReadingBody({
   const Renderer = renderer?.component;
   return (
     <div ref={displayed}>
-      {paging && paging.earlier > 0 && (
-        <FileEdgeLoader
-          pending={paging.pending && paging.fromEnd}
-          disabled={paging.unavailable || (paging.failed && paging.fromEnd)}
-          label={t("file.loadEarlier", { count: paging.earlier })}
-          onLoad={paging.loadEarlier}
-        />
-      )}
       {renderer && Renderer ? (
         <div ref={previewRef} {...stylex.props(styles.preview)}>
           <PluginBoundary
@@ -229,14 +229,7 @@ export function FileReadingBody({
       ) : (
         recorded
       )}
-      {paging && paging.later > 0 && (
-        <FileEdgeLoader
-          pending={paging.pending && !paging.fromEnd}
-          disabled={paging.unavailable || (paging.failed && !paging.fromEnd)}
-          label={t("file.loadLater", { count: paging.later })}
-          onLoad={paging.loadLater}
-        />
-      )}
+      <FilePageAction edge="later" paging={paging} />
     </div>
   );
 }

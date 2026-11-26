@@ -1307,9 +1307,83 @@ existing drain deadline. The owned app registration, processes,
 listeners, profile, captures, fixtures, logs, caches and checkout
 outputs are removed.
 
-The next review follows adjacent pages from their edge controls
-and checks the reading position when an earlier or later range
-takes over.
+[File continuation follows the reading order](#file-continuation-follows-the-reading-order-2026-11-27)
+checks the edge controls and the accepted page position.
+
+### File continuation follows the reading order (2026-11-27)
+
+Signed Wails at `ad12f75b7` and the isolated Runtime read the
+1,450-line fixture in a 1120 × 728 English/dark/18 px/Blue
+window with a 320 px Dock. Go to line 1,180 presents
+1,180–1,380. Earlier accepts 980–1,179 at the top and focuses
+the named reader. End moves 1,179 to y=657 and makes Show
+200 more lines visible at y=689. The first Tab instead reaches
+Show 200 earlier lines and scrolls 1,179 to y=4,188. The
+second Tab brings the end back into view.
+
+The earlier action now occupies one persistent row immediately
+above the named scrollport when that range has an earlier page.
+The later action follows the source in the scrollport. The
+natural keyboard order follows their visual order. FilePreview
+projects paging from the source that DataView can present and
+both edges use the same page action for counts, loading and
+failure. WorkspaceViewLayout exposes the existing position before
+the scrollport for feedback and the earlier action. Accepted
+pages begin at their first served line. This follows Better
+Accessibility's reading and focus order and ZCode's use of an
+owned reading viewport for source placement.
+
+- On `3be4b2551`, signed Wails with rebuilt Runtime
+  `2026-11-27.2` first shows 980 at y=208. End and one Tab
+  reach Show 200 more lines while 1,179 stays at y=657.
+  Shift+Tab reaches the same reader, then the visible earlier
+  action at y=162. Forward Tab resumes the reader and later
+  action at the same position. Enter accepts 1,180–1,379 from
+  line 1,180 at y=208. The persistent action uses part of the
+  reading height while the two edge controls are visible.
+- Temporarily moving the private file out of its workspace
+  rejects earlier reads for 500–699 and 520–719. The latter
+  retains 720–920 and shows Retry above the disabled earlier
+  action. Tab skips the disabled action into the reader. Retry
+  while the file is absent keeps the reader focused and reports
+  the same failed range. Restoring the fixture triggers a read
+  of the requested range, which recovers at line 520. The
+  first probe's extra Retry locator finds the action already
+  retired after the restore.
+- From 1,250–1,449 the visible continuation says Show 1 more
+  line and enters exactly 1,450. Tab from that last page goes
+  to Hide right workspace. Back focuses the original file.
+- In a 1280 × 800 Chinese/light/14 px/Flame window, End and
+  Tab leave line 619 at y=736 and focus 再显示 200 行. Mouse
+  activation accepts 620–819 at its start. Back restores the
+  file row and the Composer continues its draft `2468`.
+
+The ordinary signed rebuild after `f7775aa1d` repeats the
+English y=657 sequence, the same real missing-file recovery,
+and the single-line continuation under the updated RPC
+envelope entry. After `b92bd27ed`, direct Runtime calls
+serve the exact 980–1,179 and 1,180–1,379 windows with their
+boundary text intact. The past-EOF call returns its typed
+invalid-parameters reply.
+
+Web typecheck, 82 contract tests, bootstrap, scoped Prettier
+and diff checks pass under npm 11.21.1. Runtime packaging,
+production staging and signed builds pass. The complete
+private Session, draft and 51 file digests match. The provider
+serves 18 catalog reads and zero generations. Runtime records
+zero Runs. The native checks cover macOS Wails keyboard,
+pointer and accessibility state. VoiceOver and other
+platforms remain outside this review.
+
+All three Wails hosts exit normally. Their private Runtime
+processes reach the existing drain deadline. The Runtime used
+for direct RPC verification exits normally. The owned app
+registration, processes, listeners, profile, captures,
+fixtures, logs, caches and checkout outputs are removed.
+
+The next review follows a live transcript file reference into
+the reader and back, including an initial line past the end of
+the current file.
 
 ## Error notes leave retrying to their buttons (2026-11-26)
 
