@@ -1,6 +1,6 @@
 import { type Disposable } from "@/extensions/types/lifetime";
 import { safeCall } from "@/extensions/errors";
-import { service } from "dougong";
+import { disposeSymbol, service } from "dougong";
 
 type ConfigValue =
   string | number | boolean | null | ConfigValue[] | { [key: string]: ConfigValue };
@@ -46,7 +46,7 @@ export class Configuration implements ConfigService {
     subscribers.add(notify);
     const owned = subscribers;
     return {
-      [Symbol.dispose]: () => {
+      [disposeSymbol]: () => {
         owned.delete(notify);
         if (owned.size === 0 && this.#subscribers.get(key) === owned) {
           this.#subscribers.delete(key);

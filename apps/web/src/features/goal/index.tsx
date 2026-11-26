@@ -1,3 +1,4 @@
+import { disposeSymbol } from "dougong";
 import { GOAL_WORKFLOW, type WorkflowProviders } from "@/features/plugins/public/workflows";
 import { type AgentAccess } from "@/features/agent/public/agent";
 import { type ComposerAccess } from "@/features/composer/public/composer";
@@ -137,7 +138,7 @@ export function createGoalPlugin(
         const slash = ctx.contributions.add(SLASH_COMMAND, GOAL_SLASH_SPEC, {
           key: GOAL_SLASH_COMMAND,
         });
-        unregister = () => slash[Symbol.dispose]();
+        unregister = () => slash[disposeSymbol]();
       };
       ctx.lifetime.defer(providers.subscribe(refresh));
       refresh();
