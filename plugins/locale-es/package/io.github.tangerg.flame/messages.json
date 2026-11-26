@@ -887,7 +887,7 @@
   "dock.action.expand": "Abrir a ancho completo",
   "dock.action.openFull": "Abrir el material a ancho completo",
   "composer.add": "Añadir al mensaje",
-  "composer.add.file": "Citar un archivo",
+  "composer.add.file": "Referenciar un archivo",
   "composer.add.command": "Ejecutar un comando",
   "composer.add.command.startsMessage": "Un comando empieza un mensaje vacío.",
   "shortcuts.edit": "Cambiar",
