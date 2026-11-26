@@ -30,7 +30,7 @@ export const en: Record<string, string> = {
   "mcp.status.disconnected": "Disconnected",
   "mcp.status.connecting": "Connecting…",
   "mcp.status.failed": "Connection failed",
-  "mcp.status.needsAuth": "Sign in required",
+  "mcp.status.needsAuth": "Sign-in required",
   "mcp.form.name.aria": "Server name",
   "mcp.form.transport.aria": "Transport",
   "mcp.form.command.aria": "Command",
