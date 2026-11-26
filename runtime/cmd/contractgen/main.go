@@ -28,7 +28,7 @@ var (
 
 func main() {
 	out := flag.String("out", ".", "directory for generated artifacts; empty writes only requested projections")
-	validators := flag.String("validators", "", "directory the generated Go wire validator is written to; skipped when empty")
+	validator := flag.String("validator", "", "generated Go wire validator file")
 	ts := flag.String("ts", "", "directory the TypeScript protocol binding is written to; skipped when empty")
 	clientValues := flag.String("client-values", "", "file for consumer-neutral client scalar contracts; skipped when empty")
 	toolCategoryFixture := flag.String("tool-category-fixture", "", "file for the built-in tool categories used by client fixtures")
@@ -39,7 +39,7 @@ func main() {
 
 	err := writeGoBindings(*localBinding, *remoteBinding)
 	if err == nil {
-		err = run(*out, *validators, *ts, *sampleSource, *clientValues)
+		err = run(*out, *validator, *ts, *sampleSource, *clientValues)
 	}
 	if err == nil && *toolCategoryFixture != "" {
 		err = writeToolCategoryFixture(*toolCategoryFixture)
@@ -50,7 +50,7 @@ func main() {
 	}
 }
 
-func run(dir, validatorDir, tsDir, sampleDir, clientValuesFile string) error {
+func run(dir, validator, tsDir, sampleDir, clientValuesFile string) error {
 	if tsDir != "" && sampleDir == "" {
 		return fmt.Errorf("canonical sample directory is required with TypeScript output")
 	}
@@ -60,10 +60,9 @@ func run(dir, validatorDir, tsDir, sampleDir, clientValuesFile string) error {
 	if err != nil {
 		return err
 	}
-	if validatorDir != "" {
-		path := filepath.Join(validatorDir, validatorFile)
-		if err := os.WriteFile(path, []byte(newValidators(registry, shapes, walked)), filesystem.SharedFileMode); err != nil {
-			return fmt.Errorf("write %s: %w", path, err)
+	if validator != "" {
+		if err := os.WriteFile(validator, []byte(newValidators(registry, shapes, walked)), filesystem.SharedFileMode); err != nil {
+			return fmt.Errorf("write %s: %w", validator, err)
 		}
 	}
 	if dir != "" {

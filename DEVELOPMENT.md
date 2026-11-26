@@ -87,9 +87,9 @@ the frozen standard module artifacts described in
 Owner checks can be run directly, for example `go test ./runtime/...` or
 `npm run typecheck --workspace @flame/web`. Use `npm ci` only at the root, then
 `make setup`/`make generate` for prerequisites. Do not create package-local
-locks or install graphs. `make check-generated` rebuilds in a disposable source
-copy and detects added, deleted and changed generated files without rewriting
-the working tree. Component builds always include current icons, UI, SDK policy,
+locks or install graphs. `make check-generated` seeds a stale Go wire validator
+in a disposable source copy, reruns generation, and checks for added, deleted
+and changed outputs. Component builds always include current icons, UI, SDK policy,
 contracts and root lock; no incomplete timestamp cache is enabled.
 
 Only edit hand-authored sources. Registry-owned Go methods and metadata,

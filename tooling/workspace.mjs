@@ -17,6 +17,9 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { stageNode } from "./node-companion.mjs";
 
 export const root = fileURLToPath(new URL("../", import.meta.url));
+
+const wireValidator = "packages/go-sdk/protocol/wire_constraints.generated.go";
+
 export function run(
   command,
   args,
@@ -108,19 +111,22 @@ async function stampDeclarations(repository) {
     }
 }
 
-export async function generate(repository = root) {
-  run("node", ["plugins/scripts/generate-runtime-profile.mjs"], repository);
-  await buildShared(repository);
-  const { generatePresentation } = await import("./presentation.mjs");
-  await generatePresentation(repository);
-  const env = {
-    ...proxyEnvironment(join(root, "out/module-proxy")),
-    GOWORK: join(repository, "go.work"),
-  };
-  const go = (args, member = "") =>
-    run("go", args, join(repository, member), env);
+async function generateRuntimeContract(repository, env) {
   const temporary = await mkdtemp(join(tmpdir(), "flame-contract-source-"));
   try {
+    const validator = join(await realpath(repository), wireValidator);
+    const overlay = join(temporary, "sources.json");
+    // A deleted wire type can leave an invalid receiver in the previous output.
+    await writeFile(overlay, JSON.stringify({ Replace: { [validator]: "" } }));
+    const flags = run("go", ["env", "GOFLAGS"], repository, env, true)
+      .toString()
+      .trim();
+    const sourceEnvironment = {
+      ...env,
+      GOFLAGS: [flags, `"-overlay=${overlay}"`].filter(Boolean).join(" "),
+    };
+    const go = (args, member, capture = false) =>
+      run("go", args, join(repository, member), sourceEnvironment, capture);
     go(["generate", "./plugin/mcp"], "packages/go-sdk");
     go(
       [
@@ -137,13 +143,7 @@ export async function generate(repository = root) {
     const memory = join(temporary, "memory.json");
     await writeFile(
       memory,
-      run(
-        "go",
-        ["run", "./memory/contractgen"],
-        join(repository, "plugins"),
-        env,
-        true,
-      ),
+      go(["run", "./memory/contractgen"], "plugins", true),
     );
     go(
       [
@@ -161,16 +161,14 @@ export async function generate(repository = root) {
       ],
       "packages/go-sdk",
     );
-    run(
-      "go",
+    go(
       [
         "run",
         "./memory/backend/cmd/contracts",
         "--caller-go",
         "../packages/go-sdk/plugin/memory/caller_policy.generated.go",
       ],
-      join(repository, "plugins"),
-      env,
+      "plugins",
       true,
     );
     const plugins = join(repository, "plugins");
@@ -186,13 +184,7 @@ export async function generate(repository = root) {
       const descriptor = join(temporary, `${publisher.name}.json`);
       await writeFile(
         descriptor,
-        run(
-          "go",
-          ["run", `./${publisher.name}/contractgen`],
-          plugins,
-          env,
-          true,
-        ),
+        go(["run", `./${publisher.name}/contractgen`], "plugins", true),
       );
       go(
         [
@@ -226,8 +218,8 @@ export async function generate(repository = root) {
         "./cmd/contractgen",
         "--out",
         "contract",
-        "--validators",
-        "../packages/go-sdk/protocol",
+        "--validator",
+        validator,
         "--ts",
         "../packages/runtime-client",
         "--client-values",
@@ -243,72 +235,86 @@ export async function generate(repository = root) {
       ],
       "runtime",
     );
-    run(
-      "npm",
-      [
-        "exec",
-        "--",
-        "prettier",
-        "--write",
-        "src/foundation/protocolValues.generated.ts",
-      ],
-      join(repository, "apps/web"),
-      env,
-    );
-    go(["generate", "./..."], "plugins");
-    go(
-      [
-        "run",
-        "github.com/Tangerg/flame/packages/go-sdk/cmd/flame-sdk",
-        "feature",
-        "--feature",
-        "usagereports/contracts/capability.json",
-        "--out",
-        "usagereports/package/io.github.tangerg.flame/contracts",
-        "--ts",
-        "usagereports/component",
-      ],
-      "plugins",
-    );
-    go(["generate", "./internal/testsupport"], "runtime");
-    go(["generate", "./nodequalification", "./integration"], "tooling");
-    go(["generate", "./..."], "apps/cli");
-    go(["generate", "./..."], "examples/plugins/reviews/backend");
-    go(
-      [
-        "run",
-        "./cmd/bridgegen",
-        "--source",
-        ".",
-        "--receiver",
-        "DesktopHost",
-        "--out",
-        "../web/src/platform/desktop.generated.ts",
-        "--foundation",
-        "../../packages/component-sdk/src/notificationAuthorization.generated.ts",
-      ],
-      "apps/desktop",
-    );
-    go(
-      [
-        "run",
-        "./goapi",
-        "catalog",
-        "--repository",
-        repository,
-        "--out",
-        join(repository, "runtime/contract/go-api.json"),
-      ],
-      "tooling",
-    );
-    for (const p of ordered(await workspaces(repository)))
-      if (p.scripts?.generate)
-        run("npm", ["run", "generate"], p.directory, env);
-    await stampDeclarations(repository);
   } finally {
     await rm(temporary, { recursive: true, force: true });
   }
 }
+
+export async function generate(repository = root) {
+  run("node", ["plugins/scripts/generate-runtime-profile.mjs"], repository);
+  await buildShared(repository);
+  const { generatePresentation } = await import("./presentation.mjs");
+  await generatePresentation(repository);
+  const env = {
+    ...proxyEnvironment(join(root, "out/module-proxy")),
+    GOWORK: join(repository, "go.work"),
+  };
+  await generateRuntimeContract(repository, env);
+  const go = (args, member = "") =>
+    run("go", args, join(repository, member), env);
+  run(
+    "npm",
+    [
+      "exec",
+      "--",
+      "prettier",
+      "--write",
+      "src/foundation/protocolValues.generated.ts",
+    ],
+    join(repository, "apps/web"),
+    env,
+  );
+  go(["generate", "./..."], "plugins");
+  go(
+    [
+      "run",
+      "github.com/Tangerg/flame/packages/go-sdk/cmd/flame-sdk",
+      "feature",
+      "--feature",
+      "usagereports/contracts/capability.json",
+      "--out",
+      "usagereports/package/io.github.tangerg.flame/contracts",
+      "--ts",
+      "usagereports/component",
+    ],
+    "plugins",
+  );
+  go(["generate", "./internal/testsupport"], "runtime");
+  go(["generate", "./nodequalification", "./integration"], "tooling");
+  go(["generate", "./..."], "apps/cli");
+  go(["generate", "./..."], "examples/plugins/reviews/backend");
+  go(
+    [
+      "run",
+      "./cmd/bridgegen",
+      "--source",
+      ".",
+      "--receiver",
+      "DesktopHost",
+      "--out",
+      "../web/src/platform/desktop.generated.ts",
+      "--foundation",
+      "../../packages/component-sdk/src/notificationAuthorization.generated.ts",
+    ],
+    "apps/desktop",
+  );
+  go(
+    [
+      "run",
+      "./goapi",
+      "catalog",
+      "--repository",
+      repository,
+      "--out",
+      join(repository, "runtime/contract/go-api.json"),
+    ],
+    "tooling",
+  );
+  for (const p of ordered(await workspaces(repository)))
+    if (p.scripts?.generate) run("npm", ["run", "generate"], p.directory, env);
+  await stampDeclarations(repository);
+}
+
 export function goWorkspaceMembers(repository = root) {
   const env = { ...process.env, GOWORK: join(repository, "go.work") };
   return JSON.parse(
@@ -642,6 +648,10 @@ export async function checkGenerated() {
     await linkDependencies(scratch);
     run("git", ["init", "-q"], scratch);
     run("git", ["add", "--all"], scratch);
+    await writeFile(
+      join(scratch, wireValidator),
+      "package protocol\n\nfunc (RemovedWireType) validateWire() error { return nil }\n",
+    );
     await generate(scratch);
     const changed = [
       run("git", ["diff", "--name-status"], scratch, process.env, true)
