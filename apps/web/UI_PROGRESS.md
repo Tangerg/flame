@@ -816,7 +816,63 @@ existing drain deadline. App registration, processes, profiles,
 fixtures, screenshots, logs, caches and checkout outputs are removed.
 
 The panel and model catalogs also use Base UI inputs with local scrolling.
-The next batch checks their Enter behavior in an overflowing native list.
+[Catalog Enter](#catalog-enter-reveals-the-model-before-selection-2026-11-27)
+checks their behavior in an overflowing native list.
+
+### Catalog Enter reveals the model before selection (2026-11-27)
+
+The installed provider adapter discovers 32 models from a private loopback
+catalog through Runtime. In signed production Wails at `474717feb`,
+arrow navigation highlights `catalog-demo-02`. Wheel moves it from
+y=201 to y=-531, with `catalog-demo-32` visible at y=369.
+Return applies the hidden 02 preference and closes the selector.
+
+The search overlays and both catalog list forms use one input check
+against the live Base UI active descendant and each list's actual
+viewport. It keeps the visible-choice rule from the previous batch.
+The model selection still writes its exact preference and recent
+entry through ModelPicker's existing selection action.
+
+- In Chinese/light/14 px/Flame Orange at 1120 × 728, native wheel
+  again moves model 02 from y=201 to y=-531. The first fresh Return
+  reveals it at y=167 while the trigger still displays 01. Repeated
+  Return leaves the list open before and after reveal. Fresh Return
+  then chooses 02, returns to its trigger and preserves draft `2468`.
+- In English/dark/18 px/Blue (#0485F7) at 1280 × 800, type
+  `catalog` and use arrows to highlight model 30. Wheel moves it from
+  y=410 to y=1082. Return reveals it at y=414 while 02 stays selected
+  and the query is retained. Escape clears the query, then closes
+  back to the 02 trigger. A visible `24` result activates on the
+  first Return. Pointer entry to Recent shows exactly 24, 02 and 01
+  in that order.
+- In the inline Dock directory, focus Find a panel, type `files`,
+  and press Return to open Files and reach the real README row. Escape returns
+  to the same field and query. The first driver attempt assumed the
+  Dock toggle moved focus and typed into the private draft. Undo
+  restored `2468` before this field-focused check.
+- Commit a marked native command query with Space, then use Return
+  on Agent memory. Escape restores the draft's caret at two. This
+  verifies visible command activation after sharing the input rule.
+
+Web typecheck, 81 contract tests, 26 bundle tests, production bundle
+verification, bootstrap, scoped Prettier and diff checks pass. Setup,
+production staging, Runtime packaging and both signed Wails builds
+pass. Both native builds use private Runtime `2026-11-26.10`.
+The original Session matches its complete snapshot and records zero
+Runs. The loopback provider serves five catalog GET requests and
+zero generation requests. Native coverage includes macOS keyboard,
+pointer and accessibility inspection. VoiceOver, system IME candidate
+selection and other platforms are outside this check. The Dock list
+check exercises its visible activation and return.
+
+Both Wails hosts exit normally. The private Runtime reaches its existing
+drain deadline and the loopback provider stops. The app registration,
+processes, ports, profile, fixtures, captures, logs, caches and checkout
+outputs are removed.
+
+The single-provider model search shows the same provider caption on
+each result at 18 px. The next batch checks the space available to the
+model identity with long names and with multiple configured providers.
 
 ## Error notes leave retrying to their buttons (2026-11-26)
 

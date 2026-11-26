@@ -1,5 +1,13 @@
 import * as stylex from "@stylexjs/stylex";
-import { type ReactElement, type ReactNode, type Ref, useEffect, useRef, useState } from "react";
+import {
+  type ReactElement,
+  type ReactNode,
+  type Ref,
+  type RefObject,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { SearchField, ButtonPrimitive } from "@flame/ui";
 import { clsx } from "clsx";
 import { color, motion, radius, space, surface, type, weight } from "@flame/ui/tokens.stylex";
@@ -8,6 +16,7 @@ import { Icon } from "@/ui/icons/index";
 import { dress } from "@flame/ui/button";
 import { Popover } from "@flame/ui";
 import { floatingRow } from "@/ui/atoms/option-row";
+import { guardComboboxEnter } from "@/ui/atoms/combobox-enter";
 
 import { vocab } from "@flame/ui/vocabulary";
 const styles = stylex.create({
@@ -200,6 +209,7 @@ function CatalogSearch({
   onClear,
   ring,
   ref,
+  listRef,
 }: {
   placeholder: string;
   clearLabel: string;
@@ -207,10 +217,12 @@ function CatalogSearch({
   onClear: () => void;
   ring: boolean;
   ref?: Ref<HTMLInputElement>;
+  listRef: RefObject<HTMLDivElement | null>;
 }) {
   return (
     <ComboboxPrimitive.Input
       ref={ref}
+      onKeyDown={(event) => guardComboboxEnter(event, listRef.current)}
       render={
         <SearchField
           aria-label={placeholder}
@@ -279,6 +291,7 @@ export function CatalogList({
   searchRing?: boolean;
 }) {
   const [query, setQuery] = useState("");
+  const listRef = useRef<HTMLDivElement>(null);
   return (
     <ComboboxPrimitive.Root<CatalogPickerItem>
       items={groups}
@@ -296,6 +309,7 @@ export function CatalogList({
       <div {...stylex.props(styles.content)}>
         <CatalogSearch
           ref={inputRef}
+          listRef={listRef}
           placeholder={placeholder}
           clearLabel={clearLabel}
           value={query}
@@ -308,6 +322,7 @@ export function CatalogList({
           {emptyLabel}
         </ComboboxPrimitive.Empty>
         <ComboboxPrimitive.List
+          ref={listRef}
           aria-label={label}
           {...stylex.props(styles.emptyFlush, styles.list)}
         >
@@ -505,6 +520,7 @@ export function RailCatalogPicker({
               <div {...stylex.props(styles.railHead)}>
                 <CatalogSearch
                   ref={searchRef}
+                  listRef={listRef}
                   placeholder={placeholder}
                   clearLabel={clearLabel}
                   value={query}

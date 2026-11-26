@@ -1,13 +1,14 @@
 import * as stylex from "@stylexjs/stylex";
 import { type ReactElement, type ReactNode } from "react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { isConcealed, isImeKey } from "@flame/ui";
+import { isConcealed } from "@flame/ui";
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
 import { Autocomplete } from "@base-ui/react/autocomplete";
 import { Icon } from "@/ui/icons/index";
 import { MODAL_SCRIM, modalPanel } from "@flame/ui/floating-surface";
 import { color, edge, space, surface } from "@flame/ui/tokens.stylex";
 import { floatingRow } from "@/ui/atoms/option-row";
+import { guardComboboxEnter } from "@/ui/atoms/combobox-enter";
 import { TextField } from "@flame/ui/text-field";
 const styles = stylex.create({
   panel: {
@@ -198,21 +199,6 @@ type SearchOverlayContentProps = Omit<SearchOverlayProps, "onOpenChange" | "capt
   onChoose: (option: SearchOption) => void;
 };
 
-function revealOffscreenOption(input: HTMLInputElement, viewport: HTMLDivElement | null): boolean {
-  if (!viewport?.clientHeight) return false;
-  const id = input.getAttribute("aria-activedescendant");
-  const option = id ? input.ownerDocument.getElementById(id) : null;
-  if (!option || !viewport.contains(option)) return false;
-  const bounds = option.getBoundingClientRect();
-  const top = viewport.getBoundingClientRect().top + viewport.clientTop;
-  const bottom = top + viewport.clientHeight;
-  if (!bounds.height || (bounds.bottom > top && bounds.top < bottom)) return false;
-  const delta =
-    bounds.top < top ? bounds.top - top : Math.min(bounds.bottom - bottom, bounds.top - top);
-  viewport.scrollTo({ top: viewport.scrollTop + delta, behavior: "instant" });
-  return true;
-}
-
 function SearchOverlayContent({
   open,
   label,
@@ -245,28 +231,9 @@ function SearchOverlayContent({
             render={<TextField variant="bare" />}
             data-chrome-focus=""
             autoFocus={open}
-            onKeyDown={(event) => {
-              if (isImeKey(event.nativeEvent)) {
-                event.preventBaseUIHandler();
-                return;
-              }
-              if (
-                event.key !== "Enter" ||
-                event.defaultPrevented ||
-                !open ||
-                rows.length === 0 ||
-                event.ctrlKey ||
-                event.shiftKey ||
-                event.altKey ||
-                event.metaKey
-              )
-                return;
-              if (event.repeat || revealOffscreenOption(event.currentTarget, viewportRef.current)) {
-                event.preventBaseUIHandler();
-                event.preventDefault();
-                event.stopPropagation();
-              }
-            }}
+            onKeyDown={(event) =>
+              guardComboboxEnter(event, open && rows.length > 0 ? viewportRef.current : null)
+            }
             placeholder={placeholder}
             aria-label={placeholder}
             {...stylex.props(styles.input)}

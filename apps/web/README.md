@@ -1217,8 +1217,9 @@ focus isolation. A captured command is delivered once after Dialog completion;
 canceling, reopening or unmounting retires an undelivered command.
 Canceling from the Composer restores the original editing selection through
 Lexical after the same Dialog completion, while the source editor is current.
-When its highlighted choice has scrolled completely out of view, Enter reveals
-that choice in the results. A fresh Enter activates the visible choice.
+The search overlays and model and panel pickers reveal the highlighted choice
+on Enter if it has scrolled completely out of view. A fresh Enter activates the
+visible choice.
 
 Transcript viewports reveal returned keyboard/programmatic focus against the current
 Composer clearance after window or page-zoom changes. Pointer focus keeps its
