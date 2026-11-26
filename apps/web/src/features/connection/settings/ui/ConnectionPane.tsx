@@ -305,15 +305,11 @@ export function ConnectionPane() {
                 >
                   {t("settings.connection.clearToken")}
                 </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  disabled={tokenDraft === null}
-                  onClick={discardToken}
-                  styles={vocab.hold}
-                >
-                  {t("settings.connection.discardToken")}
-                </Button>
+                {tokenDraft !== null && (
+                  <Button type="button" variant="ghost" onClick={discardToken} styles={vocab.hold}>
+                    {t("settings.connection.discardToken")}
+                  </Button>
+                )}
               </>
             }
           >
