@@ -299,25 +299,14 @@ function MemoryToolbar({
     <Toolbar
       label={t("nav.label")}
       actions={
-        <>
-          <IconButton
-            icon={Refresh}
-            aria-label={t("refresh")}
-            size="md"
-            pending={loading}
-            disabled={noTarget || pending}
-            onClick={onRefresh}
-          />
-          <Button
-            variant={editing ? "outline" : "primary"}
-            size="md"
-            disabled={locked || noTarget || editing}
-            focusableWhenDisabled
-            onClick={(event) => onAdd(event.currentTarget)}
-          >
-            <Icon glyph={Plus} size="sm" /> {t("add")}
-          </Button>
-        </>
+        <IconButton
+          icon={Refresh}
+          aria-label={t("refresh")}
+          size="md"
+          pending={loading}
+          disabled={noTarget || pending}
+          onClick={onRefresh}
+        />
       }
     >
       <Hang>
@@ -332,6 +321,15 @@ function MemoryToolbar({
           disabled={locked || editing}
         />
       </Hang>
+      <Button
+        variant={editing ? "outline" : "primary"}
+        size="md"
+        disabled={locked || noTarget || editing}
+        focusableWhenDisabled
+        onClick={(event) => onAdd(event.currentTarget)}
+      >
+        <Icon glyph={Plus} size="sm" /> {t("add")}
+      </Button>
     </Toolbar>
   );
 }
