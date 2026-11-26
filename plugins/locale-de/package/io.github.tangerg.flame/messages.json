@@ -157,6 +157,7 @@
   "dock.action.resize": "Rechten Arbeitsbereich anpassen",
   "dock.action.show": "Rechten Arbeitsbereich einblenden",
   "dock.tabs.label": "Panels im rechten Arbeitsbereich",
+  "dock.tabs.close": "{{title}} schließen",
   "dock.tabs.closeAll": "Alle Panels schließen",
   "dock.tabs.closeOthers": "Andere Panels schließen",
   "dock.tabs.moveLeft": "Panel nach links verschieben",

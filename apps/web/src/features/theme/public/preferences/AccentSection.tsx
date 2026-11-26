@@ -1,5 +1,6 @@
 import { ButtonPrimitive } from "@flame/ui";
 import * as stylex from "@stylexjs/stylex";
+import { useId } from "react";
 import { useT } from "@/lib/i18n/index";
 import { ACCENT } from "@/features/theme/public/extensionPoints";
 import { useExtensionPoint } from "@/extensions/selectors/extensions";
@@ -109,10 +110,11 @@ export function AccentSection() {
   const selectedColor = accent.toLowerCase();
   const isSelected = (color: string) => color.toLowerCase() === selectedColor;
   const isCustom = !accents.some((a) => isSelected(a.color));
+  const labelId = useId();
 
   return (
-    <SettingRow label={t("settings.accent")}>
-      <div {...stylex.props(a.swatchRow)}>
+    <SettingRow label={t("settings.accent")} labelId={labelId}>
+      <div role="group" aria-labelledby={labelId} {...stylex.props(a.swatchRow)}>
         {accents.map((swatch) => {
           const fill = solidFill(swatch.color);
           const selected = isSelected(swatch.color);
@@ -121,8 +123,8 @@ export function AccentSection() {
               key={swatch.id}
               type="button"
               onClick={() => setAccent(swatch.color)}
-              title={`${t("settings.accent")}: ${t(swatch.label)}`}
-              aria-label={`${t("settings.accent")}: ${t(swatch.label)}`}
+              title={t(swatch.label)}
+              aria-label={t(swatch.label)}
               aria-pressed={selected}
               className={stylex.props(a.target, a.noPad, corner.pill).className}
             >

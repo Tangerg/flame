@@ -183,6 +183,7 @@ export const en = {
   "dock.action.resize": "Resize right workspace",
   "dock.action.show": "Show right workspace",
   "dock.tabs.label": "Right workspace panels",
+  "dock.tabs.close": "Close {{title}}",
   "dock.tabs.closeAll": "Close all panels",
   "dock.tabs.closeOthers": "Close other panels",
   "dock.tabs.moveLeft": "Move panel left",

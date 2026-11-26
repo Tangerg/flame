@@ -163,6 +163,7 @@
   "dock.action.resize": "調整右側工作區寬度",
   "dock.action.show": "顯示右側工作區",
   "dock.tabs.label": "右側工作區面板",
+  "dock.tabs.close": "關閉「{{title}}」",
   "dock.tabs.closeAll": "關閉全部面板",
   "dock.tabs.closeOthers": "關閉其他面板",
   "dock.tabs.moveLeft": "向左移動面板",

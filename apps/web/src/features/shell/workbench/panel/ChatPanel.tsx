@@ -130,7 +130,7 @@ function useDockTabs(
       badge: Badge ? <Badge /> : undefined,
       active: id === activeViewId,
       onClose: () => navigation.closeDockView(id),
-      closeLabel: `${t("common.close")} ${title}`,
+      closeLabel: t("dock.tabs.close", { title }),
       onCloseOthers: () => navigation.closeOtherDockViews(id),
       closeOthersLabel: t("dock.tabs.closeOthers"),
       onCloseAll: navigation.closeAllDockViews.bind(navigation),

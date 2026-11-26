@@ -157,6 +157,7 @@
   "dock.action.resize": "Redimensionner l’espace de droite",
   "dock.action.show": "Afficher l’espace de droite",
   "dock.tabs.label": "Panneaux de l’espace de droite",
+  "dock.tabs.close": "Fermer {{title}}",
   "dock.tabs.closeAll": "Fermer tous les panneaux",
   "dock.tabs.closeOthers": "Fermer les autres panneaux",
   "dock.tabs.moveLeft": "Déplacer le panneau à gauche",

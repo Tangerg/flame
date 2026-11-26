@@ -157,6 +157,7 @@
   "dock.action.resize": "Ajustar espacio derecho",
   "dock.action.show": "Mostrar espacio derecho",
   "dock.tabs.label": "Paneles del espacio derecho",
+  "dock.tabs.close": "Cerrar {{title}}",
   "dock.tabs.closeAll": "Cerrar todos los paneles",
   "dock.tabs.closeOthers": "Cerrar los demás paneles",
   "dock.tabs.moveLeft": "Mover panel a la izquierda",
