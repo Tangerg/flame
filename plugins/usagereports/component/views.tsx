@@ -26,19 +26,21 @@ import {
   PERIODS,
   lowerBound,
   observed,
-  reportTitle,
   type ArchiveRead,
   type Formatters,
   type Header,
   type OpenedReport,
   type Period,
+  type ReportTitleFor,
 } from "./model";
 import { type ReportArchive } from "./useReportArchive";
 
 export function ArchiveControls({
-  archive: { t, fmt, busy, action, refs, catalog, report, recovery },
+  archive: { t, busy, action, refs, catalog, report, recovery },
+  titleFor,
 }: {
   archive: ReportArchive;
+  titleFor: ReportTitleFor;
 }) {
   const opened = report.opened;
   const archive = catalog.read;
@@ -65,7 +67,7 @@ export function ArchiveControls({
           onClick={report.back}
         />
         <PanelTitle ref={heading} tabIndex={-1} size="sm" aria-level={2}>
-          {reportTitle(opened.header, t, fmt)}
+          {titleFor(opened.header)}
         </PanelTitle>
       </Toolbar>
     </>
@@ -147,8 +149,10 @@ export function PendingCommands({
 
 export function RemovalDialog({
   archive: { t, fmt, busy, action, refs, removal },
+  titleFor,
 }: {
   archive: ReportArchive;
+  titleFor: ReportTitleFor;
 }) {
   const removing = removal.target;
   if (!removing) return null;
@@ -157,7 +161,7 @@ export function RemovalDialog({
       open
       role="alertdialog"
       title={t("removal.title", {
-        title: reportTitle(removing, t, fmt),
+        title: titleFor(removing),
       })}
       description={t("removal.description")}
       closeLabel={t("removal.close")}
@@ -323,11 +327,13 @@ export function ArchiveCatalog({
   archive,
   t,
   fmt,
+  titleFor,
   onOpen,
 }: {
   archive: ArchiveRead;
   t: Translate;
   fmt: Formatters;
+  titleFor: ReportTitleFor;
   onOpen(header: Header, opener: HTMLElement): void;
 }) {
   const headers = archive.accepted;
@@ -363,10 +369,7 @@ export function ArchiveCatalog({
               onClick={(event) => onOpen(header, event.currentTarget)}
             >
               <RecordSummary
-                title={t("row.title", {
-                  period: t(`period.${header.period}.label`),
-                  observed: observed(header, fmt),
-                })}
+                title={titleFor(header, "row.title")}
                 description={t("row.description", {
                   since: lowerBound(header, t, fmt),
                 })}

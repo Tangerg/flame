@@ -44,9 +44,19 @@ read; unmounting or retirement of the captured component signal ends local
 observation. Accepted commands keep their original Runtime identity and recovery
 path.
 
+Escape inside an open report follows Back to archive, including the saved
+scroll position and the original row's focus. The deletion dialog and focused
+tooltips handle their own Escape first. The archive list follows the workspace
+return path.
+
 Action feedback uses the current display locale, including after settlement.
-Saved-report titles and observation times follow that locale; captured report
-identity and external error text remain unchanged.
+Saved-report titles normally display the capture minute in that locale. Reports
+of the same period with matching displayed minutes include seconds in their
+titles. If those times also match, the title includes the distinguishing
+report ID suffix, or the complete ID for matching suffixes. The archive,
+reader, deletion confirmation and saved feedback share the same title rule.
+Exact report identity shows the original ID and UTC bounds. Original error
+text appears as supplied.
 
 One archive action waits at a time. Only its initiating control names the
 waiting action and is busy; it keeps keyboard focus and refuses repeated

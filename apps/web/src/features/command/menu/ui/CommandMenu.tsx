@@ -1,5 +1,6 @@
 import { useWorkspace } from "@/features/workspace/public/workspace";
 import { useAgent } from "@/features/agent/public/agent";
+import { useComposer } from "@/features/composer/public/composer";
 import { iconGlyph } from "@/ui/icons/index";
 import * as stylex from "@stylexjs/stylex";
 import { useT, labelText, type Label } from "@/lib/i18n/index";
@@ -42,6 +43,7 @@ interface CommandChoice {
 export function CommandMenu() {
   const workspaceAccess = useWorkspace();
   const { getActiveSessionId } = useAgent();
+  const { captureEditorFocusReturn } = useComposer();
 
   const t = useT();
   const preparedActions = useCommandMenuStore((state) => state.preparedActions);
@@ -86,6 +88,7 @@ export function CommandMenu() {
     <SearchOverlay
       open={preparedActions !== null}
       onOpenChange={setOpen}
+      captureFocusReturn={captureEditorFocusReturn}
       label={t("command.openCommandMenu")}
       placeholder={t("commandMenu.placeholder")}
       empty={

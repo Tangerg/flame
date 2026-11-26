@@ -546,6 +546,334 @@ exit normally and the private Runtime drain reaches the existing
 deadline. The private app, processes, profile, Git fixture, logs,
 captures, caches and checkout build outputs are removed.
 
+### Saved reports identify captures in the same minute (2026-11-27)
+
+Signed production Wails at `b09f6eaf0` saves two Daily reports
+one second apart through the normal desktop action. The archive rows,
+including their accessible names and Starts times, are identical.
+Their detail titles also match. The actual Runtime returns a distinct
+ID and capture instant for each. Two additional Weekly captures in a
+single second exhibit the same ambiguity. The fifth report is the only
+Daily capture in its minute.
+
+The archive projects one display title from the accepted report headers,
+including a newly confirmed or currently opened report. It uses localized
+minute precision ordinarily and seconds for matching minutes in the same
+period. If the displayed seconds still match, titles use an ID suffix,
+with the complete ID available to distinguish repeated suffixes. The
+list, reader, deletion confirmation and saved feedback use this same rule.
+This keeps the earlier minute-scale typography for ordinary reports
+and applies Better Accessibility's requirement for distinct actionable names.
+
+- Stage the rebuilt Usage Reports package for the original private
+  installation. Runtime refuses live selection because the previous
+  release is in use. Restart only the private Runtime and select that
+  staged release. It serves the rebuilt component byte for byte and
+  returns all five original reports in their original publication order.
+- In Chinese/light/14 px/Flame Orange at 1120 × 728, the original
+  Daily captures read `02:19:08` and `02:19:09`. Both Weekly rows
+  read `02:20:04` with distinct ID suffixes. The singleton Daily
+  row reads `02:20`. Keyboard entry and the exact identity disclosure
+  identify the chosen Weekly report. Its deletion confirmation carries
+  the same title. Cancel returns to Delete saved report, and Back
+  focuses the exact archive row.
+- In English/dark/18 px/Blue (#0485F7) at 1280 × 800, Settings and
+  Cmd+W restore the same Weekly row with the localized title. Add eight
+  private reports and use Save in Wails to capture the next Weekly
+  report. The new report opens with seconds in its title. At 14
+  archived reports, wheel input brings the oldest original row from
+  y=1248 to y=691. Pointer entry reveals the same original ID. Back
+  focuses that row at y=690.
+
+The original five reports match their captured accounting payloads,
+timestamps and IDs after the nine additional captures. The Session
+records zero Runs. The fixture uses local accounting with empty model
+usage. VoiceOver and other platforms remain outside the check.
+Plugin typecheck, 44 script tests, 24 source tests, catalog and resource
+checks, Web typecheck and bootstrap, scoped Prettier, production staging,
+Runtime and portable package builds, signed Wails and diff checks pass.
+Seven plugin source tests are skipped. After fast-forwarding to
+`4ec08c967`, the rebuilt Runtime and signed Wails repeat the
+same-second Weekly read, exact identity and row return. The accepted
+resource and original reports still match. Web typecheck and bootstrap
+pass again. All three Wails instances exit normally. The isolated Runtime
+drains reach the existing deadline.
+The private app, processes, profile, fixture, candidate package, logs,
+captures, caches and checkout build outputs are removed.
+
+One Escape from Exact report identity leaves the entire archive for the
+Conversation. The [archive return repair](#escape-returns-from-a-report-to-its-archive-row-2026-11-27)
+qualifies that reading transition.
+
+### Escape returns from a report to its archive row (2026-11-27)
+
+In signed production Wails at `9df6081bd`, open the oldest Daily
+report in a private archive of 14 real reports. One Escape from
+Exact report identity closes the entire view and focuses the
+Composer. Skills and Diff already give the current detail its
+own Escape step.
+
+The saved report panel now handles an unclaimed Escape from its
+own detail by invoking the existing Back to archive action. That
+action aborts the report read and restores the captured row and
+scroll. The deletion dialog and focused Tooltip handle Escape
+first. The archive list keeps the workspace return path. This
+follows Better Accessibility and the existing workspace precedence
+for detail views and nested controls.
+
+- In Chinese/light/14 px/Flame Orange at 1120 × 728, native wheel
+  input brings the oldest Daily row from y=1044 to y=629. Pointer
+  entry exposes its original ID. Escape restores the focused row
+  at y=629. From the report's deletion confirmation, Escape first
+  returns to Delete saved report. The following Escape returns to
+  the archive. From Back to archive with its Tooltip visible, one
+  Escape closes the Tooltip and the next returns to the same row.
+- In English/dark/18 px/Blue (#0485F7) at 1280 × 800, hold only
+  the private Runtime just before opening a report. While
+  **Reading saved report…** is present, Escape restores its exact
+  row. The row retains focus when the real Runtime resumes.
+  Workspace Escape reaches the original Composer draft again.
+  Cmd+L continues it from `56825` to `568257`.
+- Stage and select the rebuilt package on the same private
+  installation across a Runtime restart. Runtime serves the
+  exact rebuilt component. All 14 original archive headers and
+  the inspected report's immutable ID and data still match.
+
+Plugin typecheck, 44 script tests, 24 source tests, catalog and
+resource verification, Web typecheck and bootstrap, scoped Prettier,
+production staging, Runtime and portable package builds, signed Wails
+and diff checks pass. Seven plugin source tests are skipped. Both
+native builds use Runtime `2026-11-26.10`. The private Session records
+zero Runs. VoiceOver and other platforms remain outside this check.
+Both Wails instances exit normally. The Runtime drains reach the
+existing deadline. The private app, processes, profile, fixtures,
+candidate package, logs, captures, caches and checkout outputs are
+removed.
+
+After workspace Escape returns native focus to the Composer, typing a
+digit leaves the draft unchanged until Cmd+L reactivates editing. The
+same behavior occurs in a separate return from Agent memory. The
+[Composer return](#composer-resumes-editing-after-workspace-returns-2026-11-27)
+fix follows that host path.
+
+### Composer resumes editing after workspace returns (2026-11-27)
+
+In signed production Wails at `35acaf744`, start with draft `2468`.
+Agent memory Escape returns its native text area and moves the caret
+from two to zero. Settings Cmd+W returns the same draft and moves the
+caret from one to zero. A digit leaves the draft unchanged on both paths.
+
+Workspace inspection and Settings return use the Composer's existing
+mounted-editor focus handoff from Find. The Composer enables Lexical
+during reveal layout and allows the native blur handoff before hiding
+disables editing. Lexical restores the last range for the same draft
+revision and surviving points. Ordinary Lexical focus supplies an
+editing selection when the saved range is unavailable. Workspace still
+owns when a return can take focus. This follows Better Accessibility's
+focus restoration guidance and the workspace's keyboard-anchor contract.
+
+- In Chinese/light/14 px/Flame Orange at 1120 × 728, Agent memory
+  Escape restores the caret at two and immediately inserts a digit,
+  producing `24568`. Settings Cmd+W restores the next caret at
+  three, and a direct key produces `245768`.
+- From a reverse selection of `57`, open the saved usage reports
+  archive. Native wheel input brings the oldest Daily row from
+  y=1044 to y=629. Pointer entry opens the report, and Escape restores
+  the same row at y=629. Pointer Back to conversation restores the
+  range starting at two with length two. Typing produces `24368`
+  and Cmd+Z restores `245768`.
+- With Settings open from the Composer, switch to English, dark,
+  18 px and Blue (#0485F7), and resize to 1280 × 800. Cmd+W
+  restores the exact caret and the next key produces `2457768`.
+  Native captures show the caret and accented input border in both
+  themes.
+- At the wider size Files can stay beside the conversation.
+  Returning from the inspected Dock restores typing at the prior
+  caret. Settings Cmd+W returns to the retained Back to files button.
+  When the original Dock header has retired, the Files region receives
+  focus. Cmd+L from the full-width Agent memory still resumes the
+  draft, and Find closes to the original caret and accepts its next
+  key there.
+
+Both native builds use private Runtime `2026-11-26.10`. All 14 report
+headers and the inspected Daily report's ID and data still match. The
+private Session records zero Runs. Native coverage uses macOS keyboard,
+pointer and accessibility inspection. VoiceOver, IME composition and
+other platforms are outside this check.
+
+Web typecheck, 81 contract tests, 58 Runtime HTTP tests, bootstrap,
+scoped Prettier and diff checks pass. The first full Web invocation used
+npm 11.19.1. The contract and Runtime projects pass again with the
+required npm 11.21.1, with the Runtime project using Go 1.27.4.
+Setup, production staging, the Runtime build and both signed Wails
+builds pass. Both Wails instances exit normally. The private Runtime
+reaches its existing drain deadline. The private app registration,
+processes, profiles, test fixtures, captures, logs, caches and checkout
+outputs are removed.
+
+Dismissing the command menu still moves an existing Composer caret
+to zero without opening a view. A native key then inserts at the
+start of the draft. [Search overlay cancellation](#canceled-search-overlays-restore-the-composer-selection-2026-11-27)
+follows the modal's independent focus return.
+
+### Canceled search overlays restore the Composer selection (2026-11-27)
+
+In signed production Wails at `eba920829`, start in draft `2468`
+with the caret at two. Command menu and Session search both return
+native focus on Escape and move the caret to zero. The next digits
+prepend `5` and `6` in their respective probes.
+
+The shared SearchOverlay captures the actual opener and an optional
+return action for each opening. Both feature consumers use the
+Composer's existing editor and input-scope guard. Base UI completes its
+modal isolation cleanup before the canceled overlay restores the
+selection. Delivery requires the same opening, a presented source and
+unclaimed focus. Base UI handles ordinary openers, and a chosen row
+delivers its captured action and source once. This follows Better
+Accessibility's modal return guidance. ZCode's Command Center shows
+the same keyboard-first entry from an active composer.
+
+- In Chinese/light/14 px/Flame Orange at 1120 × 728, Command menu
+  Escape returns the caret to two and typing produces `24568`. Start
+  with the reverse selection of `45`, open Session search, and wheel
+  its last row from y=823 to y=411. Click the backdrop. The original
+  range returns at one with length two. A key replaces it to produce
+  `2768`. Cmd+Z restores `24568`.
+- After switching to English/dark/18 px/Blue (#0485F7) and resizing
+  to 1280 × 800, cancel the menu with its shortcut and Session search
+  with Escape. Keys insert at the original carets, producing
+  `245168` and `2451668`. The sidebar Search sessions trigger also
+  regains its own focus after ordinary cancellation.
+- Native text keys filter the command menu to Agent memory. Return
+  opens and focuses that view, then its Escape returns to the original
+  Composer caret. Pointer and keyboard choices switch between
+  the source Session and a distinct destination. Their separate
+  drafts `2451668` and `98` remain available on return.
+
+Web typecheck, 81 contract tests, bootstrap, production bundle checks,
+scoped Prettier and diff checks pass. Setup, production staging,
+Runtime packaging and two signed Wails builds pass. Both builds use
+the same private Runtime `2026-11-26.10`. All 22 private Sessions
+retain their IDs, titles and workspace, and record zero Runs.
+VoiceOver, IME composition and other platforms are outside this
+macOS keyboard, pointer and accessibility check.
+
+Both Wails instances exit normally. The private Runtime reaches its
+existing drain deadline. The app registration, processes, profile,
+fixtures, screenshots, logs, caches and checkout outputs are removed.
+
+An independent scroll probe leaves the first Session search choice
+highlighted at y=-347 while the visible last row is at y=410.
+Return opens that offscreen first Session. [Search activation](#search-enter-reveals-an-offscreen-choice-before-activation-2026-11-27)
+now checks the visible target.
+
+### Search Enter reveals an offscreen choice before activation (2026-11-27)
+
+In signed production Wails at `c43ca65b5`, open Session search from
+an unsent draft. Native wheel moves the highlighted first option from
+y=139 to y=-273 and reveals the last option at y=411. One Return
+activates the still-highlighted first Session outside the visible list.
+
+The shared search input checks the current Base UI active descendant
+against its own results viewport on a plain Enter. A fully offscreen
+option receives an instant local scroll and retains the highlight.
+A fresh Enter on the visible row uses Base UI activation. Repeated
+Enter leaves the dialog ready for fresh confirmation. Base UI owns
+the active option and ordinary pointer and arrow navigation.
+This applies the visibility guidance from the
+[WAI-ARIA APG combobox example](https://www.w3.org/WAI/ARIA/apg/patterns/combobox/examples/combobox-autocomplete-list/)
+after deliberate wheel scrolling.
+
+- In Chinese/light/14 px/Flame Orange at 1120 × 728, wheel again
+  moves the first result from y=139 to y=-273. A repeat event leaves
+  it there. Fresh Return reveals that same row at y=133 without
+  navigation. A repeat and Shift+Return keep the same search open.
+  Fresh Return activates the visible first Session.
+- Escape after a reveal restores the original reversed one-character
+  draft selection. The next key produces `2458` from `2468`, and
+  Cmd+Z restores `2468`. Native wheel and pointer selection still
+  reach the visible last row and open its exact Session.
+- In English/dark/18 px/Blue (#0485F7) at 1280 × 800, arrows reach
+  View: Agent memory. Wheel takes it from y=411 to y=861 below the
+  list. Fresh Return reveals it at y=418, repeated Return keeps the
+  dialog open, and fresh Return opens Agent memory. Escape restores
+  the original caret and a key produces `24568`.
+- In Session search with the physical-key query `zzz` and no matches,
+  Return leaves the search open. With `rev` in Session search, opening
+  and canceling the command menu exposes the same query and highlight.
+  The following Escape restores the original editing caret.
+
+Web typecheck, 81 contract tests, bootstrap, scoped Prettier and
+diff checks pass. Setup, production staging, Runtime packaging and
+both signed Wails builds pass with the private Runtime
+`2026-11-26.10`. All 22 private Sessions retain their IDs, titles
+and workspace. They record zero Runs. Native verification uses macOS
+keyboard, pointer and accessibility inspection. VoiceOver, IME
+composition and other platforms are outside this check.
+
+Both Wails hosts exit normally. The private Runtime reaches its
+existing drain deadline. App registration, processes, profiles,
+fixtures, screenshots, logs, caches and checkout outputs are removed.
+
+The panel and model catalogs also use Base UI inputs with local scrolling.
+[Catalog Enter](#catalog-enter-reveals-the-model-before-selection-2026-11-27)
+checks their behavior in an overflowing native list.
+
+### Catalog Enter reveals the model before selection (2026-11-27)
+
+The installed provider adapter discovers 32 models from a private loopback
+catalog through Runtime. In signed production Wails at `474717feb`,
+arrow navigation highlights `catalog-demo-02`. Wheel moves it from
+y=201 to y=-531, with `catalog-demo-32` visible at y=369.
+Return applies the hidden 02 preference and closes the selector.
+
+The search overlays and both catalog list forms use one input check
+against the live Base UI active descendant and each list's actual
+viewport. It keeps the visible-choice rule from the previous batch.
+The model selection still writes its exact preference and recent
+entry through ModelPicker's existing selection action.
+
+- In Chinese/light/14 px/Flame Orange at 1120 × 728, native wheel
+  again moves model 02 from y=201 to y=-531. The first fresh Return
+  reveals it at y=167 while the trigger still displays 01. Repeated
+  Return leaves the list open before and after reveal. Fresh Return
+  then chooses 02, returns to its trigger and preserves draft `2468`.
+- In English/dark/18 px/Blue (#0485F7) at 1280 × 800, type
+  `catalog` and use arrows to highlight model 30. Wheel moves it from
+  y=410 to y=1082. Return reveals it at y=414 while 02 stays selected
+  and the query is retained. Escape clears the query, then closes
+  back to the 02 trigger. A visible `24` result activates on the
+  first Return. Pointer entry to Recent shows exactly 24, 02 and 01
+  in that order.
+- In the inline Dock directory, focus Find a panel, type `files`,
+  and press Return to open Files and reach the real README row. Escape returns
+  to the same field and query. The first driver attempt assumed the
+  Dock toggle moved focus and typed into the private draft. Undo
+  restored `2468` before this field-focused check.
+- Commit a marked native command query with Space, then use Return
+  on Agent memory. Escape restores the draft's caret at two. This
+  verifies visible command activation after sharing the input rule.
+
+Web typecheck, 81 contract tests, 26 bundle tests, production bundle
+verification, bootstrap, scoped Prettier and diff checks pass. Setup,
+production staging, Runtime packaging and both signed Wails builds
+pass. Both native builds use private Runtime `2026-11-26.10`.
+The original Session matches its complete snapshot and records zero
+Runs. The loopback provider serves five catalog GET requests and
+zero generation requests. Native coverage includes macOS keyboard,
+pointer and accessibility inspection. VoiceOver, system IME candidate
+selection and other platforms are outside this check. The Dock list
+check exercises its visible activation and return.
+
+Both Wails hosts exit normally. The private Runtime reaches its existing
+drain deadline and the loopback provider stops. The app registration,
+processes, ports, profile, fixtures, captures, logs, caches and checkout
+outputs are removed.
+
+The single-provider model search shows the same provider caption on
+each result at 18 px. The next batch checks the space available to the
+model identity with long names and with multiple configured providers.
+
 ## Error notes leave retrying to their buttons (2026-11-26)
 
 Five error notes ended by narrating the buttons beside them. The sidebar's folder error said `Check the Runtime connection, then retry.` above `Retry`. The shared data-view error said `… Check the connection and retry.`, and every caller offers Retry except provider selections, whose section has its own Refresh selections. The draft notices said `Keep this window open and retry, or copy drafts.` above `Retry` and `Copy draft text`. The startup failure said `Retry, or copy the diagnostics to report it.` above `Retry` and `Copy diagnostics`. Each now stops at what the buttons can't say:

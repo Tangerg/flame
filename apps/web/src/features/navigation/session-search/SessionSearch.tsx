@@ -1,4 +1,5 @@
 import { useAgent } from "@/features/agent/public/agent";
+import { useComposer } from "@/features/composer/public/composer";
 import { iconGlyph } from "@/ui/icons/index";
 import * as stylex from "@stylexjs/stylex";
 import { formatRelative } from "@/lib/i18n/relativeTime";
@@ -23,6 +24,7 @@ const cmd = stylex.create({
 
 export function SessionSearch() {
   const agentAccess = useAgent();
+  const { captureEditorFocusReturn } = useComposer();
 
   const t = useT();
   const open = useSessionSearchStore((state) => state.open);
@@ -33,6 +35,7 @@ export function SessionSearch() {
     <SearchOverlay
       open={open}
       onOpenChange={setOpen}
+      captureFocusReturn={captureEditorFocusReturn}
       label={t("sessionSearch.label")}
       placeholder={t("sessionSearch.placeholder")}
       feedback={

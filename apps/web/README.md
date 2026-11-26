@@ -1150,6 +1150,8 @@ Back restores the retained source and its trigger; selecting the current materia
 only closes the picker. Its delayed completion respects later outside focus.
 The conversation keeps its last reading width while a full-width view covers it.
 The split follows the measured panel width again as it returns.
+Returning from an inspection or Settings to the same mounted Composer restores
+its last valid draft selection through Lexical so typing can resume there.
 The picker lifetime follows the active Session, retiring both an open query and
 any closing selection when history restores another Session's material.
 Settings, unavailable views and the catalog retain their separate task headers.
@@ -1213,6 +1215,11 @@ Search overlays use inline Base UI Autocomplete for externally filtered choices,
 highlighting and activation. The surrounding Dialog alone owns dismissal and
 focus isolation. A captured command is delivered once after Dialog completion;
 canceling, reopening or unmounting retires an undelivered command.
+Canceling from the Composer restores the original editing selection through
+Lexical after the same Dialog completion, while the source editor is current.
+The search overlays and model and panel pickers reveal the highlighted choice
+on Enter if it has scrolled completely out of view. A fresh Enter activates the
+visible choice.
 
 Transcript viewports reveal returned keyboard/programmatic focus against the current
 Composer clearance after window or page-zoom changes. Pointer focus keeps its
