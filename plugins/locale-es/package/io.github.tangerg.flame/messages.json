@@ -39,7 +39,7 @@
   "packages.commands.checking": "Comprobando el comando original {{id}}…",
   "packages.commands.confirmed": "Resultado original confirmado: {{id}}",
   "packages.commands.refused": "Comando original rechazado: {{id}}",
-  "packages.commands.unknown": "El resultado original sigue siendo desconocido. Conserve el comando {{id}}.",
+  "packages.commands.unknown": "El resultado original sigue siendo desconocido. Conserva el comando {{id}}.",
   "packages.commands.failed": "No se pudo leer el resultado original.",
   "packages.points.title": "Puntos de extensión",
   "packages.points.inspect": "Inspeccionar valores",
