@@ -25,8 +25,8 @@ export const en: Record<string, string> = {
   "value.unrecorded": "Unrecorded",
   "value.unpriced": "Unpriced",
   "status.reading": "Reading recorded observations…",
-  "status.error": "The requested page could not be read: {{error}}",
-  "read.failed": "Recorded observations could not be read.",
+  "status.error": "The requested page couldn’t be read: {{error}}",
+  "read.failed": "Recorded observations couldn’t be read.",
   "summary.stale": "Showing the last accepted page.",
   "pages.label": "Trajectory pages",
   "pages.newer": "Newer records",
@@ -121,5 +121,5 @@ export const en: Record<string, string> = {
   "image.zoomIn": "Zoom in image",
   "image.zoomOut": "Zoom out image",
   "image.description": "Image description",
-  "image.unavailable": "This recorded image could not be displayed.",
+  "image.unavailable": "This recorded image couldn’t be displayed.",
 };

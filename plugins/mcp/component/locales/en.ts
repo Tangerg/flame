@@ -1,5 +1,5 @@
 export const en: Record<string, string> = {
-  "mcp.error.toolPolicy": "Could not update tool policy.",
+  "mcp.error.toolPolicy": "Couldn’t update tool policy.",
   "mcp.tools.policyHint":
     "Saved immediately. Tool visibility applies to new runs. Auto-approve sets a global allow rule; more specific rules still apply.",
   "mcp.tools.nameConflict":
@@ -22,7 +22,7 @@ export const en: Record<string, string> = {
   "mcp.signIn": "Sign in",
   "mcp.signingIn": "Signing in…",
   "mcp.signIn.unconfirmed":
-    "The previous sign-in result could not be confirmed after restart.",
+    "The previous sign-in result couldn’t be confirmed after restart.",
   "mcp.signIn.aria": "Sign in to {{server}}",
   "mcp.signingIn.aria": "Signing in to {{server}}…",
   "mcp.reconnect": "Reconnect",

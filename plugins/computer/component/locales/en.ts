@@ -4,7 +4,7 @@ export const en = {
   refresh: "Refresh status",
   reading: "Reading control status…",
   "read.failed":
-    "The current status could not be read. Retained information may be outdated.",
+    "The current status couldn’t be read. Retained information may be outdated.",
   "watch.failed":
     "Live observation stopped. Reconnect before starting more work.",
   "watch.reconnect": "Reconnect observation",
@@ -46,7 +46,7 @@ export const en = {
   "reason.expired": "Lease expired",
   "reason.shutdown": "Backend shut down",
   "reason.engine": "Engine failed",
-  "reason.cleanup": "Cleanup could not be confirmed",
+  "reason.cleanup": "Cleanup couldn’t be confirmed",
   "reason.startup": "Startup failed",
   "reason.canceled": "Opening was canceled",
   "operation.id": "Operation identity",
@@ -131,7 +131,7 @@ export const en = {
   "result.title": "Inspected original operation",
   "result.content": "Recorded content",
   "result.image": "Captured image {{number}}",
-  "result.imageUnavailable": "This recorded image could not be displayed.",
+  "result.imageUnavailable": "This recorded image couldn’t be displayed.",
   "image.view": "View image",
   "image.close": "Close image",
   "image.fit": "Fit image",

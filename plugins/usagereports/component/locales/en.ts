@@ -28,14 +28,14 @@ export const en: Record<string, string> = {
   "archive.count_one": "{{count}} of {{capacity}} saved",
   "archive.count_other": "{{count}} of {{capacity}} saved",
   "archive.reading": "Reading saved reports…",
-  "archive.error": "The archive could not be read: {{error}}.",
+  "archive.error": "The archive couldn’t be read: {{error}}.",
   "archive.error.retained":
-    "The archive could not be read: {{error}}. The last accepted archive remains shown.",
+    "The archive couldn’t be read: {{error}}. The last accepted archive remains shown.",
   "archive.empty.title": "No saved reports",
   "archive.list.label": "Saved reports",
   "removal.title": "Remove {{title}}?",
   "removal.description":
-    "Only this saved copy is removed. Core accounting evidence and totals are unchanged, and the copy cannot be restored.",
+    "Only this saved copy is removed. Core accounting evidence and totals are unchanged, and the copy can’t be restored.",
   "removal.close": "Close removal confirmation",
   "removal.cancel": "Cancel",
   "report.remove": "Remove saved report",
@@ -45,8 +45,8 @@ export const en: Record<string, string> = {
   "fact.lowerBound": "Starts",
   "report.reading": "Reading saved report…",
   "report.error.refresh":
-    "The saved report could not be refreshed: {{error}}. The last accepted report remains visible.",
-  "report.error.read": "The saved report could not be read: {{error}}.",
+    "The saved report couldn’t be refreshed: {{error}}. The last accepted report remains visible.",
+  "report.error.read": "The saved report couldn’t be read: {{error}}.",
   "report.totals.title": "Totals",
   "fact.attempts": "Model attempts",
   "fact.inputTokens": "Known input tokens",
@@ -73,10 +73,9 @@ export const en: Record<string, string> = {
   "message.unknown":
     "Confirmation is unknown. Check the original outcome before submitting another archive change.",
   "message.archiveFailed": "The archive change failed: {{error}}",
-  "message.captureRejected": "The capture could not be admitted: {{error}}",
-  "message.removalRejected": "The removal could not be admitted: {{error}}",
+  "message.captureRejected": "The capture couldn’t be admitted: {{error}}",
+  "message.removalRejected": "The removal couldn’t be admitted: {{error}}",
   "message.retired":
     "Original command retired. Any report already saved remains in the archive.",
-  "message.retireFailed":
-    "The original command could not be retired: {{error}}",
+  "message.retireFailed": "The original command couldn’t be retired: {{error}}",
 };

@@ -36,6 +36,6 @@ export const en: Record<string, string> = {
   "attributes.title": "Attributes",
   "raw.title": "Raw observation",
   "raw.label": "Local observation details",
-  "read.failed": "Local observations could not be read.",
-  "clear.failed": "Local observations could not be cleared.",
+  "read.failed": "Local observations couldn’t be read.",
+  "clear.failed": "Local observations couldn’t be cleared.",
 };

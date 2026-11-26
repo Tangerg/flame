@@ -14,9 +14,9 @@ export const en: Record<string, string> = {
   "status.disabled": "Disabled",
   refresh: "Refresh",
   reading: "Reading schedules…",
-  "read.error": "Schedules could not be read. Use Refresh to try again.",
+  "read.error": "Schedules couldn’t be read. Use Refresh to try again.",
   "read.errorRetained":
-    "Schedules could not be read. The last accepted page is retained. Use Refresh to try again.",
+    "Schedules couldn’t be read. The last accepted page is retained. Use Refresh to try again.",
   "live.error":
     "Live refresh is unavailable. Use Refresh to read the current schedules.",
   "command.status.label": "Schedule command status",
@@ -51,7 +51,7 @@ export const en: Record<string, string> = {
   "model.unavailable": "unavailable",
   "reasoning.default": "Provider default",
   "reasoning.unavailable": "{{effort}} (unavailable)",
-  "models.error": "Model choices could not be read: {{error}}",
+  "models.error": "Model choices couldn’t be read: {{error}}",
   "models.refresh": "Refresh model choices",
   "models.refreshing": "Refreshing model choices…",
   cancel: "Cancel",

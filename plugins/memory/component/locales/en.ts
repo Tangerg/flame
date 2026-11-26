@@ -85,9 +85,9 @@ export const en: Record<string, string> = {
   "feedback.original.label": "Original memory command",
   "feedback.original": "Original command: {{key}}",
   "feedback.check": "Check original result",
-  "error.read": "Memory could not be read.",
-  "error.observe": "Memory updates could not be observed.",
+  "error.read": "Memory couldn’t be read.",
+  "error.observe": "Memory updates couldn’t be observed.",
   "error.refused": "The request was refused.",
-  "error.submit": "The request could not be submitted.",
-  "error.check": "The original result could not be checked.",
+  "error.submit": "The request couldn’t be submitted.",
+  "error.check": "The original result couldn’t be checked.",
 };
