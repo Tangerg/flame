@@ -296,6 +296,7 @@
   "folder.row.missing": "文件夹在磁盘上已丢失",
   "workIndex.row.newSession": "在 {{name}} 中新建会话",
   "toolInspector.arguments": "参数",
+  "toolInspector.details": "工具详情",
   "toolInspector.result": "结果",
   "toolInspector.noResult": "（无结果内容——工具返回为空）",
   "runtime.unsupported.title": "当前 Runtime 不支持",

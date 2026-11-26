@@ -7,7 +7,8 @@ import { type ToolMetaItem } from "@/features/agent/public/messagePresentation";
 import { useT } from "@/lib/i18n/index";
 import { toolCardModel } from "@/features/chat/tools/application/toolCardModel";
 import { toolCallIconFor } from "@/features/agent/public/toolIcon";
-import { ToolPreview } from "@/features/chat/tools/ui/ToolPreview";
+import { InlineToolResult, ToolPreview } from "@/features/chat/tools/ui/ToolPreview";
+import { type ToolResultRendererSpec } from "@/features/chat/public/tools/types";
 import { ToolText } from "@/ui/agent/index";
 import { space, type as typeStep } from "@flame/ui/tokens.stylex";
 import { toolMetaInk } from "@/features/chat/tools/ui/toolMetaInk";
@@ -20,11 +21,13 @@ import {
 } from "@/features/chat/tools/ui/ToolRowParts";
 interface Props {
   tool: ToolCall;
+  inlineRenderer?: ToolResultRendererSpec;
   expanded: boolean;
   onExpandedChange: (expanded: boolean) => void;
 }
 
 const tc = stylex.create({
+  details: { marginBlockStart: space.s2 },
   full: { width: "100%" },
   meta: { fontVariantNumeric: "tabular-nums" },
   secondaryMeta: {
@@ -38,24 +41,33 @@ const tc = stylex.create({
   },
 });
 
-export function ToolCard({ tool, expanded, onExpandedChange }: Props) {
+export function ToolCard({ tool, inlineRenderer, expanded, onExpandedChange }: Props) {
   const t = useT();
   const model = toolCardModel(t, tool);
   const summaryId = useId();
   const { controls: actions, feedback } = useToolRowActions(tool, summaryId);
-  const stackDetail = expanded && model.disclosable && model.detail?.kind === "path";
+  const stackDetail =
+    !inlineRenderer && expanded && model.disclosable && model.detail?.kind === "path";
 
   return (
     <>
+      {inlineRenderer && <InlineToolResult tool={tool} renderer={inlineRenderer} />}
       <AgentActivityDisclosure
         data-tool={tool.name}
+        className={inlineRenderer ? stylex.props(tc.details).className : undefined}
         icon={toolCallIconFor(tool)}
         shell="line"
         summaryId={summaryId}
         contentInset="rows"
-        label={<ToolText value={model.intent.label} styles={tc.full} wrap={expanded} />}
+        label={
+          inlineRenderer ? (
+            t("toolInspector.details")
+          ) : (
+            <ToolText value={model.intent.label} styles={tc.full} wrap={expanded} />
+          )
+        }
         detail={
-          model.detail ? (
+          !inlineRenderer && model.detail ? (
             <ToolText value={model.detail} styles={tc.full} wrap={stackDetail} />
           ) : undefined
         }
@@ -74,7 +86,9 @@ export function ToolCard({ tool, expanded, onExpandedChange }: Props) {
         open={expanded}
         onOpenChange={onExpandedChange}
       >
-        {model.disclosable ? <ToolPreview tool={tool} /> : undefined}
+        {model.disclosable ? (
+          <ToolPreview tool={tool} raw={inlineRenderer !== undefined} />
+        ) : undefined}
       </AgentActivityDisclosure>
       <ToolFailureLine model={model} />
     </>

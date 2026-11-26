@@ -295,6 +295,7 @@
   "folder.row.missing": "Dossier absent du disque",
   "workIndex.row.newSession": "Nouvelle session dans {{name}}",
   "toolInspector.arguments": "Arguments",
+  "toolInspector.details": "Détails de l’outil",
   "toolInspector.result": "Résultat",
   "toolInspector.noResult": "(pas de corps de résultat — l’outil n’a rien renvoyé)",
   "runtime.unsupported.title": "Non pris en charge par ce Runtime",

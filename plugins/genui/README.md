@@ -26,6 +26,10 @@ captured contributions within the same capacity used to read history.
 No generated JavaScript, HTML, arbitrary component imports or renderer RPC is
 accepted.
 
+The package declares its exact presentation tool as an inline result. The
+workbench places the generated surface in the answer and keeps the recorded
+call and its arguments available in the tool disclosure.
+
 Editable controls bind under `/draft`. Subsequent recorded `updateDataModel`
 messages may write only under `/data/`. Operation results are published under
 `/data/operations/<operation id>`. Business identifiers and exact quantities use

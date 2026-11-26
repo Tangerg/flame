@@ -3,7 +3,10 @@ export {
   waveStepCount,
   waveToolCalls,
 } from "@/features/agent/presentation/messageRenderUnits";
-export type { MessageRenderUnit } from "@/features/agent/presentation/messageRenderUnits";
+export type {
+  MessageRenderUnit,
+  ToolResultPlacement,
+} from "@/features/agent/presentation/messageRenderUnits";
 export {
   summarizeActivity,
   toolActivityStatus,

@@ -291,6 +291,7 @@
   "folder.row.missing": "資料夾在磁碟上已遺失",
   "workIndex.row.newSession": "在 {{name}} 中新建工作階段",
   "toolInspector.arguments": "參數",
+  "toolInspector.details": "工具詳細資料",
   "toolInspector.result": "結果",
   "toolInspector.noResult": "（無結果內容——工具回傳為空）",
   "runtime.unsupported.title": "目前的 Runtime 不支援",

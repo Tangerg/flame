@@ -85,6 +85,7 @@ type storedComponent struct {
 	Contribution    plugin.ContributionID        `json:"contribution"`
 	Material        string                       `json:"material"`
 	SettingsIntent  string                       `json:"settingsIntent"`
+	InlineResult    bool                         `json:"inlineResult,omitzero"`
 }
 
 type storedRendererSelector struct {
@@ -310,7 +311,7 @@ func storeComponent(component plugin.ClientComponent) storedComponent {
 	stored := storedComponent{
 		ToolCategory: component.ToolCategory, TargetView: component.TargetView, ID: component.ID, Title: component.Title,
 		LocalizedTitles: component.LocalizedTitles, Scope: component.Scope, Placement: component.Placement, Entry: component.Entry,
-		Export: component.Export, Contribution: component.Contribution, Material: component.Material, SettingsIntent: component.SettingsIntent,
+		Export: component.Export, Contribution: component.Contribution, Material: component.Material, SettingsIntent: component.SettingsIntent, InlineResult: component.InlineResult,
 	}
 	if component.Selector != nil {
 		selector := storedRendererSelector(*component.Selector)
@@ -323,7 +324,7 @@ func (s storedComponent) component() plugin.ClientComponent {
 	component := plugin.ClientComponent{
 		ToolCategory: s.ToolCategory, TargetView: s.TargetView, ID: s.ID, Title: s.Title,
 		LocalizedTitles: s.LocalizedTitles, Scope: s.Scope, Placement: s.Placement, Entry: s.Entry,
-		Export: s.Export, Contribution: s.Contribution, Material: s.Material, SettingsIntent: s.SettingsIntent,
+		Export: s.Export, Contribution: s.Contribution, Material: s.Material, SettingsIntent: s.SettingsIntent, InlineResult: s.InlineResult,
 	}
 	if s.Selector != nil {
 		selector := plugin.RendererSelector(*s.Selector)

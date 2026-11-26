@@ -290,6 +290,7 @@
   "folder.row.missing": "Ordner auf der Festplatte fehlt",
   "workIndex.row.newSession": "Neue Sitzung in {{name}}",
   "toolInspector.arguments": "Argumente",
+  "toolInspector.details": "Werkzeugdetails",
   "toolInspector.result": "Ergebnis",
   "toolInspector.noResult": "(kein Ergebnistext — Tool lieferte nichts zurück)",
   "runtime.unsupported.title": "Von dieser Runtime nicht unterstützt",

@@ -26,6 +26,9 @@ func TestToolComponentUsesSelectedImmutableBytes(t *testing.T) {
 	webBrowse := false
 	shaped := false
 	for _, value := range installed.Selected.Components {
+		if value.InlineResult {
+			t.Fatalf("supporting tool result %q declared inline", value.ID)
+		}
 		if value.Selector != nil && value.Selector.Type == extension.RendererResultShape {
 			if value.Selector.Name != "" || !value.Selector.Shape.Valid() {
 				t.Fatalf("published result selector: %+v", value.Selector)
@@ -81,6 +84,37 @@ func TestToolComponentUsesSelectedImmutableBytes(t *testing.T) {
 	refused(wrong, protocol.ErrPluginStale)
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: false}, "disable-tool-component")
 	refused(request, protocol.ErrPluginDisabled)
+}
+
+func TestInlineToolResultPresentationSurvivesRestart(t *testing.T) {
+	cfg := poMCPConfig(t)
+	r := poMCPOpen(t, cfg)
+	source := filepath.Join(firstPartyPackages, "genui")
+	installed := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, "install-genui-component").(*protocol.PluginInstallation)
+
+	assertPresentation := func(release protocol.PluginRelease) {
+		t.Helper()
+		if len(release.Diagnostics) != 0 || len(release.Components) != 1 {
+			t.Fatalf("GenUI admission: %+v", release)
+		}
+		component := release.Components[0]
+		if !component.InlineResult || component.Selector == nil ||
+			component.Selector.Type != extension.RendererToolName || component.Selector.Name != "genui_ui_present" ||
+			component.Scope != extension.ComponentScopeToolResult || component.Placement != extension.ComponentPlacementToolResultRenderer {
+			t.Fatalf("GenUI presentation: %+v", component)
+		}
+	}
+	assertPresentation(installed.Selected)
+
+	r = reopenPluginRuntime(t, r, &cfg)
+	restored := r.must(delivery.PluginsList, struct{}{}, "").(*protocol.Page[protocol.PluginInstallation])
+	for _, candidate := range restored.Data {
+		if candidate.ID == installed.ID {
+			assertPresentation(candidate.Selected)
+			return
+		}
+	}
+	t.Fatalf("GenUI installation %q missing after restart", installed.ID)
 }
 
 func TestFileComponentUsesSelectedImmutableBytes(t *testing.T) {

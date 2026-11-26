@@ -218,15 +218,16 @@ available again.
 Conversation search covers message text, including text reached by
 scrolling and the full text of folded user messages. Activating a match opens a
 user message if its fold clips or fades the match. Matches in the clear preview
-leave the message folded. Find omits visually hidden accessibility text and
+leave the message folded. Find skips shared standalone action buttons and keeps
+visible disclosure summaries. It omits visually hidden accessibility text and
 hidden or inert disclosure content regardless of its mounting history. Closing a
 disclosure updates the count and retires its ranges. Search preserves the
 keyboard focus and disclosure owners.
 Find highlights the current match inside a rendered Mermaid diagram.
 Each line of a diagram label is searched independently.
 In prose, a run of collapsible spaces or tabs matches one space across inline
-formatting. Code and preserved whitespace match literally. Explicit breaks and
-block boundaries still split phrases.
+formatting. Code and preserved whitespace match literally. Explicit breaks,
+standalone action buttons and block boundaries split phrases.
 Find leaves keyboard focus inside a modal while it hides the transcript.
 Closing Find restores the original Composer's last editing selection when its
 mounted document is still current. The Composer owns that return through
@@ -1097,7 +1098,7 @@ Current activity, the captured error or cancellation reason, and unconfirmed
 effects appear at the start of a subagent transcript. The "No messages"
 placeholder appears when both captured messages and run details are absent.
 
-Conversation Find matches rendered text, so while Find is open the transcript
+Conversation Find matches rendered message text, so while Find is open the transcript
 reader renders every row and the first query already sees all of them. Legend
 keeps every container it has filled. After Find closes, the transcript starts a
 fresh windowed list as soon as focus is outside the reader. It retains the reading

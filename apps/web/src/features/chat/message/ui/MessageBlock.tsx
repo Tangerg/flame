@@ -30,6 +30,7 @@ import { useT, type MessageKey } from "@/lib/i18n/index";
 import { MESSAGE_CONTENT_CLASS } from "@/features/chat/message/ui/messageContent";
 import { MessageContextMenu } from "@/features/chat/message/ui/MessageContextMenu";
 import { renderBlock, renderMessageBlocks } from "@/features/chat/message/ui/BlockRenderer";
+import { type StandaloneToolResultFor } from "@/features/chat/public/tools/rendering";
 import {
   MessageVisibleMaterialOwner,
   MessageVisibleMaterialProvider,
@@ -219,6 +220,7 @@ function MessageBlockInner({
   sessionId,
   isLast,
   isRunning,
+  standaloneToolResult,
   answerFollows = false,
   terminalFooter,
 }: {
@@ -227,6 +229,7 @@ function MessageBlockInner({
   sessionId: string;
   isLast: boolean;
   isRunning: boolean;
+  standaloneToolResult: StandaloneToolResultFor;
   answerFollows?: boolean;
   terminalFooter?: ReactNode;
 }) {
@@ -292,7 +295,7 @@ function MessageBlockInner({
     );
   }
 
-  const content = renderMessageBlocks(row, ctx, answerFollows);
+  const content = renderMessageBlocks(row, ctx, standaloneToolResult, answerFollows);
 
   const roleLabel = t(isUser ? "role.user" : "role.assistant");
 

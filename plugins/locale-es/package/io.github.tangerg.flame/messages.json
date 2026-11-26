@@ -295,6 +295,7 @@
   "folder.row.missing": "Falta la carpeta en el disco",
   "workIndex.row.newSession": "Nueva sesión en {{name}}",
   "toolInspector.arguments": "Argumentos",
+  "toolInspector.details": "Detalles de la herramienta",
   "toolInspector.result": "Resultado",
   "toolInspector.noResult": "(sin cuerpo de resultado — la herramienta no devolvió nada)",
   "runtime.unsupported.title": "No compatible con este Runtime",

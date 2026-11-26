@@ -156,7 +156,7 @@ func presentClientComponent(value plugin.ClientComponent) protocol.PluginClientC
 	if value.Selector != nil {
 		selector = &protocol.PluginRendererSelector{Type: value.Selector.Kind, Name: value.Selector.Name, Shape: value.Selector.Shape}
 	}
-	return protocol.PluginClientComponent{Selector: selector, ID: value.ID.String(), Title: value.Title, LocalizedTitles: value.LocalizedTitles, ToolCategory: value.ToolCategory, TargetView: value.TargetView, Scope: value.Scope, Placement: value.Placement, Entry: value.Entry, Export: value.Export, Contribution: value.Contribution.String(), Material: value.Material, SettingsIntent: value.SettingsIntent}
+	return protocol.PluginClientComponent{Selector: selector, ID: value.ID.String(), Title: value.Title, LocalizedTitles: value.LocalizedTitles, ToolCategory: value.ToolCategory, TargetView: value.TargetView, Scope: value.Scope, Placement: value.Placement, Entry: value.Entry, Export: value.Export, Contribution: value.Contribution.String(), Material: value.Material, SettingsIntent: value.SettingsIntent, InlineResult: value.InlineResult}
 }
 
 func presentContribution(value plugin.Contribution) protocol.PluginContribution {
