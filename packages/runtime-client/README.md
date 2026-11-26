@@ -61,6 +61,7 @@ Consumers use explicit public entries: the main API, `wire`, `methods`,
 are not exports. `testing` supplies the deliberate memory-transport
 fixture and sample index. Its raw sample JSON is an exact generated copy of
 `runtime/contract/samples`; edit canonical samples at that Runtime owner.
+Their protocol version is supplied by contract generation.
 
 `workspace.diff.get` returns a discriminated read projection. Browser review
 requests `format: "visual"` and accepts `baseline` plus `visual.patch`,

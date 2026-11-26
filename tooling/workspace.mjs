@@ -652,6 +652,18 @@ export async function checkGenerated() {
       join(scratch, wireValidator),
       "package protocol\n\nfunc (RemovedWireType) validateWire() error { return nil }\n",
     );
+    const discoverySample = join(
+      scratch,
+      "runtime/contract/samples/method.discover.resp.json",
+    );
+    const discovery = await readFile(discoverySample, "utf8");
+    await writeFile(
+      discoverySample,
+      discovery.replace(
+        /("protocolVersion"\s*:\s*)"[^"]*"/,
+        '$1"stale-sample-version"',
+      ),
+    );
     await generate(scratch);
     const changed = [
       run("git", ["diff", "--name-status"], scratch, process.env, true)

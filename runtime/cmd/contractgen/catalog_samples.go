@@ -7,8 +7,8 @@ import (
 )
 
 // Samples stay hand-written so a generator defect cannot produce both an invalid
-// shape and a matching fixture; they live in non-test code because the artifact
-// pipeline reads them.
+// shape and a matching fixture. Only the protocol version is a projection of
+// the same version served by Runtime.
 
 type contractSample struct {
 	File string

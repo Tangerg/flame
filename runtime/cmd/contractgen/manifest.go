@@ -185,7 +185,7 @@ func build(walked *schemaSet) (manifest, error) {
 		Notifications:       notificationNames(shapes),
 		StreamingMethods:    registry.StreamMethods(),
 		HTTPEndpoints:       httpEndpoints(walked),
-		Errors:              errors(registry),
+		Errors:              manifestErrors(registry),
 		CapabilityPolicy:    capabilities(registry),
 		RunEventPolicy:      runEvents(shapes),
 		RuntimeTopics:       topics(shapes),
@@ -257,7 +257,7 @@ func methods(registry *delivery.Registry) ([]methodEntry, error) {
 	return out, nil
 }
 
-func errors(registry *delivery.Registry) errorRegistry {
+func manifestErrors(registry *delivery.Registry) errorRegistry {
 	codes := dispatch.ProblemCodes()
 	return errorRegistry{
 		Types:    errorTypes(registry, codes),
@@ -476,7 +476,7 @@ func methodNames(names []delivery.Name) []string {
 
 func problemCodes(registry *delivery.Registry) map[string]int {
 	out := make(map[string]int)
-	for _, entry := range errors(registry).Types {
+	for _, entry := range manifestErrors(registry).Types {
 		out[entry.Type] = entry.Code
 	}
 	return out

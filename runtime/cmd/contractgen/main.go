@@ -5,7 +5,6 @@ import (
 	json "encoding/json/v2"
 	"flag"
 	"fmt"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -34,7 +33,7 @@ func main() {
 	toolCategoryFixture := flag.String("tool-category-fixture", "", "file for the built-in tool categories used by client fixtures")
 	localBinding := flag.String("go-local", "", "local typed Go binding output directory")
 	remoteBinding := flag.String("go-client", "", "remote typed Go client output directory")
-	sampleSource := flag.String("samples", "", "directory of canonical Runtime JSON samples; required with -ts")
+	sampleSource := flag.String("samples", "", "directory of canonical Runtime JSON samples to refresh and copy; required with -ts")
 	flag.Parse()
 
 	err := writeGoBindings(*localBinding, *remoteBinding)
@@ -141,37 +140,7 @@ func writeTypeScriptBinding(tsDir, sampleDir string, registry *delivery.Registry
 			return fmt.Errorf("write %s: %w", path, err)
 		}
 	}
-	return writeSamples(os.DirFS(sampleDir), filepath.Join(testing, samplesDirectory))
-}
-
-func writeSamples(source fs.FS, directory string) error {
-	files, err := fs.Glob(source, "*.json")
-	if err != nil {
-		return err
-	}
-	retained := make(map[string]bool, len(files))
-	for _, name := range files {
-		encoded, err := fs.ReadFile(source, name)
-		if err != nil {
-			return err
-		}
-		if err := os.WriteFile(filepath.Join(directory, name), encoded, filesystem.SharedFileMode); err != nil {
-			return err
-		}
-		retained[name] = true
-	}
-	previous, err := filepath.Glob(filepath.Join(directory, "*.json"))
-	if err != nil {
-		return err
-	}
-	for _, path := range previous {
-		if !retained[filepath.Base(path)] {
-			if err := os.Remove(path); err != nil {
-				return err
-			}
-		}
-	}
-	return nil
+	return writeSamples(sampleDir, filepath.Join(testing, samplesDirectory))
 }
 
 func writeJSON(path string, content any) error {

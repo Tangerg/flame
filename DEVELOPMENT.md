@@ -88,14 +88,16 @@ Owner checks can be run directly, for example `go test ./runtime/...` or
 `npm run typecheck --workspace @flame/web`. Use `npm ci` only at the root, then
 `make setup`/`make generate` for prerequisites. Do not create package-local
 locks or install graphs. `make check-generated` seeds a stale Go wire validator
-in a disposable source copy, reruns generation, and checks for added, deleted
-and changed outputs. Component builds always include current icons, UI, SDK policy,
-contracts and root lock; no incomplete timestamp cache is enabled.
+and discovery sample version in a disposable copy. It reruns generation and
+checks for added, deleted and changed outputs. Component builds always include
+the current icons, UI, SDK policy, contracts and root lock.
 
 Only edit hand-authored sources. Registry-owned Go methods and metadata,
 Runtime wire/schema/methods, SDK sample copies, plugin contracts and installed
 component ESM are generated projections. Runtime owns the raw canonical JSON
 samples in `runtime/contract/samples`.
+Generation refreshes the version in samples that carry it from
+`protocol.Version` before publishing the SDK copies.
 
 Run `go mod tidy` for dependency changes and inspect every manifest/checksum
 diff. Run `git diff --check`. Do not change global Go/npm configuration.
