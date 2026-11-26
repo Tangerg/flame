@@ -37,7 +37,10 @@ const unavailableIsolationProfile = `(version 1)(allow default)(deny file-read-m
 
 // One fixture per suite file: a runner, a Runtime and a scripted provider that
 // live for the whole file, with live accessors for state tests replace.
-export function useRuntimeFixture(suite: string, { isolationUnavailable = false } = {}) {
+export function useRuntimeFixture(
+  suite: string,
+  { isolationUnavailable: defaultIsolationUnavailable = false } = {},
+) {
   const environmentRoot = inject("runtimeHttpEnvironmentRoot");
   // Each suite owns a fresh Runtime, so its workspace and durable state start
   // empty; they stay out of the shared distribution beside the executables.
@@ -227,7 +230,10 @@ export function useRuntimeFixture(suite: string, { isolationUnavailable = false 
     processRunner = undefined;
   };
 
-  const startRuntimeProcess = async (readyBefore = Date.now() + processStartupMilliseconds) => {
+  const startRuntimeProcess = async ({
+    readyBefore = Date.now() + processStartupMilliseconds,
+    isolationUnavailable = defaultIsolationUnavailable,
+  } = {}) => {
     processOutput = "";
     baseUrl = "";
     const restricted = isolationUnavailable && process.platform === "darwin";
@@ -383,7 +389,7 @@ export function useRuntimeFixture(suite: string, { isolationUnavailable = false 
     providerBaseUrl = provider.baseUrl;
 
     await startRunnerProcess(readyBefore);
-    await startRuntimeProcess(readyBefore);
+    await startRuntimeProcess({ readyBefore });
     client = createRuntimeClient();
     negotiated = (await client.runtime.discover()).capabilities;
     for (const feature of ["memory", "schedules"] as const)

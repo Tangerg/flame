@@ -1,7 +1,12 @@
 import { mkdir, realpath } from "node:fs/promises";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { asSessionId, createFlameClient, createHttpTransport } from "@flame/runtime-client";
+import {
+  asSessionId,
+  createFlameClient,
+  createHttpTransport,
+  RpcConnectionError,
+} from "@flame/runtime-client";
 import { HTTP_HEADERS, RPC_HTTP } from "@flame/runtime-client/wire";
 import { useRuntimeFixture } from "./fixture";
 import { faultUnaryResponse } from "./transportFaults";
@@ -43,8 +48,10 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: capability conditions", () => 
     await expect(denied.json()).resolves.toMatchObject({
       error: {
         data: {
-          type: "capability_not_negotiated",
-          requiredCapabilities: [{ type: "feature", name: "isolation" }],
+          problem: {
+            type: "capability_not_negotiated",
+            requiredCapabilities: [{ type: "feature", name: "isolation" }],
+          },
         },
       },
     });
@@ -117,10 +124,117 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: capability conditions", () => 
     await expect(withDescendants.json()).resolves.toMatchObject({
       error: {
         data: {
-          type: "capability_not_negotiated",
-          requiredCapabilities: [{ type: "feature", name: "childRuns" }],
+          problem: {
+            type: "capability_not_negotiated",
+            requiredCapabilities: [{ type: "feature", name: "childRuns" }],
+          },
         },
       },
     });
   });
+
+  it("settles a previously dispatched command using its recorded refusal", async () => {
+    const created = await fixture.client.sessions.create({ title: "Initial revision" });
+    const sessionId = asSessionId(created.id);
+    const edited = await fixture.client.sessions.update({
+      sessionId,
+      expectedRevision: created.revision,
+      title: "Latest revision",
+    });
+    const loss = faultUnaryResponse("sessions.update", "afterCommit");
+    const client = fixture.createRuntimeClient(loss.fetch);
+    try {
+      await expect(
+        client.sessions.update({
+          sessionId,
+          expectedRevision: created.revision,
+          title: "Stale edit",
+        }),
+      ).rejects.toMatchObject({
+        name: "RpcError",
+        data: { type: "revision_conflict" },
+        recordedOutcome: true,
+      });
+      expect(loss.attempts()).toBe(2);
+      await expect(fixture.client.sessions.get(sessionId)).resolves.toEqual(edited);
+    } finally {
+      await client.close();
+    }
+  });
+});
+
+describe.skipIf(process.platform !== "darwin")("Runtime replay after capability loss", () => {
+  const fixture = useRuntimeFixture("capability-replay");
+
+  const restartRuntime = async (isolationUnavailable: boolean) => {
+    await fixture.client.close();
+    await fixture.stopRuntimeProcess();
+    await fixture.startRuntimeProcess({ isolationUnavailable });
+    fixture.client = fixture.createRuntimeClient();
+    fixture.negotiated = (await fixture.client.runtime.discover()).capabilities;
+  };
+
+  it("retains the original command when Runtime refuses a replay before checking its receipt", async () => {
+    expect(fixture.negotiated?.features.isolation?.enabled).toBe(true);
+    const created = await fixture.client.sessions.create({ title: "Before capability loss" });
+    const sessionId = asSessionId(created.id);
+    const params = {
+      sessionId,
+      expectedRevision: created.revision,
+      title: "Committed before capability loss",
+      isolated: false,
+    };
+    const entries = new Map<string, unknown>();
+    const mutationStorage = {
+      get: (key: string) => structuredClone(entries.get(key)),
+      set: (key: string, value: unknown) => void entries.set(key, structuredClone(value)),
+      remove: (key: string) => void entries.delete(key),
+      keys: () => [...entries.keys()],
+    };
+    const openClient = (fetch?: typeof globalThis.fetch) =>
+      createFlameClient(createHttpTransport({ baseUrl: fixture.baseUrl, fetch }), {
+        capabilities: () => fixture.negotiated,
+        mutationStorage,
+      });
+    const first = openClient(async (...args) => {
+      const response = await fetch(...args);
+      await response.arrayBuffer();
+      throw new Error("connection lost after receiving the Runtime response");
+    });
+    const original = first.sessions.update(params);
+    try {
+      await expect(original).rejects.toBeInstanceOf(RpcConnectionError);
+      expect(entries.size).toBe(1);
+    } finally {
+      await first.close();
+    }
+    const committed = await fixture.client.sessions.get(sessionId);
+    expect(committed).toMatchObject({ title: params.title, revision: created.revision + 1 });
+
+    await restartRuntime(true);
+    expect(fixture.negotiated?.features.isolation?.enabled).toBe(false);
+    const restricted = openClient();
+    try {
+      const replay = restricted.sessions.update(params);
+      expect(replay.idempotencyKey).toBe(original.idempotencyKey);
+      await expect(replay).rejects.toMatchObject({
+        name: "MutationLookupError",
+        cause: { data: { type: "capability_not_negotiated" }, recordedOutcome: false },
+      });
+      expect(entries.size).toBe(1);
+    } finally {
+      await restricted.close();
+    }
+
+    await restartRuntime(false);
+    const restored = openClient();
+    try {
+      const replay = restored.sessions.update(params);
+      expect(replay.idempotencyKey).toBe(original.idempotencyKey);
+      await expect(replay).resolves.toEqual(committed);
+      expect(entries.size).toBe(0);
+    } finally {
+      await restored.close();
+    }
+  }, 30_000);
 });

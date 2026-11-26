@@ -54,6 +54,8 @@ export interface MutationJournalScope {
   retentionSeconds: number;
 }
 
+export type DispatchPhase = "initial" | "replay";
+
 export interface DurableMutationJournal {
   matchesPluginCommandIntent(identity: DurableMutationIdentity, intent: string): boolean;
   findPluginCommand(
@@ -78,7 +80,7 @@ export interface DurableMutationJournal {
     requestMeta: RequestMeta | null,
   ): DurableMutationIdentity;
   authorizeDispatch(identity: DurableMutationIdentity): string;
-  markDispatched(identity: DurableMutationIdentity): void;
+  markDispatched(identity: DurableMutationIdentity): DispatchPhase;
   wasDispatched(identity: DurableMutationIdentity): boolean;
   lookupNamespace(identity: DurableMutationIdentity): string;
   bindSteerItem(identity: DurableMutationIdentity, userItemId: string): void;
@@ -215,6 +217,14 @@ export function openDurableMutationJournal(
     if (effectiveExpiry <= options.now()) {
       throw new MutationJournalError("Runtime mutation identity expired before delivery");
     }
+  };
+
+  const dispatchEntry = (identity: DurableMutationIdentity): JournalEntry => {
+    validateIdentity(identity, currentScope());
+    const entry = readReservedEntry(identity);
+    if (!entry)
+      throw new MutationJournalOwnershipError("Runtime command has no reserved journal entry");
+    return entry;
   };
 
   const createEntry = (
@@ -387,20 +397,16 @@ export function openDurableMutationJournal(
       return identity;
     },
     authorizeDispatch(identity) {
-      const scope = currentScope();
-      validateIdentity(identity, scope);
-      readReservedEntry(identity);
-      return identity.entry.namespace;
+      return dispatchEntry(identity).namespace;
     },
     markDispatched(identity) {
-      journal.authorizeDispatch(identity);
-      if (identity.entry.delivery === "dispatched") return;
-      persistEntry({ ...identity.entry, delivery: "dispatched" });
-      identity.entry.delivery = "dispatched";
+      const entry = dispatchEntry(identity);
+      if (entry.delivery === "dispatched") return "replay";
+      persistEntry({ ...entry, delivery: "dispatched" });
+      return "initial";
     },
     wasDispatched(identity) {
-      readReservedEntry(identity);
-      return identity.entry.delivery === "dispatched";
+      return readReservedEntry(identity)?.delivery === "dispatched";
     },
     lookupNamespace(identity) {
       readReservedEntry(identity);

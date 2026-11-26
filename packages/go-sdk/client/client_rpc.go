@@ -214,17 +214,14 @@ func decodeRemoteResponse(encoded []byte, id jsonrpc.ID, method methodMeta) (pro
 		if !ok {
 			return protocol.OperationResult{}, invalidRemote("invalid operation error envelope")
 		}
-		var problem protocol.ProblemData
-		if err := protocol.DecodeResponse(rpcError.Data, &problem); err != nil {
+		failure, err := protocol.DecodeRPCFailure(rpcError.Data)
+		if err != nil {
 			return protocol.OperationResult{}, invalidRemote("invalid operation problem")
 		}
-		code, known := problemCodes[problem.Type]
-		if !known || int64(code) != rpcError.Code || rpcError.Message != problem.Type {
+		problemType := failure.Problem().Type
+		code, known := problemCodes[problemType]
+		if !known || int64(code) != rpcError.Code || rpcError.Message != problemType {
 			return protocol.OperationResult{}, invalidRemote("operation problem does not match its envelope")
-		}
-		failure, err := protocol.DecodeFailure(problem)
-		if err != nil {
-			return protocol.OperationResult{}, invalidRemote("invalid operation problem data")
 		}
 		return protocol.OperationResult{Failure: failure}, nil
 	}

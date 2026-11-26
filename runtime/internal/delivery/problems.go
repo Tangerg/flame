@@ -16,14 +16,6 @@ func runtimeProduced(detail string, cause error) *protocol.Failure {
 	return protocol.NewFailure(protocol.ErrInternalError, "the runtime produced "+detail, cause)
 }
 
-func failureFromData(data protocol.ProblemData) *protocol.Failure {
-	failure, err := protocol.DecodeFailure(data)
-	if err != nil {
-		return protocol.ProjectError(err)
-	}
-	return failure
-}
-
 func projectError(err error) *protocol.Failure {
 	if errors.Is(err, framecall.ErrConflict) {
 		return protocol.NewFailure(protocol.ErrIdempotencyConflict, "idempotency key already binds a different command", err)

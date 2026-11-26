@@ -10756,7 +10756,7 @@
         {
           "name": "Version",
           "type": "untyped string",
-          "value": "\"2026-11-27.1\""
+          "value": "\"2026-11-27.2\""
         },
         {
           "name": "WorkspaceAvailable",
@@ -10963,6 +10963,10 @@
         {
           "name": "DecodeFailure",
           "signature": "func(data ProblemData) (*Failure, error)"
+        },
+        {
+          "name": "DecodeRPCFailure",
+          "signature": "func(encoded []byte) (*Failure, error)"
         },
         {
           "name": "DecodeRPCMessage",
@@ -12341,8 +12345,16 @@
               "signature": "func() ProblemData"
             },
             {
+              "name": "RPCData",
+              "signature": "func() RPCFailureData"
+            },
+            {
               "name": "Unwrap",
               "signature": "func() error"
+            },
+            {
+              "name": "WithRecordedOutcome",
+              "signature": "func() *Failure"
             }
           ]
         },
@@ -16455,6 +16467,22 @@
               "name": "Preview",
               "type": "string",
               "tag": "json:\"preview,omitempty\""
+            }
+          ]
+        },
+        {
+          "name": "RPCFailureData",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Problem",
+              "type": "ProblemData",
+              "tag": "json:\"problem\""
+            },
+            {
+              "name": "RecordedOutcome",
+              "type": "bool",
+              "tag": "json:\"recordedOutcome,omitzero\""
             }
           ]
         },

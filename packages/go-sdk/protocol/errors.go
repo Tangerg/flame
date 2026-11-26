@@ -2,6 +2,11 @@ package protocol
 
 import "errors"
 
+type RPCFailureData struct {
+	Problem         ProblemData `json:"problem"`
+	RecordedOutcome bool        `json:"recordedOutcome,omitzero"`
+}
+
 type ProblemData struct {
 	Type                 string                  `json:"type"`
 	Detail               string                  `json:"detail,omitempty"`

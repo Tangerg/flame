@@ -46,6 +46,10 @@ requires isolation because it changes the Session's isolation setting. A
 descendant query requires `childRuns` only when `includeDescendants` is `true`.
 The SDK checks capabilities before reserving a new command. On retry, Runtime
 applies its live policy to the original request, metadata and idempotency key.
+JSON-RPC errors carry the problem in `error.data.problem`. For a command with
+a stored response, `error.data.recordedOutcome` confirms that the failure came
+from the matching durable receipt. The SDK retains a previously dispatched
+command when a replay is refused without that evidence.
 
 HTTP credentials and metadata must be ASCII field values without surrounding
 whitespace. Fetch byte strings cannot preserve non-ASCII UTF-8 identities, and

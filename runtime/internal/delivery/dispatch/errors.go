@@ -87,16 +87,16 @@ func errorToRPC(err error) *jsonrpc.Error {
 }
 
 func marshalFailure(failure *protocol.Failure) *jsonrpc.Error {
-	problem := failure.Problem()
-	code, ok := problemCode(problem.Type)
-	if !ok || protocol.ValidateWireTree(problem) != nil {
+	data := failure.RPCData()
+	code, ok := problemCode(data.Problem.Type)
+	if !ok || protocol.ValidateWireTree(data) != nil {
 		return invalidProblemResponse("the runtime could not encode a valid error response")
 	}
-	encoded, err := json.Marshal(problem, json.Deterministic(true))
+	encoded, err := json.Marshal(data, json.Deterministic(true))
 	if err != nil {
 		return invalidProblemResponse("the runtime could not serialize a valid error response")
 	}
-	return protocol.NewRPCError(code, problem.Type, encoded)
+	return protocol.NewRPCError(code, data.Problem.Type, encoded)
 }
 
 func problemError(sentinel error, detail string) *jsonrpc.Error {
@@ -104,7 +104,9 @@ func problemError(sentinel error, detail string) *jsonrpc.Error {
 }
 
 func invalidProblemResponse(detail string) *jsonrpc.Error {
-	fallback := protocol.ProblemData{Type: protocol.ProblemInternalError, Detail: detail}
+	fallback := protocol.RPCFailureData{
+		Problem: protocol.ProblemData{Type: protocol.ProblemInternalError, Detail: detail},
+	}
 	encoded, err := json.Marshal(fallback, json.Deterministic(true))
 	if err != nil {
 		return protocol.NewRPCError(codeInternalError, protocol.ProblemInternalError, nil)

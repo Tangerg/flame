@@ -146,6 +146,7 @@ func registerRequiredAnyConstraints(s *Shapes) {
 
 func registerCarriedShapes(s *Shapes) {
 	s.carriedShape(CarriedSpec{Carrier: "params." + protocol.RequestMetaMember, GoType: typeOf[protocol.RequestMeta]()})
+	s.carriedShape(CarriedSpec{Carrier: "error.data", GoType: typeOf[protocol.RPCFailureData]()})
 }
 
 func registerValueConstraints(s *Shapes) {

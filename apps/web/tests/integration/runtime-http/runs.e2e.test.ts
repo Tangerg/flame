@@ -568,7 +568,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: runs", () => {
       });
       expect(response.status).toBe(200);
       await expect(response.json()).resolves.toMatchObject({
-        error: { data: { type: "invalid_params" } },
+        error: { data: { problem: { type: "invalid_params" } } },
       });
     }
   }, 30_000);

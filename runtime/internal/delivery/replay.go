@@ -169,7 +169,11 @@ func replayOutcome(method *Method, payload []byte) protocol.OperationResult {
 		return failed(projectError(errors.New("idempotency: stored outcome must contain exactly one value or problem")))
 	}
 	if stored.Problem != nil {
-		return failed(failureFromData(*stored.Problem))
+		failure, err := protocol.DecodeFailure(*stored.Problem)
+		if err != nil {
+			return failed(projectError(fmt.Errorf("idempotency: decode stored problem: %w", err)))
+		}
+		return failed(failure.WithRecordedOutcome())
 	}
 	value, err := method.Meta.DecodeResult(stored.Value)
 	if err != nil {

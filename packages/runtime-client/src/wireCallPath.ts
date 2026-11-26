@@ -1,8 +1,13 @@
 import type { RpcCallOptions, RpcClient } from "./client";
 import { cloneJSON } from "@frame/sdk/json";
-import { RpcCancellationError } from "./errors";
+import { RpcCancellationError, RpcError } from "./errors";
 import { captureRequestMeta, checkRequest, requestRequiresIdempotency } from "./request";
-import { createMutationPromise, type MutationPromise } from "./mutation";
+import {
+  createMutationPromise,
+  MutationLookupError,
+  mutationSettlementIsUnknown,
+  type MutationPromise,
+} from "./mutation";
 import type {
   MutationJournal,
   MutationReservation,
@@ -10,6 +15,7 @@ import type {
   PluginCommandBinding,
 } from "./mutationJournal";
 import { requireCapabilities } from "./preflight";
+import type { DispatchPhase } from "./durableMutationJournal";
 import {
   createAutoPagingPromise,
   SDK_PAGINATION_POLICY,
@@ -18,6 +24,7 @@ import {
 } from "./pagination";
 import type { RequestMeta, ServerCapabilities } from "@flame/runtime-client/wire";
 import {
+  WIRE_METHOD_POLICY,
   wireMethodIsPaginated,
   type WireMethodName,
   type WireMutationMethodName,
@@ -126,13 +133,29 @@ export function createWireCallPath(client: RpcClient, options: MethodsOptions): 
   // A reservation can outlive the capabilities observed when it was admitted.
   const dispatchCommand: CommandDispatch = async (method, params, reservation, callOptions) => {
     const idempotencyNamespace = reservation.authorizeDispatch();
-    return client.call(method, params, {
-      ...callOptions,
-      requestMeta: reservation.requestMeta,
-      idempotencyKey: reservation.idempotencyKey,
-      idempotencyNamespace,
-      beforeDispatch: reservation.markDispatched,
-    });
+    let phase: DispatchPhase | undefined;
+    try {
+      return await client.call(method, params, {
+        ...callOptions,
+        requestMeta: reservation.requestMeta,
+        idempotencyKey: reservation.idempotencyKey,
+        idempotencyNamespace,
+        beforeDispatch: () => {
+          phase = reservation.markDispatched();
+        },
+      });
+    } catch (error) {
+      if (
+        phase === "replay" &&
+        WIRE_METHOD_POLICY[method].idempotency === "replayResponse" &&
+        error instanceof RpcError &&
+        !error.recordedOutcome &&
+        !mutationSettlementIsUnknown(error)
+      ) {
+        throw new MutationLookupError(error);
+      }
+      throw error;
+    }
   };
 
   const openMutation = <M extends WireMethodName, Result>(

@@ -72,7 +72,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: protocol delivery", () => {
     );
     expect(staleStoreResponse.status).toBe(RPC_HTTP.callStatus);
     await expect(staleStoreResponse.json()).resolves.toMatchObject({
-      error: { data: { type: "idempotency_store_mismatch" } },
+      error: { data: { problem: { type: "idempotency_store_mismatch" } } },
     });
     const sessionsAfterStoreMismatch = await fixture.client.sessions.list();
     expect(
@@ -214,8 +214,10 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: protocol delivery", () => {
       await expect(response.json()).resolves.toMatchObject({
         error: {
           data: {
-            type: "invalid_params",
-            errors: expect.arrayContaining([expect.objectContaining({ field: "sessionId" })]),
+            problem: {
+              type: "invalid_params",
+              errors: expect.arrayContaining([expect.objectContaining({ field: "sessionId" })]),
+            },
           },
         },
       });
@@ -235,7 +237,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: protocol delivery", () => {
     });
     expect(empty.status).toBe(RPC_HTTP.callStatus);
     await expect(empty.json()).resolves.toMatchObject({
-      error: { data: { type: "invalid_params", errors: [{ field: "format" }] } },
+      error: { data: { problem: { type: "invalid_params", errors: [{ field: "format" }] } } },
     });
   });
 
@@ -280,7 +282,9 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: protocol delivery", () => {
       });
       expect(invalid).toMatchObject({
         error: {
-          data: { type: "invalid_params", errors: fields.map((field) => ({ field })) },
+          data: {
+            problem: { type: "invalid_params", errors: fields.map((field) => ({ field })) },
+          },
         },
       });
     },

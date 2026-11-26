@@ -2,6 +2,7 @@ import {
   openDurableMutationJournal,
   type DurableMutationJournal,
   type DurableMutationJournalOptions,
+  type DispatchPhase,
 } from "./durableMutationJournal";
 import type { WireMethodName } from "@flame/runtime-client/methods";
 import {
@@ -36,7 +37,7 @@ export interface MutationReservation {
   readonly requestMeta: RequestMeta | null;
   lookupNamespace(): string;
   authorizeDispatch(): string;
-  markDispatched(): void;
+  markDispatched(): DispatchPhase;
   track<T>(create: () => MutationPromise<T>): MutationPromise<T>;
 }
 
@@ -255,7 +256,7 @@ export class MutationJournal {
       },
       markDispatched: () => {
         this.#assertClaim(identity);
-        this.#journal.markDispatched(identity);
+        return this.#journal.markDispatched(identity);
       },
       track: (create) => trackedMutation(create, lifecycle),
     };

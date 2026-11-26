@@ -231,7 +231,6 @@ export function matchesCommand(
 
 export function sameEntry(left: JournalEntry, right: JournalEntry): boolean {
   return (
-    left.delivery === right.delivery &&
     left.steerItemId === right.steerItemId &&
     left.method === right.method &&
     left.salt === right.salt &&

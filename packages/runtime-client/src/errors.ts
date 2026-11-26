@@ -31,6 +31,7 @@ export class RpcError extends Error {
   readonly code?: number;
   readonly data: ProblemData;
   readonly requestId?: string;
+  readonly recordedOutcome: boolean;
 
   constructor(payload: BusinessErrorPayload, requestId?: string) {
     super(payload.message);
@@ -38,6 +39,7 @@ export class RpcError extends Error {
     this.code = payload.code;
     this.data = payload.data;
     this.requestId = requestId;
+    this.recordedOutcome = payload.recordedOutcome === true;
   }
 }
 
@@ -45,6 +47,7 @@ interface BusinessErrorPayload {
   code?: number;
   message: string;
   data: ProblemData;
+  recordedOutcome?: boolean;
 }
 
 export class RpcTransportError extends Error {

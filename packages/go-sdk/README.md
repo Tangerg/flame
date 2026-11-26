@@ -34,6 +34,8 @@ including in tests and development commands.
 `protocol.DecodeRequest` returns the admitted JSON members together with any
 error. Use those members to check whether a field was sent. `protocol.InspectWire`
 offers the same checks for a Go request using its encoded JSON representation.
+`protocol.DecodeRPCFailure` decodes JSON-RPC error data. Its ordinary problem
+and recorded outcome evidence are available through the decoded failure.
 
 `builtin` declares Runtime's built-in tool names, shell arguments and normalized
 transcript results. Runtime produces those values and generates their schemas

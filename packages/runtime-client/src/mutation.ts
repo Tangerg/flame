@@ -1,4 +1,10 @@
-import { isErrorType, RpcProtocolError, RpcTransportError, RpcCancellationError } from "./errors";
+import {
+  isErrorType,
+  RpcError,
+  RpcProtocolError,
+  RpcTransportError,
+  RpcCancellationError,
+} from "./errors";
 
 const MILLISECONDS_PER_SECOND = 1_000;
 
@@ -33,6 +39,7 @@ class MutationObservationInterruptedError extends Error {
 }
 
 export function mutationSettlementIsUnknown(error: unknown): boolean {
+  if (error instanceof RpcError && error.recordedOutcome) return false;
   if (error instanceof MutationLookupError) return true;
   if (error instanceof MutationObservationInterruptedError) return true;
   if (error instanceof RpcProtocolError) return true;
@@ -85,7 +92,11 @@ async function settleMutation<T>(
         replayedTransportFailure = true;
         continue;
       }
-      if (!waitedForInProgress && isErrorType(error, "idempotency_in_progress")) {
+      if (
+        !waitedForInProgress &&
+        isErrorType(error, "idempotency_in_progress") &&
+        !error.recordedOutcome
+      ) {
         waitedForInProgress = true;
         try {
           await waitForReplay(error.data.retryAfterSeconds, options.signal);

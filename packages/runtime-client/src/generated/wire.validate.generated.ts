@@ -313,6 +313,7 @@ export type WireTypeName =
   | "QuestionField"
   | "QuestionFieldType"
   | "QuestionOption"
+  | "RPCFailureData"
   | "ReadFileRequest"
   | "ReadPluginLocaleRequest"
   | "ReadPluginResourceRequest"
@@ -3613,6 +3614,10 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     label: allOf([text(), pattern("\\S")]),
     preview: text(),
   }, ["label"]),
+  RPCFailureData: object({
+    problem: ref(() => CHECKS.ProblemData),
+    recordedOutcome: flag(),
+  }, ["problem"]),
   ReadFileRequest: allOf([
     object({
       endLine: allOf([integer(), minimum("1")]),

@@ -14,7 +14,7 @@ import {
   NOTIFICATIONS_RUN_EVENT,
   RUN_EVENT_ID_PREFIX,
   runEventReliability,
-  type ProblemData,
+  type RPCFailureData,
   type RequestMeta,
 } from "@flame/runtime-client/wire";
 import type { Transport, TransportRequest, TransportResponseMetadata } from "./transport";
@@ -186,9 +186,9 @@ function protocolFailure(
 
 // A problem response must name a declared problem type with its own code.
 function problemViolations(method: WireMethodName, payload: ErrorPayload) {
-  const violations = validateWire("ProblemData", payload.data);
+  const violations = validateWire("RPCFailureData", payload.data);
   if (violations.length > 0) return violations;
-  const problem = payload.data as ProblemData;
+  const { problem } = payload.data as RPCFailureData;
   const expectedCode = PROBLEM_CODES[problem.type as keyof typeof PROBLEM_CODES];
   if (
     expectedCode !== undefined &&
@@ -214,9 +214,9 @@ function rejectWithProblem(
     entry.reject(new RpcProtocolError(`${entry.method} error`, violations, requestId));
     return;
   }
-  let problem: ProblemData;
+  let data: RPCFailureData;
   try {
-    problem = projectWire("ProblemData", payload.data) as ProblemData;
+    data = projectWire("RPCFailureData", payload.data) as RPCFailureData;
   } catch (cause) {
     entry.reject(
       protocolFailure(
@@ -229,7 +229,15 @@ function rejectWithProblem(
     return;
   }
   entry.reject(
-    new RpcError({ code: payload.code, message: payload.message, data: problem }, requestId),
+    new RpcError(
+      {
+        code: payload.code,
+        message: payload.message,
+        data: data.problem,
+        recordedOutcome: data.recordedOutcome,
+      },
+      requestId,
+    ),
   );
 }
 

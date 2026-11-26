@@ -298,9 +298,9 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: plugins", () => {
     await expect(
       send("sessions.create", { workspace: { path: fixture.root }, title }, key),
     ).resolves.toMatchObject({ result: { title } });
-    expect(notice).toMatchObject({ error: { data: { type: "invalid_params" } } });
+    expect(notice).toMatchObject({ error: { data: { problem: { type: "invalid_params" } } } });
     await expect(send("plugins.notifyChange", change)).resolves.toMatchObject({
-      error: { data: { type: "plugin_unavailable" } },
+      error: { data: { problem: { type: "plugin_unavailable" } } },
     });
   });
 });

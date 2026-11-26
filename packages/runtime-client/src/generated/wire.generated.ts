@@ -9,7 +9,7 @@
 // in the generated validator and in schema.json.
 
 // The wire version this runtime serves; a client states it in request metadata.
-export const PROTOCOL_VERSION = "2026-11-27.1";
+export const PROTOCOL_VERSION = "2026-11-27.2";
 
 // The only Session Artifact version this runtime imports or exports.
 export const SESSION_ARTIFACT_VERSION = 32;
@@ -1769,6 +1769,11 @@ export interface QuestionOption {
   description?: string;
   label: string;
   preview?: string;
+}
+
+export interface RPCFailureData {
+  problem: ProblemData;
+  recordedOutcome?: boolean;
 }
 
 export interface ReadFileRequest {

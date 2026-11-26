@@ -79,8 +79,9 @@ func retryingProblem(sentinel error, retryAfterSeconds int) problemSpec {
 }
 
 type Failure struct {
-	cause error
-	data  ProblemData
+	cause           error
+	data            ProblemData
+	recordedOutcome bool
 }
 
 type problemDetailed interface {
@@ -99,6 +100,17 @@ func (f *Failure) Unwrap() error { return f.cause }
 
 func (f *Failure) Problem() ProblemData {
 	return cloneProblemData(f.data)
+}
+
+func (f *Failure) RPCData() RPCFailureData {
+	return RPCFailureData{Problem: f.Problem(), RecordedOutcome: f.recordedOutcome}
+}
+
+// Only an owner returning a matched durable receipt can confirm the outcome.
+func (f *Failure) WithRecordedOutcome() *Failure {
+	recorded := *f
+	recorded.recordedOutcome = true
+	return &recorded
 }
 
 func NewFailure(kind error, detail string, causes ...error) *Failure {
@@ -121,7 +133,9 @@ func ProjectError(err error) *Failure {
 		if err == failure {
 			return failure
 		}
-		return &Failure{cause: err, data: failure.Problem()}
+		wrapped := *failure
+		wrapped.cause = err
+		return &wrapped
 	}
 	spec, ok := problemSpecForError(err)
 	if !ok {
@@ -172,14 +186,30 @@ func internalFailure(cause error) *Failure {
 }
 
 func DecodeFailure(data ProblemData) (*Failure, error) {
+	if err := ValidateWireTree(data); err != nil {
+		return nil, err
+	}
+	return decodedFailure(data, false)
+}
+
+func DecodeRPCFailure(encoded []byte) (*Failure, error) {
+	var data RPCFailureData
+	if err := DecodeResponse(encoded, &data); err != nil {
+		return nil, err
+	}
+	return decodedFailure(data.Problem, data.RecordedOutcome)
+}
+
+func decodedFailure(data ProblemData, recorded bool) (*Failure, error) {
 	spec, ok := problemSpecForType(data.Type)
 	if !ok {
 		return nil, errors.New("unknown operation problem type")
 	}
-	if err := ValidateWireTree(data); err != nil {
-		return nil, err
-	}
-	return &Failure{cause: spec.sentinel, data: cloneProblemData(data)}, nil
+	return &Failure{
+		cause:           spec.sentinel,
+		data:            cloneProblemData(data),
+		recordedOutcome: recorded,
+	}, nil
 }
 
 func cloneProblemData(data ProblemData) ProblemData {
