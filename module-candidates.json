@@ -252,6 +252,10 @@
     "v0.1.64-dev.20261125.t0800b3a59158": {
       "tree": "0800b3a59158220ecd450a175a9311984cabd255",
       "time": "2026-11-25T20:41:30Z"
+    },
+    "v0.1.65-dev.20261126.t10f6603b97ed": {
+      "tree": "10f6603b97ed6908fa5242d6dbc1af310894cfb9",
+      "time": "2026-11-26T14:56:00Z"
     }
   },
   "github.com/Tangerg/flame/plugins": {
