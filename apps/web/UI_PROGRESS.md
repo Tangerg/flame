@@ -908,8 +908,8 @@ entries use the exact provider and model pair.
   and candidate left the focused query empty during several attempts,
   and subsequent Chinese probes could not repeat the digit entry or
   type `release`. The provider-caption review includes native search
-  and Recent, with reliable physical text entry on reopen still to
-  investigate.
+  and Recent. [Catalog composition](#catalog-search-keeps-composing-text-2026-11-27)
+  traces the input issue and verifies its fix.
 
 Web typecheck, 81 contract tests, bootstrap, scoped Prettier and diff
 checks pass. Production staging, Runtime packaging and signed Wails
@@ -927,6 +927,60 @@ Session matched its snapshot with zero Runs and four catalog reads.
 The Wails hosts exit normally. The private Runtime reaches its
 existing drain deadline. The providers, listeners, app registration,
 profiles, captures, logs, caches and checkout outputs are removed.
+
+### Catalog search keeps composing text (2026-11-27)
+
+In signed Wails at `1f8d2ed2f`, the model search held DOM focus. A
+digit entered normally. Typing `release` through macOS Pinyin
+delivered trusted keydown and input events to that same field, but
+each composition left the rendered value empty. Space could not
+commit the text. The inline Dock catalog reproduced it with `files`.
+The command palette displayed `files` from the same native input.
+
+`ui/atoms/catalog-picker.tsx` now renders SearchField with the value
+supplied by Base UI. Base UI owns the composing input value and
+publishes the committed query to the catalog. The render element had
+supplied that committed query to the input again, overriding Base
+UI's composing value. [Base UI 1.9.0 Combobox input](https://github.com/mui/base-ui/blob/v1.9.0/packages/react/src/combobox/input/ComboboxInput.tsx)
+and [render prop merge](https://github.com/mui/base-ui/blob/v1.9.0/packages/react/src/internals/useRenderElement.ts).
+The isolated event observer used Vite's normal module and artifact
+policy generation after integrity and inline script checks rejected
+earlier diagnostic builds.
+
+- At 1120 × 728 in Chinese and light mode, Tab and Return open the
+  model selector. The visible marked text grows from `r` to
+  `release` while the provider rail stays visible. Space commits it
+  and the list shows the two exact model IDs with their captions.
+  Down moves the highlight. Escape clears the query, and a second
+  Escape returns focus to the same model trigger.
+- Both Dock entries display the marked Pinyin `wen'jian` and commit
+  it as `文件`. Return from the inline catalog opens Files with the
+  private workspace's README row visible. In the Browse panels popup,
+  Escape clears the query and a second Escape returns to its button
+  with the README row still in view.
+- After rebasing onto `d0c12b3c0`, the standard signed build and a
+  fresh Runtime repeat the path at 1280 × 800 in English, dark mode,
+  18 px and Blue. Pointer opens the model selector. Committing
+  `release` then pressing Return selects the exact Audit model.
+  During a fresh `build` composition, Escape cancels the marked text
+  with the picker still open. Return on the recomposed text filters
+  to Build while Audit is still selected. The English Dock popup
+  also commits `files` and restores its trigger on closing.
+
+Web typecheck, 81 contract tests, bootstrap, scoped Prettier and diff
+checks pass with npm 11.21.1. The signed baseline, traced candidate
+and final production build launch and exit normally. The complete
+Session snapshot and Composer draft `2468` match throughout. The
+isolated provider serves nine catalog reads and zero generation
+requests. Runtime records zero Runs. Both private Runtime processes
+reach their existing drain deadline. All owned app registrations,
+listeners, profiles, captures, logs, caches and checkout outputs
+are removed.
+
+The production search at 18 px also shows that both long mixed-catalog
+rows still clip before their distinguishing suffixes when their
+source captions are present. The next visual check follows that
+choice through the model selector with the Dock open.
 
 ## Error notes leave retrying to their buttons (2026-11-26)
 
