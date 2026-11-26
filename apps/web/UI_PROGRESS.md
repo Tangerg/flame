@@ -871,8 +871,62 @@ processes, ports, profile, fixtures, captures, logs, caches and checkout
 outputs are removed.
 
 The single-provider model search shows the same provider caption on
-each result at 18 px. The next batch checks the space available to the
-model identity with long names and with multiple configured providers.
+each result at 18 px. [Long model labels](#long-model-labels-in-single-provider-results-2026-11-27)
+checks the same rows with one and two providers.
+
+### Long model labels in single-provider results (2026-11-27)
+
+A private loopback catalog returned 34 IDs through the installed provider
+adapter and Runtime 2026-11-26.10. In signed Wails at `5d9e6fd4c`,
+native wheel and pointer selection added the `build` and `audit` variants
+of `catalog-release-gateway-2026` to Recent. At 1439 × 899 in English,
+dark mode, 18 px and Blue, both rows clipped to `catalog-release-gat…`
+beside the repeated `Openai-compatible` caption.
+
+Following Better Layout and Better Typography, ModelPicker derives
+caption visibility from the providers represented in the available
+model catalog. With one provider, Recent and search give the inline
+space to the model name. With multiple providers, they retain the source
+caption even when their rows come from one provider. The rail and
+provider icons identify the source. The explicit preference and Recent
+entries use the exact provider and model pair.
+
+- At the same English appearance and size, Tab and Return opened the
+  candidate picker. Recent displayed both names through their distinct
+  suffixes. Pointer selection applied the exact Build and Audit models
+  and returned to the Composer with draft `2468`.
+- Runtime admitted 42 preset models after a second private provider was
+  configured. The rail opened OpenAI, and pointer selection applied
+  `GPT-5.6 Sol`. Recent then showed its `OpenAI` caption alongside the
+  two existing `Openai-compatible` captions. Mixed captions also
+  appeared after resizing to 1120 × 728 and switching to Simplified
+  Chinese, light mode, 14 px and Flame.
+- In the Chinese mixed picker, a physical `5` filtered the catalog,
+  Down changed the highlighted model and Escape cleared the search.
+  A second Escape returned focus to the exact model trigger. Text
+  input was intermittent in the native driver. The English baseline
+  and candidate left the focused query empty during several attempts,
+  and subsequent Chinese probes could not repeat the digit entry or
+  type `release`. The provider-caption review includes native search
+  and Recent, with reliable physical text entry on reopen still to
+  investigate.
+
+Web typecheck, 81 contract tests, bootstrap, scoped Prettier and diff
+checks pass. Production staging, Runtime packaging and signed Wails
+builds pass. The complete Session snapshot is unchanged. Runtime
+records zero Runs and the loopback provider serves six catalog reads
+and zero generation calls.
+
+After rebasing onto the wire-validation changes at `6202ec393`, a new
+signed build and private Runtime repeated the catalog path. At 1439 ×
+899 in Chinese, the wheel reached both long models, pointer selected
+each exact model and Recent showed the full labels. Adding the second
+provider restored both captions. The draft still read `2468`. The
+Session matched its snapshot with zero Runs and four catalog reads.
+
+The Wails hosts exit normally. The private Runtime reaches its
+existing drain deadline. The providers, listeners, app registration,
+profiles, captures, logs, caches and checkout outputs are removed.
 
 ## Error notes leave retrying to their buttons (2026-11-26)
 
