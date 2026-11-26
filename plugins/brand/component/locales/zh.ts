@@ -9,7 +9,6 @@ export const zh: Record<string, string> = {
   copyFailed: "无法复制颜色，请选中 HEX 色值后复制。",
   downloadPng: "下载 PNG",
   downloadFailed: "无法保存图片，请重试。",
-  copied: "已复制",
   copyHex: "复制 HEX",
   "guidelines.title": "使用建议",
   "guidelines.shape": "保留原有比例、表情和焰尖，在图形周围留出空间。",

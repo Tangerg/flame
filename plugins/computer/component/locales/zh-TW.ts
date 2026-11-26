@@ -118,7 +118,6 @@ export const zhTW = {
   "history.previous": "上一頁",
   "history.next": "下一頁",
   "source.copy": "複製原文",
-  "source.copied": "已複製",
   "source.wrap": "啟用自動換行",
   "source.unwrap": "關閉自動換行",
   "result.refresh": "重新整理原始結果",

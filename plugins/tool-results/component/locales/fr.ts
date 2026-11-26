@@ -9,7 +9,6 @@ export const fr: Record<string, string> = {
   "find.open": "Rechercher",
   "find.clear": "Effacer la recherche",
   "find.close": "Fermer la recherche",
-  "action.copied": "Copié",
   "action.wrap": "Activer le retour à la ligne",
   "action.unwrap": "Désactiver le retour à la ligne",
   "output.empty": "Aucune sortie.",

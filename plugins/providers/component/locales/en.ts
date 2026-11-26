@@ -24,8 +24,6 @@ export const en: Record<string, string> = {
   "providers.test": "Test",
   "providers.testing": "Testing…",
   "providers.connectionOk": "Connection OK",
-  "providers.error.save": "Save failed",
-  "providers.error.test": "Test failed",
   "providers.models.error": "Couldn’t load models.",
   "providers.models.refresh": "Refresh models",
   "providers.empty": "No providers",
@@ -33,13 +31,11 @@ export const en: Record<string, string> = {
   "providers.utility.title": "Utility model",
   "providers.utility.desc": "Model for summaries, titles, and fact extraction.",
   "providers.utility.main": "Use Runtime default",
-  "providers.utility.error": "Couldn’t set the utility model.",
   "providers.embedding.title": "Embedding model",
-  "providers.embedding.desc": "Optionally improves Agent memory ranking.",
+  "providers.embedding.desc": "Improves Agent memory ranking.",
   "providers.embedding.off": "Off",
   "providers.embedding.none":
     "No embedding-capable provider configured yet — add one (e.g. OpenAI) above.",
-  "providers.embedding.error": "Couldn’t set the embedding model.",
   "providers.testOutcome.notConfigured":
     "Finish configuring the provider first.",
   "providers.testOutcome.failed":

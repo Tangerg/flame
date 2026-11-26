@@ -22,8 +22,6 @@ export const es: Record<string, string> = {
   "providers.test": "Probar",
   "providers.testing": "Probando…",
   "providers.connectionOk": "Conexión correcta",
-  "providers.error.save": "Error al guardar",
-  "providers.error.test": "Error en la prueba",
   "providers.models.error": "No se pudieron cargar los modelos.",
   "providers.models.refresh": "Actualizar modelos",
   "providers.empty": "Sin proveedores",
@@ -36,14 +34,12 @@ export const es: Record<string, string> = {
   "providers.utility.desc":
     "Modelo para resúmenes, títulos y extracción de hechos.",
   "providers.utility.main": "Usar el modelo predeterminado de Runtime",
-  "providers.utility.error": "No se pudo establecer el modelo auxiliar.",
   "providers.embedding.title": "Modelo de embeddings",
   "providers.embedding.desc":
-    "Mejora opcionalmente la clasificación de Agent Memory.",
+    "Mejora la clasificación de la memoria del agente.",
   "providers.embedding.off": "Desactivado",
   "providers.embedding.none":
     "Todavía no hay ningún proveedor con embeddings configurado: añade uno arriba (por ejemplo OpenAI).",
-  "providers.embedding.error": "No se pudo establecer el modelo de embeddings.",
   "providers.testOutcome.notConfigured":
     "Completa primero la configuración del proveedor.",
   "providers.testOutcome.failed":

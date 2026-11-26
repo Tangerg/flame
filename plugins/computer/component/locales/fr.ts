@@ -123,7 +123,6 @@ export const fr = {
   "history.previous": "Page précédente",
   "history.next": "Page suivante",
   "source.copy": "Copier le texte source",
-  "source.copied": "Texte copié",
   "source.wrap": "Activer le retour à la ligne",
   "source.unwrap": "Désactiver le retour à la ligne",
   "result.refresh": "Actualiser le résultat original",

@@ -1,6 +1,4 @@
 export const es: Record<string, string> = {
-  "mcp.error.toolPolicy":
-    "No se pudo actualizar la política de la herramienta.",
   "mcp.tools.policyHint":
     "Se guarda al instante. La visibilidad se aplica a las nuevas ejecuciones. La aprobación automática establece una regla global de permiso; las reglas más específicas siguen vigentes.",
   "mcp.tools.nameConflict":
@@ -70,13 +68,10 @@ export const es: Record<string, string> = {
   "mcp.import.ok_one": "{{count}} servidor importado",
   "mcp.import.ok_many": "{{count}} de servidores importados",
   "mcp.import.ok_other": "{{count}} servidores importados",
-  "mcp.import.renamed":
-    "Se renombraron para que el Runtime las acepte: {{names}}",
   "mcp.import.partial_one": "Se importó {{count}} de {{total}} servidores.",
   "mcp.import.partial_many": "Se importaron {{count}} de {{total}} servidores.",
   "mcp.import.partial_other":
     "Se importaron {{count}} de {{total}} servidores.",
-  "mcp.import.error": "No se pudo importar esa configuración.",
   "mcp.import.invalidJson": "Introduce un JSON válido.",
   "mcp.import.missingTransport":
     "Indica un comando o una URL para el servidor «{{server}}», pero no ambos.",
@@ -87,12 +82,6 @@ export const es: Record<string, string> = {
   "mcp.tools.empty": "Este servidor no expone herramientas",
   "mcp.tools.enable.aria": "Activar {{tool}}",
   "mcp.tools.autoApprove.aria": "Aprobar automáticamente {{tool}}",
-  "mcp.error.save": "No se pudo guardar el servidor.",
-  "mcp.error.remove": "No se pudo eliminar el servidor.",
-  "mcp.error.toggle": "No se pudo modificar el servidor.",
-  "mcp.error.signIn": "Error al iniciar sesión.",
-  "mcp.error.reconnect": "No se pudo reconectar el servidor.",
-  "mcp.error.test": "La prueba falló",
   "mcp.error.loadTools": "No se pudieron cargar las herramientas",
   "mcp.error.loadToolVisibility":
     "No se pudo cargar la visibilidad de las herramientas",

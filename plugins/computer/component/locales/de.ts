@@ -51,8 +51,7 @@ export const de = {
   "reason.canceled": "Öffnen abgebrochen",
   "operation.id": "Aktionskennung",
   "operation.started": "Gestartet",
-  "context.reading":
-    "Aktuelle Runtime-Anweisungen und Tools werden gelesen…",
+  "context.reading": "Aktuelle Runtime-Anweisungen und Tools werden gelesen…",
   "context.instructions": "Ursprüngliche Runtime-Anweisungen",
   "context.tools": "Erfasste Tool-Definitionen",
   "context.server": "Runtime-Serverinformationen",
@@ -126,7 +125,6 @@ export const de = {
   "history.previous": "Vorherige Seite",
   "history.next": "Nächste Seite",
   "source.copy": "Quelltext kopieren",
-  "source.copied": "Quelltext kopiert",
   "source.wrap": "Zeilenumbruch aktivieren",
   "source.unwrap": "Zeilenumbruch deaktivieren",
   "result.refresh": "Originalergebnis aktualisieren",

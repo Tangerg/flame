@@ -22,8 +22,6 @@ export const de: Record<string, string> = {
   "providers.test": "Testen",
   "providers.testing": "Test läuft…",
   "providers.connectionOk": "Verbindung OK",
-  "providers.error.save": "Speichern fehlgeschlagen",
-  "providers.error.test": "Test fehlgeschlagen",
   "providers.models.error": "Modelle konnten nicht geladen werden.",
   "providers.models.refresh": "Modelle aktualisieren",
   "providers.empty": "Keine Anbieter",
@@ -35,14 +33,11 @@ export const de: Record<string, string> = {
   "providers.utility.desc":
     "Modell für Zusammenfassungen, Titel und Faktenextraktion.",
   "providers.utility.main": "Runtime-Standard verwenden",
-  "providers.utility.error": "Hilfsmodell konnte nicht gesetzt werden.",
   "providers.embedding.title": "Embedding-Modell",
-  "providers.embedding.desc":
-    "Verbessert optional das Ranking des Agent-Memory.",
+  "providers.embedding.desc": "Verbessert das Ranking im Agent-Memory.",
   "providers.embedding.off": "Aus",
   "providers.embedding.none":
     "Noch kein Anbieter mit Embedding-Unterstützung konfiguriert — füge oben einen hinzu (z. B. OpenAI).",
-  "providers.embedding.error": "Embedding-Modell konnte nicht gesetzt werden.",
   "providers.testOutcome.notConfigured":
     "Schließe zuerst die Anbieterkonfiguration ab.",
   "providers.testOutcome.failed":

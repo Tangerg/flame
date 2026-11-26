@@ -23,8 +23,6 @@ export const ja: Record<string, string> = {
   "providers.test": "テスト",
   "providers.testing": "テスト中…",
   "providers.connectionOk": "接続 OK",
-  "providers.error.save": "保存に失敗しました",
-  "providers.error.test": "テストに失敗しました",
   "providers.models.error": "モデルを読み込めませんでした。",
   "providers.models.refresh": "モデル一覧を更新",
   "providers.empty": "プロバイダーがありません",
@@ -36,14 +34,11 @@ export const ja: Record<string, string> = {
   "providers.utility.title": "補助モデル",
   "providers.utility.desc": "要約、タイトル、事実抽出に使うモデルです。",
   "providers.utility.main": "Runtime の既定モデルを使用",
-  "providers.utility.error": "補助モデルを設定できませんでした。",
   "providers.embedding.title": "埋め込みモデル",
-  "providers.embedding.desc":
-    "エージェントメモリのランキングを必要に応じて改善します。",
+  "providers.embedding.desc": "エージェントメモリのランキングを改善します。",
   "providers.embedding.off": "オフ",
   "providers.embedding.none":
     "埋め込み対応のプロバイダーがまだ設定されていません — 上で追加してください（例：OpenAI）。",
-  "providers.embedding.error": "埋め込みモデルを設定できませんでした。",
   "providers.testOutcome.notConfigured":
     "先にプロバイダーの設定を完了してください。",
   "providers.testOutcome.failed":

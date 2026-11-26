@@ -22,8 +22,6 @@ export const ko: Record<string, string> = {
   "providers.test": "테스트",
   "providers.testing": "테스트 중…",
   "providers.connectionOk": "연결 정상",
-  "providers.error.save": "저장 실패",
-  "providers.error.test": "테스트 실패",
   "providers.models.error": "모델을 불러올 수 없습니다.",
   "providers.models.refresh": "모델 목록 새로 고침",
   "providers.empty": "제공자 없음",
@@ -34,13 +32,11 @@ export const ko: Record<string, string> = {
   "providers.utility.title": "보조 모델",
   "providers.utility.desc": "요약, 제목, 사실 추출용 모델입니다.",
   "providers.utility.main": "Runtime 기본 모델 사용",
-  "providers.utility.error": "보조 모델을 설정할 수 없습니다.",
   "providers.embedding.title": "임베딩 모델",
-  "providers.embedding.desc": "에이전트 메모리 순위를 선택적으로 개선합니다.",
+  "providers.embedding.desc": "에이전트 메모리 순위를 개선합니다.",
   "providers.embedding.off": "끔",
   "providers.embedding.none":
     "임베딩을 지원하는 제공자가 아직 없습니다 — 위에서 하나 추가하세요(예: OpenAI).",
-  "providers.embedding.error": "임베딩 모델을 설정할 수 없습니다.",
   "providers.testOutcome.notConfigured": "먼저 제공자 구성을 완료하세요.",
   "providers.testOutcome.failed":
     "제공자에 연결할 수 없거나 테스트 요청이 거부됐습니다.",

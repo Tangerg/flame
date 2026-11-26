@@ -9,7 +9,6 @@ export const ja: Record<string, string> = {
   "find.open": "検索",
   "find.clear": "検索をクリア",
   "find.close": "検索を閉じる",
-  "action.copied": "コピーしました",
   "action.wrap": "折り返しを有効にする",
   "action.unwrap": "折り返しを無効にする",
   "output.empty": "出力なし。",

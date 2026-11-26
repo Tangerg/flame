@@ -1,5 +1,4 @@
 export const zhTW: Record<string, string> = {
-  "mcp.error.toolPolicy": "無法更新工具策略。",
   "mcp.tools.policyHint":
     "即時儲存。工具可見性對新執行生效。自動核准設定全域允許規則；更具體的規則仍然生效。",
   "mcp.tools.nameConflict":
@@ -61,9 +60,7 @@ export const zhTW: Record<string, string> = {
   "mcp.import.confirm": "匯入",
   "mcp.importing": "正在匯入…",
   "mcp.import.ok_other": "已匯入 {{count}} 個伺服器",
-  "mcp.import.renamed": "已重新命名以符合 Runtime 的要求：{{names}}",
   "mcp.import.partial_other": "已匯入 {{count}} / {{total}} 個伺服器。",
-  "mcp.import.error": "無法匯入該設定。",
   "mcp.import.invalidJson": "請輸入有效的 JSON。",
   "mcp.import.invalidShape": "請使用包含「mcpServers」物件的有效 MCP 設定。",
   "mcp.import.invalidName":
@@ -82,12 +79,6 @@ export const zhTW: Record<string, string> = {
   "mcp.tools.empty": "此伺服器未提供任何工具",
   "mcp.tools.enable.aria": "啟用 {{tool}}",
   "mcp.tools.autoApprove.aria": "自動核准 {{tool}}",
-  "mcp.error.save": "無法儲存伺服器。",
-  "mcp.error.remove": "無法移除伺服器。",
-  "mcp.error.toggle": "無法變更伺服器。",
-  "mcp.error.signIn": "登入失敗。",
-  "mcp.error.reconnect": "無法重新連線伺服器。",
-  "mcp.error.test": "測試失敗",
   "mcp.error.loadTools": "無法載入工具",
   "mcp.error.loadToolVisibility": "無法載入工具可見性",
   "mcp.error.loadAutoApproveRules": "無法載入自動核准規則",

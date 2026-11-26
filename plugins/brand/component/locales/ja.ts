@@ -9,7 +9,6 @@ export const ja: Record<string, string> = {
   copyFailed: "色をコピーできませんでした。HEX値を選択してコピーしてください。",
   downloadPng: "PNGをダウンロード",
   downloadFailed: "画像を保存できませんでした。もう一度お試しください。",
-  copied: "コピーしました",
   copyHex: "HEXをコピー",
   "guidelines.title": "使用ガイド",
   "guidelines.shape":

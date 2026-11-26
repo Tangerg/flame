@@ -1,6 +1,5 @@
 export const ja: Record<string, string> = {
   "code.copy": "コードをコピー",
-  "code.copied": "コピーしました",
   "code.wrap": "折り返しを有効にする",
   "code.unwrap": "折り返しを無効にする",
   "panel.title": "セッション履歴",

@@ -1,6 +1,5 @@
 export const ja: Record<string, string> = {
   "code.copy": "コードをコピー",
-  "code.copied": "コピーしました",
   "code.wrap": "折り返しを有効にする",
   "code.unwrap": "折り返しを無効にする",
   "panel.title": "クライアント診断",
@@ -36,6 +35,4 @@ export const ja: Record<string, string> = {
   "attributes.title": "属性",
   "raw.title": "生の観測記録",
   "raw.label": "ローカル観測記録の詳細",
-  "read.failed": "ローカル観測記録を読み取れませんでした。",
-  "clear.failed": "ローカル観測記録を消去できませんでした。",
 };

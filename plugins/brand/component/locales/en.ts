@@ -9,7 +9,6 @@ export const en: Record<string, string> = {
   copyFailed: "Couldn’t copy the color. Select the HEX value to copy it.",
   downloadPng: "Download PNG",
   downloadFailed: "Couldn’t save the image. Try again.",
-  copied: "Copied",
   copyHex: "Copy HEX",
   "guidelines.title": "Using the identity",
   "guidelines.shape":

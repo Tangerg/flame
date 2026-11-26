@@ -118,7 +118,6 @@ export const zh = {
   "history.previous": "上一页",
   "history.next": "下一页",
   "source.copy": "复制原文",
-  "source.copied": "已复制",
   "source.wrap": "启用自动换行",
   "source.unwrap": "关闭自动换行",
   "result.refresh": "刷新原始结果",

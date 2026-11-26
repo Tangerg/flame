@@ -121,7 +121,6 @@ export const ja = {
   "history.previous": "前のページ",
   "history.next": "次のページ",
   "source.copy": "原文をコピー",
-  "source.copied": "コピーしました",
   "source.wrap": "折り返しを有効にする",
   "source.unwrap": "折り返しを無効にする",
   "result.refresh": "元の結果を更新",

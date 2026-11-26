@@ -9,7 +9,6 @@ export const es: Record<string, string> = {
   "find.open": "Buscar",
   "find.clear": "Borrar búsqueda",
   "find.close": "Cerrar búsqueda",
-  "action.copied": "Copiado",
   "action.wrap": "Activar ajuste de línea",
   "action.unwrap": "Desactivar ajuste de línea",
   "output.empty": "Sin salida.",

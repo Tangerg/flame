@@ -1,5 +1,4 @@
 export const ko: Record<string, string> = {
-  "mcp.error.toolPolicy": "도구 정책을 업데이트하지 못했습니다.",
   "mcp.tools.policyHint":
     "즉시 저장됩니다. 도구 표시 설정은 새 실행에 적용됩니다. 자동 승인은 전역 허용 규칙을 설정하며, 더 구체적인 규칙도 적용됩니다.",
   "mcp.tools.nameConflict":
@@ -64,10 +63,7 @@ export const ko: Record<string, string> = {
   "mcp.import.confirm": "가져오기",
   "mcp.importing": "가져오는 중…",
   "mcp.import.ok_other": "서버 {{count}}개를 가져왔습니다",
-  "mcp.import.renamed":
-    "Runtime이 허용하는 형식으로 이름을 변경했습니다: {{names}}",
   "mcp.import.partial_other": "서버 {{total}}개 중 {{count}}개를 가져왔습니다.",
-  "mcp.import.error": "해당 설정을 가져올 수 없습니다.",
   "mcp.import.invalidJson": "올바른 JSON을 입력하세요.",
   "mcp.tools.title": "{{server}} 도구",
   "mcp.tools.label": "{{server}} {{tools}}",
@@ -76,12 +72,6 @@ export const ko: Record<string, string> = {
   "mcp.tools.empty": "이 서버는 도구를 제공하지 않습니다",
   "mcp.tools.enable.aria": "{{tool}} 사용",
   "mcp.tools.autoApprove.aria": "{{tool}} 자동 승인",
-  "mcp.error.save": "서버를 저장할 수 없습니다.",
-  "mcp.error.remove": "서버를 삭제할 수 없습니다.",
-  "mcp.error.toggle": "서버를 변경할 수 없습니다.",
-  "mcp.error.signIn": "로그인에 실패했습니다.",
-  "mcp.error.reconnect": "서버에 다시 연결할 수 없습니다.",
-  "mcp.error.test": "테스트 실패",
   "mcp.error.loadTools": "도구를 불러올 수 없습니다",
   "mcp.error.loadToolVisibility": "도구 표시 설정을 불러올 수 없습니다",
   "mcp.error.loadAutoApproveRules": "자동 승인 규칙을 불러올 수 없습니다",

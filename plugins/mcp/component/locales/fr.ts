@@ -1,5 +1,4 @@
 export const fr: Record<string, string> = {
-  "mcp.error.toolPolicy": "Impossible de modifier la politique de l’outil.",
   "mcp.tools.policyHint":
     "Enregistrement immédiat. La visibilité des outils s’applique aux nouvelles exécutions. L’approbation automatique définit une règle globale d’autorisation ; les règles plus précises restent applicables.",
   "mcp.tools.nameConflict":
@@ -69,11 +68,9 @@ export const fr: Record<string, string> = {
   "mcp.import.ok_one": "{{count}} serveur importé",
   "mcp.import.ok_many": "{{count}} de serveurs importés",
   "mcp.import.ok_other": "{{count}} serveurs importés",
-  "mcp.import.renamed": "Renommés pour que le Runtime les accepte : {{names}}",
   "mcp.import.partial_one": "{{count}} serveur sur {{total}} importé.",
   "mcp.import.partial_many": "{{count}} serveurs sur {{total}} importés.",
   "mcp.import.partial_other": "{{count}} serveurs sur {{total}} importés.",
-  "mcp.import.error": "Impossible d’importer cette configuration.",
   "mcp.import.invalidJson": "Saisissez un JSON valide.",
   "mcp.import.invalidShape":
     "Utilisez une configuration MCP valide avec un objet « mcpServers ».",
@@ -94,12 +91,6 @@ export const fr: Record<string, string> = {
   "mcp.tools.empty": "Ce serveur n’expose aucun outil",
   "mcp.tools.enable.aria": "Activer {{tool}}",
   "mcp.tools.autoApprove.aria": "Approuver automatiquement {{tool}}",
-  "mcp.error.save": "Impossible d’enregistrer le serveur.",
-  "mcp.error.remove": "Impossible de supprimer le serveur.",
-  "mcp.error.toggle": "Impossible de modifier le serveur.",
-  "mcp.error.signIn": "Échec de la connexion.",
-  "mcp.error.reconnect": "Impossible de reconnecter le serveur.",
-  "mcp.error.test": "Échec du test",
   "mcp.error.loadTools": "Impossible de charger les outils",
   "mcp.error.loadToolVisibility":
     "Impossible de charger la visibilité des outils",

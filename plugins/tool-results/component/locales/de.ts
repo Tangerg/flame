@@ -9,7 +9,6 @@ export const de: Record<string, string> = {
   "find.open": "Suchen",
   "find.clear": "Suche löschen",
   "find.close": "Suche schließen",
-  "action.copied": "Kopiert",
   "action.wrap": "Zeilenumbruch aktivieren",
   "action.unwrap": "Zeilenumbruch deaktivieren",
   "output.empty": "Keine Ausgabe.",

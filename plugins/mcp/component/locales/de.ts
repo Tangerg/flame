@@ -1,6 +1,4 @@
 export const de: Record<string, string> = {
-  "mcp.error.toolPolicy":
-    "Die Tool-Richtlinie konnte nicht geändert werden.",
   "mcp.tools.policyHint":
     "Wird sofort gespeichert. Die Sichtbarkeit gilt für neue Ausführungen. Automatische Genehmigung setzt eine globale Erlaubnisregel; spezifischere Regeln gelten weiterhin.",
   "mcp.tools.nameConflict":
@@ -69,11 +67,8 @@ export const de: Record<string, string> = {
   "mcp.importing": "Import läuft…",
   "mcp.import.ok_one": "{{count}} Server importiert",
   "mcp.import.ok_other": "{{count}} Server importiert",
-  "mcp.import.renamed":
-    "Umbenannt, damit die Runtime sie akzeptiert: {{names}}",
   "mcp.import.partial_one": "{{count}} von {{total}} Servern importiert.",
   "mcp.import.partial_other": "{{count}} von {{total}} Servern importiert.",
-  "mcp.import.error": "Diese Konfiguration konnte nicht importiert werden.",
   "mcp.import.invalidJson": "Gib gültiges JSON ein.",
   "mcp.import.invalidShape":
     "Verwende eine gültige MCP-Konfiguration mit einem „mcpServers“-Objekt.",
@@ -94,12 +89,6 @@ export const de: Record<string, string> = {
   "mcp.tools.empty": "Dieser Server stellt keine Tools bereit",
   "mcp.tools.enable.aria": "{{tool}} aktivieren",
   "mcp.tools.autoApprove.aria": "{{tool}} automatisch genehmigen",
-  "mcp.error.save": "Server konnte nicht gespeichert werden.",
-  "mcp.error.remove": "Server konnte nicht entfernt werden.",
-  "mcp.error.toggle": "Server konnte nicht geändert werden.",
-  "mcp.error.signIn": "Anmeldung fehlgeschlagen.",
-  "mcp.error.reconnect": "Server konnte nicht neu verbunden werden.",
-  "mcp.error.test": "Test fehlgeschlagen",
   "mcp.error.loadTools": "Tools konnten nicht geladen werden",
   "mcp.error.loadToolVisibility":
     "Tool-Sichtbarkeit konnte nicht geladen werden",

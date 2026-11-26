@@ -57,9 +57,7 @@ export const zh: Record<string, string> = {
   "mcp.import.confirm": "导入",
   "mcp.importing": "导入中…",
   "mcp.import.ok_other": "已导入 {{count}} 个服务器",
-  "mcp.import.renamed": "已重命名以符合 Runtime 的要求：{{names}}",
   "mcp.import.partial_other": "已导入 {{count}} / {{total}} 个服务器。",
-  "mcp.import.error": "无法导入该配置。",
   "mcp.import.invalidJson": "请输入有效的 JSON。",
   "mcp.import.invalidShape": "请使用包含“mcpServers”对象的有效 MCP 配置。",
   "mcp.import.invalidName":
@@ -78,12 +76,6 @@ export const zh: Record<string, string> = {
   "mcp.tools.empty": "此服务器未暴露任何工具",
   "mcp.tools.enable.aria": "启用 {{tool}}",
   "mcp.tools.autoApprove.aria": "自动批准 {{tool}}",
-  "mcp.error.save": "无法保存服务器。",
-  "mcp.error.remove": "无法移除服务器。",
-  "mcp.error.toggle": "无法更改服务器。",
-  "mcp.error.signIn": "登录失败。",
-  "mcp.error.reconnect": "无法重新连接服务器。",
-  "mcp.error.test": "测试失败",
   "mcp.error.loadTools": "无法加载工具",
   "mcp.error.loadToolVisibility": "无法加载工具可见性",
   "mcp.error.loadAutoApproveRules": "无法加载自动批准规则",
@@ -91,7 +83,6 @@ export const zh: Record<string, string> = {
     "服务器未在限定时间内响应，请检查命令或 URL 后重试。",
   "mcp.testOutcome.failed":
     "服务器未能连接，或未提供有效的工具列表。请检查其设置后重试。",
-  "mcp.error.toolPolicy": "无法更新工具策略。",
   "mcp.tools.policyHint":
     "即时保存。工具可见性对新运行生效。自动批准设置全局允许规则；更具体的规则仍然生效。",
   "mcp.tools.nameConflict":

@@ -9,7 +9,6 @@ export const en: Record<string, string> = {
   "find.open": "Find",
   "find.clear": "Clear search",
   "find.close": "Close find",
-  "action.copied": "Copied",
   "action.wrap": "Enable word wrap",
   "action.unwrap": "Disable word wrap",
   "output.empty": "No output.",

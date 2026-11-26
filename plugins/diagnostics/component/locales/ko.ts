@@ -1,6 +1,5 @@
 export const ko: Record<string, string> = {
   "code.copy": "코드 복사",
-  "code.copied": "복사됨",
   "code.wrap": "자동 줄 바꿈 사용",
   "code.unwrap": "자동 줄 바꿈 사용 안 함",
   "panel.title": "클라이언트 진단",
@@ -36,6 +35,4 @@ export const ko: Record<string, string> = {
   "attributes.title": "속성",
   "raw.title": "원시 관측 기록",
   "raw.label": "로컬 관측 기록 세부 정보",
-  "read.failed": "로컬 관측 기록을 읽을 수 없습니다.",
-  "clear.failed": "로컬 관측 기록을 지울 수 없습니다.",
 };

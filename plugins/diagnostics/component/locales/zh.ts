@@ -1,6 +1,5 @@
 export const zh: Record<string, string> = {
   "code.copy": "复制代码",
-  "code.copied": "已复制",
   "code.wrap": "启用自动换行",
   "code.unwrap": "关闭自动换行",
   "panel.title": "客户端诊断",
@@ -36,6 +35,4 @@ export const zh: Record<string, string> = {
   "attributes.title": "属性",
   "raw.title": "原始观测记录",
   "raw.label": "本地观测记录详情",
-  "read.failed": "无法读取本地观测记录。",
-  "clear.failed": "无法清除本地观测记录。",
 };

@@ -11,7 +11,6 @@ export const de: Record<string, string> = {
   downloadPng: "PNG herunterladen",
   downloadFailed:
     "Das Bild konnte nicht gespeichert werden. Versuche es erneut.",
-  copied: "Kopiert",
   copyHex: "HEX kopieren",
   "guidelines.title": "Verwendung der Identität",
   "guidelines.shape":

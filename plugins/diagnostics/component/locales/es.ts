@@ -1,6 +1,5 @@
 export const es: Record<string, string> = {
   "code.copy": "Copiar código",
-  "code.copied": "Copiado",
   "code.wrap": "Activar ajuste de línea",
   "code.unwrap": "Desactivar ajuste de línea",
   "panel.title": "Diagnóstico del cliente",
@@ -36,6 +35,4 @@ export const es: Record<string, string> = {
   "attributes.title": "Atributos",
   "raw.title": "Observación sin procesar",
   "raw.label": "Detalles de la observación local",
-  "read.failed": "No se pudieron leer las observaciones locales.",
-  "clear.failed": "No se pudieron borrar las observaciones locales.",
 };

@@ -121,7 +121,6 @@ export const ko = {
   "history.previous": "이전 페이지",
   "history.next": "다음 페이지",
   "source.copy": "원문 복사",
-  "source.copied": "복사됨",
   "source.wrap": "자동 줄 바꿈 사용",
   "source.unwrap": "자동 줄 바꿈 해제",
   "result.refresh": "원본 결과 새로 고침",

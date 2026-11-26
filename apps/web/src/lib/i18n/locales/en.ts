@@ -850,8 +850,6 @@ export const en = {
   "tool.done.reportGoalOutcome": "Reported goal",
   "tool.meta.matches_one": "{{count}} match",
   "tool.meta.matches_other": "{{count}} matches",
-  "tool.meta.results_one": "{{count}} result",
-  "tool.meta.results_other": "{{count}} results",
   "tool.meta.lines_one": "{{count}} line",
   "tool.meta.lines_other": "{{count}} lines",
   "tool.meta.files_one": "{{count}} file",
@@ -959,7 +957,6 @@ export const en = {
   "file.change.mod": "Modified in the working tree",
   "file.change.del": "Deleted in the working tree",
   "file.change.renamed": "Renamed from {{path}}",
-  "file.change.below": "Contains working-tree changes",
   "packages.module.selectSession": "Select a session to view this page.",
   "packages.loading": "Loading…",
   "packages.trust":

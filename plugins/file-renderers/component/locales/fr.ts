@@ -1,6 +1,5 @@
 export const fr: Record<string, string> = {
   "code.copy": "Copier le code",
-  "code.copied": "Copié",
   "code.wrap": "Activer le retour à la ligne",
   "code.unwrap": "Désactiver le retour à la ligne",
   "panel.label": "Fichier Markdown",

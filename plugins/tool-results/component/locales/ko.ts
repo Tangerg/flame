@@ -9,7 +9,6 @@ export const ko: Record<string, string> = {
   "find.open": "찾기",
   "find.clear": "검색 지우기",
   "find.close": "찾기 닫기",
-  "action.copied": "복사됨",
   "action.wrap": "자동 줄 바꿈 사용",
   "action.unwrap": "자동 줄 바꿈 사용 안 함",
   "output.empty": "출력 없음.",

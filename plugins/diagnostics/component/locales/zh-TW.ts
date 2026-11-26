@@ -1,6 +1,5 @@
 export const zhTW: Record<string, string> = {
   "code.copy": "複製程式碼",
-  "code.copied": "已複製",
   "code.wrap": "啟用自動換行",
   "code.unwrap": "關閉自動換行",
   "panel.title": "用戶端診斷",
@@ -36,6 +35,4 @@ export const zhTW: Record<string, string> = {
   "attributes.title": "屬性",
   "raw.title": "原始觀測記錄",
   "raw.label": "本機觀測記錄詳情",
-  "read.failed": "無法讀取本機觀測記錄。",
-  "clear.failed": "無法清除本機觀測記錄。",
 };

@@ -9,7 +9,6 @@ export const ko: Record<string, string> = {
   copyFailed: "색상을 복사하지 못했습니다. HEX 값을 선택해 복사하세요.",
   downloadPng: "PNG 다운로드",
   downloadFailed: "이미지를 저장하지 못했습니다. 다시 시도하세요.",
-  copied: "복사됨",
   copyHex: "HEX 복사",
   "guidelines.title": "사용 가이드",
   "guidelines.shape":

@@ -123,7 +123,6 @@ export const en = {
   "history.previous": "Previous page",
   "history.next": "Next page",
   "source.copy": "Copy source",
-  "source.copied": "Source copied",
   "source.wrap": "Enable word wrap",
   "source.unwrap": "Disable word wrap",
   "result.refresh": "Refresh original outcome",

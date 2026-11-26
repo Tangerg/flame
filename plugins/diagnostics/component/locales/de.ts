@@ -1,6 +1,5 @@
 export const de: Record<string, string> = {
   "code.copy": "Code kopieren",
-  "code.copied": "Kopiert",
   "code.wrap": "Zeilenumbruch aktivieren",
   "code.unwrap": "Zeilenumbruch deaktivieren",
   "panel.title": "Client-Diagnose",
@@ -37,6 +36,4 @@ export const de: Record<string, string> = {
   "attributes.title": "Attribute",
   "raw.title": "Rohbeobachtung",
   "raw.label": "Details der lokalen Beobachtung",
-  "read.failed": "Lokale Beobachtungen konnten nicht gelesen werden.",
-  "clear.failed": "Lokale Beobachtungen konnten nicht gelöscht werden.",
 };

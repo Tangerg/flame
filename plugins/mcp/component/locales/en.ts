@@ -1,5 +1,4 @@
 export const en: Record<string, string> = {
-  "mcp.error.toolPolicy": "Couldn’t update tool policy.",
   "mcp.tools.policyHint":
     "Saved immediately. Tool visibility applies to new runs. Auto-approve sets a global allow rule; more specific rules still apply.",
   "mcp.tools.nameConflict":
@@ -65,10 +64,8 @@ export const en: Record<string, string> = {
   "mcp.importing": "Importing…",
   "mcp.import.ok_one": "Imported {{count}} server",
   "mcp.import.ok_other": "Imported {{count}} servers",
-  "mcp.import.renamed": "Renamed to match what the Runtime accepts: {{names}}",
   "mcp.import.partial_one": "Imported {{count}} of {{total}} servers.",
   "mcp.import.partial_other": "Imported {{count}} of {{total}} servers.",
-  "mcp.import.error": "Couldn’t import that config.",
   "mcp.import.invalidJson": "Enter valid JSON.",
   "mcp.tools.title": "Tools for {{server}}",
   "mcp.tools.label": "{{tools}} for {{server}}",
@@ -77,12 +74,6 @@ export const en: Record<string, string> = {
   "mcp.tools.empty": "This server exposes no tools",
   "mcp.tools.enable.aria": "Enable {{tool}}",
   "mcp.tools.autoApprove.aria": "Auto-approve {{tool}}",
-  "mcp.error.save": "Couldn’t save the server.",
-  "mcp.error.remove": "Couldn’t remove the server.",
-  "mcp.error.toggle": "Couldn’t change the server.",
-  "mcp.error.signIn": "Sign-in failed.",
-  "mcp.error.reconnect": "Couldn’t reconnect the server.",
-  "mcp.error.test": "Test failed",
   "mcp.error.loadTools": "Couldn’t load tools",
   "mcp.error.loadToolVisibility": "Couldn’t load tool visibility",
   "mcp.error.loadAutoApproveRules": "Couldn’t load auto-approve rules",

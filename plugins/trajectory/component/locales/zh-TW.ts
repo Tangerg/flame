@@ -1,6 +1,5 @@
 export const zhTW: Record<string, string> = {
   "code.copy": "複製程式碼",
-  "code.copied": "已複製",
   "code.wrap": "啟用自動換行",
   "code.unwrap": "關閉自動換行",
   "panel.title": "工作階段軌跡",
