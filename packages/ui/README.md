@@ -715,6 +715,8 @@ ReadingList delegates virtualization, following and anchor correction to Legend.
 Its public pinning retains the complete selected range and rows owning native
 focus, composition or a React portal. It exposes only the library handle for
 navigation. Clipboard receipts are projected by each host's existing Toast feed.
+Focus inside a row stays clear of the viewport’s scroll padding when it returns
+from a popup or the row reflows. A reader’s wheel movement releases that reveal.
 The optional `maintainScrollAtEndThreshold` uses Legend's viewport fraction.
 Zero uses the physical edge tolerance for automatic end following.
 

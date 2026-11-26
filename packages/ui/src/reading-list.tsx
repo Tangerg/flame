@@ -155,8 +155,8 @@ function useOverflowing(
   return overflowing;
 }
 
-// Keeps the focused control inside a row visible while the row resizes or the
-// list repositions, until the reader scrolls away on purpose.
+// Keeps the focused control visible on focus return, row resize and list
+// repositioning, until the reader scrolls away on purpose.
 function useFocusedControlVisible({
   root,
   rowSelector,
@@ -177,27 +177,43 @@ function useFocusedControlVisible({
     const row = [
       ...(root.current?.querySelectorAll<HTMLElement>(rowSelector) ?? []),
     ].find((element) => element.dataset.readingKey === focused);
-    if (!row) return;
+    const viewport = list.getScrollableNode();
+    if (!row || !viewport) return;
     const reveal = () => {
       const active = row.ownerDocument.activeElement;
       if (
         !retain.current ||
         row.querySelector(":active") ||
         !(active instanceof HTMLElement) ||
-        !row.contains(active)
+        !row.contains(active) ||
+        !viewport.contains(row)
       )
         return;
-      const rowBounds = row.getBoundingClientRect();
+      const { clientHeight, scrollHeight, scrollTop } = viewport;
+      if (clientHeight === 0) return;
+      // The mounted control can move before Legend measures the new item layout.
+      const viewportTop =
+        viewport.getBoundingClientRect().top + viewport.clientTop;
       const bounds = active.getBoundingClientRect();
-      const index = list.getState().indexByKey(focused);
-      if (index !== undefined)
-        void list.scrollIndexIntoView({
-          index,
-          animated: false,
-          itemOffset: Math.max(0, bounds.top - rowBounds.top),
-          itemLength: bounds.height,
-          viewportMargin: { start: 8, end: 8 },
-        });
+      const { scrollPaddingTop, scrollPaddingBottom } =
+        getComputedStyle(viewport);
+      const start =
+        viewportTop + Math.max(8, parseFloat(scrollPaddingTop) || 0);
+      const end =
+        viewportTop +
+        clientHeight -
+        Math.max(8, parseFloat(scrollPaddingBottom) || 0);
+      const delta =
+        bounds.top < start || bounds.height > end - start
+          ? bounds.top - start
+          : Math.max(0, bounds.bottom - end);
+      if (Math.abs(delta) <= 0.5) return;
+      const offset = Math.max(
+        0,
+        Math.min(scrollTop + delta, scrollHeight - clientHeight),
+      );
+      if (Math.abs(offset - scrollTop) > 0.5)
+        void list.scrollToOffset({ offset, animated: false });
     };
     let frame: number | undefined;
     const requestReveal = () => {
@@ -208,10 +224,13 @@ function useFocusedControlVisible({
       });
     };
     const observer = new ResizeObserver(requestReveal);
+    observer.observe(viewport);
     observer.observe(row);
+    row.addEventListener("focusin", requestReveal);
     const stop = list.getState().listen("lastPositionUpdate", requestReveal);
     return () => {
       observer.disconnect();
+      row.removeEventListener("focusin", requestReveal);
       stop();
       if (frame !== undefined) cancelAnimationFrame(frame);
     };
