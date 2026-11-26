@@ -99,8 +99,15 @@ export function ServerForm({
   const form = useRef<HTMLDivElement>(null);
   const close = (complete: () => void) => {
     const root = form.current;
-    if (root?.contains(root.ownerDocument.activeElement))
+    if (root?.contains(root.ownerDocument.activeElement)) {
       returnFocus.focus({ preventScroll: true });
+      if (root.ownerDocument.activeElement === returnFocus)
+        returnFocus.scrollIntoView({
+          block: "nearest",
+          inline: "nearest",
+          behavior: "instant",
+        });
+    }
     complete();
   };
   const presented = useRef(false);
