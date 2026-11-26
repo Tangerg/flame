@@ -104,7 +104,9 @@ export function ConsoleHistory({
                       <RecordBody>{result.error}</RecordBody>
                     </div>
                   )}
-                  {result.value && <Outcome record={result.value} t={t} />}
+                  {result.value && (
+                    <Outcome record={result.value} t={t} dateTime={dateTime} />
+                  )}
                 </RecordGroup>
               )}
             </Disclosure>
