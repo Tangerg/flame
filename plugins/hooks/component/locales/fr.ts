@@ -14,7 +14,7 @@ export const fr: Record<string, string> = {
   "inactive.hint": "Faites confiance à ce dépôt pour activer ses hooks.",
   empty: "Aucun hook configuré",
   "empty.sub":
-    "Ajoutez des hooks dans ~/.flame/hooks.json (global) ou <repository>/.flame/hooks.json.",
+    "Ajoutez des hooks dans ~/.flame/hooks.json (global) ou <dépôt>/.flame/hooks.json.",
   "error.trust": "Impossible de modifier la confiance des hooks du dépôt.",
   reading: "Chargement",
   refresh: "Actualiser",

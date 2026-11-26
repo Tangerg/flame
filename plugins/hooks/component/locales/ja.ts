@@ -14,7 +14,7 @@ export const ja: Record<string, string> = {
   "inactive.hint": "このリポジトリを信頼するとフックが有効になります。",
   empty: "フックが設定されていません",
   "empty.sub":
-    "~/.flame/hooks.json（グローバル）または <repository>/.flame/hooks.json にフックを追加してください。",
+    "~/.flame/hooks.json（グローバル）または <リポジトリ>/.flame/hooks.json にフックを追加してください。",
   "error.trust": "リポジトリのフック信頼設定を変更できませんでした。",
   reading: "読み込み中",
   refresh: "更新",

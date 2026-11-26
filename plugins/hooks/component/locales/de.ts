@@ -14,7 +14,7 @@ export const de: Record<string, string> = {
   "inactive.hint": "Vertraue diesem Repository, um seine Hooks zu aktivieren.",
   empty: "Keine Hooks konfiguriert",
   "empty.sub":
-    "Füge Hooks in ~/.flame/hooks.json (global) oder <repository>/.flame/hooks.json hinzu.",
+    "Füge Hooks in ~/.flame/hooks.json (global) oder <Repository>/.flame/hooks.json hinzu.",
   "error.trust": "Hook-Vertrauen des Repositorys konnte nicht geändert werden.",
   reading: "Wird geladen",
   refresh: "Aktualisieren",
