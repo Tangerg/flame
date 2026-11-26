@@ -25,7 +25,7 @@ const styles = stylex.create({
   },
   inline: {
     color: color.fgFaint,
-    fontFamily: "var(--font-mono)",
+    fontFamily: font.mono,
     fontWeight: weight.regular,
     lineHeight: 1,
   },

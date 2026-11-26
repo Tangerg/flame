@@ -16,12 +16,13 @@ import { usePluginErrorStore } from "@/extensions/errors";
 import {
   color,
   face,
+  font,
   leading,
   radius,
+  rowInset,
   space,
   surface,
   type as typeStep,
-  rowInset,
 } from "@flame/ui/tokens.stylex";
 import { SettingsGroup } from "@/ui/settings/SettingsGroup";
 import { settingStyles as ss } from "@/ui/settings/settingStyles";
@@ -67,7 +68,7 @@ const pp = stylex.create({
     maxHeight: "calc(var(--spacing) * 56)",
     whiteSpace: "pre-wrap",
     overflowWrap: "anywhere",
-    fontFamily: "var(--font-mono)",
+    fontFamily: font.mono,
     lineHeight: leading.body,
     color: color.fgMuted,
   },

@@ -13,7 +13,7 @@ import {
   type RefObject,
 } from "react";
 import { clsx } from "clsx";
-import { color, motion, space, surface, type, weight } from "@flame/ui/tokens.stylex";
+import { color, font, motion, space, surface, type, weight } from "@flame/ui/tokens.stylex";
 import { ContextMenu } from "@/ui/atoms/menu";
 import { IconButton } from "@flame/ui/icon-button";
 import { handoffFocus, isImeKey, vocab, useContentVisible } from "@flame/ui";
@@ -162,7 +162,7 @@ const styles = stylex.create({
   sortHandle: { flexShrink: 0, cursor: "grab" },
   hiddenSortHandle: { display: "none" },
   tabClose: { marginRight: space.s0_5 },
-  badge: { flexShrink: 0, fontFamily: "var(--font-mono)", lineHeight: 1, color: color.fgFaint },
+  badge: { flexShrink: 0, fontFamily: font.mono, lineHeight: 1, color: color.fgFaint },
   contents: { display: "contents" },
 });
 

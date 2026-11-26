@@ -5,6 +5,7 @@ import type { IconSize } from "./icon-scale";
 import { clsx as cn } from "clsx";
 import {
   color,
+  font,
   leading,
   motion,
   radius,
@@ -67,7 +68,7 @@ const styles = stylex.create({
   inkSoft: { color: color.fgSoft },
   invalidBare: { boxShadow: `inset 0 0 0 1px ${color.negative}` },
   numeric: { fontVariantNumeric: "tabular-nums" },
-  faceMono: { fontFamily: "var(--font-mono)" },
+  faceMono: { fontFamily: font.mono },
   faceSans: { fontFamily: "var(--font-sans)" },
   input: { lineHeight: leading.tight },
   area: {

@@ -3,7 +3,7 @@ import { Fragment, type ReactNode, type Ref } from "react";
 import { DiffStat } from "./diff-stat";
 import { useHeadingTag } from "./heading-level";
 import { RecordButton, RecordGroup } from "./records";
-import { color, layout, space, type, weight } from "./tokens.stylex";
+import { color, font, layout, space, type, weight } from "./tokens.stylex";
 
 export interface DiffFileSummary {
   path: string;
@@ -40,7 +40,7 @@ const styles = stylex.create({
   },
   directory: {
     color: color.fgMuted,
-    fontFamily: "var(--font-mono)",
+    fontFamily: font.mono,
     fontWeight: weight.regular,
     overflowWrap: "anywhere",
     minWidth: 0,

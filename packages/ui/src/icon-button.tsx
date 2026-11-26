@@ -1,7 +1,15 @@
 import * as stylex from "@stylexjs/stylex";
 import { ChevronLeft } from "@flame/icons/react";
 import type { IconSize } from "./icon-scale";
-import { color, corner, space, surface, type, weight } from "./tokens.stylex";
+import {
+  color,
+  corner,
+  font,
+  space,
+  surface,
+  type,
+  weight,
+} from "./tokens.stylex";
 import { Icon, type IconGlyph } from "./font-scale";
 import { Button, type ButtonProps, type ButtonSize } from "./button";
 import { GlyphSwap } from "./glyph-swap";
@@ -53,7 +61,7 @@ const styles = stylex.create({
     placeItems: "center",
     backgroundColor: surface.ctaFill,
     paddingInline: space.s0_5,
-    fontFamily: "var(--font-mono)",
+    fontFamily: font.mono,
     fontWeight: weight.semibold,
     color: color.ctaText,
   },
