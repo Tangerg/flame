@@ -6,8 +6,6 @@ export const de: Record<string, string> = {
   "plush.title": "Plüschfigur",
   "color.title": "Markenfarbe",
   "color.name": "Flame Orange",
-  copyFailed:
-    "Die Farbe konnte nicht kopiert werden. Wähle den HEX-Wert zum Kopieren aus.",
   downloadPng: "PNG herunterladen",
   downloadFailed:
     "Das Bild konnte nicht gespeichert werden. Versuche es erneut.",

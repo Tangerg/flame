@@ -5,9 +5,7 @@ export const fr: Record<string, string> = {
   "companion.title": "Compagnon 3D",
   "plush.title": "Personnage en peluche",
   "color.title": "Couleur de marque",
-  "color.name": "Orange Flame",
-  copyFailed:
-    "Impossible de copier la couleur. Sélectionnez la valeur HEX pour la copier.",
+  "color.name": "Flame Orange",
   downloadPng: "Télécharger le PNG",
   downloadFailed: "Impossible d’enregistrer l’image. Réessayez.",
   copyHex: "Copier le HEX",

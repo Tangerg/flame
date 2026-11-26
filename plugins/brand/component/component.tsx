@@ -46,14 +46,12 @@ function pngBytes(source: string): Uint8Array {
   );
 }
 
-type Failure = { kind: "copy" } | { kind: "download"; detail: string };
-
 export function Brand({ context }: { context: ComponentContext }) {
   const t = useTranslator(CATALOGS, context.locale);
   const copy = useCopy(hex, t("copyHex"));
   const saving = useRef(false);
   const [savingID, setSavingID] = useState<string>();
-  const [failure, setFailure] = useState<Failure>();
+  const [failure, setFailure] = useState<string>();
 
   async function download(asset: (typeof assets)[number]) {
     if (saving.current || context.signal.aborted) return;
@@ -67,8 +65,7 @@ export function Brand({ context }: { context: ComponentContext }) {
         bytes: pngBytes(asset.source),
       });
     } catch (error) {
-      if (!context.signal.aborted)
-        setFailure({ kind: "download", detail: failureText(error) });
+      if (!context.signal.aborted) setFailure(failureText(error));
     } finally {
       saving.current = false;
       if (!context.signal.aborted) setSavingID(undefined);
@@ -79,9 +76,7 @@ export function Brand({ context }: { context: ComponentContext }) {
     <>
       {failure && (
         <p role="alert">
-          {failure.kind === "copy"
-            ? t("copyFailed")
-            : `${t("downloadFailed")} ${failure.detail}`}
+          {t("downloadFailed")} {failure}
         </p>
       )}
       <PanelSection title={t("assets")}>
@@ -166,16 +161,11 @@ export function Brand({ context }: { context: ComponentContext }) {
             variant="soft"
             size="sm"
             onClick={() => {
-              if (context.signal.aborted) return;
-              setFailure(undefined);
-              void copy().then((accepted) => {
-                if (accepted === false && !context.signal.aborted)
-                  setFailure({ kind: "copy" });
-              });
+              if (!context.signal.aborted) void copy();
             }}
           >
             <Icon glyph={Copy} />
-            <span aria-live="polite">{t("copyHex")}</span>
+            {t("copyHex")}
           </Button>
         </div>
       </PanelSection>
