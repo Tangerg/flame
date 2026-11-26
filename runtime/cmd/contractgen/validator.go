@@ -13,8 +13,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/delivery/dispatch"
 )
 
-const validatorFile = "wire_constraints.generated.go"
-
 type validatorRuleIndex struct {
 	values  map[reflect.Type][]dispatch.FieldConstraint
 	unions  map[reflect.Type]dispatch.UnionSpec
