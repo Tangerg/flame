@@ -1,6 +1,4 @@
 export const es: Record<string, string> = {
-  "mcp.tools.policyHint":
-    "Se guarda al instante. La visibilidad se aplica a las nuevas ejecuciones. La aprobación automática establece una regla global de permiso; las reglas más específicas siguen vigentes.",
   "mcp.tools.nameConflict":
     "Disponible como {{name}}. {{sources}} también usa el nombre corto.",
   "mcp.add": "Añadir servidor",

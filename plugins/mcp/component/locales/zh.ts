@@ -83,8 +83,6 @@ export const zh: Record<string, string> = {
     "服务器未在限定时间内响应，请检查命令或 URL 后重试。",
   "mcp.testOutcome.failed":
     "服务器未能连接，或未提供有效的工具列表。请检查其设置后重试。",
-  "mcp.tools.policyHint":
-    "即时保存。工具可见性对新运行生效。自动批准设置全局允许规则；更具体的规则仍然生效。",
   "mcp.tools.nameConflict":
     "可通过 {{name}} 调用。{{sources}} 也使用这个简短名称。",
   "mcpStatus.mcp_authorization_required": "该服务器需要先登录才能使用。",

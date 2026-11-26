@@ -1,6 +1,4 @@
 export const ja: Record<string, string> = {
-  "mcp.tools.policyHint":
-    "即座に保存されます。ツールの表示設定は新しい実行に適用されます。自動承認はグローバルな許可ルールを設定します。より具体的なルールも適用されます。",
   "mcp.tools.nameConflict":
     "{{name}} として利用できます。短い名前は {{sources}} でも使われています。",
   "mcp.add": "サーバーを追加",

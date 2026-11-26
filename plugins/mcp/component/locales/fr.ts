@@ -1,6 +1,4 @@
 export const fr: Record<string, string> = {
-  "mcp.tools.policyHint":
-    "Enregistrement immédiat. La visibilité des outils s’applique aux nouvelles exécutions. L’approbation automatique définit une règle globale d’autorisation ; les règles plus précises restent applicables.",
   "mcp.tools.nameConflict":
     "Disponible sous le nom {{name}}. Le nom court est aussi utilisé par {{sources}}.",
   "mcp.add": "Ajouter un serveur",

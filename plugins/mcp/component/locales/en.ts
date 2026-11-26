@@ -1,6 +1,4 @@
 export const en: Record<string, string> = {
-  "mcp.tools.policyHint":
-    "Saved immediately. Tool visibility applies to new runs. Auto-approve sets a global allow rule; more specific rules still apply.",
   "mcp.tools.nameConflict":
     "Available as {{name}}. The short name is also used by {{sources}}.",
   "mcp.add": "Add server",
