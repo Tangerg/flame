@@ -43,7 +43,7 @@ export const ko: Record<string, string> = {
     "프로세스 대상이 변경되었습니다. 새 환경 변수를 입력하거나 저장된 값을 제거하세요.",
   "mcp.form.dir.aria": "작업 디렉터리",
   "mcp.form.url.aria": "서버 URL",
-  "mcp.form.auth.placeholder": "인증 토큰 (선택)",
+  "mcp.form.auth.placeholder": "인증 토큰(선택)",
   "mcp.form.auth.keep": "비워 두면 저장된 토큰을 유지합니다",
   "mcp.form.auth.clear": "저장된 인증 정보 제거",
   "mcp.form.auth.originChanged":

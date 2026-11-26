@@ -1,5 +1,5 @@
 export const ko: Record<string, string> = {
-  "worktree.open": "변경 사항 보기 ({{count}})",
+  "worktree.open": "변경 사항 보기({{count}})",
   "worktree.files_other": "파일 {{count}}개",
   "panel.title": "작업 공간 diff",
   refresh: "새로 고침",

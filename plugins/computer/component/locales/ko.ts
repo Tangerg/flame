@@ -76,7 +76,7 @@ export const ko = {
   "approval.app": "앱",
   "approval.risk": "보고된 위험",
   "approval.fields": "요청된 정보",
-  "approval.required": " (필수)",
+  "approval.required": "(필수)",
   "approval.choose": "값 선택",
   "approval.true": "예",
   "approval.false": "아니요",
