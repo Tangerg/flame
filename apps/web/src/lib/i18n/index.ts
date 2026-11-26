@@ -16,29 +16,28 @@ const stored = readStoredDictionary(initial);
 let provisional: Locale | undefined = stored?.locale;
 const mountedSources = new Map<Locale, string>();
 
-const countFormats = new Map<string, Intl.NumberFormat>();
+const numberFormats = new Map<string, Intl.NumberFormat>();
 
-// `count` selects plural forms, so it is always a quantity and reads in the locale's digits;
-// every other value interpolates as given.
-const countFormatter: FormatterModule = {
+// Numbers read in the locale's digits; a caller passes a string to keep a value verbatim.
+const numberFormatter: FormatterModule = {
   type: "formatter",
   init() {},
   add() {},
   addCached() {},
-  format(value, _format, lng, options) {
-    if (options?.interpolationkey !== "count" || typeof value !== "number") return value;
+  format(value, _format, lng) {
+    if (typeof value !== "number") return value;
     const locale = localeToBcp47(lng ?? getLocale());
-    let format = countFormats.get(locale);
+    let format = numberFormats.get(locale);
     if (!format) {
       format = new Intl.NumberFormat(locale);
-      countFormats.set(locale, format);
+      numberFormats.set(locale, format);
     }
     return format.format(value);
   },
 };
 
 void i18next
-  .use(countFormatter)
+  .use(numberFormatter)
   .use(initReactI18next)
   .init({
     resources: {

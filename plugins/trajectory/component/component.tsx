@@ -369,7 +369,7 @@ export function RenameSession({ context }: { context: ComponentContext }) {
           <p role="status">
             {t("rename.saved", {
               id: rename.session.id,
-              revision: rename.session.revision,
+              revision: String(rename.session.revision),
               title: rename.session.title || t("rename.untitled"),
             })}
           </p>
