@@ -14,7 +14,7 @@ import (
 
 func remoteEvents(call *remoteCall, reader *sse.Reader, eventType reflect.Type, operation operation, acknowledgement any) iter.Seq2[any, error] {
 	var consumed atomic.Bool
-	rootID, segmentID := streamIdentity(acknowledgement)
+	rootID, segmentID := runStreamIdentity(acknowledgement)
 	return func(yield func(any, error) bool) {
 		fail := func(err error) {
 			if eventType == reflect.TypeFor[protocol.PluginStreamEvent]() && operation == commandOperation {
@@ -38,15 +38,17 @@ func remoteEvents(call *remoteCall, reader *sse.Reader, eventType reflect.Type, 
 				return
 			}
 			terminal := false
-			if run, ok := event.(protocol.RunEvent); ok && run.RunID == rootID {
-				if run.SegmentID != segmentID {
-					yield(nil, invalidRemote("event belongs to another root segment"))
+			switch event := event.(type) {
+			case protocol.RunEvent:
+				matchesRun := event.RunID == rootID
+				matchesSegment := event.SegmentID == segmentID
+				if matchesRun != matchesSegment {
+					fail(invalidRemote("event does not match the acknowledged root run and segment"))
 					return
 				}
-				terminal = run.Event.Type == protocol.StreamSegmentFinished
-			}
-			if stream, ok := event.(protocol.PluginStreamEvent); ok {
-				terminal = stream.Kind == protocol.PluginStreamResult || stream.Kind == protocol.PluginStreamFailure
+				terminal = matchesRun && event.Event.Type == protocol.StreamSegmentFinished
+			case protocol.PluginStreamEvent:
+				terminal = event.Kind == protocol.PluginStreamResult || event.Kind == protocol.PluginStreamFailure
 			}
 			if !yield(event, nil) || terminal {
 				return
@@ -114,7 +116,7 @@ func decodeRemoteRuntimeEvent(frame sse.Message, notification *jsonrpc.Request) 
 	return decoded.Event, nil
 }
 
-func streamIdentity(acknowledgement any) (string, string) {
+func runStreamIdentity(acknowledgement any) (string, string) {
 	switch ack := acknowledgement.(type) {
 	case *protocol.StartRunResponse:
 		return ack.RunID, ack.SegmentID

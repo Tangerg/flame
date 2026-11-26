@@ -27,6 +27,11 @@ HTTP metadata must retain its exact value. Invalid field bytes and surrounding
 HTTP whitespace are refused before dispatch, rather than changing a command's
 identity or reporting an unknown acknowledgement for a local encoding failure.
 
+A Run's acknowledgement binds both its root Run and Segment. The stream
+delivers child events independently and completes when the acknowledged pair
+publishes its terminal event. A notification matching just one of the two
+identities fails observation before delivery.
+
 Backend implementations use `packages/go-sdk/plugin`. Add this client only when
 they need a Runtime callback; the backend SDK does not depend on the client.
 Run `go test ./packages/go-sdk/client` and the root boundary checks.
