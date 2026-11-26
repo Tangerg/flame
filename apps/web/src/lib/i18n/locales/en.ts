@@ -63,7 +63,7 @@ export const en = {
   "packages.requirements.optional": "Optional",
   "packages.requirements.required": "Required",
   "packages.requirements.absent": "Optional dependency is absent.",
-  "packages.requirements.unread": "Bindings have not been read.",
+  "packages.requirements.unread": "Bindings haven’t been read.",
   "packages.requirements.failed": "The dependency bindings couldn’t be read.",
   "common.clearSearch": "Clear search",
   "common.cancel": "Cancel",
@@ -191,7 +191,7 @@ export const en = {
   "workspace.view.openBeside": "Open in the context dock",
   "workspace.view.unavailable.title": "View unavailable",
   "workspace.view.unavailable.body":
-    'The "{{id}}" view is not registered. Close this tab or re-enable its plugin.',
+    'The "{{id}}" view isn’t registered. Close this tab or re-enable its plugin.',
   "message.markdown.footnotes": "Footnotes",
   "message.markdown.backReference": "Back to reference {{reference}}",
   "message.image.view": "View attached image",
@@ -446,8 +446,8 @@ export const en = {
   "renderer.automatic": "Automatic",
   "renderer.unavailable": "Selected renderer unavailable",
   "settings.font.default": "Default",
-  "settings.font.defaultUi": "Default (System)",
-  "settings.font.defaultMono": "Default (System mono)",
+  "settings.font.defaultUi": "Default (system)",
+  "settings.font.defaultMono": "Default (system mono)",
   "settings.customColors": "Custom colors",
   "settings.color.bg": "Background",
   "settings.color.fg": "Foreground",
@@ -512,7 +512,7 @@ export const en = {
   "settings.connection.status.degraded": "Degraded",
   "settings.connection.status.unhealthy": "Unhealthy",
   "settings.connection.status.unavailable": "Unavailable",
-  "settings.connection.status.timeout": "The Runtime did not respond in time.",
+  "settings.connection.status.timeout": "The Runtime didn’t respond in time.",
   "settings.connection.status.refresh": "Refresh",
   "settings.connection.status.server": "Server",
   "settings.connection.status.protocol": "Protocol",
@@ -563,8 +563,8 @@ export const en = {
   "session.identity.copiedId": "Session ID copied",
   "session.status.waiting": "Needs input",
   "agent.loss.restart":
-    "The Runtime stopped while this run was active, so its result was not saved.",
-  "agent.loss.isolatedWorkspace": "This run’s isolated workspace does not survive a restart.",
+    "The Runtime stopped while this run was active, so its result wasn’t saved.",
+  "agent.loss.isolatedWorkspace": "This run’s isolated workspace doesn’t survive a restart.",
   "agent.loss.workspaceUnavailable": "This run’s workspace is no longer available.",
   "agent.loss.otherBuild": "This run was waiting in state written by a different Runtime version.",
   "agent.loss.waitingStateUnavailable": "This run’s waiting state couldn’t be restored.",
@@ -720,7 +720,7 @@ export const en = {
     "Restore was refused to protect files not saved in the checkpoint. No files were changed.",
   "rpcError.prompt_source_too_large":
     "The instruction files exceed the size or count limit. Shorten them or use fewer files, then try again.",
-  "rpcError.workspace_unavailable": "That workspace does not exist on the Runtime’s disk.",
+  "rpcError.workspace_unavailable": "That workspace doesn’t exist on the Runtime’s disk.",
   "rpcError.vcs_unavailable": "This folder isn’t a git repository.",
   "rpcError.rate_limited":
     "The model provider is rate-limiting requests — wait a moment, then retry.",
@@ -739,7 +739,7 @@ export const en = {
   "rpcError.tool_canceled": "The tool call was canceled before it finished.",
   "rpcError.child_run_canceled": "A delegated run was canceled.",
   "rpcError.idempotency_in_progress":
-    "The command outcome is not yet known. Check the session before sending again; a new request could repeat an action that already completed.",
+    "The command outcome isn’t yet known. Check the session before sending again; a new request could repeat an action that already completed.",
   "rpcError.internal_error":
     "Something broke inside the Runtime — retry, and check diagnostics if it keeps happening.",
   "rpcError.mcp_authorization_attempt_not_found": "This sign-in attempt expired. Start again.",
@@ -1031,7 +1031,7 @@ export const en = {
   "composer.image.failed": "Couldn’t read {{name}}. Remove it and choose it again.",
   "composer.image.ready": "{{name}} is ready",
   "diff.unmodifiedLines": "{count, plural, one {# unchanged line} other {# unchanged lines}}",
-  "diff.unknownUnmodifiedLines": "Unchanged context is not included in this patch.",
+  "diff.unknownUnmodifiedLines": "Unchanged context isn’t included in this patch.",
   "diff.expandAll": "Expand all available context",
   "diff.noNewline": "No newline at end of file",
 } as const satisfies Record<string, string>;

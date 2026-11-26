@@ -55,7 +55,7 @@ export const en: Record<string, string> = {
   "instructions.heading": "Instructions",
   "command.status.label": "Skill command status",
   "command.uncertain":
-    "The original command outcome is not confirmed. Reconcile it before issuing another command or changing catalogs.",
+    "The original command outcome isn’t confirmed. Reconcile it before issuing another command or changing catalogs.",
   "command.pending": "{{label}}…",
   "command.original": "Original command: {{key}}",
   "command.reconcile": "Reconcile original command",

@@ -20,14 +20,14 @@ export const en = {
     "Select the installed ChatGPT application in this plugin’s installation settings, then reopen the plugin. Flame launches its CUA engine directly.",
   "open.title": "Authorize a control lease",
   "open.help":
-    "During this lease, model tools can control the Runtime host through Flame’s computer engine. Use an operator console outside the controlled desktop, account and browser, such as a separate device or an isolated target. Closing this view does not end the lease.",
+    "During this lease, model tools can control the Runtime host through Flame’s computer engine. Use an operator console outside the controlled desktop, account and browser, such as a separate device or an isolated target. Closing this view doesn’t end the lease.",
   "open.lease": "Lease duration in seconds",
   "open.invalid":
     "Enter a whole number from {{minimum}} to {{maximum}} seconds.",
   "open.action": "Authorize and open control",
   "close.action": "End control lease",
   "close.help":
-    "Ending control cancels pending permission requests and retires this engine. Actions already performed are not undone.",
+    "Ending control cancels pending permission requests and retires this engine. Actions already performed aren’t undone.",
   "stop.action": "Stop current operation",
   "session.title": "Control session",
   "session.id": "Session identity",
@@ -92,12 +92,12 @@ export const en = {
   "approval.sent": "The original permission response was accepted.",
   "approval.original": "Original permission request",
   "approval.urlHelp":
-    "Open the requested URL to complete the external step. Opening the link does not submit approval; respond here when finished.",
+    "Open the requested URL to complete the external step. Opening the link doesn’t submit approval; respond here when finished.",
   "command.title": "Original commands",
   "command.original": "Original command status",
   "command.running": "Waiting for the original command outcome…",
   "command.unknown":
-    "The outcome is unconfirmed. Recover this original command; do not repeat its actions.",
+    "The outcome is unconfirmed. Recover this original command; don’t repeat its actions.",
   "command.recover": "Check original outcome",
   "command.accepted": "{{action}}: the original command completed.",
   "receipts.title": "Original evidence capacity",
@@ -139,7 +139,7 @@ export const en = {
   "image.zoomOut": "Zoom out",
   "image.description": "Image description",
   "result.audio": "Captured audio {{number}}",
-  "result.captured": "Recorded image; this is not a live desktop.",
+  "result.captured": "Recorded image; this isn’t a live desktop.",
   "result.resource": "Recorded resource",
   "result.structured": "Structured content",
   "result.input": "Original input",
@@ -150,5 +150,5 @@ export const en = {
   "result.toolError":
     "The original tool reported an error. Earlier effects may still have occurred.",
   "result.cleanup":
-    "The result was recorded, but engine cleanup was not confirmed.",
+    "The result was recorded, but engine cleanup wasn’t confirmed.",
 } as const;

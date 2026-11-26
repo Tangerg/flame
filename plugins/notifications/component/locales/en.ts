@@ -10,7 +10,7 @@ export const en: Record<string, string> = {
   "settings.notifications.authorization.denied":
     "Blocked by the system. Allow Flame in System Settings › Notifications to turn this on.",
   "settings.notifications.authorization.unsupported":
-    "This platform does not offer system notifications.",
+    "This platform doesn’t offer system notifications.",
   "notify.finished.title": "{{product}} finished",
   "notify.finished.body": "The agent finished its turn.",
   "notify.needsInput.title": "{{product}} needs you",

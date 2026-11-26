@@ -54,8 +54,7 @@ export const en: Record<string, string> = {
   "files.region": "Changed files",
   "file.changes": "Changes in {{path}}",
   "file.renamed": "Renamed from",
-  "file.binary":
-    "Binary content is not displayed. Line counts are unavailable.",
+  "file.binary": "Binary content isn’t displayed. Line counts are unavailable.",
   "file.noLineChanges": "No line changes.",
   "file.status.added": "Added",
   "file.status.modified": "Modified",

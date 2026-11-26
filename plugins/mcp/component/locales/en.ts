@@ -89,7 +89,7 @@ export const en: Record<string, string> = {
   "mcp.testOutcome.timedOut":
     "The server didn’t respond in time — check the command or URL and retry.",
   "mcp.testOutcome.failed":
-    "The server did not connect or did not offer a valid tool list. Check its settings and retry.",
+    "The server didn’t connect or didn’t offer a valid tool list. Check its settings and retry.",
   "mcpStatus.mcp_authorization_required":
     "This server needs you to sign in before it can be used.",
   "mcpStatus.mcp_authorization_failed": "Sign-in didn’t complete. Try again.",
@@ -102,7 +102,7 @@ export const en: Record<string, string> = {
   "common.cancel": "Cancel",
   "common.close": "Close",
   "command.uncertain":
-    "The original command outcome is not confirmed. Reconcile it before issuing another command or changing catalogs.",
+    "The original command outcome isn’t confirmed. Reconcile it before issuing another command or changing catalogs.",
   "command.reconcile": "Reconcile original command",
   "command.confirmed": "Original outcome confirmed",
   "read.retained": "The last accepted read is retained.",
@@ -125,7 +125,7 @@ export const en: Record<string, string> = {
     "Use a valid MCP configuration with an “mcpServers” object.",
   "mcp.import.empty": "Add at least one server under “mcpServers”.",
   "mcp.import.invalidName":
-    "The server name “{{server}}” does not match the Runtime naming rules. Change the key and try again.",
+    "The server name “{{server}}” doesn’t match the Runtime naming rules. Change the key and try again.",
   "mcp.import.missingTransport":
     "Give server “{{server}}” either a command or a URL.",
   "mcp.import.missingCommand": "Add a command for server “{{server}}”.",

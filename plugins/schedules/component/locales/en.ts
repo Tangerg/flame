@@ -21,7 +21,7 @@ export const en: Record<string, string> = {
     "Live refresh is unavailable. Use Refresh to read the current schedules.",
   "command.status.label": "Schedule command status",
   "command.uncertain":
-    "The original outcome is not confirmed. Reconcile it before issuing another command.",
+    "The original outcome isn’t confirmed. Reconcile it before issuing another command.",
   "command.progress": "{{label}}…",
   "command.original": "Original command: {{key}}",
   "command.reconcile": "Reconcile original command",
