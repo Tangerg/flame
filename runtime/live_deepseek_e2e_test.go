@@ -16,6 +16,7 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/packages/go-sdk/runevent"
 	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
@@ -240,7 +241,7 @@ func TestLiveDeepSeekSteerAtToolBoundary(t *testing.T) {
 		if eventErr != nil {
 			t.Fatal(eventErr)
 		}
-		if event.Event.Type != protocol.StreamItemStarted || event.Event.Item == nil ||
+		if event.Event.Type != runevent.ItemStarted || event.Event.Item == nil ||
 			event.Event.Item.Type != protocol.ItemTypeToolCall || event.Event.Item.Tool == nil ||
 			event.Event.Item.Tool.Name != "shell" {
 			continue

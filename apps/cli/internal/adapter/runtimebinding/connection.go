@@ -10,6 +10,7 @@ import (
 
 	runtimeclient "github.com/Tangerg/flame/packages/go-sdk/client"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/packages/go-sdk/runevent"
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/changefeed"
 	"github.com/Tangerg/flame/apps/cli/internal/application/mutation"
@@ -26,12 +27,8 @@ func supportedInterruptTypes() []protocol.InterruptType {
 	return []protocol.InterruptType{protocol.InterruptApproval, protocol.InterruptQuestion}
 }
 
-func recognizedRunEventTypes() []protocol.StreamEventType {
-	return []protocol.StreamEventType{protocol.StreamSegmentStarted, protocol.StreamSegmentProgress, protocol.StreamSegmentFinished, protocol.StreamItemStarted, protocol.StreamItemDelta, protocol.StreamItemCompleted, protocol.StreamPlanUpdated}
-}
-
-func requiredRunEventTypes() []protocol.StreamEventType {
-	return []protocol.StreamEventType{protocol.StreamSegmentStarted, protocol.StreamSegmentFinished, protocol.StreamItemStarted, protocol.StreamItemDelta, protocol.StreamItemCompleted, protocol.StreamPlanUpdated}
+func requiredRunEventTypes() []runevent.Kind {
+	return []runevent.Kind{runevent.SegmentStarted, runevent.SegmentFinished, runevent.ItemStarted, runevent.ItemDelta, runevent.ItemCompleted, runevent.PlanUpdated}
 }
 
 type Config struct {
@@ -265,7 +262,7 @@ func validateDiscovery(discovery *protocol.DiscoverResponse) error {
 		}
 	}
 	for _, eventType := range discovery.Capabilities.RunEvents {
-		if !slices.Contains(recognizedRunEventTypes(), eventType) {
+		if _, known := eventType.Reliability(); !known {
 			return fmt.Errorf("%w: runtime advertises unsupported run event %q", conversation.ErrIncompatibleRuntime, eventType)
 		}
 	}

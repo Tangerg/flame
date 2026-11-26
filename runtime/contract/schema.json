@@ -10405,6 +10405,18 @@
         "timestamp"
       ]
     },
+    "RunEventKind": {
+      "type": "string",
+      "enum": [
+        "segment.started",
+        "segment.progress",
+        "segment.finished",
+        "item.started",
+        "item.delta",
+        "item.completed",
+        "plan.updated"
+      ]
+    },
     "RunLoss": {
       "type": "object",
       "properties": {
@@ -11789,7 +11801,7 @@
           "type": "array",
           "uniqueItems": true,
           "items": {
-            "$ref": "#/$defs/StreamEventType"
+            "$ref": "#/$defs/RunEventKind"
           }
         },
         "runtimeTopics": {
@@ -12955,7 +12967,7 @@
           "$ref": "#/$defs/RunRef"
         },
         "type": {
-          "$ref": "#/$defs/StreamEventType"
+          "$ref": "#/$defs/RunEventKind"
         }
       },
       "oneOf": [
@@ -13168,18 +13180,6 @@
             ]
           }
         }
-      ]
-    },
-    "StreamEventType": {
-      "type": "string",
-      "enum": [
-        "segment.started",
-        "segment.progress",
-        "segment.finished",
-        "item.started",
-        "item.delta",
-        "item.completed",
-        "plan.updated"
       ]
     },
     "SubscribeRunRequest": {

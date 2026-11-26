@@ -18,6 +18,9 @@ A Run observer can stop independently of the executing Run. In-process streams
 report the observer's cancellation. When a subscriber falls behind the retained
 authoritative events, its stream reports `replay_unavailable` so the caller can
 attach again from a coherent snapshot.
+The shared Go `runevent.Kind` catalogue supplies Run event reliability. The
+Runtime journal, replay cursor projection, preview suppression and generated
+client bindings all consume that classification.
 
 A configured Web distribution must include its current build policy. The shared
 `local-runtime/webassets` delivery verifies registered artifact bytes, applies

@@ -46,7 +46,7 @@ func remoteEvents(call *remoteCall, reader *sse.Reader, eventType reflect.Type, 
 					fail(invalidRemote("event does not match the acknowledged root run and segment"))
 					return
 				}
-				terminal = matchesRun && event.Event.Type == protocol.StreamSegmentFinished
+				terminal = matchesRun && event.Event.Type.Terminal()
 			case protocol.PluginStreamEvent:
 				terminal = event.Kind == protocol.PluginStreamResult || event.Kind == protocol.PluginStreamFailure
 			}
@@ -99,7 +99,7 @@ func decodeRemoteRunEvent(frame sse.Message, notification *jsonrpc.Request) (any
 	}
 	// SSE retains the previous id on ephemeral frames. Only a replayable
 	// event publishes a cursor; its two wire projections must agree.
-	if event.Event.Replayable() && frame.ID != event.EventID {
+	if event.Event.Type.Replayable() && frame.ID != event.EventID {
 		return nil, invalidRemote("event cursor does not match its sse id")
 	}
 	return event, nil

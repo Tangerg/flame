@@ -8951,6 +8951,7 @@
         "github.com/Tangerg/flame/packages/go-sdk/extension",
         "github.com/Tangerg/flame/packages/go-sdk/hook",
         "github.com/Tangerg/flame/packages/go-sdk/model",
+        "github.com/Tangerg/flame/packages/go-sdk/runevent",
         "github.com/Tangerg/frame/call",
         "github.com/Tangerg/go-sdk/jsonrpc",
         "iter",
@@ -10582,51 +10583,6 @@
           "name": "SkillScopeUser",
           "type": "SkillScope",
           "value": "\"user\""
-        },
-        {
-          "name": "StreamItemCompleted",
-          "type": "StreamEventType",
-          "value": "\"item.completed\""
-        },
-        {
-          "name": "StreamItemDelta",
-          "type": "StreamEventType",
-          "value": "\"item.delta\""
-        },
-        {
-          "name": "StreamItemStarted",
-          "type": "StreamEventType",
-          "value": "\"item.started\""
-        },
-        {
-          "name": "StreamPlanUpdated",
-          "type": "StreamEventType",
-          "value": "\"plan.updated\""
-        },
-        {
-          "name": "StreamSegmentFinished",
-          "type": "StreamEventType",
-          "value": "\"segment.finished\""
-        },
-        {
-          "name": "StreamSegmentProgress",
-          "type": "StreamEventType",
-          "value": "\"segment.progress\""
-        },
-        {
-          "name": "StreamSegmentStarted",
-          "type": "StreamEventType",
-          "value": "\"segment.started\""
-        },
-        {
-          "name": "SuppressibleRunItemDelta",
-          "type": "SuppressibleRunEventType",
-          "value": "\"item.delta\""
-        },
-        {
-          "name": "SuppressibleRunSegmentProgress",
-          "type": "SuppressibleRunEventType",
-          "value": "\"segment.progress\""
         },
         {
           "name": "ToolAttemptCompleted",
@@ -17398,7 +17354,7 @@
           "fields": [
             {
               "name": "RunEvents",
-              "type": "[]StreamEventType",
+              "type": "[]runevent.Kind",
               "tag": "json:\"runEvents\""
             },
             {
@@ -18278,7 +18234,7 @@
           "fields": [
             {
               "name": "Type",
-              "type": "StreamEventType",
+              "type": "runevent.Kind",
               "tag": "json:\"type\""
             },
             {
@@ -18316,22 +18272,7 @@
               "type": "*Plan",
               "tag": "json:\"plan,omitzero\""
             }
-          ],
-          "methods": [
-            {
-              "name": "Authoritative",
-              "signature": "func() bool"
-            },
-            {
-              "name": "Replayable",
-              "signature": "func() bool"
-            }
           ]
-        },
-        {
-          "name": "StreamEventType",
-          "kind": "defined",
-          "underlying": "string"
         },
         {
           "name": "SubscribeRunRequest",
@@ -19285,6 +19226,92 @@
               "signature": "func() []string"
             }
           ]
+        }
+      ]
+    },
+    {
+      "path": "github.com/Tangerg/flame/packages/go-sdk/runevent",
+      "constants": [
+        {
+          "name": "Authoritative",
+          "type": "Reliability",
+          "value": "\"authoritative\""
+        },
+        {
+          "name": "Ephemeral",
+          "type": "Reliability",
+          "value": "\"ephemeral\""
+        },
+        {
+          "name": "ItemCompleted",
+          "type": "Kind",
+          "value": "\"item.completed\""
+        },
+        {
+          "name": "ItemDelta",
+          "type": "Kind",
+          "value": "\"item.delta\""
+        },
+        {
+          "name": "ItemStarted",
+          "type": "Kind",
+          "value": "\"item.started\""
+        },
+        {
+          "name": "PlanUpdated",
+          "type": "Kind",
+          "value": "\"plan.updated\""
+        },
+        {
+          "name": "SegmentFinished",
+          "type": "Kind",
+          "value": "\"segment.finished\""
+        },
+        {
+          "name": "SegmentProgress",
+          "type": "Kind",
+          "value": "\"segment.progress\""
+        },
+        {
+          "name": "SegmentStarted",
+          "type": "Kind",
+          "value": "\"segment.started\""
+        }
+      ],
+      "functions": [
+        {
+          "name": "Kinds",
+          "signature": "func() []Kind"
+        }
+      ],
+      "types": [
+        {
+          "name": "Kind",
+          "kind": "defined",
+          "underlying": "string",
+          "methods": [
+            {
+              "name": "Reliability",
+              "signature": "func() (Reliability, bool)"
+            },
+            {
+              "name": "Replayable",
+              "signature": "func() bool"
+            },
+            {
+              "name": "Terminal",
+              "signature": "func() bool"
+            },
+            {
+              "name": "Values",
+              "signature": "func() []string"
+            }
+          ]
+        },
+        {
+          "name": "Reliability",
+          "kind": "defined",
+          "underlying": "string"
         }
       ]
     },

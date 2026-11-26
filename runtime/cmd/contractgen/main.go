@@ -21,7 +21,6 @@ const (
 )
 
 var (
-	streamEventType  = reflect.TypeFor[protocol.StreamEvent]()
 	runtimeEventType = reflect.TypeFor[protocol.RuntimeEvent]()
 )
 

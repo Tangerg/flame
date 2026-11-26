@@ -355,7 +355,7 @@ func reduceOpenings(sessionID identity.SessionID, ordered []*executorRoute) ([]r
 			return nil, nil, err
 		}
 		for _, reduced := range projected.events {
-			if reduced.Event.Terminal() || reduced.Nudge != nil {
+			if reduced.Event.Kind().Terminal() || reduced.Nudge != nil {
 				return nil, nil, fmt.Errorf("runs: invalid opening event for Run %q", route.runID)
 			}
 			if reduced.Commit != nil {

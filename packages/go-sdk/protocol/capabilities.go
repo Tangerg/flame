@@ -1,5 +1,7 @@
 package protocol
 
+import "github.com/Tangerg/flame/packages/go-sdk/runevent"
+
 // There is deliberately no list of renderable event types: a client that cannot
 // follow the authoritative stream cannot be served a shortened one.
 type ClientCapabilities struct {
@@ -8,20 +10,24 @@ type ClientCapabilities struct {
 	ExcludedEphemeralEvents []SuppressibleRunEventType   `json:"excludedEphemeralEvents,omitempty"`
 }
 
-//flame:enum
 type SuppressibleRunEventType string
 
-const (
-	SuppressibleRunSegmentProgress SuppressibleRunEventType = SuppressibleRunEventType(StreamSegmentProgress)
-	SuppressibleRunItemDelta       SuppressibleRunEventType = SuppressibleRunEventType(StreamItemDelta)
-)
+func (SuppressibleRunEventType) wireEnumValues() []string {
+	var values []string
+	for _, kind := range runevent.Kinds() {
+		if reliability, _ := kind.Reliability(); reliability == runevent.Ephemeral {
+			values = append(values, string(kind))
+		}
+	}
+	return values
+}
 
 type FeaturePreference struct {
 	Enabled bool `json:"enabled"`
 }
 
 type ServerCapabilities struct {
-	RunEvents        []StreamEventType            `json:"runEvents"`
+	RunEvents        []runevent.Kind              `json:"runEvents"`
 	RuntimeTopics    []RuntimeTopic               `json:"runtimeTopics"`
 	StreamingMethods []string                     `json:"streamingMethods"`
 	Features         map[string]FeatureCapability `json:"features"`

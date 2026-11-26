@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/packages/go-sdk/runevent"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
@@ -47,7 +48,7 @@ func (f *fakeRuntime) CancelRun(_ context.Context, in protocol.CancelRunRequest)
 
 func validTestCapabilities() protocol.ServerCapabilities {
 	return protocol.ServerCapabilities{
-		RunEvents:        []protocol.StreamEventType{},
+		RunEvents:        []runevent.Kind{},
 		RuntimeTopics:    []protocol.RuntimeTopic{},
 		StreamingMethods: []string{},
 		Features:         map[string]protocol.FeatureCapability{},

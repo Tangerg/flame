@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/packages/go-sdk/runevent"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/core/chat"
@@ -287,7 +288,7 @@ func reportCompletedChildren(events iter.Seq2[protocol.RunEvent, error], root st
 }
 
 func completedChild(event protocol.RunEvent, root string) bool {
-	return event.RunID != root && event.Event.Type == protocol.StreamSegmentFinished &&
+	return event.RunID != root && event.Event.Type == runevent.SegmentFinished &&
 		event.Event.Run.Outcome != nil && event.Event.Run.Outcome.Type == protocol.OutcomeCompleted
 }
 
@@ -373,7 +374,7 @@ func TestProtocolCancelsOneWaitingSiblingAndAnswersTheOther(t *testing.T) {
 	}
 	if len(pending.Data) != 1 || len(pending.Data[0].Interrupts) == 0 {
 		for _, event := range openingEvents {
-			if event.Event.Type == protocol.StreamSegmentFinished {
+			if event.Event.Type == runevent.SegmentFinished {
 				encoded, _ := json.Marshal(event.Event.Run.Outcome)
 				t.Logf("run %s outcome: %s", event.RunID, encoded)
 			}

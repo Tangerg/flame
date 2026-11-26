@@ -91,6 +91,8 @@ Both generators use their compiled contract owners and run without source files
 from another checkout.
 
 Runtime owns execution identities, durable replay and transcript rendering.
+Run event types in Go DTOs use `runevent.Kind`. Its reliability catalogue drives
+replay, ephemeral suppression and generated client contracts.
 The SDK's lexical mechanisms do not own product lifecycle policy. Plugin receipts
 are encoded through `packages/go-sdk/plugin/mcp.EncodeReply`; only the business owner commits their durable
 representation. Protocol consumers validate complete values with

@@ -5,6 +5,7 @@ import (
 
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/packages/go-sdk/runevent"
 )
 
 func projectEvent(value protocol.RunEvent) (conversation.RunEvent, bool, error) {
@@ -39,19 +40,19 @@ func (r runEventProjection) envelope(event conversation.Event) conversation.RunE
 
 func (r runEventProjection) project() (projectedRunEvent, error) {
 	switch r.source.Event.Type {
-	case protocol.StreamSegmentStarted:
+	case runevent.SegmentStarted:
 		return r.segmentStarted()
-	case protocol.StreamItemStarted:
+	case runevent.ItemStarted:
 		return r.itemStarted()
-	case protocol.StreamItemDelta:
+	case runevent.ItemDelta:
 		return r.itemDelta()
-	case protocol.StreamItemCompleted:
+	case runevent.ItemCompleted:
 		return r.itemCompleted()
-	case protocol.StreamPlanUpdated:
+	case runevent.PlanUpdated:
 		return r.planUpdated()
-	case protocol.StreamSegmentFinished:
+	case runevent.SegmentFinished:
 		return r.segmentFinished()
-	case protocol.StreamSegmentProgress:
+	case runevent.SegmentProgress:
 		return r.segmentProgress()
 	default:
 		return projectedRunEvent{}, fmt.Errorf("event %s has unsupported authoritative type %q", r.source.EventID, r.source.Event.Type)

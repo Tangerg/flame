@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/planworkflow"
+	"github.com/Tangerg/flame/packages/go-sdk/runevent"
 )
 
 type RunEvent struct {
@@ -14,21 +15,8 @@ type RunEvent struct {
 	Event     StreamEvent `json:"event"`
 }
 
-//flame:enum
-type StreamEventType string
-
-const (
-	StreamSegmentStarted  StreamEventType = "segment.started"
-	StreamSegmentProgress StreamEventType = "segment.progress"
-	StreamSegmentFinished StreamEventType = "segment.finished"
-	StreamItemStarted     StreamEventType = "item.started"
-	StreamItemDelta       StreamEventType = "item.delta"
-	StreamItemCompleted   StreamEventType = "item.completed"
-	StreamPlanUpdated     StreamEventType = "plan.updated"
-)
-
 type StreamEvent struct {
-	Type StreamEventType `json:"type"`
+	Type runevent.Kind `json:"type"`
 
 	Run        *RunRef      `json:"run,omitzero"`
 	Progress   *RunProgress `json:"progress,omitzero"`
@@ -37,26 +25,6 @@ type StreamEvent struct {
 	ItemID     string       `json:"itemId,omitempty"`
 	Delta      *ItemDelta   `json:"delta,omitzero"`
 	Plan       *Plan        `json:"plan,omitzero"`
-}
-
-func (s StreamEvent) Authoritative() bool {
-	switch s.Type {
-	case StreamSegmentStarted, StreamSegmentFinished,
-		StreamItemStarted, StreamItemCompleted, StreamPlanUpdated:
-		return true
-	default:
-		return false
-	}
-}
-
-func (s StreamEvent) Replayable() bool {
-	switch s.Type {
-	case StreamSegmentStarted, StreamSegmentFinished,
-		StreamItemStarted, StreamItemCompleted, StreamPlanUpdated:
-		return true
-	default:
-		return false
-	}
 }
 
 type RunProgress struct {

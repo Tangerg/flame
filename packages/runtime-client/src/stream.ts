@@ -76,7 +76,7 @@ class RunEventInbox {
   }
 
   admit(event: RunEvent): RunEventAdmission {
-    const replayable = runEventIsReplayable(event.event.type) === true;
+    const replayable = runEventIsReplayable(event.event.type);
     if (replayable && this.replayMemory.alreadyDelivered(event.eventId)) return "duplicate";
     if (this.channel.tryPush(event)) return "accepted";
     return replayable ? "authoritativeOverflow" : "ephemeralDropped";
@@ -179,11 +179,7 @@ export function streamRunEvents(options: RunEventStreamOptions = {}) {
             return;
           }
           const frame = metadata?.eventStream;
-          if (
-            frame &&
-            runEventIsReplayable(event.event.type) === true &&
-            frame.cursor !== event.eventId
-          ) {
+          if (frame && runEventIsReplayable(event.event.type) && frame.cursor !== event.eventId) {
             stream.fail(
               new RpcProtocolError(
                 "event-stream frame",

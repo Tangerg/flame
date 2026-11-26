@@ -11,6 +11,7 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/wiregen"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/packages/go-sdk/runevent"
 
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/delivery/dispatch"
@@ -429,7 +430,12 @@ func (s *schemaSet) conditional(t reflect.Type, rule dispatch.ConditionalRule) *
 	return &wiregen.Schema{If: condition, Then: then}
 }
 
+const runEventKindSchemaName = "RunEventKind"
+
 func defName(t reflect.Type) string {
+	if t == reflect.TypeFor[runevent.Kind]() {
+		return runEventKindSchemaName
+	}
 	genericName, arguments, generic := strings.Cut(t.Name(), "[")
 	if !generic {
 		return genericName

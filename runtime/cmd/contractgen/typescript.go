@@ -13,6 +13,7 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/goalworkflow"
 	"github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/packages/go-sdk/runevent"
 	"github.com/Tangerg/flame/runtime/internal/delivery/dispatch"
 	runtimehttp "github.com/Tangerg/flame/runtime/internal/delivery/http"
 )
@@ -202,39 +203,25 @@ func (t *tsEmitter) enumValues(names []string) {
 }
 
 func (t *tsEmitter) runEventSemantics() {
-	values, ok := protocol.WireEnumValues(reflect.TypeFor[protocol.StreamEventType]())
-	if !ok {
-		panic("contractgen: StreamEventType is not a registered wire enum")
-	}
+	authoritative := wiregen.Literal(string(runevent.Authoritative))
+	ephemeral := wiregen.Literal(string(runevent.Ephemeral))
 	t.line("")
 	t.line("/** Reliability is owned by event type; a frame cannot promote itself. */")
-	t.line("export type RunEventReliability = \"authoritative\" | \"ephemeral\";")
+	t.line("export type RunEventReliability = %s | %s;", authoritative, ephemeral)
 	t.line("export const RUN_EVENT_RELIABILITY = {")
-	for _, value := range values {
-		reliability := "ephemeral"
-		if (protocol.StreamEvent{Type: protocol.StreamEventType(value)}).Authoritative() {
-			reliability = "authoritative"
-		}
-		t.line("  %s: %s,", wiregen.Literal(value), wiregen.Literal(reliability))
+	for _, kind := range runevent.Kinds() {
+		reliability, _ := kind.Reliability()
+		t.line("  %s: %s,", wiregen.Literal(string(kind)), wiregen.Literal(string(reliability)))
 	}
-	t.line("} as const satisfies Record<StreamEventType, RunEventReliability>;")
+	t.line("} as const satisfies Record<%s, RunEventReliability>;", runEventKindSchemaName)
 	t.line("")
 	t.line("export function runEventReliability(value: unknown): RunEventReliability | undefined {")
 	t.line("  if (typeof value !== \"string\") return undefined;")
 	t.line("  return (RUN_EVENT_RELIABILITY as Partial<Record<string, RunEventReliability>>)[value];")
 	t.line("}")
 	t.line("")
-	t.line("/** Replay retention is owned by event type; live-only previews never consume the replay window. */")
-	t.line("export const RUN_EVENT_REPLAYABLE = {")
-	for _, value := range values {
-		replayable := (protocol.StreamEvent{Type: protocol.StreamEventType(value)}).Replayable()
-		t.line("  %s: %t,", wiregen.Literal(value), replayable)
-	}
-	t.line("} as const satisfies Record<StreamEventType, boolean>;")
-	t.line("")
-	t.line("export function runEventIsReplayable(value: unknown): boolean | undefined {")
-	t.line("  if (typeof value !== \"string\") return undefined;")
-	t.line("  return (RUN_EVENT_REPLAYABLE as Partial<Record<string, boolean>>)[value];")
+	t.line("export function runEventIsReplayable(kind: %s): boolean {", runEventKindSchemaName)
+	t.line("  return RUN_EVENT_RELIABILITY[kind] === %s;", authoritative)
 	t.line("}")
 }
 

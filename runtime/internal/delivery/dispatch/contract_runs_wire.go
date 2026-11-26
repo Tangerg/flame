@@ -6,6 +6,7 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	questioncontract "github.com/Tangerg/flame/packages/go-sdk/question"
+	"github.com/Tangerg/flame/packages/go-sdk/runevent"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -80,15 +81,7 @@ func registerEventUnions(s *Shapes) {
 	s.union(UnionSpec{
 		GoType:    typeOf[protocol.StreamEvent](),
 		Forbidden: []string{"durable"},
-		Variants: []VariantSpec{
-			{Tag: string(protocol.StreamSegmentStarted), Required: []string{"run"}},
-			{Tag: string(protocol.StreamSegmentProgress), Required: []string{"progress"}},
-			{Tag: string(protocol.StreamSegmentFinished), Required: []string{"run"}, Optional: []string{"interrupts"}},
-			{Tag: string(protocol.StreamItemStarted), Required: []string{"item"}},
-			{Tag: string(protocol.StreamItemDelta), Required: []string{"itemId", "delta"}},
-			{Tag: string(protocol.StreamItemCompleted), Required: []string{"item"}},
-			{Tag: string(protocol.StreamPlanUpdated), Required: []string{"plan"}},
-		},
+		Variants:  runEventVariants(),
 	})
 
 	runtimeEvents := []VariantSpec{
@@ -119,6 +112,33 @@ func registerEventUnions(s *Shapes) {
 	s.union(UnionSpec{GoType: typeOf[protocol.RuntimeEvent](), Variants: runtimeEvents})
 }
 
+func runEventVariants() []VariantSpec {
+	kinds := runevent.Kinds()
+	variants := make([]VariantSpec, 0, len(kinds))
+	for _, kind := range kinds {
+		variant := VariantSpec{Tag: string(kind)}
+		switch kind {
+		case runevent.SegmentStarted:
+			variant.Required = []string{"run"}
+		case runevent.SegmentProgress:
+			variant.Required = []string{"progress"}
+		case runevent.SegmentFinished:
+			variant.Required = []string{"run"}
+			variant.Optional = []string{"interrupts"}
+		case runevent.ItemStarted, runevent.ItemCompleted:
+			variant.Required = []string{"item"}
+		case runevent.ItemDelta:
+			variant.Required = []string{"itemId", "delta"}
+		case runevent.PlanUpdated:
+			variant.Required = []string{"plan"}
+		default:
+			panic("dispatch: run event " + string(kind) + " has no wire shape")
+		}
+		variants = append(variants, variant)
+	}
+	return variants
+}
+
 func registerRunConditions(s *Shapes) {
 	s.union(UnionSpec{
 		GoType: typeOf[protocol.Activity](),
@@ -145,16 +165,16 @@ func registerRunConditions(s *Shapes) {
 	s.constraint(ObjectConstraintSpec{
 		GoType: typeOf[protocol.StreamEvent](),
 		Rules: []ConditionalRule{{
-			When: whenEquals("type", string(protocol.StreamItemStarted)),
+			When: whenEquals("type", string(runevent.ItemStarted)),
 			AllowedValues: slices.Concat(
 				allowedStreamItemKinds(protocol.ItemTypeAgentMessage, protocol.ItemTypeReasoning, protocol.ItemTypeToolCall),
 				allowedStreamItemStatuses(protocol.ItemStatusRunning),
 			),
 		}, {
-			When:          whenEquals("type", string(protocol.StreamItemCompleted)),
+			When:          whenEquals("type", string(runevent.ItemCompleted)),
 			AllowedValues: allowedStreamItemStatuses(protocol.ItemStatusCompleted, protocol.ItemStatusIncomplete),
 		}, {
-			When:     whenEquals("type", string(protocol.StreamPlanUpdated)),
+			When:     whenEquals("type", string(runevent.PlanUpdated)),
 			Required: []string{"plan.state"},
 		}},
 	})

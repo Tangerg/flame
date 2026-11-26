@@ -12,6 +12,7 @@ import (
 
 	runtimeclient "github.com/Tangerg/flame/packages/go-sdk/client"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/packages/go-sdk/runevent"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/delivery/dispatch"
 	runtimehttp "github.com/Tangerg/flame/runtime/internal/delivery/http"
@@ -104,7 +105,7 @@ func TestRemoteRunStreamRejectsAChildUsingTheRootSegment(t *testing.T) {
 			observationErr = err
 			break
 		}
-		if event.RunID == started.RunID || event.Event.Type != protocol.StreamSegmentFinished {
+		if event.RunID == started.RunID || event.Event.Type != runevent.SegmentFinished {
 			continue
 		}
 		if event.SegmentID == started.SegmentID {
@@ -145,7 +146,7 @@ func misrouteRootTerminal(body string) (string, error) {
 			if err := protocol.DecodeResponse(message.Params, &event); err != nil {
 				return "", err
 			}
-			if event.Event.Type != protocol.StreamSegmentFinished {
+			if event.Event.Type != runevent.SegmentFinished {
 				continue
 			}
 			if event.RunID != root.RunID {

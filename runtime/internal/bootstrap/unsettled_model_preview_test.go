@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/packages/go-sdk/runevent"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 )
@@ -52,7 +53,7 @@ func TestUnsettledModelPreviewStaysIncomplete(t *testing.T) {
 			t.Fatal(err)
 		}
 		switch event.Event.Type {
-		case protocol.StreamItemStarted:
+		case runevent.ItemStarted:
 			item := event.Event.Item
 			if item.Type == protocol.ItemTypeAgentMessage || item.Type == protocol.ItemTypeReasoning {
 				if previews[item.Type] != "" {
@@ -60,7 +61,7 @@ func TestUnsettledModelPreviewStaysIncomplete(t *testing.T) {
 				}
 				previews[item.Type] = item.ID
 			}
-		case protocol.StreamSegmentFinished:
+		case runevent.SegmentFinished:
 			lost = event.Event.Run.Outcome != nil && event.Event.Run.Outcome.Type == protocol.OutcomeLost
 		}
 	}

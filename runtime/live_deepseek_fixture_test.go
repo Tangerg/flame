@@ -14,6 +14,7 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/packages/go-sdk/runevent"
 	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
@@ -232,11 +233,11 @@ func (f liveDeepSeekFixture) runTurn(t *testing.T, sessionID, prompt string) liv
 		if eventErr != nil {
 			t.Fatal(eventErr)
 		}
-		if event.Event.Type == protocol.StreamItemCompleted && event.Event.Item != nil &&
+		if event.Event.Type == runevent.ItemCompleted && event.Event.Item != nil &&
 			event.Event.Item.Type == protocol.ItemTypeCompaction {
 			compactionSeen = true
 		}
-		if event.RunID == started.RunID && event.Event.Type == protocol.StreamSegmentFinished {
+		if event.RunID == started.RunID && event.Event.Type == runevent.SegmentFinished {
 			contextTokens := event.Event.Run.ContextTokens
 			boundaryContextTokens = &contextTokens
 		}

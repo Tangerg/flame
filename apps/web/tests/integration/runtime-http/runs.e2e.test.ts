@@ -9,7 +9,12 @@ import {
   RpcProtocolError,
 } from "@flame/runtime-client";
 import { wireMethodRequiresIdempotency, type WireMethodName } from "@flame/runtime-client/methods";
-import { HTTP_HEADERS, RPC_HTTP } from "@flame/runtime-client/wire";
+import {
+  HTTP_HEADERS,
+  PROTOCOL_VERSION,
+  RPC_HTTP,
+  type RunEvent,
+} from "@flame/runtime-client/wire";
 import { createProviderGate } from "./fakeProvider";
 import {
   collectRunEvents,
@@ -362,6 +367,83 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: runs", () => {
     } finally {
       gate.release.resolve();
       fixture.providerGate = undefined;
+    }
+  }, 30_000);
+
+  it("replays retained Run events while leaving previous previews behind", async () => {
+    const session = await fixture.client.sessions.create({ workspace: { path: fixture.root } });
+    const sessionId = asSessionId(session.id);
+    const gate = createProviderGate("E2E_SUBSCRIBE");
+    fixture.providerGate = gate;
+    const replaying = createFlameClient(createHttpTransport({ baseUrl: fixture.baseUrl }), {
+      capabilities: () => fixture.negotiated,
+      requestMeta: () => ({
+        protocolVersion: PROTOCOL_VERSION,
+        clientCapabilities: {
+          features: { childRuns: { enabled: true } },
+          interruptTypes: ["approval", "question"],
+          excludedEphemeralEvents: ["item.delta"],
+        },
+      }),
+    });
+    try {
+      const opening = await fixture.client.runs.start({
+        sessionId,
+        input: [{ type: "text", text: "E2E_SUBSCRIBE hold at the live preview." }],
+      });
+      await within(gate.arrived.promise, "the held model request");
+      const live = originalOpeningEvents(opening)[Symbol.asyncIterator]();
+      try {
+        const previous = await within(
+          (async () => {
+            const events: RunEvent[] = [];
+            for (;;) {
+              const next = await live.next();
+              if (next.done) throw new Error("Run ended before its model preview");
+              events.push(next.value);
+              if (next.value.event.type === "segment.progress") return events;
+            }
+          })(),
+          "the initial live Run events",
+        );
+        const started = previous.find((event) => event.event.type === "segment.started");
+        const committed = previous.find((event) => event.event.type === "item.completed");
+        const preview = previous.at(-1);
+        if (!started || !committed || !preview) throw new Error("expected the Run's initial facts");
+
+        const replay = await replaying.runs.subscribe(
+          {
+            runId: asRunId(opening.result.runId),
+            segmentId: asSegmentId(opening.result.segmentId),
+          },
+          undefined,
+          { lastEventId: started.eventId },
+        );
+        gate.release.resolve();
+        const [events, liveTail] = await within(
+          Promise.all([
+            collectRunEvents(replay.events),
+            collectRunEvents({ [Symbol.asyncIterator]: () => live }),
+          ]),
+          "replay and live delivery",
+        );
+        const ids = events.map(({ eventId }) => eventId);
+        expect(ids).toContain(committed.eventId);
+        expect(ids).not.toContain(preview.eventId);
+        expect(liveTail.some(({ event }) => event.type === "item.delta")).toBe(true);
+        expect(events.some(({ event }) => event.type === "item.delta")).toBe(false);
+        expect(events.at(-1)?.event).toMatchObject({
+          type: "segment.finished",
+          run: { status: "finished", outcome: { type: "completed" } },
+        });
+      } finally {
+        await live.return?.();
+      }
+    } finally {
+      gate.release.resolve();
+      fixture.providerGate = undefined;
+      await replaying.close();
+      await fixture.client.sessions.delete(sessionId);
     }
   }, 30_000);
 

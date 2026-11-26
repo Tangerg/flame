@@ -15,6 +15,4 @@ type Event struct {
 	Payload   ProjectionEvent
 }
 
-func (e Event) Replayable() bool { return e.Payload != nil && e.Payload.Replayable() }
-
-func (e Event) Terminal() bool { return e.Payload != nil && e.Payload.Terminal() }
+func (e Event) Replayable() bool { return e.Payload != nil && e.Payload.Kind().Replayable() }

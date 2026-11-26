@@ -5,6 +5,7 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/packages/go-sdk/runevent"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/approvals"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/feedback"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/projects"
@@ -281,9 +282,8 @@ func capabilitiesFor(
 	idempotency protocol.IdempotencyLimits,
 	mcpAuthorizationAttempts protocol.MCPAuthorizationAttemptLimits,
 ) protocol.ServerCapabilities {
-	runEvents := []protocol.StreamEventType{protocol.StreamSegmentStarted, protocol.StreamSegmentProgress, protocol.StreamSegmentFinished, protocol.StreamItemStarted, protocol.StreamItemDelta, protocol.StreamItemCompleted, protocol.StreamPlanUpdated}
 	return protocol.ServerCapabilities{
-		RunEvents:     runEvents,
+		RunEvents:     runevent.Kinds(),
 		RuntimeTopics: protocol.RuntimeTopics(),
 		Limits: protocol.RuntimeLimits{
 			Idempotency:              idempotency,

@@ -1903,6 +1903,8 @@ export interface RunEvent {
   timestamp: string;
 }
 
+export type RunEventKind = "segment.started" | "segment.progress" | "segment.finished" | "item.started" | "item.delta" | "item.completed" | "plan.updated";
+
 export interface RunLoss {
   detail?: string;
   reason: LossReason;
@@ -2096,7 +2098,7 @@ export interface SelectPluginProviderRequest {
 export interface ServerCapabilities {
   features: Record<string, FeatureCapability>;
   limits: RuntimeLimits;
-  runEvents: StreamEventType[];
+  runEvents: RunEventKind[];
   runtimeTopics: RuntimeTopic[];
   streamingMethods: string[];
 }
@@ -2345,8 +2347,6 @@ export type StreamEvent =
   | { type: "item.delta"; delta: ItemDelta; itemId: string }
   | { type: "item.completed"; item: Item }
   | { type: "plan.updated"; plan: Plan };
-
-export type StreamEventType = "segment.started" | "segment.progress" | "segment.finished" | "item.started" | "item.delta" | "item.completed" | "plan.updated";
 
 export interface SubscribeRunRequest {
   runId: string;
@@ -2662,6 +2662,7 @@ export const WIRE_ENUMS = {
   RunAcceptanceType: ["notRecorded", "accepted", "retired"],
   RunCapabilityFeature: ["childRuns"],
   RunCommandOperation: ["start", "resume", "steer"],
+  RunEventKind: ["segment.started", "segment.progress", "segment.finished", "item.started", "item.delta", "item.completed", "plan.updated"],
   RunOutcomeType: ["completed", "timedOut", "failed", "canceled", "lost"],
   RunReplayScope: ["runtimeInstanceRootSegment"],
   RunStatus: ["running", "waiting", "finished"],
@@ -2676,7 +2677,6 @@ export const WIRE_ENUMS = {
   SkillProposalOrigin: ["requested", "mined"],
   SkillProposalScope: ["repository", "user"],
   SkillScope: ["repository", "user", "installation"],
-  StreamEventType: ["segment.started", "segment.progress", "segment.finished", "item.started", "item.delta", "item.completed", "plan.updated"],
   SuppressibleRunEventType: ["segment.progress", "item.delta"],
   TerminalActionTarget: ["view", "row"],
   TerminalBindingSource: ["value", "row", "context", "form"],
@@ -2701,25 +2701,13 @@ export const RUN_EVENT_RELIABILITY = {
   "item.delta": "ephemeral",
   "item.completed": "authoritative",
   "plan.updated": "authoritative",
-} as const satisfies Record<StreamEventType, RunEventReliability>;
+} as const satisfies Record<RunEventKind, RunEventReliability>;
 
 export function runEventReliability(value: unknown): RunEventReliability | undefined {
   if (typeof value !== "string") return undefined;
   return (RUN_EVENT_RELIABILITY as Partial<Record<string, RunEventReliability>>)[value];
 }
 
-/** Replay retention is owned by event type; live-only previews never consume the replay window. */
-export const RUN_EVENT_REPLAYABLE = {
-  "segment.started": true,
-  "segment.progress": false,
-  "segment.finished": true,
-  "item.started": true,
-  "item.delta": false,
-  "item.completed": true,
-  "plan.updated": true,
-} as const satisfies Record<StreamEventType, boolean>;
-
-export function runEventIsReplayable(value: unknown): boolean | undefined {
-  if (typeof value !== "string") return undefined;
-  return (RUN_EVENT_REPLAYABLE as Partial<Record<string, boolean>>)[value];
+export function runEventIsReplayable(kind: RunEventKind): boolean {
+  return RUN_EVENT_RELIABILITY[kind] === "authoritative";
 }

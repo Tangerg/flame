@@ -9,6 +9,7 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/wiregen"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/packages/go-sdk/runevent"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/delivery/dispatch"
@@ -187,7 +188,7 @@ func build(walked *schemaSet) (manifest, error) {
 		HTTPEndpoints:       httpEndpoints(walked),
 		Errors:              manifestErrors(registry),
 		CapabilityPolicy:    capabilities(registry),
-		RunEventPolicy:      runEvents(shapes),
+		RunEventPolicy:      runEvents(),
 		RuntimeTopics:       topics(shapes),
 		CarriedShapes:       carriedShapes(shapes, walked),
 		ResultPresentations: presentations,
@@ -313,18 +314,14 @@ func conditions(in []delivery.FieldCondition) []conditionRow {
 	return out
 }
 
-func runEvents(shapes *dispatch.Shapes) []eventEntry {
-	var out []eventEntry
-	for _, union := range shapes.Unions() {
-		if union.GoType != streamEventType {
-			continue
-		}
-		for _, variant := range union.Variants {
-			event := protocol.StreamEvent{Type: protocol.StreamEventType(variant.Tag)}
-			out = append(out, eventEntry{
-				Type: variant.Tag, Authoritative: event.Authoritative(), Replayable: event.Replayable(),
-			})
-		}
+func runEvents() []eventEntry {
+	kinds := runevent.Kinds()
+	out := make([]eventEntry, 0, len(kinds))
+	for _, kind := range kinds {
+		replayable := kind.Replayable()
+		out = append(out, eventEntry{
+			Type: string(kind), Authoritative: replayable, Replayable: replayable,
+		})
 	}
 	return out
 }

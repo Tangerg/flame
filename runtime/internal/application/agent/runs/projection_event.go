@@ -7,6 +7,7 @@ import (
 	"time"
 
 	flameidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/packages/go-sdk/runevent"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -14,10 +15,8 @@ import (
 )
 
 type ProjectionEvent interface {
-	runEvent()
+	Kind() runevent.Kind
 	validate() error
-	Replayable() bool
-	Terminal() bool
 	retainedBytes() int
 }
 
@@ -92,14 +91,14 @@ func (p PlanSnapshot) clone() PlanSnapshot {
 	return p
 }
 
-func (SegmentStarted) runEvent()    {}
-func (SegmentProgressed) runEvent() {}
-func (SegmentFinished) runEvent()   {}
-func (ItemStarted) runEvent()       {}
-func (ItemChanged) runEvent()       {}
-func (ItemCompleted) runEvent()     {}
-func (QuestionAnswered) runEvent()  {}
-func (PlanSnapshot) runEvent()      {}
+func (SegmentStarted) Kind() runevent.Kind    { return runevent.SegmentStarted }
+func (SegmentProgressed) Kind() runevent.Kind { return runevent.SegmentProgress }
+func (SegmentFinished) Kind() runevent.Kind   { return runevent.SegmentFinished }
+func (ItemStarted) Kind() runevent.Kind       { return runevent.ItemStarted }
+func (ItemChanged) Kind() runevent.Kind       { return runevent.ItemDelta }
+func (ItemCompleted) Kind() runevent.Kind     { return runevent.ItemCompleted }
+func (QuestionAnswered) Kind() runevent.Kind  { return runevent.ItemCompleted }
+func (PlanSnapshot) Kind() runevent.Kind      { return runevent.PlanUpdated }
 
 func (s SegmentStarted) validate() error {
 	if s.Run.State() != run.Running {
@@ -148,24 +147,6 @@ func (q QuestionAnswered) validate() error {
 	}
 	return nil
 }
-
-func (SegmentStarted) Replayable() bool    { return true }
-func (SegmentProgressed) Replayable() bool { return false }
-func (SegmentFinished) Replayable() bool   { return true }
-func (ItemStarted) Replayable() bool       { return true }
-func (ItemChanged) Replayable() bool       { return false }
-func (ItemCompleted) Replayable() bool     { return true }
-func (QuestionAnswered) Replayable() bool  { return true }
-func (PlanSnapshot) Replayable() bool      { return true }
-
-func (SegmentStarted) Terminal() bool    { return false }
-func (SegmentProgressed) Terminal() bool { return false }
-func (SegmentFinished) Terminal() bool   { return true }
-func (ItemStarted) Terminal() bool       { return false }
-func (ItemChanged) Terminal() bool       { return false }
-func (ItemCompleted) Terminal() bool     { return false }
-func (QuestionAnswered) Terminal() bool  { return false }
-func (PlanSnapshot) Terminal() bool      { return false }
 
 func (s SegmentStarted) retainedBytes() int  { return retainedRunBytes(s.Run) }
 func (SegmentProgressed) retainedBytes() int { return 0 }

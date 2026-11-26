@@ -647,25 +647,6 @@ func (SkillScope) wireEnumValues() []string {
 	}
 }
 
-func (StreamEventType) wireEnumValues() []string {
-	return []string{
-		string(StreamSegmentStarted),
-		string(StreamSegmentProgress),
-		string(StreamSegmentFinished),
-		string(StreamItemStarted),
-		string(StreamItemDelta),
-		string(StreamItemCompleted),
-		string(StreamPlanUpdated),
-	}
-}
-
-func (SuppressibleRunEventType) wireEnumValues() []string {
-	return []string{
-		string(SuppressibleRunSegmentProgress),
-		string(SuppressibleRunItemDelta),
-	}
-}
-
 func (ToolAttemptState) wireEnumValues() []string {
 	return []string{
 		string(ToolAttemptStarted),

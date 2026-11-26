@@ -16,36 +16,30 @@ import (
 )
 
 func presentRunEvent(event runs.ProjectionEvent) protocol.StreamEvent {
+	result := protocol.StreamEvent{Type: event.Kind()}
 	switch event := event.(type) {
 	case runs.SegmentStarted:
-		run := presentRun(event.Run)
-		return protocol.StreamEvent{Type: protocol.StreamSegmentStarted, Run: &run}
+		result.Run = new(presentRun(event.Run))
 	case runs.SegmentProgressed:
-		progress := presentProgress(event.Progress)
-		return protocol.StreamEvent{Type: protocol.StreamSegmentProgress, Progress: &progress}
+		result.Progress = new(presentProgress(event.Progress))
 	case runs.SegmentFinished:
-		run := presentRun(event.Run)
-		return protocol.StreamEvent{
-			Type: protocol.StreamSegmentFinished, Run: &run, Interrupts: presentInterrupts(event.Interrupts),
-		}
+		result.Run = new(presentRun(event.Run))
+		result.Interrupts = presentInterrupts(event.Interrupts)
 	case runs.ItemStarted:
-		item := presentItemStart(event.Item)
-		return protocol.StreamEvent{Type: protocol.StreamItemStarted, Item: &item}
+		result.Item = new(presentItemStart(event.Item))
 	case runs.ItemChanged:
-		delta := presentDelta(event.Delta)
-		return protocol.StreamEvent{Type: protocol.StreamItemDelta, ItemID: event.ItemID.String(), Delta: &delta}
+		result.ItemID = event.ItemID.String()
+		result.Delta = new(presentDelta(event.Delta))
 	case runs.ItemCompleted:
-		item := presentItem(event.Item)
-		return protocol.StreamEvent{Type: protocol.StreamItemCompleted, Item: &item}
+		result.Item = new(presentItem(event.Item))
 	case runs.QuestionAnswered:
-		item := presentItem(event.Item)
-		return protocol.StreamEvent{Type: protocol.StreamItemCompleted, Item: &item}
+		result.Item = new(presentItem(event.Item))
 	case runs.PlanSnapshot:
-		plan := presentPlan(event)
-		return protocol.StreamEvent{Type: protocol.StreamPlanUpdated, Plan: &plan}
+		result.Plan = new(presentPlan(event))
 	default:
 		panic("delivery: unknown canonical run event")
 	}
+	return result
 }
 
 func presentPlan(event runs.PlanSnapshot) protocol.Plan {

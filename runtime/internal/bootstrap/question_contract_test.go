@@ -10,6 +10,7 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	questioncontract "github.com/Tangerg/flame/packages/go-sdk/question"
+	"github.com/Tangerg/flame/packages/go-sdk/runevent"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
@@ -119,7 +120,7 @@ func TestQuestionContractRejectsTheSameFieldAndPersistsExplicitSkips(t *testing.
 		if !ok {
 			t.Fatalf("resume event type = %T", value)
 		}
-		if event.Event.Type == protocol.StreamItemCompleted && event.Event.Item != nil && event.Event.Item.Question != nil && event.Event.Item.Question.Answers != nil {
+		if event.Event.Type == runevent.ItemCompleted && event.Event.Item != nil && event.Event.Item.Question != nil && event.Event.Item.Question.Answers != nil {
 			assertQuestion(event.Event.Item.Question)
 			completed = true
 		}

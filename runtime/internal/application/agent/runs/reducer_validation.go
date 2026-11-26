@@ -55,7 +55,8 @@ func validateReductionEvents(reductions []reduction) (terminalAt int, err error)
 				return -1, fmt.Errorf("%w: reduction batch both opens and ends a segment", errReducerInvariant)
 			}
 		}
-		if reduced.Event.Terminal() {
+		terminal := reduced.Event.Kind().Terminal()
+		if terminal {
 			terminalAt = i
 			if i != len(reductions)-1 {
 				return -1, fmt.Errorf("%w: terminal reduction[%d] is not last", errReducerInvariant, i)
@@ -69,7 +70,7 @@ func validateReductionEvents(reductions []reduction) (terminalAt int, err error)
 		case StateSuspend:
 			return -1, fmt.Errorf("%w: reduction[%d] carries a park commit", errReducerInvariant, i)
 		case StateTerminalize:
-			if !reduced.Event.Terminal() {
+			if !terminal {
 				return -1, fmt.Errorf("%w: terminal commit at reduction[%d] has no terminal event", errReducerInvariant, i)
 			}
 		default:

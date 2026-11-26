@@ -76,7 +76,7 @@ func (t treePublisher) validateIncrementalPublication(
 		)
 	}
 	for index, reduced := range batch.events {
-		if reduced.Event.Terminal() {
+		if reduced.Event.Kind().Terminal() {
 			return fmt.Errorf(
 				"runs: terminal reduction[%d] requires atomic publication",
 				index,
@@ -491,7 +491,7 @@ func suspendedInterrupts(events []ProjectionEvent) []transcript.Interrupt {
 
 func (t treePublisher) append(route *executorRoute, reduced reduction) error {
 	event := t.publications.event(route.runID, route.segmentID, reduced)
-	if route.runID == t.rootSpec.RunID && reduced.Event.Terminal() {
+	if route.runID == t.rootSpec.RunID && reduced.Event.Kind().Terminal() {
 		// Root segment.finished is the client's completion boundary, so publication must
 		// not outrun terminal maintenance and admission release or an immediate next
 		// command sees busy.
@@ -513,7 +513,7 @@ func combineAuthoritativeCommit(route *executorRoute, sessionID identity.Session
 		CommitID: newRunCommitID(),
 	}
 	for index, reduced := range batch.events {
-		if reduced.Event.Terminal() {
+		if reduced.Event.Kind().Terminal() {
 			return EventCommit{}, fmt.Errorf(
 				"runs: authoritative fact unexpectedly produced terminal event[%d]",
 				index,

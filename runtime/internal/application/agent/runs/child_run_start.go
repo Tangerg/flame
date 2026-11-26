@@ -251,7 +251,7 @@ func (p *preparedChildStart) openingEvents(sessionID identity.SessionID, project
 		Items:     newItemWrites(p.spawningItem),
 	}}
 	for _, reduced := range projected.events {
-		if reduced.Event.Terminal() || reduced.Nudge != nil {
+		if reduced.Event.Kind().Terminal() || reduced.Nudge != nil {
 			return nil, fmt.Errorf("runs: child member %q produced an invalid opening event", p.member.MemberID)
 		}
 		if reduced.Commit != nil {

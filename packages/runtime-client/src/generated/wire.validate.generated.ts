@@ -340,6 +340,7 @@ export type WireTypeName =
   | "RunCapabilityFeature"
   | "RunCommandOperation"
   | "RunEvent"
+  | "RunEventKind"
   | "RunLoss"
   | "RunMetrics"
   | "RunOutcome"
@@ -409,7 +410,6 @@ export type WireTypeName =
   | "SteerRunRequest"
   | "SteerRunResponse"
   | "StreamEvent"
-  | "StreamEventType"
   | "SubscribeRunRequest"
   | "SubscribeRunResponse"
   | "SubscriptionLimits"
@@ -3770,6 +3770,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     segmentId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
     timestamp: text(),
   }, ["event", "eventId", "runId", "segmentId", "timestamp"]),
+  RunEventKind: enumOf(["segment.started", "segment.progress", "segment.finished", "item.started", "item.delta", "item.completed", "plan.updated"]),
   RunLoss: object({
     detail: text(),
     reason: ref(() => CHECKS.LossReason),
@@ -4237,7 +4238,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   ServerCapabilities: object({
     features: record(ref(() => CHECKS.FeatureCapability)),
     limits: ref(() => CHECKS.RuntimeLimits),
-    runEvents: allOf([array(ref(() => CHECKS.StreamEventType)), uniqueItems()]),
+    runEvents: allOf([array(ref(() => CHECKS.RunEventKind)), uniqueItems()]),
     runtimeTopics: allOf([array(ref(() => CHECKS.RuntimeTopic)), uniqueItems()]),
     streamingMethods: allOf([array(allOf([text(), pattern("\\S")])), uniqueItems()]),
   }, ["features", "limits", "runEvents", "runtimeTopics", "streamingMethods"]),
@@ -4518,7 +4519,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       plan: ref(() => CHECKS.Plan),
       progress: ref(() => CHECKS.RunProgress),
       run: ref(() => CHECKS.RunRef),
-      type: ref(() => CHECKS.StreamEventType),
+      type: ref(() => CHECKS.RunEventKind),
     }, []),
     oneOf([
       fields({
@@ -4620,7 +4621,6 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       }, ["plan"]),
     ),
   ]),
-  StreamEventType: enumOf(["segment.started", "segment.progress", "segment.finished", "item.started", "item.delta", "item.completed", "plan.updated"]),
   SubscribeRunRequest: object({
     runId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
     segmentId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),

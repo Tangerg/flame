@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/packages/go-sdk/runevent"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -161,10 +162,10 @@ func streamedDelegateOutcomes(t *testing.T, events iter.Seq2[any, error]) (map[s
 			t.Fatal(err)
 		}
 		event := value.(protocol.RunEvent)
-		if event.Event.Type == protocol.StreamItemCompleted && event.Event.Item.Type == protocol.ItemTypeAgentMessage {
+		if event.Event.Type == runevent.ItemCompleted && event.Event.Item.Type == protocol.ItemTypeAgentMessage {
 			answers[event.RunID]++
 		}
-		if event.Event.Type == protocol.StreamSegmentFinished && event.Event.Run.Outcome != nil {
+		if event.Event.Type == runevent.SegmentFinished && event.Event.Run.Outcome != nil {
 			if answers[event.RunID] != 1 {
 				t.Fatalf("Run %s ended with %d assistant answers, want one before its terminal", event.RunID, answers[event.RunID])
 			}

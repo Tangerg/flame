@@ -29,7 +29,7 @@ func runEventToFrame(event protocol.RunEvent) (StreamFrame, bool) {
 		return StreamFrame{}, false
 	}
 	sseID := ""
-	if event.Event.Replayable() {
+	if event.Event.Type.Replayable() {
 		sseID = event.EventID
 	}
 	return StreamFrame{Notification: notification, SSEID: sseID}, true

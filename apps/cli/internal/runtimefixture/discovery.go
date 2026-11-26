@@ -4,6 +4,7 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	"github.com/Tangerg/flame/packages/go-sdk/mcpconnector"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/packages/go-sdk/runevent"
 )
 
 const (
@@ -22,7 +23,7 @@ func fixtureDiscovery() *protocol.DiscoverResponse {
 			DefaultWorkspace: protocol.WorkspaceRef{Path: "/workspace"}, Home: "/home/test",
 		},
 		Capabilities: protocol.ServerCapabilities{
-			RunEvents:        []protocol.StreamEventType{protocol.StreamSegmentStarted, protocol.StreamSegmentProgress, protocol.StreamSegmentFinished, protocol.StreamItemStarted, protocol.StreamItemDelta, protocol.StreamItemCompleted, protocol.StreamPlanUpdated},
+			RunEvents:        runevent.Kinds(),
 			RuntimeTopics:    protocol.RuntimeTopics(),
 			StreamingMethods: []string{"runs.start", "runs.resume", "runs.subscribe"},
 			Features:         map[string]protocol.FeatureCapability{},
