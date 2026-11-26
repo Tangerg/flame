@@ -15,11 +15,15 @@ import type {
   GetRunAcceptanceRequest,
   StartRunRequest,
 } from "@flame/runtime-client/wire";
-import { streamRunEvents } from "./stream";
+import {
+  callOrDispose,
+  streamRunEvents,
+  type RunStreamTarget,
+  type StreamingResult,
+} from "./stream";
 import type { PendingRunCommand } from "./mutationJournal";
 import { RpcCancellationError, RpcProtocolError } from "./errors";
 
-import { callOrDispose, type StreamingResult } from "./stream";
 import type { MutationJournal } from "./mutationJournal";
 import type { WireCallPath } from "./wireCallPath";
 
@@ -68,7 +72,7 @@ export type RunCommandRecovery = CommandObservation &
   );
 
 export interface RunCommands {
-  attach<R extends { segmentId: string }>(
+  attach<R extends RunStreamTarget>(
     signal: AbortSignal | undefined,
     request: (options: Pick<RpcCallOptions<R>, "signal" | "observe">) => Promise<R>,
   ): Promise<StreamingResult<R, RunEvent>>;
@@ -103,7 +107,7 @@ export function createRunCommands(
     replayLimits: capabilities?.()?.limits.runReplay,
   });
 
-  const attachRunStream = async <R extends { segmentId: string }>(
+  const attachRunStream = async <R extends RunStreamTarget>(
     signal: AbortSignal | undefined,
     request: (options: Pick<RpcCallOptions<R>, "signal" | "observe">) => Promise<R>,
   ): Promise<StreamingResult<R, RunEvent>> => {

@@ -1,3 +1,4 @@
+import { parseJSON, stringifyJSON, type JSONValue } from "@frame/sdk/json";
 import { describe, expect, it } from "vitest";
 import {
   asRunId,
@@ -103,6 +104,58 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: runs", () => {
       await client.close();
     }
   }, 30_000);
+
+  it.each(["runId", "segmentId"] as const)(
+    "refuses a root terminal with another Run's %s",
+    async (field) => {
+      const foreignSession = await fixture.client.sessions.create();
+      const session = await fixture.client.sessions.create();
+      const foreign = await fixture.client.runs.start({
+        sessionId: asSessionId(foreignSession.id),
+        input: [{ type: "text", text: "E2E_RUN complete a separate run." }],
+      });
+      await within(collectRunEvents(originalOpeningEvents(foreign)), "the separate Run to finish");
+      const client = fixture.createRuntimeClient(async (input, init) => {
+        const response = await fetch(input, init);
+        if (new Headers(init?.headers).get(HTTP_HEADERS.method) !== "runs.start") return response;
+        expect(response.headers.get(HTTP_HEADERS.contentType)).toContain(RPC_HTTP.streamMediaType);
+        const frames = (await response.text()).split("\n\n");
+        const terminal = frames.findIndex((frame) => frame.includes('"type":"segment.finished"'));
+        if (terminal < 0) throw new Error("expected the root Run's terminal frame");
+        frames[terminal] = frames[terminal]!.replace(/^(data: )(.*)$/m, (_, prefix, encoded) => {
+          const notification = parseJSON(encoded) as { params: Record<string, JSONValue> };
+          notification.params[field] = foreign.result[field];
+          return prefix + stringifyJSON(notification);
+        });
+        return new Response(frames.join("\n\n"), {
+          status: response.status,
+          headers: response.headers,
+        });
+      });
+      try {
+        const opening = await client.runs.start({
+          sessionId: asSessionId(session.id),
+          input: [{ type: "text", text: "E2E_RUN finish with its original identity." }],
+        });
+        await expect(
+          within(collectRunEvents(originalOpeningEvents(opening)), "the misaddressed Run frame"),
+        ).rejects.toSatisfy(
+          (error: unknown) =>
+            error instanceof RpcProtocolError &&
+            error.violations[0]?.path === `$.${field}` &&
+            Boolean(error.requestId),
+        );
+        await expect(fixture.client.runs.get(asRunId(opening.result.runId))).resolves.toMatchObject(
+          { status: "finished", outcome: { type: "completed" } },
+        );
+      } finally {
+        await client.close();
+        await fixture.client.sessions.delete(asSessionId(session.id));
+        await fixture.client.sessions.delete(asSessionId(foreignSession.id));
+      }
+    },
+    30_000,
+  );
 
   it.each([
     { fault: "notification before acknowledgement", phase: "opening" },

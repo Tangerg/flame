@@ -34,10 +34,9 @@ export interface RunStreamPosition {
   recovery: "replay" | "cold";
 }
 
-interface DrainedStream {
-  finished: boolean;
+interface StreamDetachment {
   recovery: RunStreamPosition["recovery"];
-  error?: unknown;
+  error: unknown;
 }
 
 const MAXIMUM_STALLED_REPLAYS = 3;
@@ -55,17 +54,17 @@ class ReattachPolicy {
     this.#lastDetached = position;
   }
 
-  next(position: RunStreamPosition, projectionAdvanced: boolean, drained: DrainedStream) {
+  next(position: RunStreamPosition, projectionAdvanced: boolean, detached: StreamDetachment) {
     const segmentChanged = position.segmentId !== this.#lastDetached.segmentId;
     const advanced = segmentChanged || position.lastEventId !== this.#lastDetached.lastEventId;
     this.#stalledReplays = advanced ? 0 : this.#stalledReplays + 1;
     if ((advanced && projectionAdvanced) || segmentChanged) this.#coldRecovered = false;
     this.#lastDetached = position;
-    if (drained.recovery !== "cold" && this.#stalledReplays < MAXIMUM_STALLED_REPLAYS)
+    if (detached.recovery !== "cold" && this.#stalledReplays < MAXIMUM_STALLED_REPLAYS)
       return position;
     if (this.#coldRecovered)
       throw new Error("run synchronization incomplete: recovery made no progress", {
-        cause: drained.error,
+        cause: detached.error,
       });
     this.#coldRecovered = true;
     return { ...position, recovery: "cold" as const };
@@ -151,9 +150,8 @@ export function createAgentRunPump({
             onRunFinished,
           });
           activeBatcher = eventBatcher;
-          const drained = await consume(
+          let detached = await consume(
             events,
-            position.segmentId,
             AbortSignal.any([signal, projectionFailure.signal]),
             eventBatcher,
           );
@@ -165,12 +163,10 @@ export function createAgentRunPump({
                 cause: projectionFailure.signal.reason,
               });
             }
-            drained.finished = false;
-            drained.recovery = "cold";
-            drained.error = projectionFailure.signal.reason;
+            detached = { recovery: "cold", error: projectionFailure.signal.reason };
           }
-          if (superseded() || drained.finished || !reattach) break;
-          position = reattachPolicy.next(position, projectionAdvanced, drained);
+          if (superseded() || !detached || !reattach) break;
+          position = reattachPolicy.next(position, projectionAdvanced, detached);
           await delayUntilAborted(reattachPolicy.backoffMilliseconds(), signal);
           if (superseded()) break;
           const next = await reattach(position, signal);
@@ -236,34 +232,25 @@ export function createAgentRunPump({
 
   async function consume(
     events: AsyncIterable<RunEvent>,
-    rootSegmentId: SegmentId,
     signal: AbortSignal,
     eventBatcher: ReturnType<typeof createRunEventBatcher>,
-  ): Promise<DrainedStream> {
-    let finished = false;
-    let recovery: "replay" | "cold" = "replay";
-    let error: unknown;
+  ): Promise<StreamDetachment | undefined> {
     try {
-      const outcome = await drainUntilAbort(
+      await drainUntilAbort(
         events,
         signal,
         (ev) => {
           if (isCanceled() || signal.aborted) return false;
           eventBatcher.enqueue(ev);
-          if (ev.segmentId === rootSegmentId && ev.event.type === "segment.finished")
-            finished = true;
           return true;
         },
         () => !isCanceled(),
       );
-      // A pull interrupted by the owner, or a value read after cancellation, ends this drain.
-      if (outcome === "interrupted" || outcome === "stopped") return { finished: true, recovery };
-    } catch (err) {
-      error = err;
-      if (err instanceof RpcProtocolError) recovery = "cold";
-      if (!isCanceled() && !signal.aborted && !(err instanceof RpcConnectionError))
-        console.warn("[agent] run stream ended early:", sessionId, err);
+      return undefined;
+    } catch (error) {
+      if (!isCanceled() && !signal.aborted && !(error instanceof RpcConnectionError))
+        console.warn("[agent] run stream ended early:", sessionId, error);
+      return { error, recovery: error instanceof RpcProtocolError ? "cold" : "replay" };
     }
-    return { finished, recovery, error };
   }
 }

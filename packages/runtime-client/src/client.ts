@@ -42,7 +42,7 @@ import type { RpcId, RpcMessage, RpcNotification, RpcResponse } from "./types";
 import { JSONRPC_VERSION, isErrorResponse, isNotification, isResponse } from "./types";
 
 interface StreamConsumer<M extends WireNotificationName> {
-  next(params: WireNotificationParams[M]): void | Promise<void>;
+  next(params: WireNotificationParams[M], requestId?: string): void | Promise<void>;
   fail(error: Error): void;
   end(error?: Error): void;
 }
@@ -106,7 +106,7 @@ export function observeNotifications<M extends WireNotificationName>(
         consumer.fail(failure);
       };
       try {
-        return consumer.next(params)?.catch(failDelivery);
+        return consumer.next(params, metadata?.requestId)?.catch(failDelivery);
       } catch (cause) {
         failDelivery(cause);
       }

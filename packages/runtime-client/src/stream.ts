@@ -5,9 +5,10 @@ import {
   type RunEvent,
   type RunReplayLimits,
   type RuntimeEvent,
+  type SubscribeRunResponse,
 } from "@flame/runtime-client/wire";
 import { NOTIFICATIONS_RUN_EVENT, NOTIFICATIONS_RUNTIME_EVENT } from "@flame/runtime-client/wire";
-import { RpcConnectionError } from "./errors";
+import { RpcConnectionError, RpcProtocolError } from "./errors";
 
 interface RunReplayBudget {
   maxEvents: number;
@@ -150,14 +151,33 @@ export interface RunEventStreamOptions {
   replayLimits?: RunReplayLimits;
 }
 
+export type RunStreamTarget = Pick<SubscribeRunResponse, "runId" | "segmentId">;
+
 export function streamRunEvents(options: RunEventStreamOptions = {}) {
   const inbox = new RunEventInbox(options.replayLimits);
   const stream = eventStream(inbox.channel, options.signal);
   return {
     ...stream,
-    observe: ({ segmentId }: { segmentId: string }) =>
+    observe: ({ runId, segmentId }: RunStreamTarget) =>
       observeNotifications(NOTIFICATIONS_RUN_EVENT, {
-        next(event) {
+        next(event, requestId) {
+          const matchesRun = event.runId === runId;
+          const matchesSegment = event.segmentId === segmentId;
+          if (matchesRun !== matchesSegment) {
+            stream.fail(
+              new RpcProtocolError(
+                "Run event",
+                [
+                  {
+                    path: matchesRun ? "$.segmentId" : "$.runId",
+                    detail: "must match the acknowledged root Run and Segment",
+                  },
+                ],
+                requestId,
+              ),
+            );
+            return;
+          }
           const admission = inbox.admit(event);
           if (admission === "authoritativeOverflow") {
             stream.fail(
@@ -167,7 +187,7 @@ export function streamRunEvents(options: RunEventStreamOptions = {}) {
             );
           } else if (
             admission === "accepted" &&
-            event.segmentId === segmentId &&
+            matchesRun &&
             event.event.type === "segment.finished"
           ) {
             stream.finish();
