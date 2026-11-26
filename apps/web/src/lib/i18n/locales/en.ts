@@ -141,6 +141,7 @@ export const en = {
 
   "composer.switchModel": "Switch model",
   "composer.switchReasoningEffort": "Switch reasoning effort",
+  "composer.switchApprovalMode": "Switch approval mode",
   "composer.model.unavailable": "Unavailable in the current catalog",
   "composer.model.recent": "Recent",
   "composer.model.search.placeholder": "Search models…",

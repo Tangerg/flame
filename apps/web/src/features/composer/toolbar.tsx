@@ -159,7 +159,7 @@ function ApprovalModePill() {
         render={
           <AgentComposerChip
             type="button"
-            actionLabel={t("approvals.mode.aria")}
+            actionLabel={t("composer.switchApprovalMode")}
             variant={full ? "wash" : "ghost"}
             tone={full ? "warning" : undefined}
             leading={<Icon name={MODE_ICON[mode]} size="composer" full />}

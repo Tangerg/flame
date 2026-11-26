@@ -125,6 +125,7 @@
   "composer.placeholder": "Beschreibe, was zu tun ist — @ referenziert eine Datei",
   "composer.switchModel": "Modell wechseln",
   "composer.switchReasoningEffort": "Denkintensität ändern",
+  "composer.switchApprovalMode": "Genehmigungsmodus ändern",
   "composer.model.unavailable": "Im aktuellen Katalog nicht verfügbar",
   "composer.model.recent": "Zuletzt verwendet",
   "composer.model.search.placeholder": "Modelle suchen…",
