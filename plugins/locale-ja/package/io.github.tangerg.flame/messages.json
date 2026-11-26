@@ -856,7 +856,7 @@
   "model.effort.high": "高",
   "model.effort.xhigh": "非常に高い",
   "model.effort.max": "最大",
-  "file.unsupported.image": "ここではまだ画像をプレビューできません",
+  "file.unsupported.image": "ここでは画像をプレビューできません",
   "file.unsupported.binary": "このファイルはテキストではありません",
   "file.open": "開く",
   "file.openFailed": "{{path}} を開けませんでした。もう一度お試しください。",

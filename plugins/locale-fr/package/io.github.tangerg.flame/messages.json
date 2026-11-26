@@ -903,7 +903,7 @@
   "model.effort.high": "Élevé",
   "model.effort.xhigh": "Très élevé",
   "model.effort.max": "Maximal",
-  "file.unsupported.image": "Pas encore d’aperçu d’image ici",
+  "file.unsupported.image": "Pas d’aperçu d’image ici",
   "file.unsupported.binary": "Ce fichier n’est pas du texte",
   "file.open": "Ouvrir",
   "file.change.add": "Ajouté dans l’arbre de travail",

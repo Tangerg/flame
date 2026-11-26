@@ -859,7 +859,7 @@
   "model.effort.high": "高",
   "model.effort.xhigh": "极高",
   "model.effort.max": "最高",
-  "file.unsupported.image": "这里暂时无法预览图片",
+  "file.unsupported.image": "这里无法预览图片",
   "file.unsupported.binary": "这不是文本文件",
   "file.open": "打开",
   "file.change.add": "工作树中新增",

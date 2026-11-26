@@ -946,7 +946,7 @@ export const en = {
   "model.effort.high": "High",
   "model.effort.xhigh": "Extra high",
   "model.effort.max": "Max",
-  "file.unsupported.image": "No image preview here yet",
+  "file.unsupported.image": "Images don’t preview here",
   "file.unsupported.binary": "This file isn’t text",
   "file.open": "Open",
   "file.openFailed": "Couldn’t open {{path}}. Try again.",
