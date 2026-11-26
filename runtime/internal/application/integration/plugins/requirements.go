@@ -24,7 +24,7 @@ type Collaborator struct {
 type requirementCatalog struct {
 	installations map[identity.InstallationID]plugin.Snapshot
 	selections    map[string]plugin.SelectionRecord
-	compositions  map[string]plugin.CompositionRecord
+	compositions  map[string]plugin.OrderedComposition
 }
 
 func ResolveRequirements(ctx context.Context, host framehost.Host, store Store, selections SelectionStore, compositions CompositionStore, installation identity.InstallationID, digest framevalue.Digest, contribution plugin.ContributionID) ([]Collaborator, error) {
@@ -73,7 +73,11 @@ func readRequirementCatalog(ctx context.Context, store Store, selections Selecti
 	if err != nil {
 		return requirementCatalog{}, err
 	}
-	catalog := requirementCatalog{installations: make(map[identity.InstallationID]plugin.Snapshot, len(snapshots)), selections: make(map[string]plugin.SelectionRecord, len(choices)), compositions: make(map[string]plugin.CompositionRecord, len(ordered))}
+	catalog := requirementCatalog{
+		installations: make(map[identity.InstallationID]plugin.Snapshot, len(snapshots)),
+		selections:    make(map[string]plugin.SelectionRecord, len(choices)),
+		compositions:  make(map[string]plugin.OrderedComposition, len(ordered)),
+	}
 	for _, snapshot := range snapshots {
 		catalog.installations[snapshot.Installation.ID()] = snapshot
 	}
@@ -81,13 +85,8 @@ func readRequirementCatalog(ctx context.Context, store Store, selections Selecti
 		record := choice.Snapshot()
 		catalog.selections[record.Role] = record
 	}
-	for _, value := range ordered {
-		record := value.Snapshot()
-		contract, err := plugincontract.ParseCapability(record.Contract.Bytes())
-		if err != nil {
-			return requirementCatalog{}, err
-		}
-		catalog.compositions[contract.Descriptor().Reference] = record
+	for _, composition := range ordered {
+		catalog.compositions[composition.ContractReference()] = composition
 	}
 	return catalog, nil
 }
@@ -183,19 +182,15 @@ func (c requirementCatalog) implements(snapshot plugin.Snapshot, declaration plu
 }
 
 func (c requirementCatalog) decorators(required plugin.Requirement, contract *plugincontract.Capability) ([]ContributionBinding, error) {
-	record, found := c.compositions[contract.Descriptor().Reference]
+	composition, found := c.compositions[contract.Descriptor().Reference]
 	if !found {
 		if required.Optional {
 			return []ContributionBinding{}, nil
 		}
 		return nil, fmt.Errorf("%w: dependency %s needs an explicit decoration composition", plugin.ErrUnavailable, required.ID)
 	}
-	if record.Contract != contract.Identity() {
+	if composition.ContractIdentity() != contract.Identity() {
 		return nil, fmt.Errorf("%w: dependency %s composition contract differs", plugin.ErrUnavailable, required.ID)
-	}
-	composition, err := plugin.NewOrderedComposition(record)
-	if err != nil {
-		return nil, err
 	}
 	bindings, err := resolveCompositionMembers(composition, func(id identity.InstallationID) (plugin.Snapshot, bool, error) {
 		snapshot, found := c.installations[id]

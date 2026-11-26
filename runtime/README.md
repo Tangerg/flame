@@ -520,8 +520,11 @@ returns the actual vector space with its vectors. See
 Enablement and selection are independent. `plugins.listProviders` and
 `plugins.selectProvider` inspect/change the explicit role owner; an unavailable
 selected provider never chooses another candidate. Composition operations retain
-an explicit outer-to-inner order. Frozen execution and setup dependencies keep
-exact contribution/export/contract, source authority and transitive release facts.
+an explicit outer-to-inner order. `plugins.setComposition` commits that order
+and the original acknowledgement in one transaction. A retry within the advertised
+replay retention returns the recorded order. `plugins.listCompositions` reports
+the current choice. Frozen execution and setup dependencies keep exact
+contribution/export/contract, source authority and transitive release facts.
 Changing a choice affects subsequent captures. A missing selected member refuses
 its whole composition, including a previously bound optional dependency.
 

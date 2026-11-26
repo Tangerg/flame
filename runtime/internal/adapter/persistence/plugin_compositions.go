@@ -6,7 +6,6 @@ import (
 	"errors"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
-	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	framevalue "github.com/Tangerg/frame/value"
 )
@@ -80,37 +79,28 @@ func restoreComposition(reference string, encoded string) (plugin.OrderedComposi
 		}
 		members[index] = plugin.CompositionMember{Installation: id, Contribution: contribution}
 	}
-	record := plugin.CompositionRecord{Contract: stored.Contract, Members: members}
-	value, err := plugin.NewOrderedComposition(record)
+	value, err := plugin.NewOrderedComposition(stored.Contract.Bytes(), members)
 	if err != nil {
 		return plugin.OrderedComposition{}, err
 	}
-	contract, err := plugincontract.ParseCapability(value.Snapshot().Contract.Bytes())
-	if err != nil || contract.Descriptor().Reference != reference {
-		return plugin.OrderedComposition{}, errors.Join(err, errors.New("sqlite: composition reference differs from its contract"))
+	if value.ContractReference() != reference {
+		return plugin.OrderedComposition{}, errors.New("sqlite: composition reference differs from its contract")
 	}
 	return value, nil
 }
 
 func (s *compositionStore) Save(ctx context.Context, value plugin.OrderedComposition) error {
+	members := value.Members()
+	stored := storedComposition{Contract: value.ContractIdentity(), Members: make([]storedCompositionMember, len(members))}
+	for index, member := range members {
+		stored.Members[index] = storedCompositionMember{Installation: member.Installation.String(), Contribution: member.Contribution.String()}
+	}
+	encoded, err := encodeStoredJSON(stored)
+	if err != nil {
+		return err
+	}
 	return s.db.write(ctx, func(ctx context.Context) error {
-		if err := value.Validate(); err != nil {
-			return err
-		}
-		record := value.Snapshot()
-		contract, err := plugincontract.ParseCapability(record.Contract.Bytes())
-		if err != nil {
-			return err
-		}
-		members := make([]storedCompositionMember, len(record.Members))
-		for index, member := range record.Members {
-			members[index] = storedCompositionMember{Installation: member.Installation.String(), Contribution: member.Contribution.String()}
-		}
-		encoded, err := encodeStoredJSON(storedComposition{Contract: record.Contract, Members: members})
-		if err != nil {
-			return err
-		}
-		_, err = s.db.connection(ctx).ExecContext(ctx, `INSERT INTO plugin_compositions(reference,composition_json) VALUES(?,?) ON CONFLICT(reference) DO UPDATE SET composition_json=excluded.composition_json`, contract.Descriptor().Reference, string(encoded))
+		_, err := s.db.connection(ctx).ExecContext(ctx, `INSERT INTO plugin_compositions(reference,composition_json) VALUES(?,?) ON CONFLICT(reference) DO UPDATE SET composition_json=excluded.composition_json`, value.ContractReference(), string(encoded))
 		return err
 	})
 }

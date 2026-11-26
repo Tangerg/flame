@@ -309,7 +309,11 @@ func assembleIntegrations(cfg assemblyConfig, lifetime *runtimeLifetime, policy 
 	if err != nil {
 		return integrationAssembly{}, err
 	}
-	pluginCompositions, err := plugins.NewCompositions(cfg.stores.PluginCompositions, cfg.stores.Installations, cfg.stores.Transactor, policy.invalidations.publish)
+	pluginCompositions, err := plugins.NewCompositions(plugins.CompositionsConfig{
+		Store: cfg.stores.PluginCompositions, Installations: cfg.stores.Installations,
+		ReadSnapshot: cfg.stores.ReadSnapshot, Transact: cfg.stores.Transactor,
+		Publish: policy.invalidations.publish,
+	})
 	if err != nil {
 		return integrationAssembly{}, err
 	}

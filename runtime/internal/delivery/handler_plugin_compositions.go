@@ -5,9 +5,8 @@ import (
 
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-
-	framevalue "github.com/Tangerg/frame/value"
 )
 
 func (s *Handler) ResolvePluginComposition(ctx context.Context, in protocol.ResolvePluginCompositionRequest) (*protocol.Page[protocol.PluginOperationBinding], error) {
@@ -27,12 +26,12 @@ func (s *Handler) ResolvePluginComposition(ctx context.Context, in protocol.Reso
 }
 
 func presentComposition(value plugin.OrderedComposition) *protocol.PluginComposition {
-	record := value.Snapshot()
-	members := make([]protocol.PluginCompositionMember, len(record.Members))
-	for index, member := range record.Members {
+	order := value.Members()
+	members := make([]protocol.PluginCompositionMember, len(order))
+	for index, member := range order {
 		members[index] = protocol.PluginCompositionMember{InstallationID: member.Installation.String(), Contribution: member.Contribution.String()}
 	}
-	return &protocol.PluginComposition{Contract: record.Contract.String(), Members: members}
+	return &protocol.PluginComposition{Contract: value.ContractIdentity().String(), Members: members}
 }
 
 func (s *Handler) ListPluginCompositions(ctx context.Context) (*protocol.Page[protocol.PluginComposition], error) {
@@ -48,25 +47,36 @@ func (s *Handler) ListPluginCompositions(ctx context.Context) (*protocol.Page[pr
 }
 
 func (s *Handler) SetPluginComposition(ctx context.Context, in protocol.SetPluginCompositionRequest) (*protocol.PluginComposition, error) {
-	contract, err := framevalue.ParseJSON([]byte(in.Contract))
-	if err != nil {
-		return nil, protocol.InvalidParameters(err)
+	var value plugin.OrderedComposition
+	if err := s.setPluginComposition(ctx, in, operation.DirectReply(&value)); err != nil {
+		return nil, err
 	}
+	return presentComposition(value), nil
+}
+
+func (s *Handler) commitPluginComposition(ctx context.Context, in protocol.SetPluginCompositionRequest, outcome atomicOutcome) error {
+	reply := atomicReply(outcome.complete, func(value plugin.OrderedComposition) ([]byte, error) {
+		return encodeAtomicResult(outcome.method, presentComposition(value))
+	})
+	return outcome.settleRefusal(ctx, s.setPluginComposition(ctx, in, reply))
+}
+
+func (s *Handler) setPluginComposition(ctx context.Context, in protocol.SetPluginCompositionRequest, reply operation.Reply[plugin.OrderedComposition]) error {
 	members := make([]plugin.CompositionMember, len(in.Members))
 	for index, member := range in.Members {
 		installation, err := parseInstallationID(member.InstallationID)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		contribution, err := plugin.ParseContributionID(member.Contribution)
 		if err != nil {
-			return nil, protocol.InvalidParameters(err)
+			return protocol.InvalidParameters(err)
 		}
 		members[index] = plugin.CompositionMember{Installation: installation, Contribution: contribution}
 	}
-	value, err := s.pluginCompositions.Set(ctx, plugin.CompositionRecord{Contract: contract, Members: members})
+	value, err := plugin.NewOrderedComposition([]byte(in.Contract), members)
 	if err != nil {
-		return nil, wirePluginError(err)
+		return wirePluginError(err)
 	}
-	return presentComposition(value), nil
+	return wirePluginError(s.pluginCompositions.Set(ctx, value, reply))
 }

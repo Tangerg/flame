@@ -9,6 +9,7 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 
 	"github.com/samber/lo"
@@ -20,18 +21,30 @@ type CompositionStore interface {
 	Save(context.Context, plugin.OrderedComposition) error
 }
 
+type CompositionsConfig struct {
+	Store         CompositionStore
+	Installations Store
+	ReadSnapshot  func(context.Context, func(context.Context) error) error
+	Transact      func(context.Context, func(context.Context) error) error
+	Publish       invalidation.Publish
+}
+
 type Compositions struct {
 	store         CompositionStore
 	installations Store
+	readSnapshot  func(context.Context, func(context.Context) error) error
 	transact      func(context.Context, func(context.Context) error) error
 	publish       invalidation.Publish
 }
 
-func NewCompositions(store CompositionStore, installations Store, transact func(context.Context, func(context.Context) error) error, publish invalidation.Publish) (*Compositions, error) {
-	if lo.IsNil(store) || lo.IsNil(installations) || transact == nil || publish == nil {
-		return nil, errors.New("plugins: compositions, installations and admission are required")
+func NewCompositions(cfg CompositionsConfig) (*Compositions, error) {
+	if lo.IsNil(cfg.Store) || lo.IsNil(cfg.Installations) || cfg.ReadSnapshot == nil || cfg.Transact == nil || cfg.Publish == nil {
+		return nil, errors.New("plugins: compositions, installations, transactions and invalidation are required")
 	}
-	return &Compositions{store: store, installations: installations, transact: transact, publish: publish}, nil
+	return &Compositions{
+		store: cfg.Store, installations: cfg.Installations, readSnapshot: cfg.ReadSnapshot,
+		transact: cfg.Transact, publish: cfg.Publish,
+	}, nil
 }
 
 func (c *Compositions) List(ctx context.Context) ([]plugin.OrderedComposition, error) {
@@ -40,7 +53,7 @@ func (c *Compositions) List(ctx context.Context) ([]plugin.OrderedComposition, e
 
 func (c *Compositions) Resolve(ctx context.Context, required *plugincontract.Capability) ([]ContributionBinding, error) {
 	var bindings []ContributionBinding
-	err := c.transact(ctx, func(ctx context.Context) error {
+	err := c.readSnapshot(ctx, func(ctx context.Context) error {
 		var err error
 		bindings, err = ResolveComposition(ctx, c.installations, c.store, required)
 		return err
@@ -48,21 +61,22 @@ func (c *Compositions) Resolve(ctx context.Context, required *plugincontract.Cap
 	return bindings, err
 }
 
-func (c *Compositions) Set(ctx context.Context, record plugin.CompositionRecord) (plugin.OrderedComposition, error) {
-	value, err := plugin.NewOrderedComposition(record)
-	if err != nil {
-		return plugin.OrderedComposition{}, err
+func (c *Compositions) Set(ctx context.Context, value plugin.OrderedComposition, reply operation.Reply[plugin.OrderedComposition]) error {
+	if !value.Valid() {
+		return plugin.ErrInvalid
 	}
-	err = c.transact(ctx, func(ctx context.Context) error {
+	err := c.transact(ctx, func(ctx context.Context) error {
 		if _, err := bindComposition(ctx, c.installations, value); err != nil {
 			return err
 		}
-		return c.store.Save(ctx, value)
+		return reply(ctx, func(tx context.Context) (plugin.OrderedComposition, error) {
+			return value, c.store.Save(tx, value)
+		})
 	})
 	if err == nil {
 		c.publish.Notify(invalidation.Notice{Resource: invalidation.Plugins})
 	}
-	return value, err
+	return err
 }
 
 func ResolveComposition(ctx context.Context, installations Store, compositions CompositionStore, required *plugincontract.Capability) ([]ContributionBinding, error) {
@@ -76,7 +90,7 @@ func ResolveComposition(ctx context.Context, installations Store, compositions C
 	if !found {
 		return []ContributionBinding{}, nil
 	}
-	if value.Snapshot().Contract != required.Identity() {
+	if value.ContractIdentity() != required.Identity() {
 		return nil, fmt.Errorf("%w: stored composition contract differs from the consumer requirement", plugin.ErrUnavailable)
 	}
 	return bindComposition(ctx, installations, value)
@@ -89,12 +103,9 @@ func bindComposition(ctx context.Context, installations Store, composition plugi
 }
 
 func resolveCompositionMembers(composition plugin.OrderedComposition, snapshotFor func(identity.InstallationID) (plugin.Snapshot, bool, error)) ([]ContributionBinding, error) {
-	if err := composition.Validate(); err != nil {
-		return nil, err
-	}
-	record := composition.Snapshot()
-	bindings := make([]ContributionBinding, 0, len(record.Members))
-	for _, member := range record.Members {
+	contract, members := composition.ContractIdentity(), composition.Members()
+	bindings := make([]ContributionBinding, 0, len(members))
+	for _, member := range members {
 		snapshot, found, err := snapshotFor(member.Installation)
 		if err != nil {
 			return nil, err
@@ -103,7 +114,7 @@ func resolveCompositionMembers(composition plugin.OrderedComposition, snapshotFo
 			return nil, fmt.Errorf("%w: composition member installation is absent", plugin.ErrUnavailable)
 		}
 		contribution, found := snapshot.Selected.Contribution(member.Contribution)
-		if !found || contribution.Contract != record.Contract || !snapshot.Installation.ServerEnabled(contribution.Server) {
+		if !found || contribution.Contract != contract || !snapshot.Installation.ServerEnabled(contribution.Server) {
 			return nil, fmt.Errorf("%w: composition member is not admitted", plugin.ErrUnavailable)
 		}
 		id, err := snapshot.Installation.ServerID(contribution.Server)

@@ -15,49 +15,41 @@ type CompositionMember struct {
 	Contribution ContributionID
 }
 
-type CompositionRecord struct {
-	Contract framevalue.JSON
-	Members  []CompositionMember
+type OrderedComposition struct {
+	contract *plugincontract.Capability
+	members  []CompositionMember
 }
 
-type OrderedComposition struct{ record CompositionRecord }
-
-func NewOrderedComposition(record CompositionRecord) (OrderedComposition, error) {
-	contract, err := plugincontract.ParseCapability(record.Contract.Bytes())
+func NewOrderedComposition(encodedContract []byte, members []CompositionMember) (OrderedComposition, error) {
+	contract, err := plugincontract.ParseCapability(encodedContract)
 	if err != nil {
 		return OrderedComposition{}, errors.Join(ErrInvalid, err)
 	}
 	if contract.Descriptor().Composition != plugincontract.Decoration {
 		return OrderedComposition{}, errors.Join(ErrInvalid, errors.New("ordered composition requires a decoration contract"))
 	}
-	seen := make(map[CompositionMember]bool, len(record.Members))
-	for _, member := range record.Members {
+	seen := make(map[CompositionMember]struct{}, len(members))
+	for _, member := range members {
 		if err := member.Installation.Validate(); err != nil {
 			return OrderedComposition{}, err
 		}
 		if err := member.Contribution.Validate(); err != nil {
 			return OrderedComposition{}, err
 		}
-		if seen[member] {
+		if _, found := seen[member]; found {
 			return OrderedComposition{}, errors.Join(ErrInvalid, errors.New("duplicate composition member"))
 		}
-		seen[member] = true
+		seen[member] = struct{}{}
 	}
-	record.Contract = contract.Identity()
-	record.Members = slices.Clone(record.Members)
-	if record.Members == nil {
-		record.Members = []CompositionMember{}
-	}
-	return OrderedComposition{record: record}, nil
+	return OrderedComposition{contract: contract, members: slices.Clone(members)}, nil
 }
 
-func (c OrderedComposition) Snapshot() CompositionRecord {
-	record := c.record
-	record.Members = slices.Clone(record.Members)
-	return record
+func (c OrderedComposition) Valid() bool { return c.contract != nil }
+
+func (c OrderedComposition) ContractReference() string {
+	return c.contract.Descriptor().Reference
 }
 
-func (c OrderedComposition) Validate() error {
-	_, err := NewOrderedComposition(c.record)
-	return err
-}
+func (c OrderedComposition) ContractIdentity() framevalue.JSON { return c.contract.Identity() }
+
+func (c OrderedComposition) Members() []CompositionMember { return slices.Clone(c.members) }
