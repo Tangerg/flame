@@ -939,10 +939,11 @@ failed and confirmed-empty branches. Budget exhaustion requires explicit Load
 more; a changed directory refuses its old cursor and can be retried. Hidden
 branches unsubscribe from Query without creating another filesystem catalog.
 
-File previews retain the browser's DOM and project its logical visibility through
-`ContentVisibility`, so row menus retire before returning to the tree. Root and
-expanded-directory Query observers unsubscribe while the browser is hidden and
-resume their normal read lifecycle on return, preserving accepted data and rows.
+File previews retain the browser's bounded scrollport while reading. Its inactive
+layer leaves pointer, keyboard and accessibility navigation, while
+`ContentVisibility` retires row menus. Root and expanded-directory Query observers
+unsubscribe while the browser is hidden and resume their normal read lifecycle on
+return. The virtual tree retains its measured rows and native scroll position.
 Workspace changes replace the tree's and preview's interaction scopes even when
 the new Query already has identical paths cached. Pagination, presentation mode
 and popup drafts belong to that workspace; returning does not revive them.
