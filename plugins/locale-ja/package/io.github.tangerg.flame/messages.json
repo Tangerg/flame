@@ -285,6 +285,7 @@
   "folder.row.missing": "ディスク上にフォルダーが見つかりません",
   "workIndex.row.newSession": "{{name}} で新規セッション",
   "toolInspector.arguments": "引数",
+  "toolInspector.details": "ツールの詳細",
   "toolInspector.result": "結果",
   "toolInspector.noResult": "（結果の本文なし — ツールは空を返しました）",
   "runtime.unsupported.title": "この Runtime では利用できません",

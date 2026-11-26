@@ -153,6 +153,7 @@ function contributeToolResultRenderer({
     {
       id,
       title: { text: entry.title },
+      inlineResult: entry.inlineResult,
       selector:
         entry.selector.type === "resultShape"
           ? { type: "resultShape", shape: entry.selector.shape }
@@ -163,7 +164,7 @@ function contributeToolResultRenderer({
           reload={() => modules.reload()}
           fallback={props.fallback}
         >
-          <Suspense fallback={props.fallback}>
+          <Suspense fallback={props.fallback ?? <ComponentLoading />}>
             <RecordedToolComponent {...props} entry={Result} />
           </Suspense>
         </ComponentBoundary>

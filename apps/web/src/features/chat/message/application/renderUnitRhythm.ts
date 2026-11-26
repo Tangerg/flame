@@ -3,6 +3,7 @@ type UnitVoice = "process" | "prose" | "panel";
 
 function unitVoice(unit: MessageRenderUnit): UnitVoice {
   if (unit.kind === "wave" || unit.kind === "toolGroup") return "process";
+  if (unit.inlineResult) return "panel";
   switch (unit.block.kind) {
     case "text":
       return "prose";

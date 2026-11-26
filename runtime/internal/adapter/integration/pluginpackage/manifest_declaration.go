@@ -205,7 +205,7 @@ func (r declarationResources) component(ctx context.Context, w wireComponent) (p
 	if w.Selector != nil {
 		selector = &plugin.RendererSelector{Kind: w.Selector.Type, Name: w.Selector.Name, Shape: w.Selector.Shape}
 	}
-	return plugin.ClientComponent{Selector: selector, ID: w.ID, Title: w.Title, LocalizedTitles: w.LocalizedTitles, ToolCategory: w.ToolCategory, TargetView: w.TargetView, Scope: w.Scope, Placement: w.Placement, Entry: w.Entry, Export: w.Export, Contribution: contribution, Material: material, SettingsIntent: settingsIntent}, nil
+	return plugin.ClientComponent{Selector: selector, ID: w.ID, Title: w.Title, LocalizedTitles: w.LocalizedTitles, ToolCategory: w.ToolCategory, TargetView: w.TargetView, Scope: w.Scope, Placement: w.Placement, Entry: w.Entry, Export: w.Export, Contribution: contribution, Material: material, SettingsIntent: settingsIntent, InlineResult: w.InlineResult}, nil
 }
 
 func (r declarationResources) locale(ctx context.Context, w wireLocale) (plugin.Locale, error) {

@@ -13,10 +13,17 @@ import { ImageBlock } from "@/features/chat/message/ui/cards/index";
 import { QuestionCard } from "@/features/chat/message/ui/cards/index";
 import { ReasoningBlock } from "@/features/chat/message/ui/cards/index";
 import { ReferenceBlock } from "@/features/chat/message/ui/cards/index";
-import { ToolCard } from "@/features/chat/public/tools/rendering";
-import { ToolGroup } from "@/features/chat/public/tools/rendering";
+import {
+  ToolCard,
+  ToolGroup,
+  type StandaloneToolResult,
+  type StandaloneToolResultFor,
+} from "@/features/chat/public/tools/rendering";
 import { lookupExtensionByKey } from "@/extensions/selectors/extensions";
-import { TOOL_STANDING_SURFACE } from "@/features/chat/public/tools/types";
+import {
+  TOOL_STANDING_SURFACE,
+  type ToolResultRendererSpec,
+} from "@/features/chat/public/tools/types";
 import {
   messageBlockRenderUnits,
   narratedBlocks,
@@ -51,6 +58,7 @@ function renderToolBlock(
   block: Extract<ContentBlock, { kind: "tool" }>,
   facts: TurnFacts,
   ctx: BlockCtx,
+  inlineRenderer: ToolResultRendererSpec | undefined,
 ) {
   const tool = facts.toolCalls[block.itemId];
   if (!tool) return null;
@@ -65,6 +73,7 @@ function renderToolBlock(
     >
       <ToolCard
         tool={tool}
+        inlineRenderer={inlineRenderer}
         expanded={ctx.expandedIds.has(block.itemId)}
         onExpandedChange={(expanded) => ctx.onExpandedChange(block.itemId, expanded)}
       />
@@ -85,7 +94,13 @@ function renderToolBlock(
   );
 }
 
-export function renderBlock(block: ContentBlock, key: number, facts: TurnFacts, ctx: BlockCtx) {
+export function renderBlock(
+  block: ContentBlock,
+  key: number,
+  facts: TurnFacts,
+  ctx: BlockCtx,
+  inlineRenderer?: ToolResultRendererSpec,
+) {
   switch (block.kind) {
     case "text":
       return (
@@ -101,7 +116,7 @@ export function renderBlock(block: ContentBlock, key: number, facts: TurnFacts, 
       return <ReferenceBlock key={key} label={block.label} text={block.text} />;
 
     case "tool":
-      return renderToolBlock(block, facts, ctx);
+      return renderToolBlock(block, facts, ctx, inlineRenderer);
 
     case "reasoning":
       return <ReasoningBlock key={key} text={block.text} status={block.status} />;
@@ -142,7 +157,13 @@ export function renderBlock(block: ContentBlock, key: number, facts: TurnFacts, 
   }
 }
 
-function renderUnit(messageId: string, unit: MessageRenderUnit, facts: TurnFacts, ctx: BlockCtx) {
+function renderUnit(
+  messageId: string,
+  unit: MessageRenderUnit,
+  facts: TurnFacts,
+  ctx: BlockCtx,
+  standaloneResults?: ReadonlyMap<string, StandaloneToolResult>,
+) {
   if (unit.kind === "wave")
     return (
       <NarrativeWave
@@ -163,7 +184,11 @@ function renderUnit(messageId: string, unit: MessageRenderUnit, facts: TurnFacts
       />
     );
   }
-  return renderBlock(unit.block, unit.index, facts, ctx);
+  const inlineRenderer =
+    unit.inlineResult && unit.block.kind === "tool"
+      ? standaloneResults?.get(unit.block.itemId)?.renderer
+      : undefined;
+  return renderBlock(unit.block, unit.index, facts, ctx, inlineRenderer);
 }
 
 const standingTool = (name: string) =>
@@ -172,14 +197,27 @@ const standingTool = (name: string) =>
 export function renderMessageBlocks(
   { message, facts }: Pick<TranscriptRow, "message" | "facts">,
   ctx: BlockCtx,
+  standaloneToolResult: StandaloneToolResultFor,
   answerFollows = false,
 ) {
+  const blocks = narratedBlocks(message.blocks, facts.toolCalls, standingTool);
+  const standaloneResults = new Map<string, StandaloneToolResult>();
+  for (const block of blocks) {
+    if (block.kind !== "tool") continue;
+    const tool = facts.toolCalls[block.itemId];
+    const result = tool && standaloneToolResult(tool);
+    if (result) standaloneResults.set(block.itemId, result);
+  }
   const units = messageBlockRenderUnits(
-    narratedBlocks(message.blocks, facts.toolCalls, standingTool),
+    blocks,
     facts.toolCalls,
     facts.awaiting,
     answerFollows,
     new Set(Object.keys(facts.delegatedRuns)),
+    (tool) => {
+      const result = standaloneResults.get(tool.id);
+      if (result) return result.renderer ? "inline" : "standalone";
+    },
   ).filter((unit) => unit.kind !== "block" || unit.block !== ctx.questionInComposer);
   return units.map((unit, index) => {
     const anchor = renderUnitAnchor(message.id, unit);
@@ -193,7 +231,7 @@ export function renderMessageBlocks(
             .className
         }
       >
-        {renderUnit(message.id, unit, facts, ctx)}
+        {renderUnit(message.id, unit, facts, ctx, standaloneResults)}
       </motion.div>
     );
   });

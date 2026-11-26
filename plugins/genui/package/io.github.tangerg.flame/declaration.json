@@ -9,6 +9,7 @@
       "title": "Generated interface",
       "scope": "toolResult",
       "placement": "toolResultRenderer",
+      "inlineResult": true,
       "selector": { "type": "toolName", "name": "genui_ui_present" },
       "entry": "io.github.tangerg.flame/components/component.js",
       "export": "GenUIResult"

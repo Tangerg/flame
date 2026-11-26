@@ -58,6 +58,7 @@ type wireComponent struct {
 	Contribution    *plugin.ContributionID       `json:"contribution,omitzero"`
 	Material        *string                      `json:"material,omitzero"`
 	SettingsIntent  *string                      `json:"settingsIntent,omitzero"`
+	InlineResult    bool                         `json:"inlineResult,omitzero"`
 }
 
 type wireInput struct {

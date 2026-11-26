@@ -11,6 +11,7 @@ import { type BlockCtx } from "@/features/chat/message/ui/blockContext";
 import { MessageTurn } from "@/features/chat/message/ui/MessageTurn";
 import { readingColumn as rc } from "@/features/chat/message/ui/readingColumn";
 import { TurnErrorBoundary } from "@/features/chat/message/ui/TurnErrorBoundary";
+import { useStandaloneToolResult } from "@/features/chat/public/tools/rendering";
 
 const styles = stylex.create({ dayPad: { paddingBlock: space.s1 } });
 
@@ -87,6 +88,7 @@ export function MessageTranscript({
   onFollowChange,
 }: Props) {
   const t = useT();
+  const standaloneToolResult = useStandaloneToolResult();
   const dayBreaks = transcriptDayBreaks(rows);
   return (
     <ReadingList
@@ -109,6 +111,7 @@ export function MessageTranscript({
             sessionId={sessionId}
             isLast={index === rows.length - 1}
             isRunning={isRunning}
+            standaloneToolResult={standaloneToolResult}
             previous={rows[index - 1]?.message}
             next={rows[index + 1]?.message}
             opensDay={dayBreaks[index] ?? false}

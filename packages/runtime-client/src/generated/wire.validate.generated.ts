@@ -2673,6 +2673,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     entry: text(),
     export: text(),
     id: allOf([text(), pattern("^[a-z][a-z0-9._-]{0,63}$")]),
+    inlineResult: flag(),
     localizedTitles: record(text()),
     material: allOf([text(), pattern("^[a-z][a-z0-9._-]{0,63}$")]),
     placement: ref(() => CHECKS.ComponentPlacement),

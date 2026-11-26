@@ -1,1 +1,5 @@
-export { resolveRenderer, useRendererChoice } from "@/features/plugins/ui/RendererChoice";
+export {
+  resolveRenderer,
+  useRendererChoice,
+  useRendererResolver,
+} from "@/features/plugins/ui/RendererChoice";

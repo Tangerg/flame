@@ -32,6 +32,7 @@ type ClientComponent struct {
 	Contribution    ContributionID
 	Material        string
 	SettingsIntent  string
+	InlineResult    bool
 }
 
 type componentPlacement struct {
@@ -178,6 +179,9 @@ func (c ClientComponent) validatePresentation() error {
 func (c ClientComponent) validatePlacementFields() error {
 	if c.SettingsIntent != "" && (c.Placement != extension.ComponentPlacementSettingsPane || !identity.ValidDeclarationID(c.SettingsIntent)) {
 		return refuse(DiagnosticInvalidDeclaration, "invalid settings intent for component %q", c.ID)
+	}
+	if c.InlineResult && (c.Placement != extension.ComponentPlacementToolResultRenderer || c.Selector == nil || c.Selector.Kind != extension.RendererToolName) {
+		return refuse(DiagnosticInvalidDeclaration, "inline result requires an exact tool name selector for component %q", c.ID)
 	}
 	if c.ToolCategory != "" && (c.Placement != extension.ComponentPlacementWorkspaceView || !slices.Contains(c.ToolCategory.Values(), string(c.ToolCategory))) {
 		return refuse(DiagnosticInvalidDeclaration, "invalid tool category for component %q", c.ID)

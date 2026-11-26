@@ -1,5 +1,5 @@
 import { Select } from "@flame/ui";
-import { useSyncExternalStore } from "react";
+import { useCallback, useSyncExternalStore } from "react";
 import { useInstalledPlugins } from "@/features/plugins/context";
 import { useT, labelText, type Label } from "@/lib/i18n/index";
 import { tupleKey } from "@/lib/tupleKey";
@@ -7,6 +7,12 @@ import { tupleKey } from "@/lib/tupleKey";
 interface Renderer {
   id: string;
   title: Label;
+}
+
+type RendererKind = "file" | "tool";
+
+function preferenceKey(endpoint: string, kind: RendererKind, target: string): string {
+  return tupleKey(endpoint, kind, target);
 }
 
 export function resolveRenderer<T extends Renderer>(
@@ -18,12 +24,12 @@ export function resolveRenderer<T extends Renderer>(
 }
 
 export function useRendererChoice<T extends Renderer>(
-  kind: "file" | "tool",
+  kind: RendererKind,
   target: string,
   candidates: readonly T[],
 ) {
   const { presentationPreferences } = useInstalledPlugins();
-  const key = tupleKey(presentationPreferences.endpoint(), kind, target);
+  const key = preferenceKey(presentationPreferences.endpoint(), kind, target);
   const preferred = useSyncExternalStore(presentationPreferences.subscribe, () =>
     presentationPreferences.read(key),
   );
@@ -39,6 +45,20 @@ export function useRendererChoice<T extends Renderer>(
         />
       ) : undefined,
   };
+}
+
+export function useRendererResolver(kind: RendererKind) {
+  const { presentationPreferences } = useInstalledPlugins();
+  const endpoint = presentationPreferences.endpoint();
+  const selections = useSyncExternalStore(
+    presentationPreferences.subscribe,
+    presentationPreferences.selections,
+  );
+  return useCallback(
+    <T extends Renderer>(target: string, candidates: readonly T[]) =>
+      resolveRenderer(candidates, selections[preferenceKey(endpoint, kind, target)] ?? null),
+    [endpoint, kind, selections],
+  );
 }
 
 function RendererPicker({

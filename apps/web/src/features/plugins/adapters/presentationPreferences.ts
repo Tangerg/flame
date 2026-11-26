@@ -18,6 +18,7 @@ export function createPresentationPreferences(endpoint: () => string) {
   return {
     endpoint,
     subscribe: store.subscribe,
+    selections: () => store.getState().selections,
     read: (key: string) => store.getState().selections[key] ?? null,
     choose(key: string, id: string | null) {
       const selections = { ...store.getState().selections };

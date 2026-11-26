@@ -5,6 +5,7 @@ import { type MessageActionMaterialization } from "@/features/chat/message-actio
 import {
   planRenderUnits,
   type MessageRenderUnit,
+  type ToolResultPlacement,
 } from "@/features/agent/public/messagePresentation";
 import { agentRunIsFinished } from "@/features/agent/public/runPresentation";
 export function narratedBlocks(
@@ -25,9 +26,17 @@ export function messageBlockRenderUnits(
   awaiting: ReadonlyMap<string, string>,
   answerFollows = false,
   delegating?: ReadonlySet<string>,
+  toolResultPlacement?: (tool: ToolCall) => ToolResultPlacement | undefined,
 ): MessageRenderUnit[] {
   const lastIndex = blocks.length - 1;
-  return planRenderUnits(blocks, toolCalls, awaiting, answerFollows, delegating).map((unit) => {
+  return planRenderUnits(
+    blocks,
+    toolCalls,
+    awaiting,
+    answerFollows,
+    delegating,
+    toolResultPlacement,
+  ).map((unit) => {
     if (unit.kind !== "block") return unit;
     const { block, index } = unit;
     if (block.kind === "text" && block.status === "running" && index !== lastIndex) {

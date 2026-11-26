@@ -10722,7 +10722,7 @@
         {
           "name": "Version",
           "type": "untyped string",
-          "value": "\"2026-11-26.3\""
+          "value": "\"2026-11-26.4\""
         },
         {
           "name": "WorkspaceAvailable",
@@ -15112,6 +15112,11 @@
               "name": "SettingsIntent",
               "type": "string",
               "tag": "json:\"settingsIntent,omitzero\""
+            },
+            {
+              "name": "InlineResult",
+              "type": "bool",
+              "tag": "json:\"inlineResult,omitzero\""
             }
           ]
         },

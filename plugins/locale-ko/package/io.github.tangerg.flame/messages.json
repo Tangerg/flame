@@ -285,6 +285,7 @@
   "folder.row.missing": "디스크에 폴더가 없습니다",
   "workIndex.row.newSession": "{{name}}에서 새 세션",
   "toolInspector.arguments": "인수",
+  "toolInspector.details": "도구 세부 정보",
   "toolInspector.result": "결과",
   "toolInspector.noResult": "(결과 본문 없음 — 도구가 빈 값을 반환함)",
   "runtime.unsupported.title": "이 Runtime에서 지원되지 않음",

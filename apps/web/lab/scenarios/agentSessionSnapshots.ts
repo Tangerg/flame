@@ -2154,7 +2154,7 @@ export const RUNTIME_AGENT_SESSION_SNAPSHOTS: Readonly<
       run("finished", {
         finishedAt: "2026-07-31T08:00:01.000Z",
         outcome: { type: "completed" },
-        metrics: { steps: 1, activeDurationMillis: 1_000 },
+        metrics: { steps: 3, activeDurationMillis: 1_000 },
       }),
     ],
     items: [
@@ -2164,14 +2164,26 @@ export const RUNTIME_AGENT_SESSION_SNAPSHOTS: Readonly<
         "Present the plugin delivery review as a report.",
       ),
       {
+        ...WAVE_REASONING_ONE,
+        text: "Read the package evidence before presenting the delivery review.",
+      },
+      {
+        ...WAVE_READ,
+        tool: {
+          ...WAVE_READ.tool,
+          arguments: { path: "plugins/genui/README.md" },
+          result: "Package contents and component activation were verified.",
+        },
+      },
+      {
         type: "toolCall",
         id: "item_genui_report",
         runId: ROOT_RUN_ID,
         status: "completed",
         safetyClass: "safe",
         startedAt: CREATED_AT,
-        finishedAt: "2026-07-31T08:00:00.020Z",
-        durationMillis: 20,
+        finishedAt: "2026-07-31T08:00:00.069Z",
+        durationMillis: 38,
         tool: {
           name: "genui_ui_present",
           arguments: GENUI_REPORT,

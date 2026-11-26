@@ -120,6 +120,7 @@ type ComponentMetadata struct {
 	Contribution    string                       `json:"contribution,omitempty"`
 	Material        string                       `json:"material,omitempty"`
 	SettingsIntent  string                       `json:"settingsIntent,omitempty"`
+	InlineResult    bool                         `json:"inlineResult,omitzero"`
 	Selector        *ComponentSelector           `json:"selector,omitempty"`
 }
 
@@ -133,7 +134,7 @@ func PublicComponentConfiguration(release plugin.Release, id plugin.Contribution
 		if component.ID != id {
 			continue
 		}
-		metadata := ComponentMetadata{ID: id.String(), Title: component.Title, LocalizedTitles: component.LocalizedTitles, ToolCategory: component.ToolCategory, TargetView: component.TargetView, Scope: component.Scope, Placement: component.Placement, Contribution: component.Contribution.String(), Material: component.Material, SettingsIntent: component.SettingsIntent}
+		metadata := ComponentMetadata{ID: id.String(), Title: component.Title, LocalizedTitles: component.LocalizedTitles, ToolCategory: component.ToolCategory, TargetView: component.TargetView, Scope: component.Scope, Placement: component.Placement, Contribution: component.Contribution.String(), Material: component.Material, SettingsIntent: component.SettingsIntent, InlineResult: component.InlineResult}
 		if component.Selector != nil {
 			metadata.Selector = &ComponentSelector{Kind: component.Selector.Kind, Name: component.Selector.Name}
 		}

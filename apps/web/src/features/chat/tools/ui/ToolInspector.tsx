@@ -30,7 +30,11 @@ interface ToolResultLayoutProps {
   children: ReactNode;
 }
 
-class ToolResultLayout extends Component<ToolResultLayoutProps, unknown, HTMLElement | null> {
+export class ToolResultLayout extends Component<
+  ToolResultLayoutProps,
+  unknown,
+  HTMLElement | null
+> {
   private readonly root = createRef<HTMLDivElement>();
 
   // Capture before a result renderer can remove its focused reader or control.
@@ -85,8 +89,10 @@ class ToolResultLayout extends Component<ToolResultLayoutProps, unknown, HTMLEle
 export function ToolInspector({
   tool,
   children,
+  collapseResult = false,
 }: {
   tool: ToolCall;
+  collapseResult?: boolean;
   children?: (fallback: ReactNode) => ReactNode;
 }) {
   const t = useT();
@@ -109,12 +115,18 @@ export function ToolInspector({
     </>
   );
 
+  const resultPanel = (hasResult || model.showNoResult || children !== undefined) && (
+    <ToolResultLayout tool={tool} label={t("toolInspector.result")} visible={visible}>
+      {children ? children(result) : result}
+    </ToolResultLayout>
+  );
+
   return (
     <div {...stylex.props(ti.body)}>
-      {(hasResult || model.showNoResult || children !== undefined) && (
-        <ToolResultLayout tool={tool} label={t("toolInspector.result")} visible={visible}>
-          {children ? children(result) : result}
-        </ToolResultLayout>
+      {collapseResult && resultPanel ? (
+        <Disclosure title={t("toolInspector.result")}>{resultPanel}</Disclosure>
+      ) : (
+        resultPanel
       )}
       {model.args.text && (
         <Disclosure

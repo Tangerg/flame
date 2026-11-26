@@ -13,6 +13,7 @@ export interface ToolResultRendererSpec {
   id: string;
   title: Label;
   selector: PluginRendererSelector;
+  inlineResult?: boolean;
   component: ComponentType<ToolPreviewProps & { fallback: ReactNode }>;
 }
 

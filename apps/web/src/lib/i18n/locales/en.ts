@@ -327,6 +327,7 @@ export const en = {
   "folder.row.missing": "Folder missing on disk",
   "workIndex.row.newSession": "New session in {{name}}",
   "toolInspector.arguments": "Arguments",
+  "toolInspector.details": "Tool details",
   "toolInspector.result": "Result",
   "toolInspector.noResult": "(no result body — tool returned empty)",
   "runtime.unsupported.title": "Not supported by this Runtime",

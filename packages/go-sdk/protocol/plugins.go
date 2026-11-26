@@ -396,6 +396,7 @@ type PluginClientComponent struct {
 	Contribution    string                       `json:"contribution,omitzero"`
 	Material        string                       `json:"material,omitzero"`
 	SettingsIntent  string                       `json:"settingsIntent,omitzero"`
+	InlineResult    bool                         `json:"inlineResult,omitzero"`
 }
 
 type PluginTerminalView struct {

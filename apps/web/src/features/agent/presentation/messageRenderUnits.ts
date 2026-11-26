@@ -4,8 +4,10 @@ import { isQuestionTool } from "@/features/agent/domain/toolCategory";
 import { isReadOnlyTool } from "@/features/agent/presentation/toolPresentation";
 type Superseded = { superseded: boolean };
 
+export type ToolResultPlacement = "inline" | "standalone";
+
 export type MessageRenderUnit =
-  | ({ kind: "block"; block: ContentBlock; index: number } & Superseded)
+  | ({ kind: "block"; block: ContentBlock; index: number; inlineResult?: true } & Superseded)
   | ({ kind: "toolGroup"; tools: ToolCall[] } & Superseded)
   | { kind: "wave"; units: MessageRenderUnit[] };
 
@@ -26,23 +28,20 @@ export function planRenderUnits(
   awaiting: ReadonlyMap<string, string>,
   answerFollows = false,
   delegating: ReadonlySet<string> = EMPTY_DELEGATING,
+  toolResultPlacement?: (tool: ToolCall) => ToolResultPlacement | undefined,
 ): MessageRenderUnit[] {
   const hasQuestion = blocks.some((block) => block.kind === "question");
   const approvalOwnedToolCallIds = findApprovalOwnedToolCallIds(blocks, awaiting);
+  const ownedByInterrupt = (tool: ToolCall) =>
+    approvalOwnedToolCallIds.has(tool.id) ||
+    (hasQuestion && isQuestionTool(tool) && tool.status !== "err" && tool.status !== "denied");
   const answered = answeredAfter(blocks, answerFollows);
   const units: MessageRenderUnit[] = [];
   let wave: PositionedBlock[] = [];
 
   const flushWave = () => {
     if (wave.length === 0) return;
-    const inner = planWithinWave(
-      wave,
-      toolCalls,
-      hasQuestion,
-      approvalOwnedToolCallIds,
-      answered,
-      delegating,
-    );
+    const inner = planWithinWave(wave, toolCalls, ownedByInterrupt, answered, delegating);
     const last = wave[wave.length - 1]!;
     if (answered[last.index] && inner.length >= 2) units.push({ kind: "wave", units: inner });
     else units.push(...inner);
@@ -50,12 +49,20 @@ export function planRenderUnits(
   };
 
   blocks.forEach((block, index) => {
-    if (isProcess(block)) {
+    const tool = toolOf(block, toolCalls);
+    const placement = tool && !ownedByInterrupt(tool) ? toolResultPlacement?.(tool) : undefined;
+    if (isProcess(block) && !placement) {
       wave.push({ block, index });
       return;
     }
     flushWave();
-    units.push({ kind: "block", block, index, superseded: answered[index]! });
+    units.push({
+      kind: "block",
+      block,
+      index,
+      superseded: answered[index]!,
+      inlineResult: placement === "inline" ? true : undefined,
+    });
   });
 
   flushWave();
@@ -76,8 +83,7 @@ function answeredAfter(blocks: ContentBlock[], answerFollows: boolean): boolean[
 function planWithinWave(
   positioned: readonly PositionedBlock[],
   toolCalls: Record<string, ToolCall>,
-  hasQuestion: boolean,
-  approvalOwnedToolCallIds: ReadonlySet<string>,
+  ownedByInterrupt: (tool: ToolCall) => boolean,
   answered: readonly boolean[],
   delegating: ReadonlySet<string>,
 ): MessageRenderUnit[] {
@@ -106,17 +112,7 @@ function planWithinWave(
 
   for (const item of positioned) {
     const tool = toolOf(item.block, toolCalls);
-    if (tool && approvalOwnedToolCallIds.has(tool.id)) {
-      flushReads();
-      continue;
-    }
-    if (
-      tool &&
-      hasQuestion &&
-      isQuestionTool(tool) &&
-      tool.status !== "err" &&
-      tool.status !== "denied"
-    ) {
+    if (tool && ownedByInterrupt(tool)) {
       flushReads();
       continue;
     }

@@ -77,6 +77,7 @@ export async function visualToolResults(runtimeClient: () => FlameClient, genui 
           {
             id: `visual:${renderer.key}`,
             title: { text: entry.title },
+            inlineResult: entry.inlineResult,
             selector: entry.selector,
             component: (props) =>
               createElement(RecordedToolComponent, {
