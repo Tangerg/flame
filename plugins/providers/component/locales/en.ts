@@ -4,7 +4,6 @@ export const en: Record<string, string> = {
   "providers.apiKey.clear.title": "Remove the stored key?",
   "providers.apiKey.clear.body":
     "{{provider}} loses its saved API key. You’ll need to paste it again to reconnect.",
-  "providers.apiKey.envPlaceholder": "Using environment key — type to override",
   "providers.apiKey.aria": "{{provider}} API key",
   "providers.baseUrl.mount":
     "Enter the gateway mount. The SDK appends {{suffix}}.",

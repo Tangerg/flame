@@ -40,7 +40,7 @@ export const es: Record<string, string> = {
   "layout.split": "Lado a lado",
   "controls.label": "Controles de archivos",
   "filter.label": "Filtrar archivos",
-  "filter.placeholder": "Buscar un archivo cambiado",
+  "filter.placeholder": "Buscar un archivo cambiado…",
   "filter.clear": "Borrar filtro",
   partial:
     "Diff parcial. Solo se muestran los archivos incluidos y los cambios de línea.",

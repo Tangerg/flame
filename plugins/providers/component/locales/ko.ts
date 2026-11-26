@@ -26,8 +26,6 @@ export const ko: Record<string, string> = {
   "providers.models.error": "모델을 불러올 수 없습니다.",
   "providers.empty": "제공자 없음",
   "providers.empty.sub": "Runtime이 지원되는 LLM 제공자를 보고하지 않습니다.",
-  "providers.apiKey.envPlaceholder":
-    "환경 변수 키 사용 중 — 입력하면 덮어씁니다",
   "providers.fromEnv": "환경 변수에서",
   "providers.utility.title": "보조 모델",
   "providers.utility.desc": "요약, 제목, 사실 추출용 모델입니다.",

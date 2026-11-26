@@ -26,8 +26,6 @@ export const fr: Record<string, string> = {
   "providers.empty": "Aucun fournisseur",
   "providers.empty.sub":
     "Le Runtime ne signale aucun fournisseur LLM pris en charge.",
-  "providers.apiKey.envPlaceholder":
-    "Clé d’environnement utilisée — saisissez pour la remplacer",
   "providers.fromEnv": "Depuis l’environnement",
   "providers.utility.title": "Modèle utilitaire",
   "providers.utility.desc":

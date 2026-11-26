@@ -40,7 +40,7 @@ export const de: Record<string, string> = {
   "layout.split": "Nebeneinander",
   "controls.label": "Dateisteuerung",
   "filter.label": "Dateien filtern",
-  "filter.placeholder": "Geänderte Datei finden",
+  "filter.placeholder": "Geänderte Datei finden…",
   "filter.clear": "Filter löschen",
   partial:
     "Teilweiser Diff. Es werden nur die enthaltenen Dateien und Zeilenänderungen angezeigt.",

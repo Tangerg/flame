@@ -37,7 +37,7 @@ export const ko: Record<string, string> = {
   "layout.split": "나란히",
   "controls.label": "파일 컨트롤",
   "filter.label": "파일 필터",
-  "filter.placeholder": "변경된 파일 찾기",
+  "filter.placeholder": "변경된 파일 찾기…",
   "filter.clear": "필터 지우기",
   partial: "부분 diff입니다. 포함된 파일과 행 변경 사항만 표시됩니다.",
   "files.changed_other": "변경된 파일 {{count}}개",

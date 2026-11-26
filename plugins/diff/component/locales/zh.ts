@@ -35,7 +35,7 @@ export const zh: Record<string, string> = {
   "layout.split": "并排",
   "controls.label": "文件控件",
   "filter.label": "筛选文件",
-  "filter.placeholder": "查找已更改的文件",
+  "filter.placeholder": "查找已更改的文件…",
   "filter.clear": "清除筛选",
   partial: "部分 diff。仅显示包含的文件和行更改。",
   "files.changed_other": "{{count}} 个已更改文件",

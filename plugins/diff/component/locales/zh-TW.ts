@@ -35,7 +35,7 @@ export const zhTW: Record<string, string> = {
   "layout.split": "並排",
   "controls.label": "檔案控制項",
   "filter.label": "篩選檔案",
-  "filter.placeholder": "尋找已變更的檔案",
+  "filter.placeholder": "尋找已變更的檔案…",
   "filter.clear": "清除篩選",
   partial: "部分 diff。僅顯示包含的檔案和行變更。",
   "files.changed_other": "{{count}} 個已變更檔案",

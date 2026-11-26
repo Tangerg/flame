@@ -25,8 +25,6 @@ export const de: Record<string, string> = {
   "providers.models.error": "Modelle konnten nicht geladen werden.",
   "providers.empty": "Keine Anbieter",
   "providers.empty.sub": "Die Runtime meldet keine unterstützten LLM-Anbieter.",
-  "providers.apiKey.envPlaceholder":
-    "Umgebungsschlüssel wird verwendet — tippen zum Überschreiben",
   "providers.fromEnv": "Aus Umgebung",
   "providers.utility.title": "Hilfsmodell",
   "providers.utility.desc":

@@ -27,8 +27,6 @@ export const ja: Record<string, string> = {
   "providers.empty": "プロバイダーがありません",
   "providers.empty.sub":
     "Runtime はサポートされている LLM プロバイダーを報告していません。",
-  "providers.apiKey.envPlaceholder":
-    "環境変数のキーを使用中 — 入力すると上書きします",
   "providers.fromEnv": "環境変数から",
   "providers.utility.title": "補助モデル",
   "providers.utility.desc": "要約、タイトル、事実抽出に使うモデルです。",

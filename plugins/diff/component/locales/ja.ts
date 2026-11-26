@@ -36,7 +36,7 @@ export const ja: Record<string, string> = {
   "layout.split": "左右並べて",
   "controls.label": "ファイルコントロール",
   "filter.label": "ファイルを絞り込む",
-  "filter.placeholder": "変更されたファイルを検索",
+  "filter.placeholder": "変更されたファイルを検索…",
   "filter.clear": "絞り込みをクリア",
   partial: "部分的な diff。含まれるファイルと行の変更のみが表示されます。",
   "files.changed_other": "変更されたファイル {{count}} 件",

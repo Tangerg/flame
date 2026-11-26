@@ -4,7 +4,6 @@ export const zh: Record<string, string> = {
   "providers.apiKey.clear.title": "移除已保存的密钥？",
   "providers.apiKey.clear.body":
     "{{provider}} 将失去已保存的 API 密钥，需要重新粘贴才能再次连接。",
-  "providers.apiKey.envPlaceholder": "正在使用环境变量密钥 — 输入以覆盖",
   "providers.apiKey.aria": "{{provider}} API 密钥",
   "providers.baseUrl.mount": "填写网关挂载地址。SDK 会追加 {{suffix}}。",
   "providers.baseUrl.apiBase": "填写完整 API 基址，包括网关使用的版本路径。",

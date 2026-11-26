@@ -26,8 +26,6 @@ export const es: Record<string, string> = {
   "providers.empty": "Sin proveedores",
   "providers.empty.sub":
     "El Runtime no informa proveedores de LLM compatibles.",
-  "providers.apiKey.envPlaceholder":
-    "Usando la clave del entorno: escribe para sobrescribirla",
   "providers.fromEnv": "Del entorno",
   "providers.utility.title": "Modelo auxiliar",
   "providers.utility.desc":

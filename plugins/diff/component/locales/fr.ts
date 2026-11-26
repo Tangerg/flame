@@ -41,7 +41,7 @@ export const fr: Record<string, string> = {
   "layout.split": "Côte à côte",
   "controls.label": "Contrôles des fichiers",
   "filter.label": "Filtrer les fichiers",
-  "filter.placeholder": "Trouver un fichier modifié",
+  "filter.placeholder": "Trouver un fichier modifié…",
   "filter.clear": "Effacer le filtre",
   partial:
     "Diff partiel. Seuls les fichiers inclus et les modifications de lignes sont affichés.",

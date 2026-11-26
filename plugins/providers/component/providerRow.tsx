@@ -49,10 +49,8 @@ function ProviderCredentialBadge({
   );
 }
 
-// An environment key cannot be replaced here; a stored key can.
+// A stored key replaces the effective key, whether that key was stored or read from the environment.
 function apiKeyPlaceholder(provider: Provider, t: Translate) {
-  if (provider.credential?.source === "env")
-    return t("providers.apiKey.envPlaceholder");
   return provider.credential ? t("providers.apiKey.replace") : undefined;
 }
 

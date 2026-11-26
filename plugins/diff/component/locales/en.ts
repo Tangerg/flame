@@ -37,7 +37,7 @@ export const en: Record<string, string> = {
   "layout.split": "Side by side",
   "controls.label": "File controls",
   "filter.label": "Filter files",
-  "filter.placeholder": "Find a changed file",
+  "filter.placeholder": "Find a changed file…",
   "filter.clear": "Clear filter",
   partial: "Partial diff. Only the included files and line changes are shown.",
   "files.changed_one": "{{count}} changed file",
