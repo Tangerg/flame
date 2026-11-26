@@ -26,7 +26,7 @@ export const zh: Record<string, string> = {
   "result.filter": "筛选结果",
   "result.region": "结果",
   "result.morePages": "后续还有内容",
-  "result.line": "行 ",
+  "result.line": "第 {{line}} 行",
   "result.countRows": "{{shown}} / {{total}} 行",
   "result.countMatches": "{{shown}} / {{total}} 处匹配",
   "result.showMore": "再显示 {{rows}} 个匹配的行",

@@ -310,8 +310,10 @@ function RowLead({ row, t }: { row: Row; t: Translate }) {
           fontVariantNumeric: "tabular-nums",
         }}
       >
-        <span className="sr-only">{t("result.line")}</span>
-        {row.number}
+        <span className="sr-only">
+          {t("result.line", { line: String(row.number) })}
+        </span>
+        <span aria-hidden="true">{row.number}</span>
       </span>
     );
   if (row.kind === "located" && row.location !== undefined)

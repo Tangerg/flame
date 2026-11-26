@@ -27,7 +27,7 @@ export const ko: Record<string, string> = {
   "result.filter": "결과 필터",
   "result.region": "결과",
   "result.morePages": "다음 페이지 있음",
-  "result.line": "줄 ",
+  "result.line": "{{line}}행",
   "result.countRows": "{{shown}} / {{total}}행",
   "result.countMatches": "{{shown}} / {{total}}건 일치",
   "result.showMore": "일치하는 행 {{rows}}개 더 보기",

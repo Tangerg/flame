@@ -32,7 +32,7 @@ export const es: Record<string, string> = {
   "result.filter": "Filtrar resultado",
   "result.region": "Resultado",
   "result.morePages": "Más páginas",
-  "result.line": "Línea ",
+  "result.line": "Línea {{line}}",
   "result.countRows": "{{shown}} de {{total}} filas",
   "result.countMatches": "{{shown}} de {{total}} coincidencias",
   "result.showMore": "Mostrar {{rows}} filas coincidentes más",
