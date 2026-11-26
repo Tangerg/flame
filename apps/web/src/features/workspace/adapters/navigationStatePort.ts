@@ -2,6 +2,7 @@ import { type ShellLayoutStore } from "@/features/workspace/adapters/shellLayout
 import {
   resolveInspectionReturnDock,
   WORKSPACE_DOCK_CATALOG,
+  WORKSPACE_SETTINGS_VIEW,
 } from "@/features/workspace/application/navigation";
 import { type ContextDockStore } from "@/features/workspace/adapters/contextDockStore";
 import { type AppLocation, type Navigator } from "@/lib/navigation";
@@ -18,6 +19,11 @@ function markedDockViewId(element: HTMLElement): string | null {
   return element.closest<HTMLElement>("[data-dock-view-id]")?.dataset.dockViewId ?? null;
 }
 
+interface SettingsFocusRegistration {
+  capture: () => (() => void) | undefined;
+  prepareReturn?: () => void;
+}
+
 export function createWorkspaceNavigation(
   navigation: Navigator,
   dockStore: ContextDockStore,
@@ -26,6 +32,7 @@ export function createWorkspaceNavigation(
 ): WorkspaceNavigationPort {
   const useContextDockStore = dockStore.store;
   const activateContextDockStorage = dockStore.activate;
+  let settingsFocus: SettingsFocusRegistration | undefined;
   function selectChat(presentation: WorkspaceChatPresentation = "preserve-dock"): void {
     navigation.go(presentation === "hide-dock" ? { view: null, dock: null } : { view: null });
   }
@@ -133,6 +140,18 @@ export function createWorkspaceNavigation(
     useViewMemory: () => useContextDockStore((state) => state.memory),
     remember: (change) => useContextDockStore.getState().remember(change),
     useSettingsPaneTarget: () => navigation.use((location) => location.settings),
+    registerSettingsFocusCapture: (capture) => {
+      const registration: SettingsFocusRegistration = { capture };
+      settingsFocus = registration;
+      const unsubscribe = navigation.subscribe((location, previous) => {
+        if (location.view !== WORKSPACE_SETTINGS_VIEW || location.session !== previous.session)
+          registration.prepareReturn = undefined;
+      });
+      return () => {
+        unsubscribe();
+        if (settingsFocus === registration) settingsFocus = undefined;
+      };
+    },
     useExpandedToolIds: () => useContextDockStore((state) => state.expandedToolIds),
     useSetToolExpanded: () => useContextDockStore((state) => state.setToolExpanded),
     useSidebarDrawer: () => ({
@@ -150,6 +169,8 @@ export function createWorkspaceNavigation(
     toggleSidebar: () => useShellLayoutStore.getState().toggleSidebar(),
     selectChat,
     openView: (id, origin) => {
+      if (settingsFocus && id === WORKSPACE_SETTINGS_VIEW && navigation.get().view !== id)
+        settingsFocus.prepareReturn = settingsFocus.capture();
       inspectFrom(id, origin);
       navigation.go({ view: id });
     },
@@ -194,7 +215,13 @@ export function createWorkspaceNavigation(
       } else showDockView(target, "alone", origin);
     },
     closeView: (id) => {
-      if (navigation.get().view === id) selectChat();
+      if (navigation.get().view !== id) return;
+      if (id === WORKSPACE_SETTINGS_VIEW && settingsFocus) {
+        const prepareReturn = settingsFocus.prepareReturn;
+        settingsFocus.prepareReturn = undefined;
+        prepareReturn?.();
+      }
+      selectChat();
     },
     activeViewId: () => navigation.get().view,
     dock: dockSnapshot,

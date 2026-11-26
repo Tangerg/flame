@@ -276,9 +276,10 @@ snapshot is still absent, so it cannot remount the recovery action or create an
 empty conversation. Explicit workspace views remain reachable during that wait.
 The existing connection status owns the notice and automatic retry; its action
 opens the Connection settings pane. Closing Settings returns to the retained
-conversation region, with the same recovery action next in the Tab order. Once
-Session data arrives, the existing Composer presents connection feedback and
-retains its draft and focus through later connection status changes.
+recovery action when it held focus on entry and remains available. The
+conversation region provides the fallback. Once Session data arrives, the
+existing Composer presents connection feedback and retains its draft and focus
+through later connection status changes.
 
 Image selections belong to their Session draft as pending, ready or failed
 attachments from the moment they are chosen. Send remains unavailable until all

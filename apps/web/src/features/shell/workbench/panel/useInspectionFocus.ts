@@ -1,17 +1,24 @@
 import { useComposer } from "@/features/composer/public/composer";
 import { useWorkspace } from "@/features/workspace/public/workspace";
 import { useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
-import { isImeKey } from "@flame/ui";
+import { handoffFocus, isConcealed, isImeKey } from "@flame/ui";
 import { focusComposer as focusComposerTarget } from "@/features/composer/public/focus";
 import {
   resolveInspectionReturnDock,
   returnFromWorkspaceInspection,
   selectWorkspaceChat,
   useWorkspaceSubagentRunId,
+  WORKSPACE_SETTINGS_VIEW,
 } from "@/features/workspace/public/navigation";
 import { type WorkspaceInspection } from "@/features/workspace/public/navigation";
 interface ReturnFocus {
   inspection: WorkspaceInspection;
+  activeElement: Element | null;
+  sessionId: string;
+}
+
+interface SettingsReturnFocus {
+  origin: HTMLElement;
   activeElement: Element | null;
   sessionId: string;
 }
@@ -71,6 +78,7 @@ export function useInspectionFocus({
   const subagentRunId = useWorkspaceSubagentRunId();
   const delivered = useRef<WorkspaceInspection | null>(null);
   const returningRef = useRef<ReturnFocus | null>(null);
+  const settingsReturningRef = useRef<SettingsReturnFocus | null>(null);
   const dockRef = useRef<HTMLElement>(null);
   const conversationRef = useRef<HTMLDivElement>(null);
   const mainViewRef = useRef<HTMLDivElement>(null);
@@ -82,6 +90,25 @@ export function useInspectionFocus({
   });
   const composerRequest = useRef<ComposerRequest | null>(null);
   const [composerRender, setComposerRender] = useState<symbol | null>(null);
+
+  useLayoutEffect(
+    () =>
+      workspaceAccess.navigation.registerSettingsFocusCapture(() => {
+        // The full-pane header sits outside the Settings body but inside the workspace.
+        const workspace = conversationRef.current?.closest("main");
+        if (!workspace) return;
+        const doc = workspace.ownerDocument;
+        const origin = doc.activeElement;
+        if (!(origin instanceof HTMLElement) || !workspace.contains(origin)) return;
+        return () => {
+          const activeElement = doc.activeElement;
+          if (activeElement === doc.body || workspace.contains(activeElement)) {
+            settingsReturningRef.current = { origin, activeElement, sessionId };
+          }
+        };
+      }),
+    [workspaceAccess, sessionId],
+  );
 
   // Deliver before generic presentation focus. The token also retires requests
   // when a later navigation coalesces back to the original hidden view.
@@ -179,6 +206,8 @@ export function useInspectionFocus({
   useLayoutEffect(() => {
     const previous = previousPresentation.current;
     previousPresentation.current = { sessionId, fullPaneViewId, dockVisible };
+    const settingsReturning = settingsReturningRef.current;
+    settingsReturningRef.current = null;
     if (
       (previous.sessionId === sessionId &&
         previous.fullPaneViewId === fullPaneViewId &&
@@ -190,6 +219,16 @@ export function useInspectionFocus({
     if (!target) return;
     const doc = target.ownerDocument;
     const active = doc.activeElement;
+    if (
+      settingsReturning?.sessionId === sessionId &&
+      previous.fullPaneViewId === WORKSPACE_SETTINGS_VIEW &&
+      fullPaneViewId !== WORKSPACE_SETTINGS_VIEW &&
+      (active === doc.body ||
+        (active && active === settingsReturning.activeElement && isConcealed(active))) &&
+      !settingsReturning.origin.closest("[aria-disabled='true']") &&
+      handoffFocus(doc.body, settingsReturning.origin)
+    )
+      return;
     // A presentation change hides owned content before WebKit settles focus:
     // entering a full pane hides the conversation and Dock, and leaving one for
     // a narrow conversation keeps the retained view inside the hidden Dock, and
