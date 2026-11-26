@@ -30,7 +30,7 @@ export const zhTW: Record<string, string> = {
   "files.back": "返回已變更檔案",
   "files.show": "顯示已變更檔案",
   "files.button": "檔案",
-  "layout.label": "Diff 版面",
+  "layout.label": "diff 版面",
   "layout.unified": "統一",
   "layout.split": "並排",
   "controls.label": "檔案控制項",

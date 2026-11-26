@@ -30,7 +30,7 @@ export const zh: Record<string, string> = {
   "files.back": "返回已更改文件",
   "files.show": "显示已更改文件",
   "files.button": "文件",
-  "layout.label": "Diff 布局",
+  "layout.label": "diff 布局",
   "layout.unified": "统一",
   "layout.split": "并排",
   "controls.label": "文件控件",

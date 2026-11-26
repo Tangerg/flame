@@ -3,7 +3,7 @@ export const zh: Record<string, string> = {
   title: "生命周期钩子",
   trust: "信任此仓库的钩子",
   "trust.sub":
-    "此仓库的钩子会在你的机器上执行 shell 命令。只对你信任的仓库启用。下一轮起生效。",
+    "此仓库的钩子会在你的机器上执行 Shell 命令。只对你信任的仓库启用。下一轮起生效。",
   "trust.aria": "信任此仓库的钩子",
   matcher: "工具匹配器",
   "kind.inject": "注入",

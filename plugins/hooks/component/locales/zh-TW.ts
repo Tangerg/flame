@@ -3,7 +3,7 @@ export const zhTW: Record<string, string> = {
   title: "生命週期掛鉤",
   trust: "信任此儲存庫的掛鉤",
   "trust.sub":
-    "此儲存庫的掛鉤會在你的機器上執行 shell 命令。只對你信任的儲存庫啟用。下一個回合起生效。",
+    "此儲存庫的掛鉤會在你的機器上執行 Shell 命令。只對你信任的儲存庫啟用。下一個回合起生效。",
   "trust.aria": "信任此儲存庫的掛鉤",
   matcher: "工具比對器",
   "kind.inject": "注入",

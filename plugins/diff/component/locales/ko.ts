@@ -32,7 +32,7 @@ export const ko: Record<string, string> = {
   "files.back": "변경된 파일로 돌아가기",
   "files.show": "변경된 파일 표시",
   "files.button": "파일",
-  "layout.label": "Diff 레이아웃",
+  "layout.label": "diff 레이아웃",
   "layout.unified": "통합",
   "layout.split": "나란히",
   "controls.label": "파일 컨트롤",

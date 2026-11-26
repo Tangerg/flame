@@ -31,7 +31,7 @@ export const ja: Record<string, string> = {
   "files.back": "変更されたファイルに戻る",
   "files.show": "変更されたファイルを表示",
   "files.button": "ファイル",
-  "layout.label": "Diff レイアウト",
+  "layout.label": "diff レイアウト",
   "layout.unified": "統合",
   "layout.split": "左右並べて",
   "controls.label": "ファイルコントロール",
