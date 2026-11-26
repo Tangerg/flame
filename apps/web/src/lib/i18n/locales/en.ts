@@ -8,7 +8,6 @@ export const en = {
   "packages.installedTitle": "Installed packages",
   "packages.refreshError.title": "Couldn’t refresh installed packages",
   "packages.refreshError.sub": "Showing the last loaded packages.",
-  "packages.details": "Release details",
   "packages.details.label": "Release details for {{name}} {{version}}",
   "packages.manifest": "Release manifest",
   "packages.actions": "Package actions",

@@ -4,7 +4,6 @@
   "packages.installedTitle": "Installierte Pakete",
   "packages.refreshError.title": "Installierte Pakete konnten nicht aktualisiert werden",
   "packages.refreshError.sub": "Die zuletzt geladenen Pakete werden angezeigt.",
-  "packages.details": "Versionsdetails",
   "packages.details.label": "Versionsdetails für {{name}} {{version}}",
   "packages.manifest": "Release-Manifest",
   "packages.actions": "Paketaktionen",

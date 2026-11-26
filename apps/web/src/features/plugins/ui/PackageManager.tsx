@@ -24,14 +24,13 @@ import {
   Disclosure,
   Facts,
   Hang,
-  ListRow,
   PanelSection,
   RecordGroup,
-  RecordHeading,
+  RecordSummary,
   TextField,
   Toolbar,
 } from "@flame/ui";
-import { space } from "@flame/ui/tokens.stylex";
+import { layout, rowInset, space } from "@flame/ui/tokens.stylex";
 import { useAsyncFeedback } from "@/lib/useAsyncFeedback";
 import { failureText } from "@/lib/rpcErrors";
 import {
@@ -54,6 +53,13 @@ const styles = stylex.create({
     alignItems: "start",
     gap: space.s2,
     minWidth: 0,
+  },
+  // Warnings stay visible below a collapsed release, on the row's text edge.
+  notices: {
+    display: "grid",
+    gap: layout.contentGap,
+    paddingInline: rowInset.inline,
+    paddingBlockEnd: space.s3,
   },
 });
 
@@ -330,11 +336,27 @@ function PackageRow({
       setEdit((current) => current && { ...current, validationError });
     }
   };
+  const notices = [
+    ...realizationMessages(t, installation.realization),
+    ...installation.selected.diagnostics.map((diagnostic) => describeDiagnostic(t, diagnostic)),
+    ...(!edit && error ? [error] : []),
+  ];
   return (
-    <ListRow>
-      <RecordHeading
-        title={installation.selected.name}
-        status={enabled ? undefined : <Badge tone="neutral">{t("packages.disabled")}</Badge>}
+    <div>
+      <Disclosure
+        variant="row"
+        title={
+          <RecordSummary
+            title={installation.selected.name}
+            status={enabled ? undefined : <Badge tone="neutral">{t("packages.disabled")}</Badge>}
+            description={identity.version || undefined}
+          />
+        }
+        label={
+          identity.version
+            ? t("packages.details.label", { name: identity.name, version: identity.version })
+            : undefined
+        }
         actions={
           <Toolbar label={t("packages.actions")}>
             {configurable && (
@@ -409,14 +431,6 @@ function PackageRow({
             />
           </Toolbar>
         }
-      />
-      <Disclosure
-        title={identity.version || t("packages.details")}
-        label={
-          identity.version
-            ? t("packages.details.label", { name: identity.name, version: identity.version })
-            : undefined
-        }
       >
         <Facts
           values={[
@@ -430,23 +444,15 @@ function PackageRow({
           {preview}
         </CodeBlock>
       </Disclosure>
-      {realizationMessages(t, installation.realization).map((message) => (
-        <SystemMessage key={message} variant="warning">
-          {message}
-        </SystemMessage>
-      ))}
-      {installation.selected.diagnostics.map((diagnostic, index) => {
-        const message = describeDiagnostic(t, diagnostic);
-        return (
-          <SystemMessage
-            key={`${index}:${diagnostic.code}:${diagnostic.component.type}`}
-            variant="warning"
-          >
-            {message}
-          </SystemMessage>
-        );
-      })}
-      {!edit && error && <SystemMessage variant="warning">{error}</SystemMessage>}
+      {notices.length > 0 && (
+        <div {...stylex.props(styles.notices)}>
+          {notices.map((message, index) => (
+            <SystemMessage key={`${index}:${message}`} variant="warning">
+              {message}
+            </SystemMessage>
+          ))}
+        </div>
+      )}
       <TextEditorDialog
         open={edit !== undefined}
         onOpenChange={(open) => {
@@ -473,7 +479,7 @@ function PackageRow({
         autoCorrect="off"
         spellCheck={false}
       />
-    </ListRow>
+    </div>
   );
 }
 
