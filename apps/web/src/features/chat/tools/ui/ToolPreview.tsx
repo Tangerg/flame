@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { PluginBoundary } from "@/extensions/host/PluginBoundary";
 import {
   TOOL_RESULT_RENDERER,
@@ -8,6 +9,7 @@ import { useExtensionPoint } from "@/extensions/selectors/extensions";
 import { ToolInspector, ToolResultLayout } from "@/features/chat/tools/ui/ToolInspector";
 import { useCallback, type ReactNode } from "react";
 import { useContentVisible } from "@flame/ui";
+import { space } from "@flame/ui/tokens.stylex";
 import { ToolText } from "@/ui/agent/index";
 import { type ToolCall } from "@/features/agent/public/sessionView";
 import { labelText, useT } from "@/lib/i18n/index";
@@ -16,6 +18,16 @@ import {
   toolRendererCandidates,
   toolRendererTarget,
 } from "@/features/chat/tools/application/toolResultRenderer";
+
+const styles = stylex.create({
+  controls: {
+    display: "flex",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: space.s2,
+  },
+});
+
 export interface StandaloneToolResult {
   renderer?: ToolResultRendererSpec;
 }
@@ -80,8 +92,12 @@ export function ToolPreview({ tool, raw }: ToolPreviewProps & { raw?: boolean })
   );
   return (
     <>
-      {raw && <ToolText value={{ kind: "machine", value: tool.name }} wrap />}
-      {control}
+      {(raw || control) && (
+        <div {...stylex.props(styles.controls)}>
+          {raw && <ToolText value={{ kind: "machine", value: tool.name }} wrap />}
+          {control}
+        </div>
+      )}
       <ToolInspector tool={tool} collapseResult={raw}>
         {renderer && !raw
           ? (fallback) => <RenderToolResult tool={tool} renderer={renderer} fallback={fallback} />
