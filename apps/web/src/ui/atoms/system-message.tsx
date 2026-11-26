@@ -19,10 +19,15 @@ const styles = stylex.create({
   },
   sentence: { alignItems: "center", paddingBlock: space.s2 },
   form: { alignItems: "flex-start", paddingBlock: space.s2_5 },
-  info: { backgroundColor: surface.infoWash, color: color.info },
-  warning: { backgroundColor: surface.warningWash, color: color.warning },
-  error: { backgroundColor: surface.negativeWash, color: color.negative },
-  success: { backgroundColor: surface.successWash, color: color.success },
+  // The wash and the glyph carry the tone; the message stays in the banners' reading ink.
+  info: { backgroundColor: surface.infoWash },
+  warning: { backgroundColor: surface.warningWash },
+  error: { backgroundColor: surface.negativeWash },
+  success: { backgroundColor: surface.successWash },
+  infoInk: { color: color.info },
+  warningInk: { color: color.warning },
+  errorInk: { color: color.negative },
+  successInk: { color: color.success },
   body: {
     display: "flex",
     minWidth: 0,
@@ -38,7 +43,13 @@ const styles = stylex.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  copy: { minWidth: 0, flex: 1, overflowWrap: "anywhere", whiteSpace: "pre-wrap" },
+  copy: {
+    minWidth: 0,
+    flex: 1,
+    overflowWrap: "anywhere",
+    whiteSpace: "pre-wrap",
+    color: color.fgSoft,
+  },
   action: { maxWidth: "100%", marginInlineStart: "auto" },
 });
 
@@ -47,6 +58,13 @@ const TONE = {
   warning: styles.warning,
   error: styles.error,
   success: styles.success,
+} as const;
+
+const INK = {
+  info: styles.infoInk,
+  warning: styles.warningInk,
+  error: styles.errorInk,
+  success: styles.successInk,
 } as const;
 
 const DEFAULT_ICON: Record<SystemMessageVariant, IconName> = {
@@ -83,7 +101,7 @@ export function SystemMessage({
     <div role={role} {...styled} className={clsx(styled.className, className)} {...props}>
       <div {...stylex.props(styles.body)}>
         {!hideIcon && (
-          <span {...stylex.props(styles.glyph)}>
+          <span {...stylex.props(styles.glyph, INK[variant])}>
             <Icon name={iconName} size="md" />
           </span>
         )}
