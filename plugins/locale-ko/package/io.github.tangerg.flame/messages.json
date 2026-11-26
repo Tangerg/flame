@@ -356,7 +356,7 @@
   "shape.opt.slow": "느리게",
   "shape.radius.default": "기본",
   "shape.motion.default": "기본",
-  "contextDock.group.workspace": "작업 영역",
+  "contextDock.group.workspace": "작업 공간",
   "contextDock.group.run": "실행",
   "contextDock.group.session": "세션",
   "settings.theme": "테마",
