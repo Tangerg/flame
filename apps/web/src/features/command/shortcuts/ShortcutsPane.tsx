@@ -1,9 +1,25 @@
 import { iconGlyph } from "@/ui/icons/index";
 import * as stylex from "@stylexjs/stylex";
-import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
+import {
+  type RefObject,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Kbd } from "@/ui/index";
 import { TextButton } from "@/ui/index";
-import { Button, EmptyState, Hang, SearchField, TextField, useContentVisible } from "@flame/ui";
+import {
+  Button,
+  ButtonPrimitive,
+  EmptyState,
+  Hang,
+  SearchField,
+  TextField,
+  useContentVisible,
+} from "@flame/ui";
 import { useT, labelText } from "@/lib/i18n/index";
 import { normalizeHotkey, areHotkeysEqual, formatForDisplay } from "@tanstack/hotkeys";
 import { useHotkeyRecorder } from "@tanstack/react-hotkeys";
@@ -13,7 +29,7 @@ import {
   useShortcutOverrides,
 } from "@/features/command/public/shortcutOverrides";
 import { useExtensionPoint } from "@/extensions/selectors/extensions";
-import { color, layout, space } from "@flame/ui/tokens.stylex";
+import { color, layout, radius, space, surface } from "@flame/ui/tokens.stylex";
 import { SettingRow } from "@/ui/settings/SettingRow";
 import { SettingsGroup } from "@/ui/settings/SettingsGroup";
 const sc = stylex.create({
@@ -31,6 +47,17 @@ const sc = stylex.create({
     flexWrap: "wrap",
     alignItems: "center",
     gap: layout.controlGap,
+  },
+  // The keys are the row's Change control; its fill bleeds so they keep the trailing edge.
+  change: {
+    display: "inline-flex",
+    padding: space.s1,
+    margin: `calc(-1 * ${space.s1})`,
+    borderRadius: radius.sm,
+    backgroundColor: {
+      default: "transparent",
+      ":hover:not(:disabled)": { "@media (hover: hover)": surface.hover },
+    },
   },
   recorder: { width: "12em", maxWidth: "100%" },
   warn: { color: color.warning },
@@ -79,11 +106,12 @@ function ShortcutRow({
   rows: readonly Row[];
   recording: Recording | null;
   onRecordingChange(recording: Recording | null): void;
-  onReturnFocus(trigger: HTMLButtonElement | null): void;
+  onReturnFocus(trigger: RefObject<HTMLButtonElement | null>): void;
 }) {
   const t = useT();
   const change = useRef<HTMLButtonElement>(null);
   const statusId = useId();
+  const keysId = useId();
   const { rebind, reset } = useShortcutOverrides.getState();
   const mine = recording?.commandId === row.id ? recording : null;
   const conflict = mine?.conflict;
@@ -91,7 +119,7 @@ function ShortcutRow({
   const locked = recording !== null && mine === null;
 
   function closeRecorder(apply?: () => void) {
-    onReturnFocus(change.current);
+    onReturnFocus(change);
     apply?.();
     onRecordingChange(null);
   }
@@ -111,9 +139,6 @@ function ShortcutRow({
   });
   const { startRecording, stopRecording } = recorder;
   const active = mine !== null;
-  // Keys sit beside the row's actions so bindings read as one column; an unbound
-  // command shows none, and the recorder replaces them while it captures.
-  const keys = !mine && row.combo ? <Keys combo={row.combo} /> : null;
   useEffect(() => {
     if (active) startRecording();
     return stopRecording;
@@ -146,7 +171,45 @@ function ShortcutRow({
           }}
           {...stylex.props(sc.controls)}
         >
-          {keys}
+          {!mine && row.overridden && (
+            <TextButton
+              tone="muted"
+              size="sm"
+              disabled={locked}
+              onClick={() => {
+                onReturnFocus(change);
+                reset(row.id);
+              }}
+            >
+              {t("shortcuts.reset")}
+            </TextButton>
+          )}
+          {!mine &&
+            (row.combo ? (
+              <ButtonPrimitive
+                ref={change}
+                disabled={locked}
+                aria-label={t("shortcuts.editAria", { action: row.label })}
+                aria-describedby={keysId}
+                onClick={() => onRecordingChange({ commandId: row.id, conflict: null })}
+                {...stylex.props(sc.change)}
+              >
+                <span id={keysId}>
+                  <Keys combo={row.combo} />
+                </span>
+              </ButtonPrimitive>
+            ) : (
+              <TextButton
+                ref={change}
+                tone="muted"
+                size="sm"
+                disabled={locked}
+                aria-label={t("shortcuts.editAria", { action: row.label })}
+                onClick={() => onRecordingChange({ commandId: row.id, conflict: null })}
+              >
+                {t("shortcuts.edit")}
+              </TextButton>
+            ))}
           {mine && (
             <TextField
               readOnly
@@ -171,34 +234,14 @@ function ShortcutRow({
               {t("shortcuts.replace")}
             </TextButton>
           )}
-          <TextButton
-            ref={change}
-            tone="muted"
-            size="sm"
-            disabled={locked}
-            aria-label={mine ? t("common.cancel") : t("shortcuts.editAria", { action: row.label })}
-            onClick={() =>
-              mine ? closeRecorder() : onRecordingChange({ commandId: row.id, conflict: null })
-            }
-          >
-            {mine ? t("common.cancel") : t("shortcuts.edit")}
-          </TextButton>
-          {!mine && row.overridden && (
-            <TextButton
-              tone="muted"
-              size="sm"
-              disabled={locked}
-              onClick={() => {
-                onReturnFocus(change.current);
-                reset(row.id);
-              }}
-            >
-              {t("shortcuts.reset")}
+          {mine && (
+            <TextButton tone="muted" size="sm" onClick={() => closeRecorder()}>
+              {t("common.cancel")}
             </TextButton>
           )}
         </div>
       ) : (
-        keys
+        row.combo && <Keys combo={row.combo} />
       )}
     </SettingRow>
   );
@@ -214,14 +257,18 @@ export function ShortcutsPane() {
   const filter = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
   const [recording, setRecordingFor] = useState<Recording | null>(null);
-  const focusReturn = useRef<{ trigger: HTMLButtonElement | null } | undefined>(undefined);
+  const focusReturn = useRef<{ trigger: RefObject<HTMLButtonElement | null> | null } | undefined>(
+    undefined,
+  );
 
   useLayoutEffect(() => {
     const request = focusReturn.current;
     focusReturn.current = undefined;
     if (!request) return;
-    // The update following a request can remove its trigger from combo-filtered results.
-    const target = request.trigger?.isConnected ? request.trigger : filter.current;
+    // The trigger is read after this update mounts it again; the update can also
+    // remove its row from combo-filtered results.
+    const trigger = request.trigger?.current;
+    const target = trigger?.isConnected ? trigger : filter.current;
     target?.focus();
   });
 
