@@ -440,9 +440,14 @@ resource byte for byte. Plugin typecheck, 44 script tests, 24 source
 tests, catalog and resource checks, Web typecheck and bootstrap,
 scoped Prettier, production staging, Runtime packaging, signed Wails
 and diff checks pass. Seven plugin source tests are skipped. The
-private Session has no Run. VoiceOver and other platforms remain
-outside the check. Both Wails instances exit normally. Their private
-Runtime drains reach the existing deadline. The private app,
+private Session has no Run. After merging the shared event changes
+`a7b2c546a` and `138650246`, production staging, signed Wails, Web
+and Runtime client typechecks and Web bootstrap pass again. Both
+installed repeats preserve the same Memory resource and return focus
+to the search with the query intact. Clearing shows the original
+record at revision 2. VoiceOver and other platforms remain outside
+the check. Each Wails instance exits normally. The private Runtime
+drains reach the existing deadline. The private app,
 processes, profiles, fixtures, logs, captures, caches and checkout
 build outputs are removed.
 
