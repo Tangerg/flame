@@ -71,15 +71,18 @@ async function refuseResponse(
   throw error;
 }
 
-function readRPCEnvelope(text: string, request: TransportRequest, requestId?: string): RpcResponse {
+function readRPCDocument(
+  text: string,
+  method: TransportRequest["method"],
+  requestId?: string,
+): RpcResponse {
   const invalid = (path: string, detail: string) =>
     new RpcProtocolError("RPC response", [{ path, detail }], requestId);
   if (!text) throw invalid("$", "must not be empty");
   const inbound = parseRpcMessage(text);
   if (!inbound) throw invalid("$", "must contain a valid JSON-RPC envelope");
-  if (!isResponse(inbound) || inbound.id !== request.id)
-    throw invalid("$.id", "must match the outbound request");
-  if (isWireStreamingMethodName(request.method) && "result" in inbound)
+  if (!isResponse(inbound)) throw invalid("$", "must contain a JSON-RPC response");
+  if (isWireStreamingMethodName(method) && "result" in inbound)
     throw invalid("$", "successful stream acknowledgement requires text/event-stream");
   return inbound;
 }
@@ -399,7 +402,7 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
     }
     let inbound: RpcResponse;
     try {
-      inbound = readRPCEnvelope(text, msg, metadata.requestId);
+      inbound = readRPCDocument(text, msg.method, metadata.requestId);
     } catch (error) {
       endSpan(span, error);
       throw error;

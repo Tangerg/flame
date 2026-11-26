@@ -11,9 +11,11 @@ const client = createFlameClient(createHttpTransport({ baseUrl: "http://127.0.0.
 const discovery = await client.runtime.discover();
 ```
 
-A successful streaming call requires a 200 SSE response with a valid
-acknowledgement before its notifications. The acknowledgement binds the
-observation to its request and, for a Run, to its root Segment. A transport
+A successful streaming call requires a 200 SSE response with exactly one valid
+acknowledgement followed by notifications. The request state correlates both
+document and stream responses with the original call. A second acknowledgement
+ends the observation with a protocol error. For a Run, the acknowledgement
+also binds the observation to its root Segment. A transport
 reports the end of a stream once through `streamEnd`. The request state
 determines whether that end rejects the pending response or settles the active
 stream. A 200 JSON document may carry a streaming call's refusal.

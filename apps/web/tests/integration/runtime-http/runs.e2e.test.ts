@@ -8,7 +8,7 @@ import {
   RpcProtocolError,
 } from "@flame/runtime-client";
 import { wireMethodRequiresIdempotency, type WireMethodName } from "@flame/runtime-client/methods";
-import { HTTP_HEADERS } from "@flame/runtime-client/wire";
+import { HTTP_HEADERS, RPC_HTTP } from "@flame/runtime-client/wire";
 import { createProviderGate } from "./fakeProvider";
 import {
   collectRunEvents,
@@ -104,60 +104,79 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: runs", () => {
     }
   }, 30_000);
 
-  it("refuses Run notifications before the subscription acknowledgement", async () => {
-    const session = await fixture.client.sessions.create({
-      workspace: { path: fixture.root },
-    });
-    const sessionId = asSessionId(session.id);
-    const gate = createProviderGate("E2E_SUBSCRIBE");
-    fixture.providerGate = gate;
-    const subscribed = Promise.withResolvers<void>();
-    const client = fixture.createRuntimeClient(async (input, init) => {
-      const response = await fetch(input, init);
-      if (!response.headers.get("Content-Type")?.includes("text/event-stream"))
-        throw new Error("expected an event stream from Runtime");
-      subscribed.resolve();
-      const [responseFrame, firstEvent, ...tail] = (await response.text()).split("\n\n");
-      if (!responseFrame?.includes('"result"') || !firstEvent?.includes('"method"'))
-        throw new Error("expected Runtime acknowledgement followed by a Run event");
-      return new Response([firstEvent, responseFrame, ...tail].join("\n\n"), {
-        status: response.status,
-        headers: response.headers,
+  it.each([
+    { fault: "notification before acknowledgement", phase: "opening" },
+    { fault: "duplicate acknowledgement", phase: "observation" },
+  ] as const)(
+    "refuses a Run stream with $fault",
+    async ({ phase }) => {
+      const session = await fixture.client.sessions.create({ workspace: { path: fixture.root } });
+      const sessionId = asSessionId(session.id);
+      const gate = createProviderGate("E2E_SUBSCRIBE");
+      fixture.providerGate = gate;
+      const subscribed = Promise.withResolvers<void>();
+      const client = fixture.createRuntimeClient(async (input, init) => {
+        const response = await fetch(input, init);
+        expect(response.headers.get(HTTP_HEADERS.contentType)).toContain(RPC_HTTP.streamMediaType);
+        subscribed.resolve();
+        const [acknowledgement, firstEvent, ...tail] = (await response.text()).split("\n\n");
+        if (!acknowledgement?.includes('"result"') || !firstEvent?.includes('"method"'))
+          throw new Error("expected Runtime acknowledgement followed by a Run event");
+        const frames =
+          phase === "opening"
+            ? [firstEvent, acknowledgement, ...tail]
+            : [acknowledgement, acknowledgement, firstEvent, ...tail];
+        return new Response(frames.join("\n\n"), {
+          status: response.status,
+          headers: response.headers,
+        });
       });
-    });
-    try {
-      const started = await fixture.client.runs.start({
-        sessionId,
-        input: [{ type: "text", text: "E2E_SUBSCRIBE finish after the subscriber opens." }],
-      });
-      await within(gate.arrived.promise, "the held model request");
-      const observation = client.runs
-        .subscribe({
-          runId: asRunId(started.result.runId),
-          segmentId: asSegmentId(started.result.segmentId),
-        })
-        .then(
-          () => ({ type: "accepted" }),
+      try {
+        const started = await fixture.client.runs.start({
+          sessionId,
+          input: [{ type: "text", text: "E2E_SUBSCRIBE finish after the subscriber opens." }],
+        });
+        const runId = asRunId(started.result.runId);
+        const segmentId = asSegmentId(started.result.segmentId);
+        await within(gate.arrived.promise, "the held model request");
+        const observation = client.runs.subscribe({ runId, segmentId }).then(
+          async ({ events }) => {
+            try {
+              await collectRunEvents(events);
+              return { type: "completed" };
+            } catch (error) {
+              return { type: "observation", error };
+            }
+          },
           (error: unknown) => {
             subscribed.reject(error);
-            return { type: "refused", error };
+            return { type: "opening", error };
           },
         );
-      try {
-        await within(subscribed.promise, "Runtime's response to the subscription");
-        gate.release.resolve();
-        expect(await observation).toEqual({ type: "refused", error: expect.any(RpcProtocolError) });
+        try {
+          await within(subscribed.promise, "Runtime's response to the subscription");
+          gate.release.resolve();
+          expect(await within(observation, "the invalid observation to settle")).toEqual({
+            type: phase,
+            error: expect.any(RpcProtocolError),
+          });
+        } finally {
+          gate.release.resolve();
+          const events = await collectRunEvents(originalOpeningEvents(started));
+          expect(events.at(-1)?.event).toMatchObject({
+            type: "segment.finished",
+            run: { status: "finished", outcome: { type: "completed" } },
+          });
+        }
       } finally {
         gate.release.resolve();
-        await collectRunEvents(originalOpeningEvents(started));
+        fixture.providerGate = undefined;
+        await client.close();
+        await fixture.client.sessions.delete(sessionId);
       }
-    } finally {
-      gate.release.resolve();
-      fixture.providerGate = undefined;
-      await client.close();
-      await fixture.client.sessions.delete(sessionId);
-    }
-  }, 30_000);
+    },
+    30_000,
+  );
 
   it("reattaches to a live segment before releasing the in-flight model", async () => {
     const gate = createProviderGate("E2E_SUBSCRIBE");

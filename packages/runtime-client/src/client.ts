@@ -436,43 +436,45 @@ export function createRpcClient(transport: Transport, options: RpcClientOptions 
     requestRpcId: RpcId,
     metadata?: TransportResponseMetadata,
   ): void | Promise<void> {
-    if (isResponse(message)) {
-      if (request.state !== "awaiting") return;
-      if (message.id !== requestRpcId) {
-        request.reject(
-          new RpcProtocolError(
-            `${request.method} response`,
-            [
-              {
-                path: `${request.method}.response.id`,
-                detail: `must match request id ${requestRpcId}`,
-              },
-            ],
-            metadata?.requestId,
-          ),
-        );
-      } else if (isErrorResponse(message)) {
-        rejectWithProblem(request, message.error, metadata?.requestId);
-      } else {
-        settleResult(request, message.result, metadata?.requestId);
-      }
+    if (request.state === "observing") {
+      if (isNotification(message)) return request.observation.deliver(message, metadata);
+      requests.delete(requestRpcId);
+      endRequest(
+        request,
+        new RpcProtocolError(
+          "event stream",
+          [{ path: "$", detail: "must contain only notifications after acknowledgement" }],
+          metadata?.requestId,
+        ),
+      );
       return;
     }
 
-    if (isNotification(message)) {
-      if (request.state === "observing") return request.observation.deliver(message, metadata);
-      if (isWireStreamingMethodName(request.method) && isWireNotificationName(message.method)) {
-        request.reject(
-          new RpcProtocolError(
-            `${request.method} response`,
-            [{ path: "$", detail: "must precede stream notifications" }],
-            metadata?.requestId,
-          ),
-        );
-      }
+    if (!isResponse(message)) {
+      request.reject(
+        new RpcProtocolError(
+          `${request.method} response`,
+          [{ path: "$", detail: "must acknowledge the call before any other message" }],
+          metadata?.requestId,
+        ),
+      );
       return;
     }
-    console.warn("[rpc] dropping unexpected server-initiated Request", message);
+    if (message.id !== requestRpcId) {
+      request.reject(
+        new RpcProtocolError(
+          `${request.method} response`,
+          [{ path: "$.id", detail: `must match request id ${requestRpcId}` }],
+          metadata?.requestId,
+        ),
+      );
+      return;
+    }
+    if (isErrorResponse(message)) {
+      rejectWithProblem(request, message.error, metadata?.requestId);
+    } else {
+      settleResult(request, message.result, metadata?.requestId);
+    }
   }
 
   async function request<M extends WireMethodName>(

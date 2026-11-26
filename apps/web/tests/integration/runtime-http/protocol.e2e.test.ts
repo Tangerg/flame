@@ -4,6 +4,7 @@ import {
   type FlameClient,
   JSONRPC_VERSION,
   RpcError,
+  RpcProtocolError,
   asRunId,
   asSegmentId,
   asSessionId,
@@ -79,6 +80,46 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: protocol delivery", () => {
         id,
         error: { data: { problem: { type } } },
       });
+    }
+  });
+
+  it("rejects a mismatched unary reply without settling the request it names", async () => {
+    const first = await fixture.client.sessions.create({ title: "Mismatched reply origin" });
+    const second = await fixture.client.sessions.create({ title: "Matching reply origin" });
+    const matchingId = Promise.withResolvers<string>();
+    const releaseMatchingReply = Promise.withResolvers<void>();
+    const client = fixture.createRuntimeClient(async (input, init) => {
+      const response = await fetch(input, init);
+      const request = JSON.parse(String(init?.body)) as {
+        id: string;
+        params: { sessionId: string };
+      };
+      if (request.params.sessionId === second.id) {
+        matchingId.resolve(request.id);
+        await releaseMatchingReply.promise;
+        return response;
+      }
+      const reply = (await response.json()) as object;
+      return new Response(JSON.stringify({ ...reply, id: await matchingId.promise }), {
+        status: response.status,
+        headers: response.headers,
+      });
+    });
+    try {
+      const mismatched = client.sessions.get(asSessionId(first.id));
+      const matching = client.sessions.get(asSessionId(second.id));
+      await Promise.all([
+        expect(within(mismatched, "the mismatched reply to be refused"))
+          .rejects.toBeInstanceOf(RpcProtocolError)
+          .finally(releaseMatchingReply.resolve),
+        expect(within(matching, "the matching reply to settle")).resolves.toMatchObject({
+          id: second.id,
+        }),
+      ]);
+    } finally {
+      await client.close();
+      await fixture.client.sessions.delete(asSessionId(first.id));
+      await fixture.client.sessions.delete(asSessionId(second.id));
     }
   });
 
