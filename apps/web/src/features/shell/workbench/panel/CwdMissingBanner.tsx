@@ -7,12 +7,9 @@ import { useRelocateSession } from "@/features/agent/public/session";
 import { BannerAction } from "@/features/shell/workbench/panel/BannerAction";
 import { useT } from "@/lib/i18n/index";
 import { useRuntimeCapability } from "@/features/connection/public/capabilities";
-import { color, face, space, type as typeStep, weight } from "@flame/ui/tokens.stylex";
+import { shellStyles as sh } from "@/features/shell/workbench/shellStyles";
+import { face, type as typeStep } from "@flame/ui/tokens.stylex";
 const cw = stylex.create({
-  title: { marginBottom: space.s0_5, color: color.warning, fontWeight: weight.semibold },
-  body: { color: color.fgSoft, overflowWrap: "break-word" },
-  // Hangs like the run error banner's actions (sh.bannerActions).
-  form: { marginTop: space.s2, marginInlineStart: `calc(-1 * ${space.s2})` },
   field: { width: "calc(var(--spacing) * 72)", maxWidth: "100%" },
 });
 
@@ -54,13 +51,17 @@ export function CwdMissingBanner() {
   return (
     <SystemMessage variant="warning" shape="form">
       <div {...stylex.props(vocab.min)}>
-        <div {...stylex.props(cw.title, typeStep.uiMd)}>{t("cwdMissing.title")}</div>
-        <div {...stylex.props(cw.body, typeStep.uiMd)}>
-          <code {...stylex.props(typeStep.uiMd, face.mono)}>{session.workspace.path}</code> ·{" "}
+        <div {...stylex.props(sh.bannerBody, vocab.strong, typeStep.uiMd)}>
+          {t("cwdMissing.title")}
+        </div>
+        <div {...stylex.props(sh.bannerBody, sh.selectable, vocab.muted, typeStep.uiSm, face.mono)}>
+          {session.workspace.path}
+        </div>
+        <div {...stylex.props(sh.bannerBody, vocab.muted, typeStep.uiSm)}>
           {t("cwdMissing.body")}
         </div>
         {relocateEnabled && (
-          <div {...stylex.props(cw.form)}>
+          <div {...stylex.props(sh.bannerActions)}>
             {editing ? (
               <div {...stylex.props(vocab.lineTight)}>
                 <TextField
@@ -82,7 +83,6 @@ export function CwdMissingBanner() {
                   placeholder={t("cwdMissing.placeholder")}
                   aria-label={t("cwdMissing.placeholder")}
                   pending={busy}
-                  spellCheck={false}
                   autoFocus
                   className={stylex.props(cw.field).className}
                 />

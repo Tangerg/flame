@@ -44,7 +44,7 @@
     },
     {
       "id": "rename-session",
-      "title": "Name this investigation",
+      "title": "Rename session",
       "localizedTitles": {
         "zh": "重命名会话",
         "zh-TW": "重新命名工作階段",

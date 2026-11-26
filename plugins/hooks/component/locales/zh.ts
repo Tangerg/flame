@@ -1,22 +1,19 @@
 export const zh: Record<string, string> = {
   "failure.required": "必需：出错时阻止",
-  "failure.advisory": "建议：出错时继续",
   title: "生命周期钩子",
   trust: "信任此仓库的钩子",
   "trust.sub":
-    "此仓库的钩子会在你的机器上执行 shell 命令。只对你信任的仓库启用。下一轮起生效。",
+    "此仓库的钩子会在你的机器上执行 Shell 命令。只对你信任的仓库启用。下一轮起生效。",
   "trust.aria": "信任此仓库的钩子",
   matcher: "工具匹配器",
   "kind.inject": "注入",
   "scope.global": "全局",
   "scope.repository": "仓库",
-  inactive: "未启用",
-  "inactive.hint": "信任此仓库以启用其钩子。",
   empty: "未配置钩子",
   "empty.sub":
     "在 ~/.flame/hooks.json（全局）或仓库内的 .flame/hooks.json 中添加钩子。",
   "error.trust": "无法更改仓库钩子信任。",
-  reading: "加载中",
+  reading: "正在加载…",
   refresh: "刷新",
   retry: "重试",
   "command.uncertain":

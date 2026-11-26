@@ -2,7 +2,7 @@ import { useNotifications } from "@/features/notifications/public/notifier";
 import * as stylex from "@stylexjs/stylex";
 import { type ReactElement, type ReactNode } from "react";
 import { basename } from "@/lib/path";
-import { ContextMenu, DropdownMenu, Icon } from "@/ui/index";
+import { ContextMenu, DropdownMenu } from "@/ui/index";
 import { iconGlyph } from "@/ui/icons/index";
 import { useT } from "@/lib/i18n/index";
 import { writeToClipboard } from "@/lib/clipboard";
@@ -11,7 +11,6 @@ import { color, space, type as typeStep, weight } from "@flame/ui/tokens.stylex"
 const si = stylex.create({
   bar: { display: "flex", minWidth: 0, flexShrink: 1, alignItems: "center", gap: space.s2 },
   fill: { flex: 1 },
-  menuDetail: { paddingInline: space.s2, paddingBlock: space.s1_5 },
   summary: {
     display: "flex",
     minWidth: 0,
@@ -113,11 +112,10 @@ export function SessionIdentity({ sessionId, title, workspacePath, detail }: Pro
       <ContextMenu.Root>
         <ContextMenu.Trigger render={identity} />
         <ContextMenu.Content aria-label={title}>
-          {detail && <div {...stylex.props(si.menuDetail)}>{detail}</div>}
           {copies.map((item) => (
-            <ContextMenu.IconItem key={item.id} icon="copy" onSelect={item.copy}>
-              {item.label}
-            </ContextMenu.IconItem>
+            <ContextMenu.Item key={item.id} layout="pickPlain" onClick={item.copy}>
+              <span {...stylex.props(vocab.truncate)}>{item.label}</span>
+            </ContextMenu.Item>
           ))}
         </ContextMenu.Content>
       </ContextMenu.Root>
@@ -132,10 +130,9 @@ export function SessionIdentity({ sessionId, title, workspacePath, detail }: Pro
           }
         />
         <DropdownMenu.Content align="start" sideOffset={4} aria-label={title}>
-          {detail && <div {...stylex.props(si.menuDetail)}>{detail}</div>}
+          {/* Every entry copies, as its label says; a shared copy glyph would add nothing. */}
           {copies.map((item) => (
-            <DropdownMenu.Item key={item.id} layout="glyph" onClick={item.copy}>
-              <Icon name="copy" size="md" />
+            <DropdownMenu.Item key={item.id} layout="pickPlain" onClick={item.copy}>
               <span {...stylex.props(vocab.truncate)}>{item.label}</span>
             </DropdownMenu.Item>
           ))}

@@ -1,7 +1,4 @@
 export const zhTW: Record<string, string> = {
-  "mcp.error.toolPolicy": "無法更新工具策略。",
-  "mcp.tools.policyHint":
-    "即時儲存。工具可見性對新執行生效。自動核准設定全域允許規則；更具體的規則仍然生效。",
   "mcp.tools.nameConflict":
     "可透過 {{name}} 呼叫。{{sources}} 也使用這個簡短名稱。",
   "mcp.add": "新增伺服器",
@@ -42,27 +39,26 @@ export const zhTW: Record<string, string> = {
     "處理程序目標已變更，請輸入新的環境變數或移除已儲存的值。",
   "mcp.form.dir.aria": "工作目錄",
   "mcp.form.url.aria": "伺服器 URL",
-  "mcp.form.auth.placeholder": "授權 token（選填）",
-  "mcp.form.auth.keep": "留空則保留已存的 token",
+  "mcp.form.auth.placeholder": "授權權杖（選填）",
+  "mcp.form.auth.keep": "留空則保留已存的權杖",
   "mcp.form.auth.clear": "移除已儲存的授權資訊",
   "mcp.form.auth.originChanged":
     "端點來源已變更，請輸入新的授權資訊或明確移除已儲存的值。",
-  "mcp.form.auth.aria": "授權 token",
+  "mcp.form.auth.aria": "授權權杖",
   "mcp.form.headers": "請求標頭（JSON 物件）",
   "mcp.form.headers.keep": "留空則保留已存的標頭",
   "mcp.form.headers.clear": "移除已儲存的標頭",
   "mcp.form.headers.originChanged":
     "端點來源已變更，請輸入新的標頭或移除已儲存的值。",
-  "mcp.form.timeout": "逾時（秒）—— 選填",
+  "mcp.form.timeout": "逾時（秒）",
+  "mcp.form.timeout.none": "不限時",
   "mcp.form.timeout.invalid": "請輸入正整數秒數，或留空表示不限時。",
   "mcp.form.description.aria": "說明",
   "mcp.import": "從 JSON 匯入",
   "mcp.import.confirm": "匯入",
   "mcp.importing": "正在匯入…",
   "mcp.import.ok_other": "已匯入 {{count}} 個伺服器",
-  "mcp.import.renamed": "已重新命名以符合 Runtime 的要求：{{names}}",
   "mcp.import.partial_other": "已匯入 {{count}} / {{total}} 個伺服器。",
-  "mcp.import.error": "無法匯入該設定。",
   "mcp.import.invalidJson": "請輸入有效的 JSON。",
   "mcp.import.invalidShape": "請使用包含「mcpServers」物件的有效 MCP 設定。",
   "mcp.import.invalidName":
@@ -74,19 +70,11 @@ export const zhTW: Record<string, string> = {
   "mcp.import.invalidTimeout":
     "請為伺服器「{{server}}」設定以秒為單位的正整數逾時，或省略此項表示不限時。",
   "mcp.import.empty": "請在「mcpServers」下至少新增一個伺服器。",
-  "mcp.tools.title": "{{server}} 的工具",
-  "mcp.tools.label": "{{server}} 的 {{tools}}",
   "mcp.tools.enabled": "已啟用",
   "mcp.tools.autoApprove": "自動核准",
   "mcp.tools.empty": "此伺服器未提供任何工具",
   "mcp.tools.enable.aria": "啟用 {{tool}}",
   "mcp.tools.autoApprove.aria": "自動核准 {{tool}}",
-  "mcp.error.save": "無法儲存伺服器。",
-  "mcp.error.remove": "無法移除伺服器。",
-  "mcp.error.toggle": "無法變更伺服器。",
-  "mcp.error.signIn": "登入失敗。",
-  "mcp.error.reconnect": "無法重新連線伺服器。",
-  "mcp.error.test": "測試失敗",
   "mcp.error.loadTools": "無法載入工具",
   "mcp.error.loadToolVisibility": "無法載入工具可見性",
   "mcp.error.loadAutoApproveRules": "無法載入自動核准規則",
@@ -100,7 +88,7 @@ export const zhTW: Record<string, string> = {
     "已連線，但這個伺服器沒有回傳可用的工具清單。請檢查伺服器後重試。",
   "mcpStatus.mcp_configuration_failed":
     "無法使用這個伺服器的設定或已儲存的憑證。請檢查設定後重試。",
-  "mcpStatus.mcp_dial_failed": "連不上這個伺服器 —— 檢查命令或 URL 後重試。",
+  "mcpStatus.mcp_dial_failed": "連不上這個伺服器——檢查命令或 URL 後重試。",
   "common.cancel": "取消",
   "common.close": "關閉",
   "command.uncertain":
@@ -118,5 +106,5 @@ export const zhTW: Record<string, string> = {
   title: "MCP 伺服器",
   retry: "重試",
   refresh: "重新整理",
-  reading: "正在讀取…",
+  reading: "正在載入…",
 };

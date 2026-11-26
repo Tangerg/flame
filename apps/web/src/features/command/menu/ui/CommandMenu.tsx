@@ -91,7 +91,6 @@ export function CommandMenu() {
           icon={iconGlyph("command")}
           size="compact"
           title={t("commandMenu.empty.title")}
-          sub={t("commandMenu.empty.sub")}
         />
       }
       options={(query) =>

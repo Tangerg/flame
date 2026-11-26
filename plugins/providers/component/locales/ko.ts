@@ -6,12 +6,13 @@ export const ko: Record<string, string> = {
     "{{provider}}의 저장된 API 키가 사라집니다. 다시 연결하려면 키를 다시 붙여넣어야 합니다.",
   "providers.apiKey.aria": "{{provider}} API 키",
   "providers.baseUrl.mount":
-    "게이트웨이 마운트 주소를 입력하세요. SDK가 {{suffix}}를 추가합니다.",
+    "게이트웨이 마운트 주소를 입력하세요. SDK가 {{suffix}}을(를) 추가합니다.",
   "providers.baseUrl.apiBase":
     "게이트웨이의 버전 경로를 포함한 전체 API 기본 주소를 입력하세요.",
   "providers.baseUrl.appends":
-    "SDK가 {{suffix}}를 추가합니다. 최종 API 경로는 {{path}}입니다.",
-  "providers.baseUrl.suffix": "엔드포인트 경로는 {{suffix}}로 끝나야 합니다.",
+    "SDK가 {{suffix}}을(를) 추가합니다. 최종 API 경로는 {{path}}입니다.",
+  "providers.baseUrl.suffix":
+    "엔드포인트 경로는 {{suffix}}(으)로 끝나야 합니다.",
   "providers.baseUrl.invalid":
     "인증 정보, 쿼리 또는 프래그먼트가 없는 HTTP(S) URL을 입력하세요.",
   "providers.baseUrl.aria": "{{provider}} 기본 URL",
@@ -22,32 +23,25 @@ export const ko: Record<string, string> = {
   "providers.test": "테스트",
   "providers.testing": "테스트 중…",
   "providers.connectionOk": "연결 정상",
-  "providers.error.save": "저장 실패",
-  "providers.error.test": "테스트 실패",
   "providers.models.error": "모델을 불러올 수 없습니다.",
-  "providers.models.refresh": "모델 목록 새로고침",
-  "providers.empty": "공급자 없음",
-  "providers.empty.sub": "Runtime이 지원되는 LLM 공급자를 보고하지 않습니다.",
-  "providers.apiKey.envPlaceholder":
-    "환경 변수 키 사용 중 — 입력하면 덮어씁니다",
+  "providers.empty": "제공자 없음",
+  "providers.empty.sub": "Runtime이 지원되는 LLM 제공자를 보고하지 않습니다.",
   "providers.fromEnv": "환경 변수에서",
   "providers.utility.title": "보조 모델",
   "providers.utility.desc": "요약, 제목, 사실 추출용 모델입니다.",
   "providers.utility.main": "Runtime 기본 모델 사용",
-  "providers.utility.error": "보조 모델을 설정할 수 없습니다.",
   "providers.embedding.title": "임베딩 모델",
-  "providers.embedding.desc": "Agent Memory 순위를 선택적으로 개선합니다.",
-  "providers.embedding.off": "끄기",
+  "providers.embedding.desc": "에이전트 메모리 순위를 개선합니다.",
+  "providers.embedding.off": "끔",
   "providers.embedding.none":
     "임베딩을 지원하는 제공자가 아직 없습니다 — 위에서 하나 추가하세요(예: OpenAI).",
-  "providers.embedding.error": "임베딩 모델을 설정할 수 없습니다.",
   "providers.testOutcome.notConfigured": "먼저 제공자 구성을 완료하세요.",
   "providers.testOutcome.failed":
     "제공자에 연결할 수 없거나 테스트 요청이 거부됐습니다.",
   "providers.apiKey.label": "API 키",
   "providers.baseUrl.label": "기본 URL",
   "providers.baseUrl.labelRequired": "기본 URL · 필수",
-  "providers.baseUrl.required": "이 공급자를 저장하려면 기본 URL이 필요합니다.",
+  "providers.baseUrl.required": "이 제공자를 저장하려면 기본 URL이 필요합니다.",
   "providers.saveAndTest": "저장 후 테스트",
   "providers.saved": "저장됨",
   "providers.role.loadError":
@@ -55,7 +49,7 @@ export const ko: Record<string, string> = {
   "providers.role.stale":
     "마지막으로 확인된 값을 표시 중입니다 — 새로 고침에 실패했습니다.",
   "providers.setup.done":
-    "공급자가 준비되었습니다. 설정을 닫고 돌아가면 초안이 그대로 있습니다.",
+    "제공자가 준비되었습니다. 설정을 닫고 돌아가면 초안이 그대로 있습니다.",
   "providers.roles.heading": "모델 역할",
   "rpcError.invalid_credentials":
     "제공자가 API 키를 거부했습니다 — 제공자 설정에서 확인하세요.",
@@ -63,15 +57,15 @@ export const ko: Record<string, string> = {
     "모델 제공자 요청이 시간 초과되었습니다 — 연결을 확인하고 다시 시도하세요.",
   title: "모델 제공자",
   cancel: "취소",
-  reading: "불러오는 중",
+  reading: "불러오는 중…",
   refresh: "새로 고침",
   retry: "다시 시도",
   "command.uncertain":
     "원래 명령의 결과가 확인되지 않았습니다. 다른 명령을 실행하거나 카탈로그를 전환하기 전에 조정하세요.",
-  "command.reconcile": "원래 명령 조정",
+  "command.reconcile": "원래 명령 대조",
   "command.confirmed": "원래 결과 확인됨",
   "read.retained": "마지막으로 수락된 읽기를 유지합니다.",
   close: "닫기",
   "providers.embedding.noPreset":
-    "구성된 공급자에 사전 설정된 임베딩 모델이 없습니다.",
+    "구성된 제공자에 사전 설정된 임베딩 모델이 없습니다.",
 };

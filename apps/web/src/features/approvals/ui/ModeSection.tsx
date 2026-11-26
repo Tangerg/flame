@@ -4,7 +4,7 @@ import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { ChoiceList, ChoiceOption } from "@/ui/index";
 import { Icon } from "@/ui/index";
 import { SkeletonList } from "@/ui/index";
-import { vocab } from "@flame/ui";
+import { PanelSection, vocab } from "@flame/ui";
 import {
   APPROVAL_MODE_LABEL_KEY,
   describeApprovalMode,
@@ -15,7 +15,6 @@ import { useCommandAction } from "@/features/command/public/commandAction";
 import { useT } from "@/lib/i18n/index";
 import { useId, useState } from "react";
 import { color, leading, motion, space, type as typeStep, weight } from "@flame/ui/tokens.stylex";
-import { SettingRow } from "@/ui/settings/SettingRow";
 const m = stylex.create({
   body: { display: "flex", minWidth: 0, flex: 1, flexDirection: "column", gap: space.s0_5 },
   name: { color: color.fg, fontWeight: weight.medium },
@@ -23,7 +22,7 @@ const m = stylex.create({
   spin: { animation: motion.spin },
 });
 
-export function ModeRow({ approval }: { approval: ApprovalModeResult | undefined }) {
+export function ModeSection({ approval }: { approval: ApprovalModeResult | undefined }) {
   const agentAccess = useAgent();
 
   const t = useT();
@@ -42,7 +41,7 @@ export function ModeRow({ approval }: { approval: ApprovalModeResult | undefined
     modeAction.run(() => agentAccess.setApprovalMode(next).finally(() => setPending(null)));
   };
   return (
-    <SettingRow label={t("approvals.mode")} labelId={labelId} align="stacked">
+    <PanelSection title={<span id={labelId}>{t("approvals.mode")}</span>}>
       {approval === undefined ? (
         <SkeletonList
           count={Object.keys(APPROVAL_MODE_LABEL_KEY).length}
@@ -89,6 +88,6 @@ export function ModeRow({ approval }: { approval: ApprovalModeResult | undefined
           ))}
         </ChoiceList>
       )}
-    </SettingRow>
+    </PanelSection>
   );
 }

@@ -16,6 +16,24 @@ import {
 import type { Snapshot } from "./types";
 import { LIMITS } from "../contracts/limits";
 
+const BYTE_UNITS = ["byte", "kilobyte", "megabyte", "gigabyte"] as const;
+
+// Decimal steps, as macOS reports file sizes.
+function byteSize(locale: string, bytes: number): string {
+  let unit = 0;
+  let value = bytes;
+  while (value >= 1000 && unit < BYTE_UNITS.length - 1) {
+    value /= 1000;
+    unit++;
+  }
+  return new Intl.NumberFormat(locale, {
+    style: "unit",
+    unit: BYTE_UNITS[unit],
+    unitDisplay: unit ? "short" : "long",
+    maximumFractionDigits: unit ? 1 : 0,
+  }).format(value);
+}
+
 function ReceiptCapacity({
   value,
   locale,
@@ -36,7 +54,7 @@ function ReceiptCapacity({
           ],
           [
             t("receipts.bytes"),
-            `${number.format(projectNumber(value.bytes))} / ${number.format(projectNumber(value.maxBytes))}`,
+            `${byteSize(locale, projectNumber(value.bytes))} / ${byteSize(locale, projectNumber(value.maxBytes))}`,
           ],
           [t("receipts.pending"), number.format(projectNumber(value.pending))],
         ]}

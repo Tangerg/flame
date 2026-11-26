@@ -16,23 +16,17 @@ import { usePluginErrorStore } from "@/extensions/errors";
 import {
   color,
   face,
+  font,
   leading,
-  motion,
   radius,
+  rowInset,
   space,
   surface,
   type as typeStep,
-  rowInset,
 } from "@flame/ui/tokens.stylex";
 import { SettingsGroup } from "@/ui/settings/SettingsGroup";
 import { settingStyles as ss } from "@/ui/settings/settingStyles";
 const pp = stylex.create({
-  plugin: {
-    backgroundColor: { default: null, ":hover": surface.hover },
-    transitionProperty: "background-color",
-    transitionDuration: motion.color,
-    transitionTimingFunction: motion.easeState,
-  },
   faulted: { backgroundColor: surface.negativeWash },
   name: { overflowWrap: "anywhere" },
   head: {
@@ -74,7 +68,7 @@ const pp = stylex.create({
     maxHeight: "calc(var(--spacing) * 56)",
     whiteSpace: "pre-wrap",
     overflowWrap: "anywhere",
-    fontFamily: "var(--font-mono)",
+    fontFamily: font.mono,
     lineHeight: leading.body,
     color: color.fgMuted,
   },
@@ -131,7 +125,7 @@ export function PluginsPane() {
                 key={name}
                 role="group"
                 aria-label={name}
-                {...stylex.props(pp.plugin, errCount > 0 && pp.faulted)}
+                {...stylex.props(errCount > 0 && pp.faulted)}
               >
                 <div {...stylex.props(pp.head)}>
                   <div {...stylex.props(vocab.min)}>
@@ -153,7 +147,7 @@ export function PluginsPane() {
                   <div {...stylex.props(vocab.lineTight)}>
                     {errCount > 0 && (
                       <Button
-                        variant="outline"
+                        variant="soft"
                         size="sm"
                         onClick={() => {
                           clearFor(name);

@@ -20,11 +20,11 @@ interface TextEditorDialogProps extends Pick<
 > {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  icon?: ReactNode;
-  title: ReactNode;
+  title: string;
   description?: ReactNode;
   closeLabel: string;
-  label: string;
+  /** A visible field label, only when it says more than the title; otherwise the title names the field. */
+  label?: string;
   value: string;
   onChange: (value: string) => void;
   cancelLabel: string;
@@ -44,7 +44,6 @@ interface TextEditorDialogProps extends Pick<
 export function TextEditorDialog({
   open,
   onOpenChange,
-  icon,
   title,
   description,
   closeLabel,
@@ -91,7 +90,6 @@ export function TextEditorDialog({
       dismissible={!busy}
       title={title}
       description={description}
-      icon={icon}
       closeLabel={closeLabel}
       initialFocus={editorRef}
       finalFocus={finalFocus}
@@ -122,7 +120,7 @@ export function TextEditorDialog({
           autosize
           styles={styles.editor}
           font={font}
-          aria-label={label}
+          aria-label={label ?? title}
           aria-describedby={error ? errorId : undefined}
           invalid={invalid}
           autoCapitalize={autoCapitalize}

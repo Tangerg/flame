@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { type ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import { clsx } from "clsx";
 import { Icon, type IconName } from "@/ui/index";
 import { reveal } from "@/ui/index";
@@ -135,12 +135,14 @@ function rowSkin({
 
 function AgentRowLabel({
   overflowText,
+  onOverflowChange,
   trailing,
   actioned,
   detail,
   children,
 }: {
   overflowText: string | undefined;
+  onOverflowChange: (overflowing: boolean) => void;
   trailing: ReactNode;
   actioned: boolean;
   detail: ReactNode;
@@ -152,7 +154,7 @@ function AgentRowLabel({
     <span {...stylex.props(rowStyles.stack)}>
       <span {...stylex.props(rowStyles.line, detail ? rowStyles.lineStacked : rowStyles.lineAlone)}>
         {overflowText ? (
-          <AgentOverflowLabel text={overflowText} />
+          <AgentOverflowLabel text={overflowText} onOverflowChange={onOverflowChange} />
         ) : (
           <span {...label} className={clsx(label.className, "truncate-fade")}>
             {children}
@@ -194,6 +196,7 @@ export function AgentRow({
   const trackItem = useHoverTrackItem();
   const track = look === "search" ? null : trackItem;
   const overflowText = revealOverflow && typeof children === "string" ? children : undefined;
+  const [overflowing, setOverflowing] = useState(false);
   const button = (
     <Button
       data-chrome-focus={look === "search" ? undefined : ""}
@@ -224,6 +227,7 @@ export function AgentRow({
       )}
       <AgentRowLabel
         overflowText={overflowText}
+        onOverflowChange={setOverflowing}
         trailing={trailing}
         actioned={Boolean(action)}
         detail={detail}
@@ -233,7 +237,13 @@ export function AgentRow({
     </Button>
   );
   const row = overflowText ? (
-    <Tooltip label={overflowText} side="right" sideOffset={8} delayDuration={500}>
+    <Tooltip
+      label={overflowText}
+      disabled={!overflowing}
+      side="right"
+      sideOffset={8}
+      delayDuration={500}
+    >
       {button}
     </Tooltip>
   ) : (

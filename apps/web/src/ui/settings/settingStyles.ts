@@ -1,8 +1,9 @@
 import * as stylex from "@stylexjs/stylex";
 import {
   color,
-  leading,
+  font,
   layout,
+  leading,
   motion,
   radius,
   space,
@@ -37,12 +38,10 @@ export const settingStyles = stylex.create({
   readout: {
     width: "3ch",
     textAlign: "end",
-    fontFamily: "var(--font-mono)",
+    fontFamily: font.mono,
     whiteSpace: "nowrap",
     color: color.fgMuted,
   },
-  end: { display: "flex", justifyContent: "flex-end" },
-
   label: { color: color.fg, fontWeight: weight.medium },
   hint: { color: color.fgMuted, lineHeight: leading.body },
   hintSpaced: { marginTop: space.s1, color: color.fgMuted, lineHeight: leading.body },

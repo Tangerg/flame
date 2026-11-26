@@ -298,9 +298,11 @@ function Content({
 export function Outcome({
   record,
   t,
+  dateTime,
 }: {
   record: OperationRecord;
   t: Translate;
+  dateTime: Intl.DateTimeFormat;
 }) {
   const outcome = useMemo(() => {
     if (record.outcomeJSON === undefined) return undefined;
@@ -319,7 +321,12 @@ export function Outcome({
         values={[
           [t("history.identity"), record.id],
           [t("history.method"), record.method],
-          [t("history.time"), record.admittedAt],
+          [
+            t("history.time"),
+            <time key="admitted" dateTime={record.admittedAt}>
+              {dateTime.format(new Date(record.admittedAt))}
+            </time>,
+          ],
           [
             t("history.dispatch"),
             t(

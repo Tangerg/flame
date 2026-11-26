@@ -111,13 +111,6 @@ export function ScheduleEditor({
             })
           : t("editor.new.title")
       }
-      description={
-        edit.basis
-          ? t("editor.edit.description", {
-              revision: String(edit.basis.revision),
-            })
-          : undefined
-      }
       closeLabel={t("editor.close")}
       size="lg"
       initialFocus={titleElement}
@@ -166,6 +159,7 @@ export function ScheduleEditor({
           <FormField label={t("field.cron")}>
             <TextField
               size="lg"
+              font="mono"
               aria-label={t("field.cron")}
               placeholder="0 9 * * 1"
               value={draft.cron}
@@ -182,17 +176,18 @@ export function ScheduleEditor({
               onChange={(event) => patch("timeZone", event.target.value)}
             />
           </FormField>
-          <FormField label={t("field.workspace")}>
-            <TextField
-              size="lg"
-              aria-label={t("field.workspace")}
-              placeholder={t("field.workspace.placeholder")}
-              value={draft.cwd}
-              disabled={busy}
-              onChange={(event) => patch("cwd", event.target.value)}
-            />
-          </FormField>
         </FormRow>
+        <FormField label={t("field.workspace")}>
+          <TextField
+            size="lg"
+            font="mono"
+            aria-label={t("field.workspace")}
+            placeholder={t("field.workspace.placeholder")}
+            value={draft.cwd}
+            disabled={busy}
+            onChange={(event) => patch("cwd", event.target.value)}
+          />
+        </FormField>
         <Checkbox
           label={t("status.enabled")}
           checked={draft.enabled}

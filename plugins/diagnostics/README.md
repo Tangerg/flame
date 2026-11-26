@@ -12,8 +12,8 @@ older evictions cannot be reconstructed. The existing signal controls carry thei
 locale. Counts come directly from the accepted snapshot; unknown counts stay absent
 after an initial failure or failed reread following Clear. One status names the last
 read and distinguishes retained accepted content after failure. Repeated
-introductions and a separate count dashboard are removed. The About disclosure
-retains the bounded-buffer limitation.
+introductions, a separate count dashboard and an About note are removed: the panel
+title and the Clear action already say the buffer is this client's own.
 Raw-record code actions and accepted-copy feedback use the same active component
 locale as the named reading region. Shared UI retains source, selection and
 wrapping behavior; telemetry read and clear ownership remain unchanged.
@@ -24,8 +24,9 @@ dimensional counter values. Raw evidence keeps every original field.
 
 Only the span `error` status and metric kind (`histogram`, `counter`) badges use
 localized display words. `ok` and OpenTelemetry's `unset` (no status was set) are a
-span's ordinary ends, so a span names its status only when it failed. Open span
-kinds, provider-defined log severities,
+span's ordinary ends, so a span names its status only when it failed; likewise it
+names its kind only when it is not the default `internal`. Open span kinds,
+provider-defined log severities,
 identifiers, bodies and raw JSON keep their exact recorded values.
 
 Refresh rereads that owner. Clear delegates to its existing local clear operation

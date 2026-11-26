@@ -4,14 +4,13 @@ import { EmptyState } from "@flame/ui/empty-state";
 import { useApprovalModeConfig } from "@/features/approvals/application/approvalConfig";
 import { useT } from "@/lib/i18n/index";
 import { isUnsupportedMethod } from "@/lib/rpcErrors";
-import { SettingsGroup } from "@/ui/settings/SettingsGroup";
-import { ModeRow } from "@/features/approvals/ui/ModeRow";
-import { RulesRow } from "@/features/approvals/ui/RulesRow";
+import { ModeSection } from "@/features/approvals/ui/ModeSection";
+import { RulesSection } from "@/features/approvals/ui/RulesSection";
 export function ApprovalsPane() {
   const t = useT();
   const { data: approval, error, isError, refetch } = useApprovalModeConfig();
   return (
-    <SettingsGroup>
+    <>
       {isError && isUnsupportedMethod(error) ? (
         <EmptyState
           icon={iconGlyph("shield")}
@@ -22,9 +21,9 @@ export function ApprovalsPane() {
       ) : isError ? (
         <DataError onRetry={() => refetch()} title={t("approvals.error.loadMode")} />
       ) : (
-        <ModeRow approval={approval} />
+        <ModeSection approval={approval} />
       )}
-      <RulesRow />
-    </SettingsGroup>
+      <RulesSection />
+    </>
   );
 }

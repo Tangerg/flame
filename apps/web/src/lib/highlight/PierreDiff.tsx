@@ -20,11 +20,12 @@ import { useScheme } from "@/lib/appearance";
 import { copyDiffSelection, selectedDiffRange } from "./diffSelection";
 import { CODE_RENDERING } from "./PierreFile";
 import { diffColumns, indexedLine, indexedLines, rowIndexPair } from "@/lib/highlight/pierreMarkup";
+import { edge } from "@flame/ui/tokens.stylex";
 
 const styles = stylex.create({
   reader: {
     // Clip Pierre's gutter and change fills before they reach the inset outline.
-    borderInlineWidth: "var(--focus-inset-edge)",
+    borderInlineWidth: edge.focusInset,
     borderInlineStyle: "solid",
     borderInlineColor: "transparent",
   },

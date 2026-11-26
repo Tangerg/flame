@@ -69,7 +69,7 @@ export function ReasoningBlock({ text, status }: Props) {
     ? t("reasoning.thinking")
     : thoughtMillis === null
       ? t("reasoning.thought")
-      : t("reasoning.thoughtFor", { duration: fmtDuration(thoughtMillis) });
+      : t("reasoning.thoughtFor", { duration: fmtDuration(t, thoughtMillis) });
 
   const glimpse = streaming && !isOpen ? currentThought(text) : undefined;
 

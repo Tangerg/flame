@@ -29,12 +29,12 @@ export const fr: Record<string, string> = {
   "archive.count_many": "{{count}} sur {{capacity}} enregistrés",
   "archive.count_other": "{{count}} sur {{capacity}} enregistrés",
   "archive.reading": "Lecture des rapports enregistrés…",
-  "archive.error": "Les archives n’ont pas pu être lues : {{error}}.",
+  "archive.error": "Les archives n’ont pas pu être lues : {{error}}.",
   "archive.error.retained":
-    "Les archives n’ont pas pu être lues : {{error}}. Les dernières archives acceptées restent affichées.",
+    "Les archives n’ont pas pu être lues : {{error}}. Les dernières archives acceptées restent affichées.",
   "archive.empty.title": "Aucun rapport enregistré",
   "archive.list.label": "Rapports enregistrés",
-  "removal.title": "Supprimer {{title}} ?",
+  "removal.title": "Supprimer {{title}} ?",
   "removal.description":
     "Seule cette copie enregistrée est supprimée. Les preuves et les totaux de la comptabilité principale restent inchangés, et la copie ne peut pas être restaurée.",
   "removal.close": "Fermer la confirmation de suppression",
@@ -46,8 +46,8 @@ export const fr: Record<string, string> = {
   "fact.lowerBound": "Début",
   "report.reading": "Lecture du rapport enregistré…",
   "report.error.refresh":
-    "Le rapport enregistré n’a pas pu être actualisé : {{error}}. Le dernier rapport accepté reste visible.",
-  "report.error.read": "Le rapport enregistré n’a pas pu être lu : {{error}}.",
+    "Le rapport enregistré n’a pas pu être actualisé : {{error}}. Le dernier rapport accepté reste visible.",
+  "report.error.read": "Le rapport enregistré n’a pas pu être lu : {{error}}.",
   "report.totals.title": "Totaux",
   "fact.attempts": "Tentatives de modèle",
   "fact.inputTokens": "Tokens d’entrée connus",
@@ -71,19 +71,19 @@ export const fr: Record<string, string> = {
   "report.actions.label": "Actions du rapport enregistré",
   "message.saved": "Rapport principal enregistré.",
   "message.savedArchived":
-    "Rapport principal enregistré : {{title}}. Il figure dans les archives.",
+    "Rapport principal enregistré : {{title}}. Il figure dans les archives.",
   "message.removed":
     "Rapport enregistré supprimé. La comptabilité principale est inchangée.",
   "message.removalConfirmed":
     "Suppression du rapport d’origine confirmée. La comptabilité principale est inchangée.",
   "message.unknown":
     "La confirmation est inconnue. Vérifiez le résultat d’origine avant de soumettre une autre modification des archives.",
-  "message.archiveFailed": "La modification des archives a échoué : {{error}}",
-  "message.captureRejected": "La capture n’a pas pu être admise : {{error}}",
+  "message.archiveFailed": "La modification des archives a échoué : {{error}}",
+  "message.captureRejected": "La capture n’a pas pu être admise : {{error}}",
   "message.removalRejected":
-    "La suppression n’a pas pu être admise : {{error}}",
+    "La suppression n’a pas pu être admise : {{error}}",
   "message.retired":
     "Commande d’origine retirée. Tout rapport déjà enregistré reste dans les archives.",
   "message.retireFailed":
-    "La commande d’origine n’a pas pu être retirée : {{error}}",
+    "La commande d’origine n’a pas pu être retirée : {{error}}",
 };

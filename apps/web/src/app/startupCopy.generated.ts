@@ -17,7 +17,7 @@ export const startupCopy = {
       "This browser is missing features Flame needs. Update your browser, or update macOS and Safari, then reopen Flame.",
     "startup.unsupported.browsers": "Supported browsers",
     "startup.unsupported.features": "Missing browser features",
-    "startup.loadFailed.body": "The application couldn't load. Reload this window to try again.",
+    "startup.loadFailed.body": "The application couldn’t load. Reload this window to try again.",
     "plugins.renderFailed.details": "Details",
     "common.retry": "Retry",
   },
@@ -46,9 +46,9 @@ export const startupCopy = {
   ja: {
     "startup.failed.title": "Flame を起動できませんでした",
     "startup.unsupported.body":
-      "このブラウザには Flame に必要な機能がありません。ブラウザを更新するか、macOS と Safari を更新してから、Flame を開き直してください。",
-    "startup.unsupported.browsers": "対応ブラウザ",
-    "startup.unsupported.features": "不足しているブラウザ機能",
+      "このブラウザーには Flame に必要な機能がありません。ブラウザーを更新するか、macOS と Safari を更新してから、Flame を開き直してください。",
+    "startup.unsupported.browsers": "対応ブラウザー",
+    "startup.unsupported.features": "不足しているブラウザー機能",
     "startup.loadFailed.body":
       "アプリケーションを読み込めませんでした。このウィンドウを再読み込みして、もう一度試してください。",
     "plugins.renderFailed.details": "詳細",
@@ -60,7 +60,7 @@ export const startupCopy = {
       "이 브라우저에는 Flame에 필요한 기능이 없습니다. 브라우저를 업데이트하거나 macOS와 Safari를 업데이트한 다음 Flame을 다시 여세요.",
     "startup.unsupported.browsers": "지원 브라우저",
     "startup.unsupported.features": "누락된 브라우저 기능",
-    "startup.loadFailed.body": "앱을 불러오지 못했습니다. 이 창을 새로고침한 뒤 다시 시도하세요.",
+    "startup.loadFailed.body": "앱을 불러오지 못했습니다. 이 창을 다시 로드하세요.",
     "plugins.renderFailed.details": "세부 정보",
     "common.retry": "다시 시도",
   },

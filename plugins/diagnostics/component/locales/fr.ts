@@ -1,6 +1,5 @@
 export const fr: Record<string, string> = {
   "code.copy": "Copier le code",
-  "code.copied": "Copié",
   "code.wrap": "Activer le retour à la ligne",
   "code.unwrap": "Désactiver le retour à la ligne",
   "panel.title": "Diagnostic du client",
@@ -16,10 +15,10 @@ export const fr: Record<string, string> = {
   "observations.title": "Observations locales",
   "observations.accepted": "Dernière lecture du tampon",
   "observations.stale": "Dernière lecture acceptée affichée.",
-  "observations.empty.title": "Aucune observation locale dans cette lecture.",
+  "observations.empty.title": "Aucune observation locale dans cette lecture",
   "span.meta": "{{ms}} ms · {{kind}}",
   "span.status.error": "Erreur",
-  "fact.started": "Démarré",
+  "fact.started": "Début",
   "fact.duration": "Durée",
   "fact.trace": "Trace",
   "fact.parentSpan": "Span parent",
@@ -36,9 +35,4 @@ export const fr: Record<string, string> = {
   "attributes.title": "Attributs",
   "raw.title": "Observation brute",
   "raw.label": "Détails de l’observation locale",
-  "about.title": "À propos du diagnostic du client",
-  "about.note":
-    "Seul le tampon local de ce client est affiché. Actualiser lit son contenu le plus récent ; Effacer supprime les observations locales. Le décompte du Runtime et la télémétrie distante restent inchangés. Les observations plus anciennes ont pu être supprimées.",
-  "read.failed": "Impossible de lire les observations locales.",
-  "clear.failed": "Impossible d’effacer les observations locales.",
 };

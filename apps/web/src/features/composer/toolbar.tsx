@@ -7,10 +7,21 @@ import * as stylex from "@stylexjs/stylex";
 import { DropdownMenu } from "@/ui/index";
 import { HiddenFileInput } from "@/ui/index";
 import { Icon } from "@/ui/index";
+import { Kbd } from "@/ui/index";
 import { IconButton, vocab } from "@flame/ui";
 import { type IconName } from "@/ui/icons/index";
-import { type as typeStep } from "@flame/ui/tokens.stylex";
+import { space, type as typeStep } from "@flame/ui/tokens.stylex";
 import { toolbarStyles } from "@/features/composer/toolbarStyles";
+// The trigger character ends its item, where menus show a key, so the composer needs no hint.
+const addMenu = stylex.create({
+  line: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: space.s4,
+    minWidth: 0,
+  },
+});
 import { AgentComposerChip } from "@/ui/agent/index";
 import { imageFiles } from "@/features/composer/public/input";
 import { useSelectedModel } from "@/features/composer/public/selectedModel";
@@ -105,7 +116,12 @@ function ContextMenuButton() {
             }}
           >
             <Icon name="file-text" size="md" />
-            <span {...stylex.props(vocab.truncate)}>{t("composer.add.file")}</span>
+            <span {...stylex.props(addMenu.line)}>
+              <span {...stylex.props(vocab.truncate)}>{t("composer.add.file")}</span>
+              <Kbd variant="inline" aria-hidden="true">
+                @
+              </Kbd>
+            </span>
           </DropdownMenu.Item>
           <DropdownMenu.Item
             layout="glyph"
@@ -116,7 +132,12 @@ function ContextMenuButton() {
           >
             <Icon name="command" size="md" />
             <span {...stylex.props(vocab.min)}>
-              <span {...stylex.props(vocab.truncate)}>{t("composer.add.command")}</span>
+              <span {...stylex.props(addMenu.line)}>
+                <span {...stylex.props(vocab.truncate)}>{t("composer.add.command")}</span>
+                <Kbd variant="inline" aria-hidden="true">
+                  /
+                </Kbd>
+              </span>
               {value.trim() !== "" && (
                 <span {...stylex.props(toolbarStyles.optionDetail, typeStep.uiSm)}>
                   {t("composer.add.command.startsMessage")}
@@ -159,7 +180,7 @@ function ApprovalModePill() {
         render={
           <AgentComposerChip
             type="button"
-            actionLabel={t("approvals.mode.aria")}
+            actionLabel={t("composer.switchApprovalMode")}
             variant={full ? "wash" : "ghost"}
             tone={full ? "warning" : undefined}
             leading={<Icon name={MODE_ICON[mode]} size="composer" full />}

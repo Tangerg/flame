@@ -25,6 +25,10 @@ export const CODE_RENDERING = { preferredHighlighter: "shiki-js" as const, theme
 
 const FILE_TARGET_LINE = "data-file-target-line";
 
+// A code block already sits on its frame's card and owns the caption's leading edge.
+const CODE_BLOCK_APPEARANCE = `:host { --diffs-bg: transparent; background-color: transparent; }
+[data-line] { padding-inline-start: 0; }`;
+
 const styles = stylex.create({
   // Let CodeBody scroll the full width of unwrapped source.
   readerScroll: {
@@ -196,6 +200,7 @@ export function PierreFile({
       overflow: wrapped ? "wrap" : "scroll",
       disableFileHeader: true,
       disableLineNumbers: endLine === undefined,
+      unsafeCSS: isCodeBlock ? CODE_BLOCK_APPEARANCE : undefined,
       onPostRender: (node, _instance, phase) => {
         if (phase === "unmount") {
           root.current = null;
@@ -229,6 +234,7 @@ export function PierreFile({
       },
     }),
     [
+      isCodeBlock,
       scheme,
       wrapped,
       served,

@@ -1,8 +1,4 @@
 export const es: Record<string, string> = {
-  "mcp.error.toolPolicy":
-    "No se pudo actualizar la política de la herramienta.",
-  "mcp.tools.policyHint":
-    "Se guarda al instante. La visibilidad se aplica a las nuevas ejecuciones. La aprobación automática establece una regla global de permiso; las reglas más específicas siguen vigentes.",
   "mcp.tools.nameConflict":
     "Disponible como {{name}}. {{sources}} también usa el nombre corto.",
   "mcp.add": "Añadir servidor",
@@ -59,7 +55,8 @@ export const es: Record<string, string> = {
   "mcp.form.headers.clear": "Eliminar las cabeceras guardadas",
   "mcp.form.headers.originChanged":
     "El origen del endpoint cambió. Introduce cabeceras nuevas o elimina los valores guardados.",
-  "mcp.form.timeout": "Tiempo de espera (segundos) — opcional",
+  "mcp.form.timeout": "Tiempo de espera (segundos)",
+  "mcp.form.timeout.none": "Sin límite",
   "mcp.form.timeout.invalid":
     "Introduce un número entero positivo de segundos o déjalo en blanco para no fijar un límite de tiempo.",
   "mcp.form.description.aria": "Descripción",
@@ -69,29 +66,18 @@ export const es: Record<string, string> = {
   "mcp.import.ok_one": "{{count}} servidor importado",
   "mcp.import.ok_many": "{{count}} de servidores importados",
   "mcp.import.ok_other": "{{count}} servidores importados",
-  "mcp.import.renamed":
-    "Se renombraron para que el Runtime las acepte: {{names}}",
   "mcp.import.partial_one": "Se importó {{count}} de {{total}} servidores.",
   "mcp.import.partial_many": "Se importaron {{count}} de {{total}} servidores.",
   "mcp.import.partial_other":
     "Se importaron {{count}} de {{total}} servidores.",
-  "mcp.import.error": "No se pudo importar esa configuración.",
   "mcp.import.invalidJson": "Introduce un JSON válido.",
   "mcp.import.missingTransport":
     "Indica un comando o una URL para el servidor «{{server}}», pero no ambos.",
-  "mcp.tools.title": "Herramientas de {{server}}",
-  "mcp.tools.label": "{{tools}} de {{server}}",
   "mcp.tools.enabled": "Activada",
   "mcp.tools.autoApprove": "Aprobar automáticamente",
   "mcp.tools.empty": "Este servidor no expone herramientas",
   "mcp.tools.enable.aria": "Activar {{tool}}",
   "mcp.tools.autoApprove.aria": "Aprobar automáticamente {{tool}}",
-  "mcp.error.save": "No se pudo guardar el servidor.",
-  "mcp.error.remove": "No se pudo eliminar el servidor.",
-  "mcp.error.toggle": "No se pudo modificar el servidor.",
-  "mcp.error.signIn": "Error al iniciar sesión.",
-  "mcp.error.reconnect": "No se pudo reconectar el servidor.",
-  "mcp.error.test": "La prueba falló",
   "mcp.error.loadTools": "No se pudieron cargar las herramientas",
   "mcp.error.loadToolVisibility":
     "No se pudo cargar la visibilidad de las herramientas",

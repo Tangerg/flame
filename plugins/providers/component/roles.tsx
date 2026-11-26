@@ -12,6 +12,7 @@ import {
   ListRow,
   Metadata,
   RecordBody,
+  RecordHeading,
   Select,
 } from "@flame/ui";
 import type { ProviderSettings, Read, RoleKind } from "./settings";
@@ -22,12 +23,10 @@ const column = {
   gap: token.layout.fieldGap,
 } as const;
 // The control sits in a FormRow's second column like the provider forms above it: the
-// Select's fill hangs by the row bleed and a leading borderless action keeps the edge,
-// so both start on that column's label line.
+// Select's fill hangs by the row bleed so its text starts on that column's label line.
 const control = {
   ...column,
   "--field-hang": token.space.s3,
-  "--ghost-hang": 1,
 } as CSSProperties;
 type Choice = { provider: string; model: string; label: string };
 const choiceKey = (value: { provider?: string; model?: string }) =>
@@ -149,7 +148,7 @@ function RolePending({
 }) {
   if (!failed)
     return (
-      <Button variant="outline" disabled aria-label={title}>
+      <Button variant="soft" disabled aria-label={title}>
         {t("reading")}
       </Button>
     );
@@ -213,8 +212,7 @@ export function RoleSection({
       <div data-focus-unit="">
         <FormRow>
           <div style={column}>
-            <strong>{title}</strong>
-            <RecordBody>{t(labels.description)}</RecordBody>
+            <RecordHeading title={title} description={t(labels.description)} />
             {known && (
               <RoleNotes
                 t={t}
@@ -287,27 +285,16 @@ function ModelCatalogStatus({
   refresh(): void;
   t: Translate;
 }) {
+  if (read.data === undefined && read.phase === "loading")
+    return <p role="status">{t("reading")}</p>;
+  if (read.phase !== "failed") return null;
   return (
-    <div style={column}>
-      {read.data === undefined && read.phase === "loading" && (
-        <p role="status">{t("reading")}</p>
-      )}
-      {read.phase === "failed" && (
-        <div role="alert">
-          <RecordBody>
-            {t("providers.models.error")} {failureText(read.error)}
-          </RecordBody>
-          {read.data !== undefined && <Metadata>{t("read.retained")}</Metadata>}
-        </div>
-      )}
-      <Button
-        variant="ghost"
-        size="sm"
-        pending={read.phase === "loading"}
-        onClick={refresh}
-      >
-        {t("providers.models.refresh")}
-      </Button>
+    <div role="alert">
+      <RecordBody>
+        {t("providers.models.error")} {failureText(read.error)}
+      </RecordBody>
+      {read.data !== undefined && <Metadata>{t("read.retained")}</Metadata>}
+      <Button onClick={refresh}>{t("retry")}</Button>
     </div>
   );
 }

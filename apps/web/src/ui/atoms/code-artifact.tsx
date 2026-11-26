@@ -3,7 +3,7 @@ import { type ReactNode, type Ref } from "react";
 import { CodeBody, CodeCaption, CodeFrame } from "@flame/ui";
 import { useT } from "@/lib/i18n/index";
 import { clsx } from "clsx";
-import { space } from "@flame/ui/tokens.stylex";
+import { edge, space } from "@flame/ui/tokens.stylex";
 import { artifactFrame } from "@/ui/atoms/artifact-frame";
 import { reveal } from "@/ui/atoms/reveal";
 import { useCodeActionLabels } from "@/ui/atoms/codeActionLabels";
@@ -29,7 +29,7 @@ const styles = stylex.create({
     placeItems: "center",
     overflow: "auto",
     // Clip the scrolling image before it reaches the inset focus ring.
-    borderWidth: "var(--focus-inset-edge)",
+    borderWidth: edge.focusInset,
     borderStyle: "solid",
     borderColor: "transparent",
     padding: `calc(${space.s3} - var(--focus-inset-edge))`,

@@ -1,6 +1,5 @@
 export const zh: Record<string, string> = {
   "code.copy": "复制代码",
-  "code.copied": "已复制",
   "code.wrap": "启用自动换行",
   "code.unwrap": "关闭自动换行",
   "panel.title": "客户端诊断",
@@ -16,7 +15,7 @@ export const zh: Record<string, string> = {
   "observations.title": "本地观测记录",
   "observations.accepted": "最近一次读取",
   "observations.stale": "当前显示上次成功读取的内容。",
-  "observations.empty.title": "本次读取没有本地观测记录。",
+  "observations.empty.title": "本次读取没有本地观测记录",
   "span.meta": "{{ms}} ms · {{kind}}",
   "span.status.error": "错误",
   "fact.started": "开始时间",
@@ -36,9 +35,4 @@ export const zh: Record<string, string> = {
   "attributes.title": "属性",
   "raw.title": "原始观测记录",
   "raw.label": "本地观测记录详情",
-  "about.title": "关于客户端诊断",
-  "about.note":
-    "仅显示此客户端的本地缓冲区。刷新会读取其最新内容；清除会移除本地观测记录。Runtime 计量和远程遥测不受影响。 较早的观测记录可能已被淘汰。",
-  "read.failed": "无法读取本地观测记录。",
-  "clear.failed": "无法清除本地观测记录。",
 };

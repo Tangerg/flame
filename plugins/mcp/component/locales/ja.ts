@@ -1,7 +1,4 @@
 export const ja: Record<string, string> = {
-  "mcp.error.toolPolicy": "ツールのポリシーを更新できませんでした。",
-  "mcp.tools.policyHint":
-    "即座に保存されます。ツールの表示設定は新しい実行に適用されます。自動承認はグローバルな許可ルールを設定します。より具体的なルールも適用されます。",
   "mcp.tools.nameConflict":
     "{{name}} として利用できます。短い名前は {{sources}} でも使われています。",
   "mcp.add": "サーバーを追加",
@@ -55,7 +52,8 @@ export const ja: Record<string, string> = {
   "mcp.form.headers.clear": "保存済みのヘッダーを削除",
   "mcp.form.headers.originChanged":
     "エンドポイントのオリジンが変わりました。新しいヘッダーを入力するか、保存済みの値を削除してください。",
-  "mcp.form.timeout": "タイムアウト（秒）— 任意",
+  "mcp.form.timeout": "タイムアウト（秒）",
+  "mcp.form.timeout.none": "無制限",
   "mcp.form.timeout.invalid":
     "正の整数で秒数を入力するか、時間制限なしにする場合は空欄のままにしてください。",
   "mcp.form.description.aria": "説明",
@@ -63,10 +61,8 @@ export const ja: Record<string, string> = {
   "mcp.import.confirm": "インポート",
   "mcp.importing": "インポート中…",
   "mcp.import.ok_other": "{{count}} 個のサーバーをインポートしました",
-  "mcp.import.renamed": "Runtime が受け付ける形式に改名しました: {{names}}",
   "mcp.import.partial_other":
     "{{total}} 件中 {{count}} 件をインポートしました。",
-  "mcp.import.error": "その設定をインポートできませんでした。",
   "mcp.import.invalidJson": "有効な JSON を入力してください。",
   "mcp.import.invalidShape":
     "「mcpServers」オブジェクトを含む有効な MCP 設定を使用してください。",
@@ -81,19 +77,11 @@ export const ja: Record<string, string> = {
     "サーバー「{{server}}」のタイムアウトを正の整数の秒数で設定するか、時間制限なしにする場合は省略してください。",
   "mcp.import.empty":
     "「mcpServers」の下にサーバーを 1 つ以上追加してください。",
-  "mcp.tools.title": "{{server}} のツール",
-  "mcp.tools.label": "{{server}} の{{tools}}",
   "mcp.tools.enabled": "有効",
   "mcp.tools.autoApprove": "自動承認",
   "mcp.tools.empty": "このサーバーはツールを公開していません",
   "mcp.tools.enable.aria": "{{tool}} を有効化",
   "mcp.tools.autoApprove.aria": "{{tool}} を自動承認",
-  "mcp.error.save": "サーバーを保存できませんでした。",
-  "mcp.error.remove": "サーバーを削除できませんでした。",
-  "mcp.error.toggle": "サーバーを変更できませんでした。",
-  "mcp.error.signIn": "サインインに失敗しました。",
-  "mcp.error.reconnect": "サーバーに再接続できませんでした。",
-  "mcp.error.test": "テストに失敗しました",
   "mcp.error.loadTools": "ツールを読み込めませんでした",
   "mcp.error.loadToolVisibility": "ツールの表示設定を読み込めませんでした",
   "mcp.error.loadAutoApproveRules": "自動承認ルールを読み込めませんでした",

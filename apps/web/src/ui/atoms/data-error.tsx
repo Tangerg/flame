@@ -1,10 +1,10 @@
 import { iconGlyph, type IconName } from "@/ui/icons/index";
-import { type RefObject } from "react";
+import { type CSSProperties, type RefObject } from "react";
 import { useT } from "@/lib/i18n/index";
 import { isUnsupportedMethod } from "@/lib/rpcErrors";
 import { handoffFocus } from "@flame/ui";
 import { Button } from "@flame/ui/button";
-import { EmptyState, type EmptyStateSize } from "@flame/ui/empty-state";
+import { EmptyState, type EmptyStateAlign, type EmptyStateSize } from "@flame/ui/empty-state";
 export interface UnsupportedConfig {
   icon?: IconName;
   title?: string;
@@ -21,6 +21,8 @@ interface Props {
   title?: string;
   sub?: string;
   size?: EmptyStateSize;
+  align?: EmptyStateAlign;
+  style?: CSSProperties;
 }
 
 export function DataError({
@@ -32,6 +34,8 @@ export function DataError({
   title,
   sub,
   size,
+  align,
+  style,
 }: Props) {
   const t = useT();
   if (failure != null && isUnsupportedMethod(failure)) {
@@ -42,6 +46,8 @@ export function DataError({
         title={unsupported?.title ?? t("runtime.unsupported.title")}
         sub={unsupported?.sub ?? t("runtime.unsupported.sub")}
         size={unsupported?.size}
+        align={align}
+        style={style}
       />
     );
   }
@@ -52,10 +58,12 @@ export function DataError({
       title={title ?? t("dataView.error.title")}
       sub={sub ?? t("dataView.error.sub")}
       size={size}
+      align={align}
+      style={style}
       action={
         onRetry && (
           <Button
-            variant="outline"
+            variant="soft"
             size={size === "compact" ? "xs" : "sm"}
             onClick={(event) => {
               const retiring = event.currentTarget;

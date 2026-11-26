@@ -1,6 +1,5 @@
 export const ko: Record<string, string> = {
   "code.copy": "코드 복사",
-  "code.copied": "복사됨",
   "code.wrap": "자동 줄 바꿈 사용",
   "code.unwrap": "자동 줄 바꿈 사용 안 함",
   "panel.title": "클라이언트 진단",
@@ -16,7 +15,7 @@ export const ko: Record<string, string> = {
   "observations.title": "로컬 관측 기록",
   "observations.accepted": "최근 버퍼 읽기",
   "observations.stale": "마지막으로 읽은 내용을 표시합니다.",
-  "observations.empty.title": "이번 읽기에는 로컬 관측 기록이 없습니다.",
+  "observations.empty.title": "이번 읽기에는 로컬 관측 기록이 없습니다",
   "span.meta": "{{ms}} ms · {{kind}}",
   "span.status.error": "오류",
   "fact.started": "시작 시각",
@@ -36,9 +35,4 @@ export const ko: Record<string, string> = {
   "attributes.title": "속성",
   "raw.title": "원시 관측 기록",
   "raw.label": "로컬 관측 기록 세부 정보",
-  "about.title": "클라이언트 진단 정보",
-  "about.note":
-    "이 클라이언트의 로컬 버퍼만 표시됩니다. 새로 고침은 최신 내용을 읽고, 지우기는 로컬 관측 기록을 제거합니다. Runtime 집계와 원격 텔레메트리는 변경되지 않습니다. 오래된 관측 기록은 제거되었을 수 있습니다.",
-  "read.failed": "로컬 관측 기록을 읽을 수 없습니다.",
-  "clear.failed": "로컬 관측 기록을 지울 수 없습니다.",
 };

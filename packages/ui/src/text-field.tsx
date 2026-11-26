@@ -5,6 +5,7 @@ import type { IconSize } from "./icon-scale";
 import { clsx as cn } from "clsx";
 import {
   color,
+  font,
   leading,
   motion,
   radius,
@@ -67,8 +68,10 @@ const styles = stylex.create({
   inkSoft: { color: color.fgSoft },
   invalidBare: { boxShadow: `inset 0 0 0 1px ${color.negative}` },
   numeric: { fontVariantNumeric: "tabular-nums" },
-  faceMono: { fontFamily: "var(--font-mono)" },
-  faceSans: { fontFamily: "var(--font-sans)" },
+  faceMono: { fontFamily: font.mono },
+  faceSans: { fontFamily: font.sans },
+  // A one-line hint ("New absolute path") is prose, not a value to copy.
+  hintSans: { "::placeholder": { fontFamily: font.sans } },
   input: { lineHeight: leading.tight },
   area: {
     resize: "vertical",
@@ -83,7 +86,6 @@ const styles = stylex.create({
   areaMd: { paddingBlock: space.s2 },
   autosize: {
     resize: "vertical",
-    minHeight: "2lh",
     maxHeight: "min(24lh, 60dvh)",
     overflowY: "auto",
     fieldSizing: {
@@ -127,6 +129,23 @@ type SharedProps = {
   pending?: boolean;
 };
 
+// Code-face text is literal: spelling aids would underline or rewrite paths and commands.
+function literalText(
+  font: keyof typeof FACE,
+  props: {
+    spellCheck?: boolean | "true" | "false";
+    autoCorrect?: string;
+    autoCapitalize?: string;
+  },
+) {
+  if (font !== "mono") return {};
+  return {
+    spellCheck: props.spellCheck ?? false,
+    autoCorrect: props.autoCorrect ?? "off",
+    autoCapitalize: props.autoCapitalize ?? "none",
+  };
+}
+
 function edge(variant: FieldEdge, invalid: boolean) {
   return [
     variant === "boxed" ? [FIELD_SURFACE.face, styles.hang] : styles[variant],
@@ -156,6 +175,7 @@ export function TextField({
     styles.input,
     type.uiMd,
     FACE[font],
+    font === "mono" && styles.hintSans,
     INK[ink],
     ...edge(variant, invalid),
     variant === "boxed" && FIELD_SIZE[size],
@@ -165,6 +185,7 @@ export function TextField({
   return (
     <input
       {...props}
+      {...literalText(font, props)}
       aria-invalid={invalid || undefined}
       {...(invalid && { "data-focus-outset": "" })}
       readOnly={pending || props.readOnly}
@@ -218,9 +239,19 @@ export function TextArea({
     autosize && styles.autosize,
     extra,
   );
+  // field-sizing ignores the rows attribute, so the requested rows (two by
+  // default) set the visible minimum; the border box adds the block padding.
+  const minRows = props.rows ?? 2;
+  const padding = size === "sm" ? space.s1_5 : space.s2;
   return (
     <textarea
       {...props}
+      {...literalText(font, props)}
+      style={
+        autosize
+          ? { minHeight: `calc(${minRows}lh + 2 * ${padding})`, ...props.style }
+          : props.style
+      }
       ref={ref}
       rows={props.rows ?? (autosize ? 4 : undefined)}
       aria-invalid={invalid || undefined}

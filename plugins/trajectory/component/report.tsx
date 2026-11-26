@@ -170,6 +170,7 @@ export function TrajectoryReport({
               <Observation
                 row={row}
                 t={t}
+                occurred={occurred}
                 expansion={expansion}
                 onEvidenceOpenChange={(open) => setEvidenceOpen(key, open)}
               />
@@ -185,7 +186,7 @@ export function TrajectoryReport({
             }
             action={
               (kind !== UNFILTERED || run !== UNFILTERED || search !== "") && (
-                <Button variant="outline" onClick={onClearFilters}>
+                <Button variant="soft" onClick={onClearFilters}>
                   {t("filters.clear")}
                 </Button>
               )
@@ -206,9 +207,6 @@ export function TrajectoryReport({
             ],
           ]}
         />
-      </Disclosure>
-      <Disclosure title={t("about.title")}>
-        <Metadata>{t("about.note")}</Metadata>
       </Disclosure>
     </>
   );

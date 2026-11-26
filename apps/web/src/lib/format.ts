@@ -22,24 +22,22 @@ export function fmtTokens(n: number): string {
   return `${decimal(n / 1_000_000, 1, 1)}M`;
 }
 
-export function fmtDuration(ms: number): string {
-  if (ms < 1000) return `${decimal(ms, 0)}ms`;
-  const seconds = ms / 1000;
-  if (seconds < 10) return `${decimal(Math.round(seconds * 10) / 10, 1)}s`;
-  const whole = Math.round(seconds);
-  if (whole < 60) return `${whole}s`;
-  const minutes = Math.floor(whole / 60);
-  if (minutes < 60) return `${minutes}m ${String(whole - minutes * 60).padStart(2, "0")}s`;
-  const hours = Math.floor(minutes / 60);
-  return `${hours}h ${String(minutes - hours * 60).padStart(2, "0")}m`;
+// The catalogs own each locale's units and spacing; whole seconds keep a ticking clock steady.
+function clockText(t: Translate, seconds: number): string {
+  if (seconds < 60) return t("duration.seconds", { sec: seconds });
+  const min = Math.floor(seconds / 60);
+  if (min < 60) return t("duration.minutes", { min, sec: seconds % 60 });
+  const hr = Math.floor(min / 60);
+  return t("duration.hours", { hr, min: min % 60 });
+}
+
+export function fmtDuration(t: Translate, ms: number): string {
+  if (ms < 1000) return t("duration.milliseconds", { ms: Math.round(ms) });
+  if (ms < 10_000) return t("duration.seconds", { sec: decimal(ms / 1000, 1) });
+  return clockText(t, Math.round(ms / 1000));
 }
 
 export function durationText(t: Translate, start: number, end: number | null): string {
   if (end === null) return "—";
-  const sec = Math.round((end - start) / 1000);
-  if (sec < 60) return t("duration.seconds", { sec });
-  const min = Math.floor(sec / 60);
-  if (min < 60) return t("duration.minutes", { min, sec: sec % 60 });
-  const hr = Math.floor(min / 60);
-  return t("duration.hours", { hr, min: min % 60 });
+  return clockText(t, Math.round((end - start) / 1000));
 }

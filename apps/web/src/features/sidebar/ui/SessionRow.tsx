@@ -18,7 +18,7 @@ import { useLocale, useT, type Translate } from "@/lib/i18n/index";
 import { formatRelative } from "@/lib/i18n/relativeTime";
 import { type WorkSession } from "@/features/navigation/public/workIndex";
 import { sessionDisplayTitle } from "@/features/agent/public/session";
-import { MoveToProjectDialog } from "@/features/projects/public/projects";
+import { MoveToProjectDialog, useProjects } from "@/features/projects/public/projects";
 import {
   sessionIsRunning,
   sessionIsWaiting,
@@ -64,7 +64,7 @@ function sessionMenu(
   session: WorkSession,
   actions: Pick<Props, "onToggleFavorite" | "onFork" | "onDelete"> & {
     contributed: SessionMenuItem[];
-    move: () => void;
+    move: (() => void) | undefined;
     confirmDelete: () => void;
   },
 ): SessionMenuItem[] {
@@ -84,15 +84,14 @@ function sessionMenu(
       label: t("session.action.fork"),
       run: () => onFork(session.id),
     });
-  items.push(
-    {
+  if (actions.move)
+    items.push({
       id: "project",
       icon: "blocks",
       label: t("session.action.moveToProject"),
       run: actions.move,
-    },
-    ...actions.contributed,
-  );
+    });
+  items.push(...actions.contributed);
   if (onDelete)
     items.push({
       id: "delete",
@@ -147,6 +146,10 @@ export function SessionRow({
     title: session.title,
   });
   const contributedActions = useExtensionPoint(SESSION_ACTION);
+  const projects = useProjects();
+  // A move needs a destination: another project, or out of the current one.
+  const movable =
+    session.projectId !== undefined || (projects.data ?? []).some((project) => !project.archived);
   const [action, setAction] = useState<{ entry: SessionActionSpec; session: CapturedSession }>();
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [moving, setMoving] = useState(false);
@@ -163,7 +166,7 @@ export function SessionRow({
     onDelete,
     contributed: contributedActions.map((entry) => ({
       id: entry.id,
-      icon: "blocks" as const,
+      icon: "plug" as const,
       label: presentationTitle(entry.title, entry.localizedTitles, locale),
       run: () =>
         setAction({
@@ -171,7 +174,7 @@ export function SessionRow({
           session: capturedSession,
         }),
     })),
-    move: () => setMoving(true),
+    move: movable ? () => setMoving(true) : undefined,
     confirmDelete: () => setConfirmingDelete(true),
   });
 

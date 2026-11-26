@@ -5,7 +5,7 @@ export const en: Record<string, string> = {
   "interaction.failed": "The operation failed.",
   "interaction.complete": "Action accepted.",
   "interaction.unknown":
-    "The original action has not been confirmed. Recover it before submitting again.",
+    "The original action hasn’t been confirmed. Recover it before submitting again.",
   "interaction.recover": "Recover original action",
   "interaction.review": "Review business command",
   "interaction.reviewDescription":

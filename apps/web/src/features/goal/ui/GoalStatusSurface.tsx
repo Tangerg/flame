@@ -19,7 +19,7 @@ import {
   vocab,
 } from "@flame/ui";
 import { AgentComposerTopTraySurface } from "@/ui/agent/index";
-import { color, leading, space, type as typeStep } from "@flame/ui/tokens.stylex";
+import { color, edge, leading, space, type as typeStep } from "@flame/ui/tokens.stylex";
 import { useT } from "@/lib/i18n/index";
 import { durationText } from "@/lib/format";
 import { useElapsedMillis } from "@/lib/useElapsedMillis";
@@ -46,9 +46,9 @@ const goalTray = stylex.create({
     marginInline: space.s3,
     marginBottom: `calc(-1 * ${space.s3})`,
     paddingBottom: space.s3,
-    borderTopWidth: "var(--control-edge-width)",
-    borderLeftWidth: "var(--control-edge-width)",
-    borderRightWidth: "var(--control-edge-width)",
+    borderTopWidth: edge.control,
+    borderLeftWidth: edge.control,
+    borderRightWidth: edge.control,
     borderBottomWidth: 0,
     borderStyle: "solid",
     borderColor: "var(--composer-tray-edge-color)",
@@ -235,7 +235,6 @@ function GoalRow({ goal, writable }: { goal: GoalReadModel; writable: boolean })
       <ModalDialog
         open={readerOpen}
         onOpenChange={setReaderOpen}
-        icon={<Icon name="target" size="lg" className={stylex.props(vocab.muted).className} />}
         title={t("goal.edit.label")}
         closeLabel={t("common.close")}
         initialFocus={readerRef}
@@ -299,7 +298,7 @@ function GoalActions({
         <IconButton
           type="button"
           size="xs"
-          icon={iconGlyph("maximize")}
+          icon={iconGlyph("edit")}
           quiet
           aria-label={t("goal.action.edit")}
           disabled={disabled}
@@ -386,10 +385,8 @@ function GoalEditorDialog({
     <TextEditorDialog
       open={open}
       onOpenChange={editor.changeOpen}
-      icon={<Icon name="target" size="lg" className={stylex.props(vocab.muted).className} />}
       title={t("goal.edit.title")}
       closeLabel={t("common.close")}
-      label={t("goal.edit.label")}
       value={editor.draft}
       onChange={editor.edit}
       cancelLabel={t("common.cancel")}

@@ -2,7 +2,7 @@ export const de: Record<string, string> = {
   "worktree.open": "Arbeitsbereichsänderungen anzeigen ({{count}})",
   "worktree.files_one": "{{count}} Datei",
   "worktree.files_other": "{{count}} Dateien",
-  "panel.title": "Workspace-Diff",
+  "panel.title": "Arbeitsbereichs-Diff",
   refresh: "Aktualisieren",
   "scope.label": "Vergleichsbereich",
   "read.failedShort": "Lesen fehlgeschlagen",
@@ -14,10 +14,18 @@ export const de: Record<string, string> = {
   "comparison.worktree": "Nicht committete Änderungen",
   "comparison.base": "Branch-Änderungen",
   "read.failed": "Der Diff konnte nicht gelesen werden.",
-  "status.reading": "{{name}} werden gelesen…",
-  "status.error": "{{name}} konnten nicht gelesen werden: {{error}}",
-  "status.stale": "Zeigt {{name}} aus dem letzten erfolgreichen Lesevorgang.",
-  "status.loaded": "Zeigt {{name}}.",
+  "status.reading.worktree": "Nicht committete Änderungen werden gelesen…",
+  "status.reading.base": "Branch-Änderungen werden gelesen…",
+  "status.error.worktree":
+    "Nicht committete Änderungen konnten nicht gelesen werden: {{error}}",
+  "status.error.base":
+    "Branch-Änderungen konnten nicht gelesen werden: {{error}}",
+  "status.stale.worktree":
+    "Zeigt nicht committete Änderungen aus dem letzten erfolgreichen Lesevorgang.",
+  "status.stale.base":
+    "Zeigt Branch-Änderungen aus dem letzten erfolgreichen Lesevorgang.",
+  "status.loaded.worktree": "Zeigt nicht committete Änderungen.",
+  "status.loaded.base": "Zeigt Branch-Änderungen.",
   "navigation.label": "Navigation durch geänderte Dateien",
   "navigation.position": "Datei {{position}} von {{total}}",
   "navigation.positionMatching":
@@ -32,7 +40,7 @@ export const de: Record<string, string> = {
   "layout.split": "Nebeneinander",
   "controls.label": "Dateisteuerung",
   "filter.label": "Dateien filtern",
-  "filter.placeholder": "Geänderte Datei finden",
+  "filter.placeholder": "Geänderte Datei finden…",
   "filter.clear": "Filter löschen",
   partial:
     "Teilweiser Diff. Es werden nur die enthaltenen Dateien und Zeilenänderungen angezeigt.",
@@ -43,10 +51,10 @@ export const de: Record<string, string> = {
   "files.match_one": "{{count}} von {{total}} Dateien stimmt überein",
   "files.match_other": "{{count}} von {{total}} Dateien stimmen überein",
   "stat.title": "Zeilenänderungen in enthaltenen Textdateien",
-  "empty.title": "Keine Änderungen in diesem Vergleich.",
+  "empty.title": "Keine Änderungen in diesem Vergleich",
   "file.unchanged": "Keine Änderungen an dieser Datei in diesem Vergleich.",
   "file.overBudget": "Diese Datei passt nicht in das Leselimit.",
-  "nomatch.title": "Keine übereinstimmenden Dateien.",
+  "nomatch.title": "Keine übereinstimmenden Dateien",
   "files.region": "Geänderte Dateien",
   "file.changes": "Änderungen in {{path}}",
   "file.renamed": "Umbenannt von",
@@ -70,5 +78,5 @@ export const de: Record<string, string> = {
   "baseline.label": "Basis: {{ref}} · {{commit}}",
   "baseline.head": "HEAD",
   "baseline.mergeBase": "Merge-Basis",
-  "budget.empty": "Keine vollständige Datei passt in das Leselimit.",
+  "budget.empty": "Keine vollständige Datei passt in das Leselimit",
 };

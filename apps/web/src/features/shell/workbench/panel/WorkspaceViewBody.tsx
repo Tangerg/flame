@@ -8,6 +8,7 @@ import { useT, labelText } from "@/lib/i18n/index";
 import { PluginBoundary } from "@/extensions/host/PluginBoundary";
 import { useWorkspaceViews } from "@/features/workspace/public/views";
 import { AgentDockPanel } from "@/ui/agent/context-dock";
+import { edge } from "@flame/ui/tokens.stylex";
 interface Props {
   viewId: string;
   presentation: "dock" | "main";
@@ -22,7 +23,7 @@ const styles = stylex.create({
     minWidth: 0,
     minHeight: 0,
     // Clip scrolling content before the reserved inset focus perimeter.
-    borderWidth: "var(--focus-inset-edge)",
+    borderWidth: edge.focusInset,
     borderStyle: "solid",
     borderColor: "transparent",
     overflowY: "auto",

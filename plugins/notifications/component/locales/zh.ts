@@ -1,11 +1,6 @@
 export const zh: Record<string, string> = {
   "settings.completionSound": "完成提示音",
-  "settings.completionSound.sub": "当应用在后台时，运行结束播放提示音。",
   "settings.notifications": "系统通知",
-  "settings.notifications.authorization.granted":
-    "Flame 在后台时，运行完成、失败或需要你处理时会显示通知。",
-  "settings.notifications.authorization.default":
-    "Flame 会在第一次需要通知你时请求权限。",
   "settings.notifications.authorization.denied":
     "已被系统阻止。请在“系统设置 › 通知”中允许 Flame 后再开启。",
   "settings.notifications.authorization.unsupported": "此平台不支持系统通知。",

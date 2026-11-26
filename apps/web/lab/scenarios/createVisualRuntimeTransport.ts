@@ -40,6 +40,7 @@ import { VISUAL_DIRECTORY_PATH } from "./workspaceFixtureStates";
 import discovery from "@flame/runtime-client/testing/samples/method.discover.resp.json";
 import { visualTrajectory } from "./trajectorySnapshot";
 import { VISUAL_HOOKS } from "./hookSnapshot";
+import { VISUAL_APPROVAL_RULES } from "./approvalRulesSnapshot";
 import { type RuntimeAgentSessionSnapshot } from "./agentSessionSnapshots";
 import {
   VISUAL_SKILL_DOCUMENTS,
@@ -173,7 +174,7 @@ const RECORDED_RESPONSES: Partial<Record<TransportRequest["method"], RecordedRes
   }),
   "plugins.list": () => ({ data: VISUAL_PACKAGES }),
   "plugins.listProviders": () => ({ data: VISUAL_PLUGIN_PROVIDERS }),
-  "approval.listRules": () => ({ rules: [] }),
+  "approval.listRules": () => structuredClone(VISUAL_APPROVAL_RULES),
   "approval.getMode": (_, { approval }) => ({ ...approval }),
   "approval.setMode": (params, { approval }) => {
     approval.mode = (params as SetApprovalModeRequest).mode;

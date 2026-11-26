@@ -22,28 +22,21 @@ export const es: Record<string, string> = {
   "providers.test": "Probar",
   "providers.testing": "Probando…",
   "providers.connectionOk": "Conexión correcta",
-  "providers.error.save": "Error al guardar",
-  "providers.error.test": "Error en la prueba",
   "providers.models.error": "No se pudieron cargar los modelos.",
-  "providers.models.refresh": "Actualizar modelos",
   "providers.empty": "Sin proveedores",
   "providers.empty.sub":
     "El Runtime no informa proveedores de LLM compatibles.",
-  "providers.apiKey.envPlaceholder":
-    "Usando la clave del entorno: escribe para sobrescribirla",
   "providers.fromEnv": "Del entorno",
   "providers.utility.title": "Modelo auxiliar",
   "providers.utility.desc":
     "Modelo para resúmenes, títulos y extracción de hechos.",
   "providers.utility.main": "Usar el modelo predeterminado de Runtime",
-  "providers.utility.error": "No se pudo establecer el modelo auxiliar.",
   "providers.embedding.title": "Modelo de embeddings",
   "providers.embedding.desc":
-    "Mejora opcionalmente la clasificación de Agent Memory.",
+    "Mejora la clasificación de la memoria del agente.",
   "providers.embedding.off": "Desactivado",
   "providers.embedding.none":
     "Todavía no hay ningún proveedor con embeddings configurado: añade uno arriba (por ejemplo OpenAI).",
-  "providers.embedding.error": "No se pudo establecer el modelo de embeddings.",
   "providers.testOutcome.notConfigured":
     "Completa primero la configuración del proveedor.",
   "providers.testOutcome.failed":
@@ -63,12 +56,12 @@ export const es: Record<string, string> = {
     "Hay un proveedor listo. Cierra Ajustes para volver: tu borrador sigue ahí.",
   "providers.roles.heading": "Funciones de modelo",
   "rpcError.invalid_credentials":
-    "El proveedor rechazó la API key — revísala en los ajustes del proveedor.",
+    "El proveedor rechazó la clave de API — revísala en los ajustes del proveedor.",
   "rpcError.timeout":
     "La petición al proveedor del modelo agotó el tiempo — comprueba la conexión y reintenta.",
   title: "Proveedores de modelos",
   cancel: "Cancelar",
-  reading: "Cargando",
+  reading: "Cargando…",
   refresh: "Actualizar",
   retry: "Reintentar",
   "command.uncertain":

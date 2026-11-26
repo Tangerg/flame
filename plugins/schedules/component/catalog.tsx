@@ -127,7 +127,7 @@ export function ScheduleCatalogEmpty({
         size="compact"
         title={t("empty.filtered.title")}
         action={
-          <Button variant="outline" onClick={onClearFilters}>
+          <Button variant="soft" onClick={onClearFilters}>
             {t("empty.filtered.action")}
           </Button>
         }
@@ -146,7 +146,6 @@ export function ScheduleCatalogEmpty({
       icon={CalendarClock}
       size="compact"
       title={t("empty.none.title")}
-      sub={t("empty.none.sub")}
     />
   );
 }

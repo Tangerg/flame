@@ -11,13 +11,14 @@ import { HeadingLevel, useHeadingTag } from "./heading-level";
 import { clsx } from "clsx";
 import {
   color,
-  leading,
+  font,
   layout,
+  leading,
+  rowInset,
   space,
   surface,
   type,
   weight,
-  rowInset,
 } from "./tokens.stylex";
 
 const styles = stylex.create({
@@ -34,7 +35,7 @@ const styles = stylex.create({
       default: null,
       ":is([data-paper-texture] *)": surface.texture,
     },
-    fontFamily: "var(--font-sans)",
+    fontFamily: font.sans,
     lineHeight: leading.body,
     minWidth: 0,
     overflowWrap: "anywhere",
@@ -161,15 +162,17 @@ const styles = stylex.create({
     minWidth: 0,
     marginInlineStart: `calc(-1 * ${space.s3})`,
   },
+  // Sized by its search and actions, so the filters wrap to the next line before
+  // the actions break away from the search, keeping reading and focus order.
   filterLead: {
     display: "flex",
     flexWrap: "wrap",
     alignItems: "center",
     gap: layout.controlGap,
-    flex: "1 1 20rem",
+    flex: "1 1 auto",
     minWidth: 0,
   },
-  filterSearch: { flex: "1 1 12rem", minWidth: 0 },
+  filterSearch: { flex: "1 1 12rem", width: "12rem", minWidth: 0 },
   hang: {
     display: "flex",
     minWidth: 0,

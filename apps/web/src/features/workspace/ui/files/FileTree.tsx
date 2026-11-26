@@ -1,4 +1,4 @@
-import { useWorkingTreeFiles } from "@/features/workspace/application/workingTreeChanges";
+import { useWorkingTree } from "@/features/workspace/application/workingTreeChanges";
 import {
   useId,
   useImperativeHandle,
@@ -68,6 +68,14 @@ const styles = stylex.create({
   chevronGlyph: { position: "relative", insetInlineStart: "calc(var(--icon-xs) * -0.3125)" },
   chevronGlyphOpen: { insetInlineStart: "calc(var(--icon-xs) * -0.1875)" },
   name: { flex: 1, overflowWrap: "anywhere" },
+  folderMark: {
+    flexShrink: 0,
+    width: "0.375rem",
+    height: "0.375rem",
+    marginInline: "0.125rem",
+    borderRadius: "50%",
+    backgroundColor: "currentColor",
+  },
   loading: { marginInline: layout.compactGutter },
   statuses: {
     flexShrink: 0,
@@ -172,14 +180,15 @@ function Item({
     entry.path,
     directory && ancestorsExpanded && expanded.has(entry.path) && visible,
   );
-  const changes = useWorkingTreeFiles();
-  const change = changes.get(entry.path);
+  const tree = useWorkingTree();
+  const change = tree.files.get(entry.path);
+  const changedBelow = directory && !change && tree.folders.has(entry.path);
   return (
     <TreeItem
       id={entry.path}
       textValue={entry.name}
       aria-label={entry.name}
-      aria-describedby={change ? changeId : undefined}
+      aria-describedby={change || changedBelow ? changeId : undefined}
       data-file-path={entry.path}
       data-focus-inset=""
       hasChildItems={directory}
@@ -219,6 +228,14 @@ function Item({
               </span>
             )}
             {change && <span aria-hidden="true">{CHANGE_MARK[change.change]}</span>}
+            {changedBelow && (
+              <>
+                <span id={changeId} hidden>
+                  {t("file.change.below")}
+                </span>
+                <span aria-hidden="true" {...stylex.props(styles.folderMark)} />
+              </>
+            )}
           </div>
         )}
       </TreeItemContent>

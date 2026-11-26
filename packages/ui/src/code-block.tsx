@@ -23,7 +23,7 @@ import {
   useDiffSource,
   type DiffSourceProps,
 } from "./source-renderers";
-import { color, leading, space, type, weight } from "./tokens.stylex";
+import { color, font, leading, space, type, weight } from "./tokens.stylex";
 
 let wrapCode = false;
 const wrapListeners = new Set<() => void>();
@@ -71,7 +71,7 @@ const styles = stylex.create({
   literalFrame: {
     minHeight: 0,
     maxHeight: "min(36rem, 80dvh)",
-    fontFamily: "var(--font-mono)",
+    fontFamily: font.mono,
     lineHeight: leading.relaxed,
   },
   caption: {
@@ -84,7 +84,7 @@ const styles = stylex.create({
     paddingBlock: space.s1,
     paddingInlineStart: space.s3,
     paddingInlineEnd: space.s1_5,
-    fontFamily: "var(--font-sans)",
+    fontFamily: font.sans,
   },
   language: {
     flex: "1 0 auto",
@@ -121,7 +121,7 @@ const styles = stylex.create({
     paddingInline: `calc(${space.s3} - ${SOURCE_EDGE})`,
     paddingBlockStart: space.s0_5,
     paddingBlockEnd: space.s3,
-    fontFamily: "var(--font-mono)",
+    fontFamily: font.mono,
     lineHeight: leading.relaxed,
     userSelect: "text",
   },

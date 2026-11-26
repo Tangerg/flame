@@ -18,33 +18,25 @@ export const de: Record<string, string> = {
   "providers.key": "Schlüssel {{masked}}",
   "providers.ready": "Bereit",
   "providers.save": "Speichern",
-  "providers.saving": "Speichern…",
+  "providers.saving": "Wird gespeichert…",
   "providers.test": "Testen",
   "providers.testing": "Test läuft…",
   "providers.connectionOk": "Verbindung OK",
-  "providers.error.save": "Speichern fehlgeschlagen",
-  "providers.error.test": "Test fehlgeschlagen",
   "providers.models.error": "Modelle konnten nicht geladen werden.",
-  "providers.models.refresh": "Modelle aktualisieren",
   "providers.empty": "Keine Anbieter",
   "providers.empty.sub": "Die Runtime meldet keine unterstützten LLM-Anbieter.",
-  "providers.apiKey.envPlaceholder":
-    "Umgebungsschlüssel wird verwendet — tippen zum Überschreiben",
   "providers.fromEnv": "Aus Umgebung",
   "providers.utility.title": "Hilfsmodell",
   "providers.utility.desc":
     "Modell für Zusammenfassungen, Titel und Faktenextraktion.",
   "providers.utility.main": "Runtime-Standard verwenden",
-  "providers.utility.error": "Hilfsmodell konnte nicht gesetzt werden.",
   "providers.embedding.title": "Embedding-Modell",
-  "providers.embedding.desc":
-    "Verbessert optional das Ranking des Agent Memory.",
+  "providers.embedding.desc": "Verbessert das Ranking im Agent-Memory.",
   "providers.embedding.off": "Aus",
   "providers.embedding.none":
     "Noch kein Anbieter mit Embedding-Unterstützung konfiguriert — füge oben einen hinzu (z. B. OpenAI).",
-  "providers.embedding.error": "Embedding-Modell konnte nicht gesetzt werden.",
   "providers.testOutcome.notConfigured":
-    "Schließe zuerst die Provider-Konfiguration ab.",
+    "Schließe zuerst die Anbieterkonfiguration ab.",
   "providers.testOutcome.failed":
     "Der Anbieter war nicht erreichbar oder hat die Testanfrage abgelehnt.",
   "providers.apiKey.label": "API-Schlüssel",
@@ -67,7 +59,7 @@ export const de: Record<string, string> = {
     "Die Anfrage an den Modellanbieter hat das Zeitlimit überschritten — Verbindung prüfen und erneut versuchen.",
   title: "Modellanbieter",
   cancel: "Abbrechen",
-  reading: "Wird geladen",
+  reading: "Wird geladen…",
   refresh: "Aktualisieren",
   retry: "Erneut versuchen",
   "command.uncertain":

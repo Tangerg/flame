@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import type { StyleXStyles } from "@stylexjs/stylex";
 import type { ReactElement, ReactNode } from "react";
-import { leading, space, type } from "./tokens.stylex";
+import { font, leading, space, type } from "./tokens.stylex";
 import { Tooltip as TooltipPrimitive } from "@base-ui/react/tooltip";
 import { FLOATING_LAYER, FLOATING_TIP } from "./floating-surface";
 import {
@@ -14,7 +14,7 @@ const tip = stylex.create({
   measure: {
     paddingInline: space.s3,
     paddingBlock: space.s1_5,
-    fontFamily: "var(--font-sans)",
+    fontFamily: font.sans,
     lineHeight: leading.snug,
     pointerEvents: {
       default: "auto",

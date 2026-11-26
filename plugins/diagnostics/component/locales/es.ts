@@ -1,6 +1,5 @@
 export const es: Record<string, string> = {
   "code.copy": "Copiar código",
-  "code.copied": "Copiado",
   "code.wrap": "Activar ajuste de línea",
   "code.unwrap": "Desactivar ajuste de línea",
   "panel.title": "Diagnóstico del cliente",
@@ -16,10 +15,10 @@ export const es: Record<string, string> = {
   "observations.title": "Observaciones locales",
   "observations.accepted": "Última lectura del búfer",
   "observations.stale": "Se muestra la última lectura aceptada.",
-  "observations.empty.title": "No hay observaciones locales en esta lectura.",
+  "observations.empty.title": "No hay observaciones locales en esta lectura",
   "span.meta": "{{ms}} ms · {{kind}}",
   "span.status.error": "Error",
-  "fact.started": "Iniciado",
+  "fact.started": "Inicio",
   "fact.duration": "Duración",
   "fact.trace": "Traza",
   "fact.parentSpan": "Span principal",
@@ -36,9 +35,4 @@ export const es: Record<string, string> = {
   "attributes.title": "Atributos",
   "raw.title": "Observación sin procesar",
   "raw.label": "Detalles de la observación local",
-  "about.title": "Acerca del diagnóstico del cliente",
-  "about.note":
-    "Solo se muestra el búfer local de este cliente. Actualizar lee su contenido más reciente; Borrar elimina las observaciones locales. El recuento de Runtime y la telemetría remota no cambian. Es posible que se hayan descartado observaciones más antiguas.",
-  "read.failed": "No se pudieron leer las observaciones locales.",
-  "clear.failed": "No se pudieron borrar las observaciones locales.",
 };

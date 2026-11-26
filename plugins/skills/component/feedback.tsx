@@ -64,7 +64,7 @@ export function SkillReadStatus({
   read,
   snapshot,
   skillDocument,
-  title,
+  target,
   observationError,
   t,
 }: Pick<
@@ -73,7 +73,7 @@ export function SkillReadStatus({
   | "read"
   | "snapshot"
   | "skillDocument"
-  | "title"
+  | "target"
   | "observationError"
   | "t"
 >) {
@@ -82,10 +82,7 @@ export function SkillReadStatus({
       {!opened && read.loading && <p role="status">{t("reading")}</p>}
       {!opened && read.error && (
         <p role="alert">
-          {t("read.error", {
-            catalog: title.toLocaleLowerCase(),
-            error: read.error,
-          })}
+          {t(`read.error.${target}`, { error: read.error })}
           {snapshot && ` ${t("read.retained")}`}
         </p>
       )}

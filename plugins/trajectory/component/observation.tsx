@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import type { ReactNode, RefObject } from "react";
 import type { Translate } from "@flame/component-sdk";
-import { Activity, Cpu, Terminal, FileText, Server } from "@flame/icons/react";
+import { Activity, Cpu, FileText, Server, Wrench } from "@flame/icons/react";
 import type { TrajectoryEntry } from "@flame/runtime-client/wire";
 import { prettyJSON } from "@frame/sdk/json";
 import {
@@ -50,7 +50,7 @@ export function title(
             : row.type === "endpoint"
               ? Server
               : row.item.type === "toolCall"
-                ? Terminal
+                ? Wrench
                 : FileText
       }
       title={title}
@@ -171,11 +171,13 @@ function recordedBody(row: TrajectoryEntry, t: Translate): ReactNode[] {
 export function Observation({
   row: recorded,
   t,
+  occurred,
   expansion,
   onEvidenceOpenChange,
 }: {
   row: TrajectoryEntry;
   t: Translate;
+  occurred: Intl.DateTimeFormat;
   expansion?: ExpandedRecord;
   onEvidenceOpenChange: (open: boolean) => void;
 }) {
@@ -183,7 +185,9 @@ export function Observation({
   const sourceBodyRef = useEvidenceScrollRestoration(recorded, sourcePosition);
   const row = evidence(recorded);
   const body = recordedBody(row, t);
-  const { facts, notes } = observationFindings(row, t);
+  const { facts, notes } = observationFindings(row, t, (iso) => (
+    <time dateTime={iso}>{occurred.format(new Date(iso))}</time>
+  ));
   const raw = (
     <CodeBlock
       label={t("evidence.recorded")}

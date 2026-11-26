@@ -1,13 +1,9 @@
 export const de: Record<string, string> = {
-  "mcp.error.toolPolicy":
-    "Die Werkzeugrichtlinie konnte nicht geändert werden.",
-  "mcp.tools.policyHint":
-    "Wird sofort gespeichert. Die Sichtbarkeit gilt für neue Ausführungen. Automatische Genehmigung setzt eine globale Erlaubnisregel; spezifischere Regeln gelten weiterhin.",
   "mcp.tools.nameConflict":
     "Verfügbar als {{name}}. Der Kurzname wird auch von {{sources}} verwendet.",
   "mcp.add": "Server hinzufügen",
   "mcp.save": "Speichern",
-  "mcp.saving": "Speichern…",
+  "mcp.saving": "Wird gespeichert…",
   "mcp.delete": "Löschen",
   "mcp.delete.title": "Diesen Server löschen?",
   "mcp.delete.body":
@@ -59,7 +55,8 @@ export const de: Record<string, string> = {
   "mcp.form.headers.clear": "Gespeicherte Header entfernen",
   "mcp.form.headers.originChanged":
     "Der Ursprung des Endpunkts hat sich geändert. Neue Header eingeben oder die gespeicherten Werte entfernen.",
-  "mcp.form.timeout": "Timeout (Sekunden) — optional",
+  "mcp.form.timeout": "Timeout (Sekunden)",
+  "mcp.form.timeout.none": "Kein Limit",
   "mcp.form.timeout.invalid":
     "Gib eine positive ganze Zahl an Sekunden ein oder lass das Feld leer für kein Zeitlimit.",
   "mcp.form.description.aria": "Beschreibung",
@@ -68,11 +65,8 @@ export const de: Record<string, string> = {
   "mcp.importing": "Import läuft…",
   "mcp.import.ok_one": "{{count}} Server importiert",
   "mcp.import.ok_other": "{{count}} Server importiert",
-  "mcp.import.renamed":
-    "Umbenannt, damit die Runtime sie akzeptiert: {{names}}",
   "mcp.import.partial_one": "{{count}} von {{total}} Servern importiert.",
   "mcp.import.partial_other": "{{count}} von {{total}} Servern importiert.",
-  "mcp.import.error": "Diese Konfiguration konnte nicht importiert werden.",
   "mcp.import.invalidJson": "Gib gültiges JSON ein.",
   "mcp.import.invalidShape":
     "Verwende eine gültige MCP-Konfiguration mit einem „mcpServers“-Objekt.",
@@ -86,19 +80,11 @@ export const de: Record<string, string> = {
   "mcp.import.invalidTimeout":
     "Lege für den Server „{{server}}“ ein Timeout in positiven ganzen Sekunden fest oder lass es weg für kein Zeitlimit.",
   "mcp.import.empty": "Füge unter „mcpServers“ mindestens einen Server hinzu.",
-  "mcp.tools.title": "Tools von {{server}}",
-  "mcp.tools.label": "{{tools}} von {{server}}",
   "mcp.tools.enabled": "Aktiviert",
   "mcp.tools.autoApprove": "Automatisch genehmigen",
   "mcp.tools.empty": "Dieser Server stellt keine Tools bereit",
   "mcp.tools.enable.aria": "{{tool}} aktivieren",
   "mcp.tools.autoApprove.aria": "{{tool}} automatisch genehmigen",
-  "mcp.error.save": "Server konnte nicht gespeichert werden.",
-  "mcp.error.remove": "Server konnte nicht entfernt werden.",
-  "mcp.error.toggle": "Server konnte nicht geändert werden.",
-  "mcp.error.signIn": "Anmeldung fehlgeschlagen.",
-  "mcp.error.reconnect": "Server konnte nicht neu verbunden werden.",
-  "mcp.error.test": "Test fehlgeschlagen",
   "mcp.error.loadTools": "Tools konnten nicht geladen werden",
   "mcp.error.loadToolVisibility":
     "Tool-Sichtbarkeit konnte nicht geladen werden",
@@ -107,14 +93,14 @@ export const de: Record<string, string> = {
   "mcp.testOutcome.timedOut":
     "Der Server hat nicht rechtzeitig geantwortet – prüfe Befehl oder URL und versuche es erneut.",
   "mcp.testOutcome.failed":
-    "Der Server hat keine Verbindung hergestellt oder keine gültige Werkzeugliste geliefert. Prüfe die Einstellungen und versuche es erneut.",
+    "Der Server hat keine Verbindung hergestellt oder keine gültige Tool-Liste geliefert. Prüfe die Einstellungen und versuche es erneut.",
   "mcp.import.config": "JSON-Konfiguration",
   "mcpStatus.mcp_authorization_required":
     "Dieser Server verlangt eine Anmeldung, bevor er nutzbar ist.",
   "mcpStatus.mcp_authorization_failed":
     "Die Anmeldung wurde nicht abgeschlossen. Versuche es erneut.",
   "mcpStatus.mcp_tool_discovery_failed":
-    "Verbunden, aber dieser Server hat keine verwendbare Werkzeugliste geliefert. Prüfe den Server und versuche es erneut.",
+    "Verbunden, aber dieser Server hat keine verwendbare Tool-Liste geliefert. Prüfe den Server und versuche es erneut.",
   "mcpStatus.mcp_configuration_failed":
     "Die Konfiguration oder die gespeicherten Anmeldedaten dieses Servers konnten nicht verwendet werden. Prüfe die Einstellungen und versuche es erneut.",
   "mcpStatus.mcp_dial_failed":

@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import { type ComponentPropsWithoutRef } from "react";
 import { clsx } from "clsx";
-import { color, radius, space, surface, type, weight } from "@flame/ui/tokens.stylex";
+import { color, font, radius, space, surface, type, weight } from "@flame/ui/tokens.stylex";
 type KbdVariant = "cap" | "inline";
 
 const styles = stylex.create({
@@ -19,13 +19,13 @@ const styles = stylex.create({
     borderRadius: radius.step2xs,
     backgroundColor: surface.sunken,
     color: color.fgMuted,
-    fontFamily: "var(--font-sans)",
+    fontFamily: font.sans,
     fontWeight: weight.medium,
     lineHeight: 1,
   },
   inline: {
     color: color.fgFaint,
-    fontFamily: "var(--font-mono)",
+    fontFamily: font.mono,
     fontWeight: weight.regular,
     lineHeight: 1,
   },

@@ -15,17 +15,17 @@ import { solidFill } from "@/features/theme/kit/scale";
 import { SettingRow } from "@/ui/settings/SettingRow";
 import { useAppearance, useAppearanceEdit } from "@/features/theme/public/appearance";
 import { color, corner, radius, space, type as typeStep } from "@flame/ui/tokens.stylex";
-const FALLBACK_TOKENS: Record<Scheme, { bg: string; surface: string }> = {
-  dark: { bg: "#0c0d0f", surface: "#16181b" },
-  light: { bg: "#ffffff", surface: "#f6f7f8" },
-};
+// A theme paints over its scheme's built-in theme, the one the System choice paints.
+function schemeTokens(themes: readonly ColorThemeSpec[], scheme: Scheme) {
+  return themes.find((spec) => spec.id === scheme)?.tokens;
+}
 
-function previewTokens(spec: ColorThemeSpec): { bg: string; surface: string; accent: string } {
-  const fallback = FALLBACK_TOKENS[spec.scheme];
+function previewTokens(spec: ColorThemeSpec, themes: readonly ColorThemeSpec[]) {
+  const tokens = { ...schemeTokens(themes, spec.scheme), ...spec.tokens };
   return {
-    bg: spec.tokens?.["color-bg"] ?? fallback.bg,
-    surface: spec.tokens?.["color-surface"] ?? fallback.surface,
-    accent: spec.tokens?.["color-accent"] ?? solidFill(DEFAULT_ACCENT),
+    bg: tokens["color-bg"],
+    surface: tokens["color-surface"],
+    accent: tokens["color-accent"] ?? solidFill(DEFAULT_ACCENT),
   };
 }
 
@@ -59,7 +59,15 @@ const th = stylex.create({
   name: { color: color.fg },
 });
 
-function ThemeSwatch({ bg, surface, accent }: { bg: string; surface: string; accent: string }) {
+function ThemeSwatch({
+  bg,
+  surface,
+  accent,
+}: {
+  bg: string | undefined;
+  surface: string | undefined;
+  accent: string;
+}) {
   return (
     <span
       className={clsx("media-edge", stylex.props(th.swatch).className)}
@@ -71,16 +79,16 @@ function ThemeSwatch({ bg, surface, accent }: { bg: string; surface: string; acc
   );
 }
 
-function SystemSwatch() {
+function SystemSwatch({ themes }: { themes: readonly ColorThemeSpec[] }) {
   return (
     <span {...stylex.props(th.swatch)}>
       <span
         {...stylex.props(th.half, th.halfStart)}
-        style={{ background: FALLBACK_TOKENS.dark.bg }}
+        style={{ background: schemeTokens(themes, "dark")?.["color-bg"] }}
       />
       <span
         {...stylex.props(th.half, th.halfEnd)}
-        style={{ background: FALLBACK_TOKENS.light.bg }}
+        style={{ background: schemeTokens(themes, "light")?.["color-bg"] }}
       />
     </span>
   );
@@ -107,7 +115,11 @@ export function ThemeSection() {
   const triggerLabel =
     isSystem || !activeSpec ? t("settings.theme.system") : labelText(activeSpec.label, t);
   const triggerSwatch =
-    isSystem || !activeSpec ? <SystemSwatch /> : <ThemeSwatch {...previewTokens(activeSpec)} />;
+    isSystem || !activeSpec ? (
+      <SystemSwatch themes={themes} />
+    ) : (
+      <ThemeSwatch {...previewTokens(activeSpec, themes)} />
+    );
 
   return (
     <SettingRow label={t("settings.theme")}>
@@ -124,14 +136,14 @@ export function ThemeSection() {
         <DropdownMenu.Content align="start" sideOffset={4}>
           <DropdownMenu.RadioGroup value={theme} onValueChange={(id) => setTheme(id)}>
             <ThemeItem
-              swatch={<SystemSwatch />}
+              swatch={<SystemSwatch themes={themes} />}
               label={t("settings.theme.system")}
               value={SYSTEM_THEME}
             />
             {themes.map((spec) => (
               <ThemeItem
                 key={spec.id}
-                swatch={<ThemeSwatch {...previewTokens(spec)} />}
+                swatch={<ThemeSwatch {...previewTokens(spec, themes)} />}
                 label={labelText(spec.label, t)}
                 value={spec.id}
               />

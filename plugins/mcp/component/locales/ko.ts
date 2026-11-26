@@ -1,7 +1,4 @@
 export const ko: Record<string, string> = {
-  "mcp.error.toolPolicy": "도구 정책을 업데이트하지 못했습니다.",
-  "mcp.tools.policyHint":
-    "즉시 저장됩니다. 도구 표시 설정은 새 실행에 적용됩니다. 자동 승인은 전역 허용 규칙을 설정하며, 더 구체적인 규칙도 적용됩니다.",
   "mcp.tools.nameConflict":
     "{{name}} 이름으로 사용할 수 있습니다. {{sources}}도 같은 짧은 이름을 사용합니다.",
   "mcp.add": "서버 추가",
@@ -10,7 +7,7 @@ export const ko: Record<string, string> = {
   "mcp.delete": "삭제",
   "mcp.delete.title": "이 서버를 삭제할까요?",
   "mcp.delete.body":
-    "'{{server}}'과 그 도구가 제거됩니다. 나중에 다시 추가할 수 있습니다.",
+    "“{{server}}”와(과) 그 도구가 제거됩니다. 나중에 다시 추가할 수 있습니다.",
   "mcp.test": "테스트",
   "mcp.testing": "테스트 중…",
   "mcp.connectionOk": "연결 정상",
@@ -44,7 +41,7 @@ export const ko: Record<string, string> = {
     "프로세스 대상이 변경되었습니다. 새 환경 변수를 입력하거나 저장된 값을 제거하세요.",
   "mcp.form.dir.aria": "작업 디렉터리",
   "mcp.form.url.aria": "서버 URL",
-  "mcp.form.auth.placeholder": "인증 토큰 (선택)",
+  "mcp.form.auth.placeholder": "인증 토큰(선택)",
   "mcp.form.auth.keep": "비워 두면 저장된 토큰을 유지합니다",
   "mcp.form.auth.clear": "저장된 인증 정보 제거",
   "mcp.form.auth.originChanged":
@@ -55,7 +52,8 @@ export const ko: Record<string, string> = {
   "mcp.form.headers.clear": "저장된 헤더 제거",
   "mcp.form.headers.originChanged":
     "엔드포인트 출처가 변경되었습니다. 새 헤더를 입력하거나 저장된 값을 제거하세요.",
-  "mcp.form.timeout": "타임아웃(초) — 선택",
+  "mcp.form.timeout": "타임아웃(초)",
+  "mcp.form.timeout.none": "제한 없음",
   "mcp.form.timeout.invalid":
     "초 단위의 양의 정수를 입력하거나, 시간 제한을 두지 않으려면 비워 두세요.",
   "mcp.form.description.aria": "설명",
@@ -63,24 +61,13 @@ export const ko: Record<string, string> = {
   "mcp.import.confirm": "가져오기",
   "mcp.importing": "가져오는 중…",
   "mcp.import.ok_other": "서버 {{count}}개를 가져왔습니다",
-  "mcp.import.renamed":
-    "Runtime이 허용하는 형식으로 이름을 변경했습니다: {{names}}",
   "mcp.import.partial_other": "서버 {{total}}개 중 {{count}}개를 가져왔습니다.",
-  "mcp.import.error": "해당 설정을 가져올 수 없습니다.",
   "mcp.import.invalidJson": "올바른 JSON을 입력하세요.",
-  "mcp.tools.title": "{{server}} 도구",
-  "mcp.tools.label": "{{server}} {{tools}}",
   "mcp.tools.enabled": "사용",
   "mcp.tools.autoApprove": "자동 승인",
   "mcp.tools.empty": "이 서버는 도구를 제공하지 않습니다",
   "mcp.tools.enable.aria": "{{tool}} 사용",
   "mcp.tools.autoApprove.aria": "{{tool}} 자동 승인",
-  "mcp.error.save": "서버를 저장할 수 없습니다.",
-  "mcp.error.remove": "서버를 삭제할 수 없습니다.",
-  "mcp.error.toggle": "서버를 변경할 수 없습니다.",
-  "mcp.error.signIn": "로그인에 실패했습니다.",
-  "mcp.error.reconnect": "서버에 다시 연결할 수 없습니다.",
-  "mcp.error.test": "테스트 실패",
   "mcp.error.loadTools": "도구를 불러올 수 없습니다",
   "mcp.error.loadToolVisibility": "도구 표시 설정을 불러올 수 없습니다",
   "mcp.error.loadAutoApproveRules": "자동 승인 규칙을 불러올 수 없습니다",
@@ -103,7 +90,7 @@ export const ko: Record<string, string> = {
   "common.close": "닫기",
   "command.uncertain":
     "원래 명령의 결과가 확인되지 않았습니다. 다른 명령을 실행하거나 카탈로그를 전환하기 전에 조정하세요.",
-  "command.reconcile": "원래 명령 조정",
+  "command.reconcile": "원래 명령 대조",
   "command.confirmed": "원래 결과 확인됨",
   "read.retained": "마지막으로 수락된 읽기를 유지합니다.",
   "mcp.form.args.invalid":
@@ -113,13 +100,13 @@ export const ko: Record<string, string> = {
   "mcp.form.headers.invalid":
     "값이 문자열인 비어 있지 않은 JSON 객체를 입력하세요.",
   "mcp.import.invalidName":
-    "서버 이름 “{{server}}”이 Runtime 이름 규칙에 맞지 않습니다. 키를 수정하고 다시 시도하세요.",
+    "서버 이름 “{{server}}”이(가) Runtime 이름 규칙에 맞지 않습니다. 키를 수정하고 다시 시도하세요.",
   "mcp.import.missingTransport":
     "서버 “{{server}}”에 명령 또는 URL 중 하나만 지정하세요.",
   "mcp.import.unsupportedTransport":
     "서버 “{{server}}”의 “type”은 지원되지 않습니다. “stdio” 또는 “streamableHttp”를 사용하세요.",
   "mcp.import.headerConflict":
-    "서버 “{{server}}”에 “{{header}}”이 중복 선언되어 있습니다. 하나만 남겨 두세요.",
+    "서버 “{{server}}”에 “{{header}}”이(가) 중복 선언되어 있습니다. 하나만 남겨 두세요.",
   title: "MCP 서버",
   retry: "다시 시도",
   refresh: "새로 고침",

@@ -15,10 +15,18 @@ export const fr: Record<string, string> = {
   "comparison.worktree": "Modifications non validées",
   "comparison.base": "Modifications de la branche",
   "read.failed": "Le diff n’a pas pu être lu.",
-  "status.reading": "Lecture de {{name}}…",
-  "status.error": "Impossible de lire {{name}} : {{error}}",
-  "status.stale": "Affichage de {{name}} depuis la dernière lecture réussie.",
-  "status.loaded": "Affichage de {{name}}.",
+  "status.reading.worktree": "Lecture des modifications non validées…",
+  "status.reading.base": "Lecture des modifications de la branche…",
+  "status.error.worktree":
+    "Impossible de lire les modifications non validées : {{error}}",
+  "status.error.base":
+    "Impossible de lire les modifications de la branche : {{error}}",
+  "status.stale.worktree":
+    "Affichage des modifications non validées depuis la dernière lecture réussie.",
+  "status.stale.base":
+    "Affichage des modifications de la branche depuis la dernière lecture réussie.",
+  "status.loaded.worktree": "Affichage des modifications non validées.",
+  "status.loaded.base": "Affichage des modifications de la branche.",
   "navigation.label": "Navigation dans les fichiers modifiés",
   "navigation.position": "Fichier {{position}} sur {{total}}",
   "navigation.positionMatching":
@@ -33,7 +41,7 @@ export const fr: Record<string, string> = {
   "layout.split": "Côte à côte",
   "controls.label": "Contrôles des fichiers",
   "filter.label": "Filtrer les fichiers",
-  "filter.placeholder": "Trouver un fichier modifié",
+  "filter.placeholder": "Trouver un fichier modifié…",
   "filter.clear": "Effacer le filtre",
   partial:
     "Diff partiel. Seuls les fichiers inclus et les modifications de lignes sont affichés.",
@@ -47,10 +55,10 @@ export const fr: Record<string, string> = {
   "files.match_many": "{{count}} fichiers sur {{total}} correspondent",
   "files.match_other": "{{count}} fichiers sur {{total}} correspondent",
   "stat.title": "Modifications de lignes dans les fichiers texte inclus",
-  "empty.title": "Aucune modification dans cette comparaison.",
+  "empty.title": "Aucune modification dans cette comparaison",
   "file.unchanged": "Aucune modification de ce fichier dans cette comparaison.",
   "file.overBudget": "Ce fichier ne tient pas dans la limite de cette lecture.",
-  "nomatch.title": "Aucun fichier correspondant.",
+  "nomatch.title": "Aucun fichier correspondant",
   "files.region": "Fichiers modifiés",
   "file.changes": "Modifications dans {{path}}",
   "file.renamed": "Renommé depuis",
@@ -70,10 +78,10 @@ export const fr: Record<string, string> = {
     "Modifications par rapport à HEAD, y compris les fichiers indexés, non indexés et non suivis.",
   "details.base":
     "Modifications suivies, validées et non validées, depuis l’ancêtre commun avec la branche par défaut. Les fichiers non suivis sont exclus.",
-  "baseline.emptyTree": "Base : arbre vide",
-  "baseline.label": "Base : {{ref}} · {{commit}}",
+  "baseline.emptyTree": "Base : arbre vide",
+  "baseline.label": "Base : {{ref}} · {{commit}}",
   "baseline.head": "HEAD",
   "baseline.mergeBase": "base de fusion",
   "budget.empty":
-    "Aucun fichier complet ne tient dans la limite de cette lecture.",
+    "Aucun fichier complet ne tient dans la limite de cette lecture",
 };

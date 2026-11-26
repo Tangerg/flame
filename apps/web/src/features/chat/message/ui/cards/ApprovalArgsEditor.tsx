@@ -86,7 +86,6 @@ export function ApprovalArgsEditor({
             aria-disabled={disabled || undefined}
             aria-label={t("approval.args.label")}
             aria-describedby={invalid ? errorId : undefined}
-            spellCheck={false}
             rows={Math.min(10, argsText.split("\n").length + 1)}
             onChange={(e) => {
               onTextChange(e.target.value);

@@ -3,7 +3,6 @@ import * as stylex from "@stylexjs/stylex";
 import { type BlockStatus, type QuestionItem } from "@/features/agent/public/contentBlock";
 import { useId, useLayoutEffect, useRef, useState, type ChangeEvent } from "react";
 import { ChoiceList, ChoiceOption } from "@/ui/index";
-import { TranscriptMark } from "@/ui/index";
 import { Icon } from "@/ui/index";
 import { Surface } from "@/ui/index";
 import { Badge, Button, IconButton, TextArea, TextField } from "@flame/ui";
@@ -27,6 +26,7 @@ import { useRuntimeCommandsAvailable } from "@/features/connection/public/servic
 import {
   color,
   corner,
+  edge,
   leading,
   motion,
   radius,
@@ -47,12 +47,7 @@ const qc = stylex.create({
   },
   reading: { minHeight: 0, overflowY: "auto", overscrollBehavior: "contain" },
   askBody: { paddingTop: space.s1, paddingBottom: space.s0_5 },
-  settledLine: {
-    display: "flex",
-    minWidth: 0,
-    alignItems: "center",
-    gap: space.s1,
-  },
+  settledLine: { display: "block", minWidth: 0 },
   settledList: { display: "flex", flexDirection: "column", gap: space.s3 },
   settledItem: { display: "flex", flexDirection: "column", gap: space.s1 },
   settledAsk: {
@@ -125,7 +120,7 @@ const qc = stylex.create({
     width: "var(--control-mark-size)",
     flexShrink: 0,
     placeItems: "center",
-    borderWidth: "var(--control-edge-width)",
+    borderWidth: edge.control,
     borderStyle: "solid",
   },
   freeMarkOn: { borderColor: color.fg, backgroundColor: color.fg, color: surface.canvas },
@@ -151,7 +146,7 @@ interface Props {
 
 const RECOMMENDED_SUFFIX = " (Recommended)";
 
-// A settled question shows what was asked and answered, or that it was dismissed.
+// A settled question shows what was asked, with its answers or that it was dismissed.
 function SettledQuestions({
   questions,
   answers,
@@ -164,13 +159,6 @@ function SettledQuestions({
   onOpenChange: (open: boolean) => void;
 }) {
   const t = useT();
-  if (!answers)
-    return (
-      <TranscriptMark icon={<Icon name="x" size="xs" />}>
-        {t("question.settled.dismissed")}
-      </TranscriptMark>
-    );
-  const countLabel = t("question.settled.question", { count: questions.length });
   return (
     <AgentActivityDisclosure
       icon="question"
@@ -178,9 +166,10 @@ function SettledQuestions({
       open={open}
       onOpenChange={onOpenChange}
       label={
-        <span {...stylex.props(qc.settledLine, vocab.truncate)}>
-          <span {...stylex.props(vocab.muted)}>{t("question.settled.asked")}</span>
-          <span {...stylex.props(vocab.faint)}>{countLabel}</span>
+        <span {...stylex.props(qc.settledLine, vocab.truncate, vocab.muted)}>
+          {answers
+            ? t("question.settled.question", { count: questions.length })
+            : t("question.settled.dismissed")}
         </span>
       }
       contentClassName={stylex.props(qc.askBody).className}
@@ -189,9 +178,11 @@ function SettledQuestions({
         {questions.map((question, index) => (
           <div key={index} {...stylex.props(qc.settledItem)}>
             <div {...stylex.props(qc.settledAsk, typeStep.uiSm)}>{question.prompt}</div>
-            <div data-settled-answer="" {...stylex.props(qc.settledAnswer, typeStep.uiSm)}>
-              {questionAnswerText(answers, index) || t("question.settled.noAnswer")}
-            </div>
+            {answers && (
+              <div data-settled-answer="" {...stylex.props(qc.settledAnswer, typeStep.uiSm)}>
+                {questionAnswerText(answers, index) || t("question.settled.noAnswer")}
+              </div>
+            )}
           </div>
         ))}
       </div>

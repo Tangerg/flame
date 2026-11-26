@@ -1,6 +1,5 @@
 export const fr: Record<string, string> = {
   "code.copy": "Copier le code",
-  "code.copied": "Copié",
   "code.wrap": "Activer le retour à la ligne",
   "code.unwrap": "Désactiver le retour à la ligne",
   "panel.title": "Trajectoire de la session",
@@ -8,7 +7,7 @@ export const fr: Record<string, string> = {
   "controls.label": "Contrôles de trajectoire",
   "search.label": "Filtrer cette page",
   "search.placeholder": "Texte enregistré ou ID",
-  "filters.clear": "Réinitialiser les filtres",
+  "filters.clear": "Effacer les filtres",
   "search.clear": "Effacer le filtre",
   refresh: "Actualiser",
   "kind.label": "Type d’observation",
@@ -25,7 +24,7 @@ export const fr: Record<string, string> = {
   "value.unrecorded": "Non enregistré",
   "value.unpriced": "Sans prix",
   "status.reading": "Lecture des observations enregistrées…",
-  "status.error": "La page demandée n’a pas pu être lue : {{error}}",
+  "status.error": "La page demandée n’a pas pu être lue : {{error}}",
   "read.failed": "Les observations enregistrées n’ont pas pu être lues.",
   "summary.stale": "Affichage de la dernière page acceptée.",
   "pages.label": "Pages de trajectoire",
@@ -46,14 +45,11 @@ export const fr: Record<string, string> = {
   attention_many: "{{count}} nécessitent une attention",
   attention_other: "{{count}} nécessitent une attention",
   "empty.filtered.title":
-    "Aucun enregistrement de cette page ne correspond à ce filtre.",
-  "empty.none.title": "Aucun enregistrement sur cette page.",
+    "Aucun enregistrement de cette page ne correspond à ce filtre",
+  "empty.none.title": "Aucun enregistrement sur cette page",
   "modelActivity.title": "Activité du modèle",
   "fact.logicalModelCalls": "Appels logiques de modèle",
   "fact.modelEndpoints": "Points de terminaison de modèle",
-  "about.title": "À propos de ces enregistrements",
-  "about.note":
-    "Les décomptes et les filtres s’appliquent à cette page. Les preuves de fournisseur manquantes restent non enregistrées ; les horodatages n’impliquent pas de causalité. Exportez la trajectoire complète de la session depuis le menu de commandes de confiance.",
   "title.run": "Exécution · {{provider}}/{{model}}",
   "title.model": "Appel de modèle",
   "title.endpoint": "Point de terminaison de modèle · {{provider}}/{{model}}",
@@ -62,7 +58,7 @@ export const fr: Record<string, string> = {
   "item.reasoning": "Raisonnement",
   "item.question": "Question",
   "item.compaction": "Compactage du contexte",
-  "approval.inline": "Approbation : {{decision}}",
+  "approval.inline": "Approbation : {{decision}}",
   "approval.approve": "Accordée",
   "approval.deny": "Refusée",
   "state.running": "En cours",
@@ -97,7 +93,6 @@ export const fr: Record<string, string> = {
   "fact.delegatingItemId": "ID d’élément délégant",
   "fact.executionDurationMs": "Durée d’exécution (ms)",
   "fact.approval": "Approbation",
-  "note.usageMissing": "L’utilisation n’a pas été enregistrée pour cet appel.",
   "note.outcomeUnobserved":
     "Le résultat final n’a pas été observé. L’heure de résolution n’est pas le temps d’exécution mesuré.",
   "note.providerUnobserved":
@@ -107,11 +102,11 @@ export const fr: Record<string, string> = {
   "rename.section": "Détails de la session",
   "rename.titleLabel": "Titre de la session",
   "rename.failure":
-    "{{message}} La révision capturée reste inchangée ; rouvrez cette action pour inspecter la session actuelle.",
+    "{{message}} La révision capturée reste inchangée ; rouvrez cette action pour inspecter la session actuelle.",
   "rename.unconfirmed":
     "La modification n’est pas confirmée. Réconciliez la commande d’origine avant de soumettre une autre modification.",
   "rename.checking": "Vérification de la commande d’origine…",
-  "rename.reconcile": "Réconcilier la commande d’origine",
+  "rename.reconcile": "Rapprocher la commande d’origine",
   "rename.saved":
     "Enregistré {{id}} · Révision {{revision}} · {{title}}. Fermez et rouvrez pour effectuer une autre modification.",
   "rename.untitled": "Sans titre",
@@ -129,5 +124,5 @@ export const fr: Record<string, string> = {
   "image.zoomIn": "Agrandir l’image",
   "image.zoomOut": "Réduire l’image",
   "image.description": "Description de l’image",
-  "image.unavailable": "Impossible d’afficher cette image enregistrée.",
+  "image.unavailable": "Cette image enregistrée n’a pas pu être affichée.",
 };

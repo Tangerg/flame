@@ -1,6 +1,5 @@
 export const de: Record<string, string> = {
   "code.copy": "Code kopieren",
-  "code.copied": "Kopiert",
   "code.wrap": "Zeilenumbruch aktivieren",
   "code.unwrap": "Zeilenumbruch deaktivieren",
   "panel.title": "Client-Diagnose",
@@ -17,7 +16,7 @@ export const de: Record<string, string> = {
   "observations.accepted": "Letzter Pufferstand",
   "observations.stale": "Letzter erfolgreich gelesener Stand.",
   "observations.empty.title":
-    "Keine lokalen Beobachtungen in diesem Lesevorgang.",
+    "Keine lokalen Beobachtungen in diesem Lesevorgang",
   "span.meta": "{{ms}} ms · {{kind}}",
   "span.status.error": "Fehler",
   "fact.started": "Gestartet",
@@ -37,9 +36,4 @@ export const de: Record<string, string> = {
   "attributes.title": "Attribute",
   "raw.title": "Rohbeobachtung",
   "raw.label": "Details der lokalen Beobachtung",
-  "about.title": "Über die Client-Diagnose",
-  "about.note":
-    "Es wird nur der lokale Puffer dieses Clients angezeigt. Aktualisieren liest den neuesten Inhalt; Löschen entfernt lokale Beobachtungen. Die Runtime-Abrechnung und die Remote-Telemetrie bleiben unverändert. Ältere Beobachtungen wurden möglicherweise verdrängt.",
-  "read.failed": "Lokale Beobachtungen konnten nicht gelesen werden.",
-  "clear.failed": "Lokale Beobachtungen konnten nicht gelöscht werden.",
 };

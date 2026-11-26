@@ -3,6 +3,8 @@ import { type ReactNode } from "react";
 import {
   color,
   corner,
+  edge,
+  font,
   motion,
   radius,
   space,
@@ -25,7 +27,7 @@ const chipStyles = stylex.create({
     "corner-shape": "round",
     alignItems: "center",
     gap: space.s1_5,
-    borderWidth: "var(--control-edge-width)",
+    borderWidth: edge.control,
     borderStyle: "solid",
     borderColor: surface.field,
     paddingLeft: space.s2_5,
@@ -36,7 +38,7 @@ const chipStyles = stylex.create({
   attached: { backgroundColor: surface.surface2, color: color.fgMuted },
   value: {
     maxWidth: "220px",
-    fontFamily: "var(--font-mono)",
+    fontFamily: font.mono,
   },
   closeBox: {
     display: "grid",

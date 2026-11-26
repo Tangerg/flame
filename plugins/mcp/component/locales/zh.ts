@@ -1,7 +1,7 @@
 export const zh: Record<string, string> = {
   "mcp.add": "添加服务器",
   "mcp.save": "保存",
-  "mcp.saving": "保存中…",
+  "mcp.saving": "正在保存…",
   "mcp.delete": "删除",
   "mcp.delete.title": "删除这个服务器？",
   "mcp.delete.body": "“{{server}}”及其工具都会移除。之后可以重新添加。",
@@ -48,7 +48,8 @@ export const zh: Record<string, string> = {
   "mcp.form.headers.clear": "移除已保存的请求头",
   "mcp.form.headers.originChanged":
     "端点来源已改变，请输入新的请求头或明确移除已保存的值。",
-  "mcp.form.timeout": "超时（秒）— 可选",
+  "mcp.form.timeout": "超时（秒）",
+  "mcp.form.timeout.none": "不限时",
   "mcp.form.timeout.invalid": "请输入正整数秒数，或留空表示不限时。",
   "mcp.form.description.aria": "描述",
   "mcp.import": "从 JSON 导入",
@@ -56,9 +57,7 @@ export const zh: Record<string, string> = {
   "mcp.import.confirm": "导入",
   "mcp.importing": "导入中…",
   "mcp.import.ok_other": "已导入 {{count}} 个服务器",
-  "mcp.import.renamed": "已重命名以符合 Runtime 的要求：{{names}}",
   "mcp.import.partial_other": "已导入 {{count}} / {{total}} 个服务器。",
-  "mcp.import.error": "无法导入该配置。",
   "mcp.import.invalidJson": "请输入有效的 JSON。",
   "mcp.import.invalidShape": "请使用包含“mcpServers”对象的有效 MCP 配置。",
   "mcp.import.invalidName":
@@ -70,19 +69,11 @@ export const zh: Record<string, string> = {
   "mcp.import.invalidTimeout":
     "请为服务器“{{server}}”设置以秒为单位的正整数超时，或省略此项表示不限时。",
   "mcp.import.empty": "请在“mcpServers”下至少添加一个服务器。",
-  "mcp.tools.title": "{{server}} 的工具",
-  "mcp.tools.label": "{{server}} 的 {{tools}}",
   "mcp.tools.enabled": "启用",
   "mcp.tools.autoApprove": "自动批准",
   "mcp.tools.empty": "此服务器未暴露任何工具",
   "mcp.tools.enable.aria": "启用 {{tool}}",
   "mcp.tools.autoApprove.aria": "自动批准 {{tool}}",
-  "mcp.error.save": "无法保存服务器。",
-  "mcp.error.remove": "无法移除服务器。",
-  "mcp.error.toggle": "无法更改服务器。",
-  "mcp.error.signIn": "登录失败。",
-  "mcp.error.reconnect": "无法重新连接服务器。",
-  "mcp.error.test": "测试失败",
   "mcp.error.loadTools": "无法加载工具",
   "mcp.error.loadToolVisibility": "无法加载工具可见性",
   "mcp.error.loadAutoApproveRules": "无法加载自动批准规则",
@@ -90,9 +81,6 @@ export const zh: Record<string, string> = {
     "服务器未在限定时间内响应，请检查命令或 URL 后重试。",
   "mcp.testOutcome.failed":
     "服务器未能连接，或未提供有效的工具列表。请检查其设置后重试。",
-  "mcp.error.toolPolicy": "无法更新工具策略。",
-  "mcp.tools.policyHint":
-    "即时保存。工具可见性对新运行生效。自动批准设置全局允许规则；更具体的规则仍然生效。",
   "mcp.tools.nameConflict":
     "可通过 {{name}} 调用。{{sources}} 也使用这个简短名称。",
   "mcpStatus.mcp_authorization_required": "该服务器需要先登录才能使用。",
@@ -101,7 +89,7 @@ export const zh: Record<string, string> = {
     "已连接，但该服务器没有返回可用的工具列表。请检查服务器后重试。",
   "mcpStatus.mcp_configuration_failed":
     "无法使用该服务器的配置或已保存的凭据。请检查设置后重试。",
-  "mcpStatus.mcp_dial_failed": "连不上这个服务器 —— 检查命令或 URL 后重试。",
+  "mcpStatus.mcp_dial_failed": "连不上这个服务器——检查命令或 URL 后重试。",
   "common.cancel": "取消",
   "common.close": "关闭",
   "command.uncertain":
@@ -119,5 +107,5 @@ export const zh: Record<string, string> = {
   title: "MCP 服务器",
   retry: "重试",
   refresh: "刷新",
-  reading: "正在读取…",
+  reading: "正在加载…",
 };

@@ -4,6 +4,7 @@ import { type ToolCall } from "@/features/agent/public/sessionView";
 import { fmtDuration } from "@/lib/format";
 import { toolVerbId } from "@/features/agent/domain/toolFamilies";
 import { builtinToolName } from "@/features/agent/domain/toolCategory";
+import { type BuiltinToolName } from "@/foundation/protocolValues.generated";
 export type ToolDetail = { kind: "path" | "machine" | "prose"; value: string };
 
 export interface ToolIntent {
@@ -68,7 +69,7 @@ export function toolMetaItems(t: Translate, tool: ToolCall): ToolMetaItem[] {
     });
   }
   if (tool.durationMillis != null && tool.durationMillis >= 1000) {
-    items.push({ id: "duration", label: fmtDuration(tool.durationMillis), tone: "muted" });
+    items.push({ id: "duration", label: fmtDuration(t, tool.durationMillis), tone: "muted" });
   }
   const offset = skillTextOffset(tool);
   if (offset !== undefined) {
@@ -123,16 +124,32 @@ export function toolActivityStatus(tools: readonly ToolCall[]): ToolActivityCoun
   return counts.running + counts.issues + counts.denied > 0 ? counts : null;
 }
 
-const ACTIVITY_FAMILIES = ["read", "search", "write", "run", "fetch"] as const;
+const ACTIVITY_FAMILIES = ["read", "search", "write", "run", "fetch", "call"] as const;
 
 type ActivityFamily = (typeof ACTIVITY_FAMILIES)[number];
 
+// A family names what a built-in tool does. Safety classes only decide approval:
+// Runtime classes plugin and MCP tools as exec so approval fails closed.
+const BUILTIN_ACTIVITY: Partial<Record<BuiltinToolName, ActivityFamily>> = {
+  read: "read",
+  read_shell_output: "read",
+  read_tool_result: "read",
+  read_skill_resource: "read",
+  load_skill: "read",
+  list_skills: "read",
+  grep: "search",
+  glob: "search",
+  search_tools: "search",
+  shell: "run",
+  stop_shell: "run",
+  run_script: "run",
+};
+
 function activityFamily(tool: ToolCall): ActivityFamily {
-  if (builtinToolName(tool) === "read") return "read";
   if (tool.safetyClass === "write") return "write";
-  if (tool.safetyClass === "exec") return "run";
   if (tool.safetyClass === "network") return "fetch";
-  return "search";
+  const builtin = builtinToolName(tool);
+  return (builtin && BUILTIN_ACTIVITY[builtin]) ?? "call";
 }
 
 export function summarizeActivity(t: Translate, tools: readonly ToolCall[]): string {

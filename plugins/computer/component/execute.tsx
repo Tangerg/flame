@@ -210,7 +210,6 @@ function ExecuteForm({
               setError(undefined);
             }}
             rows={8}
-            spellCheck={false}
             maxLength={LIMITS.maxInputBytes}
             readOnly={!ready || pending}
             invalid={error !== undefined}

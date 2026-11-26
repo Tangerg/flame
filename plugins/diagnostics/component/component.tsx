@@ -44,13 +44,26 @@ const CATALOGS = { en, zh, "zh-TW": zhTW, ja, ko, es, fr, de };
 type Signal = "spans" | "metrics" | "logs";
 type Observation = SpanRow | MetricRow | LogRow;
 
-function title(row: Observation, t: Translate, clock: Intl.DateTimeFormat) {
+function title(
+  row: Observation,
+  t: Translate,
+  clock: Intl.DateTimeFormat,
+  measure: Intl.NumberFormat,
+) {
   if ("durationMillis" in row)
     return (
       <RecordSummary
         title={row.name}
-        description={t("span.meta", { ms: row.durationMillis, kind: row.kind })}
-        // OK and unset are a span's ordinary ends; only an error is named.
+        // Internal is OpenTelemetry's default kind and OK/unset a span's ordinary ends;
+        // only other kinds and an error are named.
+        description={
+          row.kind === "internal"
+            ? t("duration.ms", { ms: measure.format(row.durationMillis) })
+            : t("span.meta", {
+                ms: measure.format(row.durationMillis),
+                kind: row.kind,
+              })
+        }
         status={
           row.status === "error" && (
             <Badge tone="negative">{t("span.status.error")}</Badge>
@@ -100,6 +113,19 @@ function DiagnosticsReport({
     () => new Intl.DateTimeFormat(locale, { timeStyle: "medium" }),
     [locale],
   );
+  const moment = useMemo(
+    () =>
+      new Intl.DateTimeFormat(locale, {
+        dateStyle: "medium",
+        timeStyle: "medium",
+      }),
+    [locale],
+  );
+  // Span and histogram values are fractional milliseconds; two places keep them readable.
+  const measure = useMemo(
+    () => new Intl.NumberFormat(locale, { maximumFractionDigits: 2 }),
+    [locale],
+  );
   if (!rows.length) {
     return (
       <EmptyState
@@ -120,7 +146,7 @@ function DiagnosticsReport({
         <Disclosure
           variant="row"
           key={`${signal}:${row.id}`}
-          title={title(row, t, clock)}
+          title={title(row, t, clock, measure)}
         >
           {"durationMillis" in row && (
             <>
@@ -129,13 +155,12 @@ function DiagnosticsReport({
               )}
               <Facts
                 values={[
-                  [
-                    t("fact.started"),
-                    new Date(row.startMs).toLocaleString(locale),
-                  ],
+                  [t("fact.started"), moment.format(new Date(row.startMs))],
                   [
                     t("fact.duration"),
-                    t("duration.ms", { ms: row.durationMillis }),
+                    t("duration.ms", {
+                      ms: measure.format(row.durationMillis),
+                    }),
                   ],
                   [t("fact.trace"), row.traceId],
                   [t("fact.parentSpan"), row.parentSpanId],
@@ -148,10 +173,7 @@ function DiagnosticsReport({
               <RecordBody>{row.body}</RecordBody>
               <Facts
                 values={[
-                  [
-                    t("fact.recorded"),
-                    new Date(row.timeMs).toLocaleString(locale),
-                  ],
+                  [t("fact.recorded"), moment.format(new Date(row.timeMs))],
                   [t("fact.trace"), row.traceId],
                   [t("fact.span"), row.spanId],
                 ]}
@@ -167,8 +189,8 @@ function DiagnosticsReport({
                     [
                       t(`metric.${key}`),
                       row.unit && (key !== "count" || row.kind !== "histogram")
-                        ? `${row[key]} ${row.unit}`
-                        : String(row[key]),
+                        ? `${measure.format(row[key]!)} ${row.unit}`
+                        : measure.format(row[key]!),
                     ] as Fact,
                 )}
             />
@@ -209,10 +231,6 @@ type Read = {
 export function Diagnostics({ context }: { context: ComponentContext }) {
   const { telemetry, signal: componentSignal } = context;
   const t = useTranslator(CATALOGS, context.locale);
-  const numbers = useMemo(
-    () => new Intl.NumberFormat(context.locale),
-    [context.locale],
-  );
   const [signal, setSignal] = useState<Signal>("spans");
   const [read, setRead] = useState<Read>({});
   const refresh = useCallback(() => {
@@ -284,7 +302,7 @@ export function Diagnostics({ context }: { context: ComponentContext }) {
                 label: read.snapshot
                   ? t("signal.count", {
                       signal: t(`signal.${value}`),
-                      count: numbers.format(read.snapshot[value].length),
+                      count: read.snapshot[value].length,
                     })
                   : t(`signal.${value}`),
               }))}
@@ -314,9 +332,6 @@ export function Diagnostics({ context }: { context: ComponentContext }) {
           />
         </>
       )}
-      <Disclosure title={t("about.title")}>
-        <Metadata>{t("about.note")}</Metadata>
-      </Disclosure>
     </Panel>
   );
 }

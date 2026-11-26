@@ -49,17 +49,23 @@ export function ConsoleControls({
   t: Translate;
 }) {
   return (
-    <Toolbar label={t("controls.label")}>
-      <Button
-        ref={refresh}
-        disabled={state.read?.loading}
-        onClick={() => void state.refresh()}
-      >
-        {t("refresh")}
-      </Button>
-      {state.watchError && (
-        <Button onClick={state.reconnect}>{t("watch.reconnect")}</Button>
-      )}
+    <Toolbar
+      label={t("controls.label")}
+      actions={
+        <>
+          {state.watchError && (
+            <Button onClick={state.reconnect}>{t("watch.reconnect")}</Button>
+          )}
+          <Button
+            ref={refresh}
+            disabled={state.read?.loading}
+            onClick={() => void state.refresh()}
+          >
+            {t("refresh")}
+          </Button>
+        </>
+      }
+    >
       {activeSession && (
         <Button
           disabled={

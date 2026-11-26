@@ -1,22 +1,19 @@
 export const ja: Record<string, string> = {
   "failure.required": "必須：エラー時は停止",
-  "failure.advisory": "任意：エラー時も続行",
   title: "ライフサイクルフック",
   trust: "このリポジトリのフックを信頼する",
   "trust.sub":
     "このリポジトリのフックはあなたのマシンでシェルコマンドを実行します。信頼できるリポジトリでのみ有効にしてください。次のターンから反映されます。",
   "trust.aria": "このリポジトリのフックを信頼する",
   matcher: "ツールマッチャー",
-  "kind.inject": "inject",
+  "kind.inject": "注入",
   "scope.global": "グローバル",
   "scope.repository": "リポジトリ",
-  inactive: "無効",
-  "inactive.hint": "このリポジトリを信頼するとフックが有効になります。",
   empty: "フックが設定されていません",
   "empty.sub":
-    "~/.flame/hooks.json（グローバル）または <repository>/.flame/hooks.json にフックを追加してください。",
+    "~/.flame/hooks.json（グローバル）または <リポジトリ>/.flame/hooks.json にフックを追加してください。",
   "error.trust": "リポジトリのフック信頼設定を変更できませんでした。",
-  reading: "読み込み中",
+  reading: "読み込み中…",
   refresh: "更新",
   retry: "再試行",
   "command.uncertain":

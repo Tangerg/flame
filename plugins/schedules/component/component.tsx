@@ -5,6 +5,7 @@ import {
   PanelSection,
   RecordBody,
   RecordGroup,
+  RecordMeta,
 } from "@flame/ui";
 import {
   useSchedules,
@@ -55,17 +56,17 @@ function CatalogSummary({
 }) {
   return (
     <span ref={summary} tabIndex={-1}>
-      {page !== undefined && (
-        <>
-          {t("pages.current", { page })}
-          {" · "}
-        </>
-      )}
-      {t("catalog.enabled", { count: rows.filter(enabled).length })}
-      {" · "}
-      {t("catalog.disabled", {
-        count: rows.filter((item) => !enabled(item)).length,
-      })}
+      <RecordMeta>
+        {page !== undefined && <span>{t("pages.current", { page })}</span>}
+        <span>
+          {t("catalog.enabled", { count: rows.filter(enabled).length })}
+        </span>
+        <span>
+          {t("catalog.disabled", {
+            count: rows.filter((item) => !enabled(item)).length,
+          })}
+        </span>
+      </RecordMeta>
     </span>
   );
 }

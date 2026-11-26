@@ -33,11 +33,11 @@ function domainKey<T>(
 
 interface ExtensionContribution<T> {
   update(value: T): void;
-  [Symbol.dispose](): void;
+  [disposeSymbol](): void;
 }
 
 export class ContributionScope {
-  readonly #publications = new Set<{ [Symbol.dispose](): void }>();
+  readonly #publications = new Set<{ [disposeSymbol](): void }>();
   readonly #children = new Set<ContributionScope>();
   readonly #operations: ContributionOperations;
   readonly #plugin: string;

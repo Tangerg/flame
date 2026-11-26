@@ -3,7 +3,16 @@ import { reveal } from "@/ui/atoms/reveal";
 import { type ComponentPropsWithoutRef, type ReactNode } from "react";
 import { Children, useId, useState } from "react";
 import { clsx } from "clsx";
-import { color, leading, motion, radius, space, surface, type } from "@flame/ui/tokens.stylex";
+import {
+  color,
+  edge,
+  leading,
+  motion,
+  radius,
+  space,
+  surface,
+  type,
+} from "@flame/ui/tokens.stylex";
 import { vocab, ButtonPrimitive, ContentVisibility } from "@flame/ui";
 import { Collapsible } from "@base-ui/react/collapsible";
 
@@ -35,7 +44,7 @@ const styles = stylex.create({
   frameCard: {
     borderRadius: radius.card,
     backgroundColor: surface.card,
-    borderWidth: "var(--control-edge-width)",
+    borderWidth: edge.control,
     borderStyle: "solid",
     borderColor: surface.field,
   },

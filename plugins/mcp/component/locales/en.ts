@@ -1,7 +1,4 @@
 export const en: Record<string, string> = {
-  "mcp.error.toolPolicy": "Could not update tool policy.",
-  "mcp.tools.policyHint":
-    "Saved immediately. Tool visibility applies to new runs. Auto-approve sets a global allow rule; more specific rules still apply.",
   "mcp.tools.nameConflict":
     "Available as {{name}}. The short name is also used by {{sources}}.",
   "mcp.add": "Add server",
@@ -22,7 +19,7 @@ export const en: Record<string, string> = {
   "mcp.signIn": "Sign in",
   "mcp.signingIn": "Signing in…",
   "mcp.signIn.unconfirmed":
-    "The previous sign-in result could not be confirmed after restart.",
+    "The previous sign-in result couldn’t be confirmed after restart.",
   "mcp.signIn.aria": "Sign in to {{server}}",
   "mcp.signingIn.aria": "Signing in to {{server}}…",
   "mcp.reconnect": "Reconnect",
@@ -31,7 +28,7 @@ export const en: Record<string, string> = {
   "mcp.status.disconnected": "Disconnected",
   "mcp.status.connecting": "Connecting…",
   "mcp.status.failed": "Connection failed",
-  "mcp.status.needsAuth": "Sign in required",
+  "mcp.status.needsAuth": "Sign-in required",
   "mcp.form.name.aria": "Server name",
   "mcp.form.transport.aria": "Transport",
   "mcp.form.command.aria": "Command",
@@ -54,7 +51,8 @@ export const en: Record<string, string> = {
   "mcp.form.headers.clear": "Remove stored headers",
   "mcp.form.headers.originChanged":
     "The endpoint origin changed. Enter replacement headers or remove the stored values.",
-  "mcp.form.timeout": "Timeout (seconds) — optional",
+  "mcp.form.timeout": "Timeout (seconds)",
+  "mcp.form.timeout.none": "No limit",
   "mcp.form.timeout.invalid":
     "Enter positive whole seconds, or leave blank for no time limit.",
   "mcp.form.description.aria": "Description",
@@ -64,44 +62,34 @@ export const en: Record<string, string> = {
   "mcp.importing": "Importing…",
   "mcp.import.ok_one": "Imported {{count}} server",
   "mcp.import.ok_other": "Imported {{count}} servers",
-  "mcp.import.renamed": "Renamed to match what the Runtime accepts: {{names}}",
   "mcp.import.partial_one": "Imported {{count}} of {{total}} servers.",
   "mcp.import.partial_other": "Imported {{count}} of {{total}} servers.",
-  "mcp.import.error": "Couldn't import that config.",
   "mcp.import.invalidJson": "Enter valid JSON.",
-  "mcp.tools.title": "Tools for {{server}}",
-  "mcp.tools.label": "{{tools}} for {{server}}",
   "mcp.tools.enabled": "Enabled",
   "mcp.tools.autoApprove": "Auto-approve",
   "mcp.tools.empty": "This server exposes no tools",
   "mcp.tools.enable.aria": "Enable {{tool}}",
   "mcp.tools.autoApprove.aria": "Auto-approve {{tool}}",
-  "mcp.error.save": "Couldn't save the server.",
-  "mcp.error.remove": "Couldn't remove the server.",
-  "mcp.error.toggle": "Couldn't change the server.",
-  "mcp.error.signIn": "Sign-in failed.",
-  "mcp.error.reconnect": "Couldn't reconnect the server.",
-  "mcp.error.test": "Test failed",
-  "mcp.error.loadTools": "Couldn't load tools",
-  "mcp.error.loadToolVisibility": "Couldn't load tool visibility",
-  "mcp.error.loadAutoApproveRules": "Couldn't load auto-approve rules",
+  "mcp.error.loadTools": "Couldn’t load tools",
+  "mcp.error.loadToolVisibility": "Couldn’t load tool visibility",
+  "mcp.error.loadAutoApproveRules": "Couldn’t load auto-approve rules",
   "mcp.testOutcome.timedOut":
-    "The server didn't respond in time — check the command or URL and retry.",
+    "The server didn’t respond in time — check the command or URL and retry.",
   "mcp.testOutcome.failed":
-    "The server did not connect or did not offer a valid tool list. Check its settings and retry.",
+    "The server didn’t connect or didn’t offer a valid tool list. Check its settings and retry.",
   "mcpStatus.mcp_authorization_required":
     "This server needs you to sign in before it can be used.",
-  "mcpStatus.mcp_authorization_failed": "Sign-in didn't complete. Try again.",
+  "mcpStatus.mcp_authorization_failed": "Sign-in didn’t complete. Try again.",
   "mcpStatus.mcp_tool_discovery_failed":
-    "Connected, but this server didn't return a usable tool list. Check the server and retry.",
+    "Connected, but this server didn’t return a usable tool list. Check the server and retry.",
   "mcpStatus.mcp_configuration_failed":
-    "This server's configuration or saved credentials couldn't be used. Review its settings and retry.",
+    "This server’s configuration or saved credentials couldn’t be used. Review its settings and retry.",
   "mcpStatus.mcp_dial_failed":
-    "Couldn't reach this server — check the command or URL and retry.",
+    "Couldn’t reach this server — check the command or URL and retry.",
   "common.cancel": "Cancel",
   "common.close": "Close",
   "command.uncertain":
-    "The original command outcome is not confirmed. Reconcile it before issuing another command or changing catalogs.",
+    "The original command outcome isn’t confirmed. Reconcile it before issuing another command or changing catalogs.",
   "command.reconcile": "Reconcile original command",
   "command.confirmed": "Original outcome confirmed",
   "read.retained": "The last accepted read is retained.",
@@ -124,7 +112,7 @@ export const en: Record<string, string> = {
     "Use a valid MCP configuration with an “mcpServers” object.",
   "mcp.import.empty": "Add at least one server under “mcpServers”.",
   "mcp.import.invalidName":
-    "The server name “{{server}}” does not match the Runtime naming rules. Change the key and try again.",
+    "The server name “{{server}}” doesn’t match the Runtime naming rules. Change the key and try again.",
   "mcp.import.missingTransport":
     "Give server “{{server}}” either a command or a URL.",
   "mcp.import.missingCommand": "Add a command for server “{{server}}”.",

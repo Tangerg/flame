@@ -259,10 +259,11 @@ gives the trigger an accessible name that contains the visible title and the
 row's identity.
 
 `RecordHeading` groups identity, state and the main action. The title and status
-form one wrapping group beside the actions on a center-aligned row, so they share
-the action control's center line; the actions wrap beneath once that group falls
-below its `12rem` basis. The description follows the row at full width and never
-moves the actions. Long prose in a description (schedule instructions, MCP tool
+form one wrapping line, and the description beneath it completes one copy column;
+the actions sit beside that column on its center line and wrap beneath once it
+falls below its `12rem` basis. The actions column is at least an md control tall,
+so a heading holding a switch or small button keeps the pitch of a row holding
+an md field. Long prose in a description (schedule instructions, MCP tool
 descriptions) goes through `RecordExcerpt`: collapsed whitespace and two visible
 lines, with the whole text kept for assistive technology. `Disclosure` owns a
 full-width expanding panel with an optional adjacent action slot. The growing
@@ -493,10 +494,10 @@ named checkbox marker. Its caller supplies the captured checked state and primar
 visible label; paragraphs and nested lists remain selectable document content.
 The marker follows the reading font size and does not enter the keyboard path.
 Its primitive projects document semantics without registering a form control.
-`IconMark` owns the decorative identity frame used by centred empty states and
-modal headers. They keep the default accent emphasis derived from the host
-accent, so changing the accent recolors those marks and selected rows together;
-semantic tones keep their existing fills.
+`IconMark` owns the decorative identity frame of centred empty states. It keeps
+the default accent emphasis derived from the host accent, so changing the accent
+recolors those marks and selected rows together; semantic tones keep their
+existing fills. Modal headers carry their title alone.
 `EmptyState` centres a whole-surface empty result by default. An empty result
 inside a start-aligned flow uses `align="start"` and sits on the column edge:
 a bare glyph at the title's size, in faint ink or its tone's ink, leads the
@@ -537,6 +538,9 @@ in capture on its own owner. `isImeKey` is the shared composition test for
 `isComposing` and the legacy `keyCode` 229.
 The field paints its focus ring on its frame. A popup whose only input keeps focus
 for the popup's whole life passes `ring={false}`; the caret then marks focus.
+A `Button` with `variant="outline"` is the secondary action beside a filled
+`primary` (Deny beside Approve, Test beside Save). An action that stands alone
+in a row, header, empty state or error state is `soft`.
 `IconButton` requires either
 `aria-label` or `aria-labelledby`; `title` only overrides the tooltip.
 `BackButton` is the small left-chevron `IconButton` that returns from a detail
@@ -604,8 +608,14 @@ result with the same wash and a leading accent rule, preserving its ANSI ink and
 fixed row height. Each consumer retains its own query, matching and navigation.
 
 `TextArea autosize` uses progressive CSS `field-sizing: content` with native rows
-as the fallback on hosts without support. Native controls own caret, selection,
+as the fallback on hosts without support. Because content sizing ignores the
+`rows` attribute, the requested `rows` (two by default) set the visible minimum
+height. Native controls own caret, selection,
 composition and scrolling. There is no JavaScript height or caret mirror.
+A one-line `TextField` with `font="mono"` sets its value in the code face and its
+placeholder in the interface face, because the placeholder is a prose hint.
+Code-face fields and areas hold literal text, so spell checking, autocorrect and
+autocapitalization default to off; a caller's explicit value still wins.
 
 Focus return is delegated to Base UI for popups. Explicit removal actions may
 call handoffFocus before mutation; it refuses disconnected, hidden, inert or
@@ -693,7 +703,9 @@ Boxed single-line and multiline fields share `FIELD_SIZE` text insets and reset
 native WebKit appearance; focus and invalid borders remain with `FIELD_SURFACE`.
 Under a `FormField` or `FormGroup` label a boxed field, `Select` or `Segmented` hangs by the row bleed: its
 text starts on the label's edge, its fill starts outside it, and its end edge
-stays on the column's end.
+stays on the column's end. A `FormField` without a label holds a sole field that
+its surface's title already names, such as a text editor dialog's; the field
+keeps the same hang onto the title's edge and carries its own accessible name.
 Provider, MCP, and hook lists consume `RecordGroup` and `ListRow`, while inline
 editors consume `RecordForm`, `FormField`, and `FormActions` rather than defining
 another set of row insets, field spacing, and footer alignment.

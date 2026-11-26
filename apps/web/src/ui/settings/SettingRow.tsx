@@ -6,21 +6,18 @@ import { settingStyles as ss } from "@/ui/settings/settingStyles";
 const styles = stylex.create({
   row: {
     display: "grid",
-    gap: layout.sectionGap,
+    gridTemplateColumns: {
+      default: "minmax(0, 1fr) auto",
+      "@container (max-width: 35rem)": "minmax(0, 1fr)",
+    },
+    columnGap: layout.sectionGap,
+    rowGap: layout.contentGap,
     paddingInline: rowInset.inline,
     paddingBlock: layout.rowPadding,
     // Rows with a switch or slider keep the pitch of rows holding an md field.
     minHeight: `calc(2 * ${layout.rowPadding} + max(var(--control-height-md), var(--control-target-min)))`,
     minWidth: 0,
   },
-  split: {
-    gridTemplateColumns: {
-      default: "minmax(0, 1fr) auto",
-      "@container (max-width: 35rem)": "minmax(0, 1fr)",
-    },
-    rowGap: layout.contentGap,
-  },
-  stacked: { gap: layout.contentGap },
   top: { alignItems: "flex-start" },
   centre: { alignContent: "center", alignItems: "center" },
   copy: { minWidth: 0, overflowWrap: "anywhere" },
@@ -42,19 +39,16 @@ export function SettingRow({
   label: string;
   labelId?: string;
   sub?: ReactNode;
-  align?: "start" | "center" | "stacked";
+  align?: "start" | "center";
   children?: ReactNode;
 }) {
-  const stacked = align === "stacked";
   return (
     <div
       data-focus-unit=""
       {...stylex.props(
         styles.row,
-        !stacked && styles.split,
         align === "center" && styles.centre,
         align === "start" && styles.top,
-        stacked && styles.stacked,
       )}
     >
       <div {...stylex.props(styles.copy)}>
@@ -63,7 +57,7 @@ export function SettingRow({
         </div>
         {sub != null && <div {...stylex.props(ss.hintSpaced, typeStep.uiSm)}>{sub}</div>}
       </div>
-      {children != null && <div {...stylex.props(!stacked && styles.control)}>{children}</div>}
+      {children != null && <div {...stylex.props(styles.control)}>{children}</div>}
     </div>
   );
 }

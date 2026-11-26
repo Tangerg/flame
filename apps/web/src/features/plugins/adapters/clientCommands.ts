@@ -3,6 +3,7 @@ import {
   type ComponentContext,
   type ComponentReference,
 } from "@flame/component-sdk";
+import { disposeSymbol } from "dougong";
 import { type ContributionScope } from "@/extensions/definePlugin";
 import { trackContributionIO } from "@/extensions/contributionIO";
 import { reportPluginError } from "@/extensions/errors";
@@ -54,7 +55,7 @@ export function createClientCommandRegistration(
       if (registered.get(localId) !== registration) return;
       registered.delete(localId);
       signal.removeEventListener("abort", stop);
-      contribution[Symbol.dispose]();
+      contribution[disposeSymbol]();
     };
     signal.addEventListener("abort", stop, { once: true });
     return stop;

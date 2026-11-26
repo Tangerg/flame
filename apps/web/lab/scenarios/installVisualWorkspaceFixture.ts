@@ -14,6 +14,8 @@ import brandDeclaration from "../../../../plugins/brand/package/io.github.tanger
 import mcpDeclaration from "../../../../plugins/mcp/package/io.github.tangerg.flame/declaration.json";
 import providersDeclaration from "../../../../plugins/providers/package/io.github.tangerg.flame/declaration.json";
 import hooksDeclaration from "../../../../plugins/hooks/package/io.github.tangerg.flame/declaration.json";
+import notificationsDeclaration from "../../../../plugins/notifications/package/io.github.tangerg.flame/declaration.json";
+import { NotificationSettings } from "../../../../plugins/notifications/component/component";
 import diagnosticsDeclaration from "../../../../plugins/diagnostics/package/io.github.tangerg.flame/declaration.json";
 import galleryDeclaration from "../../../../plugins/icon-gallery/package/io.github.tangerg.flame/declaration.json";
 import trajectoryDeclaration from "../../../../plugins/trajectory/package/io.github.tangerg.flame/declaration.json";
@@ -394,6 +396,31 @@ function workspaceDataPlugin(
         group: settingsGroupForIntent(undefined),
         component: () =>
           createElement(InstalledComponent, { ...hooksSources, scope: "client", entry: Hooks }),
+      });
+      const notificationsLifetime = ctx.contributions.child("visual-notifications");
+      const notificationsSources = visualComponentProps(
+        runtimeClient(),
+        notificationsLifetime,
+        "notifications",
+      );
+      const notificationsPane = publishedComponent(
+        notificationsDeclaration,
+        "notification-settings",
+      );
+      notificationsLifetime.add(SETTINGS_PANE, {
+        id: "notifications",
+        label: { text: notificationsPane.title },
+        localizedTitles: notificationsPane.localizedTitles,
+        keywords: [{ text: notificationsPane.title }, { text: notificationsPane.id }],
+        material: "notifications",
+        intent: "notifications",
+        group: settingsGroupForIntent("notifications"),
+        component: () =>
+          createElement(InstalledComponent, {
+            ...notificationsSources,
+            scope: "installation",
+            entry: NotificationSettings,
+          }),
       });
       const diagnosticsLifetime = ctx.contributions.child("visual-diagnostics");
       const diagnosticsSources = visualComponentProps(

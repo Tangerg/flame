@@ -15,10 +15,17 @@ export const es: Record<string, string> = {
   "comparison.worktree": "Cambios sin confirmar",
   "comparison.base": "Cambios de la rama",
   "read.failed": "No se pudo leer el diff.",
-  "status.reading": "Leyendo {{name}}…",
-  "status.error": "No se pudo leer {{name}}: {{error}}",
-  "status.stale": "Mostrando {{name}} de la última lectura correcta.",
-  "status.loaded": "Mostrando {{name}}.",
+  "status.reading.worktree": "Leyendo los cambios sin confirmar…",
+  "status.reading.base": "Leyendo los cambios de la rama…",
+  "status.error.worktree":
+    "No se pudieron leer los cambios sin confirmar: {{error}}",
+  "status.error.base": "No se pudieron leer los cambios de la rama: {{error}}",
+  "status.stale.worktree":
+    "Mostrando los cambios sin confirmar de la última lectura correcta.",
+  "status.stale.base":
+    "Mostrando los cambios de la rama de la última lectura correcta.",
+  "status.loaded.worktree": "Mostrando los cambios sin confirmar.",
+  "status.loaded.base": "Mostrando los cambios de la rama.",
   "navigation.label": "Navegación de archivos cambiados",
   "navigation.position": "Archivo {{position}} de {{total}}",
   "navigation.positionMatching":
@@ -33,7 +40,7 @@ export const es: Record<string, string> = {
   "layout.split": "Lado a lado",
   "controls.label": "Controles de archivos",
   "filter.label": "Filtrar archivos",
-  "filter.placeholder": "Buscar un archivo cambiado",
+  "filter.placeholder": "Buscar un archivo cambiado…",
   "filter.clear": "Borrar filtro",
   partial:
     "Diff parcial. Solo se muestran los archivos incluidos y los cambios de línea.",
@@ -47,10 +54,10 @@ export const es: Record<string, string> = {
   "files.match_many": "{{count}} de {{total}} archivos coinciden",
   "files.match_other": "{{count}} de {{total}} archivos coinciden",
   "stat.title": "Cambios de línea en los archivos de texto incluidos",
-  "empty.title": "No hay cambios en esta comparación.",
+  "empty.title": "No hay cambios en esta comparación",
   "file.unchanged": "No hay cambios en este archivo en esta comparación.",
   "file.overBudget": "Este archivo no cabe en el límite de esta lectura.",
-  "nomatch.title": "No hay archivos coincidentes.",
+  "nomatch.title": "No hay archivos coincidentes",
   "files.region": "Archivos cambiados",
   "file.changes": "Cambios en {{path}}",
   "file.renamed": "Renombrado desde",
@@ -74,5 +81,5 @@ export const es: Record<string, string> = {
   "baseline.label": "Base: {{ref}} · {{commit}}",
   "baseline.head": "HEAD",
   "baseline.mergeBase": "base de fusión",
-  "budget.empty": "Ningún archivo completo cabe en el límite de esta lectura.",
+  "budget.empty": "Ningún archivo completo cabe en el límite de esta lectura",
 };

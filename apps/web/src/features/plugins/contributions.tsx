@@ -78,7 +78,6 @@ function createPackageReconciler(
           installation,
           entry,
           id: packageScopedId(installation.id, entry.id),
-          qualifiedTitle: `${release.name} · ${entry.title}`,
           failureScope: componentFailureScope(component, generation),
           modules,
           load: async () => {

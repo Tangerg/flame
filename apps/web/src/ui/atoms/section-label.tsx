@@ -2,16 +2,16 @@ import * as stylex from "@stylexjs/stylex";
 import { type ReactNode } from "react";
 import { clsx } from "clsx";
 import { vocab } from "@flame/ui";
-import { color, space, type } from "@flame/ui/tokens.stylex";
+import { color, font, leading, space, type, weight } from "@flame/ui/tokens.stylex";
 const styles = stylex.create({
   row: {
     display: "flex",
     minWidth: 0,
     alignItems: "center",
     gap: space.s2,
-    fontFamily: "var(--font-sans)",
-    fontWeight: 500,
-    lineHeight: "var(--leading-tight)",
+    fontFamily: font.sans,
+    fontWeight: weight.medium,
+    lineHeight: leading.tight,
     color: color.fgFaint,
   },
   label: { minWidth: 0 },

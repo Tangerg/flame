@@ -8,13 +8,21 @@ export const fr: Record<string, string> = {
   "search.placeholder": "Nom ou description",
   "search.clear": "Effacer la recherche",
   reading: "Lecture des Skills…",
-  "read.error": "Impossible de lire {{catalog}} : {{error}}",
+  "read.error.available":
+    "Impossible de lire les Skills disponibles : {{error}}",
+  "read.error.review":
+    "Impossible de lire les propositions de Skills : {{error}}",
+  "read.error.library":
+    "Impossible de lire la bibliothèque de Skills personnelle : {{error}}",
   "read.retained": "La dernière lecture acceptée est conservée.",
   "observation.error":
-    "L’actualisation en direct est indisponible : {{error}}. Utilisez Actualiser pour lire le propriétaire actuel.",
+    "L’actualisation en direct est indisponible : {{error}}. Utilisez Actualiser pour lire le propriétaire actuel.",
   "section.available": "Skills disponibles",
   "section.review": "Propositions de Skills",
   "section.library": "Bibliothèque de Skills personnelle",
+  "tab.available": "Disponibles",
+  "tab.review": "Propositions",
+  "tab.library": "Bibliothèque personnelle",
   "section.selectWorkspace":
     "Sélectionnez un espace de travail pour inspecter les Skills disponibles et les propositions.",
   "summary.available_one": "{{count}} Skill disponible",
@@ -45,19 +53,16 @@ export const fr: Record<string, string> = {
   "summary.matching.library_other":
     "{{matching}} sur {{count}} Skills gérés par l’utilisateur",
   "summary.none": "Aucune lecture acceptée.",
-  "empty.filtered.title": "Aucun Skill correspondant dans ce catalogue.",
-  "empty.none.title": "Aucun Skill dans ce catalogue.",
-  "empty.review.filtered.title": "Aucune proposition correspondante.",
-  "empty.review.none.title": "Aucune proposition en attente.",
-  "empty.filtered.sub": "Effacez la recherche pour afficher les Skills.",
-  "empty.none.sub":
-    "Choisissez un autre catalogue ou actualisez après avoir ajouté un Skill.",
+  "empty.filtered.title": "Aucun Skill correspondant dans ce catalogue",
+  "empty.none.title": "Aucun Skill dans ce catalogue",
+  "empty.review.filtered.title": "Aucune proposition correspondante",
+  "empty.review.none.title": "Aucune proposition en attente",
   "document.toolbar": "Document du Skill",
   "document.refresh": "Actualiser le document",
   "document.back": "Retour aux Skills disponibles",
   "document.reading": "Lecture de {{name}}…",
-  "document.error.read": "Impossible de lire {{name}} : {{error}}",
-  "document.error.refresh": "Impossible d’actualiser {{name}} : {{error}}",
+  "document.error.read": "Impossible de lire {{name}} : {{error}}",
+  "document.error.refresh": "Impossible d’actualiser {{name}} : {{error}}",
   "document.retained": "Affichage de la dernière lecture acceptée de {{name}}.",
   "document.source": "Source et révision",
   "instructions.for": "Instructions pour {{name}}",
@@ -66,7 +71,7 @@ export const fr: Record<string, string> = {
   "command.uncertain":
     "Le résultat de la commande d’origine n’est pas confirmé. Rapprochez-le avant d’émettre une autre commande ou de changer de catalogue.",
   "command.pending": "{{label}}…",
-  "command.original": "Commande d’origine : {{key}}",
+  "command.original": "Commande d’origine : {{key}}",
   "command.reconcile": "Rapprocher la commande d’origine",
   "command.approve": "Approuver {{name}}",
   "command.reject": "Rejeter {{name}}",

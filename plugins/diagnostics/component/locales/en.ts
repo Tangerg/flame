@@ -1,6 +1,5 @@
 export const en: Record<string, string> = {
   "code.copy": "Copy code",
-  "code.copied": "Copied",
   "code.wrap": "Enable word wrap",
   "code.unwrap": "Disable word wrap",
   "panel.title": "Client diagnostics",
@@ -16,7 +15,7 @@ export const en: Record<string, string> = {
   "observations.title": "Local observations",
   "observations.accepted": "Last buffer read",
   "observations.stale": "Showing the last accepted read.",
-  "observations.empty.title": "No local observations in this read.",
+  "observations.empty.title": "No local observations in this read",
   "span.meta": "{{ms}} ms · {{kind}}",
   "span.status.error": "Error",
   "fact.started": "Started",
@@ -36,9 +35,4 @@ export const en: Record<string, string> = {
   "attributes.title": "Attributes",
   "raw.title": "Raw observation",
   "raw.label": "Local observation details",
-  "about.title": "About client diagnostics",
-  "about.note":
-    "Only this client's local buffer is shown. Refresh reads its latest contents; Clear removes local observations. Runtime accounting and remote telemetry are unchanged. Older observations may have been evicted.",
-  "read.failed": "Local observations could not be read.",
-  "clear.failed": "Local observations could not be cleared.",
 };

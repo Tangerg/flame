@@ -6,7 +6,6 @@ import { Wrench } from "@flame/icons/react";
 import {
   EmptyState,
   ListRow,
-  RecordBody,
   RecordExcerpt,
   RecordGroup,
   RecordHeading,
@@ -64,7 +63,6 @@ export function ToolControls({
   const command = state.commands.get(policy);
   return (
     <div style={column}>
-      <RecordBody>{t("mcp.tools.policyHint")}</RecordBody>
       {command?.phase === "running" && <p role="status">{t("mcp.saving")}</p>}
       <CommandFeedback
         context={context}

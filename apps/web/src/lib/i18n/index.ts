@@ -1,4 +1,4 @@
-import i18next from "i18next";
+import i18next, { type FormatterModule } from "i18next";
 import { useCallback } from "react";
 import { initReactI18next, useTranslation } from "react-i18next";
 import { en } from "@/lib/i18n/locales/en";
@@ -16,19 +16,42 @@ const stored = readStoredDictionary(initial);
 let provisional: Locale | undefined = stored?.locale;
 const mountedSources = new Map<Locale, string>();
 
-void i18next.use(initReactI18next).init({
-  resources: {
-    en: { translation: en },
-    ...(stored ? { [stored.locale]: { translation: stored.messages } } : {}),
+const numberFormats = new Map<string, Intl.NumberFormat>();
+
+// Numbers read in the locale's digits; a caller passes a string to keep a value verbatim.
+const numberFormatter: FormatterModule = {
+  type: "formatter",
+  init() {},
+  add() {},
+  addCached() {},
+  format(value, _format, lng) {
+    if (typeof value !== "number") return value;
+    const locale = localeToBcp47(lng ?? getLocale());
+    let format = numberFormats.get(locale);
+    if (!format) {
+      format = new Intl.NumberFormat(locale);
+      numberFormats.set(locale, format);
+    }
+    return format.format(value);
   },
-  lng: initial,
-  fallbackLng: "en",
-  react: { bindI18nStore: "added removed" },
-  keySeparator: false,
-  nsSeparator: false,
-  interpolation: { escapeValue: false },
-  returnNull: false,
-});
+};
+
+void i18next
+  .use(numberFormatter)
+  .use(initReactI18next)
+  .init({
+    resources: {
+      en: { translation: en },
+      ...(stored ? { [stored.locale]: { translation: stored.messages } } : {}),
+    },
+    lng: initial,
+    fallbackLng: "en",
+    react: { bindI18nStore: "added removed" },
+    keySeparator: false,
+    nsSeparator: false,
+    interpolation: { escapeValue: false, alwaysFormat: true },
+    returnNull: false,
+  });
 
 function syncHtmlLang(loc: Locale): void {
   if (typeof document === "undefined") return;

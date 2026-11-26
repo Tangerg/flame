@@ -22,28 +22,20 @@ export const ja: Record<string, string> = {
   "providers.saving": "保存中…",
   "providers.test": "テスト",
   "providers.testing": "テスト中…",
-  "providers.connectionOk": "接続 OK",
-  "providers.error.save": "保存に失敗しました",
-  "providers.error.test": "テストに失敗しました",
+  "providers.connectionOk": "接続は正常です",
   "providers.models.error": "モデルを読み込めませんでした。",
-  "providers.models.refresh": "モデル一覧を更新",
   "providers.empty": "プロバイダーがありません",
   "providers.empty.sub":
     "Runtime はサポートされている LLM プロバイダーを報告していません。",
-  "providers.apiKey.envPlaceholder":
-    "環境変数のキーを使用中 — 入力すると上書きします",
   "providers.fromEnv": "環境変数から",
   "providers.utility.title": "補助モデル",
   "providers.utility.desc": "要約、タイトル、事実抽出に使うモデルです。",
   "providers.utility.main": "Runtime の既定モデルを使用",
-  "providers.utility.error": "補助モデルを設定できませんでした。",
   "providers.embedding.title": "埋め込みモデル",
-  "providers.embedding.desc":
-    "Agent Memory のランキングを必要に応じて改善します。",
+  "providers.embedding.desc": "エージェントメモリのランキングを改善します。",
   "providers.embedding.off": "オフ",
   "providers.embedding.none":
     "埋め込み対応のプロバイダーがまだ設定されていません — 上で追加してください（例：OpenAI）。",
-  "providers.embedding.error": "埋め込みモデルを設定できませんでした。",
   "providers.testOutcome.notConfigured":
     "先にプロバイダーの設定を完了してください。",
   "providers.testOutcome.failed":
@@ -63,12 +55,12 @@ export const ja: Record<string, string> = {
     "プロバイダーの準備ができました。設定を閉じると戻れます。下書きはそのままです。",
   "providers.roles.heading": "モデルの役割",
   "rpcError.invalid_credentials":
-    "プロバイダが API キーを拒否しました — プロバイダ設定で確認してください。",
+    "プロバイダーが API キーを拒否しました — プロバイダー設定で確認してください。",
   "rpcError.timeout":
-    "モデルプロバイダへのリクエストがタイムアウトしました — 接続を確認して再試行してください。",
+    "モデルプロバイダーへのリクエストがタイムアウトしました — 接続を確認して再試行してください。",
   title: "モデルプロバイダー",
   cancel: "キャンセル",
-  reading: "読み込み中",
+  reading: "読み込み中…",
   refresh: "更新",
   retry: "再試行",
   "command.uncertain":

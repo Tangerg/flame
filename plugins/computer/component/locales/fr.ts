@@ -17,7 +17,7 @@ export const fr = {
   "host.scope":
     "Les actions ciblent l’hôte Runtime affiché, qui peut différer de cet ordinateur.",
   "host.setup":
-    "Sélectionnez l’application ChatGPT installée dans les réglages du plugin, puis rouvrez-le. Flame lance directement son moteur CUA.",
+    "Sélectionnez l’application ChatGPT installée dans les paramètres du plugin, puis rouvrez-le. Flame lance directement son moteur CUA.",
   "open.title": "Autoriser une durée de contrôle",
   "open.help":
     "Pendant cette durée, les outils du modèle contrôlent l’hôte Runtime via le moteur de contrôle de Flame. Utilisez une console hors du bureau, du compte et du navigateur contrôlés, sur un autre appareil ou une cible isolée. Fermer cette vue ne termine pas l’autorisation.",
@@ -86,20 +86,20 @@ export const fr = {
   "approval.once": "Autoriser une fois",
   "approval.session": "Autoriser pour cette session",
   "approval.always": "Toujours autoriser",
-  "approval.accept": "Envoyer l’accord",
+  "approval.accept": "Envoyer l’approbation",
   "approval.decline": "Refuser",
   "approval.cancel": "Annuler la demande",
   "approval.sent": "La réponse à la demande d’origine a été acceptée.",
   "approval.original": "Demande d’origine",
   "approval.urlHelp":
-    "Ouvrez l’URL pour terminer l’étape externe. Cela n’envoie pas l’accord ; répondez ici ensuite.",
+    "Ouvrez l’URL pour terminer l’étape externe. Cela n’envoie pas l’accord ; répondez ici ensuite.",
   "command.title": "Commandes d’origine",
   "command.original": "État de la commande d’origine",
   "command.running": "Attente du résultat d’origine…",
   "command.unknown":
     "Le résultat est non confirmé. Retrouvez cette commande d’origine sans répéter ses actions.",
   "command.recover": "Vérifier le résultat d’origine",
-  "command.accepted": "{{action}} : la commande d’origine est terminée.",
+  "command.accepted": "{{action}} : la commande d’origine est terminée.",
   "receipts.title": "Capacité des preuves originales",
   "receipts.records": "Enregistrements conservés / limite",
   "receipts.bytes": "Octets comptabilisés / limite",
@@ -109,7 +109,7 @@ export const fr = {
   "history.title": "Résultats d’origine",
   "history.refresh": "Actualiser les résultats",
   "history.reading": "Lecture des preuves d’origine…",
-  "history.empty": "Aucune commande enregistrée.",
+  "history.empty": "Aucune commande enregistrée",
   "history.identity": "Identité de commande",
   "history.method": "Opération",
   "history.time": "Date d’admission",
@@ -123,7 +123,6 @@ export const fr = {
   "history.previous": "Page précédente",
   "history.next": "Page suivante",
   "source.copy": "Copier le texte source",
-  "source.copied": "Texte copié",
   "source.wrap": "Activer le retour à la ligne",
   "source.unwrap": "Désactiver le retour à la ligne",
   "result.refresh": "Actualiser le résultat original",
@@ -133,7 +132,7 @@ export const fr = {
   "result.image": "Image capturée {{number}}",
   "result.imageUnavailable":
     "Cette image enregistrée n’a pas pu être affichée.",
-  "image.view": "Afficher l’image",
+  "image.view": "Voir l’image",
   "image.close": "Fermer l’image",
   "image.fit": "Ajuster l’image",
   "image.zoomIn": "Zoom avant",
@@ -147,7 +146,7 @@ export const fr = {
   "result.invocation": "Autorité d’appel capturée",
   "result.original": "Résultat exact enregistré",
   "result.unknown":
-    "Aucun résultat d’origine confirmé. Des effets externes sont possibles ; cette vue ne relance jamais l’action.",
+    "Aucun résultat d’origine confirmé. Des effets externes sont possibles ; cette vue ne relance jamais l’action.",
   "result.toolError":
     "L’outil d’origine a signalé une erreur. Des effets antérieurs restent possibles.",
   "result.cleanup":

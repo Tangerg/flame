@@ -3,6 +3,7 @@ import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { clsx } from "clsx";
 import {
   color,
+  font,
   leading,
   motion,
   radius,
@@ -80,7 +81,7 @@ const styles = stylex.create({
     },
     paddingInline: space.s2,
     textAlign: "start",
-    fontFamily: "var(--font-sans)",
+    fontFamily: font.sans,
     fontWeight: weight.regular,
     lineHeight: leading.tight,
     color: color.fg,

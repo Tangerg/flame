@@ -1,6 +1,5 @@
 export const ja: Record<string, string> = {
   "code.copy": "コードをコピー",
-  "code.copied": "コピーしました",
   "code.wrap": "折り返しを有効にする",
   "code.unwrap": "折り返しを無効にする",
   "panel.title": "クライアント診断",
@@ -16,7 +15,7 @@ export const ja: Record<string, string> = {
   "observations.title": "ローカル観測記録",
   "observations.accepted": "直近のバッファ読み取り",
   "observations.stale": "最後に読み取れた内容を表示しています。",
-  "observations.empty.title": "この読み取りにはローカル観測記録がありません。",
+  "observations.empty.title": "この読み取りにはローカル観測記録がありません",
   "span.meta": "{{ms}} ms · {{kind}}",
   "span.status.error": "エラー",
   "fact.started": "開始時刻",
@@ -36,9 +35,4 @@ export const ja: Record<string, string> = {
   "attributes.title": "属性",
   "raw.title": "生の観測記録",
   "raw.label": "ローカル観測記録の詳細",
-  "about.title": "クライアント診断について",
-  "about.note":
-    "表示されるのはこのクライアントのローカルバッファのみです。更新で最新の内容を読み取り、消去でローカル観測記録を削除します。Runtime の集計とリモートテレメトリは変更されません。 古い観測記録は破棄されている場合があります。",
-  "read.failed": "ローカル観測記録を読み取れませんでした。",
-  "clear.failed": "ローカル観測記録を消去できませんでした。",
 };

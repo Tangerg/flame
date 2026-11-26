@@ -2,7 +2,7 @@ import * as stylex from "@stylexjs/stylex";
 import type { StyleXArray, StyleXStyles } from "@stylexjs/stylex";
 import type { ComponentPropsWithRef } from "react";
 import { clsx } from "clsx";
-import { color, space } from "./tokens.stylex";
+import { color, font, space } from "./tokens.stylex";
 
 const styles = stylex.create({
   row: {
@@ -13,7 +13,7 @@ const styles = stylex.create({
     maxWidth: "100%",
     columnGap: space.s1_5,
     rowGap: space.s1,
-    fontFamily: "var(--font-mono)",
+    fontFamily: font.mono,
     fontVariantNumeric: "tabular-nums",
     color: color.fgMuted,
   },

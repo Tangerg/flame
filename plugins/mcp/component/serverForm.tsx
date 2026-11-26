@@ -23,7 +23,6 @@ import { MCPServerEdit, type MCPServerFields } from "./draft";
 import { MCPSettings, editorKey } from "./settings";
 import { CommandFeedback } from "./feedback";
 import {
-  EXAMPLE,
   FieldIssue,
   HttpFields,
   LITERAL_INPUT,
@@ -208,7 +207,7 @@ export function ServerForm({
             pending={busy}
             value={draft.timeoutSec}
             onChange={(e) => updateDraft("timeoutSec", e.target.value)}
-            placeholder={EXAMPLE.timeoutSeconds}
+            placeholder={t("mcp.form.timeout.none")}
           />
           <FieldIssue
             id={timeoutErrorId}

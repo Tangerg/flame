@@ -1,6 +1,5 @@
 export const zhTW: Record<string, string> = {
   "code.copy": "複製程式碼",
-  "code.copied": "已複製",
   "code.wrap": "啟用自動換行",
   "code.unwrap": "關閉自動換行",
   "panel.title": "用戶端診斷",
@@ -16,7 +15,7 @@ export const zhTW: Record<string, string> = {
   "observations.title": "本機觀測記錄",
   "observations.accepted": "最近一次讀取",
   "observations.stale": "目前顯示上次成功讀取的內容。",
-  "observations.empty.title": "本次讀取沒有本機觀測記錄。",
+  "observations.empty.title": "本次讀取沒有本機觀測記錄",
   "span.meta": "{{ms}} ms · {{kind}}",
   "span.status.error": "錯誤",
   "fact.started": "開始時間",
@@ -36,9 +35,4 @@ export const zhTW: Record<string, string> = {
   "attributes.title": "屬性",
   "raw.title": "原始觀測記錄",
   "raw.label": "本機觀測記錄詳情",
-  "about.title": "關於用戶端診斷",
-  "about.note":
-    "僅顯示此用戶端的本機緩衝區。重新整理會讀取其最新內容；清除會移除本機觀測記錄。Runtime 計量與遠端遙測不受影響。 較舊的觀測記錄可能已被淘汰。",
-  "read.failed": "無法讀取本機觀測記錄。",
-  "clear.failed": "無法清除本機觀測記錄。",
 };

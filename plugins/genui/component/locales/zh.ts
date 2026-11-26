@@ -17,6 +17,6 @@ export const zh: Record<string, string> = {
   "interaction.target": "目标",
   "interaction.input": "提交内容",
   "code.copy": "复制代码",
-  "code.wrap": "开启自动换行",
+  "code.wrap": "启用自动换行",
   "code.unwrap": "关闭自动换行",
 };

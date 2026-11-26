@@ -1,6 +1,5 @@
 export const es: Record<string, string> = {
   "code.copy": "Copiar código",
-  "code.copied": "Copiado",
   "code.wrap": "Activar ajuste de línea",
   "code.unwrap": "Desactivar ajuste de línea",
   "panel.title": "Trayectoria de la sesión",
@@ -8,7 +7,7 @@ export const es: Record<string, string> = {
   "controls.label": "Controles de trayectoria",
   "search.label": "Filtrar esta página",
   "search.placeholder": "Texto registrado o ID",
-  "filters.clear": "Restablecer filtros",
+  "filters.clear": "Borrar filtros",
   "search.clear": "Borrar filtro",
   refresh: "Actualizar",
   "kind.label": "Tipo de observación",
@@ -46,14 +45,11 @@ export const es: Record<string, string> = {
   attention_many: "{{count}} requieren atención",
   attention_other: "{{count}} requieren atención",
   "empty.filtered.title":
-    "Ningún registro de esta página coincide con este filtro.",
-  "empty.none.title": "No hay registros en esta página.",
+    "Ningún registro de esta página coincide con este filtro",
+  "empty.none.title": "No hay registros en esta página",
   "modelActivity.title": "Actividad del modelo",
   "fact.logicalModelCalls": "Llamadas lógicas de modelo",
   "fact.modelEndpoints": "Endpoints de modelo",
-  "about.title": "Acerca de estos registros",
-  "about.note":
-    "Los recuentos y filtros se aplican a esta página. La evidencia de proveedor ausente permanece sin registrar; las marcas de tiempo no implican causalidad. Exporta la trayectoria completa de la sesión desde el menú de comandos de confianza.",
   "title.run": "Ejecución · {{provider}}/{{model}}",
   "title.model": "Llamada de modelo",
   "title.endpoint": "Endpoint de modelo · {{provider}}/{{model}}",
@@ -97,7 +93,6 @@ export const es: Record<string, string> = {
   "fact.delegatingItemId": "ID de elemento delegante",
   "fact.executionDurationMs": "Duración de ejecución (ms)",
   "fact.approval": "Aprobación",
-  "note.usageMissing": "No se registró el uso de esta llamada.",
   "note.outcomeUnobserved":
     "No se observó el resultado final. La hora de resolución no es el tiempo de ejecución medido.",
   "note.providerUnobserved":
@@ -124,7 +119,7 @@ export const es: Record<string, string> = {
   "export.json": "Exportar conversación como JSON",
   "export.trajectory": "Exportar la trayectoria completa de la sesión",
   "image.view": "Ver imagen",
-  "image.close": "Cerrar vista previa de imagen",
+  "image.close": "Cerrar vista previa de la imagen",
   "image.fit": "Ajustar imagen",
   "image.zoomIn": "Ampliar imagen",
   "image.zoomOut": "Reducir imagen",

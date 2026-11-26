@@ -17,6 +17,6 @@ export const ko: Record<string, string> = {
   "interaction.target": "대상",
   "interaction.input": "제출 내용",
   "code.copy": "코드 복사",
-  "code.wrap": "줄 바꿈 사용",
-  "code.unwrap": "줄 바꿈 해제",
+  "code.wrap": "자동 줄 바꿈 사용",
+  "code.unwrap": "자동 줄 바꿈 사용 안 함",
 };

@@ -6,8 +6,7 @@ import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
 import { Autocomplete } from "@base-ui/react/autocomplete";
 import { Icon } from "@/ui/icons/index";
 import { MODAL_SCRIM, modalPanel } from "@flame/ui/floating-surface";
-import { color, space, surface } from "@flame/ui/tokens.stylex";
-import { Kbd } from "@/ui/atoms/kbd";
+import { color, edge, space, surface } from "@flame/ui/tokens.stylex";
 import { floatingRow } from "@/ui/atoms/option-row";
 import { TextField } from "@flame/ui/text-field";
 const styles = stylex.create({
@@ -22,7 +21,7 @@ const styles = stylex.create({
     display: "flex",
     alignItems: "center",
     gap: space.s2_5,
-    borderBottomWidth: "var(--control-edge-width)",
+    borderBottomWidth: edge.control,
     borderBottomStyle: "solid",
     borderBottomColor: surface.lineSoft,
     paddingInline: "calc(var(--spacing) * 3.5)",
@@ -198,7 +197,6 @@ function SearchOverlayContent({
             aria-label={placeholder}
             {...stylex.props(styles.input)}
           />
-          <Kbd variant="inline">esc</Kbd>
         </div>
         <div {...stylex.props(styles.list)}>
           <Autocomplete.List aria-label={label} hidden={feedback != null}>

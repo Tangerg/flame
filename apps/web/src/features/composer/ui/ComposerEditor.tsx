@@ -57,6 +57,7 @@ import { useT, type MessageKey } from "@/lib/i18n/index";
 import type { AgentInput } from "@/features/agent/public/input";
 import { useNotifications } from "@/features/notifications/public/notifier";
 import * as stylex from "@stylexjs/stylex";
+import { splitFilePath } from "@/lib/path";
 import { color, radius, space, surface, type as typeStep } from "@flame/ui/tokens.stylex";
 
 import {
@@ -68,9 +69,14 @@ import {
 import { type DraftContent } from "@/features/composer/domain/draft";
 const styles = stylex.create({
   host: { position: "relative" },
+  // The overlay does not size the editor, so a wrapped placeholder would run into the toolbar.
   placeholder: {
     position: "absolute",
     insetBlockStart: 0,
+    insetInline: 0,
+    overflow: "hidden",
+    whiteSpace: "nowrap",
+    textOverflow: "ellipsis",
     pointerEvents: "none",
     color: color.fgMuted,
   },
@@ -107,6 +113,7 @@ const styles = stylex.create({
     borderWidth: 0,
   },
   selected: { backgroundColor: surface.hover },
+  fileName: { flexShrink: 0, maxWidth: "100%", overflowWrap: "anywhere" },
   optionDescription: {
     minWidth: 0,
     overflow: "hidden",
@@ -279,6 +286,7 @@ function Suggestions() {
                       type="button"
                       role="option"
                       aria-selected={selectedIndex === index}
+                      aria-label={kind === "file" ? option.label : undefined}
                       tabIndex={-1}
                       key={option.key}
                       ref={(node) => option.setRefElement(node)}
@@ -287,11 +295,17 @@ function Suggestions() {
                       onClick={() => selectOptionAndCleanUp(option)}
                       {...stylex.props(styles.option, selectedIndex === index && styles.selected)}
                     >
-                      <span>{option.label}</span>
-                      {option.description && (
-                        <span {...stylex.props(styles.optionDescription)}>
-                          {t(option.description)}
-                        </span>
+                      {kind === "file" ? (
+                        <FileOption path={option.label} />
+                      ) : (
+                        <>
+                          <span>{option.label}</span>
+                          {option.description && (
+                            <span {...stylex.props(styles.optionDescription)}>
+                              {t(option.description)}
+                            </span>
+                          )}
+                        </>
                       )}
                     </ButtonPrimitive>
                   ))}
@@ -327,6 +341,17 @@ function Suggestions() {
     />
   );
 }
+// A file reads by its name; the muted directory beside it only tells equal names apart.
+function FileOption({ path }: { path: string }) {
+  const { directory, name } = splitFilePath(path);
+  return (
+    <>
+      <span {...stylex.props(styles.fileName)}>{name}</span>
+      {directory && <span {...stylex.props(styles.optionDescription)}>{directory}</span>}
+    </>
+  );
+}
+
 function $pointStillExists(point: PointType): boolean {
   const node = $getNodeByKey(point.key);
   if (!node?.isAttached()) return false;

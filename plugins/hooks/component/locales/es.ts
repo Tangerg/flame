@@ -1,23 +1,20 @@
 export const es: Record<string, string> = {
   "failure.required": "Obligatorio: un error bloquea",
-  "failure.advisory": "Consultivo: un error permite continuar",
   title: "Hooks del ciclo de vida",
   trust: "Confiar en los hooks de este repositorio",
   "trust.sub":
     "Los hooks de este repositorio ejecutan comandos de shell en tu máquina. Actívalos solo para repositorios de confianza. Surte efecto en el siguiente turno.",
   "trust.aria": "Confiar en los hooks de este repositorio",
   matcher: "Filtro de herramientas",
-  "kind.inject": "inject",
+  "kind.inject": "Inyección",
   "scope.global": "Global",
   "scope.repository": "Repositorio",
-  inactive: "inactivo",
-  "inactive.hint": "Confía en este repositorio para activar sus hooks.",
   empty: "No hay hooks configurados",
   "empty.sub":
-    "Añade hooks en ~/.flame/hooks.json (global) o <repository>/.flame/hooks.json.",
+    "Añade hooks en ~/.flame/hooks.json (global) o <repositorio>/.flame/hooks.json.",
   "error.trust":
     "No se pudo cambiar la confianza de los hooks del repositorio.",
-  reading: "Cargando",
+  reading: "Cargando…",
   refresh: "Actualizar",
   retry: "Reintentar",
   "command.uncertain":

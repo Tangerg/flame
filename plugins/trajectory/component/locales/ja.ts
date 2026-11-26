@@ -1,6 +1,5 @@
 export const ja: Record<string, string> = {
   "code.copy": "コードをコピー",
-  "code.copied": "コピーしました",
   "code.wrap": "折り返しを有効にする",
   "code.unwrap": "折り返しを無効にする",
   "panel.title": "セッション履歴",
@@ -8,7 +7,7 @@ export const ja: Record<string, string> = {
   "controls.label": "履歴コントロール",
   "search.label": "このページを絞り込む",
   "search.placeholder": "記録されたテキストまたは ID",
-  "filters.clear": "すべてのフィルターをクリア",
+  "filters.clear": "絞り込みをクリア",
   "search.clear": "絞り込みをクリア",
   refresh: "更新",
   "kind.label": "観測の種類",
@@ -38,14 +37,11 @@ export const ja: Record<string, string> = {
   toolCalls_other: "{{count}} 件のツール呼び出し",
   attention_other: "{{count}} 件が要対応",
   "empty.filtered.title":
-    "このページにこのフィルターに一致するレコードはありません。",
-  "empty.none.title": "このページに記録はありません。",
+    "このページにこのフィルターに一致するレコードはありません",
+  "empty.none.title": "このページに記録はありません",
   "modelActivity.title": "モデルのアクティビティ",
   "fact.logicalModelCalls": "論理モデル呼び出し",
   "fact.modelEndpoints": "モデルエンドポイント",
-  "about.title": "これらのレコードについて",
-  "about.note":
-    "カウントとフィルターはこのページにのみ適用されます。欠落したプロバイダーの証跡は未記録のままです。タイムスタンプは因果関係を示すものではありません。完全なセッション履歴は信頼できるコマンドメニューからエクスポートしてください。",
   "title.run": "実行 · {{provider}}/{{model}}",
   "title.model": "モデル呼び出し",
   "title.endpoint": "モデルエンドポイント · {{provider}}/{{model}}",
@@ -82,14 +78,13 @@ export const ja: Record<string, string> = {
   "fact.reasoningTokens": "思考トークン",
   "fact.callingOperation": "呼び出し操作",
   "fact.parentOperation": "親操作",
-  "fact.origin": "発生元",
+  "fact.origin": "由来",
   "fact.costUsd": "コスト (USD)",
   "fact.rootRunId": "ルート実行 ID",
   "fact.parentRunId": "親実行 ID",
   "fact.delegatingItemId": "委任アイテム ID",
   "fact.executionDurationMs": "実行時間 (ms)",
   "fact.approval": "承認",
-  "note.usageMissing": "この呼び出しの使用量は記録されませんでした。",
   "note.outcomeUnobserved":
     "最終結果は観測されませんでした。確定時刻は実測の実行時間ではありません。",
   "note.providerUnobserved":
@@ -102,7 +97,7 @@ export const ja: Record<string, string> = {
     "{{message}} 取得したリビジョンは変更されていません。この操作を再度開いて現在のセッションを確認してください。",
   "rename.unconfirmed":
     "変更は未確認です。別の編集を送信する前に、元のコマンドを照合してください。",
-  "rename.checking": "元のコマンドを照合中…",
+  "rename.checking": "元のコマンドを確認中…",
   "rename.reconcile": "元のコマンドを照合",
   "rename.saved":
     "{{id}} を保存しました · リビジョン {{revision}} · {{title}}。閉じて再度開くと、別の編集ができます。",
@@ -121,5 +116,5 @@ export const ja: Record<string, string> = {
   "image.zoomIn": "画像を拡大",
   "image.zoomOut": "画像を縮小",
   "image.description": "画像の説明",
-  "image.unavailable": "記録された画像を表示できません。",
+  "image.unavailable": "この記録された画像を表示できませんでした。",
 };

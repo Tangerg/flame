@@ -101,9 +101,11 @@ export function NotificationSettings({
         <ListRow data-focus-unit="">
           <RecordHeading
             title={t("settings.notifications")}
-            description={t(
-              `settings.notifications.authorization.${authorization}`,
-            )}
+            description={
+              blocked
+                ? t(`settings.notifications.authorization.${authorization}`)
+                : undefined
+            }
             actions={
               <Switch
                 checked={preferences.systemNotifications && !blocked}
@@ -119,7 +121,6 @@ export function NotificationSettings({
         <ListRow data-focus-unit="">
           <RecordHeading
             title={t("settings.completionSound")}
-            description={t("settings.completionSound.sub")}
             actions={
               <Switch
                 checked={preferences.completionSound}

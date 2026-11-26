@@ -9,6 +9,7 @@ interface OverflowLabelStyle extends CSSProperties {
 
 interface Props {
   text: string;
+  onOverflowChange: (overflowing: boolean) => void;
 }
 
 const styles = stylex.create({
@@ -16,7 +17,7 @@ const styles = stylex.create({
   track: { display: "inline-block", minWidth: "max-content" },
 });
 
-export function AgentOverflowLabel({ text }: Props) {
+export function AgentOverflowLabel({ text, onOverflowChange }: Props) {
   const viewportRef = useRef<HTMLSpanElement>(null);
   const trackRef = useRef<HTMLSpanElement>(null);
   const [geometry, setGeometry] = useState({ distance: 0, duration: 0 });
@@ -46,6 +47,9 @@ export function AgentOverflowLabel({ text }: Props) {
     return () => observer.disconnect();
   }, [measure, text]);
 
+  const overflowing = geometry.distance > 0;
+  useLayoutEffect(() => onOverflowChange(overflowing), [onOverflowChange, overflowing]);
+
   const style: OverflowLabelStyle = {
     "--agent-overflow-distance": `${geometry.distance}px`,
     "--agent-overflow-duration": `${geometry.duration}s`,
@@ -55,12 +59,12 @@ export function AgentOverflowLabel({ text }: Props) {
     <span
       ref={viewportRef}
       className={clsx("agent-overflow-label truncate-fade", stylex.props(styles.label).className)}
-      data-overflowing={geometry.distance > 0 ? "" : undefined}
+      data-overflowing={overflowing ? "" : undefined}
     >
       <span
         ref={trackRef}
         className={clsx("agent-overflow-track", stylex.props(styles.track).className)}
-        data-overflowing={geometry.distance > 0 ? "" : undefined}
+        data-overflowing={overflowing ? "" : undefined}
         style={style}
       >
         {text}

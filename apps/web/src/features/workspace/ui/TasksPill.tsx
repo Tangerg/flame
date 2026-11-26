@@ -3,7 +3,15 @@ import { useTasksStore } from "@/extensions/tasksStore";
 import { iconGlyph } from "@/ui/icons/index";
 import * as stylex from "@stylexjs/stylex";
 import { useT, type MessageKey } from "@/lib/i18n/index";
-import { color, motion, radius, space, type as typeStep, weight } from "@flame/ui/tokens.stylex";
+import {
+  color,
+  font,
+  motion,
+  radius,
+  space,
+  type as typeStep,
+  weight,
+} from "@flame/ui/tokens.stylex";
 import { Icon, type IconName } from "@/ui/index";
 import { Popover } from "@/ui/index";
 import { ProgressBar } from "@/ui/index";
@@ -51,7 +59,7 @@ const p = stylex.create({
   percent: {
     flexShrink: 0,
     whiteSpace: "nowrap",
-    fontFamily: "var(--font-mono)",
+    fontFamily: font.mono,
     color: color.fgFaint,
   },
   detail: {

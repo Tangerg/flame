@@ -34,7 +34,7 @@ import { ContentVisibility, useContentVisible } from "@/ui/index";
 import { BackButton, EmptyState, RecordBody, toneInk, vocab, isConcealed } from "@flame/ui";
 import { AgentJumpToBottom } from "@/ui/agent/index";
 import { AgentWorkspaceView } from "@/ui/agent/index";
-import { space, type as typeStep, weight } from "@flame/ui/tokens.stylex";
+import { layout, space, type as typeStep, weight } from "@flame/ui/tokens.stylex";
 import { subagentEntries, type SubagentEntry } from "@/features/chat/message/application/subagents";
 import {
   delegatedRunSummary,
@@ -64,10 +64,10 @@ const styles = stylex.create({
     minHeight: "var(--surface-header-height)",
     // Status and controls must still leave one complete line for the scrollable title.
     maxHeight: "max(calc(100% / 3), calc(var(--surface-header-height) + 1lh))",
-    paddingInline: "var(--layout-compact-gutter)",
+    paddingInline: layout.compactGutter,
     paddingBlock: space.s2,
   },
-  overview: { paddingBlock: space.s3, paddingInline: "var(--layout-compact-gutter)" },
+  overview: { paddingBlock: space.s3, paddingInline: layout.compactGutter },
   group: { marginBottom: space.s4 },
   title: { marginBottom: space.s2 },
   delegation: { marginBlockEnd: space.s2 },

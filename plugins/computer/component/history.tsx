@@ -52,7 +52,7 @@ export function ConsoleHistory({
         </div>
       )}
       {state.history?.value && state.history.value.entries.length === 0 && (
-        <EmptyState title={t("history.empty")} />
+        <EmptyState title={t("history.empty")} align="start" />
       )}
       {state.history?.value?.entries.map((entry) => {
         const result = state.result?.id === entry.id ? state.result : undefined;
@@ -104,7 +104,9 @@ export function ConsoleHistory({
                       <RecordBody>{result.error}</RecordBody>
                     </div>
                   )}
-                  {result.value && <Outcome record={result.value} t={t} />}
+                  {result.value && (
+                    <Outcome record={result.value} t={t} dateTime={dateTime} />
+                  )}
                 </RecordGroup>
               )}
             </Disclosure>

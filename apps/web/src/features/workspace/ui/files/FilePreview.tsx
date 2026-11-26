@@ -129,7 +129,7 @@ function FileReadFeedback({
         role="group"
         variant="error"
         hideIcon
-        action={{ label: t("common.retry"), variant: "outline", onClick: () => void onRetry() }}
+        action={{ label: t("common.retry"), onClick: () => void onRetry() }}
       >
         {pageErrorTitle}
       </SystemMessage>

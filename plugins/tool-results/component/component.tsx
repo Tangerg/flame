@@ -86,8 +86,8 @@ export function RecordedResult({ context }: { context: ComponentContext }) {
         {tool?.outputPage && (
           <RecordMeta>
             {t("output.byteRange", {
-              start: tool.outputPage.offset,
-              end: tool.outputPage.nextOffset,
+              start: String(tool.outputPage.offset),
+              end: String(tool.outputPage.nextOffset),
             })}
             {tool.outputPage.shellId &&
               ` · ${t("output.shell", { id: tool.outputPage.shellId })}`}

@@ -1,6 +1,5 @@
 export const de: Record<string, string> = {
   "code.copy": "Code kopieren",
-  "code.copied": "Kopiert",
   "code.wrap": "Zeilenumbruch aktivieren",
   "code.unwrap": "Zeilenumbruch deaktivieren",
   "panel.title": "Sitzungsverlauf",
@@ -43,14 +42,11 @@ export const de: Record<string, string> = {
   attention_one: "{{count}} erfordert Aufmerksamkeit",
   attention_other: "{{count}} erfordern Aufmerksamkeit",
   "empty.filtered.title":
-    "Kein Datensatz auf dieser Seite entspricht diesem Filter.",
-  "empty.none.title": "Keine Datensätze auf dieser Seite.",
+    "Kein Datensatz auf dieser Seite entspricht diesem Filter",
+  "empty.none.title": "Keine Datensätze auf dieser Seite",
   "modelActivity.title": "Modellaktivität",
   "fact.logicalModelCalls": "Logische Modellaufrufe",
   "fact.modelEndpoints": "Modellendpunkte",
-  "about.title": "Über diese Datensätze",
-  "about.note":
-    "Zählungen und Filter gelten für diese Seite. Fehlende Anbieternachweise bleiben nicht erfasst; Zeitstempel implizieren keine Kausalität. Exportiere den vollständigen Sitzungsverlauf über das vertrauenswürdige Befehlsmenü.",
   "title.run": "Lauf · {{provider}}/{{model}}",
   "title.model": "Modellaufruf",
   "title.endpoint": "Modellendpunkt · {{provider}}/{{model}}",
@@ -87,14 +83,13 @@ export const de: Record<string, string> = {
   "fact.reasoningTokens": "Denk-Tokens",
   "fact.callingOperation": "Aufrufende Operation",
   "fact.parentOperation": "Übergeordnete Operation",
-  "fact.origin": "Ursprung",
+  "fact.origin": "Herkunft",
   "fact.costUsd": "Kosten (USD)",
   "fact.rootRunId": "Stamm-Lauf-ID",
   "fact.parentRunId": "Übergeordnete Lauf-ID",
   "fact.delegatingItemId": "Delegierende Element-ID",
   "fact.executionDurationMs": "Ausführungsdauer (ms)",
   "fact.approval": "Genehmigung",
-  "note.usageMissing": "Für diesen Aufruf wurde keine Nutzung erfasst.",
   "note.outcomeUnobserved":
     "Das endgültige Ergebnis wurde nicht beobachtet. Die Abschlusszeit ist nicht die gemessene Ausführungszeit.",
   "note.providerUnobserved":
@@ -107,7 +102,7 @@ export const de: Record<string, string> = {
     "{{message}} Die erfasste Revision bleibt unverändert; öffne diese Aktion erneut, um die aktuelle Sitzung zu prüfen.",
   "rename.unconfirmed":
     "Die Änderung ist unbestätigt. Gleiche den ursprünglichen Befehl ab, bevor du eine weitere Bearbeitung sendest.",
-  "rename.checking": "Ursprünglicher Befehl wird abgeglichen…",
+  "rename.checking": "Ursprünglicher Befehl wird geprüft…",
   "rename.reconcile": "Ursprünglichen Befehl abgleichen",
   "rename.saved":
     "{{id}} gespeichert · Revision {{revision}} · {{title}}. Schließe und öffne erneut, um eine weitere Bearbeitung vorzunehmen.",
@@ -117,8 +112,8 @@ export const de: Record<string, string> = {
   "rename.actions": "Sitzungstitel speichern",
   "rename.factRevision": "Revision",
   "rename.captured": "Erfasste Sitzung",
-  "export.markdown": "Konversation als Markdown exportieren",
-  "export.json": "Konversation als JSON exportieren",
+  "export.markdown": "Unterhaltung als Markdown exportieren",
+  "export.json": "Unterhaltung als JSON exportieren",
   "export.trajectory": "Vollständigen Sitzungsverlauf exportieren",
   "image.view": "Bild anzeigen",
   "image.close": "Bildvorschau schließen",

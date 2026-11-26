@@ -1,22 +1,19 @@
 export const fr: Record<string, string> = {
-  "failure.required": "Requis : les erreurs bloquent",
-  "failure.advisory": "Consultatif : continuer en cas d’erreur",
+  "failure.required": "Requis : les erreurs bloquent",
   title: "Hooks du cycle de vie",
   trust: "Faire confiance aux hooks de ce dépôt",
   "trust.sub":
-    "Les hooks de ce dépôt exécutent des commandes shell sur votre machine. N'activez que pour des dépôts de confiance. Effectif au prochain tour.",
+    "Les hooks de ce dépôt exécutent des commandes shell sur votre machine. N’activez que pour des dépôts de confiance. Effectif au prochain tour.",
   "trust.aria": "Faire confiance aux hooks de ce dépôt",
-  matcher: "Filtre d'outils",
-  "kind.inject": "inject",
+  matcher: "Filtre d’outils",
+  "kind.inject": "Injection",
   "scope.global": "Global",
   "scope.repository": "Dépôt",
-  inactive: "inactif",
-  "inactive.hint": "Faites confiance à ce dépôt pour activer ses hooks.",
   empty: "Aucun hook configuré",
   "empty.sub":
-    "Ajoutez des hooks dans ~/.flame/hooks.json (global) ou <repository>/.flame/hooks.json.",
+    "Ajoutez des hooks dans ~/.flame/hooks.json (global) ou <dépôt>/.flame/hooks.json.",
   "error.trust": "Impossible de modifier la confiance des hooks du dépôt.",
-  reading: "Chargement",
+  reading: "Chargement…",
   refresh: "Actualiser",
   retry: "Réessayer",
   "command.uncertain":

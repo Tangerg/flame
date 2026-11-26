@@ -1,3 +1,4 @@
+import * as token from "@flame/ui/tokens.stylex";
 import { useId, useState, useSyncExternalStore } from "react";
 import type { ComponentContext, Translate } from "@flame/component-sdk";
 import { Pencil } from "@flame/icons/react";
@@ -9,7 +10,7 @@ import {
   ListRow,
   RecordBody,
   RecordHeading,
-  RecordMeta,
+  RecordSummary,
   Switch,
   type Tone,
 } from "@flame/ui";
@@ -26,6 +27,13 @@ const TONES: Record<Exclude<MCPServerSettings["status"], "connected">, Tone> = {
   failed: "negative",
   disconnected: "neutral",
 };
+// Messages and the editor sit below the row on its text edge; empty, the column takes no space.
+const below = {
+  display: "grid",
+  gap: token.layout.contentGap,
+  minWidth: 0,
+  paddingInline: token.rowInset.inline,
+} as const;
 interface ServerRowProps {
   context: ComponentContext;
   settings: MCPSettings;
@@ -51,7 +59,7 @@ function ServerConnectionButton({
     : "mcp.reconnect";
   return (
     <Button
-      variant={needsSignIn ? "primary" : "outline"}
+      variant={needsSignIn ? "primary" : "soft"}
       size="sm"
       disabled={busy || signingIn}
       pending={running || server.status === "connecting" || signingIn}
@@ -80,94 +88,70 @@ export function ServerRow({ context, settings, server, t }: ServerRowProps) {
     server.toolCount === undefined
       ? undefined
       : t("mcp.toolCount", { count: server.toolCount });
-  return (
-    <ListRow>
-      <RecordHeading
-        title={
-          <span style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>
-            {server.id.name}
-          </span>
-        }
-        description={
-          server.status !== "connected" ? (
-            <RecordMeta>
-              <Badge tone={TONES[server.status]}>
-                {t(`mcp.status.${server.status}`)}
-              </Badge>
-            </RecordMeta>
-          ) : (
-            server.toolCount === 0 && tools
-          )
-        }
-        actions={
-          <>
-            <ServerConnectionButton
-              context={context}
-              settings={settings}
-              server={server}
-              t={t}
-              signingIn={signingIn}
-              running={command?.phase === "running"}
-              busy={busy}
-            />
-            {server.id.origin.type === "user" && (
-              <>
-                <Switch
-                  checked={server.enabled}
-                  disabled={busy || signingIn}
-                  onCheckedChange={(value) =>
-                    void settings.setEnabled(context, server.id, value)
-                  }
-                  ariaLabel={t("mcp.enable.aria", { server: server.id.name })}
-                />
-                <IconButton
-                  icon={Pencil}
-                  size="sm"
-                  active={editing !== null}
-                  aria-label={t("mcp.edit", { server: server.id.name })}
-                  aria-expanded={editing !== null}
-                  aria-controls={panelId}
-                  onClick={(event) =>
-                    setEditing(editing ? null : event.currentTarget)
-                  }
-                />
-              </>
-            )}
-          </>
-        }
+  const name = (
+    <span style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>
+      {server.id.name}
+    </span>
+  );
+  const status = server.status !== "connected" && (
+    <Badge tone={TONES[server.status]}>
+      {t(`mcp.status.${server.status}`)}
+    </Badge>
+  );
+  const actions = (
+    <>
+      <ServerConnectionButton
+        context={context}
+        settings={settings}
+        server={server}
+        t={t}
+        signingIn={signingIn}
+        running={command?.phase === "running"}
+        busy={busy}
       />
-      {server.status === "failed" && server.errorDetail && (
-        <RecordBody>{t(`mcpStatus.${server.errorDetail}`)}</RecordBody>
+      {server.id.origin.type === "user" && (
+        <>
+          <Switch
+            checked={server.enabled}
+            disabled={busy || signingIn}
+            onCheckedChange={(value) =>
+              void settings.setEnabled(context, server.id, value)
+            }
+            ariaLabel={t("mcp.enable.aria", { server: server.id.name })}
+          />
+          <IconButton
+            icon={Pencil}
+            size="sm"
+            active={editing !== null}
+            aria-label={t("mcp.edit", { server: server.id.name })}
+            aria-expanded={editing !== null}
+            aria-controls={panelId}
+            onClick={(event) =>
+              setEditing(editing ? null : event.currentTarget)
+            }
+          />
+        </>
       )}
-      {authorization?.status.type === "unconfirmed" && (
-        <div role="status">
-          <RecordBody>{t("mcp.signIn.unconfirmed")}</RecordBody>
-        </div>
-      )}
-      {authorization?.status.type === "failed" && (
-        <div role="alert">
-          <RecordBody>{t("mcpStatus.mcp_authorization_failed")}</RecordBody>
-        </div>
-      )}
-      {signingIn && state.feedback.get(key)?.kind === "error" && (
-        <Button onClick={() => settings.retryAuthorization(context, server.id)}>
-          {t("retry")}
-        </Button>
-      )}
-      {!editing && (
-        <CommandFeedback
-          context={context}
-          settings={settings}
-          resource={key}
-          t={t}
-        />
-      )}
-      {server.toolCount !== 0 && (
+    </>
+  );
+  return (
+    <div>
+      {server.toolCount === 0 ? (
+        <ListRow>
+          <RecordHeading
+            title={name}
+            status={status}
+            description={tools}
+            actions={actions}
+          />
+        </ListRow>
+      ) : (
         <Disclosure
-          title={tools ?? t("mcp.tools.title", { server: server.id.name })}
-          label={
-            tools && t("mcp.tools.label", { tools, server: server.id.name })
+          variant="row"
+          title={
+            <RecordSummary title={name} status={status} description={tools} />
           }
+          actions={actions}
         >
           <ToolControls
             context={context}
@@ -177,19 +161,49 @@ export function ServerRow({ context, settings, server, t }: ServerRowProps) {
           />
         </Disclosure>
       )}
-      {editing && (
-        <div id={panelId}>
-          <ServerForm
-            returnFocus={editing}
+      <div style={below}>
+        {server.status === "failed" && server.errorDetail && (
+          <RecordBody>{t(`mcpStatus.${server.errorDetail}`)}</RecordBody>
+        )}
+        {authorization?.status.type === "unconfirmed" && (
+          <div role="status">
+            <RecordBody>{t("mcp.signIn.unconfirmed")}</RecordBody>
+          </div>
+        )}
+        {authorization?.status.type === "failed" && (
+          <div role="alert">
+            <RecordBody>{t("mcpStatus.mcp_authorization_failed")}</RecordBody>
+          </div>
+        )}
+        {signingIn && state.feedback.get(key)?.kind === "error" && (
+          <Button
+            onClick={() => settings.retryAuthorization(context, server.id)}
+          >
+            {t("retry")}
+          </Button>
+        )}
+        {!editing && (
+          <CommandFeedback
             context={context}
             settings={settings}
+            resource={key}
             t={t}
-            server={server}
-            onDone={() => setEditing(null)}
-            onCancel={() => setEditing(null)}
           />
-        </div>
-      )}
-    </ListRow>
+        )}
+        {editing && (
+          <div id={panelId}>
+            <ServerForm
+              returnFocus={editing}
+              context={context}
+              settings={settings}
+              t={t}
+              server={server}
+              onDone={() => setEditing(null)}
+              onCancel={() => setEditing(null)}
+            />
+          </div>
+        )}
+      </div>
+    </div>
   );
 }

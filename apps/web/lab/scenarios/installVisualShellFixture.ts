@@ -3,6 +3,7 @@ import { queryClient } from "@/lib/queryClient";
 import { type FlameClient } from "@flame/runtime-client";
 import { createElement } from "react";
 import { RenameSession } from "../../../../plugins/trajectory/component/component";
+import trajectoryDeclaration from "../../../../plugins/trajectory/package/io.github.tangerg.flame/declaration.json";
 import { InstalledSessionActionComponent } from "@/features/plugins/ui/InstalledComponent";
 import { AGENT_SESSIONS_KEY, type AgentSessionSummary } from "@/features/agent/public/session";
 import sessionSearch from "@/features/navigation/session-search/index";
@@ -164,9 +165,12 @@ function sessionActionsPlugin(runtimeClient: () => FlameClient): AnyPlugin {
     setup(ctx) {
       const lifetime = ctx.contributions.child("visual-rename-session");
       const sources = visualComponentProps(runtimeClient(), lifetime, "rename-session");
+      const entry = trajectoryDeclaration.components.find(({ id }) => id === "rename-session");
+      if (!entry) throw new Error('published trajectory declaration has no "rename-session"');
       lifetime.add(SESSION_ACTION, {
         id: "package:visual:rename-session",
-        title: "flame.trajectory · Name this investigation",
+        title: entry.title,
+        localizedTitles: entry.localizedTitles,
         component: ({ session }) =>
           createElement(InstalledSessionActionComponent, {
             ...sources,
