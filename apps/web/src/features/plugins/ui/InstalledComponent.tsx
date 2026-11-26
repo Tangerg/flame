@@ -29,6 +29,7 @@ import {
   type SaveFileRequest,
 } from "@flame/component-sdk";
 import { useOptionalWorkspace, type WorkspaceAccess } from "@/features/workspace/public/workspace";
+import { observeWorkspaceDiffReads } from "@/features/workspace/public/queries";
 import { packageScopedId } from "@/features/plugins/adapters/packages";
 import {
   isWorkspaceResolving,
@@ -246,8 +247,13 @@ class ComponentInstance {
       trackContributionIO(this.sources.lifetime, () => operation(signal));
     const openSession = this.sources.openSession;
     const component = Object.freeze({ ...this.sources.component });
+    const runtime = this.sources.runtime;
+    const workspace = this.sources.workspace && capturedWorkspace(this.sources.workspace);
     return Object.freeze({
-      runtime: this.sources.runtime,
+      runtime:
+        workspace && this.sources.placement === "workspaceView"
+          ? observeWorkspaceDiffReads(runtime, workspace.ref.path, signal)
+          : runtime,
       component,
       sessionId: this.sources.sessionTarget?.id ?? this.sources.sessionId,
       sessionTarget: this.sources.sessionTarget
@@ -267,7 +273,7 @@ class ComponentInstance {
             )
           : undefined,
       file: this.sources.file && capturedFile(this.sources.file),
-      workspace: this.sources.workspace && capturedWorkspace(this.sources.workspace),
+      workspace,
       project: this.sources.project ? Object.freeze({ ...this.sources.project }) : undefined,
       binding: this.sources.binding ? structuredClone(this.sources.binding) : undefined,
       openSession: openSession

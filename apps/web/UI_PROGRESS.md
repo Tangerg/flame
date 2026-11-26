@@ -351,8 +351,53 @@ logs, captures and caches are removed.
 
 In the same task, the conversation's worktree action still reads
 `+51 −2` after a successful Diff refresh. The overview and Git both
-show one added and one removed line across the same two files. Next
-trace the worktree summary's refresh contract.
+show one added and one removed line across the same two files.
+[The summary refresh repair](#worktree-summary-follows-a-successful-diff-read-2026-11-27)
+qualifies an explicit Refresh with those same counts.
+
+### Worktree summary follows a successful Diff read (2026-11-27)
+
+`WorkspaceChangesAction` projects the exact workspace's
+`workspace.changes.list` query. The installed Diff view independently
+reads a visual comparison. The captured workspace view now reports a
+successful worktree comparison through `observeWorkspaceDiffReads`.
+It invalidates the matching file-changes query while both the component
+and request remain active. The existing query fetches the full summary
+even when the comparison addresses one file or has a read budget.
+Branch comparisons keep their own scope.
+
+- Signed production Wails v3.1.0 with Runtime `2026-11-26.10` at
+  `c2b02d0fb` plus this change uses two real uncommitted files and a
+  separate committed branch change. Chinese/light/14 px/Flame Orange
+  at 1120 × 728 keeps a 320 px Dock. Native wheel input brings the
+  final patch line from y=1306 to y=628. The header starts at
+  `+51 −2`. Restore one file's HEAD bytes and change its mode.
+  Git now reports `+1 −1` across the two files. Refresh accepts
+  **没有行更改。** for the selected file, and the same header updates
+  to `+1 −1`. The files overview shows the other file's changed
+  line. Back to conversation focuses the original action with
+  its updated label.
+- English/dark/18 px/Blue (#0485F7) at 1280 × 800 opens Branch
+  changes with the keyboard. Its committed `branch-note.md` reads
+  `+2 −1` and the worktree action reads `+1 −1`. Returning to
+  Uncommitted changes restores the two worktree rows.
+- Restore both uncommitted files while the Composer owns an unsent
+  draft. Refresh shows **No changes in this comparison** and the
+  worktree action disappears. Composer keeps focus and accepts the
+  next digit, `5682` to `56825`. Back to conversation has a
+  named Conversation region to focus after the original action
+  has retired. Cmd+L continues the same draft.
+
+Web typecheck, bootstrap, plugin resources, Prettier, production
+staging, Runtime packaging, signed Wails and diff checks pass.
+Web typecheck and bootstrap repeat after the independent recovery
+change at `1c8a50abc`. Wails acceptance uses the preceding pair.
+Runtime serves the installed Diff resource byte for byte. The
+fixture has no Run. VoiceOver, failed reads and other platforms
+remain outside this native check. Wails exits normally and the
+private Runtime drain reaches the existing deadline. The test
+app, process, profile, Git fixture, logs, capture, caches and
+checkout build outputs are removed.
 
 ## Error notes leave retrying to their buttons (2026-11-26)
 
