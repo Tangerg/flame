@@ -908,8 +908,8 @@ entries use the exact provider and model pair.
   and candidate left the focused query empty during several attempts,
   and subsequent Chinese probes could not repeat the digit entry or
   type `release`. The provider-caption review includes native search
-  and Recent, with reliable physical text entry on reopen still to
-  investigate.
+  and Recent. [Catalog composition](#catalog-search-keeps-composing-text-2026-11-27)
+  traces the input issue and verifies its fix.
 
 Web typecheck, 81 contract tests, bootstrap, scoped Prettier and diff
 checks pass. Production staging, Runtime packaging and signed Wails
@@ -927,6 +927,161 @@ Session matched its snapshot with zero Runs and four catalog reads.
 The Wails hosts exit normally. The private Runtime reaches its
 existing drain deadline. The providers, listeners, app registration,
 profiles, captures, logs, caches and checkout outputs are removed.
+
+### Catalog search keeps composing text (2026-11-27)
+
+In signed Wails at `1f8d2ed2f`, the model search held DOM focus. A
+digit entered normally. Typing `release` through macOS Pinyin
+delivered trusted keydown and input events to that same field, but
+each composition left the rendered value empty. Space could not
+commit the text. The inline Dock catalog reproduced it with `files`.
+The command palette displayed `files` from the same native input.
+
+`ui/atoms/catalog-picker.tsx` now renders SearchField with the value
+supplied by Base UI. Base UI owns the composing input value and
+publishes the committed query to the catalog. The render element had
+supplied that committed query to the input again, overriding Base
+UI's composing value. [Base UI 1.9.0 Combobox input](https://github.com/mui/base-ui/blob/v1.9.0/packages/react/src/combobox/input/ComboboxInput.tsx)
+and [render prop merge](https://github.com/mui/base-ui/blob/v1.9.0/packages/react/src/internals/useRenderElement.ts).
+The isolated event observer used Vite's normal module and artifact
+policy generation after integrity and inline script checks rejected
+earlier diagnostic builds.
+
+- At 1120 × 728 in Chinese and light mode, Tab and Return open the
+  model selector. The visible marked text grows from `r` to
+  `release` while the provider rail stays visible. Space commits it
+  and the list shows the two exact model IDs with their captions.
+  Down moves the highlight. Escape clears the query, and a second
+  Escape returns focus to the same model trigger.
+- Both Dock entries display the marked Pinyin `wen'jian` and commit
+  it as `文件`. Return from the inline catalog opens Files with the
+  private workspace's README row visible. In the Browse panels popup,
+  Escape clears the query and a second Escape returns to its button
+  with the README row still in view.
+- After rebasing onto `d0c12b3c0`, the standard signed build and a
+  fresh Runtime repeat the path at 1280 × 800 in English, dark mode,
+  18 px and Blue. Pointer opens the model selector. Committing
+  `release` then pressing Return selects the exact Audit model.
+  During a fresh `build` composition, Escape cancels the marked text
+  with the picker still open. Return on the recomposed text filters
+  to Build while Audit is still selected. The English Dock popup
+  also commits `files` and restores its trigger on closing.
+
+Web typecheck, 81 contract tests, bootstrap, scoped Prettier and diff
+checks pass with npm 11.21.1. The signed baseline, traced candidate
+and final production build launch and exit normally. The complete
+Session snapshot and Composer draft `2468` match throughout. The
+isolated provider serves nine catalog reads and zero generation
+requests. Runtime records zero Runs. Both private Runtime processes
+reach their existing drain deadline. All owned app registrations,
+listeners, profiles, captures, logs, caches and checkout outputs
+are removed.
+
+The production search at 18 px also shows that both long mixed-catalog
+rows still clip before their distinguishing suffixes when their
+source captions are present. [Long mixed model labels](#long-mixed-model-labels-stay-readable-2026-11-27)
+follows that choice through the model selector with the Dock open.
+
+### Long mixed model labels stay readable (2026-11-27)
+
+At `5b1b2737b`, the signed desktop shows two matching
+`catalog-release-gateway…` rows beside `Openai-compatible` when
+`release` is committed. The actual IDs end in `-audit` and
+`-build`. This is visible at 1280 × 800 with Files open, dark
+mode, an 18 px interface and the Blue accent.
+
+`ui/atoms/catalog-picker.tsx` lets captioned rows collect their label
+and provider on separate flex lines when the pair needs more room.
+The names and captions fit the row's inline size and share the menu
+surface's existing long-word wrapping. Short pairs share a line.
+Rows without a rendered caption use the existing compact label.
+Better Layout and Better Typography inform this choice. [CSS flex line collection](https://www.w3.org/TR/css-flexbox-1/#algo-line-break)
+
+- With the same English appearance and window size, the signed
+  candidate shows both complete names above their readable provider
+  captions. The existing Files Dock displays README throughout.
+  Pointer opens the selector, native composition commits `release`,
+  and Return applies the exact Audit variant.
+- In the longer `catalog` search, Down highlights the wrapped Build
+  row at y=385. Wheel moves it out of view to y=1227. The first
+  Return reveals it at y=389 while Audit stays selected. A fresh
+  Return applies Build and focus returns to its trigger.
+- Recent places `GPT-4.1` beside its `OpenAI` caption on one line.
+  It shows both long model names with `Openai-compatible` below.
+  An initial driver probe aimed at GPT-3.5-turbo using its reported
+  AX rectangle and landed on GPT-4.1. The recent review uses the
+  actual selection. At 1120 × 728 in Chinese, light mode, 14 px
+  and Flame, a pointer click on the visible Audit caption applies
+  that exact model.
+- The Chinese narrow window also shows one unbroken model ID across
+  two readable lines with its full source below. Two Escapes clear
+  the query and return to the current model trigger. The Composer
+  retains `2468` and the Files Dock retains the README row.
+
+Web typecheck, 81 contract tests, bootstrap, scoped Prettier and diff
+checks pass with npm 11.21.1. Production staging, Runtime packaging and
+the signed Wails build pass. Runtime admits 35 loopback models and
+42 OpenAI preset models. The complete Session snapshot is equal and
+there are zero Runs. The provider serves seven catalog reads and zero
+generation requests. The host exits normally and the private Runtime
+reaches its existing drain deadline. The app registration, processes,
+listeners, profiles, captures, logs, caches and checkout outputs are
+removed.
+
+The flow keeps the real Files Dock visible during a model choice.
+[Full paths for clipped Files headings](#full-paths-for-clipped-files-headings-2026-11-27)
+returns to file identity and the path back to the conversation.
+
+### Full paths for clipped Files headings (2026-11-27)
+
+At `6fb808485`, a private file tree wraps two 192-character basenames
+with the distinct `north-review-tail.txt` and `south-review-tail.txt`
+endings. Both readers paint the same two-line prefix. At 1120 × 728
+in English, dark mode, 18 px and Blue with a 320 px Files Dock, Tab
+from Back to files goes directly to Go to line. Hover relies on the
+native title.
+
+Following Better Layout and the [Diff heading work](#full-paths-for-clipped-diff-headings-2026-11-27),
+Files uses the shared Tooltip on its existing basename. The observer
+measures actual multiline clipping after width, text and font changes.
+When clipped, the label is a named focus target and the tooltip
+presents the complete relative path. Diff uses the same observer
+with its original heading ref and heading level changes. The ZCode
+tree and reader inform the distinction between the visible name and
+the full location.
+
+- Pointer wheel reaches both long rows. In Files, Tab from Back to
+  files focuses each exact name and opens its path tooltip. Escape
+  dismisses the tooltip with focus and file content still present.
+  Hover over the south title reveals the same path while Go to line
+  has focus. The short sibling goes directly to Go to line and
+  exposes no path tooltip on hover. The Escape assertions were
+  rerun after correcting a scratch variable that shadowed shell
+  command lookup.
+- Back returns to the exact nested row for both files. In the final
+  compact check, the north row moves from y=153 before reading to
+  y=377 on return. The south row stays at y=455. The next Files
+  review compares that position with the same starting viewport.
+- The installed Workspace diff view opens the actual north patch.
+  Its focused heading and Shift+Tab from Diff layout both show the
+  full path. Escape closes the tooltip, then the next Escape
+  returns to that exact changed-file button.
+- At 1280 × 800 the full-width Files view fits the north title
+  in English/dark/18 px and Chinese/light/14 px/Flame. Tab skips
+  the title in both. Returning to the 378 px Dock restores the
+  clipped path affordance for the same reader. Back finds the exact
+  north row. Cmd+L restores the draft `2468`, typing reaches
+  `24685`, and Undo restores `2468`.
+
+Shared UI typecheck and packed-consumer check, Web typecheck, 81
+contract tests, bootstrap, scoped Prettier and diff checks pass.
+Production staging, Runtime packaging and signed Wails builds pass.
+The complete Session snapshot and all 50 private file digests match.
+No Runs or generation calls occurred. The private provider served
+29 catalog reads. All Wails hosts exited normally. The private
+Runtime reached its existing drain deadline. The app registration,
+processes, listeners, profiles, fixtures, captures, logs, caches and
+checkout outputs are removed.
 
 ## Error notes leave retrying to their buttons (2026-11-26)
 

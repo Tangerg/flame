@@ -28,7 +28,9 @@ const styles = stylex.create({
 
   row: { cursor: "default", userSelect: "none" },
   rowText: { minWidth: 0 },
-  rowLine: { display: "flex", minWidth: 0, alignItems: "baseline", gap: space.s1_5 },
+  rowLine: { display: "flex", minWidth: 0, alignItems: "baseline", columnGap: space.s1_5 },
+  captionedLine: { flexWrap: "wrap", rowGap: space.s0_5 },
+  fitRowText: { maxInlineSize: "100%" },
   caption: { flexShrink: 0, color: color.fgFaint },
   mark: { color: color.accentText },
 
@@ -205,7 +207,6 @@ function CatalogTrigger({
 function CatalogSearch({
   placeholder,
   clearLabel,
-  value,
   onClear,
   ring,
   ref,
@@ -213,7 +214,6 @@ function CatalogSearch({
 }: {
   placeholder: string;
   clearLabel: string;
-  value: string;
   onClear: () => void;
   ring: boolean;
   ref?: Ref<HTMLInputElement>;
@@ -223,17 +223,18 @@ function CatalogSearch({
     <ComboboxPrimitive.Input
       ref={ref}
       onKeyDown={(event) => guardComboboxEnter(event, listRef.current)}
-      render={
+      render={({ defaultValue: _defaultValue, ...input }) => (
         <SearchField
+          {...input}
           aria-label={placeholder}
           placeholder={placeholder}
-          value={value}
+          value={"value" in input && typeof input.value === "string" ? input.value : ""}
           onClear={onClear}
           clearLabel={clearLabel}
           ring={ring}
           styles={styles.searchBox}
         />
-      }
+      )}
     />
   );
 }
@@ -246,7 +247,7 @@ function CatalogRow(
   groupLabel?: string,
   size: "sm" | "md" = "sm",
 ) {
-  const showCaption = item.caption !== undefined && item.caption !== groupLabel;
+  const caption = item.caption === groupLabel ? undefined : item.caption;
   return (
     <ComboboxPrimitive.Item
       key={item.id}
@@ -262,10 +263,10 @@ function CatalogRow(
     >
       {item.leading}
       <span {...stylex.props(styles.rowText)}>
-        <span {...stylex.props(styles.rowLine)}>
-          <span {...stylex.props(vocab.truncate)}>{item.label}</span>
-          {showCaption && item.caption && (
-            <span {...stylex.props(styles.caption, type.uiXs)}>{item.caption}</span>
+        <span {...stylex.props(styles.rowLine, caption ? styles.captionedLine : undefined)}>
+          <span {...stylex.props(caption ? styles.fitRowText : vocab.truncate)}>{item.label}</span>
+          {caption && (
+            <span {...stylex.props(styles.caption, styles.fitRowText, type.uiXs)}>{caption}</span>
           )}
         </span>
         {item.description}
@@ -312,7 +313,6 @@ export function CatalogList({
           listRef={listRef}
           placeholder={placeholder}
           clearLabel={clearLabel}
-          value={query}
           onClear={() => setQuery("")}
           ring={searchRing}
         />
@@ -523,7 +523,6 @@ export function RailCatalogPicker({
                   listRef={listRef}
                   placeholder={placeholder}
                   clearLabel={clearLabel}
-                  value={query}
                   onClear={() => setQuery("")}
                   ring={false}
                 />

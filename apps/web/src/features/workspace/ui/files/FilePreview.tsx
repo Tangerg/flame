@@ -17,7 +17,16 @@ import { WORKSPACE_FILE_RENDERER } from "@/features/workspace/public/views";
 import { DataError, DataView, SkeletonList } from "@/ui/index";
 import { Segmented } from "@flame/ui";
 import { Icon, fileIconName } from "@/ui/index";
-import { BackButton, Button, EmptyState, IconButton, useContentVisible, useCopy } from "@flame/ui";
+import {
+  BackButton,
+  Button,
+  EmptyState,
+  IconButton,
+  Tooltip,
+  useClampedText,
+  useContentVisible,
+  useCopy,
+} from "@flame/ui";
 import { face } from "@flame/ui/tokens.stylex";
 import { useT, type Translate } from "@/lib/i18n/index";
 import { WorkspaceViewLayout } from "@/features/workspace/ui/WorkspaceViewLayout";
@@ -48,7 +57,7 @@ import {
 
 const styles = stylex.create({
   directory: { display: "block", overflowWrap: "anywhere" },
-  // The header never shrinks, so a long name is bounded here; the directory below completes it.
+  // A bounded basename leaves room for the reading controls in a narrow header.
   identityName: {
     display: "-webkit-box",
     WebkitBoxOrient: "vertical",
@@ -379,6 +388,8 @@ export function FilePreview({
 
   const icon = fileIconName(viewer.path);
   const { name, directory } = splitFilePath(viewer.path);
+  const nameRef = useRef<HTMLSpanElement>(null);
+  const nameClamped = useClampedText(nameRef, viewer.path);
   const {
     refreshFailed,
     rejectedJump,
@@ -439,9 +450,17 @@ export function FilePreview({
       }
       icon={<Icon name={icon} size="sm" />}
       identity={
-        <span title={viewer.path} {...stylex.props(styles.identityName)}>
-          {name}
-        </span>
+        <Tooltip label={<span dir="ltr">{viewer.path}</span>} disabled={!nameClamped}>
+          <span
+            ref={nameRef}
+            role={nameClamped ? "group" : undefined}
+            aria-label={nameClamped ? name : undefined}
+            tabIndex={nameClamped ? 0 : undefined}
+            {...stylex.props(styles.identityName)}
+          >
+            {name}
+          </span>
+        </Tooltip>
       }
       sub={fileSubline(t, {
         directory,

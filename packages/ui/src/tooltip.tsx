@@ -1,6 +1,12 @@
 import * as stylex from "@stylexjs/stylex";
 import type { StyleXStyles } from "@stylexjs/stylex";
-import type { ReactElement, ReactNode } from "react";
+import {
+  useLayoutEffect,
+  useState,
+  type ReactElement,
+  type ReactNode,
+  type RefObject,
+} from "react";
 import { font, leading, space, type } from "./tokens.stylex";
 import { Tooltip as TooltipPrimitive } from "@base-ui/react/tooltip";
 import { FLOATING_LAYER, FLOATING_TIP } from "./floating-surface";
@@ -45,6 +51,36 @@ interface RichTooltipProps {
   sideOffset?: number;
   delay?: number;
   styles?: StyleXStyles;
+}
+
+export function useClampedText(
+  ref: RefObject<HTMLElement | null>,
+  text: string,
+  tag?: string,
+): boolean {
+  const [clamped, setClamped] = useState(false);
+  useLayoutEffect(() => {
+    const node = ref.current;
+    if (!node) return;
+    const { documentElement, fonts } = node.ownerDocument;
+    const measure = () => {
+      const { clientHeight, scrollHeight } = node;
+      setClamped(clientHeight > 0 && scrollHeight > clientHeight);
+    };
+    const resize = new ResizeObserver(measure);
+    resize.observe(node);
+    // Switching between installed fonts can change wrapping without resizing the clamped box.
+    const appearance = new MutationObserver(measure);
+    appearance.observe(documentElement, { attributeFilter: ["style"] });
+    fonts?.addEventListener("loadingdone", measure);
+    measure();
+    return () => {
+      resize.disconnect();
+      appearance.disconnect();
+      fonts?.removeEventListener("loadingdone", measure);
+    };
+  }, [ref, text, tag]);
+  return clamped;
 }
 
 export function TooltipProvider({ children }: TooltipProviderProps) {
