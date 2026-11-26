@@ -31,7 +31,8 @@ func TestIndependentComponentPackagesComposeThroughInstallationLifecycle(t *test
 				if len(row.Selected.Diagnostics) != 0 || len(row.Selected.Servers) != 0 {
 					t.Fatalf("independent component admission: %+v", row.Selected)
 				}
-				installed[name] = r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: row.ID, Enabled: true}, "enable-"+name).(*protocol.PluginInstallation)
+				r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: row.ID, Enabled: true}, "enable-"+name)
+				installed[name] = r.pluginInstallation(row.ID)
 			}
 			request := func(name, point string, order ...protocol.PluginPointReference) protocol.ResolvePluginPointRequest {
 				t.Helper()

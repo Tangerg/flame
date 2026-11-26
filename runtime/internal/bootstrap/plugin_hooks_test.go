@@ -21,21 +21,20 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-func activateHookProvider(t *testing.T, api *delivery.Handler) *protocol.PluginInstallation {
+func activateHookProvider(t *testing.T, api *delivery.Handler) string {
 	t.Helper()
 	ctx := protocolLifecycleContext(t.Context())
 	installed, err := api.InstallPlugin(ctx, protocol.InstallPluginRequest{Source: filepath.Join(firstPartyPackages, "hooks")})
 	if err != nil {
 		t.Fatal(err)
 	}
-	installed, err = api.SetPluginEnablement(ctx, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true})
-	if err != nil {
+	if _, err := api.SetPluginEnablement(ctx, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := api.SelectPluginProvider(ctx, protocol.SelectPluginProviderRequest{Role: "flame.hooks.v1", InstallationID: installed.ID, Contribution: "hook-provider"}); err != nil {
 		t.Fatal(err)
 	}
-	return installed
+	return installed.ID
 }
 
 func writeHookSource(t *testing.T, root string, rules string) {
@@ -61,7 +60,7 @@ func TestInstalledHooksRetainRulesAndOriginalCommandReceipt(t *testing.T) {
 	}
 	writeHookSource(t, cfg.userHome, string(document))
 	r := poMCPOpen(t, cfg)
-	installed := activateHookProvider(t, r.api)
+	id := activateHookProvider(t, r.api)
 	source := r.host.application.delivery.PluginCalls.(adapterhooks.Source)
 	resolver, err := newHookResolver(cfg.userHome, cfg.stores.Trust, source)
 	if err != nil {
@@ -83,7 +82,7 @@ func TestInstalledHooksRetainRulesAndOriginalCommandReceipt(t *testing.T) {
 	if content, err := os.ReadFile(filepath.Join(cfg.defaultWorkspacePath, "hook-effects")); err != nil || string(content) != "once\n" {
 		t.Fatalf("original command was redispatched: %q %v", content, err)
 	}
-	blocked := r.endpoint.Invoke(t.Context(), delivery.PluginsUninstall, protocol.PluginRequest{InstallationID: installed.ID}, protocol.CallMetadata{IdempotencyKey: "remove-held-hooks", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
+	blocked := r.endpoint.Invoke(t.Context(), delivery.PluginsUninstall, protocol.PluginRequest{InstallationID: id}, protocol.CallMetadata{IdempotencyKey: "remove-held-hooks", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 	if blocked.Failure == nil || !errors.Is(blocked.Failure, protocol.ErrPluginInUse) {
 		t.Fatalf("captured source was not retained: %v", blocked.Failure)
 	}
@@ -100,7 +99,7 @@ func TestInstalledHooksRetainRulesAndOriginalCommandReceipt(t *testing.T) {
 	if err := current.Close(); err != nil {
 		t.Fatal(err)
 	}
-	r.must(delivery.PluginsUninstall, protocol.PluginRequest{InstallationID: installed.ID}, "remove-released-hooks")
+	r.must(delivery.PluginsUninstall, protocol.PluginRequest{InstallationID: id}, "remove-released-hooks")
 }
 
 func TestInstalledHooksAbsenceTrustAndDisablementThroughRuntime(t *testing.T) {
@@ -127,7 +126,7 @@ func TestInstalledHooksAbsenceTrustAndDisablementThroughRuntime(t *testing.T) {
 	if result := start("without-hook-provider"); result.Failure != nil {
 		t.Fatalf("absent optional hooks prevented execution: %v", result.Failure)
 	}
-	installed := activateHookProvider(t, r.api)
+	id := activateHookProvider(t, r.api)
 	if result := start("global-policy"); result.Failure == nil {
 		t.Fatal("installed global policy did not block the prompt")
 	}
@@ -155,7 +154,7 @@ func TestInstalledHooksAbsenceTrustAndDisablementThroughRuntime(t *testing.T) {
 	if err != nil || !view.RepositoryTrusted || len(view.Hooks) != 2 {
 		t.Fatalf("installed rules lost Runtime trust: %+v %v", view, err)
 	}
-	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: false}, "disable-hooks")
+	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: id, Enabled: false}, "disable-hooks")
 	if result := start("without-enabled-hooks"); result.Failure != nil {
 		t.Fatalf("disabled hooks still contributed rules: %v", result.Failure)
 	}

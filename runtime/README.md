@@ -796,6 +796,13 @@ Plugin and Skill read invalidations likewise follow the durable write, outside a
 and before realization. Withdrawal failure cannot suppress a committed change's notices;
 a refused write publishes none.
 
+`plugins.setEnablement` commits the desired enablement and its acknowledgement in
+the same installation transaction. Retrying the original command returns its
+recorded `installationId` and `enabled` values, including after a later decision
+changes the installation. A Frame confirmation failure after commit preserves
+the decision and requires Frame recovery. Use `plugins.list` for current
+enablement and observed backend availability.
+
 Installation withdrawal reads the configured external connector selection through
 the original mutation context. Directory reads cannot change that selection or its
 impact on a later installation change. An unreadable selection withdraws potentially

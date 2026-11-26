@@ -30,7 +30,7 @@ type pluginRuntime interface {
 	StagePlugin(context.Context, protocol.StagePluginRequest, authoring.CommandID) (*protocol.PluginInstallation, error)
 	SelectPlugin(context.Context, protocol.PluginReleaseRequest, authoring.CommandID) (*protocol.PluginInstallation, error)
 	ConfigurePlugin(context.Context, protocol.ConfigurePluginRequest, authoring.CommandID) (*protocol.PluginInstallation, error)
-	SetPluginEnablement(context.Context, protocol.SetPluginEnablementRequest, authoring.CommandID) (*protocol.PluginInstallation, error)
+	SetPluginEnablement(context.Context, protocol.SetPluginEnablementRequest, authoring.CommandID) (*protocol.PluginEnablement, error)
 	UninstallPlugin(context.Context, protocol.PluginRequest, authoring.CommandID) error
 }
 

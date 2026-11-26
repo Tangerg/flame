@@ -27,7 +27,8 @@ import (
 func activateWorkflow(r *poMCPRuntime, source, key, role, id string) *protocol.PluginInstallation {
 	r.t.Helper()
 	p := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, key+"-install").(*protocol.PluginInstallation)
-	p = r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: p.ID, Enabled: true}, key+"-enable").(*protocol.PluginInstallation)
+	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: p.ID, Enabled: true}, key+"-enable")
+	p = r.pluginInstallation(p.ID)
 	r.must(delivery.PluginsSelectProvider, protocol.SelectPluginProviderRequest{Role: role, InstallationID: p.ID, Contribution: id}, key+"-select")
 	return p
 }

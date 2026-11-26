@@ -158,11 +158,14 @@ func registerPlugins(r *Registry) {
 	}, ctx context.Context, in protocol.ConfigurePluginRequest) (*protocol.PluginInstallation, error) {
 		return s.ConfigurePlugin(ctx, in)
 	})
-	r.command(MethodMeta{Name: PluginsSetEnablement, GoName: "SetPluginEnablement", CapabilityRules: requires(protocol.FeaturePlugins), Errors: pluginErrors()}, func(s interface {
-		SetPluginEnablement(context.Context, protocol.SetPluginEnablementRequest) (*protocol.PluginInstallation, error)
-	}, ctx context.Context, in protocol.SetPluginEnablementRequest) (*protocol.PluginInstallation, error) {
+	r.command(MethodMeta{
+		Name: PluginsSetEnablement, GoName: "SetPluginEnablement",
+		CapabilityRules: requires(protocol.FeaturePlugins), Errors: pluginErrors(),
+	}, func(s interface {
+		SetPluginEnablement(context.Context, protocol.SetPluginEnablementRequest) (*protocol.PluginEnablement, error)
+	}, ctx context.Context, in protocol.SetPluginEnablementRequest) (*protocol.PluginEnablement, error) {
 		return s.SetPluginEnablement(ctx, in)
-	})
+	}).withOwnedReplay(atomicReplay((*Handler).commitPluginEnablement))
 	r.commandAck(MethodMeta{Name: PluginsUninstall, GoName: "UninstallPlugin", CapabilityRules: requires(protocol.FeaturePlugins), Errors: pluginErrors()}, func(s interface {
 		UninstallPlugin(context.Context, protocol.PluginRequest) error
 	}, ctx context.Context, in protocol.PluginRequest) error {

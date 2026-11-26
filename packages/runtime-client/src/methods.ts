@@ -28,6 +28,7 @@ import type {
   ResolvePluginCompositionRequest,
   PluginOperationBinding,
   PluginInstallation,
+  PluginEnablement,
   InstallPluginRequest,
   StagePluginRequest,
   PluginReleaseRequest,
@@ -388,7 +389,7 @@ export interface Methods {
     stage: (params: StagePluginRequest) => MutationPromise<PluginInstallation>;
     select: (params: PluginReleaseRequest) => MutationPromise<PluginInstallation>;
     configure: (params: ConfigurePluginRequest) => MutationPromise<PluginInstallation>;
-    setEnablement: (params: SetPluginEnablementRequest) => MutationPromise<PluginInstallation>;
+    setEnablement: (params: SetPluginEnablementRequest) => MutationPromise<PluginEnablement>;
     uninstall: (installationId: string) => MutationPromise<void>;
   };
   providers: {

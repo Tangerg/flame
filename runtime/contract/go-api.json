@@ -1080,7 +1080,7 @@
             },
             {
               "name": "SetPluginEnablement",
-              "signature": "func(ctx context.Context, request protocol.SetPluginEnablementRequest, options protocol.CommandOptions) (*protocol.PluginInstallation, error)"
+              "signature": "func(ctx context.Context, request protocol.SetPluginEnablementRequest, options protocol.CommandOptions) (*protocol.PluginEnablement, error)"
             },
             {
               "name": "SetUtilityRole",
@@ -10756,7 +10756,7 @@
         {
           "name": "Version",
           "type": "untyped string",
-          "value": "\"2026-11-26.6\""
+          "value": "\"2026-11-26.7\""
         },
         {
           "name": "WorkspaceAvailable",
@@ -15305,6 +15305,22 @@
           "name": "PluginDiagnosticCode",
           "kind": "defined",
           "underlying": "string"
+        },
+        {
+          "name": "PluginEnablement",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "InstallationID",
+              "type": "string",
+              "tag": "json:\"installationId\""
+            },
+            {
+              "name": "Enabled",
+              "type": "bool",
+              "tag": "json:\"enabled\""
+            }
+          ]
         },
         {
           "name": "PluginInput",
@@ -20488,7 +20504,7 @@
             },
             {
               "name": "SetPluginEnablement",
-              "signature": "func(ctx context.Context, request protocol.SetPluginEnablementRequest, options protocol.CommandOptions) (*protocol.PluginInstallation, error)"
+              "signature": "func(ctx context.Context, request protocol.SetPluginEnablementRequest, options protocol.CommandOptions) (*protocol.PluginEnablement, error)"
             },
             {
               "name": "SetUtilityRole",

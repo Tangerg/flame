@@ -288,6 +288,11 @@ type SetPluginEnablementRequest struct {
 	Enabled        bool   `json:"enabled"`
 }
 
+type PluginEnablement struct {
+	InstallationID string `json:"installationId"`
+	Enabled        bool   `json:"enabled"`
+}
+
 type ConfigurePluginRequest struct {
 	InstallationID string                           `json:"installationId"`
 	Digest         string                           `json:"digest"`

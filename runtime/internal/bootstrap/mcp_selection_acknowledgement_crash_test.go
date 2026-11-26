@@ -154,7 +154,8 @@ func enableReplacementConnector(r *poMCPRuntime) *protocol.PluginInstallation {
 	r.t.Helper()
 	replacement := r.must(delivery.PluginsInstall,
 		protocol.InstallPluginRequest{Source: filepath.Join(firstPartyPackages, "mcp")}, "install-replacement").(*protocol.PluginInstallation)
-	return r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{
+	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{
 		InstallationID: replacement.ID, Enabled: true,
-	}, "enable-replacement").(*protocol.PluginInstallation)
+	}, "enable-replacement")
+	return r.pluginInstallation(replacement.ID)
 }

@@ -25,7 +25,8 @@ import (
 func activateModelProviders(r *poMCPRuntime) *protocol.PluginInstallation {
 	r.t.Helper()
 	installed := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: filepath.Join(firstPartyPackages, "providers")}, "provider-install").(*protocol.PluginInstallation)
-	installed = r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, "provider-enable").(*protocol.PluginInstallation)
+	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, "provider-enable")
+	installed = r.pluginInstallation(installed.ID)
 	for _, contribution := range installed.Selected.Contributions {
 		for i, role := range contribution.SelectionRoles {
 			r.must(delivery.PluginsSelectProvider, protocol.SelectPluginProviderRequest{Role: role, InstallationID: installed.ID, Contribution: contribution.ID}, fmt.Sprintf("select-model-provider-%s-%d", installed.ID, i))

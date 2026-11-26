@@ -27,7 +27,8 @@ func TestInstalledToolEntryReachesDeclaredAnalyzerDependency(t *testing.T) {
 	activate := func(source, key string) *protocol.PluginInstallation {
 		t.Helper()
 		installed := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, "install-"+key).(*protocol.PluginInstallation)
-		return r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, "enable-"+key).(*protocol.PluginInstallation)
+		r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, "enable-"+key)
+		return r.pluginInstallation(installed.ID)
 	}
 	waitConnected := func(installed *protocol.PluginInstallation, name string) {
 		t.Helper()

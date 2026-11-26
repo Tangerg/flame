@@ -60,7 +60,8 @@ func installCallContributor(t *testing.T, r *poMCPRuntime, binary, mode, trace s
 	}
 	authorPluginPackage(t, source)
 	installed := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, "install-"+mode).(*protocol.PluginInstallation)
-	installed = r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, "enable-"+mode).(*protocol.PluginInstallation)
+	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, "enable-"+mode)
+	installed = r.pluginInstallation(installed.ID)
 	if len(installed.Selected.Diagnostics) != 0 || len(installed.Selected.Servers) != 1 || len(installed.Selected.Contributions) != 1 {
 		t.Fatalf("public contributor package was not admitted: %+v", installed.Selected)
 	}

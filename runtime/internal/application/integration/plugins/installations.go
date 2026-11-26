@@ -249,18 +249,6 @@ func (c *Coordinator) Select(ctx context.Context, id identity.InstallationID, di
 	})
 }
 
-func (c *Coordinator) Enable(ctx context.Context, id identity.InstallationID) (Inspection, error) {
-	return c.change(ctx, id, func(_ context.Context, i plugin.Installation, selected plugin.Release) (plugin.Installation, error) {
-		return i.Enable(selected)
-	})
-}
-
-func (c *Coordinator) Disable(ctx context.Context, id identity.InstallationID) (Inspection, error) {
-	return c.change(ctx, id, func(_ context.Context, i plugin.Installation, _ plugin.Release) (plugin.Installation, error) {
-		return i.Disable(), nil
-	})
-}
-
 func (c *Coordinator) Configure(ctx context.Context, id identity.InstallationID, digest framevalue.Digest, configuration plugin.Configuration) (Inspection, error) {
 	return c.change(ctx, id, func(ctx context.Context, i plugin.Installation, _ plugin.Release) (plugin.Installation, error) {
 		release, err := c.named(ctx, digest)
@@ -307,57 +295,71 @@ func (c *Coordinator) change(ctx context.Context, id identity.InstallationID, tr
 	if err != nil {
 		return Inspection{}, err
 	}
-	expected, err := c.currentFrameworkInstallation(snapshot)
-	if err != nil {
-		return Inspection{}, err
-	}
 	installation, err := transition(ctx, snapshot.Installation, snapshot.Selected)
 	if err != nil {
 		return Inspection{}, err
 	}
-	after := snapshot.Selected
+	reconcile, err := c.commitInstallationChange(ctx, snapshot, installation)
+	if err != nil {
+		return Inspection{}, err
+	}
+	ownerCtx, finish := c.realizationContext(ctx)
+	defer finish()
+	committed, err := c.realizeInstallationChange(ownerCtx, id, reconcile)
+	var inspection Inspection
+	if err == nil {
+		inspection, err = c.inspect(ownerCtx, committed)
+	}
+	return inspection, errors.Join(err, c.Reclaim(ownerCtx))
+}
+
+func (c *Coordinator) commitInstallationChange(ctx context.Context, before plugin.Snapshot, installation plugin.Installation) ([]mcpserver.ID, error) {
+	expected, err := c.currentFrameworkInstallation(before)
+	if err != nil {
+		return nil, err
+	}
+	after := before.Selected
 	if installation.Selected() != after.Digest() {
 		after, err = c.catalog.Get(ctx, installation.Selected())
 		if err != nil {
-			return Inspection{}, err
+			return nil, err
 		}
+	}
+	reconcile, err := changedServerIDs(installation, before, after)
+	if err != nil {
+		return nil, err
 	}
 	projection, err := c.packages.Project(after)
 	if err != nil {
-		return Inspection{}, err
+		return nil, err
 	}
 	if err := RegisterFrameworkRelease(c.framework, projection); err != nil {
-		return Inspection{}, err
+		return nil, err
 	}
 	configuration, err := EncodeFrameworkConfiguration(installation.Snapshot())
 	if err != nil {
-		return Inspection{}, err
+		return nil, err
 	}
-	if err := c.framework.Update(ctx, expected, framehost.InstallationConfig{ID: expected.ID, Plugin: projection.Plugin, Configuration: configuration, Enabled: installation.Enabled()}); err != nil {
-		return Inspection{}, FrameworkError(err)
-	}
-	reconcile, err := changedServerIDs(installation, snapshot, after)
-	if err != nil {
-		return Inspection{}, err
-	}
+	err = c.framework.Update(ctx, expected, framehost.InstallationConfig{ID: expected.ID, Plugin: projection.Plugin, Configuration: configuration, Enabled: installation.Enabled()})
+	return reconcile, FrameworkError(err)
+}
+
+func (c *Coordinator) realizeInstallationChange(ctx context.Context, id identity.InstallationID, reconcile []mcpserver.ID) (plugin.Snapshot, error) {
 	withdrawErr := c.connections.WithdrawInstallation(ctx, reconcile)
 	c.publish.Notify(invalidation.Notice{Resource: invalidation.Plugins}, invalidation.Notice{Resource: invalidation.Skills})
 	committed, err := c.installationSnapshot(ctx, id)
 	if err != nil {
-		return Inspection{}, errors.Join(err, withdrawErr)
+		return plugin.Snapshot{}, errors.Join(err, withdrawErr)
 	}
-	realizationCtx, finish := c.realizationContext(ctx)
-	defer finish()
 	if len(reconcile) > 0 {
-		if err := c.packages.Prepare(realizationCtx, committed.Installation, committed.Selected); err != nil {
+		if err := c.packages.Prepare(ctx, committed.Installation, committed.Selected); err != nil {
 			slog.WarnContext(ctx, "committed plugin preparation failed", telemetry.InstallationID(id), telemetry.Error(err))
 		}
-		if err := c.connections.ReconcileInstallation(realizationCtx, reconcile); err != nil {
+		if err := c.connections.ReconcileInstallation(ctx, reconcile); err != nil {
 			slog.WarnContext(ctx, "committed plugin reconciliation failed", telemetry.InstallationID(id), telemetry.Error(err))
 		}
 	}
-	inspection, err := c.inspect(realizationCtx, committed)
-	return inspection, errors.Join(err, withdrawErr, c.Reclaim(realizationCtx))
+	return committed, withdrawErr
 }
 
 func (c *Coordinator) Uninstall(ctx context.Context, id identity.InstallationID) error {

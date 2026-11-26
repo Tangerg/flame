@@ -94,7 +94,10 @@ func (o *frameworkOwner) projectInstallation(ctx context.Context, executor sqlit
 				record.Staged = staged
 			}
 		}
-		return o.installations.projectRecord(ctx, record)
+		if err := o.installations.projectRecord(ctx, record); err != nil {
+			return err
+		}
+		return plugins.SettleInstallationEnablement(ctx, record)
 	})
 }
 

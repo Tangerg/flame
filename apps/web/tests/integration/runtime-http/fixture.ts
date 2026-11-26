@@ -67,11 +67,12 @@ export function useRuntimeFixture(suite: string) {
         source: join(environmentRoot, "plugins", feature),
       });
     expect(installation.selected.diagnostics).toEqual([]);
-    if (!installation.enabled)
-      installation = await client.plugins.setEnablement({
-        installationId: installation.id,
-        enabled: true,
-      });
+    if (!installation.enabled) {
+      const id = installation.id;
+      await client.plugins.setEnablement({ installationId: id, enabled: true });
+      installation = (await client.plugins.list()).data.find((item) => item.id === id);
+      if (!installation?.enabled) throw new Error("managed owner did not enable");
+    }
     if (feature === "memory")
       await client.plugins.selectProvider({
         role: "memory",

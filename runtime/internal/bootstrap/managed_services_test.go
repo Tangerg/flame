@@ -124,7 +124,7 @@ func TestMemoryServiceHasOneSelectedOwnerAndReenableRetainsItsPrivateFacts(t *te
 		return r.endpoint.Invoke(t.Context(), method, input, protocol.CallMetadata{IdempotencyKey: key, RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 	}
 	enabled := invoke(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: second.ID, Enabled: true}, "second-enable")
-	if enabled.Failure != nil || !enabled.Value.(*protocol.PluginInstallation).Enabled {
+	if enabled.Failure != nil || !enabled.Value.(*protocol.PluginEnablement).Enabled {
 		t.Fatalf("second candidate was not enabled: %v", enabled.Failure)
 	}
 	choices := r.must(delivery.PluginsListProviders, struct{}{}, "").(*protocol.Page[protocol.PluginProviderSelection])

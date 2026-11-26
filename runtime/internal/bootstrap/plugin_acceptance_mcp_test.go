@@ -88,6 +88,18 @@ func (r *poMCPRuntime) must(method delivery.Name, input any, key string) any {
 	return result.Value
 }
 
+func (r *poMCPRuntime) pluginInstallation(id string) *protocol.PluginInstallation {
+	r.t.Helper()
+	page := r.must(delivery.PluginsList, struct{}{}, "").(*protocol.Page[protocol.PluginInstallation])
+	for _, installation := range page.Data {
+		if installation.ID == id {
+			return &installation
+		}
+	}
+	r.t.Fatalf("installation %q is missing", id)
+	return nil
+}
+
 func (r *poMCPRuntime) createUserServer(candidate protocol.MCPServerCandidate, key string) protocol.MCPServerID {
 	r.t.Helper()
 	r.must(delivery.MCPServersCreate, candidate, key)
@@ -183,7 +195,8 @@ func installExternalConnector(r *poMCPRuntime) *protocol.PluginInstallation {
 func poMCPActivate(r *poMCPRuntime, source string) *protocol.PluginInstallation {
 	r.t.Helper()
 	installed := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, "install").(*protocol.PluginInstallation)
-	installed = r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, "enable").(*protocol.PluginInstallation)
+	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, "enable")
+	installed = r.pluginInstallation(installed.ID)
 	for _, contribution := range installed.Selected.Contributions {
 		contract, err := plugincontract.ParseCapability([]byte(contribution.Contract))
 		if err != nil {

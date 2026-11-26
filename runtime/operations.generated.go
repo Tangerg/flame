@@ -248,8 +248,8 @@ func (r *Runtime) SelectPlugin(ctx context.Context, request protocol.PluginRelea
 func (r *Runtime) ConfigurePlugin(ctx context.Context, request protocol.ConfigurePluginRequest, options protocol.CommandOptions) (*protocol.PluginInstallation, error) {
 	return r.invoke[protocol.ConfigurePluginRequest, *protocol.PluginInstallation](ctx, delivery.Name("plugins.configure"), request, options.Metadata())
 }
-func (r *Runtime) SetPluginEnablement(ctx context.Context, request protocol.SetPluginEnablementRequest, options protocol.CommandOptions) (*protocol.PluginInstallation, error) {
-	return r.invoke[protocol.SetPluginEnablementRequest, *protocol.PluginInstallation](ctx, delivery.Name("plugins.setEnablement"), request, options.Metadata())
+func (r *Runtime) SetPluginEnablement(ctx context.Context, request protocol.SetPluginEnablementRequest, options protocol.CommandOptions) (*protocol.PluginEnablement, error) {
+	return r.invoke[protocol.SetPluginEnablementRequest, *protocol.PluginEnablement](ctx, delivery.Name("plugins.setEnablement"), request, options.Metadata())
 }
 func (r *Runtime) UninstallPlugin(ctx context.Context, request protocol.PluginRequest, options protocol.CommandOptions) error {
 	return r.invokeAck[protocol.PluginRequest](ctx, delivery.Name("plugins.uninstall"), request, options.Metadata())

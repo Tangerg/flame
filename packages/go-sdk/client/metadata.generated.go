@@ -87,7 +87,7 @@ var methodMetadata = map[string]methodMeta{
 	"plugins.stage":                    {Name: "plugins.stage", Kind: unaryMethod, Operation: commandOperation, Result: reflect.TypeFor[*protocol.PluginInstallation](), Event: nil, ResultNullable: false},
 	"plugins.select":                   {Name: "plugins.select", Kind: unaryMethod, Operation: commandOperation, Result: reflect.TypeFor[*protocol.PluginInstallation](), Event: nil, ResultNullable: false},
 	"plugins.configure":                {Name: "plugins.configure", Kind: unaryMethod, Operation: commandOperation, Result: reflect.TypeFor[*protocol.PluginInstallation](), Event: nil, ResultNullable: false},
-	"plugins.setEnablement":            {Name: "plugins.setEnablement", Kind: unaryMethod, Operation: commandOperation, Result: reflect.TypeFor[*protocol.PluginInstallation](), Event: nil, ResultNullable: false},
+	"plugins.setEnablement":            {Name: "plugins.setEnablement", Kind: unaryMethod, Operation: commandOperation, Result: reflect.TypeFor[*protocol.PluginEnablement](), Event: nil, ResultNullable: false},
 	"plugins.uninstall":                {Name: "plugins.uninstall", Kind: unaryMethod, Operation: commandOperation, Result: reflect.TypeFor[struct{}](), Event: nil, ResultNullable: false},
 	"hooks.list":                       {Name: "hooks.list", Kind: unaryMethod, Operation: queryOperation, Result: reflect.TypeFor[*protocol.HooksListResult](), Event: nil, ResultNullable: false},
 	"hooks.setTrust":                   {Name: "hooks.setTrust", Kind: unaryMethod, Operation: commandOperation, Result: reflect.TypeFor[struct{}](), Event: nil, ResultNullable: false},

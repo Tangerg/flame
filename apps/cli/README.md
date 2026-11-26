@@ -333,8 +333,12 @@ Installation and explicit release selection are the trust decisions. Selection p
 desired enablement and refuses a candidate missing required retained inputs before mutation.
 `install`, `stage`, `select`, `configure`, `set-enablement`, and `uninstall`
 accept their exact Runtime JSON request through `--request`. Source paths refer to the
-Runtime machine. Each mutation prints its command identity to stderr and the resulting installation as
-JSON; `uninstall` is an acknowledgement and prints nothing on success. Retain the identity and use
+Runtime machine. Each mutation prints its command identity to stderr. The
+`install`, `stage`, `select` and `configure` commands print the resulting
+installation as JSON.
+`set-enablement` prints the original decision's `installationId` and `enabled`.
+Use `flame plugins list` for current state. `uninstall` prints nothing on success.
+Retain the identity and use
 `--command-id` with the original request to recover an uncertain acknowledgement.
 Configuration requests include the selected release's `digest` as well as `installationId`,
 and are deltas: `valueChanges` sets or clears named inputs, and `serverChanges` and

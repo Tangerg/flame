@@ -27,7 +27,7 @@ type pluginBinding interface {
 	StagePlugin(context.Context, protocol.StagePluginRequest, protocol.CommandOptions) (*protocol.PluginInstallation, error)
 	SelectPlugin(context.Context, protocol.PluginReleaseRequest, protocol.CommandOptions) (*protocol.PluginInstallation, error)
 	ConfigurePlugin(context.Context, protocol.ConfigurePluginRequest, protocol.CommandOptions) (*protocol.PluginInstallation, error)
-	SetPluginEnablement(context.Context, protocol.SetPluginEnablementRequest, protocol.CommandOptions) (*protocol.PluginInstallation, error)
+	SetPluginEnablement(context.Context, protocol.SetPluginEnablementRequest, protocol.CommandOptions) (*protocol.PluginEnablement, error)
 	UninstallPlugin(context.Context, protocol.PluginRequest, protocol.CommandOptions) error
 }
 
@@ -235,13 +235,19 @@ func (r *Connection) ConfigurePlugin(ctx context.Context, request protocol.Confi
 	return pluginResult("configure plugin", request.InstallationID, value, err)
 }
 
-func (r *Connection) SetPluginEnablement(ctx context.Context, request protocol.SetPluginEnablementRequest, commandID authoring.CommandID) (*protocol.PluginInstallation, error) {
+func (r *Connection) SetPluginEnablement(ctx context.Context, request protocol.SetPluginEnablementRequest, commandID authoring.CommandID) (*protocol.PluginEnablement, error) {
 	options, err := r.commandOptionsFor(commandID)
 	if err != nil {
 		return nil, err
 	}
 	value, err := r.plugins.SetPluginEnablement(ctx, request, options)
-	return pluginResult("set plugin enablement", request.InstallationID, value, err)
+	if err != nil {
+		return nil, classifyError(err)
+	}
+	if value == nil || value.InstallationID != request.InstallationID || value.Enabled != request.Enabled {
+		return nil, runtimeContractViolation("set plugin enablement returned a different decision")
+	}
+	return value, nil
 }
 
 func (r *Connection) UninstallPlugin(ctx context.Context, request protocol.PluginRequest, commandID authoring.CommandID) error {
