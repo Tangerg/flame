@@ -30,8 +30,12 @@ func (c *ExternalConnector) restoreAuthorizationStarts(ctx context.Context) erro
 	if err != nil {
 		return err
 	}
+	epoch := *c.epoch.Load()
 	var result error
 	for _, pending := range starts {
+		if pending.Intent.Start.Epoch == epoch {
+			continue
+		}
 		settlement, err := c.resumeAuthorizationStart(ctx, pending)
 		if err == nil {
 			err = settlement.Complete(ctx)
@@ -66,7 +70,7 @@ func (c *ExternalConnector) settleAuthorizationStart(ctx context.Context, u *con
 	if err != nil {
 		return nil, errors.Join(operation.ErrOutcomePending, err)
 	}
-	settlement, err := c.admitAuthorizationStart(ctx, u, intent, result)
+	settlement, err := c.authorizationStartSettlement(ctx, intent, result, u.epoch, recoverReceipt)
 	if err != nil {
 		return nil, errors.Join(operation.ErrOutcomePending, err)
 	}
@@ -106,7 +110,7 @@ func readAuthorizationStart(ctx context.Context, method *pluginmcp.BoundMethod[w
 	return method.CallCommand(ctx, id, intent.Start)
 }
 
-func (c *ExternalConnector) admitAuthorizationStart(ctx context.Context, u *connectorUse, intent mcpapp.AuthorizationIntent, result wire.AttemptResult) (*mcpapp.AuthorizationStartSettlement, error) {
+func (c *ExternalConnector) authorizationStartSettlement(ctx context.Context, intent mcpapp.AuthorizationIntent, result wire.AttemptResult, epoch string, checkPending bool) (*mcpapp.AuthorizationStartSettlement, error) {
 	name, err := mcpserver.ParseServerName(intent.Start.Name)
 	if err != nil {
 		return nil, err
@@ -124,27 +128,29 @@ func (c *ExternalConnector) admitAuthorizationStart(ctx context.Context, u *conn
 	if err != nil {
 		return nil, err
 	}
-	if _, err := readStartedExternalAttempt(result, id, server); err != nil {
-		return nil, err
-	}
-	settlement.AttemptID = id
-	if intent.Start.Epoch != u.epoch {
-		return settlement, nil
-	}
-	entry, found, err := c.find(ctx, u, name)
+	accepted, err := readExternalAttempt(result, id)
 	if err != nil {
 		return nil, err
 	}
-	if found && entry.Enabled && entry.LaunchGrant == intent.Start.Grant {
-		start := operation.Adopt(ctx, intent.Invocation.ID, intent.Invocation.Origin, intent.Invocation.Parent)
-		finishContext := operation.Start(start, extension.Automatic, c.methods.Finish.Name(), id.String())
-		invocation, err := operation.Capture(finishContext, intent.Invocation.Target)
-		if err != nil {
-			return nil, err
-		}
-		settlement.Finish = func(ctx context.Context, status mcpapp.AuthorizationAttemptStatus) error {
+	if accepted.Server != server || accepted.Status != mcpapp.AuthorizationAttemptPending {
+		return nil, mcpapp.ErrInvalidServerConfiguration
+	}
+	settlement.AttemptID = id
+	if intent.Start.Epoch != epoch {
+		return settlement, nil
+	}
+	start := operation.Adopt(ctx, intent.Invocation.ID, intent.Invocation.Origin, intent.Invocation.Parent)
+	finishContext := operation.Start(start, extension.Automatic, c.methods.Finish.Name(), id.String())
+	invocation, err := operation.Capture(finishContext, intent.Invocation.Target)
+	if err != nil {
+		return nil, err
+	}
+	settlement.Transport = &mcpapp.AuthorizationTransport{
+		Recipient:    intent.Recipient,
+		CheckPending: checkPending,
+		Report: func(ctx context.Context, status mcpapp.AuthorizationAttemptStatus) error {
 			return c.recordAuthorizationFinish(ctx, mcpapp.AuthorizationFinish{ID: id, Invocation: invocation, Outcome: wire.Outcome(status)})
-		}
+		},
 	}
 	return settlement, nil
 }

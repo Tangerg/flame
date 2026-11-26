@@ -97,7 +97,7 @@ func (c *Coordinator) dispatchConnection(
 		switch {
 		case err == nil:
 			outcome = connectionSucceeded
-		case errors.Is(err, context.Canceled):
+		case errors.Is(err, context.Canceled), errors.Is(err, mcpserver.ErrOAuthSessionSuperseded):
 			outcome = connectionCanceled
 		default:
 			outcome = connectionFailed

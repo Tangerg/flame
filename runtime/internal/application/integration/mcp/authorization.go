@@ -79,7 +79,7 @@ func (c *Coordinator) completeAuthorizationStart(write *mutationScope, settlemen
 	if err := settlement.Complete(write.ownerCtx); err != nil {
 		return err
 	}
-	if settlement.Finish != nil {
+	if settlement.Transport != nil {
 		c.launchAuthorization(write, settlement)
 	}
 	return settlement.Refusal
@@ -97,16 +97,30 @@ func (c *Coordinator) authorizationTarget(ctx context.Context, server mcpserver.
 }
 
 func (c *Coordinator) launchAuthorization(write *mutationScope, settlement *AuthorizationStartSettlement) {
-	server, attempt := settlement.Server, settlement.AttemptID
-	start := make(chan struct{})
-	defer close(start)
-	var event *statusEvent
+	server, attempt, transport := settlement.Server, settlement.AttemptID, settlement.Transport
 	finish := func(status AuthorizationAttemptStatus) {
-		if err := settlement.Finish(context.WithoutCancel(write.ownerCtx), status); err != nil {
+		if err := transport.Report(context.WithoutCancel(write.ownerCtx), status); err != nil {
 			slog.ErrorContext(write.ownerCtx, "mcp: record authorization outcome", slog.String("attempt", attempt.String()), telemetry.Error(err))
 		}
 	}
-	err := c.dispatchConnection(write.ownerCtx, server, c.connections.BeginAuthorize, start, func() { c.statusQueue.publish(event) }, func(outcome connectionOutcome) { finish(authorizationAttemptStatus(outcome)) })
+	if transport.CheckPending {
+		current, err := c.external.ReadAuthorization(write.ownerCtx, attempt)
+		if err != nil {
+			slog.WarnContext(write.ownerCtx, "mcp: check recovered authorization before launch", slog.String("attempt", attempt.String()), telemetry.Error(err))
+			finish(AuthorizationAttemptFailed)
+			return
+		}
+		if current.Status != AuthorizationAttemptPending {
+			return
+		}
+	}
+	begin := func(ctx context.Context, server mcpserver.ID) (Attempt, error) {
+		return c.connections.BeginAuthorize(ctx, server, transport.Recipient)
+	}
+	start := make(chan struct{})
+	defer close(start)
+	var event *statusEvent
+	err := c.dispatchConnection(write.ownerCtx, server, begin, start, func() { c.statusQueue.publish(event) }, func(outcome connectionOutcome) { finish(authorizationAttemptStatus(outcome)) })
 	if err != nil {
 		slog.ErrorContext(write.ownerCtx, "mcp: start accepted authorization", telemetry.MCPServer(server.String()), telemetry.Error(err))
 		finish(AuthorizationAttemptFailed)

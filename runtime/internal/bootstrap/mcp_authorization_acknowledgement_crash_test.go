@@ -99,3 +99,30 @@ func TestMCPAuthorizationAcknowledgementRecoversTheOriginalAttempt(t *testing.T)
 		t.Fatalf("connector did not recover the interrupted attempt: %+v", attempt)
 	}
 }
+
+func TestMCPAuthorizationRetryLaunchesTheAcceptedAttempt(t *testing.T) {
+	remote := poMCPRemote(t, "record")
+	cfg := poMCPConfig(t)
+	r := poMCPOpen(t, cfg)
+	installExternalConnector(r)
+	server := r.createUserServer(protocol.MCPServerCandidate{
+		Name: authorizationAckServer, Enabled: true,
+		Connection:       protocol.MCPConnectionInput{Type: protocol.MCPTransportStreamableHTTP, URL: remote},
+		HandshakeTimeout: protocol.MCPHandshakeTimeout{Type: protocol.MCPHandshakeUnbounded},
+	}, "create-authorization-fixture")
+	r.poMCPTools(&server, func(tools []protocol.MCPTool) bool { return len(tools) == 1 && tools[0].Name == "record" })
+
+	request := protocol.CreateMCPAuthorizationAttemptRequest{Server: server}
+	allowReceipt := refuseCommandReceipt(t, cfg.stores.DataDirectory)
+	initial := r.endpoint.Invoke(t.Context(), delivery.MCPAuthorizationAttemptsCreate, request, protocol.CallMetadata{IdempotencyKey: authorizationAckCrashKey})
+	if !errors.Is(initial.Failure, protocol.ErrIdempotencyInProgress) {
+		t.Fatalf("unacknowledged authorization = %+v", initial)
+	}
+	allowReceipt()
+
+	accepted := r.must(delivery.MCPAuthorizationAttemptsCreate, request, authorizationAckCrashKey).(*protocol.MCPAuthorizationAttemptRef)
+	attempt := awaitMCPAuthorization(t, r, accepted.AttemptID)
+	if attempt.Server != server || attempt.Status.Type != protocol.MCPAuthorizationAttemptSucceeded {
+		t.Fatalf("recovered launch did not settle the accepted authorization: %+v", attempt)
+	}
+}

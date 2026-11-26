@@ -61,9 +61,9 @@ func (c *connections) authorize(attempt *attempt, prepared *launch) (err error) 
 	if cfg.OAuthHandler != nil {
 		return errors.New("mcp: explicit authorization cannot supply an OAuth handler")
 	}
-	target, ok := cfg.OAuthTarget()
-	if !ok {
-		return errors.New("mcp: OAuth applies to HTTP servers without static authorization")
+	target, eligible := cfg.OAuthTarget()
+	if !eligible || target.Fingerprint() != *attempt.recipient {
+		return errors.Join(errSourceWithdrawn, mcpserver.ErrOAuthSessionSuperseded)
 	}
 	c.mu.Lock()
 	if err := c.cancellationErr(attempt.ctx); !c.currentAttempt(attempt) || err != nil {
@@ -186,7 +186,7 @@ func (c *connections) connectLocked(attempt *attempt, session *sdk.ClientSession
 	if owned != nil && owned.toolChanges != nil {
 		c.watchToolChangesLocked(session, owned, cfg, toolVersion)
 	}
-	if attempt.purpose == attemptAuthorize {
+	if attempt.recipient != nil {
 		target.oauth = cfg.OAuthHandler
 	}
 }

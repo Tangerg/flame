@@ -11,18 +11,10 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/completion"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/telemetry"
+	framevalue "github.com/Tangerg/frame/value"
 )
 
 var errSourceWithdrawn = errors.New("mcp: connection source withdrawn")
-
-// An authorization attempt adopts the OAuth handler it completed; a connection
-// attempt keeps the handler the server already holds.
-type attemptPurpose int
-
-const (
-	attemptConnect attemptPurpose = iota
-	attemptAuthorize
-)
 
 type attempt struct {
 	owner     *connections
@@ -30,7 +22,7 @@ type attempt struct {
 	ctx       context.Context
 	cancel    context.CancelFunc
 	resolve   func(context.Context, mcpserver.ID) (*launchPermit, error)
-	purpose   attemptPurpose
+	recipient *framevalue.Digest
 	withdrawn *sessionCloseAttempt
 	start     chan struct{}
 	done      chan struct{}
@@ -39,14 +31,17 @@ type attempt struct {
 }
 
 func (c *connections) beginConnect(ctx context.Context, name mcpserver.ID, resolve func(context.Context, mcpserver.ID) (*launchPermit, error)) (*attempt, error) {
-	return c.begin(ctx, name, resolve, attemptConnect)
+	return c.begin(ctx, name, resolve, nil)
 }
 
-func (c *connections) beginAuthorize(ctx context.Context, name mcpserver.ID, resolve func(context.Context, mcpserver.ID) (*launchPermit, error)) (*attempt, error) {
-	return c.begin(ctx, name, resolve, attemptAuthorize)
+func (c *connections) beginAuthorize(ctx context.Context, name mcpserver.ID, recipient framevalue.Digest, resolve func(context.Context, mcpserver.ID) (*launchPermit, error)) (*attempt, error) {
+	if recipient.IsZero() {
+		return nil, errors.New("mcp: authorization requires an admitted recipient")
+	}
+	return c.begin(ctx, name, resolve, &recipient)
 }
 
-func (c *connections) begin(ctx context.Context, name mcpserver.ID, resolve func(context.Context, mcpserver.ID) (*launchPermit, error), purpose attemptPurpose) (*attempt, error) {
+func (c *connections) begin(ctx context.Context, name mcpserver.ID, resolve func(context.Context, mcpserver.ID) (*launchPermit, error), recipient *framevalue.Digest) (*attempt, error) {
 	if ctx == nil || resolve == nil {
 		return nil, errors.New("mcp: attempt context and configuration source are required")
 	}
@@ -77,7 +72,7 @@ func (c *connections) begin(ctx context.Context, name mcpserver.ID, resolve func
 	}
 	attempt := &attempt{
 		owner: c, target: target, ctx: ctx, cancel: cancel, resolve: resolve,
-		purpose: purpose, withdrawn: c.retireSessionLocked(target.session),
+		recipient: recipient, withdrawn: c.retireSessionLocked(target.session),
 		start: make(chan struct{}), done: make(chan struct{}),
 	}
 	target.attempt = attempt
@@ -165,7 +160,7 @@ func (a *attempt) connect() (err error) {
 	if prepared.config.ID() != a.target.name() {
 		return errors.New("mcp: connection configuration source changed identity")
 	}
-	if a.purpose == attemptAuthorize {
+	if a.recipient != nil {
 		return c.authorize(a, prepared)
 	}
 	return c.configure(a, prepared)

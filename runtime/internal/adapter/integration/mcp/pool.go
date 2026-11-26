@@ -86,8 +86,8 @@ func (p *Pool) BeginConnect(ctx context.Context, name mcpserver.ID) (mcpapp.Atte
 	return attempt, nil
 }
 
-func (p *Pool) BeginAuthorize(ctx context.Context, name mcpserver.ID) (mcpapp.Attempt, error) {
-	attempt, err := p.inner.beginAuthorize(ctx, name, p.connectionLaunch)
+func (p *Pool) BeginAuthorize(ctx context.Context, name mcpserver.ID, recipient framevalue.Digest) (mcpapp.Attempt, error) {
+	attempt, err := p.inner.beginAuthorize(ctx, name, recipient, p.connectionLaunch)
 	if err != nil {
 		return nil, err
 	}

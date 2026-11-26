@@ -11,6 +11,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/taskgroup"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	framevalue "github.com/Tangerg/frame/value"
 	"github.com/samber/lo"
 )
 
@@ -27,7 +28,7 @@ type Connections interface {
 	Statuses() []mcpserver.ConnectionStatus
 	HasConnectionConfiguration(mcpserver.Server) bool
 	BeginConnect(ctx context.Context, name mcpserver.ID) (Attempt, error)
-	BeginAuthorize(ctx context.Context, name mcpserver.ID) (Attempt, error)
+	BeginAuthorize(ctx context.Context, name mcpserver.ID, recipient framevalue.Digest) (Attempt, error)
 	Probe(ctx context.Context, server mcpserver.Server) error
 	Refuse(ctx context.Context, name mcpserver.ID, failure mcpserver.ConnectionFailure) error
 	Detach(name mcpserver.ID) error

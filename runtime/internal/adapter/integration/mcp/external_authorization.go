@@ -68,6 +68,10 @@ func (c *ExternalConnector) prepareAuthorizationStart(ctx context.Context, u *co
 	if !current.SameConnection(server) {
 		return mcpapp.AuthorizationIntent{}, plugin.ErrStale
 	}
+	target, eligible := current.OAuthTarget()
+	if !eligible {
+		return mcpapp.AuthorizationIntent{}, mcpapp.ErrAuthorizationUnsupported
+	}
 	command := operation.Bind(ctx, c.methods.Start.Name(), operation.Identity(ctx))
 	invocation, err := operation.Capture(command, framecall.Target{Scope: extension.ScopeInstallation, Reference: u.source.InstallationID.String()})
 	if err != nil {
@@ -75,7 +79,8 @@ func (c *ExternalConnector) prepareAuthorizationStart(ctx context.Context, u *co
 	}
 	return mcpapp.AuthorizationIntent{
 		Source: u.source.ContributionSource(), Invocation: invocation,
-		Start: wire.Start{Name: e.Name, Grant: e.LaunchGrant, Epoch: u.epoch, AttemptID: id.String()},
+		Start:     wire.Start{Name: e.Name, Grant: e.LaunchGrant, Epoch: u.epoch, AttemptID: id.String()},
+		Recipient: target.Fingerprint(),
 	}, nil
 }
 
@@ -104,17 +109,6 @@ func (c *ExternalConnector) ReadAuthorization(ctx context.Context, id mcpapp.Aut
 		return mcpapp.AuthorizationAttempt{}, mcpapp.ErrInvalidServerConfiguration
 	}
 	return attempt, err
-}
-
-func readStartedExternalAttempt(r wire.AttemptResult, id mcpapp.AuthorizationAttemptID, server mcpserver.ID) (mcpapp.AuthorizationAttempt, error) {
-	attempt, err := readExternalAttempt(r, id)
-	if err != nil {
-		return mcpapp.AuthorizationAttempt{}, err
-	}
-	if attempt.Server != server || attempt.Status != mcpapp.AuthorizationAttemptPending {
-		return mcpapp.AuthorizationAttempt{}, mcpapp.ErrInvalidServerConfiguration
-	}
-	return attempt, nil
 }
 
 func readExternalAttempt(r wire.AttemptResult, id mcpapp.AuthorizationAttemptID) (mcpapp.AuthorizationAttempt, error) {
