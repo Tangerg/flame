@@ -12,6 +12,11 @@ This user-requested file is the maintained progress and handoff record for the d
 
 A scan for raw color literals in components found the theme picker's own copy of the scheme colors. Built-in Light and Dark swatches already used their palette tokens, but the System swatch always drew its halves from `FALLBACK_TOKENS`, and so would any theme without its own planes: pure white `#ffffff` and `#0c0d0f`, while the painted light and dark canvases are `#f5f5f5` and `#0f0f0f`. The menu therefore showed System's light half whiter than the Light swatch beside it. Every swatch now reads the built-in theme for its scheme (the spec whose id is `light` or `dark`, which is what the System choice paints), overlaid with the theme's own tokens, and the copied colors are gone. The other color literals left in components are masks (`#000`) and the custom accent's rainbow.
 
+A follow-up scan of raw pixel values (71) found only hairlines, small glyph geometry and fixed popover or column widths. Kept:
+- Compaction and reference text inside their disclosures stays capped at 640 px. `ReferenceBlock` copied the cap from `CompactionBlock`, and the Lab's only summary is one sentence, so nothing shows a long summary being too narrow.
+- Six styles still write `textAlign: "left"` where 13 write `start`. The app has no right-to-left locale, and `file-path` may keep `left` on purpose for paths, which always read left to right.
+- The narrative state's activity lines, expanded compaction summary and approval card (an outline Deny beside the primary Allow once) need no change.
+
 Native Lab (`settings`, Appearance, EN/light): the theme menu shows System's light half in the same gray as the Light swatch and its dark half matching Dark. Web typecheck and Prettier pass.
 
 ## Search overlays without an esc hint (2026-11-26)
