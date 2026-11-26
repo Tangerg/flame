@@ -89,7 +89,7 @@ export const zhTW: Record<string, string> = {
   "pages.current": "第 {{page}} 頁",
   "notice.accepted": "Runtime 已接受工作階段 {{session}} 中的執行 {{run}}。",
   "notice.openSession": "開啟工作階段",
-  "notice.completed": "{{label}} 已完成。",
+  "notice.completed": "{{label}}已完成。",
   "notice.revision":
     "排程已變更。請讀取其最新修訂版本，並在儲存前開啟新的編輯。",
   "template.hourly.title": "每小時進度檢查",
