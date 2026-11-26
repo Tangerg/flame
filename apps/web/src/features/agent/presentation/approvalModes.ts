@@ -37,15 +37,17 @@ export function describeApprovalMode(policy: ApprovalModePolicy, t: Translate): 
   ).join(" · ");
 }
 
-// The label is prose and the value is the matched argument, so callers set them in different faces.
+// A rule over all arguments and a built-in tool are the defaults, so only a narrower subject
+// or an MCP source has anything to say. The label stays: an exact value may contain glob characters.
 export function describeApprovalSubject(
   subject: ApprovalRuleSummary["subject"],
   t: Translate,
-): { label: string; value?: string } {
-  const label = t(`approvals.subject.${subject.type}`);
-  return subject.type === "all" ? { label } : { label, value: subject.value };
+): { label: string; value: string } | undefined {
+  return subject.type === "all"
+    ? undefined
+    : { label: t(`approvals.subject.${subject.type}`), value: subject.value };
 }
 
-export function describeApprovalRuleTool(tool: ApprovalRuleSummary["tool"], t: Translate): string {
-  return tool.type === "builtIn" ? t("approvals.builtIn") : toolSourceLabel(tool);
+export function describeApprovalRuleTool(tool: ApprovalRuleSummary["tool"]): string | undefined {
+  return tool.type === "builtIn" ? undefined : toolSourceLabel(tool);
 }

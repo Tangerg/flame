@@ -6,12 +6,11 @@ import {
   describeApprovalSubject,
 } from "@/features/agent/public/approvalPolicy";
 import * as stylex from "@stylexjs/stylex";
-import { useId, useLayoutEffect, useRef, type RefObject } from "react";
+import { Fragment, useId, useLayoutEffect, useRef, type ReactNode, type RefObject } from "react";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { DataView } from "@/ui/index";
 import { TextButton } from "@/ui/index";
 import { Badge, IconButton, vocab, handoffFocus } from "@flame/ui";
-import { type Tone } from "@flame/ui/badge";
 import {
   forgetApprovalRule,
   forgetApprovalRules,
@@ -19,7 +18,7 @@ import {
 } from "@/features/approvals/application/approvalConfig";
 import { useActiveSessionId } from "@/features/agent/public/session";
 import { useCommandAction } from "@/features/command/public/commandAction";
-import { useT } from "@/lib/i18n/index";
+import { Trans, useT, type Translate } from "@/lib/i18n/index";
 import {
   color,
   face,
@@ -32,23 +31,23 @@ import {
   weight,
 } from "@flame/ui/tokens.stylex";
 import { SettingRow } from "@/ui/settings/SettingRow";
-import { settingStyles as ss } from "@/ui/settings/settingStyles";
-const SCOPE_TONE: Record<ApprovalRuleSummary["scope"], Tone> = {
-  session: "neutral",
-  workspace: "accent",
-  global: "warning",
-};
 
 const r = stylex.create({
-  list: { display: "flex", flexDirection: "column", gap: space.s0_5 },
+  // Rows bleed by their inset so rule text starts on the mode choices' edge.
+  list: {
+    display: "flex",
+    flexDirection: "column",
+    gap: space.s0_5,
+    marginInline: `calc(-1 * ${space.s2})`,
+  },
   rule: {
     display: "grid",
     gridTemplateColumns: "minmax(0, 1fr) auto",
     alignItems: "start",
     gap: layout.controlGap,
-    borderRadius: radius.card,
+    borderRadius: radius.row,
     backgroundColor: { default: null, ":hover": surface.hover },
-    paddingInline: space.s2_5,
+    paddingInline: space.s2,
     paddingBlock: space.s2,
     transitionProperty: "background-color",
     transitionDuration: motion.color,
@@ -68,15 +67,8 @@ const r = stylex.create({
     gap: layout.controlGap,
     minWidth: 0,
   },
-  details: {
-    display: "grid",
-    gridTemplateColumns: "minmax(0, 1fr)",
-    gap: layout.labelGap,
-    minWidth: 0,
-    whiteSpace: "pre-wrap",
-  },
+  details: { minWidth: 0, whiteSpace: "pre-wrap" },
   verdict: { flexShrink: 0, fontWeight: weight.medium },
-  allow: { color: color.success },
   tool: { color: color.fg, minWidth: 0, maxWidth: "100%" },
 });
 
@@ -102,8 +94,20 @@ export function RulesRow() {
     <SettingRow
       label={t("approvals.rules")}
       labelId={titleId}
-      sub={data?.length ? t("approvals.rules.sub") : undefined}
       align="stacked"
+      actions={
+        data?.length ? (
+          <ClearRules
+            context={context}
+            busy={busy}
+            current={() =>
+              source.current.agentAccess === agentAccess && source.current.sessionId === sessionId
+            }
+            onClick={() => run(() => forgetApprovalRules(agentAccess, data))}
+            label={t("approvals.clearAll")}
+          />
+        ) : undefined
+      }
     >
       <div ref={context} role="group" aria-labelledby={titleId} tabIndex={-1} data-focus-inset="">
         <DataView
@@ -120,47 +124,22 @@ export function RulesRow() {
         >
           {(rows) => (
             <div {...stylex.props(r.list)}>
-              <div {...stylex.props(ss.end)}>
-                <ClearRules
-                  context={context}
-                  busy={busy}
-                  current={() =>
-                    source.current.agentAccess === agentAccess &&
-                    source.current.sessionId === sessionId
-                  }
-                  onClick={() => run(() => forgetApprovalRules(agentAccess, rows))}
-                  label={t("approvals.clearAll")}
-                />
-              </div>
               {rows.map((rule, index) => {
                 const descriptionId = `${descriptionPrefix}-${index}`;
                 return (
                   <div key={rule.id} data-focus-unit="" {...stylex.props(r.rule)}>
                     <div id={descriptionId} {...stylex.props(r.copy)}>
-                      <div {...stylex.props(r.identity)}>
-                        <Badge tone={SCOPE_TONE[rule.scope]}>
-                          {t(`approvals.scope.${rule.scope}`)}
-                        </Badge>
+                      <div {...stylex.props(r.identity, typeStep.uiMd)}>
                         <span
-                          {...stylex.props(
-                            r.verdict,
-                            rule.decision === "deny" ? vocab.negative : r.allow,
-                            typeStep.uiSm,
-                          )}
+                          {...stylex.props(r.verdict, rule.decision === "deny" && vocab.negative)}
                         >
                           {rule.decision === "deny" ? t("approvals.deny") : t("approvals.allow")}
                         </span>
-                        <span {...stylex.props(r.tool, typeStep.uiMd, face.mono)}>
-                          {rule.modelName}
-                        </span>
+                        <span {...stylex.props(r.tool, face.mono)}>{rule.modelName}</span>
                         {rule.stale ? <Badge tone="warning">{t("approvals.stale")}</Badge> : null}
                       </div>
                       <div {...stylex.props(r.details, vocab.muted, typeStep.uiSm)}>
-                        <span {...stylex.props(rule.tool.type !== "builtIn" && face.mono)}>
-                          {describeApprovalRuleTool(rule.tool, t)}
-                        </span>
-                        <SubjectLine subject={describeApprovalSubject(rule.subject, t)} />
-                        {rule.dir ? <span {...stylex.props(face.mono)}>{rule.dir}</span> : null}
+                        <RuleDetails rule={rule} t={t} />
                       </div>
                     </div>
                     <RuleForget
@@ -249,16 +228,28 @@ function ClearRules({
   );
 }
 
-function SubjectLine({ subject }: { subject: { label: string; value?: string } }) {
-  return (
-    <span>
-      {subject.label}
-      {subject.value !== undefined && (
-        <>
-          {": "}
-          <span {...stylex.props(face.mono)}>{subject.value}</span>
-        </>
-      )}
-    </span>
-  );
+function Literal({ text }: { text: string }) {
+  return <span {...stylex.props(face.mono)}>{text}</span>;
+}
+
+function RuleDetails({ rule, t }: { rule: ApprovalRuleSummary; t: Translate }) {
+  const source = describeApprovalRuleTool(rule.tool);
+  const subject = describeApprovalSubject(rule.subject, t);
+  const parts: ReactNode[] = [t(`approvals.scope.${rule.scope}`)];
+  if (rule.dir) parts.push(<Literal text={rule.dir} />);
+  if (source) parts.push(<Literal text={source} />);
+  if (subject)
+    parts.push(
+      <Trans
+        i18nKey="approvals.subject.entry"
+        values={{ kind: subject.label }}
+        components={{ value: <Literal text={subject.value} /> }}
+      />,
+    );
+  return parts.map((part, index) => (
+    <Fragment key={index}>
+      {index > 0 && " · "}
+      {part}
+    </Fragment>
+  ));
 }

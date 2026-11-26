@@ -24,6 +24,13 @@ const styles = stylex.create({
   top: { alignItems: "flex-start" },
   centre: { alignContent: "center", alignItems: "center" },
   copy: { minWidth: 0, overflowWrap: "anywhere" },
+  head: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: layout.controlGap,
+    minWidth: 0,
+  },
   name: { color: color.fg, fontWeight: weight.medium },
   control: {
     minWidth: 0,
@@ -37,15 +44,25 @@ export function SettingRow({
   labelId,
   sub,
   align = "center",
+  actions,
   children,
 }: {
   label: string;
   labelId?: string;
   sub?: ReactNode;
   align?: "start" | "center" | "stacked";
+  actions?: ReactNode;
   children?: ReactNode;
 }) {
   const stacked = align === "stacked";
+  const copy = (
+    <div {...stylex.props(styles.copy)}>
+      <div id={labelId} {...stylex.props(styles.name, typeStep.uiMd)}>
+        {label}
+      </div>
+      {sub != null && <div {...stylex.props(ss.hintSpaced, typeStep.uiSm)}>{sub}</div>}
+    </div>
+  );
   return (
     <div
       data-focus-unit=""
@@ -57,12 +74,14 @@ export function SettingRow({
         stacked && styles.stacked,
       )}
     >
-      <div {...stylex.props(styles.copy)}>
-        <div id={labelId} {...stylex.props(styles.name, typeStep.uiMd)}>
-          {label}
+      {actions != null ? (
+        <div {...stylex.props(styles.head)}>
+          {copy}
+          {actions}
         </div>
-        {sub != null && <div {...stylex.props(ss.hintSpaced, typeStep.uiSm)}>{sub}</div>}
-      </div>
+      ) : (
+        copy
+      )}
       {children != null && <div {...stylex.props(!stacked && styles.control)}>{children}</div>}
     </div>
   );

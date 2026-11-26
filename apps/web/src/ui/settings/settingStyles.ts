@@ -41,8 +41,6 @@ export const settingStyles = stylex.create({
     whiteSpace: "nowrap",
     color: color.fgMuted,
   },
-  end: { display: "flex", justifyContent: "flex-end" },
-
   label: { color: color.fg, fontWeight: weight.medium },
   hint: { color: color.fgMuted, lineHeight: leading.body },
   hintSpaced: { marginTop: space.s1, color: color.fgMuted, lineHeight: leading.body },
