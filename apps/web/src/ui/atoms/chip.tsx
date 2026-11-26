@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { type ReactNode } from "react";
+import { useId, type ReactNode } from "react";
 import {
   color,
   corner,
@@ -92,10 +92,14 @@ export function Chip({
   closeLabel,
 }: Props) {
   const t = useT();
+  const valueId = useId();
+  const closeLabelId = `${valueId}-close`;
   const face = (
     <>
       {icon && <Icon name={icon} size="xs" />}
-      <span {...stylex.props(chipStyles.value, vocab.truncate)}>{children}</span>
+      <span id={valueId} {...stylex.props(chipStyles.value, vocab.truncate)}>
+        {children}
+      </span>
     </>
   );
   return (
@@ -108,7 +112,7 @@ export function Chip({
         {onOpen ? (
           <ButtonPrimitive
             type="button"
-            aria-label={title}
+            aria-labelledby={valueId}
             onClick={onOpen}
             {...stylex.props(chipStyles.open)}
           >
@@ -123,9 +127,12 @@ export function Chip({
             type="button"
             {...stylex.props(reveal.shown, chipStyles.closeBox, corner.pill, chipStyles.close)}
             onClick={onClose}
-            aria-label={closeLabel ?? t("common.remove")}
+            aria-labelledby={`${closeLabelId} ${valueId}`}
           >
             <Icon name="x" size="xs" />
+            <span id={closeLabelId} className="sr-only">
+              {closeLabel ?? t("common.remove")}
+            </span>
           </ButtonPrimitive>
         )}
       </span>
