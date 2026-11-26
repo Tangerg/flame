@@ -63,8 +63,6 @@ export const ko: Record<string, string> = {
   "mcp.import.ok_other": "서버 {{count}}개를 가져왔습니다",
   "mcp.import.partial_other": "서버 {{total}}개 중 {{count}}개를 가져왔습니다.",
   "mcp.import.invalidJson": "올바른 JSON을 입력하세요.",
-  "mcp.tools.title": "{{server}} 도구",
-  "mcp.tools.label": "{{server}} {{tools}}",
   "mcp.tools.enabled": "사용",
   "mcp.tools.autoApprove": "자동 승인",
   "mcp.tools.empty": "이 서버는 도구를 제공하지 않습니다",

@@ -69,8 +69,6 @@ export const zh: Record<string, string> = {
   "mcp.import.invalidTimeout":
     "请为服务器“{{server}}”设置以秒为单位的正整数超时，或省略此项表示不限时。",
   "mcp.import.empty": "请在“mcpServers”下至少添加一个服务器。",
-  "mcp.tools.title": "{{server}} 的工具",
-  "mcp.tools.label": "{{server}} 的 {{tools}}",
   "mcp.tools.enabled": "启用",
   "mcp.tools.autoApprove": "自动批准",
   "mcp.tools.empty": "此服务器未暴露任何工具",

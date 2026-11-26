@@ -80,8 +80,6 @@ export const de: Record<string, string> = {
   "mcp.import.invalidTimeout":
     "Lege für den Server „{{server}}“ ein Timeout in positiven ganzen Sekunden fest oder lass es weg für kein Zeitlimit.",
   "mcp.import.empty": "Füge unter „mcpServers“ mindestens einen Server hinzu.",
-  "mcp.tools.title": "Tools von {{server}}",
-  "mcp.tools.label": "{{tools}} von {{server}}",
   "mcp.tools.enabled": "Aktiviert",
   "mcp.tools.autoApprove": "Automatisch genehmigen",
   "mcp.tools.empty": "Dieser Server stellt keine Tools bereit",

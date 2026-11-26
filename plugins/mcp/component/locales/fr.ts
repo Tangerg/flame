@@ -82,8 +82,6 @@ export const fr: Record<string, string> = {
   "mcp.import.invalidTimeout":
     "Définissez un délai d’expiration en secondes entières positives pour le serveur « {{server}} », ou omettez-le pour ne fixer aucune limite de temps.",
   "mcp.import.empty": "Ajoutez au moins un serveur sous « mcpServers ».",
-  "mcp.tools.title": "Outils de {{server}}",
-  "mcp.tools.label": "{{tools}} de {{server}}",
   "mcp.tools.enabled": "Activé",
   "mcp.tools.autoApprove": "Approbation automatique",
   "mcp.tools.empty": "Ce serveur n’expose aucun outil",

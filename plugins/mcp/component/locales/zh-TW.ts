@@ -70,8 +70,6 @@ export const zhTW: Record<string, string> = {
   "mcp.import.invalidTimeout":
     "請為伺服器「{{server}}」設定以秒為單位的正整數逾時，或省略此項表示不限時。",
   "mcp.import.empty": "請在「mcpServers」下至少新增一個伺服器。",
-  "mcp.tools.title": "{{server}} 的工具",
-  "mcp.tools.label": "{{server}} 的 {{tools}}",
   "mcp.tools.enabled": "已啟用",
   "mcp.tools.autoApprove": "自動核准",
   "mcp.tools.empty": "此伺服器未提供任何工具",

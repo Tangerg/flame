@@ -77,8 +77,6 @@ export const ja: Record<string, string> = {
     "サーバー「{{server}}」のタイムアウトを正の整数の秒数で設定するか、時間制限なしにする場合は省略してください。",
   "mcp.import.empty":
     "「mcpServers」の下にサーバーを 1 つ以上追加してください。",
-  "mcp.tools.title": "{{server}} のツール",
-  "mcp.tools.label": "{{server}} の{{tools}}",
   "mcp.tools.enabled": "有効",
   "mcp.tools.autoApprove": "自動承認",
   "mcp.tools.empty": "このサーバーはツールを公開していません",

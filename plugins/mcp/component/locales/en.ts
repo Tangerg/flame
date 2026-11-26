@@ -65,8 +65,6 @@ export const en: Record<string, string> = {
   "mcp.import.partial_one": "Imported {{count}} of {{total}} servers.",
   "mcp.import.partial_other": "Imported {{count}} of {{total}} servers.",
   "mcp.import.invalidJson": "Enter valid JSON.",
-  "mcp.tools.title": "Tools for {{server}}",
-  "mcp.tools.label": "{{tools}} for {{server}}",
   "mcp.tools.enabled": "Enabled",
   "mcp.tools.autoApprove": "Auto-approve",
   "mcp.tools.empty": "This server exposes no tools",
