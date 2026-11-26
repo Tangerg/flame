@@ -10756,7 +10756,7 @@
         {
           "name": "Version",
           "type": "untyped string",
-          "value": "\"2026-11-26.10\""
+          "value": "\"2026-11-27.1\""
         },
         {
           "name": "WorkspaceAvailable",
@@ -10970,7 +10970,7 @@
         },
         {
           "name": "DecodeRequest",
-          "signature": "func(encoded []byte, target any) error"
+          "signature": "func(encoded []byte, target any) (WireMembers, error)"
         },
         {
           "name": "DecodeResponse",
@@ -10987,6 +10987,10 @@
         {
           "name": "Features",
           "signature": "func() []Feature"
+        },
+        {
+          "name": "InspectWire",
+          "signature": "func(value any) (WireMembers, error)"
         },
         {
           "name": "InvalidParameters",
@@ -19006,6 +19010,24 @@
           ]
         },
         {
+          "name": "WireMembers",
+          "kind": "struct",
+          "methods": [
+            {
+              "name": "Has",
+              "signature": "func(path string) bool"
+            },
+            {
+              "name": "IsTrue",
+              "signature": "func(path string) bool"
+            },
+            {
+              "name": "StringEquals",
+              "signature": "func(path string, expected string) bool"
+            }
+          ]
+        },
+        {
           "name": "WorkspaceAvailability",
           "kind": "defined",
           "underlying": "string"
@@ -19721,6 +19743,10 @@
       ],
       "functions": [
         {
+          "name": "Literal",
+          "signature": "func(value any) string"
+        },
+        {
           "name": "NewTypeScript",
           "signature": "func(definitions Definitions) *TypeScript"
         },
@@ -19731,10 +19757,6 @@
         {
           "name": "QuoteAll",
           "signature": "func(values []string) []string"
-        },
-        {
-          "name": "StringLiteral",
-          "signature": "func(value string) string"
         }
       ],
       "types": [
@@ -19784,8 +19806,8 @@
             },
             {
               "name": "Const",
-              "type": "string",
-              "tag": "json:\"const,omitempty\""
+              "type": "any",
+              "tag": "json:\"const,omitzero\""
             },
             {
               "name": "Pattern",

@@ -41,6 +41,10 @@ subscriber to leave closes the shared connection. File watch subscriptions use
 dedicated connections. A Run's segment stream retains unread events for the
 active observer through its terminal `segment.finished` event.
 
+Capability checks use the request's wire fields. An explicit `isolated: false`
+requires isolation because it changes the Session's isolation setting. A
+descendant query requires `childRuns` only when `includeDescendants` is `true`.
+
 HTTP credentials and metadata must be ASCII field values without surrounding
 whitespace. Fetch byte strings cannot preserve non-ASCII UTF-8 identities, and
 header normalization must never replace a captured command key or replay cursor.

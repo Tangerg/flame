@@ -31,6 +31,10 @@ including in tests and development commands.
 | `timezone`                                                                             | The host's IANA time zone for values recorded on a person's behalf                   |
 | `capture`, `exactint`, `httpresponse`, `httporigin`, `instant`, `procgroup`, `sandbox` | Focused technical guarantees used across owners                                      |
 
+`protocol.DecodeRequest` returns the admitted JSON members together with any
+error. Use those members to check whether a field was sent. `protocol.InspectWire`
+offers the same checks for a Go request using its encoded JSON representation.
+
 `builtin` declares Runtime's built-in tool names, shell arguments and normalized
 transcript results. Runtime produces those values and generates their schemas
 from the same types; CLI consumes them for typed presentation. Scope owns the

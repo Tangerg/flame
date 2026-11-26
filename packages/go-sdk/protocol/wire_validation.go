@@ -18,24 +18,29 @@ type wireEnum interface {
 	wireEnumValues() []string
 }
 
+func ValidateWireTree(value any) error {
+	_, err := InspectWire(value)
+	return err
+}
+
 // The JSON encoder determines member omission for in-process Go calls too.
 // Interface-valued payloads are opaque because their schema has a separate owner.
-func ValidateWireTree(value any) error {
+func InspectWire(value any) (WireMembers, error) {
 	root := reflect.ValueOf(value)
 	if !root.IsValid() {
-		return nil
+		return WireMembers{}, nil
 	}
 	if err := ValidateWireType(root.Type()); err != nil {
-		return err
+		return WireMembers{}, err
 	}
 	encoded, err := json.Marshal(value)
 	if err != nil {
-		return err
+		return WireMembers{}, err
 	}
 	return validateWireDocument(root, encoded)
 }
 
-func validateWireTree(root reflect.Value, members wireMembers) error {
+func validateWireTree(root reflect.Value, members WireMembers) error {
 	fields := validateWireValue(root, "", members)
 	if len(fields) == 0 {
 		return nil
@@ -53,7 +58,7 @@ func wireShapeName(owner reflect.Type) string {
 	return "wire value"
 }
 
-func validateWireValue(value reflect.Value, path string, members wireMembers) []FieldError {
+func validateWireValue(value reflect.Value, path string, members WireMembers) []FieldError {
 	for value.Kind() == reflect.Pointer {
 		if value.IsNil() {
 			return nil
@@ -129,12 +134,11 @@ func enumViolation(value reflect.Value, path string) FieldError {
 type wireObject struct {
 	value   reflect.Value
 	path    string
-	members wireMembers
+	members WireMembers
 }
 
 func (o wireObject) present(field string) bool {
-	_, present := o.members[joinWirePath(o.path, field)]
-	return present
+	return o.members.Has(joinWirePath(o.path, field))
 }
 
 func (o wireObject) field(path string) reflect.Value {

@@ -55,6 +55,14 @@ describe("the published JSON Schema bundle", () => {
     }
   });
 
+  it("allows text counts when a workspace file explicitly reports binary false", () => {
+    const validate = ajv.getSchema("schema.json#/$defs/WorkspaceFileChange");
+    if (!validate) throw new Error("the bundle defines no WorkspaceFileChange");
+    const change = { path: "tracked.txt", status: "modified", added: 1, removed: 0 };
+    expect(validate({ ...change, binary: false })).toBe(true);
+    expect(validate({ ...change, binary: true })).toBe(false);
+  });
+
   it.each(WIRE_SAMPLES)("accepts $file as $shape", ({ file, shape }) => {
     const validate = ajv.getSchema(`schema.json#/$defs/${shape}`);
     if (!validate) throw new Error(`the bundle defines no ${shape}`);

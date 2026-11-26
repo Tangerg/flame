@@ -96,8 +96,8 @@ func validateRuleConditions(owner string, shape reflect.Type, conditions []deliv
 				)
 			}
 			return fmt.Errorf(
-				"%s: field %q combines present and equals conditions",
-				owner, condition.Field,
+				"%s: field %q combines %s and %s conditions",
+				owner, condition.Field, previous.Operator, condition.Operator,
 			)
 		}
 	}

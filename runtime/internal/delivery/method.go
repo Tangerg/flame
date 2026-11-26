@@ -116,9 +116,14 @@ type ConditionOperator string
 const (
 	OperatorPresent ConditionOperator = "present"
 	OperatorEquals  ConditionOperator = "equals"
+	OperatorTrue    ConditionOperator = "true"
 )
 
-func (c ConditionOperator) Valid() bool { return c == OperatorPresent || c == OperatorEquals }
+func ConditionOperators() []ConditionOperator {
+	return []ConditionOperator{OperatorPresent, OperatorEquals, OperatorTrue}
+}
+
+func (c ConditionOperator) Valid() bool { return slices.Contains(ConditionOperators(), c) }
 
 type FieldCondition struct {
 	Field    string
@@ -137,7 +142,7 @@ const includeDescendantsParameter = "includeDescendants"
 // gated on the child-runs feature.
 func descendantsRequireChildRuns(field string) []CapabilityRule {
 	return []CapabilityRule{{
-		When:     []FieldCondition{{Field: field, Operator: OperatorPresent}},
+		When:     []FieldCondition{{Field: field, Operator: OperatorTrue}},
 		Requires: []string{protocol.FeatureChildRuns},
 	}}
 }
@@ -457,11 +462,17 @@ func ValidateFieldCondition(owner string, shape reflect.Type, condition FieldCon
 	}
 	_, leaf, _ := protocol.WireGoPath(shape, condition.Field)
 	switch condition.Operator {
-	case OperatorPresent:
+	case OperatorPresent, OperatorTrue:
 		if condition.Value != "" {
 			return fmt.Errorf(
 				"%s condition field %q: operator %s does not accept value %q",
 				owner, condition.Field, condition.Operator, condition.Value,
+			)
+		}
+		if condition.Operator == OperatorTrue && leaf.Type.Kind() != reflect.Bool {
+			return fmt.Errorf(
+				"%s condition field %q: operator %s requires a boolean field, got %s",
+				owner, condition.Field, condition.Operator, leaf.Type,
 			)
 		}
 	case OperatorEquals:
@@ -479,12 +490,11 @@ func ValidateFieldCondition(owner string, shape reflect.Type, condition FieldCon
 		}
 	default:
 		return fmt.Errorf(
-			"%s condition field %q: invalid operator %s; expected %s or %s",
+			"%s condition field %q: invalid operator %s; expected one of %v",
 			owner,
 			condition.Field,
 			condition.Operator,
-			OperatorPresent,
-			OperatorEquals,
+			ConditionOperators(),
 		)
 	}
 	return nil

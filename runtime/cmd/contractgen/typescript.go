@@ -64,7 +64,7 @@ func (t *tsEmitter) problemCodes() {
 	t.line("export const PROBLEM_CODES = {")
 	codes := dispatch.ProblemCodes()
 	for _, name := range slices.Sorted(maps.Keys(codes)) {
-		t.line("  %s: %d,", wiregen.StringLiteral(name), codes[name])
+		t.line("  %s: %d,", wiregen.Literal(name), codes[name])
 	}
 	t.line("} as const satisfies Partial<Record<ProblemData['type'], number>>;")
 	t.line("")
@@ -74,7 +74,7 @@ func (t *tsEmitter) problemCodes() {
 	}
 	quoted := make([]string, len(actions))
 	for index, action := range actions {
-		quoted[index] = wiregen.StringLiteral(action)
+		quoted[index] = wiregen.Literal(action)
 	}
 	t.line("// The default next move a client offers for a problem, by where it arrived.")
 	t.line("export type RecoveryAction = %s;", strings.Join(quoted, " | "))
@@ -86,7 +86,7 @@ func (t *tsEmitter) problemCodes() {
 		if !declared {
 			panic("contractgen: problem type " + name + " declares no recovery action")
 		}
-		t.line("  %s: %s,", wiregen.StringLiteral(name), wiregen.StringLiteral(string(recovery)))
+		t.line("  %s: %s,", wiregen.Literal(name), wiregen.Literal(string(recovery)))
 	}
 	t.line("} as const satisfies Partial<Record<ProblemData['type'], RecoveryAction>>;")
 	t.line("")
@@ -94,7 +94,7 @@ func (t *tsEmitter) problemCodes() {
 	t.line("export const RUN_PROBLEM_RECOVERY = {")
 	for _, contract := range dispatch.ProblemContracts() {
 		if slices.Contains(contract.Channels, dispatch.ProblemChannelExecution) {
-			t.line("  %s: %s,", wiregen.StringLiteral(contract.Type), wiregen.StringLiteral(string(contract.ExecutionRecovery)))
+			t.line("  %s: %s,", wiregen.Literal(contract.Type), wiregen.Literal(string(contract.ExecutionRecovery)))
 		}
 	}
 	t.line("} as const satisfies Partial<Record<ProblemData['type'], RecoveryAction>>;")
@@ -104,14 +104,14 @@ func (t *tsEmitter) problemCodes() {
 func (t *tsEmitter) httpHeaders() {
 	headers := runtimehttp.Contract().Headers
 	t.line("export const HTTP_HEADERS = {")
-	t.line("  authorization: %s,", wiregen.StringLiteral(headers.Authorization))
-	t.line("  contentType: %s,", wiregen.StringLiteral(headers.ContentType))
-	t.line("  idempotencyKey: %s,", wiregen.StringLiteral(headers.IdempotencyKey))
-	t.line("  idempotencyNamespace: %s,", wiregen.StringLiteral(headers.IdempotencyNamespace))
-	t.line("  lastEventId: %s,", wiregen.StringLiteral(headers.LastEventID))
-	t.line("  requestId: %s,", wiregen.StringLiteral(headers.RequestID))
-	t.line("  server: %s,", wiregen.StringLiteral(headers.Server))
-	t.line("  method: %s,", wiregen.StringLiteral(headers.Method))
+	t.line("  authorization: %s,", wiregen.Literal(headers.Authorization))
+	t.line("  contentType: %s,", wiregen.Literal(headers.ContentType))
+	t.line("  idempotencyKey: %s,", wiregen.Literal(headers.IdempotencyKey))
+	t.line("  idempotencyNamespace: %s,", wiregen.Literal(headers.IdempotencyNamespace))
+	t.line("  lastEventId: %s,", wiregen.Literal(headers.LastEventID))
+	t.line("  requestId: %s,", wiregen.Literal(headers.RequestID))
+	t.line("  server: %s,", wiregen.Literal(headers.Server))
+	t.line("  method: %s,", wiregen.Literal(headers.Method))
 	t.line("} as const;")
 	t.line("")
 }
@@ -119,9 +119,9 @@ func (t *tsEmitter) httpHeaders() {
 func (t *tsEmitter) httpEndpoints() {
 	t.line("export const RPC_HTTP = {")
 	t.line("  callStatus: %d,", protocol.RPCCallStatus)
-	t.line("  documentMediaType: %s,", wiregen.StringLiteral(protocol.RPCDocumentMediaType))
-	t.line("  streamMediaType: %s,", wiregen.StringLiteral(protocol.RPCStreamMediaType))
-	t.line("  problemMediaType: %s,", wiregen.StringLiteral(protocol.HTTPProblemMediaType))
+	t.line("  documentMediaType: %s,", wiregen.Literal(protocol.RPCDocumentMediaType))
+	t.line("  streamMediaType: %s,", wiregen.Literal(protocol.RPCStreamMediaType))
+	t.line("  problemMediaType: %s,", wiregen.Literal(protocol.HTTPProblemMediaType))
 	t.line("} as const;")
 	t.line("")
 
@@ -130,10 +130,10 @@ func (t *tsEmitter) httpEndpoints() {
 	contract := runtimehttp.Contract()
 	for _, endpoint := range contract.Endpoints {
 		t.line("  %s: {", wiregen.PropertyKey(endpoint.Name))
-		t.line("    kind: %s,", wiregen.StringLiteral(string(endpoint.Kind)))
-		t.line("    method: %s,", wiregen.StringLiteral(endpoint.Method))
-		t.line("    path: %s,", wiregen.StringLiteral(endpoint.Path))
-		t.line("    authentication: %s,", wiregen.StringLiteral(string(endpoint.Authentication)))
+		t.line("    kind: %s,", wiregen.Literal(string(endpoint.Kind)))
+		t.line("    method: %s,", wiregen.Literal(endpoint.Method))
+		t.line("    path: %s,", wiregen.Literal(endpoint.Path))
+		t.line("    authentication: %s,", wiregen.Literal(string(endpoint.Authentication)))
 		statuses := make([]string, 0, len(endpoint.ResponseStatuses))
 		for _, status := range endpoint.ResponseStatuses {
 			statuses = append(statuses, strconv.Itoa(status))
@@ -160,7 +160,7 @@ func (t *tsEmitter) httpEndpoints() {
 func (t *tsEmitter) notifications(methods []string) {
 	t.line("// The methods the runtime sends downstream. A client only ever subscribes.")
 	for _, method := range methods {
-		t.line("export const %s = %s;", screamingSnake(method), wiregen.StringLiteral(method))
+		t.line("export const %s = %s;", screamingSnake(method), wiregen.Literal(method))
 	}
 	t.line("")
 }
@@ -215,7 +215,7 @@ func (t *tsEmitter) runEventSemantics() {
 		if (protocol.StreamEvent{Type: protocol.StreamEventType(value)}).Authoritative() {
 			reliability = "authoritative"
 		}
-		t.line("  %s: %s,", wiregen.StringLiteral(value), wiregen.StringLiteral(reliability))
+		t.line("  %s: %s,", wiregen.Literal(value), wiregen.Literal(reliability))
 	}
 	t.line("} as const satisfies Record<StreamEventType, RunEventReliability>;")
 	t.line("")
@@ -228,7 +228,7 @@ func (t *tsEmitter) runEventSemantics() {
 	t.line("export const RUN_EVENT_REPLAYABLE = {")
 	for _, value := range values {
 		replayable := (protocol.StreamEvent{Type: protocol.StreamEventType(value)}).Replayable()
-		t.line("  %s: %t,", wiregen.StringLiteral(value), replayable)
+		t.line("  %s: %t,", wiregen.Literal(value), replayable)
 	}
 	t.line("} as const satisfies Record<StreamEventType, boolean>;")
 	t.line("")
@@ -253,12 +253,12 @@ func (t *tsEmitter) header() {
 
 func (t *tsEmitter) protocolVersion() {
 	t.line("// The wire version this runtime serves; a client states it in request metadata.")
-	t.line("export const PROTOCOL_VERSION = %s;", wiregen.StringLiteral(protocol.Version))
+	t.line("export const PROTOCOL_VERSION = %s;", wiregen.Literal(protocol.Version))
 	t.line("")
 	t.line("// The only Session Artifact version this runtime imports or exports.")
 	t.line("export const SESSION_ARTIFACT_VERSION = %d;", protocol.SessionArtifactVersion)
 	t.line("")
-	t.line("export const GOAL_WORKFLOW = %s;", wiregen.StringLiteral(goalworkflow.Reference))
+	t.line("export const GOAL_WORKFLOW = %s;", wiregen.Literal(goalworkflow.Reference))
 	t.line("// The maximum length of one opaque pagination cursor on the public wire.")
 	t.line("export const MAXIMUM_PAGINATION_CURSOR_CHARACTERS = %d;", protocol.MaximumPaginationCursorCharacters)
 	t.line("")
@@ -271,7 +271,7 @@ func (t *tsEmitter) protocolVersion() {
 	t.line("// Public framing of one opaque Schedule resource identity.")
 	t.line("")
 	t.line("// Public framing and maximum length of one opaque Run event identity.")
-	t.line("export const RUN_EVENT_ID_PREFIX = %s;", wiregen.StringLiteral(protocol.IDPrefixEvent))
+	t.line("export const RUN_EVENT_ID_PREFIX = %s;", wiregen.Literal(protocol.IDPrefixEvent))
 	t.line("export const MAXIMUM_RUN_EVENT_ID_CHARACTERS = %d;", protocol.MaximumRunEventIDCharacters)
 	t.line("")
 	t.line("// Largest integer identity represented exactly by every supported JSON consumer.")

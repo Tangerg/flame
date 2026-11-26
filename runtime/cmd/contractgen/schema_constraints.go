@@ -55,7 +55,7 @@ func setAllowedValues(parent *wiregen.Schema, name string, owner reflect.Type, s
 		return
 	}
 	narrowed, ok := existing.(*wiregen.Schema)
-	if !ok || narrowed.Const != "" || len(narrowed.Enum) != 0 {
+	if !ok || narrowed.Const != nil || len(narrowed.Enum) != 0 {
 		panic(fmt.Sprintf("contractgen: %s.%s has conflicting branch constraints", owner.Name(), set.Field))
 	}
 	narrowed.Enum = slices.Clone(set.Values)

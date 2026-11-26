@@ -412,6 +412,8 @@ func (s *schemaSet) conditional(t reflect.Type, rule dispatch.ConditionalRule) *
 		switch when.Operator {
 		case delivery.OperatorEquals:
 			parent.Properties[leaf] = &wiregen.Schema{Const: when.Value}
+		case delivery.OperatorTrue:
+			parent.Properties[leaf] = &wiregen.Schema{Const: true}
 		case delivery.OperatorPresent:
 		default:
 			panic(fmt.Sprintf(

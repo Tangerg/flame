@@ -189,6 +189,8 @@ func conditionExpression(conditions []delivery.FieldCondition) string {
 			))
 		case delivery.OperatorPresent:
 			parts = append(parts, fmt.Sprintf("%s.present(%q)", wireObjectParameter, condition.Field))
+		case delivery.OperatorTrue:
+			parts = append(parts, fmt.Sprintf("%s.isTrue(%q)", wireObjectParameter, condition.Field))
 		default:
 			panic(fmt.Sprintf("contractgen: unsupported conditional operator %q", condition.Operator))
 		}

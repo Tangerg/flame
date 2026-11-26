@@ -1263,12 +1263,10 @@ export function wireAcknowledgementCheck(
   }
 }
 
-/** One condition on the request that decides whether a rule applies. */
-export interface WireCapabilityCondition {
-  field: string;
-  operator: "present" | "equals";
-  value?: string;
-}
+export type WireCapabilityCondition =
+  | { field: string; operator: "present" }
+  | { field: string; operator: "equals"; value: string }
+  | { field: string; operator: "true" };
 
 /**
  * What a method needs negotiated. An absent `when` gates the whole method; a
@@ -1283,13 +1281,13 @@ export const WIRE_CAPABILITY_POLICY: {
   readonly [M in WireMethodName]?: readonly WireCapabilityRule[];
 } = {
   "sessions.trajectory": [
-    { when: [{ field: "includeDescendants", operator: "present" }], requires: ["childRuns"] },
+    { when: [{ field: "includeDescendants", operator: "true" }], requires: ["childRuns"] },
   ],
   "sessions.exportTrajectory": [
     { requires: ["sessionExport"] },
   ],
   "sessions.snapshot": [
-    { when: [{ field: "includeDescendants", operator: "present" }], requires: ["childRuns"] },
+    { when: [{ field: "includeDescendants", operator: "true" }], requires: ["childRuns"] },
   ],
   "sessions.update": [
     { when: [{ field: "workspace", operator: "present" }], requires: ["relocate"] },
@@ -1306,13 +1304,13 @@ export const WIRE_CAPABILITY_POLICY: {
     { requires: ["sessionExport"] },
   ],
   "runs.list": [
-    { when: [{ field: "includeDescendants", operator: "present" }], requires: ["childRuns"] },
+    { when: [{ field: "includeDescendants", operator: "true" }], requires: ["childRuns"] },
   ],
   "plan.get": [
     { requires: ["plan"] },
   ],
   "items.list": [
-    { when: [{ field: "scope.includeDescendants", operator: "present" }], requires: ["childRuns"] },
+    { when: [{ field: "scope.includeDescendants", operator: "true" }], requires: ["childRuns"] },
   ],
   "workspace.changes.list": [
     { requires: ["git"] },

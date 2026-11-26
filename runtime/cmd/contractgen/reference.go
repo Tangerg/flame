@@ -151,11 +151,14 @@ func when(conditions []conditionRow) string {
 	}
 	parts := make([]string, 0, len(conditions))
 	for _, condition := range conditions {
-		if condition.Operator == delivery.OperatorEquals {
+		switch condition.Operator {
+		case delivery.OperatorEquals:
 			parts = append(parts, fmt.Sprintf("`%s` == `%s`", condition.Field, condition.Value))
-			continue
+		case delivery.OperatorTrue:
+			parts = append(parts, fmt.Sprintf("`%s` == `true`", condition.Field))
+		case delivery.OperatorPresent:
+			parts = append(parts, fmt.Sprintf("`%s` present", condition.Field))
 		}
-		parts = append(parts, fmt.Sprintf("`%s` present", condition.Field))
 	}
 	return strings.Join(parts, " and ")
 }

@@ -52,7 +52,7 @@ func newWireChecks(registry *delivery.Registry, shapes *dispatch.Shapes, set *sc
 	}
 	out.WriteString("/** Every shape the protocol publishes. */\nexport type WireTypeName =\n")
 	for _, name := range names {
-		fmt.Fprintf(&out, "  | %s\n", wiregen.StringLiteral(name))
+		fmt.Fprintf(&out, "  | %s\n", wiregen.Literal(name))
 	}
 	out.WriteString("  ;\n\n")
 	out.WriteString(body.String())
@@ -71,7 +71,7 @@ func (c *checkEmitter) httpResponses() string {
 		if endpoint.Kind != runtimehttp.EndpointKindSidecar || endpoint.ResponseType == nil {
 			continue
 		}
-		fmt.Fprintf(&out, "  %s: %s,\n", wiregen.StringLiteral(endpoint.Name), indent(c.compile(c.set.walk(endpoint.ResponseType))))
+		fmt.Fprintf(&out, "  %s: %s,\n", wiregen.Literal(endpoint.Name), indent(c.compile(c.set.walk(endpoint.ResponseType))))
 	}
 	out.WriteString("};\n")
 	out.WriteString(`
@@ -128,7 +128,7 @@ func (c *checkEmitter) methodParams(registry *delivery.Registry) string {
 	var out strings.Builder
 	out.WriteString("\nconst METHOD_PARAMS: Record<WireMethodName, WireCheck> = {\n")
 	for _, meta := range registry.Metas() {
-		fmt.Fprintf(&out, "  %s: %s,\n", wiregen.StringLiteral(meta.Name.String()), indent(c.compile(c.set.walk(meta.Params))))
+		fmt.Fprintf(&out, "  %s: %s,\n", wiregen.Literal(meta.Name.String()), indent(c.compile(c.set.walk(meta.Params))))
 	}
 	out.WriteString("};\n")
 	out.WriteString(`
@@ -153,7 +153,7 @@ func (c *checkEmitter) methodResults(registry *delivery.Registry) string {
 				check = c.call("nullable", check)
 			}
 		}
-		fmt.Fprintf(&out, "  %s: %s,\n", wiregen.StringLiteral(meta.Name.String()), indent(check))
+		fmt.Fprintf(&out, "  %s: %s,\n", wiregen.Literal(meta.Name.String()), indent(check))
 	}
 	out.WriteString("};\n")
 	out.WriteString(`
@@ -177,7 +177,7 @@ func (c *checkEmitter) notifications(shapes *dispatch.Shapes) string {
 	var out strings.Builder
 	out.WriteString("\nexport const WIRE_NOTIFICATION_NAMES = [\n")
 	for _, notification := range notifications {
-		fmt.Fprintf(&out, "  %s,\n", wiregen.StringLiteral(notification.Name))
+		fmt.Fprintf(&out, "  %s,\n", wiregen.Literal(notification.Name))
 	}
 	out.WriteString("] as const;\n")
 	out.WriteString("\nexport type WireNotificationName = (typeof WIRE_NOTIFICATION_NAMES)[number];\n")
@@ -189,7 +189,7 @@ func (c *checkEmitter) notifications(shapes *dispatch.Shapes) string {
 		if !ok {
 			panic(fmt.Sprintf("contractgen: notification %q params has no published shape", notification.Name))
 		}
-		fmt.Fprintf(&out, "  %s: Wire.%s;\n", wiregen.StringLiteral(notification.Name), name)
+		fmt.Fprintf(&out, "  %s: Wire.%s;\n", wiregen.Literal(notification.Name), name)
 	}
 	out.WriteString("}\n")
 	out.WriteString("\nconst NOTIFICATION_PARAMS: Record<WireNotificationName, WireCheck> = {\n")
@@ -197,7 +197,7 @@ func (c *checkEmitter) notifications(shapes *dispatch.Shapes) string {
 		fmt.Fprintf(
 			&out,
 			"  %s: %s,\n",
-			wiregen.StringLiteral(notification.Name),
+			wiregen.Literal(notification.Name),
 			indent(c.compile(c.set.walk(notification.ParamsType))),
 		)
 	}
@@ -249,8 +249,8 @@ func (c *checkEmitter) compile(node *wiregen.Schema) string {
 
 func (c *checkEmitter) baseCheck(node *wiregen.Schema) string {
 	switch {
-	case node.Const != "":
-		return c.call("literal", wiregen.StringLiteral(node.Const))
+	case node.Const != nil:
+		return c.call("literal", wiregen.Literal(node.Const))
 	case len(node.Enum) > 0:
 		return c.call("enumOf", "["+strings.Join(wiregen.QuoteAll(node.Enum), ", ")+"]")
 	default:
@@ -267,7 +267,7 @@ func (c *checkEmitter) stringChecks(node *wiregen.Schema) []string {
 		checks = append(checks, c.call("maxLength", strconv.Itoa(*node.MaxLength)))
 	}
 	if node.Pattern != "" {
-		checks = append(checks, c.call("pattern", wiregen.StringLiteral(node.Pattern)))
+		checks = append(checks, c.call("pattern", wiregen.Literal(node.Pattern)))
 	}
 	return checks
 }
@@ -275,13 +275,13 @@ func (c *checkEmitter) stringChecks(node *wiregen.Schema) []string {
 func (c *checkEmitter) numericChecks(node *wiregen.Schema) []string {
 	var checks []string
 	if node.Minimum != nil {
-		checks = append(checks, c.call("minimum", wiregen.StringLiteral(strconv.FormatInt(*node.Minimum, 10))))
+		checks = append(checks, c.call("minimum", wiregen.Literal(strconv.FormatInt(*node.Minimum, 10))))
 	}
 	if node.ExclusiveMinimum != nil {
-		checks = append(checks, c.call("exclusiveMinimum", wiregen.StringLiteral(strconv.FormatInt(*node.ExclusiveMinimum, 10))))
+		checks = append(checks, c.call("exclusiveMinimum", wiregen.Literal(strconv.FormatInt(*node.ExclusiveMinimum, 10))))
 	}
 	if node.Maximum != nil {
-		checks = append(checks, c.call("maximum", wiregen.StringLiteral(strconv.FormatInt(*node.Maximum, 10))))
+		checks = append(checks, c.call("maximum", wiregen.Literal(strconv.FormatInt(*node.Maximum, 10))))
 	}
 	return checks
 }

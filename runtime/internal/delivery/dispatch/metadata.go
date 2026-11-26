@@ -22,7 +22,7 @@ func extractRequestMeta(request *jsonrpc.Request) (protocol.RequestMeta, *jsonrp
 		return protocol.RequestMeta{}, nil
 	}
 	var metadata protocol.RequestMeta
-	if err := protocol.DecodeRequest(encoded, &metadata); err != nil {
+	if _, err := protocol.DecodeRequest(encoded, &metadata); err != nil {
 		return protocol.RequestMeta{}, errorToRPC(fmt.Errorf("%s: %w", protocol.RequestMetaMember, err))
 	}
 	delete(parameters, protocol.RequestMetaMember)

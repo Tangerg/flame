@@ -23,7 +23,7 @@ type Schema struct {
 	Enum             []string       `json:"enum,omitempty"`
 	MinLength        *int           `json:"minLength,omitzero"`
 	MaxLength        *int           `json:"maxLength,omitzero"`
-	Const            string         `json:"const,omitempty"`
+	Const            any            `json:"const,omitzero"`
 	Pattern          string         `json:"pattern,omitempty"`
 	TypeScriptType   string         `json:"-"`
 	Minimum          *int64         `json:"minimum,omitzero"`

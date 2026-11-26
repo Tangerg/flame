@@ -98,8 +98,8 @@ func (t *TypeScript) branch(unionSchema, variantSchema *Schema) string {
 }
 
 func (t *TypeScript) narrow(baseChild, narrowing *Schema) string {
-	if narrowing.Const != "" {
-		return StringLiteral(narrowing.Const)
+	if narrowing.Const != nil {
+		return Literal(narrowing.Const)
 	}
 	if len(narrowing.Enum) > 0 {
 		return unionOf(QuoteAll(narrowing.Enum))
@@ -154,6 +154,9 @@ func (t *TypeScript) TypeOf(node *Schema) string {
 	}
 	if node.TypeScriptType != "" {
 		return node.TypeScriptType
+	}
+	if node.Const != nil {
+		return Literal(node.Const)
 	}
 	if node.Ref != "" {
 		name, _ := strings.CutPrefix(node.Ref, RefPrefix)
@@ -256,10 +259,10 @@ const (
 
 var identifier = regexp.MustCompile(`^[A-Za-z_$][A-Za-z0-9_$]*$`)
 
-func StringLiteral(value string) string {
+func Literal(value any) string {
 	encoded, err := json.Marshal(value, jsontext.EscapeForJS(true))
 	if err != nil {
-		panic(fmt.Errorf("contractgen: invalid typescript string: %w", err))
+		panic(fmt.Errorf("contractgen: invalid typescript literal: %w", err))
 	}
 	return string(encoded)
 }
@@ -268,13 +271,13 @@ func PropertyKey(name string) string {
 	if identifier.MatchString(name) {
 		return name
 	}
-	return StringLiteral(name)
+	return Literal(name)
 }
 
 func QuoteAll(values []string) []string {
 	out := make([]string, 0, len(values))
 	for _, value := range values {
-		out = append(out, StringLiteral(value))
+		out = append(out, Literal(value))
 	}
 	return out
 }
@@ -330,7 +333,7 @@ func discriminatorFirst(unionSchema, variantSchema *Schema) []string {
 
 func isPinned(branch *Schema, name string) bool {
 	pinned, ok := branch.Properties[name].(*Schema)
-	return ok && pinned.Const != ""
+	return ok && pinned.Const != nil
 }
 
 func boolCompare(a, b bool) int {

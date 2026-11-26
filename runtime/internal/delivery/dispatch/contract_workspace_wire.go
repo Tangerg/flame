@@ -4,6 +4,7 @@ import (
 	"reflect"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/runtime/internal/delivery"
 )
 
 func registerDiffUnions(s *Shapes) {
@@ -73,7 +74,7 @@ func registerWorkspaceConditions(s *Shapes) {
 		When:      whenEquals("status", string(protocol.FileStatusUntracked)),
 		Forbidden: []string{"previousPath"},
 	}, {
-		When:      whenPresent("binary"),
+		When:      []delivery.FieldCondition{{Field: "binary", Operator: delivery.OperatorTrue}},
 		Forbidden: []string{"added", "removed"},
 	}}
 	for _, shape := range []reflect.Type{

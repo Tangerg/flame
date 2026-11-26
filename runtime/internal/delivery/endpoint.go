@@ -65,18 +65,24 @@ func (e *Endpoint) AwaitShutdown(ctx context.Context) error {
 	return e.invocations.AwaitShutdown(ctx)
 }
 
+type admittedParameters struct {
+	value   any
+	members protocol.WireMembers
+}
+
 func (e *Endpoint) Invoke(ctx context.Context, name Name, parameters any, options protocol.CallMetadata) protocol.OperationResult {
-	return e.invoke(ctx, name, options, func(method MethodMeta) (any, *protocol.Failure) {
+	return e.invoke(ctx, name, options, func(method MethodMeta) (admittedParameters, *protocol.Failure) {
 		if err := protocol.ValidateWireTree(options.RequestMeta); err != nil {
-			return nil, protocol.InvalidParameters(err)
+			return admittedParameters{}, protocol.InvalidParameters(err)
 		}
 		if reflect.TypeOf(parameters) != method.Params {
-			return nil, protocol.NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("%s parameters have type %T, want %s", name, parameters, method.Params))
+			return admittedParameters{}, protocol.NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("%s parameters have type %T, want %s", name, parameters, method.Params))
 		}
-		if err := protocol.ValidateWireTree(parameters); err != nil {
-			return nil, protocol.InvalidParameters(err)
+		members, err := protocol.InspectWire(parameters)
+		if err != nil {
+			return admittedParameters{}, protocol.InvalidParameters(err)
 		}
-		return parameters, nil
+		return admittedParameters{value: parameters, members: members}, nil
 	})
 }
 
@@ -85,16 +91,17 @@ func (e *Endpoint) InvokeWire(ctx context.Context, name Name, encoded []byte, op
 	if len(encoded) == 0 {
 		encoded = []byte(`{}`)
 	}
-	return e.invoke(ctx, name, options, func(method MethodMeta) (any, *protocol.Failure) {
+	return e.invoke(ctx, name, options, func(method MethodMeta) (admittedParameters, *protocol.Failure) {
 		target := reflect.New(method.Params)
-		if err := protocol.DecodeRequest(encoded, target.Interface()); err != nil {
-			return nil, protocol.ProjectError(err)
+		members, err := protocol.DecodeRequest(encoded, target.Interface())
+		if err != nil {
+			return admittedParameters{}, protocol.ProjectError(err)
 		}
-		return target.Elem().Interface(), nil
+		return admittedParameters{value: target.Elem().Interface(), members: members}, nil
 	})
 }
 
-func (e *Endpoint) invoke(ctx context.Context, name Name, options protocol.CallMetadata, admit func(MethodMeta) (any, *protocol.Failure)) protocol.OperationResult {
+func (e *Endpoint) invoke(ctx context.Context, name Name, options protocol.CallMetadata, admit func(MethodMeta) (admittedParameters, *protocol.Failure)) protocol.OperationResult {
 	if err := e.validateStorage(); err != nil {
 		return failed(projectError(err))
 	}
@@ -126,7 +133,7 @@ func (e *Endpoint) invoke(ctx context.Context, name Name, options protocol.CallM
 		return failed(projectError(err))
 	}
 	if method.prepare != nil {
-		prepared, err := method.prepare(e.target, ctx, parameters)
+		prepared, err := method.prepare(e.target, ctx, parameters.value)
 		if err != nil {
 			return failed(projectError(err))
 		}
@@ -135,16 +142,16 @@ func (e *Endpoint) invoke(ctx context.Context, name Name, options protocol.CallM
 		}
 		method = prepared
 	}
-	ctx, options, err := e.bind(ctx, method, parameters, options)
+	ctx, options, err := e.bind(ctx, method, parameters.value, options)
 	if err != nil {
 		return failed(projectError(err))
 	}
 	// A replay must not serve a result the caller could not have asked for, and a
 	// refused request must not occupy the key a complete one retries with.
-	if failure := e.enforceCapabilities(ctx, method.Meta, parameters); failure != nil {
+	if failure := e.enforceCapabilities(ctx, method.Meta, parameters.members); failure != nil {
 		return failed(failure)
 	}
-	result := e.dispatch(ctx, method, parameters, options.IdempotencyKey)
+	result := e.dispatch(ctx, method, parameters.value, options.IdempotencyKey)
 	if result.Events == nil {
 		return result
 	}

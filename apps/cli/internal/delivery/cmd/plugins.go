@@ -231,7 +231,7 @@ func decodePluginRequest[T any](input string) (T, error) {
 	if len(input) > maximumPluginRequestBytes {
 		return request, fmt.Errorf("plugin input exceeds %d bytes", maximumPluginRequestBytes)
 	}
-	if err := protocol.DecodeRequest([]byte(input), &request); err != nil {
+	if _, err := protocol.DecodeRequest([]byte(input), &request); err != nil {
 		return request, fmt.Errorf("plugin request: %w", err)
 	}
 	return request, nil

@@ -34,22 +34,22 @@ export function unnegotiated(
 
 function matches(condition: WireCapabilityCondition, params: unknown): boolean {
   const value = lookup(params, condition.field);
-  if (condition.operator === "equals") return value === condition.value;
-  return value !== undefined && !isEmpty(value);
+  switch (condition.operator) {
+    case "present":
+      return value !== undefined;
+    case "equals":
+      return value === condition.value;
+    case "true":
+      return value === true;
+  }
 }
 
 function lookup(params: unknown, path: string): unknown {
   let value = params;
   for (const segment of path.split(".")) {
-    if (typeof value !== "object" || value === null || Array.isArray(value)) return undefined;
+    if (typeof value !== "object" || value === null || !Object.hasOwn(value, segment))
+      return undefined;
     value = (value as Record<string, unknown>)[segment];
   }
   return value;
-}
-
-function isEmpty(value: unknown): boolean {
-  if (value === null || value === "" || value === false) return true;
-  if (Array.isArray(value)) return value.length === 0;
-  if (typeof value === "object") return Object.keys(value).length === 0;
-  return false;
 }

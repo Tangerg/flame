@@ -4,9 +4,18 @@ import { createConnection } from "node:net";
 import { join } from "node:path";
 import { createInterface } from "node:readline";
 import { afterAll, beforeAll, beforeEach, expect, inject } from "vitest";
-import { createFlameClient, type FlameClient, createHttpTransport } from "@flame/runtime-client";
 import {
+  createFlameClient,
+  type FlameClient,
+  createHttpTransport,
+  JSONRPC_VERSION,
+} from "@flame/runtime-client";
+import type { WireMethodName } from "@flame/runtime-client/methods";
+import {
+  HTTP_ENDPOINTS,
+  HTTP_HEADERS,
   PROTOCOL_VERSION,
+  RPC_HTTP,
   type MCPTool,
   type PluginInstallation,
   type ServerCapabilities,
@@ -23,10 +32,12 @@ const runtimeFixtureStartupMilliseconds = 60_000;
 
 const runtimeListen = "127.0.0.1:0";
 const listenerAnnouncement = "[flame] http listening on ";
+const sandboxExecutable = "/usr/bin/sandbox-exec";
+const unavailableIsolationProfile = `(version 1)(allow default)(deny file-read-metadata (literal "${sandboxExecutable}"))`;
 
 // One fixture per suite file: a runner, a Runtime and a scripted provider that
 // live for the whole file, with live accessors for state tests replace.
-export function useRuntimeFixture(suite: string) {
+export function useRuntimeFixture(suite: string, { isolationUnavailable = false } = {}) {
   const environmentRoot = inject("runtimeHttpEnvironmentRoot");
   // Each suite owns a fresh Runtime, so its workspace and durable state start
   // empty; they stay out of the shared distribution beside the executables.
@@ -219,7 +230,10 @@ export function useRuntimeFixture(suite: string) {
   const startRuntimeProcess = async (readyBefore = Date.now() + processStartupMilliseconds) => {
     processOutput = "";
     baseUrl = "";
-    const child = spawn(runtimeExecutable, [], {
+    const restricted = isolationUnavailable && process.platform === "darwin";
+    const executable = restricted ? sandboxExecutable : runtimeExecutable;
+    const args = restricted ? ["-p", unavailableIsolationProfile, runtimeExecutable] : [];
+    const child = spawn(executable, args, {
       cwd: root,
       env: runtimeEnvironment(),
       stdio: ["ignore", "pipe", "pipe"],
@@ -292,6 +306,23 @@ export function useRuntimeFixture(suite: string) {
         clientCapabilities: { features: {}, interruptTypes: ["approval", "question"] },
       }),
     });
+
+  const postRPC = (
+    method: WireMethodName,
+    params: unknown,
+    headers: Record<string, string> = {},
+  ): Promise<Response> => {
+    const endpoint = HTTP_ENDPOINTS.rpc;
+    return fetch(new URL(endpoint.path, baseUrl), {
+      method: endpoint.method,
+      headers: {
+        Accept: RPC_HTTP.documentMediaType,
+        [HTTP_HEADERS.contentType]: RPC_HTTP.documentMediaType,
+        ...headers,
+      },
+      body: JSON.stringify({ jsonrpc: JSONRPC_VERSION, id: method, method, params }),
+    });
+  };
 
   const createSharedClient = () =>
     createFlameClient(createHttpTransport({ baseUrl }), {
@@ -427,6 +458,7 @@ export function useRuntimeFixture(suite: string) {
     stopRuntimeProcess,
     killRuntimeProcess,
     createRuntimeClient,
+    postRPC,
     createSharedClient,
     startCLI,
   };

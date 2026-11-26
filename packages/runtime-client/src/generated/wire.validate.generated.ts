@@ -1279,7 +1279,9 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       }, []),
     ),
     ifThen(
-      fields({}, ["binary"]),
+      fields({
+        binary: literal(true),
+      }, ["binary"]),
       fields({
         added: absent(),
         removed: absent(),
@@ -4907,7 +4909,9 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       }, []),
     ),
     ifThen(
-      fields({}, ["binary"]),
+      fields({
+        binary: literal(true),
+      }, ["binary"]),
       fields({
         added: absent(),
         removed: absent(),

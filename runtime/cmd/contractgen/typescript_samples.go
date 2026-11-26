@@ -27,7 +27,7 @@ export interface WireSample {
 export const WIRE_SAMPLES: readonly WireSample[] = [
 `)
 	for _, sample := range contractSamples() {
-		fmt.Fprintf(&out, "  { file: %s, shape: %s },\n", wiregen.StringLiteral(sample.File), wiregen.StringLiteral(defName(sample.Type)))
+		fmt.Fprintf(&out, "  { file: %s, shape: %s },\n", wiregen.Literal(sample.File), wiregen.Literal(defName(sample.Type)))
 	}
 	out.WriteString("];\n")
 	return out.String()

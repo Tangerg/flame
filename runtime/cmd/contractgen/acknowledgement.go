@@ -40,12 +40,12 @@ func (m *methodsEmitter) acknowledgementChecks(metas []delivery.MethodMeta) {
 		if len(meta.Acknowledgement) == 0 {
 			continue
 		}
-		name := wiregen.StringLiteral(meta.Name.String())
+		name := wiregen.Literal(meta.Name.String())
 		m.line("    case %s: {", name)
 		m.line("      const request = params as WireParams<%s>;", name)
 		m.line("      const expected = {")
 		for _, match := range meta.Acknowledgement {
-			wanted := "request[" + wiregen.StringLiteral(match.Request) + "]"
+			wanted := "request[" + wiregen.Literal(match.Request) + "]"
 			if match.Compare == delivery.AcknowledgementPresence {
 				request, _ := protocol.WireFieldNamed(meta.Params, match.Request)
 				if request.Type.Kind() == reflect.Slice {
@@ -54,13 +54,13 @@ func (m *methodsEmitter) acknowledgementChecks(metas []delivery.MethodMeta) {
 					wanted += " === true"
 				}
 			}
-			m.line("        %s: %s,", wiregen.StringLiteral(match.Result), wanted)
+			m.line("        %s: %s,", wiregen.Literal(match.Result), wanted)
 		}
 		m.line("      };")
 		m.line("      return (value) => {")
 		m.line("        const result = value as WireResult<%s>;", name)
 		for _, match := range meta.Acknowledgement {
-			field := wiregen.StringLiteral(match.Result)
+			field := wiregen.Literal(match.Result)
 			got := "result[" + field + "]"
 			if match.Compare == delivery.AcknowledgementPresence {
 				got = "(" + got + " !== undefined)"

@@ -248,8 +248,11 @@ func allowedValuesWhen(applies bool, field string, object wireObject, allowed []
 }
 
 func (o wireObject) equals(path, expected string) bool {
-	field := o.field(path)
-	return field.Kind() == reflect.String && field.String() == expected
+	return o.members.StringEquals(joinWirePath(o.path, path), expected)
+}
+
+func (o wireObject) isTrue(path string) bool {
+	return o.members.IsTrue(joinWirePath(o.path, path))
 }
 
 func (o wireObject) matches(path, pattern string) bool {

@@ -5,7 +5,7 @@
 > method the Runtime does not serve. The adjacent JSON artifacts are the
 > machine-readable contract; this file is its mechanical human-readable index.
 
-Protocol `2026-11-26.10` · 108 methods
+Protocol `2026-11-27.1` · 108 methods
 
 ## Methods
 
@@ -1318,18 +1318,18 @@ available. Refusal is `capability_not_negotiated` — never a silent downgrade.
 
 | method | when | requires |
 | --- | --- | --- |
-| `sessions.trajectory` | `includeDescendants` present | `childRuns` |
+| `sessions.trajectory` | `includeDescendants` == `true` | `childRuns` |
 | `sessions.exportTrajectory` | always | `sessionExport` |
-| `sessions.snapshot` | `includeDescendants` present | `childRuns` |
+| `sessions.snapshot` | `includeDescendants` == `true` | `childRuns` |
 | `sessions.update` | `workspace` present | `relocate` |
 | `sessions.update` | `isolated` present | `isolation` |
 | `sessions.rollback` | `restoreType` == `files` | `checkpoints` |
 | `sessions.rollback` | `restoreType` == `both` | `checkpoints` |
 | `sessions.export` | always | `sessionExport` |
 | `sessions.import` | always | `sessionExport` |
-| `runs.list` | `includeDescendants` present | `childRuns` |
+| `runs.list` | `includeDescendants` == `true` | `childRuns` |
 | `plan.get` | always | `plan` |
-| `items.list` | `scope.includeDescendants` present | `childRuns` |
+| `items.list` | `scope.includeDescendants` == `true` | `childRuns` |
 | `workspace.changes.list` | always | `git` |
 | `workspace.diff.get` | always | `git` |
 | `runtime.subscribe` | `watches` present | `fileWatch` |

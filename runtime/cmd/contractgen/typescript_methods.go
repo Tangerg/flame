@@ -59,12 +59,12 @@ func (m *methodsEmitter) methodPolicy(metas []delivery.MethodMeta) {
 	m.line("")
 	m.line("export const WIRE_METHOD_POLICY = {")
 	for _, meta := range metas {
-		m.line("  %s: {", wiregen.StringLiteral(meta.Name.String()))
-		m.line("    operation: %s,", wiregen.StringLiteral(meta.Operation.String()))
-		m.line("    response: %s,", wiregen.StringLiteral(meta.Kind.String()))
-		m.line("    idempotency: %s,", wiregen.StringLiteral(meta.Idempotency.String()))
-		m.line("    replayCursor: %s,", wiregen.StringLiteral(meta.ReplayCursor.String()))
-		m.line("    pagination: %s,", wiregen.StringLiteral(meta.Pagination.String()))
+		m.line("  %s: {", wiregen.Literal(meta.Name.String()))
+		m.line("    operation: %s,", wiregen.Literal(meta.Operation.String()))
+		m.line("    response: %s,", wiregen.Literal(meta.Kind.String()))
+		m.line("    idempotency: %s,", wiregen.Literal(meta.Idempotency.String()))
+		m.line("    replayCursor: %s,", wiregen.Literal(meta.ReplayCursor.String()))
+		m.line("    pagination: %s,", wiregen.Literal(meta.Pagination.String()))
 		m.line("  },")
 	}
 	m.line("} as const satisfies { readonly [M in WireMethodName]: WireMethodPolicy };")
@@ -109,12 +109,19 @@ func (m *methodsEmitter) methodPolicy(metas []delivery.MethodMeta) {
 }
 
 func (m *methodsEmitter) policy(metas []delivery.MethodMeta) {
-	m.line("/** One condition on the request that decides whether a rule applies. */")
-	m.line("export interface WireCapabilityCondition {")
-	m.line("  field: string;")
-	m.line("  operator: \"present\" | \"equals\";")
-	m.line("  value?: string;")
-	m.line("}")
+	m.line("export type WireCapabilityCondition =")
+	operators := delivery.ConditionOperators()
+	for index, operator := range operators {
+		fields := "field: string; operator: " + wiregen.Literal(operator.String())
+		if operator == delivery.OperatorEquals {
+			fields += "; value: string"
+		}
+		end := ""
+		if index == len(operators)-1 {
+			end = ";"
+		}
+		m.line("  | { %s }%s", fields, end)
+	}
 	m.line("")
 	m.line("/**")
 	m.line(" * What a method needs negotiated. An absent `when` gates the whole method; a")
@@ -132,7 +139,7 @@ func (m *methodsEmitter) policy(metas []delivery.MethodMeta) {
 		if len(meta.CapabilityRules) == 0 {
 			continue
 		}
-		m.line("  %s: [", wiregen.StringLiteral(meta.Name.String()))
+		m.line("  %s: [", wiregen.Literal(meta.Name.String()))
 		for _, rule := range meta.CapabilityRules {
 			m.line("    { %s },", renderRule(rule))
 		}
@@ -148,11 +155,11 @@ func renderRule(rule delivery.CapabilityRule) string {
 		conditions := make([]string, 0, len(rule.When))
 		for _, condition := range rule.When {
 			parts := []string{
-				"field: " + wiregen.StringLiteral(condition.Field),
-				"operator: " + wiregen.StringLiteral(condition.Operator.String()),
+				"field: " + wiregen.Literal(condition.Field),
+				"operator: " + wiregen.Literal(condition.Operator.String()),
 			}
-			if condition.Value != "" {
-				parts = append(parts, "value: "+wiregen.StringLiteral(condition.Value))
+			if condition.Operator == delivery.OperatorEquals {
+				parts = append(parts, "value: "+wiregen.Literal(condition.Value))
 			}
 			conditions = append(conditions, "{ "+strings.Join(parts, ", ")+" }")
 		}
@@ -191,7 +198,7 @@ func (m *methodsEmitter) features() {
 	m.line("// derive the union, and a published array with no reader would be a second table.")
 	m.line("const FEATURES = [")
 	for _, key := range protocol.FeatureKeys() {
-		m.line("  %s,", wiregen.StringLiteral(key))
+		m.line("  %s,", wiregen.Literal(key))
 	}
 	m.line("] as const;")
 	m.line("")
@@ -204,7 +211,7 @@ func (m *methodsEmitter) names(metas []delivery.MethodMeta) {
 	m.line("// Every method the runtime routes, in registration order.")
 	m.line("const METHOD_NAMES = [")
 	for _, meta := range metas {
-		m.line("  %s,", wiregen.StringLiteral(meta.Name.String()))
+		m.line("  %s,", wiregen.Literal(meta.Name.String()))
 	}
 	m.line("] as const;")
 	m.line("")
@@ -218,7 +225,7 @@ func (m *methodsEmitter) streamingNames(metas []delivery.MethodMeta) {
 	m.line("export const WIRE_STREAMING_METHOD_NAMES = [")
 	for _, meta := range metas {
 		if meta.Event != nil {
-			m.line("  %s,", wiregen.StringLiteral(meta.Name.String()))
+			m.line("  %s,", wiregen.Literal(meta.Name.String()))
 		}
 	}
 	m.line("] as const;")
@@ -238,7 +245,7 @@ func (m *methodsEmitter) valueMethodNames(metas []delivery.MethodMeta) {
 	m.line("const VALUE_METHOD_NAMES = [")
 	for _, meta := range metas {
 		if meta.Result != nil {
-			m.line("  %s,", wiregen.StringLiteral(meta.Name.String()))
+			m.line("  %s,", wiregen.Literal(meta.Name.String()))
 		}
 	}
 	m.line("] as const;")
@@ -266,7 +273,7 @@ func (m *methodsEmitter) shapes(metas []delivery.MethodMeta) string {
 			}
 			members = append(members, "result: "+result)
 		}
-		fmt.Fprintf(&out, "  %s: { %s };\n", wiregen.StringLiteral(meta.Name.String()), strings.Join(members, "; "))
+		fmt.Fprintf(&out, "  %s: { %s };\n", wiregen.Literal(meta.Name.String()), strings.Join(members, "; "))
 	}
 	fmt.Fprintln(&out, "}")
 	fmt.Fprintln(&out, "")
@@ -296,7 +303,7 @@ func (m *methodsEmitter) line(format string, arguments ...any) {
 func methodPolicyUnion(metas []delivery.MethodMeta, value func(delivery.MethodMeta) string) string {
 	values := make([]string, 0, len(metas))
 	for _, meta := range metas {
-		values = append(values, wiregen.StringLiteral(value(meta)))
+		values = append(values, wiregen.Literal(value(meta)))
 	}
 	slices.Sort(values)
 	values = slices.Compact(values)

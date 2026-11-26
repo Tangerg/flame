@@ -139,7 +139,7 @@ func (r *Connection) ImportSession(ctx context.Context, request session.ImportRe
 		return conversation.Session{}, err
 	}
 	var artifact protocol.SessionArtifact
-	if err := protocol.DecodeRequest(request.Artifact.Bytes(), &artifact); err != nil {
+	if _, err := protocol.DecodeRequest(request.Artifact.Bytes(), &artifact); err != nil {
 		return conversation.Session{}, fmt.Errorf("import session: decode artifact: %w", err)
 	}
 	options := r.commandOptions()

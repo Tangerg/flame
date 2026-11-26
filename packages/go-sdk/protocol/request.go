@@ -2,9 +2,10 @@ package protocol
 
 import "fmt"
 
-func DecodeRequest(encoded []byte, target any) error {
-	if err := DecodeWire(encoded, target); err != nil {
-		return fmt.Errorf("%w: %w", ErrInvalidParams, err)
+func DecodeRequest(encoded []byte, target any) (WireMembers, error) {
+	members, err := decodeWire(encoded, target)
+	if err != nil {
+		return WireMembers{}, fmt.Errorf("%w: %w", ErrInvalidParams, err)
 	}
-	return nil
+	return members, nil
 }

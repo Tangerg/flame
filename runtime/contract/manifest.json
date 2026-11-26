@@ -1,5 +1,5 @@
 {
-  "protocolVersion": "2026-11-26.10",
+  "protocolVersion": "2026-11-27.1",
   "features": [
     "reasoning",
     "multimodal",
@@ -2559,7 +2559,7 @@
           "when": [
             {
               "field": "includeDescendants",
-              "operator": "present"
+              "operator": "true"
             }
           ],
           "requires": [
@@ -2585,7 +2585,7 @@
           "when": [
             {
               "field": "includeDescendants",
-              "operator": "present"
+              "operator": "true"
             }
           ],
           "requires": [
@@ -2677,7 +2677,7 @@
           "when": [
             {
               "field": "includeDescendants",
-              "operator": "present"
+              "operator": "true"
             }
           ],
           "requires": [
@@ -2703,7 +2703,7 @@
           "when": [
             {
               "field": "scope.includeDescendants",
-              "operator": "present"
+              "operator": "true"
             }
           ],
           "requires": [
@@ -6344,7 +6344,7 @@
           "when": [
             {
               "field": "binary",
-              "operator": "present"
+              "operator": "true"
             }
           ],
           "forbidden": [
@@ -6421,7 +6421,7 @@
           "when": [
             {
               "field": "binary",
-              "operator": "present"
+              "operator": "true"
             }
           ],
           "forbidden": [

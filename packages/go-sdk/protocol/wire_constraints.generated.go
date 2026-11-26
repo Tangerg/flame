@@ -2982,8 +2982,8 @@ func (w WorkspaceFileChange) validateWire(object wireObject) []FieldError {
 		forbiddenWhen(object.equals("status", "modified"), "previousPath", object),
 		forbiddenWhen(object.equals("status", "deleted"), "previousPath", object),
 		forbiddenWhen(object.equals("status", "untracked"), "previousPath", object),
-		forbiddenWhen(object.present("binary"), "added", object),
-		forbiddenWhen(object.present("binary"), "removed", object),
+		forbiddenWhen(object.isTrue("binary"), "added", object),
+		forbiddenWhen(object.isTrue("binary"), "removed", object),
 	)
 	return violations
 }
@@ -3009,8 +3009,8 @@ func (f FileDiff) validateWire(object wireObject) []FieldError {
 		forbiddenWhen(object.equals("status", "modified"), "previousPath", object),
 		forbiddenWhen(object.equals("status", "deleted"), "previousPath", object),
 		forbiddenWhen(object.equals("status", "untracked"), "previousPath", object),
-		forbiddenWhen(object.present("binary"), "added", object),
-		forbiddenWhen(object.present("binary"), "removed", object),
+		forbiddenWhen(object.isTrue("binary"), "added", object),
+		forbiddenWhen(object.isTrue("binary"), "removed", object),
 	)
 	return violations
 }

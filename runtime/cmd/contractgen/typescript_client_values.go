@@ -92,9 +92,9 @@ type ToolPresentation = Readonly<{
 const presentations = new Map<string, ToolPresentation>([
 `)
 	for _, name := range builtin.Names() {
-		fmt.Fprintf(&out, "  [%s, { category: %s", wiregen.StringLiteral(string(name)), wiregen.StringLiteral(string(name.Category())))
+		fmt.Fprintf(&out, "  [%s, { category: %s", wiregen.Literal(string(name)), wiregen.Literal(string(name.Category())))
 		if shape := name.ResultShape(); shape != "" {
-			fmt.Fprintf(&out, ", resultShape: %s", wiregen.StringLiteral(string(shape)))
+			fmt.Fprintf(&out, ", resultShape: %s", wiregen.Literal(string(shape)))
 		}
 		out.WriteString(" }],\n")
 	}

@@ -250,7 +250,7 @@ export function flag(): WireCheck {
   };
 }
 
-export function literal(expected: string): WireCheck {
+export function literal(expected: string | boolean): WireCheck {
   return (value, path, out) => {
     if (value !== expected) out.push({ path, detail: `expected ${JSON.stringify(expected)}` });
   };

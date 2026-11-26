@@ -2,7 +2,6 @@ import { describe, expect, it, vi } from "vitest";
 import {
   createFlameClient,
   type FlameClient,
-  JSONRPC_VERSION,
   RpcError,
   asRunId,
   asSegmentId,
@@ -10,9 +9,7 @@ import {
   createSidecarClient,
   createHttpTransport,
 } from "@flame/runtime-client";
-import type { WireMethodName } from "@flame/runtime-client/methods";
 import {
-  HTTP_ENDPOINTS,
   HTTP_HEADERS,
   PROTOCOL_VERSION,
   RPC_HTTP,
@@ -28,24 +25,6 @@ import {
 } from "./observation";
 import { faultStreamOpening, faultUnaryResponse } from "./transportFaults";
 import { useRuntimeFixture } from "./fixture";
-
-function postRPC(
-  baseUrl: string,
-  method: WireMethodName,
-  params: unknown,
-  headers: Record<string, string> = {},
-): Promise<Response> {
-  const endpoint = HTTP_ENDPOINTS.rpc;
-  return fetch(new URL(endpoint.path, baseUrl), {
-    method: endpoint.method,
-    headers: {
-      Accept: RPC_HTTP.documentMediaType,
-      [HTTP_HEADERS.contentType]: RPC_HTTP.documentMediaType,
-      ...headers,
-    },
-    body: JSON.stringify({ jsonrpc: JSONRPC_VERSION, id: method, method, params }),
-  });
-}
 
 describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: protocol delivery", () => {
   const fixture = useRuntimeFixture("protocol");
@@ -83,8 +62,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: protocol delivery", () => {
     expect(discovery.capabilities.streamingMethods).toContain("runtime.subscribe");
 
     const staleStoreTitle = "must not enter replacement Runtime";
-    const staleStoreResponse = await postRPC(
-      fixture.baseUrl,
+    const staleStoreResponse = await fixture.postRPC(
       "sessions.create",
       { workspace: { path: fixture.root }, title: staleStoreTitle },
       {
@@ -212,8 +190,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: protocol delivery", () => {
 
   it("refuses both Run targets even when the existing session ID is empty", async () => {
     const sessionId = asSessionId(crypto.randomUUID());
-    const response = await postRPC(
-      fixture.baseUrl,
+    const response = await fixture.postRPC(
       "runs.start",
       {
         sessionId: "",
@@ -249,10 +226,10 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: protocol delivery", () => {
 
   it("refuses an empty export format and defaults an omitted format", async () => {
     const session = await fixture.client.sessions.create({ title: "Session export format" });
-    const omitted = await postRPC(fixture.baseUrl, "sessions.export", { sessionId: session.id });
+    const omitted = await fixture.postRPC("sessions.export", { sessionId: session.id });
     await expect(omitted.json()).resolves.toMatchObject({ result: { format: "json" } });
 
-    const empty = await postRPC(fixture.baseUrl, "sessions.export", {
+    const empty = await fixture.postRPC("sessions.export", {
       sessionId: session.id,
       format: "",
     });
@@ -288,8 +265,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: protocol delivery", () => {
       const release = { installationId: installation.id, digest: installation.selected.digest };
       const key = crypto.randomUUID();
       const configure = async (changes: object) => {
-        const response = await postRPC(
-          fixture.baseUrl,
+        const response = await fixture.postRPC(
           "plugins.configure",
           { ...release, valueChanges: {}, serverChanges: {}, skillChanges: {}, ...changes },
           { [HTTP_HEADERS.idempotencyKey]: key },

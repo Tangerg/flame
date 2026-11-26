@@ -14,39 +14,68 @@ import (
 )
 
 func DecodeWire(encoded []byte, target any) error {
+	_, err := decodeWire(encoded, target)
+	return err
+}
+
+func decodeWire(encoded []byte, target any) (WireMembers, error) {
 	destination := reflect.ValueOf(target)
 	if !destination.IsValid() || destination.Kind() != reflect.Pointer || destination.IsNil() {
-		return errors.New("protocol: wire target must be a non-nil pointer")
+		return WireMembers{}, errors.New("protocol: wire target must be a non-nil pointer")
 	}
 	owner := destination.Type().Elem()
 	if err := ValidateWireType(owner); err != nil {
-		return err
+		return WireMembers{}, err
 	}
 	value := reflect.New(owner)
 	if err := json.Unmarshal(encoded, value.Interface(), json.RejectUnknownMembers(true), framevalue.Numbers()); err != nil {
-		return err
+		return WireMembers{}, err
 	}
-	if err := validateWireDocument(value.Elem(), encoded); err != nil {
-		return err
+	members, err := validateWireDocument(value.Elem(), encoded)
+	if err != nil {
+		return WireMembers{}, err
 	}
 	destination.Elem().Set(value.Elem())
-	return nil
+	return members, nil
 }
 
-func validateWireDocument(value reflect.Value, encoded jsontext.Value) error {
-	members := make(wireMembers)
+func validateWireDocument(value reflect.Value, encoded jsontext.Value) (WireMembers, error) {
+	members := WireMembers{values: make(map[string]jsontext.Value)}
 	if err := members.inspect(encoded, value.Type(), ""); err != nil {
 		if violation, ok := errors.AsType[*ConstraintError](err); ok {
 			violation.Shape = wireShapeName(value.Type())
 		}
-		return err
+		return WireMembers{}, err
 	}
-	return validateWireTree(value, members)
+	if err := validateWireTree(value, members); err != nil {
+		return WireMembers{}, err
+	}
+	return members, nil
 }
 
-type wireMembers map[string]struct{}
+type WireMembers struct {
+	values map[string]jsontext.Value
+}
 
-func (members wireMembers) inspect(encoded jsontext.Value, owner reflect.Type, path string) error {
+func (members WireMembers) Has(path string) bool {
+	_, present := members.values[path]
+	return present
+}
+
+func (members WireMembers) StringEquals(path, expected string) bool {
+	encoded := members.values[path]
+	if encoded.Kind() != jsontext.KindString {
+		return false
+	}
+	var actual string
+	return json.Unmarshal(encoded, &actual) == nil && actual == expected
+}
+
+func (members WireMembers) IsTrue(path string) bool {
+	return members.values[path].Kind() == jsontext.KindTrue
+}
+
+func (members WireMembers) inspect(encoded jsontext.Value, owner reflect.Type, path string) error {
 	for owner.Kind() == reflect.Pointer {
 		owner = owner.Elem()
 	}
@@ -76,7 +105,7 @@ func (members wireMembers) inspect(encoded jsontext.Value, owner reflect.Type, p
 	return nil
 }
 
-func (members wireMembers) inspectArray(encoded jsontext.Value, element reflect.Type, path string) error {
+func (members WireMembers) inspectArray(encoded jsontext.Value, element reflect.Type, path string) error {
 	var values []jsontext.Value
 	if err := json.Unmarshal(encoded, &values); err != nil {
 		return err
@@ -89,7 +118,7 @@ func (members wireMembers) inspectArray(encoded jsontext.Value, element reflect.
 	return nil
 }
 
-func (members wireMembers) inspectMap(encoded jsontext.Value, element reflect.Type, path string) error {
+func (members WireMembers) inspectMap(encoded jsontext.Value, element reflect.Type, path string) error {
 	var object map[string]jsontext.Value
 	if err := json.Unmarshal(encoded, &object); err != nil {
 		return err
@@ -102,7 +131,7 @@ func (members wireMembers) inspectMap(encoded jsontext.Value, element reflect.Ty
 	return nil
 }
 
-func (members wireMembers) inspectObject(encoded jsontext.Value, owner reflect.Type, path string) error {
+func (members WireMembers) inspectObject(encoded jsontext.Value, owner reflect.Type, path string) error {
 	var object map[string]jsontext.Value
 	if err := json.Unmarshal(encoded, &object); err != nil {
 		return err
@@ -116,7 +145,7 @@ func (members wireMembers) inspectObject(encoded jsontext.Value, owner reflect.T
 			}
 			continue
 		}
-		members[member] = struct{}{}
+		members.values[member] = child
 		if err := members.inspect(child, field.Type, member); err != nil {
 			return err
 		}
