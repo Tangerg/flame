@@ -8,7 +8,6 @@ import {
   Metadata,
   PanelSection,
   RecordGroup,
-  RecordMeta,
   Toolbar,
 } from "@flame/ui";
 import { SystemMessage } from "@/ui/index";
@@ -110,17 +109,12 @@ export function PendingCommands({ operations }: { operations: PackageOperations 
     }
   }
 
+  if (empty) return null;
   return (
     <PanelSection
       aria-label={t("packages.commands.title")}
-      title={
-        empty ? (
-          <RecordMeta>{t("packages.commands.none")}</RecordMeta>
-        ) : (
-          t("packages.commands.title")
-        )
-      }
-      description={empty ? undefined : t("packages.commands.explanation")}
+      title={t("packages.commands.title")}
+      description={t("packages.commands.explanation")}
       actions={
         <Button
           variant="soft"
@@ -139,7 +133,7 @@ export function PendingCommands({ operations }: { operations: PackageOperations 
         <SystemMessage variant="warning">{read.reason}</SystemMessage>
       ) : (
         <>
-          {!empty && !current?.checking && !read.commands.length && (
+          {!current?.checking && !read.commands.length && (
             <Metadata>{t("packages.commands.none")}</Metadata>
           )}
           <RecordGroup variant="list" hidden={!read.commands.length}>
