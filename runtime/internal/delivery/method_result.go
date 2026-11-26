@@ -21,7 +21,10 @@ func (m MethodMeta) ValidateResult(value any) error {
 	if actual := reflect.TypeOf(value); actual != expected {
 		return fmt.Errorf("%s: result has type %v, want %v", m.Name, actual, expected)
 	}
-	if expected.Kind() == reflect.Pointer && reflect.ValueOf(value).IsNil() && !m.ResultNullable {
+	if expected.Kind() == reflect.Pointer && reflect.ValueOf(value).IsNil() {
+		if m.ResultNullable {
+			return nil
+		}
 		return fmt.Errorf("%s: result must not be null", m.Name)
 	}
 	return protocol.ValidateWireTree(value)
@@ -38,11 +41,7 @@ func (m MethodMeta) DecodeResult(encoded jsontext.Value) (any, error) {
 	if err := protocol.DecodeResponse(encoded, target.Interface()); err != nil {
 		return nil, err
 	}
-	value := target.Elem().Interface()
-	if err := m.ValidateResult(value); err != nil {
-		return nil, err
-	}
-	return value, nil
+	return target.Elem().Interface(), nil
 }
 
 func (m MethodMeta) resultType() reflect.Type {

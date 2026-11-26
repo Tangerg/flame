@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"iter"
-	"reflect"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
@@ -56,23 +55,7 @@ func (r *Router) Dispatch(ctx context.Context, message jsonrpc.Message, options 
 		return Result{}
 	}
 	name := delivery.Name(request.Method)
-	meta, found := delivery.Contract().Lookup(name)
-	if !found {
-		return responseError(request.ID, errorToRPC(protocol.NewFailure(protocol.ErrMethodNotFound, fmt.Sprintf("unknown method %q", request.Method))))
-	}
-	parameters, decodeError := decodeParameters(request.Params, meta.Params)
-	if decodeError != nil {
-		return responseError(request.ID, errorToRPC(decodeError))
-	}
-	return adaptResult(request.ID, r.endpoint.Invoke(ctx, name, parameters, options))
-}
-
-func decodeParameters(raw []byte, parameterType reflect.Type) (any, *protocol.Failure) {
-	target := reflect.New(parameterType)
-	if err := decodeParams(raw, target.Interface()); err != nil {
-		return nil, protocol.ProjectError(err)
-	}
-	return target.Elem().Interface(), nil
+	return adaptResult(request.ID, r.endpoint.InvokeWire(ctx, name, request.Params, options))
 }
 
 func adaptResult(id jsonrpc.ID, result protocol.OperationResult) Result {

@@ -21,9 +21,6 @@ func (s *Handler) ExportSession(ctx context.Context, request protocol.ExportSess
 		format = protocol.ExportFormatJSON
 	}
 
-	if format != protocol.ExportFormatJSON && format != protocol.ExportFormatMarkdown {
-		return nil, protocol.NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("unsupported export format %q", format))
-	}
 	results := sessions.ReferencedToolResults
 	if format == protocol.ExportFormatMarkdown {
 		results = sessions.ExpandedToolResults

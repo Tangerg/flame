@@ -2,2526 +2,3551 @@
 
 package protocol
 
-func (l ListSessionTrajectoryRequest) validateWire() error {
-	return collectWireViolations("ListSessionTrajectoryRequest",
-		requiredText("sessionId", l.SessionID),
+func (l ListSessionTrajectoryRequest) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("sessionId", l.SessionID),
 		identity("sessionId", l.SessionID),
 		maxLength("sessionId", l.SessionID, 256),
-		optionalPositiveNumber("limit", l.Limit),
-		maxLength("cursor", l.Cursor, 65536),
 	)
+	if object.present("limit") {
+		violations.add(
+			positiveNumber("limit", *l.Limit),
+		)
+	}
+	if object.present("cursor") {
+		violations.add(
+			maxLength("cursor", l.Cursor, 65536),
+		)
+	}
+	return violations
 }
 
-func (e ExportTrajectoryRequest) validateWire() error {
-	return collectWireViolations("ExportTrajectoryRequest",
-		requiredText("sessionId", e.SessionID),
+func (e ExportTrajectoryRequest) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("sessionId", e.SessionID),
 		identity("sessionId", e.SessionID),
 		maxLength("sessionId", e.SessionID, 256),
 	)
+	return violations
 }
 
-func (l ListSessionsRequest) validateWire() error {
-	return collectWireViolations("ListSessionsRequest",
-		maxLength("search", l.Search, 1024),
-		identity("projectId", l.ProjectID),
-		maxLength("projectId", l.ProjectID, 256),
-		optionalPositiveNumber("limit", l.Limit),
-		maxLength("cursor", l.Cursor, 65536),
-	)
+func (l ListSessionsRequest) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	if object.present("search") {
+		violations.add(
+			maxLength("search", l.Search, 1024),
+		)
+	}
+	if object.present("projectId") {
+		violations.add(
+			identity("projectId", l.ProjectID),
+			maxLength("projectId", l.ProjectID, 256),
+		)
+	}
+	if object.present("limit") {
+		violations.add(
+			positiveNumber("limit", *l.Limit),
+		)
+	}
+	if object.present("cursor") {
+		violations.add(
+			maxLength("cursor", l.Cursor, 65536),
+		)
+	}
+	return violations
 }
 
-func (g GetSessionRequest) validateWire() error {
-	return collectWireViolations("GetSessionRequest",
-		requiredText("sessionId", g.SessionID),
+func (g GetSessionRequest) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("sessionId", g.SessionID),
 		identity("sessionId", g.SessionID),
 		maxLength("sessionId", g.SessionID, 256),
 	)
+	return violations
 }
 
-func (g GetSessionSnapshotRequest) validateWire() error {
-	return collectWireViolations("GetSessionSnapshotRequest",
-		requiredText("sessionId", g.SessionID),
+func (g GetSessionSnapshotRequest) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("sessionId", g.SessionID),
 		identity("sessionId", g.SessionID),
 		maxLength("sessionId", g.SessionID, 256),
 	)
+	return violations
 }
 
-func (c CreateSessionRequest) validateWire() error {
-	return collectWireViolations("CreateSessionRequest",
-		identity("projectId", c.ProjectID),
-		maxLength("projectId", c.ProjectID, 256),
-	)
+func (c CreateSessionRequest) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	if object.present("projectId") {
+		violations.add(
+			identity("projectId", c.ProjectID),
+			maxLength("projectId", c.ProjectID, 256),
+		)
+	}
+	return violations
 }
 
-func (u UpdateSessionRequest) validateWire() error {
-	return collectWireViolations("UpdateSessionRequest",
-		requiredText("sessionId", u.SessionID),
+func (u UpdateSessionRequest) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("sessionId", u.SessionID),
 		identity("sessionId", u.SessionID),
 		maxLength("sessionId", u.SessionID, 256),
 		positiveNumber("expectedRevision", u.ExpectedRevision),
 		maximumNumber("expectedRevision", u.ExpectedRevision, 9007199254740991),
-		optionalText("provider", u.Provider),
-		optionalText("model", u.Model),
-		optionalIdentity("provider", u.Provider),
-		optionalMaxLength("provider", u.Provider, 64),
-		optionalIdentity("model", u.Model),
-		optionalMaxLength("model", u.Model, 256),
-		optionalIdentity("reasoningEffort", u.ReasoningEffort),
-		optionalMaxLength("reasoningEffort", u.ReasoningEffort, 32),
-		requiredWhen(wireFieldPresent(u, "provider"), "model", u),
-		requiredWhen(wireFieldPresent(u, "model"), "provider", u),
 	)
+	if object.present("provider") {
+		violations.add(
+			nonEmptyText("provider", *u.Provider),
+		)
+	}
+	if object.present("model") {
+		violations.add(
+			nonEmptyText("model", *u.Model),
+		)
+	}
+	if object.present("provider") {
+		violations.add(
+			identity("provider", *u.Provider),
+			maxLength("provider", *u.Provider, 64),
+		)
+	}
+	if object.present("model") {
+		violations.add(
+			identity("model", *u.Model),
+			maxLength("model", *u.Model, 256),
+		)
+	}
+	if object.present("reasoningEffort") {
+		violations.add(
+			identity("reasoningEffort", *u.ReasoningEffort),
+			maxLength("reasoningEffort", *u.ReasoningEffort, 32),
+		)
+	}
+	violations.add(
+		requiredWhen(object.present("provider"), "model", object),
+		requiredWhen(object.present("model"), "provider", object),
+	)
+	return violations
 }
 
-func (d DeleteSessionRequest) validateWire() error {
-	return collectWireViolations("DeleteSessionRequest",
-		requiredText("sessionId", d.SessionID),
+func (d DeleteSessionRequest) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("sessionId", d.SessionID),
 		identity("sessionId", d.SessionID),
 		maxLength("sessionId", d.SessionID, 256),
 	)
+	return violations
 }
 
-func (f ForkSessionRequest) validateWire() error {
-	return collectWireViolations("ForkSessionRequest",
-		requiredText("sessionId", f.SessionID),
+func (f ForkSessionRequest) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("sessionId", f.SessionID),
 		identity("sessionId", f.SessionID),
 		maxLength("sessionId", f.SessionID, 256),
-		identity("fromRunId", f.FromRunID),
-		maxLength("fromRunId", f.FromRunID, 256),
 	)
+	if object.present("fromRunId") {
+		violations.add(
+			identity("fromRunId", f.FromRunID),
+			maxLength("fromRunId", f.FromRunID, 256),
+		)
+	}
+	return violations
 }
 
-func (r RollbackSessionRequest) validateWire() error {
-	return collectWireViolations("RollbackSessionRequest",
-		requiredText("sessionId", r.SessionID),
+func (r RollbackSessionRequest) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("sessionId", r.SessionID),
 		identity("sessionId", r.SessionID),
 		maxLength("sessionId", r.SessionID, 256),
-		identity("toRunId", r.ToRunID),
-		maxLength("toRunId", r.ToRunID, 256),
+	)
+	if object.present("toRunId") {
+		violations.add(
+			identity("toRunId", r.ToRunID),
+			maxLength("toRunId", r.ToRunID, 256),
+		)
+	}
+	violations.add(
 		identity("expectedLastRootRunId", r.ExpectedLastRootRunID),
 		maxLength("expectedLastRootRunId", r.ExpectedLastRootRunID, 256),
-		requiredText("expectedWorkspacePath", r.ExpectedWorkspacePath),
-		requiredWhen(wireFieldEquals(r, "restoreType", "files"), "toRunId", r),
-		requiredWhen(wireFieldEquals(r, "restoreType", "both"), "toRunId", r),
+		nonEmptyText("expectedWorkspacePath", r.ExpectedWorkspacePath),
+		requiredWhen(object.equals("restoreType", "files"), "toRunId", object),
+		requiredWhen(object.equals("restoreType", "both"), "toRunId", object),
 	)
+	return violations
 }
 
-func (e ExportSessionRequest) validateWire() error {
-	return collectWireViolations("ExportSessionRequest",
-		requiredText("sessionId", e.SessionID),
+func (e ExportSessionRequest) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("sessionId", e.SessionID),
 		identity("sessionId", e.SessionID),
 		maxLength("sessionId", e.SessionID, 256),
 	)
+	return violations
 }
 
-func (l ListProjectsRequest) validateWire() error {
-	return collectWireViolations("ListProjectsRequest",
-		optionalPositiveNumber("limit", l.Limit),
-		maxLength("cursor", l.Cursor, 65536),
-	)
+func (l ListProjectsRequest) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	if object.present("limit") {
+		violations.add(
+			positiveNumber("limit", *l.Limit),
+		)
+	}
+	if object.present("cursor") {
+		violations.add(
+			maxLength("cursor", l.Cursor, 65536),
+		)
+	}
+	return violations
 }
 
-func (g GetProjectRequest) validateWire() error {
-	return collectWireViolations("GetProjectRequest",
-		requiredText("projectId", g.ProjectID),
+func (g GetProjectRequest) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("projectId", g.ProjectID),
 		identity("projectId", g.ProjectID),
 		maxLength("projectId", g.ProjectID, 256),
 	)
+	return violations
 }
 
-func (c CreateProjectRequest) validateWire() error {
-	return collectWireViolations("CreateProjectRequest",
-		requiredTextPattern("name", c.Name, "\\S"),
+func (c CreateProjectRequest) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		textPattern("name", c.Name, "\\S"),
 	)
+	return violations
 }
 
-func (u UpdateProjectRequest) validateWire() error {
-	return collectWireViolations("UpdateProjectRequest",
-		requiredText("projectId", u.ProjectID),
+func (u UpdateProjectRequest) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("projectId", u.ProjectID),
 		identity("projectId", u.ProjectID),
 		maxLength("projectId", u.ProjectID, 256),
 		positiveNumber("expectedRevision", u.ExpectedRevision),
 		maximumNumber("expectedRevision", u.ExpectedRevision, 9007199254740991),
-		optionalText("name", u.Name),
 	)
+	if object.present("name") {
+		violations.add(
+			nonEmptyText("name", *u.Name),
+		)
+	}
+	return violations
 }
 
-func (l ListModelEndpointsRequest) validateWire() error {
-	return collectWireViolations("ListModelEndpointsRequest",
-		requiredText("parentCallId", l.ParentCallID),
+func (l ListModelEndpointsRequest) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("parentCallId", l.ParentCallID),
 		identity("parentCallId", l.ParentCallID),
 		maxLength("parentCallId", l.ParentCallID, 256),
-		optionalPositiveNumber("limit", l.Limit),
-		maxLength("cursor", l.Cursor, 65536),
 	)
+	if object.present("limit") {
+		violations.add(
+			positiveNumber("limit", *l.Limit),
+		)
+	}
+	if object.present("cursor") {
+		violations.add(
+			maxLength("cursor", l.Cursor, 65536),
+		)
+	}
+	return violations
 }
 
-func (l ListModelInvocationsRequest) validateWire() error {
-	return collectWireViolations("ListModelInvocationsRequest",
-		requiredText("runId", l.RunID),
+func (l ListModelInvocationsRequest) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("runId", l.RunID),
 		identity("runId", l.RunID),
 		maxLength("runId", l.RunID, 256),
-		optionalPositiveNumber("limit", l.Limit),
-		maxLength("cursor", l.Cursor, 65536),
 	)
+	if object.present("limit") {
+		violations.add(
+			positiveNumber("limit", *l.Limit),
+		)
+	}
+	if object.present("cursor") {
+		violations.add(
+			maxLength("cursor", l.Cursor, 65536),
+		)
+	}
+	return violations
 }
 
-func (s StartRunRequest) validateWire() error {
-	return collectWireViolations("StartRunRequest",
-		identity("sessionId", s.SessionID),
-		maxLength("sessionId", s.SessionID, 256),
-		requiredItems("input", s.Input),
-		identity("provider", s.Provider),
-		maxLength("provider", s.Provider, 64),
-		identity("model", s.Model),
-		maxLength("model", s.Model, 256),
-		identity("reasoningEffort", s.ReasoningEffort),
-		maxLength("reasoningEffort", s.ReasoningEffort, 32),
-		requiredAny([]string{"sessionId", "newSession"}, s),
-		forbiddenWhen(wireFieldPresent(s, "newSession"), "sessionId", s),
-		requiredWhen(wireFieldPresent(s, "provider"), "model", s),
-		requiredWhen(wireFieldPresent(s, "model"), "provider", s),
-		requiredWhen(wireFieldPresent(s, "reasoningEffort"), "provider", s),
-		requiredWhen(wireFieldPresent(s, "reasoningEffort"), "model", s),
+func (s StartRunRequest) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	if object.present("sessionId") {
+		violations.add(
+			identity("sessionId", s.SessionID),
+			maxLength("sessionId", s.SessionID, 256),
+		)
+	}
+	violations.add(
+		nonEmptyItems("input", s.Input),
 	)
+	if object.present("provider") {
+		violations.add(
+			identity("provider", s.Provider),
+			maxLength("provider", s.Provider, 64),
+		)
+	}
+	if object.present("model") {
+		violations.add(
+			identity("model", s.Model),
+			maxLength("model", s.Model, 256),
+		)
+	}
+	if object.present("reasoningEffort") {
+		violations.add(
+			identity("reasoningEffort", s.ReasoningEffort),
+			maxLength("reasoningEffort", s.ReasoningEffort, 32),
+		)
+	}
+	violations.add(
+		requiredAny([]string{"sessionId", "newSession"}, object),
+		forbiddenWhen(object.present("newSession"), "sessionId", object),
+		requiredWhen(object.present("provider"), "model", object),
+		requiredWhen(object.present("model"), "provider", object),
+		requiredWhen(object.present("reasoningEffort"), "provider", object),
+		requiredWhen(object.present("reasoningEffort"), "model", object),
+	)
+	return violations
 }
 
-func (r ResumeRunRequest) validateWire() error {
-	return collectWireViolations("ResumeRunRequest",
-		requiredText("runId", r.RunID),
+func (r ResumeRunRequest) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("runId", r.RunID),
 		identity("runId", r.RunID),
 		maxLength("runId", r.RunID, 256),
-		nonEmptyItems("input", r.Input),
 	)
+	if object.present("input") {
+		violations.add(
+			nonEmptyItems("input", r.Input),
+		)
+	}
+	return violations
 }
 
-func (s SubscribeRunRequest) validateWire() error {
-	return collectWireViolations("SubscribeRunRequest",
-		requiredText("runId", s.RunID),
+func (s SubscribeRunRequest) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("runId", s.RunID),
 		identity("runId", s.RunID),
 		maxLength("runId", s.RunID, 256),
-		requiredText("segmentId", s.SegmentID),
+		nonEmptyText("segmentId", s.SegmentID),
 		identity("segmentId", s.SegmentID),
 		maxLength("segmentId", s.SegmentID, 256),
 	)
+	return violations
 }
 
-func (c CancelRunRequest) validateWire() error {
-	return collectWireViolations("CancelRunRequest",
-		requiredText("runId", c.RunID),
+func (c CancelRunRequest) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("runId", c.RunID),
 		identity("runId", c.RunID),
 		maxLength("runId", c.RunID, 256),
-		maxLength("reason", c.Reason, 1024),
 	)
+	if object.present("reason") {
+		violations.add(
+			maxLength("reason", c.Reason, 1024),
+		)
+	}
+	return violations
 }
 
-func (s SteerRunRequest) validateWire() error {
-	return collectWireViolations("SteerRunRequest",
-		requiredText("runId", s.RunID),
+func (s SteerRunRequest) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("runId", s.RunID),
 		identity("runId", s.RunID),
 		maxLength("runId", s.RunID, 256),
-		requiredText("expectedSegmentId", s.ExpectedSegmentID),
+		nonEmptyText("expectedSegmentId", s.ExpectedSegmentID),
 		identity("expectedSegmentId", s.ExpectedSegmentID),
 		maxLength("expectedSegmentId", s.ExpectedSegmentID, 256),
-		requiredItems("input", s.Input),
+		nonEmptyItems("input", s.Input),
 	)
+	return violations
 }
 
-func (g GetRunRequest) validateWire() error {
-	return collectWireViolations("GetRunRequest",
-		requiredText("runId", g.RunID),
+func (g GetRunRequest) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("runId", g.RunID),
 		identity("runId", g.RunID),
 		maxLength("runId", g.RunID, 256),
 	)
+	return violations
 }
 
-func (g GetRunAcceptanceRequest) validateWire() error {
-	return collectWireViolations("GetRunAcceptanceRequest",
-		requiredText("namespace", g.Namespace),
-		requiredTextPattern("namespace", g.Namespace, "^idp_[0-9a-f]{32}$"),
-		requiredText("key", g.Key),
+func (g GetRunAcceptanceRequest) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("namespace", g.Namespace),
+		textPattern("namespace", g.Namespace, "^idp_[0-9a-f]{32}$"),
+		nonEmptyText("key", g.Key),
 		maxLength("key", g.Key, 255),
 	)
+	return violations
 }
 
-func (l ListRunsRequest) validateWire() error {
-	return collectWireViolations("ListRunsRequest",
-		identity("sessionId", l.SessionID),
-		maxLength("sessionId", l.SessionID, 256),
-		nonEmptyItems("statuses", l.Statuses),
-		uniqueItems("statuses", l.Statuses),
-		optionalPositiveNumber("limit", l.Limit),
-		maxLength("cursor", l.Cursor, 65536),
-	)
+func (l ListRunsRequest) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	if object.present("sessionId") {
+		violations.add(
+			identity("sessionId", l.SessionID),
+			maxLength("sessionId", l.SessionID, 256),
+		)
+	}
+	if object.present("statuses") {
+		violations.add(
+			nonEmptyItems("statuses", l.Statuses),
+			uniqueItems("statuses", l.Statuses),
+		)
+	}
+	if object.present("limit") {
+		violations.add(
+			positiveNumber("limit", *l.Limit),
+		)
+	}
+	if object.present("cursor") {
+		violations.add(
+			maxLength("cursor", l.Cursor, 65536),
+		)
+	}
+	return violations
 }
 
-func (l ListInterruptsRequest) validateWire() error {
-	return collectWireViolations("ListInterruptsRequest",
-		identity("sessionId", l.SessionID),
-		maxLength("sessionId", l.SessionID, 256),
-		identity("rootRunId", l.RootRunID),
-		maxLength("rootRunId", l.RootRunID, 256),
-		optionalPositiveNumber("limit", l.Limit),
-		maxLength("cursor", l.Cursor, 65536),
-	)
+func (l ListInterruptsRequest) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	if object.present("sessionId") {
+		violations.add(
+			identity("sessionId", l.SessionID),
+			maxLength("sessionId", l.SessionID, 256),
+		)
+	}
+	if object.present("rootRunId") {
+		violations.add(
+			identity("rootRunId", l.RootRunID),
+			maxLength("rootRunId", l.RootRunID, 256),
+		)
+	}
+	if object.present("limit") {
+		violations.add(
+			positiveNumber("limit", *l.Limit),
+		)
+	}
+	if object.present("cursor") {
+		violations.add(
+			maxLength("cursor", l.Cursor, 65536),
+		)
+	}
+	return violations
 }
 
-func (g GetPlanRequest) validateWire() error {
-	return collectWireViolations("GetPlanRequest",
-		requiredText("sessionId", g.SessionID),
+func (g GetPlanRequest) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("sessionId", g.SessionID),
 		identity("sessionId", g.SessionID),
 		maxLength("sessionId", g.SessionID, 256),
 	)
+	return violations
 }
 
-func (l ListItemsRequest) validateWire() error {
-	return collectWireViolations("ListItemsRequest",
-		optionalPositiveNumber("limit", l.Limit),
-		maxLength("cursor", l.Cursor, 65536),
+func (l ListItemsRequest) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	if object.present("limit") {
+		violations.add(
+			positiveNumber("limit", *l.Limit),
+		)
+	}
+	if object.present("cursor") {
+		violations.add(
+			maxLength("cursor", l.Cursor, 65536),
+		)
+	}
+	return violations
+}
+
+func (g GetDiffRequest) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	if object.present("limit") {
+		violations.add(
+			positiveNumber("limit", *g.Limit),
+		)
+	}
+	violations.add(
+		forbiddenWhen(object.equals("format", "raw"), "limit", object),
 	)
+	return violations
 }
 
-func (g GetDiffRequest) validateWire() error {
-	return collectWireViolations("GetDiffRequest",
-		optionalPositiveNumber("limit", g.Limit),
-		forbiddenWhen(wireFieldEquals(g, "format", "raw"), "limit", g),
+func (g GrepRequest) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("query", g.Query),
 	)
+	if object.present("limit") {
+		violations.add(
+			positiveNumber("limit", *g.Limit),
+		)
+	}
+	return violations
 }
 
-func (g GrepRequest) validateWire() error {
-	return collectWireViolations("GrepRequest",
-		requiredText("query", g.Query),
-		optionalPositiveNumber("limit", g.Limit),
+func (l ListFilesRequest) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	if object.present("limit") {
+		violations.add(
+			positiveNumber("limit", *l.Limit),
+		)
+	}
+	if object.present("cursor") {
+		violations.add(
+			maxLength("cursor", l.Cursor, 65536),
+		)
+	}
+	return violations
+}
+
+func (r ReadFileRequest) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("path", r.Path),
 	)
-}
-
-func (l ListFilesRequest) validateWire() error {
-	return collectWireViolations("ListFilesRequest",
-		optionalPositiveNumber("limit", l.Limit),
-		maxLength("cursor", l.Cursor, 65536),
+	if object.present("startLine") {
+		violations.add(
+			positiveNumber("startLine", *r.StartLine),
+		)
+	}
+	if object.present("endLine") {
+		violations.add(
+			positiveNumber("endLine", *r.EndLine),
+		)
+	}
+	if object.present("maxBytes") {
+		violations.add(
+			positiveNumber("maxBytes", *r.MaxBytes),
+		)
+	}
+	violations.add(
+		requiredWhen(object.present("endLine"), "startLine", object),
 	)
+	return violations
 }
 
-func (r ReadFileRequest) validateWire() error {
-	return collectWireViolations("ReadFileRequest",
-		requiredText("path", r.Path),
-		optionalPositiveNumber("startLine", r.StartLine),
-		optionalPositiveNumber("endLine", r.EndLine),
-		optionalPositiveNumber("maxBytes", r.MaxBytes),
-		requiredWhen(wireFieldPresent(r, "endLine"), "startLine", r),
-	)
-}
-
-func (r RuntimeSubscribeRequest) validateWire() error {
-	return collectWireViolations("RuntimeSubscribeRequest",
-		requiredItems("topics", r.Topics),
+func (r RuntimeSubscribeRequest) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyItems("topics", r.Topics),
 		uniqueItems("topics", r.Topics),
 	)
+	return violations
 }
 
-func (s SkillDetailRequest) validateWire() error {
-	return collectWireViolations("SkillDetailRequest",
-		requiredTextPattern("name", s.Name, "\\S"),
+func (s SkillDetailRequest) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		textPattern("name", s.Name, "\\S"),
 	)
+	return violations
 }
 
-func (s SkillNameRequest) validateWire() error {
-	return collectWireViolations("SkillNameRequest",
-		requiredTextPattern("name", s.Name, "\\S"),
+func (s SkillNameRequest) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		textPattern("name", s.Name, "\\S"),
 	)
+	return violations
 }
 
-func (s SkillProposalRef) validateWire() error {
-	return collectWireViolations("SkillProposalRef",
-		requiredTextPattern("name", s.Name, "\\S"),
-		requiredTextPattern("revision", s.Revision, "^[0-9a-f]{64}$"),
+func (s SkillProposalRef) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		textPattern("name", s.Name, "\\S"),
+		textPattern("revision", s.Revision, "^[0-9a-f]{64}$"),
 	)
+	return violations
 }
 
-func (s SetMCPToolExposureRequest) validateWire() error {
-	return collectWireViolations("SetMCPToolExposureRequest",
-		requiredTextPattern("name", s.Name, "^[A-Za-z0-9_.-]{1,128}$"),
+func (s SetMCPToolExposureRequest) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		textPattern("name", s.Name, "^[A-Za-z0-9_.-]{1,128}$"),
 	)
+	return violations
 }
 
-func (m MCPServerCandidate) validateWire() error {
-	return collectWireViolations("MCPServerCandidate",
-		requiredTextPattern("name", m.Name, "^[a-z0-9][a-z0-9._-]{0,31}$"),
+func (m MCPServerCandidate) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		textPattern("name", m.Name, "^[a-z0-9][a-z0-9._-]{0,31}$"),
 	)
+	return violations
 }
 
-func (m MCPAuthorizationAttemptRef) validateWire() error {
-	return collectWireViolations("MCPAuthorizationAttemptRef",
-		requiredTextPattern("attemptId", m.AttemptID, "^mcpauth_[A-Z2-7]{26,64}$"),
+func (m MCPAuthorizationAttemptRef) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		textPattern("attemptId", m.AttemptID, "^mcpauth_[A-Z2-7]{26,64}$"),
 	)
+	return violations
 }
 
-func (o OpenPluginBrowserRealmRequest) validateWire() error {
-	return collectWireViolations("OpenPluginBrowserRealmRequest",
-		requiredText("operationId", o.OperationID),
-		requiredText("resumeToken", o.ResumeToken),
+func (o OpenPluginBrowserRealmRequest) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("operationId", o.OperationID),
+		nonEmptyText("resumeToken", o.ResumeToken),
 	)
+	return violations
 }
 
-func (a AcquirePluginComponentRequest) validateWire() error {
-	return collectWireViolations("AcquirePluginComponentRequest",
-		requiredText("operationId", a.OperationID),
-		requiredTextPattern("componentId", a.ComponentID, "^[a-z][a-z0-9._-]{0,63}$"),
-		requiredTextPattern("installationId", a.InstallationID, "^(?:[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000000[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000000[1-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000000[1-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000000[1-9a-f])$"),
-		requiredTextPattern("digest", a.Digest, "^[0-9a-f]{64}$"),
+func (a AcquirePluginComponentRequest) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("operationId", a.OperationID),
+		textPattern("componentId", a.ComponentID, "^[a-z][a-z0-9._-]{0,63}$"),
+		textPattern("installationId", a.InstallationID, "^(?:[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000000[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000000[1-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000000[1-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000000[1-9a-f])$"),
+		textPattern("digest", a.Digest, "^[0-9a-f]{64}$"),
 	)
+	return violations
 }
 
-func (p PluginCommandRequest) validateWire() error {
-	return collectWireViolations("PluginCommandRequest",
-		requiredText("namespace", p.Namespace),
-		requiredTextPattern("namespace", p.Namespace, "^idp_[0-9a-f]{32}$"),
-		requiredText("key", p.Key),
+func (p PluginCommandRequest) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("namespace", p.Namespace),
+		textPattern("namespace", p.Namespace, "^idp_[0-9a-f]{32}$"),
+		nonEmptyText("key", p.Key),
 		maxLength("key", p.Key, 255),
 	)
+	return violations
 }
 
-func (c CallPluginRequest) validateWire() error {
-	return collectWireViolations("CallPluginRequest",
-		requiredText("contract", c.Contract),
-		requiredText("input", c.Input),
-		requiredTextPattern("installationId", c.InstallationID, "^(?:[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000000[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000000[1-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000000[1-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000000[1-9a-f])$"),
-		requiredTextPattern("digest", c.Digest, "^[0-9a-f]{64}$"),
-		requiredTextPattern("contribution", c.Contribution, "^[a-z][a-z0-9._-]{0,63}$"),
-		requiredText("method", c.Method),
+func (c CallPluginRequest) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("contract", c.Contract),
+		nonEmptyText("input", c.Input),
+		textPattern("installationId", c.InstallationID, "^(?:[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000000[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000000[1-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000000[1-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000000[1-9a-f])$"),
+		textPattern("digest", c.Digest, "^[0-9a-f]{64}$"),
+		textPattern("contribution", c.Contribution, "^[a-z][a-z0-9._-]{0,63}$"),
+		nonEmptyText("method", c.Method),
 		maxLength("method", c.Method, 256),
 		identity("method", c.Method),
-		requiredText("target.scope", c.Target.Scope),
-		identity("target.scope", c.Target.Scope),
-		maxLength("target.scope", c.Target.Scope, 256),
-		requiredText("target.reference", c.Target.Reference),
-		requiredTextPattern("target.reference", c.Target.Reference, "^[^\\p{Cc}]*$"),
 	)
+	if object.present("target.scope") {
+		violations.add(
+			nonEmptyText("target.scope", c.Target.Scope),
+			identity("target.scope", c.Target.Scope),
+			maxLength("target.scope", c.Target.Scope, 256),
+		)
+	}
+	if object.present("target.reference") {
+		violations.add(
+			nonEmptyText("target.reference", c.Target.Reference),
+			textPattern("target.reference", c.Target.Reference, "^[^\\p{Cc}]*$"),
+		)
+	}
+	return violations
 }
 
-func (p PluginChangeNotice) validateWire() error {
-	return collectWireViolations("PluginChangeNotice",
-		requiredTextPattern("contribution", p.Contribution, "^[a-z][a-z0-9._-]{0,63}$"),
+func (p PluginChangeNotice) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		textPattern("contribution", p.Contribution, "^[a-z][a-z0-9._-]{0,63}$"),
 	)
+	return violations
 }
 
-func (r ReadPluginResourceRequest) validateWire() error {
-	return collectWireViolations("ReadPluginResourceRequest",
-		requiredTextPattern("componentId", r.ComponentID, "^[a-z][a-z0-9._-]{0,63}$"),
-		requiredTextPattern("installationId", r.InstallationID, "^(?:[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000000[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000000[1-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000000[1-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000000[1-9a-f])$"),
-		requiredTextPattern("digest", r.Digest, "^[0-9a-f]{64}$"),
+func (r ReadPluginResourceRequest) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		textPattern("componentId", r.ComponentID, "^[a-z][a-z0-9._-]{0,63}$"),
+		textPattern("installationId", r.InstallationID, "^(?:[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000000[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000000[1-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000000[1-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000000[1-9a-f])$"),
+		textPattern("digest", r.Digest, "^[0-9a-f]{64}$"),
 	)
+	return violations
 }
 
-func (r ReadPluginLocaleRequest) validateWire() error {
-	return collectWireViolations("ReadPluginLocaleRequest",
-		requiredText("tag", r.Tag),
+func (r ReadPluginLocaleRequest) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("tag", r.Tag),
 		maxLength("tag", r.Tag, 128),
-		requiredTextPattern("installationId", r.InstallationID, "^(?:[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000000[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000000[1-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000000[1-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000000[1-9a-f])$"),
-		requiredTextPattern("digest", r.Digest, "^[0-9a-f]{64}$"),
+		textPattern("installationId", r.InstallationID, "^(?:[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000000[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000000[1-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000000[1-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000000[1-9a-f])$"),
+		textPattern("digest", r.Digest, "^[0-9a-f]{64}$"),
 	)
+	return violations
 }
 
-func (r ResolvePluginPointRequest) validateWire() error {
-	return collectWireViolations("ResolvePluginPointRequest",
-		requiredText("contract", r.Contract),
-		requiredText("attributes", r.Attributes),
+func (r ResolvePluginPointRequest) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("contract", r.Contract),
+		nonEmptyText("attributes", r.Attributes),
 	)
+	return violations
 }
 
-func (r ResolvePluginRequirementsRequest) validateWire() error {
-	return collectWireViolations("ResolvePluginRequirementsRequest",
-		requiredTextPattern("installationId", r.InstallationID, "^(?:[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000000[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000000[1-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000000[1-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000000[1-9a-f])$"),
-		requiredTextPattern("digest", r.Digest, "^[0-9a-f]{64}$"),
-		requiredTextPattern("contribution", r.Contribution, "^[a-z][a-z0-9._-]{0,63}$"),
+func (r ResolvePluginRequirementsRequest) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		textPattern("installationId", r.InstallationID, "^(?:[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000000[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000000[1-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000000[1-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000000[1-9a-f])$"),
+		textPattern("digest", r.Digest, "^[0-9a-f]{64}$"),
+		textPattern("contribution", r.Contribution, "^[a-z][a-z0-9._-]{0,63}$"),
 	)
+	return violations
 }
 
-func (s SelectPluginProviderRequest) validateWire() error {
-	return collectWireViolations("SelectPluginProviderRequest",
-		requiredTextPattern("contribution", s.Contribution, "^[a-z][a-z0-9._-]{0,63}$"),
-		requiredText("role", s.Role),
+func (s SelectPluginProviderRequest) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		textPattern("contribution", s.Contribution, "^[a-z][a-z0-9._-]{0,63}$"),
+		nonEmptyText("role", s.Role),
 		maxLength("role", s.Role, 256),
-		requiredTextPattern("installationId", s.InstallationID, "^(?:[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000000[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000000[1-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000000[1-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000000[1-9a-f])$"),
+		textPattern("installationId", s.InstallationID, "^(?:[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000000[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000000[1-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000000[1-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000000[1-9a-f])$"),
 	)
+	return violations
 }
 
-func (s SetPluginCompositionRequest) validateWire() error {
-	return collectWireViolations("SetPluginCompositionRequest",
-		requiredText("contract", s.Contract),
+func (s SetPluginCompositionRequest) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("contract", s.Contract),
 		uniqueItems("members", s.Members),
 	)
+	return violations
 }
 
-func (r ResolvePluginCompositionRequest) validateWire() error {
-	return collectWireViolations("ResolvePluginCompositionRequest",
-		requiredText("contract", r.Contract),
+func (r ResolvePluginCompositionRequest) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("contract", r.Contract),
 	)
+	return violations
 }
 
-func (i InstallPluginRequest) validateWire() error {
-	return collectWireViolations("InstallPluginRequest",
-		requiredText("source", i.Source),
+func (i InstallPluginRequest) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("source", i.Source),
 		maxLength("source", i.Source, 4096),
 	)
+	return violations
 }
 
-func (s StagePluginRequest) validateWire() error {
-	return collectWireViolations("StagePluginRequest",
-		requiredTextPattern("installationId", s.InstallationID, "^(?:[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000000[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000000[1-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000000[1-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000000[1-9a-f])$"),
-		requiredText("source", s.Source),
+func (s StagePluginRequest) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		textPattern("installationId", s.InstallationID, "^(?:[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000000[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000000[1-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000000[1-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000000[1-9a-f])$"),
+		nonEmptyText("source", s.Source),
 		maxLength("source", s.Source, 4096),
 	)
+	return violations
 }
 
-func (p PluginReleaseRef) validateWire() error {
-	return collectWireViolations("PluginReleaseRef",
-		requiredTextPattern("installationId", p.InstallationID, "^(?:[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000000[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000000[1-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000000[1-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000000[1-9a-f])$"),
-		requiredTextPattern("digest", p.Digest, "^[0-9a-f]{64}$"),
+func (p PluginReleaseRef) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		textPattern("installationId", p.InstallationID, "^(?:[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000000[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000000[1-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000000[1-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000000[1-9a-f])$"),
+		textPattern("digest", p.Digest, "^[0-9a-f]{64}$"),
 	)
+	return violations
 }
 
-func (c ConfigurePluginRequest) validateWire() error {
-	return collectWireViolations("ConfigurePluginRequest",
-		requiredTextPattern("installationId", c.InstallationID, "^(?:[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000000[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000000[1-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000000[1-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000000[1-9a-f])$"),
-		requiredTextPattern("digest", c.Digest, "^[0-9a-f]{64}$"),
+func (c ConfigurePluginRequest) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		textPattern("installationId", c.InstallationID, "^(?:[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000000[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000000[1-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000000[1-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000000[1-9a-f])$"),
+		textPattern("digest", c.Digest, "^[0-9a-f]{64}$"),
 	)
+	return violations
 }
 
-func (s SetPluginEnablementRequest) validateWire() error {
-	return collectWireViolations("SetPluginEnablementRequest",
-		requiredTextPattern("installationId", s.InstallationID, "^(?:[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000000[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000000[1-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000000[1-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000000[1-9a-f])$"),
+func (s SetPluginEnablementRequest) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		textPattern("installationId", s.InstallationID, "^(?:[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000000[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000000[1-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000000[1-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000000[1-9a-f])$"),
 	)
+	return violations
 }
 
-func (p PluginRequest) validateWire() error {
-	return collectWireViolations("PluginRequest",
-		requiredTextPattern("installationId", p.InstallationID, "^(?:[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000000[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000000[1-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000000[1-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000000[1-9a-f])$"),
+func (p PluginRequest) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		textPattern("installationId", p.InstallationID, "^(?:[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000000[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000000[1-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000000[1-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000000[1-9a-f])$"),
 	)
+	return violations
 }
 
-func (s SetHookTrustRequest) validateWire() error {
-	return collectWireViolations("SetHookTrustRequest",
-		requiredText("repositoryRoot", s.RepositoryRoot),
+func (s SetHookTrustRequest) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("repositoryRoot", s.RepositoryRoot),
 	)
+	return violations
 }
 
-func (s SetApprovalRuleRequest) validateWire() error {
-	return collectWireViolations("SetApprovalRuleRequest",
+func (s SetApprovalRuleRequest) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	if object.present("sessionId") {
+		violations.add(
+			identity("sessionId", s.SessionID),
+			maxLength("sessionId", s.SessionID, 256),
+		)
+	}
+	violations.add(
+		forbiddenWhen(object.equals("scope", "global"), "sessionId", object),
+		requiredWhen(object.equals("scope", "session"), "sessionId", object),
+		requiredWhen(object.equals("scope", "workspace"), "sessionId", object),
+	)
+	return violations
+}
+
+func (l ListApprovalRulesRequest) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	if object.present("sessionId") {
+		violations.add(
+			identity("sessionId", l.SessionID),
+			maxLength("sessionId", l.SessionID, 256),
+		)
+	}
+	return violations
+}
+
+func (f ForgetApprovalRuleRequest) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("id", f.ID),
+	)
+	return violations
+}
+
+func (s StartGoalRequest) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("sessionId", s.SessionID),
 		identity("sessionId", s.SessionID),
 		maxLength("sessionId", s.SessionID, 256),
-		forbiddenWhen(wireFieldEquals(s, "scope", "global"), "sessionId", s),
-		requiredWhen(wireFieldEquals(s, "scope", "session"), "sessionId", s),
-		requiredWhen(wireFieldEquals(s, "scope", "workspace"), "sessionId", s),
+		textPattern("objective", s.Objective, "\\S"),
 	)
+	if object.present("provider") {
+		violations.add(
+			identity("provider", s.Provider),
+			maxLength("provider", s.Provider, 64),
+		)
+	}
+	if object.present("model") {
+		violations.add(
+			identity("model", s.Model),
+			maxLength("model", s.Model, 256),
+		)
+	}
+	if object.present("reasoningEffort") {
+		violations.add(
+			identity("reasoningEffort", s.ReasoningEffort),
+			maxLength("reasoningEffort", s.ReasoningEffort, 32),
+		)
+	}
+	violations.add(
+		requiredWhen(object.present("provider"), "model", object),
+		requiredWhen(object.present("model"), "provider", object),
+		requiredWhen(object.present("reasoningEffort"), "provider", object),
+		requiredWhen(object.present("reasoningEffort"), "model", object),
+	)
+	return violations
 }
 
-func (l ListApprovalRulesRequest) validateWire() error {
-	return collectWireViolations("ListApprovalRulesRequest",
-		identity("sessionId", l.SessionID),
-		maxLength("sessionId", l.SessionID, 256),
-	)
-}
-
-func (f ForgetApprovalRuleRequest) validateWire() error {
-	return collectWireViolations("ForgetApprovalRuleRequest",
-		requiredText("id", f.ID),
-	)
-}
-
-func (s StartGoalRequest) validateWire() error {
-	return collectWireViolations("StartGoalRequest",
-		requiredText("sessionId", s.SessionID),
-		identity("sessionId", s.SessionID),
-		maxLength("sessionId", s.SessionID, 256),
-		requiredTextPattern("objective", s.Objective, "\\S"),
-		identity("provider", s.Provider),
-		maxLength("provider", s.Provider, 64),
-		identity("model", s.Model),
-		maxLength("model", s.Model, 256),
-		identity("reasoningEffort", s.ReasoningEffort),
-		maxLength("reasoningEffort", s.ReasoningEffort, 32),
-		requiredWhen(wireFieldPresent(s, "provider"), "model", s),
-		requiredWhen(wireFieldPresent(s, "model"), "provider", s),
-		requiredWhen(wireFieldPresent(s, "reasoningEffort"), "provider", s),
-		requiredWhen(wireFieldPresent(s, "reasoningEffort"), "model", s),
-	)
-}
-
-func (u UpdateGoalRequest) validateWire() error {
-	return collectWireViolations("UpdateGoalRequest",
-		requiredText("sessionId", u.SessionID),
+func (u UpdateGoalRequest) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("sessionId", u.SessionID),
 		identity("sessionId", u.SessionID),
 		maxLength("sessionId", u.SessionID, 256),
-		requiredTextPattern("objective", u.Objective, "\\S"),
+		textPattern("objective", u.Objective, "\\S"),
 	)
+	return violations
 }
 
-func (g GoalRequest) validateWire() error {
-	return collectWireViolations("GoalRequest",
-		requiredText("sessionId", g.SessionID),
+func (g GoalRequest) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("sessionId", g.SessionID),
 		identity("sessionId", g.SessionID),
 		maxLength("sessionId", g.SessionID, 256),
 	)
+	return violations
 }
 
-func (u UpdateProviderRequest) validateWire() error {
-	return collectWireViolations("UpdateProviderRequest",
-		requiredText("provider", u.Provider),
+func (u UpdateProviderRequest) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("provider", u.Provider),
 		identity("provider", u.Provider),
 		maxLength("provider", u.Provider, 64),
 	)
+	return violations
 }
 
-func (t TestProviderRequest) validateWire() error {
-	return collectWireViolations("TestProviderRequest",
-		requiredText("provider", t.Provider),
+func (t TestProviderRequest) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("provider", t.Provider),
 		identity("provider", t.Provider),
 		maxLength("provider", t.Provider, 64),
 	)
+	return violations
 }
 
-func (l ListModelsRequest) validateWire() error {
-	return collectWireViolations("ListModelsRequest",
+func (l ListModelsRequest) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
 		identity("provider", l.Provider),
 		maxLength("provider", l.Provider, 64),
 	)
+	return violations
 }
 
-func (u UtilityRole) validateWire() error {
-	return collectWireViolations("UtilityRole",
-		identity("provider", u.Provider),
-		maxLength("provider", u.Provider, 64),
-		identity("model", u.Model),
-		maxLength("model", u.Model, 256),
+func (u UtilityRole) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	if object.present("provider") {
+		violations.add(
+			identity("provider", u.Provider),
+			maxLength("provider", u.Provider, 64),
+		)
+	}
+	if object.present("model") {
+		violations.add(
+			identity("model", u.Model),
+			maxLength("model", u.Model, 256),
+		)
+	}
+	return violations
+}
+
+func (e EmbeddingRole) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	if object.present("provider") {
+		violations.add(
+			identity("provider", e.Provider),
+			maxLength("provider", e.Provider, 64),
+		)
+	}
+	if object.present("model") {
+		violations.add(
+			identity("model", e.Model),
+			maxLength("model", e.Model, 256),
+		)
+	}
+	return violations
+}
+
+func (i InvokeToolRequest) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("name", i.Name),
 	)
+	return violations
 }
 
-func (e EmbeddingRole) validateWire() error {
-	return collectWireViolations("EmbeddingRole",
-		identity("provider", e.Provider),
-		maxLength("provider", e.Provider, 64),
-		identity("model", e.Model),
-		maxLength("model", e.Model, 256),
-	)
-}
-
-func (i InvokeToolRequest) validateWire() error {
-	return collectWireViolations("InvokeToolRequest",
-		requiredText("name", i.Name),
-	)
-}
-
-func (s SessionUsageRequest) validateWire() error {
-	return collectWireViolations("SessionUsageRequest",
-		requiredText("sessionId", s.SessionID),
+func (s SessionUsageRequest) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("sessionId", s.SessionID),
 		identity("sessionId", s.SessionID),
 		maxLength("sessionId", s.SessionID, 256),
 	)
+	return violations
 }
 
-func (u UsageSummaryRequest) validateWire() error {
-	return collectWireViolations("UsageSummaryRequest",
-		optionalPositiveNumber("sinceDays", u.SinceDays),
+func (u UsageSummaryRequest) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	if object.present("sinceDays") {
+		violations.add(
+			positiveNumber("sinceDays", *u.SinceDays),
+		)
+	}
+	return violations
+}
+
+func (f FeedbackRequest) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	if object.present("sessionId") {
+		violations.add(
+			identity("sessionId", f.SessionID),
+			maxLength("sessionId", f.SessionID, 256),
+		)
+	}
+	if object.present("runId") {
+		violations.add(
+			identity("runId", f.RunID),
+			maxLength("runId", f.RunID, 256),
+		)
+	}
+	if object.present("itemId") {
+		violations.add(
+			identity("itemId", f.ItemID),
+			maxLength("itemId", f.ItemID, 256),
+		)
+	}
+	if object.present("text") {
+		violations.add(
+			textPattern("text", f.Text, "\\S"),
+		)
+	}
+	violations.add(
+		requiredAny([]string{"rating", "text"}, object),
 	)
+	return violations
 }
 
-func (f FeedbackRequest) validateWire() error {
-	return collectWireViolations("FeedbackRequest",
-		identity("sessionId", f.SessionID),
-		maxLength("sessionId", f.SessionID, 256),
-		identity("runId", f.RunID),
-		maxLength("runId", f.RunID, 256),
-		identity("itemId", f.ItemID),
-		maxLength("itemId", f.ItemID, 256),
-		optionalTextPattern("text", f.Text, "\\S"),
-		requiredAny([]string{"rating", "text"}, f),
-	)
-}
-
-func (p ProblemData) validateWire() error {
-	return collectWireViolations("ProblemData",
-		optionalPositiveScalarNumber("retryAfterSeconds", p.RetryAfterSeconds),
-		maximumNumber("retryAfterSeconds", p.RetryAfterSeconds, 9223372036),
-		nonEmptyItems("requiredCapabilities", p.RequiredCapabilities),
-		uniqueItems("requiredCapabilities", p.RequiredCapabilities),
+func (p ProblemData) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	if object.present("retryAfterSeconds") {
+		violations.add(
+			positiveNumber("retryAfterSeconds", p.RetryAfterSeconds),
+			maximumNumber("retryAfterSeconds", p.RetryAfterSeconds, 9223372036),
+		)
+	}
+	if object.present("requiredCapabilities") {
+		violations.add(
+			nonEmptyItems("requiredCapabilities", p.RequiredCapabilities),
+			uniqueItems("requiredCapabilities", p.RequiredCapabilities),
+		)
+	}
+	violations.add(
 		unionTag("type", string(p.Type), []string{"agent_stuck", "capability_not_negotiated", "checkpoint_conflict", "checkpoint_unavailable", "child_run_canceled", "denied_by_user", "export_too_large", "idempotency_conflict", "idempotency_in_progress", "idempotency_store_mismatch", "internal_error", "interrupt_not_open", "invalid_credentials", "invalid_params", "invalid_protocol_version", "invalid_request", "item_not_found", "mcp_authorization_attempt_not_found", "mcp_owned_by_installation", "mcp_server_already_exists", "mcp_server_disabled", "mcp_server_not_found", "method_not_found", "path_outside_root", "plugin_changed", "plugin_command_retired", "plugin_disabled", "plugin_in_use", "plugin_not_found", "plugin_stale", "plugin_unavailable", "project_not_found", "prompt_source_too_large", "provider_error", "provider_rejected", "provider_unavailable", "rate_limited", "replay_cursor_invalid", "replay_unavailable", "revision_conflict", "run_finished", "run_not_found", "run_not_root", "run_waiting", "session_busy", "session_has_active_run", "session_not_found", "skill_not_found", "skill_unavailable", "stale_segment", "timeout", "tool_canceled", "tool_failed", "unsupported_mime", "vcs_unavailable", "workspace_unavailable"}, "^plugin:[a-z0-9][a-z0-9._-]*/[a-z0-9][a-z0-9._-]*$"),
-		forbiddenWhen(wireFieldEquals(p, "type", "agent_stuck"), "requiredCapabilities", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "agent_stuck"), "retryAfterSeconds", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "agent_stuck"), "errors", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "agent_stuck"), "activeRun", p),
-		requiredWhen(wireFieldEquals(p, "type", "capability_not_negotiated"), "requiredCapabilities", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "capability_not_negotiated"), "retryAfterSeconds", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "capability_not_negotiated"), "errors", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "capability_not_negotiated"), "activeRun", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "checkpoint_conflict"), "requiredCapabilities", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "checkpoint_conflict"), "retryAfterSeconds", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "checkpoint_conflict"), "errors", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "checkpoint_conflict"), "activeRun", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "checkpoint_unavailable"), "requiredCapabilities", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "checkpoint_unavailable"), "retryAfterSeconds", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "checkpoint_unavailable"), "errors", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "checkpoint_unavailable"), "activeRun", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "child_run_canceled"), "requiredCapabilities", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "child_run_canceled"), "retryAfterSeconds", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "child_run_canceled"), "errors", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "child_run_canceled"), "activeRun", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "denied_by_user"), "requiredCapabilities", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "denied_by_user"), "retryAfterSeconds", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "denied_by_user"), "errors", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "denied_by_user"), "activeRun", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "export_too_large"), "requiredCapabilities", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "export_too_large"), "retryAfterSeconds", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "export_too_large"), "errors", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "export_too_large"), "activeRun", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "idempotency_conflict"), "requiredCapabilities", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "idempotency_conflict"), "retryAfterSeconds", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "idempotency_conflict"), "errors", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "idempotency_conflict"), "activeRun", p),
-		requiredWhen(wireFieldEquals(p, "type", "idempotency_in_progress"), "retryAfterSeconds", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "idempotency_in_progress"), "requiredCapabilities", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "idempotency_in_progress"), "errors", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "idempotency_in_progress"), "activeRun", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "idempotency_store_mismatch"), "requiredCapabilities", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "idempotency_store_mismatch"), "retryAfterSeconds", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "idempotency_store_mismatch"), "errors", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "idempotency_store_mismatch"), "activeRun", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "internal_error"), "requiredCapabilities", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "internal_error"), "retryAfterSeconds", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "internal_error"), "errors", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "internal_error"), "activeRun", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "interrupt_not_open"), "requiredCapabilities", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "interrupt_not_open"), "retryAfterSeconds", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "interrupt_not_open"), "errors", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "interrupt_not_open"), "activeRun", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "invalid_credentials"), "requiredCapabilities", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "invalid_credentials"), "retryAfterSeconds", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "invalid_credentials"), "errors", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "invalid_credentials"), "activeRun", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "invalid_params"), "requiredCapabilities", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "invalid_params"), "retryAfterSeconds", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "invalid_params"), "activeRun", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "invalid_protocol_version"), "requiredCapabilities", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "invalid_protocol_version"), "retryAfterSeconds", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "invalid_protocol_version"), "errors", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "invalid_protocol_version"), "activeRun", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "invalid_request"), "requiredCapabilities", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "invalid_request"), "retryAfterSeconds", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "invalid_request"), "errors", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "invalid_request"), "activeRun", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "item_not_found"), "requiredCapabilities", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "item_not_found"), "retryAfterSeconds", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "item_not_found"), "errors", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "item_not_found"), "activeRun", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "mcp_authorization_attempt_not_found"), "requiredCapabilities", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "mcp_authorization_attempt_not_found"), "retryAfterSeconds", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "mcp_authorization_attempt_not_found"), "errors", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "mcp_authorization_attempt_not_found"), "activeRun", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "mcp_owned_by_installation"), "requiredCapabilities", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "mcp_owned_by_installation"), "retryAfterSeconds", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "mcp_owned_by_installation"), "errors", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "mcp_owned_by_installation"), "activeRun", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "mcp_server_already_exists"), "requiredCapabilities", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "mcp_server_already_exists"), "retryAfterSeconds", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "mcp_server_already_exists"), "errors", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "mcp_server_already_exists"), "activeRun", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "mcp_server_disabled"), "requiredCapabilities", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "mcp_server_disabled"), "retryAfterSeconds", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "mcp_server_disabled"), "errors", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "mcp_server_disabled"), "activeRun", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "mcp_server_not_found"), "requiredCapabilities", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "mcp_server_not_found"), "retryAfterSeconds", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "mcp_server_not_found"), "errors", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "mcp_server_not_found"), "activeRun", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "method_not_found"), "requiredCapabilities", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "method_not_found"), "retryAfterSeconds", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "method_not_found"), "errors", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "method_not_found"), "activeRun", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "path_outside_root"), "requiredCapabilities", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "path_outside_root"), "retryAfterSeconds", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "path_outside_root"), "errors", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "path_outside_root"), "activeRun", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "plugin_changed"), "requiredCapabilities", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "plugin_changed"), "retryAfterSeconds", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "plugin_changed"), "errors", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "plugin_changed"), "activeRun", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "plugin_command_retired"), "requiredCapabilities", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "plugin_command_retired"), "retryAfterSeconds", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "plugin_command_retired"), "errors", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "plugin_command_retired"), "activeRun", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "plugin_disabled"), "requiredCapabilities", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "plugin_disabled"), "retryAfterSeconds", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "plugin_disabled"), "errors", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "plugin_disabled"), "activeRun", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "plugin_in_use"), "requiredCapabilities", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "plugin_in_use"), "retryAfterSeconds", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "plugin_in_use"), "errors", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "plugin_in_use"), "activeRun", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "plugin_not_found"), "requiredCapabilities", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "plugin_not_found"), "retryAfterSeconds", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "plugin_not_found"), "errors", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "plugin_not_found"), "activeRun", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "plugin_stale"), "requiredCapabilities", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "plugin_stale"), "retryAfterSeconds", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "plugin_stale"), "errors", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "plugin_stale"), "activeRun", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "plugin_unavailable"), "requiredCapabilities", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "plugin_unavailable"), "retryAfterSeconds", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "plugin_unavailable"), "errors", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "plugin_unavailable"), "activeRun", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "project_not_found"), "requiredCapabilities", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "project_not_found"), "retryAfterSeconds", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "project_not_found"), "errors", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "project_not_found"), "activeRun", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "prompt_source_too_large"), "requiredCapabilities", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "prompt_source_too_large"), "retryAfterSeconds", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "prompt_source_too_large"), "errors", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "prompt_source_too_large"), "activeRun", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "provider_error"), "requiredCapabilities", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "provider_error"), "retryAfterSeconds", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "provider_error"), "errors", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "provider_error"), "activeRun", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "provider_rejected"), "requiredCapabilities", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "provider_rejected"), "retryAfterSeconds", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "provider_rejected"), "errors", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "provider_rejected"), "activeRun", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "provider_unavailable"), "requiredCapabilities", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "provider_unavailable"), "errors", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "provider_unavailable"), "activeRun", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "rate_limited"), "requiredCapabilities", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "rate_limited"), "errors", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "rate_limited"), "activeRun", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "replay_cursor_invalid"), "requiredCapabilities", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "replay_cursor_invalid"), "retryAfterSeconds", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "replay_cursor_invalid"), "errors", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "replay_cursor_invalid"), "activeRun", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "replay_unavailable"), "requiredCapabilities", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "replay_unavailable"), "retryAfterSeconds", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "replay_unavailable"), "errors", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "replay_unavailable"), "activeRun", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "revision_conflict"), "requiredCapabilities", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "revision_conflict"), "retryAfterSeconds", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "revision_conflict"), "errors", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "revision_conflict"), "activeRun", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "run_finished"), "requiredCapabilities", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "run_finished"), "retryAfterSeconds", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "run_finished"), "errors", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "run_finished"), "activeRun", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "run_not_found"), "requiredCapabilities", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "run_not_found"), "retryAfterSeconds", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "run_not_found"), "errors", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "run_not_found"), "activeRun", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "run_not_root"), "requiredCapabilities", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "run_not_root"), "retryAfterSeconds", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "run_not_root"), "errors", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "run_not_root"), "activeRun", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "run_waiting"), "requiredCapabilities", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "run_waiting"), "retryAfterSeconds", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "run_waiting"), "errors", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "run_waiting"), "activeRun", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "session_busy"), "requiredCapabilities", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "session_busy"), "retryAfterSeconds", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "session_busy"), "errors", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "session_busy"), "activeRun", p),
-		requiredWhen(wireFieldEquals(p, "type", "session_has_active_run"), "activeRun", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "session_has_active_run"), "requiredCapabilities", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "session_has_active_run"), "retryAfterSeconds", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "session_has_active_run"), "errors", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "session_not_found"), "requiredCapabilities", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "session_not_found"), "retryAfterSeconds", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "session_not_found"), "errors", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "session_not_found"), "activeRun", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "skill_not_found"), "requiredCapabilities", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "skill_not_found"), "retryAfterSeconds", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "skill_not_found"), "errors", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "skill_not_found"), "activeRun", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "skill_unavailable"), "requiredCapabilities", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "skill_unavailable"), "retryAfterSeconds", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "skill_unavailable"), "errors", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "skill_unavailable"), "activeRun", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "stale_segment"), "requiredCapabilities", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "stale_segment"), "retryAfterSeconds", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "stale_segment"), "errors", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "stale_segment"), "activeRun", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "timeout"), "requiredCapabilities", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "timeout"), "errors", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "timeout"), "activeRun", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "tool_canceled"), "requiredCapabilities", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "tool_canceled"), "retryAfterSeconds", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "tool_canceled"), "errors", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "tool_canceled"), "activeRun", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "tool_failed"), "requiredCapabilities", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "tool_failed"), "retryAfterSeconds", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "tool_failed"), "errors", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "tool_failed"), "activeRun", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "unsupported_mime"), "requiredCapabilities", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "unsupported_mime"), "retryAfterSeconds", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "unsupported_mime"), "errors", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "unsupported_mime"), "activeRun", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "vcs_unavailable"), "requiredCapabilities", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "vcs_unavailable"), "retryAfterSeconds", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "vcs_unavailable"), "errors", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "vcs_unavailable"), "activeRun", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "workspace_unavailable"), "requiredCapabilities", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "workspace_unavailable"), "retryAfterSeconds", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "workspace_unavailable"), "errors", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "workspace_unavailable"), "activeRun", p),
-		forbiddenWhen(wireFieldMatches(p, "type", "^plugin:[a-z0-9][a-z0-9._-]*/[a-z0-9][a-z0-9._-]*$"), "requiredCapabilities", p),
-		forbiddenWhen(wireFieldMatches(p, "type", "^plugin:[a-z0-9][a-z0-9._-]*/[a-z0-9][a-z0-9._-]*$"), "errors", p),
-		forbiddenWhen(wireFieldMatches(p, "type", "^plugin:[a-z0-9][a-z0-9._-]*/[a-z0-9][a-z0-9._-]*$"), "activeRun", p),
+		forbiddenWhen(object.equals("type", "agent_stuck"), "requiredCapabilities", object),
+		forbiddenWhen(object.equals("type", "agent_stuck"), "retryAfterSeconds", object),
+		forbiddenWhen(object.equals("type", "agent_stuck"), "errors", object),
+		forbiddenWhen(object.equals("type", "agent_stuck"), "activeRun", object),
+		requiredWhen(object.equals("type", "capability_not_negotiated"), "requiredCapabilities", object),
+		forbiddenWhen(object.equals("type", "capability_not_negotiated"), "retryAfterSeconds", object),
+		forbiddenWhen(object.equals("type", "capability_not_negotiated"), "errors", object),
+		forbiddenWhen(object.equals("type", "capability_not_negotiated"), "activeRun", object),
+		forbiddenWhen(object.equals("type", "checkpoint_conflict"), "requiredCapabilities", object),
+		forbiddenWhen(object.equals("type", "checkpoint_conflict"), "retryAfterSeconds", object),
+		forbiddenWhen(object.equals("type", "checkpoint_conflict"), "errors", object),
+		forbiddenWhen(object.equals("type", "checkpoint_conflict"), "activeRun", object),
+		forbiddenWhen(object.equals("type", "checkpoint_unavailable"), "requiredCapabilities", object),
+		forbiddenWhen(object.equals("type", "checkpoint_unavailable"), "retryAfterSeconds", object),
+		forbiddenWhen(object.equals("type", "checkpoint_unavailable"), "errors", object),
+		forbiddenWhen(object.equals("type", "checkpoint_unavailable"), "activeRun", object),
+		forbiddenWhen(object.equals("type", "child_run_canceled"), "requiredCapabilities", object),
+		forbiddenWhen(object.equals("type", "child_run_canceled"), "retryAfterSeconds", object),
+		forbiddenWhen(object.equals("type", "child_run_canceled"), "errors", object),
+		forbiddenWhen(object.equals("type", "child_run_canceled"), "activeRun", object),
+		forbiddenWhen(object.equals("type", "denied_by_user"), "requiredCapabilities", object),
+		forbiddenWhen(object.equals("type", "denied_by_user"), "retryAfterSeconds", object),
+		forbiddenWhen(object.equals("type", "denied_by_user"), "errors", object),
+		forbiddenWhen(object.equals("type", "denied_by_user"), "activeRun", object),
+		forbiddenWhen(object.equals("type", "export_too_large"), "requiredCapabilities", object),
+		forbiddenWhen(object.equals("type", "export_too_large"), "retryAfterSeconds", object),
+		forbiddenWhen(object.equals("type", "export_too_large"), "errors", object),
+		forbiddenWhen(object.equals("type", "export_too_large"), "activeRun", object),
+		forbiddenWhen(object.equals("type", "idempotency_conflict"), "requiredCapabilities", object),
+		forbiddenWhen(object.equals("type", "idempotency_conflict"), "retryAfterSeconds", object),
+		forbiddenWhen(object.equals("type", "idempotency_conflict"), "errors", object),
+		forbiddenWhen(object.equals("type", "idempotency_conflict"), "activeRun", object),
+		requiredWhen(object.equals("type", "idempotency_in_progress"), "retryAfterSeconds", object),
+		forbiddenWhen(object.equals("type", "idempotency_in_progress"), "requiredCapabilities", object),
+		forbiddenWhen(object.equals("type", "idempotency_in_progress"), "errors", object),
+		forbiddenWhen(object.equals("type", "idempotency_in_progress"), "activeRun", object),
+		forbiddenWhen(object.equals("type", "idempotency_store_mismatch"), "requiredCapabilities", object),
+		forbiddenWhen(object.equals("type", "idempotency_store_mismatch"), "retryAfterSeconds", object),
+		forbiddenWhen(object.equals("type", "idempotency_store_mismatch"), "errors", object),
+		forbiddenWhen(object.equals("type", "idempotency_store_mismatch"), "activeRun", object),
+		forbiddenWhen(object.equals("type", "internal_error"), "requiredCapabilities", object),
+		forbiddenWhen(object.equals("type", "internal_error"), "retryAfterSeconds", object),
+		forbiddenWhen(object.equals("type", "internal_error"), "errors", object),
+		forbiddenWhen(object.equals("type", "internal_error"), "activeRun", object),
+		forbiddenWhen(object.equals("type", "interrupt_not_open"), "requiredCapabilities", object),
+		forbiddenWhen(object.equals("type", "interrupt_not_open"), "retryAfterSeconds", object),
+		forbiddenWhen(object.equals("type", "interrupt_not_open"), "errors", object),
+		forbiddenWhen(object.equals("type", "interrupt_not_open"), "activeRun", object),
+		forbiddenWhen(object.equals("type", "invalid_credentials"), "requiredCapabilities", object),
+		forbiddenWhen(object.equals("type", "invalid_credentials"), "retryAfterSeconds", object),
+		forbiddenWhen(object.equals("type", "invalid_credentials"), "errors", object),
+		forbiddenWhen(object.equals("type", "invalid_credentials"), "activeRun", object),
+		forbiddenWhen(object.equals("type", "invalid_params"), "requiredCapabilities", object),
+		forbiddenWhen(object.equals("type", "invalid_params"), "retryAfterSeconds", object),
+		forbiddenWhen(object.equals("type", "invalid_params"), "activeRun", object),
+		forbiddenWhen(object.equals("type", "invalid_protocol_version"), "requiredCapabilities", object),
+		forbiddenWhen(object.equals("type", "invalid_protocol_version"), "retryAfterSeconds", object),
+		forbiddenWhen(object.equals("type", "invalid_protocol_version"), "errors", object),
+		forbiddenWhen(object.equals("type", "invalid_protocol_version"), "activeRun", object),
+		forbiddenWhen(object.equals("type", "invalid_request"), "requiredCapabilities", object),
+		forbiddenWhen(object.equals("type", "invalid_request"), "retryAfterSeconds", object),
+		forbiddenWhen(object.equals("type", "invalid_request"), "errors", object),
+		forbiddenWhen(object.equals("type", "invalid_request"), "activeRun", object),
+		forbiddenWhen(object.equals("type", "item_not_found"), "requiredCapabilities", object),
+		forbiddenWhen(object.equals("type", "item_not_found"), "retryAfterSeconds", object),
+		forbiddenWhen(object.equals("type", "item_not_found"), "errors", object),
+		forbiddenWhen(object.equals("type", "item_not_found"), "activeRun", object),
+		forbiddenWhen(object.equals("type", "mcp_authorization_attempt_not_found"), "requiredCapabilities", object),
+		forbiddenWhen(object.equals("type", "mcp_authorization_attempt_not_found"), "retryAfterSeconds", object),
+		forbiddenWhen(object.equals("type", "mcp_authorization_attempt_not_found"), "errors", object),
+		forbiddenWhen(object.equals("type", "mcp_authorization_attempt_not_found"), "activeRun", object),
+		forbiddenWhen(object.equals("type", "mcp_owned_by_installation"), "requiredCapabilities", object),
+		forbiddenWhen(object.equals("type", "mcp_owned_by_installation"), "retryAfterSeconds", object),
+		forbiddenWhen(object.equals("type", "mcp_owned_by_installation"), "errors", object),
+		forbiddenWhen(object.equals("type", "mcp_owned_by_installation"), "activeRun", object),
+		forbiddenWhen(object.equals("type", "mcp_server_already_exists"), "requiredCapabilities", object),
+		forbiddenWhen(object.equals("type", "mcp_server_already_exists"), "retryAfterSeconds", object),
+		forbiddenWhen(object.equals("type", "mcp_server_already_exists"), "errors", object),
+		forbiddenWhen(object.equals("type", "mcp_server_already_exists"), "activeRun", object),
+		forbiddenWhen(object.equals("type", "mcp_server_disabled"), "requiredCapabilities", object),
+		forbiddenWhen(object.equals("type", "mcp_server_disabled"), "retryAfterSeconds", object),
+		forbiddenWhen(object.equals("type", "mcp_server_disabled"), "errors", object),
+		forbiddenWhen(object.equals("type", "mcp_server_disabled"), "activeRun", object),
+		forbiddenWhen(object.equals("type", "mcp_server_not_found"), "requiredCapabilities", object),
+		forbiddenWhen(object.equals("type", "mcp_server_not_found"), "retryAfterSeconds", object),
+		forbiddenWhen(object.equals("type", "mcp_server_not_found"), "errors", object),
+		forbiddenWhen(object.equals("type", "mcp_server_not_found"), "activeRun", object),
+		forbiddenWhen(object.equals("type", "method_not_found"), "requiredCapabilities", object),
+		forbiddenWhen(object.equals("type", "method_not_found"), "retryAfterSeconds", object),
+		forbiddenWhen(object.equals("type", "method_not_found"), "errors", object),
+		forbiddenWhen(object.equals("type", "method_not_found"), "activeRun", object),
+		forbiddenWhen(object.equals("type", "path_outside_root"), "requiredCapabilities", object),
+		forbiddenWhen(object.equals("type", "path_outside_root"), "retryAfterSeconds", object),
+		forbiddenWhen(object.equals("type", "path_outside_root"), "errors", object),
+		forbiddenWhen(object.equals("type", "path_outside_root"), "activeRun", object),
+		forbiddenWhen(object.equals("type", "plugin_changed"), "requiredCapabilities", object),
+		forbiddenWhen(object.equals("type", "plugin_changed"), "retryAfterSeconds", object),
+		forbiddenWhen(object.equals("type", "plugin_changed"), "errors", object),
+		forbiddenWhen(object.equals("type", "plugin_changed"), "activeRun", object),
+		forbiddenWhen(object.equals("type", "plugin_command_retired"), "requiredCapabilities", object),
+		forbiddenWhen(object.equals("type", "plugin_command_retired"), "retryAfterSeconds", object),
+		forbiddenWhen(object.equals("type", "plugin_command_retired"), "errors", object),
+		forbiddenWhen(object.equals("type", "plugin_command_retired"), "activeRun", object),
+		forbiddenWhen(object.equals("type", "plugin_disabled"), "requiredCapabilities", object),
+		forbiddenWhen(object.equals("type", "plugin_disabled"), "retryAfterSeconds", object),
+		forbiddenWhen(object.equals("type", "plugin_disabled"), "errors", object),
+		forbiddenWhen(object.equals("type", "plugin_disabled"), "activeRun", object),
+		forbiddenWhen(object.equals("type", "plugin_in_use"), "requiredCapabilities", object),
+		forbiddenWhen(object.equals("type", "plugin_in_use"), "retryAfterSeconds", object),
+		forbiddenWhen(object.equals("type", "plugin_in_use"), "errors", object),
+		forbiddenWhen(object.equals("type", "plugin_in_use"), "activeRun", object),
+		forbiddenWhen(object.equals("type", "plugin_not_found"), "requiredCapabilities", object),
+		forbiddenWhen(object.equals("type", "plugin_not_found"), "retryAfterSeconds", object),
+		forbiddenWhen(object.equals("type", "plugin_not_found"), "errors", object),
+		forbiddenWhen(object.equals("type", "plugin_not_found"), "activeRun", object),
+		forbiddenWhen(object.equals("type", "plugin_stale"), "requiredCapabilities", object),
+		forbiddenWhen(object.equals("type", "plugin_stale"), "retryAfterSeconds", object),
+		forbiddenWhen(object.equals("type", "plugin_stale"), "errors", object),
+		forbiddenWhen(object.equals("type", "plugin_stale"), "activeRun", object),
+		forbiddenWhen(object.equals("type", "plugin_unavailable"), "requiredCapabilities", object),
+		forbiddenWhen(object.equals("type", "plugin_unavailable"), "retryAfterSeconds", object),
+		forbiddenWhen(object.equals("type", "plugin_unavailable"), "errors", object),
+		forbiddenWhen(object.equals("type", "plugin_unavailable"), "activeRun", object),
+		forbiddenWhen(object.equals("type", "project_not_found"), "requiredCapabilities", object),
+		forbiddenWhen(object.equals("type", "project_not_found"), "retryAfterSeconds", object),
+		forbiddenWhen(object.equals("type", "project_not_found"), "errors", object),
+		forbiddenWhen(object.equals("type", "project_not_found"), "activeRun", object),
+		forbiddenWhen(object.equals("type", "prompt_source_too_large"), "requiredCapabilities", object),
+		forbiddenWhen(object.equals("type", "prompt_source_too_large"), "retryAfterSeconds", object),
+		forbiddenWhen(object.equals("type", "prompt_source_too_large"), "errors", object),
+		forbiddenWhen(object.equals("type", "prompt_source_too_large"), "activeRun", object),
+		forbiddenWhen(object.equals("type", "provider_error"), "requiredCapabilities", object),
+		forbiddenWhen(object.equals("type", "provider_error"), "retryAfterSeconds", object),
+		forbiddenWhen(object.equals("type", "provider_error"), "errors", object),
+		forbiddenWhen(object.equals("type", "provider_error"), "activeRun", object),
+		forbiddenWhen(object.equals("type", "provider_rejected"), "requiredCapabilities", object),
+		forbiddenWhen(object.equals("type", "provider_rejected"), "retryAfterSeconds", object),
+		forbiddenWhen(object.equals("type", "provider_rejected"), "errors", object),
+		forbiddenWhen(object.equals("type", "provider_rejected"), "activeRun", object),
+		forbiddenWhen(object.equals("type", "provider_unavailable"), "requiredCapabilities", object),
+		forbiddenWhen(object.equals("type", "provider_unavailable"), "errors", object),
+		forbiddenWhen(object.equals("type", "provider_unavailable"), "activeRun", object),
+		forbiddenWhen(object.equals("type", "rate_limited"), "requiredCapabilities", object),
+		forbiddenWhen(object.equals("type", "rate_limited"), "errors", object),
+		forbiddenWhen(object.equals("type", "rate_limited"), "activeRun", object),
+		forbiddenWhen(object.equals("type", "replay_cursor_invalid"), "requiredCapabilities", object),
+		forbiddenWhen(object.equals("type", "replay_cursor_invalid"), "retryAfterSeconds", object),
+		forbiddenWhen(object.equals("type", "replay_cursor_invalid"), "errors", object),
+		forbiddenWhen(object.equals("type", "replay_cursor_invalid"), "activeRun", object),
+		forbiddenWhen(object.equals("type", "replay_unavailable"), "requiredCapabilities", object),
+		forbiddenWhen(object.equals("type", "replay_unavailable"), "retryAfterSeconds", object),
+		forbiddenWhen(object.equals("type", "replay_unavailable"), "errors", object),
+		forbiddenWhen(object.equals("type", "replay_unavailable"), "activeRun", object),
+		forbiddenWhen(object.equals("type", "revision_conflict"), "requiredCapabilities", object),
+		forbiddenWhen(object.equals("type", "revision_conflict"), "retryAfterSeconds", object),
+		forbiddenWhen(object.equals("type", "revision_conflict"), "errors", object),
+		forbiddenWhen(object.equals("type", "revision_conflict"), "activeRun", object),
+		forbiddenWhen(object.equals("type", "run_finished"), "requiredCapabilities", object),
+		forbiddenWhen(object.equals("type", "run_finished"), "retryAfterSeconds", object),
+		forbiddenWhen(object.equals("type", "run_finished"), "errors", object),
+		forbiddenWhen(object.equals("type", "run_finished"), "activeRun", object),
+		forbiddenWhen(object.equals("type", "run_not_found"), "requiredCapabilities", object),
+		forbiddenWhen(object.equals("type", "run_not_found"), "retryAfterSeconds", object),
+		forbiddenWhen(object.equals("type", "run_not_found"), "errors", object),
+		forbiddenWhen(object.equals("type", "run_not_found"), "activeRun", object),
+		forbiddenWhen(object.equals("type", "run_not_root"), "requiredCapabilities", object),
+		forbiddenWhen(object.equals("type", "run_not_root"), "retryAfterSeconds", object),
+		forbiddenWhen(object.equals("type", "run_not_root"), "errors", object),
+		forbiddenWhen(object.equals("type", "run_not_root"), "activeRun", object),
+		forbiddenWhen(object.equals("type", "run_waiting"), "requiredCapabilities", object),
+		forbiddenWhen(object.equals("type", "run_waiting"), "retryAfterSeconds", object),
+		forbiddenWhen(object.equals("type", "run_waiting"), "errors", object),
+		forbiddenWhen(object.equals("type", "run_waiting"), "activeRun", object),
+		forbiddenWhen(object.equals("type", "session_busy"), "requiredCapabilities", object),
+		forbiddenWhen(object.equals("type", "session_busy"), "retryAfterSeconds", object),
+		forbiddenWhen(object.equals("type", "session_busy"), "errors", object),
+		forbiddenWhen(object.equals("type", "session_busy"), "activeRun", object),
+		requiredWhen(object.equals("type", "session_has_active_run"), "activeRun", object),
+		forbiddenWhen(object.equals("type", "session_has_active_run"), "requiredCapabilities", object),
+		forbiddenWhen(object.equals("type", "session_has_active_run"), "retryAfterSeconds", object),
+		forbiddenWhen(object.equals("type", "session_has_active_run"), "errors", object),
+		forbiddenWhen(object.equals("type", "session_not_found"), "requiredCapabilities", object),
+		forbiddenWhen(object.equals("type", "session_not_found"), "retryAfterSeconds", object),
+		forbiddenWhen(object.equals("type", "session_not_found"), "errors", object),
+		forbiddenWhen(object.equals("type", "session_not_found"), "activeRun", object),
+		forbiddenWhen(object.equals("type", "skill_not_found"), "requiredCapabilities", object),
+		forbiddenWhen(object.equals("type", "skill_not_found"), "retryAfterSeconds", object),
+		forbiddenWhen(object.equals("type", "skill_not_found"), "errors", object),
+		forbiddenWhen(object.equals("type", "skill_not_found"), "activeRun", object),
+		forbiddenWhen(object.equals("type", "skill_unavailable"), "requiredCapabilities", object),
+		forbiddenWhen(object.equals("type", "skill_unavailable"), "retryAfterSeconds", object),
+		forbiddenWhen(object.equals("type", "skill_unavailable"), "errors", object),
+		forbiddenWhen(object.equals("type", "skill_unavailable"), "activeRun", object),
+		forbiddenWhen(object.equals("type", "stale_segment"), "requiredCapabilities", object),
+		forbiddenWhen(object.equals("type", "stale_segment"), "retryAfterSeconds", object),
+		forbiddenWhen(object.equals("type", "stale_segment"), "errors", object),
+		forbiddenWhen(object.equals("type", "stale_segment"), "activeRun", object),
+		forbiddenWhen(object.equals("type", "timeout"), "requiredCapabilities", object),
+		forbiddenWhen(object.equals("type", "timeout"), "errors", object),
+		forbiddenWhen(object.equals("type", "timeout"), "activeRun", object),
+		forbiddenWhen(object.equals("type", "tool_canceled"), "requiredCapabilities", object),
+		forbiddenWhen(object.equals("type", "tool_canceled"), "retryAfterSeconds", object),
+		forbiddenWhen(object.equals("type", "tool_canceled"), "errors", object),
+		forbiddenWhen(object.equals("type", "tool_canceled"), "activeRun", object),
+		forbiddenWhen(object.equals("type", "tool_failed"), "requiredCapabilities", object),
+		forbiddenWhen(object.equals("type", "tool_failed"), "retryAfterSeconds", object),
+		forbiddenWhen(object.equals("type", "tool_failed"), "errors", object),
+		forbiddenWhen(object.equals("type", "tool_failed"), "activeRun", object),
+		forbiddenWhen(object.equals("type", "unsupported_mime"), "requiredCapabilities", object),
+		forbiddenWhen(object.equals("type", "unsupported_mime"), "retryAfterSeconds", object),
+		forbiddenWhen(object.equals("type", "unsupported_mime"), "errors", object),
+		forbiddenWhen(object.equals("type", "unsupported_mime"), "activeRun", object),
+		forbiddenWhen(object.equals("type", "vcs_unavailable"), "requiredCapabilities", object),
+		forbiddenWhen(object.equals("type", "vcs_unavailable"), "retryAfterSeconds", object),
+		forbiddenWhen(object.equals("type", "vcs_unavailable"), "errors", object),
+		forbiddenWhen(object.equals("type", "vcs_unavailable"), "activeRun", object),
+		forbiddenWhen(object.equals("type", "workspace_unavailable"), "requiredCapabilities", object),
+		forbiddenWhen(object.equals("type", "workspace_unavailable"), "retryAfterSeconds", object),
+		forbiddenWhen(object.equals("type", "workspace_unavailable"), "errors", object),
+		forbiddenWhen(object.equals("type", "workspace_unavailable"), "activeRun", object),
+		forbiddenWhen(object.matches("type", "^plugin:[a-z0-9][a-z0-9._-]*/[a-z0-9][a-z0-9._-]*$"), "requiredCapabilities", object),
+		forbiddenWhen(object.matches("type", "^plugin:[a-z0-9][a-z0-9._-]*/[a-z0-9][a-z0-9._-]*$"), "errors", object),
+		forbiddenWhen(object.matches("type", "^plugin:[a-z0-9][a-z0-9._-]*/[a-z0-9][a-z0-9._-]*$"), "activeRun", object),
 	)
+	return violations
 }
 
-func (c CancelRunResponse) validateWire() error {
-	return collectWireViolations("CancelRunResponse",
-		requiredWhen(wireFieldEquals(c, "type", "root"), "run", c),
-		forbiddenWhen(wireFieldEquals(c, "type", "root"), "rootRun", c),
-		requiredWhen(wireFieldEquals(c, "type", "child"), "run", c),
-		requiredWhen(wireFieldEquals(c, "type", "child"), "rootRun", c),
+func (c CancelRunResponse) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		requiredWhen(object.equals("type", "root"), "run", object),
+		forbiddenWhen(object.equals("type", "root"), "rootRun", object),
+		requiredWhen(object.equals("type", "child"), "run", object),
+		requiredWhen(object.equals("type", "child"), "rootRun", object),
 	)
+	return violations
 }
 
-func (r RunAcceptance) validateWire() error {
-	return collectWireViolations("RunAcceptance",
-		identity("runId", r.RunID),
-		maxLength("runId", r.RunID, 256),
-		identity("segmentId", r.SegmentID),
-		maxLength("segmentId", r.SegmentID, 256),
-		identity("sessionId", r.SessionID),
-		maxLength("sessionId", r.SessionID, 256),
-		identity("userItemId", r.UserItemID),
-		maxLength("userItemId", r.UserItemID, 256),
-		identity("candidateUserItemId", r.CandidateUserItemID),
-		maxLength("candidateUserItemId", r.CandidateUserItemID, 256),
-		forbiddenWhen(wireFieldEquals(r, "type", "notRecorded"), "runId", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "notRecorded"), "segmentId", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "notRecorded"), "sessionId", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "notRecorded"), "run", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "notRecorded"), "userItemId", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "notRecorded"), "input", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "notRecorded"), "appliedItem", r),
-		requiredWhen(wireFieldEquals(r, "type", "accepted"), "runId", r),
-		requiredWhen(wireFieldEquals(r, "type", "accepted"), "segmentId", r),
-		requiredWhen(wireFieldEquals(r, "type", "accepted"), "sessionId", r),
-		requiredWhen(wireFieldEquals(r, "type", "accepted"), "run", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "accepted"), "candidateUserItemId", r),
-		requiredWhen(wireFieldEquals(r, "type", "retired"), "runId", r),
-		requiredWhen(wireFieldEquals(r, "type", "retired"), "segmentId", r),
-		requiredWhen(wireFieldEquals(r, "type", "retired"), "sessionId", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "retired"), "candidateUserItemId", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "retired"), "run", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "retired"), "appliedItem", r),
+func (r RunAcceptance) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	if object.present("runId") {
+		violations.add(
+			identity("runId", r.RunID),
+			maxLength("runId", r.RunID, 256),
+		)
+	}
+	if object.present("segmentId") {
+		violations.add(
+			identity("segmentId", r.SegmentID),
+			maxLength("segmentId", r.SegmentID, 256),
+		)
+	}
+	if object.present("sessionId") {
+		violations.add(
+			identity("sessionId", r.SessionID),
+			maxLength("sessionId", r.SessionID, 256),
+		)
+	}
+	if object.present("userItemId") {
+		violations.add(
+			identity("userItemId", r.UserItemID),
+			maxLength("userItemId", r.UserItemID, 256),
+		)
+	}
+	if object.present("candidateUserItemId") {
+		violations.add(
+			identity("candidateUserItemId", r.CandidateUserItemID),
+			maxLength("candidateUserItemId", r.CandidateUserItemID, 256),
+		)
+	}
+	violations.add(
+		forbiddenWhen(object.equals("type", "notRecorded"), "runId", object),
+		forbiddenWhen(object.equals("type", "notRecorded"), "segmentId", object),
+		forbiddenWhen(object.equals("type", "notRecorded"), "sessionId", object),
+		forbiddenWhen(object.equals("type", "notRecorded"), "run", object),
+		forbiddenWhen(object.equals("type", "notRecorded"), "userItemId", object),
+		forbiddenWhen(object.equals("type", "notRecorded"), "input", object),
+		forbiddenWhen(object.equals("type", "notRecorded"), "appliedItem", object),
+		requiredWhen(object.equals("type", "accepted"), "runId", object),
+		requiredWhen(object.equals("type", "accepted"), "segmentId", object),
+		requiredWhen(object.equals("type", "accepted"), "sessionId", object),
+		requiredWhen(object.equals("type", "accepted"), "run", object),
+		forbiddenWhen(object.equals("type", "accepted"), "candidateUserItemId", object),
+		requiredWhen(object.equals("type", "retired"), "runId", object),
+		requiredWhen(object.equals("type", "retired"), "segmentId", object),
+		requiredWhen(object.equals("type", "retired"), "sessionId", object),
+		forbiddenWhen(object.equals("type", "retired"), "candidateUserItemId", object),
+		forbiddenWhen(object.equals("type", "retired"), "run", object),
+		forbiddenWhen(object.equals("type", "retired"), "appliedItem", object),
 	)
+	return violations
 }
 
-func (r RunOutcome) validateWire() error {
-	return collectWireViolations("RunOutcome",
-		forbiddenWhen(wireFieldEquals(r, "type", "completed"), "error", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "completed"), "detail", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "completed"), "loss", r),
-		requiredWhen(wireFieldEquals(r, "type", "timedOut"), "error", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "timedOut"), "detail", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "timedOut"), "loss", r),
-		requiredWhen(wireFieldEquals(r, "type", "failed"), "error", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "failed"), "detail", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "failed"), "loss", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "canceled"), "error", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "canceled"), "loss", r),
-		requiredWhen(wireFieldEquals(r, "type", "lost"), "loss", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "lost"), "error", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "lost"), "detail", r),
+func (r RunOutcome) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		forbiddenWhen(object.equals("type", "completed"), "error", object),
+		forbiddenWhen(object.equals("type", "completed"), "detail", object),
+		forbiddenWhen(object.equals("type", "completed"), "loss", object),
+		requiredWhen(object.equals("type", "timedOut"), "error", object),
+		forbiddenWhen(object.equals("type", "timedOut"), "detail", object),
+		forbiddenWhen(object.equals("type", "timedOut"), "loss", object),
+		requiredWhen(object.equals("type", "failed"), "error", object),
+		forbiddenWhen(object.equals("type", "failed"), "detail", object),
+		forbiddenWhen(object.equals("type", "failed"), "loss", object),
+		forbiddenWhen(object.equals("type", "canceled"), "error", object),
+		forbiddenWhen(object.equals("type", "canceled"), "loss", object),
+		requiredWhen(object.equals("type", "lost"), "loss", object),
+		forbiddenWhen(object.equals("type", "lost"), "error", object),
+		forbiddenWhen(object.equals("type", "lost"), "detail", object),
 	)
+	return violations
 }
 
-func (t TrajectoryEntry) validateWire() error {
-	return collectWireViolations("TrajectoryEntry",
-		requiredWhen(wireFieldEquals(t, "type", "run"), "occurredAt", t),
-		requiredWhen(wireFieldEquals(t, "type", "run"), "run", t),
-		forbiddenWhen(wireFieldEquals(t, "type", "run"), "model", t),
-		forbiddenWhen(wireFieldEquals(t, "type", "run"), "endpoint", t),
-		forbiddenWhen(wireFieldEquals(t, "type", "run"), "item", t),
-		requiredWhen(wireFieldEquals(t, "type", "model"), "occurredAt", t),
-		requiredWhen(wireFieldEquals(t, "type", "model"), "model", t),
-		forbiddenWhen(wireFieldEquals(t, "type", "model"), "run", t),
-		forbiddenWhen(wireFieldEquals(t, "type", "model"), "endpoint", t),
-		forbiddenWhen(wireFieldEquals(t, "type", "model"), "item", t),
-		requiredWhen(wireFieldEquals(t, "type", "endpoint"), "occurredAt", t),
-		requiredWhen(wireFieldEquals(t, "type", "endpoint"), "endpoint", t),
-		forbiddenWhen(wireFieldEquals(t, "type", "endpoint"), "run", t),
-		forbiddenWhen(wireFieldEquals(t, "type", "endpoint"), "model", t),
-		forbiddenWhen(wireFieldEquals(t, "type", "endpoint"), "item", t),
-		requiredWhen(wireFieldEquals(t, "type", "item"), "occurredAt", t),
-		requiredWhen(wireFieldEquals(t, "type", "item"), "item", t),
-		forbiddenWhen(wireFieldEquals(t, "type", "item"), "run", t),
-		forbiddenWhen(wireFieldEquals(t, "type", "item"), "model", t),
-		forbiddenWhen(wireFieldEquals(t, "type", "item"), "endpoint", t),
+func (t TrajectoryEntry) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		requiredWhen(object.equals("type", "run"), "occurredAt", object),
+		requiredWhen(object.equals("type", "run"), "run", object),
+		forbiddenWhen(object.equals("type", "run"), "model", object),
+		forbiddenWhen(object.equals("type", "run"), "endpoint", object),
+		forbiddenWhen(object.equals("type", "run"), "item", object),
+		requiredWhen(object.equals("type", "model"), "occurredAt", object),
+		requiredWhen(object.equals("type", "model"), "model", object),
+		forbiddenWhen(object.equals("type", "model"), "run", object),
+		forbiddenWhen(object.equals("type", "model"), "endpoint", object),
+		forbiddenWhen(object.equals("type", "model"), "item", object),
+		requiredWhen(object.equals("type", "endpoint"), "occurredAt", object),
+		requiredWhen(object.equals("type", "endpoint"), "endpoint", object),
+		forbiddenWhen(object.equals("type", "endpoint"), "run", object),
+		forbiddenWhen(object.equals("type", "endpoint"), "model", object),
+		forbiddenWhen(object.equals("type", "endpoint"), "item", object),
+		requiredWhen(object.equals("type", "item"), "occurredAt", object),
+		requiredWhen(object.equals("type", "item"), "item", object),
+		forbiddenWhen(object.equals("type", "item"), "run", object),
+		forbiddenWhen(object.equals("type", "item"), "model", object),
+		forbiddenWhen(object.equals("type", "item"), "endpoint", object),
 	)
+	return violations
 }
 
-func (i Item) validateWire() error {
-	return collectWireViolations("Item",
-		requiredText("id", i.ID),
+func (i Item) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("id", i.ID),
 		identity("id", i.ID),
 		maxLength("id", i.ID, 256),
-		requiredText("runId", i.RunID),
+		nonEmptyText("runId", i.RunID),
 		identity("runId", i.RunID),
 		maxLength("runId", i.RunID, 256),
-		optionalNonNegativeNumber("durationMillis", i.DurationMillis),
-		optionalMaximumNumber("durationMillis", i.DurationMillis, 9223372036854),
-		nonNegativeNumber("droppedMessages", i.DroppedMessages),
-		requiredWhen(wireFieldEquals(i, "type", "userMessage"), "id", i),
-		requiredWhen(wireFieldEquals(i, "type", "userMessage"), "runId", i),
-		requiredWhen(wireFieldEquals(i, "type", "userMessage"), "status", i),
-		requiredWhen(wireFieldEquals(i, "type", "userMessage"), "createdAt", i),
-		requiredWhen(wireFieldEquals(i, "type", "userMessage"), "content", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "userMessage"), "phase", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "userMessage"), "text", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "userMessage"), "redacted", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "userMessage"), "question", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "userMessage"), "startedAt", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "userMessage"), "tool", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "userMessage"), "finishedAt", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "userMessage"), "durationMillis", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "userMessage"), "safetyClass", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "userMessage"), "approvalDecision", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "userMessage"), "error", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "userMessage"), "summary", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "userMessage"), "droppedMessages", i),
-		allowedValuesWhen(wireFieldEquals(i, "type", "userMessage"), "status", i, []string{"completed"}),
-		requiredWhen(wireFieldEquals(i, "type", "agentMessage"), "id", i),
-		requiredWhen(wireFieldEquals(i, "type", "agentMessage"), "runId", i),
-		requiredWhen(wireFieldEquals(i, "type", "agentMessage"), "status", i),
-		requiredWhen(wireFieldEquals(i, "type", "agentMessage"), "createdAt", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "agentMessage"), "text", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "agentMessage"), "redacted", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "agentMessage"), "question", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "agentMessage"), "startedAt", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "agentMessage"), "tool", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "agentMessage"), "finishedAt", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "agentMessage"), "durationMillis", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "agentMessage"), "safetyClass", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "agentMessage"), "approvalDecision", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "agentMessage"), "error", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "agentMessage"), "summary", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "agentMessage"), "droppedMessages", i),
-		allowedValuesWhen(wireFieldEquals(i, "type", "agentMessage"), "status", i, []string{"running", "completed", "incomplete"}),
-		requiredWhen(wireFieldEquals(i, "type", "reasoning"), "id", i),
-		requiredWhen(wireFieldEquals(i, "type", "reasoning"), "runId", i),
-		requiredWhen(wireFieldEquals(i, "type", "reasoning"), "status", i),
-		requiredWhen(wireFieldEquals(i, "type", "reasoning"), "createdAt", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "reasoning"), "content", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "reasoning"), "phase", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "reasoning"), "question", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "reasoning"), "startedAt", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "reasoning"), "tool", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "reasoning"), "finishedAt", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "reasoning"), "durationMillis", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "reasoning"), "safetyClass", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "reasoning"), "approvalDecision", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "reasoning"), "error", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "reasoning"), "summary", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "reasoning"), "droppedMessages", i),
-		allowedValuesWhen(wireFieldEquals(i, "type", "reasoning"), "status", i, []string{"running", "completed", "incomplete"}),
-		requiredWhen(wireFieldEquals(i, "type", "question"), "id", i),
-		requiredWhen(wireFieldEquals(i, "type", "question"), "runId", i),
-		requiredWhen(wireFieldEquals(i, "type", "question"), "status", i),
-		requiredWhen(wireFieldEquals(i, "type", "question"), "createdAt", i),
-		requiredWhen(wireFieldEquals(i, "type", "question"), "question", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "question"), "content", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "question"), "phase", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "question"), "text", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "question"), "redacted", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "question"), "startedAt", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "question"), "tool", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "question"), "finishedAt", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "question"), "durationMillis", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "question"), "safetyClass", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "question"), "approvalDecision", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "question"), "error", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "question"), "summary", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "question"), "droppedMessages", i),
-		allowedValuesWhen(wireFieldEquals(i, "type", "question"), "status", i, []string{"completed"}),
-		requiredWhen(wireFieldEquals(i, "type", "toolCall"), "id", i),
-		requiredWhen(wireFieldEquals(i, "type", "toolCall"), "runId", i),
-		requiredWhen(wireFieldEquals(i, "type", "toolCall"), "status", i),
-		requiredWhen(wireFieldEquals(i, "type", "toolCall"), "startedAt", i),
-		requiredWhen(wireFieldEquals(i, "type", "toolCall"), "tool", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "toolCall"), "createdAt", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "toolCall"), "content", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "toolCall"), "phase", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "toolCall"), "text", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "toolCall"), "redacted", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "toolCall"), "question", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "toolCall"), "summary", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "toolCall"), "droppedMessages", i),
-		allowedValuesWhen(wireFieldEquals(i, "type", "toolCall"), "status", i, []string{"running", "completed", "incomplete"}),
-		requiredWhen(wireFieldEquals(i, "type", "compaction"), "id", i),
-		requiredWhen(wireFieldEquals(i, "type", "compaction"), "runId", i),
-		requiredWhen(wireFieldEquals(i, "type", "compaction"), "status", i),
-		requiredWhen(wireFieldEquals(i, "type", "compaction"), "createdAt", i),
-		requiredWhen(wireFieldEquals(i, "type", "compaction"), "summary", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "compaction"), "content", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "compaction"), "phase", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "compaction"), "text", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "compaction"), "redacted", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "compaction"), "question", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "compaction"), "startedAt", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "compaction"), "tool", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "compaction"), "finishedAt", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "compaction"), "durationMillis", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "compaction"), "safetyClass", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "compaction"), "approvalDecision", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "compaction"), "error", i),
-		allowedValuesWhen(wireFieldEquals(i, "type", "compaction"), "status", i, []string{"completed"}),
-		requiredWhen(wireFieldEquals(i, "type", "toolCall") && wireFieldEquals(i, "status", "completed"), "finishedAt", i),
-		requiredWhen(wireFieldEquals(i, "type", "toolCall") && wireFieldEquals(i, "status", "completed"), "durationMillis", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "toolCall") && wireFieldEquals(i, "status", "completed"), "error", i),
-		requiredWhen(wireFieldEquals(i, "type", "toolCall") && wireFieldEquals(i, "status", "incomplete"), "finishedAt", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "toolCall") && wireFieldEquals(i, "status", "running"), "finishedAt", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "toolCall") && wireFieldEquals(i, "status", "running"), "durationMillis", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "agentMessage") && wireFieldEquals(i, "status", "running"), "phase", i),
-		requiredWhen(wireFieldEquals(i, "type", "agentMessage") && wireFieldEquals(i, "status", "completed"), "phase", i),
-		requiredWhen(wireFieldEquals(i, "type", "agentMessage") && wireFieldEquals(i, "status", "completed"), "content", i),
-		requiredWhen(wireFieldEquals(i, "type", "reasoning") && wireFieldEquals(i, "status", "completed"), "text", i),
-		requiredWhen(wireFieldEquals(i, "type", "agentMessage") && wireFieldEquals(i, "status", "incomplete"), "phase", i),
-		requiredWhen(wireFieldEquals(i, "type", "agentMessage") && wireFieldEquals(i, "status", "incomplete"), "content", i),
-		requiredWhen(wireFieldEquals(i, "type", "reasoning") && wireFieldEquals(i, "status", "incomplete"), "text", i),
 	)
+	if object.present("durationMillis") {
+		violations.add(
+			nonNegativeNumber("durationMillis", *i.DurationMillis),
+			maximumNumber("durationMillis", *i.DurationMillis, 9223372036854),
+		)
+	}
+	if object.present("droppedMessages") {
+		violations.add(
+			nonNegativeNumber("droppedMessages", i.DroppedMessages),
+		)
+	}
+	violations.add(
+		requiredWhen(object.equals("type", "userMessage"), "id", object),
+		requiredWhen(object.equals("type", "userMessage"), "runId", object),
+		requiredWhen(object.equals("type", "userMessage"), "status", object),
+		requiredWhen(object.equals("type", "userMessage"), "createdAt", object),
+		requiredWhen(object.equals("type", "userMessage"), "content", object),
+		forbiddenWhen(object.equals("type", "userMessage"), "phase", object),
+		forbiddenWhen(object.equals("type", "userMessage"), "text", object),
+		forbiddenWhen(object.equals("type", "userMessage"), "redacted", object),
+		forbiddenWhen(object.equals("type", "userMessage"), "question", object),
+		forbiddenWhen(object.equals("type", "userMessage"), "startedAt", object),
+		forbiddenWhen(object.equals("type", "userMessage"), "tool", object),
+		forbiddenWhen(object.equals("type", "userMessage"), "finishedAt", object),
+		forbiddenWhen(object.equals("type", "userMessage"), "durationMillis", object),
+		forbiddenWhen(object.equals("type", "userMessage"), "safetyClass", object),
+		forbiddenWhen(object.equals("type", "userMessage"), "approvalDecision", object),
+		forbiddenWhen(object.equals("type", "userMessage"), "error", object),
+		forbiddenWhen(object.equals("type", "userMessage"), "summary", object),
+		forbiddenWhen(object.equals("type", "userMessage"), "droppedMessages", object),
+		allowedValuesWhen(object.equals("type", "userMessage"), "status", object, []string{"completed"}),
+		requiredWhen(object.equals("type", "agentMessage"), "id", object),
+		requiredWhen(object.equals("type", "agentMessage"), "runId", object),
+		requiredWhen(object.equals("type", "agentMessage"), "status", object),
+		requiredWhen(object.equals("type", "agentMessage"), "createdAt", object),
+		forbiddenWhen(object.equals("type", "agentMessage"), "text", object),
+		forbiddenWhen(object.equals("type", "agentMessage"), "redacted", object),
+		forbiddenWhen(object.equals("type", "agentMessage"), "question", object),
+		forbiddenWhen(object.equals("type", "agentMessage"), "startedAt", object),
+		forbiddenWhen(object.equals("type", "agentMessage"), "tool", object),
+		forbiddenWhen(object.equals("type", "agentMessage"), "finishedAt", object),
+		forbiddenWhen(object.equals("type", "agentMessage"), "durationMillis", object),
+		forbiddenWhen(object.equals("type", "agentMessage"), "safetyClass", object),
+		forbiddenWhen(object.equals("type", "agentMessage"), "approvalDecision", object),
+		forbiddenWhen(object.equals("type", "agentMessage"), "error", object),
+		forbiddenWhen(object.equals("type", "agentMessage"), "summary", object),
+		forbiddenWhen(object.equals("type", "agentMessage"), "droppedMessages", object),
+		allowedValuesWhen(object.equals("type", "agentMessage"), "status", object, []string{"running", "completed", "incomplete"}),
+		requiredWhen(object.equals("type", "reasoning"), "id", object),
+		requiredWhen(object.equals("type", "reasoning"), "runId", object),
+		requiredWhen(object.equals("type", "reasoning"), "status", object),
+		requiredWhen(object.equals("type", "reasoning"), "createdAt", object),
+		forbiddenWhen(object.equals("type", "reasoning"), "content", object),
+		forbiddenWhen(object.equals("type", "reasoning"), "phase", object),
+		forbiddenWhen(object.equals("type", "reasoning"), "question", object),
+		forbiddenWhen(object.equals("type", "reasoning"), "startedAt", object),
+		forbiddenWhen(object.equals("type", "reasoning"), "tool", object),
+		forbiddenWhen(object.equals("type", "reasoning"), "finishedAt", object),
+		forbiddenWhen(object.equals("type", "reasoning"), "durationMillis", object),
+		forbiddenWhen(object.equals("type", "reasoning"), "safetyClass", object),
+		forbiddenWhen(object.equals("type", "reasoning"), "approvalDecision", object),
+		forbiddenWhen(object.equals("type", "reasoning"), "error", object),
+		forbiddenWhen(object.equals("type", "reasoning"), "summary", object),
+		forbiddenWhen(object.equals("type", "reasoning"), "droppedMessages", object),
+		allowedValuesWhen(object.equals("type", "reasoning"), "status", object, []string{"running", "completed", "incomplete"}),
+		requiredWhen(object.equals("type", "question"), "id", object),
+		requiredWhen(object.equals("type", "question"), "runId", object),
+		requiredWhen(object.equals("type", "question"), "status", object),
+		requiredWhen(object.equals("type", "question"), "createdAt", object),
+		requiredWhen(object.equals("type", "question"), "question", object),
+		forbiddenWhen(object.equals("type", "question"), "content", object),
+		forbiddenWhen(object.equals("type", "question"), "phase", object),
+		forbiddenWhen(object.equals("type", "question"), "text", object),
+		forbiddenWhen(object.equals("type", "question"), "redacted", object),
+		forbiddenWhen(object.equals("type", "question"), "startedAt", object),
+		forbiddenWhen(object.equals("type", "question"), "tool", object),
+		forbiddenWhen(object.equals("type", "question"), "finishedAt", object),
+		forbiddenWhen(object.equals("type", "question"), "durationMillis", object),
+		forbiddenWhen(object.equals("type", "question"), "safetyClass", object),
+		forbiddenWhen(object.equals("type", "question"), "approvalDecision", object),
+		forbiddenWhen(object.equals("type", "question"), "error", object),
+		forbiddenWhen(object.equals("type", "question"), "summary", object),
+		forbiddenWhen(object.equals("type", "question"), "droppedMessages", object),
+		allowedValuesWhen(object.equals("type", "question"), "status", object, []string{"completed"}),
+		requiredWhen(object.equals("type", "toolCall"), "id", object),
+		requiredWhen(object.equals("type", "toolCall"), "runId", object),
+		requiredWhen(object.equals("type", "toolCall"), "status", object),
+		requiredWhen(object.equals("type", "toolCall"), "startedAt", object),
+		requiredWhen(object.equals("type", "toolCall"), "tool", object),
+		forbiddenWhen(object.equals("type", "toolCall"), "createdAt", object),
+		forbiddenWhen(object.equals("type", "toolCall"), "content", object),
+		forbiddenWhen(object.equals("type", "toolCall"), "phase", object),
+		forbiddenWhen(object.equals("type", "toolCall"), "text", object),
+		forbiddenWhen(object.equals("type", "toolCall"), "redacted", object),
+		forbiddenWhen(object.equals("type", "toolCall"), "question", object),
+		forbiddenWhen(object.equals("type", "toolCall"), "summary", object),
+		forbiddenWhen(object.equals("type", "toolCall"), "droppedMessages", object),
+		allowedValuesWhen(object.equals("type", "toolCall"), "status", object, []string{"running", "completed", "incomplete"}),
+		requiredWhen(object.equals("type", "compaction"), "id", object),
+		requiredWhen(object.equals("type", "compaction"), "runId", object),
+		requiredWhen(object.equals("type", "compaction"), "status", object),
+		requiredWhen(object.equals("type", "compaction"), "createdAt", object),
+		requiredWhen(object.equals("type", "compaction"), "summary", object),
+		forbiddenWhen(object.equals("type", "compaction"), "content", object),
+		forbiddenWhen(object.equals("type", "compaction"), "phase", object),
+		forbiddenWhen(object.equals("type", "compaction"), "text", object),
+		forbiddenWhen(object.equals("type", "compaction"), "redacted", object),
+		forbiddenWhen(object.equals("type", "compaction"), "question", object),
+		forbiddenWhen(object.equals("type", "compaction"), "startedAt", object),
+		forbiddenWhen(object.equals("type", "compaction"), "tool", object),
+		forbiddenWhen(object.equals("type", "compaction"), "finishedAt", object),
+		forbiddenWhen(object.equals("type", "compaction"), "durationMillis", object),
+		forbiddenWhen(object.equals("type", "compaction"), "safetyClass", object),
+		forbiddenWhen(object.equals("type", "compaction"), "approvalDecision", object),
+		forbiddenWhen(object.equals("type", "compaction"), "error", object),
+		allowedValuesWhen(object.equals("type", "compaction"), "status", object, []string{"completed"}),
+		requiredWhen(object.equals("type", "toolCall") && object.equals("status", "completed"), "finishedAt", object),
+		requiredWhen(object.equals("type", "toolCall") && object.equals("status", "completed"), "durationMillis", object),
+		forbiddenWhen(object.equals("type", "toolCall") && object.equals("status", "completed"), "error", object),
+		requiredWhen(object.equals("type", "toolCall") && object.equals("status", "incomplete"), "finishedAt", object),
+		forbiddenWhen(object.equals("type", "toolCall") && object.equals("status", "running"), "finishedAt", object),
+		forbiddenWhen(object.equals("type", "toolCall") && object.equals("status", "running"), "durationMillis", object),
+		forbiddenWhen(object.equals("type", "agentMessage") && object.equals("status", "running"), "phase", object),
+		requiredWhen(object.equals("type", "agentMessage") && object.equals("status", "completed"), "phase", object),
+		requiredWhen(object.equals("type", "agentMessage") && object.equals("status", "completed"), "content", object),
+		requiredWhen(object.equals("type", "reasoning") && object.equals("status", "completed"), "text", object),
+		requiredWhen(object.equals("type", "agentMessage") && object.equals("status", "incomplete"), "phase", object),
+		requiredWhen(object.equals("type", "agentMessage") && object.equals("status", "incomplete"), "content", object),
+		requiredWhen(object.equals("type", "reasoning") && object.equals("status", "incomplete"), "text", object),
+	)
+	return violations
 }
 
-func (i ItemDelta) validateWire() error {
-	return collectWireViolations("ItemDelta",
-		requiredWhen(wireFieldEquals(i, "type", "content"), "text", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "content"), "argumentsTextDelta", i),
-		requiredWhen(wireFieldEquals(i, "type", "reasoning"), "text", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "reasoning"), "argumentsTextDelta", i),
-		requiredWhen(wireFieldEquals(i, "type", "toolArguments"), "argumentsTextDelta", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "toolArguments"), "text", i),
-		requiredWhen(wireFieldEquals(i, "type", "toolOutput"), "text", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "toolOutput"), "argumentsTextDelta", i),
+func (i ItemDelta) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		requiredWhen(object.equals("type", "content"), "text", object),
+		forbiddenWhen(object.equals("type", "content"), "argumentsTextDelta", object),
+		requiredWhen(object.equals("type", "reasoning"), "text", object),
+		forbiddenWhen(object.equals("type", "reasoning"), "argumentsTextDelta", object),
+		requiredWhen(object.equals("type", "toolArguments"), "argumentsTextDelta", object),
+		forbiddenWhen(object.equals("type", "toolArguments"), "text", object),
+		requiredWhen(object.equals("type", "toolOutput"), "text", object),
+		forbiddenWhen(object.equals("type", "toolOutput"), "argumentsTextDelta", object),
 	)
+	return violations
 }
 
-func (c CapabilityRequirement) validateWire() error {
-	return collectWireViolations("CapabilityRequirement",
-		requiredText("name", c.Name),
-		requiredWhen(wireFieldEquals(c, "type", "feature"), "name", c),
-		requiredWhen(wireFieldEquals(c, "type", "interruptType"), "name", c),
-		requiredWhen(wireFieldEquals(c, "type", "runtimeTopic"), "name", c),
+func (c CapabilityRequirement) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("name", c.Name),
+		requiredWhen(object.equals("type", "feature"), "name", object),
+		requiredWhen(object.equals("type", "interruptType"), "name", object),
+		requiredWhen(object.equals("type", "runtimeTopic"), "name", object),
 	)
+	return violations
 }
 
-func (i ItemListScope) validateWire() error {
-	return collectWireViolations("ItemListScope",
-		identity("sessionId", i.SessionID),
-		maxLength("sessionId", i.SessionID, 256),
-		identity("runId", i.RunID),
-		maxLength("runId", i.RunID, 256),
-		requiredWhen(wireFieldEquals(i, "type", "session"), "sessionId", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "session"), "runId", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "session"), "includeDescendants", i),
-		requiredWhen(wireFieldEquals(i, "type", "run"), "runId", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "run"), "sessionId", i),
+func (i ItemListScope) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	if object.present("sessionId") {
+		violations.add(
+			identity("sessionId", i.SessionID),
+			maxLength("sessionId", i.SessionID, 256),
+		)
+	}
+	if object.present("runId") {
+		violations.add(
+			identity("runId", i.RunID),
+			maxLength("runId", i.RunID, 256),
+		)
+	}
+	violations.add(
+		requiredWhen(object.equals("type", "session"), "sessionId", object),
+		forbiddenWhen(object.equals("type", "session"), "runId", object),
+		forbiddenWhen(object.equals("type", "session"), "includeDescendants", object),
+		requiredWhen(object.equals("type", "run"), "runId", object),
+		forbiddenWhen(object.equals("type", "run"), "sessionId", object),
 	)
+	return violations
 }
 
-func (c ContentBlock) validateWire() error {
-	return collectWireViolations("ContentBlock",
-		optionalTextPattern("text", c.Text, "\\S"),
-		optionalTextPattern("mime", c.Mime, "^image/"),
-		requiredWhen(wireFieldEquals(c, "type", "text"), "text", c),
-		forbiddenWhen(wireFieldEquals(c, "type", "text"), "mime", c),
-		forbiddenWhen(wireFieldEquals(c, "type", "text"), "data", c),
-		forbiddenWhen(wireFieldEquals(c, "type", "text"), "label", c),
-		requiredWhen(wireFieldEquals(c, "type", "image"), "mime", c),
-		requiredWhen(wireFieldEquals(c, "type", "image"), "data", c),
-		forbiddenWhen(wireFieldEquals(c, "type", "image"), "text", c),
-		forbiddenWhen(wireFieldEquals(c, "type", "image"), "label", c),
-		requiredWhen(wireFieldEquals(c, "type", "reference"), "label", c),
-		requiredWhen(wireFieldEquals(c, "type", "reference"), "text", c),
-		forbiddenWhen(wireFieldEquals(c, "type", "reference"), "mime", c),
-		forbiddenWhen(wireFieldEquals(c, "type", "reference"), "data", c),
+func (c ContentBlock) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	if object.present("text") {
+		violations.add(
+			textPattern("text", c.Text, "\\S"),
+		)
+	}
+	if object.present("mime") {
+		violations.add(
+			textPattern("mime", c.Mime, "^image/"),
+		)
+	}
+	violations.add(
+		requiredWhen(object.equals("type", "text"), "text", object),
+		forbiddenWhen(object.equals("type", "text"), "mime", object),
+		forbiddenWhen(object.equals("type", "text"), "data", object),
+		forbiddenWhen(object.equals("type", "text"), "label", object),
+		requiredWhen(object.equals("type", "image"), "mime", object),
+		requiredWhen(object.equals("type", "image"), "data", object),
+		forbiddenWhen(object.equals("type", "image"), "text", object),
+		forbiddenWhen(object.equals("type", "image"), "label", object),
+		requiredWhen(object.equals("type", "reference"), "label", object),
+		requiredWhen(object.equals("type", "reference"), "text", object),
+		forbiddenWhen(object.equals("type", "reference"), "mime", object),
+		forbiddenWhen(object.equals("type", "reference"), "data", object),
 	)
+	return violations
 }
 
-func (q QuestionField) validateWire() error {
-	return collectWireViolations("QuestionField",
-		requiredTextPattern("prompt", q.Prompt, "\\S"),
-		maxLength("header", q.Header, 12),
-		optionalMinItems("options", q.Options, 2),
-		maxItems("options", q.Options, 4),
-		requiredWhen(wireFieldEquals(q, "type", "text"), "prompt", q),
-		forbiddenWhen(wireFieldEquals(q, "type", "text"), "options", q),
-		forbiddenWhen(wireFieldEquals(q, "type", "text"), "multiple", q),
-		forbiddenWhen(wireFieldEquals(q, "type", "text"), "allowCustom", q),
-		requiredWhen(wireFieldEquals(q, "type", "choice"), "prompt", q),
-		requiredWhen(wireFieldEquals(q, "type", "choice"), "options", q),
+func (q QuestionField) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		textPattern("prompt", q.Prompt, "\\S"),
 	)
+	if object.present("header") {
+		violations.add(
+			maxLength("header", q.Header, 12),
+		)
+	}
+	if object.present("options") {
+		violations.add(
+			minItems("options", q.Options, 2),
+			maxItems("options", q.Options, 4),
+		)
+	}
+	violations.add(
+		requiredWhen(object.equals("type", "text"), "prompt", object),
+		forbiddenWhen(object.equals("type", "text"), "options", object),
+		forbiddenWhen(object.equals("type", "text"), "multiple", object),
+		forbiddenWhen(object.equals("type", "text"), "allowCustom", object),
+		requiredWhen(object.equals("type", "choice"), "prompt", object),
+		requiredWhen(object.equals("type", "choice"), "options", object),
+	)
+	return violations
 }
 
-func (p ProviderConfigChange) validateWire() error {
-	return collectWireViolations("ProviderConfigChange",
-		optionalText("value", p.Value),
-		requiredWhen(wireFieldEquals(p, "type", "set"), "value", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "clear"), "value", p),
+func (p ProviderConfigChange) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	if object.present("value") {
+		violations.add(
+			nonEmptyText("value", *p.Value),
+		)
+	}
+	violations.add(
+		requiredWhen(object.equals("type", "set"), "value", object),
+		forbiddenWhen(object.equals("type", "clear"), "value", object),
 	)
+	return violations
 }
 
-func (s SessionProjectChange) validateWire() error {
-	return collectWireViolations("SessionProjectChange",
-		identity("projectId", s.ProjectID),
-		maxLength("projectId", s.ProjectID, 256),
-		requiredWhen(wireFieldEquals(s, "type", "set"), "projectId", s),
-		forbiddenWhen(wireFieldEquals(s, "type", "clear"), "projectId", s),
+func (s SessionProjectChange) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	if object.present("projectId") {
+		violations.add(
+			identity("projectId", s.ProjectID),
+			maxLength("projectId", s.ProjectID, 256),
+		)
+	}
+	violations.add(
+		requiredWhen(object.equals("type", "set"), "projectId", object),
+		forbiddenWhen(object.equals("type", "clear"), "projectId", object),
 	)
+	return violations
 }
 
-func (m MCPOrigin) validateWire() error {
-	return collectWireViolations("MCPOrigin",
-		optionalTextPattern("installationId", m.InstallationID, "^(?:[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000000[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000000[1-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000000[1-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000000[1-9a-f])$"),
-		forbiddenWhen(wireFieldEquals(m, "type", "user"), "installationId", m),
-		requiredWhen(wireFieldEquals(m, "type", "installation"), "installationId", m),
+func (m MCPOrigin) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	if object.present("installationId") {
+		violations.add(
+			textPattern("installationId", m.InstallationID, "^(?:[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000000[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000000[1-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000000[1-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000000[1-9a-f])$"),
+		)
+	}
+	violations.add(
+		forbiddenWhen(object.equals("type", "user"), "installationId", object),
+		requiredWhen(object.equals("type", "installation"), "installationId", object),
 	)
+	return violations
 }
 
-func (m MCPHandshakeTimeout) validateWire() error {
-	return collectWireViolations("MCPHandshakeTimeout",
-		optionalPositiveNumber("seconds", m.Seconds),
-		optionalMaximumNumber("seconds", m.Seconds, 9223372036),
-		forbiddenWhen(wireFieldEquals(m, "type", "unbounded"), "seconds", m),
-		requiredWhen(wireFieldEquals(m, "type", "bounded"), "seconds", m),
+func (m MCPHandshakeTimeout) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	if object.present("seconds") {
+		violations.add(
+			positiveNumber("seconds", *m.Seconds),
+			maximumNumber("seconds", *m.Seconds, 9223372036),
+		)
+	}
+	violations.add(
+		forbiddenWhen(object.equals("type", "unbounded"), "seconds", object),
+		requiredWhen(object.equals("type", "bounded"), "seconds", object),
 	)
+	return violations
 }
 
-func (m MCPConnection) validateWire() error {
-	return collectWireViolations("MCPConnection",
-		requiredWhen(wireFieldEquals(m, "type", "streamableHttp"), "url", m),
-		forbiddenWhen(wireFieldEquals(m, "type", "streamableHttp"), "command", m),
-		forbiddenWhen(wireFieldEquals(m, "type", "streamableHttp"), "args", m),
-		forbiddenWhen(wireFieldEquals(m, "type", "streamableHttp"), "envMasked", m),
-		forbiddenWhen(wireFieldEquals(m, "type", "streamableHttp"), "dir", m),
-		requiredWhen(wireFieldEquals(m, "type", "stdio"), "command", m),
-		forbiddenWhen(wireFieldEquals(m, "type", "stdio"), "url", m),
-		forbiddenWhen(wireFieldEquals(m, "type", "stdio"), "authorizationMasked", m),
-		forbiddenWhen(wireFieldEquals(m, "type", "stdio"), "headersMasked", m),
+func (m MCPConnection) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	if object.present("url") {
+		violations.add(
+			nonEmptyText("url", m.URL),
+		)
+	}
+	if object.present("command") {
+		violations.add(
+			nonEmptyText("command", m.Command),
+		)
+	}
+	violations.add(
+		requiredWhen(object.equals("type", "streamableHttp"), "url", object),
+		forbiddenWhen(object.equals("type", "streamableHttp"), "command", object),
+		forbiddenWhen(object.equals("type", "streamableHttp"), "args", object),
+		forbiddenWhen(object.equals("type", "streamableHttp"), "envMasked", object),
+		forbiddenWhen(object.equals("type", "streamableHttp"), "dir", object),
+		requiredWhen(object.equals("type", "stdio"), "command", object),
+		forbiddenWhen(object.equals("type", "stdio"), "url", object),
+		forbiddenWhen(object.equals("type", "stdio"), "authorizationMasked", object),
+		forbiddenWhen(object.equals("type", "stdio"), "headersMasked", object),
 	)
+	return violations
 }
 
-func (m MCPConnectionInput) validateWire() error {
-	return collectWireViolations("MCPConnectionInput",
-		requiredWhen(wireFieldEquals(m, "type", "streamableHttp"), "url", m),
-		forbiddenWhen(wireFieldEquals(m, "type", "streamableHttp"), "command", m),
-		forbiddenWhen(wireFieldEquals(m, "type", "streamableHttp"), "args", m),
-		forbiddenWhen(wireFieldEquals(m, "type", "streamableHttp"), "env", m),
-		forbiddenWhen(wireFieldEquals(m, "type", "streamableHttp"), "dir", m),
-		requiredWhen(wireFieldEquals(m, "type", "stdio"), "command", m),
-		forbiddenWhen(wireFieldEquals(m, "type", "stdio"), "url", m),
-		forbiddenWhen(wireFieldEquals(m, "type", "stdio"), "authorization", m),
-		forbiddenWhen(wireFieldEquals(m, "type", "stdio"), "headers", m),
+func (m MCPConnectionInput) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	if object.present("url") {
+		violations.add(
+			nonEmptyText("url", m.URL),
+		)
+	}
+	if object.present("command") {
+		violations.add(
+			nonEmptyText("command", m.Command),
+		)
+	}
+	violations.add(
+		requiredWhen(object.equals("type", "streamableHttp"), "url", object),
+		forbiddenWhen(object.equals("type", "streamableHttp"), "command", object),
+		forbiddenWhen(object.equals("type", "streamableHttp"), "args", object),
+		forbiddenWhen(object.equals("type", "streamableHttp"), "env", object),
+		forbiddenWhen(object.equals("type", "streamableHttp"), "dir", object),
+		requiredWhen(object.equals("type", "stdio"), "command", object),
+		forbiddenWhen(object.equals("type", "stdio"), "url", object),
+		forbiddenWhen(object.equals("type", "stdio"), "authorization", object),
+		forbiddenWhen(object.equals("type", "stdio"), "headers", object),
 	)
+	return violations
 }
 
-func (m MCPAuthorizationChange) validateWire() error {
-	return collectWireViolations("MCPAuthorizationChange",
-		requiredWhen(wireFieldEquals(m, "type", "set"), "value", m),
-		forbiddenWhen(wireFieldEquals(m, "type", "clear"), "value", m),
+func (m MCPAuthorizationChange) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	if object.present("value") {
+		violations.add(
+			nonEmptyText("value", m.Value),
+		)
+	}
+	violations.add(
+		requiredWhen(object.equals("type", "set"), "value", object),
+		forbiddenWhen(object.equals("type", "clear"), "value", object),
 	)
+	return violations
 }
 
-func (m MCPHeadersChange) validateWire() error {
-	return collectWireViolations("MCPHeadersChange",
-		nonEmptyProperties("value", m.Value),
-		requiredWhen(wireFieldEquals(m, "type", "set"), "value", m),
-		forbiddenWhen(wireFieldEquals(m, "type", "clear"), "value", m),
+func (m MCPHeadersChange) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	if object.present("value") {
+		violations.add(
+			nonEmptyProperties("value", m.Value),
+		)
+	}
+	violations.add(
+		requiredWhen(object.equals("type", "set"), "value", object),
+		forbiddenWhen(object.equals("type", "clear"), "value", object),
 	)
+	return violations
 }
 
-func (m MCPEnvironmentChange) validateWire() error {
-	return collectWireViolations("MCPEnvironmentChange",
-		nonEmptyProperties("value", m.Value),
-		requiredWhen(wireFieldEquals(m, "type", "set"), "value", m),
-		forbiddenWhen(wireFieldEquals(m, "type", "clear"), "value", m),
+func (m MCPEnvironmentChange) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	if object.present("value") {
+		violations.add(
+			nonEmptyProperties("value", m.Value),
+		)
+	}
+	violations.add(
+		requiredWhen(object.equals("type", "set"), "value", object),
+		forbiddenWhen(object.equals("type", "clear"), "value", object),
 	)
+	return violations
 }
 
-func (m MCPServerState) validateWire() error {
-	return collectWireViolations("MCPServerState",
-		optionalNonNegativeNumber("toolCount", m.ToolCount),
-		optionalMaximumNumber("toolCount", m.ToolCount, 2048),
-		forbiddenWhen(wireFieldEquals(m, "type", "disabled"), "toolCount", m),
-		forbiddenWhen(wireFieldEquals(m, "type", "disabled"), "error", m),
-		forbiddenWhen(wireFieldEquals(m, "type", "disconnected"), "toolCount", m),
-		forbiddenWhen(wireFieldEquals(m, "type", "disconnected"), "error", m),
-		forbiddenWhen(wireFieldEquals(m, "type", "connecting"), "toolCount", m),
-		forbiddenWhen(wireFieldEquals(m, "type", "connecting"), "error", m),
-		requiredWhen(wireFieldEquals(m, "type", "connected"), "toolCount", m),
-		forbiddenWhen(wireFieldEquals(m, "type", "connected"), "error", m),
-		requiredWhen(wireFieldEquals(m, "type", "failed"), "error", m),
-		forbiddenWhen(wireFieldEquals(m, "type", "failed"), "toolCount", m),
-		allowedValuesWhen(wireFieldEquals(m, "type", "failed"), "error.type", m, []string{"mcp_configuration_failed", "mcp_dial_failed", "mcp_tool_discovery_failed", "mcp_authorization_failed"}),
-		requiredWhen(wireFieldEquals(m, "type", "needsAuth"), "error", m),
-		forbiddenWhen(wireFieldEquals(m, "type", "needsAuth"), "toolCount", m),
-		allowedValuesWhen(wireFieldEquals(m, "type", "needsAuth"), "error.type", m, []string{"mcp_authorization_required"}),
+func (m MCPServerState) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	if object.present("toolCount") {
+		violations.add(
+			nonNegativeNumber("toolCount", *m.ToolCount),
+			maximumNumber("toolCount", *m.ToolCount, 2048),
+		)
+	}
+	violations.add(
+		forbiddenWhen(object.equals("type", "disabled"), "toolCount", object),
+		forbiddenWhen(object.equals("type", "disabled"), "error", object),
+		forbiddenWhen(object.equals("type", "disconnected"), "toolCount", object),
+		forbiddenWhen(object.equals("type", "disconnected"), "error", object),
+		forbiddenWhen(object.equals("type", "connecting"), "toolCount", object),
+		forbiddenWhen(object.equals("type", "connecting"), "error", object),
+		requiredWhen(object.equals("type", "connected"), "toolCount", object),
+		forbiddenWhen(object.equals("type", "connected"), "error", object),
+		requiredWhen(object.equals("type", "failed"), "error", object),
+		forbiddenWhen(object.equals("type", "failed"), "toolCount", object),
+		allowedValuesWhen(object.equals("type", "failed"), "error.type", object, []string{"mcp_configuration_failed", "mcp_dial_failed", "mcp_tool_discovery_failed", "mcp_authorization_failed"}),
+		requiredWhen(object.equals("type", "needsAuth"), "error", object),
+		forbiddenWhen(object.equals("type", "needsAuth"), "toolCount", object),
+		allowedValuesWhen(object.equals("type", "needsAuth"), "error.type", object, []string{"mcp_authorization_required"}),
 	)
+	return violations
 }
 
-func (m MCPAuthorizationAttemptStatus) validateWire() error {
-	return collectWireViolations("MCPAuthorizationAttemptStatus",
-		forbiddenWhen(wireFieldEquals(m, "type", "pending"), "error", m),
-		forbiddenWhen(wireFieldEquals(m, "type", "succeeded"), "error", m),
-		requiredWhen(wireFieldEquals(m, "type", "failed"), "error", m),
-		allowedValuesWhen(wireFieldEquals(m, "type", "failed"), "error.type", m, []string{"mcp_authorization_failed"}),
-		forbiddenWhen(wireFieldEquals(m, "type", "canceled"), "error", m),
-		forbiddenWhen(wireFieldEquals(m, "type", "unconfirmed"), "error", m),
+func (m MCPAuthorizationAttemptStatus) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		forbiddenWhen(object.equals("type", "pending"), "error", object),
+		forbiddenWhen(object.equals("type", "succeeded"), "error", object),
+		requiredWhen(object.equals("type", "failed"), "error", object),
+		allowedValuesWhen(object.equals("type", "failed"), "error.type", object, []string{"mcp_authorization_failed"}),
+		forbiddenWhen(object.equals("type", "canceled"), "error", object),
+		forbiddenWhen(object.equals("type", "unconfirmed"), "error", object),
 	)
+	return violations
 }
 
-func (p PluginRendererSelector) validateWire() error {
-	return collectWireViolations("PluginRendererSelector",
-		maxLength("name", p.Name, 256),
-		requiredWhen(wireFieldEquals(p, "type", "toolName"), "name", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "toolName"), "shape", p),
-		requiredWhen(wireFieldEquals(p, "type", "resultShape"), "shape", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "resultShape"), "name", p),
-		requiredWhen(wireFieldEquals(p, "type", "fileExtension"), "name", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "fileExtension"), "shape", p),
+func (p PluginRendererSelector) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	if object.present("name") {
+		violations.add(
+			nonEmptyText("name", p.Name),
+			maxLength("name", p.Name, 256),
+		)
+	}
+	violations.add(
+		requiredWhen(object.equals("type", "toolName"), "name", object),
+		forbiddenWhen(object.equals("type", "toolName"), "shape", object),
+		requiredWhen(object.equals("type", "resultShape"), "shape", object),
+		forbiddenWhen(object.equals("type", "resultShape"), "name", object),
+		requiredWhen(object.equals("type", "fileExtension"), "name", object),
+		forbiddenWhen(object.equals("type", "fileExtension"), "shape", object),
 	)
+	return violations
 }
 
-func (p PluginValueChange) validateWire() error {
-	return collectWireViolations("PluginValueChange",
-		optionalMaxLength("value", p.Value, 8192),
-		requiredWhen(wireFieldEquals(p, "type", "set"), "value", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "clear"), "value", p),
+func (p PluginValueChange) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	if object.present("value") {
+		violations.add(
+			maxLength("value", *p.Value, 8192),
+		)
+	}
+	violations.add(
+		requiredWhen(object.equals("type", "set"), "value", object),
+		forbiddenWhen(object.equals("type", "clear"), "value", object),
 	)
+	return violations
 }
 
-func (p PluginRealization) validateWire() error {
-	return collectWireViolations("PluginRealization",
-		optionalMinItems("unavailableBackends", p.UnavailableBackends, 1),
-		uniqueItems("unavailableBackends", p.UnavailableBackends),
-		textPatternItems("unavailableBackends", p.UnavailableBackends, "^[a-z0-9][a-z0-9._-]{0,31}$"),
-		forbiddenWhen(wireFieldEquals(p, "type", "releaseUnavailable"), "unavailableBackends", p),
+func (p PluginRealization) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	if object.present("unavailableBackends") {
+		violations.add(
+			minItems("unavailableBackends", p.UnavailableBackends, 1),
+			uniqueItems("unavailableBackends", p.UnavailableBackends),
+			textPatternItems("unavailableBackends", p.UnavailableBackends, "^[a-z0-9][a-z0-9._-]{0,31}$"),
+		)
+	}
+	violations.add(
+		forbiddenWhen(object.equals("type", "releaseUnavailable"), "unavailableBackends", object),
 	)
+	return violations
 }
 
-func (p PluginServerDeclaration) validateWire() error {
-	return collectWireViolations("PluginServerDeclaration",
-		requiredTextPattern("name", p.Name, "^[a-z0-9][a-z0-9._-]{0,31}$"),
-		requiredWhen(wireFieldEquals(p, "type", "stdio"), "name", p),
-		requiredWhen(wireFieldEquals(p, "type", "stdio"), "command", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "stdio"), "url", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "stdio"), "headers", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "stdio"), "entry", p),
-		requiredWhen(wireFieldEquals(p, "type", "streamableHttp"), "name", p),
-		requiredWhen(wireFieldEquals(p, "type", "streamableHttp"), "url", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "streamableHttp"), "command", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "streamableHttp"), "args", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "streamableHttp"), "env", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "streamableHttp"), "dir", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "streamableHttp"), "entry", p),
-		requiredWhen(wireFieldEquals(p, "type", "managedNode"), "name", p),
-		requiredWhen(wireFieldEquals(p, "type", "managedNode"), "entry", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "managedNode"), "command", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "managedNode"), "args", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "managedNode"), "env", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "managedNode"), "dir", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "managedNode"), "url", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "managedNode"), "headers", p),
+func (p PluginServerDeclaration) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		textPattern("name", p.Name, "^[a-z0-9][a-z0-9._-]{0,31}$"),
+		requiredWhen(object.equals("type", "stdio"), "name", object),
+		requiredWhen(object.equals("type", "stdio"), "command", object),
+		forbiddenWhen(object.equals("type", "stdio"), "url", object),
+		forbiddenWhen(object.equals("type", "stdio"), "headers", object),
+		forbiddenWhen(object.equals("type", "stdio"), "entry", object),
+		requiredWhen(object.equals("type", "streamableHttp"), "name", object),
+		requiredWhen(object.equals("type", "streamableHttp"), "url", object),
+		forbiddenWhen(object.equals("type", "streamableHttp"), "command", object),
+		forbiddenWhen(object.equals("type", "streamableHttp"), "args", object),
+		forbiddenWhen(object.equals("type", "streamableHttp"), "env", object),
+		forbiddenWhen(object.equals("type", "streamableHttp"), "dir", object),
+		forbiddenWhen(object.equals("type", "streamableHttp"), "entry", object),
+		requiredWhen(object.equals("type", "managedNode"), "name", object),
+		requiredWhen(object.equals("type", "managedNode"), "entry", object),
+		forbiddenWhen(object.equals("type", "managedNode"), "command", object),
+		forbiddenWhen(object.equals("type", "managedNode"), "args", object),
+		forbiddenWhen(object.equals("type", "managedNode"), "env", object),
+		forbiddenWhen(object.equals("type", "managedNode"), "dir", object),
+		forbiddenWhen(object.equals("type", "managedNode"), "url", object),
+		forbiddenWhen(object.equals("type", "managedNode"), "headers", object),
 	)
+	return violations
 }
 
-func (p PluginInputState) validateWire() error {
-	return collectWireViolations("PluginInputState",
-		forbiddenWhen(wireFieldEquals(p, "type", "unset"), "value", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "configured"), "value", p),
-		requiredWhen(wireFieldEquals(p, "type", "value"), "value", p),
+func (p PluginInputState) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		forbiddenWhen(object.equals("type", "unset"), "value", object),
+		forbiddenWhen(object.equals("type", "configured"), "value", object),
+		requiredWhen(object.equals("type", "value"), "value", object),
 	)
+	return violations
 }
 
-func (p PluginComponent) validateWire() error {
-	return collectWireViolations("PluginComponent",
-		requiredWhen(wireFieldEquals(p, "type", "manifestField"), "name", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "flameExtension"), "name", p),
-		requiredWhen(wireFieldEquals(p, "type", "extensionField"), "name", p),
-		requiredWhen(wireFieldEquals(p, "type", "contribution"), "name", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "mcp"), "name", p),
-		requiredWhen(wireFieldEquals(p, "type", "mcpServer"), "name", p),
-		forbiddenWhen(wireFieldEquals(p, "type", "skills"), "name", p),
-		requiredWhen(wireFieldEquals(p, "type", "skill"), "name", p),
+func (p PluginComponent) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		requiredWhen(object.equals("type", "manifestField"), "name", object),
+		forbiddenWhen(object.equals("type", "flameExtension"), "name", object),
+		requiredWhen(object.equals("type", "extensionField"), "name", object),
+		requiredWhen(object.equals("type", "contribution"), "name", object),
+		forbiddenWhen(object.equals("type", "mcp"), "name", object),
+		requiredWhen(object.equals("type", "mcpServer"), "name", object),
+		forbiddenWhen(object.equals("type", "skills"), "name", object),
+		requiredWhen(object.equals("type", "skill"), "name", object),
 	)
+	return violations
 }
 
-func (t ToolRef) validateWire() error {
-	return collectWireViolations("ToolRef",
-		optionalTextPattern("name", t.Name, "^[A-Za-z0-9_.-]{1,128}$"),
-		requiredWhen(wireFieldEquals(t, "type", "builtIn"), "name", t),
-		forbiddenWhen(wireFieldEquals(t, "type", "builtIn"), "server", t),
-		allowedValuesWhen(wireFieldEquals(t, "type", "builtIn"), "name", t, []string{"apply_patch", "ask_user", "create_goal", "delegate_task", "edit", "enter_plan_mode", "exit_plan_mode", "get_goal", "glob", "grep", "list_skills", "load_skill", "propose_skill", "read", "read_shell_output", "read_skill_resource", "read_tool_result", "report_goal_outcome", "run_script", "search_tools", "set_plan", "shell", "stop_shell"}),
-		requiredWhen(wireFieldEquals(t, "type", "mcp"), "server", t),
-		requiredWhen(wireFieldEquals(t, "type", "mcp"), "name", t),
+func (t ToolRef) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	if object.present("name") {
+		violations.add(
+			textPattern("name", t.Name, "^[A-Za-z0-9_.-]{1,128}$"),
+		)
+	}
+	violations.add(
+		requiredWhen(object.equals("type", "builtIn"), "name", object),
+		forbiddenWhen(object.equals("type", "builtIn"), "server", object),
+		allowedValuesWhen(object.equals("type", "builtIn"), "name", object, []string{"apply_patch", "ask_user", "create_goal", "delegate_task", "edit", "enter_plan_mode", "exit_plan_mode", "get_goal", "glob", "grep", "list_skills", "load_skill", "propose_skill", "read", "read_shell_output", "read_skill_resource", "read_tool_result", "report_goal_outcome", "run_script", "search_tools", "set_plan", "shell", "stop_shell"}),
+		requiredWhen(object.equals("type", "mcp"), "server", object),
+		requiredWhen(object.equals("type", "mcp"), "name", object),
 	)
+	return violations
 }
 
-func (a ApprovalSubject) validateWire() error {
-	return collectWireViolations("ApprovalSubject",
-		forbiddenWhen(wireFieldEquals(a, "type", "all"), "value", a),
-		requiredWhen(wireFieldEquals(a, "type", "exact"), "value", a),
-		requiredWhen(wireFieldEquals(a, "type", "glob"), "value", a),
+func (a ApprovalSubject) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		forbiddenWhen(object.equals("type", "all"), "value", object),
+		requiredWhen(object.equals("type", "exact"), "value", object),
+		requiredWhen(object.equals("type", "glob"), "value", object),
 	)
+	return violations
 }
 
-func (i Interrupt) validateWire() error {
-	return collectWireViolations("Interrupt",
-		requiredText("itemId", i.ItemID),
+func (i Interrupt) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("itemId", i.ItemID),
 		identity("itemId", i.ItemID),
 		maxLength("itemId", i.ItemID, 256),
-		requiredText("runId", i.RunID),
+		nonEmptyText("runId", i.RunID),
 		identity("runId", i.RunID),
 		maxLength("runId", i.RunID, 256),
-		requiredWhen(wireFieldEquals(i, "type", "approval"), "itemId", i),
-		requiredWhen(wireFieldEquals(i, "type", "approval"), "runId", i),
-		requiredWhen(wireFieldEquals(i, "type", "approval"), "payload.tool", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "approval"), "payload.question", i),
-		requiredWhen(wireFieldEquals(i, "type", "question"), "itemId", i),
-		requiredWhen(wireFieldEquals(i, "type", "question"), "runId", i),
-		requiredWhen(wireFieldEquals(i, "type", "question"), "payload.question", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "question"), "payload.tool", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "question"), "payload.risk", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "question"), "payload.reason", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "question"), "payload.rememberable", i),
+		requiredWhen(object.equals("type", "approval"), "itemId", object),
+		requiredWhen(object.equals("type", "approval"), "runId", object),
+		requiredWhen(object.equals("type", "approval"), "payload.tool", object),
+		forbiddenWhen(object.equals("type", "approval"), "payload.question", object),
+		requiredWhen(object.equals("type", "question"), "itemId", object),
+		requiredWhen(object.equals("type", "question"), "runId", object),
+		requiredWhen(object.equals("type", "question"), "payload.question", object),
+		forbiddenWhen(object.equals("type", "question"), "payload.tool", object),
+		forbiddenWhen(object.equals("type", "question"), "payload.risk", object),
+		forbiddenWhen(object.equals("type", "question"), "payload.reason", object),
+		forbiddenWhen(object.equals("type", "question"), "payload.rememberable", object),
 	)
+	return violations
 }
 
-func (i InterruptResponseValue) validateWire() error {
-	return collectWireViolations("InterruptResponseValue",
-		nonEmptyItems("answers", i.Answers),
-		requiredWhen(wireFieldEquals(i, "type", "approval"), "decision", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "approval"), "answers", i),
-		requiredWhen(wireFieldEquals(i, "type", "answer"), "answers", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "answer"), "decision", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "answer"), "remember", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "answer"), "editedArgs", i),
-		forbiddenWhen(wireFieldEquals(i, "type", "answer"), "reason", i),
+func (i InterruptResponseValue) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	if object.present("answers") {
+		violations.add(
+			nonEmptyItems("answers", i.Answers),
+		)
+	}
+	violations.add(
+		requiredWhen(object.equals("type", "approval"), "decision", object),
+		forbiddenWhen(object.equals("type", "approval"), "answers", object),
+		requiredWhen(object.equals("type", "answer"), "answers", object),
+		forbiddenWhen(object.equals("type", "answer"), "decision", object),
+		forbiddenWhen(object.equals("type", "answer"), "remember", object),
+		forbiddenWhen(object.equals("type", "answer"), "editedArgs", object),
+		forbiddenWhen(object.equals("type", "answer"), "reason", object),
 	)
+	return violations
 }
 
-func (s StreamEvent) validateWire() error {
-	return collectWireViolations("StreamEvent",
-		identity("itemId", s.ItemID),
-		maxLength("itemId", s.ItemID, 256),
-		requiredWhen(wireFieldEquals(s, "type", "segment.started"), "run", s),
-		forbiddenWhen(wireFieldEquals(s, "type", "segment.started"), "progress", s),
-		forbiddenWhen(wireFieldEquals(s, "type", "segment.started"), "interrupts", s),
-		forbiddenWhen(wireFieldEquals(s, "type", "segment.started"), "item", s),
-		forbiddenWhen(wireFieldEquals(s, "type", "segment.started"), "itemId", s),
-		forbiddenWhen(wireFieldEquals(s, "type", "segment.started"), "delta", s),
-		forbiddenWhen(wireFieldEquals(s, "type", "segment.started"), "plan", s),
-		requiredWhen(wireFieldEquals(s, "type", "segment.progress"), "progress", s),
-		forbiddenWhen(wireFieldEquals(s, "type", "segment.progress"), "run", s),
-		forbiddenWhen(wireFieldEquals(s, "type", "segment.progress"), "interrupts", s),
-		forbiddenWhen(wireFieldEquals(s, "type", "segment.progress"), "item", s),
-		forbiddenWhen(wireFieldEquals(s, "type", "segment.progress"), "itemId", s),
-		forbiddenWhen(wireFieldEquals(s, "type", "segment.progress"), "delta", s),
-		forbiddenWhen(wireFieldEquals(s, "type", "segment.progress"), "plan", s),
-		requiredWhen(wireFieldEquals(s, "type", "segment.finished"), "run", s),
-		forbiddenWhen(wireFieldEquals(s, "type", "segment.finished"), "progress", s),
-		forbiddenWhen(wireFieldEquals(s, "type", "segment.finished"), "item", s),
-		forbiddenWhen(wireFieldEquals(s, "type", "segment.finished"), "itemId", s),
-		forbiddenWhen(wireFieldEquals(s, "type", "segment.finished"), "delta", s),
-		forbiddenWhen(wireFieldEquals(s, "type", "segment.finished"), "plan", s),
-		requiredWhen(wireFieldEquals(s, "type", "item.started"), "item", s),
-		forbiddenWhen(wireFieldEquals(s, "type", "item.started"), "run", s),
-		forbiddenWhen(wireFieldEquals(s, "type", "item.started"), "progress", s),
-		forbiddenWhen(wireFieldEquals(s, "type", "item.started"), "interrupts", s),
-		forbiddenWhen(wireFieldEquals(s, "type", "item.started"), "itemId", s),
-		forbiddenWhen(wireFieldEquals(s, "type", "item.started"), "delta", s),
-		forbiddenWhen(wireFieldEquals(s, "type", "item.started"), "plan", s),
-		requiredWhen(wireFieldEquals(s, "type", "item.delta"), "itemId", s),
-		requiredWhen(wireFieldEquals(s, "type", "item.delta"), "delta", s),
-		forbiddenWhen(wireFieldEquals(s, "type", "item.delta"), "run", s),
-		forbiddenWhen(wireFieldEquals(s, "type", "item.delta"), "progress", s),
-		forbiddenWhen(wireFieldEquals(s, "type", "item.delta"), "interrupts", s),
-		forbiddenWhen(wireFieldEquals(s, "type", "item.delta"), "item", s),
-		forbiddenWhen(wireFieldEquals(s, "type", "item.delta"), "plan", s),
-		requiredWhen(wireFieldEquals(s, "type", "item.completed"), "item", s),
-		forbiddenWhen(wireFieldEquals(s, "type", "item.completed"), "run", s),
-		forbiddenWhen(wireFieldEquals(s, "type", "item.completed"), "progress", s),
-		forbiddenWhen(wireFieldEquals(s, "type", "item.completed"), "interrupts", s),
-		forbiddenWhen(wireFieldEquals(s, "type", "item.completed"), "itemId", s),
-		forbiddenWhen(wireFieldEquals(s, "type", "item.completed"), "delta", s),
-		forbiddenWhen(wireFieldEquals(s, "type", "item.completed"), "plan", s),
-		requiredWhen(wireFieldEquals(s, "type", "plan.updated"), "plan", s),
-		forbiddenWhen(wireFieldEquals(s, "type", "plan.updated"), "run", s),
-		forbiddenWhen(wireFieldEquals(s, "type", "plan.updated"), "progress", s),
-		forbiddenWhen(wireFieldEquals(s, "type", "plan.updated"), "interrupts", s),
-		forbiddenWhen(wireFieldEquals(s, "type", "plan.updated"), "item", s),
-		forbiddenWhen(wireFieldEquals(s, "type", "plan.updated"), "itemId", s),
-		forbiddenWhen(wireFieldEquals(s, "type", "plan.updated"), "delta", s),
-		allowedValuesWhen(wireFieldEquals(s, "type", "item.started"), "item.type", s, []string{"agentMessage", "reasoning", "toolCall"}),
-		allowedValuesWhen(wireFieldEquals(s, "type", "item.started"), "item.status", s, []string{"running"}),
-		allowedValuesWhen(wireFieldEquals(s, "type", "item.completed"), "item.status", s, []string{"completed", "incomplete"}),
-		requiredWhen(wireFieldEquals(s, "type", "plan.updated"), "plan.state", s),
+func (s StreamEvent) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	if object.present("itemId") {
+		violations.add(
+			identity("itemId", s.ItemID),
+			maxLength("itemId", s.ItemID, 256),
+		)
+	}
+	violations.add(
+		requiredWhen(object.equals("type", "segment.started"), "run", object),
+		forbiddenWhen(object.equals("type", "segment.started"), "progress", object),
+		forbiddenWhen(object.equals("type", "segment.started"), "interrupts", object),
+		forbiddenWhen(object.equals("type", "segment.started"), "item", object),
+		forbiddenWhen(object.equals("type", "segment.started"), "itemId", object),
+		forbiddenWhen(object.equals("type", "segment.started"), "delta", object),
+		forbiddenWhen(object.equals("type", "segment.started"), "plan", object),
+		requiredWhen(object.equals("type", "segment.progress"), "progress", object),
+		forbiddenWhen(object.equals("type", "segment.progress"), "run", object),
+		forbiddenWhen(object.equals("type", "segment.progress"), "interrupts", object),
+		forbiddenWhen(object.equals("type", "segment.progress"), "item", object),
+		forbiddenWhen(object.equals("type", "segment.progress"), "itemId", object),
+		forbiddenWhen(object.equals("type", "segment.progress"), "delta", object),
+		forbiddenWhen(object.equals("type", "segment.progress"), "plan", object),
+		requiredWhen(object.equals("type", "segment.finished"), "run", object),
+		forbiddenWhen(object.equals("type", "segment.finished"), "progress", object),
+		forbiddenWhen(object.equals("type", "segment.finished"), "item", object),
+		forbiddenWhen(object.equals("type", "segment.finished"), "itemId", object),
+		forbiddenWhen(object.equals("type", "segment.finished"), "delta", object),
+		forbiddenWhen(object.equals("type", "segment.finished"), "plan", object),
+		requiredWhen(object.equals("type", "item.started"), "item", object),
+		forbiddenWhen(object.equals("type", "item.started"), "run", object),
+		forbiddenWhen(object.equals("type", "item.started"), "progress", object),
+		forbiddenWhen(object.equals("type", "item.started"), "interrupts", object),
+		forbiddenWhen(object.equals("type", "item.started"), "itemId", object),
+		forbiddenWhen(object.equals("type", "item.started"), "delta", object),
+		forbiddenWhen(object.equals("type", "item.started"), "plan", object),
+		requiredWhen(object.equals("type", "item.delta"), "itemId", object),
+		requiredWhen(object.equals("type", "item.delta"), "delta", object),
+		forbiddenWhen(object.equals("type", "item.delta"), "run", object),
+		forbiddenWhen(object.equals("type", "item.delta"), "progress", object),
+		forbiddenWhen(object.equals("type", "item.delta"), "interrupts", object),
+		forbiddenWhen(object.equals("type", "item.delta"), "item", object),
+		forbiddenWhen(object.equals("type", "item.delta"), "plan", object),
+		requiredWhen(object.equals("type", "item.completed"), "item", object),
+		forbiddenWhen(object.equals("type", "item.completed"), "run", object),
+		forbiddenWhen(object.equals("type", "item.completed"), "progress", object),
+		forbiddenWhen(object.equals("type", "item.completed"), "interrupts", object),
+		forbiddenWhen(object.equals("type", "item.completed"), "itemId", object),
+		forbiddenWhen(object.equals("type", "item.completed"), "delta", object),
+		forbiddenWhen(object.equals("type", "item.completed"), "plan", object),
+		requiredWhen(object.equals("type", "plan.updated"), "plan", object),
+		forbiddenWhen(object.equals("type", "plan.updated"), "run", object),
+		forbiddenWhen(object.equals("type", "plan.updated"), "progress", object),
+		forbiddenWhen(object.equals("type", "plan.updated"), "interrupts", object),
+		forbiddenWhen(object.equals("type", "plan.updated"), "item", object),
+		forbiddenWhen(object.equals("type", "plan.updated"), "itemId", object),
+		forbiddenWhen(object.equals("type", "plan.updated"), "delta", object),
+		allowedValuesWhen(object.equals("type", "item.started"), "item.type", object, []string{"agentMessage", "reasoning", "toolCall"}),
+		allowedValuesWhen(object.equals("type", "item.started"), "item.status", object, []string{"running"}),
+		allowedValuesWhen(object.equals("type", "item.completed"), "item.status", object, []string{"completed", "incomplete"}),
+		requiredWhen(object.equals("type", "plan.updated"), "plan.state", object),
 	)
+	return violations
 }
 
-func (r RuntimeEvent) validateWire() error {
-	return collectWireViolations("RuntimeEvent",
+func (r RuntimeEvent) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
 		positiveNumber("sequence", r.Sequence),
 		maximumNumber("sequence", r.Sequence, 9007199254740991),
-		nonEmptyItems("paths", r.Paths),
-		uniqueItems("paths", r.Paths),
-		nonEmptyItems("names", r.Names),
-		uniqueItems("names", r.Names),
-		nonEmptyItems("servers", r.Servers),
-		uniqueItems("servers", r.Servers),
-		nonEmptyItems("sessionIds", r.SessionIDs),
-		uniqueItems("sessionIds", r.SessionIDs),
-		nonEmptyItems("runIds", r.RunIDs),
-		uniqueItems("runIds", r.RunIDs),
-		nonEmptyItems("topics", r.Topics),
-		uniqueItems("topics", r.Topics),
-		nonEmptyItems("watchIds", r.WatchIDs),
-		uniqueItems("watchIds", r.WatchIDs),
-		identityItems("sessionIds", r.SessionIDs),
-		maxItemLength("sessionIds", r.SessionIDs, 256),
-		identityItems("runIds", r.RunIDs),
-		maxItemLength("runIds", r.RunIDs, 256),
-		requiredWhen(wireFieldEquals(r, "type", "files.changed"), "sequence", r),
-		requiredWhen(wireFieldEquals(r, "type", "files.changed"), "paths", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "files.changed"), "names", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "files.changed"), "servers", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "files.changed"), "sessionIds", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "files.changed"), "runIds", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "files.changed"), "topics", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "files.changed"), "watchIds", r),
-		requiredWhen(wireFieldEquals(r, "type", "skills.changed"), "sequence", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "skills.changed"), "paths", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "skills.changed"), "watchId", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "skills.changed"), "workspace", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "skills.changed"), "servers", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "skills.changed"), "sessionIds", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "skills.changed"), "runIds", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "skills.changed"), "topics", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "skills.changed"), "watchIds", r),
-		requiredWhen(wireFieldEquals(r, "type", "plugins.changed"), "sequence", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "plugins.changed"), "paths", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "plugins.changed"), "watchId", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "plugins.changed"), "workspace", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "plugins.changed"), "names", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "plugins.changed"), "servers", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "plugins.changed"), "sessionIds", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "plugins.changed"), "runIds", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "plugins.changed"), "topics", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "plugins.changed"), "watchIds", r),
-		requiredWhen(wireFieldEquals(r, "type", "mcp.changed"), "sequence", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "mcp.changed"), "paths", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "mcp.changed"), "watchId", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "mcp.changed"), "workspace", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "mcp.changed"), "names", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "mcp.changed"), "sessionIds", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "mcp.changed"), "runIds", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "mcp.changed"), "topics", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "mcp.changed"), "watchIds", r),
-		requiredWhen(wireFieldEquals(r, "type", "plugins.dataChanged"), "sequence", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "plugins.dataChanged"), "paths", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "plugins.dataChanged"), "watchId", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "plugins.dataChanged"), "workspace", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "plugins.dataChanged"), "names", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "plugins.dataChanged"), "servers", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "plugins.dataChanged"), "sessionIds", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "plugins.dataChanged"), "runIds", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "plugins.dataChanged"), "topics", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "plugins.dataChanged"), "watchIds", r),
-		requiredWhen(wireFieldEquals(r, "type", "sessions.changed"), "sequence", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "sessions.changed"), "paths", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "sessions.changed"), "watchId", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "sessions.changed"), "workspace", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "sessions.changed"), "names", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "sessions.changed"), "servers", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "sessions.changed"), "runIds", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "sessions.changed"), "topics", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "sessions.changed"), "watchIds", r),
-		requiredWhen(wireFieldEquals(r, "type", "runs.changed"), "sequence", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "runs.changed"), "paths", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "runs.changed"), "watchId", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "runs.changed"), "workspace", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "runs.changed"), "names", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "runs.changed"), "servers", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "runs.changed"), "topics", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "runs.changed"), "watchIds", r),
-		requiredWhen(wireFieldEquals(r, "type", "plan.changed"), "sequence", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "plan.changed"), "paths", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "plan.changed"), "watchId", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "plan.changed"), "workspace", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "plan.changed"), "names", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "plan.changed"), "servers", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "plan.changed"), "runIds", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "plan.changed"), "topics", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "plan.changed"), "watchIds", r),
-		requiredWhen(wireFieldEquals(r, "type", "goals.changed"), "sequence", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "goals.changed"), "paths", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "goals.changed"), "watchId", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "goals.changed"), "workspace", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "goals.changed"), "names", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "goals.changed"), "servers", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "goals.changed"), "runIds", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "goals.changed"), "topics", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "goals.changed"), "watchIds", r),
-		requiredWhen(wireFieldEquals(r, "type", "interrupts.changed"), "sequence", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "interrupts.changed"), "paths", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "interrupts.changed"), "watchId", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "interrupts.changed"), "workspace", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "interrupts.changed"), "names", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "interrupts.changed"), "servers", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "interrupts.changed"), "topics", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "interrupts.changed"), "watchIds", r),
-		requiredWhen(wireFieldEquals(r, "type", "hooks.changed"), "sequence", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "hooks.changed"), "paths", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "hooks.changed"), "watchId", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "hooks.changed"), "workspace", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "hooks.changed"), "names", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "hooks.changed"), "servers", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "hooks.changed"), "sessionIds", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "hooks.changed"), "runIds", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "hooks.changed"), "topics", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "hooks.changed"), "watchIds", r),
-		requiredWhen(wireFieldEquals(r, "type", "models.changed"), "sequence", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "models.changed"), "paths", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "models.changed"), "watchId", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "models.changed"), "workspace", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "models.changed"), "names", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "models.changed"), "servers", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "models.changed"), "sessionIds", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "models.changed"), "runIds", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "models.changed"), "topics", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "models.changed"), "watchIds", r),
-		requiredWhen(wireFieldEquals(r, "type", "approvals.changed"), "sequence", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "approvals.changed"), "paths", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "approvals.changed"), "watchId", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "approvals.changed"), "workspace", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "approvals.changed"), "names", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "approvals.changed"), "servers", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "approvals.changed"), "sessionIds", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "approvals.changed"), "runIds", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "approvals.changed"), "topics", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "approvals.changed"), "watchIds", r),
-		requiredWhen(wireFieldEquals(r, "type", "projects.changed"), "sequence", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "projects.changed"), "paths", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "projects.changed"), "watchId", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "projects.changed"), "workspace", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "projects.changed"), "names", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "projects.changed"), "servers", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "projects.changed"), "sessionIds", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "projects.changed"), "runIds", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "projects.changed"), "topics", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "projects.changed"), "watchIds", r),
-		requiredWhen(wireFieldEquals(r, "type", "resync"), "sequence", r),
-		requiredWhen(wireFieldEquals(r, "type", "resync"), "topics", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "resync"), "paths", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "resync"), "watchId", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "resync"), "workspace", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "resync"), "names", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "resync"), "servers", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "resync"), "sessionIds", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "resync"), "runIds", r),
 	)
+	if object.present("paths") {
+		violations.add(
+			nonEmptyItems("paths", r.Paths),
+			uniqueItems("paths", r.Paths),
+		)
+	}
+	if object.present("names") {
+		violations.add(
+			nonEmptyItems("names", r.Names),
+			uniqueItems("names", r.Names),
+		)
+	}
+	if object.present("servers") {
+		violations.add(
+			nonEmptyItems("servers", r.Servers),
+			uniqueItems("servers", r.Servers),
+		)
+	}
+	if object.present("sessionIds") {
+		violations.add(
+			nonEmptyItems("sessionIds", r.SessionIDs),
+			uniqueItems("sessionIds", r.SessionIDs),
+		)
+	}
+	if object.present("runIds") {
+		violations.add(
+			nonEmptyItems("runIds", r.RunIDs),
+			uniqueItems("runIds", r.RunIDs),
+		)
+	}
+	if object.present("topics") {
+		violations.add(
+			nonEmptyItems("topics", r.Topics),
+			uniqueItems("topics", r.Topics),
+		)
+	}
+	if object.present("watchIds") {
+		violations.add(
+			nonEmptyItems("watchIds", r.WatchIDs),
+			uniqueItems("watchIds", r.WatchIDs),
+		)
+	}
+	if object.present("sessionIds") {
+		violations.add(
+			identityItems("sessionIds", r.SessionIDs),
+			maxItemLength("sessionIds", r.SessionIDs, 256),
+		)
+	}
+	if object.present("runIds") {
+		violations.add(
+			identityItems("runIds", r.RunIDs),
+			maxItemLength("runIds", r.RunIDs, 256),
+		)
+	}
+	violations.add(
+		requiredWhen(object.equals("type", "files.changed"), "sequence", object),
+		requiredWhen(object.equals("type", "files.changed"), "paths", object),
+		forbiddenWhen(object.equals("type", "files.changed"), "names", object),
+		forbiddenWhen(object.equals("type", "files.changed"), "servers", object),
+		forbiddenWhen(object.equals("type", "files.changed"), "sessionIds", object),
+		forbiddenWhen(object.equals("type", "files.changed"), "runIds", object),
+		forbiddenWhen(object.equals("type", "files.changed"), "topics", object),
+		forbiddenWhen(object.equals("type", "files.changed"), "watchIds", object),
+		requiredWhen(object.equals("type", "skills.changed"), "sequence", object),
+		forbiddenWhen(object.equals("type", "skills.changed"), "paths", object),
+		forbiddenWhen(object.equals("type", "skills.changed"), "watchId", object),
+		forbiddenWhen(object.equals("type", "skills.changed"), "workspace", object),
+		forbiddenWhen(object.equals("type", "skills.changed"), "servers", object),
+		forbiddenWhen(object.equals("type", "skills.changed"), "sessionIds", object),
+		forbiddenWhen(object.equals("type", "skills.changed"), "runIds", object),
+		forbiddenWhen(object.equals("type", "skills.changed"), "topics", object),
+		forbiddenWhen(object.equals("type", "skills.changed"), "watchIds", object),
+		requiredWhen(object.equals("type", "plugins.changed"), "sequence", object),
+		forbiddenWhen(object.equals("type", "plugins.changed"), "paths", object),
+		forbiddenWhen(object.equals("type", "plugins.changed"), "watchId", object),
+		forbiddenWhen(object.equals("type", "plugins.changed"), "workspace", object),
+		forbiddenWhen(object.equals("type", "plugins.changed"), "names", object),
+		forbiddenWhen(object.equals("type", "plugins.changed"), "servers", object),
+		forbiddenWhen(object.equals("type", "plugins.changed"), "sessionIds", object),
+		forbiddenWhen(object.equals("type", "plugins.changed"), "runIds", object),
+		forbiddenWhen(object.equals("type", "plugins.changed"), "topics", object),
+		forbiddenWhen(object.equals("type", "plugins.changed"), "watchIds", object),
+		requiredWhen(object.equals("type", "mcp.changed"), "sequence", object),
+		forbiddenWhen(object.equals("type", "mcp.changed"), "paths", object),
+		forbiddenWhen(object.equals("type", "mcp.changed"), "watchId", object),
+		forbiddenWhen(object.equals("type", "mcp.changed"), "workspace", object),
+		forbiddenWhen(object.equals("type", "mcp.changed"), "names", object),
+		forbiddenWhen(object.equals("type", "mcp.changed"), "sessionIds", object),
+		forbiddenWhen(object.equals("type", "mcp.changed"), "runIds", object),
+		forbiddenWhen(object.equals("type", "mcp.changed"), "topics", object),
+		forbiddenWhen(object.equals("type", "mcp.changed"), "watchIds", object),
+		requiredWhen(object.equals("type", "plugins.dataChanged"), "sequence", object),
+		forbiddenWhen(object.equals("type", "plugins.dataChanged"), "paths", object),
+		forbiddenWhen(object.equals("type", "plugins.dataChanged"), "watchId", object),
+		forbiddenWhen(object.equals("type", "plugins.dataChanged"), "workspace", object),
+		forbiddenWhen(object.equals("type", "plugins.dataChanged"), "names", object),
+		forbiddenWhen(object.equals("type", "plugins.dataChanged"), "servers", object),
+		forbiddenWhen(object.equals("type", "plugins.dataChanged"), "sessionIds", object),
+		forbiddenWhen(object.equals("type", "plugins.dataChanged"), "runIds", object),
+		forbiddenWhen(object.equals("type", "plugins.dataChanged"), "topics", object),
+		forbiddenWhen(object.equals("type", "plugins.dataChanged"), "watchIds", object),
+		requiredWhen(object.equals("type", "sessions.changed"), "sequence", object),
+		forbiddenWhen(object.equals("type", "sessions.changed"), "paths", object),
+		forbiddenWhen(object.equals("type", "sessions.changed"), "watchId", object),
+		forbiddenWhen(object.equals("type", "sessions.changed"), "workspace", object),
+		forbiddenWhen(object.equals("type", "sessions.changed"), "names", object),
+		forbiddenWhen(object.equals("type", "sessions.changed"), "servers", object),
+		forbiddenWhen(object.equals("type", "sessions.changed"), "runIds", object),
+		forbiddenWhen(object.equals("type", "sessions.changed"), "topics", object),
+		forbiddenWhen(object.equals("type", "sessions.changed"), "watchIds", object),
+		requiredWhen(object.equals("type", "runs.changed"), "sequence", object),
+		forbiddenWhen(object.equals("type", "runs.changed"), "paths", object),
+		forbiddenWhen(object.equals("type", "runs.changed"), "watchId", object),
+		forbiddenWhen(object.equals("type", "runs.changed"), "workspace", object),
+		forbiddenWhen(object.equals("type", "runs.changed"), "names", object),
+		forbiddenWhen(object.equals("type", "runs.changed"), "servers", object),
+		forbiddenWhen(object.equals("type", "runs.changed"), "topics", object),
+		forbiddenWhen(object.equals("type", "runs.changed"), "watchIds", object),
+		requiredWhen(object.equals("type", "plan.changed"), "sequence", object),
+		forbiddenWhen(object.equals("type", "plan.changed"), "paths", object),
+		forbiddenWhen(object.equals("type", "plan.changed"), "watchId", object),
+		forbiddenWhen(object.equals("type", "plan.changed"), "workspace", object),
+		forbiddenWhen(object.equals("type", "plan.changed"), "names", object),
+		forbiddenWhen(object.equals("type", "plan.changed"), "servers", object),
+		forbiddenWhen(object.equals("type", "plan.changed"), "runIds", object),
+		forbiddenWhen(object.equals("type", "plan.changed"), "topics", object),
+		forbiddenWhen(object.equals("type", "plan.changed"), "watchIds", object),
+		requiredWhen(object.equals("type", "goals.changed"), "sequence", object),
+		forbiddenWhen(object.equals("type", "goals.changed"), "paths", object),
+		forbiddenWhen(object.equals("type", "goals.changed"), "watchId", object),
+		forbiddenWhen(object.equals("type", "goals.changed"), "workspace", object),
+		forbiddenWhen(object.equals("type", "goals.changed"), "names", object),
+		forbiddenWhen(object.equals("type", "goals.changed"), "servers", object),
+		forbiddenWhen(object.equals("type", "goals.changed"), "runIds", object),
+		forbiddenWhen(object.equals("type", "goals.changed"), "topics", object),
+		forbiddenWhen(object.equals("type", "goals.changed"), "watchIds", object),
+		requiredWhen(object.equals("type", "interrupts.changed"), "sequence", object),
+		forbiddenWhen(object.equals("type", "interrupts.changed"), "paths", object),
+		forbiddenWhen(object.equals("type", "interrupts.changed"), "watchId", object),
+		forbiddenWhen(object.equals("type", "interrupts.changed"), "workspace", object),
+		forbiddenWhen(object.equals("type", "interrupts.changed"), "names", object),
+		forbiddenWhen(object.equals("type", "interrupts.changed"), "servers", object),
+		forbiddenWhen(object.equals("type", "interrupts.changed"), "topics", object),
+		forbiddenWhen(object.equals("type", "interrupts.changed"), "watchIds", object),
+		requiredWhen(object.equals("type", "hooks.changed"), "sequence", object),
+		forbiddenWhen(object.equals("type", "hooks.changed"), "paths", object),
+		forbiddenWhen(object.equals("type", "hooks.changed"), "watchId", object),
+		forbiddenWhen(object.equals("type", "hooks.changed"), "workspace", object),
+		forbiddenWhen(object.equals("type", "hooks.changed"), "names", object),
+		forbiddenWhen(object.equals("type", "hooks.changed"), "servers", object),
+		forbiddenWhen(object.equals("type", "hooks.changed"), "sessionIds", object),
+		forbiddenWhen(object.equals("type", "hooks.changed"), "runIds", object),
+		forbiddenWhen(object.equals("type", "hooks.changed"), "topics", object),
+		forbiddenWhen(object.equals("type", "hooks.changed"), "watchIds", object),
+		requiredWhen(object.equals("type", "models.changed"), "sequence", object),
+		forbiddenWhen(object.equals("type", "models.changed"), "paths", object),
+		forbiddenWhen(object.equals("type", "models.changed"), "watchId", object),
+		forbiddenWhen(object.equals("type", "models.changed"), "workspace", object),
+		forbiddenWhen(object.equals("type", "models.changed"), "names", object),
+		forbiddenWhen(object.equals("type", "models.changed"), "servers", object),
+		forbiddenWhen(object.equals("type", "models.changed"), "sessionIds", object),
+		forbiddenWhen(object.equals("type", "models.changed"), "runIds", object),
+		forbiddenWhen(object.equals("type", "models.changed"), "topics", object),
+		forbiddenWhen(object.equals("type", "models.changed"), "watchIds", object),
+		requiredWhen(object.equals("type", "approvals.changed"), "sequence", object),
+		forbiddenWhen(object.equals("type", "approvals.changed"), "paths", object),
+		forbiddenWhen(object.equals("type", "approvals.changed"), "watchId", object),
+		forbiddenWhen(object.equals("type", "approvals.changed"), "workspace", object),
+		forbiddenWhen(object.equals("type", "approvals.changed"), "names", object),
+		forbiddenWhen(object.equals("type", "approvals.changed"), "servers", object),
+		forbiddenWhen(object.equals("type", "approvals.changed"), "sessionIds", object),
+		forbiddenWhen(object.equals("type", "approvals.changed"), "runIds", object),
+		forbiddenWhen(object.equals("type", "approvals.changed"), "topics", object),
+		forbiddenWhen(object.equals("type", "approvals.changed"), "watchIds", object),
+		requiredWhen(object.equals("type", "projects.changed"), "sequence", object),
+		forbiddenWhen(object.equals("type", "projects.changed"), "paths", object),
+		forbiddenWhen(object.equals("type", "projects.changed"), "watchId", object),
+		forbiddenWhen(object.equals("type", "projects.changed"), "workspace", object),
+		forbiddenWhen(object.equals("type", "projects.changed"), "names", object),
+		forbiddenWhen(object.equals("type", "projects.changed"), "servers", object),
+		forbiddenWhen(object.equals("type", "projects.changed"), "sessionIds", object),
+		forbiddenWhen(object.equals("type", "projects.changed"), "runIds", object),
+		forbiddenWhen(object.equals("type", "projects.changed"), "topics", object),
+		forbiddenWhen(object.equals("type", "projects.changed"), "watchIds", object),
+		requiredWhen(object.equals("type", "resync"), "sequence", object),
+		requiredWhen(object.equals("type", "resync"), "topics", object),
+		forbiddenWhen(object.equals("type", "resync"), "paths", object),
+		forbiddenWhen(object.equals("type", "resync"), "watchId", object),
+		forbiddenWhen(object.equals("type", "resync"), "workspace", object),
+		forbiddenWhen(object.equals("type", "resync"), "names", object),
+		forbiddenWhen(object.equals("type", "resync"), "servers", object),
+		forbiddenWhen(object.equals("type", "resync"), "sessionIds", object),
+		forbiddenWhen(object.equals("type", "resync"), "runIds", object),
+	)
+	return violations
 }
 
-func (a ArtifactOutcome) validateWire() error {
-	return collectWireViolations("ArtifactOutcome",
-		forbiddenWhen(wireFieldEquals(a, "type", "completed"), "error", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "completed"), "detail", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "completed"), "loss", a),
-		requiredWhen(wireFieldEquals(a, "type", "timedOut"), "error", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "timedOut"), "detail", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "timedOut"), "loss", a),
-		allowedValuesWhen(wireFieldEquals(a, "type", "timedOut"), "error.type", a, []string{"timeout"}),
-		requiredWhen(wireFieldEquals(a, "type", "failed"), "error", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "failed"), "detail", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "failed"), "loss", a),
-		allowedValuesWhen(wireFieldEquals(a, "type", "failed"), "error.type", a, []string{"internal_error", "agent_stuck", "rate_limited", "invalid_credentials", "timeout", "provider_unavailable", "provider_rejected"}),
-		forbiddenWhen(wireFieldEquals(a, "type", "canceled"), "error", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "canceled"), "loss", a),
-		requiredWhen(wireFieldEquals(a, "type", "lost"), "loss", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "lost"), "error", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "lost"), "detail", a),
+func (a ArtifactOutcome) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		forbiddenWhen(object.equals("type", "completed"), "error", object),
+		forbiddenWhen(object.equals("type", "completed"), "detail", object),
+		forbiddenWhen(object.equals("type", "completed"), "loss", object),
+		requiredWhen(object.equals("type", "timedOut"), "error", object),
+		forbiddenWhen(object.equals("type", "timedOut"), "detail", object),
+		forbiddenWhen(object.equals("type", "timedOut"), "loss", object),
+		allowedValuesWhen(object.equals("type", "timedOut"), "error.type", object, []string{"timeout"}),
+		requiredWhen(object.equals("type", "failed"), "error", object),
+		forbiddenWhen(object.equals("type", "failed"), "detail", object),
+		forbiddenWhen(object.equals("type", "failed"), "loss", object),
+		allowedValuesWhen(object.equals("type", "failed"), "error.type", object, []string{"internal_error", "agent_stuck", "rate_limited", "invalid_credentials", "timeout", "provider_unavailable", "provider_rejected"}),
+		forbiddenWhen(object.equals("type", "canceled"), "error", object),
+		forbiddenWhen(object.equals("type", "canceled"), "loss", object),
+		requiredWhen(object.equals("type", "lost"), "loss", object),
+		forbiddenWhen(object.equals("type", "lost"), "error", object),
+		forbiddenWhen(object.equals("type", "lost"), "detail", object),
 	)
+	return violations
 }
 
-func (a ArtifactItem) validateWire() error {
-	return collectWireViolations("ArtifactItem",
-		requiredText("id", a.ID),
+func (a ArtifactItem) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("id", a.ID),
 		identity("id", a.ID),
 		maxLength("id", a.ID, 256),
-		requiredText("runId", a.RunID),
+		nonEmptyText("runId", a.RunID),
 		identity("runId", a.RunID),
 		maxLength("runId", a.RunID, 256),
-		nonNegativeNumber("droppedMessages", a.DroppedMessages),
-		optionalNonNegativeNumber("durationMillis", a.DurationMillis),
-		optionalMaximumNumber("durationMillis", a.DurationMillis, 9223372036854),
-		requiredWhen(wireFieldEquals(a, "type", "userMessage"), "id", a),
-		requiredWhen(wireFieldEquals(a, "type", "userMessage"), "runId", a),
-		requiredWhen(wireFieldEquals(a, "type", "userMessage"), "status", a),
-		requiredWhen(wireFieldEquals(a, "type", "userMessage"), "createdAt", a),
-		requiredWhen(wireFieldEquals(a, "type", "userMessage"), "content", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "userMessage"), "phase", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "userMessage"), "text", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "userMessage"), "redacted", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "userMessage"), "question", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "userMessage"), "startedAt", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "userMessage"), "tool", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "userMessage"), "finishedAt", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "userMessage"), "durationMillis", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "userMessage"), "safetyClass", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "userMessage"), "approvalDecision", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "userMessage"), "error", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "userMessage"), "summary", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "userMessage"), "droppedMessages", a),
-		allowedValuesWhen(wireFieldEquals(a, "type", "userMessage"), "status", a, []string{"completed"}),
-		requiredWhen(wireFieldEquals(a, "type", "agentMessage"), "id", a),
-		requiredWhen(wireFieldEquals(a, "type", "agentMessage"), "runId", a),
-		requiredWhen(wireFieldEquals(a, "type", "agentMessage"), "status", a),
-		requiredWhen(wireFieldEquals(a, "type", "agentMessage"), "createdAt", a),
-		requiredWhen(wireFieldEquals(a, "type", "agentMessage"), "phase", a),
-		requiredWhen(wireFieldEquals(a, "type", "agentMessage"), "content", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "agentMessage"), "text", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "agentMessage"), "redacted", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "agentMessage"), "question", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "agentMessage"), "startedAt", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "agentMessage"), "tool", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "agentMessage"), "finishedAt", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "agentMessage"), "durationMillis", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "agentMessage"), "safetyClass", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "agentMessage"), "approvalDecision", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "agentMessage"), "error", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "agentMessage"), "summary", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "agentMessage"), "droppedMessages", a),
-		allowedValuesWhen(wireFieldEquals(a, "type", "agentMessage"), "status", a, []string{"completed", "incomplete"}),
-		requiredWhen(wireFieldEquals(a, "type", "reasoning"), "id", a),
-		requiredWhen(wireFieldEquals(a, "type", "reasoning"), "runId", a),
-		requiredWhen(wireFieldEquals(a, "type", "reasoning"), "status", a),
-		requiredWhen(wireFieldEquals(a, "type", "reasoning"), "createdAt", a),
-		requiredWhen(wireFieldEquals(a, "type", "reasoning"), "text", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "reasoning"), "content", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "reasoning"), "phase", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "reasoning"), "question", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "reasoning"), "startedAt", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "reasoning"), "tool", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "reasoning"), "finishedAt", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "reasoning"), "durationMillis", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "reasoning"), "safetyClass", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "reasoning"), "approvalDecision", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "reasoning"), "error", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "reasoning"), "summary", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "reasoning"), "droppedMessages", a),
-		allowedValuesWhen(wireFieldEquals(a, "type", "reasoning"), "status", a, []string{"completed", "incomplete"}),
-		requiredWhen(wireFieldEquals(a, "type", "question"), "id", a),
-		requiredWhen(wireFieldEquals(a, "type", "question"), "runId", a),
-		requiredWhen(wireFieldEquals(a, "type", "question"), "status", a),
-		requiredWhen(wireFieldEquals(a, "type", "question"), "createdAt", a),
-		requiredWhen(wireFieldEquals(a, "type", "question"), "question", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "question"), "content", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "question"), "phase", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "question"), "text", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "question"), "redacted", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "question"), "startedAt", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "question"), "tool", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "question"), "finishedAt", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "question"), "durationMillis", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "question"), "safetyClass", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "question"), "approvalDecision", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "question"), "error", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "question"), "summary", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "question"), "droppedMessages", a),
-		allowedValuesWhen(wireFieldEquals(a, "type", "question"), "status", a, []string{"completed"}),
-		requiredWhen(wireFieldEquals(a, "type", "toolCall"), "id", a),
-		requiredWhen(wireFieldEquals(a, "type", "toolCall"), "runId", a),
-		requiredWhen(wireFieldEquals(a, "type", "toolCall"), "status", a),
-		requiredWhen(wireFieldEquals(a, "type", "toolCall"), "startedAt", a),
-		requiredWhen(wireFieldEquals(a, "type", "toolCall"), "tool", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "toolCall"), "createdAt", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "toolCall"), "content", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "toolCall"), "phase", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "toolCall"), "text", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "toolCall"), "redacted", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "toolCall"), "question", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "toolCall"), "summary", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "toolCall"), "droppedMessages", a),
-		allowedValuesWhen(wireFieldEquals(a, "type", "toolCall"), "status", a, []string{"completed", "incomplete"}),
-		allowedValuesWhen(wireFieldEquals(a, "type", "toolCall"), "error.type", a, []string{"internal_error", "denied_by_user", "tool_failed", "child_run_canceled", "tool_canceled"}),
-		requiredWhen(wireFieldEquals(a, "type", "compaction"), "id", a),
-		requiredWhen(wireFieldEquals(a, "type", "compaction"), "runId", a),
-		requiredWhen(wireFieldEquals(a, "type", "compaction"), "status", a),
-		requiredWhen(wireFieldEquals(a, "type", "compaction"), "createdAt", a),
-		requiredWhen(wireFieldEquals(a, "type", "compaction"), "summary", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "compaction"), "content", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "compaction"), "phase", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "compaction"), "text", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "compaction"), "redacted", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "compaction"), "question", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "compaction"), "startedAt", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "compaction"), "tool", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "compaction"), "finishedAt", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "compaction"), "durationMillis", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "compaction"), "safetyClass", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "compaction"), "approvalDecision", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "compaction"), "error", a),
-		allowedValuesWhen(wireFieldEquals(a, "type", "compaction"), "status", a, []string{"completed"}),
-		requiredWhen(wireFieldEquals(a, "type", "toolCall") && wireFieldEquals(a, "status", "completed"), "finishedAt", a),
-		requiredWhen(wireFieldEquals(a, "type", "toolCall") && wireFieldEquals(a, "status", "completed"), "durationMillis", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "toolCall") && wireFieldEquals(a, "status", "completed"), "error", a),
-		requiredWhen(wireFieldEquals(a, "type", "toolCall") && wireFieldEquals(a, "status", "incomplete"), "finishedAt", a),
 	)
+	if object.present("droppedMessages") {
+		violations.add(
+			nonNegativeNumber("droppedMessages", a.DroppedMessages),
+		)
+	}
+	if object.present("durationMillis") {
+		violations.add(
+			nonNegativeNumber("durationMillis", *a.DurationMillis),
+			maximumNumber("durationMillis", *a.DurationMillis, 9223372036854),
+		)
+	}
+	violations.add(
+		requiredWhen(object.equals("type", "userMessage"), "id", object),
+		requiredWhen(object.equals("type", "userMessage"), "runId", object),
+		requiredWhen(object.equals("type", "userMessage"), "status", object),
+		requiredWhen(object.equals("type", "userMessage"), "createdAt", object),
+		requiredWhen(object.equals("type", "userMessage"), "content", object),
+		forbiddenWhen(object.equals("type", "userMessage"), "phase", object),
+		forbiddenWhen(object.equals("type", "userMessage"), "text", object),
+		forbiddenWhen(object.equals("type", "userMessage"), "redacted", object),
+		forbiddenWhen(object.equals("type", "userMessage"), "question", object),
+		forbiddenWhen(object.equals("type", "userMessage"), "startedAt", object),
+		forbiddenWhen(object.equals("type", "userMessage"), "tool", object),
+		forbiddenWhen(object.equals("type", "userMessage"), "finishedAt", object),
+		forbiddenWhen(object.equals("type", "userMessage"), "durationMillis", object),
+		forbiddenWhen(object.equals("type", "userMessage"), "safetyClass", object),
+		forbiddenWhen(object.equals("type", "userMessage"), "approvalDecision", object),
+		forbiddenWhen(object.equals("type", "userMessage"), "error", object),
+		forbiddenWhen(object.equals("type", "userMessage"), "summary", object),
+		forbiddenWhen(object.equals("type", "userMessage"), "droppedMessages", object),
+		allowedValuesWhen(object.equals("type", "userMessage"), "status", object, []string{"completed"}),
+		requiredWhen(object.equals("type", "agentMessage"), "id", object),
+		requiredWhen(object.equals("type", "agentMessage"), "runId", object),
+		requiredWhen(object.equals("type", "agentMessage"), "status", object),
+		requiredWhen(object.equals("type", "agentMessage"), "createdAt", object),
+		requiredWhen(object.equals("type", "agentMessage"), "phase", object),
+		requiredWhen(object.equals("type", "agentMessage"), "content", object),
+		forbiddenWhen(object.equals("type", "agentMessage"), "text", object),
+		forbiddenWhen(object.equals("type", "agentMessage"), "redacted", object),
+		forbiddenWhen(object.equals("type", "agentMessage"), "question", object),
+		forbiddenWhen(object.equals("type", "agentMessage"), "startedAt", object),
+		forbiddenWhen(object.equals("type", "agentMessage"), "tool", object),
+		forbiddenWhen(object.equals("type", "agentMessage"), "finishedAt", object),
+		forbiddenWhen(object.equals("type", "agentMessage"), "durationMillis", object),
+		forbiddenWhen(object.equals("type", "agentMessage"), "safetyClass", object),
+		forbiddenWhen(object.equals("type", "agentMessage"), "approvalDecision", object),
+		forbiddenWhen(object.equals("type", "agentMessage"), "error", object),
+		forbiddenWhen(object.equals("type", "agentMessage"), "summary", object),
+		forbiddenWhen(object.equals("type", "agentMessage"), "droppedMessages", object),
+		allowedValuesWhen(object.equals("type", "agentMessage"), "status", object, []string{"completed", "incomplete"}),
+		requiredWhen(object.equals("type", "reasoning"), "id", object),
+		requiredWhen(object.equals("type", "reasoning"), "runId", object),
+		requiredWhen(object.equals("type", "reasoning"), "status", object),
+		requiredWhen(object.equals("type", "reasoning"), "createdAt", object),
+		requiredWhen(object.equals("type", "reasoning"), "text", object),
+		forbiddenWhen(object.equals("type", "reasoning"), "content", object),
+		forbiddenWhen(object.equals("type", "reasoning"), "phase", object),
+		forbiddenWhen(object.equals("type", "reasoning"), "question", object),
+		forbiddenWhen(object.equals("type", "reasoning"), "startedAt", object),
+		forbiddenWhen(object.equals("type", "reasoning"), "tool", object),
+		forbiddenWhen(object.equals("type", "reasoning"), "finishedAt", object),
+		forbiddenWhen(object.equals("type", "reasoning"), "durationMillis", object),
+		forbiddenWhen(object.equals("type", "reasoning"), "safetyClass", object),
+		forbiddenWhen(object.equals("type", "reasoning"), "approvalDecision", object),
+		forbiddenWhen(object.equals("type", "reasoning"), "error", object),
+		forbiddenWhen(object.equals("type", "reasoning"), "summary", object),
+		forbiddenWhen(object.equals("type", "reasoning"), "droppedMessages", object),
+		allowedValuesWhen(object.equals("type", "reasoning"), "status", object, []string{"completed", "incomplete"}),
+		requiredWhen(object.equals("type", "question"), "id", object),
+		requiredWhen(object.equals("type", "question"), "runId", object),
+		requiredWhen(object.equals("type", "question"), "status", object),
+		requiredWhen(object.equals("type", "question"), "createdAt", object),
+		requiredWhen(object.equals("type", "question"), "question", object),
+		forbiddenWhen(object.equals("type", "question"), "content", object),
+		forbiddenWhen(object.equals("type", "question"), "phase", object),
+		forbiddenWhen(object.equals("type", "question"), "text", object),
+		forbiddenWhen(object.equals("type", "question"), "redacted", object),
+		forbiddenWhen(object.equals("type", "question"), "startedAt", object),
+		forbiddenWhen(object.equals("type", "question"), "tool", object),
+		forbiddenWhen(object.equals("type", "question"), "finishedAt", object),
+		forbiddenWhen(object.equals("type", "question"), "durationMillis", object),
+		forbiddenWhen(object.equals("type", "question"), "safetyClass", object),
+		forbiddenWhen(object.equals("type", "question"), "approvalDecision", object),
+		forbiddenWhen(object.equals("type", "question"), "error", object),
+		forbiddenWhen(object.equals("type", "question"), "summary", object),
+		forbiddenWhen(object.equals("type", "question"), "droppedMessages", object),
+		allowedValuesWhen(object.equals("type", "question"), "status", object, []string{"completed"}),
+		requiredWhen(object.equals("type", "toolCall"), "id", object),
+		requiredWhen(object.equals("type", "toolCall"), "runId", object),
+		requiredWhen(object.equals("type", "toolCall"), "status", object),
+		requiredWhen(object.equals("type", "toolCall"), "startedAt", object),
+		requiredWhen(object.equals("type", "toolCall"), "tool", object),
+		forbiddenWhen(object.equals("type", "toolCall"), "createdAt", object),
+		forbiddenWhen(object.equals("type", "toolCall"), "content", object),
+		forbiddenWhen(object.equals("type", "toolCall"), "phase", object),
+		forbiddenWhen(object.equals("type", "toolCall"), "text", object),
+		forbiddenWhen(object.equals("type", "toolCall"), "redacted", object),
+		forbiddenWhen(object.equals("type", "toolCall"), "question", object),
+		forbiddenWhen(object.equals("type", "toolCall"), "summary", object),
+		forbiddenWhen(object.equals("type", "toolCall"), "droppedMessages", object),
+		allowedValuesWhen(object.equals("type", "toolCall"), "status", object, []string{"completed", "incomplete"}),
+		allowedValuesWhen(object.equals("type", "toolCall"), "error.type", object, []string{"internal_error", "denied_by_user", "tool_failed", "child_run_canceled", "tool_canceled"}),
+		requiredWhen(object.equals("type", "compaction"), "id", object),
+		requiredWhen(object.equals("type", "compaction"), "runId", object),
+		requiredWhen(object.equals("type", "compaction"), "status", object),
+		requiredWhen(object.equals("type", "compaction"), "createdAt", object),
+		requiredWhen(object.equals("type", "compaction"), "summary", object),
+		forbiddenWhen(object.equals("type", "compaction"), "content", object),
+		forbiddenWhen(object.equals("type", "compaction"), "phase", object),
+		forbiddenWhen(object.equals("type", "compaction"), "text", object),
+		forbiddenWhen(object.equals("type", "compaction"), "redacted", object),
+		forbiddenWhen(object.equals("type", "compaction"), "question", object),
+		forbiddenWhen(object.equals("type", "compaction"), "startedAt", object),
+		forbiddenWhen(object.equals("type", "compaction"), "tool", object),
+		forbiddenWhen(object.equals("type", "compaction"), "finishedAt", object),
+		forbiddenWhen(object.equals("type", "compaction"), "durationMillis", object),
+		forbiddenWhen(object.equals("type", "compaction"), "safetyClass", object),
+		forbiddenWhen(object.equals("type", "compaction"), "approvalDecision", object),
+		forbiddenWhen(object.equals("type", "compaction"), "error", object),
+		allowedValuesWhen(object.equals("type", "compaction"), "status", object, []string{"completed"}),
+		requiredWhen(object.equals("type", "toolCall") && object.equals("status", "completed"), "finishedAt", object),
+		requiredWhen(object.equals("type", "toolCall") && object.equals("status", "completed"), "durationMillis", object),
+		forbiddenWhen(object.equals("type", "toolCall") && object.equals("status", "completed"), "error", object),
+		requiredWhen(object.equals("type", "toolCall") && object.equals("status", "incomplete"), "finishedAt", object),
+	)
+	return violations
 }
 
-func (d Diff) validateWire() error {
-	return collectWireViolations("Diff",
-		requiredWhen(wireFieldEquals(d, "type", "rows"), "baseline", d),
-		requiredWhen(wireFieldEquals(d, "type", "rows"), "rows", d),
-		forbiddenWhen(wireFieldEquals(d, "type", "rows"), "patch", d),
-		forbiddenWhen(wireFieldEquals(d, "type", "rows"), "visual", d),
-		requiredWhen(wireFieldEquals(d, "type", "raw"), "baseline", d),
-		requiredWhen(wireFieldEquals(d, "type", "raw"), "patch", d),
-		forbiddenWhen(wireFieldEquals(d, "type", "raw"), "rows", d),
-		forbiddenWhen(wireFieldEquals(d, "type", "raw"), "visual", d),
-		requiredWhen(wireFieldEquals(d, "type", "visual"), "baseline", d),
-		requiredWhen(wireFieldEquals(d, "type", "visual"), "visual", d),
-		forbiddenWhen(wireFieldEquals(d, "type", "visual"), "rows", d),
-		forbiddenWhen(wireFieldEquals(d, "type", "visual"), "patch", d),
+func (d Diff) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		requiredWhen(object.equals("type", "rows"), "baseline", object),
+		requiredWhen(object.equals("type", "rows"), "rows", object),
+		forbiddenWhen(object.equals("type", "rows"), "patch", object),
+		forbiddenWhen(object.equals("type", "rows"), "visual", object),
+		requiredWhen(object.equals("type", "raw"), "baseline", object),
+		requiredWhen(object.equals("type", "raw"), "patch", object),
+		forbiddenWhen(object.equals("type", "raw"), "rows", object),
+		forbiddenWhen(object.equals("type", "raw"), "visual", object),
+		requiredWhen(object.equals("type", "visual"), "baseline", object),
+		requiredWhen(object.equals("type", "visual"), "visual", object),
+		forbiddenWhen(object.equals("type", "visual"), "rows", object),
+		forbiddenWhen(object.equals("type", "visual"), "patch", object),
 	)
+	return violations
 }
 
-func (d DiffBaseline) validateWire() error {
-	return collectWireViolations("DiffBaseline",
-		optionalTextPattern("commit", d.Commit, "^([0-9a-f]{40}|[0-9a-f]{64})$"),
-		requiredWhen(wireFieldEquals(d, "type", "head"), "commit", d),
-		requiredWhen(wireFieldEquals(d, "type", "mergeBase"), "commit", d),
-		forbiddenWhen(wireFieldEquals(d, "type", "emptyTree"), "commit", d),
+func (d DiffBaseline) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	if object.present("commit") {
+		violations.add(
+			textPattern("commit", d.Commit, "^([0-9a-f]{40}|[0-9a-f]{64})$"),
+		)
+	}
+	violations.add(
+		requiredWhen(object.equals("type", "head"), "commit", object),
+		requiredWhen(object.equals("type", "mergeBase"), "commit", object),
+		forbiddenWhen(object.equals("type", "emptyTree"), "commit", object),
 	)
+	return violations
 }
 
-func (d DiffRow) validateWire() error {
-	return collectWireViolations("DiffRow",
-		optionalPositiveScalarNumber("leftLine", d.LeftLine),
-		optionalPositiveScalarNumber("rightLine", d.RightLine),
-		requiredWhen(wireFieldEquals(d, "type", "hunk"), "text", d),
-		forbiddenWhen(wireFieldEquals(d, "type", "hunk"), "code", d),
-		forbiddenWhen(wireFieldEquals(d, "type", "hunk"), "leftLine", d),
-		forbiddenWhen(wireFieldEquals(d, "type", "hunk"), "rightLine", d),
-		forbiddenWhen(wireFieldEquals(d, "type", "hunk"), "noNewline", d),
-		requiredWhen(wireFieldEquals(d, "type", "context"), "code", d),
-		requiredWhen(wireFieldEquals(d, "type", "context"), "leftLine", d),
-		requiredWhen(wireFieldEquals(d, "type", "context"), "rightLine", d),
-		forbiddenWhen(wireFieldEquals(d, "type", "context"), "text", d),
-		requiredWhen(wireFieldEquals(d, "type", "added"), "code", d),
-		requiredWhen(wireFieldEquals(d, "type", "added"), "rightLine", d),
-		forbiddenWhen(wireFieldEquals(d, "type", "added"), "text", d),
-		forbiddenWhen(wireFieldEquals(d, "type", "added"), "leftLine", d),
-		requiredWhen(wireFieldEquals(d, "type", "deleted"), "code", d),
-		requiredWhen(wireFieldEquals(d, "type", "deleted"), "leftLine", d),
-		forbiddenWhen(wireFieldEquals(d, "type", "deleted"), "text", d),
-		forbiddenWhen(wireFieldEquals(d, "type", "deleted"), "rightLine", d),
+func (d DiffRow) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	if object.present("leftLine") {
+		violations.add(
+			positiveNumber("leftLine", d.LeftLine),
+		)
+	}
+	if object.present("rightLine") {
+		violations.add(
+			positiveNumber("rightLine", d.RightLine),
+		)
+	}
+	violations.add(
+		requiredWhen(object.equals("type", "hunk"), "text", object),
+		forbiddenWhen(object.equals("type", "hunk"), "code", object),
+		forbiddenWhen(object.equals("type", "hunk"), "leftLine", object),
+		forbiddenWhen(object.equals("type", "hunk"), "rightLine", object),
+		forbiddenWhen(object.equals("type", "hunk"), "noNewline", object),
+		requiredWhen(object.equals("type", "context"), "code", object),
+		requiredWhen(object.equals("type", "context"), "leftLine", object),
+		requiredWhen(object.equals("type", "context"), "rightLine", object),
+		forbiddenWhen(object.equals("type", "context"), "text", object),
+		requiredWhen(object.equals("type", "added"), "code", object),
+		requiredWhen(object.equals("type", "added"), "rightLine", object),
+		forbiddenWhen(object.equals("type", "added"), "text", object),
+		forbiddenWhen(object.equals("type", "added"), "leftLine", object),
+		requiredWhen(object.equals("type", "deleted"), "code", object),
+		requiredWhen(object.equals("type", "deleted"), "leftLine", object),
+		forbiddenWhen(object.equals("type", "deleted"), "text", object),
+		forbiddenWhen(object.equals("type", "deleted"), "rightLine", object),
 	)
+	return violations
 }
 
-func (a Activity) validateWire() error {
-	return collectWireViolations("Activity",
-		forbiddenWhen(wireFieldEquals(a, "type", "callingModel"), "itemId", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "callingModel"), "tool", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "modelCallFailed"), "itemId", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "modelCallFailed"), "tool", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "applyingUserInput"), "itemId", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "applyingUserInput"), "tool", a),
-		requiredWhen(wireFieldEquals(a, "type", "toolCall"), "itemId", a),
-		requiredWhen(wireFieldEquals(a, "type", "toolCall"), "tool", a),
+func (a Activity) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		forbiddenWhen(object.equals("type", "callingModel"), "itemId", object),
+		forbiddenWhen(object.equals("type", "callingModel"), "tool", object),
+		forbiddenWhen(object.equals("type", "modelCallFailed"), "itemId", object),
+		forbiddenWhen(object.equals("type", "modelCallFailed"), "tool", object),
+		forbiddenWhen(object.equals("type", "applyingUserInput"), "itemId", object),
+		forbiddenWhen(object.equals("type", "applyingUserInput"), "tool", object),
+		requiredWhen(object.equals("type", "toolCall"), "itemId", object),
+		requiredWhen(object.equals("type", "toolCall"), "tool", object),
 	)
+	return violations
 }
 
-func (m ModelEndpointInvocation) validateWire() error {
-	return collectWireViolations("ModelEndpointInvocation",
-		identity("sessionId", m.SessionID),
-		maxLength("sessionId", m.SessionID, 256),
-		identity("runId", m.RunID),
-		maxLength("runId", m.RunID, 256),
-		optionalNonNegativeNumber("costUsd", m.CostUSD),
+func (m ModelEndpointInvocation) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	if object.present("sessionId") {
+		violations.add(
+			identity("sessionId", m.SessionID),
+			maxLength("sessionId", m.SessionID, 256),
+		)
+	}
+	if object.present("runId") {
+		violations.add(
+			identity("runId", m.RunID),
+			maxLength("runId", m.RunID, 256),
+		)
+	}
+	if object.present("costUsd") {
+		violations.add(
+			nonNegativeNumber("costUsd", *m.CostUSD),
+		)
+	}
+	violations.add(
 		identity("id", m.ID),
-		requiredText("id", m.ID),
-		requiredText("provider", m.Provider),
-		requiredText("model", m.Model),
-		requiredText("request", m.Request),
-		requiredWhen(wireFieldPresent(m, "runId"), "sessionId", m),
-		forbiddenWhen(wireFieldEquals(m, "state", "started"), "settledAt", m),
-		forbiddenWhen(wireFieldEquals(m, "state", "started"), "response", m),
-		forbiddenWhen(wireFieldEquals(m, "state", "started"), "failure", m),
-		forbiddenWhen(wireFieldEquals(m, "state", "started"), "costUsd", m),
-		requiredWhen(wireFieldEquals(m, "state", "completed"), "settledAt", m),
-		requiredWhen(wireFieldEquals(m, "state", "completed"), "response", m),
-		forbiddenWhen(wireFieldEquals(m, "state", "completed"), "failure", m),
-		requiredWhen(wireFieldEquals(m, "state", "failed"), "settledAt", m),
-		requiredWhen(wireFieldEquals(m, "state", "failed"), "response", m),
-		requiredWhen(wireFieldEquals(m, "state", "failed"), "failure", m),
-		requiredWhen(wireFieldEquals(m, "state", "unknown"), "settledAt", m),
-		requiredWhen(wireFieldEquals(m, "state", "unknown"), "failure", m),
-		forbiddenWhen(wireFieldEquals(m, "state", "unknown"), "response", m),
-		forbiddenWhen(wireFieldEquals(m, "state", "unknown"), "costUsd", m),
+		nonEmptyText("id", m.ID),
+		nonEmptyText("provider", m.Provider),
+		nonEmptyText("model", m.Model),
+		nonEmptyText("request", m.Request),
+		requiredWhen(object.present("runId"), "sessionId", object),
+		forbiddenWhen(object.equals("state", "started"), "settledAt", object),
+		forbiddenWhen(object.equals("state", "started"), "response", object),
+		forbiddenWhen(object.equals("state", "started"), "failure", object),
+		forbiddenWhen(object.equals("state", "started"), "costUsd", object),
+		requiredWhen(object.equals("state", "completed"), "settledAt", object),
+		requiredWhen(object.equals("state", "completed"), "response", object),
+		forbiddenWhen(object.equals("state", "completed"), "failure", object),
+		requiredWhen(object.equals("state", "failed"), "settledAt", object),
+		requiredWhen(object.equals("state", "failed"), "response", object),
+		requiredWhen(object.equals("state", "failed"), "failure", object),
+		requiredWhen(object.equals("state", "unknown"), "settledAt", object),
+		requiredWhen(object.equals("state", "unknown"), "failure", object),
+		forbiddenWhen(object.equals("state", "unknown"), "response", object),
+		forbiddenWhen(object.equals("state", "unknown"), "costUsd", object),
 	)
+	return violations
 }
 
-func (m ModelInvocation) validateWire() error {
-	return collectWireViolations("ModelInvocation",
-		requiredText("runId", m.RunID),
+func (m ModelInvocation) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("runId", m.RunID),
 		identity("runId", m.RunID),
 		maxLength("runId", m.RunID, 256),
-		requiredText("segmentId", m.SegmentID),
+		nonEmptyText("segmentId", m.SegmentID),
 		identity("segmentId", m.SegmentID),
 		maxLength("segmentId", m.SegmentID, 256),
-		requiredTextPattern("callId", m.CallID, "^[A-Za-z0-9._:-]+$"),
+		textPattern("callId", m.CallID, "^[A-Za-z0-9._:-]+$"),
 		maxLength("callId", m.CallID, 256),
-		optionalNonNegativeNumber("firstOutputLatencyMillis", m.FirstOutputLatencyMillis),
-		requiredWhen(wireFieldEquals(m, "state", "failed") && wireFieldPresent(m, "usage"), "knownResponse", m),
-		forbiddenWhen(wireFieldEquals(m, "state", "started"), "settledAt", m),
-		forbiddenWhen(wireFieldEquals(m, "state", "started"), "usage", m),
-		forbiddenWhen(wireFieldEquals(m, "state", "started"), "firstOutputLatencyMillis", m),
-		forbiddenWhen(wireFieldEquals(m, "state", "started"), "knownResponse", m),
-		requiredWhen(wireFieldEquals(m, "state", "completed"), "settledAt", m),
-		forbiddenWhen(wireFieldEquals(m, "state", "completed"), "knownResponse", m),
-		requiredWhen(wireFieldEquals(m, "state", "failed"), "settledAt", m),
-		requiredWhen(wireFieldEquals(m, "state", "unknown"), "settledAt", m),
-		forbiddenWhen(wireFieldEquals(m, "state", "unknown"), "usage", m),
-		forbiddenWhen(wireFieldEquals(m, "state", "unknown"), "firstOutputLatencyMillis", m),
-		forbiddenWhen(wireFieldEquals(m, "state", "unknown"), "knownResponse", m),
 	)
+	if object.present("firstOutputLatencyMillis") {
+		violations.add(
+			nonNegativeNumber("firstOutputLatencyMillis", *m.FirstOutputLatencyMillis),
+		)
+	}
+	violations.add(
+		requiredWhen(object.equals("state", "failed") && object.present("usage"), "knownResponse", object),
+		forbiddenWhen(object.equals("state", "started"), "settledAt", object),
+		forbiddenWhen(object.equals("state", "started"), "usage", object),
+		forbiddenWhen(object.equals("state", "started"), "firstOutputLatencyMillis", object),
+		forbiddenWhen(object.equals("state", "started"), "knownResponse", object),
+		requiredWhen(object.equals("state", "completed"), "settledAt", object),
+		forbiddenWhen(object.equals("state", "completed"), "knownResponse", object),
+		requiredWhen(object.equals("state", "failed"), "settledAt", object),
+		requiredWhen(object.equals("state", "unknown"), "settledAt", object),
+		forbiddenWhen(object.equals("state", "unknown"), "usage", object),
+		forbiddenWhen(object.equals("state", "unknown"), "firstOutputLatencyMillis", object),
+		forbiddenWhen(object.equals("state", "unknown"), "knownResponse", object),
+	)
+	return violations
 }
 
-func (t ToolAttempt) validateWire() error {
-	return collectWireViolations("ToolAttempt",
-		requiredText("runId", t.RunID),
+func (t ToolAttempt) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("runId", t.RunID),
 		identity("runId", t.RunID),
 		maxLength("runId", t.RunID, 256),
-		requiredText("segmentId", t.SegmentID),
+		nonEmptyText("segmentId", t.SegmentID),
 		identity("segmentId", t.SegmentID),
 		maxLength("segmentId", t.SegmentID, 256),
-		requiredTextPattern("callId", t.CallID, "^[A-Za-z0-9._:-]+$"),
+		textPattern("callId", t.CallID, "^[A-Za-z0-9._:-]+$"),
 		maxLength("callId", t.CallID, 256),
-		requiredText("itemId", t.ItemID),
+		nonEmptyText("itemId", t.ItemID),
 		identity("itemId", t.ItemID),
 		maxLength("itemId", t.ItemID, 256),
-		forbiddenWhen(wireFieldEquals(t, "state", "started"), "settledAt", t),
-		requiredWhen(wireFieldEquals(t, "state", "completed"), "settledAt", t),
-		requiredWhen(wireFieldEquals(t, "state", "incomplete"), "settledAt", t),
+		forbiddenWhen(object.equals("state", "started"), "settledAt", object),
+		requiredWhen(object.equals("state", "completed"), "settledAt", object),
+		requiredWhen(object.equals("state", "incomplete"), "settledAt", object),
 	)
+	return violations
 }
 
-func (p PluginInput) validateWire() error {
-	return collectWireViolations("PluginInput",
-		requiredTextPattern("server", p.Server, "^[a-z0-9][a-z0-9._-]{0,31}$"),
-		requiredWhen(wireFieldEquals(p, "target", "env"), "key", p),
-		requiredWhen(wireFieldEquals(p, "target", "header"), "key", p),
-		forbiddenWhen(wireFieldEquals(p, "target", "authorization"), "key", p),
+func (p PluginInput) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		textPattern("server", p.Server, "^[a-z0-9][a-z0-9._-]{0,31}$"),
+		requiredWhen(object.equals("target", "env"), "key", object),
+		requiredWhen(object.equals("target", "header"), "key", object),
+		forbiddenWhen(object.equals("target", "authorization"), "key", object),
 	)
+	return violations
 }
 
-func (m ModelTokenLimits) validateWire() error {
-	return collectWireViolations("ModelTokenLimits",
-		optionalPositiveNumber("contextWindow", m.ContextWindow),
-		optionalPositiveNumber("maxInputTokens", m.MaxInputTokens),
-		optionalPositiveNumber("maxOutputTokens", m.MaxOutputTokens),
-		requiredAny([]string{"contextWindow", "maxInputTokens", "maxOutputTokens"}, m),
+func (m ModelTokenLimits) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	if object.present("contextWindow") {
+		violations.add(
+			positiveNumber("contextWindow", *m.ContextWindow),
+		)
+	}
+	if object.present("maxInputTokens") {
+		violations.add(
+			positiveNumber("maxInputTokens", *m.MaxInputTokens),
+		)
+	}
+	if object.present("maxOutputTokens") {
+		violations.add(
+			positiveNumber("maxOutputTokens", *m.MaxOutputTokens),
+		)
+	}
+	violations.add(
+		requiredAny([]string{"contextWindow", "maxInputTokens", "maxOutputTokens"}, object),
 	)
+	return violations
 }
 
-func (r RunProgress) validateWire() error {
-	return collectWireViolations("RunProgress",
-		optionalNonNegativeNumber("step", r.Step),
-		optionalNonNegativeNumber("contextTokens", r.ContextTokens),
-		requiredAny([]string{"step", "usage", "contextTokens", "activity"}, r),
+func (r RunProgress) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	if object.present("step") {
+		violations.add(
+			nonNegativeNumber("step", *r.Step),
+		)
+	}
+	if object.present("contextTokens") {
+		violations.add(
+			nonNegativeNumber("contextTokens", *r.ContextTokens),
+		)
+	}
+	violations.add(
+		requiredAny([]string{"step", "usage", "contextTokens", "activity"}, object),
 	)
+	return violations
 }
 
-func (r RunEvent) validateWire() error {
-	return collectWireViolations("RunEvent",
-		requiredText("runId", r.RunID),
+func (r RunEvent) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("runId", r.RunID),
 		identity("runId", r.RunID),
 		maxLength("runId", r.RunID, 256),
-		requiredText("segmentId", r.SegmentID),
+		nonEmptyText("segmentId", r.SegmentID),
 		identity("segmentId", r.SegmentID),
 		maxLength("segmentId", r.SegmentID, 256),
 		identity("eventId", r.EventID),
-		requiredTextPrefix("eventId", r.EventID, "evt_"),
+		textPrefix("eventId", r.EventID, "evt_"),
 		maxLength("eventId", r.EventID, 65540),
-		required("timestamp", r),
+		required("timestamp", object),
 	)
+	return violations
 }
 
-func (r RunSummary) validateWire() error {
-	return collectWireViolations("RunSummary",
-		requiredText("id", r.ID),
+func (r RunSummary) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("id", r.ID),
 		identity("id", r.ID),
 		maxLength("id", r.ID, 256),
-		requiredText("sessionId", r.SessionID),
+		nonEmptyText("sessionId", r.SessionID),
 		identity("sessionId", r.SessionID),
 		maxLength("sessionId", r.SessionID, 256),
-		identity("spawnedByItemId", r.SpawnedByItemID),
-		maxLength("spawnedByItemId", r.SpawnedByItemID, 256),
-		identity("parentRunId", r.ParentRunID),
-		maxLength("parentRunId", r.ParentRunID, 256),
-		identity("rootRunId", r.RootRunID),
-		maxLength("rootRunId", r.RootRunID, 256),
-		requiredText("provider", r.Provider),
-		requiredText("model", r.Model),
+	)
+	if object.present("spawnedByItemId") {
+		violations.add(
+			identity("spawnedByItemId", r.SpawnedByItemID),
+			maxLength("spawnedByItemId", r.SpawnedByItemID, 256),
+		)
+	}
+	if object.present("parentRunId") {
+		violations.add(
+			identity("parentRunId", r.ParentRunID),
+			maxLength("parentRunId", r.ParentRunID, 256),
+		)
+	}
+	if object.present("rootRunId") {
+		violations.add(
+			identity("rootRunId", r.RootRunID),
+			maxLength("rootRunId", r.RootRunID, 256),
+		)
+	}
+	violations.add(
+		nonEmptyText("provider", r.Provider),
+		nonEmptyText("model", r.Model),
 		identity("provider", r.Provider),
 		maxLength("provider", r.Provider, 64),
 		identity("model", r.Model),
 		maxLength("model", r.Model, 256),
-		identity("reasoningEffort", r.ReasoningEffort),
-		maxLength("reasoningEffort", r.ReasoningEffort, 32),
-		required("provider", r),
-		required("model", r),
-		required("createdAt", r),
-		requiredWhen(wireFieldEquals(r, "status", "finished"), "outcome", r),
-		requiredWhen(wireFieldEquals(r, "status", "finished"), "finishedAt", r),
-		forbiddenWhen(wireFieldEquals(r, "status", "running"), "outcome", r),
-		forbiddenWhen(wireFieldEquals(r, "status", "running"), "finishedAt", r),
-		forbiddenWhen(wireFieldEquals(r, "status", "waiting"), "outcome", r),
-		forbiddenWhen(wireFieldEquals(r, "status", "waiting"), "finishedAt", r),
-		requiredWhen(wireFieldPresent(r, "spawnedByItemId"), "parentRunId", r),
-		requiredWhen(wireFieldPresent(r, "spawnedByItemId"), "rootRunId", r),
-		requiredWhen(wireFieldPresent(r, "parentRunId"), "spawnedByItemId", r),
-		requiredWhen(wireFieldPresent(r, "parentRunId"), "rootRunId", r),
-		requiredWhen(wireFieldPresent(r, "rootRunId"), "spawnedByItemId", r),
-		requiredWhen(wireFieldPresent(r, "rootRunId"), "parentRunId", r),
 	)
+	if object.present("reasoningEffort") {
+		violations.add(
+			identity("reasoningEffort", r.ReasoningEffort),
+			maxLength("reasoningEffort", r.ReasoningEffort, 32),
+		)
+	}
+	violations.add(
+		required("provider", object),
+		required("model", object),
+		required("createdAt", object),
+		requiredWhen(object.equals("status", "finished"), "outcome", object),
+		requiredWhen(object.equals("status", "finished"), "finishedAt", object),
+		forbiddenWhen(object.equals("status", "running"), "outcome", object),
+		forbiddenWhen(object.equals("status", "running"), "finishedAt", object),
+		forbiddenWhen(object.equals("status", "waiting"), "outcome", object),
+		forbiddenWhen(object.equals("status", "waiting"), "finishedAt", object),
+		requiredWhen(object.present("spawnedByItemId"), "parentRunId", object),
+		requiredWhen(object.present("spawnedByItemId"), "rootRunId", object),
+		requiredWhen(object.present("parentRunId"), "spawnedByItemId", object),
+		requiredWhen(object.present("parentRunId"), "rootRunId", object),
+		requiredWhen(object.present("rootRunId"), "spawnedByItemId", object),
+		requiredWhen(object.present("rootRunId"), "parentRunId", object),
+	)
+	return violations
 }
 
-func (r RunRef) validateWire() error {
-	return collectWireViolations("RunRef",
-		identity("activeSegmentId", r.ActiveSegmentID),
-		maxLength("activeSegmentId", r.ActiveSegmentID, 256),
-		nonNegativeNumber("contextTokens", r.ContextTokens),
-		requiredText("id", r.ID),
+func (r RunRef) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	if object.present("activeSegmentId") {
+		violations.add(
+			identity("activeSegmentId", r.ActiveSegmentID),
+			maxLength("activeSegmentId", r.ActiveSegmentID, 256),
+		)
+	}
+	if object.present("contextTokens") {
+		violations.add(
+			nonNegativeNumber("contextTokens", r.ContextTokens),
+		)
+	}
+	violations.add(
+		nonEmptyText("id", r.ID),
 		identity("id", r.ID),
 		maxLength("id", r.ID, 256),
-		requiredText("sessionId", r.SessionID),
+		nonEmptyText("sessionId", r.SessionID),
 		identity("sessionId", r.SessionID),
 		maxLength("sessionId", r.SessionID, 256),
-		identity("spawnedByItemId", r.SpawnedByItemID),
-		maxLength("spawnedByItemId", r.SpawnedByItemID, 256),
-		identity("parentRunId", r.ParentRunID),
-		maxLength("parentRunId", r.ParentRunID, 256),
-		identity("rootRunId", r.RootRunID),
-		maxLength("rootRunId", r.RootRunID, 256),
-		requiredText("provider", r.Provider),
-		requiredText("model", r.Model),
+	)
+	if object.present("spawnedByItemId") {
+		violations.add(
+			identity("spawnedByItemId", r.SpawnedByItemID),
+			maxLength("spawnedByItemId", r.SpawnedByItemID, 256),
+		)
+	}
+	if object.present("parentRunId") {
+		violations.add(
+			identity("parentRunId", r.ParentRunID),
+			maxLength("parentRunId", r.ParentRunID, 256),
+		)
+	}
+	if object.present("rootRunId") {
+		violations.add(
+			identity("rootRunId", r.RootRunID),
+			maxLength("rootRunId", r.RootRunID, 256),
+		)
+	}
+	violations.add(
+		nonEmptyText("provider", r.Provider),
+		nonEmptyText("model", r.Model),
 		identity("provider", r.Provider),
 		maxLength("provider", r.Provider, 64),
 		identity("model", r.Model),
 		maxLength("model", r.Model, 256),
-		identity("reasoningEffort", r.ReasoningEffort),
-		maxLength("reasoningEffort", r.ReasoningEffort, 32),
-		required("provider", r),
-		required("model", r),
-		required("createdAt", r),
-		requiredWhen(wireFieldEquals(r, "status", "finished"), "outcome", r),
-		requiredWhen(wireFieldEquals(r, "status", "finished"), "finishedAt", r),
-		forbiddenWhen(wireFieldEquals(r, "status", "running"), "outcome", r),
-		forbiddenWhen(wireFieldEquals(r, "status", "running"), "finishedAt", r),
-		forbiddenWhen(wireFieldEquals(r, "status", "waiting"), "outcome", r),
-		forbiddenWhen(wireFieldEquals(r, "status", "waiting"), "finishedAt", r),
-		requiredWhen(wireFieldPresent(r, "spawnedByItemId"), "parentRunId", r),
-		requiredWhen(wireFieldPresent(r, "spawnedByItemId"), "rootRunId", r),
-		requiredWhen(wireFieldPresent(r, "parentRunId"), "spawnedByItemId", r),
-		requiredWhen(wireFieldPresent(r, "parentRunId"), "rootRunId", r),
-		requiredWhen(wireFieldPresent(r, "rootRunId"), "spawnedByItemId", r),
-		requiredWhen(wireFieldPresent(r, "rootRunId"), "parentRunId", r),
-		requiredWhen(wireFieldEquals(r, "status", "running"), "activeSegmentId", r),
-		forbiddenWhen(wireFieldEquals(r, "status", "waiting"), "activeSegmentId", r),
-		forbiddenWhen(wireFieldEquals(r, "status", "finished"), "activeSegmentId", r),
-		forbiddenWhen(wireFieldPresent(r, "spawnedByItemId"), "capabilities", r),
 	)
+	if object.present("reasoningEffort") {
+		violations.add(
+			identity("reasoningEffort", r.ReasoningEffort),
+			maxLength("reasoningEffort", r.ReasoningEffort, 32),
+		)
+	}
+	violations.add(
+		required("provider", object),
+		required("model", object),
+		required("createdAt", object),
+		requiredWhen(object.equals("status", "finished"), "outcome", object),
+		requiredWhen(object.equals("status", "finished"), "finishedAt", object),
+		forbiddenWhen(object.equals("status", "running"), "outcome", object),
+		forbiddenWhen(object.equals("status", "running"), "finishedAt", object),
+		forbiddenWhen(object.equals("status", "waiting"), "outcome", object),
+		forbiddenWhen(object.equals("status", "waiting"), "finishedAt", object),
+		requiredWhen(object.present("spawnedByItemId"), "parentRunId", object),
+		requiredWhen(object.present("spawnedByItemId"), "rootRunId", object),
+		requiredWhen(object.present("parentRunId"), "spawnedByItemId", object),
+		requiredWhen(object.present("parentRunId"), "rootRunId", object),
+		requiredWhen(object.present("rootRunId"), "spawnedByItemId", object),
+		requiredWhen(object.present("rootRunId"), "parentRunId", object),
+		requiredWhen(object.equals("status", "running"), "activeSegmentId", object),
+		forbiddenWhen(object.equals("status", "waiting"), "activeSegmentId", object),
+		forbiddenWhen(object.equals("status", "finished"), "activeSegmentId", object),
+		forbiddenWhen(object.present("spawnedByItemId"), "capabilities", object),
+	)
+	return violations
 }
 
-func (p PendingInterruptSet) validateWire() error {
-	return collectWireViolations("PendingInterruptSet",
-		requiredText("rootRunId", p.RootRunID),
+func (p PendingInterruptSet) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("rootRunId", p.RootRunID),
 		identity("rootRunId", p.RootRunID),
 		maxLength("rootRunId", p.RootRunID, 256),
-		requiredText("sessionId", p.SessionID),
+		nonEmptyText("sessionId", p.SessionID),
 		identity("sessionId", p.SessionID),
 		maxLength("sessionId", p.SessionID, 256),
-		requiredItems("interrupts", p.Interrupts),
-		required("rootRunId", p),
-		required("sessionId", p),
-		required("interrupts", p),
-		required("createdAt", p),
+		nonEmptyItems("interrupts", p.Interrupts),
+		required("rootRunId", object),
+		required("sessionId", object),
+		required("interrupts", object),
+		required("createdAt", object),
 	)
+	return violations
 }
 
-func (s Session) validateWire() error {
-	return collectWireViolations("Session",
-		requiredText("id", s.ID),
+func (s Session) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("id", s.ID),
 		identity("id", s.ID),
 		maxLength("id", s.ID, 256),
-		requiredText("provider", s.Provider),
-		requiredText("model", s.Model),
+		nonEmptyText("provider", s.Provider),
+		nonEmptyText("model", s.Model),
 		identity("provider", s.Provider),
 		maxLength("provider", s.Provider, 64),
 		identity("model", s.Model),
 		maxLength("model", s.Model, 256),
-		identity("reasoningEffort", s.ReasoningEffort),
-		maxLength("reasoningEffort", s.ReasoningEffort, 32),
+	)
+	if object.present("reasoningEffort") {
+		violations.add(
+			identity("reasoningEffort", s.ReasoningEffort),
+			maxLength("reasoningEffort", s.ReasoningEffort, 32),
+		)
+	}
+	violations.add(
 		positiveNumber("revision", s.Revision),
 		maximumNumber("revision", s.Revision, 9007199254740991),
-		identity("projectId", s.ProjectID),
-		maxLength("projectId", s.ProjectID, 256),
-		required("createdAt", s),
-		required("updatedAt", s),
 	)
+	if object.present("projectId") {
+		violations.add(
+			identity("projectId", s.ProjectID),
+			maxLength("projectId", s.ProjectID, 256),
+		)
+	}
+	violations.add(
+		required("createdAt", object),
+		required("updatedAt", object),
+	)
+	return violations
 }
 
-func (p PlanState) validateWire() error {
-	return collectWireViolations("PlanState",
+func (p PlanState) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
 		positiveNumber("revision", p.Revision),
 		maximumNumber("revision", p.Revision, 9007199254740991),
-		required("updatedAt", p),
+		required("updatedAt", object),
 	)
+	return violations
 }
 
-func (h HookInfo) validateWire() error {
-	return collectWireViolations("HookInfo",
-		requiredText("source", h.Source),
-		nonNegativeNumber("timeoutMillis", h.TimeoutMillis),
-		maximumNumber("timeoutMillis", h.TimeoutMillis, 300000),
-		requiredAny([]string{"command", "inject"}, h),
-		requiredWhen(wireFieldPresent(h, "command"), "failurePolicy", h),
-		forbiddenWhen(wireFieldPresent(h, "command"), "inject", h),
-		forbiddenWhen(wireFieldPresent(h, "inject"), "command", h),
-		forbiddenWhen(wireFieldPresent(h, "inject"), "matcher", h),
-		forbiddenWhen(wireFieldPresent(h, "inject"), "timeoutMillis", h),
-		forbiddenWhen(wireFieldPresent(h, "inject"), "failurePolicy", h),
-		allowedValuesWhen(wireFieldEquals(h, "failurePolicy", "required"), "event", h, []string{"PreToolUse", "UserPromptSubmit", "PreCompact"}),
-		forbiddenWhen(wireFieldEquals(h, "event", "UserPromptSubmit"), "matcher", h),
-		forbiddenWhen(wireFieldEquals(h, "event", "SessionStart"), "matcher", h),
-		forbiddenWhen(wireFieldEquals(h, "event", "PreCompact"), "matcher", h),
-		forbiddenWhen(wireFieldEquals(h, "event", "Stop"), "matcher", h),
-		forbiddenWhen(wireFieldEquals(h, "event", "Notification"), "matcher", h),
+func (h HookInfo) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("source", h.Source),
 	)
+	if object.present("timeoutMillis") {
+		violations.add(
+			nonNegativeNumber("timeoutMillis", h.TimeoutMillis),
+			maximumNumber("timeoutMillis", h.TimeoutMillis, 300000),
+		)
+	}
+	violations.add(
+		requiredAny([]string{"command", "inject"}, object),
+		requiredWhen(object.present("command"), "failurePolicy", object),
+		forbiddenWhen(object.present("command"), "inject", object),
+		forbiddenWhen(object.present("inject"), "command", object),
+		forbiddenWhen(object.present("inject"), "matcher", object),
+		forbiddenWhen(object.present("inject"), "timeoutMillis", object),
+		forbiddenWhen(object.present("inject"), "failurePolicy", object),
+		allowedValuesWhen(object.equals("failurePolicy", "required"), "event", object, []string{"PreToolUse", "UserPromptSubmit", "PreCompact"}),
+		forbiddenWhen(object.equals("event", "UserPromptSubmit"), "matcher", object),
+		forbiddenWhen(object.equals("event", "SessionStart"), "matcher", object),
+		forbiddenWhen(object.equals("event", "PreCompact"), "matcher", object),
+		forbiddenWhen(object.equals("event", "Stop"), "matcher", object),
+		forbiddenWhen(object.equals("event", "Notification"), "matcher", object),
+	)
+	return violations
 }
 
-func (p PluginTerminalBinding) validateWire() error {
-	return collectWireViolations("PluginTerminalBinding",
-		requiredWhen(wireFieldEquals(p, "source", "value"), "value", p),
-		forbiddenWhen(wireFieldEquals(p, "source", "value"), "field", p),
-		forbiddenWhen(wireFieldEquals(p, "source", "value"), "context", p),
-		forbiddenWhen(wireFieldEquals(p, "source", "value"), "form", p),
-		requiredWhen(wireFieldEquals(p, "source", "row"), "field", p),
-		forbiddenWhen(wireFieldEquals(p, "source", "row"), "value", p),
-		forbiddenWhen(wireFieldEquals(p, "source", "row"), "context", p),
-		forbiddenWhen(wireFieldEquals(p, "source", "row"), "form", p),
-		requiredWhen(wireFieldEquals(p, "source", "context"), "context", p),
-		forbiddenWhen(wireFieldEquals(p, "source", "context"), "value", p),
-		forbiddenWhen(wireFieldEquals(p, "source", "context"), "field", p),
-		forbiddenWhen(wireFieldEquals(p, "source", "context"), "form", p),
-		requiredWhen(wireFieldEquals(p, "source", "form"), "form", p),
-		forbiddenWhen(wireFieldEquals(p, "source", "form"), "value", p),
-		forbiddenWhen(wireFieldEquals(p, "source", "form"), "field", p),
-		forbiddenWhen(wireFieldEquals(p, "source", "form"), "context", p),
+func (p PluginTerminalBinding) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		requiredWhen(object.equals("source", "value"), "value", object),
+		forbiddenWhen(object.equals("source", "value"), "field", object),
+		forbiddenWhen(object.equals("source", "value"), "context", object),
+		forbiddenWhen(object.equals("source", "value"), "form", object),
+		requiredWhen(object.equals("source", "row"), "field", object),
+		forbiddenWhen(object.equals("source", "row"), "value", object),
+		forbiddenWhen(object.equals("source", "row"), "context", object),
+		forbiddenWhen(object.equals("source", "row"), "form", object),
+		requiredWhen(object.equals("source", "context"), "context", object),
+		forbiddenWhen(object.equals("source", "context"), "value", object),
+		forbiddenWhen(object.equals("source", "context"), "field", object),
+		forbiddenWhen(object.equals("source", "context"), "form", object),
+		requiredWhen(object.equals("source", "form"), "form", object),
+		forbiddenWhen(object.equals("source", "form"), "value", object),
+		forbiddenWhen(object.equals("source", "form"), "field", object),
+		forbiddenWhen(object.equals("source", "form"), "context", object),
 	)
+	return violations
 }
 
-func (p PluginTerminalFormField) validateWire() error {
-	return collectWireViolations("PluginTerminalFormField",
-		requiredWhen(wireFieldEquals(p, "kind", "choice"), "options", p),
+func (p PluginTerminalFormField) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		requiredWhen(object.equals("kind", "choice"), "options", object),
 	)
+	return violations
 }
 
-func (a ApprovalRule) validateWire() error {
-	return collectWireViolations("ApprovalRule",
-		requiredText("id", a.ID),
+func (a ApprovalRule) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("id", a.ID),
 		identity("id", a.ID),
 		maxLength("id", a.ID, 256),
-		requiredTextPattern("modelName", a.ModelName, "^[A-Za-z0-9_-]{1,64}$"),
-		requiredWhen(wireFieldEquals(a, "scope", "workspace"), "dir", a),
-		forbiddenWhen(wireFieldEquals(a, "scope", "session"), "dir", a),
-		forbiddenWhen(wireFieldEquals(a, "scope", "global"), "dir", a),
+		textPattern("modelName", a.ModelName, "^[A-Za-z0-9_-]{1,64}$"),
+		requiredWhen(object.equals("scope", "workspace"), "dir", object),
+		forbiddenWhen(object.equals("scope", "session"), "dir", object),
+		forbiddenWhen(object.equals("scope", "global"), "dir", object),
 	)
+	return violations
 }
 
-func (f FileContent) validateWire() error {
-	return collectWireViolations("FileContent",
+func (f FileContent) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
 		positiveNumber("totalLines", f.TotalLines),
-		optionalPositiveScalarNumber("startLine", f.StartLine),
-		optionalPositiveScalarNumber("endLine", f.EndLine),
-		requiredWhen(wireFieldPresent(f, "startLine"), "endLine", f),
-		requiredWhen(wireFieldPresent(f, "endLine"), "startLine", f),
 	)
+	if object.present("startLine") {
+		violations.add(
+			positiveNumber("startLine", f.StartLine),
+		)
+	}
+	if object.present("endLine") {
+		violations.add(
+			positiveNumber("endLine", f.EndLine),
+		)
+	}
+	violations.add(
+		requiredWhen(object.present("startLine"), "endLine", object),
+		requiredWhen(object.present("endLine"), "startLine", object),
+	)
+	return violations
 }
 
-func (w WorkspaceFileChange) validateWire() error {
-	return collectWireViolations("WorkspaceFileChange",
-		requiredText("path", w.Path),
-		optionalNonNegativeNumber("added", w.Added),
-		optionalNonNegativeNumber("removed", w.Removed),
-		requiredWhen(wireFieldEquals(w, "status", "renamed"), "previousPath", w),
-		forbiddenWhen(wireFieldEquals(w, "status", "added"), "previousPath", w),
-		forbiddenWhen(wireFieldEquals(w, "status", "modified"), "previousPath", w),
-		forbiddenWhen(wireFieldEquals(w, "status", "deleted"), "previousPath", w),
-		forbiddenWhen(wireFieldEquals(w, "status", "untracked"), "previousPath", w),
-		forbiddenWhen(wireFieldPresent(w, "binary"), "added", w),
-		forbiddenWhen(wireFieldPresent(w, "binary"), "removed", w),
+func (w WorkspaceFileChange) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("path", w.Path),
 	)
+	if object.present("added") {
+		violations.add(
+			nonNegativeNumber("added", *w.Added),
+		)
+	}
+	if object.present("removed") {
+		violations.add(
+			nonNegativeNumber("removed", *w.Removed),
+		)
+	}
+	violations.add(
+		requiredWhen(object.equals("status", "renamed"), "previousPath", object),
+		forbiddenWhen(object.equals("status", "added"), "previousPath", object),
+		forbiddenWhen(object.equals("status", "modified"), "previousPath", object),
+		forbiddenWhen(object.equals("status", "deleted"), "previousPath", object),
+		forbiddenWhen(object.equals("status", "untracked"), "previousPath", object),
+		forbiddenWhen(object.present("binary"), "added", object),
+		forbiddenWhen(object.present("binary"), "removed", object),
+	)
+	return violations
 }
 
-func (f FileDiff) validateWire() error {
-	return collectWireViolations("FileDiff",
-		requiredText("path", f.Path),
-		optionalNonNegativeNumber("added", f.Added),
-		optionalNonNegativeNumber("removed", f.Removed),
-		requiredWhen(wireFieldEquals(f, "status", "renamed"), "previousPath", f),
-		forbiddenWhen(wireFieldEquals(f, "status", "added"), "previousPath", f),
-		forbiddenWhen(wireFieldEquals(f, "status", "modified"), "previousPath", f),
-		forbiddenWhen(wireFieldEquals(f, "status", "deleted"), "previousPath", f),
-		forbiddenWhen(wireFieldEquals(f, "status", "untracked"), "previousPath", f),
-		forbiddenWhen(wireFieldPresent(f, "binary"), "added", f),
-		forbiddenWhen(wireFieldPresent(f, "binary"), "removed", f),
+func (f FileDiff) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("path", f.Path),
 	)
+	if object.present("added") {
+		violations.add(
+			nonNegativeNumber("added", *f.Added),
+		)
+	}
+	if object.present("removed") {
+		violations.add(
+			nonNegativeNumber("removed", *f.Removed),
+		)
+	}
+	violations.add(
+		requiredWhen(object.equals("status", "renamed"), "previousPath", object),
+		forbiddenWhen(object.equals("status", "added"), "previousPath", object),
+		forbiddenWhen(object.equals("status", "modified"), "previousPath", object),
+		forbiddenWhen(object.equals("status", "deleted"), "previousPath", object),
+		forbiddenWhen(object.equals("status", "untracked"), "previousPath", object),
+		forbiddenWhen(object.present("binary"), "added", object),
+		forbiddenWhen(object.present("binary"), "removed", object),
+	)
+	return violations
 }
 
-func (g Goal) validateWire() error {
-	return collectWireViolations("Goal",
-		requiredText("sessionId", g.SessionID),
+func (g Goal) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("sessionId", g.SessionID),
 		identity("sessionId", g.SessionID),
 		maxLength("sessionId", g.SessionID, 256),
-		requiredTextPattern("objective", g.Objective, "\\S"),
-		identity("provider", g.Provider),
-		maxLength("provider", g.Provider, 64),
-		identity("model", g.Model),
-		maxLength("model", g.Model, 256),
-		identity("reasoningEffort", g.ReasoningEffort),
-		maxLength("reasoningEffort", g.ReasoningEffort, 32),
-		required("createdAt", g),
-		required("updatedAt", g),
-		forbiddenWhen(wireFieldEquals(g, "status", "active"), "reason", g),
-		forbiddenWhen(wireFieldEquals(g, "status", "completing"), "reason", g),
-		requiredWhen(wireFieldEquals(g, "status", "paused"), "reason", g),
-		allowedValuesWhen(wireFieldEquals(g, "status", "paused"), "reason.code", g, []string{"stoppedByUser", "runtimeRestarted", "runStartFailed", "awaitingInput", "terminalOutcomeMissing", "runNotCompleted"}),
-		requiredWhen(wireFieldEquals(g, "status", "blocked"), "reason", g),
-		allowedValuesWhen(wireFieldEquals(g, "status", "blocked"), "reason.code", g, []string{"blockedByModel"}),
+		textPattern("objective", g.Objective, "\\S"),
 	)
+	if object.present("provider") {
+		violations.add(
+			identity("provider", g.Provider),
+			maxLength("provider", g.Provider, 64),
+		)
+	}
+	if object.present("model") {
+		violations.add(
+			identity("model", g.Model),
+			maxLength("model", g.Model, 256),
+		)
+	}
+	if object.present("reasoningEffort") {
+		violations.add(
+			identity("reasoningEffort", g.ReasoningEffort),
+			maxLength("reasoningEffort", g.ReasoningEffort, 32),
+		)
+	}
+	violations.add(
+		required("createdAt", object),
+		required("updatedAt", object),
+		forbiddenWhen(object.equals("status", "active"), "reason", object),
+		forbiddenWhen(object.equals("status", "completing"), "reason", object),
+		requiredWhen(object.equals("status", "paused"), "reason", object),
+		allowedValuesWhen(object.equals("status", "paused"), "reason.code", object, []string{"stoppedByUser", "runtimeRestarted", "runStartFailed", "awaitingInput", "terminalOutcomeMissing", "runNotCompleted"}),
+		requiredWhen(object.equals("status", "blocked"), "reason", object),
+		allowedValuesWhen(object.equals("status", "blocked"), "reason.code", object, []string{"blockedByModel"}),
+	)
+	return violations
 }
 
-func (g GoalReason) validateWire() error {
-	return collectWireViolations("GoalReason",
-		requiredWhen(wireFieldEquals(g, "code", "runNotCompleted"), "runOutcome", g),
-		forbiddenWhen(wireFieldEquals(g, "code", "runNotCompleted"), "explanation", g),
-		allowedValuesWhen(wireFieldEquals(g, "code", "runNotCompleted"), "runOutcome", g, []string{"timedOut", "failed", "canceled", "lost"}),
-		requiredWhen(wireFieldEquals(g, "code", "blockedByModel"), "explanation", g),
-		forbiddenWhen(wireFieldEquals(g, "code", "blockedByModel"), "runOutcome", g),
-		forbiddenWhen(wireFieldEquals(g, "code", "stoppedByUser"), "runOutcome", g),
-		forbiddenWhen(wireFieldEquals(g, "code", "stoppedByUser"), "explanation", g),
-		forbiddenWhen(wireFieldEquals(g, "code", "runtimeRestarted"), "runOutcome", g),
-		forbiddenWhen(wireFieldEquals(g, "code", "runtimeRestarted"), "explanation", g),
-		forbiddenWhen(wireFieldEquals(g, "code", "runStartFailed"), "runOutcome", g),
-		forbiddenWhen(wireFieldEquals(g, "code", "runStartFailed"), "explanation", g),
-		forbiddenWhen(wireFieldEquals(g, "code", "awaitingInput"), "runOutcome", g),
-		forbiddenWhen(wireFieldEquals(g, "code", "awaitingInput"), "explanation", g),
-		forbiddenWhen(wireFieldEquals(g, "code", "terminalOutcomeMissing"), "runOutcome", g),
-		forbiddenWhen(wireFieldEquals(g, "code", "terminalOutcomeMissing"), "explanation", g),
+func (g GoalReason) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		requiredWhen(object.equals("code", "runNotCompleted"), "runOutcome", object),
+		forbiddenWhen(object.equals("code", "runNotCompleted"), "explanation", object),
+		allowedValuesWhen(object.equals("code", "runNotCompleted"), "runOutcome", object, []string{"timedOut", "failed", "canceled", "lost"}),
+		requiredWhen(object.equals("code", "blockedByModel"), "explanation", object),
+		forbiddenWhen(object.equals("code", "blockedByModel"), "runOutcome", object),
+		forbiddenWhen(object.equals("code", "stoppedByUser"), "runOutcome", object),
+		forbiddenWhen(object.equals("code", "stoppedByUser"), "explanation", object),
+		forbiddenWhen(object.equals("code", "runtimeRestarted"), "runOutcome", object),
+		forbiddenWhen(object.equals("code", "runtimeRestarted"), "explanation", object),
+		forbiddenWhen(object.equals("code", "runStartFailed"), "runOutcome", object),
+		forbiddenWhen(object.equals("code", "runStartFailed"), "explanation", object),
+		forbiddenWhen(object.equals("code", "awaitingInput"), "runOutcome", object),
+		forbiddenWhen(object.equals("code", "awaitingInput"), "explanation", object),
+		forbiddenWhen(object.equals("code", "terminalOutcomeMissing"), "runOutcome", object),
+		forbiddenWhen(object.equals("code", "terminalOutcomeMissing"), "explanation", object),
 	)
+	return violations
 }
 
-func (m MCPAuthorizationAttempt) validateWire() error {
-	return collectWireViolations("MCPAuthorizationAttempt",
-		requiredTextPattern("id", m.ID, "^mcpauth_[A-Z2-7]{26,64}$"),
-		required("createdAt", m),
-		forbiddenWhen(wireFieldEquals(m, "status.type", "pending"), "finishedAt", m),
-		requiredWhen(wireFieldEquals(m, "status.type", "succeeded"), "finishedAt", m),
-		requiredWhen(wireFieldEquals(m, "status.type", "failed"), "finishedAt", m),
-		requiredWhen(wireFieldEquals(m, "status.type", "unconfirmed"), "finishedAt", m),
-		requiredWhen(wireFieldEquals(m, "status.type", "canceled"), "finishedAt", m),
+func (m MCPAuthorizationAttempt) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		textPattern("id", m.ID, "^mcpauth_[A-Z2-7]{26,64}$"),
+		required("createdAt", object),
+		forbiddenWhen(object.equals("status.type", "pending"), "finishedAt", object),
+		requiredWhen(object.equals("status.type", "succeeded"), "finishedAt", object),
+		requiredWhen(object.equals("status.type", "failed"), "finishedAt", object),
+		requiredWhen(object.equals("status.type", "unconfirmed"), "finishedAt", object),
+		requiredWhen(object.equals("status.type", "canceled"), "finishedAt", object),
 	)
+	return violations
 }
 
-func (a ArtifactRun) validateWire() error {
-	return collectWireViolations("ArtifactRun",
-		requiredText("id", a.ID),
+func (a ArtifactRun) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("id", a.ID),
 		identity("id", a.ID),
 		maxLength("id", a.ID, 256),
-		requiredText("sessionId", a.SessionID),
+		nonEmptyText("sessionId", a.SessionID),
 		identity("sessionId", a.SessionID),
 		maxLength("sessionId", a.SessionID, 256),
-		identity("spawnedByItemId", a.SpawnedByItemID),
-		maxLength("spawnedByItemId", a.SpawnedByItemID, 256),
-		identity("parentRunId", a.ParentRunID),
-		maxLength("parentRunId", a.ParentRunID, 256),
-		identity("rootRunId", a.RootRunID),
-		maxLength("rootRunId", a.RootRunID, 256),
-		requiredText("provider", a.Provider),
-		requiredText("model", a.Model),
+	)
+	if object.present("spawnedByItemId") {
+		violations.add(
+			identity("spawnedByItemId", a.SpawnedByItemID),
+			maxLength("spawnedByItemId", a.SpawnedByItemID, 256),
+		)
+	}
+	if object.present("parentRunId") {
+		violations.add(
+			identity("parentRunId", a.ParentRunID),
+			maxLength("parentRunId", a.ParentRunID, 256),
+		)
+	}
+	if object.present("rootRunId") {
+		violations.add(
+			identity("rootRunId", a.RootRunID),
+			maxLength("rootRunId", a.RootRunID, 256),
+		)
+	}
+	violations.add(
+		nonEmptyText("provider", a.Provider),
+		nonEmptyText("model", a.Model),
 		identity("provider", a.Provider),
 		maxLength("provider", a.Provider, 64),
 		identity("model", a.Model),
 		maxLength("model", a.Model, 256),
-		identity("reasoningEffort", a.ReasoningEffort),
-		maxLength("reasoningEffort", a.ReasoningEffort, 32),
-		nonNegativeNumber("contextTokens", a.ContextTokens),
-		required("createdAt", a),
-		required("finishedAt", a),
-		required("updatedAt", a),
-		forbiddenWhen(wireFieldPresent(a, "spawnedByItemId"), "capabilities", a),
-		forbiddenWhen(wireFieldPresent(a, "spawnedByItemId"), "messageMark", a),
-		requiredWhen(wireFieldPresent(a, "spawnedByItemId"), "parentRunId", a),
-		requiredWhen(wireFieldPresent(a, "spawnedByItemId"), "rootRunId", a),
-		requiredWhen(wireFieldPresent(a, "parentRunId"), "spawnedByItemId", a),
-		requiredWhen(wireFieldPresent(a, "parentRunId"), "rootRunId", a),
-		requiredWhen(wireFieldPresent(a, "rootRunId"), "spawnedByItemId", a),
-		requiredWhen(wireFieldPresent(a, "rootRunId"), "parentRunId", a),
 	)
+	if object.present("reasoningEffort") {
+		violations.add(
+			identity("reasoningEffort", a.ReasoningEffort),
+			maxLength("reasoningEffort", a.ReasoningEffort, 32),
+		)
+	}
+	if object.present("contextTokens") {
+		violations.add(
+			nonNegativeNumber("contextTokens", a.ContextTokens),
+		)
+	}
+	violations.add(
+		required("createdAt", object),
+		required("finishedAt", object),
+		required("updatedAt", object),
+		forbiddenWhen(object.present("spawnedByItemId"), "capabilities", object),
+		forbiddenWhen(object.present("spawnedByItemId"), "messageMark", object),
+		requiredWhen(object.present("spawnedByItemId"), "parentRunId", object),
+		requiredWhen(object.present("spawnedByItemId"), "rootRunId", object),
+		requiredWhen(object.present("parentRunId"), "spawnedByItemId", object),
+		requiredWhen(object.present("parentRunId"), "rootRunId", object),
+		requiredWhen(object.present("rootRunId"), "spawnedByItemId", object),
+		requiredWhen(object.present("rootRunId"), "parentRunId", object),
+	)
+	return violations
 }
 
-func (a ArtifactSession) validateWire() error {
-	return collectWireViolations("ArtifactSession",
-		requiredText("id", a.ID),
+func (a ArtifactSession) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("id", a.ID),
 		identity("id", a.ID),
 		maxLength("id", a.ID, 256),
-		requiredText("provider", a.Provider),
-		requiredText("model", a.Model),
+		nonEmptyText("provider", a.Provider),
+		nonEmptyText("model", a.Model),
 		identity("provider", a.Provider),
 		maxLength("provider", a.Provider, 64),
 		identity("model", a.Model),
 		maxLength("model", a.Model, 256),
-		identity("reasoningEffort", a.ReasoningEffort),
-		maxLength("reasoningEffort", a.ReasoningEffort, 32),
-		required("createdAt", a),
-		required("updatedAt", a),
 	)
+	if object.present("reasoningEffort") {
+		violations.add(
+			identity("reasoningEffort", a.ReasoningEffort),
+			maxLength("reasoningEffort", a.ReasoningEffort, 32),
+		)
+	}
+	violations.add(
+		required("createdAt", object),
+		required("updatedAt", object),
+	)
+	return violations
 }
 
-func (a ArtifactToolResult) validateWire() error {
-	return collectWireViolations("ArtifactToolResult",
-		requiredTextPattern("id", a.ID, "^[A-Z2-7]{2,64}$"),
-		requiredText("body", a.Body),
-		requiredText("itemId", a.ItemID),
+func (a ArtifactToolResult) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		textPattern("id", a.ID, "^[A-Z2-7]{2,64}$"),
+		nonEmptyText("body", a.Body),
+		nonEmptyText("itemId", a.ItemID),
 		identity("itemId", a.ItemID),
 		maxLength("itemId", a.ItemID, 256),
-		required("createdAt", a),
+		required("createdAt", object),
 	)
+	return violations
 }
 
-func (a ArtifactProblem) validateWire() error {
-	return collectWireViolations("ArtifactProblem",
-		optionalPositiveScalarNumber("retryAfterSeconds", a.RetryAfterSeconds),
-		maximumNumber("retryAfterSeconds", a.RetryAfterSeconds, 9223372036),
-		forbiddenWhen(wireFieldEquals(a, "type", "internal_error"), "retryAfterSeconds", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "agent_stuck"), "retryAfterSeconds", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "invalid_credentials"), "retryAfterSeconds", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "provider_rejected"), "retryAfterSeconds", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "denied_by_user"), "retryAfterSeconds", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "tool_failed"), "retryAfterSeconds", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "child_run_canceled"), "retryAfterSeconds", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "tool_canceled"), "retryAfterSeconds", a),
+func (a ArtifactProblem) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	if object.present("retryAfterSeconds") {
+		violations.add(
+			positiveNumber("retryAfterSeconds", a.RetryAfterSeconds),
+			maximumNumber("retryAfterSeconds", a.RetryAfterSeconds, 9223372036),
+		)
+	}
+	violations.add(
+		forbiddenWhen(object.equals("type", "internal_error"), "retryAfterSeconds", object),
+		forbiddenWhen(object.equals("type", "agent_stuck"), "retryAfterSeconds", object),
+		forbiddenWhen(object.equals("type", "invalid_credentials"), "retryAfterSeconds", object),
+		forbiddenWhen(object.equals("type", "provider_rejected"), "retryAfterSeconds", object),
+		forbiddenWhen(object.equals("type", "denied_by_user"), "retryAfterSeconds", object),
+		forbiddenWhen(object.equals("type", "tool_failed"), "retryAfterSeconds", object),
+		forbiddenWhen(object.equals("type", "child_run_canceled"), "retryAfterSeconds", object),
+		forbiddenWhen(object.equals("type", "tool_canceled"), "retryAfterSeconds", object),
 	)
+	return violations
 }
 
-func (c CallPluginResponse) validateWire() error {
-	return collectWireViolations("CallPluginResponse",
-		requiredAny([]string{"output", "failure"}, c),
-		forbiddenWhen(wireFieldPresent(c, "failure"), "output", c),
+func (c CallPluginResponse) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	if object.present("output") {
+		violations.add(
+			nonEmptyText("output", c.Output),
+		)
+	}
+	violations.add(
+		requiredAny([]string{"output", "failure"}, object),
+		forbiddenWhen(object.present("failure"), "output", object),
 	)
+	return violations
 }
 
-func (p PluginStreamEvent) validateWire() error {
-	return collectWireViolations("PluginStreamEvent",
-		requiredWhen(wireFieldEquals(p, "kind", "chunk"), "value", p),
-		forbiddenWhen(wireFieldEquals(p, "kind", "chunk"), "failure", p),
-		requiredWhen(wireFieldEquals(p, "kind", "result"), "value", p),
-		forbiddenWhen(wireFieldEquals(p, "kind", "result"), "failure", p),
-		requiredWhen(wireFieldEquals(p, "kind", "failure"), "failure", p),
-		forbiddenWhen(wireFieldEquals(p, "kind", "failure"), "value", p),
+func (p PluginStreamEvent) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	if object.present("value") {
+		violations.add(
+			nonEmptyText("value", p.Value),
+		)
+	}
+	violations.add(
+		requiredWhen(object.equals("kind", "chunk"), "value", object),
+		forbiddenWhen(object.equals("kind", "chunk"), "failure", object),
+		requiredWhen(object.equals("kind", "result"), "value", object),
+		forbiddenWhen(object.equals("kind", "result"), "failure", object),
+		requiredWhen(object.equals("kind", "failure"), "failure", object),
+		forbiddenWhen(object.equals("kind", "failure"), "value", object),
 	)
+	return violations
 }
 
-func (p PageContinuation) validateWire() error {
-	return collectWireViolations("PageContinuation",
-		maxLength("nextCursor", p.NextCursor, 65536),
-	)
+func (p PageContinuation) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	if object.present("nextCursor") {
+		violations.add(
+			maxLength("nextCursor", p.NextCursor, 65536),
+		)
+	}
+	return violations
 }
 
-func (p PageQuery) validateWire() error {
-	return collectWireViolations("PageQuery",
-		optionalPositiveNumber("limit", p.Limit),
-		maxLength("cursor", p.Cursor, 65536),
-	)
+func (p PageQuery) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	if object.present("limit") {
+		violations.add(
+			positiveNumber("limit", *p.Limit),
+		)
+	}
+	if object.present("cursor") {
+		violations.add(
+			maxLength("cursor", p.Cursor, 65536),
+		)
+	}
+	return violations
 }
 
-func (p Project) validateWire() error {
-	return collectWireViolations("Project",
-		requiredText("id", p.ID),
+func (p Project) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("id", p.ID),
 		identity("id", p.ID),
 		maxLength("id", p.ID, 256),
-		requiredTextPattern("name", p.Name, "\\S"),
+		textPattern("name", p.Name, "\\S"),
 		positiveNumber("revision", p.Revision),
 		maximumNumber("revision", p.Revision, 9007199254740991),
 	)
+	return violations
 }
 
-func (s SessionTrajectory) validateWire() error {
-	return collectWireViolations("SessionTrajectory",
+func (s SessionTrajectory) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
 		minimumNumber("schemaVersion", s.SchemaVersion, 4),
 		maximumNumber("schemaVersion", s.SchemaVersion, 4),
 	)
+	return violations
 }
 
-func (s SessionArtifact) validateWire() error {
-	return collectWireViolations("SessionArtifact",
+func (s SessionArtifact) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
 		minimumNumber("version", s.Version, 32),
 		maximumNumber("version", s.Version, 32),
 	)
+	return violations
 }
 
-func (t ToolInvocation) validateWire() error {
-	return collectWireViolations("ToolInvocation",
-		requiredTextPattern("name", t.Name, "\\S"),
+func (t ToolInvocation) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		textPattern("name", t.Name, "\\S"),
 	)
+	return violations
 }
 
-func (s SubscribeRunResponse) validateWire() error {
-	return collectWireViolations("SubscribeRunResponse",
-		requiredText("runId", s.RunID),
+func (s SubscribeRunResponse) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("runId", s.RunID),
 		identity("runId", s.RunID),
 		maxLength("runId", s.RunID, 256),
-		requiredText("segmentId", s.SegmentID),
+		nonEmptyText("segmentId", s.SegmentID),
 		identity("segmentId", s.SegmentID),
 		maxLength("segmentId", s.SegmentID, 256),
-		optionalIdentity("headEventId", s.HeadEventID),
-		optionalTextPointerPrefix("headEventId", s.HeadEventID, "evt_"),
-		optionalMaxLength("headEventId", s.HeadEventID, 65540),
 	)
+	if object.present("headEventId") {
+		violations.add(
+			identity("headEventId", *s.HeadEventID),
+			textPrefix("headEventId", *s.HeadEventID, "evt_"),
+			maxLength("headEventId", *s.HeadEventID, 65540),
+		)
+	}
+	return violations
 }
 
-func (i InterruptResponse) validateWire() error {
-	return collectWireViolations("InterruptResponse",
-		requiredText("itemId", i.ItemID),
+func (i InterruptResponse) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("itemId", i.ItemID),
 		identity("itemId", i.ItemID),
 		maxLength("itemId", i.ItemID, 256),
 	)
+	return violations
 }
 
-func (r RunMetrics) validateWire() error {
-	return collectWireViolations("RunMetrics",
+func (r RunMetrics) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
 		nonNegativeNumber("steps", r.Steps),
 		nonNegativeNumber("activeDurationMillis", r.ActiveDurationMillis),
 		maximumNumber("activeDurationMillis", r.ActiveDurationMillis, 9223372036854),
 	)
+	return violations
 }
 
-func (m ModelUsage) validateWire() error {
-	return collectWireViolations("ModelUsage",
-		nonNegativeNumber("inputTokens", m.InputTokens),
-		nonNegativeNumber("outputTokens", m.OutputTokens),
-		nonNegativeNumber("cacheReadTokens", m.CacheReadTokens),
-		nonNegativeNumber("cacheWriteTokens", m.CacheWriteTokens),
-		nonNegativeNumber("reasoningTokens", m.ReasoningTokens),
-		optionalNonNegativeNumber("costUsd", m.CostUSD),
-	)
+func (m ModelUsage) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	if object.present("inputTokens") {
+		violations.add(
+			nonNegativeNumber("inputTokens", m.InputTokens),
+		)
+	}
+	if object.present("outputTokens") {
+		violations.add(
+			nonNegativeNumber("outputTokens", m.OutputTokens),
+		)
+	}
+	if object.present("cacheReadTokens") {
+		violations.add(
+			nonNegativeNumber("cacheReadTokens", m.CacheReadTokens),
+		)
+	}
+	if object.present("cacheWriteTokens") {
+		violations.add(
+			nonNegativeNumber("cacheWriteTokens", m.CacheWriteTokens),
+		)
+	}
+	if object.present("reasoningTokens") {
+		violations.add(
+			nonNegativeNumber("reasoningTokens", m.ReasoningTokens),
+		)
+	}
+	if object.present("costUsd") {
+		violations.add(
+			nonNegativeNumber("costUsd", *m.CostUSD),
+		)
+	}
+	return violations
 }
 
-func (u Usage) validateWire() error {
-	return collectWireViolations("Usage",
-		identityPropertyNames("byModel", u.ByModel),
-		maxPropertyNameLength("byModel", u.ByModel, 256),
-		nonNegativeNumber("inputTokens", u.InputTokens),
-		nonNegativeNumber("outputTokens", u.OutputTokens),
-		nonNegativeNumber("cacheReadTokens", u.CacheReadTokens),
-		nonNegativeNumber("cacheWriteTokens", u.CacheWriteTokens),
-		nonNegativeNumber("reasoningTokens", u.ReasoningTokens),
-		optionalNonNegativeNumber("costUsd", u.CostUSD),
-	)
+func (u Usage) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	if object.present("byModel") {
+		violations.add(
+			identityPropertyNames("byModel", u.ByModel),
+			maxPropertyNameLength("byModel", u.ByModel, 256),
+		)
+	}
+	if object.present("inputTokens") {
+		violations.add(
+			nonNegativeNumber("inputTokens", u.InputTokens),
+		)
+	}
+	if object.present("outputTokens") {
+		violations.add(
+			nonNegativeNumber("outputTokens", u.OutputTokens),
+		)
+	}
+	if object.present("cacheReadTokens") {
+		violations.add(
+			nonNegativeNumber("cacheReadTokens", u.CacheReadTokens),
+		)
+	}
+	if object.present("cacheWriteTokens") {
+		violations.add(
+			nonNegativeNumber("cacheWriteTokens", u.CacheWriteTokens),
+		)
+	}
+	if object.present("reasoningTokens") {
+		violations.add(
+			nonNegativeNumber("reasoningTokens", u.ReasoningTokens),
+		)
+	}
+	if object.present("costUsd") {
+		violations.add(
+			nonNegativeNumber("costUsd", *u.CostUSD),
+		)
+	}
+	return violations
 }
 
-func (r RunCapabilities) validateWire() error {
-	return collectWireViolations("RunCapabilities",
+func (r RunCapabilities) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
 		uniqueItems("requiredFeatures", r.RequiredFeatures),
 		uniqueItems("interruptTypes", r.InterruptTypes),
 	)
+	return violations
 }
 
-func (r RunSessionOpening) validateWire() error {
-	return collectWireViolations("RunSessionOpening",
-		requiredText("sessionId", r.SessionID),
+func (r RunSessionOpening) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("sessionId", r.SessionID),
 		identity("sessionId", r.SessionID),
 		maxLength("sessionId", r.SessionID, 256),
-		requiredText("runId", r.RunID),
+		nonEmptyText("runId", r.RunID),
 		identity("runId", r.RunID),
 		maxLength("runId", r.RunID, 256),
-		identity("projectId", r.ProjectID),
-		maxLength("projectId", r.ProjectID, 256),
 	)
+	if object.present("projectId") {
+		violations.add(
+			identity("projectId", r.ProjectID),
+			maxLength("projectId", r.ProjectID, 256),
+		)
+	}
+	return violations
 }
 
-func (g GenerationParams) validateWire() error {
-	return collectWireViolations("GenerationParams",
-		optionalNonNegativeNumber("temperature", g.Temperature),
-		optionalMaximumNumber("temperature", g.Temperature, 2),
-		optionalPositiveNumber("maxTokens", g.MaxTokens),
-		optionalNonNegativeNumber("topP", g.TopP),
-		optionalMaximumNumber("topP", g.TopP, 1),
-		nonEmptyItems("stop", g.Stop),
-		uniqueItems("stop", g.Stop),
-	)
+func (g GenerationParams) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	if object.present("temperature") {
+		violations.add(
+			nonNegativeNumber("temperature", *g.Temperature),
+			maximumNumber("temperature", *g.Temperature, 2),
+		)
+	}
+	if object.present("maxTokens") {
+		violations.add(
+			positiveNumber("maxTokens", *g.MaxTokens),
+		)
+	}
+	if object.present("topP") {
+		violations.add(
+			nonNegativeNumber("topP", *g.TopP),
+			maximumNumber("topP", *g.TopP, 1),
+		)
+	}
+	if object.present("stop") {
+		violations.add(
+			nonEmptyItems("stop", g.Stop),
+			uniqueItems("stop", g.Stop),
+		)
+	}
+	return violations
 }
 
-func (q Question) validateWire() error {
-	return collectWireViolations("Question",
-		requiredItems("fields", q.Fields),
+func (q Question) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyItems("fields", q.Fields),
 		maxItems("fields", q.Fields, 4),
 	)
+	return violations
 }
 
-func (q QuestionOption) validateWire() error {
-	return collectWireViolations("QuestionOption",
-		requiredTextPattern("label", q.Label, "\\S"),
+func (q QuestionOption) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		textPattern("label", q.Label, "\\S"),
 	)
+	return violations
 }
 
-func (s StartRunResponse) validateWire() error {
-	return collectWireViolations("StartRunResponse",
-		requiredText("runId", s.RunID),
+func (s StartRunResponse) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("runId", s.RunID),
 		identity("runId", s.RunID),
 		maxLength("runId", s.RunID, 256),
-		requiredText("segmentId", s.SegmentID),
+		nonEmptyText("segmentId", s.SegmentID),
 		identity("segmentId", s.SegmentID),
 		maxLength("segmentId", s.SegmentID, 256),
-		requiredText("userItemId", s.UserItemID),
+		nonEmptyText("userItemId", s.UserItemID),
 		identity("userItemId", s.UserItemID),
 		maxLength("userItemId", s.UserItemID, 256),
 	)
+	return violations
 }
 
-func (r ResumeRunResponse) validateWire() error {
-	return collectWireViolations("ResumeRunResponse",
-		requiredText("runId", r.RunID),
+func (r ResumeRunResponse) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("runId", r.RunID),
 		identity("runId", r.RunID),
 		maxLength("runId", r.RunID, 256),
-		requiredText("segmentId", r.SegmentID),
+		nonEmptyText("segmentId", r.SegmentID),
 		identity("segmentId", r.SegmentID),
 		maxLength("segmentId", r.SegmentID, 256),
-		optionalText("userItemId", r.UserItemID),
-		optionalIdentity("userItemId", r.UserItemID),
-		optionalMaxLength("userItemId", r.UserItemID, 256),
 	)
+	if object.present("userItemId") {
+		violations.add(
+			nonEmptyText("userItemId", *r.UserItemID),
+			identity("userItemId", *r.UserItemID),
+			maxLength("userItemId", *r.UserItemID, 256),
+		)
+	}
+	return violations
 }
 
-func (s SteerRunResponse) validateWire() error {
-	return collectWireViolations("SteerRunResponse",
-		requiredText("userItemId", s.UserItemID),
+func (s SteerRunResponse) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("userItemId", s.UserItemID),
 		identity("userItemId", s.UserItemID),
 		maxLength("userItemId", s.UserItemID, 256),
 	)
+	return violations
 }
 
-func (u UsageCoverage) validateWire() error {
-	return collectWireViolations("UsageCoverage",
+func (u UsageCoverage) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
 		nonNegativeNumber("calls", u.Calls),
 		nonNegativeNumber("reportedCalls", u.ReportedCalls),
 		nonNegativeNumber("pricedCalls", u.PricedCalls),
@@ -2530,507 +3555,756 @@ func (u UsageCoverage) validateWire() error {
 		nonNegativeNumber("failedCalls", u.FailedCalls),
 		nonNegativeNumber("unknownCalls", u.UnknownCalls),
 	)
+	return violations
 }
 
-func (r RecordedUsage) validateWire() error {
-	return collectWireViolations("RecordedUsage",
-		optionalNonNegativeNumber("recordedCostUsd", r.RecordedCostUSD),
-	)
+func (r RecordedUsage) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	if object.present("recordedCostUsd") {
+		violations.add(
+			nonNegativeNumber("recordedCostUsd", *r.RecordedCostUSD),
+		)
+	}
+	return violations
 }
 
-func (m ModelInvocationUsage) validateWire() error {
-	return collectWireViolations("ModelInvocationUsage",
+func (m ModelInvocationUsage) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
 		nonNegativeNumber("inputTokens", m.InputTokens),
 		nonNegativeNumber("outputTokens", m.OutputTokens),
-		optionalNonNegativeNumber("cacheReadTokens", m.CacheReadTokens),
-		optionalNonNegativeNumber("cacheWriteTokens", m.CacheWriteTokens),
-		optionalNonNegativeNumber("reasoningTokens", m.ReasoningTokens),
 	)
+	if object.present("cacheReadTokens") {
+		violations.add(
+			nonNegativeNumber("cacheReadTokens", *m.CacheReadTokens),
+		)
+	}
+	if object.present("cacheWriteTokens") {
+		violations.add(
+			nonNegativeNumber("cacheWriteTokens", *m.CacheWriteTokens),
+		)
+	}
+	if object.present("reasoningTokens") {
+		violations.add(
+			nonNegativeNumber("reasoningTokens", *m.ReasoningTokens),
+		)
+	}
+	return violations
 }
 
-func (p Plan) validateWire() error {
-	return collectWireViolations("Plan",
-		requiredText("sessionId", p.SessionID),
+func (p Plan) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("sessionId", p.SessionID),
 		identity("sessionId", p.SessionID),
 		maxLength("sessionId", p.SessionID, 256),
 	)
+	return violations
 }
 
-func (p PlanStep) validateWire() error {
-	return collectWireViolations("PlanStep",
-		requiredText("id", p.ID),
-		requiredTextPattern("description", p.Description, "\\S"),
+func (p PlanStep) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("id", p.ID),
+		textPattern("description", p.Description, "\\S"),
 	)
+	return violations
 }
 
-func (w WorkspaceRef) validateWire() error {
-	return collectWireViolations("WorkspaceRef",
-		requiredText("path", w.Path),
+func (w WorkspaceRef) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("path", w.Path),
 	)
+	return violations
 }
 
-func (w WorkspaceInfo) validateWire() error {
-	return collectWireViolations("WorkspaceInfo",
-		requiredText("repositoryRoot", w.RepositoryRoot),
-	)
+func (w WorkspaceInfo) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	if object.present("repositoryRoot") {
+		violations.add(
+			nonEmptyText("repositoryRoot", w.RepositoryRoot),
+		)
+	}
+	return violations
 }
 
-func (w WorkspaceSummary) validateWire() error {
-	return collectWireViolations("WorkspaceSummary",
-		requiredText("name", w.Name),
+func (w WorkspaceSummary) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("name", w.Name),
 		nonNegativeNumber("sessionCount", w.SessionCount),
 	)
+	return violations
 }
 
-func (f FileEntry) validateWire() error {
-	return collectWireViolations("FileEntry",
-		requiredText("path", f.Path),
-		requiredText("name", f.Name),
-		optionalNonNegativeNumber("sizeBytes", f.SizeBytes),
+func (f FileEntry) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("path", f.Path),
+		nonEmptyText("name", f.Name),
 	)
+	if object.present("sizeBytes") {
+		violations.add(
+			nonNegativeNumber("sizeBytes", *f.SizeBytes),
+		)
+	}
+	return violations
 }
 
-func (g GrepResult) validateWire() error {
-	return collectWireViolations("GrepResult",
+func (g GrepResult) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
 		nonNegativeNumber("total", g.Total),
 	)
+	return violations
 }
 
-func (g GrepCoverage) validateWire() error {
-	return collectWireViolations("GrepCoverage",
+func (g GrepCoverage) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
 		nonNegativeNumber("scannedFiles", g.ScannedFiles),
 		nonNegativeNumber("skippedFiles", g.SkippedFiles),
 		nonNegativeNumber("remainingFiles", g.RemainingFiles),
 		nonNegativeNumber("sourceBytes", g.SourceBytes),
 	)
+	return violations
 }
 
-func (g GrepMatch) validateWire() error {
-	return collectWireViolations("GrepMatch",
-		requiredText("path", g.Path),
+func (g GrepMatch) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("path", g.Path),
 		positiveNumber("lineNumber", g.LineNumber),
 	)
+	return violations
 }
 
-func (d DiffBudget) validateWire() error {
-	return collectWireViolations("DiffBudget",
+func (d DiffBudget) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
 		positiveNumber("files", d.Files),
 		positiveNumber("rows", d.Rows),
 		positiveNumber("bytes", d.Bytes),
 	)
+	return violations
 }
 
-func (u UsageBucket) validateWire() error {
-	return collectWireViolations("UsageBucket",
-		requiredText("key", u.Key),
-		optionalNonNegativeNumber("recordedCostUsd", u.RecordedCostUSD),
+func (u UsageBucket) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("key", u.Key),
 	)
+	if object.present("recordedCostUsd") {
+		violations.add(
+			nonNegativeNumber("recordedCostUsd", *u.RecordedCostUSD),
+		)
+	}
+	return violations
 }
 
-func (u UsageSummary) validateWire() error {
-	return collectWireViolations("UsageSummary",
+func (u UsageSummary) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
 		nonNegativeNumber("sessions", u.Sessions),
 		nonNegativeNumber("runs", u.Runs),
-		optionalNonNegativeNumber("recordedCostUsd", u.RecordedCostUSD),
 	)
+	if object.present("recordedCostUsd") {
+		violations.add(
+			nonNegativeNumber("recordedCostUsd", *u.RecordedCostUSD),
+		)
+	}
+	return violations
 }
 
-func (s SessionAnnotation) validateWire() error {
-	return collectWireViolations("SessionAnnotation",
-		identity("sessionId", s.SessionID),
-		maxLength("sessionId", s.SessionID, 256),
-		identity("runId", s.RunID),
-		maxLength("runId", s.RunID, 256),
-		identity("itemId", s.ItemID),
-		maxLength("itemId", s.ItemID, 256),
-	)
+func (s SessionAnnotation) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	if object.present("sessionId") {
+		violations.add(
+			identity("sessionId", s.SessionID),
+			maxLength("sessionId", s.SessionID, 256),
+		)
+	}
+	if object.present("runId") {
+		violations.add(
+			identity("runId", s.RunID),
+			maxLength("runId", s.RunID, 256),
+		)
+	}
+	if object.present("itemId") {
+		violations.add(
+			identity("itemId", s.ItemID),
+			maxLength("itemId", s.ItemID, 256),
+		)
+	}
+	return violations
 }
 
-func (s SkillDiagnostic) validateWire() error {
-	return collectWireViolations("SkillDiagnostic",
-		requiredTextPattern("name", s.Name, "\\S"),
-		requiredText("detail", s.Detail),
+func (s SkillDiagnostic) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		textPattern("name", s.Name, "\\S"),
+		nonEmptyText("detail", s.Detail),
 	)
+	return violations
 }
 
-func (s SkillDetail) validateWire() error {
-	return collectWireViolations("SkillDetail",
-		requiredText("path", s.Path),
-		requiredTextPattern("revision", s.Revision, "^[a-f0-9]{64}$"),
-		requiredTextPattern("name", s.Name, "\\S"),
+func (s SkillDetail) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("path", s.Path),
+		textPattern("revision", s.Revision, "^[a-f0-9]{64}$"),
+		textPattern("name", s.Name, "\\S"),
 	)
+	return violations
 }
 
-func (s Skill) validateWire() error {
-	return collectWireViolations("Skill",
-		requiredTextPattern("name", s.Name, "\\S"),
+func (s Skill) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		textPattern("name", s.Name, "\\S"),
 	)
+	return violations
 }
 
-func (m ManagedSkill) validateWire() error {
-	return collectWireViolations("ManagedSkill",
-		requiredTextPattern("name", m.Name, "\\S"),
+func (m ManagedSkill) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		textPattern("name", m.Name, "\\S"),
 	)
+	return violations
 }
 
-func (s SkillProposal) validateWire() error {
-	return collectWireViolations("SkillProposal",
-		requiredTextPattern("name", s.Name, "\\S"),
-		requiredTextPattern("revision", s.Revision, "^[0-9a-f]{64}$"),
-		requiredTextPattern("description", s.Description, "\\S"),
-		requiredTextPattern("instructions", s.Instructions, "\\S"),
+func (s SkillProposal) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		textPattern("name", s.Name, "\\S"),
+		textPattern("revision", s.Revision, "^[0-9a-f]{64}$"),
+		textPattern("description", s.Description, "\\S"),
+		textPattern("instructions", s.Instructions, "\\S"),
 	)
+	return violations
 }
 
-func (l ListApprovalRulesResult) validateWire() error {
-	return collectWireViolations("ListApprovalRulesResult",
+func (l ListApprovalRulesResult) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
 		maxItems("rules", l.Rules, 2048),
 	)
+	return violations
 }
 
-func (m MCPServerID) validateWire() error {
-	return collectWireViolations("MCPServerID",
-		requiredTextPattern("name", m.Name, "^[a-z0-9][a-z0-9._-]{0,31}$"),
+func (m MCPServerID) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		textPattern("name", m.Name, "^[a-z0-9][a-z0-9._-]{0,31}$"),
 	)
+	return violations
 }
 
-func (m MCPToolExposure) validateWire() error {
-	return collectWireViolations("MCPToolExposure",
+func (m MCPToolExposure) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
 		maxItems("disabledTools", m.DisabledTools, 2048),
 		uniqueItems("disabledTools", m.DisabledTools),
 		textPatternItems("disabledTools", m.DisabledTools, "^[A-Za-z0-9_.-]{1,128}$"),
 	)
+	return violations
 }
 
-func (m MCPTool) validateWire() error {
-	return collectWireViolations("MCPTool",
-		requiredTextPattern("name", m.Name, "^[A-Za-z0-9_.-]{1,128}$"),
-		requiredTextPattern("modelName", m.ModelName, "^[A-Za-z0-9_-]{1,64}$"),
+func (m MCPTool) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		textPattern("name", m.Name, "^[A-Za-z0-9_.-]{1,128}$"),
+		textPattern("modelName", m.ModelName, "^[A-Za-z0-9_-]{1,64}$"),
 	)
+	return violations
 }
 
-func (p PluginBrowserSession) validateWire() error {
-	return collectWireViolations("PluginBrowserSession",
-		requiredText("credential", p.Credential),
-		requiredText("controlEndpoint", p.ControlEndpoint),
+func (p PluginBrowserSession) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("credential", p.Credential),
+		nonEmptyText("controlEndpoint", p.ControlEndpoint),
 		positiveNumber("maximumMessageBytes", p.MaximumMessageBytes),
 		positiveNumber("proofCapacity", p.ProofCapacity),
 		positiveNumber("preparationCapacity", p.PreparationCapacity),
 		positiveNumber("pollIntervalMilliseconds", p.PollIntervalMilliseconds),
 	)
+	return violations
 }
 
-func (p PluginClientComponent) validateWire() error {
-	return collectWireViolations("PluginClientComponent",
-		requiredTextPattern("id", p.ID, "^[a-z][a-z0-9._-]{0,63}$"),
-		optionalTextPattern("contribution", p.Contribution, "^[a-z][a-z0-9._-]{0,63}$"),
-		optionalTextPattern("material", p.Material, "^[a-z][a-z0-9._-]{0,63}$"),
-		optionalTextPattern("settingsIntent", p.SettingsIntent, "^[a-z][a-z0-9._-]{0,63}$"),
+func (p PluginClientComponent) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		textPattern("id", p.ID, "^[a-z][a-z0-9._-]{0,63}$"),
 	)
+	if object.present("contribution") {
+		violations.add(
+			textPattern("contribution", p.Contribution, "^[a-z][a-z0-9._-]{0,63}$"),
+		)
+	}
+	if object.present("material") {
+		violations.add(
+			textPattern("material", p.Material, "^[a-z][a-z0-9._-]{0,63}$"),
+		)
+	}
+	if object.present("settingsIntent") {
+		violations.add(
+			textPattern("settingsIntent", p.SettingsIntent, "^[a-z][a-z0-9._-]{0,63}$"),
+		)
+	}
+	return violations
 }
 
-func (p PluginTerminalView) validateWire() error {
-	return collectWireViolations("PluginTerminalView",
-		requiredTextPattern("id", p.ID, "^[a-z][a-z0-9._-]{0,63}$"),
-		requiredTextPattern("contribution", p.Contribution, "^[a-z][a-z0-9._-]{0,63}$"),
-		requiredText("title", p.Title),
+func (p PluginTerminalView) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		textPattern("id", p.ID, "^[a-z][a-z0-9._-]{0,63}$"),
+		textPattern("contribution", p.Contribution, "^[a-z][a-z0-9._-]{0,63}$"),
+		nonEmptyText("title", p.Title),
 		maxLength("title", p.Title, 128),
 	)
+	return violations
 }
 
-func (p PluginTerminalAction) validateWire() error {
-	return collectWireViolations("PluginTerminalAction",
-		requiredTextPattern("id", p.ID, "^[a-z][a-z0-9._-]{0,63}$"),
-		requiredText("title", p.Title),
+func (p PluginTerminalAction) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		textPattern("id", p.ID, "^[a-z][a-z0-9._-]{0,63}$"),
+		nonEmptyText("title", p.Title),
 		maxLength("title", p.Title, 128),
 	)
+	return violations
 }
 
-func (p PluginLocale) validateWire() error {
-	return collectWireViolations("PluginLocale",
-		requiredText("tag", p.Tag),
+func (p PluginLocale) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("tag", p.Tag),
 		maxLength("tag", p.Tag, 128),
-		requiredText("title", p.Title),
+		nonEmptyText("title", p.Title),
 		maxLength("title", p.Title, 128),
 	)
+	return violations
 }
 
-func (p PluginPoint) validateWire() error {
-	return collectWireViolations("PluginPoint",
-		requiredText("contract", p.Contract),
-		requiredTextPattern("id", p.ID, "^[a-z][a-z0-9._-]{0,63}$"),
+func (p PluginPoint) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("contract", p.Contract),
+		textPattern("id", p.ID, "^[a-z][a-z0-9._-]{0,63}$"),
 	)
+	return violations
 }
 
-func (p PluginPointValue) validateWire() error {
-	return collectWireViolations("PluginPointValue",
-		requiredText("contract", p.Contract),
-		requiredTextPattern("id", p.ID, "^[a-z][a-z0-9._-]{0,63}$"),
-		requiredText("value", p.Value),
+func (p PluginPointValue) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("contract", p.Contract),
+		textPattern("id", p.ID, "^[a-z][a-z0-9._-]{0,63}$"),
+		nonEmptyText("value", p.Value),
 	)
+	return violations
 }
 
-func (p PluginPointReference) validateWire() error {
-	return collectWireViolations("PluginPointReference",
-		requiredTextPattern("installationId", p.InstallationID, "^(?:[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000000[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000000[1-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000000[1-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000000[1-9a-f])$"),
-		requiredTextPattern("contribution", p.Contribution, "^[a-z][a-z0-9._-]{0,63}$"),
+func (p PluginPointReference) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		textPattern("installationId", p.InstallationID, "^(?:[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000000[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000000[1-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000000[1-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000000[1-9a-f])$"),
+		textPattern("contribution", p.Contribution, "^[a-z][a-z0-9._-]{0,63}$"),
 	)
+	return violations
 }
 
-func (p PluginPointBinding) validateWire() error {
-	return collectWireViolations("PluginPointBinding",
-		requiredTextPattern("installationId", p.InstallationID, "^(?:[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000000[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000000[1-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000000[1-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000000[1-9a-f])$"),
-		requiredTextPattern("contribution", p.Contribution, "^[a-z][a-z0-9._-]{0,63}$"),
-		requiredTextPattern("digest", p.Digest, "^[0-9a-f]{64}$"),
-		requiredText("value", p.Value),
+func (p PluginPointBinding) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		textPattern("installationId", p.InstallationID, "^(?:[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000000[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000000[1-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000000[1-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000000[1-9a-f])$"),
+		textPattern("contribution", p.Contribution, "^[a-z][a-z0-9._-]{0,63}$"),
+		textPattern("digest", p.Digest, "^[0-9a-f]{64}$"),
+		nonEmptyText("value", p.Value),
 	)
+	return violations
 }
 
-func (p PluginOperationBinding) validateWire() error {
-	return collectWireViolations("PluginOperationBinding",
-		requiredTextPattern("installationId", p.InstallationID, "^(?:[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000000[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000000[1-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000000[1-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000000[1-9a-f])$"),
-		requiredTextPattern("digest", p.Digest, "^[0-9a-f]{64}$"),
-		requiredTextPattern("contribution", p.Contribution, "^[a-z][a-z0-9._-]{0,63}$"),
-		requiredText("contract", p.Contract),
+func (p PluginOperationBinding) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		textPattern("installationId", p.InstallationID, "^(?:[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000000[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000000[1-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000000[1-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000000[1-9a-f])$"),
+		textPattern("digest", p.Digest, "^[0-9a-f]{64}$"),
+		textPattern("contribution", p.Contribution, "^[a-z][a-z0-9._-]{0,63}$"),
+		nonEmptyText("contract", p.Contract),
 	)
+	return violations
 }
 
-func (p PluginRequirement) validateWire() error {
-	return collectWireViolations("PluginRequirement",
-		requiredTextPattern("id", p.ID, "^[a-z][a-z0-9._-]{0,63}$"),
-		requiredText("contract", p.Contract),
+func (p PluginRequirement) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		textPattern("id", p.ID, "^[a-z][a-z0-9._-]{0,63}$"),
+		nonEmptyText("contract", p.Contract),
 	)
+	return violations
 }
 
-func (p PluginCollaborator) validateWire() error {
-	return collectWireViolations("PluginCollaborator",
-		requiredTextPattern("id", p.ID, "^[a-z][a-z0-9._-]{0,63}$"),
+func (p PluginCollaborator) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		textPattern("id", p.ID, "^[a-z][a-z0-9._-]{0,63}$"),
 	)
+	return violations
 }
 
-func (p PluginCallFailure) validateWire() error {
-	return collectWireViolations("PluginCallFailure",
-		requiredText("code", p.Code),
+func (p PluginCallFailure) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("code", p.Code),
 		maxLength("code", p.Code, 256),
-		requiredText("message", p.Message),
+		nonEmptyText("message", p.Message),
 	)
+	return violations
 }
 
-func (p PluginContribution) validateWire() error {
-	return collectWireViolations("PluginContribution",
-		requiredTextPattern("server", p.Server, "^[a-z0-9][a-z0-9._-]{0,31}$"),
-		requiredTextPattern("id", p.ID, "^[a-z][a-z0-9._-]{0,63}$"),
-		requiredTextPattern("export", p.Export, "^[a-z][a-z0-9._-]{0,63}$"),
-		requiredText("contract", p.Contract),
+func (p PluginContribution) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		textPattern("server", p.Server, "^[a-z0-9][a-z0-9._-]{0,31}$"),
+		textPattern("id", p.ID, "^[a-z][a-z0-9._-]{0,63}$"),
+		textPattern("export", p.Export, "^[a-z][a-z0-9._-]{0,63}$"),
+		nonEmptyText("contract", p.Contract),
 	)
+	return violations
 }
 
-func (p PluginThemeColors) validateWire() error {
-	return collectWireViolations("PluginThemeColors",
-		optionalTextPattern("background", p.Background, "^#[0-9a-fA-F]{6}$"),
-		optionalTextPattern("foreground", p.Foreground, "^#[0-9a-fA-F]{6}$"),
-		optionalTextPattern("accent", p.Accent, "^#[0-9a-fA-F]{6}$"),
-		optionalTextPattern("muted", p.Muted, "^#[0-9a-fA-F]{6}$"),
-		optionalTextPattern("border", p.Border, "^#[0-9a-fA-F]{6}$"),
-	)
+func (p PluginThemeColors) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	if object.present("background") {
+		violations.add(
+			textPattern("background", p.Background, "^#[0-9a-fA-F]{6}$"),
+		)
+	}
+	if object.present("foreground") {
+		violations.add(
+			textPattern("foreground", p.Foreground, "^#[0-9a-fA-F]{6}$"),
+		)
+	}
+	if object.present("accent") {
+		violations.add(
+			textPattern("accent", p.Accent, "^#[0-9a-fA-F]{6}$"),
+		)
+	}
+	if object.present("muted") {
+		violations.add(
+			textPattern("muted", p.Muted, "^#[0-9a-fA-F]{6}$"),
+		)
+	}
+	if object.present("border") {
+		violations.add(
+			textPattern("border", p.Border, "^#[0-9a-fA-F]{6}$"),
+		)
+	}
+	return violations
 }
 
-func (p PluginProviderSelection) validateWire() error {
-	return collectWireViolations("PluginProviderSelection",
-		requiredTextPattern("contribution", p.Contribution, "^[a-z][a-z0-9._-]{0,63}$"),
-		requiredText("role", p.Role),
+func (p PluginProviderSelection) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		textPattern("contribution", p.Contribution, "^[a-z][a-z0-9._-]{0,63}$"),
+		nonEmptyText("role", p.Role),
 		maxLength("role", p.Role, 256),
-		requiredTextPattern("installationId", p.InstallationID, "^(?:[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000000[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000000[1-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000000[1-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000000[1-9a-f])$"),
+		textPattern("installationId", p.InstallationID, "^(?:[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000000[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000000[1-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000000[1-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000000[1-9a-f])$"),
 	)
+	return violations
 }
 
-func (p PluginCompositionMember) validateWire() error {
-	return collectWireViolations("PluginCompositionMember",
-		requiredTextPattern("installationId", p.InstallationID, "^(?:[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000000[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000000[1-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000000[1-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000000[1-9a-f])$"),
-		requiredTextPattern("contribution", p.Contribution, "^[a-z][a-z0-9._-]{0,63}$"),
+func (p PluginCompositionMember) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		textPattern("installationId", p.InstallationID, "^(?:[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000000[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000000[1-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000000[1-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000000[1-9a-f])$"),
+		textPattern("contribution", p.Contribution, "^[a-z][a-z0-9._-]{0,63}$"),
 	)
+	return violations
 }
 
-func (p PluginComposition) validateWire() error {
-	return collectWireViolations("PluginComposition",
-		requiredText("contract", p.Contract),
+func (p PluginComposition) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("contract", p.Contract),
 		uniqueItems("members", p.Members),
 	)
+	return violations
 }
 
-func (p PluginEnablement) validateWire() error {
-	return collectWireViolations("PluginEnablement",
-		requiredTextPattern("installationId", p.InstallationID, "^(?:[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000000[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000000[1-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000000[1-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000000[1-9a-f])$"),
+func (p PluginEnablement) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		textPattern("installationId", p.InstallationID, "^(?:[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000000[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000000[1-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000000[1-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000000[1-9a-f])$"),
 	)
+	return violations
 }
 
-func (p Provider) validateWire() error {
-	return collectWireViolations("Provider",
-		requiredText("id", p.ID),
+func (p Provider) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("id", p.ID),
 		identity("id", p.ID),
 		maxLength("id", p.ID, 64),
-		optionalIdentity("defaultEmbeddingModel", p.DefaultEmbeddingModel),
-		optionalMaxLength("defaultEmbeddingModel", p.DefaultEmbeddingModel, 256),
 	)
+	if object.present("defaultEmbeddingModel") {
+		violations.add(
+			identity("defaultEmbeddingModel", *p.DefaultEmbeddingModel),
+			maxLength("defaultEmbeddingModel", *p.DefaultEmbeddingModel, 256),
+		)
+	}
+	return violations
 }
 
-func (p ProviderCredential) validateWire() error {
-	return collectWireViolations("ProviderCredential",
-		requiredText("masked", p.Masked),
+func (p ProviderCredential) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("masked", p.Masked),
 	)
+	return violations
 }
 
-func (m ModelPriceBand) validateWire() error {
-	return collectWireViolations("ModelPriceBand",
-		nonNegativeNumber("aboveInputTokens", m.AboveInputTokens),
-		nonNegativeNumber("inputUsdPerMillionTokens", m.InputUSDPerMillionTokens),
-		nonNegativeNumber("outputUsdPerMillionTokens", m.OutputUSDPerMillionTokens),
-		nonNegativeNumber("cacheReadUsdPerMillionTokens", m.CacheReadUSDPerMillionTokens),
-		nonNegativeNumber("cacheWriteUsdPerMillionTokens", m.CacheWriteUSDPerMillionTokens),
-	)
+func (m ModelPriceBand) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	if object.present("aboveInputTokens") {
+		violations.add(
+			nonNegativeNumber("aboveInputTokens", m.AboveInputTokens),
+		)
+	}
+	if object.present("inputUsdPerMillionTokens") {
+		violations.add(
+			nonNegativeNumber("inputUsdPerMillionTokens", m.InputUSDPerMillionTokens),
+		)
+	}
+	if object.present("outputUsdPerMillionTokens") {
+		violations.add(
+			nonNegativeNumber("outputUsdPerMillionTokens", m.OutputUSDPerMillionTokens),
+		)
+	}
+	if object.present("cacheReadUsdPerMillionTokens") {
+		violations.add(
+			nonNegativeNumber("cacheReadUsdPerMillionTokens", m.CacheReadUSDPerMillionTokens),
+		)
+	}
+	if object.present("cacheWriteUsdPerMillionTokens") {
+		violations.add(
+			nonNegativeNumber("cacheWriteUsdPerMillionTokens", m.CacheWriteUSDPerMillionTokens),
+		)
+	}
+	return violations
 }
 
-func (m Model) validateWire() error {
-	return collectWireViolations("Model",
-		requiredText("id", m.ID),
-		requiredText("provider", m.Provider),
+func (m Model) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("id", m.ID),
+		nonEmptyText("provider", m.Provider),
 		identity("id", m.ID),
 		maxLength("id", m.ID, 256),
 		identity("provider", m.Provider),
 		maxLength("provider", m.Provider, 64),
 	)
+	return violations
 }
 
-func (m ModelCapabilities) validateWire() error {
-	return collectWireViolations("ModelCapabilities",
-		identityItems("reasoningLevels", m.ReasoningLevels),
-		maxItemLength("reasoningLevels", m.ReasoningLevels, 32),
-		identity("reasoningDefaultLevel", m.ReasoningDefaultLevel),
-		maxLength("reasoningDefaultLevel", m.ReasoningDefaultLevel, 32),
+func (m ModelCapabilities) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	if object.present("reasoningLevels") {
+		violations.add(
+			identityItems("reasoningLevels", m.ReasoningLevels),
+			maxItemLength("reasoningLevels", m.ReasoningLevels, 32),
+		)
+	}
+	if object.present("reasoningDefaultLevel") {
+		violations.add(
+			identity("reasoningDefaultLevel", m.ReasoningDefaultLevel),
+			maxLength("reasoningDefaultLevel", m.ReasoningDefaultLevel, 32),
+		)
+	}
+	return violations
+}
+
+func (a AgentDoc) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		textPattern("path", a.Path, "\\S"),
 	)
+	return violations
 }
 
-func (a AgentDoc) validateWire() error {
-	return collectWireViolations("AgentDoc",
-		requiredTextPattern("path", a.Path, "\\S"),
-	)
-}
-
-func (g GoalUsage) validateWire() error {
-	return collectWireViolations("GoalUsage",
+func (g GoalUsage) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
 		nonNegativeNumber("runs", g.Runs),
-		optionalNonNegativeNumber("costUsd", g.CostUSD),
+	)
+	if object.present("costUsd") {
+		violations.add(
+			nonNegativeNumber("costUsd", *g.CostUSD),
+		)
+	}
+	violations.add(
 		nonNegativeNumber("steps", g.Steps),
 	)
+	return violations
 }
 
-func (c ClientInfo) validateWire() error {
-	return collectWireViolations("ClientInfo",
-		requiredText("name", c.Name),
-		requiredText("version", c.Version),
+func (c ClientInfo) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("name", c.Name),
+		nonEmptyText("version", c.Version),
 	)
+	return violations
 }
 
-func (s ServerInfo) validateWire() error {
-	return collectWireViolations("ServerInfo",
-		requiredTextPattern("name", s.Name, "\\S"),
-		requiredTextPattern("version", s.Version, "\\S"),
-		requiredTextPattern("home", s.Home, "\\S"),
+func (s ServerInfo) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		textPattern("name", s.Name, "\\S"),
+		textPattern("version", s.Version, "\\S"),
+		textPattern("home", s.Home, "\\S"),
 	)
+	return violations
 }
 
-func (s ServerCapabilities) validateWire() error {
-	return collectWireViolations("ServerCapabilities",
+func (s ServerCapabilities) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
 		uniqueItems("runEvents", s.RunEvents),
 		uniqueItems("runtimeTopics", s.RuntimeTopics),
 		uniqueItems("streamingMethods", s.StreamingMethods),
 		textPatternItems("streamingMethods", s.StreamingMethods, "\\S"),
 	)
+	return violations
 }
 
-func (r RuntimeLimits) validateWire() error {
-	return collectWireViolations("RuntimeLimits",
-		optionalPositiveNumber("maxConcurrentRuns", r.MaxConcurrentRuns),
-	)
+func (r RuntimeLimits) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	if object.present("maxConcurrentRuns") {
+		violations.add(
+			positiveNumber("maxConcurrentRuns", *r.MaxConcurrentRuns),
+		)
+	}
+	return violations
 }
 
-func (c ClientCapabilities) validateWire() error {
-	return collectWireViolations("ClientCapabilities",
-		uniqueItems("interruptTypes", c.InterruptTypes),
-		uniqueItems("excludedEphemeralEvents", c.ExcludedEphemeralEvents),
-	)
+func (c ClientCapabilities) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	if object.present("interruptTypes") {
+		violations.add(
+			uniqueItems("interruptTypes", c.InterruptTypes),
+		)
+	}
+	if object.present("excludedEphemeralEvents") {
+		violations.add(
+			uniqueItems("excludedEphemeralEvents", c.ExcludedEphemeralEvents),
+		)
+	}
+	return violations
 }
 
-func (m MCPAuthorizationAttemptLimits) validateWire() error {
-	return collectWireViolations("MCPAuthorizationAttemptLimits",
+func (m MCPAuthorizationAttemptLimits) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
 		positiveNumber("retentionSeconds", m.RetentionSeconds),
 		maximumNumber("retentionSeconds", m.RetentionSeconds, 9223372036),
 	)
+	return violations
 }
 
-func (w WatchSpec) validateWire() error {
-	return collectWireViolations("WatchSpec",
-		nonEmptyItems("paths", w.Paths),
-		uniqueItems("paths", w.Paths),
-	)
+func (w WatchSpec) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	if object.present("paths") {
+		violations.add(
+			nonEmptyItems("paths", w.Paths),
+			uniqueItems("paths", w.Paths),
+		)
+	}
+	return violations
 }
 
-func (a ActiveRunRef) validateWire() error {
-	return collectWireViolations("ActiveRunRef",
-		requiredText("runId", a.RunID),
+func (a ActiveRunRef) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("runId", a.RunID),
 		identity("runId", a.RunID),
 		maxLength("runId", a.RunID, 256),
 	)
+	return violations
 }
 
-func (f FieldError) validateWire() error {
-	return collectWireViolations("FieldError",
-		requiredText("field", f.Field),
-		requiredText("detail", f.Detail),
+func (f FieldError) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("field", f.Field),
+		nonEmptyText("detail", f.Detail),
 	)
+	return violations
 }
 
-func (r RunReplayLimits) validateWire() error {
-	return collectWireViolations("RunReplayLimits",
+func (r RunReplayLimits) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
 		positiveNumber("maxEvents", r.MaxEvents),
 		positiveNumber("maxBytes", r.MaxBytes),
 	)
+	return violations
 }
 
-func (i IdempotencyLimits) validateWire() error {
-	return collectWireViolations("IdempotencyLimits",
+func (i IdempotencyLimits) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
 		positiveNumber("retentionSeconds", i.RetentionSeconds),
 		maximumNumber("retentionSeconds", i.RetentionSeconds, 9223372036),
-		requiredTextPattern("namespace", i.Namespace, "^idp_[0-9a-f]{32}$"),
+		textPattern("namespace", i.Namespace, "^idp_[0-9a-f]{32}$"),
 	)
+	return violations
 }
 
-func (s SubscriptionLimits) validateWire() error {
-	return collectWireViolations("SubscriptionLimits",
+func (s SubscriptionLimits) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
 		positiveNumber("maxTopics", s.MaxTopics),
 		positiveNumber("maxWatches", s.MaxWatches),
 		positiveNumber("maxPaths", s.MaxPaths),
 		positiveNumber("maxDirectoryEntries", s.MaxDirectoryEntries),
 		positiveNumber("maxFileBytes", s.MaxFileBytes),
 	)
+	return violations
 }
 
-func (f FileListPage) validateWire() error {
-	return collectWireViolations("FileListPage",
-		maxLength("nextCursor", f.NextCursor, 65536),
-	)
+func (f FileListPage) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	if object.present("nextCursor") {
+		violations.add(
+			maxLength("nextCursor", f.NextCursor, 65536),
+		)
+	}
+	return violations
 }
 
-func (l ListItemsResponse) validateWire() error {
-	return collectWireViolations("ListItemsResponse",
-		maxLength("nextCursor", l.NextCursor, 65536),
-	)
+func (l ListItemsResponse) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	if object.present("nextCursor") {
+		violations.add(
+			maxLength("nextCursor", l.NextCursor, 65536),
+		)
+	}
+	return violations
 }
 
-func (s SessionUsage) validateWire() error {
-	return collectWireViolations("SessionUsage",
-		optionalNonNegativeNumber("recordedCostUsd", s.RecordedCostUSD),
-	)
+func (s SessionUsage) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	if object.present("recordedCostUsd") {
+		violations.add(
+			nonNegativeNumber("recordedCostUsd", *s.RecordedCostUSD),
+		)
+	}
+	return violations
 }
 
 func (ActivityType) wireEnumValues() []string {

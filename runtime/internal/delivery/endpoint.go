@@ -66,6 +66,35 @@ func (e *Endpoint) AwaitShutdown(ctx context.Context) error {
 }
 
 func (e *Endpoint) Invoke(ctx context.Context, name Name, parameters any, options protocol.CallMetadata) protocol.OperationResult {
+	return e.invoke(ctx, name, options, func(method MethodMeta) (any, *protocol.Failure) {
+		if err := protocol.ValidateWireTree(options.RequestMeta); err != nil {
+			return nil, protocol.InvalidParameters(err)
+		}
+		if reflect.TypeOf(parameters) != method.Params {
+			return nil, protocol.NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("%s parameters have type %T, want %s", name, parameters, method.Params))
+		}
+		if err := protocol.ValidateWireTree(parameters); err != nil {
+			return nil, protocol.InvalidParameters(err)
+		}
+		return parameters, nil
+	})
+}
+
+// The envelope admits request metadata before the endpoint handles method parameters.
+func (e *Endpoint) InvokeWire(ctx context.Context, name Name, encoded []byte, options protocol.CallMetadata) protocol.OperationResult {
+	if len(encoded) == 0 {
+		encoded = []byte(`{}`)
+	}
+	return e.invoke(ctx, name, options, func(method MethodMeta) (any, *protocol.Failure) {
+		target := reflect.New(method.Params)
+		if err := protocol.DecodeRequest(encoded, target.Interface()); err != nil {
+			return nil, protocol.ProjectError(err)
+		}
+		return target.Elem().Interface(), nil
+	})
+}
+
+func (e *Endpoint) invoke(ctx context.Context, name Name, options protocol.CallMetadata, admit func(MethodMeta) (any, *protocol.Failure)) protocol.OperationResult {
 	if err := e.validateStorage(); err != nil {
 		return failed(projectError(err))
 	}
@@ -78,9 +107,33 @@ func (e *Endpoint) Invoke(ctx context.Context, name Name, parameters any, option
 			release()
 		}
 	}()
-	method, failure := e.admit(ctx, name, parameters, options)
+	method, found := contract.lookup(name)
+	if !found {
+		return failed(protocol.NewFailure(protocol.ErrMethodNotFound, fmt.Sprintf("unknown method %q", name)))
+	}
+	if failure := validateOptions(method.Meta, options); failure != nil {
+		return failed(failure)
+	}
+	if options.IdempotencyKey != "" && options.IdempotencyNamespace != "" &&
+		options.IdempotencyNamespace != e.idempotencyNamespace.String() {
+		return failed(protocol.NewFailure(protocol.ErrIdempotencyStoreMismatch, "idempotency namespace does not identify this Runtime store"))
+	}
+	parameters, failure := admit(method.Meta)
 	if failure != nil {
 		return failed(failure)
+	}
+	if err := ctx.Err(); err != nil {
+		return failed(projectError(err))
+	}
+	if method.prepare != nil {
+		prepared, err := method.prepare(e.target, ctx, parameters)
+		if err != nil {
+			return failed(projectError(err))
+		}
+		if failure := validateOptions(prepared.Meta, options); failure != nil {
+			return failed(failure)
+		}
+		method = prepared
 	}
 	ctx, options, err := e.bind(ctx, method, parameters, options)
 	if err != nil {
@@ -98,40 +151,6 @@ func (e *Endpoint) Invoke(ctx context.Context, name Name, parameters any, option
 	result.Events = ownStream(ctx, result.Events, release)
 	release = nil
 	return result
-}
-
-func (e *Endpoint) admit(ctx context.Context, name Name, parameters any, options protocol.CallMetadata) (*Method, *protocol.Failure) {
-	method, ok := contract.lookup(name)
-	if !ok {
-		return nil, protocol.NewFailure(protocol.ErrMethodNotFound, fmt.Sprintf("unknown method %q", name))
-	}
-	if failure := validateOptions(method.Meta, options); failure != nil {
-		return nil, failure
-	}
-	if options.IdempotencyKey != "" && options.IdempotencyNamespace != "" &&
-		options.IdempotencyNamespace != e.idempotencyNamespace.String() {
-		return nil, protocol.NewFailure(protocol.ErrIdempotencyStoreMismatch, "idempotency namespace does not identify this Runtime store")
-	}
-	if reflect.TypeOf(parameters) != method.Meta.Params {
-		return nil, protocol.NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("%s parameters have type %T, want %s", name, parameters, method.Meta.Params))
-	}
-	if err := protocol.ValidateWireTree(parameters); err != nil {
-		return nil, protocol.InvalidParameters(err)
-	}
-	if err := ctx.Err(); err != nil {
-		return nil, projectError(err)
-	}
-	if method.prepare == nil {
-		return method, nil
-	}
-	prepared, err := method.prepare(e.target, ctx, parameters)
-	if err != nil {
-		return nil, projectError(err)
-	}
-	if failure := validateOptions(prepared.Meta, options); failure != nil {
-		return nil, failure
-	}
-	return prepared, nil
 }
 
 // A key created only in the response cannot survive a lost acknowledgement.
@@ -226,9 +245,6 @@ func allowsEvent(ctx context.Context, event any) bool {
 }
 
 func validateOptions(method MethodMeta, options protocol.CallMetadata) *protocol.Failure {
-	if err := protocol.ValidateWireTree(options.RequestMeta); err != nil {
-		return protocol.InvalidParameters(err)
-	}
 	version := options.RequestMeta.ProtocolVersion
 	if version != "" && version != protocol.Version {
 		return protocol.NewFailure(protocol.ErrInvalidProtocolVersion, fmt.Sprintf("protocolVersion %q is unsupported; expected %q", version, protocol.Version))

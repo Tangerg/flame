@@ -8,21 +8,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/delivery/dispatch"
 )
 
-func unionRequiresField(union dispatch.UnionSpec, field string) bool {
-	if union.GoType == nil {
-		return false
-	}
-	for _, variant := range union.Variants {
-		if slices.Contains(variant.Required, field) {
-			return true
-		}
-	}
-	if pattern := union.PatternVariant; pattern != nil {
-		return slices.Contains(pattern.Required, field)
-	}
-	return false
-}
-
 func unionChecks(union dispatch.UnionSpec, recv string) []string {
 	if union.GoType == nil {
 		return nil
@@ -33,10 +18,10 @@ func unionChecks(union dispatch.UnionSpec, recv string) []string {
 		checks = append(checks, patternUnionTagCheck(union, *pattern, recv))
 	}
 	for _, variant := range union.Variants {
-		checks = append(checks, literalUnionChecks(variant, paths, recv)...)
+		checks = append(checks, literalUnionChecks(variant, paths)...)
 	}
 	if pattern := union.PatternVariant; pattern != nil {
-		checks = append(checks, patternUnionChecks(*pattern, paths, recv)...)
+		checks = append(checks, patternUnionChecks(*pattern, paths)...)
 	}
 	return checks
 }
@@ -59,33 +44,31 @@ func patternUnionTagCheck(union dispatch.UnionSpec, pattern dispatch.PatternVari
 func literalUnionChecks(
 	variant dispatch.VariantSpec,
 	paths []string,
-	recv string,
 ) []string {
-	applies := fmt.Sprintf("wireFieldEquals(%s, %q, %q)", recv, dispatch.UnionDiscriminator, variant.Tag)
-	checks := unionBranchChecks(applies, variant.Required, variant.Optional, paths, recv)
-	return append(checks, allowedValueChecks(applies, variant.AllowedValues, recv)...)
+	applies := fmt.Sprintf("%s.equals(%q, %q)", wireObjectParameter, dispatch.UnionDiscriminator, variant.Tag)
+	checks := unionBranchChecks(applies, variant.Required, variant.Optional, paths)
+	return append(checks, allowedValueChecks(applies, variant.AllowedValues)...)
 }
 
 func patternUnionChecks(
 	pattern dispatch.PatternVariantSpec,
 	paths []string,
-	recv string,
 ) []string {
-	applies := fmt.Sprintf("wireFieldMatches(%s, %q, %q)", recv, dispatch.UnionDiscriminator, pattern.TagPattern)
-	return unionBranchChecks(applies, pattern.Required, pattern.Optional, paths, recv)
+	applies := fmt.Sprintf("%s.matches(%q, %q)", wireObjectParameter, dispatch.UnionDiscriminator, pattern.TagPattern)
+	return unionBranchChecks(applies, pattern.Required, pattern.Optional, paths)
 }
 
-func unionBranchChecks(applies string, required, optional, paths []string, recv string) []string {
+func unionBranchChecks(applies string, required, optional, paths []string) []string {
 	allowed := append(slices.Clone(required), optional...)
 	checks := make([]string, 0, len(required)+len(paths))
 	for _, field := range required {
-		checks = append(checks, fmt.Sprintf("requiredWhen(%s, %q, %s)", applies, field, recv))
+		checks = append(checks, fmt.Sprintf("requiredWhen(%s, %q, %s)", applies, field, wireObjectParameter))
 	}
 	for _, field := range paths {
 		if slices.Contains(allowed, field) {
 			continue
 		}
-		checks = append(checks, fmt.Sprintf("forbiddenWhen(%s, %q, %s)", applies, field, recv))
+		checks = append(checks, fmt.Sprintf("forbiddenWhen(%s, %q, %s)", applies, field, wireObjectParameter))
 	}
 	return checks
 }

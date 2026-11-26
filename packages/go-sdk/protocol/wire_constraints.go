@@ -2,7 +2,6 @@ package protocol
 
 import (
 	json "encoding/json/v2"
-	"errors"
 	"fmt"
 	"maps"
 	"math"
@@ -16,211 +15,8 @@ import (
 	framevalue "github.com/Tangerg/frame/value"
 )
 
-type wireValidator interface {
-	validateWire() error
-}
-
-type wireEnum interface {
-	wireEnumValues() []string
-}
-
-// Interface-valued payloads are intentionally opaque: their schema is owned
-// outside the first-party contract.
-func ValidateWireTree(value any) error {
-	root := reflect.ValueOf(value)
-	if !root.IsValid() {
-		return nil
-	}
-	if err := ValidateWireType(root.Type()); err != nil {
-		return err
-	}
-	rootType := root.Type()
-	for rootType.Kind() == reflect.Pointer {
-		rootType = rootType.Elem()
-	}
-	shape := rootType.Name()
-	if shape == "" {
-		shape = "wire value"
-	}
-
-	fields := validateWireValue(root, "", make(map[wirePointer]bool))
-	if len(fields) == 0 {
-		return nil
-	}
-	return &ConstraintError{Shape: shape, Fields: uniqueFieldErrors(fields)}
-}
-
-type wirePointer struct {
-	typ reflect.Type
-	ptr uintptr
-}
-
-func validateWireValue(value reflect.Value, path string, visiting map[wirePointer]bool) []FieldError {
-	if !value.IsValid() {
-		return nil
-	}
-	for value.Kind() == reflect.Pointer {
-		if value.IsNil() {
-			return nil
-		}
-		pointer := wirePointer{typ: value.Type(), ptr: value.Pointer()}
-		if visiting[pointer] {
-			return nil
-		}
-		visiting[pointer] = true
-		defer delete(visiting, pointer)
-		value = value.Elem()
-	}
-	if value.Kind() == reflect.Interface {
-		return nil
-	}
-
-	var fields []FieldError
-	if value.CanInterface() {
-		if validator, ok := value.Interface().(wireValidator); ok {
-			fields = append(fields, prefixedWireErrors(path, validator.validateWire())...)
-		}
-	}
-
-	switch value.Kind() {
-	case reflect.Struct:
-		for _, field := range WireFields(value.Type()) {
-			child := value.FieldByName(field.GoName)
-			// Optional scalar strings use the Go zero value to encode omission.
-			if field.Optional && child.Kind() == reflect.String && child.Len() == 0 {
-				continue
-			}
-			fields = append(fields, validateWireValue(
-				child,
-				joinWirePath(path, field.Name),
-				visiting,
-			)...)
-		}
-	case reflect.Slice, reflect.Array:
-		for index := range value.Len() {
-			fields = append(fields, validateWireValue(
-				value.Index(index),
-				fmt.Sprintf("%s[%d]", path, index),
-				visiting,
-			)...)
-		}
-	case reflect.Map:
-		keys := value.MapKeys()
-		slices.SortFunc(keys, func(left, right reflect.Value) int { return strings.Compare(left.String(), right.String()) })
-		for _, key := range keys {
-			fields = append(fields, validateWireValue(value.MapIndex(key), framevalue.MapPath(path, key.String()), visiting)...)
-		}
-	case reflect.String:
-		if field := enumViolation(value, path); field.Field != "" {
-			fields = append(fields, field)
-		}
-	}
-	return fields
-}
-
-func enumViolation(value reflect.Value, path string) FieldError {
-	if !value.CanInterface() {
-		return FieldError{}
-	}
-	var values []string
-	switch enum := value.Interface().(type) {
-	case wireEnum:
-		values = enum.wireEnumValues()
-	case interface{ Values() []string }:
-		values = enum.Values()
-	default:
-		return FieldError{}
-	}
-	if slices.Contains(values, value.String()) {
-		return FieldError{}
-	}
-	return FieldError{Field: joinWirePath(path, ""), Detail: "must be one of " + strings.Join(values, ", ")}
-}
-
-func prefixedWireErrors(path string, err error) []FieldError {
-	if err == nil {
-		return nil
-	}
-	if constraint, ok := errors.AsType[*ConstraintError](err); ok {
-		fields := make([]FieldError, 0, len(constraint.Fields))
-		for _, field := range constraint.Fields {
-			field.Field = joinWirePath(path, field.Field)
-			fields = append(fields, field)
-		}
-		return fields
-	}
-	return []FieldError{{Field: joinWirePath(path, ""), Detail: err.Error()}}
-}
-
-func joinWirePath(prefix, field string) string {
-	switch {
-	case prefix == "" && field == "":
-		return "$"
-	case prefix == "":
-		return field
-	case field == "":
-		return prefix
-	default:
-		return prefix + "." + field
-	}
-}
-
-func uniqueFieldErrors(fields []FieldError) []FieldError {
-	seen := make(map[FieldError]bool, len(fields))
-	out := make([]FieldError, 0, len(fields))
-	for _, field := range fields {
-		if seen[field] {
-			continue
-		}
-		seen[field] = true
-		out = append(out, field)
-	}
-	return out
-}
-
-type ConstraintError struct {
-	Shape  string
-	Fields []FieldError
-}
-
-func (c *ConstraintError) Error() string {
-	parts := make([]string, 0, len(c.Fields))
-	for _, f := range c.Fields {
-		path := f.Field
-		if c.Shape != "" {
-			path = c.Shape + "." + path
-		}
-		parts = append(parts, path+": "+f.Detail)
-	}
-	return strings.Join(parts, "; ")
-}
-
-func (c *ConstraintError) Enrich(data *ProblemData) {
-	data.Errors = append(data.Errors, c.Fields...)
-}
-
-func collectWireViolations(shape string, fields ...FieldError) error {
-	present := make([]FieldError, 0, len(fields))
-	for _, f := range fields {
-		if f.Field != "" {
-			present = append(present, f)
-		}
-	}
-	if len(present) == 0 {
-		return nil
-	}
-	return &ConstraintError{Shape: shape, Fields: present}
-}
-
-func requiredText(field, value string) FieldError {
+func nonEmptyText(field, value string) FieldError {
 	if value == "" {
-		return FieldError{Field: field, Detail: "is required"}
-	}
-	return FieldError{}
-}
-
-func optionalText[Text ~string](field string, value *Text) FieldError {
-	if value != nil && *value == "" {
 		return FieldError{Field: field, Detail: "must not be empty"}
 	}
 	return FieldError{}
@@ -239,23 +35,6 @@ func positiveNumber[Number wireNumeric](field string, value Number) FieldError {
 	return FieldError{}
 }
 
-// Zero is absence because encoding/json omits an optional scalar at its zero
-// value.
-func optionalPositiveScalarNumber[Number wireNumeric](field string, value Number) FieldError {
-	number := float64(value)
-	if number < 0 || math.IsNaN(number) || math.IsInf(number, 0) {
-		return FieldError{Field: field, Detail: "must be finite and greater than zero when present"}
-	}
-	return FieldError{}
-}
-
-func optionalPositiveNumber[Number wireNumeric](field string, value *Number) FieldError {
-	if value == nil {
-		return FieldError{}
-	}
-	return positiveNumber(field, *value)
-}
-
 type wireNumeric interface {
 	wireNumber | ~float32 | ~float64
 }
@@ -266,13 +45,6 @@ func nonNegativeNumber[Number wireNumeric](field string, value Number) FieldErro
 		return FieldError{Field: field, Detail: "must be finite and non-negative"}
 	}
 	return FieldError{}
-}
-
-func optionalNonNegativeNumber[Number wireNumeric](field string, value *Number) FieldError {
-	if value == nil {
-		return FieldError{}
-	}
-	return nonNegativeNumber(field, *value)
 }
 
 func minimumNumber[Number wireNumeric](field string, value Number, minimum Number) FieldError {
@@ -294,32 +66,15 @@ func maximumNumber[Number wireNumeric](field string, value Number, maximum Numbe
 	return FieldError{}
 }
 
-func optionalMaximumNumber[Number wireNumeric](field string, value *Number, maximum Number) FieldError {
-	if value == nil {
-		return FieldError{}
-	}
-	return maximumNumber(field, *value, maximum)
-}
-
-func requiredItems[T any](field string, values []T) FieldError {
-	if values == nil {
-		return FieldError{Field: field, Detail: "is required"}
-	}
+func nonEmptyItems[T any](field string, values []T) FieldError {
 	if len(values) == 0 {
 		return FieldError{Field: field, Detail: "must not be empty"}
 	}
 	return FieldError{}
 }
 
-func nonEmptyItems[T any](field string, values []T) FieldError {
-	if values != nil && len(values) == 0 {
-		return FieldError{Field: field, Detail: "must not be empty"}
-	}
-	return FieldError{}
-}
-
-func optionalMinItems[T any](field string, values []T, minimum int) FieldError {
-	if values != nil && len(values) < minimum {
+func minItems[T any](field string, values []T, minimum int) FieldError {
+	if len(values) < minimum {
 		return FieldError{Field: field, Detail: fmt.Sprintf("must contain at least %d items", minimum)}
 	}
 	return FieldError{}
@@ -337,13 +92,6 @@ func maxLength(field, value string, maximum int) FieldError {
 		return FieldError{Field: field, Detail: fmt.Sprintf("must contain at most %d characters", maximum)}
 	}
 	return FieldError{}
-}
-
-func optionalMaxLength(field string, value *string, maximum int) FieldError {
-	if value == nil {
-		return FieldError{}
-	}
-	return maxLength(field, *value, maximum)
 }
 
 func maxItemLength[Identity ~string](field string, values []Identity, maximum int) FieldError {
@@ -364,13 +112,6 @@ func identity(field, value string) FieldError {
 	return FieldError{}
 }
 
-func optionalIdentity(field string, value *string) FieldError {
-	if value == nil {
-		return FieldError{}
-	}
-	return identity(field, *value)
-}
-
 func identityItems[Identity ~string](field string, values []Identity) FieldError {
 	for index, value := range values {
 		if violation := identity(fmt.Sprintf("%s[%d]", field, index), string(value)); violation.Field != "" {
@@ -382,7 +123,7 @@ func identityItems[Identity ~string](field string, values []Identity) FieldError
 
 func textPatternItems[Identity ~string](field string, values []Identity, pattern string) FieldError {
 	for index, value := range values {
-		if violation := requiredTextPattern(
+		if violation := textPattern(
 			fmt.Sprintf("%s[%d]", field, index),
 			string(value),
 			pattern,
@@ -411,21 +152,14 @@ func identityPropertyNames[Value any](field string, values map[string]Value) Fie
 	return FieldError{}
 }
 
-func requiredTextPrefix(field, value, prefix string) FieldError {
+func textPrefix(field, value, prefix string) FieldError {
 	if !strings.HasPrefix(value, prefix) {
 		return FieldError{Field: field, Detail: fmt.Sprintf("must start with %q", prefix)}
 	}
 	return FieldError{}
 }
 
-func optionalTextPointerPrefix(field string, value *string, prefix string) FieldError {
-	if value == nil {
-		return FieldError{}
-	}
-	return requiredTextPrefix(field, *value, prefix)
-}
-
-func requiredTextPattern(field, value, pattern string) FieldError {
+func textPattern(field, value, pattern string) FieldError {
 	matched, err := regexp.MatchString(pattern, value)
 	if err != nil || !matched {
 		return FieldError{Field: field, Detail: fmt.Sprintf("must match %q", pattern)}
@@ -433,15 +167,8 @@ func requiredTextPattern(field, value, pattern string) FieldError {
 	return FieldError{}
 }
 
-func optionalTextPattern(field, value, pattern string) FieldError {
-	if value == "" {
-		return FieldError{}
-	}
-	return requiredTextPattern(field, value, pattern)
-}
-
 func nonEmptyProperties[Value any](field string, values map[string]Value) FieldError {
-	if values != nil && len(values) == 0 {
+	if len(values) == 0 {
 		return FieldError{Field: field, Detail: "must not be empty"}
 	}
 	return FieldError{}
@@ -473,23 +200,23 @@ func unionTag(field, value string, literals []string, pattern string) FieldError
 	return FieldError{Field: field, Detail: "must be a known tag or match " + pattern}
 }
 
-func required(field string, value any) FieldError {
-	if !wireFieldPresent(value, field) {
+func required(field string, object wireObject) FieldError {
+	if !object.present(field) {
 		return FieldError{Field: field, Detail: "is required"}
 	}
 	return FieldError{}
 }
 
-func requiredWhen(applies bool, field string, value any) FieldError {
+func requiredWhen(applies bool, field string, object wireObject) FieldError {
 	if !applies {
 		return FieldError{}
 	}
-	return required(field, value)
+	return required(field, object)
 }
 
-func requiredAny(fields []string, value any) FieldError {
+func requiredAny(fields []string, object wireObject) FieldError {
 	for _, field := range fields {
-		if wireFieldPresent(value, field) {
+		if object.present(field) {
 			return FieldError{}
 		}
 	}
@@ -499,19 +226,19 @@ func requiredAny(fields []string, value any) FieldError {
 	}
 }
 
-func forbiddenWhen(applies bool, field string, value any) FieldError {
-	if applies && wireFieldPresent(value, field) {
+func forbiddenWhen(applies bool, field string, object wireObject) FieldError {
+	if applies && object.present(field) {
 		return FieldError{Field: field, Detail: "must not be present here"}
 	}
 	return FieldError{}
 }
 
-func allowedValuesWhen(applies bool, field string, value any, allowed []string) FieldError {
+func allowedValuesWhen(applies bool, field string, object wireObject, allowed []string) FieldError {
 	if !applies {
 		return FieldError{}
 	}
-	actual, _, found := lookupWireValue(reflect.ValueOf(value), field)
-	if !found {
+	actual := object.field(field)
+	if !actual.IsValid() {
 		return FieldError{}
 	}
 	if actual.Kind() != reflect.String || !slices.Contains(allowed, actual.String()) {
@@ -520,67 +247,16 @@ func allowedValuesWhen(applies bool, field string, value any, allowed []string) 
 	return FieldError{}
 }
 
-func wireFieldEquals(value any, path, expected string) bool {
-	field, _, ok := lookupWireValue(reflect.ValueOf(value), path)
-	return ok && field.Kind() == reflect.String && field.String() == expected
+func (o wireObject) equals(path, expected string) bool {
+	field := o.field(path)
+	return field.Kind() == reflect.String && field.String() == expected
 }
 
-func wireFieldMatches(value any, path, pattern string) bool {
-	field, _, ok := lookupWireValue(reflect.ValueOf(value), path)
-	if !ok || field.Kind() != reflect.String {
+func (o wireObject) matches(path, pattern string) bool {
+	field := o.field(path)
+	if field.Kind() != reflect.String {
 		return false
 	}
 	matched, err := regexp.MatchString(pattern, field.String())
 	return err == nil && matched
-}
-
-func wireFieldPresent(value any, path string) bool {
-	field, optional, ok := lookupWireValue(reflect.ValueOf(value), path)
-	if !ok {
-		return false
-	}
-	if !optional {
-		return true
-	}
-	switch field.Kind() {
-	case reflect.Array, reflect.Map, reflect.Slice, reflect.String:
-		return field.Len() > 0
-	case reflect.Bool:
-		return field.Bool()
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		return field.Int() != 0
-	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		return field.Uint() != 0
-	case reflect.Float32, reflect.Float64:
-		return field.Float() != 0
-	case reflect.Chan, reflect.Func, reflect.Interface, reflect.Pointer:
-		return !field.IsNil()
-	default:
-		return !field.IsZero()
-	}
-}
-
-func lookupWireValue(value reflect.Value, path string) (reflect.Value, bool, bool) {
-	current := value
-	var optional bool
-	for segment := range strings.SplitSeq(path, ".") {
-		for current.IsValid() && (current.Kind() == reflect.Interface || current.Kind() == reflect.Pointer) {
-			if current.IsNil() {
-				return reflect.Value{}, false, false
-			}
-			current = current.Elem()
-		}
-		if !current.IsValid() || current.Kind() != reflect.Struct {
-			return reflect.Value{}, false, false
-		}
-		fields := WireFields(current.Type())
-		index := slices.IndexFunc(fields, func(field WireField) bool { return field.Name == segment })
-		if index < 0 {
-			return reflect.Value{}, false, false
-		}
-		wireField := fields[index]
-		current = current.FieldByName(wireField.GoName)
-		optional = wireField.Optional
-	}
-	return current, optional, current.IsValid()
 }

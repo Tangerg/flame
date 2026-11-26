@@ -292,6 +292,10 @@
     "v0.1.73-dev.20261126.t0f34b5605b59": {
       "tree": "0f34b5605b59637ed233eb0c73f09ec8e7f0b13d",
       "time": "2026-11-26T17:58:28Z"
+    },
+    "v0.1.74-dev.20261126.taaaf6c4713f7": {
+      "tree": "aaaf6c4713f7f8cefe30fc569828640cc3c5aa84",
+      "time": "2026-11-26T19:31:23Z"
     }
   },
   "github.com/Tangerg/flame/plugins": {
@@ -782,6 +786,10 @@
     "v0.1.140-dev.20261126.tefaaf0227cba": {
       "tree": "efaaf0227cbac34394e2a8ff3a0f4aa18871a20a",
       "time": "2026-11-26T17:58:56Z"
+    },
+    "v0.1.141-dev.20261126.t9ed6728d0cb0": {
+      "tree": "9ed6728d0cb0c09976498fbbf1a6a3bdd8bfd633",
+      "time": "2026-11-26T19:31:37Z"
     }
   },
   "github.com/Tangerg/flame/apps/cli": {

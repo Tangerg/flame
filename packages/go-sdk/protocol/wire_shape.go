@@ -1,20 +1,15 @@
 package protocol
 
 import (
-	"bytes"
 	"encoding"
 	"encoding/json/jsontext"
 	json "encoding/json/v2"
 	"errors"
 	"fmt"
-	"maps"
 	"reflect"
-	"slices"
 	"strings"
 	"time"
 	"unicode/utf8"
-
-	framevalue "github.com/Tangerg/frame/value"
 )
 
 type WireField struct {
@@ -261,102 +256,6 @@ func validateWireOptions(owner reflect.Type, field, options string, present, inl
 			return fmt.Errorf("protocol: unsupported JSON option %q on %s.%s", option, owner, field)
 		}
 		seen[option] = true
-	}
-	return nil
-}
-
-func DecodeWire(encoded []byte, target any) error {
-	destination := reflect.ValueOf(target)
-	if !destination.IsValid() || destination.Kind() != reflect.Pointer || destination.IsNil() {
-		return errors.New("protocol: wire target must be a non-nil pointer")
-	}
-	owner := destination.Type().Elem()
-	if err := ValidateWireType(owner); err != nil {
-		return err
-	}
-	value := reflect.New(owner)
-	if err := json.Unmarshal(encoded, value.Interface(), json.RejectUnknownMembers(true), framevalue.Numbers()); err != nil {
-		return err
-	}
-	if err := validateWirePresence(encoded, owner, ""); err != nil {
-		return err
-	}
-	destination.Elem().Set(value.Elem())
-	return nil
-}
-
-func validateWirePresence(encoded jsontext.Value, owner reflect.Type, path string) error {
-	for owner.Kind() == reflect.Pointer {
-		owner = owner.Elem()
-	}
-	if owner.Kind() == reflect.Interface || owner == reflect.TypeFor[jsontext.Value]() {
-		return nil
-	}
-	violation := func(field, detail string) error {
-		return &ConstraintError{Fields: []FieldError{{Field: joinWirePath("", field), Detail: detail}}}
-	}
-	if bytes.Equal(bytes.TrimSpace(encoded), []byte("null")) {
-		return violation(path, "must not be null")
-	}
-	if wireScalar(owner) {
-		return nil
-	}
-	switch owner.Kind() {
-	case reflect.Struct:
-		return validateWireObjectPresence(encoded, owner, path)
-	case reflect.Slice, reflect.Array:
-		if owner.Elem().Kind() == reflect.Uint8 {
-			return nil
-		}
-		return validateWireArrayPresence(encoded, owner.Elem(), path)
-	case reflect.Map:
-		return validateWireMapPresence(encoded, owner.Elem(), path)
-	}
-	return nil
-}
-
-func validateWireArrayPresence(encoded jsontext.Value, element reflect.Type, path string) error {
-	var values []jsontext.Value
-	if err := json.Unmarshal(encoded, &values); err != nil {
-		return err
-	}
-	for index, child := range values {
-		if err := validateWirePresence(child, element, fmt.Sprintf("%s[%d]", path, index)); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func validateWireMapPresence(encoded jsontext.Value, element reflect.Type, path string) error {
-	var object map[string]jsontext.Value
-	if err := json.Unmarshal(encoded, &object); err != nil {
-		return err
-	}
-	for _, key := range slices.Sorted(maps.Keys(object)) {
-		if err := validateWirePresence(object[key], element, framevalue.MapPath(path, key)); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func validateWireObjectPresence(encoded jsontext.Value, owner reflect.Type, path string) error {
-	var object map[string]jsontext.Value
-	if err := json.Unmarshal(encoded, &object); err != nil {
-		return err
-	}
-	for _, field := range WireFields(owner) {
-		child, found := object[field.Name]
-		if !found {
-			if !field.Optional {
-				return &ConstraintError{Fields: []FieldError{{Field: joinWirePath("", joinWirePath(path, field.Name)), Detail: "is required"}}}
-			}
-			continue
-		}
-		if err := validateWirePresence(child, field.Type, joinWirePath(path, field.Name)); err != nil {
-			return err
-		}
 	}
 	return nil
 }

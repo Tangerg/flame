@@ -257,106 +257,17 @@ func validateConstraintArguments(owner string, constraint FieldConstraint, argum
 }
 
 func validateConstraintProjection(owner string, field protocol.WireField, constraint FieldConstraint) error {
-	if err := validatePointerConstraintProjection(owner, field, constraint); err != nil {
-		return err
-	}
-	if err := validateConstraintHelperAssignment(owner, field, constraint); err != nil {
-		return err
-	}
-	if constraint.Kind == ConstraintMinItems && !field.Optional {
-		return fmt.Errorf(
-			"%s.%s constraint %s does not support a required array",
-			owner, constraint.Field, constraint.Kind,
-		)
-	}
-	if constraint.Kind == ConstraintMinimum && field.Optional {
-		return fmt.Errorf(
-			"%s.%s constraint %s does not support an optional value field",
-			owner, constraint.Field, constraint.Kind,
-		)
-	}
-	return validateTextualConstraintProjection(owner, field, constraint)
-}
-
-func validateConstraintHelperAssignment(owner string, field protocol.WireField, constraint FieldConstraint) error {
-	if field.Type.Kind() == reflect.Pointer {
-		target := field.Type.Elem()
-		if target.Kind() == reflect.String && target != reflect.TypeFor[string]() {
-			switch constraint.Kind {
-			case ConstraintMaxLength, ConstraintIdentity, ConstraintPrefix, ConstraintPattern:
-				return fmt.Errorf(
-					"%s.%s constraint %s does not support a named string pointer",
-					owner, constraint.Field, constraint.Kind,
-				)
-			case ConstraintNonEmpty, ConstraintPositive, ConstraintNonNegative, ConstraintNonEmptyItems, ConstraintNonEmptyProperties, ConstraintUniqueItems, ConstraintMinItems, ConstraintMaxItems, ConstraintMaxItemLength, ConstraintIdentityItems, ConstraintMaxPropertyNameLength, ConstraintIdentityPropertyNames, ConstraintPatternItems, ConstraintMinimum, ConstraintMaximum:
-			}
-		}
-		if target.Kind() == reflect.Slice && target.Name() != "" {
-			switch constraint.Kind {
-			case ConstraintUniqueItems, ConstraintMaxItems, ConstraintMaxItemLength, ConstraintPatternItems:
-				return fmt.Errorf(
-					"%s.%s constraint %s does not support a named slice pointer",
-					owner, constraint.Field, constraint.Kind,
-				)
-			case ConstraintNonEmpty, ConstraintPositive, ConstraintNonNegative, ConstraintNonEmptyItems, ConstraintNonEmptyProperties, ConstraintMinItems, ConstraintMaxLength, ConstraintIdentity, ConstraintIdentityItems, ConstraintMaxPropertyNameLength, ConstraintIdentityPropertyNames, ConstraintPrefix, ConstraintPattern, ConstraintMinimum, ConstraintMaximum:
-			}
-		}
-	}
-	if _, carrier, _ := constraint.Kind.rule(); carrier == objectCarrier || carrier == stringKeysCarrier {
-		valueType := field.Type
-		if valueType.Kind() == reflect.Pointer {
-			valueType = valueType.Elem()
-		}
-		if valueType.Key() != reflect.TypeFor[string]() {
-			return fmt.Errorf(
-				"%s.%s constraint %s supports only builtin string keys",
-				owner, constraint.Field, constraint.Kind,
-			)
-		}
-	}
-	return nil
-}
-
-func validatePointerConstraintProjection(owner string, field protocol.WireField, constraint FieldConstraint) error {
-	if field.Type.Kind() != reflect.Pointer {
+	_, carrier, _ := constraint.Kind.rule()
+	if carrier != objectCarrier && carrier != stringKeysCarrier {
 		return nil
 	}
-	if !field.Optional {
-		return fmt.Errorf(
-			"%s.%s constraint %s does not support a required pointer field",
-			owner, constraint.Field, constraint.Kind,
-		)
+	valueType := field.Type
+	for valueType.Kind() == reflect.Pointer {
+		valueType = valueType.Elem()
 	}
-	switch constraint.Kind {
-	case ConstraintNonEmptyItems, ConstraintNonEmptyProperties, ConstraintMinItems,
-		ConstraintMaxPropertyNameLength, ConstraintIdentityPropertyNames, ConstraintMinimum,
-		ConstraintUniqueItems, ConstraintMaxItems, ConstraintPatternItems:
+	if valueType.Key() != reflect.TypeFor[string]() {
 		return fmt.Errorf(
-			"%s.%s constraint %s does not support a pointer target",
-			owner, constraint.Field, constraint.Kind,
-		)
-	default:
-		return nil
-	}
-}
-
-func validateTextualConstraintProjection(owner string, field protocol.WireField, constraint FieldConstraint) error {
-	declaredKind := field.Type.Kind()
-	if constraint.Kind == ConstraintPrefix && declaredKind != reflect.Pointer && field.Optional {
-		return fmt.Errorf(
-			"%s.%s constraint %s does not support an optional value field",
-			owner, constraint.Field, constraint.Kind,
-		)
-	}
-	if constraint.Kind == ConstraintPattern && declaredKind == reflect.Pointer {
-		return fmt.Errorf(
-			"%s.%s constraint %s does not support a pointer string",
-			owner, constraint.Field, constraint.Kind,
-		)
-	}
-	if constraint.Kind == ConstraintIdentityItems && declaredKind == reflect.Pointer {
-		return fmt.Errorf(
-			"%s.%s constraint %s does not support a pointer string array",
+			"%s.%s constraint %s supports only builtin string keys",
 			owner, constraint.Field, constraint.Kind,
 		)
 	}

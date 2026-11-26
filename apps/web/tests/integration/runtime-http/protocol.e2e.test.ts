@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   createFlameClient,
   type FlameClient,
+  JSONRPC_VERSION,
   RpcError,
   asRunId,
   asSegmentId,
@@ -9,6 +10,7 @@ import {
   createSidecarClient,
   createHttpTransport,
 } from "@flame/runtime-client";
+import type { WireMethodName } from "@flame/runtime-client/methods";
 import {
   HTTP_ENDPOINTS,
   HTTP_HEADERS,
@@ -26,6 +28,24 @@ import {
 } from "./observation";
 import { faultStreamOpening, faultUnaryResponse } from "./transportFaults";
 import { useRuntimeFixture } from "./fixture";
+
+function postRPC(
+  baseUrl: string,
+  method: WireMethodName,
+  params: unknown,
+  headers: Record<string, string> = {},
+): Promise<Response> {
+  const endpoint = HTTP_ENDPOINTS.rpc;
+  return fetch(new URL(endpoint.path, baseUrl), {
+    method: endpoint.method,
+    headers: {
+      Accept: RPC_HTTP.documentMediaType,
+      [HTTP_HEADERS.contentType]: RPC_HTTP.documentMediaType,
+      ...headers,
+    },
+    body: JSON.stringify({ jsonrpc: JSONRPC_VERSION, id: method, method, params }),
+  });
+}
 
 describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: protocol delivery", () => {
   const fixture = useRuntimeFixture("protocol");
@@ -63,22 +83,16 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: protocol delivery", () => {
     expect(discovery.capabilities.streamingMethods).toContain("runtime.subscribe");
 
     const staleStoreTitle = "must not enter replacement Runtime";
-    const staleStoreResponse = await fetch(`${fixture.baseUrl}/v2/rpc`, {
-      method: "POST",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-        "Idempotency-Key": "stale-store-session-create",
-        "Idempotency-Namespace": "idp_00000000000000000000000000000000",
+    const staleStoreResponse = await postRPC(
+      fixture.baseUrl,
+      "sessions.create",
+      { workspace: { path: fixture.root }, title: staleStoreTitle },
+      {
+        [HTTP_HEADERS.idempotencyKey]: "stale-store-session-create",
+        [HTTP_HEADERS.idempotencyNamespace]: "idp_00000000000000000000000000000000",
       },
-      body: JSON.stringify({
-        jsonrpc: "2.0",
-        id: "stale-store-fence",
-        method: "sessions.create",
-        params: { workspace: { path: fixture.root }, title: staleStoreTitle },
-      }),
-    });
-    expect(staleStoreResponse.status).toBe(200);
+    );
+    expect(staleStoreResponse.status).toBe(RPC_HTTP.callStatus);
     await expect(staleStoreResponse.json()).resolves.toMatchObject({
       error: { data: { type: "idempotency_store_mismatch" } },
     });
@@ -196,6 +210,58 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: protocol delivery", () => {
     },
   );
 
+  it("refuses both Run targets even when the existing session ID is empty", async () => {
+    const sessionId = asSessionId(crypto.randomUUID());
+    const response = await postRPC(
+      fixture.baseUrl,
+      "runs.start",
+      {
+        sessionId: "",
+        newSession: {
+          sessionId,
+          runId: asRunId(crypto.randomUUID()),
+          title: "Ambiguous Run target",
+        },
+        input: [{ type: "text", text: "E2E_RUN complete without tools." }],
+      },
+      {
+        Accept: `${RPC_HTTP.documentMediaType}, ${RPC_HTTP.streamMediaType}`,
+        [HTTP_HEADERS.idempotencyKey]: "ambiguous-session-target",
+      },
+    );
+    try {
+      await expect(fixture.client.sessions.get(sessionId)).rejects.toMatchObject({
+        data: { type: "session_not_found" },
+      });
+      expect(response.status).toBe(RPC_HTTP.callStatus);
+      await expect(response.json()).resolves.toMatchObject({
+        error: {
+          data: {
+            type: "invalid_params",
+            errors: expect.arrayContaining([expect.objectContaining({ field: "sessionId" })]),
+          },
+        },
+      });
+    } finally {
+      if (!response.bodyUsed) await response.body?.cancel();
+    }
+  });
+
+  it("refuses an empty export format and defaults an omitted format", async () => {
+    const session = await fixture.client.sessions.create({ title: "Session export format" });
+    const omitted = await postRPC(fixture.baseUrl, "sessions.export", { sessionId: session.id });
+    await expect(omitted.json()).resolves.toMatchObject({ result: { format: "json" } });
+
+    const empty = await postRPC(fixture.baseUrl, "sessions.export", {
+      sessionId: session.id,
+      format: "",
+    });
+    expect(empty.status).toBe(RPC_HTTP.callStatus);
+    await expect(empty.json()).resolves.toMatchObject({
+      error: { data: { type: "invalid_params", errors: [{ field: "format" }] } },
+    });
+  });
+
   it("leaves a plugin configuration key reusable after rejecting invalid component values", async () => {
     const installation = await fixture.activateManagedOwner("schedules");
     const release = { installationId: installation.id, digest: installation.selected.digest };
@@ -203,21 +269,12 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: protocol delivery", () => {
       serverChanges: Record<string, string>,
       skillChanges: Record<string, string>,
     ) => {
-      const endpoint = HTTP_ENDPOINTS.rpc;
-      const response = await fetch(new URL(endpoint.path, fixture.baseUrl), {
-        method: endpoint.method,
-        headers: {
-          Accept: RPC_HTTP.documentMediaType,
-          [HTTP_HEADERS.contentType]: RPC_HTTP.documentMediaType,
-          [HTTP_HEADERS.idempotencyKey]: "reusable-plugin-configuration",
-        },
-        body: JSON.stringify({
-          jsonrpc: "2.0",
-          id: "configure-schedules-components",
-          method: "plugins.configure",
-          params: { ...release, valueChanges: {}, serverChanges, skillChanges },
-        }),
-      });
+      const response = await postRPC(
+        fixture.baseUrl,
+        "plugins.configure",
+        { ...release, valueChanges: {}, serverChanges, skillChanges },
+        { [HTTP_HEADERS.idempotencyKey]: "reusable-plugin-configuration" },
+      );
       expect(response.status).toBe(RPC_HTTP.callStatus);
       return response.json();
     };

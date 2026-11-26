@@ -73,16 +73,41 @@ func protocolDefinitions(walked *schemaSet, kind reflect.Kind) []reflect.Type {
 	return targets
 }
 
-func writeValidator(out *strings.Builder, target reflect.Type, checks []string) {
+const wireObjectParameter = "object"
+
+type validatorCheck struct {
+	present    string
+	expression string
+}
+
+func writeValidator(out *strings.Builder, target reflect.Type, checks []validatorCheck) {
 	if len(checks) == 0 {
 		return
 	}
-	fmt.Fprintf(out, "\nfunc (%s %s) validateWire() error {\n", receiverName(target), target.Name())
-	fmt.Fprintf(out, "\treturn collectWireViolations(%q,\n", target.Name())
-	for _, check := range checks {
-		fmt.Fprintf(out, "\t\t%s,\n", check)
+	fmt.Fprintf(out, "\nfunc (%s %s) validateWire(%s wireObject) []FieldError {\n", receiverName(target), target.Name(), wireObjectParameter)
+	out.WriteString("\tvar violations wireViolations\n")
+	for len(checks) > 0 {
+		present := checks[0].present
+		end := 1
+		for end < len(checks) && checks[end].present == present {
+			end++
+		}
+		indent := "\t"
+		if present != "" {
+			fmt.Fprintf(out, "\tif %s.present(%q) {\n", wireObjectParameter, present)
+			indent += "\t"
+		}
+		fmt.Fprintf(out, "%sviolations.add(\n", indent)
+		for _, check := range checks[:end] {
+			fmt.Fprintf(out, "%s\t%s,\n", indent, check.expression)
+		}
+		fmt.Fprintf(out, "%s)\n", indent)
+		if present != "" {
+			out.WriteString("\t}\n")
+		}
+		checks = checks[end:]
 	}
-	out.WriteString("\t)\n}\n")
+	out.WriteString("\treturn violations\n}\n")
 }
 
 func receiverName(shape reflect.Type) string {
@@ -97,63 +122,61 @@ func validatorChecks(
 	constraints []dispatch.FieldConstraint,
 	union dispatch.UnionSpec,
 	rules []dispatch.ConditionalRule,
-) []string {
-	recv := receiverName(shape)
-	checks := make([]string, 0, len(constraints))
+) []validatorCheck {
+	checks := make([]validatorCheck, 0, len(constraints))
 	for _, constraint := range constraints {
-		requiredByShape := unionRequiresField(union, constraint.Field) || slices.ContainsFunc(rules, func(rule dispatch.ConditionalRule) bool {
-			return slices.Contains(rule.Required, constraint.Field) || slices.Contains(rule.RequiredAny, constraint.Field)
-		})
-		if check := constraintCheck(shape, constraint, requiredByShape); check != "" {
-			checks = append(checks, check)
-		}
+		checks = append(checks, constraintCheck(shape, constraint))
 	}
-	checks = append(checks, unionChecks(union, recv)...)
-	checks = append(checks, objectChecks(rules, recv)...)
+	for _, check := range unionChecks(union, receiverName(shape)) {
+		checks = append(checks, validatorCheck{expression: check})
+	}
+	for _, check := range objectChecks(rules) {
+		checks = append(checks, validatorCheck{expression: check})
+	}
 	return checks
 }
 
-func objectChecks(rules []dispatch.ConditionalRule, recv string) []string {
+func objectChecks(rules []dispatch.ConditionalRule) []string {
 	var checks []string
 	for _, rule := range rules {
-		applies := conditionExpression(rule.When, recv)
+		applies := conditionExpression(rule.When)
 		conditional := len(rule.When) > 0
 		for _, field := range rule.Required {
 			if conditional {
-				checks = append(checks, fmt.Sprintf("requiredWhen(%s, %q, %s)", applies, field, recv))
+				checks = append(checks, fmt.Sprintf("requiredWhen(%s, %q, %s)", applies, field, wireObjectParameter))
 			} else {
-				checks = append(checks, fmt.Sprintf("required(%q, %s)", field, recv))
+				checks = append(checks, fmt.Sprintf("required(%q, %s)", field, wireObjectParameter))
 			}
 		}
 		if len(rule.RequiredAny) > 0 {
 			if conditional {
 				panic("contractgen: a conditional requiredAny rule has no Go validator")
 			}
-			checks = append(checks, fmt.Sprintf("requiredAny(%s, %s)", valueList(rule.RequiredAny), recv))
+			checks = append(checks, fmt.Sprintf("requiredAny(%s, %s)", valueList(rule.RequiredAny), wireObjectParameter))
 		}
 		for _, field := range rule.Forbidden {
-			checks = append(checks, fmt.Sprintf("forbiddenWhen(%s, %q, %s)", applies, field, recv))
+			checks = append(checks, fmt.Sprintf("forbiddenWhen(%s, %q, %s)", applies, field, wireObjectParameter))
 		}
-		checks = append(checks, allowedValueChecks(applies, rule.AllowedValues, recv)...)
+		checks = append(checks, allowedValueChecks(applies, rule.AllowedValues)...)
 	}
 	return checks
 }
 
-func allowedValueChecks(applies string, sets []dispatch.AllowedValueSet, recv string) []string {
+func allowedValueChecks(applies string, sets []dispatch.AllowedValueSet) []string {
 	checks := make([]string, 0, len(sets))
 	for _, set := range sets {
 		checks = append(checks, fmt.Sprintf(
 			"allowedValuesWhen(%s, %q, %s, %s)",
 			applies,
 			set.Field,
-			recv,
+			wireObjectParameter,
 			valueList(set.Values),
 		))
 	}
 	return checks
 }
 
-func conditionExpression(conditions []delivery.FieldCondition, recv string) string {
+func conditionExpression(conditions []delivery.FieldCondition) string {
 	if len(conditions) == 0 {
 		return "true"
 	}
@@ -162,30 +185,15 @@ func conditionExpression(conditions []delivery.FieldCondition, recv string) stri
 		switch condition.Operator {
 		case delivery.OperatorEquals:
 			parts = append(parts, fmt.Sprintf(
-				"wireFieldEquals(%s, %q, %q)", recv, condition.Field, condition.Value,
+				"%s.equals(%q, %q)", wireObjectParameter, condition.Field, condition.Value,
 			))
 		case delivery.OperatorPresent:
-			parts = append(parts, fmt.Sprintf("wireFieldPresent(%s, %q)", recv, condition.Field))
+			parts = append(parts, fmt.Sprintf("%s.present(%q)", wireObjectParameter, condition.Field))
 		default:
 			panic(fmt.Sprintf("contractgen: unsupported conditional operator %q", condition.Operator))
 		}
 	}
 	return strings.Join(parts, " && ")
-}
-
-// An identity conversion on a plain string is what the linter deletes, so the
-// conversion is emitted only for named string types.
-func stringExpr(shape reflect.Type, selector string, leaf reflect.Type) string {
-	const builtinStringTypeName = "string"
-
-	ref := receiverName(shape) + "." + selector
-	if leaf.Kind() == reflect.Pointer {
-		return ref
-	}
-	if leaf.Kind() == reflect.String && leaf.Name() != builtinStringTypeName {
-		return fmt.Sprintf("string(%s)", ref)
-	}
-	return ref
 }
 
 func valueList(values []string) string {
