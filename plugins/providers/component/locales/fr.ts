@@ -23,7 +23,6 @@ export const fr: Record<string, string> = {
   "providers.testing": "Test…",
   "providers.connectionOk": "Connexion OK",
   "providers.models.error": "Impossible de charger les modèles.",
-  "providers.models.refresh": "Actualiser les modèles",
   "providers.empty": "Aucun fournisseur",
   "providers.empty.sub":
     "Le Runtime ne signale aucun fournisseur LLM pris en charge.",

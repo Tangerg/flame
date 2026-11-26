@@ -25,7 +25,6 @@ export const en: Record<string, string> = {
   "providers.testing": "Testing…",
   "providers.connectionOk": "Connection OK",
   "providers.models.error": "Couldn’t load models.",
-  "providers.models.refresh": "Refresh models",
   "providers.empty": "No providers",
   "providers.empty.sub": "The Runtime reports no supported LLM providers.",
   "providers.utility.title": "Utility model",

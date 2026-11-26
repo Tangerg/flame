@@ -24,7 +24,6 @@ export const ja: Record<string, string> = {
   "providers.testing": "テスト中…",
   "providers.connectionOk": "接続 OK",
   "providers.models.error": "モデルを読み込めませんでした。",
-  "providers.models.refresh": "モデル一覧を更新",
   "providers.empty": "プロバイダーがありません",
   "providers.empty.sub":
     "Runtime はサポートされている LLM プロバイダーを報告していません。",

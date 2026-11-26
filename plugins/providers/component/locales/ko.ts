@@ -23,7 +23,6 @@ export const ko: Record<string, string> = {
   "providers.testing": "테스트 중…",
   "providers.connectionOk": "연결 정상",
   "providers.models.error": "모델을 불러올 수 없습니다.",
-  "providers.models.refresh": "모델 목록 새로 고침",
   "providers.empty": "제공자 없음",
   "providers.empty.sub": "Runtime이 지원되는 LLM 제공자를 보고하지 않습니다.",
   "providers.apiKey.envPlaceholder":

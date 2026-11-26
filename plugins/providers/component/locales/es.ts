@@ -23,7 +23,6 @@ export const es: Record<string, string> = {
   "providers.testing": "Probando…",
   "providers.connectionOk": "Conexión correcta",
   "providers.models.error": "No se pudieron cargar los modelos.",
-  "providers.models.refresh": "Actualizar modelos",
   "providers.empty": "Sin proveedores",
   "providers.empty.sub":
     "El Runtime no informa proveedores de LLM compatibles.",

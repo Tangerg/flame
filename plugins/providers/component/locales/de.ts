@@ -23,7 +23,6 @@ export const de: Record<string, string> = {
   "providers.testing": "Test läuft…",
   "providers.connectionOk": "Verbindung OK",
   "providers.models.error": "Modelle konnten nicht geladen werden.",
-  "providers.models.refresh": "Modelle aktualisieren",
   "providers.empty": "Keine Anbieter",
   "providers.empty.sub": "Die Runtime meldet keine unterstützten LLM-Anbieter.",
   "providers.apiKey.envPlaceholder":

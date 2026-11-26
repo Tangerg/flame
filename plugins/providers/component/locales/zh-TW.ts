@@ -21,7 +21,6 @@ export const zhTW: Record<string, string> = {
   "providers.testing": "測試中…",
   "providers.connectionOk": "連線正常",
   "providers.models.error": "無法載入模型。",
-  "providers.models.refresh": "重新整理模型清單",
   "providers.empty": "尚無供應商",
   "providers.empty.sub": "Runtime 回報沒有受支援的 LLM 供應商。",
   "providers.apiKey.envPlaceholder": "正在使用環境變數金鑰——輸入即可覆寫",
