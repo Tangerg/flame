@@ -181,6 +181,15 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: runs", () => {
       path: "$",
       change: (frame: string) => frame.replace(/^data: .+$/m, "data:"),
     },
+    {
+      fault: "an undeclared JSON-RPC field",
+      path: "$",
+      change: (frame: string) =>
+        frame.replace(/^data: (.+)$/m, (_, encoded) => {
+          const notification = parseJSON(encoded) as Record<string, JSONValue>;
+          return `data: ${stringifyJSON({ ...notification, undeclared: true })}`;
+        }),
+    },
   ] as const)(
     "refuses a Run's terminal SSE frame with $fault",
     async ({ change, path }) => {

@@ -123,6 +123,30 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: protocol delivery", () => {
     }
   });
 
+  it("rejects an undeclared field on a live unary RPC reply", async () => {
+    const session = await fixture.client.sessions.create({ title: "Strict reply envelope" });
+    const sessionId = asSessionId(session.id);
+    let changeReply = true;
+    const client = fixture.createRuntimeClient(async (input, init) => {
+      const response = await fetch(input, init);
+      if (!changeReply) return response;
+      changeReply = false;
+      expect(response.headers.get(HTTP_HEADERS.contentType)).toContain(RPC_HTTP.documentMediaType);
+      const reply = (await response.json()) as object;
+      return new Response(JSON.stringify({ ...reply, undeclared: true }), {
+        status: response.status,
+        headers: response.headers,
+      });
+    });
+    try {
+      await expect(client.sessions.get(sessionId)).rejects.toBeInstanceOf(RpcProtocolError);
+      await expect(client.sessions.get(sessionId)).resolves.toMatchObject({ id: sessionId });
+    } finally {
+      await client.close();
+      await fixture.client.sessions.delete(sessionId);
+    }
+  });
+
   it("validates discovery, streaming notifications and session lifecycle", async () => {
     const sidecar = createSidecarClient({ baseUrl: fixture.baseUrl });
     const liveness = await sidecar.liveness();

@@ -6,7 +6,7 @@ import type {
   TransportResponseMetadata,
 } from "../transport";
 import type { WireMethodName } from "@flame/runtime-client/methods";
-import { isResponse, type RpcId, type RpcMessage } from "../types";
+import { isResponse, type RpcId, type RpcMessage } from "../rpcMessage";
 
 export interface MemoryTransport extends Transport {
   inject(msg: RpcMessage, metadata?: TransportResponseMetadata, requestRpcId?: RpcId): void;

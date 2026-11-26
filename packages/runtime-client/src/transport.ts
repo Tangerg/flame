@@ -1,11 +1,14 @@
-import type { RpcId, RpcMessage, RpcRequest } from "./types";
+import type { JSONRPC_VERSION, RpcId, RpcMessage } from "./rpcMessage";
 import type { WireMethodName } from "@flame/runtime-client/methods";
 
 export const RUNTIME_SUBSCRIBE_METHOD = "runtime.subscribe" satisfies WireMethodName;
 
-export type TransportRequest = Omit<RpcRequest, "method"> & {
+export interface TransportRequest {
+  jsonrpc: typeof JSONRPC_VERSION;
+  id: RpcId;
   method: WireMethodName;
-};
+  params?: unknown;
+}
 
 export interface TransportResponseMetadata {
   requestId?: string;

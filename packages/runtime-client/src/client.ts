@@ -43,8 +43,14 @@ import {
   type WireNotificationName,
   type WireNotificationParams,
 } from "./generated/wire.validate.generated";
-import type { RpcId, RpcMessage, RpcNotification, RpcResponse } from "./types";
-import { JSONRPC_VERSION, isErrorResponse, isNotification, isResponse } from "./types";
+import {
+  JSONRPC_VERSION,
+  isResponse,
+  type RpcErrorPayload,
+  type RpcId,
+  type RpcMessage,
+  type RpcNotification,
+} from "./rpcMessage";
 
 interface StreamConsumer<M extends WireNotificationName> {
   next(
@@ -179,8 +185,6 @@ interface ObservingStream {
 
 type RequestState = AwaitingResponse | ObservingStream;
 
-type ErrorPayload = Extract<RpcResponse, { error: unknown }>["error"];
-
 function protocolFailure(
   subject: string,
   detail: string,
@@ -193,7 +197,7 @@ function protocolFailure(
 }
 
 // A problem response must name a declared problem type with its own code.
-function problemViolations(method: WireMethodName, payload: ErrorPayload) {
+function problemViolations(method: WireMethodName, payload: RpcErrorPayload) {
   const violations = validateWire("RPCFailureData", payload.data);
   if (violations.length > 0) return violations;
   const { problem } = payload.data as RPCFailureData;
@@ -214,7 +218,7 @@ function problemViolations(method: WireMethodName, payload: ErrorPayload) {
 
 function rejectWithProblem(
   entry: AwaitingResponse,
-  payload: ErrorPayload,
+  payload: RpcErrorPayload,
   requestId: string | undefined,
 ): void {
   const violations = problemViolations(entry.method, payload);
@@ -445,7 +449,7 @@ export function createRpcClient(transport: Transport, options: RpcClientOptions 
     metadata?: TransportMessageMetadata,
   ): void | Promise<void> {
     if (request.state === "observing") {
-      if (isNotification(message)) return request.observation.deliver(message, metadata);
+      if (!isResponse(message)) return request.observation.deliver(message, metadata);
       requests.delete(requestRpcId);
       endRequest(
         request,
@@ -478,7 +482,7 @@ export function createRpcClient(transport: Transport, options: RpcClientOptions 
       );
       return;
     }
-    if (isErrorResponse(message)) {
+    if ("error" in message) {
       rejectWithProblem(request, message.error, metadata?.requestId);
     } else {
       settleResult(request, message.result, metadata?.requestId);

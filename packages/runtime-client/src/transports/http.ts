@@ -27,8 +27,7 @@ import {
   type TransportResponseMetadata,
   type TransportSendOptions,
 } from "../transport";
-import type { RpcId, RpcResponse } from "../types";
-import { isResponse, parseRpcMessage } from "../types";
+import { isResponse, parseRpcMessage, type RpcId, type RpcResponse } from "../rpcMessage";
 import { HTTP_ENDPOINTS, HTTP_HEADERS, RPC_HTTP } from "@flame/runtime-client/wire";
 import {
   isWireStreamingMethodName,

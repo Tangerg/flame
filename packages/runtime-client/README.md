@@ -82,6 +82,9 @@ the matching tagged payload; the decoder does not translate old responses.
 Transport receives JSON losslessly before method validation. Schema-declared
 numeric DTO fields project into JavaScript numbers and reject values they cannot
 represent exactly. Opaque JSON, including Tool schemas, retains exact numbers.
+The inbound envelope admits one response or notification shape and refuses
+undeclared envelope members. Its schema also supplies the client-side message
+type, preserving exact payload values for method validation.
 For evidence such as accounting archives, `client.queryJSON(method,
 params, { signal })` returns canonical JSON with the original numeric lexemes,
 wide integers, null and missing members retained. It uses the same request,

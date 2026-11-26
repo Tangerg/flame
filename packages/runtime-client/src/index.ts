@@ -98,7 +98,7 @@ export type { WireFeature } from "@flame/runtime-client/methods";
 export { createSidecarClient } from "./sidecar";
 export type { LivenessStatus, ReadinessStatus, RuntimeInfo, SidecarClient } from "./sidecar";
 export { createHttpTransport } from "./transports/http";
-export { JSONRPC_VERSION } from "./types";
+export { JSONRPC_VERSION } from "./rpcMessage";
 export { endpointAcceptsBearer, normalizeRuntimeEndpoint } from "./endpoint";
 
 export { errorMessage } from "./errors";

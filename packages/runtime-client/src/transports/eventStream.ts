@@ -1,7 +1,7 @@
 import { isExpectedAbort, retainCleanupFailure } from "./body";
 import { type EventSourceMessage } from "eventsource-parser";
 import { errorMessage, RpcConnectionError, RpcProtocolError, RpcTransportError } from "../errors";
-import { isNotification, parseRpcMessage, type RpcMessage } from "../types";
+import { isResponse, parseRpcMessage, type RpcMessage } from "../rpcMessage";
 import {
   wireMethodAcceptsReplayCursor,
   type WireStreamingMethodName,
@@ -38,7 +38,7 @@ export function admitStreamFrame(
   if (
     cursor !== undefined &&
     cursor !== "" &&
-    (!isNotification(message) || !wireMethodAcceptsReplayCursor(method))
+    (isResponse(message) || !wireMethodAcceptsReplayCursor(method))
   )
     throw invalid("$.id", "is only valid on Run replay notifications");
   return message;
