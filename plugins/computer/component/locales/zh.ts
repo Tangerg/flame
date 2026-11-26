@@ -125,7 +125,7 @@ export const zh = {
   "result.title": "已检查的原始操作",
   "result.content": "已记录内容",
   "result.image": "捕获图像 {{number}}",
-  "result.imageUnavailable": "无法显示此记录的图像。",
+  "result.imageUnavailable": "无法显示这张已记录的图片。",
   "image.view": "查看图片",
   "image.close": "关闭图片",
   "image.fit": "适应窗口",

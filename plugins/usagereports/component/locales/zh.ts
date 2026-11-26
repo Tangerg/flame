@@ -22,7 +22,7 @@ export const zh: Record<string, string> = {
   "pending.note": "原始命令的确认待定。",
   "pending.check": "核对原始结果",
   "pending.retire": "撤销原始命令",
-  "pending.checking": "正在检查原始命令…",
+  "pending.checking": "正在核对原始命令…",
   "pending.retiring": "正在撤销原始命令…",
   "archive.title": "归档",
   "archive.count_other": "已保存 {{count}} / {{capacity}}",

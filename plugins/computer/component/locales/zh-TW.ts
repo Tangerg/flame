@@ -125,7 +125,7 @@ export const zhTW = {
   "result.title": "已檢查的原始操作",
   "result.content": "已記錄內容",
   "result.image": "擷取影像 {{number}}",
-  "result.imageUnavailable": "無法顯示此記錄的圖像。",
+  "result.imageUnavailable": "無法顯示這張已記錄的圖片。",
   "image.view": "檢視圖片",
   "image.close": "關閉圖片",
   "image.fit": "符合視窗",

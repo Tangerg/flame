@@ -102,7 +102,7 @@ export const de: Record<string, string> = {
     "{{message}} Die erfasste Revision bleibt unverändert; öffne diese Aktion erneut, um die aktuelle Sitzung zu prüfen.",
   "rename.unconfirmed":
     "Die Änderung ist unbestätigt. Gleiche den ursprünglichen Befehl ab, bevor du eine weitere Bearbeitung sendest.",
-  "rename.checking": "Ursprünglicher Befehl wird abgeglichen…",
+  "rename.checking": "Ursprünglicher Befehl wird geprüft…",
   "rename.reconcile": "Ursprünglichen Befehl abgleichen",
   "rename.saved":
     "{{id}} gespeichert · Revision {{revision}} · {{title}}. Schließe und öffne erneut, um eine weitere Bearbeitung vorzunehmen.",

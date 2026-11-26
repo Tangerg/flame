@@ -97,7 +97,7 @@ export const ja: Record<string, string> = {
     "{{message}} 取得したリビジョンは変更されていません。この操作を再度開いて現在のセッションを確認してください。",
   "rename.unconfirmed":
     "変更は未確認です。別の編集を送信する前に、元のコマンドを照合してください。",
-  "rename.checking": "元のコマンドを照合中…",
+  "rename.checking": "元のコマンドを確認中…",
   "rename.reconcile": "元のコマンドを照合",
   "rename.saved":
     "{{id}} を保存しました · リビジョン {{revision}} · {{title}}。閉じて再度開くと、別の編集ができます。",
@@ -116,5 +116,5 @@ export const ja: Record<string, string> = {
   "image.zoomIn": "画像を拡大",
   "image.zoomOut": "画像を縮小",
   "image.description": "画像の説明",
-  "image.unavailable": "記録された画像を表示できません。",
+  "image.unavailable": "この記録された画像を表示できませんでした。",
 };

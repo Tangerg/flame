@@ -96,7 +96,7 @@ export const ko: Record<string, string> = {
     "{{message}} 캡처된 리비전은 그대로 유지됩니다. 이 작업을 다시 열어 현재 세션을 확인하세요.",
   "rename.unconfirmed":
     "변경이 확인되지 않았습니다. 다른 편집을 제출하기 전에 원래 명령을 대조하세요.",
-  "rename.checking": "원래 명령을 대조하는 중…",
+  "rename.checking": "원래 명령을 확인하는 중…",
   "rename.reconcile": "원래 명령 대조",
   "rename.saved":
     "{{id}} 저장됨 · 리비전 {{revision}} · {{title}}. 다시 편집하려면 닫았다가 다시 여세요.",
@@ -115,5 +115,5 @@ export const ko: Record<string, string> = {
   "image.zoomIn": "이미지 확대",
   "image.zoomOut": "이미지 축소",
   "image.description": "이미지 설명",
-  "image.unavailable": "기록된 이미지를 표시할 수 없습니다.",
+  "image.unavailable": "이 기록된 이미지를 표시할 수 없습니다.",
 };

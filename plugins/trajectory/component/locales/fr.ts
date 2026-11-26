@@ -106,7 +106,7 @@ export const fr: Record<string, string> = {
   "rename.unconfirmed":
     "La modification n’est pas confirmée. Réconciliez la commande d’origine avant de soumettre une autre modification.",
   "rename.checking": "Vérification de la commande d’origine…",
-  "rename.reconcile": "Réconcilier la commande d’origine",
+  "rename.reconcile": "Rapprocher la commande d’origine",
   "rename.saved":
     "Enregistré {{id}} · Révision {{revision}} · {{title}}. Fermez et rouvrez pour effectuer une autre modification.",
   "rename.untitled": "Sans titre",
@@ -124,5 +124,5 @@ export const fr: Record<string, string> = {
   "image.zoomIn": "Agrandir l’image",
   "image.zoomOut": "Réduire l’image",
   "image.description": "Description de l’image",
-  "image.unavailable": "Impossible d’afficher cette image enregistrée.",
+  "image.unavailable": "Cette image enregistrée n’a pas pu être affichée.",
 };

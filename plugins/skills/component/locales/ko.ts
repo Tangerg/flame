@@ -51,7 +51,7 @@ export const ko: Record<string, string> = {
     "원래 명령의 결과가 확인되지 않았습니다. 다른 명령을 실행하거나 카탈로그를 전환하기 전에 조정하세요.",
   "command.pending": "{{label}}…",
   "command.original": "원래 명령: {{key}}",
-  "command.reconcile": "원래 명령 조정",
+  "command.reconcile": "원래 명령 대조",
   "command.approve": "{{name}} 승인",
   "command.reject": "{{name}} 거부",
   "command.restore": "{{name}} 복원",

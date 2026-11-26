@@ -22,7 +22,7 @@ export const zhTW: Record<string, string> = {
   "pending.note": "原始命令的確認待定。",
   "pending.check": "核對原始結果",
   "pending.retire": "撤銷原始命令",
-  "pending.checking": "正在檢查原始命令…",
+  "pending.checking": "正在核對原始命令…",
   "pending.retiring": "正在撤銷原始命令…",
   "archive.title": "封存",
   "archive.count_other": "已儲存 {{count}} / {{capacity}}",
