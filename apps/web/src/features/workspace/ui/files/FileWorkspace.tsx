@@ -24,8 +24,17 @@ import {
 import { FilePreview } from "@/features/workspace/ui/files/FilePreview";
 
 const styles = stylex.create({
-  hidden: { display: "none" },
-  workspace: { display: "flex", flex: 1, flexDirection: "column", minWidth: 0, minHeight: 0 },
+  workspace: {
+    position: "relative",
+    display: "flex",
+    flex: 1,
+    flexDirection: "column",
+    minWidth: 0,
+    minHeight: 0,
+  },
+  // A zero-sized viewport invalidates the virtual tree's measured row layout.
+  browser: { position: "absolute", inset: 0, display: "flex", flexDirection: "column" },
+  hidden: { visibility: "hidden" },
 });
 
 export function FileWorkspace() {
@@ -75,10 +84,15 @@ export function FileWorkspace() {
       focusFileOnReturn.current?.(previous.path);
     }
   }, [viewer]);
+  const browserVisible = !viewer;
   return (
     <div ref={panelRef} {...stylex.props(styles.workspace)}>
-      <ContentVisibility visible={!viewer}>
-        <div hidden={Boolean(viewer)} {...stylex.props(styles.workspace, viewer && styles.hidden)}>
+      <ContentVisibility visible={browserVisible}>
+        <div
+          inert={!browserVisible}
+          aria-hidden={!browserVisible || undefined}
+          {...stylex.props(styles.browser, !browserVisible && styles.hidden)}
+        >
           <FileBrowser
             workspace={workspace}
             focusFileOnReturn={focusFileOnReturn}

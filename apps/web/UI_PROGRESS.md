@@ -1060,8 +1060,9 @@ the full location.
   command lookup.
 - Back returns to the exact nested row for both files. In the final
   compact check, the north row moves from y=153 before reading to
-  y=377 on return. The south row stays at y=455. The next Files
-  review compares that position with the same starting viewport.
+  y=377 on return. The south row stays at y=455.
+  [Files returns to the same tree viewport](#files-returns-to-the-same-tree-viewport-2026-11-27)
+  repeats the north row's exact starting position.
 - The installed Workspace diff view opens the actual north patch.
   Its focused heading and Shift+Tab from Diff layout both show the
   full path. Escape closes the tooltip, then the next Escape
@@ -1082,6 +1083,55 @@ No Runs or generation calls occurred. The private provider served
 Runtime reached its existing drain deadline. The app registration,
 processes, listeners, profiles, fixtures, captures, logs, caches and
 checkout outputs are removed.
+
+### Files returns to the same tree viewport (2026-11-27)
+
+The signed `c2ddbbfeb` host repeats the long north row's y=153 to y=377
+jump in the 320 px Files Dock at 1120 × 728, English, dark mode,
+18 px and Blue. A private WebKit observer shows scrollTop 820 both
+before opening and after Back. The mounted browser's hidden box
+measures zero while the reader is open. On return the virtual
+content grows from 2418 to 2754 px, so the same scrollTop shows an
+earlier set of rows.
+
+`FileWorkspace.tsx` keeps the tree browser in one bounded layer.
+Visibility, inert and accessible scope follow the reader's existing
+visibility decision, as in the outer Workspace view stack. The
+native scrollport retains its geometry while directory reads and
+row menus follow `ContentVisibility`. File return uses the current
+tree's focus and reveal path.
+
+- The traced candidate keeps the 679 px viewport, content height
+  2418, scrollTop 820 and the same visible first row through reading.
+  The Mac accessibility tree offers the reader while the browser is
+  inactive. Wheel over the reader leaves the tree's position intact.
+  Back focuses the exact north row at y=153 again.
+- After rebasing onto `8cd54f2a8`, a normal signed production Wails
+  build with Runtime `2026-11-27.1` repeats the path. The file title's
+  path tooltip opens and closes in place. Wheel moves source row
+  50 from y=1216 to y=518. Back restores the north row at y=153.
+  Real pointer entry and Back keep the south row at y=424.
+- At 1120 × 840, the north row starts at y=499 with height 272.
+  Shrinking the window to 728 while reading returns focus to that
+  entire row at y=147. The additional displacement with a changing
+  viewport is a separate native observation.
+- At 1280 × 800 in Chinese, light mode, 14 px and Flame, keyboard
+  entry and pointer Back keep the north row at y=295. Cmd+L
+  returns to the draft `2468` in both appearances.
+
+Web typecheck, 82 contract tests, bootstrap, scoped Prettier and
+diff checks pass using npm 11.21.1. Production staging, Runtime
+packaging and signed Wails builds pass. The complete Session and
+all 50 private file digests match. The provider serves 20 catalog
+reads and zero generation requests. Runtime records zero Runs.
+All Wails hosts exit normally. The two private Runtime processes
+reach their existing drain deadline. Owned app registration,
+processes, listeners, profiles, fixtures, captures, observer, logs,
+caches and checkout outputs are removed.
+
+The next review traces the measured-height change while the file
+reader is open and checks how the exact row is brought back into
+view after resizing.
 
 ## Error notes leave retrying to their buttons (2026-11-26)
 
