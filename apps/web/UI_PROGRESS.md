@@ -121,6 +121,54 @@ Settings → MCP servers had the same split the package rows had: a heading (`wo
 
 Native Lab (`settings`, `mcp-transport=stdio`): EN/light shows `workspace-tools` over `1 tool` with the chevron before `Reconnect`; opening it shows `read_workspace_files` with its two switches. EN/dark with `long-mcp` shows `workspace-permissions-toolserver` with `Connection failed` on its line and the configuration error below on the same text edge. Plugin build, typecheck, `check:i18n`, `check:resources` and Prettier pass.
 
+### Visible return after repairing MCP authorization (2026-11-26)
+
+In the installed Settings component at `b0c8b16e9`, a user-owned HTTP server
+with rejected stored credentials shows the configuration error and opens its
+masked editor from Edit. The replacement passes Test and Save connects the
+server. After scrolling down to Save, the editor closes and the original
+Edit button receives focus 239 px above the window. The visible list gives
+no indication of which server was saved or where the next Tab begins.
+
+`ServerForm` keeps the existing form-owned focus handoff on close. When the
+original opener actually takes focus, the browser reveals it at the nearest
+edge using the Settings pane's scroll padding. This follows the retained
+origin pattern in Deliverables and Better Accessibility's treatment of
+visible focus. Save, Cancel and Escape share the same closing path.
+
+- Signed production Wails v3.1.0 with an isolated Runtime and a loopback
+  Streamable HTTP server. The installed component matches the regenerated
+  MCP resource. At 1120 × 728 in Chinese/light/14 px/Flame Orange, Test
+  accepts the replacement while the saved server still reports the
+  configuration error. Keyboard Save connects it and returns to the visible
+  Edit button at y=76, down from y=−269 before Save. Return reopens the
+  masked editor, and Cancel keeps the visible button at y=76. The server's
+  disclosure shows the discovered tool.
+- In English/dark/18 px/Blue (#0485F7), resizing from 1120 × 728 to
+  1270 × 800 and wheel-scrolling the open editor moves Edit above the
+  viewport. Escape returns to the same Edit at y=65 with the focus ring
+  visible. Add server also returns from an offscreen opener. During a
+  delayed real Save, focus moves to Search settings. The description is
+  saved, the server stays connected, and the search focus and pane scroll
+  both stay in place when the editor closes. Restarting the same isolated
+  Runtime restores the saved authorization and description.
+- After fast-forwarding to `a063b7fc4` (protocol `2026-11-26.6`), production
+  Web, Runtime and Wails are rebuilt together. The English/dark/18 px
+  sequence at 1120 × 728 again reports the configuration failure, accepts
+  the replacement in Test, and connects after keyboard Save. Edit comes
+  back into view at y=80 from y=−276.
+- Plugin build and check pass, including typecheck, 44 script tests,
+  24 source tests, eight-locale catalog and resource checks. The existing
+  platform and opt-in conditions skip seven source tests. Production Web
+  staging, Runtime packaging, the signed Wails build, scoped Prettier and
+  diff checks pass. Coverage uses synthetic credentials on loopback.
+  External OAuth and VoiceOver remain outside this check.
+- Runtime shutdown after leaving Wails reaches the drain deadline and
+  exits with status 1 in the baseline and patched runs. The isolated
+  restart with only the direct read probe exits with status 0. The owned
+  apps, listeners, profiles, data, logs, caches and generated build
+  outputs are removed.
+
 ## An installed package is one expandable row (2026-11-26)
 
 Settings → Plugins drew each installed package as a heading (`flame.memory`, with `Configure inputs` and the actions menu) followed by a separate `› 2.0.0` disclosure. Headless measurement put the version 25 px below its name but only 34 px above the next package, so the version read as a row of its own. `@flame/ui` already documents the shape for this: a `Disclosure` with `variant="row"` owns a resource summary that expands directly. Each package is now that row: a `RecordSummary` (name, the `Disabled` badge when needed, and the version beneath), the actions beside it, and the release's digest, source, dependencies, points and manifest in its panel. Warnings and command errors stay below the collapsed row on its text edge. The trigger keeps the `flame.memory 2.0.0` accessible name, and `packages.details` (the old title for a release without a version) leaves the eight catalogs.
