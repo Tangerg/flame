@@ -11,8 +11,8 @@ import {
   Segmented,
   PanelFooter,
   Disclosure,
-  FormField,
   FormActions,
+  FormField,
   RecordForm,
   RecordTitle,
   TextArea,
@@ -504,7 +504,7 @@ function MemoryEditor({
             <span>{edit.item.id}</span>
           </RecordMeta>
         )}
-        <FormField label={t("content.label")}>
+        <FormField>
           <TextArea
             aria-label={t("content.label")}
             autoFocus
