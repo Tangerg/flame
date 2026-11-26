@@ -33,13 +33,13 @@ export const de: Record<string, string> = {
     "Das Archiv konnte nicht gelesen werden: {{error}}. Das zuletzt akzeptierte Archiv wird weiterhin angezeigt.",
   "archive.empty.title": "Keine gespeicherten Berichte",
   "archive.list.label": "Gespeicherte Berichte",
-  "removal.title": "{{title}} entfernen?",
+  "removal.title": "{{title}} löschen?",
   "removal.description":
-    "Nur diese gespeicherte Kopie wird entfernt. Nachweise und Summen der Kernabrechnung bleiben unverändert, und die Kopie kann nicht wiederhergestellt werden.",
-  "removal.close": "Entfernungsbestätigung schließen",
+    "Nur diese gespeicherte Kopie wird gelöscht. Nachweise und Summen der Kernabrechnung bleiben unverändert, und die Kopie kann nicht wiederhergestellt werden.",
+  "removal.close": "Löschbestätigung schließen",
   "removal.cancel": "Abbrechen",
-  "report.remove": "Gespeicherten Bericht entfernen",
-  "removal.removing": "Bericht wird entfernt…",
+  "report.remove": "Gespeicherten Bericht löschen",
+  "removal.removing": "Bericht wird gelöscht…",
   "fact.period": "Zeitraum",
   "fact.observation": "Erfasst",
   "fact.lowerBound": "Beginn",
@@ -69,16 +69,16 @@ export const de: Record<string, string> = {
   "message.savedArchived":
     "Kernbericht gespeichert: {{title}}. Er ist im Archiv aufgeführt.",
   "message.removed":
-    "Gespeicherter Bericht entfernt. Die Kernabrechnung bleibt unverändert.",
+    "Gespeicherter Bericht gelöscht. Die Kernabrechnung bleibt unverändert.",
   "message.removalConfirmed":
-    "Entfernung des ursprünglichen Berichts bestätigt. Die Kernabrechnung bleibt unverändert.",
+    "Löschung des ursprünglichen Berichts bestätigt. Die Kernabrechnung bleibt unverändert.",
   "message.unknown":
     "Die Bestätigung ist unbekannt. Prüfe das ursprüngliche Ergebnis, bevor du eine weitere Archivänderung sendest.",
   "message.archiveFailed": "Die Archivänderung ist fehlgeschlagen: {{error}}",
   "message.captureRejected":
     "Die Erfassung konnte nicht zugelassen werden: {{error}}",
   "message.removalRejected":
-    "Die Entfernung konnte nicht zugelassen werden: {{error}}",
+    "Die Löschung konnte nicht zugelassen werden: {{error}}",
   "message.retired":
     "Ursprünglicher Befehl zurückgezogen. Bereits gespeicherte Berichte bleiben im Archiv.",
   "message.retireFailed":

@@ -33,13 +33,13 @@ export const en: Record<string, string> = {
     "The archive couldn’t be read: {{error}}. The last accepted archive remains shown.",
   "archive.empty.title": "No saved reports",
   "archive.list.label": "Saved reports",
-  "removal.title": "Remove {{title}}?",
+  "removal.title": "Delete {{title}}?",
   "removal.description":
-    "Only this saved copy is removed. Core accounting evidence and totals are unchanged, and the copy can’t be restored.",
-  "removal.close": "Close removal confirmation",
+    "Only this saved copy is deleted. Core accounting evidence and totals are unchanged, and the copy can’t be restored.",
+  "removal.close": "Close deletion confirmation",
   "removal.cancel": "Cancel",
-  "report.remove": "Remove saved report",
-  "removal.removing": "Removing report…",
+  "report.remove": "Delete saved report",
+  "removal.removing": "Deleting report…",
   "fact.period": "Period",
   "fact.observation": "Captured",
   "fact.lowerBound": "Starts",
@@ -67,14 +67,14 @@ export const en: Record<string, string> = {
   "message.saved": "Core report saved.",
   "message.savedArchived":
     "Core report saved: {{title}}. It is listed in the archive.",
-  "message.removed": "Saved report removed. Core accounting is unchanged.",
+  "message.removed": "Saved report deleted. Core accounting is unchanged.",
   "message.removalConfirmed":
-    "Original report removal confirmed. Core accounting is unchanged.",
+    "Original report deletion confirmed. Core accounting is unchanged.",
   "message.unknown":
     "Confirmation is unknown. Check the original outcome before submitting another archive change.",
   "message.archiveFailed": "The archive change failed: {{error}}",
   "message.captureRejected": "The capture couldn’t be admitted: {{error}}",
-  "message.removalRejected": "The removal couldn’t be admitted: {{error}}",
+  "message.removalRejected": "The deletion couldn’t be admitted: {{error}}",
   "message.retired":
     "Original command retired. Any report already saved remains in the archive.",
   "message.retireFailed": "The original command couldn’t be retired: {{error}}",
