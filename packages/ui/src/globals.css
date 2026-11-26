@@ -5,6 +5,8 @@
 ::highlight(search-match-active) {
   background-color: var(--color-accent);
   color: var(--color-text-on-accent);
+  text-decoration-line: underline;
+  text-decoration-style: double;
 }
 [data-slot="search-line"][data-current-match] {
   background-color: var(--wash-selected);

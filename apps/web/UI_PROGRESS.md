@@ -25,7 +25,7 @@ ZH/dark/18 px/`#3B82F6`/motion off, resized to 1120 × 728 with Files open: the 
 
 Verification includes the Wails build and native host tests (`make check-native`), Lab build, Web and plugin typechecks, locale and bootstrap checks, plugin module and resource checks, `make check-generated`, workspace boundaries, and three isolated Runtime bootstrap tests. The Runtime regression installs GenUI and checks its inline declaration again after restarting the same Runtime. Prettier and `git diff --check` pass.
 
-The native flow uses a disposable Wails profile and the built Lab fixture. The real Runtime test covers artifact admission and restart. Live provider execution, VoiceOver and the alternate-renderer interaction in a running installation remain open. This review covers the report, evidence and file-return flow. Retired the private Wails app, preview, profile, logs and worktree build outputs. Next, qualify a report-specific Find match and inspect the surrounding reading return path.
+The native flow uses a disposable Wails profile and the built Lab fixture. The real Runtime test covers artifact admission and restart. Live provider execution, VoiceOver and the alternate-renderer interaction in a running installation remain open. This review covers the report, evidence and file-return flow. Retired the private Wails app, preview, profile, logs and worktree build outputs. Report-specific Find and caret return are qualified in [Distinguish the current Find match](#distinguish-the-current-find-match-2026-11-26).
 
 ## Error notes leave retrying to their buttons (2026-11-26)
 
@@ -24983,6 +24983,14 @@ Dialog and HeroUI modal references inform the bounded task model; static Ace
 artwork supplies no keyboard evidence.
 
 ## Conversation Find and reading return
+
+### Distinguish the current Find match (2026-11-26)
+
+In the native report scene, `review` produced six matches. With a light theme and a `#FFD600` custom accent, the active and inactive fills differed by about 1.25:1. The current match now adds a double underline through the shared CSS highlight rule. Plain text and underlined links keep the same text measure while the additional shape identifies the active match. The decoration uses the existing on-accent ink. [CSS highlight styling](https://drafts.csswg.org/css-pseudo-4/#highlight-styling) · [WCAG use of color](https://www.w3.org/WAI/WCAG22/Understanding/use-of-color.html)
+
+Native Wails v3.1.0 at Actual Size, EN/light/18 px/`#FFD600`: Enter and Shift+Enter move the two visible strokes between prompt and report title with the count moving `1 / 6` → `2 / 6` → `1 / 6`. Searching `agent` produces one report-heading match. A real Pinyin composition consumes its Escape before the search bar handles a later Escape. After the bar closes, typing in the originating Report note inserts at the original caret (`orixginal`). ZH/dark/18 px/`#3B82F6` at 1120 × 728 with Files open finds and reveals `protocol` inside its link, with the active strokes confined to the matching word. Escape returns to the Composer.
+
+The shared UI build and packed consumer, staged product build, Web typecheck, bootstrap, plugin module check, Lab build, Prettier and `git diff --check` pass. Qualification uses an isolated native Lab. Temporary app, preview, profile, logs and worktree build outputs are retired. Open observation for the next review: in the yellow scene, the passive wash reached beyond `review` in the last reply even though the active color reached the exact word. Isolate the text ranges and WebKit paint independently.
 
 An earlier fix stopped a pending bottom-follow tick from carrying normal Find
 navigation away (a Lab trace showed the first visible `Runtime` word moving from

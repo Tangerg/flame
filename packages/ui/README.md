@@ -601,11 +601,12 @@ and WebP headers. Recorded computer/trajectory images and downloaded document pa
 bytes can project these dimensions before decoding; remote GenUI images retain
 unknown dimensions. The detached image decoder still owns final natural geometry.
 
-The shared stylesheet owns search emphasis: `search-match` and
-`search-match-active` CSS highlights use the host's selected wash and paired accent
-fill and ink. A `search-line` slot with `data-current-match` marks a line-based
-result with the same wash and a leading accent rule, preserving its ANSI ink and
-fixed row height. Each consumer retains its own query, matching and navigation.
+The shared stylesheet paints `search-match` with the host's selected wash and
+text ink. `search-match-active` pairs the accent fill and ink with a double
+underline to distinguish the current match, including within underlined links.
+A `search-line` slot with `data-current-match` marks a line-based result with the
+same wash and a leading accent rule, preserving its ANSI ink and fixed row height.
+Each consumer retains its own query, matching and navigation.
 
 `TextArea autosize` uses progressive CSS `field-sizing: content` with native rows
 as the fallback on hosts without support. Because content sizing ignores the
