@@ -55,7 +55,7 @@ export function SkillCatalogControls({
             value={target}
             options={SECTION_VALUES.map((value) => ({
               value,
-              label: t(`section.${value}`),
+              label: t(`tab.${value}`),
             }))}
             disabled={busy}
             onChange={(value) => onNavigate(value as Target)}

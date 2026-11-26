@@ -8,13 +8,21 @@ export const fr: Record<string, string> = {
   "search.placeholder": "Nom ou description",
   "search.clear": "Effacer la recherche",
   reading: "Lecture des Skills…",
-  "read.error": "Impossible de lire {{catalog}} : {{error}}",
+  "read.error.available":
+    "Impossible de lire les Skills disponibles : {{error}}",
+  "read.error.review":
+    "Impossible de lire les propositions de Skills : {{error}}",
+  "read.error.library":
+    "Impossible de lire la bibliothèque de Skills personnelle : {{error}}",
   "read.retained": "La dernière lecture acceptée est conservée.",
   "observation.error":
     "L’actualisation en direct est indisponible : {{error}}. Utilisez Actualiser pour lire le propriétaire actuel.",
   "section.available": "Skills disponibles",
   "section.review": "Propositions de Skills",
   "section.library": "Bibliothèque de Skills personnelle",
+  "tab.available": "Disponibles",
+  "tab.review": "Propositions",
+  "tab.library": "Bibliothèque personnelle",
   "section.selectWorkspace":
     "Sélectionnez un espace de travail pour inspecter les Skills disponibles et les propositions.",
   "summary.available_one": "{{count}} Skill disponible",

@@ -121,7 +121,7 @@ export function Skills({ context }: { context: ComponentContext }) {
         read={read}
         snapshot={snapshot}
         skillDocument={skillDocument}
-        title={title}
+        target={target}
         observationError={observationError}
         t={t}
       />
