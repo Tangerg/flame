@@ -1829,6 +1829,62 @@ The next review follows the draft caret when quoting from a
 file in the Dock. The qualification above sets its caret
 after the quote has been attached.
 
+### Search choices preserve the Composer selection
+
+Signed Wails at `4df6eb0b6` keeps caret 2 in `2468` when
+quoting from an already open file. Escape from the command
+menu also keeps it. Selecting View: Files and immediately
+pressing Cmd+L moves the caret to 0 while the Files list is
+still open. Typing 5 yields `52468`. Opening a file and
+quoting from the same command entry yields the same misplaced
+digit, which isolates the failure to the navigation preceding
+the quote.
+
+SearchOverlay now uses its captured Composer selection
+restorer for a chosen result. Delivery follows the modal's
+isolation cleanup. It restores the connected visible opener
+while focus still belongs to the closing popup or document
+body. An opener without a capture uses ordinary focus.
+An expired capture can decline the restoration while the
+action still receives its original opener. Lexical represents
+the range using the editor's own node keys and offsets.
+[Lexical selection](https://lexical.dev/docs/concepts/selection)
+
+- Chinese/light/14 px/Flame at 1120 × 728. Choose View: Files
+  by keyboard, then Cmd+L to resume at caret 2. The next
+  digit yields `24568`. The same path through `note.txt`
+  and Ctrl+Shift+Q adds `note.txt:1` with its literal
+  first line and resumes at caret 2. Undo restores `2468`.
+- English/dark/18 px/Blue at 1280 × 800. Select the second
+  digit before opening the command menu, then click View:
+  Files and use the file's pointer Quote in message action.
+  The `note.txt:2` preview shows `A second line`. The original
+  one-character selection survives and typing 5 produces
+  `2568`. Undo restores `2468`.
+- Selecting the active Session in Session Search keeps the
+  draft, its reference and caret 2. Both that selection and
+  the command-to-Files return are replayed with the signed
+  build on `1ed7c5c8f`, after the Runtime client change.
+
+The private Runtime has the same Session and zero Runs
+throughout. Both source file digests match. The loopback
+provider serves seventeen catalog reads and zero generations.
+The signed macOS Wails baseline and candidates exercise actual
+pointer, keys, accessibility focus and text insertion. Speech,
+IME composition and other platforms require separate checks.
+
+Web typecheck, 84 contracts, bootstrap, scoped Prettier, diff
+checks, production staging, Runtime packaging and strict Wails
+signatures pass. The selection regression is qualified in the
+native editor. All three Wails hosts exit normally. The private
+Runtime reaches its existing drain deadline. The owned provider,
+listeners, app registration, profile, fixture, screenshots,
+logs, checkout outputs and caches are removed.
+
+The next review checks whether long session titles are
+distinguishable in a narrow sidebar, including keyboard focus
+and reduced motion.
+
 ## Error notes leave retrying to their buttons (2026-11-26)
 
 Five error notes ended by narrating the buttons beside them. The sidebar's folder error said `Check the Runtime connection, then retry.` above `Retry`. The shared data-view error said `… Check the connection and retry.`, and every caller offers Retry except provider selections, whose section has its own Refresh selections. The draft notices said `Keep this window open and retry, or copy drafts.` above `Retry` and `Copy draft text`. The startup failure said `Retry, or copy the diagnostics to report it.` above `Retry` and `Copy diagnostics`. Each now stops at what the buttons can't say:
