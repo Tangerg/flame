@@ -119,7 +119,7 @@
   "composer.persistence.readFailed": "无法读取已保存的草稿。请保持此窗口打开并重试。",
   "composer.persistence.recoveryRequired": "编辑前未能读取已保存的草稿。请先复制草稿，再重新加载以恢复已保存的草稿。",
   "composer.persistence.copy": "复制草稿文本",
-  "composer.placeholder": "描述你要做的事，@ 引用文件",
+  "composer.placeholder": "描述你要做的事",
   "composer.switchModel": "切换模型",
   "composer.switchReasoningEffort": "切换思考强度",
   "composer.switchApprovalMode": "切换审批模式",

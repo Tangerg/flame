@@ -119,7 +119,7 @@
   "composer.persistence.readFailed": "保存済みの下書きを読み取れませんでした。このウィンドウを開いたまま再試行してください。",
   "composer.persistence.recoveryRequired": "編集前に保存済みの下書きを読み取れませんでした。保存済みの下書きを復元するために再読み込みする前に、下書きをコピーしてください。",
   "composer.persistence.copy": "下書きのテキストをコピー",
-  "composer.placeholder": "やりたいことを書いてください — @ でファイル参照",
+  "composer.placeholder": "やりたいことを書いてください",
   "composer.switchModel": "モデルを切替",
   "composer.switchReasoningEffort": "思考強度を切替",
   "composer.switchApprovalMode": "承認モードを切替",

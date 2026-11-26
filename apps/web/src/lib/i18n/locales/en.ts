@@ -132,7 +132,7 @@ export const en = {
     "Saved drafts couldn’t be read before editing. Copy drafts before reloading to recover saved drafts.",
   "composer.persistence.copy": "Copy draft text",
 
-  "composer.placeholder": "Describe what you want done — @ to reference a file",
+  "composer.placeholder": "Describe what you want done",
 
   "composer.switchModel": "Switch model",
   "composer.switchReasoningEffort": "Switch reasoning effort",

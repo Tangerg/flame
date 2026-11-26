@@ -119,7 +119,7 @@
   "composer.persistence.readFailed": "No se pudieron leer los borradores guardados. Mantén esta ventana abierta y vuelve a intentarlo.",
   "composer.persistence.recoveryRequired": "No se pudieron leer los borradores guardados antes de editar. Copia los borradores antes de recargar para recuperar los borradores guardados.",
   "composer.persistence.copy": "Copiar texto de borradores",
-  "composer.placeholder": "Describe lo que quieres hacer — @ para referenciar un archivo",
+  "composer.placeholder": "Describe lo que quieres hacer",
   "composer.switchModel": "Cambiar modelo",
   "composer.switchReasoningEffort": "Cambiar intensidad de razonamiento",
   "composer.switchApprovalMode": "Cambiar modo de aprobación",

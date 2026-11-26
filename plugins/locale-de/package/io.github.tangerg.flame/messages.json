@@ -119,7 +119,7 @@
   "composer.persistence.readFailed": "Die gespeicherten Entwürfe konnten nicht gelesen werden. Lass dieses Fenster geöffnet und versuche es erneut.",
   "composer.persistence.recoveryRequired": "Die gespeicherten Entwürfe konnten vor dem Bearbeiten nicht gelesen werden. Kopiere die Entwürfe vor dem Neuladen, um die gespeicherten Entwürfe wiederherzustellen.",
   "composer.persistence.copy": "Entwurfstext kopieren",
-  "composer.placeholder": "Beschreibe, was zu tun ist — @ referenziert eine Datei",
+  "composer.placeholder": "Beschreibe, was zu tun ist",
   "composer.switchModel": "Modell wechseln",
   "composer.switchReasoningEffort": "Denkintensität ändern",
   "composer.switchApprovalMode": "Genehmigungsmodus ändern",
