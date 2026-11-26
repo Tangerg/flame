@@ -261,10 +261,17 @@ export function createRunCommands(
           throw new RpcProtocolError("runs.getAcceptance result", [
             { path: "$", detail: "Steer lookup omitted its input identity" },
           ]);
+        if (acceptance.type !== "notRecorded") {
+          if (boundItem !== null && boundItem !== userItemId)
+            throw new RpcProtocolError("runs.getAcceptance result", [
+              { path: "$.userItemId", detail: "receipt differs from the nominated input identity" },
+            ]);
+          // The Runtime receipt can outlive the local entry another observer settled.
+          await publishNomination(userItemId);
+          return { type: acceptance.type, userItemId };
+        }
         const nomination = reservation.bindSteerItem(userItemId);
         await publishNomination(nomination);
-        if (acceptance.type !== "notRecorded")
-          return { type: acceptance.type, userItemId: nomination };
         const acknowledged = await dispatchCommand("runs.steer", prepared, reservation, {
           signal: attemptSignal,
         });

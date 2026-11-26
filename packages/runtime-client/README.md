@@ -149,6 +149,8 @@ command. Explicit retry continues to use its original admission and request.
 A Steer recovery handle keeps the command identity it discovered. The journal
 supplies the current delivery phase and nominated input, including nominations
 recorded by another client after discovery.
+A recorded Runtime receipt settles the original Steer even after another
+observer has cleared the journal entry.
 
 Run `npm run check --workspace @flame/runtime-client` from the root after
 `make setup`. Independent author checks consume a real packed package, rather

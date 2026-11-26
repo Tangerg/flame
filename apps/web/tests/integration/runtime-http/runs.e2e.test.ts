@@ -266,85 +266,96 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: runs", () => {
     }
   }, 30_000);
 
-  it("recovers a Steer command whose nomination was recorded after discovery", async () => {
-    const gate = createProviderGate("E2E_SHARED_STEER");
-    fixture.providerGate = gate;
-    const lookupOpened = Promise.withResolvers<void>();
-    const allowLookup = Promise.withResolvers<void>();
-    const dispatchOpened = Promise.withResolvers<void>();
-    const allowDispatch = Promise.withResolvers<void>();
-    const mutationStorage = new MemoryMutationStorage();
-    const openClient = (fetch?: typeof globalThis.fetch) =>
-      createFlameClient(createHttpTransport({ baseUrl: fixture.baseUrl, fetch }), {
-        capabilities: () => fixture.negotiated,
-        mutationStorage,
+  it.each([
+    { timing: "after its nomination is recorded", waitForOriginalDispatch: true },
+    { timing: "before the original client reads the receipt", waitForOriginalDispatch: false },
+  ])(
+    "recovers a Steer command $timing",
+    async ({ waitForOriginalDispatch }) => {
+      const gate = createProviderGate("E2E_SHARED_STEER");
+      fixture.providerGate = gate;
+      const lookupOpened = Promise.withResolvers<void>();
+      const allowLookup = Promise.withResolvers<void>();
+      const dispatchOpened = Promise.withResolvers<void>();
+      const allowDispatch = Promise.withResolvers<void>();
+      const mutationStorage = new MemoryMutationStorage();
+      const openClient = (fetch?: typeof globalThis.fetch) =>
+        createFlameClient(createHttpTransport({ baseUrl: fixture.baseUrl, fetch }), {
+          capabilities: () => fixture.negotiated,
+          mutationStorage,
+        });
+      const original = openClient(async (input, init) => {
+        const method = new Headers(init?.headers).get(HTTP_HEADERS.method);
+        if (method === "runs.getAcceptance") {
+          lookupOpened.resolve();
+          await allowLookup.promise;
+        } else if (method === "runs.steer") {
+          dispatchOpened.resolve();
+          await allowDispatch.promise;
+        }
+        return fetch(input, init);
       });
-    const original = openClient(async (input, init) => {
-      const method = new Headers(init?.headers).get(HTTP_HEADERS.method);
-      if (method === "runs.getAcceptance") {
-        lookupOpened.resolve();
-        await allowLookup.promise;
-      } else if (method === "runs.steer") {
-        dispatchOpened.resolve();
-        await allowDispatch.promise;
+      const recovering = openClient();
+      try {
+        const session = await fixture.client.sessions.create({ title: "Shared Steer recovery" });
+        const started = await fixture.client.runs.start({
+          sessionId: asSessionId(session.id),
+          input: [{ type: "text", text: "E2E_SHARED_STEER hold the model boundary." }],
+        });
+        await within(gate.arrived.promise, "the held model request");
+        const runId = asRunId(started.result.runId);
+        const steerText = "Apply the recovered instruction once.";
+        const first = original.runs.steer(runId, asSegmentId(started.result.segmentId), [
+          { type: "text", text: steerText },
+        ]);
+        const originalResult = first.then(
+          (value) => ({ value }),
+          (error: unknown) => ({ error }),
+        );
+        await within(lookupOpened.promise, "the original Steer lookup");
+        const pending = (await recovering.runs.recoverCommands()).find(
+          (command) => command.idempotencyKey === first.idempotencyKey,
+        );
+        if (pending?.operation !== "steer") throw new Error("expected the original Steer");
+        expect(pending.userItemId).toBeNull();
+        expect(pending.observation.type).toBe("notRecorded");
+
+        if (waitForOriginalDispatch) {
+          allowLookup.resolve();
+          await within(dispatchOpened.promise, "the original Steer dispatch");
+        }
+        const retry = pending.retry();
+        expect(retry.idempotencyKey).toBe(first.idempotencyKey);
+        const accepted = await retry;
+        const nominated = await within(retry.inputIdentity, "the Runtime's input nomination");
+        expect(accepted).toMatchObject({ type: "accepted", userItemId: nominated });
+        expect(mutationStorage.size).toBe(0);
+
+        allowLookup.resolve();
+        allowDispatch.resolve();
+        expect(await originalResult).toEqual({ value: accepted });
+        await expect(first.inputIdentity).resolves.toBe(nominated);
+        expect(mutationStorage.size).toBe(0);
+        gate.release.resolve();
+        const events = await collectRunEvents(originalOpeningEvents(started));
+        const inputs = events.flatMap(({ event }) =>
+          event.type === "item.completed" &&
+          event.item.type === "userMessage" &&
+          event.item.content?.some((block) => block.type === "text" && block.text === steerText)
+            ? [event.item.id]
+            : [],
+        );
+        expect(inputs).toEqual([nominated]);
+      } finally {
+        allowLookup.resolve();
+        allowDispatch.resolve();
+        gate.release.resolve();
+        fixture.providerGate = undefined;
+        await Promise.all([original.close(), recovering.close()]);
       }
-      return fetch(input, init);
-    });
-    const recovering = openClient();
-    try {
-      const session = await fixture.client.sessions.create({ title: "Shared Steer recovery" });
-      const started = await fixture.client.runs.start({
-        sessionId: asSessionId(session.id),
-        input: [{ type: "text", text: "E2E_SHARED_STEER hold the model boundary." }],
-      });
-      await within(gate.arrived.promise, "the held model request");
-      const runId = asRunId(started.result.runId);
-      const steerText = "Apply the recovered instruction once.";
-      const first = original.runs.steer(runId, asSegmentId(started.result.segmentId), [
-        { type: "text", text: steerText },
-      ]);
-      const originalResult = first.then(
-        (value) => ({ value }),
-        (error: unknown) => ({ error }),
-      );
-      await within(lookupOpened.promise, "the original Steer lookup");
-      const pending = (await recovering.runs.recoverCommands()).find(
-        (command) => command.idempotencyKey === first.idempotencyKey,
-      );
-      if (pending?.operation !== "steer") throw new Error("expected the original Steer");
-      expect(pending.userItemId).toBeNull();
-      expect(pending.observation.type).toBe("notRecorded");
-
-      allowLookup.resolve();
-      const nominated = await within(first.inputIdentity, "the Runtime's input nomination");
-      await within(dispatchOpened.promise, "the original Steer dispatch");
-      const retry = pending.retry();
-      expect(retry.idempotencyKey).toBe(first.idempotencyKey);
-      const accepted = await retry;
-      expect(accepted).toMatchObject({ type: "accepted", userItemId: nominated });
-      await expect(retry.inputIdentity).resolves.toBe(nominated);
-
-      allowDispatch.resolve();
-      expect(await originalResult).toEqual({ value: accepted });
-      expect(mutationStorage.size).toBe(0);
-      gate.release.resolve();
-      const events = await collectRunEvents(originalOpeningEvents(started));
-      const inputs = events.flatMap(({ event }) =>
-        event.type === "item.completed" &&
-        event.item.type === "userMessage" &&
-        event.item.content?.some((block) => block.type === "text" && block.text === steerText)
-          ? [event.item.id]
-          : [],
-      );
-      expect(inputs).toEqual([nominated]);
-    } finally {
-      allowLookup.resolve();
-      allowDispatch.resolve();
-      gate.release.resolve();
-      fixture.providerGate = undefined;
-      await Promise.all([original.close(), recovering.close()]);
-    }
-  }, 30_000);
+    },
+    30_000,
+  );
 
   it("preserves an unconfirmed model outcome when cancellation closes its stream", async () => {
     const gate = createProviderGate("E2E_CANCEL");
