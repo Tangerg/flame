@@ -175,17 +175,17 @@ export function ScheduleEditor({
               onChange={(event) => patch("timeZone", event.target.value)}
             />
           </FormField>
-          <FormField label={t("field.workspace")}>
-            <TextField
-              size="lg"
-              aria-label={t("field.workspace")}
-              placeholder={t("field.workspace.placeholder")}
-              value={draft.cwd}
-              disabled={busy}
-              onChange={(event) => patch("cwd", event.target.value)}
-            />
-          </FormField>
         </FormRow>
+        <FormField label={t("field.workspace")}>
+          <TextField
+            size="lg"
+            aria-label={t("field.workspace")}
+            placeholder={t("field.workspace.placeholder")}
+            value={draft.cwd}
+            disabled={busy}
+            onChange={(event) => patch("cwd", event.target.value)}
+          />
+        </FormField>
         <Checkbox
           label={t("status.enabled")}
           checked={draft.enabled}
