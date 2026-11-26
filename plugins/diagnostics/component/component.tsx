@@ -113,6 +113,14 @@ function DiagnosticsReport({
     () => new Intl.DateTimeFormat(locale, { timeStyle: "medium" }),
     [locale],
   );
+  const moment = useMemo(
+    () =>
+      new Intl.DateTimeFormat(locale, {
+        dateStyle: "medium",
+        timeStyle: "medium",
+      }),
+    [locale],
+  );
   // Span and histogram values are fractional milliseconds; two places keep them readable.
   const measure = useMemo(
     () => new Intl.NumberFormat(locale, { maximumFractionDigits: 2 }),
@@ -147,10 +155,7 @@ function DiagnosticsReport({
               )}
               <Facts
                 values={[
-                  [
-                    t("fact.started"),
-                    new Date(row.startMs).toLocaleString(locale),
-                  ],
+                  [t("fact.started"), moment.format(new Date(row.startMs))],
                   [
                     t("fact.duration"),
                     t("duration.ms", {
@@ -168,10 +173,7 @@ function DiagnosticsReport({
               <RecordBody>{row.body}</RecordBody>
               <Facts
                 values={[
-                  [
-                    t("fact.recorded"),
-                    new Date(row.timeMs).toLocaleString(locale),
-                  ],
+                  [t("fact.recorded"), moment.format(new Date(row.timeMs))],
                   [t("fact.trace"), row.traceId],
                   [t("fact.span"), row.spanId],
                 ]}
