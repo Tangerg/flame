@@ -1248,9 +1248,68 @@ deadline. The owned app registration, processes, listeners,
 profiles, HTTP harness, fixtures, captures, observer, logs,
 caches and checkout outputs are removed.
 
-The next review follows Go to line through a long file to check
-its target line, viewport and focus after submitting or dismissing
-the control.
+[File line jumps leave feedback visible](#file-line-jumps-leave-feedback-visible-2026-11-27)
+follows Go to line across windows of a long file.
+
+### File line jumps leave feedback visible (2026-11-27)
+
+Signed production Wails at `d2d253ffd` and the isolated Runtime
+read a 1,450-line text file from disk. In a 1120 × 728
+English/dark/18 px/Blue window with the 320 px Dock, jumps
+accept 360–560 and 1,180–1,380. Line 1,180 moves from native
+y=206 to y=−634 by wheel. Resubmitting 1,180 reveals the same
+marked line at y=206 and restores focus to Go to line.
+
+A real request for line 1,451 is rejected. The focused icon's
+tooltip covers part of the rejected number and the accepted
+range. In Markdown Preview the same tooltip covers part of
+Source after a rejected jump, even though the original Preview
+is still available. Better Accessibility treats focus indication
+and content visibility together. The existing tooltip and its
+HeroUI reference supply supplementary text to a trigger.
+`FileReader.tsx` now uses the existing small text-labelled
+button for the Go to line popover. The existing message provides
+its visible label and accessible name.
+
+- The regular signed build on `9c71d70a2` uses the same private
+  Runtime `2026-11-27.2`. At 1120 × 728, the full range and
+  `Couldn’t open from line 1,451` remain readable with Go to
+  line focused. Repeating 1,180 returns it from y=−632 to
+  y=208. The rejection adds a 23 px metadata line and row
+  1,220 moves from y=168 to y=191. Typing `750` and pressing
+  Escape leaves row 1,220 at y=191 and keeps the rejection
+  visible. Reopen shows `750`. Enter accepts 750–950 and
+  reveals the new marked line.
+- Pointer opening the 64-line Markdown file shows Preview and
+  Source at y=120. The new 94 px Go to line trigger starts at
+  y=158, on its existing action row. Pointer Go rejects line
+  65, keeps the Preview and returns focus to Go to line. The
+  error and both mode choices remain visible. Back focuses the
+  matched file row.
+- At 1280 × 800 in Chinese/light/14 px/Flame, keyboard focus
+  returns to 跳转到行 after line 1,180 and the real rejection
+  无法从第 1,451 行打开. The pending and terminal labels are
+  captured separately. The accepted range and error both fit,
+  and Back restores the original text file row and the
+  Composer draft `2468`.
+
+Preliminary probes are corrected to use grouped numbers, the
+measured narrow window and the actual native names. The native
+runs cover macOS keyboard, pointer and accessibility state.
+VoiceOver and other platforms remain outside this review.
+Web typecheck, 82 contract tests, bootstrap, scoped Prettier and
+diff checks pass under npm 11.21.1. Production staging, Runtime
+packaging and signed builds pass. The complete private Session,
+draft and 52 file digests match. The provider serves 19 catalog
+reads and zero generations, and Runtime records zero Runs.
+Both Wails hosts exit normally. The private Runtime reaches its
+existing drain deadline. The owned app registration, processes,
+listeners, profile, captures, fixtures, logs, caches and checkout
+outputs are removed.
+
+The next review follows adjacent pages from their edge controls
+and checks the reading position when an earlier or later range
+takes over.
 
 ## Error notes leave retrying to their buttons (2026-11-26)
 
