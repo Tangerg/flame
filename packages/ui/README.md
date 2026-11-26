@@ -538,6 +538,9 @@ in capture on its own owner. `isImeKey` is the shared composition test for
 `isComposing` and the legacy `keyCode` 229.
 The field paints its focus ring on its frame. A popup whose only input keeps focus
 for the popup's whole life passes `ring={false}`; the caret then marks focus.
+A `Button` with `variant="outline"` is the secondary action beside a filled
+`primary` (Deny beside Approve, Test beside Save). An action that stands alone
+in a row, header, empty state or error state is `soft`.
 `IconButton` requires either
 `aria-label` or `aria-labelledby`; `title` only overrides the tooltip.
 `BackButton` is the small left-chevron `IconButton` that returns from a detail

@@ -63,7 +63,7 @@ export function DataError({
       action={
         onRetry && (
           <Button
-            variant="outline"
+            variant="soft"
             size={size === "compact" ? "xs" : "sm"}
             onClick={(event) => {
               const retiring = event.currentTarget;

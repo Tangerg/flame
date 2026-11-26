@@ -147,7 +147,7 @@ export function PluginsPane() {
                   <div {...stylex.props(vocab.lineTight)}>
                     {errCount > 0 && (
                       <Button
-                        variant="outline"
+                        variant="soft"
                         size="sm"
                         onClick={() => {
                           clearFor(name);

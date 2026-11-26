@@ -51,7 +51,7 @@ function ServerConnectionButton({
     : "mcp.reconnect";
   return (
     <Button
-      variant={needsSignIn ? "primary" : "outline"}
+      variant={needsSignIn ? "primary" : "soft"}
       size="sm"
       disabled={busy || signingIn}
       pending={running || server.status === "connecting" || signingIn}

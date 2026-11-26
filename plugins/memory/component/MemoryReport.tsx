@@ -130,7 +130,7 @@ export function MemoryReport({
                 action={
                   rows.length ? (
                     <Button
-                      variant="outline"
+                      variant="soft"
                       size="sm"
                       onClick={clearSearchAndFilters}
                     >

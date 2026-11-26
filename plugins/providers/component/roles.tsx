@@ -148,7 +148,7 @@ function RolePending({
 }) {
   if (!failed)
     return (
-      <Button variant="outline" disabled aria-label={title}>
+      <Button variant="soft" disabled aria-label={title}>
         {t("reading")}
       </Button>
     );

@@ -186,7 +186,7 @@ export function TrajectoryReport({
             }
             action={
               (kind !== UNFILTERED || run !== UNFILTERED || search !== "") && (
-                <Button variant="outline" onClick={onClearFilters}>
+                <Button variant="soft" onClick={onClearFilters}>
                   {t("filters.clear")}
                 </Button>
               )
