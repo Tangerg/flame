@@ -67,7 +67,7 @@ function collectTextFlows(messageRoot: HTMLElement): FlowText[][] {
     const element = node as Element;
     const style = getComputedStyle(element);
     if (isHidden(element, style)) return;
-    if (element.nodeName === "BR") {
+    if (element.nodeName === "BR" || element.matches('[data-slot="button"]:not([aria-expanded])')) {
       endFlow();
       return;
     }
