@@ -793,6 +793,7 @@
   "tool.group.run_other": "実行 {{count}}",
   "tool.group.fetch_other": "通信 {{count}}",
   "tool.group.call_other": "ツール呼び出し {{count}}",
+  "duration.milliseconds": "{{ms}} ms",
   "duration.seconds": "{{sec}} 秒",
   "duration.minutes": "{{min}} 分 {{sec}} 秒",
   "duration.hours": "{{hr}} 時間 {{min}} 分",

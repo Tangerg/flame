@@ -69,7 +69,7 @@ export function toolMetaItems(t: Translate, tool: ToolCall): ToolMetaItem[] {
     });
   }
   if (tool.durationMillis != null && tool.durationMillis >= 1000) {
-    items.push({ id: "duration", label: fmtDuration(tool.durationMillis), tone: "muted" });
+    items.push({ id: "duration", label: fmtDuration(t, tool.durationMillis), tone: "muted" });
   }
   const offset = skillTextOffset(tool);
   if (offset !== undefined) {

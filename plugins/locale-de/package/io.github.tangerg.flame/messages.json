@@ -812,6 +812,7 @@
   "tool.group.fetch_other": "{{count}} Webabrufe",
   "tool.group.call_one": "{{count}} Tool-Aufruf",
   "tool.group.call_other": "{{count}} Tool-Aufrufe",
+  "duration.milliseconds": "{{ms}} ms",
   "duration.seconds": "{{sec}} s",
   "duration.minutes": "{{min}} min {{sec}} s",
   "duration.hours": "{{hr}} Std. {{min}} min",

@@ -793,6 +793,7 @@
   "tool.group.run_other": "執行 {{count}}",
   "tool.group.fetch_other": "連網 {{count}}",
   "tool.group.call_other": "工具呼叫 {{count}}",
+  "duration.milliseconds": "{{ms}} 毫秒",
   "duration.seconds": "{{sec}} 秒",
   "duration.minutes": "{{min}} 分 {{sec}} 秒",
   "duration.hours": "{{hr}} 小時 {{min}} 分",

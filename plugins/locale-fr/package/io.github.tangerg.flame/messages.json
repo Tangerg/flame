@@ -831,6 +831,7 @@
   "tool.group.call_one": "{{count}} appel d’outil",
   "tool.group.call_many": "{{count}} d’appels d’outil",
   "tool.group.call_other": "{{count}} appels d’outil",
+  "duration.milliseconds": "{{ms}} ms",
   "duration.seconds": "{{sec}} s",
   "duration.minutes": "{{min}} min {{sec}} s",
   "duration.hours": "{{hr}} h {{min}} min",

@@ -22,55 +22,22 @@ export function fmtTokens(n: number): string {
   return `${decimal(n / 1_000_000, 1, 1)}M`;
 }
 
-type TimeUnit = "millisecond" | "second" | "minute" | "hour";
-const timeUnits = new Map<string, Intl.NumberFormat>();
-const timeLists = new Map<string, Intl.ListFormat>();
-
-function timeUnit(value: number, unit: TimeUnit, maximumFractionDigits = 0): string {
-  const locale = localeToBcp47(activeLocale());
-  const key = `${locale}/${unit}/${maximumFractionDigits}`;
-  let formatter = timeUnits.get(key);
-  if (!formatter) {
-    formatter = new Intl.NumberFormat(locale, {
-      style: "unit",
-      unit,
-      unitDisplay: "narrow",
-      useGrouping: false,
-      maximumFractionDigits,
-    });
-    timeUnits.set(key, formatter);
-  }
-  return formatter.format(value);
+// The catalogs own each locale's units and spacing; whole seconds keep a ticking clock steady.
+function clockText(t: Translate, seconds: number): string {
+  if (seconds < 60) return t("duration.seconds", { sec: seconds });
+  const min = Math.floor(seconds / 60);
+  if (min < 60) return t("duration.minutes", { min, sec: seconds % 60 });
+  const hr = Math.floor(min / 60);
+  return t("duration.hours", { hr, min: min % 60 });
 }
 
-function timeParts(...parts: string[]): string {
-  const locale = localeToBcp47(activeLocale());
-  let formatter = timeLists.get(locale);
-  if (!formatter) {
-    formatter = new Intl.ListFormat(locale, { type: "unit", style: "narrow" });
-    timeLists.set(locale, formatter);
-  }
-  return formatter.format(parts);
-}
-
-export function fmtDuration(ms: number): string {
-  if (ms < 1000) return timeUnit(ms, "millisecond");
-  const seconds = ms / 1000;
-  if (seconds < 10) return timeUnit(Math.round(seconds * 10) / 10, "second", 1);
-  const whole = Math.round(seconds);
-  if (whole < 60) return timeUnit(whole, "second");
-  const minutes = Math.floor(whole / 60);
-  if (minutes < 60) return timeParts(timeUnit(minutes, "minute"), timeUnit(whole % 60, "second"));
-  const hours = Math.floor(minutes / 60);
-  return timeParts(timeUnit(hours, "hour"), timeUnit(minutes % 60, "minute"));
+export function fmtDuration(t: Translate, ms: number): string {
+  if (ms < 1000) return t("duration.milliseconds", { ms: Math.round(ms) });
+  if (ms < 10_000) return t("duration.seconds", { sec: decimal(ms / 1000, 1) });
+  return clockText(t, Math.round(ms / 1000));
 }
 
 export function durationText(t: Translate, start: number, end: number | null): string {
   if (end === null) return "—";
-  const sec = Math.round((end - start) / 1000);
-  if (sec < 60) return t("duration.seconds", { sec });
-  const min = Math.floor(sec / 60);
-  if (min < 60) return t("duration.minutes", { min, sec: sec % 60 });
-  const hr = Math.floor(min / 60);
-  return t("duration.hours", { hr, min: min % 60 });
+  return clockText(t, Math.round((end - start) / 1000));
 }

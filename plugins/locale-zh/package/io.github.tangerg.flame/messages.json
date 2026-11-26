@@ -793,6 +793,7 @@
   "tool.group.run_other": "执行 {{count}}",
   "tool.group.fetch_other": "联网 {{count}}",
   "tool.group.call_other": "工具调用 {{count}}",
+  "duration.milliseconds": "{{ms}} 毫秒",
   "duration.seconds": "{{sec}} 秒",
   "duration.minutes": "{{min}} 分 {{sec}} 秒",
   "duration.hours": "{{hr}} 小时 {{min}} 分",
