@@ -198,8 +198,58 @@ and checkout build outputs are removed.
 
 Closing Settings with Escape after opening it from the Files renderer
 picker leaves the exact file and preview open. Focus returns to the
-Files region and the next Tab reaches Back to panel list. The next
-batch traces how Settings can return to the control focused before entry.
+Files region and the next Tab reaches Back to panel list.
+[The Settings return repair](#settings-returns-to-the-control-that-had-focus-2026-11-27)
+qualifies the same route with exact focus.
+
+### Settings returns to the control that had focus (2026-11-27)
+
+The Workspace navigation adapter captures the active workbench control
+before an explicit Settings entry conceals it. Its focus callback
+belongs to that Settings visit and the same Session. The normal close
+prepares restoration for `useInspectionFocus`, which uses the shared
+`handoffFocus` after the source is revealed. An unavailable source uses
+the existing region fallback. This applies Better Accessibility's
+return-focus rule to the workbench's full-pane surface.
+
+- Signed production Wails v3.1.0 and Runtime `2026-11-26.7` at
+  `bc98cd18b` plus this change use an installed report and an actual
+  workspace `README.md`. Chinese/light/14 px/Flame Orange at
+  1120 × 728 opens Settings from the file renderer and closes with
+  Escape. The same picker at y=147–180 has a visible focus ring.
+  The next Tab reaches Go to line. Change Appearance to English,
+  dark, 18 px and Blue (#0485F7). Pointer Close returns to that
+  same Go to line control after the language change.
+- Open Settings from Generated interface, resize to 1280 × 800,
+  and close with a physical click. The original report picker
+  returns at y=411–444 and the next Tab reaches Result. Cmd+W
+  returns to Result in the next visit. Cmd+L takes focus to the
+  Composer, which accepts the unsent `5682` draft. A wheel scroll
+  moves Tool details up 50 px with `README.md` open.
+- Hiding the Dock while Settings is open makes the original file
+  picker unavailable. Escape then focuses the Conversation region
+  and retains the draft. This exercises the fallback with the
+  original element hidden in the workspace.
+- Rebuild the signed production pair after fast-forward to
+  `2a17c8a4f` and Runtime `2026-11-26.8`. Reopening the private
+  Session restores the report, file and draft. Repeat Escape from
+  the file picker and pointer Close from the report picker. Both
+  return to the original control and its following Tab stop.
+  The original Run, Item and result hash still match and the local
+  provider has received three requests in total.
+- With the Runtime stopped at its private loopback port, launch the
+  same signed client. Keyboard entry from **Connection settings**
+  opens the Connection pane and Escape returns to the recovery
+  button at the same bounds before a Session snapshot is available.
+
+Scoped Prettier, Web typecheck, bootstrap, production staging,
+Runtime packaging, the signed Wails builds and diff checks pass.
+The recorded report uses a synthetic loopback model through the real
+installed Runtime. VoiceOver, live inference and history replay remain
+outside this acceptance. Wails exits normally. Both private Runtime
+drains after Wails exit reach the existing deadline. The test apps,
+listeners, fixture installations, profiles, logs, captures, caches and
+checkout build outputs are removed.
 
 ## Error notes leave retrying to their buttons (2026-11-26)
 
