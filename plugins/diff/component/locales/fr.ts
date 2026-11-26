@@ -18,9 +18,9 @@ export const fr: Record<string, string> = {
   "status.reading.worktree": "Lecture des modifications non validées…",
   "status.reading.base": "Lecture des modifications de la branche…",
   "status.error.worktree":
-    "Impossible de lire les modifications non validées : {{error}}",
+    "Impossible de lire les modifications non validées : {{error}}",
   "status.error.base":
-    "Impossible de lire les modifications de la branche : {{error}}",
+    "Impossible de lire les modifications de la branche : {{error}}",
   "status.stale.worktree":
     "Affichage des modifications non validées depuis la dernière lecture réussie.",
   "status.stale.base":

@@ -10,7 +10,7 @@ export const fr: Record<string, string> = {
   "mcp.delete": "Supprimer",
   "mcp.delete.title": "Supprimer ce serveur ?",
   "mcp.delete.body":
-    "« {{server}} » et ses outils sont supprimés. Vous pourrez l’ajouter de nouveau plus tard.",
+    "« {{server}} » et ses outils sont supprimés. Vous pourrez l’ajouter de nouveau plus tard.",
   "mcp.test": "Tester",
   "mcp.testing": "Test en cours…",
   "mcp.connectionOk": "Connexion OK",
@@ -76,17 +76,17 @@ export const fr: Record<string, string> = {
   "mcp.import.error": "Impossible d’importer cette configuration.",
   "mcp.import.invalidJson": "Saisissez un JSON valide.",
   "mcp.import.invalidShape":
-    "Utilisez une configuration MCP valide avec un objet « mcpServers ».",
+    "Utilisez une configuration MCP valide avec un objet « mcpServers ».",
   "mcp.import.invalidName":
-    "Le nom du serveur « {{server}} » ne respecte pas les règles du Runtime. Modifiez la clé et réessayez.",
+    "Le nom du serveur « {{server}} » ne respecte pas les règles du Runtime. Modifiez la clé et réessayez.",
   "mcp.import.missingTransport":
-    "Indique soit une commande, soit une URL pour le serveur « {{server}} », mais pas les deux.",
+    "Indiquez soit une commande, soit une URL pour le serveur « {{server}} », mais pas les deux.",
   "mcp.import.missingCommand":
-    "Ajoutez une commande pour le serveur « {{server}} ».",
-  "mcp.import.missingUrl": "Ajoutez une URL pour le serveur « {{server}} ».",
+    "Ajoutez une commande pour le serveur « {{server}} ».",
+  "mcp.import.missingUrl": "Ajoutez une URL pour le serveur « {{server}} ».",
   "mcp.import.invalidTimeout":
-    "Définissez un délai d’expiration en secondes entières positives pour le serveur « {{server}} », ou omettez-le pour ne fixer aucune limite de temps.",
-  "mcp.import.empty": "Ajoutez au moins un serveur sous « mcpServers ».",
+    "Définissez un délai d’expiration en secondes entières positives pour le serveur « {{server}} », ou omettez-le pour ne fixer aucune limite de temps.",
+  "mcp.import.empty": "Ajoutez au moins un serveur sous « mcpServers ».",
   "mcp.tools.title": "Outils de {{server}}",
   "mcp.tools.label": "{{tools}} de {{server}}",
   "mcp.tools.enabled": "Activé",
@@ -134,9 +134,9 @@ export const fr: Record<string, string> = {
   "mcp.form.headers.invalid":
     "Saisissez un objet JSON non vide dont les valeurs sont des chaînes.",
   "mcp.import.unsupportedTransport":
-    "Le « type » du serveur « {{server}} » n’est pas pris en charge. Utilisez « stdio » ou « streamableHttp ».",
+    "Le « type » du serveur « {{server}} » n’est pas pris en charge. Utilisez « stdio » ou « streamableHttp ».",
   "mcp.import.headerConflict":
-    "Le serveur « {{server}} » déclare « {{header}} » plusieurs fois. Garde une seule déclaration.",
+    "Le serveur « {{server}} » déclare « {{header}} » plusieurs fois. Gardez une seule déclaration.",
   title: "Serveurs MCP",
   retry: "Réessayer",
   refresh: "Actualiser",
