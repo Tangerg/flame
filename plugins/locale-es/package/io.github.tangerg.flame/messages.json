@@ -478,7 +478,7 @@
   "question.settled.dismissed": "Cerrado sin respuesta",
   "question.freetext.placeholder": "Escribe una respuesta…",
   "cwdMissing.title": "La carpeta desapareció del disco",
-  "cwdMissing.body": "El agent funciona en modo solo chat hasta restaurar la carpeta o reubicar la sesión.",
+  "cwdMissing.body": "El agente funciona en modo solo chat hasta restaurar la carpeta o reubicar la sesión.",
   "cwdMissing.action.relocate": "Reubicar…",
   "cwdMissing.action.apply": "Aplicar",
   "cwdMissing.action.cancel": "Cancelar",
