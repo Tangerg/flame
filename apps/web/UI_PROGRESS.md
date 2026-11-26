@@ -1585,8 +1585,54 @@ its existing drain deadline. The owned provider, app
 registration, profile, fixtures, captures, logs, listeners,
 checkout outputs and caches are removed.
 
-The next review follows one Escape from the keyboard-opened
-reference dialog when the chip tooltip was active.
+[Escape dismisses the visible reference review tooltip](#escape-dismisses-the-visible-reference-review-tooltip-2026-11-27)
+identifies which control handles the first key.
+
+### Escape dismisses the visible reference review tooltip (2026-11-27)
+
+Ordinary signed Wails at `968df8b54` follows a Runtime file
+selection into its Composer reference review. The keyboard
+opens the dialog on Close, its first Tab stop. The shared
+IconButton uses the action name for its visible tooltip.
+Escape follows the existing priority for a visible tooltip
+inside the active focus boundary.
+
+- Chinese/light/14 px/Flame at 1120 × 728 with a 364 px
+  Dock. Shift+Tab reaches the long line-4 chip and displays its
+  full value. Enter opens the exact review and shows 关闭 above
+  the focused Close button. The first Escape removes that
+  visible tooltip and leaves Close focused. The second Escape
+  returns to the same chip.
+- Dismissing the chip's own tooltip before Enter produces the
+  same two steps inside the review. In a separate keyboard
+  opening, Tab reaches the labelled review body and the Close
+  tooltip leaves. One Escape returns to the exact chip.
+  Pointer opening also returns in one Escape.
+- English/dark/18 px/Blue at 1280 × 800 with a 427 px Dock.
+  Keyboard entry displays the visible Close tooltip above
+  its focus ring. The two Escape steps restore the same
+  reference. Pointer entry returns with one Escape. Cmd+L
+  restores `2468` at caret 2, typing 5 gives `24568` and
+  Undo restores `2468`.
+
+The evidence resolves the earlier two-Escape observation
+using the current shared Tooltip and ModalDialog behavior.
+This accompanies the established Settings and report
+tooltip priority. Production staging, Runtime packaging,
+signing and diff checks pass. Both private file digests and
+the complete Session match, and the provider records four
+catalog reads and zero generations. Native qualification
+covers macOS accessibility state, pointer and keys. VoiceOver
+speech and other platforms remain outside this review.
+
+Wails exits normally. The private Runtime reaches the
+existing drain deadline. The owned provider, app
+registration, profile, fixtures, captures, logs, listeners,
+checkout outputs and caches are removed.
+
+The next review follows an already sent reference from its
+transcript entry into its review and back to the conversation
+and current draft.
 
 ## Error notes leave retrying to their buttons (2026-11-26)
 
