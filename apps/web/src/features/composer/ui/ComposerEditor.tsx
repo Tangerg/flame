@@ -69,9 +69,14 @@ import {
 import { type DraftContent } from "@/features/composer/domain/draft";
 const styles = stylex.create({
   host: { position: "relative" },
+  // The overlay does not size the editor, so a wrapped placeholder would run into the toolbar.
   placeholder: {
     position: "absolute",
     insetBlockStart: 0,
+    insetInline: 0,
+    overflow: "hidden",
+    whiteSpace: "nowrap",
+    textOverflow: "ellipsis",
     pointerEvents: "none",
     color: color.fgMuted,
   },
