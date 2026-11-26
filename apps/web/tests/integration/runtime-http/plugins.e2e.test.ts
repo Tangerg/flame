@@ -1,4 +1,9 @@
-import { addInstalledMemory, deleteInstalledMemory, readInstalledMemory } from "./memoryOperations";
+import {
+  addInstalledMemory,
+  captureMemoryBinding,
+  deleteInstalledMemory,
+  readInstalledMemory,
+} from "./memoryOperations";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { describe, expect, it, onTestFinished } from "vitest";
@@ -210,6 +215,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: plugins", () => {
 
   it("reads the shipped Memory backend page and resumes private facts after withdrawal", async () => {
     const installation = fixture.managedOwners.get("memory")!;
+    const binding = await captureMemoryBinding(fixture.client);
     const release = { installationId: installation.id, digest: installation.selected.digest };
     const component = installation.selected.components[0]!;
     const resourceRequest = { ...release, componentId: component.id, path: component.entry };
@@ -218,7 +224,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: plugins", () => {
     let withdrawn = false;
     try {
       expect(installation.selected.diagnostics).toEqual([]);
-      created = await addInstalledMemory(fixture.client, {
+      created = await addInstalledMemory(fixture.client, binding, {
         scope: "project",
         cwd: workspace.path,
         content: "Memory page canonical ownership fixture",
@@ -226,7 +232,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: plugins", () => {
       const query = { scope: "project" as const, workspace, limit: 1 };
       expect(
         (
-          await readInstalledMemory(fixture.client, "project", query.workspace.path).then(
+          await readInstalledMemory(fixture.client, binding, "project", query.workspace.path).then(
             (data) => ({
               data,
             }),
@@ -249,12 +255,12 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: plugins", () => {
         code: -32042,
       });
       await expect(
-        readInstalledMemory(fixture.client, "project", query.workspace.path).then((data) => ({
-          data,
-        })),
-      ).rejects.toSatisfy(
-        (error: unknown) => error instanceof Error && error.message.includes("unavailable"),
-      );
+        readInstalledMemory(fixture.client, binding, "project", query.workspace.path).then(
+          (data) => ({
+            data,
+          }),
+        ),
+      ).rejects.toMatchObject({ data: { type: "plugin_disabled" } });
       await fixture.client.plugins.setEnablement({
         installationId: installation.id,
         enabled: true,
@@ -264,12 +270,13 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: plugins", () => {
         (tools) => tools.some((tool) => tool.name === "search_memory"),
       );
       withdrawn = false;
-      expect(await readInstalledMemory(fixture.client, "project", workspace.path)).toContainEqual(
-        created,
-      );
+      expect(
+        await readInstalledMemory(fixture.client, binding, "project", workspace.path),
+      ).toContainEqual(created);
     } finally {
       if (withdrawn) await fixture.activateManagedOwner("memory");
-      if (created) await deleteInstalledMemory(fixture.client, created.id, created.revision);
+      if (created)
+        await deleteInstalledMemory(fixture.client, binding, created.id, created.revision);
       await fixture.client.plugins.uninstall(installation.id);
       fixture.managedOwners.delete("memory");
     }
