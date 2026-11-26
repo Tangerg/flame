@@ -749,7 +749,8 @@ picker owns only presentation: feedback sits outside options, recovery stays in 
 bounded footer, an arriving preferred group respects later explicit browsing,
 and the complete popup fits the available height. Composer gives model labels the
 row width in single-provider Recent and search. With multiple available providers,
-Recent and search include their source captions. The model and panel search
+Recent and search include their source captions. A caption flows onto its
+own line when it would crowd the model name. The model and panel search
 fields render the combobox's current input method text. Filtering uses the
 query after the composition commits.
 

@@ -979,8 +979,58 @@ are removed.
 
 The production search at 18 px also shows that both long mixed-catalog
 rows still clip before their distinguishing suffixes when their
-source captions are present. The next visual check follows that
-choice through the model selector with the Dock open.
+source captions are present. [Long mixed model labels](#long-mixed-model-labels-stay-readable-2026-11-27)
+follows that choice through the model selector with the Dock open.
+
+### Long mixed model labels stay readable (2026-11-27)
+
+At `5b1b2737b`, the signed desktop shows two matching
+`catalog-release-gateway…` rows beside `Openai-compatible` when
+`release` is committed. The actual IDs end in `-audit` and
+`-build`. This is visible at 1280 × 800 with Files open, dark
+mode, an 18 px interface and the Blue accent.
+
+`ui/atoms/catalog-picker.tsx` lets captioned rows collect their label
+and provider on separate flex lines when the pair needs more room.
+The names and captions fit the row's inline size and share the menu
+surface's existing long-word wrapping. Short pairs share a line.
+Rows without a rendered caption use the existing compact label.
+Better Layout and Better Typography inform this choice. [CSS flex line collection](https://www.w3.org/TR/css-flexbox-1/#algo-line-break)
+
+- With the same English appearance and window size, the signed
+  candidate shows both complete names above their readable provider
+  captions. The existing Files Dock displays README throughout.
+  Pointer opens the selector, native composition commits `release`,
+  and Return applies the exact Audit variant.
+- In the longer `catalog` search, Down highlights the wrapped Build
+  row at y=385. Wheel moves it out of view to y=1227. The first
+  Return reveals it at y=389 while Audit stays selected. A fresh
+  Return applies Build and focus returns to its trigger.
+- Recent places `GPT-4.1` beside its `OpenAI` caption on one line.
+  It shows both long model names with `Openai-compatible` below.
+  An initial driver probe aimed at GPT-3.5-turbo using its reported
+  AX rectangle and landed on GPT-4.1. The recent review uses the
+  actual selection. At 1120 × 728 in Chinese, light mode, 14 px
+  and Flame, a pointer click on the visible Audit caption applies
+  that exact model.
+- The Chinese narrow window also shows one unbroken model ID across
+  two readable lines with its full source below. Two Escapes clear
+  the query and return to the current model trigger. The Composer
+  retains `2468` and the Files Dock retains the README row.
+
+Web typecheck, 81 contract tests, bootstrap, scoped Prettier and diff
+checks pass with npm 11.21.1. Production staging, Runtime packaging and
+the signed Wails build pass. Runtime admits 35 loopback models and
+42 OpenAI preset models. The complete Session snapshot is equal and
+there are zero Runs. The provider serves seven catalog reads and zero
+generation requests. The host exits normally and the private Runtime
+reaches its existing drain deadline. The app registration, processes,
+listeners, profiles, captures, logs, caches and checkout outputs are
+removed.
+
+The flow keeps the real Files Dock visible during a model choice.
+Return to file inspection for the next review of identity, width and
+the path back to the conversation.
 
 ## Error notes leave retrying to their buttons (2026-11-26)
 
