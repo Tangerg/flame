@@ -19,7 +19,7 @@ const fixturePluginCommand = "./bin/mcp-fixture"
 
 func preparePluginFixture(executable string) error {
 	_, file, _, _ := goruntime.Caller(0)
-	command := exec.Command(filepath.Join(goruntime.GOROOT(), "bin", "go"), "build", "-trimpath", "-o", filepath.Join(filepath.Dir(executable), "mcp-fixture"), "./testdata/mcp-fixture")
+	command := exec.Command(filepath.Join(goruntime.GOROOT(), "bin", "go"), "build", "-trimpath", "-ldflags=-s -w", "-o", filepath.Join(filepath.Dir(executable), "mcp-fixture"), "./testdata/mcp-fixture")
 	command.Dir = filepath.Join(filepath.Dir(file), "../..")
 	command.Stdout, command.Stderr = os.Stdout, os.Stderr
 	return command.Run()

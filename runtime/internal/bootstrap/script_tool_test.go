@@ -60,7 +60,8 @@ return reads.map((read) => read.status === "fulfilled" ? read.value.content.trim
 		message := chat.NewAssistantMessage(chat.NewToolCallPart(call))
 		return &chat.Response{Output: &chat.Output{Message: &message, FinishReason: chat.FinishReasonToolCalls}}, nil
 	})}
-	_, api, ctx, home := newSessionStateE2ERuntime(t, model)
+	_, runtime, ctx, home := newSessionStateE2ERuntime(t, model)
+	api := runtime.api
 	for name, text := range map[string]string{"alpha.txt": "first secret line", "beta.txt": "second secret"} {
 		if err := os.WriteFile(filepath.Join(home, name), []byte(text), 0o600); err != nil {
 			t.Fatal(err)
