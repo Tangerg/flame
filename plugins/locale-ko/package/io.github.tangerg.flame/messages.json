@@ -456,7 +456,6 @@
   "question.action.skipSubmit": "건너뛰고 제출",
   "question.action.advance": "다음",
   "question.action.submit": "답변 제출",
-  "question.settled.asked": "질문함",
   "question.settled.question_other": "질문 {{count}}개",
   "question.settled.noAnswer": "답변 없음",
   "question.settled.dismissed": "답변 없이 종료됨",

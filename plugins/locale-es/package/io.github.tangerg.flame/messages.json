@@ -468,7 +468,6 @@
   "question.action.skipSubmit": "Omitir y enviar",
   "question.action.advance": "Siguiente",
   "question.action.submit": "Enviar respuestas",
-  "question.settled.asked": "Preguntó",
   "question.settled.question_one": "{{count}} pregunta",
   "question.settled.question_many": "{{count}} de preguntas",
   "question.settled.question_other": "{{count}} preguntas",

@@ -456,7 +456,6 @@
   "question.action.skipSubmit": "スキップして送信",
   "question.action.advance": "次へ",
   "question.action.submit": "回答を送信",
-  "question.settled.asked": "質問済み",
   "question.settled.question_other": "{{count}} 件の質問",
   "question.settled.noAnswer": "回答なし",
   "question.settled.dismissed": "未回答のまま終了",

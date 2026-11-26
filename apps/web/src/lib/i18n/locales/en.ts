@@ -531,7 +531,6 @@ export const en = {
   "question.action.skipSubmit": "Skip and submit",
   "question.action.advance": "Next",
   "question.action.submit": "Submit answers",
-  "question.settled.asked": "Asked",
   "question.settled.question_one": "{{count}} question",
   "question.settled.question_other": "{{count}} questions",
   "question.settled.noAnswer": "No answer provided",

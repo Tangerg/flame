@@ -462,7 +462,6 @@
   "question.action.skipSubmit": "Überspringen und senden",
   "question.action.advance": "Weiter",
   "question.action.submit": "Antworten senden",
-  "question.settled.asked": "Gefragt",
   "question.settled.question_one": "{{count}} Frage",
   "question.settled.question_other": "{{count}} Fragen",
   "question.settled.noAnswer": "Keine Antwort angegeben",

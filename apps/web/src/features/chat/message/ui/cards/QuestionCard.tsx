@@ -47,12 +47,7 @@ const qc = stylex.create({
   },
   reading: { minHeight: 0, overflowY: "auto", overscrollBehavior: "contain" },
   askBody: { paddingTop: space.s1, paddingBottom: space.s0_5 },
-  settledLine: {
-    display: "flex",
-    minWidth: 0,
-    alignItems: "center",
-    gap: space.s1,
-  },
+  settledLine: { display: "block", minWidth: 0 },
   settledList: { display: "flex", flexDirection: "column", gap: space.s3 },
   settledItem: { display: "flex", flexDirection: "column", gap: space.s1 },
   settledAsk: {
@@ -171,17 +166,10 @@ function SettledQuestions({
       open={open}
       onOpenChange={onOpenChange}
       label={
-        <span {...stylex.props(qc.settledLine, vocab.truncate)}>
-          {answers ? (
-            <>
-              <span {...stylex.props(vocab.muted)}>{t("question.settled.asked")}</span>
-              <span {...stylex.props(vocab.faint)}>
-                {t("question.settled.question", { count: questions.length })}
-              </span>
-            </>
-          ) : (
-            <span {...stylex.props(vocab.muted)}>{t("question.settled.dismissed")}</span>
-          )}
+        <span {...stylex.props(qc.settledLine, vocab.truncate, vocab.muted)}>
+          {answers
+            ? t("question.settled.question", { count: questions.length })
+            : t("question.settled.dismissed")}
         </span>
       }
       contentClassName={stylex.props(qc.askBody).className}
