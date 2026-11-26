@@ -25,7 +25,7 @@ interface Props extends ViewHeaderProps {
   scrollLabel?: string;
   onScrollKeyDown?: KeyboardEventHandler<HTMLDivElement>;
   onScrollCopy?: ClipboardEventHandler<HTMLDivElement>;
-  notice?: ReactNode;
+  beforeScroll?: ReactNode;
   children: ReactNode;
 }
 
@@ -35,14 +35,14 @@ export function WorkspaceViewLayout({
   scrollLabel,
   onScrollKeyDown,
   onScrollCopy,
-  notice,
+  beforeScroll,
   children,
   ...header
 }: Props) {
   return (
     <AgentWorkspaceView>
       <ViewHeader {...header} />
-      {notice}
+      {beforeScroll}
       <ScrollArea
         ref={scrollRef}
         tabIndex={scrollLabel ? 0 : undefined}
