@@ -9,7 +9,12 @@ export const fr: Record<string, string> = {
   "status.reading": "Lecture de l’utilisation…",
   "read.failed": "Le rapport n’a pas pu être lu.",
   "status.error": "Le rapport actuel n’a pas pu être lu : {{error}}",
-  "status.stale": "Affichage de {{period}} depuis la dernière lecture réussie.",
+  "status.stale.all":
+    "Affichage de toute la période depuis la dernière lecture réussie.",
+  "status.stale.30":
+    "Affichage des 30 derniers jours depuis la dernière lecture réussie.",
+  "status.stale.7":
+    "Affichage des 7 derniers jours depuis la dernière lecture réussie.",
   "status.loaded": "Utilisation enregistrée chargée. {{period}}.",
   "controls.label": "Contrôles d’utilisation",
   "filter.label": "Filtrer les sources",

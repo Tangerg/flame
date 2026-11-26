@@ -9,7 +9,11 @@ export const es: Record<string, string> = {
   "status.reading": "Leyendo el uso…",
   "read.failed": "No se pudo leer el informe.",
   "status.error": "No se pudo leer el informe actual: {{error}}",
-  "status.stale": "Mostrando {{period}} de la última lectura correcta.",
+  "status.stale.all": "Mostrando todo el tiempo de la última lectura correcta.",
+  "status.stale.30":
+    "Mostrando los últimos 30 días de la última lectura correcta.",
+  "status.stale.7":
+    "Mostrando los últimos 7 días de la última lectura correcta.",
   "status.loaded": "Uso registrado cargado. {{period}}.",
   "controls.label": "Controles de uso",
   "filter.label": "Filtrar fuentes",

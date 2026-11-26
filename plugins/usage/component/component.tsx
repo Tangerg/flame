@@ -397,11 +397,7 @@ export function Usage({ context }: { context: ComponentContext }) {
           {read.accepted &&
             (read.loading || read.error || read.accepted.period !== period) && (
               <Metadata role="status">
-                {t("status.stale", {
-                  period: t(
-                    `period.${read.accepted.period.value}`,
-                  ).toLocaleLowerCase(),
-                })}
+                {t(`status.stale.${read.accepted.period.value}`)}
               </Metadata>
             )}
         </>
