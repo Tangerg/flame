@@ -380,7 +380,7 @@
   "renderer.unavailable": "Ausgewählte Darstellung nicht verfügbar",
   "settings.font.default": "Standard",
   "settings.font.defaultUi": "Standard (System)",
-  "settings.font.defaultMono": "Standard (System, monospace)",
+  "settings.font.defaultMono": "Standard (System-Mono)",
   "settings.customColors": "Eigene Farben",
   "settings.color.bg": "Hintergrund",
   "settings.color.fg": "Vordergrund",
