@@ -9,7 +9,7 @@ export const ko: Record<string, string> = {
   "mcp.delete": "삭제",
   "mcp.delete.title": "이 서버를 삭제할까요?",
   "mcp.delete.body":
-    "“{{server}}”과 그 도구가 제거됩니다. 나중에 다시 추가할 수 있습니다.",
+    "“{{server}}”와(과) 그 도구가 제거됩니다. 나중에 다시 추가할 수 있습니다.",
   "mcp.test": "테스트",
   "mcp.testing": "테스트 중…",
   "mcp.connectionOk": "연결 정상",
@@ -104,13 +104,13 @@ export const ko: Record<string, string> = {
   "mcp.form.headers.invalid":
     "값이 문자열인 비어 있지 않은 JSON 객체를 입력하세요.",
   "mcp.import.invalidName":
-    "서버 이름 “{{server}}”이 Runtime 이름 규칙에 맞지 않습니다. 키를 수정하고 다시 시도하세요.",
+    "서버 이름 “{{server}}”이(가) Runtime 이름 규칙에 맞지 않습니다. 키를 수정하고 다시 시도하세요.",
   "mcp.import.missingTransport":
     "서버 “{{server}}”에 명령 또는 URL 중 하나만 지정하세요.",
   "mcp.import.unsupportedTransport":
     "서버 “{{server}}”의 “type”은 지원되지 않습니다. “stdio” 또는 “streamableHttp”를 사용하세요.",
   "mcp.import.headerConflict":
-    "서버 “{{server}}”에 “{{header}}”이 중복 선언되어 있습니다. 하나만 남겨 두세요.",
+    "서버 “{{server}}”에 “{{header}}”이(가) 중복 선언되어 있습니다. 하나만 남겨 두세요.",
   title: "MCP 서버",
   retry: "다시 시도",
   refresh: "새로 고침",
