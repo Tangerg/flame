@@ -1129,9 +1129,56 @@ reach their existing drain deadline. Owned app registration,
 processes, listeners, profiles, fixtures, captures, observer, logs,
 caches and checkout outputs are removed.
 
-The next review traces the measured-height change while the file
-reader is open and checks how the exact row is brought back into
-view after resizing.
+[Files reveals the row after a height change](#files-reveals-the-row-after-a-height-change-2026-11-27)
+traces the oversized movement while the reader is open.
+
+### Files reveals the row after a height change (2026-11-27)
+
+In signed Wails at `c05b9cbd5`, the long north row starts at
+native y=499 in a 1120 × 840 English/dark/18 px/Blue window and
+320 px Files Dock. The live tree viewport shrinks from 791 to
+679 px while the reader is open. Its 316 px content width and
+scrollTop 474 stay fixed. Before Back, the DOM row moves from
+y=500 to y=878 and virtual content height changes from 2432 to
+2560 px. The default list layout clears measured row sizes on any
+size change. The first reveal uses the estimates, then real rows
+remeasure and the focus position settles at native y=189.
+
+`FileTree.tsx` specializes the public vertical ListLayout cache
+invalidation hook. A height-only update retains the measured rows
+while the base layout recomputes the visible range. Width and
+layout option changes follow the original invalidation policy.
+The exact focus-return path reveals the row against the measured
+viewport.
+
+- A private candidate trace holds row y=500 and content height
+  2432 across the same shrink. Back moves scrollTop 474 to 518,
+  bringing the row from native y=499 to y=455 with its full
+  height and exact file focus.
+- After rebasing onto `c35d4a953`, the regular signed Wails build
+  and fresh Runtime `2026-11-27.1` reproduce y=499 to y=455
+  against the measured edge. Opening by pointer and clicking Back
+  at the same size keep y=455. Widening the Dock to 441 px while
+  reading remeasures the wrapped row from 272 to 166 px.
+- At 1280 × 840 in Chinese, light mode, 14 px and Flame, shrinking
+  to 728 px returns the same row from y=632 to the measured
+  nearest edge at y=557. The traced candidate also changes the
+  font from 18 to 14 px during reading, then returns focus to
+  the same row at its measured 169 px height.
+
+Web typecheck, 82 contract tests, bootstrap, scoped Prettier and
+diff checks pass under npm 11.21.1. Production staging, Runtime
+packaging and signed builds pass. The complete Session, draft
+`2468` and all 50 private file digests match. Runtime records zero
+Runs. The isolated provider serves 23 catalog reads and zero
+generation requests. All Wails hosts exit normally. Both private
+Runtime processes reach their existing drain deadline. The owned
+app registration, processes, listeners, profiles, captures,
+observer, logs, caches and checkout outputs are removed.
+
+During the font test, Settings temporarily widens the retained
+tree and the Dock narrows again on close. Check the same visit
+with an unchanged appearance to isolate its effect on tree position.
 
 ## Error notes leave retrying to their buttons (2026-11-26)
 
