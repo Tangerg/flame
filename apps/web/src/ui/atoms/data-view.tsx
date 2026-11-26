@@ -23,7 +23,7 @@ interface Props<T> {
   loadingLabel?: string;
   empty?: EmptyConfig;
   unsupported?: UnsupportedConfig;
-  error?: Omit<EmptyConfig, "icon"> & { retryLabel?: string };
+  error?: Partial<Omit<EmptyConfig, "icon">> & { retryLabel?: string };
   focusTarget?: RefObject<HTMLElement | null>;
   onRetry?: () => void;
   children: (items: T[]) => ReactNode;

@@ -121,6 +121,7 @@ export function RulesRow() {
             title: t("approvals.rules.empty"),
             align: "start",
           }}
+          error={{ align: "start" }}
         >
           {(rows) => (
             <div {...stylex.props(r.list)}>
