@@ -164,6 +164,35 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: protocol delivery", () => {
     }
   });
 
+  it.each(["abort", "return"] as const)(
+    "stops buffered events after subscriber %s",
+    async (stop) => {
+      const request: RuntimeSubscribeRequest = { topics: ["sessions.changed"] };
+      const departing = new AbortController();
+      const observing = new AbortController();
+      try {
+        const buffered = await fixture.client.runtimeEvents.subscribe(request, departing.signal);
+        const witness = await fixture.client.runtimeEvents.subscribe(request, observing.signal);
+        const events = buffered.events[Symbol.asyncIterator]();
+        const session = await fixture.client.sessions.create({
+          title: "event pending for two observers",
+        });
+        await collectSessionRuntimeEvents(
+          witness.events[Symbol.asyncIterator](),
+          request.topics,
+          session.id,
+        );
+
+        if (stop === "abort") departing.abort();
+        else await events.return?.();
+        await expect(events.next()).resolves.toEqual({ done: true, value: undefined });
+      } finally {
+        departing.abort();
+        observing.abort();
+      }
+    },
+  );
+
   it("converges unary mutations across pre-admission and post-commit disconnects", async () => {
     const requestMeta = (): RequestMeta => ({
       protocolVersion: PROTOCOL_VERSION,

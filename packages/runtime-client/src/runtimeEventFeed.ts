@@ -40,9 +40,9 @@ class Subscriber {
         ? Promise.race([acknowledgement, this.#cancellation.promise])
         : acknowledgement);
       this.signal?.throwIfAborted();
-      return { result, events: iterableOf(this.#channel, this.#detach) };
+      return { result, events: iterableOf(this.#channel, this.#detach, this.signal) };
     } catch (error) {
-      this.#close();
+      this.#cancel();
       throw error;
     }
   }
@@ -54,11 +54,11 @@ class Subscriber {
 
   #abort = () => {
     this.#cancellation?.reject(this.signal?.reason);
-    this.#close();
+    this.#cancel();
   };
 
-  #close(): void {
-    this.#channel.close();
+  #cancel(): void {
+    this.#channel.cancel();
     this.#detach();
   }
 

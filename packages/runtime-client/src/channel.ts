@@ -3,6 +3,7 @@ export interface PushPullChannel<T> {
   push(value: T): void;
   send(value: T): Promise<boolean>;
   close(): void;
+  cancel(): void;
   fail(error: unknown): void;
   readonly closed: boolean;
   iterator(): AsyncIterableIterator<T>;
@@ -11,6 +12,8 @@ export interface PushPullChannel<T> {
 export type PushPullChannelOptions = {
   capacity: number | "unbounded";
 };
+
+type ChannelTermination = { kind: "closed" | "canceled" } | { kind: "failed"; error: unknown };
 
 export function createPushPullChannel<T>(options: PushPullChannelOptions): PushPullChannel<T> {
   const capacity = options.capacity === "unbounded" ? Number.POSITIVE_INFINITY : options.capacity;
@@ -27,12 +30,10 @@ export function createPushPullChannel<T>(options: PushPullChannelOptions): PushP
     resolve: (accepted: boolean) => void;
     reject: (error: unknown) => void;
   }> = [];
-  let isClosed = false;
-  let failure: unknown;
-  let failed = false;
+  let state: { kind: "open" } | ChannelTermination = { kind: "open" };
 
   function tryPush(value: T): boolean {
-    if (isClosed) return false;
+    if (state.kind !== "open") return false;
     const waiter = waiters.shift();
     if (waiter) {
       waiter.resolve({ value, done: false });
@@ -45,12 +46,12 @@ export function createPushPullChannel<T>(options: PushPullChannelOptions): PushP
   }
 
   function push(value: T): void {
-    if (tryPush(value) || isClosed) return;
+    if (tryPush(value) || state.kind !== "open") return;
     throw new Error("bounded channel is full; use send() to apply producer backpressure");
   }
 
   function send(value: T): Promise<boolean> {
-    if (isClosed) return Promise.resolve(false);
+    if (state.kind !== "open") return Promise.resolve(false);
     const waiter = waiters.shift();
     if (waiter) {
       waiter.resolve({ value, done: false });
@@ -66,39 +67,40 @@ export function createPushPullChannel<T>(options: PushPullChannelOptions): PushP
   }
 
   function refillBuffer(): void {
-    while (!isClosed && producers.length > 0 && buffer.length < capacity) {
+    while (state.kind === "open" && producers.length > 0 && buffer.length < capacity) {
       const producer = producers.shift()!;
       buffer.push(producer.value);
       producer.resolve(true);
     }
   }
 
-  function close(): void {
-    if (isClosed) return;
-    isClosed = true;
+  function terminate(outcome: ChannelTermination): void {
+    const wasOpen = state.kind === "open";
+    if (outcome.kind === "canceled") buffer.length = 0;
+    else if (!wasOpen) return;
+
+    state = outcome;
+    if (!wasOpen) return;
+    if (outcome.kind === "failed") {
+      for (const producer of producers.splice(0)) producer.reject(outcome.error);
+      for (const waiter of waiters.splice(0)) waiter.reject(outcome.error);
+      return;
+    }
     for (const producer of producers.splice(0)) producer.resolve(false);
     for (const waiter of waiters.splice(0)) {
       waiter.resolve({ value: undefined as never, done: true });
     }
   }
 
-  function fail(error: unknown): void {
-    if (isClosed) return;
-    isClosed = true;
-    failed = true;
-    failure = error;
-    for (const producer of producers.splice(0)) producer.reject(error);
-    for (const waiter of waiters.splice(0)) waiter.reject(error);
-  }
-
   return {
     tryPush,
     push,
     send,
-    close,
-    fail,
+    close: () => terminate({ kind: "closed" }),
+    cancel: () => terminate({ kind: "canceled" }),
+    fail: (error) => terminate({ kind: "failed", error }),
     get closed() {
-      return isClosed;
+      return state.kind !== "open";
     },
     iterator(): AsyncIterableIterator<T> {
       return {
@@ -116,14 +118,14 @@ export function createPushPullChannel<T>(options: PushPullChannelOptions): PushP
             producer.resolve(true);
             return { value: producer.value, done: false };
           }
-          if (failed) throw failure;
-          if (isClosed) return { value: undefined as never, done: true };
+          if (state.kind === "failed") throw state.error;
+          if (state.kind !== "open") return { value: undefined as never, done: true };
           return new Promise<IteratorResult<T>>((resolve, reject) => {
             waiters.push({ resolve, reject });
           });
         },
         async return(): Promise<IteratorResult<T>> {
-          close();
+          terminate({ kind: "canceled" });
           return { value: undefined as never, done: true };
         },
       };
