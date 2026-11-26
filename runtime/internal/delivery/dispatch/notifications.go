@@ -1,8 +1,6 @@
 package dispatch
 
 import (
-	"context"
-
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/go-sdk/jsonrpc"
 )
@@ -24,8 +22,6 @@ func encodeRuntimeEvent(event protocol.RuntimeEvent) (jsonrpc.Message, error) {
 		Event: event,
 	})
 }
-
-func (r *Router) handleNotification(context.Context, *jsonrpc.Request) {}
 
 func runEventToFrame(event protocol.RunEvent) (StreamFrame, bool) {
 	notification, err := encodeRunEvent(event)

@@ -313,9 +313,8 @@ export function useRuntimeFixture(
       }),
     });
 
-  const postRPC = (
-    method: WireMethodName,
-    params: unknown,
+  const postRPCDocument = (
+    body: string,
     headers: Record<string, string> = {},
   ): Promise<Response> => {
     const endpoint = HTTP_ENDPOINTS.rpc;
@@ -326,9 +325,15 @@ export function useRuntimeFixture(
         [HTTP_HEADERS.contentType]: RPC_HTTP.documentMediaType,
         ...headers,
       },
-      body: JSON.stringify({ jsonrpc: JSONRPC_VERSION, id: method, method, params }),
+      body,
     });
   };
+
+  const postRPC = (method: WireMethodName, params: unknown, headers?: Record<string, string>) =>
+    postRPCDocument(
+      JSON.stringify({ jsonrpc: JSONRPC_VERSION, id: method, method, params }),
+      headers,
+    );
 
   const createSharedClient = () =>
     createFlameClient(createHttpTransport({ baseUrl }), {
@@ -465,6 +470,7 @@ export function useRuntimeFixture(
     killRuntimeProcess,
     createRuntimeClient,
     postRPC,
+    postRPCDocument,
     createSharedClient,
     startCLI,
   };

@@ -3,7 +3,6 @@ package dispatch
 import (
 	"context"
 	"errors"
-	"fmt"
 	"iter"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
@@ -27,35 +26,17 @@ type Result struct {
 	EventStream iter.Seq[StreamFrame]
 }
 
-func (r *Router) Dispatch(ctx context.Context, message jsonrpc.Message, options protocol.CallMetadata) Result {
-	request, ok := message.(*jsonrpc.Request)
-	if !ok || request == nil {
-		return responseError(jsonrpc.ID{}, badEnvelope("expected a JSON-RPC request"))
+func (r *Router) Dispatch(ctx context.Context, request *jsonrpc.Request, options protocol.CallMetadata) Result {
+	if !request.IsCall() {
+		return Result{}
 	}
-	if request.ID.IsValid() {
-		if _, ok := request.ID.Raw().(string); !ok {
-			return responseError(request.ID, badEnvelope(
-				fmt.Sprintf("id must be a JSON string, got %T", request.ID.Raw())))
-		}
-	}
-
-	requestCopy := *request
-	request = &requestCopy
-	metadata, metadataError := extractRequestMeta(request)
+	parameters, metadata, metadataError := splitRequestMetadata(request.Params)
 	if metadataError != nil {
-		if !request.IsCall() {
-			return Result{}
-		}
 		return responseError(request.ID, metadataError)
 	}
 	options.RequestMeta = metadata
-
-	if !request.IsCall() {
-		r.handleNotification(ctx, request)
-		return Result{}
-	}
 	name := delivery.Name(request.Method)
-	return adaptResult(request.ID, r.endpoint.InvokeWire(ctx, name, request.Params, options))
+	return adaptResult(request.ID, r.endpoint.InvokeWire(ctx, name, parameters, options))
 }
 
 func adaptResult(id jsonrpc.ID, result protocol.OperationResult) Result {

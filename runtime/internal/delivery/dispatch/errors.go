@@ -118,10 +118,6 @@ func invalidParams(reason string) *jsonrpc.Error {
 	return problemError(protocol.ErrInvalidParams, reason)
 }
 
-func badEnvelope(detail string) *jsonrpc.Error {
-	return problemError(protocol.ErrInvalidRequest, detail)
-}
-
 func mustRPCCodeSpecs(specs []rpcCodeSpec) []rpcCodeSpec {
 	types := make(map[string]bool, len(specs))
 	codes := make(map[int]bool, len(specs))

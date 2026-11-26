@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   createFlameClient,
   type FlameClient,
+  JSONRPC_VERSION,
   RpcError,
   asRunId,
   asSegmentId,
@@ -29,6 +30,40 @@ import { MemoryMutationStorage } from "./mutationStorage";
 
 describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: protocol delivery", () => {
   const fixture = useRuntimeFixture("protocol");
+
+  it("keeps incoming notifications and ambiguous envelopes out of command delivery", async () => {
+    const sessionIds = async () =>
+      (await fixture.client.sessions.list().autoPagingToArray()).map(({ id }) => id).sort();
+    const existing = await sessionIds();
+    const method = "sessions.create";
+    const title = "No session from this envelope";
+    const noContent = 204;
+    const badRequest = 400;
+    for (const params of [{ title }, { title, _meta: false }]) {
+      const notification = JSON.stringify({ jsonrpc: JSONRPC_VERSION, method, params });
+      const response = await fixture.postRPCDocument(notification);
+      expect(response.status).toBe(noContent);
+      await expect(response.text()).resolves.toBe("");
+    }
+
+    const call = JSON.stringify({
+      jsonrpc: JSONRPC_VERSION,
+      id: method,
+      method,
+      params: { title },
+    });
+    const duplicateTitle = call.replace('"title":', '"title":"First value","title":');
+    for (const ambiguous of [
+      duplicateTitle,
+      `${call} {}`,
+      call.replace(`"id":"${method}"`, '"id":null'),
+    ]) {
+      const response = await fixture.postRPCDocument(ambiguous);
+      expect(response.status).toBe(badRequest);
+      await expect(response.json()).resolves.toMatchObject({ status: badRequest });
+    }
+    await expect(sessionIds()).resolves.toEqual(existing);
+  });
 
   it("validates discovery, streaming notifications and session lifecycle", async () => {
     const sidecar = createSidecarClient({ baseUrl: fixture.baseUrl });

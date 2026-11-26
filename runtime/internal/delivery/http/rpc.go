@@ -74,7 +74,7 @@ func (s *rpcHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		IdempotencyNamespace: r.Header.Get(headerIdempotencyNamespace),
 		AfterEventID:         r.Header.Get(headerLastEventID),
 	}
-	result := s.router.Dispatch(r.Context(), message, options)
+	result := s.router.Dispatch(r.Context(), request, options)
 	methodLabel := request.Method
 
 	if result.Response == nil {
