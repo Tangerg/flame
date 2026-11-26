@@ -1,80 +1,69 @@
 package skillauthoring
 
 import (
-	"crypto/rand"
-	"crypto/sha256"
-	"encoding/hex"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"errors"
-	"io/fs"
+	"fmt"
 	"os"
-	"path/filepath"
 
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
-	"github.com/Tangerg/flame/runtime/internal/domain/skills"
 )
 
+type publicationState string
+
 const (
-	publishedMarker = "published"
-	refusedMarker   = "refused"
+	publicationPrepared  publicationState = "prepared"
+	publicationPublished publicationState = "published"
+	publicationRefused   publicationState = "refused"
 )
+
+type publicationProof struct {
+	FileID   string `json:"fileId"`
+	Revision string `json:"revision"`
+}
+
+type publicationRecord struct {
+	Binding string            `json:"binding"`
+	State   publicationState  `json:"state"`
+	Proof   *publicationProof `json:"proof,omitzero"`
+}
+
+func (r publicationRecord) validate() error {
+	switch r.State {
+	case publicationPrepared:
+		if r.Binding != "" && r.Proof != nil && r.Proof.FileID != "" && r.Proof.Revision != "" {
+			return nil
+		}
+	case publicationPublished, publicationRefused:
+		if r.Binding != "" && r.Proof == nil {
+			return nil
+		}
+	}
+	return errors.New("skill publication: invalid retained publication record")
+}
 
 type publicationReceipt struct {
 	root   *os.Root
 	permit string
 }
 
-func (r publicationReceipt) mark(marker string) error {
-	err := r.root.Mkdir(filepath.Join(r.permit, marker), filesystem.PrivateDirectoryMode)
-	if errors.Is(err, fs.ErrExist) {
-		return nil
+func (r publicationReceipt) load() (publicationRecord, bool, error) {
+	var record publicationRecord
+	data, found, err := readBoundedFile(r.root, r.permit)
+	if err != nil || !found {
+		return record, found, err
 	}
-	return err
+	if err := json.Unmarshal(data, &record, json.RejectUnknownMembers(true)); err != nil {
+		return publicationRecord{}, false, fmt.Errorf("skill publication: decode receipt: %w", err)
+	}
+	return record, true, record.validate()
 }
 
-func (r publicationReceipt) has(marker string) (bool, error) {
-	_, err := r.root.Stat(filepath.Join(r.permit, marker))
-	if errors.Is(err, fs.ErrNotExist) {
-		return false, nil
+func (r publicationReceipt) save(record publicationRecord) error {
+	data, err := json.Marshal(record, jsontext.WithIndent("  "), json.Deterministic(true))
+	if err != nil {
+		return fmt.Errorf("skill publication: encode receipt: %w", err)
 	}
-	return err == nil, err
-}
-
-func (r publicationReceipt) claim(p publication) (bool, error) {
-	hash := sha256.New()
-	for _, part := range []string{p.store.root, p.name, p.previous} {
-		hash.Write([]byte(part))
-		hash.Write([]byte{0})
-	}
-	hash.Write(p.content)
-	fingerprint := hex.EncodeToString(hash.Sum(nil))
-	if found, err := r.has(fingerprint); found || err != nil {
-		return false, err
-	}
-	if _, err := r.root.Stat(r.permit); err == nil {
-		return false, skills.ErrProposalChanged
-	} else if !errors.Is(err, fs.ErrNotExist) {
-		return false, err
-	}
-	tmp := ".claim-" + rand.Text()
-	if err := r.root.Mkdir(tmp, filesystem.PrivateDirectoryMode); err != nil {
-		return false, err
-	}
-	defer r.root.RemoveAll(tmp)
-	if err := r.root.Mkdir(filepath.Join(tmp, fingerprint), filesystem.PrivateDirectoryMode); err != nil {
-		return false, err
-	}
-	if err := r.root.Rename(tmp, r.permit); err != nil {
-		return false, err
-	}
-	return true, nil
-}
-
-func (r publicationReceipt) settle(publishErr error) error {
-	if publishErr == nil {
-		return r.mark(publishedMarker)
-	}
-	if errors.Is(publishErr, skills.ErrConflict) || errors.Is(publishErr, skills.ErrProposalChanged) || errors.Is(publishErr, skills.ErrLibraryCapacity) {
-		return errors.Join(publishErr, r.mark(refusedMarker))
-	}
-	return publishErr
+	return replaceFile(r.root, r.permit, data, filesystem.PrivateFileMode)
 }

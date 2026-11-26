@@ -329,7 +329,7 @@ func (s *SkillGovernance) ApproveProposal(ctx context.Context, root string, ref 
 		return nil, err
 	}
 	changed, publishErr := s.publishApproved(ctx, root, doc, record, permit.Decision)
-	if publishErr != nil && !publicationRefused(publishErr) {
+	if publishErr != nil && !errors.Is(publishErr, skills.ErrPublicationRefused) {
 		return changed, publishErr
 	}
 	confirm, err := skilllearning.ConfirmMethod()
@@ -366,10 +366,6 @@ func (s *SkillGovernance) publishApproved(ctx context.Context, root string, doc 
 			return publish(ctx)
 		})
 	})
-}
-
-func publicationRefused(err error) bool {
-	return errors.Is(err, skills.ErrProposalChanged) || errors.Is(err, skills.ErrConflict) || errors.Is(err, skills.ErrLibraryCapacity)
 }
 
 func (s *SkillGovernance) changed() {

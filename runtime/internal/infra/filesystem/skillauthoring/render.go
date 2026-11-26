@@ -9,20 +9,16 @@ import (
 	"go.yaml.in/yaml/v3"
 )
 
-func renderProposal(proposal skills.Proposal) ([]byte, error) {
-	frontmatter, err := yaml.Marshal(skillspec.Frontmatter{
-		Name:        proposal.Name,
-		Description: proposal.Description,
-		Metadata:    proposalProvenance(proposal),
-	})
+func renderDocument(header skillspec.Frontmatter, instructions string) ([]byte, error) {
+	frontmatter, err := yaml.Marshal(header)
 	if err != nil {
 		return nil, fmt.Errorf("skillauthoring: render frontmatter: %w", err)
 	}
-	document := []byte("---\n" + string(frontmatter) + "---\n\n" + strings.TrimSpace(proposal.Instructions) + "\n")
+	document := []byte("---\n" + string(frontmatter) + "---\n\n" + strings.TrimSpace(instructions) + "\n")
 	if len(document) > skills.MaxAuthoredSkillDocumentBytes {
 		return nil, fmt.Errorf(
 			"skillauthoring: render proposal %q: %w: %d bytes exceeds %d",
-			proposal.Name,
+			header.Name,
 			skills.ErrDocumentTooLarge,
 			len(document),
 			skills.MaxAuthoredSkillDocumentBytes,
@@ -31,13 +27,10 @@ func renderProposal(proposal skills.Proposal) ([]byte, error) {
 	return document, nil
 }
 
-func proposalProvenance(proposal skills.Proposal) map[string]string {
+func proposalFrontmatter(proposal skills.Proposal) skillspec.Frontmatter {
 	metadata := map[string]string{metadataOrigin: string(proposal.Origin)}
 	if proposal.SourceSession != "" {
 		metadata[metadataSourceSession] = proposal.SourceSession
 	}
-	if proposal.Revises {
-		metadata[metadataRevises] = metadataTrue
-	}
-	return metadata
+	return skillspec.Frontmatter{Name: proposal.Name, Description: proposal.Description, Metadata: metadata}
 }

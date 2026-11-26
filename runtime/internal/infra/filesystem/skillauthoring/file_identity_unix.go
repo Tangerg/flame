@@ -8,9 +8,9 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-func directoryIdentity(directory *os.File) (device, inode uint64, err error) {
+func fileIdentity(file *os.File) (device, inode uint64, err error) {
 	var stat unix.Stat_t
-	if err := unix.Fstat(int(directory.Fd()), &stat); err != nil {
+	if err := unix.Fstat(int(file.Fd()), &stat); err != nil {
 		return 0, 0, err
 	}
 	return uint64(stat.Dev), uint64(stat.Ino), nil

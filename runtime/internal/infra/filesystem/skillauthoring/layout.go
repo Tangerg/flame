@@ -5,6 +5,4 @@ const (
 
 	metadataOrigin        = "origin"
 	metadataSourceSession = "source_session"
-	metadataRevises       = "revises"
-	metadataTrue          = "true"
 )

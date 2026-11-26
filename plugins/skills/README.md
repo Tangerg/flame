@@ -8,7 +8,7 @@ The provider selects a repository Skill ahead of a user Skill and a user Skill a
 
 The review revision exposed to GUI, CLI and Agent is the originating command ID. Its retained input captures the content, provenance, target library, reviewed preimage and provider release. Switching the selected provider starts a separate queue. Previously reviewed work remains actionable while its original release is enabled. Disabling, replacing or uninstalling it prevents its pending commands from publishing. Forking a Session preserves the original proposal and source Session.
 
-An approved command reserves its proposal while the host compares the active file against the captured preimage. The host records physical publication receipts in its private data directory. If it crashes after writing the approved bytes, it can reconcile them under the original permit. If the outcome is unknown and the file has since changed, the host reports that uncertainty and leaves the file in place.
+An approved command reserves its proposal while the host compares the active file against the captured preimage. The host records the staged file's identity in its private data directory before placement. A retry can place that file under the original permit or recognize it at its destination. A revision updates the existing bundle's description and instructions. The bundle owns the remaining frontmatter, resources and lifecycle. If the staged file can no longer establish the outcome, the host reports uncertainty.
 
 ## Learning policy
 

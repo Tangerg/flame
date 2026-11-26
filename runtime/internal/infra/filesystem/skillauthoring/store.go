@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/fs"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -129,26 +128,6 @@ func distinctPaths(paths []string) []string {
 		}
 	}
 	return out
-}
-
-func identitiesIf(changed bool, identities []string) []string {
-	if !changed {
-		return nil
-	}
-	return identities
-}
-
-func removeSkillTree(root *os.Root, directory string) (bool, error) {
-	_, existed, err := readSkill(root, directory)
-	if err != nil {
-		return false, err
-	}
-	removeErr := root.RemoveAll(directory)
-	if removeErr == nil || errors.Is(removeErr, fs.ErrNotExist) {
-		return existed, nil
-	}
-	_, remains, inspectErr := readSkill(root, directory)
-	return existed && !remains, errors.Join(removeErr, inspectErr)
 }
 
 func validateSkill(ctx context.Context, name string, content []byte) error {

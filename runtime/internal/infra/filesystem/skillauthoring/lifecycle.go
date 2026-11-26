@@ -55,9 +55,7 @@ func (s *Store) Move(ctx context.Context, name string, to skills.Lifecycle, rece
 	if err != nil {
 		return changed, err
 	}
-	if _, err := root.Lstat(destination); err == nil {
-		return changed, fmt.Errorf("%w: %q", skills.ErrConflict, destination)
-	} else if !errors.Is(err, fs.ErrNotExist) {
+	if err := requireVacantDirectory(root, destination); err != nil {
 		return changed, err
 	}
 	usage, err := readUsage(ctx, root)
@@ -224,23 +222,25 @@ func clearSkillUsage(ctx context.Context, root *os.Root, usage map[string]usageR
 
 func (s *Store) archiveActive(root *os.Root, name string) ([]string, error) {
 	active, archived := s.movePaths(name, skills.Archived)
-	info, err := root.Lstat(active)
-	if err != nil {
-		return nil, fmt.Errorf("skillauthoring: find active directory for %q: %w", name, err)
-	}
-	if !info.IsDir() {
-		return nil, fmt.Errorf("%w: active Skill %q is not a directory", skills.ErrConflict, name)
+	if err := requireVacantDirectory(root, archived); err != nil {
+		return nil, err
 	}
 	if err := root.MkdirAll(archivedSubdir, filesystem.SharedDirectoryMode); err != nil {
 		return nil, fmt.Errorf("skillauthoring: create archive area: %w", err)
 	}
-	removed, err := removeSkillTree(root, archived)
-	identities := identitiesIf(removed, s.skillIdentities(archived))
-	if err != nil {
-		return identities, fmt.Errorf("skillauthoring: clear archive slot for %q: %w", name, err)
-	}
 	if err := root.Rename(active, archived); err != nil {
-		return identities, fmt.Errorf("skillauthoring: archive %q: %w", name, err)
+		return nil, fmt.Errorf("skillauthoring: archive %q: %w", name, err)
 	}
 	return s.skillIdentities(active, archived), nil
+}
+
+func requireVacantDirectory(root *os.Root, directory string) error {
+	_, err := root.Lstat(directory)
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	return fmt.Errorf("%w: %q", skills.ErrConflict, directory)
 }

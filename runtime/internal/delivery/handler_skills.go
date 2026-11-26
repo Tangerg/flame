@@ -196,7 +196,7 @@ func mapSkillProposalErr(err error) error {
 		return wirePluginError(err)
 	case errors.Is(err, skills.ErrPublicationUnconfirmed):
 		return wirePluginError(errors.Join(plugin.ErrCommandUnconfirmed, err))
-	case errors.Is(err, skills.ErrConflict), errors.Is(err, skills.ErrProposalChanged), errors.Is(err, skills.ErrNotFound):
+	case errors.Is(err, skills.ErrPublicationRefused), errors.Is(err, skills.ErrConflict), errors.Is(err, skills.ErrProposalChanged), errors.Is(err, skills.ErrNotFound):
 		return protocol.NewFailure(protocol.ErrRevisionConflict, fmt.Sprintf("proposal review is stale: %v", err), err)
 	default:
 		return wireWorkspaceError(err)

@@ -13,6 +13,7 @@ import (
 
 var (
 	ErrPublicationUnconfirmed = errors.New("skills: original file publication cannot be confirmed")
+	ErrPublicationRefused     = errors.New("skills: original file publication was refused")
 	ErrUnsafeProposal         = errors.New("skills: dangerous instruction")
 	ErrInvalidName            = errors.New("skills: invalid name")
 	ErrConflict               = errors.New("skills: destination already exists")

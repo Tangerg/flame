@@ -3,6 +3,7 @@ package skillauthoring
 import (
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
@@ -21,8 +22,27 @@ func moveDirectoryID(root *os.Root, path string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	device, inode, err := directoryIdentity(directory)
-	if err := errors.Join(err, directory.Close()); err != nil {
+	return closeWithFileID(directory)
+}
+
+func documentFileID(root *os.Root, path string) (string, error) {
+	info, err := root.Lstat(path)
+	if errors.Is(err, fs.ErrNotExist) || (err == nil && !info.Mode().IsRegular()) {
+		return "", nil
+	}
+	if err != nil {
+		return "", err
+	}
+	file, _, err := filesystem.OpenFileAtExpected(root, path, info, 0)
+	if err != nil {
+		return "", err
+	}
+	return closeWithFileID(file)
+}
+
+func closeWithFileID(file *os.File) (string, error) {
+	device, inode, err := fileIdentity(file)
+	if err := errors.Join(err, file.Close()); err != nil {
 		return "", err
 	}
 	return fmt.Sprintf("%x:%x", device, inode), nil

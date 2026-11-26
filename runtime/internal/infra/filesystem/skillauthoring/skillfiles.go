@@ -1,8 +1,6 @@
 package skillauthoring
 
 import (
-	"bytes"
-	"context"
 	"crypto/rand"
 	"errors"
 	"fmt"
@@ -58,8 +56,8 @@ func readBoundedFile(root *os.Root, path string) ([]byte, bool, error) {
 	return content, true, nil
 }
 
-func writeFile(root *os.Root, path string, content []byte) (err error) {
-	file, err := root.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, filesystem.SharedFileMode)
+func writeFile(root *os.Root, path string, content []byte, mode fs.FileMode) (err error) {
+	file, err := root.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, mode)
 	if err != nil {
 		return fmt.Errorf("skillauthoring: create %q: %w", path, err)
 	}
@@ -67,34 +65,26 @@ func writeFile(root *os.Root, path string, content []byte) (err error) {
 	if _, err := file.Write(content); err != nil {
 		return fmt.Errorf("skillauthoring: write %q: %w", path, err)
 	}
+	if err := file.Chmod(mode); err != nil {
+		return fmt.Errorf("skillauthoring: set permissions for %q: %w", path, err)
+	}
 	if err := file.Sync(); err != nil {
 		return fmt.Errorf("skillauthoring: sync %q: %w", path, err)
 	}
 	return nil
 }
 
-func stageSkill(ctx context.Context, root *os.Root, destination string, content []byte) (err error) {
-	temporary := ".skill-stage-" + rand.Text()
-	if mkdirErr := root.Mkdir(temporary, filesystem.SharedDirectoryMode); mkdirErr != nil {
-		return fmt.Errorf("skillauthoring: create skill staging directory: %w", mkdirErr)
-	}
+const replacementPrefix = ".skill-replace-"
+
+func replaceFile(root *os.Root, destination string, content []byte, mode fs.FileMode) (err error) {
+	temporary := filepath.Join(filepath.Dir(destination), replacementPrefix+rand.Text())
 	defer func() {
-		if cleanupErr := root.RemoveAll(temporary); cleanupErr != nil && !errors.Is(cleanupErr, fs.ErrNotExist) {
-			err = errors.Join(err, fmt.Errorf("skillauthoring: clean skill staging directory: %w", cleanupErr))
+		if cleanupErr := root.Remove(temporary); cleanupErr != nil && !errors.Is(cleanupErr, fs.ErrNotExist) {
+			err = errors.Join(err, cleanupErr)
 		}
 	}()
-	if err := writeFile(root, filepath.Join(temporary, skillspec.SkillFile), content); err != nil {
+	if err := writeFile(root, temporary, content, mode); err != nil {
 		return err
 	}
-	if err := contextError(ctx, "publish skill"); err != nil {
-		return err
-	}
-	if err := root.Rename(temporary, destination); err != nil {
-		existing, found, readErr := readSkill(root, destination)
-		if readErr == nil && found && bytes.Equal(existing, content) {
-			return nil
-		}
-		return fmt.Errorf("skillauthoring: publish skill %q: %w", filepath.Base(destination), errors.Join(err, readErr))
-	}
-	return nil
+	return root.Rename(temporary, destination)
 }

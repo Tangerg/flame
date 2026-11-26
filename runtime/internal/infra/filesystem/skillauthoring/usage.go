@@ -225,7 +225,7 @@ func writeUsage(ctx context.Context, root *os.Root, usage map[string]usageRecord
 	if err := contextError(ctx, "write skill usage"); err != nil {
 		return err
 	}
-	if err := writeFile(root, temporary, data); err != nil {
+	if err := writeFile(root, temporary, data, filesystem.SharedFileMode); err != nil {
 		return err
 	}
 	if err := contextError(ctx, "commit skill usage"); err != nil {

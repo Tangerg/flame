@@ -23,7 +23,18 @@ import (
 )
 
 func TestInstalledSkillLearningUsesAdmittedSkillDocuments(t *testing.T) {
-	const document = "---\nname: run-tests\ndescription: Run the project tests.\n---\nUse the current test command.\n"
+	const document = `---
+name: run-tests
+description: Run the project tests.
+license: MIT
+compatibility: Requires a Go toolchain.
+allowed-tools: Bash(go:*)
+metadata:
+  maintainer: local-team
+---
+Use the current test command.
+`
+	const referenceContents = "Use the workspace CI settings."
 	for _, test := range []struct {
 		name     string
 		prepare  func(string) error
@@ -51,6 +62,13 @@ func TestInstalledSkillLearningUsesAdmittedSkillDocuments(t *testing.T) {
 				t.Fatal(err)
 			}
 			if err := os.WriteFile(path, []byte(document), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			reference := filepath.Join(filepath.Dir(path), "references", "ci.md")
+			if err := os.MkdirAll(filepath.Dir(reference), 0o700); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(reference, []byte(referenceContents), 0o600); err != nil {
 				t.Fatal(err)
 			}
 			if test.prepare != nil {
@@ -130,6 +148,26 @@ func TestInstalledSkillLearningUsesAdmittedSkillDocuments(t *testing.T) {
 			if !strings.Contains(current.Instructions, "Run go test ./...") {
 				t.Fatalf("approved revision = %+v", current)
 			}
+			managed := r.must(delivery.SkillsLibraryList, struct{}{}, "").(*protocol.Page[protocol.ManagedSkill]).Data
+			if len(managed) != 1 || managed[0].Name != proposal.Name || managed[0].Lifecycle != protocol.SkillLifecycleActive {
+				t.Fatalf("revised personal library = %+v", managed)
+			}
+			if contents, err := os.ReadFile(reference); err != nil || string(contents) != referenceContents {
+				t.Fatalf("revised reference = %q, %v", contents, err)
+			}
+			publishedBytes, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			published, err := skillspec.Parse(publishedBytes)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if published.License != "MIT" || published.Compatibility != "Requires a Go toolchain." || published.AllowedTools != "Bash(go:*)" || published.Metadata["maintainer"] != "local-team" || published.Metadata["origin"] != "" {
+				t.Fatalf("revision changed authored frontmatter: %+v", published.Frontmatter)
+			}
+			r.must(delivery.SkillsLibraryArchive, protocol.SkillNameRequest{Name: proposal.Name}, "archive-revised")
+			r.must(delivery.SkillsLibraryRestore, protocol.SkillNameRequest{Name: proposal.Name}, "restore-revised")
 			r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: false}, "disable-learning")
 			for index := range 3 {
 				_ = learning.MaintainSkills(t.Context(), executionadapter.RunMaintenanceInput{SessionID: testsupport.MustSessionID(sessionID), RootMemberID: "member_disabled_" + strconv.Itoa(index), WorkspaceCWD: cfg.defaultWorkspacePath}, 8)
