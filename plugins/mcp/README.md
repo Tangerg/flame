@@ -108,6 +108,10 @@ delivers retained outcomes before the Connector marks still-open interrupted
 sign-ins as unconfirmed. The Connector preserves terminal attempts for the
 published retention window.
 
+A server that challenges an OAuth-eligible connection can offer interactive
+sign-in. A server that rejects a configured Authorization header reports a
+configuration failure, so the saved value can be corrected.
+
 Runtime commits a Connector choice with the selection acknowledgement before
 switching live connections. Repeating the same choice reuses those connections.
 Disabling or removing the selected connector withdraws external tools. Installed package

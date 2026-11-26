@@ -44,15 +44,16 @@ func (s *server) markFailed(failure mcpserver.ConnectionFailure, cause error) {
 	s.session, s.tools, s.state, s.failure, s.cause = nil, nil, mcpserver.ConnectionFailed, failure, cause
 }
 
-// A server that requires authorization is waiting for the user, not failing,
-// and its stale OAuth handler must not be reused.
 func (s *server) fail(cause error, step mcpserver.ConnectionFailure) {
-	if !errors.Is(cause, mcpserver.ErrAuthorizationRequired) {
+	switch {
+	case errors.Is(cause, mcpserver.ErrAuthorizationRequired):
+		s.session, s.tools, s.state, s.failure, s.cause = nil, nil, mcpserver.ConnectionNeedsAuth, "", nil
+		s.oauth = nil
+	case errors.Is(cause, errStaticAuthorizationRejected):
+		s.markFailed(mcpserver.FailureConfiguration, cause)
+	default:
 		s.markFailed(step, cause)
-		return
 	}
-	s.session, s.tools, s.state, s.failure, s.cause = nil, nil, mcpserver.ConnectionNeedsAuth, "", nil
-	s.oauth = nil
 }
 
 type shutdownAttempt struct {

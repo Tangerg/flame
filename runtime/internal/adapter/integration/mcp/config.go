@@ -45,12 +45,8 @@ func (s ServerConfig) Validate() error {
 		if lo.IsNil(s.OAuthHandler) {
 			return fmt.Errorf("mcp server %q: supplied OAuth handler is nil", s.ID())
 		}
-		http, ok := s.Connection.(mcpserver.HTTPConnection)
-		if !ok {
-			return fmt.Errorf("mcp server %q: OAuth applies to HTTP transport only", s.ID())
-		}
-		if http.Authorization != "" {
-			return fmt.Errorf("mcp server %q: OAuth and static Authorization are mutually exclusive", s.ID())
+		if _, eligible := s.OAuthTarget(); !eligible {
+			return fmt.Errorf("mcp server %q: OAuth requires HTTP transport without static authorization", s.ID())
 		}
 	}
 	return nil
@@ -111,10 +107,11 @@ func (d *dialedConnection) connect(ctx context.Context) (*sdk.ClientSession, err
 		if err != nil {
 			return nil, fmt.Errorf("mcp server %q: build HTTP client: %w", cfg.ID(), err)
 		}
+		_, interactive := cfg.OAuthTarget()
 		transport := &sdk.StreamableClientTransport{
 			Endpoint:     connection.URL,
 			HTTPClient:   httpClient,
-			OAuthHandler: authorizationChallenge{oauth: cfg.OAuthHandler},
+			OAuthHandler: authorizationChallenge{oauth: cfg.OAuthHandler, interactive: interactive},
 		}
 		return d.client.Connect(ctx, transport, nil)
 	case mcpserver.StdioConnection:
@@ -249,12 +246,15 @@ func (h *headerRoundTripper) RoundTrip(req *http.Request) (*http.Response, error
 	return response, err
 }
 
+var errStaticAuthorizationRejected = errors.New("mcp: static authorization was rejected")
+
 // The SDK hands Authorize the exact refused request and response while its own
 // status error carries only text, so a 401 marks only the request it answered.
 // Without an OAuth handler the challenge fails the request instead of letting the
 // SDK retry.
 type authorizationChallenge struct {
-	oauth auth.OAuthHandler
+	oauth       auth.OAuthHandler
+	interactive bool
 }
 
 func (a authorizationChallenge) TokenSource(ctx context.Context) (oauth2.TokenSource, error) {
@@ -271,10 +271,13 @@ func (a authorizationChallenge) Authorize(ctx context.Context, request *http.Req
 	} else {
 		err = a.oauth.Authorize(ctx, request, response)
 	}
-	if err != nil && response.StatusCode == http.StatusUnauthorized {
+	if err == nil || response.StatusCode != http.StatusUnauthorized {
+		return err
+	}
+	if a.interactive {
 		return errors.Join(mcpserver.ErrAuthorizationRequired, err)
 	}
-	return err
+	return errors.Join(errStaticAuthorizationRejected, err)
 }
 
 func (h *headerRoundTripper) validateTarget(target *url.URL) error {
