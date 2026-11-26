@@ -396,6 +396,9 @@ export const chartDataSchema = z.strictObject({
     .max(255),
 });
 export type ChartData = z.infer<typeof chartDataSchema>;
+export const CHART_LEGEND_POSITIONS = ["b", "l", "r", "t", "tr"] as const;
+export const chartLegendPositionSchema = z.enum(CHART_LEGEND_POSITIONS);
+export type ChartLegendPosition = z.infer<typeof chartLegendPositionSchema>;
 export const CHART_TYPES = [
   "bar",
   "bar3D",
@@ -513,6 +516,12 @@ export const presentationEditSchema = z.strictObject({
           expect: chartDataSchema,
           data: chartDataSchema,
         }),
+        z.strictObject({
+          type: z.literal("setChartLegend"),
+          id: elementId,
+          expect: chartLegendPositionSchema,
+          position: chartLegendPositionSchema,
+        }),
         z.strictObject({ type: z.literal("duplicateSlide"), id: elementId }),
         z.strictObject({ type: z.literal("deleteSlide"), id: elementId }),
         // Without after, the slide opens the presentation.
@@ -558,7 +567,13 @@ export type EditorOperation<Format extends DraftFormat = DraftFormat> = z.infer<
 // The edits an editor stages in its local draft. A suggestion carries only
 // these, so the person can adopt it into a draft before anything is saved.
 export const STAGED_OPERATIONS = {
-  pptx: ["replaceText", "setFrame", "setChartData", "deleteElement"],
+  pptx: [
+    "replaceText",
+    "setFrame",
+    "setChartData",
+    "setChartLegend",
+    "deleteElement",
+  ],
   xlsx: ["setCell"],
   docx: ["replaceText", "insertParagraph", "deleteBlock", "setParagraphStyle"],
 } as const satisfies {

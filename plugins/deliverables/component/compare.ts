@@ -155,6 +155,7 @@ export type ElementChange =
       text: TextChange[];
       frame: boolean;
       chart: boolean;
+      legend: boolean;
     };
 
 export type SlideChange = {
@@ -174,9 +175,24 @@ function elementChanges(before: SlideView, after: SlideView): ElementChange[] {
       if (!previous) return [{ type: "added", element }];
       const text = runChanges(previous.text, element.text);
       const frame = !same(previous.frame ?? null, element.frame ?? null);
-      const chart = !same(previous.chart ?? null, element.chart ?? null);
-      return text.length || frame || chart
-        ? [{ type: "changed", element, before: previous, text, frame, chart }]
+      const chart = !same(
+        previous.chart?.data ?? null,
+        element.chart?.data ?? null,
+      );
+      const legend =
+        previous.chart?.legendPosition !== element.chart?.legendPosition;
+      return text.length || frame || chart || legend
+        ? [
+            {
+              type: "changed",
+              element,
+              before: previous,
+              text,
+              frame,
+              chart,
+              legend,
+            },
+          ]
         : [];
     }),
     ...before.elements

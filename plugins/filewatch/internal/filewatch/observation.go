@@ -1,6 +1,7 @@
 package filewatch
 
 import (
+	"encoding/json/jsontext"
 	json "encoding/json/v2"
 	"errors"
 	"slices"
@@ -31,6 +32,7 @@ type Capture struct {
 	SessionID  identity.SessionID   `json:"sessionId"`
 	RunID      identity.RunID       `json:"runId"`
 	Invocation framecall.Invocation `json:"invocation"`
+	Partitions []Partition          `json:"partitions,omitempty"`
 }
 
 type Observation struct{ capture Capture }
@@ -46,7 +48,12 @@ func NewObservation(capture Capture) (Observation, error) {
 	if err != nil {
 		return Observation{}, err
 	}
-	if capture.SessionID.IsZero() || capture.RunID.IsZero() {
+	if capture.SessionID.IsZero() {
+		return Observation{}, ErrInvalid
+	}
+	target := trigger.Draft().TargetSessionID
+	if target == "" && capture.RunID.IsZero() ||
+		target != "" && (target != capture.SessionID.String() || !capture.RunID.IsZero()) {
 		return Observation{}, ErrInvalid
 	}
 	if err := extension.ValidateInvocation(capture.Invocation); err != nil {
@@ -55,11 +62,12 @@ func NewObservation(capture Capture) (Observation, error) {
 	if capture.Invocation.Origin != extension.Automatic || capture.Invocation.Parent != "" || capture.Invocation.Target.Scope != extension.ScopeInstallation {
 		return Observation{}, ErrInvalid
 	}
-	if !capture.observesTriggerPaths() {
+	if !capture.observesTriggerPaths() || !validPartitions(capture.Trigger, capture.Partitions) {
 		return Observation{}, ErrInvalid
 	}
 	capture.Trigger = trigger.Draft()
 	capture.Paths = slices.Clone(capture.Paths)
+	capture.Partitions = slices.Clone(capture.Partitions)
 	capture.ObservedAt = capture.ObservedAt.UTC()
 	return Observation{capture: capture}, nil
 }
@@ -84,15 +92,29 @@ func (o Observation) Capture() Capture {
 	value := o.capture
 	value.Paths = slices.Clone(value.Paths)
 	value.Trigger.Paths = slices.Clone(value.Trigger.Paths)
+	value.Partitions = slices.Clone(value.Partitions)
 	return value
 }
 
 func (o Observation) Input() (string, error) {
-	context, err := json.Marshal(struct {
+	type positionedObservation struct {
 		Kind       Kind      `json:"kind"`
 		Paths      []string  `json:"paths"`
 		ObservedAt time.Time `json:"observedAt"`
-	}{o.capture.Kind, o.capture.Paths, o.capture.ObservedAt}, json.Deterministic(true))
+	}
+	position := positionedObservation{o.capture.Kind, o.capture.Paths, o.capture.ObservedAt}
+	var payload any = position
+	// Existing captures must reproduce their original opening fingerprint.
+	if o.capture.Trigger.TargetSessionID != "" {
+		payload = struct {
+			positionedObservation
+			Revision      int64              `json:"methodRevision"`
+			SessionID     string             `json:"targetSessionId"`
+			RequiredPaths []string           `json:"requiredPaths"`
+			Coverage      *partitionCoverage `json:"partitionCoverage,omitzero"`
+		}{position, o.capture.Revision, o.capture.SessionID.String(), o.capture.Trigger.Paths, coverage(o.capture.Partitions)}
+	}
+	context, err := json.Marshal(payload, json.Deterministic(true), jsontext.EscapeForHTML(len(o.capture.Partitions) != 0))
 	if err != nil {
 		return "", err
 	}
@@ -100,8 +122,9 @@ func (o Observation) Input() (string, error) {
 }
 
 type Event struct {
-	Capture  Capture `json:"capture"`
-	Accepted bool    `json:"accepted"`
+	Capture       Capture        `json:"capture"`
+	Accepted      bool           `json:"accepted"`
+	AdmittedRunID identity.RunID `json:"admittedRunId,omitzero"`
 }
 
 type Header struct {
@@ -116,8 +139,12 @@ type Header struct {
 }
 
 func (e Event) Header() Header {
+	runID := e.Capture.RunID
+	if !e.AdmittedRunID.IsZero() {
+		runID = e.AdmittedRunID
+	}
 	return Header{ID: e.Capture.Invocation.ID, Revision: e.Capture.Revision, Kind: e.Capture.Kind, ObservedAt: e.Capture.ObservedAt,
-		PathCount: len(e.Capture.Paths), SessionID: e.Capture.SessionID, RunID: e.Capture.RunID, Accepted: e.Accepted}
+		PathCount: len(e.Capture.Paths), SessionID: e.Capture.SessionID, RunID: runID, Accepted: e.Accepted}
 }
 
 type Phase string
@@ -148,13 +175,27 @@ func NewCursor(generation string) (Cursor, error) {
 	return Cursor{generation: generation}, nil
 }
 
-func (c *Cursor) Advance(sequence uint64) (bool, error) {
-	if c.generation == "" || sequence <= c.sequence || sequence > uint64(exactint.Maximum) {
-		return false, errors.New("filewatch: invalid observation sequence")
+type Position string
+
+const (
+	AlreadyObserved Position = "alreadyObserved"
+	NextObservation Position = "next"
+	ObservationGap  Position = "gap"
+)
+
+func (c *Cursor) Advance(sequence uint64) (Position, error) {
+	if c.generation == "" || sequence == 0 || sequence > uint64(exactint.Maximum) {
+		return "", errors.New("filewatch: invalid observation sequence")
+	}
+	if sequence <= c.sequence {
+		return AlreadyObserved, nil
 	}
 	gap := sequence != c.sequence+1
 	c.sequence = sequence
-	return gap, nil
+	if gap {
+		return ObservationGap, nil
+	}
+	return NextObservation, nil
 }
 
 func (Kind) JSONSchemaEnum() []string {

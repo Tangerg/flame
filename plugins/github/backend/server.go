@@ -8,6 +8,7 @@ import (
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	rpc "github.com/Tangerg/flame/plugins/github/internal/contract"
+	"github.com/Tangerg/flame/plugins/github/internal/wire"
 	framecall "github.com/Tangerg/frame/call"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 
@@ -68,6 +69,10 @@ func newServer(connector *connector) (*sdk.Server, error) {
 		return nil, err
 	}
 	if err := errors.Join(
+		registerRead(backend, &tools, contracts.ReviewWork, "review_work", connector.readReviewWork),
+		contracts.UpdateReviewWork.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[wire.ReviewWorkChange]) (wire.ReviewWork, error) {
+			return connector.changeReviewWork(ctx, command, contracts.UpdateReviewWork.Name())
+		}),
 		registerRead(backend, &tools, contracts.List, "list_issues", connector.listIssues),
 		registerRead(backend, &tools, contracts.Issue, "get_issue", connector.getIssue),
 		registerRead(backend, &tools, contracts.File, "read_file", connector.readFile),

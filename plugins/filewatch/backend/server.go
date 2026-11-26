@@ -6,6 +6,7 @@ import (
 	"io"
 	"sync"
 
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	rpc "github.com/Tangerg/flame/plugins/filewatch/internal/contract"
@@ -30,6 +31,15 @@ func newServer(store *store) (*sdk.Server, *pluginmcp.Backend, error) {
 	if err := errors.Join(
 		pluginstorage.RegisterReceipts(backend, store.db),
 		pluginstorage.RegisterCommand(backend, store.db, contracts.Configure, classify, func(ctx context.Context, _ *sdk.ServerSession, input wire.ConfigureInput) (pluginstorage.CommandPlan[filewatch.Snapshot], error) {
+			if input.Trigger != nil && input.Trigger.TargetSessionID != "" {
+				invocation, err := pluginmcp.InvocationFromContext(ctx)
+				if err != nil {
+					return pluginstorage.CommandPlan[filewatch.Snapshot]{}, err
+				}
+				if invocation.Origin != extension.Human {
+					return pluginstorage.CommandPlan[filewatch.Snapshot]{}, filewatch.ErrInvalid
+				}
+			}
 			return store.prepareConfiguration(ctx, input.ExpectedRevision, input.Trigger)
 		}),
 		contracts.Get.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, _ pluginmcp.Command[struct{}]) (filewatch.Snapshot, error) {

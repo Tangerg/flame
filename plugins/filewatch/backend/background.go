@@ -109,13 +109,15 @@ func (w *watcher) observationStatus(revision int64, phase filewatch.Phase, err e
 	}
 }
 
-func (w *watcher) dispatchStatus(err error) {
+func (w *watcher) dispatchStatus(err error) bool {
 	w.mu.Lock()
 	defer w.mu.Unlock()
+	previous := w.status.DispatchError
 	w.status.DispatchError = ""
 	if err != nil {
 		w.status.DispatchError = err.Error()
 	}
+	return previous != w.status.DispatchError
 }
 
 func (w *watcher) invocation() framecall.Invocation {
@@ -155,9 +157,10 @@ type observationLoop struct {
 	cursor     filewatch.Cursor
 }
 
-func (l *observationLoop) fail(err error) {
+func (l *observationLoop) fail(ctx context.Context, err error) {
 	l.closeStream()
 	l.watcher.observationStatus(l.current.Revision(), filewatch.Failed, err)
+	l.watcher.notify(ctx)
 }
 
 func (l *observationLoop) closeStream() {
@@ -168,7 +171,7 @@ func (l *observationLoop) closeStream() {
 func (l *observationLoop) refresh(ctx context.Context) {
 	configuration, err := l.watcher.store.configuration(ctx)
 	if err != nil {
-		l.fail(err)
+		l.fail(ctx, err)
 		return
 	}
 	if configuration.Revision() == l.current.Revision() {
@@ -179,12 +182,13 @@ func (l *observationLoop) refresh(ctx context.Context) {
 	trigger, enabled := l.current.Trigger()
 	if !enabled {
 		l.watcher.observationStatus(l.current.Revision(), filewatch.Disabled, nil)
+		l.watcher.notify(ctx)
 		return
 	}
 	l.generation = uuid.NewString()
 	l.cursor, err = filewatch.NewCursor(l.generation)
 	if err != nil {
-		l.fail(err)
+		l.fail(ctx, err)
 		return
 	}
 	invocation, err := pluginmcp.WithInvocation(ctx, l.watcher.invocation())
@@ -192,43 +196,50 @@ func (l *observationLoop) refresh(ctx context.Context) {
 		l.stream, err = openStream(invocation, l.watcher.host, l.generation, trigger)
 	}
 	if err != nil {
-		l.fail(err)
+		l.fail(ctx, err)
 		return
 	}
 	l.notices = l.stream.notices
 	l.watcher.observationStatus(l.current.Revision(), filewatch.Watching, nil)
+	l.watcher.notify(ctx)
 }
 
 func (l *observationLoop) observe(ctx context.Context, notice observationNotice) {
 	if notice.err != nil {
-		l.fail(notice.err)
+		l.fail(ctx, notice.err)
 		return
 	}
-	gap, err := l.cursor.Advance(notice.event.Sequence)
+	position, err := l.cursor.Advance(notice.event.Sequence)
 	if err != nil {
-		l.fail(err)
+		l.fail(ctx, err)
 		return
 	}
-	observation, relevant, err := l.watcher.captureNotice(l.current, l.generation, notice.event, gap)
+	if position == filewatch.AlreadyObserved {
+		return
+	}
+	observation, relevant, err := l.watcher.captureNotice(ctx, l.current, l.generation, notice.event, position == filewatch.ObservationGap)
 	if err != nil || !relevant {
 		if err != nil {
-			l.fail(err)
+			l.fail(ctx, err)
 		}
 		return
 	}
-	if err := l.watcher.store.capture(ctx, observation); err != nil {
+	inserted, err := l.watcher.store.capture(ctx, observation)
+	if err != nil {
 		if errors.Is(err, filewatch.ErrRevision) {
 			l.refresh(ctx)
 		} else {
-			l.fail(err)
+			l.fail(ctx, err)
 		}
 		return
 	}
-	l.watcher.notify(ctx)
-	l.watcher.reconcile(ctx)
+	if inserted {
+		l.watcher.notify(ctx)
+		l.watcher.reconcile(ctx)
+	}
 }
 
-func (w *watcher) captureNotice(configuration filewatch.Configuration, generation string, event protocol.RuntimeEvent, gap bool) (filewatch.Observation, bool, error) {
+func (w *watcher) captureNotice(ctx context.Context, configuration filewatch.Configuration, generation string, event protocol.RuntimeEvent, gap bool) (filewatch.Observation, bool, error) {
 	trigger, enabled := configuration.Trigger()
 	if !enabled {
 		return filewatch.Observation{}, false, filewatch.ErrInvalid
@@ -250,23 +261,44 @@ func (w *watcher) captureNotice(configuration filewatch.Configuration, generatio
 	default:
 		return filewatch.Observation{}, false, nil
 	}
-	sessionID, err := identity.NewSession(uuid.NewString())
+	sessionID, err := identity.ParseOptionalSession(draft.TargetSessionID)
 	if err != nil {
 		return filewatch.Observation{}, false, err
 	}
-	runID, err := identity.NewRun(uuid.NewString())
-	if err != nil {
-		return filewatch.Observation{}, false, err
+	var runID identity.RunID
+	if sessionID.IsZero() {
+		sessionID, err = identity.NewSession(uuid.NewString())
+		if err != nil {
+			return filewatch.Observation{}, false, err
+		}
+		runID, err = identity.NewRun(uuid.NewString())
+		if err != nil {
+			return filewatch.Observation{}, false, err
+		}
 	}
-	observation, err := filewatch.NewObservation(filewatch.Capture{Generation: generation, Sequence: event.Sequence, Revision: configuration.Revision(), Kind: kind, Paths: paths, ObservedAt: time.Now(), Trigger: draft,
-		SessionID: sessionID, RunID: runID, Invocation: w.invocation()})
+	capture := filewatch.Capture{Generation: generation, Sequence: event.Sequence, Revision: configuration.Revision(), Kind: kind, Paths: paths, ObservedAt: time.Now(), Trigger: draft, SessionID: sessionID, RunID: runID, Invocation: w.invocation()}
+	if draft.CapturePartitions {
+		read, cancel := context.WithTimeout(ctx, triggerAdmissionTimeout)
+		defer cancel()
+		read, err = pluginmcp.WithInvocation(read, capture.Invocation)
+		if err != nil {
+			return filewatch.Observation{}, false, err
+		}
+		capture.Partitions, err = w.host.readPartitions(read, draft)
+		if err != nil {
+			return filewatch.Observation{}, false, err
+		}
+	}
+	observation, err := filewatch.NewObservation(capture)
 	return observation, true, err
 }
 
 func (w *watcher) reconcile(ctx context.Context) {
 	events, err := w.store.pending(ctx)
 	if err != nil {
-		w.dispatchStatus(err)
+		if w.dispatchStatus(err) {
+			w.notify(ctx)
+		}
 		return
 	}
 	var failures error
@@ -282,10 +314,11 @@ func (w *watcher) reconcile(ctx context.Context) {
 			admission, cancel := context.WithTimeout(ctx, triggerAdmissionTimeout)
 			admission, err = pluginmcp.WithInvocation(admission, event.Capture.Invocation)
 			if err == nil {
-				err = w.host.Admit(admission, w.namespace, observation)
-			}
-			if err == nil {
-				err = w.store.acceptRun(admission, event.Capture.Invocation.ID)
+				var runID identity.RunID
+				runID, err = w.host.Admit(admission, w.namespace, observation)
+				if err == nil {
+					err = w.store.acceptRun(admission, event.Capture, runID)
+				}
 			}
 			cancel()
 		}
@@ -295,7 +328,9 @@ func (w *watcher) reconcile(ctx context.Context) {
 			w.notify(ctx)
 		}
 	}
-	w.dispatchStatus(failures)
+	if w.dispatchStatus(failures) {
+		w.notify(ctx)
+	}
 }
 
 func (w *watcher) notify(ctx context.Context) {

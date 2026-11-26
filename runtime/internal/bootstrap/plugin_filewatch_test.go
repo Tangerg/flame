@@ -27,17 +27,31 @@ import (
 )
 
 func TestFilewatchInstalledIngressReconcilesLostOpeningAcrossDisableAndRestart(t *testing.T) {
+	t.Run("new-work", func(t *testing.T) { testFilewatchRetry(t, false) })
+	t.Run("continue-work", func(t *testing.T) { testFilewatchRetry(t, true) })
+}
+
+func testFilewatchRetry(t *testing.T, follow bool) {
+	t.Helper()
 	cfg := poMCPConfig(t)
 	var calls atomic.Int32
 	var input atomic.Value
 	input.Store("")
-	client, err := chatclient.New(delegateRestartModel{chat.ModelFunc(func(_ context.Context, request *chat.Request) (*chat.Response, error) {
-		calls.Add(1)
+	releaseFirst := make(chan struct{})
+	client, err := chatclient.New(delegateRestartModel{chat.ModelFunc(func(ctx context.Context, request *chat.Request) (*chat.Response, error) {
+		first := calls.Add(1) == 1
 		encoded, err := json.Marshal(request.Messages)
 		if err != nil {
 			t.Error(err)
 		}
 		input.Store(string(encoded))
+		if follow && first {
+			select {
+			case <-releaseFirst:
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			}
+		}
 		return completedTextResponse("observed source inspected"), nil
 	})})
 	if err != nil {
@@ -107,7 +121,14 @@ func TestFilewatchInstalledIngressReconcilesLostOpeningAcrossDisableAndRestart(t
 	}
 	draft := testsupport.FilewatchConfigureV1InputFilewatchDraft{}
 	draft.Title, draft.Workspace, draft.Paths = "Original file trigger", workspace.Ref.Path, []string{"source.txt"}
-	draft.Instructions, draft.Provider, draft.Model = "Inspect the original observed source.", cfg.defaultSelection.Provider(), cfg.defaultSelection.Model()
+	draft.Instructions = "Inspect the original observed source."
+	var existing *protocol.Session
+	if follow {
+		existing = r.must(delivery.SessionsCreate, protocol.CreateSessionRequest{Title: "Original analysis", Workspace: &workspace.Ref}, "original-work").(*protocol.Session)
+		draft.TargetSessionId = &existing.ID
+	} else {
+		draft.Provider, draft.Model = new(cfg.defaultSelection.Provider()), new(cfg.defaultSelection.Model())
+	}
 	configured := call(testsupport.FilewatchConfigureV1Method, testsupport.FilewatchConfigureInput{ExpectedRevision: generatedNumber(t, "1"), Trigger: &draft}, "configure-source")
 	wait(func() bool { return status(testsupport.FilewatchStatusPhaseWatching, 2) })
 	changed := managedServiceChange(t, r, protocol.TopicPluginDataChanged)
@@ -133,11 +154,25 @@ func TestFilewatchInstalledIngressReconcilesLostOpeningAcrossDisableAndRestart(t
 		original = capture(values[0].Id).Capture
 		return true
 	})
-	if original.RunId != accepted.RunID || original.Invocation.Origin != string(extension.Automatic) || original.Invocation.Target.Reference != installed.ID || original.Kind != "changed" {
+	plannedRun := accepted.RunID
+	if follow {
+		plannedRun = ""
+		if original.SessionId != existing.ID {
+			t.Fatal("continued source went to another Session")
+		}
+	}
+	if original.RunId != plannedRun || original.Invocation.Origin != string(extension.Automatic) || original.Invocation.Target.Reference != installed.ID || original.Kind != "changed" {
 		t.Fatalf("capture differs from canonical opening: %+v %+v", original, accepted)
 	}
 	call(testsupport.FilewatchConfigureV1Method, testsupport.FilewatchConfigureInput{ExpectedRevision: generatedNumber(t, "2"), Trigger: nil}, "disable-source")
 	wait(func() bool { return status(testsupport.FilewatchStatusPhaseDisabled, 3) })
+	if follow {
+		run := r.must(delivery.RunsGet, protocol.GetRunRequest{RunID: accepted.RunID}, "").(*protocol.RunRef)
+		if run.Outcome != nil || calls.Load() != 1 {
+			t.Fatalf("disabling observation ended active work: %+v calls=%d", run.Outcome, calls.Load())
+		}
+		close(releaseFirst)
+	}
 	wait(func() bool {
 		run := r.must(delivery.RunsGet, protocol.GetRunRequest{RunID: accepted.RunID}, "").(*protocol.RunRef)
 		if run.SessionID != original.SessionId {
@@ -151,8 +186,16 @@ func TestFilewatchInstalledIngressReconcilesLostOpeningAcrossDisableAndRestart(t
 	r = reopenPluginRuntime(t, r, &cfg)
 	waitCallContributorState(t, r, installed.ID, protocol.MCPServerConnected)
 	wait(func() bool { values := events(); return len(values) == 1 && values[0].Accepted })
-	if values := events(); !reflect.DeepEqual(capture(values[0].Id).Capture, original) || calls.Load() != 1 {
+	if values := events(); !reflect.DeepEqual(capture(values[0].Id).Capture, original) ||
+		values[0].RunId != accepted.RunID || calls.Load() != 1 {
 		t.Fatalf("recovery changed intent or reexecuted the accepted Run: %+v calls=%d", values, calls.Load())
+	}
+	if follow {
+		recovered := r.must(delivery.SessionsGet, protocol.GetSessionRequest{SessionID: existing.ID}, "").(*protocol.Session)
+		if recovered.Provider != existing.Provider || recovered.Model != existing.Model ||
+			!strings.Contains(input.Load().(string), "methodRevision") {
+			t.Fatal("continuation changed the Session default or lost its method identity")
+		}
 	}
 	if replay := call(testsupport.FilewatchConfigureV1Method, testsupport.FilewatchConfigureInput{ExpectedRevision: generatedNumber(t, "1"), Trigger: &draft}, "configure-source"); replay != configured {
 		t.Fatal("configure replay replaced the disabled rule")
@@ -170,7 +213,7 @@ func TestFilewatchInstalledIngressReconcilesLostOpeningAcrossDisableAndRestart(t
 	}
 	wait(func() bool {
 		values := events()
-		return len(values) == 2 && values[0].Accepted && values[0].RunId != original.RunId
+		return len(values) == 2 && values[0].Accepted && values[0].RunId != accepted.RunID && (!follow || values[0].SessionId == original.SessionId)
 	})
 	wait(func() bool { return calls.Load() == 2 })
 }

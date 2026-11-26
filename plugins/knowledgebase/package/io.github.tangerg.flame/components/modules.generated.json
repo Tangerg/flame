@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "entry": "component.js",
+  "modules": [
+    {
+      "path": "component.js",
+      "imports": [
+        "@flame/component-sdk",
+        "@flame/ui",
+        "@frame/sdk/json",
+        "react",
+        "react/jsx-runtime"
+      ],
+      "dynamicImports": [],
+      "exports": [
+        "ProjectResearch"
+      ]
+    }
+  ],
+  "sharedSpecifiers": [
+    "@flame/component-sdk",
+    "@flame/ui",
+    "@frame/sdk/json",
+    "react",
+    "react/jsx-runtime"
+  ]
+}

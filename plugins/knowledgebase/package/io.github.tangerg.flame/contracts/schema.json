@@ -1,6 +1,285 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$defs": {
+    "AcceptClaimV1Input": {
+      "$ref": "#/$defs/ClaimAcceptInput"
+    },
+    "AcceptClaimV1Output": {
+      "$ref": "#/$defs/ClaimReceipt"
+    },
+    "AcceptClaimV1OutputInstantTimestamp": {
+      "type": "string"
+    },
+    "ClaimAcceptInput": {
+      "additionalProperties": false,
+      "properties": {
+        "citations": {
+          "items": {
+            "$ref": "#/$defs/MaterialCitation"
+          },
+          "maxItems": 8,
+          "minItems": 1,
+          "type": "array"
+        },
+        "expectedRevision": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 0,
+          "type": "integer"
+        },
+        "id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        },
+        "project": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "reason": {
+          "maxLength": 4096,
+          "minLength": 1,
+          "type": "string"
+        },
+        "statement": {
+          "maxLength": 4096,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "project",
+        "id",
+        "expectedRevision",
+        "statement",
+        "reason",
+        "citations"
+      ],
+      "type": "object"
+    },
+    "ClaimEvidence": {
+      "additionalProperties": false,
+      "properties": {
+        "documentId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        },
+        "excerpt": {
+          "type": "string"
+        },
+        "firstLine": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        },
+        "lastLine": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        },
+        "needsRecheck": {
+          "type": "boolean"
+        },
+        "page": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        },
+        "revision": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        },
+        "source": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "documentId",
+        "revision",
+        "page",
+        "firstLine",
+        "lastLine",
+        "title",
+        "source",
+        "excerpt",
+        "needsRecheck"
+      ],
+      "type": "object"
+    },
+    "ClaimRead": {
+      "additionalProperties": false,
+      "properties": {
+        "acceptedAt": {
+          "$ref": "#/$defs/ReadClaimV1OutputInstantTimestamp"
+        },
+        "evidence": {
+          "items": {
+            "$ref": "#/$defs/ClaimEvidence"
+          },
+          "type": "array"
+        },
+        "id": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "revision": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "state": {
+          "allOf": [
+            {
+              "enum": [
+                "current",
+                "recheck",
+                "unavailable"
+              ]
+            }
+          ],
+          "type": "string"
+        },
+        "statement": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "revision",
+        "state",
+        "acceptedAt",
+        "evidence"
+      ],
+      "type": "object"
+    },
+    "ClaimReadInput": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        },
+        "project": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "revision": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "project",
+        "id"
+      ],
+      "type": "object"
+    },
+    "ClaimReceipt": {
+      "additionalProperties": false,
+      "properties": {
+        "acceptedAt": {
+          "$ref": "#/$defs/AcceptClaimV1OutputInstantTimestamp"
+        },
+        "id": {
+          "type": "string"
+        },
+        "revision": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "revision",
+        "acceptedAt"
+      ],
+      "type": "object"
+    },
+    "ClaimSummary": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "revision": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "state": {
+          "allOf": [
+            {
+              "enum": [
+                "current",
+                "recheck",
+                "unavailable"
+              ]
+            }
+          ],
+          "type": "string"
+        },
+        "statement": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "revision",
+        "state"
+      ],
+      "type": "object"
+    },
     "Content": {
       "additionalProperties": false,
       "allOf": [
@@ -95,13 +374,32 @@
         "document": {
           "$ref": "#/$defs/ReadV1OutputKnowledgeHeader"
         },
+        "page": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "pages": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
         "text": {
           "type": "string"
         }
       },
       "required": [
         "document",
-        "text"
+        "text",
+        "pages"
       ],
       "type": "object"
     },
@@ -181,7 +479,10 @@
       ],
       "type": "object"
     },
-    "ListInput": {
+    "ListClaimsV1Input": {
+      "$ref": "#/$defs/ListClaimsV1InputWireListInput"
+    },
+    "ListClaimsV1InputWireListInput": {
       "additionalProperties": false,
       "properties": {
         "project": {
@@ -190,8 +491,23 @@
       },
       "type": "object"
     },
+    "ListClaimsV1Output": {
+      "items": {
+        "$ref": "#/$defs/ClaimSummary"
+      },
+      "type": "array"
+    },
     "ListV1Input": {
-      "$ref": "#/$defs/ListInput"
+      "$ref": "#/$defs/ListV1InputWireListInput"
+    },
+    "ListV1InputWireListInput": {
+      "additionalProperties": false,
+      "properties": {
+        "project": {
+          "type": "string"
+        }
+      },
+      "type": "object"
     },
     "ListV1Output": {
       "items": {
@@ -276,8 +592,163 @@
       ],
       "type": "object"
     },
+    "MaterialCitation": {
+      "additionalProperties": false,
+      "properties": {
+        "documentId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        },
+        "firstLine": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        },
+        "lastLine": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        },
+        "page": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        },
+        "revision": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "documentId",
+        "revision",
+        "page",
+        "firstLine",
+        "lastLine"
+      ],
+      "type": "object"
+    },
+    "MoveInput": {
+      "additionalProperties": false,
+      "properties": {
+        "expectedRevision": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        },
+        "id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        },
+        "project": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "targetProject": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "expectedRevision",
+        "project",
+        "targetProject"
+      ],
+      "type": "object"
+    },
+    "MoveV1Input": {
+      "$ref": "#/$defs/MoveInput"
+    },
+    "MoveV1Output": {
+      "$ref": "#/$defs/MoveV1OutputKnowledgeHeader"
+    },
+    "MoveV1OutputKnowledgeHeader": {
+      "additionalProperties": false,
+      "properties": {
+        "chunks": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "id": {
+          "type": "string"
+        },
+        "project": {
+          "type": "string"
+        },
+        "revision": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "source": {
+          "type": "string"
+        },
+        "space": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "source",
+        "revision",
+        "chunks",
+        "space"
+      ],
+      "type": "object"
+    },
     "Number": {
       "type": "number"
+    },
+    "ReadClaimV1Input": {
+      "$ref": "#/$defs/ClaimReadInput"
+    },
+    "ReadClaimV1Output": {
+      "$ref": "#/$defs/ClaimRead"
+    },
+    "ReadClaimV1OutputInstantTimestamp": {
+      "type": "string"
     },
     "ReadInput": {
       "additionalProperties": false,
@@ -295,8 +766,28 @@
           "minLength": 1,
           "type": "string"
         },
+        "page": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        },
         "project": {
           "type": "string"
+        },
+        "revision": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
         }
       },
       "required": [

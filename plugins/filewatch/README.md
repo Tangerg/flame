@@ -1,8 +1,9 @@
 # File watch
 
 This optional backend owns one persistent trigger per installation, its revision,
-accepted observations and immutable dispatch intent. It has no component or model
-Tool. Runtime owns path admission, OS observation, bounded subscription delivery
+accepted observations and immutable dispatch intent. The File watch workspace
+view can follow the active Session, stop future observations and reopen retained
+observations and their original Session. Runtime owns path admission, OS observation, bounded subscription delivery
 and canonical Session/Run acceptance, execution and accounting.
 
 Build `go build -o plugins/filewatch/bin/filewatch ./plugins/filewatch/backend`,
@@ -13,8 +14,11 @@ the ordinary plugin lifecycle. The public generated contract exports `get`,
 
 `configure` replaces the inspected revision with one trigger; omitting `trigger`
 disables observation. Use an available canonical workspace returned by
-`workspaces.resolve`, 1–32 exact workspace-relative paths, a title, instructions
-and an exact Provider/Model selection. Reasoning effort belongs to that selection.
+`workspaces.resolve`, 1–32 exact workspace-relative paths, a title and instructions.
+Supply an exact Provider/Model selection or set `targetSessionId` to follow a
+Session that owns the watched workspace with its current model selection.
+Selecting that Session requires a human invocation. Reasoning effort belongs to
+an explicit model selection.
 Paths cannot escape the workspace through traversal or symlinks. Model construction
 and availability checks remain in Runtime. Changing configuration, including an
 identical rearm, advances its revision. Configuration acceptance is a desired rule;
@@ -28,8 +32,18 @@ targets remain observed through their nearest existing parent. OS notifications
 may coalesce. Only notifications attributed to this watch can originate ordinary
 observations. Git invalidation, subscription resync or a sequence gap instead
 captures a `resync` observation requesting inspection of every configured path.
-It never claims a specific write happened. The original instructions and a JSON
-observation block become the captured Run input; file contents are not copied.
+The cursor ignores repeated or late sequences in the same watch generation.
+Each resync asks for a fresh inspection. The original instructions and a JSON
+observation block become the captured Run input. By default it contains path
+metadata only.
+
+For a followed Session, explicitly enable `capturePartitions` to treat the exact
+paths as required UTF-8 data partitions. Each observation retains the separately
+read text and its SHA-256 (up to 2048 bytes per file) or its missing, truncated or
+unavailable status. The Run input includes the evidence and the read/expected
+denominator. Each partition reflects its own file inspection. Repeated file
+notifications with identical, determinate evidence under the same configuration
+keep one dispatch. Resync remains a separate observation.
 
 An initialization or streaming failure stops that watch and remains visible until
 an explicit configuration rearm. No blind reconnect hides a coverage gap. Disable,
@@ -42,8 +56,10 @@ observations; select source paths and instructions with that feedback in mind.
 The backend holds an exclusive `PLUGIN_DATA` lease and opens `filewatch.db` only.
 Configuration commands and their standard SDK receipts commit atomically. Before
 any Run call, a private transaction retains the original observation generation,
-sequence, definition revision, instructions, exact model, paths, timestamp,
-Session/Run identities and automatic installation invocation. Later configuration
+sequence, definition revision, instructions, paths, timestamp and automatic
+installation invocation. A new Session opening captures its exact model and
+Session/Run IDs. An existing Session opening captures the original Session ID
+and uses the Run ID returned by Runtime on acceptance. Later configuration
 changes never rewrite captured work. The private store is bound to one Runtime
 idempotency namespace and refuses another store.
 

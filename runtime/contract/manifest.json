@@ -571,6 +571,7 @@
       "errors": [
         "workspace_unavailable",
         "path_outside_root",
+        "workspace_file_not_found",
         "unsupported_mime"
       ]
     },
@@ -2473,6 +2474,14 @@
         ]
       },
       {
+        "type": "workspace_file_not_found",
+        "code": -32049,
+        "recoveryAction": "refetch",
+        "methods": [
+          "workspace.files.read"
+        ]
+      },
+      {
         "type": "workspace_unavailable",
         "code": -32005,
         "recoveryAction": "promptUser",
@@ -3768,6 +3777,13 @@
         },
         {
           "tag": "vcs_unavailable",
+          "optional": [
+            "detail",
+            "docUrl"
+          ]
+        },
+        {
+          "tag": "workspace_file_not_found",
           "optional": [
             "detail",
             "docUrl"

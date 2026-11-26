@@ -90,6 +90,7 @@ var (
 	ErrRunNotFound                     = errors.New("run_not_found")
 	ErrItemNotFound                    = errors.New("item_not_found")
 	ErrWorkspaceUnavailable            = errors.New("workspace_unavailable")
+	ErrWorkspaceFileNotFound           = errors.New("workspace_file_not_found")
 	ErrCapabilityNotNeg                = errors.New("capability_not_negotiated")
 	ErrCheckpointUnavailable           = errors.New("checkpoint_unavailable")
 	ErrCheckpointConflict              = errors.New("checkpoint_conflict")

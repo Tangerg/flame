@@ -1,6 +1,8 @@
 import { canonicalJSON, parseJSON, projectNumber } from "@frame/sdk/json";
 import {
   chartDataSchema,
+  chartLegendPositionSchema,
+  type ChartLegendPosition,
   type CHART_TYPES,
   type ChartData,
 } from "../../contracts/content";
@@ -8,6 +10,7 @@ import { OfficePackage, relations } from "./archive";
 import { worksheetCells } from "./workbook";
 import { createWorkbook } from "./workbook-authoring";
 import {
+  cellRange,
   cellValue,
   rangeAddresses,
   sharedStrings,
@@ -140,11 +143,36 @@ function exact(lexeme: string): number {
   }
 }
 
+function legendPositionNode(document: XmlDocument): XmlNode | undefined {
+  const legend = chartChild(chartChild(document.root, "chart"), "legend");
+  if (chartChild(chartChild(legend, "layout"), "manualLayout")) return;
+  return chartChild(legend, "legendPos");
+}
+
+export function chartLegendPatch(
+  document: XmlDocument,
+  expect: ChartLegendPosition,
+  position: ChartLegendPosition,
+): XmlPatch {
+  const node = legendPositionNode(document);
+  if (!node || node.attributes.val !== expect)
+    throw new Error(
+      "chart legend precondition does not match the exact revision",
+    );
+  const tag = openTag(node, { ...node.attributes, val: position });
+  return {
+    start: node.start,
+    end: node.openEnd,
+    value: node.selfClosing ? tag.slice(0, -1) + "/>" : tag,
+  };
+}
+
 export interface ChartModel {
   document: XmlDocument;
   type: (typeof CHART_TYPES)[number];
   series: Array<{ name: Reference; categories: Reference; values: Reference }>;
   data: ChartData;
+  legendPosition?: ChartLegendPosition;
   workbook: { kind: "none" } | { kind: "chart" | "mixed"; part: string };
 }
 
@@ -201,8 +229,21 @@ export function readChart(archive: OfficePackage, part: string): ChartModel {
     type,
     series,
     data,
+    legendPosition: chartLegendPositionSchema.safeParse(
+      legendPositionNode(document)?.attributes.val,
+    ).data,
     workbook: embeddedWorkbook(archive, part, document, series),
   };
+}
+
+function chartWorkbookPart(
+  archive: OfficePackage,
+  part: string,
+  external: XmlNode,
+): string | undefined {
+  const id = attribute(external, namespaces.officeRelationships, "id");
+  const relation = relations(archive, part).find((entry) => entry.id === id);
+  return relation?.type === "package" ? relation.target : undefined;
 }
 
 function embeddedWorkbook(
@@ -213,20 +254,16 @@ function embeddedWorkbook(
 ): ChartModel["workbook"] {
   const external = chartChild(document.root, "externalData");
   if (!external) return { kind: "none" };
-  const id = attribute(external, namespaces.officeRelationships, "id");
-  const relation = relations(archive, part).find((entry) => entry.id === id);
-  if (relation?.type !== "package" || !relation.target)
+  const target = chartWorkbookPart(archive, part, external);
+  if (!target)
     throw new Error("chart external data is not an embedded workbook");
   try {
-    const workbook = OfficePackage.open(
-      "xlsx",
-      archive.parts.get(relation.target)!,
-    );
+    const workbook = OfficePackage.open("xlsx", archive.parts.get(target)!);
     return workbookHoldsOnlySeries(workbook, referencedCells(series))
-      ? { kind: "chart", part: relation.target }
-      : { kind: "mixed", part: relation.target };
+      ? { kind: "chart", part: target }
+      : { kind: "mixed", part: target };
   } catch {
-    return { kind: "mixed", part: relation.target };
+    return { kind: "mixed", part: target };
   }
 }
 
@@ -276,6 +313,55 @@ function workbookHoldsOnlySeries(
     }
   }
   return true;
+}
+
+// PptxGenJS appends an apostrophe to the table range in generated chart data.
+// Some readers reject the entire chart when this table cannot be read.
+export function repairChartTables(
+  presentation: OfficePackage,
+  parts: Iterable<string>,
+): void {
+  const visited = new Set<string>();
+  for (const part of parts) {
+    if (!/^ppt\/charts\/[^/]+\.xml$/u.test(part)) continue;
+    const external = chartChild(presentation.xml(part).root, "externalData");
+    if (!external) continue;
+    const target = chartWorkbookPart(presentation, part, external);
+    if (
+      !target ||
+      !/^ppt\/embeddings\/[^/]+\.xlsx$/u.test(target) ||
+      visited.has(target)
+    )
+      continue;
+    visited.add(target);
+    const workbook = OfficePackage.open(
+      "xlsx",
+      presentation.parts.get(target)!,
+    );
+    const table = "xl/tables/table1.xml";
+    if (!workbook.parts.has(table)) continue;
+    const { root } = workbook.xml(table);
+    const ref = /^(A1:[A-Z]{1,3}[1-9][0-9]{0,6})'$/u.exec(
+      root.attributes.ref ?? "",
+    )?.[1];
+    if (
+      root.uri !== namespaces.sheet ||
+      root.local !== "table" ||
+      root.attributes.name !== "Table1" ||
+      root.selfClosing ||
+      !ref
+    )
+      continue;
+    cellRange(ref);
+    workbook.patch(table, [
+      {
+        start: root.start,
+        end: root.openEnd,
+        value: openTag(root, { ...root.attributes, ref }),
+      },
+    ]);
+    presentation.parts.set(target, workbook.save());
+  }
 }
 
 function cachePatch(

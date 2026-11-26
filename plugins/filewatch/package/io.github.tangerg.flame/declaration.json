@@ -8,5 +8,25 @@
       "export": "filewatch",
       "contract": "io.github.tangerg.flame/contracts/capability.generated.json"
     }
+  ],
+  "components": [
+    {
+      "id": "filewatch",
+      "title": "File watch",
+      "localizedTitles": {
+        "zh": "文件跟进",
+        "zh-TW": "檔案追蹤",
+        "de": "Dateibeobachtung",
+        "fr": "Suivi des fichiers",
+        "es": "Seguimiento de archivos",
+        "ja": "ファイルの監視",
+        "ko": "파일 추적"
+      },
+      "scope": "client",
+      "placement": "workspaceView",
+      "entry": "io.github.tangerg.flame/components/component.js",
+      "export": "FileWatch",
+      "contribution": "filewatch-operations"
+    }
   ]
 }

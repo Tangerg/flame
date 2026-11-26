@@ -112,20 +112,23 @@ func (l *library) indexDocument(ctx context.Context, method, id string, admitted
 	})
 }
 
-func (l *library) read(ctx context.Context, input wire.ReadInput) (wire.DocumentRead, error) {
-	if _, err := identity.ParseOptionalProject(input.Project); err != nil {
-		return wire.DocumentRead{}, err
-	}
-	document, err := l.store.read(ctx, input.ID)
-	if err != nil {
-		return wire.DocumentRead{}, err
-	}
-	// Another Project's document is absent here, not forbidden, so its identity
-	// reveals nothing to a Run outside that Project.
-	if document.Header().Revision == 0 || !document.VisibleIn(input.Project) {
-		return wire.DocumentRead{}, knowledge.ErrNotFound
-	}
-	return wire.DocumentRead{Document: document.Header(), Text: document.Content().Text}, nil
+func (l *library) read(ctx context.Context, input wire.ReadInput) (result wire.DocumentRead, err error) {
+	err = l.store.db.RunReadSnapshot(ctx, func(ctx context.Context) error {
+		_, source, err := l.store.resolveSource(ctx, input.Project, input.ID, input.Revision)
+		if err != nil {
+			return err
+		}
+		pages := sourcePages(source.Text)
+		if input.Page < 0 || input.Page > len(pages) {
+			return knowledge.ErrNotFound
+		}
+		result = wire.DocumentRead{Document: source.Header, Text: source.Text, Page: input.Page, Pages: len(pages)}
+		if input.Page != 0 {
+			result.Text = pages[input.Page-1]
+		}
+		return nil
+	})
+	return result, err
 }
 
 func (l *library) list(ctx context.Context, input wire.ListInput) ([]knowledge.Header, error) {

@@ -47,7 +47,7 @@ Protocol `2026-11-26.10` · 108 methods
 | `workspace.diff.get` | query | unary | none | none | none | — | `git` | `workspace_unavailable`, `vcs_unavailable`, `path_outside_root`, `capability_not_negotiated` |
 | `workspace.files.search` | query | unary | none | none | none | — | — | `workspace_unavailable`, `path_outside_root` |
 | `workspace.files.list` | query | unary | none | none | cursor | — | — | `workspace_unavailable`, `path_outside_root` |
-| `workspace.files.read` | query | unary | none | none | none | — | — | `workspace_unavailable`, `path_outside_root`, `unsupported_mime` |
+| `workspace.files.read` | query | unary | none | none | none | — | — | `workspace_unavailable`, `path_outside_root`, `workspace_file_not_found`, `unsupported_mime` |
 | `runtime.subscribe` | subscription | stream | none | none | none | — | `fileWatch` | `capability_not_negotiated` |
 | `skills.discovered.list` | query | unary | none | none | none | — | `skills` | `workspace_unavailable`, `capability_not_negotiated` |
 | `skills.discovered.get` | query | unary | none | none | none | — | `skills` | `workspace_unavailable`, `skill_not_found`, `skill_unavailable`, `capability_not_negotiated` |
@@ -222,6 +222,7 @@ publish one namespaced pattern branch without weakening first-party tags.
 | `tool_failed` | — | `detail`, `docUrl` |
 | `unsupported_mime` | — | `detail`, `docUrl` |
 | `vcs_unavailable` | — | `detail`, `docUrl` |
+| `workspace_file_not_found` | — | `detail`, `docUrl` |
 | `workspace_unavailable` | — | `detail`, `docUrl` |
 | `^plugin:[a-z0-9][a-z0-9._-]*/[a-z0-9][a-z0-9._-]*$` | — | `detail`, `docUrl`, `retryAfterSeconds` |
 

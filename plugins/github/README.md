@@ -53,6 +53,31 @@ directory without converting it or creating command tables in it. Retain the old
 installation and private directory separately, then use a fresh installation/data
 directory with this complete release. Re-enter its token for the new executable.
 
+## Pull request reviews
+
+Open the installed **Pull request reviews** view and enter a repository and PR
+number, such as `owner/repo#42`. Inspect the current revision to retain its base
+and head commits. On a later inspection, findings from the preceding captured
+revision stay available for recheck. Accept or defer an individual finding with
+a reason on its inspected revision. Its code reference names the exact file,
+commit, side and line. Revision links reopen the original base/head pair.
+
+Checking a retained revision records CI only for its head SHA. Discussion
+comments captured from the pull request retain their upstream identities and
+revision times. Repeated observations of one comment version reuse its captured
+entry. Use **Continue from this comment** to attach it to the current Composer.
+The review inspector reads the first 32 comments and check runs at a time.
+The plugin reports incomplete check coverage if GitHub offers another page or
+returns a different SHA.
+
+`review-work.v1` checks current access to the pull request before serving stored
+review work. `update-review-work.v1` uses the expected work version for a new
+inspection, finding or individual human decision. The local decision and
+command receipt commit together. **Publish comment to GitHub** submits a separate
+review at the selected head through the original GitHub write and receipt
+protocol. The review workspace stores its data in the same account-scoped
+GitHub database.
+
 ## Writes and original outcomes
 
 Use the same `github-operations` contribution, installation target and complete

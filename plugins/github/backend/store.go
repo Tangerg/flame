@@ -20,7 +20,7 @@ type response struct {
 type store struct{ db sqlite.Database }
 
 func openStore(ctx context.Context, path string) (*store, error) {
-	db, err := sqlite.OpenSchema(ctx, path, []string{pluginstorage.CommandsSchema, `CREATE TABLE IF NOT EXISTS responses (key TEXT PRIMARY KEY, etag TEXT NOT NULL, links TEXT NOT NULL, body BLOB NOT NULL, checked_at INTEGER NOT NULL)`})
+	db, err := sqlite.OpenSchema(ctx, path, []string{pluginstorage.CommandsSchema, reviewWorkSchema, `CREATE TABLE IF NOT EXISTS responses (key TEXT PRIMARY KEY, etag TEXT NOT NULL, links TEXT NOT NULL, body BLOB NOT NULL, checked_at INTEGER NOT NULL)`})
 	if err != nil {
 		return nil, err
 	}

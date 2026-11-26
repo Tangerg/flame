@@ -369,6 +369,13 @@ export const en = {
   "slides.chart.series": "Series {{number}} name",
   "slides.chart.apply": "Use this data",
   "slides.chart.invalid": "Enter numbers or leave a value empty.",
+  "slides.chart.titleRun": "Chart title {{number}}",
+  "slides.chart.legend": "Legend position",
+  "slides.chart.legend.b": "Bottom",
+  "slides.chart.legend.l": "Left",
+  "slides.chart.legend.r": "Right",
+  "slides.chart.legend.t": "Top",
+  "slides.chart.legend.tr": "Top right",
   "slides.chart.mixed":
     "This chart's embedded workbook holds other data. Edit the data in PowerPoint.",
   "slides.chart.unsupported":
@@ -382,6 +389,8 @@ export const en = {
   "handoff.failed": "The reference could not be copied.",
   "handoff.unsaved":
     "Save or discard the draft before handing it to the Agent; a reference names saved revisions only.",
+  "slides.handoff.saved":
+    "The Agent receives the saved revision. Your unsaved edits stay in this draft.",
   "slides.slideActions": "Slide actions",
   "slides.moveUp": "Move earlier",
   "slides.moveDown": "Move later",
@@ -412,6 +421,7 @@ export const en = {
   "slides.op.setFrame": "Position of {{name}}",
   "slides.op.replaceText": "Text “{{text}}”",
   "slides.op.deleteElement": "Delete {{name}}",
+  "slides.op.setChartLegend": "Legend of {{name}}",
   "slides.op.setChartData": "Data of {{name}}",
   "handoff.add": "Hand to Agent",
   "link.copy": "Copy link",

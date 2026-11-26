@@ -249,6 +249,21 @@ function elementItem(
             },
           ]
         : []),
+      ...(change.legend
+        ? [
+            {
+              label: t("slides.chart.legend"),
+              text: textChanges(
+                before.chart?.legendPosition
+                  ? t(`slides.chart.legend.${before.chart.legendPosition}`)
+                  : "",
+                element.chart?.legendPosition
+                  ? t(`slides.chart.legend.${element.chart.legendPosition}`)
+                  : "",
+              ),
+            },
+          ]
+        : []),
     ],
     target: { slide, element: element.id },
   };

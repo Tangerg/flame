@@ -40,7 +40,8 @@ func TestRuntimeStopsRequiredCompactionWhenHookConfigurationCannotBeRead(t *test
 		}
 		return response, err
 	})}
-	stores, api, ctx, home := newSessionStateE2ERuntime(t, model)
+	stores, runtime, ctx, home := newSessionStateE2ERuntime(t, model)
+	api := runtime.api
 	activateHookProvider(t, api)
 	t.Cleanup(release)
 	session, err := api.CreateSession(ctx, protocol.CreateSessionRequest{

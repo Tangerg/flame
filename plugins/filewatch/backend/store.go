@@ -7,6 +7,7 @@ import (
 	json "encoding/json/v2"
 	"errors"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	"github.com/Tangerg/flame/plugins/filewatch/internal/filewatch"
 
@@ -33,6 +34,7 @@ func openStore(ctx context.Context, path string) (*store, error) {
 		pluginstorage.SnapshotSchema(configurationTable),
 		pluginstorage.RuntimeTargetSchema,
 		`CREATE TABLE IF NOT EXISTS events (id TEXT PRIMARY KEY, generation TEXT NOT NULL, sequence INTEGER NOT NULL CHECK(sequence>0), capture TEXT NOT NULL CHECK(json_valid(capture)), accepted INTEGER NOT NULL CHECK(accepted IN (0,1)), UNIQUE(generation,sequence))`,
+		`CREATE TABLE IF NOT EXISTS existing_run_acceptances (event TEXT PRIMARY KEY REFERENCES events(id) ON DELETE CASCADE, run_id TEXT NOT NULL)`,
 		`CREATE TRIGGER IF NOT EXISTS immutable_capture BEFORE UPDATE OF id,generation,sequence,capture ON events BEGIN SELECT RAISE(ABORT,'observation capture is immutable'); END`,
 		`CREATE TRIGGER IF NOT EXISTS accepted_is_final BEFORE UPDATE OF accepted ON events WHEN OLD.accepted=1 AND NEW.accepted<>1 BEGIN SELECT RAISE(ABORT,'acceptance cannot be withdrawn'); END`,
 	})
@@ -74,13 +76,14 @@ func (s *store) prepareConfiguration(ctx context.Context, expected int64, draft 
 	return pluginstorage.Replace(s.settings, next.Snapshot(), next.Snapshot())
 }
 
-func (s *store) capture(ctx context.Context, observation filewatch.Observation) error {
+func (s *store) capture(ctx context.Context, observation filewatch.Observation) (bool, error) {
 	capture := observation.Capture()
 	encoded, err := json.Marshal(capture, json.Deterministic(true))
 	if err != nil {
-		return err
+		return false, err
 	}
-	return s.db.RunInTx(ctx, func(ctx context.Context) error {
+	var inserted bool
+	err = s.db.RunInTx(ctx, func(ctx context.Context) error {
 		connection := s.db.Executor(ctx)
 		var previous string
 		err := connection.QueryRowContext(ctx, `SELECT capture FROM events WHERE generation=? AND sequence=?`, capture.Generation, capture.Sequence).Scan(&previous)
@@ -111,6 +114,21 @@ func (s *store) capture(ctx context.Context, observation filewatch.Observation) 
 		if !bytes.Equal(definition, captured) {
 			return errStored
 		}
+		if capture.Kind == filewatch.Changed && len(capture.Partitions) != 0 {
+			var latest string
+			err := connection.QueryRowContext(ctx, `SELECT capture FROM events ORDER BY rowid DESC LIMIT 1`).Scan(&latest)
+			if err == nil {
+				var previous filewatch.Capture
+				if err := json.Unmarshal([]byte(latest), &previous); err != nil {
+					return errors.Join(errStored, err)
+				}
+				if capture.RepeatsPartitionReads(previous) {
+					return nil
+				}
+			} else if !errors.Is(err, sql.ErrNoRows) {
+				return err
+			}
+		}
 		var pending int
 		if err := connection.QueryRowContext(ctx, `SELECT COUNT(*) FROM events WHERE accepted=0`).Scan(&pending); err != nil {
 			return err
@@ -122,8 +140,10 @@ func (s *store) capture(ctx context.Context, observation filewatch.Observation) 
 			return err
 		}
 		_, err = connection.ExecContext(ctx, `INSERT INTO events(id,generation,sequence,capture,accepted) VALUES(?,?,?,?,0)`, capture.Invocation.ID, capture.Generation, capture.Sequence, string(encoded))
+		inserted = err == nil
 		return err
 	})
+	return inserted, err
 }
 
 func (s *store) pending(ctx context.Context) ([]filewatch.Event, error) {
@@ -139,11 +159,11 @@ func (s *store) headers(ctx context.Context) ([]filewatch.Header, error) {
 }
 
 func (s *store) event(ctx context.Context, id string) (filewatch.Event, error) {
-	var generation, raw string
+	var generation, raw, admittedRun string
 	var sequence uint64
 	var accepted int
 	err := s.db.Read(ctx, func(reader sqlite.Reader) error {
-		return reader.QueryRowContext(ctx, `SELECT generation,sequence,capture,accepted FROM events WHERE id=?`, id).Scan(&generation, &sequence, &raw, &accepted)
+		return reader.QueryRowContext(ctx, `SELECT generation,sequence,capture,accepted,`+admittedRunColumn+` FROM events WHERE id=?`, id).Scan(&generation, &sequence, &raw, &accepted, &admittedRun)
 	})
 	if errors.Is(err, sql.ErrNoRows) {
 		return filewatch.Event{}, filewatch.ErrNotFound
@@ -151,7 +171,7 @@ func (s *store) event(ctx context.Context, id string) (filewatch.Event, error) {
 	if err != nil {
 		return filewatch.Event{}, err
 	}
-	return decodeEvent(id, generation, sequence, raw, accepted)
+	return decodeEvent(id, generation, sequence, raw, accepted, admittedRun)
 }
 
 type eventSelection struct {
@@ -159,9 +179,11 @@ type eventSelection struct {
 	limit int
 }
 
+const admittedRunColumn = `COALESCE((SELECT run_id FROM existing_run_acceptances WHERE event=events.id),'')`
+
 var (
-	pendingEvents = eventSelection{`SELECT id,generation,sequence,capture,accepted FROM events WHERE accepted=0 ORDER BY rowid LIMIT ?`, maxPending}
-	recentEvents  = eventSelection{`SELECT id,generation,sequence,capture,accepted FROM events ORDER BY rowid DESC LIMIT ?`, maxEvents}
+	pendingEvents = eventSelection{`SELECT id,generation,sequence,capture,accepted,` + admittedRunColumn + ` FROM events WHERE accepted=0 ORDER BY rowid LIMIT ?`, maxPending}
+	recentEvents  = eventSelection{`SELECT id,generation,sequence,capture,accepted,` + admittedRunColumn + ` FROM events ORDER BY rowid DESC LIMIT ?`, maxEvents}
 )
 
 func (s *store) visitEvents(ctx context.Context, selection eventSelection, visit func(filewatch.Event)) error {
@@ -174,13 +196,13 @@ func (s *store) visitEvents(ctx context.Context, selection eventSelection, visit
 		defer rows.Close()
 		count := 0
 		for rows.Next() {
-			var id, generation, raw string
+			var id, generation, raw, admittedRun string
 			var sequence uint64
 			var accepted int
-			if err := rows.Scan(&id, &generation, &sequence, &raw, &accepted); err != nil {
+			if err := rows.Scan(&id, &generation, &sequence, &raw, &accepted, &admittedRun); err != nil {
 				return err
 			}
-			event, err := decodeEvent(id, generation, sequence, raw, accepted)
+			event, err := decodeEvent(id, generation, sequence, raw, accepted, admittedRun)
 			if err != nil {
 				return err
 			}
@@ -197,7 +219,7 @@ func (s *store) visitEvents(ctx context.Context, selection eventSelection, visit
 	})
 }
 
-func decodeEvent(id, generation string, sequence uint64, raw string, accepted int) (filewatch.Event, error) {
+func decodeEvent(id, generation string, sequence uint64, raw string, accepted int, admittedRun string) (filewatch.Event, error) {
 	var capture filewatch.Capture
 	if err := json.Unmarshal([]byte(raw), &capture, json.RejectUnknownMembers(true)); err != nil {
 		return filewatch.Event{}, errors.Join(errStored, err)
@@ -206,12 +228,33 @@ func decodeEvent(id, generation string, sequence uint64, raw string, accepted in
 	if err != nil || id != capture.Invocation.ID || generation != capture.Generation || sequence != capture.Sequence || (accepted != 0 && accepted != 1) {
 		return filewatch.Event{}, errors.Join(errStored, err)
 	}
-	return filewatch.Event{Capture: observation.Capture(), Accepted: accepted == 1}, nil
+	runID, err := identity.ParseOptionalRun(admittedRun)
+	expectReceipt := accepted == 1 && capture.RunID.IsZero()
+	if err != nil || expectReceipt == runID.IsZero() {
+		return filewatch.Event{}, errors.Join(errStored, err)
+	}
+	return filewatch.Event{Capture: observation.Capture(), Accepted: accepted == 1, AdmittedRunID: runID}, nil
 }
 
-func (s *store) acceptRun(ctx context.Context, id string) error {
+func (s *store) acceptRun(ctx context.Context, capture filewatch.Capture, runID identity.RunID) error {
+	if runID.IsZero() || !capture.RunID.IsZero() && capture.RunID != runID {
+		return errStored
+	}
 	return s.db.RunInTx(ctx, func(ctx context.Context) error {
-		result, err := s.db.Executor(ctx).ExecContext(ctx, `UPDATE events SET accepted=1 WHERE id=?`, id)
+		connection := s.db.Executor(ctx)
+		id := capture.Invocation.ID
+		if capture.RunID.IsZero() {
+			result, err := connection.ExecContext(ctx, `INSERT INTO existing_run_acceptances(event,run_id) VALUES(?,?)
+			  ON CONFLICT(event) DO UPDATE SET run_id=excluded.run_id WHERE run_id=excluded.run_id`, id, runID.String())
+			if err != nil {
+				return err
+			}
+			count, err := result.RowsAffected()
+			if err != nil || count != 1 {
+				return errors.Join(errStored, err)
+			}
+		}
+		result, err := connection.ExecContext(ctx, `UPDATE events SET accepted=1 WHERE id=?`, id)
 		if err != nil {
 			return err
 		}
