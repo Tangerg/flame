@@ -49,7 +49,7 @@ export const ja: Record<string, string> = {
   "nomatch.title": "一致するファイルはありません。",
   "files.region": "変更されたファイル",
   "file.changes": "{{path}} の変更",
-  "file.renamed": "名前の変更元:",
+  "file.renamed": "名前の変更元：",
   "file.binary": "バイナリコンテンツは表示されません。行数は利用できません。",
   "file.noLineChanges": "行の変更はありません。",
   "file.status.added": "追加",
