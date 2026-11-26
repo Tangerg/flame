@@ -123,15 +123,19 @@ export function toolActivityStatus(tools: readonly ToolCall[]): ToolActivityCoun
   return counts.running + counts.issues + counts.denied > 0 ? counts : null;
 }
 
-const ACTIVITY_FAMILIES = ["read", "search", "write", "run", "fetch"] as const;
+const ACTIVITY_FAMILIES = ["read", "search", "write", "run", "fetch", "call"] as const;
 
 type ActivityFamily = (typeof ACTIVITY_FAMILIES)[number];
 
+// Runtime classes every plugin and MCP tool as exec so approval fails closed; that
+// says nothing about what the tool does, so only built-in exec tools are commands.
 function activityFamily(tool: ToolCall): ActivityFamily {
-  if (builtinToolName(tool) === "read") return "read";
+  const builtin = builtinToolName(tool);
+  if (builtin === "read") return "read";
   if (tool.safetyClass === "write") return "write";
-  if (tool.safetyClass === "exec") return "run";
   if (tool.safetyClass === "network") return "fetch";
+  if (builtin === undefined) return "call";
+  if (tool.safetyClass === "exec") return "run";
   return "search";
 }
 

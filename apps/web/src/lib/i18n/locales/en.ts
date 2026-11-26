@@ -879,6 +879,8 @@ export const en = {
   "tool.group.run_other": "{{count}} commands",
   "tool.group.fetch_one": "{{count}} fetch",
   "tool.group.fetch_other": "{{count}} fetches",
+  "tool.group.call_one": "{{count}} tool call",
+  "tool.group.call_other": "{{count}} tool calls",
   "duration.seconds": "{{sec}}s",
   "duration.minutes": "{{min}}m {{sec}}s",
   "duration.hours": "{{hr}}h {{min}}m",

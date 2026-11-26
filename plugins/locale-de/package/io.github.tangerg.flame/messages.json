@@ -820,6 +820,8 @@
   "tool.group.run_other": "{{count}} Befehle",
   "tool.group.fetch_one": "{{count}} abgerufen",
   "tool.group.fetch_other": "{{count}} abgerufen",
+  "tool.group.call_one": "{{count}} Tool-Aufruf",
+  "tool.group.call_other": "{{count}} Tool-Aufrufe",
   "duration.seconds": "{{sec}} s",
   "duration.minutes": "{{min}} min {{sec}} s",
   "duration.hours": "{{hr}} Std. {{min}} min",

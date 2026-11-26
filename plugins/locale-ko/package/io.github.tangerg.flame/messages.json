@@ -801,6 +801,7 @@
   "tool.group.write_other": "쓰기 {{count}}",
   "tool.group.run_other": "실행 {{count}}",
   "tool.group.fetch_other": "통신 {{count}}",
+  "tool.group.call_other": "도구 호출 {{count}}",
   "duration.seconds": "{{sec}}초",
   "duration.minutes": "{{min}}분 {{sec}}초",
   "duration.hours": "{{hr}}시간 {{min}}분",
