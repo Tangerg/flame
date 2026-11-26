@@ -116,7 +116,7 @@ func registerPlugins(r *Registry) {
 		SelectPluginProvider(context.Context, protocol.SelectPluginProviderRequest) (*protocol.PluginProviderSelection, error)
 	}, ctx context.Context, in protocol.SelectPluginProviderRequest) (*protocol.PluginProviderSelection, error) {
 		return s.SelectPluginProvider(ctx, in)
-	})
+	}).withOwnedReplay(atomicReplay((*Handler).commitPluginProviderSelection))
 	r.query(MethodMeta{Name: pluginsListCompositions, GoName: "ListPluginCompositions", CapabilityRules: requires(protocol.FeaturePlugins), Errors: pluginErrors()}, func(s interface {
 		ListPluginCompositions(context.Context) (*protocol.Page[protocol.PluginComposition], error)
 	}, ctx context.Context, _ struct{}) (*protocol.Page[protocol.PluginComposition], error) {

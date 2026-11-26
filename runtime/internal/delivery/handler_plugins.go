@@ -8,6 +8,7 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 
@@ -32,19 +33,30 @@ func (s *Handler) ListPluginProviders(ctx context.Context) (*protocol.Page[proto
 }
 
 func (s *Handler) SelectPluginProvider(ctx context.Context, in protocol.SelectPluginProviderRequest) (*protocol.PluginProviderSelection, error) {
+	var selection plugin.ProviderSelection
+	if err := s.selectPluginProvider(ctx, in, operation.DirectReply(&selection)); err != nil {
+		return nil, err
+	}
+	return presentProviderSelection(selection), nil
+}
+
+func (s *Handler) commitPluginProviderSelection(ctx context.Context, in protocol.SelectPluginProviderRequest, outcome atomicOutcome) error {
+	complete := atomicReply(outcome.complete, func(selection plugin.ProviderSelection) ([]byte, error) {
+		return encodeAtomicResult(outcome.method, presentProviderSelection(selection))
+	})
+	return outcome.settleRefusal(ctx, s.selectPluginProvider(ctx, in, complete))
+}
+
+func (s *Handler) selectPluginProvider(ctx context.Context, in protocol.SelectPluginProviderRequest, complete operation.Reply[plugin.ProviderSelection]) error {
 	id, err := parseInstallationID(in.InstallationID)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	contribution, err := plugin.ParseContributionID(in.Contribution)
 	if err != nil {
-		return nil, protocol.InvalidParameters(err)
+		return protocol.InvalidParameters(err)
 	}
-	value, err := s.pluginSelections.Select(ctx, plugin.SelectionRecord{Role: in.Role, Installation: id, Contribution: contribution})
-	if err != nil {
-		return nil, wirePluginError(err)
-	}
-	return presentProviderSelection(value), nil
+	return wirePluginError(s.pluginSelections.Select(ctx, plugin.SelectionRecord{Role: in.Role, Installation: id, Contribution: contribution}, complete))
 }
 
 func parseInstallationID(text string) (identity.InstallationID, error) {

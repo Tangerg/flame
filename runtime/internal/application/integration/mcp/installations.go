@@ -20,7 +20,7 @@ func (c *Coordinator) WithdrawInstallation(ctx context.Context, servers []mcpser
 	}
 	affected, result := c.external.Affected(ctx, servers)
 	if result != nil || affected {
-		result = errors.Join(result, c.WithdrawExternal())
+		result = errors.Join(result, c.withdrawExternal())
 	}
 	for _, id := range servers {
 		result = errors.Join(result, c.connections.Detach(id))
@@ -41,7 +41,7 @@ func (c *Coordinator) ReconcileInstallation(ctx context.Context, servers []mcpse
 		return errors.Join(result, selectionErr)
 	}
 	if affected {
-		result = errors.Join(result, c.ReconcileExternal(ctx))
+		result = errors.Join(result, c.reconcileExternal(ctx))
 	}
 	return result
 }
@@ -56,7 +56,7 @@ func (c *Coordinator) RestoreExternal(ctx context.Context, ready <-chan struct{}
 		if err := c.restoreExternalCommands(ctx); err != nil && ctx.Err() == nil {
 			slog.WarnContext(ctx, "external MCP commands could not be settled", telemetry.Error(err))
 		}
-		if err := c.ReconcileExternal(ctx); err != nil && ctx.Err() == nil {
+		if err := c.reconcileExternal(ctx); err != nil && ctx.Err() == nil {
 			slog.WarnContext(ctx, "external MCP directory could not be restored", telemetry.Error(err))
 		}
 		c.external.RunAuthorizationDelivery(ctx)
@@ -72,7 +72,27 @@ func (c *Coordinator) restoreExternalCommands(ctx context.Context) error {
 	return c.external.RestoreCommands(write.ownerCtx)
 }
 
-func (c *Coordinator) WithdrawExternal() error {
+func (c *Coordinator) ApplyExternalSelection(ctx context.Context, commit func(context.Context) (bool, error)) error {
+	write, err := c.beginMutation(ctx)
+	if err != nil {
+		return err
+	}
+	defer write.close()
+	changed, err := commit(write.requestCtx)
+	if err != nil || !changed {
+		return err
+	}
+	if err := c.withdrawExternal(); err != nil {
+		slog.ErrorContext(write.ownerCtx, "mcp: withdraw the previous connector", telemetry.Error(err))
+	}
+	write.unlock()
+	if err := c.reconcileExternal(write.ownerCtx); err != nil {
+		slog.ErrorContext(write.ownerCtx, "mcp: reconcile the selected connector", telemetry.Error(err))
+	}
+	return nil
+}
+
+func (c *Coordinator) withdrawExternal() error {
 	c.external.Invalidate()
 	var err error
 	for _, s := range c.connections.Statuses() {
@@ -83,7 +103,7 @@ func (c *Coordinator) WithdrawExternal() error {
 	return err
 }
 
-func (c *Coordinator) ReconcileExternal(ctx context.Context) error {
+func (c *Coordinator) reconcileExternal(ctx context.Context) error {
 	definitions, err := c.external.List(ctx)
 	if err != nil {
 		return err

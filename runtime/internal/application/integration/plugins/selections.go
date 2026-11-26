@@ -8,6 +8,7 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/mcpconnector"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 
 	"github.com/samber/lo"
@@ -20,8 +21,7 @@ type SelectionStore interface {
 }
 
 type connectorSelection interface {
-	WithdrawExternal() error
-	ReconcileExternal(context.Context) error
+	ApplyExternalSelection(context.Context, func(context.Context) (bool, error)) error
 }
 type Selections struct {
 	connector     connectorSelection
@@ -42,39 +42,56 @@ func (s *Selections) List(ctx context.Context) ([]plugin.ProviderSelection, erro
 	return s.store.List(ctx)
 }
 
-func (s *Selections) Select(ctx context.Context, record plugin.SelectionRecord) (plugin.ProviderSelection, error) {
+func (s *Selections) Select(ctx context.Context, record plugin.SelectionRecord, complete operation.Reply[plugin.ProviderSelection]) error {
 	selection, err := plugin.NewProviderSelection(record)
 	if err != nil {
-		return plugin.ProviderSelection{}, err
+		return err
 	}
-	err = s.transact(ctx, func(ctx context.Context) error {
-		snapshot, found, err := s.installations.Get(ctx, record.Installation)
-		if err != nil {
-			return err
-		}
-		if !found {
-			return plugin.ErrNotFound
-		}
-		contribution, found := snapshot.Selected.Contribution(record.Contribution)
-		if !found {
-			return fmt.Errorf("%w: contribution is not declared", plugin.ErrInvalid)
-		}
-		if !slices.Contains(contribution.SelectionRoles(), record.Role) {
-			return fmt.Errorf("%w: contribution does not provide the requested selection role", plugin.ErrInvalid)
-		}
-		if err := s.store.Save(ctx, selection); err != nil {
-			return err
-		}
-		if record.Role == mcpconnector.Reference {
-			return s.connector.WithdrawExternal()
-		}
-		return nil
-	})
-	if err == nil {
+	var changed bool
+	commit := func(ctx context.Context) (bool, error) {
+		err := complete(ctx, func(tx context.Context) (plugin.ProviderSelection, error) {
+			err := s.transact(tx, func(ctx context.Context) error {
+				selected, err := s.saveSelection(ctx, selection)
+				changed = selected
+				return err
+			})
+			return selection, err
+		})
+		return changed, err
+	}
+	if record.Role == mcpconnector.Reference {
+		err = s.connector.ApplyExternalSelection(ctx, commit)
+	} else {
+		_, err = commit(ctx)
+	}
+	if err == nil && changed {
 		s.publish.Notify(invalidation.Notice{Resource: invalidation.Plugins})
-		if record.Role == mcpconnector.Reference {
-			err = s.connector.ReconcileExternal(context.WithoutCancel(ctx))
-		}
 	}
-	return selection, err
+	return err
+}
+
+func (s *Selections) saveSelection(ctx context.Context, selection plugin.ProviderSelection) (bool, error) {
+	record := selection.Snapshot()
+	snapshot, found, err := s.installations.Get(ctx, record.Installation)
+	if err != nil {
+		return false, err
+	}
+	if !found {
+		return false, plugin.ErrNotFound
+	}
+	contribution, found := snapshot.Selected.Contribution(record.Contribution)
+	if !found {
+		return false, fmt.Errorf("%w: contribution is not declared", plugin.ErrInvalid)
+	}
+	if !slices.Contains(contribution.SelectionRoles(), record.Role) {
+		return false, fmt.Errorf("%w: contribution does not provide the requested selection role", plugin.ErrInvalid)
+	}
+	current, found, err := s.store.Get(ctx, record.Role)
+	if err != nil || found && current == selection {
+		return false, err
+	}
+	if err := s.store.Save(ctx, selection); err != nil {
+		return false, err
+	}
+	return true, nil
 }

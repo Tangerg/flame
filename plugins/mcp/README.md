@@ -108,6 +108,8 @@ delivers retained outcomes before the Connector marks still-open interrupted
 sign-ins as unconfirmed. The Connector preserves terminal attempts for the
 published retention window.
 
+Runtime commits a Connector choice with the selection acknowledgement before
+switching live connections. Repeating the same choice reuses those connections.
 Disabling or removing the selected connector withdraws external tools. Installed package
 backends retain their own Frame bindings. Selecting the original connector again restores
 its directory.
