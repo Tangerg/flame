@@ -854,7 +854,7 @@
   "shortcuts.recording": "按下新的组合键 · Esc 取消",
   "shortcuts.conflict": "已被“{{action}}”使用",
   "shortcuts.replace": "改为在此使用",
-  "composer.reasoningEffort": "推理强度",
+  "composer.reasoningEffort": "思考强度",
   "model.effort.none": "关闭",
   "model.effort.minimal": "极低",
   "model.effort.low": "低",

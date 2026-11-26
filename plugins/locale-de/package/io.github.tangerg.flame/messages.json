@@ -876,7 +876,7 @@
   "shortcuts.recording": "Neue Tasten drücken · Esc zum Abbrechen",
   "shortcuts.conflict": "Bereits von {{action}} belegt",
   "shortcuts.replace": "Stattdessen hier nutzen",
-  "composer.reasoningEffort": "Denkaufwand",
+  "composer.reasoningEffort": "Denkintensität",
   "model.effort.none": "Aus",
   "model.effort.minimal": "Minimal",
   "model.effort.low": "Niedrig",

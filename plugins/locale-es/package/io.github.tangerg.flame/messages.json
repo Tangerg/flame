@@ -898,7 +898,7 @@
   "shortcuts.recording": "Pulsa las nuevas teclas · Esc para cancelar",
   "shortcuts.conflict": "Ya lo usa {{action}}",
   "shortcuts.replace": "Usarlo aquí",
-  "composer.reasoningEffort": "Esfuerzo de razonamiento",
+  "composer.reasoningEffort": "Intensidad de razonamiento",
   "model.effort.none": "Desactivado",
   "model.effort.minimal": "Mínimo",
   "model.effort.low": "Bajo",
