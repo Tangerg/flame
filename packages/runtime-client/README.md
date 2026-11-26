@@ -35,8 +35,11 @@ alone remain successful cleanup.
 
 After capability discovery, `runtimeEvents.subscribe` can share one connection
 for negotiated topics. A subscriber's abort settles its own call while the
-shared stream is still awaiting acknowledgement. The last subscriber to leave
-closes the shared connection. File watch subscriptions use dedicated connections.
+shared stream is still awaiting acknowledgement. Canceling a subscription or
+returning its iterator discards that subscriber's unread events. The last
+subscriber to leave closes the shared connection. File watch subscriptions use
+dedicated connections. A Run's segment stream retains unread events for the
+active observer through its terminal `segment.finished` event.
 
 HTTP credentials and metadata must be ASCII field values without surrounding
 whitespace. Fetch byte strings cannot preserve non-ASCII UTF-8 identities, and

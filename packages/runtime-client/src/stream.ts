@@ -82,15 +82,25 @@ class RunEventInbox {
   }
 }
 
-export function iterableOf<T>(channel: PushPullChannel<T>, cleanup: () => void): AsyncIterable<T> {
+export function iterableOf<T>(
+  channel: PushPullChannel<T>,
+  cleanup: () => void,
+  signal?: AbortSignal,
+): AsyncIterable<T> {
   return {
     [Symbol.asyncIterator]() {
       const inner = channel.iterator();
+      const cancel = (): IteratorResult<T> => {
+        channel.cancel();
+        cleanup();
+        return { value: undefined as never, done: true };
+      };
       return {
         [Symbol.asyncIterator]() {
           return this;
         },
         next: async (): Promise<IteratorResult<T>> => {
+          if (signal?.aborted) return cancel();
           try {
             const result = await inner.next();
             if (result.done) cleanup();
@@ -100,11 +110,7 @@ export function iterableOf<T>(channel: PushPullChannel<T>, cleanup: () => void):
             throw error;
           }
         },
-        return: async (): Promise<IteratorResult<T>> => {
-          channel.close();
-          cleanup();
-          return { value: undefined as never, done: true };
-        },
+        return: async () => cancel(),
       };
     },
   };
@@ -113,17 +119,28 @@ export function iterableOf<T>(channel: PushPullChannel<T>, cleanup: () => void):
 function eventStream<T>(channel: PushPullChannel<T>, parent?: AbortSignal) {
   const controller = new AbortController();
   const signal = parent ? AbortSignal.any([parent, controller.signal]) : controller.signal;
-  const dispose = () => controller.abort();
-  if (signal.aborted) channel.close();
-  else signal.addEventListener("abort", () => channel.close(), { once: true });
+  const stop = () => {
+    parent?.removeEventListener("abort", dispose);
+    controller.abort();
+  };
+  const dispose = () => {
+    channel.cancel();
+    stop();
+  };
+  if (parent?.aborted) dispose();
+  else parent?.addEventListener("abort", dispose, { once: true });
 
   return {
     signal,
     dispose,
-    events: iterableOf(channel, dispose),
+    events: iterableOf(channel, stop, parent),
+    finish() {
+      channel.close();
+      stop();
+    },
     fail(error: Error) {
       channel.fail(error);
-      dispose();
+      stop();
     },
   };
 }
@@ -153,7 +170,7 @@ export function streamRunEvents(options: RunEventStreamOptions = {}) {
             event.segmentId === segmentId &&
             event.event.type === "segment.finished"
           ) {
-            stream.dispose();
+            stream.finish();
           }
         },
         fail: stream.fail,

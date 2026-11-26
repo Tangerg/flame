@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { asRunId, asSegmentId, asSessionId, RpcProtocolError } from "@flame/runtime-client";
 import { wireMethodRequiresIdempotency, type WireMethodName } from "@flame/runtime-client/methods";
+import { HTTP_HEADERS } from "@flame/runtime-client/wire";
 import { createProviderGate } from "./fakeProvider";
 import {
   collectRunEvents,
@@ -67,6 +68,32 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: runs", () => {
         }),
       ],
     });
+  }, 30_000);
+
+  it("retains unread Run events after the terminal frame closes the response", async () => {
+    const closed = Promise.withResolvers<void>();
+    const client = fixture.createRuntimeClient(async (input, init) => {
+      if (new Headers(init?.headers).get(HTTP_HEADERS.method) === "runs.start") {
+        init?.signal?.addEventListener("abort", () => closed.resolve(), { once: true });
+      }
+      return fetch(input, init);
+    });
+    try {
+      const session = await fixture.client.sessions.create({ workspace: { path: fixture.root } });
+      const started = await client.runs.start({
+        sessionId: asSessionId(session.id),
+        input: [{ type: "text", text: "E2E_RUN complete before observation starts." }],
+      });
+      await within(closed.promise, "the completed Run response to close");
+      const events = await collectRunEvents(originalOpeningEvents(started));
+      expect(events.at(0)?.event.type).toBe("segment.started");
+      expect(events.at(-1)?.event).toMatchObject({
+        type: "segment.finished",
+        run: { status: "finished", outcome: { type: "completed" } },
+      });
+    } finally {
+      await client.close();
+    }
   }, 30_000);
 
   it("refuses Run notifications before the subscription acknowledgement", async () => {
