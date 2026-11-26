@@ -84,7 +84,7 @@ export const ja = {
   "approval.once": "今回のみ許可",
   "approval.session": "このセッションで許可",
   "approval.always": "常に許可",
-  "approval.accept": "許可を送信",
+  "approval.accept": "承認を送信",
   "approval.decline": "拒否",
   "approval.cancel": "要求をキャンセル",
   "approval.sent": "元の権限要求への回答が受理されました。",

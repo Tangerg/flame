@@ -329,7 +329,7 @@ export const en = {
   "session.action.delete": "Delete",
   "session.delete.title": "Delete this session?",
   "session.delete.body": "“{{title}}” and everything in it will be gone. This can’t be undone.",
-  "folder.row.missing": "Directory missing on disk",
+  "folder.row.missing": "Folder missing on disk",
   "workIndex.row.newSession": "New session in {{name}}",
   "toolInspector.arguments": "Arguments",
   "toolInspector.result": "Result",

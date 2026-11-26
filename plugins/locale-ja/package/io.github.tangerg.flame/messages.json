@@ -284,7 +284,7 @@
   "session.action.delete": "削除",
   "session.delete.title": "このセッションを削除しますか？",
   "session.delete.body": "「{{title}}」とその内容はすべて失われ、元に戻せません。",
-  "folder.row.missing": "ディスク上にディレクトリが見つかりません",
+  "folder.row.missing": "ディスク上にフォルダが見つかりません",
   "workIndex.row.newSession": "{{name}} で新規セッション",
   "toolInspector.arguments": "引数",
   "toolInspector.result": "結果",

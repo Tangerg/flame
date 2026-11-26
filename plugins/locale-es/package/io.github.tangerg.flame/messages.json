@@ -294,7 +294,7 @@
   "session.action.delete": "Eliminar",
   "session.delete.title": "¿Eliminar esta sesión?",
   "session.delete.body": "«{{title}}» y todo su contenido desaparecen. Esto no se puede deshacer.",
-  "folder.row.missing": "Falta el directorio en el disco",
+  "folder.row.missing": "Falta la carpeta en el disco",
   "workIndex.row.newSession": "Nueva sesión en {{name}}",
   "toolInspector.arguments": "Argumentos",
   "toolInspector.result": "Resultado",

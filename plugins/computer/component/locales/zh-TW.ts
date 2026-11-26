@@ -81,7 +81,7 @@ export const zhTW = {
   "approval.once": "允許一次",
   "approval.session": "在此工作階段允許",
   "approval.always": "一律允許",
-  "approval.accept": "提交同意",
+  "approval.accept": "提交核准",
   "approval.decline": "拒絕",
   "approval.cancel": "取消請求",
   "approval.sent": "原權限請求的回覆已被接收。",

@@ -290,7 +290,7 @@
   "session.action.delete": "刪除",
   "session.delete.title": "刪除這個工作階段？",
   "session.delete.body": "「{{title}}」及其中的全部內容都會消失，且無法復原。",
-  "folder.row.missing": "目錄在磁碟上已遺失",
+  "folder.row.missing": "資料夾在磁碟上已遺失",
   "workIndex.row.newSession": "在 {{name}} 中新建工作階段",
   "toolInspector.arguments": "參數",
   "toolInspector.result": "結果",

@@ -294,7 +294,7 @@
   "session.action.delete": "Supprimer",
   "session.delete.title": "Supprimer cette session ?",
   "session.delete.body": "« {{title}} » et tout son contenu disparaissent. Cette action est irréversible.",
-  "folder.row.missing": "Répertoire absent du disque",
+  "folder.row.missing": "Dossier absent du disque",
   "workIndex.row.newSession": "Nouvelle session dans {{name}}",
   "toolInspector.arguments": "Arguments",
   "toolInspector.result": "Résultat",

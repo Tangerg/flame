@@ -289,7 +289,7 @@
   "session.action.delete": "Löschen",
   "session.delete.title": "Diese Sitzung löschen?",
   "session.delete.body": "„{{title}}“ und alles darin verschwindet. Das kann nicht widerrufen werden.",
-  "folder.row.missing": "Verzeichnis auf der Festplatte fehlt",
+  "folder.row.missing": "Ordner auf der Festplatte fehlt",
   "workIndex.row.newSession": "Neue Sitzung in {{name}}",
   "toolInspector.arguments": "Argumente",
   "toolInspector.result": "Ergebnis",

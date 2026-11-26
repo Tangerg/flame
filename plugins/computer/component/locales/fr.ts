@@ -86,7 +86,7 @@ export const fr = {
   "approval.once": "Autoriser une fois",
   "approval.session": "Autoriser pour cette session",
   "approval.always": "Toujours autoriser",
-  "approval.accept": "Envoyer l’accord",
+  "approval.accept": "Envoyer l’approbation",
   "approval.decline": "Refuser",
   "approval.cancel": "Annuler la demande",
   "approval.sent": "La réponse à la demande d’origine a été acceptée.",

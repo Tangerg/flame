@@ -81,7 +81,7 @@ export const zh = {
   "approval.once": "允许一次",
   "approval.session": "在本会话中允许",
   "approval.always": "始终允许",
-  "approval.accept": "提交同意",
+  "approval.accept": "提交批准",
   "approval.decline": "拒绝",
   "approval.cancel": "取消请求",
   "approval.sent": "原权限请求的回复已被接收。",
