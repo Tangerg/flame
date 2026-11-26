@@ -407,7 +407,6 @@
   "settings.language.label": "Sprache",
   "settings.pane.connection": "Verbindung",
   "settings.connection.title": "Runtime",
-  "settings.connection.sub": "Anwenden verbindet neu.",
   "settings.connection.clearToken": "Token löschen",
   "settings.connection.discardToken": "Token-Änderung verwerfen",
   "settings.connection.tokenPending": "Token-Änderung nicht übernommen. Übernehmen, um diesen Wert zu verwenden; leer lassen, um das Token zu entfernen.",

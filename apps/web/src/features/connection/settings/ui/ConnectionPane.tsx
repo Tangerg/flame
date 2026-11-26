@@ -22,8 +22,10 @@ const cp = stylex.create({
   form: { display: "grid", gap: layout.fieldGap, minWidth: 0 },
   notes: { display: "grid", minWidth: 0 },
   pending: { margin: 0, marginBottom: { default: space.s1, ":empty": 0 } },
+  // The fill hangs like the fields above, so its text starts on the labels' edge.
   status: {
     marginTop: space.s1,
+    marginInlineStart: `calc(-1 * ${space.s3})`,
     borderRadius: radius.card,
     backgroundColor: surface.sunken,
     paddingInline: space.s3,
@@ -210,11 +212,7 @@ export function ConnectionPane() {
 
   return (
     <SettingsGroup>
-      <SettingRow
-        label={t("settings.connection.title")}
-        sub={t("settings.connection.sub")}
-        align="stacked"
-      >
+      <SettingRow label={t("settings.connection.title")} align="stacked">
         <div {...stylex.props(cp.form)}>
           <FormField label={t("settings.connection.url")}>
             <TextField

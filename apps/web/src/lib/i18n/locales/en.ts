@@ -473,7 +473,6 @@ export const en = {
   "settings.language.label": "Language",
   "settings.pane.connection": "Connection",
   "settings.connection.title": "Runtime",
-  "settings.connection.sub": "Applying reconnects.",
   "settings.connection.clearToken": "Clear token",
   "settings.connection.discardToken": "Discard token change",
   "settings.connection.tokenPending":

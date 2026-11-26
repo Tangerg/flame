@@ -413,7 +413,6 @@
   "settings.language.label": "Langue",
   "settings.pane.connection": "Connexion",
   "settings.connection.title": "Runtime",
-  "settings.connection.sub": "Appliquer rétablit la connexion.",
   "settings.connection.clearToken": "Effacer le jeton",
   "settings.connection.discardToken": "Annuler la modification du jeton",
   "settings.connection.tokenPending": "Modification du jeton non appliquée. Appliquez pour utiliser cette valeur ; laissez vide pour supprimer le jeton.",
