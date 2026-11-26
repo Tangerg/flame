@@ -240,7 +240,6 @@ export function HttpFields({
       </FormField>
       <FormField label={t("mcp.form.auth.aria")}>
         <TextField
-          font="mono"
           type="password"
           aria-label={t("mcp.form.auth.aria")}
           {...LITERAL_INPUT}

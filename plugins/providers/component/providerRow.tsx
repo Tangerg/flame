@@ -112,7 +112,6 @@ export function ProviderRow({
       <FormRow>
         <FormField label={t("providers.apiKey.label")}>
           <TextField
-            font="mono"
             type="password"
             autoComplete="off"
             aria-label={t("providers.apiKey.aria", { provider: provider.id })}
