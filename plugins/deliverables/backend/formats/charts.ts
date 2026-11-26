@@ -1,6 +1,8 @@
 import { canonicalJSON, parseJSON, projectNumber } from "@frame/sdk/json";
 import {
   chartDataSchema,
+  chartLegendPositionSchema,
+  type ChartLegendPosition,
   type CHART_TYPES,
   type ChartData,
 } from "../../contracts/content";
@@ -140,11 +142,36 @@ function exact(lexeme: string): number {
   }
 }
 
+function legendPositionNode(document: XmlDocument): XmlNode | undefined {
+  const legend = chartChild(chartChild(document.root, "chart"), "legend");
+  if (chartChild(chartChild(legend, "layout"), "manualLayout")) return;
+  return chartChild(legend, "legendPos");
+}
+
+export function chartLegendPatch(
+  document: XmlDocument,
+  expect: ChartLegendPosition,
+  position: ChartLegendPosition,
+): XmlPatch {
+  const node = legendPositionNode(document);
+  if (!node || node.attributes.val !== expect)
+    throw new Error(
+      "chart legend precondition does not match the exact revision",
+    );
+  const tag = openTag(node, { ...node.attributes, val: position });
+  return {
+    start: node.start,
+    end: node.openEnd,
+    value: node.selfClosing ? tag.slice(0, -1) + "/>" : tag,
+  };
+}
+
 export interface ChartModel {
   document: XmlDocument;
   type: (typeof CHART_TYPES)[number];
   series: Array<{ name: Reference; categories: Reference; values: Reference }>;
   data: ChartData;
+  legendPosition?: ChartLegendPosition;
   workbook: { kind: "none" } | { kind: "chart" | "mixed"; part: string };
 }
 
@@ -201,6 +228,9 @@ export function readChart(archive: OfficePackage, part: string): ChartModel {
     type,
     series,
     data,
+    legendPosition: chartLegendPositionSchema.safeParse(
+      legendPositionNode(document)?.attributes.val,
+    ).data,
     workbook: embeddedWorkbook(archive, part, document, series),
   };
 }

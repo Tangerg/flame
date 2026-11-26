@@ -374,6 +374,13 @@ export const fr = {
   "slides.chart.series": "Nom de la série {{number}}",
   "slides.chart.apply": "Utiliser ces données",
   "slides.chart.invalid": "Saisissez des nombres ou laissez la valeur vide.",
+  "slides.chart.titleRun": "Titre du graphique {{number}}",
+  "slides.chart.legend": "Position de la légende",
+  "slides.chart.legend.b": "En bas",
+  "slides.chart.legend.l": "À gauche",
+  "slides.chart.legend.r": "À droite",
+  "slides.chart.legend.t": "En haut",
+  "slides.chart.legend.tr": "En haut à droite",
   "slides.chart.mixed":
     "Le classeur incorporé de ce graphique contient d’autres données. Modifiez-les dans PowerPoint.",
   "slides.chart.unsupported":
@@ -386,6 +393,8 @@ export const fr = {
   "handoff.failed": "Impossible de copier la référence.",
   "handoff.unsaved":
     "Enregistrez ou abandonnez le brouillon avant de le transmettre à l’Agent ; une référence ne désigne que des révisions enregistrées.",
+  "slides.handoff.saved":
+    "L’agent reçoit la révision enregistrée. Vos modifications restent dans le brouillon.",
   "slides.slideActions": "Actions sur la diapositive",
   "slides.moveUp": "Avancer",
   "slides.moveDown": "Reculer",
@@ -416,6 +425,7 @@ export const fr = {
   "slides.op.setFrame": "Position de {{name}}",
   "slides.op.replaceText": "Texte « {{text}} »",
   "slides.op.deleteElement": "Supprimer {{name}}",
+  "slides.op.setChartLegend": "Légende de {{name}}",
   "slides.op.setChartData": "Données de {{name}}",
   "handoff.add": "Transmettre à l’Agent",
   "link.copy": "Copier le lien",

@@ -74,7 +74,7 @@ function SelectionActions({
   return (
     <>
       <Button
-        disabled={live.dirty || !saved || (element !== undefined && !original)}
+        disabled={!saved || (element !== undefined && !original)}
         onClick={() => {
           if (saved)
             handoff.hand(selectionReference(live.document, saved, original, t));
@@ -352,6 +352,14 @@ export function SlideStudio({
                 onText={setText}
                 onChart={(expect, data) =>
                   change({ type: "setChartData", id: element.id, expect, data })
+                }
+                onLegend={(expect, position) =>
+                  change({
+                    type: "setChartLegend",
+                    id: element.id,
+                    expect,
+                    position,
+                  })
                 }
                 onDelete={() => remove(element)}
                 onRevert={() => {

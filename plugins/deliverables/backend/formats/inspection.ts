@@ -100,13 +100,17 @@ export function officeReport(archive: OfficePackage): InspectionReport {
   return report;
 }
 
+export const isSlideChartPart = (part: string): boolean =>
+  /^ppt\/charts\/chart[0-9]+\.xml$/u.test(part);
+
 export function textParts(archive: OfficePackage): string[] {
   return [...archive.parts.keys()].filter((part) =>
     archive.format === "docx"
       ? /^word\/(?:document|header[0-9]+|footer[0-9]+|footnotes|endnotes|comments)\.xml$/u.test(
           part,
         )
-      : /^ppt\/(?:slides\/slide[0-9]+|notesSlides\/notesSlide[0-9]+)\.xml$/u.test(
+      : isSlideChartPart(part) ||
+        /^ppt\/(?:slides\/slide[0-9]+|notesSlides\/notesSlide[0-9]+)\.xml$/u.test(
           part,
         ),
   );
@@ -115,11 +119,30 @@ export function textParts(archive: OfficePackage): string[] {
 export function textNodes(archive: OfficePackage, part: string) {
   const document = archive.xml(part);
   const uri = archive.format === "docx" ? namespaces.word : namespaces.drawing;
+  const chartChild = (parent: typeof document.root | undefined, name: string) =>
+    parent?.children.find(
+      (node) => node.uri === namespaces.chart && node.local === name,
+    );
+  const area = isSlideChartPart(part)
+    ? chartChild(
+        chartChild(
+          chartChild(chartChild(document.root, "chart"), "title"),
+          "tx",
+        ),
+        "rich",
+      )
+    : document.root;
   return {
     document,
-    nodes: document.nodes.filter(
-      (node) => node.uri === uri && node.local === "t",
-    ),
+    nodes: area
+      ? document.nodes.filter(
+          (node) =>
+            node.uri === uri &&
+            node.local === "t" &&
+            node.start >= area.start &&
+            node.end <= area.end,
+        )
+      : [],
   };
 }
 

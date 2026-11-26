@@ -376,6 +376,13 @@ export const de = {
   "slides.chart.series": "Name der Reihe {{number}}",
   "slides.chart.apply": "Diese Daten verwenden",
   "slides.chart.invalid": "Gib Zahlen ein oder lass den Wert leer.",
+  "slides.chart.titleRun": "Diagrammtitel {{number}}",
+  "slides.chart.legend": "Legendenposition",
+  "slides.chart.legend.b": "Unten",
+  "slides.chart.legend.l": "Links",
+  "slides.chart.legend.r": "Rechts",
+  "slides.chart.legend.t": "Oben",
+  "slides.chart.legend.tr": "Oben rechts",
   "slides.chart.mixed":
     "Die eingebettete Arbeitsmappe enthält weitere Daten. Bearbeite sie in PowerPoint.",
   "slides.chart.unsupported":
@@ -389,6 +396,8 @@ export const de = {
   "handoff.failed": "Der Verweis konnte nicht kopiert werden.",
   "handoff.unsaved":
     "Speichere oder verwirf den Entwurf, bevor du ihn an den Agent übergibst; ein Verweis nennt nur gespeicherte Revisionen.",
+  "slides.handoff.saved":
+    "Der Agent erhält die gespeicherte Revision. Ungespeicherte Änderungen bleiben im Entwurf.",
   "slides.slideActions": "Folienaktionen",
   "slides.moveUp": "Nach vorne",
   "slides.moveDown": "Nach hinten",
@@ -419,6 +428,7 @@ export const de = {
   "slides.op.setFrame": "Position von {{name}}",
   "slides.op.replaceText": "Text „{{text}}“",
   "slides.op.deleteElement": "{{name}} löschen",
+  "slides.op.setChartLegend": "Legende von {{name}}",
   "slides.op.setChartData": "Daten von {{name}}",
   "handoff.add": "An den Agent übergeben",
   "link.copy": "Link kopieren",

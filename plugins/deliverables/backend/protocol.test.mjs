@@ -810,6 +810,7 @@ it(
               {
                 type: "chart",
                 chart: "bar",
+                title: "Regional revenue",
                 x: 4,
                 y: 2,
                 width: 6,
@@ -860,6 +861,7 @@ it(
     expect(chart.chart).toEqual({
       type: "bar",
       workbook: "chart",
+      legendPosition: "b",
       data: {
         categories: ["Q1", "Q2"],
         series: [{ name: "Revenue (USD million)", values: [100, 112] }],
@@ -869,11 +871,14 @@ it(
     const suggestion = await backend.tool("suggest", {
       id,
       revision: created.id,
-      note: "Review the slide wording and speaker notes.",
+      note: "Review the chart title and speaker notes.",
       operationsJSON: JSON.stringify({
         operations: [
-          { run: title.text[0], text: "Revenue grew 12%" },
-          { run: slide.notes[0], text: "Explain the quarter-on-quarter growth" },
+          { run: chart.text[0], text: "Regional revenue rose" },
+          {
+            run: slide.notes[0],
+            text: "Explain the quarter-on-quarter growth",
+          },
         ].map(({ run, text }) => ({
           type: "replaceText",
           id: run.id,
@@ -887,6 +892,12 @@ it(
     const moved = { ...shape.frame, x: shape.frame.x + 914400 };
     const human = [
       { type: "setFrame", id: shape.id, expect: shape.frame, frame: moved },
+      {
+        type: "setChartLegend",
+        id: chart.id,
+        expect: chart.chart.legendPosition,
+        position: "r",
+      },
     ];
     const byHuman = await edit(created.id, human, "human-move");
     const converted = {
@@ -901,6 +912,12 @@ it(
           id: title.text[0].id,
           expect: "Revenue grew",
           text: "Revenue grew 12%",
+        },
+        {
+          type: "replaceText",
+          id: chart.text[0].id,
+          expect: "Regional revenue",
+          text: "Regional revenue rose",
         },
         {
           type: "setChartData",
@@ -919,6 +936,11 @@ it(
       "Revenue grew 12%",
     ]);
     expect(find(chart).chart.data).toEqual(converted);
+    expect(find(chart).chart.legendPosition).toBe("r");
+    expect(find(chart).text.map((run) => run.text)).toEqual([
+      "Regional revenue rose",
+    ]);
+    expect((await layout(created.id)).slides[0]).toEqual(slide);
     const deck = await native(byAgent);
     const workbooks = [...deck.parts.keys()].filter((part) =>
       part.startsWith("ppt/embeddings/"),
@@ -931,6 +953,11 @@ it(
       expect(cells.some((cell) => cell.text.includes(value))).toBe(true);
     expect(cells.some((cell) => cell.text.includes("112"))).toBe(false);
     await expect(edit(byAgent.id, human, "stale-move")).rejects.toMatchObject({
+      code: "invalid_native",
+    });
+    await expect(
+      edit(byAgent.id, [human[1]], "stale-legend"),
+    ).rejects.toMatchObject({
       code: "invalid_native",
     });
     expect((await layout()).slides[0]).toEqual(current);

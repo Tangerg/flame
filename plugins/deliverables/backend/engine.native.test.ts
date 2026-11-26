@@ -119,6 +119,7 @@ native(
                 {
                   type: "chart",
                   chart: "bar",
+                  title: "Revenue by region",
                   x: 1,
                   y: 2,
                   width: 8,
@@ -173,6 +174,18 @@ native(
               text: "Revenue grew 12%",
             },
             {
+              type: "setChartLegend",
+              id: chart.id,
+              expect: chart.chart!.legendPosition,
+              position: "r",
+            },
+            {
+              type: "replaceText",
+              id: chart.text[0]!.id,
+              expect: "Revenue by region",
+              text: "Revenue by territory",
+            },
+            {
               type: "setChartData",
               id: chart.id,
               expect: chart.chart!.data,
@@ -205,7 +218,12 @@ native(
       ).toEqual([]);
       const text = result.report.extractedText;
       expect(text.split("Revenue grew 12%")).toHaveLength(3);
-      for (const value of ["North", "South", "Converted"])
+      for (const value of [
+        "North",
+        "South",
+        "Converted",
+        "Revenue by territory",
+      ])
         expect(text.split(value)).toHaveLength(3);
       expect(text).not.toContain("Q1");
       expect(text).not.toContain("Appendix detail");
