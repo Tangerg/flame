@@ -7,7 +7,7 @@ export const ja: Record<string, string> = {
   "controls.label": "履歴コントロール",
   "search.label": "このページを絞り込む",
   "search.placeholder": "記録されたテキストまたは ID",
-  "filters.clear": "すべてのフィルターをクリア",
+  "filters.clear": "絞り込みをクリア",
   "search.clear": "絞り込みをクリア",
   refresh: "更新",
   "kind.label": "観測の種類",

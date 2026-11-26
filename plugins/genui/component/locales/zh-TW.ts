@@ -16,6 +16,6 @@ export const zhTW: Record<string, string> = {
   "interaction.target": "目標",
   "interaction.input": "提交內容",
   "code.copy": "複製程式碼",
-  "code.wrap": "開啟自動換行",
+  "code.wrap": "啟用自動換行",
   "code.unwrap": "關閉自動換行",
 };

@@ -929,7 +929,7 @@
   "common.copied": "コピーしました",
   "common.copyFailed": "コピーできませんでした",
   "file.loadMore": "ファイルをさらに読み込む",
-  "message.image.fit": "画像をウィンドウに合わせる",
+  "message.image.fit": "全体を表示",
   "chat.conversation": "会話",
   "message.mermaid.pan": "図を移動",
   "diff.unmodifiedLines": "未変更の {count} 行",

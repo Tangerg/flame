@@ -110,5 +110,5 @@ export const zhTW: Record<string, string> = {
   title: "MCP 伺服器",
   retry: "重試",
   refresh: "重新整理",
-  reading: "正在讀取…",
+  reading: "正在載入…",
 };

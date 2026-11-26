@@ -89,7 +89,7 @@ export const es: Record<string, string> = {
   "feedback.confirmed": "{{label}} · la solicitud se completó.",
   "feedback.original.label": "Comando de memoria original",
   "feedback.original": "Comando original: {{key}}",
-  "feedback.check": "Comprobar resultado original",
+  "feedback.check": "Comprobar el resultado original",
   "error.read": "No se pudo leer la memoria.",
   "error.observe": "No se pudieron observar las actualizaciones de la memoria.",
   "error.refused": "La solicitud fue rechazada.",

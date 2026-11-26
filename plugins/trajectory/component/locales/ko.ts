@@ -7,7 +7,7 @@ export const ko: Record<string, string> = {
   "controls.label": "궤적 컨트롤",
   "search.label": "이 페이지 필터링",
   "search.placeholder": "기록된 텍스트 또는 ID",
-  "filters.clear": "필터 초기화",
+  "filters.clear": "필터 지우기",
   "search.clear": "필터 지우기",
   refresh: "새로 고침",
   "kind.label": "관측 유형",

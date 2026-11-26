@@ -18,7 +18,7 @@ export const de: Record<string, string> = {
   "providers.key": "Schlüssel {{masked}}",
   "providers.ready": "Bereit",
   "providers.save": "Speichern",
-  "providers.saving": "Speichern…",
+  "providers.saving": "Wird gespeichert…",
   "providers.test": "Testen",
   "providers.testing": "Test läuft…",
   "providers.connectionOk": "Verbindung OK",

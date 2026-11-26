@@ -16,7 +16,7 @@ export const zhTW: Record<string, string> = {
   "providers.key": "金鑰 {{masked}}",
   "providers.ready": "就緒",
   "providers.save": "儲存",
-  "providers.saving": "儲存中…",
+  "providers.saving": "正在儲存…",
   "providers.test": "測試",
   "providers.testing": "測試中…",
   "providers.connectionOk": "連線正常",

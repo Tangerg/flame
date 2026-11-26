@@ -1,7 +1,7 @@
 export const zh: Record<string, string> = {
   "mcp.add": "添加服务器",
   "mcp.save": "保存",
-  "mcp.saving": "保存中…",
+  "mcp.saving": "正在保存…",
   "mcp.delete": "删除",
   "mcp.delete.title": "删除这个服务器？",
   "mcp.delete.body": "“{{server}}”及其工具都会移除。之后可以重新添加。",
@@ -111,5 +111,5 @@ export const zh: Record<string, string> = {
   title: "MCP 服务器",
   retry: "重试",
   refresh: "刷新",
-  reading: "正在读取…",
+  reading: "正在加载…",
 };

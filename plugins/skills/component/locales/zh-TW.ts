@@ -76,7 +76,7 @@ export const zhTW: Record<string, string> = {
   "scope.installation": "安裝",
   "fact.workspace": "工作區",
   "fact.scope": "範圍",
-  "fact.revision": "修訂",
+  "fact.revision": "修訂版本",
   "fact.installation": "安裝",
   "fact.release": "版本",
   "fact.sourcePath": "來源路徑",

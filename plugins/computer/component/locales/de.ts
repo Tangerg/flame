@@ -84,7 +84,7 @@ export const de = {
   "approval.false": "Nein",
   "approval.actions": "Berechtigungsantwort",
   "approval.once": "Einmal erlauben",
-  "approval.session": "Für diese Sitzung erlauben",
+  "approval.session": "Für diese Sitzung zulassen",
   "approval.always": "Immer erlauben",
   "approval.accept": "Zustimmung senden",
   "approval.decline": "Ablehnen",

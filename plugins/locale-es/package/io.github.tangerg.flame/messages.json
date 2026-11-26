@@ -28,7 +28,7 @@
   "packages.providers.apply": "Aplicar selección",
   "packages.providers.failed": "No se pudo confirmar la selección.",
   "packages.providers.unknown": "Confirmación desconocida. Comprueba el comando original {{id}} antes de otra selección.",
-  "packages.providers.reconcile": "Comprobar resultado original",
+  "packages.providers.reconcile": "Comprobar el resultado original",
   "packages.commands.title": "Comandos de plugin sin confirmar",
   "packages.commands.refresh": "Actualizar comandos",
   "packages.commands.explanation": "Comprueba el resultado original aunque la vista del plugin no esté disponible. Un nuevo proveedor no puede sustituir al propietario original.",

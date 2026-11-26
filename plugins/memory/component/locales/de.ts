@@ -19,7 +19,7 @@ export const de: Record<string, string> = {
   "search.clear": "Suche löschen",
   "filters.title": "Filter",
   "filters.active": "Filter · {{n}} aktiv",
-  "filters.clear": "Filter löschen",
+  "filters.clear": "Filter zurücksetzen",
   "filters.label": "Memory-Filter",
   "status.label": "Memory-Status",
   "status.all": "Alle Status",

@@ -79,7 +79,7 @@ export const zhTW = {
   "approval.false": "否",
   "approval.actions": "回覆權限請求",
   "approval.once": "允許一次",
-  "approval.session": "允許本次工作階段",
+  "approval.session": "在此工作階段允許",
   "approval.always": "一律允許",
   "approval.accept": "提交同意",
   "approval.decline": "拒絕",
@@ -93,7 +93,7 @@ export const zhTW = {
   "command.running": "正在等待原始命令結果…",
   "command.unknown":
     "結果尚未確認。請查詢此原始命令的結果，不要重複執行其操作。",
-  "command.recover": "查詢原始結果",
+  "command.recover": "核對原始結果",
   "command.accepted": "{{action}}：原始命令已完成。",
   "receipts.title": "原始證據容量",
   "receipts.records": "已保留紀錄 / 上限",

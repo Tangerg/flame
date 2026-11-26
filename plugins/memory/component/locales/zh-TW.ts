@@ -81,7 +81,7 @@ export const zhTW: Record<string, string> = {
   "feedback.confirmed": "{{label}} · 已完成。",
   "feedback.original.label": "原始記憶命令",
   "feedback.original": "原始命令：{{key}}",
-  "feedback.check": "查看原始結果",
+  "feedback.check": "核對原始結果",
   "error.read": "無法讀取記憶。",
   "error.observe": "無法監看記憶更新。",
   "error.refused": "請求被拒絕。",

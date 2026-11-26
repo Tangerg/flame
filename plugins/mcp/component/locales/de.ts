@@ -5,7 +5,7 @@ export const de: Record<string, string> = {
     "Verfügbar als {{name}}. Der Kurzname wird auch von {{sources}} verwendet.",
   "mcp.add": "Server hinzufügen",
   "mcp.save": "Speichern",
-  "mcp.saving": "Speichern…",
+  "mcp.saving": "Wird gespeichert…",
   "mcp.delete": "Löschen",
   "mcp.delete.title": "Diesen Server löschen?",
   "mcp.delete.body":

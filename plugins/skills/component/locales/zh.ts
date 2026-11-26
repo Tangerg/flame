@@ -75,7 +75,7 @@ export const zh: Record<string, string> = {
   "scope.installation": "安装",
   "fact.workspace": "工作区",
   "fact.scope": "范围",
-  "fact.revision": "修订",
+  "fact.revision": "修订版本",
   "fact.installation": "安装",
   "fact.release": "版本",
   "fact.sourcePath": "源路径",

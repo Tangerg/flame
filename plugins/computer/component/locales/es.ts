@@ -98,7 +98,7 @@ export const es = {
   "command.running": "Esperando el resultado original…",
   "command.unknown":
     "El resultado no está confirmado. Recupera esta orden original sin repetir sus acciones.",
-  "command.recover": "Consultar resultado original",
+  "command.recover": "Comprobar el resultado original",
   "command.accepted": "{{action}}: la orden original terminó.",
   "receipts.title": "Capacidad de evidencia original",
   "receipts.records": "Registros conservados / límite",

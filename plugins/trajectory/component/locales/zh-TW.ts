@@ -7,7 +7,7 @@ export const zhTW: Record<string, string> = {
   "controls.label": "軌跡控制項",
   "search.label": "篩選此頁",
   "search.placeholder": "已記錄的文字或 ID",
-  "filters.clear": "清除所有篩選",
+  "filters.clear": "清除篩選",
   "search.clear": "清除篩選",
   refresh: "重新整理",
   "kind.label": "觀測類型",

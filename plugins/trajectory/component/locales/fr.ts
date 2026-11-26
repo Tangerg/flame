@@ -7,7 +7,7 @@ export const fr: Record<string, string> = {
   "controls.label": "Contrôles de trajectoire",
   "search.label": "Filtrer cette page",
   "search.placeholder": "Texte enregistré ou ID",
-  "filters.clear": "Réinitialiser les filtres",
+  "filters.clear": "Effacer les filtres",
   "search.clear": "Effacer le filtre",
   refresh: "Actualiser",
   "kind.label": "Type d’observation",

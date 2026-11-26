@@ -18,7 +18,7 @@ export const zh: Record<string, string> = {
   "providers.ready": "就绪",
   "providers.fromEnv": "来自环境变量",
   "providers.save": "保存",
-  "providers.saving": "保存中…",
+  "providers.saving": "正在保存…",
   "providers.test": "测试",
   "providers.testing": "测试中…",
   "providers.connectionOk": "连接正常",

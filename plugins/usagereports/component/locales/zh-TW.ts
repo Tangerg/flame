@@ -20,7 +20,7 @@ export const zhTW: Record<string, string> = {
   "cost.notReported": "未回報",
   "pending.label": "原始封存命令",
   "pending.note": "原始命令的確認待定。",
-  "pending.check": "檢查原始結果",
+  "pending.check": "核對原始結果",
   "pending.retire": "撤銷原始命令",
   "pending.checking": "正在檢查原始命令…",
   "pending.retiring": "正在撤銷原始命令…",
