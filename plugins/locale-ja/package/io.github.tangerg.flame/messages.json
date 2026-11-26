@@ -703,7 +703,7 @@
   "rpcError.plugin_disabled": "使用する前にこのプラグインを有効にしてください。",
   "rpcError.plugin_unavailable": "そのプラグインのリリースは検証に失敗しました。再インストールまたは更新してください。",
   "session.error.create": "セッションを作成できませんでした。もう一度お試しください。",
-  "session.directory.title": "新しいセッション",
+  "session.directory.title": "新規セッション",
   "session.directory.path": "Runtime の作業ディレクトリ",
   "session.directory.create": "セッションを作成",
   "session.directory.browse": "このコンピューターを参照",
