@@ -44,7 +44,12 @@ const CATALOGS = { en, zh, "zh-TW": zhTW, ja, ko, es, fr, de };
 type Signal = "spans" | "metrics" | "logs";
 type Observation = SpanRow | MetricRow | LogRow;
 
-function title(row: Observation, t: Translate, clock: Intl.DateTimeFormat) {
+function title(
+  row: Observation,
+  t: Translate,
+  clock: Intl.DateTimeFormat,
+  measure: Intl.NumberFormat,
+) {
   if ("durationMillis" in row)
     return (
       <RecordSummary
@@ -53,8 +58,11 @@ function title(row: Observation, t: Translate, clock: Intl.DateTimeFormat) {
         // only other kinds and an error are named.
         description={
           row.kind === "internal"
-            ? t("duration.ms", { ms: row.durationMillis })
-            : t("span.meta", { ms: row.durationMillis, kind: row.kind })
+            ? t("duration.ms", { ms: measure.format(row.durationMillis) })
+            : t("span.meta", {
+                ms: measure.format(row.durationMillis),
+                kind: row.kind,
+              })
         }
         status={
           row.status === "error" && (
@@ -105,6 +113,11 @@ function DiagnosticsReport({
     () => new Intl.DateTimeFormat(locale, { timeStyle: "medium" }),
     [locale],
   );
+  // Span and histogram values are fractional milliseconds; two places keep them readable.
+  const measure = useMemo(
+    () => new Intl.NumberFormat(locale, { maximumFractionDigits: 2 }),
+    [locale],
+  );
   if (!rows.length) {
     return (
       <EmptyState
@@ -125,7 +138,7 @@ function DiagnosticsReport({
         <Disclosure
           variant="row"
           key={`${signal}:${row.id}`}
-          title={title(row, t, clock)}
+          title={title(row, t, clock, measure)}
         >
           {"durationMillis" in row && (
             <>
@@ -140,7 +153,9 @@ function DiagnosticsReport({
                   ],
                   [
                     t("fact.duration"),
-                    t("duration.ms", { ms: row.durationMillis }),
+                    t("duration.ms", {
+                      ms: measure.format(row.durationMillis),
+                    }),
                   ],
                   [t("fact.trace"), row.traceId],
                   [t("fact.parentSpan"), row.parentSpanId],
@@ -172,8 +187,8 @@ function DiagnosticsReport({
                     [
                       t(`metric.${key}`),
                       row.unit && (key !== "count" || row.kind !== "histogram")
-                        ? `${row[key]} ${row.unit}`
-                        : String(row[key]),
+                        ? `${measure.format(row[key]!)} ${row.unit}`
+                        : measure.format(row[key]!),
                     ] as Fact,
                 )}
             />
