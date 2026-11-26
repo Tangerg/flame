@@ -69,28 +69,24 @@ func (s *rpcHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		writeProblem(w, problemInvalidRequest, "method header does not match the RPC envelope")
 		return
 	}
+	methodLabel := request.Method
+	if !request.IsCall() {
+		w.Header().Set(headerMethod, methodLabel)
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
 	options := protocol.CallMetadata{
 		IdempotencyKey:       r.Header.Get(headerIdempotencyKey),
 		IdempotencyNamespace: r.Header.Get(headerIdempotencyNamespace),
 		AfterEventID:         r.Header.Get(headerLastEventID),
 	}
-	result := s.router.Dispatch(r.Context(), request, options)
-	methodLabel := request.Method
-
-	if result.Response == nil {
-		if methodLabel != "" {
-			w.Header().Set(headerMethod, methodLabel)
-		}
-		w.WriteHeader(http.StatusNoContent)
+	reply := s.router.Call(r.Context(), request, options)
+	if reply.EventStream != nil {
+		serveStream(w, r, &reply.Response, reply.EventStream, methodLabel, cancel)
 		return
 	}
 
-	if result.EventStream != nil {
-		serveStream(w, r, result.Response, result.EventStream, methodLabel, cancel)
-		return
-	}
-
-	writeRPCResponse(w, r, result.Response, methodLabel)
+	writeRPCResponse(w, r, &reply.Response, methodLabel)
 }
 
 func writeRPCResponse(w http.ResponseWriter, r *http.Request, response *jsonrpc.Response, methodLabel string) {
@@ -103,9 +99,7 @@ func writeRPCResponse(w http.ResponseWriter, r *http.Request, response *jsonrpc.
 		return
 	}
 	w.Header().Set(headerContentType, protocol.RPCDocumentMediaType+"; charset=utf-8")
-	if methodLabel != "" {
-		w.Header().Set(headerMethod, methodLabel)
-	}
+	w.Header().Set(headerMethod, methodLabel)
 	w.WriteHeader(protocol.RPCCallStatus)
 	if _, err := w.Write(responseBytes); err != nil {
 		recordError(r.Context(), "rpc.write-response", err,

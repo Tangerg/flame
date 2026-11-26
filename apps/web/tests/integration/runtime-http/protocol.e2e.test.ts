@@ -65,6 +65,23 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: protocol delivery", () => {
     await expect(sessionIds()).resolves.toEqual(existing);
   });
 
+  it("returns a correlated reply for command admission failures", async () => {
+    const id = "rejected-call";
+    for (const { method, params, type } of [
+      { method: "runtime.unknown", params: {}, type: "method_not_found" },
+      { method: "sessions.create", params: { _meta: false }, type: "invalid_params" },
+    ]) {
+      const response = await fixture.postRPCDocument(
+        JSON.stringify({ jsonrpc: JSONRPC_VERSION, id, method, params }),
+      );
+      expect(response.status).toBe(RPC_HTTP.callStatus);
+      await expect(response.json()).resolves.toMatchObject({
+        id,
+        error: { data: { problem: { type } } },
+      });
+    }
+  });
+
   it("validates discovery, streaming notifications and session lifecycle", async () => {
     const sidecar = createSidecarClient({ baseUrl: fixture.baseUrl });
     const liveness = await sidecar.liveness();

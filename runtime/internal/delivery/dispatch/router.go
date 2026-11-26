@@ -21,34 +21,38 @@ func New(endpoint *delivery.Endpoint) (*Router, error) {
 	return &Router{endpoint: endpoint}, nil
 }
 
-type Result struct {
-	Response    *jsonrpc.Response
+type Reply struct {
+	Response    jsonrpc.Response
 	EventStream iter.Seq[StreamFrame]
 }
 
-func (r *Router) Dispatch(ctx context.Context, request *jsonrpc.Request, options protocol.CallMetadata) Result {
-	if !request.IsCall() {
-		return Result{}
-	}
+func (r *Router) Call(ctx context.Context, request *jsonrpc.Request, options protocol.CallMetadata) Reply {
 	parameters, metadata, metadataError := splitRequestMetadata(request.Params)
 	if metadataError != nil {
-		return responseError(request.ID, metadataError)
+		return errorReply(request.ID, metadataError)
 	}
 	options.RequestMeta = metadata
 	name := delivery.Name(request.Method)
 	return adaptResult(request.ID, r.endpoint.InvokeWire(ctx, name, parameters, options))
 }
 
-func adaptResult(id jsonrpc.ID, result protocol.OperationResult) Result {
+func adaptResult(id jsonrpc.ID, result protocol.OperationResult) Reply {
 	if result.Failure != nil {
-		return responseError(id, errorToRPC(result.Failure))
+		return errorReply(id, errorToRPC(result.Failure))
 	}
-	response := responseResult(id, result.Value)
-	if response.Response == nil || response.Response.Error != nil || result.Events == nil {
-		return response
+	response, err := protocol.NewRPCResult(id, result.Value)
+	if err != nil {
+		return errorReply(id, problemError(protocol.ErrInternalError, "the runtime could not encode the response"))
 	}
-	response.EventStream = adaptOperationEvents(result.Events)
-	return response
+	reply := Reply{Response: *response}
+	if result.Events != nil {
+		reply.EventStream = adaptOperationEvents(result.Events)
+	}
+	return reply
+}
+
+func errorReply(id jsonrpc.ID, failure *jsonrpc.Error) Reply {
+	return Reply{Response: *protocol.NewRPCErrorResponse(id, failure)}
 }
 
 // Skipping a frame would hand the client a complete-looking stream with a hole;
