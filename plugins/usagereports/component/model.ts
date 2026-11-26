@@ -46,6 +46,7 @@ export type Formatters = {
   count: (value?: JSONNumber) => string;
   amount: (value?: JSONNumber) => string;
   time: (iso: string) => string;
+  timeWithSeconds: (iso: string) => string;
 };
 export function makeFormatters(locale: string, t: Translate): Formatters {
   const number = new Intl.NumberFormat(locale);
@@ -55,6 +56,10 @@ export function makeFormatters(locale: string, t: Translate): Formatters {
   const dateTime = new Intl.DateTimeFormat(locale, {
     dateStyle: "medium",
     timeStyle: "short",
+  });
+  const dateTimeWithSeconds = new Intl.DateTimeFormat(locale, {
+    dateStyle: "medium",
+    timeStyle: "medium",
   });
   const format = (
     value: JSONNumber | undefined,
@@ -72,6 +77,7 @@ export function makeFormatters(locale: string, t: Translate): Formatters {
         ? tiny.format(value)
         : format(value, dollars),
     time: (iso) => dateTime.format(new Date(iso)),
+    timeWithSeconds: (iso) => dateTimeWithSeconds.format(new Date(iso)),
   };
 }
 export const failure = (error: unknown) => failureText(error, String(error));
@@ -79,8 +85,45 @@ export const observed = (header: Header, fmt: Formatters) =>
   fmt.time(header.observedAt);
 export const lowerBound = (header: Header, t: Translate, fmt: Formatters) =>
   header.since ? fmt.time(header.since) : t("evidence.beginning");
-export const reportTitle = (header: Header, t: Translate, fmt: Formatters) =>
-  t("report.title", {
-    period: t(`period.${header.period}.label`),
-    observed: observed(header, fmt),
-  });
+export function reportTitles(
+  headers: readonly (Header | undefined)[],
+  t: Translate,
+  fmt: Formatters,
+) {
+  const byId = new Map<string, Header>();
+  for (const header of headers) if (header) byId.set(header.id, header);
+  const byMinute = Map.groupBy(
+    byId.values(),
+    (header) => `${header.period}:${observed(header, fmt)}`,
+  );
+  const observations = new Map<string, string>();
+  for (const sameMinute of byMinute.values()) {
+    if (sameMinute.length === 1) continue;
+    const bySecond = Map.groupBy(sameMinute, ({ observedAt }) =>
+      fmt.timeWithSeconds(observedAt),
+    );
+    for (const [time, sameSecond] of bySecond) {
+      if (sameSecond.length === 1) {
+        observations.set(sameSecond[0]!.id, time);
+        continue;
+      }
+      for (const { id } of sameSecond) {
+        const tail = id.slice(-8);
+        const tied = sameSecond.some(
+          (other) => other.id !== id && other.id.endsWith(tail),
+        );
+        observations.set(id, `${time} · ${tied ? id : tail}`);
+      }
+    }
+  }
+  return (
+    header: Header,
+    message: "report.title" | "row.title" = "report.title",
+  ) =>
+    t(message, {
+      period: t(`period.${header.period}.label`),
+      observed: observations.get(header.id) ?? observed(header, fmt),
+    });
+}
+
+export type ReportTitleFor = ReturnType<typeof reportTitles>;

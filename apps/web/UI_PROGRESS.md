@@ -546,6 +546,65 @@ exit normally and the private Runtime drain reaches the existing
 deadline. The private app, processes, profile, Git fixture, logs,
 captures, caches and checkout build outputs are removed.
 
+### Saved reports identify captures in the same minute (2026-11-27)
+
+Signed production Wails at `b09f6eaf0` saves two Daily reports
+one second apart through the normal desktop action. The archive rows,
+including their accessible names and Starts times, are identical.
+Their detail titles also match. The actual Runtime returns a distinct
+ID and capture instant for each. Two additional Weekly captures in a
+single second exhibit the same ambiguity. The fifth report is the only
+Daily capture in its minute.
+
+The archive projects one display title from the accepted report headers,
+including a newly confirmed or currently opened report. It uses localized
+minute precision ordinarily and seconds for matching minutes in the same
+period. If the displayed seconds still match, titles use an ID suffix,
+with the complete ID available to distinguish repeated suffixes. The
+list, reader, deletion confirmation and saved feedback use this same rule.
+This keeps the earlier minute-scale typography for ordinary reports
+and applies Better Accessibility's requirement for distinct actionable names.
+
+- Stage the rebuilt Usage Reports package for the original private
+  installation. Runtime refuses live selection because the previous
+  release is in use. Restart only the private Runtime and select that
+  staged release. It serves the rebuilt component byte for byte and
+  returns all five original reports in their original publication order.
+- In Chinese/light/14 px/Flame Orange at 1120 × 728, the original
+  Daily captures read `02:19:08` and `02:19:09`. Both Weekly rows
+  read `02:20:04` with distinct ID suffixes. The singleton Daily
+  row reads `02:20`. Keyboard entry and the exact identity disclosure
+  identify the chosen Weekly report. Its deletion confirmation carries
+  the same title. Cancel returns to Delete saved report, and Back
+  focuses the exact archive row.
+- In English/dark/18 px/Blue (#0485F7) at 1280 × 800, Settings and
+  Cmd+W restore the same Weekly row with the localized title. Add eight
+  private reports and use Save in Wails to capture the next Weekly
+  report. The new report opens with seconds in its title. At 14
+  archived reports, wheel input brings the oldest original row from
+  y=1248 to y=691. Pointer entry reveals the same original ID. Back
+  focuses that row at y=690.
+
+The original five reports match their captured accounting payloads,
+timestamps and IDs after the nine additional captures. The Session
+records zero Runs. The fixture uses local accounting with empty model
+usage. VoiceOver and other platforms remain outside the check.
+Plugin typecheck, 44 script tests, 24 source tests, catalog and resource
+checks, Web typecheck and bootstrap, scoped Prettier, production staging,
+Runtime and portable package builds, signed Wails and diff checks pass.
+Seven plugin source tests are skipped. After fast-forwarding to
+`4ec08c967`, the rebuilt Runtime and signed Wails repeat the
+same-second Weekly read, exact identity and row return. The accepted
+resource and original reports still match. Web typecheck and bootstrap
+pass again. All three Wails instances exit normally. The isolated Runtime
+drains reach the existing deadline.
+The private app, processes, profile, fixture, candidate package, logs,
+captures, caches and checkout build outputs are removed.
+
+One Escape from Exact report identity leaves the entire archive for the
+Conversation. Check that reading transition against the other archive
+readers in the next batch.
+
 ## Error notes leave retrying to their buttons (2026-11-26)
 
 Five error notes ended by narrating the buttons beside them. The sidebar's folder error said `Check the Runtime connection, then retry.` above `Retry`. The shared data-view error said `… Check the connection and retry.`, and every caller offers Retry except provider selections, whose section has its own Refresh selections. The draft notices said `Keep this window open and retry, or copy drafts.` above `Retry` and `Copy draft text`. The startup failure said `Retry, or copy the diagnostics to report it.` above `Retry` and `Copy diagnostics`. Each now stops at what the buttons can't say:

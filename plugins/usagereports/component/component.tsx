@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { type ComponentContext } from "@flame/component-sdk";
 import { Metadata, Panel, PanelHeader } from "@flame/ui";
-import { reportTitle, type BoundContext } from "./model";
+import { reportTitles, type BoundContext } from "./model";
 import { useReportArchive } from "./useReportArchive";
 import {
   ArchiveCatalog,
@@ -26,18 +26,28 @@ function Archive({ context }: { context: BoundContext }) {
   const { t, fmt, busy, outcome, refs, catalog, report, removal, recovery } =
     archive;
   const opened = report.opened;
+  const titleFor = reportTitles(
+    [
+      ...(catalog.read.accepted ?? []),
+      opened?.header,
+      removal.target,
+      outcome?.kind === "savedArchived" ? outcome.header : undefined,
+    ],
+    t,
+    fmt,
+  );
   return (
     <Panel
       ref={refs.panel}
       label={t("panel.title")}
       header={<PanelHeader title={t("panel.title")} />}
-      controls={<ArchiveControls archive={archive} />}
+      controls={<ArchiveControls archive={archive} titleFor={titleFor} />}
     >
       {outcome && (
         <Metadata role="status">
           {outcome.kind === "savedArchived"
             ? t("message.savedArchived", {
-                title: reportTitle(outcome.header, t, fmt),
+                title: titleFor(outcome.header),
               })
             : "error" in outcome
               ? t(`message.${outcome.kind}`, { error: outcome.error })
@@ -60,10 +70,11 @@ function Archive({ context }: { context: BoundContext }) {
           archive={catalog.read}
           t={t}
           fmt={fmt}
+          titleFor={titleFor}
           onOpen={catalog.open}
         />
       </div>
-      <RemovalDialog archive={archive} />
+      <RemovalDialog archive={archive} titleFor={titleFor} />
     </Panel>
   );
 }
