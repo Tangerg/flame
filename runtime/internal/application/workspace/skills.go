@@ -14,6 +14,7 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/skill"
 
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/skills"
 	"github.com/samber/lo"
@@ -28,8 +29,8 @@ type SkillCatalog interface {
 
 type SkillCurator interface {
 	List(ctx context.Context) ([]skills.Entry, error)
-	Archive(ctx context.Context, name string) ([]string, error)
-	Restore(ctx context.Context, name string) ([]string, error)
+	Move(ctx context.Context, name string, destination skills.Lifecycle, receipt operation.ReplayClaim) ([]string, error)
+	RecoverMove(ctx context.Context) ([]string, error)
 }
 
 type SkillProposals interface {
@@ -140,20 +141,14 @@ func (s *Skills) Managed(ctx context.Context) ([]skills.Entry, error) {
 	return entries, nil
 }
 
-func (s *Skills) Archive(ctx context.Context, name string) error {
-	if err := skills.ValidateName(name); err != nil {
-		return err
-	}
-	identities, err := s.curator.Archive(ctx, name)
+func (s *Skills) Move(ctx context.Context, name string, destination skills.Lifecycle, receipt operation.ReplayClaim) error {
+	identities, err := s.curator.Move(ctx, name, destination, receipt)
 	s.publishSkillMutation(identities)
 	return err
 }
 
-func (s *Skills) Restore(ctx context.Context, name string) error {
-	if err := skills.ValidateName(name); err != nil {
-		return err
-	}
-	identities, err := s.curator.Restore(ctx, name)
+func (s *Skills) RecoverMove(ctx context.Context) error {
+	identities, err := s.curator.RecoverMove(ctx)
 	s.publishSkillMutation(identities)
 	return err
 }

@@ -18,8 +18,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/application/workspace"
-
-	"github.com/Tangerg/flame/runtime/internal/domain/skills"
+	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/skillauthoring"
 )
 
@@ -105,7 +104,7 @@ func buildWorkspaceComposition(
 	if err != nil {
 		return workspaceComposition{}, fmt.Errorf("runtime: build authored resource observation: %w", err)
 	}
-	skillStore, err := skillauthoring.NewStore(cfg.skillsUserDir, skills.ScopeUser)
+	skillStore, err := skillauthoring.NewUserStore(cfg.skillsUserDir, cfg.stores.SkillMoves(delivery.EncodeSkillMoveReceipt))
 	if err != nil {
 		return workspaceComposition{}, fmt.Errorf("runtime: build user skill store: %w", err)
 	}

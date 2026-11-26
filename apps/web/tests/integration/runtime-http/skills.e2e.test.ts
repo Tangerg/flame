@@ -109,7 +109,12 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: skills", () => {
       await fixture.client.skills.restore(managedSkillName);
       expect((await workspace.skills.listDiscovered()).skills).toContainEqual(projectSkill);
     } finally {
-      await fixture.client.skills.restore(managedSkillName);
+      const managed = (await fixture.client.skills.listLibrary()).data.find(
+        (skill) => skill.name === managedSkillName,
+      );
+      if (managed?.lifecycle === "archived") {
+        await fixture.client.skills.restore(managedSkillName);
+      }
     }
   }, 30_000);
 

@@ -4,6 +4,8 @@ import (
 	"context"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
+	"github.com/Tangerg/flame/runtime/internal/domain/skills"
 )
 
 const (
@@ -47,25 +49,8 @@ func registerSkills(registry *Registry) {
 		return service.ListManagedSkills(ctx)
 	})
 
-	registry.commandAck(MethodMeta{
-		Name: SkillsLibraryArchive, GoName: "ArchiveSkill",
-		Errors:          []string{protocol.ErrSkillNotFound.Error()},
-		CapabilityRules: requires(protocol.FeatureSkills),
-	}, func(service interface {
-		ArchiveSkill(context.Context, protocol.SkillNameRequest) error
-	}, ctx context.Context, request protocol.SkillNameRequest) error {
-		return service.ArchiveSkill(ctx, request)
-	})
-
-	registry.commandAck(MethodMeta{
-		Name: SkillsLibraryRestore, GoName: "RestoreSkill",
-		Errors:          []string{protocol.ErrSkillNotFound.Error()},
-		CapabilityRules: requires(protocol.FeatureSkills),
-	}, func(service interface {
-		RestoreSkill(context.Context, protocol.SkillNameRequest) error
-	}, ctx context.Context, request protocol.SkillNameRequest) error {
-		return service.RestoreSkill(ctx, request)
-	})
+	registerSkillMove(registry, SkillsLibraryArchive, "ArchiveSkill", skills.Archived)
+	registerSkillMove(registry, SkillsLibraryRestore, "RestoreSkill", skills.Active)
 
 	registry.query(MethodMeta{
 		Name: SkillsProposalsList, GoName: "ListSkillProposals",
@@ -96,4 +81,14 @@ func registerSkills(registry *Registry) {
 	}, ctx context.Context, request protocol.SkillProposalRef) error {
 		return service.RejectSkillProposal(ctx, request)
 	})
+}
+
+func registerSkillMove(registry *Registry, method Name, goName string, destination skills.Lifecycle) {
+	registry.commandAck(MethodMeta{
+		Name: method, GoName: goName,
+		Errors:          []string{protocol.ErrSkillNotFound.Error()},
+		CapabilityRules: requires(protocol.FeatureSkills),
+	}, func(s *Handler, ctx context.Context, request protocol.SkillNameRequest) error {
+		return mapSkillError(s.workspaceSkills.Move(ctx, request.Name, destination, operation.ReplayClaim{}))
+	}).withOwnedReplay(skillMoveReplay(destination))
 }

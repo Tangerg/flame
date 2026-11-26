@@ -12,7 +12,10 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/skills"
 )
 
-func (s *Store) Publish(ctx context.Context, proposal skills.Proposal, previous, permit, journal string) ([]string, error) {
+func (s *Store) Publish(ctx context.Context, proposal skills.Proposal, previous, permit, journal string, admit func(context.Context, func(context.Context) error) error) ([]string, error) {
+	if admit == nil {
+		return nil, errors.New("skill publication: original authority is required")
+	}
 	if previous != "" && !proposal.Revises {
 		return nil, skills.ErrConflict
 	}
@@ -28,13 +31,20 @@ func (s *Store) Publish(ctx context.Context, proposal skills.Proposal, previous,
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	root, release, err := s.openLeasedRoot(ctx, "publish approved bytes")
+	root, release, err := s.openWritableRoot(ctx, "publish approved bytes")
 	if err != nil {
 		return nil, err
 	}
 	defer release()
 	p := publication{store: s, root: root, name: proposal.Name, content: content, previous: previous}
-	return p.commit(ctx, journal, permit)
+	// Skill moves also take the library lease before entering Frame admission.
+	var changed []string
+	err = admit(ctx, func(ctx context.Context) error {
+		var err error
+		changed, err = p.commit(ctx, journal, permit)
+		return err
+	})
+	return changed, err
 }
 
 type publication struct {

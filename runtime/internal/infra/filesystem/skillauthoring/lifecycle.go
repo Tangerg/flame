@@ -1,7 +1,6 @@
 package skillauthoring
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -10,227 +9,238 @@ import (
 	"path/filepath"
 
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/skills"
 )
 
-func (s *Store) archiveActive(root *os.Root, name string) ([]string, error) {
-	activeDir := s.activeDir(name)
-	content, found, err := readSkill(root, activeDir)
-	if err != nil {
+type LifecycleMove struct {
+	Name             string
+	Destination      skills.Lifecycle
+	DirectoryID      string
+	DocumentRevision string
+	Receipt          operation.ReplayClaim
+}
+
+type MoveJournal interface {
+	Prepare(context.Context, LifecycleMove) error
+	Pending(context.Context) (LifecycleMove, bool, error)
+	Complete(context.Context, LifecycleMove, error) error
+}
+
+var errUserLifecycleRequired = errors.New("skillauthoring: lifecycle commands require the personal library")
+
+func (s *Store) Move(ctx context.Context, name string, to skills.Lifecycle, receipt operation.ReplayClaim) ([]string, error) {
+	if s.moves == nil {
+		return nil, errUserLifecycleRequired
+	}
+	if err := skills.ValidateName(name); err != nil {
 		return nil, err
 	}
-	if !found {
-		return nil, fmt.Errorf("%w: cannot archive %q", skills.ErrNotFound, name)
-	}
-	archiveDir := s.archiveDir(name)
-	removed, err := removeSkillTree(root, archiveDir)
-	identities := identitiesIf(removed, s.skillIdentities(archiveDir))
-	if err != nil {
-		return identities, fmt.Errorf("skillauthoring: clear archive slot for %q: %w", name, err)
-	}
-	if err := root.MkdirAll(archivedSubdir, filesystem.SharedDirectoryMode); err != nil {
-		return identities, fmt.Errorf("skillauthoring: create archive area: %w", err)
-	}
-	if err := root.Rename(activeDir, archiveDir); err != nil {
-		moved, reconcileErr := reconcileLifecycleRename(root, name, activeDir, archiveDir, archiveMove.verb, content, err)
-		if moved {
-			return distinctPaths(append(identities, s.skillIdentities(activeDir, archiveDir)...)), reconcileErr
-		}
-		return identities, reconcileErr
-	}
-	return distinctPaths(append(identities, s.skillIdentities(activeDir, archiveDir)...)), nil
-}
-
-type lifecycleMove struct {
-	verb     string
-	from, to skills.Lifecycle
-}
-
-var (
-	archiveMove = lifecycleMove{verb: "archive", from: skills.Active, to: skills.Archived}
-	restoreMove = lifecycleMove{verb: "restore", from: skills.Archived, to: skills.Active}
-)
-
-func (s *Store) Archive(ctx context.Context, name string) ([]string, error) {
-	return s.moveLifecycle(ctx, name, archiveMove)
-}
-
-func (s *Store) Restore(ctx context.Context, name string) ([]string, error) {
-	return s.moveLifecycle(ctx, name, restoreMove)
-}
-
-func (s *Store) lifecyclePaths(name string, move lifecycleMove) (string, string, error) {
-	if !validName(name) {
-		return "", "", fmt.Errorf("skillauthoring: invalid skill name %q", name)
-	}
-	source, err := s.lifecycleDir(move.from, name)
-	if err != nil {
-		return "", "", err
-	}
-	destination, err := s.lifecycleDir(move.to, name)
-	return source, destination, err
-}
-
-func (s *Store) moveLifecycle(ctx context.Context, name string, move lifecycleMove) ([]string, error) {
-	source, destination, err := s.lifecyclePaths(name, move)
-	if err != nil {
-		return nil, err
-	}
-	if err := contextError(ctx, move.verb+" skill"); err != nil {
+	if err := to.Validate(); err != nil {
 		return nil, err
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	root, cleanup, err := s.openLeasedRoot(ctx, move.verb+" skill")
+	root, release, err := s.openLeasedRoot(ctx, "move skill")
 	if err != nil {
 		return nil, err
 	}
-	defer cleanup()
+	defer release()
+	changed, err := s.settlePendingMove(ctx, root)
+	if err != nil {
+		return changed, err
+	}
+	source, destination := s.movePaths(name, to)
+	directory, revision, err := readMoveSource(ctx, root, name, source)
+	if err != nil {
+		return changed, err
+	}
+	if _, err := root.Lstat(destination); err == nil {
+		return changed, fmt.Errorf("%w: %q", skills.ErrConflict, destination)
+	} else if !errors.Is(err, fs.ErrNotExist) {
+		return changed, err
+	}
+	usage, err := readUsage(ctx, root)
+	if err != nil {
+		return changed, err
+	}
+	move := LifecycleMove{Name: name, Destination: to, DirectoryID: directory, DocumentRevision: revision, Receipt: receipt}
+	if err := s.moves.Prepare(ctx, move); err != nil {
+		return changed, err
+	}
+	moved, refusal, err := s.completeMove(ctx, root, move, usage)
+	return distinctPaths(append(changed, moved...)), errors.Join(refusal, err)
+}
 
-	content, replayed, err := readMoveSource(ctx, root, name, source, destination, move)
-	if err != nil || replayed {
+func (s *Store) RecoverMove(ctx context.Context) ([]string, error) {
+	if s.moves == nil {
+		return nil, errUserLifecycleRequired
+	}
+	if _, pending, err := s.moves.Pending(ctx); err != nil || !pending {
 		return nil, err
 	}
-	if err := prepareMoveDestination(root, name, destination, move); err != nil {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	root, release, err := s.openLeasedRoot(ctx, "recover skill move")
+	if err != nil {
 		return nil, err
 	}
-	if err := contextError(ctx, move.verb+" skill"); err != nil {
+	defer release()
+	return s.settlePendingMove(ctx, root)
+}
+
+func (s *Store) settlePendingMove(ctx context.Context, root *os.Root) ([]string, error) {
+	move, pending, err := s.moves.Pending(ctx)
+	if err != nil || !pending {
 		return nil, err
 	}
 	usage, err := readUsage(ctx, root)
 	if err != nil {
-		return nil, err
+		return nil, errors.Join(operation.ErrOutcomePending, err)
 	}
-	_, hadUsage := usage[name]
-	delete(usage, name)
-	// Reset archived activity before restoring visibility so a crash cannot
-	// expose an active Skill with a stale grace floor. Replays returned above
-	// without advancing either lifecycle or activity.
-	if move == restoreMove && hadUsage {
-		if err := writeUsage(ctx, root, usage); err != nil {
-			return nil, err
-		}
-	}
-	if err := renameLifecycle(root, name, source, destination, move.verb, content); err != nil {
-		return nil, err
-	}
-	identities := s.skillIdentities(source, destination)
-	if move == archiveMove && hadUsage {
-		return identities, writeUsage(ctx, root, usage)
-	}
-	return identities, nil
+	changed, _, err := s.completeMove(ctx, root, move, usage)
+	return changed, err
 }
 
-func renameLifecycle(root *os.Root, name, source, destination, verb string, content []byte) error {
-	err := root.Rename(source, destination)
-	if err == nil {
+func (s *Store) requireSettledMove(ctx context.Context) error {
+	if s.moves == nil {
 		return nil
 	}
-	if moved, reconcileErr := reconcileLifecycleRename(root, name, source, destination, verb, content, err); !moved {
-		return reconcileErr
+	_, pending, err := s.moves.Pending(ctx)
+	if err != nil {
+		return err
+	}
+	if pending {
+		return operation.ErrInProgress
 	}
 	return nil
 }
 
-func readMoveSource(ctx context.Context, root *os.Root, name, source, destination string, move lifecycleMove) ([]byte, bool, error) {
-	info, err := root.Lstat(source)
+func (s *Store) movePaths(name string, to skills.Lifecycle) (string, string) {
+	active, archived := s.activeDir(name), s.archiveDir(name)
+	if to == skills.Active {
+		return archived, active
+	}
+	return active, archived
+}
+
+func readMoveSource(ctx context.Context, root *os.Root, name, source string) (string, string, error) {
+	directory, err := moveDirectoryID(root, source)
 	if errors.Is(err, fs.ErrNotExist) {
-		return nil, true, inspectCompletedLifecycleMove(ctx, root, name, destination, move.verb)
+		return "", "", fmt.Errorf("%w: %q", skills.ErrNotFound, name)
 	}
 	if err != nil {
-		return nil, false, fmt.Errorf("skillauthoring: cannot %s %q: %w", move.verb, name, err)
-	}
-	if !info.IsDir() {
-		return nil, false, fmt.Errorf("skillauthoring: cannot %s %q: source is not a directory", move.verb, name)
+		return "", "", err
 	}
 	content, found, err := readSkill(root, source)
 	if err != nil {
-		return nil, false, err
+		return "", "", err
 	}
 	if !found {
-		return nil, false, fmt.Errorf("%w: cannot %s %q", skills.ErrNotFound, move.verb, name)
+		return "", "", fmt.Errorf("%w: %q", skills.ErrNotFound, name)
 	}
 	if err := validateSkill(ctx, name, content); err != nil {
-		return nil, false, err
+		return "", "", err
 	}
-	return content, false, nil
+	return directory, digestDocument(content, true), nil
 }
 
-func prepareMoveDestination(root *os.Root, name, destination string, move lifecycleMove) error {
-	if _, err := root.Lstat(destination); err == nil {
-		return fmt.Errorf("%w: cannot %s %q", skills.ErrConflict, move.verb, name)
-	} else if !errors.Is(err, fs.ErrNotExist) {
-		return fmt.Errorf("skillauthoring: inspect %s destination for %q: %w", move.verb, name, err)
+func (s *Store) completeMove(ctx context.Context, root *os.Root, move LifecycleMove, usage map[string]usageRecord) (changed []string, refusal, pendingErr error) {
+	source, destination := s.movePaths(move.Name, move.Destination)
+	moved, cause := move.apply(ctx, root, source, destination, usage)
+	if moved {
+		changed = s.skillIdentities(source, destination)
+	}
+	if cause != nil && !errors.Is(cause, skills.ErrNotFound) && !errors.Is(cause, skills.ErrConflict) {
+		return changed, nil, errors.Join(operation.ErrOutcomePending, cause)
+	}
+	if err := s.moves.Complete(ctx, move, cause); err != nil {
+		return changed, nil, errors.Join(operation.ErrOutcomePending, err)
+	}
+	return changed, cause, nil
+}
+
+func (m LifecycleMove) apply(ctx context.Context, root *os.Root, source, destination string, usage map[string]usageRecord) (bool, error) {
+	current, err := moveDirectoryID(root, destination)
+	if err == nil && current == m.DirectoryID {
+		return true, m.finishArchive(ctx, root, usage)
+	}
+	if err != nil && !errors.Is(err, fs.ErrNotExist) && !errors.Is(err, skills.ErrConflict) {
+		return false, err
+	}
+	if sourceErr := m.verifySource(root, source); sourceErr != nil {
+		return false, sourceErr
+	}
+	if !errors.Is(err, fs.ErrNotExist) {
+		return false, fmt.Errorf("%w: %q", skills.ErrConflict, destination)
 	}
 	if err := root.MkdirAll(filepath.Dir(destination), filesystem.SharedDirectoryMode); err != nil {
-		return fmt.Errorf("skillauthoring: prepare %s destination for %q: %w", move.verb, name, err)
+		return false, err
+	}
+	// Give a restored Skill a fresh grace floor before making it discoverable.
+	if m.Destination == skills.Active {
+		if err := clearSkillUsage(ctx, root, usage, m.Name); err != nil {
+			return false, err
+		}
+	}
+	if err := root.Rename(source, destination); err != nil {
+		return false, err
+	}
+	return true, m.finishArchive(ctx, root, usage)
+}
+
+func (m LifecycleMove) verifySource(root *os.Root, source string) error {
+	directory, err := moveDirectoryID(root, source)
+	if err != nil && !errors.Is(err, fs.ErrNotExist) && !errors.Is(err, skills.ErrConflict) {
+		return err
+	}
+	if directory != m.DirectoryID {
+		return fmt.Errorf("%w: original directory for %q", skills.ErrNotFound, m.Name)
+	}
+	content, found, err := readSkill(root, source)
+	if err != nil {
+		return err
+	}
+	if digestDocument(content, found) != m.DocumentRevision {
+		return fmt.Errorf("%w: original document for %q", skills.ErrNotFound, m.Name)
 	}
 	return nil
 }
 
-func inspectCompletedLifecycleMove(ctx context.Context, root *os.Root, name, destination, operation string) error {
-	content, found, err := readSkill(root, destination)
-	if err != nil {
-		return fmt.Errorf("skillauthoring: inspect completed %s for %q: %w", operation, name, err)
+func (m LifecycleMove) finishArchive(ctx context.Context, root *os.Root, usage map[string]usageRecord) error {
+	if m.Destination == skills.Archived {
+		return clearSkillUsage(ctx, root, usage, m.Name)
 	}
-	if found {
-		if err := validateSkill(ctx, name, content); err != nil {
-			return fmt.Errorf("%w: cannot replay %s %q: %w", skills.ErrConflict, operation, name, err)
-		}
-		return nil
-	}
-	if _, err := root.Lstat(destination); err == nil {
-		return fmt.Errorf(
-			"%w: cannot replay %s %q: destination is not a valid skill",
-			skills.ErrConflict,
-			operation,
-			name,
-		)
-	} else if !errors.Is(err, fs.ErrNotExist) {
-		return fmt.Errorf("skillauthoring: inspect %s destination for %q: %w", operation, name, err)
-	}
-	return fmt.Errorf("%w: cannot %s %q", skills.ErrNotFound, operation, name)
+	return nil
 }
 
-func reconcileLifecycleRename(
-	root *os.Root,
-	name string,
-	source string,
-	destination string,
-	operation string,
-	content []byte,
-	renameErr error,
-) (bool, error) {
-	moved, found, readErr := readSkill(root, destination)
-	if readErr != nil {
-		return false, fmt.Errorf(
-			"skillauthoring: inspect %s outcome for %q: %w",
-			operation,
-			name,
-			errors.Join(renameErr, readErr),
-		)
+func clearSkillUsage(ctx context.Context, root *os.Root, usage map[string]usageRecord, name string) error {
+	if _, exists := usage[name]; !exists {
+		return nil
 	}
-	if found && bytes.Equal(moved, content) {
-		if _, sourceErr := root.Lstat(source); errors.Is(sourceErr, fs.ErrNotExist) {
-			return true, nil
-		} else if sourceErr != nil {
-			return false, fmt.Errorf(
-				"skillauthoring: inspect %s source for %q: %w",
-				operation,
-				name,
-				sourceErr,
-			)
-		}
+	delete(usage, name)
+	return writeUsage(ctx, root, usage)
+}
+
+func (s *Store) archiveActive(root *os.Root, name string) ([]string, error) {
+	active, archived := s.movePaths(name, skills.Archived)
+	info, err := root.Lstat(active)
+	if err != nil {
+		return nil, fmt.Errorf("skillauthoring: find active directory for %q: %w", name, err)
 	}
-	if _, err := root.Lstat(destination); err == nil {
-		return false, fmt.Errorf("%w: cannot %s %q", skills.ErrConflict, operation, name)
-	} else if !errors.Is(err, fs.ErrNotExist) {
-		return false, fmt.Errorf(
-			"skillauthoring: inspect %s destination for %q: %w",
-			operation,
-			name,
-			errors.Join(renameErr, err),
-		)
+	if !info.IsDir() {
+		return nil, fmt.Errorf("%w: active Skill %q is not a directory", skills.ErrConflict, name)
 	}
-	return false, fmt.Errorf("skillauthoring: %s %q: %w", operation, name, renameErr)
+	if err := root.MkdirAll(archivedSubdir, filesystem.SharedDirectoryMode); err != nil {
+		return nil, fmt.Errorf("skillauthoring: create archive area: %w", err)
+	}
+	removed, err := removeSkillTree(root, archived)
+	identities := identitiesIf(removed, s.skillIdentities(archived))
+	if err != nil {
+		return identities, fmt.Errorf("skillauthoring: clear archive slot for %q: %w", name, err)
+	}
+	if err := root.Rename(active, archived); err != nil {
+		return identities, fmt.Errorf("skillauthoring: archive %q: %w", name, err)
+	}
+	return s.skillIdentities(active, archived), nil
 }

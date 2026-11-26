@@ -15,7 +15,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/workspace/promptsource"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/flame/runtime/internal/domain/skills"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/skillauthoring"
 )
 
@@ -26,7 +25,7 @@ func TestSkillDiscoveryRestoresOriginalReleaseAndRefusesForeignWorkspace(t *test
 	first := poMCPActivate(r, source)
 	waitCallContributorState(t, r, first.ID, protocol.MCPServerConnected)
 	consumer := func() *pluginservices.SkillGovernance {
-		files, err := skillauthoring.NewStore(cfg.skillsUserDir, skills.ScopeUser)
+		files, err := skillauthoring.NewUserStore(cfg.skillsUserDir, cfg.stores.SkillMoves(delivery.EncodeSkillMoveReceipt))
 		if err != nil {
 			t.Fatal(err)
 		}

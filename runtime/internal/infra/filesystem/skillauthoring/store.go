@@ -23,31 +23,26 @@ type Store struct {
 	root                 string
 	repository, relative string
 	scope                skills.Scope
+	moves                MoveJournal
 	mu                   sync.RWMutex
 }
 
-func NewStore(root string, scope skills.Scope) (*Store, error) {
+func NewUserStore(root string, moves MoveJournal) (*Store, error) {
 	if !filepath.IsAbs(root) {
 		return nil, errors.New("skillauthoring: skills root must be absolute")
 	}
-	if err := scope.Validate(); err != nil {
-		return nil, fmt.Errorf("skillauthoring: store scope: %w", err)
+	if moves == nil {
+		return nil, errors.New("skillauthoring: user library requires a move journal")
 	}
-	return &Store{root: root, scope: scope}, nil
+	return &Store{root: root, scope: skills.ScopeUser, moves: moves}, nil
 }
 
 func NewRepositoryStore(repository, library string) (*Store, error) {
 	relative, err := filepath.Rel(repository, library)
-	if err != nil || !filepath.IsLocal(relative) {
+	if err != nil || !filepath.IsAbs(library) || !filepath.IsLocal(relative) {
 		return nil, errors.New("skillauthoring: library is outside repository root")
 	}
-	store, err := NewStore(library, skills.ScopeRepository)
-	if err != nil {
-		return nil, err
-	}
-	store.repository = repository
-	store.relative = relative
-	return store, nil
+	return &Store{root: library, repository: repository, relative: relative, scope: skills.ScopeRepository}, nil
 }
 
 func (s *Store) Library() string { return s.root }
@@ -98,6 +93,20 @@ func (s *Store) openLeasedRoot(ctx context.Context, operation string) (*os.Root,
 	return root, cleanup, nil
 }
 
+func (s *Store) openWritableRoot(ctx context.Context, operation string) (*os.Root, func(), error) {
+	root, release, err := s.openLeasedRoot(ctx, operation)
+	if err != nil {
+		return nil, nil, err
+	}
+	// Other writers must leave the original directory and its activity intact
+	// until the interrupted move's receipt is settled.
+	if err := s.requireSettledMove(ctx); err != nil {
+		release()
+		return nil, nil, err
+	}
+	return root, release, nil
+}
+
 func (s *Store) activeDir(name string) string { return name }
 
 func (s *Store) archiveDir(name string) string {
@@ -140,17 +149,6 @@ func removeSkillTree(root *os.Root, directory string) (bool, error) {
 	}
 	_, remains, inspectErr := readSkill(root, directory)
 	return existed && !remains, errors.Join(removeErr, inspectErr)
-}
-
-func (s *Store) lifecycleDir(lifecycle skills.Lifecycle, name string) (string, error) {
-	switch lifecycle {
-	case skills.Active:
-		return s.activeDir(name), nil
-	case skills.Archived:
-		return s.archiveDir(name), nil
-	default:
-		return "", fmt.Errorf("skillauthoring: unknown lifecycle %q", lifecycle)
-	}
 }
 
 func validateSkill(ctx context.Context, name string, content []byte) error {

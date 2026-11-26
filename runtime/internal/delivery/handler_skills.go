@@ -75,14 +75,6 @@ func presentSkillLifecycle(lifecycle skills.Lifecycle) (protocol.SkillLifecycle,
 	}
 }
 
-func (s *Handler) ArchiveSkill(ctx context.Context, in protocol.SkillNameRequest) error {
-	return mapSkillError(s.workspaceSkills.Archive(ctx, in.Name))
-}
-
-func (s *Handler) RestoreSkill(ctx context.Context, in protocol.SkillNameRequest) error {
-	return mapSkillError(s.workspaceSkills.Restore(ctx, in.Name))
-}
-
 func mapSkillError(err error) error {
 	var kind error
 	var detail string

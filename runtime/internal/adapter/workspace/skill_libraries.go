@@ -41,12 +41,12 @@ func (l *SkillLibraries) Preimage(ctx context.Context, root string, proposal ski
 	return store.Preimage(ctx, proposal)
 }
 
-func (l *SkillLibraries) Publish(ctx context.Context, root string, proposal skills.Proposal, previous, permit string) ([]string, error) {
+func (l *SkillLibraries) Publish(ctx context.Context, root string, proposal skills.Proposal, previous, permit string, admit func(context.Context, func(context.Context) error) error) ([]string, error) {
 	store, err := l.store(proposal.Scope, root)
 	if err != nil {
 		return nil, err
 	}
-	return store.Publish(ctx, proposal, previous, permit, l.journal)
+	return store.Publish(ctx, proposal, previous, permit, l.journal, admit)
 }
 
 func (l *SkillLibraries) store(scope skills.Scope, repositoryRoot string) (*skillauthoring.Store, error) {

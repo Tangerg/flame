@@ -310,6 +310,14 @@ func currentSchema() []string {
 			receipt_key    TEXT    UNIQUE REFERENCES idempotency_records(key) ON DELETE RESTRICT,
 			FOREIGN KEY (to_run_id, session_id) REFERENCES runs(run_id, session_id) ON DELETE RESTRICT
 		)`,
+		`CREATE TABLE IF NOT EXISTS pending_skill_move (
+			id                INTEGER PRIMARY KEY CHECK (id = 1),
+			name              TEXT NOT NULL,
+			destination       TEXT NOT NULL,
+			directory_id      TEXT NOT NULL CHECK (length(directory_id) > 0),
+			document_revision TEXT NOT NULL CHECK (length(document_revision) > 0),
+			receipt_key       TEXT REFERENCES idempotency_records(key) ON DELETE RESTRICT
+		)`,
 		`CREATE TABLE IF NOT EXISTS committed_session_resource_retirements (
 			retirement_id TEXT PRIMARY KEY,
 			session_id TEXT NOT NULL UNIQUE

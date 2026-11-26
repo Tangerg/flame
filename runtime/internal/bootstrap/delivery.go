@@ -44,6 +44,9 @@ func (h *runtimeApplication) recoverStartup(ctx context.Context) error {
 	if err := h.retirer.RecoverPending(ctx, h.admissions); err != nil {
 		return err
 	}
+	if err := h.delivery.WorkspaceSkills.RecoverMove(ctx); err != nil {
+		return err
+	}
 	return h.sessions.RecoverWorkspaceMutations(ctx)
 }
 

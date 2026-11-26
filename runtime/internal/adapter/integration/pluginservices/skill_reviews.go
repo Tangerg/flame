@@ -26,7 +26,7 @@ import (
 type skillPublisher interface {
 	Library(context.Context, string, skills.Scope) (string, error)
 	Preimage(context.Context, string, skills.Proposal) (string, error)
-	Publish(context.Context, string, skills.Proposal, string, string) ([]string, error)
+	Publish(context.Context, string, skills.Proposal, string, string, func(context.Context, func(context.Context) error) error) ([]string, error)
 }
 type SkillGovernance struct {
 	calls    *CommandCalls
@@ -355,19 +355,17 @@ func sameApproval(record plugin.CommandBinding, doc reviewDocument, method strin
 }
 
 func (s *SkillGovernance) publishApproved(ctx context.Context, root string, doc reviewDocument, approval plugin.CommandBinding, decision string) ([]string, error) {
-	var changed []string
-	err := s.calls.framework.Admission().Admit(ctx, func(ctx context.Context) error {
-		if err := s.calls.admitDispatch(ctx, doc.record); err != nil {
-			return err
-		}
-		if err := s.calls.admitDispatch(ctx, approval); err != nil {
-			return err
-		}
-		var err error
-		changed, err = s.files.Publish(ctx, root, doc.proposal(), doc.draft.Previous, decision)
-		return err
+	return s.files.Publish(ctx, root, doc.proposal(), doc.draft.Previous, decision, func(ctx context.Context, publish func(context.Context) error) error {
+		return s.calls.framework.Admission().Admit(ctx, func(ctx context.Context) error {
+			if err := s.calls.admitDispatch(ctx, doc.record); err != nil {
+				return err
+			}
+			if err := s.calls.admitDispatch(ctx, approval); err != nil {
+				return err
+			}
+			return publish(ctx)
+		})
 	})
-	return changed, err
 }
 
 func publicationRefused(err error) bool {
