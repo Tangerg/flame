@@ -1137,7 +1137,10 @@ if err != nil {
 }
 ```
 
-Hosts must close each Runtime they open. Protocol errors support `errors.Is` against public sentinel errors and `errors.As` to `*protocol.Failure` for structured recovery information.
+Hosts must close each Runtime they open. Go callers can inspect the public
+sentinel and underlying causes of a `*protocol.Failure` with `errors.Is`.
+Use `errors.As` to reach the structured recovery information. HTTP responses
+carry the validated public problem data.
 
 Repeated `Close` calls join or resume an incomplete shutdown. Once terminal
 resource teardown finishes, every call returns its retained diagnostic without

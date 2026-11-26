@@ -1,7 +1,6 @@
 package protocol
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"slices"
@@ -103,77 +102,73 @@ func (f *Failure) Problem() ProblemData {
 }
 
 func NewFailure(kind error, detail string, causes ...error) *Failure {
-	if kind == nil {
-		return internalFailure()
-	}
-	spec, ok := problemSpecForType(kind.Error())
-	if !ok {
-		return internalFailure()
-	}
 	cause := errors.Join(append([]error{kind}, causes...)...)
-	failure := newFailure(spec, cause, detail)
-	if detailed, ok := errors.AsType[problemDetailed](cause); ok && !errors.Is(spec.sentinel, ErrInternalError) && errors.Is(detailed, kind) {
-		detailed.Enrich(&failure.data)
+	spec, ok := problemSpecForError(kind)
+	if !ok {
+		return internalFailure(cause)
 	}
-	if errors.Is(spec.sentinel, ErrInvalidParams) {
-		if constraint, ok := errors.AsType[*ConstraintError](cause); ok {
-			failure.data.Errors = slices.Clone(constraint.Fields)
-		}
-	}
-	if ValidateWireTree(failure.data) != nil {
-		return internalFailure()
-	}
-	return failure
+	return spec.failure(detail, cause)
 }
 
 func ProjectError(err error) *Failure {
 	if err == nil {
 		return nil
 	}
-	projected := internalFailure()
 	if failure, ok := errors.AsType[*Failure](err); ok {
-		if ValidateWireTree(failure.data) == nil {
-			projected = &Failure{cause: failure.cause, data: cloneProblemData(failure.data)}
+		if ValidateWireTree(failure.data) != nil {
+			return internalFailure(err)
 		}
-	} else {
-		for _, spec := range problemSpecs {
-			if !errors.Is(err, spec.sentinel) {
-				continue
-			}
-			detail := ""
-			if message := err.Error(); message != spec.sentinel.Error() {
-				detail = message
-			}
-			projected = NewFailure(spec.sentinel, detail, err)
-			break
+		if err == failure {
+			return failure
 		}
+		return &Failure{cause: err, data: failure.Problem()}
 	}
-	for _, cause := range []error{context.Canceled, context.DeadlineExceeded} {
-		if errors.Is(err, cause) && !errors.Is(projected, cause) {
-			projected.cause = errors.Join(projected.cause, cause)
-		}
+	spec, ok := problemSpecForError(err)
+	if !ok {
+		return internalFailure(err)
 	}
-	return projected
+	detail := err.Error()
+	if detail == spec.sentinel.Error() {
+		detail = ""
+	}
+	return spec.failure(detail, err)
 }
 
 func InvalidParameters(err error) *Failure {
-	return ProjectError(NewFailure(ErrInvalidParams, err.Error(), err))
+	return NewFailure(ErrInvalidParams, err.Error(), err)
 }
 
-func newFailure(spec problemSpec, cause error, detail string) *Failure {
-	return &Failure{
-		cause: cause,
-		data: ProblemData{
-			Type:              spec.sentinel.Error(),
-			Detail:            detail,
-			RetryAfterSeconds: spec.retryAfterSeconds,
-		},
+func (s problemSpec) failure(detail string, cause error) *Failure {
+	data := s.problem(detail)
+	if detailed, ok := errors.AsType[problemDetailed](cause); ok && s.sentinel != ErrInternalError && errors.Is(detailed, s.sentinel) {
+		detailed.Enrich(&data)
+	}
+	if s.sentinel == ErrInvalidParams {
+		if constraint, ok := errors.AsType[*ConstraintError](cause); ok {
+			data.Errors = constraint.Fields
+		}
+	}
+	data = cloneProblemData(data)
+	if ValidateWireTree(data) != nil {
+		return internalFailure(cause)
+	}
+	return &Failure{cause: cause, data: data}
+}
+
+func (s problemSpec) problem(detail string) ProblemData {
+	return ProblemData{
+		Type:              s.sentinel.Error(),
+		Detail:            detail,
+		RetryAfterSeconds: s.retryAfterSeconds,
 	}
 }
 
-func internalFailure() *Failure {
+func internalFailure(cause error) *Failure {
 	spec, _ := problemSpecForType(ProblemInternalError)
-	return newFailure(spec, ErrInternalError, "the runtime could not complete the request")
+	return &Failure{
+		cause: errors.Join(ErrInternalError, cause),
+		data:  spec.problem("the runtime could not complete the request"),
+	}
 }
 
 func DecodeFailure(data ProblemData) (*Failure, error) {
@@ -217,6 +212,15 @@ func ProblemTypes() []string {
 func RetryAfterFor(problemType string) int {
 	spec, _ := problemSpecForType(problemType)
 	return spec.retryAfterSeconds
+}
+
+func problemSpecForError(err error) (problemSpec, bool) {
+	for _, spec := range problemSpecs {
+		if errors.Is(err, spec.sentinel) {
+			return spec, true
+		}
+	}
+	return problemSpec{}, false
 }
 
 func problemSpecForType(problemType string) (problemSpec, bool) {

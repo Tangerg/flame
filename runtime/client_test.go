@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -67,7 +69,7 @@ func TestClientRejectsResumeAcknowledgementsThatChangeInputPresence(t *testing.T
 }
 
 func TestClientsShareRuntimeWithoutSharingOwnership(t *testing.T) {
-	rt, server, discovery := remoteRuntime(t)
+	rt, server, discovery := remoteRuntime(t, testsupport.TempDirectory(t))
 	first := remoteTestClient(t, server.URL)
 	second := remoteTestClient(t, server.URL)
 	options := protocol.CommandOptions{IdempotencyKey: "shared-create", IdempotencyNamespace: discovery.Capabilities.Limits.Idempotency.Namespace}
@@ -120,6 +122,46 @@ func TestClientsShareRuntimeWithoutSharingOwnership(t *testing.T) {
 	}
 }
 
+func TestRuntimePreservesLocalCauseAndProjectsPublicProblem(t *testing.T) {
+	root := testsupport.TempDirectory(t)
+	data := filepath.Join(root, "runtime-data")
+	rt, server, _ := remoteRuntime(t, data)
+	remote := remoteTestClient(t, server.URL)
+	options := protocol.CallOptions{}
+
+	moved := filepath.Join(root, "moved-data")
+	if err := os.Rename(data, moved); err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := os.Rename(moved, data); err != nil {
+			t.Error(err)
+		}
+	}()
+
+	_, err := rt.Discover(t.Context(), options)
+	if !errors.Is(err, protocol.ErrInternalError) || !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("local discovery lost the filesystem cause: %v", err)
+	}
+	localFailure, ok := errors.AsType[*protocol.Failure](err)
+	if !ok {
+		t.Fatalf("local discovery did not return a protocol failure: %v", err)
+	}
+	public := localFailure.Problem()
+	if public.Type != protocol.ProblemInternalError || strings.Contains(public.Detail, data) {
+		t.Fatalf("local discovery projected an invalid public problem: %+v", public)
+	}
+
+	_, err = remote.Discover(t.Context(), options)
+	wireFailure, ok := errors.AsType[*protocol.Failure](err)
+	if !ok || !errors.Is(err, protocol.ErrInternalError) || errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("remote discovery did not return the public failure: %v", err)
+	}
+	if wire := wireFailure.Problem(); wire.Type != public.Type || wire.Detail != public.Detail {
+		t.Fatalf("remote discovery changed the public problem: %+v", wire)
+	}
+}
+
 func TestClientDoesNotFollowRedirectsOrTransmitCredentials(t *testing.T) {
 	var forwarded atomic.Int32
 	destination := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { forwarded.Add(1) }))
@@ -139,14 +181,14 @@ func TestClientDoesNotFollowRedirectsOrTransmitCredentials(t *testing.T) {
 	}
 }
 
-func remoteRuntime(t *testing.T) (*Runtime, *httptest.Server, *protocol.DiscoverResponse) {
+func remoteRuntime(t *testing.T, dataDirectory string) (*Runtime, *httptest.Server, *protocol.DiscoverResponse) {
 	t.Helper()
-	for _, name := range []string{"FLAME_APIKEY", "FLAME_MODEL", "FLAME_BASEURL"} {
+	for _, name := range []string{"FLAME_APIKEY", "FLAME_BASEURL", "ANTHROPIC_API_KEY"} {
 		t.Setenv(name, "")
 	}
 	t.Setenv("FLAME_PROVIDER", "anthropic")
 	t.Setenv("FLAME_MODEL", "claude-opus-5")
-	rt, err := Open(t.Context(), Config{DataDirectory: testsupport.TempDirectory(t), UserHomePath: testsupport.TempDirectory(t), DefaultWorkspacePath: testsupport.TempDirectory(t), ConfigDirectories: []string{testsupport.TempDirectory(t)}})
+	rt, err := Open(t.Context(), Config{DataDirectory: dataDirectory, UserHomePath: testsupport.TempDirectory(t), DefaultWorkspacePath: testsupport.TempDirectory(t), ConfigDirectories: []string{testsupport.TempDirectory(t)}})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -87,9 +87,6 @@ func errorToRPC(err error) *jsonrpc.Error {
 }
 
 func marshalFailure(failure *protocol.Failure) *jsonrpc.Error {
-	if failure == nil {
-		failure = protocol.NewFailure(protocol.ErrInternalError, "the runtime could not complete the request")
-	}
 	problem := failure.Problem()
 	code, ok := problemCode(problem.Type)
 	if !ok || protocol.ValidateWireTree(problem) != nil {

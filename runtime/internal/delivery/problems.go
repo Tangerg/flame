@@ -19,7 +19,7 @@ func runtimeProduced(detail string, cause error) *protocol.Failure {
 func failureFromData(data protocol.ProblemData) *protocol.Failure {
 	failure, err := protocol.DecodeFailure(data)
 	if err != nil {
-		return protocol.NewFailure(protocol.ErrInternalError, "the runtime could not complete the request")
+		return protocol.ProjectError(err)
 	}
 	return failure
 }
