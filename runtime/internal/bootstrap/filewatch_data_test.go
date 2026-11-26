@@ -43,13 +43,14 @@ func TestFilewatchResumesTheSamePartialDataMethodWithPinnedInputs(t *testing.T) 
 	fault := &repeatedFilewatchEvents{t: t}
 	r := poMCPOpenWithCallbackRPC(t, cfg, fault.wrap)
 	watch := poMCPActivate(r, filepath.Join(firstPartyPackages, "filewatch"))
-	skills := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: filepath.Join(firstPartyPackages, "skills")}, "install-skills").(*protocol.PluginInstallation)
+	skills := r.installAndInspect(filepath.Join(firstPartyPackages, "skills"), "install-skills")
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: skills.ID, Enabled: true}, "enable-skills")
 	r.must(delivery.PluginsSelectProvider, protocol.SelectPluginProviderRequest{Role: skilllearning.Reference, InstallationID: skills.ID, Contribution: "skill-learning"}, "select-skills")
-	trajectory := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: filepath.Join(firstPartyPackages, "trajectory")}, "install-trajectory").(*protocol.PluginInstallation)
+	trajectory := r.installAndInspect(filepath.Join(firstPartyPackages, "trajectory"), "install-trajectory")
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: trajectory.ID, Enabled: true}, "enable-trajectory")
-	artifact := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: filepath.Join(firstPartyPackages, "deliverables")}, "install-data-chart").(*protocol.PluginInstallation)
-	artifact = r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: artifact.ID, Enabled: true}, "enable-data-chart").(*protocol.PluginInstallation)
+	artifact := r.installAndInspect(filepath.Join(firstPartyPackages, "deliverables"), "install-data-chart")
+	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: artifact.ID, Enabled: true}, "enable-data-chart")
+	artifact = r.pluginInstallation(artifact.ID)
 	waitCallContributorState(t, r, watch.ID, protocol.MCPServerConnected)
 	server := &protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: artifact.ID}, Name: "deliverables"}
 	for _, tool := range r.poMCPTools(server, func(tools []protocol.MCPTool) bool {
