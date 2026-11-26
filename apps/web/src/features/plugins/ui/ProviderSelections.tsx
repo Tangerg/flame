@@ -79,7 +79,7 @@ export function ProviderSelections({
           isLoading={providers.isPending}
           failure={providers.error}
           onRetry={providers.refetch}
-          empty={{ icon: "blocks", title: t("packages.providers.none") }}
+          empty={{ icon: "plug", title: t("packages.providers.none") }}
         >
           {() => null}
         </DataView>

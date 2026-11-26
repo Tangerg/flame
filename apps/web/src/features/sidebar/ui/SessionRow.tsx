@@ -163,7 +163,7 @@ export function SessionRow({
     onDelete,
     contributed: contributedActions.map((entry) => ({
       id: entry.id,
-      icon: "blocks" as const,
+      icon: "plug" as const,
       label: presentationTitle(entry.title, entry.localizedTitles, locale),
       run: () =>
         setAction({

@@ -117,7 +117,7 @@ function CatalogRefreshFailure({
         sub={t("packages.refreshError.sub")}
         size="compact"
         unsupported={{
-          icon: "blocks",
+          icon: "plug",
           sub: t("packages.refreshError.sub"),
           size: "compact",
         }}
@@ -204,7 +204,7 @@ export function PackageManager() {
           isLoading={catalog.isPending}
           failure={retained ? undefined : catalog.error}
           onRetry={catalog.refetch}
-          empty={{ icon: "blocks", title: t("packages.empty") }}
+          empty={{ icon: "plug", title: t("packages.empty") }}
         >
           {(rows) => (
             <RecordGroup variant="list" hidden={!operations}>
