@@ -10,6 +10,7 @@ import {
 import { HTTP_HEADERS, RPC_HTTP } from "@flame/runtime-client/wire";
 import { useRuntimeFixture } from "./fixture";
 import { faultUnaryResponse } from "./transportFaults";
+import { MemoryMutationStorage } from "./mutationStorage";
 
 describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: capability conditions", () => {
   const fixture = useRuntimeFixture("capabilities", { isolationUnavailable: true });
@@ -184,13 +185,7 @@ describe.skipIf(process.platform !== "darwin")("Runtime replay after capability 
       title: "Committed before capability loss",
       isolated: false,
     };
-    const entries = new Map<string, unknown>();
-    const mutationStorage = {
-      get: (key: string) => structuredClone(entries.get(key)),
-      set: (key: string, value: unknown) => void entries.set(key, structuredClone(value)),
-      remove: (key: string) => void entries.delete(key),
-      keys: () => [...entries.keys()],
-    };
+    const mutationStorage = new MemoryMutationStorage();
     const openClient = (fetch?: typeof globalThis.fetch) =>
       createFlameClient(createHttpTransport({ baseUrl: fixture.baseUrl, fetch }), {
         capabilities: () => fixture.negotiated,
@@ -204,7 +199,7 @@ describe.skipIf(process.platform !== "darwin")("Runtime replay after capability 
     const original = first.sessions.update(params);
     try {
       await expect(original).rejects.toBeInstanceOf(RpcConnectionError);
-      expect(entries.size).toBe(1);
+      expect(mutationStorage.size).toBe(1);
     } finally {
       await first.close();
     }
@@ -221,7 +216,7 @@ describe.skipIf(process.platform !== "darwin")("Runtime replay after capability 
         name: "MutationLookupError",
         cause: { data: { type: "capability_not_negotiated" }, recordedOutcome: false },
       });
-      expect(entries.size).toBe(1);
+      expect(mutationStorage.size).toBe(1);
     } finally {
       await restricted.close();
     }
@@ -232,7 +227,7 @@ describe.skipIf(process.platform !== "darwin")("Runtime replay after capability 
       const replay = restored.sessions.update(params);
       expect(replay.idempotencyKey).toBe(original.idempotencyKey);
       await expect(replay).resolves.toEqual(committed);
-      expect(entries.size).toBe(0);
+      expect(mutationStorage.size).toBe(0);
     } finally {
       await restored.close();
     }

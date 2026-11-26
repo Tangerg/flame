@@ -33,7 +33,7 @@ export type { MutationJournalScope, MutationJournalStorage } from "./durableMuta
 export interface MutationReservation {
   readonly idempotencyKey: string;
   readonly steerItemId: string | null;
-  bindSteerItem(userItemId: string): void;
+  bindSteerItem(userItemId: string): string;
   readonly requestMeta: RequestMeta | null;
   lookupNamespace(): string;
   authorizeDispatch(): string;
@@ -128,18 +128,18 @@ export class MutationJournal {
     this.#assertCurrent();
     return this.#journal
       .pendingPluginCommands()
-      .filter((identity) => !this.#claims.has(identity.entry.idempotencyKey))
+      .filter((identity) => !this.#claims.has(identity.idempotencyKey))
       .map((identity) => ({
-        idempotencyKey: identity.entry.idempotencyKey,
+        idempotencyKey: identity.idempotencyKey,
         namespace: this.#journal.lookupNamespace(identity),
-        binding: captureInstalledRoute(identity.entry.installed!.route),
+        binding: captureInstalledRoute(identity.installed!.route),
         matchesIntent: (intent) => {
           this.#assertCurrent();
           return this.#journal.matchesPluginCommandIntent(identity, intent);
         },
         reserve: () => {
           this.#assertCurrent();
-          if (this.#claims.has(identity.entry.idempotencyKey))
+          if (this.#claims.has(identity.idempotencyKey))
             throw new MutationJournalOwnershipError(
               "plugin command is already owned by an active attempt",
             );
@@ -195,16 +195,16 @@ export class MutationJournal {
     this.#assertCurrent();
     return this.#journal
       .pendingCommands()
-      .filter((identity) => !this.#claims.has(identity.entry.idempotencyKey))
+      .filter((identity) => !this.#claims.has(identity.idempotencyKey))
       .map((identity) => ({
-        ...captureRunCommand(identity.entry.command!),
-        idempotencyKey: identity.entry.idempotencyKey,
+        ...captureRunCommand(identity.command!),
+        idempotencyKey: identity.idempotencyKey,
         namespace: this.#journal.lookupNamespace(identity),
-        steerItemId: identity.entry.steerItemId,
+        steerItemId: this.#journal.steerItemId(identity),
         acknowledge: () => this.#journal.settle(identity),
         reserve: () => {
           this.#assertCurrent();
-          if (this.#claims.has(identity.entry.idempotencyKey))
+          if (this.#claims.has(identity.idempotencyKey))
             throw new MutationJournalOwnershipError(
               "Runtime mutation identity is already owned by an active command",
             );
@@ -232,19 +232,20 @@ export class MutationJournal {
   }
 
   #claim(identity: DurableMutationIdentity): MutationReservation {
-    this.#claims.set(identity.entry.idempotencyKey, identity);
+    this.#claims.set(identity.idempotencyKey, identity);
+    const journal = this.#journal;
     const lifecycle = this.#lifecycle(identity);
     return {
-      idempotencyKey: identity.entry.idempotencyKey,
+      idempotencyKey: identity.idempotencyKey,
       get steerItemId() {
-        return identity.entry.steerItemId;
+        return journal.steerItemId(identity);
       },
       bindSteerItem: (userItemId) => {
         this.#assertClaim(identity);
-        this.#journal.bindSteerItem(identity, userItemId);
+        return journal.bindSteerItem(identity, userItemId);
       },
       get requestMeta() {
-        return captureRequestMeta(identity.entry.requestMeta);
+        return captureRequestMeta(identity.requestMeta);
       },
       lookupNamespace: () => {
         this.#assertClaim(identity);
@@ -269,7 +270,7 @@ export class MutationJournal {
   }
 
   #lifecycle(identity: DurableMutationIdentity): MutationLifecycle {
-    const idempotencyKey = identity.entry.idempotencyKey;
+    const idempotencyKey = identity.idempotencyKey;
     let activeAttempts = 0;
     let definitiveOutcome = false;
     const finish = (definitive: boolean, canceled = false) => {
@@ -316,7 +317,7 @@ export class MutationJournal {
 
   #assertClaim(identity: DurableMutationIdentity): void {
     this.#assertCurrent();
-    if (this.#claims.get(identity.entry.idempotencyKey) !== identity) {
+    if (this.#claims.get(identity.idempotencyKey) !== identity) {
       throw new MutationJournalOwnershipError(
         "Runtime mutation identity is no longer owned by this client",
       );

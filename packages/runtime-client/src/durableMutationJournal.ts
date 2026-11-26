@@ -8,7 +8,7 @@ import {
   isPluginDeliveryMethod,
 } from "./request";
 import type { RequestMeta } from "./generated/wire.generated";
-import { cloneJSON } from "@frame/sdk/json";
+import { canonicalJSON, cloneJSON } from "@frame/sdk/json";
 import {
   type CapturedPluginCommand,
   type DurableMutationIdentity,
@@ -22,7 +22,7 @@ import {
   matchesCommand,
   matchesPluginIntent,
   prepareCommand,
-  sameEntry,
+  mutationIdentity,
   validEntry,
   validSteerItem,
   validText,
@@ -83,7 +83,8 @@ export interface DurableMutationJournal {
   markDispatched(identity: DurableMutationIdentity): DispatchPhase;
   wasDispatched(identity: DurableMutationIdentity): boolean;
   lookupNamespace(identity: DurableMutationIdentity): string;
-  bindSteerItem(identity: DurableMutationIdentity, userItemId: string): void;
+  steerItemId(identity: DurableMutationIdentity): string | null;
+  bindSteerItem(identity: DurableMutationIdentity, userItemId: string): string;
   retain(identity: DurableMutationIdentity): void;
   settle(identity: DurableMutationIdentity): void;
 }
@@ -180,12 +181,18 @@ export function openDurableMutationJournal(
   const persistEntry = (entry: JournalEntry) =>
     persistValue(options.storage, entryKey(entry.idempotencyKey), entry);
 
+  const reserveEntry = (identity: DurableMutationIdentity): JournalEntry => {
+    const entry: JournalEntry = { ...identity, delivery: "reserved", steerItemId: null };
+    persistEntry(entry);
+    return entry;
+  };
+
   const removeEntry = (entry: JournalEntry) =>
     removeValue(options.storage, entryKey(entry.idempotencyKey));
 
   const readReservedEntry = (identity: DurableMutationIdentity): JournalEntry | undefined => {
-    const persisted = readEntry(identity.entry.idempotencyKey);
-    if (persisted && !sameEntry(persisted, identity.entry)) {
+    const persisted = readEntry(identity.idempotencyKey);
+    if (persisted && canonicalJSON(mutationIdentity(persisted)) !== canonicalJSON(identity)) {
       throw new MutationJournalOwnershipError(
         "Runtime mutation identity no longer names the reserved command",
       );
@@ -204,15 +211,14 @@ export function openDurableMutationJournal(
   };
 
   const validateIdentity = (identity: DurableMutationIdentity, scope: MutationJournalScope) => {
-    const entry = identity.entry;
-    if (entry.namespace !== scope.namespace) {
+    if (identity.namespace !== scope.namespace) {
       throw new MutationJournalOwnershipError(
         "Runtime mutation identity belongs to a replaced Runtime store",
       );
     }
     const effectiveExpiry = Math.min(
-      entry.expiresAt,
-      entry.createdAt + scope.retentionSeconds * MILLISECONDS_PER_SECOND,
+      identity.expiresAt,
+      identity.createdAt + scope.retentionSeconds * MILLISECONDS_PER_SECOND,
     );
     if (effectiveExpiry <= options.now()) {
       throw new MutationJournalError("Runtime mutation identity expired before delivery");
@@ -238,10 +244,8 @@ export function openDurableMutationJournal(
     options.admitNewCommand(method, params, requestMeta);
     const createdAt = options.now();
     const salt = crypto.randomUUID();
-    const entry: JournalEntry = {
-      delivery: "reserved",
+    return reserveEntry({
       method,
-      steerItemId: null,
       salt,
       namespace: scope.namespace,
       fingerprint: fingerprint(
@@ -266,9 +270,7 @@ export function openDurableMutationJournal(
           }),
       command: prepareCommand(method, params, requestMeta),
       requestMeta: captureRequestMeta(requestMeta),
-    };
-    persistEntry(entry);
-    return entry;
+    });
   };
 
   const journal: DurableMutationJournal = {
@@ -304,7 +306,7 @@ export function openDurableMutationJournal(
         throw new MutationJournalOwnershipError(
           "plugin command intent is already owned by an active command",
         );
-      return { identity: { entry }, request };
+      return { identity: mutationIdentity(entry), request };
     },
     stagePluginCommand(intent, request, claimed, requestMeta) {
       request = checkRequest("plugins.call", cloneJSON(request), requestMeta);
@@ -322,24 +324,22 @@ export function openDurableMutationJournal(
         intent,
         route,
       });
-      return { identity: { entry }, request };
+      return { identity: mutationIdentity(entry), request };
     },
     pendingCommands() {
       return loadEntries(options.storage)
         .filter((entry) => entry.command !== null)
-        .map((entry) => ({ entry }));
+        .map(mutationIdentity);
     },
     pendingPluginCommands() {
       return loadEntries(options.storage)
         .filter((entry) => isPluginDeliveryMethod(entry.method) && entry.installed !== undefined)
-        .map((entry) => ({ entry }));
+        .map(mutationIdentity);
     },
     validatePluginCommand(identity, request) {
       validateIdentity(identity, currentScope());
       readReservedEntry(identity);
-      if (
-        !matchesCommand(identity.entry, identity.entry.method, request, identity.entry.requestMeta)
-      ) {
+      if (!matchesCommand(identity, identity.method, request, identity.requestMeta)) {
         throw new MutationJournalOwnershipError(
           "original plugin command differs from retained identity",
         );
@@ -393,8 +393,7 @@ export function openDurableMutationJournal(
           installed,
         );
       }
-      const identity = { entry };
-      return identity;
+      return mutationIdentity(entry);
     },
     authorizeDispatch(identity) {
       return dispatchEntry(identity).namespace;
@@ -410,10 +409,13 @@ export function openDurableMutationJournal(
     },
     lookupNamespace(identity) {
       readReservedEntry(identity);
-      return identity.entry.namespace;
+      return identity.namespace;
+    },
+    steerItemId(identity) {
+      return readReservedEntry(identity)?.steerItemId ?? null;
     },
     bindSteerItem(identity, userItemId) {
-      if (identity.entry.command?.operation !== "steer" || !validSteerItem(userItemId))
+      if (identity.command?.operation !== "steer" || !validSteerItem(userItemId))
         throw new MutationJournalOwnershipError(
           "Runtime input identity does not belong to a Steer command",
         );
@@ -424,13 +426,12 @@ export function openDurableMutationJournal(
         throw new MutationJournalOwnershipError(
           "Runtime changed the original Steer input identity",
         );
-      if (persisted.steerItemId === userItemId) return;
-      persistEntry({ ...persisted, steerItemId: userItemId });
-      identity.entry.steerItemId = userItemId;
+      if (persisted.steerItemId === null) persistEntry({ ...persisted, steerItemId: userItemId });
+      return userItemId;
     },
     retain(identity) {
       if (readReservedEntry(identity)) return;
-      persistEntry(identity.entry);
+      reserveEntry(identity);
     },
     settle(identity) {
       const persisted = readReservedEntry(identity);

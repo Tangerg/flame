@@ -78,8 +78,11 @@ export interface CapturedPluginCommand {
   request: CallPluginRequest;
 }
 
-export interface DurableMutationIdentity {
-  readonly entry: JournalEntry;
+export type DurableMutationIdentity = Readonly<Omit<JournalEntry, "delivery" | "steerItemId">>;
+
+export function mutationIdentity(entry: JournalEntry): DurableMutationIdentity {
+  const { delivery: _, steerItemId: __, ...identity } = entry;
+  return identity;
 }
 
 export function validText(value: unknown, maximum: number): value is string {
@@ -214,33 +217,17 @@ export function commandFingerprintInput(
 }
 
 export function matchesCommand(
-  entry: JournalEntry,
+  identity: DurableMutationIdentity,
   method: string,
   params: unknown,
   requestMeta: RequestMeta | null,
 ): boolean {
-  if (entry.method !== method) return false;
+  if (identity.method !== method) return false;
   const command = commandFingerprintInput(
     method,
     params,
     requestMeta,
-    entry.installed !== undefined,
+    identity.installed !== undefined,
   );
-  return entry.fingerprint === fingerprint(fingerprintFields(entry.salt, command));
-}
-
-export function sameEntry(left: JournalEntry, right: JournalEntry): boolean {
-  return (
-    left.steerItemId === right.steerItemId &&
-    left.method === right.method &&
-    left.salt === right.salt &&
-    left.namespace === right.namespace &&
-    left.fingerprint === right.fingerprint &&
-    left.idempotencyKey === right.idempotencyKey &&
-    left.createdAt === right.createdAt &&
-    left.expiresAt === right.expiresAt &&
-    canonicalJSON(left.installed ?? null) === canonicalJSON(right.installed ?? null) &&
-    canonicalJSON(left.command) === canonicalJSON(right.command) &&
-    canonicalJSON(left.requestMeta) === canonicalJSON(right.requestMeta)
-  );
+  return identity.fingerprint === fingerprint(fingerprintFields(identity.salt, command));
 }

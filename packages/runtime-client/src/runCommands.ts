@@ -16,7 +16,6 @@ import type {
   StartRunRequest,
 } from "@flame/runtime-client/wire";
 import { streamRunEvents } from "./stream";
-import { MutationJournalScopeUnavailableError } from "./mutationJournal";
 import type { PendingRunCommand } from "./mutationJournal";
 import { RpcCancellationError, RpcProtocolError } from "./errors";
 
@@ -174,10 +173,6 @@ export function createRunCommands(
       params,
       async (preparedParams, reservation, attemptSignal) => {
         const namespace = reservation.lookupNamespace();
-        if (!namespace)
-          throw new MutationJournalScopeUnavailableError(
-            "run opening requires the Runtime store identity",
-          );
         const acceptance = await queryAcceptance(
           method === "runs.start" ? "start" : "resume",
           preparedParams,
@@ -212,14 +207,10 @@ export function createRunCommands(
     signal?: AbortSignal,
     original?: PendingRunCommand,
   ): SteerMutationPromise => {
-    let knownIdentity: string | undefined;
+    let publishedNomination: string | undefined;
     const observers = new Set<ReturnType<typeof Promise.withResolvers<string>>>();
-    const publishIdentity = async (userItemId: string) => {
-      if (knownIdentity !== undefined && knownIdentity !== userItemId)
-        throw new RpcProtocolError("runs.steer identity", [
-          { path: "$.userItemId", detail: "Runtime changed the original input identity" },
-        ]);
-      knownIdentity = userItemId;
+    const publishNomination = async (userItemId: string) => {
+      publishedNomination = userItemId;
       const published = [...observers];
       for (const observer of observers) observer.resolve(userItemId);
       observers.clear();
@@ -227,7 +218,7 @@ export function createRunCommands(
     };
     const expose = (mutation: MutationPromise<SteerCommandResult>): SteerMutationPromise => {
       const identity = Promise.withResolvers<string>();
-      if (knownIdentity !== undefined) identity.resolve(knownIdentity);
+      if (publishedNomination !== undefined) identity.resolve(publishedNomination);
       else observers.add(identity);
       // Observing nomination is optional; the command still reports every failure.
       identity.promise.catch(() => undefined);
@@ -253,12 +244,8 @@ export function createRunCommands(
       params,
       async (prepared, reservation, attemptSignal): Promise<SteerCommandResult> => {
         const boundItem = reservation.steerItemId;
-        if (boundItem !== null) await publishIdentity(boundItem);
+        if (boundItem !== null) await publishNomination(boundItem);
         const namespace = reservation.lookupNamespace();
-        if (!namespace)
-          throw new MutationJournalScopeUnavailableError(
-            "steer requires the Runtime store identity",
-          );
         const acceptance = await queryAcceptance(
           "steer",
           prepared,
@@ -274,13 +261,14 @@ export function createRunCommands(
           throw new RpcProtocolError("runs.getAcceptance result", [
             { path: "$", detail: "Steer lookup omitted its input identity" },
           ]);
-        reservation.bindSteerItem(userItemId);
-        await publishIdentity(userItemId);
-        if (acceptance.type !== "notRecorded") return { type: acceptance.type, userItemId };
+        const nomination = reservation.bindSteerItem(userItemId);
+        await publishNomination(nomination);
+        if (acceptance.type !== "notRecorded")
+          return { type: acceptance.type, userItemId: nomination };
         const acknowledged = await dispatchCommand("runs.steer", prepared, reservation, {
           signal: attemptSignal,
         });
-        if (acknowledged.userItemId !== userItemId)
+        if (acknowledged.userItemId !== nomination)
           throw new RpcProtocolError("runs.steer result", [
             { path: "$.userItemId", detail: "ACK differs from the nominated input identity" },
           ]);

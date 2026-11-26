@@ -25,6 +25,7 @@ import {
 } from "./observation";
 import { faultStreamOpening, faultUnaryResponse } from "./transportFaults";
 import { useRuntimeFixture } from "./fixture";
+import { MemoryMutationStorage } from "./mutationStorage";
 
 describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: protocol delivery", () => {
   const fixture = useRuntimeFixture("protocol");
@@ -439,15 +440,9 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: protocol delivery", () => {
       workspace: { path: fixture.root },
       title: "cold accepted opening",
     });
-    const entries = new Map<string, unknown>();
+    const mutationStorage = new MemoryMutationStorage();
     let now = Date.now();
     const clock = vi.spyOn(Date, "now").mockImplementation(() => now);
-    const mutationStorage = {
-      get: (key: string) => structuredClone(entries.get(key)),
-      set: (key: string, value: unknown) => void entries.set(key, structuredClone(value)),
-      remove: (key: string) => void entries.delete(key),
-      keys: () => [...entries.keys()],
-    };
     const requestMeta = (): RequestMeta => ({
       protocolVersion: PROTOCOL_VERSION,
       clientInfo: { name: "cold-opening-e2e", version: "1" },
@@ -481,8 +476,8 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: protocol delivery", () => {
       const pending = first.runs.start(params);
       await expect(pending).rejects.toMatchObject({ name: "MutationLookupError" });
       await within(gate.arrived.promise, "the cold opening model request");
-      expect(entries.size).toBe(1);
-      const evidence = structuredClone([...entries]);
+      expect(mutationStorage.size).toBe(1);
+      const evidence = mutationStorage.snapshot();
       await first.close();
       now += fixture.negotiated!.limits.idempotency.retentionSeconds * 1_000;
       cold = createFlameClient(createHttpTransport({ baseUrl: fixture.baseUrl }), {
@@ -500,13 +495,13 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: protocol delivery", () => {
           },
         },
       ]);
-      expect([...entries]).toEqual(evidence);
+      expect(mutationStorage.snapshot()).toEqual(evidence);
       const recovered = cold.runs.start(params);
       expect(recovered.idempotencyKey).toBe(pending.idempotencyKey);
-      expect([...entries]).toEqual(evidence);
+      expect(mutationStorage.snapshot()).toEqual(evidence);
       const opening = await recovered;
       expect(opening.observation).toEqual({ type: "snapshot", sessionId: session.id });
-      expect(entries.size).toBe(0);
+      expect(mutationStorage.size).toBe(0);
       expect(fault.attempts()).toBe(1);
       const receipt = await cold.runs.getAcceptance({
         namespace: fixture.negotiated.limits.idempotency.namespace,
