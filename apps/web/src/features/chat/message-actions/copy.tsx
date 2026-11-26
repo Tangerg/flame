@@ -10,8 +10,6 @@ import { useCurrentMessage } from "@/features/chat/public/messageContext";
 import { canCopyMessage } from "@/features/chat/message-actions/application/messageActionAvailability";
 import { messageCopyPayloads } from "@/features/chat/message-actions/presentation/copyPayloads";
 import { MessageActionButton } from "@/features/chat/message-actions/MessageActionButton";
-import { type as typeStep } from "@flame/ui/tokens.stylex";
-import { chatStyles as ct } from "@/ui/agent/chatStyles";
 function CopyButton() {
   const { messages } = useNotifications();
   const t = useT();
@@ -31,7 +29,6 @@ function CopyButton() {
       <DropdownMenu.Content align="end" sideOffset={4}>
         <CopyItem
           label={t("msgActions.copyMarkdown")}
-          hint={t("msgActions.copyMarkdownHint")}
           onSelect={() =>
             writeToClipboard(messages.show, copy.markdown || copy.plain, {
               successLabel: t("msgActions.copiedMarkdown"),
@@ -40,7 +37,6 @@ function CopyButton() {
         />
         <CopyItem
           label={t("msgActions.copyPlain")}
-          hint={t("msgActions.copyPlainHint")}
           onSelect={() =>
             writeToClipboard(messages.show, copy.plain, {
               successLabel: t("msgActions.copiedPlain"),
@@ -52,19 +48,10 @@ function CopyButton() {
   );
 }
 
-function CopyItem({
-  label,
-  hint,
-  onSelect,
-}: {
-  label: string;
-  hint: string;
-  onSelect: () => void;
-}) {
+function CopyItem({ label, onSelect }: { label: string; onSelect: () => void }) {
   return (
-    <DropdownMenu.Item onClick={onSelect} styles={ct.panelRow}>
-      <span {...stylex.props(vocab.ink, typeStep.uiMd)}>{label}</span>
-      <span {...stylex.props(vocab.faint, typeStep.uiSm)}>{hint}</span>
+    <DropdownMenu.Item layout="pickPlain" onClick={onSelect}>
+      <span {...stylex.props(vocab.truncate)}>{label}</span>
     </DropdownMenu.Item>
   );
 }
