@@ -64,7 +64,11 @@ export function createComposer(
     const { draft } = state.composer;
     const { current, replace } = state.captureDraftReplacement();
     const apply = () => current() && begin(replace);
-    if (draft.imageAttachments.length > 0 || draft.pastes.length > 0) {
+    if (
+      draft.imageAttachments.length > 0 ||
+      draft.pastes.length > 0 ||
+      draft.references.length > 0
+    ) {
       requestConfirmation(apply);
     } else {
       apply();
