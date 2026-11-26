@@ -9,3 +9,4 @@ export {
 } from "@/features/workspace/application/workspaceQueries";
 export type { WorkspaceFolderSummary } from "@/features/workspace/application/workspaceQueries";
 export { useChangedFiles } from "@/features/workspace/application/workingTreeChanges";
+export { observeWorkspaceDiffReads } from "@/features/workspace/adapters/workspaceReadObservation";

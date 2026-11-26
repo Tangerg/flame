@@ -1,3 +1,4 @@
+import { type FlameClient } from "@flame/runtime-client";
 import { queryClient, replaceCachedRead } from "@/lib/queryClient";
 import {
   WORKSPACE_LIST_FILES_KEY,
@@ -5,6 +6,42 @@ import {
   WORKSPACE_FILES_CHANGED_KEY,
 } from "@/features/workspace/application/workspaceQueries";
 import { type WorkspaceReadTarget } from "@/features/workspace/application/workspaceEventLoop";
+
+export function observeWorkspaceDiffReads(
+  runtime: FlameClient,
+  cwd: string,
+  componentSignal: AbortSignal,
+): FlameClient {
+  return {
+    ...runtime,
+    workspace(ref) {
+      const workspace = runtime.workspace(ref);
+      if (workspace.ref.path !== cwd) return workspace;
+      return {
+        ...workspace,
+        diff: {
+          ...workspace.diff,
+          get(params, signal) {
+            const mode = params?.mode ?? "worktree";
+            const read = workspace.diff.get(params, signal);
+            if (mode !== "worktree") return read;
+            return read.then((diff) => {
+              if (diff.type === "visual" && !componentSignal.aborted && !signal?.aborted) {
+                // The comparison can be scoped or truncated. The summary owns its full read.
+                void replaceCachedRead({
+                  queryKey: [WORKSPACE_FILES_CHANGED_KEY, { cwd }],
+                  exact: true,
+                });
+              }
+              return diff;
+            });
+          },
+        },
+      };
+    },
+  };
+}
+
 export function workspaceReadTargets(): WorkspaceReadTarget[] {
   const scopes = new Map<string | undefined, Set<string>>();
   for (const query of queryClient.getQueryCache().getAll()) {
