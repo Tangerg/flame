@@ -16,7 +16,7 @@ export const zh: Record<string, string> = {
   "filter.placeholder": "查找来源",
   "filter.clear": "清除筛选",
   "group.label": "分组方式",
-  "group.byProvider": "提供者",
+  "group.byProvider": "提供方",
   "group.byModel": "模型",
   "group.byDay": "UTC 日期",
   "group.byOrigin": "调用来源",

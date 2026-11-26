@@ -87,7 +87,7 @@ export const zh: Record<string, string> = {
   "fact.approval": "审批",
   "note.usageMissing": "此次调用未记录用量。",
   "note.outcomeUnobserved": "未观测到最终结果。结算时间不是实测的执行时间。",
-  "note.providerUnobserved": "未观测到提供者结果。缺失用量并不意味着零消耗。",
+  "note.providerUnobserved": "未观测到提供方结果。缺失用量并不意味着零消耗。",
   "note.reasoningRedacted": "思考内容已被隐去。",
   "evidence.recorded": "已记录的证据",
   "rename.section": "会话详情",

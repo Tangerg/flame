@@ -13,7 +13,7 @@ export const zh: Record<string, string> = {
   "providers.baseUrl.suffix": "地址路径必须以 {{suffix}} 结尾。",
   "providers.baseUrl.invalid":
     "请输入不含凭据、查询参数或片段的 HTTP(S) 地址。",
-  "providers.baseUrl.aria": "{{provider}} Base URL",
+  "providers.baseUrl.aria": "{{provider}} 基础 URL",
   "providers.key": "密钥 {{masked}}",
   "providers.ready": "就绪",
   "providers.fromEnv": "来自环境变量",

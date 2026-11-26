@@ -47,7 +47,7 @@ export const zh: Record<string, string> = {
   "model.existing": "{{provider}} / {{model}}（{{state}}）",
   "model.deprecated": "已弃用",
   "model.unavailable": "不可用",
-  "reasoning.default": "提供者默认",
+  "reasoning.default": "提供方默认",
   "reasoning.unavailable": "{{effort}}（不可用）",
   "models.error": "无法读取模型选项：{{error}}",
   "models.refresh": "刷新模型选项",

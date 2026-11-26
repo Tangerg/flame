@@ -44,7 +44,7 @@ export const de: Record<string, string> = {
     "Noch kein Anbieter mit Embedding-Unterstützung konfiguriert — füge oben einen hinzu (z. B. OpenAI).",
   "providers.embedding.error": "Embedding-Modell konnte nicht gesetzt werden.",
   "providers.testOutcome.notConfigured":
-    "Schließe zuerst die Provider-Konfiguration ab.",
+    "Schließe zuerst die Anbieterkonfiguration ab.",
   "providers.testOutcome.failed":
     "Der Anbieter war nicht erreichbar oder hat die Testanfrage abgelehnt.",
   "providers.apiKey.label": "API-Schlüssel",

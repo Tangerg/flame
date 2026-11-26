@@ -1,6 +1,6 @@
 export const de: Record<string, string> = {
   "mcp.error.toolPolicy":
-    "Die Werkzeugrichtlinie konnte nicht geändert werden.",
+    "Die Tool-Richtlinie konnte nicht geändert werden.",
   "mcp.tools.policyHint":
     "Wird sofort gespeichert. Die Sichtbarkeit gilt für neue Ausführungen. Automatische Genehmigung setzt eine globale Erlaubnisregel; spezifischere Regeln gelten weiterhin.",
   "mcp.tools.nameConflict":
@@ -108,14 +108,14 @@ export const de: Record<string, string> = {
   "mcp.testOutcome.timedOut":
     "Der Server hat nicht rechtzeitig geantwortet – prüfe Befehl oder URL und versuche es erneut.",
   "mcp.testOutcome.failed":
-    "Der Server hat keine Verbindung hergestellt oder keine gültige Werkzeugliste geliefert. Prüfe die Einstellungen und versuche es erneut.",
+    "Der Server hat keine Verbindung hergestellt oder keine gültige Tool-Liste geliefert. Prüfe die Einstellungen und versuche es erneut.",
   "mcp.import.config": "JSON-Konfiguration",
   "mcpStatus.mcp_authorization_required":
     "Dieser Server verlangt eine Anmeldung, bevor er nutzbar ist.",
   "mcpStatus.mcp_authorization_failed":
     "Die Anmeldung wurde nicht abgeschlossen. Versuche es erneut.",
   "mcpStatus.mcp_tool_discovery_failed":
-    "Verbunden, aber dieser Server hat keine verwendbare Werkzeugliste geliefert. Prüfe den Server und versuche es erneut.",
+    "Verbunden, aber dieser Server hat keine verwendbare Tool-Liste geliefert. Prüfe den Server und versuche es erneut.",
   "mcpStatus.mcp_configuration_failed":
     "Die Konfiguration oder die gespeicherten Anmeldedaten dieses Servers konnten nicht verwendet werden. Prüfe die Einstellungen und versuche es erneut.",
   "mcpStatus.mcp_dial_failed":

@@ -12,7 +12,7 @@ export const zhTW: Record<string, string> = {
   "providers.baseUrl.suffix": "位址路徑必須以 {{suffix}} 結尾。",
   "providers.baseUrl.invalid":
     "請輸入不含憑證、查詢參數或片段的 HTTP(S) 網址。",
-  "providers.baseUrl.aria": "{{provider}} Base URL",
+  "providers.baseUrl.aria": "{{provider}} 基礎 URL",
   "providers.key": "金鑰 {{masked}}",
   "providers.ready": "就緒",
   "providers.save": "儲存",
@@ -38,7 +38,7 @@ export const zhTW: Record<string, string> = {
   "providers.embedding.none":
     "尚未設定任何支援 embedding 的供應商 —— 請先在上方新增一個（例如 OpenAI）。",
   "providers.embedding.error": "無法設定 embedding 模型。",
-  "providers.testOutcome.notConfigured": "請先完成 provider 設定。",
+  "providers.testOutcome.notConfigured": "請先完成供應商設定。",
   "providers.testOutcome.failed": "供應方連不上，或拒絕了這次測試請求。",
   "providers.apiKey.label": "API 金鑰",
   "providers.baseUrl.label": "基礎 URL",

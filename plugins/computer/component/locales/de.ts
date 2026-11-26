@@ -20,7 +20,7 @@ export const de = {
     "Wähle die installierte ChatGPT-Anwendung in den Plugin-Einstellungen aus und öffne das Plugin erneut. Flame startet die CUA-Engine direkt.",
   "open.title": "Steuerungszeitraum genehmigen",
   "open.help":
-    "Während dieses Zeitraums können Modellwerkzeuge den Runtime-Host über Flames Computersteuerung steuern. Verwende eine Konsole außerhalb des gesteuerten Desktops, Kontos und Browsers, etwa ein separates Gerät oder ein isoliertes Ziel. Das Schließen dieser Ansicht beendet die Freigabe nicht.",
+    "Während dieses Zeitraums können Modell-Tools den Runtime-Host über Flames Computersteuerung steuern. Verwende eine Konsole außerhalb des gesteuerten Desktops, Kontos und Browsers, etwa ein separates Gerät oder ein isoliertes Ziel. Das Schließen dieser Ansicht beendet die Freigabe nicht.",
   "open.lease": "Dauer in Sekunden",
   "open.invalid":
     "Ganze Zahl zwischen {{minimum}} und {{maximum}} Sekunden eingeben.",
@@ -52,17 +52,17 @@ export const de = {
   "operation.id": "Aktionskennung",
   "operation.started": "Gestartet",
   "context.reading":
-    "Aktuelle Runtime-Anweisungen und Werkzeuge werden gelesen…",
+    "Aktuelle Runtime-Anweisungen und Tools werden gelesen…",
   "context.instructions": "Ursprüngliche Runtime-Anweisungen",
-  "context.tools": "Erfasste Werkzeugdefinitionen",
+  "context.tools": "Erfasste Tool-Definitionen",
   "context.server": "Runtime-Serverinformationen",
   "execute.title": "Manuelle Ausführung",
   "execute.action": "Computeraktion ausführen",
   "execute.help":
     "Erfasste Anweisungen und das genaue Schema verwenden. Code und Argumente als JSON-Objekt eingeben und das Ziel vor der Ausführung prüfen.",
-  "execute.tool": "Werkzeug",
-  "execute.arguments": "Werkzeugargumente (JSON)",
-  "execute.object": "Werkzeugargumente müssen ein JSON-Objekt sein.",
+  "execute.tool": "Tool",
+  "execute.arguments": "Tool-Argumente (JSON)",
+  "execute.object": "Tool-Argumente müssen ein JSON-Objekt sein.",
   "execute.review": "Aktion prüfen",
   "execute.actions": "Aktionen nach Prüfung",
   "execute.warning":
@@ -152,7 +152,7 @@ export const de = {
   "result.unknown":
     "Kein bestätigtes Ergebnis der ursprünglichen Aktion. Externe Auswirkungen sind möglich; diese Ansicht führt sie nicht erneut aus.",
   "result.toolError":
-    "Das ursprüngliche Werkzeug meldete einen Fehler. Frühere Auswirkungen sind weiterhin möglich.",
+    "Das ursprüngliche Tool meldete einen Fehler. Frühere Auswirkungen sind weiterhin möglich.",
   "result.cleanup":
     "Das Ergebnis wurde gespeichert, die Engine-Bereinigung ist jedoch unbestätigt.",
 } as const;

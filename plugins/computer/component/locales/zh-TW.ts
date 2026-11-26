@@ -87,7 +87,7 @@ export const zhTW = {
   "approval.sent": "原權限請求的回覆已被接收。",
   "approval.original": "原始權限請求",
   "approval.urlHelp":
-    "開啟請求的網址完成外部步驟。開啟連結不會自動批准，完成後請在此回覆。",
+    "開啟請求的網址完成外部步驟。開啟連結不會自動核准，完成後請在此回覆。",
   "command.title": "原始命令",
   "command.original": "原始命令狀態",
   "command.running": "正在等待原始命令結果…",

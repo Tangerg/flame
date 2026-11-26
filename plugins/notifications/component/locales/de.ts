@@ -14,7 +14,7 @@ export const de: Record<string, string> = {
   "notify.finished.title": "{{product}} ist fertig",
   "notify.finished.body": "Der Agent hat seinen Zug beendet.",
   "notify.needsInput.title": "{{product}} braucht dich",
-  "notify.needsInput.body": "Der Agent wartet auf deine Freigabe oder Antwort.",
+  "notify.needsInput.body": "Der Agent wartet auf deine Genehmigung oder Antwort.",
   "notify.error.title": "{{product}} hat einen Fehler",
   "notify.error.body": "Der Agentenlauf ist fehlgeschlagen.",
   "notify.canceled.title": "{{product}} wurde gestoppt",
