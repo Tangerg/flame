@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { useId, type ReactNode } from "react";
+import { useId, useRef } from "react";
 import {
   color,
   corner,
@@ -17,7 +17,7 @@ import { reveal } from "@/ui/atoms/reveal";
 import { Icon, type IconName } from "@/ui/icons/index";
 import { useT } from "@/lib/i18n/index";
 import { ButtonPrimitive } from "@flame/ui";
-import { Tooltip } from "@flame/ui/tooltip";
+import { Tooltip, useClampedText } from "@flame/ui/tooltip";
 const chipStyles = stylex.create({
   chip: {
     display: "inline-flex",
@@ -74,7 +74,7 @@ const chipStyles = stylex.create({
 
 interface Props {
   icon?: IconName;
-  children: ReactNode;
+  children: string;
   title?: string;
   onClose?: () => void;
   onOpen?: () => void;
@@ -92,18 +92,22 @@ export function Chip({
   closeLabel,
 }: Props) {
   const t = useT();
+  const valueRef = useRef<HTMLSpanElement>(null);
+  const clipped = useClampedText(valueRef, children);
+  const tooltipLabel = clipped ? children : title;
   const valueId = useId();
   const closeLabelId = `${valueId}-close`;
   const face = (
     <>
       {icon && <Icon name={icon} size="xs" />}
-      <span id={valueId} {...stylex.props(chipStyles.value, vocab.truncate)}>
+      <span ref={valueRef} id={valueId} {...stylex.props(chipStyles.value, vocab.truncate)}>
         {children}
       </span>
     </>
   );
+  // Keep the measured value mounted when the optional tooltip is disabled.
   return (
-    <Tooltip label={title}>
+    <Tooltip label={<>{tooltipLabel}</>} disabled={!tooltipLabel}>
       <span
         data-slot="chip"
         data-kind={kind}

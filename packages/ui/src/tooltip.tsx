@@ -64,12 +64,15 @@ export function useClampedText(
     if (!node) return;
     const { documentElement, fonts } = node.ownerDocument;
     const measure = () => {
-      const { clientHeight, scrollHeight } = node;
-      setClamped(clientHeight > 0 && scrollHeight > clientHeight);
+      const { clientHeight, clientWidth, scrollHeight, scrollWidth } = node;
+      setClamped(
+        (clientHeight > 0 && scrollHeight > clientHeight) ||
+          (clientWidth > 0 && scrollWidth > clientWidth),
+      );
     };
     const resize = new ResizeObserver(measure);
     resize.observe(node);
-    // Switching between installed fonts can change wrapping without resizing the clamped box.
+    // A font switch can change text overflow without resizing the box.
     const appearance = new MutationObserver(measure);
     appearance.observe(documentElement, { attributeFilter: ["style"] });
     fonts?.addEventListener("loadingdone", measure);

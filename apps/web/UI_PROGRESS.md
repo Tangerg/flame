@@ -1513,9 +1513,80 @@ processes stop on their owned termination signals. The app
 registration, private profile, fixtures, captures, logs,
 listeners, checkout outputs and caches are removed.
 
-The next review follows two clipped quote labels in the
-narrow Composer and checks how a pointer user can inspect the
-full path and line range before choosing which chip to remove.
+[A clipped attachment tooltip shows its full value](#a-clipped-attachment-tooltip-shows-its-full-value-2026-11-27)
+checks the label before review and removal.
+
+### A clipped attachment tooltip shows its full value (2026-11-27)
+
+Signed Wails at `a99dcef34` and the private Runtime
+read `quarterly-release-evidence-for-reviewers-with-identical-prefixes.txt`.
+Quotes from lines 4 and 12 yield the same visible ellipsis
+in a 1120 × 728 Chinese/light/14 px/Flame window with a
+320 px Dock. Hovering either 238 × 21 px review button
+shows 查看引用 alone. Identifying the exact line by pointer
+requires opening its review.
+
+Chip now measures its existing value span and gives the full
+value to the same Tooltip when that text is clipped. A fitting
+value uses its configured purpose tooltip, and the shared
+trigger stays mounted through measurement and availability changes.
+`useClampedText` reads width and height overflow with its
+existing box and font observations. Files and Diff retain
+their wrapping header callers. The open and remove buttons
+both reference their original visible value.
+
+ZCode's actual selection-reference details expose the source
+identity next to the excerpt. HeroUI and Arc use bounded
+hover content at a stable trigger. Better Typography and
+Better Accessibility inform retaining the compact caption
+and making its expansion reachable and dismissible.
+[Radix Tooltip](https://www.radix-ui.com/primitives/docs/components/tooltip)
+[Content on Hover or Focus](https://www.w3.org/WAI/WCAG22/Understanding/content-on-hover-or-focus.html)
+
+- The signed candidate on `0d30057dd` keeps the two narrow
+  chip positions at [275, 383] and [275, 417]. Mouse movement
+  between them displays the complete path and each distinct
+  suffix. The first full tooltip wraps into 233 × 34 px of
+  text and remains readable when the pointer moves into it.
+  Moving away clears it. Hovering the fitting `note.txt:1`
+  keeps 查看引用.
+- Shift+Tab reaches the full value for line 12 and opens
+  its tooltip. Enter opens the named review containing the
+  captured excerpt. Enter on Close restores that button.
+  In the separate focus pass, Escape dismisses the tooltip
+  with the same button focused. Cmd+L resumes `2468` at caret 2.
+- English/dark/18 px/Blue at 1280 × 800 with a 378 px Dock.
+  Hovering each clipped label reveals its exact line before
+  pointer removal of the line 12 chip. Line 4 and
+  `note.txt:1` remain. Typing 5 gives `24568` at the
+  restored caret, and Undo returns to `2468`. Files opens
+  the long source with a two-line title. Back focuses its
+  exact row and Cmd+L resumes the same caret.
+
+A preliminary synthetic drag inherited the Control modifier
+from the previous shortcut and opened the context menu. Its
+accepted second reference is the word `Second` on line 12.
+The scratch pointer driver clears the modifier flags for the
+subsequent ordinary pointer events. Both selected objects
+retain their actual absolute labels.
+
+Shared UI typecheck and its packed consumer check pass.
+Web typecheck, 83 contracts, bootstrap, scoped Prettier, diff
+checks, production staging, Runtime packaging and signed
+Wails builds pass. Both private file digests and the complete
+Session match. The provider serves eight catalog reads and
+zero generations, and there are no Runs. Native acceptance
+covers macOS pointer, keyboard and accessibility state.
+VoiceOver speech and other platforms remain outside this
+review.
+
+Both Wails hosts exit normally. The private Runtime reaches
+its existing drain deadline. The owned provider, app
+registration, profile, fixtures, captures, logs, listeners,
+checkout outputs and caches are removed.
+
+The next review follows one Escape from the keyboard-opened
+reference dialog when the chip tooltip was active.
 
 ## Error notes leave retrying to their buttons (2026-11-26)
 
