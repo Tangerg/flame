@@ -114,6 +114,8 @@ function FoldersSection() {
           title: t("folders.error.title"),
           sub: t("folders.error.sub"),
           size: "compact",
+          align: "start",
+          style: AGENT_WORK_INDEX_EMPTY_INSET,
         }}
       >
         {(items) => (
