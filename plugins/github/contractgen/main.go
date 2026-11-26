@@ -39,6 +39,8 @@ func define() (*plugincontract.Capability, error) {
 	declared.add(command[wire.ReplyReviewCommentInput, wire.ReviewComment]("reply-pull-request-comment", "Reply to an existing inline PR review comment by its inspected comment ID, preserving its upstream thread."))
 	declared.add(command[wire.UpdateCommentInput, wire.ReviewComment]("update-pull-request-comment", "Replace an inline PR review comment's body by its inspected comment ID."))
 	declared.add(command[wire.CommentInput, wire.DeletedComment]("delete-pull-request-comment", "Delete an inline PR review comment by its inspected comment ID."))
+	declared.add(query[wire.ReviewWorkInput, wire.ReviewWork]("review-work", "Open retained review work for one pull request and optional exact base/head revision. Access to the pull request is checked again."))
+	declared.add(reviewWorkCommand())
 	if err := errors.Join(declared.errs...); err != nil {
 		return nil, err
 	}
@@ -68,6 +70,17 @@ func query[P, R any](name, description string) (frame.MethodDescriptor, error) {
 
 func command[P, R any](name, description string) (frame.MethodDescriptor, error) {
 	method, err := pluginmcp.NewMethod[P, R](frame.MethodConfig{Name: methodName(name), Kind: frame.Command, Target: extension.ScopeInstallation, Description: description + " Requires the user's intent and a configured token. Recovery reads the original receipt; an unknown outcome never permits resubmission."})
+	if err != nil {
+		return frame.MethodDescriptor{}, err
+	}
+	return method.Descriptor(), nil
+}
+
+func reviewWorkCommand() (frame.MethodDescriptor, error) {
+	method, err := pluginmcp.NewMethod[wire.ReviewWorkChange, wire.ReviewWork](frame.MethodConfig{
+		Name: methodName("update-review-work"), Kind: frame.Command, Target: extension.ScopeInstallation,
+		Description: "Capture the current pull request or inspect checks for a retained revision. Alternatively record a finding or a human finding decision at an exact retained revision. A local decision does not publish a GitHub review.",
+	})
 	if err != nil {
 		return frame.MethodDescriptor{}, err
 	}
