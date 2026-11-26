@@ -157,6 +157,11 @@ visible focus. Save, Cancel and Escape share the same closing path.
   sequence at 1120 × 728 again reports the configuration failure, accepts
   the replacement in Test, and connects after keyboard Save. Edit comes
   back into view at y=80 from y=−276.
+- The subsequent Runtime-only merge from `0cbc383ea` passes four focused
+  bootstrap regressions with real isolated plugin processes. They cover
+  static and interactive credential challenges, reconciliation with an
+  admitted authorization, committed reconnect and an installed server
+  surviving restart. The native sequence above predates this merge.
 - Plugin build and check pass, including typecheck, 44 script tests,
   24 source tests, eight-locale catalog and resource checks. The existing
   platform and opt-in conditions skip seven source tests. Production Web
