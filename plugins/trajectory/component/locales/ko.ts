@@ -89,7 +89,7 @@ export const ko: Record<string, string> = {
   "note.outcomeUnobserved":
     "최종 결과가 관측되지 않았습니다. 정산 시간은 측정된 실행 시간이 아닙니다.",
   "note.providerUnobserved":
-    "공급자 결과가 관측되지 않았습니다. 사용량 누락이 소비 0을 의미하지는 않습니다.",
+    "제공자 결과가 관측되지 않았습니다. 사용량 누락이 소비 0을 의미하지는 않습니다.",
   "note.reasoningRedacted": "추론 내용이 삭제 처리되었습니다.",
   "evidence.recorded": "기록된 증거",
   "rename.section": "세션 세부 정보",

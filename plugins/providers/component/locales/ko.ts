@@ -26,8 +26,8 @@ export const ko: Record<string, string> = {
   "providers.error.test": "테스트 실패",
   "providers.models.error": "모델을 불러올 수 없습니다.",
   "providers.models.refresh": "모델 목록 새로고침",
-  "providers.empty": "공급자 없음",
-  "providers.empty.sub": "Runtime이 지원되는 LLM 공급자를 보고하지 않습니다.",
+  "providers.empty": "제공자 없음",
+  "providers.empty.sub": "Runtime이 지원되는 LLM 제공자를 보고하지 않습니다.",
   "providers.apiKey.envPlaceholder":
     "환경 변수 키 사용 중 — 입력하면 덮어씁니다",
   "providers.fromEnv": "환경 변수에서",
@@ -47,7 +47,7 @@ export const ko: Record<string, string> = {
   "providers.apiKey.label": "API 키",
   "providers.baseUrl.label": "기본 URL",
   "providers.baseUrl.labelRequired": "기본 URL · 필수",
-  "providers.baseUrl.required": "이 공급자를 저장하려면 기본 URL이 필요합니다.",
+  "providers.baseUrl.required": "이 제공자를 저장하려면 기본 URL이 필요합니다.",
   "providers.saveAndTest": "저장 후 테스트",
   "providers.saved": "저장됨",
   "providers.role.loadError":
@@ -55,7 +55,7 @@ export const ko: Record<string, string> = {
   "providers.role.stale":
     "마지막으로 확인된 값을 표시 중입니다 — 새로 고침에 실패했습니다.",
   "providers.setup.done":
-    "공급자가 준비되었습니다. 설정을 닫고 돌아가면 초안이 그대로 있습니다.",
+    "제공자가 준비되었습니다. 설정을 닫고 돌아가면 초안이 그대로 있습니다.",
   "providers.roles.heading": "모델 역할",
   "rpcError.invalid_credentials":
     "제공자가 API 키를 거부했습니다 — 제공자 설정에서 확인하세요.",
@@ -73,5 +73,5 @@ export const ko: Record<string, string> = {
   "read.retained": "마지막으로 수락된 읽기를 유지합니다.",
   close: "닫기",
   "providers.embedding.noPreset":
-    "구성된 공급자에 사전 설정된 임베딩 모델이 없습니다.",
+    "구성된 제공자에 사전 설정된 임베딩 모델이 없습니다.",
 };

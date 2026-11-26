@@ -50,7 +50,7 @@ export const ko: Record<string, string> = {
   "model.existing": "{{provider}} / {{model}} ({{state}})",
   "model.deprecated": "지원 중단됨",
   "model.unavailable": "사용할 수 없음",
-  "reasoning.default": "공급자 기본값",
+  "reasoning.default": "제공자 기본값",
   "reasoning.unavailable": "{{effort}} (사용할 수 없음)",
   "models.error": "모델 선택 항목을 읽을 수 없습니다: {{error}}",
   "models.refresh": "모델 선택 항목 새로 고침",

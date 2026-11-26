@@ -16,7 +16,7 @@ export const ko: Record<string, string> = {
   "filter.placeholder": "소스 찾기",
   "filter.clear": "필터 지우기",
   "group.label": "그룹화 기준",
-  "group.byProvider": "공급자",
+  "group.byProvider": "제공자",
   "group.byModel": "모델",
   "group.byDay": "UTC 날짜",
   "group.byOrigin": "호출 출처",
