@@ -119,7 +119,7 @@ export const es: Record<string, string> = {
   "export.json": "Exportar conversación como JSON",
   "export.trajectory": "Exportar la trayectoria completa de la sesión",
   "image.view": "Ver imagen",
-  "image.close": "Cerrar vista previa de imagen",
+  "image.close": "Cerrar vista previa de la imagen",
   "image.fit": "Ajustar imagen",
   "image.zoomIn": "Ampliar imagen",
   "image.zoomOut": "Reducir imagen",

@@ -816,7 +816,7 @@
   "duration.seconds": "{{sec}} s",
   "duration.minutes": "{{min}} min {{sec}} s",
   "duration.hours": "{{hr}} Std. {{min}} min",
-  "composer.image.preview": "Bild ansehen",
+  "composer.image.preview": "Bild anzeigen",
   "composer.paste.review": "Eingefügten Text prüfen",
   "composer.paste.title": "Eingefügter Text",
   "composer.paste.save": "Speichern",

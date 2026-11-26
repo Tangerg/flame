@@ -18,7 +18,7 @@ export const zhTW: Record<string, string> = {
   "providers.save": "儲存",
   "providers.saving": "正在儲存…",
   "providers.test": "測試",
-  "providers.testing": "測試中…",
+  "providers.testing": "正在測試…",
   "providers.connectionOk": "連線正常",
   "providers.models.error": "無法載入模型。",
   "providers.empty": "尚無供應商",

@@ -22,7 +22,7 @@ export const fr: Record<string, string> = {
   "filters.clear": "Effacer les filtres",
   "filters.label": "Filtres de mémoire",
   "status.label": "État de la mémoire",
-  "status.all": "Tous les états",
+  "status.all": "Tous les statuts",
   "status.pending": "En attente de révision",
   "status.active": "Actif",
   "origin.label": "Origine de la mémoire",

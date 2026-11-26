@@ -65,7 +65,7 @@ export const de: Record<string, string> = {
   "catalog.empty.filtered.action": "Suche und Filter löschen",
   "catalog.empty.none.title": "Keine Memory-Einträge in diesem Ziel.",
   "record.details": "Details",
-  pinned: "Angepinnt",
+  pinned: "Angeheftet",
   "actions.for": "Aktionen für {{id}}",
   approve: "Genehmigen",
   reject: "Ablehnen",

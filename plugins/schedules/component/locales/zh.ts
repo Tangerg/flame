@@ -11,7 +11,7 @@ export const zh: Record<string, string> = {
   "status.label": "定时任务状态",
   "status.all": "所有状态",
   "status.enabled": "已启用",
-  "status.disabled": "已禁用",
+  "status.disabled": "已停用",
   refresh: "刷新",
   reading: "正在读取定时任务…",
   "read.error": "无法读取定时任务。请使用“刷新”重试。",

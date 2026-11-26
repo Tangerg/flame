@@ -22,7 +22,7 @@ export const ja: Record<string, string> = {
   "filters.clear": "絞り込みをクリア",
   "filters.label": "メモリの絞り込み",
   "status.label": "メモリのステータス",
-  "status.all": "すべてのステータス",
+  "status.all": "すべての状態",
   "status.pending": "レビュー待ち",
   "status.active": "有効",
   "origin.label": "メモリの由来",

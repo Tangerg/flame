@@ -83,7 +83,7 @@ export const de: Record<string, string> = {
   "fact.reasoningTokens": "Denk-Tokens",
   "fact.callingOperation": "Aufrufende Operation",
   "fact.parentOperation": "Übergeordnete Operation",
-  "fact.origin": "Ursprung",
+  "fact.origin": "Herkunft",
   "fact.costUsd": "Kosten (USD)",
   "fact.rootRunId": "Stamm-Lauf-ID",
   "fact.parentRunId": "Übergeordnete Lauf-ID",

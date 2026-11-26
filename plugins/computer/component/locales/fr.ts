@@ -132,7 +132,7 @@ export const fr = {
   "result.image": "Image capturée {{number}}",
   "result.imageUnavailable":
     "Cette image enregistrée n’a pas pu être affichée.",
-  "image.view": "Afficher l’image",
+  "image.view": "Voir l’image",
   "image.close": "Fermer l’image",
   "image.fit": "Ajuster l’image",
   "image.zoomIn": "Zoom avant",

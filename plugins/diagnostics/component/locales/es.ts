@@ -18,7 +18,7 @@ export const es: Record<string, string> = {
   "observations.empty.title": "No hay observaciones locales en esta lectura.",
   "span.meta": "{{ms}} ms · {{kind}}",
   "span.status.error": "Error",
-  "fact.started": "Iniciado",
+  "fact.started": "Inicio",
   "fact.duration": "Duración",
   "fact.trace": "Traza",
   "fact.parentSpan": "Span principal",

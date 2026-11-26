@@ -18,7 +18,7 @@ export const fr: Record<string, string> = {
   "observations.empty.title": "Aucune observation locale dans cette lecture.",
   "span.meta": "{{ms}} ms · {{kind}}",
   "span.status.error": "Erreur",
-  "fact.started": "Démarré",
+  "fact.started": "Début",
   "fact.duration": "Durée",
   "fact.trace": "Trace",
   "fact.parentSpan": "Span parent",

@@ -78,7 +78,7 @@ export const ja: Record<string, string> = {
   "fact.reasoningTokens": "思考トークン",
   "fact.callingOperation": "呼び出し操作",
   "fact.parentOperation": "親操作",
-  "fact.origin": "発生元",
+  "fact.origin": "由来",
   "fact.costUsd": "コスト (USD)",
   "fact.rootRunId": "ルート実行 ID",
   "fact.parentRunId": "親実行 ID",

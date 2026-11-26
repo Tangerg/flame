@@ -20,7 +20,7 @@ export const fr: Record<string, string> = {
   "providers.save": "Enregistrer",
   "providers.saving": "Enregistrement…",
   "providers.test": "Tester",
-  "providers.testing": "Test…",
+  "providers.testing": "Test en cours…",
   "providers.connectionOk": "Connexion OK",
   "providers.models.error": "Impossible de charger les modèles.",
   "providers.empty": "Aucun fournisseur",

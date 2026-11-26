@@ -22,7 +22,7 @@ export const ja: Record<string, string> = {
   "providers.saving": "保存中…",
   "providers.test": "テスト",
   "providers.testing": "テスト中…",
-  "providers.connectionOk": "接続 OK",
+  "providers.connectionOk": "接続は正常です",
   "providers.models.error": "モデルを読み込めませんでした。",
   "providers.empty": "プロバイダーがありません",
   "providers.empty.sub":
