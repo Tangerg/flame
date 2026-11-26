@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import { type ReactNode } from "react";
 import { type DotTone } from "@/lib/tone";
-import { color, radius, space, surface, type, weight } from "@flame/ui/tokens.stylex";
+import { color, font, radius, space, surface, type, weight } from "@flame/ui/tokens.stylex";
 import { StatusDot } from "@/ui/atoms/status-dot";
 const styles = stylex.create({
   pill: {
@@ -23,7 +23,7 @@ const styles = stylex.create({
     },
     paddingInline: { default: space.s2_5, "@container conversation (max-width: 640px)": 0 },
     paddingBlock: { default: space.s1, "@container conversation (max-width: 640px)": 0 },
-    fontFamily: "var(--font-sans)",
+    fontFamily: font.sans,
     fontWeight: weight.medium,
     lineHeight: 1,
     whiteSpace: "nowrap",

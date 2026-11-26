@@ -22,9 +22,9 @@ import {
   toolCardActions,
   toolCardViewOpener,
 } from "@/features/chat/tools/application/toolCardModel";
-import { color, space, type as typeStep } from "@flame/ui/tokens.stylex";
+import { color, font, space, type as typeStep } from "@flame/ui/tokens.stylex";
 const styles = stylex.create({
-  sans: { fontFamily: "var(--font-sans)" },
+  sans: { fontFamily: font.sans },
   failure: { flexShrink: 0, color: color.negative },
   failureLine: {
     marginTop: space.s0_5,

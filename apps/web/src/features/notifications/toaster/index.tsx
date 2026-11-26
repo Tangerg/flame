@@ -8,6 +8,7 @@ import { contributeLayout } from "@/extensions/contributeHelpers";
 import { definePlugin } from "@/extensions/definePlugin";
 import {
   color,
+  font,
   motion,
   radius,
   space,
@@ -55,7 +56,7 @@ const styles = stylex.create({
     borderWidth: 0,
     backgroundColor: surface.card,
     color: color.fg,
-    fontFamily: "var(--font-sans)",
+    fontFamily: font.sans,
     boxShadow: "var(--shadow-overlay)",
     transform: "translate(var(--toast-swipe-movement-x, 0px), var(--toast-swipe-movement-y, 0px))",
     opacity: { default: 1, ":is([data-starting-style], [data-ending-style])": 0 },
