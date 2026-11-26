@@ -5,7 +5,7 @@
 > method the Runtime does not serve. The adjacent JSON artifacts are the
 > machine-readable contract; this file is its mechanical human-readable index.
 
-Protocol `2026-11-26.5` · 108 methods
+Protocol `2026-11-26.6` · 108 methods
 
 ## Methods
 
@@ -67,8 +67,8 @@ Protocol `2026-11-26.5` · 108 methods
 | `mcp.servers.test` | query | unary | none | none | none | — | `mcp` | `plugin_unavailable`, `capability_not_negotiated` |
 | `mcp.tools.list` | query | unary | none | none | none | — | `mcp` | `capability_not_negotiated` |
 | `mcp.servers.reconnect` | command | unary | replayResponse | none | none | — | `mcp` | `mcp_server_not_found`, `mcp_server_disabled`, `capability_not_negotiated` |
-| `mcp.authorizationAttempts.create` | command | unary | replayResponse | none | none | — | `mcp` | `mcp_server_not_found`, `mcp_server_disabled`, `capability_not_negotiated` |
-| `mcp.authorizationAttempts.get` | query | unary | none | none | none | — | `mcp` | `mcp_authorization_attempt_not_found`, `capability_not_negotiated` |
+| `mcp.authorizationAttempts.create` | command | unary | replayResponse | none | none | — | `mcp` | `mcp_server_not_found`, `mcp_server_disabled`, `plugin_unavailable`, `plugin_command_retired`, `capability_not_negotiated` |
+| `mcp.authorizationAttempts.get` | query | unary | none | none | none | — | `mcp` | `mcp_authorization_attempt_not_found`, `plugin_unavailable`, `capability_not_negotiated` |
 | `plugins.openBrowserRealm` | command | unary | ownerResponse | none | none | — | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_disabled`, `plugin_stale`, `plugin_command_retired`, `capability_not_negotiated` |
 | `plugins.acquireComponent` | command | unary | ownerResponse | none | none | — | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_disabled`, `plugin_stale`, `plugin_command_retired`, `capability_not_negotiated` |
 | `plugins.closeBrowserRealm` | command | unary | ownerResponse | none | none | — | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_disabled`, `plugin_stale`, `plugin_command_retired`, `capability_not_negotiated` |

@@ -169,6 +169,8 @@ func wireMCPError(err error) error {
 		return protocol.NewFailure(protocol.ErrMCPServerAlreadyExists, err.Error(), err)
 	case errors.Is(err, mcpapp.ErrServerDisabled):
 		return protocol.NewFailure(protocol.ErrMCPServerDisabled, err.Error(), err)
+	case errors.Is(err, mcpapp.ErrAuthorizationStartRetired):
+		return protocol.NewFailure(protocol.ErrPluginCommandRetired, err.Error(), err)
 	case errors.Is(err, mcpapp.ErrAuthorizationAttemptNotFound):
 		return protocol.NewFailure(protocol.ErrMCPAuthorizationAttemptNotFound, err.Error(), err)
 	case errors.Is(err, mcpapp.ErrAuthorizationUnsupported):

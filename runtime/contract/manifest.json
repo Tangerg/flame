@@ -1,5 +1,5 @@
 {
-  "protocolVersion": "2026-11-26.5",
+  "protocolVersion": "2026-11-26.6",
   "features": [
     "reasoning",
     "multimodal",
@@ -886,6 +886,8 @@
       "errors": [
         "mcp_server_not_found",
         "mcp_server_disabled",
+        "plugin_unavailable",
+        "plugin_command_retired",
         "capability_not_negotiated"
       ],
       "features": [
@@ -902,6 +904,7 @@
       "pagination": "none",
       "errors": [
         "mcp_authorization_attempt_not_found",
+        "plugin_unavailable",
         "capability_not_negotiated"
       ],
       "features": [
@@ -2051,6 +2054,7 @@
         "code": -32047,
         "recoveryAction": "stop",
         "methods": [
+          "mcp.authorizationAttempts.create",
           "plugins.acquireComponent",
           "plugins.call",
           "plugins.closeBrowserRealm",
@@ -2224,6 +2228,8 @@
           "goals.stop",
           "goals.update",
           "hooks.list",
+          "mcp.authorizationAttempts.create",
+          "mcp.authorizationAttempts.get",
           "mcp.servers.create",
           "mcp.servers.test",
           "models.list",

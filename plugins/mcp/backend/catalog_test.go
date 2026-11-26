@@ -43,7 +43,7 @@ func TestDirectoryAndAuthorizationSurviveRestartAndFenceWithdrawnGrants(t *testi
 		}
 		return values.Entries[0]
 	}
-	begin := func(id, epoch string) wire.AttemptResult {
+	begin := func(id, epoch string) wire.StartDecision {
 		t.Helper()
 		a, err := invokeCatalogCommand(t, c, c.prepareStart, wire.Start{Name: name, Grant: entry.LaunchGrant, Epoch: epoch, AttemptID: id})
 		if err != nil {
@@ -84,7 +84,7 @@ func TestDirectoryAndAuthorizationSurviveRestartAndFenceWithdrawnGrants(t *testi
 	if result, err := invokeCatalogCommand(t, c, c.prepareFinish, wire.Completion{ID: "second", Epoch: "host-A", Status: wire.Succeeded}); err != nil || result != wire.Conflict {
 		t.Fatal("late completion replaced cancellation", result, err)
 	}
-	if a := begin("third", "host-B"); a.Attempt == nil {
+	if a := begin("third", "host-B"); a != wire.StartAccepted {
 		t.Fatal("valid authorization unavailable")
 	}
 	entry.Enabled = false
@@ -93,7 +93,7 @@ func TestDirectoryAndAuthorizationSurviveRestartAndFenceWithdrawnGrants(t *testi
 	if a := read("third", "host-B"); a == nil || a.Status != wire.Canceled {
 		t.Fatal(a)
 	}
-	if a := begin("fourth", "host-B"); a.Attempt != nil {
+	if a := begin("fourth", "host-B"); a != wire.StartUnavailable {
 		t.Fatal("disabled server admitted authorization")
 	}
 	now = now.Add(wire.AttemptRetentionSeconds * time.Second)

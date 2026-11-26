@@ -1,7 +1,11 @@
 package mcpconnector
 
-const Reference = "flame.external-mcp.v1"
-const Export = "external-servers"
+const (
+	Namespace = "flame.external-mcp"
+	Version   = "v2"
+	Reference = Namespace + "." + Version
+	Export    = "external-servers"
+)
 
 type Decision string
 
@@ -43,6 +47,14 @@ type Change struct {
 	Expected    string `json:"expected,omitempty"`
 	Replacement *Entry `json:"replacement,omitempty"`
 }
+
+type StartDecision string
+
+const (
+	StartAccepted    StartDecision = "accepted"
+	StartUnavailable StartDecision = "unavailable"
+	StartRetired     StartDecision = "retired"
+)
 
 type Start struct {
 	Name      string `json:"name"`

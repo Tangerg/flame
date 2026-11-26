@@ -106,7 +106,10 @@ func registerMCP(registry *Registry) {
 
 	registry.command(MethodMeta{
 		Name: MCPAuthorizationAttemptsCreate, GoName: "CreateMCPAuthorizationAttempt",
-		Errors:          []string{protocol.ErrMCPServerNotFound.Error(), protocol.ErrMCPServerDisabled.Error()},
+		Errors: []string{
+			protocol.ErrMCPServerNotFound.Error(), protocol.ErrMCPServerDisabled.Error(),
+			protocol.ErrPluginUnavailable.Error(), protocol.ErrPluginCommandRetired.Error(),
+		},
 		CapabilityRules: requires(protocol.FeatureMCP),
 	}, func(service interface {
 		CreateMCPAuthorizationAttempt(context.Context, protocol.MCPServerID) (*protocol.MCPAuthorizationAttemptRef, error)
@@ -116,7 +119,7 @@ func registerMCP(registry *Registry) {
 
 	registry.query(MethodMeta{
 		Name: mcpAuthorizationAttemptsGet, GoName: "GetMCPAuthorizationAttempt",
-		Errors:          []string{protocol.ErrMCPAuthorizationAttemptNotFound.Error()},
+		Errors:          []string{protocol.ErrMCPAuthorizationAttemptNotFound.Error(), protocol.ErrPluginUnavailable.Error()},
 		CapabilityRules: requires(protocol.FeatureMCP),
 	}, func(service interface {
 		GetMCPAuthorizationAttempt(context.Context, string) (*protocol.MCPAuthorizationAttempt, error)

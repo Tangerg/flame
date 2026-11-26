@@ -1,50 +1,58 @@
 [
   {
-    "name": "flame.external-mcp/attempt.v1",
+    "name": "flame.external-mcp/attempt.v2",
     "kind": "query",
     "target": "installation",
     "description": "Read a retained external authorization attempt.",
-    "input": "schema.json#/$defs/AttemptV1Input",
-    "output": "schema.json#/$defs/AttemptV1Output"
+    "input": "schema.json#/$defs/AttemptV2Input",
+    "output": "schema.json#/$defs/AttemptV2Output"
   },
   {
-    "name": "flame.external-mcp/authorize.v1",
+    "name": "flame.external-mcp/authorize.v2",
     "kind": "command",
     "target": "installation",
     "description": "Begin an authorization attempt against the current enabled entry.",
-    "input": "schema.json#/$defs/AuthorizeV1Input",
-    "output": "schema.json#/$defs/AuthorizeV1Output"
+    "input": "schema.json#/$defs/AuthorizeV2Input",
+    "output": "schema.json#/$defs/AuthorizeV2Output"
   },
   {
-    "name": "flame.external-mcp/change.v1",
+    "name": "flame.external-mcp/change.v2",
     "kind": "command",
     "target": "installation",
     "description": "Compare and change one external directory entry.",
-    "input": "schema.json#/$defs/ChangeV1Input",
-    "output": "schema.json#/$defs/ChangeV1Output"
+    "input": "schema.json#/$defs/ChangeV2Input",
+    "output": "schema.json#/$defs/ChangeV2Output"
   },
   {
-    "name": "flame.external-mcp/list.v1",
+    "name": "flame.external-mcp/list.v2",
     "kind": "query",
     "target": "installation",
     "description": "List external servers and their opaque host launch grants.",
-    "input": "schema.json#/$defs/ListV1Input",
-    "output": "schema.json#/$defs/ListV1Output"
+    "input": "schema.json#/$defs/ListV2Input",
+    "output": "schema.json#/$defs/ListV2Output"
   },
   {
-    "name": "flame.external-mcp/recover.v1",
+    "name": "flame.external-mcp/recover.v2",
     "kind": "command",
     "target": "installation",
-    "description": "Cancel uncompleted attempts admitted by a previous Runtime incarnation.",
-    "input": "schema.json#/$defs/RecoverV1Input",
-    "output": "schema.json#/$defs/RecoverV1Output"
+    "description": "Mark interrupted attempts from earlier Runtime connection epochs as unconfirmed.",
+    "input": "schema.json#/$defs/RecoverV2Input",
+    "output": "schema.json#/$defs/RecoverV2Output"
   },
   {
-    "name": "flame.external-mcp/settle.v1",
+    "name": "flame.external-mcp/retire-authorization-start.v2",
+    "kind": "command",
+    "target": "installation",
+    "description": "Return the original authorization start decision or retire the command before it can accept an attempt.",
+    "input": "schema.json#/$defs/RetireAuthorizationStartV2Input",
+    "output": "schema.json#/$defs/RetireAuthorizationStartV2Output"
+  },
+  {
+    "name": "flame.external-mcp/settle.v2",
     "kind": "command",
     "target": "installation",
     "description": "Record the original authorization attempt's terminal result.",
-    "input": "schema.json#/$defs/SettleV1Input",
-    "output": "schema.json#/$defs/SettleV1Output"
+    "input": "schema.json#/$defs/SettleV2Input",
+    "output": "schema.json#/$defs/SettleV2Output"
   }
 ]

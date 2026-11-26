@@ -54,6 +54,18 @@ func register(bound *pluginmcp.Backend, db sqlite.Database) error {
 	if err := pluginstorage.RegisterCommand(bound, db, m.Start, nil, c.prepareStart); err != nil {
 		return err
 	}
+	if err := m.RetireStart.RegisterServer(bound, nil, func(ctx context.Context, _ *sdk.ServerSession, cmd pluginmcp.Command[wire.Start]) (wire.StartDecision, error) {
+		input, err := cmd.RequestInput()
+		if err != nil {
+			return "", err
+		}
+		// Retirement uses the same receipt as admission, which fences late deliveries.
+		return pluginstorage.Command(ctx, db, m.Start.Name(), string(cmd.ID), input, nil, func(context.Context, wire.Start) (pluginstorage.CommandPlan[wire.StartDecision], error) {
+			return pluginstorage.NewCommandPlan(wire.StartRetired, nil)
+		})
+	}); err != nil {
+		return err
+	}
 	if err := pluginstorage.RegisterCommand(bound, db, m.Finish, nil, c.prepareFinish); err != nil {
 		return err
 	}

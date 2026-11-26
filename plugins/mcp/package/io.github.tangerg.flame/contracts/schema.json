@@ -1,89 +1,77 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$defs": {
-    "AttemptV1Input": {
+    "Attempt": {
+      "additionalProperties": false,
+      "properties": {
+        "finishedAt": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "startedAt": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "status",
+        "startedAt"
+      ],
+      "type": "object"
+    },
+    "AttemptResult": {
+      "additionalProperties": false,
+      "properties": {
+        "attempt": {
+          "$ref": "#/$defs/Attempt"
+        }
+      },
+      "type": "object"
+    },
+    "AttemptV2Input": {
       "$ref": "#/$defs/Request"
     },
-    "AttemptV1Output": {
-      "$ref": "#/$defs/AttemptV1OutputMcpconnectorAttemptResult"
+    "AttemptV2Output": {
+      "$ref": "#/$defs/AttemptResult"
     },
-    "AttemptV1OutputMcpconnectorAttempt": {
+    "AuthorizeV2Input": {
+      "$ref": "#/$defs/AuthorizeV2InputMcpconnectorStart"
+    },
+    "AuthorizeV2InputMcpconnectorStart": {
       "additionalProperties": false,
       "properties": {
-        "finishedAt": {
+        "attemptId": {
           "type": "string"
         },
-        "id": {
+        "epoch": {
+          "type": "string"
+        },
+        "grant": {
           "type": "string"
         },
         "name": {
           "type": "string"
-        },
-        "startedAt": {
-          "type": "string"
-        },
-        "status": {
-          "type": "string"
         }
       },
       "required": [
-        "id",
         "name",
-        "status",
-        "startedAt"
+        "grant",
+        "epoch",
+        "attemptId"
       ],
       "type": "object"
     },
-    "AttemptV1OutputMcpconnectorAttemptResult": {
-      "additionalProperties": false,
-      "properties": {
-        "attempt": {
-          "$ref": "#/$defs/AttemptV1OutputMcpconnectorAttempt"
-        }
-      },
-      "type": "object"
-    },
-    "AuthorizeV1Input": {
-      "$ref": "#/$defs/Start"
-    },
-    "AuthorizeV1Output": {
-      "$ref": "#/$defs/AuthorizeV1OutputMcpconnectorAttemptResult"
-    },
-    "AuthorizeV1OutputMcpconnectorAttempt": {
-      "additionalProperties": false,
-      "properties": {
-        "finishedAt": {
-          "type": "string"
-        },
-        "id": {
-          "type": "string"
-        },
-        "name": {
-          "type": "string"
-        },
-        "startedAt": {
-          "type": "string"
-        },
-        "status": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "id",
-        "name",
-        "status",
-        "startedAt"
-      ],
-      "type": "object"
-    },
-    "AuthorizeV1OutputMcpconnectorAttemptResult": {
-      "additionalProperties": false,
-      "properties": {
-        "attempt": {
-          "$ref": "#/$defs/AuthorizeV1OutputMcpconnectorAttempt"
-        }
-      },
-      "type": "object"
+    "AuthorizeV2Output": {
+      "type": "string"
     },
     "Change": {
       "additionalProperties": false,
@@ -95,7 +83,7 @@
           "type": "string"
         },
         "replacement": {
-          "$ref": "#/$defs/ChangeV1InputMcpconnectorEntry"
+          "$ref": "#/$defs/ChangeV2InputMcpconnectorEntry"
         }
       },
       "required": [
@@ -103,10 +91,10 @@
       ],
       "type": "object"
     },
-    "ChangeV1Input": {
+    "ChangeV2Input": {
       "$ref": "#/$defs/Change"
     },
-    "ChangeV1InputMcpconnectorEntry": {
+    "ChangeV2InputMcpconnectorEntry": {
       "additionalProperties": false,
       "properties": {
         "description": {
@@ -143,7 +131,7 @@
       ],
       "type": "object"
     },
-    "ChangeV1Output": {
+    "ChangeV2Output": {
       "type": "string"
     },
     "Completion": {
@@ -171,7 +159,7 @@
       "properties": {
         "entries": {
           "items": {
-            "$ref": "#/$defs/ListV1OutputMcpconnectorEntry"
+            "$ref": "#/$defs/ListV2OutputMcpconnectorEntry"
           },
           "type": "array"
         }
@@ -181,13 +169,13 @@
       ],
       "type": "object"
     },
-    "ListV1Input": {
+    "ListV2Input": {
       "$ref": "#/$defs/Selector"
     },
-    "ListV1Output": {
+    "ListV2Output": {
       "$ref": "#/$defs/Directory"
     },
-    "ListV1OutputMcpconnectorEntry": {
+    "ListV2OutputMcpconnectorEntry": {
       "additionalProperties": false,
       "properties": {
         "description": {
@@ -224,10 +212,10 @@
       ],
       "type": "object"
     },
-    "RecoverV1Input": {
+    "RecoverV2Input": {
       "$ref": "#/$defs/Recovery"
     },
-    "RecoverV1Output": {
+    "RecoverV2Output": {
       "type": "string"
     },
     "Recovery": {
@@ -258,22 +246,10 @@
       ],
       "type": "object"
     },
-    "Selector": {
-      "additionalProperties": false,
-      "properties": {
-        "name": {
-          "type": "string"
-        }
-      },
-      "type": "object"
+    "RetireAuthorizationStartV2Input": {
+      "$ref": "#/$defs/RetireAuthorizationStartV2InputMcpconnectorStart"
     },
-    "SettleV1Input": {
-      "$ref": "#/$defs/Completion"
-    },
-    "SettleV1Output": {
-      "type": "string"
-    },
-    "Start": {
+    "RetireAuthorizationStartV2InputMcpconnectorStart": {
       "additionalProperties": false,
       "properties": {
         "attemptId": {
@@ -296,6 +272,24 @@
         "attemptId"
       ],
       "type": "object"
+    },
+    "RetireAuthorizationStartV2Output": {
+      "type": "string"
+    },
+    "Selector": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "SettleV2Input": {
+      "$ref": "#/$defs/Completion"
+    },
+    "SettleV2Output": {
+      "type": "string"
     }
   }
 }

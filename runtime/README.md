@@ -971,7 +971,9 @@ owns the attempt status. Runtime records each observed transport outcome before
 sending its completion command, then resolves that command through the original
 receipt.
 Startup delivers recorded outcomes before retiring interrupted attempts and
-leaves earlier browser flows closed. Interactive OAuth is available for
+leaves earlier browser flows closed. For each interrupted start, the Connector
+returns its original decision or retires the command in its original receipt.
+A retired request can be followed by a fresh sign-in. Interactive OAuth is available for
 user-configured Streamable HTTP sources without a static Authorization header.
 Use a fresh development data directory for the revised authorization records.
 

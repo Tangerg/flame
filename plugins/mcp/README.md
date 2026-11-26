@@ -3,9 +3,9 @@
 This installed client component owns server configuration drafts, JSON import,
 connection and authorization interaction, and tool visibility and auto-approval
 controls. The external connector backend owns its server directory and OAuth
-attempts. Runtime owns host credentials, launch permissions, live connections,
-installation-bound authorization attempts and tool approval rules. The component
-calls the public operations that project those owners.
+attempts. Runtime owns host credentials, launch permissions, live connections and
+tool approval rules. The component calls the public operations that project those
+owners.
 
 An explicitly constructed source retains drafts and original command observations
 across view closes. An authored draft is the only editable state of its editor;
@@ -103,10 +103,12 @@ Runtime acknowledges the attempt ID before it begins the interactive transport.
 The `mcp.authorizationAttempts.get` query supplies status by ID, including after
 replaying a creation request or switching the selected Connector. Runtime records
 the transport outcome before sending it to the original Connector. The Connector
-settles the command and its receipt in the same transaction. On restart, Runtime
-delivers retained outcomes before the Connector marks still-open interrupted
-sign-ins as unconfirmed. The Connector preserves terminal attempts for the
-published retention window.
+settles the command and its receipt in the same transaction. Retirement of an
+interrupted start uses its original receipt. It returns an existing decision or
+records a refusal that also fences later delivery of the original command.
+Runtime delivers retained outcomes before the Connector marks still-open
+interrupted sign-ins as unconfirmed. The Connector preserves terminal attempts for
+the published retention window.
 
 A server that challenges an OAuth-eligible connection can offer interactive
 sign-in. A server that rejects a configured Authorization header reports a

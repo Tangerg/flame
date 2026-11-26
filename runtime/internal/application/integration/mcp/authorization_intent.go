@@ -12,6 +12,8 @@ import (
 	framevalue "github.com/Tangerg/frame/value"
 )
 
+var ErrAuthorizationStartRetired = errors.New("mcp: sign-in did not start before the connection ended")
+
 type AuthorizationIntent struct {
 	Source     extension.ContributionSource `json:"source"`
 	Invocation framecall.Invocation         `json:"invocation"`

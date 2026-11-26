@@ -3274,6 +3274,11 @@
           "value": "\"failed\""
         },
         {
+          "name": "Namespace",
+          "type": "untyped string",
+          "value": "\"flame.external-mcp\""
+        },
+        {
           "name": "Pending",
           "type": "Outcome",
           "value": "\"pending\""
@@ -3281,7 +3286,22 @@
         {
           "name": "Reference",
           "type": "untyped string",
-          "value": "\"flame.external-mcp.v1\""
+          "value": "\"flame.external-mcp.v2\""
+        },
+        {
+          "name": "StartAccepted",
+          "type": "StartDecision",
+          "value": "\"accepted\""
+        },
+        {
+          "name": "StartRetired",
+          "type": "StartDecision",
+          "value": "\"retired\""
+        },
+        {
+          "name": "StartUnavailable",
+          "type": "StartDecision",
+          "value": "\"unavailable\""
         },
         {
           "name": "Succeeded",
@@ -3297,6 +3317,11 @@
           "name": "Unconfirmed",
           "type": "Outcome",
           "value": "\"unconfirmed\""
+        },
+        {
+          "name": "Version",
+          "type": "untyped string",
+          "value": "\"v2\""
         }
       ],
       "types": [
@@ -3504,6 +3529,11 @@
               "tag": "json:\"attemptId\""
             }
           ]
+        },
+        {
+          "name": "StartDecision",
+          "kind": "defined",
+          "underlying": "string"
         }
       ]
     },
@@ -6442,7 +6472,11 @@
             },
             {
               "name": "Start",
-              "type": "*mcp.Method[mcpconnector.Start, mcpconnector.AttemptResult]"
+              "type": "*mcp.Method[mcpconnector.Start, mcpconnector.StartDecision]"
+            },
+            {
+              "name": "RetireStart",
+              "type": "*mcp.Method[mcpconnector.Start, mcpconnector.StartDecision]"
             },
             {
               "name": "Finish",
@@ -10722,7 +10756,7 @@
         {
           "name": "Version",
           "type": "untyped string",
-          "value": "\"2026-11-26.5\""
+          "value": "\"2026-11-26.6\""
         },
         {
           "name": "WorkspaceAvailable",

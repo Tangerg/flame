@@ -10,23 +10,24 @@ import (
 )
 
 type Methods struct {
-	Recover  *pluginmcp.Method[mcpconnector.Recovery, mcpconnector.Decision]
-	List     *pluginmcp.Method[mcpconnector.Selector, mcpconnector.Directory]
-	Change   *pluginmcp.Method[mcpconnector.Change, mcpconnector.Decision]
-	Start    *pluginmcp.Method[mcpconnector.Start, mcpconnector.AttemptResult]
-	Finish   *pluginmcp.Method[mcpconnector.Completion, mcpconnector.Decision]
-	Get      *pluginmcp.Method[mcpconnector.Request, mcpconnector.AttemptResult]
-	Contract *plugincontract.Capability
+	Recover     *pluginmcp.Method[mcpconnector.Recovery, mcpconnector.Decision]
+	List        *pluginmcp.Method[mcpconnector.Selector, mcpconnector.Directory]
+	Change      *pluginmcp.Method[mcpconnector.Change, mcpconnector.Decision]
+	Start       *pluginmcp.Method[mcpconnector.Start, mcpconnector.StartDecision]
+	RetireStart *pluginmcp.Method[mcpconnector.Start, mcpconnector.StartDecision]
+	Finish      *pluginmcp.Method[mcpconnector.Completion, mcpconnector.Decision]
+	Get         *pluginmcp.Method[mcpconnector.Request, mcpconnector.AttemptResult]
+	Contract    *plugincontract.Capability
 }
 
 func method[P, R any](name, description string, kind frame.MethodKind) (*pluginmcp.Method[P, R], error) {
-	return pluginmcp.NewMethod[P, R](frame.MethodConfig{Name: "flame.external-mcp/" + name + ".v1", Description: description, Kind: kind, Target: extension.ScopeInstallation})
+	return pluginmcp.NewMethod[P, R](frame.MethodConfig{Name: mcpconnector.Namespace + "/" + name + "." + mcpconnector.Version, Description: description, Kind: kind, Target: extension.ScopeInstallation})
 }
 
 func NewMethods() (Methods, error) {
 	var m Methods
 	var err error
-	if m.Recover, err = method[mcpconnector.Recovery, mcpconnector.Decision]("recover", "Cancel uncompleted attempts admitted by a previous Runtime incarnation.", frame.Command); err != nil {
+	if m.Recover, err = method[mcpconnector.Recovery, mcpconnector.Decision]("recover", "Mark interrupted attempts from earlier Runtime connection epochs as unconfirmed.", frame.Command); err != nil {
 		return m, err
 	}
 	if m.List, err = method[mcpconnector.Selector, mcpconnector.Directory]("list", "List external servers and their opaque host launch grants.", frame.Query); err != nil {
@@ -35,7 +36,10 @@ func NewMethods() (Methods, error) {
 	if m.Change, err = method[mcpconnector.Change, mcpconnector.Decision]("change", "Compare and change one external directory entry.", frame.Command); err != nil {
 		return m, err
 	}
-	if m.Start, err = method[mcpconnector.Start, mcpconnector.AttemptResult]("authorize", "Begin an authorization attempt against the current enabled entry.", frame.Command); err != nil {
+	if m.Start, err = method[mcpconnector.Start, mcpconnector.StartDecision]("authorize", "Begin an authorization attempt against the current enabled entry.", frame.Command); err != nil {
+		return m, err
+	}
+	if m.RetireStart, err = method[mcpconnector.Start, mcpconnector.StartDecision]("retire-authorization-start", "Return the original authorization start decision or retire the command before it can accept an attempt.", frame.Command); err != nil {
 		return m, err
 	}
 	if m.Finish, err = method[mcpconnector.Completion, mcpconnector.Decision]("settle", "Record the original authorization attempt's terminal result.", frame.Command); err != nil {
@@ -44,6 +48,6 @@ func NewMethods() (Methods, error) {
 	if m.Get, err = method[mcpconnector.Request, mcpconnector.AttemptResult]("attempt", "Read a retained external authorization attempt.", frame.Query); err != nil {
 		return m, err
 	}
-	m.Contract, err = plugincontract.NewCapability(plugincontract.CapabilityConfig{Reference: mcpconnector.Reference, Composition: plugincontract.Selection, Scope: extension.ScopeInstallation}, m.Recover.Descriptor(), m.List.Descriptor(), m.Change.Descriptor(), m.Start.Descriptor(), m.Finish.Descriptor(), m.Get.Descriptor())
+	m.Contract, err = plugincontract.NewCapability(plugincontract.CapabilityConfig{Reference: mcpconnector.Reference, Composition: plugincontract.Selection, Scope: extension.ScopeInstallation}, m.Recover.Descriptor(), m.List.Descriptor(), m.Change.Descriptor(), m.Start.Descriptor(), m.RetireStart.Descriptor(), m.Finish.Descriptor(), m.Get.Descriptor())
 	return m, err
 }

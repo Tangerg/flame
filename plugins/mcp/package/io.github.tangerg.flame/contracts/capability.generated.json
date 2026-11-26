@@ -1,11 +1,11 @@
 {
   "protocol": "io.github.tangerg.flame/plugin/1",
-  "reference": "flame.external-mcp.v1",
+  "reference": "flame.external-mcp.v2",
   "composition": "selection",
   "scope": "installation",
   "methods": [
     {
-      "name": "flame.external-mcp/attempt.v1",
+      "name": "flame.external-mcp/attempt.v2",
       "kind": "query",
       "target": "installation",
       "description": "Read a retained external authorization attempt.",
@@ -94,7 +94,7 @@
       }
     },
     {
-      "name": "flame.external-mcp/authorize.v1",
+      "name": "flame.external-mcp/authorize.v2",
       "kind": "command",
       "target": "installation",
       "description": "Begin an authorization attempt against the current enabled entry.",
@@ -150,56 +150,12 @@
         "type": "object"
       },
       "output": {
-        "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tY3Bjb25uZWN0b3I.QXR0ZW1wdA": {
-            "additionalProperties": false,
-            "properties": {
-              "finishedAt": {
-                "type": "string"
-              },
-              "id": {
-                "type": "string"
-              },
-              "name": {
-                "type": "string"
-              },
-              "startedAt": {
-                "type": "string"
-              },
-              "status": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "id",
-              "name",
-              "status",
-              "startedAt"
-            ],
-            "type": "object"
-          },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tY3Bjb25uZWN0b3I.QXR0ZW1wdFJlc3VsdA": {
-            "additionalProperties": false,
-            "properties": {
-              "attempt": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tY3Bjb25uZWN0b3I.QXR0ZW1wdA"
-              }
-            },
-            "type": "object"
-          }
-        },
         "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "additionalProperties": false,
-        "properties": {
-          "attempt": {
-            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tY3Bjb25uZWN0b3I.QXR0ZW1wdA"
-          }
-        },
-        "type": "object"
+        "type": "string"
       }
     },
     {
-      "name": "flame.external-mcp/change.v1",
+      "name": "flame.external-mcp/change.v2",
       "kind": "command",
       "target": "installation",
       "description": "Compare and change one external directory entry.",
@@ -285,7 +241,7 @@
       }
     },
     {
-      "name": "flame.external-mcp/list.v1",
+      "name": "flame.external-mcp/list.v2",
       "kind": "query",
       "target": "installation",
       "description": "List external servers and their opaque host launch grants.",
@@ -382,10 +338,10 @@
       }
     },
     {
-      "name": "flame.external-mcp/recover.v1",
+      "name": "flame.external-mcp/recover.v2",
       "kind": "command",
       "target": "installation",
-      "description": "Cancel uncompleted attempts admitted by a previous Runtime incarnation.",
+      "description": "Mark interrupted attempts from earlier Runtime connection epochs as unconfirmed.",
       "input": {
         "$defs": {
           "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tY3Bjb25uZWN0b3I.UmVjb3Zlcnk": {
@@ -419,7 +375,68 @@
       }
     },
     {
-      "name": "flame.external-mcp/settle.v1",
+      "name": "flame.external-mcp/retire-authorization-start.v2",
+      "kind": "command",
+      "target": "installation",
+      "description": "Return the original authorization start decision or retire the command before it can accept an attempt.",
+      "input": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tY3Bjb25uZWN0b3I.U3RhcnQ": {
+            "additionalProperties": false,
+            "properties": {
+              "attemptId": {
+                "type": "string"
+              },
+              "epoch": {
+                "type": "string"
+              },
+              "grant": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "grant",
+              "epoch",
+              "attemptId"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "attemptId": {
+            "type": "string"
+          },
+          "epoch": {
+            "type": "string"
+          },
+          "grant": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "grant",
+          "epoch",
+          "attemptId"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "string"
+      }
+    },
+    {
+      "name": "flame.external-mcp/settle.v2",
       "kind": "command",
       "target": "installation",
       "description": "Record the original authorization attempt's terminal result.",

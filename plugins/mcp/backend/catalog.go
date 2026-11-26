@@ -92,21 +92,20 @@ func (c catalog) cancelPending(ctx context.Context, name string, finished time.T
 	return err
 }
 
-func (c catalog) prepareStart(ctx context.Context, _ *sdk.ServerSession, start wire.Start) (pluginstorage.CommandPlan[wire.AttemptResult], error) {
+func (c catalog) prepareStart(ctx context.Context, _ *sdk.ServerSession, start wire.Start) (pluginstorage.CommandPlan[wire.StartDecision], error) {
 	if start.Epoch == "" || start.AttemptID == "" {
-		return pluginstorage.NewCommandPlan(wire.AttemptResult{}, nil)
+		return pluginstorage.NewCommandPlan(wire.StartUnavailable, nil)
 	}
 	var enabled bool
 	err := c.db.Executor(ctx).QueryRowContext(ctx, `SELECT enabled FROM entries WHERE name=? AND grant=?`, start.Name, start.Grant).Scan(&enabled)
 	if errors.Is(err, sql.ErrNoRows) || err == nil && !enabled {
-		return pluginstorage.NewCommandPlan(wire.AttemptResult{}, nil)
+		return pluginstorage.NewCommandPlan(wire.StartUnavailable, nil)
 	}
 	if err != nil {
-		return pluginstorage.CommandPlan[wire.AttemptResult]{}, err
+		return pluginstorage.CommandPlan[wire.StartDecision]{}, err
 	}
 	now := c.now()
-	attempt := wire.Attempt{ID: start.AttemptID, Name: start.Name, Status: wire.Pending, StartedAt: now.UTC().Format(time.RFC3339Nano)}
-	return pluginstorage.NewCommandPlan(wire.AttemptResult{Attempt: &attempt}, func(ctx context.Context) error {
+	return pluginstorage.NewCommandPlan(wire.StartAccepted, func(ctx context.Context) error {
 		if err := c.cancelPending(ctx, start.Name, now); err != nil {
 			return err
 		}

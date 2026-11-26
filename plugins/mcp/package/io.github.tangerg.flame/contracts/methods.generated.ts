@@ -2,11 +2,7 @@
 // Numeric and cross-field constraints remain in schema.json and the business owner.
 import type { JSONNumber } from "@frame/sdk/json";
 
-export type AttemptV1Input = Request;
-
-export type AttemptV1Output = AttemptV1OutputMcpconnectorAttemptResult;
-
-export interface AttemptV1OutputMcpconnectorAttempt {
+export interface Attempt {
   finishedAt?: string;
   id: string;
   name: string;
@@ -14,35 +10,34 @@ export interface AttemptV1OutputMcpconnectorAttempt {
   status: string;
 }
 
-export interface AttemptV1OutputMcpconnectorAttemptResult {
-  attempt?: AttemptV1OutputMcpconnectorAttempt;
+export interface AttemptResult {
+  attempt?: Attempt;
 }
 
-export type AuthorizeV1Input = Start;
+export type AttemptV2Input = Request;
 
-export type AuthorizeV1Output = AuthorizeV1OutputMcpconnectorAttemptResult;
+export type AttemptV2Output = AttemptResult;
 
-export interface AuthorizeV1OutputMcpconnectorAttempt {
-  finishedAt?: string;
-  id: string;
+export type AuthorizeV2Input = AuthorizeV2InputMcpconnectorStart;
+
+export interface AuthorizeV2InputMcpconnectorStart {
+  attemptId: string;
+  epoch: string;
+  grant: string;
   name: string;
-  startedAt: string;
-  status: string;
 }
 
-export interface AuthorizeV1OutputMcpconnectorAttemptResult {
-  attempt?: AuthorizeV1OutputMcpconnectorAttempt;
-}
+export type AuthorizeV2Output = string;
 
 export interface Change {
   expected?: string;
   name: string;
-  replacement?: ChangeV1InputMcpconnectorEntry;
+  replacement?: ChangeV2InputMcpconnectorEntry;
 }
 
-export type ChangeV1Input = Change;
+export type ChangeV2Input = Change;
 
-export interface ChangeV1InputMcpconnectorEntry {
+export interface ChangeV2InputMcpconnectorEntry {
   description: string;
   enabled: boolean;
   handshakeSeconds: JSONNumber;
@@ -51,7 +46,7 @@ export interface ChangeV1InputMcpconnectorEntry {
   revision?: string;
 }
 
-export type ChangeV1Output = string;
+export type ChangeV2Output = string;
 
 export interface Completion {
   epoch: string;
@@ -60,14 +55,14 @@ export interface Completion {
 }
 
 export interface Directory {
-  entries: Array<ListV1OutputMcpconnectorEntry>;
+  entries: Array<ListV2OutputMcpconnectorEntry>;
 }
 
-export type ListV1Input = Selector;
+export type ListV2Input = Selector;
 
-export type ListV1Output = Directory;
+export type ListV2Output = Directory;
 
-export interface ListV1OutputMcpconnectorEntry {
+export interface ListV2OutputMcpconnectorEntry {
   description: string;
   enabled: boolean;
   handshakeSeconds: JSONNumber;
@@ -76,9 +71,9 @@ export interface ListV1OutputMcpconnectorEntry {
   revision?: string;
 }
 
-export type RecoverV1Input = Recovery;
+export type RecoverV2Input = Recovery;
 
-export type RecoverV1Output = string;
+export type RecoverV2Output = string;
 
 export interface Recovery {
   epoch: string;
@@ -89,44 +84,51 @@ export interface Request {
   id: string;
 }
 
-export interface Selector {
-  name?: string;
-}
+export type RetireAuthorizationStartV2Input = RetireAuthorizationStartV2InputMcpconnectorStart;
 
-export type SettleV1Input = Completion;
-
-export type SettleV1Output = string;
-
-export interface Start {
+export interface RetireAuthorizationStartV2InputMcpconnectorStart {
   attemptId: string;
   epoch: string;
   grant: string;
   name: string;
 }
 
+export type RetireAuthorizationStartV2Output = string;
+
+export interface Selector {
+  name?: string;
+}
+
+export type SettleV2Input = Completion;
+
+export type SettleV2Output = string;
+
 export interface MethodInputs {
-  "flame.external-mcp/attempt.v1": AttemptV1Input;
-  "flame.external-mcp/authorize.v1": AuthorizeV1Input;
-  "flame.external-mcp/change.v1": ChangeV1Input;
-  "flame.external-mcp/list.v1": ListV1Input;
-  "flame.external-mcp/recover.v1": RecoverV1Input;
-  "flame.external-mcp/settle.v1": SettleV1Input;
+  "flame.external-mcp/attempt.v2": AttemptV2Input;
+  "flame.external-mcp/authorize.v2": AuthorizeV2Input;
+  "flame.external-mcp/change.v2": ChangeV2Input;
+  "flame.external-mcp/list.v2": ListV2Input;
+  "flame.external-mcp/recover.v2": RecoverV2Input;
+  "flame.external-mcp/retire-authorization-start.v2": RetireAuthorizationStartV2Input;
+  "flame.external-mcp/settle.v2": SettleV2Input;
 }
 export interface MethodOutputs {
-  "flame.external-mcp/attempt.v1": AttemptV1Output;
-  "flame.external-mcp/authorize.v1": AuthorizeV1Output;
-  "flame.external-mcp/change.v1": ChangeV1Output;
-  "flame.external-mcp/list.v1": ListV1Output;
-  "flame.external-mcp/recover.v1": RecoverV1Output;
-  "flame.external-mcp/settle.v1": SettleV1Output;
+  "flame.external-mcp/attempt.v2": AttemptV2Output;
+  "flame.external-mcp/authorize.v2": AuthorizeV2Output;
+  "flame.external-mcp/change.v2": ChangeV2Output;
+  "flame.external-mcp/list.v2": ListV2Output;
+  "flame.external-mcp/recover.v2": RecoverV2Output;
+  "flame.external-mcp/retire-authorization-start.v2": RetireAuthorizationStartV2Output;
+  "flame.external-mcp/settle.v2": SettleV2Output;
 }
 export const METHODS = {
-  ["flame.external-mcp/attempt.v1"]: { kind: "query", target: "installation" },
-  ["flame.external-mcp/authorize.v1"]: { kind: "command", target: "installation" },
-  ["flame.external-mcp/change.v1"]: { kind: "command", target: "installation" },
-  ["flame.external-mcp/list.v1"]: { kind: "query", target: "installation" },
-  ["flame.external-mcp/recover.v1"]: { kind: "command", target: "installation" },
-  ["flame.external-mcp/settle.v1"]: { kind: "command", target: "installation" },
+  ["flame.external-mcp/attempt.v2"]: { kind: "query", target: "installation" },
+  ["flame.external-mcp/authorize.v2"]: { kind: "command", target: "installation" },
+  ["flame.external-mcp/change.v2"]: { kind: "command", target: "installation" },
+  ["flame.external-mcp/list.v2"]: { kind: "query", target: "installation" },
+  ["flame.external-mcp/recover.v2"]: { kind: "command", target: "installation" },
+  ["flame.external-mcp/retire-authorization-start.v2"]: { kind: "command", target: "installation" },
+  ["flame.external-mcp/settle.v2"]: { kind: "command", target: "installation" },
 } as const;
-export const CAPABILITY = {"protocol":"io.github.tangerg.flame/plugin/1","reference":"flame.external-mcp.v1","composition":"selection","scope":"installation","contract":"ccaab5930965e0ab26fef9b6f371b95a6e2b8483266e01e2bb047aba71476d32"} as const;
-export const CAPABILITY_JSON = "{\"composition\":\"selection\",\"methods\":[{\"description\":\"\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tY3Bjb25uZWN0b3I.UmVxdWVzdA\":{\"additionalProperties\":false,\"properties\":{\"epoch\":{\"type\":\"string\"},\"id\":{\"type\":\"string\"}},\"required\":[\"id\",\"epoch\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"epoch\":{\"type\":\"string\"},\"id\":{\"type\":\"string\"}},\"required\":[\"id\",\"epoch\"],\"type\":\"object\"},\"kind\":\"query\",\"name\":\"flame.external-mcp/attempt.v1\",\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tY3Bjb25uZWN0b3I.QXR0ZW1wdA\":{\"additionalProperties\":false,\"properties\":{\"finishedAt\":{\"type\":\"string\"},\"id\":{\"type\":\"string\"},\"name\":{\"type\":\"string\"},\"startedAt\":{\"type\":\"string\"},\"status\":{\"type\":\"string\"}},\"required\":[\"id\",\"name\",\"status\",\"startedAt\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tY3Bjb25uZWN0b3I.QXR0ZW1wdFJlc3VsdA\":{\"additionalProperties\":false,\"properties\":{\"attempt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tY3Bjb25uZWN0b3I.QXR0ZW1wdA\"}},\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"attempt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tY3Bjb25uZWN0b3I.QXR0ZW1wdA\"}},\"type\":\"object\"},\"target\":\"installation\"},{\"description\":\"\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tY3Bjb25uZWN0b3I.U3RhcnQ\":{\"additionalProperties\":false,\"properties\":{\"attemptId\":{\"type\":\"string\"},\"epoch\":{\"type\":\"string\"},\"grant\":{\"type\":\"string\"},\"name\":{\"type\":\"string\"}},\"required\":[\"name\",\"grant\",\"epoch\",\"attemptId\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"attemptId\":{\"type\":\"string\"},\"epoch\":{\"type\":\"string\"},\"grant\":{\"type\":\"string\"},\"name\":{\"type\":\"string\"}},\"required\":[\"name\",\"grant\",\"epoch\",\"attemptId\"],\"type\":\"object\"},\"kind\":\"command\",\"name\":\"flame.external-mcp/authorize.v1\",\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tY3Bjb25uZWN0b3I.QXR0ZW1wdA\":{\"additionalProperties\":false,\"properties\":{\"finishedAt\":{\"type\":\"string\"},\"id\":{\"type\":\"string\"},\"name\":{\"type\":\"string\"},\"startedAt\":{\"type\":\"string\"},\"status\":{\"type\":\"string\"}},\"required\":[\"id\",\"name\",\"status\",\"startedAt\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tY3Bjb25uZWN0b3I.QXR0ZW1wdFJlc3VsdA\":{\"additionalProperties\":false,\"properties\":{\"attempt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tY3Bjb25uZWN0b3I.QXR0ZW1wdA\"}},\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"attempt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tY3Bjb25uZWN0b3I.QXR0ZW1wdA\"}},\"type\":\"object\"},\"target\":\"installation\"},{\"description\":\"\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tY3Bjb25uZWN0b3I.Q2hhbmdl\":{\"additionalProperties\":false,\"properties\":{\"expected\":{\"type\":\"string\"},\"name\":{\"type\":\"string\"},\"replacement\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tY3Bjb25uZWN0b3I.RW50cnk\"}},\"required\":[\"name\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tY3Bjb25uZWN0b3I.RW50cnk\":{\"additionalProperties\":false,\"properties\":{\"description\":{\"type\":\"string\"},\"enabled\":{\"type\":\"boolean\"},\"handshakeSeconds\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"launchGrant\":{\"type\":\"string\"},\"name\":{\"type\":\"string\"},\"revision\":{\"type\":\"string\"}},\"required\":[\"name\",\"launchGrant\",\"enabled\",\"description\",\"handshakeSeconds\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"expected\":{\"type\":\"string\"},\"name\":{\"type\":\"string\"},\"replacement\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tY3Bjb25uZWN0b3I.RW50cnk\"}},\"required\":[\"name\"],\"type\":\"object\"},\"kind\":\"command\",\"name\":\"flame.external-mcp/change.v1\",\"output\":{\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"type\":\"string\"},\"target\":\"installation\"},{\"description\":\"\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tY3Bjb25uZWN0b3I.U2VsZWN0b3I\":{\"additionalProperties\":false,\"properties\":{\"name\":{\"type\":\"string\"}},\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"name\":{\"type\":\"string\"}},\"type\":\"object\"},\"kind\":\"query\",\"name\":\"flame.external-mcp/list.v1\",\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tY3Bjb25uZWN0b3I.RGlyZWN0b3J5\":{\"additionalProperties\":false,\"properties\":{\"entries\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tY3Bjb25uZWN0b3I.RW50cnk\"},\"type\":\"array\"}},\"required\":[\"entries\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tY3Bjb25uZWN0b3I.RW50cnk\":{\"additionalProperties\":false,\"properties\":{\"description\":{\"type\":\"string\"},\"enabled\":{\"type\":\"boolean\"},\"handshakeSeconds\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"launchGrant\":{\"type\":\"string\"},\"name\":{\"type\":\"string\"},\"revision\":{\"type\":\"string\"}},\"required\":[\"name\",\"launchGrant\",\"enabled\",\"description\",\"handshakeSeconds\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"entries\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tY3Bjb25uZWN0b3I.RW50cnk\"},\"type\":\"array\"}},\"required\":[\"entries\"],\"type\":\"object\"},\"target\":\"installation\"},{\"description\":\"\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tY3Bjb25uZWN0b3I.UmVjb3Zlcnk\":{\"additionalProperties\":false,\"properties\":{\"epoch\":{\"type\":\"string\"}},\"required\":[\"epoch\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"epoch\":{\"type\":\"string\"}},\"required\":[\"epoch\"],\"type\":\"object\"},\"kind\":\"command\",\"name\":\"flame.external-mcp/recover.v1\",\"output\":{\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"type\":\"string\"},\"target\":\"installation\"},{\"description\":\"\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tY3Bjb25uZWN0b3I.Q29tcGxldGlvbg\":{\"additionalProperties\":false,\"properties\":{\"epoch\":{\"type\":\"string\"},\"id\":{\"type\":\"string\"},\"status\":{\"type\":\"string\"}},\"required\":[\"id\",\"epoch\",\"status\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"epoch\":{\"type\":\"string\"},\"id\":{\"type\":\"string\"},\"status\":{\"type\":\"string\"}},\"required\":[\"id\",\"epoch\",\"status\"],\"type\":\"object\"},\"kind\":\"command\",\"name\":\"flame.external-mcp/settle.v1\",\"output\":{\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"type\":\"string\"},\"target\":\"installation\"}],\"protocol\":\"io.github.tangerg.flame/plugin/1\",\"reference\":\"flame.external-mcp.v1\",\"scope\":\"installation\"}";
+export const CAPABILITY = {"protocol":"io.github.tangerg.flame/plugin/1","reference":"flame.external-mcp.v2","composition":"selection","scope":"installation","contract":"c251bd2c21fb435b4c26f6669d02de631a1fdaa1dbae5b1df3667b8e6d76ab1b"} as const;
+export const CAPABILITY_JSON = "{\"composition\":\"selection\",\"methods\":[{\"description\":\"\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tY3Bjb25uZWN0b3I.UmVxdWVzdA\":{\"additionalProperties\":false,\"properties\":{\"epoch\":{\"type\":\"string\"},\"id\":{\"type\":\"string\"}},\"required\":[\"id\",\"epoch\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"epoch\":{\"type\":\"string\"},\"id\":{\"type\":\"string\"}},\"required\":[\"id\",\"epoch\"],\"type\":\"object\"},\"kind\":\"query\",\"name\":\"flame.external-mcp/attempt.v2\",\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tY3Bjb25uZWN0b3I.QXR0ZW1wdA\":{\"additionalProperties\":false,\"properties\":{\"finishedAt\":{\"type\":\"string\"},\"id\":{\"type\":\"string\"},\"name\":{\"type\":\"string\"},\"startedAt\":{\"type\":\"string\"},\"status\":{\"type\":\"string\"}},\"required\":[\"id\",\"name\",\"status\",\"startedAt\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tY3Bjb25uZWN0b3I.QXR0ZW1wdFJlc3VsdA\":{\"additionalProperties\":false,\"properties\":{\"attempt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tY3Bjb25uZWN0b3I.QXR0ZW1wdA\"}},\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"attempt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tY3Bjb25uZWN0b3I.QXR0ZW1wdA\"}},\"type\":\"object\"},\"target\":\"installation\"},{\"description\":\"\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tY3Bjb25uZWN0b3I.U3RhcnQ\":{\"additionalProperties\":false,\"properties\":{\"attemptId\":{\"type\":\"string\"},\"epoch\":{\"type\":\"string\"},\"grant\":{\"type\":\"string\"},\"name\":{\"type\":\"string\"}},\"required\":[\"name\",\"grant\",\"epoch\",\"attemptId\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"attemptId\":{\"type\":\"string\"},\"epoch\":{\"type\":\"string\"},\"grant\":{\"type\":\"string\"},\"name\":{\"type\":\"string\"}},\"required\":[\"name\",\"grant\",\"epoch\",\"attemptId\"],\"type\":\"object\"},\"kind\":\"command\",\"name\":\"flame.external-mcp/authorize.v2\",\"output\":{\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"type\":\"string\"},\"target\":\"installation\"},{\"description\":\"\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tY3Bjb25uZWN0b3I.Q2hhbmdl\":{\"additionalProperties\":false,\"properties\":{\"expected\":{\"type\":\"string\"},\"name\":{\"type\":\"string\"},\"replacement\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tY3Bjb25uZWN0b3I.RW50cnk\"}},\"required\":[\"name\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tY3Bjb25uZWN0b3I.RW50cnk\":{\"additionalProperties\":false,\"properties\":{\"description\":{\"type\":\"string\"},\"enabled\":{\"type\":\"boolean\"},\"handshakeSeconds\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"launchGrant\":{\"type\":\"string\"},\"name\":{\"type\":\"string\"},\"revision\":{\"type\":\"string\"}},\"required\":[\"name\",\"launchGrant\",\"enabled\",\"description\",\"handshakeSeconds\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"expected\":{\"type\":\"string\"},\"name\":{\"type\":\"string\"},\"replacement\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tY3Bjb25uZWN0b3I.RW50cnk\"}},\"required\":[\"name\"],\"type\":\"object\"},\"kind\":\"command\",\"name\":\"flame.external-mcp/change.v2\",\"output\":{\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"type\":\"string\"},\"target\":\"installation\"},{\"description\":\"\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tY3Bjb25uZWN0b3I.U2VsZWN0b3I\":{\"additionalProperties\":false,\"properties\":{\"name\":{\"type\":\"string\"}},\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"name\":{\"type\":\"string\"}},\"type\":\"object\"},\"kind\":\"query\",\"name\":\"flame.external-mcp/list.v2\",\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tY3Bjb25uZWN0b3I.RGlyZWN0b3J5\":{\"additionalProperties\":false,\"properties\":{\"entries\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tY3Bjb25uZWN0b3I.RW50cnk\"},\"type\":\"array\"}},\"required\":[\"entries\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tY3Bjb25uZWN0b3I.RW50cnk\":{\"additionalProperties\":false,\"properties\":{\"description\":{\"type\":\"string\"},\"enabled\":{\"type\":\"boolean\"},\"handshakeSeconds\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"launchGrant\":{\"type\":\"string\"},\"name\":{\"type\":\"string\"},\"revision\":{\"type\":\"string\"}},\"required\":[\"name\",\"launchGrant\",\"enabled\",\"description\",\"handshakeSeconds\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"entries\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tY3Bjb25uZWN0b3I.RW50cnk\"},\"type\":\"array\"}},\"required\":[\"entries\"],\"type\":\"object\"},\"target\":\"installation\"},{\"description\":\"\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tY3Bjb25uZWN0b3I.UmVjb3Zlcnk\":{\"additionalProperties\":false,\"properties\":{\"epoch\":{\"type\":\"string\"}},\"required\":[\"epoch\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"epoch\":{\"type\":\"string\"}},\"required\":[\"epoch\"],\"type\":\"object\"},\"kind\":\"command\",\"name\":\"flame.external-mcp/recover.v2\",\"output\":{\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"type\":\"string\"},\"target\":\"installation\"},{\"description\":\"\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tY3Bjb25uZWN0b3I.U3RhcnQ\":{\"additionalProperties\":false,\"properties\":{\"attemptId\":{\"type\":\"string\"},\"epoch\":{\"type\":\"string\"},\"grant\":{\"type\":\"string\"},\"name\":{\"type\":\"string\"}},\"required\":[\"name\",\"grant\",\"epoch\",\"attemptId\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"attemptId\":{\"type\":\"string\"},\"epoch\":{\"type\":\"string\"},\"grant\":{\"type\":\"string\"},\"name\":{\"type\":\"string\"}},\"required\":[\"name\",\"grant\",\"epoch\",\"attemptId\"],\"type\":\"object\"},\"kind\":\"command\",\"name\":\"flame.external-mcp/retire-authorization-start.v2\",\"output\":{\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"type\":\"string\"},\"target\":\"installation\"},{\"description\":\"\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tY3Bjb25uZWN0b3I.Q29tcGxldGlvbg\":{\"additionalProperties\":false,\"properties\":{\"epoch\":{\"type\":\"string\"},\"id\":{\"type\":\"string\"},\"status\":{\"type\":\"string\"}},\"required\":[\"id\",\"epoch\",\"status\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"epoch\":{\"type\":\"string\"},\"id\":{\"type\":\"string\"},\"status\":{\"type\":\"string\"}},\"required\":[\"id\",\"epoch\",\"status\"],\"type\":\"object\"},\"kind\":\"command\",\"name\":\"flame.external-mcp/settle.v2\",\"output\":{\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"type\":\"string\"},\"target\":\"installation\"}],\"protocol\":\"io.github.tangerg.flame/plugin/1\",\"reference\":\"flame.external-mcp.v2\",\"scope\":\"installation\"}";
