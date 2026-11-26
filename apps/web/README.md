@@ -966,6 +966,8 @@ through that first result.
 When Runtime rejects an initial line request as invalid, Files names the line
 and offers Open from start. The action reads the same current path and keeps
 the return to the original inspection source.
+A clipped reader title exposes the exact relative path on focus or hover.
+When the name fits, Tab moves from Back to files to the reading controls.
 
 Folder choices retain complete wrapping names. When folders share a display
 name, both the new-conversation tray and active-folder menu show their full

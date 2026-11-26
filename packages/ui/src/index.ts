@@ -13,6 +13,7 @@ export {
   TooltipProvider,
   Tooltip,
   RichTooltip,
+  useClampedText,
 } from "./tooltip";
 export { Popover } from "./popover";
 export { ProgressBar } from "./progress-bar";

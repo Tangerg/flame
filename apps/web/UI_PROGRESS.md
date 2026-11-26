@@ -1029,8 +1029,59 @@ listeners, profiles, captures, logs, caches and checkout outputs are
 removed.
 
 The flow keeps the real Files Dock visible during a model choice.
-Return to file inspection for the next review of identity, width and
-the path back to the conversation.
+[Full paths for clipped Files headings](#full-paths-for-clipped-files-headings-2026-11-27)
+returns to file identity and the path back to the conversation.
+
+### Full paths for clipped Files headings (2026-11-27)
+
+At `6fb808485`, a private file tree wraps two 192-character basenames
+with the distinct `north-review-tail.txt` and `south-review-tail.txt`
+endings. Both readers paint the same two-line prefix. At 1120 × 728
+in English, dark mode, 18 px and Blue with a 320 px Files Dock, Tab
+from Back to files goes directly to Go to line. Hover relies on the
+native title.
+
+Following Better Layout and the [Diff heading work](#full-paths-for-clipped-diff-headings-2026-11-27),
+Files uses the shared Tooltip on its existing basename. The observer
+measures actual multiline clipping after width, text and font changes.
+When clipped, the label is a named focus target and the tooltip
+presents the complete relative path. Diff uses the same observer
+with its original heading ref and heading level changes. The ZCode
+tree and reader inform the distinction between the visible name and
+the full location.
+
+- Pointer wheel reaches both long rows. In Files, Tab from Back to
+  files focuses each exact name and opens its path tooltip. Escape
+  dismisses the tooltip with focus and file content still present.
+  Hover over the south title reveals the same path while Go to line
+  has focus. The short sibling goes directly to Go to line and
+  exposes no path tooltip on hover. The Escape assertions were
+  rerun after correcting a scratch variable that shadowed shell
+  command lookup.
+- Back returns to the exact nested row for both files. In the final
+  compact check, the north row moves from y=153 before reading to
+  y=377 on return. The south row stays at y=455. The next Files
+  review compares that position with the same starting viewport.
+- The installed Workspace diff view opens the actual north patch.
+  Its focused heading and Shift+Tab from Diff layout both show the
+  full path. Escape closes the tooltip, then the next Escape
+  returns to that exact changed-file button.
+- At 1280 × 800 the full-width Files view fits the north title
+  in English/dark/18 px and Chinese/light/14 px/Flame. Tab skips
+  the title in both. Returning to the 378 px Dock restores the
+  clipped path affordance for the same reader. Back finds the exact
+  north row. Cmd+L restores the draft `2468`, typing reaches
+  `24685`, and Undo restores `2468`.
+
+Shared UI typecheck and packed-consumer check, Web typecheck, 81
+contract tests, bootstrap, scoped Prettier and diff checks pass.
+Production staging, Runtime packaging and signed Wails builds pass.
+The complete Session snapshot and all 50 private file digests match.
+No Runs or generation calls occurred. The private provider served
+29 catalog reads. All Wails hosts exited normally. The private
+Runtime reached its existing drain deadline. The app registration,
+processes, listeners, profiles, fixtures, captures, logs, caches and
+checkout outputs are removed.
 
 ## Error notes leave retrying to their buttons (2026-11-26)
 
