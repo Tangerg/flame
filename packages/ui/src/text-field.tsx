@@ -129,6 +129,23 @@ type SharedProps = {
   pending?: boolean;
 };
 
+// Code-face text is literal: spelling aids would underline or rewrite paths and commands.
+function literalText(
+  font: keyof typeof FACE,
+  props: {
+    spellCheck?: boolean | "true" | "false";
+    autoCorrect?: string;
+    autoCapitalize?: string;
+  },
+) {
+  if (font !== "mono") return {};
+  return {
+    spellCheck: props.spellCheck ?? false,
+    autoCorrect: props.autoCorrect ?? "off",
+    autoCapitalize: props.autoCapitalize ?? "none",
+  };
+}
+
 function edge(variant: FieldEdge, invalid: boolean) {
   return [
     variant === "boxed" ? [FIELD_SURFACE.face, styles.hang] : styles[variant],
@@ -168,6 +185,7 @@ export function TextField({
   return (
     <input
       {...props}
+      {...literalText(font, props)}
       aria-invalid={invalid || undefined}
       {...(invalid && { "data-focus-outset": "" })}
       readOnly={pending || props.readOnly}
@@ -228,6 +246,7 @@ export function TextArea({
   return (
     <textarea
       {...props}
+      {...literalText(font, props)}
       style={
         autosize
           ? { minHeight: `calc(${minRows}lh + 2 * ${padding})`, ...props.style }

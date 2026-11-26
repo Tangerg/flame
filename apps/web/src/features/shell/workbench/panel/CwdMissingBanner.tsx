@@ -83,7 +83,6 @@ export function CwdMissingBanner() {
                   placeholder={t("cwdMissing.placeholder")}
                   aria-label={t("cwdMissing.placeholder")}
                   pending={busy}
-                  spellCheck={false}
                   autoFocus
                   className={stylex.props(cw.field).className}
                 />

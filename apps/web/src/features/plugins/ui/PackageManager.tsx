@@ -174,9 +174,6 @@ export function PackageManager() {
                 setInstalled(undefined);
                 setDraft({ signal: operations?.signal, source: event.target.value });
               }}
-              autoCapitalize="none"
-              autoCorrect="off"
-              spellCheck={false}
               pending={busy}
             />
           </Hang>
@@ -476,9 +473,6 @@ function PackageRow({
         invalid={edit?.validationError !== undefined}
         onSave={() => void save()}
         font="mono"
-        autoCapitalize="none"
-        autoCorrect="off"
-        spellCheck={false}
       />
     </div>
   );

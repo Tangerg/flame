@@ -135,9 +135,6 @@ export function JsonImport({
             settings.setImportText(context, event.target.value);
           }}
           rows={10}
-          spellCheck={false}
-          autoCapitalize="none"
-          autoCorrect="off"
           aria-describedby={error?.invalid ? errorId : undefined}
           placeholder={EXAMPLE}
         />

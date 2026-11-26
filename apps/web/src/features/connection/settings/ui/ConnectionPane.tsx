@@ -237,7 +237,6 @@ export function ConnectionPane() {
               if (apply()) e.currentTarget.blur();
             }}
             placeholder={defaultEndpoint}
-            spellCheck={false}
           />
         </FormField>
         <FormField label={t("settings.connection.token")}>

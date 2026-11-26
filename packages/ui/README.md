@@ -614,6 +614,8 @@ height. Native controls own caret, selection,
 composition and scrolling. There is no JavaScript height or caret mirror.
 A one-line `TextField` with `font="mono"` sets its value in the code face and its
 placeholder in the interface face, because the placeholder is a prose hint.
+Code-face fields and areas hold literal text, so spell checking, autocorrect and
+autocapitalization default to off; a caller's explicit value still wins.
 
 Focus return is delegated to Base UI for popups. Explicit removal actions may
 call handoffFocus before mutation; it refuses disconnected, hidden, inert or

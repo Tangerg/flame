@@ -68,7 +68,6 @@ export function InputDialog(props: InputDialogProps) {
           pending={props.busy}
           onChange={(event) => props.onChange(event.target.value)}
           autoComplete="off"
-          spellCheck={false}
         />
       </FormField>
       {props.error && (
