@@ -1,4 +1,17 @@
 export const ko = {
+  follow: "새 커밋 추적",
+  pauseFollow: "추적 일시 중지",
+  following: "이 풀 리퀘스트의 새 커밋을 추적 중입니다.",
+  stalePublish:
+    "풀 리퀘스트의 현재 헤드는 {{sha}}입니다. 이 초안은 선택한 리비전에 속합니다.",
+  localRecheck: "작업 트리에서 재검증",
+  "recheck.pending": "재검증 대기 중",
+  "recheck.clean": "Git 변경 사항 검사 통과",
+  "recheck.issues": "Git 변경 사항 검사에서 문제가 발견되었습니다",
+  "recheck.failed": "작업 트리 재검증에 실패했습니다",
+  "findingFile.unchanged": "파일 변경 없음",
+  "findingFile.changed": "파일 변경됨",
+  "findingFile.unavailable": "파일을 비교할 수 없습니다",
   title: "풀 리퀘스트 검토",
   open: "검토 열기",
   address: "저장소와 풀 리퀘스트",

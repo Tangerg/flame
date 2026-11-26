@@ -13,6 +13,7 @@
   "contributions": [
     {
       "id": "github-operations",
+      "background": true,
       "server": "github",
       "export": "github",
       "contract": "io.github.tangerg.flame/contracts/capability.generated.json"

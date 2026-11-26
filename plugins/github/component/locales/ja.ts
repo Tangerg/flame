@@ -1,4 +1,17 @@
 export const ja = {
+  follow: "新しいコミットを追跡",
+  pauseFollow: "追跡を一時停止",
+  following: "このプルリクエストの新しいコミットを追跡しています。",
+  stalePublish:
+    "プルリクエストの先頭は現在 {{sha}} です。この下書きは選択中のリビジョンに属します。",
+  localRecheck: "ワークツリーでの再検証",
+  "recheck.pending": "再検証を待機中",
+  "recheck.clean": "Git の差分チェックに合格",
+  "recheck.issues": "Git の差分チェックで問題が見つかりました",
+  "recheck.failed": "ワークツリーでの再検証に失敗しました",
+  "findingFile.unchanged": "ファイルに変更なし",
+  "findingFile.changed": "ファイルに変更あり",
+  "findingFile.unavailable": "ファイルの比較結果を取得できません",
   title: "プルリクエストレビュー",
   open: "レビューを開く",
   address: "リポジトリとプルリクエスト",

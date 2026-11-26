@@ -79,7 +79,7 @@ func command[P, R any](name, description string) (frame.MethodDescriptor, error)
 func reviewWorkCommand() (frame.MethodDescriptor, error) {
 	method, err := pluginmcp.NewMethod[wire.ReviewWorkChange, wire.ReviewWork](frame.MethodConfig{
 		Name: methodName("update-review-work"), Kind: frame.Command, Target: extension.ScopeInstallation,
-		Description: "Capture the current pull request or inspect checks for a retained revision. Alternatively record a finding or a human finding decision at an exact retained revision. A local decision does not publish a GitHub review.",
+		Description: "Capture the current pull request, inspect checks for a retained revision, record a finding or human decision, or change the follow setting. Following a pull request rechecks each new captured revision in a detached worktree. A local decision does not publish a GitHub review.",
 	})
 	if err != nil {
 		return frame.MethodDescriptor{}, err

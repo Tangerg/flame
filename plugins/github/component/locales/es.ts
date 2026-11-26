@@ -1,4 +1,18 @@
 export const es = {
+  follow: "Seguir los nuevos commits",
+  pauseFollow: "Pausar seguimiento",
+  following:
+    "Se están siguiendo los nuevos commits de esta solicitud de cambios.",
+  stalePublish:
+    "La solicitud de cambios está ahora en {{sha}}. Este borrador pertenece a la revisión seleccionada.",
+  localRecheck: "Nueva verificación en el árbol de trabajo",
+  "recheck.pending": "Nueva verificación pendiente",
+  "recheck.clean": "La comprobación de diferencias de Git pasó",
+  "recheck.issues": "La comprobación de diferencias de Git encontró problemas",
+  "recheck.failed": "Falló la nueva verificación en el árbol de trabajo",
+  "findingFile.unchanged": "Archivo sin cambios",
+  "findingFile.changed": "Archivo modificado",
+  "findingFile.unavailable": "Comparación de archivos no disponible",
   title: "Revisiones de pull requests",
   open: "Abrir revisión",
   address: "Repositorio y pull request",

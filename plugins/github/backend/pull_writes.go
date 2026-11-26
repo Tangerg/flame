@@ -63,6 +63,19 @@ func (c *connector) submitReview(ctx context.Context, input contractwire.SubmitR
 	if err != nil {
 		return contractwire.Review{}, err
 	}
+	if !c.credential.configured() {
+		return contractwire.Review{}, refused(refusalCredentialRequired, "a configured token is required for writes")
+	}
+	pull, err := c.getPull(ctx, input.IssueInput)
+	if err != nil {
+		if _, known := classify(err); known {
+			return contractwire.Review{}, err
+		}
+		return contractwire.Review{}, refused(refusalNotAllowed, "current pull request head could not be verified before publishing")
+	}
+	if !strings.EqualFold(pull.Head.SHA, string(input.CommitID)) {
+		return contractwire.Review{}, refused(refusalConflict, "pull request head changed since the review was inspected")
+	}
 	payload := struct {
 		CommitID string                   `json:"commit_id"`
 		Event    contractwire.ReviewEvent `json:"event"`

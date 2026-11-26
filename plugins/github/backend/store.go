@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"path/filepath"
 	"time"
 
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
@@ -17,14 +18,17 @@ type response struct {
 	body        []byte
 	etag, links string
 }
-type store struct{ db sqlite.Database }
+type store struct {
+	db   sqlite.Database
+	data string
+}
 
 func openStore(ctx context.Context, path string) (*store, error) {
 	db, err := sqlite.OpenSchema(ctx, path, []string{pluginstorage.CommandsSchema, reviewWorkSchema, `CREATE TABLE IF NOT EXISTS responses (key TEXT PRIMARY KEY, etag TEXT NOT NULL, links TEXT NOT NULL, body BLOB NOT NULL, checked_at INTEGER NOT NULL)`})
 	if err != nil {
 		return nil, err
 	}
-	return &store{db: db}, nil
+	return &store{db: db, data: filepath.Dir(path)}, nil
 }
 
 func (c *store) readCache(ctx context.Context, key string) (response, error) {

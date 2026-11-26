@@ -203,7 +203,7 @@
     "name": "flame.github/update-review-work.v1",
     "kind": "command",
     "target": "installation",
-    "description": "Capture the current pull request or inspect checks for a retained revision. Alternatively record a finding or a human finding decision at an exact retained revision. A local decision does not publish a GitHub review.",
+    "description": "Capture the current pull request, inspect checks for a retained revision, record a finding or human decision, or change the follow setting. Following a pull request rechecks each new captured revision in a detached worktree. A local decision does not publish a GitHub review.",
     "input": "schema.json#/$defs/UpdateReviewWorkV1Input",
     "output": "schema.json#/$defs/UpdateReviewWorkV1Output"
   }

@@ -1,4 +1,17 @@
 export const de = {
+  follow: "Neuen Commits folgen",
+  pauseFollow: "Verfolgung pausieren",
+  following: "Neue Commits dieses Pull Requests werden verfolgt.",
+  stalePublish:
+    "Der Pull Request steht jetzt auf {{sha}}. Dieser Entwurf gehört zur ausgewählten Revision.",
+  localRecheck: "Erneute Prüfung im Worktree",
+  "recheck.pending": "Erneute Prüfung steht aus",
+  "recheck.clean": "Git-Diff-Prüfung bestanden",
+  "recheck.issues": "Git-Diff-Prüfung hat Probleme gefunden",
+  "recheck.failed": "Erneute Prüfung im Worktree fehlgeschlagen",
+  "findingFile.unchanged": "Datei unverändert",
+  "findingFile.changed": "Datei geändert",
+  "findingFile.unavailable": "Dateivergleich nicht verfügbar",
   title: "Pull-Request-Prüfungen",
   open: "Prüfung öffnen",
   address: "Repository und Pull Request",

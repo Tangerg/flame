@@ -1,4 +1,17 @@
 export const en = {
+  follow: "Follow new commits",
+  pauseFollow: "Pause following",
+  following: "Following new commits on this pull request.",
+  stalePublish:
+    "The PR head is now {{sha}}. This draft belongs to the selected revision.",
+  localRecheck: "Worktree recheck",
+  "recheck.pending": "Worktree recheck pending",
+  "recheck.clean": "Git diff check passed",
+  "recheck.issues": "Git diff check found issues",
+  "recheck.failed": "Worktree recheck failed",
+  "findingFile.unchanged": "File unchanged",
+  "findingFile.changed": "File changed",
+  "findingFile.unavailable": "File comparison unavailable",
   title: "Pull request reviews",
   open: "Open review",
   address: "Repository and pull request",

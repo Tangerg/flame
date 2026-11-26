@@ -62,6 +62,20 @@ revision stay available for recheck. Accept or defer an individual finding with
 a reason on its inspected revision. Its code reference names the exact file,
 commit, side and line. Revision links reopen the original base/head pair.
 
+Choose **Follow new commits** to poll this PR while the plugin is running. The
+plugin checks once when following starts and every two minutes afterwards.
+Each observed revision is saved before verification. A restart resumes a saved
+verification at its captured head before considering a newer head. Polling
+records the head it sees and can miss heads that appeared between polls.
+
+Verification uses Git on the host to fetch the captured base and head into a
+private detached worktree. It checks the diff for whitespace errors and shows
+whether the files referenced by prior findings changed. The temporary worktree
+is removed when verification finishes. Private repositories require a token
+that can read their contents. Prior findings and their decisions stay attached
+to their original revisions. People make new decisions and choose what to
+publish.
+
 Checking a retained revision records CI only for its head SHA. Discussion
 comments captured from the pull request retain their upstream identities and
 revision times. Repeated observations of one comment version reuse its captured
@@ -75,8 +89,12 @@ review work. `update-review-work.v1` uses the expected work version for a new
 inspection, finding or individual human decision. The local decision and
 command receipt commit together. **Publish comment to GitHub** submits a separate
 review at the selected head through the original GitHub write and receipt
-protocol. The review workspace stores its data in the same account-scoped
-GitHub database.
+protocol. Publishing checks GitHub's current head before sending the review and
+rejects a stale draft. The GitHub API takes the captured commit SHA without a
+conditional head check, so a head change during submission can still leave a
+review on that captured commit. Reopening an original command recovers its
+receipt even when the head has advanced. The review workspace stores its data in
+the same account-scoped GitHub database.
 
 ## Writes and original outcomes
 

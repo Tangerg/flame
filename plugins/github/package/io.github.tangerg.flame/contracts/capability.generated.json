@@ -4736,6 +4736,31 @@
             ],
             "type": "object"
           },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.RmluZGluZ1JlY2hlY2s": {
+            "additionalProperties": false,
+            "properties": {
+              "finding": {
+                "type": "string"
+              },
+              "status": {
+                "allOf": [
+                  {
+                    "enum": [
+                      "unchanged",
+                      "changed",
+                      "unavailable"
+                    ]
+                  }
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "finding",
+              "status"
+            ],
+            "type": "object"
+          },
           "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.UmV2aWV3Q2hlY2s": {
             "additionalProperties": false,
             "properties": {
@@ -4869,6 +4894,48 @@
             ],
             "type": "object"
           },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.UmV2aWV3UmVjaGVjaw": {
+            "additionalProperties": false,
+            "properties": {
+              "checkedHead": {
+                "type": "string"
+              },
+              "completedAt": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
+              },
+              "diagnostic": {
+                "type": "string"
+              },
+              "findings": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.RmluZGluZ1JlY2hlY2s"
+                },
+                "type": "array"
+              },
+              "previousRevision": {
+                "type": "string"
+              },
+              "status": {
+                "allOf": [
+                  {
+                    "enum": [
+                      "pending",
+                      "clean",
+                      "issues",
+                      "failed"
+                    ]
+                  }
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "status",
+              "previousRevision",
+              "findings"
+            ],
+            "type": "object"
+          },
           "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.UmV2aWV3V29yaw": {
             "additionalProperties": false,
             "properties": {
@@ -4881,6 +4948,9 @@
               "checksPartial": {
                 "type": "boolean"
               },
+              "currentHead": {
+                "type": "string"
+              },
               "discussion": {
                 "items": {
                   "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.UmV2aWV3RGlzY3Vzc2lvbg"
@@ -4892,6 +4962,12 @@
                   "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.UmV2aWV3RmluZGluZw"
                 },
                 "type": "array"
+              },
+              "followError": {
+                "type": "string"
+              },
+              "following": {
+                "type": "boolean"
               },
               "latest": {
                 "type": "string"
@@ -4944,6 +5020,8 @@
               "number",
               "url",
               "version",
+              "currentHead",
+              "following",
               "versions",
               "checks",
               "checksPartial",
@@ -4967,6 +5045,9 @@
               },
               "id": {
                 "type": "string"
+              },
+              "recheck": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.UmV2aWV3UmVjaGVjaw"
               },
               "title": {
                 "type": "string"
@@ -4993,6 +5074,9 @@
           "checksPartial": {
             "type": "boolean"
           },
+          "currentHead": {
+            "type": "string"
+          },
           "discussion": {
             "items": {
               "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.UmV2aWV3RGlzY3Vzc2lvbg"
@@ -5004,6 +5088,12 @@
               "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.UmV2aWV3RmluZGluZw"
             },
             "type": "array"
+          },
+          "followError": {
+            "type": "string"
+          },
+          "following": {
+            "type": "boolean"
           },
           "latest": {
             "type": "string"
@@ -5056,6 +5146,8 @@
           "number",
           "url",
           "version",
+          "currentHead",
+          "following",
           "versions",
           "checks",
           "checksPartial",
@@ -6222,7 +6314,7 @@
       "name": "flame.github/update-review-work.v1",
       "kind": "command",
       "target": "installation",
-      "description": "Capture the current pull request or inspect checks for a retained revision. Alternatively record a finding or a human finding decision at an exact retained revision. A local decision does not publish a GitHub review.",
+      "description": "Capture the current pull request, inspect checks for a retained revision, record a finding or human decision, or change the follow setting. Following a pull request rechecks each new captured revision in a detached worktree. A local decision does not publish a GitHub review.",
       "input": {
         "$defs": {
           "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.RmluZGluZ0RlY2lzaW9uSW5wdXQ": {
@@ -6319,6 +6411,9 @@
               "finding": {
                 "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.UmV2aWV3RmluZGluZ0lucHV0"
               },
+              "follow": {
+                "type": "boolean"
+              },
               "number": {
                 "allOf": [
                   {
@@ -6365,6 +6460,9 @@
           },
           "finding": {
             "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.UmV2aWV3RmluZGluZ0lucHV0"
+          },
+          "follow": {
+            "type": "boolean"
           },
           "number": {
             "allOf": [
@@ -6423,6 +6521,31 @@
               "disposition",
               "reason",
               "at"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.RmluZGluZ1JlY2hlY2s": {
+            "additionalProperties": false,
+            "properties": {
+              "finding": {
+                "type": "string"
+              },
+              "status": {
+                "allOf": [
+                  {
+                    "enum": [
+                      "unchanged",
+                      "changed",
+                      "unavailable"
+                    ]
+                  }
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "finding",
+              "status"
             ],
             "type": "object"
           },
@@ -6559,6 +6682,48 @@
             ],
             "type": "object"
           },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.UmV2aWV3UmVjaGVjaw": {
+            "additionalProperties": false,
+            "properties": {
+              "checkedHead": {
+                "type": "string"
+              },
+              "completedAt": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
+              },
+              "diagnostic": {
+                "type": "string"
+              },
+              "findings": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.RmluZGluZ1JlY2hlY2s"
+                },
+                "type": "array"
+              },
+              "previousRevision": {
+                "type": "string"
+              },
+              "status": {
+                "allOf": [
+                  {
+                    "enum": [
+                      "pending",
+                      "clean",
+                      "issues",
+                      "failed"
+                    ]
+                  }
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "status",
+              "previousRevision",
+              "findings"
+            ],
+            "type": "object"
+          },
           "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.UmV2aWV3V29yaw": {
             "additionalProperties": false,
             "properties": {
@@ -6571,6 +6736,9 @@
               "checksPartial": {
                 "type": "boolean"
               },
+              "currentHead": {
+                "type": "string"
+              },
               "discussion": {
                 "items": {
                   "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.UmV2aWV3RGlzY3Vzc2lvbg"
@@ -6582,6 +6750,12 @@
                   "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.UmV2aWV3RmluZGluZw"
                 },
                 "type": "array"
+              },
+              "followError": {
+                "type": "string"
+              },
+              "following": {
+                "type": "boolean"
               },
               "latest": {
                 "type": "string"
@@ -6634,6 +6808,8 @@
               "number",
               "url",
               "version",
+              "currentHead",
+              "following",
               "versions",
               "checks",
               "checksPartial",
@@ -6657,6 +6833,9 @@
               },
               "id": {
                 "type": "string"
+              },
+              "recheck": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.UmV2aWV3UmVjaGVjaw"
               },
               "title": {
                 "type": "string"
@@ -6683,6 +6862,9 @@
           "checksPartial": {
             "type": "boolean"
           },
+          "currentHead": {
+            "type": "string"
+          },
           "discussion": {
             "items": {
               "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.UmV2aWV3RGlzY3Vzc2lvbg"
@@ -6694,6 +6876,12 @@
               "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.UmV2aWV3RmluZGluZw"
             },
             "type": "array"
+          },
+          "followError": {
+            "type": "string"
+          },
+          "following": {
+            "type": "boolean"
           },
           "latest": {
             "type": "string"
@@ -6746,6 +6934,8 @@
           "number",
           "url",
           "version",
+          "currentHead",
+          "following",
           "versions",
           "checks",
           "checksPartial",

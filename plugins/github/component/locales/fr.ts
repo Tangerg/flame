@@ -1,4 +1,18 @@
 export const fr = {
+  follow: "Suivre les nouveaux commits",
+  pauseFollow: "Suspendre le suivi",
+  following: "Les nouveaux commits de cette pull request sont suivis.",
+  stalePublish:
+    "Le commit courant de la pull request est {{sha}}. Ce brouillon appartient à la révision sélectionnée.",
+  localRecheck: "Nouvelle vérification dans l’arbre de travail",
+  "recheck.pending": "Nouvelle vérification en attente",
+  "recheck.clean": "La vérification des différences Git a réussi",
+  "recheck.issues":
+    "La vérification des différences Git a détecté des problèmes",
+  "recheck.failed": "La vérification dans l’arbre de travail a échoué",
+  "findingFile.unchanged": "Fichier inchangé",
+  "findingFile.changed": "Fichier modifié",
+  "findingFile.unavailable": "Comparaison de fichiers indisponible",
   title: "Revues de pull requests",
   open: "Ouvrir la revue",
   address: "Dépôt et pull request",

@@ -4,9 +4,11 @@ import {
   failureText,
   mutationSettlementIsUnknown,
   useTranslator,
+  watchRuntimeTopics,
   type ComponentContext,
 } from "@flame/component-sdk";
 import type { MutationPromise } from "@flame/runtime-client";
+import { compareJSONNumbers } from "@frame/sdk/json";
 import {
   Button,
   FormActions,
@@ -44,6 +46,12 @@ type Work = MethodOutputs[typeof read];
 type Change = MethodInputs[typeof update];
 type Finding = Work["findings"][number];
 type Translation = ReturnType<typeof useTranslator>;
+
+function newerWork(current: Work | undefined, observed: Work): Work {
+  return current && compareJSONNumbers(current.version, observed.version) > 0
+    ? current
+    : observed;
+}
 
 function locate(target: string): Target | undefined {
   const match =
@@ -128,6 +136,7 @@ function Review({
   }, [context]);
   const [state, setState] = useState<Work>();
   const [revision, setRevision] = useState(target.revision);
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [readError, setReadError] = useState<string>();
   const [writeError, setWriteError] = useState<string>();
   const [message, setMessage] = useState<string>();
@@ -135,27 +144,51 @@ function Review({
   const [loading, setLoading] = useState(true);
   const [recover, setRecover] = useState<() => void>();
   const selected = state?.selected;
+  const recheck = selected?.recheck;
+  const stale = selected && selected.headSha !== state.currentHead;
   useEffect(() => {
-    const reading = new AbortController();
-    setReadError(undefined);
-    setLoading(true);
-    void operations.query(read, { ...target, revision }, reading.signal).then(
-      (result) => {
-        if (!reading.signal.aborted) {
-          setState(result);
+    const watching = new AbortController();
+    let reading: AbortController | undefined;
+    let pinned = revision;
+    const refresh = () => {
+      reading?.abort();
+      reading = new AbortController();
+      const signal = reading.signal;
+      setReadError(undefined);
+      setLoading(true);
+      void operations.query(read, { ...target, revision: pinned }, signal).then(
+        (result) => {
+          if (signal.aborted) return;
+          pinned ??= result.selected?.id;
+          setState((current) => newerWork(current, result));
           setLoading(false);
-        }
-      },
-      (error) => {
-        if (!reading.signal.aborted) {
-          setState(undefined);
+        },
+        (error) => {
+          if (signal.aborted) return;
           setReadError(failureText(error));
           setLoading(false);
-        }
-      },
-    );
-    return () => reading.abort();
-  }, [operations, revision, target]);
+        },
+      );
+    };
+    void context
+      .track(() =>
+        watchRuntimeTopics(
+          context.runtime,
+          { topics: ["plugins.dataChanged"] },
+          AbortSignal.any([watching.signal, context.signal]),
+          refresh,
+        ),
+      )
+      .catch((error) => {
+        if (watching.signal.aborted) return;
+        if (reading) setReadError(failureText(error));
+        else refresh();
+      });
+    return () => {
+      watching.abort();
+      reading?.abort();
+    };
+  }, [context, operations, revision, target]);
 
   async function apply<T>(
     command: MutationPromise<T>,
@@ -176,7 +209,9 @@ function Review({
       setBusy(false);
     }
   }
-  const change = (input: Pick<Change, "finding" | "decision" | "revision">) => {
+  const change = (
+    input: Pick<Change, "finding" | "decision" | "follow" | "revision">,
+  ) => {
     if (!state || busy || loading || recover) return;
     void apply(
       operations.command(update, {
@@ -185,7 +220,7 @@ function Review({
         expectedVersion: state.version,
       }),
       (value) => {
-        setState(value);
+        setState((current) => newerWork(current, value));
         setRevision(value.selected?.id);
       },
     );
@@ -236,12 +271,22 @@ function Review({
               {t("inspect")}
             </Button>
             {selected && (
-              <Button
-                disabled={busy || loading || !!recover}
-                onClick={() => change({ revision: selected.id })}
-              >
-                {t("checksRefresh")}
-              </Button>
+              <>
+                <Button
+                  disabled={busy || loading || !!recover}
+                  onClick={() => change({ revision: selected.id })}
+                >
+                  {t("checksRefresh")}
+                </Button>
+                <Button
+                  disabled={busy || loading || !!recover}
+                  onClick={() =>
+                    change({ revision: selected.id, follow: !state.following })
+                  }
+                >
+                  {t(state.following ? "pauseFollow" : "follow")}
+                </Button>
+              </>
             )}
             {recover && (
               <Button disabled={busy} onClick={recover}>
@@ -250,6 +295,8 @@ function Review({
             )}
             {link && <a href={link}>{t("revisionLink")}</a>}
           </FormActions>
+          {state.following && <Metadata>{t("following")}</Metadata>}
+          {state.followError && <p role="alert">{state.followError}</p>}
           {selected && (
             <>
               <Select
@@ -262,6 +309,31 @@ function Review({
                   label: `${baseSha.slice(0, 12)} → ${headSha.slice(0, 12)}`,
                 }))}
               />
+              {stale && (
+                <p role="status">
+                  {t("stalePublish", { sha: state.currentHead.slice(0, 12) })}
+                </p>
+              )}
+              {recheck && (
+                <RecordGroup aria-label={t("localRecheck")}>
+                  <Metadata>
+                    {t("recheck." + recheck.status)}
+                    {recheck.checkedHead && (
+                      <>
+                        {" "}
+                        · <code>{recheck.checkedHead}</code>
+                      </>
+                    )}
+                  </Metadata>
+                  {recheck.diagnostic && (
+                    <RecordBody>
+                      <pre className="break-words whitespace-pre-wrap">
+                        {recheck.diagnostic}
+                      </pre>
+                    </RecordBody>
+                  )}
+                </RecordGroup>
+              )}
               <RecordGroup aria-label={t("checks")}>
                 {state.checks.map((check) => (
                   <RecordBody key={String(check.id)}>
@@ -311,11 +383,18 @@ function Review({
               {state.needsRecheck.length > 0 && (
                 <RecordGroup aria-label={t("recheck")}>
                   <Metadata>{t("recheck")}</Metadata>
-                  {state.needsRecheck.map((finding) => (
-                    <RecordBody key={finding.id}>
-                      {finding.path}:{String(finding.line)} · {finding.summary}
-                    </RecordBody>
-                  ))}
+                  {state.needsRecheck.map((finding) => {
+                    const result = recheck?.findings.find(
+                      (value) => value.finding === finding.id,
+                    );
+                    return (
+                      <RecordBody key={finding.id}>
+                        {finding.path}:{String(finding.line)} ·{" "}
+                        {finding.summary}
+                        {result && <> · {t("findingFile." + result.status)}</>}
+                      </RecordBody>
+                    );
+                  })}
                 </RecordGroup>
               )}
               {!recover &&
@@ -331,8 +410,17 @@ function Review({
               <PublishForm
                 key={selected.id}
                 t={t}
+                body={drafts[selected.id] ?? ""}
+                edit={(body) =>
+                  setDrafts((current) => ({ ...current, [selected.id]: body }))
+                }
                 disabled={
-                  busy || loading || !!recover || pendingPublications.length > 0
+                  busy ||
+                  loading ||
+                  !!readError ||
+                  !!stale ||
+                  !!recover ||
+                  pendingPublications.length > 0
                 }
                 publishReview={(body) => {
                   void apply(
@@ -343,8 +431,14 @@ function Review({
                       event: "COMMENT",
                       body,
                     }),
-                    (receipt) =>
-                      setMessage(t("published", { id: String(receipt.id) })),
+                    (receipt) => {
+                      setMessage(t("published", { id: String(receipt.id) }));
+                      setDrafts((current) =>
+                        current[selected.id]?.trim() === body
+                          ? { ...current, [selected.id]: "" }
+                          : current,
+                      );
+                    },
                   );
                 }}
               />
@@ -505,26 +599,29 @@ function FindingRow({
 
 function PublishForm({
   t,
+  body,
+  edit,
   disabled,
   publishReview,
 }: {
   t: Translation;
+  body: string;
+  edit(body: string): void;
   disabled: boolean;
   publishReview(body: string): void;
 }) {
-  const [body, setBody] = useState("");
   return (
     <form
       onSubmit={(event) => {
         event.preventDefault();
-        if (body.trim()) publishReview(body.trim());
+        if (!disabled && body.trim()) publishReview(body.trim());
       }}
     >
       <FormField label={t("publishComment")}>
         <TextArea
           autosize
           value={body}
-          onChange={(event) => setBody(event.target.value)}
+          onChange={(event) => edit(event.target.value)}
         />
       </FormField>
       <FormActions label={t("publish")}>

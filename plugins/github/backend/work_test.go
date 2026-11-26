@@ -13,6 +13,7 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
@@ -25,6 +26,7 @@ import (
 
 const reviewFixture = "FLAME_TEST_GITHUB_REVIEW_URL"
 const reviewFixtureDatabase = "FLAME_TEST_GITHUB_REVIEW_DATABASE"
+const reviewFixtureGitOrigin = "FLAME_TEST_GITHUB_REVIEW_GIT_ORIGIN"
 
 func TestMain(tests *testing.M) {
 	if endpoint := os.Getenv(reviewFixture); endpoint != "" {
@@ -61,21 +63,44 @@ func runReviewFixture(endpoint, database string) error {
 	if err != nil {
 		return err
 	}
-	server, err := newServer(connector)
+	if origin := os.Getenv(reviewFixtureGitOrigin); origin != "" {
+		connector.reviewGit.origin = origin
+		background, err := connector.reviewBackground(ctx, 25*time.Millisecond, func(ctx context.Context) error {
+			request, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint+"/review-notice", nil)
+			if err != nil {
+				return err
+			}
+			response, err := http.DefaultClient.Do(request)
+			if err != nil {
+				return err
+			}
+			return response.Body.Close()
+		}, func() error { return nil })
+		if err != nil {
+			return err
+		}
+		defer background.Close()
+		if err := background.Start(); err != nil {
+			return err
+		}
+	}
+	server, operations, err := newServer(connector)
 	if err != nil {
 		return err
 	}
+	defer operations.Close()
 	return server.Run(ctx, &sdk.StdioTransport{})
 }
 
-func reviewProcess(t *testing.T, address, database string) *sdk.ClientSession {
+func reviewProcess(t *testing.T, address, database, gitOrigin string) (*sdk.ClientSession, *exec.Cmd) {
 	t.Helper()
 	binary, err := os.Executable()
 	if err != nil {
 		t.Fatal(err)
 	}
 	command := exec.Command(binary)
-	command.Env = []string{reviewFixture + "=" + address, reviewFixtureDatabase + "=" + database}
+	command.Env = []string{reviewFixture + "=" + address, reviewFixtureDatabase + "=" + database,
+		reviewFixtureGitOrigin + "=" + gitOrigin, "PATH=" + os.Getenv("PATH")}
 	client, err := pluginmcp.NewProcessClient()
 	if err != nil {
 		t.Fatal(err)
@@ -85,39 +110,47 @@ func reviewProcess(t *testing.T, address, database string) *sdk.ClientSession {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = session.Close() })
-	return session
+	return session, command
 }
 
 type reviewFixtureSource struct {
-	nextHead    atomic.Bool
+	base        string
+	heads       [3]string
+	headIndex   atomic.Int32
 	reviewCount atomic.Int32
+	checkReads  atomic.Int32
+	polled      chan int
 }
 
 func (s *reviewFixtureSource) ServeHTTP(w http.ResponseWriter, request *http.Request) {
-	base, before, after := strings.Repeat("1", 40), strings.Repeat("a", 40), strings.Repeat("b", 40)
+	current := s.headIndex.Load()
+	head, before, after := s.heads[current], s.heads[0], s.heads[1]
 	w.Header().Set("Content-Type", "application/json")
 	switch request.URL.Path {
 	case "/repos/owner/repo/pulls/42", "/repos/owner/repo/pulls/43":
-		number, head := 42, before
+		number := 42
 		if strings.HasSuffix(request.URL.Path, "/43") {
-			number, head = 43, strings.Repeat("c", 40)
-		} else if s.nextHead.Load() {
-			head = after
+			number, head = 43, s.heads[2]
 		}
-		fmt.Fprintf(w, `{"number":%d,"title":"Review %d","html_url":"https://github.com/owner/repo/pull/%d","state":"open","draft":false,"head":{"ref":"topic","sha":%q,"repo":{"full_name":"owner/repo"}},"base":{"ref":"main","sha":%q,"repo":{"full_name":"owner/repo"}},"updated_at":"2026-11-20T00:00:00Z","additions":1,"deletions":0,"changed_files":1}`, number, number, number, head, base)
+		fmt.Fprintf(w, `{"number":%d,"title":"Review %d","html_url":"https://github.com/owner/repo/pull/%d","state":"open","draft":false,"head":{"ref":"topic","sha":%q,"repo":{"full_name":"owner/repo"}},"base":{"ref":"main","sha":%q,"repo":{"full_name":"owner/repo"}},"updated_at":"2026-11-20T00:00:00Z","additions":1,"deletions":0,"changed_files":1}`, number, number, number, head, s.base)
+		select {
+		case s.polled <- number:
+		default:
+		}
 	case "/repos/owner/repo/commits/" + before + "/check-runs":
-		if s.nextHead.Load() {
+		if current > 0 {
 			fmt.Fprintf(w, `{"total_count":1,"check_runs":[%s]}`, reviewCheckJSON(10, before, "completed", "success"))
 		} else {
 			fmt.Fprint(w, `{"total_count":0,"check_runs":[]}`)
 		}
 	case "/repos/owner/repo/commits/" + after + "/check-runs":
+		s.checkReads.Add(1)
 		fmt.Fprintf(w, `{"total_count":2,"check_runs":[%s,%s]}`,
 			reviewCheckJSON(10, before, "completed", "success"), reviewCheckJSON(11, after, "in_progress", ""))
-	case "/repos/owner/repo/commits/" + strings.Repeat("c", 40) + "/check-runs":
+	case "/repos/owner/repo/commits/" + s.heads[2] + "/check-runs":
 		fmt.Fprint(w, `{"total_count":0,"check_runs":[]}`)
 	case "/repos/owner/repo/issues/42/comments":
-		if s.nextHead.Load() {
+		if current > 0 {
 			fmt.Fprint(w, `[{"id":30,"html_url":"https://github.com/owner/repo/pull/42#issuecomment-30","body":"Please recheck on the new commit.","user":{"login":"reviewer"},"created_at":"2026-11-20T00:00:00Z","updated_at":"2026-11-20T00:00:00Z"}]`)
 		} else {
 			fmt.Fprint(w, `[]`)
@@ -129,16 +162,16 @@ func (s *reviewFixtureSource) ServeHTTP(w http.ResponseWriter, request *http.Req
 			http.Error(w, "expected review POST", http.StatusMethodNotAllowed)
 			return
 		}
+		s.reviewCount.Add(1)
 		var body struct {
 			Commit string `json:"commit_id"`
 		}
-		if json.NewDecoder(request.Body).Decode(&body) != nil || body.Commit != after {
+		if json.NewDecoder(request.Body).Decode(&body) != nil || (body.Commit != after && body.Commit != s.heads[2]) {
 			http.Error(w, "expected exact reviewed SHA", http.StatusBadRequest)
 			return
 		}
-		s.reviewCount.Add(1)
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprintf(w, `{"id":40,"html_url":"https://github.com/owner/repo/pull/42#pullrequestreview-40","body":"Checked this revision.","state":"COMMENTED","commit_id":%q,"submitted_at":"2026-11-20T00:00:00Z"}`, after)
+		fmt.Fprintf(w, `{"id":40,"html_url":"https://github.com/owner/repo/pull/42#pullrequestreview-40","body":"Checked this revision.","state":"COMMENTED","commit_id":%q,"submitted_at":"2026-11-20T00:00:00Z"}`, body.Commit)
 	default:
 		http.NotFound(w, request)
 	}
@@ -154,6 +187,15 @@ func reviewCheckJSON(id int, head, status, conclusion string) string {
 
 func reviewRequest[P, R any](t *testing.T, session *sdk.ClientSession, contracts rpc.Contracts, method *pluginmcp.Method[P, R], key string, request P) R {
 	t.Helper()
+	result, err := reviewResult(t, session, contracts, method, key, request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return result
+}
+
+func reviewResult[P, R any](t *testing.T, session *sdk.ClientSession, contracts rpc.Contracts, method *pluginmcp.Method[P, R], key string, request P) (R, error) {
+	t.Helper()
 	ctx, err := pluginmcp.WithInvocation(t.Context(), framecall.Invocation{ID: "review-" + key, Origin: extension.Human, Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: "github-owner"}})
 	if err != nil {
 		t.Fatal(err)
@@ -166,23 +208,24 @@ func reviewRequest[P, R any](t *testing.T, session *sdk.ClientSession, contracts
 	if method.Descriptor().Kind == "command" {
 		command = pluginmcp.CommandID("review-" + key)
 	}
+	var result R
 	response, err := githubBinding(t, session, contracts, method.Name()).Invoke(ctx, command, input)
 	if err != nil {
-		t.Fatal(err)
+		return result, err
 	}
-	var result R
-	if err := response.Decode(&result); err != nil {
-		t.Fatal(err)
-	}
-	return result
+	err = response.Decode(&result)
+	return result, err
 }
 
 func TestReviewWorkKeepsCommitEvidenceAndDiscussionAcrossRestart(t *testing.T) {
-	source := &reviewFixtureSource{}
+	source := &reviewFixtureSource{
+		base:  strings.Repeat("1", 40),
+		heads: [3]string{strings.Repeat("a", 40), strings.Repeat("b", 40), strings.Repeat("c", 40)},
+	}
 	server := httptest.NewServer(source)
 	t.Cleanup(server.Close)
 	database := filepath.Join(t.TempDir(), "github.db")
-	session := reviewProcess(t, server.URL, database)
+	session, _ := reviewProcess(t, server.URL, database, "")
 	contracts, err := rpc.NewContracts()
 	if err != nil {
 		t.Fatal(err)
@@ -210,7 +253,7 @@ func TestReviewWorkKeepsCommitEvidenceAndDiscussionAcrossRestart(t *testing.T) {
 			Decision: &wire.FindingDecisionInput{Finding: work.Findings[index].ID, Disposition: disposition, Reason: "Inspected on revision A"},
 		})
 	}
-	source.nextHead.Store(true)
+	source.headIndex.Store(1)
 	latest := first
 	latest.Revision = ""
 	work = observe(latest, work.Version, "inspect-b")
@@ -240,7 +283,7 @@ func TestReviewWorkKeepsCommitEvidenceAndDiscussionAcrossRestart(t *testing.T) {
 	if err := session.Close(); err != nil {
 		t.Fatal(err)
 	}
-	session = reviewProcess(t, server.URL, database)
+	session, _ = reviewProcess(t, server.URL, database, "")
 	original, err := framevalue.EncodeJSON(publication)
 	if err != nil {
 		t.Fatal(err)

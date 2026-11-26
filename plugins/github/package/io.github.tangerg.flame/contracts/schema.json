@@ -2780,6 +2780,9 @@
         "finding": {
           "$ref": "#/$defs/ReviewFindingInput"
         },
+        "follow": {
+          "type": "boolean"
+        },
         "number": {
           "allOf": [
             {
@@ -2870,6 +2873,31 @@
         "disposition",
         "reason",
         "at"
+      ],
+      "type": "object"
+    },
+    "ReviewWorkV1OutputWireFindingRecheck": {
+      "additionalProperties": false,
+      "properties": {
+        "finding": {
+          "type": "string"
+        },
+        "status": {
+          "allOf": [
+            {
+              "enum": [
+                "unchanged",
+                "changed",
+                "unavailable"
+              ]
+            }
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "finding",
+        "status"
       ],
       "type": "object"
     },
@@ -3006,6 +3034,48 @@
       ],
       "type": "object"
     },
+    "ReviewWorkV1OutputWireReviewRecheck": {
+      "additionalProperties": false,
+      "properties": {
+        "checkedHead": {
+          "type": "string"
+        },
+        "completedAt": {
+          "$ref": "#/$defs/ReviewWorkV1OutputInstantTimestamp"
+        },
+        "diagnostic": {
+          "type": "string"
+        },
+        "findings": {
+          "items": {
+            "$ref": "#/$defs/ReviewWorkV1OutputWireFindingRecheck"
+          },
+          "type": "array"
+        },
+        "previousRevision": {
+          "type": "string"
+        },
+        "status": {
+          "allOf": [
+            {
+              "enum": [
+                "pending",
+                "clean",
+                "issues",
+                "failed"
+              ]
+            }
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "status",
+        "previousRevision",
+        "findings"
+      ],
+      "type": "object"
+    },
     "ReviewWorkV1OutputWireReviewVersion": {
       "additionalProperties": false,
       "properties": {
@@ -3020,6 +3090,9 @@
         },
         "id": {
           "type": "string"
+        },
+        "recheck": {
+          "$ref": "#/$defs/ReviewWorkV1OutputWireReviewRecheck"
         },
         "title": {
           "type": "string"
@@ -3045,6 +3118,9 @@
         "checksPartial": {
           "type": "boolean"
         },
+        "currentHead": {
+          "type": "string"
+        },
         "discussion": {
           "items": {
             "$ref": "#/$defs/ReviewWorkV1OutputWireReviewDiscussion"
@@ -3056,6 +3132,12 @@
             "$ref": "#/$defs/ReviewWorkV1OutputWireReviewFinding"
           },
           "type": "array"
+        },
+        "followError": {
+          "type": "string"
+        },
+        "following": {
+          "type": "boolean"
         },
         "latest": {
           "type": "string"
@@ -3108,6 +3190,8 @@
         "number",
         "url",
         "version",
+        "currentHead",
+        "following",
         "versions",
         "checks",
         "checksPartial",
@@ -3796,6 +3880,31 @@
       ],
       "type": "object"
     },
+    "UpdateReviewWorkV1OutputWireFindingRecheck": {
+      "additionalProperties": false,
+      "properties": {
+        "finding": {
+          "type": "string"
+        },
+        "status": {
+          "allOf": [
+            {
+              "enum": [
+                "unchanged",
+                "changed",
+                "unavailable"
+              ]
+            }
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "finding",
+        "status"
+      ],
+      "type": "object"
+    },
     "UpdateReviewWorkV1OutputWireReviewCheck": {
       "additionalProperties": false,
       "properties": {
@@ -3929,6 +4038,48 @@
       ],
       "type": "object"
     },
+    "UpdateReviewWorkV1OutputWireReviewRecheck": {
+      "additionalProperties": false,
+      "properties": {
+        "checkedHead": {
+          "type": "string"
+        },
+        "completedAt": {
+          "$ref": "#/$defs/UpdateReviewWorkV1OutputInstantTimestamp"
+        },
+        "diagnostic": {
+          "type": "string"
+        },
+        "findings": {
+          "items": {
+            "$ref": "#/$defs/UpdateReviewWorkV1OutputWireFindingRecheck"
+          },
+          "type": "array"
+        },
+        "previousRevision": {
+          "type": "string"
+        },
+        "status": {
+          "allOf": [
+            {
+              "enum": [
+                "pending",
+                "clean",
+                "issues",
+                "failed"
+              ]
+            }
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "status",
+        "previousRevision",
+        "findings"
+      ],
+      "type": "object"
+    },
     "UpdateReviewWorkV1OutputWireReviewVersion": {
       "additionalProperties": false,
       "properties": {
@@ -3943,6 +4094,9 @@
         },
         "id": {
           "type": "string"
+        },
+        "recheck": {
+          "$ref": "#/$defs/UpdateReviewWorkV1OutputWireReviewRecheck"
         },
         "title": {
           "type": "string"
@@ -3968,6 +4122,9 @@
         "checksPartial": {
           "type": "boolean"
         },
+        "currentHead": {
+          "type": "string"
+        },
         "discussion": {
           "items": {
             "$ref": "#/$defs/UpdateReviewWorkV1OutputWireReviewDiscussion"
@@ -3979,6 +4136,12 @@
             "$ref": "#/$defs/UpdateReviewWorkV1OutputWireReviewFinding"
           },
           "type": "array"
+        },
+        "followError": {
+          "type": "string"
+        },
+        "following": {
+          "type": "boolean"
         },
         "latest": {
           "type": "string"
@@ -4031,6 +4194,8 @@
         "number",
         "url",
         "version",
+        "currentHead",
+        "following",
         "versions",
         "checks",
         "checksPartial",

@@ -29,7 +29,7 @@ Generated from the feature's Go-owned method contracts.
 | `flame.github/update-issue-comment.v1` | command | installation | Replace one issue/PR discussion comment's body by its inspected comment ID. Requires the user's intent and a configured token. Recovery reads the original receipt; an unknown outcome never permits resubmission. |
 | `flame.github/update-issue.v1` | command | installation | Patch only supplied issue fields. Empty body clears it; empty labels/assignees clear their sets. Omitted fields are preserved. GitHub provides no atomic revision condition for these edits. Requires the user's intent and a configured token. Recovery reads the original receipt; an unknown outcome never permits resubmission. |
 | `flame.github/update-pull-request-comment.v1` | command | installation | Replace an inline PR review comment's body by its inspected comment ID. Requires the user's intent and a configured token. Recovery reads the original receipt; an unknown outcome never permits resubmission. |
-| `flame.github/update-review-work.v1` | command | installation | Capture the current pull request or inspect checks for a retained revision. Alternatively record a finding or a human finding decision at an exact retained revision. A local decision does not publish a GitHub review. |
+| `flame.github/update-review-work.v1` | command | installation | Capture the current pull request, inspect checks for a retained revision, record a finding or human decision, or change the follow setting. Following a pull request rechecks each new captured revision in a detached worktree. A local decision does not publish a GitHub review. |
 
 Capability `flame.github.v1` exposes the declared methods. Required backend protocol: `io.github.tangerg.frame/portable/1`.
 

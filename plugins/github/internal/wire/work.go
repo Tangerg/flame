@@ -36,6 +36,7 @@ type ReviewWorkChange struct {
 	ExpectedVersion int64                 `json:"expectedVersion" jsonschema:"minimum=0"`
 	Finding         *ReviewFindingInput   `json:"finding,omitzero"`
 	Decision        *FindingDecisionInput `json:"decision,omitzero"`
+	Follow          *bool                 `json:"follow,omitzero"`
 }
 
 type FindingDecision struct {
@@ -51,11 +52,51 @@ type ReviewFinding struct {
 }
 
 type ReviewVersion struct {
-	ID             string `json:"id"`
-	BaseSHA        string `json:"baseSha"`
-	HeadSHA        string `json:"headSha"`
-	HeadRepository string `json:"headRepository,omitempty"`
-	Title          string `json:"title"`
+	ID             string         `json:"id"`
+	BaseSHA        string         `json:"baseSha"`
+	HeadSHA        string         `json:"headSha"`
+	HeadRepository string         `json:"headRepository,omitempty"`
+	Title          string         `json:"title"`
+	Recheck        *ReviewRecheck `json:"recheck,omitzero"`
+}
+
+type ReviewRecheckStatus string
+
+const (
+	ReviewRecheckPending ReviewRecheckStatus = "pending"
+	ReviewRecheckClean   ReviewRecheckStatus = "clean"
+	ReviewRecheckIssues  ReviewRecheckStatus = "issues"
+	ReviewRecheckFailed  ReviewRecheckStatus = "failed"
+)
+
+func (ReviewRecheckStatus) JSONSchemaEnum() []string {
+	return []string{string(ReviewRecheckPending), string(ReviewRecheckClean), string(ReviewRecheckIssues), string(ReviewRecheckFailed)}
+}
+
+type FindingRecheckStatus string
+
+const (
+	FindingFileUnchanged   FindingRecheckStatus = "unchanged"
+	FindingFileChanged     FindingRecheckStatus = "changed"
+	FindingFileUnavailable FindingRecheckStatus = "unavailable"
+)
+
+func (FindingRecheckStatus) JSONSchemaEnum() []string {
+	return []string{string(FindingFileUnchanged), string(FindingFileChanged), string(FindingFileUnavailable)}
+}
+
+type FindingRecheck struct {
+	Finding string               `json:"finding"`
+	Status  FindingRecheckStatus `json:"status"`
+}
+
+type ReviewRecheck struct {
+	Status           ReviewRecheckStatus `json:"status"`
+	PreviousRevision string              `json:"previousRevision"`
+	CheckedHead      string              `json:"checkedHead,omitempty"`
+	CompletedAt      *instant.Timestamp  `json:"completedAt,omitzero"`
+	Diagnostic       string              `json:"diagnostic,omitempty"`
+	Findings         []FindingRecheck    `json:"findings"`
 }
 
 type ReviewCheck struct {
@@ -77,6 +118,9 @@ type ReviewWork struct {
 	URL           string             `json:"url"`
 	Version       int64              `json:"version"`
 	Latest        string             `json:"latest,omitempty"`
+	CurrentHead   string             `json:"currentHead"`
+	Following     bool               `json:"following"`
+	FollowError   string             `json:"followError,omitempty"`
 	Selected      *ReviewVersion     `json:"selected,omitzero"`
 	Versions      []ReviewVersion    `json:"versions"`
 	Checks        []ReviewCheck      `json:"checks"`

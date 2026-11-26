@@ -33,10 +33,11 @@ func run(ctx context.Context, data string) (err error) {
 	if err != nil {
 		return err
 	}
-	server, err := newServer(connector)
+	server, operations, err := newServer(connector)
 	if err != nil {
 		return err
 	}
+	defer func() { err = errors.Join(err, operations.Close()) }()
 	return server.Run(ctx, &sdk.StdioTransport{})
 }
 
