@@ -1,13 +1,6 @@
-import type { CallPluginRequest } from "@flame/runtime-client/wire";
+import type { CallPluginRequest, RequestMeta } from "@flame/runtime-client/wire";
 import type { WireMethodName } from "@flame/runtime-client/methods";
-import {
-  captureRequestMeta,
-  checkRequest,
-  requestRequiresIdempotency,
-  pluginDeliveryMethod,
-  isPluginDeliveryMethod,
-} from "./request";
-import type { RequestMeta } from "./generated/wire.generated";
+import { checkRequest, pluginDeliveryMethod } from "./request";
 import { canonicalJSON, cloneJSON } from "@frame/sdk/json";
 import {
   type CapturedPluginCommand,
@@ -15,15 +8,13 @@ import {
   type JournalEntry,
   MAX_IDENTITY_LENGTH,
   type PluginCommandInput,
-  captureInstalledRoute,
-  commandFingerprintInput,
-  fingerprint,
-  fingerprintFields,
+  captureJournalCommand,
+  decodeJournalEntry,
+  fingerprintCommand,
+  isSteerCommand,
   matchesCommand,
-  matchesPluginIntent,
-  prepareCommand,
   mutationIdentity,
-  validEntry,
+  pluginRouteForIntent,
   validSteerItem,
   validText,
 } from "./mutationJournalEntry";
@@ -69,8 +60,7 @@ export interface DurableMutationJournal {
     claimed: (idempotencyKey: string) => boolean,
     requestMeta: RequestMeta | null,
   ): CapturedPluginCommand;
-  pendingCommands(): DurableMutationIdentity[];
-  pendingPluginCommands(): DurableMutationIdentity[];
+  pendingEntries(): JournalEntry[];
   validatePluginCommand(identity: DurableMutationIdentity, request: CallPluginRequest): void;
   reserve(
     method: WireMethodName,
@@ -152,32 +142,27 @@ function removeValue(storage: MutationJournalStorage, key: string): void {
   }
 }
 
+function readEntry(storage: MutationJournalStorage, key: string): JournalEntry | undefined {
+  const value = readValue(storage, key);
+  if (value === undefined) return undefined;
+  const entry = decodeJournalEntry(value);
+  if (!entry || entryKey(entry.idempotencyKey) !== key)
+    throw storageError(`Runtime mutation journal entry is corrupted: ${key}`);
+  return entry;
+}
+
 function loadEntries(storage: MutationJournalStorage): JournalEntry[] {
   return readKeys(storage)
     .filter((key) => key.startsWith(ENTRY_PREFIX))
     .flatMap((key) => {
-      const value = readValue(storage, key);
-      if (value === undefined) return [];
-      if (!validEntry(value) || entryKey(value.idempotencyKey) !== key) {
-        throw storageError(`Runtime mutation journal entry is corrupted: ${key}`);
-      }
-      return [value];
+      const entry = readEntry(storage, key);
+      return entry === undefined ? [] : [entry];
     });
 }
 
 export function openDurableMutationJournal(
   options: DurableMutationJournalOptions,
 ): DurableMutationJournal {
-  const readEntry = (idempotencyKey: string): JournalEntry | undefined => {
-    const key = entryKey(idempotencyKey);
-    const value = readValue(options.storage, key);
-    if (value === undefined) return undefined;
-    if (!validEntry(value) || entryKey(value.idempotencyKey) !== key) {
-      throw storageError(`Runtime mutation journal entry is corrupted: ${key}`);
-    }
-    return value;
-  };
-
   const persistEntry = (entry: JournalEntry) =>
     persistValue(options.storage, entryKey(entry.idempotencyKey), entry);
 
@@ -191,7 +176,7 @@ export function openDurableMutationJournal(
     removeValue(options.storage, entryKey(entry.idempotencyKey));
 
   const readReservedEntry = (identity: DurableMutationIdentity): JournalEntry | undefined => {
-    const persisted = readEntry(identity.idempotencyKey);
+    const persisted = readEntry(options.storage, entryKey(identity.idempotencyKey));
     if (persisted && canonicalJSON(mutationIdentity(persisted)) !== canonicalJSON(identity)) {
       throw new MutationJournalOwnershipError(
         "Runtime mutation identity no longer names the reserved command",
@@ -239,37 +224,21 @@ export function openDurableMutationJournal(
     scope: MutationJournalScope,
     idempotencyKey: string,
     requestMeta: RequestMeta | null,
-    installed?: { intent: string | null; route: Omit<CallPluginRequest, "input"> },
+    intent: string | null = null,
   ) => {
-    options.admitNewCommand(method, params, requestMeta);
     const createdAt = options.now();
     const salt = crypto.randomUUID();
+    const command = captureJournalCommand(method, params, salt, intent);
+    options.admitNewCommand(method, params, requestMeta);
     return reserveEntry({
-      method,
       salt,
       namespace: scope.namespace,
-      fingerprint: fingerprint(
-        fingerprintFields(
-          salt,
-          commandFingerprintInput(method, params, requestMeta, installed !== undefined),
-        ),
-      ),
+      fingerprint: fingerprintCommand(salt, method, params, requestMeta),
       idempotencyKey,
       createdAt,
       expiresAt: createdAt + scope.retentionSeconds * MILLISECONDS_PER_SECOND,
-      ...(installed === undefined
-        ? {}
-        : {
-            installed: {
-              intentFingerprint:
-                installed.intent === null
-                  ? null
-                  : fingerprint(fingerprintFields(salt, "plugins.call", installed.intent)),
-              route: captureInstalledRoute(installed.route),
-            },
-          }),
-      command: prepareCommand(method, params, requestMeta),
-      requestMeta: captureRequestMeta(requestMeta),
+      command,
+      requestMeta,
     });
   };
 
@@ -278,26 +247,23 @@ export function openDurableMutationJournal(
       if (!validText(intent, MAX_IDENTITY_LENGTH))
         throw new MutationJournalError("plugin command intent is invalid");
       const entry = readReservedEntry(identity);
-      return entry !== undefined && matchesPluginIntent(entry, intent);
+      return entry !== undefined && pluginRouteForIntent(entry, intent) !== undefined;
     },
     findPluginCommand(intent, input, claimed) {
       if (!validText(intent, MAX_IDENTITY_LENGTH))
         throw new MutationJournalError("plugin command intent is invalid");
-      const matches = loadEntries(options.storage).filter((entry) =>
-        matchesPluginIntent(entry, intent),
-      );
+      const matches = loadEntries(options.storage).flatMap((entry) => {
+        const route = pluginRouteForIntent(entry, intent);
+        return route === undefined ? [] : [{ entry, route }];
+      });
       if (matches.length > 1)
         throw new MutationJournalOwnershipError(
           "plugin command intent names multiple unresolved commands",
         );
-      const entry = matches[0];
-      if (!entry) return undefined;
-      const route = entry.installed!.route;
-      const request = checkRequest(
-        "plugins.call",
-        cloneJSON({ ...route, ...input }),
-        entry.requestMeta,
-      );
+      const match = matches[0];
+      if (!match) return undefined;
+      const { entry, route } = match;
+      const request = checkRequest("plugins.call", cloneJSON({ ...route, ...input }));
       if (!matchesCommand(entry, pluginDeliveryMethod(request), request, entry.requestMeta))
         throw new MutationJournalOwnershipError(
           "plugin command intent requires its original contract and input",
@@ -309,37 +275,23 @@ export function openDurableMutationJournal(
       return { identity: mutationIdentity(entry), request };
     },
     stagePluginCommand(intent, request, claimed, requestMeta) {
-      request = checkRequest("plugins.call", cloneJSON(request), requestMeta);
+      request = checkRequest("plugins.call", cloneJSON(request));
       const original = journal.findPluginCommand(intent, request, claimed);
       if (original) return original;
       const method = pluginDeliveryMethod(request);
-      checkRequest(method, request, requestMeta);
-      if (!requestRequiresIdempotency(method, request))
-        throw new MutationJournalError("plugin command requires a command operation");
       const scope = currentScope();
       if (loadEntries(options.storage).length >= MAX_ENTRIES)
         throw new MutationJournalCapacityError("Runtime mutation journal capacity is exhausted");
-      const { input: _, ...route } = request;
-      const entry = createEntry(method, request, scope, crypto.randomUUID(), requestMeta, {
-        intent,
-        route,
-      });
+      const entry = createEntry(method, request, scope, crypto.randomUUID(), requestMeta, intent);
       return { identity: mutationIdentity(entry), request };
     },
-    pendingCommands() {
-      return loadEntries(options.storage)
-        .filter((entry) => entry.command !== null)
-        .map(mutationIdentity);
-    },
-    pendingPluginCommands() {
-      return loadEntries(options.storage)
-        .filter((entry) => isPluginDeliveryMethod(entry.method) && entry.installed !== undefined)
-        .map(mutationIdentity);
+    pendingEntries() {
+      return loadEntries(options.storage);
     },
     validatePluginCommand(identity, request) {
       validateIdentity(identity, currentScope());
       readReservedEntry(identity);
-      if (!matchesCommand(identity, identity.method, request, identity.requestMeta)) {
+      if (!matchesCommand(identity, pluginDeliveryMethod(request), request, identity.requestMeta)) {
         throw new MutationJournalOwnershipError(
           "original plugin command differs from retained identity",
         );
@@ -353,7 +305,7 @@ export function openDurableMutationJournal(
       // Neither expiry nor replacement of the serving store settles their outcome.
       const entries = loadEntries(options.storage);
       const matches = (entry: JournalEntry) =>
-        (entry.installed === undefined || entry.installed.intentFingerprint === null) &&
+        (entry.command.kind !== "plugin" || entry.command.intentFingerprint === null) &&
         matchesCommand(entry, method, params, requestMeta);
       const preferred =
         preferredKey === undefined
@@ -378,19 +330,12 @@ export function openDurableMutationJournal(
         if (entries.length >= MAX_ENTRIES) {
           throw new MutationJournalCapacityError("Runtime mutation journal capacity is exhausted");
         }
-        const installed = isPluginDeliveryMethod(method)
-          ? (() => {
-              const { input: _, ...route } = checkRequest(method, cloneJSON(params), requestMeta);
-              return { intent: null, route };
-            })()
-          : undefined;
         entry = createEntry(
           method,
           params,
           scope,
           preferredKey ?? crypto.randomUUID(),
           requestMeta,
-          installed,
         );
       }
       return mutationIdentity(entry);
@@ -415,7 +360,7 @@ export function openDurableMutationJournal(
       return readReservedEntry(identity)?.steerItemId ?? null;
     },
     bindSteerItem(identity, userItemId) {
-      if (identity.command?.operation !== "steer" || !validSteerItem(userItemId))
+      if (!isSteerCommand(identity.command) || !validSteerItem(userItemId))
         throw new MutationJournalOwnershipError(
           "Runtime input identity does not belong to a Steer command",
         );

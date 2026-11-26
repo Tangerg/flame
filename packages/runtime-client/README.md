@@ -151,10 +151,12 @@ retry, including stable-intent plugin commands. Replacing client defaults cannot
 change an unresolved command. A replay refusal at the HTTP boundary does not
 prove whether an earlier dispatch was accepted, so it retains the original
 identity for receipt reconciliation. The current journal requires captured
-metadata and the delivery phase; older entry shapes are refused without conversion
-or deletion. Settle outstanding commands with the previous client before upgrading,
-or preserve that client and its journal separately for recovery and start with a
-fresh client journal.
+metadata, the delivery phase and one tagged command. A Run record contains the
+original request, a plugin record contains the admitted route, and other Runtime
+commands name their protocol method. An invalid record stops recovery with a
+storage error and remains available for inspection. Settle outstanding commands
+with the previous client before upgrading, or preserve that client and its
+journal separately for recovery and start with a fresh client journal.
 
 `runs.recoverCommands()` observes the original receipts of pending Start, Resume,
 and Steer commands. Each observation is `recorded`, `notRecorded`, or `unknown`.

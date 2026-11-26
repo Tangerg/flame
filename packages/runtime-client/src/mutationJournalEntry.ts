@@ -1,8 +1,17 @@
 import { canonicalJSON, cloneJSON, parseJSON } from "@frame/sdk/json";
+import {
+  WIRE_METHOD_POLICY,
+  type WireMethodName,
+  type WireMutationMethodName,
+} from "@flame/runtime-client/methods";
 import { z } from "zod";
-import type { CallPluginRequest } from "@flame/runtime-client/wire";
-import { checkRequest, requestRequiresIdempotency, pluginDeliveryMethod } from "./request";
-import type { RequestMeta } from "./generated/wire.generated";
+import type { CallPluginRequest, RequestMeta } from "@flame/runtime-client/wire";
+import {
+  checkRequest,
+  isPluginDeliveryMethod,
+  pluginDeliveryMethod,
+  pluginOperationKind,
+} from "./request";
 import { validateWire } from "./generated/wire.validate.generated";
 import { MutationJournalError } from "./mutationJournalErrors";
 
@@ -15,6 +24,18 @@ const FINGERPRINT_HEX_LENGTH = 32;
 const FINGERPRINT_PATTERN = new RegExp(`^[0-9a-f]{${FINGERPRINT_HEX_LENGTH}}$`);
 
 type InstalledRoute = Omit<CallPluginRequest, "input">;
+
+type MethodOnlyCommandName = {
+  [M in WireMutationMethodName]: (typeof WIRE_METHOD_POLICY)[M]["idempotency"] extends "ownerRun"
+    ? never
+    : M;
+}[WireMutationMethodName];
+
+function isMethodOnlyCommand(value: unknown): value is MethodOnlyCommandName {
+  if (typeof value !== "string" || !Object.hasOwn(WIRE_METHOD_POLICY, value)) return false;
+  const policy = WIRE_METHOD_POLICY[value as WireMethodName];
+  return policy.operation === "command" && policy.idempotency !== "ownerRun";
+}
 
 function commandParams<M extends "runs.start" | "runs.resume" | "runs.steer">(method: M) {
   return z.custom<ReturnType<typeof checkRequest<M>>>((value) => {
@@ -35,17 +56,27 @@ const runCommand = z.discriminatedUnion("operation", [
 
 export type RunCommand = z.infer<typeof runCommand>;
 
-export function captureRunCommand(command: RunCommand): RunCommand {
-  return runCommand.parse(cloneJSON(command));
-}
-
 const boundedText = z.string().min(1).max(MAX_IDENTITY_LENGTH);
 
 const digest = z.string().regex(FINGERPRINT_PATTERN);
 
+const journalCommand = z.discriminatedUnion("kind", [
+  z.strictObject({ kind: z.literal("run"), request: runCommand }),
+  z.strictObject({
+    kind: z.literal("plugin"),
+    intentFingerprint: digest.nullable(),
+    route: z.custom<InstalledRoute>(validInstalledRoute),
+  }),
+  z.strictObject({
+    kind: z.literal("method"),
+    method: z.custom<MethodOnlyCommandName>(isMethodOnlyCommand),
+  }),
+]);
+
+type JournalCommand = z.infer<typeof journalCommand>;
+
 const entrySchema = z.strictObject({
   delivery: z.enum(["reserved", "dispatched"]),
-  method: boundedText,
   steerItemId: z.custom<string>(validSteerItem).nullable(),
   salt: boundedText,
   namespace: boundedText,
@@ -53,13 +84,7 @@ const entrySchema = z.strictObject({
   idempotencyKey: boundedText,
   createdAt: z.number(),
   expiresAt: z.number(),
-  installed: z
-    .strictObject({
-      intentFingerprint: digest.nullable(),
-      route: z.custom<InstalledRoute>(validInstalledRoute),
-    })
-    .optional(),
-  command: runCommand.nullable(),
+  command: journalCommand,
   requestMeta: z
     .custom<RequestMeta>(
       (value) => value !== undefined && validateWire("RequestMeta", value, "request").length === 0,
@@ -85,6 +110,21 @@ export function mutationIdentity(entry: JournalEntry): DurableMutationIdentity {
   return identity;
 }
 
+function commandMethod(command: JournalCommand): WireMethodName {
+  switch (command.kind) {
+    case "run":
+      return `runs.${command.request.operation}`;
+    case "plugin":
+      return pluginDeliveryMethod(command.route);
+    case "method":
+      return command.method;
+  }
+}
+
+export function isSteerCommand(command: JournalCommand): boolean {
+  return command.kind === "run" && command.request.operation === "steer";
+}
+
 export function validText(value: unknown, maximum: number): value is string {
   return typeof value === "string" && value.length > 0 && value.length <= maximum;
 }
@@ -101,70 +141,75 @@ function validInstalledRoute(value: unknown): value is InstalledRoute {
   if (!value || typeof value !== "object" || Array.isArray(value) || "input" in value) return false;
   try {
     const route = checkRequest("plugins.call", { ...value, input: "null" });
-    return requestRequiresIdempotency(pluginDeliveryMethod(route), route);
+    return pluginOperationKind(route) === "command";
   } catch {
     return false;
   }
 }
 
-export function captureInstalledRoute(route: InstalledRoute): InstalledRoute {
-  const captured = cloneJSON(route);
-  if (!validInstalledRoute(captured))
-    throw new MutationJournalError("plugin command binding is invalid");
-  return captured;
-}
-
-export function validEntry(value: unknown): value is JournalEntry {
+export function decodeJournalEntry(value: unknown): JournalEntry | undefined {
   const admission = entrySchema.safeParse(value);
-  if (!admission.success) return false;
+  if (!admission.success) return undefined;
   const entry = admission.data;
   if (
     entry.expiresAt <= entry.createdAt ||
-    (entry.steerItemId !== null && entry.command?.operation !== "steer")
+    (entry.steerItemId !== null && !isSteerCommand(entry.command))
   )
-    return false;
-  if (entry.installed)
-    return entry.command === null && entry.method === pluginDeliveryMethod(entry.installed.route);
-  if (entry.command === null) return true;
-  try {
-    return matchesCommand(
+    return undefined;
+  if (
+    entry.command.kind === "run" &&
+    !matchesCommand(
       entry,
-      `runs.${entry.command.operation}`,
-      entry.command.params,
+      commandMethod(entry.command),
+      entry.command.request.params,
       entry.requestMeta,
-    );
-  } catch {
-    return false;
-  }
+    )
+  )
+    return undefined;
+  return entry;
 }
 
-export function prepareCommand(
-  method: string,
+export function captureJournalCommand(
+  method: WireMethodName,
   params: unknown,
-  requestMeta: RequestMeta | null,
-): RunCommand | null {
+  salt: string,
+  intent: string | null,
+): JournalCommand {
   switch (method) {
     case "runs.start":
       return {
-        operation: "start",
-        params: checkRequest(method, cloneJSON(params), requestMeta),
+        kind: "run",
+        request: { operation: "start", params: checkRequest(method, cloneJSON(params)) },
       };
     case "runs.resume":
       return {
-        operation: "resume",
-        params: checkRequest(method, cloneJSON(params), requestMeta),
+        kind: "run",
+        request: { operation: "resume", params: checkRequest(method, cloneJSON(params)) },
       };
     case "runs.steer":
       return {
-        operation: "steer",
-        params: checkRequest(method, cloneJSON(params), requestMeta),
+        kind: "run",
+        request: { operation: "steer", params: checkRequest(method, cloneJSON(params)) },
       };
+    case "plugins.call":
+    case "plugins.stream": {
+      const { input: _, ...route } = checkRequest(method, cloneJSON(params));
+      if (pluginOperationKind(route) !== "command" || pluginDeliveryMethod(route) !== method)
+        throw new MutationJournalError("plugin command requires its declared delivery method");
+      return {
+        kind: "plugin",
+        intentFingerprint: intent === null ? null : pluginIntentFingerprint(salt, intent),
+        route,
+      };
+    }
     default:
-      return null;
+      if (!isMethodOnlyCommand(method))
+        throw new MutationJournalError("Runtime method cannot reserve a command");
+      return { kind: "method", method };
   }
 }
 
-export function fingerprint(value: string): string {
+function fingerprint(value: string): string {
   let h1 = 1_779_033_703;
   let h2 = 3_144_134_277;
   let h3 = 1_013_904_242;
@@ -184,50 +229,51 @@ export function fingerprint(value: string): string {
   return hex(h1) + hex(h2) + hex(h3) + hex(h4);
 }
 
-export function fingerprintFields(...fields: readonly string[]): string {
-  return fields.join(FINGERPRINT_FIELD_SEPARATOR);
+function pluginIntentFingerprint(salt: string, intent: string): string {
+  return fingerprint([salt, "plugins.call", intent].join(FINGERPRINT_FIELD_SEPARATOR));
 }
 
-export function matchesPluginIntent(entry: JournalEntry, intent: string): boolean {
-  return (
-    entry.installed?.intentFingerprint ===
-    fingerprint(fingerprintFields(entry.salt, "plugins.call", intent))
-  );
+export function pluginRouteForIntent(
+  entry: DurableMutationIdentity,
+  intent: string,
+): InstalledRoute | undefined {
+  const { command } = entry;
+  if (
+    command.kind === "plugin" &&
+    command.intentFingerprint === pluginIntentFingerprint(entry.salt, intent)
+  )
+    return command.route;
+  return undefined;
 }
 
-export function commandFingerprintInput(
-  method: string,
+export function fingerprintCommand(
+  salt: string,
+  method: WireMethodName,
   params: unknown,
   requestMeta: RequestMeta | null,
-  installed: boolean,
 ): string {
   // jsoninput.Input ignores object spelling but preserves numeric lexemes.
   // Ordinary JSON.parse would collapse receipt-relevant numbers here.
-  const request = installed
+  const request = isPluginDeliveryMethod(method)
     ? {
         ...(params as CallPluginRequest),
         contract: parseJSON((params as CallPluginRequest).contract),
         input: parseJSON((params as CallPluginRequest).input),
       }
     : params;
-  return fingerprintFields(
-    method,
-    canonicalJSON({ request: prepareCommand(method, params, requestMeta) ?? request, requestMeta }),
+  return fingerprint(
+    [salt, method, canonicalJSON({ request, requestMeta })].join(FINGERPRINT_FIELD_SEPARATOR),
   );
 }
 
 export function matchesCommand(
   identity: DurableMutationIdentity,
-  method: string,
+  method: WireMethodName,
   params: unknown,
   requestMeta: RequestMeta | null,
 ): boolean {
-  if (identity.method !== method) return false;
-  const command = commandFingerprintInput(
-    method,
-    params,
-    requestMeta,
-    identity.installed !== undefined,
+  return (
+    commandMethod(identity.command) === method &&
+    identity.fingerprint === fingerprintCommand(identity.salt, method, params, requestMeta)
   );
-  return identity.fingerprint === fingerprint(fingerprintFields(identity.salt, command));
 }

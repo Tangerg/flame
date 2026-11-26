@@ -17,15 +17,8 @@ export function captureRequestMeta(value: unknown): RequestMeta | null {
   return captured as RequestMeta;
 }
 
-export function checkRequest<M extends WireMethodName>(
-  method: M,
-  value: unknown,
-  requestMeta?: RequestMeta | null,
-): WireParams<M> {
+export function checkRequest<M extends WireMethodName>(method: M, value: unknown): WireParams<M> {
   const violations = validateMethodParams(method, value);
-  if (requestMeta !== undefined && requestMeta !== null) {
-    violations.push(...validateWire("RequestMeta", requestMeta, "request"));
-  }
   if (violations.length > 0) throw new RpcProtocolError(`${method} params`, violations);
   return value as WireParams<M>;
 }

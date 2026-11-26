@@ -6,8 +6,7 @@ import {
 } from "./durableMutationJournal";
 import type { WireMethodName } from "@flame/runtime-client/methods";
 import {
-  captureInstalledRoute,
-  captureRunCommand,
+  mutationIdentity,
   type DurableMutationIdentity,
   type RunCommand,
   type PluginCommandInput,
@@ -18,6 +17,7 @@ import { MutationLookupError, mutationSettlementIsUnknown, type MutationPromise 
 import type { CallPluginRequest } from "@flame/runtime-client/wire";
 import { RpcCancellationError } from "./errors";
 import { captureRequestMeta } from "./request";
+import { cloneJSON } from "@frame/sdk/json";
 
 export type { PluginCommandInput, PluginCommandBinding } from "./mutationJournalEntry";
 import type { RequestMeta } from "./generated/wire.generated";
@@ -77,6 +77,12 @@ interface MutationLifecycle {
   reject(error: unknown): void;
 }
 
+// Caller-owned copies of admitted journal data must retain exact JSON numbers.
+function copyJournalProjection<T>(value: T): T {
+  const copy: unknown = cloneJSON(value);
+  return copy as T;
+}
+
 function trackedMutation<T>(
   create: () => MutationPromise<T>,
   lifecycle: MutationLifecycle,
@@ -126,13 +132,14 @@ export class MutationJournal {
 
   pendingPluginCommands(): PendingPluginCommand[] {
     this.#assertCurrent();
-    return this.#journal
-      .pendingPluginCommands()
-      .filter((identity) => !this.#claims.has(identity.idempotencyKey))
-      .map((identity) => ({
+    return this.#journal.pendingEntries().flatMap((entry) => {
+      const { command } = entry;
+      if (command.kind !== "plugin" || this.#claims.has(entry.idempotencyKey)) return [];
+      const identity = mutationIdentity(entry);
+      const pending: PendingPluginCommand = {
         idempotencyKey: identity.idempotencyKey,
-        namespace: this.#journal.lookupNamespace(identity),
-        binding: captureInstalledRoute(identity.installed!.route),
+        namespace: identity.namespace,
+        binding: copyJournalProjection(command.route),
         matchesIntent: (intent) => {
           this.#assertCurrent();
           return this.#journal.matchesPluginCommandIntent(identity, intent);
@@ -150,7 +157,9 @@ export class MutationJournal {
           this.#assertClaim(identity);
           this.#journal.validatePluginCommand(identity, request);
         },
-      }));
+      };
+      return [pending];
+    });
   }
 
   async capturePluginCommand(
@@ -193,14 +202,15 @@ export class MutationJournal {
   }
   pendingCommands(): PendingRunCommand[] {
     this.#assertCurrent();
-    return this.#journal
-      .pendingCommands()
-      .filter((identity) => !this.#claims.has(identity.idempotencyKey))
-      .map((identity) => ({
-        ...captureRunCommand(identity.command!),
+    return this.#journal.pendingEntries().flatMap((entry) => {
+      const { command } = entry;
+      if (command.kind !== "run" || this.#claims.has(entry.idempotencyKey)) return [];
+      const identity = mutationIdentity(entry);
+      const pending: PendingRunCommand = {
+        ...copyJournalProjection(command.request),
         idempotencyKey: identity.idempotencyKey,
-        namespace: this.#journal.lookupNamespace(identity),
-        steerItemId: this.#journal.steerItemId(identity),
+        namespace: identity.namespace,
+        steerItemId: entry.steerItemId,
         acknowledge: () => this.#journal.settle(identity),
         reserve: () => {
           this.#assertCurrent();
@@ -211,7 +221,9 @@ export class MutationJournal {
           this.#journal.retain(identity);
           return this.#claim(identity);
         },
-      }));
+      };
+      return [pending];
+    });
   }
 
   reserve(
@@ -245,7 +257,7 @@ export class MutationJournal {
         return journal.bindSteerItem(identity, userItemId);
       },
       get requestMeta() {
-        return captureRequestMeta(identity.requestMeta);
+        return copyJournalProjection(identity.requestMeta);
       },
       lookupNamespace: () => {
         this.#assertClaim(identity);

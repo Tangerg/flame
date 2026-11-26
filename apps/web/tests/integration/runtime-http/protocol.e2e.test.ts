@@ -592,7 +592,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: protocol delivery", () => {
     }
   }, 30_000);
 
-  it("queries a cold persisted opening after its replay deadline and recovers its snapshot tail", async () => {
+  it("requires the durable command to recover a cold opening and its snapshot tail", async () => {
     if (!fixture.negotiated) throw new Error("runtime client was not initialized");
     const session = await fixture.client.sessions.create({
       workspace: { path: fixture.root },
@@ -643,6 +643,18 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: protocol delivery", () => {
         capabilities: () => fixture.negotiated,
         mutationStorage,
       });
+      const [storageKey] = mutationStorage.keys();
+      if (storageKey === undefined) throw new Error("expected the original journal key");
+      const record = mutationStorage.get(storageKey);
+      if (!record || typeof record !== "object" || Array.isArray(record))
+        throw new Error("expected the original journal record");
+      mutationStorage.set(storageKey, { ...record, command: null });
+      const damagedRecovery = await cold.runs.recoverCommands().then(
+        (commands) => ({ commands }),
+        (error: unknown) => ({ error }),
+      );
+      const damagedRecord = mutationStorage.get(storageKey);
+      mutationStorage.set(storageKey, record);
       await expect(cold.runs.recoverCommands()).resolves.toMatchObject([
         {
           idempotencyKey: pending.idempotencyKey,
@@ -687,6 +699,8 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: protocol delivery", () => {
       expect(
         await fixture.client.runs.list({ sessionId: params.sessionId }).autoPagingToArray(),
       ).toHaveLength(1);
+      expect(damagedRecovery).toMatchObject({ error: { name: "MutationJournalStorageError" } });
+      expect(damagedRecord).toMatchObject({ command: null });
     } finally {
       gate.release.resolve();
       fixture.providerGate = undefined;
