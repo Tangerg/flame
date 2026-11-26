@@ -1381,9 +1381,63 @@ for direct RPC verification exits normally. The owned app
 registration, processes, listeners, profile, captures,
 fixtures, logs, caches and checkout outputs are removed.
 
-The next review follows a live transcript file reference into
-the reader and back, including an initial line past the end of
-the current file.
+[Live file references return to the reply](#live-file-references-return-to-the-reply-2026-11-27)
+checks out-of-range recovery and the saved Composer caret.
+
+### Live file references return to the reply (2026-11-27)
+
+Ordinary signed Wails at `7f0540098` and private Runtime
+`2026-11-27.2` exercise the authored reply path. One native
+Send completes a real Runtime Run against a loopback provider
+with a fixed reply. Its two Markdown links name the same
+1,450-line file. Historical checkpoint targets 1,451 and
+Current checkpoint targets 1,180. The Runtime records one
+user message and one agent message for the completed Run.
+Earlier captured Read cases supply the tool-output path.
+
+- English/dark/18 px/Blue, 1120 × 728 with a 360 px Dock.
+  Keyboard activation of Historical checkpoint shows
+  Couldn’t open from line 1,451. Open from start focuses
+  the named reader and shows the actual first source line.
+  Escape restores the Historical checkpoint button. It moves
+  from y=332 to y=434 as the Files Dock opens and stays
+  visible. Current checkpoint presents 1,180–1,380 with
+  line 1,180 marked. Mouse Back to conversation restores
+  Current checkpoint at the same y=513.
+- Chinese/light/14 px/Flame, 1280 × 800 with a 320 px Dock.
+  Clicking Historical checkpoint while inspecting the valid
+  location in the same file produces 无法从第 1,451 行打开.
+  从文件开头打开 focuses the named reader on the actual first
+  line. 返回对话 restores Historical checkpoint at y=384.
+  The reader remains available under Files with 返回文件列表
+  as its local Back action.
+- In both passes Cmd+L returns to draft `2468` at caret 2.
+  Typing 5 gives `24568` and native Undo restores `2468`.
+  The saved Composer position survives both recovery and
+  a targeted file read. The preliminary text-entry probe
+  under the host's active Pinyin input was cleared in the
+  private draft before Send. The admitted prompt uses a
+  numeric marker.
+
+The existing reference, recovery and focus paths pass this
+review. Production staging, Runtime packaging and app
+signing pass. The completed Run and its messages match the
+original receipt after both passes, and all 51 fixture
+digests match. The loopback provider serves four catalog
+reads and one generation. Verification covers macOS Wails
+pointer, keyboard and accessibility state with a private
+provider. A production provider, VoiceOver and other
+platforms remain outside this review.
+
+Wails exits normally. The private Runtime reaches its
+existing drain deadline and the loopback provider stops on
+its owned termination signal. The app registration, private
+profile, fixtures, captures, logs, listeners and checkout
+outputs and caches are removed.
+
+The next review follows a selection on a later file page
+into the Composer and checks its literal text, absolute line
+range and continuation.
 
 ## Error notes leave retrying to their buttons (2026-11-26)
 
