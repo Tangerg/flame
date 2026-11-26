@@ -1630,9 +1630,72 @@ existing drain deadline. The owned provider, app
 registration, profile, fixtures, captures, logs, listeners,
 checkout outputs and caches are removed.
 
-The next review follows an already sent reference from its
-transcript entry into its review and back to the conversation
-and current draft.
+[One disclosure opens a sent reference](#one-disclosure-opens-a-sent-reference-2026-11-27)
+checks reading, return and the saved Composer caret.
+
+### One disclosure opens a sent reference (2026-11-27)
+
+Ordinary signed Wails at `473e8f99b` sends `39104` with
+two literal references to the same private file. They cover
+1–26 and line 4. The original short user message fits its
+preview. Opening 1–26 by pointer or keyboard leaves its
+trigger at y=101 and marks it expanded. UserMessageFold then
+clips and fades the new details into its seven-line preview.
+The first two source rows are readable, and Show full message
+is needed before the conversation can scroll to row 26.
+
+ReferenceBlock marks its existing disclosure root. An open
+or exiting reference panel can lift the height cap of a
+preview that already fits. The fold's existing measurement
+continues to identify long messages. This uses the present
+Base UI panel state and the existing fold attribute.
+Better Layout and Better Accessibility guide the single
+reveal action. HeroUI's Disclosure and the read-only ZCode
+selection-reference details place the source with its report.
+
+- Chinese/light/14 px/Flame at 1120 × 728 with a 364 px Dock.
+  The first reference still enters at y=101. One pointer
+  activation and wheel scrolling reach row 26. Return on the
+  same trigger closes it and restores the compact message
+  at y=101. Keyboard reopening followed by Tab brings the
+  line-4 trigger into view at y=375. Both references can be
+  open, and closing each returns to its own trigger.
+  Cmd+L continues `2468` at caret 2, typing 5 gives `24568`
+  and Undo restores `2468`.
+- English/dark/18 px/Blue at 1280 × 800 with a 427 px Dock.
+  Pointer entry reaches row 26 in the conversation scrollport.
+  Return on its trigger closes the reference. The same draft
+  and caret remain available.
+- A separate portable Session with only long prose opens
+  and closes using Show full message and Show less on the
+  baseline and candidate. Another imported long message
+  includes the saved 1–26 reference. After Show full message
+  and opening that reference, the user can still activate
+  Show less to return to the folded prose. The same
+  Show full message control holds focus. These controls
+  use actual Runtime imports with fixture content. The first
+  verification expected the import to carry a workspace
+  path. A Session-list read finds the single imported control
+  and checks its text.
+
+Production staging, Runtime packaging, signing, Web
+typecheck, 83 contract tests, bootstrap, scoped Prettier
+and diff checks pass. The immutable live Run and both
+messages match their receipt in each pass. The provider
+receives the exact two reference bodies and the single
+draft. It serves ten catalog reads and one generation.
+Both private file digests match. Native qualification covers
+pointer, keys, scroll and accessibility state on macOS.
+Frame-by-frame motion, VoiceOver speech and other platforms
+remain outside this review.
+
+Both Wails hosts exit normally. The private Runtime reaches
+its existing drain deadline. The owned provider, app
+registration, profile, fixtures, captures, logs, listeners,
+checkout outputs and caches are removed.
+
+The next review checks how a pointer user distinguishes
+two clipped sent-reference labels before opening either one.
 
 ## Error notes leave retrying to their buttons (2026-11-26)
 

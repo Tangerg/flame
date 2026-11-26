@@ -17,6 +17,7 @@ export function ReferenceBlock({ label, text }: { label: string; text: string })
   const [open, setOpen] = useState(false);
   return (
     <AgentActivityDisclosure
+      data-message-reference=""
       icon="crosshair"
       shell="line"
       label={label}
