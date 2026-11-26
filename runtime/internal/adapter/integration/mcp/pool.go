@@ -71,6 +71,13 @@ func (p *Pool) Statuses() []mcpserver.ConnectionStatus {
 	return p.inner.statuses()
 }
 
+func (p *Pool) HasConnectionConfiguration(current mcpserver.Server) bool {
+	p.inner.mu.Lock()
+	defer p.inner.mu.Unlock()
+	server := p.inner.find(current.ID())
+	return server != nil && server.config.SameConnection(current)
+}
+
 func (p *Pool) BeginConnect(ctx context.Context, name mcpserver.ID) (mcpapp.Attempt, error) {
 	attempt, err := p.inner.beginConnect(ctx, name, p.connectionLaunch)
 	if err != nil {

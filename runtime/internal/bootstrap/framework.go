@@ -16,6 +16,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/pluginservices"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
+	"github.com/Tangerg/flame/runtime/internal/delivery"
 	runtimehttp "github.com/Tangerg/flame/runtime/internal/delivery/http"
 
 	"github.com/Tangerg/frame"
@@ -144,7 +145,7 @@ func buildMCPConnectors(stores *persistence.Bundle, config mcpadapter.InstalledC
 	if err != nil {
 		return nil, nil, err
 	}
-	external, err := mcpadapter.NewExternalConnector(installed, stores.Installations, stores.ProviderSelections, stores.MCPServers)
+	external, err := mcpadapter.NewExternalConnector(installed, stores.Installations, stores.ProviderSelections, stores.MCPServers, delivery.EncodeMCPDirectoryReceipt)
 	if err != nil {
 		return nil, nil, err
 	}

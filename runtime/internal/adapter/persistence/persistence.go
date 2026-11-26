@@ -129,7 +129,7 @@ func Open(ctx context.Context, config Config) (*Bundle, error) {
 		Transcript:            newTranscriptStore(db),
 		Annotations:           &annotationStore{db: db},
 		Providers:             newProviderStore(db),
-		MCPServers:            newMCPServerStore(db),
+		MCPServers:            &MCPServerStore{db: db, receipts: receipts},
 		Installations:         installations,
 		PluginReleases:        installations.releases,
 		ProviderSelections:    newProviderSelectionStore(db),

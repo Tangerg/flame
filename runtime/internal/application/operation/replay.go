@@ -73,7 +73,7 @@ func (r *Replay) Serialize(ctx context.Context, key string) (func(), error) {
 	return r.inFlight.Acquire(ctx, key)
 }
 
-func (r *Replay) InvokeRecoverable(ctx context.Context, key, fingerprint string, execute func() ([]byte, error), refuse func(error) ([]byte, error)) ([]byte, error) {
+func (r *Replay) InvokeRecoverable(ctx context.Context, key, fingerprint string, execute func(retained bool) error, refuse func(error) ([]byte, error)) ([]byte, error) {
 	release, err := r.inFlight.Acquire(ctx, key)
 	if err != nil {
 		return nil, err
@@ -86,19 +86,31 @@ func (r *Replay) InvokeRecoverable(ctx context.Context, key, fingerprint string,
 	if found && record.Settled() {
 		return settledPayload(record)
 	}
-	payload, err := execute()
-	if err == nil || errors.Is(err, ErrOutcomePending) || errors.Is(err, ErrInProgress) || errors.Is(err, framecall.ErrConflict) {
-		return payload, err
+	workErr := execute(found)
+	// The workflow can commit after the caller stops observing it. Only its
+	// durable receipt may settle the original invocation.
+	readCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), replayWriteTimeout)
+	defer cancel()
+	record, found, err = r.store.Lookup(readCtx, key, fingerprint)
+	if err != nil {
+		return nil, settlementError(err)
 	}
-	// A durable intent may already have changed the workspace. An error on
-	// the way back to its owner cannot settle that intent as a refusal.
+	if found && record.Settled() {
+		return settledPayload(record)
+	}
+	if errors.Is(workErr, ErrOutcomePending) || errors.Is(workErr, ErrInProgress) || errors.Is(workErr, framecall.ErrConflict) {
+		return nil, workErr
+	}
 	if found {
-		return nil, errors.Join(ErrOutcomePending, err)
+		return nil, errors.Join(ErrOutcomePending, workErr)
 	}
-	payload, _, commitErr := r.commitOutcome(ctx, key, fingerprint, func(context.Context) ([]byte, error) {
-		return refuse(err)
+	if workErr == nil {
+		return nil, ErrClaimLost
+	}
+	payload, _, err := r.commitOutcome(ctx, key, fingerprint, func(context.Context) ([]byte, error) {
+		return refuse(workErr)
 	})
-	return payload, commitErr
+	return payload, err
 }
 
 func (r *Replay) Invoke(ctx context.Context, key, fingerprint string, execute func() ([]byte, error)) ([]byte, error) {

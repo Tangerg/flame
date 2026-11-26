@@ -90,10 +90,6 @@ func rollbackBasis(in protocol.RollbackSessionRequest) (sessions.RollbackBasis, 
 }
 
 func (s *Handler) replayRollback(ctx context.Context, in protocol.RollbackSessionRequest, call keyedCall) protocol.OperationResult {
-	sessionID, parseErr := sessionParameter(in.SessionID)
-	if parseErr != nil {
-		return protocol.OperationResult{}
-	}
 	restoreType, refusal := rollbackTypeFromWire(in)
 	if refusal != nil || restoreType == protocol.RestoreHistory {
 		return call.invokeAtomic(ctx, func(outcome atomicOutcome) error {
@@ -106,16 +102,13 @@ func (s *Handler) replayRollback(ctx context.Context, in protocol.RollbackSessio
 			return outcome.settleRefusal(ctx, s.rollbackHistory(ctx, in, reply))
 		})
 	}
-	payload, err := call.replay.InvokeRecoverable(ctx, call.key, call.fingerprint, func() ([]byte, error) {
+	payload, err := call.replay.InvokeRecoverable(ctx, call.key, call.fingerprint, func(_ bool) error {
 		receipt := sessions.WorkspaceRollbackReceipt{Key: call.key, Fingerprint: call.fingerprint}
-		result, err := s.rollbackWorkspace(ctx, in, restoreType, receipt)
+		_, err := s.rollbackWorkspace(ctx, in, restoreType, receipt)
 		if errors.Is(err, sessions.ErrRollbackRecoveryPending) {
-			return nil, errors.Join(operation.ErrOutcomePending, err)
+			return errors.Join(operation.ErrOutcomePending, err)
 		}
-		if err != nil {
-			return nil, err
-		}
-		return EncodeWorkspaceRollbackReceipt(sessionID, result, nil)
+		return err
 	}, func(err error) ([]byte, error) {
 		return encodeStoredOutcome(failed(projectError(err)))
 	})

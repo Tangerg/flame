@@ -53,10 +53,22 @@ func (c *Coordinator) RestoreExternal(ctx context.Context, ready <-chan struct{}
 			return
 		case <-ready:
 		}
+		if err := c.restoreDirectoryChanges(ctx); err != nil && ctx.Err() == nil {
+			slog.WarnContext(ctx, "external MCP directory changes could not be settled", telemetry.Error(err))
+		}
 		if err := c.ReconcileExternal(ctx); err != nil && ctx.Err() == nil {
 			slog.WarnContext(ctx, "external MCP directory could not be restored", telemetry.Error(err))
 		}
 	})
+}
+
+func (c *Coordinator) restoreDirectoryChanges(ctx context.Context) error {
+	write, err := c.beginMutation(ctx)
+	if err != nil {
+		return err
+	}
+	defer write.close()
+	return c.directory.RestoreDirectoryChanges(write.ownerCtx)
 }
 
 func (c *Coordinator) WithdrawExternal() error {

@@ -2,7 +2,6 @@ package persistence
 
 import (
 	"context"
-	"crypto/rand"
 	"database/sql"
 	json "encoding/json/v2"
 	"errors"
@@ -64,165 +63,102 @@ func (g httpGrant) connection() mcpserver.HTTPConnection {
 	return connection
 }
 
-func (m *MCPServerStore) PrepareGrant(ctx context.Context, owner identity.InstallationID, srv mcpserver.Server, proposal mcpapp.GrantProposal) (string, error) {
-	if proposal.Source.InstallationID != owner.String() || proposal.Change.Name != srv.Name.String() || proposal.Change.Replacement == nil || proposal.Change.Replacement.LaunchGrant != "" {
-		return "", errors.New("mcp: grant proposal does not match its original source")
+func encodeLaunchMaterial(server mcpserver.Server) ([]byte, error) {
+	if err := server.Validate(); err != nil {
+		return nil, err
 	}
-	if err := proposal.Source.Validate(); err != nil {
-		return "", err
-	}
-	if err := proposal.Invocation.Validate(); err != nil {
-		return "", err
-	}
-	data, err := json.Marshal(proposal, json.Deterministic(true))
-	if err != nil {
-		return "", err
-	}
-	return m.storeGrant(ctx, owner, srv, data)
-}
-
-func (m *MCPServerStore) storeGrant(ctx context.Context, owner identity.InstallationID, srv mcpserver.Server, proposal []byte) (string, error) {
-	if err := owner.Validate(); err != nil {
-		return "", err
-	}
-	if err := srv.Validate(); err != nil {
-		return "", err
-	}
-	if srv.Source.Origin().Kind() != mcpserver.OriginUser {
-		return "", errors.New("mcp: external grant requires a user source")
+	if server.Source.Origin().Kind() != mcpserver.OriginUser {
+		return nil, errors.New("mcp: launch grant requires a user source")
 	}
 	var material launchMaterial
-	switch c := srv.Connection.(type) {
+	switch connection := server.Connection.(type) {
 	case mcpserver.HTTPConnection:
-		material.HTTP = encodeHTTPGrant(c)
+		material.HTTP = encodeHTTPGrant(connection)
 	case mcpserver.StdioConnection:
-		material.Process = encodeStdioGrant(c)
+		material.Process = encodeStdioGrant(connection)
 	default:
-		return "", errors.New("mcp: unsupported launch material")
+		return nil, errors.New("mcp: unsupported launch material")
 	}
-	body, err := json.Marshal(material, json.Deterministic(true), json.FormatNilMapAsNull(true), json.FormatNilSliceAsNull(true))
-	if err != nil {
-		return "", err
-	}
-	var grant string
-	err = m.db.write(ctx, func(ctx context.Context) error {
-		db := m.db.connection(ctx)
-		if _, err := db.ExecContext(ctx, `INSERT INTO mcp_sources(origin,name) VALUES(?,?) ON CONFLICT DO NOTHING`, mcpserver.OriginUser, srv.Name.String()); err != nil {
-			return err
-		}
-		base := []any{owner.String(), string(mcpserver.OriginUser), nil, srv.Name.String()}
-		err := db.QueryRowContext(ctx, `SELECT grant_id FROM mcp_launch_grants WHERE connector=? AND source_id=`+mcpSourceIDQuery+` AND material=? AND proposal IS NULL LIMIT 1`, append(base, body)...).Scan(&grant)
-		if err == nil {
-			return nil
-		}
-		if !errors.Is(err, sql.ErrNoRows) {
-			return err
-		}
-		return db.QueryRowContext(ctx, `INSERT INTO mcp_launch_grants(grant_id,connector,source_id,material,proposal) VALUES(?,?,`+mcpSourceIDQuery+`,?,?) ON CONFLICT(connector,source_id,proposal) DO UPDATE SET proposal=excluded.proposal WHERE material=excluded.material RETURNING grant_id`, rand.Text(), owner.String(), string(mcpserver.OriginUser), nil, srv.Name.String(), body, proposal).Scan(&grant)
-	})
-	return grant, err
+	return json.Marshal(material, json.Deterministic(true), json.FormatNilMapAsNull(true), json.FormatNilSliceAsNull(true))
 }
 
-func (m *MCPServerStore) OpenGrant(ctx context.Context, owner identity.InstallationID, name mcpserver.ServerName, grant string) (mcpserver.Connection, bool, error) {
-	return scopedPair(ctx, m.db.read, func(ctx context.Context) (mcpserver.Connection, bool, error) {
+func (m *MCPServerStore) OpenGrant(ctx context.Context, owner identity.InstallationID, name mcpserver.ServerName, token string) (mcpapp.LaunchGrant, bool, error) {
+	return scopedPair(ctx, m.db.read, func(ctx context.Context) (mcpapp.LaunchGrant, bool, error) {
 		var body []byte
-		err := m.db.connection(ctx).QueryRowContext(ctx, `SELECT material FROM mcp_launch_grants WHERE grant_id=? AND connector=? AND proposal IS NULL AND source_id=`+mcpSourceIDQuery, grant, owner.String(), string(mcpserver.OriginUser), nil, name.String()).Scan(&body)
+		var intent sql.NullString
+		err := m.db.connection(ctx).QueryRowContext(ctx, `SELECT grant.material, pending.intent
+			FROM mcp_launch_grants grant
+			LEFT JOIN pending_mcp_directory_changes pending ON pending.invocation = grant.proposal
+			WHERE grant.grant_id=? AND grant.connector=? AND grant.source_id=`+mcpSourceIDQuery,
+			token, owner.String(), string(mcpserver.OriginUser), nil, name.String()).Scan(&body, &intent)
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, false, nil
+			return mcpapp.LaunchGrant{}, false, nil
 		}
 		if err != nil {
-			return nil, false, err
+			return mcpapp.LaunchGrant{}, false, err
 		}
-		var material launchMaterial
-		if err := json.Unmarshal(body, &material, json.RejectUnknownMembers(true)); err != nil {
-			return nil, false, err
-		}
-		switch {
-		case material.HTTP != nil && material.Process == nil:
-			connection := material.HTTP.connection()
-			if err := (mcpserver.Server{Source: mcpserver.UserSource(), Name: name, Connection: connection}).Validate(); err != nil {
-				return nil, false, err
-			}
-			return connection, true, nil
-		case material.Process != nil && material.HTTP == nil:
-			connection := material.Process.connection()
-			if err := (mcpserver.Server{Source: mcpserver.UserSource(), Name: name, Connection: connection}).Validate(); err != nil {
-				return nil, false, err
-			}
-			return connection, true, nil
-		default:
-			return nil, false, errors.New("mcp: invalid stored launch grant")
-		}
-	})
-}
-
-func (m *MCPServerStore) PendingGrant(ctx context.Context, owner identity.InstallationID, name mcpserver.ServerName, grant string) (mcpapp.GrantProposal, bool, error) {
-	return scopedPair(ctx, m.db.read, func(ctx context.Context) (mcpapp.GrantProposal, bool, error) {
-		var raw []byte
-		err := m.db.connection(ctx).QueryRowContext(ctx, `SELECT proposal FROM mcp_launch_grants WHERE grant_id=? AND connector=? AND source_id=`+mcpSourceIDQuery+` AND proposal IS NOT NULL`, grant, owner.String(), string(mcpserver.OriginUser), nil, name.String()).Scan(&raw)
-		if errors.Is(err, sql.ErrNoRows) {
-			return mcpapp.GrantProposal{}, false, nil
-		}
-		if err != nil {
-			return mcpapp.GrantProposal{}, false, err
-		}
-		var proposal mcpapp.GrantProposal
-		if err := json.Unmarshal(raw, &proposal, json.RejectUnknownMembers(true)); err != nil {
-			return mcpapp.GrantProposal{}, false, err
-		}
-		return proposal, true, nil
-	})
-}
-
-func (m *MCPServerStore) RejectGrant(ctx context.Context, owner identity.InstallationID, name mcpserver.ServerName, grant string) error {
-	return m.db.write(ctx, func(ctx context.Context) error {
-		_, err := m.db.connection(ctx).ExecContext(ctx, `DELETE FROM mcp_launch_grants WHERE grant_id=? AND connector=? AND source_id=`+mcpSourceIDQuery+` AND proposal IS NOT NULL`, grant, owner.String(), string(mcpserver.OriginUser), nil, name.String())
-		return err
-	})
-}
-
-// A receipt read can race the next command's preparation. The original
-// insert order fences retirement so this receipt cannot revoke a newer grant.
-func (m *MCPServerStore) ConfirmPendingGrant(ctx context.Context, owner identity.InstallationID, name mcpserver.ServerName, grant string) error {
-	return m.db.write(ctx, func(ctx context.Context) error {
-		db := m.db.connection(ctx)
-		var position, sourceID int64
-		err := db.QueryRowContext(ctx, `SELECT sequence,source_id FROM mcp_launch_grants WHERE grant_id=? AND connector=? AND source_id=`+mcpSourceIDQuery, grant, owner.String(), string(mcpserver.OriginUser), nil, name.String()).Scan(&position, &sourceID)
-		if err != nil {
-			return err
-		}
-		var newer bool
-		if err := db.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM mcp_launch_grants WHERE connector=? AND source_id=? AND sequence>? AND proposal IS NULL)`, owner.String(), sourceID, position).Scan(&newer); err != nil {
-			return err
-		}
-		if newer {
-			return errors.New("mcp: newer transport grant already active")
-		}
-		if _, err := db.ExecContext(ctx, `UPDATE mcp_launch_grants SET proposal=NULL WHERE sequence=?`, position); err != nil {
-			return err
-		}
-		_, err = db.ExecContext(ctx, `DELETE FROM mcp_launch_grants WHERE connector=? AND source_id=? AND sequence<?`, owner.String(), sourceID, position)
-		return err
-	})
-}
-
-func (m *MCPServerStore) RetireGrants(ctx context.Context, owner identity.InstallationID, name mcpserver.ServerName, active string) error {
-	return m.db.write(ctx, func(ctx context.Context) error {
-		db := m.db.connection(ctx)
-		if active != "" {
-			r, err := db.ExecContext(ctx, `UPDATE mcp_launch_grants SET proposal=NULL WHERE grant_id=? AND connector=? AND source_id=`+mcpSourceIDQuery, active, owner.String(), string(mcpserver.OriginUser), nil, name.String())
+		var proposal *mcpapp.DirectoryIntent
+		if intent.Valid {
+			value, err := decodeDirectoryIntent(intent.String)
 			if err != nil {
-				return err
+				return mcpapp.LaunchGrant{}, false, err
 			}
-			affected, err := r.RowsAffected()
-			if err != nil {
-				return err
-			}
-			if affected != 1 {
-				return errors.New("mcp: original grant was revoked")
-			}
+			proposal = &value
 		}
-		_, err := db.ExecContext(ctx, `DELETE FROM mcp_launch_grants WHERE connector=? AND source_id=`+mcpSourceIDQuery+` AND grant_id<>?`, owner.String(), string(mcpserver.OriginUser), nil, name.String(), active)
-		return err
+		connection, err := decodeLaunchMaterial(body, name)
+		if err != nil {
+			return mcpapp.LaunchGrant{}, false, err
+		}
+		return mcpapp.LaunchGrant{Connection: connection, Proposal: proposal}, true, nil
 	})
+}
+
+func decodeLaunchMaterial(body []byte, name mcpserver.ServerName) (mcpserver.Connection, error) {
+	var material launchMaterial
+	if err := json.Unmarshal(body, &material, json.RejectUnknownMembers(true)); err != nil {
+		return nil, err
+	}
+	var connection mcpserver.Connection
+	switch {
+	case material.HTTP != nil && material.Process == nil:
+		connection = material.HTTP.connection()
+	case material.Process != nil && material.HTTP == nil:
+		connection = material.Process.connection()
+	default:
+		return nil, errors.New("mcp: invalid stored launch grant")
+	}
+	if err := (mcpserver.Server{Source: mcpserver.UserSource(), Name: name, Connection: connection}).Validate(); err != nil {
+		return nil, err
+	}
+	return connection, nil
+}
+
+func (m *MCPServerStore) settleLaunchGrants(ctx context.Context, intent mcpapp.DirectoryIntent, accepted bool) error {
+	db := m.db.connection(ctx)
+	if !accepted {
+		_, err := db.ExecContext(ctx, `DELETE FROM mcp_launch_grants WHERE proposal=?`, intent.Invocation.ID)
+		return err
+	}
+	source := []any{intent.Source.InstallationID, string(mcpserver.OriginUser), nil, intent.Change.Name}
+	if intent.Change.Replacement == nil {
+		_, err := db.ExecContext(ctx, `DELETE FROM mcp_launch_grants WHERE connector=? AND source_id=`+mcpSourceIDQuery, source...)
+		return err
+	}
+	active := intent.Change.Replacement.LaunchGrant
+	var proposal sql.NullString
+	if err := db.QueryRowContext(ctx, `SELECT proposal FROM mcp_launch_grants
+		WHERE connector=? AND source_id=`+mcpSourceIDQuery+` AND grant_id=?`, append(source, active)...).Scan(&proposal); err != nil {
+		return err
+	}
+	if !proposal.Valid {
+		return nil
+	}
+	if proposal.String != intent.Invocation.ID {
+		return errors.New("mcp: launch grant belongs to another directory change")
+	}
+	if _, err := db.ExecContext(ctx, `DELETE FROM mcp_launch_grants WHERE connector=? AND source_id=`+mcpSourceIDQuery+` AND proposal IS NULL`, source...); err != nil {
+		return err
+	}
+	_, err := db.ExecContext(ctx, `UPDATE mcp_launch_grants SET proposal=NULL WHERE grant_id=? AND proposal=?`, active, intent.Invocation.ID)
+	return err
 }

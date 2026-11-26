@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/application/taskgroup"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
@@ -24,6 +25,7 @@ type Attempt interface {
 
 type Connections interface {
 	Statuses() []mcpserver.ConnectionStatus
+	HasConnectionConfiguration(mcpserver.Server) bool
 	BeginConnect(ctx context.Context, name mcpserver.ID) (Attempt, error)
 	BeginAuthorize(ctx context.Context, name mcpserver.ID) (Attempt, error)
 	Probe(ctx context.Context, server mcpserver.Server) error
@@ -36,13 +38,19 @@ type registry interface {
 	Definition(ctx context.Context, name mcpserver.ID) (mcpserver.Server, bool, error)
 }
 
-// Connector acceptance authorizes publication before retiring local grants and
-// releasing the lease that admitted the write.
-type DirectorySettlement func(context.Context) error
+// The Connector supplies the decision before Runtime publishes its live effects
+// and completes the local launch authorization and acknowledgement.
+type DirectorySettlement struct {
+	Server   mcpserver.ID
+	Refusal  error
+	Complete func(context.Context) error
+}
 
 type directoryStore interface {
-	Save(ctx context.Context, server mcpserver.Server) (DirectorySettlement, error)
-	Remove(ctx context.Context, current mcpserver.Server) (DirectorySettlement, error)
+	Save(context.Context, mcpserver.Server, operation.ReplayClaim) (*DirectorySettlement, error)
+	Remove(context.Context, mcpserver.Server, operation.ReplayClaim) (*DirectorySettlement, error)
+	RecoverDirectoryChange(context.Context, operation.ReplayClaim) (*DirectorySettlement, error)
+	RestoreDirectoryChanges(context.Context) error
 }
 
 type exposureStore interface {
@@ -128,4 +136,60 @@ func (c *Coordinator) BeginShutdown() {
 
 func (c *Coordinator) AwaitShutdown(ctx context.Context) error {
 	return c.tasks.Wait(ctx)
+}
+
+type mutationScope struct {
+	coordinator *Coordinator
+	requestCtx  context.Context
+	ownerCtx    context.Context
+	finish      func()
+	locked      bool
+}
+
+func (c *Coordinator) beginMutation(ctx context.Context) (*mutationScope, error) {
+	if ctx == nil {
+		return nil, errors.New("mcp: mutation context is required")
+	}
+	ownerCtx, releaseOwner, ok := c.tasks.Attach(ctx)
+	if !ok {
+		return nil, errClosed
+	}
+	requestCtx, releaseRequest, ok := c.tasks.AttachLinked(ctx)
+	if !ok {
+		releaseOwner()
+		return nil, errClosed
+	}
+	c.mutationMu.Lock()
+	if err := requestCtx.Err(); err != nil {
+		c.mutationMu.Unlock()
+		releaseRequest()
+		releaseOwner()
+		return nil, err
+	}
+	return &mutationScope{
+		coordinator: c,
+		requestCtx:  requestCtx,
+		ownerCtx:    ownerCtx,
+		finish: func() {
+			releaseRequest()
+			releaseOwner()
+		},
+		locked: true,
+	}, nil
+}
+
+func (m *mutationScope) unlock() {
+	if m != nil && m.locked {
+		m.locked = false
+		m.coordinator.mutationMu.Unlock()
+	}
+}
+
+func (m *mutationScope) close() {
+	if m == nil || m.finish == nil {
+		return
+	}
+	m.unlock()
+	m.finish()
+	m.finish = nil
 }

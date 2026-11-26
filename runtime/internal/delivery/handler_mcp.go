@@ -29,14 +29,22 @@ func (s *Handler) ListMCPServers(ctx context.Context) (*protocol.Page[protocol.M
 }
 
 func (s *Handler) CreateMCPServer(ctx context.Context, in protocol.MCPServerCandidate) error {
+	return wireMCPError(s.createMCPServer(ctx, in, operation.ReplayClaim{}))
+}
+
+func (s *Handler) createMCPServer(ctx context.Context, in protocol.MCPServerCandidate, receipt operation.ReplayClaim) error {
 	input, err := mcpServerInputFromCandidate(in)
 	if err != nil {
 		return err
 	}
-	return wireMCPError(s.mcp.CreateServer(ctx, input))
+	return s.mcp.CreateServer(ctx, input, receipt)
 }
 
 func (s *Handler) UpdateMCPServer(ctx context.Context, in protocol.UpdateMCPServerRequest) error {
+	return wireMCPError(s.updateMCPServer(ctx, in, operation.ReplayClaim{}))
+}
+
+func (s *Handler) updateMCPServer(ctx context.Context, in protocol.UpdateMCPServerRequest, receipt operation.ReplayClaim) error {
 	name, err := mcpServerIDFromWire(in.Server)
 	if err != nil {
 		return err
@@ -45,15 +53,19 @@ func (s *Handler) UpdateMCPServer(ctx context.Context, in protocol.UpdateMCPServ
 	if err != nil {
 		return err
 	}
-	return wireMCPError(s.mcp.UpdateServer(ctx, name, patch))
+	return s.mcp.UpdateServer(ctx, name, patch, receipt)
 }
 
 func (s *Handler) DeleteMCPServer(ctx context.Context, server protocol.MCPServerID) error {
-	name, err := mcpServerIDFromWire(server)
+	return wireMCPError(s.deleteMCPServer(ctx, protocol.MCPServerRequest{Server: server}, operation.ReplayClaim{}))
+}
+
+func (s *Handler) deleteMCPServer(ctx context.Context, in protocol.MCPServerRequest, receipt operation.ReplayClaim) error {
+	name, err := mcpServerIDFromWire(in.Server)
 	if err != nil {
 		return err
 	}
-	return wireMCPError(s.mcp.DeleteServer(ctx, name))
+	return s.mcp.DeleteServer(ctx, name, receipt)
 }
 
 func (s *Handler) TestMCPServer(ctx context.Context, in protocol.MCPServerCandidate) (*protocol.MCPTestResult, error) {

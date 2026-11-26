@@ -951,7 +951,11 @@ User MCP server membership and configuration belong exclusively to the durable r
 commands: `mcp.servers.create`, `mcp.servers.update` and `mcp.servers.delete` (or the
 corresponding Go binding methods). Their acknowledgements confirm the directory write.
 The server list supplies current configuration and live connection status, including after
-replaying an older write. Startup restores these resources and realizes enabled connections. `FLAME_MCP_SERVERS` and `FLAME_MCP_<NAME>_TOKEN` no longer configure
+replaying an older write. Runtime stages the exact Connector request and its launch
+authorization before delivery. The Connector's original receipt settles the Runtime
+acknowledgement and grant retirement together. Startup resolves retained directory
+changes before realizing enabled connections. The Runtime store requires a fresh
+development directory for this change. `FLAME_MCP_SERVERS` and `FLAME_MCP_<NAME>_TOKEN` no longer configure
 or seed servers. Configure new servers and credentials through the existing CLI or
 Desktop MCP controls, or the public Runtime binding. Previously persisted servers remain
 ordinary user resources; deleting one stays effective across restart.

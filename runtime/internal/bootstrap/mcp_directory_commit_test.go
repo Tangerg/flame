@@ -17,7 +17,7 @@ func TestAcceptedMCPDisableSurvivesCallerCancellation(t *testing.T) {
 	waiting, resume := make(chan struct{}), make(chan struct{})
 	release := sync.OnceFunc(func() { close(resume) })
 	defer release()
-	if err := modernsqlite.RegisterScalarFunction("test_mcp_grant_confirmation", 0,
+	if err := modernsqlite.RegisterScalarFunction("test_mcp_directory_acknowledgement", 0,
 		func(*modernsqlite.FunctionContext, []driver.Value) (driver.Value, error) {
 			close(waiting)
 			<-resume
@@ -36,12 +36,11 @@ func TestAcceptedMCPDisableSurvivesCallerCancellation(t *testing.T) {
 		HandshakeTimeout: protocol.MCPHandshakeTimeout{Type: protocol.MCPHandshakeUnbounded},
 	}, "create-before-disable")
 	runtime.poMCPTools(&serverID, func(tools []protocol.MCPTool) bool { return len(tools) == 1 })
-	questionCrashDatabase(t, cfg.stores.DataDirectory, `CREATE TRIGGER pause_mcp_grant_confirmation
-		BEFORE UPDATE OF proposal ON mcp_launch_grants
-		WHEN NEW.proposal IS NULL
-		BEGIN SELECT test_mcp_grant_confirmation(); END`)
+	questionCrashDatabase(t, cfg.stores.DataDirectory, `CREATE TRIGGER pause_mcp_directory_acknowledgement
+		BEFORE UPDATE OF payload ON idempotency_records
+		WHEN OLD.key = 'disable-once'
+		BEGIN SELECT test_mcp_directory_acknowledgement(); END`)
 
-	const updateServer delivery.Name = "mcp.servers.update"
 	request := protocol.UpdateMCPServerRequest{Server: serverID, Enabled: new(false)}
 	options := protocol.CallMetadata{
 		IdempotencyKey: "disable-once", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version},
@@ -49,13 +48,13 @@ func TestAcceptedMCPDisableSurvivesCallerCancellation(t *testing.T) {
 	callCtx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	done := make(chan protocol.OperationResult, 1)
-	go func() { done <- runtime.endpoint.Invoke(callCtx, updateServer, request, options) }()
+	go func() { done <- runtime.endpoint.Invoke(callCtx, delivery.MCPServersUpdate, request, options) }()
 	select {
 	case <-waiting:
 	case result := <-done:
-		t.Fatalf("disable finished before grant confirmation: %+v", result)
+		t.Fatalf("disable finished before directory acknowledgement: %+v", result)
 	case <-time.After(lifecycleWaitBudget(t)):
-		t.Fatal("disable did not reach grant confirmation")
+		t.Fatal("disable did not reach directory acknowledgement")
 	}
 	assertWithdrawn := func() {
 		t.Helper()
@@ -73,7 +72,7 @@ func TestAcceptedMCPDisableSurvivesCallerCancellation(t *testing.T) {
 		t.Fatal("committed disable did not settle")
 	}
 
-	recorded := runtime.endpoint.Invoke(t.Context(), updateServer, request, options)
+	recorded := runtime.endpoint.Invoke(t.Context(), delivery.MCPServersUpdate, request, options)
 	if recorded.Failure != nil || recorded.Value != (struct{}{}) {
 		t.Fatalf("replayed disable = %+v, %v", recorded.Value, recorded.Failure)
 	}

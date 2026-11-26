@@ -9,7 +9,7 @@ import (
 const (
 	MCPServersList                 Name = "mcp.servers.list"
 	MCPServersCreate               Name = "mcp.servers.create"
-	mcpServersUpdate               Name = "mcp.servers.update"
+	MCPServersUpdate               Name = "mcp.servers.update"
 	MCPServersDelete               Name = "mcp.servers.delete"
 	mcpServersTest                 Name = "mcp.servers.test"
 	mcpToolsExposure               Name = "mcp.tools.exposure"
@@ -51,17 +51,17 @@ func registerMCP(registry *Registry) {
 		CreateMCPServer(context.Context, protocol.MCPServerCandidate) error
 	}, ctx context.Context, request protocol.MCPServerCandidate) error {
 		return service.CreateMCPServer(ctx, request)
-	})
+	}).withOwnedReplay(directoryReplay((*Handler).createMCPServer))
 
 	registry.commandAck(MethodMeta{
-		Name: mcpServersUpdate, GoName: "UpdateMCPServer",
+		Name: MCPServersUpdate, GoName: "UpdateMCPServer",
 		Errors:          []string{protocol.ErrMCPServerNotFound.Error()},
 		CapabilityRules: requires(protocol.FeatureMCP),
 	}, func(service interface {
 		UpdateMCPServer(context.Context, protocol.UpdateMCPServerRequest) error
 	}, ctx context.Context, request protocol.UpdateMCPServerRequest) error {
 		return service.UpdateMCPServer(ctx, request)
-	})
+	}).withOwnedReplay(directoryReplay((*Handler).updateMCPServer))
 
 	registry.commandAck(MethodMeta{
 		Name: MCPServersDelete, GoName: "DeleteMCPServer",
@@ -71,7 +71,7 @@ func registerMCP(registry *Registry) {
 		DeleteMCPServer(context.Context, protocol.MCPServerID) error
 	}, ctx context.Context, request protocol.MCPServerRequest) error {
 		return service.DeleteMCPServer(ctx, request.Server)
-	})
+	}).withOwnedReplay(directoryReplay((*Handler).deleteMCPServer))
 
 	registry.query(MethodMeta{
 		Name: mcpServersTest, GoName: "TestMCPServer",
