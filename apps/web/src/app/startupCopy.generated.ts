@@ -46,9 +46,9 @@ export const startupCopy = {
   ja: {
     "startup.failed.title": "Flame を起動できませんでした",
     "startup.unsupported.body":
-      "このブラウザには Flame に必要な機能がありません。ブラウザを更新するか、macOS と Safari を更新してから、Flame を開き直してください。",
-    "startup.unsupported.browsers": "対応ブラウザ",
-    "startup.unsupported.features": "不足しているブラウザ機能",
+      "このブラウザーには Flame に必要な機能がありません。ブラウザーを更新するか、macOS と Safari を更新してから、Flame を開き直してください。",
+    "startup.unsupported.browsers": "対応ブラウザー",
+    "startup.unsupported.features": "不足しているブラウザー機能",
     "startup.loadFailed.body":
       "アプリケーションを読み込めませんでした。このウィンドウを再読み込みして、もう一度試してください。",
     "plugins.renderFailed.details": "詳細",
