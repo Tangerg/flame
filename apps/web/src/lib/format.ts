@@ -22,16 +22,47 @@ export function fmtTokens(n: number): string {
   return `${decimal(n / 1_000_000, 1, 1)}M`;
 }
 
+type TimeUnit = "millisecond" | "second" | "minute" | "hour";
+const timeUnits = new Map<string, Intl.NumberFormat>();
+const timeLists = new Map<string, Intl.ListFormat>();
+
+function timeUnit(value: number, unit: TimeUnit, maximumFractionDigits = 0): string {
+  const locale = localeToBcp47(activeLocale());
+  const key = `${locale}/${unit}/${maximumFractionDigits}`;
+  let formatter = timeUnits.get(key);
+  if (!formatter) {
+    formatter = new Intl.NumberFormat(locale, {
+      style: "unit",
+      unit,
+      unitDisplay: "narrow",
+      useGrouping: false,
+      maximumFractionDigits,
+    });
+    timeUnits.set(key, formatter);
+  }
+  return formatter.format(value);
+}
+
+function timeParts(...parts: string[]): string {
+  const locale = localeToBcp47(activeLocale());
+  let formatter = timeLists.get(locale);
+  if (!formatter) {
+    formatter = new Intl.ListFormat(locale, { type: "unit", style: "narrow" });
+    timeLists.set(locale, formatter);
+  }
+  return formatter.format(parts);
+}
+
 export function fmtDuration(ms: number): string {
-  if (ms < 1000) return `${decimal(ms, 0)}ms`;
+  if (ms < 1000) return timeUnit(ms, "millisecond");
   const seconds = ms / 1000;
-  if (seconds < 10) return `${decimal(Math.round(seconds * 10) / 10, 1)}s`;
+  if (seconds < 10) return timeUnit(Math.round(seconds * 10) / 10, "second", 1);
   const whole = Math.round(seconds);
-  if (whole < 60) return `${whole}s`;
+  if (whole < 60) return timeUnit(whole, "second");
   const minutes = Math.floor(whole / 60);
-  if (minutes < 60) return `${minutes}m ${String(whole - minutes * 60).padStart(2, "0")}s`;
+  if (minutes < 60) return timeParts(timeUnit(minutes, "minute"), timeUnit(whole % 60, "second"));
   const hours = Math.floor(minutes / 60);
-  return `${hours}h ${String(minutes - hours * 60).padStart(2, "0")}m`;
+  return timeParts(timeUnit(hours, "hour"), timeUnit(minutes % 60, "minute"));
 }
 
 export function durationText(t: Translate, start: number, end: number | null): string {
