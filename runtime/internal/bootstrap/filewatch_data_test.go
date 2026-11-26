@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	json "encoding/json/v2"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -139,6 +140,10 @@ func TestFilewatchResumesTheSamePartialDataMethodWithPinnedInputs(t *testing.T) 
 	write(east, "P1,0\nP2,80")
 	write(west, "P1,6\nP2,90")
 	const instructions = "M1. Filter P1 and generate a new editable chart for these inputs. Include exact source hashes and the read/required denominator. Ask before proceeding with partial data."
+	meta := protocol.RequestMeta{ProtocolVersion: protocol.Version, ClientCapabilities: &protocol.ClientCapabilities{
+		InterruptTypes: []protocol.InterruptType{protocol.InterruptQuestion, protocol.InterruptApproval},
+	}}
+	ctx := delivery.WithRequestMeta(t.Context(), meta)
 	watchCall(testsupport.FilewatchConfigureV1Method, testsupport.FilewatchConfigureInput{
 		ExpectedRevision: generatedNumber(t, "1"), Trigger: &testsupport.FilewatchConfigureV1InputFilewatchDraft{
 			Title: "M1", Workspace: root.Ref.Path, Paths: []string{"east.csv", "west.csv"}, Instructions: instructions, TargetSessionId: &session.ID, CapturePartitions: new(true),
@@ -159,9 +164,22 @@ func TestFilewatchResumesTheSamePartialDataMethodWithPinnedInputs(t *testing.T) 
 		return false
 	})
 	d1 := events()[0]
-	waitForProtocolRunTerminal(t, t.Context(), r.api, d1.RunId)
+	started := r.must(delivery.RunsGet, protocol.GetRunRequest{RunID: d1.RunId}, "").(*protocol.RunRef)
+	if started.Status == protocol.RunStatusRunning {
+		_, stream, err := r.api.SubscribeRun(ctx, protocol.SubscribeRunRequest{RunID: d1.RunId, SegmentID: started.ActiveSegmentID, Snapshot: true})
+		if err != nil && !errors.Is(err, protocol.ErrRunFinished) {
+			t.Fatal(err)
+		}
+		if err == nil {
+			for _, err := range stream {
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+		}
+	}
 	if run := r.must(delivery.RunsGet, protocol.GetRunRequest{RunID: d1.RunId}, "").(*protocol.RunRef); run.Outcome == nil || run.Outcome.Type != protocol.OutcomeCompleted {
-		t.Fatalf("D1 did not create its chart: %+v", run.Outcome)
+		t.Fatalf("D1 did not create its chart: status %s, outcome %+v", run.Status, run.Outcome)
 	}
 	if err := os.Remove(west); err != nil {
 		t.Fatal(err)
@@ -202,10 +220,6 @@ func TestFilewatchResumesTheSamePartialDataMethodWithPinnedInputs(t *testing.T) 
 	r = reopenPluginRuntime(t, r, &cfg)
 	waitCallContributorState(t, r, watch.ID, protocol.MCPServerConnected)
 	waitCallContributorState(t, r, artifact.ID, protocol.MCPServerConnected)
-	meta := protocol.RequestMeta{ProtocolVersion: protocol.Version, ClientCapabilities: &protocol.ClientCapabilities{
-		InterruptTypes: []protocol.InterruptType{protocol.InterruptQuestion, protocol.InterruptApproval},
-	}}
-	ctx := delivery.WithRequestMeta(t.Context(), meta)
 	pending, err := r.api.ListInterrupts(ctx, protocol.ListInterruptsRequest{RootRunID: d2.RunId})
 	if err != nil || len(pending.Data) != 1 || len(pending.Data[0].Interrupts) != 1 {
 		t.Fatalf("original partial Run lost the question: %+v, %v", pending, err)
