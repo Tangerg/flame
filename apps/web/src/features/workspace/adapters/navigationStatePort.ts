@@ -19,20 +19,54 @@ function markedDockViewId(element: HTMLElement): string | null {
   return element.closest<HTMLElement>("[data-dock-view-id]")?.dataset.dockViewId ?? null;
 }
 
-interface SettingsFocusRegistration {
-  capture: () => (() => void) | undefined;
+type SettingsVisit = Pick<AppLocation, "session" | "view" | "target"> & {
   prepareReturn?: () => void;
-}
+  unsubscribe: () => void;
+};
 
 export function createWorkspaceNavigation(
   navigation: Navigator,
   dockStore: ContextDockStore,
   useShellLayoutStore: ShellLayoutStore,
   endpoint: () => string,
-): WorkspaceNavigationPort {
+): WorkspaceNavigationPort & { dispose(): void } {
   const useContextDockStore = dockStore.store;
   const activateContextDockStorage = dockStore.activate;
-  let settingsFocus: SettingsFocusRegistration | undefined;
+  let settingsFocus: { capture: () => (() => void) | undefined } | undefined;
+  let settingsVisit: SettingsVisit | undefined;
+
+  function retireSettingsVisit(): void {
+    const visit = settingsVisit;
+    settingsVisit = undefined;
+    visit?.unsubscribe();
+  }
+
+  function beginSettingsVisit({ session, view, target }: AppLocation): void {
+    retireSettingsVisit();
+    const registration = settingsFocus;
+    const prepareReturn = registration?.capture();
+    settingsVisit = {
+      session,
+      view,
+      target,
+      prepareReturn: prepareReturn
+        ? () => {
+            if (settingsFocus === registration) prepareReturn();
+          }
+        : undefined,
+      unsubscribe: navigation.subscribe((location) => {
+        if (location.view !== WORKSPACE_SETTINGS_VIEW || location.session !== session)
+          retireSettingsVisit();
+      }),
+    };
+  }
+
+  function currentSettingsVisit(location: AppLocation): SettingsVisit | undefined {
+    return location.view === WORKSPACE_SETTINGS_VIEW && location.session === settingsVisit?.session
+      ? settingsVisit
+      : undefined;
+  }
+
   function selectChat(presentation: WorkspaceChatPresentation = "preserve-dock"): void {
     navigation.go(presentation === "hide-dock" ? { view: null, dock: null } : { view: null });
   }
@@ -89,6 +123,10 @@ export function createWorkspaceNavigation(
     (location.view ?? location.dock) === id ? location.target : null;
 
   return {
+    dispose: () => {
+      retireSettingsVisit();
+      settingsFocus = undefined;
+    },
     useActiveViewId: () => navigation.use((location) => location.view),
     useDock: () => ({
       open: navigation.use((location) => location.dock !== null),
@@ -140,15 +178,12 @@ export function createWorkspaceNavigation(
     useViewMemory: () => useContextDockStore((state) => state.memory),
     remember: (change) => useContextDockStore.getState().remember(change),
     useSettingsPaneTarget: () => navigation.use((location) => location.settings),
+    useSettingsSourceViewId: () =>
+      navigation.use((location) => currentSettingsVisit(location)?.view ?? null),
     registerSettingsFocusCapture: (capture) => {
-      const registration: SettingsFocusRegistration = { capture };
+      const registration = { capture };
       settingsFocus = registration;
-      const unsubscribe = navigation.subscribe((location, previous) => {
-        if (location.view !== WORKSPACE_SETTINGS_VIEW || location.session !== previous.session)
-          registration.prepareReturn = undefined;
-      });
       return () => {
-        unsubscribe();
         if (settingsFocus === registration) settingsFocus = undefined;
       };
     },
@@ -169,9 +204,11 @@ export function createWorkspaceNavigation(
     toggleSidebar: () => useShellLayoutStore.getState().toggleSidebar(),
     selectChat,
     openView: (id, origin) => {
-      if (settingsFocus && id === WORKSPACE_SETTINGS_VIEW && navigation.get().view !== id)
-        settingsFocus.prepareReturn = settingsFocus.capture();
-      inspectFrom(id, origin);
+      if (id === WORKSPACE_SETTINGS_VIEW) {
+        const location = navigation.get();
+        if (location.view === id) return;
+        beginSettingsVisit(location);
+      } else inspectFrom(id, origin);
       navigation.go({ view: id });
     },
     openViewInDock: (id, origin, target) => showDockView(id, "alone", origin, target),
@@ -215,11 +252,15 @@ export function createWorkspaceNavigation(
       } else showDockView(target, "alone", origin);
     },
     closeView: (id) => {
-      if (navigation.get().view !== id) return;
-      if (id === WORKSPACE_SETTINGS_VIEW && settingsFocus) {
-        const prepareReturn = settingsFocus.prepareReturn;
-        settingsFocus.prepareReturn = undefined;
-        prepareReturn?.();
+      const location = navigation.get();
+      if (location.view !== id) return;
+      const visit = currentSettingsVisit(location);
+      if (visit) {
+        visit.prepareReturn?.();
+        if (visit.view !== null) {
+          navigation.go({ view: visit.view, target: visit.target });
+          return;
+        }
       }
       selectChat();
     },

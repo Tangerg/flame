@@ -714,10 +714,14 @@ while the accepted, stored and contributed color text stays exactly as written.
 
 Settings categories mount on first visit and retain their inline inputs and pending
 feedback for the lifetime of the open Settings view. Inactive categories retain
-layout and native reading position while invisible and inert; their visibility
-boundary retires menus and dialogs. Closing the view or removing
-a category unmounts that pane. Installation sources belong to the current Runtime
-operations generation: replacement clears the source, a failed install keeps it
+layout and native reading position while invisible and inert. Their visibility
+boundary retires menus and dialogs. Closing the view or removing a category
+unmounts that pane. A Settings visit opened over a full-width workspace view keeps
+the source mounted with its existing draft, query and reading position. Closing
+Settings returns to that view and target and focuses the original control when
+it is available. Navigating away from Settings or changing Sessions ends the
+visit. Installation sources belong to the current Runtime operations generation.
+Replacement clears the source, a failed install keeps it
 editable, and an accepted install clears it. Pending exposes its busy state;
 successful settlement retains the action's focus when clearing the source makes
 that action unavailable. Category navigation does not create another draft store

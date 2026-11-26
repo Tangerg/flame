@@ -64,6 +64,7 @@ export interface WorkspaceNavigationPort {
   useViewMemory(): WorkspaceViewMemory;
   remember(change: Partial<WorkspaceViewMemory>): void;
   useSettingsPaneTarget(): string | null;
+  useSettingsSourceViewId(): string | null;
   // Capture before Settings hides the source. The returned callback prepares
   // the focus handoff for a normal close of that same visit.
   registerSettingsFocusCapture(capture: () => (() => void) | undefined): () => void;

@@ -451,6 +451,54 @@ drains reach the existing deadline. The private app,
 processes, profiles, fixtures, logs, captures, caches and checkout
 build outputs are removed.
 
+### Settings preserves an interrupted full-width view (2026-11-27)
+
+Signed production Wails at `a66fee407` opens Agent memory in User
+scope with query `2468` and unsaved edit `9724`. Cmd+, from the edit
+field opens Settings. Keyboard activation of Close returns to the
+Conversation. The next visit to Memory has an empty query and no
+editor. The isolated Runtime still has the original record at
+revision 1.
+
+Workspace navigation now captures the prior main view and target for
+one Settings visit in the same Session. The existing view stack
+keeps that source mounted, invisible and inert. A normal close
+restores the captured view and target. The existing focus handoff
+also recognizes the Settings header control when React reuses it
+during the return. This follows Better Accessibility and the
+retained reading pattern already used for Dock inspections.
+
+- At 1120 × 728 in Chinese/light/14 px/Flame Orange, Cmd+, from the
+  edit field hides Memory from the native accessibility tree. Return
+  on Settings Close restores the same field, User scope and query.
+  Pressing `5` changes `9724` to `97524`, preserving the insertion
+  point. The saved record still reads `2468`.
+- Open Settings again. Wheel input moves a keyboard shortcut action
+  from y=814 to y=279. Change to English/dark/18 px/Blue (#0485F7)
+  and resize to 1280 × 800. Cmd+W returns to the same editor.
+  Typing `7` produces `975724` with a visible focus ring. Escape
+  cancels the edit and returns to the original Edit button.
+- History Back from Settings reveals Memory with the retained
+  `2468` query. Forward shows Settings and Close follows the
+  normal Conversation path for that history visit. The Composer
+  draft continues from `5682` to `56825`. In a fresh Settings
+  visit from an editor, Cmd+L goes directly to that Composer.
+- Pointer entry into the actual `README.md` Files preview opens
+  its reader beside the conversation. From Go to line, open Settings
+  and focus Close. The first Escape dismisses its visible Tooltip.
+  The next returns to Go to line. Opening Settings from the Composer
+  and activating Close returns to the same draft and input.
+
+Production staging, Runtime packaging, signed Wails, Web typecheck,
+bootstrap, plugin resource verification, scoped Prettier and diff
+checks pass. Both Wails builds use the same isolated Runtime
+`2026-11-26.10`. The saved Memory remains at revision 1 and the
+private Session has no Run. VoiceOver, other platforms and an
+in-flight Memory write during Settings remain outside this check.
+Both Wails instances exit normally and the private Runtime drain
+reaches the existing deadline. The private app, processes, profile,
+fixture, logs, captures, caches and checkout build outputs are removed.
+
 ## Error notes leave retrying to their buttons (2026-11-26)
 
 Five error notes ended by narrating the buttons beside them. The sidebar's folder error said `Check the Runtime connection, then retry.` above `Retry`. The shared data-view error said `… Check the connection and retry.`, and every caller offers Retry except provider selections, whose section has its own Refresh selections. The draft notices said `Keep this window open and retry, or copy drafts.` above `Retry` and `Copy draft text`. The startup failure said `Retry, or copy the diagnostics to report it.` above `Retry` and `Copy diagnostics`. Each now stops at what the buttons can't say:

@@ -424,8 +424,9 @@ scrolling, so a hidden floating action never keeps keyboard focus.
   practice for a closable tab.
 
 An open workspace view has one mounted instance per exact Session and view ID.
-Dock tabs, the main view and distinct main sources on the current inspection path
-retain it. Selection, collapse and presentation change visibility and layout while
+Dock tabs, the main view, the full-width source of an open Settings visit and
+distinct main sources on the current inspection path retain it.
+Selection, collapse and presentation change visibility and layout while
 preserving its query, draft and original command observation. A same-view return
 shortcut does not retain a closed tab. Session and captured-target replacement,
 resource retirement and actual removal retain their cancellation contracts.
