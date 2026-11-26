@@ -1,4 +1,5 @@
 import type { CallPluginRequest } from "@flame/runtime-client/wire";
+import type { WireMethodName } from "@flame/runtime-client/methods";
 import {
   captureRequestMeta,
   checkRequest,
@@ -70,7 +71,7 @@ export interface DurableMutationJournal {
   pendingPluginCommands(): DurableMutationIdentity[];
   validatePluginCommand(identity: DurableMutationIdentity, request: CallPluginRequest): void;
   reserve(
-    method: string,
+    method: WireMethodName,
     params: unknown,
     preferredKey: string | undefined,
     claimed: (idempotencyKey: string) => boolean,
@@ -85,10 +86,11 @@ export interface DurableMutationJournal {
   settle(identity: DurableMutationIdentity): void;
 }
 
-interface DurableMutationJournalOptions {
+export interface DurableMutationJournalOptions {
   storage: MutationJournalStorage;
   scope: () => MutationJournalScope | null | undefined;
   now: () => number;
+  admitNewCommand(method: WireMethodName, params: unknown, requestMeta: RequestMeta | null): void;
 }
 
 function storageError(message: string, cause?: unknown): MutationJournalStorageError {
@@ -216,13 +218,14 @@ export function openDurableMutationJournal(
   };
 
   const createEntry = (
-    method: string,
+    method: WireMethodName,
     params: unknown,
     scope: MutationJournalScope,
     idempotencyKey: string,
     requestMeta: RequestMeta | null,
     installed?: { intent: string | null; route: Omit<CallPluginRequest, "input"> },
   ) => {
+    options.admitNewCommand(method, params, requestMeta);
     const createdAt = options.now();
     const salt = crypto.randomUUID();
     const entry: JournalEntry = {

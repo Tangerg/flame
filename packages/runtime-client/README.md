@@ -44,6 +44,8 @@ active observer through its terminal `segment.finished` event.
 Capability checks use the request's wire fields. An explicit `isolated: false`
 requires isolation because it changes the Session's isolation setting. A
 descendant query requires `childRuns` only when `includeDescendants` is `true`.
+The SDK checks capabilities before reserving a new command. On retry, Runtime
+applies its live policy to the original request, metadata and idempotency key.
 
 HTTP credentials and metadata must be ASCII field values without surrounding
 whitespace. Fetch byte strings cannot preserve non-ASCII UTF-8 identities, and

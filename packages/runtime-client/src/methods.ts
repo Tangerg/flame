@@ -135,11 +135,7 @@ import { streamRuntimeEvents } from "./stream";
 import { createRuntimeEventFeed } from "./runtimeEventFeed";
 import type { AutoPagingPromise } from "./pagination";
 import { RUNTIME_SUBSCRIBE_METHOD } from "./transport";
-import {
-  createMutationJournal,
-  type PluginCommandInput,
-  type PluginCommandBinding,
-} from "./mutationJournal";
+import type { PluginCommandInput, PluginCommandBinding } from "./mutationJournal";
 
 import { callOrDispose, type StreamingResult } from "./stream";
 import {
@@ -148,8 +144,6 @@ import {
   type RunOpeningResult,
   type SteerMutationPromise,
 } from "./runCommands";
-
-export type { MethodsOptions } from "./wireCallPath";
 
 interface WorkspaceMethods {
   readonly ref: Readonly<WorkspaceRef>;
@@ -462,22 +456,12 @@ function bindWorkspace(call: WireCall, ref: WorkspaceRef): WorkspaceMethods {
   };
 }
 
-export function createMethods(client: RpcClient, options: MethodsOptions = {}): Methods {
-  const mutationJournal =
-    options.mutationJournal ??
-    createMutationJournal({
-      scope: () => options.capabilities?.()?.limits.idempotency,
-    });
-  const { call, perform, openMutation, capturePluginCommand } = createWireCallPath(client, {
-    ...options,
-    mutationJournal,
-  });
+export function createMethods(client: RpcClient, options: MethodsOptions): Methods {
+  const { mutationJournal } = options;
+  const wire = createWireCallPath(client, options);
+  const { call } = wire;
 
-  const runCommands = createRunCommands(
-    { perform, openMutation },
-    mutationJournal,
-    options.capabilities,
-  );
+  const runCommands = createRunCommands(wire, mutationJournal, options.capabilities);
 
   const openWorkspace = async (
     ref?: WorkspaceRef,
@@ -612,28 +596,13 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
       pendingCommands: () =>
         mutationJournal
           .pendingPluginCommands()
-          .map((command) => pendingPluginCommand(command, { perform })),
+          .map((command) => pendingPluginCommand(command, wire)),
       queryStream: (request, consume, decode, signal) =>
-        queryPluginStream({ perform }, request, consume, decode, signal),
+        queryPluginStream(wire, request, consume, decode, signal),
       stream: (intent, input, prepare, consume, decode, signal) =>
-        callPluginStream(
-          { perform, openMutation, capturePluginCommand },
-          intent,
-          input,
-          prepare,
-          consume,
-          decode,
-          signal,
-        ),
+        callPluginStream(wire, intent, input, prepare, consume, decode, signal),
       command: (intent, input, prepare, decode, signal) =>
-        callPluginCommand(
-          { perform, openMutation, capturePluginCommand },
-          intent,
-          input,
-          prepare,
-          decode,
-          signal,
-        ),
+        callPluginCommand(wire, intent, input, prepare, decode, signal),
       listProviders: (signal) => call("plugins.listProviders", {}, { signal }),
       listCompositions: (signal) => call("plugins.listCompositions", {}, { signal }),
       setComposition: (request, signal) => call("plugins.setComposition", request, { signal }),

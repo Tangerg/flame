@@ -27,7 +27,7 @@ export interface PluginCommandRecovery {
 
 export function pendingPluginCommand(
   command: PendingPluginCommand,
-  wire: Pick<WireCallPath, "perform">,
+  wire: Pick<WireCallPath, "callUnkeyed" | "dispatchCommand">,
 ): PluginCommandRecovery {
   return {
     idempotencyKey: command.idempotencyKey,
@@ -41,7 +41,7 @@ export function pendingPluginCommand(
             let request: CallPluginRequest;
             try {
               reservation.authorizeDispatch();
-              request = await wire.perform(
+              request = await wire.callUnkeyed(
                 "plugins.getCommand",
                 {
                   namespace: command.namespace,
@@ -64,12 +64,11 @@ export function pendingPluginCommand(
                 wire,
                 request,
                 reservation,
-                key,
                 () => undefined,
                 decode,
                 attempt.signal,
               );
-            return deliverPluginCommand(wire, request, reservation, key, decode, attempt.signal);
+            return deliverPluginCommand(wire, request, reservation, decode, attempt.signal);
           },
           command.idempotencyKey,
           { signal },
@@ -82,7 +81,7 @@ export function pendingPluginCommand(
         createMutationPromise<void>(
           async (key, attempt) => {
             try {
-              await wire.perform(
+              await wire.callUnkeyed(
                 "plugins.retireCommand",
                 {
                   namespace: reservation.lookupNamespace(),
@@ -103,7 +102,7 @@ export function pendingPluginCommand(
 }
 
 export async function callPluginCommand<T>(
-  wire: Pick<WireCallPath, "perform" | "openMutation" | "capturePluginCommand">,
+  wire: Pick<WireCallPath, "dispatchCommand" | "openMutation" | "capturePluginCommand">,
   intent: string,
   input: PluginCommandInput,
   prepare: () => Promise<PluginCommandBinding>,
@@ -117,33 +116,25 @@ export async function callPluginCommand<T>(
   return wire.openMutation(
     "plugins.call",
     request,
-    (key, attempt, prepared) =>
-      deliverPluginCommand(wire, prepared, reservation, key, decode, attempt.signal),
+    (prepared, original, attemptSignal) =>
+      deliverPluginCommand(wire, prepared, original, decode, attemptSignal),
     {
       signal,
-      journalKey: reservation.idempotencyKey,
-      reserveOriginal: () => reservation,
+      original: { idempotencyKey: reservation.idempotencyKey, reserve: () => reservation },
     },
   );
 }
 
 async function deliverPluginCommand<T>(
-  wire: Pick<WireCallPath, "perform">,
+  wire: Pick<WireCallPath, "dispatchCommand">,
   request: CallPluginRequest,
   reservation: MutationReservation,
-  key: string,
   decode: (output: unknown) => T,
   signal?: AbortSignal,
 ): Promise<T> {
   let reply;
   try {
-    reply = await wire.perform("plugins.call", request, {
-      signal,
-      idempotencyKey: key,
-      idempotencyNamespace: reservation.authorizeDispatch(),
-      requestMeta: reservation.requestMeta,
-      beforeDispatch: reservation.markDispatched,
-    });
+    reply = await wire.dispatchCommand("plugins.call", request, reservation, { signal });
   } catch (error) {
     if (
       isErrorType(error, "plugin_command_retired") ||

@@ -5,15 +5,16 @@ import {
   type WireFeature,
   type WireMethodName,
 } from "@flame/runtime-client/methods";
+import { RpcError } from "./errors";
 
-export function unnegotiated(
+export function requireCapabilities(
   method: WireMethodName,
   params: unknown,
   capabilities: ServerCapabilities | null | undefined,
   clientCapabilities?: ClientCapabilities,
-): WireFeature[] {
+): void {
   const rules = WIRE_CAPABILITY_POLICY[method];
-  if (!rules || !capabilities) return [];
+  if (!rules || !capabilities) return;
 
   const missing: WireFeature[] = [];
   for (const rule of rules) {
@@ -29,7 +30,14 @@ export function unnegotiated(
       }
     }
   }
-  return missing;
+  if (missing.length === 0) return;
+  throw new RpcError({
+    message: `${method} requires ${missing.join(", ")}`,
+    data: {
+      type: "capability_not_negotiated",
+      requiredCapabilities: missing.map((name) => ({ type: "feature", name })),
+    },
+  });
 }
 
 function matches(condition: WireCapabilityCondition, params: unknown): boolean {

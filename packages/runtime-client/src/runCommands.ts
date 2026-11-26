@@ -91,7 +91,11 @@ export interface RunCommands {
 // Runtime whether their original key was accepted, and only an unrecorded
 // command dispatches and attaches its event stream.
 export function createRunCommands(
-  { perform, openMutation }: Pick<WireCallPath, "perform" | "openMutation">,
+  {
+    callUnkeyed,
+    dispatchCommand,
+    openMutation,
+  }: Pick<WireCallPath, "callUnkeyed" | "dispatchCommand" | "openMutation">,
   mutationJournal: MutationJournal,
   capabilities: MethodsOptions["capabilities"],
 ): RunCommands {
@@ -119,7 +123,7 @@ export function createRunCommands(
     signal?: AbortSignal,
   ) => {
     const acknowledgement = wireAcknowledgementCheck(`runs.${operation}`, params);
-    return perform("runs.getAcceptance", { namespace, key, operation }, { signal })
+    return callUnkeyed("runs.getAcceptance", { namespace, key, operation }, { signal })
       .then((receipt) => {
         if (receipt.type === "notRecorded") return receipt;
         const mismatch = acknowledgement?.(receipt);
@@ -168,8 +172,8 @@ export function createRunCommands(
     return openMutation(
       method,
       params,
-      async (idempotencyKey, attempt, preparedParams) => {
-        const namespace = attempt.lookupNamespace();
+      async (preparedParams, reservation, attemptSignal) => {
+        const namespace = reservation.lookupNamespace();
         if (!namespace)
           throw new MutationJournalScopeUnavailableError(
             "run opening requires the Runtime store identity",
@@ -178,8 +182,8 @@ export function createRunCommands(
           method === "runs.start" ? "start" : "resume",
           preparedParams,
           namespace,
-          idempotencyKey,
-          attempt.signal,
+          reservation.idempotencyKey,
+          attemptSignal,
         );
         if (acceptance.type !== "notRecorded") {
           return {
@@ -194,23 +198,12 @@ export function createRunCommands(
             },
           };
         }
-        const idempotencyNamespace = attempt.authorizeDispatch();
-        const opened = await attachRunStream<ResumeRunResponse>(attempt.signal, (options) =>
-          perform(method, preparedParams, {
-            ...options,
-            idempotencyKey,
-            idempotencyNamespace,
-            requestMeta: attempt.requestMeta,
-            beforeDispatch: attempt.markDispatched,
-          }),
+        const opened = await attachRunStream<ResumeRunResponse>(attemptSignal, (options) =>
+          dispatchCommand(method, preparedParams, reservation, options),
         );
         return { result: opened.result, observation: { type: "stream", events: opened.events } };
       },
-      {
-        signal,
-        journalKey: original?.idempotencyKey,
-        reserveOriginal: original?.reserve,
-      },
+      { signal, original },
     );
   }
 
@@ -258,14 +251,21 @@ export function createRunCommands(
     const mutation = openMutation(
       "runs.steer",
       params,
-      async (key, attempt, prepared): Promise<SteerCommandResult> => {
-        if (attempt.steerItemId !== null) await publishIdentity(attempt.steerItemId);
-        const namespace = attempt.lookupNamespace();
+      async (prepared, reservation, attemptSignal): Promise<SteerCommandResult> => {
+        const boundItem = reservation.steerItemId;
+        if (boundItem !== null) await publishIdentity(boundItem);
+        const namespace = reservation.lookupNamespace();
         if (!namespace)
           throw new MutationJournalScopeUnavailableError(
             "steer requires the Runtime store identity",
           );
-        const acceptance = await queryAcceptance("steer", prepared, namespace, key, attempt.signal);
+        const acceptance = await queryAcceptance(
+          "steer",
+          prepared,
+          namespace,
+          reservation.idempotencyKey,
+          attemptSignal,
+        );
         const userItemId =
           acceptance.type === "notRecorded"
             ? acceptance.candidateUserItemId
@@ -274,15 +274,11 @@ export function createRunCommands(
           throw new RpcProtocolError("runs.getAcceptance result", [
             { path: "$", detail: "Steer lookup omitted its input identity" },
           ]);
-        attempt.bindSteerItem(userItemId);
+        reservation.bindSteerItem(userItemId);
         await publishIdentity(userItemId);
         if (acceptance.type !== "notRecorded") return { type: acceptance.type, userItemId };
-        const acknowledged = await perform("runs.steer", prepared, {
-          signal: attempt.signal,
-          idempotencyKey: key,
-          idempotencyNamespace: attempt.authorizeDispatch(),
-          requestMeta: attempt.requestMeta,
-          beforeDispatch: attempt.markDispatched,
+        const acknowledged = await dispatchCommand("runs.steer", prepared, reservation, {
+          signal: attemptSignal,
         });
         if (acknowledged.userItemId !== userItemId)
           throw new RpcProtocolError("runs.steer result", [
@@ -290,11 +286,7 @@ export function createRunCommands(
           ]);
         return { type: "accepted", ...acknowledged };
       },
-      {
-        signal,
-        journalKey: original?.idempotencyKey,
-        reserveOriginal: original?.reserve,
-      },
+      { signal, original },
     );
     return expose(mutation);
   };

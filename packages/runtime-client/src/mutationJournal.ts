@@ -1,9 +1,9 @@
 import {
   openDurableMutationJournal,
   type DurableMutationJournal,
-  type MutationJournalScope,
-  type MutationJournalStorage,
+  type DurableMutationJournalOptions,
 } from "./durableMutationJournal";
+import type { WireMethodName } from "@flame/runtime-client/methods";
 import {
   captureInstalledRoute,
   captureRunCommand,
@@ -56,12 +56,6 @@ export type PendingRunCommand = RunCommand & {
   acknowledge(): void;
   reserve(): MutationReservation;
 };
-
-export interface MutationJournalOptions {
-  storage?: MutationJournalStorage;
-  scope: () => MutationJournalScope | null | undefined;
-  now?: () => number;
-}
 
 function rejectedMutation<T>(
   error: unknown,
@@ -220,7 +214,7 @@ export class MutationJournal {
   }
 
   reserve(
-    method: string,
+    method: WireMethodName,
     params: unknown,
     preferredKey?: string,
     requestMeta: RequestMeta | null = null,
@@ -335,7 +329,10 @@ export class MutationJournal {
   }
 }
 
-export function createMutationJournal(options: MutationJournalOptions): MutationJournal {
+export function createMutationJournal(
+  options: Omit<DurableMutationJournalOptions, "storage" | "now"> &
+    Partial<Pick<DurableMutationJournalOptions, "storage" | "now">>,
+): MutationJournal {
   const values = new Map<string, unknown>();
   const storage = options.storage ?? {
     get: (key: string) => values.get(key),

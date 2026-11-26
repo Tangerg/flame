@@ -74,7 +74,7 @@ function observePluginStream(
 }
 
 export async function callPluginStream<T>(
-  wire: Pick<WireCallPath, "perform" | "openMutation" | "capturePluginCommand">,
+  wire: Pick<WireCallPath, "dispatchCommand" | "openMutation" | "capturePluginCommand">,
   intent: string,
   input: PluginCommandInput,
   prepare: () => Promise<PluginCommandBinding>,
@@ -89,21 +89,19 @@ export async function callPluginStream<T>(
   return wire.openMutation(
     "plugins.stream",
     request,
-    (key, attempt, prepared) =>
-      deliverPluginStream(wire, prepared, reservation, key, consume, decode, attempt.signal),
+    (prepared, original, attemptSignal) =>
+      deliverPluginStream(wire, prepared, original, consume, decode, attemptSignal),
     {
       signal,
-      journalKey: reservation.idempotencyKey,
-      reserveOriginal: () => reservation,
+      original: { idempotencyKey: reservation.idempotencyKey, reserve: () => reservation },
     },
   );
 }
 
 export async function deliverPluginStream<T>(
-  wire: Pick<WireCallPath, "perform">,
+  wire: Pick<WireCallPath, "dispatchCommand">,
   request: CallPluginRequest,
   reservation: MutationReservation,
-  key: string,
   consume: (chunk: unknown, signal: AbortSignal) => void | Promise<void>,
   decode: (output: unknown) => T,
   signal?: AbortSignal,
@@ -116,13 +114,9 @@ export async function deliverPluginStream<T>(
     (error: unknown) => ({ error }),
   );
   try {
-    await wire.perform("plugins.stream", request, {
+    await wire.dispatchCommand("plugins.stream", request, reservation, {
       signal: stream.signal,
       observe: stream.observe,
-      idempotencyKey: key,
-      idempotencyNamespace: reservation.authorizeDispatch(),
-      requestMeta: reservation.requestMeta,
-      beforeDispatch: reservation.markDispatched,
     });
     const final = await outcome;
     if ("error" in final) throw final.error;
@@ -146,7 +140,7 @@ export async function deliverPluginStream<T>(
 }
 
 export async function queryPluginStream<T>(
-  wire: Pick<WireCallPath, "perform">,
+  wire: Pick<WireCallPath, "callUnkeyed">,
   request: CallPluginRequest,
   consume: (chunk: unknown, signal: AbortSignal) => void | Promise<void>,
   decode: (output: unknown) => T,
@@ -164,7 +158,7 @@ export async function queryPluginStream<T>(
     (error: unknown) => ({ error }),
   );
   try {
-    await wire.perform("plugins.stream", structuredClone(request), {
+    await wire.callUnkeyed("plugins.stream", structuredClone(request), {
       signal: stream.signal,
       observe: stream.observe,
     });

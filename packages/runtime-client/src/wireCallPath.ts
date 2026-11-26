@@ -1,6 +1,6 @@
 import type { RpcCallOptions, RpcClient } from "./client";
 import { cloneJSON } from "@frame/sdk/json";
-import { RpcError, RpcCancellationError } from "./errors";
+import { RpcCancellationError } from "./errors";
 import { captureRequestMeta, checkRequest, requestRequiresIdempotency } from "./request";
 import { createMutationPromise, type MutationPromise } from "./mutation";
 import type {
@@ -9,7 +9,7 @@ import type {
   PluginCommandInput,
   PluginCommandBinding,
 } from "./mutationJournal";
-import { unnegotiated } from "./preflight";
+import { requireCapabilities } from "./preflight";
 import {
   createAutoPagingPromise,
   SDK_PAGINATION_POLICY,
@@ -26,10 +26,22 @@ import {
   type WireResult,
 } from "@flame/runtime-client/methods";
 
-type WirePerform = <M extends WireMethodName>(
+type UnkeyedCall = <M extends WireMethodName>(
   method: M,
   params: WireParams<M>,
   options?: RpcCallOptions<WireResult<M>>,
+) => Promise<WireResult<M>>;
+
+type CommandCallOptions<Result> = Omit<
+  RpcCallOptions<Result>,
+  "idempotencyKey" | "idempotencyNamespace" | "requestMeta" | "beforeDispatch"
+>;
+
+type CommandDispatch = <M extends WireMethodName>(
+  method: M,
+  params: WireParams<M>,
+  reservation: MutationReservation,
+  options?: CommandCallOptions<WireResult<M>>,
 ) => Promise<WireResult<M>>;
 
 type WireInvokeResult<M extends WireMethodName> = M extends WireMutationMethodName
@@ -60,12 +72,13 @@ export type WireCall = <M extends WireMethodName>(
 export interface MethodsOptions {
   capabilities?: () => ServerCapabilities | null | undefined;
   requestMeta?: () => RequestMeta | undefined;
-  mutationJournal?: MutationJournal;
+  mutationJournal: MutationJournal;
 }
 
 export interface WireCallPath {
   call: WireCall;
-  perform: WirePerform;
+  callUnkeyed: UnkeyedCall;
+  dispatchCommand: CommandDispatch;
   openMutation: OpenMutation;
   capturePluginCommand(
     intent: string,
@@ -75,67 +88,34 @@ export interface WireCallPath {
   ): ReturnType<MutationJournal["capturePluginCommand"]>;
 }
 
-interface MutationOpeningOptions {
-  signal?: AbortSignal;
-  requestedKey?: string;
-  journalKey?: string;
-  reserveOriginal?: () => MutationReservation;
-  requestMeta?: RequestMeta | null;
+interface OriginalMutation {
+  readonly idempotencyKey: string;
+  reserve(): MutationReservation;
 }
+
+type MutationOpeningOptions = {
+  signal?: AbortSignal;
+} & (
+  | { original: OriginalMutation; requestedKey?: never; requestMeta?: never }
+  | { original?: undefined; requestedKey?: string; requestMeta?: RequestMeta | null }
+);
 
 type OpenMutation = <M extends WireMethodName, Result>(
   method: M,
   params: WireParams<M>,
   execute: (
-    idempotencyKey: string,
-    attempt: MutationDelivery,
     preparedParams: WireParams<M>,
+    reservation: MutationReservation,
+    signal?: AbortSignal,
   ) => Promise<Result>,
   options?: MutationOpeningOptions,
 ) => MutationPromise<Result>;
 
-interface MutationDelivery {
-  signal?: AbortSignal;
-  readonly requestMeta: RequestMeta | null;
-  readonly steerItemId: string | null;
-  bindSteerItem(userItemId: string): void;
-  lookupNamespace(): string;
-  authorizeDispatch(): string;
-  markDispatched(): void;
-}
-
-export function createWireCallPath(
-  client: RpcClient,
-  options: MethodsOptions & { mutationJournal: MutationJournal },
-): WireCallPath {
-  const refuse = <M extends WireMethodName>(
-    method: M,
-    params: WireParams<M>,
-    requestMeta?: RequestMeta | null,
-  ): void => {
-    const missing = unnegotiated(
-      method,
-      params,
-      options.capabilities?.(),
-      requestMeta?.clientCapabilities,
-    );
-    if (missing.length === 0) return;
-    throw new RpcError({
-      message: `${method} requires ${missing.join(", ")}`,
-      data: {
-        type: "capability_not_negotiated",
-        requiredCapabilities: missing.map((name) => ({
-          type: "feature",
-          name,
-        })),
-      },
-    });
-  };
-
-  const perform: WirePerform = async (method, params, callOptions) => {
+export function createWireCallPath(client: RpcClient, options: MethodsOptions): WireCallPath {
+  const callUnkeyed: UnkeyedCall = async (method, params, callOptions) => {
     const requestMeta =
       callOptions?.requestMeta === undefined ? options.requestMeta?.() : callOptions.requestMeta;
-    refuse(method, params, requestMeta);
+    requireCapabilities(method, params, options.capabilities?.(), requestMeta?.clientCapabilities);
     const effectiveOptions =
       options.requestMeta !== undefined || callOptions?.requestMeta !== undefined
         ? { ...callOptions, requestMeta: requestMeta ?? null }
@@ -143,30 +123,41 @@ export function createWireCallPath(
     return client.call(method, params, effectiveOptions);
   };
 
+  // A reservation can outlive the capabilities observed when it was admitted.
+  const dispatchCommand: CommandDispatch = async (method, params, reservation, callOptions) => {
+    const idempotencyNamespace = reservation.authorizeDispatch();
+    return client.call(method, params, {
+      ...callOptions,
+      requestMeta: reservation.requestMeta,
+      idempotencyKey: reservation.idempotencyKey,
+      idempotencyNamespace,
+      beforeDispatch: reservation.markDispatched,
+    });
+  };
+
   const openMutation = <M extends WireMethodName, Result>(
     method: M,
     params: WireParams<M>,
     execute: (
-      idempotencyKey: string,
-      attempt: MutationDelivery,
       preparedParams: WireParams<M>,
+      reservation: MutationReservation,
+      signal?: AbortSignal,
     ) => Promise<Result>,
     opening: MutationOpeningOptions = {},
   ): MutationPromise<Result> => {
-    const { signal, requestedKey, journalKey, reserveOriginal, requestMeta } = opening;
+    const { signal, requestedKey, original, requestMeta } = opening;
     let preparedParams: WireParams<M>;
-    const preferredJournalKey = requestedKey ?? journalKey ?? crypto.randomUUID();
+    const preferredJournalKey = original?.idempotencyKey ?? requestedKey ?? crypto.randomUUID();
     let reservation: MutationReservation;
     try {
-      if (!reserveOriginal && signal?.aborted) throw new RpcCancellationError();
+      if (!original && signal?.aborted) throw new RpcCancellationError();
       preparedParams = checkRequest(method, cloneJSON(params));
-      if (reserveOriginal) {
-        reservation = reserveOriginal();
+      if (original) {
+        reservation = original.reserve();
       } else {
         const metadata = captureRequestMeta(
           requestMeta === undefined ? (options.requestMeta?.() ?? null) : requestMeta,
         );
-        checkRequest(method, preparedParams, metadata);
         reservation = options.mutationJournal.reserve(
           method,
           preparedParams,
@@ -175,35 +166,16 @@ export function createWireCallPath(
         );
       }
     } catch (error) {
-      const failedKey = requestedKey ?? preferredJournalKey;
       const refused = (): MutationPromise<Result> =>
         Object.defineProperties(Promise.reject(error), {
-          idempotencyKey: { enumerable: true, value: failedKey },
+          idempotencyKey: { enumerable: true, value: preferredJournalKey },
           retry: { enumerable: true, value: refused },
         }) as MutationPromise<Result>;
       return refused();
     }
     const create = () =>
       createMutationPromise(
-        (idempotencyKey, attempt) => {
-          return execute(
-            idempotencyKey,
-            {
-              ...attempt,
-              requestMeta: reservation.requestMeta,
-              get steerItemId() {
-                return reservation.steerItemId;
-              },
-              bindSteerItem: (userItemId) => {
-                reservation.bindSteerItem(userItemId);
-              },
-              lookupNamespace: () => reservation.lookupNamespace(),
-              authorizeDispatch: () => reservation.authorizeDispatch(),
-              markDispatched: () => reservation.markDispatched(),
-            },
-            preparedParams,
-          );
-        },
+        (_, attempt) => execute(preparedParams, reservation, attempt.signal),
         reservation.idempotencyKey,
         { signal },
       );
@@ -216,23 +188,17 @@ export function createWireCallPath(
     callOptions?: RpcCallOptions<WireResult<M>>,
   ): WireInvokeResult<M> => {
     if (!requestRequiresIdempotency(method, params)) {
-      return perform(method, params, callOptions) as WireInvokeResult<M>;
+      return callUnkeyed(method, params, callOptions) as WireInvokeResult<M>;
     }
     const { signal, idempotencyKey, requestMeta, ...stableCallOptions } = callOptions ?? {};
     return openMutation(
       method,
       params,
-      (idempotencyKey, attempt, preparedParams) => {
-        const idempotencyNamespace = attempt.authorizeDispatch();
-        return perform(method, preparedParams, {
+      (preparedParams, reservation, attemptSignal) =>
+        dispatchCommand(method, preparedParams, reservation, {
           ...stableCallOptions,
-          requestMeta: attempt.requestMeta,
-          ...(attempt.signal ? { signal: attempt.signal } : {}),
-          idempotencyKey,
-          beforeDispatch: attempt.markDispatched,
-          ...(idempotencyNamespace ? { idempotencyNamespace } : {}),
-        });
-      },
+          signal: attemptSignal,
+        }),
       { signal, requestedKey: idempotencyKey, requestMeta },
     ) as WireInvokeResult<M>;
   }) as WireInvoke;
@@ -274,5 +240,5 @@ export function createWireCallPath(
       signal,
     );
 
-  return { call, perform, openMutation, capturePluginCommand };
+  return { call, callUnkeyed, dispatchCommand, openMutation, capturePluginCommand };
 }
