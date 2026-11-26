@@ -1,6 +1,5 @@
 export const ko: Record<string, string> = {
   "failure.required": "필수: 오류 시 차단",
-  "failure.advisory": "권고: 오류 시 계속",
   title: "수명 주기 훅",
   trust: "이 저장소의 훅을 신뢰",
   "trust.sub":
@@ -10,8 +9,6 @@ export const ko: Record<string, string> = {
   "kind.inject": "주입",
   "scope.global": "전역",
   "scope.repository": "저장소",
-  inactive: "비활성",
-  "inactive.hint": "이 저장소를 신뢰하면 훅이 켜집니다.",
   empty: "설정된 훅이 없습니다",
   "empty.sub":
     "~/.flame/hooks.json(전역) 또는 <저장소>/.flame/hooks.json에 훅을 추가하세요.",

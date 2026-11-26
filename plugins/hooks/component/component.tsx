@@ -13,10 +13,10 @@ import {
   useTranslator,
   watchRuntimeTopics,
 } from "@flame/component-sdk";
-import * as token from "@flame/ui/tokens.stylex";
 import { type MutationPromise } from "@flame/runtime-client";
 import {
   type HookInfo,
+  type HookScope,
   type HooksListResult,
   type WorkspaceRef,
 } from "@flame/runtime-client/wire";
@@ -28,8 +28,11 @@ import {
   IconButton,
   ListRow,
   Metadata,
+  PanelSection,
   RecordBody,
   RecordGroup,
+  RecordHeading,
+  RecordMeta,
   Switch,
   Toolbar,
 } from "@flame/ui";
@@ -211,38 +214,46 @@ export function Hooks({ context }: { context: ComponentContext }) {
           </Button>
         </div>
       )}
-      {snapshot?.repositoryRoot &&
-        snapshot.hooks.some((value) => value.scope === "repository") && (
-          <RecordGroup variant="list" aria-busy={command?.phase === "running"}>
-            <ListRow
-              data-focus-unit=""
-              style={{ display: "flex", alignItems: "flex-start" }}
-            >
-              <div style={{ minWidth: 0, flex: 1 }}>
-                <strong>{t("trust")}</strong>
-                <RecordBody>{t("trust.sub")}</RecordBody>
-                <code style={literal}>{snapshot.repositoryRoot}</code>
-              </div>
-              <Switch
-                checked={snapshot.repositoryTrusted}
-                disabled={Boolean(command) || read.loading}
-                onCheckedChange={trust}
-                ariaLabel={t("trust.aria")}
-              />
-            </ListRow>
-          </RecordGroup>
-        )}
       {snapshot &&
         (snapshot.hooks.length ? (
-          <RecordGroup variant="list">
-            {snapshot.hooks.map((value, index) => (
-              <HookRow
-                key={`${value.source}:${value.event}:${index}`}
-                value={value}
-                t={t}
-              />
-            ))}
-          </RecordGroup>
+          sourceGroups(snapshot.hooks).map((group, index, groups) => (
+            <PanelSection
+              key={`${index}:${group.source}`}
+              title={t(`scope.${group.scope}`)}
+              description={<code style={literal}>{group.source}</code>}
+            >
+              <RecordGroup
+                variant="list"
+                aria-busy={
+                  group.scope === "repository"
+                    ? command?.phase === "running"
+                    : undefined
+                }
+              >
+                {snapshot.repositoryRoot &&
+                  groups.findIndex(({ scope }) => scope === "repository") ===
+                    index && (
+                    <ListRow data-focus-unit="">
+                      <RecordHeading
+                        title={t("trust")}
+                        description={t("trust.sub")}
+                        actions={
+                          <Switch
+                            checked={snapshot.repositoryTrusted}
+                            disabled={Boolean(command) || read.loading}
+                            onCheckedChange={trust}
+                            ariaLabel={t("trust.aria")}
+                          />
+                        }
+                      />
+                    </ListRow>
+                  )}
+                {group.hooks.map((value, row) => (
+                  <HookRow key={`${value.event}:${row}`} value={value} t={t} />
+                ))}
+              </RecordGroup>
+            </PanelSection>
+          ))
         ) : (
           <EmptyState title={t("empty")} sub={t("empty.sub")} />
         ))}
@@ -250,45 +261,43 @@ export function Hooks({ context }: { context: ComponentContext }) {
   );
 }
 
+// Runtime lists rules in their captured order, so consecutive rules share a file.
+function sourceGroups(hooks: readonly HookInfo[]) {
+  const groups: { source: string; scope: HookScope; hooks: HookInfo[] }[] = [];
+  for (const hook of hooks) {
+    const last = groups.at(-1);
+    if (last?.source === hook.source) last.hooks.push(hook);
+    else groups.push({ source: hook.source, scope: hook.scope, hooks: [hook] });
+  }
+  return groups;
+}
+
 function HookRow({ value, t }: { value: HookInfo; t: Translate }) {
   return (
     <ListRow>
-      <div style={{ display: "grid", minWidth: 0, gap: token.layout.labelGap }}>
-        <div
-          style={{
-            display: "flex",
-            flexWrap: "wrap",
-            gap: token.layout.controlGap,
-            alignItems: "center",
-          }}
-        >
-          <Badge>{value.event}</Badge>
-          <Metadata>{t(`scope.${value.scope}`)}</Metadata>
-          {value.failurePolicy && (
-            <Badge
-              tone={value.failurePolicy === "required" ? "warning" : undefined}
-            >
-              {t(`failure.${value.failurePolicy}`)}
-            </Badge>
-          )}
-          {!value.active ? (
-            <Badge tone="warning" title={t("inactive.hint")}>
-              {t("inactive")}
-            </Badge>
-          ) : value.inject ? (
-            <Metadata>{t("kind.inject")}</Metadata>
-          ) : null}
-        </div>
-        {value.matcher && (
-          <code title={t("matcher")} style={literal}>
-            {value.matcher}
-          </code>
-        )}
-        <code style={literal}>{value.command || value.inject}</code>
-        <Metadata>
-          <code style={literal}>{value.source}</code>
-        </Metadata>
-      </div>
+      <RecordHeading
+        title={value.event}
+        status={
+          <>
+            {value.matcher && (
+              <RecordMeta>
+                <code title={t("matcher")} style={literal}>
+                  {value.matcher}
+                </code>
+              </RecordMeta>
+            )}
+            {value.inject !== undefined && (
+              <RecordMeta>{t("kind.inject")}</RecordMeta>
+            )}
+            {value.failurePolicy === "required" && (
+              <Badge tone="warning">{t("failure.required")}</Badge>
+            )}
+          </>
+        }
+        description={
+          <code style={literal}>{value.command || value.inject}</code>
+        }
+      />
     </ListRow>
   );
 }

@@ -1,6 +1,5 @@
 export const de: Record<string, string> = {
   "failure.required": "Erforderlich: Fehler blockieren",
-  "failure.advisory": "Hinweis: Bei Fehlern fortfahren",
   title: "Lifecycle-Hooks",
   trust: "Hooks dieses Repositorys vertrauen",
   "trust.sub":
@@ -10,8 +9,6 @@ export const de: Record<string, string> = {
   "kind.inject": "Injektion",
   "scope.global": "Global",
   "scope.repository": "Repository",
-  inactive: "inaktiv",
-  "inactive.hint": "Vertraue diesem Repository, um seine Hooks zu aktivieren.",
   empty: "Keine Hooks konfiguriert",
   "empty.sub":
     "Füge Hooks in ~/.flame/hooks.json (global) oder <Repository>/.flame/hooks.json hinzu.",

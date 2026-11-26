@@ -1,6 +1,5 @@
 export const ja: Record<string, string> = {
   "failure.required": "必須：エラー時は停止",
-  "failure.advisory": "任意：エラー時も続行",
   title: "ライフサイクルフック",
   trust: "このリポジトリのフックを信頼する",
   "trust.sub":
@@ -10,8 +9,6 @@ export const ja: Record<string, string> = {
   "kind.inject": "注入",
   "scope.global": "グローバル",
   "scope.repository": "リポジトリ",
-  inactive: "無効",
-  "inactive.hint": "このリポジトリを信頼するとフックが有効になります。",
   empty: "フックが設定されていません",
   "empty.sub":
     "~/.flame/hooks.json（グローバル）または <リポジトリ>/.flame/hooks.json にフックを追加してください。",

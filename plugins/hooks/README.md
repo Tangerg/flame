@@ -50,6 +50,7 @@ Runtime, tracking function, cancellation signal and workspace target. Explicit
 Refresh/Retry, subscription establishment and matching Runtime change/resync events
 still request fresh reads; actual source or target retirement still cancels them.
 
-Keyboard focus on a fitting repository-trust row reveals its shell-execution
-consequence and captured repository root through the shared Panel owner; an
-oversized row falls back to revealing the focused control.
+Rules appear under their source file. The repository-trust switch leads the first
+repository file, so trust visibly governs the rules beneath it. Keyboard focus on
+a fitting trust row reveals its shell-execution consequence through the shared
+Panel owner; an oversized row falls back to revealing the focused control.

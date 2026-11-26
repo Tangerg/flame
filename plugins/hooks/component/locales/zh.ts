@@ -1,6 +1,5 @@
 export const zh: Record<string, string> = {
   "failure.required": "必需：出错时阻止",
-  "failure.advisory": "建议：出错时继续",
   title: "生命周期钩子",
   trust: "信任此仓库的钩子",
   "trust.sub":
@@ -10,8 +9,6 @@ export const zh: Record<string, string> = {
   "kind.inject": "注入",
   "scope.global": "全局",
   "scope.repository": "仓库",
-  inactive: "未启用",
-  "inactive.hint": "信任此仓库以启用其钩子。",
   empty: "未配置钩子",
   "empty.sub":
     "在 ~/.flame/hooks.json（全局）或仓库内的 .flame/hooks.json 中添加钩子。",

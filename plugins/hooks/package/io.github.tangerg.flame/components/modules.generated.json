@@ -7,7 +7,6 @@
       "imports": [
         "@flame/component-sdk",
         "@flame/ui",
-        "@flame/ui/tokens.stylex",
         "react",
         "react/jsx-runtime"
       ],
@@ -20,7 +19,6 @@
   "sharedSpecifiers": [
     "@flame/component-sdk",
     "@flame/ui",
-    "@flame/ui/tokens.stylex",
     "react",
     "react/jsx-runtime"
   ]

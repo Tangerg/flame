@@ -1,6 +1,5 @@
 export const zhTW: Record<string, string> = {
   "failure.required": "必要：出錯時阻止",
-  "failure.advisory": "建議：出錯時繼續",
   title: "生命週期掛鉤",
   trust: "信任此儲存庫的掛鉤",
   "trust.sub":
@@ -10,8 +9,6 @@ export const zhTW: Record<string, string> = {
   "kind.inject": "注入",
   "scope.global": "全域",
   "scope.repository": "儲存庫",
-  inactive: "未啟用",
-  "inactive.hint": "信任此儲存庫以啟用其掛鉤。",
   empty: "尚未設定任何掛鉤",
   "empty.sub":
     "在 ~/.flame/hooks.json（全域）或儲存庫內的 .flame/hooks.json 中新增掛鉤。",
