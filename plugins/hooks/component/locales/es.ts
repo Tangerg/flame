@@ -17,7 +17,7 @@ export const es: Record<string, string> = {
     "Añade hooks en ~/.flame/hooks.json (global) o <repositorio>/.flame/hooks.json.",
   "error.trust":
     "No se pudo cambiar la confianza de los hooks del repositorio.",
-  reading: "Cargando",
+  reading: "Cargando…",
   refresh: "Actualizar",
   retry: "Reintentar",
   "command.uncertain":

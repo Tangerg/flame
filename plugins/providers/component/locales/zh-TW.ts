@@ -55,7 +55,7 @@ export const zhTW: Record<string, string> = {
   "rpcError.timeout": "請求模型供應商逾時——檢查網路後重試。",
   title: "模型供應商",
   cancel: "取消",
-  reading: "載入中",
+  reading: "正在載入…",
   refresh: "重新整理",
   retry: "重試",
   "command.uncertain":

@@ -276,7 +276,7 @@
   "tools.group.issues_other": "{{count}} 项异常",
   "tools.group.denied_other": "{{count}} 项已拒绝",
   "common.remove": "移除",
-  "common.loading": "加载中",
+  "common.loading": "正在加载…",
   "common.retry": "重试",
   "tasks.header": "任务",
   "tasks.status.running": "运行中",

@@ -67,7 +67,7 @@ export const de: Record<string, string> = {
     "Die Anfrage an den Modellanbieter hat das Zeitlimit überschritten — Verbindung prüfen und erneut versuchen.",
   title: "Modellanbieter",
   cancel: "Abbrechen",
-  reading: "Wird geladen",
+  reading: "Wird geladen…",
   refresh: "Aktualisieren",
   retry: "Erneut versuchen",
   "command.uncertain":

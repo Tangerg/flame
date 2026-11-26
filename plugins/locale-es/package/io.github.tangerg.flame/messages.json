@@ -271,7 +271,7 @@
   "tools.group.denied_many": "{{count}} denegadas",
   "tools.group.denied_other": "{{count}} denegadas",
   "common.remove": "Eliminar",
-  "common.loading": "Cargando",
+  "common.loading": "Cargando…",
   "common.retry": "Reintentar",
   "tasks.header": "Tareas",
   "tasks.status.running": "En curso",

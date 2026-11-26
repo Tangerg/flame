@@ -68,7 +68,7 @@ export const es: Record<string, string> = {
     "La petición al proveedor del modelo agotó el tiempo — comprueba la conexión y reintenta.",
   title: "Proveedores de modelos",
   cancel: "Cancelar",
-  reading: "Cargando",
+  reading: "Cargando…",
   refresh: "Actualizar",
   retry: "Reintentar",
   "command.uncertain":

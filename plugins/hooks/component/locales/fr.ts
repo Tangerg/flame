@@ -16,7 +16,7 @@ export const fr: Record<string, string> = {
   "empty.sub":
     "Ajoutez des hooks dans ~/.flame/hooks.json (global) ou <dépôt>/.flame/hooks.json.",
   "error.trust": "Impossible de modifier la confiance des hooks du dépôt.",
-  reading: "Chargement",
+  reading: "Chargement…",
   refresh: "Actualiser",
   retry: "Réessayer",
   "command.uncertain":

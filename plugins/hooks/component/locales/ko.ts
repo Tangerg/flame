@@ -16,7 +16,7 @@ export const ko: Record<string, string> = {
   "empty.sub":
     "~/.flame/hooks.json(전역) 또는 <저장소>/.flame/hooks.json에 훅을 추가하세요.",
   "error.trust": "저장소 훅 신뢰 설정을 변경할 수 없습니다.",
-  reading: "불러오는 중",
+  reading: "불러오는 중…",
   refresh: "새로 고침",
   retry: "다시 시도",
   "command.uncertain":

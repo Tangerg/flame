@@ -308,7 +308,7 @@ export const en = {
   "tools.group.denied_one": "{{count}} denied",
   "tools.group.denied_other": "{{count}} denied",
   "common.remove": "Remove",
-  "common.loading": "Loading",
+  "common.loading": "Loading…",
   "common.retry": "Retry",
   "tasks.header": "Tasks",
   "tasks.status.running": "Running",

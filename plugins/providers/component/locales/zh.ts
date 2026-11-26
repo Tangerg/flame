@@ -55,7 +55,7 @@ export const zh: Record<string, string> = {
   "rpcError.timeout": "请求模型提供方超时——检查网络后重试。",
   title: "模型提供方",
   cancel: "取消",
-  reading: "加载中",
+  reading: "正在加载…",
   refresh: "刷新",
   retry: "重试",
   "command.uncertain":

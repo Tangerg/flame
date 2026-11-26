@@ -271,7 +271,7 @@
   "tools.group.denied_many": "{{count}} refusés",
   "tools.group.denied_other": "{{count}} refusés",
   "common.remove": "Supprimer",
-  "common.loading": "Chargement",
+  "common.loading": "Chargement…",
   "common.retry": "Réessayer",
   "tasks.header": "Tâches",
   "tasks.status.running": "En cours",

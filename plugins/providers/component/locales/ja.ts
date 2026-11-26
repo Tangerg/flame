@@ -68,7 +68,7 @@ export const ja: Record<string, string> = {
     "モデルプロバイダへのリクエストがタイムアウトしました — 接続を確認して再試行してください。",
   title: "モデルプロバイダー",
   cancel: "キャンセル",
-  reading: "読み込み中",
+  reading: "読み込み中…",
   refresh: "更新",
   retry: "再試行",
   "command.uncertain":

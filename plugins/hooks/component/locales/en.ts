@@ -16,7 +16,7 @@ export const en: Record<string, string> = {
   "empty.sub":
     "Add hooks to ~/.flame/hooks.json (global) or <repository>/.flame/hooks.json.",
   "error.trust": "Couldn’t change repository hook trust.",
-  reading: "Loading",
+  reading: "Loading…",
   refresh: "Refresh",
   retry: "Retry",
   "command.uncertain":

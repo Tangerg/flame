@@ -68,7 +68,7 @@ export const fr: Record<string, string> = {
     "La requête au fournisseur de modèle a expiré — vérifiez votre connexion et réessayez.",
   title: "Fournisseurs de modèles",
   cancel: "Annuler",
-  reading: "Chargement",
+  reading: "Chargement…",
   refresh: "Actualiser",
   retry: "Réessayer",
   "command.uncertain":

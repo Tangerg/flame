@@ -16,7 +16,7 @@ export const zhTW: Record<string, string> = {
   "empty.sub":
     "在 ~/.flame/hooks.json（全域）或儲存庫內的 .flame/hooks.json 中新增掛鉤。",
   "error.trust": "無法變更儲存庫掛鉤的信任狀態。",
-  reading: "載入中",
+  reading: "正在載入…",
   refresh: "重新整理",
   retry: "重試",
   "command.uncertain":

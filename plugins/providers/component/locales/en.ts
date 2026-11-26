@@ -64,7 +64,7 @@ export const en: Record<string, string> = {
     "The request to the model provider timed out — check your connection and retry.",
   title: "Model providers",
   cancel: "Cancel",
-  reading: "Loading",
+  reading: "Loading…",
   refresh: "Refresh",
   retry: "Retry",
   "command.uncertain":
