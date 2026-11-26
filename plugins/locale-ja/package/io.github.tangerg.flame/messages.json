@@ -846,7 +846,7 @@
   "shortcuts.editAria": "「{{action}}」のショートカットを変更",
   "shortcuts.reset": "リセット",
   "shortcuts.resetAll": "すべてリセット",
-  "shortcuts.recording": "新しいキーを押す · Esc でキャンセル",
+  "shortcuts.recording": "新しいキーを押してください",
   "shortcuts.conflict": "「{{action}}」で使用中",
   "shortcuts.replace": "こちらで使う",
   "composer.reasoningEffort": "思考強度",

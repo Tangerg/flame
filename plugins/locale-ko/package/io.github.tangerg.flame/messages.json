@@ -849,7 +849,7 @@
   "shortcuts.editAria": "{{action}} 단축키 변경",
   "shortcuts.reset": "초기화",
   "shortcuts.resetAll": "모두 초기화",
-  "shortcuts.recording": "새 키를 누르세요 · Esc로 취소",
+  "shortcuts.recording": "새 키를 누르세요",
   "shortcuts.conflict": "{{action}}에서 이미 사용 중",
   "shortcuts.replace": "여기에 대신 사용",
   "composer.reasoningEffort": "추론 강도",

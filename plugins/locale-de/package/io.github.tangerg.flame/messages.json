@@ -871,7 +871,7 @@
   "shortcuts.editAria": "Tastenkürzel für {{action}} ändern",
   "shortcuts.reset": "Zurücksetzen",
   "shortcuts.resetAll": "Alle zurücksetzen",
-  "shortcuts.recording": "Neue Tasten drücken · Esc zum Abbrechen",
+  "shortcuts.recording": "Drücke die neuen Tasten",
   "shortcuts.conflict": "Bereits von {{action}} belegt",
   "shortcuts.replace": "Stattdessen hier nutzen",
   "composer.reasoningEffort": "Denkintensität",

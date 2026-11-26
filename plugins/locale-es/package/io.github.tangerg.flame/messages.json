@@ -893,7 +893,7 @@
   "shortcuts.editAria": "Cambiar el atajo de {{action}}",
   "shortcuts.reset": "Restablecer",
   "shortcuts.resetAll": "Restablecer todo",
-  "shortcuts.recording": "Pulsa las nuevas teclas · Esc para cancelar",
+  "shortcuts.recording": "Pulsa las nuevas teclas",
   "shortcuts.conflict": "Ya lo usa {{action}}",
   "shortcuts.replace": "Usarlo aquí",
   "composer.reasoningEffort": "Intensidad de razonamiento",

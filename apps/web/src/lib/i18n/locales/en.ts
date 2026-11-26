@@ -935,7 +935,7 @@ export const en = {
   "shortcuts.editAria": "Change the shortcut for {{action}}",
   "shortcuts.reset": "Reset",
   "shortcuts.resetAll": "Reset all",
-  "shortcuts.recording": "Press the new keys · Esc to cancel",
+  "shortcuts.recording": "Press the new keys",
   "shortcuts.conflict": "Already used by {{action}}",
   "shortcuts.replace": "Use it here instead",
   "composer.reasoningEffort": "Reasoning effort",

@@ -893,7 +893,7 @@
   "shortcuts.editAria": "Modifier le raccourci de {{action}}",
   "shortcuts.reset": "Réinitialiser",
   "shortcuts.resetAll": "Tout réinitialiser",
-  "shortcuts.recording": "Appuyez sur les nouvelles touches · Échap pour annuler",
+  "shortcuts.recording": "Appuyez sur les nouvelles touches",
   "shortcuts.conflict": "Déjà utilisé par {{action}}",
   "shortcuts.replace": "L’utiliser ici",
   "composer.reasoningEffort": "Intensité du raisonnement",
