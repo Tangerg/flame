@@ -399,6 +399,53 @@ private Runtime drain reaches the existing deadline. The test
 app, process, profile, Git fixture, logs, capture, caches and
 checkout build outputs are removed.
 
+### Memory keeps search focus when a saved row leaves the results (2026-11-27)
+
+In signed production Wails at `171583561`, open Agent memory from the
+command menu and add `2468` in User scope. Search for it, edit it to
+`1357`, and save with Return. Runtime confirms the change at revision
+2. The accepted list removes the row and leaves the query in place.
+Native focus falls to the Web area.
+
+`MemoryReport` observes which record row actually owns focus as React
+detaches it. After that row leaves the document, the existing focus
+handoff gives the retained search field focus if the document body owns
+it and the captured Memory source is live. The workspace field
+visibility behavior reveals the field. This follows Better
+Accessibility's focus continuity guidance for a disappearing control
+and the File reader's existing removal pattern.
+
+- In Chinese/light/14 px/Flame Orange at 1120 × 728, saving the edit
+  returns to the visible search field with `2468` in place and a
+  visible focus ring. Tab advances to Clear search. Pointer activation
+  of Clear search and filters shows `1357` and focuses search.
+- In English/dark/18 px/Blue (#0485F7) at 1280 × 800, Escape from an
+  edited draft returns to the exact Edit button. Saving `13579`
+  keeps that button focused under query `1357`. Hold only the private
+  Runtime briefly around a later Save and focus Back to conversation.
+  The acknowledged edit out of the filter keeps that header button
+  focused. The same record reads `9753` at revision 4 after three
+  accepted edits. Back to conversation resumes the unsent draft from
+  `5682` to `56825`.
+- A second record has 25 lines. Native wheel input brings its Edit
+  button from y=1026 to y=721 while the search field is above the
+  viewport. Pointer Edit and keyboard Save replace its content with
+  `8531`. Focus returns to Search this page at y=136 with the old
+  query intact. Clearing shows the same record at revision 2. The
+  first record and the conversation draft remain available.
+
+The candidate uses `31f16f651` and the same Runtime protocol
+`2026-11-26.10`. Runtime serves the regenerated installed Memory
+resource byte for byte. Plugin typecheck, 44 script tests, 24 source
+tests, catalog and resource checks, Web typecheck and bootstrap,
+scoped Prettier, production staging, Runtime packaging, signed Wails
+and diff checks pass. Seven plugin source tests are skipped. The
+private Session has no Run. VoiceOver and other platforms remain
+outside the check. Both Wails instances exit normally. Their private
+Runtime drains reach the existing deadline. The private app,
+processes, profiles, fixtures, logs, captures, caches and checkout
+build outputs are removed.
+
 ## Error notes leave retrying to their buttons (2026-11-26)
 
 Five error notes ended by narrating the buttons beside them. The sidebar's folder error said `Check the Runtime connection, then retry.` above `Retry`. The shared data-view error said `… Check the connection and retry.`, and every caller offers Retry except provider selections, whose section has its own Refresh selections. The draft notices said `Keep this window open and retry, or copy drafts.` above `Retry` and `Copy draft text`. The startup failure said `Retry, or copy the diagnostics to report it.` above `Retry` and `Copy diagnostics`. Each now stops at what the buttons can't say:

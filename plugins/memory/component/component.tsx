@@ -232,6 +232,7 @@ export function Memory({ context }: { context: ComponentContext }) {
             pageNumber={current?.cursors.length}
             summary={summary}
             search={filters.search}
+            searchElement={filters.searchElement}
             status={filters.status}
             origin={filters.origin}
             pinned={filters.pinned}

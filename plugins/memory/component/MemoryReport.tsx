@@ -3,7 +3,15 @@ import {
   type OriginFilter,
   type StatusFilter,
 } from "./useMemoryFilters";
-import { type ReactNode, type Ref, type RefObject, useState } from "react";
+import {
+  useCallback,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+  type Ref,
+  type RefObject,
+} from "react";
 import { type Translate } from "@flame/component-sdk";
 import { type MethodInputs } from "../package/io.github.tangerg.flame/contracts/methods.generated";
 import { Brain } from "@flame/icons/react";
@@ -20,6 +28,7 @@ import {
   RecordMeta,
   RecordGroup,
   Toolbar,
+  handoffFocus,
 } from "@flame/ui";
 import { MemoryAction } from "./MemoryAction";
 import {
@@ -44,6 +53,7 @@ export function MemoryReport({
   remove,
   command,
   search,
+  searchElement,
   status,
   origin,
   pinned,
@@ -62,6 +72,7 @@ export function MemoryReport({
   remove(item: MemoryItem, opener: HTMLElement): void;
   command: RecordCommand;
   search: string;
+  searchElement: RefObject<HTMLInputElement | null>;
   status: StatusFilter;
   origin: OriginFilter;
   pinned: boolean;
@@ -71,6 +82,25 @@ export function MemoryReport({
   canRestoreFocus(): boolean;
   t: Translate;
 }) {
+  const retiredRow = useRef<HTMLElement>(null);
+  const rowRef = useCallback((row: HTMLElement | null) => {
+    if (!row) return;
+    if (retiredRow.current === row) retiredRow.current = null;
+    return () => {
+      // At detachment the row can still tell whether it owns focus.
+      if (row.contains(row.ownerDocument.activeElement))
+        retiredRow.current = row;
+    };
+  }, []);
+  useLayoutEffect(() => {
+    const row = retiredRow.current;
+    retiredRow.current = null;
+    if (!row || row.isConnected || !canRestoreFocus()) return;
+    const doc = row.ownerDocument;
+    if (doc.activeElement === doc.body)
+      handoffFocus(doc.body, searchElement.current);
+  });
+
   const rows = page?.rows ?? [];
   const matching = rows.filter(
     (item) =>
@@ -143,6 +173,7 @@ export function MemoryReport({
             {matching.map((item) => (
               <ListRow
                 key={item.id}
+                ref={rowRef}
                 data-memory-id={item.id}
                 data-status={item.status}
               >
