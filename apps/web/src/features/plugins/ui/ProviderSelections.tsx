@@ -38,7 +38,6 @@ export function ProviderSelections({
   return (
     <PanelSection
       title={t("packages.providers.title")}
-      description={t("packages.providers.future")}
       actions={
         <Button
           variant="soft"

@@ -23,8 +23,6 @@ export const en = {
   "packages.module.selectWorkspace": "Choose a session with a workspace to view this page.",
   "packages.providers.title": "Provider selections",
   "packages.providers.refresh": "Refresh selections",
-  "packages.providers.future":
-    "Selections apply to future activations. Existing execution keeps its captured bindings.",
   "packages.providers.none": "No provider has been selected",
   "packages.providers.unavailable": "Selected but unavailable: {{name}} · {{contribution}}",
   "packages.providers.unread": "Selection not read.",
@@ -58,8 +56,6 @@ export const en = {
   "packages.points.failed": "The extension point couldn’t be inspected.",
   "packages.requirements.title": "Dependencies",
   "packages.requirements.inspect": "Inspect bindings",
-  "packages.requirements.future":
-    "Read the current declaration bindings. Displayed results are the last inspected snapshot; existing execution retains its admitted set.",
   "packages.requirements.optional": "Optional",
   "packages.requirements.required": "Required",
   "packages.requirements.absent": "Optional dependency is absent.",

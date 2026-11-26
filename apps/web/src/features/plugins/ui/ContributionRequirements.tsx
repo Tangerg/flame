@@ -89,7 +89,6 @@ function RequirementBindings({
   return (
     <PanelSection
       title={`${contribution.id} · ${t("packages.requirements.title")}`}
-      description={t("packages.requirements.future")}
       actions={
         <Button
           variant="soft"
