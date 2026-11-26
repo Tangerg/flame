@@ -159,6 +159,7 @@ export function ScheduleEditor({
           <FormField label={t("field.cron")}>
             <TextField
               size="lg"
+              font="mono"
               aria-label={t("field.cron")}
               placeholder="0 9 * * 1"
               value={draft.cron}
@@ -179,6 +180,7 @@ export function ScheduleEditor({
         <FormField label={t("field.workspace")}>
           <TextField
             size="lg"
+            font="mono"
             aria-label={t("field.workspace")}
             placeholder={t("field.workspace.placeholder")}
             value={draft.cwd}

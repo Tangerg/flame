@@ -70,6 +70,8 @@ const styles = stylex.create({
   numeric: { fontVariantNumeric: "tabular-nums" },
   faceMono: { fontFamily: font.mono },
   faceSans: { fontFamily: font.sans },
+  // A one-line hint ("New absolute path") is prose, not a value to copy.
+  hintSans: { "::placeholder": { fontFamily: font.sans } },
   input: { lineHeight: leading.tight },
   area: {
     resize: "vertical",
@@ -156,6 +158,7 @@ export function TextField({
     styles.input,
     type.uiMd,
     FACE[font],
+    font === "mono" && styles.hintSans,
     INK[ink],
     ...edge(variant, invalid),
     variant === "boxed" && FIELD_SIZE[size],

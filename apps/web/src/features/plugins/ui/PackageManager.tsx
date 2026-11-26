@@ -165,6 +165,7 @@ export function PackageManager() {
         <div {...stylex.props(styles.install)}>
           <Hang>
             <TextField
+              font="mono"
               aria-label={t("packages.source")}
               placeholder={t("packages.source")}
               value={source}
