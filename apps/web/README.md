@@ -1142,6 +1142,8 @@ Dock. Choosing a different material preserves full-width presentation and captur
 the actual trigger through Workspace navigation's existing inspection owner.
 Back restores the retained source and its trigger; selecting the current material
 only closes the picker. Its delayed completion respects later outside focus.
+The conversation keeps its last reading width while a full-width view covers it.
+The split follows the measured panel width again as it returns.
 The picker lifetime follows the active Session, retiring both an open query and
 any closing selection when history restores another Session's material.
 Settings, unavailable views and the catalog retain their separate task headers.

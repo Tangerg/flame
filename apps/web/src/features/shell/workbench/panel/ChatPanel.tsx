@@ -261,7 +261,17 @@ export function ChatPanel({ onSend, ref }: Props) {
           }}
           style={{ flex: 1, width: "100%", minHeight: 0 }}
         >
-          <Panel id="conversation" {...panelSizes.conversation}>
+          <Panel
+            id="conversation"
+            {...panelSizes.conversation}
+            style={{ overflow: "clip" }}
+            onResize={({ inPixels }) => {
+              // Keep the reader's layout when the pane has no width, including
+              // when return focus arrives before the pane expands again.
+              const pane = conversationRef.current;
+              if (pane && inPixels > 0) pane.style.inlineSize = `${inPixels}px`;
+            }}
+          >
             <ConversationPane
               ref={conversationRef}
               hidden={presentation === "main"}
