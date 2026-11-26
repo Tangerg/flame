@@ -1885,6 +1885,70 @@ The next review checks whether long session titles are
 distinguishable in a narrow sidebar, including keyboard focus
 and reduced motion.
 
+### Session title tooltips use the width after the row reveals its actions
+
+Signed Wails at `c48902c9d` shows the full
+`Workspace release review` in the resting 240 px sidebar.
+The first parked hover reveals More and clips the title.
+The full tooltip is absent after the hover delay, with both
+default motion and motion Off. Entering through More and
+back into the row can open it. The first keyboard focus
+already opens the title tooltip. Two obviously clipped titles
+show their complete distinct labels, and `Quick notes`
+fits with More visible.
+
+The shared Tooltip can admit opening using its live trigger.
+Sidebar Session rows measure the rendered title at that
+point, using the same width calculation as their title
+animation. Base UI now receives the first hover before
+checking the space left by More. The title tooltip closes
+when its source can fit the title again while hovered or
+keyboard-focused. Pointer movement into the tooltip retains
+the readable popup while the resting row regains space.
+A previously refused tooltip is checked on the next hover
+or focus. [Base UI Tooltip](https://base-ui.com/react/components/tooltip)
+[WCAG content on hover or focus](https://www.w3.org/WAI/WCAG22/Understanding/content-on-hover-or-focus.html)
+
+- Chinese/light/14 px/Flame at 1120 × 728 with motion Off.
+  First parked hover shows the complete boundary title.
+  The pointer can enter its tooltip and leave it. First Tab
+  opens the same tooltip and Escape keeps focus on the row.
+  With keyboard focus on the divider and the pointer still
+  on the row, expanding the sidebar makes the title fit
+  and closes the tooltip. Re-entering the wider row shows
+  the title alone. Narrowing restores full-title hover.
+- Both long titles reveal their exact suffixes. Selecting
+  Metrics review opens its own Session heading. Escape in
+  that Session's More menu returns to its own More button.
+  Hover leaves the fitting `Quick notes` visible by itself.
+- English/dark/18 px/Blue at 1280 × 800 with default motion.
+  The initially widened 315 px row fits. Dragging the
+  divider to a 270 px row produces the same boundary
+  condition. A parked pointer gets the full title on the
+  first hover. `Quick notes` still fits and the other
+  long title opens Release checklist.
+
+The private Runtime has four original Sessions, zero Items
+and Runs, and two matching source file digests. The loopback
+provider serves four catalog reads and zero generations.
+Native checks cover macOS pointer, keyboard, focus, visibility of
+the title and divider resizing. Speech and other platforms
+require separate qualification.
+
+The shared UI build and packed host-free consumer, Web
+typecheck, 84 contracts, bootstrap, scoped Prettier, diff
+checks, production staging, Runtime packaging and strict
+Wails signatures pass. The signed candidate includes the
+intervening Runtime client work on `3f652b56e`.
+Both Wails hosts exit normally. The private Runtime reaches
+the existing drain deadline. The owned provider, listeners,
+registration, profile, fixture, captures, logs, checkout
+outputs and caches are removed.
+
+The next review follows a long active Session title in the
+main header while the Files Dock uses part of the reading
+width, and checks how the user confirms the current scope.
+
 ## Error notes leave retrying to their buttons (2026-11-26)
 
 Five error notes ended by narrating the buttons beside them. The sidebar's folder error said `Check the Runtime connection, then retry.` above `Retry`. The shared data-view error said `… Check the connection and retry.`, and every caller offers Retry except provider selections, whose section has its own Refresh selections. The draft notices said `Keep this window open and retry, or copy drafts.` above `Retry` and `Copy draft text`. The startup failure said `Retry, or copy the diagnostics to report it.` above `Retry` and `Copy diagnostics`. Each now stops at what the buttons can't say:

@@ -34,7 +34,14 @@ export interface TooltipProviderProps {
   children: ReactNode;
 }
 
-interface Props {
+export type TooltipActions = TooltipPrimitive.Root.Actions;
+
+interface TooltipOpenBehavior {
+  canOpen?: (trigger: Element) => boolean;
+  actionsRef?: RefObject<TooltipActions | null>;
+}
+
+interface Props extends TooltipOpenBehavior {
   label?: ReactNode;
   disabled?: boolean;
   side?: "top" | "right" | "bottom" | "left";
@@ -43,7 +50,7 @@ interface Props {
   children: ReactElement;
 }
 
-interface RichTooltipProps {
+interface RichTooltipProps extends TooltipOpenBehavior {
   trigger: ReactElement;
   children: ReactNode;
   disabled?: boolean;
@@ -100,6 +107,8 @@ export function Tooltip({
   sideOffset,
   delayDuration,
   disabled,
+  canOpen,
+  actionsRef,
   children,
 }: Props) {
   if (label == null || label === "") return <>{children}</>;
@@ -110,6 +119,8 @@ export function Tooltip({
       sideOffset={sideOffset}
       delay={delayDuration}
       disabled={disabled}
+      canOpen={canOpen}
+      actionsRef={actionsRef}
       styles={tip.label}
     >
       {label}
@@ -124,12 +135,20 @@ export function RichTooltip({
   sideOffset = 6,
   delay,
   disabled,
+  canOpen,
+  actionsRef,
   styles,
 }: RichTooltipProps) {
   const retirement = useHiddenRootRetirement<
-    TooltipPrimitive.Root.Actions,
+    TooltipActions,
     TooltipPrimitive.Root.ChangeEventDetails
-  >({});
+  >({
+    actionsRef,
+    onOpenChange: (open, details) => {
+      if (open && canOpen && (!details.trigger || !canOpen(details.trigger)))
+        details.cancel();
+    },
+  });
   const { portalRef } = useHiddenPopupRelease();
   const popup = stylex.props(FLOATING_TIP, type.uiSm, tip.measure, styles);
   return (

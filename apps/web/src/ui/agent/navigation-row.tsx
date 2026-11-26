@@ -1,13 +1,13 @@
 import * as stylex from "@stylexjs/stylex";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useCallback, useRef } from "react";
 import { clsx } from "clsx";
 import { Icon, type IconName } from "@/ui/index";
 import { reveal } from "@/ui/index";
 import { Button, type ButtonProps } from "@flame/ui";
 import { ItemHighlight, useHoverTrackItem } from "@flame/ui";
-import { Tooltip } from "@flame/ui/tooltip";
+import { Tooltip, type TooltipActions } from "@flame/ui/tooltip";
 import { color, leading, motion, space, surface, type as typeStep } from "@flame/ui/tokens.stylex";
-import { AgentOverflowLabel } from "@/ui/agent/overflow-label";
+import { AgentOverflowLabel, agentLabelOverflows } from "@/ui/agent/overflow-label";
 const rowStyles = stylex.create({
   base: {
     height: "auto",
@@ -135,14 +135,14 @@ function rowSkin({
 
 function AgentRowLabel({
   overflowText,
-  onOverflowChange,
+  onLabelFit,
   trailing,
   actioned,
   detail,
   children,
 }: {
   overflowText: string | undefined;
-  onOverflowChange: (overflowing: boolean) => void;
+  onLabelFit: (viewport: HTMLSpanElement) => void;
   trailing: ReactNode;
   actioned: boolean;
   detail: ReactNode;
@@ -154,7 +154,7 @@ function AgentRowLabel({
     <span {...stylex.props(rowStyles.stack)}>
       <span {...stylex.props(rowStyles.line, detail ? rowStyles.lineStacked : rowStyles.lineAlone)}>
         {overflowText ? (
-          <AgentOverflowLabel text={overflowText} onOverflowChange={onOverflowChange} />
+          <AgentOverflowLabel text={overflowText} onFit={onLabelFit} />
         ) : (
           <span {...label} className={clsx(label.className, "truncate-fade")}>
             {children}
@@ -196,7 +196,12 @@ export function AgentRow({
   const trackItem = useHoverTrackItem();
   const track = look === "search" ? null : trackItem;
   const overflowText = revealOverflow && typeof children === "string" ? children : undefined;
-  const [overflowing, setOverflowing] = useState(false);
+  const tooltipActions = useRef<TooltipActions>(null);
+  const closeTooltipOnFit = useCallback((label: HTMLSpanElement) => {
+    // Leaving the row can restore its width while the pointer moves into the tooltip.
+    if (label.closest(".agent-row")?.matches(":hover, :focus-visible"))
+      tooltipActions.current?.close();
+  }, []);
   const button = (
     <Button
       data-chrome-focus={look === "search" ? undefined : ""}
@@ -227,7 +232,7 @@ export function AgentRow({
       )}
       <AgentRowLabel
         overflowText={overflowText}
-        onOverflowChange={setOverflowing}
+        onLabelFit={closeTooltipOnFit}
         trailing={trailing}
         actioned={Boolean(action)}
         detail={detail}
@@ -239,7 +244,8 @@ export function AgentRow({
   const row = overflowText ? (
     <Tooltip
       label={overflowText}
-      disabled={!overflowing}
+      canOpen={agentLabelOverflows}
+      actionsRef={tooltipActions}
       side="right"
       sideOffset={8}
       delayDuration={500}
