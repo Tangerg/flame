@@ -764,8 +764,59 @@ fixtures, screenshots, logs, caches and checkout outputs are removed.
 
 An independent scroll probe leaves the first Session search choice
 highlighted at y=-347 while the visible last row is at y=410.
-Return opens that offscreen first Session. The next batch checks
-visibility before keyboard activation.
+Return opens that offscreen first Session. [Search activation](#search-enter-reveals-an-offscreen-choice-before-activation-2026-11-27)
+now checks the visible target.
+
+### Search Enter reveals an offscreen choice before activation (2026-11-27)
+
+In signed production Wails at `c43ca65b5`, open Session search from
+an unsent draft. Native wheel moves the highlighted first option from
+y=139 to y=-273 and reveals the last option at y=411. One Return
+activates the still-highlighted first Session outside the visible list.
+
+The shared search input checks the current Base UI active descendant
+against its own results viewport on a plain Enter. A fully offscreen
+option receives an instant local scroll and retains the highlight.
+A fresh Enter on the visible row uses Base UI activation. Repeated
+Enter leaves the dialog ready for fresh confirmation. Base UI owns
+the active option and ordinary pointer and arrow navigation.
+This applies the visibility guidance from the
+[WAI-ARIA APG combobox example](https://www.w3.org/WAI/ARIA/apg/patterns/combobox/examples/combobox-autocomplete-list/)
+after deliberate wheel scrolling.
+
+- In Chinese/light/14 px/Flame Orange at 1120 × 728, wheel again
+  moves the first result from y=139 to y=-273. A repeat event leaves
+  it there. Fresh Return reveals that same row at y=133 without
+  navigation. A repeat and Shift+Return keep the same search open.
+  Fresh Return activates the visible first Session.
+- Escape after a reveal restores the original reversed one-character
+  draft selection. The next key produces `2458` from `2468`, and
+  Cmd+Z restores `2468`. Native wheel and pointer selection still
+  reach the visible last row and open its exact Session.
+- In English/dark/18 px/Blue (#0485F7) at 1280 × 800, arrows reach
+  View: Agent memory. Wheel takes it from y=411 to y=861 below the
+  list. Fresh Return reveals it at y=418, repeated Return keeps the
+  dialog open, and fresh Return opens Agent memory. Escape restores
+  the original caret and a key produces `24568`.
+- In Session search with the physical-key query `zzz` and no matches,
+  Return leaves the search open. With `rev` in Session search, opening
+  and canceling the command menu exposes the same query and highlight.
+  The following Escape restores the original editing caret.
+
+Web typecheck, 81 contract tests, bootstrap, scoped Prettier and
+diff checks pass. Setup, production staging, Runtime packaging and
+both signed Wails builds pass with the private Runtime
+`2026-11-26.10`. All 22 private Sessions retain their IDs, titles
+and workspace. They record zero Runs. Native verification uses macOS
+keyboard, pointer and accessibility inspection. VoiceOver, IME
+composition and other platforms are outside this check.
+
+Both Wails hosts exit normally. The private Runtime reaches its
+existing drain deadline. App registration, processes, profiles,
+fixtures, screenshots, logs, caches and checkout outputs are removed.
+
+The panel and model catalogs also use Base UI inputs with local scrolling.
+The next batch checks their Enter behavior in an overflowing native list.
 
 ## Error notes leave retrying to their buttons (2026-11-26)
 

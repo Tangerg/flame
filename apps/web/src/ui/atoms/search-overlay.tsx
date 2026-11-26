@@ -198,6 +198,21 @@ type SearchOverlayContentProps = Omit<SearchOverlayProps, "onOpenChange" | "capt
   onChoose: (option: SearchOption) => void;
 };
 
+function revealOffscreenOption(input: HTMLInputElement, viewport: HTMLDivElement | null): boolean {
+  if (!viewport?.clientHeight) return false;
+  const id = input.getAttribute("aria-activedescendant");
+  const option = id ? input.ownerDocument.getElementById(id) : null;
+  if (!option || !viewport.contains(option)) return false;
+  const bounds = option.getBoundingClientRect();
+  const top = viewport.getBoundingClientRect().top + viewport.clientTop;
+  const bottom = top + viewport.clientHeight;
+  if (!bounds.height || (bounds.bottom > top && bounds.top < bottom)) return false;
+  const delta =
+    bounds.top < top ? bounds.top - top : Math.min(bounds.bottom - bottom, bounds.top - top);
+  viewport.scrollTo({ top: viewport.scrollTop + delta, behavior: "instant" });
+  return true;
+}
+
 function SearchOverlayContent({
   open,
   label,
@@ -208,6 +223,7 @@ function SearchOverlayContent({
   onChoose,
 }: SearchOverlayContentProps) {
   const [query, setQuery] = useState("");
+  const viewportRef = useRef<HTMLDivElement>(null);
   const rows = feedback == null ? options(query) : [];
 
   return (
@@ -230,14 +246,33 @@ function SearchOverlayContent({
             data-chrome-focus=""
             autoFocus={open}
             onKeyDown={(event) => {
-              if (isImeKey(event.nativeEvent)) event.preventBaseUIHandler();
+              if (isImeKey(event.nativeEvent)) {
+                event.preventBaseUIHandler();
+                return;
+              }
+              if (
+                event.key !== "Enter" ||
+                event.defaultPrevented ||
+                !open ||
+                rows.length === 0 ||
+                event.ctrlKey ||
+                event.shiftKey ||
+                event.altKey ||
+                event.metaKey
+              )
+                return;
+              if (event.repeat || revealOffscreenOption(event.currentTarget, viewportRef.current)) {
+                event.preventBaseUIHandler();
+                event.preventDefault();
+                event.stopPropagation();
+              }
             }}
             placeholder={placeholder}
             aria-label={placeholder}
             {...stylex.props(styles.input)}
           />
         </div>
-        <div {...stylex.props(styles.list)}>
+        <div ref={viewportRef} {...stylex.props(styles.list)}>
           <Autocomplete.List aria-label={label} hidden={feedback != null}>
             {(option: SearchOption, index: number) => (
               <Autocomplete.Item
