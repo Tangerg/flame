@@ -9,7 +9,7 @@ interface OverflowLabelStyle extends CSSProperties {
 
 interface Props {
   text: string;
-  onOverflowChange: (overflowing: boolean) => void;
+  onFit: (viewport: HTMLSpanElement) => void;
 }
 
 const styles = stylex.create({
@@ -17,7 +17,19 @@ const styles = stylex.create({
   track: { display: "inline-block", minWidth: "max-content" },
 });
 
-export function AgentOverflowLabel({ text, onOverflowChange }: Props) {
+const viewportClass = "agent-overflow-label";
+
+function overflowDistance(viewport: Element, track: Element): number {
+  return Math.max(0, track.getBoundingClientRect().width - viewport.clientWidth);
+}
+
+export function agentLabelOverflows(trigger: Element): boolean {
+  const viewport = trigger.querySelector(`.${viewportClass}`);
+  const track = viewport?.firstElementChild;
+  return !!viewport && !!track && overflowDistance(viewport, track) > 0;
+}
+
+export function AgentOverflowLabel({ text, onFit }: Props) {
   const viewportRef = useRef<HTMLSpanElement>(null);
   const trackRef = useRef<HTMLSpanElement>(null);
   const [geometry, setGeometry] = useState({ distance: 0, duration: 0 });
@@ -27,7 +39,7 @@ export function AgentOverflowLabel({ text, onOverflowChange }: Props) {
     const track = trackRef.current;
     if (!viewport || !track) return;
 
-    const distance = Math.max(0, track.getBoundingClientRect().width - viewport.clientWidth);
+    const distance = overflowDistance(viewport, track);
     const fontSize = Number.parseFloat(getComputedStyle(track).fontSize) || 13;
     const duration = distance > 0 ? distance / (fontSize * 2) : 0;
     setGeometry((current) =>
@@ -35,7 +47,8 @@ export function AgentOverflowLabel({ text, onOverflowChange }: Props) {
         ? current
         : { distance, duration },
     );
-  }, []);
+    if (distance === 0) onFit(viewport);
+  }, [onFit]);
 
   useLayoutEffect(() => {
     measure();
@@ -48,7 +61,6 @@ export function AgentOverflowLabel({ text, onOverflowChange }: Props) {
   }, [measure, text]);
 
   const overflowing = geometry.distance > 0;
-  useLayoutEffect(() => onOverflowChange(overflowing), [onOverflowChange, overflowing]);
 
   const style: OverflowLabelStyle = {
     "--agent-overflow-distance": `${geometry.distance}px`,
@@ -58,7 +70,7 @@ export function AgentOverflowLabel({ text, onOverflowChange }: Props) {
   return (
     <span
       ref={viewportRef}
-      className={clsx("agent-overflow-label truncate-fade", stylex.props(styles.label).className)}
+      className={clsx(viewportClass, "truncate-fade", stylex.props(styles.label).className)}
       data-overflowing={overflowing ? "" : undefined}
     >
       <span

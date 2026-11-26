@@ -1,12 +1,12 @@
 import { useNotifications } from "@/features/notifications/public/notifier";
 import * as stylex from "@stylexjs/stylex";
-import { type ReactElement, type ReactNode } from "react";
+import { type ReactElement, type ReactNode, useRef } from "react";
 import { basename } from "@/lib/path";
 import { ContextMenu, DropdownMenu } from "@/ui/index";
 import { iconGlyph } from "@/ui/icons/index";
 import { useT } from "@/lib/i18n/index";
 import { writeToClipboard } from "@/lib/clipboard";
-import { IconButton, vocab } from "@flame/ui";
+import { IconButton, Tooltip, useClampedText, vocab } from "@flame/ui";
 import { color, space, type as typeStep, weight } from "@flame/ui/tokens.stylex";
 const si = stylex.create({
   bar: { display: "flex", minWidth: 0, flexShrink: 1, alignItems: "center", gap: space.s2 },
@@ -93,12 +93,7 @@ export function SessionIdentity({ sessionId, title, workspacePath, detail }: Pro
             </span>
           </>
         )}
-        <h1
-          title={title}
-          className={stylex.props(si.title, vocab.truncate, typeStep.uiMd).className}
-        >
-          {title}
-        </h1>
+        <SessionHeading title={title} />
       </div>
       {detail}
     </div>
@@ -139,5 +134,17 @@ export function SessionIdentity({ sessionId, title, workspacePath, detail }: Pro
         </DropdownMenu.Content>
       </DropdownMenu.Root>
     </div>
+  );
+}
+
+function SessionHeading({ title }: { title: string }) {
+  const heading = useRef<HTMLHeadingElement>(null);
+  const clipped = useClampedText(heading, title);
+  return (
+    <Tooltip label={title} disabled={!clipped} side="bottom">
+      <h1 ref={heading} className={stylex.props(si.title, vocab.truncate, typeStep.uiMd).className}>
+        {title}
+      </h1>
+    </Tooltip>
   );
 }

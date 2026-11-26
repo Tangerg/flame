@@ -1885,6 +1885,131 @@ The next review checks whether long session titles are
 distinguishable in a narrow sidebar, including keyboard focus
 and reduced motion.
 
+### Session title tooltips use the width after the row reveals its actions
+
+Signed Wails at `c48902c9d` shows the full
+`Workspace release review` in the resting 240 px sidebar.
+The first parked hover reveals More and clips the title.
+The full tooltip is absent after the hover delay, with both
+default motion and motion Off. Entering through More and
+back into the row can open it. The first keyboard focus
+already opens the title tooltip. Two obviously clipped titles
+show their complete distinct labels, and `Quick notes`
+fits with More visible.
+
+The shared Tooltip can admit opening using its live trigger.
+Sidebar Session rows measure the rendered title at that
+point, using the same width calculation as their title
+animation. Base UI now receives the first hover before
+checking the space left by More. The title tooltip closes
+when its source can fit the title again while hovered or
+keyboard-focused. Pointer movement into the tooltip retains
+the readable popup while the resting row regains space.
+A previously refused tooltip is checked on the next hover
+or focus. [Base UI Tooltip](https://base-ui.com/react/components/tooltip)
+[WCAG content on hover or focus](https://www.w3.org/WAI/WCAG22/Understanding/content-on-hover-or-focus.html)
+
+- Chinese/light/14 px/Flame at 1120 × 728 with motion Off.
+  First parked hover shows the complete boundary title.
+  The pointer can enter its tooltip and leave it. First Tab
+  opens the same tooltip and Escape keeps focus on the row.
+  With keyboard focus on the divider and the pointer still
+  on the row, expanding the sidebar makes the title fit
+  and closes the tooltip. Re-entering the wider row shows
+  the title alone. Narrowing restores full-title hover.
+- Both long titles reveal their exact suffixes. Selecting
+  Metrics review opens its own Session heading. Escape in
+  that Session's More menu returns to its own More button.
+  Hover leaves the fitting `Quick notes` visible by itself.
+- English/dark/18 px/Blue at 1280 × 800 with default motion.
+  The initially widened 315 px row fits. Dragging the
+  divider to a 270 px row produces the same boundary
+  condition. A parked pointer gets the full title on the
+  first hover. `Quick notes` still fits and the other
+  long title opens Release checklist.
+
+The private Runtime has four original Sessions, zero Items
+and Runs, and two matching source file digests. The loopback
+provider serves four catalog reads and zero generations.
+Native checks cover macOS pointer, keyboard, focus, visibility of
+the title and divider resizing. Speech and other platforms
+require separate qualification.
+
+The shared UI build and packed host-free consumer, Web
+typecheck, 84 contracts, bootstrap, scoped Prettier, diff
+checks, production staging, Runtime packaging and strict
+Wails signatures pass. The signed candidate includes the
+intervening Runtime client work on `3f652b56e`.
+Both Wails hosts exit normally. The private Runtime reaches
+the existing drain deadline. The owned provider, listeners,
+registration, profile, fixture, captures, logs, checkout
+outputs and caches are removed.
+
+The next review follows a long active Session title in the
+main header while the Files Dock uses part of the reading
+width, and checks how the user confirms the current scope.
+
+### Clipped conversation headings show the full Session title
+
+Signed Wails at `e67f4c73d` preserves the complete
+`Quarterly release evidence for the workspace — Metrics review`
+in the native heading name and help. The visible heading
+ends in `Metric…` beside the 364 px Files Dock. With a
+441 px Dock its 313 px heading shows only the shared prefix.
+The stationary pointer produces no visible title in the
+owned window capture or its window inventory. Keyboard
+focus on the header's More button already shows the exact
+title and opens its two copy choices.
+
+The Session heading now measures its rendered `h1` with
+the shared clamped-text hook and uses the shared Tooltip
+while clipped. The measurement lives with the heading
+instance. The tooltip shows the same value as the heading's
+accessible name.
+The HTML standard describes why the advisory `title`
+attribute is a weak disclosure mechanism.
+[HTML title attribute](https://html.spec.whatwg.org/multipage/dom.html#the-title-attribute)
+
+- Chinese/light/14 px/Flame at 1120 × 728 with a 441 px
+  Files Dock. Hover on the clipped heading shows the
+  exact name and suffix below it. The pointer can enter
+  the tooltip. Escape hides it while the Composer still
+  has `2468` at caret 2. Backward Tab reaches the existing
+  More button, whose menu names the two copy actions.
+  Escape returns to that button. Right-click on the
+  heading still opens the same copy choices.
+- Hiding Files gives the title 416 px and shows it in full
+  by itself on hover. Reopening Files directly restores
+  `note.txt` and the heading tooltip. The first scratch
+  probe expected the file list on reopen. The next probe
+  uses the retained reader. Cmd+L resumes at caret 2,
+  typing 5 yields `24568`, and Undo restores `2468`.
+- English/dark/18 px/Blue at 1280 × 800 with Files open.
+  Hover shows Metrics review, then Release checklist
+  after selecting its own Session. Its More menu carries
+  the new title and the same two actions. The fitting
+  `Quick notes` heading remains visible by itself.
+
+All three private Sessions, their empty Items and Runs,
+and both source file digests match. The provider serves
+nine catalog reads and zero generations. macOS Wails
+qualification covers pointer, keyboard, focus, width
+changes and both menu entries. The clipboard payload is
+verified in source. Screen reader speech and other hosts
+require separate qualification.
+
+Web typecheck, 84 contracts, bootstrap, scoped Prettier,
+diff checks, production staging, Runtime packaging and
+strict Wails signatures pass. Both Wails hosts exit
+normally. The private Runtime reaches its existing drain
+deadline. The owned provider, listeners, registration,
+profile, fixture, screenshots, logs, checkout outputs and
+caches are removed.
+
+The next review follows the shortened workspace name beside
+the heading, where folders with the same basename need
+distinct full paths.
+
 ## Error notes leave retrying to their buttons (2026-11-26)
 
 Five error notes ended by narrating the buttons beside them. The sidebar's folder error said `Check the Runtime connection, then retry.` above `Retry`. The shared data-view error said `… Check the connection and retry.`, and every caller offers Retry except provider selections, whose section has its own Refresh selections. The draft notices said `Keep this window open and retry, or copy drafts.` above `Retry` and `Copy draft text`. The startup failure said `Retry, or copy the diagnostics to report it.` above `Retry` and `Copy diagnostics`. Each now stops at what the buttons can't say:
