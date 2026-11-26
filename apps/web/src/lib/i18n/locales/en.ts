@@ -342,7 +342,7 @@ export const en = {
   "welcome.folderTitle": "What should we build in <folderSelect>{{folder}}?</folderSelect>",
   "composer.folder.choose": "Choose folder",
   "composer.folder.change": "Change folder: {{folder}}",
-  "composer.folder.add": "Add folder",
+  "composer.folder.add": "Add folder…",
   "composer.folder.required": "Select a folder to continue",
   "providers.setup.title": "No model provider connected",
   "providers.setup.action": "Configure a provider",
@@ -652,7 +652,7 @@ export const en = {
   "folders.empty.title": "No folders",
   "folders.error.title": "Couldn’t load folders",
   "folders.error.sub": "Check the Runtime connection, then retry.",
-  "convExport.import": "Import conversation from JSON",
+  "convExport.import": "Import conversation from JSON…",
   "convExport.importSuccess": "Imported “{{title}}”.",
   "convExport.unsupported": "This Runtime doesn’t support session export or import.",
   "convExport.readFailed":
