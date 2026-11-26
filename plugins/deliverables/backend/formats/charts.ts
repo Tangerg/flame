@@ -10,6 +10,7 @@ import { OfficePackage, relations } from "./archive";
 import { worksheetCells } from "./workbook";
 import { createWorkbook } from "./workbook-authoring";
 import {
+  cellRange,
   cellValue,
   rangeAddresses,
   sharedStrings,
@@ -235,6 +236,16 @@ export function readChart(archive: OfficePackage, part: string): ChartModel {
   };
 }
 
+function chartWorkbookPart(
+  archive: OfficePackage,
+  part: string,
+  external: XmlNode,
+): string | undefined {
+  const id = attribute(external, namespaces.officeRelationships, "id");
+  const relation = relations(archive, part).find((entry) => entry.id === id);
+  return relation?.type === "package" ? relation.target : undefined;
+}
+
 function embeddedWorkbook(
   archive: OfficePackage,
   part: string,
@@ -243,20 +254,16 @@ function embeddedWorkbook(
 ): ChartModel["workbook"] {
   const external = chartChild(document.root, "externalData");
   if (!external) return { kind: "none" };
-  const id = attribute(external, namespaces.officeRelationships, "id");
-  const relation = relations(archive, part).find((entry) => entry.id === id);
-  if (relation?.type !== "package" || !relation.target)
+  const target = chartWorkbookPart(archive, part, external);
+  if (!target)
     throw new Error("chart external data is not an embedded workbook");
   try {
-    const workbook = OfficePackage.open(
-      "xlsx",
-      archive.parts.get(relation.target)!,
-    );
+    const workbook = OfficePackage.open("xlsx", archive.parts.get(target)!);
     return workbookHoldsOnlySeries(workbook, referencedCells(series))
-      ? { kind: "chart", part: relation.target }
-      : { kind: "mixed", part: relation.target };
+      ? { kind: "chart", part: target }
+      : { kind: "mixed", part: target };
   } catch {
-    return { kind: "mixed", part: relation.target };
+    return { kind: "mixed", part: target };
   }
 }
 
@@ -308,36 +315,52 @@ function workbookHoldsOnlySeries(
   return true;
 }
 
-// PptxGenJS emits an invalid table range in its chart workbooks. Recreate the
-// generated worksheets through the same XLSX author as subsequent data edits.
-export async function writeAuthoredChartWorkbooks(
+// PptxGenJS appends an apostrophe to the table range in generated chart data.
+// Some readers reject the entire chart when this table cannot be read.
+export function repairChartTables(
   presentation: OfficePackage,
-): Promise<void> {
-  for (const [part, bytes] of presentation.parts) {
-    if (!/^ppt\/embeddings\/[^/]+\.xlsx$/u.test(part)) continue;
-    const source = OfficePackage.open("xlsx", bytes);
-    const strings = sharedStrings(source);
-    const sheets = workbookSheets(source).map((sheet) => ({
-      name: sheet.name,
-      cells: Array.from(
-        worksheetCells(source.xml(sheet.part)),
-        ([address, cell]) => {
-          const value = cellValue(cell, strings);
-          // Authored chart numbers came from finite JavaScript numbers.
-          return {
-            address,
-            value:
-              value.type === "number"
-                ? { type: "number", value: Number(value.value) }
-                : value,
-          };
-        },
-      ),
-    }));
-    presentation.parts.set(
-      part,
-      await createWorkbook(JSON.stringify({ title: "Chart data", sheets })),
+  parts: Iterable<string>,
+): void {
+  const visited = new Set<string>();
+  for (const part of parts) {
+    if (!/^ppt\/charts\/[^/]+\.xml$/u.test(part)) continue;
+    const external = chartChild(presentation.xml(part).root, "externalData");
+    if (!external) continue;
+    const target = chartWorkbookPart(presentation, part, external);
+    if (
+      !target ||
+      !/^ppt\/embeddings\/[^/]+\.xlsx$/u.test(target) ||
+      visited.has(target)
+    )
+      continue;
+    visited.add(target);
+    const workbook = OfficePackage.open(
+      "xlsx",
+      presentation.parts.get(target)!,
     );
+    const table = "xl/tables/table1.xml";
+    if (!workbook.parts.has(table)) continue;
+    const { root } = workbook.xml(table);
+    const ref = /^(A1:[A-Z]{1,3}[1-9][0-9]{0,6})'$/u.exec(
+      root.attributes.ref ?? "",
+    )?.[1];
+    if (
+      root.uri !== namespaces.sheet ||
+      root.local !== "table" ||
+      root.attributes.name !== "Table1" ||
+      root.selfClosing ||
+      !ref
+    )
+      continue;
+    cellRange(ref);
+    workbook.patch(table, [
+      {
+        start: root.start,
+        end: root.openEnd,
+        value: openTag(root, { ...root.attributes, ref }),
+      },
+    ]);
+    presentation.parts.set(target, workbook.save());
   }
 }
 

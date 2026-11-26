@@ -1,6 +1,7 @@
 import { mkdtemp, realpath, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
+import PptxGenJS from "pptxgenjs";
 import { expect, it } from "vitest";
 import { Engine } from "./engine";
 import { OfficePackage } from "./formats/archive";
@@ -18,6 +19,80 @@ import { LIMITS } from "../contracts/limits";
 // Explicit host qualification uses the same production owner and confinement.
 // Ordinary unit runs do not assume LibreOffice/Poppler are installed or permitted.
 const native = it.runIf(process.env.FLAME_DELIVERABLES_NATIVE_TESTS === "1");
+
+it("repairs a legacy embedded chart table when editing its title and legend", async () => {
+  const presentation = new PptxGenJS();
+  presentation
+    .addSlide()
+    .addChart(
+      presentation.ChartType.bar,
+      [{ name: "East", labels: ["Q1", "Q2"], values: [39, 43] }],
+      {
+        x: 1,
+        y: 1,
+        w: 8,
+        h: 4,
+        showTitle: true,
+        title: "Original",
+        showLegend: true,
+        legendPos: "b",
+      },
+    );
+  const original = await presentation.write({
+    outputType: "uint8array",
+    compression: true,
+  });
+  if (!(original instanceof Uint8Array))
+    throw new Error("presentation encoder returned an unexpected result");
+  const tablePart = "xl/tables/table1.xml";
+  const embedded = (bytes: Uint8Array): OfficePackage => {
+    const bundle = OfficePackage.open("pptx", bytes);
+    const bytesInPart = [...bundle.parts.entries()].find(([name]) =>
+      name.endsWith(".xlsx"),
+    )?.[1];
+    if (!bytesInPart) throw new Error("chart fixture has no embedded workbook");
+    return OfficePackage.open("xlsx", bytesInPart);
+  };
+  const originalBook = embedded(original);
+  expect(originalBook.xml(tablePart).root.attributes.ref).toBe("A1:B3'");
+
+  const chart = layoutFile(original).slides[0]!.elements.find(
+    (element) => element.kind === "chart",
+  )!;
+  const edited = await editFile(
+    "pptx",
+    original,
+    JSON.stringify({
+      operations: [
+        {
+          type: "replaceText",
+          id: chart.text[0]!.id,
+          expect: "Original",
+          text: "Updated",
+        },
+        {
+          type: "setChartLegend",
+          id: chart.id,
+          expect: chart.chart!.legendPosition,
+          position: "t",
+        },
+      ],
+    }),
+  );
+
+  const editedBook = embedded(edited);
+  expect(editedBook.xml(tablePart).root.attributes.ref).toBe("A1:B3");
+  expect(editedBook.parts.get("xl/worksheets/sheet1.xml")).toEqual(
+    originalBook.parts.get("xl/worksheets/sheet1.xml"),
+  );
+  expect(embedded(original).xml(tablePart).root.attributes.ref).toBe("A1:B3'");
+  const updated = layoutFile(edited).slides[0]!.elements.find(
+    (element) => element.id === chart.id,
+  )!;
+  expect(updated.text[0]!.text).toBe("Updated");
+  expect(updated.chart?.legendPosition).toBe("t");
+  expect(updated.chart?.data).toEqual(chart.chart?.data);
+});
 
 native.each(["docx", "xlsx", "pptx"] as const)(
   "renders the catalog %s with the real confined toolchain",

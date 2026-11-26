@@ -14,11 +14,7 @@ import {
   relationshipsPath,
   MAIN_PARTS,
 } from "./archive";
-import {
-  chartLegendPatch,
-  setChartData,
-  writeAuthoredChartWorkbooks,
-} from "./charts";
+import { chartLegendPatch, repairChartTables, setChartData } from "./charts";
 import { HOUSE_STYLE } from "./style";
 import { imageBytes } from "./images";
 import { inspectOfficeText, officeReport } from "./inspection";
@@ -362,7 +358,7 @@ export async function createPresentation(json: string): Promise<Uint8Array> {
   if (!(result instanceof Uint8Array))
     throw new Error("presentation encoder returned an unexpected result");
   const archive = OfficePackage.open("pptx", result);
-  await writeAuthoredChartWorkbooks(archive);
+  repairChartTables(archive, archive.parts.keys());
   nameSlides(archive, content.slides);
   return archive.save();
 }
@@ -603,6 +599,7 @@ export async function editPresentation(
   });
   const reachable = deleted.size ? reachableParts(archive) : undefined;
   for (const [part, edits] of patches) archive.patch(part, edits);
+  repairChartTables(archive, patches.keys());
   for (const { chart, operation } of charts)
     await setChartData(archive, chart, operation.expect, operation.data);
   releaseRelationships(archive, released);
