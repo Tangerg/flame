@@ -17,6 +17,7 @@ export interface WorkspaceFileRendererProps {
 export interface WorkspaceFileRendererSpec {
   id: string;
   title: Label;
+  localizedTitles?: Readonly<Record<string, string>>;
   extension: string;
   component: ComponentType<WorkspaceFileRendererProps>;
 }

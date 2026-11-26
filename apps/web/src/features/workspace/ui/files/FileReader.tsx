@@ -28,7 +28,8 @@ import {
   TextField,
   vocab,
 } from "@flame/ui";
-import { useT, labelText } from "@/lib/i18n/index";
+import { useT } from "@/lib/i18n/index";
+import { useRendererTitle } from "@/features/plugins/public/renderers";
 import { FileView } from "@/features/workspace/ui/files/FileView";
 import { type WorkspaceFileContent } from "@/features/workspace/application/workspaceQueries";
 import { type WorkspaceFileViewer } from "@/features/workspace/application/navigationState";
@@ -191,6 +192,7 @@ export function FileReadingBody({
   paging: (FileReadPaging & { failed: boolean }) | undefined;
 }) {
   const t = useT();
+  const titleFor = useRendererTitle();
   const recorded = (
     <FileView
       ref={source}
@@ -220,7 +222,7 @@ export function FileReadingBody({
           <PluginBoundary
             key={renderer.id}
             plugin={renderer.id}
-            label={labelText(renderer.title, t)}
+            label={titleFor(renderer)}
             fallback={recorded}
           >
             <Renderer cwd={cwd} path={path} {...file} fallback={recorded} />

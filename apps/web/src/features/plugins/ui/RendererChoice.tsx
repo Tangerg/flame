@@ -1,12 +1,14 @@
 import { Select } from "@flame/ui";
 import { useCallback, useSyncExternalStore } from "react";
 import { useInstalledPlugins } from "@/features/plugins/context";
-import { useT, labelText, type Label } from "@/lib/i18n/index";
+import { useLocale, useT, labelText, type Label } from "@/lib/i18n/index";
+import { presentationTitle } from "@/lib/i18n/presentationTitle";
 import { tupleKey } from "@/lib/tupleKey";
 
 interface Renderer {
   id: string;
   title: Label;
+  localizedTitles?: Readonly<Record<string, string>>;
 }
 
 type RendererKind = "file" | "tool";
@@ -61,6 +63,12 @@ export function useRendererResolver(kind: RendererKind) {
   );
 }
 
+export function useRendererTitle() {
+  const locale = useLocale();
+  return (renderer: Renderer) =>
+    presentationTitle(labelText(renderer.title), renderer.localizedTitles, locale);
+}
+
 function RendererPicker({
   candidates,
   preferred,
@@ -71,14 +79,13 @@ function RendererPicker({
   choose: (id: string | null) => void;
 }) {
   const t = useT();
+  const titleFor = useRendererTitle();
   const automatic = "";
+  const titles = candidates.map((renderer) => ({ id: renderer.id, text: titleFor(renderer) }));
   const options = [
     { value: automatic, label: t("renderer.automatic") },
-    ...candidates.map(({ id, title }) => {
-      const text = labelText(title, t);
-      const ambiguous = candidates.some(
-        (other) => other.id !== id && labelText(other.title, t) === text,
-      );
+    ...titles.map(({ id, text }) => {
+      const ambiguous = titles.some((other) => other.id !== id && other.text === text);
       return { value: id, label: ambiguous ? text + " · " + id : text };
     }),
   ];

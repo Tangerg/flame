@@ -12,6 +12,7 @@ export interface ToolPreviewProps {
 export interface ToolResultRendererSpec {
   id: string;
   title: Label;
+  localizedTitles?: Readonly<Record<string, string>>;
   selector: PluginRendererSelector;
   inlineResult?: boolean;
   component: ComponentType<ToolPreviewProps & { fallback: ReactNode }>;

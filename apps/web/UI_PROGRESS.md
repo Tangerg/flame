@@ -25,7 +25,7 @@ ZH/dark/18 px/`#3B82F6`/motion off, resized to 1120 × 728 with Files open: the 
 
 Verification includes the Wails build and native host tests (`make check-native`), Lab build, Web and plugin typechecks, locale and bootstrap checks, plugin module and resource checks, `make check-generated`, workspace boundaries, and three isolated Runtime bootstrap tests. The Runtime regression installs GenUI and checks its inline declaration again after restarting the same Runtime. Prettier and `git diff --check` pass.
 
-The earlier native flow uses a disposable Wails profile and the built Lab fixture. The real Runtime test covers artifact admission and restart. The installed flow below covers a streamed Run with a loopback provider. External model providers, VoiceOver and switching renderers in a running installation remain open. Retired the private Wails app, preview, profile, logs and worktree build outputs. The isolated picker round trip and report-specific Find are qualified in [Keep the result renderer picker in view](#keep-the-result-renderer-picker-in-view-2026-11-26) and [Distinguish the current Find match](#distinguish-the-current-find-match-2026-11-26).
+The earlier native flow uses a disposable Wails profile and the built Lab fixture. The real Runtime test covers artifact admission and restart. The installed checks below cover a streamed Run with a loopback provider and switching between two admitted renderers. External model providers and VoiceOver remain open. Retired the private Wails app, preview, profile, logs and worktree build outputs. The isolated picker round trip and report-specific Find are qualified in [Keep the result renderer picker in view](#keep-the-result-renderer-picker-in-view-2026-11-26) and [Distinguish the current Find match](#distinguish-the-current-find-match-2026-11-26).
 
 ### An installed report generated and reread through Runtime (2026-11-27)
 
@@ -115,9 +115,91 @@ With Files open at 1120 × 728 and 18 px, choosing Generated interface inserts i
 
 Native Wails v3.1.0 at Actual Size, EN/light/18 px/Flame Orange with Files open, repeated Automatic → Generated interface from the top of the conversation after a deliberate wheel scroll. The same picker landed at y508–540 with its focus ring visible. Escape from the picker returned to it and Tab reached Result. Generated interface → Recorded result → Generated interface kept the edited `originalx`. Wheel scrolling could still move the focused picker outside the padded frame, and Tab then Shift+Tab restored it to view. Escape from Portal note returned to Open captured dialog.
 
-ZH/dark/18 px/`#3B82F6` with motion off retained the same visible picker when resizing from 1439 × 899 to 1120 × 728 and switching both ways with the keyboard. A native pointer opened the popup. Coordinate option selection is unqualified because the trace observed pointer down without a matching pointer up.
+ZH/dark/18 px/`#3B82F6` with motion off retained the same visible picker when resizing from 1439 × 899 to 1120 × 728 and switching both ways with the keyboard. A native pointer opened the popup. That Lab trace observed pointer down without a matching pointer up. [The later installed round trip](#read-a-report-with-installed-renderer-choices-2026-11-27) qualifies pointer selection.
 
 The isolated Lab temporarily gave the same tool a second candidate using the existing Recorded result ESM. Fixture sources returned to their original bytes. The shared UI build and packed-consumer check, production staging, Web typecheck and bootstrap, Lab build, Prettier and diff checks pass. The scope covers captured data in the actual native host. The private app, preview, profile, diagnostic scripts and generated outputs were removed.
+
+### Read a report with installed renderer choices (2026-11-27)
+
+Production Wails v3.1.0 and Runtime at `7e19c87aa`
+(`2026-11-26.7`) run one real GenUI report from a loopback Messages model.
+A disposable package registers the existing RecordedResult resource under
+the same exact `genui_ui_present` selector as GenUI. Repository
+`pluginpack` builds the archive, and Runtime admits and enables the package.
+The returned resource matches the existing ESM byte for byte.
+
+- English/light/14 px/Flame Orange at 1120 × 728 begins on Automatic.
+  A physical click selects Generated interface. Keyboard selection reaches
+  Recorded result, which exposes the captured JSON and Arguments. A
+  physical click returns to Generated interface and the edited
+  `originalx` note. The picker takes focus at y=373, fully within view.
+- Changing to Chinese/dark/18 px/Blue (#0485F7) keeps the edited note
+  in the running source. Choose Recorded result and restart both Wails
+  and Runtime. Reopening the same Session and expanding its tool shows
+  the retained recorded choice. With Files open, keyboard selection
+  returns to the generated report and its captured initial `original`
+  note. The picker retains focus on resize from 1120 × 728 to 1280 × 800.
+  Its bounds are y=411–444 at both sizes.
+- The same immutable renderer installations, result hash, Run and Item
+  survive switching and restart. The provider counter stays at three
+  requests and one successful report.
+- The Runtime returns the alternate's declared Chinese title, `记录结果`.
+  The picker in this build still uses `Recorded result`. Both installed
+  file and tool renderer contributions dropped the title metadata.
+  [The renderer title fix](#installed-renderers-use-their-declared-titles-2026-11-27)
+  qualifies both paths with installed packages.
+
+Production staging, Runtime packaging, `pluginpack`, resource comparison,
+the signed Wails build and diff checks pass. External providers and
+VoiceOver remain outside the check. Both Runtime shutdowns after Wails
+exit reach the existing drain deadline. The owned apps, listeners,
+temporary package, profiles, logs, caches and checkout build outputs
+are removed.
+
+### Installed renderers use their declared titles (2026-11-27)
+
+Both renderer registrations carry the installed component's
+`localizedTitles` through `contributionKinds.tsx`. The renderer picker,
+file and tool boundary labels, and inline report label use
+`useRendererTitle` in `RendererChoice.tsx`. It follows the Dock's
+existing locale, base language and declared title fallback. The picker
+compares the displayed titles when disambiguating candidates. The
+existing component ID remains the selection and mount identity.
+
+- Signed production Wails v3.1.0 and isolated Runtime
+  `2026-11-26.7` use source at `3b3476324` plus this change.
+  Runtime admits and enables two archives made with `pluginpack`.
+  They contribute an exact `genui_ui_present` renderer and an
+  `.md` renderer. The installed ESM resources match the repository
+  RecordedResult and Markdown resources byte for byte.
+- Chinese/light/14 px/Flame Orange at 1120 × 728 uses pointer selection
+  to show **记录结果** beside the recorded report and **Markdown 预览**
+  in Files. The file row opens with the keyboard and the preview reads
+  the fixture `README.md`.
+- Change Appearance to English with Dark, 18 px and Blue (#0485F7).
+  The same report, open file and renderer selections show **Recorded
+  result** and **Markdown preview**. Keyboard selection returns to
+  **Generated interface**, including the edited `5682` note. The
+  picker has a visible focus ring at y=411–444 before and after a
+  resize to 1280 × 800. A wheel scroll moves Tool details up 50 px
+  while the file heading stays at y=216. Composer accepts an unsent
+  draft with the same file preview still open.
+- Runtime reads confirm the same Run, Item, result hash and three
+  provider requests after the language and renderer changes. This
+  is a synthetic loopback provider through the actual Runtime.
+  Live inference, VoiceOver and other locales are outside this check.
+
+Web typecheck, production staging, bootstrap, Runtime packaging,
+both fixture packages, signed Wails, scoped Prettier and diff checks
+pass. The native app closes normally. The isolated Runtime again
+reaches the existing drain deadline after Wails exit. The owned
+processes, installation fixtures, profiles, logs, captures, caches
+and checkout build outputs are removed.
+
+Closing Settings with Escape after opening it from the Files renderer
+picker leaves the exact file and preview open. Focus returns to the
+Files region and the next Tab reaches Back to panel list. The next
+batch traces how Settings can return to the control focused before entry.
 
 ## Error notes leave retrying to their buttons (2026-11-26)
 
