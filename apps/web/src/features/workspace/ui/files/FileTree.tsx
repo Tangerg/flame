@@ -84,6 +84,19 @@ const styles = stylex.create({
     paddingInline: layout.compactGutter,
   },
 });
+
+class FileTreeLayout extends ListLayout<unknown> {
+  protected override shouldInvalidateEverything(
+    context: Parameters<ListLayout<unknown>["update"]>[0],
+  ): boolean {
+    const { heightChanged, widthChanged } = context;
+    // Wrapped file names depend on viewport width, so height-only changes can reuse row measurements.
+    return super.shouldInvalidateEverything(
+      heightChanged && !widthChanged ? { ...context, sizeChanged: false } : context,
+    );
+  }
+}
+
 type Directory = ReturnType<typeof useDirectory>;
 function More({ query }: { query: Directory }) {
   const t = useT();
@@ -446,7 +459,7 @@ export function FileTree({
           onKeyDownCapture={onTreeRowKeyDownCapture}
           style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0 }}
         >
-          <Virtualizer layout={ListLayout} shouldObserveItemSize>
+          <Virtualizer layout={FileTreeLayout} shouldObserveItemSize>
             <ContextMenu.Trigger
               onContextMenu={(event) => {
                 const row =

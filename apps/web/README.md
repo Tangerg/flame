@@ -944,6 +944,8 @@ layer leaves pointer, keyboard and accessibility navigation, while
 `ContentVisibility` retires row menus. Root and expanded-directory Query observers
 unsubscribe while the browser is hidden and resume their normal read lifecycle on
 return. The virtual tree retains its measured rows and native scroll position.
+A height-only resize keeps row measurements. Back reveals the focused row
+within the new viewport. Width changes trigger fresh measurements for wrapping.
 Workspace changes replace the tree's and preview's interaction scopes even when
 the new Query already has identical paths cached. Pagination, presentation mode
 and popup drafts belong to that workspace; returning does not revive them.
