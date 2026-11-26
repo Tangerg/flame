@@ -161,15 +161,17 @@ const styles = stylex.create({
     minWidth: 0,
     marginInlineStart: `calc(-1 * ${space.s3})`,
   },
+  // Sized by its search and actions, so the filters wrap to the next line before
+  // the actions break away from the search, keeping reading and focus order.
   filterLead: {
     display: "flex",
     flexWrap: "wrap",
     alignItems: "center",
     gap: layout.controlGap,
-    flex: "1 1 20rem",
+    flex: "1 1 auto",
     minWidth: 0,
   },
-  filterSearch: { flex: "1 1 12rem", minWidth: 0 },
+  filterSearch: { flex: "1 1 12rem", width: "12rem", minWidth: 0 },
   hang: {
     display: "flex",
     minWidth: 0,
