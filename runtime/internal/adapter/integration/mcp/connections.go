@@ -150,17 +150,22 @@ func (c *connections) ownSessionLocked(session *sdk.ClientSession, cleanup sessi
 		if c.callbacks != nil {
 			err = c.callbacks.AdmitSession(session)
 		}
-		owned := &ownedSession{toolChanges: make(chan struct{}, 1), end: &sessionEnd{done: make(chan struct{})}, closeFn: func() error {
+		owned := &ownedSession{toolChanges: make(chan struct{}, 1), closeFn: func() error {
 			if c.callbacks != nil {
 				c.callbacks.RevokeSession(session)
 			}
 			return retireSession(session, cleanup)
 		}}
-		c.sessions[session] = owned
-		c.observers.Add(1)
-		go c.observeSessionEnd(session, owned)
+		c.trackSessionLocked(session, owned)
 	}
 	return err
+}
+
+func (c *connections) trackSessionLocked(session *sdk.ClientSession, owned *ownedSession) {
+	owned.end = &sessionEnd{done: make(chan struct{})}
+	c.sessions[session] = owned
+	c.observers.Add(1)
+	go c.observeSessionEnd(session, owned)
 }
 
 func retireSession(session *sdk.ClientSession, cleanup sessionCleanup) (err error) {

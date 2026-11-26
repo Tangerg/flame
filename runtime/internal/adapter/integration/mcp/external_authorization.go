@@ -9,7 +9,6 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/instant"
 	wire "github.com/Tangerg/flame/packages/go-sdk/mcpconnector"
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
-	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
@@ -40,6 +39,9 @@ func (c *ExternalConnector) StartAuthorization(ctx context.Context, server mcpse
 			returned = errors.Join(returned, u.session.release(context.WithoutCancel(ctx)))
 		}
 	}()
+	if err := c.recoverAuthorizationEpoch(ctx, u); err != nil {
+		return nil, err
+	}
 	intent, err := c.prepareAuthorizationStart(ctx, u, server, id)
 	if err != nil {
 		return nil, err
@@ -77,64 +79,31 @@ func (c *ExternalConnector) prepareAuthorizationStart(ctx context.Context, u *co
 	}, nil
 }
 
-type externalAttemptCompletion struct {
-	connector   *ExternalConnector
-	server      mcpserver.ID
-	id          mcpapp.AuthorizationAttemptID
-	source      plugins.ContributionBinding
-	epoch       string
-	operationID string
-	parentID    string
-}
-
-func (a externalAttemptCompletion) finish(ctx context.Context, status mcpapp.AuthorizationAttemptStatus) error {
-	selected, err := a.connector.use(ctx, func(current *connectorUse) error { return a.settle(ctx, current, status) })
-	if err == nil && !selected {
-		return plugin.ErrUnavailable
-	}
-	return err
-}
-
-func (a externalAttemptCompletion) settle(ctx context.Context, current *connectorUse, status mcpapp.AuthorizationAttemptStatus) error {
-	c := a.connector
-	if !current.source.SameContribution(a.source) || current.epoch != a.epoch {
-		return plugin.ErrStale
-	}
-	ctx = operation.Adopt(ctx, a.operationID, extension.Automatic, a.parentID)
-	input := wire.Completion{ID: a.id.String(), Epoch: a.epoch, Status: wire.Outcome(status)}
-	decision, err := connectorCall(ctx, current, c.methods.Finish, input)
-	if err == nil && decision == wire.Applied {
-		return nil
-	}
-	request := wire.Request{ID: a.id.String(), Epoch: a.epoch}
-	result, readErr := connectorCall(operation.Start(ctx, extension.Automatic, c.methods.Get.Name(), a.id.String()), current, c.methods.Get, request)
-	if readErr == nil {
-		observed, decodeErr := readExternalAttempt(result, a.id)
-		if decodeErr == nil && observed.Server == a.server && observed.Status != mcpapp.AuthorizationAttemptPending {
-			return nil
-		}
-		readErr = decodeErr
-	}
-	return errors.Join(plugin.ErrUnavailable, err, readErr)
-}
-
-func (c *ExternalConnector) ReadAuthorization(ctx context.Context, id mcpapp.AuthorizationAttemptID) (mcpapp.AuthorizationAttempt, error) {
-	var attempt mcpapp.AuthorizationAttempt
-	selected, err := c.use(ctx, func(u *connectorUse) error {
-		result, err := connectorCall(ctx, u, c.methods.Get, wire.Request{ID: id.String(), Epoch: u.epoch})
-		if err != nil {
-			return err
-		}
-		attempt, err = readExternalAttempt(result, id)
-		return err
-	})
+func (c *ExternalConnector) ReadAuthorization(ctx context.Context, id mcpapp.AuthorizationAttemptID) (attempt mcpapp.AuthorizationAttempt, err error) {
+	route, found, err := c.vault.AuthorizationRoute(ctx, id)
 	if err != nil {
 		return mcpapp.AuthorizationAttempt{}, err
 	}
-	if !selected {
+	if !found {
 		return mcpapp.AuthorizationAttempt{}, mcpapp.ErrAuthorizationAttemptNotFound
 	}
-	return attempt, nil
+	u, err := c.acquireCaptured(ctx, route.Source)
+	if errors.Is(err, plugin.ErrUnavailable) {
+		return mcpapp.AuthorizationAttempt{}, errors.Join(mcpapp.ErrAuthorizationOwnerUnavailable, err)
+	}
+	if err != nil {
+		return mcpapp.AuthorizationAttempt{}, err
+	}
+	defer func() { err = errors.Join(err, u.session.release(context.WithoutCancel(ctx))) }()
+	result, err := connectorCall(ctx, u, c.methods.Get, wire.Request{ID: id.String(), Epoch: route.Epoch})
+	if err != nil {
+		return mcpapp.AuthorizationAttempt{}, err
+	}
+	attempt, err = readExternalAttempt(result, id)
+	if err == nil && attempt.Server.Name() != route.Name {
+		return mcpapp.AuthorizationAttempt{}, mcpapp.ErrInvalidServerConfiguration
+	}
+	return attempt, err
 }
 
 func readStartedExternalAttempt(r wire.AttemptResult, id mcpapp.AuthorizationAttemptID, server mcpserver.ID) (mcpapp.AuthorizationAttempt, error) {

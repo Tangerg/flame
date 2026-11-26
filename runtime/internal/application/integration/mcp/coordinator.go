@@ -50,7 +50,6 @@ type directoryStore interface {
 	Save(context.Context, mcpserver.Server, operation.ReplayClaim) (*DirectorySettlement, error)
 	Remove(context.Context, mcpserver.Server, operation.ReplayClaim) (*DirectorySettlement, error)
 	RecoverDirectoryChange(context.Context, operation.ReplayClaim) (*DirectorySettlement, error)
-	RestoreDirectoryChanges(context.Context) error
 }
 
 type exposureStore interface {
@@ -65,23 +64,22 @@ type ExternalWorkflow interface {
 	AdmitProbe(context.Context) (func() error, error)
 	StartAuthorization(context.Context, mcpserver.Server, AuthorizationAttemptID, operation.ReplayClaim) (*AuthorizationStartSettlement, error)
 	RecoverAuthorizationStart(context.Context, operation.ReplayClaim) (*AuthorizationStartSettlement, error)
-	RestoreAuthorizationStarts(context.Context) error
+	RestoreCommands(context.Context) error
+	RunAuthorizationDelivery(context.Context)
 	ReadAuthorization(context.Context, AuthorizationAttemptID) (AuthorizationAttempt, error)
 }
 
 type Coordinator struct {
-	// Network and interactive OAuth waits never hold mutationMu.
-	registry                registry
-	directory               directoryStore
-	exposureStore           exposureStore
-	toolCatalog             toolCatalog
-	connections             Connections
-	exposure                *ExposureState
-	mutationMu              sync.Mutex
-	statusQueue             *statusQueue
-	external                ExternalWorkflow
-	authorizationDeliveries pendingDeliveries
-	invalidations           invalidation.Publish
+	registry      registry
+	directory     directoryStore
+	exposureStore exposureStore
+	toolCatalog   toolCatalog
+	connections   Connections
+	exposure      *ExposureState
+	mutationMu    sync.Mutex
+	statusQueue   *statusQueue
+	external      ExternalWorkflow
+	invalidations invalidation.Publish
 
 	tasks taskgroup.Group
 }

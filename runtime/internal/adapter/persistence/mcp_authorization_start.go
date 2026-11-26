@@ -6,8 +6,10 @@ import (
 	json "encoding/json/v2"
 	"errors"
 
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 )
 
 func (m *MCPServerStore) PrepareAuthorizationStart(ctx context.Context, pending mcpapp.PendingAuthorizationStart) error {
@@ -96,7 +98,7 @@ func decodeAuthorizationStart(data string, receipt operation.ReplayClaim) (mcpap
 	return mcpapp.PendingAuthorizationStart{Intent: intent, Receipt: receipt}, intent.Validate()
 }
 
-func (m *MCPServerStore) CompleteAuthorizationStart(ctx context.Context, pending mcpapp.PendingAuthorizationStart, payload []byte) error {
+func (m *MCPServerStore) CompleteAuthorizationStart(ctx context.Context, pending mcpapp.PendingAuthorizationStart, accepted bool, payload []byte) error {
 	return m.db.independent(ctx, func(tx context.Context) error {
 		result, err := m.db.connection(tx).ExecContext(tx, `DELETE FROM pending_mcp_authorization_starts WHERE invocation=?`, pending.Intent.Invocation.ID)
 		if err != nil {
@@ -109,10 +111,72 @@ func (m *MCPServerStore) CompleteAuthorizationStart(ctx context.Context, pending
 		if removed != 1 {
 			return operation.ErrClaimLost
 		}
+		if accepted {
+			source, err := json.Marshal(pending.Intent.Source)
+			if err != nil {
+				return err
+			}
+			start := pending.Intent.Start
+			_, err = m.db.connection(tx).ExecContext(tx, `INSERT INTO mcp_authorization_routes(attempt,source,name,epoch) VALUES (?,?,?,?)`,
+				start.AttemptID, string(source), start.Name, start.Epoch)
+			if err != nil {
+				return err
+			}
+		}
 		if pending.Receipt.Key == "" {
 			return nil
 		}
 		_, err = m.receipts.Complete(tx, operation.ReplayRecord{Key: pending.Receipt.Key, Fingerprint: pending.Receipt.Fingerprint, Payload: payload})
 		return err
+	})
+}
+
+func (m *MCPServerStore) AuthorizationRoute(ctx context.Context, id mcpapp.AuthorizationAttemptID) (mcpapp.AuthorizationRoute, bool, error) {
+	return scopedPair(ctx, m.db.read, func(tx context.Context) (mcpapp.AuthorizationRoute, bool, error) {
+		var source, name, epoch string
+		err := m.db.connection(tx).QueryRowContext(tx, `SELECT source,name,epoch FROM mcp_authorization_routes WHERE attempt=?`, id.String()).Scan(&source, &name, &epoch)
+		if errors.Is(err, sql.ErrNoRows) {
+			return mcpapp.AuthorizationRoute{}, false, nil
+		}
+		if err != nil {
+			return mcpapp.AuthorizationRoute{}, false, err
+		}
+		route, err := decodeAuthorizationRoute(source, name, epoch)
+		return route, err == nil, err
+	})
+}
+
+func decodeAuthorizationRoute(source, name, epoch string) (mcpapp.AuthorizationRoute, error) {
+	var binding extension.ContributionSource
+	if err := json.Unmarshal([]byte(source), &binding, json.RejectUnknownMembers(true)); err != nil {
+		return mcpapp.AuthorizationRoute{}, err
+	}
+	server, err := mcpserver.ParseServerName(name)
+	if err != nil {
+		return mcpapp.AuthorizationRoute{}, err
+	}
+	return mcpapp.AuthorizationRoute{Source: binding, Name: server, Epoch: epoch}, nil
+}
+
+func (m *MCPServerStore) AuthorizationConnectors(ctx context.Context) ([]extension.ContributionSource, error) {
+	return scopedValue(ctx, m.db.read, func(tx context.Context) ([]extension.ContributionSource, error) {
+		rows, err := m.db.connection(tx).QueryContext(tx, `SELECT DISTINCT source FROM mcp_authorization_routes ORDER BY source`)
+		if err != nil {
+			return nil, err
+		}
+		defer rows.Close()
+		var connectors []extension.ContributionSource
+		for rows.Next() {
+			var source string
+			if err := rows.Scan(&source); err != nil {
+				return nil, err
+			}
+			var binding extension.ContributionSource
+			if err := json.Unmarshal([]byte(source), &binding, json.RejectUnknownMembers(true)); err != nil {
+				return nil, err
+			}
+			connectors = append(connectors, binding)
+		}
+		return connectors, rows.Err()
 	})
 }

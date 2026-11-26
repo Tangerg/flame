@@ -35,7 +35,12 @@ type connectorStore interface {
 	PrepareAuthorizationStart(context.Context, mcpapp.PendingAuthorizationStart) error
 	PendingAuthorizationStart(context.Context, operation.ReplayClaim) (mcpapp.PendingAuthorizationStart, bool, error)
 	PendingAuthorizationStarts(context.Context) ([]mcpapp.PendingAuthorizationStart, error)
-	CompleteAuthorizationStart(context.Context, mcpapp.PendingAuthorizationStart, []byte) error
+	CompleteAuthorizationStart(context.Context, mcpapp.PendingAuthorizationStart, bool, []byte) error
+	AuthorizationRoute(context.Context, mcpapp.AuthorizationAttemptID) (mcpapp.AuthorizationRoute, bool, error)
+	AuthorizationConnectors(context.Context) ([]extension.ContributionSource, error)
+	RecordAuthorizationFinish(context.Context, mcpapp.AuthorizationFinish) error
+	PendingAuthorizationFinishes(context.Context) ([]mcpapp.PendingAuthorizationFinish, error)
+	CompleteAuthorizationFinish(context.Context, mcpapp.AuthorizationAttemptID) error
 	OpenGrant(context.Context, identity.InstallationID, mcpserver.ServerName, string) (mcpapp.LaunchGrant, bool, error)
 }
 
@@ -45,15 +50,16 @@ type ConnectorReceipts struct {
 }
 
 type ExternalConnector struct {
-	recoveryMu    sync.Mutex
-	recovered     map[identity.InstallationID]string
-	installed     *Installed
-	installations plugins.Store
-	selections    plugins.SelectionStore
-	vault         connectorStore
-	receipts      ConnectorReceipts
-	methods       connectormcp.Methods
-	epoch         atomic.Pointer[string]
+	authorizationMu   sync.Mutex
+	recovered         map[extension.ContributionSource]string
+	installed         *Installed
+	installations     plugins.Store
+	selections        plugins.SelectionStore
+	vault             connectorStore
+	receipts          ConnectorReceipts
+	methods           connectormcp.Methods
+	epoch             atomic.Pointer[string]
+	authorizationWork chan struct{}
 }
 
 func NewExternalConnector(installed *Installed, installations plugins.Store, selections plugins.SelectionStore, vault connectorStore, receipts ConnectorReceipts) (*ExternalConnector, error) {
@@ -64,9 +70,27 @@ func NewExternalConnector(installed *Installed, installations plugins.Store, sel
 	if err != nil {
 		return nil, err
 	}
-	connector := &ExternalConnector{recovered: make(map[identity.InstallationID]string), installed: installed, installations: installations, selections: selections, vault: vault, methods: m, receipts: receipts}
+	connector := &ExternalConnector{
+		recovered:         make(map[extension.ContributionSource]string),
+		installed:         installed,
+		installations:     installations,
+		selections:        selections,
+		vault:             vault,
+		methods:           m,
+		receipts:          receipts,
+		authorizationWork: make(chan struct{}, 1),
+	}
 	connector.Invalidate()
 	return connector, nil
+}
+
+func (c *ExternalConnector) RestoreCommands(ctx context.Context) error {
+	return errors.Join(
+		c.deliverAuthorizationFinishes(ctx),
+		c.restoreDirectoryChanges(ctx),
+		c.restoreAuthorizationStarts(ctx),
+		c.restoreAuthorizationEpochs(ctx),
+	)
 }
 
 type connectorUse struct {
@@ -86,8 +110,11 @@ func (c *ExternalConnector) acquire(ctx context.Context) (*connectorUse, error) 
 
 func (c *ExternalConnector) acquireCaptured(ctx context.Context, source extension.ContributionSource) (*connectorUse, error) {
 	binding, found, err := plugins.CapturedContribution(ctx, c.installed.host, c.installations, c.methods.Contract, source)
-	if err != nil || !found {
-		return nil, errors.Join(plugin.ErrUnavailable, err)
+	if err != nil {
+		return nil, err
+	}
+	if !found {
+		return nil, plugin.ErrUnavailable
 	}
 	return c.acquireBinding(ctx, binding)
 }
@@ -111,11 +138,7 @@ func (c *ExternalConnector) acquireBinding(ctx context.Context, b plugins.Contri
 	if err != nil {
 		return fail(err)
 	}
-	u := &connectorUse{epoch: *c.epoch.Load(), source: b, session: session, capability: capability}
-	if err := c.recover(ctx, u); err != nil {
-		return fail(err)
-	}
-	return u, nil
+	return &connectorUse{epoch: *c.epoch.Load(), source: b, session: session, capability: capability}, nil
 }
 
 func connectorCall[P, R any](ctx context.Context, u *connectorUse, m *pluginmcp.Method[P, R], input P) (R, error) {
@@ -271,12 +294,16 @@ func (c *ExternalConnector) Affected(ctx context.Context, servers []mcpserver.ID
 	return false, nil
 }
 
-func (c *ExternalConnector) recover(ctx context.Context, u *connectorUse) error {
-	c.recoveryMu.Lock()
-	defer c.recoveryMu.Unlock()
-	id := u.source.InstallationID
-	if c.recovered[id] == u.epoch {
+func (c *ExternalConnector) recoverAuthorizationEpoch(ctx context.Context, u *connectorUse) error {
+	c.authorizationMu.Lock()
+	defer c.authorizationMu.Unlock()
+	source := u.source.ContributionSource()
+	if c.recovered[source] == u.epoch {
 		return nil
+	}
+	// A recorded outcome must reach its owner before the epoch is retired.
+	if err := c.deliverAuthorizationFinishesLocked(ctx, u); err != nil {
+		return err
 	}
 	recovery := operation.Start(ctx, extension.Automatic, c.methods.Recover.Name(), u.epoch)
 	decision, err := connectorCall(recovery, u, c.methods.Recover, wire.Recovery{Epoch: u.epoch})
@@ -286,7 +313,7 @@ func (c *ExternalConnector) recover(ctx context.Context, u *connectorUse) error 
 	if decision != wire.Applied {
 		return mcpapp.ErrInvalidServerConfiguration
 	}
-	c.recovered[id] = u.epoch
+	c.recovered[source] = u.epoch
 	return nil
 }
 

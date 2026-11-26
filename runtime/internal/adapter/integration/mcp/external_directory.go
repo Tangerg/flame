@@ -75,7 +75,7 @@ func (c *ExternalConnector) RecoverDirectoryChange(ctx context.Context, receipt 
 	return c.resumeDirectoryChange(ctx, pending)
 }
 
-func (c *ExternalConnector) RestoreDirectoryChanges(ctx context.Context) error {
+func (c *ExternalConnector) restoreDirectoryChanges(ctx context.Context) error {
 	pending, err := c.vault.PendingDirectoryChanges(ctx)
 	if err != nil {
 		return err

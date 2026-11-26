@@ -157,6 +157,8 @@ func (s *Handler) GetMCPAuthorizationAttempt(ctx context.Context, attemptID stri
 
 func wireMCPError(err error) error {
 	switch {
+	case errors.Is(err, mcpapp.ErrAuthorizationOwnerUnavailable):
+		return protocol.NewFailure(protocol.ErrPluginUnavailable, mcpapp.ErrAuthorizationOwnerUnavailable.Error(), err)
 	case errors.Is(err, plugin.ErrUnavailable):
 		return protocol.NewFailure(protocol.ErrPluginUnavailable, "select an enabled external MCP connector", err)
 	case errors.Is(err, mcpapp.ErrOwnedByInstallation):

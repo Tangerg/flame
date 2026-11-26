@@ -163,10 +163,7 @@ func TestCrashDuringExternalAuthorizationRestoresUnconfirmedReceipt(t *testing.T
 	}
 	cfg := externalMCPRestartConfig(t, data, runnerDir)
 	restored := poMCPOpen(t, cfg)
-	attempt, err := restored.api.GetMCPAuthorizationAttempt(t.Context(), string(id))
-	if err != nil {
-		t.Fatal(err)
-	}
+	attempt := awaitMCPAuthorization(t, restored, string(id))
 	if attempt.Status.Type != protocol.MCPAuthorizationAttemptUnconfirmed || attempt.FinishedAt == nil {
 		t.Fatalf("restored authorization = %+v", attempt)
 	}

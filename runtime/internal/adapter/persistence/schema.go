@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/packages/go-sdk/exactint"
+	wire "github.com/Tangerg/flame/packages/go-sdk/mcpconnector"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
@@ -425,6 +426,17 @@ func currentSchema() []string {
 			receipt_key TEXT UNIQUE REFERENCES idempotency_records(key) ON DELETE RESTRICT,
 			UNIQUE(connector,epoch,name)
 		)`,
+		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS mcp_authorization_routes (
+			attempt TEXT PRIMARY KEY,
+			source TEXT NOT NULL CHECK (json_valid(source)),
+			name TEXT NOT NULL CHECK (%s),
+			epoch TEXT NOT NULL CHECK (length(epoch) > 0)
+		)`, serverNameCheck()),
+		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS pending_mcp_authorization_finishes (
+			attempt TEXT PRIMARY KEY REFERENCES mcp_authorization_routes(attempt) ON DELETE RESTRICT,
+			outcome TEXT NOT NULL CHECK (outcome IN ('%s', '%s', '%s')),
+			invocation TEXT NOT NULL CHECK (json_valid(invocation))
+		)`, wire.Succeeded, wire.Failed, wire.Canceled),
 		`CREATE TABLE IF NOT EXISTS mcp_launch_grants (
 			grant_id TEXT NOT NULL PRIMARY KEY,
 			connector TEXT NOT NULL,

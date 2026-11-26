@@ -88,14 +88,14 @@ func TestMCPAuthorizationAcknowledgementRecoversTheOriginalAttempt(t *testing.T)
 	}
 	r := poMCPOpen(t, externalMCPRestartConfig(t, home, runnerDir))
 	server := protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginUser}, Name: authorizationAckServer}
-	attempt, err := r.api.GetMCPAuthorizationAttempt(t.Context(), original.Value.AttemptID)
-	if err != nil || attempt == nil || attempt.ID != original.Value.AttemptID || attempt.Server != server ||
-		attempt.Status.Type != protocol.MCPAuthorizationAttemptUnconfirmed {
-		t.Fatalf("connector did not recover the interrupted attempt: %+v, %v", attempt, err)
-	}
 	request := protocol.CreateMCPAuthorizationAttemptRequest{Server: server}
 	value := r.must(delivery.MCPAuthorizationAttemptsCreate, request, authorizationAckCrashKey).(*protocol.MCPAuthorizationAttemptRef)
 	if *value != original.Value {
 		t.Fatalf("recovered authorization acknowledged %q, want %q", value.AttemptID, original.Value.AttemptID)
+	}
+	attempt := awaitMCPAuthorization(t, r, original.Value.AttemptID)
+	if attempt.ID != original.Value.AttemptID || attempt.Server != server ||
+		attempt.Status.Type != protocol.MCPAuthorizationAttemptUnconfirmed {
+		t.Fatalf("connector did not recover the interrupted attempt: %+v", attempt)
 	}
 }

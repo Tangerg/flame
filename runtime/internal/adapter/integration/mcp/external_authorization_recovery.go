@@ -25,7 +25,7 @@ func (c *ExternalConnector) RecoverAuthorizationStart(ctx context.Context, recei
 	return c.resumeAuthorizationStart(ctx, pending)
 }
 
-func (c *ExternalConnector) RestoreAuthorizationStarts(ctx context.Context) error {
+func (c *ExternalConnector) restoreAuthorizationStarts(ctx context.Context) error {
 	starts, err := c.vault.PendingAuthorizationStarts(ctx)
 	if err != nil {
 		return err
@@ -84,7 +84,7 @@ func (c *ExternalConnector) settleAuthorizationStart(ctx context.Context, u *con
 				return errors.Join(operation.ErrOutcomePending, err)
 			}
 		}
-		if err := c.vault.CompleteAuthorizationStart(ctx, pending, payload); err != nil {
+		if err := c.vault.CompleteAuthorizationStart(ctx, pending, settlement.Refusal == nil, payload); err != nil {
 			return errors.Join(operation.ErrOutcomePending, err)
 		}
 		return nil
@@ -136,12 +136,15 @@ func (c *ExternalConnector) admitAuthorizationStart(ctx context.Context, u *conn
 		return nil, err
 	}
 	if found && entry.Enabled && entry.LaunchGrant == intent.Start.Grant {
-		completion := externalAttemptCompletion{
-			connector: c, server: server, id: id, source: u.source, epoch: u.epoch,
-			operationID: operation.Identity(operation.Start(ctx, extension.Automatic, c.methods.Finish.Name(), id.String())),
-			parentID:    intent.Invocation.ID,
+		start := operation.Adopt(ctx, intent.Invocation.ID, intent.Invocation.Origin, intent.Invocation.Parent)
+		finishContext := operation.Start(start, extension.Automatic, c.methods.Finish.Name(), id.String())
+		invocation, err := operation.Capture(finishContext, intent.Invocation.Target)
+		if err != nil {
+			return nil, err
 		}
-		settlement.Finish = completion.finish
+		settlement.Finish = func(ctx context.Context, status mcpapp.AuthorizationAttemptStatus) error {
+			return c.recordAuthorizationFinish(ctx, mcpapp.AuthorizationFinish{ID: id, Invocation: invocation, Outcome: wire.Outcome(status)})
+		}
 	}
 	return settlement, nil
 }

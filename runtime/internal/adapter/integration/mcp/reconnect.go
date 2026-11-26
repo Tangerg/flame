@@ -109,8 +109,8 @@ func (c *connections) adoptLaunchSession(ctx context.Context, prepared *launch) 
 	defer c.mu.Unlock()
 	if prepared.managed == nil {
 		err = errors.Join(err, c.ownSessionLocked(session, cleanupSession))
-	} else if session != nil {
-		c.sessions[session] = &ownedSession{closeFn: cleanupSession, managed: observation}
+	} else if session != nil && c.sessions[session] == nil {
+		c.trackSessionLocked(session, &ownedSession{closeFn: cleanupSession, managed: observation})
 	}
 	owned := c.sessions[session]
 	var toolVersion uint64

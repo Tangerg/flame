@@ -49,3 +49,20 @@ type AuthorizationStartSettlement struct {
 	Finish    func(context.Context, AuthorizationAttemptStatus) error
 	Complete  func(context.Context) error
 }
+
+type AuthorizationRoute struct {
+	Source extension.ContributionSource
+	Name   mcpserver.ServerName
+	Epoch  string
+}
+
+type AuthorizationFinish struct {
+	ID         AuthorizationAttemptID
+	Outcome    wire.Outcome
+	Invocation framecall.Invocation
+}
+
+type PendingAuthorizationFinish struct {
+	AuthorizationFinish
+	Route AuthorizationRoute
+}

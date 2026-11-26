@@ -101,9 +101,13 @@ fresh development directory for the connector; no conversion is performed.
 The start command records the new attempt and its original receipt atomically.
 Runtime acknowledges the attempt ID before it begins the interactive transport.
 The `mcp.authorizationAttempts.get` query supplies status by ID, including after
-replaying a creation request.
+replaying a creation request or switching the selected Connector. Runtime records
+the transport outcome before sending it to the original Connector. The Connector
+settles the command and its receipt in the same transaction. On restart, Runtime
+delivers retained outcomes before the Connector marks still-open interrupted
+sign-ins as unconfirmed. The Connector preserves terminal attempts for the
+published retention window.
 
 Disabling or removing the selected connector withdraws external tools. Installed package
 backends retain their own Frame bindings. Selecting the original connector again restores
-its directory. Restart marks interrupted sign-ins as unconfirmed and preserves completed attempts
-for the published retention window.
+its directory.

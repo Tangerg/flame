@@ -59,6 +59,7 @@ func (c *Coordinator) RestoreExternal(ctx context.Context, ready <-chan struct{}
 		if err := c.ReconcileExternal(ctx); err != nil && ctx.Err() == nil {
 			slog.WarnContext(ctx, "external MCP directory could not be restored", telemetry.Error(err))
 		}
+		c.external.RunAuthorizationDelivery(ctx)
 	})
 }
 
@@ -68,7 +69,7 @@ func (c *Coordinator) restoreExternalCommands(ctx context.Context) error {
 		return err
 	}
 	defer write.close()
-	return errors.Join(c.directory.RestoreDirectoryChanges(write.ownerCtx), c.external.RestoreAuthorizationStarts(write.ownerCtx))
+	return c.external.RestoreCommands(write.ownerCtx)
 }
 
 func (c *Coordinator) WithdrawExternal() error {
