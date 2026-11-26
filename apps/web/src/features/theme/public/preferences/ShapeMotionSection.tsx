@@ -10,14 +10,14 @@ const DENSITY_OPTIONS = UI_DENSITY_MODES.map((mode) => ({
 
 const RADIUS_OPTIONS: { value: number; label: MessageKey }[] = [
   { value: 0.6, label: "shape.opt.sharp" },
-  { value: 1, label: "settings.font.default" },
+  { value: 1, label: "shape.radius.default" },
   { value: 1.4, label: "shape.opt.soft" },
 ];
 
 const MOTION_OPTIONS: { value: number; label: MessageKey }[] = [
   { value: 0, label: "shape.opt.off" },
   { value: 0.6, label: "shape.opt.fast" },
-  { value: 1, label: "settings.font.default" },
+  { value: 1, label: "shape.motion.default" },
   { value: 1.5, label: "shape.opt.slow" },
 ];
 

@@ -359,6 +359,8 @@
   "shape.opt.off": "Aus",
   "shape.opt.fast": "Schnell",
   "shape.opt.slow": "Langsam",
+  "shape.radius.default": "Standard",
+  "shape.motion.default": "Standard",
   "contextDock.group.workspace": "Arbeitsbereich",
   "contextDock.group.run": "Lauf",
   "contextDock.group.session": "Sitzung",

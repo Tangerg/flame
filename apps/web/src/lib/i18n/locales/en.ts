@@ -420,6 +420,8 @@ export const en = {
   "shape.opt.off": "Off",
   "shape.opt.fast": "Fast",
   "shape.opt.slow": "Slow",
+  "shape.radius.default": "Default",
+  "shape.motion.default": "Default",
   "workspace.view.title.file": "Files",
   "contextDock.group.workspace": "Workspace",
   "contextDock.group.run": "Run",

@@ -353,6 +353,8 @@
   "shape.opt.off": "オフ",
   "shape.opt.fast": "速い",
   "shape.opt.slow": "遅い",
+  "shape.radius.default": "デフォルト",
+  "shape.motion.default": "デフォルト",
   "contextDock.group.workspace": "ワークスペース",
   "contextDock.group.run": "実行",
   "contextDock.group.session": "セッション",

@@ -359,6 +359,8 @@
   "shape.opt.off": "關閉",
   "shape.opt.fast": "快",
   "shape.opt.slow": "慢",
+  "shape.radius.default": "預設",
+  "shape.motion.default": "預設",
   "workspace.view.title.file": "檔案",
   "contextDock.group.workspace": "工作區",
   "contextDock.group.run": "執行",

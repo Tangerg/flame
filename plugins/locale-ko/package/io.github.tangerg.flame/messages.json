@@ -353,6 +353,8 @@
   "shape.opt.off": "끄기",
   "shape.opt.fast": "빠르게",
   "shape.opt.slow": "느리게",
+  "shape.radius.default": "기본",
+  "shape.motion.default": "기본",
   "contextDock.group.workspace": "작업 영역",
   "contextDock.group.run": "실행",
   "contextDock.group.session": "세션",
