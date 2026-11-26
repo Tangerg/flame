@@ -114,7 +114,7 @@ export const en: Record<string, string> = {
   "rename.captured": "Captured session",
   "export.markdown": "Export conversation as Markdown",
   "export.json": "Export conversation as JSON",
-  "export.trajectory": "Export complete Session trajectory",
+  "export.trajectory": "Export complete session trajectory",
   "image.view": "View image",
   "image.close": "Close image preview",
   "image.fit": "Fit image",
