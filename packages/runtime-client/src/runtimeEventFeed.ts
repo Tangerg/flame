@@ -4,7 +4,7 @@ import type {
   RuntimeSubscribeResponse,
   RuntimeTopic,
 } from "@flame/runtime-client/wire";
-import { createPushPullChannel, type PushPullChannel } from "./channel";
+import { createPushPullChannel } from "./channel";
 import { RpcConnectionError } from "./errors";
 import { iterableOf, MAXIMUM_BUFFERED_RUNTIME_EVENTS, type StreamingResult } from "./stream";
 
@@ -16,18 +16,62 @@ type OpenRuntimeEvents = (
 ) => Promise<RuntimeEventSubscription>;
 
 class Subscriber {
-  readonly channel: PushPullChannel<RuntimeEvent> = createPushPullChannel({
+  readonly #channel = createPushPullChannel<RuntimeEvent>({
     capacity: MAXIMUM_BUFFERED_RUNTIME_EVENTS,
   });
+  readonly #cancellation: PromiseWithResolvers<never> | undefined;
   #sequence = 0;
 
-  constructor(private readonly topics: ReadonlySet<RuntimeTopic>) {}
+  constructor(
+    private readonly topics: ReadonlySet<RuntimeTopic>,
+    private readonly signal: AbortSignal | undefined,
+    private readonly leave: (subscriber: Subscriber) => void,
+  ) {
+    this.#cancellation = signal && Promise.withResolvers<never>();
+  }
+
+  async open(
+    acknowledgement: Promise<RuntimeSubscribeResponse>,
+  ): Promise<RuntimeEventSubscription> {
+    this.signal?.addEventListener("abort", this.#abort, { once: true });
+    try {
+      // Other subscribers can keep the shared opening alive after this observer leaves.
+      const result = await (this.#cancellation
+        ? Promise.race([acknowledgement, this.#cancellation.promise])
+        : acknowledgement);
+      this.signal?.throwIfAborted();
+      return { result, events: iterableOf(this.#channel, this.#detach) };
+    } catch (error) {
+      this.#close();
+      throw error;
+    }
+  }
+
+  fail(error: unknown): void {
+    this.#channel.fail(error);
+    this.#detach();
+  }
+
+  #abort = () => {
+    this.#cancellation?.reject(this.signal?.reason);
+    this.#close();
+  };
+
+  #close(): void {
+    this.#channel.close();
+    this.#detach();
+  }
+
+  #detach = () => {
+    this.signal?.removeEventListener("abort", this.#abort);
+    this.leave(this);
+  };
 
   // A dedicated subscription numbers only the frames it receives, so a shared
   // stream renumbers each subscriber's subset to keep gaps meaning loss.
   deliver(event: RuntimeEvent): boolean {
     const routed = this.#route(event);
-    return routed === undefined || this.channel.tryPush({ ...routed, sequence: ++this.#sequence });
+    return routed === undefined || this.#channel.tryPush({ ...routed, sequence: ++this.#sequence });
   }
 
   #route(event: RuntimeEvent): RuntimeEvent | undefined {
@@ -40,51 +84,51 @@ class Subscriber {
 }
 
 class SharedStream {
-  readonly subscribers = new Set<Subscriber>();
+  readonly #subscribers = new Set<Subscriber>();
   readonly #controller = new AbortController();
-  readonly opened: Promise<RuntimeSubscribeResponse>;
+  readonly #opened: Promise<RuntimeSubscribeResponse>;
 
   constructor(
     topics: readonly RuntimeTopic[],
     open: OpenRuntimeEvents,
     private readonly ended: (stream: SharedStream) => void,
   ) {
-    this.opened = open({ topics: [...topics] }, this.#controller.signal).then(
+    this.#opened = open({ topics: [...topics] }, this.#controller.signal).then(
       ({ result, events }) => {
         void this.#forward(events);
         return result;
       },
-      (error: unknown) => {
-        this.ended(this);
-        throw error;
-      },
     );
   }
 
-  leave(subscriber: Subscriber): void {
-    if (!this.subscribers.delete(subscriber) || this.subscribers.size > 0) return;
+  join(topics: readonly RuntimeTopic[], signal?: AbortSignal): Promise<RuntimeEventSubscription> {
+    const subscriber = new Subscriber(new Set(topics), signal, this.#leave);
+    this.#subscribers.add(subscriber);
+    return subscriber.open(this.#opened);
+  }
+
+  #leave = (subscriber: Subscriber) => {
+    if (!this.#subscribers.delete(subscriber) || this.#subscribers.size > 0) return;
     this.ended(this);
     this.#controller.abort();
-  }
+  };
 
   async #forward(events: AsyncIterable<RuntimeEvent>): Promise<void> {
     let failure: unknown = new RpcConnectionError("runtime subscription ended unexpectedly");
     try {
       for await (const event of events) {
-        for (const subscriber of this.subscribers) {
-          if (subscriber.deliver(event)) continue;
-          subscriber.channel.fail(
-            new RpcConnectionError("runtime event consumer exceeded its bounded inbox"),
-          );
-          this.leave(subscriber);
+        for (const subscriber of this.#subscribers) {
+          if (!subscriber.deliver(event)) {
+            subscriber.fail(
+              new RpcConnectionError("runtime event consumer exceeded its bounded inbox"),
+            );
+          }
         }
       }
     } catch (error) {
       failure = error;
     }
-    this.ended(this);
-    for (const subscriber of this.subscribers) subscriber.channel.fail(failure);
-    this.subscribers.clear();
+    for (const subscriber of this.#subscribers) subscriber.fail(failure);
   }
 }
 
@@ -110,29 +154,7 @@ export function createRuntimeEventFeed(
         return open(request, signal);
       signal?.throwIfAborted();
       const stream = (current ??= new SharedStream(topics, open, ended));
-      const subscriber = new Subscriber(new Set(request.topics));
-      stream.subscribers.add(subscriber);
-      const leave = () => stream.leave(subscriber);
-      const abandon = () => {
-        subscriber.channel.close();
-        leave();
-      };
-      signal?.addEventListener("abort", abandon, { once: true });
-      let result: RuntimeSubscribeResponse;
-      try {
-        result = await stream.opened;
-        signal?.throwIfAborted();
-      } catch (error) {
-        abandon();
-        throw error;
-      }
-      return {
-        result,
-        events: iterableOf(subscriber.channel, () => {
-          signal?.removeEventListener("abort", abandon);
-          leave();
-        }),
-      };
+      return stream.join(request.topics, signal);
     },
   };
 }

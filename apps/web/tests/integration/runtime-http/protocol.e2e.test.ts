@@ -9,9 +9,18 @@ import {
   createSidecarClient,
   createHttpTransport,
 } from "@flame/runtime-client";
-import { PROTOCOL_VERSION, type RequestMeta } from "@flame/runtime-client/wire";
+import {
+  PROTOCOL_VERSION,
+  type RequestMeta,
+  type RuntimeSubscribeRequest,
+} from "@flame/runtime-client/wire";
 import { createProviderGate } from "./fakeProvider";
-import { collectRunEvents, nextRuntimeEvent, within } from "./observation";
+import {
+  collectRunEvents,
+  collectSessionRuntimeEvents,
+  nextRuntimeEvent,
+  within,
+} from "./observation";
 import { faultStreamOpening, faultUnaryResponse } from "./transportFaults";
 import { useRuntimeFixture } from "./fixture";
 
@@ -111,6 +120,49 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: protocol delivery", () => {
     streamController.abort();
     await events.return?.();
   }, 30_000);
+
+  it("cancels a subscriber while another owns the shared opening", async () => {
+    const arrived = Promise.withResolvers<void>();
+    const release = Promise.withResolvers<void>();
+    let openings = 0;
+    const client = fixture.createRuntimeClient(async (input, init) => {
+      openings++;
+      const response = await fetch(input, init);
+      arrived.resolve();
+      await release.promise;
+      return response;
+    });
+    const request: RuntimeSubscribeRequest = { topics: ["sessions.changed"] };
+    const staying = new AbortController();
+    const leaving = new AbortController();
+    const survivor = client.runtimeEvents.subscribe(request, staying.signal);
+    try {
+      await within(Promise.race([arrived.promise, survivor]), "shared Runtime opening");
+      const canceled = client.runtimeEvents.subscribe(request, leaving.signal);
+      const reason = new Error("the second subscriber left");
+      leaving.abort(reason);
+      await expect(within(canceled, "canceled subscriber", 1_000)).rejects.toBe(reason);
+      expect(openings).toBe(1);
+
+      release.resolve();
+      const subscription = await within(survivor, "remaining subscriber");
+      const events = subscription.events[Symbol.asyncIterator]();
+      const session = await fixture.client.sessions.create({ title: "shared event survivor" });
+      await collectSessionRuntimeEvents(events, request.topics, session.id);
+      await events.return?.();
+
+      const replacement = await within(
+        client.runtimeEvents.subscribe(request, staying.signal),
+        "replacement subscription",
+      );
+      expect(openings).toBe(2);
+      await replacement.events[Symbol.asyncIterator]().return?.();
+    } finally {
+      release.resolve();
+      staying.abort();
+      await client.close();
+    }
+  });
 
   it("converges unary mutations across pre-admission and post-commit disconnects", async () => {
     const requestMeta = (): RequestMeta => ({
