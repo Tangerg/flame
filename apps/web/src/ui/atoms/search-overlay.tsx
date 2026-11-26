@@ -174,15 +174,21 @@ export function SearchOverlay({
             onChoose={(option) => {
               if (!open || !opening || pending.current) return;
               const run = option.onSelect;
-              const opener = opening.origin;
+              const { origin: opener, restore } = opening;
               const popup = popupRef.current;
               pending.current = {
                 completion: opening.completion,
                 deliver: () => {
                   const doc = popup?.ownerDocument ?? document;
                   const active = doc.activeElement;
-                  if ((active === doc.body || popup?.contains(active)) && opener?.isConnected)
-                    opener.focus({ preventScroll: true });
+                  if (
+                    (active === doc.body || popup?.contains(active)) &&
+                    opener?.isConnected &&
+                    !isConcealed(opener)
+                  ) {
+                    if (restore) restore();
+                    else opener.focus({ preventScroll: true });
+                  }
                   run(opener ?? undefined);
                 },
               };
