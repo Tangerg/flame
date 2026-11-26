@@ -1,4 +1,7 @@
+import * as stylex from "@stylexjs/stylex";
 import { Group, Panel } from "react-resizable-panels";
+import { PanelHost } from "@flame/ui/panel";
+import { surface } from "@flame/ui/tokens.stylex";
 import { useWorkspace } from "@/features/workspace/public/workspace";
 import { useComposer } from "@/features/composer/public/composer";
 import {
@@ -13,6 +16,7 @@ import {
 } from "react";
 import { flushSync } from "react-dom";
 import { type AgentInput } from "@/features/agent/public/input";
+import { ContentVisibility } from "@/ui/index";
 import {
   AgentContentCard,
   AgentContextDock,
@@ -28,10 +32,12 @@ import {
   useWorkspaceDock,
   useWorkspaceInspection,
   WORKSPACE_DOCK_CATALOG,
+  WORKSPACE_SETTINGS_VIEW,
 } from "@/features/workspace/public/navigation";
 import { useContextDockCatalog } from "@/features/workspace/public/contextDockCatalog";
 import { useWorkspaceViews } from "@/features/workspace/public/views";
 import { useDockLayout } from "@/features/workspace/public/sidebarDrawer";
+import { shellStyles as sh } from "@/features/shell/workbench/shellStyles";
 import { useT, labelText, type Label, type Translate } from "@/lib/i18n/index";
 import { canPresentDock } from "@/features/shell/workbench/panel/shellGeometry";
 import { useInspectionFocus } from "@/features/shell/workbench/panel/useInspectionFocus";
@@ -46,9 +52,11 @@ import {
 import {
   ConversationPane,
   FullPaneHeader,
+  paneStyles,
 } from "@/features/shell/workbench/panel/ConversationPane";
 import { DockHeader, WorkspaceViewPicker } from "@/features/shell/workbench/panel/DockHeader";
 import { WorkspaceViewStack } from "@/features/shell/workbench/panel/WorkspaceViewStack";
+import { WorkspaceViewBody } from "@/features/shell/workbench/panel/WorkspaceViewBody";
 
 export interface ChatPanelHandle {
   focusComposer(): void;
@@ -74,6 +82,15 @@ const PANEL_SIZES = {
   dock: { conversation: { minSize: 440 }, dock: { minSize: 320 } },
   closed: { conversation: { minSize: 440 }, dock: { minSize: 0, maxSize: 0 } },
 } as const;
+
+const styles = stylex.create({
+  // Cover the sidebar's retained slot while keeping Settings inside the workspace focus scope.
+  settingsLayer: {
+    position: "fixed",
+    backgroundColor: "var(--app-content-surface)",
+    backgroundImage: { default: null, ":is([data-paper-texture] *)": surface.texture },
+  },
+});
 
 // Capacity commits can resize body portals and start ancestor observers, so the row
 // publishes its width from animation frames before ResizeObserver delivery.
@@ -168,6 +185,8 @@ export function ChatPanel({ onSend, ref }: Props) {
   const dockAvailable = canPresentDock(rowWidth ?? 0);
 
   const {
+    settingsOpen,
+    settingsMounted,
     hasDockOwner,
     dockOpen,
     dockVisible,
@@ -182,6 +201,7 @@ export function ChatPanel({ onSend, ref }: Props) {
     dockTabValue,
     viewsReady,
     dockOwnsMaterialKeys,
+    dockAddressable,
     openViewIds,
     mountedViewIds,
   } = workspacePresentation({
@@ -194,6 +214,8 @@ export function ChatPanel({ onSend, ref }: Props) {
     conversationReady: sessions !== undefined,
   });
   const {
+    workspaceLayerRef,
+    settingsLayerRef,
     dockRef,
     conversationRef,
     mainViewRef,
@@ -205,11 +227,11 @@ export function ChatPanel({ onSend, ref }: Props) {
     sessionId: activeSessionId,
     inspection,
     mainViewId: activeMainView,
-    fullPaneViewId,
+    fullPaneViewId: settingsOpen ? WORKSPACE_SETTINGS_VIEW : fullPaneViewId,
     dockViewId: dock.activeViewId,
     dockViewIds: ownedDockViewIds,
     dockAvailable,
-    dockVisible,
+    dockVisible: !settingsOpen && dockVisible,
   });
   useLayoutEffect(
     () => registerComposerFocusPresentation(composerAccess, requestComposerFocus),
@@ -228,112 +250,162 @@ export function ChatPanel({ onSend, ref }: Props) {
       label={t("shell.region.workspace")}
       onFocusCapture={applyComposerReadingLimit}
     >
-      {fullPaneViewId !== null && (
-        <FullPaneHeader
-          viewId={fullPaneViewId}
-          view={
-            fullPaneViewId === WORKSPACE_DOCK_CATALOG ? CATALOG_VIEW : viewsById.get(fullPaneViewId)
-          }
-          dockAvailable={hasDockOwner && dockAvailable}
-          inspection={
-            inspectedFullPane
-              ? { returnAction: dockReturn, onKeyDown: onMaterialKeyDown }
-              : undefined
-          }
-          picker={
-            fullPanePickable(fullPaneViewId, hasDockOwner, viewsById) && (
-              <WorkspaceViewPicker
-                triggerRef={pickerRef}
-                key={activeSessionId}
-                groups={catalog}
-                openViewIds={openViewIds}
-                activeViewId={fullPaneViewId}
-                onSelect={openWorkspaceView.bind(null, workspaceAccess)}
-              />
-            )
-          }
-        />
-      )}
-      <AgentDockRow ref={dockRowRef} open={dockVisible} presentation={presentation}>
-        <Group
-          orientation="horizontal"
-          defaultLayout={initialDockLayout}
-          onLayoutChanged={(layout, meta) => {
-            if (meta.isUserInteraction) saveDockLayout(meta.requestedLayout ?? layout);
-          }}
-          style={{ flex: 1, width: "100%", minHeight: 0 }}
+      <ContentVisibility visible={!settingsOpen} fallbackFocus={presentationRef}>
+        <div
+          ref={workspaceLayerRef}
+          inert={settingsOpen}
+          aria-hidden={settingsOpen || undefined}
+          {...stylex.props(sh.paneNarrow, settingsOpen && paneStyles.inactiveView)}
         >
-          <Panel
-            id="conversation"
-            {...panelSizes.conversation}
-            style={{ overflow: "clip" }}
-            onResize={({ inPixels }) => {
-              // Keep the reader's layout when the pane has no width, including
-              // when return focus arrives before the pane expands again.
-              const pane = conversationRef.current;
-              if (pane && inPixels > 0) pane.style.inlineSize = `${inPixels}px`;
-            }}
-          >
-            <ConversationPane
-              ref={conversationRef}
-              hidden={presentation === "main"}
-              fallbackFocus={presentationRef}
-              ready={sessions !== undefined}
-              sessionId={activeSessionId}
-              onSend={onSend}
-            />
-          </Panel>
-          {dockChromeVisible && <AgentDockSeparator label={t("dock.action.resize")} />}
-          <Panel id="dock" defaultSize={480} {...panelSizes.dock}>
-            {viewsReady && (
-              <SessionOwnedWorkspaceState sessionId={activeSessionId}>
-                <AgentContextDock
-                  value={dockTabValue}
-                  onValueChange={(id) => {
-                    if (id !== null) workspaceAccess.navigation.selectDockView(id);
-                  }}
-                  ref={dockRef}
-                  {...(presentation === "main"
-                    ? { role: "presentation" }
-                    : { tabIndex: -1, "aria-label": dockLabel(viewsById, dock.activeViewId, t) })}
-                  data-focus-inset=""
-                  onKeyDown={dockOwnsMaterialKeys ? onMaterialKeyDown : undefined}
-                >
-                  {dockChromeVisible && (
-                    <DockHeader
-                      key={activeSessionId}
-                      tabs={dockTabs}
-                      groups={catalog}
-                      openViewIds={openViewIds}
-                      returnAction={dockReturn}
-                    />
-                  )}
-                  <WorkspaceViewStack
-                    presentation={presentation}
-                    shown={presentation === "main" || dockVisible}
-                    presentedViewId={presentedViewId}
-                    fullPaneViewId={fullPaneViewId}
-                    addressable={activeMainView === null}
-                    mountedViewIds={mountedViewIds}
-                    mainViewRef={mainViewRef}
-                    presentationRef={presentationRef}
-                    catalog={catalog}
+          {fullPaneViewId !== null && (
+            <FullPaneHeader
+              viewId={fullPaneViewId}
+              view={
+                fullPaneViewId === WORKSPACE_DOCK_CATALOG
+                  ? CATALOG_VIEW
+                  : viewsById.get(fullPaneViewId)
+              }
+              dockAvailable={hasDockOwner && dockAvailable}
+              inspection={
+                inspectedFullPane
+                  ? { returnAction: dockReturn, onKeyDown: onMaterialKeyDown }
+                  : undefined
+              }
+              picker={
+                fullPanePickable(fullPaneViewId, hasDockOwner, viewsById) && (
+                  <WorkspaceViewPicker
+                    triggerRef={pickerRef}
+                    key={activeSessionId}
+                    groups={catalog}
                     openViewIds={openViewIds}
+                    activeViewId={fullPaneViewId}
+                    onSelect={openWorkspaceView.bind(null, workspaceAccess)}
                   />
-                </AgentContextDock>
-              </SessionOwnedWorkspaceState>
+                )
+              }
+            />
+          )}
+          <AgentDockRow ref={dockRowRef} open={dockVisible} presentation={presentation}>
+            <Group
+              orientation="horizontal"
+              defaultLayout={initialDockLayout}
+              onLayoutChanged={(layout, meta) => {
+                if (meta.isUserInteraction) saveDockLayout(meta.requestedLayout ?? layout);
+              }}
+              style={{ flex: 1, width: "100%", minHeight: 0 }}
+            >
+              <Panel
+                id="conversation"
+                {...panelSizes.conversation}
+                style={{ overflow: "clip" }}
+                onResize={({ inPixels }) => {
+                  // Keep the reader's layout when the pane has no width, including
+                  // when return focus arrives before the pane expands again.
+                  const pane = conversationRef.current;
+                  if (pane && inPixels > 0) pane.style.inlineSize = `${inPixels}px`;
+                }}
+              >
+                <ConversationPane
+                  ref={conversationRef}
+                  hidden={presentation === "main"}
+                  fallbackFocus={presentationRef}
+                  ready={sessions !== undefined}
+                  sessionId={activeSessionId}
+                  onSend={onSend}
+                />
+              </Panel>
+              {dockChromeVisible && <AgentDockSeparator label={t("dock.action.resize")} />}
+              <Panel id="dock" defaultSize={480} {...panelSizes.dock}>
+                {viewsReady && (
+                  <SessionOwnedWorkspaceState sessionId={activeSessionId}>
+                    <AgentContextDock
+                      value={dockTabValue}
+                      onValueChange={(id) => {
+                        if (id !== null) workspaceAccess.navigation.selectDockView(id);
+                      }}
+                      ref={dockRef}
+                      {...(presentation === "main"
+                        ? { role: "presentation" }
+                        : {
+                            tabIndex: -1,
+                            "aria-label": dockLabel(viewsById, dock.activeViewId, t),
+                          })}
+                      data-focus-inset=""
+                      onKeyDown={dockOwnsMaterialKeys ? onMaterialKeyDown : undefined}
+                    >
+                      {dockChromeVisible && (
+                        <DockHeader
+                          key={activeSessionId}
+                          tabs={dockTabs}
+                          groups={catalog}
+                          openViewIds={openViewIds}
+                          returnAction={dockReturn}
+                        />
+                      )}
+                      <WorkspaceViewStack
+                        presentation={presentation}
+                        shown={presentation === "main" || dockVisible}
+                        presentedViewId={presentedViewId}
+                        addressable={dockAddressable}
+                        mountedViewIds={mountedViewIds}
+                        mainViewRef={settingsOpen ? undefined : mainViewRef}
+                        presentationRef={presentationRef}
+                        catalog={catalog}
+                        openViewIds={openViewIds}
+                      />
+                    </AgentContextDock>
+                  </SessionOwnedWorkspaceState>
+                )}
+              </Panel>
+            </Group>
+            {dockToggleShown && (
+              <AgentDockToggle
+                open={dockVisible}
+                onToggle={() => toggleChatDock(workspaceAccess, dockAvailable, dockOpen)}
+                showLabel={dockAvailable ? t("dock.action.show") : t("dock.action.openFull")}
+                hideLabel={t("dock.action.hide")}
+              />
             )}
-          </Panel>
-        </Group>
-        {dockToggleShown && (
-          <AgentDockToggle
-            open={dockVisible}
-            onToggle={() => toggleChatDock(workspaceAccess, dockAvailable, dockOpen)}
-            showLabel={dockAvailable ? t("dock.action.show") : t("dock.action.openFull")}
-            hideLabel={t("dock.action.hide")}
-          />
-        )}
-      </AgentDockRow>
+          </AgentDockRow>
+        </div>
+      </ContentVisibility>
+      {settingsMounted && (
+        <ContentVisibility visible={settingsOpen} fallbackFocus={presentationRef}>
+          <div
+            ref={settingsLayerRef}
+            inert={!settingsOpen}
+            aria-hidden={!settingsOpen || undefined}
+            {...stylex.props(
+              sh.overlay,
+              styles.settingsLayer,
+              !settingsOpen && paneStyles.inactiveView,
+            )}
+          >
+            <FullPaneHeader
+              viewId={WORKSPACE_SETTINGS_VIEW}
+              view={viewsById.get(WORKSPACE_SETTINGS_VIEW)}
+              inspection={undefined}
+              dockAvailable={false}
+              picker={null}
+            />
+            <AgentContextDock
+              key={activeSessionId}
+              value={WORKSPACE_SETTINGS_VIEW}
+              role="presentation"
+              data-focus-inset=""
+              className={stylex.props(sh.paneNarrow).className}
+            >
+              <PanelHost density="page">
+                <WorkspaceViewBody
+                  ref={settingsOpen ? mainViewRef : undefined}
+                  viewId={WORKSPACE_SETTINGS_VIEW}
+                  presentation="main"
+                />
+              </PanelHost>
+            </AgentContextDock>
+          </div>
+        </ContentVisibility>
+      )}
     </AgentContentCard>
   );
 }

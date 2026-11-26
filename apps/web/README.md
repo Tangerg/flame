@@ -716,11 +716,14 @@ Settings categories mount on first visit and retain their inline inputs and pend
 feedback for the lifetime of the open Settings view. Inactive categories retain
 layout and native reading position while invisible and inert. Their visibility
 boundary retires menus and dialogs. Closing the view or removing a category
-unmounts that pane. A Settings visit opened over a full-width workspace view keeps
-the source mounted with its existing draft, query and reading position. Closing
-Settings returns to that view and target and focuses the original control when
-it is available. Navigating away from Settings or changing Sessions ends the
-visit. Installation sources belong to the current Runtime operations generation.
+unmounts that pane. Settings covers the window while the underlying Sidebar
+and Dock splits keep their geometry. The mounted workspace stays inert with its
+draft, query and reading position. Closing a current Settings visit restores the
+source view and target, then focuses the original control when available.
+History navigation away from Settings and Session changes retire that visit.
+A material inspection opened from Settings keeps the Settings layer mounted
+and inert so returning restores the same query and control. Installation
+sources belong to the current Runtime operations generation.
 Replacement clears the source, a failed install keeps it
 editable, and an accepted install clears it. Pending exposes its busy state;
 successful settlement retains the action's focus when clearing the source makes

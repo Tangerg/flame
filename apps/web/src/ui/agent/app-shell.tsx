@@ -1,5 +1,6 @@
 import { Group, Panel, Separator } from "react-resizable-panels";
 import * as stylex from "@stylexjs/stylex";
+import { clsx } from "clsx";
 import { type ReactNode } from "react";
 import { createContext, useContext, useSyncExternalStore, useState } from "react";
 import { AgentSidebar } from "@/ui/agent/sidebar";
@@ -9,6 +10,7 @@ interface AgentAppShellProps {
   sidebarLabel: string;
   sidebarResizeLabel: string;
   sidebarOpen: boolean;
+  sidebarCovered?: boolean;
   sidebarLayout: Readonly<Record<string, number>> | null;
   onLayoutChanged(layout: Record<string, number>): void;
   onSidebarToggle: () => void;
@@ -28,6 +30,7 @@ const styles = stylex.create({
     flex: 1,
     zIndex: "var(--layer-card)",
   },
+  hidden: { visibility: "hidden" },
 });
 
 const AgentShellContext = createContext<HTMLDivElement | null>(null);
@@ -41,6 +44,7 @@ export function AgentAppShell({
   sidebarLabel,
   sidebarResizeLabel,
   sidebarOpen,
+  sidebarCovered = false,
   sidebarLayout,
   onLayoutChanged,
   onSidebarToggle,
@@ -51,6 +55,7 @@ export function AgentAppShell({
 }: AgentAppShellProps) {
   const [shell, setShell] = useState<HTMLDivElement | null>(null);
   const hasSidebar = sidebar !== undefined;
+  const showSidebar = hasSidebar && !sidebarCovered;
 
   const [initial] = useState(() => sidebarLayout ?? undefined);
   const narrow = useSyncExternalStore(
@@ -66,10 +71,10 @@ export function AgentAppShell({
     <div
       ref={setShell}
       className="agent-shell"
-      data-sidebar={hasSidebar ? (sidebarOpen ? "expanded" : "collapsed") : "absent"}
+      data-sidebar={showSidebar ? (sidebarOpen ? "expanded" : "collapsed") : "absent"}
     >
       <AgentShellContext.Provider value={shell}>
-        {hasSidebar && (
+        {showSidebar && (
           <div className="agent-window-sidebar-control">
             <AgentDrawerToggle
               collapsed={!sidebarOpen}
@@ -94,17 +99,28 @@ export function AgentAppShell({
               minSize={sidebarOpen ? (narrow ? 100 : 240) : 0}
               maxSize={sidebarOpen ? (narrow ? "40%" : 520) : 0}
             >
-              <div
-                inert={!sidebarOpen}
-                aria-hidden={!sidebarOpen || undefined}
-                style={{ height: "100%" }}
-              >
-                <AgentSidebar label={sidebarLabel}>{sidebar}</AgentSidebar>
-              </div>
+              {showSidebar && (
+                <div
+                  inert={!sidebarOpen}
+                  aria-hidden={!sidebarOpen || undefined}
+                  style={{ height: "100%" }}
+                >
+                  <AgentSidebar label={sidebarLabel}>{sidebar}</AgentSidebar>
+                </div>
+              )}
             </Panel>
           )}
           {hasSidebar && sidebarOpen && (
-            <Separator aria-label={sidebarResizeLabel} className="agent-seam-rail" />
+            <Separator
+              aria-label={sidebarResizeLabel}
+              aria-hidden={sidebarCovered || undefined}
+              disabled={sidebarCovered}
+              inert={sidebarCovered}
+              className={clsx(
+                "agent-seam-rail",
+                stylex.props(sidebarCovered && styles.hidden).className,
+              )}
+            />
           )}
           <Panel id="main" minSize={narrow ? 120 : 440}>
             <div {...stylex.props(styles.content)}>{main}</div>

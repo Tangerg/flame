@@ -174,7 +174,7 @@ export function AgentContextDock({
   ...props
 }: ComponentProps<"aside"> & {
   value: string | null;
-  onValueChange: (value: string | null) => void;
+  onValueChange?: (value: string | null) => void;
 }) {
   return (
     <TabsPrimitive.Root
