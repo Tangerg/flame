@@ -33,6 +33,9 @@ method hints, command identities and replay cursors are refused before dispatch;
 transport order cannot select an authority from competing values.
 Client-chosen idempotency keys must be valid UTF-8 so JSON receipt lookup can
 retain the same identity accepted through either binding.
+Protocol admission checks enum values throughout each request, including plugin
+server and skill configuration maps, before creating a command receipt. A caller
+can correct an invalid enum and retry with the original key.
 
 Run accounting retains unreported model identities until the first reported usage. Missing cache partitions yield an unknown price when the catalog could charge different amounts. Existing data directories must be retained separately; the private Run accounting representation requires a fresh directory. A connecting MCP source fences its original crash-uncertain Run while other Sessions remain available.
 

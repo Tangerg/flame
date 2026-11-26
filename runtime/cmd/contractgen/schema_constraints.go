@@ -127,14 +127,12 @@ func normalize(node *wiregen.Schema) {
 	normalize(node.Then)
 }
 
-func applyValueConstraints(node *wiregen.Schema, constraints []dispatch.FieldConstraint) {
-	for _, constraint := range constraints {
-		if target, kind, textual := stringConstraintTarget(node, constraint.Kind); textual {
-			applyStringConstraint(target, kind, constraint)
-			continue
-		}
-		applyShapeConstraint(node, constraint)
+func applyValueConstraint(node *wiregen.Schema, constraint dispatch.FieldConstraint) {
+	if target, kind, textual := stringConstraintTarget(node, constraint.Kind); textual {
+		applyStringConstraint(target, kind, constraint)
+		return
 	}
+	applyShapeConstraint(node, constraint)
 }
 
 func stringConstraintTarget(node *wiregen.Schema, kind dispatch.ConstraintKind) (*wiregen.Schema, dispatch.ConstraintKind, bool) {

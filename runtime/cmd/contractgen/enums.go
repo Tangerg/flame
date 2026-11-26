@@ -39,8 +39,12 @@ var closedVocabulary = sync.OnceValue(func() map[string][]string {
 	return values
 })
 
+type declaredEnum interface {
+	Values() []string
+}
+
 func enumValues(t reflect.Type) ([]string, bool) {
-	if values, ok := reflect.Zero(t).Interface().(interface{ Values() []string }); ok {
+	if values, ok := reflect.Zero(t).Interface().(declaredEnum); ok {
 		return slices.Clone(values.Values()), true
 	}
 	switch t {

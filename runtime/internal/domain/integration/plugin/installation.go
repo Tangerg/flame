@@ -38,33 +38,18 @@ type Record struct {
 }
 
 type ValueChange struct {
-	kind  valueChangeKind
-	value string
+	value *string
 }
 
-type valueChangeKind uint8
-
-const (
-	setValue valueChangeKind = iota + 1
-	clearValue
-)
-
-func SetValue(value string) ValueChange { return ValueChange{kind: setValue, value: value} }
-func ClearValue() ValueChange           { return ValueChange{kind: clearValue} }
-
-type ComponentChange string
-
-const (
-	EnableComponent  ComponentChange = "enable"
-	DisableComponent ComponentChange = "disable"
-)
+func SetValue(value string) ValueChange { return ValueChange{value: &value} }
+func ClearValue() ValueChange           { return ValueChange{} }
 
 // A delta: unnamed members keep their value, so a client never echoes state it
 // cannot read, such as a configured secret.
 type Configuration struct {
-	Values  map[string]ValueChange
-	Servers map[mcpserver.ServerName]ComponentChange
-	Skills  map[string]ComponentChange
+	Values           map[string]ValueChange
+	ServerEnablement map[mcpserver.ServerName]bool
+	SkillEnablement  map[string]bool
 }
 
 type Snapshot struct {
@@ -290,26 +275,23 @@ func (i Installation) Configure(release Release, configuration Configuration) (I
 		if _, declared := release.input(key); !declared {
 			return Installation{}, fmt.Errorf("%w: unknown input %q", ErrInvalid, key)
 		}
-		switch change.kind {
-		case setValue:
-			values[key] = change.value
-		case clearValue:
+		if change.value == nil {
 			delete(values, key)
-		default:
-			return Installation{}, fmt.Errorf("%w: input %q change", ErrInvalid, key)
+		} else {
+			values[key] = *change.value
 		}
 	}
 	if err := validateValues(release, values); err != nil {
 		return Installation{}, err
 	}
-	servers, err := applyComponentChanges(i.record.DisabledServers, configuration.Servers, func(name mcpserver.ServerName) bool {
+	servers, err := applyEnablement(i.record.DisabledServers, configuration.ServerEnablement, func(name mcpserver.ServerName) bool {
 		_, declared := release.server(name)
 		return declared
 	}, mcpserver.ServerName.String)
 	if err != nil {
 		return Installation{}, fmt.Errorf("server enablement: %w", err)
 	}
-	skills, err := applyComponentChanges(i.record.DisabledSkills, configuration.Skills, release.declaresSkill, func(name string) string { return name })
+	skills, err := applyEnablement(i.record.DisabledSkills, configuration.SkillEnablement, release.declaresSkill, func(name string) string { return name })
 	if err != nil {
 		return Installation{}, fmt.Errorf("skill enablement: %w", err)
 	}
@@ -325,19 +307,15 @@ func (i Installation) Configure(release Release, configuration Configuration) (I
 	return Installation{record: next}, nil
 }
 
-func applyComponentChanges[N comparable](disabled []N, changes map[N]ComponentChange, declared func(N) bool, text func(N) string) ([]N, error) {
+func applyEnablement[N comparable](disabled []N, changes map[N]bool, declared func(N) bool, text func(N) string) ([]N, error) {
 	result := slices.Clone(disabled)
-	for name, change := range changes {
+	for name, enabled := range changes {
 		if !declared(name) {
 			return nil, fmt.Errorf("%w: unknown component %q", ErrInvalid, text(name))
 		}
 		result = slices.DeleteFunc(result, func(existing N) bool { return existing == name })
-		switch change {
-		case EnableComponent:
-		case DisableComponent:
+		if !enabled {
 			result = append(result, name)
-		default:
-			return nil, fmt.Errorf("%w: component %q change %q", ErrInvalid, text(name), change)
 		}
 	}
 	slices.SortFunc(result, func(a, b N) int { return strings.Compare(text(a), text(b)) })

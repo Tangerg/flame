@@ -226,10 +226,15 @@ func (s *schemaSet) reserve(t reflect.Type, body *wiregen.Schema) {
 func (s *schemaSet) object(t reflect.Type, collections map[reflect.Type]bool) *wiregen.Schema {
 	out := &wiregen.Schema{Type: wiregen.SchemaTypeObject, Properties: make(map[string]any)}
 	s.defineEmbeddedOwners(t)
+	constraints := s.valueConstraints(t)
 	for _, field := range protocol.WireFields(t) {
 		node := s.walkAdmitted(field.Type, collections)
 		if node.Ref == "" {
-			applyValueConstraints(node, s.valueConstraintsFor(t, field.Name))
+			for _, constraint := range constraints {
+				if constraint.Field == field.Name {
+					applyValueConstraint(node, constraint)
+				}
+			}
 		}
 		out.Properties[field.Name] = node
 		if !field.Optional {
@@ -253,6 +258,20 @@ func (s *schemaSet) object(t reflect.Type, collections map[reflect.Type]bool) *w
 	}
 	normalize(out)
 	return out
+}
+
+// encoding/json inlines the embedded object, so its constraints belong on the carrier.
+func (s *schemaSet) valueConstraints(shape reflect.Type) []dispatch.FieldConstraint {
+	owners := append([]reflect.Type{shape}, protocol.WireEmbeds(shape)...)
+	var constraints []dispatch.FieldConstraint
+	for _, owner := range owners {
+		for _, constraint := range s.values[owner] {
+			if !slices.Contains(constraints, constraint) {
+				constraints = append(constraints, constraint)
+			}
+		}
+	}
+	return constraints
 }
 
 func (s *schemaSet) defineEmbeddedOwners(t reflect.Type) {
@@ -283,7 +302,7 @@ func (s *schemaSet) nestedConstraintBranches(t reflect.Type) []*wiregen.Schema {
 			parent.Properties = make(map[string]any)
 		}
 		narrowed := &wiregen.Schema{}
-		applyValueConstraints(narrowed, []dispatch.FieldConstraint{constraint})
+		applyValueConstraint(narrowed, constraint)
 		parent.Properties[leaf] = narrowed
 		branches = append(branches, branch)
 	}

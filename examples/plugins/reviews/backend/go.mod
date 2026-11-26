@@ -3,7 +3,7 @@ module github.com/Tangerg/flame/examples/plugins/reviews/backend
 go 1.27.4
 
 require (
-	github.com/Tangerg/flame/packages/go-sdk v0.1.72-dev.20261126.t866754cd1586
+	github.com/Tangerg/flame/packages/go-sdk v0.1.73-dev.20261126.t0f34b5605b59
 	github.com/Tangerg/frame v0.5.0
 	github.com/Tangerg/go-sdk v1.9.0-scope.1
 	github.com/Tangerg/scope/core v0.64.0

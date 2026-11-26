@@ -20,6 +20,10 @@ type wireValidator interface {
 	validateWire() error
 }
 
+type wireEnum interface {
+	wireEnumValues() []string
+}
+
 // Interface-valued payloads are intentionally opaque: their schema is owned
 // outside the first-party contract.
 func ValidateWireTree(value any) error {
@@ -81,8 +85,13 @@ func validateWireValue(value reflect.Value, path string, visiting map[wirePointe
 	switch value.Kind() {
 	case reflect.Struct:
 		for _, field := range WireFields(value.Type()) {
+			child := value.FieldByName(field.GoName)
+			// Optional scalar strings use the Go zero value to encode omission.
+			if field.Optional && child.Kind() == reflect.String && child.Len() == 0 {
+				continue
+			}
 			fields = append(fields, validateWireValue(
-				value.FieldByName(field.GoName),
+				child,
 				joinWirePath(path, field.Name),
 				visiting,
 			)...)
@@ -101,8 +110,31 @@ func validateWireValue(value reflect.Value, path string, visiting map[wirePointe
 		for _, key := range keys {
 			fields = append(fields, validateWireValue(value.MapIndex(key), framevalue.MapPath(path, key.String()), visiting)...)
 		}
+	case reflect.String:
+		if field := enumViolation(value, path); field.Field != "" {
+			fields = append(fields, field)
+		}
 	}
 	return fields
+}
+
+func enumViolation(value reflect.Value, path string) FieldError {
+	if !value.CanInterface() {
+		return FieldError{}
+	}
+	var values []string
+	switch enum := value.Interface().(type) {
+	case wireEnum:
+		values = enum.wireEnumValues()
+	case interface{ Values() []string }:
+		values = enum.Values()
+	default:
+		return FieldError{}
+	}
+	if slices.Contains(values, value.String()) {
+		return FieldError{}
+	}
+	return FieldError{Field: joinWirePath(path, ""), Detail: "must be one of " + strings.Join(values, ", ")}
 }
 
 func prefixedWireErrors(path string, err error) []FieldError {
@@ -427,30 +459,6 @@ func uniqueItems[T any](field string, values []T) FieldError {
 			return FieldError{Field: field, Detail: "must not repeat a value"}
 		}
 		seen[key] = true
-	}
-	return FieldError{}
-}
-
-// Go's decoder puts any string into a named string type, so typing alone cannot
-// enforce membership.
-func closedEnum(field, value string, values []string, optional bool) FieldError {
-	if value == "" && optional {
-		return FieldError{}
-	}
-	if slices.Contains(values, value) {
-		return FieldError{}
-	}
-	return FieldError{Field: field, Detail: "must be one of " + strings.Join(values, ", ")}
-}
-
-func closedEnumItems[Enum ~string](field string, items []Enum, values []string) FieldError {
-	for index, item := range items {
-		if !slices.Contains(values, string(item)) {
-			return FieldError{
-				Field:  fmt.Sprintf("%s[%d]", field, index),
-				Detail: "must be one of " + strings.Join(values, ", "),
-			}
-		}
 	}
 	return FieldError{}
 }

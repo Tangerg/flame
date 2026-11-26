@@ -101,7 +101,6 @@ func (r RollbackSessionRequest) validateWire() error {
 		identity("expectedLastRootRunId", r.ExpectedLastRootRunID),
 		maxLength("expectedLastRootRunId", r.ExpectedLastRootRunID, 256),
 		requiredText("expectedWorkspacePath", r.ExpectedWorkspacePath),
-		closedEnum("restoreType", string(r.RestoreType), []string{"history", "files", "both"}, true),
 		requiredWhen(wireFieldEquals(r, "restoreType", "files"), "toRunId", r),
 		requiredWhen(wireFieldEquals(r, "restoreType", "both"), "toRunId", r),
 	)
@@ -112,7 +111,6 @@ func (e ExportSessionRequest) validateWire() error {
 		requiredText("sessionId", e.SessionID),
 		identity("sessionId", e.SessionID),
 		maxLength("sessionId", e.SessionID, 256),
-		closedEnum("format", string(e.Format), []string{"md", "json"}, true),
 	)
 }
 
@@ -243,7 +241,6 @@ func (g GetRunAcceptanceRequest) validateWire() error {
 		requiredTextPattern("namespace", g.Namespace, "^idp_[0-9a-f]{32}$"),
 		requiredText("key", g.Key),
 		maxLength("key", g.Key, 255),
-		closedEnum("operation", string(g.Operation), []string{"start", "resume", "steer"}, false),
 	)
 }
 
@@ -255,7 +252,6 @@ func (l ListRunsRequest) validateWire() error {
 		uniqueItems("statuses", l.Statuses),
 		optionalPositiveNumber("limit", l.Limit),
 		maxLength("cursor", l.Cursor, 65536),
-		closedEnumItems("statuses", l.Statuses, []string{"running", "waiting", "finished"}),
 	)
 }
 
@@ -282,15 +278,12 @@ func (l ListItemsRequest) validateWire() error {
 	return collectWireViolations("ListItemsRequest",
 		optionalPositiveNumber("limit", l.Limit),
 		maxLength("cursor", l.Cursor, 65536),
-		closedEnum("order", string(l.Order), []string{"asc", "desc"}, true),
 	)
 }
 
 func (g GetDiffRequest) validateWire() error {
 	return collectWireViolations("GetDiffRequest",
 		optionalPositiveNumber("limit", g.Limit),
-		closedEnum("mode", string(g.Mode), []string{"worktree", "base"}, true),
-		closedEnum("format", string(g.Format), []string{"rows", "raw", "visual"}, true),
 		forbiddenWhen(wireFieldEquals(g, "format", "raw"), "limit", g),
 	)
 }
@@ -323,7 +316,6 @@ func (r RuntimeSubscribeRequest) validateWire() error {
 	return collectWireViolations("RuntimeSubscribeRequest",
 		requiredItems("topics", r.Topics),
 		uniqueItems("topics", r.Topics),
-		closedEnumItems("topics", r.Topics, []string{"files.changed", "skills.changed", "mcp.changed", "plugins.changed", "plugins.dataChanged", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "hooks.changed", "models.changed", "approvals.changed", "projects.changed"}),
 	)
 }
 
@@ -343,7 +335,6 @@ func (s SkillProposalRef) validateWire() error {
 	return collectWireViolations("SkillProposalRef",
 		requiredTextPattern("name", s.Name, "\\S"),
 		requiredTextPattern("revision", s.Revision, "^[0-9a-f]{64}$"),
-		closedEnum("scope", string(s.Scope), []string{"repository", "user"}, false),
 	)
 }
 
@@ -519,17 +510,9 @@ func (s SetApprovalRuleRequest) validateWire() error {
 	return collectWireViolations("SetApprovalRuleRequest",
 		identity("sessionId", s.SessionID),
 		maxLength("sessionId", s.SessionID, 256),
-		closedEnum("scope", string(s.Scope), []string{"session", "workspace", "global"}, false),
-		closedEnum("decision", string(s.Decision), []string{"allow", "deny"}, false),
 		forbiddenWhen(wireFieldEquals(s, "scope", "global"), "sessionId", s),
 		requiredWhen(wireFieldEquals(s, "scope", "session"), "sessionId", s),
 		requiredWhen(wireFieldEquals(s, "scope", "workspace"), "sessionId", s),
-	)
-}
-
-func (s SetApprovalModeRequest) validateWire() error {
-	return collectWireViolations("SetApprovalModeRequest",
-		closedEnum("mode", string(s.Mode), []string{"safe", "balanced", "yolo"}, false),
 	)
 }
 
@@ -652,7 +635,6 @@ func (f FeedbackRequest) validateWire() error {
 		identity("itemId", f.ItemID),
 		maxLength("itemId", f.ItemID, 256),
 		optionalTextPattern("text", f.Text, "\\S"),
-		closedEnum("rating", string(f.Rating), []string{"positive", "negative"}, true),
 		requiredAny([]string{"rating", "text"}, f),
 	)
 }
@@ -892,7 +874,6 @@ func (p ProblemData) validateWire() error {
 
 func (c CancelRunResponse) validateWire() error {
 	return collectWireViolations("CancelRunResponse",
-		closedEnum("type", string(c.Type), []string{"root", "child"}, false),
 		requiredWhen(wireFieldEquals(c, "type", "root"), "run", c),
 		forbiddenWhen(wireFieldEquals(c, "type", "root"), "rootRun", c),
 		requiredWhen(wireFieldEquals(c, "type", "child"), "run", c),
@@ -912,7 +893,6 @@ func (r RunAcceptance) validateWire() error {
 		maxLength("userItemId", r.UserItemID, 256),
 		identity("candidateUserItemId", r.CandidateUserItemID),
 		maxLength("candidateUserItemId", r.CandidateUserItemID, 256),
-		closedEnum("type", string(r.Type), []string{"notRecorded", "accepted", "retired"}, false),
 		forbiddenWhen(wireFieldEquals(r, "type", "notRecorded"), "runId", r),
 		forbiddenWhen(wireFieldEquals(r, "type", "notRecorded"), "segmentId", r),
 		forbiddenWhen(wireFieldEquals(r, "type", "notRecorded"), "sessionId", r),
@@ -936,7 +916,6 @@ func (r RunAcceptance) validateWire() error {
 
 func (r RunOutcome) validateWire() error {
 	return collectWireViolations("RunOutcome",
-		closedEnum("type", string(r.Type), []string{"completed", "timedOut", "failed", "canceled", "lost"}, false),
 		forbiddenWhen(wireFieldEquals(r, "type", "completed"), "error", r),
 		forbiddenWhen(wireFieldEquals(r, "type", "completed"), "detail", r),
 		forbiddenWhen(wireFieldEquals(r, "type", "completed"), "loss", r),
@@ -956,7 +935,6 @@ func (r RunOutcome) validateWire() error {
 
 func (t TrajectoryEntry) validateWire() error {
 	return collectWireViolations("TrajectoryEntry",
-		closedEnum("type", string(t.Type), []string{"run", "model", "endpoint", "item"}, false),
 		requiredWhen(wireFieldEquals(t, "type", "run"), "occurredAt", t),
 		requiredWhen(wireFieldEquals(t, "type", "run"), "run", t),
 		forbiddenWhen(wireFieldEquals(t, "type", "run"), "model", t),
@@ -991,11 +969,6 @@ func (i Item) validateWire() error {
 		optionalNonNegativeNumber("durationMillis", i.DurationMillis),
 		optionalMaximumNumber("durationMillis", i.DurationMillis, 9223372036854),
 		nonNegativeNumber("droppedMessages", i.DroppedMessages),
-		closedEnum("status", string(i.Status), []string{"running", "completed", "incomplete"}, false),
-		closedEnum("type", string(i.Type), []string{"userMessage", "agentMessage", "reasoning", "question", "toolCall", "compaction"}, false),
-		closedEnum("phase", string(i.Phase), []string{"commentary", "finalAnswer"}, true),
-		closedEnum("safetyClass", string(i.SafetyClass), []string{"safe", "write", "exec", "network"}, true),
-		closedEnum("approvalDecision", string(i.ApprovalDecision), []string{"approve", "deny"}, true),
 		requiredWhen(wireFieldEquals(i, "type", "userMessage"), "id", i),
 		requiredWhen(wireFieldEquals(i, "type", "userMessage"), "runId", i),
 		requiredWhen(wireFieldEquals(i, "type", "userMessage"), "status", i),
@@ -1118,7 +1091,6 @@ func (i Item) validateWire() error {
 
 func (i ItemDelta) validateWire() error {
 	return collectWireViolations("ItemDelta",
-		closedEnum("type", string(i.Type), []string{"content", "reasoning", "toolArguments", "toolOutput"}, false),
 		requiredWhen(wireFieldEquals(i, "type", "content"), "text", i),
 		forbiddenWhen(wireFieldEquals(i, "type", "content"), "argumentsTextDelta", i),
 		requiredWhen(wireFieldEquals(i, "type", "reasoning"), "text", i),
@@ -1133,7 +1105,6 @@ func (i ItemDelta) validateWire() error {
 func (c CapabilityRequirement) validateWire() error {
 	return collectWireViolations("CapabilityRequirement",
 		requiredText("name", c.Name),
-		closedEnum("type", string(c.Type), []string{"feature", "interruptType", "runtimeTopic"}, false),
 		requiredWhen(wireFieldEquals(c, "type", "feature"), "name", c),
 		requiredWhen(wireFieldEquals(c, "type", "interruptType"), "name", c),
 		requiredWhen(wireFieldEquals(c, "type", "runtimeTopic"), "name", c),
@@ -1146,7 +1117,6 @@ func (i ItemListScope) validateWire() error {
 		maxLength("sessionId", i.SessionID, 256),
 		identity("runId", i.RunID),
 		maxLength("runId", i.RunID, 256),
-		closedEnum("type", string(i.Type), []string{"session", "run"}, false),
 		requiredWhen(wireFieldEquals(i, "type", "session"), "sessionId", i),
 		forbiddenWhen(wireFieldEquals(i, "type", "session"), "runId", i),
 		forbiddenWhen(wireFieldEquals(i, "type", "session"), "includeDescendants", i),
@@ -1159,7 +1129,6 @@ func (c ContentBlock) validateWire() error {
 	return collectWireViolations("ContentBlock",
 		optionalTextPattern("text", c.Text, "\\S"),
 		optionalTextPattern("mime", c.Mime, "^image/"),
-		closedEnum("type", string(c.Type), []string{"text", "image", "reference"}, false),
 		requiredWhen(wireFieldEquals(c, "type", "text"), "text", c),
 		forbiddenWhen(wireFieldEquals(c, "type", "text"), "mime", c),
 		forbiddenWhen(wireFieldEquals(c, "type", "text"), "data", c),
@@ -1181,7 +1150,6 @@ func (q QuestionField) validateWire() error {
 		maxLength("header", q.Header, 12),
 		optionalMinItems("options", q.Options, 2),
 		maxItems("options", q.Options, 4),
-		closedEnum("type", string(q.Type), []string{"text", "choice"}, false),
 		requiredWhen(wireFieldEquals(q, "type", "text"), "prompt", q),
 		forbiddenWhen(wireFieldEquals(q, "type", "text"), "options", q),
 		forbiddenWhen(wireFieldEquals(q, "type", "text"), "multiple", q),
@@ -1194,7 +1162,6 @@ func (q QuestionField) validateWire() error {
 func (p ProviderConfigChange) validateWire() error {
 	return collectWireViolations("ProviderConfigChange",
 		optionalText("value", p.Value),
-		closedEnum("type", string(p.Type), []string{"set", "clear"}, false),
 		requiredWhen(wireFieldEquals(p, "type", "set"), "value", p),
 		forbiddenWhen(wireFieldEquals(p, "type", "clear"), "value", p),
 	)
@@ -1204,7 +1171,6 @@ func (s SessionProjectChange) validateWire() error {
 	return collectWireViolations("SessionProjectChange",
 		identity("projectId", s.ProjectID),
 		maxLength("projectId", s.ProjectID, 256),
-		closedEnum("type", string(s.Type), []string{"set", "clear"}, false),
 		requiredWhen(wireFieldEquals(s, "type", "set"), "projectId", s),
 		forbiddenWhen(wireFieldEquals(s, "type", "clear"), "projectId", s),
 	)
@@ -1213,7 +1179,6 @@ func (s SessionProjectChange) validateWire() error {
 func (m MCPOrigin) validateWire() error {
 	return collectWireViolations("MCPOrigin",
 		optionalTextPattern("installationId", m.InstallationID, "^(?:[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000000[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000000[1-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000000[1-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000000[1-9a-f])$"),
-		closedEnum("type", string(m.Type), []string{"user", "installation"}, false),
 		forbiddenWhen(wireFieldEquals(m, "type", "user"), "installationId", m),
 		requiredWhen(wireFieldEquals(m, "type", "installation"), "installationId", m),
 	)
@@ -1223,7 +1188,6 @@ func (m MCPHandshakeTimeout) validateWire() error {
 	return collectWireViolations("MCPHandshakeTimeout",
 		optionalPositiveNumber("seconds", m.Seconds),
 		optionalMaximumNumber("seconds", m.Seconds, 9223372036),
-		closedEnum("type", string(m.Type), []string{"unbounded", "bounded"}, false),
 		forbiddenWhen(wireFieldEquals(m, "type", "unbounded"), "seconds", m),
 		requiredWhen(wireFieldEquals(m, "type", "bounded"), "seconds", m),
 	)
@@ -1231,7 +1195,6 @@ func (m MCPHandshakeTimeout) validateWire() error {
 
 func (m MCPConnection) validateWire() error {
 	return collectWireViolations("MCPConnection",
-		closedEnum("type", string(m.Type), []string{"stdio", "streamableHttp"}, false),
 		requiredWhen(wireFieldEquals(m, "type", "streamableHttp"), "url", m),
 		forbiddenWhen(wireFieldEquals(m, "type", "streamableHttp"), "command", m),
 		forbiddenWhen(wireFieldEquals(m, "type", "streamableHttp"), "args", m),
@@ -1246,7 +1209,6 @@ func (m MCPConnection) validateWire() error {
 
 func (m MCPConnectionInput) validateWire() error {
 	return collectWireViolations("MCPConnectionInput",
-		closedEnum("type", string(m.Type), []string{"stdio", "streamableHttp"}, false),
 		requiredWhen(wireFieldEquals(m, "type", "streamableHttp"), "url", m),
 		forbiddenWhen(wireFieldEquals(m, "type", "streamableHttp"), "command", m),
 		forbiddenWhen(wireFieldEquals(m, "type", "streamableHttp"), "args", m),
@@ -1261,7 +1223,6 @@ func (m MCPConnectionInput) validateWire() error {
 
 func (m MCPAuthorizationChange) validateWire() error {
 	return collectWireViolations("MCPAuthorizationChange",
-		closedEnum("type", string(m.Type), []string{"set", "clear"}, false),
 		requiredWhen(wireFieldEquals(m, "type", "set"), "value", m),
 		forbiddenWhen(wireFieldEquals(m, "type", "clear"), "value", m),
 	)
@@ -1270,7 +1231,6 @@ func (m MCPAuthorizationChange) validateWire() error {
 func (m MCPHeadersChange) validateWire() error {
 	return collectWireViolations("MCPHeadersChange",
 		nonEmptyProperties("value", m.Value),
-		closedEnum("type", string(m.Type), []string{"set", "clear"}, false),
 		requiredWhen(wireFieldEquals(m, "type", "set"), "value", m),
 		forbiddenWhen(wireFieldEquals(m, "type", "clear"), "value", m),
 	)
@@ -1279,7 +1239,6 @@ func (m MCPHeadersChange) validateWire() error {
 func (m MCPEnvironmentChange) validateWire() error {
 	return collectWireViolations("MCPEnvironmentChange",
 		nonEmptyProperties("value", m.Value),
-		closedEnum("type", string(m.Type), []string{"set", "clear"}, false),
 		requiredWhen(wireFieldEquals(m, "type", "set"), "value", m),
 		forbiddenWhen(wireFieldEquals(m, "type", "clear"), "value", m),
 	)
@@ -1289,7 +1248,6 @@ func (m MCPServerState) validateWire() error {
 	return collectWireViolations("MCPServerState",
 		optionalNonNegativeNumber("toolCount", m.ToolCount),
 		optionalMaximumNumber("toolCount", m.ToolCount, 2048),
-		closedEnum("type", string(m.Type), []string{"disabled", "disconnected", "connecting", "connected", "failed", "needsAuth"}, false),
 		forbiddenWhen(wireFieldEquals(m, "type", "disabled"), "toolCount", m),
 		forbiddenWhen(wireFieldEquals(m, "type", "disabled"), "error", m),
 		forbiddenWhen(wireFieldEquals(m, "type", "disconnected"), "toolCount", m),
@@ -1309,7 +1267,6 @@ func (m MCPServerState) validateWire() error {
 
 func (m MCPAuthorizationAttemptStatus) validateWire() error {
 	return collectWireViolations("MCPAuthorizationAttemptStatus",
-		closedEnum("type", string(m.Type), []string{"unconfirmed", "pending", "succeeded", "failed", "canceled"}, false),
 		forbiddenWhen(wireFieldEquals(m, "type", "pending"), "error", m),
 		forbiddenWhen(wireFieldEquals(m, "type", "succeeded"), "error", m),
 		requiredWhen(wireFieldEquals(m, "type", "failed"), "error", m),
@@ -1322,8 +1279,6 @@ func (m MCPAuthorizationAttemptStatus) validateWire() error {
 func (p PluginRendererSelector) validateWire() error {
 	return collectWireViolations("PluginRendererSelector",
 		maxLength("name", p.Name, 256),
-		closedEnum("type", string(p.Type), []string{"toolName", "resultShape", "fileExtension"}, false),
-		closedEnum("shape", string(p.Shape), []string{"search", "patch", "command"}, true),
 		requiredWhen(wireFieldEquals(p, "type", "toolName"), "name", p),
 		forbiddenWhen(wireFieldEquals(p, "type", "toolName"), "shape", p),
 		requiredWhen(wireFieldEquals(p, "type", "resultShape"), "shape", p),
@@ -1336,7 +1291,6 @@ func (p PluginRendererSelector) validateWire() error {
 func (p PluginValueChange) validateWire() error {
 	return collectWireViolations("PluginValueChange",
 		optionalMaxLength("value", p.Value, 8192),
-		closedEnum("type", string(p.Type), []string{"set", "clear"}, false),
 		requiredWhen(wireFieldEquals(p, "type", "set"), "value", p),
 		forbiddenWhen(wireFieldEquals(p, "type", "clear"), "value", p),
 	)
@@ -1347,7 +1301,6 @@ func (p PluginRealization) validateWire() error {
 		optionalMinItems("unavailableBackends", p.UnavailableBackends, 1),
 		uniqueItems("unavailableBackends", p.UnavailableBackends),
 		textPatternItems("unavailableBackends", p.UnavailableBackends, "^[a-z0-9][a-z0-9._-]{0,31}$"),
-		closedEnum("type", string(p.Type), []string{"available", "releaseUnavailable"}, false),
 		forbiddenWhen(wireFieldEquals(p, "type", "releaseUnavailable"), "unavailableBackends", p),
 	)
 }
@@ -1355,7 +1308,6 @@ func (p PluginRealization) validateWire() error {
 func (p PluginServerDeclaration) validateWire() error {
 	return collectWireViolations("PluginServerDeclaration",
 		requiredTextPattern("name", p.Name, "^[a-z0-9][a-z0-9._-]{0,31}$"),
-		closedEnum("type", string(p.Type), []string{"stdio", "streamableHttp", "managedNode"}, false),
 		requiredWhen(wireFieldEquals(p, "type", "stdio"), "name", p),
 		requiredWhen(wireFieldEquals(p, "type", "stdio"), "command", p),
 		forbiddenWhen(wireFieldEquals(p, "type", "stdio"), "url", p),
@@ -1381,7 +1333,6 @@ func (p PluginServerDeclaration) validateWire() error {
 
 func (p PluginInputState) validateWire() error {
 	return collectWireViolations("PluginInputState",
-		closedEnum("type", string(p.Type), []string{"unset", "configured", "value"}, false),
 		forbiddenWhen(wireFieldEquals(p, "type", "unset"), "value", p),
 		forbiddenWhen(wireFieldEquals(p, "type", "configured"), "value", p),
 		requiredWhen(wireFieldEquals(p, "type", "value"), "value", p),
@@ -1390,7 +1341,6 @@ func (p PluginInputState) validateWire() error {
 
 func (p PluginComponent) validateWire() error {
 	return collectWireViolations("PluginComponent",
-		closedEnum("type", string(p.Type), []string{"manifestField", "flameExtension", "extensionField", "contribution", "mcp", "mcpServer", "skills", "skill"}, false),
 		requiredWhen(wireFieldEquals(p, "type", "manifestField"), "name", p),
 		forbiddenWhen(wireFieldEquals(p, "type", "flameExtension"), "name", p),
 		requiredWhen(wireFieldEquals(p, "type", "extensionField"), "name", p),
@@ -1405,7 +1355,6 @@ func (p PluginComponent) validateWire() error {
 func (t ToolRef) validateWire() error {
 	return collectWireViolations("ToolRef",
 		optionalTextPattern("name", t.Name, "^[A-Za-z0-9_.-]{1,128}$"),
-		closedEnum("type", string(t.Type), []string{"builtIn", "mcp"}, false),
 		requiredWhen(wireFieldEquals(t, "type", "builtIn"), "name", t),
 		forbiddenWhen(wireFieldEquals(t, "type", "builtIn"), "server", t),
 		allowedValuesWhen(wireFieldEquals(t, "type", "builtIn"), "name", t, []string{"apply_patch", "ask_user", "create_goal", "delegate_task", "edit", "enter_plan_mode", "exit_plan_mode", "get_goal", "glob", "grep", "list_skills", "load_skill", "propose_skill", "read", "read_shell_output", "read_skill_resource", "read_tool_result", "report_goal_outcome", "run_script", "search_tools", "set_plan", "shell", "stop_shell"}),
@@ -1416,7 +1365,6 @@ func (t ToolRef) validateWire() error {
 
 func (a ApprovalSubject) validateWire() error {
 	return collectWireViolations("ApprovalSubject",
-		closedEnum("type", string(a.Type), []string{"all", "exact", "glob"}, false),
 		forbiddenWhen(wireFieldEquals(a, "type", "all"), "value", a),
 		requiredWhen(wireFieldEquals(a, "type", "exact"), "value", a),
 		requiredWhen(wireFieldEquals(a, "type", "glob"), "value", a),
@@ -1431,7 +1379,6 @@ func (i Interrupt) validateWire() error {
 		requiredText("runId", i.RunID),
 		identity("runId", i.RunID),
 		maxLength("runId", i.RunID, 256),
-		closedEnum("type", string(i.Type), []string{"approval", "question"}, false),
 		requiredWhen(wireFieldEquals(i, "type", "approval"), "itemId", i),
 		requiredWhen(wireFieldEquals(i, "type", "approval"), "runId", i),
 		requiredWhen(wireFieldEquals(i, "type", "approval"), "payload.tool", i),
@@ -1449,8 +1396,6 @@ func (i Interrupt) validateWire() error {
 func (i InterruptResponseValue) validateWire() error {
 	return collectWireViolations("InterruptResponseValue",
 		nonEmptyItems("answers", i.Answers),
-		closedEnum("type", string(i.Type), []string{"approval", "answer"}, false),
-		closedEnum("decision", string(i.Decision), []string{"approve", "deny"}, true),
 		requiredWhen(wireFieldEquals(i, "type", "approval"), "decision", i),
 		forbiddenWhen(wireFieldEquals(i, "type", "approval"), "answers", i),
 		requiredWhen(wireFieldEquals(i, "type", "answer"), "answers", i),
@@ -1465,7 +1410,6 @@ func (s StreamEvent) validateWire() error {
 	return collectWireViolations("StreamEvent",
 		identity("itemId", s.ItemID),
 		maxLength("itemId", s.ItemID, 256),
-		closedEnum("type", string(s.Type), []string{"segment.started", "segment.progress", "segment.finished", "item.started", "item.delta", "item.completed", "plan.updated"}, false),
 		requiredWhen(wireFieldEquals(s, "type", "segment.started"), "run", s),
 		forbiddenWhen(wireFieldEquals(s, "type", "segment.started"), "progress", s),
 		forbiddenWhen(wireFieldEquals(s, "type", "segment.started"), "interrupts", s),
@@ -1543,8 +1487,6 @@ func (r RuntimeEvent) validateWire() error {
 		maxItemLength("sessionIds", r.SessionIDs, 256),
 		identityItems("runIds", r.RunIDs),
 		maxItemLength("runIds", r.RunIDs, 256),
-		closedEnum("type", string(r.Type), []string{"files.changed", "skills.changed", "mcp.changed", "plugins.changed", "plugins.dataChanged", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "hooks.changed", "models.changed", "approvals.changed", "projects.changed", "resync"}, false),
-		closedEnumItems("topics", r.Topics, []string{"files.changed", "skills.changed", "mcp.changed", "plugins.changed", "plugins.dataChanged", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "hooks.changed", "models.changed", "approvals.changed", "projects.changed"}),
 		requiredWhen(wireFieldEquals(r, "type", "files.changed"), "sequence", r),
 		requiredWhen(wireFieldEquals(r, "type", "files.changed"), "paths", r),
 		forbiddenWhen(wireFieldEquals(r, "type", "files.changed"), "names", r),
@@ -1688,7 +1630,6 @@ func (r RuntimeEvent) validateWire() error {
 
 func (a ArtifactOutcome) validateWire() error {
 	return collectWireViolations("ArtifactOutcome",
-		closedEnum("type", string(a.Type), []string{"completed", "timedOut", "failed", "canceled", "lost"}, false),
 		forbiddenWhen(wireFieldEquals(a, "type", "completed"), "error", a),
 		forbiddenWhen(wireFieldEquals(a, "type", "completed"), "detail", a),
 		forbiddenWhen(wireFieldEquals(a, "type", "completed"), "loss", a),
@@ -1719,11 +1660,6 @@ func (a ArtifactItem) validateWire() error {
 		nonNegativeNumber("droppedMessages", a.DroppedMessages),
 		optionalNonNegativeNumber("durationMillis", a.DurationMillis),
 		optionalMaximumNumber("durationMillis", a.DurationMillis, 9223372036854),
-		closedEnum("status", string(a.Status), []string{"running", "completed", "incomplete"}, false),
-		closedEnum("type", string(a.Type), []string{"userMessage", "agentMessage", "reasoning", "question", "toolCall", "compaction"}, false),
-		closedEnum("phase", string(a.Phase), []string{"commentary", "finalAnswer"}, true),
-		closedEnum("safetyClass", string(a.SafetyClass), []string{"safe", "write", "exec", "network"}, true),
-		closedEnum("approvalDecision", string(a.ApprovalDecision), []string{"approve", "deny"}, true),
 		requiredWhen(wireFieldEquals(a, "type", "userMessage"), "id", a),
 		requiredWhen(wireFieldEquals(a, "type", "userMessage"), "runId", a),
 		requiredWhen(wireFieldEquals(a, "type", "userMessage"), "status", a),
@@ -1841,7 +1777,6 @@ func (a ArtifactItem) validateWire() error {
 
 func (d Diff) validateWire() error {
 	return collectWireViolations("Diff",
-		closedEnum("type", string(d.Type), []string{"rows", "raw", "visual"}, false),
 		requiredWhen(wireFieldEquals(d, "type", "rows"), "baseline", d),
 		requiredWhen(wireFieldEquals(d, "type", "rows"), "rows", d),
 		forbiddenWhen(wireFieldEquals(d, "type", "rows"), "patch", d),
@@ -1860,7 +1795,6 @@ func (d Diff) validateWire() error {
 func (d DiffBaseline) validateWire() error {
 	return collectWireViolations("DiffBaseline",
 		optionalTextPattern("commit", d.Commit, "^([0-9a-f]{40}|[0-9a-f]{64})$"),
-		closedEnum("type", string(d.Type), []string{"head", "mergeBase", "emptyTree"}, false),
 		requiredWhen(wireFieldEquals(d, "type", "head"), "commit", d),
 		requiredWhen(wireFieldEquals(d, "type", "mergeBase"), "commit", d),
 		forbiddenWhen(wireFieldEquals(d, "type", "emptyTree"), "commit", d),
@@ -1871,7 +1805,6 @@ func (d DiffRow) validateWire() error {
 	return collectWireViolations("DiffRow",
 		optionalPositiveScalarNumber("leftLine", d.LeftLine),
 		optionalPositiveScalarNumber("rightLine", d.RightLine),
-		closedEnum("type", string(d.Type), []string{"hunk", "context", "added", "deleted"}, false),
 		requiredWhen(wireFieldEquals(d, "type", "hunk"), "text", d),
 		forbiddenWhen(wireFieldEquals(d, "type", "hunk"), "code", d),
 		forbiddenWhen(wireFieldEquals(d, "type", "hunk"), "leftLine", d),
@@ -1894,7 +1827,6 @@ func (d DiffRow) validateWire() error {
 
 func (a Activity) validateWire() error {
 	return collectWireViolations("Activity",
-		closedEnum("type", string(a.Type), []string{"callingModel", "modelCallFailed", "applyingUserInput", "toolCall"}, false),
 		forbiddenWhen(wireFieldEquals(a, "type", "callingModel"), "itemId", a),
 		forbiddenWhen(wireFieldEquals(a, "type", "callingModel"), "tool", a),
 		forbiddenWhen(wireFieldEquals(a, "type", "modelCallFailed"), "itemId", a),
@@ -1918,8 +1850,6 @@ func (m ModelEndpointInvocation) validateWire() error {
 		requiredText("provider", m.Provider),
 		requiredText("model", m.Model),
 		requiredText("request", m.Request),
-		closedEnum("kind", string(m.Kind), []string{"chat", "embedding"}, false),
-		closedEnum("state", string(m.State), []string{"started", "completed", "failed", "unknown"}, false),
 		requiredWhen(wireFieldPresent(m, "runId"), "sessionId", m),
 		forbiddenWhen(wireFieldEquals(m, "state", "started"), "settledAt", m),
 		forbiddenWhen(wireFieldEquals(m, "state", "started"), "response", m),
@@ -1949,7 +1879,6 @@ func (m ModelInvocation) validateWire() error {
 		requiredTextPattern("callId", m.CallID, "^[A-Za-z0-9._:-]+$"),
 		maxLength("callId", m.CallID, 256),
 		optionalNonNegativeNumber("firstOutputLatencyMillis", m.FirstOutputLatencyMillis),
-		closedEnum("state", string(m.State), []string{"started", "completed", "failed", "unknown"}, false),
 		requiredWhen(wireFieldEquals(m, "state", "failed") && wireFieldPresent(m, "usage"), "knownResponse", m),
 		forbiddenWhen(wireFieldEquals(m, "state", "started"), "settledAt", m),
 		forbiddenWhen(wireFieldEquals(m, "state", "started"), "usage", m),
@@ -1978,7 +1907,6 @@ func (t ToolAttempt) validateWire() error {
 		requiredText("itemId", t.ItemID),
 		identity("itemId", t.ItemID),
 		maxLength("itemId", t.ItemID, 256),
-		closedEnum("state", string(t.State), []string{"started", "completed", "incomplete"}, false),
 		forbiddenWhen(wireFieldEquals(t, "state", "started"), "settledAt", t),
 		requiredWhen(wireFieldEquals(t, "state", "completed"), "settledAt", t),
 		requiredWhen(wireFieldEquals(t, "state", "incomplete"), "settledAt", t),
@@ -1988,7 +1916,6 @@ func (t ToolAttempt) validateWire() error {
 func (p PluginInput) validateWire() error {
 	return collectWireViolations("PluginInput",
 		requiredTextPattern("server", p.Server, "^[a-z0-9][a-z0-9._-]{0,31}$"),
-		closedEnum("target", string(p.Target), []string{"env", "header", "authorization"}, false),
 		requiredWhen(wireFieldEquals(p, "target", "env"), "key", p),
 		requiredWhen(wireFieldEquals(p, "target", "header"), "key", p),
 		forbiddenWhen(wireFieldEquals(p, "target", "authorization"), "key", p),
@@ -2049,7 +1976,6 @@ func (r RunSummary) validateWire() error {
 		maxLength("model", r.Model, 256),
 		identity("reasoningEffort", r.ReasoningEffort),
 		maxLength("reasoningEffort", r.ReasoningEffort, 32),
-		closedEnum("status", string(r.Status), []string{"running", "waiting", "finished"}, false),
 		required("provider", r),
 		required("model", r),
 		required("createdAt", r),
@@ -2093,7 +2019,6 @@ func (r RunRef) validateWire() error {
 		maxLength("model", r.Model, 256),
 		identity("reasoningEffort", r.ReasoningEffort),
 		maxLength("reasoningEffort", r.ReasoningEffort, 32),
-		closedEnum("status", string(r.Status), []string{"running", "waiting", "finished"}, false),
 		required("provider", r),
 		required("model", r),
 		required("createdAt", r),
@@ -2149,7 +2074,6 @@ func (s Session) validateWire() error {
 		maximumNumber("revision", s.Revision, 9007199254740991),
 		identity("projectId", s.ProjectID),
 		maxLength("projectId", s.ProjectID, 256),
-		closedEnum("status", string(s.Status), []string{"running", "waiting", "idle"}, false),
 		required("createdAt", s),
 		required("updatedAt", s),
 	)
@@ -2168,9 +2092,6 @@ func (h HookInfo) validateWire() error {
 		requiredText("source", h.Source),
 		nonNegativeNumber("timeoutMillis", h.TimeoutMillis),
 		maximumNumber("timeoutMillis", h.TimeoutMillis, 300000),
-		closedEnum("event", string(h.Event), []string{"PreToolUse", "PostToolUse", "UserPromptSubmit", "SessionStart", "PreCompact", "Stop", "Notification"}, false),
-		closedEnum("failurePolicy", string(h.FailurePolicy), []string{"advisory", "required"}, true),
-		closedEnum("scope", string(h.Scope), []string{"global", "repository"}, false),
 		requiredAny([]string{"command", "inject"}, h),
 		requiredWhen(wireFieldPresent(h, "command"), "failurePolicy", h),
 		forbiddenWhen(wireFieldPresent(h, "command"), "inject", h),
@@ -2189,8 +2110,6 @@ func (h HookInfo) validateWire() error {
 
 func (p PluginTerminalBinding) validateWire() error {
 	return collectWireViolations("PluginTerminalBinding",
-		closedEnum("source", string(p.Source), []string{"value", "row", "context", "form"}, false),
-		closedEnum("context", string(p.Context), []string{"workspace", "timeZone"}, true),
 		requiredWhen(wireFieldEquals(p, "source", "value"), "value", p),
 		forbiddenWhen(wireFieldEquals(p, "source", "value"), "field", p),
 		forbiddenWhen(wireFieldEquals(p, "source", "value"), "context", p),
@@ -2212,7 +2131,6 @@ func (p PluginTerminalBinding) validateWire() error {
 
 func (p PluginTerminalFormField) validateWire() error {
 	return collectWireViolations("PluginTerminalFormField",
-		closedEnum("kind", string(p.Kind), []string{"text", "integer", "number", "boolean", "choice"}, false),
 		requiredWhen(wireFieldEquals(p, "kind", "choice"), "options", p),
 	)
 }
@@ -2223,8 +2141,6 @@ func (a ApprovalRule) validateWire() error {
 		identity("id", a.ID),
 		maxLength("id", a.ID, 256),
 		requiredTextPattern("modelName", a.ModelName, "^[A-Za-z0-9_-]{1,64}$"),
-		closedEnum("scope", string(a.Scope), []string{"session", "workspace", "global"}, false),
-		closedEnum("decision", string(a.Decision), []string{"allow", "deny"}, false),
 		requiredWhen(wireFieldEquals(a, "scope", "workspace"), "dir", a),
 		forbiddenWhen(wireFieldEquals(a, "scope", "session"), "dir", a),
 		forbiddenWhen(wireFieldEquals(a, "scope", "global"), "dir", a),
@@ -2246,7 +2162,6 @@ func (w WorkspaceFileChange) validateWire() error {
 		requiredText("path", w.Path),
 		optionalNonNegativeNumber("added", w.Added),
 		optionalNonNegativeNumber("removed", w.Removed),
-		closedEnum("status", string(w.Status), []string{"added", "modified", "deleted", "renamed", "untracked"}, false),
 		requiredWhen(wireFieldEquals(w, "status", "renamed"), "previousPath", w),
 		forbiddenWhen(wireFieldEquals(w, "status", "added"), "previousPath", w),
 		forbiddenWhen(wireFieldEquals(w, "status", "modified"), "previousPath", w),
@@ -2262,7 +2177,6 @@ func (f FileDiff) validateWire() error {
 		requiredText("path", f.Path),
 		optionalNonNegativeNumber("added", f.Added),
 		optionalNonNegativeNumber("removed", f.Removed),
-		closedEnum("status", string(f.Status), []string{"added", "modified", "deleted", "renamed", "untracked"}, false),
 		requiredWhen(wireFieldEquals(f, "status", "renamed"), "previousPath", f),
 		forbiddenWhen(wireFieldEquals(f, "status", "added"), "previousPath", f),
 		forbiddenWhen(wireFieldEquals(f, "status", "modified"), "previousPath", f),
@@ -2285,7 +2199,6 @@ func (g Goal) validateWire() error {
 		maxLength("model", g.Model, 256),
 		identity("reasoningEffort", g.ReasoningEffort),
 		maxLength("reasoningEffort", g.ReasoningEffort, 32),
-		closedEnum("status", string(g.Status), []string{"active", "paused", "blocked", "completing"}, false),
 		required("createdAt", g),
 		required("updatedAt", g),
 		forbiddenWhen(wireFieldEquals(g, "status", "active"), "reason", g),
@@ -2299,8 +2212,6 @@ func (g Goal) validateWire() error {
 
 func (g GoalReason) validateWire() error {
 	return collectWireViolations("GoalReason",
-		closedEnum("code", string(g.Code), []string{"stoppedByUser", "runtimeRestarted", "runStartFailed", "awaitingInput", "terminalOutcomeMissing", "runNotCompleted", "blockedByModel"}, false),
-		closedEnum("runOutcome", string(g.RunOutcome), []string{"completed", "timedOut", "failed", "canceled", "lost"}, true),
 		requiredWhen(wireFieldEquals(g, "code", "runNotCompleted"), "runOutcome", g),
 		forbiddenWhen(wireFieldEquals(g, "code", "runNotCompleted"), "explanation", g),
 		allowedValuesWhen(wireFieldEquals(g, "code", "runNotCompleted"), "runOutcome", g, []string{"timedOut", "failed", "canceled", "lost"}),
@@ -2401,7 +2312,6 @@ func (a ArtifactProblem) validateWire() error {
 	return collectWireViolations("ArtifactProblem",
 		optionalPositiveScalarNumber("retryAfterSeconds", a.RetryAfterSeconds),
 		maximumNumber("retryAfterSeconds", a.RetryAfterSeconds, 9223372036),
-		closedEnum("type", string(a.Type), []string{"internal_error", "agent_stuck", "rate_limited", "invalid_credentials", "timeout", "provider_unavailable", "provider_rejected", "denied_by_user", "tool_failed", "child_run_canceled", "tool_canceled"}, false),
 		forbiddenWhen(wireFieldEquals(a, "type", "internal_error"), "retryAfterSeconds", a),
 		forbiddenWhen(wireFieldEquals(a, "type", "agent_stuck"), "retryAfterSeconds", a),
 		forbiddenWhen(wireFieldEquals(a, "type", "invalid_credentials"), "retryAfterSeconds", a),
@@ -2422,7 +2332,6 @@ func (c CallPluginResponse) validateWire() error {
 
 func (p PluginStreamEvent) validateWire() error {
 	return collectWireViolations("PluginStreamEvent",
-		closedEnum("kind", string(p.Kind), []string{"chunk", "result", "failure"}, false),
 		requiredWhen(wireFieldEquals(p, "kind", "chunk"), "value", p),
 		forbiddenWhen(wireFieldEquals(p, "kind", "chunk"), "failure", p),
 		requiredWhen(wireFieldEquals(p, "kind", "result"), "value", p),
@@ -2473,8 +2382,6 @@ func (s SessionArtifact) validateWire() error {
 func (t ToolInvocation) validateWire() error {
 	return collectWireViolations("ToolInvocation",
 		requiredTextPattern("name", t.Name, "\\S"),
-		closedEnum("category", string(t.Category), []string{"shell", "edit", "read", "search", "task"}, true),
-		closedEnum("resultShape", string(t.ResultShape), []string{"search", "patch", "command"}, true),
 	)
 }
 
@@ -2536,8 +2443,6 @@ func (r RunCapabilities) validateWire() error {
 	return collectWireViolations("RunCapabilities",
 		uniqueItems("requiredFeatures", r.RequiredFeatures),
 		uniqueItems("interruptTypes", r.InterruptTypes),
-		closedEnumItems("requiredFeatures", r.RequiredFeatures, []string{"childRuns"}),
-		closedEnumItems("interruptTypes", r.InterruptTypes, []string{"approval", "question"}),
 	)
 }
 
@@ -2655,7 +2560,6 @@ func (p PlanStep) validateWire() error {
 	return collectWireViolations("PlanStep",
 		requiredText("id", p.ID),
 		requiredTextPattern("description", p.Description, "\\S"),
-		closedEnum("status", string(p.Status), []string{"pending", "in_progress", "completed"}, false),
 	)
 }
 
@@ -2668,7 +2572,6 @@ func (w WorkspaceRef) validateWire() error {
 func (w WorkspaceInfo) validateWire() error {
 	return collectWireViolations("WorkspaceInfo",
 		requiredText("repositoryRoot", w.RepositoryRoot),
-		closedEnum("availability", string(w.Availability), []string{"available", "missing"}, false),
 	)
 }
 
@@ -2684,7 +2587,6 @@ func (f FileEntry) validateWire() error {
 		requiredText("path", f.Path),
 		requiredText("name", f.Name),
 		optionalNonNegativeNumber("sizeBytes", f.SizeBytes),
-		closedEnum("type", string(f.Type), []string{"file", "dir", "symlink"}, false),
 	)
 }
 
@@ -2756,21 +2658,18 @@ func (s SkillDetail) validateWire() error {
 		requiredText("path", s.Path),
 		requiredTextPattern("revision", s.Revision, "^[a-f0-9]{64}$"),
 		requiredTextPattern("name", s.Name, "\\S"),
-		closedEnum("scope", string(s.Scope), []string{"repository", "user", "installation"}, false),
 	)
 }
 
 func (s Skill) validateWire() error {
 	return collectWireViolations("Skill",
 		requiredTextPattern("name", s.Name, "\\S"),
-		closedEnum("scope", string(s.Scope), []string{"repository", "user", "installation"}, false),
 	)
 }
 
 func (m ManagedSkill) validateWire() error {
 	return collectWireViolations("ManagedSkill",
 		requiredTextPattern("name", m.Name, "\\S"),
-		closedEnum("lifecycle", string(m.Lifecycle), []string{"active", "archived"}, false),
 	)
 }
 
@@ -2780,8 +2679,6 @@ func (s SkillProposal) validateWire() error {
 		requiredTextPattern("revision", s.Revision, "^[0-9a-f]{64}$"),
 		requiredTextPattern("description", s.Description, "\\S"),
 		requiredTextPattern("instructions", s.Instructions, "\\S"),
-		closedEnum("scope", string(s.Scope), []string{"repository", "user"}, false),
-		closedEnum("origin", string(s.Origin), []string{"requested", "mined"}, false),
 	)
 }
 
@@ -2829,9 +2726,6 @@ func (p PluginClientComponent) validateWire() error {
 		optionalTextPattern("contribution", p.Contribution, "^[a-z][a-z0-9._-]{0,63}$"),
 		optionalTextPattern("material", p.Material, "^[a-z][a-z0-9._-]{0,63}$"),
 		optionalTextPattern("settingsIntent", p.SettingsIntent, "^[a-z][a-z0-9._-]{0,63}$"),
-		closedEnum("toolCategory", string(p.ToolCategory), []string{"shell", "edit", "read", "search", "task"}, true),
-		closedEnum("scope", string(p.Scope), []string{"installation", "workspace", "session", "client", "file", "toolResult"}, false),
-		closedEnum("placement", string(p.Placement), []string{"workspaceChangesAction", "sharedClientEffect", "export", "workspaceView", "settingsPane", "clientEffect", "messageAction", "sessionAction", "fileRenderer", "toolResultRenderer"}, false),
 	)
 }
 
@@ -2849,7 +2743,6 @@ func (p PluginTerminalAction) validateWire() error {
 		requiredTextPattern("id", p.ID, "^[a-z][a-z0-9._-]{0,63}$"),
 		requiredText("title", p.Title),
 		maxLength("title", p.Title, 128),
-		closedEnum("target", string(p.Target), []string{"view", "row"}, false),
 	)
 }
 
@@ -2978,14 +2871,12 @@ func (p Provider) validateWire() error {
 		maxLength("id", p.ID, 64),
 		optionalIdentity("defaultEmbeddingModel", p.DefaultEmbeddingModel),
 		optionalMaxLength("defaultEmbeddingModel", p.DefaultEmbeddingModel, 256),
-		closedEnum("credentialRequirement", string(p.CredentialRequirement), []string{"apiKeyRequired", "apiKeyOptional"}, false),
 	)
 }
 
 func (p ProviderCredential) validateWire() error {
 	return collectWireViolations("ProviderCredential",
 		requiredText("masked", p.Masked),
-		closedEnum("source", string(p.Source), []string{"stored", "env"}, false),
 	)
 }
 
@@ -3016,15 +2907,12 @@ func (m ModelCapabilities) validateWire() error {
 		maxItemLength("reasoningLevels", m.ReasoningLevels, 32),
 		identity("reasoningDefaultLevel", m.ReasoningDefaultLevel),
 		maxLength("reasoningDefaultLevel", m.ReasoningDefaultLevel, 32),
-		closedEnumItems("inputModalities", m.InputModalities, []string{"text", "image", "audio", "video", "pdf"}),
-		closedEnumItems("outputModalities", m.OutputModalities, []string{"text", "image", "audio", "video", "pdf"}),
 	)
 }
 
 func (a AgentDoc) validateWire() error {
 	return collectWireViolations("AgentDoc",
 		requiredTextPattern("path", a.Path, "\\S"),
-		closedEnum("scope", string(a.Scope), []string{"cwd", "repositoryRoot", "home"}, false),
 	)
 }
 
@@ -3057,8 +2945,6 @@ func (s ServerCapabilities) validateWire() error {
 		uniqueItems("runtimeTopics", s.RuntimeTopics),
 		uniqueItems("streamingMethods", s.StreamingMethods),
 		textPatternItems("streamingMethods", s.StreamingMethods, "\\S"),
-		closedEnumItems("runEvents", s.RunEvents, []string{"segment.started", "segment.progress", "segment.finished", "item.started", "item.delta", "item.completed", "plan.updated"}),
-		closedEnumItems("runtimeTopics", s.RuntimeTopics, []string{"files.changed", "skills.changed", "mcp.changed", "plugins.changed", "plugins.dataChanged", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "hooks.changed", "models.changed", "approvals.changed", "projects.changed"}),
 	)
 }
 
@@ -3072,8 +2958,6 @@ func (c ClientCapabilities) validateWire() error {
 	return collectWireViolations("ClientCapabilities",
 		uniqueItems("interruptTypes", c.InterruptTypes),
 		uniqueItems("excludedEphemeralEvents", c.ExcludedEphemeralEvents),
-		closedEnumItems("interruptTypes", c.InterruptTypes, []string{"approval", "question"}),
-		closedEnumItems("excludedEphemeralEvents", c.ExcludedEphemeralEvents, []string{"segment.progress", "item.delta"}),
 	)
 }
 
@@ -3096,7 +2980,6 @@ func (a ActiveRunRef) validateWire() error {
 		requiredText("runId", a.RunID),
 		identity("runId", a.RunID),
 		maxLength("runId", a.RunID, 256),
-		closedEnum("status", string(a.Status), []string{"running", "waiting", "finished"}, false),
 	)
 }
 
@@ -3111,7 +2994,6 @@ func (r RunReplayLimits) validateWire() error {
 	return collectWireViolations("RunReplayLimits",
 		positiveNumber("maxEvents", r.MaxEvents),
 		positiveNumber("maxBytes", r.MaxBytes),
-		closedEnum("scope", string(r.Scope), []string{"runtimeInstanceRootSegment"}, false),
 	)
 }
 
@@ -3133,36 +3015,9 @@ func (s SubscriptionLimits) validateWire() error {
 	)
 }
 
-func (a ApprovalModePolicy) validateWire() error {
-	return collectWireViolations("ApprovalModePolicy",
-		closedEnum("mode", string(a.Mode), []string{"safe", "balanced", "yolo"}, false),
-		closedEnum("write", string(a.Write), []string{"pass", "prompt", "deny"}, false),
-		closedEnum("exec", string(a.Exec), []string{"pass", "prompt", "deny"}, false),
-		closedEnum("network", string(a.Network), []string{"pass", "prompt", "deny"}, false),
-	)
-}
-
-func (a ApprovalModeResult) validateWire() error {
-	return collectWireViolations("ApprovalModeResult",
-		closedEnum("mode", string(a.Mode), []string{"safe", "balanced", "yolo"}, false),
-	)
-}
-
-func (e ExportSessionResponse) validateWire() error {
-	return collectWireViolations("ExportSessionResponse",
-		closedEnum("format", string(e.Format), []string{"md", "json"}, false),
-	)
-}
-
 func (f FileListPage) validateWire() error {
 	return collectWireViolations("FileListPage",
 		maxLength("nextCursor", f.NextCursor, 65536),
-	)
-}
-
-func (i InterruptPayload) validateWire() error {
-	return collectWireViolations("InterruptPayload",
-		closedEnum("risk", string(i.Risk), []string{"low", "medium", "high"}, true),
 	)
 }
 
@@ -3172,75 +3027,352 @@ func (l ListItemsResponse) validateWire() error {
 	)
 }
 
-func (m MCPStatusProblem) validateWire() error {
-	return collectWireViolations("MCPStatusProblem",
-		closedEnum("type", string(m.Type), []string{"mcp_authorization_required", "mcp_authorization_failed", "mcp_dial_failed", "mcp_tool_discovery_failed", "mcp_configuration_failed"}, false),
-	)
-}
-
-func (m MCPTestResult) validateWire() error {
-	return collectWireViolations("MCPTestResult",
-		closedEnum("outcome", string(m.Outcome), []string{"reachable", "authorizationRequired", "timedOut", "failed"}, false),
-	)
-}
-
-func (p PluginBrowserContractRef) validateWire() error {
-	return collectWireViolations("PluginBrowserContractRef",
-		closedEnum("kind", string(p.Kind), []string{"service", "point", "event"}, false),
-		closedEnum("mode", string(p.Mode), []string{"native", "portable"}, false),
-	)
-}
-
-func (p PluginDiagnostic) validateWire() error {
-	return collectWireViolations("PluginDiagnostic",
-		closedEnum("code", string(p.Code), []string{"unknownField", "invalidDeclaration", "unsupportedContribution", "componentLimit", "invalidDependencies", "unavailableComponent"}, false),
-	)
-}
-
-func (p PluginInstallation) validateWire() error {
-	return collectWireViolations("PluginInstallation",
-		closedEnum("presentation", string(p.Presentation), []string{"admitted", "withheld"}, false),
-	)
-}
-
-func (p PluginTheme) validateWire() error {
-	return collectWireViolations("PluginTheme",
-		closedEnum("scheme", string(p.Scheme), []string{"dark", "light"}, false),
-	)
-}
-
-func (p ProviderTestResult) validateWire() error {
-	return collectWireViolations("ProviderTestResult",
-		closedEnum("outcome", string(p.Outcome), []string{"reachable", "notConfigured", "invalidCredentials", "timedOut", "failed"}, false),
-	)
-}
-
-func (r RememberScope) validateWire() error {
-	return collectWireViolations("RememberScope",
-		closedEnum("scope", string(r.Scope), []string{"session", "workspace", "global"}, false),
-	)
-}
-
-func (r RunLoss) validateWire() error {
-	return collectWireViolations("RunLoss",
-		closedEnum("reason", string(r.Reason), []string{"restart", "isolatedWorkspace", "workspaceUnavailable", "otherBuild", "waitingStateUnavailable", "configurationChanged", "unresolvedEffects", "unresolvedModelCall"}, false),
-	)
-}
-
 func (s SessionUsage) validateWire() error {
 	return collectWireViolations("SessionUsage",
 		optionalNonNegativeNumber("recordedCostUsd", s.RecordedCostUSD),
 	)
 }
 
-func (t ToolSpec) validateWire() error {
-	return collectWireViolations("ToolSpec",
-		closedEnum("safetyClass", string(t.SafetyClass), []string{"safe", "write", "exec", "network"}, true),
-	)
+func (ActivityType) wireEnumValues() []string {
+	return []string{"callingModel", "modelCallFailed", "applyingUserInput", "toolCall"}
 }
 
-func (u UnresolvedEffect) validateWire() error {
-	return collectWireViolations("UnresolvedEffect",
-		closedEnum("cause", string(u.Cause), []string{"termination", "runtimeFailure"}, false),
-	)
+func (AgentDocScope) wireEnumValues() []string {
+	return []string{"cwd", "repositoryRoot", "home"}
+}
+
+func (ApprovalDecision) wireEnumValues() []string {
+	return []string{"approve", "deny"}
+}
+
+func (ApprovalGate) wireEnumValues() []string {
+	return []string{"pass", "prompt", "deny"}
+}
+
+func (ApprovalMode) wireEnumValues() []string {
+	return []string{"safe", "balanced", "yolo"}
+}
+
+func (ApprovalRisk) wireEnumValues() []string {
+	return []string{"low", "medium", "high"}
+}
+
+func (ApprovalRuleDecision) wireEnumValues() []string {
+	return []string{"allow", "deny"}
+}
+
+func (ApprovalRuleScope) wireEnumValues() []string {
+	return []string{"session", "workspace", "global"}
+}
+
+func (ApprovalSubjectType) wireEnumValues() []string {
+	return []string{"all", "exact", "glob"}
+}
+
+func (ArtifactOutcomeType) wireEnumValues() []string {
+	return []string{"completed", "timedOut", "failed", "canceled", "lost"}
+}
+
+func (ArtifactProblemType) wireEnumValues() []string {
+	return []string{"internal_error", "agent_stuck", "rate_limited", "invalid_credentials", "timeout", "provider_unavailable", "provider_rejected", "denied_by_user", "tool_failed", "child_run_canceled", "tool_canceled"}
+}
+
+func (CancelRunResponseType) wireEnumValues() []string {
+	return []string{"root", "child"}
+}
+
+func (CapabilityRequirementType) wireEnumValues() []string {
+	return []string{"feature", "interruptType", "runtimeTopic"}
+}
+
+func (ContentBlockType) wireEnumValues() []string {
+	return []string{"text", "image", "reference"}
+}
+
+func (DiffBaselineType) wireEnumValues() []string {
+	return []string{"head", "mergeBase", "emptyTree"}
+}
+
+func (DiffFormat) wireEnumValues() []string {
+	return []string{"rows", "raw", "visual"}
+}
+
+func (DiffMode) wireEnumValues() []string {
+	return []string{"worktree", "base"}
+}
+
+func (DiffRowType) wireEnumValues() []string {
+	return []string{"hunk", "context", "added", "deleted"}
+}
+
+func (ExportFormat) wireEnumValues() []string {
+	return []string{"md", "json"}
+}
+
+func (FeedbackRating) wireEnumValues() []string {
+	return []string{"positive", "negative"}
+}
+
+func (FileEntryType) wireEnumValues() []string {
+	return []string{"file", "dir", "symlink"}
+}
+
+func (FileStatus) wireEnumValues() []string {
+	return []string{"added", "modified", "deleted", "renamed", "untracked"}
+}
+
+func (GoalReasonCode) wireEnumValues() []string {
+	return []string{"stoppedByUser", "runtimeRestarted", "runStartFailed", "awaitingInput", "terminalOutcomeMissing", "runNotCompleted", "blockedByModel"}
+}
+
+func (GoalStatus) wireEnumValues() []string {
+	return []string{"active", "paused", "blocked", "completing"}
+}
+
+func (HookEvent) wireEnumValues() []string {
+	return []string{"PreToolUse", "PostToolUse", "UserPromptSubmit", "SessionStart", "PreCompact", "Stop", "Notification"}
+}
+
+func (HookScope) wireEnumValues() []string {
+	return []string{"global", "repository"}
+}
+
+func (InterruptResponseType) wireEnumValues() []string {
+	return []string{"approval", "answer"}
+}
+
+func (InterruptType) wireEnumValues() []string {
+	return []string{"approval", "question"}
+}
+
+func (ItemDeltaType) wireEnumValues() []string {
+	return []string{"content", "reasoning", "toolArguments", "toolOutput"}
+}
+
+func (ItemOrder) wireEnumValues() []string {
+	return []string{"asc", "desc"}
+}
+
+func (ItemScopeType) wireEnumValues() []string {
+	return []string{"session", "run"}
+}
+
+func (ItemStatus) wireEnumValues() []string {
+	return []string{"running", "completed", "incomplete"}
+}
+
+func (ItemType) wireEnumValues() []string {
+	return []string{"userMessage", "agentMessage", "reasoning", "question", "toolCall", "compaction"}
+}
+
+func (LossReason) wireEnumValues() []string {
+	return []string{"restart", "isolatedWorkspace", "workspaceUnavailable", "otherBuild", "waitingStateUnavailable", "configurationChanged", "unresolvedEffects", "unresolvedModelCall"}
+}
+
+func (MCPAuthorizationAttemptStatusType) wireEnumValues() []string {
+	return []string{"unconfirmed", "pending", "succeeded", "failed", "canceled"}
+}
+
+func (MCPHandshakeTimeoutType) wireEnumValues() []string {
+	return []string{"unbounded", "bounded"}
+}
+
+func (MCPOriginType) wireEnumValues() []string {
+	return []string{"user", "installation"}
+}
+
+func (MCPSecretChangeType) wireEnumValues() []string {
+	return []string{"set", "clear"}
+}
+
+func (MCPServerStateType) wireEnumValues() []string {
+	return []string{"disabled", "disconnected", "connecting", "connected", "failed", "needsAuth"}
+}
+
+func (MCPStatusProblemType) wireEnumValues() []string {
+	return []string{"mcp_authorization_required", "mcp_authorization_failed", "mcp_dial_failed", "mcp_tool_discovery_failed", "mcp_configuration_failed"}
+}
+
+func (MCPTestOutcome) wireEnumValues() []string {
+	return []string{"reachable", "authorizationRequired", "timedOut", "failed"}
+}
+
+func (MCPTransport) wireEnumValues() []string {
+	return []string{"stdio", "streamableHttp"}
+}
+
+func (MessagePhase) wireEnumValues() []string {
+	return []string{"commentary", "finalAnswer"}
+}
+
+func (Modality) wireEnumValues() []string {
+	return []string{"text", "image", "audio", "video", "pdf"}
+}
+
+func (ModelEndpointKind) wireEnumValues() []string {
+	return []string{"chat", "embedding"}
+}
+
+func (ModelInvocationState) wireEnumValues() []string {
+	return []string{"started", "completed", "failed", "unknown"}
+}
+
+func (PlanStatus) wireEnumValues() []string {
+	return []string{"pending", "in_progress", "completed"}
+}
+
+func (PluginComponentChange) wireEnumValues() []string {
+	return []string{"enable", "disable"}
+}
+
+func (PluginComponentType) wireEnumValues() []string {
+	return []string{"manifestField", "flameExtension", "extensionField", "contribution", "mcp", "mcpServer", "skills", "skill"}
+}
+
+func (PluginDiagnosticCode) wireEnumValues() []string {
+	return []string{"unknownField", "invalidDeclaration", "unsupportedContribution", "componentLimit", "invalidDependencies", "unavailableComponent"}
+}
+
+func (PluginInputStateType) wireEnumValues() []string {
+	return []string{"unset", "configured", "value"}
+}
+
+func (PluginInputTarget) wireEnumValues() []string {
+	return []string{"env", "header", "authorization"}
+}
+
+func (PluginPresentation) wireEnumValues() []string {
+	return []string{"admitted", "withheld"}
+}
+
+func (PluginRealizationType) wireEnumValues() []string {
+	return []string{"available", "releaseUnavailable"}
+}
+
+func (PluginServerType) wireEnumValues() []string {
+	return []string{"stdio", "streamableHttp", "managedNode"}
+}
+
+func (PluginStreamKind) wireEnumValues() []string {
+	return []string{"chunk", "result", "failure"}
+}
+
+func (PluginThemeScheme) wireEnumValues() []string {
+	return []string{"dark", "light"}
+}
+
+func (PluginValueChangeType) wireEnumValues() []string {
+	return []string{"set", "clear"}
+}
+
+func (ProviderConfigChangeType) wireEnumValues() []string {
+	return []string{"set", "clear"}
+}
+
+func (ProviderCredentialRequirement) wireEnumValues() []string {
+	return []string{"apiKeyRequired", "apiKeyOptional"}
+}
+
+func (ProviderKeySource) wireEnumValues() []string {
+	return []string{"stored", "env"}
+}
+
+func (ProviderTestOutcome) wireEnumValues() []string {
+	return []string{"reachable", "notConfigured", "invalidCredentials", "timedOut", "failed"}
+}
+
+func (RememberScopeKind) wireEnumValues() []string {
+	return []string{"session", "workspace", "global"}
+}
+
+func (RestoreType) wireEnumValues() []string {
+	return []string{"history", "files", "both"}
+}
+
+func (RunAcceptanceType) wireEnumValues() []string {
+	return []string{"notRecorded", "accepted", "retired"}
+}
+
+func (RunCapabilityFeature) wireEnumValues() []string {
+	return []string{"childRuns"}
+}
+
+func (RunCommandOperation) wireEnumValues() []string {
+	return []string{"start", "resume", "steer"}
+}
+
+func (RunOutcomeType) wireEnumValues() []string {
+	return []string{"completed", "timedOut", "failed", "canceled", "lost"}
+}
+
+func (RunReplayScope) wireEnumValues() []string {
+	return []string{"runtimeInstanceRootSegment"}
+}
+
+func (RunStatus) wireEnumValues() []string {
+	return []string{"running", "waiting", "finished"}
+}
+
+func (RuntimeEventType) wireEnumValues() []string {
+	return []string{"files.changed", "skills.changed", "mcp.changed", "plugins.changed", "plugins.dataChanged", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "hooks.changed", "models.changed", "approvals.changed", "projects.changed", "resync"}
+}
+
+func (RuntimeTopic) wireEnumValues() []string {
+	return []string{"files.changed", "skills.changed", "mcp.changed", "plugins.changed", "plugins.dataChanged", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "hooks.changed", "models.changed", "approvals.changed", "projects.changed"}
+}
+
+func (SafetyClass) wireEnumValues() []string {
+	return []string{"safe", "write", "exec", "network"}
+}
+
+func (SessionProjectChangeType) wireEnumValues() []string {
+	return []string{"set", "clear"}
+}
+
+func (SessionStatus) wireEnumValues() []string {
+	return []string{"running", "waiting", "idle"}
+}
+
+func (SkillLifecycle) wireEnumValues() []string {
+	return []string{"active", "archived"}
+}
+
+func (SkillProposalOrigin) wireEnumValues() []string {
+	return []string{"requested", "mined"}
+}
+
+func (SkillProposalScope) wireEnumValues() []string {
+	return []string{"repository", "user"}
+}
+
+func (SkillScope) wireEnumValues() []string {
+	return []string{"repository", "user", "installation"}
+}
+
+func (StreamEventType) wireEnumValues() []string {
+	return []string{"segment.started", "segment.progress", "segment.finished", "item.started", "item.delta", "item.completed", "plan.updated"}
+}
+
+func (SuppressibleRunEventType) wireEnumValues() []string {
+	return []string{"segment.progress", "item.delta"}
+}
+
+func (ToolAttemptState) wireEnumValues() []string {
+	return []string{"started", "completed", "incomplete"}
+}
+
+func (ToolRefType) wireEnumValues() []string {
+	return []string{"builtIn", "mcp"}
+}
+
+func (TrajectoryEntryType) wireEnumValues() []string {
+	return []string{"run", "model", "endpoint", "item"}
+}
+
+func (UnresolvedEffectCause) wireEnumValues() []string {
+	return []string{"termination", "runtimeFailure"}
+}
+
+func (WorkspaceAvailability) wireEnumValues() []string {
+	return []string{"available", "missing"}
 }

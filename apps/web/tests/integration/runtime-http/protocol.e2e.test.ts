@@ -10,7 +10,10 @@ import {
   createHttpTransport,
 } from "@flame/runtime-client";
 import {
+  HTTP_ENDPOINTS,
+  HTTP_HEADERS,
   PROTOCOL_VERSION,
+  RPC_HTTP,
   type RequestMeta,
   type RuntimeSubscribeRequest,
 } from "@flame/runtime-client/wire";
@@ -192,6 +195,46 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: protocol delivery", () => {
       }
     },
   );
+
+  it("leaves a plugin configuration key reusable after rejecting invalid component values", async () => {
+    const installation = await fixture.activateManagedOwner("schedules");
+    const release = { installationId: installation.id, digest: installation.selected.digest };
+    const configure = async (
+      serverChanges: Record<string, string>,
+      skillChanges: Record<string, string>,
+    ) => {
+      const endpoint = HTTP_ENDPOINTS.rpc;
+      const response = await fetch(new URL(endpoint.path, fixture.baseUrl), {
+        method: endpoint.method,
+        headers: {
+          Accept: RPC_HTTP.documentMediaType,
+          [HTTP_HEADERS.contentType]: RPC_HTTP.documentMediaType,
+          [HTTP_HEADERS.idempotencyKey]: "reusable-plugin-configuration",
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: "configure-schedules-components",
+          method: "plugins.configure",
+          params: { ...release, valueChanges: {}, serverChanges, skillChanges },
+        }),
+      });
+      expect(response.status).toBe(RPC_HTTP.callStatus);
+      return response.json();
+    };
+
+    const invalid = await configure({ schedules: "restart" }, { demo: "" });
+    await expect(configure({ schedules: "enable" }, {})).resolves.toMatchObject({
+      result: release,
+    });
+    expect(invalid).toMatchObject({
+      error: {
+        data: {
+          type: "invalid_params",
+          errors: [{ field: 'serverChanges["schedules"]' }, { field: 'skillChanges["demo"]' }],
+        },
+      },
+    });
+  });
 
   it("converges unary mutations across pre-admission and post-commit disconnects", async () => {
     const requestMeta = (): RequestMeta => ({

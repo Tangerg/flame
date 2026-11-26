@@ -3,7 +3,6 @@ package delivery
 import (
 	"context"
 	"errors"
-	"fmt"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
@@ -214,18 +213,15 @@ func (s *Handler) configurePlugin(ctx context.Context, in protocol.ConfigurePlug
 		return err
 	}
 	configuration := plugin.Configuration{
-		Values:  make(map[string]plugin.ValueChange, len(in.ValueChanges)),
-		Servers: make(map[mcpserver.ServerName]plugin.ComponentChange, len(in.ServerChanges)),
-		Skills:  make(map[string]plugin.ComponentChange, len(in.SkillChanges)),
+		Values:           make(map[string]plugin.ValueChange, len(in.ValueChanges)),
+		ServerEnablement: make(map[mcpserver.ServerName]bool, len(in.ServerChanges)),
+		SkillEnablement:  make(map[string]bool, len(in.SkillChanges)),
 	}
 	for key, change := range in.ValueChanges {
-		switch {
-		case change.Type == protocol.PluginValueSet && change.Value != nil:
+		if change.Type == protocol.PluginValueSet {
 			configuration.Values[key] = plugin.SetValue(*change.Value)
-		case change.Type == protocol.PluginValueClear && change.Value == nil:
+		} else {
 			configuration.Values[key] = plugin.ClearValue()
-		default:
-			return protocol.InvalidParameters(fmt.Errorf("plugin input %q change", key))
 		}
 	}
 	for raw, change := range in.ServerChanges {
@@ -233,29 +229,12 @@ func (s *Handler) configurePlugin(ctx context.Context, in protocol.ConfigurePlug
 		if err != nil {
 			return protocol.InvalidParameters(err)
 		}
-		configuration.Servers[name], err = parseComponentChange(change)
-		if err != nil {
-			return err
-		}
+		configuration.ServerEnablement[name] = change == protocol.PluginComponentEnable
 	}
 	for name, change := range in.SkillChanges {
-		configuration.Skills[name], err = parseComponentChange(change)
-		if err != nil {
-			return err
-		}
+		configuration.SkillEnablement[name] = change == protocol.PluginComponentEnable
 	}
 	return wirePluginError(s.plugins.Configure(ctx, id, digest, configuration, reply))
-}
-
-func parseComponentChange(change protocol.PluginComponentChange) (plugin.ComponentChange, error) {
-	switch change {
-	case protocol.PluginComponentEnable:
-		return plugin.EnableComponent, nil
-	case protocol.PluginComponentDisable:
-		return plugin.DisableComponent, nil
-	default:
-		return "", protocol.InvalidParameters(fmt.Errorf("plugin component change %q", change))
-	}
 }
 
 func (s *Handler) SetPluginEnablement(ctx context.Context, in protocol.SetPluginEnablementRequest) (*protocol.PluginEnablement, error) {

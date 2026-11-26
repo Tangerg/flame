@@ -2,9 +2,7 @@ package main
 
 import (
 	"fmt"
-	"reflect"
 	"slices"
-	"strconv"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery/dispatch"
@@ -23,25 +21,6 @@ func unionRequiresField(union dispatch.UnionSpec, field string) bool {
 		return slices.Contains(pattern.Required, field)
 	}
 	return false
-}
-
-func enumChecks(shape reflect.Type) []string {
-	recv := receiverName(shape)
-	var checks []string
-	for _, field := range protocol.WireFields(shape) {
-		if values, found := enumValues(field.Type); found {
-			checks = append(checks, fmt.Sprintf("closedEnum(%s, string(%s.%s), %s, %t)",
-				strconv.Quote(field.Name), recv, field.GoName, valueList(values), field.Optional))
-			continue
-		}
-		if field.Type.Kind() == reflect.Slice {
-			if values, found := enumValues(field.Type.Elem()); found {
-				checks = append(checks, fmt.Sprintf("closedEnumItems(%s, %s.%s, %s)",
-					strconv.Quote(field.Name), recv, field.GoName, valueList(values)))
-			}
-		}
-	}
-	return checks
 }
 
 func unionChecks(union dispatch.UnionSpec, recv string) []string {
