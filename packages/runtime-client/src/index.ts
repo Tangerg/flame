@@ -114,6 +114,7 @@ export type {
   Transport,
   TransportRequest,
   TransportEvent,
+  TransportMessageMetadata,
   TransportSendOptions,
   TransportResponseMetadata,
 } from "./transport";

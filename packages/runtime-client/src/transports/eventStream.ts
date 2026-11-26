@@ -1,16 +1,18 @@
 import { isExpectedAbort, retainCleanupFailure } from "./body";
 import { type EventSourceMessage } from "eventsource-parser";
 import { errorMessage, RpcConnectionError, RpcProtocolError, RpcTransportError } from "../errors";
-import type { RpcMessage } from "../types";
-import { parseRpcMessage } from "../types";
-import { type WireStreamingMethodName } from "@flame/runtime-client/methods";
+import { isNotification, parseRpcMessage, type RpcMessage } from "../types";
+import {
+  wireMethodAcceptsReplayCursor,
+  type WireStreamingMethodName,
+} from "@flame/runtime-client/methods";
 
 interface EventStreamTextParser {
   feed(chunk: string): void;
 }
 
-// Plugin streams carry ephemeral messages only: a replay cursor or a named event
-// would promise a resumption the plugin channel cannot honour.
+const sseMessageEvent = "message";
+
 export function admitStreamFrame(
   event: EventSourceMessage,
   method: WireStreamingMethodName,
@@ -26,22 +28,19 @@ export function admitStreamFrame(
       undefined,
       requestId,
     );
-  if (
-    method === "plugins.stream" &&
-    (event.id || (event.event !== undefined && event.event !== "message"))
-  )
-    throw new RpcProtocolError(
-      "plugin stream",
-      [{ path: "$", detail: "requires ephemeral message frames without a replay cursor" }],
-      requestId,
-    );
+  const invalid = (path: string, detail: string) =>
+    new RpcProtocolError("event-stream frame", [{ path, detail }], requestId);
+  if (event.event !== undefined && event.event !== sseMessageEvent)
+    throw invalid("$.event", "must use the default event name");
   const message = parseRpcMessage(event.data);
-  if (!message)
-    throw new RpcProtocolError(
-      "event stream",
-      [{ path: "$", detail: "must contain a valid JSON-RPC envelope" }],
-      requestId,
-    );
+  if (!message) throw invalid("$", "must contain a valid JSON-RPC envelope");
+  const cursor = event.id;
+  if (
+    cursor !== undefined &&
+    cursor !== "" &&
+    (!isNotification(message) || !wireMethodAcceptsReplayCursor(method))
+  )
+    throw invalid("$.id", "is only valid on Run replay notifications");
   return message;
 }
 

@@ -160,7 +160,7 @@ export function streamRunEvents(options: RunEventStreamOptions = {}) {
     ...stream,
     observe: ({ runId, segmentId }: RunStreamTarget) =>
       observeNotifications(NOTIFICATIONS_RUN_EVENT, {
-        next(event, requestId) {
+        next(event, metadata) {
           const matchesRun = event.runId === runId;
           const matchesSegment = event.segmentId === segmentId;
           if (matchesRun !== matchesSegment) {
@@ -173,7 +173,22 @@ export function streamRunEvents(options: RunEventStreamOptions = {}) {
                     detail: "must match the acknowledged root Run and Segment",
                   },
                 ],
-                requestId,
+                metadata?.requestId,
+              ),
+            );
+            return;
+          }
+          const frame = metadata?.eventStream;
+          if (
+            frame &&
+            runEventIsReplayable(event.event.type) === true &&
+            frame.cursor !== event.eventId
+          ) {
+            stream.fail(
+              new RpcProtocolError(
+                "event-stream frame",
+                [{ path: "$.id", detail: "must match the Run event ID" }],
+                metadata?.requestId,
               ),
             );
             return;

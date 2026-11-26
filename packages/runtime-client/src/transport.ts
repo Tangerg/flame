@@ -11,12 +11,16 @@ export interface TransportResponseMetadata {
   requestId?: string;
 }
 
+export interface TransportMessageMetadata extends TransportResponseMetadata {
+  readonly eventStream?: { readonly cursor: string | undefined };
+}
+
 export type TransportEvent =
   | {
       type: "message";
       message: RpcMessage;
       requestRpcId: RpcId;
-      metadata?: TransportResponseMetadata;
+      metadata?: TransportMessageMetadata;
       consumed?: (delivery: Promise<void>) => void;
     }
   | {

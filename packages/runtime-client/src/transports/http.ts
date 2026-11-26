@@ -156,7 +156,6 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
     let consumption: Promise<void> | undefined;
     const parser = createParser({
       onEvent(event) {
-        if (!event.data) return;
         const msg = admitStreamFrame(
           event,
           method,
@@ -169,7 +168,7 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
           type: "message",
           message: msg,
           requestRpcId: requestId,
-          metadata,
+          metadata: { ...metadata, eventStream: { cursor: event.id } },
           ...(consumed
             ? {
                 consumed: (delivery: Promise<void>) => {

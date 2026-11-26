@@ -19,6 +19,10 @@ also binds the observation to its root Segment. A transport
 reports the end of a stream once through `streamEnd`. The request state
 determines whether that end rejects the pending response or settles the active
 stream. A 200 JSON document may carry a streaming call's refusal.
+SSE frames use the default message name and carry a JSON-RPC envelope.
+Replayable Run notifications carry an SSE id matching their admitted JSON
+event ID. A conflicting or missing frame ID ends the observation before it can
+advance the replay position.
 Both RPC and sidecar clients bound ordinary response documents with
 `maximumResponseBytes` (128 MiB by default), including error bodies without a length.
 HTTP transport captures its endpoint, credentials and resource limits on creation;

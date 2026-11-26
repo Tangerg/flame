@@ -32,6 +32,8 @@ const unconfirmedModelOutcome = {
   ],
 };
 
+const sseCursorLine = /^id: .+\n/m;
+
 describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: runs", () => {
   const fixture = useRuntimeFixture("runs");
 
@@ -152,6 +154,74 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: runs", () => {
         await client.close();
         await fixture.client.sessions.delete(asSessionId(session.id));
         await fixture.client.sessions.delete(asSessionId(foreignSession.id));
+      }
+    },
+    30_000,
+  );
+
+  it.each([
+    {
+      fault: "a mismatched replay cursor",
+      path: "$.id",
+      change: (frame: string, initialCursorLine: string) =>
+        frame.replace(sseCursorLine, initialCursorLine),
+    },
+    {
+      fault: "an omitted replay cursor",
+      path: "$.id",
+      change: (frame: string) => frame.replace(sseCursorLine, ""),
+    },
+    {
+      fault: "a different event name",
+      path: "$.event",
+      change: (frame: string) => `event: diagnostic\n${frame}`,
+    },
+    {
+      fault: "empty event data",
+      path: "$",
+      change: (frame: string) => frame.replace(/^data: .+$/m, "data:"),
+    },
+  ] as const)(
+    "refuses a Run's terminal SSE frame with $fault",
+    async ({ change, path }) => {
+      const session = await fixture.client.sessions.create();
+      const sessionId = asSessionId(session.id);
+      const client = fixture.createRuntimeClient(async (input, init) => {
+        const response = await fetch(input, init);
+        if (new Headers(init?.headers).get(HTTP_HEADERS.method) !== "runs.start") return response;
+        expect(response.headers.get(HTTP_HEADERS.contentType)).toContain(RPC_HTTP.streamMediaType);
+        const frames = (await response.text()).split("\n\n");
+        const firstCursor = frames
+          .find((frame) => sseCursorLine.test(frame))
+          ?.match(sseCursorLine)?.[0];
+        const terminal = frames.findIndex((frame) => frame.includes('"type":"segment.finished"'));
+        if (!firstCursor || terminal < 0 || !sseCursorLine.test(frames[terminal]!))
+          throw new Error("expected two replayable Run frames");
+        frames[terminal] = change(frames[terminal]!, firstCursor);
+        return new Response(frames.join("\n\n"), {
+          status: response.status,
+          headers: response.headers,
+        });
+      });
+      try {
+        const opening = await client.runs.start({
+          sessionId,
+          input: [{ type: "text", text: "E2E_RUN finish with replayable events." }],
+        });
+        await expect(
+          within(collectRunEvents(originalOpeningEvents(opening)), "the malformed SSE frame"),
+        ).rejects.toSatisfy(
+          (error: unknown) =>
+            error instanceof RpcProtocolError &&
+            error.violations[0]?.path === path &&
+            Boolean(error.requestId),
+        );
+        await expect(fixture.client.runs.get(asRunId(opening.result.runId))).resolves.toMatchObject(
+          { status: "finished", outcome: { type: "completed" } },
+        );
+      } finally {
+        await client.close();
+        await fixture.client.sessions.delete(sessionId);
       }
     },
     30_000,

@@ -17,7 +17,12 @@ import {
   type RPCFailureData,
   type RequestMeta,
 } from "@flame/runtime-client/wire";
-import type { Transport, TransportRequest, TransportResponseMetadata } from "./transport";
+import type {
+  Transport,
+  TransportMessageMetadata,
+  TransportRequest,
+  TransportResponseMetadata,
+} from "./transport";
 import {
   wireAcknowledgementCheck,
   wireMethodAcceptsReplayCursor,
@@ -42,13 +47,16 @@ import type { RpcId, RpcMessage, RpcNotification, RpcResponse } from "./types";
 import { JSONRPC_VERSION, isErrorResponse, isNotification, isResponse } from "./types";
 
 interface StreamConsumer<M extends WireNotificationName> {
-  next(params: WireNotificationParams[M], requestId?: string): void | Promise<void>;
+  next(
+    params: WireNotificationParams[M],
+    metadata?: TransportMessageMetadata,
+  ): void | Promise<void>;
   fail(error: Error): void;
   end(error?: Error): void;
 }
 
 export interface StreamObservation {
-  deliver(message: RpcNotification, metadata?: TransportResponseMetadata): void | Promise<void>;
+  deliver(message: RpcNotification, metadata?: TransportMessageMetadata): void | Promise<void>;
   end(error?: Error): void;
 }
 
@@ -106,7 +114,7 @@ export function observeNotifications<M extends WireNotificationName>(
         consumer.fail(failure);
       };
       try {
-        return consumer.next(params, metadata?.requestId)?.catch(failDelivery);
+        return consumer.next(params, metadata)?.catch(failDelivery);
       } catch (cause) {
         failDelivery(cause);
       }
@@ -434,7 +442,7 @@ export function createRpcClient(transport: Transport, options: RpcClientOptions 
     request: RequestState,
     message: RpcMessage,
     requestRpcId: RpcId,
-    metadata?: TransportResponseMetadata,
+    metadata?: TransportMessageMetadata,
   ): void | Promise<void> {
     if (request.state === "observing") {
       if (isNotification(message)) return request.observation.deliver(message, metadata);
