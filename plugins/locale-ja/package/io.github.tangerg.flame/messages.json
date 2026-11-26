@@ -694,7 +694,7 @@
   "rpcError.idempotency_conflict": "同じ要求が別の内容で既に送信されています。",
   "rpcError.plugin_changed": "実行の準備中にプラグインが変更されました。何も開始されていません。再送信して再試行してください。",
   "rpcError.capability_not_negotiated": "接続中の Runtime はこの機能を提供していません。",
-  "rpcError.export_too_large": "このセッションは大きすぎるため、1 つの軌跡としてエクスポートできません。",
+  "rpcError.export_too_large": "このセッションは大きすぎるため、1 つの履歴としてエクスポートできません。",
   "rpcError.invalid_protocol_version": "この Runtime は異なるプロトコルバージョンを使用しています。Flame または Runtime を更新してください。",
   "rpcError.mcp_owned_by_installation": "このサーバーはプラグインが提供しています。プラグイン側で変更してください。",
   "rpcError.plugin_in_use": "このプラグインに依存しているセッションがあります。依存がなくなってから再試行してください。",
