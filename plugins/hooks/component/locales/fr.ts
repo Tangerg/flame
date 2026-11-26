@@ -7,7 +7,7 @@ export const fr: Record<string, string> = {
     "Les hooks de ce dépôt exécutent des commandes shell sur votre machine. N’activez que pour des dépôts de confiance. Effectif au prochain tour.",
   "trust.aria": "Faire confiance aux hooks de ce dépôt",
   matcher: "Filtre d'outils",
-  "kind.inject": "inject",
+  "kind.inject": "Injection",
   "scope.global": "Global",
   "scope.repository": "Dépôt",
   inactive: "inactif",

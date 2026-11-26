@@ -466,7 +466,7 @@
   "question.settled.dismissed": "未回答のまま終了",
   "question.freetext.placeholder": "自由に入力…",
   "cwdMissing.title": "フォルダがディスクから消えました",
-  "cwdMissing.body": "フォルダを復元するかセッションを再配置するまで、agent はチャット専用モードで動作します。",
+  "cwdMissing.body": "フォルダを復元するかセッションを再配置するまで、エージェントはチャット専用モードで動作します。",
   "cwdMissing.action.relocate": "再配置…",
   "cwdMissing.action.apply": "適用",
   "cwdMissing.action.cancel": "キャンセル",

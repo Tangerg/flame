@@ -7,7 +7,7 @@ export const ko: Record<string, string> = {
     "이 저장소의 훅은 사용자 머신에서 셸 명령을 실행합니다. 신뢰하는 저장소에만 켜세요. 다음 턴부터 적용됩니다.",
   "trust.aria": "이 저장소의 훅을 신뢰",
   matcher: "도구 매처",
-  "kind.inject": "inject",
+  "kind.inject": "주입",
   "scope.global": "전역",
   "scope.repository": "저장소",
   inactive: "비활성",

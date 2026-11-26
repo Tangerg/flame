@@ -7,7 +7,7 @@ export const ja: Record<string, string> = {
     "このリポジトリのフックはあなたのマシンでシェルコマンドを実行します。信頼できるリポジトリでのみ有効にしてください。次のターンから反映されます。",
   "trust.aria": "このリポジトリのフックを信頼する",
   matcher: "ツールマッチャー",
-  "kind.inject": "inject",
+  "kind.inject": "注入",
   "scope.global": "グローバル",
   "scope.repository": "リポジトリ",
   inactive: "無効",

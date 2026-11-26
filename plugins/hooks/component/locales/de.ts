@@ -7,7 +7,7 @@ export const de: Record<string, string> = {
     "Die Hooks dieses Repositorys führen Shell-Befehle auf deinem Rechner aus. Aktiviere sie nur für Repositories, denen du vertraust. Wirkt ab dem nächsten Zug.",
   "trust.aria": "Hooks dieses Repositorys vertrauen",
   matcher: "Tool-Matcher",
-  "kind.inject": "inject",
+  "kind.inject": "Injektion",
   "scope.global": "Global",
   "scope.repository": "Repository",
   inactive: "inaktiv",

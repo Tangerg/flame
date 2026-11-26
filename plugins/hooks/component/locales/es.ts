@@ -7,7 +7,7 @@ export const es: Record<string, string> = {
     "Los hooks de este repositorio ejecutan comandos de shell en tu máquina. Actívalos solo para repositorios de confianza. Surte efecto en el siguiente turno.",
   "trust.aria": "Confiar en los hooks de este repositorio",
   matcher: "Filtro de herramientas",
-  "kind.inject": "inject",
+  "kind.inject": "Inyección",
   "scope.global": "Global",
   "scope.repository": "Repositorio",
   inactive: "inactivo",
