@@ -341,8 +341,8 @@ export type Translate = (
 ) => string;
 
 // Mirrors the host i18next conventions: flat dotted keys, {{name}}
-// interpolation, _one/_other plural suffixes via Intl.PluralRules on `count`,
-// with en as reference and fallback.
+// interpolation, _one/_other plural suffixes via Intl.PluralRules on `count`
+// (which also reads in the locale's digits), with en as reference and fallback.
 export function createTranslator(
   catalogs: Readonly<Record<string, Catalog>>,
   locale: string,
@@ -353,6 +353,8 @@ export function createTranslator(
     typeof Intl !== "undefined" && "PluralRules" in Intl
       ? new Intl.PluralRules(locale)
       : undefined;
+  const count =
+    typeof Intl !== "undefined" ? new Intl.NumberFormat(locale) : undefined;
   return (key, params) => {
     let lookup = key;
     if (params && typeof params.count === "number") {
@@ -366,9 +368,13 @@ export function createTranslator(
     const template =
       active[lookup] ?? base[lookup] ?? active[key] ?? base[key] ?? key;
     return params
-      ? template.replace(/\{\{(\w+)\}\}/g, (whole, name: string) =>
-          name in params ? String(params[name]) : whole,
-        )
+      ? template.replace(/\{\{(\w+)\}\}/g, (whole, name: string) => {
+          if (!(name in params)) return whole;
+          const value = params[name];
+          return name === "count" && typeof value === "number" && count
+            ? count.format(value)
+            : String(value);
+        })
       : template;
   };
 }

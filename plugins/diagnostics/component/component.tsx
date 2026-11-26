@@ -229,10 +229,6 @@ type Read = {
 export function Diagnostics({ context }: { context: ComponentContext }) {
   const { telemetry, signal: componentSignal } = context;
   const t = useTranslator(CATALOGS, context.locale);
-  const numbers = useMemo(
-    () => new Intl.NumberFormat(context.locale),
-    [context.locale],
-  );
   const [signal, setSignal] = useState<Signal>("spans");
   const [read, setRead] = useState<Read>({});
   const refresh = useCallback(() => {
@@ -304,7 +300,7 @@ export function Diagnostics({ context }: { context: ComponentContext }) {
                 label: read.snapshot
                   ? t("signal.count", {
                       signal: t(`signal.${value}`),
-                      count: numbers.format(read.snapshot[value].length),
+                      count: read.snapshot[value].length,
                     })
                   : t(`signal.${value}`),
               }))}
