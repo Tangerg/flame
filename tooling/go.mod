@@ -69,7 +69,7 @@ require (
 require (
 	github.com/Tangerg/flame/packages/go-sdk v0.1.65-dev.20261126.t10f6603b97ed
 	github.com/Tangerg/flame/packages/local-runtime v0.1.14-dev.20261123.tca9fa5e1c260
-	github.com/Tangerg/flame/runtime v0.1.127-dev.20261125.t8e75b09ca20d
+	github.com/Tangerg/flame/runtime v0.1.128-dev.20261126.tdc7588bf9a54
 	github.com/Tangerg/frame v0.5.0
 	github.com/Tangerg/go-sdk v1.9.0-scope.1
 	golang.org/x/mod v0.43.0
