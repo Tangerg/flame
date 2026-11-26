@@ -1432,7 +1432,9 @@ receipts to Toast, including completions after the source unmounts. Selection
 quoting captures an immutable snapshot from a context menu or its configurable
 shortcut, `Ctrl+Shift+Q` by default. A message menu offers Quote in message
 when its target and the selection endpoints share one visible source. It appends
-to the captured Composer after the menu closes.
+to the captured Composer after the menu closes. An attachment review button
+uses its visible chip value as its name. The remove button includes its
+localized action and the same value.
 
 GenUI renders official A2UI 1.0 through a trusted Flame catalog; its
 processor lifetime is outside virtual rows. Highlights remains deferred under the

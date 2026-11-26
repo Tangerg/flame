@@ -1435,9 +1435,87 @@ its owned termination signal. The app registration, private
 profile, fixtures, captures, logs, listeners and checkout
 outputs and caches are removed.
 
-The next review follows a selection on a later file page
-into the Composer and checks its literal text, absolute line
-range and continuation.
+[File quote actions name their selected lines](#file-quote-actions-name-their-selected-lines-2026-11-27)
+checks the selected source through review, removal and continuation.
+
+### File quote actions name their selected lines (2026-11-27)
+
+Signed Wails at `c51dfae62` uses private Runtime
+`2026-11-27.2` to read a file with 1,450 records and a final
+blank line. Go to 779 and Show 200 more lines accept
+980–1,179. The next page accepts 1,180–1,379. Partial
+selections from the ends of these pages produce
+`reading-proof.txt:1177-1179` and `reading-proof.txt:1377-1379`.
+The original screen shows these labels side by side. Its
+macOS accessibility tree exposes two 查看引用 buttons and
+two 移除引用 buttons with identical names.
+
+Chip now names its review button from the visible value.
+The remove button names its localized action and that same
+value. Each chip supplies its own ID for the label. The
+existing tooltip still gives the action, and the Composer
+uses the same review and remove callbacks. This applies to
+references, pasted text and pending or failed images.
+Better Accessibility and the W3C label guidance keep the
+visible value available to assistive controls.
+[Label in Name](https://www.w3.org/WAI/WCAG22/Understanding/label-in-name.html)
+
+- Chinese/light/14 px/Flame at 1280 × 800 with a 423 px
+  Dock. Native drag and Ctrl+Shift+Q quote 1,177–1,179.
+  Drag and the right-click action quote 1,377–1,379. Both
+  quotes retain the inner blank line, tab and double space.
+  A right-click on the page footer clears the selection and
+  opens no Quote action.
+- Candidate signed on `2ed9a49ea` exposes both full ranges
+  on their review buttons and both named remove actions.
+  Shift+Tab reaches the 1,177–1,179 actions from the
+  Composer. Enter opens its exact review. Enter on Close
+  returns to that button. Tab and Enter remove exactly that
+  chip. Once its exit animation settles, only the other
+  chip remains. The Composer still has `3625` at caret 3.
+  Adding the source again through the right-click action
+  keeps caret 3. Typing 0 gives `36205`.
+- English/dark/18 px/Blue at 1120 × 728 with a 320 px Dock.
+  Both full names remain available in the native tree while
+  their visible captions truncate. Pointer activation opens
+  the 1,377–1,379 review and Close dismisses it. Pointer
+  removal leaves the 1,177–1,179 chip and draft `2468` at
+  caret 2. Typing 5 gives `24568` and Undo restores `2468`.
+
+The baseline Run retains both exact references and its draft
+input. Its loopback provider gate expects the draft marker
+in the final user row and rejects the request. The candidate
+provider verifies the draft and the following reference row.
+The completed candidate Run and the provider receipt match
+the two absolute labels, both literal fenced bodies and
+`36205` exactly. The source digest and private Session
+identity match throughout. The provider receives six catalog
+reads and two generation requests, one rejected and one
+completed. The English pass leaves its draft unsent.
+
+The new markup regression fails with the original Chip and
+passes with the candidate bytes. Web typecheck, 83 contract
+tests, bootstrap, scoped Prettier and diff checks pass again
+after the fast-forward to `3c62a0a14`. Runtime packaging,
+production staging and signed Wails builds pass. The first
+command-menu coordinate fell outside the test window, with
+the menu still open. The native driver gained a window bound
+and keyboard navigation selected Files. The first Escape in
+the keyboard-opened review stayed in the dialog in repeated
+probes, and a subsequent Escape dismissed it. The recorded
+keyboard return uses the named Close control. Verification
+covers macOS accessibility state and native input. VoiceOver
+speech and other platforms remain outside this review.
+
+Both Wails hosts exit normally. The private Runtime reaches
+its existing drain deadline and the two loopback provider
+processes stop on their owned termination signals. The app
+registration, private profile, fixtures, captures, logs,
+listeners, checkout outputs and caches are removed.
+
+The next review follows two clipped quote labels in the
+narrow Composer and checks how a pointer user can inspect the
+full path and line range before choosing which chip to remove.
 
 ## Error notes leave retrying to their buttons (2026-11-26)
 
