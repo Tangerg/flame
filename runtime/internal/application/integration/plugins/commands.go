@@ -47,6 +47,18 @@ func (c *Commands) Get(ctx context.Context, id string) (*plugin.Command, error) 
 	return command, nil
 }
 
+func (c *Commands) Captured(ctx context.Context, id, method string) (plugin.CommandBinding, error) {
+	command, err := c.authorized(ctx, id)
+	if err != nil {
+		return plugin.CommandBinding{}, err
+	}
+	record := command.Snapshot()
+	if record.Method != method {
+		return plugin.CommandBinding{}, framecall.ErrConflict
+	}
+	return record, nil
+}
+
 func (c *Commands) authorized(ctx context.Context, id string) (*plugin.Command, error) {
 	command, found, err := c.store.Get(ctx, id)
 	if err != nil {

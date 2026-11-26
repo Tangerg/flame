@@ -120,22 +120,6 @@ func (s *Handler) ListSkillProposals(ctx context.Context, in protocol.WorkspaceQ
 	return protocol.NewPage(out), nil
 }
 
-func (s *Handler) ApproveSkillProposal(ctx context.Context, in protocol.SkillProposalRef) error {
-	ref, err := skillProposalRef(in)
-	if err != nil {
-		return err
-	}
-	return mapSkillProposalErr(s.workspaceSkills.ApproveProposal(ctx, in.Workspace.Path, ref))
-}
-
-func (s *Handler) RejectSkillProposal(ctx context.Context, in protocol.SkillProposalRef) error {
-	ref, err := skillProposalRef(in)
-	if err != nil {
-		return err
-	}
-	return mapSkillProposalErr(s.workspaceSkills.RejectProposal(ctx, in.Workspace.Path, ref))
-}
-
 func skillProposalRef(in protocol.SkillProposalRef) (skills.ProposalRef, error) {
 	ref := skills.ProposalRef{Scope: proposalScopeDomain(in.Scope), Name: in.Name, Revision: in.Revision}
 	if err := ref.Validate(); err != nil {
@@ -192,11 +176,13 @@ func mapSkillProposalErr(err error) error {
 	switch {
 	case err == nil:
 		return nil
-	case errors.Is(err, plugin.ErrUnavailable), errors.Is(err, plugin.ErrDisabled), errors.Is(err, plugin.ErrCommandUnconfirmed), errors.Is(err, plugin.ErrCommandRetired), errors.Is(err, plugin.ErrStale):
+	case errors.Is(err, plugin.ErrInvalid), errors.Is(err, plugin.ErrUnavailable), errors.Is(err, plugin.ErrDisabled), errors.Is(err, plugin.ErrCommandUnconfirmed), errors.Is(err, plugin.ErrCommandRetired), errors.Is(err, plugin.ErrStale):
 		return wirePluginError(err)
 	case errors.Is(err, skills.ErrPublicationUnconfirmed):
 		return wirePluginError(errors.Join(plugin.ErrCommandUnconfirmed, err))
-	case errors.Is(err, skills.ErrPublicationRefused), errors.Is(err, skills.ErrConflict), errors.Is(err, skills.ErrProposalChanged), errors.Is(err, skills.ErrNotFound):
+	case errors.Is(err, skills.ErrPublicationRefused):
+		return protocol.NewFailure(protocol.ErrRevisionConflict, "the approved file could not be published at its reviewed target", err)
+	case errors.Is(err, skills.ErrConflict), errors.Is(err, skills.ErrProposalChanged), errors.Is(err, skills.ErrNotFound):
 		return protocol.NewFailure(protocol.ErrRevisionConflict, fmt.Sprintf("proposal review is stale: %v", err), err)
 	default:
 		return wireWorkspaceError(err)

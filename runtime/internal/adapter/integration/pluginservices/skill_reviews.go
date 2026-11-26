@@ -284,8 +284,12 @@ func (s *SkillGovernance) admitted(ctx context.Context, root string, ref skills.
 	return doc, nil
 }
 
+func bindReviewCommand(ctx context.Context, method string) context.Context {
+	return operation.Bind(ctx, method, operation.Identity(ctx))
+}
+
 func reviewMutation[P, R any](ctx context.Context, s *SkillGovernance, doc reviewDocument, method *pluginmcp.Method[P, R], input P) (R, error) {
-	child := operation.Bind(ctx, method.Name(), operation.Identity(ctx))
+	child := bindReviewCommand(ctx, method.Name())
 	reply, err := invokeResolvedCommand[P, R](child, s.calls, method.Name(), input, nil, func(ctx context.Context) (plugins.ContributionBinding, error) { return doc.source, nil }, nil)
 	return reply.value, reviewError(err)
 }
@@ -311,47 +315,87 @@ func (s *SkillGovernance) ApproveProposal(ctx context.Context, root string, ref 
 	if err != nil {
 		return nil, err
 	}
-	method, err := skilllearning.ApproveMethod()
-	if err != nil {
+	approve, approvalErr := skilllearning.ApproveMethod()
+	confirm, confirmationErr := skilllearning.ConfirmMethod()
+	if err := errors.Join(approvalErr, confirmationErr); err != nil {
 		return nil, err
 	}
 	reference := skilllearning.ReviewRef{Command: ref.Revision}
-	permit, err := reviewMutation(ctx, s, doc, method, reference)
+	if found, err := s.recoverReviewConfirmation(ctx, doc, confirm, approve.Name(), reference); found || err != nil {
+		return nil, err
+	}
+	permit, err := reviewMutation(ctx, s, doc, approve, reference)
 	if err != nil {
 		return nil, err
 	}
-	approval, err := s.calls.routing.Get(ctx, permit.Decision)
+	record, err := s.readReviewApproval(ctx, doc, approve.Name(), reference, permit)
 	if err != nil {
-		return nil, err
-	}
-	record := approval.Snapshot()
-	if err := sameApproval(record, doc, method.Name(), reference); err != nil {
 		return nil, err
 	}
 	changed, publishErr := s.publishApproved(ctx, root, doc, record, permit.Decision)
 	if publishErr != nil && !errors.Is(publishErr, skills.ErrPublicationRefused) {
-		return changed, publishErr
+		return changed, errors.Join(skills.ErrPublicationUnconfirmed, publishErr)
 	}
-	confirm, err := skilllearning.ConfirmMethod()
-	if err != nil {
-		return changed, err
-	}
-	_, err = reviewMutation(ctx, s, doc, confirm, skilllearning.Publication{Proposal: reference, Permit: permit, Published: publishErr == nil})
-	if err == nil {
-		s.changed()
-	}
+	input := skilllearning.Publication{Proposal: reference, Permit: permit, Published: publishErr == nil}
+	err = s.confirmReview(ctx, doc, confirm, input)
 	return changed, errors.Join(publishErr, err)
 }
 
-func sameApproval(record plugin.CommandBinding, doc reviewDocument, method string, reference skilllearning.ReviewRef) error {
-	var original skilllearning.ReviewRef
-	if err := json.Unmarshal(record.Input.Bytes(), &original); err != nil {
+func (s *SkillGovernance) recoverReviewConfirmation(ctx context.Context, doc reviewDocument, method *pluginmcp.Method[skilllearning.Publication, struct{}], approvalMethod string, reference skilllearning.ReviewRef) (bool, error) {
+	child := bindReviewCommand(ctx, method.Name())
+	record, err := s.calls.routing.Captured(child, operation.Identity(child), method.Name())
+	if errors.Is(err, plugin.ErrNotFound) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	var input skilllearning.Publication
+	if err := json.Unmarshal(record.Input.Bytes(), &input, json.RejectUnknownMembers(true)); err != nil {
+		return true, err
+	}
+	if !doc.ownsReview(record, method.Name()) || input.Proposal != reference {
+		return true, framecall.ErrConflict
+	}
+	if _, err := s.readReviewApproval(ctx, doc, approvalMethod, reference, input.Permit); err != nil {
+		return true, err
+	}
+	return true, s.confirmReview(ctx, doc, method, input)
+}
+
+func (s *SkillGovernance) confirmReview(ctx context.Context, doc reviewDocument, method *pluginmcp.Method[skilllearning.Publication, struct{}], input skilllearning.Publication) error {
+	if _, err := reviewMutation(ctx, s, doc, method, input); err != nil {
+		if errors.Is(err, plugin.ErrUnavailable) || errors.Is(err, plugin.ErrDisabled) || errors.Is(err, plugin.ErrStale) {
+			return errors.Join(plugin.ErrCommandUnconfirmed, err)
+		}
 		return err
 	}
-	if record.Method != method || record.Provider != doc.record.Provider || record.Contract != doc.record.Contract || record.Contribution != doc.record.Contribution || record.Invocation.Origin != extension.Human || original != reference {
-		return skills.ErrProposalChanged
+	s.changed()
+	if !input.Published {
+		return skills.ErrPublicationRefused
 	}
 	return nil
+}
+
+func (d reviewDocument) ownsReview(record plugin.CommandBinding, method string) bool {
+	return record.Method == method && record.Provider == d.record.Provider && record.Contract == d.record.Contract &&
+		record.Contribution == d.record.Contribution && record.Invocation.Origin == extension.Human
+}
+
+func (s *SkillGovernance) readReviewApproval(ctx context.Context, doc reviewDocument, method string, reference skilllearning.ReviewRef, permit skilllearning.Permit) (plugin.CommandBinding, error) {
+	command, err := s.calls.routing.Get(ctx, permit.Decision)
+	if err != nil {
+		return plugin.CommandBinding{}, err
+	}
+	record := command.Snapshot()
+	var original skilllearning.ReviewRef
+	if err := json.Unmarshal(record.Input.Bytes(), &original, json.RejectUnknownMembers(true)); err != nil {
+		return plugin.CommandBinding{}, err
+	}
+	if !doc.ownsReview(record, method) || original != reference {
+		return plugin.CommandBinding{}, skills.ErrProposalChanged
+	}
+	return record, nil
 }
 
 func (s *SkillGovernance) publishApproved(ctx context.Context, root string, doc reviewDocument, approval plugin.CommandBinding, decision string) ([]string, error) {

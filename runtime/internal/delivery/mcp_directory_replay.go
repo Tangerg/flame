@@ -21,8 +21,5 @@ func directoryReplay[Params any](invoke func(*Handler, context.Context, Params, 
 }
 
 func EncodeMCPDirectoryReceipt(cause error) ([]byte, error) {
-	if cause != nil {
-		return encodeStoredOutcome(failed(projectError(wireMCPError(cause))))
-	}
-	return encodeStoredOutcome(protocol.OperationResult{Value: struct{}{}})
+	return encodeAcknowledgement(wireMCPError(cause))
 }

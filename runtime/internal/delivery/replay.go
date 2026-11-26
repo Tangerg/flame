@@ -25,6 +25,13 @@ type storedOutcome struct {
 	Problem *protocol.ProblemData `json:"problem,omitzero"`
 }
 
+func encodeAcknowledgement(err error) ([]byte, error) {
+	if err != nil {
+		return encodeStoredOutcome(failed(projectError(err)))
+	}
+	return encodeStoredOutcome(protocol.OperationResult{Value: struct{}{}})
+}
+
 type keyedCall struct {
 	replay      *operation.Replay
 	method      *Method

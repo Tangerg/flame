@@ -22,8 +22,5 @@ func skillMoveReplay(to skills.Lifecycle) func(*Handler, context.Context, protoc
 }
 
 func EncodeSkillMoveReceipt(cause error) ([]byte, error) {
-	if cause != nil {
-		return encodeStoredOutcome(failed(projectError(mapSkillError(cause))))
-	}
-	return encodeStoredOutcome(protocol.OperationResult{Value: struct{}{}})
+	return encodeAcknowledgement(mapSkillError(cause))
 }

@@ -1958,6 +1958,8 @@ The selected `flame.skill-learning.v2` provider owns learning cadence, mining pr
 
 A proposal revision identifies its original provider command. Explicit review resolves that retained command and its original release. The host checks the authorized target and file preimage and records the identity of the staged file before placing it. An approved revision replaces `SKILL.md` in the existing bundle. The proposal supplies the description and instructions, and the bundle supplies its other frontmatter and resources. Forks and restarts preserve the source Session and review identity. Revoking the original release prevents further publication from its queue. The provider independently advises on archival using the host's usage observations. See [the Skills package](../plugins/skills/README.md).
 
+Keyed reviews retain the resolved workspace and exact proposal before dispatch. A recovered rejection reads its original provider receipt. Approval recovery uses the original publication confirmation when it exists. An unsettled confirmation retains the earlier publication permit and resumes from the staged file's evidence.
+
 ## Discovered Skill inspection
 
 `skills.discovered.list` returns a complete bounded `skills` catalog and `diagnostics`, replacing the former page shape. `skills.discovered.get` / `GetDiscoveredSkill` reads one named document on demand and returns its selected scope, source path, instructions, and SHA-256 revision of the exact document bytes. Upgrade consumers together; there is no legacy page adapter.

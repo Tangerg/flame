@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"path/filepath"
 	"slices"
 	"strings"
 	"unicode/utf8"
@@ -206,28 +207,34 @@ func validateSkillSummary(summary SkillSummary) error {
 	}).Validate()
 }
 
-func (s *Skills) ApproveProposal(ctx context.Context, cwd string, ref skills.ProposalRef) error {
-	if err := ref.Validate(); err != nil {
-		return err
+type SkillReviewTarget struct {
+	Root     string             `json:"root"`
+	Proposal skills.ProposalRef `json:"proposal"`
+}
+
+func (r SkillReviewTarget) Validate() error {
+	if !filepath.IsAbs(r.Root) {
+		return errors.New("workspace: a Skill review requires its resolved root")
 	}
+	return r.Proposal.Validate()
+}
+
+func (s *Skills) ResolveReviewTarget(cwd string, ref skills.ProposalRef) (SkillReviewTarget, error) {
 	root, err := s.scope.ResolveRoot(cwd)
 	if err != nil {
-		return err
+		return SkillReviewTarget{}, err
 	}
-	identities, err := s.proposals.ApproveProposal(ctx, root, ref)
+	return SkillReviewTarget{Root: root, Proposal: ref}, nil
+}
+
+func (s *Skills) ApproveProposal(ctx context.Context, review SkillReviewTarget) error {
+	identities, err := s.proposals.ApproveProposal(ctx, review.Root, review.Proposal)
 	s.publishSkillMutation(identities)
 	return err
 }
 
-func (s *Skills) RejectProposal(ctx context.Context, cwd string, ref skills.ProposalRef) error {
-	if err := ref.Validate(); err != nil {
-		return err
-	}
-	root, err := s.scope.ResolveRoot(cwd)
-	if err != nil {
-		return err
-	}
-	return s.proposals.RejectProposal(ctx, root, ref)
+func (s *Skills) RejectProposal(ctx context.Context, review SkillReviewTarget) error {
+	return s.proposals.RejectProposal(ctx, review.Root, review.Proposal)
 }
 
 func (s *Skills) publishSkillMutation(identities []string) {

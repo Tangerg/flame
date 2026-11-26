@@ -5,6 +5,7 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
+	"github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/domain/skills"
 )
 
@@ -16,7 +17,7 @@ const (
 	SkillsLibraryRestore   Name = "skills.library.restore"
 	SkillsProposalsList    Name = "skills.proposals.list"
 	SkillsProposalsApprove Name = "skills.proposals.approve"
-	skillsProposalsReject  Name = "skills.proposals.reject"
+	SkillsProposalsReject  Name = "skills.proposals.reject"
 )
 
 func registerSkills(registry *Registry) {
@@ -62,25 +63,8 @@ func registerSkills(registry *Registry) {
 		return service.ListSkillProposals(ctx, request)
 	})
 
-	registry.commandAck(MethodMeta{
-		Name: SkillsProposalsApprove, GoName: "ApproveSkillProposal",
-		Errors:          []string{protocol.ErrWorkspaceUnavailable.Error(), protocol.ErrRevisionConflict.Error()},
-		CapabilityRules: requires(protocol.FeatureSkills),
-	}, func(service interface {
-		ApproveSkillProposal(context.Context, protocol.SkillProposalRef) error
-	}, ctx context.Context, request protocol.SkillProposalRef) error {
-		return service.ApproveSkillProposal(ctx, request)
-	})
-
-	registry.commandAck(MethodMeta{
-		Name: skillsProposalsReject, GoName: "RejectSkillProposal",
-		Errors:          []string{protocol.ErrWorkspaceUnavailable.Error(), protocol.ErrRevisionConflict.Error()},
-		CapabilityRules: requires(protocol.FeatureSkills),
-	}, func(service interface {
-		RejectSkillProposal(context.Context, protocol.SkillProposalRef) error
-	}, ctx context.Context, request protocol.SkillProposalRef) error {
-		return service.RejectSkillProposal(ctx, request)
-	})
+	registerSkillReview(registry, SkillsProposalsApprove, "ApproveSkillProposal", (*workspace.Skills).ApproveProposal)
+	registerSkillReview(registry, SkillsProposalsReject, "RejectSkillProposal", (*workspace.Skills).RejectProposal)
 }
 
 func registerSkillMove(registry *Registry, method Name, goName string, destination skills.Lifecycle) {
