@@ -297,8 +297,62 @@ The two private Runtime drains reach the existing deadline.
 The private app, Runtime processes, profiles, Git fixtures, captures,
 logs, caches and checkout build outputs are removed.
 
-Next check the focus handoff when a refresh keeps the selected file
-and changes its patch from text to metadata-only evidence.
+[The Diff refresh focus repair](#diff-refresh-keeps-focus-with-the-selected-file-2026-11-27)
+qualifies a refresh that turns the same selected file into metadata-only evidence.
+
+### Diff refresh keeps focus with the selected file (2026-11-27)
+
+Two private Git files are changed. While the reader shows the text
+patch for `docs/review-target.md`, the fixture restores that file's
+HEAD bytes and changes its executable mode. Git reports zero line
+changes for the same path and one changed line in the other file.
+In signed production Wails at `15ed4b3ec`, the refresh retires Enable
+word wrap and assigns focus to the Web area.
+
+`useDiffFocusRestoration` now uses the visible file heading when the
+tracked control is detached and focus has fallen to the document
+body. The overview uses its existing recovery targets. This follows
+Better Accessibility's return-focus rule for a disappearing control
+and uses the Diff reader's existing focus history.
+
+- The initial signed Wails builds use Runtime `2026-11-26.9`.
+  The candidate Runtime serves the regenerated installed Diff resource
+  byte for byte. The resource differs from the baseline package.
+- Chinese/light/14 px/Flame Orange at 1120 × 728 with a 320 px Dock
+  opens the changed file and reaches the wrap control by keyboard.
+  Wheel input brings the last evidence line from y=1306 to y=628.
+  Native Refresh keeps the selected path and shows **没有行更改。**.
+  The view focuses the original file heading at y=111–133 with a
+  visible ring. Tab advances to **比较详情**. Escape returns to
+  the exact file row, with the other file still available.
+- English/dark/18 px/Blue (#0485F7) requests Refresh while the
+  isolated Runtime is held briefly. Cmd+L
+  moves to the Composer while the text patch is still displayed.
+  After the real reply, the file shows **No line changes.** and
+  the composer still owns the `5682` draft and focus. Resize to
+  1280 × 800, continue to `56825`, then use **Back to changed files**
+  to focus the selected file row again. The private Session has no
+  Run.
+- Fast-forward to `2650bde31` and Runtime `2026-11-26.10`, then
+  rebuild both products. The installed resource still matches.
+  Reopen the same Session at 1280 × 800, refresh the selected
+  mode-only entry from Enable word wrap, and confirm the heading,
+  Comparison details and exact file row on successive focus moves.
+  The restored draft still reads `56825`.
+
+Scoped Prettier, plugin typecheck, 44 script tests, 24 source tests,
+resource verification, Web typecheck and bootstrap, production staging,
+Runtime packaging, signed Wails and diff checks pass. The source suite
+reports seven skips. VoiceOver, other platforms and nonempty filters
+are outside this check. The three Wails instances exit normally. Each
+isolated Runtime drain reaches the existing deadline. Checkout build
+outputs and the private app, processes, profiles, Git fixtures,
+logs, captures and caches are removed.
+
+In the same task, the conversation's worktree action still reads
+`+51 −2` after a successful Diff refresh. The overview and Git both
+show one added and one removed line across the same two files. Next
+trace the worktree summary's refresh contract.
 
 ## Error notes leave retrying to their buttons (2026-11-26)
 
