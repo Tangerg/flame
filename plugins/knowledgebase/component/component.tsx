@@ -4,6 +4,7 @@ import {
   failureText,
   mutationSettlementIsUnknown,
   useTranslator,
+  watchRuntimeTopics,
   type ComponentContext,
 } from "@flame/component-sdk";
 import { projectNumber } from "@frame/sdk/json";
@@ -187,6 +188,43 @@ function Research({
   const [editing, setEditing] = useState<{ id: string; revision: number }>();
   const [first, setFirst] = useState("1");
   const [last, setLast] = useState("1");
+
+  useEffect(() => {
+    const subscription = new AbortController();
+    const signal = AbortSignal.any([context.signal, subscription.signal]);
+    void context
+      .track(() =>
+        watchRuntimeTopics(
+          context.runtime,
+          { topics: ["plugins.dataChanged", "projects.changed"] },
+          signal,
+          () => {
+            setSources([]);
+            setResults([]);
+            setDocument(undefined);
+            setClaim(undefined);
+            setRefresh((current) => current + 1);
+          },
+        ),
+      )
+      .catch((failure) => {
+        if (!signal.aborted) setError(failureText(failure));
+      });
+    return () => subscription.abort();
+  }, [context]);
+  useEffect(() => {
+    if (
+      editing &&
+      results.some(
+        (claim) => claim.id === editing.id && claim.state === "unavailable",
+      )
+    ) {
+      setEditing(undefined);
+      setStatement("");
+      setReason("");
+      setCitations([]);
+    }
+  }, [editing, results]);
 
   useEffect(() => {
     const reader = new AbortController();
