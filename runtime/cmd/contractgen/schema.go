@@ -102,7 +102,7 @@ func (s *schemaSet) stringSchema(t reflect.Type) *wiregen.Schema {
 	if values, ok := s.enums[t]; ok {
 		return s.define(t, &wiregen.Schema{Type: wiregen.SchemaTypeString, Enum: slices.Clone(values)})
 	}
-	if values, ok := enumValues(t); ok {
+	if values, ok := protocol.WireEnumValues(t); ok {
 		return s.define(t, &wiregen.Schema{Type: wiregen.SchemaTypeString, Enum: values})
 	}
 	return &wiregen.Schema{Type: wiregen.SchemaTypeString}
@@ -351,7 +351,7 @@ func discriminatorValues(t reflect.Type) []string {
 	if !ok {
 		return nil
 	}
-	values, ok := enumValues(field.Type)
+	values, ok := protocol.WireEnumValues(field.Type)
 	if !ok {
 		return nil
 	}

@@ -11101,6 +11101,10 @@
           "signature": "func(owner reflect.Type) []reflect.Type"
         },
         {
+          "name": "WireEnumValues",
+          "signature": "func(owner reflect.Type) ([]string, bool)"
+        },
+        {
           "name": "WireFieldNamed",
           "signature": "func(owner reflect.Type, name string) (WireField, bool)"
         },

@@ -92,7 +92,6 @@ const (
 	ContentBlockReference ContentBlockType = "reference"
 )
 
-//flame:enum
 type QuestionFieldType string
 
 const (

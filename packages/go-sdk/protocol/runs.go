@@ -44,6 +44,16 @@ const (
 	RunCapabilityFeatureChildRuns = RunCapabilityFeature(FeatureChildRuns)
 )
 
+func (RunCapabilityFeature) wireEnumValues() []string {
+	var values []string
+	for _, feature := range features {
+		if feature.RequiredByRun {
+			values = append(values, feature.Key)
+		}
+	}
+	return values
+}
+
 type RunCapabilities struct {
 	RequiredFeatures []RunCapabilityFeature `json:"requiredFeatures"`
 	InterruptTypes   []InterruptType        `json:"interruptTypes"`

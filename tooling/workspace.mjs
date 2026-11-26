@@ -19,6 +19,7 @@ import { stageNode } from "./node-companion.mjs";
 export const root = fileURLToPath(new URL("../", import.meta.url));
 
 const wireValidator = "packages/go-sdk/protocol/wire_constraints.generated.go";
+const wireEnumVocabulary = "packages/go-sdk/protocol/wire_enums.generated.go";
 
 export function run(
   command,
@@ -114,10 +115,15 @@ async function stampDeclarations(repository) {
 async function generateRuntimeContract(repository, env) {
   const temporary = await mkdtemp(join(tmpdir(), "flame-contract-source-"));
   try {
-    const validator = join(await realpath(repository), wireValidator);
+    const sourceRoot = await realpath(repository);
+    const validator = join(sourceRoot, wireValidator);
+    const enumVocabulary = join(sourceRoot, wireEnumVocabulary);
     const overlay = join(temporary, "sources.json");
     // A deleted wire type can leave an invalid receiver in the previous output.
-    await writeFile(overlay, JSON.stringify({ Replace: { [validator]: "" } }));
+    await writeFile(
+      overlay,
+      JSON.stringify({ Replace: { [validator]: "", [enumVocabulary]: "" } }),
+    );
     const flags = run("go", ["env", "GOFLAGS"], repository, env, true)
       .toString()
       .trim();
@@ -127,6 +133,18 @@ async function generateRuntimeContract(repository, env) {
     };
     const go = (args, member, capture = false) =>
       run("go", args, join(repository, member), sourceEnvironment, capture);
+    go(
+      [
+        "run",
+        "./wireenum",
+        "--source",
+        dirname(enumVocabulary),
+        "--out",
+        enumVocabulary,
+      ],
+      "tooling",
+    );
+    await writeFile(overlay, JSON.stringify({ Replace: { [validator]: "" } }));
     go(["generate", "./plugin/mcp"], "packages/go-sdk");
     go(
       [
@@ -212,28 +230,30 @@ async function generateRuntimeContract(repository, env) {
       ],
       "runtime",
     );
-    go(
+    const contractgen = join(temporary, "contractgen");
+    go(["build", "-o", contractgen, "./cmd/contractgen"], "runtime");
+    run(
+      contractgen,
       [
-        "run",
-        "./cmd/contractgen",
         "--out",
-        "contract",
+        join(sourceRoot, "runtime/contract"),
         "--validator",
         validator,
         "--ts",
-        "../packages/runtime-client",
+        join(sourceRoot, "packages/runtime-client"),
         "--client-values",
-        "../apps/web/src/foundation/protocolValues.generated.ts",
+        join(sourceRoot, "apps/web/src/foundation/protocolValues.generated.ts"),
         "--tool-category-fixture",
-        "../apps/web/src/test/toolCategory.generated.ts",
+        join(sourceRoot, "apps/web/src/test/toolCategory.generated.ts"),
         "--samples",
-        "contract/samples",
+        join(sourceRoot, "runtime/contract/samples"),
         "--go-local",
-        ".",
+        join(sourceRoot, "runtime"),
         "--go-client",
-        "../packages/go-sdk/client",
+        join(sourceRoot, "packages/go-sdk/client"),
       ],
-      "runtime",
+      temporary,
+      { ...env, GOWORK: "off", GOPROXY: "off" },
     );
   } finally {
     await rm(temporary, { recursive: true, force: true });
@@ -651,6 +671,10 @@ export async function checkGenerated() {
     await writeFile(
       join(scratch, wireValidator),
       "package protocol\n\nfunc (RemovedWireType) validateWire() error { return nil }\n",
+    );
+    await writeFile(
+      join(scratch, wireEnumVocabulary),
+      "package protocol\n\nfunc (RemovedWireEnum) wireEnumValues() []string { return nil }\n",
     );
     const discoverySample = join(
       scratch,

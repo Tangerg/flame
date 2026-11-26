@@ -68,7 +68,7 @@ func (t *tsEmitter) problemCodes() {
 	}
 	t.line("} as const satisfies Partial<Record<ProblemData['type'], number>>;")
 	t.line("")
-	actions, ok := enumValues(reflect.TypeFor[protocol.RecoveryAction]())
+	actions, ok := protocol.WireEnumValues(reflect.TypeFor[protocol.RecoveryAction]())
 	if !ok {
 		panic("contractgen: RecoveryAction has no registered wire values")
 	}
@@ -202,7 +202,7 @@ func (t *tsEmitter) enumValues(names []string) {
 }
 
 func (t *tsEmitter) runEventSemantics() {
-	values, ok := enumValues(reflect.TypeFor[protocol.StreamEventType]())
+	values, ok := protocol.WireEnumValues(reflect.TypeFor[protocol.StreamEventType]())
 	if !ok {
 		panic("contractgen: StreamEventType is not a registered wire enum")
 	}

@@ -50,6 +50,19 @@ func RuntimeTopics() []RuntimeTopic {
 	}
 }
 
+func (RuntimeTopic) wireEnumValues() []string {
+	topics := RuntimeTopics()
+	values := make([]string, 0, len(topics))
+	for _, topic := range topics {
+		values = append(values, string(topic))
+	}
+	return values
+}
+
+func (RuntimeEventType) wireEnumValues() []string {
+	return append(RuntimeTopic("").wireEnumValues(), string(RuntimeResync))
+}
+
 const (
 	MaxSubscriptionTopics  = 32
 	MaxSubscriptionWatches = 32

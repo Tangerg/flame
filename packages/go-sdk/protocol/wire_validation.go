@@ -14,10 +14,6 @@ type wireValidator interface {
 	validateWire(wireObject) []FieldError
 }
 
-type wireEnum interface {
-	wireEnumValues() []string
-}
-
 func ValidateWireTree(value any) error {
 	_, err := InspectWire(value)
 	return err
@@ -113,19 +109,8 @@ func validateWireValue(value reflect.Value, path string, members WireMembers) []
 }
 
 func enumViolation(value reflect.Value, path string) FieldError {
-	if !value.CanInterface() {
-		return FieldError{}
-	}
-	var values []string
-	switch enum := value.Interface().(type) {
-	case wireEnum:
-		values = enum.wireEnumValues()
-	case interface{ Values() []string }:
-		values = enum.Values()
-	default:
-		return FieldError{}
-	}
-	if slices.Contains(values, value.String()) {
+	values, closed := WireEnumValues(value.Type())
+	if !closed || slices.Contains(values, value.String()) {
 		return FieldError{}
 	}
 	return FieldError{Field: joinWirePath(path, ""), Detail: "must be one of " + strings.Join(values, ", ")}

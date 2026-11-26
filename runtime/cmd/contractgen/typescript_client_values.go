@@ -52,7 +52,7 @@ func newClientValues(set *schemaSet) (string, error) {
 	fmt.Fprintf(&out, "export const BUILTIN_TOOL_NAMES = [%s] as const;\n\n", strings.Join(wiregen.QuoteAll(toolNames), ", "))
 	out.WriteString("export type BuiltinToolName = (typeof BUILTIN_TOOL_NAMES)[number];\n\n")
 	recovery := reflect.TypeFor[protocol.RecoveryAction]()
-	actions, ok := enumValues(recovery)
+	actions, ok := protocol.WireEnumValues(recovery)
 	if !ok {
 		return "", fmt.Errorf("client scalar %s has no declared closed values", recovery)
 	}

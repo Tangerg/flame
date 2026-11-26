@@ -277,7 +277,7 @@ func runProblemTypes() []runProblemEntry {
 }
 
 func mcpStatusProblemTypes() []string {
-	values, ok := enumValues(reflect.TypeFor[protocol.MCPStatusProblemType]())
+	values, ok := protocol.WireEnumValues(reflect.TypeFor[protocol.MCPStatusProblemType]())
 	if !ok {
 		panic("contractgen: MCPStatusProblemType has no registered wire values")
 	}

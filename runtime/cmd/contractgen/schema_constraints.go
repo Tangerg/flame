@@ -31,7 +31,7 @@ func restrictAllowedValueSet(node *wiregen.Schema, owner reflect.Type, set dispa
 }
 
 func checkAllowedEnumSubset(owner reflect.Type, set dispatch.AllowedValueSet, fieldType reflect.Type) {
-	values, known := enumValues(fieldType)
+	values, known := protocol.WireEnumValues(fieldType)
 	if !known {
 		return
 	}

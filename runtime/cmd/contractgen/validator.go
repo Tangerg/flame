@@ -21,12 +21,6 @@ func newValidators(registry *delivery.Registry, shapes *dispatch.Shapes, walked 
 	for _, target := range validatorTargets(registry, shapes, walked) {
 		writeValidator(&out, target, validatorChecks(target, walked.valueConstraints(target), walked.unions[target], walked.constraints[target]))
 	}
-	for _, target := range protocolDefinitions(walked, reflect.String) {
-		values := walked.defs[defName(target)].Enum
-		if len(values) > 0 && !target.Implements(reflect.TypeFor[declaredEnum]()) {
-			fmt.Fprintf(&out, "\nfunc (%s) wireEnumValues() []string {\n\treturn %s\n}\n", target.Name(), valueList(values))
-		}
-	}
 	return out.String()
 }
 
@@ -45,7 +39,7 @@ func validatorTargets(registry *delivery.Registry, shapes *dispatch.Shapes, walk
 	for _, spec := range shapes.ValueConstraints() {
 		targets = appendValidatorTarget(targets, written, spec.GoType)
 	}
-	for _, target := range protocolDefinitions(walked, reflect.Struct) {
+	for _, target := range protocolStructs(walked) {
 		targets = appendValidatorTarget(targets, written, target)
 	}
 	return targets
@@ -59,12 +53,12 @@ func appendValidatorTarget(targets []reflect.Type, written map[reflect.Type]bool
 	return append(targets, target)
 }
 
-func protocolDefinitions(walked *schemaSet, kind reflect.Kind) []reflect.Type {
+func protocolStructs(walked *schemaSet) []reflect.Type {
 	protocolPackage := reflect.TypeFor[protocol.Session]().PkgPath()
 	var targets []reflect.Type
 	for _, name := range slices.Sorted(maps.Keys(walked.origin)) {
 		target := walked.origin[name]
-		if target.Kind() != kind || target.PkgPath() != protocolPackage ||
+		if target.Kind() != reflect.Struct || target.PkgPath() != protocolPackage ||
 			target.Name() == "" || strings.Contains(target.Name(), "[") {
 			continue
 		}
