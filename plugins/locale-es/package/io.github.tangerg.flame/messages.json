@@ -911,6 +911,7 @@
   "file.change.mod": "Modificado en el árbol de trabajo",
   "file.change.del": "Eliminado en el árbol de trabajo",
   "file.change.renamed": "Renombrado desde {{path}}",
+  "file.change.below": "Contiene cambios del árbol de trabajo",
   "packages.module.selectSession": "Selecciona una sesión para ver esta página.",
   "packages.loading": "Cargando…",
   "packages.trust": "Aprobar una versión implica confiar exactamente en su código. Los ejecutables locales usan tus permisos del sistema. Revisa origen, resumen y entradas. Seleccionar otra versión requiere una nueva aprobación.",

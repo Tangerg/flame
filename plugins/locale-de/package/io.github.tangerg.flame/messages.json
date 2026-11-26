@@ -889,6 +889,7 @@
   "file.change.mod": "Im Arbeitsbaum geändert",
   "file.change.del": "Im Arbeitsbaum gelöscht",
   "file.change.renamed": "Umbenannt von {{path}}",
+  "file.change.below": "Enthält Änderungen im Arbeitsbaum",
   "packages.module.selectSession": "Wähle eine Sitzung, um diese Seite anzuzeigen.",
   "packages.loading": "Wird geladen…",
   "packages.trust": "Mit der Genehmigung vertraust du genau diesem Code. Lokale Programme laufen mit deinen Betriebssystemrechten. Prüfe Quelle, Prüfsumme und Eingaben. Eine andere Version erfordert eine neue Genehmigung.",

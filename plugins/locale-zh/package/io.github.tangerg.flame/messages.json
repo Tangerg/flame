@@ -867,6 +867,7 @@
   "file.change.mod": "工作树中已修改",
   "file.change.del": "工作树中已删除",
   "file.change.renamed": "重命名自 {{path}}",
+  "file.change.below": "包含工作树改动",
   "packages.module.selectSession": "选择一个会话来查看此页面。",
   "packages.loading": "正在加载…",
   "packages.trust": "批准发布版本意味着信任其确切代码。本地程序以你的操作系统权限运行。请先检查来源、摘要和输入。选择其他版本需要重新批准。",

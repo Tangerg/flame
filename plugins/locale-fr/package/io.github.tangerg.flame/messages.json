@@ -911,6 +911,7 @@
   "file.change.mod": "Modifié dans l’arbre de travail",
   "file.change.del": "Supprimé dans l’arbre de travail",
   "file.change.renamed": "Renommé depuis {{path}}",
+  "file.change.below": "Contient des modifications de l’arbre de travail",
   "packages.module.selectSession": "Sélectionnez une session pour afficher cette page.",
   "packages.loading": "Chargement…",
   "packages.trust": "Approuver une version revient à faire confiance à ce code précis. Les exécutables locaux utilisent vos permissions système. Vérifiez source, empreinte et entrées. Sélectionner une autre version exige une nouvelle approbation.",

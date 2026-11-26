@@ -957,6 +957,7 @@ export const en = {
   "file.change.mod": "Modified in the working tree",
   "file.change.del": "Deleted in the working tree",
   "file.change.renamed": "Renamed from {{path}}",
+  "file.change.below": "Contains working-tree changes",
   "packages.module.selectSession": "Select a session to view this page.",
   "packages.loading": "Loading…",
   "packages.trust":

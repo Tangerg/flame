@@ -18,12 +18,26 @@ export function useChangedFiles(): WorkspaceFileChange[] | undefined {
   ).data;
 }
 
-const NO_CHANGES: ReadonlyMap<string, WorkspaceFileChange> = new Map();
+export interface WorkingTree {
+  files: ReadonlyMap<string, WorkspaceFileChange>;
+  // Folders holding a change at any depth, so a collapsed folder can still say so.
+  folders: ReadonlySet<string>;
+}
 
-export function useWorkingTreeFiles(): ReadonlyMap<string, WorkspaceFileChange> {
+const CLEAN: WorkingTree = { files: new Map(), folders: new Set() };
+
+function folderPaths(path: string): string[] {
+  const parts = path.split("/");
+  return parts.slice(1).map((_, index) => parts.slice(0, index + 1).join("/"));
+}
+
+export function useWorkingTree(): WorkingTree {
   const data = useChangedFiles();
-  return useMemo(
-    () => (data ? new Map(data.map((file) => [file.path, file])) : NO_CHANGES),
-    [data],
-  );
+  return useMemo(() => {
+    if (!data) return CLEAN;
+    const folders = new Set(
+      data.flatMap((file) => [file.path, file.previousPath ?? ""].flatMap(folderPaths)),
+    );
+    return { files: new Map(data.map((file) => [file.path, file])), folders };
+  }, [data]);
 }
