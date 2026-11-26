@@ -114,8 +114,8 @@ export function useDiffFocusRestoration(
     const lostFocus = targets.last.current?.isConnected === false;
     if (lostFocus) targets.last.current = null;
     if (!pending) {
-      if (!state.showingReader && active === document.body && lostFocus)
-        fallback?.focus();
+      if (active === document.body && lostFocus)
+        (state.showingReader ? targets.heading.current : fallback)?.focus();
       return;
     }
     if (userMovedFocus(pending, state.showingReader, active)) {
