@@ -234,7 +234,7 @@ export function ChatPanel({ onSend, ref }: Props) {
           view={
             fullPaneViewId === WORKSPACE_DOCK_CATALOG ? CATALOG_VIEW : viewsById.get(fullPaneViewId)
           }
-          dockAvailable={dockAvailable}
+          dockAvailable={hasDockOwner && dockAvailable}
           inspection={
             inspectedFullPane
               ? { returnAction: dockReturn, onKeyDown: onMaterialKeyDown }

@@ -306,7 +306,7 @@ function contributePlacedComponent(
       title: { text: entry.title },
       localizedTitles: entry.localizedTitles,
       material: entry.material,
-      dock: entry.scope === "session" ? "session" : undefined,
+      dock: entry.scope === "workspace" || entry.scope === "session" ? entry.scope : undefined,
       component: PlacedComponent,
     },
     { key: id },

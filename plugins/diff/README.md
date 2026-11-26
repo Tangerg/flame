@@ -14,6 +14,8 @@ through the package catalogs; the accepted read keeps its wire values. Host
 target/focus replacement retires the render instance and joins SDK I/O.
 
 The general entry starts at a changed-file overview with aggregate text counts.
+With an active Session, open Workspace diff from the Workspace group in the
+context dock. Branch changes remain available when the working tree is clean.
 A file-specific entry passes its normalized path to Runtime instead of searching
 a workspace-wide slice. Its independent Files command requests the workspace
 overview, retaining the current comparison. Web requests only `format: "visual"`.

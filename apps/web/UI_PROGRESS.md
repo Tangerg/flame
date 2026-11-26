@@ -499,6 +499,53 @@ Both Wails instances exit normally and the private Runtime drain
 reaches the existing deadline. The private app, processes, profile,
 fixture, logs, captures, caches and checkout build outputs are removed.
 
+### Branch Diff is reachable from the context dock (2026-11-27)
+
+The private Git fixture has a clean worktree and two committed changes
+on its review branch. In signed production Wails at `7405f0893`, the
+worktree summary is absent and the Dock catalog lists Files, Subagents
+and Session trajectory. The command menu opens the admitted Workspace
+diff full width, where Branch changes shows both files. The installed
+component's `workspace` scope already names its group. The captured
+component migration at `a8d757ec5` dropped the earlier Workspace
+registration while the Lab supplied its own.
+
+The installed workspace view now projects its workspace scope into
+the existing Dock group. The command menu checks the active Session
+when its choice is delivered. Full-width panels offer the side-by-side
+action when the Dock has a Session and room beside the conversation.
+This follows the existing grouped navigation contract and the
+workspace split used in the ZCode reference.
+
+- In Chinese/light/14 px/Flame Orange at 1120 × 728, opening the
+  command with an empty active Session leaves the full-width workspace
+  selection message and Back to conversation available.
+- In the private Session, the actual Workspace group includes
+  **工作区 diff**. Pointer selection opens it in the 320 px Dock beside
+  the conversation. Keyboard selection of Branch changes shows
+  `+53 −2` across the same two files as Git. Filter to `metrics`,
+  then open its row. Native wheel input moves the last evidence line
+  from y=1286 to y=628 while the filename keeps focus. Escape
+  restores the exact file row and the query.
+- In English/dark/18 px/Blue (#0485F7) at 1280 × 800, the Diff moves
+  from the Dock to full width and back with the same comparison and
+  query. Cmd+L continues the Composer draft from `5682` to `56825`.
+  The command menu opens the same Diff beside that conversation.
+- Close the Dock tab to return to the catalog. Disabling Diff through
+  the private Runtime removes its entry while Files stays available.
+  Enabling it restores the entry in Workspace. Git still reports a
+  clean worktree and the same two committed changes.
+
+Both production Wails builds use isolated Runtime `2026-11-26.10`.
+The installed Diff resource matches the tracked package byte for byte.
+Web typecheck, bootstrap, plugin resource verification, scoped
+Prettier, production staging, Runtime packaging, signed Wails and
+diff checks pass. The private Session records zero Runs. This check
+does not exercise VoiceOver or other platforms. Both Wails instances
+exit normally and the private Runtime drain reaches the existing
+deadline. The private app, processes, profile, Git fixture, logs,
+captures, caches and checkout build outputs are removed.
+
 ## Error notes leave retrying to their buttons (2026-11-26)
 
 Five error notes ended by narrating the buttons beside them. The sidebar's folder error said `Check the Runtime connection, then retry.` above `Retry`. The shared data-view error said `… Check the connection and retry.`, and every caller offers Retry except provider selections, whose section has its own Refresh selections. The draft notices said `Keep this window open and retry, or copy drafts.` above `Retry` and `Copy draft text`. The startup failure said `Retry, or copy the diagnostics to report it.` above `Retry` and `Copy diagnostics`. Each now stops at what the buttons can't say:
