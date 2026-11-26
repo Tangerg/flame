@@ -14,10 +14,18 @@ export const de: Record<string, string> = {
   "comparison.worktree": "Nicht committete Änderungen",
   "comparison.base": "Branch-Änderungen",
   "read.failed": "Der Diff konnte nicht gelesen werden.",
-  "status.reading": "{{name}} werden gelesen…",
-  "status.error": "{{name}} konnten nicht gelesen werden: {{error}}",
-  "status.stale": "Zeigt {{name}} aus dem letzten erfolgreichen Lesevorgang.",
-  "status.loaded": "Zeigt {{name}}.",
+  "status.reading.worktree": "Nicht committete Änderungen werden gelesen…",
+  "status.reading.base": "Branch-Änderungen werden gelesen…",
+  "status.error.worktree":
+    "Nicht committete Änderungen konnten nicht gelesen werden: {{error}}",
+  "status.error.base":
+    "Branch-Änderungen konnten nicht gelesen werden: {{error}}",
+  "status.stale.worktree":
+    "Zeigt nicht committete Änderungen aus dem letzten erfolgreichen Lesevorgang.",
+  "status.stale.base":
+    "Zeigt Branch-Änderungen aus dem letzten erfolgreichen Lesevorgang.",
+  "status.loaded.worktree": "Zeigt nicht committete Änderungen.",
+  "status.loaded.base": "Zeigt Branch-Änderungen.",
   "navigation.label": "Navigation durch geänderte Dateien",
   "navigation.position": "Datei {{position}} von {{total}}",
   "navigation.positionMatching":

@@ -13,10 +13,17 @@ export const ko: Record<string, string> = {
   "comparison.worktree": "커밋되지 않은 변경 사항",
   "comparison.base": "브랜치 변경 사항",
   "read.failed": "diff를 읽을 수 없습니다.",
-  "status.reading": "{{name}}을(를) 읽는 중…",
-  "status.error": "{{name}}을(를) 읽을 수 없습니다: {{error}}",
-  "status.stale": "마지막으로 성공한 읽기의 {{name}}을(를) 표시합니다.",
-  "status.loaded": "{{name}}을(를) 표시합니다.",
+  "status.reading.worktree": "커밋되지 않은 변경 사항을 읽는 중…",
+  "status.reading.base": "브랜치 변경 사항을 읽는 중…",
+  "status.error.worktree":
+    "커밋되지 않은 변경 사항을 읽을 수 없습니다: {{error}}",
+  "status.error.base": "브랜치 변경 사항을 읽을 수 없습니다: {{error}}",
+  "status.stale.worktree":
+    "마지막으로 성공한 읽기의 커밋되지 않은 변경 사항을 표시합니다.",
+  "status.stale.base":
+    "마지막으로 성공한 읽기의 브랜치 변경 사항을 표시합니다.",
+  "status.loaded.worktree": "커밋되지 않은 변경 사항을 표시합니다.",
+  "status.loaded.base": "브랜치 변경 사항을 표시합니다.",
   "navigation.label": "변경된 파일 탐색",
   "navigation.position": "파일 {{position}}/{{total}}",
   "navigation.positionMatching": "일치하는 파일 {{position}}/{{total}}",

@@ -33,9 +33,6 @@ import { type DiffFile, type Query, type Read } from "./diffRead";
 
 const COMPARISONS: DiffMode[] = ["worktree", "base"];
 
-const comparisonName = (t: Translate, mode: DiffMode) =>
-  t(`comparison.${mode}`);
-
 const fileSummary = (
   t: Translate,
   file: WorkspaceFileChange,
@@ -177,16 +174,11 @@ export function DiffReadStatus({
   return (
     <>
       {read.loading && (
-        <Metadata role="status">
-          {t("status.reading", {
-            name: comparisonName(t, query.mode).toLocaleLowerCase(),
-          })}
-        </Metadata>
+        <Metadata role="status">{t(`status.reading.${query.mode}`)}</Metadata>
       )}
       {read.error && (
         <Metadata role="alert">
-          {t("status.error", {
-            name: comparisonName(t, query.mode).toLocaleLowerCase(),
+          {t(`status.error.${query.mode}`, {
             error: failureText(read.error.cause, t("read.failed")),
           })}
         </Metadata>
@@ -196,16 +188,12 @@ export function DiffReadStatus({
           role="status"
           className={accepted.query.mode !== query.mode ? undefined : "sr-only"}
         >
-          {t("status.stale", {
-            name: comparisonName(t, accepted.query.mode).toLocaleLowerCase(),
-          })}
+          {t(`status.stale.${accepted.query.mode}`)}
         </Metadata>
       )}
       {accepted && settled && accepted.query === query && (
         <Metadata role="status" className="sr-only">
-          {t("status.loaded", {
-            name: comparisonName(t, accepted.query.mode).toLocaleLowerCase(),
-          })}
+          {t(`status.loaded.${accepted.query.mode}`)}
         </Metadata>
       )}
     </>

@@ -15,10 +15,17 @@ export const es: Record<string, string> = {
   "comparison.worktree": "Cambios sin confirmar",
   "comparison.base": "Cambios de la rama",
   "read.failed": "No se pudo leer el diff.",
-  "status.reading": "Leyendo {{name}}…",
-  "status.error": "No se pudo leer {{name}}: {{error}}",
-  "status.stale": "Mostrando {{name}} de la última lectura correcta.",
-  "status.loaded": "Mostrando {{name}}.",
+  "status.reading.worktree": "Leyendo los cambios sin confirmar…",
+  "status.reading.base": "Leyendo los cambios de la rama…",
+  "status.error.worktree":
+    "No se pudieron leer los cambios sin confirmar: {{error}}",
+  "status.error.base": "No se pudieron leer los cambios de la rama: {{error}}",
+  "status.stale.worktree":
+    "Mostrando los cambios sin confirmar de la última lectura correcta.",
+  "status.stale.base":
+    "Mostrando los cambios de la rama de la última lectura correcta.",
+  "status.loaded.worktree": "Mostrando los cambios sin confirmar.",
+  "status.loaded.base": "Mostrando los cambios de la rama.",
   "navigation.label": "Navegación de archivos cambiados",
   "navigation.position": "Archivo {{position}} de {{total}}",
   "navigation.positionMatching":

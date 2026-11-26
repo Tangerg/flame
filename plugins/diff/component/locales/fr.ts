@@ -15,10 +15,18 @@ export const fr: Record<string, string> = {
   "comparison.worktree": "Modifications non validées",
   "comparison.base": "Modifications de la branche",
   "read.failed": "Le diff n’a pas pu être lu.",
-  "status.reading": "Lecture de {{name}}…",
-  "status.error": "Impossible de lire {{name}} : {{error}}",
-  "status.stale": "Affichage de {{name}} depuis la dernière lecture réussie.",
-  "status.loaded": "Affichage de {{name}}.",
+  "status.reading.worktree": "Lecture des modifications non validées…",
+  "status.reading.base": "Lecture des modifications de la branche…",
+  "status.error.worktree":
+    "Impossible de lire les modifications non validées : {{error}}",
+  "status.error.base":
+    "Impossible de lire les modifications de la branche : {{error}}",
+  "status.stale.worktree":
+    "Affichage des modifications non validées depuis la dernière lecture réussie.",
+  "status.stale.base":
+    "Affichage des modifications de la branche depuis la dernière lecture réussie.",
+  "status.loaded.worktree": "Affichage des modifications non validées.",
+  "status.loaded.base": "Affichage des modifications de la branche.",
   "navigation.label": "Navigation dans les fichiers modifiés",
   "navigation.position": "Fichier {{position}} sur {{total}}",
   "navigation.positionMatching":
