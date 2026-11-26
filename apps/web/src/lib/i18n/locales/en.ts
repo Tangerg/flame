@@ -935,7 +935,7 @@ export const en = {
   "workIndex.row.waiting_one": "{{count}} waiting",
   "workIndex.row.waiting_other": "{{count}} waiting",
   "settings.font.codeSize": "Code size",
-  "settings.font.followUi": "Follow UI",
+  "settings.font.followUi": "Same as interface",
   "dock.action.expand": "Open full width",
   "dock.action.openFull": "Open material full width",
   "composer.add": "Add to message",
