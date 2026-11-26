@@ -175,11 +175,11 @@ func (r *Client) ListMCPTools(ctx context.Context, request protocol.MCPListTools
 func (r *Client) ReconnectMCPServer(ctx context.Context, request protocol.MCPServerRequest, options protocol.CommandOptions) error {
 	return r.invokeAck[protocol.MCPServerRequest](ctx, "mcp.servers.reconnect", request, options.Metadata())
 }
-func (r *Client) CreateMCPAuthorizationAttempt(ctx context.Context, request protocol.CreateMCPAuthorizationAttemptRequest, options protocol.CommandOptions) (*protocol.MCPAuthorizationAttempt, error) {
-	return r.invoke[protocol.CreateMCPAuthorizationAttemptRequest, *protocol.MCPAuthorizationAttempt](ctx, "mcp.authorizationAttempts.create", request, options.Metadata())
+func (r *Client) CreateMCPAuthorizationAttempt(ctx context.Context, request protocol.CreateMCPAuthorizationAttemptRequest, options protocol.CommandOptions) (*protocol.MCPAuthorizationAttemptRef, error) {
+	return r.invoke[protocol.CreateMCPAuthorizationAttemptRequest, *protocol.MCPAuthorizationAttemptRef](ctx, "mcp.authorizationAttempts.create", request, options.Metadata())
 }
-func (r *Client) GetMCPAuthorizationAttempt(ctx context.Context, request protocol.MCPAuthorizationAttemptRequest, options protocol.CallOptions) (*protocol.MCPAuthorizationAttempt, error) {
-	return r.invoke[protocol.MCPAuthorizationAttemptRequest, *protocol.MCPAuthorizationAttempt](ctx, "mcp.authorizationAttempts.get", request, options.Metadata())
+func (r *Client) GetMCPAuthorizationAttempt(ctx context.Context, request protocol.MCPAuthorizationAttemptRef, options protocol.CallOptions) (*protocol.MCPAuthorizationAttempt, error) {
+	return r.invoke[protocol.MCPAuthorizationAttemptRef, *protocol.MCPAuthorizationAttempt](ctx, "mcp.authorizationAttempts.get", request, options.Metadata())
 }
 func (r *Client) OpenPluginBrowserRealm(ctx context.Context, request protocol.OpenPluginBrowserRealmRequest, options protocol.CommandOptions) (*protocol.PluginBrowserSession, error) {
 	return r.invoke[protocol.OpenPluginBrowserRealmRequest, *protocol.PluginBrowserSession](ctx, "plugins.openBrowserRealm", request, options.Metadata())

@@ -756,7 +756,7 @@
             },
             {
               "name": "CreateMCPAuthorizationAttempt",
-              "signature": "func(ctx context.Context, request protocol.CreateMCPAuthorizationAttemptRequest, options protocol.CommandOptions) (*protocol.MCPAuthorizationAttempt, error)"
+              "signature": "func(ctx context.Context, request protocol.CreateMCPAuthorizationAttemptRequest, options protocol.CommandOptions) (*protocol.MCPAuthorizationAttemptRef, error)"
             },
             {
               "name": "CreateMCPServer",
@@ -816,7 +816,7 @@
             },
             {
               "name": "GetMCPAuthorizationAttempt",
-              "signature": "func(ctx context.Context, request protocol.MCPAuthorizationAttemptRequest, options protocol.CallOptions) (*protocol.MCPAuthorizationAttempt, error)"
+              "signature": "func(ctx context.Context, request protocol.MCPAuthorizationAttemptRef, options protocol.CallOptions) (*protocol.MCPAuthorizationAttempt, error)"
             },
             {
               "name": "GetMCPToolExposure",
@@ -10722,7 +10722,7 @@
         {
           "name": "Version",
           "type": "untyped string",
-          "value": "\"2026-11-26.3\""
+          "value": "\"2026-11-26.4\""
         },
         {
           "name": "WorkspaceAvailable",
@@ -13723,7 +13723,7 @@
           ]
         },
         {
-          "name": "MCPAuthorizationAttemptRequest",
+          "name": "MCPAuthorizationAttemptRef",
           "kind": "struct",
           "fields": [
             {
@@ -20125,7 +20125,7 @@
             },
             {
               "name": "CreateMCPAuthorizationAttempt",
-              "signature": "func(ctx context.Context, request protocol.CreateMCPAuthorizationAttemptRequest, options protocol.CommandOptions) (*protocol.MCPAuthorizationAttempt, error)"
+              "signature": "func(ctx context.Context, request protocol.CreateMCPAuthorizationAttemptRequest, options protocol.CommandOptions) (*protocol.MCPAuthorizationAttemptRef, error)"
             },
             {
               "name": "CreateMCPServer",
@@ -20185,7 +20185,7 @@
             },
             {
               "name": "GetMCPAuthorizationAttempt",
-              "signature": "func(ctx context.Context, request protocol.MCPAuthorizationAttemptRequest, options protocol.CallOptions) (*protocol.MCPAuthorizationAttempt, error)"
+              "signature": "func(ctx context.Context, request protocol.MCPAuthorizationAttemptRef, options protocol.CallOptions) (*protocol.MCPAuthorizationAttempt, error)"
             },
             {
               "name": "GetMCPToolExposure",

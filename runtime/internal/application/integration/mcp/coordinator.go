@@ -63,7 +63,9 @@ type ExternalWorkflow interface {
 	Affected(context.Context, []mcpserver.ID) (bool, error)
 	List(context.Context) ([]mcpserver.Server, error)
 	AdmitProbe(context.Context) (func() error, error)
-	StartAuthorization(context.Context, mcpserver.Server, AuthorizationAttemptID) (AuthorizationAttempt, func(context.Context, AuthorizationAttemptStatus) error, error)
+	StartAuthorization(context.Context, mcpserver.Server, AuthorizationAttemptID, operation.ReplayClaim) (*AuthorizationStartSettlement, error)
+	RecoverAuthorizationStart(context.Context, operation.ReplayClaim) (*AuthorizationStartSettlement, error)
+	RestoreAuthorizationStarts(context.Context) error
 	ReadAuthorization(context.Context, AuthorizationAttemptID) (AuthorizationAttempt, error)
 }
 
@@ -77,7 +79,6 @@ type Coordinator struct {
 	exposure                *ExposureState
 	mutationMu              sync.Mutex
 	statusQueue             *statusQueue
-	installedAuthorizations *authorizationAttemptStore
 	external                ExternalWorkflow
 	authorizationDeliveries pendingDeliveries
 	invalidations           invalidation.Publish
@@ -114,15 +115,14 @@ func New(cfg Config) (*Coordinator, error) {
 		return nil, errors.New("mcp: initialized exposure is required")
 	}
 	coordinator := &Coordinator{
-		external:                cfg.External,
-		registry:                cfg.Registry,
-		directory:               cfg.Directory,
-		exposureStore:           cfg.ExposureStore,
-		toolCatalog:             cfg.ToolCatalog,
-		connections:             cfg.Connections,
-		exposure:                cfg.Exposure,
-		installedAuthorizations: newAuthorizationAttemptStore(),
-		invalidations:           cfg.Invalidations,
+		external:      cfg.External,
+		registry:      cfg.Registry,
+		directory:     cfg.Directory,
+		exposureStore: cfg.ExposureStore,
+		toolCatalog:   cfg.ToolCatalog,
+		connections:   cfg.Connections,
+		exposure:      cfg.Exposure,
+		invalidations: cfg.Invalidations,
 	}
 	coordinator.statusQueue = newStatusQueue(func(name mcpserver.ID) {
 		coordinator.invalidations.Notify(invalidation.ForMCP(name))

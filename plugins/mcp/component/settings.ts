@@ -9,6 +9,7 @@ import type { MutationPromise } from "@flame/runtime-client";
 import type {
   ApprovalRule,
   MCPAuthorizationAttempt,
+  MCPAuthorizationAttemptRef,
   MCPServerID,
   MCPTool,
   MCPTestResult,
@@ -35,6 +36,21 @@ export type Feedback =
   | { kind: "error"; error: unknown }
   | { kind: "tested"; outcome: MCPTestResult["outcome"] }
   | { kind: "imported"; count: number };
+interface AuthorizationObservation {
+  server: MCPServerID;
+  reference: MCPAuthorizationAttemptRef;
+  attempt?: MCPAuthorizationAttempt;
+}
+
+export function shouldObserveAuthorization(
+  observation: AuthorizationObservation,
+): boolean {
+  return (
+    observation.attempt === undefined ||
+    observation.attempt.status.type === "pending"
+  );
+}
+
 interface Snapshot {
   servers: Read<MCPServerSettings[]>;
   tools: ReadonlyMap<string, Read<MCPTool[]>>;
@@ -44,7 +60,7 @@ interface Snapshot {
   commands: ReadonlyMap<string, Command>;
   feedback: ReadonlyMap<string, Feedback>;
   probing: ReadonlySet<string>;
-  authorizations: ReadonlyMap<string, MCPAuthorizationAttempt>;
+  authorizations: ReadonlyMap<string, AuthorizationObservation>;
   importText: string;
   importProgress?: { completed: number; total: number };
   observationFailure?: { error: unknown };
@@ -86,7 +102,7 @@ export class MCPSettings {
   readonly #listeners = new Set<() => void>();
   readonly #reads = new Map<string, AbortController>();
   readonly #batches = new Map<string, Batch>();
-  readonly #polling = new Map<string, AbortSignal>();
+  readonly #polling = new Map<MCPAuthorizationAttemptRef, AbortSignal>();
   #snapshot = initial();
   #import?: ReturnType<typeof parseMcpImport>;
   constructor(source: ComponentSource) {
@@ -121,9 +137,9 @@ export class MCPSettings {
     ]);
     this.#snapshot = { ...this.#snapshot, observationFailure: undefined };
     this.refresh(context, signal);
-    for (const attempt of this.#snapshot.authorizations.values())
-      if (attempt.status.type === "pending")
-        this.#poll(context, attempt, signal);
+    for (const authorization of this.#snapshot.authorizations.values())
+      if (shouldObserveAuthorization(authorization))
+        this.#poll(context, authorization, signal);
     void context.track(async () => {
       try {
         await watchRuntimeTopics(
@@ -397,21 +413,25 @@ export class MCPSettings {
               context.signal,
             ),
           accept: (value) => {
-            const attempt = value as MCPAuthorizationAttempt;
+            const reference = value as MCPAuthorizationAttemptRef;
             this.#snapshot = {
               ...this.#snapshot,
-              authorizations: new Map(this.#snapshot.authorizations).set(
-                key,
-                attempt,
-              ),
+              authorizations: new Map(this.#snapshot.authorizations).set(key, {
+                server,
+                reference,
+              }),
             };
           },
         },
       ],
       (context) => {
-        const attempt = this.#snapshot.authorizations.get(key);
-        if (!context.signal.aborted && attempt?.status.type === "pending")
-          this.#poll(context, attempt, context.signal);
+        const authorization = this.#snapshot.authorizations.get(key);
+        if (
+          !context.signal.aborted &&
+          authorization &&
+          shouldObserveAuthorization(authorization)
+        )
+          this.#poll(context, authorization, context.signal);
       },
     );
   }
@@ -567,53 +587,62 @@ export class MCPSettings {
   }
   retryAuthorization(context: ComponentContext, server: MCPServerID) {
     this.#assert(context);
-    const attempt = this.#snapshot.authorizations.get(serverKey(server));
-    if (attempt?.status.type === "pending") {
+    const authorization = this.#snapshot.authorizations.get(serverKey(server));
+    if (authorization && shouldObserveAuthorization(authorization)) {
       this.#feedback(serverKey(server));
       this.#publish();
-      this.#poll(context, attempt, context.signal);
+      this.#poll(context, authorization, context.signal);
     }
   }
   #poll(
     context: ComponentContext,
-    initialAttempt: MCPAuthorizationAttempt,
+    authorization: AuthorizationObservation,
     parent: AbortSignal,
   ) {
-    const previous = this.#polling.get(initialAttempt.id);
+    const { reference, server } = authorization;
+    const previous = this.#polling.get(reference);
     if (previous && !previous.aborted) return;
     const signal = AbortSignal.any([
       parent,
       context.signal,
       this.#source.signal,
     ]);
-    this.#polling.set(initialAttempt.id, signal);
+    this.#polling.set(reference, signal);
     void context.track(async () => {
-      let attempt = initialAttempt;
-      const key = serverKey(attempt.server);
+      let observed = authorization;
+      const key = serverKey(server);
+      const current = () =>
+        this.#snapshot.authorizations.get(key)?.reference === reference;
       try {
-        while (attempt.status.type === "pending") {
-          await pollDelay(signal);
-          attempt = await context.runtime.mcp.authorizationAttempts.get(
-            attempt.id,
+        while (shouldObserveAuthorization(observed)) {
+          if (observed.attempt) await pollDelay(signal);
+          const attempt = await context.runtime.mcp.authorizationAttempts.get(
+            reference.attemptId,
             signal,
           );
-          if (signal.aborted) return;
+          if (signal.aborted || !current()) return;
+          if (
+            attempt.id !== reference.attemptId ||
+            !sameMCPServer(attempt.server, server)
+          ) {
+            throw new Error(
+              "MCP authorization status belongs to another attempt",
+            );
+          }
+          observed = { ...authorization, attempt };
           this.#snapshot = {
             ...this.#snapshot,
             authorizations: new Map(this.#snapshot.authorizations).set(
               key,
-              attempt,
+              observed,
             ),
           };
           this.#publish();
         }
         this.refresh(context, signal);
       } catch (error) {
-        if (!signal.aborted) {
-          if (
-            isErrorType(error, "mcp_authorization_attempt_not_found") &&
-            this.#snapshot.authorizations.get(key)?.id === initialAttempt.id
-          ) {
+        if (!signal.aborted && current()) {
+          if (isErrorType(error, "mcp_authorization_attempt_not_found")) {
             const authorizations = new Map(this.#snapshot.authorizations);
             authorizations.delete(key);
             this.#snapshot = { ...this.#snapshot, authorizations };
@@ -623,8 +652,8 @@ export class MCPSettings {
           this.#publish();
         }
       } finally {
-        if (this.#polling.get(initialAttempt.id) === signal)
-          this.#polling.delete(initialAttempt.id);
+        if (this.#polling.get(reference) === signal)
+          this.#polling.delete(reference);
       }
     });
   }

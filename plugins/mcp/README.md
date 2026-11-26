@@ -98,6 +98,11 @@ their original identity and coherent pending or terminal times; private SQL
 constraints also refuse a finish before its start. This schema change requires a
 fresh development directory for the connector; no conversion is performed.
 
+The start command records the new attempt and its original receipt atomically.
+Runtime acknowledges the attempt ID before it begins the interactive transport.
+The `mcp.authorizationAttempts.get` query supplies status by ID, including after
+replaying a creation request.
+
 Disabling or removing the selected connector withdraws external tools. Installed package
 backends retain their own Frame bindings. Selecting the original connector again restores
 its directory. Restart marks interrupted sign-ins as unconfirmed and preserves completed attempts

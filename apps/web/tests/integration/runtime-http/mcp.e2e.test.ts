@@ -71,7 +71,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: MCP", () => {
     await runtimeEvents.return?.();
   }, 30_000);
 
-  it("handshakes imported stdio and Streamable HTTP material through the production gateway", async () => {
+  it("handshakes imported MCP servers and reads authorization from the owner", async () => {
     const requests: string[] = [];
     const authorization: (string | undefined)[] = [];
     const headers: (string | string[] | undefined)[] = [];
@@ -138,6 +138,36 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: MCP", () => {
       expect(requests).toContain("tools/list");
       expect(new Set(authorization)).toEqual(new Set(["Bearer import-fixture"]));
       expect(new Set(headers)).toEqual(new Set(["exact"]));
+
+      const withStaticAuth = imported.map(mcpCandidate).find((input) => input.name === "import-http");
+      if (!withStaticAuth) throw new Error("missing imported Streamable HTTP server");
+      const staticServer = { origin: { type: "user" as const }, name: withStaticAuth.name };
+      await fixture.client.mcp.create(withStaticAuth);
+      const staticStatus = async () =>
+        (await fixture.client.mcp.list()).data.find((entry) => entry.id.name === staticServer.name);
+      await expect.poll(staticStatus).toMatchObject({ status: { type: "connected" } });
+      await expect(fixture.client.mcp.authorizationAttempts.create(staticServer)).rejects.toSatisfy(
+        (error: unknown) => error instanceof RpcError && error.data.type === "invalid_params",
+      );
+      await expect(staticStatus()).resolves.toMatchObject({ status: { type: "connected" } });
+
+      const serverId = { origin: { type: "user" as const }, name: "http-e2e-authorization" };
+      await fixture.client.mcp.create({
+        name: serverId.name,
+        enabled: true,
+        connection: { type: "streamableHttp", url: `http://127.0.0.1:${address.port}/mcp` },
+        handshakeTimeout: { type: "unbounded" },
+      });
+      const start = fixture.client.mcp.authorizationAttempts.create(serverId);
+      const reference = await start;
+      expect(reference).toEqual({ attemptId: expect.any(String) });
+      const read = () => fixture.client.mcp.authorizationAttempts.get(reference.attemptId);
+      await expect.poll(read, { timeout: 5_000 }).toMatchObject({
+        id: reference.attemptId, server: serverId, status: { type: "succeeded" },
+      });
+      const settled = await read();
+      await expect(start.retry()).resolves.toEqual(reference);
+      await expect(read()).resolves.toEqual(settled);
     } finally {
       remote.closeAllConnections();
       await new Promise<void>((resolve, reject) =>

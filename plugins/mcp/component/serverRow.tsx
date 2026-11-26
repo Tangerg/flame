@@ -15,7 +15,7 @@ import {
   type Tone,
 } from "@flame/ui";
 import { serverKey, type MCPServerSettings } from "./model";
-import type { MCPSettings } from "./settings";
+import { shouldObserveAuthorization, type MCPSettings } from "./settings";
 import { ServerForm } from "./serverForm";
 import { ToolControls } from "./toolControls";
 import { CommandFeedback } from "./feedback";
@@ -51,7 +51,7 @@ function ServerConnectionButton({
   busy,
 }: ServerRowProps & { signingIn: boolean; running: boolean; busy: boolean }) {
   if (!server.enabled && !signingIn) return null;
-  const needsSignIn = server.status === "needsAuth";
+  const needsSignIn = signingIn || server.status === "needsAuth";
   const label = needsSignIn
     ? signingIn
       ? "mcp.signingIn"
@@ -82,8 +82,10 @@ export function ServerRow({ context, settings, server, t }: ServerRowProps) {
   const busy = settings.busy(key);
   const [editing, setEditing] = useState<HTMLElement | null>(null);
   const panelId = useId();
-  const authorization = state.authorizations.get(key);
-  const signingIn = authorization?.status.type === "pending";
+  const observation = state.authorizations.get(key);
+  const authorization = observation?.attempt;
+  const signingIn =
+    observation !== undefined && shouldObserveAuthorization(observation);
   const tools =
     server.toolCount === undefined
       ? undefined

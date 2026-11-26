@@ -131,20 +131,16 @@ func (s *Handler) reconnectMCPServer(ctx context.Context, server protocol.MCPSer
 	return wireMCPError(s.mcp.ReconnectServer(ctx, name, complete))
 }
 
-func (s *Handler) CreateMCPAuthorizationAttempt(ctx context.Context, server protocol.MCPServerID) (*protocol.MCPAuthorizationAttempt, error) {
+func (s *Handler) CreateMCPAuthorizationAttempt(ctx context.Context, server protocol.MCPServerID) (*protocol.MCPAuthorizationAttemptRef, error) {
 	name, err := mcpServerIDFromWire(server)
 	if err != nil {
 		return nil, err
 	}
-	attempt, err := s.mcp.CreateAuthorizationAttempt(ctx, name)
+	id, err := s.mcp.StartAuthorization(ctx, name, operation.ReplayClaim{})
 	if err != nil {
 		return nil, wireMCPError(err)
 	}
-	out, err := presentMCPAuthorizationAttempt(attempt)
-	if err != nil {
-		return nil, err
-	}
-	return &out, nil
+	return authorizationAttemptRef(id), nil
 }
 
 func (s *Handler) GetMCPAuthorizationAttempt(ctx context.Context, attemptID string) (*protocol.MCPAuthorizationAttempt, error) {

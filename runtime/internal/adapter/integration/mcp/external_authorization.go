@@ -13,6 +13,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+	framecall "github.com/Tangerg/frame/call"
 )
 
 func (c *ExternalConnector) AdmitProbe(ctx context.Context) (func() error, error) {
@@ -26,44 +27,54 @@ func (c *ExternalConnector) AdmitProbe(ctx context.Context) (func() error, error
 	return func() error { return u.session.release(context.WithoutCancel(ctx)) }, nil
 }
 
-func (c *ExternalConnector) StartAuthorization(ctx context.Context, server mcpserver.Server, id mcpapp.AuthorizationAttemptID) (mcpapp.AuthorizationAttempt, func(context.Context, mcpapp.AuthorizationAttemptStatus) error, error) {
+func (c *ExternalConnector) StartAuthorization(ctx context.Context, server mcpserver.Server, id mcpapp.AuthorizationAttemptID, receipt operation.ReplayClaim) (settlement *mcpapp.AuthorizationStartSettlement, returned error) {
 	u, err := c.acquire(ctx)
 	if err != nil {
-		return mcpapp.AuthorizationAttempt{}, nil, err
+		return nil, err
 	}
 	if u == nil {
-		return mcpapp.AuthorizationAttempt{}, nil, plugin.ErrUnavailable
+		return nil, plugin.ErrUnavailable
 	}
-	attempt, err := c.startAttempt(ctx, u, server, id)
+	defer func() {
+		if settlement == nil {
+			returned = errors.Join(returned, u.session.release(context.WithoutCancel(ctx)))
+		}
+	}()
+	intent, err := c.prepareAuthorizationStart(ctx, u, server, id)
 	if err != nil {
-		return mcpapp.AuthorizationAttempt{}, nil, errors.Join(err, u.session.release(context.WithoutCancel(ctx)))
+		return nil, err
 	}
-	completion := externalAttemptCompletion{
-		connector: c, server: server.ID(), id: id, source: u.source, epoch: u.epoch,
-		operationID: operation.Identity(operation.Start(ctx, extension.Automatic, c.methods.Finish.Name(), id.String())),
-		parentID:    operation.Identity(ctx),
+	pending := mcpapp.PendingAuthorizationStart{Intent: intent, Receipt: receipt}
+	if err := c.vault.PrepareAuthorizationStart(ctx, pending); err != nil {
+		return nil, err
 	}
-	if err := u.session.release(context.WithoutCancel(ctx)); err != nil {
-		return mcpapp.AuthorizationAttempt{}, nil, err
-	}
-	return attempt, completion.finish, nil
+	return c.settleAuthorizationStart(ctx, u, pending, false)
 }
 
-func (c *ExternalConnector) startAttempt(ctx context.Context, u *connectorUse, server mcpserver.Server, id mcpapp.AuthorizationAttemptID) (mcpapp.AuthorizationAttempt, error) {
+func (c *ExternalConnector) prepareAuthorizationStart(ctx context.Context, u *connectorUse, server mcpserver.Server, id mcpapp.AuthorizationAttemptID) (mcpapp.AuthorizationIntent, error) {
 	e, found, err := c.find(ctx, u, server.Name)
-	if err != nil || !found {
-		return mcpapp.AuthorizationAttempt{}, errors.Join(err, mcpapp.ErrUnknownServer)
+	if err != nil {
+		return mcpapp.AuthorizationIntent{}, err
+	}
+	if !found {
+		return mcpapp.AuthorizationIntent{}, mcpapp.ErrUnknownServer
 	}
 	current, err := c.materialize(ctx, u, e)
-	if err != nil || !current.SameConnection(server) {
-		return mcpapp.AuthorizationAttempt{}, errors.Join(err, mcpapp.ErrUnknownServer)
-	}
-	input := wire.Start{Name: e.Name, Grant: e.LaunchGrant, Epoch: u.epoch, AttemptID: id.String()}
-	result, err := connectorCall(ctx, u, c.methods.Start, input)
 	if err != nil {
-		return mcpapp.AuthorizationAttempt{}, err
+		return mcpapp.AuthorizationIntent{}, err
 	}
-	return readStartedExternalAttempt(result, id, server.ID())
+	if !current.SameConnection(server) {
+		return mcpapp.AuthorizationIntent{}, plugin.ErrStale
+	}
+	command := operation.Bind(ctx, c.methods.Start.Name(), operation.Identity(ctx))
+	invocation, err := operation.Capture(command, framecall.Target{Scope: extension.ScopeInstallation, Reference: u.source.InstallationID.String()})
+	if err != nil {
+		return mcpapp.AuthorizationIntent{}, err
+	}
+	return mcpapp.AuthorizationIntent{
+		Source: u.source.ContributionSource(), Invocation: invocation,
+		Start: wire.Start{Name: e.Name, Grant: e.LaunchGrant, Epoch: u.epoch, AttemptID: id.String()},
+	}, nil
 }
 
 type externalAttemptCompletion struct {

@@ -27,7 +27,7 @@ var ErrOwnedByInstallation = errors.New("mcp: server is owned by installation")
 
 var ErrAuthorizationAttemptNotFound = errors.New("mcp: MCP authorization attempt not found")
 
-var ErrAuthorizationUnsupported = errors.New("mcp: MCP authorization requires streamable HTTP")
+var ErrAuthorizationUnsupported = errors.New("mcp: interactive authorization requires a user-configured Streamable HTTP server without static authorization")
 
 func (c *Coordinator) TestServer(ctx context.Context, input ServerInput) (result TestResult, err error) {
 	if err := ctx.Err(); err != nil {

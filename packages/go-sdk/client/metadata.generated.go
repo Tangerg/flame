@@ -63,7 +63,7 @@ var methodMetadata = map[string]methodMeta{
 	"mcp.servers.test":                 {Name: "mcp.servers.test", Kind: unaryMethod, Operation: queryOperation, Result: reflect.TypeFor[*protocol.MCPTestResult](), Event: nil, ResultNullable: false},
 	"mcp.tools.list":                   {Name: "mcp.tools.list", Kind: unaryMethod, Operation: queryOperation, Result: reflect.TypeFor[*protocol.Page[protocol.MCPTool]](), Event: nil, ResultNullable: false},
 	"mcp.servers.reconnect":            {Name: "mcp.servers.reconnect", Kind: unaryMethod, Operation: commandOperation, Result: reflect.TypeFor[struct{}](), Event: nil, ResultNullable: false},
-	"mcp.authorizationAttempts.create": {Name: "mcp.authorizationAttempts.create", Kind: unaryMethod, Operation: commandOperation, Result: reflect.TypeFor[*protocol.MCPAuthorizationAttempt](), Event: nil, ResultNullable: false},
+	"mcp.authorizationAttempts.create": {Name: "mcp.authorizationAttempts.create", Kind: unaryMethod, Operation: commandOperation, Result: reflect.TypeFor[*protocol.MCPAuthorizationAttemptRef](), Event: nil, ResultNullable: false},
 	"mcp.authorizationAttempts.get":    {Name: "mcp.authorizationAttempts.get", Kind: unaryMethod, Operation: queryOperation, Result: reflect.TypeFor[*protocol.MCPAuthorizationAttempt](), Event: nil, ResultNullable: false},
 	"plugins.openBrowserRealm":         {Name: "plugins.openBrowserRealm", Kind: unaryMethod, Operation: commandOperation, Result: reflect.TypeFor[*protocol.PluginBrowserSession](), Event: nil, ResultNullable: false},
 	"plugins.acquireComponent":         {Name: "plugins.acquireComponent", Kind: unaryMethod, Operation: commandOperation, Result: reflect.TypeFor[*protocol.PluginBrowserUseGrant](), Event: nil, ResultNullable: false},

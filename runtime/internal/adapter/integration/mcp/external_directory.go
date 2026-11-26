@@ -11,7 +11,6 @@ import (
 	wire "github.com/Tangerg/flame/packages/go-sdk/mcpconnector"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
-	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
@@ -95,11 +94,7 @@ func (c *ExternalConnector) RestoreDirectoryChanges(ctx context.Context) error {
 }
 
 func (c *ExternalConnector) resumeDirectoryChange(ctx context.Context, pending mcpapp.PendingDirectoryChange) (settle *mcpapp.DirectorySettlement, err error) {
-	original, found, err := plugins.CapturedContribution(ctx, c.installed.host, c.installations, c.methods.Contract, pending.Intent.Source)
-	if err != nil || !found {
-		return nil, errors.Join(operation.ErrOutcomePending, plugin.ErrUnavailable, err)
-	}
-	u, err := c.acquireBinding(ctx, original)
+	u, err := c.acquireCaptured(ctx, pending.Intent.Source)
 	if err != nil {
 		return nil, errors.Join(operation.ErrOutcomePending, err)
 	}
@@ -113,7 +108,7 @@ func (c *ExternalConnector) resumeDirectoryChange(ctx context.Context, pending m
 
 func (c *ExternalConnector) settleDirectory(ctx context.Context, u *connectorUse, pending mcpapp.PendingDirectoryChange, recoverReceipt bool) (*mcpapp.DirectorySettlement, error) {
 	intent := pending.Intent
-	ctx, method, err := c.bindDirectoryChange(ctx, u, intent)
+	ctx, method, err := bindConnectorCommand(ctx, u, intent.Source, intent.Invocation, c.methods.Change)
 	if err != nil {
 		return nil, errors.Join(operation.ErrOutcomePending, err)
 	}
@@ -161,7 +156,7 @@ func (c *ExternalConnector) settleDirectory(ctx context.Context, u *connectorUse
 			var payload []byte
 			if pending.Receipt.Key != "" {
 				var err error
-				payload, err = c.encodeReceipt(refusal)
+				payload, err = c.receipts.Directory(refusal)
 				if err != nil {
 					return errors.Join(operation.ErrOutcomePending, err)
 				}
@@ -174,15 +169,15 @@ func (c *ExternalConnector) settleDirectory(ctx context.Context, u *connectorUse
 	}, nil
 }
 
-func (c *ExternalConnector) bindDirectoryChange(ctx context.Context, u *connectorUse, intent mcpapp.DirectoryIntent) (context.Context, *pluginmcp.BoundMethod[wire.Change, wire.Decision], error) {
-	if intent.Source != u.source.ContributionSource() {
+func bindConnectorCommand[P, R any](ctx context.Context, u *connectorUse, source extension.ContributionSource, invocation framecall.Invocation, operation *pluginmcp.Method[P, R]) (context.Context, *pluginmcp.BoundMethod[P, R], error) {
+	if source != u.source.ContributionSource() {
 		return ctx, nil, plugin.ErrStale
 	}
-	ctx, err := pluginmcp.WithInvocation(ctx, intent.Invocation)
+	ctx, err := pluginmcp.WithInvocation(ctx, invocation)
 	if err != nil {
 		return ctx, nil, err
 	}
-	method, err := c.methods.Change.Bind(u.capability)
+	method, err := operation.Bind(u.capability)
 	return ctx, method, err
 }
 
@@ -190,7 +185,7 @@ func (c *ExternalConnector) verifyGrant(ctx context.Context, u *connectorUse, in
 	if intent.Change.Replacement == nil || intent.Change.Replacement.LaunchGrant != token {
 		return mcpapp.ErrInvalidServerConfiguration
 	}
-	ctx, method, err := c.bindDirectoryChange(ctx, u, intent)
+	ctx, method, err := bindConnectorCommand(ctx, u, intent.Source, intent.Invocation, c.methods.Change)
 	if err != nil {
 		return err
 	}

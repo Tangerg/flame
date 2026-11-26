@@ -32,7 +32,7 @@ type CreateMCPAuthorizationAttemptRequest struct {
 	Server MCPServerID `json:"server"`
 }
 
-type MCPAuthorizationAttemptRequest struct {
+type MCPAuthorizationAttemptRef struct {
 	AttemptID string `json:"attemptId"`
 }
 

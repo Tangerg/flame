@@ -192,7 +192,7 @@ func (*Runtime) SetToolExposure(context.Context, protocol.SetMCPToolExposureRequ
 	return
 }
 
-func (*Runtime) StartAuthorization(context.Context, protocol.MCPServerID) (_ protocol.MCPAuthorizationAttempt, err error) {
+func (*Runtime) StartAuthorization(context.Context, protocol.MCPServerID) (_ mcp.AuthorizationReference, err error) {
 	err = errUnsupported
 	return
 }

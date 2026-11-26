@@ -145,7 +145,9 @@ func buildMCPConnectors(stores *persistence.Bundle, config mcpadapter.InstalledC
 	if err != nil {
 		return nil, nil, err
 	}
-	external, err := mcpadapter.NewExternalConnector(installed, stores.Installations, stores.ProviderSelections, stores.MCPServers, delivery.EncodeMCPDirectoryReceipt)
+	external, err := mcpadapter.NewExternalConnector(installed, stores.Installations, stores.ProviderSelections, stores.MCPServers, mcpadapter.ConnectorReceipts{
+		Directory: delivery.EncodeMCPDirectoryReceipt, Authorization: delivery.EncodeMCPAuthorizationReceipt,
+	})
 	if err != nil {
 		return nil, nil, err
 	}

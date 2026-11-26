@@ -20,8 +20,8 @@ type mcpBinding interface {
 	TestMCPServer(context.Context, protocol.MCPServerCandidate, protocol.CallOptions) (*protocol.MCPTestResult, error)
 	ListMCPTools(context.Context, protocol.MCPListToolsRequest, protocol.CallOptions) (*protocol.Page[protocol.MCPTool], error)
 	ReconnectMCPServer(context.Context, protocol.MCPServerRequest, protocol.CommandOptions) error
-	CreateMCPAuthorizationAttempt(context.Context, protocol.CreateMCPAuthorizationAttemptRequest, protocol.CommandOptions) (*protocol.MCPAuthorizationAttempt, error)
-	GetMCPAuthorizationAttempt(context.Context, protocol.MCPAuthorizationAttemptRequest, protocol.CallOptions) (*protocol.MCPAuthorizationAttempt, error)
+	CreateMCPAuthorizationAttempt(context.Context, protocol.CreateMCPAuthorizationAttemptRequest, protocol.CommandOptions) (*protocol.MCPAuthorizationAttemptRef, error)
+	GetMCPAuthorizationAttempt(context.Context, protocol.MCPAuthorizationAttemptRef, protocol.CallOptions) (*protocol.MCPAuthorizationAttempt, error)
 }
 
 func (r *Connection) Servers(ctx context.Context) ([]protocol.MCPServer, error) {
@@ -146,28 +146,48 @@ func (r *Connection) Tools(ctx context.Context, server *protocol.MCPServerID) ([
 	return values, nil
 }
 
-func (r *Connection) StartAuthorization(ctx context.Context, server protocol.MCPServerID) (protocol.MCPAuthorizationAttempt, error) {
+func (r *Connection) StartAuthorization(ctx context.Context, server protocol.MCPServerID) (mcp.AuthorizationReference, error) {
 	request := protocol.CreateMCPAuthorizationAttemptRequest{Server: server}
 	if err := protocol.ValidateWireTree(request); err != nil {
-		return protocol.MCPAuthorizationAttempt{}, fmt.Errorf("start MCP authorization: %w", err)
+		return mcp.AuthorizationReference{}, fmt.Errorf("start MCP authorization: %w", err)
 	}
 	options := r.commandOptions()
 	result, err := r.mcp.CreateMCPAuthorizationAttempt(ctx, request, options)
-	return projectMCPAuthorizationResult("start MCP authorization", mcpAuthorizationIdentity{server: request.Server}, result, err)
+	if err != nil {
+		return mcp.AuthorizationReference{}, classifyError(err)
+	}
+	if result == nil {
+		return mcp.AuthorizationReference{}, runtimeContractViolation("start MCP authorization returned nil")
+	}
+	reference := mcp.AuthorizationReference{ID: result.AttemptID, Server: server}
+	if err := reference.Validate(); err != nil {
+		return mcp.AuthorizationReference{}, runtimeContractViolation("start MCP authorization returned an invalid reference: %v", err)
+	}
+	return reference, nil
 }
 
 func (r *Connection) GetAuthorization(ctx context.Context, reference mcp.AuthorizationReference) (protocol.MCPAuthorizationAttempt, error) {
 	if err := reference.Validate(); err != nil {
 		return protocol.MCPAuthorizationAttempt{}, fmt.Errorf("get MCP authorization: %w", err)
 	}
-	request := protocol.MCPAuthorizationAttemptRequest{AttemptID: reference.ID}
+	request := protocol.MCPAuthorizationAttemptRef{AttemptID: reference.ID}
 	result, err := r.mcp.GetMCPAuthorizationAttempt(ctx, request, r.callOptions())
-	return projectMCPAuthorizationResult(
-		"get MCP authorization",
-		mcpAuthorizationIdentity{attemptID: reference.ID, server: reference.Server},
-		result,
-		err,
-	)
+	if err != nil {
+		return protocol.MCPAuthorizationAttempt{}, classifyError(err)
+	}
+	if result == nil {
+		return protocol.MCPAuthorizationAttempt{}, runtimeContractViolation("get MCP authorization returned nil")
+	}
+	if err := mcp.ValidateAuthorizationAttempt(*result); err != nil {
+		return protocol.MCPAuthorizationAttempt{}, runtimeContractViolation("get MCP authorization returned an invalid attempt: %v", err)
+	}
+	if err := requireIdentity("get MCP authorization", result.ID, reference.ID); err != nil {
+		return protocol.MCPAuthorizationAttempt{}, err
+	}
+	if result.Server != reference.Server {
+		return protocol.MCPAuthorizationAttempt{}, runtimeContractViolation("get MCP authorization returned server %q for %q", mcp.ServerLabel(result.Server), mcp.ServerLabel(reference.Server))
+	}
+	return *result, nil
 }
 
 func projectMCPCandidate(candidate mcp.Candidate) (protocol.MCPServerCandidate, error) {
@@ -210,45 +230,6 @@ func projectMCPConnectionInput(connection mcp.ConnectionInput) protocol.MCPConne
 		}
 	}
 	return projected
-}
-
-type mcpAuthorizationIdentity struct {
-	attemptID string
-	server    protocol.MCPServerID
-}
-
-func projectMCPAuthorizationResult(
-	operation string,
-	expected mcpAuthorizationIdentity,
-	result *protocol.MCPAuthorizationAttempt,
-	err error,
-) (protocol.MCPAuthorizationAttempt, error) {
-	if err != nil {
-		return protocol.MCPAuthorizationAttempt{}, classifyError(err)
-	}
-	if result == nil {
-		return protocol.MCPAuthorizationAttempt{}, runtimeContractViolation("%s returned nil", operation)
-	}
-	attempt := *result
-	if err := mcp.ValidateAuthorizationAttempt(attempt); err != nil {
-		return protocol.MCPAuthorizationAttempt{}, runtimeContractViolation(
-			"%s returned an invalid authorization attempt: %v",
-			operation,
-			err,
-		)
-	}
-	if err := requireIdentity(operation, attempt.ID, expected.attemptID); err != nil {
-		return protocol.MCPAuthorizationAttempt{}, err
-	}
-	if attempt.Server != expected.server {
-		return protocol.MCPAuthorizationAttempt{}, runtimeContractViolation(
-			"%s returned server %q for %q",
-			operation,
-			mcp.ServerLabel(attempt.Server),
-			mcp.ServerLabel(expected.server),
-		)
-	}
-	return attempt, nil
 }
 
 func clonePointer[T any](value *T) *T {

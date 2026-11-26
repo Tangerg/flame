@@ -16,7 +16,7 @@ const (
 	mcpToolsSetExposure            Name = "mcp.tools.setExposure"
 	MCPToolsList                   Name = "mcp.tools.list"
 	MCPServersReconnect            Name = "mcp.servers.reconnect"
-	mcpAuthorizationAttemptsCreate Name = "mcp.authorizationAttempts.create"
+	MCPAuthorizationAttemptsCreate Name = "mcp.authorizationAttempts.create"
 	mcpAuthorizationAttemptsGet    Name = "mcp.authorizationAttempts.get"
 )
 
@@ -105,14 +105,14 @@ func registerMCP(registry *Registry) {
 	}).commitMCPReconnect))
 
 	registry.command(MethodMeta{
-		Name: mcpAuthorizationAttemptsCreate, GoName: "CreateMCPAuthorizationAttempt",
+		Name: MCPAuthorizationAttemptsCreate, GoName: "CreateMCPAuthorizationAttempt",
 		Errors:          []string{protocol.ErrMCPServerNotFound.Error(), protocol.ErrMCPServerDisabled.Error()},
 		CapabilityRules: requires(protocol.FeatureMCP),
 	}, func(service interface {
-		CreateMCPAuthorizationAttempt(context.Context, protocol.MCPServerID) (*protocol.MCPAuthorizationAttempt, error)
-	}, ctx context.Context, request protocol.CreateMCPAuthorizationAttemptRequest) (*protocol.MCPAuthorizationAttempt, error) {
+		CreateMCPAuthorizationAttempt(context.Context, protocol.MCPServerID) (*protocol.MCPAuthorizationAttemptRef, error)
+	}, ctx context.Context, request protocol.CreateMCPAuthorizationAttemptRequest) (*protocol.MCPAuthorizationAttemptRef, error) {
 		return service.CreateMCPAuthorizationAttempt(ctx, request.Server)
-	})
+	}).withOwnedReplay((*Handler).replayMCPAuthorization)
 
 	registry.query(MethodMeta{
 		Name: mcpAuthorizationAttemptsGet, GoName: "GetMCPAuthorizationAttempt",
@@ -120,7 +120,7 @@ func registerMCP(registry *Registry) {
 		CapabilityRules: requires(protocol.FeatureMCP),
 	}, func(service interface {
 		GetMCPAuthorizationAttempt(context.Context, string) (*protocol.MCPAuthorizationAttempt, error)
-	}, ctx context.Context, request protocol.MCPAuthorizationAttemptRequest) (*protocol.MCPAuthorizationAttempt, error) {
+	}, ctx context.Context, request protocol.MCPAuthorizationAttemptRef) (*protocol.MCPAuthorizationAttempt, error) {
 		return service.GetMCPAuthorizationAttempt(ctx, request.AttemptID)
 	})
 }

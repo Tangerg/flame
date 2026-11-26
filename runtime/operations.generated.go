@@ -176,11 +176,11 @@ func (r *Runtime) ListMCPTools(ctx context.Context, request protocol.MCPListTool
 func (r *Runtime) ReconnectMCPServer(ctx context.Context, request protocol.MCPServerRequest, options protocol.CommandOptions) error {
 	return r.invokeAck[protocol.MCPServerRequest](ctx, delivery.Name("mcp.servers.reconnect"), request, options.Metadata())
 }
-func (r *Runtime) CreateMCPAuthorizationAttempt(ctx context.Context, request protocol.CreateMCPAuthorizationAttemptRequest, options protocol.CommandOptions) (*protocol.MCPAuthorizationAttempt, error) {
-	return r.invoke[protocol.CreateMCPAuthorizationAttemptRequest, *protocol.MCPAuthorizationAttempt](ctx, delivery.Name("mcp.authorizationAttempts.create"), request, options.Metadata())
+func (r *Runtime) CreateMCPAuthorizationAttempt(ctx context.Context, request protocol.CreateMCPAuthorizationAttemptRequest, options protocol.CommandOptions) (*protocol.MCPAuthorizationAttemptRef, error) {
+	return r.invoke[protocol.CreateMCPAuthorizationAttemptRequest, *protocol.MCPAuthorizationAttemptRef](ctx, delivery.Name("mcp.authorizationAttempts.create"), request, options.Metadata())
 }
-func (r *Runtime) GetMCPAuthorizationAttempt(ctx context.Context, request protocol.MCPAuthorizationAttemptRequest, options protocol.CallOptions) (*protocol.MCPAuthorizationAttempt, error) {
-	return r.invoke[protocol.MCPAuthorizationAttemptRequest, *protocol.MCPAuthorizationAttempt](ctx, delivery.Name("mcp.authorizationAttempts.get"), request, options.Metadata())
+func (r *Runtime) GetMCPAuthorizationAttempt(ctx context.Context, request protocol.MCPAuthorizationAttemptRef, options protocol.CallOptions) (*protocol.MCPAuthorizationAttempt, error) {
+	return r.invoke[protocol.MCPAuthorizationAttemptRef, *protocol.MCPAuthorizationAttempt](ctx, delivery.Name("mcp.authorizationAttempts.get"), request, options.Metadata())
 }
 func (r *Runtime) OpenPluginBrowserRealm(ctx context.Context, request protocol.OpenPluginBrowserRealmRequest, options protocol.CommandOptions) (*protocol.PluginBrowserSession, error) {
 	return r.invoke[protocol.OpenPluginBrowserRealmRequest, *protocol.PluginBrowserSession](ctx, delivery.Name("plugins.openBrowserRealm"), request, options.Metadata())

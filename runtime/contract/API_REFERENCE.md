@@ -5,7 +5,7 @@
 > method the Runtime does not serve. The adjacent JSON artifacts are the
 > machine-readable contract; this file is its mechanical human-readable index.
 
-Protocol `2026-11-26.3` · 108 methods
+Protocol `2026-11-26.4` · 108 methods
 
 ## Methods
 
@@ -1043,7 +1043,7 @@ TypeScript validator from this single registry projection.
 | `MCPServerState` | `toolCount` | `maximum(2048)` |
 | `MCPTool` | `name` | `pattern("^[A-Za-z0-9_.-]{1,128}$")` |
 | `MCPTool` | `modelName` | `pattern("^[A-Za-z0-9_-]{1,64}$")` |
-| `MCPAuthorizationAttemptRequest` | `attemptId` | `pattern("^mcpauth_[A-Z2-7]{26,64}$")` |
+| `MCPAuthorizationAttemptRef` | `attemptId` | `pattern("^mcpauth_[A-Z2-7]{26,64}$")` |
 | `MCPAuthorizationAttempt` | `id` | `pattern("^mcpauth_[A-Z2-7]{26,64}$")` |
 | `MCPConnection` | `url` | `nonEmpty` |
 | `MCPConnection` | `command` | `nonEmpty` |

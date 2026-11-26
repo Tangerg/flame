@@ -27,12 +27,21 @@ import (
 	"github.com/samber/lo"
 )
 
-type directoryVault interface {
+type connectorStore interface {
 	PrepareDirectoryChange(context.Context, mcpapp.PendingDirectoryChange, *mcpserver.Server) (mcpapp.PendingDirectoryChange, error)
 	PendingDirectoryChange(context.Context, operation.ReplayClaim) (mcpapp.PendingDirectoryChange, bool, error)
 	PendingDirectoryChanges(context.Context) ([]mcpapp.PendingDirectoryChange, error)
 	CompleteDirectoryChange(context.Context, mcpapp.PendingDirectoryChange, bool, []byte) error
+	PrepareAuthorizationStart(context.Context, mcpapp.PendingAuthorizationStart) error
+	PendingAuthorizationStart(context.Context, operation.ReplayClaim) (mcpapp.PendingAuthorizationStart, bool, error)
+	PendingAuthorizationStarts(context.Context) ([]mcpapp.PendingAuthorizationStart, error)
+	CompleteAuthorizationStart(context.Context, mcpapp.PendingAuthorizationStart, []byte) error
 	OpenGrant(context.Context, identity.InstallationID, mcpserver.ServerName, string) (mcpapp.LaunchGrant, bool, error)
+}
+
+type ConnectorReceipts struct {
+	Directory     func(error) ([]byte, error)
+	Authorization func(mcpapp.AuthorizationAttemptID, error) ([]byte, error)
 }
 
 type ExternalConnector struct {
@@ -41,21 +50,21 @@ type ExternalConnector struct {
 	installed     *Installed
 	installations plugins.Store
 	selections    plugins.SelectionStore
-	vault         directoryVault
-	encodeReceipt func(error) ([]byte, error)
+	vault         connectorStore
+	receipts      ConnectorReceipts
 	methods       connectormcp.Methods
 	epoch         atomic.Pointer[string]
 }
 
-func NewExternalConnector(installed *Installed, installations plugins.Store, selections plugins.SelectionStore, vault directoryVault, encodeReceipt func(error) ([]byte, error)) (*ExternalConnector, error) {
-	if installed == nil || lo.IsNil(installations) || lo.IsNil(selections) || lo.IsNil(vault) || encodeReceipt == nil {
-		return nil, errors.New("external mcp: installed sessions, installations, selections and directory receipts are required")
+func NewExternalConnector(installed *Installed, installations plugins.Store, selections plugins.SelectionStore, vault connectorStore, receipts ConnectorReceipts) (*ExternalConnector, error) {
+	if installed == nil || lo.IsNil(installations) || lo.IsNil(selections) || lo.IsNil(vault) || receipts.Directory == nil || receipts.Authorization == nil {
+		return nil, errors.New("external mcp: installed sessions, installations, selections and receipts are required")
 	}
 	m, err := connectormcp.NewMethods()
 	if err != nil {
 		return nil, err
 	}
-	connector := &ExternalConnector{recovered: make(map[identity.InstallationID]string), installed: installed, installations: installations, selections: selections, vault: vault, methods: m, encodeReceipt: encodeReceipt}
+	connector := &ExternalConnector{recovered: make(map[identity.InstallationID]string), installed: installed, installations: installations, selections: selections, vault: vault, methods: m, receipts: receipts}
 	connector.Invalidate()
 	return connector, nil
 }
@@ -73,6 +82,14 @@ func (c *ExternalConnector) acquire(ctx context.Context) (*connectorUse, error) 
 		return nil, err
 	}
 	return c.acquireBinding(ctx, b)
+}
+
+func (c *ExternalConnector) acquireCaptured(ctx context.Context, source extension.ContributionSource) (*connectorUse, error) {
+	binding, found, err := plugins.CapturedContribution(ctx, c.installed.host, c.installations, c.methods.Contract, source)
+	if err != nil || !found {
+		return nil, errors.Join(plugin.ErrUnavailable, err)
+	}
+	return c.acquireBinding(ctx, binding)
 }
 
 func (c *ExternalConnector) acquireBinding(ctx context.Context, b plugins.ContributionBinding) (*connectorUse, error) {

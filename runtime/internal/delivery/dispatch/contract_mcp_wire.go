@@ -123,7 +123,7 @@ func registerMCPValues(s *Shapes) {
 		Constraints: append(mcpRemoteToolIdentity(), FieldConstraint{Field: "modelName", Kind: ConstraintPattern, Value: tool.ModelNamePattern()}),
 	})
 	s.valueConstraint(FieldConstraintSpec{
-		GoType: typeOf[protocol.MCPAuthorizationAttemptRequest](),
+		GoType: typeOf[protocol.MCPAuthorizationAttemptRef](),
 		Constraints: []FieldConstraint{{
 			Field: "attemptId", Kind: ConstraintPattern, Value: mcpapp.AuthorizationAttemptIDPattern(),
 		}},

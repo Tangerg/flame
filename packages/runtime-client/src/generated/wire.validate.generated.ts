@@ -161,7 +161,7 @@ export type WireTypeName =
   | "LossReason"
   | "MCPAuthorizationAttempt"
   | "MCPAuthorizationAttemptLimits"
-  | "MCPAuthorizationAttemptRequest"
+  | "MCPAuthorizationAttemptRef"
   | "MCPAuthorizationAttemptStatus"
   | "MCPAuthorizationAttemptStatusType"
   | "MCPAuthorizationChange"
@@ -2047,7 +2047,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   MCPAuthorizationAttemptLimits: object({
     retentionSeconds: allOf([integer(), minimum("1"), maximum("9223372036")]),
   }, ["retentionSeconds"]),
-  MCPAuthorizationAttemptRequest: object({
+  MCPAuthorizationAttemptRef: object({
     attemptId: allOf([text(), pattern("^mcpauth_[A-Z2-7]{26,64}$")]),
   }, ["attemptId"]),
   MCPAuthorizationAttemptStatus: allOf([
@@ -4985,7 +4985,7 @@ const METHOD_PARAMS: Record<WireMethodName, WireCheck> = {
   "mcp.tools.list": ref(() => CHECKS.MCPListToolsRequest),
   "mcp.servers.reconnect": ref(() => CHECKS.MCPServerRequest),
   "mcp.authorizationAttempts.create": ref(() => CHECKS.CreateMCPAuthorizationAttemptRequest),
-  "mcp.authorizationAttempts.get": ref(() => CHECKS.MCPAuthorizationAttemptRequest),
+  "mcp.authorizationAttempts.get": ref(() => CHECKS.MCPAuthorizationAttemptRef),
   "plugins.openBrowserRealm": ref(() => CHECKS.OpenPluginBrowserRealmRequest),
   "plugins.acquireComponent": ref(() => CHECKS.AcquirePluginComponentRequest),
   "plugins.closeBrowserRealm": ref(() => CHECKS.ClosePluginBrowserRealmRequest),
@@ -5102,7 +5102,7 @@ const METHOD_RESULTS: Record<WireMethodName, WireCheck> = {
   "mcp.servers.test": ref(() => CHECKS.MCPTestResult),
   "mcp.tools.list": ref(() => CHECKS.PageOfMCPTool),
   "mcp.servers.reconnect": object({}, []),
-  "mcp.authorizationAttempts.create": ref(() => CHECKS.MCPAuthorizationAttempt),
+  "mcp.authorizationAttempts.create": ref(() => CHECKS.MCPAuthorizationAttemptRef),
   "mcp.authorizationAttempts.get": ref(() => CHECKS.MCPAuthorizationAttempt),
   "plugins.openBrowserRealm": ref(() => CHECKS.PluginBrowserSession),
   "plugins.acquireComponent": ref(() => CHECKS.PluginBrowserUseGrant),

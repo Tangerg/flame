@@ -359,8 +359,8 @@ func (m MCPServerCandidate) validateWire() error {
 	)
 }
 
-func (m MCPAuthorizationAttemptRequest) validateWire() error {
-	return collectWireViolations("MCPAuthorizationAttemptRequest",
+func (m MCPAuthorizationAttemptRef) validateWire() error {
+	return collectWireViolations("MCPAuthorizationAttemptRef",
 		requiredTextPattern("attemptId", m.AttemptID, "^mcpauth_[A-Z2-7]{26,64}$"),
 	)
 }

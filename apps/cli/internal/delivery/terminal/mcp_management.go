@@ -351,21 +351,22 @@ func (m *mcpScreens) AuthorizeMCPServer(argument string) error {
 	presentation := m.session.context
 	m.status.note("starting MCP authorization " + mcp.ServerLabel(server))
 	started := m.tasks.admissionMutation(mcpAuthorizationOperation,
-		func(ctx context.Context) (protocol.MCPAuthorizationAttempt, error) {
+		func(ctx context.Context) (mcp.AuthorizationReference, error) {
 			return m.service.StartAuthorization(ctx, server)
 		},
-		func(attempt protocol.MCPAuthorizationAttempt, err error) {
+		func(reference mcp.AuthorizationReference, err error) {
 			if err != nil {
 				m.message("start MCP authorization failed: " + err.Error())
 				return
 			}
 			view := &readerQuery{status: "MCP authorization"}
 			if m.session.context.current(presentation) {
-				m.reader.open(view, mcpAuthorizationDocument(attempt))
+				m.reader.open(view, paragraphDocument("MCP authorization", "reading authorization status", []string{
+					"attempt  " + reference.ID,
+					"server   " + mcp.ServerLabel(reference.Server),
+				}))
 			}
-			if attempt.Status.Type == protocol.MCPAuthorizationAttemptPending {
-				m.pollMCPAuthorization(attempt, view)
-			}
+			m.pollMCPAuthorization(reference, view)
 		},
 	)
 	if !started {
@@ -374,13 +375,13 @@ func (m *mcpScreens) AuthorizeMCPServer(argument string) error {
 	return nil
 }
 
-func (m *mcpScreens) pollMCPAuthorization(initial protocol.MCPAuthorizationAttempt, view *readerQuery) {
+func (m *mcpScreens) pollMCPAuthorization(reference mcp.AuthorizationReference, view *readerQuery) {
 	observer := mcpAuthorizationObserver{
 		service: m.service, pollInterval: mcpAuthorizationPollInterval, recovery: runtimeRecoveryBackoff,
 	}
 	started := m.tasks.application(mcpAuthorizationOperation,
 		func(ctx context.Context) (protocol.MCPAuthorizationAttempt, error) {
-			return observer.observe(ctx, initial)
+			return observer.observe(ctx, reference)
 		},
 		func(attempt protocol.MCPAuthorizationAttempt, err error) {
 			if err != nil {
@@ -392,7 +393,7 @@ func (m *mcpScreens) pollMCPAuthorization(initial protocol.MCPAuthorizationAttem
 		},
 	)
 	if !started {
-		m.message("could not observe MCP authorization " + initial.ID)
+		m.message("could not observe MCP authorization " + reference.ID)
 	}
 }
 
@@ -408,16 +409,14 @@ type mcpAuthorizationReader interface {
 
 func (m mcpAuthorizationObserver) observe(
 	ctx context.Context,
-	initial protocol.MCPAuthorizationAttempt,
+	reference mcp.AuthorizationReference,
 ) (protocol.MCPAuthorizationAttempt, error) {
-	if err := mcp.ValidateAuthorizationAttempt(initial); err != nil {
+	if err := reference.Validate(); err != nil {
 		return protocol.MCPAuthorizationAttempt{}, fmt.Errorf("observe MCP authorization: %w", err)
 	}
-	current := initial
-	reference := mcp.AuthorizationReferenceFrom(initial)
-	delay := m.pollInterval
+	var delay time.Duration
 	failures := 0
-	for current.Status.Type == protocol.MCPAuthorizationAttemptPending {
+	for {
 		if err := retry.Wait(ctx, delay); err != nil {
 			return protocol.MCPAuthorizationAttempt{}, err
 		}
@@ -445,11 +444,12 @@ func (m mcpAuthorizationObserver) observe(
 				nextReference,
 			)
 		}
-		current = next
+		if next.Status.Type != protocol.MCPAuthorizationAttemptPending {
+			return next, nil
+		}
 		failures = 0
 		delay = m.pollInterval
 	}
-	return current, nil
 }
 
 func mcpAuthorizationDocument(attempt protocol.MCPAuthorizationAttempt) readerDocument {

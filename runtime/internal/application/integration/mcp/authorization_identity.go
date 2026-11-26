@@ -25,14 +25,14 @@ func AuthorizationAttemptIDPattern() string { return authorizationAttemptIDExpre
 type AuthorizationAttemptID struct{ text string }
 
 func newAuthorizationAttemptID() AuthorizationAttemptID {
-	id, err := parseAuthorizationAttemptID(authorizationAttemptIDPrefix + rand.Text())
+	id, err := ParseAuthorizationAttemptID(authorizationAttemptIDPrefix + rand.Text())
 	if err != nil {
 		panic(fmt.Sprintf("mcp: generated invalid authorization attempt identity: %v", err))
 	}
 	return id
 }
 
-func parseAuthorizationAttemptID(text string) (AuthorizationAttemptID, error) {
+func ParseAuthorizationAttemptID(text string) (AuthorizationAttemptID, error) {
 	if !authorizationAttemptIDExpression.MatchString(text) {
 		return AuthorizationAttemptID{}, errors.New("mcp: invalid authorization attempt identity")
 	}

@@ -1,5 +1,5 @@
 {
-  "protocolVersion": "2026-11-26.3",
+  "protocolVersion": "2026-11-26.4",
   "features": [
     "reasoning",
     "multimodal",
@@ -9657,7 +9657,7 @@
       ]
     },
     {
-      "type": "MCPAuthorizationAttemptRequest",
+      "type": "MCPAuthorizationAttemptRef",
       "rules": [
         {
           "field": "attemptId",

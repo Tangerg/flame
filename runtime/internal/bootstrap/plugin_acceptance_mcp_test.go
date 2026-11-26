@@ -220,6 +220,11 @@ func TestPluginAcceptanceMCPInvalidServerKeepsSiblingsAcrossRestart(t *testing.T
 		return slices.ContainsFunc(tools, func(tool protocol.MCPTool) bool { return tool.Name == "record" })
 	}
 	first.poMCPTools(&sibling, hasRecord)
+	refused := first.endpoint.Invoke(t.Context(), delivery.MCPAuthorizationAttemptsCreate,
+		protocol.CreateMCPAuthorizationAttemptRequest{Server: sibling}, protocol.CallMetadata{IdempotencyKey: "authorize-packaged-process"})
+	if refused.Failure == nil || refused.Failure.Problem().Type != protocol.ErrInvalidParams.Error() {
+		t.Fatalf("packaged process authorization was not rejected: %+v", refused)
+	}
 	restarted := reopenPluginRuntime(t, first, &cfg)
 	listed := restarted.must(delivery.PluginsList, struct{}{}, "").(*protocol.Page[protocol.PluginInstallation])
 	if len(listed.Data) != 1 {
@@ -415,7 +420,11 @@ func TestExternalConnectorKeepsLaunchSecretsOutOfPluginAndRestoresAuthorizationR
 	case <-time.After(10 * time.Second):
 		t.Fatal("approved transport did not receive its header")
 	}
-	attempt, err := r.api.CreateMCPAuthorizationAttempt(t.Context(), serverID)
+	ref, err := r.api.CreateMCPAuthorizationAttempt(t.Context(), serverID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	attempt, err := r.api.GetMCPAuthorizationAttempt(t.Context(), ref.AttemptID)
 	if err != nil {
 		t.Fatal(err)
 	}

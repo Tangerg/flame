@@ -960,6 +960,14 @@ or seed servers. Configure new servers and credentials through the existing CLI 
 Desktop MCP controls, or the public Runtime binding. Previously persisted servers remain
 ordinary user resources; deleting one stays effective across restart.
 
+MCP sign-in creation acknowledges an immutable attempt ID. Read the attempt by
+that ID for current status. Runtime records the selected Connector release, exact
+start command and launch grant before dispatch, then commits the public receipt
+before opening the sign-in transport. A retry recovers the original Connector
+receipt. Startup never opens another browser flow for a previous connection epoch.
+Installed MCP servers use packaged processes, so interactive OAuth is available for
+user-configured Streamable HTTP sources without a static Authorization header.
+
 Typed declarations reject explicit `null`, including nested arguments, environment values
 and theme colors, instead of converting it to an implicit default. Invalid contribution
 lists receive their own diagnostic and do not withdraw independent contributions.

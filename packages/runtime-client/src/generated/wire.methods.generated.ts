@@ -62,7 +62,7 @@ import type {
   ListSessionTrajectoryRequest,
   ListSessionsRequest,
   MCPAuthorizationAttempt,
-  MCPAuthorizationAttemptRequest,
+  MCPAuthorizationAttemptRef,
   MCPListToolsRequest,
   MCPServerCandidate,
   MCPServerRequest,
@@ -1530,8 +1530,8 @@ export interface WireShapes {
   "mcp.servers.test": { params: MCPServerCandidate; result: MCPTestResult };
   "mcp.tools.list": { params: MCPListToolsRequest; result: PageOfMCPTool };
   "mcp.servers.reconnect": { params: MCPServerRequest };
-  "mcp.authorizationAttempts.create": { params: CreateMCPAuthorizationAttemptRequest; result: MCPAuthorizationAttempt };
-  "mcp.authorizationAttempts.get": { params: MCPAuthorizationAttemptRequest; result: MCPAuthorizationAttempt };
+  "mcp.authorizationAttempts.create": { params: CreateMCPAuthorizationAttemptRequest; result: MCPAuthorizationAttemptRef };
+  "mcp.authorizationAttempts.get": { params: MCPAuthorizationAttemptRef; result: MCPAuthorizationAttempt };
   "plugins.openBrowserRealm": { params: OpenPluginBrowserRealmRequest; result: PluginBrowserSession };
   "plugins.acquireComponent": { params: AcquirePluginComponentRequest; result: PluginBrowserUseGrant };
   "plugins.closeBrowserRealm": { params: ClosePluginBrowserRealmRequest };

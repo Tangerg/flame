@@ -84,7 +84,11 @@ func TestExternalAuthorizationCrashChild(t *testing.T) {
 		}
 		time.Sleep(10 * time.Millisecond)
 	}
-	attempt, err := r.api.CreateMCPAuthorizationAttempt(t.Context(), serverID)
+	ref, err := r.api.CreateMCPAuthorizationAttempt(t.Context(), serverID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	attempt, err := r.api.GetMCPAuthorizationAttempt(t.Context(), ref.AttemptID)
 	if err != nil {
 		t.Fatal(err)
 	}

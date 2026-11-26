@@ -287,7 +287,7 @@ type AuthorizationReference struct {
 
 func (a AuthorizationReference) Validate() error {
 	var problems []error
-	if err := protocol.ValidateWireTree((protocol.MCPAuthorizationAttemptRequest{AttemptID: a.ID})); err != nil {
+	if err := protocol.ValidateWireTree(protocol.MCPAuthorizationAttemptRef{AttemptID: a.ID}); err != nil {
 		problems = append(problems, err)
 	}
 	if err := protocol.ValidateWireTree(protocol.MCPServerRequest{Server: a.Server}); err != nil {

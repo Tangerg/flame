@@ -416,6 +416,15 @@ func currentSchema() []string {
 			receipt_key TEXT UNIQUE REFERENCES idempotency_records(key) ON DELETE RESTRICT,
 			UNIQUE(connector,name)
 		)`,
+		`CREATE TABLE IF NOT EXISTS pending_mcp_authorization_starts (
+			intent TEXT NOT NULL CHECK (json_valid(intent)),
+			invocation TEXT GENERATED ALWAYS AS (json_extract(intent, '$.invocation.id')) STORED NOT NULL UNIQUE,
+			connector TEXT GENERATED ALWAYS AS (json_extract(intent, '$.source.installationId')) STORED NOT NULL,
+			epoch TEXT GENERATED ALWAYS AS (json_extract(intent, '$.start.epoch')) STORED NOT NULL,
+			name TEXT GENERATED ALWAYS AS (json_extract(intent, '$.start.name')) STORED NOT NULL,
+			receipt_key TEXT UNIQUE REFERENCES idempotency_records(key) ON DELETE RESTRICT,
+			UNIQUE(connector,epoch,name)
+		)`,
 		`CREATE TABLE IF NOT EXISTS mcp_launch_grants (
 			grant_id TEXT NOT NULL PRIMARY KEY,
 			connector TEXT NOT NULL,

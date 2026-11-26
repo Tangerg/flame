@@ -80,6 +80,7 @@ import type {
   ListProjectsRequest,
   ListSessionTrajectoryRequest,
   MCPAuthorizationAttempt,
+  MCPAuthorizationAttemptRef,
   MCPServer,
   MCPTestResult,
   MCPTool,
@@ -307,7 +308,7 @@ export interface Methods {
       create: (
         server: MCPServerID,
         signal?: AbortSignal,
-      ) => MutationPromise<MCPAuthorizationAttempt>;
+      ) => MutationPromise<MCPAuthorizationAttemptRef>;
       get: (attemptId: string, signal?: AbortSignal) => Promise<MCPAuthorizationAttempt>;
     };
   };
