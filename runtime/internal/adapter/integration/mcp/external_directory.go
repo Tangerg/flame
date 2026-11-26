@@ -141,12 +141,13 @@ func (c *ExternalConnector) settleDirectory(ctx context.Context, u *connectorUse
 	if err != nil {
 		return nil, errors.Join(operation.ErrOutcomePending, err)
 	}
-	server, err := mcpserver.NewID(mcpserver.UserOrigin(), name)
+	source, err := mcpserver.ConnectorSource(u.source.InstallationID)
 	if err != nil {
 		return nil, errors.Join(operation.ErrOutcomePending, err)
 	}
+	server := source.ID(name)
 	return &mcpapp.DirectorySettlement{
-		Server: server, Refusal: refusal,
+		Source: source, Name: name, Refusal: refusal,
 		Complete: func(ctx context.Context) error {
 			defer func() {
 				if err := u.session.release(context.WithoutCancel(ctx)); err != nil {

@@ -32,6 +32,13 @@ type server struct {
 
 func (s *server) name() mcpserver.ID { return s.id }
 
+func (s *server) matchesConnection(target mcpserver.Server) bool {
+	if s.attempt != nil {
+		return s.attempt.plan.accepts(target)
+	}
+	return s.config.SameConnection(target)
+}
+
 func (s *server) markConnecting() {
 	s.session, s.tools, s.state, s.failure, s.cause = nil, nil, mcpserver.ConnectionConnecting, "", nil
 }

@@ -56,7 +56,7 @@ func (c *connections) start(servers []ServerConfig, configuration func(context.C
 	}
 	attempts := make([]*attempt, 0, len(servers))
 	for _, server := range servers {
-		attempt, err := c.beginConnect(c.lifetime, server.ID(), configuration)
+		attempt, err := c.beginConnect(c.lifetime, server.Server, configuration, replaceConnection)
 		if err != nil {
 			return err
 		}
