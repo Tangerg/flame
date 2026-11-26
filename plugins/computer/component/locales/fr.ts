@@ -17,7 +17,7 @@ export const fr = {
   "host.scope":
     "Les actions ciblent l’hôte Runtime affiché, qui peut différer de cet ordinateur.",
   "host.setup":
-    "Sélectionnez l’application ChatGPT installée dans les réglages du plugin, puis rouvrez-le. Flame lance directement son moteur CUA.",
+    "Sélectionnez l’application ChatGPT installée dans les paramètres du plugin, puis rouvrez-le. Flame lance directement son moteur CUA.",
   "open.title": "Autoriser une durée de contrôle",
   "open.help":
     "Pendant cette durée, les outils du modèle contrôlent l’hôte Runtime via le moteur de contrôle de Flame. Utilisez une console hors du bureau, du compte et du navigateur contrôlés, sur un autre appareil ou une cible isolée. Fermer cette vue ne termine pas l’autorisation.",

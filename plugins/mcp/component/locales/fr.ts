@@ -78,7 +78,7 @@ export const fr: Record<string, string> = {
   "mcp.import.invalidShape":
     "Utilisez une configuration MCP valide avec un objet « mcpServers ».",
   "mcp.import.invalidName":
-    "Le nom du serveur « {{server}} » ne respecte pas les règles de Runtime. Modifie la clé et réessaie.",
+    "Le nom du serveur « {{server}} » ne respecte pas les règles du Runtime. Modifiez la clé et réessayez.",
   "mcp.import.missingTransport":
     "Indique soit une commande, soit une URL pour le serveur « {{server}} », mais pas les deux.",
   "mcp.import.missingCommand":
@@ -108,7 +108,7 @@ export const fr: Record<string, string> = {
   "mcp.testOutcome.timedOut":
     "Le serveur n’a pas répondu à temps — vérifiez la commande ou l’URL et réessayez.",
   "mcp.testOutcome.failed":
-    "Le serveur ne s’est pas connecté ou n’a pas fourni de liste d’outils valide. Vérifiez ses réglages et réessayez.",
+    "Le serveur ne s’est pas connecté ou n’a pas fourni de liste d’outils valide. Vérifiez ses paramètres et réessayez.",
   "mcp.import.config": "Configuration JSON",
   "mcpStatus.mcp_authorization_required":
     "Ce serveur demande une connexion avant de pouvoir servir.",
@@ -117,7 +117,7 @@ export const fr: Record<string, string> = {
   "mcpStatus.mcp_tool_discovery_failed":
     "Connecté, mais ce serveur n’a pas renvoyé de liste d’outils utilisable. Vérifiez le serveur et réessayez.",
   "mcpStatus.mcp_configuration_failed":
-    "La configuration ou les identifiants enregistrés de ce serveur n’ont pas pu être utilisés. Vérifiez ses réglages et réessayez.",
+    "La configuration ou les identifiants enregistrés de ce serveur n’ont pas pu être utilisés. Vérifiez ses paramètres et réessayez.",
   "mcpStatus.mcp_dial_failed":
     "Impossible de joindre ce serveur — vérifiez la commande ou l’URL et réessayez.",
   "common.cancel": "Annuler",

@@ -63,7 +63,7 @@ export const es: Record<string, string> = {
     "Hay un proveedor listo. Cierra Ajustes para volver: tu borrador sigue ahí.",
   "providers.roles.heading": "Funciones de modelo",
   "rpcError.invalid_credentials":
-    "El proveedor rechazó la API key — revísala en los ajustes del proveedor.",
+    "El proveedor rechazó la clave de API — revísala en los ajustes del proveedor.",
   "rpcError.timeout":
     "La petición al proveedor del modelo agotó el tiempo — comprueba la conexión y reintenta.",
   title: "Proveedores de modelos",
