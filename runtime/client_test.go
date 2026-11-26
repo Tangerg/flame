@@ -181,6 +181,27 @@ func TestClientDoesNotFollowRedirectsOrTransmitCredentials(t *testing.T) {
 	}
 }
 
+func TestHTTPRefusalRetainsItsRequestIDAndDefinitiveOutcome(t *testing.T) {
+	_, server, discovery := remoteRuntime(t, testsupport.TempDirectory(t))
+	client, err := runtimeclient.Connect(t.Context(), runtimeclient.RemoteConfig{
+		Endpoint: server.URL,
+		Token:    "incorrect-test-token",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer client.Close()
+	_, err = client.CreateSession(t.Context(), protocol.CreateSessionRequest{Title: "refused before admission"}, protocol.CommandOptions{
+		IdempotencyKey:       "refused-command",
+		IdempotencyNamespace: discovery.Capabilities.Limits.Idempotency.Namespace,
+	})
+	var refusal *runtimeclient.TransportError
+	if !errors.As(err, &refusal) || refusal.StatusCode != http.StatusUnauthorized || refusal.RequestID == "" ||
+		errors.Is(err, runtimeclient.ErrAcknowledgementUnknown) {
+		t.Fatalf("HTTP refusal = %v, want a definitive unauthorized response with its request ID", err)
+	}
+}
+
 func remoteRuntime(t *testing.T, dataDirectory string) (*Runtime, *httptest.Server, *protocol.DiscoverResponse) {
 	t.Helper()
 	for _, name := range []string{"FLAME_APIKEY", "FLAME_BASEURL", "ANTHROPIC_API_KEY"} {

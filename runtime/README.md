@@ -34,6 +34,9 @@ Local HTTP requests in token-free mode must use the loopback listener authority.
 HTTP RPC scalar metadata occurs at most once. Repeated credentials, content type,
 method hints, command identities and replay cursors are refused before dispatch;
 transport order cannot select an authority from competing values.
+Core `2026-11-27.3` carries HTTP error correlation on the `Request-Id` response
+header. Both Go peers use the shared `protocol.HTTPProblem` diagnostic body,
+which supplies the generated TypeScript projection.
 Client-chosen idempotency keys must be valid UTF-8 so JSON receipt lookup can
 retain the same identity accepted through either binding.
 Protocol admission checks enum values throughout each request, including plugin

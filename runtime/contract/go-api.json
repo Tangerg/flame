@@ -10712,7 +10712,7 @@
         {
           "name": "Version",
           "type": "untyped string",
-          "value": "\"2026-11-27.2\""
+          "value": "\"2026-11-27.3\""
         },
         {
           "name": "WorkspaceAvailable",
@@ -12984,6 +12984,32 @@
               "name": "Coverage",
               "type": "GrepCoverage",
               "tag": "json:\"coverage\""
+            }
+          ]
+        },
+        {
+          "name": "HTTPProblem",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Type",
+              "type": "string",
+              "tag": "json:\"type\""
+            },
+            {
+              "name": "Title",
+              "type": "string",
+              "tag": "json:\"title\""
+            },
+            {
+              "name": "Status",
+              "type": "int",
+              "tag": "json:\"status\""
+            },
+            {
+              "name": "Detail",
+              "type": "string",
+              "tag": "json:\"detail\""
             }
           ]
         },

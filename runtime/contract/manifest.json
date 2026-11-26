@@ -1,5 +1,5 @@
 {
-  "protocolVersion": "2026-11-27.2",
+  "protocolVersion": "2026-11-27.3",
   "features": [
     "reasoning",
     "multimodal",
@@ -3335,6 +3335,12 @@
       "carrier": "error.data",
       "schema": {
         "$ref": "schema.json#/$defs/RPCFailureData"
+      }
+    },
+    {
+      "carrier": "application/problem+json",
+      "schema": {
+        "$ref": "schema.json#/$defs/HTTPProblem"
       }
     }
   ],

@@ -5,6 +5,7 @@ import {
   JSONRPC_VERSION,
   RpcError,
   RpcProtocolError,
+  RpcTransportError,
   asRunId,
   asSegmentId,
   asSessionId,
@@ -144,6 +145,46 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: protocol delivery", () => {
     } finally {
       await client.close();
       await fixture.client.sessions.delete(sessionId);
+    }
+  });
+
+  it("correlates an HTTP refusal with the Runtime response header", async () => {
+    const unsupportedMediaType = 415;
+    let original: { requestId: string; body: object } | undefined;
+    const client = fixture.createRuntimeClient(async (input, init) => {
+      if (original) return fetch(input, init);
+      const headers = new Headers(init?.headers);
+      headers.set(HTTP_HEADERS.contentType, "text/plain");
+      const response = await fetch(input, { ...init, headers });
+      expect(response.status).toBe(unsupportedMediaType);
+      const requestId = response.headers.get(HTTP_HEADERS.requestId);
+      if (!requestId) throw new Error("expected the Runtime to issue a request ID");
+      const body = (await response.json()) as object;
+      original = { requestId, body };
+      return new Response(JSON.stringify({ ...body, requestId: "unrelated-http-request" }), {
+        status: response.status,
+        headers: response.headers,
+      });
+    });
+    try {
+      const failure = await client.runtime.discover().then(
+        () => {
+          throw new Error("expected the HTTP request to be refused");
+        },
+        (error: unknown) => error,
+      );
+      if (!original) throw new Error("expected a refusal from the running Runtime");
+      expect(failure).toBeInstanceOf(RpcTransportError);
+      expect(failure).toMatchObject({
+        requestId: original.requestId,
+        status: unsupportedMediaType,
+      });
+      expect(original.body).not.toHaveProperty("requestId");
+      await expect(client.runtime.discover()).resolves.toMatchObject({
+        protocolVersion: PROTOCOL_VERSION,
+      });
+    } finally {
+      await client.close();
     }
   });
 

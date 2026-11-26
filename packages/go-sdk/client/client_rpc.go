@@ -271,7 +271,7 @@ func decodeTransportError(response *http.Response, mediaType string, limit int) 
 	if err != nil {
 		return errors.Join(failure, err)
 	}
-	var problem transportProblem
+	var problem protocol.HTTPProblem
 	if err := protocol.DecodeResponse(encoded, &problem); err == nil && problem.Status == response.StatusCode {
 		failure.Type = problem.Type
 	}

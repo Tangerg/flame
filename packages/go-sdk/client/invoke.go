@@ -70,14 +70,6 @@ func invocationOperation(meta methodMeta, request any) (operation, error) {
 	return queryOperation, nil
 }
 
-type transportProblem struct {
-	Type      string `json:"type"`
-	Title     string `json:"title"`
-	Status    int    `json:"status"`
-	Detail    string `json:"detail"`
-	RequestID string `json:"requestId,omitempty"`
-}
-
 func (r *Client) invoke[Request, Response any](
 	ctx context.Context,
 	name string,

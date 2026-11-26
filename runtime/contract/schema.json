@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Flame Runtime Protocol wire types",
-  "protocolVersion": "2026-11-27.2",
+  "protocolVersion": "2026-11-27.3",
   "$defs": {
     "AcquirePluginComponentRequest": {
       "type": "object",
@@ -3350,6 +3350,29 @@
         "coverage",
         "matches",
         "total"
+      ]
+    },
+    "HTTPProblem": {
+      "type": "object",
+      "properties": {
+        "detail": {
+          "type": "string"
+        },
+        "status": {
+          "type": "integer"
+        },
+        "title": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "detail",
+        "status",
+        "title",
+        "type"
       ]
     },
     "HealthStatus": {

@@ -1,7 +1,27 @@
 import { bodyCancellation, isPrimaryFailure, retainCleanupFailure } from "./body";
 import { errorMessage, RpcConnectionError, RpcProtocolError, RpcTransportError } from "../errors";
+import { HTTP_HEADERS, RPC_HTTP, type HTTPProblem } from "@flame/runtime-client/wire";
+import { parseJSON } from "@frame/sdk/json";
+import { projectWire, validateWire } from "../generated/wire.validate.generated";
 
 const DEFAULT_DOCUMENT_BYTES = 128 * 1024 * 1024;
+const httpProblemShape = "HTTPProblem";
+
+export function responseMediaType(response: Response): string | undefined {
+  return response.headers.get(HTTP_HEADERS.contentType)?.split(";", 1)[0]?.trim().toLowerCase();
+}
+
+export function readProblemDetail(text: string, response: Response): string | undefined {
+  if (responseMediaType(response) !== RPC_HTTP.problemMediaType) return undefined;
+  try {
+    const document = parseJSON(text);
+    if (validateWire(httpProblemShape, document).length > 0) return undefined;
+    const problem = projectWire(httpProblemShape, document) as HTTPProblem;
+    return problem.status === response.status ? problem.detail : undefined;
+  } catch {
+    return undefined;
+  }
+}
 
 export function responseDocumentLimit(configured = DEFAULT_DOCUMENT_BYTES): number {
   if (!Number.isSafeInteger(configured) || configured <= 0)

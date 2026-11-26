@@ -5,7 +5,7 @@
 > method the Runtime does not serve. The adjacent JSON artifacts are the
 > machine-readable contract; this file is its mechanical human-readable index.
 
-Protocol `2026-11-27.2` · 108 methods
+Protocol `2026-11-27.3` · 108 methods
 
 ## Methods
 

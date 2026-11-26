@@ -1,5 +1,10 @@
 import { bodyCancellation, isExpectedAbort, isPrimaryFailure } from "./body";
-import { readResponseDocument, responseDocumentLimit } from "./document";
+import {
+  readProblemDetail,
+  readResponseDocument,
+  responseDocumentLimit,
+  responseMediaType,
+} from "./document";
 import { endpointAcceptsBearer, requireRuntimeEndpoint } from "../endpoint";
 import {
   context,
@@ -12,14 +17,7 @@ import {
 import { createParser } from "eventsource-parser";
 import { createPushPullChannel } from "../channel";
 import { stringifyJSON } from "@frame/sdk/json";
-import {
-  errorMessage,
-  parseTransportProblem,
-  responseMediaType,
-  RpcConnectionError,
-  RpcProtocolError,
-  RpcTransportError,
-} from "../errors";
+import { errorMessage, RpcConnectionError, RpcProtocolError, RpcTransportError } from "../errors";
 import {
   type Transport,
   type TransportEvent,
@@ -387,9 +385,8 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
       throw error;
     }
     if (!res.ok) {
-      const problem = parseTransportProblem(text, res);
-      const requestId = problem?.requestId ?? metadata.requestId;
-      const detail = problem?.detail || res.statusText || "transport request failed";
+      const { requestId } = metadata;
+      const detail = readProblemDetail(text, res) || res.statusText || "transport request failed";
       const err = new RpcTransportError(
         `http ${res.status}: ${detail}${requestId ? ` (request ${requestId})` : ""}`,
         res.status,

@@ -1,12 +1,10 @@
-import { readResponseDocument, responseDocumentLimit } from "./transports/document";
-import { requireRuntimeEndpoint } from "./endpoint";
 import {
-  errorMessage,
-  parseTransportProblem,
-  RpcConnectionError,
-  RpcProtocolError,
-  RpcTransportError,
-} from "./errors";
+  readProblemDetail,
+  readResponseDocument,
+  responseDocumentLimit,
+} from "./transports/document";
+import { requireRuntimeEndpoint } from "./endpoint";
+import { errorMessage, RpcConnectionError, RpcProtocolError, RpcTransportError } from "./errors";
 import { parseJSON } from "@frame/sdk/json";
 import {
   projectHTTPSidecarResponse,
@@ -69,9 +67,7 @@ export function createSidecarClient(config: SidecarClientConfig): SidecarClient 
       signal,
     );
     if (!specification.responseStatuses.some((status) => status === res.status)) {
-      const problem = parseTransportProblem(text, res);
-      const requestId = problem?.requestId ?? res.headers.get(HTTP_HEADERS.requestId) ?? undefined;
-      const detail = problem?.detail || res.statusText || "sidecar request failed";
+      const detail = readProblemDetail(text, res) || res.statusText || "sidecar request failed";
       throw new RpcTransportError(
         `sidecar ${path}: http ${res.status}: ${detail}`,
         res.status,

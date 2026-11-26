@@ -125,14 +125,6 @@ func readRPCBody(r *http.Request, methodHint string) ([]byte, error) {
 	return body, err
 }
 
-type Problem struct {
-	Type      string `json:"type"`
-	Title     string `json:"title"`
-	Status    int    `json:"status"`
-	Detail    string `json:"detail"`
-	RequestID string `json:"requestId,omitempty"`
-}
-
 const transportProblemNamespace = "urn:flame:transport:"
 
 type problemKind struct {
@@ -172,12 +164,11 @@ func writeProblem(w http.ResponseWriter, kind problemKind, detail string) {
 	w.WriteHeader(kind.status)
 	// The status line is already on the wire, so a failed body write has no
 	// remaining way to change what this response says.
-	_ = json.MarshalWrite(w, Problem{
-		Type:      kind.problemType(),
-		Title:     http.StatusText(kind.status),
-		Status:    kind.status,
-		Detail:    detail,
-		RequestID: w.Header().Get(headerRequestID),
+	_ = json.MarshalWrite(w, protocol.HTTPProblem{
+		Type:   kind.problemType(),
+		Title:  http.StatusText(kind.status),
+		Status: kind.status,
+		Detail: detail,
 	})
 }
 

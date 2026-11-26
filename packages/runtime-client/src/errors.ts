@@ -1,6 +1,5 @@
-import { HTTP_HEADERS, RPC_HTTP, type ProblemData } from "@flame/runtime-client/wire";
+import type { ProblemData } from "@flame/runtime-client/wire";
 import type { WireViolation } from "./validation/wireCheck";
-import { isJSONNumber, parseJSON } from "@frame/sdk/json";
 
 type ProblemOf<Type extends ProblemData["type"]> = Type extends `plugin:${string}/${string}`
   ? Extract<ProblemData, { type: `plugin:${string}/${string}` }>
@@ -88,34 +87,5 @@ export class RpcProtocolError extends Error {
     this.name = "RpcProtocolError";
     this.violations = violations;
     this.requestId = requestId;
-  }
-}
-
-interface TransportProblem {
-  detail?: string;
-  requestId?: string;
-}
-
-export function responseMediaType(response: Response): string | undefined {
-  return response.headers.get(HTTP_HEADERS.contentType)?.split(";", 1)[0]?.trim().toLowerCase();
-}
-
-export function parseTransportProblem(
-  text: string,
-  response: Response,
-): TransportProblem | undefined {
-  if (responseMediaType(response) !== RPC_HTTP.problemMediaType) return undefined;
-  try {
-    const value = parseJSON(text);
-    if (!value || typeof value !== "object" || Array.isArray(value) || isJSONNumber(value))
-      return undefined;
-    const fields = value as Record<string, unknown>;
-    if (fields.status !== response.status) return undefined;
-    return {
-      detail: typeof fields.detail === "string" ? fields.detail : undefined,
-      requestId: typeof fields.requestId === "string" ? fields.requestId : undefined,
-    };
-  } catch {
-    return undefined;
   }
 }

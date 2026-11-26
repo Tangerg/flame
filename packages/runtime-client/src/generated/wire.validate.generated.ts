@@ -117,6 +117,7 @@ export type WireTypeName =
   | "GrepMatch"
   | "GrepRequest"
   | "GrepResult"
+  | "HTTPProblem"
   | "HealthStatus"
   | "HookEvent"
   | "HookInfo"
@@ -1516,6 +1517,12 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     matches: array(ref(() => CHECKS.GrepMatch)),
     total: allOf([integer(), minimum("0")]),
   }, ["complete", "coverage", "matches", "total"]),
+  HTTPProblem: object({
+    detail: text(),
+    status: integer(),
+    title: text(),
+    type: text(),
+  }, ["detail", "status", "title", "type"]),
   HealthStatus: enumOf(["ok", "degraded", "unhealthy"]),
   HookEvent: enumOf(["PreToolUse", "PostToolUse", "UserPromptSubmit", "SessionStart", "PreCompact", "Stop", "Notification"]),
   HookInfo: allOf([

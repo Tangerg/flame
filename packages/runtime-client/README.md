@@ -28,6 +28,8 @@ Both RPC and sidecar clients bound ordinary response documents with
 `maximumResponseBytes` (128 MiB by default), including error bodies without a length.
 HTTP transport captures its endpoint, credentials and resource limits on creation;
 later edits to the supplied configuration cannot change an admitted connection.
+HTTP errors use the response's `Request-Id` for correlation. A matching
+problem document can supply diagnostic detail.
 Every received message completes transport consumption, including a response
 rejected for a mismatched RPC identity. The original request is refused without
 settling another request or requiring cancellation to release stream backpressure.
