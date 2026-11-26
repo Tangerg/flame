@@ -179,7 +179,11 @@ export function useInspectionFocus({
       return;
     const doc = request.origin.ownerDocument;
     if (doc.activeElement === returning.activeElement || doc.activeElement === doc.body) {
-      if (request.origin.isConnected) request.origin.focus();
+      if (request.origin.isConnected) {
+        const restoreEditor = composerAccess.captureEditorFocusReturn(request.origin);
+        if (!restoreEditor) request.origin.focus();
+        else if (!isConcealed(request.origin)) restoreEditor();
+      }
       if (doc.activeElement !== request.origin) {
         (fullPaneViewId !== null
           ? mainViewRef
@@ -193,6 +197,7 @@ export function useInspectionFocus({
     }
     returningRef.current = null;
   }, [
+    composerAccess,
     inspection,
     sessionId,
     mainViewId,
@@ -227,10 +232,17 @@ export function useInspectionFocus({
         (active &&
           active === settingsReturning.activeElement &&
           (isConcealed(active) || active.closest('[data-slot="workspace-window-header"]')))) &&
-      !settingsReturning.origin.closest("[aria-disabled='true']") &&
-      handoffFocus(doc.body, settingsReturning.origin)
-    )
-      return;
+      !settingsReturning.origin.closest("[aria-disabled='true']")
+    ) {
+      const { origin } = settingsReturning;
+      const restoreEditor = composerAccess.captureEditorFocusReturn(origin);
+      if (
+        restoreEditor
+          ? origin.isConnected && !isConcealed(origin) && restoreEditor()
+          : handoffFocus(doc.body, origin)
+      )
+        return;
+    }
     // A presentation change hides owned content before WebKit settles focus:
     // entering a full pane hides the conversation and Dock, and leaving one for
     // a narrow conversation keeps the retained view inside the hidden Dock, and
@@ -250,7 +262,7 @@ export function useInspectionFocus({
     ) {
       target.focus({ preventScroll: true });
     }
-  }, [sessionId, fullPaneViewId, dockVisible, presentationRef]);
+  }, [composerAccess, sessionId, fullPaneViewId, dockVisible, presentationRef]);
 
   const returnToSource = () => {
     if (!inspection) return;

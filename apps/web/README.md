@@ -1150,6 +1150,8 @@ Back restores the retained source and its trigger; selecting the current materia
 only closes the picker. Its delayed completion respects later outside focus.
 The conversation keeps its last reading width while a full-width view covers it.
 The split follows the measured panel width again as it returns.
+Returning from an inspection or Settings to the same mounted Composer restores
+its last valid draft selection through Lexical so typing can resume there.
 The picker lifetime follows the active Session, retiring both an open query and
 any closing selection when history restores another Session's material.
 Settings, unavailable views and the catalog retain their separate task headers.

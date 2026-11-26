@@ -369,8 +369,13 @@ function Commands({ onSend, onAddImages, onAddPaste, acceptsImages }: EditorProp
   const t = useT();
   const revision = useRef<object>({});
   const lastContent = useRef<DraftContent | null>(null);
+  // Return focus in the reveal commit. On hide Lexical still needs to observe
+  // blur from the workspace's focus handoff before it stops listening.
+  useLayoutEffect(() => {
+    if (visible) editor.setEditable(true);
+  }, [editor, visible]);
   useEffect(() => {
-    editor.setEditable(visible);
+    if (!visible) editor.setEditable(false);
   }, [editor, visible]);
   useEffect(() => {
     let release = () => {};
@@ -401,8 +406,10 @@ function Commands({ onSend, onAddImages, onAddPaste, acceptsImages }: EditorProp
         restoreFocusWithSelection: () => {
           root.focus({ preventScroll: true });
           if (root.ownerDocument.activeElement !== root) return false;
+          if (!editor.isEditable() || editor.isComposing()) return true;
           const snapshot = blurredSelection;
-          if (snapshot && editor.isEditable() && !editor.isComposing()) {
+          let restored = false;
+          if (snapshot) {
             editor.update(
               () => {
                 if (
@@ -411,11 +418,13 @@ function Commands({ onSend, onAddImages, onAddPaste, acceptsImages }: EditorProp
                   $pointStillExists(snapshot.range.focus)
                 ) {
                   $setSelection(snapshot.range.clone());
+                  restored = true;
                 }
               },
               { discrete: true, tag: SKIP_SCROLL_INTO_VIEW_TAG },
             );
           }
+          if (!restored) editor.focus();
           return true;
         },
         revision: () => revision.current,

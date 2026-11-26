@@ -652,8 +652,69 @@ removed.
 
 After workspace Escape returns native focus to the Composer, typing a
 digit leaves the draft unchanged until Cmd+L reactivates editing. The
-same behavior occurs in a separate return from Agent memory. The next
-batch traces that host return.
+same behavior occurs in a separate return from Agent memory. The
+[Composer return](#composer-resumes-editing-after-workspace-returns-2026-11-27)
+fix follows that host path.
+
+### Composer resumes editing after workspace returns (2026-11-27)
+
+In signed production Wails at `35acaf744`, start with draft `2468`.
+Agent memory Escape returns its native text area and moves the caret
+from two to zero. Settings Cmd+W returns the same draft and moves the
+caret from one to zero. A digit leaves the draft unchanged on both paths.
+
+Workspace inspection and Settings return use the Composer's existing
+mounted-editor focus handoff from Find. The Composer enables Lexical
+during reveal layout and allows the native blur handoff before hiding
+disables editing. Lexical restores the last range for the same draft
+revision and surviving points. Ordinary Lexical focus supplies an
+editing selection when the saved range is unavailable. Workspace still
+owns when a return can take focus. This follows Better Accessibility's
+focus restoration guidance and the workspace's keyboard-anchor contract.
+
+- In Chinese/light/14 px/Flame Orange at 1120 × 728, Agent memory
+  Escape restores the caret at two and immediately inserts a digit,
+  producing `24568`. Settings Cmd+W restores the next caret at
+  three, and a direct key produces `245768`.
+- From a reverse selection of `57`, open the saved usage reports
+  archive. Native wheel input brings the oldest Daily row from
+  y=1044 to y=629. Pointer entry opens the report, and Escape restores
+  the same row at y=629. Pointer Back to conversation restores the
+  range starting at two with length two. Typing produces `24368`
+  and Cmd+Z restores `245768`.
+- With Settings open from the Composer, switch to English, dark,
+  18 px and Blue (#0485F7), and resize to 1280 × 800. Cmd+W
+  restores the exact caret and the next key produces `2457768`.
+  Native captures show the caret and accented input border in both
+  themes.
+- At the wider size Files can stay beside the conversation.
+  Returning from the inspected Dock restores typing at the prior
+  caret. Settings Cmd+W returns to the retained Back to files button.
+  When the original Dock header has retired, the Files region receives
+  focus. Cmd+L from the full-width Agent memory still resumes the
+  draft, and Find closes to the original caret and accepts its next
+  key there.
+
+Both native builds use private Runtime `2026-11-26.10`. All 14 report
+headers and the inspected Daily report's ID and data still match. The
+private Session records zero Runs. Native coverage uses macOS keyboard,
+pointer and accessibility inspection. VoiceOver, IME composition and
+other platforms are outside this check.
+
+Web typecheck, 81 contract tests, 58 Runtime HTTP tests, bootstrap,
+scoped Prettier and diff checks pass. The first full Web invocation used
+npm 11.19.1. The contract and Runtime projects pass again with the
+required npm 11.21.1, with the Runtime project using Go 1.27.4.
+Setup, production staging, the Runtime build and both signed Wails
+builds pass. Both Wails instances exit normally. The private Runtime
+reaches its existing drain deadline. The private app registration,
+processes, profiles, test fixtures, captures, logs, caches and checkout
+outputs are removed.
+
+Dismissing the command menu still moves an existing Composer caret
+to zero without opening a view. A native key then inserts at the
+start of the draft. The next batch traces the modal's independent
+focus return.
 
 ## Error notes leave retrying to their buttons (2026-11-26)
 
