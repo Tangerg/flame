@@ -18,7 +18,8 @@ func (c *Coordinator) ReconnectServer(ctx context.Context, name mcpserver.ID, co
 		return err
 	}
 	defer write.close()
-	if _, err := c.connectionTarget(write.requestCtx, name); err != nil {
+	target, err := c.connectionTarget(write.requestCtx, name)
+	if err != nil {
 		return err
 	}
 	if err := complete(write.requestCtx, func(context.Context) (struct{}, error) { return struct{}{}, nil }); err != nil {
@@ -27,13 +28,32 @@ func (c *Coordinator) ReconnectServer(ctx context.Context, name mcpserver.ID, co
 	start := make(chan struct{})
 	defer close(start)
 	var event *statusEvent
-	if err := c.dispatchConnection(write.ownerCtx, name, c.connections.BeginConnect, start, func() { c.statusQueue.publish(event) }, nil); err != nil {
+	begin := func(ctx context.Context) (Attempt, error) {
+		return c.connections.BeginReconnect(ctx, target)
+	}
+	if err := c.dispatchConnection(write.ownerCtx, name, begin, start, func() { c.statusQueue.publish(event) }, nil); err != nil {
 		slog.ErrorContext(write.ownerCtx, "mcp: accepted reconnect could not start", telemetry.MCPServer(name.String()), telemetry.Error(err))
 		return nil
 	}
 	event = c.statusQueue.prepare(name)
 	write.unlock()
 	return nil
+}
+
+func (c *Coordinator) realizeServer(ctx context.Context, server mcpserver.Server, start <-chan struct{}) error {
+	c.exposure.setServer(server)
+	if !server.Enabled {
+		return c.connections.Detach(server.ID())
+	}
+	begin := func(ctx context.Context) (Attempt, error) {
+		return c.connections.EnsureConnection(ctx, server)
+	}
+	return c.dispatchConnection(ctx, server.ID(), begin, start, nil, nil)
+}
+
+func (c *Coordinator) removeServer(id mcpserver.ID) error {
+	c.exposure.removeServer(id)
+	return c.connections.Detach(id)
 }
 
 func (c *Coordinator) connectionTarget(ctx context.Context, name mcpserver.ID) (mcpserver.Server, error) {
@@ -64,7 +84,7 @@ const (
 func (c *Coordinator) dispatchConnection(
 	ctx context.Context,
 	name mcpserver.ID,
-	begin func(context.Context, mcpserver.ID) (Attempt, error),
+	begin func(context.Context) (Attempt, error),
 	start <-chan struct{},
 	notifyAdmission func(),
 	completed func(connectionOutcome),
@@ -73,8 +93,8 @@ func (c *Coordinator) dispatchConnection(
 	if !ok {
 		return errClosed
 	}
-	attempt, err := begin(ownerCtx, name)
-	if err != nil {
+	attempt, err := begin(ownerCtx)
+	if err != nil || attempt == nil {
 		releaseOwner()
 		return err
 	}

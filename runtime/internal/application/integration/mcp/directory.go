@@ -29,7 +29,7 @@ func (c *Coordinator) CreateServer(ctx context.Context, input ServerInput, recei
 	if err != nil {
 		return err
 	}
-	return c.saveServer(write, srv, nil, receipt)
+	return c.saveServer(write, srv, receipt)
 }
 
 func (c *Coordinator) UpdateServer(ctx context.Context, name mcpserver.ID, patch ServerPatch, receipt operation.ReplayClaim) error {
@@ -55,26 +55,19 @@ func (c *Coordinator) UpdateServer(ctx context.Context, name mcpserver.ID, patch
 	if err != nil {
 		return err
 	}
-	return c.saveServer(write, updated, &current, receipt)
+	return c.saveServer(write, updated, receipt)
 }
 
-func (c *Coordinator) saveServer(write *mutationScope, accepted mcpserver.Server, previous *mcpserver.Server, receipt operation.ReplayClaim) error {
+func (c *Coordinator) saveServer(write *mutationScope, accepted mcpserver.Server, receipt operation.ReplayClaim) error {
 	settlement, err := c.directory.Save(write.requestCtx, accepted, receipt)
 	if err != nil {
 		return err
 	}
 	start := make(chan struct{})
 	defer close(start)
+	accepted.Source = settlement.Source
 	return c.completeDirectoryChange(write, settlement, func(ctx context.Context) error {
-		c.exposure.setServer(accepted)
-		switch {
-		case !accepted.Enabled:
-			return c.connections.Detach(accepted.ID())
-		case previous == nil || !previous.Enabled || !previous.SameConnection(accepted):
-			return c.dispatchConnection(ctx, accepted.ID(), c.connections.BeginConnect, start, nil, nil)
-		default:
-			return nil
-		}
+		return c.realizeServer(ctx, accepted, start)
 	})
 }
 
@@ -98,8 +91,7 @@ func (c *Coordinator) DeleteServer(ctx context.Context, name mcpserver.ID, recei
 		return err
 	}
 	return c.completeDirectoryChange(write, settlement, func(context.Context) error {
-		c.exposure.removeServer(name)
-		return c.connections.Detach(name)
+		return c.removeServer(name)
 	})
 }
 
@@ -123,23 +115,15 @@ func (c *Coordinator) completeRecoveredDirectoryChange(write *mutationScope, set
 	start := make(chan struct{})
 	defer close(start)
 	return c.completeDirectoryChange(write, settlement, func(ctx context.Context) error {
-		name := settlement.Server
+		name := settlement.ServerID()
 		current, found, err := c.registry.Definition(ctx, name)
 		if err != nil {
 			return err
 		}
 		if !found {
-			c.exposure.removeServer(name)
-			return c.connections.Detach(name)
+			return c.removeServer(name)
 		}
-		c.exposure.setServer(current)
-		if !current.Enabled {
-			return c.connections.Detach(name)
-		}
-		if c.connections.HasConnectionConfiguration(current) {
-			return nil
-		}
-		return c.dispatchConnection(ctx, name, c.connections.BeginConnect, start, nil, nil)
+		return c.realizeServer(ctx, current, start)
 	})
 }
 
@@ -151,9 +135,9 @@ func (c *Coordinator) completeDirectoryChange(write *mutationScope, settlement *
 		return settlement.Refusal
 	}
 	if err := project(write.ownerCtx); err != nil {
-		slog.ErrorContext(write.ownerCtx, "mcp: realize accepted directory change", telemetry.MCPServer(settlement.Server.String()), telemetry.Error(err))
+		slog.ErrorContext(write.ownerCtx, "mcp: realize accepted directory change", telemetry.MCPServer(settlement.ServerID().String()), telemetry.Error(err))
 	}
-	event := c.statusQueue.prepare(settlement.Server)
+	event := c.statusQueue.prepare(settlement.ServerID())
 	err := settlement.Complete(write.ownerCtx)
 	write.unlock()
 	c.statusQueue.publish(event)

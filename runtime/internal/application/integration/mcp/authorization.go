@@ -114,7 +114,7 @@ func (c *Coordinator) launchAuthorization(write *mutationScope, settlement *Auth
 			return
 		}
 	}
-	begin := func(ctx context.Context, server mcpserver.ID) (Attempt, error) {
+	begin := func(ctx context.Context) (Attempt, error) {
 		return c.connections.BeginAuthorize(ctx, server, transport.Recipient)
 	}
 	start := make(chan struct{})

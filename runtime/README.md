@@ -964,12 +964,14 @@ MCP sign-in creation acknowledges an immutable attempt ID. Read the attempt by
 that ID for current status. Runtime records the selected Connector release, exact
 start command, launch grant and recipient fingerprint before dispatch, then
 commits the public receipt before opening the sign-in transport. The transport
-checks the approved recipient before starting OAuth. A retry recovers the
-original Connector receipt. Runtime retains the original Connector installation
-and release for status reads, including after a selection change. The Connector
-owns the attempt status. Runtime records each observed transport outcome before
-sending its completion command, then resolves that command through the original
-receipt.
+checks the approved recipient before starting OAuth. Connection reconciliation
+retains matching admissions, including an interactive sign-in that is still
+starting. An explicit reconnect replaces the existing connection. A retry
+recovers the original Connector receipt. Runtime retains the original Connector
+installation and release for status reads, including after a selection change.
+The Connector owns the attempt status. Runtime records each observed transport
+outcome before sending its completion command, then resolves that command
+through the original receipt.
 Startup delivers recorded outcomes before retiring interrupted attempts and
 leaves earlier browser flows closed. For each interrupted start, the Connector
 returns its original decision or retires the command in its original receipt.

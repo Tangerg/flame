@@ -61,10 +61,7 @@ func (c *connections) authorize(attempt *attempt, prepared *launch) (err error) 
 	if cfg.OAuthHandler != nil {
 		return errors.New("mcp: explicit authorization cannot supply an OAuth handler")
 	}
-	target, eligible := cfg.OAuthTarget()
-	if !eligible || target.Fingerprint() != *attempt.recipient {
-		return errors.Join(errSourceWithdrawn, mcpserver.ErrOAuthSessionSuperseded)
-	}
+	target, _ := cfg.OAuthTarget()
 	c.mu.Lock()
 	if err := c.cancellationErr(attempt.ctx); !c.currentAttempt(attempt) || err != nil {
 		c.mu.Unlock()
@@ -186,9 +183,7 @@ func (c *connections) connectLocked(attempt *attempt, session *sdk.ClientSession
 	if owned != nil && owned.toolChanges != nil {
 		c.watchToolChangesLocked(session, owned, cfg, toolVersion)
 	}
-	if attempt.recipient != nil {
-		target.oauth = cfg.OAuthHandler
-	}
+	target.oauth = cfg.OAuthHandler
 }
 
 func (c *connections) proveSession(ctx context.Context, cfg ServerConfig, session *sdk.ClientSession, admit func(context.Context, *sdk.ClientSession) error) ([]Executable, mcpserver.ConnectionFailure, error) {

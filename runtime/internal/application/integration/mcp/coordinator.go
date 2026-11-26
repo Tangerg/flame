@@ -26,8 +26,9 @@ type Attempt interface {
 
 type Connections interface {
 	Statuses() []mcpserver.ConnectionStatus
-	HasConnectionConfiguration(mcpserver.Server) bool
-	BeginConnect(ctx context.Context, name mcpserver.ID) (Attempt, error)
+	// A matching attempt keeps its ownership, so there is no new attempt to run.
+	EnsureConnection(ctx context.Context, target mcpserver.Server) (Attempt, error)
+	BeginReconnect(ctx context.Context, target mcpserver.Server) (Attempt, error)
 	BeginAuthorize(ctx context.Context, name mcpserver.ID, recipient framevalue.Digest) (Attempt, error)
 	Probe(ctx context.Context, server mcpserver.Server) error
 	Refuse(ctx context.Context, name mcpserver.ID, failure mcpserver.ConnectionFailure) error
@@ -42,10 +43,13 @@ type registry interface {
 // The Connector supplies the decision before Runtime publishes its live effects
 // and completes the local launch authorization and acknowledgement.
 type DirectorySettlement struct {
-	Server   mcpserver.ID
+	Source   mcpserver.Source
+	Name     mcpserver.ServerName
 	Refusal  error
 	Complete func(context.Context) error
 }
+
+func (s DirectorySettlement) ServerID() mcpserver.ID { return s.Source.ID(s.Name) }
 
 type directoryStore interface {
 	Save(context.Context, mcpserver.Server, operation.ReplayClaim) (*DirectorySettlement, error)

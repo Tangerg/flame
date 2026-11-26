@@ -16,13 +16,27 @@ import (
 
 var errSourceWithdrawn = errors.New("mcp: connection source withdrawn")
 
+type connectionPolicy uint8
+
+const (
+	replaceConnection connectionPolicy = iota
+	keepMatchingConnection
+)
+
+type connectionPlan struct {
+	id         mcpserver.ID
+	accepts    func(mcpserver.Server) bool
+	launch     func(*connections, *attempt, *launch) error
+	superseded error
+}
+
 type attempt struct {
 	owner     *connections
 	target    *server
 	ctx       context.Context
 	cancel    context.CancelFunc
 	resolve   func(context.Context, mcpserver.ID) (*launchPermit, error)
-	recipient *framevalue.Digest
+	plan      connectionPlan
 	withdrawn *sessionCloseAttempt
 	start     chan struct{}
 	done      chan struct{}
@@ -30,18 +44,35 @@ type attempt struct {
 	err       error
 }
 
-func (c *connections) beginConnect(ctx context.Context, name mcpserver.ID, resolve func(context.Context, mcpserver.ID) (*launchPermit, error)) (*attempt, error) {
-	return c.begin(ctx, name, resolve, nil)
+func (c *connections) beginConnect(ctx context.Context, target mcpserver.Server, resolve func(context.Context, mcpserver.ID) (*launchPermit, error), policy connectionPolicy) (*attempt, error) {
+	target = target.Clone()
+	plan := connectionPlan{
+		id: target.ID(), accepts: target.SameConnection,
+		launch: (*connections).configure, superseded: errSourceWithdrawn,
+	}
+	var retainFor *mcpserver.Server
+	if policy == keepMatchingConnection {
+		retainFor = &target
+	}
+	return c.begin(ctx, plan, resolve, retainFor)
 }
 
 func (c *connections) beginAuthorize(ctx context.Context, name mcpserver.ID, recipient framevalue.Digest, resolve func(context.Context, mcpserver.ID) (*launchPermit, error)) (*attempt, error) {
 	if recipient.IsZero() {
 		return nil, errors.New("mcp: authorization requires an admitted recipient")
 	}
-	return c.begin(ctx, name, resolve, &recipient)
+	return c.begin(ctx, connectionPlan{
+		id: name,
+		accepts: func(server mcpserver.Server) bool {
+			target, eligible := server.OAuthTarget()
+			return eligible && target.Fingerprint() == recipient
+		},
+		launch: (*connections).authorize, superseded: errors.Join(errSourceWithdrawn, mcpserver.ErrOAuthSessionSuperseded),
+	}, resolve, nil)
 }
 
-func (c *connections) begin(ctx context.Context, name mcpserver.ID, resolve func(context.Context, mcpserver.ID) (*launchPermit, error), recipient *framevalue.Digest) (*attempt, error) {
+func (c *connections) begin(ctx context.Context, plan connectionPlan, resolve func(context.Context, mcpserver.ID) (*launchPermit, error), retainFor *mcpserver.Server) (*attempt, error) {
+	name := plan.id
 	if ctx == nil || resolve == nil {
 		return nil, errors.New("mcp: attempt context and configuration source are required")
 	}
@@ -60,6 +91,8 @@ func (c *connections) begin(ctx context.Context, name mcpserver.ID, resolve func
 	if target == nil {
 		target = &server{id: name}
 		c.servers = append(c.servers, target)
+	} else if retainFor != nil && target.matchesConnection(*retainFor) {
+		return nil, nil
 	}
 	if target.attempt != nil {
 		target.attempt.cancel()
@@ -72,7 +105,7 @@ func (c *connections) begin(ctx context.Context, name mcpserver.ID, resolve func
 	}
 	attempt := &attempt{
 		owner: c, target: target, ctx: ctx, cancel: cancel, resolve: resolve,
-		recipient: recipient, withdrawn: c.retireSessionLocked(target.session),
+		plan: plan, withdrawn: c.retireSessionLocked(target.session),
 		start: make(chan struct{}), done: make(chan struct{}),
 	}
 	target.attempt = attempt
@@ -160,10 +193,10 @@ func (a *attempt) connect() (err error) {
 	if prepared.config.ID() != a.target.name() {
 		return errors.New("mcp: connection configuration source changed identity")
 	}
-	if a.recipient != nil {
-		return c.authorize(a, prepared)
+	if !a.plan.accepts(prepared.config.Server) {
+		return a.plan.superseded
 	}
-	return c.configure(a, prepared)
+	return a.plan.launch(c, a, prepared)
 }
 
 func (c *connections) currentAttempt(attempt *attempt) bool {

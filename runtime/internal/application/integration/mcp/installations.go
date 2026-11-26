@@ -134,17 +134,10 @@ func (c *Coordinator) reconcileSources(ctx context.Context, servers []mcpserver.
 			events = append(events, c.statusQueue.prepare(id))
 			continue
 		}
-		if !found || !server.Enabled {
-			result = errors.Join(result, c.connections.Detach(id))
-		}
-		if !found {
-			c.exposure.removeServer(id)
-			events = append(events, c.statusQueue.prepare(id))
-			continue
-		}
-		c.exposure.setServer(server)
-		if server.Enabled {
-			result = errors.Join(result, c.dispatchConnection(write.ownerCtx, server.ID(), c.connections.BeginConnect, start, nil, nil))
+		if found {
+			result = errors.Join(result, c.realizeServer(write.ownerCtx, server, start))
+		} else {
+			result = errors.Join(result, c.removeServer(id))
 		}
 		events = append(events, c.statusQueue.prepare(id))
 	}

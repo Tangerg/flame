@@ -118,6 +118,13 @@ func (r *poMCPRuntime) poMCPTools(server *protocol.MCPServerID, ready func([]pro
 
 func poMCPRemote(t *testing.T, names ...string) string {
 	t.Helper()
+	server := httptest.NewServer(poMCPRemoteHandler(t, names...))
+	t.Cleanup(server.Close)
+	return server.URL
+}
+
+func poMCPRemoteHandler(t *testing.T, names ...string) http.Handler {
+	t.Helper()
 	remote := sdk.NewServer(&sdk.Implementation{Name: "fixture", Version: "1"}, nil)
 	publishTestBackend(t, remote)
 	for _, name := range names {
@@ -133,9 +140,7 @@ func poMCPRemote(t *testing.T, names ...string) string {
 			t.Fatal(err)
 		}
 	}
-	server := httptest.NewServer(sdk.NewStreamableHTTPHandler(func(*http.Request) *sdk.Server { return remote }, nil))
-	t.Cleanup(server.Close)
-	return server.URL
+	return sdk.NewStreamableHTTPHandler(func(*http.Request) *sdk.Server { return remote }, nil)
 }
 
 func poMCPPackage(t *testing.T, files map[string]string) string {
