@@ -115,8 +115,10 @@ export function Brand({ context }: { context: ComponentContext }) {
                 style={{ marginBlockStart: "auto" }}
                 onClick={() => void download(asset)}
               >
+                {/* The glyph says download and the label names the format; the full
+                    phrase broke onto two lines in narrow tiles, so it lives in the name. */}
                 <Icon glyph={Download} />
-                {t("downloadPng")}
+                PNG
               </Button>
             </Tile>
           ))}
