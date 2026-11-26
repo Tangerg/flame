@@ -29,7 +29,7 @@ func TestPluginCompositionCommitsWithItsOriginalAcknowledgement(t *testing.T) {
 	}
 	allowReceipt := refuseCommandReceipt(t, cfg.stores.DataDirectory)
 	failed := r.endpoint.Invoke(t.Context(), delivery.PluginsSetComposition, request, protocol.CallMetadata{
-		IdempotencyKey: key, RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version},
+		IdempotencyKey: key, RequestMeta: protocol.RequestMeta{ProtocolVersion: new(protocol.Version)},
 	})
 	allowReceipt()
 	if failed.Failure == nil {

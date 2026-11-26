@@ -118,6 +118,9 @@ func (e *Endpoint) invoke(ctx context.Context, name Name, options protocol.CallM
 	if !found {
 		return failed(protocol.NewFailure(protocol.ErrMethodNotFound, fmt.Sprintf("unknown method %q", name)))
 	}
+	if version := options.RequestMeta.ProtocolVersion; version != nil && *version != protocol.Version {
+		return failed(protocol.NewFailure(protocol.ErrInvalidProtocolVersion, fmt.Sprintf("protocolVersion %q is unsupported; expected %q", *version, protocol.Version)))
+	}
 	if failure := validateOptions(method.Meta, options); failure != nil {
 		return failed(failure)
 	}
@@ -252,10 +255,6 @@ func allowsEvent(ctx context.Context, event any) bool {
 }
 
 func validateOptions(method MethodMeta, options protocol.CallMetadata) *protocol.Failure {
-	version := options.RequestMeta.ProtocolVersion
-	if version != "" && version != protocol.Version {
-		return protocol.NewFailure(protocol.ErrInvalidProtocolVersion, fmt.Sprintf("protocolVersion %q is unsupported; expected %q", version, protocol.Version))
-	}
 	if failure := validateIdempotencyOptions(method, options); failure != nil {
 		return failure
 	}

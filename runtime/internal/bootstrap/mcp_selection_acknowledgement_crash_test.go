@@ -59,7 +59,7 @@ func TestMCPConnectorSelectionAcknowledgementChild(t *testing.T) {
 		BEGIN SELECT test_connector_selection_ack_crash(NEW.payload); END`)
 	request := protocol.SelectPluginProviderRequest{Role: mcpconnector.Reference, InstallationID: replacement.ID, Contribution: mcpconnector.Export}
 	result := r.endpoint.Invoke(t.Context(), delivery.PluginsSelectProvider, request, protocol.CallMetadata{
-		IdempotencyKey: selectionAckKey, RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version},
+		IdempotencyKey: selectionAckKey, RequestMeta: protocol.RequestMeta{ProtocolVersion: new(protocol.Version)},
 	})
 	t.Fatalf("selection did not stop before acknowledgement: %v", result.Failure)
 }
@@ -129,7 +129,7 @@ func TestMCPConnectorKeepsItsConnectionsUntilAChoiceCommits(t *testing.T) {
 	allowReceipt := refuseCommandReceipt(t, cfg.stores.DataDirectory)
 	request := protocol.SelectPluginProviderRequest{Role: mcpconnector.Reference, InstallationID: replacement.ID, Contribution: mcpconnector.Export}
 	failed := r.endpoint.Invoke(t.Context(), delivery.PluginsSelectProvider, request, protocol.CallMetadata{
-		IdempotencyKey: "refused-connector-selection", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version},
+		IdempotencyKey: "refused-connector-selection", RequestMeta: protocol.RequestMeta{ProtocolVersion: new(protocol.Version)},
 	})
 	allowReceipt()
 	if failed.Failure == nil {

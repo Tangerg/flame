@@ -43,7 +43,7 @@ type waitingChildCancellationMarker struct {
 
 func waitingChildCancellationMeta() protocol.RequestMeta {
 	return protocol.RequestMeta{
-		ProtocolVersion: protocol.Version,
+		ProtocolVersion: new(protocol.Version),
 		ClientCapabilities: &protocol.ClientCapabilities{
 			Features:       map[string]protocol.FeaturePreference{protocol.FeatureChildRuns: {Enabled: true}},
 			InterruptTypes: []protocol.InterruptType{protocol.InterruptQuestion},

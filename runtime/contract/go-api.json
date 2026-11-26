@@ -10712,7 +10712,7 @@
         {
           "name": "Version",
           "type": "untyped string",
-          "value": "\"2026-11-27.3\""
+          "value": "\"2026-11-27.4\""
         },
         {
           "name": "WorkspaceAvailable",
@@ -16613,8 +16613,8 @@
           "fields": [
             {
               "name": "ProtocolVersion",
-              "type": "string",
-              "tag": "json:\"protocolVersion,omitempty\""
+              "type": "*string",
+              "tag": "json:\"protocolVersion,omitzero\""
             },
             {
               "name": "ClientInfo",

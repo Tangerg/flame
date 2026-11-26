@@ -53,7 +53,7 @@ func TestCommittedMCPWithdrawalDetachesToolsEvenIfLocalSettlementFails(t *testin
 			questionCrashDatabase(t, cfg.stores.DataDirectory, scenario.trigger)
 
 			options := protocol.CallMetadata{
-				IdempotencyKey: "withdraw-server", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version},
+				IdempotencyKey: "withdraw-server", RequestMeta: protocol.RequestMeta{ProtocolVersion: new(protocol.Version)},
 			}
 			result := runtime.endpoint.Invoke(t.Context(), scenario.method, scenario.request(serverID), options)
 			if !errors.Is(result.Failure, protocol.ErrIdempotencyInProgress) {

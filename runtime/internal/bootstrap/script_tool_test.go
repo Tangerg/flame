@@ -179,7 +179,7 @@ return { declared: Object.keys(tools), issue, source: describeTool(%[1]s).source
 	}
 	declared.Store([2]string{names["get_issue"], names["create_issue"]})
 
-	meta := protocol.RequestMeta{ProtocolVersion: protocol.Version, ClientCapabilities: &protocol.ClientCapabilities{InterruptTypes: []protocol.InterruptType{protocol.InterruptApproval}}}
+	meta := protocol.RequestMeta{ProtocolVersion: new(protocol.Version), ClientCapabilities: &protocol.ClientCapabilities{InterruptTypes: []protocol.InterruptType{protocol.InterruptApproval}}}
 	drain := func(result protocol.OperationResult) {
 		t.Helper()
 		if result.Failure != nil {

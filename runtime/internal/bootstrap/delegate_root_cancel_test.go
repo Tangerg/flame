@@ -29,7 +29,7 @@ func testCancelDelegatedTree(t *testing.T, confirmed bool) {
 	model := delegateRestartModel{chat.ModelFunc(cancelTreeScript{childEntered: childEntered, confirmed: confirmed}.Call)}
 
 	ctx := delivery.WithRequestMeta(t.Context(), protocol.RequestMeta{
-		ProtocolVersion: protocol.Version,
+		ProtocolVersion: new(protocol.Version),
 		ClientCapabilities: &protocol.ClientCapabilities{
 			Features: map[string]protocol.FeaturePreference{protocol.FeatureChildRuns: {Enabled: true}},
 		},

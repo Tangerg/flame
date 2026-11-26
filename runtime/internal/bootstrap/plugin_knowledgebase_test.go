@@ -93,7 +93,7 @@ func TestKnowledgeBaseInstalledEntriesShareRetrievalAndLeaveConversationWithCore
 	runTask := func(project, task string) *protocol.Session {
 		t.Helper()
 		session := r.must(delivery.SessionsCreate, protocol.CreateSessionRequest{Title: task, ProjectID: project}, "session-"+task).(*protocol.Session)
-		run := r.endpoint.Invoke(t.Context(), delivery.RunsStart, protocol.StartRunRequest{SessionID: session.ID, Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: task}}}, protocol.CallMetadata{IdempotencyKey: "run-" + task, RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
+		run := r.endpoint.Invoke(t.Context(), delivery.RunsStart, protocol.StartRunRequest{SessionID: session.ID, Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: task}}}, protocol.CallMetadata{IdempotencyKey: "run-" + task, RequestMeta: protocol.RequestMeta{ProtocolVersion: new(protocol.Version)}})
 		if run.Failure != nil {
 			t.Fatal(run.Failure)
 		}

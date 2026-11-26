@@ -19,7 +19,7 @@ func TestPluginUninstallCommitsWithItsOriginalAcknowledgement(t *testing.T) {
 
 	allowReceipt := refuseCommandReceipt(t, cfg.stores.DataDirectory)
 	failed := r.endpoint.Invoke(t.Context(), delivery.PluginsUninstall, request, protocol.CallMetadata{
-		IdempotencyKey: key, RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version},
+		IdempotencyKey: key, RequestMeta: protocol.RequestMeta{ProtocolVersion: new(protocol.Version)},
 	})
 	allowReceipt()
 	if failed.Failure == nil {
@@ -36,7 +36,7 @@ func TestPluginUninstallCommitsWithItsOriginalAcknowledgement(t *testing.T) {
 		t.Fatal("an acknowledged uninstall left the original installation")
 	}
 	missing := r.endpoint.Invoke(t.Context(), delivery.PluginsUninstall, request, protocol.CallMetadata{
-		IdempotencyKey: "uninstall-absent-installation", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version},
+		IdempotencyKey: "uninstall-absent-installation", RequestMeta: protocol.RequestMeta{ProtocolVersion: new(protocol.Version)},
 	})
 	if !errors.Is(missing.Failure, protocol.ErrPluginNotFound) {
 		t.Fatalf("uninstalling an absent installation returned %v", missing.Failure)

@@ -48,7 +48,7 @@ func TestRunReadRefusesMismatchedEndingEvidence(t *testing.T) {
 	}
 
 	result := host.Endpoint().Invoke(ctx, delivery.RunsGet, query, protocol.CallMetadata{
-		RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version},
+		RequestMeta: protocol.RequestMeta{ProtocolVersion: new(protocol.Version)},
 	})
 	if result.Value != nil || !errors.Is(result.Failure, protocol.ErrInternalError) {
 		t.Fatalf("Run with mismatched durable ending = %+v, %v", result.Value, result.Failure)

@@ -45,35 +45,35 @@ type CallMetadata struct {
 }
 
 func (o CallOptions) Metadata() CallMetadata {
-	return CallMetadata{RequestMeta: o.RequestMeta.current()}
+	return CallMetadata{RequestMeta: o.RequestMeta.withDefaultVersion()}
 }
 
 func (o CommandOptions) Metadata() CallMetadata {
-	return CallMetadata{RequestMeta: o.RequestMeta.current(), IdempotencyKey: o.IdempotencyKey, IdempotencyNamespace: o.IdempotencyNamespace}
+	return CallMetadata{RequestMeta: o.RequestMeta.withDefaultVersion(), IdempotencyKey: o.IdempotencyKey, IdempotencyNamespace: o.IdempotencyNamespace}
 }
 
 func (o PluginCallOptions) Metadata() CallMetadata {
-	return CallMetadata{RequestMeta: o.RequestMeta.current(), IdempotencyKey: o.IdempotencyKey, IdempotencyNamespace: o.IdempotencyNamespace}
+	return CallMetadata{RequestMeta: o.RequestMeta.withDefaultVersion(), IdempotencyKey: o.IdempotencyKey, IdempotencyNamespace: o.IdempotencyNamespace}
 }
 
 func (o RunCommandOptions) Metadata() CallMetadata {
 	return CallMetadata{
-		RequestMeta: o.RequestMeta.current(), IdempotencyKey: o.IdempotencyKey,
+		RequestMeta: o.RequestMeta.withDefaultVersion(), IdempotencyKey: o.IdempotencyKey,
 		IdempotencyNamespace: o.IdempotencyNamespace, AfterEventID: o.AfterEventID,
 	}
 }
 
 func (o RunSubscriptionOptions) Metadata() CallMetadata {
-	return CallMetadata{RequestMeta: o.RequestMeta.current(), AfterEventID: o.AfterEventID}
+	return CallMetadata{RequestMeta: o.RequestMeta.withDefaultVersion(), AfterEventID: o.AfterEventID}
 }
 
 func (o SubscriptionOptions) Metadata() CallMetadata {
-	return CallMetadata{RequestMeta: o.RequestMeta.current()}
+	return CallMetadata{RequestMeta: o.RequestMeta.withDefaultVersion()}
 }
 
-func (m RequestMeta) current() RequestMeta {
-	if m.ProtocolVersion == "" {
-		m.ProtocolVersion = Version
+func (m RequestMeta) withDefaultVersion() RequestMeta {
+	if m.ProtocolVersion == nil {
+		m.ProtocolVersion = new(Version)
 	}
 	return m
 }

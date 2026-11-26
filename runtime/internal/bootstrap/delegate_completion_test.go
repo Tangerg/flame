@@ -20,7 +20,7 @@ func TestProtocolCompletesAllDelegates(t *testing.T) {
 	model := delegateRestartModel{chat.ModelFunc(completeAllDelegatesScript{calls: &calls}.Call)}
 	ctx := t.Context()
 	options := protocol.CallMetadata{RequestMeta: protocol.RequestMeta{
-		ProtocolVersion: protocol.Version,
+		ProtocolVersion: new(protocol.Version),
 		ClientCapabilities: &protocol.ClientCapabilities{
 			Features: map[string]protocol.FeaturePreference{protocol.FeatureChildRuns: {Enabled: true}},
 		},

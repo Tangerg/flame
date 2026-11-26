@@ -23,7 +23,7 @@ func TestPluginStagingCommitsWithItsOriginalAcknowledgement(t *testing.T) {
 	const key = "stage-original-candidate"
 	allowReceipt := refuseCommandReceipt(t, cfg.stores.DataDirectory)
 	failed := r.endpoint.Invoke(t.Context(), delivery.PluginsStage, request, protocol.CallMetadata{
-		IdempotencyKey: key, RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version},
+		IdempotencyKey: key, RequestMeta: protocol.RequestMeta{ProtocolVersion: new(protocol.Version)},
 	})
 	allowReceipt()
 	if failed.Failure == nil {
@@ -58,7 +58,7 @@ func TestPluginSelectionCommitsWithItsOriginalAcknowledgement(t *testing.T) {
 	const key = "select-approved-candidate"
 	allowReceipt := refuseCommandReceipt(t, cfg.stores.DataDirectory)
 	failed := r.endpoint.Invoke(t.Context(), delivery.PluginsSelect, request, protocol.CallMetadata{
-		IdempotencyKey: key, RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version},
+		IdempotencyKey: key, RequestMeta: protocol.RequestMeta{ProtocolVersion: new(protocol.Version)},
 	})
 	allowReceipt()
 	if failed.Failure == nil {
@@ -80,7 +80,7 @@ func TestPluginSelectionCommitsWithItsOriginalAcknowledgement(t *testing.T) {
 		t.Fatal("selection replay changed the later release")
 	}
 	stale := r.endpoint.Invoke(t.Context(), delivery.PluginsSelect, request, protocol.CallMetadata{
-		IdempotencyKey: "new-selection-of-old-release", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version},
+		IdempotencyKey: "new-selection-of-old-release", RequestMeta: protocol.RequestMeta{ProtocolVersion: new(protocol.Version)},
 	})
 	if stale.Failure == nil || !errors.Is(stale.Failure, protocol.ErrPluginStale) {
 		t.Fatalf("selection of a consumed candidate returned %v", stale.Failure)

@@ -57,7 +57,7 @@ func TestToolComponentUsesSelectedImmutableBytes(t *testing.T) {
 	request := protocol.ReadPluginResourceRequest{PluginReleaseRef: protocol.PluginReleaseRef{InstallationID: installed.ID, Digest: installed.Selected.Digest}, ComponentID: component.ID, Path: component.Entry}
 	refused := func(input protocol.ReadPluginResourceRequest, want error) {
 		t.Helper()
-		result := r.endpoint.Invoke(t.Context(), delivery.PluginsReadResource, input, protocol.CallMetadata{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
+		result := r.endpoint.Invoke(t.Context(), delivery.PluginsReadResource, input, protocol.CallMetadata{RequestMeta: protocol.RequestMeta{ProtocolVersion: new(protocol.Version)}})
 		if !errors.Is(result.Failure, want) {
 			t.Fatalf("read: %v, want %v", result.Failure, want)
 		}

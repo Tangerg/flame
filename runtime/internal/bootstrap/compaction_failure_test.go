@@ -43,7 +43,7 @@ func TestRuntimeRejectsTruncatedSummaryBeforeReplacingHistory(t *testing.T) {
 	})
 	ctx := t.Context()
 	endpoint := host.Endpoint()
-	options := protocol.CallMetadata{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}}
+	options := protocol.CallMetadata{RequestMeta: protocol.RequestMeta{ProtocolVersion: new(protocol.Version)}}
 	created := endpoint.Invoke(ctx, delivery.SessionsCreate, protocol.CreateSessionRequest{
 		Workspace: &protocol.WorkspaceRef{Path: home}, Title: "truncated compaction summary",
 	}, options)

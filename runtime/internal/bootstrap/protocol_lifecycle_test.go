@@ -204,7 +204,7 @@ func newProtocolLifecycleFixture(t *testing.T) *protocolLifecycleFixture {
 
 func protocolLifecycleContext(ctx context.Context) context.Context {
 	return delivery.WithRequestMeta(ctx, protocol.RequestMeta{
-		ProtocolVersion: protocol.Version,
+		ProtocolVersion: new(protocol.Version),
 		ClientCapabilities: &protocol.ClientCapabilities{
 			InterruptTypes: []protocol.InterruptType{protocol.InterruptQuestion},
 		},

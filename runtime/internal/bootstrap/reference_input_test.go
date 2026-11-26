@@ -39,7 +39,7 @@ func TestReferencedInputReachesTheModelAndSurvivesRestart(t *testing.T) {
 		{Type: protocol.ContentBlockText, Text: "Shorten this title."},
 		{Type: protocol.ContentBlockReference, Label: `Slide 4 · "Revenue" chart`, Text: "Deck d1 revision r12, slide s4, element 7."},
 	}
-	ctx := delivery.WithRequestMeta(t.Context(), protocol.RequestMeta{ProtocolVersion: protocol.Version})
+	ctx := delivery.WithRequestMeta(t.Context(), protocol.RequestMeta{ProtocolVersion: new(protocol.Version)})
 	first, api := openProtocolRuntime(t, model)
 	session, err := api.CreateSession(ctx, protocol.CreateSessionRequest{Workspace: &protocol.WorkspaceRef{Path: home}, Title: "reference"})
 	if err != nil {

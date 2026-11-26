@@ -22,7 +22,7 @@ func TestSteeringARootMidDelegationLandsAfterTheChildResult(t *testing.T) {
 	model := delegateRestartModel{chat.ModelFunc(script.Call)}
 
 	ctx := delivery.WithRequestMeta(t.Context(), protocol.RequestMeta{
-		ProtocolVersion: protocol.Version,
+		ProtocolVersion: new(protocol.Version),
 		ClientCapabilities: &protocol.ClientCapabilities{
 			Features: map[string]protocol.FeaturePreference{protocol.FeatureChildRuns: {Enabled: true}},
 		},

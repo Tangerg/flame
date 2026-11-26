@@ -60,7 +60,7 @@ func testProtocolSiblingRestart(t *testing.T, delegateCalls []chat.ToolCall, can
 		delegations: parts, expectedResults: expectedResults, releaseA: releaseA, calls: &calls,
 	}.Call)}
 	ctx := delivery.WithRequestMeta(t.Context(), protocol.RequestMeta{
-		ProtocolVersion: protocol.Version,
+		ProtocolVersion: new(protocol.Version),
 		ClientCapabilities: &protocol.ClientCapabilities{
 			Features:       map[string]protocol.FeaturePreference{protocol.FeatureChildRuns: {Enabled: true}},
 			InterruptTypes: []protocol.InterruptType{protocol.InterruptQuestion},
@@ -342,7 +342,7 @@ func TestProtocolCancelsOneWaitingSiblingAndAnswersTheOther(t *testing.T) {
 	t.Setenv("FLAME_HOME", home)
 	model := waitingSiblingModel()
 	ctx := delivery.WithRequestMeta(t.Context(), protocol.RequestMeta{
-		ProtocolVersion: protocol.Version,
+		ProtocolVersion: new(protocol.Version),
 		ClientCapabilities: &protocol.ClientCapabilities{
 			Features:       map[string]protocol.FeaturePreference{protocol.FeatureChildRuns: {Enabled: true}},
 			InterruptTypes: []protocol.InterruptType{protocol.InterruptQuestion},

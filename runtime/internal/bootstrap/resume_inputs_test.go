@@ -29,7 +29,7 @@ func TestQueuedUserInputsReachTheRootModelAfterRestart(t *testing.T) {
 		childEntered: childEntered, releaseChild: releaseChild,
 	}.Call)}
 	ctx := delivery.WithRequestMeta(t.Context(), protocol.RequestMeta{
-		ProtocolVersion: protocol.Version,
+		ProtocolVersion: new(protocol.Version),
 		ClientCapabilities: &protocol.ClientCapabilities{
 			Features:       map[string]protocol.FeaturePreference{protocol.FeatureChildRuns: {Enabled: true}},
 			InterruptTypes: []protocol.InterruptType{protocol.InterruptQuestion},

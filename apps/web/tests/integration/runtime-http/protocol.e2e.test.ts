@@ -400,6 +400,39 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: protocol delivery", () => {
     });
   });
 
+  it("refuses an empty request version and admits an omitted version", async () => {
+    const title = "Request protocol version admission";
+    const headers = { [HTTP_HEADERS.idempotencyKey]: crypto.randomUUID() };
+    const sessionsWithTitle = async () =>
+      (await fixture.client.sessions.list().autoPagingToArray()).filter(
+        (session) => session.title === title,
+      );
+
+    try {
+      const empty = await fixture.postRPC(
+        "sessions.create",
+        { title, _meta: { protocolVersion: "" } },
+        headers,
+      );
+      expect(empty.status).toBe(RPC_HTTP.callStatus);
+      await expect(empty.json()).resolves.toMatchObject({
+        error: { data: { problem: { type: "invalid_protocol_version" } } },
+      });
+      await expect(sessionsWithTitle()).resolves.toEqual([]);
+
+      const omitted = await fixture.postRPC("sessions.create", { title, _meta: {} }, headers);
+      expect(omitted.status).toBe(RPC_HTTP.callStatus);
+      const persisted = await sessionsWithTitle();
+      expect(persisted).toHaveLength(1);
+      await expect(omitted.json()).resolves.toMatchObject({
+        result: { id: persisted[0]?.id, title },
+      });
+    } finally {
+      for (const session of await sessionsWithTitle())
+        await fixture.client.sessions.delete(asSessionId(session.id));
+    }
+  });
+
   it.each([
     {
       label: "component values",

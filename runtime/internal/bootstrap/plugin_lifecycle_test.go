@@ -72,7 +72,7 @@ func TestPluginReleaseUsesExistingMCPPolicySkillsAndReplay(t *testing.T) {
 	cleanup(host)
 	endpoint := host.Endpoint()
 	fixture := &poMCPRuntime{t: t, host: host, api: api, endpoint: endpoint}
-	options := protocol.CallMetadata{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}}
+	options := protocol.CallMetadata{RequestMeta: protocol.RequestMeta{ProtocolVersion: new(protocol.Version)}}
 	invoke := func(method delivery.Name, input any, key string) protocol.OperationResult {
 		t.Helper()
 		attempt := options

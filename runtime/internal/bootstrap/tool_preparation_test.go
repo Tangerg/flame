@@ -99,7 +99,7 @@ func TestProtocolPreservesToolPreparationFailuresAcrossRestart(t *testing.T) {
 			t.Error(err)
 		}
 	})
-	ctx := delivery.WithRequestMeta(t.Context(), protocol.RequestMeta{ProtocolVersion: protocol.Version})
+	ctx := delivery.WithRequestMeta(t.Context(), protocol.RequestMeta{ProtocolVersion: new(protocol.Version)})
 	activateHookProvider(t, api)
 	session, err := api.CreateSession(ctx, protocol.CreateSessionRequest{
 		Workspace: &protocol.WorkspaceRef{Path: home}, Title: "tool preparation failure",

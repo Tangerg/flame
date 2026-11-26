@@ -223,7 +223,7 @@ func TestReviewBackendUsesInstallationRunApprovalAndRecoveryOwners(t *testing.T)
 	r.poMCPTools(&server, func(tools []protocol.MCPTool) bool { return len(tools) == 3 })
 	session := r.must(delivery.SessionsCreate, protocol.CreateSessionRequest{Title: "Review example"}, "session").(*protocol.Session)
 	options := func(key string) protocol.CallMetadata {
-		return protocol.CallMetadata{IdempotencyKey: key, RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version, ClientCapabilities: &protocol.ClientCapabilities{InterruptTypes: []protocol.InterruptType{protocol.InterruptApproval}}}}
+		return protocol.CallMetadata{IdempotencyKey: key, RequestMeta: protocol.RequestMeta{ProtocolVersion: new(protocol.Version), ClientCapabilities: &protocol.ClientCapabilities{InterruptTypes: []protocol.InterruptType{protocol.InterruptApproval}}}}
 	}
 	invoke := func(method delivery.Name, request any, key string) protocol.OperationResult {
 		t.Helper()

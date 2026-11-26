@@ -48,6 +48,9 @@ whether a well-formed name exists in that installation.
 Protocol rules use the members in the received JSON document or the document
 produced by Go's JSON encoder. A Run start admits one Session target. An omitted
 Session export format selects JSON, and an explicitly empty format is invalid.
+Core `2026-11-27.4` also distinguishes a supplied request protocol version from
+omission. A supplied version must equal the Runtime's version. HTTP requests
+that omit the member use the current Runtime protocol.
 
 Run accounting retains unreported model identities until the first reported usage. Missing cache partitions yield an unknown price when the catalog could charge different amounts. Existing data directories must be retained separately; the private Run accounting representation requires a fresh directory. A connecting MCP source fences its original crash-uncertain Run while other Sessions remain available.
 

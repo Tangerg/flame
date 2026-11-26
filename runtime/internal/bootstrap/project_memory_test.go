@@ -52,7 +52,7 @@ func TestProjectsInOneWorkspaceKeepInstructionsAndMemoryApart(t *testing.T) {
 		}, "session-"+project.ID).(*protocol.Session)
 		started := r.endpoint.Invoke(t.Context(), delivery.RunsStart, protocol.StartRunRequest{
 			SessionID: session.ID, Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: task}},
-		}, protocol.CallMetadata{IdempotencyKey: "start-" + project.ID, RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
+		}, protocol.CallMetadata{IdempotencyKey: "start-" + project.ID, RequestMeta: protocol.RequestMeta{ProtocolVersion: new(protocol.Version)}})
 		if started.Failure != nil {
 			t.Fatal(started.Failure)
 		}

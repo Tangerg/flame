@@ -58,7 +58,7 @@ func TestTrajectoryComponentReadsInstalledBytesAndCanonicalHistory(t *testing.T)
 	request := protocol.ReadPluginResourceRequest{PluginReleaseRef: protocol.PluginReleaseRef{InstallationID: installed.ID, Digest: installed.Selected.Digest}, ComponentID: component.ID, Path: component.Entry}
 	checkFailure := func(method delivery.Name, input any, want error) {
 		t.Helper()
-		result := r.endpoint.Invoke(t.Context(), method, input, protocol.CallMetadata{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
+		result := r.endpoint.Invoke(t.Context(), method, input, protocol.CallMetadata{RequestMeta: protocol.RequestMeta{ProtocolVersion: new(protocol.Version)}})
 		if !errors.Is(result.Failure, want) {
 			t.Fatalf("%s: %v, want %v", method, result.Failure, want)
 		}
@@ -76,7 +76,7 @@ func TestTrajectoryComponentReadsInstalledBytesAndCanonicalHistory(t *testing.T)
 	}
 	session := r.must(delivery.SessionsCreate, protocol.CreateSessionRequest{Title: "Inspection", Workspace: &protocol.WorkspaceRef{Path: cfg.defaultWorkspacePath}}, "session").(*protocol.Session)
 	meta := protocol.RequestMeta{
-		ProtocolVersion:    protocol.Version,
+		ProtocolVersion:    new(protocol.Version),
 		ClientCapabilities: &protocol.ClientCapabilities{Features: map[string]protocol.FeaturePreference{protocol.FeatureChildRuns: {Enabled: true}}},
 	}
 	started, events, err := r.api.StartRun(delivery.WithRequestMeta(t.Context(), meta), protocol.StartRunRequest{SessionID: session.ID, Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "Record an observation."}}})
@@ -276,12 +276,12 @@ func TestScheduleComponentUsesOwnBackendAndWithdrawalPreservesPrivateData(t *tes
 		t.Fatal("restart changed admitted components")
 	}
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: false}, "disable-schedules")
-	refused := r.endpoint.Invoke(t.Context(), delivery.PluginsReadResource, resource, protocol.CallMetadata{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
+	refused := r.endpoint.Invoke(t.Context(), delivery.PluginsReadResource, resource, protocol.CallMetadata{RequestMeta: protocol.RequestMeta{ProtocolVersion: new(protocol.Version)}})
 	if !errors.Is(refused.Failure, protocol.ErrPluginDisabled) {
 		t.Fatalf("disabled schedule page: %v", refused.Failure)
 	}
 	r.must(delivery.PluginsUninstall, protocol.PluginRequest{InstallationID: installed.ID}, "uninstall-schedules")
-	result := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "schedules-provider", Contract: string(contracts.Identity().Bytes()), Method: testsupport.SchedulesListV2Method, Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: installed.ID}, Input: `{"cursor":""}`}, protocol.CallMetadata{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
+	result := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "schedules-provider", Contract: string(contracts.Identity().Bytes()), Method: testsupport.SchedulesListV2Method, Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: installed.ID}, Input: `{"cursor":""}`}, protocol.CallMetadata{RequestMeta: protocol.RequestMeta{ProtocolVersion: new(protocol.Version)}})
 	if !errors.Is(result.Failure, protocol.ErrPluginNotFound) {
 		t.Fatalf("uninstalled Schedule owner=%v", result.Failure)
 	}
@@ -317,7 +317,7 @@ func TestUsageComponentUsesCanonicalSummaryAndUninstallPreservesUsage(t *testing
 	read := protocol.UsageSummaryRequest{}
 	refused := func(input any, method delivery.Name, want error) {
 		t.Helper()
-		result := r.endpoint.Invoke(t.Context(), method, input, protocol.CallMetadata{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
+		result := r.endpoint.Invoke(t.Context(), method, input, protocol.CallMetadata{RequestMeta: protocol.RequestMeta{ProtocolVersion: new(protocol.Version)}})
 		if !errors.Is(result.Failure, want) {
 			t.Fatalf("%s: %v, want %v", method, result.Failure, want)
 		}

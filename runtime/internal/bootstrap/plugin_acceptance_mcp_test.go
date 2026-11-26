@@ -80,7 +80,7 @@ func (r *poMCPRuntime) close() {
 
 func (r *poMCPRuntime) must(method delivery.Name, input any, key string) any {
 	r.t.Helper()
-	options := protocol.CallMetadata{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}, IdempotencyKey: key}
+	options := protocol.CallMetadata{RequestMeta: protocol.RequestMeta{ProtocolVersion: new(protocol.Version)}, IdempotencyKey: key}
 	result := r.endpoint.Invoke(r.t.Context(), method, input, options)
 	if result.Failure != nil {
 		r.t.Fatalf("%s: %v (%v)", method, result.Failure, errors.Unwrap(result.Failure))

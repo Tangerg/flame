@@ -110,8 +110,14 @@ func TestClientsShareRuntimeWithoutSharingOwnership(t *testing.T) {
 	if _, err := second.CreateSession(t.Context(), request, options); !errors.Is(err, protocol.ErrIdempotencyStoreMismatch) || errors.Is(err, runtimeclient.ErrAcknowledgementUnknown) {
 		t.Fatalf("store fence = %v", err)
 	}
-	if _, err := second.Discover(t.Context(), protocol.CallOptions{RequestMeta: protocol.RequestMeta{ProtocolVersion: "1900-01-01"}}); !errors.Is(err, protocol.ErrInvalidProtocolVersion) {
-		t.Fatalf("protocol negotiation = %v", err)
+	for _, version := range []string{"", "1900-01-01"} {
+		options := protocol.CallOptions{RequestMeta: protocol.RequestMeta{ProtocolVersion: new(version)}}
+		if _, err := second.Discover(t.Context(), options); !errors.Is(err, protocol.ErrInvalidProtocolVersion) {
+			t.Fatalf("remote protocol version %q = %v", version, err)
+		}
+		if _, err := rt.Discover(t.Context(), options); !errors.Is(err, protocol.ErrInvalidProtocolVersion) {
+			t.Fatalf("local protocol version %q = %v", version, err)
+		}
 	}
 	_, err = second.ListRuns(t.Context(), protocol.ListRunsRequest{IncludeDescendants: true}, protocol.CallOptions{
 		RequestMeta: protocol.RequestMeta{ClientCapabilities: &protocol.ClientCapabilities{}},

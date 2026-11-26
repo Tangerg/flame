@@ -166,8 +166,7 @@ func openConnection(ctx context.Context, cfg Config, target settings.Runtime) (*
 
 func requestMeta(version string) protocol.RequestMeta {
 	return protocol.RequestMeta{
-		ProtocolVersion: protocol.Version,
-		ClientInfo:      &protocol.ClientInfo{Name: clientName, Version: version},
+		ClientInfo: &protocol.ClientInfo{Name: clientName, Version: version},
 		ClientCapabilities: &protocol.ClientCapabilities{
 			Features:       map[string]protocol.FeaturePreference{protocol.FeatureChildRuns: {Enabled: true}},
 			InterruptTypes: supportedInterruptTypes(),

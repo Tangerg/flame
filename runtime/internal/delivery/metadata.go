@@ -2,8 +2,6 @@ package delivery
 
 import (
 	"context"
-	"maps"
-	"slices"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
@@ -12,12 +10,12 @@ type requestMetaKey struct{}
 type afterEventIDKey struct{}
 
 func WithRequestMeta(ctx context.Context, meta protocol.RequestMeta) context.Context {
-	return context.WithValue(ctx, requestMetaKey{}, cloneRequestMeta(meta))
+	return context.WithValue(ctx, requestMetaKey{}, meta.Clone())
 }
 
 func RequestMetaFrom(ctx context.Context) (protocol.RequestMeta, bool) {
 	meta, ok := ctx.Value(requestMetaKey{}).(protocol.RequestMeta)
-	return cloneRequestMeta(meta), ok
+	return meta.Clone(), ok
 }
 
 func clientCapabilitiesFrom(ctx context.Context) (*protocol.ClientCapabilities, bool) {
@@ -35,18 +33,4 @@ func withAfterEventID(ctx context.Context, eventID string) context.Context {
 func afterEventIDFrom(ctx context.Context) string {
 	eventID, _ := ctx.Value(afterEventIDKey{}).(string)
 	return eventID
-}
-
-func cloneRequestMeta(meta protocol.RequestMeta) protocol.RequestMeta {
-	if meta.ClientInfo != nil {
-		meta.ClientInfo = new(*meta.ClientInfo)
-	}
-	if meta.ClientCapabilities != nil {
-		capabilities := *meta.ClientCapabilities
-		capabilities.InterruptTypes = slices.Clone(capabilities.InterruptTypes)
-		capabilities.ExcludedEphemeralEvents = slices.Clone(capabilities.ExcludedEphemeralEvents)
-		capabilities.Features = maps.Clone(capabilities.Features)
-		meta.ClientCapabilities = &capabilities
-	}
-	return meta
 }

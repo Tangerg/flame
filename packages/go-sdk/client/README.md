@@ -14,6 +14,10 @@ The server's admission and lifecycle handlers
 remain private. `client.ErrClosed` describes a closed transport owner;
 `runtime.ErrClosed` describes a closed in-process host.
 
+Call options use the SDK's compiled protocol version when
+`RequestMeta.ProtocolVersion` is nil. A supplied pointer carries that exact
+version claim to Runtime, where an empty or unsupported version is refused.
+
 Typed plugin bindings capture the admitted contract by value. Replacing the
 caller's Capability cannot retarget a bound method or its delayed stream.
 Point resolution retains that same captured schema across the remote call,

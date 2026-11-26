@@ -108,7 +108,7 @@ func TestPluginAcceptanceDiscoveryMidSessionActivationKeepsPrefix(t *testing.T) 
 		}
 	})
 	endpoint := host.Endpoint()
-	options := protocol.CallMetadata{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}}
+	options := protocol.CallMetadata{RequestMeta: protocol.RequestMeta{ProtocolVersion: new(protocol.Version)}}
 	must := func(method delivery.Name, input any, key string) any {
 		t.Helper()
 		attempt := options
@@ -401,7 +401,7 @@ func TestDeferredCatalogSurvivesWaitingRestoreUnchanged(t *testing.T) {
 		return chat.NewResponse(&chat.Output{Message: &message, FinishReason: chat.FinishReasonToolCalls}, &chat.ResponseMetadata{Model: "claude-test", Usage: &chat.Usage{InputTokens: 2, OutputTokens: 1}})
 	})}
 	ctx := delivery.WithRequestMeta(t.Context(), protocol.RequestMeta{
-		ProtocolVersion:    protocol.Version,
+		ProtocolVersion:    new(protocol.Version),
 		ClientCapabilities: &protocol.ClientCapabilities{InterruptTypes: []protocol.InterruptType{protocol.InterruptApproval}},
 	})
 	first, api := openProtocolRuntime(t, model)

@@ -169,7 +169,7 @@ const acceptedCommandKey = "resume-crash"
 
 func acceptedCommandOptions() protocol.CallMetadata {
 	return protocol.CallMetadata{IdempotencyKey: acceptedCommandKey, IdempotencyNamespace: testsupport.IdempotencyNamespace,
-		RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version, ClientCapabilities: &protocol.ClientCapabilities{InterruptTypes: []protocol.InterruptType{protocol.InterruptApproval}}}}
+		RequestMeta: protocol.RequestMeta{ProtocolVersion: new(protocol.Version), ClientCapabilities: &protocol.ClientCapabilities{InterruptTypes: []protocol.InterruptType{protocol.InterruptApproval}}}}
 }
 
 func acceptedResumeRequest(runID, itemID string) protocol.ResumeRunRequest {

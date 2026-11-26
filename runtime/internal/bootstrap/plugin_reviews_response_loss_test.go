@@ -67,7 +67,7 @@ func TestReviewCommandWithoutRunRecoversItsOriginalOwnerAcrossReplacementAndRest
 		Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: installed.ID},
 		Input:  `{"id":"example-review","expectedRevision":1,"status":"resolved"}`,
 	}
-	options := protocol.CallMetadata{IdempotencyKey: "original-review-command", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}}
+	options := protocol.CallMetadata{IdempotencyKey: "original-review-command", RequestMeta: protocol.RequestMeta{ProtocolVersion: new(protocol.Version)}}
 	if result := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, options); result.Failure == nil || !errors.Is(result.Failure, protocol.ErrInternalError) {
 		t.Fatalf("lost response became a definite result: %+v", result)
 	}
@@ -376,7 +376,7 @@ func TestReviewBackendCommittedResponseLossPreservesUnknownRunAndReceipt(t *test
 		t.Helper()
 		result := runtime.endpoint.Invoke(t.Context(), method, request, protocol.CallMetadata{
 			IdempotencyKey: key,
-			RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version, ClientCapabilities: &protocol.ClientCapabilities{
+			RequestMeta: protocol.RequestMeta{ProtocolVersion: new(protocol.Version), ClientCapabilities: &protocol.ClientCapabilities{
 				InterruptTypes: []protocol.InterruptType{protocol.InterruptApproval},
 			}},
 		})

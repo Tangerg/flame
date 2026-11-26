@@ -43,7 +43,7 @@ func TestAcceptedMCPDisableSurvivesCallerCancellation(t *testing.T) {
 
 	request := protocol.UpdateMCPServerRequest{Server: serverID, Enabled: new(false)}
 	options := protocol.CallMetadata{
-		IdempotencyKey: "disable-once", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version},
+		IdempotencyKey: "disable-once", RequestMeta: protocol.RequestMeta{ProtocolVersion: new(protocol.Version)},
 	}
 	callCtx, cancel := context.WithCancel(t.Context())
 	defer cancel()

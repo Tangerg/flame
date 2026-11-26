@@ -201,7 +201,7 @@ func newSessionStateE2ERuntime(
 		}
 	})
 	ctx := delivery.WithRequestMeta(t.Context(), protocol.RequestMeta{
-		ProtocolVersion: protocol.Version,
+		ProtocolVersion: new(protocol.Version),
 	})
 	return stores, api, ctx, home
 }
