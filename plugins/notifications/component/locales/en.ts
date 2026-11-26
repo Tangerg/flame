@@ -1,12 +1,6 @@
 export const en: Record<string, string> = {
   "settings.completionSound": "Completion sound",
-  "settings.completionSound.sub":
-    "Play a chime when a run finishes while the app is in the background.",
   "settings.notifications": "System notifications",
-  "settings.notifications.authorization.granted":
-    "Shown when a run finishes, fails or needs you while Flame is in the background.",
-  "settings.notifications.authorization.default":
-    "Flame will ask for permission the first time it has something to tell you.",
   "settings.notifications.authorization.denied":
     "Blocked by the system. Allow Flame in System Settings › Notifications to turn this on.",
   "settings.notifications.authorization.unsupported":

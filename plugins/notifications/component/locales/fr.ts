@@ -1,12 +1,6 @@
 export const fr: Record<string, string> = {
   "settings.completionSound": "Son de fin",
-  "settings.completionSound.sub":
-    "Jouer un son lorsqu’une exécution se termine alors que l’application est en arrière-plan.",
   "settings.notifications": "Notifications système",
-  "settings.notifications.authorization.granted":
-    "Affichées quand une exécution se termine, échoue ou vous attend pendant que Flame est en arrière-plan.",
-  "settings.notifications.authorization.default":
-    "Flame demandera l’autorisation la première fois qu’il aura quelque chose à vous signaler.",
   "settings.notifications.authorization.denied":
     "Bloquées par le système. Autorisez Flame dans Réglages Système › Notifications.",
   "settings.notifications.authorization.unsupported":

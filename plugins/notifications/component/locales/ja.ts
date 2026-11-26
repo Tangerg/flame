@@ -1,12 +1,6 @@
 export const ja: Record<string, string> = {
   "settings.completionSound": "完了サウンド",
-  "settings.completionSound.sub":
-    "アプリがバックグラウンドのときに実行が完了したらサウンドを再生します。",
   "settings.notifications": "システム通知",
-  "settings.notifications.authorization.granted":
-    "Flame がバックグラウンドのとき、実行の完了・失敗・入力待ちを通知します。",
-  "settings.notifications.authorization.default":
-    "最初に通知が必要になったときに許可を求めます。",
   "settings.notifications.authorization.denied":
     "システムでブロックされています。「システム設定 › 通知」で Flame を許可してください。",
   "settings.notifications.authorization.unsupported":
