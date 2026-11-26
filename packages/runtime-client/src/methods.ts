@@ -39,9 +39,9 @@ import type {
   SetMCPToolExposureRequest,
   SetApprovalRuleRequest,
 } from "./generated/wire.generated";
-import type { RpcCallOptions, RpcClient } from "./client";
+import type { RpcCallOptions } from "./client";
 import { type MutationPromise } from "./mutation";
-import { createWireCallPath, type MethodsOptions, type WireCall } from "./wireCallPath";
+import type { WireCall, WireCallPath, WireCallPathOptions } from "./wireCallPath";
 import type { RunId, SegmentId, SessionId } from "./ids";
 import type {
   ModelInvocation,
@@ -456,12 +456,13 @@ function bindWorkspace(call: WireCall, ref: WorkspaceRef): WorkspaceMethods {
   };
 }
 
-export function createMethods(client: RpcClient, options: MethodsOptions): Methods {
-  const { mutationJournal } = options;
-  const wire = createWireCallPath(client, options);
+export function createMethods(
+  wire: WireCallPath,
+  { capabilities, mutationJournal }: Pick<WireCallPathOptions, "capabilities" | "mutationJournal">,
+): Methods {
   const { call } = wire;
 
-  const runCommands = createRunCommands(wire, mutationJournal, options.capabilities);
+  const runCommands = createRunCommands(wire, mutationJournal, capabilities);
 
   const openWorkspace = async (
     ref?: WorkspaceRef,
@@ -542,7 +543,7 @@ export function createMethods(client: RpcClient, options: MethodsOptions): Metho
         );
         return { result, events: stream.events };
       },
-      () => options.capabilities?.()?.runtimeTopics,
+      () => capabilities?.()?.runtimeTopics,
     ),
     interrupts: {
       list: (query, signal) =>

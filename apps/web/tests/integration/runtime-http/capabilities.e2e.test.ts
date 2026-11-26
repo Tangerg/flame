@@ -7,7 +7,7 @@ import {
   createHttpTransport,
   RpcConnectionError,
 } from "@flame/runtime-client";
-import { HTTP_HEADERS, RPC_HTTP } from "@flame/runtime-client/wire";
+import { HTTP_HEADERS, PROTOCOL_VERSION, RPC_HTTP } from "@flame/runtime-client/wire";
 import { useRuntimeFixture } from "./fixture";
 import { faultUnaryResponse } from "./transportFaults";
 import { MemoryMutationStorage } from "./mutationStorage";
@@ -132,6 +132,59 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: capability conditions", () => 
         },
       },
     });
+  });
+
+  it("applies the same capability admission to typed and exact JSON queries", async () => {
+    const discovery = fixture.negotiated;
+    const childRuns = discovery?.features.childRuns;
+    if (!discovery || !childRuns?.enabled) throw new Error("expected live child Run support");
+    const session = await fixture.client.sessions.create({ title: "Exact query admission" });
+    const sessionId = asSessionId(session.id);
+    let dispatched = 0;
+    let metadataReads = 0;
+    const client = createFlameClient(
+      createHttpTransport({
+        baseUrl: fixture.baseUrl,
+        fetch: (...args) => {
+          dispatched++;
+          return fetch(...args);
+        },
+      }),
+      {
+        capabilities: () => ({
+          ...discovery,
+          features: { ...discovery.features, childRuns: { ...childRuns, enabled: false } },
+        }),
+        requestMeta: () => {
+          metadataReads++;
+          return {
+            protocolVersion: PROTOCOL_VERSION,
+            clientCapabilities: { features: { childRuns: { enabled: true } } },
+          };
+        },
+      },
+    );
+    try {
+      const refusal = {
+        data: {
+          type: "capability_not_negotiated",
+          requiredCapabilities: [{ type: "feature", name: "childRuns" }],
+        },
+      };
+      await expect(client.sessions.snapshot(sessionId, true)).rejects.toMatchObject(refusal);
+      await expect(
+        client.queryJSON("sessions.snapshot", { sessionId, includeDescendants: true }),
+      ).rejects.toMatchObject(refusal);
+      expect(dispatched).toBe(0);
+
+      const snapshot = await client.queryJSON("sessions.snapshot", { sessionId });
+      expect(JSON.parse(snapshot)).toMatchObject({ session: { id: sessionId } });
+      expect(dispatched).toBe(1);
+      expect(metadataReads).toBe(3);
+    } finally {
+      await client.close();
+      await fixture.client.sessions.delete(sessionId);
+    }
   });
 
   it("settles a previously dispatched command using its recorded refusal", async () => {

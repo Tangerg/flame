@@ -3,7 +3,7 @@ import { wireAcknowledgementCheck, type WireParams } from "@flame/runtime-client
 import { checkRequest } from "./request";
 import type { RpcCallOptions } from "./client";
 import { MutationLookupError, type MutationPromise } from "./mutation";
-import { type MethodsOptions } from "./wireCallPath";
+import type { WireCallPath, WireCallPathOptions } from "./wireCallPath";
 import type {
   ResumeRunRequest,
   ResumeRunResponse,
@@ -25,7 +25,6 @@ import type { PendingRunCommand } from "./mutationJournal";
 import { RpcCancellationError, RpcProtocolError } from "./errors";
 
 import type { MutationJournal } from "./mutationJournal";
-import type { WireCallPath } from "./wireCallPath";
 
 export interface RunOpeningResult<R> {
   result: R;
@@ -100,7 +99,7 @@ export function createRunCommands(
     openMutation,
   }: Pick<WireCallPath, "callUnkeyed" | "dispatchCommand" | "openMutation">,
   mutationJournal: MutationJournal,
-  capabilities: MethodsOptions["capabilities"],
+  capabilities: WireCallPathOptions["capabilities"],
 ): RunCommands {
   const runEventStreamOptions = (signal?: AbortSignal) => ({
     signal,

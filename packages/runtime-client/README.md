@@ -90,9 +90,9 @@ undeclared envelope members. Its schema also supplies the client-side message
 type, preserving exact payload values for method validation.
 For evidence such as accounting archives, `client.queryJSON(method,
 params, { signal })` returns canonical JSON with the original numeric lexemes,
-wide integers, null and missing members retained. It uses the same request,
-generated validation and cancellation path. It accepts only unary queries;
-commands and streams keep their existing lifecycle APIs. Use `parseJSON`,
+wide integers, null and missing members retained. Both result formats capture
+request metadata once and share request validation, capability admission and
+cancellation. Exact JSON accepts unary queries. Use `parseJSON`,
 `stringifyJSON`, `bigint` and `ExactNumber` from `@frame/sdk/json` to inspect or return exact data.
 That Frame entry owns the pure data mechanism. Its dependency closure
 cannot enter Runtime calls, protocol records or validation; neutral application

@@ -7,7 +7,7 @@ import {
   RpcCancellationError,
   RpcConnectionError,
 } from "./errors";
-import { checkRequest, requestRequiresIdempotency } from "./request";
+import { requestRequiresIdempotency } from "./request";
 import {
   MAXIMUM_RUN_EVENT_ID_CHARACTERS,
   PROBLEM_CODES,
@@ -134,10 +134,6 @@ function notificationEventType(params: unknown): unknown {
   return (event as Record<string, unknown>).type;
 }
 
-export interface RpcClientOptions {
-  requestMeta?: () => RequestMeta | undefined;
-}
-
 export interface RpcCallOptions<Result = unknown> {
   signal?: AbortSignal;
   idempotencyKey?: string;
@@ -163,8 +159,7 @@ export interface RpcClient {
   close(): Promise<void>;
 }
 
-// A query result is delivered as its projected value or as its exact JSON text.
-type ResultDelivery = "value" | "json";
+export type ResultDelivery = "value" | "json";
 
 interface AwaitingResponse {
   state: "awaiting";
@@ -305,20 +300,12 @@ function settleResult(
   }
 }
 
-// The options a call carries must fit its method: exact JSON only for unary
-// queries, idempotency only for commands, replay cursors only where accepted.
 function assertCallOptions<M extends WireMethodName>(
   method: M,
   params: WireParams<M>,
   callOptions: RpcCallOptions<WireResult<M>>,
-  delivery: ResultDelivery,
 ): void {
   const requiresIdempotency = requestRequiresIdempotency(method, params);
-  if (
-    delivery === "json" &&
-    (requiresIdempotency || isWireStreamingMethodName(method) || !wireMethodReturnsValue(method))
-  )
-    throw new TypeError("exact JSON delivery requires a unary query result");
   if (callOptions.observe && !isWireStreamingMethodName(method))
     throw new TypeError("notification observation requires a streaming method");
   if (callOptions.idempotencyKey !== undefined && !requiresIdempotency) {
@@ -357,7 +344,7 @@ function assertReplayCursor(
   }
 }
 
-export function createRpcClient(transport: Transport, options: RpcClientOptions = {}): RpcClient {
+export function createRpcClient(transport: Transport): RpcClient {
   let lastRequestId = 0n;
   const requests = new Map<RpcId, RequestState>();
   const consumers = new Set<Promise<void>>();
@@ -494,10 +481,8 @@ export function createRpcClient(transport: Transport, options: RpcClientOptions 
     delivery: ResultDelivery = "value",
   ): Promise<WireResult<M> | string> {
     requireOpen();
-    assertCallOptions(method, params, callOptions, delivery);
-    const requestMeta =
-      callOptions.requestMeta === undefined ? options.requestMeta?.() : callOptions.requestMeta;
-    checkRequest(method, params, requestMeta);
+    assertCallOptions(method, params, callOptions);
+    const { requestMeta } = callOptions;
     const id = (++lastRequestId).toString();
     const req: TransportRequest = {
       jsonrpc: JSONRPC_VERSION,

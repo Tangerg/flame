@@ -1,4 +1,4 @@
-import type { RpcCallOptions, RpcClient } from "./client";
+import type { ResultDelivery, RpcCallOptions, RpcClient } from "./client";
 import { cloneJSON } from "@frame/sdk/json";
 import { RpcCancellationError, RpcError } from "./errors";
 import { captureRequestMeta, checkRequest, requestRequiresIdempotency } from "./request";
@@ -25,7 +25,9 @@ import {
 import type { RequestMeta, ServerCapabilities } from "@flame/runtime-client/wire";
 import {
   WIRE_METHOD_POLICY,
+  isWireStreamingMethodName,
   wireMethodIsPaginated,
+  wireMethodReturnsValue,
   type WireMethodName,
   type WireMutationMethodName,
   type WirePaginatedMethodName,
@@ -76,7 +78,7 @@ export type WireCall = <M extends WireMethodName>(
   options?: RpcCallOptions<WireResult<M>>,
 ) => WireCallResult<M>;
 
-export interface MethodsOptions {
+export interface WireCallPathOptions {
   capabilities?: () => ServerCapabilities | null | undefined;
   requestMeta?: () => RequestMeta | undefined;
   mutationJournal: MutationJournal;
@@ -85,6 +87,7 @@ export interface MethodsOptions {
 export interface WireCallPath {
   call: WireCall;
   callUnkeyed: UnkeyedCall;
+  queryJSON: RpcClient["callJSON"];
   dispatchCommand: CommandDispatch;
   openMutation: OpenMutation;
   capturePluginCommand(
@@ -118,24 +121,57 @@ type OpenMutation = <M extends WireMethodName, Result>(
   options?: MutationOpeningOptions,
 ) => MutationPromise<Result>;
 
-export function createWireCallPath(client: RpcClient, options: MethodsOptions): WireCallPath {
+export function createWireCallPath(client: RpcClient, options: WireCallPathOptions): WireCallPath {
+  const captureMetadata = (supplied?: RequestMeta | null) =>
+    captureRequestMeta(supplied === undefined ? options.requestMeta?.() : supplied);
+
+  const prepareUnkeyed = <M extends WireMethodName>(
+    method: M,
+    params: WireParams<M>,
+    suppliedMeta?: RequestMeta | null,
+    delivery: ResultDelivery = "value",
+  ) => {
+    const prepared = checkRequest(method, cloneJSON(params));
+    if (
+      delivery === "json" &&
+      (isWireStreamingMethodName(method) ||
+        !wireMethodReturnsValue(method) ||
+        requestRequiresIdempotency(method, prepared))
+    )
+      throw new TypeError("exact JSON delivery requires a unary query result");
+    const requestMeta = captureMetadata(suppliedMeta);
+    requireCapabilities(
+      method,
+      prepared,
+      options.capabilities?.(),
+      requestMeta?.clientCapabilities,
+    );
+    return { params: prepared, requestMeta };
+  };
+
   const callUnkeyed: UnkeyedCall = async (method, params, callOptions) => {
-    const requestMeta =
-      callOptions?.requestMeta === undefined ? options.requestMeta?.() : callOptions.requestMeta;
-    requireCapabilities(method, params, options.capabilities?.(), requestMeta?.clientCapabilities);
-    const effectiveOptions =
-      options.requestMeta !== undefined || callOptions?.requestMeta !== undefined
-        ? { ...callOptions, requestMeta: requestMeta ?? null }
-        : callOptions;
-    return client.call(method, params, effectiveOptions);
+    const prepared = prepareUnkeyed(method, params, callOptions?.requestMeta);
+    return client.call(method, prepared.params, {
+      ...callOptions,
+      requestMeta: prepared.requestMeta,
+    });
+  };
+
+  const queryJSON: WireCallPath["queryJSON"] = async (method, params, callOptions) => {
+    const prepared = prepareUnkeyed(method, params, callOptions?.requestMeta, "json");
+    return client.callJSON(method, prepared.params, {
+      ...callOptions,
+      requestMeta: prepared.requestMeta,
+    });
   };
 
   // A reservation can outlive the capabilities observed when it was admitted.
   const dispatchCommand: CommandDispatch = async (method, params, reservation, callOptions) => {
+    const prepared = checkRequest(method, params);
     const idempotencyNamespace = reservation.authorizeDispatch();
     let phase: DispatchPhase | undefined;
     try {
-      return await client.call(method, params, {
+      return await client.call(method, prepared, {
         ...callOptions,
         requestMeta: reservation.requestMeta,
         idempotencyKey: reservation.idempotencyKey,
@@ -178,14 +214,11 @@ export function createWireCallPath(client: RpcClient, options: MethodsOptions): 
       if (original) {
         reservation = original.reserve();
       } else {
-        const metadata = captureRequestMeta(
-          requestMeta === undefined ? (options.requestMeta?.() ?? null) : requestMeta,
-        );
         reservation = options.mutationJournal.reserve(
           method,
           preparedParams,
           preferredJournalKey,
-          metadata,
+          captureMetadata(requestMeta),
         );
       }
     } catch (error) {
@@ -263,5 +296,5 @@ export function createWireCallPath(client: RpcClient, options: MethodsOptions): 
       signal,
     );
 
-  return { call, callUnkeyed, dispatchCommand, openMutation, capturePluginCommand };
+  return { call, callUnkeyed, queryJSON, dispatchCommand, openMutation, capturePluginCommand };
 }
