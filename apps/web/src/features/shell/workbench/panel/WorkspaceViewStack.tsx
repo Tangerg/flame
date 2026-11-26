@@ -18,7 +18,6 @@ export function WorkspaceViewStack({
   presentation,
   shown,
   presentedViewId,
-  fullPaneViewId,
   addressable,
   mountedViewIds,
   mainViewRef,
@@ -29,21 +28,21 @@ export function WorkspaceViewStack({
   presentation: "main" | "dock";
   shown: boolean;
   presentedViewId: string | null;
-  fullPaneViewId: string | null;
   addressable: boolean;
   mountedViewIds: ReadonlySet<string>;
-  mainViewRef: InspectionFocus["mainViewRef"];
+  mainViewRef?: InspectionFocus["mainViewRef"];
   presentationRef: InspectionFocus["presentationRef"];
   catalog: ReturnType<typeof useContextDockCatalog>;
   openViewIds: ReadonlySet<string>;
 }) {
   const t = useT();
   const main = presentation === "main";
+  const mainViewId = main ? presentedViewId : null;
   return (
     <div {...stylex.props(sh.anchor)}>
       <Activity mode={presentedViewId === WORKSPACE_DOCK_CATALOG ? "visible" : "hidden"}>
         <div
-          ref={fullPaneViewId === WORKSPACE_DOCK_CATALOG ? mainViewRef : undefined}
+          ref={mainViewId === WORKSPACE_DOCK_CATALOG ? mainViewRef : undefined}
           role={main ? "region" : undefined}
           aria-label={main ? t(CATALOG_VIEW.title) : undefined}
           tabIndex={main ? -1 : undefined}
@@ -68,7 +67,7 @@ export function WorkspaceViewStack({
             <ContentVisibility visible={visible} fallbackFocus={presentationRef}>
               <PanelHost density={main ? "page" : "compact"}>
                 <WorkspaceViewBody
-                  ref={viewId === fullPaneViewId ? mainViewRef : undefined}
+                  ref={viewId === mainViewId ? mainViewRef : undefined}
                   viewId={viewId}
                   presentation={presentation}
                 />

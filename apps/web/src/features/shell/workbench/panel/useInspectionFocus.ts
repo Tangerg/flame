@@ -79,6 +79,8 @@ export function useInspectionFocus({
   const delivered = useRef<WorkspaceInspection | null>(null);
   const returningRef = useRef<ReturnFocus | null>(null);
   const settingsReturningRef = useRef<SettingsReturnFocus | null>(null);
+  const workspaceLayerRef = useRef<HTMLDivElement>(null);
+  const settingsLayerRef = useRef<HTMLDivElement>(null);
   const dockRef = useRef<HTMLElement>(null);
   const conversationRef = useRef<HTMLDivElement>(null);
   const mainViewRef = useRef<HTMLDivElement>(null);
@@ -244,15 +246,17 @@ export function useInspectionFocus({
         return;
     }
     // A presentation change hides owned content before WebKit settles focus:
-    // entering a full pane hides the conversation and Dock, and leaving one for
-    // a narrow conversation keeps the retained view inside the hidden Dock, and
-    // collapsing the Dock hides it in place. Revealing a Dock hides nothing.
+    // Settings covers the workspace, including the header outside the two panes.
+    // Other full-pane routes hide the conversation and Dock. Collapsing the
+    // Dock hides it in place, and revealing it hides nothing.
     const hiddenPanes =
-      fullPaneViewId !== null
-        ? [conversationRef.current, dockRef.current]
-        : dockVisible
-          ? []
-          : [dockRef.current];
+      fullPaneViewId === WORKSPACE_SETTINGS_VIEW
+        ? [workspaceLayerRef.current]
+        : fullPaneViewId !== null
+          ? [settingsLayerRef.current, conversationRef.current, dockRef.current]
+          : dockVisible
+            ? [settingsLayerRef.current]
+            : [settingsLayerRef.current, dockRef.current];
     const hiddenOrigin =
       !target.contains(active) && hiddenPanes.some((pane) => pane?.contains(active));
     if (
@@ -310,6 +314,8 @@ export function useInspectionFocus({
   };
 
   return {
+    workspaceLayerRef,
+    settingsLayerRef,
     dockRef,
     conversationRef,
     mainViewRef,

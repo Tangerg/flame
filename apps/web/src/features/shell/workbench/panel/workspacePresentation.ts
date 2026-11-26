@@ -6,6 +6,7 @@ import {
   useWorkspaceDock,
   useWorkspaceInspection,
   WORKSPACE_DOCK_CATALOG,
+  WORKSPACE_SETTINGS_VIEW,
 } from "@/features/workspace/public/navigation";
 import { composerFocusRegion } from "@/features/shell/workbench/panel/FloatingComposer";
 import { type Translate, labelText, type Label } from "@/lib/i18n/index";
@@ -134,26 +135,34 @@ export function workspacePresentation({
   rowWidth: number | null;
   conversationReady: boolean;
 }) {
+  const settingsOpen = activeMainView === WORKSPACE_SETTINGS_VIEW;
+  // Settings covers the source presentation while its layout stays in place.
+  const workspaceMainViewId = settingsOpen ? settingsSourceViewId : activeMainView;
   const { hasDockOwner, dockOpen, fullPaneViewId, dockVisible, inspectedFullPane } = dockPlacement({
     activeSessionId,
     dock,
-    activeMainView,
+    activeMainView: workspaceMainViewId,
     inspection,
     rowWidth,
   });
   const main = fullPaneViewId !== null;
   const ownedDockViewIds = hasDockOwner ? dock.viewIds : [];
   const openViewIds = new Set(ownedDockViewIds);
-  if (activeMainView !== null) openViewIds.add(activeMainView);
+  if (workspaceMainViewId !== null) openViewIds.add(workspaceMainViewId);
+  const mountedViewIds = mountedWorkspaceViews(openViewIds, inspection);
+  const settingsMounted = mountedViewIds.delete(WORKSPACE_SETTINGS_VIEW) || settingsOpen;
   // Views mount once a conversation, a main view or an open dock can show them.
-  const viewsReady = conversationReady || activeMainView !== null || dock.open;
+  const viewsReady = conversationReady || workspaceMainViewId !== null || dock.open;
   return {
+    settingsOpen,
+    settingsMounted,
     hasDockOwner,
     dockOpen,
     dockVisible,
     ownedDockViewIds,
     openViewIds,
-    mountedViewIds: mountedWorkspaceViews(openViewIds, inspection, settingsSourceViewId),
+    mountedViewIds,
+    dockAddressable: workspaceMainViewId === null,
     fullPaneViewId,
     inspectedFullPane,
     presentation: main ? ("main" as const) : ("dock" as const),
@@ -166,7 +175,7 @@ export function workspacePresentation({
     dockChromeVisible: !main && dockVisible,
     dockToggleShown: viewsReady && !main && hasDockOwner,
     // Material keys reach the dock unless a main view outside inspection owns them.
-    dockOwnsMaterialKeys: activeMainView === null || inspectedFullPane,
+    dockOwnsMaterialKeys: workspaceMainViewId === null || inspectedFullPane,
   };
 }
 
@@ -181,14 +190,12 @@ export function fullPanePickable(
   );
 }
 
-// Keep sources mounted so a return from inspection or Settings finds the reader as left.
+// Keep sources mounted so a return from inspection finds the reader as left.
 function mountedWorkspaceViews(
   openViewIds: ReadonlySet<string>,
   inspection: WorkspaceInspection,
-  settingsSourceViewId: string | null,
 ): Set<string> {
   const mounted = new Set(openViewIds);
-  if (settingsSourceViewId !== null) mounted.add(settingsSourceViewId);
   for (let source = inspection; source; source = source.previous) {
     if (source.returnViewId && source.returnViewId !== source.viewId)
       mounted.add(source.returnViewId);

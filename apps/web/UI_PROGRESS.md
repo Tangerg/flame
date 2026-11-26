@@ -1176,9 +1176,81 @@ Runtime processes reach their existing drain deadline. The owned
 app registration, processes, listeners, profiles, captures,
 observer, logs, caches and checkout outputs are removed.
 
-During the font test, Settings temporarily widens the retained
-tree and the Dock narrows again on close. Check the same visit
-with an unchanged appearance to isolate its effect on tree position.
+[Settings leaves the workspace in place](#settings-leaves-the-workspace-in-place-2026-11-27)
+isolates the effect of an unchanged Settings visit on that position.
+
+### Settings leaves the workspace in place (2026-11-27)
+
+In signed Wails at `501c21f9b`, the long north file opens from
+y=153 in a 1120 × 728 English/dark/18 px/Blue window with a
+320 px Files Dock. Cmd+, from Go to line and Close make no
+preference changes. The hidden tree's content width still grows
+from 316 to 1117 px and resets its measured rows. Close restores
+Go to line. Back to files then restores the correct file at
+y=301 and scrollTop 896, up from 820.
+
+The first candidate separates Settings from the Dock group. The
+tree still widens to 403 px when the outer shell removes the
+Sidebar and its separator. The complete candidate retains both
+split groups. Settings occupies a full-window sibling of the
+workspace layer, following ZCode's retained workspace and
+separate Settings cover. Inactive content keeps its bounds and
+leaves the accessibility tree, keyboard navigation and pointer
+interaction. The existing visibility boundary retires its menus.
+The Sidebar's covered panel and disabled separator keep their
+slots. The host reads the source view and target from the
+navigation visit for the active Session. A material inspection
+returning to Settings keeps the same Settings layer and input
+mounted.
+
+- After fast-forwarding to `50fade205`, the traced signed Wails
+  build with Runtime `2026-11-27.2` holds the tree viewport at
+  316 × 679 px, scrollTop 820 and content height 2418 throughout
+  the no-edit visit. Both long row bounds remain stable. Back
+  focuses the original north row at y=153.
+- The regular signed build repeats y=153 to y=153 from the reader
+  and from the visible tree. A click reaches the Settings search
+  field over the retained Sidebar slot. Pointer Close returns
+  the correct tree row. From the full-width reader, resize to
+  1280 × 800 during Settings and close with Cmd+W to return to
+  Go to line. History Back restores the reader, Forward shows
+  Settings and Close from that historical entry reveals the Dock.
+- Settings search `2468` at caret 2 opens Files from the command
+  menu. Escape restores the same field and caret, and typing
+  `5` yields `24568`. The Composer separately continues
+  `2468` at caret 2 through Settings and Undo restores its draft.
+- At 1280 × 800 in Chinese/light/14 px/Flame, pointer opening
+  confirms the north file. Settings covers the window, Cmd+W
+  returns to Back to files and the row stays at y=99 on return.
+  The Sidebar Settings button enters the same layer by pointer.
+  With the Sidebar already collapsed, a visit from the Composer
+  preserves the collapsed state, draft `2468` and caret 1.
+
+At `50fade205`, 66 Runtime HTTP tests pass across 15 suites.
+The complete private Session and 50 workspace file digests
+match. The provider serves 30 catalog reads and zero generations.
+Production staging, Runtime packaging and signed builds pass.
+
+After `121523ab6`, the rebuilt regular signed app and a fresh
+private Runtime repeat y=153 to y=153 and the Settings search
+return at caret 2. The second provider serves nine catalog reads
+and zero generations. Its Session and 50 file digests match.
+Both native profiles record zero Runs. `8060ac76c` changes the
+steering receipt path, which starts during a Run. The final
+Web typechecks, 82 contract tests, bootstrap, scoped Prettier
+and diff checks pass under npm 11.21.1. The native checks cover
+macOS Wails pointer, keyboard and accessibility state.
+VoiceOver and other platforms remain outside this review.
+
+Every private Wails host exits normally. All three Runtime
+processes used for native checks reach their existing drain
+deadline. The owned app registration, processes, listeners,
+profiles, HTTP harness, fixtures, captures, observer, logs,
+caches and checkout outputs are removed.
+
+The next review follows Go to line through a long file to check
+its target line, viewport and focus after submitting or dismissing
+the control.
 
 ## Error notes leave retrying to their buttons (2026-11-26)
 
