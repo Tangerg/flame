@@ -10,7 +10,7 @@ import { Fragment, useId, useLayoutEffect, useRef, type ReactNode, type RefObjec
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { DataView } from "@/ui/index";
 import { TextButton } from "@/ui/index";
-import { Badge, IconButton, vocab, handoffFocus } from "@flame/ui";
+import { Badge, IconButton, PanelSection, vocab, handoffFocus } from "@flame/ui";
 import {
   forgetApprovalRule,
   forgetApprovalRules,
@@ -30,7 +30,6 @@ import {
   type as typeStep,
   weight,
 } from "@flame/ui/tokens.stylex";
-import { SettingRow } from "@/ui/settings/SettingRow";
 
 const r = stylex.create({
   // Rows bleed by their inset so rule text starts on the mode choices' edge.
@@ -72,7 +71,7 @@ const r = stylex.create({
   tool: { color: color.fg, minWidth: 0, maxWidth: "100%" },
 });
 
-export function RulesRow() {
+export function RulesSection() {
   const agentAccess = useAgent();
 
   const t = useT();
@@ -91,10 +90,8 @@ export function RulesRow() {
   });
 
   return (
-    <SettingRow
-      label={t("approvals.rules")}
-      labelId={titleId}
-      align="stacked"
+    <PanelSection
+      title={<span id={titleId}>{t("approvals.rules")}</span>}
       actions={
         data?.length ? (
           <ClearRules
@@ -161,7 +158,7 @@ export function RulesRow() {
           )}
         </DataView>
       </div>
-    </SettingRow>
+    </PanelSection>
   );
 }
 
