@@ -89,17 +89,24 @@ export function MemoryReport({
           page &&
           pageNumber !== undefined && (
             <span id="summary" ref={summary} tabIndex={-1}>
-              {(pageNumber > 1 || Boolean(page.nextCursor)) &&
-                `${t("footer.page", { page: pageNumber })} · `}
-              {t("footer.items", { count: rows.length })}
-              {" · "}
-              {t("catalog.pending", {
-                count: rows.filter((item) => item.status === "pending").length,
-              })}
-              {" · "}
-              {t("catalog.active", {
-                count: rows.filter((item) => item.status === "active").length,
-              })}
+              <RecordMeta>
+                {(pageNumber > 1 || Boolean(page.nextCursor)) && (
+                  <span>{t("footer.page", { page: pageNumber })}</span>
+                )}
+                <span>{t("footer.items", { count: rows.length })}</span>
+                <span>
+                  {t("catalog.pending", {
+                    count: rows.filter((item) => item.status === "pending")
+                      .length,
+                  })}
+                </span>
+                <span>
+                  {t("catalog.active", {
+                    count: rows.filter((item) => item.status === "active")
+                      .length,
+                  })}
+                </span>
+              </RecordMeta>
             </span>
           )
         }
