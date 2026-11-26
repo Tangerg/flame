@@ -85,7 +85,7 @@ export function EmptyState({
 }: {
   icon?: IconGlyph;
   title: string;
-  sub?: string;
+  sub?: ReactNode;
   action?: ReactNode;
   size?: EmptyStateSize;
   align?: EmptyStateAlign;

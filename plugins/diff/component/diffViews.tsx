@@ -380,17 +380,13 @@ export function DiffManifestNotices({
   // complete, over budget when truncated, never a clean comparison.
   if (!hasFiles && missingPath)
     return (
-      <>
-        <EmptyState
-          icon={FileDiffIcon}
-          size="compact"
-          align="start"
-          title={t(truncated ? "file.overBudget" : "file.unchanged")}
-        />
-        <Metadata>
-          <DiffFilePath path={missingPath} />
-        </Metadata>
-      </>
+      <EmptyState
+        icon={FileDiffIcon}
+        size="compact"
+        align="start"
+        title={t(truncated ? "file.overBudget" : "file.unchanged")}
+        sub={<DiffFilePath path={missingPath} />}
+      />
     );
   return (
     <>
