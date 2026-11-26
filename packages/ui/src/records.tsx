@@ -86,6 +86,7 @@ const styles = stylex.create({
     flexWrap: "wrap",
     gap: space.s2,
   },
+  // A heading holding a switch or small button keeps the pitch of one holding an md field.
   actions: {
     display: "flex",
     flexWrap: "wrap",
@@ -94,6 +95,7 @@ const styles = stylex.create({
     columnGap: layout.contentGap,
     rowGap: space.s1,
     minWidth: 0,
+    minHeight: "max(var(--control-height-md), var(--control-target-min))",
   },
   meta: {
     display: "inline-flex",

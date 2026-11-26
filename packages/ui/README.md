@@ -259,10 +259,11 @@ gives the trigger an accessible name that contains the visible title and the
 row's identity.
 
 `RecordHeading` groups identity, state and the main action. The title and status
-form one wrapping group beside the actions on a center-aligned row, so they share
-the action control's center line; the actions wrap beneath once that group falls
-below its `12rem` basis. The description follows the row at full width and never
-moves the actions. Long prose in a description (schedule instructions, MCP tool
+form one wrapping line, and the description beneath it completes one copy column;
+the actions sit beside that column on its center line and wrap beneath once it
+falls below its `12rem` basis. The actions column is at least an md control tall,
+so a heading holding a switch or small button keeps the pitch of a row holding
+an md field. Long prose in a description (schedule instructions, MCP tool
 descriptions) goes through `RecordExcerpt`: collapsed whitespace and two visible
 lines, with the whole text kept for assistive technology. `Disclosure` owns a
 full-width expanding panel with an optional adjacent action slot. The growing
