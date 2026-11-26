@@ -251,6 +251,55 @@ drains after Wails exit reach the existing deadline. The test apps,
 listeners, fixture installations, profiles, logs, captures, caches and
 checkout build outputs are removed.
 
+### Full paths for clipped Diff headings (2026-11-27)
+
+Two files in the same directory with 196-character names share the
+entire visible part of the two-line header. Their final
+`north-review-tail.md` and `south-review-tail.md` portions distinguish
+them. In the signed Wails baseline at `72002d012` and Runtime
+`2026-11-26.8`, English/dark/18 px/Blue at 1120 × 728 with a
+320 px Dock paints the same heading for both files. The heading box
+is 57 px tall and the text would use 190 px.
+
+`DiffFileHeader` keeps the compact title and its original DOM focus
+target. When its visible height clips the text, the heading joins
+the keyboard order and the shared Tooltip carries the full relative
+path. It measures the current file, width and typography. The
+reader follows Better Layout's guidance on exposing clipped content
+and ZCode's compact sticky file identity.
+
+- The final signed production Wails build uses `6d832dfb5` and
+  Runtime `2026-11-26.9`. On the same two real Git changes and
+  320 px Dock, Shift+Tab from Diff layout focuses the north heading
+  and exposes the full path. Escape closes the Tooltip in place.
+  The next Escape returns to the selected file row. Next file
+  selects the south file. Physical pointer motion into its heading
+  exposes the south path with keyboard focus still on Diff layout.
+- The filter remains `tail` when returning to the south row. Append
+  52 evidence lines to each private file and refresh the selected
+  patch. Native wheel input brings the last evidence line from
+  y=1758 to y=618.
+- In Chinese/light/14 px/Flame Orange at 1280 × 800, the full-width
+  reader fits the same south file name. Hover leaves the heading
+  clear and Shift+Tab from Diff layout reaches Refresh. Closing the
+  full-width view and returning to the files still selects the same
+  south row. Open from the worktree action and use Back to
+  conversation. Focus returns to that action, and Cmd+L continues
+  the unsent draft from `5682` to `56825`.
+
+Scoped Prettier and diff checks, shared UI typecheck and packed
+consumer, Web typecheck, bootstrap, plugin resources, production
+staging, Runtime packaging and both signed Wails builds pass.
+Runtime serves the byte-identical installed Workspace Diff component
+and the private Session has no Run. VoiceOver and other platforms
+remain outside this check. Both Wails instances close normally.
+The two private Runtime drains reach the existing deadline.
+The private app, Runtime processes, profiles, Git fixtures, captures,
+logs, caches and checkout build outputs are removed.
+
+Next check the focus handoff when a refresh keeps the selected file
+and changes its patch from text to metadata-only evidence.
+
 ## Error notes leave retrying to their buttons (2026-11-26)
 
 Five error notes ended by narrating the buttons beside them. The sidebar's folder error said `Check the Runtime connection, then retry.` above `Retry`. The shared data-view error said `… Check the connection and retry.`, and every caller offers Retry except provider selections, whose section has its own Refresh selections. The draft notices said `Keep this window open and retry, or copy drafts.` above `Retry` and `Copy draft text`. The startup failure said `Retry, or copy the diagnostics to report it.` above `Retry` and `Copy diagnostics`. Each now stops at what the buttons can't say:

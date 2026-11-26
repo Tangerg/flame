@@ -1,9 +1,18 @@
 import * as stylex from "@stylexjs/stylex";
-import { Fragment, type ReactNode, type Ref } from "react";
+import {
+  Fragment,
+  useImperativeHandle,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+  type Ref,
+} from "react";
 import { DiffStat } from "./diff-stat";
 import { useHeadingTag } from "./heading-level";
 import { RecordButton, RecordGroup } from "./records";
 import { color, font, layout, space, type, weight } from "./tokens.stylex";
+import { Tooltip } from "./tooltip";
 
 export interface DiffFileSummary {
   path: string;
@@ -165,21 +174,51 @@ export function DiffFileHeader({
 }) {
   const Tag = useHeadingTag();
   const cut = directoryEnd(file.path);
+  const heading = useRef<HTMLHeadingElement>(null);
+  const [truncated, setTruncated] = useState(false);
+  useImperativeHandle(ref, () => heading.current!, [Tag]);
+  useLayoutEffect(() => {
+    const node = heading.current;
+    if (!node) return;
+    const { documentElement, fonts } = node.ownerDocument;
+    const measure = () => {
+      const { clientHeight, scrollHeight } = node;
+      setTruncated(clientHeight > 0 && scrollHeight > clientHeight);
+    };
+    const resize = new ResizeObserver(measure);
+    resize.observe(node);
+    // Switching between installed fonts can change wrapping without resizing the clamped box.
+    const appearance = new MutationObserver(measure);
+    appearance.observe(documentElement, { attributeFilter: ["style"] });
+    fonts?.addEventListener("loadingdone", measure);
+    measure();
+    return () => {
+      resize.disconnect();
+      appearance.disconnect();
+      fonts?.removeEventListener("loadingdone", measure);
+    };
+  }, [file.path, Tag]);
+
   return (
     <div {...stylex.props(styles.heading)}>
       <div {...stylex.props(styles.headingLine)}>
-        <Tag
-          ref={ref}
-          tabIndex={-1}
-          {...stylex.props(
-            styles.name,
-            styles.clamp,
-            styles.headingName,
-            type.uiMd,
-          )}
+        <Tooltip
+          label={<span dir="ltr">{file.path}</span>}
+          disabled={!truncated}
         >
-          {file.path.slice(cut)}
-        </Tag>
+          <Tag
+            ref={heading}
+            tabIndex={truncated ? 0 : -1}
+            {...stylex.props(
+              styles.name,
+              styles.clamp,
+              styles.headingName,
+              type.uiMd,
+            )}
+          >
+            {file.path.slice(cut)}
+          </Tag>
+        </Tooltip>
         {children && (
           <div {...stylex.props(styles.headingActions)}>{children}</div>
         )}
