@@ -121,7 +121,7 @@ func (h *runHost) Admit(ctx context.Context, namespace string, observation filew
 		start.Provider, start.Model, start.ReasoningEffort = capture.Trigger.Provider, capture.Trigger.Model, capture.Trigger.ReasoningEffort
 	}
 	options := protocol.RunCommandOptions{IdempotencyKey: key, IdempotencyNamespace: namespace}
-	if capture.Trigger.CapturePartitions {
+	if capture.Trigger.CapturePartitions || start.Background != nil {
 		options.RequestMeta.ClientCapabilities = &protocol.ClientCapabilities{
 			InterruptTypes: []protocol.InterruptType{protocol.InterruptQuestion, protocol.InterruptApproval},
 		}

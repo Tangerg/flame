@@ -56,7 +56,13 @@ func (h remoteRuns) Admit(ctx context.Context, request schedule.RunRequest) erro
 	if err != nil {
 		return err
 	}
-	acceptance, err := h.client.GetRunAcceptance(ctx, protocol.GetRunAcceptanceRequest{Namespace: namespace, Key: key, Operation: protocol.RunCommandStart, Request: &start}, protocol.CallOptions{})
+	options := protocol.RunCommandOptions{IdempotencyKey: key, IdempotencyNamespace: namespace}
+	if start.Background != nil {
+		options.RequestMeta.ClientCapabilities = &protocol.ClientCapabilities{
+			InterruptTypes: []protocol.InterruptType{protocol.InterruptQuestion, protocol.InterruptApproval},
+		}
+	}
+	acceptance, err := h.client.GetRunAcceptance(ctx, protocol.GetRunAcceptanceRequest{Namespace: namespace, Key: key, Operation: protocol.RunCommandStart, Request: &start}, protocol.CallOptions{RequestMeta: options.RequestMeta})
 	if err != nil {
 		return err
 	}
@@ -72,7 +78,7 @@ func (h remoteRuns) Admit(ctx context.Context, request schedule.RunRequest) erro
 	}
 	observation, cancel := context.WithCancel(ctx)
 	defer cancel()
-	ack, _, err := h.client.StartRun(observation, start, protocol.RunCommandOptions{IdempotencyKey: key, IdempotencyNamespace: namespace})
+	ack, _, err := h.client.StartRun(observation, start, options)
 	if err != nil {
 		return err
 	}

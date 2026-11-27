@@ -277,6 +277,9 @@ func TestFilewatchResumesTheSamePartialDataMethodWithPinnedInputs(t *testing.T) 
 	if state := projectActivity(); state.Active != 0 {
 		t.Fatalf("resuming the original interrupt did not free the Project slot: %+v", state)
 	}
+	if _, err := r.api.SetApprovalMode(ctx, protocol.SetApprovalModeRequest{Mode: protocol.ApprovalModeBalanced}); err != nil {
+		t.Fatal(err)
+	}
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: schedules.ID, Enabled: false}, "pause-schedule-recovery")
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: schedules.ID, Enabled: true}, "restart-schedule-recovery")
 	wait("recovery of captured schedule event", func() bool { return projectActivity().Admitted == 3 })
@@ -284,6 +287,47 @@ func TestFilewatchResumesTheSamePartialDataMethodWithPinnedInputs(t *testing.T) 
 	if state := projectActivity(); len(state.Recent) != 3 || state.Recent[0].RunID != backgroundSchedule.RunId ||
 		state.Recent[0].Source.Kind != "schedules" || state.Recent[1].RunID != d2.RunId || state.Admitted != 3 {
 		t.Fatalf("retry did not admit the captured schedule event once: %+v", state)
+	}
+	wait("schedule approval", func() bool {
+		run := r.must(delivery.RunsGet, protocol.GetRunRequest{RunID: backgroundSchedule.RunId}, "").(*protocol.RunRef)
+		if run.Outcome != nil {
+			t.Fatalf("schedule ended before the human approval: %+v", run.Outcome)
+		}
+		return run.Status == protocol.RunStatusWaiting
+	})
+	readApproval := func() string {
+		t.Helper()
+		pending, err := r.api.ListInterrupts(ctx, protocol.ListInterruptsRequest{RootRunID: backgroundSchedule.RunId})
+		if err != nil || len(pending.Data) != 1 || len(pending.Data[0].Interrupts) != 1 ||
+			pending.Data[0].Interrupts[0].Type != protocol.InterruptApproval {
+			t.Fatalf("missing scheduled Run approval: %+v, %v", pending, err)
+		}
+		return pending.Data[0].Interrupts[0].ItemID
+	}
+	originalApproval := readApproval()
+	r = reopenPluginRuntime(t, r, &cfg)
+	if readApproval() != originalApproval || projectActivity().Active != 1 {
+		t.Fatal("restart did not preserve the original approval and its occupied Project slot")
+	}
+	answered := r.endpoint.Invoke(ctx, delivery.RunsResume, protocol.ResumeRunRequest{
+		RunID: backgroundSchedule.RunId,
+		Responses: []protocol.InterruptResponse{{ItemID: originalApproval, Response: protocol.InterruptResponseValue{
+			Type: protocol.InterruptResponseApproval, Decision: protocol.ApprovalDeny,
+		}}},
+	}, protocol.CallMetadata{IdempotencyKey: "settle-scheduled-approval", RequestMeta: meta})
+	if answered.Failure != nil {
+		t.Fatal(answered.Failure)
+	}
+	for _, err := range answered.Events {
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	if result := projectActivity(); result.Active != 0 || result.Recent[0].RunID != backgroundSchedule.RunId {
+		t.Fatalf("settled approval did not free the original slot: %+v", result)
+	}
+	if _, err := os.Stat(filepath.Join(root.Ref.Path, "schedule-approval.txt")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("the denied approval executed its command: %v", err)
 	}
 	if values := events(); len(values) != 2 || values[0].RunId != d2.RunId {
 		t.Fatalf("stopped rule or repeated events dispatched again: %+v", values)
@@ -353,15 +397,25 @@ func (m *filewatchDataModel) call(_ context.Context, request *chat.Request) (*ch
 	}
 	var input string
 	results := map[string]*chat.ToolResult{}
+	scheduled := false
 	for _, message := range request.Messages {
-		if message.Role == chat.RoleUser && strings.Contains(message.Text(), "<flame-file-observation>") {
-			input = message.Text()
+		if message.Role == chat.RoleUser {
+			scheduled = scheduled || strings.Contains(message.Text(), "Check the captured data")
+			if strings.Contains(message.Text(), "<flame-file-observation>") {
+				input = message.Text()
+			}
 		}
 		for _, part := range message.Parts {
 			if part.ToolResult != nil {
 				results[part.ToolResult.ID] = part.ToolResult
 			}
 		}
+	}
+	if scheduled {
+		if results["scheduled-approval"] == nil {
+			return filewatchToolCall(chat.ToolCall{ID: "scheduled-approval", Name: "shell", Arguments: `{"command":"printf checked > schedule-approval.txt","description":"Write a check marker"}`})
+		}
+		return completedTextResponse("Scheduled verification settled"), nil
 	}
 	var observation struct {
 		Revision int `json:"methodRevision"`
