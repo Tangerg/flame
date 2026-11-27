@@ -52,9 +52,11 @@ installation digest and target; discovery does not grant command permission.
 
 Queries and calls enter the existing Runtime plugin method boundary. Commands
 require the existing user review, permission and mutation journal. Their original
-handles, idempotency keys and recovery outcomes remain attached to the captured
-Run, Item, Session and installation. An uncertain command is recovered through
-its original handle. A new action cannot retarget it to the current conversation.
+idempotency keys remain attached to the captured Run, Item, Session and
+installation. The card reads command availability from the SDK journal and stays
+locked while an original claim is active or recoverable, including across views.
+Recovery reads the original receipt. The card publishes operation output when
+its own attempt or recovery observes that output.
 
 ## Lifetime and scrolling
 

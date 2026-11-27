@@ -134,8 +134,11 @@ function CapturedDocument({
   );
   useEffect(() => {
     const unmount = entry.mount(controller);
-    void controller.initialize();
-    return unmount;
+    const disconnect = controller.connect();
+    return () => {
+      disconnect();
+      unmount();
+    };
   }, [entry, controller]);
   return (
     <CatalogDisplay value={{ controller, t }}>
