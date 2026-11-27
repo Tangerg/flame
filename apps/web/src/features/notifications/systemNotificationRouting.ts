@@ -8,27 +8,18 @@ export const SYSTEM_NOTIFICATIONS_PLUGIN = "flame.builtin.system-notifications";
 
 export function startSystemNotificationRouting(
   notifier: SystemNotifier,
-  agent: Pick<AgentAccess, "openExistingAgentSession" | "subscribeActiveSessionId">,
+  agent: Pick<AgentAccess, "openExistingAgentSession">,
   revealWindow: () => Promise<void>,
 ): () => void {
-  let opening: AbortController | undefined;
-  const stopSelection = agent.subscribeActiveSessionId(() => opening?.abort());
+  const lifetime = new AbortController();
   const stop = notifier.onSystemNotificationOpened((sessionId) => {
-    opening?.abort();
-    const request = new AbortController();
-    opening = request;
     void revealWindow().catch((error: unknown) =>
       console.error("[notify] reveal window failed:", error),
     );
-    void agent
-      .openExistingAgentSession(sessionId, request.signal)
-      .catch((error: unknown) => {
-        if (!request.signal.aborted)
-          console.error("[notify] open notification Session failed", error);
-      })
-      .finally(() => {
-        if (opening === request) opening = undefined;
-      });
+    void agent.openExistingAgentSession(sessionId, lifetime.signal).catch((error: unknown) => {
+      if (!lifetime.signal.aborted)
+        console.error("[notify] open notification Session failed", error);
+    });
   });
   void notifier
     .refreshNotificationAuthorization()
@@ -37,8 +28,7 @@ export function startSystemNotificationRouting(
     );
   return () => {
     stop();
-    stopSelection();
-    opening?.abort();
+    lifetime.abort();
   };
 }
 

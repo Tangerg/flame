@@ -19,6 +19,61 @@ import { openWebSession } from "./webSessionFixture";
 describe("Web agent Session recovery over Runtime HTTP", () => {
   const fixture = useRuntimeFixture("agent-session-recovery");
 
+  it("keeps the newest Session opening when an older lookup returns first", async () => {
+    const workspace = { path: fixture.root };
+    const [current, older, newest] = await Promise.all([
+      fixture.client.sessions.create({ workspace, title: "Current selection" }),
+      fixture.client.sessions.create({ workspace, title: "Older link" }),
+      fixture.client.sessions.create({ workspace, title: "Newest link" }),
+    ]);
+    const holdLookup = () => ({
+      issued: Promise.withResolvers<AbortSignal | null | undefined>(),
+      release: Promise.withResolvers<void>(),
+    });
+    const olderLookup = holdLookup();
+    const latestLookup = holdLookup();
+    const reads = [olderLookup, latestLookup];
+    let lookups = 0;
+    const client = fixture.createRuntimeClient(async (url, init) => {
+      if (new Headers(init?.headers).get(HTTP_HEADERS.method) !== "sessions.get")
+        return fetch(url, init);
+      const read = reads[lookups++];
+      const response = await fetch(url, init);
+      if (read) {
+        read.issued.resolve(init?.signal);
+        await read.release.promise;
+      }
+      return response;
+    });
+    const web = openWebSession(client, fixture.baseUrl, current.id);
+    const { access } = web.agent;
+    const lifetime = new AbortController();
+    const pending: Promise<unknown>[] = [];
+    try {
+      const first = access.openExistingAgentSession(older.id, lifetime.signal);
+      pending.push(first);
+      const earlierRead = await within(olderLookup.issued.promise, "the older Session lookup");
+      const second = access.openExistingAgentSession(newest.id, lifetime.signal);
+      pending.push(second);
+      await within(latestLookup.issued.promise, "the newest Session lookup");
+      expect(await within(first, "settlement of the superseded lookup")).toBe("superseded");
+      expect(access.getActiveSessionId()).toBe(current.id);
+      expect(earlierRead?.aborted).toBe(true);
+      olderLookup.release.resolve();
+      latestLookup.release.resolve();
+      expect(await within(second, "the newest Session opening")).toBe("opened");
+      expect(access.getActiveSessionId()).toBe(newest.id);
+      expect(access.getAgentSessionLifecycleSnapshot().openSessionIds).not.toContain(older.id);
+      expect(lookups).toBe(reads.length);
+    } finally {
+      lifetime.abort();
+      for (const read of reads) read.release.resolve();
+      await Promise.allSettled(pending);
+      web.dispose();
+      await client.close();
+    }
+  }, 30_000);
+
   it("opens live notification targets without displacing newer Session selections", async () => {
     const [current, deleted, live, manual] = await Promise.all([
       fixture.client.sessions.create({ workspace: { path: fixture.root }, title: "Current" }),

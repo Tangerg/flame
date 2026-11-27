@@ -99,6 +99,7 @@ export const es: Record<string, string> = {
   "notice.accepted":
     "El Runtime aceptó la ejecución {{run}} en la sesión {{session}}.",
   "notice.openSession": "Abrir conversación",
+  "notice.sessionMissing": "Esta conversación ya no está disponible.",
   "notice.completed": "{{label}} completado.",
   "notice.revision":
     "La programación cambió. Lee su última revisión y abre una nueva edición antes de guardar.",

@@ -94,6 +94,7 @@ export const ko: Record<string, string> = {
   "notice.accepted":
     "Runtime이 세션 {{session}}에서 실행 {{run}}을(를) 수락했습니다.",
   "notice.openSession": "대화 열기",
+  "notice.sessionMissing": "이 대화는 더 이상 열 수 없습니다.",
   "notice.completed": "{{label}}이(가) 완료되었습니다.",
   "notice.revision":
     "스케줄이 변경되었습니다. 최신 리비전을 읽고 저장하기 전에 새 편집을 여세요.",

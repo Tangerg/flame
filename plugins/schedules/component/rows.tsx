@@ -1,5 +1,5 @@
-import { type ReactNode } from "react";
-import { type ComponentContext } from "@flame/component-sdk";
+import { useState, useTransition, type ReactNode } from "react";
+import { failureText, type ComponentContext } from "@flame/component-sdk";
 import {
   Badge,
   Button,
@@ -190,10 +190,11 @@ export function ScheduleFeedback({
   command,
   reconcile,
   openSession,
+  signal,
 }: Pick<
   ScheduleState,
   "t" | "notice" | "feedbackElement" | "command" | "reconcile"
-> & { openSession: ComponentContext["openSession"] }) {
+> & { openSession: ComponentContext["openSession"]; signal: AbortSignal }) {
   return (
     <section
       ref={feedbackElement}
@@ -213,12 +214,13 @@ export function ScheduleFeedback({
               })}
             </p>
             {openSession && (
-              <Button
-                variant="soft"
-                onClick={() => openSession(notice.sessionId)}
-              >
-                {t("notice.openSession")}
-              </Button>
+              <OpenScheduledConversation
+                key={notice.runId}
+                sessionId={notice.sessionId}
+                open={openSession}
+                signal={signal}
+                t={t}
+              />
             )}
           </>
         ))}
@@ -245,5 +247,42 @@ export function ScheduleFeedback({
         </>
       )}
     </section>
+  );
+}
+
+function OpenScheduledConversation({
+  sessionId,
+  open,
+  signal,
+  t,
+}: {
+  sessionId: string;
+  open: NonNullable<ComponentContext["openSession"]>;
+  signal: AbortSignal;
+  t: ScheduleState["t"];
+}) {
+  const [pending, startOpening] = useTransition();
+  const [problem, setProblem] = useState<string>();
+  return (
+    <>
+      <Button
+        variant="soft"
+        pending={pending}
+        onClick={() => {
+          setProblem(undefined);
+          startOpening(async () => {
+            try {
+              if ((await open(sessionId)) === "missing")
+                setProblem(t("notice.sessionMissing"));
+            } catch (error) {
+              if (!signal.aborted) setProblem(failureText(error));
+            }
+          });
+        }}
+      >
+        {t("notice.openSession")}
+      </Button>
+      {problem && <p role="alert">{problem}</p>}
+    </>
   );
 }

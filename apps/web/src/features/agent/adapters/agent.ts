@@ -125,6 +125,7 @@ export function composeAgent(
       );
       stops.push(
         followRuntimeGeneration(stream, () => {
+          state.retirePendingSessionOpen();
           gateway.replaceRuntimeGeneration();
           runOpenings.replaceRuntimeGeneration();
         }),

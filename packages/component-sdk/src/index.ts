@@ -226,6 +226,8 @@ export interface SystemNotificationChannel {
   send(notification: ComponentNotification): Promise<boolean>;
 }
 
+export type ComponentSessionOpenOutcome = "opened" | "missing" | "superseded";
+
 export interface ComponentContext {
   readonly component: Readonly<ComponentReference>;
   readonly file?: Readonly<CapturedFile>;
@@ -240,7 +242,9 @@ export interface ComponentContext {
   readonly sessionId?: string;
   readonly sessionTarget?: CapturedSession;
   readonly binding?: Readonly<PluginOperationBinding>;
-  readonly openSession?: (sessionId: string) => void;
+  readonly openSession?: (
+    sessionId: string,
+  ) => Promise<ComponentSessionOpenOutcome>;
   readonly views?: ComponentViews;
   // Only clientEffect placements register global commands. IDs belong to the
   // installed component. Dispatch captures the current

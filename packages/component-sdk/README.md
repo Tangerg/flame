@@ -225,13 +225,12 @@ Hosts without this collaborator may still render captured content; authored
 components must make its absence explicit before offering submission.
 
 The graphical Host supplies optional `context.openSession(sessionId)` for an
-explicit user action on an existing Runtime Session. It delegates selection and
-conversation presentation to the Host's existing navigation owners, without
-querying or starting a Run. The action refuses after the captured component
-signal ends. Hosts without Session navigation omit it; a receipt can remain
-readable without offering that action. Session navigation follows the existing
-scope lifetimes above and may retire the source component. It does not promise
-an exact Run reading anchor or retain another Session's local page filters.
+explicit user action on a Runtime Session. It checks the exact Session before
+publishing the selection and resolves to `opened`, `missing` or `superseded`.
+A later navigation selection or a retired scope withdraws an in-flight open.
+The action refuses after the captured component signal ends. Hosts without
+Session navigation omit it so the receipt remains readable. Opening selects a
+conversation and may retire the source component.
 
 The graphical Host also supplies optional `context.views` for a plugin's own
 workspace views. `open(componentId, target?, origin?)` shows one beside the

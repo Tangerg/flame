@@ -24,6 +24,7 @@ import {
 // against the replaced projection generation; an ordinary refresh retains them.
 export type QueuedRunEvents = "retain" | "invalidate";
 export type { AgentOpenSessions };
+export type SessionSelectionOutcome = "opened" | "missing" | "superseded";
 
 export interface AgentSessionStatePort {
   useActiveSessionId(): string;
@@ -32,6 +33,11 @@ export interface AgentSessionStatePort {
   subscribeActiveSessionId(onChange: (sessionId: string) => void): () => void;
   subscribeLifecycle(onChange: (snapshot: AgentOpenSessions) => void): () => void;
   selectSession(id: string): void;
+  selectExistingSession(
+    id: string,
+    signal: AbortSignal,
+    verify: (signal: AbortSignal) => Promise<boolean>,
+  ): Promise<SessionSelectionOutcome>;
   closeSession(id: string): void;
   deleteSession(id: string): void;
   subscribeDeletedSession(listener: (id: string) => void): () => void;

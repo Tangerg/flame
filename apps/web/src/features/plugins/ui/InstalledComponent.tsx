@@ -274,12 +274,10 @@ class ComponentInstance {
       workspace,
       project: this.sources.project ? Object.freeze({ ...this.sources.project }) : undefined,
       binding: this.sources.binding ? structuredClone(this.sources.binding) : undefined,
-      openSession: openSession
-        ? (sessionId: string) => {
-            signal.throwIfAborted();
-            openSession(sessionId);
-          }
-        : undefined,
+      openSession: (sessionId: string) => {
+        signal.throwIfAborted();
+        return track((reading) => openSession(sessionId, reading));
+      },
       views: this.sources.views && captureViews(this.sources.views, component, signal),
       ...this.effectCapabilities(signal, component),
       notifications: createComponentNotifications(
@@ -378,12 +376,16 @@ export function RenderingComponent(
   props: InstalledComponentProps &
     Omit<
       ComponentSources,
-      "captureSessionId" | "notificationAccess" | "subscribeRootRunSettlements"
+      | "openSession"
+      | "views"
+      | "captureSessionId"
+      | "notificationAccess"
+      | "subscribeRootRunSettlements"
     >,
 ) {
   const locale = useLocale();
   const {
-    selectAgentSession: openSession,
+    openExistingAgentSession: openSession,
     getActiveSessionId: captureSessionId,
     subscribeRootRunSettlements,
   } = useAgent();
@@ -512,7 +514,7 @@ type ComponentSources = Pick<
   submitInput?: SubmitCapturedAgentInput;
   composer?: ComposerAccess;
   sessionTarget?: CapturedSession;
-  openSession?: (sessionId: string) => void;
+  openSession: AgentAccess["openExistingAgentSession"];
   views?: ViewNavigation;
   captureSessionId: () => string | undefined;
   notificationAccess: NotificationAccess;

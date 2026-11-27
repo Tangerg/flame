@@ -72,7 +72,6 @@ function CatalogSummary({
 }
 
 export function Schedules({ context, locale }: PluginComponentProps) {
-  const openSession = context.openSession;
   const schedules = useSchedules(context, locale);
   const {
     t,
@@ -103,7 +102,8 @@ export function Schedules({ context, locale }: PluginComponentProps) {
       feedbackElement={feedbackElement}
       command={command}
       reconcile={reconcile}
-      openSession={openSession}
+      openSession={context.openSession}
+      signal={context.signal}
     />
   );
 

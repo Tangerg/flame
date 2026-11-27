@@ -60,14 +60,14 @@ export function selectAgentSession(agentAccess: AgentDependencies, id: string): 
   agentAccess.state.selectSession(id);
 }
 
-export async function openExistingAgentSession(
+export function openExistingAgentSession(
   agentAccess: AgentDependencies,
   id: string,
   signal: AbortSignal,
-): Promise<void> {
-  const owner = agentAccess.commands.current();
-  const exists = await agentAccess.runtime.sessionExists(id, signal);
-  if (exists && !signal.aborted && owner.isCurrent()) agentAccess.state.selectSession(id);
+) {
+  return agentAccess.state.selectExistingSession(id, signal, (reading) =>
+    agentAccess.runtime.sessionExists(id, reading),
+  );
 }
 
 export function closeActiveAgentSession(agentAccess: AgentDependencies): boolean {

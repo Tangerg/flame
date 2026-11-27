@@ -96,6 +96,7 @@ export const de: Record<string, string> = {
   "notice.accepted":
     "Die Runtime hat den Lauf {{run}} in der Sitzung {{session}} akzeptiert.",
   "notice.openSession": "Unterhaltung öffnen",
+  "notice.sessionMissing": "Diese Unterhaltung ist nicht mehr verfügbar.",
   "notice.completed": "{{label}} abgeschlossen.",
   "notice.revision":
     "Der Zeitplan hat sich geändert. Lies seine neueste Revision und öffne eine neue Bearbeitung, bevor du speicherst.",
