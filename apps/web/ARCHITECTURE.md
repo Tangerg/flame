@@ -422,6 +422,8 @@ directly; Composer does not republish that same hook under another name.
 The draft's `/goal` command determines Goal submission across view changes and
 connection recovery. The Goal surface projects that command and manages pending
 confirmation and submission for the captured Session.
+Goal commands retain their original Runtime client through an event feed
+reconnect. Their command scope advances when the selected Runtime target changes.
 
 A mutation's prepared parameters, idempotency key, and Runtime namespace survive
 an uncertain acknowledgement. A transport failure does not authorize creating a

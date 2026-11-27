@@ -14,10 +14,10 @@ import { SLASH_COMMAND } from "@/features/composer/public/extensionPoints";
 import { TOOL_STANDING_SURFACE } from "@/features/chat/public/tools/types";
 import { t } from "@/lib/i18n/index";
 import { rpcErrorText } from "@/lib/rpcErrors";
-import { createGoalRuntimeAdapter } from "@/features/goal/adapters/runtimeGoalCommandsGateway";
+import { bindGoalRuntime } from "@/features/goal/adapters/runtimeGoalCommandsGateway";
 import { GoalStatusSurface } from "@/features/goal/ui/GoalStatusSurface";
 import { GoalModeIndicator } from "@/features/goal/ui/GoalModeIndicator";
-import { RUNTIME_STREAM, followRuntimeGeneration } from "@/features/connection/public/services";
+import { RUNTIME_SERVER_SCOPE } from "@/features/connection/public/services";
 
 import { focusComposer } from "@/features/composer/public/focus";
 import { runtimeCommandsAvailable } from "@/features/connection/public/serviceStatus";
@@ -29,7 +29,7 @@ import {
   GOAL_SLASH_COMMAND,
   type GoalState,
 } from "@/features/goal/application/goalReadModel";
-import { GOAL_COMMAND_GENERATION } from "@/features/goal/application/goalCommands";
+import { GOAL_COMMAND_SCOPE } from "@/features/goal/application/goalCommands";
 const GOAL_SURFACE = "composer.overlay.top:goal";
 
 export function createGoalPlugin(
@@ -43,23 +43,18 @@ export function createGoalPlugin(
 ) {
   return definePlugin({
     name: "flame.builtin.goal",
-    requires: { runtime: RUNTIME_STREAM },
+    requires: { scope: RUNTIME_SERVER_SCOPE },
     setup(ctx) {
       const submissions = goals.submissions;
       ctx.lifetime.defer(() => submissions.reset());
-      const runtimeAdapter = createGoalRuntimeAdapter(
-        agentAccess,
-        runtimeAccess,
-        runtimeClient,
-        goals.commands,
-        ctx.dependencies.runtime.connectionGeneration() !== null,
-      );
-      ctx.lifetime.defer(() => runtimeAdapter.dispose());
       ctx.lifetime.defer(
-        followRuntimeGeneration(ctx.dependencies.runtime, (next) => {
-          if (next === null) runtimeAdapter.retireRuntimeGeneration();
-          else runtimeAdapter.replaceRuntimeGeneration();
-        }),
+        bindGoalRuntime(
+          agentAccess,
+          runtimeAccess,
+          runtimeClient,
+          goals.commands,
+          ctx.dependencies.scope,
+        ),
       );
       contributeLayout(ctx.contributions, "composer.overlay.top", {
         id: "goal",
@@ -103,7 +98,7 @@ export function createGoalPlugin(
               providers.selected(GOAL_WORKFLOW) !== source ||
               (original && !providers.admits(GOAL_WORKFLOW, original.author))
             )
-              throw new GenerationRetiredError(GOAL_COMMAND_GENERATION);
+              throw new GenerationRetiredError(GOAL_COMMAND_SCOPE);
             return commands.start(input);
           };
         },

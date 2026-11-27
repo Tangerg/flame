@@ -1,10 +1,7 @@
 import { createContext, useContext, useMemo, useSyncExternalStore, type ReactNode } from "react";
 import { GenerationRetiredError } from "@/lib/asyncOwnership";
 import { type GoalAccess } from "@/features/goal/application/goalAccess";
-import {
-  GOAL_COMMAND_GENERATION,
-  type GoalCommands,
-} from "@/features/goal/application/goalCommands";
+import { GOAL_COMMAND_SCOPE, type GoalCommands } from "@/features/goal/application/goalCommands";
 
 const GoalContext = createContext<GoalAccess | null>(null);
 
@@ -20,17 +17,17 @@ export function useGoalAccess(): GoalAccess {
 
 export function useGoalCommands(): Pick<GoalCommands, "update" | "clear" | "stop" | "resume"> {
   const { commands } = useGoalAccess();
-  const generation = useSyncExternalStore(commands.subscribe, commands.capture, commands.capture);
+  const scope = useSyncExternalStore(commands.subscribe, commands.capture, commands.capture);
   return useMemo(() => {
-    const requireGeneration = () => {
-      if (!generation) throw new GenerationRetiredError(GOAL_COMMAND_GENERATION);
-      return generation;
+    const requireScope = () => {
+      if (!scope) throw new GenerationRetiredError(GOAL_COMMAND_SCOPE);
+      return scope;
     };
     return {
-      update: (input) => requireGeneration().update(input),
-      clear: (target) => requireGeneration().clear(target),
-      stop: (target) => requireGeneration().stop(target),
-      resume: (target) => requireGeneration().resume(target),
+      update: (input) => requireScope().update(input),
+      clear: (target) => requireScope().clear(target),
+      stop: (target) => requireScope().stop(target),
+      resume: (target) => requireScope().resume(target),
     };
-  }, [generation]);
+  }, [scope]);
 }
