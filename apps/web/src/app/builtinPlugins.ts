@@ -74,7 +74,7 @@ import toaster from "@/features/notifications/toaster/index";
 import { createToolActions, toolIcons } from "@/features/chat/tools/toolMeta";
 import { subagentsView } from "@/features/chat/message/subagents";
 import toolViewOpener from "@/features/workspace/toolViewOpener";
-import { fileView } from "@/features/workspace/views";
+import { fileView, taskWorktreeView } from "@/features/workspace/views";
 export function createToolRenderingPlugins(
   workspace: WorkspaceOwner["access"],
   messages: NotificationFeed,
@@ -140,6 +140,7 @@ export function createBuiltinPlugins(
     createProviderCatalogPlugin(runtimeClient),
     createProjectsPlugin(runtimeClient),
     fileView,
+    taskWorktreeView,
     subagentsView,
   ];
 

@@ -8,6 +8,7 @@
 
 import type {
   AcquirePluginComponentRequest,
+  ApplyWorktreeHandoffRequest,
   ApprovalModeResult,
   CallPluginRequest,
   CallPluginResponse,
@@ -18,6 +19,7 @@ import type {
   CreateMCPAuthorizationAttemptRequest,
   CreateProjectRequest,
   CreateSessionRequest,
+  CreateTaskWorktreeRequest,
   DeleteSessionRequest,
   Diff,
   DiscoverResponse,
@@ -88,6 +90,7 @@ import type {
   PageOfRunRef,
   PageOfSession,
   PageOfSkillProposal,
+  PageOfTaskWorktree,
   PageOfToolSpec,
   PageOfTrajectoryEntry,
   PageOfWorkspaceFileChange,
@@ -146,6 +149,8 @@ import type {
   SteerRunResponse,
   SubscribeRunRequest,
   SubscribeRunResponse,
+  TaskWorktree,
+  TaskWorktreeRequest,
   TestProviderRequest,
   UpdateGoalRequest,
   UpdateMCPServerRequest,
@@ -157,6 +162,7 @@ import type {
   UtilityRole,
   WorkspaceInfo,
   WorkspaceQuery,
+  WorktreeHandoff,
 } from "./wire.generated";
 
 // Every capability key discovery may advertise. Private: it exists to
@@ -214,6 +220,11 @@ const METHOD_NAMES = [
   "interrupts.list",
   "plan.get",
   "items.list",
+  "workspaces.tasks.create",
+  "workspaces.tasks.list",
+  "workspaces.tasks.handoff.preview",
+  "workspaces.tasks.handoff.apply",
+  "workspaces.tasks.release",
   "workspaces.resolve",
   "workspaces.list",
   "workspace.changes.list",
@@ -345,6 +356,10 @@ const VALUE_METHOD_NAMES = [
   "interrupts.list",
   "plan.get",
   "items.list",
+  "workspaces.tasks.create",
+  "workspaces.tasks.list",
+  "workspaces.tasks.handoff.preview",
+  "workspaces.tasks.handoff.apply",
   "workspaces.resolve",
   "workspaces.list",
   "workspace.changes.list",
@@ -638,6 +653,41 @@ export const WIRE_METHOD_POLICY = {
     idempotency: "none",
     replayCursor: "none",
     pagination: "cursor",
+  },
+  "workspaces.tasks.create": {
+    operation: "command",
+    response: "unary",
+    idempotency: "replayResponse",
+    replayCursor: "none",
+    pagination: "none",
+  },
+  "workspaces.tasks.list": {
+    operation: "query",
+    response: "unary",
+    idempotency: "none",
+    replayCursor: "none",
+    pagination: "none",
+  },
+  "workspaces.tasks.handoff.preview": {
+    operation: "query",
+    response: "unary",
+    idempotency: "none",
+    replayCursor: "none",
+    pagination: "none",
+  },
+  "workspaces.tasks.handoff.apply": {
+    operation: "command",
+    response: "unary",
+    idempotency: "replayResponse",
+    replayCursor: "none",
+    pagination: "none",
+  },
+  "workspaces.tasks.release": {
+    operation: "command",
+    response: "unary",
+    idempotency: "replayResponse",
+    replayCursor: "none",
+    pagination: "none",
   },
   "workspaces.resolve": {
     operation: "query",
@@ -1312,6 +1362,21 @@ export const WIRE_CAPABILITY_POLICY: {
   "items.list": [
     { when: [{ field: "scope.includeDescendants", operator: "true" }], requires: ["childRuns"] },
   ],
+  "workspaces.tasks.create": [
+    { requires: ["git"] },
+  ],
+  "workspaces.tasks.list": [
+    { requires: ["git"] },
+  ],
+  "workspaces.tasks.handoff.preview": [
+    { requires: ["git"] },
+  ],
+  "workspaces.tasks.handoff.apply": [
+    { requires: ["git"] },
+  ],
+  "workspaces.tasks.release": [
+    { requires: ["git"] },
+  ],
   "workspace.changes.list": [
     { requires: ["git"] },
   ],
@@ -1502,6 +1567,11 @@ export interface WireShapes {
   "interrupts.list": { params: ListInterruptsRequest; result: PageOfPendingInterruptSet };
   "plan.get": { params: GetPlanRequest; result: Plan };
   "items.list": { params: ListItemsRequest; result: ListItemsResponse };
+  "workspaces.tasks.create": { params: CreateTaskWorktreeRequest; result: TaskWorktree };
+  "workspaces.tasks.list": { params: Record<string, never>; result: PageOfTaskWorktree };
+  "workspaces.tasks.handoff.preview": { params: TaskWorktreeRequest; result: WorktreeHandoff };
+  "workspaces.tasks.handoff.apply": { params: ApplyWorktreeHandoffRequest; result: WorktreeHandoff };
+  "workspaces.tasks.release": { params: TaskWorktreeRequest };
   "workspaces.resolve": { params: ResolveWorkspaceRequest; result: WorkspaceInfo };
   "workspaces.list": { params: Record<string, never>; result: PageOfWorkspaceSummary };
   "workspace.changes.list": { params: WorkspaceQuery; result: PageOfWorkspaceFileChange };

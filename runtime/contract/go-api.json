@@ -719,6 +719,10 @@
               "signature": "func(ctx context.Context, request protocol.AcquirePluginComponentRequest, options protocol.CommandOptions) (*protocol.PluginBrowserUseGrant, error)"
             },
             {
+              "name": "ApplyWorktreeHandoff",
+              "signature": "func(ctx context.Context, request protocol.ApplyWorktreeHandoffRequest, options protocol.CommandOptions) (*protocol.WorktreeHandoff, error)"
+            },
+            {
               "name": "ApproveSkillProposal",
               "signature": "func(ctx context.Context, request protocol.SkillProposalRef, options protocol.CommandOptions) error"
             },
@@ -769,6 +773,10 @@
             {
               "name": "CreateSession",
               "signature": "func(ctx context.Context, request protocol.CreateSessionRequest, options protocol.CommandOptions) (*protocol.Session, error)"
+            },
+            {
+              "name": "CreateTaskWorktree",
+              "signature": "func(ctx context.Context, request protocol.CreateTaskWorktreeRequest, options protocol.CommandOptions) (*protocol.TaskWorktree, error)"
             },
             {
               "name": "DeleteMCPServer",
@@ -963,6 +971,10 @@
               "signature": "func(ctx context.Context, request protocol.WorkspaceQuery, options protocol.CallOptions) (*protocol.Page[protocol.SkillProposal], error)"
             },
             {
+              "name": "ListTaskWorktrees",
+              "signature": "func(ctx context.Context, options protocol.CallOptions) (*protocol.Page[protocol.TaskWorktree], error)"
+            },
+            {
               "name": "ListTools",
               "signature": "func(ctx context.Context, options protocol.CallOptions) (*protocol.Page[protocol.ToolSpec], error)"
             },
@@ -987,6 +999,10 @@
               "signature": "func(ctx context.Context, request protocol.OpenPluginBrowserRealmRequest, options protocol.CommandOptions) (*protocol.PluginBrowserSession, error)"
             },
             {
+              "name": "PreviewWorktreeHandoff",
+              "signature": "func(ctx context.Context, request protocol.TaskWorktreeRequest, options protocol.CallOptions) (*protocol.WorktreeHandoff, error)"
+            },
+            {
               "name": "ReadPluginLocale",
               "signature": "func(ctx context.Context, request protocol.ReadPluginLocaleRequest, options protocol.CallOptions) (*protocol.PluginLocaleCatalog, error)"
             },
@@ -1005,6 +1021,10 @@
             {
               "name": "RejectSkillProposal",
               "signature": "func(ctx context.Context, request protocol.SkillProposalRef, options protocol.CommandOptions) error"
+            },
+            {
+              "name": "ReleaseTaskWorktree",
+              "signature": "func(ctx context.Context, request protocol.TaskWorktreeRequest, options protocol.CommandOptions) error"
             },
             {
               "name": "ResolvePluginComposition",
@@ -11189,6 +11209,22 @@
           "underlying": "string"
         },
         {
+          "name": "ApplyWorktreeHandoffRequest",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "ID",
+              "type": "string",
+              "tag": "json:\"id\""
+            },
+            {
+              "name": "Digest",
+              "type": "string",
+              "tag": "json:\"digest\""
+            }
+          ]
+        },
+        {
           "name": "ApprovalDecision",
           "kind": "defined",
           "underlying": "string"
@@ -12004,6 +12040,27 @@
               "name": "Title",
               "type": "string",
               "tag": "json:\"title,omitempty\""
+            }
+          ]
+        },
+        {
+          "name": "CreateTaskWorktreeRequest",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Source",
+              "type": "WorkspaceRef",
+              "tag": "json:\"source\""
+            },
+            {
+              "name": "Base",
+              "type": "string",
+              "tag": "json:\"base\""
+            },
+            {
+              "name": "Setup",
+              "type": "string",
+              "tag": "json:\"setup,omitempty\""
             }
           ]
         },
@@ -18429,6 +18486,53 @@
           "underlying": "string"
         },
         {
+          "name": "TaskWorktree",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "ID",
+              "type": "string",
+              "tag": "json:\"id\""
+            },
+            {
+              "name": "Workspace",
+              "type": "WorkspaceRef",
+              "tag": "json:\"workspace\""
+            },
+            {
+              "name": "Source",
+              "type": "WorkspaceRef",
+              "tag": "json:\"source\""
+            },
+            {
+              "name": "Base",
+              "type": "string",
+              "tag": "json:\"base\""
+            },
+            {
+              "name": "Available",
+              "type": "bool",
+              "tag": "json:\"available\""
+            },
+            {
+              "name": "Setup",
+              "type": "*WorktreeSetup",
+              "tag": "json:\"setup,omitzero\""
+            }
+          ]
+        },
+        {
+          "name": "TaskWorktreeRequest",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "ID",
+              "type": "string",
+              "tag": "json:\"id\""
+            }
+          ]
+        },
+        {
           "name": "TestProviderRequest",
           "kind": "struct",
           "fields": [
@@ -19164,6 +19268,58 @@
               "tag": "json:\"lastActiveAt,omitzero\""
             }
           ]
+        },
+        {
+          "name": "WorktreeHandoff",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Worktree",
+              "type": "TaskWorktree",
+              "tag": "json:\"worktree\""
+            },
+            {
+              "name": "Branch",
+              "type": "string",
+              "tag": "json:\"branch\""
+            },
+            {
+              "name": "Head",
+              "type": "string",
+              "tag": "json:\"head\""
+            },
+            {
+              "name": "Digest",
+              "type": "string",
+              "tag": "json:\"digest\""
+            },
+            {
+              "name": "Patch",
+              "type": "string",
+              "tag": "json:\"patch\""
+            }
+          ]
+        },
+        {
+          "name": "WorktreeSetup",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Command",
+              "type": "string",
+              "tag": "json:\"command\""
+            },
+            {
+              "name": "ExitCode",
+              "type": "*int",
+              "tag": "json:\"exitCode,omitzero\""
+            },
+            {
+              "name": "Output",
+              "type": "string",
+              "tag": "json:\"output\""
+            }
+          ]
         }
       ]
     },
@@ -19442,6 +19598,10 @@
         {
           "name": "NewConfiner",
           "signature": "func(userHome string, readOnlyPaths []string) (*Confiner, error)"
+        },
+        {
+          "name": "RunInPlace",
+          "signature": "func(ctx context.Context, config Config, path string, input shell.Input) (shell.Output, error)"
         }
       ],
       "types": [
@@ -20283,6 +20443,10 @@
               "signature": "func(ctx context.Context, request protocol.AcquirePluginComponentRequest, options protocol.CommandOptions) (*protocol.PluginBrowserUseGrant, error)"
             },
             {
+              "name": "ApplyWorktreeHandoff",
+              "signature": "func(ctx context.Context, request protocol.ApplyWorktreeHandoffRequest, options protocol.CommandOptions) (*protocol.WorktreeHandoff, error)"
+            },
+            {
               "name": "ApproveSkillProposal",
               "signature": "func(ctx context.Context, request protocol.SkillProposalRef, options protocol.CommandOptions) error"
             },
@@ -20333,6 +20497,10 @@
             {
               "name": "CreateSession",
               "signature": "func(ctx context.Context, request protocol.CreateSessionRequest, options protocol.CommandOptions) (*protocol.Session, error)"
+            },
+            {
+              "name": "CreateTaskWorktree",
+              "signature": "func(ctx context.Context, request protocol.CreateTaskWorktreeRequest, options protocol.CommandOptions) (*protocol.TaskWorktree, error)"
             },
             {
               "name": "DeleteMCPServer",
@@ -20527,6 +20695,10 @@
               "signature": "func(ctx context.Context, request protocol.WorkspaceQuery, options protocol.CallOptions) (*protocol.Page[protocol.SkillProposal], error)"
             },
             {
+              "name": "ListTaskWorktrees",
+              "signature": "func(ctx context.Context, options protocol.CallOptions) (*protocol.Page[protocol.TaskWorktree], error)"
+            },
+            {
               "name": "ListTools",
               "signature": "func(ctx context.Context, options protocol.CallOptions) (*protocol.Page[protocol.ToolSpec], error)"
             },
@@ -20551,6 +20723,10 @@
               "signature": "func(ctx context.Context, request protocol.OpenPluginBrowserRealmRequest, options protocol.CommandOptions) (*protocol.PluginBrowserSession, error)"
             },
             {
+              "name": "PreviewWorktreeHandoff",
+              "signature": "func(ctx context.Context, request protocol.TaskWorktreeRequest, options protocol.CallOptions) (*protocol.WorktreeHandoff, error)"
+            },
+            {
               "name": "ReadPluginLocale",
               "signature": "func(ctx context.Context, request protocol.ReadPluginLocaleRequest, options protocol.CallOptions) (*protocol.PluginLocaleCatalog, error)"
             },
@@ -20569,6 +20745,10 @@
             {
               "name": "RejectSkillProposal",
               "signature": "func(ctx context.Context, request protocol.SkillProposalRef, options protocol.CommandOptions) error"
+            },
+            {
+              "name": "ReleaseTaskWorktree",
+              "signature": "func(ctx context.Context, request protocol.TaskWorktreeRequest, options protocol.CommandOptions) error"
             },
             {
               "name": "ResolvePluginComposition",

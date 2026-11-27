@@ -129,6 +129,10 @@ import type {
   RuntimeEvent,
   WorkspaceFileChange,
   WorkspaceInfo,
+  ApplyWorktreeHandoffRequest,
+  CreateTaskWorktreeRequest,
+  TaskWorktree,
+  WorktreeHandoff,
   WorkspaceRef,
   WorkspaceSummary,
 } from "@flame/runtime-client/wire";
@@ -277,6 +281,13 @@ export interface Methods {
     resolve: (ref?: WorkspaceRef, signal?: AbortSignal) => Promise<WorkspaceInfo>;
     list: (signal?: AbortSignal) => Promise<Page<WorkspaceSummary>>;
     open: (ref?: WorkspaceRef, signal?: AbortSignal) => Promise<WorkspaceMethods>;
+    tasks: {
+      list: (signal?: AbortSignal) => Promise<Page<TaskWorktree>>;
+      create: (request: CreateTaskWorktreeRequest) => MutationPromise<TaskWorktree>;
+      preview: (id: string, signal?: AbortSignal) => Promise<WorktreeHandoff>;
+      apply: (request: ApplyWorktreeHandoffRequest) => MutationPromise<WorktreeHandoff>;
+      release: (id: string) => MutationPromise<void>;
+    };
   };
   workspace: (ref: WorkspaceRef) => WorkspaceMethods;
   runtimeEvents: {
@@ -562,6 +573,13 @@ export function createMethods(
       resolve: (ref, signal) => call("workspaces.resolve", ref ? { ref } : {}, { signal }),
       list: (signal) => call("workspaces.list", {}, { signal }),
       open: openWorkspace,
+      tasks: {
+        list: (signal) => call("workspaces.tasks.list", {}, { signal }),
+        create: (request) => call("workspaces.tasks.create", request),
+        preview: (id, signal) => call("workspaces.tasks.handoff.preview", { id }, { signal }),
+        apply: (request) => call("workspaces.tasks.handoff.apply", request),
+        release: (id) => call("workspaces.tasks.release", { id }),
+      },
     },
     workspace: (ref) => bindWorkspace(call, ref),
     hooks: {

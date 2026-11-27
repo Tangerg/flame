@@ -279,6 +279,11 @@ export interface AppliedChange {
   status: ChangeStatus;
 }
 
+export interface ApplyWorktreeHandoffRequest {
+  digest: string;
+  id: string;
+}
+
 export type ApprovalDecision = "approve" | "deny";
 
 export type ApprovalGate = "pass" | "prompt" | "deny";
@@ -484,6 +489,12 @@ export interface CreateSessionRequest {
   projectId?: string;
   title?: string;
   workspace?: WorkspaceRef;
+}
+
+export interface CreateTaskWorktreeRequest {
+  base: string;
+  setup?: string;
+  source: WorkspaceRef;
 }
 
 export interface DeleteSessionRequest {
@@ -1240,6 +1251,8 @@ export type PageOfRunRef = Page<RunRef>;
 export type PageOfSession = Page<Session>;
 
 export type PageOfSkillProposal = Page<SkillProposal>;
+
+export type PageOfTaskWorktree = Page<TaskWorktree>;
 
 export type PageOfToolSpec = Page<ToolSpec>;
 
@@ -2394,6 +2407,19 @@ export interface Target {
   scope: string;
 }
 
+export interface TaskWorktree {
+  available: boolean;
+  base: string;
+  id: string;
+  setup?: WorktreeSetup;
+  source: WorkspaceRef;
+  workspace: WorkspaceRef;
+}
+
+export interface TaskWorktreeRequest {
+  id: string;
+}
+
 export type TerminalActionTarget = "view" | "row";
 
 export type TerminalBindingSource = "value" | "row" | "context" | "form";
@@ -2598,6 +2624,20 @@ export interface WorkspaceSummary {
   name: string;
   sessionCount: number;
   workspace: WorkspaceInfo;
+}
+
+export interface WorktreeHandoff {
+  branch: string;
+  digest: string;
+  head: string;
+  patch: string;
+  worktree: TaskWorktree;
+}
+
+export interface WorktreeSetup {
+  command: string;
+  exitCode?: number;
+  output: string;
 }
 
 // The closed value sets, as data: a union type does not exist at runtime.

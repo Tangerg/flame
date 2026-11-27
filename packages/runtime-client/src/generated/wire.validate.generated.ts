@@ -24,6 +24,7 @@ export type WireTypeName =
   | "AgentDocScope"
   | "AnnotationSource"
   | "AppliedChange"
+  | "ApplyWorktreeHandoffRequest"
   | "ApprovalDecision"
   | "ApprovalGate"
   | "ApprovalMode"
@@ -65,6 +66,7 @@ export type WireTypeName =
   | "CreateMCPAuthorizationAttemptRequest"
   | "CreateProjectRequest"
   | "CreateSessionRequest"
+  | "CreateTaskWorktreeRequest"
   | "DeleteSessionRequest"
   | "Diff"
   | "DiffBaseline"
@@ -224,6 +226,7 @@ export type WireTypeName =
   | "PageOfRunRef"
   | "PageOfSession"
   | "PageOfSkillProposal"
+  | "PageOfTaskWorktree"
   | "PageOfToolSpec"
   | "PageOfTrajectoryEntry"
   | "PageOfWorkspaceFileChange"
@@ -417,6 +420,8 @@ export type WireTypeName =
   | "SubscriptionLimits"
   | "SuppressibleRunEventType"
   | "Target"
+  | "TaskWorktree"
+  | "TaskWorktreeRequest"
   | "TerminalActionTarget"
   | "TerminalBindingSource"
   | "TerminalContext"
@@ -453,6 +458,8 @@ export type WireTypeName =
   | "WorkspaceQuery"
   | "WorkspaceRef"
   | "WorkspaceSummary"
+  | "WorktreeHandoff"
+  | "WorktreeSetup"
   ;
 
 const CHECKS: Record<WireTypeName, WireCheck> = {
@@ -514,6 +521,10 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     removed: integer(),
     status: ref(() => CHECKS.ChangeStatus),
   }, ["added", "path", "removed", "status"]),
+  ApplyWorktreeHandoffRequest: object({
+    digest: text(),
+    id: text(),
+  }, ["digest", "id"]),
   ApprovalDecision: enumOf(["approve", "deny"]),
   ApprovalGate: enumOf(["pass", "prompt", "deny"]),
   ApprovalMode: enumOf(["safe", "balanced", "yolo"]),
@@ -1031,6 +1042,11 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     title: text(),
     workspace: ref(() => CHECKS.WorkspaceRef),
   }, []),
+  CreateTaskWorktreeRequest: object({
+    base: text(),
+    setup: text(),
+    source: ref(() => CHECKS.WorkspaceRef),
+  }, ["base", "source"]),
   DeleteSessionRequest: object({
     sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
   }, ["sessionId"]),
@@ -2539,6 +2555,10 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   }, ["data"]),
   PageOfSkillProposal: object({
     data: array(ref(() => CHECKS.SkillProposal)),
+    nextCursor: allOf([text(), maxLength(65536)]),
+  }, ["data"]),
+  PageOfTaskWorktree: object({
+    data: array(ref(() => CHECKS.TaskWorktree)),
     nextCursor: allOf([text(), maxLength(65536)]),
   }, ["data"]),
   PageOfToolSpec: object({
@@ -4663,6 +4683,17 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     reference: text(),
     scope: text(),
   }, ["reference", "scope"]),
+  TaskWorktree: object({
+    available: flag(),
+    base: text(),
+    id: text(),
+    setup: ref(() => CHECKS.WorktreeSetup),
+    source: ref(() => CHECKS.WorkspaceRef),
+    workspace: ref(() => CHECKS.WorkspaceRef),
+  }, ["available", "base", "id", "source", "workspace"]),
+  TaskWorktreeRequest: object({
+    id: text(),
+  }, ["id"]),
   TerminalActionTarget: enumOf(["view", "row"]),
   TerminalBindingSource: enumOf(["value", "row", "context", "form"]),
   TerminalContext: enumOf(["workspace", "timeZone"]),
@@ -4959,6 +4990,18 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     sessionCount: allOf([integer(), minimum("0")]),
     workspace: ref(() => CHECKS.WorkspaceInfo),
   }, ["name", "sessionCount", "workspace"]),
+  WorktreeHandoff: object({
+    branch: text(),
+    digest: text(),
+    head: text(),
+    patch: text(),
+    worktree: ref(() => CHECKS.TaskWorktree),
+  }, ["branch", "digest", "head", "patch", "worktree"]),
+  WorktreeSetup: object({
+    command: text(),
+    exitCode: integer(),
+    output: text(),
+  }, ["command", "output"]),
 };
 
 const METHOD_PARAMS: Record<WireMethodName, WireCheck> = {
@@ -4992,6 +5035,11 @@ const METHOD_PARAMS: Record<WireMethodName, WireCheck> = {
   "interrupts.list": ref(() => CHECKS.ListInterruptsRequest),
   "plan.get": ref(() => CHECKS.GetPlanRequest),
   "items.list": ref(() => CHECKS.ListItemsRequest),
+  "workspaces.tasks.create": ref(() => CHECKS.CreateTaskWorktreeRequest),
+  "workspaces.tasks.list": object({}, []),
+  "workspaces.tasks.handoff.preview": ref(() => CHECKS.TaskWorktreeRequest),
+  "workspaces.tasks.handoff.apply": ref(() => CHECKS.ApplyWorktreeHandoffRequest),
+  "workspaces.tasks.release": ref(() => CHECKS.TaskWorktreeRequest),
   "workspaces.resolve": ref(() => CHECKS.ResolveWorkspaceRequest),
   "workspaces.list": object({}, []),
   "workspace.changes.list": ref(() => CHECKS.WorkspaceQuery),
@@ -5110,6 +5158,11 @@ const METHOD_RESULTS: Record<WireMethodName, WireCheck> = {
   "interrupts.list": ref(() => CHECKS.PageOfPendingInterruptSet),
   "plan.get": ref(() => CHECKS.Plan),
   "items.list": ref(() => CHECKS.ListItemsResponse),
+  "workspaces.tasks.create": ref(() => CHECKS.TaskWorktree),
+  "workspaces.tasks.list": ref(() => CHECKS.PageOfTaskWorktree),
+  "workspaces.tasks.handoff.preview": ref(() => CHECKS.WorktreeHandoff),
+  "workspaces.tasks.handoff.apply": ref(() => CHECKS.WorktreeHandoff),
+  "workspaces.tasks.release": object({}, []),
   "workspaces.resolve": ref(() => CHECKS.WorkspaceInfo),
   "workspaces.list": ref(() => CHECKS.PageOfWorkspaceSummary),
   "workspace.changes.list": ref(() => CHECKS.PageOfWorkspaceFileChange),

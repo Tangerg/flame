@@ -17,6 +17,7 @@ const (
 )
 
 func registerWorkspace(registry *Registry) {
+	registerTaskWorktrees(registry)
 	registry.query(MethodMeta{
 		Name: WorkspacesResolve, GoName: "ResolveWorkspace",
 		Errors: []string{protocol.ErrWorkspaceUnavailable.Error()},

@@ -97,6 +97,21 @@ func (r *Client) GetPlan(ctx context.Context, request protocol.GetPlanRequest, o
 func (r *Client) ListItems(ctx context.Context, request protocol.ListItemsRequest, options protocol.CallOptions) (*protocol.ListItemsResponse, error) {
 	return r.invoke[protocol.ListItemsRequest, *protocol.ListItemsResponse](ctx, "items.list", request, options.Metadata())
 }
+func (r *Client) CreateTaskWorktree(ctx context.Context, request protocol.CreateTaskWorktreeRequest, options protocol.CommandOptions) (*protocol.TaskWorktree, error) {
+	return r.invoke[protocol.CreateTaskWorktreeRequest, *protocol.TaskWorktree](ctx, "workspaces.tasks.create", request, options.Metadata())
+}
+func (r *Client) ListTaskWorktrees(ctx context.Context, options protocol.CallOptions) (*protocol.Page[protocol.TaskWorktree], error) {
+	return r.invoke[struct{}, *protocol.Page[protocol.TaskWorktree]](ctx, "workspaces.tasks.list", struct{}{}, options.Metadata())
+}
+func (r *Client) PreviewWorktreeHandoff(ctx context.Context, request protocol.TaskWorktreeRequest, options protocol.CallOptions) (*protocol.WorktreeHandoff, error) {
+	return r.invoke[protocol.TaskWorktreeRequest, *protocol.WorktreeHandoff](ctx, "workspaces.tasks.handoff.preview", request, options.Metadata())
+}
+func (r *Client) ApplyWorktreeHandoff(ctx context.Context, request protocol.ApplyWorktreeHandoffRequest, options protocol.CommandOptions) (*protocol.WorktreeHandoff, error) {
+	return r.invoke[protocol.ApplyWorktreeHandoffRequest, *protocol.WorktreeHandoff](ctx, "workspaces.tasks.handoff.apply", request, options.Metadata())
+}
+func (r *Client) ReleaseTaskWorktree(ctx context.Context, request protocol.TaskWorktreeRequest, options protocol.CommandOptions) error {
+	return r.invokeAck[protocol.TaskWorktreeRequest](ctx, "workspaces.tasks.release", request, options.Metadata())
+}
 func (r *Client) ResolveWorkspace(ctx context.Context, request protocol.ResolveWorkspaceRequest, options protocol.CallOptions) (*protocol.WorkspaceInfo, error) {
 	return r.invoke[protocol.ResolveWorkspaceRequest, *protocol.WorkspaceInfo](ctx, "workspaces.resolve", request, options.Metadata())
 }

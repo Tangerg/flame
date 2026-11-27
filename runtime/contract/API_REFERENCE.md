@@ -5,7 +5,7 @@
 > method the Runtime does not serve. The adjacent JSON artifacts are the
 > machine-readable contract; this file is its mechanical human-readable index.
 
-Protocol `2026-11-27.8` · 108 methods
+Protocol `2026-11-27.8` · 113 methods
 
 ## Methods
 
@@ -41,6 +41,11 @@ Protocol `2026-11-27.8` · 108 methods
 | `interrupts.list` | query | unary | none | none | cursor | — | — | `run_not_root`, `capability_not_negotiated` |
 | `plan.get` | query | unary | none | none | none | — | `plan` | `session_not_found`, `capability_not_negotiated` |
 | `items.list` | query | unary | none | none | cursor | — | `childRuns` | `session_not_found`, `run_not_found`, `capability_not_negotiated` |
+| `workspaces.tasks.create` | command | unary | replayResponse | none | none | — | `git` | `workspace_unavailable`, `vcs_unavailable`, `session_busy`, `capability_not_negotiated` |
+| `workspaces.tasks.list` | query | unary | none | none | none | — | `git` | `capability_not_negotiated` |
+| `workspaces.tasks.handoff.preview` | query | unary | none | none | none | — | `git` | `workspace_unavailable`, `session_busy`, `revision_conflict`, `capability_not_negotiated` |
+| `workspaces.tasks.handoff.apply` | command | unary | replayResponse | none | none | — | `git` | `workspace_unavailable`, `session_busy`, `revision_conflict`, `capability_not_negotiated` |
+| `workspaces.tasks.release` | command | unary | replayResponse | none | none | — | `git` | `workspace_unavailable`, `session_busy`, `revision_conflict`, `capability_not_negotiated` |
 | `workspaces.resolve` | query | unary | none | none | none | — | — | `workspace_unavailable` |
 | `workspaces.list` | query | unary | none | none | none | — | — | — |
 | `workspace.changes.list` | query | unary | none | none | none | — | `git` | `workspace_unavailable`, `vcs_unavailable`, `capability_not_negotiated` |
@@ -1331,6 +1336,11 @@ available. Refusal is `capability_not_negotiated` — never a silent downgrade.
 | `runs.list` | `includeDescendants` == `true` | `childRuns` |
 | `plan.get` | always | `plan` |
 | `items.list` | `scope.includeDescendants` == `true` | `childRuns` |
+| `workspaces.tasks.create` | always | `git` |
+| `workspaces.tasks.list` | always | `git` |
+| `workspaces.tasks.handoff.preview` | always | `git` |
+| `workspaces.tasks.handoff.apply` | always | `git` |
+| `workspaces.tasks.release` | always | `git` |
 | `workspace.changes.list` | always | `git` |
 | `workspace.diff.get` | always | `git` |
 | `runtime.subscribe` | `watches` present | `fileWatch` |

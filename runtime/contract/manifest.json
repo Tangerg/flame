@@ -479,6 +479,93 @@
       ]
     },
     {
+      "goName": "CreateTaskWorktree",
+      "name": "workspaces.tasks.create",
+      "kind": "unary",
+      "operation": "command",
+      "idempotency": "replayResponse",
+      "replayCursor": "none",
+      "pagination": "none",
+      "errors": [
+        "workspace_unavailable",
+        "vcs_unavailable",
+        "session_busy",
+        "capability_not_negotiated"
+      ],
+      "features": [
+        "git"
+      ]
+    },
+    {
+      "goName": "ListTaskWorktrees",
+      "name": "workspaces.tasks.list",
+      "kind": "unary",
+      "operation": "query",
+      "idempotency": "none",
+      "replayCursor": "none",
+      "pagination": "none",
+      "errors": [
+        "capability_not_negotiated"
+      ],
+      "features": [
+        "git"
+      ]
+    },
+    {
+      "goName": "PreviewWorktreeHandoff",
+      "name": "workspaces.tasks.handoff.preview",
+      "kind": "unary",
+      "operation": "query",
+      "idempotency": "none",
+      "replayCursor": "none",
+      "pagination": "none",
+      "errors": [
+        "workspace_unavailable",
+        "session_busy",
+        "revision_conflict",
+        "capability_not_negotiated"
+      ],
+      "features": [
+        "git"
+      ]
+    },
+    {
+      "goName": "ApplyWorktreeHandoff",
+      "name": "workspaces.tasks.handoff.apply",
+      "kind": "unary",
+      "operation": "command",
+      "idempotency": "replayResponse",
+      "replayCursor": "none",
+      "pagination": "none",
+      "errors": [
+        "workspace_unavailable",
+        "session_busy",
+        "revision_conflict",
+        "capability_not_negotiated"
+      ],
+      "features": [
+        "git"
+      ]
+    },
+    {
+      "goName": "ReleaseTaskWorktree",
+      "name": "workspaces.tasks.release",
+      "kind": "unary",
+      "operation": "command",
+      "idempotency": "replayResponse",
+      "replayCursor": "none",
+      "pagination": "none",
+      "errors": [
+        "workspace_unavailable",
+        "session_busy",
+        "revision_conflict",
+        "capability_not_negotiated"
+      ],
+      "features": [
+        "git"
+      ]
+    },
+    {
       "goName": "ResolveWorkspace",
       "name": "workspaces.resolve",
       "kind": "unary",
@@ -1906,7 +1993,12 @@
           "skills.proposals.list",
           "skills.proposals.reject",
           "workspace.changes.list",
-          "workspace.diff.get"
+          "workspace.diff.get",
+          "workspaces.tasks.create",
+          "workspaces.tasks.handoff.apply",
+          "workspaces.tasks.handoff.preview",
+          "workspaces.tasks.list",
+          "workspaces.tasks.release"
         ]
       },
       {
@@ -2330,7 +2422,10 @@
           "sessions.rollback",
           "sessions.update",
           "skills.proposals.approve",
-          "skills.proposals.reject"
+          "skills.proposals.reject",
+          "workspaces.tasks.handoff.apply",
+          "workspaces.tasks.handoff.preview",
+          "workspaces.tasks.release"
         ]
       },
       {
@@ -2389,7 +2484,11 @@
           "sessions.exportTrajectory",
           "sessions.import",
           "sessions.rollback",
-          "sessions.update"
+          "sessions.update",
+          "workspaces.tasks.create",
+          "workspaces.tasks.handoff.apply",
+          "workspaces.tasks.handoff.preview",
+          "workspaces.tasks.release"
         ]
       },
       {
@@ -2470,7 +2569,8 @@
         "recoveryAction": "promptUser",
         "methods": [
           "workspace.changes.list",
-          "workspace.diff.get"
+          "workspace.diff.get",
+          "workspaces.tasks.create"
         ]
       },
       {
@@ -2502,7 +2602,11 @@
           "workspace.files.list",
           "workspace.files.read",
           "workspace.files.search",
-          "workspaces.resolve"
+          "workspaces.resolve",
+          "workspaces.tasks.create",
+          "workspaces.tasks.handoff.apply",
+          "workspaces.tasks.handoff.preview",
+          "workspaces.tasks.release"
         ]
       }
     ],
@@ -2717,6 +2821,56 @@
           ],
           "requires": [
             "childRuns"
+          ]
+        }
+      ]
+    },
+    {
+      "method": "workspaces.tasks.create",
+      "rules": [
+        {
+          "requires": [
+            "git"
+          ]
+        }
+      ]
+    },
+    {
+      "method": "workspaces.tasks.list",
+      "rules": [
+        {
+          "requires": [
+            "git"
+          ]
+        }
+      ]
+    },
+    {
+      "method": "workspaces.tasks.handoff.preview",
+      "rules": [
+        {
+          "requires": [
+            "git"
+          ]
+        }
+      ]
+    },
+    {
+      "method": "workspaces.tasks.handoff.apply",
+      "rules": [
+        {
+          "requires": [
+            "git"
+          ]
+        }
+      ]
+    },
+    {
+      "method": "workspaces.tasks.release",
+      "rules": [
+        {
+          "requires": [
+            "git"
           ]
         }
       ]

@@ -52,6 +52,15 @@ func New(ctx context.Context, config Config, source string) (*Workspace, error) 
 	return newWorkspace(ctx, config, source, runner)
 }
 
+// RunInPlace confines a command to a workspace whose lifecycle the caller owns.
+func RunInPlace(ctx context.Context, config Config, path string, input toolshell.Input) (toolshell.Output, error) {
+	runner, err := platformRunner(config)
+	if err != nil {
+		return toolshell.Output{}, err
+	}
+	return runner.Run(ctx, path, input)
+}
+
 func newWorkspace(ctx context.Context, config Config, source string, runner commandRunner) (_ *Workspace, err error) {
 	if ctx == nil {
 		return nil, errors.New("sandbox: context is required")

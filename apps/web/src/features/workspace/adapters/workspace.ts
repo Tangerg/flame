@@ -36,6 +36,7 @@ export function createWorkspace(
     local: createLocalWorkspaceActions(host, canAccessLocalWorkspace),
     errors: runtimeWorkspaceErrorClassifier,
     conversationImport,
+    taskWorktrees: () => client().workspaces.tasks,
   };
   let importGateway: ReturnType<typeof createConversationImportGateway> | null = null;
   let disposed = false;

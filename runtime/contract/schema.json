@@ -201,6 +201,21 @@
         "status"
       ]
     },
+    "ApplyWorktreeHandoffRequest": {
+      "type": "object",
+      "properties": {
+        "digest": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "digest",
+        "id"
+      ]
+    },
     "ApprovalDecision": {
       "type": "string",
       "enum": [
@@ -1781,6 +1796,24 @@
           "$ref": "#/$defs/WorkspaceRef"
         }
       }
+    },
+    "CreateTaskWorktreeRequest": {
+      "type": "object",
+      "properties": {
+        "base": {
+          "type": "string"
+        },
+        "setup": {
+          "type": "string"
+        },
+        "source": {
+          "$ref": "#/$defs/WorkspaceRef"
+        }
+      },
+      "required": [
+        "base",
+        "source"
+      ]
     },
     "DeleteSessionRequest": {
       "type": "object",
@@ -6593,6 +6626,24 @@
           "type": "array",
           "items": {
             "$ref": "#/$defs/SkillProposal"
+          }
+        },
+        "nextCursor": {
+          "type": "string",
+          "maxLength": 65536
+        }
+      },
+      "required": [
+        "data"
+      ]
+    },
+    "PageOfTaskWorktree": {
+      "type": "object",
+      "properties": {
+        "data": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TaskWorktree"
           }
         },
         "nextCursor": {
@@ -13345,6 +13396,47 @@
         "scope"
       ]
     },
+    "TaskWorktree": {
+      "type": "object",
+      "properties": {
+        "available": {
+          "type": "boolean"
+        },
+        "base": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "setup": {
+          "$ref": "#/$defs/WorktreeSetup"
+        },
+        "source": {
+          "$ref": "#/$defs/WorkspaceRef"
+        },
+        "workspace": {
+          "$ref": "#/$defs/WorkspaceRef"
+        }
+      },
+      "required": [
+        "available",
+        "base",
+        "id",
+        "source",
+        "workspace"
+      ]
+    },
+    "TaskWorktreeRequest": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ]
+    },
     "TerminalActionTarget": {
       "type": "string",
       "enum": [
@@ -14400,6 +14492,51 @@
         "name",
         "sessionCount",
         "workspace"
+      ]
+    },
+    "WorktreeHandoff": {
+      "type": "object",
+      "properties": {
+        "branch": {
+          "type": "string"
+        },
+        "digest": {
+          "type": "string"
+        },
+        "head": {
+          "type": "string"
+        },
+        "patch": {
+          "type": "string"
+        },
+        "worktree": {
+          "$ref": "#/$defs/TaskWorktree"
+        }
+      },
+      "required": [
+        "branch",
+        "digest",
+        "head",
+        "patch",
+        "worktree"
+      ]
+    },
+    "WorktreeSetup": {
+      "type": "object",
+      "properties": {
+        "command": {
+          "type": "string"
+        },
+        "exitCode": {
+          "type": "integer"
+        },
+        "output": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "command",
+        "output"
       ]
     }
   }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"path/filepath"
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
@@ -173,6 +174,7 @@ func buildAssemblyCore(
 				WorkspaceFiles:         readServices.workspaceFiles,
 				WorkspaceVCS:           readServices.workspaceVCS,
 				WorkspaceDiscovery:     readServices.workspaceDiscovery,
+				TaskWorktrees:          workspace.NewTaskWorktrees(workspaceServices.scope, workspaceadapter.NewTaskWorktrees(filepath.Join(cfg.stores.DataDirectory, "task-worktrees"), cfg.sandboxReadOnlyPaths), admissionGate, sessionCoordinator),
 				WorkspaceSkills:        execution.tools.skills,
 				Hooks:                  execution.hooks,
 				WorkspaceWatch:         readServices.workspaceWatch,
