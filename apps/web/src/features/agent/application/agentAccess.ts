@@ -15,7 +15,7 @@ import {
   regenerateSessionRun,
 } from "./session/historyActions";
 import { forkSessionAt } from "./session/forkSession";
-import { rehydrateSessionView } from "./session/rehydrateSession";
+import { synchronizeRewrittenSessionView } from "./session/synchronizeRewrittenSessionView";
 import {
   synchronizeMountedAgentSession,
   synchronizeMountedAgentSessions,
@@ -49,7 +49,7 @@ export function createAgentAccess(dependencies: AgentDependencies) {
     forkAgentSession: forkSessionAt.bind(undefined, dependencies),
     rollbackSessionToBeforeRun: rollbackSessionToBeforeRun.bind(undefined, dependencies),
     regenerateSessionRun: regenerateSessionRun.bind(undefined, dependencies),
-    rehydrateSessionView: rehydrateSessionView.bind(undefined, dependencies),
+    synchronizeRewrittenSessionView: synchronizeRewrittenSessionView.bind(undefined, dependencies),
     synchronizeMountedAgentSession: synchronizeMountedAgentSession.bind(undefined, dependencies),
     synchronizeMountedAgentSessions: synchronizeMountedAgentSessions.bind(undefined, dependencies),
     stepActiveAgentSession: stepActiveAgentSession.bind(undefined, dependencies),

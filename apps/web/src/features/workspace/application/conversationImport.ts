@@ -75,8 +75,8 @@ export function createConversationImport(
 
         const session = await this.#cohort.run(() => this.#gateway.importConversation(artifact));
         try {
-          await this.#cohort.run(() => agentAccess.rehydrateSessionView(session.id));
-          await this.#cohort.run(() => invalidateAgentSessions());
+          await this.#cohort.run(invalidateAgentSessions);
+          await this.#cohort.run(() => agentAccess.synchronizeRewrittenSessionView(session.id));
         } catch (error) {
           if (this.#cohort.retired) return;
           console.error("[import] imported Session view could not be refreshed:", error);

@@ -1,15 +1,21 @@
 import { lstat } from "node:fs/promises";
 import { join } from "node:path";
 import { describe, expect, it, onTestFinished } from "vitest";
-import { asRunId, asSessionId, type FlameClient } from "@flame/runtime-client";
+import { asRunId, asSessionId, createSidecarClient, type FlameClient } from "@flame/runtime-client";
 import { HTTP_HEADERS } from "@flame/runtime-client/wire";
 import { composeAgent } from "@/features/agent/adapters/agent";
-import { editAndRerunMessage, regenerateMessage } from "@/features/chat/message-actions/public/messageActions";
+import {
+  editAndRerunMessage,
+  regenerateMessage,
+} from "@/features/chat/message-actions/public/messageActions";
 import { createComposer } from "@/features/composer/adapters/composerStatePorts";
 import { DraftContent } from "@/features/composer/domain/draft";
 import { createRuntimeConnectionProjection } from "@/features/connection/adapters/runtimeConnectionProjection";
+import { runtimeServiceInspector } from "@/features/connection/adapters/runtimeServiceInspector";
 import { createRuntimeEndpoint } from "@/features/connection/application/runtimeEndpoint";
 import { NotificationFeed } from "@/features/notifications/public/notifications";
+import { createConversationImportGateway } from "@/features/workspace/adapters/runtimeConversationImportGateway";
+import { createConversationImport } from "@/features/workspace/application/conversationImport";
 import { createMemoryNavigator } from "@/lib/navigation.testkit";
 import {
   type ProviderGate,
@@ -56,12 +62,15 @@ function openWebSession(client: FlameClient, endpoint: string, sessionId: string
     connection.scope,
     notifications,
   );
-  agent.sessions.store.getState().holdOpen(sessionId);
-  agent.projection.store.getState().ensureSession(sessionId);
+  if (sessionId) {
+    agent.sessions.store.getState().holdOpen(sessionId);
+    agent.projection.store.getState().ensureSession(sessionId);
+  }
   return {
     agent,
     connection,
     notifications,
+    runtime,
     dispose() {
       agent.dispose();
       notifications.dispose();
@@ -95,6 +104,71 @@ function openWebComposer(
 describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: restart and crash recovery", () => {
   const fixture = useRuntimeFixture("recovery");
 
+  it("opens an unmounted JSON import and refreshes an existing view on reimport", async () => {
+    const title = "Conversation imported before its view mounts";
+    const source = await fixture.client.sessions.create({
+      title,
+      workspace: { path: fixture.root },
+    });
+    const sourceId = asSessionId(source.id);
+    const prompt = "This input survives an export and reimport.";
+    const run = await fixture.client.runs.start({
+      sessionId: sourceId,
+      input: [{ type: "text", text: prompt }],
+    });
+    await collectRunEvents(originalOpeningEvents(run));
+    const { artifact } = await fixture.client.sessions.export(sourceId, "json");
+    if (!artifact) throw new Error("JSON export omitted its Session artifact");
+
+    const client = fixture.createSharedClient();
+    const web = openWebSession(client, fixture.baseUrl, "");
+    const access = web.agent.access;
+    const sidecar = createSidecarClient({ baseUrl: fixture.baseUrl });
+    web.connection.start(
+      runtimeServiceInspector(
+        () => client,
+        () => sidecar,
+      ),
+    );
+    const presentations: string[] = [];
+    const notifications = new NotificationFeed(({ level }) => presentations.push(level));
+    const imports = createConversationImport(web.agent.access, web.runtime, notifications);
+    const gateway = createConversationImportGateway(imports, () => client, {
+      pickText: async () => JSON.stringify(artifact),
+    });
+    try {
+      await web.connection.status.refresh();
+      await imports.importConversationJson();
+      expect(access.getActiveSessionId()).toBe(sourceId);
+      expect(web.agent.dependencies.view.getSession(sourceId)).toBeUndefined();
+      expect(presentations).toEqual(["success"]);
+      await expect(fixture.client.sessions.snapshot(sourceId)).resolves.toMatchObject({
+        session: { id: sourceId, title },
+        runs: [expect.objectContaining({ id: run.result.runId })],
+      });
+
+      await fixture.client.sessions.rollback({
+        sessionId: sourceId,
+        expectedLastRootRunId: run.result.runId,
+        expectedWorkspacePath: source.workspace.ref.path,
+      });
+      web.agent.projection.store.getState().ensureSession(sourceId);
+      await expect(access.synchronizeRewrittenSessionView(sourceId)).resolves.toBe(true);
+      expect(access.activeAgentConversation()?.messages).toEqual([]);
+      await imports.importConversationJson();
+      expect(presentations).toEqual(["success", "success"]);
+      expect(access.activeAgentConversation()?.messages).toContainEqual(
+        expect.objectContaining({ role: "user", runId: run.result.runId }),
+      );
+    } finally {
+      gateway.dispose();
+      notifications.dispose();
+      web.dispose();
+      await client.close();
+      await fixture.client.sessions.delete(sourceId);
+    }
+  }, 30_000);
+
   it("returns the committed rollback input when the next Session read fails", async () => {
     const session = await fixture.client.sessions.create({ workspace: { path: fixture.root } });
     const sessionId = asSessionId(session.id);
@@ -121,9 +195,14 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: restart and crash recovery", (
     try {
       await expect(
         agent.access.rollbackSessionToBeforeRun(sessionId, run.result.runId),
-      ).resolves.toEqual({ status: "committed", userInput: { parts: [{ kind: "text", text: input }] } });
+      ).resolves.toEqual({
+        status: "committed",
+        userInput: { parts: [{ kind: "text", text: input }] },
+      });
       await within(refreshing.promise, "Session refresh after the committed rollback");
-      await expect(fixture.client.sessions.snapshot(sessionId)).resolves.toMatchObject({ runs: [] });
+      await expect(fixture.client.sessions.snapshot(sessionId)).resolves.toMatchObject({
+        runs: [],
+      });
       await expect
         .poll(() => notifications.snapshot().some(({ level }) => level === "error"))
         .toBe(true);
@@ -163,13 +242,18 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: restart and crash recovery", (
     const access = agent.access;
     const composer = openWebComposer(web, fixture.baseUrl, sessionId);
     try {
-      await access.rehydrateSessionView(sessionId);
-      const opening = access.activeAgentConversation()?.messages.find(
-        (message) => message.role === "user" && message.runId === run.result.runId,
-      );
+      await expect(access.synchronizeRewrittenSessionView(sessionId)).resolves.toBe(true);
+      const opening = access
+        .activeAgentConversation()
+        ?.messages.find((message) => message.role === "user" && message.runId === run.result.runId);
       if (!opening) throw new Error("the Web projection omitted the original message");
-      editAndRerunMessage(notifications, access, composer.access, opening, "history", (_type, apply) =>
-        apply(),
+      editAndRerunMessage(
+        notifications,
+        access,
+        composer.access,
+        opening,
+        "history",
+        (_type, apply) => apply(),
       );
       await within(committed.promise, "rollback acknowledgement before draft recovery");
 
@@ -189,7 +273,9 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: restart and crash recovery", (
         references: [originalReference, laterReference],
       });
       expect(composer.access.captureSubmission().value).toBe(scratch);
-      await expect(fixture.client.sessions.snapshot(sessionId)).resolves.toMatchObject({ runs: [] });
+      await expect(fixture.client.sessions.snapshot(sessionId)).resolves.toMatchObject({
+        runs: [],
+      });
     } finally {
       release.resolve();
       composer.dispose();
@@ -225,17 +311,21 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: restart and crash recovery", (
     const unsent = "My separate unsent notes stay in the draft.";
     composer.access.checkpoint(DraftContent.fromText(unsent));
     try {
-      await access.rehydrateSessionView(sessionId);
-      const reply = access.activeAgentConversation()?.messages.find(
-        (message) => message.role === "assistant" && message.runId === run.result.runId,
-      );
+      await expect(access.synchronizeRewrittenSessionView(sessionId)).resolves.toBe(true);
+      const reply = access
+        .activeAgentConversation()
+        ?.messages.find(
+          (message) => message.role === "assistant" && message.runId === run.result.runId,
+        );
       if (!reply) throw new Error("the Web projection omitted the reply to regenerate");
       regenerateMessage(web.notifications, access, composer.access, reply);
 
       await expect
         .poll(() => composer.access.captureSubmission().value)
         .toBe(`${original}\n\n${unsent}`);
-      await expect(fixture.client.sessions.snapshot(sessionId)).resolves.toMatchObject({ runs: [] });
+      await expect(fixture.client.sessions.snapshot(sessionId)).resolves.toMatchObject({
+        runs: [],
+      });
     } finally {
       composer.dispose();
       web.dispose();

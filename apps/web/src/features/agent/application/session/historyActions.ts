@@ -9,7 +9,7 @@ import {
   selectRootNarrativeMessages,
   selectRootRollbackBoundary,
 } from "@/features/agent/application/view/runTree";
-import { rehydrateSessionView } from "@/features/agent/application/session/rehydrateSession";
+import { synchronizeRewrittenSessionView } from "@/features/agent/application/session/synchronizeRewrittenSessionView";
 import { projectAgentSessionSnapshot } from "@/features/agent/application/session/sessionSnapshot";
 import { type AgentCommandOwner } from "@/features/agent/application/agentCommandOwner";
 
@@ -142,8 +142,7 @@ async function refreshAfterRollback(
   sessionId: string,
 ): Promise<boolean> {
   try {
-    await owner.settle(rehydrateSessionView(agentAccess, sessionId));
-    return true;
+    return await owner.settle(synchronizeRewrittenSessionView(agentAccess, sessionId));
   } catch (error) {
     if (owner.isCurrent()) {
       console.error("[session] rollback view could not be refreshed:", error);
