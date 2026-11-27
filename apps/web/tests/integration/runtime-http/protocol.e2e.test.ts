@@ -3,6 +3,7 @@ import {
   createFlameClient,
   type FlameClient,
   JSONRPC_VERSION,
+  MutationJournalCleanupError,
   MutationJournalOwnershipError,
   RpcError,
   RpcProtocolError,
@@ -770,6 +771,54 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: protocol delivery", () => {
       expect(deliveries).toBe(2);
     } finally {
       await Promise.all([original.close(), cold.close()]);
+      for (const session of await fixture.client.sessions.list().autoPagingToArray()) {
+        if (session.title === title) await fixture.client.sessions.delete(asSessionId(session.id));
+      }
+    }
+  }, 30_000);
+
+  it("retries journal cleanup without dispatching a confirmed command again", async () => {
+    const title = "Confirmed Session with retained local journal entry";
+    const mutationStorage = new MemoryMutationStorage();
+    const unavailable = new Error("injected refusal to remove the local journal entry");
+    const removal = vi.spyOn(mutationStorage, "remove").mockImplementation(() => {
+      throw unavailable;
+    });
+    let deliveries = 0;
+    const client = createFlameClient(
+      createHttpTransport({
+        baseUrl: fixture.baseUrl,
+        fetch: (url, init) => {
+          if (new Headers(init?.headers).get(HTTP_HEADERS.method) === "sessions.create") deliveries++;
+          return globalThis.fetch(url, init);
+        },
+      }),
+      { capabilities: () => fixture.negotiated, mutationStorage },
+    );
+    try {
+      const mutation = client.sessions.create({ title });
+      const failure = await mutation.catch((error: unknown) => error);
+      if (!(failure instanceof MutationJournalCleanupError)) {
+        throw new Error("expected cleanup of the confirmed command to fail", { cause: failure });
+      }
+      expect(failure.cause).toHaveProperty("cause", unavailable);
+      expect(deliveries).toBe(1);
+      expect(mutationStorage.size).toBe(1);
+      expect(client.runtime.pendingCommands()).toEqual([]);
+      const [accepted] = (await fixture.client.sessions.list().autoPagingToArray()).filter(
+        (session) => session.title === title,
+      );
+      if (!accepted) throw new Error("the Session was not committed");
+      expect(failure.confirmation).toEqual({ type: "accepted", result: accepted });
+
+      removal.mockRestore();
+      await expect(mutation.retry()).resolves.toEqual(accepted);
+      failure.retryCleanup();
+      expect(deliveries).toBe(1);
+      expect(mutationStorage.size).toBe(0);
+    } finally {
+      removal.mockRestore();
+      await client.close();
       for (const session of await fixture.client.sessions.list().autoPagingToArray()) {
         if (session.title === title) await fixture.client.sessions.delete(asSessionId(session.id));
       }

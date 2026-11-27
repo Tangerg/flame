@@ -107,6 +107,9 @@ Mutation handles retain the original key and receipt authority after uncertain
 responses. An unresolved retry continues the original command. After
 confirmation, retries return the observed result or refusal directly. To open a
 fresh observation of an acknowledged Run, use `runs.subscribe`.
+`MutationJournalCleanupError` carries the confirmed outcome and the local
+storage failure. Use `error.retryCleanup()` to complete removal of that record.
+The original handle also retries the removal before returning its confirmation.
 Presentation components
 must not rebuild settlement or invent a replacement identity. Streaming reads
 and durable commands retain their registry-classified distinction.

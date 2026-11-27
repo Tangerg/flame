@@ -12,7 +12,11 @@ export type { ItemId, RunId, SegmentId, SessionId } from "./ids";
 export type { MutationAttemptOptions, MutationPromise } from "./mutation";
 export { MutationLookupError } from "./mutation";
 export type { MutationJournalStorage } from "./mutationJournal";
-export { MutationJournalOwnershipError } from "./mutationJournalErrors";
+export {
+  MutationJournalCleanupError,
+  MutationJournalOwnershipError,
+  type MutationConfirmation,
+} from "./mutationJournalErrors";
 export type { PendingRuntimeCommand, RuntimeCommandMethod } from "./mutationJournalEntry";
 export type { PluginCommandRecovery } from "./pluginCommand";
 export type { PluginCommandInput, PluginCommandBinding } from "./mutationJournal";

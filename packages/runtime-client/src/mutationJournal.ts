@@ -13,7 +13,12 @@ import {
   type PluginCommandInput,
   type PluginCommandBinding,
 } from "./mutationJournalEntry";
-import { MutationJournalError, MutationJournalOwnershipError } from "./mutationJournalErrors";
+import {
+  MutationJournalCleanupError,
+  MutationJournalError,
+  MutationJournalOwnershipError,
+  type MutationConfirmation,
+} from "./mutationJournalErrors";
 import {
   MutationLookupError,
   mutationHandle,
@@ -65,7 +70,35 @@ export type PendingRunCommand = RunCommand & {
 };
 
 type AttemptOutcome<T> =
-  { type: "confirmed"; handle: MutationPromise<T> } | { type: "unresolved" } | { type: "canceled" };
+  | { type: "confirmed"; confirmation: MutationConfirmation<T> }
+  | { type: "unresolved" }
+  | { type: "canceled" };
+
+class ConfirmedMutation<T> {
+  #cleanup: (() => void) | undefined;
+
+  constructor(
+    private readonly confirmation: MutationConfirmation<T>,
+    cleanup: () => void,
+  ) {
+    this.#cleanup = cleanup;
+  }
+
+  cleanup(): void {
+    if (!this.#cleanup) return;
+    try {
+      this.#cleanup();
+    } catch (cause) {
+      throw new MutationJournalCleanupError(this.confirmation, () => this.cleanup(), cause);
+    }
+    this.#cleanup = undefined;
+  }
+
+  result(): T {
+    if (this.confirmation.type === "refused") throw this.confirmation.error;
+    return this.confirmation.result;
+  }
+}
 
 // Caller-owned copies of admitted journal data must retain exact JSON numbers.
 function copyJournalProjection<T>(value: T): T {
@@ -258,21 +291,29 @@ export class MutationJournal {
   ): MutationPromise<T> {
     const idempotencyKey = identity.idempotencyKey;
     let activeAttempts = 0;
-    let confirmed: MutationPromise<T> | undefined;
+    let confirmed: ConfirmedMutation<T> | undefined;
     let reopen: (() => void) | undefined;
+    const releaseClaim = () => {
+      if (this.#claims.get(idempotencyKey) === identity) this.#claims.delete(idempotencyKey);
+    };
     const finish = (outcome: AttemptOutcome<T>) => {
-      const observed = confirmed ?? (outcome.type === "confirmed" ? outcome.handle : undefined);
-      activeAttempts -= 1;
-      if (activeAttempts === 0) {
-        try {
-          if (observed) this.#journal.settle(identity);
-          else if (outcome.type === "canceled")
-            reopen = this.#journal.withdrawBeforeDispatch(identity);
-        } finally {
-          if (this.#claims.get(idempotencyKey) === identity) this.#claims.delete(idempotencyKey);
-        }
+      if (outcome.type === "confirmed") {
+        confirmed ??= new ConfirmedMutation(outcome.confirmation, () => {
+          this.#journal.settle(identity);
+          releaseClaim();
+        });
       }
-      confirmed = observed;
+      activeAttempts--;
+      if (activeAttempts !== 0) return;
+      if (confirmed) {
+        confirmed.cleanup();
+        return;
+      }
+      try {
+        if (outcome.type === "canceled") reopen = this.#journal.withdrawBeforeDispatch(identity);
+      } finally {
+        releaseClaim();
+      }
     };
     const observe = (start: () => MutationPromise<T>): MutationPromise<T> => {
       this.#assertClaim(identity);
@@ -286,7 +327,7 @@ export class MutationJournal {
       }
       const tracked = mutation.then(
         (value) => {
-          finish({ type: "confirmed", handle });
+          finish({ type: "confirmed", confirmation: { type: "accepted", result: value } });
           return value;
         },
         (error: unknown) => {
@@ -295,14 +336,21 @@ export class MutationJournal {
           } else if (mutationSettlementIsUnknown(error) || error instanceof MutationJournalError) {
             finish({ type: "unresolved" });
           } else {
-            finish({ type: "confirmed", handle });
+            finish({ type: "confirmed", confirmation: { type: "refused", error } });
           }
           throw error;
         },
       );
       const retry: MutationPromise<T>["retry"] = (options) => {
-        // A racing attempt may still be draining after this receipt reached its caller.
-        if (confirmed) return confirmed;
+        const observed = confirmed;
+        if (observed) {
+          const result = Promise.resolve().then(() => {
+            // The last active attempt retires the entry that the other attempts still use.
+            if (activeAttempts === 0) observed.cleanup();
+            return observed.result();
+          });
+          return mutationHandle(result, idempotencyKey, retry);
+        }
         try {
           this.#assertCurrent();
           const claimed = this.#claims.get(idempotencyKey);
@@ -320,8 +368,7 @@ export class MutationJournal {
           return mutationHandle(Promise.reject(error), idempotencyKey, retry);
         }
       };
-      const handle = mutationHandle(tracked, idempotencyKey, retry);
-      return handle;
+      return mutationHandle(tracked, idempotencyKey, retry);
     };
     return observe(create);
   }
