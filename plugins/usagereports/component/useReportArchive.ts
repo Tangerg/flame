@@ -89,8 +89,14 @@ export function useReportArchive(context: BoundContext, locale: string) {
   // A confirmed recovery unmounts its initiating control after the commit.
   const recoveryReturn = useRef<Element | null>(null);
   const pendingCommands = () => [
-    ...operations.pendingCommands(METHODS.capture),
-    ...operations.pendingCommands(METHODS.delete),
+    ...operations.pendingCommands(METHODS.capture).map((command) => ({
+      ...command,
+      method: METHODS.capture,
+    })),
+    ...operations.pendingCommands(METHODS.delete).map((command) => ({
+      ...command,
+      method: METHODS.delete,
+    })),
   ];
   const unknown = pendingCommands();
   const canAuthor = () => actions.canStart() && !pendingCommands().length;
@@ -248,29 +254,23 @@ export function useReportArchive(context: BoundContext, locale: string) {
   }
 
   async function settleRemoval(
-    removed: Header | undefined,
+    removed: MethodOutputs[typeof METHODS.delete],
     active: Element | null,
     signal: AbortSignal,
   ) {
-    setOutcome({ kind: removed ? "removed" : "removalConfirmed" });
-    const accepted = await refresh(signal);
-    if (signal.aborted) return;
-    // A recovered removal reports success without its original target. Only
-    // the captured target or fresh canonical membership can retire the open
-    // report; an unread archive keeps it.
-    const current = shown.current;
-    if (
-      current &&
-      (current.header.id === removed?.id ||
-        (accepted && !accepted.some(({ id }) => id === current.header.id)))
-    )
-      leave(active, "archive");
+    setOutcome({ kind: "removed" });
+    if (shown.current?.header.id === removed.id) leave(active, "archive");
+    await refresh(signal);
   }
 
-  function observe(
+  function observe<Result>(
     started: Action,
-    command: (signal: AbortSignal) => Promise<Header | boolean>,
-    removed?: Header,
+    command: (signal: AbortSignal) => Promise<Result>,
+    settle: (
+      result: Result,
+      active: Element | null,
+      signal: AbortSignal,
+    ) => void | Promise<void>,
   ) {
     return actions.run(started, async () => {
       const signal = ownerSignal();
@@ -281,8 +281,7 @@ export function useReportArchive(context: BoundContext, locale: string) {
         const result = await command(signal);
         if (signal.aborted) return;
         if (started.kind === "check") recoveryReturn.current = active;
-        if (typeof result !== "boolean") settleSaved(result, active, signal);
-        else await settleRemoval(removed, active, signal);
+        await settle(result, active, signal);
       } catch (error) {
         if (!signal.aborted) {
           const refusal =
@@ -305,8 +304,10 @@ export function useReportArchive(context: BoundContext, locale: string) {
 
   function save() {
     if (!canAuthor()) return;
-    void observe({ kind: "capture" }, () =>
-      operations.command(METHODS.capture, { period }),
+    void observe(
+      { kind: "capture" },
+      () => operations.command(METHODS.capture, { period }),
+      settleSaved,
     );
   }
 
@@ -321,7 +322,7 @@ export function useReportArchive(context: BoundContext, locale: string) {
     void observe(
       { kind: "removal" },
       () => operations.command(METHODS.delete, { id: removing.id }),
-      removing,
+      settleRemoval,
     );
   }
 
@@ -349,9 +350,10 @@ export function useReportArchive(context: BoundContext, locale: string) {
 
   function check(command: (typeof unknown)[number]) {
     if (!isPending(command.idempotencyKey)) return;
-    void observe({ kind: "check", key: command.idempotencyKey }, (signal) =>
-      command.recover(signal),
-    );
+    const checking = { kind: "check", key: command.idempotencyKey } as const;
+    if (command.method === METHODS.capture)
+      void observe(checking, command.recover, settleSaved);
+    else void observe(checking, command.recover, settleRemoval);
   }
 
   function retire(command: (typeof unknown)[number]) {

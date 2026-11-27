@@ -22,7 +22,8 @@ its saved accounting payload. Core evidence and totals are unaffected.
 
 Each accepted command has its own immutable report ID. Replaying a capture after
 removal cannot recreate that report, and an old removal cannot target a later
-capture. [Archive policy](contracts/limits.ts) owns the report count and canonical
+capture. A deletion receipt contains the exact removed report ID. Recovery
+closes that report if it is open before refreshing the catalog. [Archive policy](contracts/limits.ts) owns the report count and canonical
 accounting byte limits; admission and component feedback consume that same policy.
 Full archives refuse new captures until a report is explicitly removed. Stored
 data that fails identity or summary validation is an error, never an empty

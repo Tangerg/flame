@@ -74,8 +74,6 @@ export const es: Record<string, string> = {
     "Informe base guardado: {{title}}. Aparece en el archivo.",
   "message.removed":
     "Informe guardado eliminado. La contabilidad base no cambia.",
-  "message.removalConfirmed":
-    "Eliminación del informe original confirmada. La contabilidad base no cambia.",
   "message.unknown":
     "La confirmación es desconocida. Comprueba el resultado original antes de enviar otro cambio del archivo.",
   "message.archiveFailed": "El cambio del archivo falló: {{error}}",

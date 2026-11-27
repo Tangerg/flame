@@ -24,6 +24,7 @@ type Command = Pick<
   "commandId" | "requestInput" | "inputDigest" | "signal"
 >;
 type Header = { id: string; period: Period; observedAt: string; since: string };
+type ReportRemoval = { id: string };
 type Snapshot = {
   id: string;
   command: string;
@@ -157,17 +158,23 @@ export class Archive {
       this.#assertReplyMatches(method, row.reply as string, input);
     return row;
   }
-  // A saved capture reply reports the period its original command requested.
   #assertReplyMatches(method: Method, raw: string, input: unknown): void {
     const reply = this.#reply(method, raw) as RecordValue;
-    if (
-      method === this.#capture &&
-      Object.hasOwn(reply, "value") &&
-      (reply.value as Header).period !== (input as { period: Period }).period
-    )
+    if (!Object.hasOwn(reply, "value")) return;
+    if (method === this.#capture) {
+      if (
+        (reply.value as Header).period !== (input as { period: Period }).period
+      )
+        throw new Error(
+          "usage reports: capture receipt differs from its original period",
+        );
+    } else if (
+      (reply.value as ReportRemoval).id !== (input as ReportRemoval).id
+    ) {
       throw new Error(
-        "usage reports: saved outcome differs from its original period",
+        "usage reports: removal receipt differs from its original report",
       );
+    }
   }
 
   #reply(method: Method, raw: string): unknown {
@@ -177,8 +184,6 @@ export class Archive {
     try {
       const output = method.admitOutput(decodeReply(reply));
       if (method === this.#capture) admitHeader(output);
-      else if (output !== true)
-        throw new Error("usage reports: invalid saved removal outcome");
     } catch (error) {
       if (
         !(error instanceof Refusal) ||
@@ -355,30 +360,29 @@ export class Archive {
       return this.#report(row.id, row.snapshot).header;
     });
   }
-  remove(context: Command): boolean {
+  remove(context: Command): ReportRemoval {
     context.signal.throwIfAborted();
     return decodeReply(
       this.#db.transaction(() => {
         const admission = this.#admit(this.#remove, context);
         if (!admission.fresh) return admission.reply;
-        const { id } = parseJSON(context.requestInput) as { id: string };
-        try {
-          this.read(id);
-          const removed = this.#db
-            .prepare("DELETE FROM reports WHERE id=?")
-            .run(id);
-          if (removed.changes !== 1n)
-            throw new Error("usage reports: report removal is unconfirmed");
-          return this.#settle(this.#remove, context, { value: true });
-        } catch (error) {
-          if (!(error instanceof Refusal) || error.code !== "report_not_found")
-            throw error;
+        const { id } = parseJSON(context.requestInput) as ReportRemoval;
+        const row = this.#db
+          .prepare("DELETE FROM reports WHERE id=? RETURNING id,snapshot")
+          .get(id);
+        if (!row)
           return this.#settle(this.#remove, context, {
-            failure: { code: error.code, message: error.message },
+            failure: {
+              code: "report_not_found",
+              message: "saved report was not found",
+            },
           });
-        }
+        if (typeof row.id !== "string" || typeof row.snapshot !== "string")
+          throw new Error("usage reports: invalid stored report");
+        this.#report(row.id, row.snapshot);
+        return this.#settle(this.#remove, context, { value: { id: row.id } });
       }),
-    ) as boolean;
+    ) as ReportRemoval;
   }
   receipt(request: {
     id: string;

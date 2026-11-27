@@ -49,18 +49,22 @@ func TestUsageReportsRecoversItsOriginalReceiptAfterBackendExitsBeforeReply(t *t
 		},
 		Input: `{"period":"daily"}`,
 	}
-	options := protocol.CallMetadata{IdempotencyKey: "original-lost-save", RequestMeta: protocol.RequestMeta{ProtocolVersion: new(protocol.Version)}}
-	first := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, options)
-	if first.Failure == nil {
-		t.Fatal("lost backend response became a known success")
+	recoverLostReply := func(request protocol.CallPluginRequest, key string) *protocol.CallPluginResponse {
+		t.Helper()
+		options := protocol.CallMetadata{IdempotencyKey: key, RequestMeta: protocol.RequestMeta{ProtocolVersion: new(protocol.Version)}}
+		first := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, options)
+		if first.Failure == nil {
+			t.Fatalf("lost %s response became a known success", request.Route.Method)
+		}
+		r = reopenPluginRuntime(t, r, &cfg)
+		waitCallContributorState(t, r, installed.ID, protocol.MCPServerConnected)
+		recovered := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, options)
+		if recovered.Failure != nil {
+			t.Fatal(recovered.Failure)
+		}
+		return recovered.Value.(*protocol.CallPluginResponse)
 	}
-	r = reopenPluginRuntime(t, r, &cfg)
-	waitCallContributorState(t, r, installed.ID, protocol.MCPServerConnected)
-	recovered := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, options)
-	if recovered.Failure != nil {
-		t.Fatal(recovered.Failure)
-	}
-	reply := recovered.Value.(*protocol.CallPluginResponse)
+	reply := recoverLostReply(request, "original-lost-save")
 	var saved testsupport.UsageReportsCaptureV1OutputRpcHeader
 	if reply.Failure != nil || json.Unmarshal([]byte(reply.Output), &saved) != nil || saved.Id == "" {
 		t.Fatalf("original capture was not reconciled: %+v", reply)
@@ -70,6 +74,21 @@ func TestUsageReportsRecoversItsOriginalReceiptAfterBackendExitsBeforeReply(t *t
 	var headers testsupport.UsageReportsListV2Output
 	if err := json.Unmarshal([]byte(listed.Output), &headers); err != nil || len(headers.Reports) != 1 || headers.Reports[0].Id != saved.Id || headers.Reports[0].ObservedAt != saved.ObservedAt {
 		t.Fatalf("recovery repeated or changed the captured accounting observation: %s: %v", listed.Output, err)
+	}
+	removal, err := framevalue.EncodeJSON(testsupport.UsageReportsDeleteV2InputRpcReportInput{Id: saved.Id})
+	if err != nil {
+		t.Fatal(err)
+	}
+	request.Route.Method, request.Input = testsupport.UsageReportsDeleteV2Method, removal.String()
+	removed := recoverLostReply(request, "original-lost-removal")
+	var receipt testsupport.UsageReportsDeleteV2Output
+	if removed.Failure != nil || json.Unmarshal([]byte(removed.Output), &receipt) != nil || receipt.Id != saved.Id {
+		t.Fatalf("original deletion did not retain report %q: %+v", saved.Id, removed)
+	}
+	request.Route.Method, request.Input = testsupport.UsageReportsListV2Method, `{}`
+	listed = r.must(delivery.PluginsCall, request, "").(*protocol.CallPluginResponse)
+	if err := json.Unmarshal([]byte(listed.Output), &headers); err != nil || len(headers.Reports) != 0 {
+		t.Fatalf("removed report returned after receipt recovery: %s: %v", listed.Output, err)
 	}
 }
 
@@ -142,7 +161,7 @@ func TestUsageReportsInstalledCaptureKeepsCoreFactsAcrossLaterWorkAndRestart(t *
 	if replay := call(testsupport.UsageReportsCaptureV1Method, input, "save-report"); replay.Output != captured.Output {
 		t.Fatal("replay did not return the original capture identity")
 	}
-	call(testsupport.UsageReportsDeleteV1Method, request, "remove-report")
+	call(testsupport.UsageReportsDeleteV2Method, testsupport.UsageReportsDeleteV2InputRpcReportInput{Id: header.Id}, "remove-report")
 	call(testsupport.UsageReportsCaptureV1Method, input, "save-report")
 	var remaining testsupport.UsageReportsListV2Output
 	listed := call(testsupport.UsageReportsListV2Method, struct{}{}, "")

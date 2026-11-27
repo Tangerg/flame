@@ -30,7 +30,7 @@ export type Action =
   { kind: "capture" | "removal" } | { kind: "check" | "retire"; key: string };
 export type Outcome =
   | {
-      kind: "saved" | "removed" | "removalConfirmed" | "unknown" | "retired";
+      kind: "saved" | "removed" | "unknown" | "retired";
     }
   | { kind: "savedArchived"; header: Header }
   | {

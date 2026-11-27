@@ -8,12 +8,12 @@
     "output": "schema.json#/$defs/CaptureV1Output"
   },
   {
-    "name": "flame.usage-reports/delete.v1",
+    "name": "flame.usage-reports/delete.v2",
     "kind": "command",
     "target": "installation",
-    "description": "Remove one immutable saved report without changing core accounting evidence or totals.",
-    "input": "schema.json#/$defs/DeleteV1Input",
-    "output": "schema.json#/$defs/DeleteV1Output"
+    "description": "Remove one immutable saved report and return its original identity without changing core accounting evidence or totals.",
+    "input": "schema.json#/$defs/DeleteV2Input",
+    "output": "schema.json#/$defs/DeleteV2Output"
   },
   {
     "name": "flame.usage-reports/get.v1",

@@ -107,10 +107,10 @@
       }
     },
     {
-      "name": "flame.usage-reports/delete.v1",
+      "name": "flame.usage-reports/delete.v2",
       "kind": "command",
       "target": "installation",
-      "description": "Remove one immutable saved report without changing core accounting evidence or totals.",
+      "description": "Remove one immutable saved report and return its original identity without changing core accounting evidence or totals.",
       "input": {
         "$defs": {
           "rpc.ReportInput": {
@@ -144,7 +144,18 @@
       },
       "output": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "type": "boolean"
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "maxLength": 64,
+            "minLength": 64,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "type": "object"
       }
     },
     {

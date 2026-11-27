@@ -64,7 +64,6 @@ export const zhTW: Record<string, string> = {
   "message.saved": "核心報告已儲存。",
   "message.savedArchived": "核心報告已儲存：{{title}}。它已列入封存。",
   "message.removed": "已刪除儲存的報告。核心核算未變更。",
-  "message.removalConfirmed": "已確認原始報告的刪除。核心核算未變更。",
   "message.unknown": "確認結果未知。在提交另一項封存變更之前，請檢查原始結果。",
   "message.archiveFailed": "封存變更失敗：{{error}}",
   "message.captureRejected": "無法受理此擷取：{{error}}",
