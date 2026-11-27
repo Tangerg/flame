@@ -43,8 +43,7 @@ export function settleAgentInput(
     if (!idempotencyKey || !original.isUnknown(error)) throw error;
     return { status: "unknown", idempotencyKey, recover: original.recover };
   });
-  // Composer admission deliberately does not wait for the receipt. Its existing
-  // command owner reports failures while other consumers can await this handle.
+  // Retry affordances may leave receipt observation to the Agent command owner.
   void settlement.catch(() => {});
   return settlement;
 }

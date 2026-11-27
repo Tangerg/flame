@@ -6,7 +6,6 @@ import {
   type ComposerImageAttachment,
   type PastedText,
 } from "@/features/composer/public/attachments";
-import { type AgentInput } from "@/features/agent/public/input";
 import { AgentComposerFooter, AgentComposerSurface } from "@/ui/agent/index";
 import { SkeletonText } from "@/ui/index";
 import { composerStyles } from "@/features/composer/ui/composerStyles";
@@ -18,7 +17,6 @@ import { ComposerFileDropCue, useComposerFileDrop } from "@/features/composer/ui
 import { useCallback, useRef } from "react";
 import * as stylex from "@stylexjs/stylex";
 interface Props {
-  onSend: (input: AgentInput) => boolean;
   images: readonly ComposerImageAttachment[];
   onRemoveImage: (id: string) => void;
   onAddImages: (files: File[]) => void;
@@ -33,7 +31,6 @@ interface Props {
 }
 
 export function Composer({
-  onSend,
   images,
   onRemoveImage,
   onAddImages,
@@ -98,7 +95,6 @@ export function Composer({
           <ComposerEditor
             key={draftKey}
             inputRef={inputRef}
-            onSend={onSend}
             onAddImages={onAddImages}
             onAddPaste={onAddPaste}
             acceptsImages={acceptsImages}

@@ -17,6 +17,7 @@ export interface ComposerSubmission {
   readonly attachmentsReady: boolean;
   readonly pastes: readonly PastedText[];
   readonly references: readonly ComposerDraftReference[];
+  claimInputDelivery(): { readonly sessionId: string; release(): void } | null;
   consume(historyText?: string): boolean;
 }
 
@@ -62,6 +63,7 @@ export interface ComposerStatePort {
   usePersistenceState(): ComposerPersistenceState;
   retryPersistence(): void;
   getRecoveryDrafts(): string;
+  useInputDeliveryPending(): boolean;
   captureSubmission(): ComposerSubmission;
   captureDraftRecovery(sessionId: string): ComposerDraftRecovery;
   replaceDraft(

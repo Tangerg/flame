@@ -2,7 +2,6 @@ import * as stylex from "@stylexjs/stylex";
 import { companion } from "@flame/brand-assets";
 import { tupleKey } from "@/lib/tupleKey";
 import { useT } from "@/lib/i18n/index";
-import { type AgentInput } from "@/features/agent/public/input";
 import { memo, useLayoutEffect, useMemo, useRef } from "react";
 import { useActiveConversationRows } from "@/features/agent/public/conversation";
 import { useActiveSessionId } from "@/features/agent/public/session";
@@ -104,10 +103,6 @@ const cst = stylex.create({
   },
 });
 
-interface Props {
-  onSend: (input: AgentInput) => boolean;
-}
-
 const ChatBanners = memo(function ChatBanners({ sessionId }: { sessionId: string }) {
   const t = useT();
   return (
@@ -119,7 +114,7 @@ const ChatBanners = memo(function ChatBanners({ sessionId }: { sessionId: string
   );
 });
 
-export function ChatStream({ onSend }: Props) {
+export function ChatStream() {
   const sessionId = useActiveSessionId();
   const rows = useActiveConversationRows();
 
@@ -155,7 +150,7 @@ export function ChatStream({ onSend }: Props) {
       }}
     />
   ) : (
-    <ComposerSurface onSend={onSend} />
+    <ComposerSurface />
   );
   const started = rows.length > 0;
 

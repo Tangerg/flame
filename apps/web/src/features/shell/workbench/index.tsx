@@ -4,7 +4,6 @@ import { ChatPanel, type ChatPanelHandle } from "@/features/shell/workbench/pane
 import { useWarmMarkdownRenderer } from "@/features/chat/public/message/rendering";
 import { SettingsPage } from "@/features/settings/public/SettingsPage";
 import { SidebarPanel } from "@/features/sidebar/public/SidebarPanel";
-import { useChatSend } from "@/features/agent/public/input";
 import { useReconcilePersistedAgentSessions } from "@/features/agent/public/session";
 import { contributeLayout } from "@/extensions/contributeHelpers";
 import { definePlugin } from "@/extensions/definePlugin";
@@ -17,8 +16,7 @@ function WorkbenchChat({ panel }: { panel: RefObject<ChatPanelHandle | null> }) 
   useWarmMarkdownRenderer();
   useReconcilePersistedAgentSessions();
   useDefaultChatSession();
-  const send = useChatSend();
-  return <ChatPanel ref={panel} onSend={send} />;
+  return <ChatPanel ref={panel} />;
 }
 
 function WorkbenchSidebar() {

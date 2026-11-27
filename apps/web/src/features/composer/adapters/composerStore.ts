@@ -21,6 +21,7 @@ interface ComposerState {
   composer: Composer;
   modelPreference: ComposerModelPreference;
   persistenceState: ComposerPersistenceState;
+  pendingInputDeliveries: ReadonlySet<string>;
 }
 
 export interface DraftCapture {
@@ -100,6 +101,7 @@ export function createComposerStore() {
     composer: Composer.empty(),
     modelPreference: { kind: "session" },
     persistenceState: SAVED,
+    pendingInputDeliveries: new Set(),
   });
   const target = (endpoint: string | null): Target => ({
     endpoint,
@@ -119,6 +121,13 @@ export function createComposerStore() {
     if (disposed) return;
     if (owner === current) useComposerStore.setState(owner.state);
     for (const listener of persistenceListeners) listener();
+  }
+  function setInputDelivery(owner: Target, sessionId: string, pending: boolean) {
+    const deliveries = new Set(owner.state.pendingInputDeliveries);
+    if (pending) deliveries.add(sessionId);
+    else deliveries.delete(sessionId);
+    owner.state = { ...owner.state, pendingInputDeliveries: deliveries };
+    present(owner);
   }
   function persistence(owner: Target, state: ComposerPersistenceState) {
     owner.state = { ...owner.state, persistenceState: state };
@@ -298,6 +307,7 @@ export function createComposerStore() {
         });
       },
       captureSubmission: () => {
+        const owner = current;
         const generation = storageGeneration;
         const { activeSessionId: sessionId, draft } = get().composer;
         return {
@@ -306,6 +316,18 @@ export function createComposerStore() {
           attachmentsReady: draft.attachmentsReady,
           pastes: draft.pastes,
           references: draft.references,
+          claimInputDelivery: () => {
+            const { composer, pendingInputDeliveries } = owner.state;
+            if (
+              generation !== storageGeneration ||
+              composer.activeSessionId !== sessionId ||
+              composer.draft !== draft ||
+              pendingInputDeliveries.has(sessionId)
+            )
+              return null;
+            setInputDelivery(owner, sessionId, true);
+            return { sessionId, release: () => setInputDelivery(owner, sessionId, false) };
+          },
           consume: (historyText) => {
             if (generation !== storageGeneration) return false;
             const current = get().composer;

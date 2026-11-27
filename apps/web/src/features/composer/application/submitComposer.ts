@@ -1,6 +1,16 @@
 import { buildInput } from "@/features/composer/public/input";
 import { type ComposerSubmission } from "@/features/composer/application/state";
-import { agentTextInput, type AgentInput } from "@/features/agent/public/input";
+import {
+  agentTextInput,
+  type AgentInput,
+  type AgentInputSettlement,
+  type SubmitChatInput,
+  useSubmitChatInput,
+} from "@/features/agent/public/input";
+import { useComposer } from "@/features/composer/public/composer";
+import { useRuntime } from "@/features/connection/public/runtime";
+import { runtimeCommandsAvailable } from "@/features/connection/public/serviceStatus";
+import { useCallback } from "react";
 import { createComposerSendIntent } from "@/features/composer/domain/sendIntent";
 import {
   COMPOSER_SUBMIT_MODE,
@@ -15,12 +25,28 @@ import {
 import { reportPluginError } from "@/extensions/errors";
 interface SubmitDeps {
   draft: ComposerSubmission;
-  sendInput: (input: AgentInput) => boolean;
+  sendInput: SubmitChatInput;
   canSend: () => boolean;
   restoreFocus: () => void;
 }
 
-export function submitComposer({ draft, sendInput, canSend, restoreFocus }: SubmitDeps): void {
+export function useSubmitComposer(): () => void {
+  const composer = useComposer();
+  const runtime = useRuntime();
+  const sendInput = useSubmitChatInput();
+  return useCallback(
+    () =>
+      submitComposer({
+        draft: composer.captureSubmission(),
+        restoreFocus: composer.captureFocus(),
+        sendInput,
+        canSend: () => runtimeCommandsAvailable(runtime),
+      }),
+    [composer, runtime, sendInput],
+  );
+}
+
+function submitComposer({ draft, sendInput, canSend, restoreFocus }: SubmitDeps): void {
   if (!draft.attachmentsReady) return;
   const { value, images, pastes, references } = draft;
   const intent = createComposerSendIntent({ value, images, pastes, references });
@@ -43,6 +69,22 @@ export function submitComposer({ draft, sendInput, canSend, restoreFocus }: Subm
       restoreFocus();
   };
   const accept = () => consume("record");
+  const dispatch = (input: AgentInput): boolean => {
+    if (!canSend()) return false;
+    const delivery = draft.claimInputDelivery();
+    if (!delivery) return false;
+    let pending: Promise<AgentInputSettlement> | null = null;
+    try {
+      pending = sendInput(delivery.sessionId, input);
+      if (!pending) return false;
+      // A known refusal keeps the original editable draft. Uncertain delivery
+      // leaves the command journal responsible for its captured input.
+      void pending.then(accept, restoreFocus).finally(delivery.release);
+      return true;
+    } finally {
+      if (!pending) delivery.release();
+    }
+  };
 
   for (const mode of lookupExtensionPoint(COMPOSER_SUBMIT_MODE)) {
     const owner = lookupExtensionOwner(COMPOSER_SUBMIT_MODE, mode.id) ?? "unknown";
@@ -80,11 +122,7 @@ export function submitComposer({ draft, sendInput, canSend, restoreFocus }: Subm
           spec.run({
             args: slash.args,
             accept,
-            send: (text) => {
-              if (!canSend() || !sendInput(agentTextInput(text))) return false;
-              accept();
-              return true;
-            },
+            send: (text) => dispatch(agentTextInput(text)),
           }),
         ).catch(report);
       } catch (error) {
@@ -93,7 +131,5 @@ export function submitComposer({ draft, sendInput, canSend, restoreFocus }: Subm
       return;
     }
   }
-  if (!canSend()) return;
-  if (!sendInput(buildInput(intent.body, images, references))) return;
-  accept();
+  dispatch(buildInput(intent.body, images, references));
 }

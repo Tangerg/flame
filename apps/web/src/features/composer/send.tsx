@@ -1,9 +1,7 @@
 import { useComposer } from "@/features/composer/public/composer";
-import { useRuntime } from "@/features/connection/public/runtime";
 import { iconGlyph } from "@/ui/icons/index";
 import { IconButton } from "@flame/ui";
-import { useIsCurrentRootRunning } from "@/features/agent/public/run";
-import { useStopCurrentRootRun } from "@/features/agent/public/run";
+import { useIsCurrentRootRunning, useStopCurrentRootRun } from "@/features/agent/public/run";
 import { useT } from "@/lib/i18n/index";
 import { contributeLayout } from "@/extensions/contributeHelpers";
 import { definePlugin } from "@/extensions/definePlugin";
@@ -13,18 +11,16 @@ import {
   useComposerPastes,
   useComposerReferences,
 } from "@/features/composer/public/attachments";
-import { captureComposerSubmission, useComposerText } from "@/features/composer/public/draft";
+import { useComposerText } from "@/features/composer/public/draft";
 import { captureComposerFocus } from "@/features/composer/public/focus";
 import { composerActionLayout } from "@/features/composer/application/composerActionLayout";
 import { hasSendableContent } from "@/features/composer/domain/sendIntent";
-import { submitComposer } from "@/features/composer/application/submitComposer";
+import { useSubmitComposer } from "@/features/composer/application/submitComposer";
 import { useRuntimeCommandsAvailable } from "@/features/connection/public/serviceStatus";
-import { useCanSendToAgent, useChatSend } from "@/features/agent/public/input";
+import { useCanSendToAgent } from "@/features/agent/public/input";
 import { useActiveSessionId } from "@/features/agent/public/session";
-import { runtimeCommandsAvailable } from "@/features/connection/public/serviceStatus";
 function SendButton() {
   const composerAccess = useComposer();
-  const runtimeAccess = useRuntime();
 
   const t = useT();
   const value = useComposerText();
@@ -32,23 +28,17 @@ function SendButton() {
   const attachmentsReady = useComposerAttachmentsReady();
   const pastes = useComposerPastes();
   const references = useComposerReferences();
-  const send = useChatSend();
+  const submit = useSubmitComposer();
+  const deliveryPending = composerAccess.useInputDeliveryPending();
   const stop = useStopCurrentRootRun();
   const running = useIsCurrentRootRunning();
   const runtimeAvailable = useRuntimeCommandsAvailable();
   const agentCanSend = useCanSendToAgent();
   const activeSessionId = useActiveSessionId();
-  const canSend = runtimeAvailable && agentCanSend && attachmentsReady;
+  const canSend = runtimeAvailable && agentCanSend && attachmentsReady && !deliveryPending;
 
   const hasInput = hasSendableContent({ value, images, pastes, references });
   const layout = composerActionLayout({ running, hasInput });
-  const submit = () =>
-    submitComposer({
-      draft: captureComposerSubmission(composerAccess),
-      restoreFocus: captureComposerFocus(composerAccess),
-      sendInput: send,
-      canSend: runtimeCommandsAvailable.bind(null, runtimeAccess),
-    });
 
   const stopButton = (primary: boolean) => (
     <IconButton
@@ -72,7 +62,7 @@ function SendButton() {
       iconSize={16}
       focusableWhenDisabled
       disabled={!enabled}
-      aria-busy={images.some((image) => image.status === "pending")}
+      aria-busy={deliveryPending || images.some((image) => image.status === "pending")}
       aria-label={label}
       onClick={submit}
       variant="primary"

@@ -148,6 +148,8 @@ export function createComposer(
     usePersistenceState: () => useComposerStore((state) => state.persistenceState),
     retryPersistence: owner.retryPersistence,
     getRecoveryDrafts: owner.getRecoveryDrafts,
+    useInputDeliveryPending: () =>
+      useComposerStore((state) => state.pendingInputDeliveries.has(state.composer.activeSessionId)),
     captureSubmission: () => {
       const draft = useComposerStore.getState().captureSubmission();
       const capturedEditor = editor;

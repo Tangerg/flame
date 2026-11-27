@@ -385,6 +385,11 @@ never rewrites it, and Runtime owns it once the message is sent. Changing the en
 to the selected Runtime. A remote path describes the Runtime machine; a browser
 file selection does not turn it into a server workspace.
 
+One chat input delivery holds the captured Composer draft for its Session.
+A settled acceptance consumes that draft. Unconfirmed delivery transfers
+responsibility for the exact command to the journal. A refusal leaves the
+draft editable, and settlement only clears the submitted revision.
+
 The URL owns current navigation: active Session, main view, dock target, and
 Settings pane. Stores retain tab sets, drafts, per-view state, and continuity.
 Restored continuity can seed navigation; effects do not keep a second writable

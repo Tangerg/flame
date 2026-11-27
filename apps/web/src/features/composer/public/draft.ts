@@ -16,7 +16,3 @@ export function startComposerFileReference(composerAccess: ComposerAccess): stri
 export function startComposerSlashCommand(composerAccess: ComposerAccess): string {
   return composerAccess.startSlashCommand();
 }
-
-export function captureComposerSubmission(composerAccess: ComposerAccess) {
-  return composerAccess.captureSubmission();
-}

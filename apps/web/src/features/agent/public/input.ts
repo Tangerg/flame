@@ -8,7 +8,11 @@ export {
   type AgentInput,
   type AgentInputPart,
 } from "@/features/agent/domain/input";
-export { useCanSendToAgent, useChatSend } from "@/features/agent/application/input/chatSend";
+export {
+  useCanSendToAgent,
+  useSubmitChatInput,
+  type SubmitChatInput,
+} from "@/features/agent/application/input/chatSend";
 export { type AgentInputSettlement } from "@/features/agent/application/input/inputSubmission";
 
 export function useSubmitCapturedAgentInput() {

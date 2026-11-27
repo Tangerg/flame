@@ -41,20 +41,17 @@ import {
 import { isImeKey, useContentVisible, Button, ButtonPrimitive } from "@flame/ui";
 import { FLOATING_PANEL } from "@flame/ui/floating-surface";
 import { useComposer } from "@/features/composer/public/composer";
-import { useRuntime } from "@/features/connection/public/runtime";
-import { runtimeCommandsAvailable } from "@/features/connection/public/serviceStatus";
 import { resolvedWorkspaceCwd, useActiveSessionWorkspace } from "@/features/agent/public/session";
 import { useWorkspaceListFiles } from "@/features/workspace/public/queries";
 import { useSlashCommands, COMPOSER_KEY_BINDING } from "@/features/composer/public/extensionPoints";
 import { lookupExtensionByKey } from "@/extensions/selectors/extensions";
-import { submitComposer } from "@/features/composer/public/submit";
+import { useSubmitComposer } from "@/features/composer/application/submitComposer";
 import {
   composerKeyBindingKey,
   composerPasteIntent,
 } from "@/features/composer/application/composerInputEvents";
 import { imageFiles } from "@/features/composer/public/input";
 import { useT, type MessageKey } from "@/lib/i18n/index";
-import type { AgentInput } from "@/features/agent/public/input";
 import { useNotifications } from "@/features/notifications/public/notifier";
 import * as stylex from "@stylexjs/stylex";
 import { splitFilePath } from "@/lib/path";
@@ -360,10 +357,10 @@ function $pointStillExists(point: PointType): boolean {
     : $isElementNode(node) && point.offset <= node.getChildrenSize();
 }
 
-function Commands({ onSend, onAddImages, onAddPaste, acceptsImages }: EditorProps) {
+function Commands({ onAddImages, onAddPaste, acceptsImages }: EditorProps) {
   const [editor] = useLexicalComposerContext();
   const access = useComposer();
-  const runtime = useRuntime();
+  const submit = useSubmitComposer();
   const visible = useContentVisible();
   const { messages } = useNotifications();
   const t = useT();
@@ -449,22 +446,13 @@ function Commands({ onSend, onAddImages, onAddPaste, acceptsImages }: EditorProp
           if (!visible || editor.isComposing() || isImeKey(event)) return false;
           const binding = lookupExtensionByKey(COMPOSER_KEY_BINDING, composerKeyBindingKey(event));
           if (!binding) return false;
-          const handled = binding.handler({
-            submit: () =>
-              submitComposer({
-                draft: access.captureSubmission(),
-                sendInput: onSend,
-                canSend: () => runtimeCommandsAvailable(runtime),
-                restoreFocus: access.captureFocus(),
-              }),
-            event,
-          });
+          const handled = binding.handler({ submit, event });
           if (handled) event.preventDefault();
           return handled === true;
         },
         COMMAND_PRIORITY_LOW,
       ),
-    [editor, access, runtime, visible, onSend],
+    [editor, visible, submit],
   );
   useEffect(
     () =>
@@ -506,7 +494,6 @@ function Commands({ onSend, onAddImages, onAddPaste, acceptsImages }: EditorProp
 }
 interface EditorProps {
   inputRef?: Ref<HTMLDivElement>;
-  onSend(input: AgentInput): boolean;
   onAddImages(files: File[]): void;
   onAddPaste(text: string): void;
   acceptsImages: boolean;
