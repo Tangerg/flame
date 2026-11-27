@@ -1,12 +1,14 @@
 import {
   useCallback,
   useEffect,
+  useEffectEvent,
   useLayoutEffect,
   useMemo,
   useRef,
   useState,
   useSyncExternalStore,
 } from "react";
+import type { PluginCommandChange } from "@flame/runtime-client";
 import {
   type CommandActivity,
   mutationSettlementIsUnknown,
@@ -55,6 +57,10 @@ export const selection = (model?: Model, reasoningEffort = "") => ({
 // The schedules backend refuses a stale expected revision with this code.
 const REVISION_CONFLICT = "revision";
 
+function isRevisionConflict(error: unknown): boolean {
+  return error instanceof OperationFailure && error.code === REVISION_CONFLICT;
+}
+
 // The unset model or reasoning choice: the Run uses the Runtime default.
 export const DEFAULT_CHOICE = "default";
 
@@ -67,7 +73,7 @@ type ScheduleTask =
   | { kind: "edit"; edit: Edit }
   | { kind: "delete"; schedule: Schedule };
 
-type TaskSubmission = { task: ScheduleTask; originalKey?: string };
+type RetainedTask = { task: ScheduleTask; idempotencyKey: string; label: string };
 
 function targetsExistingSchedule(task: ScheduleTask): boolean {
   return task.kind === "delete" || task.edit.basis !== undefined;
@@ -115,7 +121,7 @@ export function useSchedules(
   const [task, setTask] = useState<ScheduleTask>();
   const edit = task?.kind === "edit" ? task.edit : undefined;
   const deleteTarget = task?.kind === "delete" ? task.schedule : undefined;
-  const retainedTask = useRef<Required<TaskSubmission>>(undefined);
+  const retainedTask = useRef<RetainedTask>(undefined);
   const searchElement = useRef<HTMLInputElement>(null);
   const taskOpener = useRef<HTMLElement>(null);
   const titleElement = useRef<HTMLInputElement>(null);
@@ -231,10 +237,38 @@ export function useSchedules(
     void modelSource.track(() => readModels());
     return () => controller.abort();
   }, [modelSource, modelRefresh]);
+
+  const resolveTask = useEffectEvent((change: PluginCommandChange) => {
+    const retained = retainedTask.current;
+    if (change.type !== "resolved" || retained?.idempotencyKey !== change.idempotencyKey)
+      return;
+    retainedTask.current = undefined;
+    const { resolution } = change;
+    if (task !== retained.task) return;
+    if (resolution.type === "retired") {
+      if (!observation.snapshot()) setNotice(undefined);
+      return;
+    }
+    const stale = resolution.type === "refused" && resolution.code === REVISION_CONFLICT;
+    if (resolution.type === "confirmed")
+      closeTask(retained.task, targetsExistingSchedule(retained.task));
+    else if (stale) closeTask(retained.task, true);
+    if (observation.snapshot()) return;
+    setNotice(
+      resolution.type === "confirmed"
+        ? t("notice.completed", { label: retained.label })
+        : stale
+          ? t("notice.revision")
+          : t("notice.refused"),
+    );
+    void refresh();
+  });
+  useEffect(() => operations.subscribeCommands(resolveTask), [operations]);
+
   function observe(
     command: Command,
     execute: () => Promise<MethodOutputs[keyof MethodOutputs]> | undefined,
-    submission?: TaskSubmission,
+    owner?: ScheduleTask,
   ) {
     if (context.signal.aborted) return;
     void observation.run(command, async () => {
@@ -244,8 +278,7 @@ export function useSchedules(
         setNotice(undefined);
         const output = await attempt;
         if (context.signal.aborted) return;
-        if (submission)
-          closeTask(submission.task, targetsExistingSchedule(submission.task));
+        if (owner) closeTask(owner, targetsExistingSchedule(owner));
         setNotice(
           "runId" in output
             ? output
@@ -254,22 +287,20 @@ export function useSchedules(
         void refresh();
       } catch (error) {
         if (context.signal.aborted) return;
-        const stale =
-          error instanceof OperationFailure && error.code === REVISION_CONFLICT;
+        const stale = isRevisionConflict(error);
         setNotice(stale ? t("notice.revision") : failure(error));
-        if (stale && submission) closeTask(submission.task, true);
+        if (stale && owner) closeTask(owner, true);
         const unresolved = mutationSettlementIsUnknown(error);
-        if (unresolved && submission) {
+        if (unresolved && owner) {
           const original = operations.originalCommand();
           if (
             original?.state === "recoverable" &&
-            original.method === command.method &&
-            (submission.originalKey === undefined ||
-              original.idempotencyKey === submission.originalKey)
+            original.method === command.method
           ) {
             retainedTask.current = {
-              originalKey: original.idempotencyKey,
-              task: submission.task,
+              idempotencyKey: original.idempotencyKey,
+              task: owner,
+              label: command.label,
             };
           }
         }
@@ -286,7 +317,7 @@ export function useSchedules(
     observe(
       { method, label },
       () => operations.submit(method, input),
-      owner && { task: owner },
+      owner,
     );
   }
   function reconcile(key: string) {
@@ -296,7 +327,6 @@ export function useSchedules(
       return;
     const { method } = original;
     if (!isAuthoringMethod(method)) return;
-    const retained = retainedTask.current;
     observe(
       { method, label: t(AUTHORING_LABELS[method]) },
       () => {
@@ -310,7 +340,6 @@ export function useSchedules(
           feedback.focus({ preventScroll: true });
         return original.recover();
       },
-      retained?.originalKey === key ? retained : undefined,
     );
   }
   function beginTask(opener: HTMLElement, next: ScheduleTask) {

@@ -95,6 +95,7 @@ export const ja: Record<string, string> = {
   "notice.openSession": "会話を開く",
   "notice.sessionMissing": "この会話はもう開けません。",
   "notice.completed": "{{label}}が完了しました。",
+  "notice.refused": "Runtime が元のスケジュール変更を拒否しました。",
   "notice.revision":
     "スケジュールが変更されました。最新のリビジョンを読み込み、保存する前に新しい編集を開いてください。",
   "template.hourly.title": "毎時の進捗チェック",

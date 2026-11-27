@@ -13,6 +13,8 @@ import {
   type FlameClient,
   createHttpTransport,
   mutationSettlementIsUnknown,
+  type MutationJournalCleanupError,
+  type PluginCommandChange,
 } from "@flame/runtime-client";
 import {
   HTTP_HEADERS,
@@ -292,9 +294,20 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: configuration commits after lo
     const firstKey = crypto.randomUUID();
     const secondKey = crypto.randomUUID();
     const lost = faultUnaryResponse("plugins.call", "afterCommit");
+    const storage = new MemoryMutationStorage();
+    let blockCleanup = false;
+    let cleanupFailure: MutationJournalCleanupError | undefined;
     const options = {
       capabilities: () => fixture.negotiated,
-      mutationStorage: new MemoryMutationStorage(),
+      mutationStorage: {
+        get: (key: string) => storage.get(key),
+        set: (key: string, value: unknown) => storage.set(key, value),
+        keys: () => storage.keys(),
+        remove: (key: string) => {
+          if (blockCleanup) throw new Error("injected failure to release the confirmed entry");
+          storage.remove(key);
+        },
+      },
     };
     const original = createFlameClient(
       createHttpTransport({
@@ -324,8 +337,17 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: configuration commits after lo
           return fetch(url, init);
         },
       }),
-      options,
+      {
+        ...options,
+        onMutationJournalCleanupFailure: (failure) => {
+          cleanupFailure = failure;
+        },
+      },
     );
+    const resolutions: PluginCommandChange[] = [];
+    const stop = cold.plugins.subscribeCommands((change) => {
+      if (change.type === "resolved") resolutions.push(change);
+    });
 
     try {
       await expect(original.plugins.call(request, { idempotencyKey: firstKey })).rejects.toSatisfy(
@@ -360,6 +382,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: configuration commits after lo
       expect(cold.plugins.commands()[0]).not.toHaveProperty("retire");
       await pending.observe(firstKey, "retire");
       expect(pending.snapshot()?.observation).toMatchObject({ type: "checking", key: firstKey });
+      blockCleanup = true;
       releaseLookup.resolve();
       await within(checking, "the original plugin command confirming");
       expect(pending.snapshot()?.observation).toMatchObject({
@@ -367,10 +390,19 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: configuration commits after lo
         key: firstKey,
         output: expect.any(String),
       });
+      expect(cold.plugins.commands()).toMatchObject([{ idempotencyKey: firstKey, state: "active" }]);
+      expect(resolutions).toEqual([
+        { type: "resolved", idempotencyKey: firstKey, resolution: { type: "confirmed" } },
+      ]);
+      if (!cleanupFailure) throw new Error("confirmation did not report the journal cleanup failure");
+      blockCleanup = false;
+      cleanupFailure.retryCleanup();
       expect(cold.plugins.commands()).toEqual([]);
+      expect(resolutions).toHaveLength(1);
       await pending.observe(firstKey, "retire");
       expect(retirements).toBe(0);
     } finally {
+      stop();
       releaseLookup.resolve();
       await Promise.all([original.close(), cold.close()]);
     }

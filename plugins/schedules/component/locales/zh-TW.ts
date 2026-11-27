@@ -90,6 +90,7 @@ export const zhTW: Record<string, string> = {
   "notice.openSession": "開啟對話",
   "notice.sessionMissing": "這段對話已無法開啟。",
   "notice.completed": "{{label}}已完成。",
+  "notice.refused": "Runtime 拒絕了原排程變更。",
   "notice.revision":
     "排程已變更。請讀取其最新修訂版本，並在儲存前開啟新的編輯。",
   "template.hourly.title": "每小時進度檢查",

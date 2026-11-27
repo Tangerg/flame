@@ -144,6 +144,9 @@ outcome and the journal remains available for recovery.
 original keys. Only recoverable entries expose `recover()` and `retire()`.
 `plugins.subscribeCommands(listener)` observes claim and settlement changes,
 and `plugins.commandsVersion()` supplies the current snapshot version.
+Each change identifies the original key. A resolved change reports the
+definitive recovery or retirement outcome. Availability still follows any
+remaining journal cleanup.
 Each entry exposes `matchesIntent(intent)`, a
 read-only comparison against the original journal's salted intent fingerprint.
 Use the same authored intent when associating pending work with a document or

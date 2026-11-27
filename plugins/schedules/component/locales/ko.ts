@@ -95,6 +95,7 @@ export const ko: Record<string, string> = {
   "notice.openSession": "대화 열기",
   "notice.sessionMissing": "이 대화는 더 이상 열 수 없습니다.",
   "notice.completed": "{{label}}이(가) 완료되었습니다.",
+  "notice.refused": "Runtime에서 원래 일정 변경을 거부했습니다.",
   "notice.revision":
     "스케줄이 변경되었습니다. 최신 리비전을 읽고 저장하기 전에 새 편집을 여세요.",
   "template.hourly.title": "매시간 진행 확인",

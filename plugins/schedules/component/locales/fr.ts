@@ -99,6 +99,7 @@ export const fr: Record<string, string> = {
   "notice.openSession": "Ouvrir la conversation",
   "notice.sessionMissing": "Cette conversation n’est plus disponible.",
   "notice.completed": "{{label}} terminé.",
+  "notice.refused": "Le Runtime a refusé la modification d’origine de la planification.",
   "notice.revision":
     "La planification a changé. Lisez sa dernière révision et ouvrez une nouvelle modification avant d’enregistrer.",
   "template.hourly.title": "Vérification horaire de la progression",

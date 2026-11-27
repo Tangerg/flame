@@ -330,6 +330,8 @@ binds one named intent per installation. `submit` returns no attempt while the
 original is active or recoverable. `originalCommand()` selects that exact entry
 for a recreated panel. `subscribeCommands` and `commandsVersion` keep each live
 panel current as an original is claimed, released or settled.
+Use a resolved notification to update an editor tied to that exact key after
+another view recovers or retires its submission.
 `CommandActivity` holds foreground feedback for a component source lifetime.
 A recoverable command's handle reads `plugins.getCommand` from Runtime's saved route before
 querying the original backend receipt under the same key. It does not reconstruct

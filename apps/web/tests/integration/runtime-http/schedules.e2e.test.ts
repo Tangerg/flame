@@ -3,6 +3,7 @@ import {
   asSessionId,
   mutationSettlementIsUnknown,
   type FlameClient,
+  type PluginCommandChange,
 } from "@flame/runtime-client";
 import {
   HTTP_HEADERS,
@@ -15,6 +16,23 @@ import { bindScheduleOperations } from "../../../../../plugins/schedules/compone
 import { type RunReference } from "../../../../../plugins/schedules/package/io.github.tangerg.flame/contracts/methods.generated";
 import { useRuntimeFixture } from "./fixture";
 import { within } from "./observation";
+
+function observeResolutions(client: FlameClient) {
+  const resolutions: Array<{
+    change: Extract<PluginCommandChange, { type: "resolved" }>;
+    retained: boolean;
+  }> = [];
+  const stop = client.plugins.subscribeCommands((change) => {
+    if (change.type !== "resolved") return;
+    resolutions.push({
+      change,
+      retained: client.plugins.commands().some(
+        ({ idempotencyKey }) => idempotencyKey === change.idempotencyKey,
+      ),
+    });
+  });
+  return { resolutions, stop };
+}
 
 describe("Schedules commands over Runtime HTTP", () => {
   const fixture = useRuntimeFixture("schedules");
@@ -67,6 +85,7 @@ describe("Schedules commands over Runtime HTTP", () => {
       await dropReply.promise;
       throw new TypeError("injected loss of the original Schedule response");
     });
+    const { resolutions, stop } = observeResolutions(client);
     const originalLifetime = new AbortController();
     const replacementLifetime = new AbortController();
     let original: Promise<unknown> | undefined;
@@ -111,10 +130,15 @@ describe("Schedules commands over Runtime HTTP", () => {
       const command = second.originalCommand();
       if (command?.state !== "recoverable") throw new Error("the original Schedule command is unavailable");
       expect(command).toMatchObject({ method: METHODS.runNow, idempotencyKey: delivered[0] });
+      expect(resolutions).toEqual([]);
       await expect(command.recover()).resolves.toEqual(receipt);
       expect(recovered).toEqual([command.idempotencyKey]);
       expect(delivered).toEqual([command.idempotencyKey, command.idempotencyKey]);
       expect(second.originalCommand()).toBeUndefined();
+      expect(resolutions).toEqual([{
+        change: { type: "resolved", idempotencyKey: command.idempotencyKey, resolution: { type: "confirmed" } },
+        retained: false,
+      }]);
 
       const sessionId = asSessionId(receipt.sessionId);
       await expect(fixture.client.sessions.get(sessionId)).resolves.toMatchObject({
@@ -123,6 +147,7 @@ describe("Schedules commands over Runtime HTTP", () => {
       const runs = await fixture.client.runs.list({ sessionId });
       expect(runs.data.map(({ id }) => id)).toEqual([receipt.runId]);
     } finally {
+      stop();
       originalLifetime.abort();
       replacementLifetime.abort();
       dropReply.resolve();
@@ -156,6 +181,7 @@ describe("Schedules commands over Runtime HTTP", () => {
         signal.addEventListener("abort", () => reject(signal.reason), { once: true });
       });
     });
+    const { resolutions, stop } = observeResolutions(client);
     let outstanding: Promise<unknown> | undefined;
     try {
       const management = new PendingPluginCommands(
@@ -190,6 +216,10 @@ describe("Schedules commands over Runtime HTTP", () => {
         .find(({ idempotencyKey }) => idempotencyKey === delayed.key);
       if (original?.state !== "recoverable") throw new Error("the SDK did not retain its undelivered command");
       await original.retire(replacementLifetime.signal);
+      expect(resolutions).toEqual([{
+        change: { type: "resolved", idempotencyKey: delayed.key, resolution: { type: "retired" } },
+        retained: false,
+      }]);
       expect(management.snapshot()?.read).toMatchObject({ type: "ready", commands: [] });
       const replacement = bindView(client, replacementLifetime.signal);
       expect(replacement.originalCommand()).toBeUndefined();
@@ -207,9 +237,63 @@ describe("Schedules commands over Runtime HTTP", () => {
         [created.id],
       );
     } finally {
+      stop();
       originalLifetime.abort();
       replacementLifetime.abort();
       await outstanding;
+      await client.close();
+    }
+  }, 30_000);
+
+  it("publishes a recovered revision refusal without authorizing a new write", async () => {
+    let readingOriginal = false;
+    const client = fixture.createRuntimeClient(async (url, init) => {
+      const method = new Headers(init?.headers).get(HTTP_HEADERS.method);
+      if (method === "plugins.getCommand") readingOriginal = true;
+      const response = await fetch(url, init);
+      if (readingOriginal || method !== "plugins.call") return response;
+      const { params } = JSON.parse(String(init?.body)) as { params: CallPluginRequest };
+      if (params.route.method !== METHODS.update) return response;
+      await response.arrayBuffer();
+      throw new TypeError("injected loss of a stale Schedule update reply");
+    });
+    const lifetime = new AbortController();
+    const { resolutions, stop } = observeResolutions(client);
+    try {
+      const view = bindView(client, lifetime.signal);
+      const schedule = await view.submit(METHODS.create, {
+        title: "Original Schedule revision",
+        instructions: "Report the Schedule revision.",
+        cron: "0 0 1 1 *",
+        timeZone: "UTC",
+        cwd: fixture.root,
+        enabled: false,
+        modelSelection: { provider: "", model: "", reasoningEffort: "" },
+      });
+      if (!schedule) throw new Error("the fixture Schedule was not created");
+      await expect(view.submit(METHODS.update, {
+        id: schedule.id,
+        title: "Conflicting update",
+        expectedRevision: 2,
+        modelSelection: {},
+      })).rejects.toSatisfy(mutationSettlementIsUnknown);
+      const original = view.originalCommand();
+      if (original?.state !== "recoverable") throw new Error("the update was not retained");
+      expect(resolutions).toEqual([]);
+      await expect(original.recover()).rejects.toMatchObject({ code: "revision" });
+      expect(resolutions).toEqual([{
+        change: {
+          type: "resolved",
+          idempotencyKey: original.idempotencyKey,
+          resolution: { type: "refused", code: "revision" },
+        },
+        retained: false,
+      }]);
+      const current = await view.query(METHODS.list, { cursor: "" });
+      expect(current.rows.find(({ id }) => id === schedule.id)).toEqual(schedule);
+    } finally {
+      stop();
+      lifetime.abort();
       await client.close();
     }
   }, 30_000);

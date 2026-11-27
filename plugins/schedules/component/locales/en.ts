@@ -95,6 +95,7 @@ export const en: Record<string, string> = {
   "notice.openSession": "Open conversation",
   "notice.sessionMissing": "This conversation is no longer available.",
   "notice.completed": "{{label}} completed.",
+  "notice.refused": "Runtime refused the original schedule change.",
   "notice.revision":
     "The schedule changed. Read its latest revision and open a new edit before saving.",
   "template.hourly.title": "Hourly progress check",

@@ -100,6 +100,7 @@ export const es: Record<string, string> = {
   "notice.openSession": "Abrir conversación",
   "notice.sessionMissing": "Esta conversación ya no está disponible.",
   "notice.completed": "{{label}} completado.",
+  "notice.refused": "Runtime rechazó el cambio original de la programación.",
   "notice.revision":
     "La programación cambió. Lee su última revisión y abre una nueva edición antes de guardar.",
   "template.hourly.title": "Comprobación de progreso cada hora",

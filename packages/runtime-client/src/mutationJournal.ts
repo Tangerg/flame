@@ -26,7 +26,7 @@ import {
   type MutationPromise,
 } from "./mutation";
 import type { CallPluginRequest, PluginCallRoute } from "@flame/runtime-client/wire";
-import { RpcCancellationError } from "./errors";
+import { isErrorType, OperationFailure, RpcCancellationError } from "./errors";
 import { captureRequestMeta } from "./request";
 import { cloneJSON } from "@frame/sdk/json";
 
@@ -61,12 +61,35 @@ export interface PluginCommandIdentity {
 export interface PluginCommandReservation extends PluginCommandIdentity {
   readonly state: "recoverable";
   readonly namespace: string;
-  reserve(): MutationReservation;
+  reserve(action: PluginRecoveryAction): MutationReservation;
   validate(request: CallPluginRequest): void;
 }
 
 export type ActivePluginCommand = PluginCommandIdentity & { readonly state: "active" };
 type PluginCommandEntry = ActivePluginCommand | PluginCommandReservation;
+
+type PluginRecoveryAction = "recover" | "retire";
+type PluginCommandResolution =
+  | { readonly type: "confirmed" }
+  | { readonly type: "retired" }
+  | { readonly type: "refused"; readonly code?: string };
+
+export type PluginCommandChange = { readonly idempotencyKey: string } & (
+  | { readonly type: "availability" }
+  | { readonly type: "resolved"; readonly resolution: PluginCommandResolution }
+);
+
+function recoveryResolution(
+  action: PluginRecoveryAction,
+  confirmation: MutationConfirmation<unknown>,
+): PluginCommandResolution {
+  if (confirmation.type === "accepted")
+    return { type: action === "retire" ? "retired" : "confirmed" };
+  if (isErrorType(confirmation.error, "plugin_command_retired")) return { type: "retired" };
+  return confirmation.error instanceof OperationFailure
+    ? { type: "refused", code: confirmation.error.code }
+    : { type: "refused" };
+}
 
 export type PendingRunCommand = RunCommand & {
   readonly idempotencyKey: string;
@@ -85,12 +108,15 @@ export type MutationJournalCleanupObserver = (failure: MutationJournalCleanupErr
 
 class ConfirmedMutation<T> {
   #cleanup: (() => void) | undefined;
+  #publishResolution?: () => void;
 
   constructor(
     private readonly confirmation: MutationConfirmation<T>,
     cleanup: () => void,
+    publishResolution?: () => void,
   ) {
     this.#cleanup = cleanup;
+    this.#publishResolution = publishResolution;
   }
 
   tryCleanup(): MutationJournalCleanupError<T> | undefined {
@@ -108,6 +134,14 @@ class ConfirmedMutation<T> {
       );
     }
     this.#cleanup = undefined;
+  }
+
+  publishResolution(): boolean {
+    const publish = this.#publishResolution;
+    if (!publish) return false;
+    this.#publishResolution = undefined;
+    publish();
+    return true;
   }
 
   result(): T {
@@ -179,13 +213,13 @@ export class MutationJournal {
           ...reference,
           state: "recoverable",
           namespace: identity.namespace,
-          reserve: () => {
+          reserve: (action) => {
             this.#assertCurrent();
             if (this.#claims.has(identity.idempotencyKey))
               throw new MutationJournalOwnershipError(
                 "plugin command is already owned by an active attempt",
               );
-            return this.#claim(identity);
+            return this.#claim(identity, action);
           },
           validate: (request) => {
             this.#assertClaim(identity);
@@ -198,12 +232,13 @@ export class MutationJournal {
 
   pluginCommandsVersion = (): number => this.#pluginCommandVersion;
 
-  subscribePluginCommands = (listener: () => void): (() => void) => {
+  subscribePluginCommands = (listener: (change: PluginCommandChange) => void): (() => void) => {
     const changes = this.#pluginCommandChanges;
-    changes.addEventListener(PLUGIN_COMMANDS_CHANGED, listener, {
+    const notify = (event: Event) => listener((event as CustomEvent<PluginCommandChange>).detail);
+    changes.addEventListener(PLUGIN_COMMANDS_CHANGED, notify, {
       signal: this.#lifetime.signal,
     });
-    return () => changes.removeEventListener(PLUGIN_COMMANDS_CHANGED, listener);
+    return () => changes.removeEventListener(PLUGIN_COMMANDS_CHANGED, notify);
   };
 
   async capturePluginCommand(
@@ -289,7 +324,7 @@ export class MutationJournal {
     return this.#claim(identity);
   }
 
-  #claim(identity: DurableMutationIdentity): MutationReservation {
+  #claim(identity: DurableMutationIdentity, recovery?: PluginRecoveryAction): MutationReservation {
     this.#own(identity);
     const journal = this.#journal;
     return {
@@ -316,7 +351,7 @@ export class MutationJournal {
         this.#assertClaim(identity);
         return this.#journal.markDispatched(identity);
       },
-      track: (create) => this.#track(identity, create),
+      track: (create) => this.#track(identity, create, recovery),
     };
   }
 
@@ -328,18 +363,28 @@ export class MutationJournal {
 
   #own(identity: DurableMutationIdentity): void {
     this.#claims.set(identity.idempotencyKey, identity);
-    this.#publishClaim(identity);
+    this.#publishPluginCommandChange(identity);
   }
 
-  #publishClaim(identity: DurableMutationIdentity): void {
+  #publishPluginCommandChange(
+    identity: DurableMutationIdentity,
+    resolution?: PluginCommandResolution,
+  ): void {
     if (identity.command.kind !== "plugin") return;
     this.#pluginCommandVersion += 1;
-    this.#pluginCommandChanges.dispatchEvent(new Event(PLUGIN_COMMANDS_CHANGED));
+    const idempotencyKey = identity.idempotencyKey;
+    const change: PluginCommandChange = resolution
+      ? { type: "resolved", idempotencyKey, resolution }
+      : { type: "availability", idempotencyKey };
+    this.#pluginCommandChanges.dispatchEvent(
+      new CustomEvent(PLUGIN_COMMANDS_CHANGED, { detail: change }),
+    );
   }
 
   #track<T>(
     identity: DurableMutationIdentity,
     create: () => MutationPromise<T>,
+    recovery?: PluginRecoveryAction,
   ): MutationPromise<T> {
     const idempotencyKey = identity.idempotencyKey;
     let activeAttempts = 0;
@@ -348,19 +393,25 @@ export class MutationJournal {
     const releaseClaim = () => {
       if (this.#claims.get(idempotencyKey) !== identity) return;
       this.#claims.delete(idempotencyKey);
-      this.#publishClaim(identity);
+      if (!confirmed?.publishResolution()) this.#publishPluginCommandChange(identity);
     };
     const finish = (outcome: AttemptOutcome<T>) => {
-      if (outcome.type === "confirmed") {
-        confirmed ??= new ConfirmedMutation(outcome.confirmation, () => {
-          this.#journal.settle(identity);
-          releaseClaim();
-        });
+      if (outcome.type === "confirmed" && !confirmed) {
+        const resolution = recovery && recoveryResolution(recovery, outcome.confirmation);
+        confirmed = new ConfirmedMutation(
+          outcome.confirmation,
+          () => {
+            this.#journal.settle(identity);
+            releaseClaim();
+          },
+          resolution && (() => this.#publishPluginCommandChange(identity, resolution)),
+        );
       }
       activeAttempts--;
       if (activeAttempts !== 0) return;
       if (confirmed) {
         this.#cleanConfirmed(confirmed);
+        confirmed.publishResolution();
         return;
       }
       try {

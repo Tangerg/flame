@@ -37,7 +37,7 @@ export function pluginCommandRecovery(
     state: command.state,
     matchesIntent: command.matchesIntent,
     recover: async <T>(decode: (output: unknown) => T, signal?: AbortSignal) => {
-      const reservation = command.reserve();
+      const reservation = command.reserve("recover");
       return reservation.track(() =>
         createMutationPromise<T>(
           async (key, attempt) => {
@@ -79,7 +79,7 @@ export function pluginCommandRecovery(
       );
     },
     retire: (signal) => {
-      const reservation = command.reserve();
+      const reservation = command.reserve("retire");
       return reservation.track(() =>
         createMutationPromise<void>(
           async (key, attempt) => {
