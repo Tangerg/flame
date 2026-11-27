@@ -27,9 +27,6 @@ func (r *Connection) GetRunAcceptance(ctx context.Context, query protocol.GetRun
 	if result == nil {
 		return protocol.RunAcceptance{}, runtimeContractViolation("run acceptance returned nil")
 	}
-	if result.Run != nil && (result.Run.ID != result.RunID || result.Run.SessionID != result.SessionID) {
-		return protocol.RunAcceptance{}, runtimeContractViolation("run acceptance material does not match the original opening")
-	}
 	return *result, nil
 }
 

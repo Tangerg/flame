@@ -3796,10 +3796,8 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   }, ["droppedRuns", "session"]),
   RunAcceptance: allOf([
     object({
-      appliedItem: ref(() => CHECKS.Item),
       candidateUserItemId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
       input: array(ref(() => CHECKS.ContentBlock)),
-      run: ref(() => CHECKS.RunRef),
       runId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
       segmentId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
       sessionId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
@@ -3808,9 +3806,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     }, []),
     oneOf([
       fields({
-        appliedItem: absent(),
         input: absent(),
-        run: absent(),
         runId: absent(),
         segmentId: absent(),
         sessionId: absent(),
@@ -3820,11 +3816,9 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       fields({
         candidateUserItemId: absent(),
         type: literal("accepted"),
-      }, ["run", "runId", "segmentId", "sessionId", "type"]),
+      }, ["runId", "segmentId", "sessionId", "type"]),
       fields({
-        appliedItem: absent(),
         candidateUserItemId: absent(),
-        run: absent(),
         type: literal("retired"),
       }, ["runId", "segmentId", "sessionId", "type"]),
     ]),

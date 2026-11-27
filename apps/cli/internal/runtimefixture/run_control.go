@@ -139,24 +139,9 @@ func (r *Runtime) GetRunAcceptance(ctx context.Context, query protocol.GetRunAcc
 	if !ok {
 		return protocol.RunAcceptance{Type: protocol.RunAcceptanceNotRecorded}, nil
 	}
-	run := r.runs[receipt.RunID]
-	if run == nil {
+	if r.runs[receipt.RunID] == nil {
 		receipt.Type = protocol.RunAcceptanceRetired
-		return receipt, nil
 	}
-	material := protocol.RunRef{RunSummary: protocol.RunSummary{
-		ID: run.id, SessionID: run.sessionID, Status: run.status, Provider: run.provider, Model: run.model,
-		ReasoningEffort: run.reasoningEffort, SpawnedByItemID: run.lineage.SpawnedByBlockID(),
-		ParentRunID: run.lineage.ParentRunID(), RootRunID: run.lineage.RootRunID(),
-	}}
-	if run.status == protocol.RunStatusRunning {
-		material.ActiveSegmentID = run.active
-	}
-	if run.status == protocol.RunStatusFinished {
-		outcome := run.outcome.Clone()
-		material.Outcome = &protocol.RunOutcome{Type: outcome.Status, Detail: outcome.Detail, Error: outcome.Problem}
-	}
-	receipt.Run = &material
 	return receipt, nil
 }
 

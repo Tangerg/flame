@@ -152,10 +152,15 @@ func TestScheduleCreateRecoversAcrossSIGKILLCuts(t *testing.T) {
 				t.Fatal(err)
 			}
 			receipt, err := stores.CommandAcceptances.Lookup(t.Context(), scheduleCrashKey)
-			if err != nil || receipt.Use != runs.CommandKeyAccepted || receipt.CurrentRun == nil || receipt.CurrentRun.State() != run.Running {
+			acceptance, recorded := receipt.Accepted()
+			if err != nil || !recorded {
 				t.Fatalf("original opening: %+v,%v", receipt, err)
 			}
-			items, err := stores.Transcript.List(t.Context(), receipt.Acceptance.SessionID)
+			originalRun, found, err := stores.Runs.Run(t.Context(), acceptance.RunID)
+			if err != nil || !found || originalRun.State() != run.Running {
+				t.Fatalf("original Run: %+v,%v", originalRun, err)
+			}
+			items, err := stores.Transcript.List(t.Context(), acceptance.SessionID)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -175,7 +180,7 @@ func TestScheduleCreateRecoversAcrossSIGKILLCuts(t *testing.T) {
 			if originalTool.IsZero() {
 				t.Fatal("original Tool Item was not committed")
 			}
-			scopeRoot := (scoperun.StartID{Scope: receipt.Acceptance.SessionID.String(), Key: receipt.Acceptance.RunID.String()}).Root()
+			scopeRoot := (scoperun.StartID{Scope: acceptance.SessionID.String(), Key: acceptance.RunID.String()}).Root()
 			checkpoint, err := stores.ExecutorCheckpoints.LoadCheckpoint(t.Context(), scopeRoot.String())
 			if err != nil {
 				t.Fatalf("original Run's checkpoint: %v", err)
@@ -219,15 +224,20 @@ func TestScheduleCreateRecoversAcrossSIGKILLCuts(t *testing.T) {
 			}
 			defer stores.Close()
 			current, err := stores.CommandAcceptances.Lookup(t.Context(), scheduleCrashKey)
-			if err != nil || !current.Acceptance.Equal(receipt.Acceptance) {
-				t.Fatalf("recovery changed opening identity: %+v,%v", current, err)
+			confirmed, recorded := current.Accepted()
+			if err != nil || !recorded || !confirmed.Equal(acceptance) {
+				t.Fatalf("recovery changed opening identity: %+v,%v", confirmed, err)
+			}
+			recoveredRun, found, err := stores.Runs.Run(t.Context(), confirmed.RunID)
+			if err != nil || !found {
+				t.Fatalf("recovered Run is missing: %v", err)
 			}
 			steps := 3
 			if cut.inconclusive() {
 				steps = 2
 			}
-			if current.CurrentRun.Metrics().Steps() != steps {
-				t.Fatalf("model steps=%d, want the original two calls and one continuation", current.CurrentRun.Metrics().Steps())
+			if recoveredRun.Metrics().Steps() != steps {
+				t.Fatalf("model steps=%d, want the original two calls and one continuation", recoveredRun.Metrics().Steps())
 			}
 			finalHead, found, err := stores.ExecutorCheckpoints.LoadExecutionTree(t.Context(), originalHead.SessionID, originalHead.RootID)
 			if err != nil {
@@ -257,7 +267,7 @@ func TestScheduleCreateRecoversAcrossSIGKILLCuts(t *testing.T) {
 					t.Fatal("recovery replaced the original effect or process tree")
 				}
 			}
-			items, err = stores.Transcript.List(t.Context(), receipt.Acceptance.SessionID)
+			items, err = stores.Transcript.List(t.Context(), acceptance.SessionID)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -304,8 +314,8 @@ func TestScheduleCreateRecoversAcrossSIGKILLCuts(t *testing.T) {
 				t.Fatalf("recovery changed the original creation: original ID=%q current ID=%q", witness.Response.Result.StructuredContent.Schedule.ID, createdID)
 			}
 			if cut.inconclusive() {
-				if !cut.disables && len(current.CurrentRun.UnresolvedEffects()) != 1 {
-					t.Fatalf("inconclusive proof lost its Unknown Effect: %+v", current.CurrentRun.UnresolvedEffects())
+				if !cut.disables && len(recoveredRun.UnresolvedEffects()) != 1 {
+					t.Fatalf("inconclusive proof lost its Unknown Effect: %+v", recoveredRun.UnresolvedEffects())
 				}
 				if _, err := os.Stat(filepath.Join(home, "recovered-model-result.json")); !errors.Is(err, os.ErrNotExist) {
 					t.Fatalf("inconclusive evidence became a model result: %v", err)

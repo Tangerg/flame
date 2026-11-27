@@ -1,5 +1,5 @@
 {
-  "protocolVersion": "2026-11-27.12",
+  "protocolVersion": "2026-11-27.13",
   "features": [
     "reasoning",
     "multimodal",
@@ -3847,13 +3847,11 @@
           "required": [
             "runId",
             "segmentId",
-            "sessionId",
-            "run"
+            "sessionId"
           ],
           "optional": [
             "userItemId",
-            "input",
-            "appliedItem"
+            "input"
           ]
         },
         {

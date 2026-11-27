@@ -10,7 +10,6 @@ import (
 	"testing"
 	"time"
 
-	runsapp "github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
@@ -42,7 +41,7 @@ func TestStartAcceptanceCrashHelper(t *testing.T) {
 			if err != nil {
 				return err
 			}
-			if record.Use == runsapp.CommandKeyAccepted {
+			if _, accepted := record.Accepted(); accepted {
 				os.Exit(commandCrashExit)
 			}
 			return nil
@@ -110,7 +109,8 @@ func TestStartAcceptanceSurvivesCommitBeforeResponseCrash(t *testing.T) {
 		t.Fatal(err)
 	}
 	record, err := stores.CommandAcceptances.Lookup(t.Context(), startCrashKey)
-	if err != nil || record.Use != runsapp.CommandKeyAccepted || record.CurrentRun == nil {
+	acceptance, recorded := record.Accepted()
+	if err != nil || !recorded || !record.RetainsMaterial() {
 		t.Fatalf("committed opening: %+v,%v", record, err)
 	}
 	if err := stores.Close(); err != nil {
@@ -125,8 +125,8 @@ func TestStartAcceptanceSurvivesCommitBeforeResponseCrash(t *testing.T) {
 	if err := json.Unmarshal(encoded, &ack); err != nil {
 		t.Fatal(err)
 	}
-	if ack.Type != protocol.RunAcceptanceAccepted || ack.RunID != record.Acceptance.RunID.String() || ack.SegmentID != record.Acceptance.SegmentID.String() || ack.UserItemID != record.Acceptance.UserItemID.String() || ack.SessionID != record.Acceptance.SessionID.String() {
-		t.Fatalf("fresh query changed acceptance: %+v, original=%+v", ack, record.Acceptance)
+	if ack.Type != protocol.RunAcceptanceAccepted || ack.RunID != acceptance.RunID.String() || ack.SegmentID != acceptance.SegmentID.String() || ack.UserItemID != acceptance.UserItemID.String() || ack.SessionID != acceptance.SessionID.String() {
+		t.Fatalf("fresh query changed acceptance: %+v, original=%+v", ack, acceptance)
 	}
 	if _, err := os.Stat(filepath.Join(home, "unexpected-model-call")); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("acceptance query dispatched model work: %v", err)

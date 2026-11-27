@@ -637,7 +637,10 @@ Public Start, Resume and Steer require caller-retained idempotency keys. Preserv
 the exact request, capability metadata and discovered store namespace before
 sending it. Runtime owns one atomic acceptance with the Run/Segment opening or
 Steer input; redelivery reads it before current execution preparation.
-`runs.getAcceptance` is a read, not permission to repeat an unknown operation.
+`runs.getAcceptance` is a read, not permission to repeat an unknown operation. Core `2026-11-27.13` returns the
+original acceptance and retained or retired disposition. `runs.get` reads the
+current Run, and the Session snapshot supplies the retained input and the exact
+committed User Item when it has entered the transcript.
 Retired material retains its original references and cannot be recreated by import.
 
 A Steer acceptance nominates its exact User Item identity before application.

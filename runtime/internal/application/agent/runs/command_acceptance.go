@@ -10,7 +10,6 @@ import (
 
 	flameidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goalref"
-	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 
 	framevalue "github.com/Tangerg/frame/value"
@@ -116,30 +115,47 @@ func (c CommandIdentity) Validate() error {
 	return nil
 }
 
-type CommandKeyUse uint8
+type commandAcceptanceState uint8
 
 const (
-	CommandKeyUnused CommandKeyUse = iota
-	CommandKeyAccepted
-	CommandKeyForeign
+	commandAcceptanceAbsent commandAcceptanceState = iota
+	commandAcceptanceForeign
+	commandAcceptanceRetained
+	commandAcceptanceRetired
 )
 
 type CommandAcceptanceRecord struct {
-	Use         CommandKeyUse
-	Acceptance  CommandAcceptance
-	CurrentRun  *run.Run
-	AppliedItem *transcript.Item
+	state      commandAcceptanceState
+	acceptance CommandAcceptance
+}
+
+func OccupiedCommandKey() CommandAcceptanceRecord {
+	return CommandAcceptanceRecord{state: commandAcceptanceForeign}
+}
+
+func RecordedCommandAcceptance(acceptance CommandAcceptance, materialRetained bool) CommandAcceptanceRecord {
+	state := commandAcceptanceRetired
+	if materialRetained {
+		state = commandAcceptanceRetained
+	}
+	return CommandAcceptanceRecord{state: state, acceptance: acceptance}
+}
+
+func (r CommandAcceptanceRecord) Accepted() (CommandAcceptance, bool) {
+	return r.acceptance, r.state == commandAcceptanceRetained || r.state == commandAcceptanceRetired
+}
+
+func (r CommandAcceptanceRecord) RetainsMaterial() bool {
+	return r.state == commandAcceptanceRetained
+}
+
+func (r CommandAcceptanceRecord) Foreign() bool {
+	return r.state == commandAcceptanceForeign
 }
 
 func (r CommandAcceptanceRecord) Conflicts(operation CommandOperation, fingerprint string) bool {
-	switch r.Use {
-	case CommandKeyForeign:
-		return true
-	case CommandKeyAccepted:
-		return r.Acceptance.Operation != operation || r.Acceptance.Fingerprint != fingerprint
-	default:
-		return false
-	}
+	accepted, found := r.Accepted()
+	return r.Foreign() || found && (accepted.Operation != operation || accepted.Fingerprint != fingerprint)
 }
 
 type commandAcceptanceReader interface {
@@ -189,18 +205,15 @@ func lookupAcceptedCommand(ctx context.Context, acceptances commandAcceptanceRea
 	if record.Conflicts(operation, identity.Fingerprint) {
 		return StartResult{}, false, ErrCommandKeyConflict
 	}
-	if record.Use != CommandKeyAccepted {
+	accepted, found := record.Accepted()
+	if !found {
 		return StartResult{}, false, nil
 	}
-	accepted := record.Acceptance
-	return StartResult{
-		RunID: accepted.RunID, SegmentID: accepted.SegmentID, UserItemID: accepted.UserItemID, Opening: reopening(record),
-	}, true, nil
-}
-
-func reopening(record CommandAcceptanceRecord) Opening {
-	if record.CurrentRun == nil {
-		return OpeningRetired
+	opening := OpeningRetired
+	if record.RetainsMaterial() {
+		opening = OpeningReopened
 	}
-	return OpeningReopened
+	return StartResult{
+		RunID: accepted.RunID, SegmentID: accepted.SegmentID, UserItemID: accepted.UserItemID, Opening: opening,
+	}, true, nil
 }

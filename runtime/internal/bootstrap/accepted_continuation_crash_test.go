@@ -227,7 +227,8 @@ func testAcceptedContinuationSurvivesRestart(t *testing.T, phase acceptedCrashPo
 	}
 	accepted := bindings[0]
 	record, err := stores.CommandAcceptances.Lookup(t.Context(), acceptedCommandKey)
-	if err != nil || record.Use != runsapp.CommandKeyAccepted || record.Acceptance.Operation != "resume" || record.Acceptance.SegmentID != accepted.Segments[len(accepted.Segments)-1].SegmentID || record.Acceptance.UserItemID != accepted.InputItemID {
+	acceptance, recorded := record.Accepted()
+	if err != nil || !recorded || acceptance.Operation != runsapp.CommandResumeOpening || acceptance.SegmentID != accepted.Segments[len(accepted.Segments)-1].SegmentID || acceptance.UserItemID != accepted.InputItemID {
 		t.Fatalf("crash lost original command acceptance: %+v,%v", record, err)
 	}
 	if _, err := os.Stat(filepath.Join(home, "effect.txt")); !os.IsNotExist(err) {
@@ -255,7 +256,7 @@ func testAcceptedContinuationSurvivesRestart(t *testing.T, phase acceptedCrashPo
 	endpoint := host.Endpoint()
 	lookup := protocol.GetRunAcceptanceRequest{Namespace: testsupport.IdempotencyNamespace, Key: acceptedCommandKey, Operation: protocol.RunCommandResume}
 	ack, err := endpoint.Call[protocol.GetRunAcceptanceRequest, *protocol.RunAcceptance](t.Context(), delivery.RunsGetAcceptance, lookup, protocol.CallMetadata{})
-	if err != nil || ack.SegmentID != record.Acceptance.SegmentID.String() || ack.UserItemID != accepted.InputItemID.String() || ack.Run == nil || ack.Run.Status != protocol.RunStatusFinished {
+	if err != nil || ack.Type != protocol.RunAcceptanceAccepted || ack.SegmentID != acceptance.SegmentID.String() || ack.UserItemID != accepted.InputItemID.String() {
 		t.Fatalf("acceptance lookup after terminal=%+v,%v", ack, err)
 	}
 	request := acceptedResumeRequest(accepted.RootRunID().String(), accepted.Pending.Bindings[0].InterruptItemID.String())
@@ -348,7 +349,8 @@ func TestResumeAcceptanceRollbackSurvivesAbruptRestart(t *testing.T) {
 	if err != nil || len(bindings) != 0 {
 		t.Fatalf("rollback kept acceptance: %+v,%v", bindings, err)
 	}
-	if record, err := stores.CommandAcceptances.Lookup(t.Context(), acceptedCommandKey); err != nil || record.Use == runsapp.CommandKeyAccepted {
+	record, err := stores.CommandAcceptances.Lookup(t.Context(), acceptedCommandKey)
+	if _, accepted := record.Accepted(); err != nil || accepted {
 		t.Fatalf("rollback kept command acceptance: %+v,%v", record, err)
 	}
 	cfg := protocolRuntimeConfig(t, stores, acceptedCrashModel(t, home))

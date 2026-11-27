@@ -10717,7 +10717,7 @@
         {
           "name": "Version",
           "type": "untyped string",
-          "value": "\"2026-11-27.12\""
+          "value": "\"2026-11-27.13\""
         },
         {
           "name": "WorkspaceAvailable",
@@ -16898,19 +16898,9 @@
               "tag": "json:\"userItemId,omitempty\""
             },
             {
-              "name": "Run",
-              "type": "*RunRef",
-              "tag": "json:\"run,omitzero\""
-            },
-            {
               "name": "Input",
               "type": "[]ContentBlock",
               "tag": "json:\"input,omitempty\""
-            },
-            {
-              "name": "AppliedItem",
-              "type": "*Item",
-              "tag": "json:\"appliedItem,omitzero\""
             }
           ]
         },

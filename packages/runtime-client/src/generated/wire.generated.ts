@@ -9,7 +9,7 @@
 // in the generated validator and in schema.json.
 
 // The wire version this runtime serves; a client states it in request metadata.
-export const PROTOCOL_VERSION = "2026-11-27.12";
+export const PROTOCOL_VERSION = "2026-11-27.13";
 
 // The only Session Artifact version this runtime imports or exports.
 export const SESSION_ARTIFACT_VERSION = 32;
@@ -1909,7 +1909,7 @@ export interface RollbackSessionResponse {
 
 export type RunAcceptance =
   | { type: "notRecorded"; candidateUserItemId?: string }
-  | { type: "accepted"; appliedItem?: Item; input?: ContentBlock[]; run: RunRef; runId: string; segmentId: string; sessionId: string; userItemId?: string }
+  | { type: "accepted"; input?: ContentBlock[]; runId: string; segmentId: string; sessionId: string; userItemId?: string }
   | { type: "retired"; input?: ContentBlock[]; runId: string; segmentId: string; sessionId: string; userItemId?: string };
 
 export type RunAcceptanceType = "notRecorded" | "accepted" | "retired";

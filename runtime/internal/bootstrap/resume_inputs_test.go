@@ -121,8 +121,14 @@ func TestQueuedUserInputsReachTheRootModelAfterRestart(t *testing.T) {
 	receipt, err := host.Endpoint().Call[protocol.GetRunAcceptanceRequest, *protocol.RunAcceptance](ctx, delivery.RunsGetAcceptance, protocol.GetRunAcceptanceRequest{
 		Namespace: options.IdempotencyNamespace, Key: options.IdempotencyKey, Operation: protocol.RunCommandSteer,
 	}, protocol.CallMetadata{})
-	if err != nil || receipt.UserItemID != steerItemID || receipt.AppliedItem == nil || receipt.AppliedItem.ID != steerItemID {
-		t.Fatalf("applied steer receipt=%+v, %v, want Item %q", receipt, err, steerItemID)
+	if err != nil || receipt.Type != protocol.RunAcceptanceAccepted || receipt.UserItemID != steerItemID {
+		t.Fatalf("steer receipt=%+v, %v, want original input %q", receipt, err, steerItemID)
+	}
+	snapshot, err := api.GetSessionSnapshot(ctx, protocol.GetSessionSnapshotRequest{SessionID: session.ID})
+	if err != nil || !slices.ContainsFunc(snapshot.Items, func(item protocol.Item) bool {
+		return item.ID == steerItemID && item.RunID == started.RunID && item.Type == protocol.ItemTypeUserMessage
+	}) {
+		t.Fatalf("the original steer has no committed user Item in the Session: %v", err)
 	}
 
 	exported, err := api.ExportSession(ctx, protocol.ExportSessionRequest{SessionID: session.ID})

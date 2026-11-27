@@ -1340,21 +1340,16 @@ func (r RunAcceptance) validateWire(object wireObject) []FieldError {
 		forbiddenWhen(object.equals("type", "notRecorded"), "runId", object),
 		forbiddenWhen(object.equals("type", "notRecorded"), "segmentId", object),
 		forbiddenWhen(object.equals("type", "notRecorded"), "sessionId", object),
-		forbiddenWhen(object.equals("type", "notRecorded"), "run", object),
 		forbiddenWhen(object.equals("type", "notRecorded"), "userItemId", object),
 		forbiddenWhen(object.equals("type", "notRecorded"), "input", object),
-		forbiddenWhen(object.equals("type", "notRecorded"), "appliedItem", object),
 		requiredWhen(object.equals("type", "accepted"), "runId", object),
 		requiredWhen(object.equals("type", "accepted"), "segmentId", object),
 		requiredWhen(object.equals("type", "accepted"), "sessionId", object),
-		requiredWhen(object.equals("type", "accepted"), "run", object),
 		forbiddenWhen(object.equals("type", "accepted"), "candidateUserItemId", object),
 		requiredWhen(object.equals("type", "retired"), "runId", object),
 		requiredWhen(object.equals("type", "retired"), "segmentId", object),
 		requiredWhen(object.equals("type", "retired"), "sessionId", object),
 		forbiddenWhen(object.equals("type", "retired"), "candidateUserItemId", object),
-		forbiddenWhen(object.equals("type", "retired"), "run", object),
-		forbiddenWhen(object.equals("type", "retired"), "appliedItem", object),
 	)
 	return violations
 }

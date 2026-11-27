@@ -25,7 +25,7 @@ func registerRunUnions(s *Shapes) {
 		GoType: typeOf[protocol.RunAcceptance](),
 		Variants: []VariantSpec{
 			{Tag: string(protocol.RunAcceptanceNotRecorded), Optional: []string{"candidateUserItemId"}},
-			{Tag: string(protocol.RunAcceptanceAccepted), Required: []string{"runId", "segmentId", "sessionId", "run"}, Optional: []string{"userItemId", "input", "appliedItem"}},
+			{Tag: string(protocol.RunAcceptanceAccepted), Required: []string{"runId", "segmentId", "sessionId"}, Optional: []string{"userItemId", "input"}},
 			{Tag: string(protocol.RunAcceptanceRetired), Required: []string{"runId", "segmentId", "sessionId"}, Optional: []string{"userItemId", "input"}},
 		},
 	})
