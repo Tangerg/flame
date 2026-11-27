@@ -1,15 +1,17 @@
 import { iconGlyph } from "@/ui/icons/index";
 import * as stylex from "@stylexjs/stylex";
+import { useId } from "react";
 import { AgentRow } from "@/ui/agent/index";
 import { Icon } from "@/ui/index";
 import { StatusDot } from "@/ui/atoms/status-dot";
-import { IconButton, vocab } from "@flame/ui";
+import { IconButton, Tooltip, vocab } from "@flame/ui";
 import { useT } from "@/lib/i18n/index";
 import { type WorkFolder } from "@/features/navigation/public/workIndex";
 import { color, space, type as typeStep, weight } from "@flame/ui/tokens.stylex";
 const pr = stylex.create({
   count: { fontVariantNumeric: "tabular-nums", lineHeight: 1, color: color.fgFaint },
   line: { display: "inline-flex", minWidth: 0, alignItems: "center", gap: space.s1_5 },
+  path: { whiteSpace: "pre-wrap", overflowWrap: "anywhere" },
   warn: { flexShrink: 0, color: color.warning },
   waiting: { flexShrink: 0, fontWeight: weight.medium, color: color.warning },
   trailing: { display: "inline-flex", alignItems: "center", gap: space.s1_5 },
@@ -37,12 +39,27 @@ export function FolderRow({
   canCreateSession: boolean;
 }) {
   const t = useT();
+  const pathId = useId();
+  const showPath = folder.name !== folder.id;
   return (
     <AgentRow
       icon={open ? "folder-open" : "folder"}
       active={active}
       onClick={() => onToggle()}
-      title={folder.id}
+      render={(buttonProps) => (
+        <Tooltip
+          label={
+            <span dir="ltr" {...stylex.props(pr.path)}>
+              {folder.id}
+            </span>
+          }
+          side="right"
+          disabled={!showPath}
+        >
+          <button {...buttonProps} />
+        </Tooltip>
+      )}
+      aria-describedby={showPath ? pathId : undefined}
       aria-expanded={open}
       aria-label={folder.cwdMissing ? `${folder.name} — ${t("folder.row.missing")}` : undefined}
       trailing={
@@ -71,6 +88,11 @@ export function FolderRow({
     >
       <span {...stylex.props(pr.line)}>
         <span {...stylex.props(vocab.truncate)}>{folder.name}</span>
+        {showPath && (
+          <span id={pathId} dir="ltr" hidden>
+            {folder.id}
+          </span>
+        )}
         {folder.cwdMissing && (
           <Icon name="alert" size="xs" className={stylex.props(pr.warn).className} />
         )}
