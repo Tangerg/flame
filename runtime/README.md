@@ -50,6 +50,9 @@ Goal requires an empty session slot. A replacement must name the existing
 incarnation in `replaceIncarnationId`. Update, stop, resume and clear use the
 incarnation from the Goal read or start receipt. Usage changes within that
 incarnation do not make a command stale.
+Core `2026-11-27.11` lets `projects.list` read the entire catalog when
+`archived` is omitted. A supplied boolean selects that archive state, and a
+continuation cursor belongs to the selected filter.
 Protocol admission checks enum values throughout each request, including plugin
 server and skill configuration maps, before creating a command receipt. A caller
 can correct an invalid enum and retry with the original key.

@@ -20,7 +20,7 @@ type CatalogAnchor struct {
 }
 
 type CatalogRead struct {
-	Archived bool
+	Archived *bool
 	After    *CatalogAnchor
 	Limit    int
 }
@@ -99,8 +99,11 @@ const (
 	pageLimit     = 100
 )
 
-func (c *Coordinator) ListPage(ctx context.Context, archived bool, cursor string, limit pagination.RequestedLimit) (pagination.Page[project.Project], error) {
-	filters := []string{"archived", strconv.FormatBool(archived)}
+func (c *Coordinator) ListPage(ctx context.Context, archived *bool, cursor string, limit pagination.RequestedLimit) (pagination.Page[project.Project], error) {
+	var filters []string
+	if archived != nil {
+		filters = []string{"archived", strconv.FormatBool(*archived)}
+	}
 	key, err := pagination.Decode(cursor, pageNamespace, filters)
 	if err != nil {
 		return pagination.Page[project.Project]{}, err

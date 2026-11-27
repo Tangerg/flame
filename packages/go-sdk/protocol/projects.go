@@ -14,7 +14,7 @@ type Project struct {
 
 type ListProjectsRequest struct {
 	PageQuery
-	Archived bool `json:"archived,omitzero"`
+	Archived *bool `json:"archived,omitzero"`
 }
 
 type GetProjectRequest struct {

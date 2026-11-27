@@ -23,11 +23,8 @@ export async function readRuntimeProjectSummaries(
   client: Pick<FlameClient, "projects">,
   signal?: AbortSignal,
 ): Promise<ProjectSummary[]> {
-  const [active, archived] = await Promise.all([
-    client.projects.list(undefined, signal).autoPagingToArray(),
-    client.projects.list({ archived: true }, signal).autoPagingToArray(),
-  ]);
-  return [...active, ...archived].map(toProjectSummary);
+  const projects = await client.projects.list(undefined, signal).autoPagingToArray();
+  return projects.map(toProjectSummary);
 }
 
 export function registerProjectDataProviders(
