@@ -325,6 +325,7 @@
         "session_busy",
         "session_has_active_run",
         "prompt_source_too_large",
+        "prompt_rejected",
         "unsupported_mime",
         "capability_not_negotiated",
         "plugin_changed"
@@ -2291,6 +2292,14 @@
         ]
       },
       {
+        "type": "prompt_rejected",
+        "code": -32049,
+        "recoveryAction": "stop",
+        "methods": [
+          "runs.start"
+        ]
+      },
+      {
         "type": "prompt_source_too_large",
         "code": -32038,
         "recoveryAction": "promptUser",
@@ -3623,6 +3632,13 @@
         },
         {
           "tag": "project_not_found",
+          "optional": [
+            "detail",
+            "docUrl"
+          ]
+        },
+        {
+          "tag": "prompt_rejected",
           "optional": [
             "detail",
             "docUrl"

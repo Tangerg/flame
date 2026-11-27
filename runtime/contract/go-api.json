@@ -10848,6 +10848,10 @@
           "type": "error"
         },
         {
+          "name": "ErrPromptRejected",
+          "type": "error"
+        },
+        {
           "name": "ErrPromptSourceTooLarge",
           "type": "error"
         },

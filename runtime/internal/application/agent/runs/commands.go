@@ -10,6 +10,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/Tangerg/flame/packages/go-sdk/hook"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 
 	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
@@ -381,6 +382,15 @@ func validateOptions(options *corechat.Options) error {
 		return fmt.Errorf("%w: Options.ReasoningEffort must stay empty; use ModelSelection", ErrInvalidRunOptions)
 	}
 	return nil
+}
+
+type PromptRejectedError struct {
+	Event  hook.Event
+	Reason string
+}
+
+func (e *PromptRejectedError) Error() string {
+	return fmt.Sprintf("runs: %s rejected the prompt: %s", e.Event, e.Reason)
 }
 
 type ActiveRoot struct {

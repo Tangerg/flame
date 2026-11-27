@@ -2678,5 +2678,8 @@ The first admitted root Run in the Session's current history carries
 `SessionStart` material. Refused openings leave that history empty, so the
 next attempt still evaluates the rules. Restarting Runtime keeps the existing
 admitted opening and its material.
+An opening hook's denial ends preparation and exposes its reason through
+`prompt_rejected` with stop recovery. A request for approval during opening also
+refuses that opening. Tool approval is available through `PreToolUse`.
 Commands use the installed process environment rather than inheriting ambient
 Runtime variables.

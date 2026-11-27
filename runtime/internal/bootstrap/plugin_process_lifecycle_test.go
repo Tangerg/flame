@@ -81,17 +81,20 @@ func TestInstalledHookCancellationStopsItsCommandGroup(t *testing.T) {
 	t.Cleanup(func() { _ = bound.Close() })
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
-	finished := make(chan struct{})
+	finished := make(chan error, 1)
 	go func() {
-		defer close(finished)
-		bound.Run(ctx, hook.Input{Event: hook.Stop, SessionID: "session:hooks", CWD: cfg.defaultWorkspacePath})
+		_, err := bound.Run(ctx, hook.Input{Event: hook.Stop, SessionID: "session:hooks", CWD: cfg.defaultWorkspacePath})
+		finished <- err
 	}()
 	const wait = 3 * time.Second
 	pid := waitPluginPID(t, filepath.Join(cfg.defaultWorkspacePath, "hook-started"), 0, wait)
 	deadline := time.Now().Add(wait)
 	cancel()
 	select {
-	case <-finished:
+	case err := <-finished:
+		if !errors.Is(err, context.Canceled) {
+			t.Errorf("installed hook cancellation lost its cause: %v", err)
+		}
 	case <-time.After(time.Until(deadline)):
 		t.Fatal("installed command did not observe cancellation")
 	}

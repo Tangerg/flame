@@ -3,13 +3,14 @@ package hooks
 import (
 	"context"
 	"errors"
+	"fmt"
 	"slices"
 
 	hookdata "github.com/Tangerg/flame/packages/go-sdk/hook"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/hookprovider"
-	domainhooks "github.com/Tangerg/flame/runtime/internal/domain/integration/hooks"
 )
 
+// Evaluate returns advice admitted by the provider boundary.
 type Evaluate func(context.Context, hookprovider.Evaluation) (hookprovider.Advice, error)
 type Bound struct {
 	rules    []hookdata.Hook
@@ -28,18 +29,12 @@ func NewBound(rules []hookdata.Hook, evaluate Evaluate, report func(context.Cont
 // A workspace without lifecycle rules still gets a binding, so callers
 // never branch on its absence.
 func Unbound() *Bound {
-	return &Bound{
-		evaluate: func(context.Context, hookprovider.Evaluation) (hookprovider.Advice, error) {
-			return hookprovider.Advice{}, nil
-		},
-		report: func(context.Context, string, error) {},
-		close:  func() error { return nil },
-	}
+	return &Bound{close: func() error { return nil }}
 }
 
-func (b *Bound) Run(ctx context.Context, in hookdata.Input) domainhooks.Decision {
+func (b *Bound) Run(ctx context.Context, in hookdata.Input) (hookdata.CommandDecision, error) {
 	if len(b.rules) == 0 {
-		return domainhooks.Decision{}
+		return hookdata.CommandDecision{Verdict: hookdata.CommandAllow}, nil
 	}
 	projected, err := in.CommandProjection()
 	request := hookprovider.Evaluation{Rules: b.rules, Input: projected}
@@ -52,26 +47,13 @@ func (b *Bound) Run(ctx context.Context, in hookdata.Input) domainhooks.Decision
 		b.report(ctx, "lifecycle event", err)
 	}
 	advice, err := b.evaluate(ctx, request)
-	if err == nil {
-		err = advice.Validate()
-	}
 	if err != nil {
-		b.report(ctx, "lifecycle provider", err)
-		return domainhooks.Decision{Verdict: domainhooks.VerdictBlock, Reason: err.Error()}
+		return hookdata.CommandDecision{}, fmt.Errorf("hooks: evaluate %s: %w", in.Event, err)
 	}
 	for _, issue := range advice.Diagnostics {
 		b.report(ctx, issue.Source, errors.New(issue.Message))
 	}
-	out := advice.Decision
-	verdict := domainhooks.VerdictAllow
-	switch out.Verdict {
-	case hookdata.CommandDeny:
-		verdict = domainhooks.VerdictBlock
-	case hookdata.CommandAsk:
-		verdict = domainhooks.VerdictAsk
-	case hookdata.CommandAllow:
-	}
-	return domainhooks.Decision{Verdict: verdict, Reason: out.Reason, InjectContext: out.InjectContext, RewriteArguments: out.RewriteArguments}
+	return advice.Decision, nil
 }
 
 type Inspection struct {

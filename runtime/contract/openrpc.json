@@ -1638,6 +1638,10 @@
           "message": "prompt_source_too_large"
         },
         {
+          "code": -32049,
+          "message": "prompt_rejected"
+        },
+        {
           "code": -32011,
           "message": "unsupported_mime"
         },

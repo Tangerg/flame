@@ -39,6 +39,7 @@ func registerRuns(registry *Registry) {
 			Error(), protocol.ErrSessionBusy.
 			Error(), protocol.ErrSessionHasActiveRun.
 			Error(), protocol.ErrPromptSourceTooLarge.
+			Error(), protocol.ErrPromptRejected.
 			Error(), protocol.ErrUnsupportedMime.
 			Error(), protocol.ErrCapabilityNotNeg.
 			Error(), protocol.ErrPluginChanged.

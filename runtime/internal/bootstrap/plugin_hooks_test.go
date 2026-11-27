@@ -15,7 +15,6 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	adapterhooks "github.com/Tangerg/flame/runtime/internal/adapter/integration/hooks"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
-	domainhooks "github.com/Tangerg/flame/runtime/internal/domain/integration/hooks"
 	"github.com/Tangerg/scope/core/chatclient"
 	"github.com/fsnotify/fsnotify"
 	"golang.org/x/sys/unix"
@@ -74,9 +73,9 @@ func TestInstalledHooksRetainRulesAndOriginalCommandReceipt(t *testing.T) {
 	writeHookSource(t, cfg.userHome, `{"hooks":[{"event":"PreToolUse","matcher":"shell","inject":"replacement"}]}`)
 	input := hook.Input{Event: hook.PreToolUse, SessionID: "session:hooks", CWD: cfg.defaultWorkspacePath, Tool: &hook.ToolInput{Name: "shell", Arguments: `{"command":"echo original"}`}}
 	for range 2 {
-		decision := bound.Run(t.Context(), input)
-		if decision.Verdict != domainhooks.VerdictAsk || decision.Reason != "confirm original" || decision.InjectContext != "captured" || decision.RewriteArguments != `{"command":"echo policy"}` {
-			t.Fatalf("captured command changed its result: %+v", decision)
+		decision, err := bound.Run(t.Context(), input)
+		if err != nil || decision.Verdict != hook.CommandAsk || decision.Reason != "confirm original" || decision.InjectContext != "captured" || decision.RewriteArguments != `{"command":"echo policy"}` {
+			t.Fatalf("captured command changed its result: %+v, %v", decision, err)
 		}
 	}
 	if content, err := os.ReadFile(filepath.Join(cfg.defaultWorkspacePath, "hook-effects")); err != nil || string(content) != "once\n" {
@@ -93,8 +92,8 @@ func TestInstalledHooksRetainRulesAndOriginalCommandReceipt(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if decision := current.Run(t.Context(), input); decision.InjectContext != "replacement" {
-		t.Fatalf("new discovery did not see the edited source: %+v", decision)
+	if decision, err := current.Run(t.Context(), input); err != nil || decision.InjectContext != "replacement" {
+		t.Fatalf("new discovery did not see the edited source: %+v, %v", decision, err)
 	}
 	if err := current.Close(); err != nil {
 		t.Fatal(err)

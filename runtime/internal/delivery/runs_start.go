@@ -133,6 +133,9 @@ func invalidWireContentBlock(index int, field, detail string) error {
 }
 
 func wireRunStartErr(err error) error {
+	if refusal, ok := errors.AsType[*runs.PromptRejectedError](err); ok {
+		return protocol.NewFailure(protocol.ErrPromptRejected, rundomain.Diagnostic(refusal), err)
+	}
 	if conflict, ok := errors.AsType[*runs.ActiveRunConflictError](err); ok {
 		return &ActiveRunConflictError{ActiveRun: protocol.ActiveRunRef{
 			RunID: conflict.Root.RunID.String(), Status: presentRunStatus(conflict.Root.State),

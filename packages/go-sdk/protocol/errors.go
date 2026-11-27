@@ -99,6 +99,7 @@ var (
 	ErrCheckpointUnavailable           = errors.New("checkpoint_unavailable")
 	ErrCheckpointConflict              = errors.New("checkpoint_conflict")
 	ErrPromptSourceTooLarge            = errors.New("prompt_source_too_large")
+	ErrPromptRejected                  = errors.New("prompt_rejected")
 	ErrUnsupportedMime                 = errors.New("unsupported_mime")
 	ErrPathOutsideRoot                 = errors.New("path_outside_root")
 	ErrInterruptNotOpen                = errors.New("interrupt_not_open")

@@ -135,6 +135,7 @@ export const PROBLEM_CODES = {
   "plugin_stale": -32043,
   "plugin_unavailable": -32045,
   "project_not_found": -32048,
+  "prompt_rejected": -32049,
   "prompt_source_too_large": -32038,
   "provider_error": -32001,
   "replay_cursor_invalid": -32027,
@@ -188,6 +189,7 @@ export const PROBLEM_RECOVERY = {
   "plugin_stale": "promptUser",
   "plugin_unavailable": "promptUser",
   "project_not_found": "refetch",
+  "prompt_rejected": "stop",
   "prompt_source_too_large": "promptUser",
   "provider_error": "promptUser",
   "replay_cursor_invalid": "resubscribe",
@@ -1713,6 +1715,7 @@ export type ProblemData =
   | { type: "plugin_stale"; detail?: string; docUrl?: string }
   | { type: "plugin_unavailable"; detail?: string; docUrl?: string }
   | { type: "project_not_found"; detail?: string; docUrl?: string }
+  | { type: "prompt_rejected"; detail?: string; docUrl?: string }
   | { type: "prompt_source_too_large"; detail?: string; docUrl?: string }
   | { type: "provider_error"; detail?: string; docUrl?: string }
   | { type: "provider_rejected"; detail?: string; docUrl?: string }

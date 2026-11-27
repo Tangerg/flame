@@ -1065,7 +1065,7 @@ func (p ProblemData) validateWire(object wireObject) []FieldError {
 		)
 	}
 	violations.add(
-		unionTag("type", string(p.Type), []string{"agent_stuck", "capability_not_negotiated", "checkpoint_conflict", "checkpoint_unavailable", "child_run_canceled", "denied_by_user", "export_too_large", "idempotency_conflict", "idempotency_in_progress", "idempotency_store_mismatch", "internal_error", "interrupt_not_open", "invalid_credentials", "invalid_params", "invalid_protocol_version", "invalid_request", "item_not_found", "mcp_authorization_attempt_not_found", "mcp_owned_by_installation", "mcp_server_already_exists", "mcp_server_disabled", "mcp_server_not_found", "method_not_found", "path_outside_root", "plugin_changed", "plugin_command_retired", "plugin_disabled", "plugin_in_use", "plugin_not_found", "plugin_stale", "plugin_unavailable", "project_not_found", "prompt_source_too_large", "provider_error", "provider_rejected", "provider_unavailable", "rate_limited", "replay_cursor_invalid", "replay_unavailable", "revision_conflict", "run_finished", "run_not_found", "run_not_root", "run_waiting", "session_busy", "session_has_active_run", "session_not_found", "skill_not_found", "skill_unavailable", "stale_segment", "timeout", "tool_canceled", "tool_failed", "unsupported_mime", "vcs_unavailable", "workspace_unavailable"}, "^plugin:[a-z0-9][a-z0-9._-]*/[a-z0-9][a-z0-9._-]*$"),
+		unionTag("type", string(p.Type), []string{"agent_stuck", "capability_not_negotiated", "checkpoint_conflict", "checkpoint_unavailable", "child_run_canceled", "denied_by_user", "export_too_large", "idempotency_conflict", "idempotency_in_progress", "idempotency_store_mismatch", "internal_error", "interrupt_not_open", "invalid_credentials", "invalid_params", "invalid_protocol_version", "invalid_request", "item_not_found", "mcp_authorization_attempt_not_found", "mcp_owned_by_installation", "mcp_server_already_exists", "mcp_server_disabled", "mcp_server_not_found", "method_not_found", "path_outside_root", "plugin_changed", "plugin_command_retired", "plugin_disabled", "plugin_in_use", "plugin_not_found", "plugin_stale", "plugin_unavailable", "project_not_found", "prompt_rejected", "prompt_source_too_large", "provider_error", "provider_rejected", "provider_unavailable", "rate_limited", "replay_cursor_invalid", "replay_unavailable", "revision_conflict", "run_finished", "run_not_found", "run_not_root", "run_waiting", "session_busy", "session_has_active_run", "session_not_found", "skill_not_found", "skill_unavailable", "stale_segment", "timeout", "tool_canceled", "tool_failed", "unsupported_mime", "vcs_unavailable", "workspace_unavailable"}, "^plugin:[a-z0-9][a-z0-9._-]*/[a-z0-9][a-z0-9._-]*$"),
 		forbiddenWhen(object.equals("type", "agent_stuck"), "requiredCapabilities", object),
 		forbiddenWhen(object.equals("type", "agent_stuck"), "retryAfterSeconds", object),
 		forbiddenWhen(object.equals("type", "agent_stuck"), "errors", object),
@@ -1193,6 +1193,10 @@ func (p ProblemData) validateWire(object wireObject) []FieldError {
 		forbiddenWhen(object.equals("type", "project_not_found"), "retryAfterSeconds", object),
 		forbiddenWhen(object.equals("type", "project_not_found"), "errors", object),
 		forbiddenWhen(object.equals("type", "project_not_found"), "activeRun", object),
+		forbiddenWhen(object.equals("type", "prompt_rejected"), "requiredCapabilities", object),
+		forbiddenWhen(object.equals("type", "prompt_rejected"), "retryAfterSeconds", object),
+		forbiddenWhen(object.equals("type", "prompt_rejected"), "errors", object),
+		forbiddenWhen(object.equals("type", "prompt_rejected"), "activeRun", object),
 		forbiddenWhen(object.equals("type", "prompt_source_too_large"), "requiredCapabilities", object),
 		forbiddenWhen(object.equals("type", "prompt_source_too_large"), "retryAfterSeconds", object),
 		forbiddenWhen(object.equals("type", "prompt_source_too_large"), "errors", object),

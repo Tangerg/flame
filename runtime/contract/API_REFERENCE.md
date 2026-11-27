@@ -30,7 +30,7 @@ Protocol `2026-11-27.13` · 108 methods
 | `projects.update` | command | unary | replayResponse | none | none | — | — | `project_not_found`, `revision_conflict` |
 | `modelInvocations.endpoints` | query | unary | none | none | cursor | — | — | `capability_not_negotiated` |
 | `modelInvocations.list` | query | unary | none | none | cursor | — | — | `run_not_found`, `capability_not_negotiated` |
-| `runs.start` | command | stream | ownerRun | run | none | — | — | `plugin_unavailable`, `plugin_stale`, `session_not_found`, `project_not_found`, `session_busy`, `session_has_active_run`, `prompt_source_too_large`, `unsupported_mime`, `capability_not_negotiated`, `plugin_changed` |
+| `runs.start` | command | stream | ownerRun | run | none | — | — | `plugin_unavailable`, `plugin_stale`, `session_not_found`, `project_not_found`, `session_busy`, `session_has_active_run`, `prompt_source_too_large`, `prompt_rejected`, `unsupported_mime`, `capability_not_negotiated`, `plugin_changed` |
 | `runs.resume` | command | stream | ownerRun | run | none | — | — | `run_not_found`, `interrupt_not_open`, `capability_not_negotiated`, `plugin_changed` |
 | `runs.subscribe` | subscription | stream | none | run | none | — | — | `run_not_found`, `run_not_root`, `run_waiting`, `run_finished`, `stale_segment`, `replay_cursor_invalid`, `replay_unavailable`, `capability_not_negotiated` |
 | `runs.cancel` | command | unary | replayResponse | none | none | — | — | `run_not_found`, `run_finished`, `session_busy`, `capability_not_negotiated` |
@@ -199,6 +199,7 @@ publish one namespaced pattern branch without weakening first-party tags.
 | `plugin_stale` | — | `detail`, `docUrl` |
 | `plugin_unavailable` | — | `detail`, `docUrl` |
 | `project_not_found` | — | `detail`, `docUrl` |
+| `prompt_rejected` | — | `detail`, `docUrl` |
 | `prompt_source_too_large` | — | `detail`, `docUrl` |
 | `provider_error` | — | `detail`, `docUrl` |
 | `provider_rejected` | — | `detail`, `docUrl` |
