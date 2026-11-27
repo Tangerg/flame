@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -19,7 +20,8 @@ import (
 	"github.com/Tangerg/scope/core/chatclient"
 )
 
-func TestTaskWorktreesKeepSeparateChangesAndHandoffAfterRestart(t *testing.T) {
+func taskWorktreeTestRepository(t *testing.T) (string, func(...string) string) {
+	t.Helper()
 	source := t.TempDir()
 	git := func(args ...string) string {
 		t.Helper()
@@ -34,6 +36,12 @@ func TestTaskWorktreesKeepSeparateChangesAndHandoffAfterRestart(t *testing.T) {
 		}
 		return strings.TrimSpace(string(raw))
 	}
+	git("init", "--quiet", "--template=", "--initial-branch=target")
+	return source, git
+}
+
+func TestTaskWorktreesKeepSeparateChangesAndHandoffAfterRestart(t *testing.T) {
+	source, git := taskWorktreeTestRepository(t)
 	write := func(root, name string, body []byte) {
 		t.Helper()
 		if err := os.WriteFile(filepath.Join(root, name), body, 0o600); err != nil {
@@ -47,7 +55,6 @@ func TestTaskWorktreesKeepSeparateChangesAndHandoffAfterRestart(t *testing.T) {
 			t.Fatalf("%s in %s = %q, %v", name, root, got, err)
 		}
 	}
-	git("init", "--quiet", "--template=", "--initial-branch=target")
 	write(source, "shared.txt", []byte("base\n"))
 	write(source, ".gitignore", []byte("setup.marker\n"))
 	git("add", ".")
@@ -223,4 +230,58 @@ func TestTaskWorktreesKeepSeparateChangesAndHandoffAfterRestart(t *testing.T) {
 		t.Fatalf("released workspace still exists: %v", err)
 	}
 	requireContents(source, "shared.txt", []byte("second task updated\n"))
+}
+
+func TestTaskWorktreesKeepListingWhenAMovedCheckoutPathIsReused(t *testing.T) {
+	source, git := taskWorktreeTestRepository(t)
+	git("commit", "--quiet", "--allow-empty", "-m", "initial snapshot")
+	cfg := poMCPConfig(t)
+	cfg.defaultWorkspacePath = source
+	r := poMCPOpen(t, cfg)
+
+	request := protocol.CreateTaskWorktreeRequest{Source: protocol.WorkspaceRef{Path: source}, Base: "target"}
+	moved := r.must(delivery.TaskWorktreesCreate, request, "move-task-worktree").(*protocol.TaskWorktree)
+	retained := r.must(delivery.TaskWorktreesCreate, request, "retain-task-worktree").(*protocol.TaskWorktree)
+	newPath := filepath.Join(t.TempDir(), "moved")
+	git("worktree", "move", "--", moved.Workspace.Path, newPath)
+	if err := os.Mkdir(moved.Workspace.Path, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	replacement := filepath.Join(moved.Workspace.Path, "notes.txt")
+	const notes = "keep these notes"
+	if err := os.WriteFile(replacement, []byte(notes), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	requireUnavailable := func(releaseKey string) {
+		t.Helper()
+		list := r.must(delivery.TaskWorktreesList, struct{}{}, "").(*protocol.Page[protocol.TaskWorktree])
+		if len(list.Data) != 2 ||
+			!slices.ContainsFunc(list.Data, func(task protocol.TaskWorktree) bool { return task.ID == moved.ID && !task.Available }) ||
+			!slices.ContainsFunc(list.Data, func(task protocol.TaskWorktree) bool { return task.ID == retained.ID && task.Available }) {
+			t.Fatalf("worktree catalog lost the retained and moved entries: %+v", list.Data)
+		}
+		release := r.endpoint.Invoke(t.Context(), delivery.TaskWorktreesRelease, protocol.TaskWorktreeRequest{ID: moved.ID},
+			protocol.CallMetadata{IdempotencyKey: releaseKey})
+		if release.Failure == nil || !errors.Is(release.Failure, protocol.ErrRevisionConflict) {
+			t.Fatalf("release did not report the replaced checkout: %v", release.Failure)
+		}
+	}
+
+	requireUnavailable("release-plain-replacement")
+	contents, err := os.ReadFile(replacement)
+	if err != nil || string(contents) != notes {
+		t.Fatalf("replacement directory lost its contents: %q, %v", contents, err)
+	}
+	if err := os.Rename(moved.Workspace.Path, filepath.Join(t.TempDir(), "notes")); err != nil {
+		t.Fatal(err)
+	}
+	git("worktree", "add", "--quiet", "--detach", "--", moved.Workspace.Path, moved.Base)
+	requireUnavailable("release-unowned-git-replacement")
+	if _, err := os.Stat(filepath.Join(moved.Workspace.Path, ".git")); err != nil {
+		t.Fatalf("replacement worktree lost its Git checkout: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(newPath, ".git")); err != nil {
+		t.Fatalf("moved worktree lost its Git checkout: %v", err)
+	}
 }

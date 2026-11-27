@@ -20,6 +20,7 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	"github.com/Tangerg/flame/packages/go-sdk/sandbox"
 	work "github.com/Tangerg/flame/runtime/internal/application/workspace"
+	"github.com/Tangerg/flame/runtime/internal/infra/git"
 	"github.com/Tangerg/flame/runtime/internal/infra/git/process"
 	toolshell "github.com/Tangerg/scope/tools/shell"
 )
@@ -27,6 +28,7 @@ import (
 const (
 	taskManifest  = "task.json"
 	taskCheckout  = "checkout"
+	taskCustody   = "flame-task-id"
 	maxHandoff    = 512 << 10
 	maxTaskRecord = 16 << 10
 )
@@ -96,6 +98,15 @@ func (b *TaskWorktrees) Create(ctx context.Context, path, base, setup string) (w
 	checkout := filepath.Join(b.root, record.ID, taskCheckout)
 	if _, err := taskGitValue(ctx, source, "worktree", "add", "--detach", "--quiet", "--", checkout, commit); err != nil {
 		return work.TaskWorktree{}, err
+	}
+	custody, err := taskCustodyPath(ctx, checkout)
+	if err != nil {
+		return work.TaskWorktree{}, err
+	}
+	// Git removes the registration and its custody stamp together. A new
+	// checkout can reuse both the working path and Git's registration name.
+	if err := os.WriteFile(custody, []byte(record.ID), filesystem.PrivateFileMode); err != nil {
+		return work.TaskWorktree{}, fmt.Errorf("workspace: record task worktree custody: %w", err)
 	}
 	if record.Setup != nil {
 		limited, cancel := context.WithTimeout(ctx, 90*time.Second)
@@ -207,15 +218,28 @@ func (b *TaskWorktrees) inspect(ctx context.Context, record taskRecord) (work.Ta
 	if !info.IsDir() {
 		return task, nil
 	}
+	if repository, err := git.IsRepo(ctx, checkout); err != nil || !repository {
+		return task, err
+	}
 	top, err := taskGitValue(ctx, checkout, "rev-parse", "--show-toplevel")
 	if err != nil {
 		return work.TaskWorktree{}, err
 	}
-	current, err := taskCommonDir(ctx, checkout)
+	if top != checkout {
+		return task, nil
+	}
+	custody, err := taskCustodyPath(ctx, checkout)
 	if err != nil {
 		return work.TaskWorktree{}, err
 	}
-	task.Available = current == record.Common && top == checkout
+	owner, err := os.ReadFile(custody)
+	if errors.Is(err, os.ErrNotExist) {
+		return task, nil
+	}
+	if err != nil {
+		return work.TaskWorktree{}, fmt.Errorf("workspace: read task worktree custody: %w", err)
+	}
+	task.Available = string(owner) == record.ID
 	return task, nil
 }
 
@@ -342,6 +366,14 @@ func taskCommonDir(ctx context.Context, path string) (string, error) {
 		return "", err
 	}
 	return filepath.EvalSymlinks(common)
+}
+
+func taskCustodyPath(ctx context.Context, checkout string) (string, error) {
+	gitDir, err := taskGitValue(ctx, checkout, "rev-parse", "--absolute-git-dir")
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(gitDir, taskCustody), nil
 }
 
 func taskGitValue(ctx context.Context, path string, args ...string) (string, error) {
