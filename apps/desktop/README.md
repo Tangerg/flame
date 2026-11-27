@@ -65,6 +65,9 @@ reuses the SDK's pure `wiregen` Schema/TypeScript renderer and emits the Web met
 type and Zod projection. Unsupported types or schema keywords fail generation.
 The notification permission projection is generated in Web foundation so Browser
 does not depend on the native platform adapter.
+On macOS, authorization reads the operating system's full notification setting.
+Desktop asks for permission only while that setting is undecided, then reads
+the same setting again. Wails owns the request, delivery and opened callbacks.
 
 From `apps/desktop`, regenerate the bridge with:
 
