@@ -1,11 +1,9 @@
 import {
   mutationSettlementIsUnknown,
   isErrorType,
-  type ComponentContext,
   type ComponentSource,
   watchRuntimeTopics,
 } from "@flame/component-sdk";
-import type { MutationPromise } from "@flame/runtime-client";
 import type {
   ApprovalRule,
   MCPAuthorizationAttempt,
@@ -25,22 +23,23 @@ import {
 } from "./model";
 import { MCPServerEdit } from "./draft";
 import { parseMcpImport } from "./import";
-
-type SettingsContext = Pick<
-  ComponentContext,
-  "component" | "runtime" | "signal" | "track"
->;
+import {
+  CommandBatch,
+  type CommandStep,
+  type SettingsContext,
+} from "./command";
 
 export type Read<T> =
   | { phase: "loading"; data?: T }
   | { phase: "ready"; data: T }
   | { phase: "failed"; data?: T; error: unknown };
-export type Command =
-  { phase: "running" } | { phase: "unknown"; error: unknown };
+type Command =
+  | { readonly phase: "running" }
+  | { readonly phase: "unknown"; readonly error: unknown };
+type ActiveCommand = Command & { readonly batch: CommandBatch };
 export type Feedback =
   | { kind: "error"; error: unknown }
-  | { kind: "tested"; outcome: MCPTestResult["outcome"] }
-  | { kind: "imported"; count: number };
+  | { kind: "tested"; outcome: MCPTestResult["outcome"] };
 interface AuthorizationObservation {
   server: MCPServerID;
   reference: MCPAuthorizationAttemptRef;
@@ -67,21 +66,11 @@ interface Snapshot {
   probing: ReadonlySet<string>;
   authorizations: ReadonlyMap<string, AuthorizationObservation>;
   importText: string;
-  importProgress?: { completed: number; total: number };
+  importProgress?: CommandBatch["progress"];
   observationFailure?: { error: unknown };
 }
-interface Step {
-  execute(context: SettingsContext): MutationPromise<unknown>;
-  accept?(value: unknown): void;
-}
-interface Batch {
-  resources: string[];
-  steps: Step[];
-  next: number;
-  original?: MutationPromise<unknown>;
-  // The initiating workflow continues once every step settled, including
-  // after a recovered unknown outcome.
-  settled?(context: SettingsContext): void;
+interface SettingsState extends Snapshot {
+  commands: ReadonlyMap<string, ActiveCommand>;
 }
 const ADD = "add";
 export const IMPORT = "import";
@@ -89,7 +78,7 @@ export const editorKey = (server?: MCPServerID) =>
   server ? serverKey(server) : ADD;
 export const toolPolicyKey = (server: MCPServerID) =>
   `tools:${serverKey(server)}`;
-const initial = (): Snapshot => ({
+const initial = (): SettingsState => ({
   servers: { phase: "loading" },
   tools: new Map(),
   exposure: new Map(),
@@ -106,10 +95,9 @@ export class MCPSettings {
   readonly #source: ComponentSource;
   readonly #listeners = new Set<() => void>();
   readonly #reads = new Map<string, AbortController>();
-  readonly #batches = new Map<string, Batch>();
   readonly #polling = new Map<MCPAuthorizationAttemptRef, AbortSignal>();
   #snapshot = initial();
-  #import?: ReturnType<typeof parseMcpImport>;
+  #import?: CommandBatch;
   constructor(source: ComponentSource) {
     source.signal.throwIfAborted();
     this.#source = source;
@@ -118,7 +106,6 @@ export class MCPSettings {
       () => {
         for (const read of this.#reads.values()) read.abort();
         this.#reads.clear();
-        this.#batches.clear();
         this.#polling.clear();
         this.#import = undefined;
         this.#snapshot = initial();
@@ -127,7 +114,7 @@ export class MCPSettings {
       { once: true },
     );
   }
-  getSnapshot = () => this.#snapshot;
+  getSnapshot = (): Snapshot => this.#snapshot;
   subscribe = (listener: () => void) => {
     this.#listeners.add(listener);
     return () => this.#listeners.delete(listener);
@@ -251,9 +238,9 @@ export class MCPSettings {
     return this.#start(
       context,
       key,
-      [serverKey(target)],
-      [
+      new CommandBatch([
         {
+          resource: serverKey(target),
           execute: (context) =>
             server
               ? context.runtime.mcp.update(updateRequest(server, update!))
@@ -269,7 +256,7 @@ export class MCPSettings {
             }
           },
         },
-      ],
+      ]),
     );
   }
   remove(context: SettingsContext, server: MCPServerID) {
@@ -277,9 +264,9 @@ export class MCPSettings {
     return this.#start(
       context,
       key,
-      [key],
-      [
+      new CommandBatch([
         {
+          resource: key,
           execute: (context) => context.runtime.mcp.delete(server),
           accept: () => {
             const drafts = new Map(this.#snapshot.drafts);
@@ -287,7 +274,7 @@ export class MCPSettings {
             this.#snapshot = { ...this.#snapshot, drafts };
           },
         },
-      ],
+      ]),
     );
   }
   setEnabled(context: SettingsContext, server: MCPServerID, enabled: boolean) {
@@ -295,12 +282,12 @@ export class MCPSettings {
     return this.#start(
       context,
       key,
-      [key],
-      [
+      new CommandBatch([
         {
+          resource: key,
           execute: (context) => context.runtime.mcp.update({ server, enabled }),
         },
-      ],
+      ]),
     );
   }
   reconnect(context: SettingsContext, server: MCPServerID) {
@@ -308,12 +295,12 @@ export class MCPSettings {
     return this.#start(
       context,
       key,
-      [key],
-      [
+      new CommandBatch([
         {
+          resource: key,
           execute: (context) => context.runtime.mcp.reconnect(server),
         },
-      ],
+      ]),
     );
   }
   setExposure(
@@ -325,13 +312,13 @@ export class MCPSettings {
     return this.#start(
       context,
       toolPolicyKey(server),
-      [serverKey(server)],
-      [
+      new CommandBatch([
         {
+          resource: serverKey(server),
           execute: (context) =>
             context.runtime.mcp.setToolExposure({ server, name, disabled }),
         },
-      ],
+      ]),
     );
   }
   setAutoApprove(
@@ -343,8 +330,10 @@ export class MCPSettings {
     const rules = this.#snapshot.rules;
     if (rules.phase !== "ready") return Promise.resolve(false);
     const existing = this.autoApproveRule(server, name);
-    const step: Step | undefined = on
+    const resource = serverKey(server);
+    const step: CommandStep | undefined = on
       ? {
+          resource,
           execute: (context) =>
             context.runtime.approval.setRule({
               tool: { type: "mcp", server, name },
@@ -354,6 +343,7 @@ export class MCPSettings {
             }),
         }
       : existing && {
+          resource,
           execute: (context) =>
             context.runtime.approval.forgetRule(existing.id),
         };
@@ -361,8 +351,7 @@ export class MCPSettings {
     return this.#start(
       context,
       toolPolicyKey(server),
-      [serverKey(server)],
-      [step],
+      new CommandBatch([step]),
     );
   }
   autoApproveRule(server: MCPServerID, name: string) {
@@ -381,35 +370,29 @@ export class MCPSettings {
     return this.#start(
       context,
       key,
-      [key],
-      [
+      new CommandBatch([
         {
+          resource: key,
           execute: (context) =>
             context.runtime.mcp.authorizationAttempts.create(
               server,
               context.signal,
             ),
-          accept: (value) => {
+          accept: (context, value) => {
             const reference = value as MCPAuthorizationAttemptRef;
+            const authorization = { server, reference };
             this.#snapshot = {
               ...this.#snapshot,
-              authorizations: new Map(this.#snapshot.authorizations).set(key, {
-                server,
-                reference,
-              }),
+              authorizations: new Map(this.#snapshot.authorizations).set(
+                key,
+                authorization,
+              ),
             };
+            if (!context.signal.aborted)
+              this.#poll(context, authorization, context.signal);
           },
         },
-      ],
-      (context) => {
-        const authorization = this.#snapshot.authorizations.get(key);
-        if (
-          !context.signal.aborted &&
-          authorization &&
-          shouldObserveAuthorization(authorization)
-        )
-          this.#poll(context, authorization, context.signal);
-      },
+      ]),
     );
   }
   async test(context: SettingsContext, key: string, draft: MCPServerEdit) {
@@ -450,117 +433,81 @@ export class MCPSettings {
   }
   setImportText(context: SettingsContext, text: string) {
     this.#assert(context);
-    if (this.#batches.has(IMPORT)) return;
+    if (this.#snapshot.commands.has(IMPORT)) return;
     this.#import = undefined;
-    this.#snapshot = {
-      ...this.#snapshot,
-      importText: text,
-      importProgress: undefined,
-    };
+    this.#snapshot = { ...this.#snapshot, importText: text };
     this.#feedback(IMPORT);
     this.#publish();
   }
   importServers(context: SettingsContext) {
     this.#assert(context);
-    if (this.#batches.has(IMPORT)) return Promise.resolve(false);
-    this.#import ??= parseMcpImport(this.#snapshot.importText);
-    const parsed = this.#import;
-    const completed = this.#snapshot.importProgress?.completed ?? 0;
-    this.#snapshot = {
-      ...this.#snapshot,
-      importProgress: { completed, total: parsed.length },
-    };
-    return this.#start(
-      context,
-      IMPORT,
-      parsed.slice(completed).map((s) => serverKey(userMCPServer(s.name))),
-      parsed.slice(completed).map((input) => ({
+    this.#import ??= new CommandBatch(
+      parseMcpImport(this.#snapshot.importText).map((input) => ({
+        resource: serverKey(userMCPServer(input.name)),
         execute: (context) => context.runtime.mcp.create(candidate(input)),
-        accept: () => {
-          this.#snapshot = {
-            ...this.#snapshot,
-            importProgress: {
-              completed: (this.#snapshot.importProgress?.completed ?? 0) + 1,
-              total: parsed.length,
-            },
-          };
-        },
       })),
-      () => {
-        this.#feedback(IMPORT, { kind: "imported", count: parsed.length });
-        this.#publish();
-      },
     );
+    return this.#start(context, IMPORT, this.#import);
   }
   busy(resource: string): boolean {
-    return [...this.#batches].some(
-      ([key, batch]) => key === resource || batch.resources.includes(resource),
+    return [...this.#snapshot.commands].some(
+      ([key, { batch }]) =>
+        key === resource ||
+        batch.someRemainingResource((name) => name === resource),
     );
   }
   recover(context: SettingsContext, key: string) {
     this.#assert(context);
-    const batch = this.#batches.get(key);
-    if (!batch || this.#snapshot.commands.get(key)?.phase !== "unknown")
-      return Promise.resolve(false);
-    return this.#run(context, key, batch);
+    const command = this.#snapshot.commands.get(key);
+    if (command?.phase !== "unknown") return Promise.resolve(false);
+    return this.#run(context, key, command.batch);
   }
-  #start(
-    context: SettingsContext,
-    key: string,
-    resources: string[],
-    steps: Step[],
-    settled?: Batch["settled"],
-  ) {
+  #start(context: SettingsContext, key: string, batch: CommandBatch) {
     this.#assert(context);
     if (
+      batch.complete ||
       this.busy(key) ||
-      resources.some(
+      this.#snapshot.probing.has(key) ||
+      batch.someRemainingResource(
         (resource) =>
           this.busy(resource) || this.#snapshot.probing.has(resource),
-      ) ||
-      this.#snapshot.probing.has(key)
+      )
     )
       return Promise.resolve(false);
     this.#feedback(key);
-    const batch: Batch = { resources, steps, next: 0, settled };
-    this.#batches.set(key, batch);
     return this.#run(context, key, batch);
   }
-  async #run(context: SettingsContext, key: string, batch: Batch) {
-    this.#command(key, { phase: "running" });
-    try {
-      while (batch.next < batch.steps.length) {
-        context.signal.throwIfAborted();
-        const step = batch.steps[batch.next]!;
-        const result = batch.original
-          ? await context.track(() =>
-              batch.original!.retry({ signal: context.signal }),
-            )
-          : await (batch.original = context.track(() => step.execute(context)));
-        if (this.#source.signal.aborted || this.#batches.get(key) !== batch)
-          return false;
-        step.accept?.(result);
-        batch.next++;
-        batch.original = undefined;
-        this.#publish();
-      }
-      this.#batches.delete(key);
-      this.#command(key);
-      if (!context.signal.aborted) this.refresh(context);
-      batch.settled?.(context);
-      return true;
-    } catch (error) {
-      if (this.#source.signal.aborted || this.#batches.get(key) !== batch)
+  async #run(context: SettingsContext, key: string, batch: CommandBatch) {
+    const running: ActiveCommand = { phase: "running", batch };
+    this.#command(key, running);
+    while (!batch.complete) {
+      let result: unknown;
+      try {
+        result = await batch.observe(context);
+      } catch (error) {
+        if (this.#snapshot.commands.get(key) !== running) return false;
+        const observationCanceled =
+          context.signal.aborted && error === context.signal.reason;
+        if (
+          batch.hasOriginal &&
+          (mutationSettlementIsUnknown(error) || observationCanceled)
+        ) {
+          this.#command(key, { phase: "unknown", batch, error });
+        } else {
+          batch.releaseOriginal();
+          if (!observationCanceled)
+            this.#feedback(key, { kind: "error", error });
+          this.#command(key);
+        }
         return false;
-      if (mutationSettlementIsUnknown(error) || context.signal.aborted)
-        this.#command(key, { phase: "unknown", error });
-      else {
-        this.#batches.delete(key);
-        this.#feedback(key, { kind: "error", error });
-        this.#command(key);
       }
-      return false;
+      if (this.#snapshot.commands.get(key) !== running) return false;
+      batch.accept(context, result);
+      if (!batch.complete) this.#publish();
     }
+    this.#command(key);
+    if (!context.signal.aborted) this.refresh(context);
+    return true;
   }
   retryAuthorization(context: SettingsContext, server: MCPServerID) {
     this.#assert(context);
@@ -681,7 +628,7 @@ export class MCPSettings {
     )
       throw new Error("mcp settings belong to another installed source");
   }
-  #command(key: string, value?: Command) {
+  #command(key: string, value?: ActiveCommand) {
     const commands = new Map(this.#snapshot.commands);
     if (value) commands.set(key, value);
     else commands.delete(key);
@@ -695,6 +642,10 @@ export class MCPSettings {
     this.#snapshot = { ...this.#snapshot, feedback };
   }
   #publish() {
+    this.#snapshot = {
+      ...this.#snapshot,
+      importProgress: this.#import?.progress,
+    };
     for (const listener of this.#listeners) listener();
   }
 }
