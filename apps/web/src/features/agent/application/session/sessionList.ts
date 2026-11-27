@@ -8,12 +8,12 @@ export function useReconcilePersistedAgentSessions(): void {
   const { data, isSuccess } = useAgentSessions();
   const restored = useRef(false);
   useEffect(() => {
-    if (!isSuccess || !data) return;
     const { state, runtime, commands } = agentAccess;
     if (!restored.current) {
       restored.current = true;
       state.restoreLastSession();
     }
+    if (!isSuccess || !data) return;
     const known = new Set(data.map(({ id }) => id));
     const { activeSessionId, openSessionIds } = state.getLifecycleSnapshot();
     const candidates = new Set(openSessionIds);
