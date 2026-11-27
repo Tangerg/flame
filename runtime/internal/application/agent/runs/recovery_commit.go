@@ -14,8 +14,8 @@ import (
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
-func newRecoveryCommit(input RecoveryCommitInput) (RecoveryCommit, error) {
-	state := cloneRecoveryCommitInput(input)
+func newRecoveryCommit(input recoveryChanges) (RecoveryCommit, error) {
+	state := cloneRecoveryChanges(input)
 	commit := RecoveryCommit{state: state}
 	if err := commit.Validate(); err != nil {
 		return RecoveryCommit{}, err
@@ -23,16 +23,14 @@ func newRecoveryCommit(input RecoveryCommitInput) (RecoveryCommit, error) {
 	return commit, nil
 }
 
-func cloneRecoveryCommitInput(state RecoveryCommitInput) RecoveryCommitInput {
+func cloneRecoveryChanges(state recoveryChanges) recoveryChanges {
 	state.LostRuns = slices.Clone(state.LostRuns)
 	state.ItemReplacements = slices.Clone(state.ItemReplacements)
 	state.ConversationTransitions = cloneRecoveryConversationTransitions(state.ConversationTransitions)
 	state.ModelInvocations = cloneRecoveryModels(state.ModelInvocations)
 	state.IndependentEndpoints = slices.Clone(state.IndependentEndpoints)
 	state.ToolInvocations = slices.Clone(state.ToolInvocations)
-	state.DeleteInterrupts = slices.Clone(state.DeleteInterrupts)
 	state.PreservedSessionIDs = slices.Clone(state.PreservedSessionIDs)
-	state.DeleteCheckpointSessionIDs = slices.Clone(state.DeleteCheckpointSessionIDs)
 	return state
 }
 
@@ -80,16 +78,14 @@ func (r RecoveryCommit) GoalRuns() []rundomain.Run {
 	return charged
 }
 
-func (r RecoveryCommit) DeleteInterrupts() []identity.RunID {
-	return slices.Clone(r.state.DeleteInterrupts)
-}
-
-func (r RecoveryCommit) PreservedSessionIDs() []identity.SessionID {
-	return slices.Clone(r.state.PreservedSessionIDs)
-}
-
-func (r RecoveryCommit) DeleteCheckpointSessionIDs() []identity.SessionID {
-	return slices.Clone(r.state.DeleteCheckpointSessionIDs)
+func (r RecoveryCommit) LostRoots() []rundomain.Run {
+	var roots []rundomain.Run
+	for _, recovery := range r.state.LostRuns {
+		if lost := recovery.State(); lost.Lineage().IsRoot() {
+			roots = append(roots, lost)
+		}
+	}
+	return roots
 }
 
 func (r RecoveryCommit) Validate() error {
@@ -98,7 +94,7 @@ func (r RecoveryCommit) Validate() error {
 	if err != nil {
 		return err
 	}
-	lostSessionIDs := r.lostRootSessionIDs()
+	lostSessionIDs := r.LostRootSessionIDs()
 	for index := 1; index < len(lostSessionIDs); index++ {
 		if lostSessionIDs[index-1] == lostSessionIDs[index] {
 			return fmt.Errorf("runs: recovery commit loses two root Runs in Session %q", lostSessionIDs[index])
@@ -127,10 +123,7 @@ func (r RecoveryCommit) Validate() error {
 	if err := validateRecoveryToolInvocations(state.ToolInvocations, lost.byID, recoveredSessions, replacedItems); err != nil {
 		return err
 	}
-	if err := validateRecoveryInterruptDeletions(state.DeleteInterrupts, lost.byID); err != nil {
-		return err
-	}
-	return validateRecoveryCheckpointDeletions(state.DeleteCheckpointSessionIDs, lostSessionIDs)
+	return nil
 }
 
 type lostRunTrees struct {
@@ -456,50 +449,6 @@ func validateRecoveryClosureMessages(rootID identity.RunID, messages []corechat.
 	return nil
 }
 
-func validateRecoveryInterruptDeletions(
-	values []identity.RunID,
-	lostByID map[identity.RunID]rundomain.Replacement,
-) error {
-	expected := make(map[identity.RunID]struct{})
-	for _, recovery := range lostByID {
-		if lost := recovery.State(); lost.Lineage().IsRoot() {
-			expected[lost.ID()] = struct{}{}
-		}
-	}
-	for index, rootRunID := range values {
-		if err := rootRunID.Validate(); err != nil {
-			return fmt.Errorf("runs: recovery commit interrupt deletion[%d]: %w", index, err)
-		}
-		if _, found := expected[rootRunID]; !found {
-			return fmt.Errorf("runs: recovery commit interrupt deletion %q is not owned by a lost root Run", rootRunID)
-		}
-		if index > 0 && values[index-1].Compare(rootRunID) >= 0 {
-			return errors.New("runs: recovery commit interrupt deletions are not in canonical order")
-		}
-	}
-	if len(values) != len(expected) {
-		return fmt.Errorf("runs: recovery commit has %d interrupt deletions, want %d lost roots", len(values), len(expected))
-	}
-	return nil
-}
-
-func validateRecoveryCheckpointDeletions(
-	values []identity.SessionID,
-	expected []identity.SessionID,
-) error {
-	if err := validateCanonicalSessionIdentities("checkpoint deletion Session", values); err != nil {
-		return err
-	}
-	if !slices.Equal(values, expected) {
-		return fmt.Errorf(
-			"runs: recovery commit checkpoint deletion Sessions %v differ from lost tree Sessions %v",
-			values,
-			expected,
-		)
-	}
-	return nil
-}
-
 func validateCanonicalSessionIdentities(name string, values []identity.SessionID) error {
 	for index, value := range values {
 		if err := value.Validate(); err != nil {
@@ -512,19 +461,18 @@ func validateCanonicalSessionIdentities(name string, values []identity.SessionID
 	return nil
 }
 
-func (r RecoveryCommit) lostRootSessionIDs() []identity.SessionID {
-	values := make([]identity.SessionID, 0, len(r.state.LostRuns))
-	for _, recovery := range r.state.LostRuns {
-		if lost := recovery.State(); lost.Lineage().IsRoot() {
-			values = append(values, lost.SessionID())
-		}
+func (r RecoveryCommit) LostRootSessionIDs() []identity.SessionID {
+	roots := r.LostRoots()
+	values := make([]identity.SessionID, 0, len(roots))
+	for _, root := range roots {
+		values = append(values, root.SessionID())
 	}
 	slices.SortFunc(values, identity.SessionID.Compare)
 	return values
 }
 
 func (r RecoveryCommit) RecoveredSessionIDs() []identity.SessionID {
-	values := append(r.lostRootSessionIDs(), r.state.PreservedSessionIDs...)
+	values := append(r.LostRootSessionIDs(), r.state.PreservedSessionIDs...)
 	slices.SortFunc(values, identity.SessionID.Compare)
 	return values
 }

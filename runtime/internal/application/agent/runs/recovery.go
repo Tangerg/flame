@@ -43,21 +43,17 @@ type recoveryAdmissions interface {
 }
 
 type RecoveryCommit struct {
-	state RecoveryCommitInput
+	state recoveryChanges
 }
 
-// A value because its two Session-identity members carry opposite checkpoint
-// authority and must not be transposable.
-type RecoveryCommitInput struct {
-	LostRuns                   []rundomain.Replacement
-	ItemReplacements           []transcript.Replacement
-	ConversationTransitions    []RecoveryConversationTransition
-	ModelInvocations           []ModelInvocationRecovery
-	IndependentEndpoints       []modelref.EndpointObservation
-	ToolInvocations            []ToolInvocationRecovery
-	DeleteInterrupts           []identity.RunID
-	PreservedSessionIDs        []identity.SessionID
-	DeleteCheckpointSessionIDs []identity.SessionID
+type recoveryChanges struct {
+	LostRuns                []rundomain.Replacement
+	ItemReplacements        []transcript.Replacement
+	ConversationTransitions []RecoveryConversationTransition
+	ModelInvocations        []ModelInvocationRecovery
+	IndependentEndpoints    []modelref.EndpointObservation
+	ToolInvocations         []ToolInvocationRecovery
+	PreservedSessionIDs     []identity.SessionID
 }
 
 type RecoveryConversationTransition struct {
@@ -179,18 +175,12 @@ func (r *Recovery) publishRecoveredReadModels(commit RecoveryCommit) {
 			changes[lost.SessionID()] = scope
 		}
 		scope.runIDs = append(scope.runIDs, lost.ID())
+		if lost.Lineage().IsRoot() {
+			scope.rootIDs = append(scope.rootIDs, lost.ID())
+		}
 	}
 	if len(changes) == 0 {
 		return
-	}
-	sessionOfRun := make(map[identity.RunID]identity.SessionID)
-	for _, recovery := range commit.LostRuns() {
-		sessionOfRun[recovery.State().ID()] = recovery.State().SessionID()
-	}
-	for _, rootRunID := range commit.DeleteInterrupts() {
-		if scope := changes[sessionOfRun[rootRunID]]; scope != nil {
-			scope.rootIDs = append(scope.rootIDs, rootRunID)
-		}
 	}
 	for _, charged := range commit.GoalRuns() {
 		if scope := changes[charged.SessionID()]; scope != nil {

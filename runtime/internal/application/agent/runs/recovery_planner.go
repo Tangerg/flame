@@ -27,7 +27,7 @@ type recoveryPlanner struct {
 	sessions      map[identity.SessionID]session.Session
 	conversations map[identity.SessionID]conversation.Conversation
 	preserved     map[identity.RunID]struct{}
-	commit        RecoveryCommitInput
+	commit        recoveryChanges
 	finishedAt    time.Time
 }
 
@@ -176,16 +176,14 @@ func (r *recoveryPlanner) plan() (RecoveryCommit, int, error) {
 			r.commit.PreservedSessionIDs = append(r.commit.PreservedSessionIDs, r.trees[open.RootRunID].root.SessionID())
 		}
 	}
-	slices.SortFunc(r.commit.DeleteInterrupts, identity.RunID.Compare)
 	slices.SortFunc(r.commit.ModelInvocations, compareModelInvocationRecoveries)
 	slices.SortFunc(r.commit.ToolInvocations, compareToolInvocationRecoveries)
 	slices.SortFunc(r.commit.PreservedSessionIDs, identity.SessionID.Compare)
-	slices.SortFunc(r.commit.DeleteCheckpointSessionIDs, identity.SessionID.Compare)
 	commit, err := newRecoveryCommit(r.commit)
 	if err != nil {
 		return RecoveryCommit{}, 0, err
 	}
-	return commit, len(commit.LostRuns()), nil
+	return commit, len(r.commit.LostRuns), nil
 }
 
 func compareModelInvocationRecoveries(left, right ModelInvocationRecovery) int {
@@ -260,11 +258,6 @@ func (r *recoveryPlanner) planTree(rootRunID identity.RunID) error {
 			RootRunID: tree.root.ID(), SessionID: tree.root.SessionID(),
 			ExpectedCount: history.Count(), Messages: closure,
 		},
-	)
-	r.commit.DeleteInterrupts = append(r.commit.DeleteInterrupts, tree.root.ID())
-	r.commit.DeleteCheckpointSessionIDs = append(
-		r.commit.DeleteCheckpointSessionIDs,
-		tree.root.SessionID(),
 	)
 	return nil
 }

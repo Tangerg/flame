@@ -187,7 +187,8 @@ func (p *RecoveryStore) recoverLostRuns(ctx context.Context, commit runs.Recover
 }
 
 func (p *RecoveryStore) deleteInterrupts(ctx context.Context, commit runs.RecoveryCommit) error {
-	for _, rootRunID := range commit.DeleteInterrupts() {
+	for _, root := range commit.LostRoots() {
+		rootRunID := root.ID()
 		if err := p.interrupts.Delete(ctx, rootRunID); err != nil {
 			return fmt.Errorf("recovery: delete interrupt for root Run %q: %w", rootRunID, err)
 		}
@@ -196,7 +197,7 @@ func (p *RecoveryStore) deleteInterrupts(ctx context.Context, commit runs.Recove
 }
 
 func (p *RecoveryStore) deleteExecutorCheckpoints(ctx context.Context, commit runs.RecoveryCommit) error {
-	for _, sessionID := range commit.DeleteCheckpointSessionIDs() {
+	for _, sessionID := range commit.LostRootSessionIDs() {
 		if err := p.executorCheckpoints.DeleteSessionCheckpoints(ctx, sessionID); err != nil {
 			return fmt.Errorf("recovery: delete executor checkpoints for Session %q: %w", sessionID, err)
 		}
