@@ -70,8 +70,14 @@ func (s *Handler) StartRun(ctx context.Context, in protocol.StartRunRequest) (*p
 	opening, actor := operation.DetachActor(ctx)
 	if source := in.Background; source != nil {
 		if actor == nil || command.Acceptance == nil || actor.Server().String() != source.Kind ||
-			(source.Kind != "schedules" && source.Kind != "filewatch") {
+			(source.Kind != "schedules" && source.Kind != "filewatch" && source.Kind != "github") {
 			return nil, nil, protocol.NewFailure(protocol.ErrInvalidParams, "background events require an authenticated trigger and a command identity", nil)
+		}
+		if source.Kind == "github" {
+			if in.NewSession == nil || in.NewSession.Workspace == nil {
+				return nil, nil, protocol.NewFailure(protocol.ErrInvalidParams, "github verification requires a dedicated session and workspace", nil)
+			}
+			command.Capabilities.ChildRuns = false
 		}
 		projectID, err := wireIdentity("background.projectId", source.ProjectID, identity.ParseProject)
 		if err != nil {

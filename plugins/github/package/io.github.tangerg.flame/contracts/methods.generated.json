@@ -64,6 +64,14 @@
     "output": "schema.json#/$defs/GetPullRequestV1Output"
   },
   {
+    "name": "flame.github/issue-deliveries.v1",
+    "kind": "query",
+    "target": "installation",
+    "description": "List source-authorized Issue deliveries for the configured Project, including exact SHA evidence and original publication outcomes.",
+    "input": "schema.json#/$defs/IssueDeliveriesV1Input",
+    "output": "schema.json#/$defs/IssueDeliveriesV1Output"
+  },
+  {
     "name": "flame.github/list-check-annotations.v1",
     "kind": "query",
     "target": "installation",
@@ -142,6 +150,14 @@
     "description": "Directly merge a PR with the explicit merge method and inspected head SHA. GitHub enforces protection and permissions. Merge queues and stacked PRs require GitHub's separate asynchronous API and are not supported by this operation. Requires the user's intent and a configured token. Recovery reads the original receipt; an unknown outcome never permits resubmission.",
     "input": "schema.json#/$defs/MergePullRequestV1Input",
     "output": "schema.json#/$defs/MergePullRequestV1Output"
+  },
+  {
+    "name": "flame.github/publish-issue-delivery.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Approve the exact Issue report and publish its captured body as a comment after checking current source authority, evidence and branch head. Requires the user's intent and a configured token. Recovery reads the original receipt; an unknown outcome never permits resubmission.",
+    "input": "schema.json#/$defs/PublishIssueDeliveryV1Input",
+    "output": "schema.json#/$defs/PublishIssueDeliveryV1Output"
   },
   {
     "name": "flame.github/read-file.v1",

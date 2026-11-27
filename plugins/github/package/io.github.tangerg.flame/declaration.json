@@ -18,6 +18,14 @@
       "required": false
     },
     {
+      "id": "issue-delivery",
+      "server": "github",
+      "target": "env",
+      "key": "GITHUB_ISSUE_DELIVERY",
+      "secret": false,
+      "required": false
+    },
+    {
       "id": "webhook-port",
       "server": "github",
       "target": "env",
@@ -61,6 +69,25 @@
       "placement": "workspaceView",
       "entry": "io.github.tangerg.flame/components/component.js",
       "export": "GitHubReviews",
+      "contribution": "github-operations"
+    },
+    {
+      "id": "github-issue-deliveries",
+      "material": "project-issue-deliveries",
+      "title": "Issue deliveries",
+      "localizedTitles": {
+        "zh": "Issue 交付",
+        "zh-TW": "Issue 交付",
+        "de": "Issue-Auslieferungen",
+        "es": "Entregas de issues",
+        "fr": "Livraisons d’issues",
+        "ja": "Issue の成果報告",
+        "ko": "이슈 인도"
+      },
+      "scope": "client",
+      "placement": "workspaceView",
+      "entry": "io.github.tangerg.flame/components/component.js",
+      "export": "GitHubIssueDeliveries",
       "contribution": "github-operations"
     }
   ]

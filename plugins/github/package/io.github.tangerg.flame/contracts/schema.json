@@ -198,7 +198,7 @@
       "properties": {
         "checkRuns": {
           "items": {
-            "$ref": "#/$defs/CheckRun"
+            "$ref": "#/$defs/ListCheckRunsV1OutputWireCheckRun"
           },
           "type": "array"
         },
@@ -214,71 +214,6 @@
       },
       "required": [
         "checkRuns"
-      ],
-      "type": "object"
-    },
-    "CheckRun": {
-      "additionalProperties": false,
-      "properties": {
-        "annotationsCount": {
-          "allOf": [
-            {
-              "maximum": 9223372036854775807,
-              "minimum": -9223372036854775808
-            }
-          ],
-          "type": "integer"
-        },
-        "completedAt": {
-          "$ref": "#/$defs/ListCheckRunsV1OutputInstantTimestamp"
-        },
-        "conclusion": {
-          "type": "string"
-        },
-        "headSha": {
-          "type": "string"
-        },
-        "id": {
-          "allOf": [
-            {
-              "maximum": 9223372036854775807,
-              "minimum": -9223372036854775808
-            }
-          ],
-          "type": "integer"
-        },
-        "name": {
-          "type": "string"
-        },
-        "startedAt": {
-          "$ref": "#/$defs/ListCheckRunsV1OutputInstantTimestamp"
-        },
-        "status": {
-          "type": "string"
-        },
-        "summary": {
-          "type": "string"
-        },
-        "text": {
-          "type": "string"
-        },
-        "title": {
-          "type": "string"
-        },
-        "url": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "id",
-        "name",
-        "headSha",
-        "status",
-        "url",
-        "title",
-        "summary",
-        "text",
-        "annotationsCount"
       ],
       "type": "object"
     },
@@ -1492,6 +1427,358 @@
       ],
       "type": "object"
     },
+    "IssueDeliveriesInput": {
+      "additionalProperties": false,
+      "properties": {
+        "before": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 0,
+          "type": "integer"
+        },
+        "projectId": {
+          "maxLength": 256,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "projectId"
+      ],
+      "type": "object"
+    },
+    "IssueDeliveriesV1Input": {
+      "$ref": "#/$defs/IssueDeliveriesInput"
+    },
+    "IssueDeliveriesV1Output": {
+      "$ref": "#/$defs/IssueDeliveryPage"
+    },
+    "IssueDeliveriesV1OutputInstantTimestamp": {
+      "type": "string"
+    },
+    "IssueDeliveriesV1OutputWireCheckRun": {
+      "additionalProperties": false,
+      "properties": {
+        "annotationsCount": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "completedAt": {
+          "$ref": "#/$defs/IssueDeliveriesV1OutputInstantTimestamp"
+        },
+        "conclusion": {
+          "type": "string"
+        },
+        "headSha": {
+          "type": "string"
+        },
+        "id": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "name": {
+          "type": "string"
+        },
+        "startedAt": {
+          "$ref": "#/$defs/IssueDeliveriesV1OutputInstantTimestamp"
+        },
+        "status": {
+          "type": "string"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "headSha",
+        "status",
+        "url",
+        "title",
+        "summary",
+        "text",
+        "annotationsCount"
+      ],
+      "type": "object"
+    },
+    "IssueDeliveriesV1OutputWireComment": {
+      "additionalProperties": false,
+      "properties": {
+        "author": {
+          "type": "string"
+        },
+        "body": {
+          "type": "string"
+        },
+        "createdAt": {
+          "$ref": "#/$defs/IssueDeliveriesV1OutputInstantTimestamp"
+        },
+        "id": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "updatedAt": {
+          "$ref": "#/$defs/IssueDeliveriesV1OutputInstantTimestamp"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "url",
+        "author",
+        "body",
+        "createdAt",
+        "updatedAt"
+      ],
+      "type": "object"
+    },
+    "IssueDeliveriesV1OutputWireIssueDeliveryReceipt": {
+      "additionalProperties": false,
+      "properties": {
+        "comment": {
+          "$ref": "#/$defs/IssueDeliveriesV1OutputWireComment"
+        },
+        "digest": {
+          "type": "string"
+        },
+        "head": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "head",
+        "digest",
+        "comment"
+      ],
+      "type": "object"
+    },
+    "IssueDeliveriesV1OutputWireProjectCheck": {
+      "additionalProperties": false,
+      "properties": {
+        "command": {
+          "type": "string"
+        },
+        "durationMillis": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "exitCode": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "log": {
+          "type": "string"
+        },
+        "logTruncated": {
+          "type": "boolean"
+        },
+        "name": {
+          "type": "string"
+        },
+        "status": {
+          "allOf": [
+            {
+              "enum": [
+                "pending",
+                "passed",
+                "failed",
+                "timed_out",
+                "unavailable",
+                "not_run"
+              ]
+            }
+          ],
+          "type": "string"
+        },
+        "timeoutSeconds": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "name",
+        "command",
+        "timeoutSeconds",
+        "status"
+      ],
+      "type": "object"
+    },
+    "IssueDeliveriesV1OutputWireProjectVerification": {
+      "additionalProperties": false,
+      "properties": {
+        "checks": {
+          "items": {
+            "$ref": "#/$defs/IssueDeliveriesV1OutputWireProjectCheck"
+          },
+          "type": "array"
+        },
+        "environment": {
+          "type": "string"
+        },
+        "policyDigest": {
+          "type": "string"
+        },
+        "runner": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "environment",
+        "policyDigest",
+        "runner",
+        "checks"
+      ],
+      "type": "object"
+    },
+    "IssueDelivery": {
+      "additionalProperties": false,
+      "properties": {
+        "approvedAt": {
+          "$ref": "#/$defs/IssueDeliveriesV1OutputInstantTimestamp"
+        },
+        "branch": {
+          "type": "string"
+        },
+        "ci": {
+          "$ref": "#/$defs/IssueVerificationCI"
+        },
+        "digest": {
+          "type": "string"
+        },
+        "draft": {
+          "type": "string"
+        },
+        "head": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "issueUrl": {
+          "type": "string"
+        },
+        "number": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        },
+        "project": {
+          "$ref": "#/$defs/IssueDeliveriesV1OutputWireProjectVerification"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "receipt": {
+          "$ref": "#/$defs/IssueDeliveriesV1OutputWireIssueDeliveryReceipt"
+        },
+        "repository": {
+          "maxLength": 256,
+          "minLength": 3,
+          "type": "string"
+        },
+        "runId": {
+          "type": "string"
+        },
+        "sessionId": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "workspace": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "repository",
+        "number",
+        "title",
+        "issueUrl",
+        "branch",
+        "status"
+      ],
+      "type": "object"
+    },
+    "IssueDeliveryPage": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/IssueDelivery"
+          },
+          "type": "array"
+        },
+        "next": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "type": "object"
+    },
     "IssuePage": {
       "additionalProperties": false,
       "properties": {
@@ -1513,6 +1800,25 @@
       },
       "required": [
         "issues"
+      ],
+      "type": "object"
+    },
+    "IssueVerificationCI": {
+      "additionalProperties": false,
+      "properties": {
+        "checks": {
+          "items": {
+            "$ref": "#/$defs/IssueDeliveriesV1OutputWireCheckRun"
+          },
+          "type": "array"
+        },
+        "status": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "status",
+        "checks"
       ],
       "type": "object"
     },
@@ -1574,6 +1880,71 @@
     },
     "ListCheckRunsV1OutputInstantTimestamp": {
       "type": "string"
+    },
+    "ListCheckRunsV1OutputWireCheckRun": {
+      "additionalProperties": false,
+      "properties": {
+        "annotationsCount": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "completedAt": {
+          "$ref": "#/$defs/ListCheckRunsV1OutputInstantTimestamp"
+        },
+        "conclusion": {
+          "type": "string"
+        },
+        "headSha": {
+          "type": "string"
+        },
+        "id": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "name": {
+          "type": "string"
+        },
+        "startedAt": {
+          "$ref": "#/$defs/ListCheckRunsV1OutputInstantTimestamp"
+        },
+        "status": {
+          "type": "string"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "headSha",
+        "status",
+        "url",
+        "title",
+        "summary",
+        "text",
+        "annotationsCount"
+      ],
+      "type": "object"
     },
     "ListCommitStatusesV1Input": {
       "$ref": "#/$defs/ListCommitStatusesV1InputWireCommitInput"
@@ -2412,6 +2783,91 @@
       "required": [
         "sha",
         "message"
+      ],
+      "type": "object"
+    },
+    "PublishIssueDeliveryInput": {
+      "additionalProperties": false,
+      "properties": {
+        "digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "id": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "digest"
+      ],
+      "type": "object"
+    },
+    "PublishIssueDeliveryV1Input": {
+      "$ref": "#/$defs/PublishIssueDeliveryInput"
+    },
+    "PublishIssueDeliveryV1Output": {
+      "$ref": "#/$defs/PublishIssueDeliveryV1OutputWireIssueDeliveryReceipt"
+    },
+    "PublishIssueDeliveryV1OutputInstantTimestamp": {
+      "type": "string"
+    },
+    "PublishIssueDeliveryV1OutputWireComment": {
+      "additionalProperties": false,
+      "properties": {
+        "author": {
+          "type": "string"
+        },
+        "body": {
+          "type": "string"
+        },
+        "createdAt": {
+          "$ref": "#/$defs/PublishIssueDeliveryV1OutputInstantTimestamp"
+        },
+        "id": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "updatedAt": {
+          "$ref": "#/$defs/PublishIssueDeliveryV1OutputInstantTimestamp"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "url",
+        "author",
+        "body",
+        "createdAt",
+        "updatedAt"
+      ],
+      "type": "object"
+    },
+    "PublishIssueDeliveryV1OutputWireIssueDeliveryReceipt": {
+      "additionalProperties": false,
+      "properties": {
+        "comment": {
+          "$ref": "#/$defs/PublishIssueDeliveryV1OutputWireComment"
+        },
+        "digest": {
+          "type": "string"
+        },
+        "head": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "head",
+        "digest",
+        "comment"
       ],
       "type": "object"
     },

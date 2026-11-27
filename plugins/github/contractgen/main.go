@@ -41,6 +41,8 @@ func define() (*plugincontract.Capability, error) {
 	declared.add(command[wire.CommentInput, wire.DeletedComment]("delete-pull-request-comment", "Delete an inline PR review comment by its inspected comment ID."))
 	declared.add(query[wire.ReviewWorkInput, wire.ReviewWork]("review-work", "Open retained review work for one pull request and optional exact base/head revision. Access to the pull request is checked again."))
 	declared.add(reviewWorkCommand())
+	declared.add(query[wire.IssueDeliveriesInput, wire.IssueDeliveryPage]("issue-deliveries", "List source-authorized Issue deliveries for the configured Project, including exact SHA evidence and original publication outcomes."))
+	declared.add(command[wire.PublishIssueDeliveryInput, wire.IssueDeliveryReceipt]("publish-issue-delivery", "Approve the exact Issue report and publish its captured body as a comment after checking current source authority, evidence and branch head."))
 	if err := errors.Join(declared.errs...); err != nil {
 		return nil, err
 	}

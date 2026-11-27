@@ -17,6 +17,7 @@ import (
 )
 
 const reviewPollInterval = 2 * time.Minute
+const issueProgressInterval = 2 * time.Second
 
 type followedReview struct {
 	wire.IssueInput
@@ -36,7 +37,7 @@ func (c *connector) setUpReviewFollow(ctx context.Context, setup pluginmcp.Setup
 		if err != nil {
 			return nil, err
 		}
-		background, err := c.reviewBackground(ctx, reviewPollInterval, func(ctx context.Context) error {
+		background, err := c.reviewBackground(ctx, reviewPollInterval, client, func(ctx context.Context) error {
 			return client.NotifyPluginChange(ctx, protocol.PluginChangeNotice{Contribution: contribution.ID}, protocol.CallOptions{})
 		}, client.Close)
 		if err != nil {
@@ -47,7 +48,7 @@ func (c *connector) setUpReviewFollow(ctx context.Context, setup pluginmcp.Setup
 	return nil, nil
 }
 
-func (c *connector) reviewBackground(lifetime context.Context, interval time.Duration, notify func(context.Context) error, close func() error) (*pluginmcp.Background, error) {
+func (c *connector) reviewBackground(lifetime context.Context, interval time.Duration, client *runtimeclient.Client, notify func(context.Context) error, close func() error) (*pluginmcp.Background, error) {
 	var closeWebhook func() error
 	return pluginmcp.NewBackground(lifetime, pluginmcp.BackgroundConfig{
 		Prepare: func(ctx context.Context) error {
@@ -58,18 +59,42 @@ func (c *connector) reviewBackground(lifetime context.Context, interval time.Dur
 		Run: func(ctx context.Context) {
 			ticker := time.NewTicker(interval)
 			defer ticker.Stop()
+			var progress <-chan time.Time
+			if c.issuePolicy != nil && client != nil {
+				issueTicker := time.NewTicker(min(interval, issueProgressInterval))
+				defer issueTicker.Stop()
+				progress = issueTicker.C
+			}
 			announce := func() {
 				if err := notify(ctx); err != nil && ctx.Err() == nil {
 					slog.WarnContext(ctx, "github: notify review change", "error", err)
 				}
 			}
+			scan := true
 			for {
-				c.pollReviews(ctx, announce)
+				if scan {
+					c.pollReviews(ctx, announce)
+					if progress != nil {
+						changed, err := c.reconcileIssueDeliveries(ctx)
+						if err != nil && ctx.Err() == nil {
+							slog.WarnContext(ctx, "github: reconcile Issue deliveries", "error", err)
+						}
+						if changed {
+							announce()
+						}
+					}
+				}
+				if progress != nil {
+					c.advanceIssueDeliveries(ctx, client, scan, announce)
+				}
+				scan = true
 				select {
 				case <-ctx.Done():
 					return
 				case <-ticker.C:
 				case <-c.reviewWake:
+				case <-progress:
+					scan = false
 				}
 			}
 		},

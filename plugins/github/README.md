@@ -145,6 +145,47 @@ review on that captured commit. Reopening an original command recovers its
 receipt even when the head has advanced. The review workspace stores its data in
 the same account-scoped GitHub database.
 
+## Issue delivery
+
+Set the optional `issue-delivery` installation input to enable one repository
+for one Flame project. Use the project ID shown under **Project background**.
+The GitHub credential needs repository metadata, contents, and checks read
+access and permission to comment on issues. Configure project checks under
+`review-checks` for the same repository.
+
+```json
+{
+  "repository": "owner/repo",
+  "projectId": "prj_example",
+  "branch": "main",
+  "label": "flame-delivery",
+  "provider": "anthropic",
+  "model": "your-configured-model"
+}
+```
+
+For immediate delivery, subscribe the GitHub App to Issue events at the same
+signed webhook endpoint. Open, labeled, and reopened Issues are eligible when
+they carry the configured label. Reconciliation also walks the repository’s
+open, labeled Issues and recovers missed events. An Issue has one delivery
+identity per project and repository, including after duplicate deliveries or a
+restart.
+
+Open **Issue deliveries** under **Project background** to see the queue before
+the first Run starts. Issue Runs share the project’s pause and admission limits.
+Each Run uses its own retained, detached worktree and can read and search that
+commit. Project checks run in the configured offline sandbox. The report needs
+passing local checks and a complete, passing GitHub check list for the same SHA.
+
+The approval button shows exactly which comment will be posted to the original
+Issue. Flame records the approval against the report and checks access, the
+Issue, the evidence and the branch head again before posting. GitHub Issue
+comments carry the verified SHA in the body. An acknowledged post retains the
+original GitHub comment receipt. If GitHub could have accepted a write but its
+response was lost, the delivery remains unconfirmed and the original command
+does not post a second comment. Closing the Issue, removing its label or losing
+repository access blocks a new post and hides the delivery from new reads.
+
 ## Writes and original outcomes
 
 Use the same `github-operations` contribution, installation target and complete

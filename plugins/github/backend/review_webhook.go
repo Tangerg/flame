@@ -124,7 +124,12 @@ func (c *connector) receiveReviewWebhook(w http.ResponseWriter, r *http.Request)
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
-	if r.Header.Get("X-GitHub-Event") != "pull_request" {
+	eventKind := r.Header.Get("X-GitHub-Event")
+	if eventKind == "issues" {
+		c.receiveIssueDelivery(w, r, raw)
+		return
+	}
+	if eventKind != "pull_request" {
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}

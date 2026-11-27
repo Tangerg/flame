@@ -47,30 +47,40 @@ func (wire checkWire) admit() (contractwire.CheckRun, error) {
 }
 
 func (c *connector) listChecks(ctx context.Context, input contractwire.CommitInput) (contractwire.CheckPage, error) {
+	list, err := c.readCheckPage(ctx, input)
+	return list.CheckPage, err
+}
+
+type checkListing struct {
+	contractwire.CheckPage
+	total int64
+}
+
+func (c *connector) readCheckPage(ctx context.Context, input contractwire.CommitInput) (checkListing, error) {
 	repository, err := newRepository(input.Repository)
 	if err != nil {
-		return contractwire.CheckPage{}, err
+		return checkListing{}, err
 	}
 	parameters := pagination(input.Page, input.Limit)
 	parameters.Set("filter", "latest")
 	path := repository.apiPath() + "/commits/" + url.PathEscape(input.Ref) + "/check-runs"
-	return query(ctx, c, path, parameters, func(result response) (contractwire.CheckPage, error) {
+	return query(ctx, c, path, parameters, func(result response) (checkListing, error) {
 		var wire struct {
 			TotalCount *int64      `json:"total_count"`
 			CheckRuns  []checkWire `json:"check_runs"`
 		}
 		if err := json.Unmarshal(result.body, &wire); err != nil {
-			return contractwire.CheckPage{}, err
+			return checkListing{}, err
 		}
 		if wire.TotalCount == nil || *wire.TotalCount < int64(len(wire.CheckRuns)) {
-			return contractwire.CheckPage{}, errors.New("github: inconsistent check run count")
+			return checkListing{}, errors.New("github: inconsistent check run count")
 		}
 		rows, err := admitRows(wire.CheckRuns, input.Limit, checkWire.admit)
 		if err != nil {
-			return contractwire.CheckPage{}, err
+			return checkListing{}, err
 		}
 		next, err := nextPage(result.links, input.Page)
-		return contractwire.CheckPage{CheckRuns: rows, NextPage: next}, err
+		return checkListing{contractwire.CheckPage{CheckRuns: rows, NextPage: next}, *wire.TotalCount}, err
 	})
 }
 

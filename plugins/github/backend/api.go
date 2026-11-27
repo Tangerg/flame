@@ -38,6 +38,7 @@ type connector struct {
 	reviewWake    chan struct{}
 	checkPolicies map[string]projectCheckPolicy
 	webhook       reviewWebhook
+	issuePolicy   *issueDeliveryPolicy
 }
 
 const (

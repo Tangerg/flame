@@ -243,7 +243,7 @@ type staticInteractionTools struct {
 	identities []domaintool.Ref
 }
 
-func (s staticInteractionTools) Manifest(_ context.Context, _ domaintool.Group, retained *toolset.Retained) (toolset.Manifest, error) {
+func (s staticInteractionTools) Manifest(_ context.Context, _ domaintool.Group, retained *toolset.Retained, _ bool) (toolset.Manifest, error) {
 	manifest, err := identifyTestManifest(s.manifest, s.identities...)
 	if err != nil || retained == nil {
 		return manifest, err

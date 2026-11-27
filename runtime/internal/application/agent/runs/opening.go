@@ -368,6 +368,10 @@ func (c *Openings) prepareRootStart(
 		ChildRunAdmissionEnabled: cmd.Capabilities.ChildRuns,
 		GoalIncarnationID:        cmd.GoalIncarnationID,
 	}
+	if cmd.Actor != nil {
+		source, background := cmd.Actor.Background()
+		draft.VerificationOnly = background && source.Kind == "github"
+	}
 	draft.WorkingContext = []corechat.Message{currentMessage}
 	if err := draft.Validate(); err != nil {
 		return rootStartPreparation{}, err

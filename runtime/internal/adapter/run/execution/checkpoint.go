@@ -30,6 +30,7 @@ type installationDependencyWire struct {
 }
 
 type interactionCheckpointPayloadWire struct {
+	VerificationOnly    bool                           `json:"verificationOnly,omitzero"`
 	SkillDiscoveries    map[domaintool.Group]string    `json:"skillDiscoveries,omitzero"`
 	ModelProvider       jsontext.Value                 `json:"modelProvider"`
 	ToolProposals       *[]contributionBindingWire     `json:"toolProposals"`
@@ -80,6 +81,7 @@ type interactionContentBlockWire struct {
 }
 
 type interactionCheckpointState struct {
+	verificationOnly    bool
 	modelProvider       *modeladapter.ProviderCapture
 	bindings            []plugin.Activation
 	resources           []plugin.Dependency
@@ -107,6 +109,7 @@ func (i interactionCheckpointState) restoredStart(continuation runs.ExecutionCon
 		WorkspaceCWD:             continuation.Workspace,
 		Project:                  continuation.Project,
 		Isolated:                 continuation.Isolated,
+		VerificationOnly:         i.verificationOnly,
 		GoalIncarnationID:        continuation.GoalIncarnationID,
 		ModelSelection:           continuation.RootModelSelection(),
 		InterruptTypes:           slices.Clone(continuation.Capabilities.InterruptTypes),
@@ -282,6 +285,7 @@ func (wire interactionCheckpointPayloadWire) restore() (interactionCheckpointSta
 		return interactionCheckpointState{}, err
 	}
 	state.mcpManifests, state.skillDiscoveries, state.handoff = manifests, wire.SkillDiscoveries, handoff
+	state.verificationOnly = wire.VerificationOnly
 	state.contextByProcess, state.instructions, state.options = contextByProcess, instructions, wire.Options.Clone()
 	state.pendingSteers, state.pendingResumeInputs, state.toolMetadata = pendingSteers, pendingResumeInputs, metadata
 	return state, nil

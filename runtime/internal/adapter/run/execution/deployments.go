@@ -165,7 +165,7 @@ func (i *InteractionExecutor) newInteractionDeploymentBuilder(
 		groups = append(groups, domaintool.GroupDelegated)
 	}
 	for _, group := range groups {
-		manifest, err := i.resolveInteractionManifest(ctx, group, checkpoint)
+		manifest, err := i.resolveInteractionManifest(ctx, group, checkpoint, start.VerificationOnly)
 		if err != nil {
 			return nil, err
 		}
@@ -311,6 +311,7 @@ func (i *InteractionExecutor) resolveInteractionManifest(
 	ctx context.Context,
 	group domaintool.Group,
 	checkpoint *interactionCheckpointState,
+	verificationOnly bool,
 ) (toolset.Manifest, error) {
 	var retained *toolset.Retained
 	if checkpoint != nil {
@@ -320,7 +321,7 @@ func (i *InteractionExecutor) resolveInteractionManifest(
 		}
 		retained = &toolset.Retained{SkillDiscovery: checkpoint.skillDiscoveries[group], MCP: captured, Bindings: checkpoint.bindings, Resources: checkpoint.resources}
 	}
-	manifest, err := i.config.ToolResolver.Manifest(ctx, group, retained)
+	manifest, err := i.config.ToolResolver.Manifest(ctx, group, retained, verificationOnly)
 	if err != nil {
 		return toolset.Manifest{}, fmt.Errorf("execution: resolve Interaction %s Tools: %w", group, err)
 	}

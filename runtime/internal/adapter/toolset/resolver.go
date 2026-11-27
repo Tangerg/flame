@@ -346,11 +346,11 @@ func (r *Resolver) toolsForCWD(cwd string) (cwdTools, error) {
 	return openCWDTools(cwd, r.codeIntel, r.readTracker, r.pathLocker)
 }
 
-func (r *Resolver) Manifest(ctx context.Context, group domaintool.Group, retained *Retained) (Manifest, error) {
+func (r *Resolver) Manifest(ctx context.Context, group domaintool.Group, retained *Retained, verificationOnly bool) (Manifest, error) {
 	if err := retained.validate(); err != nil {
 		return Manifest{}, err
 	}
-	resolved, err := r.resolve(ctx, group, retained)
+	resolved, err := r.resolve(ctx, group, retained, verificationOnly)
 	if err != nil {
 		return Manifest{}, err
 	}
@@ -364,7 +364,7 @@ func (r *Resolver) Manifest(ctx context.Context, group domaintool.Group, retaine
 	return manifest, nil
 }
 
-func (r *Resolver) resolve(ctx context.Context, group domaintool.Group, retained *Retained) (_ manifestBuilder, err error) {
+func (r *Resolver) resolve(ctx context.Context, group domaintool.Group, retained *Retained, verificationOnly bool) (_ manifestBuilder, err error) {
 	if !group.Valid() {
 		return manifestBuilder{}, fmt.Errorf("toolset: unsupported Tool group %q", group)
 	}
@@ -384,6 +384,9 @@ func (r *Resolver) resolve(ctx context.Context, group domaintool.Group, retained
 	}()
 	tools := manifestBuilder{close: localTools.close}
 	tools.direct(localTools.readSearch...)
+	if verificationOnly {
+		return tools, tools.bindDiscovery(retained)
+	}
 	tools.direct(localTools.edit)
 	tools.direct(localTools.applyPatch)
 	mcpTools, pending, closeMCP, err := r.mcpTools(ctx, retained)
