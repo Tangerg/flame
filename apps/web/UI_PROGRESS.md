@@ -2118,8 +2118,81 @@ drain deadline. The owned provider, listeners, app registration,
 profile, fixture, screenshots, diagnostics, checkout outputs
 and caches are removed.
 
-The next review isolates sidebar folder expansion across
-a visit to Settings, starting with a direct open and close.
+[Settings preserves sidebar folds and scroll](#settings-preserves-sidebar-folds-and-scroll)
+isolates folder expansion with a direct open and close.
+
+### Settings preserves sidebar folds and scroll
+
+Signed Wails at `38f777eb3` opened and closed Settings without
+changing preferences. The folded North folder reopened when
+the sidebar mounted again. South stayed selected, its
+`note.txt` stayed open and draft `2468` kept caret 2.
+
+`AgentAppShell` retains the Work Index in its existing panel.
+Settings conceals it visually and removes it from pointer,
+keyboard and accessibility navigation. The existing sidebar
+components keep their folder and project expansion and the
+scroll container keeps its position. `ContentVisibility`
+retires temporary popups. The owners in `SessionRow` and
+`ProjectsSection` clear their pending dialogs during cover.
+The Settings entry in `useInspectionFocus` hands off from an
+active element that WebKit still reports in a concealed
+subtree. This extends the existing retained workspace cover.
+[HTML inert](https://html.spec.whatwg.org/multipage/interaction.html#the-inert-attribute)
+
+- Chinese/light/14 px/Flame at 1120 × 728. North stays folded
+  at y=351. Tab in Settings reaches its search field. Closing
+  Settings restores South's reader and the Composer at caret
+  2. Typing 5 makes `24568`; Undo restores `2468` at caret
+  2. Opening Settings from the directory path tooltip and
+  from the sidebar footer places focus in Settings. The
+  sidebar menu, blank New Project and unsubmitted Rename
+  close on entry. Their individual return probes preserve
+  the same South file and fold.
+- At 1280 × 800, setting English, dark, 18 px and Blue keeps
+  North folded, South's file open and the draft caret.
+  Session Search chooses North and unfolds its group.
+  Pointer collapse of South survives another Settings visit
+  while North's distinct note remains open. An unchosen
+  Move dialog closes into Settings and stays dismissed.
+- Fourteen private folders overflow the native Work Index.
+  A wheel move takes the same row from y=643 to y=307.
+  After opening and closing Settings it returns at
+  `12 307 221 31`, with North's file still open.
+- The first retained sidebar build left focus at the WebView
+  root when entering from a focused folder. The concealed
+  origin handoff restores Settings focus. On the rebuild
+  at `dbc1613b9`, a closing Delete confirmation also left
+  focus at the WebView root. Unmounting that unconfirmed
+  dialog on cover restores Settings focus. The final signed
+  replay reads North, keeps South folded at y=610, restores
+  draft caret 2 and dismisses the unconfirmed prompt.
+
+All 16 private Sessions, the single private project and
+both notes survive a Runtime restart with matching records
+and file digests. Items and Runs stay empty. The loopback
+provider serves ten catalog reads and zero generations.
+The five Wails hosts exit normally. Both private Runtime
+instances reach the existing drain deadline. The owned
+processes, listeners, app registration, profile, fixtures,
+diagnostics, captures, checkout outputs and caches are removed.
+
+Web typecheck, 84 contract tests, bootstrap, scoped Prettier
+and diff checks pass on the integrated source. Production
+Web staging, Runtime packaging and strict Wails signature
+checks pass. The final parent `1cbbe377f` updates submitted
+command receipts. The four UI files match byte for byte,
+and the Web checks pass again on that parent. The native
+evidence at `dbc1613b9` covers keyboard, pointer,
+focus, scrolling and the recorded viewport and theme cases.
+VoiceOver speech and other hosts remain unverified.
+
+One preliminary search probe showed `south` in the field
+while the host Pinyin input source was active. All sixteen
+rows remained. A click derived from the native static-text
+rectangle selected North among the private Sessions. The
+next review checks committed input, result focus and the
+visible hit target independently.
 
 ## Error notes leave retrying to their buttons (2026-11-26)
 

@@ -257,8 +257,14 @@ export function useInspectionFocus({
           : dockVisible
             ? [settingsLayerRef.current]
             : [settingsLayerRef.current, dockRef.current];
+    // Settings also conceals the sidebar, which sits outside the workspace layer.
+    const enteringSettings =
+      fullPaneViewId === WORKSPACE_SETTINGS_VIEW &&
+      previous.fullPaneViewId !== WORKSPACE_SETTINGS_VIEW;
     const hiddenOrigin =
-      !target.contains(active) && hiddenPanes.some((pane) => pane?.contains(active));
+      !target.contains(active) &&
+      (hiddenPanes.some((pane) => pane?.contains(active)) ||
+        (enteringSettings && active !== null && isConcealed(active)));
     if (
       active === doc.body ||
       (previous.fullPaneViewId === null && active === dockRef.current) ||
