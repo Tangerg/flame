@@ -169,13 +169,16 @@ func (l *sessionLifecycle) runSessionChangeWithDraftDisposition[T any](
 		return
 	}
 	l.report(workbenchDraft, nil)
+	if l.tasks.operations.Cancel(sessionInvalidationOperation) {
+		l.state.invalidated = true
+	}
 	l.state.draftTransition = &sessionDraftTransition{
 		sourceSessionID: l.state.current.ID,
 		baseline:        baseline,
 		disposition:     disposition,
 	}
 	l.root.message(label)
-	if !l.tasks.session(sessionChangeOperation, work, func(result T, err error) {
+	if !l.tasks.sessionFence(sessionChangeOperation, work, func(result T, err error) {
 		defer l.settleSessionChange()
 		if err != nil {
 			l.root.message(label + " failed: " + err.Error())
@@ -191,10 +194,9 @@ func (l *sessionLifecycle) runSessionChangeWithDraftDisposition[T any](
 }
 
 func (l *sessionLifecycle) cancelSessionChange() bool {
-	if !l.tasks.operations.Active(sessionChangeOperation) {
+	if !l.tasks.operations.Cancel(sessionChangeOperation) {
 		return false
 	}
-	l.tasks.operations.Cancel(sessionChangeOperation)
 	l.root.message("session change canceled")
 	l.settleSessionChange()
 	return true
@@ -336,6 +338,9 @@ func (l *sessionLifecycle) readSessionAfterMutation(ctx context.Context, session
 func (l *sessionLifecycle) install(s sessionInstallation) {
 	previousSessionID := l.state.current.ID
 	previousWorkspace := l.state.current.Workspace
+	if previousSessionID != s.snapshot.Session.ID {
+		l.state.invalidated = false
+	}
 	l.prepareSessionProjectionReplacement(s.snapshot.Session, s.projection.conversation)
 	l.root.cancelPluginCommands()
 	l.tasks.operations.CancelScope(sessionOperationScope)

@@ -124,7 +124,7 @@ func (r *runs) drainQueue() bool {
 	}
 	if _, dispatching := r.queue.Dispatching(r.session.current.ID); dispatching {
 		if r.runAdmissionBlocked() || r.execution.opening == nil ||
-			r.tasks.operations.Active(sessionChangeOperation) || r.tasks.operations.Active(pendingRunRecoveryOperation) {
+			r.tasks.operations.Active(pendingRunRecoveryOperation) {
 			return false
 		}
 		opening := r.execution.opening
@@ -134,8 +134,7 @@ func (r *runs) drainQueue() bool {
 		}
 		r.execution.opening = nil
 	}
-	if r.runAdmissionBlocked() ||
-		r.tasks.operations.Active(sessionChangeOperation) || r.tasks.operations.Active(pendingRunRecoveryOperation) {
+	if r.runAdmissionBlocked() || r.tasks.operations.Active(pendingRunRecoveryOperation) {
 		return false
 	}
 	pending, ok := r.queue.BeginDispatch(r.session.current.ID)
