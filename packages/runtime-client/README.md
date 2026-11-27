@@ -130,14 +130,15 @@ through its authored intent.
 when withdrawing an observed approval or denial. Omit it when deliberately
 forgetting the rule at that identity regardless of its decision.
 
-`createMutationSettler().settle` accepts `onMutation(idempotencyKey)` to project
-the identity of the selected original mutation, including retained or shared
-recovery attempts. It grants no replacement command or independent retry owner;
-the existing mutation handle and journal retain settlement authority.
+`createMutationSettler().settle(open, options)` observes the mutation returned by
+`open`. Pass a fresh command factory to author a command. To recover an existing
+command, pass a factory that retries its original handle or journal identity.
+`onMutation(idempotencyKey)` exposes the identity for the caller's projection.
 Deadlines must be positive whole milliseconds within the platform timer range;
-invalid deadlines are refused before opening or consuming a recovery attempt.
-Failure to open an original command's retry remains a `MutationLookupError` and
-retains that original handle because it cannot prove the command's outcome.
+invalid deadlines are refused before opening the mutation. A deadline permits
+one further observation through the same handle. If that observation cannot be
+opened or also reaches its deadline, `MutationLookupError` preserves the unknown
+outcome and the journal remains available for recovery.
 
 Each `plugins.pendingCommands()` handle exposes `matchesIntent(intent)`, a
 read-only comparison against the original journal's salted intent fingerprint.

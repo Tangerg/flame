@@ -109,7 +109,7 @@ function visualAgentRuntimeGateway(
         projectId,
         workspace: { ...initial.workspace, path: cwd },
       });
-      return initial.id;
+      return { type: "confirmed", sessionId: initial.id };
     },
     deleteSession: async (id) => {
       sessions.delete(id);

@@ -88,8 +88,12 @@ export interface AgentUnresolvedSteer {
 
 export type AgentSessionProjectChange = { type: "set"; projectId: string } | { type: "clear" };
 
+export type AgentSessionCreation =
+  | { type: "confirmed"; sessionId: string }
+  | { type: "unconfirmed"; idempotencyKey: string; retry(): Promise<AgentSessionCreation> };
+
 export interface AgentRuntimeGateway {
-  createSession(input: { cwd: string; projectId?: string }): Promise<string>;
+  createSession(input: { cwd: string; projectId?: string }): Promise<AgentSessionCreation>;
   deleteSession(sessionId: string): Promise<void>;
   updateSession(input: {
     sessionId: string;

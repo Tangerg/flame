@@ -7,12 +7,14 @@ import {
   asSegmentId,
   asSessionId,
   createMutationSettler,
+  type MutationSettler,
   isErrorType,
   RpcError,
 } from "@flame/runtime-client";
 import { mutationSettlementIsUnknown } from "@flame/runtime-client";
 import {
   type AgentRuntimeGateway,
+  type AgentSessionCreation,
   type AgentOpeningCommand,
   type AgentUnresolvedSteer,
 } from "@/features/agent/application/runtimeGateway";
@@ -34,6 +36,7 @@ import { type AgentCommands } from "@/features/agent/application/agentCommandOwn
 import { type createAgentSessionUsage } from "@/features/agent/application/session/sessionUsage";
 
 type RuntimeCapabilities = Pick<RuntimeAccess["capabilities"], "hasCapability">;
+type CreateSessionMutation = ReturnType<FlameClient["sessions"]["create"]>;
 
 function openingRetry(sessionId: string, command: RecoveredOpening) {
   return {
@@ -86,20 +89,39 @@ class RuntimeAgentGateway implements AgentRuntimeGateway {
     return original.retry(signal);
   }
 
-  async createSession(input: Parameters<AgentRuntimeGateway["createSession"]>[0]) {
+  createSession(input: Parameters<AgentRuntimeGateway["createSession"]>[0]) {
     const client = this.runtimeClient();
-    const session = await this.#sessionMutations.settle(
-      JSON.stringify(["sessions.create", input.cwd, input.projectId ?? null]),
-      (signal) =>
-        client.sessions.create(
-          {
-            workspace: { path: input.cwd },
-            ...(input.projectId ? { projectId: input.projectId } : {}),
-          },
-          signal,
-        ),
+    return this.#observeCreation(this.#sessionMutations, (signal) =>
+      client.sessions.create(
+        {
+          workspace: { path: input.cwd },
+          ...(input.projectId ? { projectId: input.projectId } : {}),
+        },
+        signal,
+      ),
     );
-    return session.id;
+  }
+
+  async #observeCreation(
+    settler: MutationSettler,
+    open: (signal: AbortSignal) => CreateSessionMutation,
+  ): Promise<AgentSessionCreation> {
+    let original: CreateSessionMutation | undefined;
+    try {
+      const session = await settler.settle((signal) => {
+        original = open(signal);
+        return original;
+      });
+      return { type: "confirmed", sessionId: session.id };
+    } catch (error) {
+      const command = original;
+      if (!command || !mutationSettlementIsUnknown(error)) throw error;
+      return {
+        type: "unconfirmed",
+        idempotencyKey: command.idempotencyKey,
+        retry: () => this.#observeCreation(settler, (signal) => command.retry({ signal })),
+      };
+    }
   }
 
   async deleteSession(sessionId: string) {

@@ -13,6 +13,7 @@ import {
   asSessionId,
   createSidecarClient,
   createHttpTransport,
+  createMutationSettler,
   mutationSettlementIsUnknown,
 } from "@flame/runtime-client";
 import {
@@ -295,9 +296,9 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: protocol delivery", () => {
 
       const subscription = await client.runtimeEvents.subscribe({ topics: [topic] });
       const events = subscription.events[Symbol.asyncIterator]();
-      await expect(client.runtimeEvents.subscribe({ topics: [topic, topic] })).rejects.toBeInstanceOf(
-        RpcProtocolError,
-      );
+      await expect(
+        client.runtimeEvents.subscribe({ topics: [topic, topic] }),
+      ).rejects.toBeInstanceOf(RpcProtocolError);
       expect(openings).toBe(1);
       await events.return?.();
     } finally {
@@ -337,7 +338,9 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: protocol delivery", () => {
       const events = subscription.events[Symbol.asyncIterator]();
       createdIds.push((await fixture.client.sessions.create({ title: "Dropped invalidation" })).id);
       await within(dropped.promise, "the dropped Runtime frame");
-      createdIds.push((await fixture.client.sessions.create({ title: "Following invalidation" })).id);
+      createdIds.push(
+        (await fixture.client.sessions.create({ title: "Following invalidation" })).id,
+      );
       await expect(within(events.next(), "the sequence gap")).rejects.toBeInstanceOf(
         RpcProtocolError,
       );
@@ -777,6 +780,87 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: protocol delivery", () => {
     }
   }, 30_000);
 
+  it("keeps a fresh observation distinct from an unresolved command with identical input", async () => {
+    const method = "sessions.create";
+    const title = "Equal inputs in independent mutation observations";
+    const params = { workspace: { path: fixture.root }, title };
+    const fault = faultUnaryResponse(method, "afterCommit");
+    let loseResponse = true;
+    const client = fixture.createRuntimeClient((url, init) => {
+      if (
+        loseResponse &&
+        fault.attempts() > 0 &&
+        new Headers(init?.headers).get(HTTP_HEADERS.method) === method
+      )
+        throw new Error("disconnected before the first mutation could be reobserved");
+      return fault.fetch(url, init);
+    });
+    const settler = createMutationSettler();
+    const open = (signal: AbortSignal) => client.sessions.create(params, signal);
+    const sessions = async () =>
+      (await fixture.client.sessions.list().autoPagingToArray()).filter(
+        (session) => session.title === title,
+      );
+    try {
+      await expect(settler.settle(open)).rejects.toSatisfy(mutationSettlementIsUnknown);
+      const [original] = await sessions();
+      const [pending] = client.runtime.pendingCommands();
+      if (!original || pending?.method !== method) throw new Error("original command is missing");
+
+      loseResponse = false;
+      const fresh = await settler.settle(open);
+      expect(fresh.id).not.toBe(original.id);
+      expect(client.runtime.pendingCommands()).toEqual([pending]);
+      await expect(
+        settler.settle((signal) => client.runtime.retryCommand(method, pending, params, signal)),
+      ).resolves.toEqual(original);
+      expect(client.runtime.pendingCommands()).toEqual([]);
+      expect(await sessions()).toHaveLength(2);
+    } finally {
+      settler.dispose();
+      await client.close();
+      for (const session of await sessions())
+        await fixture.client.sessions.delete(asSessionId(session.id));
+    }
+  }, 30_000);
+
+  it("reobserves the same command when an accepted reply reaches its deadline", async () => {
+    const method = "sessions.create";
+    const title = "One Session across a mutation observation deadline";
+    let deliveries = 0;
+    const client = fixture.createRuntimeClient(async (url, init) => {
+      const response = await fetch(url, init);
+      if (new Headers(init?.headers).get(HTTP_HEADERS.method) !== method || ++deliveries !== 1)
+        return response;
+      await response.arrayBuffer();
+      const signal = init?.signal;
+      if (!signal) throw new Error("the command attempt omitted a cancellation signal");
+      signal.throwIfAborted();
+      return new Promise<Response>((_, reject) => {
+        signal.addEventListener("abort", () => reject(signal.reason), { once: true });
+      });
+    });
+    const settler = createMutationSettler();
+    const sessions = async () =>
+      (await fixture.client.sessions.list().autoPagingToArray()).filter(
+        ({ title: value }) => value === title,
+      );
+    try {
+      const session = await settler.settle(
+        (signal) => client.sessions.create({ title, workspace: { path: fixture.root } }, signal),
+        { timeoutMs: 2_000 },
+      );
+      expect(deliveries).toBe(2);
+      expect(await sessions()).toEqual([session]);
+      expect(client.runtime.pendingCommands()).toEqual([]);
+    } finally {
+      settler.dispose();
+      await client.close();
+      for (const session of await sessions())
+        await fixture.client.sessions.delete(asSessionId(session.id));
+    }
+  }, 30_000);
+
   it("retries journal cleanup without dispatching a confirmed command again", async () => {
     const title = "Confirmed Session with retained local journal entry";
     const mutationStorage = new MemoryMutationStorage();
@@ -790,7 +874,8 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: protocol delivery", () => {
       createHttpTransport({
         baseUrl: fixture.baseUrl,
         fetch: (url, init) => {
-          if (new Headers(init?.headers).get(HTTP_HEADERS.method) === "sessions.create") deliveries++;
+          if (new Headers(init?.headers).get(HTTP_HEADERS.method) === "sessions.create")
+            deliveries++;
           return globalThis.fetch(url, init);
         },
       }),

@@ -1,4 +1,3 @@
-import { stringifyJSON } from "@frame/sdk/json";
 import { type FlameClient } from "@flame/runtime-client";
 import {
   asItemId,
@@ -13,10 +12,6 @@ import {
   type RpcRunsGateway,
   type RpcRunStartParams,
 } from "@/features/agent/adapters/rpcAgentDriver";
-function runOpeningIdentity(method: "start" | "resume", params: unknown): string {
-  return stringifyJSON([`runs.${method}`, params]);
-}
-
 export class RuntimeRunsGateway implements RpcRunsGateway {
   constructor(private readonly runtimeClient: () => FlameClient) {}
 
@@ -29,7 +24,6 @@ export class RuntimeRunsGateway implements RpcRunsGateway {
   ) {
     const client = this.runtimeClient();
     const { result, observation } = await this.#openings.settle(
-      runOpeningIdentity("start", { sessionId, ...params }),
       (attemptSignal) =>
         client.runs.start({ ...params, sessionId: asSessionId(sessionId) }, attemptSignal),
       { parent: signal, onMutation },
@@ -40,7 +34,6 @@ export class RuntimeRunsGateway implements RpcRunsGateway {
   async resume(params: RpcRunResumeParams, signal?: AbortSignal) {
     const client = this.runtimeClient();
     const { result, observation } = await this.#openings.settle(
-      runOpeningIdentity("resume", params),
       (attemptSignal) => client.runs.resume(params, attemptSignal),
       { parent: signal },
     );

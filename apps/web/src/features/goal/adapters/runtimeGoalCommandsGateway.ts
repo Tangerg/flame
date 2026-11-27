@@ -20,13 +20,6 @@ import {
   type GoalReadModel,
   type GoalState,
 } from "@/features/goal/application/goalReadModel";
-function goalMutationIdentity(
-  method: "start" | "update" | "clear" | "stop" | "resume",
-  input: unknown,
-): string {
-  return JSON.stringify([`goals.${method}`, input]);
-}
-
 function toGoalReadModel(goal: Goal): GoalReadModel {
   return {
     sessionId: goal.sessionId,
@@ -63,35 +56,35 @@ class RuntimeGoalCommandsGateway implements GoalCommandsGateway {
   }
 
   async start(input: Parameters<GoalCommandsGateway["start"]>[0]) {
-    const goal = await this.#mutations.settle(goalMutationIdentity("start", input), (signal) =>
+    const goal = await this.#mutations.settle((signal) =>
       this.#client.goals.start({ ...input, sessionId: asSessionId(input.sessionId) }, signal),
     );
     return toGoalCommandReceipt(goal);
   }
 
   async update(input: Parameters<GoalCommandsGateway["update"]>[0]) {
-    const goal = await this.#mutations.settle(goalMutationIdentity("update", input), (signal) =>
+    const goal = await this.#mutations.settle((signal) =>
       this.#client.goals.update({ ...input, sessionId: asSessionId(input.sessionId) }, signal),
     );
     return toGoalCommandReceipt(goal);
   }
 
   async clear(sessionId: string) {
-    await this.#mutations.settle(goalMutationIdentity("clear", sessionId), (signal) =>
+    await this.#mutations.settle((signal) =>
       this.#client.goals.clear(asSessionId(sessionId), signal),
     );
     return { sessionId };
   }
 
   async stop(sessionId: string) {
-    await this.#mutations.settle(goalMutationIdentity("stop", sessionId), (signal) =>
+    await this.#mutations.settle((signal) =>
       this.#client.goals.stop(asSessionId(sessionId), signal),
     );
     return { sessionId };
   }
 
   async resume(sessionId: string) {
-    const goal = await this.#mutations.settle(goalMutationIdentity("resume", sessionId), (signal) =>
+    const goal = await this.#mutations.settle((signal) =>
       this.#client.goals.resume(asSessionId(sessionId), signal),
     );
     return toGoalCommandReceipt(goal);

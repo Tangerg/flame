@@ -48,10 +48,16 @@ import {
   within,
 } from "./observation";
 import { useRuntimeFixture } from "./fixture";
+import { faultUnaryResponse } from "./transportFaults";
 
 const compactionCutpointDeadlineMilliseconds = 15_000;
 
-function openWebSession(client: FlameClient, endpoint: string, sessionId: string) {
+function openWebSession(
+  client: FlameClient,
+  endpoint: string,
+  sessionId: string,
+  present: ConstructorParameters<typeof NotificationFeed>[0] = () => {},
+) {
   const connection = createRuntimeConnectionProjection();
   const target = () => ({ endpoint });
   const runtime = {
@@ -64,7 +70,7 @@ function openWebSession(client: FlameClient, endpoint: string, sessionId: string
       reset: () => false,
     }),
   };
-  const notifications = new NotificationFeed(() => {});
+  const notifications = new NotificationFeed(present);
   const agent = composeAgent(
     () => client,
     createMemoryNavigator({ session: sessionId }),
@@ -227,6 +233,63 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: restart and crash recovery", (
       await client.close();
       if (newId && newId !== sessionId) await fixture.client.sessions.delete(asSessionId(newId));
       await fixture.client.sessions.delete(sessionId);
+    }
+  }, 30_000);
+
+  it("recovers the original creation explicitly after an independent Session is created", async () => {
+    const workspace = { path: fixture.root };
+    const seed = await fixture.client.sessions.create({ workspace });
+    const existing = new Set(
+      (await fixture.client.sessions.list().autoPagingToArray()).map(({ id }) => id),
+    );
+    const fault = faultUnaryResponse("sessions.create", "afterCommit");
+    let loseResponse = true;
+    const client = fixture.createRuntimeClient((url, init) => {
+      if (
+        loseResponse &&
+        fault.attempts() > 0 &&
+        new Headers(init?.headers).get(HTTP_HEADERS.method) === "sessions.create"
+      )
+        throw new Error("disconnected before the original creation could be reobserved");
+      return fault.fetch(url, init);
+    });
+    const recoveryActions: Array<() => void> = [];
+    const web = openWebSession(client, fixture.baseUrl, seed.id, ({ action }) => {
+      if (action) recoveryActions.push(action.run);
+    });
+    const access = web.agent.access;
+    const queryKey = [AGENT_SESSIONS_KEY];
+    const created = async () =>
+      (await fixture.client.sessions.list().autoPagingToArray()).filter(
+        ({ id }) => !existing.has(id),
+      );
+    try {
+      await queryClient.fetchQuery({
+        queryKey,
+        queryFn: ({ signal }) => readRuntimeSessionSummaries(client, signal),
+      });
+      await expect(access.createSession()).resolves.toBeNull();
+      expect(access.getActiveSessionId()).toBe(seed.id);
+      const [original] = await created();
+      const [retry] = recoveryActions;
+      if (!original || !retry) throw new Error("Session creation did not offer original recovery");
+
+      loseResponse = false;
+      const next = await access.createSession();
+      expect(next).toBeTruthy();
+      expect(next).not.toBe(original.id);
+      expect(access.getActiveSessionId()).toBe(next);
+      retry();
+      await expect.poll(access.getActiveSessionId).toBe(original.id);
+      expect(await created()).toHaveLength(2);
+      expect(client.runtime.pendingCommands()).toEqual([]);
+    } finally {
+      queryClient.removeQueries({ queryKey });
+      web.dispose();
+      await client.close();
+      for (const session of await created())
+        await fixture.client.sessions.delete(asSessionId(session.id));
+      await fixture.client.sessions.delete(asSessionId(seed.id));
     }
   }, 30_000);
 
