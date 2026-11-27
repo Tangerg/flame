@@ -99,7 +99,10 @@ cannot enter Runtime calls, protocol records or validation; neutral application
 input and presentation code may consume it without importing the client API.
 
 Mutation handles retain the original key and receipt authority after uncertain
-responses. Retrying continues that original command. Presentation components
+responses. An unresolved retry continues the original command. After
+confirmation, retries return the observed result or refusal directly. To open a
+fresh observation of an acknowledged Run, use `runs.subscribe`.
+Presentation components
 must not rebuild settlement or invent a replacement identity. Streaming reads
 and durable commands retain their registry-classified distinction.
 

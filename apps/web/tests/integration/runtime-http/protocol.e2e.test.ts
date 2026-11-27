@@ -560,6 +560,47 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: protocol delivery", () => {
     }
   }, 30_000);
 
+  it("keeps a confirmed mutation settled when its delivery path becomes unavailable", async () => {
+    const mutationStorage = new MemoryMutationStorage();
+    let dispatched = 0;
+    let available = true;
+    const client = createFlameClient(
+      createHttpTransport({
+        baseUrl: fixture.baseUrl,
+        fetch: (url, init) => {
+          if (new Headers(init?.headers).get(HTTP_HEADERS.method) === "sessions.create") {
+            dispatched++;
+            if (!available) return Promise.resolve(new Response(null, { status: 503 }));
+          }
+          return fetch(url, init);
+        },
+      }),
+      { capabilities: () => fixture.negotiated, mutationStorage },
+    );
+    let sessionId: ReturnType<typeof asSessionId> | undefined;
+    try {
+      const command = client.sessions.create({ title: "Confirmed before disconnect" });
+      const created = await command;
+      sessionId = asSessionId(created.id);
+      expect(mutationStorage.size).toBe(0);
+
+      available = false;
+      const retry = command.retry();
+      expect(retry.idempotencyKey).toBe(command.idempotencyKey);
+      const observation = await retry.then(
+        (result) => ({ result }),
+        (error: unknown) => ({ error }),
+      );
+      expect(mutationStorage.size).toBe(0);
+      expect(dispatched).toBe(1);
+      expect(observation).toEqual({ result: created });
+      await expect(fixture.client.sessions.get(sessionId)).resolves.toEqual(created);
+    } finally {
+      await client.close();
+      if (sessionId) await fixture.client.sessions.delete(sessionId);
+    }
+  });
+
   it("reattaches one committed Run after its streaming acknowledgement is lost", async () => {
     const session = await fixture.client.sessions.create({
       workspace: { path: fixture.root },
