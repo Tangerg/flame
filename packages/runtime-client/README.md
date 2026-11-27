@@ -147,6 +147,10 @@ and `plugins.commandsVersion()` supplies the current snapshot version.
 Each change identifies the original key. A resolved change reports the
 definitive recovery or retirement outcome. Availability still follows any
 remaining journal cleanup.
+`plugins.observeRecovery(key, route, listener, signal)` delivers the settled
+result once to an observer of that exact key and route. The recovering caller's
+output decoder runs after the original receipt is delivered. The general
+subscription exposes the outcome category and refusal code.
 Each entry exposes `matchesIntent(intent)`, a
 read-only comparison against the original journal's salted intent fingerprint.
 Use the same authored intent when associating pending work with a document or

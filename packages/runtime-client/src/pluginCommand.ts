@@ -39,7 +39,7 @@ export function pluginCommandRecovery(
     recover: async <T>(decode: (output: unknown) => T, signal?: AbortSignal) => {
       const reservation = command.reserve("recover");
       return reservation.track(() =>
-        createMutationPromise<T>(
+        createMutationPromise<unknown>(
           async (key, attempt) => {
             let request: CallPluginRequest;
             try {
@@ -68,15 +68,15 @@ export function pluginCommandRecovery(
                 request,
                 reservation,
                 () => undefined,
-                decode,
+                (output) => output,
                 attempt.signal,
               );
-            return deliverPluginCommand(wire, request, reservation, decode, attempt.signal);
+            return deliverPluginCommand(wire, request, reservation, (output) => output, attempt.signal);
           },
           command.idempotencyKey,
           { signal },
         ),
-      );
+      ).then(decode);
     },
     retire: (signal) => {
       const reservation = command.reserve("retire");

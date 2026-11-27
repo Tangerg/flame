@@ -332,6 +332,11 @@ for a recreated panel. `subscribeCommands` and `commandsVersion` keep each live
 panel current as an original is claimed, released or settled.
 Use a resolved notification to update an editor tied to that exact key after
 another view recovers or retires its submission.
+When the editor needs the original typed output, register
+`observeRecovery(method, key, listener)` with the key returned by `command`.
+The observation belongs to the captured binding and supplies the receipt even
+when another view recovered it. It ends after confirmed recovery, retirement or
+disposal. Release the observer when the direct attempt definitively settles.
 `CommandActivity` holds foreground feedback for a component source lifetime.
 A recoverable command's handle reads `plugins.getCommand` from Runtime's saved route before
 querying the original backend receipt under the same key. It does not reconstruct

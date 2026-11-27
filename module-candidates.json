@@ -998,6 +998,10 @@
     "v0.1.176-dev.20261127.tf8eefc8256ff": {
       "tree": "f8eefc8256ff71ad15d9209b489a55b31c0ae9b3",
       "time": "2026-11-27T14:20:52Z"
+    },
+    "v0.1.177-dev.20261127.t6eb93d377631": {
+      "tree": "6eb93d377631c0d1b2f39ea864772e646e8c0e6d",
+      "time": "2026-11-27T15:09:13Z"
     }
   },
   "github.com/Tangerg/flame/apps/cli": {

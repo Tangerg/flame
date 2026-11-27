@@ -11,7 +11,7 @@ export { asItemId, asRunId, asSegmentId, asSessionId } from "./ids";
 export type { ItemId, RunId, SegmentId, SessionId } from "./ids";
 export type { MutationAttemptOptions, MutationPromise } from "./mutation";
 export { MutationLookupError } from "./mutation";
-export type { MutationJournalStorage, PluginCommandChange } from "./mutationJournal";
+export type { MutationJournalStorage, PluginCommandChange, PluginRecoveryResolution } from "./mutationJournal";
 export {
   MutationJournalCleanupError,
   MutationJournalOwnershipError,

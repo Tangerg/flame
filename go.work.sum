@@ -145,6 +145,7 @@ github.com/ProtonMail/go-crypto v1.5.2/go.mod h1:/RaSu30DaKO4RY+XdV/ACcCcZkGr7Ah
 github.com/Tangerg/flame/packages/go-sdk v0.1.7-dev.20261110.t07f62013f4a6/go.mod h1:CGQD3bnZe7dZb/DvZ9E5g1Wk2ThmZlgxZt62uh5BCgA=
 github.com/Tangerg/flame/packages/go-sdk v0.1.16-dev.20261116.t39dd98bada59/go.mod h1:H0gw4i53BrBtpXMRkbszmIodkUNqNcgiuurX9hfV+Ic=
 github.com/Tangerg/flame/runtime v0.1.52-dev.20261116.tfe868215d6f6/go.mod h1:Y8jjGVeAQ3R2krqA/aECtoYzX8WhO3xunk7nfaE3SfQ=
+github.com/Tangerg/flame/runtime v0.1.177-dev.20261127.t6eb93d377631/go.mod h1:FzeiQg0uqZ9myR+D6qVge9973b6T0y+XWND91V+YnHU=
 github.com/Tangerg/oolong/extensions/highlight v0.27.2 h1:NhUnr7yn+C4+Jv9xZNVKbLDV5GW2zZF/Tswi9pmvXM8=
 github.com/Tangerg/oolong/extensions/highlight v0.27.2/go.mod h1:9yxTOeYZ5xAJ7tkpXV+YF0d+UqC3Z/4DCRRU2xD9BHY=
 github.com/Tangerg/oolong/extensions/latex v0.30.0 h1:9V3SfLuoDqbUIge5+j6pRDYsoaeThPtwSqbD/uzpi2Q=

@@ -74,21 +74,45 @@ type PluginCommandResolution =
   | { readonly type: "retired" }
   | { readonly type: "refused"; readonly code?: string };
 
-export type PluginCommandChange = { readonly idempotencyKey: string } & (
+export type PluginRecoveryResolution<T> =
+  | { readonly type: "confirmed"; readonly output: T }
+  | Exclude<PluginCommandResolution, { type: "confirmed" }>;
+
+type PluginCommandChangeWith<Resolution> = { readonly idempotencyKey: string } & (
   | { readonly type: "availability" }
-  | { readonly type: "resolved"; readonly resolution: PluginCommandResolution }
+  | { readonly type: "resolved"; readonly resolution: Resolution }
 );
+
+export type PluginCommandChange = PluginCommandChangeWith<PluginCommandResolution>;
+
+type JournalPluginCommandChange = PluginCommandChangeWith<PluginRecoveryResolution<unknown>> & {
+  readonly route: PluginCallRoute;
+};
 
 function recoveryResolution(
   action: PluginRecoveryAction,
   confirmation: MutationConfirmation<unknown>,
-): PluginCommandResolution {
+): PluginRecoveryResolution<unknown> {
   if (confirmation.type === "accepted")
-    return { type: action === "retire" ? "retired" : "confirmed" };
+    return action === "retire"
+      ? { type: "retired" }
+      : { type: "confirmed", output: confirmation.result };
   if (isErrorType(confirmation.error, "plugin_command_retired")) return { type: "retired" };
   return confirmation.error instanceof OperationFailure
     ? { type: "refused", code: confirmation.error.code }
     : { type: "refused" };
+}
+
+function samePluginRoute(a: PluginCallRoute, b: PluginCallRoute): boolean {
+  return (
+    a.installationId === b.installationId &&
+    a.digest === b.digest &&
+    a.contribution === b.contribution &&
+    a.contract === b.contract &&
+    a.method === b.method &&
+    a.target.scope === b.target.scope &&
+    a.target.reference === b.target.reference
+  );
 }
 
 export type PendingRunCommand = RunCommand & {
@@ -232,14 +256,48 @@ export class MutationJournal {
 
   pluginCommandsVersion = (): number => this.#pluginCommandVersion;
 
-  subscribePluginCommands = (listener: (change: PluginCommandChange) => void): (() => void) => {
-    const changes = this.#pluginCommandChanges;
-    const notify = (event: Event) => listener((event as CustomEvent<PluginCommandChange>).detail);
-    changes.addEventListener(PLUGIN_COMMANDS_CHANGED, notify, {
-      signal: this.#lifetime.signal,
-    });
-    return () => changes.removeEventListener(PLUGIN_COMMANDS_CHANGED, notify);
+  subscribePluginCommands = (listener: (change: PluginCommandChange) => void): (() => void) =>
+    this.#subscribePluginCommands((change) => {
+      const { idempotencyKey, type } = change;
+      if (type === "availability") listener({ idempotencyKey, type });
+      else {
+        const { resolution } = change;
+        listener({
+          idempotencyKey,
+          type,
+          resolution: resolution.type === "confirmed" ? { type: "confirmed" } : resolution,
+        });
+      }
+    }, this.#lifetime.signal);
+
+  observePluginRecovery = (
+    idempotencyKey: string,
+    route: PluginCallRoute,
+    listener: (resolution: PluginRecoveryResolution<unknown>) => void,
+    signal: AbortSignal,
+  ): (() => void) => {
+    const captured = copyJournalProjection(route);
+    const stop = this.#subscribePluginCommands((change) => {
+      if (
+        change.type !== "resolved" || change.idempotencyKey !== idempotencyKey ||
+        !samePluginRoute(change.route, captured)
+      ) return;
+      stop();
+      // The bound observer can use the receipt without sharing mutable data with the recovery caller.
+      listener(copyJournalProjection(change.resolution));
+    }, AbortSignal.any([signal, this.#lifetime.signal]));
+    return stop;
   };
+
+  #subscribePluginCommands(
+    listener: (change: JournalPluginCommandChange) => void,
+    signal: AbortSignal,
+  ): () => void {
+    const changes = this.#pluginCommandChanges;
+    const notify = (event: Event) => listener((event as CustomEvent<JournalPluginCommandChange>).detail);
+    changes.addEventListener(PLUGIN_COMMANDS_CHANGED, notify, { signal });
+    return () => changes.removeEventListener(PLUGIN_COMMANDS_CHANGED, notify);
+  }
 
   async capturePluginCommand(
     intent: string,
@@ -368,14 +426,14 @@ export class MutationJournal {
 
   #publishPluginCommandChange(
     identity: DurableMutationIdentity,
-    resolution?: PluginCommandResolution,
+    resolution?: PluginRecoveryResolution<unknown>,
   ): void {
     if (identity.command.kind !== "plugin") return;
     this.#pluginCommandVersion += 1;
-    const idempotencyKey = identity.idempotencyKey;
-    const change: PluginCommandChange = resolution
-      ? { type: "resolved", idempotencyKey, resolution }
-      : { type: "availability", idempotencyKey };
+    const { idempotencyKey, command: { route } } = identity;
+    const change: JournalPluginCommandChange = resolution
+      ? { type: "resolved", idempotencyKey, route, resolution }
+      : { type: "availability", idempotencyKey, route };
     this.#pluginCommandChanges.dispatchEvent(
       new CustomEvent(PLUGIN_COMMANDS_CHANGED, { detail: change }),
     );

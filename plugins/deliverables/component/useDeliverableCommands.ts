@@ -1,4 +1,10 @@
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { failureText } from "@flame/component-sdk";
 import {
   METHODS as DECLARATIONS,
@@ -14,11 +20,6 @@ const commandMethods = (
 ).filter(
   (method): method is CommandMethod => DECLARATIONS[method].kind === "command",
 );
-
-type CommandDetail = {
-  onConfirmed?: (result: unknown) => void;
-  error?: string;
-};
 
 interface CommandEffect {
   // An announced result the notice offers to open.
@@ -86,29 +87,27 @@ export function useDeliverableCommands({
     () => (signal.aborted ? [] : operations.commands(...commandMethods)),
     [operations, signal, version],
   );
-  const [details, setDetails] = useState<ReadonlyMap<string, CommandDetail>>(
+  const authored = useRef(new Set<string>());
+  const [errors, setErrors] = useState<ReadonlyMap<string, string>>(
     () => new Map(),
   );
   useEffect(() => {
     const keys = new Set(originals.map((command) => command.idempotencyKey));
-    setDetails((previous) => {
+    setErrors((previous) => {
       const retained = new Map([...previous].filter(([key]) => keys.has(key)));
       return retained.size === previous.size ? previous : retained;
     });
   }, [originals]);
 
-  function updateDetail(id: string, detail: CommandDetail) {
-    setDetails((previous) =>
-      new Map(previous).set(id, { ...previous.get(id), ...detail }),
-    );
+  function originalCommand(id: string, method: CommandMethod) {
+    return operations
+      .commands(method)
+      .find((command) => command.idempotencyKey === id);
   }
 
   function reportFailure(id: string, method: CommandMethod, error: unknown) {
-    const original = operations
-      .commands(method)
-      .find((command) => command.idempotencyKey === id);
-    if (original?.state === "recoverable")
-      updateDetail(id, { error: failureText(error) });
+    if (originalCommand(id, method)?.state === "recoverable")
+      setErrors((previous) => new Map(previous).set(id, failureText(error)));
     else fail(error);
   }
 
@@ -126,7 +125,7 @@ export function useDeliverableCommands({
       return;
     }
     if (signal.aborted) return;
-    settle(method, result, onConfirmed && (() => onConfirmed(result)));
+    onConfirmed?.(result);
     return result;
   }
 
@@ -149,11 +148,38 @@ export function useDeliverableCommands({
         COMMAND_EFFECTS[method].scoped ? { ...input, ...scoped } : input,
       );
       const id = result.idempotencyKey;
-      if (onConfirmed)
-        updateDetail(id, {
-          onConfirmed: (value) => onConfirmed(value as MethodOutputs[K]),
-        });
-      return await observe(id, method, () => result, onConfirmed);
+      const confirm = (value: MethodOutputs[K]) =>
+        settle(method, value, onConfirmed && (() => onConfirmed(value)));
+      const stop = operations.observeRecovery(
+        method,
+        id,
+        (resolution) => {
+          authored.current.delete(id);
+          if (resolution.type === "confirmed") confirm(resolution.output);
+        },
+        signal,
+      );
+      authored.current.add(id);
+      try {
+        return await observe(
+          id,
+          method,
+          () => result,
+          (value) => {
+            stop();
+            authored.current.delete(id);
+            confirm(value);
+          },
+        );
+      } finally {
+        if (
+          authored.current.has(id) &&
+          (signal.aborted || !originalCommand(id, method))
+        ) {
+          authored.current.delete(id);
+          stop();
+        }
+      }
     } catch (error) {
       if (!signal.aborted) fail(error);
     }
@@ -162,15 +188,13 @@ export function useDeliverableCommands({
   async function recover(id: string, method: CommandMethod) {
     if (signal.aborted) return;
     try {
-      const original = operations
-        .commands(method)
-        .find((command) => command.idempotencyKey === id);
+      const original = originalCommand(id, method);
       if (original?.state !== "recoverable") return;
       await observe(
         id,
         method,
         () => original.recover(signal),
-        details.get(id)?.onConfirmed,
+        authored.current.has(id) ? undefined : (value) => settle(method, value),
       );
     } catch (error) {
       if (!signal.aborted) fail(error);
@@ -180,9 +204,7 @@ export function useDeliverableCommands({
   async function retire(id: string, method: CommandMethod) {
     if (signal.aborted) return;
     try {
-      const original = operations
-        .commands(method)
-        .find((command) => command.idempotencyKey === id);
+      const original = originalCommand(id, method);
       if (original?.state !== "recoverable") return;
       await original.retire(signal).catch((error: unknown) => {
         if (!signal.aborted) reportFailure(id, method, error);
@@ -197,7 +219,7 @@ export function useDeliverableCommands({
       id,
       method,
       state,
-      error: state === "recoverable" ? details.get(id)?.error : undefined,
+      error: state === "recoverable" ? errors.get(id) : undefined,
     })),
     blocked: originals.length > 0,
     run,

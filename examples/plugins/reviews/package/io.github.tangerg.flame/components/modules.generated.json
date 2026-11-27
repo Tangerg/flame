@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "runtimeProfile": "io.github.tangerg.flame/component-runtime@7",
+  "runtimeProfile": "io.github.tangerg.flame/component-runtime@8",
   "entry": "component.js",
   "modules": [
     {

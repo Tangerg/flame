@@ -138,7 +138,7 @@ import { streamRuntimeEvents } from "./stream";
 import { createRuntimeEventFeed } from "./runtimeEventFeed";
 import type { AutoPagingPromise } from "./pagination";
 import { RUNTIME_SUBSCRIBE_METHOD } from "./transport";
-import type { PluginCommandInput, PluginCommandBinding, PluginCommandChange } from "./mutationJournal";
+import type { PluginCommandInput, PluginCommandBinding, PluginCommandChange, MutationJournal } from "./mutationJournal";
 import type { PendingRuntimeCommand } from "./mutationJournalEntry";
 
 import { callOrDispose, type StreamingResult } from "./stream";
@@ -331,6 +331,7 @@ export interface Methods {
     commands: () => PluginCommand[];
     commandsVersion: () => number;
     subscribeCommands: (listener: (change: PluginCommandChange) => void) => () => void;
+    observeRecovery: MutationJournal["observePluginRecovery"];
     queryStream: <T>(
       request: CallPluginRequest,
       consume: (chunk: unknown, signal: AbortSignal) => void | Promise<void>,
@@ -612,6 +613,7 @@ export function createMethods(
           ),
       commandsVersion: mutationJournal.pluginCommandsVersion,
       subscribeCommands: mutationJournal.subscribePluginCommands,
+      observeRecovery: mutationJournal.observePluginRecovery,
       queryStream: (request, consume, decode, signal) =>
         queryPluginStream(wire, request, consume, decode, signal),
       stream: (intent, input, prepare, consume, decode, signal) =>

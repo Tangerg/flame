@@ -3,6 +3,7 @@ import {
   OperationFailure,
   pluginMethod,
   type MutationPromise,
+  type PluginRecoveryResolution,
 } from "@flame/runtime-client";
 import type { CallPluginResponse, Target } from "@flame/runtime-client/wire";
 import type { ComponentContext } from "./index";
@@ -69,9 +70,8 @@ export function bindOperations<
   const binding = structuredClone(context.binding);
   const captured = structuredClone(target);
   const journal = context.runtime.plugins;
-  function request<K extends keyof Inputs & string>(
+  function route<K extends keyof Inputs & string>(
     method: K,
-    input: Inputs[K],
     kind: "query" | "command",
     delivery: ReturnType<typeof pluginMethod>["delivery"],
   ) {
@@ -87,14 +87,22 @@ export function bindOperations<
       );
     }
     return {
-      route: {
-        installationId: binding.installationId,
-        digest: binding.digest,
-        contribution: binding.contribution,
-        contract,
-        method,
-        target: captured,
-      },
+      installationId: binding.installationId,
+      digest: binding.digest,
+      contribution: binding.contribution,
+      contract,
+      method,
+      target: captured,
+    };
+  }
+  function request<K extends keyof Inputs & string>(
+    method: K,
+    input: Inputs[K],
+    kind: "query" | "command",
+    delivery: ReturnType<typeof pluginMethod>["delivery"],
+  ) {
+    return {
+      route: route(method, kind, delivery),
       input: stringifyJSON(input),
     };
   }
@@ -147,6 +155,19 @@ export function bindOperations<
     commands,
     commandsVersion: journal.commandsVersion,
     subscribeCommands: journal.subscribeCommands,
+    observeRecovery: <K extends keyof Inputs & string>(
+      method: K,
+      idempotencyKey: string,
+      listener: (resolution: PluginRecoveryResolution<Outputs[K]>) => void,
+      signal: AbortSignal = context.signal,
+    ) =>
+      journal.observeRecovery(
+        idempotencyKey,
+        route(method, "command", "plugins.call"),
+        (resolution) =>
+          listener(resolution as PluginRecoveryResolution<Outputs[K]>),
+        AbortSignal.any([context.signal, signal]),
+      ),
     authoring: (name: string) => {
       const intent = `${name}/${binding.installationId}`;
       const originalCommand = () => {
