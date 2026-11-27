@@ -66,6 +66,11 @@ export function useReportArchive(context: BoundContext, locale: string) {
     [context.signal],
   );
   const action = useSyncExternalStore(actions.subscribe, actions.snapshot);
+  const journal = context.runtime.plugins;
+  useSyncExternalStore(
+    journal.subscribePendingCommands,
+    journal.pendingCommandsVersion,
+  );
   const busy = action !== undefined;
   const [outcome, setOutcome] = useState<Outcome>();
   const lifetime = useRef<AbortController>(undefined);
