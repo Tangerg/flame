@@ -32,7 +32,6 @@ import (
 )
 
 func TestFilewatchResumesTheSamePartialDataMethodWithPinnedInputs(t *testing.T) {
-	t.Parallel()
 	cfg := poMCPConfig(t)
 	cfg.approvalMode = approval.ModeYolo
 	model := &filewatchDataModel{}

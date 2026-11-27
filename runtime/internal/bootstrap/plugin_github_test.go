@@ -23,7 +23,6 @@ import (
 )
 
 func TestGitHubInstalledSecretLifecycleAndModelWritesShareThePublishedOwner(t *testing.T) {
-	t.Parallel()
 	script := &githubRefusalScript{t: t}
 	script.name.Store("")
 	script.arguments.Store(`{"repository":"../private","number":42}`)
