@@ -396,4 +396,6 @@ func (a *ActiveRunConflictError) Error() string {
 	return fmt.Sprintf("runs: session already has a %s run %q", a.Root.State, a.Root.RunID)
 }
 
+func (a *ActiveRunConflictError) Unwrap() error { return ErrRunAdmissionBusy }
+
 func (r StartResult) Reopened() bool { return r.Opening != OpeningAdmitted }

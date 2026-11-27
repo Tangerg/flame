@@ -1221,8 +1221,9 @@ Foreground Session and Run admission checks the caller's lifetime under the
 Gate lock before reserving resources. Startability waits reject an already
 canceled caller even when a reservation just released. Durable Run reads
 retain both their own failure and concurrent cancellation before permitting
-a continuation. Observation cleanup retires only that waiter's subscription;
-the next Start still acquires its own admission.
+a continuation. A waiting Goal re-reads the Session and its current workspace
+on each admission release. Its next Start acquires its own admission. If
+another Run takes the slot first, the Goal waits for another opportunity.
 Startup and periodic recovery share one coordinator that serializes each sweep,
 then reconciles Runs before Goals. It checks its lifetime before taking
 ownership and before starting each phase, releases acquired ownership on every

@@ -104,22 +104,34 @@ func (c *Openings) AdmitSelection(ctx context.Context, selection flamemodel.Sele
 }
 
 func (c *Openings) WaitSessionStartable(ctx context.Context, sessionID identity.SessionID) error {
-	sess, err := c.sessionReader.Get(ctx, sessionID)
-	if err != nil {
-		return err
-	}
 	for {
-		// Every writer releases its admission after settling durable state,
-		// including parked cancellation, recovery and failed cleanup. Capture
-		// that version before either read so no successful release is missed.
-		changed := c.admission.Changes()
-		if err := c.admission.WaitRunStartable(ctx, sess.ID(), sess.Workspace().Path()); err != nil {
+		if err := errors.Join(ctx.Err(), context.Cause(ctx)); err != nil {
 			return err
 		}
-		active, err := c.activeRoots.ActiveRoot(ctx, sess.ID())
-		err = errors.Join(err, errors.Join(ctx.Err(), context.Cause(ctx)))
-		if err != nil || active == nil {
+		// A Session edit can change which tree blocks the Run. Its release
+		// must invalidate both the Session read and the readiness observation.
+		changed := c.admission.Changes()
+		sess, err := c.sessionReader.Get(ctx, sessionID)
+		if err != nil {
 			return err
+		}
+		ready, err := c.admission.RunStartable(sess.ID(), sess.Workspace().Path())
+		if err != nil {
+			return err
+		}
+		if ready {
+			active, err := c.activeRoots.ActiveRoot(ctx, sess.ID())
+			if err := errors.Join(err, ctx.Err(), context.Cause(ctx)); err != nil {
+				return err
+			}
+			if active == nil {
+				select {
+				case <-changed:
+					continue
+				default:
+					return nil
+				}
+			}
 		}
 		select {
 		case <-ctx.Done():
