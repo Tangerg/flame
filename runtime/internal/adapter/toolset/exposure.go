@@ -1,6 +1,8 @@
 package toolset
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"slices"
 
@@ -193,25 +195,44 @@ func (m *manifestBuilder) bindModelNames(retained *Retained) error {
 	return nil
 }
 
-func (r *Resolver) MCPTools(server *mcpserver.ID) ([]mcpserver.AdvertisedTool, map[tool.Ref][]tool.Ref, error) {
-	snapshot := r.mcpSnapshot()
-	exposed, err := r.exposedMCPTools(snapshot, nil)
+func (r *Resolver) disabledMCPTools(ctx context.Context) (map[tool.Ref]struct{}, error) {
+	refs, err := r.listMCPExposure(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("toolset: read MCP exposure: %w", err)
+	}
+	disabled := make(map[tool.Ref]struct{}, len(refs))
+	for _, ref := range refs {
+		disabled[ref] = struct{}{}
+	}
+	return disabled, nil
+}
+
+func mcpToolRef(executable toolcontract.Tool) (tool.Ref, error) {
+	ref, found, err := mcp.IdentifyTool(executable)
+	if err != nil {
+		return tool.Ref{}, fmt.Errorf("toolset: resolve MCP tool identity: %w", err)
+	}
+	if !found {
+		return tool.Ref{}, errors.New("toolset: MCP tool has no source identity")
+	}
+	return ref, nil
+}
+
+func (r *Resolver) MCPTools(ctx context.Context, server *mcpserver.ID) ([]mcpserver.AdvertisedTool, map[tool.Ref][]tool.Ref, error) {
+	disabled, err := r.disabledMCPTools(ctx)
 	if err != nil {
 		return nil, nil, err
 	}
-	refs := make([]tool.Ref, 0, len(exposed))
-	for _, executable := range exposed {
-		ref, err := Identify(executable)
+	snapshot := r.mcpSnapshot()
+	refs := make([]tool.Ref, 0, len(snapshot))
+	advertised := make([]mcpserver.AdvertisedTool, 0, len(snapshot))
+	for _, executable := range snapshot {
+		ref, err := mcpToolRef(executable)
 		if err != nil {
 			return nil, nil, err
 		}
-		refs = append(refs, ref)
-	}
-	advertised := make([]mcpserver.AdvertisedTool, 0, len(snapshot))
-	for _, executable := range snapshot {
-		ref, _, err := mcp.IdentifyTool(executable)
-		if err != nil {
-			return nil, nil, err
+		if _, hidden := disabled[ref]; !hidden {
+			refs = append(refs, ref)
 		}
 		source, remote, _ := ref.MCP()
 		if server != nil && source != *server {

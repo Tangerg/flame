@@ -91,7 +91,7 @@ func (c *Coordinator) DeleteServer(ctx context.Context, name mcpserver.ID, recei
 		return err
 	}
 	return c.completeDirectoryChange(write, settlement, func(context.Context) error {
-		return c.removeServer(name)
+		return c.connections.Detach(name)
 	})
 }
 
@@ -121,7 +121,7 @@ func (c *Coordinator) completeRecoveredDirectoryChange(write *mutationScope, set
 			return err
 		}
 		if !found {
-			return c.removeServer(name)
+			return c.connections.Detach(name)
 		}
 		return c.realizeServer(ctx, current, start)
 	})

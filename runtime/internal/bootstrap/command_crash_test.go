@@ -40,6 +40,7 @@ func (s atomicReceiptCommitCrashStore) Transact(ctx context.Context, write func(
 
 type pausedReceiptCommit struct {
 	operation.ReplayStore
+	commandID string
 	committed chan<- struct{}
 	release   <-chan struct{}
 }
@@ -47,6 +48,9 @@ type pausedReceiptCommit struct {
 func (s pausedReceiptCommit) Transact(ctx context.Context, write func(context.Context) error) error {
 	if err := s.ReplayStore.Transact(ctx, write); err != nil {
 		return err
+	}
+	if operation.Identity(ctx) != s.commandID {
+		return nil
 	}
 	close(s.committed)
 	select {
@@ -80,12 +84,13 @@ func (s commandCrashStore) Complete(ctx context.Context, record operation.Replay
 }
 
 const embeddingRoleCrashVariable = "FLAME_TEST_EMBEDDING_ROLE_CRASH"
+const clearEmbeddingRoleKey = "clear-original-embedding-role"
 
 var originalEmbeddingRole = protocol.EmbeddingRole{Provider: "openai-compatible", Model: "original-embedding"}
 
 func clearEmbeddingRole(ctx context.Context, endpoint *delivery.Endpoint) (*protocol.EmbeddingRole, error) {
 	return endpoint.Call[protocol.EmbeddingRole, *protocol.EmbeddingRole](ctx, delivery.ModelsSetEmbeddingRole, protocol.EmbeddingRole{},
-		protocol.CallMetadata{IdempotencyKey: "clear-original-embedding-role"})
+		protocol.CallMetadata{IdempotencyKey: clearEmbeddingRoleKey})
 }
 
 func TestEmbeddingRoleCrashHelper(t *testing.T) {
@@ -237,7 +242,8 @@ func TestEmbeddingRoleReadObservesCommittedSelection(t *testing.T) {
 		t.Fatal(err)
 	}
 	committed, release := make(chan struct{}), make(chan struct{})
-	if err := startTestRuntimeWithReplayStore(t, host, api, stores, pausedReceiptCommit{stores.Idempotency, committed, release}); err != nil {
+	commandID := operation.Identity(operation.Bind(t.Context(), testsupport.IdempotencyNamespace, clearEmbeddingRoleKey))
+	if err := startTestRuntimeWithReplayStore(t, host, api, stores, pausedReceiptCommit{stores.Idempotency, commandID, committed, release}); err != nil {
 		t.Fatal(err)
 	}
 	ctx, cancel := context.WithTimeout(t.Context(), lifecycleWaitBudget(t))

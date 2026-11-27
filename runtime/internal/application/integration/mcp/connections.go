@@ -41,7 +41,6 @@ func (c *Coordinator) ReconnectServer(ctx context.Context, name mcpserver.ID, co
 }
 
 func (c *Coordinator) realizeServer(ctx context.Context, server mcpserver.Server, start <-chan struct{}) error {
-	c.exposure.setServer(server)
 	if !server.Enabled {
 		return c.connections.Detach(server.ID())
 	}
@@ -49,11 +48,6 @@ func (c *Coordinator) realizeServer(ctx context.Context, server mcpserver.Server
 		return c.connections.EnsureConnection(ctx, server)
 	}
 	return c.dispatchConnection(ctx, server.ID(), begin, start, nil, nil)
-}
-
-func (c *Coordinator) removeServer(id mcpserver.ID) error {
-	c.exposure.removeServer(id)
-	return c.connections.Detach(id)
 }
 
 func (c *Coordinator) connectionTarget(ctx context.Context, name mcpserver.ID) (mcpserver.Server, error) {

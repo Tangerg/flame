@@ -58,7 +58,6 @@ type toolEnvironmentDependencies struct {
 	lifetime       context.Context
 	config         assemblyConfig
 	approvalPolicy *approvals.RuntimePolicy
-	mcp            mcpEnvironment
 	goalReader     *goals.Reader
 	goalStore      goals.Store
 	skillStore     *skillauthoring.Store
@@ -141,7 +140,11 @@ func buildToolEnvironment(ctx context.Context, deps toolEnvironmentDependencies)
 	cfg := deps.config
 	admission := cfg.stores.Admission
 	commands := deps.framework.commands
-	mcpPool, err := mcp.Open(ctx, deps.lifetime, deps.mcp.servers, cfg.stores.MCPAuthorization(), deps.registry, deps.callbacks, deps.publish, deps.framework.installed)
+	servers, err := deps.framework.registry.Definitions(ctx)
+	if err != nil {
+		return toolEnvironment{}, fmt.Errorf("runtime: load initial MCP definitions: %w", err)
+	}
+	mcpPool, err := mcp.Open(ctx, deps.lifetime, servers, cfg.stores.MCPAuthorization(), deps.registry, deps.callbacks, deps.publish, deps.framework.installed)
 	if err != nil {
 		return toolEnvironment{}, fmt.Errorf("runtime: open MCP connections: %w", err)
 	}
@@ -197,7 +200,7 @@ func buildToolEnvironment(ctx context.Context, deps toolEnvironmentDependencies)
 		PlanAvailable:    commandCalls.PlanAvailable,
 		Plan:             environment.plans,
 		Interrupt:        runinput.Require,
-		MCPToolDisabled:  deps.mcp.exposure.ToolDisabled,
+		ListMCPExposure:  cfg.stores.MCPServers.ListExposure,
 		RestoreMCP: func(ctx context.Context, refs []tool.Ref, activations []plugin.Activation) ([]toolcontract.Tool, func() error, error) {
 			return mcpPool.RestoreTools(ctx, refs, activations, prepareTool)
 		},

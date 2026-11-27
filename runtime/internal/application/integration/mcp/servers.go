@@ -186,13 +186,13 @@ type ToolView struct {
 	Conflicts []tool.Ref
 }
 
-func (c *Coordinator) Tools(_ context.Context, server *mcpserver.ID) ([]ToolView, error) {
+func (c *Coordinator) Tools(ctx context.Context, server *mcpserver.ID) ([]ToolView, error) {
 	if server != nil {
 		if err := server.Validate(); err != nil {
 			return nil, fmt.Errorf("mcp: tool catalog server: %w", err)
 		}
 	}
-	tools, conflicts, err := c.toolCatalog.MCPTools(server)
+	tools, conflicts, err := c.toolCatalog.MCPTools(ctx, server)
 	if err != nil {
 		return nil, err
 	}

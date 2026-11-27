@@ -294,7 +294,6 @@ func assembleIntegrations(cfg assemblyConfig, lifetime *runtimeLifetime, policy 
 		External:      policy.framework.external,
 		Connections:   execution.tools.mcp,
 		ToolCatalog:   execution.tools.tools.Resolver,
-		Exposure:      policy.mcp.exposure,
 		Invalidations: policy.invalidations.publish,
 	})
 	if err != nil {

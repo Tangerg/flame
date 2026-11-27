@@ -48,9 +48,11 @@ func Open(
 	if lo.IsNil(registry) || installed == nil || publish == nil {
 		return nil, errors.New("mcp connection: source registry and installed backends are required")
 	}
-	configs := make([]ServerConfig, len(servers))
-	for index, server := range servers {
-		configs[index] = ServerConfig{Server: server}
+	configs := make([]ServerConfig, 0, len(servers))
+	for _, server := range servers {
+		if server.Enabled {
+			configs = append(configs, ServerConfig{Server: server})
+		}
 	}
 	pool := &Pool{registry: registry, publish: publish, callbacks: callbacks, installed: installed}
 	inner, err := newConnections(ctx, lifetime, configs, oauthSessions, callbacks)
