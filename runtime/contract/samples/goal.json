@@ -1,5 +1,6 @@
 {
   "sessionId": "sess_01HZY7K9Q3",
+  "incarnationId": "0cf5043e-1d88-4bc6-a897-d5b9a5a957c0",
   "objective": "Refactor the auth module and add tests.",
   "status": "active",
   "provider": "anthropic",
