@@ -31,8 +31,3 @@ export function cancelSessionRun(
   entry.cancelRun(runId);
   return true;
 }
-
-export function dismissActiveSessionProblem(agentAccess: AgentDependencies): void {
-  const sessionId = agentAccess.state.getActiveSessionId();
-  agentAccess.view.clearProblem(sessionId);
-}

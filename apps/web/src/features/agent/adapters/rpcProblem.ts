@@ -5,7 +5,7 @@ import {
   RpcTransportError,
 } from "@flame/runtime-client";
 import { type AgentProblem } from "@/features/agent/public/sessionView";
-import { requestProblem } from "@/features/agent/adapters/runtimeAgentFacts";
+import { runtimeProblem } from "@/features/agent/adapters/runtimeAgentFacts";
 export function agentProblemFromRpcFailure(error: unknown): AgentProblem | null {
   if (
     error instanceof RpcTransportError ||
@@ -14,5 +14,5 @@ export function agentProblemFromRpcFailure(error: unknown): AgentProblem | null 
   )
     return { code: "transport_error" };
   if (!(error instanceof RpcError)) return null;
-  return requestProblem(error.data);
+  return runtimeProblem(error.data);
 }

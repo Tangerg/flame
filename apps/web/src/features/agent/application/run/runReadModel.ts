@@ -8,7 +8,7 @@ import {
 } from "@/features/agent/public/sessionView";
 
 import { type TranscriptRow } from "@/features/agent/application/conversation/transcriptRows";
-import { isAgentRunFailure } from "@/features/agent/application/view/runOutcome";
+import { isAgentRunFailure, runFailureProblem } from "@/features/agent/application/view/runOutcome";
 export class CurrentRootMaterial {
   static readonly idle = new CurrentRootMaterial(null);
 
@@ -67,10 +67,21 @@ export function useIsCurrentRootRunning(): boolean {
   return agentAccess.view.useCurrentRootRunning();
 }
 
-export function useActiveSessionProblem(): AgentProblem | null {
-  const agentAccess = useAgentDependencies();
+interface SessionProblemNotice {
+  readonly error: AgentProblem;
+  dismiss(): void;
+}
 
-  return agentAccess.view.useProblem();
+export function useActiveSessionProblem(): SessionProblemNotice | null {
+  const agentAccess = useAgentDependencies();
+  const displayed = agentAccess.view.useProblem();
+  return useMemo(() => {
+    if (!displayed) return null;
+    return {
+      error: displayed.kind === "command" ? displayed.error : runFailureProblem(displayed.outcome),
+      dismiss: () => agentAccess.view.dismissProblem(displayed),
+    };
+  }, [agentAccess, displayed]);
 }
 
 function epochMillis(iso: string | undefined): number | null {

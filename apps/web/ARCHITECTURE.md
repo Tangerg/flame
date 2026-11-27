@@ -372,6 +372,12 @@ external effects. Root and delegated narratives render the same read-only eviden
 observed output stays an exact document and never becomes a final ToolResult or an
 instruction to resume the finished Run.
 
+Each Session notice dismisses the displayed command refusal or failed root Run.
+A local opening supersedes the previous command notice when it starts. Run
+events only project execution. Unknown acceptance recovers the original
+journaled command, and message regeneration gets its input from the committed
+rollback result.
+
 The client owns authoring facts: drafts, attachment preparation, queued intent,
 and unresolved command identity. A draft reference keeps the label and model text
 its producer wrote when the user added it; the Composer shows and removes it but

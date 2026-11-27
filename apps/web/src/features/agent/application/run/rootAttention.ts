@@ -2,11 +2,8 @@ import { type LossReason } from "@/foundation/protocolValues.generated";
 import { type AgentDependencies } from "@/features/agent/application/agentDependencies";
 import { type AgentRunView, type AgentSessionView } from "@/features/agent/public/sessionView";
 import { type AgentSessionViewEntry } from "@/features/agent/application/session/sessionAccess";
-import {
-  selectCurrentRootAttention,
-  selectRunProblem,
-} from "@/features/agent/application/view/runTree";
-import { isAgentRunFailure } from "@/features/agent/application/view/runOutcome";
+import { selectCurrentRootAttention } from "@/features/agent/application/view/runTree";
+import { isAgentRunFailure, runFailureProblem } from "@/features/agent/application/view/runOutcome";
 import type { RootRunSettlement as ComponentRootRunSettlement } from "@flame/component-sdk";
 export interface RootRunSettlement extends ComponentRootRunSettlement {
   runId: string;
@@ -69,7 +66,10 @@ export function projectRootRunSettlement(
     run.status === "running"
   )
     return null;
-  const problem = run.status === "finished" ? selectRunProblem(run) : null;
+  const problem =
+    run.status === "finished" && isAgentRunFailure(run.outcome)
+      ? runFailureProblem(run.outcome)
+      : null;
   return {
     sessionId: run.sessionId,
     runId,

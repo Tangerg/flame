@@ -544,7 +544,6 @@ export const en = {
   "cwdMissing.action.cancel": "Cancel",
   "cwdMissing.placeholder": "New absolute path",
   "runError.unknown": "The run failed.",
-  "runError.action.retryIn": "Retry in {{seconds}}s",
   "runError.action.context": "Inspect context",
   "runError.action.diagnostics": "Diagnostics",
   "runError.action.dismiss": "Dismiss",

@@ -7,7 +7,7 @@ type OpenedRun = { runId: string };
 interface RunOpeningControllerOptions {
   sessionId: string;
   isCanceled: () => boolean;
-  markInteracted: () => void;
+  onBegin: () => void;
   setAbortController: (controller: AbortController) => void;
   abortCurrent: () => void;
   setStartError: (error: AgentProblem) => void;
@@ -31,7 +31,7 @@ interface RunOpeningController {
 export function createRunOpeningController({
   sessionId,
   isCanceled,
-  markInteracted,
+  onBegin,
   setAbortController,
   abortCurrent,
   setStartError,
@@ -44,7 +44,7 @@ export function createRunOpeningController({
     begin(run, { observe, release, onResult, onStartError }) {
       active?.releaseDraft();
       active?.finishSpan();
-      markInteracted();
+      onBegin();
       abortCurrent();
       const ctrl = new AbortController();
       setAbortController(ctrl);

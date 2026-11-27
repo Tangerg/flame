@@ -655,7 +655,6 @@
   "settings.theme.light": "Claro",
   "settings.theme.dark": "Oscuro",
   "settings.theme.custom": "Personalizado",
-  "runError.action.retryIn": "Reintentar en {{seconds}} s",
   "file.backToFiles": "Volver a los archivos",
   "file.empty.title": "No hay archivos",
   "file.refreshError.title": "No se pudieron actualizar los archivos",

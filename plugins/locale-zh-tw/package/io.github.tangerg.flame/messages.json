@@ -475,7 +475,6 @@
   "cwdMissing.action.cancel": "取消",
   "cwdMissing.placeholder": "新的絕對路徑",
   "runError.unknown": "執行失敗。",
-  "runError.action.retryIn": "{{seconds}} 秒後可重試",
   "runError.action.context": "檢視上下文",
   "runError.action.diagnostics": "診斷",
   "runError.action.dismiss": "關閉",

@@ -17,7 +17,7 @@ import { FloatingComposer } from "@/features/shell/workbench/panel/FloatingCompo
 import { readingColumn as rc } from "@/features/chat/public/message/rendering";
 import { CwdMissingBanner } from "@/features/shell/workbench/panel/CwdMissingBanner";
 import { MessageStream } from "@/features/shell/workbench/panel/MessageStream";
-import { RunErrorBanner } from "@/features/shell/workbench/panel/RunErrorBanner";
+import { SessionProblemBanner } from "@/features/shell/workbench/panel/SessionProblemBanner";
 import { EmptyChatHeading } from "@/features/shell/workbench/panel/FolderSelector";
 import { pendingQuestionRequest } from "@/features/chat/public/message/rendering";
 import { QuestionCard } from "@/features/chat/public/message/rendering";
@@ -113,7 +113,7 @@ const ChatBanners = memo(function ChatBanners({ sessionId }: { sessionId: string
   return (
     <ScrollRegion label={t("chat.notices")} data-focus-inset="" styles={cst.notices}>
       <CwdMissingBanner key={sessionId} />
-      <RunErrorBanner />
+      <SessionProblemBanner />
       <Slot name="chat.banner.top" />
     </ScrollRegion>
   );

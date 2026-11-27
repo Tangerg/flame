@@ -1654,7 +1654,7 @@ export const RUNTIME_AGENT_SESSION_SNAPSHOTS: Readonly<
     items: [PROMPT],
     pendingInterruptSets: [],
   },
-  "error-retryable": {
+  "provider-error": {
     runs: [
       run("finished", {
         finishedAt: "2026-07-31T08:00:12.000Z",
@@ -2292,7 +2292,7 @@ const RUNTIME_AGENT_SESSION_TAIL_EVENTS: Readonly<Record<VisualAgentState, TailF
   terminal: [],
   canceled: [],
   error: [],
-  "error-retryable": [],
+  "provider-error": [],
   "cwd-missing": [],
   recovery: [],
   delegated: [],

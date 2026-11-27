@@ -200,7 +200,7 @@ export function createAgentState(
       refreshOwner.commit(sessionId, token, view, commands),
     retireProjectionGeneration: (sessionIds) => refreshOwner.retireProjectionGeneration(sessionIds),
     replaceServerScope: (sessionIds) => refreshOwner.replaceServerScope(sessionIds),
-    clearProblem: (sessionId) => useAgentStore.getState().clearProblem(sessionId),
+    dismissProblem: (target) => useAgentStore.getState().dismissProblem(target),
     subscribeSessions: (onChange) => useAgentStore.subscribe((state) => onChange(state.sessions)),
     subscribeRootRunSettlements: projection.subscribeRootRunSettlements,
   };

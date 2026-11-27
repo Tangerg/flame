@@ -4,12 +4,12 @@ import { type AgentRunStartOptions } from "@/features/agent/public/runOptions";
 import { type AgentInput } from "@/features/agent/domain/input";
 import { type InterruptResumeInput } from "@/features/agent/domain/hitl";
 import {
-  type AgentProblem,
   type AgentPlan,
   type AgentRunView,
   type AgentSessionView,
   type Message,
 } from "@/features/agent/public/sessionView";
+import { type DisplayedSessionProblem } from "@/features/agent/application/view/problemPresentation";
 import { type TranscriptRow } from "@/features/agent/application/conversation/transcriptRows";
 import {
   type AgentOpeningCommand,
@@ -104,7 +104,7 @@ export interface AgentSessionViewPort {
   useHasPrecedingRootRun(runId: string | null): boolean;
   useRootNarrativeMessages(): Message[];
   useTranscriptRows(): readonly TranscriptRow[];
-  useProblem(): AgentProblem | null;
+  useProblem(): DisplayedSessionProblem | null;
   useOpeningCommands(): readonly AgentOpeningCommand[];
   usePlan(): AgentProjectionMaterial<AgentPlan>;
   useSharedMaterial<T = unknown>(path?: string): AgentProjectionMaterial<T>;
@@ -136,7 +136,7 @@ export interface AgentSessionViewPort {
   ): boolean;
   retireProjectionGeneration(sessionIds: readonly string[]): void;
   replaceServerScope(sessionIds: readonly string[]): void;
-  clearProblem(sessionId: string): void;
+  dismissProblem(target: DisplayedSessionProblem): void;
   subscribeSessions(
     onChange: (sessions: Record<string, AgentSessionViewEntry>) => void,
   ): () => void;

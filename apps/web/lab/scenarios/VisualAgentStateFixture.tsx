@@ -22,7 +22,7 @@ const STATE_LABELS: Record<VisualAgentState, string> = {
   terminal: "Terminal",
   canceled: "Canceled",
   error: "Error",
-  "error-retryable": "Error, recoverable",
+  "provider-error": "Provider error",
   recovery: "Recovery",
   "cwd-missing": "Folder gone",
   delegated: "Delegated tree",

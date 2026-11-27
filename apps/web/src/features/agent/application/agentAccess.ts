@@ -22,15 +22,10 @@ import {
   synchronizeMountedAgentSessions,
 } from "./session/refreshSessionProjection";
 import { stepActiveAgentSession } from "./session/stepSession";
-import {
-  cancelSessionRun,
-  dismissActiveSessionProblem,
-  stopCurrentRootRun,
-} from "./run/runCommands";
+import { cancelSessionRun, stopCurrentRootRun } from "./run/runCommands";
 import { subscribeAnySessionRunning } from "./run/rootAttention";
 import { retrySteerInput } from "./input/steering";
 import { forgetRules, setApprovalMode } from "./approvalPolicy";
-import { getActiveConversationMessages } from "./conversation/readModel";
 import { submitPendingApproval } from "./hitl/submitPendingApproval";
 
 export function createAgentAccess(dependencies: AgentDependencies) {
@@ -56,14 +51,12 @@ export function createAgentAccess(dependencies: AgentDependencies) {
     synchronizeMountedAgentSessions: synchronizeMountedAgentSessions.bind(undefined, dependencies),
     stepActiveAgentSession: stepActiveAgentSession.bind(undefined, dependencies),
     cancelSessionRun: cancelSessionRun.bind(undefined, dependencies),
-    dismissActiveSessionProblem: dismissActiveSessionProblem.bind(undefined, dependencies),
     stopCurrentRootRun: stopCurrentRootRun.bind(undefined, dependencies),
     subscribeAnySessionRunning: subscribeAnySessionRunning.bind(undefined, dependencies),
     subscribeRootRunSettlements: dependencies.view.subscribeRootRunSettlements,
     retrySteerInput: retrySteerInput.bind(undefined, dependencies),
     forgetRules: forgetRules.bind(undefined, dependencies),
     setApprovalMode: setApprovalMode.bind(undefined, dependencies),
-    getActiveConversationMessages: getActiveConversationMessages.bind(undefined, dependencies),
     submitPendingApproval: submitPendingApproval.bind(undefined, dependencies),
     sessionUsageQueryKey: dependencies.usage.queryKey,
     ownsSessionUsageQuery: dependencies.usage.ownsQuery,

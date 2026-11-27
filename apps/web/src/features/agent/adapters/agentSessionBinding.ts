@@ -123,8 +123,9 @@ export function bindAgentSession(
   const runOpening = createRunOpeningController({
     sessionId,
     isCanceled: () => disposed,
-    markInteracted: () => {
+    onBegin: () => {
       interacted = true;
+      store().setCommandError(sessionId, null);
     },
     abortCurrent: () => observation?.abort(),
     setAbortController: (ctrl) => {

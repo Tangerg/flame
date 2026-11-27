@@ -655,7 +655,6 @@
   "settings.theme.light": "Clair",
   "settings.theme.dark": "Sombre",
   "settings.theme.custom": "Personnalisé",
-  "runError.action.retryIn": "Réessayer dans {{seconds}} s",
   "file.backToFiles": "Retour aux fichiers",
   "file.empty.title": "Aucun fichier",
   "file.refreshError.title": "Impossible d’actualiser les fichiers",
