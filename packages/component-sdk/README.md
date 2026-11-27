@@ -439,3 +439,9 @@ command streams, but carry no mutation intent or journal reservation. Query fail
 is a read failure; it cannot become an unconfirmed command or a private receipt
 lookup. Command streams continue through `bound.stream(intent, method, input,
 consume, signal)` with their original durable command identity.
+
+`CursorPager` owns navigation for one cursor-paginated query. Subscribe to its
+snapshot and call `move` for user navigation. Call `refresh` for invalidation so
+the read follows the selected cursor while the view keeps its last accepted page.
+Give each captured query its own pager and stop its active read when the view
+releases it.

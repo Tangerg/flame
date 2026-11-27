@@ -6,10 +6,12 @@ import {
   useSyncExternalStore,
 } from "react";
 import {
+  CursorPager,
   failureText,
   useContextState,
   watchRuntimeTopics,
   type ComponentContext,
+  type PageDirection,
 } from "@flame/component-sdk";
 import { METHODS } from "../contracts/methods";
 import { LIMITS } from "../contracts/limits";
@@ -23,7 +25,6 @@ import {
 } from "./useCommandJournal";
 import { useAssetSave } from "./useAssetSave";
 import { DocumentNavigation, type Selection } from "./documentNavigation";
-import { ArchivePager, type PageDirection } from "./archivePager";
 import { type MethodOutputs } from "./methods.generated";
 
 function commandNotice(
@@ -55,7 +56,7 @@ export function useDeliverables(context: ComponentContext) {
   const { values, query, abort } = useProjections(context, operations, signal);
   const archivePager = useMemo(
     () =>
-      new ArchivePager(signal, (before, readSignal) =>
+      new CursorPager(signal, (before, readSignal) =>
         operations.query(
           METHODS.list,
           { limit: LIMITS.pageSize, ...scoped, ...(before ? { before } : {}) },
@@ -98,7 +99,7 @@ export function useDeliverables(context: ComponentContext) {
   const selectedDocument = selection?.id;
   const historyPager = useMemo(
     () =>
-      new ArchivePager<MethodOutputs[typeof METHODS.history]>(
+      new CursorPager<MethodOutputs[typeof METHODS.history]>(
         signal,
         selectedDocument
           ? (before, readSignal) =>

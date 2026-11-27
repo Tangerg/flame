@@ -36,6 +36,7 @@ export { mutationSettlementIsUnknown } from "@flame/runtime-client";
 export { isErrorType } from "@flame/runtime-client";
 export { scrollPositions, type ScrollPosition } from "./scroll";
 export { failureText } from "./errorText";
+export { CursorPager, type PageDirection } from "./cursorPager";
 
 // The active Session's Project. Project-scoped plugins key their records on it
 // rather than on the Session's folder.

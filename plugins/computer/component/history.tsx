@@ -26,13 +26,12 @@ export function ConsoleHistory({
     | "loadHistory"
     | "inspect"
     | "closeInspection"
-    | "hasPrevious"
-    | "previousPage"
-    | "nextPage"
+    | "page"
   >;
   dateTime: Intl.DateTimeFormat;
   t: Translate;
 }) {
+  const hasPrevious = Boolean(state.history?.cursors.length);
   return (
     <PanelSection
       title={t("history.title")}
@@ -113,17 +112,17 @@ export function ConsoleHistory({
           </RecordGroup>
         );
       })}
-      {(state.hasPrevious || state.history?.value?.next) && (
+      {(hasPrevious || state.history?.value?.next) && (
         <Toolbar label={t("history.pages")}>
           <Button
-            disabled={!state.hasPrevious || state.history?.loading}
-            onClick={() => void state.previousPage()}
+            disabled={!hasPrevious || state.history?.loading}
+            onClick={() => void state.page("previous")}
           >
             {t("history.previous")}
           </Button>
           <Button
             disabled={!state.history?.value?.next || state.history.loading}
-            onClick={() => void state.nextPage()}
+            onClick={() => void state.page("next")}
           >
             {t("history.next")}
           </Button>

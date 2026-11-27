@@ -1,12 +1,21 @@
 import { METHODS } from "../contracts/methods";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import {
   bindOperations,
+  CursorPager,
   failureText,
   isErrorType,
   mutationSettlementIsUnknown,
   OperationFailure,
   type ComponentContext,
+  type PageDirection,
 } from "@flame/component-sdk";
 import {
   CAPABILITY_JSON,
@@ -96,7 +105,21 @@ export function useComputer(context: ComponentContext) {
   const { signal } = context;
   const [read, setInspection] = useState<Read<Snapshot>>();
   const [surface, setSurfaceRead] = useState<Read<Surface>>();
-  const [history, setHistoryRead] = useState<Read<HistoryPage>>();
+  const historyPager = useMemo(
+    () =>
+      new CursorPager<HistoryPage>(signal, (before, readSignal) =>
+        operations.query(
+          METHODS.history,
+          { ...(before ? { before } : {}), limit: LIMITS.maxHistoryPage },
+          readSignal,
+        ),
+      ),
+    [operations, signal],
+  );
+  const history = useSyncExternalStore(
+    historyPager.subscribe,
+    historyPager.snapshot,
+  );
   const [result, setResultRead] = useState<
     Read<OperationRecord> & { id: string }
   >();
@@ -110,13 +133,8 @@ export function useComputer(context: ComponentContext) {
   const [notice, setNotice] = useState<
     { kind: "success"; method: CommandMethod } | { kind: "error"; text: string }
   >();
-  const historyRequest = useRef<AbortController>(undefined);
   const resultRequest = useRef<AbortController>(undefined);
   const readRequest = useRef<AbortController>(undefined);
-  const cursor = useRef<string>(undefined);
-  const [previousPages, setPreviousPages] = useState<Array<string | undefined>>(
-    [],
-  );
 
   const snapshot = read?.value;
 
@@ -139,38 +157,6 @@ export function useComputer(context: ComponentContext) {
         }));
     }
   }, [operations, setInspection, signal]);
-
-  const loadHistory = useCallback(
-    async (before: string | undefined = cursor.current) => {
-      signal.throwIfAborted();
-      historyRequest.current?.abort();
-      const request = new AbortController();
-      historyRequest.current = request;
-      const lifetime = AbortSignal.any([signal, request.signal]);
-      setHistoryRead((previous) => ({ value: previous?.value, loading: true }));
-      try {
-        const value = await operations.query(
-          METHODS.history,
-          { ...(before ? { before } : {}), limit: LIMITS.maxHistoryPage },
-          lifetime,
-        );
-        if (!lifetime.aborted) {
-          cursor.current = before;
-          setHistoryRead({ value, loading: false });
-          return true;
-        }
-        return false;
-      } catch (error) {
-        if (!lifetime.aborted)
-          setHistoryRead((previous) => ({
-            value: previous?.value,
-            loading: false,
-            error: failureText(error),
-          }));
-      }
-    },
-    [operations, setHistoryRead, signal],
-  );
 
   const inspect = useCallback(
     async (id: string) => {
@@ -251,8 +237,9 @@ export function useComputer(context: ComponentContext) {
     requestId: session?.approval?.id,
   };
   useEffect(() => {
-    void loadHistory();
-  }, [loadHistory, snapshot]);
+    void historyPager.refresh();
+    return historyPager.stop;
+  }, [historyPager, snapshot]);
 
   useEffect(() => {
     if (!canReadSurface || !sessionId || !workerId || !surfaceDigest) {
@@ -349,7 +336,7 @@ export function useComputer(context: ComponentContext) {
   }, [operations, signal, publishCommands]);
 
   const observe = useCallback(
-    async (original: CommandObservation, promise: Promise<unknown>) => {
+    async (original: CommandObservation, execute: () => Promise<unknown>) => {
       commands.current.set(original.id, {
         ...original,
         target: commands.current.get(original.id)?.target ?? original.target,
@@ -359,12 +346,7 @@ export function useComputer(context: ComponentContext) {
       publishCommands();
       setNotice(undefined);
       try {
-        await promise;
-        if (signal.aborted) return false;
-        commands.current.delete(original.id);
-        setNotice({ kind: "success", method: original.method });
-        await Promise.all([refresh(), loadHistory()]);
-        return true;
+        await execute();
       } catch (error) {
         if (signal.aborted) return false;
         if (
@@ -390,12 +372,18 @@ export function useComputer(context: ComponentContext) {
           commands.current.delete(original.id);
           setNotice({ kind: "error", text: failureText(error) });
         }
-        return false;
-      } finally {
         publishCommands();
+        return false;
       }
+      if (signal.aborted) return false;
+      commands.current.delete(original.id);
+      publishCommands();
+      setNotice({ kind: "success", method: original.method });
+      void refresh();
+      void historyPager.refresh();
+      return true;
     },
-    [signal, operations, publishCommands, refresh, loadHistory],
+    [signal, operations, publishCommands, refresh, historyPager],
   );
 
   const submit = useCallback(
@@ -416,7 +404,7 @@ export function useComputer(context: ComponentContext) {
         const promise = operations.command(method, input);
         return await observe(
           { id: promise.idempotencyKey, method, target, status: "running" },
-          promise,
+          () => promise,
         );
       } catch (error) {
         if (!signal.aborted)
@@ -446,7 +434,7 @@ export function useComputer(context: ComponentContext) {
         setSurfaceVersion((value) => value + 1);
       setWatchVersion((value) => value + 1);
     },
-    loadHistory,
+    loadHistory: historyPager.refresh,
     inspect,
     closeInspection,
     submit,
@@ -454,26 +442,12 @@ export function useComputer(context: ComponentContext) {
       commandView.some((command) =>
         blocks(command, method, commandTarget(method, currentTarget)),
       ),
-    recover: (command: CommandObservation) => {
-      if (signal.aborted || command.status !== "unknown" || !command.recover)
-        return;
-      void observe(command, command.recover());
+    recover: (id: string) => {
+      if (signal.aborted) return;
+      const command = commands.current.get(id);
+      if (command?.status === "unknown" && command.recover)
+        void observe(command, command.recover);
     },
-    nextPage: async () => {
-      if (!history?.value?.next || history.loading) return;
-      const previous = cursor.current;
-      if (await loadHistory(history.value.next))
-        setPreviousPages((pages) => [...pages, previous]);
-    },
-    previousPage: async () => {
-      if (!previousPages.length || history?.loading) return;
-      const before = previousPages.at(-1);
-      const current = cursor.current;
-      cursor.current = before;
-      if (await loadHistory(before))
-        setPreviousPages((previous) => previous.slice(0, -1));
-      else cursor.current = current;
-    },
-    hasPrevious: previousPages.length > 0,
+    page: (direction: PageDirection) => historyPager.move(direction),
   };
 }

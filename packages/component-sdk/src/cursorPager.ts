@@ -1,4 +1,4 @@
-import { failureText } from "@flame/component-sdk";
+import { failureText } from "./errorText";
 
 export type PageDirection = "next" | "previous";
 
@@ -16,7 +16,7 @@ type PageRead<T> = Readonly<
 
 type ReadPage<T> = (before: string | undefined, signal: AbortSignal) => Promise<T>;
 
-export class ArchivePager<T extends PageValue> {
+export class CursorPager<T extends PageValue> {
   // Background invalidation follows the requested cursor while a read retains the old page.
   #requested: readonly string[] = [];
   #page?: PageRead<T>;

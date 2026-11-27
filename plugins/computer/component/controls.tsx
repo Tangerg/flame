@@ -147,7 +147,7 @@ export function ConsoleFeedback({
               </p>
               {command.error && <RecordBody>{command.error}</RecordBody>}
               {command.status === "unknown" && command.recover && (
-                <Button onClick={() => state.recover(command)}>
+                <Button onClick={() => state.recover(command.id)}>
                   {t("command.recover")}
                 </Button>
               )}
