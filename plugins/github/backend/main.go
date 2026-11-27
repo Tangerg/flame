@@ -33,6 +33,9 @@ func run(ctx context.Context, data string) (err error) {
 	if err != nil {
 		return err
 	}
+	if err := connector.configureReview(); err != nil {
+		return err
+	}
 	server, operations, err := newServer(connector)
 	if err != nil {
 		return err

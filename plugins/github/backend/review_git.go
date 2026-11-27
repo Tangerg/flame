@@ -25,22 +25,30 @@ type reviewGit struct {
 	origin string
 }
 
-func (g reviewGit) recheck(ctx context.Context, key string, credential credential, repository repository, revision wire.ReviewVersion, previous reviewRevision) wire.ReviewRecheck {
-	ctx, cancel := context.WithTimeout(ctx, reviewGitTimeout)
-	defer cancel()
+func (g reviewGit) recheck(ctx context.Context, key string, credential credential, repository repository, revision wire.ReviewVersion, findings []reviewFindingSource, partial bool, policy projectCheckPolicy) wire.ReviewRecheck {
 	result := wire.ReviewRecheck{
 		PreviousRevision: revision.Recheck.PreviousRevision,
 		Findings:         []wire.FindingRecheck{},
+		FindingsPartial:  partial,
+		Project:          copyProjectChecks(revision.Recheck.Project),
 	}
-	if err := g.verify(ctx, key, credential, repository, revision, previous, &result); err != nil {
+	if err := g.verify(ctx, key, credential, repository, revision, findings, policy, &result); err != nil {
 		result.Status = wire.ReviewRecheckFailed
 		result.Diagnostic = err.Error()
+		finishPendingProjectChecks(result.Project, wire.ProjectCheckNotRun, "")
+		for _, source := range findings[len(result.Findings):] {
+			result.Findings = append(result.Findings, wire.FindingRecheck{
+				Finding: source.finding.ID, SourceRevision: source.revision.ID, Status: wire.FindingFileUnavailable,
+			})
+		}
 	}
 	result.CompletedAt = &instant.Timestamp{Time: time.Now().UTC()}
 	return result
 }
 
-func (g reviewGit) verify(ctx context.Context, key string, credential credential, repository repository, revision wire.ReviewVersion, previous reviewRevision, result *wire.ReviewRecheck) (err error) {
+func (g reviewGit) verify(lifetime context.Context, key string, credential credential, repository repository, revision wire.ReviewVersion, findings []reviewFindingSource, policy projectCheckPolicy, result *wire.ReviewRecheck) (err error) {
+	ctx, cancel := context.WithTimeout(lifetime, reviewGitTimeout)
+	defer cancel()
 	if !commitSHA.MatchString(revision.BaseSHA) || !commitSHA.MatchString(revision.HeadSHA) || len(revision.BaseSHA) != len(revision.HeadSHA) {
 		return errors.New("github: the captured base and head must be exact commits of the same object format")
 	}
@@ -102,10 +110,14 @@ func (g reviewGit) verify(ctx context.Context, key string, credential credential
 	default:
 		return fmt.Errorf("github: check captured diff: %w", err)
 	}
-	if len(previous.Findings) != 0 {
-		recheckFindings(ctx, checkout, remote, authorization, revision, previous, result)
+	if len(findings) != 0 {
+		recheckFindings(ctx, checkout, remote, authorization, revision, findings, result)
 	}
-	return ctx.Err()
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	policy.run(lifetime, filepath.Join(directory, "checks"), checkout, result.Project)
+	return lifetime.Err()
 }
 
 func fetchReviewCommits(ctx context.Context, directory, remote, authorization string, commits ...string) error {
@@ -119,9 +131,10 @@ func fetchReviewCommits(ctx context.Context, directory, remote, authorization st
 	return err
 }
 
-func recheckFindings(ctx context.Context, directory, remote, authorization string, revision wire.ReviewVersion, previous reviewRevision, result *wire.ReviewRecheck) {
+func recheckFindings(ctx context.Context, directory, remote, authorization string, revision wire.ReviewVersion, findings []reviewFindingSource, result *wire.ReviewRecheck) {
 	available := map[string]bool{revision.BaseSHA: true, revision.HeadSHA: true}
-	for _, finding := range previous.Findings {
+	for _, source := range findings {
+		finding, previous := source.finding, source.revision
 		before, after := previous.HeadSHA, revision.HeadSHA
 		if finding.Side == wire.Left {
 			before, after = previous.BaseSHA, revision.BaseSHA
@@ -129,27 +142,28 @@ func recheckFindings(ctx context.Context, directory, remote, authorization strin
 		if _, known := available[before]; !known {
 			available[before] = fetchReviewCommits(ctx, directory, remote, authorization, before) == nil
 		}
-		status := wire.FindingFileUnavailable
+		recheck := wire.FindingRecheck{Finding: finding.ID, SourceRevision: previous.ID, Status: wire.FindingFileUnavailable}
 		if available[before] {
-			status = compareFindingFile(ctx, directory, before, after, finding.Path)
+			recheck.Status, recheck.Patch, recheck.PatchTruncated = compareFindingFile(ctx, directory, before, after, finding.Path)
 		}
-		result.Findings = append(result.Findings, wire.FindingRecheck{Finding: finding.ID, Status: status})
+		result.Findings = append(result.Findings, recheck)
 	}
 }
 
-func compareFindingFile(ctx context.Context, directory, before, after, path string) wire.FindingRecheckStatus {
+func compareFindingFile(ctx context.Context, directory, before, after, path string) (wire.FindingRecheckStatus, string, bool) {
 	kind, err := runReviewGit(ctx, directory, "", "cat-file", "-t", before+":"+path)
 	if err != nil || strings.TrimSpace(kind) != "blob" {
-		return wire.FindingFileUnavailable
+		return wire.FindingFileUnavailable, "", false
 	}
-	_, err = runReviewGit(ctx, directory, "", "diff", "--no-ext-diff", "--no-textconv", "--quiet", before, after, "--", path)
+	diff, err := runReviewGit(ctx, directory, "", "diff", "--no-ext-diff", "--no-textconv", "--no-color", "--no-renames", "--exit-code", before, after, "--", path)
 	switch {
 	case err == nil:
-		return wire.FindingFileUnchanged
+		return wire.FindingFileUnchanged, "", false
 	case gitExit(err, 1):
-		return wire.FindingFileChanged
+		patch, truncated := limitReviewEvidence(diff, 1024)
+		return wire.FindingFileChanged, patch, truncated
 	default:
-		return wire.FindingFileUnavailable
+		return wire.FindingFileUnavailable, "", false
 	}
 }
 

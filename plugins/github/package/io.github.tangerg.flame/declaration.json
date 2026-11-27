@@ -8,6 +8,30 @@
       "key": "GITHUB_TOKEN",
       "secret": true,
       "required": false
+    },
+    {
+      "id": "review-checks",
+      "server": "github",
+      "target": "env",
+      "key": "GITHUB_REVIEW_CHECKS",
+      "secret": false,
+      "required": false
+    },
+    {
+      "id": "webhook-port",
+      "server": "github",
+      "target": "env",
+      "key": "GITHUB_WEBHOOK_PORT",
+      "secret": false,
+      "required": false
+    },
+    {
+      "id": "webhook-secret",
+      "server": "github",
+      "target": "env",
+      "key": "GITHUB_WEBHOOK_SECRET",
+      "secret": true,
+      "required": false
     }
   ],
   "contributions": [

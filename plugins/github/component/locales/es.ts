@@ -1,4 +1,21 @@
 export const es = {
+  projectChecks: "Comprobaciones del proyecto",
+  "projectCheck.pending": "Pendiente",
+  "projectCheck.passed": "Correcta",
+  "projectCheck.failed": "Fallida",
+  "projectCheck.timed_out": "Tiempo agotado",
+  "projectCheck.unavailable": "No disponible",
+  "projectCheck.not_run": "Sin ejecutar",
+  exitCode: "Código de salida {{code}}",
+  checkOutput: "Salida de la comprobación",
+  findingPatch: "Diferencias del archivo",
+  evidenceTruncated: "Salida truncada",
+  originalDecision: "Decisión original",
+  confirmFinding: "Sigue presente",
+  resolveFinding: "Marcar como resuelto",
+  resolved: "Resuelto",
+  findingsPartial:
+    "Esta revisión solo incluye parte de los hallazgos anteriores.",
   follow: "Seguir los nuevos commits",
   pauseFollow: "Pausar seguimiento",
   following:

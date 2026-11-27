@@ -4719,7 +4719,8 @@
                   {
                     "enum": [
                       "accepted",
-                      "deferred"
+                      "deferred",
+                      "resolved"
                     ]
                   }
                 ],
@@ -4739,7 +4740,22 @@
           "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.RmluZGluZ1JlY2hlY2s": {
             "additionalProperties": false,
             "properties": {
+              "decisions": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.RmluZGluZ0RlY2lzaW9u"
+                },
+                "type": "array"
+              },
               "finding": {
+                "type": "string"
+              },
+              "patch": {
+                "type": "string"
+              },
+              "patchTruncated": {
+                "type": "boolean"
+              },
+              "sourceRevision": {
                 "type": "string"
               },
               "status": {
@@ -4758,6 +4774,100 @@
             "required": [
               "finding",
               "status"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.UHJvamVjdENoZWNr": {
+            "additionalProperties": false,
+            "properties": {
+              "command": {
+                "type": "string"
+              },
+              "durationMillis": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "type": "integer"
+              },
+              "exitCode": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "type": "integer"
+              },
+              "log": {
+                "type": "string"
+              },
+              "logTruncated": {
+                "type": "boolean"
+              },
+              "name": {
+                "type": "string"
+              },
+              "status": {
+                "allOf": [
+                  {
+                    "enum": [
+                      "pending",
+                      "passed",
+                      "failed",
+                      "timed_out",
+                      "unavailable",
+                      "not_run"
+                    ]
+                  }
+                ],
+                "type": "string"
+              },
+              "timeoutSeconds": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "minimum": 1,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "name",
+              "command",
+              "timeoutSeconds",
+              "status"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.UHJvamVjdFZlcmlmaWNhdGlvbg": {
+            "additionalProperties": false,
+            "properties": {
+              "checks": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.UHJvamVjdENoZWNr"
+                },
+                "type": "array"
+              },
+              "environment": {
+                "type": "string"
+              },
+              "policyDigest": {
+                "type": "string"
+              },
+              "runner": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "environment",
+              "policyDigest",
+              "runner",
+              "checks"
             ],
             "type": "object"
           },
@@ -4912,8 +5022,14 @@
                 },
                 "type": "array"
               },
+              "findingsPartial": {
+                "type": "boolean"
+              },
               "previousRevision": {
                 "type": "string"
+              },
+              "project": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.UHJvamVjdFZlcmlmaWNhdGlvbg"
               },
               "status": {
                 "allOf": [
@@ -6314,7 +6430,7 @@
       "name": "flame.github/update-review-work.v1",
       "kind": "command",
       "target": "installation",
-      "description": "Capture the current pull request, inspect checks for a retained revision, record a finding or human decision, or change the follow setting. Following a pull request rechecks each new captured revision in a detached worktree. A local decision does not publish a GitHub review.",
+      "description": "Capture the current pull request, inspect checks for a retained revision, record a finding or human decision, or change the follow setting. Following a pull request rechecks each captured revision and runs configured project checks in isolation. A local decision on a finding or its recheck does not publish a GitHub review.",
       "input": {
         "$defs": {
           "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.RmluZGluZ0RlY2lzaW9uSW5wdXQ": {
@@ -6325,7 +6441,8 @@
                   {
                     "enum": [
                       "accepted",
-                      "deferred"
+                      "deferred",
+                      "resolved"
                     ]
                   }
                 ],
@@ -6507,7 +6624,8 @@
                   {
                     "enum": [
                       "accepted",
-                      "deferred"
+                      "deferred",
+                      "resolved"
                     ]
                   }
                 ],
@@ -6527,7 +6645,22 @@
           "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.RmluZGluZ1JlY2hlY2s": {
             "additionalProperties": false,
             "properties": {
+              "decisions": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.RmluZGluZ0RlY2lzaW9u"
+                },
+                "type": "array"
+              },
               "finding": {
+                "type": "string"
+              },
+              "patch": {
+                "type": "string"
+              },
+              "patchTruncated": {
+                "type": "boolean"
+              },
+              "sourceRevision": {
                 "type": "string"
               },
               "status": {
@@ -6546,6 +6679,100 @@
             "required": [
               "finding",
               "status"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.UHJvamVjdENoZWNr": {
+            "additionalProperties": false,
+            "properties": {
+              "command": {
+                "type": "string"
+              },
+              "durationMillis": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "type": "integer"
+              },
+              "exitCode": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "type": "integer"
+              },
+              "log": {
+                "type": "string"
+              },
+              "logTruncated": {
+                "type": "boolean"
+              },
+              "name": {
+                "type": "string"
+              },
+              "status": {
+                "allOf": [
+                  {
+                    "enum": [
+                      "pending",
+                      "passed",
+                      "failed",
+                      "timed_out",
+                      "unavailable",
+                      "not_run"
+                    ]
+                  }
+                ],
+                "type": "string"
+              },
+              "timeoutSeconds": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "minimum": 1,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "name",
+              "command",
+              "timeoutSeconds",
+              "status"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.UHJvamVjdFZlcmlmaWNhdGlvbg": {
+            "additionalProperties": false,
+            "properties": {
+              "checks": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.UHJvamVjdENoZWNr"
+                },
+                "type": "array"
+              },
+              "environment": {
+                "type": "string"
+              },
+              "policyDigest": {
+                "type": "string"
+              },
+              "runner": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "environment",
+              "policyDigest",
+              "runner",
+              "checks"
             ],
             "type": "object"
           },
@@ -6700,8 +6927,14 @@
                 },
                 "type": "array"
               },
+              "findingsPartial": {
+                "type": "boolean"
+              },
               "previousRevision": {
                 "type": "string"
+              },
+              "project": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.UHJvamVjdFZlcmlmaWNhdGlvbg"
               },
               "status": {
                 "allOf": [

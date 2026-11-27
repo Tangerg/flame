@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   bindOperations,
   failureText,
@@ -36,6 +36,7 @@ import { es } from "./locales/es";
 import { fr } from "./locales/fr";
 import { ja } from "./locales/ja";
 import { ko } from "./locales/ko";
+import { ProjectCheckEvidence, ReviewPatch } from "./reviewEvidence";
 
 const catalogs = { en, zh, "zh-TW": zhTW, de, es, fr, ja, ko };
 const read = "flame.github/review-work.v1";
@@ -45,6 +46,7 @@ type Target = MethodInputs[typeof read];
 type Work = MethodOutputs[typeof read];
 type Change = MethodInputs[typeof update];
 type Finding = Work["findings"][number];
+type Disposition = NonNullable<Change["decision"]>["disposition"];
 type Translation = ReturnType<typeof useTranslator>;
 
 function newerWork(current: Work | undefined, observed: Work): Work {
@@ -334,6 +336,9 @@ function Review({
                   )}
                 </RecordGroup>
               )}
+              {recheck?.project && (
+                <ProjectCheckEvidence project={recheck.project} t={t} />
+              )}
               <RecordGroup aria-label={t("checks")}>
                 {state.checks.map((check) => (
                   <RecordBody key={String(check.id)}>
@@ -380,21 +385,104 @@ function Review({
                   />
                 ))}
               </RecordGroup>
-              {state.needsRecheck.length > 0 && (
+              {(state.needsRecheck.length > 0 || recheck?.findingsPartial) && (
                 <RecordGroup aria-label={t("recheck")}>
                   <Metadata>{t("recheck")}</Metadata>
                   {state.needsRecheck.map((finding) => {
                     const result = recheck?.findings.find(
                       (value) => value.finding === finding.id,
                     );
+                    const sourceId =
+                      result?.sourceRevision ?? recheck?.previousRevision;
+                    const source = state.versions.find(
+                      ({ id }) => id === sourceId,
+                    );
+                    const from =
+                      finding.side === "LEFT"
+                        ? source?.baseSha
+                        : source?.headSha;
+                    const to =
+                      finding.side === "LEFT"
+                        ? selected.baseSha
+                        : selected.headSha;
+                    const original = finding.decisions.at(-1);
                     return (
-                      <RecordBody key={finding.id}>
-                        {finding.path}:{String(finding.line)} ·{" "}
-                        {finding.summary}
-                        {result && <> · {t("findingFile." + result.status)}</>}
-                      </RecordBody>
+                      <FindingRow
+                        key={selected.id + ":" + finding.id}
+                        finding={{
+                          ...finding,
+                          decisions: result?.decisions ?? [],
+                        }}
+                        t={t}
+                        disabled={busy || loading || !!recover}
+                        resolve
+                        decide={
+                          result
+                            ? (disposition, reason) =>
+                                change({
+                                  revision: selected.id,
+                                  decision: {
+                                    finding: finding.id,
+                                    disposition,
+                                    reason,
+                                  },
+                                })
+                            : undefined
+                        }
+                        ask={() =>
+                          attach(
+                            `${finding.path} · ${to.slice(0, 12)}`,
+                            [
+                              `Recheck finding from pull request ${state.repository} #${state.number}, side ${finding.side}, file ${finding.path}, original line ${finding.line}.`,
+                              `Original commit ${from ?? sourceId ?? "unavailable"}. Selected commit ${to}. Finding: ${finding.summary}`,
+                              original &&
+                                `Original decision: ${original.disposition}. ${original.reason}`,
+                              result && `File comparison: ${result.status}.`,
+                              result?.patch,
+                              ...(recheck?.project?.checks ?? []).map(
+                                ({ name, status }) => `${name}: ${status}`,
+                              ),
+                            ]
+                              .filter(Boolean)
+                              .join("\n"),
+                          )
+                        }
+                      >
+                        {original && (
+                          <Metadata>
+                            {t("originalDecision")} · {t(original.disposition)}{" "}
+                            · {original.reason}
+                          </Metadata>
+                        )}
+                        {result && (
+                          <>
+                            <Metadata>
+                              {t("findingFile." + result.status)}
+                              {from && (
+                                <>
+                                  {" "}
+                                  ·{" "}
+                                  <code>
+                                    {from.slice(0, 12)} → {to.slice(0, 12)}
+                                  </code>
+                                </>
+                              )}
+                            </Metadata>
+                            {result.patch && (
+                              <ReviewPatch
+                                patch={result.patch}
+                                truncated={result.patchTruncated}
+                                t={t}
+                              />
+                            )}
+                          </>
+                        )}
+                      </FindingRow>
                     );
                   })}
+                  {recheck?.findingsPartial && (
+                    <Metadata>{t("findingsPartial")}</Metadata>
+                  )}
                 </RecordGroup>
               )}
               {!recover &&
@@ -551,12 +639,16 @@ function FindingRow({
   decide,
   ask,
   t,
+  resolve = false,
+  children,
 }: {
   finding: Finding;
   disabled: boolean;
-  decide(disposition: "accepted" | "deferred", reason: string): void;
+  decide?(disposition: Disposition, reason: string): void;
   ask(): void;
   t: Translation;
+  resolve?: boolean;
+  children?: ReactNode;
 }) {
   const [reason, setReason] = useState("");
   const decision = finding.decisions.at(-1);
@@ -567,30 +659,45 @@ function FindingRow({
         {t(finding.side === "LEFT" ? "base" : "head")}
       </Metadata>
       <RecordBody>{finding.summary}</RecordBody>
+      {children}
       {decision && (
         <Metadata>
           {t(decision.disposition)} · {decision.reason}
         </Metadata>
       )}
-      <FormField label={t("reason")}>
-        <TextField
-          value={reason}
-          onChange={(event) => setReason(event.target.value)}
-        />
-      </FormField>
+      {decide && (
+        <FormField label={t("reason")}>
+          <TextField
+            value={reason}
+            onChange={(event) => setReason(event.target.value)}
+          />
+        </FormField>
+      )}
       <FormActions label={t("findings")}>
-        <Button
-          disabled={disabled || !reason.trim()}
-          onClick={() => decide("accepted", reason.trim())}
-        >
-          {t("accept")}
-        </Button>
-        <Button
-          disabled={disabled || !reason.trim()}
-          onClick={() => decide("deferred", reason.trim())}
-        >
-          {t("defer")}
-        </Button>
+        {decide && (
+          <>
+            <Button
+              disabled={disabled || !reason.trim()}
+              onClick={() => decide("accepted", reason.trim())}
+            >
+              {t(resolve ? "confirmFinding" : "accept")}
+            </Button>
+            {resolve && (
+              <Button
+                disabled={disabled || !reason.trim()}
+                onClick={() => decide("resolved", reason.trim())}
+              >
+                {t("resolveFinding")}
+              </Button>
+            )}
+            <Button
+              disabled={disabled || !reason.trim()}
+              onClick={() => decide("deferred", reason.trim())}
+            >
+              {t("defer")}
+            </Button>
+          </>
+        )}
         <Button onClick={ask}>{t("ask")}</Button>
       </FormActions>
     </RecordGroup>

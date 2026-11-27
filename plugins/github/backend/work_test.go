@@ -63,9 +63,16 @@ func runReviewFixture(endpoint, database string) error {
 	if err != nil {
 		return err
 	}
+	if err := connector.configureReview(); err != nil {
+		return err
+	}
 	if origin := os.Getenv(reviewFixtureGitOrigin); origin != "" {
 		connector.reviewGit.origin = origin
-		background, err := connector.reviewBackground(ctx, 25*time.Millisecond, func(ctx context.Context) error {
+		interval := 25 * time.Millisecond
+		if connector.webhook.port != 0 {
+			interval = time.Hour
+		}
+		background, err := connector.reviewBackground(ctx, interval, func(ctx context.Context) error {
 			request, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint+"/review-notice", nil)
 			if err != nil {
 				return err
@@ -92,7 +99,7 @@ func runReviewFixture(endpoint, database string) error {
 	return server.Run(ctx, &sdk.StdioTransport{})
 }
 
-func reviewProcess(t *testing.T, address, database, gitOrigin string) (*sdk.ClientSession, *exec.Cmd) {
+func reviewProcess(t *testing.T, address, database, gitOrigin string, environment ...string) (*sdk.ClientSession, *exec.Cmd) {
 	t.Helper()
 	binary, err := os.Executable()
 	if err != nil {
@@ -101,6 +108,7 @@ func reviewProcess(t *testing.T, address, database, gitOrigin string) (*sdk.Clie
 	command := exec.Command(binary)
 	command.Env = []string{reviewFixture + "=" + address, reviewFixtureDatabase + "=" + database,
 		reviewFixtureGitOrigin + "=" + gitOrigin, "PATH=" + os.Getenv("PATH")}
+	command.Env = append(command.Env, environment...)
 	client, err := pluginmcp.NewProcessClient()
 	if err != nil {
 		t.Fatal(err)

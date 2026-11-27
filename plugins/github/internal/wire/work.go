@@ -19,10 +19,11 @@ type FindingDisposition string
 const (
 	FindingAccepted FindingDisposition = "accepted"
 	FindingDeferred FindingDisposition = "deferred"
+	FindingResolved FindingDisposition = "resolved"
 )
 
 func (FindingDisposition) JSONSchemaEnum() []string {
-	return []string{string(FindingAccepted), string(FindingDeferred)}
+	return []string{string(FindingAccepted), string(FindingDeferred), string(FindingResolved)}
 }
 
 type FindingDecisionInput struct {
@@ -86,17 +87,56 @@ func (FindingRecheckStatus) JSONSchemaEnum() []string {
 }
 
 type FindingRecheck struct {
-	Finding string               `json:"finding"`
-	Status  FindingRecheckStatus `json:"status"`
+	Finding        string               `json:"finding"`
+	Status         FindingRecheckStatus `json:"status"`
+	SourceRevision string               `json:"sourceRevision,omitempty"`
+	Patch          string               `json:"patch,omitempty"`
+	PatchTruncated bool                 `json:"patchTruncated,omitempty"`
+	Decisions      []FindingDecision    `json:"decisions,omitempty"`
+}
+
+type ProjectCheckStatus string
+
+const (
+	ProjectCheckPending     ProjectCheckStatus = "pending"
+	ProjectCheckPassed      ProjectCheckStatus = "passed"
+	ProjectCheckFailed      ProjectCheckStatus = "failed"
+	ProjectCheckTimedOut    ProjectCheckStatus = "timed_out"
+	ProjectCheckUnavailable ProjectCheckStatus = "unavailable"
+	ProjectCheckNotRun      ProjectCheckStatus = "not_run"
+)
+
+func (ProjectCheckStatus) JSONSchemaEnum() []string {
+	return []string{string(ProjectCheckPending), string(ProjectCheckPassed), string(ProjectCheckFailed), string(ProjectCheckTimedOut), string(ProjectCheckUnavailable), string(ProjectCheckNotRun)}
+}
+
+type ProjectCheck struct {
+	Name           string             `json:"name"`
+	Command        string             `json:"command"`
+	TimeoutSeconds int                `json:"timeoutSeconds" jsonschema:"minimum=1"`
+	Status         ProjectCheckStatus `json:"status"`
+	ExitCode       *int               `json:"exitCode,omitzero"`
+	DurationMillis *int64             `json:"durationMillis,omitzero"`
+	Log            string             `json:"log,omitempty"`
+	LogTruncated   bool               `json:"logTruncated,omitempty"`
+}
+
+type ProjectVerification struct {
+	Environment  string         `json:"environment"`
+	PolicyDigest string         `json:"policyDigest"`
+	Runner       string         `json:"runner"`
+	Checks       []ProjectCheck `json:"checks"`
 }
 
 type ReviewRecheck struct {
-	Status           ReviewRecheckStatus `json:"status"`
-	PreviousRevision string              `json:"previousRevision"`
-	CheckedHead      string              `json:"checkedHead,omitempty"`
-	CompletedAt      *instant.Timestamp  `json:"completedAt,omitzero"`
-	Diagnostic       string              `json:"diagnostic,omitempty"`
-	Findings         []FindingRecheck    `json:"findings"`
+	Status           ReviewRecheckStatus  `json:"status"`
+	PreviousRevision string               `json:"previousRevision"`
+	CheckedHead      string               `json:"checkedHead,omitempty"`
+	CompletedAt      *instant.Timestamp   `json:"completedAt,omitzero"`
+	Diagnostic       string               `json:"diagnostic,omitempty"`
+	Findings         []FindingRecheck     `json:"findings"`
+	FindingsPartial  bool                 `json:"findingsPartial,omitempty"`
+	Project          *ProjectVerification `json:"project,omitzero"`
 }
 
 type ReviewCheck struct {

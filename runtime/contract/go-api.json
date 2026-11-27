@@ -19464,6 +19464,10 @@
             {
               "name": "ReadOnlyPaths",
               "type": "[]string"
+            },
+            {
+              "name": "RestrictReads",
+              "type": "bool"
             }
           ]
         },

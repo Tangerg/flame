@@ -48,7 +48,13 @@ func (c *connector) setUpReviewFollow(ctx context.Context, setup pluginmcp.Setup
 }
 
 func (c *connector) reviewBackground(lifetime context.Context, interval time.Duration, notify func(context.Context) error, close func() error) (*pluginmcp.Background, error) {
+	var closeWebhook func() error
 	return pluginmcp.NewBackground(lifetime, pluginmcp.BackgroundConfig{
+		Prepare: func(ctx context.Context) error {
+			var err error
+			closeWebhook, err = c.startReviewWebhook(ctx)
+			return err
+		},
 		Run: func(ctx context.Context) {
 			ticker := time.NewTicker(interval)
 			defer ticker.Stop()
@@ -67,7 +73,12 @@ func (c *connector) reviewBackground(lifetime context.Context, interval time.Dur
 				}
 			}
 		},
-		Release: close,
+		Release: func() error {
+			if closeWebhook != nil {
+				return errors.Join(closeWebhook(), close())
+			}
+			return close()
+		},
 	})
 }
 
@@ -158,7 +169,7 @@ func (c *connector) pollReview(ctx context.Context, target followedReview, annou
 			if current.Version != version || current.Follow == nil || !current.Follow.Enabled {
 				return false, nil
 			}
-			_, err := current.observe(input, observed)
+			_, err := current.observe(input, observed, c.checkPolicies[target.Repository])
 			return err == nil, err
 		})
 		if err != nil || !changed {
@@ -171,32 +182,66 @@ func (c *connector) pollReview(ctx context.Context, target followedReview, annou
 	if pending < 0 || ctx.Err() != nil {
 		return ctx.Err()
 	}
-	revision := snapshot.Revisions[pending].ReviewVersion
-	var previous reviewRevision
-	if index := snapshot.revision(revision.Recheck.PreviousRevision); index >= 0 {
-		previous = snapshot.Revisions[index]
+	return c.verifyPendingReview(ctx, target, snapshot, snapshot.Revisions[pending], pull, announce)
+}
+
+func (c *connector) verifyPendingReview(ctx context.Context, target followedReview, snapshot reviewSnapshot, pending reviewRevision, pull wire.PullRequest, announce func()) error {
+	revision := pending.ReviewVersion
+	currentID := pull.Base.SHA + ":" + pull.Head.SHA
+	var observed reviewObservation
+	if pending.NeedsEvidence {
+		announce()
+		var err error
+		observed, err = c.loadReviewEvidence(ctx, target.IssueInput, revision, revision.ID == currentID)
+		if err != nil {
+			if ctx.Err() != nil {
+				return ctx.Err()
+			}
+			slog.WarnContext(ctx, "github: load review evidence", "repository", target.Repository, "head", revision.HeadSHA, "error", err)
+			observed = reviewObservation{Checks: []wire.ReviewCheck{}, Partial: true}
+		}
 	}
+	findings, partial := snapshot.recheckSources(revision.Recheck.PreviousRevision)
 	repository, err := newRepository(target.Repository)
 	if err != nil {
 		return err
 	}
 	key := c.credential.cacheKey("review worktree\n" + target.scope + "\n" + revision.ID)
-	result := c.reviewGit.recheck(ctx, key, c.credential, repository, revision, previous)
+	result := c.reviewGit.recheck(ctx, key, c.credential, repository, revision, findings, partial, c.checkPolicies[target.Repository])
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}
-	_, changed, err := c.updateFollowSnapshot(ctx, target.scope, func(current *reviewSnapshot) (bool, error) {
+	updated, changed, err := c.updateFollowSnapshot(ctx, target.scope, func(current *reviewSnapshot) (bool, error) {
 		index := current.revision(revision.ID)
 		if index < 0 || current.Revisions[index].Recheck == nil || current.Revisions[index].Recheck.Status != wire.ReviewRecheckPending {
 			return false, nil
 		}
-		current.Revisions[index].Recheck = &result
+		retained := &current.Revisions[index]
+		retained.Recheck = &result
+		if retained.NeedsEvidence {
+			retained.recordEvidence(observed)
+		}
+		if pending.NeedsEvidence && revision.ID == currentID && current.Latest == snapshot.Latest && current.Follow != nil && current.Follow.Enabled {
+			if err := current.recordCurrent(revision.ID, observed.Comments); err != nil {
+				return false, err
+			}
+		}
 		return true, nil
 	})
 	if changed && err == nil {
 		announce()
+		if pendingReviewRecheck(updated) >= 0 || updated.Follow != nil && updated.Follow.Enabled && updated.Latest != currentID {
+			c.wakeReviews()
+		}
 	}
 	return err
+}
+
+func (c *connector) wakeReviews() {
+	select {
+	case c.reviewWake <- struct{}{}:
+	default:
+	}
 }
 
 func pendingReviewRecheck(snapshot reviewSnapshot) int {

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"cmp"
 	"context"
 	"crypto/sha256"
 	"database/sql"
@@ -32,6 +33,7 @@ type reviewRevision struct {
 	wire.ReviewVersion
 	Checks        []wire.ReviewCheck   `json:"checks"`
 	ChecksPartial bool                 `json:"checksPartial"`
+	NeedsEvidence bool                 `json:"needsEvidence,omitempty"`
 	Findings      []wire.ReviewFinding `json:"findings"`
 }
 
@@ -76,8 +78,18 @@ func (s reviewSnapshot) view(pull wire.PullRequest, selected int) wire.ReviewWor
 		view.Selected = &revision.ReviewVersion
 		view.Checks, view.ChecksPartial, view.Findings = revision.Checks, revision.ChecksPartial, revision.Findings
 		if revision.Recheck != nil {
-			if earlier := s.revision(revision.Recheck.PreviousRevision); earlier >= 0 && earlier != selected {
-				view.NeedsRecheck = s.Revisions[earlier].Findings
+			if revision.Recheck.Status == wire.ReviewRecheckPending || len(revision.Recheck.Findings) == 0 {
+				sources, _ := s.recheckSources(revision.Recheck.PreviousRevision)
+				for _, source := range sources {
+					view.NeedsRecheck = append(view.NeedsRecheck, source.finding)
+				}
+			} else {
+				for _, check := range revision.Recheck.Findings {
+					source, ok := s.findingSource(cmp.Or(check.SourceRevision, revision.Recheck.PreviousRevision), check.Finding)
+					if ok {
+						view.NeedsRecheck = append(view.NeedsRecheck, source.finding)
+					}
+				}
 			}
 		} else if selected > 0 {
 			view.NeedsRecheck = s.Revisions[selected-1].Findings
@@ -168,17 +180,24 @@ func (c *connector) inspectReview(ctx context.Context, input wire.ReviewWorkInpu
 		}
 		version = snapshot.Revisions[selected].ReviewVersion
 	}
-	checks, err := c.listChecks(ctx, wire.CommitInput{Repository: pull.Repository, Ref: version.HeadSHA, Page: 1, Limit: 32})
-	if err != nil {
-		return reviewObservation{}, err
-	}
-	comments, err := c.listComments(ctx, wire.ThreadInput{IssueInput: input.IssueInput, Page: 1, Limit: 32})
+	return c.loadReviewEvidence(ctx, input.IssueInput, version, input.Revision == "")
+}
+
+func (c *connector) loadReviewEvidence(ctx context.Context, target wire.IssueInput, version wire.ReviewVersion, discussion bool) (reviewObservation, error) {
+	checks, err := c.listChecks(ctx, wire.CommitInput{Repository: target.Repository, Ref: version.HeadSHA, Page: 1, Limit: 32})
 	if err != nil {
 		return reviewObservation{}, err
 	}
 	observed := reviewObservation{
 		Revision: version, Checks: []wire.ReviewCheck{},
-		Partial: checks.NextPage != nil, Comments: comments.Comments,
+		Partial: checks.NextPage != nil,
+	}
+	if discussion {
+		comments, err := c.listComments(ctx, wire.ThreadInput{IssueInput: target, Page: 1, Limit: 32})
+		if err != nil {
+			return reviewObservation{}, err
+		}
+		observed.Comments = comments.Comments
 	}
 	for _, check := range checks.CheckRuns {
 		if check.HeadSHA != version.HeadSHA {
@@ -193,39 +212,62 @@ func (c *connector) inspectReview(ctx context.Context, input wire.ReviewWorkInpu
 	return observed, nil
 }
 
-func (s *reviewSnapshot) observe(input wire.ReviewWorkInput, observation reviewObservation) (int, error) {
-	position := s.revision(observation.Revision.ID)
+func (s *reviewSnapshot) retainRevision(version wire.ReviewVersion) (int, error) {
+	position := s.revision(version.ID)
 	if position == -1 {
 		if len(s.Revisions) >= maxReviewVersions {
 			return -1, refused(refusalNotAllowed, "review revision capacity reached")
 		}
 		position = len(s.Revisions)
 		s.Revisions = append(s.Revisions, reviewRevision{
-			ReviewVersion: observation.Revision, Findings: []wire.ReviewFinding{},
+			ReviewVersion: version, Checks: []wire.ReviewCheck{}, Findings: []wire.ReviewFinding{},
 		})
 	}
+	return position, nil
+}
+
+func (s *reviewSnapshot) observe(input wire.ReviewWorkInput, observation reviewObservation, policy projectCheckPolicy) (int, error) {
+	position, err := s.retainRevision(observation.Revision)
+	if err != nil {
+		return -1, err
+	}
 	revision := &s.Revisions[position]
-	revision.Checks, revision.ChecksPartial = observation.Checks, observation.Partial
+	revision.recordEvidence(observation)
 	if input.Revision == "" {
 		if s.Follow != nil && s.Follow.Enabled && s.Latest != "" && s.Latest != revision.ID && revision.Recheck == nil {
-			revision.Recheck = &wire.ReviewRecheck{
-				Status: wire.ReviewRecheckPending, PreviousRevision: s.Latest, Findings: []wire.FindingRecheck{},
-			}
+			revision.scheduleRecheck(s.Latest, policy)
 		}
-		s.Latest = revision.ID
-		for _, comment := range observation.Comments {
-			if slices.ContainsFunc(s.Discussion, func(seen wire.ReviewDiscussion) bool {
-				return seen.ID == comment.ID && seen.UpdatedAt.Equal(comment.UpdatedAt.Time) && seen.Body == comment.Body
-			}) {
-				continue
-			}
-			if len(s.Discussion) >= maxDiscussionEvents {
-				return -1, refused(refusalNotAllowed, "review discussion capacity reached")
-			}
-			s.Discussion = append(s.Discussion, wire.ReviewDiscussion{Comment: comment, ReceivedAtRevision: revision.ID})
+		if err := s.recordCurrent(revision.ID, observation.Comments); err != nil {
+			return -1, err
 		}
 	}
 	return position, nil
+}
+
+func (r *reviewRevision) recordEvidence(observation reviewObservation) {
+	r.Checks, r.ChecksPartial, r.NeedsEvidence = observation.Checks, observation.Partial, false
+}
+
+func (r *reviewRevision) scheduleRecheck(previous string, policy projectCheckPolicy) {
+	r.Recheck = &wire.ReviewRecheck{
+		Status: wire.ReviewRecheckPending, PreviousRevision: previous, Findings: []wire.FindingRecheck{}, Project: policy.capture(),
+	}
+}
+
+func (s *reviewSnapshot) recordCurrent(id string, comments []wire.Comment) error {
+	s.Latest = id
+	for _, comment := range comments {
+		if slices.ContainsFunc(s.Discussion, func(seen wire.ReviewDiscussion) bool {
+			return seen.ID == comment.ID && seen.UpdatedAt.Equal(comment.UpdatedAt.Time) && seen.Body == comment.Body
+		}) {
+			continue
+		}
+		if len(s.Discussion) >= maxDiscussionEvents {
+			return refused(refusalNotAllowed, "review discussion capacity reached")
+		}
+		s.Discussion = append(s.Discussion, wire.ReviewDiscussion{Comment: comment, ReceivedAtRevision: id})
+	}
+	return nil
 }
 
 func (s *reviewSnapshot) edit(input wire.ReviewWorkChange, command string) (int, error) {
@@ -253,15 +295,27 @@ func (s *reviewSnapshot) edit(input wire.ReviewWorkChange, command string) (int,
 	}
 	decision := input.Decision
 	index := slices.IndexFunc(revision.Findings, func(finding wire.ReviewFinding) bool { return finding.ID == decision.Finding })
-	if index < 0 {
+	var decisions *[]wire.FindingDecision
+	if index >= 0 {
+		decisions = &revision.Findings[index].Decisions
+	}
+	if decisions == nil && revision.Recheck != nil {
+		for i := range revision.Recheck.Findings {
+			if revision.Recheck.Findings[i].Finding == decision.Finding {
+				decisions = &revision.Recheck.Findings[i].Decisions
+				break
+			}
+		}
+	}
+	if decisions == nil {
 		return -1, refused(refusalNotFound, "finding is absent from the inspected revision")
 	}
 	if strings.TrimSpace(decision.Reason) == "" ||
-		decision.Disposition != wire.FindingAccepted && decision.Disposition != wire.FindingDeferred {
+		decision.Disposition != wire.FindingAccepted && decision.Disposition != wire.FindingDeferred &&
+			(decision.Disposition != wire.FindingResolved || index >= 0) {
 		return -1, invalidInput("a disposition and its reason are required")
 	}
-	finding := &revision.Findings[index]
-	finding.Decisions = append(finding.Decisions, wire.FindingDecision{
+	*decisions = append(*decisions, wire.FindingDecision{
 		Disposition: decision.Disposition, Reason: decision.Reason, At: instant.Timestamp{Time: time.Now().UTC()},
 	})
 	return selected, nil
@@ -298,6 +352,7 @@ func (c *connector) changeReviewWork(ctx context.Context, command pluginmcp.Comm
 		return wire.ReviewWork{}, err
 	}
 	scope := c.reviewScope(pull.Repository, pull.Number)
+	policy := c.checkPolicies[pull.Repository]
 	result, err := storage.Command(ctx, c.store.db, method, string(command.ID), admitted, classify, func(ctx context.Context, input wire.ReviewWorkChange) (storage.CommandPlan[wire.ReviewWork], error) {
 		var empty storage.CommandPlan[wire.ReviewWork]
 		snapshot, err := c.store.reviewSnapshot(ctx, scope)
@@ -316,7 +371,7 @@ func (c *connector) changeReviewWork(ctx context.Context, command pluginmcp.Comm
 			}
 			snapshot.Follow = &reviewFollow{IssueInput: wire.IssueInput{Repository: pull.Repository, Number: pull.Number}, Enabled: *input.Follow}
 		case input.Finding == nil && input.Decision == nil:
-			selected, err = snapshot.observe(input.ReviewWorkInput, observed)
+			selected, err = snapshot.observe(input.ReviewWorkInput, observed, policy)
 		default:
 			selected, err = snapshot.edit(input, string(command.ID))
 		}
@@ -333,10 +388,7 @@ func (c *connector) changeReviewWork(ctx context.Context, command pluginmcp.Comm
 		})
 	})
 	if err == nil && (input.Follow != nil || input.Revision == "" && input.Finding == nil && input.Decision == nil) {
-		select {
-		case c.reviewWake <- struct{}{}:
-		default:
-		}
+		c.wakeReviews()
 	}
 	return result, err
 }

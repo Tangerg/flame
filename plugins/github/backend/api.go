@@ -31,11 +31,13 @@ const (
 )
 
 type connector struct {
-	store      *store
-	http       *http.Client
-	credential credential
-	reviewGit  reviewGit
-	reviewWake chan struct{}
+	store         *store
+	http          *http.Client
+	credential    credential
+	reviewGit     reviewGit
+	reviewWake    chan struct{}
+	checkPolicies map[string]projectCheckPolicy
+	webhook       reviewWebhook
 }
 
 const (

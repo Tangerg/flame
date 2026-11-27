@@ -27,6 +27,7 @@ type followFixture struct {
 	contracts rpc.Contracts
 	database  string
 	gitOrigin string
+	env       []string
 	notices   chan struct{}
 	hold      atomic.Bool
 }
@@ -85,11 +86,18 @@ func reviewGitFixture(t *testing.T) (string, [3]string, string) {
 	if err := os.WriteFile(filepath.Join(repo, "steady.txt"), []byte("Unchanged reference.\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
+	if err := os.WriteFile(filepath.Join(repo, "check.sh"), []byte(`#!/bin/sh
+/usr/bin/grep -F "Revision" main.go || exit 1
+test "${GITHUB_TOKEN-unset}" = unset || exit 2
+printf 'temporary mutation\n' > main.go
+`), 0o600); err != nil {
+		t.Fatal(err)
+	}
 	commit := func(text string) string {
 		if err := os.WriteFile(filepath.Join(repo, "main.go"), []byte("package review\n\n// "+text+"\n"), 0o600); err != nil {
 			t.Fatal(err)
 		}
-		git("add", "--", "main.go", "steady.txt")
+		git("add", "--", "main.go", "steady.txt", "check.sh")
 		git("commit", "--quiet", "-m", strings.TrimSpace(text))
 		return git("rev-parse", "HEAD")
 	}
@@ -101,7 +109,7 @@ func reviewGitFixture(t *testing.T) (string, [3]string, string) {
 
 func (f *followFixture) connect(t *testing.T) (*sdk.ClientSession, *exec.Cmd) {
 	t.Helper()
-	return reviewProcess(t, f.server.URL, f.database, f.gitOrigin)
+	return reviewProcess(t, f.server.URL, f.database, f.gitOrigin, f.env...)
 }
 
 func (f *followFixture) read(t *testing.T, session *sdk.ClientSession, revision string) wire.ReviewWork {
@@ -162,12 +170,15 @@ func (f *followFixture) checkB(t *testing.T, work, original wire.ReviewWork) {
 		!strings.Contains(recheck.Diagnostic, "main.go:3: trailing whitespace.") {
 		t.Fatalf("captured worktree was not verified at B: %+v", recheck)
 	}
-	want := []wire.FindingRecheck{
-		{Finding: original.Findings[0].ID, Status: wire.FindingFileChanged},
-		{Finding: original.Findings[1].ID, Status: wire.FindingFileUnchanged},
-	}
-	if !reflect.DeepEqual(recheck.Findings, want) || len(work.Findings) != 0 || !reflect.DeepEqual(work.NeedsRecheck, original.Findings) {
+	if len(recheck.Findings) != 2 || len(work.Findings) != 0 || !reflect.DeepEqual(work.NeedsRecheck, original.Findings) {
 		t.Fatalf("recheck mixed file evidence and human decisions: recheck=%+v work=%+v", recheck, work)
+	}
+	changed, unchanged := recheck.Findings[0], recheck.Findings[1]
+	if changed.Finding != original.Findings[0].ID || changed.SourceRevision != original.Latest ||
+		changed.Status != wire.FindingFileChanged || !strings.Contains(changed.Patch, "+// Revision B.") ||
+		unchanged.Finding != original.Findings[1].ID || unchanged.SourceRevision != original.Latest ||
+		unchanged.Status != wire.FindingFileUnchanged || unchanged.Patch != "" {
+		t.Fatalf("incorrect retained per-finding evidence: %+v", recheck.Findings)
 	}
 	if len(work.Checks) != 1 || work.Checks[0].HeadSHA != f.source.heads[1] || work.Checks[0].ID != 11 || !work.ChecksPartial ||
 		len(work.Discussion) != 1 || work.Discussion[0].ReceivedAtRevision != work.Selected.ID {
