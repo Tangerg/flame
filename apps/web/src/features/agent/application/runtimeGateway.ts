@@ -95,6 +95,7 @@ export type AgentSessionCreation =
 
 export interface AgentRuntimeGateway {
   createSession(input: { cwd: string; projectId?: string }): Promise<AgentSessionCreation>;
+  sessionExists(sessionId: string, signal: AbortSignal): Promise<boolean>;
   deleteSession(sessionId: string): Promise<void>;
   updateSession(input: {
     sessionId: string;

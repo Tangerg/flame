@@ -131,7 +131,6 @@ export function createVisualClient(runtimeClient: () => FlameClient, messages: N
   const notifications = createNotifications(
     host,
     agent.access,
-    workspace.access,
     "Flame",
     runtime.endpoint.currentRuntimeEndpoint,
     messages,

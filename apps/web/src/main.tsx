@@ -113,7 +113,6 @@ function startClient(messages: NotificationFeed, render: (content: ReactNode) =>
   const notifications = createNotifications(
     host,
     agent.access,
-    workspace.access,
     PRODUCT_NAME,
     connection.access.endpoint.currentRuntimeEndpoint,
     messages,

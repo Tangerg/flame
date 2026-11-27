@@ -8,6 +8,8 @@ import {
 } from "@flame/runtime-client";
 import { HTTP_HEADERS } from "@flame/runtime-client/wire";
 import { bindAgentSession } from "@/features/agent/adapters/agentSessionBinding";
+import { createSystemNotifier } from "@/features/notifications/systemNotifier";
+import { startSystemNotificationRouting } from "@/features/notifications/systemNotificationRouting";
 import { createProviderGate } from "./fakeProvider";
 import { useRuntimeFixture } from "./fixture";
 import { MemoryMutationStorage } from "./mutationStorage";
@@ -16,6 +18,77 @@ import { openWebSession } from "./webSessionFixture";
 
 describe("Web agent Session recovery over Runtime HTTP", () => {
   const fixture = useRuntimeFixture("agent-session-recovery");
+
+  it("opens live notification targets without displacing newer Session selections", async () => {
+    const [current, deleted, live, manual] = await Promise.all([
+      fixture.client.sessions.create({ workspace: { path: fixture.root }, title: "Current" }),
+      fixture.client.sessions.create({ workspace: { path: fixture.root }, title: "Deleted" }),
+      fixture.client.sessions.create({ workspace: { path: fixture.root }, title: "Live target" }),
+      fixture.client.sessions.create({ workspace: { path: fixture.root }, title: "Manual choice" }),
+    ]);
+    await fixture.client.sessions.delete(asSessionId(deleted.id));
+    const firstRead = Promise.withResolvers<void>();
+    const heldRead = Promise.withResolvers<AbortSignal | null | undefined>();
+    const releaseHeldRead = Promise.withResolvers<void>();
+    let targetReads = 0;
+    const client = fixture.createRuntimeClient(async (url, init) => {
+      if (new Headers(init?.headers).get(HTTP_HEADERS.method) !== "sessions.get")
+        return fetch(url, init);
+      const read = ++targetReads;
+      const response = await fetch(url, init);
+      if (read === 1) firstRead.resolve();
+      if (read === 2) {
+        heldRead.resolve(init?.signal);
+        await releaseHeldRead.promise;
+      }
+      return response;
+    });
+    const web = openWebSession(client, fixture.baseUrl, current.id);
+    const agent = web.agent.access;
+    const native: { open?: (target: string) => void } = {};
+    const notifier = createSystemNotifier({
+      authorization: async () => "granted",
+      requestAuthorization: async () => "granted",
+      send: async () => true,
+      onOpened: (listener) => {
+        native.open = listener;
+        return () => {
+          native.open = undefined;
+        };
+      },
+    });
+    const stop = startSystemNotificationRouting(notifier, agent, async () => {});
+    const opened = Promise.withResolvers<void>();
+    const selected: string[] = [];
+    const unsubscribe = agent.subscribeActiveSessionId((id) => {
+      selected.push(id);
+      if (id === live.id) opened.resolve();
+    });
+    try {
+      if (!native.open) throw new Error("notification activation was not registered");
+      native.open(deleted.id);
+      expect(agent.getActiveSessionId()).toBe(current.id);
+      await within(firstRead.promise, "the deleted Session lookup");
+      native.open(live.id);
+      const delayed = await within(heldRead.promise, "the live Session lookup");
+      expect(agent.getActiveSessionId()).toBe(current.id);
+      agent.selectAgentSession(manual.id);
+      expect(delayed?.aborted).toBe(true);
+      releaseHeldRead.resolve();
+      native.open(live.id);
+      await within(opened.promise, "the live notification target opening");
+      expect(selected).toEqual([manual.id, live.id]);
+      expect(agent.getAgentSessionLifecycleSnapshot().openSessionIds).not.toContain(deleted.id);
+      expect(targetReads).toBe(3);
+    } finally {
+      releaseHeldRead.resolve();
+      unsubscribe();
+      stop();
+      notifier.dispose();
+      web.dispose();
+      await client.close();
+    }
+  }, 30_000);
 
   it("publishes one response lifecycle and persists its original answer", async () => {
     const session = await fixture.client.sessions.create({ workspace: { path: fixture.root } });

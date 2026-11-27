@@ -1,7 +1,6 @@
 import { reportPluginError } from "@/extensions/errors";
 import { type ClientHost } from "@/platform/host";
 import { type AgentAccess } from "@/features/agent/public/agent";
-import { type WorkspaceAccess } from "@/features/workspace/public/workspace";
 import { createNotificationCentre } from "@/features/notifications/adapters/systemNotifier";
 import { createSystemNotifier } from "@/features/notifications/systemNotifier";
 import {
@@ -20,7 +19,6 @@ export function createNotifications(
     | "revealWindow"
   >,
   agent: AgentAccess,
-  workspace: WorkspaceAccess,
   productName: string,
   endpoint: () => string,
   messages: NotificationFeed,
@@ -42,7 +40,7 @@ export function createNotifications(
     start() {
       if (disposed) throw new Error("Notifications are disposed");
       if (!stop)
-        stop = startSystemNotificationRouting(notifier, agent, workspace, () =>
+        stop = startSystemNotificationRouting(notifier, agent, () =>
           host.revealWindow(),
         );
     },

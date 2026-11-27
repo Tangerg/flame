@@ -80,6 +80,16 @@ class RuntimeAgentGateway implements AgentRuntimeGateway {
     }
   }
 
+  async sessionExists(sessionId: string, signal: AbortSignal): Promise<boolean> {
+    try {
+      await this.runtimeClient().sessions.get(asSessionId(sessionId), signal);
+      return true;
+    } catch (error) {
+      if (isErrorType(error, "session_not_found")) return false;
+      throw error;
+    }
+  }
+
   async deleteSession(sessionId: string) {
     try {
       await this.runtimeClient().sessions.delete(asSessionId(sessionId));

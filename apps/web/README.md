@@ -824,6 +824,9 @@ OS authorization and notification-click routing. Public component callbacks and
 notification requests use the captured I/O lifetime, so withdrawal refuses late
 sends while joining accepted platform work. The existing preference records
 remain readable by their new package owner; their former Core writers are removed.
+Opening a notification confirms its Session in the current Runtime. A missing
+target preserves the active conversation, and a newer Session selection cancels
+the pending lookup.
 
 `SettingRow` marks the label and controls as one shared focus unit. `Panel` owns
 revealing that complete unit inside the clipped host when it fits; taller rows
