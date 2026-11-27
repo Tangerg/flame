@@ -121,6 +121,9 @@ import type {
   RuntimeSubscribeResponse,
   UpdateSessionRequest,
   UpdateProjectRequest,
+  ProjectBackgroundActivity,
+  ProjectBackgroundPolicy,
+  SetProjectBackgroundPolicyRequest,
   UpdateMCPServerRequest,
   SessionUsage,
   UsageSummary,
@@ -216,6 +219,12 @@ export interface Methods {
     import: (artifact: SessionArtifact) => MutationPromise<ImportSessionResponse>;
   };
   projects: {
+    background: {
+      get: (projectId: string, signal?: AbortSignal) => Promise<ProjectBackgroundActivity>;
+      setPolicy: (
+        params: SetProjectBackgroundPolicyRequest,
+      ) => MutationPromise<ProjectBackgroundPolicy>;
+    };
     list: (query?: ListProjectsRequest, signal?: AbortSignal) => AutoPagingPromise<Page<Project>>;
     get: (projectId: string, signal?: AbortSignal) => Promise<Project>;
     create: (params: CreateProjectRequest) => MutationPromise<Project>;
@@ -522,6 +531,10 @@ export function createMethods(
         }),
     },
     projects: {
+      background: {
+        get: (projectId, signal) => call("projects.background.get", { projectId }, { signal }),
+        setPolicy: (params) => call("projects.background.setPolicy", params),
+      },
       list: (query, signal) => call("projects.list", query ?? {}, { signal }),
       get: (projectId, signal) => call("projects.get", { projectId }, { signal }),
       create: (params) => call("projects.create", params),

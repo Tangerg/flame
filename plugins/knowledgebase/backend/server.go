@@ -57,6 +57,7 @@ func newServer(library *library) (*sdk.Server, error) {
 	}
 	if err := errors.Join(
 		pluginstorage.RegisterReceipts(backend, library.store.db),
+		library.registerWork(backend, workMethods{contracts.AcceptWork, contracts.ReadWork, contracts.ListWork}),
 		pluginstorage.RegisterCommand(backend, library.store.db, contracts.Move, classify, func(ctx context.Context, _ *sdk.ServerSession, input wire.MoveInput) (pluginstorage.CommandPlan[knowledge.Header], error) {
 			call, err := pluginmcp.InvocationFromContext(ctx)
 			if err != nil {

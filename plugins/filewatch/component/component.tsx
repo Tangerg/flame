@@ -190,12 +190,13 @@ export function FileWatch({ context }: { context: ComponentContext }) {
     const same =
       current?.targetSessionId === session && current.workspace === workspace;
     const draft = same
-      ? current
+      ? { ...current, projectId: context.project?.id }
       : {
           title: "",
           instructions: "",
           paths: [],
           targetSessionId: session,
+          projectId: context.project?.id,
           workspace,
         };
     setEditor({

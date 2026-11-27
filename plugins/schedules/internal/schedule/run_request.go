@@ -128,6 +128,17 @@ func (r RunRequest) Validate() error {
 func (r RunRequest) ScheduleID() string   { return r.origin.schedule().String() }
 func (r RunRequest) Execution() Execution { return r.execution }
 
+func (r RunRequest) EventVersion() string {
+	switch origin := r.origin.(type) {
+	case manualOrigin:
+		return origin.commandID
+	case occurrenceIdentity:
+		return origin.String()
+	default:
+		return ""
+	}
+}
+
 func (r RunRequest) ManualRecord() (RunRecord, bool) {
 	manual, ok := r.origin.(manualOrigin)
 	return manual.record, ok

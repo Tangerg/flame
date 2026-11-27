@@ -391,6 +391,14 @@ export interface ArtifactToolResult {
   modelOnly: boolean;
 }
 
+export interface BackgroundSource {
+  id: string;
+  kind: string;
+  projectId: string;
+  title: string;
+  version: string;
+}
+
 export interface CallPluginRequest {
   input: string;
   route: PluginCallRoute;
@@ -1752,6 +1760,30 @@ export interface Project {
   updatedAt: string;
 }
 
+export interface ProjectBackgroundActivity {
+  active: number;
+  admitted: number;
+  policy: ProjectBackgroundPolicy;
+  recent: ProjectBackgroundRun[];
+}
+
+export interface ProjectBackgroundPolicy {
+  maxActive: number;
+  maxDailyRuns: number;
+  paused: boolean;
+  pullRequests: string[];
+  revision: number;
+}
+
+export interface ProjectBackgroundRun {
+  admittedAt: string;
+  outcome?: string;
+  runId: string;
+  sessionId: string;
+  source: BackgroundSource;
+  status: string;
+}
+
 export interface Provider {
   baseUrl?: string;
   configured: boolean;
@@ -2257,6 +2289,11 @@ export interface SetPluginEnablementRequest {
   installationId: string;
 }
 
+export interface SetProjectBackgroundPolicyRequest {
+  policy: ProjectBackgroundPolicy;
+  projectId: string;
+}
+
 export interface Skill {
   description?: string;
   installation?: SkillInstallation;
@@ -2338,6 +2375,7 @@ export interface StartGoalRequest {
 }
 
 export interface StartRunRequest {
+  background?: BackgroundSource;
   input: ContentBlock[];
   model?: string;
   newSession?: RunSessionOpening;

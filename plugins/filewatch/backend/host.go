@@ -41,7 +41,7 @@ func (h *runHost) Watch(ctx context.Context, generation string, trigger filewatc
 		return nil, errors.New("filewatch: configure an available canonical workspace from workspaces.resolve")
 	}
 	if draft.TargetSessionID != "" {
-		if err := h.checkTarget(ctx, draft.TargetSessionID, draft.Workspace); err != nil {
+		if err := h.checkTarget(ctx, draft.TargetSessionID, draft.Workspace, draft.ProjectID); err != nil {
 			return nil, err
 		}
 	}
@@ -52,7 +52,7 @@ func (h *runHost) Watch(ctx context.Context, generation string, trigger filewatc
 	return events, err
 }
 
-func (h *runHost) checkTarget(ctx context.Context, id, workspace string) error {
+func (h *runHost) checkTarget(ctx context.Context, id, workspace, projectID string) error {
 	session, err := h.client.GetSession(ctx, protocol.GetSessionRequest{SessionID: id}, protocol.CallOptions{})
 	if err != nil {
 		return err
@@ -60,11 +60,14 @@ func (h *runHost) checkTarget(ctx context.Context, id, workspace string) error {
 	if session.ID != id || session.Workspace.Ref.Path != workspace {
 		return errors.New("filewatch: the target Session must own the watched workspace")
 	}
+	if projectID != "" && session.ProjectID != projectID {
+		return errors.New("filewatch: the target Session must belong to the configured Project")
+	}
 	return nil
 }
 
 func (h *runHost) readPartitions(ctx context.Context, draft filewatch.Draft) ([]filewatch.Partition, error) {
-	if err := h.checkTarget(ctx, draft.TargetSessionID, draft.Workspace); err != nil {
+	if err := h.checkTarget(ctx, draft.TargetSessionID, draft.Workspace, draft.ProjectID); err != nil {
 		return nil, err
 	}
 	values := make([]filewatch.Partition, 0, len(draft.Paths))
@@ -101,13 +104,19 @@ func (h *runHost) Admit(ctx context.Context, namespace string, observation filew
 		Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: input}},
 	}
 	key := "filewatch:observation:" + capture.Invocation.ID
+	if capture.Trigger.ProjectID != "" {
+		start.Background = &protocol.BackgroundSource{
+			ProjectID: capture.Trigger.ProjectID, Kind: "filewatch", ID: capture.Generation,
+			Version: capture.Invocation.ID, Title: capture.Trigger.Title,
+		}
+	}
 	if capture.RunID.IsZero() {
 		start.SessionID = capture.SessionID.String()
 	} else {
 		key = "filewatch:run:" + capture.RunID.String()
 		start.NewSession = &protocol.RunSessionOpening{
 			SessionID: capture.SessionID.String(), RunID: capture.RunID.String(),
-			Title: capture.Trigger.Title, Workspace: &protocol.WorkspaceRef{Path: capture.Trigger.Workspace},
+			Title: capture.Trigger.Title, ProjectID: capture.Trigger.ProjectID, Workspace: &protocol.WorkspaceRef{Path: capture.Trigger.Workspace},
 		}
 		start.Provider, start.Model, start.ReasoningEffort = capture.Trigger.Provider, capture.Trigger.Model, capture.Trigger.ReasoningEffort
 	}
@@ -132,7 +141,7 @@ func (h *runHost) Admit(ctx context.Context, namespace string, observation filew
 		return identity.RunID{}, protocol.ErrInvalidResponse
 	}
 	if start.NewSession == nil {
-		if err := h.checkTarget(ctx, start.SessionID, capture.Trigger.Workspace); err != nil {
+		if err := h.checkTarget(ctx, start.SessionID, capture.Trigger.Workspace, capture.Trigger.ProjectID); err != nil {
 			return identity.RunID{}, err
 		}
 	}

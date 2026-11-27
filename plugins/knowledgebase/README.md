@@ -114,6 +114,22 @@ Generate contracts from the repository workspace with
 `make generate`. Run the backend's tests from
 the workspace with `go test ./plugins/knowledgebase/backend/... -count=1`.
 
+## Research deliverables
+
+In Project Research, accept work against current claim revisions and an exact
+native Deliverables revision. An optional presentation chart element anchors the
+link to that object. The Deliverables dependency checks the Project, the native
+bytes and the chart from its own archive. The research procedure has an
+immutable content version that can be reused by another work item.
+
+Revalidate to check the original page lines and current native head. Work with
+changed inputs needs a new acceptance. If a cited material is moved out of the
+Project, the affected work hides its derived text and links. Open the latest
+authorized revision in Deliverables to download the editable native file.
+Enable Deliverables before Knowledge Base captures its optional dependency.
+After installing or changing that dependency, reconnect Knowledge Base to
+capture the current release.
+
 ## Contract publication
 
 The plugin's `contractgen/` program owns its Portable definition. `make generate`

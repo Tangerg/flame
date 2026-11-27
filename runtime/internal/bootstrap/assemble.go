@@ -168,6 +168,7 @@ func buildAssemblyCore(
 				Invalidations:          policy.invalidations.observe,
 				Queries:                readServices.queries,
 				Projects:               projectCoordinator,
+				ProjectBackground:      cfg.stores.Projects,
 				Usage:                  readServices.usage,
 				Feedback:               readServices.feedback,
 				TrajectoryExports:      readServices.trajectoryExports,

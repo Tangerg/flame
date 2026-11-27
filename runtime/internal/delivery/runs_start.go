@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"iter"
 	"slices"
+	"strings"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 
@@ -64,7 +65,26 @@ func (s *Handler) StartRun(ctx context.Context, in protocol.StartRunRequest) (*p
 		}
 		command.NewSession = &runs.SessionOpening{SessionID: sessionID, RunID: runID, Title: in.NewSession.Title, CWD: s.sessionWorkspacePath(in.NewSession.Workspace), Project: project}
 	}
-	if actor, present := operation.ActorFrom(ctx); present {
+	actor, installed := operation.ActorFrom(ctx)
+	if source := in.Background; source != nil {
+		if !installed || command.Acceptance == nil || actor.Server().String() != source.Kind ||
+			(source.Kind != "schedules" && source.Kind != "filewatch") {
+			return nil, nil, protocol.NewFailure(protocol.ErrInvalidParams, "background events require an authenticated trigger and a command identity", nil)
+		}
+		projectID, err := wireIdentity("background.projectId", source.ProjectID, identity.ParseProject)
+		if err != nil {
+			return nil, nil, err
+		}
+		for _, value := range []string{source.ID, source.Version, source.Title} {
+			if strings.TrimSpace(value) == "" || len(value) > 512 {
+				return nil, nil, protocol.NewFailure(protocol.ErrInvalidParams, "background event requires a bounded source ID, version and title", nil)
+			}
+		}
+		actor = actor.WithBackground(project.BackgroundSource{
+			ProjectID: projectID, Kind: source.Kind, ID: source.ID, Version: source.Version, Title: source.Title,
+		})
+	}
+	if installed {
 		command.Actor = &actor
 	}
 	result, err := s.runOpenings.Start(ctx, command)
@@ -150,6 +170,10 @@ func wireRunStartErr(err error) error {
 		errors.Is(err, runs.ErrUnsupportedModelSelection),
 		errors.Is(err, runs.ErrInvalidStart),
 		errors.Is(err, session.ErrInvalid):
+		return protocol.NewFailure(protocol.ErrInvalidParams, err.Error(), err)
+	case errors.Is(err, project.ErrBackgroundCapacity):
+		return protocol.NewFailure(protocol.ErrSessionBusy, err.Error(), err)
+	case errors.Is(err, project.ErrInvalid):
 		return protocol.NewFailure(protocol.ErrInvalidParams, err.Error(), err)
 	case errors.Is(err, rundomain.ErrSessionBusy):
 		return protocol.ErrSessionBusy

@@ -1,0 +1,1153 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "AnswerRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "optionId": {
+          "type": "string"
+        },
+        "permissionId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "permissionId",
+        "optionId"
+      ],
+      "type": "object"
+    },
+    "CancelV1Input": {
+      "$ref": "#/$defs/TurnRequest"
+    },
+    "CancelV1Output": {
+      "$ref": "#/$defs/CancelV1OutputWireSession"
+    },
+    "CancelV1OutputWireEvent": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        },
+        "toolId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
+    },
+    "CancelV1OutputWireOption": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "kind"
+      ],
+      "type": "object"
+    },
+    "CancelV1OutputWirePermissionRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "options": {
+          "items": {
+            "$ref": "#/$defs/CancelV1OutputWireOption"
+          },
+          "type": "array"
+        },
+        "preview": {
+          "type": "string"
+        },
+        "selected": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "toolId": {
+          "type": "string"
+        },
+        "turnId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "turnId",
+        "toolId",
+        "title",
+        "options",
+        "status"
+      ],
+      "type": "object"
+    },
+    "CancelV1OutputWireSession": {
+      "additionalProperties": false,
+      "properties": {
+        "agent": {
+          "type": "string"
+        },
+        "canFork": {
+          "type": "boolean"
+        },
+        "connected": {
+          "type": "boolean"
+        },
+        "cwd": {
+          "type": "string"
+        },
+        "events": {
+          "items": {
+            "$ref": "#/$defs/CancelV1OutputWireEvent"
+          },
+          "type": "array"
+        },
+        "id": {
+          "type": "string"
+        },
+        "machine": {
+          "type": "string"
+        },
+        "nativeId": {
+          "type": "string"
+        },
+        "permissions": {
+          "items": {
+            "$ref": "#/$defs/CancelV1OutputWirePermissionRequest"
+          },
+          "type": "array"
+        },
+        "turn": {
+          "$ref": "#/$defs/CancelV1OutputWireTurn"
+        }
+      },
+      "required": [
+        "id",
+        "nativeId",
+        "cwd",
+        "machine",
+        "agent",
+        "connected",
+        "canFork",
+        "events",
+        "permissions"
+      ],
+      "type": "object"
+    },
+    "CancelV1OutputWireTurn": {
+      "additionalProperties": false,
+      "properties": {
+        "cancelRequested": {
+          "type": "boolean"
+        },
+        "id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "stopReason": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "status",
+        "cancelRequested"
+      ],
+      "type": "object"
+    },
+    "ForkV1Input": {
+      "$ref": "#/$defs/ForkV1InputWireSessionRequest"
+    },
+    "ForkV1InputWireSessionRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "type": "object"
+    },
+    "ForkV1Output": {
+      "$ref": "#/$defs/ForkV1OutputWireSession"
+    },
+    "ForkV1OutputWireEvent": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        },
+        "toolId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
+    },
+    "ForkV1OutputWireOption": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "kind"
+      ],
+      "type": "object"
+    },
+    "ForkV1OutputWirePermissionRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "options": {
+          "items": {
+            "$ref": "#/$defs/ForkV1OutputWireOption"
+          },
+          "type": "array"
+        },
+        "preview": {
+          "type": "string"
+        },
+        "selected": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "toolId": {
+          "type": "string"
+        },
+        "turnId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "turnId",
+        "toolId",
+        "title",
+        "options",
+        "status"
+      ],
+      "type": "object"
+    },
+    "ForkV1OutputWireSession": {
+      "additionalProperties": false,
+      "properties": {
+        "agent": {
+          "type": "string"
+        },
+        "canFork": {
+          "type": "boolean"
+        },
+        "connected": {
+          "type": "boolean"
+        },
+        "cwd": {
+          "type": "string"
+        },
+        "events": {
+          "items": {
+            "$ref": "#/$defs/ForkV1OutputWireEvent"
+          },
+          "type": "array"
+        },
+        "id": {
+          "type": "string"
+        },
+        "machine": {
+          "type": "string"
+        },
+        "nativeId": {
+          "type": "string"
+        },
+        "permissions": {
+          "items": {
+            "$ref": "#/$defs/ForkV1OutputWirePermissionRequest"
+          },
+          "type": "array"
+        },
+        "turn": {
+          "$ref": "#/$defs/ForkV1OutputWireTurn"
+        }
+      },
+      "required": [
+        "id",
+        "nativeId",
+        "cwd",
+        "machine",
+        "agent",
+        "connected",
+        "canFork",
+        "events",
+        "permissions"
+      ],
+      "type": "object"
+    },
+    "ForkV1OutputWireTurn": {
+      "additionalProperties": false,
+      "properties": {
+        "cancelRequested": {
+          "type": "boolean"
+        },
+        "id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "stopReason": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "status",
+        "cancelRequested"
+      ],
+      "type": "object"
+    },
+    "GetV1Input": {
+      "$ref": "#/$defs/GetV1InputWireSessionRequest"
+    },
+    "GetV1InputWireSessionRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "type": "object"
+    },
+    "GetV1Output": {
+      "$ref": "#/$defs/GetV1OutputWireSession"
+    },
+    "GetV1OutputWireEvent": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        },
+        "toolId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
+    },
+    "GetV1OutputWireOption": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "kind"
+      ],
+      "type": "object"
+    },
+    "GetV1OutputWirePermissionRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "options": {
+          "items": {
+            "$ref": "#/$defs/GetV1OutputWireOption"
+          },
+          "type": "array"
+        },
+        "preview": {
+          "type": "string"
+        },
+        "selected": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "toolId": {
+          "type": "string"
+        },
+        "turnId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "turnId",
+        "toolId",
+        "title",
+        "options",
+        "status"
+      ],
+      "type": "object"
+    },
+    "GetV1OutputWireSession": {
+      "additionalProperties": false,
+      "properties": {
+        "agent": {
+          "type": "string"
+        },
+        "canFork": {
+          "type": "boolean"
+        },
+        "connected": {
+          "type": "boolean"
+        },
+        "cwd": {
+          "type": "string"
+        },
+        "events": {
+          "items": {
+            "$ref": "#/$defs/GetV1OutputWireEvent"
+          },
+          "type": "array"
+        },
+        "id": {
+          "type": "string"
+        },
+        "machine": {
+          "type": "string"
+        },
+        "nativeId": {
+          "type": "string"
+        },
+        "permissions": {
+          "items": {
+            "$ref": "#/$defs/GetV1OutputWirePermissionRequest"
+          },
+          "type": "array"
+        },
+        "turn": {
+          "$ref": "#/$defs/GetV1OutputWireTurn"
+        }
+      },
+      "required": [
+        "id",
+        "nativeId",
+        "cwd",
+        "machine",
+        "agent",
+        "connected",
+        "canFork",
+        "events",
+        "permissions"
+      ],
+      "type": "object"
+    },
+    "GetV1OutputWireTurn": {
+      "additionalProperties": false,
+      "properties": {
+        "cancelRequested": {
+          "type": "boolean"
+        },
+        "id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "stopReason": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "status",
+        "cancelRequested"
+      ],
+      "type": "object"
+    },
+    "ListRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "cursor": {
+          "type": "string"
+        },
+        "cwd": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "cwd"
+      ],
+      "type": "object"
+    },
+    "ListV1Input": {
+      "$ref": "#/$defs/ListRequest"
+    },
+    "ListV1Output": {
+      "$ref": "#/$defs/Sessions"
+    },
+    "NativeSession": {
+      "additionalProperties": false,
+      "properties": {
+        "cwd": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "cwd"
+      ],
+      "type": "object"
+    },
+    "OpenRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "cwd": {
+          "type": "string"
+        },
+        "nativeId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "nativeId",
+        "cwd"
+      ],
+      "type": "object"
+    },
+    "OpenV1Input": {
+      "$ref": "#/$defs/OpenRequest"
+    },
+    "OpenV1Output": {
+      "$ref": "#/$defs/OpenV1OutputWireSession"
+    },
+    "OpenV1OutputWireEvent": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        },
+        "toolId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
+    },
+    "OpenV1OutputWireOption": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "kind"
+      ],
+      "type": "object"
+    },
+    "OpenV1OutputWirePermissionRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "options": {
+          "items": {
+            "$ref": "#/$defs/OpenV1OutputWireOption"
+          },
+          "type": "array"
+        },
+        "preview": {
+          "type": "string"
+        },
+        "selected": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "toolId": {
+          "type": "string"
+        },
+        "turnId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "turnId",
+        "toolId",
+        "title",
+        "options",
+        "status"
+      ],
+      "type": "object"
+    },
+    "OpenV1OutputWireSession": {
+      "additionalProperties": false,
+      "properties": {
+        "agent": {
+          "type": "string"
+        },
+        "canFork": {
+          "type": "boolean"
+        },
+        "connected": {
+          "type": "boolean"
+        },
+        "cwd": {
+          "type": "string"
+        },
+        "events": {
+          "items": {
+            "$ref": "#/$defs/OpenV1OutputWireEvent"
+          },
+          "type": "array"
+        },
+        "id": {
+          "type": "string"
+        },
+        "machine": {
+          "type": "string"
+        },
+        "nativeId": {
+          "type": "string"
+        },
+        "permissions": {
+          "items": {
+            "$ref": "#/$defs/OpenV1OutputWirePermissionRequest"
+          },
+          "type": "array"
+        },
+        "turn": {
+          "$ref": "#/$defs/OpenV1OutputWireTurn"
+        }
+      },
+      "required": [
+        "id",
+        "nativeId",
+        "cwd",
+        "machine",
+        "agent",
+        "connected",
+        "canFork",
+        "events",
+        "permissions"
+      ],
+      "type": "object"
+    },
+    "OpenV1OutputWireTurn": {
+      "additionalProperties": false,
+      "properties": {
+        "cancelRequested": {
+          "type": "boolean"
+        },
+        "id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "stopReason": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "status",
+        "cancelRequested"
+      ],
+      "type": "object"
+    },
+    "PermissionV1Input": {
+      "$ref": "#/$defs/AnswerRequest"
+    },
+    "PermissionV1Output": {
+      "$ref": "#/$defs/PermissionV1OutputWireSession"
+    },
+    "PermissionV1OutputWireEvent": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        },
+        "toolId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
+    },
+    "PermissionV1OutputWireOption": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "kind"
+      ],
+      "type": "object"
+    },
+    "PermissionV1OutputWirePermissionRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "options": {
+          "items": {
+            "$ref": "#/$defs/PermissionV1OutputWireOption"
+          },
+          "type": "array"
+        },
+        "preview": {
+          "type": "string"
+        },
+        "selected": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "toolId": {
+          "type": "string"
+        },
+        "turnId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "turnId",
+        "toolId",
+        "title",
+        "options",
+        "status"
+      ],
+      "type": "object"
+    },
+    "PermissionV1OutputWireSession": {
+      "additionalProperties": false,
+      "properties": {
+        "agent": {
+          "type": "string"
+        },
+        "canFork": {
+          "type": "boolean"
+        },
+        "connected": {
+          "type": "boolean"
+        },
+        "cwd": {
+          "type": "string"
+        },
+        "events": {
+          "items": {
+            "$ref": "#/$defs/PermissionV1OutputWireEvent"
+          },
+          "type": "array"
+        },
+        "id": {
+          "type": "string"
+        },
+        "machine": {
+          "type": "string"
+        },
+        "nativeId": {
+          "type": "string"
+        },
+        "permissions": {
+          "items": {
+            "$ref": "#/$defs/PermissionV1OutputWirePermissionRequest"
+          },
+          "type": "array"
+        },
+        "turn": {
+          "$ref": "#/$defs/PermissionV1OutputWireTurn"
+        }
+      },
+      "required": [
+        "id",
+        "nativeId",
+        "cwd",
+        "machine",
+        "agent",
+        "connected",
+        "canFork",
+        "events",
+        "permissions"
+      ],
+      "type": "object"
+    },
+    "PermissionV1OutputWireTurn": {
+      "additionalProperties": false,
+      "properties": {
+        "cancelRequested": {
+          "type": "boolean"
+        },
+        "id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "stopReason": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "status",
+        "cancelRequested"
+      ],
+      "type": "object"
+    },
+    "PromptRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "continue": {
+          "type": "boolean"
+        },
+        "id": {
+          "type": "string"
+        },
+        "previousTurn": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "text"
+      ],
+      "type": "object"
+    },
+    "PromptV1Input": {
+      "$ref": "#/$defs/PromptRequest"
+    },
+    "PromptV1Output": {
+      "$ref": "#/$defs/PromptV1OutputWireSession"
+    },
+    "PromptV1OutputWireEvent": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        },
+        "toolId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
+    },
+    "PromptV1OutputWireOption": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "kind"
+      ],
+      "type": "object"
+    },
+    "PromptV1OutputWirePermissionRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "options": {
+          "items": {
+            "$ref": "#/$defs/PromptV1OutputWireOption"
+          },
+          "type": "array"
+        },
+        "preview": {
+          "type": "string"
+        },
+        "selected": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "toolId": {
+          "type": "string"
+        },
+        "turnId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "turnId",
+        "toolId",
+        "title",
+        "options",
+        "status"
+      ],
+      "type": "object"
+    },
+    "PromptV1OutputWireSession": {
+      "additionalProperties": false,
+      "properties": {
+        "agent": {
+          "type": "string"
+        },
+        "canFork": {
+          "type": "boolean"
+        },
+        "connected": {
+          "type": "boolean"
+        },
+        "cwd": {
+          "type": "string"
+        },
+        "events": {
+          "items": {
+            "$ref": "#/$defs/PromptV1OutputWireEvent"
+          },
+          "type": "array"
+        },
+        "id": {
+          "type": "string"
+        },
+        "machine": {
+          "type": "string"
+        },
+        "nativeId": {
+          "type": "string"
+        },
+        "permissions": {
+          "items": {
+            "$ref": "#/$defs/PromptV1OutputWirePermissionRequest"
+          },
+          "type": "array"
+        },
+        "turn": {
+          "$ref": "#/$defs/PromptV1OutputWireTurn"
+        }
+      },
+      "required": [
+        "id",
+        "nativeId",
+        "cwd",
+        "machine",
+        "agent",
+        "connected",
+        "canFork",
+        "events",
+        "permissions"
+      ],
+      "type": "object"
+    },
+    "PromptV1OutputWireTurn": {
+      "additionalProperties": false,
+      "properties": {
+        "cancelRequested": {
+          "type": "boolean"
+        },
+        "id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "stopReason": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "status",
+        "cancelRequested"
+      ],
+      "type": "object"
+    },
+    "Sessions": {
+      "additionalProperties": false,
+      "properties": {
+        "agent": {
+          "type": "string"
+        },
+        "machine": {
+          "type": "string"
+        },
+        "nextCursor": {
+          "type": "string"
+        },
+        "rows": {
+          "items": {
+            "$ref": "#/$defs/NativeSession"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "machine",
+        "agent",
+        "rows"
+      ],
+      "type": "object"
+    },
+    "TurnRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "turnId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "turnId"
+      ],
+      "type": "object"
+    }
+  }
+}

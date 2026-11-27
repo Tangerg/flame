@@ -20,6 +20,8 @@ var methodMetadata = map[string]methodMeta{
 	"sessions.rollback":                {Name: "sessions.rollback", Kind: unaryMethod, Operation: commandOperation, Result: reflect.TypeFor[*protocol.RollbackSessionResponse](), Event: nil, ResultNullable: false},
 	"sessions.export":                  {Name: "sessions.export", Kind: unaryMethod, Operation: queryOperation, Result: reflect.TypeFor[*protocol.ExportSessionResponse](), Event: nil, ResultNullable: false},
 	"sessions.import":                  {Name: "sessions.import", Kind: unaryMethod, Operation: commandOperation, Result: reflect.TypeFor[*protocol.ImportSessionResponse](), Event: nil, ResultNullable: false},
+	"projects.background.get":          {Name: "projects.background.get", Kind: unaryMethod, Operation: queryOperation, Result: reflect.TypeFor[*protocol.ProjectBackgroundActivity](), Event: nil, ResultNullable: false},
+	"projects.background.setPolicy":    {Name: "projects.background.setPolicy", Kind: unaryMethod, Operation: commandOperation, Result: reflect.TypeFor[*protocol.ProjectBackgroundPolicy](), Event: nil, ResultNullable: false},
 	"projects.list":                    {Name: "projects.list", Kind: unaryMethod, Operation: queryOperation, Result: reflect.TypeFor[*protocol.Page[protocol.Project]](), Event: nil, ResultNullable: false},
 	"projects.get":                     {Name: "projects.get", Kind: unaryMethod, Operation: queryOperation, Result: reflect.TypeFor[*protocol.Project](), Event: nil, ResultNullable: false},
 	"projects.create":                  {Name: "projects.create", Kind: unaryMethod, Operation: commandOperation, Result: reflect.TypeFor[*protocol.Project](), Event: nil, ResultNullable: false},

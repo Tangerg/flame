@@ -37,6 +37,17 @@ func (h remoteRuns) Admit(ctx context.Context, request schedule.RunRequest) erro
 		Input:      []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: execution.Instructions()}},
 		Provider:   selection.Provider(), Model: selection.Model(), ReasoningEffort: selection.ReasoningEffort(),
 	}
+	if execution.ProjectID() != "" {
+		start.NewSession.ProjectID = execution.ProjectID()
+		title := execution.Title()
+		if title == "" {
+			title = request.ScheduleID()
+		}
+		start.Background = &protocol.BackgroundSource{
+			ProjectID: execution.ProjectID(), Kind: "schedules", ID: request.ScheduleID(),
+			Version: request.EventVersion(), Title: title,
+		}
+	}
 	if execution.CWD() != "" {
 		start.NewSession.Workspace = &protocol.WorkspaceRef{Path: execution.CWD()}
 	}

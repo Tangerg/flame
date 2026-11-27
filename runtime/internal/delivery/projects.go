@@ -14,6 +14,7 @@ const (
 )
 
 func registerProjects(registry *Registry) {
+	registerProjectBackground(registry)
 	registry.query(MethodMeta{Name: projectsList, GoName: "ListProjects"},
 		func(service interface {
 			ListProjects(context.Context, protocol.ListProjectsRequest) (*protocol.Page[protocol.Project], error)

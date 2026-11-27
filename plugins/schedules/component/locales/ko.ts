@@ -42,6 +42,7 @@ export const ko: Record<string, string> = {
   "field.instructions": "지침",
   "field.cron": "Cron 식",
   "field.timeZone": "시간대",
+  "field.project": "프로젝트 ID",
   "field.workspace": "작업 공간 경로",
   "field.workspace.placeholder": "비워 두면 Runtime 기본값을 사용합니다",
   "field.model": "모델",

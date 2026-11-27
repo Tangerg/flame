@@ -2,6 +2,7 @@ package bootstrap
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"os"
 	"os/exec"
@@ -14,6 +15,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
+	"github.com/Tangerg/scope/core/chat"
+	"github.com/Tangerg/scope/core/chatclient"
 )
 
 func TestTaskWorktreesKeepSeparateChangesAndHandoffAfterRestart(t *testing.T) {
@@ -53,6 +56,24 @@ func TestTaskWorktreesKeepSeparateChangesAndHandoffAfterRestart(t *testing.T) {
 
 	cfg := poMCPConfig(t)
 	cfg.defaultWorkspacePath = source
+	model := delegateRestartModel{chat.ModelFunc(func(_ context.Context, request *chat.Request) (*chat.Response, error) {
+		if len(request.Tools) == 0 {
+			return completedTextResponse("Worktree verification"), nil
+		}
+		for _, message := range request.Messages {
+			for _, part := range message.Parts {
+				if part.ToolResult != nil && part.ToolResult.ID == "verify-worktree" {
+					return completedTextResponse("Verified the task workspace"), nil
+				}
+			}
+		}
+		return filewatchToolCall(chat.ToolCall{ID: "verify-worktree", Name: "ask_user", Arguments: `{"questions":[{"question":"Continue the verification in this task workspace?"}]}`})
+	})}
+	chatClient, err := chatclient.New(model)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg.modelProviders = testChatResolver(chatClient)
 	r := poMCPOpen(t, cfg)
 	create := func(key, setup string) *protocol.TaskWorktree {
 		t.Helper()
@@ -85,6 +106,45 @@ func TestTaskWorktreesKeepSeparateChangesAndHandoffAfterRestart(t *testing.T) {
 	write(b.Workspace.Path, "attachment.bin", binary)
 	requireContents(source, "shared.txt", []byte("base\n"))
 
+	meta := protocol.RequestMeta{ProtocolVersion: new(protocol.Version), ClientCapabilities: &protocol.ClientCapabilities{
+		InterruptTypes: []protocol.InterruptType{protocol.InterruptQuestion},
+	}}
+	ctx := delivery.WithRequestMeta(t.Context(), meta)
+	firstRun, firstEvents, err := r.api.StartRun(ctx, protocol.StartRunRequest{
+		SessionID: first.ID, Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "Verify the first task"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	secondRun, secondEvents, err := r.api.StartRun(ctx, protocol.StartRunRequest{
+		SessionID: second.ID, Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "Verify the second task"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, err := range firstEvents {
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, err := range secondEvents {
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	question := func(runID string) string {
+		t.Helper()
+		pending, err := r.api.ListInterrupts(ctx, protocol.ListInterruptsRequest{RootRunID: runID})
+		if err != nil || len(pending.Data) != 1 || len(pending.Data[0].Interrupts) != 1 {
+			t.Fatalf("original worktree verification did not keep its interruption: %+v, %v", pending, err)
+		}
+		return pending.Data[0].Interrupts[0].ItemID
+	}
+	questions := map[string]string{firstRun.RunID: question(firstRun.RunID), secondRun.RunID: question(secondRun.RunID)}
+	if firstRun.RunID == secondRun.RunID || questions[firstRun.RunID] == questions[secondRun.RunID] {
+		t.Fatal("parallel worktrees reused an independent verification")
+	}
+
 	r.close()
 	if err := cfg.stores.Close(); err != nil {
 		t.Fatal(err)
@@ -101,6 +161,26 @@ func TestTaskWorktreesKeepSeparateChangesAndHandoffAfterRestart(t *testing.T) {
 		found := r.must(delivery.SessionsGet, protocol.GetSessionRequest{SessionID: want.ID}, "").(*protocol.Session)
 		if found.Workspace != want.Workspace {
 			t.Fatalf("restart changed the session workspace: %+v", found.Workspace)
+		}
+	}
+	for runID, original := range questions {
+		if question(runID) != original {
+			t.Fatal("restart replaced the original verification permission")
+		}
+		result := r.endpoint.Invoke(ctx, delivery.RunsResume, protocol.ResumeRunRequest{RunID: runID, Responses: []protocol.InterruptResponse{{
+			ItemID: original, Response: protocol.InterruptResponseValue{Type: protocol.InterruptResponseAnswer, Answers: [][]string{{"Continue"}}},
+		}}}, protocol.CallMetadata{IdempotencyKey: "verify-" + runID, RequestMeta: meta})
+		if result.Failure != nil {
+			t.Fatal(result.Failure)
+		}
+		for _, err := range result.Events {
+			if err != nil {
+				t.Fatal(err)
+			}
+		}
+		verified := r.must(delivery.RunsGet, protocol.GetRunRequest{RunID: runID}, "").(*protocol.RunRef)
+		if verified.Outcome == nil || verified.Outcome.Type != protocol.OutcomeCompleted {
+			t.Fatalf("the original verification did not complete: %+v", verified)
 		}
 	}
 	list := r.must(delivery.TaskWorktreesList, struct{}{}, "").(*protocol.Page[protocol.TaskWorktree])

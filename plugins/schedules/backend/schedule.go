@@ -19,6 +19,7 @@ import (
 )
 
 type createScheduleArgs struct {
+	ProjectID       string `json:"project_id,omitempty"`
 	Title           string `json:"title,omitempty" jsonschema_description:"Optional concise name for this recurring automation."`
 	Instructions    string `json:"instructions" jsonschema:"minLength=1" jsonschema_description:"Complete self-contained instructions for each scheduled Agent Run."`
 	WorkspacePath   string `json:"workspace_path,omitempty" jsonschema_description:"Workspace path for each scheduled Run. Omit to use the configured default workspace."`
@@ -30,6 +31,7 @@ type createScheduleArgs struct {
 }
 
 type updateScheduleArgs struct {
+	ProjectID        *string `json:"project_id,omitzero"`
 	ScheduleID       string  `json:"schedule_id" jsonschema:"minLength=1"`
 	ExpectedRevision uint64  `json:"expected_revision" jsonschema:"minimum=1" jsonschema_description:"The revision returned by list_schedules, create_schedule or update_schedule. Refresh after a revision conflict."`
 	Title            *string `json:"title,omitzero"`
@@ -65,6 +67,7 @@ type scheduleDeleteResponse struct {
 }
 
 type scheduleView struct {
+	ProjectID       string `json:"project_id,omitempty"`
 	ScheduleID      string `json:"schedule_id"`
 	Revision        uint64 `json:"revision"`
 	Title           string `json:"title,omitempty"`
@@ -170,6 +173,7 @@ func (in createScheduleArgs) draft(hostTimeZone func() (string, error)) (schedul
 		Title:          in.Title,
 		Instructions:   in.Instructions,
 		CWD:            in.WorkspacePath,
+		ProjectID:      in.ProjectID,
 		ModelSelection: selection,
 		Cron:           in.Cron,
 		TimeZone:       timeZone,
@@ -186,7 +190,7 @@ func (s *scheduleManagementTools) update(ctx context.Context, in updateScheduleA
 }
 
 func (in updateScheduleArgs) command() scheduling.UpdateCommand {
-	return scheduling.UpdateCommand{ID: in.ScheduleID, ExpectedRevision: in.ExpectedRevision, Patch: scheduling.Patch{Title: in.Title, Instructions: in.Instructions, CWD: in.WorkspacePath, Cron: in.Cron, TimeZone: in.TimeZone, Enabled: in.Enabled, ModelSelection: flamemodel.Patch{Provider: in.Provider, Model: in.Model, ReasoningEffort: in.ReasoningEffort}}}
+	return scheduling.UpdateCommand{ID: in.ScheduleID, ExpectedRevision: in.ExpectedRevision, Patch: scheduling.Patch{ProjectID: in.ProjectID, Title: in.Title, Instructions: in.Instructions, CWD: in.WorkspacePath, Cron: in.Cron, TimeZone: in.TimeZone, Enabled: in.Enabled, ModelSelection: flamemodel.Patch{Provider: in.Provider, Model: in.Model, ReasoningEffort: in.ReasoningEffort}}}
 }
 
 func (s *scheduleManagementTools) run(ctx context.Context, in wire.ItemInput) (scheduling.RunReference, error) {
@@ -231,6 +235,7 @@ func viewSchedule(sc schedule.Schedule) scheduleView {
 		Title:           sc.Title(),
 		Instructions:    sc.Instructions(),
 		WorkspacePath:   sc.CWD(),
+		ProjectID:       sc.ProjectID(),
 		Provider:        sc.ModelSelection().Provider(),
 		Model:           sc.ModelSelection().Model(),
 		ReasoningEffort: sc.ModelSelection().ReasoningEffort(),

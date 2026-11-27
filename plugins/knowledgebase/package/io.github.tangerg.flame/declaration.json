@@ -5,7 +5,14 @@
       "id": "knowledgebase-operations",
       "server": "knowledgebase",
       "export": "knowledgebase",
-      "contract": "io.github.tangerg.flame/contracts/capability.generated.json"
+      "contract": "io.github.tangerg.flame/contracts/capability.generated.json",
+      "requires": [
+        {
+          "id": "research-artifacts",
+          "contract": "io.github.tangerg.flame/contracts/research-artifact.generated.json",
+          "optional": true
+        }
+      ]
     },
     {
       "id": "knowledgebase-context",

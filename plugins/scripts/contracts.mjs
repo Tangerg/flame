@@ -46,10 +46,26 @@ async function contractSources(project, plan) {
       );
     directories.add(directory);
   }
-  if (contracts.size > 1 && plan.declaration.components?.length)
-    throw new Error(
-      "component generation requires one contract projection owner",
-    );
+  const componentContracts = new Set();
+  if (plan.declaration.components?.length) {
+    if (contracts.size === 1) {
+      componentContracts.add(contracts.values().next().value);
+    } else if (contracts.size > 1) {
+      const contributions = new Map(
+        plan.declaration.contributions.map((entry) => [entry.id, entry]),
+      );
+      for (const component of plan.declaration.components) {
+        if (!component.contribution) continue;
+        const contribution = contributions.get(component.contribution);
+        if (contribution && managed.has(contribution.server))
+          componentContracts.add(resourcePath(contribution.contract));
+      }
+      if (componentContracts.size !== 1)
+        throw new Error(
+          "component generation requires one contract projection owner",
+        );
+    }
+  }
   return Promise.all(
     [...contracts].map(async (resource) => {
       const stem = basename(resource).replace(/(?:\.generated)?\.json$/, "");
@@ -67,6 +83,7 @@ async function contractSources(project, plan) {
         resource,
         source: hasSource ? source : json,
         typescript: hasSource,
+        componentProjection: componentContracts.has(resource),
       };
     }),
   );
@@ -106,14 +123,19 @@ async function compileDescriptor(source, temporary) {
 export async function generateContracts(project, tool) {
   const plan = await readBuildPlan(project);
   const contracts = await contractSources(project, plan);
-  for (const { resource, source, typescript } of contracts) {
+  for (const {
+    resource,
+    source,
+    typescript,
+    componentProjection,
+  } of contracts) {
     const temporary = await mkdtemp(join(project, ".flame-contract-"));
     try {
       let feature = source;
       if (typescript) feature = await compileDescriptor(source, temporary);
       else JSON.parse(await readFile(source, "utf8"));
       const output = join(temporary, "package");
-      const component = plan.declaration.components?.length
+      const component = componentProjection
         ? join(temporary, "component")
         : undefined;
       execFileSync(

@@ -29,6 +29,7 @@ var (
 )
 
 type Draft struct {
+	ProjectID         string   `json:"projectId,omitempty"`
 	Title             string   `json:"title" jsonschema:"minLength=1"`
 	Workspace         string   `json:"workspace" jsonschema:"minLength=1"`
 	Paths             []string `json:"paths" jsonschema:"minItems=1,uniqueItems=true"`
@@ -52,6 +53,9 @@ func (Draft) JSONSchemaConstraints() jsonschema.Constraints {
 type Trigger struct{ draft Draft }
 
 func newTrigger(draft Draft) (Trigger, error) {
+	if _, err := identity.ParseOptionalProject(draft.ProjectID); err != nil {
+		return Trigger{}, errors.Join(ErrInvalid, err)
+	}
 	if !boundedText(draft.Title, maxTitleLength) || !boundedText(draft.Instructions, maxInstructionsLength) ||
 		!boundedText(draft.Workspace, maxWorkspaceLength) || !filepath.IsAbs(draft.Workspace) || filepath.Clean(draft.Workspace) != draft.Workspace ||
 		len(draft.Paths) == 0 || len(draft.Paths) > maxPaths {

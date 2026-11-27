@@ -28,6 +28,7 @@ import {
   type MethodInputs,
   type MethodOutputs,
 } from "../package/io.github.tangerg.flame/contracts/methods.generated";
+import { WorkReview } from "./work";
 import { en } from "./locales/en";
 import { zh } from "./locales/zh";
 import { zhTW } from "./locales/zh-TW";
@@ -52,6 +53,8 @@ type Target = {
   claim?: string;
   revision?: number;
   page?: number;
+  firstLine?: number;
+  lastLine?: number;
 };
 type Messages = ReturnType<typeof useTranslator>;
 
@@ -67,6 +70,8 @@ function navigationTarget(value: string): Target | undefined {
       claim: typeof item.claim === "string" ? item.claim : undefined,
       revision: number(item.revision),
       page: number(item.page),
+      firstLine: number(item.firstLine),
+      lastLine: number(item.lastLine),
     };
   } catch (error) {
     if (!(error instanceof SyntaxError)) throw error;
@@ -187,8 +192,14 @@ function Research({
   const [reason, setReason] = useState("");
   const [citations, setCitations] = useState<Citation[]>([]);
   const [editing, setEditing] = useState<{ id: string; revision: number }>();
-  const [first, setFirst] = useState("1");
-  const [last, setLast] = useState("1");
+  const [first, setFirst] = useState(String(target?.firstLine ?? 1));
+  const [last, setLast] = useState(
+    String(target?.lastLine ?? target?.firstLine ?? 1),
+  );
+  const citedLine = useRef<HTMLLIElement>(null);
+  useEffect(() => {
+    citedLine.current?.scrollIntoView({ block: "nearest" });
+  }, [document, target]);
 
   useEffect(() => {
     const subscription = new AbortController();
@@ -448,9 +459,28 @@ function Research({
               />
             )}
             <ol style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>
-              {lines.map((line, index) => (
-                <li key={index}>{line}</li>
-              ))}
+              {lines.map((line, index) => {
+                const start = target?.firstLine;
+                const selected =
+                  target &&
+                  start !== undefined &&
+                  target.material === document.document.id &&
+                  target.revision ===
+                    projectNumber(document.document.revision) &&
+                  target.page === page &&
+                  index + 1 >= start &&
+                  index + 1 <= (target.lastLine ?? start);
+                return (
+                  <li
+                    key={index}
+                    ref={
+                      selected && index + 1 === start ? citedLine : undefined
+                    }
+                  >
+                    {selected ? <mark>{line}</mark> : line}
+                  </li>
+                );
+              })}
             </ol>
             <FormActions label={t("materials")}>
               {[-1, 1].map((delta) => (
@@ -507,6 +537,13 @@ function Research({
           </RecordGroup>
         )}
       </PanelSection>
+      <WorkReview
+        operations={operations}
+        context={context}
+        project={project.id}
+        claims={results}
+        refresh={refresh}
+      />
       <PanelSection title={t("claims")}>
         <RecordGroup>
           {results.map((item) => (

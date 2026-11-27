@@ -1126,6 +1126,123 @@
       }
     },
     {
+      "name": "projects.background.get",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "projectId",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256,
+            "pattern": "^[^\\p{C}\\p{Z}]*$"
+          }
+        },
+        {
+          "name": "_meta",
+          "schema": {
+            "$ref": "#/components/schemas/RequestMeta"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "schema.json#/$defs/ProjectBackgroundActivity"
+        }
+      },
+      "errors": [
+        {
+          "code": -32048,
+          "message": "project_not_found"
+        }
+      ],
+      "x-flame-kind": "unary",
+      "x-flame-operation": "query",
+      "x-flame-idempotency": "none",
+      "x-flame-replayCursor": "none",
+      "x-flame-pagination": "none",
+      "x-flame-requestFrame": {
+        "properties": {
+          "_meta": {
+            "$ref": "#/components/schemas/RequestMeta"
+          },
+          "projectId": {}
+        },
+        "unevaluatedProperties": false,
+        "allOf": [
+          {
+            "$ref": "schema.json#/$defs/GetProjectRequest"
+          }
+        ]
+      }
+    },
+    {
+      "name": "projects.background.setPolicy",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "projectId",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "policy",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/ProjectBackgroundPolicy"
+          }
+        },
+        {
+          "name": "_meta",
+          "schema": {
+            "$ref": "#/components/schemas/RequestMeta"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "schema.json#/$defs/ProjectBackgroundPolicy"
+        }
+      },
+      "errors": [
+        {
+          "code": -32048,
+          "message": "project_not_found"
+        },
+        {
+          "code": -32019,
+          "message": "revision_conflict"
+        }
+      ],
+      "x-flame-kind": "unary",
+      "x-flame-operation": "command",
+      "x-flame-idempotency": "replayResponse",
+      "x-flame-replayCursor": "none",
+      "x-flame-pagination": "none",
+      "x-flame-requestFrame": {
+        "properties": {
+          "_meta": {
+            "$ref": "#/components/schemas/RequestMeta"
+          },
+          "policy": {
+            "$ref": "#/components/schemas/ProjectBackgroundPolicy"
+          },
+          "projectId": {}
+        },
+        "unevaluatedProperties": false,
+        "allOf": [
+          {
+            "$ref": "schema.json#/$defs/SetProjectBackgroundPolicyRequest"
+          }
+        ]
+      }
+    },
+    {
       "name": "projects.list",
       "paramStructure": "by-name",
       "params": [
@@ -1587,6 +1704,12 @@
           }
         },
         {
+          "name": "background",
+          "schema": {
+            "$ref": "#/components/schemas/BackgroundSource"
+          }
+        },
+        {
           "name": "_meta",
           "schema": {
             "$ref": "#/components/schemas/RequestMeta"
@@ -1653,6 +1776,9 @@
         "properties": {
           "_meta": {
             "$ref": "#/components/schemas/RequestMeta"
+          },
+          "background": {
+            "$ref": "#/components/schemas/BackgroundSource"
           },
           "input": {
             "items": {
@@ -9224,6 +9350,21 @@
           }
         ]
       },
+      "BackgroundSource": {
+        "properties": {
+          "id": {},
+          "kind": {},
+          "projectId": {},
+          "title": {},
+          "version": {}
+        },
+        "unevaluatedProperties": false,
+        "allOf": [
+          {
+            "$ref": "schema.json#/$defs/BackgroundSource"
+          }
+        ]
+      },
       "ClientCapabilities": {
         "properties": {
           "excludedEphemeralEvents": {
@@ -9563,6 +9704,23 @@
           }
         ]
       },
+      "ProjectBackgroundPolicy": {
+        "properties": {
+          "maxActive": {},
+          "maxDailyRuns": {},
+          "paused": {},
+          "pullRequests": {
+            "items": {}
+          },
+          "revision": {}
+        },
+        "unevaluatedProperties": false,
+        "allOf": [
+          {
+            "$ref": "schema.json#/$defs/ProjectBackgroundPolicy"
+          }
+        ]
+      },
       "ProviderConfigChange": {
         "properties": {
           "type": {},
@@ -9784,6 +9942,9 @@
       },
       "StartRunRequest": {
         "properties": {
+          "background": {
+            "$ref": "#/components/schemas/BackgroundSource"
+          },
           "input": {
             "items": {
               "$ref": "#/components/schemas/ContentBlock"

@@ -242,6 +242,31 @@
       ]
     },
     {
+      "goName": "GetProjectBackground",
+      "name": "projects.background.get",
+      "kind": "unary",
+      "operation": "query",
+      "idempotency": "none",
+      "replayCursor": "none",
+      "pagination": "none",
+      "errors": [
+        "project_not_found"
+      ]
+    },
+    {
+      "goName": "SetProjectBackgroundPolicy",
+      "name": "projects.background.setPolicy",
+      "kind": "unary",
+      "operation": "command",
+      "idempotency": "replayResponse",
+      "replayCursor": "none",
+      "pagination": "none",
+      "errors": [
+        "project_not_found",
+        "revision_conflict"
+      ]
+    },
+    {
       "goName": "ListProjects",
       "name": "projects.list",
       "kind": "unary",
@@ -2368,6 +2393,8 @@
         "code": -32048,
         "recoveryAction": "refetch",
         "methods": [
+          "projects.background.get",
+          "projects.background.setPolicy",
           "projects.get",
           "projects.update",
           "runs.start",
@@ -2418,6 +2445,7 @@
           "goals.start",
           "goals.stop",
           "goals.update",
+          "projects.background.setPolicy",
           "projects.update",
           "sessions.rollback",
           "sessions.update",

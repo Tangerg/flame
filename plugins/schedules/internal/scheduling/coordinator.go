@@ -49,6 +49,7 @@ type Dependencies struct {
 }
 
 type Patch struct {
+	ProjectID      *string
 	Title          *string
 	Instructions   *string
 	CWD            *string
@@ -157,7 +158,7 @@ func (c *Coordinator) PrepareUpdate(ctx context.Context, cmd UpdateCommand) (Sch
 		return ScheduleMutation{}, fmt.Errorf("schedules: get %q for update: %w", cmd.ID, err)
 	}
 	patch := schedule.Patch{
-		Title: cmd.Patch.Title, Instructions: cmd.Patch.Instructions, CWD: cmd.Patch.CWD,
+		ProjectID: cmd.Patch.ProjectID, Title: cmd.Patch.Title, Instructions: cmd.Patch.Instructions, CWD: cmd.Patch.CWD,
 		Cron: cmd.Patch.Cron, TimeZone: cmd.Patch.TimeZone, Enabled: cmd.Patch.Enabled,
 	}
 	if !cmd.Patch.ModelSelection.Empty() {

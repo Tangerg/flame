@@ -19,6 +19,7 @@ import { selectWorkspaceChat } from "@/features/workspace/public/navigation";
 import { useProjectsAccess } from "@/features/projects/application/projectsContext";
 import { useProjectHomeTarget } from "@/features/projects/application/projectHome";
 import { useProjects, type ProjectSummary } from "@/features/projects/application/projectQueries";
+import { ProjectBackground } from "./ProjectBackground";
 import { ProjectNameDialog } from "@/features/projects/ui/ProjectNameDialog";
 import { color, space, type as typeStep } from "@flame/ui/tokens.stylex";
 
@@ -94,9 +95,17 @@ function LoadedProjectHome({ project }: { project: ProjectSummary }) {
                 {t("projects.home.newSession")}
               </Button>
               {research && (
-                <Button variant="ghost" size="sm" onClick={(event) =>
-                  workspace.navigation.openViewInDock(research.id, event.currentTarget, JSON.stringify({ project: project.id }))
-                }>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={(event) =>
+                    workspace.navigation.openViewInDock(
+                      research.id,
+                      event.currentTarget,
+                      JSON.stringify({ project: project.id }),
+                    )
+                  }
+                >
                   {labelText(research.title)}
                 </Button>
               )}
@@ -146,6 +155,7 @@ function LoadedProjectHome({ project }: { project: ProjectSummary }) {
             )}
           </div>
         </PanelSection>
+        <ProjectBackground project={project} openSession={open} />
         <PanelSection title={t("projects.home.sessions")}>
           {members.length === 0 ? (
             <p {...stylex.props(vocab.muted, typeStep.uiSm)}>{t("projects.home.noSessions")}</p>

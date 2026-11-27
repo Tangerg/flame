@@ -39,6 +39,7 @@ export const zh: Record<string, string> = {
   "field.instructions": "指令",
   "field.cron": "Cron 表达式",
   "field.timeZone": "时区",
+  "field.project": "项目 ID",
   "field.workspace": "工作区路径",
   "field.workspace.placeholder": "留空则使用 Runtime 默认值",
   "field.model": "模型",

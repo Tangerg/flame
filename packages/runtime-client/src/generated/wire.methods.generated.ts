@@ -108,6 +108,8 @@ import type {
   PluginRequest,
   PluginResource,
   Project,
+  ProjectBackgroundActivity,
+  ProjectBackgroundPolicy,
   Provider,
   ProviderTestResult,
   ReadFileRequest,
@@ -136,6 +138,7 @@ import type {
   SetMCPToolExposureRequest,
   SetPluginCompositionRequest,
   SetPluginEnablementRequest,
+  SetProjectBackgroundPolicyRequest,
   SkillDetail,
   SkillDetailRequest,
   SkillDiscovery,
@@ -203,6 +206,8 @@ const METHOD_NAMES = [
   "sessions.rollback",
   "sessions.export",
   "sessions.import",
+  "projects.background.get",
+  "projects.background.setPolicy",
   "projects.list",
   "projects.get",
   "projects.create",
@@ -339,6 +344,8 @@ const VALUE_METHOD_NAMES = [
   "sessions.rollback",
   "sessions.export",
   "sessions.import",
+  "projects.background.get",
+  "projects.background.setPolicy",
   "projects.list",
   "projects.get",
   "projects.create",
@@ -529,6 +536,20 @@ export const WIRE_METHOD_POLICY = {
     pagination: "none",
   },
   "sessions.import": {
+    operation: "command",
+    response: "unary",
+    idempotency: "replayResponse",
+    replayCursor: "none",
+    pagination: "none",
+  },
+  "projects.background.get": {
+    operation: "query",
+    response: "unary",
+    idempotency: "none",
+    replayCursor: "none",
+    pagination: "none",
+  },
+  "projects.background.setPolicy": {
     operation: "command",
     response: "unary",
     idempotency: "replayResponse",
@@ -1550,6 +1571,8 @@ export interface WireShapes {
   "sessions.rollback": { params: RollbackSessionRequest; result: RollbackSessionResponse };
   "sessions.export": { params: ExportSessionRequest; result: ExportSessionResponse };
   "sessions.import": { params: ImportSessionRequest; result: ImportSessionResponse };
+  "projects.background.get": { params: GetProjectRequest; result: ProjectBackgroundActivity };
+  "projects.background.setPolicy": { params: SetProjectBackgroundPolicyRequest; result: ProjectBackgroundPolicy };
   "projects.list": { params: ListProjectsRequest; result: PageOfProject };
   "projects.get": { params: GetProjectRequest; result: Project };
   "projects.create": { params: CreateProjectRequest; result: Project };

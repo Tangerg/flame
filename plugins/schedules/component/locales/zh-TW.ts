@@ -39,6 +39,7 @@ export const zhTW: Record<string, string> = {
   "field.instructions": "指令",
   "field.cron": "Cron 運算式",
   "field.timeZone": "時區",
+  "field.project": "專案 ID",
   "field.workspace": "工作區路徑",
   "field.workspace.placeholder": "留空則使用 Runtime 預設值",
   "field.model": "模型",

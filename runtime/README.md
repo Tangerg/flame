@@ -73,6 +73,16 @@ original checkout's branch and HEAD. Accepting a current preview stages its
 changes in that clean destination. Release uses Git's non-forced removal for an
 owned worktree at its original base with no attached Session.
 
+Project Home shows recent accepted background Runs and links to their original
+Sessions and PR reviews. A schedule or file watcher can capture a Project ID when
+configured. Claimed events freeze their source version and keep their original
+Run command identity across retries. Project settings pause new admissions and
+set simultaneous and UTC daily Run limits. Waiting Runs occupy an active slot
+until terminal settlement. An accepted Run counts for the day even if its
+Session is retired. PR reviews open the original GitHub work at the configured
+repository, number and optional revision. The GitHub contribution continues to
+own follow settings, decisions and publication receipts.
+
 Core `2026-11-26.2` classifies `tools.invoke` as a query. Its direct `read`,
 `glob` and `grep` tools observe the current workspace on every call. Go callers
 use `CallOptions` and TypeScript callers can use `queryJSON`. Rebuild Runtime and

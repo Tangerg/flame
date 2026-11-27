@@ -7,6 +7,7 @@ import {
   Refusal,
   canonicalJSON,
   type CallContext,
+  type CapabilityDescriptor,
 } from "@flame/backend-sdk/mcp";
 import { toolReceipts } from "@flame/backend-sdk";
 import descriptor, {
@@ -27,6 +28,7 @@ import { Application, decodeInput } from "./application";
 import { Engine } from "./engine";
 import { Formats } from "./format-process";
 import manifest from "../package/plugin.json";
+import artifactDescriptor from "../package/io.github.tangerg.flame/research-artifact/research-artifact.generated.json";
 import { z } from "zod";
 
 const projectScoped: ReadonlySet<string> = new Set([
@@ -212,6 +214,19 @@ export function createBackend(
       },
     };
   });
+  const artifact = new Capability(artifactDescriptor as CapabilityDescriptor);
+  const artifactInput = z.strictObject({
+    project: z.string().min(1).max(256),
+    id: schemas.header.shape.id,
+    revision: schemas.selected.shape.revision,
+    object: z.string().max(2048).optional(),
+  });
+  backend.implement(
+    artifact.portable.method("flame.research-artifact/read.v1"),
+    (value) => artifactInput.parse(decodeInput(artifactInput, value)),
+    (context, value) => application.researchEvidence(value, context.signal),
+  );
+  backend.bindCapability("research-artifact", artifact);
   backend.bindCapability("deliverables", contract);
   return backend;
 }

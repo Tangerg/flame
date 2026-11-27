@@ -46,6 +46,12 @@ func (r *Client) ExportSession(ctx context.Context, request protocol.ExportSessi
 func (r *Client) ImportSession(ctx context.Context, request protocol.ImportSessionRequest, options protocol.CommandOptions) (*protocol.ImportSessionResponse, error) {
 	return r.invoke[protocol.ImportSessionRequest, *protocol.ImportSessionResponse](ctx, "sessions.import", request, options.Metadata())
 }
+func (r *Client) GetProjectBackground(ctx context.Context, request protocol.GetProjectRequest, options protocol.CallOptions) (*protocol.ProjectBackgroundActivity, error) {
+	return r.invoke[protocol.GetProjectRequest, *protocol.ProjectBackgroundActivity](ctx, "projects.background.get", request, options.Metadata())
+}
+func (r *Client) SetProjectBackgroundPolicy(ctx context.Context, request protocol.SetProjectBackgroundPolicyRequest, options protocol.CommandOptions) (*protocol.ProjectBackgroundPolicy, error) {
+	return r.invoke[protocol.SetProjectBackgroundPolicyRequest, *protocol.ProjectBackgroundPolicy](ctx, "projects.background.setPolicy", request, options.Metadata())
+}
 func (r *Client) ListProjects(ctx context.Context, request protocol.ListProjectsRequest, options protocol.CallOptions) (*protocol.Page[protocol.Project], error) {
 	return r.invoke[protocol.ListProjectsRequest, *protocol.Page[protocol.Project]](ctx, "projects.list", request, options.Metadata())
 }

@@ -1,0 +1,138 @@
+{
+  "protocol": "io.github.tangerg.flame/plugin/1",
+  "reference": "flame.research-artifact.v1",
+  "composition": "collection",
+  "scope": "installation",
+  "methods": [
+    {
+      "name": "flame.research-artifact/read.v1",
+      "kind": "query",
+      "target": "installation",
+      "description": "Check Project access, exact native revision and optional chart identity at the original revision and current head.",
+      "input": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvcmVzZWFyY2hhcnRpZmFjdA.UmVxdWVzdA": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              "object": {
+                "maxLength": 2048,
+                "type": "string"
+              },
+              "project": {
+                "maxLength": 256,
+                "minLength": 1,
+                "type": "string"
+              },
+              "revision": {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              }
+            },
+            "required": [
+              "project",
+              "id",
+              "revision"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "object": {
+            "maxLength": 2048,
+            "type": "string"
+          },
+          "project": {
+            "maxLength": 256,
+            "minLength": 1,
+            "type": "string"
+          },
+          "revision": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "project",
+          "id",
+          "revision"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvcmVzZWFyY2hhcnRpZmFjdA.RXZpZGVuY2U": {
+            "additionalProperties": false,
+            "properties": {
+              "acceptedSha256": {
+                "type": "string"
+              },
+              "available": {
+                "type": "boolean"
+              },
+              "format": {
+                "type": "string"
+              },
+              "head": {
+                "type": "string"
+              },
+              "headSha256": {
+                "type": "string"
+              },
+              "objectAtHead": {
+                "type": "boolean"
+              },
+              "title": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "available",
+              "objectAtHead"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "acceptedSha256": {
+            "type": "string"
+          },
+          "available": {
+            "type": "boolean"
+          },
+          "format": {
+            "type": "string"
+          },
+          "head": {
+            "type": "string"
+          },
+          "headSha256": {
+            "type": "string"
+          },
+          "objectAtHead": {
+            "type": "boolean"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "available",
+          "objectAtHead"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

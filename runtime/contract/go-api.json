@@ -843,6 +843,10 @@
               "signature": "func(ctx context.Context, request protocol.GetProjectRequest, options protocol.CallOptions) (*protocol.Project, error)"
             },
             {
+              "name": "GetProjectBackground",
+              "signature": "func(ctx context.Context, request protocol.GetProjectRequest, options protocol.CallOptions) (*protocol.ProjectBackgroundActivity, error)"
+            },
+            {
               "name": "GetRun",
               "signature": "func(ctx context.Context, request protocol.GetRunRequest, options protocol.CallOptions) (*protocol.RunRef, error)"
             },
@@ -1101,6 +1105,10 @@
             {
               "name": "SetPluginEnablement",
               "signature": "func(ctx context.Context, request protocol.SetPluginEnablementRequest, options protocol.CommandOptions) (*protocol.PluginEnablement, error)"
+            },
+            {
+              "name": "SetProjectBackgroundPolicy",
+              "signature": "func(ctx context.Context, request protocol.SetProjectBackgroundPolicyRequest, options protocol.CommandOptions) (*protocol.ProjectBackgroundPolicy, error)"
             },
             {
               "name": "SetUtilityRole",
@@ -11700,6 +11708,37 @@
           ]
         },
         {
+          "name": "BackgroundSource",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "ProjectID",
+              "type": "string",
+              "tag": "json:\"projectId\""
+            },
+            {
+              "name": "Kind",
+              "type": "string",
+              "tag": "json:\"kind\""
+            },
+            {
+              "name": "ID",
+              "type": "string",
+              "tag": "json:\"id\""
+            },
+            {
+              "name": "Version",
+              "type": "string",
+              "tag": "json:\"version\""
+            },
+            {
+              "name": "Title",
+              "type": "string",
+              "tag": "json:\"title\""
+            }
+          ]
+        },
+        {
           "name": "CallMetadata",
           "kind": "struct",
           "fields": [
@@ -16345,6 +16384,99 @@
           ]
         },
         {
+          "name": "ProjectBackgroundActivity",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Policy",
+              "type": "ProjectBackgroundPolicy",
+              "tag": "json:\"policy\""
+            },
+            {
+              "name": "Active",
+              "type": "int",
+              "tag": "json:\"active\""
+            },
+            {
+              "name": "Admitted",
+              "type": "int",
+              "tag": "json:\"admitted\""
+            },
+            {
+              "name": "Recent",
+              "type": "[]ProjectBackgroundRun",
+              "tag": "json:\"recent\""
+            }
+          ]
+        },
+        {
+          "name": "ProjectBackgroundPolicy",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Revision",
+              "type": "int64",
+              "tag": "json:\"revision\""
+            },
+            {
+              "name": "Paused",
+              "type": "bool",
+              "tag": "json:\"paused\""
+            },
+            {
+              "name": "MaxActive",
+              "type": "int",
+              "tag": "json:\"maxActive\""
+            },
+            {
+              "name": "MaxDailyRuns",
+              "type": "int",
+              "tag": "json:\"maxDailyRuns\""
+            },
+            {
+              "name": "PullRequests",
+              "type": "[]string",
+              "tag": "json:\"pullRequests\""
+            }
+          ]
+        },
+        {
+          "name": "ProjectBackgroundRun",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Source",
+              "type": "BackgroundSource",
+              "tag": "json:\"source\""
+            },
+            {
+              "name": "SessionID",
+              "type": "string",
+              "tag": "json:\"sessionId\""
+            },
+            {
+              "name": "RunID",
+              "type": "string",
+              "tag": "json:\"runId\""
+            },
+            {
+              "name": "Status",
+              "type": "string",
+              "tag": "json:\"status\""
+            },
+            {
+              "name": "Outcome",
+              "type": "string",
+              "tag": "json:\"outcome,omitempty\""
+            },
+            {
+              "name": "AdmittedAt",
+              "type": "time.Time",
+              "tag": "json:\"admittedAt\""
+            }
+          ]
+        },
+        {
           "name": "Provider",
           "kind": "struct",
           "fields": [
@@ -17956,6 +18088,22 @@
           ]
         },
         {
+          "name": "SetProjectBackgroundPolicyRequest",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "ProjectID",
+              "type": "string",
+              "tag": "json:\"projectId\""
+            },
+            {
+              "name": "Policy",
+              "type": "ProjectBackgroundPolicy",
+              "tag": "json:\"policy\""
+            }
+          ]
+        },
+        {
           "name": "Skill",
           "kind": "struct",
           "fields": [
@@ -18258,6 +18406,11 @@
               "name": "Params",
               "type": "*GenerationParams",
               "tag": "json:\"params,omitzero\""
+            },
+            {
+              "name": "Background",
+              "type": "*BackgroundSource",
+              "tag": "json:\"background,omitzero\""
             }
           ]
         },
@@ -20567,6 +20720,10 @@
               "signature": "func(ctx context.Context, request protocol.GetProjectRequest, options protocol.CallOptions) (*protocol.Project, error)"
             },
             {
+              "name": "GetProjectBackground",
+              "signature": "func(ctx context.Context, request protocol.GetProjectRequest, options protocol.CallOptions) (*protocol.ProjectBackgroundActivity, error)"
+            },
+            {
               "name": "GetRun",
               "signature": "func(ctx context.Context, request protocol.GetRunRequest, options protocol.CallOptions) (*protocol.RunRef, error)"
             },
@@ -20825,6 +20982,10 @@
             {
               "name": "SetPluginEnablement",
               "signature": "func(ctx context.Context, request protocol.SetPluginEnablementRequest, options protocol.CommandOptions) (*protocol.PluginEnablement, error)"
+            },
+            {
+              "name": "SetProjectBackgroundPolicy",
+              "signature": "func(ctx context.Context, request protocol.SetProjectBackgroundPolicyRequest, options protocol.CommandOptions) (*protocol.ProjectBackgroundPolicy, error)"
             },
             {
               "name": "SetUtilityRole",

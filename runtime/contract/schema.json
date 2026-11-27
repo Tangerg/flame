@@ -1314,6 +1314,33 @@
         "modelOnly"
       ]
     },
+    "BackgroundSource": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "projectId": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "projectId",
+        "title",
+        "version"
+      ]
+    },
     "CallPluginRequest": {
       "type": "object",
       "properties": {
@@ -9669,6 +9696,93 @@
         "updatedAt"
       ]
     },
+    "ProjectBackgroundActivity": {
+      "type": "object",
+      "properties": {
+        "active": {
+          "type": "integer"
+        },
+        "admitted": {
+          "type": "integer"
+        },
+        "policy": {
+          "$ref": "#/$defs/ProjectBackgroundPolicy"
+        },
+        "recent": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ProjectBackgroundRun"
+          }
+        }
+      },
+      "required": [
+        "active",
+        "admitted",
+        "policy",
+        "recent"
+      ]
+    },
+    "ProjectBackgroundPolicy": {
+      "type": "object",
+      "properties": {
+        "maxActive": {
+          "type": "integer"
+        },
+        "maxDailyRuns": {
+          "type": "integer"
+        },
+        "paused": {
+          "type": "boolean"
+        },
+        "pullRequests": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "revision": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "maxActive",
+        "maxDailyRuns",
+        "paused",
+        "pullRequests",
+        "revision"
+      ]
+    },
+    "ProjectBackgroundRun": {
+      "type": "object",
+      "properties": {
+        "admittedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "outcome": {
+          "type": "string"
+        },
+        "runId": {
+          "type": "string"
+        },
+        "sessionId": {
+          "type": "string"
+        },
+        "source": {
+          "$ref": "#/$defs/BackgroundSource"
+        },
+        "status": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "admittedAt",
+        "runId",
+        "sessionId",
+        "source",
+        "status"
+      ]
+    },
     "Provider": {
       "type": "object",
       "properties": {
@@ -12511,6 +12625,21 @@
         "installationId"
       ]
     },
+    "SetProjectBackgroundPolicyRequest": {
+      "type": "object",
+      "properties": {
+        "policy": {
+          "$ref": "#/$defs/ProjectBackgroundPolicy"
+        },
+        "projectId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "policy",
+        "projectId"
+      ]
+    },
     "Skill": {
       "type": "object",
       "properties": {
@@ -12839,6 +12968,9 @@
     "StartRunRequest": {
       "type": "object",
       "properties": {
+        "background": {
+          "$ref": "#/$defs/BackgroundSource"
+        },
         "input": {
           "type": "array",
           "minItems": 1,

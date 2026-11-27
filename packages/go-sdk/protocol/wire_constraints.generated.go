@@ -192,6 +192,16 @@ func (e ExportSessionRequest) validateWire(object wireObject) []FieldError {
 	return violations
 }
 
+func (g GetProjectRequest) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("projectId", g.ProjectID),
+		identity("projectId", g.ProjectID),
+		maxLength("projectId", g.ProjectID, 256),
+	)
+	return violations
+}
+
 func (l ListProjectsRequest) validateWire(object wireObject) []FieldError {
 	var violations wireViolations
 	if object.present("limit") {
@@ -204,16 +214,6 @@ func (l ListProjectsRequest) validateWire(object wireObject) []FieldError {
 			maxLength("cursor", l.Cursor, 65536),
 		)
 	}
-	return violations
-}
-
-func (g GetProjectRequest) validateWire(object wireObject) []FieldError {
-	var violations wireViolations
-	violations.add(
-		nonEmptyText("projectId", g.ProjectID),
-		identity("projectId", g.ProjectID),
-		maxLength("projectId", g.ProjectID, 256),
-	)
 	return violations
 }
 

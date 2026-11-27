@@ -136,7 +136,15 @@ func TestFilewatchResumesTheSamePartialDataMethodWithPinnedInputs(t *testing.T) 
 	if !slices.ContainsFunc(discovered.Skills, func(value protocol.Skill) bool { return value.Name == "inspect-history" }) {
 		t.Fatalf("default trajectory Skill unavailable: %+v", discovered)
 	}
-	session := r.must(delivery.SessionsCreate, protocol.CreateSessionRequest{Title: "P1 analysis", Workspace: &root.Ref}, "data-session").(*protocol.Session)
+	project := r.must(delivery.Name("projects.create"), protocol.CreateProjectRequest{Name: "File analysis"}, "create-analysis-project").(*protocol.Project)
+	projectActivity := func() *protocol.ProjectBackgroundActivity {
+		t.Helper()
+		return r.must(delivery.ProjectsGetBackground, protocol.GetProjectRequest{ProjectID: project.ID}, "").(*protocol.ProjectBackgroundActivity)
+	}
+	projectPolicy := projectActivity().Policy
+	projectPolicy.MaxActive = 1
+	r.must(delivery.ProjectsSetBackground, protocol.SetProjectBackgroundPolicyRequest{ProjectID: project.ID, Policy: projectPolicy}, "one-background-run")
+	session := r.must(delivery.SessionsCreate, protocol.CreateSessionRequest{Title: "P1 analysis", Workspace: &root.Ref, ProjectID: project.ID}, "data-session").(*protocol.Session)
 	east := filepath.Join(root.Ref.Path, "east.csv")
 	west := filepath.Join(root.Ref.Path, "west.csv")
 	write := func(path, text string) {
@@ -154,7 +162,7 @@ func TestFilewatchResumesTheSamePartialDataMethodWithPinnedInputs(t *testing.T) 
 	ctx := delivery.WithRequestMeta(t.Context(), meta)
 	watchCall(testsupport.FilewatchConfigureV1Method, testsupport.FilewatchConfigureInput{
 		ExpectedRevision: generatedNumber(t, "1"), Trigger: &testsupport.FilewatchConfigureV1InputFilewatchDraft{
-			Title: "M1", Workspace: root.Ref.Path, Paths: []string{"east.csv", "west.csv"}, Instructions: instructions, TargetSessionId: &session.ID, CapturePartitions: new(true),
+			Title: "M1", ProjectId: &project.ID, Workspace: root.Ref.Path, Paths: []string{"east.csv", "west.csv"}, Instructions: instructions, TargetSessionId: &session.ID, CapturePartitions: new(true),
 		},
 	}, "follow-data", nil)
 	wait("active method", func() bool { return watchPhase(testsupport.FilewatchStatusPhaseWatching, "2") })
@@ -210,6 +218,25 @@ func TestFilewatchResumesTheSamePartialDataMethodWithPinnedInputs(t *testing.T) 
 		}
 		return run.Status == protocol.RunStatusWaiting
 	})
+	if background := projectActivity(); background.Active != 1 || background.Admitted != 2 ||
+		len(background.Recent) != 2 || background.Recent[0].RunID != d2.RunId ||
+		background.Recent[0].Status != "waiting" || background.Recent[0].Source.Version == background.Recent[1].Source.Version {
+		t.Fatalf("Project did not project the original open interruption and distinct source versions: %+v", background)
+	}
+	schedules := r.installAndInspect(filepath.Join(firstPartyPackages, "schedules"), "install-data-schedules")
+	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: schedules.ID, Enabled: true}, "enable-data-schedules")
+	r.must(delivery.PluginsSelectProvider, protocol.SelectPluginProviderRequest{Role: "schedules", InstallationID: schedules.ID, Contribution: "schedules-provider"}, "select-data-schedules")
+	schedule := readScheduleCreate(r, scheduleCreateRequest(r, testsupport.SchedulesDraft{
+		ProjectId: &project.ID, Enabled: true, Title: "Check data", Instructions: "Check the captured data",
+		Cron: "0 0 1 1 *", TimeZone: "UTC", Cwd: cfg.defaultWorkspacePath,
+	}), "create-project-schedule")
+	dispatch := scheduleRunRequest(r, schedule.Id)
+	atCapacity := r.endpoint.Invoke(ctx, delivery.PluginsCall, dispatch, protocol.CallMetadata{
+		IdempotencyKey: "schedule-during-file-approval", RequestMeta: meta,
+	})
+	if atCapacity.Failure == nil && atCapacity.Value.(*protocol.CallPluginResponse).Failure == nil {
+		t.Fatal("schedule admitted while the filewatch Run occupied the one available slot")
+	}
 	first, second := read(d1.Id), read(d2.Id)
 	if first.Capture.Partitions == nil || second.Capture.Partitions == nil {
 		t.Fatal("observations lost their partition evidence")
@@ -246,6 +273,17 @@ func TestFilewatchResumesTheSamePartialDataMethodWithPinnedInputs(t *testing.T) 
 	}
 	if run := r.must(delivery.RunsGet, protocol.GetRunRequest{RunID: d2.RunId}, "").(*protocol.RunRef); run.Outcome == nil || run.Outcome.Type != protocol.OutcomeCompleted {
 		t.Fatalf("retained D2 Run did not complete: %+v", run)
+	}
+	if state := projectActivity(); state.Active != 0 {
+		t.Fatalf("resuming the original interrupt did not free the Project slot: %+v", state)
+	}
+	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: schedules.ID, Enabled: false}, "pause-schedule-recovery")
+	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: schedules.ID, Enabled: true}, "restart-schedule-recovery")
+	wait("recovery of captured schedule event", func() bool { return projectActivity().Admitted == 3 })
+	backgroundSchedule := readScheduleRun(r, dispatch, "schedule-during-file-approval")
+	if state := projectActivity(); len(state.Recent) != 3 || state.Recent[0].RunID != backgroundSchedule.RunId ||
+		state.Recent[0].Source.Kind != "schedules" || state.Recent[1].RunID != d2.RunId || state.Admitted != 3 {
+		t.Fatalf("retry did not admit the captured schedule event once: %+v", state)
 	}
 	if values := events(); len(values) != 2 || values[0].RunId != d2.RunId {
 		t.Fatalf("stopped rule or repeated events dispatched again: %+v", values)

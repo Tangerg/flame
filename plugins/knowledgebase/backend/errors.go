@@ -16,7 +16,7 @@ func classify(err error) (string, bool) {
 		cause error
 		code  string
 	}{
-		{errClaimInvalid, "invalid_claim"}, {errHumanClaim, "not_allowed"}, {errHumanMove, "not_allowed"}, {knowledge.ErrInvalidDocument, "invalid_document"}, {knowledge.ErrRevisionConflict, "revision_conflict"},
+		{errClaimInvalid, "invalid_claim"}, {errWorkInvalid, "invalid_work"}, {errHumanClaim, "not_allowed"}, {errHumanMove, "not_allowed"}, {knowledge.ErrInvalidDocument, "invalid_document"}, {knowledge.ErrRevisionConflict, "revision_conflict"},
 		{knowledge.ErrCapacity, "capacity"}, {knowledge.ErrNotFound, "not_found"},
 		{knowledge.ErrRetired, "retired_document"},
 		{knowledge.ErrInvalidIndex, "invalid_index"}, {knowledge.ErrEmbeddingSpace, "embedding_space_changed"},

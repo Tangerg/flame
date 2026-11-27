@@ -22,6 +22,8 @@ func openStore(ctx context.Context, path string) (*store, error) {
 		pluginstorage.CommandsSchema,
 		`CREATE TABLE IF NOT EXISTS document_history (id TEXT NOT NULL, revision INTEGER NOT NULL, source TEXT NOT NULL CHECK(json_valid(source)), PRIMARY KEY(id, revision))`,
 		researchSchema,
+		methodSchema,
+		workSchema,
 		`CREATE TABLE IF NOT EXISTS documents (id TEXT PRIMARY KEY, snapshot TEXT NOT NULL CHECK(json_valid(snapshot)))`,
 		// Retiring an identity prevents an old revision from matching a later reimport.
 		`CREATE TABLE IF NOT EXISTS retired_documents (id TEXT PRIMARY KEY)`,

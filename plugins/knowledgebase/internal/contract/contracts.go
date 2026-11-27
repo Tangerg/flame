@@ -12,6 +12,9 @@ import (
 )
 
 type Contracts struct {
+	AcceptWork  *pluginmcp.Method[wire.WorkAccept, wire.WorkReceipt]
+	ReadWork    *pluginmcp.Method[wire.WorkRead, wire.WorkView]
+	ListWork    *pluginmcp.Method[wire.ListInput, []wire.WorkReceipt]
 	Capability  *plugincontract.Capability
 	Import      *pluginmcp.Method[wire.ImportInput, knowledge.Header]
 	Reindex     *pluginmcp.Method[wire.DocumentInput, knowledge.Header]
@@ -32,6 +35,9 @@ func NewContracts() (Contracts, error) {
 	}
 	methods := pluginmcp.NewMethodSet(capability)
 	c := Contracts{
+		AcceptWork:  pluginmcp.Implement[wire.WorkAccept, wire.WorkReceipt](methods, wire.AcceptWork),
+		ReadWork:    pluginmcp.Implement[wire.WorkRead, wire.WorkView](methods, wire.ReadWork),
+		ListWork:    pluginmcp.Implement[wire.ListInput, []wire.WorkReceipt](methods, wire.ListWork),
 		Capability:  capability,
 		AcceptClaim: pluginmcp.Implement[wire.ClaimAcceptInput, wire.ClaimReceipt](methods, published.AcceptClaimV1Method),
 		Move:        pluginmcp.Implement[wire.MoveInput, knowledge.Header](methods, published.MoveV1Method),

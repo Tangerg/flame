@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "Evidence": {
+      "additionalProperties": false,
+      "properties": {
+        "acceptedSha256": {
+          "type": "string"
+        },
+        "available": {
+          "type": "boolean"
+        },
+        "format": {
+          "type": "string"
+        },
+        "head": {
+          "type": "string"
+        },
+        "headSha256": {
+          "type": "string"
+        },
+        "objectAtHead": {
+          "type": "boolean"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "available",
+        "objectAtHead"
+      ],
+      "type": "object"
+    },
+    "ReadV1Input": {
+      "$ref": "#/$defs/Request"
+    },
+    "ReadV1Output": {
+      "$ref": "#/$defs/Evidence"
+    },
+    "Request": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "object": {
+          "maxLength": 2048,
+          "type": "string"
+        },
+        "project": {
+          "maxLength": 256,
+          "minLength": 1,
+          "type": "string"
+        },
+        "revision": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "project",
+        "id",
+        "revision"
+      ],
+      "type": "object"
+    }
+  }
+}

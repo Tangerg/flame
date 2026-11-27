@@ -40,6 +40,7 @@ type HandlerConfig struct {
 	RunStreams         *runs.Segments
 	Queries            *sessions.QueryCoordinator
 	Projects           *projects.Coordinator
+	ProjectBackground  projectBackgroundStore
 	Usage              *sessions.UsageReporter
 	Feedback           *feedback.Recorder
 	TrajectoryExports  *sessions.TrajectoryExporter
@@ -86,6 +87,7 @@ type Handler struct {
 	runStreams         *runs.Segments
 	queries            *sessions.QueryCoordinator
 	projects           *projects.Coordinator
+	projectBackground  projectBackgroundStore
 	usage              *sessions.UsageReporter
 	feedback           *feedback.Recorder
 	trajectoryExports  *sessions.TrajectoryExporter
@@ -242,6 +244,7 @@ func newHandler(cfg HandlerConfig, facts contractFacts) *Handler {
 		runStreams:               cfg.RunStreams,
 		queries:                  cfg.Queries,
 		projects:                 cfg.Projects,
+		projectBackground:        cfg.ProjectBackground,
 		usage:                    cfg.Usage,
 		feedback:                 cfg.Feedback,
 		trajectoryExports:        cfg.TrajectoryExports,

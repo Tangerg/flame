@@ -137,6 +137,7 @@ type StartRunRequest struct {
 	Model           string             `json:"model,omitempty"`
 	ReasoningEffort string             `json:"reasoningEffort,omitempty"`
 	Params          *GenerationParams  `json:"params,omitzero"`
+	Background      *BackgroundSource  `json:"background,omitzero"`
 }
 
 type StartRunResponse struct {

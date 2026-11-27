@@ -111,8 +111,16 @@ func TestSchedulesReconcilesLostCoreOpeningBeforePrivateAcknowledgement(t *testi
 	installed := poMCPActivate(r, filepath.Join(firstPartyPackages, "schedules"))
 	server := &protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "schedules"}
 	ready := scheduleToolsReady
+	project := r.must(delivery.Name("projects.create"), protocol.CreateProjectRequest{Name: "Background recovery"}, "create-project").(*protocol.Project)
+	activity := func() *protocol.ProjectBackgroundActivity {
+		t.Helper()
+		return r.must(delivery.ProjectsGetBackground, protocol.GetProjectRequest{ProjectID: project.ID}, "").(*protocol.ProjectBackgroundActivity)
+	}
+	policy := activity().Policy
+	policy.MaxDailyRuns = 1
+	policy = *r.must(delivery.ProjectsSetBackground, protocol.SetProjectBackgroundPolicyRequest{ProjectID: project.ID, Policy: policy}, "limit-project").(*protocol.ProjectBackgroundPolicy)
 	r.poMCPTools(server, ready)
-	saved := readScheduleCreate(r, scheduleCreateRequest(r, testsupport.SchedulesDraft{Enabled: true, Title: "original", Instructions: "captured input", Cron: "0 0 1 1 *", TimeZone: "UTC", Cwd: cfg.defaultWorkspacePath}), "create")
+	saved := readScheduleCreate(r, scheduleCreateRequest(r, testsupport.SchedulesDraft{Enabled: true, ProjectId: &project.ID, Title: "original", Instructions: "captured input", Cron: "0 0 1 1 *", TimeZone: "UTC", Cwd: cfg.defaultWorkspacePath}), "create")
 	request := scheduleRunRequest(r, saved.Id)
 	lost := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, protocol.CallMetadata{IdempotencyKey: "lost-core", RequestMeta: protocol.RequestMeta{ProtocolVersion: new(protocol.Version)}})
 	if lost.Failure == nil {
@@ -126,6 +134,11 @@ func TestSchedulesReconcilesLostCoreOpeningBeforePrivateAcknowledgement(t *testi
 	}
 	current := r.must(delivery.RunsGet, protocol.GetRunRequest{RunID: accepted.RunID}, "").(*protocol.RunRef)
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: false}, "disable")
+	if state := activity(); state.Admitted != 1 || len(state.Recent) != 1 || state.Recent[0].RunID != accepted.RunID || current.SessionID != state.Recent[0].SessionID {
+		t.Fatalf("the uncertain response lost the admitted Project event: %+v", state)
+	}
+	policy.Paused = true
+	r.must(delivery.ProjectsSetBackground, protocol.SetProjectBackgroundPolicyRequest{ProjectID: project.ID, Policy: policy}, "pause-project")
 	r = reopenPluginRuntime(t, r, &cfg)
 	r.must(delivery.SessionsDelete, protocol.DeleteSessionRequest{SessionID: current.SessionID}, "retire-accepted-material")
 	r = reopenPluginRuntime(t, r, &cfg)
@@ -134,6 +147,17 @@ func TestSchedulesReconcilesLostCoreOpeningBeforePrivateAcknowledgement(t *testi
 	replay := readScheduleRun(r, request, "lost-core")
 	if replay.SessionId != current.SessionID || replay.RunId != accepted.RunID {
 		t.Fatalf("retired Core acceptance opened another Run: %+v", replay)
+	}
+	state := activity()
+	if !state.Policy.Paused || state.Admitted != 1 || state.Active != 0 || len(state.Recent) != 1 || state.Recent[0].Status != "retired" {
+		t.Fatalf("restart lost the original event, usage or released capacity: %+v", state)
+	}
+	policy = state.Policy
+	policy.Paused = false
+	r.must(delivery.ProjectsSetBackground, protocol.SetProjectBackgroundPolicyRequest{ProjectID: project.ID, Policy: policy}, "unpause-project")
+	refused := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, protocol.CallMetadata{IdempotencyKey: "exceeds-project-budget", RequestMeta: protocol.RequestMeta{ProtocolVersion: new(protocol.Version)}})
+	if refused.Failure == nil && refused.Value.(*protocol.CallPluginResponse).Failure == nil {
+		t.Fatal("a new event exceeded the Project's daily admission limit")
 	}
 	page := readSchedulePage(r, protocol.PageQuery{})
 	if len(page.Data) != 1 || generatedInteger(t, page.Data[0].Revision) != generatedInteger(t, saved.Revision)+1 {

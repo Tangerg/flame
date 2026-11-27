@@ -143,6 +143,9 @@
           "type": "array",
           "uniqueItems": true
         },
+        "projectId": {
+          "type": "string"
+        },
         "provider": {
           "minLength": 1,
           "type": "string"
@@ -212,6 +215,9 @@
           "minItems": 1,
           "type": "array",
           "uniqueItems": true
+        },
+        "projectId": {
+          "type": "string"
         },
         "provider": {
           "minLength": 1,
@@ -341,6 +347,9 @@
           "type": "array",
           "uniqueItems": true
         },
+        "projectId": {
+          "type": "string"
+        },
         "provider": {
           "minLength": 1,
           "type": "string"
@@ -432,6 +441,9 @@
           "minItems": 1,
           "type": "array",
           "uniqueItems": true
+        },
+        "projectId": {
+          "type": "string"
         },
         "provider": {
           "minLength": 1,

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
@@ -65,5 +66,20 @@ func define() (*plugincontract.Capability, error) {
 	if err != nil {
 		return nil, err
 	}
-	return plugincontract.NewCapability(plugincontract.CapabilityConfig{Reference: "flame.knowledgebase.v1", Composition: plugincontract.Collection, Scope: extension.ScopeInstallation}, importMethod.Descriptor(), reindexMethod.Descriptor(), deleteMethod.Descriptor(), listMethod.Descriptor(), readMethod.Descriptor(), searchMethod.Descriptor(), claimAccept.Descriptor(), claimRead.Descriptor(), claimList.Descriptor(), moveMethod.Descriptor())
+	acceptWork, e1 := pluginmcp.NewMethod[wire.WorkAccept, wire.WorkReceipt](frame.MethodConfig{
+		Name: wire.AcceptWork, Kind: frame.Command, Target: extension.ScopeInstallation,
+		Description: "Accept a reusable method version, current claim revisions, and exact native Project deliverable bytes.",
+	})
+	readWork, e2 := pluginmcp.NewMethod[wire.WorkRead, wire.WorkView](frame.MethodConfig{
+		Name: wire.ReadWork, Kind: frame.Query, Target: extension.ScopeInstallation,
+		Description: "Revalidate the Work's original claim revisions and native bytes against current Project access and the latest chart revision.",
+	})
+	listWork, e3 := pluginmcp.NewMethod[wire.ListInput, []wire.WorkReceipt](frame.MethodConfig{
+		Name: wire.ListWork, Kind: frame.Query, Target: extension.ScopeInstallation,
+		Description: "List saved Work identities and immutable method versions in one Project.",
+	})
+	if err := errors.Join(e1, e2, e3); err != nil {
+		return nil, err
+	}
+	return plugincontract.NewCapability(plugincontract.CapabilityConfig{Reference: "flame.knowledgebase.v1", Composition: plugincontract.Collection, Scope: extension.ScopeInstallation}, importMethod.Descriptor(), reindexMethod.Descriptor(), deleteMethod.Descriptor(), listMethod.Descriptor(), readMethod.Descriptor(), searchMethod.Descriptor(), claimAccept.Descriptor(), claimRead.Descriptor(), claimList.Descriptor(), moveMethod.Descriptor(), acceptWork.Descriptor(), readWork.Descriptor(), listWork.Descriptor())
 }

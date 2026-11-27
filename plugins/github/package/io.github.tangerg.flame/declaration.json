@@ -46,6 +46,7 @@
   "components": [
     {
       "id": "github-reviews",
+      "material": "project-pr-reviews",
       "title": "Pull request reviews",
       "localizedTitles": {
         "zh": "PR 复审",

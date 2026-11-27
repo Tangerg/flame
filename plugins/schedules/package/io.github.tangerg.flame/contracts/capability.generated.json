@@ -52,6 +52,9 @@
               "modelSelection": {
                 "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9u"
               },
+              "projectId": {
+                "type": "string"
+              },
               "timeZone": {
                 "type": "string"
               },
@@ -88,6 +91,9 @@
           },
           "modelSelection": {
             "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9u"
+          },
+          "projectId": {
+            "type": "string"
           },
           "timeZone": {
             "type": "string"
@@ -165,6 +171,9 @@
               "nextRunAt": {
                 "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
               },
+              "projectId": {
+                "type": "string"
+              },
               "revision": {
                 "allOf": [
                   {
@@ -221,6 +230,9 @@
           },
           "nextRunAt": {
             "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
+          },
+          "projectId": {
+            "type": "string"
           },
           "revision": {
             "allOf": [
@@ -405,6 +417,9 @@
               },
               "nextRunAt": {
                 "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
+              },
+              "projectId": {
+                "type": "string"
               },
               "revision": {
                 "allOf": [
@@ -595,6 +610,9 @@
               "modelSelection": {
                 "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU.TW9kZWxQYXRjaA"
               },
+              "projectId": {
+                "type": "string"
+              },
               "timeZone": {
                 "type": "string"
               },
@@ -639,6 +657,9 @@
           },
           "modelSelection": {
             "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU.TW9kZWxQYXRjaA"
+          },
+          "projectId": {
+            "type": "string"
           },
           "timeZone": {
             "type": "string"
@@ -712,6 +733,9 @@
               "nextRunAt": {
                 "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
               },
+              "projectId": {
+                "type": "string"
+              },
               "revision": {
                 "allOf": [
                   {
@@ -768,6 +792,9 @@
           },
           "nextRunAt": {
             "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
+          },
+          "projectId": {
+            "type": "string"
           },
           "revision": {
             "allOf": [

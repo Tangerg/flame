@@ -9,6 +9,7 @@ import (
 )
 
 type snapshotProjection struct {
+	ProjectID      string               `json:"projectId,omitempty"`
 	ID             string               `json:"id"`
 	Title          string               `json:"title"`
 	Instructions   string               `json:"instructions"`

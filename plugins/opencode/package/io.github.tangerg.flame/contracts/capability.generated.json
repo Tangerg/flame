@@ -1,0 +1,1655 @@
+{
+  "protocol": "io.github.tangerg.flame/plugin/1",
+  "reference": "flame.opencode.v1",
+  "composition": "collection",
+  "scope": "installation",
+  "methods": [
+    {
+      "name": "flame.opencode/cancel.v1",
+      "kind": "command",
+      "target": "installation",
+      "description": "Request cancellation of the original prompt and await its stop reason.",
+      "input": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.VHVyblJlcXVlc3Q": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "turnId": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "turnId"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "turnId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "turnId"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.RXZlbnQ": {
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "text": {
+                "type": "string"
+              },
+              "toolId": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.T3B0aW9u": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "kind": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "kind"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.U2Vzc2lvbg": {
+            "additionalProperties": false,
+            "properties": {
+              "agent": {
+                "type": "string"
+              },
+              "canFork": {
+                "type": "boolean"
+              },
+              "connected": {
+                "type": "boolean"
+              },
+              "cwd": {
+                "type": "string"
+              },
+              "events": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.RXZlbnQ"
+                },
+                "type": "array"
+              },
+              "id": {
+                "type": "string"
+              },
+              "machine": {
+                "type": "string"
+              },
+              "nativeId": {
+                "type": "string"
+              },
+              "permissions": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.UGVybWlzc2lvblJlcXVlc3Q"
+                },
+                "type": "array"
+              },
+              "turn": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.VHVybg"
+              }
+            },
+            "required": [
+              "id",
+              "nativeId",
+              "cwd",
+              "machine",
+              "agent",
+              "connected",
+              "canFork",
+              "events",
+              "permissions"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.UGVybWlzc2lvblJlcXVlc3Q": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "options": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.T3B0aW9u"
+                },
+                "type": "array"
+              },
+              "preview": {
+                "type": "string"
+              },
+              "selected": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "toolId": {
+                "type": "string"
+              },
+              "turnId": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "turnId",
+              "toolId",
+              "title",
+              "options",
+              "status"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.VHVybg": {
+            "additionalProperties": false,
+            "properties": {
+              "cancelRequested": {
+                "type": "boolean"
+              },
+              "id": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "stopReason": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "status",
+              "cancelRequested"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "agent": {
+            "type": "string"
+          },
+          "canFork": {
+            "type": "boolean"
+          },
+          "connected": {
+            "type": "boolean"
+          },
+          "cwd": {
+            "type": "string"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.RXZlbnQ"
+            },
+            "type": "array"
+          },
+          "id": {
+            "type": "string"
+          },
+          "machine": {
+            "type": "string"
+          },
+          "nativeId": {
+            "type": "string"
+          },
+          "permissions": {
+            "items": {
+              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.UGVybWlzc2lvblJlcXVlc3Q"
+            },
+            "type": "array"
+          },
+          "turn": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.VHVybg"
+          }
+        },
+        "required": [
+          "id",
+          "nativeId",
+          "cwd",
+          "machine",
+          "agent",
+          "connected",
+          "canFork",
+          "events",
+          "permissions"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "flame.opencode/fork.v1",
+      "kind": "command",
+      "target": "installation",
+      "description": "Fork the native session when OpenCode advertises the capability.",
+      "input": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.U2Vzc2lvblJlcXVlc3Q": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.RXZlbnQ": {
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "text": {
+                "type": "string"
+              },
+              "toolId": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.T3B0aW9u": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "kind": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "kind"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.U2Vzc2lvbg": {
+            "additionalProperties": false,
+            "properties": {
+              "agent": {
+                "type": "string"
+              },
+              "canFork": {
+                "type": "boolean"
+              },
+              "connected": {
+                "type": "boolean"
+              },
+              "cwd": {
+                "type": "string"
+              },
+              "events": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.RXZlbnQ"
+                },
+                "type": "array"
+              },
+              "id": {
+                "type": "string"
+              },
+              "machine": {
+                "type": "string"
+              },
+              "nativeId": {
+                "type": "string"
+              },
+              "permissions": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.UGVybWlzc2lvblJlcXVlc3Q"
+                },
+                "type": "array"
+              },
+              "turn": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.VHVybg"
+              }
+            },
+            "required": [
+              "id",
+              "nativeId",
+              "cwd",
+              "machine",
+              "agent",
+              "connected",
+              "canFork",
+              "events",
+              "permissions"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.UGVybWlzc2lvblJlcXVlc3Q": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "options": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.T3B0aW9u"
+                },
+                "type": "array"
+              },
+              "preview": {
+                "type": "string"
+              },
+              "selected": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "toolId": {
+                "type": "string"
+              },
+              "turnId": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "turnId",
+              "toolId",
+              "title",
+              "options",
+              "status"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.VHVybg": {
+            "additionalProperties": false,
+            "properties": {
+              "cancelRequested": {
+                "type": "boolean"
+              },
+              "id": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "stopReason": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "status",
+              "cancelRequested"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "agent": {
+            "type": "string"
+          },
+          "canFork": {
+            "type": "boolean"
+          },
+          "connected": {
+            "type": "boolean"
+          },
+          "cwd": {
+            "type": "string"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.RXZlbnQ"
+            },
+            "type": "array"
+          },
+          "id": {
+            "type": "string"
+          },
+          "machine": {
+            "type": "string"
+          },
+          "nativeId": {
+            "type": "string"
+          },
+          "permissions": {
+            "items": {
+              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.UGVybWlzc2lvblJlcXVlc3Q"
+            },
+            "type": "array"
+          },
+          "turn": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.VHVybg"
+          }
+        },
+        "required": [
+          "id",
+          "nativeId",
+          "cwd",
+          "machine",
+          "agent",
+          "connected",
+          "canFork",
+          "events",
+          "permissions"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "flame.opencode/get.v1",
+      "kind": "query",
+      "target": "installation",
+      "description": "Read the captured session, progress, permissions and turn settlement.",
+      "input": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.U2Vzc2lvblJlcXVlc3Q": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.RXZlbnQ": {
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "text": {
+                "type": "string"
+              },
+              "toolId": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.T3B0aW9u": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "kind": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "kind"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.U2Vzc2lvbg": {
+            "additionalProperties": false,
+            "properties": {
+              "agent": {
+                "type": "string"
+              },
+              "canFork": {
+                "type": "boolean"
+              },
+              "connected": {
+                "type": "boolean"
+              },
+              "cwd": {
+                "type": "string"
+              },
+              "events": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.RXZlbnQ"
+                },
+                "type": "array"
+              },
+              "id": {
+                "type": "string"
+              },
+              "machine": {
+                "type": "string"
+              },
+              "nativeId": {
+                "type": "string"
+              },
+              "permissions": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.UGVybWlzc2lvblJlcXVlc3Q"
+                },
+                "type": "array"
+              },
+              "turn": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.VHVybg"
+              }
+            },
+            "required": [
+              "id",
+              "nativeId",
+              "cwd",
+              "machine",
+              "agent",
+              "connected",
+              "canFork",
+              "events",
+              "permissions"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.UGVybWlzc2lvblJlcXVlc3Q": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "options": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.T3B0aW9u"
+                },
+                "type": "array"
+              },
+              "preview": {
+                "type": "string"
+              },
+              "selected": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "toolId": {
+                "type": "string"
+              },
+              "turnId": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "turnId",
+              "toolId",
+              "title",
+              "options",
+              "status"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.VHVybg": {
+            "additionalProperties": false,
+            "properties": {
+              "cancelRequested": {
+                "type": "boolean"
+              },
+              "id": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "stopReason": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "status",
+              "cancelRequested"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "agent": {
+            "type": "string"
+          },
+          "canFork": {
+            "type": "boolean"
+          },
+          "connected": {
+            "type": "boolean"
+          },
+          "cwd": {
+            "type": "string"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.RXZlbnQ"
+            },
+            "type": "array"
+          },
+          "id": {
+            "type": "string"
+          },
+          "machine": {
+            "type": "string"
+          },
+          "nativeId": {
+            "type": "string"
+          },
+          "permissions": {
+            "items": {
+              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.UGVybWlzc2lvblJlcXVlc3Q"
+            },
+            "type": "array"
+          },
+          "turn": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.VHVybg"
+          }
+        },
+        "required": [
+          "id",
+          "nativeId",
+          "cwd",
+          "machine",
+          "agent",
+          "connected",
+          "canFork",
+          "events",
+          "permissions"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "flame.opencode/list.v1",
+      "kind": "query",
+      "target": "installation",
+      "description": "List native sessions in the canonical workspace.",
+      "input": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.TGlzdFJlcXVlc3Q": {
+            "additionalProperties": false,
+            "properties": {
+              "cursor": {
+                "type": "string"
+              },
+              "cwd": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "cwd"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "cursor": {
+            "type": "string"
+          },
+          "cwd": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "cwd"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.TmF0aXZlU2Vzc2lvbg": {
+            "additionalProperties": false,
+            "properties": {
+              "cwd": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "cwd"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.U2Vzc2lvbnM": {
+            "additionalProperties": false,
+            "properties": {
+              "agent": {
+                "type": "string"
+              },
+              "machine": {
+                "type": "string"
+              },
+              "nextCursor": {
+                "type": "string"
+              },
+              "rows": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.TmF0aXZlU2Vzc2lvbg"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "machine",
+              "agent",
+              "rows"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "agent": {
+            "type": "string"
+          },
+          "machine": {
+            "type": "string"
+          },
+          "nextCursor": {
+            "type": "string"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.TmF0aXZlU2Vzc2lvbg"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "machine",
+          "agent",
+          "rows"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "flame.opencode/open.v1",
+      "kind": "command",
+      "target": "installation",
+      "description": "Load the original OpenCode session and its history.",
+      "input": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.T3BlblJlcXVlc3Q": {
+            "additionalProperties": false,
+            "properties": {
+              "cwd": {
+                "type": "string"
+              },
+              "nativeId": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "nativeId",
+              "cwd"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "cwd": {
+            "type": "string"
+          },
+          "nativeId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "nativeId",
+          "cwd"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.RXZlbnQ": {
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "text": {
+                "type": "string"
+              },
+              "toolId": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.T3B0aW9u": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "kind": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "kind"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.U2Vzc2lvbg": {
+            "additionalProperties": false,
+            "properties": {
+              "agent": {
+                "type": "string"
+              },
+              "canFork": {
+                "type": "boolean"
+              },
+              "connected": {
+                "type": "boolean"
+              },
+              "cwd": {
+                "type": "string"
+              },
+              "events": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.RXZlbnQ"
+                },
+                "type": "array"
+              },
+              "id": {
+                "type": "string"
+              },
+              "machine": {
+                "type": "string"
+              },
+              "nativeId": {
+                "type": "string"
+              },
+              "permissions": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.UGVybWlzc2lvblJlcXVlc3Q"
+                },
+                "type": "array"
+              },
+              "turn": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.VHVybg"
+              }
+            },
+            "required": [
+              "id",
+              "nativeId",
+              "cwd",
+              "machine",
+              "agent",
+              "connected",
+              "canFork",
+              "events",
+              "permissions"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.UGVybWlzc2lvblJlcXVlc3Q": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "options": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.T3B0aW9u"
+                },
+                "type": "array"
+              },
+              "preview": {
+                "type": "string"
+              },
+              "selected": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "toolId": {
+                "type": "string"
+              },
+              "turnId": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "turnId",
+              "toolId",
+              "title",
+              "options",
+              "status"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.VHVybg": {
+            "additionalProperties": false,
+            "properties": {
+              "cancelRequested": {
+                "type": "boolean"
+              },
+              "id": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "stopReason": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "status",
+              "cancelRequested"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "agent": {
+            "type": "string"
+          },
+          "canFork": {
+            "type": "boolean"
+          },
+          "connected": {
+            "type": "boolean"
+          },
+          "cwd": {
+            "type": "string"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.RXZlbnQ"
+            },
+            "type": "array"
+          },
+          "id": {
+            "type": "string"
+          },
+          "machine": {
+            "type": "string"
+          },
+          "nativeId": {
+            "type": "string"
+          },
+          "permissions": {
+            "items": {
+              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.UGVybWlzc2lvblJlcXVlc3Q"
+            },
+            "type": "array"
+          },
+          "turn": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.VHVybg"
+          }
+        },
+        "required": [
+          "id",
+          "nativeId",
+          "cwd",
+          "machine",
+          "agent",
+          "connected",
+          "canFork",
+          "events",
+          "permissions"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "flame.opencode/permission.v1",
+      "kind": "command",
+      "target": "installation",
+      "description": "Select an option from the original pending permission.",
+      "input": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.QW5zd2VyUmVxdWVzdA": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "optionId": {
+                "type": "string"
+              },
+              "permissionId": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "permissionId",
+              "optionId"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "optionId": {
+            "type": "string"
+          },
+          "permissionId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "permissionId",
+          "optionId"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.RXZlbnQ": {
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "text": {
+                "type": "string"
+              },
+              "toolId": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.T3B0aW9u": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "kind": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "kind"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.U2Vzc2lvbg": {
+            "additionalProperties": false,
+            "properties": {
+              "agent": {
+                "type": "string"
+              },
+              "canFork": {
+                "type": "boolean"
+              },
+              "connected": {
+                "type": "boolean"
+              },
+              "cwd": {
+                "type": "string"
+              },
+              "events": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.RXZlbnQ"
+                },
+                "type": "array"
+              },
+              "id": {
+                "type": "string"
+              },
+              "machine": {
+                "type": "string"
+              },
+              "nativeId": {
+                "type": "string"
+              },
+              "permissions": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.UGVybWlzc2lvblJlcXVlc3Q"
+                },
+                "type": "array"
+              },
+              "turn": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.VHVybg"
+              }
+            },
+            "required": [
+              "id",
+              "nativeId",
+              "cwd",
+              "machine",
+              "agent",
+              "connected",
+              "canFork",
+              "events",
+              "permissions"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.UGVybWlzc2lvblJlcXVlc3Q": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "options": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.T3B0aW9u"
+                },
+                "type": "array"
+              },
+              "preview": {
+                "type": "string"
+              },
+              "selected": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "toolId": {
+                "type": "string"
+              },
+              "turnId": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "turnId",
+              "toolId",
+              "title",
+              "options",
+              "status"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.VHVybg": {
+            "additionalProperties": false,
+            "properties": {
+              "cancelRequested": {
+                "type": "boolean"
+              },
+              "id": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "stopReason": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "status",
+              "cancelRequested"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "agent": {
+            "type": "string"
+          },
+          "canFork": {
+            "type": "boolean"
+          },
+          "connected": {
+            "type": "boolean"
+          },
+          "cwd": {
+            "type": "string"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.RXZlbnQ"
+            },
+            "type": "array"
+          },
+          "id": {
+            "type": "string"
+          },
+          "machine": {
+            "type": "string"
+          },
+          "nativeId": {
+            "type": "string"
+          },
+          "permissions": {
+            "items": {
+              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.UGVybWlzc2lvblJlcXVlc3Q"
+            },
+            "type": "array"
+          },
+          "turn": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.VHVybg"
+          }
+        },
+        "required": [
+          "id",
+          "nativeId",
+          "cwd",
+          "machine",
+          "agent",
+          "connected",
+          "canFork",
+          "events",
+          "permissions"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "flame.opencode/prompt.v1",
+      "kind": "command",
+      "target": "installation",
+      "description": "Accept one prompt for the bound native session.",
+      "input": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.UHJvbXB0UmVxdWVzdA": {
+            "additionalProperties": false,
+            "properties": {
+              "continue": {
+                "type": "boolean"
+              },
+              "id": {
+                "type": "string"
+              },
+              "previousTurn": {
+                "type": "string"
+              },
+              "text": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "text"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "continue": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string"
+          },
+          "previousTurn": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "text"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.RXZlbnQ": {
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "text": {
+                "type": "string"
+              },
+              "toolId": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.T3B0aW9u": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "kind": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "kind"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.U2Vzc2lvbg": {
+            "additionalProperties": false,
+            "properties": {
+              "agent": {
+                "type": "string"
+              },
+              "canFork": {
+                "type": "boolean"
+              },
+              "connected": {
+                "type": "boolean"
+              },
+              "cwd": {
+                "type": "string"
+              },
+              "events": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.RXZlbnQ"
+                },
+                "type": "array"
+              },
+              "id": {
+                "type": "string"
+              },
+              "machine": {
+                "type": "string"
+              },
+              "nativeId": {
+                "type": "string"
+              },
+              "permissions": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.UGVybWlzc2lvblJlcXVlc3Q"
+                },
+                "type": "array"
+              },
+              "turn": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.VHVybg"
+              }
+            },
+            "required": [
+              "id",
+              "nativeId",
+              "cwd",
+              "machine",
+              "agent",
+              "connected",
+              "canFork",
+              "events",
+              "permissions"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.UGVybWlzc2lvblJlcXVlc3Q": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "options": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.T3B0aW9u"
+                },
+                "type": "array"
+              },
+              "preview": {
+                "type": "string"
+              },
+              "selected": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "toolId": {
+                "type": "string"
+              },
+              "turnId": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "turnId",
+              "toolId",
+              "title",
+              "options",
+              "status"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.VHVybg": {
+            "additionalProperties": false,
+            "properties": {
+              "cancelRequested": {
+                "type": "boolean"
+              },
+              "id": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "stopReason": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "status",
+              "cancelRequested"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "agent": {
+            "type": "string"
+          },
+          "canFork": {
+            "type": "boolean"
+          },
+          "connected": {
+            "type": "boolean"
+          },
+          "cwd": {
+            "type": "string"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.RXZlbnQ"
+            },
+            "type": "array"
+          },
+          "id": {
+            "type": "string"
+          },
+          "machine": {
+            "type": "string"
+          },
+          "nativeId": {
+            "type": "string"
+          },
+          "permissions": {
+            "items": {
+              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.UGVybWlzc2lvblJlcXVlc3Q"
+            },
+            "type": "array"
+          },
+          "turn": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvb3BlbmNvZGUvaW50ZXJuYWwvd2lyZQ.VHVybg"
+          }
+        },
+        "required": [
+          "id",
+          "nativeId",
+          "cwd",
+          "machine",
+          "agent",
+          "connected",
+          "canFork",
+          "events",
+          "permissions"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

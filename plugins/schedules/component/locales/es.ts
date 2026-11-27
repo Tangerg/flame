@@ -42,6 +42,7 @@ export const es: Record<string, string> = {
   "field.instructions": "Instrucciones",
   "field.cron": "Expresión cron",
   "field.timeZone": "Zona horaria",
+  "field.project": "ID del proyecto",
   "field.workspace": "Ruta del espacio de trabajo",
   "field.workspace.placeholder":
     "Vacío usa el valor predeterminado del Runtime",

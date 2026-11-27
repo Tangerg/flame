@@ -5,6 +5,7 @@ import (
 	"errors"
 	"slices"
 	"strings"
+	"sync"
 	"unicode/utf8"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
@@ -31,8 +32,10 @@ func remoteEmbedding(ctx context.Context) (embed, error) {
 }
 
 type library struct {
-	store   *store
-	resolve resolveEmbedding
+	bindingsMu sync.RWMutex
+	artifacts  artifactBindings
+	store      *store
+	resolve    resolveEmbedding
 }
 
 func newLibrary(store *store, resolve resolveEmbedding) (*library, error) {

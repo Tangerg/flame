@@ -5,7 +5,7 @@
 > method the Runtime does not serve. The adjacent JSON artifacts are the
 > machine-readable contract; this file is its mechanical human-readable index.
 
-Protocol `2026-11-27.8` · 113 methods
+Protocol `2026-11-27.8` · 115 methods
 
 ## Methods
 
@@ -24,6 +24,8 @@ Protocol `2026-11-27.8` · 113 methods
 | `sessions.rollback` | command | unary | replayResponse | none | none | — | `checkpoints` | `session_not_found`, `run_not_found`, `session_busy`, `revision_conflict`, `checkpoint_unavailable`, `checkpoint_conflict`, `capability_not_negotiated` |
 | `sessions.export` | query | unary | none | none | none | — | `sessionExport` | `plugin_unavailable`, `plugin_stale`, `session_not_found`, `session_busy`, `export_too_large`, `capability_not_negotiated` |
 | `sessions.import` | command | unary | replayResponse | none | none | — | `sessionExport` | `session_busy`, `export_too_large`, `capability_not_negotiated` |
+| `projects.background.get` | query | unary | none | none | none | — | — | `project_not_found` |
+| `projects.background.setPolicy` | command | unary | replayResponse | none | none | — | — | `project_not_found`, `revision_conflict` |
 | `projects.list` | query | unary | none | none | cursor | — | — | — |
 | `projects.get` | query | unary | none | none | none | — | — | `project_not_found` |
 | `projects.create` | command | unary | replayResponse | none | none | — | — | — |

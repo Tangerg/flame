@@ -10,6 +10,84 @@
     "AcceptClaimV1OutputInstantTimestamp": {
       "type": "string"
     },
+    "AcceptWorkV1Input": {
+      "$ref": "#/$defs/WorkAccept"
+    },
+    "AcceptWorkV1InputWireArtifactRef": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "installationId": {
+          "type": "string"
+        },
+        "object": {
+          "maxLength": 2048,
+          "type": "string"
+        },
+        "revision": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "installationId",
+        "id",
+        "revision"
+      ],
+      "type": "object"
+    },
+    "AcceptWorkV1InputWireResearchMethod": {
+      "additionalProperties": false,
+      "properties": {
+        "instructions": {
+          "maxLength": 8192,
+          "minLength": 1,
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "instructions"
+      ],
+      "type": "object"
+    },
+    "AcceptWorkV1Output": {
+      "$ref": "#/$defs/AcceptWorkV1OutputWireWorkReceipt"
+    },
+    "AcceptWorkV1OutputWireWorkReceipt": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "methodVersion": {
+          "type": "string"
+        },
+        "revision": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "revision",
+        "methodVersion"
+      ],
+      "type": "object"
+    },
     "ClaimAcceptInput": {
       "additionalProperties": false,
       "properties": {
@@ -58,132 +136,6 @@
         "statement",
         "reason",
         "citations"
-      ],
-      "type": "object"
-    },
-    "ClaimEvidence": {
-      "additionalProperties": false,
-      "properties": {
-        "documentId": {
-          "maxLength": 128,
-          "minLength": 1,
-          "type": "string"
-        },
-        "excerpt": {
-          "type": "string"
-        },
-        "firstLine": {
-          "allOf": [
-            {
-              "maximum": 9223372036854775807,
-              "minimum": -9223372036854775808
-            }
-          ],
-          "minimum": 1,
-          "type": "integer"
-        },
-        "lastLine": {
-          "allOf": [
-            {
-              "maximum": 9223372036854775807,
-              "minimum": -9223372036854775808
-            }
-          ],
-          "minimum": 1,
-          "type": "integer"
-        },
-        "needsRecheck": {
-          "type": "boolean"
-        },
-        "page": {
-          "allOf": [
-            {
-              "maximum": 9223372036854775807,
-              "minimum": -9223372036854775808
-            }
-          ],
-          "minimum": 1,
-          "type": "integer"
-        },
-        "revision": {
-          "allOf": [
-            {
-              "maximum": 9223372036854775807,
-              "minimum": -9223372036854775808
-            }
-          ],
-          "minimum": 1,
-          "type": "integer"
-        },
-        "source": {
-          "type": "string"
-        },
-        "title": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "documentId",
-        "revision",
-        "page",
-        "firstLine",
-        "lastLine",
-        "title",
-        "source",
-        "excerpt",
-        "needsRecheck"
-      ],
-      "type": "object"
-    },
-    "ClaimRead": {
-      "additionalProperties": false,
-      "properties": {
-        "acceptedAt": {
-          "$ref": "#/$defs/ReadClaimV1OutputInstantTimestamp"
-        },
-        "evidence": {
-          "items": {
-            "$ref": "#/$defs/ClaimEvidence"
-          },
-          "type": "array"
-        },
-        "id": {
-          "type": "string"
-        },
-        "reason": {
-          "type": "string"
-        },
-        "revision": {
-          "allOf": [
-            {
-              "maximum": 9223372036854775807,
-              "minimum": -9223372036854775808
-            }
-          ],
-          "type": "integer"
-        },
-        "state": {
-          "allOf": [
-            {
-              "enum": [
-                "current",
-                "recheck",
-                "unavailable"
-              ]
-            }
-          ],
-          "type": "string"
-        },
-        "statement": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "id",
-        "revision",
-        "state",
-        "acceptedAt",
-        "evidence"
       ],
       "type": "object"
     },
@@ -239,6 +191,31 @@
         "id",
         "revision",
         "acceptedAt"
+      ],
+      "type": "object"
+    },
+    "ClaimRef": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        },
+        "revision": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "revision"
       ],
       "type": "object"
     },
@@ -403,6 +380,37 @@
       ],
       "type": "object"
     },
+    "Evidence": {
+      "additionalProperties": false,
+      "properties": {
+        "acceptedSha256": {
+          "type": "string"
+        },
+        "available": {
+          "type": "boolean"
+        },
+        "format": {
+          "type": "string"
+        },
+        "head": {
+          "type": "string"
+        },
+        "headSha256": {
+          "type": "string"
+        },
+        "objectAtHead": {
+          "type": "boolean"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "available",
+        "objectAtHead"
+      ],
+      "type": "object"
+    },
     "ImportInput": {
       "additionalProperties": false,
       "properties": {
@@ -559,6 +567,50 @@
         "revision",
         "chunks",
         "space"
+      ],
+      "type": "object"
+    },
+    "ListWorkV1Input": {
+      "$ref": "#/$defs/ListWorkV1InputWireListInput"
+    },
+    "ListWorkV1InputWireListInput": {
+      "additionalProperties": false,
+      "properties": {
+        "project": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "ListWorkV1Output": {
+      "items": {
+        "$ref": "#/$defs/ListWorkV1OutputWireWorkReceipt"
+      },
+      "type": "array"
+    },
+    "ListWorkV1OutputWireWorkReceipt": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "methodVersion": {
+          "type": "string"
+        },
+        "revision": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "revision",
+        "methodVersion"
       ],
       "type": "object"
     },
@@ -745,10 +797,136 @@
       "$ref": "#/$defs/ClaimReadInput"
     },
     "ReadClaimV1Output": {
-      "$ref": "#/$defs/ClaimRead"
+      "$ref": "#/$defs/ReadClaimV1OutputWireClaimRead"
     },
     "ReadClaimV1OutputInstantTimestamp": {
       "type": "string"
+    },
+    "ReadClaimV1OutputWireClaimEvidence": {
+      "additionalProperties": false,
+      "properties": {
+        "documentId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        },
+        "excerpt": {
+          "type": "string"
+        },
+        "firstLine": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        },
+        "lastLine": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        },
+        "needsRecheck": {
+          "type": "boolean"
+        },
+        "page": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        },
+        "revision": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        },
+        "source": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "documentId",
+        "revision",
+        "page",
+        "firstLine",
+        "lastLine",
+        "title",
+        "source",
+        "excerpt",
+        "needsRecheck"
+      ],
+      "type": "object"
+    },
+    "ReadClaimV1OutputWireClaimRead": {
+      "additionalProperties": false,
+      "properties": {
+        "acceptedAt": {
+          "$ref": "#/$defs/ReadClaimV1OutputInstantTimestamp"
+        },
+        "evidence": {
+          "items": {
+            "$ref": "#/$defs/ReadClaimV1OutputWireClaimEvidence"
+          },
+          "type": "array"
+        },
+        "id": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "revision": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "state": {
+          "allOf": [
+            {
+              "enum": [
+                "current",
+                "recheck",
+                "unavailable"
+              ]
+            }
+          ],
+          "type": "string"
+        },
+        "statement": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "revision",
+        "state",
+        "acceptedAt",
+        "evidence"
+      ],
+      "type": "object"
     },
     "ReadInput": {
       "additionalProperties": false,
@@ -845,6 +1023,187 @@
         "revision",
         "chunks",
         "space"
+      ],
+      "type": "object"
+    },
+    "ReadWorkV1Input": {
+      "$ref": "#/$defs/WorkRead"
+    },
+    "ReadWorkV1Output": {
+      "$ref": "#/$defs/WorkView"
+    },
+    "ReadWorkV1OutputInstantTimestamp": {
+      "type": "string"
+    },
+    "ReadWorkV1OutputWireArtifactRef": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "installationId": {
+          "type": "string"
+        },
+        "object": {
+          "maxLength": 2048,
+          "type": "string"
+        },
+        "revision": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "installationId",
+        "id",
+        "revision"
+      ],
+      "type": "object"
+    },
+    "ReadWorkV1OutputWireClaimEvidence": {
+      "additionalProperties": false,
+      "properties": {
+        "documentId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        },
+        "excerpt": {
+          "type": "string"
+        },
+        "firstLine": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        },
+        "lastLine": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        },
+        "needsRecheck": {
+          "type": "boolean"
+        },
+        "page": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        },
+        "revision": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        },
+        "source": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "documentId",
+        "revision",
+        "page",
+        "firstLine",
+        "lastLine",
+        "title",
+        "source",
+        "excerpt",
+        "needsRecheck"
+      ],
+      "type": "object"
+    },
+    "ReadWorkV1OutputWireClaimRead": {
+      "additionalProperties": false,
+      "properties": {
+        "acceptedAt": {
+          "$ref": "#/$defs/ReadWorkV1OutputInstantTimestamp"
+        },
+        "evidence": {
+          "items": {
+            "$ref": "#/$defs/ReadWorkV1OutputWireClaimEvidence"
+          },
+          "type": "array"
+        },
+        "id": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "revision": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "state": {
+          "allOf": [
+            {
+              "enum": [
+                "current",
+                "recheck",
+                "unavailable"
+              ]
+            }
+          ],
+          "type": "string"
+        },
+        "statement": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "revision",
+        "state",
+        "acceptedAt",
+        "evidence"
+      ],
+      "type": "object"
+    },
+    "ReadWorkV1OutputWireResearchMethod": {
+      "additionalProperties": false,
+      "properties": {
+        "instructions": {
+          "maxLength": 8192,
+          "minLength": 1,
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "instructions"
       ],
       "type": "object"
     },
@@ -1026,6 +1385,136 @@
         "revision",
         "chunks",
         "space"
+      ],
+      "type": "object"
+    },
+    "WorkAccept": {
+      "additionalProperties": false,
+      "properties": {
+        "artifact": {
+          "$ref": "#/$defs/AcceptWorkV1InputWireArtifactRef"
+        },
+        "claims": {
+          "items": {
+            "$ref": "#/$defs/ClaimRef"
+          },
+          "maxItems": 16,
+          "minItems": 1,
+          "type": "array"
+        },
+        "expectedRevision": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 0,
+          "type": "integer"
+        },
+        "id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        },
+        "method": {
+          "$ref": "#/$defs/AcceptWorkV1InputWireResearchMethod"
+        },
+        "project": {
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "project",
+        "id",
+        "expectedRevision",
+        "title",
+        "method",
+        "claims",
+        "artifact"
+      ],
+      "type": "object"
+    },
+    "WorkRead": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        },
+        "project": {
+          "type": "string"
+        },
+        "revision": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "project",
+        "id"
+      ],
+      "type": "object"
+    },
+    "WorkView": {
+      "additionalProperties": false,
+      "properties": {
+        "artifact": {
+          "$ref": "#/$defs/ReadWorkV1OutputWireArtifactRef"
+        },
+        "claims": {
+          "items": {
+            "$ref": "#/$defs/ReadWorkV1OutputWireClaimRead"
+          },
+          "type": "array"
+        },
+        "evidence": {
+          "$ref": "#/$defs/Evidence"
+        },
+        "id": {
+          "type": "string"
+        },
+        "method": {
+          "$ref": "#/$defs/ReadWorkV1OutputWireResearchMethod"
+        },
+        "methodVersion": {
+          "type": "string"
+        },
+        "revision": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "state": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "revision",
+        "methodVersion",
+        "title",
+        "state",
+        "claims"
       ],
       "type": "object"
     }

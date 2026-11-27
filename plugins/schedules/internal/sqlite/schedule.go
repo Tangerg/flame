@@ -24,7 +24,7 @@ func NewScheduleStore(db framesqlite.Database) *ScheduleStore {
 	return &ScheduleStore{db: db}
 }
 
-const scheduleColumns = `id, title, instructions, cwd, provider, model, reasoning_effort, cron, time_zone, last_run_at, next_run_at, created_at, revision`
+const scheduleColumns = `id, title, instructions, cwd, project_id, provider, model, reasoning_effort, cron, time_zone, last_run_at, next_run_at, created_at, revision`
 
 func (s *ScheduleStore) Insert(ctx context.Context, scheduled schedule.Schedule) error {
 	return s.db.RunInTx(ctx, func(ctx context.Context) error {
@@ -36,9 +36,9 @@ func (s *ScheduleStore) Insert(ctx context.Context, scheduled schedule.Schedule)
 		}
 		snapshot := scheduled.Snapshot()
 		_, err := s.db.Executor(ctx).ExecContext(ctx,
-			`INSERT INTO schedules (id, title, instructions, cwd, provider, model, reasoning_effort, cron, time_zone, last_run_at, next_run_at, created_at, revision)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-			snapshot.ID, snapshot.Title, snapshot.Instructions, snapshot.CWD,
+			`INSERT INTO schedules (id, title, instructions, cwd, project_id, provider, model, reasoning_effort, cron, time_zone, last_run_at, next_run_at, created_at, revision)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			snapshot.ID, snapshot.Title, snapshot.Instructions, snapshot.CWD, snapshot.ProjectID,
 			snapshot.ModelSelection.Provider(), snapshot.ModelSelection.Model(), snapshot.ModelSelection.ReasoningEffort(), snapshot.Cron, snapshot.TimeZone,
 			nullableMillis(snapshot.LastRunAt), nullableMillis(snapshot.NextRunAt), snapshot.CreatedAt.UnixMilli(), snapshot.Revision)
 		if err != nil {
@@ -55,9 +55,9 @@ func (s *ScheduleStore) Update(ctx context.Context, replacement schedule.Replace
 		snapshot := sc.Snapshot()
 		res, err := s.db.Executor(ctx).ExecContext(ctx,
 			`UPDATE schedules
-		 SET title = ?, instructions = ?, cwd = ?, provider = ?, model = ?, reasoning_effort = ?, cron = ?, time_zone = ?, next_run_at = ?, revision = ?
+		 SET title = ?, instructions = ?, cwd = ?, project_id = ?, provider = ?, model = ?, reasoning_effort = ?, cron = ?, time_zone = ?, next_run_at = ?, revision = ?
 		 WHERE id = ? AND revision = ?`,
-			snapshot.Title, snapshot.Instructions, snapshot.CWD,
+			snapshot.Title, snapshot.Instructions, snapshot.CWD, snapshot.ProjectID,
 			snapshot.ModelSelection.Provider(), snapshot.ModelSelection.Model(), snapshot.ModelSelection.ReasoningEffort(), snapshot.Cron, snapshot.TimeZone,
 			nullableMillis(snapshot.NextRunAt), snapshot.Revision, snapshot.ID, expectedRevision)
 		if err != nil {
@@ -170,11 +170,11 @@ func (s *ScheduleStore) Claim(ctx context.Context, claim schedule.Claim) (claime
 		}
 		_, execContextErr = s.db.Executor(ctx).ExecContext(ctx,
 			`INSERT INTO schedule_firings(
-				id, schedule_id, title, instructions, cwd, provider, model, reasoning_effort,
+				id, schedule_id, title, instructions, cwd, project_id, provider, model, reasoning_effort,
 				due_at, fired_at, next_run_at, session_id, run_id, invocation_json, state
-			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			snapshot.ID, occurrence.ScheduleID(), execution.Title, execution.Instructions,
-			execution.CWD, execution.ModelSelection.Provider(), execution.ModelSelection.Model(), execution.ModelSelection.ReasoningEffort(),
+			execution.CWD, execution.ProjectID, execution.ModelSelection.Provider(), execution.ModelSelection.Model(), execution.ModelSelection.ReasoningEffort(),
 			occurrence.DueAt().UnixMilli(), snapshot.FiredAt.UnixMilli(), snapshot.NextRunAt.UnixMilli(), snapshot.SessionID, snapshot.RunID,
 			string(invocation), scheduleFiringPending.databaseValue())
 		if execContextErr != nil {
@@ -192,7 +192,7 @@ func (s *ScheduleStore) Pending(ctx context.Context, afterDueAt time.Time, after
 		if limit <= 0 {
 			return errors.New("sqlite: schedule pending limit must be positive")
 		}
-		query := `SELECT id, title, instructions, cwd, provider, model, reasoning_effort,
+		query := `SELECT id, title, instructions, cwd, project_id, provider, model, reasoning_effort,
 			fired_at, next_run_at, session_id, run_id, invocation_json
 		 FROM schedule_firings WHERE state = ?`
 		args := []any{scheduleFiringPending.databaseValue()}
@@ -365,7 +365,7 @@ func scanSchedule(scan func(...any) error) (schedule.Schedule, error) {
 	var provider, model, reasoningEffort string
 	var lastMillis, nextMillis sql.NullInt64
 	var createdMillis int64
-	if err := scan(&snapshot.ID, &snapshot.Title, &snapshot.Instructions, &snapshot.CWD, &provider, &model, &reasoningEffort, &snapshot.Cron, &snapshot.TimeZone,
+	if err := scan(&snapshot.ID, &snapshot.Title, &snapshot.Instructions, &snapshot.CWD, &snapshot.ProjectID, &provider, &model, &reasoningEffort, &snapshot.Cron, &snapshot.TimeZone,
 		&lastMillis, &nextMillis, &createdMillis, &snapshot.Revision); err != nil {
 		return schedule.Schedule{}, err
 	}
@@ -390,11 +390,11 @@ func scanSchedule(scan func(...any) error) (schedule.Schedule, error) {
 
 func scanOccurrence(scan func(...any) error) (schedule.Occurrence, error) {
 	var snapshot schedule.OccurrenceSnapshot
-	var title, instructions, cwd, provider, model, reasoningEffort string
+	var title, instructions, cwd, projectID, provider, model, reasoningEffort string
 	var invocation string
 	var firedAt, nextRunAt int64
 	if err := scan(&snapshot.ID, &title, &instructions,
-		&cwd, &provider, &model, &reasoningEffort,
+		&cwd, &projectID, &provider, &model, &reasoningEffort,
 		&firedAt, &nextRunAt, &snapshot.SessionID, &snapshot.RunID, &invocation); err != nil {
 		return schedule.Occurrence{}, err
 	}
@@ -406,7 +406,7 @@ func scanOccurrence(scan func(...any) error) (schedule.Occurrence, error) {
 		return schedule.Occurrence{}, fmt.Errorf("decode schedule occurrence model selection: %w", err)
 	}
 	snapshot.Execution = schedule.ExecutionSnapshot{
-		Title: title, Instructions: instructions, CWD: cwd,
+		Title: title, Instructions: instructions, CWD: cwd, ProjectID: projectID,
 		ModelSelection: selection,
 	}
 	snapshot.FiredAt = time.UnixMilli(firedAt).UTC()
