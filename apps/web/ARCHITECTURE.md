@@ -225,6 +225,9 @@ successor gateway. The old generation is retired with its original gateway;
 late replies cannot publish into the successor's projection. Merely replacing a
 task queue while retaining its old gateway is insufficient.
 
+The gateway obtains the connection's client at command dispatch. The desktop
+host can supply its credential after the gateway is installed.
+
 React consumes the corresponding feature Provider; ordinary commands capture the
 required access object at construction or receive it as an argument. There is no
 module-global port installation, default feature instance, or application service

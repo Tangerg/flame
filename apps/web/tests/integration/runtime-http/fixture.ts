@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { mkdir, writeFile, copyFile, cp, link } from "node:fs/promises";
+import { mkdir, writeFile, copyFile, cp, link, readFile } from "node:fs/promises";
 import { createConnection } from "node:net";
 import { join } from "node:path";
 import { createInterface } from "node:readline";
@@ -42,7 +42,12 @@ export function useRuntimeFixture(
   {
     packages,
     isolationUnavailable: defaultIsolationUnavailable = false,
-  }: { packages?: readonly string[]; isolationUnavailable?: boolean } = {},
+    withLocalToken = false,
+  }: {
+    packages?: readonly string[];
+    isolationUnavailable?: boolean;
+    withLocalToken?: boolean;
+  } = {},
 ) {
   const environmentRoot = inject("runtimeHttpEnvironmentRoot");
   // Each suite owns a fresh Runtime, so its workspace and durable state start
@@ -52,8 +57,10 @@ export function useRuntimeFixture(
   const runtimeHome = join(suiteRoot, "home");
   const runtimeData = join(suiteRoot, "runtime-data");
   const runtimeStore = join(runtimeData, "runtime");
+  const localTokenPath = join(suiteRoot, "runtime-token");
   const distribution = packages ? join(suiteRoot, "distribution") : environmentRoot;
   let baseUrl = "";
+  let localToken: string | undefined;
   let mcpFixturePath = "";
   let providerBaseUrl = "";
   let runtime: ReturnType<typeof spawn> | undefined;
@@ -162,7 +169,8 @@ export function useRuntimeFixture(
     OPENAI_COMPATIBLE_API_KEY: "e2e-placeholder-key",
     OPENAI_API_KEY: "",
     FLAME_SERVER_LISTEN: runtimeListen,
-    FLAME_SERVER_NOLOCALTOKEN: "true",
+    FLAME_SERVER_NOLOCALTOKEN: String(!withLocalToken),
+    FLAME_SERVER_LOCALTOKENPATH: localTokenPath,
     OTEL_SDK_DISABLED: "true",
   });
 
@@ -273,6 +281,7 @@ export function useRuntimeFixture(
     if (url.port === "0") throw new Error(`Runtime advertised the unbound listener ${address}`);
     baseUrl = url.origin;
     await Promise.race([waitUntilReady(baseUrl, () => processOutput, readyBefore), stopped]);
+    if (withLocalToken) localToken = await readFile(localTokenPath, "utf8");
   };
 
   const stopRuntimeProcess = async () => {
@@ -308,7 +317,7 @@ export function useRuntimeFixture(
   };
 
   const createRuntimeClient = (fetch?: typeof globalThis.fetch) =>
-    createFlameClient(createHttpTransport({ baseUrl, fetch }), {
+    createFlameClient(createHttpTransport({ baseUrl, fetch, localToken }), {
       capabilities: () => negotiated,
       requestMeta: () => ({
         protocolVersion: PROTOCOL_VERSION,
@@ -340,7 +349,7 @@ export function useRuntimeFixture(
     );
 
   const createSharedClient = (fetch?: typeof globalThis.fetch) =>
-    createFlameClient(createHttpTransport({ baseUrl, fetch }), {
+    createFlameClient(createHttpTransport({ baseUrl, fetch, localToken }), {
       capabilities: () => negotiated,
       requestMeta: () => ({
         protocolVersion: PROTOCOL_VERSION,
@@ -451,6 +460,9 @@ export function useRuntimeFixture(
     managedOwners,
     get baseUrl() {
       return baseUrl;
+    },
+    get localToken() {
+      return localToken;
     },
     get mcpFixturePath() {
       return mcpFixturePath;

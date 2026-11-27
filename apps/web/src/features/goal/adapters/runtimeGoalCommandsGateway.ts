@@ -38,36 +38,41 @@ function assertGoalSession(expectedSessionId: string, goal: Goal): void {
 }
 
 class RuntimeGoalCommandsGateway implements GoalCommandsGateway {
-  readonly #client: FlameClient;
+  readonly #runtimeClient: () => FlameClient;
   readonly #mutations: MutationSettler = createMutationSettler();
 
-  constructor(client: FlameClient) {
-    this.#client = client;
+  constructor(runtimeClient: () => FlameClient) {
+    this.#runtimeClient = runtimeClient;
   }
 
   async start(input: Parameters<GoalCommandsGateway["start"]>[0]) {
     const goal = await this.#mutations.settle((signal) =>
-      this.#client.goals.start({ ...input, sessionId: asSessionId(input.sessionId) }, signal),
+      this.#runtimeClient().goals.start(
+        { ...input, sessionId: asSessionId(input.sessionId) },
+        signal,
+      ),
     );
     assertGoalSession(input.sessionId, goal);
   }
 
   async update(input: Parameters<GoalCommandsGateway["update"]>[0]) {
-    const goal = await this.#mutations.settle((signal) => this.#client.goals.update(input, signal));
+    const goal = await this.#mutations.settle((signal) =>
+      this.#runtimeClient().goals.update(input, signal),
+    );
     assertGoalSession(input.sessionId, goal);
   }
 
   clear(target: GoalTarget) {
-    return this.#mutations.settle((signal) => this.#client.goals.clear(target, signal));
+    return this.#mutations.settle((signal) => this.#runtimeClient().goals.clear(target, signal));
   }
 
   stop(target: GoalTarget) {
-    return this.#mutations.settle((signal) => this.#client.goals.stop(target, signal));
+    return this.#mutations.settle((signal) => this.#runtimeClient().goals.stop(target, signal));
   }
 
   async resume(target: GoalTarget) {
     const goal = await this.#mutations.settle((signal) =>
-      this.#client.goals.resume(target, signal),
+      this.#runtimeClient().goals.resume(target, signal),
     );
     assertGoalSession(target.sessionId, goal);
   }
@@ -84,7 +89,7 @@ export function bindGoalRuntime(
   scope: RuntimeServerScope,
 ): () => void {
   const replaceTarget = () =>
-    commandOwner.replaceTarget(() => new RuntimeGoalCommandsGateway(runtimeClient()));
+    commandOwner.replaceTarget(() => new RuntimeGoalCommandsGateway(runtimeClient));
   replaceTarget();
   const unsubscribe = scope.subscribeReplacement(replaceTarget);
   const disposeSharedMaterial = agentAccess.registerAgentSessionSharedMaterial<SessionSnapshot>(
