@@ -1,5 +1,6 @@
 import { agentInputToContentBlocks } from "@/features/agent/adapters/wireInput";
 import { localUserMessage } from "@/features/agent/adapters/optimisticUserMessage";
+import { retiredSteerMessageId } from "@/features/agent/application/view/optimisticMessageIdentity";
 import { type AgentSessionStore } from "@/features/agent/adapters/agentSessionStore";
 import { type Navigator } from "@/lib/navigation";
 import {
@@ -146,8 +147,11 @@ export function createAgentState(
       useAgentStore.getState().dropMessage(sessionId, messageId),
     projectSteerDelivery: (sessionId, messageId, command) =>
       useAgentStore.getState().projectSteerDelivery(sessionId, messageId, command),
-    projectSteerReceipt: (sessionId, messageId, steer) =>
-      useAgentStore.getState().projectSteerReceipt(sessionId, messageId, steer),
+    appendRetiredSteer: (sessionId, { runId, userItemId, input }) =>
+      useAgentStore.getState().appendLocalMessage(sessionId, {
+        ...localUserMessage(retiredSteerMessageId(userItemId), agentInputToContentBlocks(input)),
+        steer: { runId, receipt: "retired" },
+      }),
     reconcileMessageIdentity: (sessionId, fromId, toId, steer) =>
       useAgentStore.getState().reconcileMessageIdentity(sessionId, fromId, toId, steer),
     appendLocalUserMessage: (sessionId, messageId, input) =>

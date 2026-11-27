@@ -5,7 +5,6 @@ import { reduceDurableItem } from "@/features/agent/application/fold/reducer";
 import { foldRunSnapshot } from "@/features/agent/application/fold/runSnapshot";
 import { foldPendingInterruptSet } from "@/features/agent/application/fold/pendingInterruptSnapshot";
 import { onPlanUpdated } from "@/features/agent/application/fold/planHandlers";
-import { retiredSteerMessageId } from "@/features/agent/application/view/optimisticMessageIdentity";
 import {
   agentInputMessagePart,
   userContentBlocks,
@@ -18,10 +17,7 @@ export function projectAgentSessionSnapshot(snapshot: AgentSessionSnapshot): Age
     view = foldPendingInterruptSet(view, pending);
   }
   for (const accepted of snapshot.steerInputs ?? []) {
-    const identity =
-      accepted.receipt === "retired"
-        ? retiredSteerMessageId(accepted.userItemId)
-        : accepted.userItemId;
+    const identity = accepted.userItemId;
     const present = view.messages.find((message) => message.id === identity);
     if (present) {
       if (present.role !== "user" || present.runId !== accepted.runId)
@@ -30,7 +26,7 @@ export function projectAgentSessionSnapshot(snapshot: AgentSessionSnapshot): Age
         ...view,
         messages: view.messages.map((message) =>
           message.id === identity
-            ? { ...message, steer: { runId: accepted.runId, receipt: accepted.receipt } }
+            ? { ...message, steer: { runId: accepted.runId, receipt: "accepted" } }
             : message,
         ),
       };
@@ -47,9 +43,8 @@ export function projectAgentSessionSnapshot(snapshot: AgentSessionSnapshot): Age
           blocks: userContentBlocks(accepted.input.parts.map(agentInputMessagePart)),
           steer: {
             runId: accepted.runId,
-            receipt: accepted.receipt,
-            ...(accepted.receipt === "accepted" &&
-            view.runsById[accepted.runId]?.status === "finished"
+            receipt: "accepted",
+            ...(view.runsById[accepted.runId]?.status === "finished"
               ? { application: "notApplied" as const }
               : {}),
           },

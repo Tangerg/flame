@@ -28,7 +28,6 @@ import { EMPTY_AGENT_SESSION_VIEW } from "@/features/agent/public/sessionView";
 import {
   dropMessage,
   reconcileMessageIdentity,
-  projectSteerReceipt,
   projectSteerDelivery,
 } from "@/features/agent/application/view/viewMutations";
 import {
@@ -80,11 +79,6 @@ interface AgentStore {
     steer?: Required<Pick<NonNullable<Message["steer"]>, "runId" | "receipt">>,
   ) => void;
   dropMessage: (sessionId: string, id: string) => void;
-  projectSteerReceipt: (
-    sessionId: string,
-    messageId: string,
-    steer: Required<Pick<NonNullable<Message["steer"]>, "runId" | "receipt">>,
-  ) => void;
   projectSteerDelivery: (
     sessionId: string,
     messageId: string,
@@ -368,13 +362,6 @@ export function createAgentStore(sessionStore: AgentSessionStore) {
     dropMessage: (sessionId, id) =>
       set((state) => {
         const sessions = patchView(state.sessions, sessionId, (view) => dropMessage(view, id));
-        return sessions === state.sessions ? state : { sessions };
-      }),
-    projectSteerReceipt: (sessionId, messageId, steer) =>
-      set((state) => {
-        const sessions = patchView(state.sessions, sessionId, (view) =>
-          projectSteerReceipt(view, messageId, steer),
-        );
         return sessions === state.sessions ? state : { sessions };
       }),
     projectSteerDelivery: (sessionId, messageId, command) =>

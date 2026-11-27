@@ -1035,6 +1035,11 @@ reads the existing journal projection first, including an acceptance recovered
 during that read, before admitting another input. These are receipt projections,
 not a second transcript, scheduler or command store.
 
+Session recovery observes the original command receipts before taking a single
+Runtime snapshot. The snapshot supplies the ordered transcript, Run states and
+retained Steer inputs together. A retired Steer is shown as a local receipt with
+its original input. Recovery acknowledges the journal after publishing the view.
+
 Client, workspace and Session components receive `context.composer`. It captures
 `captureAppendText` from the Composer when the component context is created, so
 appended text reaches the draft that was current then and is refused after a

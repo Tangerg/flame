@@ -16,6 +16,7 @@ import {
   type AgentRuntimeGateway,
   type AgentSessionCreation,
   type AgentOpeningCommand,
+  type AgentSteerInput,
   type AgentUnresolvedSteer,
 } from "@/features/agent/application/runtimeGateway";
 import {
@@ -25,9 +26,9 @@ import {
 import { type RuntimeAccess } from "@/features/connection/public/runtime";
 import { type AgentSharedMaterial } from "@/features/agent/application/session/sharedMaterial";
 import {
-  mergeRecordedSteer,
   recoveredCommandBelongs,
   runtimeSessionMaterial,
+  runtimeSteerInput,
   unresolvedOpening,
   unresolvedSteer,
   type RecoveredOpening,
@@ -159,20 +160,14 @@ class RuntimeAgentGateway implements AgentRuntimeGateway {
     const sid = asSessionId(sessionId);
     const includeDescendants = this.capabilities.hasCapability("childRuns");
     try {
-      let snapshot = await client.sessions.snapshot(sid, includeDescendants, signal);
+      // Observe receipts before reading material so the transcript and all Run
+      // states reflect one Runtime snapshot taken after those observations.
       const commands = await client.runs.recoverCommands(signal);
       signal?.throwIfAborted();
-      if (
-        commands.some(
-          (command) =>
-            command.operation !== "steer" &&
-            command.observation.type === "recorded" &&
-            command.observation.acceptance.sessionId === sessionId,
-        )
-      )
-        snapshot = await client.sessions.snapshot(sid, includeDescendants, signal);
+      const snapshot = await client.sessions.snapshot(sid, includeDescendants, signal);
       const material = runtimeSessionMaterial(this.sharedMaterial, sessionId, snapshot);
       const unresolvedOpenings: AgentOpeningCommand[] = [];
+      const retiredSteers: AgentSteerInput[] = [];
       const unresolvedSteers: AgentUnresolvedSteer[] = [];
       const acknowledge: Array<() => void> = [];
       const runIds = new Set(snapshot.runs.map((run) => run.id));
@@ -183,13 +178,28 @@ class RuntimeAgentGateway implements AgentRuntimeGateway {
         const { observation } = command;
         if (observation.type === "recorded") {
           acknowledge.push(observation.acknowledge);
-          if (command.operation === "steer") mergeRecordedSteer(material, observation.acceptance);
+          const receipt = observation.acceptance;
+          if (
+            command.operation === "steer" &&
+            receipt.type === "retired" &&
+            receipt.userItemId &&
+            receipt.input
+          ) {
+            retiredSteers.push(
+              runtimeSteerInput({
+                runId: receipt.runId,
+                userItemId: receipt.userItemId,
+                input: receipt.input,
+              }),
+            );
+          }
         } else if (command.operation === "steer") {
           if (observation.type === "unknown")
             console.warn("[session] original steer query failed:", observation.cause);
           unresolvedSteers.push(unresolvedSteer(command));
         } else unresolvedOpenings.push(unresolvedOpening(command, observation.type));
       }
+      material.retiredSteers = retiredSteers;
       material.unresolvedSteers = unresolvedSteers;
       material.unresolvedOpenings = unresolvedOpenings;
       if (acknowledge.length)

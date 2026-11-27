@@ -11,7 +11,10 @@ import {
   type Message,
 } from "@/features/agent/public/sessionView";
 import { type TranscriptRow } from "@/features/agent/application/conversation/transcriptRows";
-import { type AgentOpeningCommand } from "@/features/agent/application/runtimeGateway";
+import {
+  type AgentOpeningCommand,
+  type AgentSteerInput,
+} from "@/features/agent/application/runtimeGateway";
 import {
   type AgentInputSettlement,
   type AgentOpeningAcceptance,
@@ -103,11 +106,7 @@ export interface AgentSessionViewPort {
   getSessions(): Record<string, AgentSessionViewEntry>;
   getSession(sessionId: string): AgentSessionViewEntry | undefined;
   dropMessage(sessionId: string, messageId: string): void;
-  projectSteerReceipt(
-    sessionId: string,
-    messageId: string,
-    steer: Required<Pick<NonNullable<Message["steer"]>, "runId" | "receipt">>,
-  ): void;
+  appendRetiredSteer(sessionId: string, steer: AgentSteerInput): void;
   projectSteerDelivery(
     sessionId: string,
     messageId: string,

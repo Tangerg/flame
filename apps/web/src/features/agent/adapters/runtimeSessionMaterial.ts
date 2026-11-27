@@ -1,7 +1,9 @@
 import { type RunCommandRecovery, type SessionSnapshot } from "@flame/runtime-client";
+import { type SteerInput } from "@flame/runtime-client/wire";
 import {
   type AgentOpeningCommand,
   type AgentSessionMaterialRead,
+  type AgentSteerInput,
   type AgentUnresolvedSteer,
 } from "@/features/agent/application/runtimeGateway";
 import { type AgentSharedMaterial } from "@/features/agent/application/session/sharedMaterial";
@@ -23,12 +25,7 @@ export function runtimeSessionMaterial(
       items: snapshot.items.map(runtimeItem),
       runs: snapshot.runs.map(runtimeRunFact),
       pendingInterruptSets: snapshot.interrupts.map(runtimePendingInterruptSet),
-      steerInputs: snapshot.steerInputs?.map((steer) => ({
-        runId: steer.runId,
-        userItemId: steer.userItemId,
-        input: contentBlocksToAgentInput(steer.input),
-        receipt: "accepted",
-      })),
+      steerInputs: snapshot.steerInputs?.map(runtimeSteerInput),
       ...(plan ? { plan } : {}),
     },
     rollbackBasis: {
@@ -39,7 +36,6 @@ export function runtimeSessionMaterial(
   };
 }
 
-type RecordedObservation = Extract<RunCommandRecovery["observation"], { type: "recorded" }>;
 type RecoveredSteer = Extract<RunCommandRecovery, { operation: "steer" }>;
 export type RecoveredOpening = Exclude<RunCommandRecovery, { operation: "steer" }>;
 
@@ -57,24 +53,12 @@ export function recoveredCommandBelongs(
   return runIds.has(command.params.runId);
 }
 
-export function mergeRecordedSteer(
-  material: AgentSessionMaterialRead,
-  receipt: RecordedObservation["acceptance"],
-): void {
-  if (receipt.type === "accepted" && receipt.appliedItem) {
-    const applied = receipt.appliedItem;
-    if (!material.snapshot.items.some((item) => item.id === applied.id))
-      material.snapshot.items.push(runtimeItem(applied));
-  }
-  if (!receipt.userItemId || !receipt.input) return;
-  material.snapshot.steerInputs ??= [];
-  if (!material.snapshot.steerInputs.some((pending) => pending.userItemId === receipt.userItemId))
-    material.snapshot.steerInputs.push({
-      runId: receipt.runId,
-      userItemId: receipt.userItemId,
-      input: contentBlocksToAgentInput(receipt.input),
-      receipt: receipt.type,
-    });
+export function runtimeSteerInput({
+  runId,
+  userItemId,
+  input,
+}: Pick<SteerInput, "runId" | "userItemId" | "input">): AgentSteerInput {
+  return { runId, userItemId, input: contentBlocksToAgentInput(input) };
 }
 
 export function unresolvedSteer(command: RecoveredSteer): AgentUnresolvedSteer {

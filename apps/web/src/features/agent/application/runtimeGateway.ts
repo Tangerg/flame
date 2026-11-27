@@ -13,17 +13,18 @@ import {
 } from "@/features/agent/domain/hitl";
 import { type AgentInput } from "@/features/agent/domain/input";
 import { type AgentPlan } from "@/features/agent/public/sessionView";
+export interface AgentSteerInput {
+  runId: string;
+  userItemId: string;
+  input: AgentInput;
+}
+
 export interface AgentSessionSnapshot {
   items: AgentItem[];
   runs: AgentRunFact[];
   pendingInterruptSets: AgentPendingInterruptSet[];
   plan?: AgentPlan;
-  steerInputs?: Array<{
-    runId: string;
-    userItemId: string;
-    input: AgentInput;
-    receipt: "accepted" | "retired";
-  }>;
+  steerInputs?: AgentSteerInput[];
 }
 
 interface SessionRollbackBasis {
@@ -36,6 +37,7 @@ export interface AgentSessionMaterialRead {
   rollbackBasis: SessionRollbackBasis;
   projectAssociatedSharedMaterial(shared: Record<string, unknown>): Record<string, unknown>;
   acknowledgeRecoveredCommands?: () => void;
+  retiredSteers?: AgentSteerInput[];
   unresolvedSteers?: AgentUnresolvedSteer[];
   unresolvedOpenings?: AgentOpeningCommand[];
 }

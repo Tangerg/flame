@@ -9,10 +9,7 @@ import {
 } from "@/features/agent/application/runtimeGateway";
 
 import { steerInputFeedback } from "@/features/agent/application/view/steerInputFeedback";
-import {
-  retiredSteerMessageId,
-  steerMessageId,
-} from "@/features/agent/application/view/optimisticMessageIdentity";
+import { steerMessageId } from "@/features/agent/application/view/optimisticMessageIdentity";
 import {
   settleAgentInput,
   type AgentInputSettlement,
@@ -181,9 +178,11 @@ function observeSteer(
         if (!owner.isCurrent()) return accepted;
         if (result.type === "retired") {
           clearProvisional();
-          const retiredId = retiredSteerMessageId(result.userItemId);
-          view.appendLocalUserMessage(sessionId, retiredId, prepared);
-          view.projectSteerReceipt(sessionId, retiredId, { runId, receipt: "retired" });
+          view.appendRetiredSteer(sessionId, {
+            runId,
+            userItemId: result.userItemId,
+            input: prepared,
+          });
           effect.settle();
         } else {
           const messages = view.getSession(sessionId)?.view.messages;
