@@ -13,6 +13,11 @@ An entry identifies a reproducible problem in a framework contract or implementa
 
 Framework changes use framework-native types and standalone fixtures. Flame translates those contracts into its product model and verifies the integration against released modules.
 
+## Oolong terminal completion and PTY resize (UI v0.30.0)
+
+- **Modal input after a completed write.** A real Flame PTY review stalled after sending approval navigation or a text answer. A standalone program reproduced a completed modal write followed by a key delivered before the program handled the writer's change notification. The frame contained the prompt and the writer had advanced, but the scene still discarded the key using its earlier completion projection. Refresh the scene's projection from the writer before routing input to a modal whose frame is pending. The same probe verifies that input sent before the writer completes still stays out of the new modal. [Input dispatch](https://github.com/Tangerg/oolong/blob/948bc888e5229c9b4e88b4feb784312e9c60cb9e/ui/core/program/run.go) [Modal input](https://github.com/Tangerg/oolong/blob/948bc888e5229c9b4e88b4feb784312e9c60cb9e/ui/core/scene/event.go)
+- **Screen decoding across resize.** A separate Flame PTY review stalled with a malformed UTF-8 error after resizing. The assertion harness starts decoding at the current byte count when requesting a new size. A standalone probe splits a valid renderer frame inside a border character at that point. The complete byte stream is valid UTF-8, yet the decoder keeps failing after a full redraw. Preserve parser continuity across the resize and make the completed replacement frame the evidence for assertions at the new geometry. [Transcript geometry](https://github.com/Tangerg/oolong/blob/948bc888e5229c9b4e88b4feb784312e9c60cb9e/ui/uitest/ptytest/transcript.go)
+
 ## Frame browser control over HTTP/1.1 (Frame v0.5.0)
 
 Browsers open at most six HTTP/1.1 connections per origin, and the Realm's control requests share that pool with every other Runtime request.
