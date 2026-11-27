@@ -31,8 +31,9 @@ workbench places the generated surface in the answer and keeps the recorded
 call and its arguments available in the tool disclosure.
 
 Editable controls bind under `/draft`. Subsequent recorded `updateDataModel`
-messages may write only under `/data/`. Operation results are published under
-`/data/operations/<operation id>`. Business identifiers and exact quantities use
+messages write named presentation fields under `/data/`. The Runtime observer
+owns `/data/operations/<operation id>` and exposes it as a read-only binding for
+the presentation. Business identifiers and exact quantities use
 strings. A field's current native value and validation state are projected from
 the A2UI model. Remote presentation messages cannot overwrite an edited draft.
 Closing a trusted Dialog returns to its opener and keeps the surface's draft

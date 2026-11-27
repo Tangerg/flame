@@ -15,6 +15,7 @@ import {
 import { DocumentBody, RecordGroup, RecordTitle } from "@flame/ui";
 import { A2UI_VERSION } from "../contracts/catalog";
 import { Presentation } from "../contracts/document";
+import { operationResultPath } from "../contracts/surfaceData";
 import { InteractionController } from "./interactionController";
 import { InteractionFeedback } from "./interaction";
 import { CatalogDisplay, displayCatalog } from "./renderingCatalog";
@@ -57,8 +58,7 @@ class CapturedSurface {
     };
   }
   writeOperation(id: string, value: unknown) {
-    const path =
-      "/data/operations/" + id.replaceAll("~", "~0").replaceAll("/", "~1");
+    const path = operationResultPath(id);
     for (const surface of this.surfaces) surface.dataModel.set(path, value);
   }
   resetDraft(surfaceId: string) {

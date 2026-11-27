@@ -18,6 +18,12 @@ import {
 import type { PluginCallRoute } from "@flame/runtime-client/wire";
 import { z } from "zod/mini";
 import {
+  isPresentationUpdate,
+  OPERATION_RESULTS_FIELD,
+  OPERATION_RESULTS_PATH,
+  PRESENTATION_DATA_FIELD,
+} from "./surfaceData";
+import {
   A2UI_VERSION,
   CATALOG_ID,
   catalog,
@@ -232,6 +238,16 @@ function admit(document: UiDocument): void {
         surfaces.has(surface.surfaceId)
       )
         throw new InvalidPresentation("invalid surface admission");
+      const data: unknown = surface.dataModel?.[PRESENTATION_DATA_FIELD];
+      const record = data !== null && typeof data === "object" && !Array.isArray(data);
+      if (record && Object.hasOwn(data, OPERATION_RESULTS_FIELD))
+        throw new InvalidPresentation(
+          `${OPERATION_RESULTS_PATH} holds Runtime operation results`,
+        );
+      if (document.operations.length && data != null && !record)
+        throw new InvalidPresentation(
+          `/${PRESENTATION_DATA_FIELD} requires an object for operation results`,
+        );
       surfaces.add(surface.surfaceId);
       surface.components?.forEach(admitControls);
       continue;
@@ -242,10 +258,10 @@ function admit(document: UiDocument): void {
     }
     if (
       "updateDataModel" in message &&
-      !message.updateDataModel.path?.startsWith("/data/")
+      !isPresentationUpdate(message.updateDataModel.path)
     )
       throw new InvalidPresentation(
-        "remote updates may write only below /data",
+        `presentation updates require a named display field in /${PRESENTATION_DATA_FIELD}. ${OPERATION_RESULTS_PATH} holds Runtime operation results`,
       );
   }
   const processor = new MessageProcessor([catalog], undefined, {
