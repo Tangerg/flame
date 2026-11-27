@@ -2,6 +2,7 @@ import type { CallPluginRequest, RequestMeta } from "@flame/runtime-client/wire"
 import type { WireMethodName } from "@flame/runtime-client/methods";
 import { checkRequest, pluginMethod } from "./request";
 import { canonicalJSON, cloneJSON } from "@frame/sdk/json";
+import { isIdempotencyKey } from "./idempotencyKey";
 import {
   type CapturedPluginCommand,
   type DurableMutationIdentity,
@@ -313,7 +314,7 @@ export function openDurableMutationJournal(
       }
     },
     reserve(method, params, preferredKey, claimed, requestMeta) {
-      if (preferredKey !== undefined && !validText(preferredKey, MAX_IDENTITY_LENGTH)) {
+      if (preferredKey !== undefined && !isIdempotencyKey(preferredKey)) {
         throw new MutationJournalError("Runtime mutation identity candidate is invalid");
       }
       // These records are unresolved evidence, not a cache of completed receipts.

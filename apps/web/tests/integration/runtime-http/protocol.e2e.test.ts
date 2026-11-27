@@ -14,6 +14,7 @@ import {
 } from "@flame/runtime-client";
 import {
   HTTP_HEADERS,
+  MAXIMUM_IDEMPOTENCY_KEY_CHARACTERS,
   PROTOCOL_VERSION,
   RPC_HTTP,
   type RequestMeta,
@@ -431,6 +432,80 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: protocol delivery", () => {
       for (const session of await sessionsWithTitle())
         await fixture.client.sessions.delete(asSessionId(session.id));
     }
+  });
+
+  it("refuses empty idempotency metadata and admits omitted metadata", async () => {
+    const title = `Idempotency header presence ${crypto.randomUUID()}`;
+    const sessionsWithTitle = async () =>
+      (await fixture.client.sessions.list().autoPagingToArray()).filter(
+        (session) => session.title === title,
+      );
+
+    try {
+      const malformed: Record<string, string>[] = [
+        { [HTTP_HEADERS.idempotencyKey]: "" },
+        {
+          [HTTP_HEADERS.idempotencyKey]: crypto.randomUUID(),
+          [HTTP_HEADERS.idempotencyNamespace]: "",
+        },
+      ];
+      for (const headers of malformed) {
+        const empty = await fixture.postRPC("sessions.create", { title }, headers);
+        await expect(sessionsWithTitle()).resolves.toEqual([]);
+        expect(empty.status).toBe(400);
+        expect(empty.headers.get(HTTP_HEADERS.contentType)).toContain(RPC_HTTP.problemMediaType);
+        await expect(empty.json()).resolves.toMatchObject({
+          type: "urn:flame:transport:invalid_request",
+        });
+      }
+
+      const omitted = await fixture.postRPC("sessions.create", { title });
+      expect(omitted.status).toBe(RPC_HTTP.callStatus);
+      const persisted = await sessionsWithTitle();
+      expect(persisted).toHaveLength(1);
+      await expect(omitted.json()).resolves.toMatchObject({
+        result: { id: persisted[0]?.id, title },
+      });
+    } finally {
+      for (const session of await sessionsWithTitle())
+        await fixture.client.sessions.delete(asSessionId(session.id));
+    }
+  });
+
+  it("admits the same idempotency key through dispatch and receipt lookup", async () => {
+    const namespace = fixture.negotiated?.limits.idempotency.namespace;
+    if (!namespace) throw new Error("expected the Runtime's idempotency namespace");
+    const lookup = (key: string) =>
+      fixture.postRPC("runs.getAcceptance", { namespace, key, operation: "start" });
+    const cancel = (key: string) =>
+      fixture.postRPC(
+        "runs.cancel",
+        { runId: asRunId(crypto.randomUUID()) },
+        { [HTTP_HEADERS.idempotencyKey]: key },
+      );
+
+    const multibyteKey = "é".repeat(128);
+    const dispatched = await cancel(multibyteKey);
+    expect(dispatched.status).toBe(RPC_HTTP.callStatus);
+    await expect(dispatched.json()).resolves.toMatchObject({
+      error: { data: { problem: { type: "invalid_params" } } },
+    });
+
+    const refused = await lookup(multibyteKey);
+    expect(refused.status).toBe(RPC_HTTP.callStatus);
+    await expect(refused.json()).resolves.toMatchObject({
+      error: { data: { problem: { type: "invalid_params", errors: [{ field: "key" }] } } },
+    });
+    const portableKey = "k".repeat(MAXIMUM_IDEMPOTENCY_KEY_CHARACTERS - 1) + "/";
+    await expect((await lookup(portableKey)).json()).resolves.toMatchObject({
+      result: { type: "notRecorded" },
+    });
+    await expect((await cancel(portableKey)).json()).resolves.toMatchObject({
+      error: { data: { problem: { type: "run_not_found" } } },
+    });
+    await expect((await lookup(portableKey)).json()).resolves.toMatchObject({
+      error: { data: { problem: { type: "idempotency_conflict" } } },
+    });
   });
 
   it.each([

@@ -1317,7 +1317,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     projectId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
   }, ["projectId"]),
   GetRunAcceptanceRequest: object({
-    key: allOf([text(), minLength(1), maxLength(255)]),
+    key: allOf([text(), maxLength(255), pattern("^[!-~]+$")]),
     namespace: allOf([text(), minLength(1), pattern("^idp_[0-9a-f]{32}$")]),
     operation: ref(() => CHECKS.RunCommandOperation),
     request: ref(() => CHECKS.StartRunRequest),
@@ -2704,7 +2704,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     id: allOf([text(), pattern("^[a-z][a-z0-9._-]{0,63}$")]),
   }, ["bindings", "id"]),
   PluginCommandRequest: object({
-    key: allOf([text(), minLength(1), maxLength(255)]),
+    key: allOf([text(), maxLength(255), pattern("^[!-~]+$")]),
     namespace: allOf([text(), minLength(1), pattern("^idp_[0-9a-f]{32}$")]),
   }, ["key", "namespace"]),
   PluginComponent: allOf([

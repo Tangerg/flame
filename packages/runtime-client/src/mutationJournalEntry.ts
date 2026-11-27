@@ -14,6 +14,7 @@ import {
 } from "./request";
 import { validateWire } from "./generated/wire.validate.generated";
 import { MutationJournalError } from "./mutationJournalErrors";
+import { isIdempotencyKey } from "./idempotencyKey";
 
 const FINGERPRINT_FIELD_SEPARATOR = "\u0000";
 
@@ -79,7 +80,7 @@ const entrySchema = z.strictObject({
   salt: boundedText,
   namespace: boundedText,
   fingerprint: digest,
-  idempotencyKey: boundedText,
+  idempotencyKey: z.custom<string>(isIdempotencyKey),
   createdAt: z.number(),
   expiresAt: z.number(),
   command: journalCommand,

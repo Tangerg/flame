@@ -6,6 +6,7 @@ import {
   responseMediaType,
 } from "./document";
 import { endpointAcceptsBearer, requireRuntimeEndpoint } from "../endpoint";
+import { isIdempotencyKey } from "../idempotencyKey";
 import {
   context,
   propagation,
@@ -96,7 +97,7 @@ export interface HttpTransportConfig {
 function requireExactHeaderValues(headers: Record<string, string>): void {
   // Fetch's byte strings cannot retain the UTF-8 identity Runtime reads from non-ASCII text.
   for (const value of Object.values(headers)) {
-    if (!/^[\t\x20-\x7e]*$/u.test(value) || value.trim() !== value)
+    if (!/^[\t\x20-\x7e]+$/u.test(value) || value.trim() !== value)
       throw new TypeError("HTTP request headers must contain exact ASCII field values");
   }
 }
@@ -315,8 +316,12 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
       [HTTP_HEADERS.method]: method,
       Accept: `${RPC_HTTP.documentMediaType}, ${RPC_HTTP.streamMediaType}`,
     });
-    if (options.idempotencyKey) headers[HTTP_HEADERS.idempotencyKey] = options.idempotencyKey;
-    if (options.idempotencyNamespace) {
+    const key = options.idempotencyKey;
+    if (key !== undefined) {
+      if (!isIdempotencyKey(key)) throw new TypeError("runtime idempotency key is invalid");
+      headers[HTTP_HEADERS.idempotencyKey] = key;
+    }
+    if (options.idempotencyNamespace !== undefined) {
       headers[HTTP_HEADERS.idempotencyNamespace] = options.idempotencyNamespace;
     }
     if (options.lastEventId) headers[HTTP_HEADERS.lastEventId] = options.lastEventId;

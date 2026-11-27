@@ -9520,6 +9520,11 @@
           "value": "\"evt_\""
         },
         {
+          "name": "IdempotencyKeyPattern",
+          "type": "untyped string",
+          "value": "\"^[!-~]+$\""
+        },
+        {
           "name": "InterruptApproval",
           "type": "InterruptType",
           "value": "\"approval\""
@@ -10712,7 +10717,7 @@
         {
           "name": "Version",
           "type": "untyped string",
-          "value": "\"2026-11-27.6\""
+          "value": "\"2026-11-27.7\""
         },
         {
           "name": "WorkspaceAvailable",
@@ -11015,6 +11020,10 @@
         {
           "name": "RuntimeTopics",
           "signature": "func() []RuntimeTopic"
+        },
+        {
+          "name": "ValidateIdempotencyKey",
+          "signature": "func(key string) error"
         },
         {
           "name": "ValidateItemID",

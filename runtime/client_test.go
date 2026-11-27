@@ -74,6 +74,18 @@ func TestClientsShareRuntimeWithoutSharingOwnership(t *testing.T) {
 	second := remoteTestClient(t, server.URL)
 	options := protocol.CommandOptions{IdempotencyKey: "shared-create", IdempotencyNamespace: discovery.Capabilities.Limits.Idempotency.Namespace}
 	request := protocol.CreateSessionRequest{Title: "shared session"}
+	invalid := options
+	invalid.IdempotencyKey = "shared create"
+	if _, err := first.CreateSession(t.Context(), request, invalid); !errors.Is(err, protocol.ErrInvalidParams) || errors.Is(err, runtimeclient.ErrAcknowledgementUnknown) {
+		t.Fatalf("remote command key = %v, want definitive refusal", err)
+	}
+	if _, err := rt.CreateSession(t.Context(), request, invalid); !errors.Is(err, protocol.ErrInvalidParams) {
+		t.Fatalf("local command key = %v, want refusal", err)
+	}
+	sessions, err := rt.ListSessions(t.Context(), protocol.ListSessionsRequest{}, protocol.CallOptions{})
+	if err != nil || len(sessions.Data) != 0 {
+		t.Fatalf("invalid command key changed Sessions = (%+v, %v)", sessions, err)
+	}
 	created, err := first.CreateSession(t.Context(), request, options)
 	if err != nil {
 		t.Fatal(err)

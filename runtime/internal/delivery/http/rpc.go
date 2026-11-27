@@ -30,8 +30,14 @@ const maxRPCBodyBytes = 4 << 20
 
 func (s *rpcHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	for _, name := range requestHeaders() {
-		if len(r.Header.Values(name)) > 1 {
+		values := r.Header.Values(name)
+		if len(values) > 1 {
 			writeProblem(w, problemInvalidRequest, name+" header must occur at most once")
+			return
+		}
+		if len(values) == 1 && values[0] == "" &&
+			(name == headerIdempotencyKey || name == headerIdempotencyNamespace) {
+			writeProblem(w, problemInvalidRequest, name+" header must not be empty")
 			return
 		}
 	}

@@ -63,9 +63,9 @@ from the matching durable receipt. The SDK retains a previously dispatched
 command when a replay is refused without that evidence.
 
 HTTP credentials and metadata must be ASCII field values without surrounding
-whitespace. Fetch byte strings cannot preserve non-ASCII UTF-8 identities, and
-header normalization must never replace a captured command key or replay cursor.
-Unrepresentable values are refused before opening Fetch.
+whitespace. Caller-chosen command keys are 1–255 visible ASCII characters
+without spaces and are retained exactly for receipt lookup. Unrepresentable
+header values are refused before opening Fetch.
 
 Consumers use explicit public entries: the main API, `wire`, `methods`,
 `validation`, `testing`, and `testing/samples/*`. Internal implementation paths

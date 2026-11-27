@@ -37,8 +37,10 @@ transport order cannot select an authority from competing values.
 Core `2026-11-27.3` carries HTTP error correlation on the `Request-Id` response
 header. Both Go peers use the shared `protocol.HTTPProblem` diagnostic body,
 which supplies the generated TypeScript projection.
-Client-chosen idempotency keys must be valid UTF-8 so JSON receipt lookup can
-retain the same identity accepted through either binding.
+Core `2026-11-27.7` requires caller-chosen idempotency keys to contain 1–255
+visible ASCII characters without spaces. Dispatch and receipt lookup accept
+the same exact key. A present empty HTTP key or namespace is invalid. Omit
+both headers for commands that allow unkeyed dispatch.
 Protocol admission checks enum values throughout each request, including plugin
 server and skill configuration maps, before creating a command receipt. A caller
 can correct an invalid enum and retry with the original key.
