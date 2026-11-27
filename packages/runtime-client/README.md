@@ -43,7 +43,8 @@ from independent readers. Expected aborts
 alone remain successful cleanup.
 
 After capability discovery, `runtimeEvents.subscribe` can share one connection
-for negotiated topics. A subscriber's abort settles its own call while the
+for negotiated topics. Each subscriber's request is validated before sharing
+the connection. A subscriber's abort settles its own call while the
 shared stream is still awaiting acknowledgement. Canceling a subscription or
 returning its iterator discards that subscriber's unread events. The last
 subscriber to leave closes the shared connection. File watch subscriptions use

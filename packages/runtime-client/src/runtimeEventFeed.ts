@@ -6,7 +6,9 @@ import type {
 } from "@flame/runtime-client/wire";
 import { createPushPullChannel } from "./channel";
 import { RpcConnectionError } from "./errors";
+import { checkRequest } from "./request";
 import { iterableOf, MAXIMUM_BUFFERED_RUNTIME_EVENTS, type StreamingResult } from "./stream";
+import { RUNTIME_SUBSCRIBE_METHOD } from "./transport";
 
 type RuntimeEventSubscription = StreamingResult<RuntimeSubscribeResponse, RuntimeEvent>;
 
@@ -144,7 +146,8 @@ export function createRuntimeEventFeed(
     if (current === stream) current = undefined;
   };
   return {
-    async subscribe(request, signal) {
+    async subscribe(input, signal) {
+      const request = checkRequest(RUNTIME_SUBSCRIBE_METHOD, input);
       const topics = negotiatedTopics();
       if (
         request.watches?.length ||

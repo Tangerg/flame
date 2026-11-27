@@ -276,6 +276,31 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: protocol delivery", () => {
     await events.return?.();
   }, 30_000);
 
+  it("refuses invalid topics before opening or joining a shared subscription", async () => {
+    let openings = 0;
+    const client = fixture.createRuntimeClient((input, init) => {
+      openings++;
+      return fetch(input, init);
+    });
+    const topic = "sessions.changed";
+    try {
+      await expect(client.runtimeEvents.subscribe({ topics: [] })).rejects.toBeInstanceOf(
+        RpcProtocolError,
+      );
+      expect(openings).toBe(0);
+
+      const subscription = await client.runtimeEvents.subscribe({ topics: [topic] });
+      const events = subscription.events[Symbol.asyncIterator]();
+      await expect(client.runtimeEvents.subscribe({ topics: [topic, topic] })).rejects.toBeInstanceOf(
+        RpcProtocolError,
+      );
+      expect(openings).toBe(1);
+      await events.return?.();
+    } finally {
+      await client.close();
+    }
+  });
+
   it("cancels a subscriber while another owns the shared opening", async () => {
     const arrived = Promise.withResolvers<void>();
     const release = Promise.withResolvers<void>();
