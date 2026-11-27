@@ -117,7 +117,10 @@ func (b *Bundle) commitPluginWrite(ctx context.Context, request []byte, fn func(
 	if err != nil {
 		return err
 	}
-	settlement, err := b.PluginUses.CommitUnder(ctx, id, request, func(admitted context.Context, executor sqlite.Executor) ([]byte, error) {
+	// A durable submission must settle under its original admission even if
+	// the projector's caller stops waiting during shutdown.
+	settling := context.WithoutCancel(ctx)
+	settlement, err := b.PluginUses.CommitUnder(settling, id, request, func(admitted context.Context, executor sqlite.Executor) ([]byte, error) {
 		if err := b.db.withExecutor(admitted, executor, fn); err != nil {
 			return nil, err
 		}
@@ -127,7 +130,7 @@ func (b *Bundle) commitPluginWrite(ctx context.Context, request []byte, fn func(
 		b.Admission.RequireRecovery(errors.Join(sqlite.ErrUnsettled, err))
 		return errors.Join(framehost.ErrRecoveryRequired, err)
 	}
-	return errors.Join(err, b.PluginUses.CompactSettledUnder(ctx))
+	return errors.Join(err, b.PluginUses.CompactSettledUnder(settling))
 }
 
 func (b *Bundle) RecoverPluginBindings(ctx context.Context) error {
