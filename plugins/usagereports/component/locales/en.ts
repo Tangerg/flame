@@ -68,8 +68,7 @@ export const en: Record<string, string> = {
   "message.savedArchived":
     "Core report saved: {{title}}. It is listed in the archive.",
   "message.removed": "Saved report deleted. Core accounting is unchanged.",
-  "message.unknown":
-    "Confirmation is unknown. Check the original outcome before submitting another archive change.",
+  "message.refused": "Runtime refused the original archive change.",
   "message.archiveFailed": "The archive change failed: {{error}}",
   "message.captureRejected": "The capture couldn’t be admitted: {{error}}",
   "message.removalRejected": "The deletion couldn’t be admitted: {{error}}",

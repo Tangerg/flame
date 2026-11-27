@@ -64,7 +64,7 @@ export const zh: Record<string, string> = {
   "message.saved": "核心报告已保存。",
   "message.savedArchived": "核心报告已保存：{{title}}。它已列入归档。",
   "message.removed": "已删除保存的报告。核心核算未更改。",
-  "message.unknown": "确认结果未知。在提交另一项归档更改之前，请检查原始结果。",
+  "message.refused": "Runtime 拒绝了原归档更改。",
   "message.archiveFailed": "归档更改失败：{{error}}",
   "message.captureRejected": "无法受理此捕获：{{error}}",
   "message.removalRejected": "无法受理此删除：{{error}}",

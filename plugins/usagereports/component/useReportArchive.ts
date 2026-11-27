@@ -8,6 +8,7 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
+import type { PluginCommandChange } from "@flame/runtime-client";
 import {
   bindOperations,
   mutationSettlementIsUnknown,
@@ -24,6 +25,7 @@ import {
   failure,
   makeFormatters,
   type Action,
+  type ArchiveMutation,
   type ArchiveRead,
   type ArchiveReturn,
   type BoundContext,
@@ -72,6 +74,7 @@ export function useReportArchive(context: BoundContext, locale: string) {
   );
   const busy = action !== undefined;
   const [outcome, setOutcome] = useState<Outcome>();
+  const retainedChange = useRef<{ idempotencyKey: string; mutation: ArchiveMutation }>(undefined);
   const lifetime = useRef<AbortController>(undefined);
   const inspecting = useRef<AbortController>(undefined);
   const listing = useRef<AbortController>(undefined);
@@ -96,7 +99,7 @@ export function useReportArchive(context: BoundContext, locale: string) {
     operations.commands(METHODS.capture, METHODS.delete);
   const commands = context.signal.aborted ? [] : originalCommands();
   const locked = busy || commands.length > 0;
-  const unknown = commands.filter((command) => command.state === "recoverable");
+  const recoverable = commands.filter((command) => command.state === "recoverable");
   const canAuthor = () => actions.canStart() && originalCommands().length === 0;
   const isPending = (key: string) =>
     actions.canStart() &&
@@ -264,8 +267,40 @@ export function useReportArchive(context: BoundContext, locale: string) {
     await refresh(signal);
   }
 
+  const resolveChange = useEffectEvent((change: PluginCommandChange) => {
+    const retained = retainedChange.current;
+    if (change.type !== "resolved" || retained?.idempotencyKey !== change.idempotencyKey)
+      return;
+    retainedChange.current = undefined;
+    if (!actions.canStart()) return;
+    const signal = ownerSignal();
+    if (signal.aborted) return;
+    switch (change.resolution.type) {
+      case "confirmed":
+        if (retained.mutation.kind === "removal") {
+          const active = activeElement();
+          void settleRemoval(
+            { id: retained.mutation.id },
+            panel.current?.contains(active) ? active : null,
+            signal,
+          );
+        } else {
+          setOutcome({ kind: "saved" });
+          void refresh(signal);
+        }
+        break;
+      case "retired":
+        setOutcome({ kind: "retired" });
+        break;
+      case "refused":
+        setOutcome({ kind: "refused" });
+        break;
+    }
+  });
+  useEffect(() => operations.subscribeCommands(resolveChange), [operations]);
+
   function observe<Result>(
-    started: Action,
+    started: Exclude<Action, { kind: "retire" }>,
     command: (signal: AbortSignal) => Promise<Result>,
     settle: (
       result: Result,
@@ -278,25 +313,38 @@ export function useReportArchive(context: BoundContext, locale: string) {
       if (signal.aborted) return;
       const active = activeElement();
       setOutcome(undefined);
+      let originalKey = started.kind === "check" ? started.key : undefined;
       try {
-        const result = await command(signal);
+        const attempt = command(signal);
+        if ("idempotencyKey" in attempt && typeof attempt.idempotencyKey === "string")
+          originalKey = attempt.idempotencyKey;
+        const result = await attempt;
         if (signal.aborted) return;
         if (started.kind === "check") recoveryReturn.current = active;
         await settle(result, active, signal);
       } catch (error) {
-        if (!signal.aborted) {
-          const refusal =
-            started.kind === "capture"
-              ? "captureRejected"
-              : started.kind === "removal"
-                ? "removalRejected"
-                : "archiveFailed";
-          setOutcome(
-            mutationSettlementIsUnknown(error)
-              ? { kind: "unknown" }
-              : { kind: refusal, error: failure(error) },
-          );
+        if (signal.aborted) return;
+        if (
+          originalKey !== undefined &&
+          mutationSettlementIsUnknown(error) &&
+          originalCommands().some(
+            (original) => original.idempotencyKey === originalKey,
+          )
+        ) {
+          if (started.kind !== "check")
+            retainedChange.current = { idempotencyKey: originalKey, mutation: started };
+          return;
         }
+        const refusal =
+          started.kind === "capture"
+            ? "captureRejected"
+            : started.kind === "removal"
+              ? "removalRejected"
+              : "archiveFailed";
+        setOutcome({
+          kind: refusal,
+          error: failure(error),
+        });
       } finally {
         if (!signal.aborted) setRemoving(undefined);
       }
@@ -320,9 +368,10 @@ export function useReportArchive(context: BoundContext, locale: string) {
 
   function confirmRemoval() {
     if (!removing || !canAuthor()) return;
+    const { id } = removing;
     void observe(
-      { kind: "removal" },
-      () => operations.command(METHODS.delete, { id: removing.id }),
+      { kind: "removal", id },
+      () => operations.command(METHODS.delete, { id }),
       settleRemoval,
     );
   }
@@ -349,7 +398,7 @@ export function useReportArchive(context: BoundContext, locale: string) {
       (shown.current ? removalReturn() : saveButton.current)?.focus();
   }, [action, removalReturn]);
 
-  function check(command: (typeof unknown)[number]) {
+  function check(command: (typeof recoverable)[number]) {
     if (!isPending(command.idempotencyKey)) return;
     const checking = { kind: "check", key: command.idempotencyKey } as const;
     if (command.method === METHODS.capture)
@@ -357,7 +406,7 @@ export function useReportArchive(context: BoundContext, locale: string) {
     else void observe(checking, command.recover, settleRemoval);
   }
 
-  function retire(command: (typeof unknown)[number]) {
+  function retire(command: (typeof recoverable)[number]) {
     if (!isPending(command.idempotencyKey)) return;
     return actions.run(
       { kind: "retire", key: command.idempotencyKey },
@@ -418,9 +467,9 @@ export function useReportArchive(context: BoundContext, locale: string) {
       focusReturn: removalReturn,
     },
     recovery: {
-      commands: unknown,
+      commands: recoverable,
       check,
-      retire: (command: (typeof unknown)[number]) => void retire(command),
+      retire: (command: (typeof recoverable)[number]) => void retire(command),
     },
   };
 }

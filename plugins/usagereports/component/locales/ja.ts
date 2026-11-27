@@ -67,8 +67,7 @@ export const ja: Record<string, string> = {
     "コアレポートを保存しました：{{title}}。アーカイブに表示されます。",
   "message.removed":
     "保存済みレポートを削除しました。コア会計は変更されていません。",
-  "message.unknown":
-    "確認は不明です。別のアーカイブ変更を送信する前に、元の結果を確認してください。",
+  "message.refused": "Runtime が元のアーカイブ変更を拒否しました。",
   "message.archiveFailed": "アーカイブの変更に失敗しました：{{error}}",
   "message.captureRejected": "キャプチャを受け付けられませんでした：{{error}}",
   "message.removalRejected": "削除を受け付けられませんでした：{{error}}",

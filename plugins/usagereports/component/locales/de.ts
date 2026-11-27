@@ -70,8 +70,7 @@ export const de: Record<string, string> = {
     "Kernbericht gespeichert: {{title}}. Er ist im Archiv aufgeführt.",
   "message.removed":
     "Gespeicherter Bericht gelöscht. Die Kernabrechnung bleibt unverändert.",
-  "message.unknown":
-    "Die Bestätigung ist unbekannt. Prüfe das ursprüngliche Ergebnis, bevor du eine weitere Archivänderung sendest.",
+  "message.refused": "Die Runtime hat die ursprüngliche Archivänderung abgelehnt.",
   "message.archiveFailed": "Die Archivänderung ist fehlgeschlagen: {{error}}",
   "message.captureRejected":
     "Die Erfassung konnte nicht zugelassen werden: {{error}}",
