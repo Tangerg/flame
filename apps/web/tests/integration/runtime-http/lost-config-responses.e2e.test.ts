@@ -20,8 +20,15 @@ import {
   type CallPluginRequest,
   type RequestMeta,
 } from "@flame/runtime-client/wire";
+import { PendingPluginCommands } from "@/features/plugins/adapters/pendingPluginCommands";
 import { CAPABILITY_JSON } from "../../../../../plugins/memory/package/io.github.tangerg.flame/contracts/methods.generated";
-import { deleteUserMCPServers, nextRuntimeEvent, nextUserMCPChange, readMCPDirectoryTarget } from "./observation";
+import {
+  deleteUserMCPServers,
+  nextRuntimeEvent,
+  nextUserMCPChange,
+  readMCPDirectoryTarget,
+  within,
+} from "./observation";
 import { managedSkillName, useRuntimeFixture } from "./fixture";
 import { MemoryMutationStorage } from "./mutationStorage";
 import { faultUnaryResponse } from "./transportFaults";
@@ -298,7 +305,26 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: configuration commits after lo
       }),
       options,
     );
-    const cold = createFlameClient(createHttpTransport({ baseUrl: fixture.baseUrl }), options);
+    const lookupStarted = Promise.withResolvers<void>();
+    const releaseLookup = Promise.withResolvers<void>();
+    const signal = new AbortController().signal;
+    let holdLookup = false;
+    let retirements = 0;
+    const cold = createFlameClient(
+      createHttpTransport({
+        baseUrl: fixture.baseUrl,
+        fetch: async (url, init) => {
+          const method = new Headers(init?.headers).get(HTTP_HEADERS.method);
+          if (method === "plugins.retireCommand") retirements++;
+          if (holdLookup && method === "plugins.getCommand") {
+            lookupStarted.resolve();
+            await releaseLookup.promise;
+          }
+          return fetch(url, init);
+        },
+      }),
+      options,
+    );
 
     try {
       await expect(original.plugins.call(request, { idempotencyKey: firstKey })).rejects.toSatisfy(
@@ -320,11 +346,26 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: configuration commits after lo
       expect(cold.plugins.pendingCommands().map((command) => command.idempotencyKey)).toEqual([
         firstKey,
       ]);
-      await expect(cold.plugins.call(request, { idempotencyKey: firstKey })).resolves.toMatchObject({
+      const pending = new PendingPluginCommands(signal, cold.plugins.pendingCommands, (run) =>
+        run(signal),
+      );
+      holdLookup = true;
+      const checking = pending.observe(firstKey, "recover");
+      await within(lookupStarted.promise, "the original plugin receipt lookup");
+      await pending.observe(firstKey, "retire");
+      expect(pending.snapshot()?.observation).toMatchObject({ type: "checking", key: firstKey });
+      releaseLookup.resolve();
+      await within(checking, "the original plugin command confirming");
+      expect(pending.snapshot()?.observation).toMatchObject({
+        type: "confirmed",
+        key: firstKey,
         output: expect.any(String),
       });
       expect(cold.plugins.pendingCommands()).toEqual([]);
+      await pending.observe(firstKey, "retire");
+      expect(retirements).toBe(0);
     } finally {
+      releaseLookup.resolve();
       await Promise.all([original.close(), cold.close()]);
     }
   });

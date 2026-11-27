@@ -21,6 +21,7 @@ import { contributeLayout } from "@/extensions/contributeHelpers";
 import { createLocaleReconciler } from "@/features/i18n/public/locales";
 import { type RuntimeConnectionGeneration } from "@/features/connection/public/services";
 import { ProviderSelectionCommands } from "@/features/plugins/adapters/providerSelectionCommands";
+import { PendingPluginCommands } from "@/features/plugins/adapters/pendingPluginCommands";
 import {
   type InstalledPackageState,
   type PackageOperations,
@@ -168,7 +169,8 @@ export function registerPackageContributions(
   });
   const signal = scope.lifetime.signal;
   const track: PackageOperations["track"] = (operation) => trackContributionIO(scope, operation);
-  const { selectProvider, ...pluginOperations } = client.plugins;
+  const { pendingCommands: readPendingCommands, selectProvider, ...pluginOperations } = client.plugins;
+  const pendingCommands = new PendingPluginCommands(signal, readPendingCommands, track);
   const providerSelections = new ProviderSelectionCommands({
     signal,
     select: (request) => track((owned) => selectProvider(request, owned)),
@@ -178,7 +180,13 @@ export function registerPackageContributions(
   scope.lifetime.defer(
     onAbort(
       signal,
-      packages.publishOperations({ ...pluginOperations, signal, track, providerSelections }),
+      packages.publishOperations({
+        ...pluginOperations,
+        signal,
+        track,
+        providerSelections,
+        pendingCommands,
+      }),
     ),
   );
   const fetcher = async (_params?: unknown, signal?: AbortSignal) =>
