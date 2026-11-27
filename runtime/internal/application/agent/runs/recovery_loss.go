@@ -39,14 +39,17 @@ func (w WaitingResumption) Loss() rundomain.LossReason { return w.loss }
 func recoverLostTree(
 	tree recoveryRunTree,
 	items []transcript.Item,
-	messageMark int,
+	closure recoveryConversationClosure,
 	finishedAt time.Time,
 	ending rundomain.Lost,
 	models []ModelInvocationRecovery,
 	independent []modelref.EndpointObservation,
-) ([]rundomain.Replacement, []transcript.Replacement, error) {
-	lostRuns := make([]rundomain.Replacement, 0, len(tree.postorder))
-	var replacements []transcript.Replacement
+) (LostTreeRecovery, error) {
+	lost := LostTreeRecovery{
+		runs:    make([]rundomain.Replacement, 0, len(tree.postorder)),
+		closure: closure,
+	}
+	messageMark := closure.previousCount + len(closure.messages)
 	for _, runID := range tree.postorder {
 		active := tree.runsByID[runID]
 		for _, item := range items {
@@ -59,18 +62,18 @@ func recoverLostTree(
 			}
 			itemReplacement, err := item.AbandonToolCall(&failure, finishedAt)
 			if err != nil {
-				return nil, nil, fmt.Errorf("runs: recover lost Item %q: %w", item.ID(), err)
+				return LostTreeRecovery{}, fmt.Errorf("runs: recover lost Item %q: %w", item.ID(), err)
 			}
-			replacements = append(replacements, itemReplacement)
+			lost.items = append(lost.items, itemReplacement)
 		}
 
 		replacement, err := recoverLostRun(active, models, independent, ending, finishedAt, messageMark)
 		if err != nil {
-			return nil, nil, fmt.Errorf("runs: recover lost Run %q: %w", active.ID(), err)
+			return LostTreeRecovery{}, fmt.Errorf("runs: recover lost Run %q: %w", active.ID(), err)
 		}
-		lostRuns = append(lostRuns, replacement)
+		lost.runs = append(lost.runs, replacement)
 	}
-	return lostRuns, replacements, nil
+	return lost, nil
 }
 
 func recoverLostRun(

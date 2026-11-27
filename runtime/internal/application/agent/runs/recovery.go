@@ -42,27 +42,6 @@ type recoveryAdmissions interface {
 	AcquireRecoverySession(ctx context.Context, sessionID identity.SessionID) (release func(), ok bool, err error)
 }
 
-type RecoveryCommit struct {
-	state recoveryChanges
-}
-
-type recoveryChanges struct {
-	LostRuns                []rundomain.Replacement
-	ItemReplacements        []transcript.Replacement
-	ConversationTransitions []RecoveryConversationTransition
-	ModelInvocations        []ModelInvocationRecovery
-	IndependentEndpoints    []modelref.EndpointObservation
-	ToolInvocations         []ToolInvocationRecovery
-	PreservedSessionIDs     []identity.SessionID
-}
-
-type RecoveryConversationTransition struct {
-	RootRunID     identity.RunID
-	SessionID     identity.SessionID
-	ExpectedCount int
-	Messages      []corechat.Message
-}
-
 type Recovery struct {
 	store                RecoveryStore
 	subtreeCancellations *Cancellations
@@ -117,7 +96,7 @@ func (r *Recovery) Reconcile(ctx context.Context) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	commit, reconciled, err := planner.plan()
+	commit, err := planner.plan()
 	if err != nil {
 		return 0, err
 	}
@@ -125,7 +104,7 @@ func (r *Recovery) Reconcile(ctx context.Context) (int, error) {
 		return 0, fmt.Errorf("runs: commit ownership recovery: %w", err)
 	}
 	r.publishRecoveredReadModels(commit)
-	return reconciled, nil
+	return commit.lostRunCount(), nil
 }
 
 type recoverySessionClaims struct {
@@ -161,53 +140,20 @@ func (r *recoverySessionClaims) release() {
 // Survivor recovery commits through this Runtime's own SQLite connection, which
 // PRAGMA data_version cannot observe, so clients need an explicit notice.
 func (r *Recovery) publishRecoveredReadModels(commit RecoveryCommit) {
-	type sessionChanges struct {
-		runIDs  []identity.RunID
-		rootIDs []identity.RunID
-		goal    bool
-	}
-	changes := make(map[identity.SessionID]*sessionChanges)
-	for _, recovery := range commit.LostRuns() {
-		lost := recovery.State()
-		scope := changes[lost.SessionID()]
-		if scope == nil {
-			scope = &sessionChanges{}
-			changes[lost.SessionID()] = scope
+	for tree := range commit.LostTrees() {
+		root := tree.Root()
+		sessionID := root.SessionID()
+		runIDs := make([]identity.RunID, 0, len(tree.runs))
+		for run := range tree.RunReplacements() {
+			runIDs = append(runIDs, run.State().ID())
 		}
-		scope.runIDs = append(scope.runIDs, lost.ID())
-		if lost.Lineage().IsRoot() {
-			scope.rootIDs = append(scope.rootIDs, lost.ID())
-		}
-	}
-	if len(changes) == 0 {
-		return
-	}
-	for _, charged := range commit.GoalRuns() {
-		if scope := changes[charged.SessionID()]; scope != nil {
-			scope.goal = true
-		}
-	}
-	sessionIDs := make([]identity.SessionID, 0, len(changes))
-	for sessionID := range changes {
-		sessionIDs = append(sessionIDs, sessionID)
-	}
-	slices.SortFunc(sessionIDs, identity.SessionID.Compare)
-	for _, sessionID := range sessionIDs {
-		scope := changes[sessionID]
-		slices.SortFunc(scope.runIDs, identity.RunID.Compare)
-		scope.runIDs = slices.Compact(scope.runIDs)
-		slices.SortFunc(scope.rootIDs, identity.RunID.Compare)
-		scope.rootIDs = slices.Compact(scope.rootIDs)
+		slices.SortFunc(runIDs, identity.RunID.Compare)
 		notices := []invalidation.Notice{
-			invalidation.InSession(invalidation.Runs, sessionID, scope.runIDs...),
+			invalidation.InSession(invalidation.Runs, sessionID, runIDs...),
+			invalidation.InSession(invalidation.Interrupts, sessionID, root.ID()),
+			invalidation.InSession(invalidation.Sessions, sessionID),
 		}
-		if len(scope.rootIDs) > 0 {
-			notices = append(notices,
-				invalidation.InSession(invalidation.Interrupts, sessionID, scope.rootIDs...),
-			)
-		}
-		notices = append(notices, invalidation.InSession(invalidation.Sessions, sessionID))
-		if scope.goal {
+		if !root.GoalIncarnationID().IsZero() {
 			notices = append(notices, invalidation.InSession(invalidation.Goals, sessionID))
 		}
 		r.invalidations.Notify(notices...)

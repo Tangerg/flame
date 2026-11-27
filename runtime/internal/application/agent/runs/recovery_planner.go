@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"context"
 	"fmt"
+	"maps"
 	"slices"
 	"time"
 
@@ -20,14 +21,10 @@ type recoveryPlanner struct {
 	ctx           context.Context
 	store         RecoveryStore
 	resumability  WaitingExecutionResumability
-	pending       []Pending
 	pendingByRoot map[identity.RunID]Pending
 	trees         map[identity.RunID]recoveryRunTree
 	transcripts   map[identity.SessionID][]transcript.Item
-	sessions      map[identity.SessionID]session.Session
-	conversations map[identity.SessionID]conversation.Conversation
-	preserved     map[identity.RunID]struct{}
-	commit        recoveryChanges
+	commit        RecoveryCommit
 	finishedAt    time.Time
 }
 
@@ -94,13 +91,9 @@ func newRecoveryPlanner(ctx context.Context, recovery *Recovery, claims *recover
 		store:         recovery.store,
 		resumability:  recovery.resumability,
 		independent:   snapshot.independent,
-		pending:       snapshot.pending,
 		pendingByRoot: pendingByRun,
 		trees:         trees,
 		transcripts:   make(map[identity.SessionID][]transcript.Item),
-		sessions:      make(map[identity.SessionID]session.Session),
-		conversations: make(map[identity.SessionID]conversation.Conversation),
-		preserved:     make(map[identity.RunID]struct{}, len(trees)),
 		finishedAt:    recovery.now().UTC(),
 	}
 	if err := planner.observeSnapshot(claims.active, snapshot); err != nil {
@@ -119,10 +112,10 @@ func newRecoveryPlanner(ctx context.Context, recovery *Recovery, claims *recover
 		}
 	}
 	for _, invocation := range snapshot.modelInvocations {
-		planner.commit.ModelInvocations = append(planner.commit.ModelInvocations, ModelInvocationRecovery{OpenModelInvocation: invocation, FinishedAt: planner.finishedAt})
+		planner.commit.modelInvocations = append(planner.commit.modelInvocations, ModelInvocationRecovery{OpenModelInvocation: invocation, FinishedAt: planner.finishedAt})
 	}
 	for _, invocation := range snapshot.toolInvocations {
-		planner.commit.ToolInvocations = append(planner.commit.ToolInvocations, ToolInvocationRecovery{OpenToolInvocation: invocation, FinishedAt: planner.finishedAt})
+		planner.commit.toolInvocations = append(planner.commit.toolInvocations, ToolInvocationRecovery{OpenToolInvocation: invocation, FinishedAt: planner.finishedAt})
 	}
 	return planner, nil
 }
@@ -160,30 +153,30 @@ func (r *recoveryPlanner) observeTime(value time.Time) {
 	}
 }
 
-func (r *recoveryPlanner) plan() (RecoveryCommit, int, error) {
-	rootRunIDs := make([]identity.RunID, 0, len(r.trees))
-	for rootRunID := range r.trees {
-		rootRunIDs = append(rootRunIDs, rootRunID)
-	}
-	slices.SortFunc(rootRunIDs, identity.RunID.Compare)
-	for _, rootRunID := range rootRunIDs {
-		if err := r.planTree(rootRunID); err != nil {
-			return RecoveryCommit{}, 0, err
+func (r *recoveryPlanner) plan() (RecoveryCommit, error) {
+	trees := slices.SortedFunc(maps.Values(r.trees), func(left, right recoveryRunTree) int {
+		return left.root.SessionID().Compare(right.root.SessionID())
+	})
+	for _, tree := range trees {
+		outcome, err := r.planTree(tree)
+		if err != nil {
+			return RecoveryCommit{}, err
+		}
+		r.commit.trees = append(r.commit.trees, outcome)
+		if _, lost := outcome.(LostTreeRecovery); lost {
+			for _, source := range r.independent {
+				if _, belongs := tree.runsByID[source.Snapshot().RunID]; belongs {
+					r.commit.independentEndpoints = append(r.commit.independentEndpoints, source)
+				}
+			}
 		}
 	}
-	for _, open := range r.pending {
-		if _, preserved := r.preserved[open.RootRunID]; preserved {
-			r.commit.PreservedSessionIDs = append(r.commit.PreservedSessionIDs, r.trees[open.RootRunID].root.SessionID())
-		}
+	slices.SortFunc(r.commit.modelInvocations, compareModelInvocationRecoveries)
+	slices.SortFunc(r.commit.toolInvocations, compareToolInvocationRecoveries)
+	if err := r.commit.validateInvocationSources(); err != nil {
+		return RecoveryCommit{}, err
 	}
-	slices.SortFunc(r.commit.ModelInvocations, compareModelInvocationRecoveries)
-	slices.SortFunc(r.commit.ToolInvocations, compareToolInvocationRecoveries)
-	slices.SortFunc(r.commit.PreservedSessionIDs, identity.SessionID.Compare)
-	commit, err := newRecoveryCommit(r.commit)
-	if err != nil {
-		return RecoveryCommit{}, 0, err
-	}
-	return commit, len(r.commit.LostRuns), nil
+	return r.commit, nil
 }
 
 func compareModelInvocationRecoveries(left, right ModelInvocationRecovery) int {
@@ -194,18 +187,18 @@ func compareToolInvocationRecoveries(left, right ToolInvocationRecovery) int {
 	return cmp.Or(compareInvocationAttempts(left.InvocationAttempt, right.InvocationAttempt), left.ItemID.Compare(right.ItemID))
 }
 
-func (r *recoveryPlanner) planTree(rootRunID identity.RunID) error {
-	tree := r.trees[rootRunID]
+func (r *recoveryPlanner) planTree(tree recoveryRunTree) (recoveryTreeOutcome, error) {
+	root := tree.root
 	items, err := r.transcript(tree)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	open, hasInterrupt := r.pendingByRoot[rootRunID]
+	open, hasInterrupt := r.pendingByRoot[root.ID()]
 	loss := rundomain.LossRestart
-	if tree.root.State() == rundomain.Waiting && hasInterrupt {
-		sess, sessionErr := r.session(tree.root.SessionID())
+	if root.State() == rundomain.Waiting && hasInterrupt {
+		sess, sessionErr := r.session(root.SessionID())
 		if sessionErr != nil {
-			return sessionErr
+			return nil, sessionErr
 		}
 		resumption, sessionErr := validateRecoveryParkedTree(
 			r.ctx,
@@ -217,49 +210,28 @@ func (r *recoveryPlanner) planTree(rootRunID identity.RunID) error {
 			r.resumability,
 		)
 		if sessionErr != nil {
-			return sessionErr
+			return nil, sessionErr
 		}
 		if resumption.Resumable() || resumption.Deferred() {
-			r.preserved[rootRunID] = struct{}{}
-			return nil
+			return preservedRecoveryTree{session: root.SessionID()}, nil
 		}
 		loss = resumption.Loss()
 	}
-	history, err := r.conversation(tree.root.SessionID())
+	history, err := r.conversation(root.SessionID())
 	if err != nil {
-		return err
+		return nil, err
 	}
 	ending := rundomain.Lost{Loss: rundomain.Loss{Reason: loss}}
-	closure, err := TerminalConversation(r.ctx, r.store, tree.root.SessionID(), tree.root.ID(), history.Messages(), ending)
+	messages, err := TerminalConversation(r.ctx, r.store, root.SessionID(), root.ID(), history.Messages(), ending)
 	if err != nil {
-		return fmt.Errorf(
+		return nil, fmt.Errorf(
 			"runs: close recovery conversation for root Run %q: %w",
-			tree.root.ID(),
+			root.ID(),
 			err,
 		)
 	}
-	messageMark := history.Count() + len(closure)
-	lostRuns, replacements, err := recoverLostTree(tree, items, messageMark, r.finishedAt, ending, r.commit.ModelInvocations, r.independent)
-	if err != nil {
-		return err
-	}
-	r.commit.LostRuns = append(r.commit.LostRuns, lostRuns...)
-	for _, lost := range lostRuns {
-		for _, source := range r.independent {
-			if source.Snapshot().RunID == lost.State().ID() {
-				r.commit.IndependentEndpoints = append(r.commit.IndependentEndpoints, source)
-			}
-		}
-	}
-	r.commit.ItemReplacements = append(r.commit.ItemReplacements, replacements...)
-	r.commit.ConversationTransitions = append(
-		r.commit.ConversationTransitions,
-		RecoveryConversationTransition{
-			RootRunID: tree.root.ID(), SessionID: tree.root.SessionID(),
-			ExpectedCount: history.Count(), Messages: closure,
-		},
-	)
-	return nil
+	closure := recoveryConversationClosure{previousCount: history.Count(), messages: messages}
+	return recoverLostTree(tree, items, closure, r.finishedAt, ending, r.commit.modelInvocations, r.independent)
 }
 
 func (r *recoveryPlanner) transcript(tree recoveryRunTree) ([]transcript.Item, error) {
@@ -285,21 +257,14 @@ func (r *recoveryPlanner) transcript(tree recoveryRunTree) ([]transcript.Item, e
 }
 
 func (r *recoveryPlanner) session(sessionID identity.SessionID) (session.Session, error) {
-	if sess, ok := r.sessions[sessionID]; ok {
-		return sess, nil
-	}
 	sess, err := r.store.SessionByID(r.ctx, sessionID)
 	if err != nil {
 		return session.Session{}, fmt.Errorf("runs: load recovery Session %q: %w", sessionID, err)
 	}
-	r.sessions[sessionID] = sess
 	return sess, nil
 }
 
 func (r *recoveryPlanner) conversation(sessionID identity.SessionID) (conversation.Conversation, error) {
-	if history, ok := r.conversations[sessionID]; ok {
-		return history, nil
-	}
 	messages, err := r.store.ReadMessages(r.ctx, sessionID)
 	if err != nil {
 		return conversation.Conversation{}, fmt.Errorf(
@@ -316,6 +281,5 @@ func (r *recoveryPlanner) conversation(sessionID identity.SessionID) (conversati
 			err,
 		)
 	}
-	r.conversations[sessionID] = history
 	return history, nil
 }
