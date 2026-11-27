@@ -54,26 +54,24 @@ export function PendingCommands({
           <Metadata role="status">
             {commandLabel(command.method, t)} ·{" "}
             {t(
-              command.status === "running"
+              command.state === "active"
                 ? "command.running"
                 : "command.unknown",
             )}
           </Metadata>
-          {command.status === "unknown" && command.error && (
+          {command.state === "recoverable" && command.error && (
             <Callout kind="warning">{command.error}</Callout>
           )}
           <Toolbar label={t("command.actions")}>
             <Button
-              disabled={command.status !== "unknown" || !command.recovery}
-              onClick={() => state.recover(command)}
+              disabled={command.state !== "recoverable"}
+              onClick={() => void state.recover(command.id, command.method)}
             >
               {t("command.recover")}
             </Button>
             <Button
-              disabled={command.status !== "unknown" || !command.recovery}
-              onClick={() => {
-                void state.retire(command);
-              }}
+              disabled={command.state !== "recoverable"}
+              onClick={() => void state.retire(command.id, command.method)}
             >
               {t("command.retire")}
             </Button>

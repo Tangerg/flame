@@ -11,9 +11,6 @@ import {
   bindOperations,
   CursorPager,
   failureText,
-  isErrorType,
-  mutationSettlementIsUnknown,
-  OperationFailure,
   type ComponentContext,
   type PageDirection,
 } from "@flame/component-sdk";
@@ -23,74 +20,16 @@ import {
   type MethodInputs,
   type MethodOutputs,
 } from "./methods.generated";
-import { parseJSON } from "@frame/sdk/json";
 import type { HistoryPage, OperationRecord, Snapshot, Surface } from "./types";
 import { LIMITS } from "../contracts/limits";
 
-type CommandMethod =
-  | typeof METHODS.open
-  | typeof METHODS.close
-  | typeof METHODS.stop
-  | typeof METHODS.execute
-  | typeof METHODS.reply;
-
-const commandMethods: readonly CommandMethod[] = [
-  METHODS.open,
-  METHODS.close,
-  METHODS.stop,
-  METHODS.execute,
-  METHODS.reply,
-];
+import { useComputerCommands } from "./useComputerCommands";
 
 type Read<T> = {
   value?: T;
   loading: boolean;
   error?: string;
 };
-
-export interface CommandObservation {
-  id: string;
-  method: CommandMethod;
-  target?: string;
-  status: "running" | "unknown";
-  error?: string;
-  recover?: () => Promise<unknown>;
-}
-
-function commandTarget(
-  method: CommandMethod,
-  input: unknown,
-): string | undefined {
-  if (method === METHODS.open) return "installation";
-  if (!input || typeof input !== "object" || Array.isArray(input)) return;
-  const values = input as Record<string, unknown>;
-  const fields =
-    method === METHODS.close
-      ? ["sessionId"]
-      : method === METHODS.stop
-        ? ["sessionId", "operationId"]
-        : method === METHODS.reply
-          ? ["sessionId", "requestId"]
-          : ["sessionId", "workerId", "surfaceDigest"];
-  if (
-    fields.some((field) => typeof values[field] !== "string" || !values[field])
-  )
-    return;
-  return JSON.stringify(fields.map((field) => values[field]));
-}
-
-function blocks(
-  command: CommandObservation,
-  method: CommandMethod,
-  target: string | undefined,
-): boolean {
-  if (command.method !== method) return false;
-  if (command.target !== undefined) return command.target === target;
-  // A missing original receipt cannot establish that a revocation or permission
-  // reply concerns the current resource. It must not disable that resource's
-  // controls. Execution and lease acquisition remain blocked until identified.
-  return method === METHODS.execute || method === METHODS.open;
-}
 
 export function useComputer(context: ComponentContext) {
   const operations = useMemo(() => {
@@ -128,11 +67,6 @@ export function useComputer(context: ComponentContext) {
   >();
   const [watchVersion, setWatchVersion] = useState(0);
   const [surfaceVersion, setSurfaceVersion] = useState(0);
-  const [commandView, setCommandView] = useState<CommandObservation[]>([]);
-  const commands = useRef(new Map<string, CommandObservation>());
-  const [notice, setNotice] = useState<
-    { kind: "success"; method: CommandMethod } | { kind: "error"; text: string }
-  >();
   const resultRequest = useRef<AbortController>(undefined);
   const readRequest = useRef<AbortController>(undefined);
 
@@ -281,138 +215,15 @@ export function useComputer(context: ComponentContext) {
     refresh,
   ]);
 
-  const publishCommands = useCallback(() => {
-    if (!signal.aborted) setCommandView([...commands.current.values()]);
-  }, [signal]);
-
-  useEffect(() => {
-    commands.current.clear();
-    for (const method of commandMethods) {
-      for (const original of operations.pendingCommands(method)) {
-        commands.current.set(original.idempotencyKey, {
-          id: original.idempotencyKey,
-          method,
-          status: "unknown",
-          recover: () => original.recover(signal),
-        });
-        void operations
-          .query(METHODS.result, { id: original.idempotencyKey }, signal)
-          .then((record) => {
-            if (signal.aborted) return;
-            const pending = commands.current.get(original.idempotencyKey);
-            if (!pending) return;
-            if (
-              record.id !== original.idempotencyKey ||
-              record.kind !== "command" ||
-              record.method !== method
-            )
-              throw new Error(
-                "computer: original command evidence differs from its identity",
-              );
-            const target = commandTarget(method, parseJSON(record.inputJSON));
-            if (target === undefined)
-              throw new Error(
-                "computer: original command target is unavailable",
-              );
-            commands.current.set(original.idempotencyKey, {
-              ...pending,
-              target,
-            });
-            publishCommands();
-          })
-          .catch((error: unknown) => {
-            if (signal.aborted) return;
-            const pending = commands.current.get(original.idempotencyKey);
-            if (!pending) return;
-            commands.current.set(original.idempotencyKey, {
-              ...pending,
-              error: pending.error ?? failureText(error),
-            });
-            publishCommands();
-          });
-      }
-    }
-    publishCommands();
-  }, [operations, signal, publishCommands]);
-
-  const observe = useCallback(
-    async (original: CommandObservation, execute: () => Promise<unknown>) => {
-      commands.current.set(original.id, {
-        ...original,
-        target: commands.current.get(original.id)?.target ?? original.target,
-        status: "running",
-        error: undefined,
-      });
-      publishCommands();
-      setNotice(undefined);
-      try {
-        await execute();
-      } catch (error) {
-        if (signal.aborted) return false;
-        if (
-          mutationSettlementIsUnknown(error) ||
-          (original.recover &&
-            !(error instanceof OperationFailure) &&
-            !isErrorType(error, "plugin_command_retired"))
-        ) {
-          const retained = operations
-            .pendingCommands(original.method)
-            .find((command) => command.idempotencyKey === original.id);
-          commands.current.set(original.id, {
-            ...original,
-            target:
-              commands.current.get(original.id)?.target ?? original.target,
-            status: "unknown",
-            error: failureText(error),
-            recover: retained
-              ? () => retained.recover(signal)
-              : original.recover,
-          });
-        } else {
-          commands.current.delete(original.id);
-          setNotice({ kind: "error", text: failureText(error) });
-        }
-        publishCommands();
-        return false;
-      }
-      if (signal.aborted) return false;
-      commands.current.delete(original.id);
-      publishCommands();
-      setNotice({ kind: "success", method: original.method });
-      void refresh();
-      void historyPager.refresh();
-      return true;
-    },
-    [signal, operations, publishCommands, refresh, historyPager],
-  );
-
-  const submit = useCallback(
-    async <K extends CommandMethod>(method: K, input: MethodInputs[K]) => {
-      const target = commandTarget(method, input);
-      if (
-        signal.aborted ||
-        [...commands.current.values()].some((command) =>
-          blocks(command, method, target),
-        )
-      )
-        return false;
-      try {
-        if (target === undefined)
-          throw new Error(
-            "computer: command requires its captured resource target",
-          );
-        const promise = operations.command(method, input);
-        return await observe(
-          { id: promise.idempotencyKey, method, target, status: "running" },
-          () => promise,
-        );
-      } catch (error) {
-        if (!signal.aborted)
-          setNotice({ kind: "error", text: failureText(error) });
-        return false;
-      }
-    },
-    [operations, signal, observe],
+  const onCommandConfirmed = useCallback(() => {
+    void refresh();
+    void historyPager.refresh();
+  }, [refresh, historyPager]);
+  const commandControls = useComputerCommands(
+    operations,
+    signal,
+    currentTarget,
+    onCommandConfirmed,
   );
 
   return {
@@ -421,8 +232,7 @@ export function useComputer(context: ComponentContext) {
     surface,
     history,
     result,
-    notice,
-    commands: commandView,
+    ...commandControls,
     watchError,
     refresh: () => {
       if (!surface?.value || surface.error)
@@ -437,17 +247,6 @@ export function useComputer(context: ComponentContext) {
     loadHistory: historyPager.refresh,
     inspect,
     closeInspection,
-    submit,
-    busy: (method: CommandMethod) =>
-      commandView.some((command) =>
-        blocks(command, method, commandTarget(method, currentTarget)),
-      ),
-    recover: (id: string) => {
-      if (signal.aborted) return;
-      const command = commands.current.get(id);
-      if (command?.status === "unknown" && command.recover)
-        void observe(command, command.recover);
-    },
     page: (direction: PageDirection) => historyPager.move(direction),
   };
 }

@@ -1,7 +1,7 @@
 import {
   callPluginCommand,
-  pendingPluginCommand,
-  type PluginCommandRecovery,
+  pluginCommandRecovery,
+  type PluginCommand,
 } from "./pluginCommand";
 import { callPluginStream, queryPluginStream } from "./pluginStream";
 import type {
@@ -328,9 +328,9 @@ export interface Methods {
     ) => MutationPromise<void>;
     getCommand: (request: PluginCommandRequest, signal?: AbortSignal) => Promise<CallPluginRequest>;
     retireCommand: (request: PluginCommandRequest, signal?: AbortSignal) => MutationPromise<void>;
-    pendingCommands: () => PluginCommandRecovery[];
-    pendingCommandsVersion: () => number;
-    subscribePendingCommands: (listener: () => void) => () => void;
+    commands: () => PluginCommand[];
+    commandsVersion: () => number;
+    subscribeCommands: (listener: () => void) => () => void;
     queryStream: <T>(
       request: CallPluginRequest,
       consume: (chunk: unknown, signal: AbortSignal) => void | Promise<void>,
@@ -604,12 +604,14 @@ export function createMethods(
         call("plugins.closeBrowserRealm", request, { signal }),
       getCommand: (request, signal) => call("plugins.getCommand", request, { signal }),
       retireCommand: (request, signal) => call("plugins.retireCommand", request, { signal }),
-      pendingCommands: () =>
+      commands: () =>
         mutationJournal
-          .pendingPluginCommands()
-          .map((command) => pendingPluginCommand(command, wire)),
-      pendingCommandsVersion: mutationJournal.pendingPluginCommandsVersion,
-      subscribePendingCommands: mutationJournal.subscribePendingPluginCommands,
+          .pluginCommands()
+          .map((command) =>
+            command.state === "recoverable" ? pluginCommandRecovery(command, wire) : command,
+          ),
+      commandsVersion: mutationJournal.pluginCommandsVersion,
+      subscribeCommands: mutationJournal.subscribePluginCommands,
       queryStream: (request, consume, decode, signal) =>
         queryPluginStream(wire, request, consume, decode, signal),
       stream: (intent, input, prepare, consume, decode, signal) =>

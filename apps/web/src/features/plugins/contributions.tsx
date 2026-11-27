@@ -170,9 +170,9 @@ export function registerPackageContributions(
   const signal = scope.lifetime.signal;
   const track: PackageOperations["track"] = (operation) => trackContributionIO(scope, operation);
   const {
-    pendingCommands: _pendingCommands,
-    pendingCommandsVersion: _pendingCommandsVersion,
-    subscribePendingCommands: _subscribePendingCommands,
+    commands: _commands,
+    commandsVersion: _commandsVersion,
+    subscribeCommands: _subscribeCommands,
     selectProvider,
     ...pluginOperations
   } = client.plugins;

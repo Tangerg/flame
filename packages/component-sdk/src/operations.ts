@@ -20,6 +20,18 @@ type OperationContext = Pick<
   "binding" | "runtime" | "signal" | "track"
 >;
 
+type BoundCommand<K extends string, O> = {
+  readonly method: K;
+  readonly idempotencyKey: string;
+} & (
+  | { readonly state: "active" }
+  | {
+      readonly state: "recoverable";
+      recover(signal?: AbortSignal): Promise<O>;
+      retire(signal?: AbortSignal): Promise<void>;
+    }
+);
+
 // The typed output must retain the reservation used by an uncertain delivery.
 function mapMutation<R>(
   source: MutationPromise<CallPluginResponse>,
@@ -56,6 +68,7 @@ export function bindOperations<
     throw new Error("component has no declared callable contribution");
   const binding = structuredClone(context.binding);
   const captured = structuredClone(target);
+  const journal = context.runtime.plugins;
   function request<K extends keyof Inputs & string>(
     method: K,
     input: Inputs[K],
@@ -85,18 +98,72 @@ export function bindOperations<
       input: stringifyJSON(input),
     };
   }
+  function commands<K extends keyof Inputs & string>(
+    ...methods: readonly K[]
+  ): { [M in K]: BoundCommand<M, Outputs[M]> }[K][] {
+    context.signal.throwIfAborted();
+    return journal
+      .commands()
+      .flatMap<BoundCommand<K, Outputs[K]>>((command) => {
+        const original = command.binding;
+        const method = methods.find((method) => method === original.method);
+        if (
+          method === undefined ||
+          original.installationId !== binding.installationId ||
+          original.digest !== binding.digest ||
+          original.contract !== contract ||
+          original.contribution !== binding.contribution ||
+          original.target.scope !== captured.scope ||
+          original.target.reference !== captured.reference
+        )
+          return [];
+        const identity = { method, idempotencyKey: command.idempotencyKey };
+        if (command.state === "active")
+          return [{ ...identity, state: "active" }];
+        return [
+          {
+            ...identity,
+            state: "recoverable",
+            retire: (signal = context.signal) => {
+              context.signal.throwIfAborted();
+              return context.track(() =>
+                command.retire(AbortSignal.any([context.signal, signal])),
+              );
+            },
+            recover: (signal = context.signal) => {
+              context.signal.throwIfAborted();
+              return context.track(() =>
+                command.recover(
+                  (value) => value as Outputs[K],
+                  AbortSignal.any([context.signal, signal]),
+                ),
+              );
+            },
+          },
+        ];
+      }) as { [M in K]: BoundCommand<M, Outputs[M]> }[K][];
+  }
   return {
+    commands,
+    commandsVersion: journal.commandsVersion,
+    subscribeCommands: journal.subscribeCommands,
     authoring: (name: string) => {
       const intent = `${name}/${binding.installationId}`;
-      const pendingCommand = () => {
+      const originalCommand = () => {
         context.signal.throwIfAborted();
-        const original = context.runtime.plugins
-          .pendingCommands()
+        const original = journal
+          .commands()
           .find((command) => command.matchesIntent(intent));
         if (!original) return;
-        return {
+        const identity = {
           method: original.binding.method,
           idempotencyKey: original.idempotencyKey,
+        };
+        if (original.state === "active")
+          return { ...identity, state: "active" } as const;
+        return {
+          ...identity,
+          state: "recoverable",
           recover: () =>
             context.track((signal) =>
               original.recover(
@@ -104,18 +171,17 @@ export function bindOperations<
                 signal,
               ),
             ),
-        };
+        } as const;
       };
       return {
-        pendingCommand,
-        pendingCommandsVersion: context.runtime.plugins.pendingCommandsVersion,
-        subscribePendingCommands:
-          context.runtime.plugins.subscribePendingCommands,
+        originalCommand,
+        commandsVersion: journal.commandsVersion,
+        subscribeCommands: journal.subscribeCommands,
         submit<K extends keyof Inputs & string>(
           method: K,
           input: Inputs[K],
         ): Promise<Outputs[K]> | undefined {
-          if (pendingCommand()) return;
+          if (originalCommand()) return;
           const invocation = request(method, input, "command", "plugins.call");
           const { contract, method: name, ...binding } = invocation.route;
           return context.track((signal) =>
@@ -129,41 +195,6 @@ export function bindOperations<
           );
         },
       };
-    },
-    pendingCommands: <K extends keyof Inputs & string>(method: K) => {
-      context.signal.throwIfAborted();
-      return context.runtime.plugins
-        .pendingCommands()
-        .filter(
-          ({ binding: original }) =>
-            original.installationId === binding.installationId &&
-            original.digest === binding.digest &&
-            original.contract === contract &&
-            original.contribution === binding.contribution &&
-            original.method === method &&
-            original.target.scope === captured.scope &&
-            original.target.reference === captured.reference,
-        )
-        .map((command) => ({
-          idempotencyKey: command.idempotencyKey,
-          retire: (signal: AbortSignal = context.signal): Promise<void> => {
-            context.signal.throwIfAborted();
-            return context.track(() =>
-              command.retire(AbortSignal.any([context.signal, signal])),
-            );
-          },
-          recover: (
-            signal: AbortSignal = context.signal,
-          ): Promise<Outputs[K]> => {
-            context.signal.throwIfAborted();
-            return context.track(() =>
-              command.recover(
-                (value) => value as Outputs[K],
-                AbortSignal.any([context.signal, signal]),
-              ),
-            );
-          },
-        }));
     },
     queryStream: <K extends keyof Inputs & keyof Chunks & string>(
       method: K,

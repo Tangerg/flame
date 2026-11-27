@@ -66,10 +66,9 @@ export function useReportArchive(context: BoundContext, locale: string) {
     [context.signal],
   );
   const action = useSyncExternalStore(actions.subscribe, actions.snapshot);
-  const journal = context.runtime.plugins;
   useSyncExternalStore(
-    journal.subscribePendingCommands,
-    journal.pendingCommandsVersion,
+    operations.subscribeCommands,
+    operations.commandsVersion,
   );
   const busy = action !== undefined;
   const [outcome, setOutcome] = useState<Outcome>();
@@ -93,21 +92,18 @@ export function useReportArchive(context: BoundContext, locale: string) {
   }>(null);
   // A confirmed recovery unmounts its initiating control after the commit.
   const recoveryReturn = useRef<Element | null>(null);
-  const pendingCommands = () => [
-    ...operations.pendingCommands(METHODS.capture).map((command) => ({
-      ...command,
-      method: METHODS.capture,
-    })),
-    ...operations.pendingCommands(METHODS.delete).map((command) => ({
-      ...command,
-      method: METHODS.delete,
-    })),
-  ];
-  const unknown = pendingCommands();
-  const canAuthor = () => actions.canStart() && !pendingCommands().length;
+  const originalCommands = () =>
+    operations.commands(METHODS.capture, METHODS.delete);
+  const commands = context.signal.aborted ? [] : originalCommands();
+  const locked = busy || commands.length > 0;
+  const unknown = commands.filter((command) => command.state === "recoverable");
+  const canAuthor = () => actions.canStart() && originalCommands().length === 0;
   const isPending = (key: string) =>
     actions.canStart() &&
-    pendingCommands().some(({ idempotencyKey }) => idempotencyKey === key);
+    originalCommands().some(
+      (command) =>
+        command.state === "recoverable" && command.idempotencyKey === key,
+    );
 
   const refresh = useCallback(
     async (owner: AbortSignal): Promise<Header[] | undefined> => {
@@ -386,6 +382,7 @@ export function useReportArchive(context: BoundContext, locale: string) {
     t,
     fmt,
     busy,
+    locked,
     action,
     outcome,
     refs: {

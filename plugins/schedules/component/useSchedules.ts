@@ -122,10 +122,13 @@ export function useSchedules(
     observation.snapshot,
   );
   useSyncExternalStore(
-    operations.subscribePendingCommands,
-    operations.pendingCommandsVersion,
+    operations.subscribeCommands,
+    operations.commandsVersion,
   );
-  const pending = context.signal.aborted ? undefined : operations.pendingCommand();
+  const original = context.signal.aborted
+    ? undefined
+    : operations.originalCommand();
+  const pending = original?.state === "recoverable" ? original : undefined;
   const [notice, setNotice] = useState<Notice>();
   const feedbackElement = useRef<HTMLElement>(null);
   const [liveError, setLiveError] = useState<string>();
@@ -262,8 +265,9 @@ export function useSchedules(
   }
   function reconcile(key: string) {
     if (context.signal.aborted) return;
-    const original = operations.pendingCommand();
-    if (original?.idempotencyKey !== key) return;
+    const original = operations.originalCommand();
+    if (original?.state !== "recoverable" || original.idempotencyKey !== key)
+      return;
     const { method } = original;
     if (!isAuthoringMethod(method)) return;
     observe({ method, label: t(AUTHORING_LABELS[method]) }, () => {
@@ -410,7 +414,7 @@ export function useSchedules(
         .toLocaleLowerCase()
         .includes(search.toLocaleLowerCase()),
   );
-  const busy = command !== undefined || pending !== undefined;
+  const busy = command !== undefined || original !== undefined;
   const canSave = Boolean(
     !busy &&
     edit?.draft.instructions.trim() &&

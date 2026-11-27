@@ -18,7 +18,7 @@ export {
   type MutationConfirmation,
 } from "./mutationJournalErrors";
 export type { PendingRuntimeCommand, RuntimeCommandMethod } from "./mutationJournalEntry";
-export type { PluginCommandRecovery } from "./pluginCommand";
+export type { PluginCommand, PluginCommandRecovery } from "./pluginCommand";
 export type { PluginCommandInput, PluginCommandBinding } from "./mutationJournal";
 export { createMutationSettler } from "./mutationSettlement";
 export type { MutationSettler } from "./mutationSettlement";

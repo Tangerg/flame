@@ -114,12 +114,14 @@ export function useMemory(
     activity.snapshot,
   );
   useSyncExternalStore(
-    operations.subscribePendingCommands,
-    operations.pendingCommandsVersion,
+    operations.subscribeCommands,
+    operations.commandsVersion,
   );
-  const original = context.signal.aborted
+  const journalCommand = context.signal.aborted
     ? undefined
-    : operations.pendingCommand();
+    : operations.originalCommand();
+  const original =
+    journalCommand?.state === "recoverable" ? journalCommand : undefined;
   const [recoveryDetail, setRecoveryDetail] = useState<{
     key: string;
     presentation: CommandPresentation;
@@ -128,7 +130,8 @@ export function useMemory(
   const [outcomes, setOutcomes] = useState<{
     [source in CommandSource]?: Outcome;
   }>({});
-  const pending = activeCommand !== undefined;
+  const pending =
+    activeCommand !== undefined || journalCommand?.state === "active";
   const detail =
     original && recoveryDetail?.key === original.idempotencyKey
       ? recoveryDetail
@@ -304,8 +307,8 @@ export function useMemory(
         if (owner.aborted) return;
         const failure = { cause: error, fallback };
         if (mutationSettlementIsUnknown(error)) {
-          const retained = operations.pendingCommand();
-          if (retained) {
+          const retained = operations.originalCommand();
+          if (retained?.state === "recoverable") {
             setRecoveryDetail({
               key: retained.idempotencyKey,
               presentation,
@@ -362,8 +365,9 @@ export function useMemory(
   }
   function reconcile(key: string) {
     if (context.signal.aborted) return;
-    const retained = operations.pendingCommand();
-    if (retained?.idempotencyKey !== key) return;
+    const retained = operations.originalCommand();
+    if (retained?.state !== "recoverable" || retained.idempotencyKey !== key)
+      return;
     observe(
       { source: recoverySource, intent: detail?.presentation.intent },
       retained.recover,

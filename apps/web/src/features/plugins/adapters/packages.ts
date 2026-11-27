@@ -30,7 +30,7 @@ export const usePluginProviders = createDataQuery<PluginProviderSelection[]>(PRO
 
 export type PackageOperations = Omit<
   Methods["plugins"],
-  "pendingCommands" | "pendingCommandsVersion" | "subscribePendingCommands" | "selectProvider"
+  "commands" | "commandsVersion" | "subscribeCommands" | "selectProvider"
 > & {
   signal: AbortSignal;
   pendingCommands: PendingPluginCommands;

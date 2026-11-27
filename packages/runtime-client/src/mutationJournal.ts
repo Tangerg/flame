@@ -52,14 +52,21 @@ export interface MutationReservation {
   track<T>(create: () => MutationPromise<T>): MutationPromise<T>;
 }
 
-export interface PendingPluginCommand {
+export interface PluginCommandIdentity {
   readonly idempotencyKey: string;
-  readonly namespace: string;
   readonly binding: PluginCallRoute;
   matchesIntent(intent: string): boolean;
+}
+
+export interface PluginCommandReservation extends PluginCommandIdentity {
+  readonly state: "recoverable";
+  readonly namespace: string;
   reserve(): MutationReservation;
   validate(request: CallPluginRequest): void;
 }
+
+export type ActivePluginCommand = PluginCommandIdentity & { readonly state: "active" };
+type PluginCommandEntry = ActivePluginCommand | PluginCommandReservation;
 
 export type PendingRunCommand = RunCommand & {
   readonly idempotencyKey: string;
@@ -151,40 +158,47 @@ export class MutationJournal {
     return this.#claim(this.#journal.recoverRuntimeCommand(command, params));
   }
 
-  pendingPluginCommands(): PendingPluginCommand[] {
+  pluginCommands(): PluginCommandEntry[] {
     this.#assertCurrent();
-    return this.#journal.pendingEntries().flatMap((entry) => {
+    return this.#journal.pendingEntries().flatMap<PluginCommandEntry>((entry) => {
       const { command } = entry;
-      if (command.kind !== "plugin" || this.#claims.has(entry.idempotencyKey)) return [];
+      if (command.kind !== "plugin") return [];
       const identity = mutationIdentity(entry);
-      const pending: PendingPluginCommand = {
+      const reference: PluginCommandIdentity = {
         idempotencyKey: identity.idempotencyKey,
-        namespace: identity.namespace,
         binding: copyJournalProjection(command.route),
         matchesIntent: (intent) => {
           this.#assertCurrent();
           return this.#journal.matchesPluginCommandIntent(identity, intent);
         },
-        reserve: () => {
-          this.#assertCurrent();
-          if (this.#claims.has(identity.idempotencyKey))
-            throw new MutationJournalOwnershipError(
-              "plugin command is already owned by an active attempt",
-            );
-          return this.#claim(identity);
-        },
-        validate: (request) => {
-          this.#assertClaim(identity);
-          this.#journal.validatePluginCommand(identity, request);
-        },
       };
-      return [pending];
+      if (this.#claims.has(identity.idempotencyKey))
+        return [{ ...reference, state: "active" }];
+      return [
+        {
+          ...reference,
+          state: "recoverable",
+          namespace: identity.namespace,
+          reserve: () => {
+            this.#assertCurrent();
+            if (this.#claims.has(identity.idempotencyKey))
+              throw new MutationJournalOwnershipError(
+                "plugin command is already owned by an active attempt",
+              );
+            return this.#claim(identity);
+          },
+          validate: (request) => {
+            this.#assertClaim(identity);
+            this.#journal.validatePluginCommand(identity, request);
+          },
+        },
+      ];
     });
   }
 
-  pendingPluginCommandsVersion = (): number => this.#pluginCommandVersion;
+  pluginCommandsVersion = (): number => this.#pluginCommandVersion;
 
-  subscribePendingPluginCommands = (listener: () => void): (() => void) => {
+  subscribePluginCommands = (listener: () => void): (() => void) => {
     const changes = this.#pluginCommandChanges;
     changes.addEventListener(PLUGIN_COMMANDS_CHANGED, listener, {
       signal: this.#lifetime.signal,

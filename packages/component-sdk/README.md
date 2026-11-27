@@ -316,28 +316,29 @@ The decoder must validate
 the publisher acknowledgement before settlement. Journal routing/fingerprints are
 durable; authored input and business results are not copied into it. Low-level
 calls and stable-intent commands share that journal and retain routing metadata.
-For a recreated component, `bindOperations(...).pendingCommands(method)` projects
-unresolved commands, including streams, for the same installation, release digest, contribution, method contract and target. Use the raw management API to inspect retained commands from another release.
+For a recreated component, `bindOperations(...).commands(...methods)` projects
+unresolved commands, including streams, for the same installation, release digest,
+contribution, method contract and target. Use the Runtime client journal to inspect
+retained commands from another release.
 Components that associate pending work with an authored action also check the
 Runtime handle's `matchesIntent(originalIntent)` through
-`context.runtime.plugins.pendingCommands()`. A shared binding does not establish
+`context.runtime.plugins.commands()`. A shared binding does not establish
 the originating document or action. The predicate reads the existing salted
 journal fingerprint without introducing another intent registry.
 For a panel that admits one authored command at a time, `bindOperations(...).authoring(name)`
-binds one named intent per installation. `submit` returns no attempt while the original
-is available for recovery, and the Runtime client serializes active claims for that intent.
-On a recreated panel, use `pendingCommand()` to recover the SDK's original handle.
-`subscribePendingCommands` and `pendingCommandsVersion` notify each live panel
-when an original handle becomes available or another panel claims it.
+binds one named intent per installation. `submit` returns no attempt while the
+original is active or recoverable. `originalCommand()` selects that exact entry
+for a recreated panel. `subscribeCommands` and `commandsVersion` keep each live
+panel current as an original is claimed, released or settled.
 `CommandActivity` holds foreground feedback for a component source lifetime.
-Its recovery handle reads `plugins.getCommand` from Runtime's saved route before
+A recoverable command's handle reads `plugins.getCommand` from Runtime's saved route before
 querying the original backend receipt under the same key. It does not reconstruct
 input from the current draft, prepare another provider or persist business output.
 Unavailable, missing, expired or conflicting evidence stays unresolved. Runtime
 refuses route recovery before dispatch admission, so this read cannot initiate work.
-`context.runtime.plugins.pendingCommands()` exposes the same journal projection
+`context.runtime.plugins.commands()` exposes the same journal projection
 for client management. Stream recovery reads the original final receipt without
-replaying chunks. Both handles expose `retire()` for Runtime-confirmed
+replaying chunks. Recoverable entries in both projections expose `retire()` for Runtime-confirmed
 never-dispatched work; a failed retirement preserves the original journal and
 cannot authorize a replacement command.
 

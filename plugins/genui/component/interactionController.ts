@@ -252,8 +252,9 @@ export class InteractionController {
     );
     this.#context.signal.throwIfAborted();
     const recoveries = this.#context.runtime.plugins
-      .pendingCommands()
+      .commands()
       .flatMap((command) => {
+        if (command.state !== "recoverable") return [];
         const captured = intents.find(({ intent }) =>
           command.matchesIntent(intent),
         );
@@ -311,8 +312,11 @@ export class InteractionController {
   #retainCommand(id: string, intent: string): Recovery {
     try {
       const original = this.#context.runtime.plugins
-        .pendingCommands()
-        .find((command) => command.matchesIntent(intent));
+        .commands()
+        .find(
+          (command): command is PluginCommandRecovery =>
+            command.state === "recoverable" && command.matchesIntent(intent),
+        );
       if (!original)
         throw new Error(
           "genui: the original command handle is unavailable; inspect the existing command recovery view",

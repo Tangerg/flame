@@ -23,7 +23,7 @@ export function UsageReports({ context, locale }: PluginComponentProps) {
 
 function Archive({ context, locale }: { context: BoundContext; locale: string }) {
   const archive = useReportArchive(context, locale);
-  const { t, fmt, busy, outcome, refs, catalog, report, removal, recovery } =
+  const { t, fmt, locked, outcome, refs, catalog, report, removal } =
     archive;
   const opened = report.opened;
   const titleFor = reportTitles(
@@ -73,7 +73,7 @@ function Archive({ context, locale }: { context: BoundContext; locale: string })
         <SavedReport
           opened={opened}
           removeButton={refs.removeButton}
-          pending={busy || recovery.commands.length > 0}
+          pending={locked}
           remove={removal.request}
           t={t}
           fmt={fmt}

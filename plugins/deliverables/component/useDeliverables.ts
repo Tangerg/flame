@@ -20,9 +20,8 @@ import { bindDeliverableOperations } from "./operations";
 import { useProjections } from "./useProjections";
 import {
   COMMAND_EFFECTS,
-  useCommandJournal,
-  type CommandObservation,
-} from "./useCommandJournal";
+  useDeliverableCommands,
+} from "./useDeliverableCommands";
 import { useAssetSave } from "./useAssetSave";
 import { DocumentNavigation, type Selection } from "./documentNavigation";
 import { type MethodOutputs } from "./methods.generated";
@@ -213,22 +212,21 @@ export function useDeliverables(context: ComponentContext) {
   }, [context, signal, fail]);
 
   const settle = useCallback(
-    (command: CommandObservation, result: unknown) => {
-      const announced = commandNotice(command.method, result);
+    (method: CommandMethod, result: unknown, followUp?: () => void) => {
+      const announced = commandNotice(method, result);
       if (announced) tell(announced);
-      // This callback belongs to the original authored action, never the current draft.
       try {
-        command.settled?.(result);
+        followUp?.();
       } catch (error) {
         fail(error);
       }
-      const { reload } = COMMAND_EFFECTS[command.method];
+      const { reload } = COMMAND_EFFECTS[method];
       if (reload === "uploads") void query(METHODS.uploads, {});
       else if (reload === "views") void refreshRef.current();
     },
     [fail, query, tell],
   );
-  const journal = useCommandJournal({
+  const journal = useDeliverableCommands({
     operations,
     signal,
     scoped,

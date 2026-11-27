@@ -30,14 +30,14 @@ export class PendingPluginCommands {
     private readonly signal: AbortSignal,
     private readonly journal: Pick<
       Methods["plugins"],
-      "pendingCommands" | "subscribePendingCommands"
+      "commands" | "subscribeCommands"
     >,
     private readonly track: <P extends Promise<unknown>>(
       operation: (signal: AbortSignal) => P,
     ) => P,
   ) {
     if (signal.aborted) return;
-    const stop = journal.subscribePendingCommands(this.refresh);
+    const stop = journal.subscribeCommands(this.refresh);
     signal.addEventListener("abort", stop, { once: true });
     this.refresh();
   }
@@ -85,7 +85,10 @@ export class PendingPluginCommands {
 
   #read(): PendingRead<PluginCommandRecovery> {
     try {
-      return { type: "ready", commands: this.journal.pendingCommands() };
+      return {
+        type: "ready",
+        commands: this.journal.commands().filter((command) => command.state === "recoverable"),
+      };
     } catch (error) {
       return { type: "failed", error };
     }

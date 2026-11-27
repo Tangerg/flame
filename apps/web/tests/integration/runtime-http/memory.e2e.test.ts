@@ -93,13 +93,13 @@ describe("Memory commands over Runtime HTTP", () => {
       await first.runtime.close();
 
       second = openClient(replacementLifetime.signal);
-      const pending = second.memory.pendingCommand();
-      if (!pending) throw new Error("the replacement client lost the original command");
+      const pending = second.memory.originalCommand();
+      if (pending?.state !== "recoverable") throw new Error("the replacement client lost the original command");
       expect(pending).toMatchObject({ method: METHODS.add, idempotencyKey: original.key });
       expect(second.memory.submit(METHODS.add, input)).toBeUndefined();
       expect(delivered).toEqual([original.key]);
       await expect(pending.recover()).resolves.toEqual(original.result);
-      expect(second.memory.pendingCommand()).toBeUndefined();
+      expect(second.memory.originalCommand()).toBeUndefined();
       expect(delivered).toEqual([original.key, original.key]);
 
       const saved = await second.memory.query(METHODS.list, {

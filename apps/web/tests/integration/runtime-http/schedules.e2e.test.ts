@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   asSessionId,
-  MutationJournalOwnershipError,
   mutationSettlementIsUnknown,
   type FlameClient,
 } from "@flame/runtime-client";
@@ -97,22 +96,25 @@ describe("Schedules commands over Runtime HTTP", () => {
         "the original Schedule run commit",
       );
       const second = bindView(client, replacementLifetime.signal);
-      expect(second.pendingCommand()).toBeUndefined();
-      await expect(second.submit(METHODS.runNow, input)).rejects.toBeInstanceOf(
-        MutationJournalOwnershipError,
-      );
+      expect(second.originalCommand()).toMatchObject({
+        state: "active",
+        method: METHODS.runNow,
+        idempotencyKey: delivered[0],
+      });
+      expect(second.submit(METHODS.runNow, input)).toBeUndefined();
       expect(delivered).toHaveLength(1);
 
       originalLifetime.abort();
       dropReply.resolve();
       expect(mutationSettlementIsUnknown(await original)).toBe(true);
       expect(second.submit(METHODS.runNow, input)).toBeUndefined();
-      const command = second.pendingCommand();
+      const command = second.originalCommand();
+      if (command?.state !== "recoverable") throw new Error("the original Schedule command is unavailable");
       expect(command).toMatchObject({ method: METHODS.runNow, idempotencyKey: delivered[0] });
-      await expect(command!.recover()).resolves.toEqual(receipt);
-      expect(recovered).toEqual([command!.idempotencyKey]);
-      expect(delivered).toEqual([command!.idempotencyKey, command!.idempotencyKey]);
-      expect(second.pendingCommand()).toBeUndefined();
+      await expect(command.recover()).resolves.toEqual(receipt);
+      expect(recovered).toEqual([command.idempotencyKey]);
+      expect(delivered).toEqual([command.idempotencyKey, command.idempotencyKey]);
+      expect(second.originalCommand()).toBeUndefined();
 
       const sessionId = asSessionId(receipt.sessionId);
       await expect(fixture.client.sessions.get(sessionId)).resolves.toMatchObject({
@@ -184,13 +186,13 @@ describe("Schedules commands over Runtime HTTP", () => {
       });
 
       const original = client.plugins
-        .pendingCommands()
+        .commands()
         .find(({ idempotencyKey }) => idempotencyKey === delayed.key);
-      if (!original) throw new Error("the SDK did not retain its undelivered command");
+      if (original?.state !== "recoverable") throw new Error("the SDK did not retain its undelivered command");
       await original.retire(replacementLifetime.signal);
       expect(management.snapshot()?.read).toMatchObject({ type: "ready", commands: [] });
       const replacement = bindView(client, replacementLifetime.signal);
-      expect(replacement.pendingCommand()).toBeUndefined();
+      expect(replacement.originalCommand()).toBeUndefined();
       const reply = await delayed.send();
       await expect(reply.json()).resolves.toMatchObject({
         error: { data: { problem: { type: "plugin_command_retired" } } },

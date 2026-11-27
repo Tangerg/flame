@@ -140,7 +140,11 @@ one further observation through the same handle. If that observation cannot be
 opened or also reaches its deadline, `MutationLookupError` preserves the unknown
 outcome and the journal remains available for recovery.
 
-Each `plugins.pendingCommands()` handle exposes `matchesIntent(intent)`, a
+`plugins.commands()` lists active claims and recoverable entries under their
+original keys. Only recoverable entries expose `recover()` and `retire()`.
+`plugins.subscribeCommands(listener)` observes claim and settlement changes,
+and `plugins.commandsVersion()` supplies the current snapshot version.
+Each entry exposes `matchesIntent(intent)`, a
 read-only comparison against the original journal's salted intent fingerprint.
 Use the same authored intent when associating pending work with a document or
 action; equal bindings alone cannot identify that input. Direct calls without a

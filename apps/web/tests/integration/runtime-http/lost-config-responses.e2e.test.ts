@@ -199,9 +199,10 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: configuration commits after lo
       );
       await original.close();
       expect(lost.attempts()).toBe(1);
-      const [pending] = cold.plugins.pendingCommands();
+      const [pending] = cold.plugins.commands();
       const namespace = fixture.negotiated?.limits.idempotency.namespace;
-      if (!pending || !namespace) throw new Error("expected the original pending plugin command");
+      if (pending?.state !== "recoverable" || !namespace)
+        throw new Error("expected the original recoverable plugin command");
       const retained = await cold.plugins.getCommand({ namespace, key: pending.idempotencyKey });
       expect(pending.binding).toEqual(retained.route);
       expect(Object.hasOwn(pending.binding, "input")).toBe(false);
@@ -343,8 +344,8 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: configuration commits after lo
       await expect(cold.plugins.getCommand({ namespace, key: fresh.idempotencyKey })).resolves.toEqual(
         first,
       );
-      expect(cold.plugins.pendingCommands().map((command) => command.idempotencyKey)).toEqual([
-        firstKey,
+      expect(cold.plugins.commands()).toMatchObject([
+        { idempotencyKey: firstKey, state: "recoverable", binding: request.route },
       ]);
       const pending = new PendingPluginCommands(signal, cold.plugins, (run) =>
         run(signal),
@@ -352,6 +353,11 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: configuration commits after lo
       holdLookup = true;
       const checking = pending.observe(firstKey, "recover");
       await within(lookupStarted.promise, "the original plugin receipt lookup");
+      expect(cold.plugins.commands()).toMatchObject([
+        { idempotencyKey: firstKey, state: "active", binding: request.route },
+      ]);
+      expect(cold.plugins.commands()[0]).not.toHaveProperty("recover");
+      expect(cold.plugins.commands()[0]).not.toHaveProperty("retire");
       await pending.observe(firstKey, "retire");
       expect(pending.snapshot()?.observation).toMatchObject({ type: "checking", key: firstKey });
       releaseLookup.resolve();
@@ -361,7 +367,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: configuration commits after lo
         key: firstKey,
         output: expect.any(String),
       });
-      expect(cold.plugins.pendingCommands()).toEqual([]);
+      expect(cold.plugins.commands()).toEqual([]);
       await pending.observe(firstKey, "retire");
       expect(retirements).toBe(0);
     } finally {
