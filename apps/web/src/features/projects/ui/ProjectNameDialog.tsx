@@ -9,11 +9,11 @@ import { type ProjectSummary } from "@/features/projects/application/projectQuer
 export function ProjectNameDialog({
   project,
   onClose,
-  onSaved,
+  onCreated,
 }: {
   project?: ProjectSummary;
   onClose: () => void;
-  onSaved?: (project: ProjectSummary) => void;
+  onCreated?: (projectId: string) => void;
 }) {
   const t = useT();
   const access = useProjectsAccess();
@@ -24,10 +24,11 @@ export function ProjectNameDialog({
     setBusy(true);
     setError(null);
     try {
-      const saved = project
-        ? await access.commands.update(project, { name: name.trim() })
-        : await access.commands.create(name.trim());
-      onSaved?.(saved);
+      if (project) await access.commands.update(project, { name: name.trim() });
+      else {
+        const projectId = await access.commands.create(name.trim());
+        onCreated?.(projectId);
+      }
       onClose();
     } catch (cause) {
       setBusy(false);

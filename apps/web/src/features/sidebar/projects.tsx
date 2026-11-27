@@ -160,10 +160,7 @@ function ProjectsSection() {
       )}
       {showArchived && archived.length > 0 && render(archived)}
       {creating && (
-        <ProjectNameDialog
-          onClose={() => setCreating(false)}
-          onSaved={(project) => access.openHome(project.id)}
-        />
+        <ProjectNameDialog onClose={() => setCreating(false)} onCreated={access.openHome} />
       )}
     </>
   );

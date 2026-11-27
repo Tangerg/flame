@@ -6,7 +6,9 @@ export interface ProjectPatch {
   archived?: boolean;
 }
 
+export type ProjectCommandTarget = Pick<ProjectSummary, "id" | "revision">;
+
 export interface ProjectCommands {
-  create(name: string): Promise<ProjectSummary>;
-  update(project: ProjectSummary, patch: ProjectPatch): Promise<ProjectSummary>;
+  create(name: string): Promise<string>;
+  update(project: ProjectCommandTarget, patch: ProjectPatch): Promise<void>;
 }
