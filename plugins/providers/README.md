@@ -13,10 +13,10 @@ retains only its ordinary model and provider catalogs for basic composition.
 
 One explicitly constructed component source owns unsubmitted credential drafts,
 read projections and original command observations across view closes. Source or
-Runtime retirement clears that state and fences stale submissions. Known command
-responses update the accepted projection before refreshing it; a refresh failure
-cannot turn that command into a failure. An unconfirmed command blocks another
-write to the same resource and retains its original promise for reconciliation.
+Runtime retirement clears that state and fences stale submissions. A command
+receipt settles the submitted draft and requests a fresh read. Catalog values and
+role selections advance through Runtime queries. An unconfirmed command blocks
+another write to the same resource and retains its original promise for reconciliation.
 Later edits survive settlement, including an address changed back to the value
 shown when a save began. Probe feedback belongs to the draft revision that was tested.
 No plugin-owned credential registry, role state machine or module-global presenter

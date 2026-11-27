@@ -56,8 +56,13 @@ interface Snapshot {
 }
 interface CommandObservation {
   readonly original: MutationPromise<unknown>;
-  readonly accept: (result: unknown) => void;
-  readonly draft?: { providerId: string; revision: symbol | undefined };
+  readonly submission?: CredentialSubmission;
+}
+
+interface CredentialSubmission {
+  readonly providerId: string;
+  readonly revision: symbol | undefined;
+  settle(): void;
 }
 
 type TrackedCommand = Command & { readonly observation: CommandObservation };
@@ -198,7 +203,8 @@ export class ProviderSettings {
     const resource = providerResource(provider.id);
     // A value equal to the current provider may be a correction to a pending save.
     const savingCredentials =
-      this.#snapshot.commands.get(resource)?.observation.draft !== undefined;
+      this.#snapshot.commands.get(resource)?.observation.submission !==
+      undefined;
     this.#storeDraft(
       provider.id,
       savingCredentials ? draft : draft.rebase(provider),
@@ -226,29 +232,27 @@ export class ProviderSettings {
       context,
       providerResource(provider.id),
       () => context.runtime.providers.update(submitted.toUpdate(provider)),
-      (saved) => {
-        this.#acceptProvider(saved);
-        const current = this.#snapshot.drafts.get(provider.id) ?? submitted;
-        this.#storeDraft(provider.id, current.settle(submitted).rebase(saved));
-        if (current.revision === submitted.revision)
-          this.#feedback(providerResource(provider.id), { kind: "saved" });
+      {
+        providerId: provider.id,
+        revision: submitted.revision,
+        settle: () => {
+          const current = this.#snapshot.drafts.get(provider.id) ?? submitted;
+          this.#storeDraft(provider.id, current.settle(submitted));
+          if (current.revision === submitted.revision)
+            this.#feedback(providerResource(provider.id), { kind: "saved" });
+        },
       },
-      { providerId: provider.id, revision: submitted.revision },
     );
   }
 
   clearKey(context: SettingsContext, provider: string) {
     this.#assert(context);
     if (this.#snapshot.probing.has(provider)) return Promise.resolve(false);
-    return this.#command(
-      context,
-      providerResource(provider),
-      () =>
-        context.runtime.providers.update({
-          provider,
-          apiKey: { type: "clear" },
-        }),
-      (saved) => this.#acceptProvider(saved),
+    return this.#command(context, providerResource(provider), () =>
+      context.runtime.providers.update({
+        provider,
+        apiKey: { type: "clear" },
+      }),
     );
   }
 
@@ -257,20 +261,10 @@ export class ProviderSettings {
     kind: RoleKind,
     value: UtilityRole | EmbeddingRole,
   ) {
-    return this.#command(
-      context,
-      kind,
-      () =>
-        kind === "utility"
-          ? context.runtime.models.setUtilityRole(value)
-          : context.runtime.models.setEmbeddingRole(value),
-      (saved) => {
-        this.#cancelRead(kind);
-        this.#snapshot = {
-          ...this.#snapshot,
-          [kind]: { phase: "ready", data: saved },
-        };
-      },
+    return this.#command(context, kind, () =>
+      kind === "utility"
+        ? context.runtime.models.setUtilityRole(value)
+        : context.runtime.models.setEmbeddingRole(value),
     );
   }
 
@@ -333,23 +327,18 @@ export class ProviderSettings {
     return this.#observe(context, resource, command.observation, true);
   }
 
-  #command<T>(
+  #command(
     context: SettingsContext,
     resource: string,
-    execute: () => MutationPromise<T>,
-    accept: (result: T) => void,
-    draft?: CommandObservation["draft"],
+    execute: () => MutationPromise<unknown>,
+    submission?: CredentialSubmission,
   ) {
     this.#assert(context);
     if (this.#snapshot.commands.has(resource)) return Promise.resolve(false);
     this.#feedback(resource);
     try {
       const original = context.track(execute);
-      const observation: CommandObservation = {
-        original,
-        accept: (result) => accept(result as T),
-        draft,
-      };
+      const observation: CommandObservation = { original, submission };
       return this.#observe(context, resource, observation, false);
     } catch (error) {
       this.#feedback(resource, { kind: "error", error });
@@ -367,9 +356,8 @@ export class ProviderSettings {
     const running: TrackedCommand = { phase: "running", observation };
     this.#setCommand(resource, running);
     this.#publish();
-    let result: unknown;
     try {
-      result = await (recover
+      await (recover
         ? context.track(() =>
             observation.original.retry({ signal: context.signal }),
           )
@@ -382,7 +370,7 @@ export class ProviderSettings {
       )
         this.#setCommand(resource, { phase: "unknown", observation, error });
       else {
-        const submitted = observation.draft;
+        const submitted = observation.submission;
         if (
           !submitted ||
           this.#snapshot.drafts.get(submitted.providerId)?.revision ===
@@ -396,7 +384,7 @@ export class ProviderSettings {
     }
     if (this.#snapshot.commands.get(resource) !== running) return false;
     this.#setCommand(resource);
-    observation.accept(result);
+    observation.submission?.settle();
     this.#publish();
     if (isRoleKind(resource)) this.refreshRead(context, resource);
     else {
@@ -416,21 +404,6 @@ export class ProviderSettings {
       context.component.componentId !== this.#component.componentId
     )
       throw new Error("provider settings belong to another installed source");
-  }
-
-  #acceptProvider(saved: Provider) {
-    this.#cancelRead("providers");
-    const providers = this.#snapshot.providers.data;
-    if (providers !== undefined)
-      this.#snapshot = {
-        ...this.#snapshot,
-        providers: {
-          phase: "ready",
-          data: providers.map((provider) =>
-            provider.id === saved.id ? saved : provider,
-          ),
-        },
-      };
   }
 
   #cancelRead(key: ReadKey) {

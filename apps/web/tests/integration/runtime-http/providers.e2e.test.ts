@@ -148,7 +148,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: providers", () => {
     }
   }, 30_000);
 
-  it("keeps an address edited back to its original value while a save is pending", async () => {
+  it("keeps later edits and the latest provider read while an earlier save is pending", async () => {
     const providerId = "openai";
     const initialAddress = fixture.providerBaseUrl;
     await fixture.client.providers.update({
@@ -164,6 +164,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: providers", () => {
     };
     const initial = await readProvider();
     const submittedAddress = new URL("/settings-save/v1", initialAddress).href;
+    const concurrentAddress = new URL("/concurrent-settings-save/v1", initialAddress).href;
     const committed = Promise.withResolvers<void>();
     const release = Promise.withResolvers<void>();
     let held = false;
@@ -194,6 +195,14 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: providers", () => {
     };
     const settings = new ProviderSettings({ ...context, runtimeIdentity: client });
     const submitted = ProviderCredentialsDraft.initial().withBaseURL(submittedAddress);
+    const expectedRead = Promise.withResolvers<void>();
+    const observedAddresses: string[] = [];
+    const stopObserving = settings.subscribe(() => {
+      const view = settings.getSnapshot().providers;
+      const address = view.data?.find((provider) => provider.id === providerId)?.baseUrl;
+      if (address !== undefined) observedAddresses.push(address);
+      if (view.phase === "ready" && address === concurrentAddress) expectedRead.resolve();
+    });
     settings.edit(context, initial, submitted);
     const saving = settings.save(context, initial, submitted);
     try {
@@ -201,18 +210,27 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: providers", () => {
       const saved = await readProvider();
       expect(saved.baseUrl).toBe(submittedAddress);
       settings.edit(context, initial, submitted.withBaseURL(initialAddress));
+      const concurrent = await fixture.client.providers.update({
+        provider: providerId,
+        baseUrl: { type: "set", value: concurrentAddress },
+      });
+      settings.refreshRead(context, "providers");
+      await within(expectedRead.promise, "the newer provider setting");
       release.resolve();
       await expect(saving).resolves.toBe(true);
+      expect(observedAddresses).toContain(concurrentAddress);
+      expect(observedAddresses).not.toContain(submittedAddress);
 
       const later = settings.getSnapshot().drafts.get(providerId);
-      expect(later?.baseURL(saved)).toBe(initialAddress);
+      expect(later?.baseURL(concurrent)).toBe(initialAddress);
       if (!later) throw new Error("expected the later address edit");
-      expect(later.dirty(saved)).toBe(true);
-      await expect(settings.save(context, saved, later)).resolves.toBe(true);
+      expect(later.dirty(concurrent)).toBe(true);
+      await expect(settings.save(context, concurrent, later)).resolves.toBe(true);
       expect((await readProvider()).baseUrl).toBe(initialAddress);
     } finally {
       release.resolve();
       await saving;
+      stopObserving();
       lifetime.abort();
       await client.close();
       await fixture.client.providers.update({
