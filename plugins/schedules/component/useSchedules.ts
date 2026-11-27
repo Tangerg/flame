@@ -5,6 +5,7 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
 } from "react";
 import {
   bindOperations,
@@ -34,18 +35,17 @@ import { de } from "./locales/de";
 const CATALOGS = { en, zh, "zh-TW": zhTW, ja, ko, es, fr, de };
 import {
   type Schedule,
-  type Page,
   type Draft,
   type Mutation,
   type Command,
   type CommandState,
   type Notice,
-  type Read,
   type Edit,
   type ModelRead,
 } from "./types";
 import { isConcealed } from "@flame/ui";
 import { METHODS } from "./methods";
+import { ScheduleCatalog } from "./scheduleCatalog";
 export const enabled = (item: Schedule) => item.nextRunAt !== undefined;
 export const modelKey = (provider: string, model: string) =>
   JSON.stringify([provider, model]);
@@ -84,8 +84,15 @@ export function useSchedules(context: ComponentContext, locale: string) {
       { scope: "installation", reference: context.binding.installationId },
     );
   }, [context]);
-  const [read, setRead] = useState<Read>({ loading: true });
-  const reading = useRef<AbortController>(undefined);
+  const catalog = useMemo(
+    () => new ScheduleCatalog(
+      (cursor, signal) => operations.query(METHODS.list, { cursor }, signal),
+      context.signal,
+    ),
+    [context.signal, operations],
+  );
+  const read = useSyncExternalStore(catalog.subscribe, catalog.snapshot);
+  const { refresh, openPage } = catalog;
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<ScheduleFilter>(UNFILTERED);
   const modelSource = useMemo(
@@ -117,52 +124,16 @@ export function useSchedules(context: ComponentContext, locale: string) {
     [],
   );
   const [command, setCommand] = useState<CommandState>();
-  const accepted = useRef<{ page: Page; history: string[] }>(undefined);
   const [notice, setNotice] = useState<Notice>();
   const feedbackElement = useRef<HTMLElement>(null);
   const [liveError, setLiveError] = useState<string>();
-  const arrival = useRef<HTMLElement>(undefined);
   const summary = useRef<HTMLSpanElement>(null);
-  const refresh = useCallback(
-    async (
-      history = accepted.current?.history ?? [],
-      pageControl?: HTMLElement,
-    ) => {
-      reading.current?.abort();
-      arrival.current = undefined;
-      const controller = new AbortController();
-      reading.current = controller;
-      const signal = AbortSignal.any([context.signal, controller.signal]);
-      setRead((previous) => ({ ...previous, loading: true, error: undefined }));
-      try {
-        const page = await operations.query(
-          METHODS.list,
-          { cursor: history.at(-1) ?? "" },
-          signal,
-        );
-        if (!signal.aborted) {
-          accepted.current = { page, history };
-          arrival.current = pageControl;
-          setRead({ loading: false, accepted: accepted.current });
-        }
-      } catch (error) {
-        if (!signal.aborted)
-          setRead((previous) => ({
-            ...previous,
-            loading: false,
-            error: failure(error),
-          }));
-      }
-    },
-    [context, operations],
-  );
   useEffect(() => {
-    void refresh();
-    return () => reading.current?.abort();
-  }, [refresh]);
+    void catalog.refresh();
+    return catalog.stop;
+  }, [catalog]);
   useLayoutEffect(() => {
-    const control = arrival.current;
-    arrival.current = undefined;
+    const control = read.accepted?.focusFrom;
     const active = control?.ownerDocument.activeElement;
     if (
       control &&
@@ -501,6 +472,7 @@ export function useSchedules(context: ComponentContext, locale: string) {
     read,
     busy,
     refresh,
+    openPage,
     summary,
     liveError,
     edit,

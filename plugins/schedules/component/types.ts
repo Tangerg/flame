@@ -22,11 +22,6 @@ export type CommandState =
   | { phase: "submitting"; command: Command }
   | { phase: "uncertain"; command: Command; error: string };
 export type Notice = string | MethodOutputs[typeof METHODS.runNow];
-export type Read = {
-  loading: boolean;
-  accepted?: { page: Page; history: string[] };
-  error?: string;
-};
 export type Edit = { basis?: Schedule; draft: Draft };
 export type ModelRead = {
   source: Pick<ComponentContext, "runtime" | "track" | "signal">;

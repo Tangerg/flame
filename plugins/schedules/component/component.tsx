@@ -85,7 +85,7 @@ export function Schedules({ context, locale }: PluginComponentProps) {
     editorOpen,
     read,
     busy,
-    refresh,
+    openPage,
     summary,
     liveError,
     edit,
@@ -94,8 +94,8 @@ export function Schedules({ context, locale }: PluginComponentProps) {
     rows,
     matching,
   } = schedules;
-  const history = read.accepted?.history ?? [];
-  const paginated = Boolean(history.length) || Boolean(page?.nextCursor);
+  const cursors = read.accepted?.cursors ?? [];
+  const paginated = Boolean(cursors.length) || Boolean(page?.nextCursor);
   const feedback = (notice || command) && (
     <ScheduleFeedback
       t={t}
@@ -131,7 +131,7 @@ export function Schedules({ context, locale }: PluginComponentProps) {
           page && (
             <CatalogSummary
               summary={summary}
-              page={paginated ? history.length + 1 : undefined}
+              page={paginated ? cursors.length + 1 : undefined}
               rows={rows}
               t={t}
             />
@@ -162,11 +162,11 @@ export function Schedules({ context, locale }: PluginComponentProps) {
         {paginated && (
           <SchedulePager
             t={t}
-            history={history}
+            cursors={cursors}
             nextCursor={page?.nextCursor}
             loading={read.loading}
             busy={busy}
-            onPage={(cursors, control) => void refresh(cursors, control)}
+            onPage={openPage}
           />
         )}
       </PanelSection>

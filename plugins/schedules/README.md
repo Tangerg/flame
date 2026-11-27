@@ -260,7 +260,9 @@ settles acceptance and refreshes the catalog.
 Templates live in src/templates.ts as authoring content copied into a new draft.
 The generic Domain/loader/Protocol owns no Schedule template or closed view kind.
 The component consumes existing schedule notices and cancels/joins its I/O on
-retirement. Failed pagination keeps the accepted page/cursor. Previous and Next
+retirement. A background invalidation refreshes the cursor the user selected,
+including during navigation. Failed pagination keeps the accepted page visible
+and Refresh retries the selected cursor. Previous and Next
 retain their keyboard position through reads using the shared pending control;
 page bounds stay focusable and inert, while commands keep their native disablement.
 An accepted explicit page transition focuses the existing catalog summary only
