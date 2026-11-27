@@ -250,6 +250,14 @@ describe.skipIf(process.platform !== "darwin")("Runtime replay after capability 
       throw new Error("connection lost after receiving the Runtime response");
     });
     const original = first.sessions.update(params);
+    const retryOriginal = (client: ReturnType<typeof openClient>) => {
+      const pending = client.runtime.pendingCommands().find(
+        ({ idempotencyKey, method }) =>
+          idempotencyKey === original.idempotencyKey && method === "sessions.update",
+      );
+      if (!pending) throw new Error("the original Session update was not retained");
+      return client.runtime.retryCommand("sessions.update", pending, params);
+    };
     try {
       await expect(original).rejects.toBeInstanceOf(RpcConnectionError);
       expect(mutationStorage.size).toBe(1);
@@ -263,7 +271,7 @@ describe.skipIf(process.platform !== "darwin")("Runtime replay after capability 
     expect(fixture.negotiated?.features.isolation?.enabled).toBe(false);
     const restricted = openClient();
     try {
-      const replay = restricted.sessions.update(params);
+      const replay = retryOriginal(restricted);
       expect(replay.idempotencyKey).toBe(original.idempotencyKey);
       await expect(replay).rejects.toMatchObject({
         name: "MutationLookupError",
@@ -277,7 +285,7 @@ describe.skipIf(process.platform !== "darwin")("Runtime replay after capability 
     await restartRuntime(false);
     const restored = openClient();
     try {
-      const replay = restored.sessions.update(params);
+      const replay = retryOriginal(restored);
       expect(replay.idempotencyKey).toBe(original.idempotencyKey);
       await expect(replay).resolves.toEqual(committed);
       expect(mutationStorage.size).toBe(0);
