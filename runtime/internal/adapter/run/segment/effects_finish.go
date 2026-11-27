@@ -97,8 +97,7 @@ func NewFinalizer(cfg FinalizerConfig) (*Finalizer, error) {
 func (f *Finalizer) Finish(ctx context.Context, fin runs.Finish) error {
 	needsSnapshot := !fin.Parked() && fin.WorkspaceCWD != ""
 	needsTitle := strings.TrimSpace(fin.OpeningUserText) != ""
-	ctx = executionctx.WithScope(ctx, runs.ExecutionScope{SessionID: fin.SessionID, CWD: fin.WorkspaceCWD, WorkspaceCWD: fin.WorkspaceCWD})
-	ctx = executionctx.WithInvocationOwner(ctx, "")
+	ctx = executionctx.WithSessionScope(ctx, fin.SessionID, fin.WorkspaceCWD)
 	var errs []error
 	// The stop hook may write files that do not belong to this Run's checkpoint.
 	if needsSnapshot {

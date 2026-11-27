@@ -138,16 +138,16 @@ export function ConsoleFeedback({
             <RecordGroup key={command.id} aria-label={t("command.original")}>
               <Metadata>{commandLabel(command.method, t)}</Metadata>
               <RecordBody>{command.id}</RecordBody>
-              <p role={command.status === "unknown" ? "alert" : "status"}>
+              <p role={command.state === "recoverable" ? "alert" : "status"}>
                 {t(
-                  command.status === "unknown"
+                  command.state === "recoverable"
                     ? "command.unknown"
                     : "command.running",
                 )}
               </p>
               {command.error && <RecordBody>{command.error}</RecordBody>}
-              {command.status === "unknown" && command.recover && (
-                <Button onClick={() => state.recover(command)}>
+              {command.state === "recoverable" && (
+                <Button onClick={() => void state.recover(command.id)}>
                   {t("command.recover")}
                 </Button>
               )}

@@ -122,7 +122,8 @@ element, a sheet's cell or a document block. "Copy link" in each editor links
 the shown object and pins the revision when the editor shows an earlier one or
 the object is a document block, whose identity is a position; otherwise the link
 follows the head. Opening a link reads the head when it names no revision and
-selects the object once the editor shows that revision. A completed create,
+selects the object once the editor shows that revision. A newer link or archive
+selection retires any earlier pending head lookup. A completed create,
 import, edit, recalculate or restore tool call shows its revision in the
 conversation with "Open", which opens that exact revision beside it.
 
@@ -295,7 +296,9 @@ changed.
 Document and revision-history pagination keeps its controls focusable while a
 read is pending and at page boundaries. Pending controls reject repeat activation;
 settlement preserves the user's current focus, including a later move to another
-control. Read failures retain the accepted page and its available navigation.
+control. Background invalidation follows the selected archive or history cursor
+while navigation is pending. Read failures retain the accepted page and its
+available navigation.
 The exact revision being read remains a selectable option alongside each history
 page, so paging does not replace its label with a raw identity or change selection.
 Opening a retained document, a completed command's revision or the Inspector's
@@ -346,6 +349,8 @@ current revision. Each review captures its revision, render and reviewed page se
 An old page's successful review cannot certify a later edit. A disconnected
 component retains its original command handle and consults that receipt; it
 cannot turn an absent receipt into permission to execute again.
+The current observation reserves its command before starting recovery or
+retirement, and only that attempt can settle the outcome.
 
 ## Execution and evidence
 

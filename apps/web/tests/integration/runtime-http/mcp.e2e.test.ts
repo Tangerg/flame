@@ -1,6 +1,7 @@
 import { parseMcpImport } from "../../../../../plugins/mcp/component/import";
-import { candidate as mcpCandidate, serverKey } from "../../../../../plugins/mcp/component/model";
-import { IMPORT, MCPSettings } from "../../../../../plugins/mcp/component/settings";
+import { candidate as mcpCandidate, directoryTarget, serverKey, serverSettings } from "../../../../../plugins/mcp/component/model";
+import { IMPORT, MCPSettings, editorKey } from "../../../../../plugins/mcp/component/settings";
+import { MCPServerEdit } from "../../../../../plugins/mcp/component/draft";
 import { createServer as createHttpServer } from "node:http";
 import { describe, expect, it } from "vitest";
 import { RpcError, asSessionId, type FlameClient } from "@flame/runtime-client";
@@ -8,7 +9,9 @@ import { HTTP_HEADERS } from "@flame/runtime-client/wire";
 import { liveMCPToolName } from "./fakeProvider";
 import {
   collectRunEvents,
+  deleteUserMCPServers,
   nextUserMCPChange,
+  readMCPDirectoryTarget,
   originalOpeningEvents,
   waitForUserMCPConnection,
   watchRuntimeTopic,
@@ -30,6 +33,75 @@ function settingsContext(runtime: FlameClient, signal: AbortSignal) {
 
 describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: MCP", () => {
   const fixture = useRuntimeFixture("mcp");
+
+  it("keeps MCP edits and delete confirmations bound to the observed configuration", async () => {
+    const name = "http-e2e-stale-configuration";
+    const original = {
+      name,
+      enabled: false,
+      description: "Original MCP configuration",
+      connection: { type: "stdio", command: "runtime-http-e2e-mcp" },
+      handshakeTimeout: { type: "unbounded" },
+    } as const;
+    const client = fixture.client;
+    const other = fixture.createSharedClient();
+    const lifetime = new AbortController();
+    const context = settingsContext(client, lifetime.signal);
+    const settings = new MCPSettings({ ...context, runtimeIdentity: client });
+    const readServer = async () => {
+      const { data } = await client.mcp.list();
+      const server = data.find(({ id }) => id.origin.type === "user" && id.name === name);
+      if (!server) throw new Error(`Missing MCP server ${name}`);
+      return serverSettings(server);
+    };
+    try {
+      await client.mcp.create(original);
+      const selected = await readServer();
+      const target = directoryTarget(selected);
+      if (!target) throw new Error(`Missing directory revision for MCP server ${name}`);
+      const key = editorKey(selected.id);
+      const staleDraft = MCPServerEdit.of(selected).with("description", "Earlier MCP edit");
+      settings.edit(context, key, staleDraft);
+
+      const latestDescription = "MCP configuration saved by another client";
+      await other.mcp.update({ ...target, description: latestDescription });
+      await expect(client.mcp.update({ ...target, enabled: true })).rejects.toMatchObject({
+        data: { type: "revision_conflict" },
+      });
+      await expect(settings.save(context, staleDraft)).resolves.toBe(false);
+      expect(settings.getSnapshot().drafts.get(key)).toBe(staleDraft);
+      expect(settings.getSnapshot().feedback.get(key)).toMatchObject({
+        kind: "error", error: { data: { type: "revision_conflict" } },
+      });
+      await expect(readServer()).resolves.toMatchObject({ description: latestDescription, enabled: false });
+
+      settings.discardDraft(context, key);
+      expect(settings.getSnapshot().drafts.has(key)).toBe(false);
+      const savedDescription = "Edit after reopening";
+      const refreshedDraft = MCPServerEdit.of(await readServer()).with("description", savedDescription);
+      await expect(settings.save(context, refreshedDraft)).resolves.toBe(true);
+      await expect(readServer()).resolves.toMatchObject({ description: savedDescription });
+
+      const confirmedDelete = await readMCPDirectoryTarget(client, name);
+      await other.mcp.delete(confirmedDelete);
+      await other.mcp.create({ ...original, description: savedDescription });
+      const replacement = await readMCPDirectoryTarget(other, name);
+      expect(replacement.server).toEqual(confirmedDelete.server);
+      expect(replacement.expectedRevision).not.toBe(confirmedDelete.expectedRevision);
+      await expect(settings.remove(context, confirmedDelete)).resolves.toBe(false);
+      expect(settings.getSnapshot().feedback.get(key)).toMatchObject({
+        kind: "error", error: { data: { type: "revision_conflict" } },
+      });
+      await expect(readMCPDirectoryTarget(client, name)).resolves.toEqual(replacement);
+    } finally {
+      lifetime.abort();
+      try {
+        await deleteUserMCPServers(other, name);
+      } finally {
+        await other.close();
+      }
+    }
+  }, 30_000);
 
   it("reconciles disabled MCP configuration through mcp.changed", async () => {
     const streamController = new AbortController();
@@ -56,7 +128,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: MCP", () => {
     ).toEqual([expect.objectContaining({ id: serverId, status: { type: "disabled" } })]);
 
     const updated = fixture.client.mcp.update({
-      server: serverId,
+      ...(await readMCPDirectoryTarget(fixture.client, server)),
       description: "Updated disabled MCP E2E fixture",
     });
     await expect(updated).resolves.toBeUndefined();
@@ -65,7 +137,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: MCP", () => {
     });
 
     const latestDescription = "Newer disabled MCP E2E fixture";
-    await fixture.client.mcp.update({ server: serverId, description: latestDescription });
+    await fixture.client.mcp.update({ ...(await readMCPDirectoryTarget(fixture.client, server)), description: latestDescription });
     await expect(nextUserMCPChange(runtimeEvents, server)).resolves.toMatchObject({
       servers: expect.arrayContaining([serverId]),
     });
@@ -74,7 +146,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: MCP", () => {
       (await fixture.client.mcp.list()).data.find((entry) => entry.id.name === server),
     ).toMatchObject({ id: serverId, description: latestDescription, status: { type: "disabled" } });
 
-    await fixture.client.mcp.delete(serverId);
+    await fixture.client.mcp.delete(await readMCPDirectoryTarget(fixture.client, server));
     await expect(nextUserMCPChange(runtimeEvents, server)).resolves.toMatchObject({
       servers: expect.arrayContaining([serverId]),
     });
@@ -313,7 +385,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: MCP", () => {
     });
 
     const deletion = await watchRuntimeTopic(fixture.client, "mcp.changed");
-    await fixture.client.mcp.delete(serverId);
+    await fixture.client.mcp.delete(await readMCPDirectoryTarget(fixture.client, server));
     await expect(nextUserMCPChange(deletion.events, server)).resolves.toMatchObject({
       servers: expect.arrayContaining([serverId]),
     });
@@ -368,7 +440,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: MCP", () => {
       stopObserving();
       lifetime.abort();
       await client.close();
-      await fixture.client.mcp.delete(server);
+      await deleteUserMCPServers(fixture.client, server.name);
     }
   }, 30_000);
 
@@ -445,8 +517,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: MCP", () => {
       await importing;
       lifetime.abort();
       await client.close();
-      for (const { id } of (await fixture.client.mcp.list()).data)
-        if (id.name === first || id.name === second) await fixture.client.mcp.delete(id);
+      await deleteUserMCPServers(fixture.client, first, second);
     }
   }, 30_000);
 
@@ -507,7 +578,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: MCP", () => {
       await revoking;
       lifetime.abort();
       await client.close();
-      await fixture.client.mcp.delete(server);
+      await deleteUserMCPServers(fixture.client, server.name);
     }
   }, 30_000);
 });

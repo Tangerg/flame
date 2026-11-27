@@ -52,6 +52,7 @@ var problemSpecs = mustProblemSpecs([]problemSpec{
 	declaredProblem(ErrCheckpointUnavailable, RecoveryPromptUser),
 	declaredProblem(ErrCheckpointConflict, RecoveryPromptUser),
 	declaredProblem(ErrPromptSourceTooLarge, RecoveryPromptUser),
+	declaredProblem(ErrPromptRejected, RecoveryStop),
 	declaredProblem(ErrExportTooLarge, RecoveryPromptUser),
 	declaredProblem(ErrUnsupportedMime, RecoveryPromptUser),
 	declaredProblem(ErrPathOutsideRoot, RecoveryPromptUser),

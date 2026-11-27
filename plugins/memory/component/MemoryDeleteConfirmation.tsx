@@ -18,8 +18,7 @@ type DeleteConfirmationProps = {
   feedback: ReactNode;
   pending: boolean;
   locked: boolean;
-  recovering: boolean;
-  aborted: boolean;
+  check?: () => void;
   cancel: () => void;
   confirm: () => void;
   t: Translate;
@@ -31,8 +30,7 @@ export function MemoryDeleteConfirmation({
   feedback,
   pending,
   locked,
-  recovering,
-  aborted,
+  check,
   cancel,
   confirm,
   t,
@@ -63,13 +61,13 @@ export function MemoryDeleteConfirmation({
           {t("cancel")}
         </Button>
         <Button
-          variant={recovering ? "primary" : "tonal"}
-          tone={recovering ? undefined : "negative"}
+          variant={check ? "primary" : "tonal"}
+          tone={check ? undefined : "negative"}
           pending={pending}
-          disabled={recovering ? aborted : locked}
-          onClick={confirm}
+          disabled={check ? pending : locked}
+          onClick={check ?? confirm}
         >
-          {recovering ? t("feedback.check") : t("delete.confirm")}
+          {check ? t("feedback.check") : t("delete.confirm")}
         </Button>
       </FormActions>
     </RecordForm>

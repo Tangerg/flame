@@ -1,10 +1,9 @@
+import type { GoalTarget, StartGoalRequest, UpdateGoalRequest } from "@flame/runtime-client/wire";
 import { GenerationRetiredError } from "@/lib/asyncOwnership";
 import { RetirableTaskCohort } from "@/lib/taskQueue";
 import {
   type GoalCommandsGateway,
   type GoalCommandReceipt,
-  type StartGoalInput,
-  type UpdateGoalInput,
 } from "@/features/goal/application/ports/goalCommandsGateway";
 export type GoalProjectionRepair = (sessionId: string) => Promise<unknown>;
 
@@ -28,24 +27,24 @@ class GoalCommandGeneration {
     this.#repairProjection = repairProjection;
   }
 
-  start(input: StartGoalInput): Promise<void> {
+  start(input: StartGoalRequest): Promise<void> {
     return this.#run(input.sessionId, () => this.#gateway.start(input));
   }
 
-  update(input: UpdateGoalInput): Promise<void> {
+  update(input: UpdateGoalRequest): Promise<void> {
     return this.#run(input.sessionId, () => this.#gateway.update(input));
   }
 
-  clear(sessionId: string): Promise<void> {
-    return this.#run(sessionId, () => this.#gateway.clear(sessionId));
+  clear(target: GoalTarget): Promise<void> {
+    return this.#run(target.sessionId, () => this.#gateway.clear(target));
   }
 
-  stop(sessionId: string): Promise<void> {
-    return this.#run(sessionId, () => this.#gateway.stop(sessionId));
+  stop(target: GoalTarget): Promise<void> {
+    return this.#run(target.sessionId, () => this.#gateway.stop(target));
   }
 
-  resume(sessionId: string): Promise<void> {
-    return this.#run(sessionId, () => this.#gateway.resume(sessionId));
+  resume(target: GoalTarget): Promise<void> {
+    return this.#run(target.sessionId, () => this.#gateway.resume(target));
   }
 
   retire(): void {

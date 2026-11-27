@@ -1,7 +1,6 @@
 package terminal
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
@@ -236,11 +235,8 @@ func (a *app) handleCancelGesture() {
 }
 
 func (a *app) retireDraft(message authoring.Message) error {
-	if err := a.composer.rememberPrompt(message); err != nil {
-		return fmt.Errorf("save prompt history: %w", err)
-	}
-	if err := a.composer.commitDraft(authoring.Message{}); err != nil {
-		return fmt.Errorf("retire session draft: %w", err)
+	if err := a.composer.moveDraftToHistory(message); err != nil {
+		return err
 	}
 	a.completion.popup.Dismiss()
 	return nil

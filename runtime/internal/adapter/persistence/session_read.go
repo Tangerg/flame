@@ -39,6 +39,10 @@ func (s *SessionStore) list(ctx context.Context, filter session.CatalogFilter, a
 			predicates = append(predicates, `(title_search LIKE ? ESCAPE '\' OR workspace_search LIKE ? ESCAPE '\')`)
 			args = append(args, pattern, pattern)
 		}
+		if prefix, present := filter.IDPrefix(); present {
+			predicates = append(predicates, `instr(id, ?) = 1`)
+			args = append(args, prefix)
+		}
 		if workspacePath, present := filter.WorkspacePath(); present {
 			predicates = append(predicates, `workspace_path = ?`)
 			args = append(args, workspacePath)

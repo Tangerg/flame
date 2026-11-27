@@ -114,6 +114,114 @@ it(
         contributions: [],
       });
 
+      const initialResult = structuredClone(request);
+      initialResult.messages[0].createSurface.dataModel.data.operations = {
+        preview: { status: "pending" },
+      };
+      const withUpdate = (path, value) => ({
+        ...request,
+        messages: [
+          ...request.messages,
+          {
+            version: A2UI_VERSION,
+            updateDataModel: { surfaceId: "review", path, value },
+          },
+        ],
+      });
+      const reservedResultWrites = [
+        initialResult,
+        withUpdate("/data/operations/preview", { status: "pending" }),
+        withUpdate("/data//operations/preview", { status: "pending" }),
+        withUpdate("/data/", { title: "Updated", operations: {} }),
+      ];
+      const rejectedWrites = await Promise.all(
+        reservedResultWrites.map((arguments_) =>
+          client.callTool({ name: presentationTool, arguments: arguments_ }),
+        ),
+      );
+      expect(rejectedWrites.map(({ isError }) => isError)).toEqual([
+        true,
+        true,
+        true,
+        true,
+      ]);
+      for (const rejected of rejectedWrites)
+        expect(rejected.content[0].text).toMatch(/^invalid_presentation:/);
+
+      const scalarData = structuredClone(request);
+      scalarData.operations.push({
+        id: "preview",
+        installationId: "fixture-installation",
+        contribution: "fixture",
+        method: "inspect",
+      });
+      scalarData.messages[0].createSurface.dataModel.data = "A title";
+      const blockedProjection = await client.callTool({
+        name: presentationTool,
+        arguments: scalarData,
+      });
+      expect(blockedProjection.isError).toBe(true);
+      expect(blockedProjection.content[0].text).toContain(
+        "/data requires an object for operation results",
+      );
+
+      const displayUpdate = withUpdate("/data/operationsSummary", "Updated");
+      const updated = await client.callTool({
+        name: presentationTool,
+        arguments: displayUpdate,
+      });
+      expect(updated.structuredContent).toEqual({
+        ...displayUpdate,
+        contributions: [],
+      });
+
+      const businessRequest = interfaceRequest();
+      const button = businessRequest.messages[0].createSurface.components.find(
+        ({ id }) => id === "send",
+      );
+      const event = button.action.event;
+      event.context.payload = {
+        catalogId: "inventory",
+        event: { name: "shipment.arrived" },
+        component: "TextField",
+        call: "fulfillment desk",
+      };
+      const businessPayload = await client.callTool({
+        name: presentationTool,
+        arguments: businessRequest,
+      });
+      expect(
+        businessPayload.isError,
+        businessPayload.content[0]?.text,
+      ).not.toBe(true);
+      expect(businessPayload.structuredContent).toEqual({
+        ...businessRequest,
+        contributions: [],
+      });
+      expect(
+        Presentation.read(
+          JSON.stringify(businessPayload.structuredContent),
+        ).snapshot(),
+      ).toEqual(businessPayload.structuredContent);
+      event.name = "shipment.arrived";
+      const undeclaredAction = await client.callTool({
+        name: presentationTool,
+        arguments: businessRequest,
+      });
+      expect(undeclaredAction.isError).toBe(true);
+      expect(undeclaredAction.content[0].text).toContain(
+        "action is not declared",
+      );
+      button.action = { functionCall: { call: "unregistered_function" } };
+      const undeclaredFunction = await client.callTool({
+        name: presentationTool,
+        arguments: businessRequest,
+      });
+      expect(undeclaredFunction.isError).toBe(true);
+      expect(undeclaredFunction.content[0].text).toContain(
+        "renderer function is not admitted",
+      );
+
       const data = request.messages[0].createSurface.dataModel.data;
       data.padding = "";
       const bytes = Buffer.byteLength(

@@ -17,10 +17,12 @@ import (
 
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+	"github.com/Tangerg/flame/packages/go-sdk/plugin/modelprovider"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
 	framecall "github.com/Tangerg/frame/call"
 	sdk "github.com/Tangerg/go-sdk/mcp"
+	"github.com/google/uuid"
 )
 
 // faultMode is how the probe disturbs the stdio stream between Runtime and
@@ -28,10 +30,11 @@ import (
 type faultMode string
 
 const (
-	withholdRequest  faultMode = "request"
-	withholdResponse faultMode = "response"
-	durableCut       faultMode = "durable"
-	replaceResponse  faultMode = "replace-response"
+	withholdRequest      faultMode = "request"
+	withholdResponse     faultMode = "response"
+	durableCut           faultMode = "durable"
+	replaceResponse      faultMode = "replace-response"
+	mismatchChatOriginal faultMode = "mismatch-chat-original"
 )
 
 // stage is the durable cut the test selects in the "<evidence>.phase" file
@@ -108,11 +111,12 @@ func run() (err error) {
 }
 
 type probe struct {
-	evidence string
-	backend  string
-	method   string
-	tool     string
-	mode     faultMode
+	evidence         string
+	backend          string
+	method           string
+	tool             string
+	mode             faultMode
+	modelCloseMethod string
 	// retained holds each matched request line until its response arrives.
 	retained sync.Map
 }
@@ -123,19 +127,28 @@ func newProbe(args []string) (*probe, error) {
 	}
 	mode := faultMode(args[4])
 	switch mode {
-	case withholdRequest, withholdResponse, durableCut, replaceResponse:
+	case withholdRequest, withholdResponse, durableCut, replaceResponse, mismatchChatOriginal:
 	default:
 		return nil, errUsage
 	}
-	return &probe{evidence: args[0], backend: args[1], method: args[2], tool: args[3], mode: mode}, nil
+	p := &probe{evidence: args[0], backend: args[1], method: args[2], tool: args[3], mode: mode}
+	if mode == mismatchChatOriginal {
+		closeMethod, err := modelprovider.CloseMethod()
+		if err != nil {
+			return nil, err
+		}
+		p.modelCloseMethod = closeMethod.Name()
+	}
+	return p, nil
 }
 
 type request struct {
 	ID     jsontext.Value `json:"id"`
 	Method string         `json:"method"`
 	Params struct {
-		Name   string `json:"name"`
-		Method string `json:"method"`
+		Name   string         `json:"name"`
+		Method string         `json:"method"`
+		Input  jsontext.Value `json:"input"`
 	} `json:"params"`
 }
 
@@ -184,7 +197,7 @@ func (p *probe) forward(backend io.Writer, line []byte) error {
 			p.retained.Store(string(message.ID), jsontext.Value(line))
 		}
 	default:
-		if p.matches(message) {
+		if p.matches(message) || (p.mode == mismatchChatOriginal && message.semantic() == p.modelCloseMethod) {
 			p.retained.Store(string(message.ID), jsontext.Value(line))
 		}
 	}
@@ -228,6 +241,8 @@ func (p *probe) relay(ctx context.Context, line []byte) ([]byte, error) {
 			return nil, err
 		}
 		return replaceReply(line, replacement)
+	case mismatchChatOriginal:
+		return p.observeModelHandle(original, line)
 	default:
 		withheld, err := p.withhold(original, line)
 		if err != nil {
@@ -238,6 +253,42 @@ func (p *probe) relay(ctx context.Context, line []byte) ([]byte, error) {
 		}
 		return line, nil
 	}
+}
+
+func (p *probe) observeModelHandle(original jsontext.Value, line []byte) ([]byte, error) {
+	var incoming request
+	if err := json.Unmarshal(original, &incoming); err != nil {
+		return nil, err
+	}
+	var reply struct {
+		Result jsontext.Value `json:"result"`
+	}
+	if err := json.Unmarshal(line, &reply); err != nil {
+		return nil, err
+	}
+	if incoming.semantic() == p.modelCloseMethod {
+		if _, err := pluginmcp.DecodeReply[struct{}](reply.Result); err != nil {
+			return nil, err
+		}
+		return line, os.WriteFile(p.evidence+".closed", incoming.Params.Input, 0600)
+	}
+	opened, err := pluginmcp.DecodeReply[modelprovider.Chat](reply.Result)
+	if err != nil {
+		return nil, err
+	}
+	handle, err := json.Marshal(opened.Handle)
+	if err != nil {
+		return nil, err
+	}
+	if err := os.WriteFile(p.evidence+".opened", handle, 0600); err != nil {
+		return nil, err
+	}
+	opened.Original = pluginmcp.CommandID(uuid.NewString())
+	modified, err := pluginmcp.EncodeReply(opened, nil, nil)
+	if err != nil {
+		return nil, err
+	}
+	return replaceReply(line, modified.Bytes())
 }
 
 // cut records the exchange at the selected stage. A halting stage then parks

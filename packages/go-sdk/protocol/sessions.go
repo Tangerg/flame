@@ -36,6 +36,7 @@ type Session struct {
 type ListSessionsRequest struct {
 	PageQuery
 	Search    string        `json:"search,omitempty"`
+	IDPrefix  string        `json:"idPrefix,omitempty"`
 	Workspace *WorkspaceRef `json:"workspace,omitzero"`
 	ProjectID string        `json:"projectId,omitempty"`
 }

@@ -16,9 +16,41 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
 	framecall "github.com/Tangerg/frame/call"
 )
+
+func TestUnboundInstalledCommandRetiresBeforeLateDelivery(t *testing.T) {
+	cfg := poMCPConfig(t)
+	r := poMCPOpen(t, cfg)
+	installed := poMCPActivate(r, filepath.Join(firstPartyPackages, "schedules"))
+	server := &protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "schedules"}
+	r.poMCPTools(server, scheduleToolsReady)
+	request := scheduleCreateRequest(r, testsupport.SchedulesDraft{
+		Title: "Delayed command", Instructions: "Report the original command.", Cron: "0 0 1 1 *", TimeZone: "UTC",
+	})
+	options := protocol.CallMetadata{IdempotencyKey: "delayed-schedule-create"}
+	lookup := protocol.PluginCommandRequest{Namespace: cfg.stores.IdempotencyNamespace.String(), Key: options.IdempotencyKey}
+	r.must(delivery.PluginsRetireCommand, lookup, "")
+
+	r = reopenPluginRuntime(t, r, &cfg)
+	r.poMCPTools(server, scheduleToolsReady)
+	r.must(delivery.PluginsRetireCommand, lookup, "")
+	if result := r.endpoint.Invoke(t.Context(), delivery.PluginsGetCommand, lookup, protocol.CallMetadata{}); !errors.Is(result.Failure, protocol.ErrPluginCommandRetired) {
+		t.Fatalf("unbound retirement was not retained: %+v", result)
+	}
+	if result := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, options); !errors.Is(result.Failure, protocol.ErrPluginCommandRetired) {
+		t.Fatalf("late command crossed its retirement: %+v", result)
+	}
+	if page := readSchedulePage(r, protocol.PageQuery{}); len(page.Data) != 0 {
+		t.Fatalf("retired command reached the Schedule: %+v", page)
+	}
+	created := readScheduleCreate(r, request, "deliberate-schedule-create")
+	if page := readSchedulePage(r, protocol.PageQuery{}); len(page.Data) != 1 || page.Data[0].Id != created.Id {
+		t.Fatalf("fresh command did not create exactly its Schedule: %+v", page)
+	}
+}
 
 func TestPreparedInstalledCommandRetiresAfterRestartWithoutBackendDispatch(t *testing.T) {
 	source := reviewExamplePackage(t)

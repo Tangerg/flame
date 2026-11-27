@@ -18,14 +18,14 @@ type Gate struct {
 	changed          chan struct{}
 	resolveTree      func(string) (string, error)
 	treesOverlap     func(string, string) (bool, error)
-	settleRetirement func(context.Context, identity.SessionID) (bool, error)
+	settleRetirement func(context.Context, identity.SessionID) error
 	rollbackPending  func(context.Context, identity.SessionID) (bool, error)
 }
 
 type GateConfig struct {
 	ResolveTree              func(string) (string, error)
 	TreesOverlap             func(string, string) (bool, error)
-	SettleRetirement         func(context.Context, identity.SessionID) (bool, error)
+	SettleRetirement         func(context.Context, identity.SessionID) error
 	WorkspaceRollbackPending func(context.Context, identity.SessionID) (bool, error)
 }
 
@@ -136,9 +136,7 @@ func (g *Gate) acquireForegroundSession(ctx context.Context, sessionID identity.
 	if err != nil || !ok {
 		return nil, false, err
 	}
-	settled, err := g.settleRetirement(ctx, sessionID)
-	err = errors.Join(err, errors.Join(ctx.Err(), context.Cause(ctx)))
-	if err != nil || !settled {
+	if err := errors.Join(g.settleRetirement(ctx, sessionID), ctx.Err(), context.Cause(ctx)); err != nil {
 		release()
 		return nil, false, err
 	}
@@ -196,9 +194,7 @@ func (g *Gate) AcquireRun(ctx context.Context, sessionID identity.SessionID, cwd
 	if err != nil || !ok {
 		return RunAdmission{}, false, err
 	}
-	settled, err := g.settleRetirement(ctx, sessionID)
-	err = errors.Join(err, errors.Join(ctx.Err(), context.Cause(ctx)))
-	if err != nil || !settled {
+	if err := errors.Join(g.settleRetirement(ctx, sessionID), ctx.Err(), context.Cause(ctx)); err != nil {
 		admission.Release()
 		return RunAdmission{}, false, err
 	}
@@ -206,13 +202,8 @@ func (g *Gate) AcquireRun(ctx context.Context, sessionID identity.SessionID, cwd
 }
 
 func (g *Gate) acquireRunLocked(sessionID identity.SessionID, cwd string) (RunAdmission, bool, error) {
-	if g.activeSessionLocked(sessionID) {
-		return RunAdmission{}, false, nil
-	}
-	if cwd != "" {
-		if busy, err := g.treeMutationLocked(cwd); err != nil || busy {
-			return RunAdmission{}, false, err
-		}
+	if ready, err := g.runStartableLocked(sessionID, cwd); err != nil || !ready {
+		return RunAdmission{}, false, err
 	}
 	admission := &runAdmissionLease{gate: g}
 	g.pending[admission] = reservedRun{sessionID: sessionID, cwd: cwd}
@@ -291,46 +282,26 @@ func (g *Gate) activeSessionsLocked(yield func(identity.SessionID) bool) {
 	}
 }
 
-// An observation boundary, not a reservation: callers must still acquire their own
-// admission and may wait again.
-func (g *Gate) WaitRunStartable(ctx context.Context, sessionID identity.SessionID, cwd string) error {
-	if ctx == nil {
-		return errors.New("session admission: wait context is required")
-	}
-	if err := errors.Join(ctx.Err(), context.Cause(ctx)); err != nil {
-		return err
-	}
+// Callers must acquire admission before acting because the probe holds no reservation.
+func (g *Gate) RunStartable(sessionID identity.SessionID, cwd string) (bool, error) {
 	if cwd != "" {
 		var err error
 		cwd, err = g.resolveTree(cwd)
 		if err != nil {
-			return err
+			return false, err
 		}
 	}
-	for {
-		g.mu.Lock()
-		if err := errors.Join(ctx.Err(), context.Cause(ctx)); err != nil {
-			g.mu.Unlock()
-			return err
-		}
-		treeMutation, err := g.treeMutationLocked(cwd)
-		if err != nil {
-			g.mu.Unlock()
-			return err
-		}
-		startable := !g.activeSessionLocked(sessionID) && (cwd == "" || !treeMutation)
-		changed := g.changed
-		g.mu.Unlock()
-		if startable {
-			return nil
-		}
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	return g.runStartableLocked(sessionID, cwd)
+}
 
-		select {
-		case <-ctx.Done():
-			return errors.Join(ctx.Err(), context.Cause(ctx))
-		case <-changed:
-		}
+func (g *Gate) runStartableLocked(sessionID identity.SessionID, cwd string) (bool, error) {
+	if g.activeSessionLocked(sessionID) {
+		return false, nil
 	}
+	busy, err := g.treeMutationLocked(cwd)
+	return !busy && err == nil, err
 }
 
 // Successful return transfers the locked Gate to the foreground admission. The

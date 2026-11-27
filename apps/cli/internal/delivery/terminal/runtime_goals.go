@@ -2,6 +2,7 @@ package terminal
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/changefeed"
@@ -81,14 +82,21 @@ func (g *goalScreens) StartGoal(objective string) error {
 		SessionID: g.session.current.ID, Objective: objective,
 		Provider: g.options.Provider, Model: g.options.Model, ReasoningEffort: g.options.ReasoningEffort,
 	}
-	return g.changeGoal("starting session goal", func(ctx context.Context) (protocol.Goal, error) {
+	if selected, ok := g.selectedGoal(); ok {
+		start.ReplaceIncarnationID = selected.IncarnationID
+	}
+	return g.changeGoal("starting session goal", "goal · start accepted", func(ctx context.Context) (protocol.Goal, error) {
 		return g.service.StartGoal(ctx, start)
 	})
 }
 
 func (g *goalScreens) UpdateGoal(objective string) error {
-	update := protocol.UpdateGoalRequest{SessionID: g.session.current.ID, Objective: objective}
-	return g.changeGoal("updating session goal", func(ctx context.Context) (protocol.Goal, error) {
+	target, ok := g.selectedGoal()
+	if !ok {
+		return errNoDisplayedGoal
+	}
+	update := protocol.UpdateGoalRequest{GoalTarget: target, Objective: objective}
+	return g.changeGoal("updating session goal", "goal · update accepted", func(ctx context.Context) (protocol.Goal, error) {
 		return g.service.UpdateGoal(ctx, update)
 	})
 }
@@ -101,13 +109,26 @@ func (g *goalScreens) StopGoal() error {
 	return g.acknowledgeGoalChange("stopping session goal", "goal · stop accepted", g.service.StopGoal)
 }
 
-func (g *goalScreens) acknowledgeGoalChange(label, accepted string, change func(context.Context, string) error) error {
+var errNoDisplayedGoal = errors.New("no Goal is displayed for the current session")
+
+func (g *goalScreens) selectedGoal() (protocol.GoalTarget, bool) {
+	current := g.header.goal
+	if current == nil || current.SessionID != g.session.current.ID {
+		return protocol.GoalTarget{}, false
+	}
+	return current.GoalTarget, true
+}
+
+func (g *goalScreens) acknowledgeGoalChange(label, accepted string, change func(context.Context, protocol.GoalTarget) error) error {
+	target, ok := g.selectedGoal()
+	if !ok {
+		return errNoDisplayedGoal
+	}
 	presentation := g.session.context
-	sessionID := g.session.current.ID
 	g.status.note(label)
 	started := g.tasks.admissionMutation(goalOperation,
 		func(ctx context.Context) (struct{}, error) {
-			return struct{}{}, change(ctx, sessionID)
+			return struct{}{}, change(ctx, target)
 		},
 		func(_ struct{}, err error) {
 			if err != nil {
@@ -127,25 +148,27 @@ func (g *goalScreens) acknowledgeGoalChange(label, accepted string, change func(
 }
 
 func (g *goalScreens) ResumeGoal() error {
-	sessionID := g.session.current.ID
-	return g.changeGoal("resuming session goal", func(ctx context.Context) (protocol.Goal, error) {
-		return g.service.ResumeGoal(ctx, sessionID)
+	target, ok := g.selectedGoal()
+	if !ok {
+		return errNoDisplayedGoal
+	}
+	return g.changeGoal("resuming session goal", "goal · resume accepted", func(ctx context.Context) (protocol.Goal, error) {
+		return g.service.ResumeGoal(ctx, target)
 	})
 }
 
-func (g *goalScreens) changeGoal(label string, change func(context.Context) (protocol.Goal, error)) error {
+func (g *goalScreens) changeGoal(label, accepted string, change func(context.Context) (protocol.Goal, error)) error {
 	presentation := g.session.context
 	g.status.note(label)
-	started := g.tasks.admissionMutation(goalOperation, change, func(current protocol.Goal, err error) {
+	started := g.tasks.admissionMutation(goalOperation, change, func(_ protocol.Goal, err error) {
 		if err != nil {
 			g.message(label + " failed: " + err.Error())
 			return
 		}
 		if g.session.context.current(presentation) {
-			g.header.SetGoal(&current)
-			g.reader.open(g.goalReaderQuery(), goalDocument(current, true))
+			g.ShowGoal()
 		}
-		g.status.note("goal · " + string(current.Status))
+		g.status.note(accepted)
 	})
 	if !started {
 		return goalOperation.busy()

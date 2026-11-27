@@ -3,7 +3,6 @@ import { useShallow } from "zustand/react/shallow";
 import { type Navigator } from "@/lib/navigation";
 import {
   type AgentPlan,
-  type AgentProblem,
   type AgentSessionView,
   type Message,
 } from "@/features/agent/public/sessionView";
@@ -13,10 +12,7 @@ import {
   selectRootNarrativeMessages,
   selectRootRollbackBoundary,
 } from "@/features/agent/application/view/runTree";
-import {
-  EMPTY_PROBLEM_PRESENTATION,
-  selectVisibleProblem,
-} from "@/features/agent/application/view/problemPresentation";
+import { type DisplayedSessionProblem } from "@/features/agent/application/view/problemPresentation";
 import {
   buildTranscriptRows,
   EMPTY_TRANSCRIPT_ROW_CACHE,
@@ -112,14 +108,12 @@ export function createAgentViewSelectors(
     return useAgentStore(selectRows);
   }
 
-  function useAgentProblem(): AgentProblem | null {
+  function useAgentProblem(): DisplayedSessionProblem | null {
     const sessionId = navigation.use((location) => location.session);
     return useAgentStore(
       useShallow((state) => {
         const entry = state.sessions[sessionId];
-        return entry
-          ? selectVisibleProblem(entry.view, entry.problem)
-          : selectVisibleProblem(EMPTY_AGENT_SESSION_VIEW, EMPTY_PROBLEM_PRESENTATION);
+        return entry?.problem.displayed(sessionId, entry.view) ?? null;
       }),
     );
   }

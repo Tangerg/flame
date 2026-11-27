@@ -77,7 +77,6 @@ export const ko: Record<string, string> = {
   "action.disable": "사용 안 함",
   "action.delete": "삭제",
   "nextFiring.label": "다음 실행",
-  "nextFiring.none": "예약되지 않음",
   "details.title": "세부 정보",
   "fact.cron": "Cron",
   "fact.timeZone": "시간대",
@@ -95,7 +94,9 @@ export const ko: Record<string, string> = {
   "notice.accepted":
     "Runtime이 세션 {{session}}에서 실행 {{run}}을(를) 수락했습니다.",
   "notice.openSession": "대화 열기",
+  "notice.sessionMissing": "이 대화는 더 이상 열 수 없습니다.",
   "notice.completed": "{{label}}이(가) 완료되었습니다.",
+  "notice.refused": "Runtime에서 원래 일정 변경을 거부했습니다.",
   "notice.revision":
     "스케줄이 변경되었습니다. 최신 리비전을 읽고 저장하기 전에 새 편집을 여세요.",
   "template.hourly.title": "매시간 진행 확인",

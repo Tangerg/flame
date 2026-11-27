@@ -82,7 +82,6 @@ export const es: Record<string, string> = {
   "action.disable": "Desactivar",
   "action.delete": "Eliminar",
   "nextFiring.label": "Próxima ejecución",
-  "nextFiring.none": "Sin programar",
   "details.title": "Detalles",
   "fact.cron": "Cron",
   "fact.timeZone": "Zona horaria",
@@ -100,7 +99,9 @@ export const es: Record<string, string> = {
   "notice.accepted":
     "El Runtime aceptó la ejecución {{run}} en la sesión {{session}}.",
   "notice.openSession": "Abrir conversación",
+  "notice.sessionMissing": "Esta conversación ya no está disponible.",
   "notice.completed": "{{label}} completado.",
+  "notice.refused": "Runtime rechazó el cambio original de la programación.",
   "notice.revision":
     "La programación cambió. Lee su última revisión y abre una nueva edición antes de guardar.",
   "template.hourly.title": "Comprobación de progreso cada hora",

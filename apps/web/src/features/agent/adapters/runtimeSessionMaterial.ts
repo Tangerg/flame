@@ -1,7 +1,9 @@
 import { type RunCommandRecovery, type SessionSnapshot } from "@flame/runtime-client";
+import { type SteerInput } from "@flame/runtime-client/wire";
 import {
   type AgentOpeningCommand,
   type AgentSessionMaterialRead,
+  type AgentSteerInput,
   type AgentUnresolvedSteer,
 } from "@/features/agent/application/runtimeGateway";
 import { type AgentSharedMaterial } from "@/features/agent/application/session/sharedMaterial";
@@ -12,6 +14,7 @@ import {
   runtimeRunFact,
 } from "@/features/agent/adapters/runtimeAgentFacts";
 import { contentBlocksToAgentInput } from "@/features/agent/adapters/wireInput";
+import { disposeAsyncIterable } from "@/lib/asyncOwnership";
 export function runtimeSessionMaterial(
   sharedMaterial: AgentSharedMaterial,
   sessionId: string,
@@ -23,12 +26,7 @@ export function runtimeSessionMaterial(
       items: snapshot.items.map(runtimeItem),
       runs: snapshot.runs.map(runtimeRunFact),
       pendingInterruptSets: snapshot.interrupts.map(runtimePendingInterruptSet),
-      steerInputs: snapshot.steerInputs?.map((steer) => ({
-        runId: steer.runId,
-        userItemId: steer.userItemId,
-        input: contentBlocksToAgentInput(steer.input),
-        receipt: "accepted",
-      })),
+      steerInputs: snapshot.steerInputs?.map(runtimeSteerInput),
       ...(plan ? { plan } : {}),
     },
     rollbackBasis: {
@@ -39,9 +37,8 @@ export function runtimeSessionMaterial(
   };
 }
 
-type RecordedObservation = Extract<RunCommandRecovery["observation"], { type: "recorded" }>;
 type RecoveredSteer = Extract<RunCommandRecovery, { operation: "steer" }>;
-export type RecoveredOpening = Exclude<RunCommandRecovery, { operation: "steer" }>;
+type RecoveredOpening = Exclude<RunCommandRecovery, { operation: "steer" }>;
 
 // An unrecorded command names its Session only through its request: a start
 // carries it, while resume and steer name a Run of the Session.
@@ -57,44 +54,12 @@ export function recoveredCommandBelongs(
   return runIds.has(command.params.runId);
 }
 
-// A recorded command is merged into the snapshot it may predate: its input is
-// kept for the composer, and an accepted steer contributes its applied item and
-// pending input once.
-export function mergeRecordedCommand(
-  material: AgentSessionMaterialRead,
-  command: RunCommandRecovery,
-  observation: RecordedObservation,
-): void {
-  const receipt = observation.acceptance;
-  if (command.operation !== "resume") {
-    material.recoveredInputs ??= [];
-    material.recoveredInputs.push({
-      idempotencyKey: command.idempotencyKey,
-      input: contentBlocksToAgentInput(command.params.input),
-      acceptance: {
-        status: receipt.type,
-        sessionId: receipt.sessionId,
-        runId: receipt.runId,
-        ...(receipt.userItemId ? { userItemId: receipt.userItemId } : {}),
-      },
-      acknowledge: observation.acknowledge,
-    });
-  }
-  if (command.operation !== "steer") return;
-  if (receipt.type === "accepted" && receipt.appliedItem) {
-    const applied = receipt.appliedItem;
-    if (!material.snapshot.items.some((item) => item.id === applied.id))
-      material.snapshot.items.push(runtimeItem(applied));
-  }
-  if (!receipt.userItemId || !receipt.input) return;
-  material.snapshot.steerInputs ??= [];
-  if (!material.snapshot.steerInputs.some((pending) => pending.userItemId === receipt.userItemId))
-    material.snapshot.steerInputs.push({
-      runId: receipt.runId,
-      userItemId: receipt.userItemId,
-      input: contentBlocksToAgentInput(receipt.input),
-      receipt: receipt.type,
-    });
+export function runtimeSteerInput({
+  runId,
+  userItemId,
+  input,
+}: Pick<SteerInput, "runId" | "userItemId" | "input">): AgentSteerInput {
+  return { runId, userItemId, input: contentBlocksToAgentInput(input) };
 }
 
 export function unresolvedSteer(command: RecoveredSteer): AgentUnresolvedSteer {
@@ -110,6 +75,8 @@ export function unresolvedSteer(command: RecoveredSteer): AgentUnresolvedSteer {
 export function unresolvedOpening(
   command: RecoveredOpening,
   receipt: Exclude<RunCommandRecovery["observation"]["type"], "recorded">,
+  sessionId: string,
+  assertCurrent: () => void,
 ): AgentOpeningCommand {
   const request =
     command.operation === "start"
@@ -131,5 +98,22 @@ export function unresolvedOpening(
             : {}),
           responses: command.params.responses,
         };
-  return { ...request, idempotencyKey: command.idempotencyKey, receipt };
+  return {
+    ...request,
+    idempotencyKey: command.idempotencyKey,
+    receipt,
+    async retry() {
+      assertCurrent();
+      const { result, observation } = await command.retry();
+      return {
+        status: observation.type === "retired" ? "retired" : "accepted",
+        sessionId: observation.type === "stream" ? sessionId : observation.sessionId,
+        runId: result.runId,
+        userItemId: result.userItemId,
+        ...(observation.type === "stream"
+          ? { releaseObservation: () => disposeAsyncIterable(observation.events) }
+          : {}),
+      };
+    },
+  };
 }

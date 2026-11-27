@@ -46,10 +46,10 @@ export function createComponentNotifications(
   };
   return Object.freeze({
     applicationName: access.productName,
-    authorization: () => notifier.useNotificationAuthorization.getState().authorization,
+    authorization: notifier.authorization,
     subscribe: (listener: () => void) =>
       ownSubscription(signal, (active) =>
-        notifier.useNotificationAuthorization.subscribe(() => {
+        notifier.subscribeAuthorization(() => {
           if (!active()) return;
           try {
             listener();

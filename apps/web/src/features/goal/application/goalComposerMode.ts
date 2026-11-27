@@ -1,26 +1,26 @@
-type GoalComposerModePhase = "inactive" | "armed" | "confirming" | "starting";
-
-interface GoalComposerModeSnapshot {
-  readonly sessionId: string | null;
-  readonly phase: GoalComposerModePhase;
-  readonly replacedObjective: string | null;
-}
+type InactiveGoalMode = { readonly phase: "inactive"; readonly sessionId: null };
+type EngagedGoalMode = { readonly phase: "armed" | "starting"; readonly sessionId: string };
+type ConfirmingGoalMode = {
+  readonly phase: "confirming";
+  readonly sessionId: string;
+  readonly replacedObjective: string;
+};
+type GoalComposerModeSnapshot = InactiveGoalMode | EngagedGoalMode | ConfirmingGoalMode;
+type GoalComposerModeState =
+  | InactiveGoalMode
+  | EngagedGoalMode
+  | (ConfirmingGoalMode & { readonly start: (submission: GoalComposerSubmission) => void });
 
 export interface GoalComposerSubmission {
   started(): boolean;
   failed(): boolean;
 }
 
-const INACTIVE: GoalComposerModeSnapshot = {
-  sessionId: null,
-  phase: "inactive",
-  replacedObjective: null,
-};
+const INACTIVE: InactiveGoalMode = { phase: "inactive", sessionId: null };
 
 export class GoalComposerModeOwner {
-  #snapshot: GoalComposerModeSnapshot = INACTIVE;
-  #replacement: ((submission: GoalComposerSubmission) => void) | null = null;
-  #listeners = new Set<() => void>();
+  #state: GoalComposerModeState = INACTIVE;
+  readonly #listeners = new Set<() => void>();
   #disposed = false;
 
   readonly subscribe = (listener: () => void): (() => void) => {
@@ -28,34 +28,33 @@ export class GoalComposerModeOwner {
     return () => this.#listeners.delete(listener);
   };
 
-  readonly snapshot = (): GoalComposerModeSnapshot => this.#snapshot;
+  readonly snapshot = (): GoalComposerModeSnapshot => this.#state;
 
   get retired(): boolean {
     return this.#disposed;
   }
 
   active(sessionId: string): boolean {
-    return this.#snapshot.sessionId === sessionId && this.#snapshot.phase !== "inactive";
+    return this.#state.sessionId === sessionId;
   }
 
   activate(sessionId: string): boolean {
     if (this.#disposed) return false;
-    this.#replacement = null;
-    this.#publish({ sessionId, phase: "armed", replacedObjective: null });
+    this.#publish({ sessionId, phase: "armed" });
     return true;
   }
 
   toggle(sessionId: string): boolean {
     if (this.#disposed) return false;
-    if (this.#snapshot.sessionId === sessionId && this.#snapshot.phase === "armed") {
+    if (this.#state.sessionId === sessionId && this.#state.phase === "armed") {
       return this.deactivate(sessionId);
     }
-    if (this.#snapshot.phase === "confirming" || this.#snapshot.phase === "starting") return false;
+    if (this.#state.phase === "confirming" || this.#state.phase === "starting") return false;
     return this.activate(sessionId);
   }
 
   begin(sessionId: string): GoalComposerSubmission | null {
-    if (this.#disposed || !this.active(sessionId) || this.#snapshot.phase !== "armed") {
+    if (this.#disposed || !this.active(sessionId) || this.#state.phase !== "armed") {
       return null;
     }
     return this.#begin(sessionId);
@@ -66,85 +65,73 @@ export class GoalComposerModeOwner {
     objective: string,
     start: (submission: GoalComposerSubmission) => void,
   ): boolean {
-    if (this.#disposed || !this.active(sessionId) || this.#snapshot.phase !== "armed") {
+    if (this.#disposed || !this.active(sessionId) || this.#state.phase !== "armed") {
       return false;
     }
-    this.#replacement = start;
-    this.#publish({ sessionId, phase: "confirming", replacedObjective: objective });
+    this.#publish({ sessionId, phase: "confirming", replacedObjective: objective, start });
     return true;
   }
 
   confirmReplacement(sessionId: string): boolean {
-    if (
-      this.#disposed ||
-      this.#snapshot.sessionId !== sessionId ||
-      this.#snapshot.phase !== "confirming" ||
-      !this.#replacement
-    ) {
+    const state = this.#state;
+    if (this.#disposed || state.sessionId !== sessionId || state.phase !== "confirming") {
       return false;
     }
-    const start = this.#replacement;
-    this.#replacement = null;
-    start(this.#begin(sessionId));
+    state.start(this.#begin(sessionId));
     return true;
   }
 
   cancelReplacement(sessionId: string): boolean {
     if (
       this.#disposed ||
-      this.#snapshot.sessionId !== sessionId ||
-      this.#snapshot.phase !== "confirming"
+      this.#state.sessionId !== sessionId ||
+      this.#state.phase !== "confirming"
     ) {
       return false;
     }
-    this.#replacement = null;
-    this.#publish({ sessionId, phase: "armed", replacedObjective: null });
+    this.#publish({ sessionId, phase: "armed" });
     return true;
   }
 
   #begin(sessionId: string): GoalComposerSubmission {
-    const snapshot: GoalComposerModeSnapshot = {
+    const snapshot: EngagedGoalMode = {
       sessionId,
       phase: "starting",
-      replacedObjective: null,
     };
     this.#publish(snapshot);
-    const settle = (next: GoalComposerModeSnapshot) => {
-      if (this.#disposed || this.#snapshot !== snapshot) return false;
+    const settle = (next: GoalComposerModeState) => {
+      if (this.#disposed || this.#state !== snapshot) return false;
       this.#publish(next);
       return true;
     };
     return {
       started: () => settle(INACTIVE),
-      failed: () => settle({ sessionId, phase: "armed", replacedObjective: null }),
+      failed: () => settle({ sessionId, phase: "armed" }),
     };
   }
 
   deactivate(sessionId: string): boolean {
-    if (this.#disposed || this.#snapshot.sessionId !== sessionId) return false;
-    this.#replacement = null;
+    if (this.#disposed || this.#state.sessionId !== sessionId) return false;
     this.#publish(INACTIVE);
     return true;
   }
 
   reset(): void {
     if (this.#disposed) return;
-    this.#replacement = null;
     this.#publish(INACTIVE);
   }
 
   dispose(): void {
     if (this.#disposed) return;
     this.#disposed = true;
-    this.#replacement = null;
-    this.#snapshot = INACTIVE;
+    this.#state = INACTIVE;
     for (const listener of this.#listeners) listener();
     this.#listeners.clear();
   }
 
-  #publish(snapshot: GoalComposerModeSnapshot): void {
-    if (this.#snapshot === snapshot) return;
-    this.#snapshot = snapshot;
+  #publish(snapshot: GoalComposerModeState): void {
+    if (this.#state === snapshot) return;
+    this.#state = snapshot;
     for (const listener of this.#listeners) listener();
   }
 }

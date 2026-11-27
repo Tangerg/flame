@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	runsapp "github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
@@ -60,13 +59,13 @@ func TestSteerAcceptanceCrashHelper(t *testing.T) {
 			if err != nil {
 				return err
 			}
-			if record.Use == runsapp.CommandKeyAccepted {
-				root := (scoperun.StartID{Scope: record.Acceptance.SessionID.String(), Key: record.Acceptance.RunID.String()}).Root()
+			if acceptance, recorded := record.Accepted(); recorded {
+				root := (scoperun.StartID{Scope: acceptance.SessionID.String(), Key: acceptance.RunID.String()}).Root()
 				checkpoint, err := stores.ExecutorCheckpoints.LoadCheckpoint(ctx, root.String())
 				if err != nil || len(checkpoint.Payload) == 0 {
 					t.Fatalf("accepted steer lost context: %v", err)
 				}
-				if _, found, err := stores.ExecutorCheckpoints.LoadExecutionTree(ctx, record.Acceptance.SessionID, checkpoint.RootMemberID); err != nil || !found {
+				if _, found, err := stores.ExecutorCheckpoints.LoadExecutionTree(ctx, acceptance.SessionID, checkpoint.RootMemberID); err != nil || !found {
 					t.Fatalf("accepted steer lost head: %t,%v", found, err)
 				}
 				os.Exit(commandCrashExit)
@@ -99,12 +98,20 @@ func TestSteerAcceptanceCrashHelper(t *testing.T) {
 		t.Fatalf("steer crash cut not reached: %v", result.Failure)
 	}
 	receipt, err := endpoint.Call[protocol.GetRunAcceptanceRequest, *protocol.RunAcceptance](t.Context(), delivery.RunsGetAcceptance, protocol.GetRunAcceptanceRequest{Namespace: testsupport.IdempotencyNamespace, Key: steerCrashKey, Operation: protocol.RunCommandSteer}, protocol.CallMetadata{})
-	if err != nil || receipt.Type != protocol.RunAcceptanceAccepted || receipt.Run.Status != protocol.RunStatusFinished || receipt.AppliedItem != nil || len(receipt.Input) != 1 || receipt.Input[0].Text != input[0].Text {
+	if err != nil || receipt.Type != protocol.RunAcceptanceAccepted || len(receipt.Input) != 1 || receipt.Input[0].Text != input[0].Text {
 		t.Fatalf("cold receipt=%+v,%v", receipt, err)
 	}
 	snapshot, err := api.GetSessionSnapshot(t.Context(), protocol.GetSessionSnapshotRequest{SessionID: receipt.SessionID})
 	if err != nil || len(snapshot.SteerInputs) != 1 || snapshot.SteerInputs[0].UserItemID != receipt.UserItemID {
 		t.Fatalf("cold pending snapshot=%+v,%v", snapshot, err)
+	}
+	if len(snapshot.Runs) != 1 || snapshot.Runs[0].ID != receipt.RunID || snapshot.Runs[0].Status != protocol.RunStatusFinished {
+		t.Fatalf("unapplied input left its original Run live: %+v", snapshot.Runs)
+	}
+	for _, item := range snapshot.Items {
+		if item.ID == receipt.UserItemID {
+			t.Fatalf("input pending at the crash acquired a committed Item: %+v", item)
+		}
 	}
 	for range 2 {
 		replay := endpoint.Invoke(t.Context(), delivery.RunsSteer, protocol.SteerRunRequest{RunID: receipt.RunID, ExpectedSegmentID: receipt.SegmentID, Input: input}, options)

@@ -313,7 +313,7 @@ func fixtureScheduleRunRequest(t *testing.T, fixture *liveDeepSeekFixture, id st
 	if err != nil {
 		t.Fatal(err)
 	}
-	input, err := json.Marshal(testsupport.SchedulesRunNowV2InputWireItemInput{Id: id})
+	input, err := json.Marshal(testsupport.SchedulesItemInput{Id: id})
 	if err != nil {
 		t.Fatal(err)
 	}

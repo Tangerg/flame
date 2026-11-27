@@ -81,7 +81,6 @@ export const fr: Record<string, string> = {
   "action.disable": "Désactiver",
   "action.delete": "Supprimer",
   "nextFiring.label": "Prochain déclenchement",
-  "nextFiring.none": "Non planifié",
   "details.title": "Détails",
   "fact.cron": "Cron",
   "fact.timeZone": "Fuseau horaire",
@@ -99,7 +98,9 @@ export const fr: Record<string, string> = {
   "notice.accepted":
     "Le Runtime a accepté l’exécution {{run}} dans la session {{session}}.",
   "notice.openSession": "Ouvrir la conversation",
+  "notice.sessionMissing": "Cette conversation n’est plus disponible.",
   "notice.completed": "{{label}} terminé.",
+  "notice.refused": "Le Runtime a refusé la modification d’origine de la planification.",
   "notice.revision":
     "La planification a changé. Lisez sa dernière révision et ouvrez une nouvelle modification avant d’enregistrer.",
   "template.hourly.title": "Vérification horaire de la progression",

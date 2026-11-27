@@ -26,10 +26,12 @@ const (
 )
 
 type sessionBrowser struct {
-	pane         *sessionCenterPane
-	dialog       *presentationDialog
-	renameDialog *presentationDialog
-	deleteDialog *presentationDialog
+	pane                  *sessionCenterPane
+	dialog                *presentationDialog
+	renameDialog          *presentationDialog
+	deleteDialog          *presentationDialog
+	catalogIntent         sessionCatalogIntent
+	catalogRefreshPending bool
 
 	runtime      Runtime
 	workbench    *workbench.Store
@@ -42,10 +44,9 @@ type sessionBrowser struct {
 	glyphs       kit.Glyphs
 	clipboard    program.Clipboard
 
-	notify         func(string)
-	observing      func() bool
-	adoptCurrent   func(conversation.Session)
-	catalogChanged func()
+	notify       func(string)
+	observing    func() bool
+	adoptCurrent func(conversation.Session)
 }
 
 type sessionBrowserConfig struct {
@@ -56,7 +57,7 @@ type sessionBrowserConfig struct {
 func newSessionBrowser(cfg sessionBrowserConfig) *sessionBrowser {
 	b := &cfg.browser
 	b.pane = newSessionCenterPane(b.theme, b.glyphs, func(session conversation.Session) {
-		b.dialog.Dismiss()
+		b.dismissCatalog()
 		cfg.switchTo(session.ID)
 	})
 	b.pane.loadMore = b.loadMoreSessions
@@ -72,15 +73,12 @@ func newSessionBrowser(cfg sessionBrowserConfig) *sessionBrowser {
 		Glyphs: b.glyphs,
 		Where:  layout.Placement{Width: wideDialogWidth, Height: tallDialogHeight},
 	})
-	b.pane.picker.cancel = func() {
-		b.tasks.operations.Cancel(pickerCatalogOperation)
-		b.dialog.Dismiss()
-	}
+	b.pane.picker.cancel = b.dismissCatalog
 	return b
 }
 
 func (b *sessionBrowser) dismiss() {
-	b.dialog.Dismiss()
+	b.dismissCatalog()
 	if b.renameDialog != nil {
 		b.renameDialog.Dismiss()
 		b.renameDialog = nil
@@ -89,50 +87,6 @@ func (b *sessionBrowser) dismiss() {
 		b.deleteDialog.Dismiss()
 		b.deleteDialog = nil
 	}
-}
-
-func (b *sessionBrowser) ShowSessions() {
-	if b.observing() {
-		b.notify("finish or cancel the current run before switching sessions")
-		return
-	}
-	b.pane.Reset()
-	b.loadSessionPage(firstSessionPage)
-}
-
-func (b *sessionBrowser) loadMoreSessions() {
-	if !b.pane.HasMore() {
-		b.notify("all sessions are already loaded")
-		return
-	}
-	b.loadSessionPage(nextSessionPage)
-}
-
-func (b *sessionBrowser) loadSessionPage(position sessionPagePosition) {
-	cursor := b.pane.requestCursor(position)
-	b.notify("loading sessions")
-	b.tasks.session(pickerCatalogOperation,
-		func(ctx context.Context) (conversation.SessionPage, error) {
-			return b.runtime.ListSessions(ctx, conversation.SessionQuery{PageSize: conversation.DefaultPageSize(), Cursor: cursor})
-		},
-		func(page conversation.SessionPage, err error) {
-			if position == nextSessionPage && !b.dialog.Open() {
-				return
-			}
-			if err != nil {
-				b.notify("could not load sessions: " + err.Error())
-				return
-			}
-			if err := b.pane.SetPage(page, position); err != nil {
-				b.notify("could not load sessions: " + err.Error())
-				return
-			}
-			if position == firstSessionPage && !b.dialog.Open() {
-				b.dialog.Show()
-			}
-			b.status.note("choose a session")
-		},
-	)
 }
 
 func (b *sessionBrowser) toggleSessionFavorite(session conversation.Session) {
@@ -272,11 +226,10 @@ func (b *sessionBrowser) updateSessionFromCenter(request conversation.UpdateSess
 				b.notify(label + " failed: " + err.Error())
 				return
 			}
-			b.pane.Replace(updated)
 			if updated.ID == b.session.current.ID {
 				b.adoptCurrent(updated)
 			}
-			b.catalogChanged()
+			b.refreshOpenCatalog()
 			b.notify(label + " complete")
 			if settled != nil {
 				settled(nil)
@@ -291,37 +244,21 @@ func (b *sessionBrowser) updateSessionFromCenter(request conversation.UpdateSess
 
 func (b *sessionBrowser) deleteSessionFromCenter(id string) {
 	started := b.tasks.application(sessionCenterOperation,
-		func(ctx context.Context) (session.DeletionResult, error) {
+		func(ctx context.Context) (session.ConfirmedDeletion, error) {
 			return session.Delete(
 				ctx, b.runtime, b.workbench, id, b.replayPolicy, runtimeRecoveryBackoff,
 			)
 		},
-		func(result session.DeletionResult, err error) {
-			switch result.Outcome {
-			case mutation.Rejected:
-				if rejectErr := session.RejectDeletion(b.workbench, result); rejectErr != nil {
-					b.notify("delete session failed; local intent cleanup failed: " + errors.Join(err, rejectErr).Error())
-					return
-				}
-				b.notify("delete session failed: " + err.Error())
-				return
-			case mutation.Unknown:
-				if result.Request.CommandID == "" {
-					b.notify("delete session failed: " + err.Error())
-					return
-				}
-				b.notify("delete session outcome is unknown; the original request is saved for recovery; inspect the session before issuing a new command: " + err.Error())
-				return
-			case mutation.Confirmed:
-			default:
-				b.notify("delete session returned an invalid settlement outcome")
+		func(result session.ConfirmedDeletion, err error) {
+			if err != nil {
+				b.notify(err.Error())
 				return
 			}
-			if err := session.ConfirmDeletion(b.workbench, result); err != nil {
-				b.notify("deleted session; local state cleanup failed: " + err.Error())
+			b.refreshOpenCatalog()
+			if result.LocalCleanupError != nil {
+				b.notify("session deleted. Local state cleanup is pending (" + result.LocalCleanupError.Error() + ")")
 				return
 			}
-			b.pane.Remove(id)
 			b.notify("deleted session")
 		},
 	)

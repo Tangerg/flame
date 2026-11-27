@@ -78,7 +78,6 @@ export const en: Record<string, string> = {
   "action.disable": "Disable",
   "action.delete": "Delete",
   "nextFiring.label": "Next firing",
-  "nextFiring.none": "Not scheduled",
   "details.title": "Details",
   "fact.cron": "Cron",
   "fact.timeZone": "Time zone",
@@ -95,7 +94,9 @@ export const en: Record<string, string> = {
   "pages.current": "Page {{page}}",
   "notice.accepted": "Runtime accepted run {{run}} in session {{session}}.",
   "notice.openSession": "Open conversation",
+  "notice.sessionMissing": "This conversation is no longer available.",
   "notice.completed": "{{label}} completed.",
+  "notice.refused": "Runtime refused the original schedule change.",
   "notice.revision":
     "The schedule changed. Read its latest revision and open a new edit before saving.",
   "template.hourly.title": "Hourly progress check",

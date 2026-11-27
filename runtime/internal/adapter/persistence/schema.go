@@ -187,9 +187,8 @@ func currentSchema() []string {
 			string(run.Waiting),
 			string(run.Finished),
 		),
-		fmt.Sprintf(`CREATE UNIQUE INDEX IF NOT EXISTS idx_runs_session_active
-			ON runs(session_id) WHERE state != '%s' AND root_run_id = ''`,
-			string(run.Finished)),
+		`CREATE UNIQUE INDEX IF NOT EXISTS idx_runs_session_active
+			ON runs(session_id) WHERE ` + activeRootRunPredicate,
 		`CREATE INDEX IF NOT EXISTS idx_runs_session
 			ON runs(session_id)`,
 		`CREATE INDEX IF NOT EXISTS idx_runs_root
@@ -389,20 +388,12 @@ func currentSchema() []string {
             contribution_id TEXT NOT NULL
         )`,
 		`CREATE TABLE IF NOT EXISTS plugin_commands (
-            id TEXT PRIMARY KEY CHECK (length(id) BETWEEN 1 AND 256),
-            method TEXT NOT NULL CHECK (length(method) BETWEEN 1 AND 256),
-            business_input_json TEXT NOT NULL CHECK (json_valid(business_input_json)),
-            contract_json TEXT NOT NULL CHECK (json_valid(contract_json)),
-            installation_id TEXT NOT NULL,
-            release_digest TEXT NOT NULL CHECK (length(release_digest)=64),
-            server_name TEXT NOT NULL,
-            contribution_id TEXT NOT NULL,
-            export_name TEXT NOT NULL,
-			invocation_json TEXT NOT NULL CHECK (json_valid(invocation_json)),
-			activation_json TEXT NOT NULL CHECK (json_valid(activation_json) AND json_type(activation_json)='object'),
-            phase TEXT NOT NULL CHECK (phase IN ('prepared','dispatched','observed','retired'))
+            id TEXT NOT NULL PRIMARY KEY CHECK (length(id) BETWEEN 1 AND 256),
+            binding_json TEXT CHECK (json_valid(binding_json) AND json_type(binding_json)='object'),
+            phase TEXT NOT NULL CHECK (phase IN ('prepared','dispatched','observed','retired')),
+            CHECK (binding_json IS NOT NULL OR phase='retired')
         )`,
-		`CREATE TRIGGER IF NOT EXISTS immutable_plugin_command BEFORE UPDATE OF id,method,business_input_json,contract_json,installation_id,release_digest,server_name,contribution_id,export_name,invocation_json,activation_json ON plugin_commands
+		`CREATE TRIGGER IF NOT EXISTS immutable_plugin_command BEFORE UPDATE OF id,binding_json ON plugin_commands
             BEGIN SELECT RAISE(ABORT,'command binding is immutable'); END`,
 		`CREATE TRIGGER IF NOT EXISTS plugin_command_phase BEFORE UPDATE OF phase ON plugin_commands
             WHEN NOT (NEW.phase=OLD.phase OR (OLD.phase='prepared' AND NEW.phase IN ('dispatched','retired')) OR (OLD.phase='dispatched' AND NEW.phase='observed'))

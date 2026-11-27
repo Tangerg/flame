@@ -127,7 +127,7 @@ func prepareMemoryTool(ctx context.Context, source mcp.Executable, callbacks *pl
 	}
 	closeEmbedder := func() error {
 		if embeds {
-			return embedder.Close(context.WithoutCancel(ctx))
+			return embedder.Close(ctx)
 		}
 		return nil
 	}

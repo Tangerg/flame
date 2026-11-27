@@ -152,7 +152,7 @@ func TestPluginReleaseUsesExistingMCPPolicySkillsAndReplay(t *testing.T) {
 		case <-time.After(10 * time.Millisecond):
 		}
 	}
-	refused := invoke(delivery.MCPServersDelete, protocol.MCPServerRequest{Server: name}, "delete-derived-server")
+	refused := invoke(delivery.MCPServersDelete, protocol.MCPDirectoryTarget{Server: name}, "delete-derived-server")
 	if refused.Failure == nil || !errors.Is(refused.Failure, protocol.ErrMCPOwnedByInstallation) {
 		t.Fatalf("installation server CRUD: %v", refused.Failure)
 	}

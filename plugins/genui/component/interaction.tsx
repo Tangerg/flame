@@ -16,7 +16,7 @@ export function InteractionFeedback({
   controller: InteractionController;
   t: Translate;
 }) {
-  const { action: view } = useSyncExternalStore(
+  const view = useSyncExternalStore(
     controller.subscribe,
     controller.snapshot,
     controller.snapshot,
@@ -39,25 +39,14 @@ export function InteractionFeedback({
       {view.status === "unknown" && (
         <RecordGroup>
           <p role="alert">{t("interaction.unknown")}</p>
-          {view.recoveries.map((recovery, index) => (
-            <div key={recovery.key ?? index}>
+          {view.recoveries.map(({ key, label }) => (
+            <div key={key}>
               <Metadata>
-                {recovery.label}
-                {recovery.key ? ` · ${recovery.key}` : ""}
+                {label} · {key}
               </Metadata>
-              {"recover" in recovery ? (
-                <Button
-                  onClick={() => {
-                    void controller.recover(recovery);
-                  }}
-                >
-                  {t("interaction.recover")}
-                </Button>
-              ) : (
-                <p role="alert">
-                  {failureText(recovery.error, t("interaction.failed"))}
-                </p>
-              )}
+              <Button onClick={() => void controller.recover(key)}>
+                {t("interaction.recover")}
+              </Button>
             </div>
           ))}
         </RecordGroup>

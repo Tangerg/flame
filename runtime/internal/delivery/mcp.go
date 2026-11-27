@@ -55,7 +55,7 @@ func registerMCP(registry *Registry) {
 
 	registry.commandAck(MethodMeta{
 		Name: MCPServersUpdate, GoName: "UpdateMCPServer",
-		Errors:          []string{protocol.ErrMCPServerNotFound.Error()},
+		Errors:          []string{protocol.ErrMCPServerNotFound.Error(), protocol.ErrMCPOwnedByInstallation.Error(), protocol.ErrRevisionConflict.Error()},
 		CapabilityRules: requires(protocol.FeatureMCP),
 	}, func(service interface {
 		UpdateMCPServer(context.Context, protocol.UpdateMCPServerRequest) error
@@ -65,12 +65,12 @@ func registerMCP(registry *Registry) {
 
 	registry.commandAck(MethodMeta{
 		Name: MCPServersDelete, GoName: "DeleteMCPServer",
-		Errors:          []string{protocol.ErrMCPServerNotFound.Error()},
+		Errors:          []string{protocol.ErrMCPServerNotFound.Error(), protocol.ErrMCPOwnedByInstallation.Error(), protocol.ErrRevisionConflict.Error()},
 		CapabilityRules: requires(protocol.FeatureMCP),
 	}, func(service interface {
-		DeleteMCPServer(context.Context, protocol.MCPServerID) error
-	}, ctx context.Context, request protocol.MCPServerRequest) error {
-		return service.DeleteMCPServer(ctx, request.Server)
+		DeleteMCPServer(context.Context, protocol.MCPDirectoryTarget) error
+	}, ctx context.Context, request protocol.MCPDirectoryTarget) error {
+		return service.DeleteMCPServer(ctx, request)
 	}).withOwnedReplay(directoryReplay((*Handler).deleteMCPServer))
 
 	registry.query(MethodMeta{

@@ -1,5 +1,9 @@
 import { type ReactNode } from "react";
-import { type ComponentContext } from "@flame/component-sdk";
+import {
+  CommandActivity,
+  defineComponent,
+  type PluginComponentProps,
+} from "@flame/component-sdk";
 import { Refresh, Plus } from "@flame/icons/react";
 import {
   Button,
@@ -26,7 +30,7 @@ import {
   Toolbar,
   isImeKey,
 } from "@flame/ui";
-import { type Edit, type Scope } from "./types";
+import { type CommandPresentation, type Edit, type Scope } from "./types";
 import { MemoryDeleteConfirmation } from "./MemoryDeleteConfirmation";
 import { MemoryReport } from "./MemoryReport";
 import { MemoryFeedback } from "./MemoryFeedback";
@@ -69,15 +73,13 @@ function MemoryEditPane({
   memory,
   edit,
   feedback,
-  recovering,
-  aborted,
+  check,
   scopeLabel,
 }: {
   memory: MemoryState;
   edit: NonNullable<MemoryState["edit"]>;
   feedback: ReactNode;
-  recovering: boolean;
-  aborted: boolean;
+  check?: () => void;
   scopeLabel: (scope: Scope) => string;
 }) {
   if (edit.type !== "delete")
@@ -86,8 +88,7 @@ function MemoryEditPane({
         {...memory}
         edit={edit}
         feedback={feedback}
-        recovering={recovering}
-        aborted={aborted}
+        check={check}
         scopeLabel={scopeLabel}
       />
     );
@@ -98,18 +99,26 @@ function MemoryEditPane({
       feedback={feedback}
       pending={memory.pending}
       locked={memory.locked}
-      recovering={recovering}
-      aborted={aborted}
+      check={check}
       cancel={() => memory.closeEditor()}
-      confirm={recovering ? memory.reconcile : memory.deleteEdited}
+      confirm={memory.deleteEdited}
       t={memory.t}
     />
   );
 }
 
-export function Memory({ context }: { context: ComponentContext }) {
+export const Memory = defineComponent((source) => {
+  const activity = new CommandActivity<CommandPresentation>(source.signal);
+  return (props) => <MemoryPanel {...props} activity={activity} />;
+});
+
+function MemoryPanel({
+  context,
+  locale,
+  activity,
+}: PluginComponentProps & { activity: CommandActivity<CommandPresentation> }) {
   const filters = useMemoryFilters();
-  const memory = useMemory(context, filters);
+  const memory = useMemory(context, locale, filters, activity);
   const {
     t,
     edit,
@@ -126,7 +135,8 @@ export function Memory({ context }: { context: ComponentContext }) {
     removeItem,
     changeScope,
     editorFeedback,
-    unknown,
+    editorRecovery,
+    recordRecovery,
     reconcile,
     change,
     current,
@@ -138,16 +148,13 @@ export function Memory({ context }: { context: ComponentContext }) {
   // Outside a Project, Memory's project scope keys on the Session's folder.
   const scopeLabel = (value: Scope) =>
     value === "project" && !context.project ? "folder" : value;
-  const recordCommand = unknown?.source === "record" ? unknown : undefined;
-  const recovering = unknown?.source === "editor";
   const noTarget = !project && cwd === undefined;
-  const editFeedback = (editorFeedback || recovering) && (
+  const editFeedback = (editorFeedback || editorRecovery) && (
     <MemoryFeedback
       canRestoreFocus={canRestoreFocus}
       feedback={editorFeedback}
-      original={recovering ? unknown : undefined}
+      original={editorRecovery?.idempotencyKey}
       pending={pending}
-      reconcile={reconcile}
       scopeLabel={scopeLabel}
       t={t}
     />
@@ -219,12 +226,13 @@ export function Memory({ context }: { context: ComponentContext }) {
           memory={memory}
           edit={edit}
           feedback={editFeedback}
-          recovering={recovering}
-          aborted={context.signal.aborted}
+          check={
+            editorRecovery && (() => reconcile(editorRecovery.idempotencyKey))
+          }
           scopeLabel={scopeLabel}
         />
       )}
-      {(current || recordFeedback || recordCommand) && (
+      {(current || recordFeedback || recordRecovery) && (
         <>
           <MemoryReport
             canRestoreFocus={canRestoreFocus}
@@ -244,9 +252,12 @@ export function Memory({ context }: { context: ComponentContext }) {
               <MemoryFeedback
                 canRestoreFocus={canRestoreFocus}
                 feedback={recordFeedback}
-                original={recordCommand}
+                original={recordRecovery?.idempotencyKey}
                 pending={pending}
-                reconcile={reconcile}
+                reconcile={
+                  recordRecovery &&
+                  (() => reconcile(recordRecovery.idempotencyKey))
+                }
                 result={recordResult}
                 scopeLabel={scopeLabel}
                 t={t}
@@ -457,8 +468,7 @@ function MemoryEditor({
   t,
   edit,
   feedback,
-  recovering,
-  aborted,
+  check,
   scopeLabel,
   locked,
   pending,
@@ -466,7 +476,6 @@ function MemoryEditor({
   setEdit,
   closeEditor,
   saveEdit,
-  reconcile,
 }: Pick<
   MemoryState,
   | "t"
@@ -476,12 +485,10 @@ function MemoryEditor({
   | "setEdit"
   | "closeEditor"
   | "saveEdit"
-  | "reconcile"
 > & {
   edit: Exclude<Edit, { type: "delete" }>;
   feedback: ReactNode;
-  recovering: boolean;
-  aborted: boolean;
+  check?: () => void;
   scopeLabel: (value: Scope) => string;
 }) {
   const title = edit.type === "add" ? t("add") : t("edit");
@@ -525,11 +532,11 @@ function MemoryEditor({
           variant="primary"
           pending={pending}
           disabled={
-            recovering ? aborted : locked || !edit.content.trim() || unchanged
+            check ? pending : locked || !edit.content.trim() || unchanged
           }
-          onClick={recovering ? reconcile : saveEdit}
+          onClick={check ?? saveEdit}
         >
-          {recovering ? t("feedback.check") : t("save")}
+          {check ? t("feedback.check") : t("save")}
         </Button>
       </FormActions>
     </RecordForm>

@@ -21,6 +21,7 @@ import (
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	modernsqlite "modernc.org/sqlite"
 )
@@ -251,7 +252,7 @@ func deliverLateAuthorizationStart(t *testing.T, data string, intent mcpapp.Auth
 
 func authorizationCrashStore(t *testing.T, path string) *sql.DB {
 	t.Helper()
-	store, err := sql.Open("sqlite", "file:"+path+"?mode=rw")
+	store, err := persistencefixture.OpenExistingSQL(path)
 	if err != nil {
 		t.Fatal(err)
 	}

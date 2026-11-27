@@ -116,85 +116,9 @@ func (i interactionCheckpointState) restoredStart(continuation runs.ExecutionCon
 	}
 }
 
-func (i *interactionSession) executorCheckpoint(
-	tree scoperun.Log,
-) (runs.ExecutorCheckpoint, error) {
-	payload, err := i.interactionCheckpointPayload(tree)
-	if err != nil {
-		return runs.ExecutorCheckpoint{}, err
-	}
-	if _, err := decodeInteractionCheckpointPayload(payload); err != nil {
-		return runs.ExecutorCheckpoint{}, err
-	}
-	bindings, resources := i.checkpointPluginReferences()
-	checkpoint := runs.ExecutorCheckpoint{
-		Bindings:     bindings,
-		Resources:    resources,
-		RootMemberID: tree.Root.String(), SessionID: i.scope.SessionID,
-		Payload: payload, BuildID: i.buildID.String(),
-	}
-	if err := checkpoint.Validate(); err != nil {
-		return runs.ExecutorCheckpoint{}, err
-	}
-	return checkpoint, nil
-}
-
-type interactionCheckpointCapture struct {
-	tree                scoperun.Log
-	contextByProcess    map[scoperun.ProcessID]ModelContextTokenCalibration
-	instructions        []corechat.Message
-	pendingSteers       map[scoperun.SignalID]runs.PreparedSteer
-	pendingResumeInputs []runs.CommittedUserInput
-	toolCalls           []toolCallCaptureWire
-	options             corechat.Options
-	mcpManifests        map[domaintool.Group][]string
-	skillDiscoveries    map[domaintool.Group]string
-	handoff             *interactionHandoffWire
-	modelObservers      []plugins.ContributionBinding
-	modelContexts       []plugins.ContributionBinding
-	modelInputs         []plugins.ContributionBinding
-	toolProposals       []plugins.ContributionBinding
-	provider            *modeladapter.ProviderCapture
-}
-
-func (c interactionCheckpointCapture) encode() ([]byte, error) {
-	if err := c.tree.Validate(); err != nil {
-		return nil, errors.New("execution: encode invalid Interaction tree checkpoint")
-	}
-	frozenInstructions := cloneChatMessages(c.instructions)
-	if frozenInstructions == nil {
-		frozenInstructions = []corechat.Message{}
-	}
-	wire := interactionCheckpointPayloadWire{
-		ToolProposals:    new(contributionBindingsWire(c.toolProposals)),
-		ModelObservers:   new(contributionBindingsWire(c.modelObservers)),
-		ModelContexts:    new(contributionBindingsWire(c.modelContexts)),
-		ModelInputs:      new(contributionBindingsWire(c.modelInputs)),
-		MCPManifests:     new(c.mcpManifests),
-		SkillDiscoveries: c.skillDiscoveries,
-		ToolCalls:        c.toolCalls, Options: new(c.options.Clone()),
-		Instructions: new(frozenInstructions),
-	}
-	providerJSON, err := encodeModelProvider(c.provider)
-	if err != nil {
-		return nil, err
-	}
-	wire.ModelProvider = providerJSON
-	wire.Handoff = c.handoff
-	if _, err := interactionInstructionContext(*wire.Instructions); err != nil {
-		return nil, err
-	}
-	wire.Contexts, err = encodeInteractionModelContexts(c.contextByProcess, c.handoff.Processes)
-	if err != nil {
-		return nil, fmt.Errorf("execution: encode Interaction model contexts: %w", err)
-	}
-	wire.PendingSteers, err = encodeInteractionPendingSteers(c.pendingSteers)
-	if err != nil {
-		return nil, fmt.Errorf("execution: encode pending Interaction steers: %w", err)
-	}
-	wire.PendingResumeInputs, err = encodeInteractionResumeInputs(c.pendingResumeInputs)
-	if err != nil {
-		return nil, fmt.Errorf("execution: encode pending Resume inputs: %w", err)
+func (wire interactionCheckpointPayloadWire) encode() ([]byte, error) {
+	if _, err := wire.restore(); err != nil {
+		return nil, fmt.Errorf("execution: capture Interaction checkpoint: %w", err)
 	}
 	// Map iteration must not change the identity of the same captured checkpoint.
 	payload, err := json.Marshal(wire, json.Deterministic(true))
@@ -308,10 +232,14 @@ func encodeInteractionContentBlock(
 }
 
 func decodeInteractionCheckpointPayload(payload []byte) (interactionCheckpointState, error) {
-	wire, err := decodeInteractionCheckpointWire(payload)
-	if err != nil {
-		return interactionCheckpointState{}, err
+	var wire interactionCheckpointPayloadWire
+	if err := json.Unmarshal(payload, &wire, json.RejectUnknownMembers(true)); err != nil {
+		return interactionCheckpointState{}, fmt.Errorf("execution: decode Interaction checkpoint: %w", err)
 	}
+	return wire.restore()
+}
+
+func (wire interactionCheckpointPayloadWire) restore() (interactionCheckpointState, error) {
 	state, err := decodeCheckpointContributions(wire)
 	if err != nil {
 		return interactionCheckpointState{}, err
@@ -394,14 +322,6 @@ func decodeFrozenBindings(name string, frozen *[]contributionBindingWire, contra
 		return nil, err
 	}
 	return decodeContributionBindings(*frozen, capability.Identity())
-}
-
-func decodeInteractionCheckpointWire(payload []byte) (interactionCheckpointPayloadWire, error) {
-	var wire interactionCheckpointPayloadWire
-	if err := json.Unmarshal(payload, &wire, json.RejectUnknownMembers(true)); err != nil {
-		return interactionCheckpointPayloadWire{}, fmt.Errorf("execution: decode Interaction checkpoint: %w", err)
-	}
-	return wire, nil
 }
 
 func decodeInteractionCheckpointInstructions(messages []corechat.Message) ([]corechat.Message, error) {

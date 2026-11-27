@@ -181,6 +181,7 @@ var problemCodes = map[string]int{
 	"plugin_stale":                        -32043,
 	"plugin_unavailable":                  -32045,
 	"project_not_found":                   -32048,
+	"prompt_rejected":                     -32049,
 	"prompt_source_too_large":             -32038,
 	"provider_error":                      -32001,
 	"replay_cursor_invalid":               -32027,
@@ -198,7 +199,7 @@ var problemCodes = map[string]int{
 	"stale_segment":                       -32026,
 	"unsupported_mime":                    -32011,
 	"vcs_unavailable":                     -32017,
-	"workspace_file_not_found":            -32049,
+	"workspace_file_not_found":            -32050,
 	"workspace_unavailable":               -32005,
 }
 var refusalProblems = map[string]int{

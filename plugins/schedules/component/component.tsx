@@ -1,4 +1,8 @@
-import { type ComponentContext } from "@flame/component-sdk";
+import {
+  CommandActivity,
+  defineComponent,
+  type PluginComponentProps,
+} from "@flame/component-sdk";
 import {
   Panel,
   PanelHeader,
@@ -20,6 +24,7 @@ import {
   SchedulePager,
 } from "./catalog";
 import { ScheduleEditor } from "./editor";
+import type { Command } from "./types";
 
 function ScheduleReadStatus({
   read,
@@ -71,39 +76,50 @@ function CatalogSummary({
   );
 }
 
-export function Schedules({ context }: { context: ComponentContext }) {
-  const openSession = context.openSession;
-  const schedules = useSchedules(context);
+export const Schedules = defineComponent((source) => {
+  const observation = new CommandActivity<Command>(source.signal);
+  return (props) => <SchedulesPanel {...props} observation={observation} />;
+});
+
+function SchedulesPanel({
+  context,
+  locale,
+  observation,
+}: PluginComponentProps & { observation: CommandActivity<Command> }) {
+  const schedules = useSchedules(context, locale, observation);
   const {
     t,
     notice,
     feedbackElement,
     command,
+    pending,
     reconcile,
     searchElement,
     filterPage,
     editorOpen,
     read,
     busy,
-    refresh,
+    openPage,
     summary,
     liveError,
     edit,
-    deleting,
+    deleteTarget,
     page,
     rows,
     matching,
   } = schedules;
-  const history = read.accepted?.history ?? [];
-  const paginated = Boolean(history.length) || Boolean(page?.nextCursor);
-  const feedback = (notice || command) && (
+  const cursors = read.accepted?.cursors ?? [];
+  const paginated = Boolean(cursors.length) || Boolean(page?.nextCursor);
+  const feedback = (notice || command || pending) && (
     <ScheduleFeedback
       t={t}
       notice={notice}
       feedbackElement={feedbackElement}
       command={command}
+      pending={pending}
       reconcile={reconcile}
-      openSession={openSession}
+      openSession={context.openSession}
+      signal={context.signal}
     />
   );
 
@@ -118,10 +134,10 @@ export function Schedules({ context }: { context: ComponentContext }) {
       {edit && (
         <ScheduleEditor {...schedules} edit={edit} feedback={feedback} />
       )}
-      {deleting && (
+      {deleteTarget && (
         <ScheduleDeletion
           {...schedules}
-          item={deleting.item}
+          item={deleteTarget}
           feedback={feedback}
         />
       )}
@@ -131,7 +147,7 @@ export function Schedules({ context }: { context: ComponentContext }) {
           page && (
             <CatalogSummary
               summary={summary}
-              page={paginated ? history.length + 1 : undefined}
+              page={paginated ? cursors.length + 1 : undefined}
               rows={rows}
               t={t}
             />
@@ -162,11 +178,11 @@ export function Schedules({ context }: { context: ComponentContext }) {
         {paginated && (
           <SchedulePager
             t={t}
-            history={history}
+            cursors={cursors}
             nextCursor={page?.nextCursor}
             loading={read.loading}
             busy={busy}
-            onPage={(cursors, control) => void refresh(cursors, control)}
+            onPage={openPage}
           />
         )}
       </PanelSection>

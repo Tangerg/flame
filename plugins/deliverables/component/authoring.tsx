@@ -133,7 +133,7 @@ export function CreateForm({
   const [sheet, setSheet] = useState("Sheet1");
   const [provenance, setProvenance] = useState(emptyProvenance);
   const [error, setError] = useState<string>();
-  const [created, setCreated] = useState<string>();
+  const [created, setCreated] = useState(false);
   const entry = catalog?.formats.find((item) => item.format === format);
   const json = jsonDrafts[format] ?? entry?.exampleJSON ?? "{}";
   const busy = state.blocked;
@@ -141,7 +141,7 @@ export function CreateForm({
   async function submit() {
     if (busy) return;
     setError(undefined);
-    setCreated(undefined);
+    setCreated(false);
     const selection = state.selection;
     try {
       const content =
@@ -168,7 +168,11 @@ export function CreateForm({
           provenance: cleanProvenance(provenance),
         },
         (revision) => {
-          setCreated(revision.id);
+          setTitle("");
+          setBodies((current) => ({ ...current, [format]: "" }));
+          setJSONDrafts(({ [format]: _submitted, ...remaining }) => remaining);
+          setProvenance(emptyProvenance);
+          setCreated(true);
           state.selectRevision(revision, selection);
         },
       );

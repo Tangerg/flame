@@ -19,7 +19,8 @@ import { createAgentSessionStore } from "@/features/agent/adapters/agentSessionS
 import { createAgentStore } from "@/features/agent/adapters/agentStore";
 import { createAgentState } from "@/features/agent/adapters/agentStatePorts";
 import { createAgentRuntimeGateway } from "@/features/agent/adapters/agentRuntimeGateway";
-import { createAgentDefaultSession } from "@/features/agent/adapters/agentDefaultSessionPort";
+import { RuntimeRunOpenings } from "./runtimeRunOpenings";
+import { createActiveSessionObservation } from "@/features/agent/adapters/activeSessionObservation";
 import { installAgentSessionScope } from "@/features/agent/adapters/agentSessionScope";
 import { type NotificationFeed } from "@/features/notifications/public/notifications";
 export function createAgent(
@@ -64,11 +65,18 @@ export function composeAgent(
     commands,
     usage,
   );
+  const runOpenings = new RuntimeRunOpenings(client);
   const interrupts = new InterruptResponseCoordinator(state.view);
   const approvalActions = new ApprovalActionRegistry();
-  const defaultSession = createAgentDefaultSession(
+  const sessionDependencies = () => ({
+    agentAccess: dependencies,
+    projection,
+    sessions,
+    runOpenings,
+  });
+  const useObserveActiveSession = createActiveSessionObservation(
     navigation,
-    () => ({ agentAccess: dependencies, projection, sessions, retries: gateway.retries }),
+    sessionDependencies,
     client,
     () => {
       const generation = stream.connectionGeneration();
@@ -79,7 +87,7 @@ export function composeAgent(
     notifications,
     state: state.state,
     view: state.view,
-    defaultSession,
+    useObserveActiveSession,
     runtime: gateway.gateway,
     commands,
     usage,
@@ -104,6 +112,7 @@ export function composeAgent(
     },
     sessions,
     projection,
+    sessionDependencies,
     Provider({ children }: { children: ReactNode }) {
       return createElement(AgentScope, { dependencies, access }, children);
     },
@@ -119,7 +128,12 @@ export function composeAgent(
           runtime.endpoint.currentRuntimeEndpoint,
         ),
       );
-      stops.push(followRuntimeGeneration(stream, () => gateway.replaceRuntimeGeneration()));
+      stops.push(
+        followRuntimeGeneration(stream, () => {
+          state.retirePendingSessionOpen();
+          gateway.replaceRuntimeGeneration();
+        }),
+      );
     },
     dispose() {
       if (disposed) return;
@@ -128,6 +142,7 @@ export function composeAgent(
       interrupts.retire();
       sharedMaterial.dispose();
       gateway.dispose();
+      runOpenings.dispose();
       state.dispose();
       projection.dispose();
     },

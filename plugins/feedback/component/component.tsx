@@ -3,7 +3,7 @@ import {
   defineComponent,
   failureText,
   useTranslator,
-  type ComponentContext,
+  type ComponentContext, type PluginComponentProps,
 } from "@flame/component-sdk";
 import {
   asItemId,
@@ -81,10 +81,10 @@ class MessageRatings {
 
 export const RateResponse = defineComponent((source) => {
   const ratings = new MessageRatings(source.signal);
-  return function FeedbackAction({ context }: { context: ComponentContext }) {
+  return function FeedbackAction({ context, locale }: PluginComponentProps) {
     const message = context.message;
     const binding = context.binding;
-    const t = useTranslator(catalogs, context.locale);
+    const t = useTranslator(catalogs, locale);
     const key = JSON.stringify([
       message?.sessionId,
       message?.runId,

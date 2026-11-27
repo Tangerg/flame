@@ -152,14 +152,14 @@ export function ScheduleCatalogEmpty({
 
 export function SchedulePager({
   t,
-  history,
+  cursors,
   nextCursor,
   loading,
   busy,
   onPage,
 }: {
   t: Translate;
-  history: string[];
+  cursors: readonly string[];
   nextCursor: string | undefined;
   loading: boolean;
   busy: boolean;
@@ -171,8 +171,8 @@ export function SchedulePager({
         <Button
           pending={loading && !busy}
           focusableWhenDisabled={!busy}
-          disabled={busy || !history.length}
-          onClick={(event) => onPage(history.slice(0, -1), event.currentTarget)}
+          disabled={busy || !cursors.length}
+          onClick={(event) => onPage(cursors.slice(0, -1), event.currentTarget)}
         >
           {t("pages.previous")}
         </Button>
@@ -181,7 +181,7 @@ export function SchedulePager({
           focusableWhenDisabled={!busy}
           disabled={busy || !nextCursor}
           onClick={(event) =>
-            onPage([...history, nextCursor!], event.currentTarget)
+            onPage([...cursors, nextCursor!], event.currentTarget)
           }
         >
           {t("pages.next")}

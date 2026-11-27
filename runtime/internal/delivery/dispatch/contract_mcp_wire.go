@@ -80,6 +80,14 @@ func registerMCPUnions(s *Shapes) {
 
 func registerMCPConditions(s *Shapes) {
 	s.constraint(ObjectConstraintSpec{
+		GoType: typeOf[protocol.MCPServer](),
+		Rules:  mcpRevisionRules("id.origin.type", "revision"),
+	})
+	s.constraint(ObjectConstraintSpec{
+		GoType: typeOf[protocol.MCPDirectoryTarget](),
+		Rules:  mcpRevisionRules("server.origin.type", "expectedRevision"),
+	})
+	s.constraint(ObjectConstraintSpec{
 		GoType: typeOf[protocol.MCPAuthorizationAttempt](),
 		Rules: []ConditionalRule{{
 			Required: []string{"createdAt"},
@@ -102,7 +110,16 @@ func registerMCPConditions(s *Shapes) {
 	})
 }
 
+func mcpRevisionRules(origin, revision string) []ConditionalRule {
+	return []ConditionalRule{
+		{When: whenEquals(origin, string(protocol.MCPOriginUser)), Required: []string{revision}},
+		{When: whenEquals(origin, string(protocol.MCPOriginInstallation)), Forbidden: []string{revision}},
+	}
+}
+
 func registerMCPValues(s *Shapes) {
+	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.MCPServer](), Constraints: requiredResourceIdentity("revision")})
+	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.MCPDirectoryTarget](), Constraints: requiredResourceIdentity("expectedRevision")})
 	s.valueConstraint(FieldConstraintSpec{
 		GoType:      typeOf[protocol.MCPOrigin](),
 		Constraints: []FieldConstraint{{Field: "installationId", Kind: ConstraintPattern, Value: identity.InstallationIDPattern()}},

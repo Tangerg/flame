@@ -1,13 +1,16 @@
 import {
   useCallback,
   useEffect,
+  useEffectEvent,
   useLayoutEffect,
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
 } from "react";
+import type { PluginCommandChange } from "@flame/runtime-client";
 import {
-  bindOperations,
+  type CommandActivity,
   mutationSettlementIsUnknown,
   OperationFailure,
   scrollPositions,
@@ -18,7 +21,6 @@ import {
 } from "@flame/component-sdk";
 import { type Model } from "@flame/runtime-client/wire";
 import {
-  CAPABILITY_JSON,
   type MethodInputs,
   type MethodOutputs,
 } from "../package/io.github.tangerg.flame/contracts/methods.generated";
@@ -34,18 +36,16 @@ import { de } from "./locales/de";
 const CATALOGS = { en, zh, "zh-TW": zhTW, ja, ko, es, fr, de };
 import {
   type Schedule,
-  type Page,
   type Draft,
-  type Mutation,
   type Command,
-  type CommandState,
   type Notice,
-  type Read,
   type Edit,
   type ModelRead,
 } from "./types";
 import { isConcealed } from "@flame/ui";
-import { METHODS } from "./methods";
+import { AUTHORING_LABELS, METHODS, isAuthoringMethod, type AuthoringMethod } from "./methods";
+import { ScheduleCatalog } from "./scheduleCatalog";
+import { bindScheduleOperations } from "./scheduleCommands";
 export const enabled = (item: Schedule) => item.nextRunAt !== undefined;
 export const modelKey = (provider: string, model: string) =>
   JSON.stringify([provider, model]);
@@ -57,6 +57,10 @@ export const selection = (model?: Model, reasoningEffort = "") => ({
 // The schedules backend refuses a stale expected revision with this code.
 const REVISION_CONFLICT = "revision";
 
+function isRevisionConflict(error: unknown): boolean {
+  return error instanceof OperationFailure && error.code === REVISION_CONFLICT;
+}
+
 // The unset model or reasoning choice: the Run uses the Runtime default.
 export const DEFAULT_CHOICE = "default";
 
@@ -65,27 +69,40 @@ export const UNFILTERED = "all";
 export const SCHEDULE_FILTERS = [UNFILTERED, "enabled", "disabled"] as const;
 export type ScheduleFilter = (typeof SCHEDULE_FILTERS)[number];
 
-export function useSchedules(context: ComponentContext) {
-  const t = useTranslator(CATALOGS, context.locale);
+type ScheduleTask =
+  | { kind: "edit"; edit: Edit }
+  | { kind: "delete"; schedule: Schedule };
+
+type RetainedTask = { task: ScheduleTask; idempotencyKey: string; label: string };
+
+function targetsExistingSchedule(task: ScheduleTask): boolean {
+  return task.kind === "delete" || task.edit.basis !== undefined;
+}
+
+export function useSchedules(
+  context: ComponentContext,
+  locale: string,
+  observation: CommandActivity<Command>,
+) {
+  const t = useTranslator(CATALOGS, locale);
   const dateTime = useMemo(
     () =>
-      new Intl.DateTimeFormat(context.locale, {
+      new Intl.DateTimeFormat(locale, {
         dateStyle: "medium",
         timeStyle: "short",
       }),
-    [context.locale],
+    [locale],
   );
-  const operations = useMemo(() => {
-    if (!context.binding)
-      throw new Error("Schedules requires its own callable contribution");
-    return bindOperations<MethodInputs, MethodOutputs>(
-      context,
-      CAPABILITY_JSON,
-      { scope: "installation", reference: context.binding.installationId },
-    );
-  }, [context]);
-  const [read, setRead] = useState<Read>({ loading: true });
-  const reading = useRef<AbortController>(undefined);
+  const operations = useMemo(() => bindScheduleOperations(context), [context]);
+  const catalog = useMemo(
+    () => new ScheduleCatalog(
+      (cursor, signal) => operations.query(METHODS.list, { cursor }, signal),
+      context.signal,
+    ),
+    [context.signal, operations],
+  );
+  const read = useSyncExternalStore(catalog.subscribe, catalog.snapshot);
+  const { refresh, openPage } = catalog;
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<ScheduleFilter>(UNFILTERED);
   const modelSource = useMemo(
@@ -101,10 +118,10 @@ export function useSchedules(context: ComponentContext) {
   const currentModels =
     modelRead?.source === modelSource ? modelRead : undefined;
   const models = [...(currentModels?.catalogs.values() ?? [])].flat();
-  const [edit, setEdit] = useState<Edit>();
-  const [deleting, setDeleting] = useState<{
-    item: Schedule;
-  }>();
+  const [task, setTask] = useState<ScheduleTask>();
+  const edit = task?.kind === "edit" ? task.edit : undefined;
+  const deleteTarget = task?.kind === "delete" ? task.schedule : undefined;
+  const retainedTask = useRef<RetainedTask>(undefined);
   const searchElement = useRef<HTMLInputElement>(null);
   const taskOpener = useRef<HTMLElement>(null);
   const titleElement = useRef<HTMLInputElement>(null);
@@ -116,53 +133,28 @@ export function useSchedules(context: ComponentContext) {
         : searchElement.current,
     [],
   );
-  const [command, setCommand] = useState<CommandState>();
-  const accepted = useRef<{ page: Page; history: string[] }>(undefined);
+  const command = useSyncExternalStore(
+    observation.subscribe,
+    observation.snapshot,
+  );
+  useSyncExternalStore(
+    operations.subscribeCommands,
+    operations.commandsVersion,
+  );
+  const original = context.signal.aborted
+    ? undefined
+    : operations.originalCommand();
+  const pending = original?.state === "recoverable" ? original : undefined;
   const [notice, setNotice] = useState<Notice>();
   const feedbackElement = useRef<HTMLElement>(null);
   const [liveError, setLiveError] = useState<string>();
-  const arrival = useRef<HTMLElement>(undefined);
   const summary = useRef<HTMLSpanElement>(null);
-  const refresh = useCallback(
-    async (
-      history = accepted.current?.history ?? [],
-      pageControl?: HTMLElement,
-    ) => {
-      reading.current?.abort();
-      arrival.current = undefined;
-      const controller = new AbortController();
-      reading.current = controller;
-      const signal = AbortSignal.any([context.signal, controller.signal]);
-      setRead((previous) => ({ ...previous, loading: true, error: undefined }));
-      try {
-        const page = await operations.query(
-          METHODS.list,
-          { cursor: history.at(-1) ?? "" },
-          signal,
-        );
-        if (!signal.aborted) {
-          accepted.current = { page, history };
-          arrival.current = pageControl;
-          setRead({ loading: false, accepted: accepted.current });
-        }
-      } catch (error) {
-        if (!signal.aborted)
-          setRead((previous) => ({
-            ...previous,
-            loading: false,
-            error: failure(error),
-          }));
-      }
-    },
-    [context, operations],
-  );
   useEffect(() => {
-    void refresh();
-    return () => reading.current?.abort();
-  }, [refresh]);
+    void catalog.refresh();
+    return catalog.stop;
+  }, [catalog]);
   useLayoutEffect(() => {
-    const control = arrival.current;
-    arrival.current = undefined;
+    const control = read.accepted?.focusFrom;
     const active = control?.ownerDocument.activeElement;
     if (
       control &&
@@ -245,108 +237,127 @@ export function useSchedules(context: ComponentContext) {
     void modelSource.track(() => readModels());
     return () => controller.abort();
   }, [modelSource, modelRefresh]);
-  async function observe(captured: Command) {
-    try {
-      const output = await captured.promise;
-      if (!context.signal.aborted) {
-        if (edit?.basis || deleting) taskOpener.current = searchElement.current;
-        setCommand(undefined);
-        setEdit(undefined);
-        setDeleting(undefined);
-        setNotice(
-          captured.method === METHODS.runNow
-            ? (output as MethodOutputs[typeof METHODS.runNow])
-            : t("notice.completed", { label: captured.label }),
-        );
-        void refresh();
-      }
-    } catch (error) {
-      if (context.signal.aborted) return;
-      if (mutationSettlementIsUnknown(error)) {
-        setCommand({
-          phase: "uncertain",
-          command: captured,
-          error: failure(error),
-        });
-      } else {
-        setCommand(undefined);
-        setNotice(
-          error instanceof OperationFailure && error.code === REVISION_CONFLICT
-            ? t("notice.revision")
-            : failure(error),
-        );
-        if (
-          error instanceof OperationFailure &&
-          error.code === REVISION_CONFLICT
-        ) {
-          taskOpener.current = searchElement.current;
-          setEdit(undefined);
-        }
-        void refresh();
-      }
+
+  const resolveTask = useEffectEvent((change: PluginCommandChange) => {
+    const retained = retainedTask.current;
+    if (change.type !== "resolved" || retained?.idempotencyKey !== change.idempotencyKey)
+      return;
+    retainedTask.current = undefined;
+    const { resolution } = change;
+    if (task !== retained.task) return;
+    if (resolution.type === "retired") {
+      if (!observation.snapshot()) setNotice(undefined);
+      return;
     }
+    const stale = resolution.type === "refused" && resolution.code === REVISION_CONFLICT;
+    if (resolution.type === "confirmed")
+      closeTask(retained.task, targetsExistingSchedule(retained.task));
+    else if (stale) closeTask(retained.task, true);
+    if (observation.snapshot()) return;
+    setNotice(
+      resolution.type === "confirmed"
+        ? t("notice.completed", { label: retained.label })
+        : stale
+          ? t("notice.revision")
+          : t("notice.refused"),
+    );
+    void refresh();
+  });
+  useEffect(() => operations.subscribeCommands(resolveTask), [operations]);
+
+  function observe(
+    command: Command,
+    execute: () => Promise<MethodOutputs[keyof MethodOutputs]> | undefined,
+    owner?: ScheduleTask,
+  ) {
+    if (context.signal.aborted) return;
+    void observation.run(command, async () => {
+      try {
+        const attempt = execute();
+        if (!attempt) return;
+        setNotice(undefined);
+        const output = await attempt;
+        if (context.signal.aborted) return;
+        if (owner) closeTask(owner, targetsExistingSchedule(owner));
+        setNotice(
+          "runId" in output
+            ? output
+            : t("notice.completed", { label: command.label }),
+        );
+        void refresh();
+      } catch (error) {
+        if (context.signal.aborted) return;
+        const stale = isRevisionConflict(error);
+        setNotice(stale ? t("notice.revision") : failure(error));
+        if (stale && owner) closeTask(owner, true);
+        const unresolved = mutationSettlementIsUnknown(error);
+        if (unresolved && owner) {
+          const original = operations.originalCommand();
+          if (
+            original?.state === "recoverable" &&
+            original.method === command.method
+          ) {
+            retainedTask.current = {
+              idempotencyKey: original.idempotencyKey,
+              task: owner,
+              label: command.label,
+            };
+          }
+        }
+        if (!unresolved) void refresh();
+      }
+    });
   }
-  function submit<K extends Mutation>(
+  function submit<K extends AuthoringMethod>(
     method: K,
     input: MethodInputs[K],
     label: string,
+    owner?: ScheduleTask,
   ) {
-    if (command || context.signal.aborted) return;
-    try {
-      const captured = {
-        method,
-        promise: operations.command(method, input),
-        label,
-      };
-      setCommand({ phase: "submitting", command: captured });
-      setNotice(undefined);
-      void observe(captured);
-    } catch (error) {
-      if (!context.signal.aborted) setNotice(failure(error));
-    }
+    observe(
+      { method, label },
+      () => operations.submit(method, input),
+      owner,
+    );
   }
-  function reconcile() {
-    if (command?.phase !== "uncertain" || context.signal.aborted) return;
-    const original = command.command;
-    try {
-      const retry = {
-        ...original,
-        promise: original.promise.retry({ signal: context.signal }),
-      };
-      const feedback = feedbackElement.current;
-      if (
-        feedback &&
-        !isConcealed(feedback) &&
-        (feedback.contains(feedback.ownerDocument.activeElement) ||
-          feedback.ownerDocument.activeElement === feedback.ownerDocument.body)
-      )
-        feedback.focus({ preventScroll: true });
-      setCommand({ phase: "submitting", command: retry });
-      void observe(retry);
-    } catch (error) {
-      if (!context.signal.aborted)
-        setCommand({
-          phase: "uncertain",
-          command: original,
-          error: failure(error),
-        });
-    }
+  function reconcile(key: string) {
+    if (context.signal.aborted) return;
+    const original = operations.originalCommand();
+    if (original?.state !== "recoverable" || original.idempotencyKey !== key)
+      return;
+    const { method } = original;
+    if (!isAuthoringMethod(method)) return;
+    observe(
+      { method, label: t(AUTHORING_LABELS[method]) },
+      () => {
+        const feedback = feedbackElement.current;
+        if (
+          feedback &&
+          !isConcealed(feedback) &&
+          (feedback.contains(feedback.ownerDocument.activeElement) ||
+            feedback.ownerDocument.activeElement === feedback.ownerDocument.body)
+        )
+          feedback.focus({ preventScroll: true });
+        return original.recover();
+      },
+    );
   }
-  // Opening a task replaces any other one and remembers where focus returns.
-  function beginTask(
-    opener: HTMLElement,
-    task: { edit: Edit } | { deleting: Schedule },
-  ) {
-    if (command) return;
+  function beginTask(opener: HTMLElement, next: ScheduleTask) {
+    if (busy) return;
     taskOpener.current = opener;
     setNotice(undefined);
-    setEdit("edit" in task ? task.edit : undefined);
-    setDeleting(
-      "deleting" in task ? { item: structuredClone(task.deleting) } : undefined,
-    );
+    retainedTask.current = undefined;
+    setTask(next);
+  }
+  function closeTask(owned: ScheduleTask, focusSearch: boolean) {
+    if (owned !== task) return;
+    if (focusSearch) taskOpener.current = searchElement.current;
+    if (retainedTask.current?.task === owned) retainedTask.current = undefined;
+    setTask((current) => current === owned ? undefined : current);
   }
   function add(opener: HTMLElement, template?: (typeof templates)[number]) {
     beginTask(opener, {
+      kind: "edit",
       edit: {
         draft: {
           title: template ? t(`template.${template.id}.title`) : "",
@@ -365,6 +376,7 @@ export function useSchedules(context: ComponentContext) {
   }
   function editSchedule(item: Schedule, opener: HTMLElement) {
     beginTask(opener, {
+      kind: "edit",
       edit: {
         basis: structuredClone(item),
         draft: {
@@ -381,11 +393,18 @@ export function useSchedules(context: ComponentContext) {
     });
   }
   function confirmDeletion(item: Schedule, opener: HTMLElement) {
-    beginTask(opener, { deleting: item });
+    beginTask(opener, { kind: "delete", schedule: structuredClone(item) });
   }
   function deleteConfirmed() {
-    if (deleting)
-      submit(METHODS.delete, { id: deleting.item.id }, t("command.delete"));
+    if (task?.kind === "delete") {
+      const { id, revision } = task.schedule;
+      submit(
+        METHODS.delete,
+        { id, expectedRevision: revision },
+        t("command.delete"),
+        task,
+      );
+    }
   }
   function runNow(item: Schedule) {
     submit(METHODS.runNow, { id: item.id }, t("command.runNow"));
@@ -404,14 +423,18 @@ export function useSchedules(context: ComponentContext) {
     );
   }
   function patch<K extends keyof Draft>(key: K, value: Draft[K]) {
-    setEdit((previous) =>
-      previous
-        ? { ...previous, draft: { ...previous.draft, [key]: value } }
-        : undefined,
+    setTask((current) =>
+      current?.kind === "edit"
+        ? {
+            ...current,
+            edit: { ...current.edit, draft: { ...current.edit.draft, [key]: value } },
+          }
+        : current,
     );
   }
   function save() {
-    if (!edit || !canSave) return;
+    if (task?.kind !== "edit" || !canSave) return;
+    const { edit } = task;
     const draft = {
       ...edit.draft,
       title: edit.draft.title.trim(),
@@ -437,17 +460,18 @@ export function useSchedules(context: ComponentContext) {
           modelSelection: draft.modelSelection,
         },
         t("command.save"),
+        task,
       );
-    else submit(METHODS.create, draft, t("command.create"));
+    else submit(METHODS.create, draft, t("command.create"), task);
   }
   function cancelTask() {
-    if (command) return;
+    if (busy || !task) return;
     // Base UI resolves the target before sibling buttons are re-enabled.
     // Catalog reads, rather than the retiring editor, can keep them disabled.
-    if ((edit?.basis || deleting) && (read.loading || read.error))
-      taskOpener.current = searchElement.current;
-    setEdit(undefined);
-    setDeleting(undefined);
+    closeTask(
+      task,
+      targetsExistingSchedule(task) && Boolean(read.loading || read.error),
+    );
   }
   function filterPage(nextSearch: string, nextStatus: ScheduleFilter = status) {
     if (nextSearch === search && nextStatus === status) return;
@@ -466,14 +490,14 @@ export function useSchedules(context: ComponentContext) {
         .toLocaleLowerCase()
         .includes(search.toLocaleLowerCase()),
   );
-  const busy = Boolean(command);
+  const busy = command !== undefined || original !== undefined;
   const canSave = Boolean(
     !busy &&
     edit?.draft.instructions.trim() &&
     edit.draft.cron.trim() &&
     edit.draft.timeZone.trim(),
   );
-  const editorOpen = Boolean(edit || deleting);
+  const editorOpen = task !== undefined;
   const actionsDisabled = busy || editorOpen;
   const disabled = actionsDisabled || read.loading || Boolean(read.error);
   const selectedModel = models.find(
@@ -494,6 +518,7 @@ export function useSchedules(context: ComponentContext) {
     notice,
     feedbackElement,
     command,
+    pending,
     reconcile,
     searchElement,
     search,
@@ -505,6 +530,7 @@ export function useSchedules(context: ComponentContext) {
     read,
     busy,
     refresh,
+    openPage,
     summary,
     liveError,
     edit,
@@ -519,7 +545,7 @@ export function useSchedules(context: ComponentContext) {
     selectedModel,
     currentModels,
     setModelRefresh,
-    deleting,
+    deleteTarget,
     deleteCancel,
     page,
     rows,

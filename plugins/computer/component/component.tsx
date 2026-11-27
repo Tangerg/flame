@@ -1,6 +1,6 @@
 import { METHODS } from "../contracts/methods";
 import { useMemo, useRef, useState } from "react";
-import { type ComponentContext, useTranslator } from "@flame/component-sdk";
+import { type PluginComponentProps, useTranslator } from "@flame/component-sdk";
 import { handoffFocus, Panel, PanelHeader, PanelSection } from "@flame/ui";
 import { LIMITS } from "../contracts/limits";
 import { ApprovalForm } from "./approval";
@@ -20,14 +20,7 @@ import { ConsoleHistory } from "./history";
 
 const CATALOGS = { en, zh, "zh-TW": zhTW, ja, ko, es, fr, de };
 
-function Console({
-  context: initialContext,
-  locale,
-}: {
-  context: ComponentContext;
-  locale: string;
-}) {
-  const [context] = useState(initialContext);
+function Console({ context, locale }: PluginComponentProps) {
   const t = useTranslator(CATALOGS, locale);
   const state = useComputer(context);
   const [lease, setLease] = useState(String(LIMITS.defaultLeaseSeconds));
@@ -138,12 +131,7 @@ function Console({
   );
 }
 
-export function Computer({ context }: { context: ComponentContext }) {
-  // Display wrappers do not retire captured observations or unsubmitted drafts.
-  const { runtime, component, binding, track, signal } = context;
-  const instance = useMemo(
-    () => crypto.randomUUID(),
-    [runtime, component, binding, track, signal],
-  );
-  return <Console key={instance} context={context} locale={context.locale} />;
+export function Computer({ context, locale }: PluginComponentProps) {
+  const instance = useMemo(() => crypto.randomUUID(), [context.signal]);
+  return <Console key={instance} context={context} locale={locale} />;
 }

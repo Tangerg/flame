@@ -12,7 +12,7 @@ import { type ContributionScope } from "@/extensions/definePlugin";
 import { DATA_PROVIDER } from "@/extensions/dataProvider";
 import { ComponentCompositions } from "@/features/plugins/ui/ComponentCompositions";
 import { type ComponentContext } from "@flame/component-sdk";
-import { queryClient } from "@/lib/queryClient";
+import { replaceCachedRead } from "@/lib/queryClient";
 import { failureMessage } from "@/lib/diagnostics";
 import { retainThemeSelection } from "@/features/theme/public/appearance";
 import { trackContributionIO } from "@/extensions/contributionIO";
@@ -20,8 +20,11 @@ import { reportPluginError } from "@/extensions/errors";
 import { contributeLayout } from "@/extensions/contributeHelpers";
 import { createLocaleReconciler } from "@/features/i18n/public/locales";
 import { type RuntimeConnectionGeneration } from "@/features/connection/public/services";
+import { ProviderSelectionCommands } from "@/features/plugins/adapters/providerSelectionCommands";
+import { PendingPluginCommands } from "@/features/plugins/adapters/pendingPluginCommands";
 import {
   type InstalledPackageState,
+  type PackageOperations,
   type PackageRealizationFailure,
   INSTALLED_PLUGIN_LOADER,
   PACKAGE_ID_PREFIX,
@@ -164,13 +167,31 @@ export function registerPackageContributions(
     id: "installed-shared-effects",
     component: SharedEffects,
   });
+  const signal = scope.lifetime.signal;
+  const track: PackageOperations["track"] = (operation) => trackContributionIO(scope, operation);
+  const {
+    commands: _commands,
+    commandsVersion: _commandsVersion,
+    subscribeCommands: _subscribeCommands,
+    selectProvider,
+    ...pluginOperations
+  } = client.plugins;
+  const pendingCommands = new PendingPluginCommands(signal, client.plugins, track);
+  const providerSelections = new ProviderSelectionCommands({
+    signal,
+    select: (request) => track((owned) => selectProvider(request, owned)),
+    retry: (original) => track((owned) => original.retry({ signal: owned })),
+    refreshCatalog: () => void replaceCachedRead({ queryKey: [PROVIDERS_KEY] }),
+  });
   scope.lifetime.defer(
     onAbort(
-      scope.lifetime.signal,
+      signal,
       packages.publishOperations({
-        ...client.plugins,
-        signal: scope.lifetime.signal,
-        track: (operation) => trackContributionIO(scope, operation),
+        ...pluginOperations,
+        signal,
+        track,
+        providerSelections,
+        pendingCommands,
       }),
     ),
   );
@@ -209,19 +230,13 @@ export function registerPackageContributions(
         const rows = await fetcher(undefined, signal);
         if (signal.aborted) return;
         await reconcile(rows);
-        if (!signal.aborted) {
-          queryClient.setQueryData([PACKAGES_KEY], rows);
-          try {
-            const choices = await fetchProviders(undefined, signal);
-            if (signal.aborted) return;
-            packages.workflows.publish(workflowAuthors(rows), choices);
-            queryClient.setQueryData([PROVIDERS_KEY], choices);
-          } catch {
-            if (!signal.aborted) {
-              packages.workflows.publish(workflowAuthors(rows), []);
-              await queryClient.invalidateQueries({ queryKey: [PROVIDERS_KEY] });
-            }
-          }
+        if (signal.aborted) return;
+        const authors = workflowAuthors(rows);
+        try {
+          const choices = await fetchProviders(undefined, signal);
+          if (!signal.aborted) packages.workflows.publish(authors, choices);
+        } catch {
+          if (!signal.aborted) packages.workflows.publish(authors, []);
         }
       };
       try {
@@ -236,7 +251,12 @@ export function registerPackageContributions(
         }
         const closeEvents = contributions.lifetime.defer(() => events.return?.());
         await refresh();
-        while (!(await events.next()).done) await refresh();
+        while (!(await events.next()).done) {
+          void replaceCachedRead({
+            predicate: ({ queryKey: [key] }) => key === PACKAGES_KEY || key === PROVIDERS_KEY,
+          });
+          await refresh();
+        }
         await closeEvents[asyncDisposeSymbol]();
       } catch (error) {
         const reasons = [error];

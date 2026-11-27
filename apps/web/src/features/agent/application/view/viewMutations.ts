@@ -8,7 +8,7 @@ function assertSteerOwner(message: Message, runId: string): void {
     throw new Error("agent.steer.itemOwnerMismatch");
 }
 
-export function projectSteerReceipt(
+function projectSteerReceipt(
   view: AgentSessionView,
   messageId: string,
   steer: Required<Pick<NonNullable<Message["steer"]>, "runId" | "receipt">>,

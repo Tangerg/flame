@@ -9,12 +9,13 @@ import {
 import {
   defineComponent,
   useTranslator,
-  type ComponentContext,
+  type ComponentContext, type PluginComponentProps,
   type Translate,
 } from "@flame/component-sdk";
 import { DocumentBody, RecordGroup, RecordTitle } from "@flame/ui";
 import { A2UI_VERSION } from "../contracts/catalog";
 import { Presentation } from "../contracts/document";
+import { operationResultPath } from "../contracts/surfaceData";
 import { InteractionController } from "./interactionController";
 import { InteractionFeedback } from "./interaction";
 import { CatalogDisplay, displayCatalog } from "./renderingCatalog";
@@ -57,8 +58,7 @@ class CapturedSurface {
     };
   }
   writeOperation(id: string, value: unknown) {
-    const path =
-      "/data/operations/" + id.replaceAll("~", "~0").replaceAll("/", "~1");
+    const path = operationResultPath(id);
     for (const surface of this.surfaces) surface.dataModel.set(path, value);
   }
   resetDraft(surfaceId: string) {
@@ -94,8 +94,8 @@ export const GenUIResult = defineComponent((source) => {
     },
     { once: true },
   );
-  return function GenUIResult({ context }: { context: ComponentContext }) {
-    const t = useTranslator(CATALOGS, context.locale);
+  return function GenUIResult({ context, locale }: PluginComponentProps) {
+    const t = useTranslator(CATALOGS, locale);
     const tool = context.toolResult;
     if (
       source.signal.aborted ||
@@ -134,8 +134,11 @@ function CapturedDocument({
   );
   useEffect(() => {
     const unmount = entry.mount(controller);
-    void controller.initialize();
-    return unmount;
+    const disconnect = controller.connect();
+    return () => {
+      disconnect();
+      unmount();
+    };
   }, [entry, controller]);
   return (
     <CatalogDisplay value={{ controller, t }}>

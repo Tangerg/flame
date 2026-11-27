@@ -824,6 +824,9 @@ OS authorization and notification-click routing. Public component callbacks and
 notification requests use the captured I/O lifetime, so withdrawal refuses late
 sends while joining accepted platform work. The existing preference records
 remain readable by their new package owner; their former Core writers are removed.
+Opening a notification confirms its Session in the current Runtime. A missing
+target preserves the active conversation, and a newer Session selection cancels
+the pending lookup.
 
 `SettingRow` marks the label and controls as one shared focus unit. `Panel` owns
 revealing that complete unit inside the clipped host when it fits; taller rows
@@ -1034,6 +1037,13 @@ Unknown results retain their original key and recovery. A recreated component
 reads the existing journal projection first, including an acceptance recovered
 during that read, before admitting another input. These are receipt projections,
 not a second transcript, scheduler or command store.
+
+Session recovery observes the original command receipts before taking a single
+Runtime snapshot. The snapshot supplies the ordered transcript, Run states and
+retained Steer inputs together. A retired Steer is shown as a local receipt with
+its original input. Recovery acknowledges the journal after publishing the view.
+A pending Start or Resume card carries its original retry capability. The
+mounted Session accepts activation from the command currently in its view.
 
 Client, workspace and Session components receive `context.composer`. It captures
 `captureAppendText` from the Composer when the component context is created, so

@@ -4,7 +4,6 @@ import { describe, expect, it, onTestFinished } from "vitest";
 import { QueryObserver } from "@tanstack/react-query";
 import { asRunId, asSessionId, createSidecarClient, type FlameClient } from "@flame/runtime-client";
 import { HTTP_HEADERS } from "@flame/runtime-client/wire";
-import { composeAgent } from "@/features/agent/adapters/agent";
 import {
   readRuntimeSessionSummaries,
   toAgentSessionSummary,
@@ -20,13 +19,10 @@ import {
 } from "@/features/chat/message-actions/public/messageActions";
 import { createComposer } from "@/features/composer/adapters/composerStatePorts";
 import { DraftContent } from "@/features/composer/domain/draft";
-import { createRuntimeConnectionProjection } from "@/features/connection/adapters/runtimeConnectionProjection";
 import { runtimeServiceInspector } from "@/features/connection/adapters/runtimeServiceInspector";
-import { createRuntimeEndpoint } from "@/features/connection/application/runtimeEndpoint";
 import { NotificationFeed } from "@/features/notifications/public/notifications";
 import { createConversationImportGateway } from "@/features/workspace/adapters/runtimeConversationImportGateway";
 import { createConversationImport } from "@/features/workspace/application/conversationImport";
-import { createMemoryNavigator } from "@/lib/navigation.testkit";
 import { queryClient } from "@/lib/queryClient";
 import {
   type ProviderGate,
@@ -40,6 +36,7 @@ import {
 import {
   collectRunEvents,
   defaultTestDeadlineMilliseconds,
+  deleteUserMCPServers,
   nextRuntimeEvent,
   originalOpeningEvents,
   waitForUserMCPConnection,
@@ -48,47 +45,10 @@ import {
   within,
 } from "./observation";
 import { useRuntimeFixture } from "./fixture";
+import { openWebSession } from "./webSessionFixture";
+import { faultUnaryResponse } from "./transportFaults";
 
 const compactionCutpointDeadlineMilliseconds = 15_000;
-
-function openWebSession(client: FlameClient, endpoint: string, sessionId: string) {
-  const connection = createRuntimeConnectionProjection();
-  const target = () => ({ endpoint });
-  const runtime = {
-    capabilities: connection.capabilities,
-    status: connection.status,
-    endpoint: createRuntimeEndpoint({
-      read: target,
-      defaultTarget: target,
-      replace: () => false,
-      reset: () => false,
-    }),
-  };
-  const notifications = new NotificationFeed(() => {});
-  const agent = composeAgent(
-    () => client,
-    createMemoryNavigator({ session: sessionId }),
-    runtime,
-    connection.stream,
-    connection.scope,
-    notifications,
-  );
-  if (sessionId) {
-    agent.sessions.store.getState().holdOpen(sessionId);
-    agent.projection.store.getState().ensureSession(sessionId);
-  }
-  return {
-    agent,
-    connection,
-    notifications,
-    runtime,
-    dispose() {
-      agent.dispose();
-      notifications.dispose();
-      connection.dispose();
-    },
-  };
-}
 
 function openWebComposer(
   { agent, connection }: ReturnType<typeof openWebSession>,
@@ -168,7 +128,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: restart and crash recovery", (
     }
   }, 30_000);
 
-  it("opens a new Session after the list observes its creation", async () => {
+  it("creates a separate Session while the current view is awaiting its first snapshot", async () => {
     const session = await fixture.client.sessions.create({ workspace: { path: fixture.root } });
     const sessionId = asSessionId(session.id);
     const opening = await fixture.client.runs.start({
@@ -201,16 +161,26 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: restart and crash recovery", (
     let creating: Promise<string | null> | undefined;
     try {
       await observer.refetch({ throwOnError: true });
-      await expect(access.synchronizeRewrittenSessionView(sessionId)).resolves.toBe(true);
       creating = access.createSession();
-      await within(listing.promise, "the Session list refetch after creation");
+      await expect(
+        within(
+          Promise.race([
+            listing.promise.then(() => "created"),
+            creating.then(() => "returned before the list refetch"),
+          ]),
+          "creating a new Session from a loading view",
+        ),
+      ).resolves.toBe("created");
       expect(access.getActiveSessionId()).toBe(sessionId);
       release.resolve();
       const newId = await creating;
-      expect(newId).toBeTruthy();
+      if (!newId) throw new Error("new Session ID is missing");
       expect(newId).not.toBe(sessionId);
       expect(access.getActiveSessionId()).toBe(newId);
       expect(observer.getCurrentResult().data?.map(({ id }) => id)).toContain(newId);
+      web.agent.projection.store.getState().ensureSession(newId);
+      await expect(access.synchronizeRewrittenSessionView(newId)).resolves.toBe(true);
+      await expect(access.createSession()).resolves.toBe(newId);
     } finally {
       release.resolve();
       const newId = await creating?.catch(() => null);
@@ -220,6 +190,63 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: restart and crash recovery", (
       await client.close();
       if (newId && newId !== sessionId) await fixture.client.sessions.delete(asSessionId(newId));
       await fixture.client.sessions.delete(sessionId);
+    }
+  }, 30_000);
+
+  it("recovers the original creation explicitly after an independent Session is created", async () => {
+    const workspace = { path: fixture.root };
+    const seed = await fixture.client.sessions.create({ workspace });
+    const existing = new Set(
+      (await fixture.client.sessions.list().autoPagingToArray()).map(({ id }) => id),
+    );
+    const fault = faultUnaryResponse("sessions.create", "afterCommit");
+    let loseResponse = true;
+    const client = fixture.createRuntimeClient((url, init) => {
+      if (
+        loseResponse &&
+        fault.attempts() > 0 &&
+        new Headers(init?.headers).get(HTTP_HEADERS.method) === "sessions.create"
+      )
+        throw new Error("disconnected before the original creation could be reobserved");
+      return fault.fetch(url, init);
+    });
+    const recoveryActions: Array<() => void> = [];
+    const web = openWebSession(client, fixture.baseUrl, seed.id, ({ action }) => {
+      if (action) recoveryActions.push(action.run);
+    });
+    const access = web.agent.access;
+    const queryKey = [AGENT_SESSIONS_KEY];
+    const created = async () =>
+      (await fixture.client.sessions.list().autoPagingToArray()).filter(
+        ({ id }) => !existing.has(id),
+      );
+    try {
+      await queryClient.fetchQuery({
+        queryKey,
+        queryFn: ({ signal }) => readRuntimeSessionSummaries(client, signal),
+      });
+      await expect(access.createSession()).resolves.toBeNull();
+      expect(access.getActiveSessionId()).toBe(seed.id);
+      const [original] = await created();
+      const [retry] = recoveryActions;
+      if (!original || !retry) throw new Error("Session creation did not offer original recovery");
+
+      loseResponse = false;
+      const next = await access.createSession();
+      expect(next).toBeTruthy();
+      expect(next).not.toBe(original.id);
+      expect(access.getActiveSessionId()).toBe(next);
+      retry();
+      await expect.poll(access.getActiveSessionId).toBe(original.id);
+      expect(await created()).toHaveLength(2);
+      expect(client.runtime.pendingCommands()).toEqual([]);
+    } finally {
+      queryClient.removeQueries({ queryKey });
+      web.dispose();
+      await client.close();
+      for (const session of await created())
+        await fixture.client.sessions.delete(asSessionId(session.id));
+      await fixture.client.sessions.delete(asSessionId(seed.id));
     }
   }, 30_000);
 
@@ -944,7 +971,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: restart and crash recovery", (
       });
     } finally {
       if (serverCreated && fixture.client)
-        await fixture.client.mcp.delete(serverId).catch(() => undefined);
+        await deleteUserMCPServers(fixture.client, serverId.name);
     }
   }, 30_000);
 });

@@ -17,8 +17,7 @@ type modelCalls struct {
 }
 
 func (i *interactionSession) modelCallContext(ctx context.Context, member runs.ExecutorMember, owner string) context.Context {
-	ctx = executionctx.WithInvocationOwner(ctx, owner)
-	return executionctx.WithModelCalls(ctx, modelCalls{session: i, member: member})
+	return executionctx.WithModelCalls(ctx, modelCalls{session: i, member: member}, owner)
 }
 
 func (m modelCalls) Start(ctx context.Context, id string, selection flamemodel.Selection) (func(context.Context, error) error, error) {

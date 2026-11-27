@@ -14,7 +14,7 @@ import {
   Switch,
   type Tone,
 } from "@flame/ui";
-import { serverKey, type MCPServerSettings } from "./model";
+import { directoryTarget, serverKey, type MCPServerSettings } from "./model";
 import { shouldObserveAuthorization, type MCPSettings } from "./settings";
 import { ServerForm } from "./serverForm";
 import { ToolControls } from "./toolControls";
@@ -78,6 +78,7 @@ function ServerConnectionButton({
 export function ServerRow({ context, settings, server, t }: ServerRowProps) {
   const state = useSyncExternalStore(settings.subscribe, settings.getSnapshot);
   const key = serverKey(server.id);
+  const target = directoryTarget(server);
   const command = state.commands.get(key);
   const busy = settings.busy(key);
   const [editing, setEditing] = useState<HTMLElement | null>(null);
@@ -111,13 +112,13 @@ export function ServerRow({ context, settings, server, t }: ServerRowProps) {
         running={command?.phase === "running"}
         busy={busy}
       />
-      {server.id.origin.type === "user" && (
+      {target && (
         <>
           <Switch
             checked={server.enabled}
             disabled={busy || signingIn}
             onCheckedChange={(value) =>
-              void settings.setEnabled(context, server.id, value)
+              void settings.setEnabled(context, target, value)
             }
             ariaLabel={t("mcp.enable.aria", { server: server.id.name })}
           />
@@ -128,9 +129,10 @@ export function ServerRow({ context, settings, server, t }: ServerRowProps) {
             aria-label={t("mcp.edit", { server: server.id.name })}
             aria-expanded={editing !== null}
             aria-controls={panelId}
-            onClick={(event) =>
-              setEditing(editing ? null : event.currentTarget)
-            }
+            onClick={(event) => {
+              if (editing) settings.discardDraft(context, key);
+              setEditing(editing ? null : event.currentTarget);
+            }}
           />
         </>
       )}

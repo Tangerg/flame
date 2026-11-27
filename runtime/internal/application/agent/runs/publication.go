@@ -4,32 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"slices"
-	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
-
-	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
-
-type segmentBoundary uint8
-
-const (
-	boundaryNone segmentBoundary = iota
-	boundaryFinished
-	boundaryParked
-)
-
-type reductionPublication struct {
-	published bool
-	boundary  segmentBoundary
-}
-
-func (b segmentBoundary) finished() bool { return b != boundaryNone }
-func (b segmentBoundary) parked() bool   { return b == boundaryParked }
-
-func (p reductionPublication) finished() bool { return p.boundary.finished() }
-func (p reductionPublication) parked() bool   { return p.boundary.parked() }
 
 type treePublisher struct {
 	publications *runPublications
@@ -37,23 +14,23 @@ type treePublisher struct {
 	owner        *runTreeOwner
 }
 
-func (t treePublisher) publish(
+func (t treePublisher) publishIncremental(
 	ctx context.Context,
 	route *executorRoute,
 	batch reductionBatch,
-) (reductionPublication, error) {
+) error {
 	if err := t.validateIncrementalPublication(route, batch); err != nil {
-		return reductionPublication{}, err
+		return err
 	}
 	for _, reduced := range batch.events {
 		if err := t.commitIncrementalReduction(ctx, route, reduced); err != nil {
-			return reductionPublication{}, err
+			return err
 		}
 		if err := t.append(route, reduced); err != nil {
-			return reductionPublication{}, err
+			return err
 		}
 	}
-	return reductionPublication{published: true}, nil
+	return nil
 }
 
 func (t treePublisher) validateIncrementalPublication(
@@ -115,31 +92,31 @@ func (t treePublisher) publishAuthoritativeAtomically(
 	ctx context.Context,
 	route *executorRoute,
 	batch reductionBatch,
-) (reductionPublication, error) {
+) error {
 	if route == nil {
-		return reductionPublication{}, errors.New("runs: publish authoritative fact without an executor route")
+		return errors.New("runs: publish authoritative fact without an executor route")
 	}
 	if err := validateReductionBatch(batch); err != nil {
-		return reductionPublication{}, err
+		return err
 	}
 	if err := validateRouteReductionBatch(route, t.rootSpec.SessionID, batch); err != nil {
-		return reductionPublication{}, err
+		return err
 	}
 	if batch.parkCommit != nil {
-		return reductionPublication{}, errors.New("runs: authoritative fact unexpectedly produced a park boundary")
+		return errors.New("runs: authoritative fact unexpectedly produced a park boundary")
 	}
 	combined, err := combineAuthoritativeCommit(route, t.rootSpec.SessionID, batch)
 	if err != nil {
-		return reductionPublication{}, err
+		return err
 	}
 	t.owner.bindChildCancellationReceipt(&combined, nil)
 	if !combined.isEmpty() {
 		if err := combined.Validate(); err != nil {
-			return reductionPublication{}, fmt.Errorf("runs: validate authoritative fact: %w", err)
+			return fmt.Errorf("runs: validate authoritative fact: %w", err)
 		}
 		write := func() error { return t.publications.events.CommitEvent(ctx, combined) }
 		if err := commitRunBoundary(ctx, combined.SessionID, combined.RunID, write, combined.durability()); err != nil {
-			return reductionPublication{}, fmt.Errorf("runs: commit authoritative fact: %w", err)
+			return fmt.Errorf("runs: commit authoritative fact: %w", err)
 		}
 		for _, write := range combined.Items {
 			t.owner.recordChildCancellationItem(route.runID, write.Item())
@@ -147,31 +124,32 @@ func (t treePublisher) publishAuthoritativeAtomically(
 	}
 	for _, reduced := range batch.events {
 		if err := t.append(route, reduced); err != nil {
-			return reductionPublication{}, err
+			return err
 		}
 	}
-	return reductionPublication{published: true}, nil
+	return nil
 }
 
 func (t treePublisher) publishTerminalAtomically(
 	ctx context.Context,
 	route *executorRoute,
+	next *reducer,
 	batch reductionBatch,
 	ending boundaryDurability,
 	cancellation CancellationID,
-) (reductionPublication, error) {
+) error {
 	if route == nil {
-		return reductionPublication{}, errors.New("runs: publish atomic terminal without an executor route")
+		return errors.New("runs: publish atomic terminal without an executor route")
 	}
 	if err := validateReductionBatch(batch); err != nil {
-		return reductionPublication{}, err
+		return err
 	}
 	if err := validateRouteReductionBatch(route, t.rootSpec.SessionID, batch); err != nil {
-		return reductionPublication{}, err
+		return err
 	}
 	combined, err := combineTerminalEventCommit(batch)
 	if err != nil {
-		return reductionPublication{}, err
+		return err
 	}
 	if route.member.ParentID == "" {
 		combined.ObsoleteCheckpointRootID = route.member.MemberID
@@ -182,7 +160,7 @@ func (t treePublisher) publishTerminalAtomically(
 	t.bindTerminalCancellation(&combined)
 	t.owner.bindChildCancellationReceipt(&combined, nil)
 	if err := combined.Validate(); err != nil {
-		return reductionPublication{}, fmt.Errorf("runs: validate atomic terminal: %w", err)
+		return fmt.Errorf("runs: validate atomic terminal: %w", err)
 	}
 	durability := combined.durability()
 	if ending == retryUntilCommitted {
@@ -190,8 +168,10 @@ func (t treePublisher) publishTerminalAtomically(
 	}
 	write := func() error { return t.publications.events.CommitEvent(ctx, combined) }
 	if err := commitRunBoundary(ctx, combined.SessionID, combined.RunID, write, durability); err != nil {
-		return reductionPublication{}, fmt.Errorf("runs: commit atomic terminal: %w", err)
+		return fmt.Errorf("runs: commit atomic terminal: %w", err)
 	}
+	route.reducer = next
+	route.boundary = boundaryTerminal
 	// The database owns one indivisible write-set, while the live tree still
 	// applies its facts in causal reduction order. Register Item closures before
 	// the terminal Run so process-local ownership observes the same ordering.
@@ -201,14 +181,14 @@ func (t treePublisher) publishTerminalAtomically(
 	t.owner.recordTerminalRun(*combined.Run, combined.cancellation)
 	for _, reduced := range batch.events {
 		if err := t.append(route, reduced); err != nil {
-			return reductionPublication{}, err
+			return err
 		}
 	}
 	t.publications.publishRunMoved(t.rootSpec.SessionID, route.runID)
 	if combined.ChargesGoal() {
 		t.publications.publishGoalMoved(t.rootSpec.SessionID)
 	}
-	return reductionPublication{published: true, boundary: boundaryFinished}, nil
+	return nil
 }
 
 func (t treePublisher) bindTerminalCancellation(commit *EventCommit) {
@@ -276,217 +256,6 @@ func combineTerminalEventCommit(batch reductionBatch) (EventCommit, error) {
 		)
 	}
 	return combined, nil
-}
-
-type treeBarrierReduction struct {
-	route      *executorRoute
-	next       *reducer
-	batch      reductionBatch
-	interrupts []transcript.Interrupt
-}
-
-type treeBarrierProjection struct {
-	pending    Pending
-	reductions []treeBarrierReduction
-	commits    []EventCommit
-}
-
-func (t treePublisher) publishTreeBarrier(
-	ctx context.Context,
-	routes *executorRoutes,
-	barrier TreeInterrupted,
-	boundaryAt time.Time,
-) (reductionPublication, error) {
-	var projection treeBarrierProjection
-	committed, err := t.owner.commitInterrupt(ctx, func(interruptCtx context.Context) error {
-		prepared, err := t.reduceTreeBarrier(routes, barrier, boundaryAt)
-		if err != nil {
-			return err
-		}
-		projection = prepared
-		commit, commitErr := newTreeBarrierCommit(
-			newRunCommitID(), projection.pending, projection.commits, barrier.Checkpoint(),
-		)
-		if commitErr != nil {
-			return commitErr
-		}
-		if commitTreeBarrierErr := t.publications.barriers.CommitTreeBarrier(interruptCtx, commit); commitTreeBarrierErr != nil {
-			return commitTreeBarrierErr
-		}
-		for _, projected := range projection.reductions {
-			projected.route.reducer = projected.next
-		}
-		for _, projected := range projection.reductions {
-			for _, reduced := range projected.batch.events {
-				if appendErr := t.append(projected.route, reduced); appendErr != nil {
-					return appendErr
-				}
-			}
-		}
-		return nil
-	})
-	if err != nil {
-		return reductionPublication{}, fmt.Errorf("runs: commit tree interrupt barrier: %w", err)
-	}
-	if !committed {
-		return reductionPublication{}, nil
-	}
-	for _, projected := range projection.reductions {
-		projected.route.boundary = boundaryParked
-		t.publications.publishWaitingMoved(t.rootSpec.SessionID, projected.route.runID)
-	}
-	return reductionPublication{published: true, boundary: boundaryParked}, nil
-}
-
-func (t treePublisher) reduceTreeBarrier(
-	routes *executorRoutes,
-	barrier TreeInterrupted,
-	boundaryAt time.Time,
-) (treeBarrierProjection, error) {
-	if routes == nil || routes.root == nil {
-		return treeBarrierProjection{}, errors.New("runs: publish tree barrier without a root executor route")
-	}
-	if err := barrier.validateFor(routes.root.member.MemberID, t.rootSpec.SessionID); err != nil {
-		return treeBarrierProjection{}, err
-	}
-	interruptionsByMemberID, err := activeInterruptionsByMemberID(routes, barrier.Interruptions())
-	if err != nil {
-		return treeBarrierProjection{}, err
-	}
-	activeRoutes, err := routes.unfinishedInPostorder()
-	if err != nil {
-		return treeBarrierProjection{}, err
-	}
-
-	projection := treeBarrierProjection{pending: Pending{
-		RootRunID:  routes.root.runID,
-		ExecutorID: t.rootSpec.ExecutorID,
-		CreatedAt:  boundaryAt,
-	},
-		reductions: make([]treeBarrierReduction, 0, len(activeRoutes)),
-		commits:    make([]EventCommit, 0, len(activeRoutes)),
-	}
-	for _, route := range activeRoutes {
-		directInterruptions := interruptionsByMemberID[route.member.MemberID]
-		reduction, bindings, continuation, err := t.reduceInterruptedRoute(
-			route,
-			directInterruptions,
-			boundaryAt,
-		)
-		if err != nil {
-			return treeBarrierProjection{}, err
-		}
-		projection.pending.Interrupts = append(projection.pending.Interrupts, OpenInterruptsOf(reduction.interrupts)...)
-		projection.pending.Bindings = append(projection.pending.Bindings, bindings...)
-		projection.pending.Continuations = append(projection.pending.Continuations, continuation)
-		projection.reductions = append(projection.reductions, reduction)
-		projection.commits = append(projection.commits, *reduction.batch.parkCommit)
-	}
-	if err := projection.pending.Validate(); err != nil {
-		return treeBarrierProjection{}, fmt.Errorf("runs: build pending interrupt set: %w", err)
-	}
-	return projection, nil
-}
-
-func activeInterruptionsByMemberID(
-	routes *executorRoutes,
-	interruptions []MemberInterruption,
-) (map[string][]MemberInterruption, error) {
-	interruptionsByMemberID := make(map[string][]MemberInterruption, len(interruptions))
-	for _, interruption := range interruptions {
-		route := routes.byMember[interruption.MemberID]
-		if route == nil || route.boundary.finished() {
-			return nil, fmt.Errorf(
-				"runs: request source member %q has no active Run",
-				interruption.MemberID,
-			)
-		}
-		interruptionsByMemberID[interruption.MemberID] = append(
-			interruptionsByMemberID[interruption.MemberID],
-			interruption,
-		)
-	}
-	return interruptionsByMemberID, nil
-}
-
-func (t treePublisher) reduceInterruptedRoute(
-	route *executorRoute,
-	directInterruptions []MemberInterruption,
-	boundaryAt time.Time,
-) (treeBarrierReduction, []InterruptBinding, Continuation, error) {
-	next := route.reducer.clone()
-	var reduced factReduction
-	var err error
-	if len(directInterruptions) > 0 {
-		interrupts := make([]Interrupt, len(directInterruptions))
-		for index, interruption := range directInterruptions {
-			interrupts[index] = interruption.Interrupt
-		}
-		reduced, err = next.interrupt(interrupts, route.activeDuration(boundaryAt))
-	} else {
-		reduced, err = next.suspend(route.activeDuration(boundaryAt))
-	}
-	if err != nil {
-		return treeBarrierReduction{}, nil, Continuation{}, fmt.Errorf(
-			"runs: reduce tree barrier for run %q: %w",
-			route.runID,
-			err,
-		)
-	}
-	batch, err := next.projectFact(reduced)
-	if err != nil {
-		return treeBarrierReduction{}, nil, Continuation{}, fmt.Errorf(
-			"runs: project tree barrier for run %q: %w",
-			route.runID,
-			err,
-		)
-	}
-	if err := validateRouteReductionBatch(route, t.rootSpec.SessionID, batch); err != nil {
-		return treeBarrierReduction{}, nil, Continuation{}, err
-	}
-	if batch.parkCommit == nil || batch.parkCommit.Run == nil {
-		return treeBarrierReduction{}, nil, Continuation{}, fmt.Errorf(
-			"runs: tree barrier for run %q produced no suspend commit",
-			route.runID,
-		)
-	}
-	projectedInterrupts := suspendedInterrupts(reduced.events)
-	if len(projectedInterrupts) != len(directInterruptions) {
-		return treeBarrierReduction{}, nil, Continuation{}, fmt.Errorf(
-			"runs: run %q projected %d interrupts from %d input requests",
-			route.runID,
-			len(projectedInterrupts),
-			len(directInterruptions),
-		)
-	}
-	bindings := make([]InterruptBinding, len(directInterruptions))
-	for index, interruption := range directInterruptions {
-		bindings[index] = InterruptBinding{
-			InterruptItemID: projectedInterrupts[index].ItemID,
-			MemberID:        interruption.MemberID,
-			RequestID:       interruption.RequestID,
-		}
-		if approval, ok := interruption.Interrupt.(ApprovalPrompt); ok {
-			bindings[index].ToolCallID = approval.CallID
-			bindings[index].ToolRef = approval.Tool
-			bindings[index].SourceFingerprint = approval.SourceFingerprint
-		}
-	}
-	continuation := Continuation{
-		RunID:        route.runID,
-		MemberID:     route.member.MemberID,
-		DrainedTools: slices.Clone(next.drained),
-	}
-	return treeBarrierReduction{route: route, next: next, batch: batch, interrupts: projectedInterrupts}, bindings, continuation, nil
-}
-
-func suspendedInterrupts(events []ProjectionEvent) []transcript.Interrupt {
-	for _, event := range events {
-		if finished, ok := event.(SegmentFinished); ok {
-			return slices.Clone(finished.Interrupts)
-		}
-	}
-	return nil
 }
 
 func (t treePublisher) append(route *executorRoute, reduced reduction) error {

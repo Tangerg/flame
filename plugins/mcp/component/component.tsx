@@ -42,19 +42,21 @@ const column = {
 } as const;
 export const MCPServers = defineComponent((source) => {
   const settings = new MCPSettings(source);
-  return function MCPSettingsView({ context }) {
-    return <McpServersPane context={context} settings={settings} />;
+  return function MCPSettingsView({ context, locale }) {
+    return <McpServersPane context={context} locale={locale} settings={settings} />;
   };
 });
 function McpServersPane({
   context,
+  locale,
   settings,
 }: {
   context: ComponentContext;
+  locale: string;
   settings: MCPSettings;
 }) {
   const state = useSyncExternalStore(settings.subscribe, settings.getSnapshot);
-  const t = useTranslator(CATALOGS, context.locale);
+  const t = useTranslator(CATALOGS, locale);
   const [attempt, setAttempt] = useState(0);
   const observe = useEffectEvent(() => settings.observe(context));
   useEffect(() => observe(), [settings, context.signal, attempt]);

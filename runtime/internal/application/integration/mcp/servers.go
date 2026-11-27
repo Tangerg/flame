@@ -24,6 +24,7 @@ var ErrServerAlreadyExists = errors.New("mcp: MCP server already exists")
 var ErrServerDisabled = errors.New("mcp: MCP server is disabled")
 
 var ErrOwnedByInstallation = errors.New("mcp: server is owned by installation")
+var ErrDirectoryRevisionConflict = errors.New("mcp: server configuration changed after it was read")
 
 var ErrAuthorizationAttemptNotFound = errors.New("mcp: MCP authorization attempt not found")
 

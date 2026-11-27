@@ -4,14 +4,17 @@ import { type AgentRunStartOptions } from "@/features/agent/public/runOptions";
 import { type AgentInput } from "@/features/agent/domain/input";
 import { type InterruptResumeInput } from "@/features/agent/domain/hitl";
 import {
-  type AgentProblem,
   type AgentPlan,
   type AgentRunView,
   type AgentSessionView,
   type Message,
 } from "@/features/agent/public/sessionView";
+import { type DisplayedSessionProblem } from "@/features/agent/application/view/problemPresentation";
 import { type TranscriptRow } from "@/features/agent/application/conversation/transcriptRows";
-import { type AgentOpeningCommand } from "@/features/agent/application/runtimeGateway";
+import {
+  type AgentOpeningCommand,
+  type AgentSteerInput,
+} from "@/features/agent/application/runtimeGateway";
 import {
   type AgentInputSettlement,
   type AgentOpeningAcceptance,
@@ -21,6 +24,7 @@ import {
 // against the replaced projection generation; an ordinary refresh retains them.
 export type QueuedRunEvents = "retain" | "invalidate";
 export type { AgentOpenSessions };
+export type SessionSelectionOutcome = "opened" | "missing" | "superseded";
 
 export interface AgentSessionStatePort {
   useActiveSessionId(): string;
@@ -29,6 +33,11 @@ export interface AgentSessionStatePort {
   subscribeActiveSessionId(onChange: (sessionId: string) => void): () => void;
   subscribeLifecycle(onChange: (snapshot: AgentOpenSessions) => void): () => void;
   selectSession(id: string): void;
+  selectExistingSession(
+    id: string,
+    signal: AbortSignal,
+    verify: (signal: AbortSignal) => Promise<boolean>,
+  ): Promise<SessionSelectionOutcome>;
   closeSession(id: string): void;
   deleteSession(id: string): void;
   subscribeDeletedSession(listener: (id: string) => void): () => void;
@@ -52,7 +61,9 @@ export type SendAgentInputAction = (
   options?: AgentRunStartOptions,
 ) => Promise<AgentInputSettlement> | null;
 
-export type RetryOpeningAction = (idempotencyKey: string) => Promise<AgentOpeningAcceptance> | null;
+export type RetryOpeningAction = (
+  command: AgentOpeningCommand,
+) => Promise<AgentOpeningAcceptance> | null;
 
 export type ResumeRunAction = (
   runId: string,
@@ -65,7 +76,7 @@ export interface AgentSessionViewEntry {
   view: AgentSessionView;
   viewEpoch: bigint;
   viewRevision: bigint;
-  authoritativeRevision: bigint;
+  hasAuthoritativeSnapshot: boolean;
   stop: StopCurrentRootRunAction | null;
   send: SendAgentInputAction | null;
   resume: ResumeRunAction | null;
@@ -93,7 +104,7 @@ export interface AgentSessionViewPort {
   useHasPrecedingRootRun(runId: string | null): boolean;
   useRootNarrativeMessages(): Message[];
   useTranscriptRows(): readonly TranscriptRow[];
-  useProblem(): AgentProblem | null;
+  useProblem(): DisplayedSessionProblem | null;
   useOpeningCommands(): readonly AgentOpeningCommand[];
   usePlan(): AgentProjectionMaterial<AgentPlan>;
   useSharedMaterial<T = unknown>(path?: string): AgentProjectionMaterial<T>;
@@ -103,11 +114,7 @@ export interface AgentSessionViewPort {
   getSessions(): Record<string, AgentSessionViewEntry>;
   getSession(sessionId: string): AgentSessionViewEntry | undefined;
   dropMessage(sessionId: string, messageId: string): void;
-  projectSteerReceipt(
-    sessionId: string,
-    messageId: string,
-    steer: Required<Pick<NonNullable<Message["steer"]>, "runId" | "receipt">>,
-  ): void;
+  appendRetiredSteer(sessionId: string, steer: AgentSteerInput): void;
   projectSteerDelivery(
     sessionId: string,
     messageId: string,
@@ -129,17 +136,8 @@ export interface AgentSessionViewPort {
   ): boolean;
   retireProjectionGeneration(sessionIds: readonly string[]): void;
   replaceServerScope(sessionIds: readonly string[]): void;
-  clearProblem(sessionId: string): void;
+  dismissProblem(target: DisplayedSessionProblem): void;
   subscribeSessions(
     onChange: (sessions: Record<string, AgentSessionViewEntry>) => void,
   ): () => void;
-}
-
-export interface AgentSession {
-  send: SendAgentInputAction;
-  stop: () => void;
-}
-
-export interface AgentDefaultSessionPort {
-  useDefaultChatSession(): AgentSession;
 }

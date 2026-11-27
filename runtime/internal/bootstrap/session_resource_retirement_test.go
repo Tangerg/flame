@@ -121,7 +121,6 @@ type retirementTransient struct{}
 
 func (retirementTransient) QuiesceSession(identity.SessionID) error            { return nil }
 func (retirementTransient) QuiesceWorkspace(string) error                      { return nil }
-func (retirementTransient) ForgetSession(identity.SessionID)                   {}
 func (retirementTransient) ForgetSessionContext(identity.SessionID)            {}
 func (retirementTransient) ForgetWorkspace(string)                             {}
 func (retirementTransient) Release(context.Context, runsapp.ExecutorRef) error { return nil }
@@ -170,7 +169,7 @@ func openRetirementFixture(t *testing.T, root, cut string) *retirementFixture {
 	}
 	gate, err := ownership.NewGate(ownership.GateConfig{
 		TreesOverlap: filesystem.PathsOverlap,
-		ResolveTree:  filesystem.CanonicalPath, SettleRetirement: retirer.Settle,
+		ResolveTree:  filesystem.CanonicalPath, SettleRetirement: retirer.SettleSession,
 		WorkspaceRollbackPending: db.WorkspaceMutations.SessionPending,
 	})
 	if err != nil {
@@ -338,15 +337,15 @@ func TestCommittedResourceCleanupFailureFencesReplacement(t *testing.T) {
 				if actual, found, err := f.stores.bundle.ResourceRetirements.Lookup(t.Context(), testsupport.MustSessionID("ses_retirement")); err != nil || !found || actual != pending {
 					t.Fatalf("wrong generation cleared responsibility: %+v, %v, %v", actual, found, err)
 				}
-				if release, ok, err := f.gate.AcquireSession(t.Context(), testsupport.MustSessionID("ses_retirement")); err != nil || ok {
+				if release, ok, err := f.gate.AcquireSession(t.Context(), testsupport.MustSessionID("ses_retirement")); ok || !errors.Is(err, refusal) {
 					if release != nil {
 						release()
 					}
-					t.Fatalf("Session crossed pending cleanup: %t, %v", ok, err)
+					t.Fatalf("Session admission did not retain the cleanup failure: %t, %v", ok, err)
 				}
-				if admission, ok, err := f.gate.AcquireRun(t.Context(), testsupport.MustSessionID("ses_retirement"), f.workspace); err != nil || ok {
+				if admission, ok, err := f.gate.AcquireRun(t.Context(), testsupport.MustSessionID("ses_retirement"), f.workspace); ok || !errors.Is(err, refusal) {
 					admission.Release()
-					t.Fatalf("Run crossed pending cleanup: %t, %v", ok, err)
+					t.Fatalf("Run admission did not retain the cleanup failure: %t, %v", ok, err)
 				}
 				if err := f.stores.bundle.Runs.Admit(t.Context(), testsupport.RunDraft(run.Draft{SessionID: testsupport.MustSessionID("ses_retirement"), RunID: testsupport.MustRunID("run_new"), SegmentID: testsupport.MustSegmentID("seg_new"), CreatedAt: time.Now().UTC()})); !errors.Is(err, run.ErrSessionBusy) {
 					t.Fatalf("durable admission crossed pending cleanup: %v", err)

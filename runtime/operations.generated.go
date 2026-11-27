@@ -185,8 +185,8 @@ func (r *Runtime) CreateMCPServer(ctx context.Context, request protocol.MCPServe
 func (r *Runtime) UpdateMCPServer(ctx context.Context, request protocol.UpdateMCPServerRequest, options protocol.CommandOptions) error {
 	return r.invokeAck[protocol.UpdateMCPServerRequest](ctx, delivery.Name("mcp.servers.update"), request, options.Metadata())
 }
-func (r *Runtime) DeleteMCPServer(ctx context.Context, request protocol.MCPServerRequest, options protocol.CommandOptions) error {
-	return r.invokeAck[protocol.MCPServerRequest](ctx, delivery.Name("mcp.servers.delete"), request, options.Metadata())
+func (r *Runtime) DeleteMCPServer(ctx context.Context, request protocol.MCPDirectoryTarget, options protocol.CommandOptions) error {
+	return r.invokeAck[protocol.MCPDirectoryTarget](ctx, delivery.Name("mcp.servers.delete"), request, options.Metadata())
 }
 func (r *Runtime) TestMCPServer(ctx context.Context, request protocol.MCPServerCandidate, options protocol.CallOptions) (*protocol.MCPTestResult, error) {
 	return r.invoke[protocol.MCPServerCandidate, *protocol.MCPTestResult](ctx, delivery.Name("mcp.servers.test"), request, options.Metadata())
@@ -302,17 +302,17 @@ func (r *Runtime) StartGoal(ctx context.Context, request protocol.StartGoalReque
 func (r *Runtime) UpdateGoal(ctx context.Context, request protocol.UpdateGoalRequest, options protocol.CommandOptions) (*protocol.Goal, error) {
 	return r.invoke[protocol.UpdateGoalRequest, *protocol.Goal](ctx, delivery.Name("goals.update"), request, options.Metadata())
 }
-func (r *Runtime) ClearGoal(ctx context.Context, request protocol.GoalRequest, options protocol.CommandOptions) error {
-	return r.invokeAck[protocol.GoalRequest](ctx, delivery.Name("goals.clear"), request, options.Metadata())
+func (r *Runtime) ClearGoal(ctx context.Context, request protocol.GoalTarget, options protocol.CommandOptions) error {
+	return r.invokeAck[protocol.GoalTarget](ctx, delivery.Name("goals.clear"), request, options.Metadata())
 }
-func (r *Runtime) GetGoal(ctx context.Context, request protocol.GoalRequest, options protocol.CallOptions) (*protocol.Goal, error) {
-	return r.invoke[protocol.GoalRequest, *protocol.Goal](ctx, delivery.Name("goals.get"), request, options.Metadata())
+func (r *Runtime) GetGoal(ctx context.Context, request protocol.GetGoalRequest, options protocol.CallOptions) (*protocol.Goal, error) {
+	return r.invoke[protocol.GetGoalRequest, *protocol.Goal](ctx, delivery.Name("goals.get"), request, options.Metadata())
 }
-func (r *Runtime) StopGoal(ctx context.Context, request protocol.GoalRequest, options protocol.CommandOptions) error {
-	return r.invokeAck[protocol.GoalRequest](ctx, delivery.Name("goals.stop"), request, options.Metadata())
+func (r *Runtime) StopGoal(ctx context.Context, request protocol.GoalTarget, options protocol.CommandOptions) error {
+	return r.invokeAck[protocol.GoalTarget](ctx, delivery.Name("goals.stop"), request, options.Metadata())
 }
-func (r *Runtime) ResumeGoal(ctx context.Context, request protocol.GoalRequest, options protocol.CommandOptions) (*protocol.Goal, error) {
-	return r.invoke[protocol.GoalRequest, *protocol.Goal](ctx, delivery.Name("goals.resume"), request, options.Metadata())
+func (r *Runtime) ResumeGoal(ctx context.Context, request protocol.GoalTarget, options protocol.CommandOptions) (*protocol.Goal, error) {
+	return r.invoke[protocol.GoalTarget, *protocol.Goal](ctx, delivery.Name("goals.resume"), request, options.Metadata())
 }
 func (r *Runtime) ListProviders(ctx context.Context, options protocol.CallOptions) (*protocol.Page[protocol.Provider], error) {
 	return r.invoke[struct{}, *protocol.Page[protocol.Provider]](ctx, delivery.Name("providers.list"), struct{}{}, options.Metadata())

@@ -167,8 +167,6 @@ function ComponentRecovery({
   );
 }
 
-type CapturedContext = Omit<ComponentContext, "locale" | "compose">;
-
 // The draft is captured with the context, so a later Session switch cannot
 // redirect a component's text into another conversation.
 function captureComposer(composer: ComposerAccess, signal: AbortSignal): CapturedComposer {
@@ -259,11 +257,11 @@ function captureViews(
 class ComponentInstance {
   private controller = new AbortController();
   private listeners = new Set<() => void>();
-  private context: CapturedContext;
+  private context: ComponentContext;
   constructor(private readonly sources: ComponentSources) {
     this.context = this.capture();
   }
-  private capture(): CapturedContext {
+  private capture(): ComponentContext {
     const signal = AbortSignal.any([
       this.controller.signal,
       this.sources.lifetime.lifetime.signal,
@@ -275,7 +273,7 @@ class ComponentInstance {
     const component = Object.freeze({ ...this.sources.component });
     const runtime = this.sources.runtime;
     const workspace = this.sources.workspace && capturedWorkspace(this.sources.workspace);
-    return Object.freeze({
+    const context: ComponentContext = Object.freeze({
       runtime:
         workspace && this.sources.placement === "workspaceView"
           ? observeWorkspaceDiffReads(runtime, workspace.ref.path, signal)
@@ -302,12 +300,10 @@ class ComponentInstance {
       workspace,
       project: this.sources.project ? Object.freeze({ ...this.sources.project }) : undefined,
       binding: this.sources.binding ? structuredClone(this.sources.binding) : undefined,
-      openSession: openSession
-        ? (sessionId: string) => {
-            signal.throwIfAborted();
-            openSession(sessionId);
-          }
-        : undefined,
+      openSession: (sessionId: string) => {
+        signal.throwIfAborted();
+        return track((reading) => openSession(sessionId, reading));
+      },
       views:
         this.sources.views &&
         captureViews(
@@ -330,13 +326,18 @@ class ComponentInstance {
       signal,
       telemetry: captureClientTelemetry(signal),
       track,
+      compose: (composition: ComponentComposition) => {
+        signal.throwIfAborted();
+        return this.sources.compose(context, composition);
+      },
     });
+    return context;
   }
   // Only client effects register commands and observe root Run settlements.
   private effectCapabilities(
     signal: AbortSignal,
     component: ComponentContext["component"],
-  ): Pick<CapturedContext, "registerCommand" | "subscribeRootRunSettlements"> {
+  ): Pick<ComponentContext, "registerCommand" | "subscribeRootRunSettlements"> {
     const placement = this.sources.placement;
     if (placement !== "clientEffect" && placement !== "sharedClientEffect")
       return {
@@ -390,23 +391,10 @@ function RenderingInstance({
   fallback,
   reload,
   locale,
-  compose,
 }: InstalledComponentProps & { instance: ComponentInstance; locale: string }) {
-  const captured = useSyncExternalStore(instance.subscribe, instance.getSnapshot);
-  const context = useMemo(() => {
-    if (!captured) return null;
-    const value: ComponentContext = Object.freeze({
-      ...captured,
-      locale,
-      compose: (composition: ComponentComposition) => {
-        captured.signal.throwIfAborted();
-        return compose(value, composition);
-      },
-    });
-    return value;
-  }, [captured, locale, compose]);
+  const context = useSyncExternalStore(instance.subscribe, instance.getSnapshot);
   return context ? (
-    <Entry context={context} input={input} contribution={contribution}>
+    <Entry context={context} locale={locale} input={input} contribution={contribution}>
       {children}
     </Entry>
   ) : (
@@ -421,12 +409,16 @@ export function RenderingComponent(
   props: InstalledComponentProps &
     Omit<
       ComponentSources,
-      "captureSessionId" | "notificationAccess" | "subscribeRootRunSettlements"
+      | "openSession"
+      | "views"
+      | "captureSessionId"
+      | "notificationAccess"
+      | "subscribeRootRunSettlements"
     >,
 ) {
   const locale = useLocale();
   const {
-    selectAgentSession: openSession,
+    openExistingAgentSession: openSession,
     getActiveSessionId: captureSessionId,
     subscribeRootRunSettlements,
   } = useAgent();
@@ -555,7 +547,7 @@ type ComponentSources = Pick<
   submitInput?: SubmitCapturedAgentInput;
   composer?: ComposerAccess;
   sessionTarget?: CapturedSession;
-  openSession?: (sessionId: string) => void;
+  openSession: AgentAccess["openExistingAgentSession"];
   views?: ViewNavigation;
   captureSessionId: () => string | undefined;
   notificationAccess: NotificationAccess;

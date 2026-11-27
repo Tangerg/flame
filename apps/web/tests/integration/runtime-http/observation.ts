@@ -2,6 +2,7 @@ import { onTestFinished } from "vitest";
 import { type FlameClient, type SessionId } from "@flame/runtime-client";
 import {
   type GoalStatus,
+  type MCPDirectoryTarget,
   type MCPServerID,
   type RunEvent,
   type RuntimeEvent,
@@ -172,6 +173,24 @@ export function nextUserMCPChange(events: AsyncIterator<RuntimeEvent>, server: s
       ? event
       : undefined,
   );
+}
+
+export async function readMCPDirectoryTarget(
+  client: FlameClient,
+  name: string,
+): Promise<MCPDirectoryTarget> {
+  const { data } = await client.mcp.list();
+  const server = data.find(({ id }) => id.origin.type === "user" && id.name === name);
+  if (!server?.revision) throw new Error(`No directory revision for MCP server ${name}`);
+  return { server: server.id, expectedRevision: server.revision };
+}
+
+export async function deleteUserMCPServers(client: FlameClient, ...names: string[]) {
+  const { data } = await client.mcp.list();
+  for (const { id, revision } of data) {
+    if (id.origin.type === "user" && names.includes(id.name))
+      await client.mcp.delete({ server: id, expectedRevision: revision });
+  }
 }
 
 export function waitForUserMCPConnection(

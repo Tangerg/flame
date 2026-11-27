@@ -202,6 +202,7 @@ test("bundles private static and dynamic modules into one captured executable mo
     );
     assert.deepEqual(graph, emitted.graph);
     assert.equal(graph.schemaVersion, profile.moduleGraph.schemaVersion);
+    assert.equal(graph.runtimeProfile, profile.profile);
     assert.equal(graph.entry, "component.js");
     assert.deepEqual(graph.sharedSpecifiers, []);
     assert.equal(graph.modules.length, 1);

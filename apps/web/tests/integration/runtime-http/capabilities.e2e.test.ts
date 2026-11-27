@@ -28,12 +28,14 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: capability conditions", () => 
       return fetch(...args);
     });
     try {
-      await expect(client.sessions.update({ ...update, isolated: false })).rejects.toMatchObject({
-        data: {
-          type: "capability_not_negotiated",
-          requiredCapabilities: [{ type: "feature", name: "isolation" }],
-        },
-      });
+      expect(() => client.sessions.update({ ...update, isolated: false })).toThrow(
+        expect.objectContaining({
+          data: {
+            type: "capability_not_negotiated",
+            requiredCapabilities: [{ type: "feature", name: "isolation" }],
+          },
+        }),
+      );
       expect(dispatched).toBe(0);
     } finally {
       await client.close();

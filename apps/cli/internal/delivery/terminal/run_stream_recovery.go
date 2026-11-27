@@ -39,7 +39,7 @@ type streamFollower struct {
 	ctx        context.Context
 	lease      operationLease
 	sessionID  string
-	open       func(context.Context) (conversation.SegmentStream, error)
+	open       func(context.Context) (runworkflow.Opening, error)
 	applyEvent func(conversation.RunEvent) error
 
 	opening  streamOpeningObserver
@@ -76,11 +76,11 @@ func (e *eventApplicationError) Error() string { return e.err.Error() }
 func (e *eventApplicationError) Unwrap() error { return e.err }
 
 func (s *streamFollower) run() {
-	var current conversation.SegmentStream
+	var opening runworkflow.Opening
 	for {
 		opened, err := s.open(s.ctx)
 		if err == nil {
-			current = opened
+			opening = opened
 			s.failures = 0
 			break
 		}
@@ -88,12 +88,19 @@ func (s *streamFollower) run() {
 			return
 		}
 	}
-	if s.postOpenAccepted(current) == followOpenedStream {
-		s.runStream(current)
+	if s.postOpenAccepted(opening) != followOpenedStream {
+		return
+	}
+	stream, attached := opening.Stream()
+	if !attached {
+		stream, attached = s.recoverStream(opening.RunID())
+	}
+	if attached {
+		s.runStream(stream)
 	}
 }
 
-func (s *streamFollower) postOpenAccepted(opened conversation.SegmentStream) streamOpeningDisposition {
+func (s *streamFollower) postOpenAccepted(opened runworkflow.Opening) streamOpeningDisposition {
 	if s.opening.accepted == nil {
 		return followOpenedStream
 	}
@@ -211,20 +218,6 @@ type followSnapshot struct {
 	phase      conversation.Phase
 }
 
-type recoveryDisposition uint8
-
-const (
-	recoveryStopped recoveryDisposition = iota
-	recoveryRetry
-	recoveryAttached
-)
-
-type recoveryAttempt struct {
-	disposition recoveryDisposition
-	stream      conversation.SegmentStream
-	cause       error
-}
-
 func (s *streamFollower) snapshot() (followSnapshot, error) {
 	snapshot := followSnapshot{active: true}
 	err := s.runs.tasks.deliver(s.ctx, func() {
@@ -241,23 +234,7 @@ func (s *streamFollower) snapshot() (followSnapshot, error) {
 func (s *streamFollower) reconnect(request conversation.SubscribeRun, cause error) (conversation.SegmentStream, bool) {
 	for {
 		if runworkflow.RecoveryRequired(cause) {
-			recovery := s.recover(request.RunID, cause)
-			switch recovery.disposition {
-			case recoveryAttached:
-				return recovery.stream, true
-			case recoveryStopped:
-				return conversation.SegmentStream{}, false
-			default:
-				if runworkflow.RecoveryRequired(recovery.cause) {
-					s.failures++
-					if !s.postRetryStatus(awaitingReconnect) || runtimeRecoveryBackoff.Wait(s.ctx, s.failures) != nil {
-						return conversation.SegmentStream{}, false
-					}
-				} else if !s.waitBeforeRetry(recovery.cause) {
-					return conversation.SegmentStream{}, false
-				}
-				continue
-			}
+			return s.recoverStream(request.RunID)
 		}
 		if !s.waitBeforeRetry(cause) {
 			return conversation.SegmentStream{}, false
@@ -320,18 +297,21 @@ func (s *streamFollower) acceptRebound(runID, segmentID string, rebound conversa
 	return rebound, true
 }
 
-func (s *streamFollower) recover(runID string, cause error) recoveryAttempt {
-	recovered, err := runworkflow.RecoverSegment(s.ctx, s.runs.runtime, s.sessionID, runID)
-	if err != nil {
-		if runworkflow.RecoveryRequired(err) {
-			return recoveryAttempt{disposition: recoveryRetry, cause: cause}
+func (s *streamFollower) recoverStream(runID string) (conversation.SegmentStream, bool) {
+	for {
+		recovered, err := runworkflow.RecoverSegment(s.ctx, s.runs.runtime, s.sessionID, runID)
+		if err == nil {
+			return recovered.Stream, s.adoptRecovery(recovered)
 		}
-		return recoveryAttempt{disposition: recoveryRetry, cause: err}
+		if runworkflow.RecoveryRequired(err) {
+			s.failures++
+			if !s.postRetryStatus(awaitingReconnect) || runtimeRecoveryBackoff.Wait(s.ctx, s.failures) != nil {
+				return conversation.SegmentStream{}, false
+			}
+		} else if !s.waitBeforeRetry(err) {
+			return conversation.SegmentStream{}, false
+		}
 	}
-	if !s.adoptRecovery(recovered) {
-		return recoveryAttempt{disposition: recoveryStopped}
-	}
-	return recoveryAttempt{disposition: recoveryAttached, stream: recovered.Stream}
 }
 
 // adoptRecovery reconciles the recovered snapshot on the UI goroutine and

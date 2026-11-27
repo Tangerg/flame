@@ -134,6 +134,11 @@ empty title/workspace or `enabled: false` are real patches. Pausing stops future
 cron claims without deleting identity or rewriting captured/accepted work. A
 revision conflict requires a fresh read and a new edit decision.
 
+Deletion requires the inspected ID and revision. The component command is
+`flame.schedules/delete.v3` and the model supplies `expected_revision`. A changed
+or removed definition requires fresh review. The transaction stores the deleted
+ID and revision in its reply, so replay settles the original deletion.
+
 Metadata edits retain `NextRunAt` and `LastRunAt`, including an already-due
 occurrence. Only a changed cron or time zone while enabled, or a
 disable/re-enable transition, recomputes the scheduling cursor. A disabled cron edit retains its zero cursor.
@@ -260,7 +265,9 @@ settles acceptance and refreshes the catalog.
 Templates live in src/templates.ts as authoring content copied into a new draft.
 The generic Domain/loader/Protocol owns no Schedule template or closed view kind.
 The component consumes existing schedule notices and cancels/joins its I/O on
-retirement. Failed pagination keeps the accepted page/cursor. Previous and Next
+retirement. A background invalidation refreshes the cursor the user selected,
+including during navigation. Failed pagination keeps the accepted page visible
+and Refresh retries the selected cursor. Previous and Next
 retain their keyboard position through reads using the shared pending control;
 page bounds stay focusable and inert, while commands keep their native disablement.
 An accepted explicit page transition focuses the existing catalog summary only

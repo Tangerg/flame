@@ -34,7 +34,7 @@ func (a *app) applyRuntimeInvalidation(event changefeed.Event) {
 	a.loadPluginViews(event.Type == protocol.RuntimePluginsChanged)
 	a.followModelChanges(event.Type == protocol.RuntimeModelsChanged)
 	if invalidatesSessionCatalog(event) {
-		a.lifecycle.reloadSessionCatalog()
+		a.sessions.refreshOpenCatalog()
 	}
 	if invalidationAffectsSession(event, a.lifecycle.state.current.ID, a.runs.conversation().RunID()) {
 		a.lifecycle.invalidateCurrentSession()
@@ -46,7 +46,7 @@ func (a *app) applyRuntimeResync(topics []protocol.RuntimeTopic) {
 	a.loadPluginViews(slices.Contains(topics, protocol.TopicPluginsChanged))
 	a.followModelChanges(slices.Contains(topics, protocol.TopicModelsChanged))
 	if invalidatesSessionCatalog(changefeed.Event{Type: protocol.RuntimeResync, Topics: topics}) {
-		a.lifecycle.reloadSessionCatalog()
+		a.sessions.refreshOpenCatalog()
 	}
 	if resyncAffectsSession(topics) {
 		a.lifecycle.invalidateCurrentSession()
@@ -67,16 +67,8 @@ func goalInvalidationAffectsSession(event changefeed.Event, sessionID string) bo
 		(len(event.SessionIDs) == 0 || slices.Contains(event.SessionIDs, sessionID))
 }
 
-func (l *sessionLifecycle) reloadSessionCatalog() {
-	if l.sessions.dialog.Open() {
-		l.sessions.pane.Reset()
-		l.sessions.loadSessionPage(firstSessionPage)
-	}
-}
-
 func (l *sessionLifecycle) invalidateCurrentSession() {
-	l.state.invalidated = true
-	if l.runs.conversation().Phase() == conversation.Running || l.runs.following() || l.runs.cancelPending() ||
+	if !l.state.invalidate() || l.runs.conversation().Phase() == conversation.Running || l.runs.following() || l.runs.cancelPending() ||
 		l.tasks.operations.Active(sessionChangeOperation) {
 		return
 	}
@@ -130,7 +122,7 @@ func (r sessionRefresh) settles() bool { return r == refreshSettlingRun }
 
 func (l *sessionLifecycle) refreshInvalidatedSession(purpose sessionRefresh) {
 	sessionID := l.state.current.ID
-	l.state.invalidated = false
+	l.state.freshness = sessionObserved
 	read := func(ctx context.Context) (conversation.SessionSnapshot, error) {
 		return l.readInvalidatedSession(ctx, sessionID)
 	}
@@ -143,7 +135,7 @@ func (l *sessionLifecycle) refreshInvalidatedSession(purpose sessionRefresh) {
 	}
 	started := l.tasks.sessionFence(slot, read, apply)
 	if !started {
-		l.state.invalidated = true
+		l.state.invalidate()
 	}
 }
 
@@ -156,7 +148,7 @@ func (l *sessionLifecycle) applyInvalidatedSessionRefresh(
 	if l.state.current.ID != sessionID {
 		return
 	}
-	if l.state.invalidated {
+	if l.state.freshness == sessionStale {
 		l.refreshInvalidatedSession(purpose)
 		return
 	}
@@ -165,7 +157,7 @@ func (l *sessionLifecycle) applyInvalidatedSessionRefresh(
 		return
 	}
 	if !purpose.settles() && (l.runs.conversation().Phase() == conversation.Running || l.runs.following()) {
-		l.state.invalidated = true
+		l.state.invalidate()
 		return
 	}
 	changed, installed := l.installRefreshedSnapshot(snapshot)
@@ -185,12 +177,12 @@ func (l *sessionLifecycle) applyInvalidatedSessionRefresh(
 }
 
 func (l *sessionLifecycle) failInvalidatedRefresh(err error) {
-	l.state.invalidated = true
 	if errors.Is(err, conversation.ErrSessionNotFound) && l.runs.conversation().Phase() == conversation.Idle && !l.runs.following() {
-		l.root.message("the active session was deleted; creating a replacement")
-		l.replaceDeletedSessionInWorkspace(l.state.current.Workspace.Path)
+		l.state.freshness = sessionMissing
+		l.startSessionInWorkspace(l.state.current.Workspace.Path)
 		return
 	}
+	l.state.invalidate()
 	l.root.message("refresh session after runtime change failed: " + err.Error())
 }
 
@@ -198,13 +190,14 @@ func (l *sessionLifecycle) installRefreshedSnapshot(snapshot conversation.Sessio
 	conversationMatches := l.runs.conversation().MatchesSnapshot(snapshot)
 	sessionMatches := l.state.current.Equal(snapshot.Session)
 	if conversationMatches && l.state.current.Workspace == snapshot.Session.Workspace {
+		l.header.SetGoal(snapshot.Goal)
 		if !sessionMatches {
-			l.installSessionMetadata(snapshot.Session)
+			l.setActiveSession(snapshot.Session)
 		}
 		return !sessionMatches, true
 	}
 	if err := l.installSnapshot(snapshot); err != nil {
-		l.state.invalidated = true
+		l.state.invalidate()
 		l.root.message("refresh session after runtime change failed: " + err.Error())
 		return false, false
 	}
@@ -223,9 +216,4 @@ func (l *sessionLifecycle) readInvalidatedSession(ctx context.Context, sessionID
 			return conversation.SessionSnapshot{}, err
 		}
 	}
-}
-
-func (l *sessionLifecycle) installSessionMetadata(session conversation.Session) {
-	l.setActiveSession(session)
-	l.sessions.pane.Replace(session)
 }

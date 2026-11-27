@@ -1,4 +1,4 @@
-import { MutationLookupError, mutationSettlementIsUnknown, type MutationPromise } from "./mutation";
+import { MutationLookupError, type MutationPromise } from "./mutation";
 
 const MUTATION_ATTEMPT_TIMEOUT_MS = 30_000;
 const MAXIMUM_MUTATION_ATTEMPT_TIMEOUT_MS = 2 ** 31 - 1;
@@ -11,29 +11,19 @@ export class MutationSettlementClosedError extends Error {
   }
 }
 
-type AcceptedAttempt = "released" | "retained";
-
-export interface MutationSettlerConfig {
-  acceptedAttempt?: AcceptedAttempt;
-}
-
-interface MutationSettleOptions {
+interface MutationSettleOptions<T> {
   parent?: AbortSignal;
   timeoutMs?: number;
-  onMutation?: (idempotencyKey: string) => void;
-}
-
-interface PendingMutation<T> {
-  mutation: MutationPromise<T>;
+  onCommand?: (command: MutationPromise<T>) => void;
 }
 
 function projectMutation<T>(
   settlement: Promise<T>,
-  idempotencyKey: string,
-  onMutation: MutationSettleOptions["onMutation"],
+  command: MutationPromise<T>,
+  onCommand: MutationSettleOptions<T>["onCommand"],
 ): Promise<T> {
   try {
-    onMutation?.(idempotencyKey);
+    onCommand?.(command);
   } catch (cause) {
     // A projection failure cannot orphan a dispatched command or its deadline.
     return settlement.then(
@@ -50,9 +40,8 @@ function projectMutation<T>(
 
 export interface MutationSettler {
   settle<T>(
-    identity: string,
     open: (signal: AbortSignal) => MutationPromise<T>,
-    options?: MutationSettleOptions,
+    options?: MutationSettleOptions<T>,
   ): Promise<T>;
   dispose(): void;
 }
@@ -65,11 +54,7 @@ interface MutationAttempt {
   dispose(): void;
 }
 
-function createAttempt(
-  ownership: AbortSignal,
-  timeoutMs: number,
-  acceptedAttempt: AcceptedAttempt,
-): MutationAttempt {
+function createAttempt(ownership: AbortSignal, timeoutMs: number): MutationAttempt {
   const controller = new AbortController();
   let expired = false;
   let deadlineSettled = false;
@@ -121,7 +106,7 @@ function createAttempt(
     wait: (operation) => Promise.race([operation, deadline]),
     accept: () => {
       releaseDeadline();
-      if (acceptedAttempt === "released") detach();
+      detach();
     },
     dispose: () => {
       releaseDeadline();
@@ -131,83 +116,49 @@ function createAttempt(
   };
 }
 
-function driveMutation<T>(
+async function driveMutation<T>(
   mutation: MutationPromise<T>,
   first: MutationAttempt,
   ownership: AbortSignal,
   timeoutMs: number,
-  acceptedAttempt: AcceptedAttempt,
-  markUnknown: () => void,
-  replaceMutation: (mutation: MutationPromise<T>) => void,
 ): Promise<T> {
-  return (async () => {
-    try {
-      const value = await first.wait(mutation);
-      first.accept();
-      return value;
-    } catch (error) {
-      const timedOut = first.deadlineExpired();
-      const canceled = ownership.aborted;
-      first.dispose();
-      if (!timedOut || canceled) {
-        if (canceled || mutationSettlementIsUnknown(error)) markUnknown();
-        throw error;
-      }
-    }
+  try {
+    const value = await first.wait(mutation);
+    first.accept();
+    return value;
+  } catch (error) {
+    first.dispose();
+    if (!first.deadlineExpired() || ownership.aborted) throw error;
+  }
 
-    const retry = createAttempt(ownership, timeoutMs, acceptedAttempt);
-    let replay: MutationPromise<T>;
-    try {
-      replay = mutation.retry({ signal: retry.signal });
-    } catch (error) {
-      retry.dispose();
-      // Refusing a new observation cannot settle the original timed-out command.
-      markUnknown();
-      throw new MutationLookupError(error);
-    }
-    replaceMutation(replay);
-    try {
-      const value = await retry.wait(replay);
-      retry.accept();
-      return value;
-    } catch (error) {
-      if (retry.deadlineExpired() || ownership.aborted || mutationSettlementIsUnknown(error)) {
-        markUnknown();
-      }
-      retry.dispose();
-      throw error;
-    }
-  })();
+  const retry = createAttempt(ownership, timeoutMs);
+  let replay: MutationPromise<T>;
+  try {
+    replay = mutation.retry({ signal: retry.signal });
+  } catch (error) {
+    retry.dispose();
+    throw new MutationLookupError(error);
+  }
+  try {
+    const value = await retry.wait(replay);
+    retry.accept();
+    return value;
+  } catch (error) {
+    retry.dispose();
+    if (retry.deadlineExpired() && !ownership.aborted) throw new MutationLookupError(error);
+    throw error;
+  }
 }
 
-export function createMutationSettler(config: MutationSettlerConfig = {}): MutationSettler {
-  const acceptedAttempt = config.acceptedAttempt ?? "released";
-  const pending = new Map<string, PendingMutation<unknown>[]>();
-  const replaying = new Map<string, { promise: Promise<unknown>; idempotencyKey: string }>();
+export function createMutationSettler(): MutationSettler {
   const lifetime = new AbortController();
-  let disposed = false;
-
-  const retain = (identity: string, record: PendingMutation<unknown>) => {
-    if (disposed) return;
-    const queue = pending.get(identity) ?? [];
-    queue.push(record);
-    pending.set(identity, queue);
-  };
-
-  const take = <T>(identity: string): PendingMutation<T> | undefined => {
-    const queue = pending.get(identity);
-    const record = queue?.shift() as PendingMutation<T> | undefined;
-    if (queue?.length === 0) pending.delete(identity);
-    return record;
-  };
 
   return {
     settle<T>(
-      identity: string,
       open: (signal: AbortSignal) => MutationPromise<T>,
-      options: MutationSettleOptions = {},
+      options: MutationSettleOptions<T> = {},
     ): Promise<T> {
-      if (disposed) return Promise.reject(new MutationSettlementClosedError());
+      if (lifetime.signal.aborted) return Promise.reject(lifetime.signal.reason);
       const timeoutMs = options.timeoutMs ?? MUTATION_ATTEMPT_TIMEOUT_MS;
       if (
         !Number.isInteger(timeoutMs) ||
@@ -217,72 +168,22 @@ export function createMutationSettler(config: MutationSettlerConfig = {}): Mutat
         return Promise.reject(
           new RangeError("mutation attempt timeout must be within the platform timer range"),
         );
-      const activeReplay = replaying.get(identity);
-      if (activeReplay)
-        return projectMutation(
-          activeReplay.promise as Promise<T>,
-          activeReplay.idempotencyKey,
-          options.onMutation,
-        );
-
-      const retained = take<T>(identity);
-
       const ownership = options.parent
         ? AbortSignal.any([options.parent, lifetime.signal])
         : lifetime.signal;
-      const first = createAttempt(ownership, timeoutMs, acceptedAttempt);
+      const first = createAttempt(ownership, timeoutMs);
       let mutation: MutationPromise<T>;
       try {
-        mutation = retained
-          ? retained.mutation.retry({ signal: first.signal })
-          : open(first.signal);
+        mutation = open(first.signal);
       } catch (error) {
         first.dispose();
-        if (retained) {
-          retain(identity, retained as PendingMutation<unknown>);
-          return Promise.reject(new MutationLookupError(error));
-        }
         return Promise.reject(error);
       }
-
-      const record = retained ?? { mutation };
-      record.mutation = mutation;
-
-      let unknown = false;
-      const settlement = driveMutation(
-        mutation,
-        first,
-        ownership,
-        timeoutMs,
-        acceptedAttempt,
-        () => {
-          unknown = true;
-        },
-        (replay) => {
-          record.mutation = replay;
-        },
-      );
-      const tracked = settlement
-        .then(
-          (value) => value,
-          (error: unknown) => {
-            if (unknown) retain(identity, record as PendingMutation<unknown>);
-            throw error;
-          },
-        )
-        .finally(() => {
-          if (replaying.get(identity)?.promise === tracked) replaying.delete(identity);
-        });
-      if (retained)
-        replaying.set(identity, { promise: tracked, idempotencyKey: mutation.idempotencyKey });
-      return projectMutation(tracked, mutation.idempotencyKey, options.onMutation);
+      const settlement = driveMutation(mutation, first, ownership, timeoutMs);
+      return projectMutation(settlement, mutation, options.onCommand);
     },
     dispose(): void {
-      if (disposed) return;
-      disposed = true;
-      lifetime.abort(new MutationSettlementClosedError());
-      pending.clear();
-      replaying.clear();
+      if (!lifetime.signal.aborted) lifetime.abort(new MutationSettlementClosedError());
     },
   };
 }

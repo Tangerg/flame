@@ -51,16 +51,6 @@ export function questionSettled({
   return status !== "running" || Boolean(answered);
 }
 
-export function canSubmitQuestion({
-  resumeRunId,
-  itemId,
-}: {
-  resumeRunId?: string;
-  itemId?: string;
-}): boolean {
-  return Boolean(resumeRunId && itemId);
-}
-
 export function questionDraftAnswers(
   questions: readonly QuestionItem[],
   draft: QuestionDraft,

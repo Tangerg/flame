@@ -67,9 +67,9 @@ func (s *Store) loadState() error {
 	if err := s.loadSessionStates(); err != nil {
 		return fmt.Errorf("load session authoring state: %w", err)
 	}
-	s.history = s.history[max(0, len(s.history)-s.historyCapacity):]
-	s.stashes = tailStashes(s.stashes, s.stashCapacity)
-	s.workspaces = slices.Clone(s.workspaces[:min(len(s.workspaces), s.workspaceCapacity)])
+	s.history = s.history[max(0, len(s.history)-maxHistoryEntries):]
+	s.stashes = retainedStashes(s.stashes)
+	s.workspaces = slices.Clone(s.workspaces[:min(len(s.workspaces), maxRecentWorkspaces)])
 	return nil
 }
 

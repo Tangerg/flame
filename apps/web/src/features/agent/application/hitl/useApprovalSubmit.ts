@@ -10,8 +10,8 @@ export interface ApprovalSubmitOptions {
 
 interface ApprovalSubmit {
   submit: (decision: ApprovalDecision, opts?: ApprovalSubmitOptions) => void;
-  pending: ApprovalDecision | null;
-  submitted: boolean;
+  available: boolean;
+  responseStaged: boolean;
   registerActions: (actions: ApprovalActions) => () => void;
 }
 
@@ -20,22 +20,18 @@ export function useApprovalSubmit(
   rootRunId?: string,
   itemId?: string,
 ): ApprovalSubmit {
-  const { pending, submitted, resume } = useInterruptResume<ApprovalDecision>(
-    sessionId,
-    rootRunId,
-    itemId,
-  );
+  const { state, available, submit: respond } = useInterruptResume(sessionId, rootRunId, itemId);
 
   const submit = useCallback(
     (decision: ApprovalDecision, opts?: ApprovalSubmitOptions) => {
-      resume(decision, {
+      respond({
         type: "approval",
         decision,
         ...(opts?.editedArgs ? { editedArgs: opts.editedArgs } : {}),
         ...(opts?.rememberScope ? { remember: { scope: opts.rememberScope } } : {}),
       });
     },
-    [resume],
+    [respond],
   );
 
   const { approvalActions } = useAgentDependencies();
@@ -47,5 +43,5 @@ export function useApprovalSubmit(
     [approvalActions, itemId, rootRunId, sessionId],
   );
 
-  return { submit, pending, submitted, registerActions };
+  return { submit, available, responseStaged: state !== "unsubmitted", registerActions };
 }

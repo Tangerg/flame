@@ -8,35 +8,38 @@ import { MutationJournalError } from "./mutationJournalErrors";
 import type {
   PluginCommandInput,
   PluginCommandBinding,
-  PendingPluginCommand,
+  PluginCommandIdentity,
+  PluginCommandReservation,
+  ActivePluginCommand,
   MutationReservation,
 } from "./mutationJournal";
-import type { CallPluginRequest, PluginCallRoute } from "@flame/runtime-client/wire";
+import type { CallPluginRequest } from "@flame/runtime-client/wire";
 import type { WireCallPath } from "./wireCallPath";
 import { deliverPluginStream } from "./pluginStream";
 import { pluginMethod } from "./request";
 import { parseJSON } from "@frame/sdk/json";
 
-export interface PluginCommandRecovery {
-  readonly idempotencyKey: string;
-  readonly binding: PluginCallRoute;
-  matchesIntent(intent: string): boolean;
+export interface PluginCommandRecovery extends PluginCommandIdentity {
+  readonly state: "recoverable";
   recover<T>(decode: (output: unknown) => T, signal?: AbortSignal): Promise<T>;
   retire(signal?: AbortSignal): Promise<void>;
 }
 
-export function pendingPluginCommand(
-  command: PendingPluginCommand,
+export type PluginCommand = ActivePluginCommand | PluginCommandRecovery;
+
+export function pluginCommandRecovery(
+  command: PluginCommandReservation,
   wire: Pick<WireCallPath, "callUnkeyed" | "dispatchCommand">,
 ): PluginCommandRecovery {
   return {
     idempotencyKey: command.idempotencyKey,
     binding: command.binding,
-    matchesIntent: (intent) => command.matchesIntent(intent),
+    state: command.state,
+    matchesIntent: command.matchesIntent,
     recover: async <T>(decode: (output: unknown) => T, signal?: AbortSignal) => {
-      const reservation = command.reserve();
+      const reservation = command.reserve("recover");
       return reservation.track(() =>
-        createMutationPromise<T>(
+        createMutationPromise<unknown>(
           async (key, attempt) => {
             let request: CallPluginRequest;
             try {
@@ -65,18 +68,18 @@ export function pendingPluginCommand(
                 request,
                 reservation,
                 () => undefined,
-                decode,
+                (output) => output,
                 attempt.signal,
               );
-            return deliverPluginCommand(wire, request, reservation, decode, attempt.signal);
+            return deliverPluginCommand(wire, request, reservation, (output) => output, attempt.signal);
           },
           command.idempotencyKey,
           { signal },
         ),
-      );
+      ).then(decode);
     },
     retire: (signal) => {
-      const reservation = command.reserve();
+      const reservation = command.reserve("retire");
       return reservation.track(() =>
         createMutationPromise<void>(
           async (key, attempt) => {
@@ -121,7 +124,7 @@ export async function callPluginCommand<T>(
       deliverPluginCommand(wire, prepared, original, decode, attemptSignal),
     {
       signal,
-      original: { idempotencyKey: reservation.idempotencyKey, reserve: () => reservation },
+      original: { reserve: () => reservation },
     },
   );
 }

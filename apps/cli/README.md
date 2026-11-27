@@ -17,9 +17,18 @@ packaging. An HTTP-only client does not initialize a local Runtime.
 
 Running without a subcommand opens the Oolong terminal interface. Runtime owns durable product state and execution; CLI owns process behavior, terminal interaction, rendering, and local authoring state.
 
-MCP forms preserve command and directory bytes, and encode arguments as JSON
-arrays and environment/header replacements as JSON objects. Empty and whitespace
-values remain explicit process material; Runtime owns their final admission.
+Workbench prompt history is shared across Sessions. Consecutive identical
+prompts occupy one recall entry. Switching Sessions ends history navigation and
+loads the destination Session's draft.
+Clearing a draft moves its visible content to history in the same transaction.
+Stashing a draft moves its visible content directly to a saved stash.
+When a steer is refused, the Workbench restores its attachments to the current
+draft and retires the original command in one commit.
+
+MCP forms preserve command and directory bytes. Arguments are JSON arrays of
+strings, and environment and header replacements are JSON objects with string
+values. Empty strings and whitespace remain explicit process material. Runtime
+owns final admission.
 Busy operation admission keeps the original form and step. An admitted form is
 read-only until settlement. A definite refusal restores editing; an uncertain
 acknowledgement retains the original request, target, command identity and replay
@@ -27,6 +36,9 @@ deadline. Enter retries that exact request while replay remains available. An
 unreplayable unknown outcome stays blocked. Success or explicit cancellation
 clears the form's secret fields; closing a pending form does not undo an accepted
 Runtime operation.
+
+When `/mcp-auth <server>` loses an acknowledgement, repeat the same command in
+the same terminal to recover the original authorization attempt.
 
 Workspace `/diff --raw` displays the original patch, including file headers and
 line-termination markers. `/diff --rows` renders Runtime's per-file rows with
@@ -122,6 +134,8 @@ partition from loading through Close; a second terminal targeting it is refused.
 Each partition uses a private SQLite `authoring.db`. Draft transfers, stashing,
 prompt settlement and session retirement publish their local changes in single
 transactions. Pending Runtime commands retain their original keys across reconnects.
+When a Start or Resume loses its opening observation, the CLI settles the outbox
+from the original Runtime receipt and recovers the accepted Run's observation.
 This development cutover starts a fresh authoring database in each partition and
 leaves existing JSON records on disk for prior builds.
 Runtime's durable idempotency namespace still guards command replay independently

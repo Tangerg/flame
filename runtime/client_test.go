@@ -1,19 +1,17 @@
 package runtime
 
 import (
-	"context"
 	json "encoding/json/v2"
 	"errors"
 	"fmt"
-	"iter"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync/atomic"
+	"syscall"
 	"testing"
-	"time"
 
 	runtimeclient "github.com/Tangerg/flame/packages/go-sdk/client"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
@@ -144,78 +142,36 @@ func TestClientsShareRuntimeWithoutSharingOwnership(t *testing.T) {
 }
 
 func TestRuntimePreservesLocalCauseAndProjectsPublicProblem(t *testing.T) {
-	root := testsupport.TempDirectory(t)
-	data := filepath.Join(root, "runtime-data")
-	rt, server, _ := remoteRuntime(t, data)
+	rt, server, _ := remoteRuntime(t, testsupport.TempDirectory(t))
 	remote := remoteTestClient(t, server.URL)
-	options := protocol.CallOptions{}
-	waitForRuntimeCompanions(t, rt)
-
-	// Moving the root while companions are starting can fail their process
-	// admission independently of the storage error exercised by Discover.
-	moved := filepath.Join(root, "moved-data")
-	if err := os.Rename(data, moved); err != nil {
+	workspace := t.TempDir()
+	const link = "unresolvable-link"
+	if err := os.Symlink(link, filepath.Join(workspace, link)); err != nil {
 		t.Fatal(err)
 	}
-	defer func() {
-		if err := os.Rename(moved, data); err != nil {
-			t.Error(err)
-		}
-	}()
+	request := protocol.ListFilesRequest{Workspace: protocol.WorkspaceRef{Path: workspace}, Path: link}
+	options := protocol.CallOptions{}
 
-	_, err := rt.Discover(t.Context(), options)
-	if !errors.Is(err, protocol.ErrInternalError) || !errors.Is(err, os.ErrNotExist) {
-		t.Fatalf("local discovery lost the filesystem cause: %v", err)
+	_, err := rt.ListWorkspaceFiles(t.Context(), request, options)
+	if !errors.Is(err, protocol.ErrInternalError) || !errors.Is(err, syscall.ELOOP) {
+		t.Fatalf("local file listing lost the filesystem cause: %v", err)
 	}
 	localFailure, ok := errors.AsType[*protocol.Failure](err)
 	if !ok {
-		t.Fatalf("local discovery did not return a protocol failure: %v", err)
+		t.Fatalf("local file listing did not return a protocol failure: %v", err)
 	}
 	public := localFailure.Problem()
-	if public.Type != protocol.ProblemInternalError || strings.Contains(public.Detail, data) {
-		t.Fatalf("local discovery projected an invalid public problem: %+v", public)
+	if public.Type != protocol.ProblemInternalError || strings.Contains(public.Detail, link) {
+		t.Fatalf("local file listing projected an invalid public problem: %+v", public)
 	}
 
-	_, err = remote.Discover(t.Context(), options)
+	_, err = remote.ListWorkspaceFiles(t.Context(), request, options)
 	wireFailure, ok := errors.AsType[*protocol.Failure](err)
-	if !ok || !errors.Is(err, protocol.ErrInternalError) || errors.Is(err, os.ErrNotExist) {
-		t.Fatalf("remote discovery did not return the public failure: %v", err)
+	if !ok || !errors.Is(err, protocol.ErrInternalError) || errors.Is(err, syscall.ELOOP) {
+		t.Fatalf("remote file listing did not return the public failure: %v", err)
 	}
 	if wire := wireFailure.Problem(); wire.Type != public.Type || wire.Detail != public.Detail {
-		t.Fatalf("remote discovery changed the public problem: %+v", wire)
-	}
-}
-
-func waitForRuntimeCompanions(t *testing.T, rt *Runtime) {
-	t.Helper()
-	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
-	defer cancel()
-	_, changes, err := rt.SubscribeRuntime(ctx, protocol.RuntimeSubscribeRequest{
-		Topics: []protocol.RuntimeTopic{protocol.TopicMCPChanged},
-	}, protocol.SubscriptionOptions{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	next, stop := iter.Pull2(changes)
-	defer stop()
-	for {
-		servers, err := rt.ListMCPServers(ctx, protocol.CallOptions{})
-		if err != nil {
-			t.Fatal(err)
-		}
-		var pending []string
-		for _, server := range servers.Data {
-			switch server.Status.Type {
-			case protocol.MCPServerConnecting, protocol.MCPServerDisconnected:
-				pending = append(pending, server.ID.Name)
-			}
-		}
-		if len(pending) == 0 {
-			return
-		}
-		if _, err, ok := next(); err != nil || !ok {
-			t.Fatalf("runtime companions did not settle: %v: %v", pending, errors.Join(err, ctx.Err()))
-		}
+		t.Fatalf("remote file listing changed the public problem: %+v", wire)
 	}
 }
 

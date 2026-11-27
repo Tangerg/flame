@@ -183,6 +183,7 @@ export async function buildComponent({ input, directory, compiler }) {
       .sort((left, right) => left.path.localeCompare(right.path, "en"));
     const graph = {
       schemaVersion: profile.moduleGraph.schemaVersion,
+      runtimeProfile: HOST_MODULE_PROFILE,
       entry: entry.fileName,
       modules,
       sharedSpecifiers: [...sharedSpecifiers].sort(),

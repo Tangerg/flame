@@ -1,7 +1,6 @@
 import {
   type AgentSessionStatePort,
   type AgentSessionViewPort,
-  type AgentDefaultSessionPort,
 } from "@/features/agent/application/session/sessionAccess";
 import { type AgentRuntimeGateway } from "@/features/agent/application/runtimeGateway";
 import { type AgentCommands } from "@/features/agent/application/agentCommandOwner";
@@ -14,7 +13,7 @@ export interface AgentDependencies {
   readonly notifications: NotificationFeed;
   readonly state: AgentSessionStatePort;
   readonly view: AgentSessionViewPort;
-  readonly defaultSession: AgentDefaultSessionPort;
+  useObserveActiveSession(): void;
   readonly runtime: AgentRuntimeGateway;
   readonly commands: AgentCommands;
   readonly usage: ReturnType<typeof createAgentSessionUsage>;

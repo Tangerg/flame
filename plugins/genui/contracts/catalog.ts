@@ -15,6 +15,7 @@ import {
   OpenUrlApi,
   BASIC_FUNCTIONS,
 } from "@a2ui/web_core/catalogs/basic/v1";
+import { OPERATION_RESULTS_PATH } from "./surfaceData";
 
 export const CATALOG_ID = "https://flame.app/a2ui/catalog/v1";
 export const A2UI_VERSION = SpecVersion.V1_0;
@@ -45,7 +46,7 @@ export function createCatalog<T extends ComponentApi>(
   return new Catalog(CATALOG_ID, A2UI_VERSION, components, functions, {
     instructions:
       "Flame trusted controls. Bind editable values only below /draft. " +
-      "Bind operation results below /data/operations. Actions use explicit event context; " +
+      `Read operation results below ${OPERATION_RESULTS_PATH}. Actions use explicit event context; ` +
       "followup requires {message, payload}; resetDraft restores the captured initial draft. " +
       "Use strings for exact identifiers and quantities.",
   });

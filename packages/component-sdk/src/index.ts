@@ -1,7 +1,4 @@
 import type { ClientTelemetry } from "./telemetry";
-import { parseJSON, stringifyJSON } from "@frame/sdk/json";
-import { OperationFailure } from "@flame/runtime-client";
-import { pluginMethod } from "@flame/runtime-client";
 export { OperationFailure } from "@flame/runtime-client";
 import {
   useCallback,
@@ -11,9 +8,8 @@ import {
   type ReactNode,
   type SetStateAction,
 } from "react";
-import type { FlameClient, MutationPromise } from "@flame/runtime-client";
+import type { FlameClient } from "@flame/runtime-client";
 import type {
-  CallPluginResponse,
   ChangeStatus,
   ResultShape,
   SafetyClass,
@@ -36,6 +32,9 @@ export { mutationSettlementIsUnknown } from "@flame/runtime-client";
 export { isErrorType } from "@flame/runtime-client";
 export { scrollPositions, type ScrollPosition } from "./scroll";
 export { failureText } from "./errorText";
+export { CursorPager, type PageDirection } from "./cursorPager";
+export { CommandActivity } from "./commandActivity";
+export { bindOperations } from "./operations";
 
 // The active Session's Project. Project-scoped plugins key their records on it
 // rather than on the Session's folder.
@@ -225,6 +224,8 @@ export interface SystemNotificationChannel {
   send(notification: ComponentNotification): Promise<boolean>;
 }
 
+export type ComponentSessionOpenOutcome = "opened" | "missing" | "superseded";
+
 export interface ComponentContext {
   readonly component: Readonly<ComponentReference>;
   readonly file?: Readonly<CapturedFile>;
@@ -239,7 +240,9 @@ export interface ComponentContext {
   readonly sessionId?: string;
   readonly sessionTarget?: CapturedSession;
   readonly binding?: Readonly<PluginOperationBinding>;
-  readonly openSession?: (sessionId: string) => void;
+  readonly openSession?: (
+    sessionId: string,
+  ) => Promise<ComponentSessionOpenOutcome>;
   readonly views?: ComponentViews;
   // Only clientEffect placements register global commands. IDs belong to the
   // installed component. Dispatch captures the current
@@ -257,8 +260,6 @@ export interface ComponentContext {
   // Accepted saves are joined by this captured lifetime. They do not change any
   // plugin delivery, revision or approval fact; the host only owns file transfer.
   saveFile(request: SaveFileRequest): Promise<FileSaveResult>;
-  // The host owns the active locale; a component projects it, never selects it.
-  readonly locale: string;
   readonly signal: AbortSignal;
   // Reserve work before starting it; preserve the original command promise and
   // its retry identity. The factory is invoked synchronously after admission.
@@ -303,12 +304,17 @@ export interface ComponentValue<Props = unknown> {
   readonly props?: Props;
 }
 
-export type PluginComponent<Input = unknown, Props = unknown> = ComponentType<{
+export interface PluginComponentProps<Input = unknown, Props = unknown> {
   context: ComponentContext;
+  locale: string;
   input?: Input;
   contribution?: Props;
   children?: ReactNode;
-}>;
+}
+
+export type PluginComponent<Input = unknown, Props = unknown> = ComponentType<
+  PluginComponentProps<Input, Props>
+>;
 
 export interface ComponentSource {
   readonly runtimeIdentity: object;
@@ -394,206 +400,31 @@ export function useTranslator(
   return useMemo(() => createTranslator(catalogs, locale), [catalogs, locale]);
 }
 
-// The Host can replace a mounted component's captured context; state produced
-// under the replaced context reads as absent instead of as the current context's.
+// A retired callback must not overwrite state already produced by the next capture.
 export function useContextState<T>(
   context: ComponentContext,
 ): readonly [T | undefined, (next: SetStateAction<T | undefined>) => void] {
-  const [state, setState] = useState<{
-    context: ComponentContext;
-    value: T | undefined;
-  }>();
+  const { signal } = context;
+  const [state, setState] = useState({ signal, value: undefined as T | undefined });
   const set = useCallback(
     (next: SetStateAction<T | undefined>) =>
       setState((previous) => {
-        const current =
-          previous?.context === context ? previous.value : undefined;
+        if (previous.signal !== signal || signal.aborted) return previous;
         return {
-          context,
+          signal,
           value:
             typeof next === "function"
-              ? (next as (current: T | undefined) => T | undefined)(current)
+              ? (next as (current: T | undefined) => T | undefined)(previous.value)
               : next,
         };
       }),
-    [context],
+    [signal],
   );
-  return [state?.context === context ? state.value : undefined, set];
-}
-
-function output<R>(reply: CallPluginResponse): R {
-  if (reply.failure)
-    throw new OperationFailure(reply.failure.code, reply.failure.message);
-  if (!("output" in reply))
-    throw new Error("plugin operation omitted its output");
-  return parseJSON(reply.output!) as R;
-}
-
-// Mapping preserves the Runtime client's original mutation identity and retry
-// closure. A component never creates a replacement command after response loss.
-function mapMutation<R>(
-  source: MutationPromise<CallPluginResponse>,
-  context: ComponentContext,
-): MutationPromise<R> {
-  const mapped = Object.defineProperties(source.then(output<R>), {
-    idempotencyKey: { enumerable: true, value: source.idempotencyKey },
-    retry: {
-      enumerable: true,
-      value: (options?: { signal?: AbortSignal }) => {
-        context.signal.throwIfAborted();
-        return context.track(() =>
-          mapMutation<R>(
-            source.retry({
-              signal: options?.signal
-                ? AbortSignal.any([context.signal, options.signal])
-                : context.signal,
-            }),
-            context,
-          ),
-        );
-      },
-    },
-  }) as MutationPromise<R>;
-  return mapped;
-}
-
-export function bindOperations<
-  Inputs,
-  Outputs extends { [K in keyof Inputs]: unknown },
-  Chunks extends { [K in keyof Inputs]?: unknown } = {},
->(context: ComponentContext, contract: string, target: Target) {
-  if (!context.binding)
-    throw new Error("component has no declared callable contribution");
-  const binding = structuredClone(context.binding);
-  const captured = structuredClone(target);
-  function request<K extends keyof Inputs & string>(
-    method: K,
-    input: Inputs[K],
-    kind: "query" | "command",
-    delivery: ReturnType<typeof pluginMethod>["delivery"],
-  ) {
-    context.signal.throwIfAborted();
-    const descriptor = pluginMethod({ contract, method });
-    if (
-      descriptor.delivery !== delivery ||
-      descriptor.kind !== kind ||
-      descriptor.target !== captured.scope
-    ) {
-      throw new Error(
-        "plugin operation differs from its required contract or target",
-      );
-    }
-    return {
-      route: {
-        installationId: binding.installationId,
-        digest: binding.digest,
-        contribution: binding.contribution,
-        contract,
-        method,
-        target: captured,
-      },
-      input: stringifyJSON(input),
-    };
+  if (state.signal !== signal) {
+    setState({ signal, value: undefined });
+    return [undefined, set];
   }
-  return {
-    pendingCommands: <K extends keyof Inputs & string>(method: K) => {
-      context.signal.throwIfAborted();
-      return context.runtime.plugins
-        .pendingCommands()
-        .filter(
-          ({ binding: original }) =>
-            original.installationId === binding.installationId &&
-            original.digest === binding.digest &&
-            original.contract === contract &&
-            original.contribution === binding.contribution &&
-            original.method === method &&
-            original.target.scope === captured.scope &&
-            original.target.reference === captured.reference,
-        )
-        .map((command) => ({
-          idempotencyKey: command.idempotencyKey,
-          retire: (signal: AbortSignal = context.signal): Promise<void> => {
-            context.signal.throwIfAborted();
-            return context.track(() =>
-              command.retire(AbortSignal.any([context.signal, signal])),
-            );
-          },
-          recover: (
-            signal: AbortSignal = context.signal,
-          ): Promise<Outputs[K]> => {
-            context.signal.throwIfAborted();
-            return context.track(() =>
-              command.recover(
-                (value) => value as Outputs[K],
-                AbortSignal.any([context.signal, signal]),
-              ),
-            );
-          },
-        }));
-    },
-    queryStream: <K extends keyof Inputs & keyof Chunks & string>(
-      method: K,
-      input: Inputs[K],
-      consume: (chunk: Chunks[K], signal: AbortSignal) => void | Promise<void>,
-      signal: AbortSignal = context.signal,
-    ): Promise<Outputs[K]> =>
-      context.track(() =>
-        context.runtime.plugins.queryStream(
-          request(method, input, "query", "plugins.stream"),
-          (chunk, signal) => consume(chunk as Chunks[K], signal),
-          (value) => value as Outputs[K],
-          AbortSignal.any([context.signal, signal]),
-        ),
-      ),
-    stream: <K extends keyof Inputs & keyof Chunks & string>(
-      intent: string,
-      method: K,
-      input: Inputs[K],
-      consume: (chunk: Chunks[K], signal: AbortSignal) => void | Promise<void>,
-      signal: AbortSignal = context.signal,
-    ): Promise<Outputs[K]> => {
-      const invocation = request(method, input, "command", "plugins.stream");
-      const { contract, method: name, ...binding } = invocation.route;
-      return context.track(() =>
-        context.runtime.plugins.stream(
-          intent,
-          { contract, method: name, input: invocation.input },
-          async () => binding,
-          (chunk, signal) => consume(chunk as Chunks[K], signal),
-          (value) => value as Outputs[K],
-          AbortSignal.any([context.signal, signal]),
-        ),
-      );
-    },
-    query: async <K extends keyof Inputs & string>(
-      method: K,
-      input: Inputs[K],
-      signal: AbortSignal = context.signal,
-    ): Promise<Outputs[K]> =>
-      context.track<Promise<Outputs[K]>>(() =>
-        context.runtime.plugins
-          .call(request(method, input, "query", "plugins.call"), {
-            signal: AbortSignal.any([context.signal, signal]),
-          })
-          .then(output<Outputs[K]>),
-      ),
-    command: <K extends keyof Inputs & string>(
-      method: K,
-      input: Inputs[K],
-    ): MutationPromise<Outputs[K]> =>
-      context.track(() => {
-        const mutation = context.runtime.plugins.call(
-          request(method, input, "command", "plugins.call"),
-          { signal: context.signal },
-        );
-        if (!("retry" in mutation) || !("idempotencyKey" in mutation))
-          throw new Error("Runtime omitted the command identity");
-        return mapMutation<Outputs[K]>(
-          mutation as MutationPromise<CallPluginResponse>,
-          context,
-        );
-      }),
-  };
+  return [state.value, set];
 }
 
 // Calls changed once the subscription is live, so a reader catches up on what

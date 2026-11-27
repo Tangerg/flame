@@ -107,7 +107,7 @@ func countedNoun(count int, noun string) string {
 }
 
 func (r *runs) enqueueDeferredPrompt() {
-	r.composer.resetComposer()
+	r.composer.replaceDraft(authoring.Message{})
 	r.tasks.operations.Cancel(completionOperation)
 	r.link.dismissCompletion()
 	snapshot := r.syncQueue()
@@ -124,17 +124,17 @@ func (r *runs) drainQueue() bool {
 	}
 	if _, dispatching := r.queue.Dispatching(r.session.current.ID); dispatching {
 		if r.runAdmissionBlocked() || r.execution.opening == nil ||
-			r.tasks.operations.Active(sessionChangeOperation) || r.tasks.operations.Active(pendingRunRecoveryOperation) {
+			r.tasks.operations.Active(pendingRunRecoveryOperation) {
 			return false
 		}
-		if err := r.attemptQueuedDispatchSettlement(r.execution.opening.CommandID); err != nil {
-			r.reportQueuedDispatchSettlementFailure(r.execution.opening.CommandID, err)
+		opening := r.execution.opening
+		if err := r.attemptQueuedDispatchSettlement(opening.SessionID, opening.CommandID); err != nil {
+			r.reportQueuedDispatchSettlementFailure(opening.SessionID, opening.CommandID, err)
 			return false
 		}
 		r.execution.opening = nil
 	}
-	if r.runAdmissionBlocked() ||
-		r.tasks.operations.Active(sessionChangeOperation) || r.tasks.operations.Active(pendingRunRecoveryOperation) {
+	if r.runAdmissionBlocked() || r.tasks.operations.Active(pendingRunRecoveryOperation) {
 		return false
 	}
 	pending, ok := r.queue.BeginDispatch(r.session.current.ID)
@@ -150,62 +150,59 @@ func (r *runs) drainQueue() bool {
 	return true
 }
 
-func (r *runs) attemptQueuedDispatchSettlement(commandID authoring.CommandID) error {
-	entry, retired, err := r.queue.SettleDispatch(r.session.current.ID, commandID)
+func (r *runs) attemptQueuedDispatchSettlement(sessionID string, commandID authoring.CommandID) error {
+	retired, err := r.queue.SettleDispatch(sessionID, commandID)
 	if err != nil {
 		return err
 	}
-	r.presentQueuedRetirement(entry, retired)
+	r.presentQueuedRetirement(retired)
 	return nil
 }
 
 func (r *runs) retireQueuedCommand(sessionID string, commandID authoring.CommandID) error {
-	entry, retired, err := r.queue.Retire(sessionID, commandID)
+	retired, err := r.queue.Retire(sessionID, commandID)
 	if err != nil {
 		return err
 	}
-	r.presentQueuedRetirement(entry, retired)
+	r.presentQueuedRetirement(retired)
 	return nil
 }
 
-func (r *runs) presentQueuedRetirement(entry authoring.QueueEntry, retired bool) {
+func (r *runs) presentQueuedRetirement(retired bool) {
 	if !retired {
 		return
 	}
-	r.composer.history.Add(entry.Message)
 	r.report(workbenchRunOutbox, nil)
 	r.syncQueue()
 }
 
-func (r *runs) settleQueuedDispatch(commandID authoring.CommandID) bool {
+func (r *runs) settleQueuedDispatch(sessionID string, commandID authoring.CommandID) {
 	if r.tasks.operations.Active(pendingRunSettlementOperation) {
-		return false
+		return
 	}
-	if err := r.attemptQueuedDispatchSettlement(commandID); err != nil {
-		r.reportQueuedDispatchSettlementFailure(commandID, err)
-		return false
+	if err := r.attemptQueuedDispatchSettlement(sessionID, commandID); err != nil {
+		r.reportQueuedDispatchSettlementFailure(sessionID, commandID, err)
 	}
-	return true
 }
 
 func (r *runs) queuedDispatchCanceling() bool {
 	return r.queue.DispatchCanceling(r.session.current.ID)
 }
 
-func (r *runs) reportQueuedDispatchSettlementFailure(commandID authoring.CommandID, err error) {
+func (r *runs) reportQueuedDispatchSettlementFailure(sessionID string, commandID authoring.CommandID, err error) {
 	if errors.Is(err, workbench.ErrDispatchCanceling) {
 		return
 	}
 	r.report(workbenchRunOutbox, err)
 	r.link.message("could not settle acknowledged run start: " + err.Error())
-	r.retryQueuedDispatchSettlement(commandID)
+	r.retryQueuedDispatchSettlement(sessionID, commandID)
 }
 
-func (r *runs) retryQueuedDispatchSettlement(commandID authoring.CommandID) {
+func (r *runs) retryQueuedDispatchSettlement(sessionID string, commandID authoring.CommandID) {
 	receipt := r.execution.opening
 	r.retryAuthoringSettlement(
 		pendingRunSettlementOperation,
-		func() error { return r.attemptQueuedDispatchSettlement(commandID) },
+		func() error { return r.attemptQueuedDispatchSettlement(sessionID, commandID) },
 		func() { r.finishQueuedSettlementRecovery(receipt) },
 	)
 }
@@ -278,6 +275,9 @@ func (r *runs) finishAuthoringSettlementRecovery() {
 func (r *runs) queueSendBlocked() error {
 	if r.tasks.operations.Active(sessionChangeOperation) {
 		return sessionChangeOperation.busy()
+	}
+	if r.session.freshness == sessionMissing {
+		return errSessionRequiredForPrompt
 	}
 	if !r.execution.blocksAdmission() && r.runtimeChangeBlocksRunAdmission() {
 		return errors.New("wait for the pending runtime change before sending a queued prompt")

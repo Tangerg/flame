@@ -45,6 +45,12 @@ func (l ListSessionsRequest) validateWire(object wireObject) []FieldError {
 			maxLength("projectId", l.ProjectID, 256),
 		)
 	}
+	if object.present("idPrefix") {
+		violations.add(
+			identity("idPrefix", l.IDPrefix),
+			maxLength("idPrefix", l.IDPrefix, 256),
+		)
+	}
 	if object.present("limit") {
 		violations.add(
 			positiveNumber("limit", *l.Limit),
@@ -596,6 +602,34 @@ func (m MCPServerCandidate) validateWire(object wireObject) []FieldError {
 	return violations
 }
 
+func (u UpdateMCPServerRequest) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	if object.present("expectedRevision") {
+		violations.add(
+			nonEmptyText("expectedRevision", u.ExpectedRevision),
+			identity("expectedRevision", u.ExpectedRevision),
+			maxLength("expectedRevision", u.ExpectedRevision, 256),
+		)
+	}
+	return violations
+}
+
+func (m MCPDirectoryTarget) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	if object.present("expectedRevision") {
+		violations.add(
+			nonEmptyText("expectedRevision", m.ExpectedRevision),
+			identity("expectedRevision", m.ExpectedRevision),
+			maxLength("expectedRevision", m.ExpectedRevision, 256),
+		)
+	}
+	violations.add(
+		requiredWhen(object.equals("server.origin.type", "user"), "expectedRevision", object),
+		forbiddenWhen(object.equals("server.origin.type", "installation"), "expectedRevision", object),
+	)
+	return violations
+}
+
 func (m MCPAuthorizationAttemptRef) validateWire(object wireObject) []FieldError {
 	var violations wireViolations
 	violations.add(
@@ -823,6 +857,13 @@ func (s StartGoalRequest) validateWire(object wireObject) []FieldError {
 		maxLength("sessionId", s.SessionID, 256),
 		textPattern("objective", s.Objective, "\\S"),
 	)
+	if object.present("replaceIncarnationId") {
+		violations.add(
+			nonEmptyText("replaceIncarnationId", s.ReplaceIncarnationID),
+			identity("replaceIncarnationId", s.ReplaceIncarnationID),
+			maxLength("replaceIncarnationId", s.ReplaceIncarnationID, 128),
+		)
+	}
 	if object.present("provider") {
 		violations.add(
 			identity("provider", s.Provider),
@@ -853,15 +894,31 @@ func (s StartGoalRequest) validateWire(object wireObject) []FieldError {
 func (u UpdateGoalRequest) validateWire(object wireObject) []FieldError {
 	var violations wireViolations
 	violations.add(
+		textPattern("objective", u.Objective, "\\S"),
 		nonEmptyText("sessionId", u.SessionID),
 		identity("sessionId", u.SessionID),
 		maxLength("sessionId", u.SessionID, 256),
-		textPattern("objective", u.Objective, "\\S"),
+		nonEmptyText("incarnationId", u.IncarnationID),
+		identity("incarnationId", u.IncarnationID),
+		maxLength("incarnationId", u.IncarnationID, 128),
 	)
 	return violations
 }
 
-func (g GoalRequest) validateWire(object wireObject) []FieldError {
+func (g GoalTarget) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("sessionId", g.SessionID),
+		identity("sessionId", g.SessionID),
+		maxLength("sessionId", g.SessionID, 256),
+		nonEmptyText("incarnationId", g.IncarnationID),
+		identity("incarnationId", g.IncarnationID),
+		maxLength("incarnationId", g.IncarnationID, 128),
+	)
+	return violations
+}
+
+func (g GetGoalRequest) validateWire(object wireObject) []FieldError {
 	var violations wireViolations
 	violations.add(
 		nonEmptyText("sessionId", g.SessionID),
@@ -1008,7 +1065,7 @@ func (p ProblemData) validateWire(object wireObject) []FieldError {
 		)
 	}
 	violations.add(
-		unionTag("type", string(p.Type), []string{"agent_stuck", "capability_not_negotiated", "checkpoint_conflict", "checkpoint_unavailable", "child_run_canceled", "denied_by_user", "export_too_large", "idempotency_conflict", "idempotency_in_progress", "idempotency_store_mismatch", "internal_error", "interrupt_not_open", "invalid_credentials", "invalid_params", "invalid_protocol_version", "invalid_request", "item_not_found", "mcp_authorization_attempt_not_found", "mcp_owned_by_installation", "mcp_server_already_exists", "mcp_server_disabled", "mcp_server_not_found", "method_not_found", "path_outside_root", "plugin_changed", "plugin_command_retired", "plugin_disabled", "plugin_in_use", "plugin_not_found", "plugin_stale", "plugin_unavailable", "project_not_found", "prompt_source_too_large", "provider_error", "provider_rejected", "provider_unavailable", "rate_limited", "replay_cursor_invalid", "replay_unavailable", "revision_conflict", "run_finished", "run_not_found", "run_not_root", "run_waiting", "session_busy", "session_has_active_run", "session_not_found", "skill_not_found", "skill_unavailable", "stale_segment", "timeout", "tool_canceled", "tool_failed", "unsupported_mime", "vcs_unavailable", "workspace_file_not_found", "workspace_unavailable"}, "^plugin:[a-z0-9][a-z0-9._-]*/[a-z0-9][a-z0-9._-]*$"),
+		unionTag("type", string(p.Type), []string{"agent_stuck", "capability_not_negotiated", "checkpoint_conflict", "checkpoint_unavailable", "child_run_canceled", "denied_by_user", "export_too_large", "idempotency_conflict", "idempotency_in_progress", "idempotency_store_mismatch", "internal_error", "interrupt_not_open", "invalid_credentials", "invalid_params", "invalid_protocol_version", "invalid_request", "item_not_found", "mcp_authorization_attempt_not_found", "mcp_owned_by_installation", "mcp_server_already_exists", "mcp_server_disabled", "mcp_server_not_found", "method_not_found", "path_outside_root", "plugin_changed", "plugin_command_retired", "plugin_disabled", "plugin_in_use", "plugin_not_found", "plugin_stale", "plugin_unavailable", "project_not_found", "prompt_rejected", "prompt_source_too_large", "provider_error", "provider_rejected", "provider_unavailable", "rate_limited", "replay_cursor_invalid", "replay_unavailable", "revision_conflict", "run_finished", "run_not_found", "run_not_root", "run_waiting", "session_busy", "session_has_active_run", "session_not_found", "skill_not_found", "skill_unavailable", "stale_segment", "timeout", "tool_canceled", "tool_failed", "unsupported_mime", "vcs_unavailable", "workspace_file_not_found", "workspace_unavailable"}, "^plugin:[a-z0-9][a-z0-9._-]*/[a-z0-9][a-z0-9._-]*$"),
 		forbiddenWhen(object.equals("type", "agent_stuck"), "requiredCapabilities", object),
 		forbiddenWhen(object.equals("type", "agent_stuck"), "retryAfterSeconds", object),
 		forbiddenWhen(object.equals("type", "agent_stuck"), "errors", object),
@@ -1136,6 +1193,10 @@ func (p ProblemData) validateWire(object wireObject) []FieldError {
 		forbiddenWhen(object.equals("type", "project_not_found"), "retryAfterSeconds", object),
 		forbiddenWhen(object.equals("type", "project_not_found"), "errors", object),
 		forbiddenWhen(object.equals("type", "project_not_found"), "activeRun", object),
+		forbiddenWhen(object.equals("type", "prompt_rejected"), "requiredCapabilities", object),
+		forbiddenWhen(object.equals("type", "prompt_rejected"), "retryAfterSeconds", object),
+		forbiddenWhen(object.equals("type", "prompt_rejected"), "errors", object),
+		forbiddenWhen(object.equals("type", "prompt_rejected"), "activeRun", object),
 		forbiddenWhen(object.equals("type", "prompt_source_too_large"), "requiredCapabilities", object),
 		forbiddenWhen(object.equals("type", "prompt_source_too_large"), "retryAfterSeconds", object),
 		forbiddenWhen(object.equals("type", "prompt_source_too_large"), "errors", object),
@@ -1287,21 +1348,16 @@ func (r RunAcceptance) validateWire(object wireObject) []FieldError {
 		forbiddenWhen(object.equals("type", "notRecorded"), "runId", object),
 		forbiddenWhen(object.equals("type", "notRecorded"), "segmentId", object),
 		forbiddenWhen(object.equals("type", "notRecorded"), "sessionId", object),
-		forbiddenWhen(object.equals("type", "notRecorded"), "run", object),
 		forbiddenWhen(object.equals("type", "notRecorded"), "userItemId", object),
 		forbiddenWhen(object.equals("type", "notRecorded"), "input", object),
-		forbiddenWhen(object.equals("type", "notRecorded"), "appliedItem", object),
 		requiredWhen(object.equals("type", "accepted"), "runId", object),
 		requiredWhen(object.equals("type", "accepted"), "segmentId", object),
 		requiredWhen(object.equals("type", "accepted"), "sessionId", object),
-		requiredWhen(object.equals("type", "accepted"), "run", object),
 		forbiddenWhen(object.equals("type", "accepted"), "candidateUserItemId", object),
 		requiredWhen(object.equals("type", "retired"), "runId", object),
 		requiredWhen(object.equals("type", "retired"), "segmentId", object),
 		requiredWhen(object.equals("type", "retired"), "sessionId", object),
 		forbiddenWhen(object.equals("type", "retired"), "candidateUserItemId", object),
-		forbiddenWhen(object.equals("type", "retired"), "run", object),
-		forbiddenWhen(object.equals("type", "retired"), "appliedItem", object),
 	)
 	return violations
 }
@@ -3002,9 +3058,6 @@ func (f FileDiff) validateWire(object wireObject) []FieldError {
 func (g Goal) validateWire(object wireObject) []FieldError {
 	var violations wireViolations
 	violations.add(
-		nonEmptyText("sessionId", g.SessionID),
-		identity("sessionId", g.SessionID),
-		maxLength("sessionId", g.SessionID, 256),
 		textPattern("objective", g.Objective, "\\S"),
 	)
 	if object.present("provider") {
@@ -3026,6 +3079,12 @@ func (g Goal) validateWire(object wireObject) []FieldError {
 		)
 	}
 	violations.add(
+		nonEmptyText("sessionId", g.SessionID),
+		identity("sessionId", g.SessionID),
+		maxLength("sessionId", g.SessionID, 256),
+		nonEmptyText("incarnationId", g.IncarnationID),
+		identity("incarnationId", g.IncarnationID),
+		maxLength("incarnationId", g.IncarnationID, 128),
 		required("createdAt", object),
 		required("updatedAt", object),
 		forbiddenWhen(object.equals("status", "active"), "reason", object),
@@ -3056,6 +3115,22 @@ func (g GoalReason) validateWire(object wireObject) []FieldError {
 		forbiddenWhen(object.equals("code", "awaitingInput"), "explanation", object),
 		forbiddenWhen(object.equals("code", "terminalOutcomeMissing"), "runOutcome", object),
 		forbiddenWhen(object.equals("code", "terminalOutcomeMissing"), "explanation", object),
+	)
+	return violations
+}
+
+func (m MCPServer) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	if object.present("revision") {
+		violations.add(
+			nonEmptyText("revision", m.Revision),
+			identity("revision", m.Revision),
+			maxLength("revision", m.Revision, 256),
+		)
+	}
+	violations.add(
+		requiredWhen(object.equals("id.origin.type", "user"), "revision", object),
+		forbiddenWhen(object.equals("id.origin.type", "installation"), "revision", object),
 	)
 	return violations
 }

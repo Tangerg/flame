@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { type ComponentContext, useTranslator } from "@flame/component-sdk";
+import { type PluginComponentProps, useTranslator } from "@flame/component-sdk";
 import { Button, Metadata, Toolbar } from "@flame/ui";
 import { z } from "zod/v4";
 import { catalogs } from "./catalogs";
@@ -25,8 +25,8 @@ const producedSchema = z.object({
 });
 
 // A result this card cannot read is left to the host's default rendering.
-export function DeliverableResult({ context }: { context: ComponentContext }) {
-  const t = useTranslator(catalogs, context.locale);
+export function DeliverableResult({ context, locale }: PluginComponentProps) {
+  const t = useTranslator(catalogs, locale);
   const result = context.toolResult?.result;
   const produced = useMemo(() => {
     if (context.toolResult?.status !== "ok" || typeof result !== "string")

@@ -93,7 +93,7 @@
         {
           "id": "remove",
           "title": "Remove saved report",
-          "method": "flame.usage-reports/delete.v1",
+          "method": "flame.usage-reports/delete.v2",
           "target": "row",
           "confirm": true,
           "input": {

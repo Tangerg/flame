@@ -8,24 +8,20 @@ import (
 	"fmt"
 	"slices"
 	"strings"
-	"time"
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/integration/mcp"
-	"github.com/Tangerg/flame/apps/cli/internal/application/retry"
 	"github.com/Tangerg/flame/apps/cli/internal/delivery/format"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 const mcpToolCommandArguments = 3
 
-const mcpAuthorizationPollInterval = 500 * time.Millisecond
-
 type mcpScreens struct {
 	screenHost
-	service         MCPManagement
-	form            *mcpFormFlow
-	setApprovalRule func(protocol.SetApprovalRuleRequest) error
+	service                    MCPManagement
+	form                       *mcpFormFlow
+	pendingAuthorizationStarts map[protocol.MCPServerID]mcpAuthorizationStart
+	setApprovalRule            func(protocol.SetApprovalRuleRequest) error
 }
 
 func (m *mcpScreens) ShowMCPServers() {
@@ -256,6 +252,12 @@ func (m *mcpScreens) EditMCPServer(argument string) error {
 	if err != nil {
 		return err
 	}
+	return m.loadEditableMCPServer(id, func(server protocol.MCPServer) {
+		m.openMCPServerForm(mcpFormUpdate, server)
+	})
+}
+
+func (m *mcpScreens) loadEditableMCPServer(id protocol.MCPServerID, apply func(protocol.MCPServer)) error {
 	presentation := m.session.context
 	m.status.note("loading MCP server " + mcp.ServerLabel(id))
 	started := m.tasks.application(mcpOperation,
@@ -277,14 +279,14 @@ func (m *mcpScreens) EditMCPServer(argument string) error {
 				return
 			}
 			if !m.session.context.current(presentation) {
-				m.message("MCP server loaded after the active session changed; reopen the editor to continue")
+				m.message("MCP server loaded after the active session changed; repeat the command to continue")
 				return
 			}
 			if server.ID.Origin.Type == protocol.MCPOriginInstallation {
 				m.message("MCP connection configuration is owned by installation " + server.ID.Origin.InstallationID + "; use flame plugins configure")
 				return
 			}
-			m.openMCPServerForm(mcpFormUpdate, server)
+			apply(server)
 		},
 	)
 	if !started {
@@ -297,18 +299,19 @@ func (m *mcpScreens) PrepareDeleteMCPServer(argument string) error {
 	if strings.TrimSpace(argument) == "" {
 		return errors.New("usage: /mcp-delete <server>")
 	}
-	server, err := mcp.ParseServerReference(argument)
+	id, err := mcp.ParseServerReference(argument)
 	if err != nil {
 		return err
 	}
-	m.confirm("Delete MCP server", "Delete "+mcp.ServerLabel(server)+" and its live connection?", "Delete permanently", "", func() {
-		m.deleteMCPServer(server)
+	return m.loadEditableMCPServer(id, func(server protocol.MCPServer) {
+		target := protocol.MCPDirectoryTarget{Server: server.ID, ExpectedRevision: server.Revision}
+		label := mcp.ServerLabel(server.ID)
+		m.confirm("Delete MCP server", "Delete "+label+" and its live connection?", "Delete permanently", "", func() {
+			m.runMCPAck("deleting MCP server "+label, func(ctx context.Context) error {
+				return m.service.DeleteServer(ctx, target)
+			})
+		})
 	})
-	return nil
-}
-
-func (m *mcpScreens) deleteMCPServer(server protocol.MCPServerID) {
-	m.runMCPAck("deleting MCP server "+mcp.ServerLabel(server), func(ctx context.Context) error { return m.service.DeleteServer(ctx, server) })
 }
 
 func (m *mcpScreens) ReconnectMCPServer(argument string) error {
@@ -338,142 +341,6 @@ func (m *mcpScreens) runMCPAck(label string, command func(context.Context) error
 	if !started {
 		m.message(mcpOperation.busy().Error())
 	}
-}
-
-func (m *mcpScreens) AuthorizeMCPServer(argument string) error {
-	if strings.TrimSpace(argument) == "" {
-		return errors.New("usage: /mcp-auth <server>")
-	}
-	server, err := mcp.ParseServerReference(argument)
-	if err != nil {
-		return err
-	}
-	presentation := m.session.context
-	m.status.note("starting MCP authorization " + mcp.ServerLabel(server))
-	started := m.tasks.admissionMutation(mcpAuthorizationOperation,
-		func(ctx context.Context) (mcp.AuthorizationReference, error) {
-			return m.service.StartAuthorization(ctx, server)
-		},
-		func(reference mcp.AuthorizationReference, err error) {
-			if err != nil {
-				m.message("start MCP authorization failed: " + err.Error())
-				return
-			}
-			view := &readerQuery{status: "MCP authorization"}
-			if m.session.context.current(presentation) {
-				m.reader.open(view, paragraphDocument("MCP authorization", "reading authorization status", []string{
-					"attempt  " + reference.ID,
-					"server   " + mcp.ServerLabel(reference.Server),
-				}))
-			}
-			m.pollMCPAuthorization(reference, view)
-		},
-	)
-	if !started {
-		return errors.New("another MCP authorization is running")
-	}
-	return nil
-}
-
-func (m *mcpScreens) pollMCPAuthorization(reference mcp.AuthorizationReference, view *readerQuery) {
-	observer := mcpAuthorizationObserver{
-		service: m.service, pollInterval: mcpAuthorizationPollInterval, recovery: runtimeRecoveryBackoff,
-	}
-	started := m.tasks.application(mcpAuthorizationOperation,
-		func(ctx context.Context) (protocol.MCPAuthorizationAttempt, error) {
-			return observer.observe(ctx, reference)
-		},
-		func(attempt protocol.MCPAuthorizationAttempt, err error) {
-			if err != nil {
-				m.message("observe MCP authorization failed: " + err.Error())
-				return
-			}
-			m.reader.update(view, mcpAuthorizationDocument(attempt))
-			m.message("MCP authorization " + string(attempt.Status.Type) + format.Separator + mcp.ServerLabel(attempt.Server))
-		},
-	)
-	if !started {
-		m.message("could not observe MCP authorization " + reference.ID)
-	}
-}
-
-type mcpAuthorizationObserver struct {
-	service      mcpAuthorizationReader
-	pollInterval time.Duration
-	recovery     retry.Backoff
-}
-
-type mcpAuthorizationReader interface {
-	GetAuthorization(context.Context, mcp.AuthorizationReference) (protocol.MCPAuthorizationAttempt, error)
-}
-
-func (m mcpAuthorizationObserver) observe(
-	ctx context.Context,
-	reference mcp.AuthorizationReference,
-) (protocol.MCPAuthorizationAttempt, error) {
-	if err := reference.Validate(); err != nil {
-		return protocol.MCPAuthorizationAttempt{}, fmt.Errorf("observe MCP authorization: %w", err)
-	}
-	var delay time.Duration
-	failures := 0
-	for {
-		if err := retry.Wait(ctx, delay); err != nil {
-			return protocol.MCPAuthorizationAttempt{}, err
-		}
-		next, err := m.service.GetAuthorization(ctx, reference)
-		if err != nil {
-			if !retry.IsReconnectable(err) {
-				return protocol.MCPAuthorizationAttempt{}, err
-			}
-			failures++
-			delay, err = m.recovery.Delay(failures)
-			if err != nil {
-				return protocol.MCPAuthorizationAttempt{}, err
-			}
-			continue
-		}
-		if err := mcp.ValidateAuthorizationAttempt(next); err != nil {
-			return protocol.MCPAuthorizationAttempt{}, fmt.Errorf("observe MCP authorization: %w", err)
-		}
-		nextReference := mcp.AuthorizationReferenceFrom(next)
-		if nextReference != reference {
-			return protocol.MCPAuthorizationAttempt{}, fmt.Errorf(
-				"%w: authorization observation moved from %+v to %+v",
-				conversation.ErrIncompatibleRuntime,
-				reference,
-				nextReference,
-			)
-		}
-		if next.Status.Type != protocol.MCPAuthorizationAttemptPending {
-			return next, nil
-		}
-		failures = 0
-		delay = m.pollInterval
-	}
-}
-
-func mcpAuthorizationDocument(attempt protocol.MCPAuthorizationAttempt) readerDocument {
-	lines := []string{
-		"attempt  " + attempt.ID,
-		"server   " + mcp.ServerLabel(attempt.Server),
-		"status   " + string(attempt.Status.Type),
-		"started  " + attempt.CreatedAt.Format(time.RFC3339),
-	}
-	if attempt.FinishedAt != nil {
-		lines = append(lines, "finished "+attempt.FinishedAt.Format(time.RFC3339))
-	}
-	problem, err := mcpStatusProblem(attempt.Status.Error)
-	if err != nil {
-		problem = err.Error()
-	}
-	if problem != "" {
-		lines = append(lines, "problem  "+problem)
-	}
-	detail := "complete the sign-in in your browser"
-	if attempt.Status.Type != protocol.MCPAuthorizationAttemptPending {
-		detail = string(attempt.Status.Type)
-	}
-	return paragraphDocument("MCP authorization", detail, lines)
 }
 
 const (

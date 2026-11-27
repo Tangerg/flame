@@ -14,6 +14,8 @@ import {
   type FlameClient,
   createHttpTransport,
   mutationSettlementIsUnknown,
+  type MutationJournalCleanupError,
+  type PluginCommandChange,
 } from "@flame/runtime-client";
 import {
   HTTP_HEADERS,
@@ -21,8 +23,15 @@ import {
   type CallPluginRequest,
   type RequestMeta,
 } from "@flame/runtime-client/wire";
+import { PendingPluginCommands } from "@/features/plugins/adapters/pendingPluginCommands";
 import { CAPABILITY_JSON } from "../../../../../plugins/memory/package/io.github.tangerg.flame/contracts/methods.generated";
-import { nextRuntimeEvent, nextUserMCPChange } from "./observation";
+import {
+  deleteUserMCPServers,
+  nextRuntimeEvent,
+  nextUserMCPChange,
+  readMCPDirectoryTarget,
+  within,
+} from "./observation";
 import { managedSkillName, useRuntimeFixture } from "./fixture";
 import { MemoryMutationStorage } from "./mutationStorage";
 import { faultUnaryResponse } from "./transportFaults";
@@ -194,9 +203,10 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: configuration commits after lo
       );
       await original.close();
       expect(lost.attempts()).toBe(1);
-      const [pending] = cold.plugins.pendingCommands();
+      const [pending] = cold.plugins.commands();
       const namespace = fixture.negotiated?.limits.idempotency.namespace;
-      if (!pending || !namespace) throw new Error("expected the original pending plugin command");
+      if (pending?.state !== "recoverable" || !namespace)
+        throw new Error("expected the original recoverable plugin command");
       const retained = await cold.plugins.getCommand({ namespace, key: pending.idempotencyKey });
       expect(pending.binding).toEqual(retained.route);
       expect(Object.hasOwn(pending.binding, "input")).toBe(false);
@@ -295,9 +305,20 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: configuration commits after lo
     const firstKey = crypto.randomUUID();
     const secondKey = crypto.randomUUID();
     const lost = faultUnaryResponse("plugins.call", "afterCommit");
+    const storage = new MemoryMutationStorage();
+    let blockCleanup = false;
+    let cleanupFailure: MutationJournalCleanupError | undefined;
     const options = {
       capabilities: () => fixture.negotiated,
-      mutationStorage: new MemoryMutationStorage(),
+      mutationStorage: {
+        get: (key: string) => storage.get(key),
+        set: (key: string, value: unknown) => storage.set(key, value),
+        keys: () => storage.keys(),
+        remove: (key: string) => {
+          if (blockCleanup) throw new Error("injected failure to release the confirmed entry");
+          storage.remove(key);
+        },
+      },
     };
     const original = createFlameClient(
       createHttpTransport({
@@ -309,7 +330,35 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: configuration commits after lo
       }),
       options,
     );
-    const cold = createFlameClient(createHttpTransport({ baseUrl: fixture.baseUrl }), options);
+    const lookupStarted = Promise.withResolvers<void>();
+    const releaseLookup = Promise.withResolvers<void>();
+    const signal = new AbortController().signal;
+    let holdLookup = false;
+    let retirements = 0;
+    const cold = createFlameClient(
+      createHttpTransport({
+        baseUrl: fixture.baseUrl,
+        fetch: async (url, init) => {
+          const method = new Headers(init?.headers).get(HTTP_HEADERS.method);
+          if (method === "plugins.retireCommand") retirements++;
+          if (holdLookup && method === "plugins.getCommand") {
+            lookupStarted.resolve();
+            await releaseLookup.promise;
+          }
+          return fetch(url, init);
+        },
+      }),
+      {
+        ...options,
+        onMutationJournalCleanupFailure: (failure) => {
+          cleanupFailure = failure;
+        },
+      },
+    );
+    const resolutions: PluginCommandChange[] = [];
+    const stop = cold.plugins.subscribeCommands((change) => {
+      if (change.type === "resolved") resolutions.push(change);
+    });
 
     try {
       await expect(original.plugins.call(request, { idempotencyKey: firstKey })).rejects.toSatisfy(
@@ -328,14 +377,44 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: configuration commits after lo
       await expect(cold.plugins.getCommand({ namespace, key: fresh.idempotencyKey })).resolves.toEqual(
         first,
       );
-      expect(cold.plugins.pendingCommands().map((command) => command.idempotencyKey)).toEqual([
-        firstKey,
+      expect(cold.plugins.commands()).toMatchObject([
+        { idempotencyKey: firstKey, state: "recoverable", binding: request.route },
       ]);
-      await expect(cold.plugins.call(request, { idempotencyKey: firstKey })).resolves.toMatchObject({
+      const pending = new PendingPluginCommands(signal, cold.plugins, (run) =>
+        run(signal),
+      );
+      holdLookup = true;
+      const checking = pending.observe(firstKey, "recover");
+      await within(lookupStarted.promise, "the original plugin receipt lookup");
+      expect(cold.plugins.commands()).toMatchObject([
+        { idempotencyKey: firstKey, state: "active", binding: request.route },
+      ]);
+      expect(cold.plugins.commands()[0]).not.toHaveProperty("recover");
+      expect(cold.plugins.commands()[0]).not.toHaveProperty("retire");
+      await pending.observe(firstKey, "retire");
+      expect(pending.snapshot()?.observation).toMatchObject({ type: "checking", key: firstKey });
+      blockCleanup = true;
+      releaseLookup.resolve();
+      await within(checking, "the original plugin command confirming");
+      expect(pending.snapshot()?.observation).toMatchObject({
+        type: "confirmed",
+        key: firstKey,
         output: expect.any(String),
       });
-      expect(cold.plugins.pendingCommands()).toEqual([]);
+      expect(cold.plugins.commands()).toMatchObject([{ idempotencyKey: firstKey, state: "active" }]);
+      expect(resolutions).toEqual([
+        { type: "resolved", idempotencyKey: firstKey, resolution: { type: "confirmed" } },
+      ]);
+      if (!cleanupFailure) throw new Error("confirmation did not report the journal cleanup failure");
+      blockCleanup = false;
+      cleanupFailure.retryCleanup();
+      expect(cold.plugins.commands()).toEqual([]);
+      expect(resolutions).toHaveLength(1);
+      await pending.observe(firstKey, "retire");
+      expect(retirements).toBe(0);
     } finally {
+      stop();
+      releaseLookup.resolve();
       await Promise.all([original.close(), cold.close()]);
     }
   });
@@ -397,10 +476,11 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: configuration commits after lo
         (await fixture.client.mcp.list()).data.filter((entry) => entry.id.name === server),
       ).toHaveLength(1);
 
+      const updateTarget = await readMCPDirectoryTarget(fixture.client, server);
       await expect(
         callAfterCommitLoss("mcp.servers.update", (faultClient) =>
           faultClient.mcp.update({
-            server: serverId,
+            ...updateTarget,
             description: "MCP replay cutpoint updated",
           }),
         ),
@@ -416,8 +496,9 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: configuration commits after lo
         status: { type: "disabled" },
       });
 
+      const deleteTarget = await readMCPDirectoryTarget(fixture.client, server);
       await callAfterCommitLoss("mcp.servers.delete", (faultClient) =>
-        faultClient.mcp.delete(serverId),
+        faultClient.mcp.delete(deleteTarget),
       );
       await expect(nextUserMCPChange(events, server)).resolves.toMatchObject({
         servers: expect.arrayContaining([serverId]),
@@ -451,7 +532,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: configuration commits after lo
         data: [expect.objectContaining({ name: managedSkillName, lifecycle: "active" })],
       });
     } finally {
-      await fixture.client.mcp.delete(serverId).catch(() => undefined);
+      await deleteUserMCPServers(fixture.client, server);
       const managed = (await fixture.client.skills.listLibrary()).data.find(
         (skill) => skill.name === managedSkillName,
       );

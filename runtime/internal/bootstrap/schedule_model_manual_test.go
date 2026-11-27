@@ -16,6 +16,11 @@ import (
 	"github.com/Tangerg/scope/core/chatclient"
 )
 
+const (
+	scheduledRunTitle   = "Scheduled Workspace Check"
+	scheduledTitleInput = 17
+)
+
 func TestScheduleModelManualRunUsesOriginalInstalledCallerAndRunAdmission(t *testing.T) {
 	for _, lost := range []bool{false, true} {
 		name := "accepted"
@@ -105,9 +110,44 @@ func scheduleModelManualRun(t *testing.T, lost bool) {
 	if createdSession.Workspace.Ref.Path != session.Workspace.Ref.Path {
 		t.Fatalf("omitted schedule workspace did not use Runtime's default: %+v", createdSession)
 	}
+	if !lost {
+		verifyScheduledRunTitle(r, createdSession, session.ID)
+	}
 	page := readSchedulePage(r, protocol.PageQuery{})
 	if len(page.Data) != 1 || page.Data[0].Id != definition.Id || page.Data[0].LastRunAt == nil {
 		t.Fatalf("manual acceptance failed to settle its private definition: %+v", page)
+	}
+}
+
+func verifyScheduledRunTitle(r *poMCPRuntime, scheduled *protocol.Session, initiatingSessionID string) {
+	t := r.t
+	t.Helper()
+	ctx, stop := context.WithTimeout(t.Context(), lifecycleWaitBudget(t))
+	defer stop()
+	ticker := time.NewTicker(10 * time.Millisecond)
+	defer ticker.Stop()
+	for scheduled.Title == "" {
+		select {
+		case <-ctx.Done():
+			t.Fatalf("scheduled Session never received a title: %v", ctx.Err())
+		case <-ticker.C:
+		}
+		scheduled = r.must(delivery.SessionsGet, protocol.GetSessionRequest{SessionID: scheduled.ID}, "").(*protocol.Session)
+	}
+	if scheduled.Title != scheduledRunTitle {
+		t.Fatalf("scheduled Session title = %q, want generated title %q", scheduled.Title, scheduledRunTitle)
+	}
+	for _, usage := range []struct {
+		sessionID string
+		wantInput int64
+	}{
+		{scheduled.ID, scheduledTitleInput},
+		{initiatingSessionID, 0},
+	} {
+		got := r.must(delivery.UsageSession, protocol.SessionUsageRequest{SessionID: usage.sessionID}, "").(*protocol.SessionUsage)
+		if got.Total.InputTokens != usage.wantInput {
+			t.Errorf("Session %q input tokens = %d, want %d", usage.sessionID, got.Total.InputTokens, usage.wantInput)
+		}
 	}
 }
 
@@ -134,7 +174,12 @@ func (s *manualRunScript) Call(_ context.Context, request *chat.Request) (*chat.
 		s.receipt.Store(text)
 		return completedTextResponse("manual work accepted"), nil
 	}
-	if s.issued.Load() || len(request.Tools) == 0 {
+	if len(request.Tools) == 0 {
+		response := completedTextResponse(scheduledRunTitle)
+		response.Metadata = &chat.ResponseMetadata{Usage: &chat.Usage{InputTokens: scheduledTitleInput}}
+		return response, nil
+	}
+	if s.issued.Load() {
 		return completedTextResponse("scheduled work finished"), nil
 	}
 	call := deferredToolCall(request, "discover-manual", chat.ToolCall{ID: "manual-schedule-call", Name: s.modelName, Arguments: `{"id":"` + s.scheduleID + `"}`})

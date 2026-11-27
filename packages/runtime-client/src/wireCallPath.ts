@@ -5,7 +5,6 @@ import { captureRequestMeta, checkRequest, requestRequiresIdempotency } from "./
 import {
   createMutationPromise,
   MutationLookupError,
-  mutationHandle,
   mutationSettlementIsUnknown,
   type MutationPromise,
 } from "./mutation";
@@ -107,7 +106,6 @@ export interface WireCallPath {
 }
 
 interface OriginalMutation {
-  readonly idempotencyKey: string;
   reserve(preparedParams: unknown): MutationReservation;
 }
 
@@ -213,27 +211,16 @@ export function createWireCallPath(client: RpcClient, options: WireCallPathOptio
     opening: MutationOpeningOptions = {},
   ): MutationPromise<Result> => {
     const { signal, requestedKey, original, requestMeta } = opening;
-    let preparedParams: WireParams<M>;
-    let reservation: MutationReservation;
-    try {
-      if (!original && signal?.aborted) throw new RpcCancellationError();
-      preparedParams = checkRequest(method, cloneJSON(params));
-      if (original) {
-        reservation = original.reserve(preparedParams);
-      } else {
-        reservation = options.mutationJournal.reserve(
+    if (!original && signal?.aborted) throw new RpcCancellationError(signal.reason);
+    const preparedParams = checkRequest(method, cloneJSON(params));
+    const reservation = original
+      ? original.reserve(preparedParams)
+      : options.mutationJournal.reserve(
           method,
           preparedParams,
           requestedKey,
           captureMetadata(requestMeta),
         );
-      }
-    } catch (error) {
-      const refusedKey = original?.idempotencyKey ?? requestedKey ?? crypto.randomUUID();
-      const refused = (): MutationPromise<Result> =>
-        mutationHandle(Promise.reject(error), refusedKey, refused);
-      return refused();
-    }
     const create = () =>
       createMutationPromise(
         (_, attempt) => execute(preparedParams, reservation, attempt.signal),
@@ -257,7 +244,6 @@ export function createWireCallPath(client: RpcClient, options: WireCallPathOptio
       {
         signal,
         original: {
-          idempotencyKey: command.idempotencyKey,
           reserve: (prepared) => options.mutationJournal.recoverRuntimeCommand(command, prepared),
         },
       },

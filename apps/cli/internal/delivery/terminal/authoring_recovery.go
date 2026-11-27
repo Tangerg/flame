@@ -68,7 +68,7 @@ func (r *runs) restorePendingResume() {
 func (r *runs) reconcilePendingResume(pending workbench.PendingResume) {
 	command := pending.Command
 	r.tasks.operations.GoSession(resumeRecoveryOperation, func(ctx context.Context, lease operationLease) {
-		_, err := mutation.ConfirmAdmitted(ctx, runtimeRecoveryBackoff, nil, func(ctx context.Context) (conversation.SegmentStream, error) {
+		_, err := mutation.ConfirmAdmitted(ctx, runtimeRecoveryBackoff, nil, func(ctx context.Context) (runworkflow.Opening, error) {
 			return runworkflow.OpenPendingResume(ctx, r.runtime, r.workbench, pending, r.replayPolicy)
 		})
 		if context.Cause(ctx) != nil {
@@ -78,12 +78,11 @@ func (r *runs) reconcilePendingResume(pending workbench.PendingResume) {
 			if !r.tasks.operations.Current(lease) || !r.tasks.operations.Release(lease) {
 				return
 			}
-			if _, retired := errors.AsType[*conversation.RetiredOpeningError](err); err == nil || retired {
+			if err == nil || errors.Is(err, conversation.ErrOpeningRetired) {
 				r.settleAcknowledgedResume(command.CommandID)
 				return
 			}
-			_, accepted := conversation.AcceptedMutationReceipt(err)
-			if !accepted && !mutation.OutcomeUnknown(err) {
+			if !mutation.OutcomeUnknown(err) {
 				err = errors.Join(err, r.workbench.RetirePendingResume(r.session.current.ID, command.CommandID))
 			}
 			r.link.message("reconcile earlier interrupt delivery: " + err.Error())
@@ -117,7 +116,7 @@ func sameInterrupts(left, right []conversation.Interrupt) bool {
 func (r *runs) reconcilePendingRun(pending workbench.PendingRun) {
 	command := pending.Command
 	r.tasks.operations.GoSession(pendingRunRecoveryOperation, func(ctx context.Context, lease operationLease) {
-		opened, err := openStartRunWithBackoff(
+		_, err := openStartRunWithBackoff(
 			ctx, r.runtime, r.workbench, pending, r.replayPolicy, runtimeRecoveryBackoff,
 		)
 		if context.Cause(ctx) != nil {
@@ -128,9 +127,8 @@ func (r *runs) reconcilePendingRun(pending workbench.PendingRun) {
 				!r.tasks.operations.Release(lease) {
 				return
 			}
-			_, accepted := observedSegmentStream(opened, err)
 			switch {
-			case accepted:
+			case err == nil || errors.Is(err, conversation.ErrOpeningRetired):
 				err = r.retireQueuedCommand(command.SessionID, command.CommandID)
 			case errors.Is(err, conversation.ErrSessionHasActiveRun):
 				err = r.queue.RequeueDispatch(command.SessionID, command.CommandID)

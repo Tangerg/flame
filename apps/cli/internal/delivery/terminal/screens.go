@@ -60,7 +60,10 @@ func (a *app) buildScreens(cfg appConfig) {
 	a.screens.goals = &goalScreens{screenHost: host, service: cfg.goals, options: &a.options, header: a.header}
 	a.screens.modelConfig = &modelConfigScreens{screenHost: host, service: cfg.modelConfig}
 	a.screens.usage = &usageScreens{screenHost: host, service: cfg.usage}
-	a.screens.mcp = &mcpScreens{screenHost: host, service: cfg.mcp, setApprovalRule: a.screens.approvals.setApprovalRule}
+	a.screens.mcp = &mcpScreens{
+		screenHost: host, service: cfg.mcp, setApprovalRule: a.screens.approvals.setApprovalRule,
+		pendingAuthorizationStarts: make(map[protocol.MCPServerID]mcpAuthorizationStart),
+	}
 	a.screens.skills = &skillScreens{screenHost: host, service: cfg.skills}
 	a.screens.hooks = &hookScreens{screenHost: host, service: cfg.hooks}
 	a.screens.diagnosticTools = &diagnosticScreens{screenHost: host, service: cfg.diagnosticTools}

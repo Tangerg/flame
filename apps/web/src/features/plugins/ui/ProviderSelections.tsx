@@ -1,9 +1,7 @@
 import { backendAvailable } from "../adapters/workflowAuthors";
 import { tupleKey } from "@/lib/tupleKey";
 import { pluginContract } from "@flame/runtime-client";
-import { useLayoutEffect, useRef, useState } from "react";
-import { type MutationPromise } from "@flame/runtime-client";
-import { mutationSettlementIsUnknown } from "@flame/runtime-client";
+import { useState, useSyncExternalStore } from "react";
 import { type PluginInstallation, type PluginProviderSelection } from "@flame/runtime-client/wire";
 import { Button, PanelSection, Select, Toolbar } from "@flame/ui";
 import { DataError, DataView } from "@/ui/index";
@@ -11,6 +9,7 @@ import { SystemMessage } from "@/ui/index";
 import { SettingRow } from "@/ui/settings/SettingRow";
 import { SettingsGroup } from "@/ui/settings/SettingsGroup";
 import { useT } from "@/lib/i18n/index";
+import { failureText } from "@/lib/rpcErrors";
 import { usePluginProviders, type PackageOperations } from "@/features/plugins/adapters/packages";
 type Candidate = { installation: PluginInstallation; contribution: string; server: string };
 
@@ -67,7 +66,6 @@ export function ProviderSelections({
                 current={(providers.data ?? []).find((value) => value.role === role)}
                 installations={installations}
                 operations={operations}
-                refresh={providers.refetch}
               />
             ))}
           </SettingsGroup>
@@ -93,14 +91,12 @@ function ProviderRole({
   current,
   installations,
   operations,
-  refresh,
 }: {
   role: string;
   hasRead: boolean;
   current?: PluginProviderSelection;
   installations: PluginInstallation[];
   operations: PackageOperations;
-  refresh: () => Promise<unknown>;
 }) {
   const t = useT();
   const candidates: Candidate[] = installations.flatMap((installation) =>
@@ -108,45 +104,18 @@ function ProviderRole({
       .filter((value) => value.selectionRoles?.includes(role))
       .map((value) => ({ installation, contribution: value.id, server: value.server })),
   );
-  type State = {
-    operations: PackageOperations;
-    draft: string | null;
-    busy: boolean;
-    failure?: string;
-    unknown?: MutationPromise<PluginProviderSelection>;
-  };
-  const [state, setState] = useState<State>({ operations, draft: null, busy: false });
-  const { draft, busy, failure, unknown } =
-    state.operations === operations
-      ? state
-      : { draft: null, busy: false, failure: undefined, unknown: undefined };
-  const update = (change: Partial<Omit<State, "operations">>) =>
-    setState((previous) => ({
-      ...(previous.operations === operations ? previous : { operations, draft: null, busy: false }),
-      ...change,
-      operations,
-    }));
-  const command = useRef<{
-    operations: PackageOperations;
-    mutation: MutationPromise<PluginProviderSelection>;
-  }>(undefined);
-  const observer = useRef<{ operations: PackageOperations; controller: AbortController }>(
-    undefined,
-  );
-  useLayoutEffect(() => {
-    const owned = { operations, controller: new AbortController() };
-    observer.current = owned;
-    return () => {
-      owned.controller.abort();
-      if (observer.current === owned) observer.current = undefined;
-    };
-  }, [operations]);
-  const observationSignal = () => {
-    const owned = observer.current;
-    return owned?.operations === operations
-      ? AbortSignal.any([owned.controller.signal, operations.signal])
+  const commands = operations.providerSelections;
+  const state = useSyncExternalStore(commands.subscribe, () => commands.snapshot(role));
+  const [draftChoice, setDraftChoice] = useState<{ source: typeof commands; value: string | null }>();
+  const draft = draftChoice?.source === commands ? draftChoice.value : null;
+  const clearDraft = () =>
+    setDraftChoice((previous) => (previous?.source === commands ? undefined : previous));
+  const busy = state?.kind === "observing";
+  const unconfirmed = state?.kind === "unconfirmed" ? state : undefined;
+  const failure =
+    state && state.kind !== "observing"
+      ? failureText(state.error, t("packages.providers.failed"))
       : undefined;
-  };
   const candidate = candidates.find((value) => candidateKey(value) === draft);
   const chosen = candidates.find(
     (value) =>
@@ -155,44 +124,15 @@ function ProviderRole({
   );
   const active = chosen && backendAvailable(chosen.installation, chosen.server);
   const chosenKey = chosen ? candidateKey(chosen) : null;
-  async function observe(mutation: MutationPromise<PluginProviderSelection>, signal: AbortSignal) {
-    command.current = { operations, mutation };
-    update({ busy: true, failure: undefined });
-    try {
-      await mutation;
-      if (signal.aborted) return;
-      command.current = undefined;
-      update({ unknown: undefined, draft: null });
-      await refresh();
-    } catch (error) {
-      if (signal.aborted) return;
-      if (mutationSettlementIsUnknown(error)) update({ unknown: mutation });
-      else {
-        command.current = undefined;
-        update({ unknown: undefined });
-      }
-      update({ failure: error instanceof Error ? error.message : t("packages.providers.failed") });
-    } finally {
-      if (!signal.aborted) update({ busy: false });
-    }
+  async function select() {
+    if (!candidate) return;
+    const accepted = await commands.select({
+      role,
+      installationId: candidate.installation.id,
+      contribution: candidate.contribution,
+    });
+    if (accepted) clearDraft();
   }
-  const select = () => {
-    if (!candidate || command.current?.operations === operations || operations.signal.aborted)
-      return;
-    const signal = observationSignal();
-    if (!signal) return;
-    try {
-      const mutation = operations.track(() =>
-        operations.selectProvider(
-          { role, installationId: candidate.installation.id, contribution: candidate.contribution },
-          signal,
-        ),
-      );
-      void observe(mutation, signal);
-    } catch (error) {
-      update({ failure: error instanceof Error ? error.message : t("packages.providers.failed") });
-    }
-  };
   return (
     <SettingRow
       label={role}
@@ -216,40 +156,29 @@ function ProviderRole({
             value: candidateKey(value),
             label: `${value.installation.selected.name} · ${value.contribution}${value.installation.enabled && !value.installation.disabledServers.includes(value.server) ? "" : ` · ${t("packages.disabled")}`}`,
           }))}
-          onValueChange={(draft) => update({ draft })}
-          disabled={busy || !!unknown}
+          onValueChange={(value) => setDraftChoice({ source: commands, value })}
+          disabled={busy || !!unconfirmed || operations.signal.aborted}
         />
         {candidate && draft !== chosenKey && (
           <Button
             variant="soft"
             pending={busy}
-            disabled={!!unknown || operations.signal.aborted}
-            onClick={select}
+            disabled={!!unconfirmed || operations.signal.aborted}
+            onClick={() => void select()}
           >
             {t("packages.providers.apply")}
           </Button>
         )}
       </Toolbar>
       {failure && <SystemMessage variant="warning">{failure}</SystemMessage>}
-      {unknown && (
+      {unconfirmed && (
         <SystemMessage variant="warning">
-          {t("packages.providers.unknown", { id: unknown.idempotencyKey })}
+          {t("packages.providers.unknown", { id: unconfirmed.idempotencyKey })}
           <Button
             pending={busy}
             disabled={operations.signal.aborted}
-            onClick={() => {
-              try {
-                const signal = observationSignal();
-                if (!signal) return;
-                void observe(
-                  operations.track(() => unknown.retry({ signal })),
-                  signal,
-                );
-              } catch (error) {
-                update({
-                  failure: error instanceof Error ? error.message : t("packages.providers.failed"),
-                });
-              }
+            onClick={async () => {
+              if (await commands.check(role, unconfirmed)) clearDraft();
             }}
           >
             {t("packages.providers.reconcile")}

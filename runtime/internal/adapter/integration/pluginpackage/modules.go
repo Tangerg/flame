@@ -11,13 +11,13 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/frame/distribution"
 )
 
 type moduleGraph struct {
 	SchemaVersion    int           `json:"schemaVersion"`
+	RuntimeProfile   string        `json:"runtimeProfile"`
 	Entry            string        `json:"entry"`
 	Modules          []moduleEntry `json:"modules"`
 	SharedSpecifiers []string      `json:"sharedSpecifiers"`
@@ -35,11 +35,8 @@ func componentModule(ctx context.Context, root *os.Root, component plugin.Client
 	if err != nil {
 		return nil, fmt.Errorf("%w: component module graph: %w", plugin.ErrInvalid, err)
 	}
-	var graph moduleGraph
-	if err := json.Unmarshal(encoded, &graph, json.RejectUnknownMembers(true)); err != nil {
-		return nil, fmt.Errorf("%w: component module graph: %w", plugin.ErrInvalid, err)
-	}
-	if err := graph.validate(component); err != nil {
+	graph, err := decodeModuleGraph(encoded, component)
+	if err != nil {
 		return nil, err
 	}
 	result := &distribution.Module{Entry: component.Entry, Imports: []distribution.ModuleImport{}}
@@ -49,10 +46,18 @@ func componentModule(ctx context.Context, root *os.Root, component plugin.Client
 		}
 	}
 	for _, name := range graph.SharedSpecifiers {
-		result.Imports = append(result.Imports, distribution.ModuleImport{Specifier: name, Shared: &distribution.HostModuleReference{Profile: hostModuleProfile}})
+		result.Imports = append(result.Imports, distribution.ModuleImport{Specifier: name, Shared: &distribution.HostModuleReference{Profile: graph.RuntimeProfile}})
 	}
 	slices.SortFunc(result.Imports, func(a, b distribution.ModuleImport) int { return strings.Compare(a.Specifier, b.Specifier) })
 	return result, nil
+}
+
+func decodeModuleGraph(encoded []byte, component plugin.ClientComponent) (moduleGraph, error) {
+	var graph moduleGraph
+	if err := json.Unmarshal(encoded, &graph, json.RejectUnknownMembers(true)); err != nil {
+		return moduleGraph{}, fmt.Errorf("%w: component module graph: %w", plugin.ErrInvalid, err)
+	}
+	return graph, graph.validate(component)
 }
 
 func (g moduleGraph) importedHostModules(local map[string]moduleEntry) (map[string]bool, error) {
@@ -72,6 +77,9 @@ func (g moduleGraph) importedHostModules(local map[string]moduleEntry) (map[stri
 }
 
 func (g moduleGraph) validate(component plugin.ClientComponent) error {
+	if g.RuntimeProfile != hostModuleProfile {
+		return fmt.Errorf("%w: component runtime profile %q requires rebuilding for %q", plugin.ErrInvalid, g.RuntimeProfile, hostModuleProfile)
+	}
 	if g.SchemaVersion != moduleGraphSchemaVersion || g.Entry != path.Base(component.Entry) || len(g.Modules) == 0 {
 		return plugin.ErrInvalid
 	}
@@ -103,16 +111,19 @@ func (g moduleGraph) validate(component plugin.ClientComponent) error {
 	return nil
 }
 
-func (r *Releases) ComponentModules(ctx context.Context, release plugin.Release, id plugin.ContributionID) (_ *distribution.Module, returned error) {
+func (r *Releases) ComponentModuleImports(ctx context.Context, release plugin.Release, component plugin.ClientComponent) (profile string, shared []string, returned error) {
 	lease, err := r.content.Acquire(ctx, release.Digest())
 	if err != nil {
-		return nil, err
+		return "", nil, err
 	}
 	defer func() { returned = errors.Join(returned, lease.Close()) }()
-	for _, unit := range lease.Snapshot().Manifest.Units {
-		if unit.ID == plugins.ComponentUnit(id) && unit.Module != nil {
-			return unit.Module, nil
-		}
+	encoded, err := lease.Read(ctx, path.Join(path.Dir(component.Entry), moduleGraphFilename))
+	if err != nil {
+		return "", nil, err
 	}
-	return nil, plugin.ErrNotFound
+	graph, err := decodeModuleGraph(encoded, component)
+	if err != nil {
+		return "", nil, err
+	}
+	return graph.RuntimeProfile, graph.SharedSpecifiers, nil
 }

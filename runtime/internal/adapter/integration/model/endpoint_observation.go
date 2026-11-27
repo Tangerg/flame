@@ -95,7 +95,7 @@ func (m *observedEndpoint) start(ctx context.Context, request *chat.Request) (mo
 	if err := invocation.Validate(); err != nil {
 		return modelref.EndpointInvocation{}, err
 	}
-	if err := m.journal.StartEndpointInvocation(ctx, invocation, executionctx.InvocationOwner(ctx)); err != nil {
+	if err := m.journal.StartEndpointInvocation(ctx, invocation, executionctx.EndpointOwner(ctx)); err != nil {
 		return modelref.EndpointInvocation{}, err
 	}
 	logRequestDiagnostics(ctx, invocation)

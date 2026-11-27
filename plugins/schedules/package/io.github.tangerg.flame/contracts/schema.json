@@ -1,11 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$defs": {
-    "Ack": {
-      "additionalProperties": false,
-      "properties": {},
-      "type": "object"
-    },
     "CreateV2Input": {
       "$ref": "#/$defs/Draft"
     },
@@ -114,23 +109,55 @@
       ],
       "type": "object"
     },
-    "DeleteV2Input": {
-      "$ref": "#/$defs/DeleteV2InputWireItemInput"
-    },
-    "DeleteV2InputWireItemInput": {
+    "DeleteInput": {
       "additionalProperties": false,
       "properties": {
+        "expectedRevision": {
+          "allOf": [
+            {
+              "maximum": 18446744073709551615,
+              "minimum": 0
+            }
+          ],
+          "type": "integer"
+        },
         "id": {
           "type": "string"
         }
       },
       "required": [
-        "id"
+        "id",
+        "expectedRevision"
       ],
       "type": "object"
     },
-    "DeleteV2Output": {
-      "$ref": "#/$defs/Ack"
+    "DeleteResult": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "revision": {
+          "allOf": [
+            {
+              "maximum": 18446744073709551615,
+              "minimum": 0
+            }
+          ],
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "revision"
+      ],
+      "type": "object"
+    },
+    "DeleteV3Input": {
+      "$ref": "#/$defs/DeleteInput"
+    },
+    "DeleteV3Output": {
+      "$ref": "#/$defs/DeleteResult"
     },
     "Draft": {
       "additionalProperties": false,
@@ -168,6 +195,18 @@
         "cron",
         "timeZone",
         "enabled"
+      ],
+      "type": "object"
+    },
+    "ItemInput": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
       ],
       "type": "object"
     },
@@ -315,19 +354,7 @@
       "type": "object"
     },
     "RunNowV2Input": {
-      "$ref": "#/$defs/RunNowV2InputWireItemInput"
-    },
-    "RunNowV2InputWireItemInput": {
-      "additionalProperties": false,
-      "properties": {
-        "id": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "id"
-      ],
-      "type": "object"
+      "$ref": "#/$defs/ItemInput"
     },
     "RunNowV2Output": {
       "$ref": "#/$defs/RunReference"

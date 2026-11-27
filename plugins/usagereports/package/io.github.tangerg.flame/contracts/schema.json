@@ -52,10 +52,10 @@
       ],
       "type": "object"
     },
-    "DeleteV1Input": {
-      "$ref": "#/$defs/DeleteV1InputRpcReportInput"
+    "DeleteV2Input": {
+      "$ref": "#/$defs/DeleteV2InputRpcReportInput"
     },
-    "DeleteV1InputRpcReportInput": {
+    "DeleteV2InputRpcReportInput": {
       "additionalProperties": false,
       "properties": {
         "id": {
@@ -69,8 +69,19 @@
       ],
       "type": "object"
     },
-    "DeleteV1Output": {
-      "type": "boolean"
+    "DeleteV2Output": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "maxLength": 64,
+          "minLength": 64,
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "type": "object"
     },
     "GetV1Input": {
       "$ref": "#/$defs/GetV1InputRpcReportInput"

@@ -31,12 +31,17 @@ func registerManagementCommands(backend *pluginmcp.Backend, db framesqlite.Datab
 			}
 			return pluginstorage.NewCommandPlan(mutation.State().Snapshot(), mutation.Apply)
 		}),
-		pluginstorage.RegisterCommand(backend, db, contracts.Delete, classify, func(ctx context.Context, _ *sdk.ServerSession, input wire.ItemInput) (pluginstorage.CommandPlan[wire.Ack], error) {
-			apply, err := coordinator.PrepareDelete(ctx, input.ID)
-			if err != nil {
-				return pluginstorage.CommandPlan[wire.Ack]{}, err
-			}
-			return pluginstorage.NewCommandPlan(wire.Ack{}, apply)
+		pluginstorage.RegisterCommand(backend, db, contracts.Delete, classify, func(ctx context.Context, _ *sdk.ServerSession, input wire.DeleteInput) (pluginstorage.CommandPlan[wire.DeleteResult], error) {
+			return prepareScheduleDeletion(ctx, coordinator, input)
 		}),
 	)
+}
+
+func prepareScheduleDeletion(ctx context.Context, coordinator *scheduling.Coordinator, input wire.DeleteInput) (pluginstorage.CommandPlan[wire.DeleteResult], error) {
+	mutation, err := coordinator.PrepareDelete(ctx, input.ID, input.ExpectedRevision)
+	if err != nil {
+		return pluginstorage.CommandPlan[wire.DeleteResult]{}, err
+	}
+	deleted := mutation.State()
+	return pluginstorage.NewCommandPlan(wire.DeleteResult{ID: deleted.ID(), Revision: deleted.Revision()}, mutation.Apply)
 }

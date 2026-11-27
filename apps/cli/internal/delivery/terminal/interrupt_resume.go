@@ -56,47 +56,35 @@ func (r *runs) deliverInterruptResume(
 	review *interruptReview,
 	command conversation.ResumeRun,
 ) {
-	pending, ok := r.workbench.PendingResume(r.session.current.ID)
+	sessionID := r.session.current.ID
+	pending, ok := r.workbench.PendingResume(sessionID)
 	if !ok || pending.Command.CommandID != command.CommandID {
 		r.fail(errors.New("submitted resume is absent from the durable outbox"))
 		return
 	}
 	r.status.active("resuming")
 	r.syncAnimation()
-	r.followOpening(func(ctx context.Context) (conversation.SegmentStream, error) {
-		stream, err := runworkflow.OpenPendingResume(ctx, r.runtime, r.workbench, pending, r.replayPolicy)
+	r.followOpening(sessionID, func(ctx context.Context) (runworkflow.Opening, error) {
+		opened, err := runworkflow.OpenPendingResume(ctx, r.runtime, r.workbench, pending, r.replayPolicy)
 		if err != nil {
-			if _, accepted := conversation.AcceptedMutationReceipt(err); accepted {
-				return conversation.SegmentStream{}, err
-			}
-			return conversation.SegmentStream{}, &resumeRunCallError{err: err}
+			return runworkflow.Opening{}, &resumeRunCallError{err: err}
 		}
-		if err := stream.ValidateResume(command.RunID, command.Message); err != nil {
-			return conversation.SegmentStream{}, conversation.NewAcceptedMutationError(stream, fmt.Errorf("resume run: %w", err))
-		}
-		return stream, nil
+		return opened, nil
 	}, streamOpeningObserver{
 		persistent: true,
-		accepted: func(opened conversation.SegmentStream) streamOpeningDisposition {
+		accepted: func(opened runworkflow.Opening) streamOpeningDisposition {
 			r.prompts.release()
 			r.settleAcknowledgedResume(command.CommandID)
-			if r.execution.conversation.RunID() != opened.RunID {
+			if r.execution.conversation.RunID() != opened.RunID() {
 				r.followRecoveredSession()
 				return rejectOpenedStream
 			}
 			return followOpenedStream
 		},
 		rejected: func(failure error) error {
-			if _, retired := errors.AsType[*conversation.RetiredOpeningError](failure); retired {
+			if errors.Is(failure, conversation.ErrOpeningRetired) {
 				r.prompts.release()
 				r.settleAcknowledgedResume(command.CommandID)
-				return failure
-			}
-			if _, accepted := conversation.AcceptedMutationReceipt(failure); accepted {
-				r.prompts.release()
-				r.cancelRuntimePreservingFailure(conversation.CancelRun{
-					RunID: command.RunID, Reason: "runtime returned an invalid resume receipt",
-				})
 				return failure
 			}
 			return r.restoreRejectedInterruptReview(review, command, failure)
@@ -137,7 +125,7 @@ func (r *runs) restoreRejectedInterruptReview(review *interruptReview, command c
 		}
 	}
 	r.execution.stopFollowing()
-	if r.session.invalidated {
+	if r.session.freshness == sessionStale {
 		r.status.note("resume refused · refreshing session")
 		r.sessions.refreshInvalidatedSession(refreshAfterChange)
 		return nil

@@ -36,7 +36,7 @@ import {
 import { type ReportArchive } from "./useReportArchive";
 
 export function ArchiveControls({
-  archive: { t, busy, action, refs, catalog, report, recovery },
+  archive: { t, locked, action, refs, catalog, report },
   titleFor,
 }: {
   archive: ReportArchive;
@@ -45,7 +45,6 @@ export function ArchiveControls({
   const opened = report.opened;
   const archive = catalog.read;
   const period = catalog.period;
-  const unknown = recovery.commands;
   const { heading, refreshButton, saveButton, backButton } = refs;
   return opened ? (
     <>
@@ -102,7 +101,7 @@ export function ArchiveControls({
       <Button
         ref={saveButton}
         variant="primary"
-        disabled={busy || unknown.length > 0}
+        disabled={locked}
         focusableWhenDisabled
         pending={action?.kind === "capture"}
         aria-busy={action?.kind === "capture"}
@@ -148,7 +147,7 @@ export function PendingCommands({
 }
 
 export function RemovalDialog({
-  archive: { t, fmt, busy, action, refs, removal },
+  archive: { t, fmt, busy, locked, action, refs, removal },
   titleFor,
 }: {
   archive: ReportArchive;
@@ -185,6 +184,7 @@ export function RemovalDialog({
           <Button
             variant="tonal"
             tone="negative"
+            disabled={locked}
             pending={action?.kind === "removal"}
             aria-busy={action?.kind === "removal"}
             onClick={removal.confirm}

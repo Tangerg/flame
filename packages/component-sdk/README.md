@@ -40,11 +40,13 @@ Ordinary stateless exports remain React components.
 
 `context.signal` belongs to the mounted component. New I/O still enters that component's
 `context.track` boundary; source construction grants no additional execution path.
-The Host can replace the captured context of a component that stays mounted, for
-example on a locale or binding change. State derived from one context is kept with
-`useContextState(context)`, which reads as absent under a replacement context
-instead of presenting the replaced context's reads or notices as current.
-Rebuild components and their graphical Host together when changing this SDK.
+The Host passes `locale` as a React prop while the captured `context` and its
+signal stay stable for the same target. `useContextState(context)` associates
+reads and notices with that signal and ignores updates from a retired capture.
+Component runtime profile 5 requires rebuilding the graphical Host and packages
+together. The compiled module graph declares the target runtime profile even for
+components with zero shared imports. Pass `locale` to `useTranslator` and
+locale-sensitive formatters.
 
 `clientEffect` placement requires client scope and has no navigation material or
 renderer selector. The Host mounts it for the admitted release independently of
@@ -223,13 +225,12 @@ Hosts without this collaborator may still render captured content; authored
 components must make its absence explicit before offering submission.
 
 The graphical Host supplies optional `context.openSession(sessionId)` for an
-explicit user action on an existing Runtime Session. It delegates selection and
-conversation presentation to the Host's existing navigation owners, without
-querying or starting a Run. The action refuses after the captured component
-signal ends. Hosts without Session navigation omit it; a receipt can remain
-readable without offering that action. Session navigation follows the existing
-scope lifetimes above and may retire the source component. It does not promise
-an exact Run reading anchor or retain another Session's local page filters.
+explicit user action on a Runtime Session. It checks the exact Session before
+publishing the selection and resolves to `opened`, `missing` or `superseded`.
+A later navigation selection or a retired scope withdraws an in-flight open.
+The action refuses after the captured component signal ends. Hosts without
+Session navigation omit it so the receipt remains readable. Opening selects a
+conversation and may retire the source component.
 
 The graphical Host also supplies optional `context.views` for a plugin's own
 workspace views. `open(componentId, target?, origin?)` shows one beside the
@@ -315,21 +316,36 @@ The decoder must validate
 the publisher acknowledgement before settlement. Journal routing/fingerprints are
 durable; authored input and business results are not copied into it. Low-level
 calls and stable-intent commands share that journal and retain routing metadata.
-For a recreated component, `bindOperations(...).pendingCommands(method)` projects
-unresolved commands, including streams, for the same installation, release digest, contribution, method contract and target. Use the raw management API to inspect retained commands from another release.
+For a recreated component, `bindOperations(...).commands(...methods)` projects
+unresolved commands, including streams, for the same installation, release digest,
+contribution, method contract and target. Use the Runtime client journal to inspect
+retained commands from another release.
 Components that associate pending work with an authored action also check the
 Runtime handle's `matchesIntent(originalIntent)` through
-`context.runtime.plugins.pendingCommands()`. A shared binding does not establish
+`context.runtime.plugins.commands()`. A shared binding does not establish
 the originating document or action. The predicate reads the existing salted
 journal fingerprint without introducing another intent registry.
-Its recovery handle reads `plugins.getCommand` from Runtime's saved route before
+For a panel that admits one authored command at a time, `bindOperations(...).authoring(name)`
+binds one named intent per installation. `submit` returns no attempt while the
+original is active or recoverable. `originalCommand()` selects that exact entry
+for a recreated panel. `subscribeCommands` and `commandsVersion` keep each live
+panel current as an original is claimed, released or settled.
+Use a resolved notification to update an editor tied to that exact key after
+another view recovers or retires its submission.
+When the editor needs the original typed output, register
+`observeRecovery(method, key, listener)` with the key returned by `command`.
+The observation belongs to the captured binding and supplies the receipt even
+when another view recovered it. It ends after confirmed recovery, retirement or
+disposal. Release the observer when the direct attempt definitively settles.
+`CommandActivity` holds foreground feedback for a component source lifetime.
+A recoverable command's handle reads `plugins.getCommand` from Runtime's saved route before
 querying the original backend receipt under the same key. It does not reconstruct
 input from the current draft, prepare another provider or persist business output.
 Unavailable, missing, expired or conflicting evidence stays unresolved. Runtime
 refuses route recovery before dispatch admission, so this read cannot initiate work.
-`context.runtime.plugins.pendingCommands()` exposes the same journal projection
+`context.runtime.plugins.commands()` exposes the same journal projection
 for client management. Stream recovery reads the original final receipt without
-replaying chunks. Both handles expose `retire()` for Runtime-confirmed
+replaying chunks. Recoverable entries in both projections expose `retire()` for Runtime-confirmed
 never-dispatched work; a failed retirement preserves the original journal and
 cannot authorize a replacement command.
 
@@ -437,3 +453,9 @@ command streams, but carry no mutation intent or journal reservation. Query fail
 is a read failure; it cannot become an unconfirmed command or a private receipt
 lookup. Command streams continue through `bound.stream(intent, method, input,
 consume, signal)` with their original durable command identity.
+
+`CursorPager` owns navigation for one cursor-paginated query. Subscribe to its
+snapshot and call `move` for user navigation. Call `refresh` for invalidation so
+the read follows the selected cursor while the view keeps its last accepted page.
+Give each captured query its own pager and stop its active read when the view
+releases it.

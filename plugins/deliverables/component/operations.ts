@@ -5,7 +5,9 @@ import {
   type MethodOutputs,
 } from "./methods.generated";
 
-export function bindDeliverableOperations(context: ComponentContext) {
+export function bindDeliverableOperations(
+  context: Pick<ComponentContext, "binding" | "runtime" | "signal" | "track">,
+) {
   if (!context.binding)
     throw new Error(
       "deliverables component requires its callable contribution",

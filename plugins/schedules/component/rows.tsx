@@ -1,5 +1,5 @@
-import { type ReactNode } from "react";
-import { type ComponentContext } from "@flame/component-sdk";
+import { useState, useTransition, type ReactNode } from "react";
+import { failureText, type ComponentContext } from "@flame/component-sdk";
 import {
   Badge,
   Button,
@@ -13,7 +13,6 @@ import {
   RecordExcerpt,
   RecordHeading,
 } from "@flame/ui";
-import { enabled } from "./useSchedules";
 import { type Schedule } from "./types";
 import { type ScheduleState } from "./useSchedules";
 import { METHODS } from "./methods";
@@ -99,6 +98,7 @@ export function ScheduleRow({
   | "confirmDeletion"
 > & { item: Schedule }) {
   const title = item.title || t("untitled");
+  const nextRunAt = item.nextRunAt;
   const { provider, model, reasoningEffort } = item.modelSelection;
   return (
     <ListRow>
@@ -115,7 +115,7 @@ export function ScheduleRow({
             label={t("actions.more", { name: title })}
             disabled={disabled}
             finalFocus={
-              command?.command.method === METHODS.runNow
+              command?.method === METHODS.runNow
                 ? feedbackElement
                 : undefined
             }
@@ -126,7 +126,8 @@ export function ScheduleRow({
                 onSelect: (opener) => editSchedule(item, opener),
               },
               {
-                label: enabled(item) ? t("action.disable") : t("action.enable"),
+                label:
+                  nextRunAt === undefined ? t("action.enable") : t("action.disable"),
                 onSelect: () => toggleEnabled(item),
               },
               {
@@ -139,20 +140,17 @@ export function ScheduleRow({
         }
         // Enabled is the resting state; only a paused schedule needs a word.
         status={
-          enabled(item) ? undefined : <Badge>{t("status.disabled")}</Badge>
+          nextRunAt === undefined ? (
+            <Badge>{t("status.disabled")}</Badge>
+          ) : undefined
         }
       />
-      {/* A disabled schedule says so in its status; "not scheduled" would only repeat it. */}
-      {(enabled(item) || item.nextRunAt !== undefined) && (
+      {nextRunAt !== undefined && (
         <Metadata>
           {t("nextFiring.label")} ·{" "}
-          {item.nextRunAt !== undefined ? (
-            <time dateTime={item.nextRunAt}>
-              {dateTime.format(new Date(item.nextRunAt))}
-            </time>
-          ) : (
-            t("nextFiring.none")
-          )}
+          <time dateTime={nextRunAt}>
+            {dateTime.format(new Date(nextRunAt))}
+          </time>
         </Metadata>
       )}
       <Disclosure title={t("details.title")}>
@@ -188,12 +186,14 @@ export function ScheduleFeedback({
   notice,
   feedbackElement,
   command,
+  pending,
   reconcile,
   openSession,
+  signal,
 }: Pick<
   ScheduleState,
-  "t" | "notice" | "feedbackElement" | "command" | "reconcile"
-> & { openSession: ComponentContext["openSession"] }) {
+  "t" | "notice" | "feedbackElement" | "command" | "pending" | "reconcile"
+> & { openSession: ComponentContext["openSession"]; signal: AbortSignal }) {
   return (
     <section
       ref={feedbackElement}
@@ -213,37 +213,69 @@ export function ScheduleFeedback({
               })}
             </p>
             {openSession && (
-              <Button
-                variant="soft"
-                onClick={() => openSession(notice.sessionId)}
-              >
-                {t("notice.openSession")}
-              </Button>
+              <OpenScheduledConversation
+                key={notice.runId}
+                sessionId={notice.sessionId}
+                open={openSession}
+                signal={signal}
+                t={t}
+              />
             )}
           </>
         ))}
       {command && (
+        <p role="status">{t("command.progress", { label: command.label })}</p>
+      )}
+      {pending && (
         <>
-          <p role={command.phase === "uncertain" ? "alert" : "status"}>
-            {command.phase === "uncertain"
-              ? t("command.uncertain")
-              : t("command.progress", { label: command.command.label })}
-          </p>
-          {command.phase === "uncertain" && (
-            <>
-              <RecordBody>{command.error}</RecordBody>
-              <Metadata>
-                {t("command.original", {
-                  key: command.command.promise.idempotencyKey,
-                })}
-              </Metadata>
-              <Button variant="soft" onClick={reconcile}>
-                {t("command.reconcile")}
-              </Button>
-            </>
-          )}
+          <p role="alert">{t("command.uncertain")}</p>
+          <Metadata>{t("command.original", { key: pending.idempotencyKey })}</Metadata>
+          <Button
+            variant="soft"
+            disabled={command !== undefined}
+            onClick={() => reconcile(pending.idempotencyKey)}
+          >
+            {t("command.reconcile")}
+          </Button>
         </>
       )}
     </section>
+  );
+}
+
+function OpenScheduledConversation({
+  sessionId,
+  open,
+  signal,
+  t,
+}: {
+  sessionId: string;
+  open: NonNullable<ComponentContext["openSession"]>;
+  signal: AbortSignal;
+  t: ScheduleState["t"];
+}) {
+  const [pending, startOpening] = useTransition();
+  const [problem, setProblem] = useState<string>();
+  return (
+    <>
+      <Button
+        variant="soft"
+        pending={pending}
+        onClick={() => {
+          setProblem(undefined);
+          startOpening(async () => {
+            try {
+              if ((await open(sessionId)) === "missing")
+                setProblem(t("notice.sessionMissing"));
+            } catch (error) {
+              if (!signal.aborted) setProblem(failureText(error));
+            }
+          });
+        }}
+      >
+        {t("notice.openSession")}
+      </Button>
+      {problem && <p role="alert">{problem}</p>}
+    </>
   );
 }

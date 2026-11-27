@@ -152,6 +152,14 @@ func startApp(
 	results []extensions.LifecycleResult,
 	prompts *workbench.Queue,
 ) (*app, error) {
+	selected := prepared.opened.Session
+	activated, err := prepared.workbench.ActivateSession(workbench.SessionActivation{
+		SessionID: selected.ID, WorkspacePath: selected.Workspace.Path,
+		InitialDraft: flameauthoring.Message{Text: cfg.InitialPrompt},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("activate session authoring state: %w", err)
+	}
 	active, err := newApp(loop, appConfig{
 		context: ctx, runtime: cfg.Runtime, runtimeProfile: prepared.runtimeProfile, replayPolicy: prepared.replayPolicy,
 		workspaces: cfg.Workspaces, changes: cfg.Changes, transfers: cfg.Transfers,
@@ -164,7 +172,7 @@ func startApp(
 		attachments: prepared.attachments,
 		settings:    prepared.settings,
 		options:     prepared.options, keyBindings: prepared.keyBindings, queue: prompts,
-		workbench: prepared.workbench, initialDraft: prepared.draft, editor: prepared.editor,
+		workbench: prepared.workbench, initialDraft: activated.Draft, editor: prepared.editor,
 		recoveredSteers: prepared.recoveryIssues.steers.Accepted,
 		localDirectory:  cfg.LocalDirectory, detachOnExit: cfg.DetachOnExit,
 	})
@@ -172,8 +180,8 @@ func startApp(
 		return nil, err
 	}
 	var rollbackNotice string
-	if prepared.rollbackRecovery != nil {
-		rollbackNotice = rollbackRecoveryNotice(*prepared.rollbackRecovery)
+	if activated.Rollback != nil {
+		rollbackNotice = rollbackRecoveryNotice(*activated.Rollback)
 	}
 	active.announceStartup(
 		rollbackNotice,
@@ -214,12 +222,10 @@ type preparedSession struct {
 	keyBindings    keyBindings
 	settings       settings.Config
 
-	options          flameauthoring.RunOptions
-	workbench        *workbench.Store
-	draft            flameauthoring.Message
-	editor           *draftEditor
-	rollbackRecovery *workbench.SessionRollbackRecovery
-	recoveryIssues   sessionCommandRecovery
+	options        flameauthoring.RunOptions
+	workbench      *workbench.Store
+	editor         *draftEditor
+	recoveryIssues sessionCommandRecovery
 }
 
 type sessionCommandRecovery struct {
@@ -316,33 +322,18 @@ func openPreparedSession(
 	if err != nil {
 		return preparedSession{}, err
 	}
-	if err := authoring.CheckSessionActivation(opened.Session.ID); err != nil {
-		return preparedSession{}, fmt.Errorf("activate session authoring state: %w", err)
-	}
 	attachments, err := attachment.New(authoringDirectory(cfg.LocalDirectory, opened.Session.Workspace.Path))
 	if err != nil {
 		return preparedSession{}, fmt.Errorf("session attachments: %w", err)
-	}
-	if rememberWorkspaceErr := authoring.RememberWorkspace(opened.Session.Workspace.Path); rememberWorkspaceErr != nil {
-		return preparedSession{}, fmt.Errorf("remember workspace: %w", rememberWorkspaceErr)
 	}
 	editor, err := configuredDraftEditor()
 	if err != nil {
 		return preparedSession{}, err
 	}
-	// Activate last: no later preparation step may fail after the one-time rollback
-	// report becomes unreachable.
-	activation, err := authoring.ActivateSessionDraft(
-		opened.Session.ID, flameauthoring.Message{Text: cfg.InitialPrompt},
-	)
-	if err != nil {
-		return preparedSession{}, fmt.Errorf("activate session draft: %w", err)
-	}
 	return preparedSession{
 		opened: opened, runtimeProfile: cfg.RuntimeProfile, attachments: attachments, keyBindings: bindings,
 		settings: configured, options: options,
-		workbench: authoring, draft: activation.Draft, editor: editor,
-		rollbackRecovery: activation.Rollback,
+		workbench: authoring, editor: editor,
 	}, nil
 }
 

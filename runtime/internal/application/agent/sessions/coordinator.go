@@ -81,7 +81,6 @@ type MaterialSnapshotReader interface {
 type transientState interface {
 	QuiesceSession(sessionID identity.SessionID) error
 	QuiesceWorkspace(root string) error
-	ForgetSession(sessionID identity.SessionID)
 	ForgetSessionContext(sessionID identity.SessionID)
 	ForgetWorkspace(root string)
 }
@@ -128,7 +127,7 @@ type workspaceMutations interface {
 
 type resourceRetirements interface {
 	Lookup(context.Context, identity.SessionID) (ResourceRetirement, bool, error)
-	ListPending(context.Context) ([]ResourceRetirement, error)
+	ListPendingSessions(context.Context) ([]identity.SessionID, error)
 	Complete(context.Context, ResourceRetirement) error
 }
 

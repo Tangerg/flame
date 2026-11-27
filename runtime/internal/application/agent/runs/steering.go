@@ -88,8 +88,8 @@ func (c *Coordinator) Steer(ctx context.Context, cmd SteerCommand) (identity.Ite
 		if record.Conflicts(CommandSteerInput, cmd.Identity.Fingerprint) {
 			return identity.ItemID{}, ErrCommandKeyConflict
 		}
-		if record.Use == CommandKeyAccepted {
-			return record.Acceptance.UserItemID, nil
+		if accepted, found := record.Accepted(); found {
+			return accepted.UserItemID, nil
 		}
 	}
 	live, _, err := c.segments.addressLiveSegment(ctx, cmd.RunID, cmd.ExpectedSegmentID)

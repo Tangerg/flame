@@ -111,7 +111,11 @@ func writeComponentGraphs(t *testing.T, directory string, files map[string]strin
 		graphPath := path.Join(path.Dir(component.Entry), moduleGraphFilename)
 		graph := graphs[graphPath]
 		if graph == nil {
-			graph = &moduleGraph{SchemaVersion: moduleGraphSchemaVersion, Entry: path.Base(component.Entry), Modules: []moduleEntry{{Path: path.Base(component.Entry), Imports: []string{}, DynamicImports: []string{}, Exports: []string{}}}, SharedSpecifiers: []string{}}
+			graph = &moduleGraph{
+				SchemaVersion: moduleGraphSchemaVersion, RuntimeProfile: hostModuleProfile, Entry: path.Base(component.Entry),
+				Modules:          []moduleEntry{{Path: path.Base(component.Entry), Imports: []string{}, DynamicImports: []string{}, Exports: []string{}}},
+				SharedSpecifiers: []string{},
+			}
 			graphs[graphPath] = graph
 		}
 		graph.Modules[0].Exports = append(graph.Modules[0].Exports, component.Export)

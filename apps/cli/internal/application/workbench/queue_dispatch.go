@@ -60,38 +60,37 @@ func (q *Queue) DispatchCanceling(sessionID string) bool {
 	return len(pending) != 0 && pending[0].Cancellation() != nil
 }
 
-func (q *Queue) SettleDispatch(sessionID string, commandID authoring.CommandID) (authoring.QueueEntry, bool, error) {
+func (q *Queue) SettleDispatch(sessionID string, commandID authoring.CommandID) (bool, error) {
 	q.store.mu.Lock()
 	defer q.store.mu.Unlock()
 	pending := q.bySession[sessionID]
 	if len(pending) != 0 && pending[0].Command.CommandID == commandID && pending[0].Cancellation() != nil {
-		return authoring.QueueEntry{}, false, ErrDispatchCanceling
+		return false, ErrDispatchCanceling
 	}
 	return q.retire(sessionID, commandID)
 }
 
-func (q *Queue) Retire(sessionID string, commandID authoring.CommandID) (authoring.QueueEntry, bool, error) {
+func (q *Queue) Retire(sessionID string, commandID authoring.CommandID) (bool, error) {
 	q.store.mu.Lock()
 	defer q.store.mu.Unlock()
 	return q.retire(sessionID, commandID)
 }
 
-func (q *Queue) retire(sessionID string, commandID authoring.CommandID) (authoring.QueueEntry, bool, error) {
+func (q *Queue) retire(sessionID string, commandID authoring.CommandID) (bool, error) {
 	pending := q.bySession[sessionID]
 	index := pendingRunIndex(pending, commandID)
 	if index < 0 {
-		return authoring.QueueEntry{}, false, nil
+		return false, nil
 	}
 	if index != 0 || pending[0].Dispatch == nil {
-		return authoring.QueueEntry{}, false, errors.New("only the dispatched queue head can be acknowledged")
+		return false, errors.New("only the dispatched queue head can be acknowledged")
 	}
-	entry := pending[0].entry()
 	update := q.store.sessionUpdate(sessionID)
 	update.runs = pending[1:]
-	if err := q.store.recordPromptSettlement(update, entry.Message); err != nil {
-		return authoring.QueueEntry{}, false, err
+	if err := q.store.recordPromptSettlement(update, pending[0].Command.Message); err != nil {
+		return false, err
 	}
-	return entry, true, nil
+	return true, nil
 }
 
 func (q *Queue) RequeueDispatch(sessionID string, commandID authoring.CommandID) error {

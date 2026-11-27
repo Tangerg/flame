@@ -1,19 +1,20 @@
-import type { RuntimeAgentDriver } from "./runtimeDriver";
 import type { ApprovalRuleDecision } from "@/foundation/protocolValues.generated";
 import { type FlameClient } from "@flame/runtime-client";
 import {
   asRunId,
-  asItemId,
   asSegmentId,
   asSessionId,
   createMutationSettler,
+  type MutationSettler,
   isErrorType,
   RpcError,
 } from "@flame/runtime-client";
 import { mutationSettlementIsUnknown } from "@flame/runtime-client";
 import {
   type AgentRuntimeGateway,
+  type AgentSessionCreation,
   type AgentOpeningCommand,
+  type AgentSteerInput,
   type AgentUnresolvedSteer,
 } from "@/features/agent/application/runtimeGateway";
 import {
@@ -23,83 +24,70 @@ import {
 import { type RuntimeAccess } from "@/features/connection/public/runtime";
 import { type AgentSharedMaterial } from "@/features/agent/application/session/sharedMaterial";
 import {
-  mergeRecordedCommand,
   recoveredCommandBelongs,
   runtimeSessionMaterial,
+  runtimeSteerInput,
   unresolvedOpening,
   unresolvedSteer,
-  type RecoveredOpening,
 } from "@/features/agent/adapters/runtimeSessionMaterial";
 import { type AgentCommands } from "@/features/agent/application/agentCommandOwner";
 import { type createAgentSessionUsage } from "@/features/agent/application/session/sessionUsage";
 
 type RuntimeCapabilities = Pick<RuntimeAccess["capabilities"], "hasCapability">;
-
-function openingRetry(sessionId: string, command: RecoveredOpening) {
-  return {
-    sessionId,
-    retry: async (signal: AbortSignal) => {
-      const opening = await command.retry({ signal });
-      return {
-        ...opening,
-        result: {
-          runId: asRunId(opening.result.runId),
-          segmentId: asSegmentId(opening.result.segmentId),
-          ...(opening.result.userItemId ? { userItemId: asItemId(opening.result.userItemId) } : {}),
-        },
-      };
-    },
-  };
-}
+type CreateSessionMutation = ReturnType<FlameClient["sessions"]["create"]>;
 
 class RuntimeAgentGateway implements AgentRuntimeGateway {
   constructor(
     private readonly runtimeClient: () => FlameClient,
     private readonly capabilities: RuntimeCapabilities,
     private readonly sharedMaterial: AgentSharedMaterial,
+    private readonly commands: AgentCommands,
   ) {}
 
   #sessionMutations = createMutationSettler();
-  // Each Runtime generation owns its opening-retry registry. A snapshot read
-  // captures its generation and registers into that registry, so a read that
-  // finishes after the gateway switched writes a stale handle into a discarded
-  // registry rather than the current one; retries resolve only the current one.
-  #generation: {
-    retries: Map<
-      string,
-      {
-        sessionId: string;
-        retry: (signal: AbortSignal) => ReturnType<RuntimeAgentDriver["resume"]>;
-      }
-    >;
-  } = { retries: new Map() };
-  retryOpening(
-    sessionId: string,
-    key: string,
-    signal: AbortSignal,
-  ): ReturnType<RuntimeAgentDriver["resume"]> {
-    const original = this.#generation.retries.get(key);
-    if (!original || original.sessionId !== sessionId)
-      return Promise.reject(
-        new Error("opening command does not belong to this Runtime generation"),
-      );
-    return original.retry(signal);
+  createSession(input: Parameters<AgentRuntimeGateway["createSession"]>[0]) {
+    const client = this.runtimeClient();
+    return this.#observeCreation(this.#sessionMutations, (signal) =>
+      client.sessions.create(
+        {
+          workspace: { path: input.cwd },
+          ...(input.projectId ? { projectId: input.projectId } : {}),
+        },
+        signal,
+      ),
+    );
   }
 
-  async createSession(input: Parameters<AgentRuntimeGateway["createSession"]>[0]) {
-    const client = this.runtimeClient();
-    const session = await this.#sessionMutations.settle(
-      JSON.stringify(["sessions.create", input.cwd, input.projectId ?? null]),
-      (signal) =>
-        client.sessions.create(
-          {
-            workspace: { path: input.cwd },
-            ...(input.projectId ? { projectId: input.projectId } : {}),
-          },
-          signal,
-        ),
-    );
-    return session.id;
+  async #observeCreation(
+    settler: MutationSettler,
+    open: (signal: AbortSignal) => CreateSessionMutation,
+  ): Promise<AgentSessionCreation> {
+    let original: CreateSessionMutation | undefined;
+    try {
+      const session = await settler.settle((signal) => {
+        original = open(signal);
+        return original;
+      });
+      return { type: "confirmed", sessionId: session.id };
+    } catch (error) {
+      const command = original;
+      if (!command || !mutationSettlementIsUnknown(error)) throw error;
+      return {
+        type: "unconfirmed",
+        idempotencyKey: command.idempotencyKey,
+        retry: () => this.#observeCreation(settler, (signal) => command.retry({ signal })),
+      };
+    }
+  }
+
+  async sessionExists(sessionId: string, signal: AbortSignal): Promise<boolean> {
+    try {
+      await this.runtimeClient().sessions.get(asSessionId(sessionId), signal);
+      return true;
+    } catch (error) {
+      if (isErrorType(error, "session_not_found")) return false;
+      throw error;
+    }
   }
 
   async deleteSession(sessionId: string) {
@@ -133,41 +121,54 @@ class RuntimeAgentGateway implements AgentRuntimeGateway {
 
   async loadSessionSnapshot(sessionId: string, signal?: AbortSignal) {
     const client = this.runtimeClient();
-    const generation = this.#generation;
+    const commandOwner = this.commands.current();
     const sid = asSessionId(sessionId);
     const includeDescendants = this.capabilities.hasCapability("childRuns");
     try {
-      let snapshot = await client.sessions.snapshot(sid, includeDescendants, signal);
+      // Observe receipts before reading material so the transcript and all Run
+      // states reflect one Runtime snapshot taken after those observations.
       const commands = await client.runs.recoverCommands(signal);
       signal?.throwIfAborted();
-      if (
-        commands.some(
-          (command) =>
-            command.operation !== "steer" &&
-            command.observation.type === "recorded" &&
-            command.observation.acceptance.sessionId === sessionId,
-        )
-      )
-        snapshot = await client.sessions.snapshot(sid, includeDescendants, signal);
+      const snapshot = await client.sessions.snapshot(sid, includeDescendants, signal);
       const material = runtimeSessionMaterial(this.sharedMaterial, sessionId, snapshot);
       const unresolvedOpenings: AgentOpeningCommand[] = [];
+      const retiredSteers: AgentSteerInput[] = [];
       const unresolvedSteers: AgentUnresolvedSteer[] = [];
       const acknowledge: Array<() => void> = [];
       const runIds = new Set(snapshot.runs.map((run) => run.id));
       for (const command of commands) {
         if (!recoveredCommandBelongs(command, sessionId, runIds)) continue;
-        if (command.operation !== "steer")
-          generation.retries.set(command.idempotencyKey, openingRetry(sessionId, command));
         const { observation } = command;
         if (observation.type === "recorded") {
           acknowledge.push(observation.acknowledge);
-          mergeRecordedCommand(material, command, observation);
+          const receipt = observation.acceptance;
+          if (
+            command.operation === "steer" &&
+            receipt.type === "retired" &&
+            receipt.userItemId &&
+            receipt.input
+          ) {
+            retiredSteers.push(
+              runtimeSteerInput({
+                runId: receipt.runId,
+                userItemId: receipt.userItemId,
+                input: receipt.input,
+              }),
+            );
+          }
         } else if (command.operation === "steer") {
           if (observation.type === "unknown")
             console.warn("[session] original steer query failed:", observation.cause);
           unresolvedSteers.push(unresolvedSteer(command));
-        } else unresolvedOpenings.push(unresolvedOpening(command, observation.type));
+        } else {
+          unresolvedOpenings.push(
+            unresolvedOpening(command, observation.type, sessionId, () =>
+              commandOwner.assertCurrent(),
+            ),
+          );
+        }
       }
+      material.retiredSteers = retiredSteers;
       material.unresolvedSteers = unresolvedSteers;
       material.unresolvedOpenings = unresolvedOpenings;
       if (acknowledge.length)
@@ -242,14 +243,12 @@ class RuntimeAgentGateway implements AgentRuntimeGateway {
   }
 
   replaceRuntimeGeneration(): void {
-    this.#generation = { retries: new Map() };
     const predecessor = this.#sessionMutations;
     this.#sessionMutations = createMutationSettler();
     predecessor.dispose();
   }
 
   dispose(): void {
-    this.#generation = { retries: new Map() };
     this.#sessionMutations.dispose();
   }
 }
@@ -262,15 +261,11 @@ export function createAgentRuntimeGateway(
   usage: ReturnType<typeof createAgentSessionUsage>,
 ) {
   let commandOwner = commands.replace();
-  const gateway = new RuntimeAgentGateway(runtimeClient, capabilities, sharedMaterial);
+  const gateway = new RuntimeAgentGateway(runtimeClient, capabilities, sharedMaterial, commands);
   let usageOwner = usage.replace(gateway);
   let disposed = false;
   return {
     gateway,
-    retries: {
-      retry: (sessionId: string, key: string, signal: AbortSignal) =>
-        gateway.retryOpening(sessionId, key, signal),
-    },
     replaceRuntimeGeneration() {
       if (disposed) return;
       gateway.replaceRuntimeGeneration();

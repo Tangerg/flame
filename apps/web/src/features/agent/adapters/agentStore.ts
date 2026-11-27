@@ -28,14 +28,11 @@ import { EMPTY_AGENT_SESSION_VIEW } from "@/features/agent/public/sessionView";
 import {
   dropMessage,
   reconcileMessageIdentity,
-  projectSteerReceipt,
   projectSteerDelivery,
 } from "@/features/agent/application/view/viewMutations";
 import {
-  dismissVisibleProblem,
-  EMPTY_PROBLEM_PRESENTATION,
-  type ProblemPresentation,
-  withCommandError,
+  type DisplayedSessionProblem,
+  ProblemPresentation,
 } from "@/features/agent/application/view/problemPresentation";
 import { type AgentSessionStore } from "@/features/agent/adapters/agentSessionStore";
 import {
@@ -80,11 +77,6 @@ interface AgentStore {
     steer?: Required<Pick<NonNullable<Message["steer"]>, "runId" | "receipt">>,
   ) => void;
   dropMessage: (sessionId: string, id: string) => void;
-  projectSteerReceipt: (
-    sessionId: string,
-    messageId: string,
-    steer: Required<Pick<NonNullable<Message["steer"]>, "runId" | "receipt">>,
-  ) => void;
   projectSteerDelivery: (
     sessionId: string,
     messageId: string,
@@ -98,7 +90,7 @@ interface AgentStore {
   setCancelRun: (sessionId: string, action: CancelRunAction | null) => void;
   setRetryOpening: (sessionId: string, action: RetryOpeningAction | null) => void;
   projectOpeningAccepted: (sessionId: string, idempotencyKey: string) => void;
-  clearProblem: (sessionId: string) => void;
+  dismissProblem: (target: DisplayedSessionProblem) => void;
   setCommandError: (sessionId: string, error: AgentProblem | null) => void;
 }
 
@@ -110,10 +102,10 @@ function advanceProjectionCounter(current: bigint): bigint {
 
 const emptyEntry = (viewEpoch: bigint): SessionEntry => ({
   view: EMPTY_AGENT_SESSION_VIEW,
-  problem: EMPTY_PROBLEM_PRESENTATION,
+  problem: ProblemPresentation.empty,
   viewEpoch,
   viewRevision: initialProjectionCounter,
-  authoritativeRevision: initialProjectionCounter,
+  hasAuthoritativeSnapshot: false,
   refreshSequence: initialProjectionCounter,
   stop: null,
   send: null,
@@ -187,7 +179,6 @@ export function createAgentStore(sessionStore: AgentSessionStore) {
         if (!prev) return state;
         generation = prev.viewEpoch;
         let view = prev.view;
-        let problem = prev.problem;
         for (const event of events) {
           const agentEvent = runtimeAgentEvent(event);
           const next = reduceAgentEvent(view, agentEvent);
@@ -199,18 +190,13 @@ export function createAgentStore(sessionStore: AgentSessionStore) {
           );
           if (settlement) settlements.push(settlement);
           view = next;
-          // A started segment supersedes the command failure that preceded it.
-          if (agentEvent.event.type === "segment.started")
-            problem = withCommandError(problem, null);
         }
         applied = true;
-        if (view === prev.view && problem === prev.problem) return state;
+        if (view === prev.view) return state;
         return {
           sessions: patchSession(state.sessions, sessionId, {
             view,
-            problem,
-            viewRevision:
-              view === prev.view ? prev.viewRevision : advanceProjectionCounter(prev.viewRevision),
+            viewRevision: advanceProjectionCounter(prev.viewRevision),
           }),
         };
       });
@@ -315,7 +301,7 @@ export function createAgentStore(sessionStore: AgentSessionStore) {
           view,
           ...(openingCommands ? { openingCommands } : {}),
           viewRevision: advanceProjectionCounter(entry.viewRevision),
-          authoritativeRevision: advanceProjectionCounter(entry.authoritativeRevision),
+          hasAuthoritativeSnapshot: true,
         });
       });
       return committed;
@@ -347,10 +333,10 @@ export function createAgentStore(sessionStore: AgentSessionStore) {
           sessions = patchSession(sessions, sessionId, {
             view: EMPTY_AGENT_SESSION_VIEW,
             openingCommands: [],
-            problem: EMPTY_PROBLEM_PRESENTATION,
+            problem: ProblemPresentation.empty,
             viewEpoch,
             viewRevision: advanceProjectionCounter(entry.viewRevision),
-            authoritativeRevision: initialProjectionCounter,
+            hasAuthoritativeSnapshot: false,
             refreshSequence: advanceProjectionCounter(entry.refreshSequence),
           });
         }
@@ -368,13 +354,6 @@ export function createAgentStore(sessionStore: AgentSessionStore) {
     dropMessage: (sessionId, id) =>
       set((state) => {
         const sessions = patchView(state.sessions, sessionId, (view) => dropMessage(view, id));
-        return sessions === state.sessions ? state : { sessions };
-      }),
-    projectSteerReceipt: (sessionId, messageId, steer) =>
-      set((state) => {
-        const sessions = patchView(state.sessions, sessionId, (view) =>
-          projectSteerReceipt(view, messageId, steer),
-        );
         return sessions === state.sessions ? state : { sessions };
       }),
     projectSteerDelivery: (sessionId, messageId, command) =>
@@ -407,7 +386,6 @@ export function createAgentStore(sessionStore: AgentSessionStore) {
           openingCommands: entry.openingCommands.filter(
             (command) => command.idempotencyKey !== idempotencyKey,
           ),
-          problem: withCommandError(entry.problem, null),
           viewRevision: advanceProjectionCounter(entry.viewRevision),
         });
       }),
@@ -415,21 +393,20 @@ export function createAgentStore(sessionStore: AgentSessionStore) {
       set((state) => patchSessionState(state, sessionId, { synchronize: action })),
     setCancelRun: (sessionId, action) =>
       set((state) => patchSessionState(state, sessionId, { cancelRun: action })),
-    clearProblem: (sessionId) =>
+    dismissProblem: (target) =>
       set((state) => {
+        const { sessionId } = target;
         const entry = state.sessions[sessionId];
         if (!entry) return state;
-        return patchSessionState(state, sessionId, {
-          problem: dismissVisibleProblem(entry.view, entry.problem),
-        });
+        const problem = entry.problem.dismiss(entry.view, target);
+        return problem === entry.problem ? state : patchSessionState(state, sessionId, { problem });
       }),
     setCommandError: (sessionId, error) =>
       set((state) => {
         const entry = state.sessions[sessionId];
         if (!entry) return state;
-        return patchSessionState(state, sessionId, {
-          problem: withCommandError(entry.problem, error),
-        });
+        const problem = entry.problem.withCommandError(error);
+        return problem === entry.problem ? state : patchSessionState(state, sessionId, { problem });
       }),
   }));
 

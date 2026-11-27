@@ -46,7 +46,8 @@ type updateScheduleArgs struct {
 }
 
 type deleteScheduleArgs struct {
-	ScheduleID string `json:"schedule_id" jsonschema:"minLength=1" jsonschema_description:"Exact id returned by list_schedules or create_schedule."`
+	ScheduleID       string `json:"schedule_id" jsonschema:"minLength=1" jsonschema_description:"Exact schedule id from the inspected definition."`
+	ExpectedRevision uint64 `json:"expected_revision" jsonschema:"minimum=1" jsonschema_description:"Revision of the inspected definition. Review the current schedule again after a revision conflict."`
 }
 
 type listScheduleArgs struct {
@@ -64,6 +65,7 @@ type scheduleResponse struct {
 
 type scheduleDeleteResponse struct {
 	ScheduleID string `json:"schedule_id"`
+	Revision   uint64 `json:"revision"`
 }
 
 type scheduleView struct {
@@ -121,7 +123,7 @@ func buildSchedules(operations toolCommands) ([]toolcontract.Tool, error) {
 	deleteSchedule, err := toolcontract.NewFunc[deleteScheduleArgs, scheduleDeleteResponse](
 		toolcontract.FuncConfig{
 			Name:        deleteScheduleTool,
-			Description: "Permanently delete one recurring Agent Run schedule by its exact schedule_id when the user requests removal. Captured and accepted work is retained. Use update_schedule to edit or pause a definition.",
+			Description: "Permanently delete one recurring Agent Run schedule at its inspected revision when the user requests removal. Captured and accepted work is retained. Use update_schedule to edit or pause a definition.",
 		},
 		t.delete,
 	)
@@ -199,10 +201,15 @@ func (s *scheduleManagementTools) run(ctx context.Context, in wire.ItemInput) (s
 }
 
 func (s *scheduleManagementTools) delete(ctx context.Context, in deleteScheduleArgs) (scheduleDeleteResponse, error) {
-	if err := s.operations.Delete(ctx, in); err != nil {
+	deleted, err := s.operations.Delete(ctx, in)
+	if err != nil {
 		return scheduleDeleteResponse{}, commandFailure(deleteScheduleTool, err)
 	}
-	return scheduleDeleteResponse(in), nil
+	return viewScheduleDeletion(deleted), nil
+}
+
+func viewScheduleDeletion(deleted wire.DeleteResult) scheduleDeleteResponse {
+	return scheduleDeleteResponse{ScheduleID: deleted.ID, Revision: deleted.Revision}
 }
 
 const (

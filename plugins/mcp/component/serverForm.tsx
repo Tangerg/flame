@@ -5,6 +5,7 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
+import type { MCPDirectoryTarget } from "@flame/runtime-client/wire";
 import type { ComponentContext, Translate } from "@flame/component-sdk";
 import {
   Button,
@@ -126,23 +127,25 @@ export function ServerForm({
   const blocked = busy && !saving;
   const probing = state.probing.has(key);
   const jsonErrorId = useId();
-  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<MCPDirectoryTarget>();
+  const cancel = () => {
+    settings.discardDraft(context, key);
+    close(onCancel);
+  };
   const updateDraft = <K extends keyof MCPServerFields>(
     key: K,
     value: MCPServerFields[K],
-  ) => settings.edit(context, editorKey(server?.id), edit.with(key, value));
+  ) =>
+    settings.edit(context, editorKey(edit.original?.id), edit.with(key, value));
   const valid = edit.isValid;
   const onSave = async () => {
-    if ((await settings.save(context, edit, server?.id)) && presented.current)
+    if ((await settings.save(context, edit)) && presented.current)
       close(onDone);
   };
   const onTest = () => settings.test(context, key, edit);
-  const onDelete = async () => {
-    if (
-      server &&
-      (await settings.remove(context, server.id)) &&
-      presented.current
-    )
+  const onDelete = async (target: MCPDirectoryTarget) => {
+    setDeleteTarget(undefined);
+    if ((await settings.remove(context, target)) && presented.current)
       close(onDone);
   };
   return (
@@ -159,7 +162,7 @@ export function ServerForm({
           return;
         event.preventDefault();
         event.stopPropagation();
-        close(onCancel);
+        cancel();
       }}
     >
       <FormRow>
@@ -196,7 +199,7 @@ export function ServerForm({
         busy={busy}
         firstField={isEdit ? firstField : undefined}
         jsonErrorId={jsonErrorId}
-        stored={storedSecrets(server)}
+        stored={storedSecrets(edit.original)}
         updateDraft={updateDraft}
       />
 
@@ -244,7 +247,7 @@ export function ServerForm({
               size="sm"
               disabled={blocked}
               pending={saving}
-              onClick={() => setConfirmingDelete(true)}
+              onClick={() => setDeleteTarget(edit.target)}
             >
               {t("mcp.delete")}
             </Button>
@@ -271,7 +274,7 @@ export function ServerForm({
         >
           {probing ? t("mcp.testing") : t("mcp.test")}
         </Button>
-        <Button variant="ghost" size="sm" onClick={() => close(onCancel)}>
+        <Button variant="ghost" size="sm" onClick={cancel}>
           {t("common.cancel")}
         </Button>
         <Button
@@ -286,15 +289,17 @@ export function ServerForm({
       </FormActions>
       {server && (
         <ModalDialog
-          open={confirmingDelete}
-          onOpenChange={setConfirmingDelete}
+          open={deleteTarget !== undefined}
+          onOpenChange={(open) => {
+            if (!open) setDeleteTarget(undefined);
+          }}
           title={t("mcp.delete.title")}
           closeLabel={t("common.close")}
           footer={
             <>
               <Button
                 variant="ghost"
-                onClick={() => setConfirmingDelete(false)}
+                onClick={() => setDeleteTarget(undefined)}
               >
                 {t("common.cancel")}
               </Button>
@@ -303,8 +308,7 @@ export function ServerForm({
                 disabled={blocked}
                 pending={saving}
                 onClick={() => {
-                  setConfirmingDelete(false);
-                  void onDelete();
+                  if (deleteTarget) void onDelete(deleteTarget);
                 }}
               >
                 {t("mcp.delete")}

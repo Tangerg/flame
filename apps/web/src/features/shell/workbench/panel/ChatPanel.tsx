@@ -15,7 +15,6 @@ import {
   type Ref,
 } from "react";
 import { flushSync } from "react-dom";
-import { type AgentInput } from "@/features/agent/public/input";
 import { ContentVisibility } from "@/ui/index";
 import {
   AgentContentCard,
@@ -63,7 +62,6 @@ export interface ChatPanelHandle {
 }
 
 interface Props {
-  onSend: (input: AgentInput) => boolean;
   ref?: Ref<ChatPanelHandle>;
 }
 
@@ -165,7 +163,7 @@ function dockLabel(
   return active ? labelText(active.title, t) : t("dock.tabs.label");
 }
 
-export function ChatPanel({ onSend, ref }: Props) {
+export function ChatPanel({ ref }: Props) {
   const pickerRef = useRef<HTMLButtonElement>(null);
   const composerAccess = useComposer();
   const workspaceAccess = useWorkspace();
@@ -311,7 +309,6 @@ export function ChatPanel({ onSend, ref }: Props) {
                   fallbackFocus={presentationRef}
                   ready={sessions !== undefined}
                   sessionId={activeSessionId}
-                  onSend={onSend}
                 />
               </Panel>
               {dockChromeVisible && <AgentDockSeparator label={t("dock.action.resize")} />}

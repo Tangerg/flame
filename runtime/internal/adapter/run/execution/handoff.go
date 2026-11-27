@@ -65,11 +65,7 @@ func (i *interactionSession) encodeInteractionHandoff(tree scoperun.Log) (*inter
 			OwnerID: owner.MemberID, Status: snapshot.Status, PreparedEffects: snapshot.Usage.PreparedEffects})
 	}
 	slices.SortFunc(wire.Processes, func(a, b interactionProgressWire) int { return strings.Compare(a.ProcessID, b.ProcessID) })
-	inputs, err := i.pendingInputs(tree)
-	if err != nil {
-		return nil, err
-	}
-	for _, input := range inputs {
+	for _, input := range i.pendingInputs(inspection) {
 		target, found := inspection.Process(input.ProcessID())
 		member, owned := i.toolCallMember(input.ProcessID())
 		if !found || !owned || target.Status != scoperun.StatusPaused {

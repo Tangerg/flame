@@ -1,15 +1,13 @@
-import { disposeAsyncIterable } from "@/lib/asyncOwnership";
-import { type RunId, type SegmentId, type RunOpeningResult } from "@flame/runtime-client";
 import { type AgentProblem } from "@/features/agent/public/sessionView";
 import { endSpan, startRunSpan, withSpan } from "@/lib/observability/tracing";
 import { agentProblemFromRpcFailure } from "@/features/agent/adapters/rpcProblem";
 import { mutationSettlementIsUnknown } from "@flame/runtime-client";
-type RunOpening = { runId: RunId; segmentId: SegmentId };
+type OpenedRun = { runId: string };
 
 interface RunOpeningControllerOptions {
   sessionId: string;
   isCanceled: () => boolean;
-  markInteracted: () => void;
+  onBegin: () => void;
   setAbortController: (controller: AbortController) => void;
   abortCurrent: () => void;
   setStartError: (error: AgentProblem) => void;
@@ -18,90 +16,76 @@ interface RunOpeningControllerOptions {
 
 interface RunOpeningController {
   isStarting: () => boolean;
-  begin: <Result extends RunOpening>(
-    run: (signal: AbortSignal) => Promise<RunOpeningResult<Result>>,
+  begin: <Result extends OpenedRun>(
+    open: () => Promise<Result>,
     callbacks: {
-      observe: (opening: RunOpeningResult<Result>, signal: AbortSignal) => Promise<void>;
-      onResult?: (result: Result, observation: RunOpeningResult<Result>["observation"]) => void;
-      onStartError?: () => void;
+      observe: (opening: Result, signal: AbortSignal) => Promise<void>;
+      release?: (opening: Result) => Promise<void> | undefined;
+      onResult?: (opening: Result) => void;
+      releaseProvisional?: () => void;
     },
-  ) => Promise<RunOpeningResult<Result>>;
+  ) => Promise<Result>;
   retire: () => void;
 }
 
 export function createRunOpeningController({
   sessionId,
   isCanceled,
-  markInteracted,
+  onBegin,
   setAbortController,
   abortCurrent,
   setStartError,
   onRejected,
 }: RunOpeningControllerOptions): RunOpeningController {
-  let starting = false;
-  let openingLease: object = {};
-  let endActiveSpan: (() => void) | null = null;
-  let releaseActiveDraft: (() => void) | null = null;
+  let active: { releasePending(): void } | null = null;
 
   return {
-    isStarting: () => starting,
-    begin(run, { observe, onResult, onStartError }) {
-      releaseActiveDraft?.();
-      endActiveSpan?.();
-      starting = true;
-      const ownLease = (openingLease = {});
-      markInteracted();
+    isStarting: () => active !== null,
+    begin(open, { observe, release, onResult, releaseProvisional }) {
+      active?.releasePending();
+      onBegin();
       abortCurrent();
       const ctrl = new AbortController();
       setAbortController(ctrl);
       const span = startRunSpan({ "flame.session_id": sessionId });
       let failure: unknown;
-      let accepted = false;
-      let draftReleased = false;
-      const releaseDraft = () => {
-        if (accepted || draftReleased) return;
-        draftReleased = true;
-        onStartError?.();
+      let releasePendingView = releaseProvisional;
+      const releasePending = () => {
+        const release = releasePendingView;
+        releasePendingView = undefined;
+        release?.();
       };
-      releaseActiveDraft = releaseDraft;
-      let spanEnded = false;
-      const finishSpan = () => {
-        if (spanEnded) return;
-        spanEnded = true;
-        if (endActiveSpan === finishSpan) endActiveSpan = null;
-        endSpan(span, failure);
-      };
-      endActiveSpan = finishSpan;
-      let opening: ReturnType<typeof run>;
+      const openingLease = { releasePending };
+      active = openingLease;
+      let opening: ReturnType<typeof open>;
       try {
-        opening = withSpan(span, () => run(ctrl.signal));
+        opening = withSpan(span, open);
       } catch (err) {
         opening = Promise.reject(err);
       }
       void opening
         .then(
           async (opening) => {
-            if (isCanceled() || ctrl.signal.aborted || ownLease !== openingLease) {
-              if (opening.observation.type === "stream") {
-                void disposeAsyncIterable(opening.observation.events);
-              }
+            span.setAttribute("flame.run_id", opening.runId);
+            if (isCanceled() || ctrl.signal.aborted || active !== openingLease) {
+              void release?.(opening);
               return;
             }
             try {
-              accepted = true;
-              onResult?.(opening.result, opening.observation);
-              span.setAttribute("flame.run_id", opening.result.runId);
+              releasePendingView = undefined;
+              onResult?.(opening);
               await observe(opening, ctrl.signal);
             } catch (err) {
-              if (isCanceled() || ctrl.signal.aborted || ownLease !== openingLease) return;
+              if (isCanceled() || ctrl.signal.aborted || active !== openingLease) return;
               failure = err;
               console.error("[agent] accepted run stream failed:", sessionId, err);
             }
           },
           (err: unknown) => {
-            if (isCanceled() || ctrl.signal.aborted || ownLease !== openingLease) return;
-            releaseDraft();
             failure = err;
+            if (isCanceled() || ctrl.signal.aborted || active !== openingLease) return;
+            active = null;
+            releasePending();
             console.error("[agent] run failed to start:", sessionId, err);
             onRejected();
             if (mutationSettlementIsUnknown(err)) return;
@@ -110,21 +94,17 @@ export function createRunOpeningController({
           },
         )
         .finally(() => {
-          if (releaseActiveDraft === releaseDraft) releaseActiveDraft = null;
-          if (ownLease === openingLease) starting = false;
-          finishSpan();
+          if (active === openingLease) active = null;
+          endSpan(span, failure);
         });
-      // Acceptance and the observed Run have different lifetimes. The existing
-      // controller keeps the stream; input consumers only receive its receipt.
+      // A view may retire while the connection still owns the opening.
       return opening;
     },
     retire() {
-      releaseActiveDraft?.();
-      releaseActiveDraft = null;
-      openingLease = {};
-      starting = false;
+      const opening = active;
+      active = null;
+      opening?.releasePending();
       abortCurrent();
-      endActiveSpan?.();
     },
   };
 }

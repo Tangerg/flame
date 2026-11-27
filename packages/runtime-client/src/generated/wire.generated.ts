@@ -9,7 +9,7 @@
 // in the generated validator and in schema.json.
 
 // The wire version this runtime serves; a client states it in request metadata.
-export const PROTOCOL_VERSION = "2026-11-27.8";
+export const PROTOCOL_VERSION = "2026-11-27.13";
 
 // The only Session Artifact version this runtime imports or exports.
 export const SESSION_ARTIFACT_VERSION = 32;
@@ -135,6 +135,7 @@ export const PROBLEM_CODES = {
   "plugin_stale": -32043,
   "plugin_unavailable": -32045,
   "project_not_found": -32048,
+  "prompt_rejected": -32049,
   "prompt_source_too_large": -32038,
   "provider_error": -32001,
   "replay_cursor_invalid": -32027,
@@ -152,7 +153,7 @@ export const PROBLEM_CODES = {
   "stale_segment": -32026,
   "unsupported_mime": -32011,
   "vcs_unavailable": -32017,
-  "workspace_file_not_found": -32049,
+  "workspace_file_not_found": -32050,
   "workspace_unavailable": -32005,
 } as const satisfies Partial<Record<ProblemData['type'], number>>;
 
@@ -189,6 +190,7 @@ export const PROBLEM_RECOVERY = {
   "plugin_stale": "promptUser",
   "plugin_unavailable": "promptUser",
   "project_not_found": "refetch",
+  "prompt_rejected": "stop",
   "prompt_source_too_large": "promptUser",
   "provider_error": "promptUser",
   "replay_cursor_invalid": "resubscribe",
@@ -685,6 +687,10 @@ export interface GetDiffRequest {
   workspace: WorkspaceRef;
 }
 
+export interface GetGoalRequest {
+  sessionId: string;
+}
+
 export interface GetPlanRequest {
   sessionId: string;
 }
@@ -716,6 +722,7 @@ export interface GetSessionSnapshotRequest {
 export interface Goal {
   author?: ContributionSource;
   createdAt: string;
+  incarnationId: string;
   model?: string;
   objective: string;
   provider?: string;
@@ -735,11 +742,12 @@ export interface GoalReason {
 
 export type GoalReasonCode = "stoppedByUser" | "runtimeRestarted" | "runStartFailed" | "awaitingInput" | "terminalOutcomeMissing" | "runNotCompleted" | "blockedByModel";
 
-export interface GoalRequest {
+export type GoalStatus = "active" | "paused" | "blocked" | "completing";
+
+export interface GoalTarget {
+  incarnationId: string;
   sessionId: string;
 }
-
-export type GoalStatus = "active" | "paused" | "blocked" | "completing";
 
 export interface GoalUsage {
   costUsd?: number;
@@ -971,6 +979,7 @@ export interface ListSessionTrajectoryRequest {
 
 export interface ListSessionsRequest {
   cursor?: string;
+  idPrefix?: string;
   limit?: number;
   projectId?: string;
   search?: string;
@@ -1023,6 +1032,11 @@ export type MCPConnectionInput =
   | { type: "streamableHttp"; authorization?: MCPAuthorizationChange; headers?: MCPHeadersChange; url: string }
   | { type: "stdio"; args?: string[]; command: string; dir?: string; env?: MCPEnvironmentChange };
 
+export interface MCPDirectoryTarget {
+  expectedRevision?: string;
+  server: MCPServerID;
+}
+
 export type MCPEnvironmentChange =
   | { type: "set"; value: Record<string, string> }
   | { type: "clear" };
@@ -1054,6 +1068,7 @@ export interface MCPServer {
   description?: string;
   handshakeTimeout: MCPHandshakeTimeout;
   id: MCPServerID;
+  revision?: string;
   status: MCPServerState;
 }
 
@@ -1723,6 +1738,7 @@ export type ProblemData =
   | { type: "plugin_stale"; detail?: string; docUrl?: string }
   | { type: "plugin_unavailable"; detail?: string; docUrl?: string }
   | { type: "project_not_found"; detail?: string; docUrl?: string }
+  | { type: "prompt_rejected"; detail?: string; docUrl?: string }
   | { type: "prompt_source_too_large"; detail?: string; docUrl?: string }
   | { type: "provider_error"; detail?: string; docUrl?: string }
   | { type: "provider_rejected"; detail?: string; docUrl?: string }
@@ -1944,7 +1960,7 @@ export interface RollbackSessionResponse {
 
 export type RunAcceptance =
   | { type: "notRecorded"; candidateUserItemId?: string }
-  | { type: "accepted"; appliedItem?: Item; input?: ContentBlock[]; run: RunRef; runId: string; segmentId: string; sessionId: string; userItemId?: string }
+  | { type: "accepted"; input?: ContentBlock[]; runId: string; segmentId: string; sessionId: string; userItemId?: string }
   | { type: "retired"; input?: ContentBlock[]; runId: string; segmentId: string; sessionId: string; userItemId?: string };
 
 export type RunAcceptanceType = "notRecorded" | "accepted" | "retired";
@@ -2371,6 +2387,7 @@ export interface StartGoalRequest {
   objective: string;
   provider?: string;
   reasoningEffort?: string;
+  replaceIncarnationId?: string;
   sessionId: string;
 }
 
@@ -2529,6 +2546,7 @@ export interface UnresolvedEffect {
 export type UnresolvedEffectCause = "termination" | "runtimeFailure";
 
 export interface UpdateGoalRequest {
+  incarnationId: string;
   objective: string;
   sessionId: string;
 }
@@ -2537,6 +2555,7 @@ export interface UpdateMCPServerRequest {
   connection?: MCPConnectionInput;
   description?: string;
   enabled?: boolean;
+  expectedRevision?: string;
   handshakeTimeout?: MCPHandshakeTimeout;
   server: MCPServerID;
 }

@@ -9,7 +9,7 @@ import {
   type GoalState,
 } from "@/features/goal/application/goalReadModel";
 import { goalCanResume } from "@/features/goal/application/goalStatusPresentation";
-import { type StartGoalInput } from "@/features/goal/application/ports/goalCommandsGateway";
+import type { StartGoalRequest } from "@flame/runtime-client/wire";
 import {
   GoalComposerModeOwner,
   type GoalComposerSubmission,
@@ -19,7 +19,7 @@ interface GoalComposerSubmitDependencies {
   goalState(sessionId: string): GoalState | undefined;
   runtimeAvailable(): boolean;
   runOptions(): AgentRunStartOptions;
-  captureStart(): (input: StartGoalInput) => Promise<void>;
+  captureStart(): (input: StartGoalRequest) => Promise<void>;
   focusComposer(): void;
   reportUnavailable(): void;
   reportUnsupportedAttachments(): void;
@@ -91,9 +91,9 @@ function submitGoalComposerMode(
     return;
   }
 
-  let input: StartGoalInput;
+  let input: StartGoalRequest;
   try {
-    input = captureStartGoalInput(sessionId, objective, dependencies.runOptions());
+    input = captureStartGoalRequest(sessionId, objective, dependencies.runOptions(), existing);
   } catch (error) {
     if (!dependencies.retired(error)) dependencies.reportStartError(error);
     return;
@@ -110,14 +110,16 @@ function submitGoalComposerMode(
   if (submission) start(submission);
 }
 
-function captureStartGoalInput(
+function captureStartGoalRequest(
   sessionId: string,
   objective: string,
   { provider, model, reasoningEffort }: AgentRunStartOptions,
-): StartGoalInput {
+  existing: GoalReadModel | null,
+): StartGoalRequest {
   return {
     sessionId,
     objective,
+    ...(existing ? { replaceIncarnationId: existing.incarnationId } : {}),
     ...(provider !== undefined ? { provider } : {}),
     ...(model !== undefined ? { model } : {}),
     ...(reasoningEffort !== undefined ? { reasoningEffort } : {}),
@@ -127,9 +129,9 @@ function captureStartGoalInput(
 async function startGoal(
   submission: GoalComposerSubmission,
   dependencies: GoalComposerSubmitDependencies,
-  startCommand: (input: StartGoalInput) => Promise<void>,
+  startCommand: (input: StartGoalRequest) => Promise<void>,
   context: ComposerSubmitModeContext,
-  input: StartGoalInput,
+  input: StartGoalRequest,
 ): Promise<void> {
   try {
     await startCommand(input);

@@ -16,6 +16,7 @@ import {
 import { useWorkspace } from "@/features/workspace/public/workspace";
 import { useStartProjectSession } from "@/features/projects/application/startProjectSession";
 import { selectWorkspaceChat } from "@/features/workspace/public/navigation";
+import type { ProjectCommandTarget } from "@/features/projects/application/projectCommands";
 import { useProjectsAccess } from "@/features/projects/application/projectsContext";
 import { useProjectHomeTarget } from "@/features/projects/application/projectHome";
 import { useProjects, type ProjectSummary } from "@/features/projects/application/projectQueries";
@@ -42,7 +43,11 @@ export function ProjectHome() {
   const project = projects.data?.find((candidate) => candidate.id === projectId);
   if (!project)
     return (
-      <p role="status">{projects.isPending ? t("common.loading") : t("projects.home.missing")}</p>
+      <p role="status">
+        {projects.isPending || projects.isFetching
+          ? t("common.loading")
+          : t("projects.home.missing")}
+      </p>
     );
   return <LoadedProjectHome key={project.id} project={project} />;
 }
@@ -59,11 +64,11 @@ function LoadedProjectHome({ project }: { project: ProjectSummary }) {
   const members = sessions
     .filter((session) => session.projectId === project.id)
     .sort((a, b) => (a.time === b.time ? 0 : a.time < b.time ? 1 : -1));
-  const [renaming, setRenaming] = useState(false);
-  const [draft, setDraft] = useState(project.instructions);
+  const [renaming, setRenaming] = useState<ProjectSummary | null>(null);
+  const [draft, setDraft] = useState<{ target: ProjectCommandTarget; text: string } | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const dirty = draft.trim() !== project.instructions;
+  const dirty = draft !== null && draft.text.trim() !== project.instructions;
 
   const run = async (change: () => Promise<unknown>) => {
     setSaving(true);
@@ -109,7 +114,7 @@ function LoadedProjectHome({ project }: { project: ProjectSummary }) {
                   {labelText(research.title)}
                 </Button>
               )}
-              <Button variant="ghost" size="sm" onClick={() => setRenaming(true)}>
+              <Button variant="ghost" size="sm" onClick={() => setRenaming(project)}>
                 {t("projects.rename.title")}
               </Button>
               <Button
@@ -133,12 +138,20 @@ function LoadedProjectHome({ project }: { project: ProjectSummary }) {
               autosize
               aria-label={t("projects.home.instructions")}
               placeholder={t("projects.home.instructionsPlaceholder")}
-              value={draft}
-              onChange={(event) => setDraft(event.target.value)}
+              value={draft?.text ?? project.instructions}
+              readOnly={saving}
+              onChange={(event) => {
+                const text = event.target.value;
+                setDraft((current) =>
+                  text === project.instructions
+                    ? null
+                    : { target: current?.target ?? project, text },
+                );
+              }}
             />
             {dirty && (
               <div {...stylex.props(styles.save)}>
-                <Button variant="ghost" size="sm" onClick={() => setDraft(project.instructions)}>
+                <Button variant="ghost" size="sm" onClick={() => setDraft(null)}>
                   {t("common.cancel")}
                 </Button>
                 <Button
@@ -146,7 +159,12 @@ function LoadedProjectHome({ project }: { project: ProjectSummary }) {
                   size="sm"
                   pending={saving}
                   onClick={() =>
-                    void run(() => access.commands.update(project, { instructions: draft.trim() }))
+                    void run(async () => {
+                      await access.commands.update(draft.target, {
+                        instructions: draft.text.trim(),
+                      });
+                      setDraft((current) => (current === draft ? null : current));
+                    })
                   }
                 >
                   {t("projects.home.save")}
@@ -179,7 +197,7 @@ function LoadedProjectHome({ project }: { project: ProjectSummary }) {
           )}
         </PanelSection>
       </Panel>
-      {renaming && <ProjectNameDialog project={project} onClose={() => setRenaming(false)} />}
+      {renaming && <ProjectNameDialog project={renaming} onClose={() => setRenaming(null)} />}
     </HeadingLevel>
   );
 }

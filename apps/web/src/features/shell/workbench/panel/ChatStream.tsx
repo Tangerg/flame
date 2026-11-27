@@ -2,7 +2,6 @@ import * as stylex from "@stylexjs/stylex";
 import { companion } from "@flame/brand-assets";
 import { tupleKey } from "@/lib/tupleKey";
 import { useT } from "@/lib/i18n/index";
-import { type AgentInput } from "@/features/agent/public/input";
 import { memo, useLayoutEffect, useMemo, useRef } from "react";
 import { useActiveConversationRows } from "@/features/agent/public/conversation";
 import { useActiveSessionId } from "@/features/agent/public/session";
@@ -17,7 +16,7 @@ import { FloatingComposer } from "@/features/shell/workbench/panel/FloatingCompo
 import { readingColumn as rc } from "@/features/chat/public/message/rendering";
 import { CwdMissingBanner } from "@/features/shell/workbench/panel/CwdMissingBanner";
 import { MessageStream } from "@/features/shell/workbench/panel/MessageStream";
-import { RunErrorBanner } from "@/features/shell/workbench/panel/RunErrorBanner";
+import { SessionProblemBanner } from "@/features/shell/workbench/panel/SessionProblemBanner";
 import { EmptyChatHeading } from "@/features/shell/workbench/panel/FolderSelector";
 import { pendingQuestionRequest } from "@/features/chat/public/message/rendering";
 import { QuestionCard } from "@/features/chat/public/message/rendering";
@@ -104,22 +103,18 @@ const cst = stylex.create({
   },
 });
 
-interface Props {
-  onSend: (input: AgentInput) => boolean;
-}
-
 const ChatBanners = memo(function ChatBanners({ sessionId }: { sessionId: string }) {
   const t = useT();
   return (
     <ScrollRegion label={t("chat.notices")} data-focus-inset="" styles={cst.notices}>
       <CwdMissingBanner key={sessionId} />
-      <RunErrorBanner />
+      <SessionProblemBanner />
       <Slot name="chat.banner.top" />
     </ScrollRegion>
   );
 });
 
-export function ChatStream({ onSend }: Props) {
+export function ChatStream() {
   const sessionId = useActiveSessionId();
   const rows = useActiveConversationRows();
 
@@ -140,9 +135,7 @@ export function ChatStream({ onSend }: Props) {
 
   const composer = pendingQuestion ? (
     <QuestionCard
-      // The composer card lives outside the session-keyed transcript, so its own
-      // identity key is what resets draft/submit state when the awaiting question
-      // changes; without it a prior question's state would bleed into the next.
+      // The composer slot survives changes to which question owns its draft.
       key={tupleKey(sessionId, pendingQuestion.resumeRunId, pendingQuestion.itemId)}
       sessionId={sessionId}
       status={pendingQuestion.block.status}
@@ -157,7 +150,7 @@ export function ChatStream({ onSend }: Props) {
       }}
     />
   ) : (
-    <ComposerSurface onSend={onSend} />
+    <ComposerSurface />
   );
   const started = rows.length > 0;
 

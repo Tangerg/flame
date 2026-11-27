@@ -264,7 +264,7 @@ func newSessionsDeleteCommand(provider runtimeProvider) *cobra.Command {
 		Aliases:      []string{"rm"},
 		Args:         cobra.ExactArgs(1),
 		SilenceUsage: true,
-		RunE: func(cmd *cobra.Command, args []string) (runErr error) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			if !yes {
 				return errors.New("refusing to delete without --yes")
 			}
@@ -272,37 +272,25 @@ func newSessionsDeleteCommand(provider runtimeProvider) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			authoring, err := provider.workbench()
-			if err != nil {
-				return err
-			}
-			defer func() { runErr = errors.Join(runErr, authoring.Close()) }()
 			replayPolicy, err := mutation.NewReplayPolicy(profile.IdempotencyLimits(), time.Now)
 			if err != nil {
 				return fmt.Errorf("runtime command replay policy: %w", err)
+			}
+			authoring, err := provider.workbench()
+			if err != nil {
+				return err
 			}
 			result, err := session.Delete(
 				cmd.Context(), runtime, authoring, args[0],
 				replayPolicy,
 				mutation.AcknowledgementBackoff(),
 			)
-			switch result.Outcome {
-			case mutation.Rejected:
-				if rejectErr := session.RejectDeletion(authoring, result); rejectErr != nil {
-					return errors.Join(err, rejectErr)
-				}
-				return err
-			case mutation.Unknown:
-				if result.Request.CommandID == "" {
-					return err
-				}
-				return fmt.Errorf("delete session outcome is unknown; retry the same command to reconcile it: %w", err)
-			case mutation.Confirmed:
-			default:
-				return errors.New("delete session returned an invalid settlement outcome")
+			closeErr := authoring.Close()
+			if err != nil {
+				return errors.Join(err, closeErr)
 			}
-			if confirmErr := session.ConfirmDeletion(authoring, result); confirmErr != nil {
-				return fmt.Errorf("retire deleted session state: %w", confirmErr)
+			if cleanupErr := errors.Join(result.LocalCleanupError, closeErr); cleanupErr != nil {
+				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "session deleted. Local state cleanup is pending (%v)\n", cleanupErr)
 			}
 			_, err = fmt.Fprintln(cmd.OutOrStdout(), args[0])
 			return err
@@ -329,9 +317,10 @@ func completeSessionIDs(provider runtimeProvider) cobra.CompletionFunc {
 		if err != nil {
 			return nil, cobra.ShellCompDirectiveError
 		}
-		// The completed word is a Session ID, which Runtime's search does not
-		// match; searching with it would hide every candidate.
-		page, err := runtime.ListSessions(cmd.Context(), conversation.SessionQuery{PageSize: conversation.MaximumPageSize()})
+		page, err := runtime.ListSessions(cmd.Context(), conversation.SessionQuery{
+			PageSize: conversation.MaximumPageSize(),
+			IDPrefix: toComplete,
+		})
 		if err != nil {
 			return nil, cobra.ShellCompDirectiveError
 		}
@@ -339,7 +328,7 @@ func completeSessionIDs(provider runtimeProvider) cobra.CompletionFunc {
 		for _, session := range page.Items {
 			items = append(items, session.ID+"\t"+session.Title)
 		}
-		return filterCompletionPrefix(items, toComplete), cobra.ShellCompDirectiveNoFileComp
+		return items, cobra.ShellCompDirectiveNoFileComp
 	}
 }
 

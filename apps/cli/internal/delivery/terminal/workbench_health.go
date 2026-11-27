@@ -8,9 +8,7 @@ const (
 	workbenchRunOutbox
 	workbenchSteerOutbox
 	workbenchDraft
-	workbenchHistory
 	workbenchConcernCount
-	workbenchSessionConcernCount = workbenchHistory
 )
 
 type workbenchHealth struct {
@@ -39,9 +37,7 @@ func (w *workbenchHealth) problem() string {
 }
 
 func (w *workbenchHealth) enterSession() {
-	for concern := range workbenchSessionConcernCount {
-		w.problems[concern] = ""
-	}
+	clear(w.problems[:])
 }
 
 func (a *app) reportWorkbenchIssue(concern workbenchConcern, err error) {

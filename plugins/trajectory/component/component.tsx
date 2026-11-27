@@ -15,7 +15,7 @@ import {
 import {
   failureText,
   mutationSettlementIsUnknown,
-  type ComponentContext,
+  type PluginComponentProps,
   useTranslator,
 } from "@flame/component-sdk";
 import type { MutationPromise } from "@flame/runtime-client";
@@ -59,11 +59,11 @@ type Read = {
   error?: { cause: unknown };
 };
 
-export function Trajectory({ context }: { context: ComponentContext }) {
+export function Trajectory({ context, locale }: PluginComponentProps) {
   const { runtime, track, signal: componentSignal, sessionId } = context;
   if (!sessionId)
     throw new Error("Session trajectory requires a Session context");
-  const t = useTranslator(catalogs, context.locale);
+  const t = useTranslator(catalogs, locale);
   const [kind, setKind] = useState<KindFilter>(UNFILTERED);
   const [run, setRun] = useState<string>(UNFILTERED);
   const [search, setSearch] = useState("");
@@ -227,7 +227,7 @@ export function Trajectory({ context }: { context: ComponentContext }) {
               searchElement.current?.focus();
             }}
             t={t}
-            locale={context.locale}
+            locale={locale}
           />
           {(accepted.cursors.length > 1 ||
             Boolean(accepted.page.nextCursor)) && (
@@ -278,10 +278,10 @@ type Rename =
   | { phase: "checking"; original: MutationPromise<Session> }
   | { phase: "saved"; session: Session };
 
-export function RenameSession({ context }: { context: ComponentContext }) {
+export function RenameSession({ context, locale }: PluginComponentProps) {
   const session = context.sessionTarget;
   if (!session) throw new Error("A captured Session action target is required");
-  const t = useTranslator(catalogs, context.locale);
+  const t = useTranslator(catalogs, locale);
   const [title, setTitle] = useState(session.title);
   const [rename, setRename] = useState<Rename>({ phase: "editing" });
   const busy = rename.phase === "saving" || rename.phase === "checking";

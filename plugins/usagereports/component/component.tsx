@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { type ComponentContext } from "@flame/component-sdk";
+import { type PluginComponentProps } from "@flame/component-sdk";
 import { isImeKey, Metadata, Panel, PanelHeader } from "@flame/ui";
 import { reportTitles, type BoundContext } from "./model";
 import { useReportArchive } from "./useReportArchive";
@@ -11,19 +11,19 @@ import {
   SavedReport,
 } from "./views";
 
-export function UsageReports({ context }: { context: ComponentContext }) {
+export function UsageReports({ context, locale }: PluginComponentProps) {
   const bound = useMemo(() => {
     if (!context.binding)
       throw new Error("Saved usage reports require their declared backend");
     return { ...context, binding: context.binding };
   }, [context]);
   const identity = `${bound.binding.installationId}/${bound.binding.digest}/${bound.binding.contribution}`;
-  return <Archive key={identity} context={bound} />;
+  return <Archive key={identity} context={bound} locale={locale} />;
 }
 
-function Archive({ context }: { context: BoundContext }) {
-  const archive = useReportArchive(context);
-  const { t, fmt, busy, outcome, refs, catalog, report, removal, recovery } =
+function Archive({ context, locale }: { context: BoundContext; locale: string }) {
+  const archive = useReportArchive(context, locale);
+  const { t, fmt, locked, outcome, refs, catalog, report, removal } =
     archive;
   const opened = report.opened;
   const titleFor = reportTitles(
@@ -73,7 +73,7 @@ function Archive({ context }: { context: BoundContext }) {
         <SavedReport
           opened={opened}
           removeButton={refs.removeButton}
-          pending={busy || recovery.commands.length > 0}
+          pending={locked}
           remove={removal.request}
           t={t}
           fmt={fmt}

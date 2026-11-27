@@ -22,7 +22,8 @@ its saved accounting payload. Core evidence and totals are unaffected.
 
 Each accepted command has its own immutable report ID. Replaying a capture after
 removal cannot recreate that report, and an old removal cannot target a later
-capture. [Archive policy](contracts/limits.ts) owns the report count and canonical
+capture. A deletion receipt contains the exact removed report ID. Recovery
+closes that report if it is open before refreshing the catalog. [Archive policy](contracts/limits.ts) owns the report count and canonical
 accounting byte limits; admission and component feedback consume that same policy.
 Full archives refuse new captures until a report is explicitly removed. Stored
 data that fails identity or summary validation is an error, never an empty
@@ -58,8 +59,8 @@ reader, deletion confirmation and saved feedback share the same title rule.
 Exact report identity shows the original ID and UTC bounds. Original error
 text appears as supplied.
 
-One archive action waits at a time. Only its initiating control names the
-waiting action and is busy; it keeps keyboard focus and refuses repeated
+The archive admits one action before issuing any command. The initiating
+control names the waiting action, keeps keyboard focus and refuses repeated
 activation. Save stays unavailable while any original command outcome is
 unresolved; a known refusal restores it. An accepted capture or original check
 opens the saved report; otherwise a confirmed check or retirement that removes

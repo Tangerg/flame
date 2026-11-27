@@ -1,5 +1,6 @@
 {
   "id": {"origin": {"type": "user"}, "name": "filesystem"},
+  "revision": "96da71c4-3799-4d48-b1de-49b04eb10099",
   "description": "Local filesystem access",
   "connection": {
     "type": "stdio",

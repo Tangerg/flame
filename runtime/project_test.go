@@ -89,16 +89,24 @@ func TestProjectKeepsItsSessionsAcrossRestartWithoutCascading(t *testing.T) {
 	if got := members(review.ID); len(got) != 1 || got[0] != moved.ID {
 		t.Fatalf("Project members after restart = %v, want [%s]", got, moved.ID)
 	}
-	archived, err := reopened.ListProjects(t.Context(), protocol.ListProjectsRequest{Archived: true}, protocol.CallOptions{})
+	archived, err := reopened.ListProjects(t.Context(), protocol.ListProjectsRequest{Archived: new(true)}, protocol.CallOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	active, err := reopened.ListProjects(t.Context(), protocol.ListProjectsRequest{}, protocol.CallOptions{})
+	active, err := reopened.ListProjects(t.Context(), protocol.ListProjectsRequest{Archived: new(false)}, protocol.CallOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(archived.Data) != 1 || archived.Data[0].ID != research.ID || len(active.Data) != 1 || active.Data[0].ID != review.ID {
 		t.Fatalf("catalogs after archive = archived %+v, active %+v", archived.Data, active.Data)
+	}
+
+	all, err := reopened.ListProjects(t.Context(), protocol.ListProjectsRequest{}, protocol.CallOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(all.Data) != 2 || all.Data[0].ID != research.ID || all.Data[1].ID != review.ID {
+		t.Fatalf("catalog after archive = %+v, want both Projects in update order", all.Data)
 	}
 
 	left, err := reopened.UpdateSession(t.Context(), protocol.UpdateSessionRequest{

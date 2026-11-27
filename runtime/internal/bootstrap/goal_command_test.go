@@ -27,7 +27,7 @@ func TestGoalCommandsSettleTheDriveAfterCommit(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	request := protocol.GoalRequest{SessionID: session.ID}
+	request := protocol.GetGoalRequest{SessionID: session.ID}
 	invoke := func(method delivery.Name, params any, key string) protocol.OperationResult {
 		return runtime.endpoint.Invoke(ctx, method, params, protocol.CallMetadata{RequestMeta: meta, IdempotencyKey: key})
 	}
@@ -66,7 +66,7 @@ func TestGoalCommandsSettleTheDriveAfterCommit(t *testing.T) {
 
 	update := func(objective, key string) protocol.OperationResult {
 		return invoke("goals.update", protocol.UpdateGoalRequest{
-			SessionID: session.ID, Objective: objective,
+			GoalTarget: started.GoalTarget, Objective: objective,
 		}, key)
 	}
 	assertOriginalDrive := func() {
@@ -86,7 +86,7 @@ func TestGoalCommandsSettleTheDriveAfterCommit(t *testing.T) {
 	assertOriginalDrive()
 
 	runtime.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: author.ID, Enabled: false}, "withdraw-author")
-	if err := api.StopGoal(ctx, request); !errors.Is(err, protocol.ErrPluginUnavailable) {
+	if err := api.StopGoal(ctx, started.GoalTarget); !errors.Is(err, protocol.ErrPluginUnavailable) {
 		t.Fatalf("stop with unavailable author = %v, want plugin_unavailable", err)
 	}
 	assertOriginalDrive()
@@ -98,7 +98,7 @@ func TestGoalCommandsSettleTheDriveAfterCommit(t *testing.T) {
 	assertOriginalDrive()
 	result := edit()
 	changed, ok := result.Value.(*protocol.Goal)
-	if result.Failure != nil || !ok || changed.Status != protocol.GoalActive || changed.Objective != edited || changed.Used.Runs != 0 {
+	if result.Failure != nil || !ok || changed.Status != protocol.GoalActive || changed.Objective != edited || changed.Used.Runs != 0 || changed.IncarnationID == started.IncarnationID {
 		t.Fatalf("edit Goal = %+v, %v, want active replacement with no prior Runs", changed, result.Failure)
 	}
 	waitForSignal(t, model.resumedCallStarted, "replacement Goal Model call")
@@ -106,7 +106,7 @@ func TestGoalCommandsSettleTheDriveAfterCommit(t *testing.T) {
 	if err != nil || currentRun.Status != protocol.RunStatusFinished {
 		t.Fatalf("original Run when replacement starts = %+v, %v, want finished", currentRun, err)
 	}
-	stop := func() protocol.OperationResult { return invoke("goals.stop", request, "stop-objective") }
+	stop := func() protocol.OperationResult { return invoke("goals.stop", changed.GoalTarget, "stop-objective") }
 	withRefusedReceipt(stop)
 	standing, err := api.GetGoal(ctx, request)
 	if err != nil || standing == nil || standing.Status != protocol.GoalActive || standing.Used.Runs != 0 {
@@ -123,8 +123,8 @@ func TestGoalCommandsSettleTheDriveAfterCommit(t *testing.T) {
 			t.Fatalf("settled Goal = %+v, %v, want paused replacement with exactly one Run", current, err)
 		}
 	}
-	clear := func() protocol.OperationResult { return invoke("goals.clear", request, "clear-objective") }
-	resume := func() protocol.OperationResult { return invoke("goals.resume", request, "resume-objective") }
+	clear := func() protocol.OperationResult { return invoke("goals.clear", changed.GoalTarget, "clear-objective") }
+	resume := func() protocol.OperationResult { return invoke("goals.resume", changed.GoalTarget, "resume-objective") }
 	assertPaused()
 	withRefusedReceipt(clear)
 	assertPaused()
@@ -132,7 +132,7 @@ func TestGoalCommandsSettleTheDriveAfterCommit(t *testing.T) {
 	assertPaused()
 	resumeResult := resume()
 	resumed, ok := resumeResult.Value.(*protocol.Goal)
-	if resumeResult.Failure != nil || !ok || resumed.Status != protocol.GoalActive || resumed.Used.Runs != 1 {
+	if resumeResult.Failure != nil || !ok || resumed.Status != protocol.GoalActive || resumed.Used.Runs != 1 || resumed.GoalTarget != changed.GoalTarget {
 		t.Fatalf("resume Goal = %+v, %v, want active replacement with one settled Run", resumed, resumeResult.Failure)
 	}
 	if result := stop(); result.Failure != nil || result.Value != (struct{}{}) {

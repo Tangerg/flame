@@ -66,7 +66,7 @@ func (o *CallComposition) captureIndependent(ctx context.Context, resolve modela
 	if err != nil {
 		return modeladapter.SelectedChat{}, nil, nil, err
 	}
-	if invocation.ID == executionctx.InvocationOwner(ctx) {
+	if invocation.ID == executionctx.EndpointOwner(ctx) {
 		return modeladapter.SelectedChat{}, nil, nil, errors.New("model call: independent invocation cannot claim its executing owner identity")
 	}
 
@@ -90,9 +90,9 @@ func (o *CallComposition) captureIndependent(ctx context.Context, resolve modela
 	}
 	selected, err := modeladapter.NewSelectedChat(selection, resolved)
 	if err != nil {
-		return modeladapter.SelectedChat{}, nil, nil, errors.Join(err, resolved.Close(context.WithoutCancel(ctx)))
+		return modeladapter.SelectedChat{}, nil, nil, errors.Join(err, resolved.Close(ctx))
 	}
-	captured, release, err := o.capture(ctx, selected, flamemodel.Independent, func() error { return resolved.Close(context.WithoutCancel(ctx)) }, input.Budget.Admit)
+	captured, release, err := o.capture(ctx, selected, flamemodel.Independent, func() error { return resolved.Close(ctx) }, input.Budget.Admit)
 	if err != nil {
 		return modeladapter.SelectedChat{}, nil, nil, err
 	}

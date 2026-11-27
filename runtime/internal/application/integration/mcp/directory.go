@@ -32,10 +32,12 @@ func (c *Coordinator) CreateServer(ctx context.Context, input ServerInput, recei
 	return c.saveServer(write, srv, receipt)
 }
 
-func (c *Coordinator) UpdateServer(ctx context.Context, name mcpserver.ID, patch ServerPatch, receipt operation.ReplayClaim) error {
-	if name.Origin().Kind() != mcpserver.OriginUser {
-		return ErrOwnedByInstallation
-	}
+type DirectoryTarget struct {
+	Server   mcpserver.ID
+	Revision string
+}
+
+func (c *Coordinator) UpdateServer(ctx context.Context, target DirectoryTarget, patch ServerPatch, receipt operation.ReplayClaim) error {
 	if patch.Empty() {
 		return fmt.Errorf("%w: update contains no changes", ErrInvalidServerConfiguration)
 	}
@@ -44,12 +46,9 @@ func (c *Coordinator) UpdateServer(ctx context.Context, name mcpserver.ID, patch
 		return err
 	}
 	defer write.close()
-	current, found, err := c.registry.Definition(write.requestCtx, name)
+	current, err := c.directoryServer(write.requestCtx, target)
 	if err != nil {
 		return err
-	}
-	if !found {
-		return ErrUnknownServer
 	}
 	updated, err := applyServerPatch(current, patch)
 	if err != nil {
@@ -71,28 +70,40 @@ func (c *Coordinator) saveServer(write *mutationScope, accepted mcpserver.Server
 	})
 }
 
-func (c *Coordinator) DeleteServer(ctx context.Context, name mcpserver.ID, receipt operation.ReplayClaim) error {
-	if name.Origin().Kind() != mcpserver.OriginUser {
-		return ErrOwnedByInstallation
-	}
+func (c *Coordinator) DeleteServer(ctx context.Context, target DirectoryTarget, receipt operation.ReplayClaim) error {
 	write, err := c.beginMutation(ctx)
 	if err != nil {
 		return err
 	}
 	defer write.close()
-	current, found, err := c.registry.Definition(write.requestCtx, name)
+	current, err := c.directoryServer(write.requestCtx, target)
 	if err != nil {
 		return err
-	} else if !found {
-		return ErrUnknownServer
 	}
 	settlement, err := c.directory.Remove(write.requestCtx, current, receipt)
 	if err != nil {
 		return err
 	}
 	return c.completeDirectoryChange(write, settlement, func(context.Context) error {
-		return c.connections.Detach(name)
+		return c.connections.Detach(target.Server)
 	})
+}
+
+func (c *Coordinator) directoryServer(ctx context.Context, target DirectoryTarget) (mcpserver.Server, error) {
+	if target.Server.Origin().Kind() != mcpserver.OriginUser {
+		return mcpserver.Server{}, ErrOwnedByInstallation
+	}
+	current, found, err := c.registry.Definition(ctx, target.Server)
+	if err != nil {
+		return mcpserver.Server{}, err
+	}
+	if !found {
+		return mcpserver.Server{}, ErrUnknownServer
+	}
+	if current.DirectoryRevision != target.Revision {
+		return mcpserver.Server{}, ErrDirectoryRevisionConflict
+	}
+	return current, nil
 }
 
 func (c *Coordinator) RecoverDirectoryChange(ctx context.Context, receipt operation.ReplayClaim) error {

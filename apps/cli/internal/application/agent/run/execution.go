@@ -77,36 +77,23 @@ func Execute(ctx context.Context, invocation Invocation) (runErr error) {
 		return fmt.Errorf("prepare one-shot start replay guard: %w", err)
 	}
 	opened, err := mutation.ConfirmAdmitted(observationCtx, mutation.AcknowledgementBackoff(), nil,
-		func(ctx context.Context) (conversation.SegmentStream, error) {
+		func(ctx context.Context) (Opening, error) {
 			return openStart(ctx, invocation.Runtime, invocation.Start, startReplay, invocation.ReplayPolicy)
 		})
-	if _, retired := errors.AsType[*conversation.RetiredOpeningError](err); retired {
-		return err
-	}
-	if err != nil {
-		if receipt, accepted := conversation.AcceptedMutationReceipt(err); accepted {
-			opened = receipt
-		} else {
-			return err
-		}
-	}
-	var watcher *cancellationWatcher
-	if opened.RunID != "" {
-		watcher = watchCancellation(ctx, invocation.Runtime, opened.RunID, invocation.ReplayPolicy)
-		defer func() { runErr = errors.Join(runErr, watcher.Finish()) }()
-	}
 	if err != nil {
 		return err
 	}
-	if validateStartErr := opened.ValidateStart(); validateStartErr != nil {
-		return fmt.Errorf("start run: %w", validateStartErr)
-	}
-	run := conversation.Run{ID: opened.RunID, SessionID: invocation.Start.SessionID, Lineage: conversation.RootRunLineage()}
+	watcher := watchCancellation(ctx, invocation.Runtime, opened.RunID(), invocation.ReplayPolicy)
+	defer func() { runErr = errors.Join(runErr, watcher.Finish()) }()
+	run := conversation.Run{ID: opened.RunID(), SessionID: invocation.Start.SessionID, Lineage: conversation.RootRunLineage()}
 	if beginErr := invocation.Renderer.Begin(run, invocation.Start.Options); beginErr != nil {
 		return beginErr
 	}
 
-	return drive(observationCtx, invocation, opened)
+	driver := executionDriver{
+		invocation: invocation, conversation: conversation.New(), current: opened.segment,
+	}
+	return driver.run(observationCtx)
 }
 
 type cancellationWatcher struct {
@@ -173,17 +160,8 @@ func cancelRequestedRun(
 	return nil
 }
 
-func drive(ctx context.Context, invocation Invocation, opened conversation.SegmentStream) error {
-	driver := executionDriver{
-		invocation: invocation, openedRunID: opened.RunID,
-		conversation: conversation.New(), current: opened,
-	}
-	return driver.run(ctx)
-}
-
 type executionDriver struct {
 	invocation   Invocation
-	openedRunID  string
 	conversation *conversation.Conversation
 	current      conversation.SegmentStream
 	failures     int
@@ -191,6 +169,13 @@ type executionDriver struct {
 
 func (e *executionDriver) run(ctx context.Context) error {
 	for {
+		if e.current.Events == nil {
+			continued, err := e.recover(ctx)
+			if !continued {
+				return err
+			}
+			continue
+		}
 		followed := consume(e.current.Events, e.conversation, e.invocation.Renderer)
 		if followed.err == nil && e.conversation.RunID() == e.current.RunID {
 			switch e.conversation.Phase() {
@@ -231,17 +216,14 @@ func (e *executionDriver) resume(ctx context.Context, interrupts []conversation.
 	}
 	continued, err := mutation.ConfirmAdmitted(
 		ctx, mutation.AcknowledgementBackoff(), nil,
-		func(ctx context.Context) (conversation.SegmentStream, error) {
+		func(ctx context.Context) (Opening, error) {
 			return openResume(ctx, e.invocation.Runtime, command, replayGuard, e.invocation.ReplayPolicy)
 		},
 	)
 	if err != nil {
 		return err
 	}
-	if err := validateContinuation(continued, e.openedRunID); err != nil {
-		return err
-	}
-	e.current = continued
+	e.current = continued.segment
 	e.failures = 0
 	return nil
 }
@@ -249,15 +231,7 @@ func (e *executionDriver) resume(ctx context.Context, interrupts []conversation.
 func (e *executionDriver) reconnect(ctx context.Context, cause error) (bool, error) {
 	for {
 		if RecoveryRequired(cause) {
-			recovered, err := RecoverSegment(ctx, e.invocation.Runtime, e.invocation.Start.SessionID, e.current.RunID)
-			if err == nil {
-				return e.installRecovery(ctx, recovered)
-			}
-			e.failures++
-			if err := e.waitBeforeRecovery(ctx, err); err != nil {
-				return false, err
-			}
-			continue
+			return e.recover(ctx)
 		}
 		e.failures++
 		if err := e.waitBeforeReconnect(ctx, cause); err != nil {
@@ -275,6 +249,19 @@ func (e *executionDriver) reconnect(ctx context.Context, cause error) (bool, err
 		}
 		e.current = rebound
 		return true, nil
+	}
+}
+
+func (e *executionDriver) recover(ctx context.Context) (bool, error) {
+	for {
+		recovered, err := RecoverSegment(ctx, e.invocation.Runtime, e.invocation.Start.SessionID, e.current.RunID)
+		if err == nil {
+			return e.installRecovery(ctx, recovered)
+		}
+		e.failures++
+		if err := e.waitBeforeRecovery(ctx, err); err != nil {
+			return false, err
+		}
 	}
 }
 
@@ -322,10 +309,6 @@ func restoreRecoveredConversation(projection *conversation.Conversation, recover
 		return projection.RestoreAttachedSnapshot(recovered.Snapshot, recovered.Stream)
 	}
 	return projection.RestoreSnapshot(recovered.Snapshot)
-}
-
-func validateContinuation(stream conversation.SegmentStream, runID string) error {
-	return stream.ValidateResume(runID, nil)
 }
 
 type followResult struct {

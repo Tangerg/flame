@@ -25,9 +25,10 @@ import (
 )
 
 const (
-	runtimeExecutable   = "flame-runtime"
-	configFile          = "config.yaml"
-	originalSaveCommand = "original-save"
+	runtimeExecutable     = "flame-runtime"
+	configFile            = "config.yaml"
+	originalSaveCommand   = "original-save"
+	originalRemoveCommand = "original-remove"
 )
 
 const qualificationTimeout = 90 * time.Second
@@ -305,14 +306,25 @@ func (d *distribution) checkReports(ctx context.Context) error {
 	); err != nil {
 		return err
 	}
-	remove, err := reportRequest(request, UsageReportsDeleteV1Method, UsageReportsDeleteV1InputRpcReportInput{Id: header.Id})
+	remove, err := reportRequest(request, UsageReportsDeleteV2Method, UsageReportsDeleteV2InputRpcReportInput{Id: header.Id})
 	if err != nil {
 		return err
 	}
-	if _, err := d.call(ctx, remove, "original-remove"); err != nil {
+	removed, err := d.call(ctx, remove, originalRemoveCommand)
+	if err != nil {
 		return err
 	}
-	if err := d.verifyOriginal(ctx, request, originalSaveCommand, original.Output); err != nil {
+	var receipt UsageReportsDeleteV2Output
+	if err := json.Unmarshal([]byte(removed.Output), &receipt); err != nil {
+		return err
+	}
+	if receipt.Id != header.Id {
+		return errors.New("usage receipt names a different removed report")
+	}
+	if err := errors.Join(
+		d.verifyOriginal(ctx, remove, originalRemoveCommand, removed.Output),
+		d.verifyOriginal(ctx, request, originalSaveCommand, original.Output),
+	); err != nil {
 		return err
 	}
 	_, err = d.client.SetPluginEnablement(ctx, protocol.SetPluginEnablementRequest{InstallationID: request.Route.InstallationID, Enabled: false}, protocol.CommandOptions{})

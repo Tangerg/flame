@@ -45,6 +45,17 @@ Core `2026-11-27.8` accepts `expectedDecision` on `approval.forgetRule`. Runtime
 checks the committed rule's decision in the same transaction that records the
 acknowledgement. The MCP auto-approval switch uses it to withdraw the allow
 decision it displayed.
+Core `2026-11-27.10` binds Goal commands to the observed incarnation. A new
+Goal requires an empty session slot. A replacement must name the existing
+incarnation in `replaceIncarnationId`. Update, stop, resume and clear use the
+incarnation from the Goal read or start receipt. Usage changes within that
+incarnation do not make a command stale.
+Core `2026-11-27.11` lets `projects.list` read the entire catalog when
+`archived` is omitted. A supplied boolean selects that archive state, and a
+continuation cursor belongs to the selected filter.
+Core `2026-11-27.12` uses the connector's observed revision when editing or
+deleting a user MCP server. The connector commits against that same revision,
+so another edit or re-creation under the name cannot redirect the command.
 Protocol admission checks enum values throughout each request, including plugin
 server and skill configuration maps, before creating a command receipt. A caller
 can correct an invalid enum and retry with the original key.
@@ -114,6 +125,9 @@ workspace projection as ordinary Session creation. An explicitly supplied empty
 workspace remains invalid. Acceptance lookup retains the original omission and
 request identity; retries do not resolve a different default into that request.
 
+An opening conflict identifies the Session's active root Run so clients can
+target the operation that holds Session admission.
+
 Installed model Tool dispatch commits its immutable caller/source alongside the
 original pre-call observation. `installed_tool_callers` retains only logical
 caller, installed Tool, release and source authority, independently of transient
@@ -125,9 +139,9 @@ a plugin business result. The additional private routing schema requires a fresh
 Runtime data directory; incompatible directories are refused without conversion
 and must be retained separately.
 
-Post-segment maintenance captures its finishing Session and workspace explicitly.
-A new root opened by another Run's plugin call cannot inherit that caller's
-Session, Goal or physical-model invocation for detached title generation.
+Run and Session scopes carry their own model publication authority. Post-segment
+maintenance enters the finishing Session's scope. Title generation keeps the
+triggering caller's provenance and records its usage against that Session.
 The originating Run reserves title maintenance before releasing its Session
 admission. A committed Session restore or deletion revokes the reservation
 even if a later import reuses its ID. A committed history rollback revokes it
@@ -150,8 +164,10 @@ clears the branch's current Plan when rolling back to that Run.
 
 A keyed Session edit, deletion or archive import commits its original reply
 with the Session transaction. A retry can recover the same acknowledgement
-after restart or a later edit. Resource retirement becomes enforceable only
-after the history change and acknowledgement commit.
+after restart or a later edit. Resource retirement becomes enforceable after
+the history change and acknowledgement commit. Admission holds the Session
+while settling its current retirement and preserves the cleanup error if it
+fails. A Goal pauses on that error and can resume once cleanup succeeds.
 
 Runtime is not another agent framework. Scope owns process execution, strategies, tools, and provider libraries; Runtime adapts those capabilities to Flame's Session, Run, Goal, Plan, persistence, recovery, and protocol model.
 
@@ -359,15 +375,15 @@ command records the same route shape and keeps the original input bytes.
 
 ## Never-dispatched command retirement
 
-Core `2026-10-16.1` exposes `plugins.retireCommand` and Go `RetirePluginCommand`
-using the original `PluginCommandRequest` namespace and key. Commands owns the
-`prepared -> retired` transition under the same Admission boundary as dispatch.
-Only a never-dispatched route can retire. Retirement retains the original identity
-and routing evidence permanently while releasing its executable dependencies;
-it is not a backend business result. Repeated retirement is idempotent.
+`plugins.retireCommand` and Go `RetirePluginCommand` use the original
+`PluginCommandRequest` namespace and key. Commands records retirement under the
+same Admission boundary as dispatch. For an identity that has yet to arrive, it
+records retirement before a delayed request can bind a route. A prepared route
+retains its original routing evidence permanently and releases its executable
+dependencies. Repeated retirement is idempotent.
 `plugins.getCommand`, unary calls and streams report `plugin_command_retired`
-without contacting the backend. Dispatched work remains receipt-only and cannot
-retire even when no receipt is available.
+before invoking the backend. Dispatched work remains receipt-only even when
+receipt evidence is unavailable.
 
 The public TS pending-command handle exposes `retire()`, including after client
 replacement. Plugin management offers the same operation without requiring the
@@ -520,6 +536,10 @@ migration. Use a fresh data directory when upgrading.
 - `localruntime` owns the executable/companion-package layout and credential handoff.
   The Runtime process and clients consume that layout without checkout discovery.
 
+`sessions.list` accepts a case-sensitive `idPrefix` alongside the catalog's text,
+workspace and project filters. A continuation cursor belongs to the full set of
+filters. The CLI sends the typed prefix before the Runtime pages the results.
+
 Installed operations enter `CallPlugin`/`StreamPlugin`, Protocol
 `plugins.call`/`plugins.stream`, or CLI `plugins call --request ...`. Typed Go
 bindings validate the complete consumer contract. The shared TypeScript client
@@ -641,7 +661,10 @@ Public Start, Resume and Steer require caller-retained idempotency keys. Preserv
 the exact request, capability metadata and discovered store namespace before
 sending it. Runtime owns one atomic acceptance with the Run/Segment opening or
 Steer input; redelivery reads it before current execution preparation.
-`runs.getAcceptance` is a read, not permission to repeat an unknown operation.
+`runs.getAcceptance` is a read, not permission to repeat an unknown operation. Core `2026-11-27.13` returns the
+original acceptance and retained or retired disposition. `runs.get` reads the
+current Run, and the Session snapshot supplies the retained input and the exact
+committed User Item when it has entered the transcript.
 Retired material retains its original references and cannot be recreated by import.
 
 A Steer acceptance nominates its exact User Item identity before application.
@@ -794,8 +817,9 @@ reconciliation; it never revalidates an accepted command against a replacement
 provider. Storage, reply validation and other post-dispatch failures still retain
 execution uncertainty rather than becoming caller-input refusals.
 
-`plugin_commands.activation_json` is required immutable routing evidence containing
-that identity and its release projection. The former release-only column is removed.
+`plugin_commands.binding_json` retains the captured route with its activation and
+release evidence. A retirement recorded before binding has only the command
+identity and retired phase.
 Former Runtime databases are refused before writes; retain them separately and use
 a fresh Runtime data directory. Private plugin databases are unchanged. Existing
 waiting executions must finish under their original binary: model dependencies also
@@ -1218,8 +1242,9 @@ Foreground Session and Run admission checks the caller's lifetime under the
 Gate lock before reserving resources. Startability waits reject an already
 canceled caller even when a reservation just released. Durable Run reads
 retain both their own failure and concurrent cancellation before permitting
-a continuation. Observation cleanup retires only that waiter's subscription;
-the next Start still acquires its own admission.
+a continuation. A waiting Goal re-reads the Session and its current workspace
+on each admission release. Its next Start acquires its own admission. If
+another Run takes the slot first, the Goal waits for another opportunity.
 Startup and periodic recovery share one coordinator that serializes each sweep,
 then reconciles Runs before Goals. It checks its lifetime before taking
 ownership and before starting each phase, releases acquired ownership on every
@@ -1748,8 +1773,9 @@ and recreation. Sampling does not enter child directories or read their files;
 symlink metadata belongs to the link entry rather than its target.
 Automatic retirement and explicit removal may overlap; an already absent
 registration completes removal. Other registration failures remain explicit
-observation failures. Accepted application writes advance only their exact
-content identities, so later external writes and recreated paths stay observable.
+observation failures. A committed Skill publication updates only the Skill
+observer's baseline for the published paths before it emits the catalog
+invalidation. Hook and workspace file observations follow filesystem events.
 
 ## Workspace search outcomes
 
@@ -2667,5 +2693,12 @@ fails or returns an invalid decision. Required policies apply only to
 undo completed work. Explicit deny and ask decisions retain their existing
 semantics under either policy. The SDK owns the default and the permitted events;
 clients display that resolved policy. Repository trust remains Runtime-owned.
+The first admitted root Run in the Session's current history carries
+`SessionStart` material. Refused openings leave that history empty, so the
+next attempt still evaluates the rules. Restarting Runtime keeps the existing
+admitted opening and its material.
+An opening hook's denial ends preparation and exposes its reason through
+`prompt_rejected` with stop recovery. A request for approval during opening also
+refuses that opening. Tool approval is available through `PreToolUse`.
 Commands use the installed process environment rather than inheriting ambient
 Runtime variables.

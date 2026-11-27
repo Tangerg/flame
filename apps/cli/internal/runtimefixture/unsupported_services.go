@@ -92,7 +92,7 @@ func (*Runtime) UpdateProvider(context.Context, models.UpdateProvider) (_ models
 	return
 }
 
-func (*Runtime) ClearGoal(context.Context, string) (err error) {
+func (*Runtime) ClearGoal(context.Context, protocol.GoalTarget) (err error) {
 	err = errUnsupported
 	return
 }
@@ -102,7 +102,7 @@ func (*Runtime) GetGoal(context.Context, string) (_ protocol.Goal, _ bool, err e
 	return
 }
 
-func (*Runtime) ResumeGoal(context.Context, string) (_ protocol.Goal, err error) {
+func (*Runtime) ResumeGoal(context.Context, protocol.GoalTarget) (_ protocol.Goal, err error) {
 	err = errUnsupported
 	return
 }
@@ -112,7 +112,7 @@ func (*Runtime) StartGoal(context.Context, protocol.StartGoalRequest) (_ protoco
 	return
 }
 
-func (*Runtime) StopGoal(context.Context, string) (err error) {
+func (*Runtime) StopGoal(context.Context, protocol.GoalTarget) (err error) {
 	err = errUnsupported
 	return
 }
@@ -162,12 +162,12 @@ func (*Runtime) Restore(context.Context, string) (err error) {
 	return
 }
 
-func (*Runtime) CreateServer(context.Context, authoring.CommandID, mcp.Candidate) (err error) {
+func (*Runtime) CreateServer(context.Context, authoring.CommandID, protocol.MCPServerCandidate) (err error) {
 	err = errUnsupported
 	return
 }
 
-func (*Runtime) DeleteServer(context.Context, protocol.MCPServerID) (err error) {
+func (*Runtime) DeleteServer(context.Context, protocol.MCPDirectoryTarget) (err error) {
 	err = errUnsupported
 	return
 }
@@ -192,12 +192,12 @@ func (*Runtime) SetToolExposure(context.Context, protocol.SetMCPToolExposureRequ
 	return
 }
 
-func (*Runtime) StartAuthorization(context.Context, protocol.MCPServerID) (_ mcp.AuthorizationReference, err error) {
+func (*Runtime) StartAuthorization(context.Context, authoring.CommandID, protocol.MCPServerID) (_ mcp.AuthorizationReference, err error) {
 	err = errUnsupported
 	return
 }
 
-func (*Runtime) TestServer(context.Context, mcp.Candidate) (_ protocol.MCPTestOutcome, err error) {
+func (*Runtime) TestServer(context.Context, protocol.MCPServerCandidate) (_ protocol.MCPTestOutcome, err error) {
 	err = errUnsupported
 	return
 }
@@ -212,7 +212,7 @@ func (*Runtime) Tools(context.Context, *protocol.MCPServerID) (_ []protocol.MCPT
 	return
 }
 
-func (*Runtime) UpdateServer(context.Context, authoring.CommandID, mcp.ServerUpdate) (err error) {
+func (*Runtime) UpdateServer(context.Context, authoring.CommandID, protocol.UpdateMCPServerRequest) (err error) {
 	err = errUnsupported
 	return
 }

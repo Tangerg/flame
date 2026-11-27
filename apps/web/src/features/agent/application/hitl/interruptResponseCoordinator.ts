@@ -5,67 +5,64 @@ import {
   type AgentSessionViewPort,
 } from "@/features/agent/application/session/sessionAccess";
 import { selectAwaitingGroups } from "@/features/agent/application/view/awaitingInterrupts";
-interface StagedResponse {
-  input: InterruptResumeInput;
-  onSettled?: () => void;
-  onError?: () => void;
-}
+
+type BatchPhase = "collecting" | "opening" | "accepted";
+export type InterruptResponseState = "unsubmitted" | "pending" | "accepted";
 
 class InterruptResponseBatch {
-  readonly #responses = new Map<string, StagedResponse>();
-  #submitted = false;
-  #settled = false;
+  readonly #responses = new Map<string, InterruptResumeInput>();
+  #phase: BatchPhase = "collecting";
 
   constructor(
     readonly sessionId: string,
     readonly rootRunId: string,
   ) {}
 
-  get submitting(): boolean {
-    return this.#submitted;
+  stage(input: InterruptResumeInput): boolean {
+    if (this.#phase !== "collecting" || this.#responses.has(input.itemId)) return false;
+    this.#responses.set(input.itemId, input);
+    return true;
   }
 
-  get settled(): boolean {
-    return this.#settled;
+  responseState(itemId: string): InterruptResponseState {
+    if (!this.#responses.has(itemId)) return "unsubmitted";
+    return this.#phase === "accepted" ? "accepted" : "pending";
   }
 
-  stage(itemId: string, response: StagedResponse): void {
-    this.#responses.get(itemId)?.onError?.();
-    this.#responses.set(itemId, response);
+  beginOpening(itemIds: readonly string[]): InterruptResumeInput[] | undefined {
+    const responses: InterruptResumeInput[] = [];
+    for (const itemId of itemIds) {
+      const response = this.#responses.get(itemId);
+      if (!response) return;
+      responses.push(response);
+    }
+    this.#phase = "opening";
+    return responses;
   }
 
-  contains(itemId: string): boolean {
-    return this.#responses.has(itemId);
+  accept(): boolean {
+    if (this.#phase !== "opening") return false;
+    this.#phase = "accepted";
+    return true;
   }
 
-  items(): string[] {
-    return [...this.#responses.keys()];
+  isOpening(): boolean {
+    return this.#phase === "opening";
   }
 
-  covers(itemIds: readonly string[]): boolean {
-    return itemIds.every((itemId) => this.#responses.has(itemId));
-  }
-
-  ordered(itemIds: readonly string[]): StagedResponse[] {
-    return itemIds.map((itemId) => this.#responses.get(itemId)!);
-  }
-
-  submit(): void {
-    this.#submitted = true;
-  }
-
-  settle(): void {
-    this.#settled = true;
-  }
-
-  responses(): IterableIterator<StagedResponse> {
-    return this.#responses.values();
+  retiredBy(open: ReadonlySet<string>): boolean {
+    if (this.#phase === "opening") return false;
+    const staged = [...this.#responses.keys()];
+    // Acceptance precedes projection of the closed interrupts.
+    if (this.#phase === "accepted") return !staged.some((itemId) => open.has(itemId));
+    return staged.some((itemId) => !open.has(itemId));
   }
 }
 
 const batchKey = (sessionId: string, rootRunId: string) => tupleKey(sessionId, rootRunId);
 
-function openResponseIds(entry: AgentSessionViewEntry, rootRunId: string): string[] {
+function openResponseIds(entry: AgentSessionViewEntry | undefined, rootRunId: string): string[] {
+  if (!entry) return [];
   return selectAwaitingGroups(entry.view)
     .filter((group) => group.rootRunId === rootRunId)
     .flatMap((group) => group.interrupts.map((interrupt) => interrupt.itemId));
@@ -74,6 +71,7 @@ function openResponseIds(entry: AgentSessionViewEntry, rootRunId: string): strin
 export class InterruptResponseCoordinator {
   readonly #view: AgentSessionViewPort;
   readonly #batches = new Map<string, InterruptResponseBatch>();
+  readonly #listeners = new Set<() => void>();
   readonly #unsubscribe: () => void;
   #retired = false;
 
@@ -85,7 +83,6 @@ export class InterruptResponseCoordinator {
   stage(
     { sessionId, rootRunId, itemId }: InterruptRef,
     response: InterruptResumeInput["response"],
-    hooks?: { onSettled?: () => void; onError?: () => void },
   ): boolean {
     if (this.#retired) return false;
     const entry = this.#view.getSession(sessionId);
@@ -99,39 +96,51 @@ export class InterruptResponseCoordinator {
       batch = new InterruptResponseBatch(sessionId, rootRunId);
       this.#batches.set(key, batch);
     }
-    if (batch.submitting) return false;
-
-    batch.stage(itemId, {
-      input: { itemId, response },
-      ...hooks,
-    });
-
-    if (!batch.covers(expected)) return true;
-    batch.submit();
-    const ordered = batch.ordered(expected);
+    if (!batch.stage({ itemId, response })) return false;
+    const responses = batch.beginOpening(expected);
+    this.#changed();
+    if (!responses) return true;
+    const opening = batch;
+    const refuse = () => {
+      if (this.#batches.get(key) !== opening || !opening.isOpening()) return;
+      this.#batches.delete(key);
+      this.#changed();
+    };
     const accepted = entry.resume(
       rootRunId,
-      ordered.map(({ input }) => input),
+      responses,
       () => {
-        if (this.#batches.get(key) !== batch) return;
-        batch.settle();
-        for (const response of batch.responses()) response.onSettled?.();
+        if (this.#batches.get(key) !== opening || !opening.accept()) return;
+        const open = new Set(openResponseIds(this.#view.getSession(sessionId), rootRunId));
+        if (opening.retiredBy(open)) this.#batches.delete(key);
+        this.#changed();
       },
-      () => this.#reject(batch),
+      refuse,
     );
-    if (!accepted && this.#batches.get(key) === batch) this.#reject(batch);
-    return true;
+    if (!accepted) refuse();
+    return accepted;
   }
 
-  isStaged({ sessionId, rootRunId, itemId }: InterruptRef): boolean {
-    return this.#batches.get(batchKey(sessionId, rootRunId))?.contains(itemId) ?? false;
+  responseState(sessionId: string, itemId: string): InterruptResponseState {
+    // A view can lose its resume target before the original Item's receipt arrives.
+    for (const batch of this.#batches.values()) {
+      if (batch.sessionId !== sessionId) continue;
+      const state = batch.responseState(itemId);
+      if (state !== "unsubmitted") return state;
+    }
+    return "unsubmitted";
   }
+
+  subscribe = (listener: () => void): (() => void) => {
+    if (this.#retired) return () => {};
+    this.#listeners.add(listener);
+    return () => this.#listeners.delete(listener);
+  };
 
   discard(): void {
-    for (const batch of [...this.#batches.values()]) {
-      if (batch.settled) this.#drop(batch);
-      else this.#reject(batch);
-    }
+    if (!this.#batches.size) return;
+    this.#batches.clear();
+    this.#changed();
   }
 
   retire(): void {
@@ -139,37 +148,22 @@ export class InterruptResponseCoordinator {
     this.#retired = true;
     this.#unsubscribe();
     this.discard();
+    this.#listeners.clear();
   }
 
-  #reject(batch: InterruptResponseBatch): void {
-    const key = batchKey(batch.sessionId, batch.rootRunId);
-    if (this.#batches.get(key) !== batch) return;
-    // A settled response is final; a reject arriving afterwards is stale and must
-    // not roll the card back as if the answer never reached the Runtime.
-    if (batch.settled) return;
-    this.#batches.delete(key);
-    for (const response of batch.responses()) {
-      response.onError?.();
-    }
-  }
-
-  #drop(batch: InterruptResponseBatch): void {
-    const key = batchKey(batch.sessionId, batch.rootRunId);
-    if (this.#batches.get(key) === batch) this.#batches.delete(key);
+  #changed(): void {
+    for (const listener of this.#listeners) listener();
   }
 
   #reconcile(sessions: Record<string, AgentSessionViewEntry>): void {
     if (this.#retired) return;
-    for (const batch of [...this.#batches.values()]) {
-      const entry = sessions[batch.sessionId];
-      const open = entry ? new Set(openResponseIds(entry, batch.rootRunId)) : new Set<string>();
-      if (batch.settled) {
-        // Retain the accepted response until the view stops listing its items, so
-        // the window between acceptance and refresh cannot admit a duplicate resume.
-        if (!batch.items().some((itemId) => open.has(itemId))) this.#drop(batch);
-      } else if (!batch.submitting && batch.items().some((itemId) => !open.has(itemId))) {
-        this.#reject(batch);
-      }
+    let changed = false;
+    for (const [key, batch] of this.#batches) {
+      const open = new Set(openResponseIds(sessions[batch.sessionId], batch.rootRunId));
+      if (!batch.retiredBy(open)) continue;
+      this.#batches.delete(key);
+      changed = true;
     }
+    if (changed) this.#changed();
   }
 }

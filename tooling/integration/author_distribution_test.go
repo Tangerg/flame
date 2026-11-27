@@ -210,7 +210,7 @@ func verifyStandalonePlugin(t *testing.T, author standaloneAuthor) {
 		if !selected {
 			t.Fatal("restart replaced the selected independent provider")
 		}
-		request.Method = memorycontract.ListV3Method
+		request.Route.Method = memorycontract.ListV3Method
 		request.Input = `{"scope":"user","cwd":"","cursor":""}`
 		reply, err := host.CallPlugin(t.Context(), request, protocol.PluginCallOptions{})
 		if err != nil || reply.Failure != nil {

@@ -1,5 +1,4 @@
 import {
-  useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -7,8 +6,8 @@ import {
   useSyncExternalStore,
 } from "react";
 import {
-  failureText,
   type ComponentContext,
+  type PluginComponentProps,
   useTranslator,
 } from "@flame/component-sdk";
 import {
@@ -36,22 +35,13 @@ import { catalogs } from "./catalogs";
 import { Capabilities, inspectRevision, readCatalog } from "./capabilities";
 import { Notices, PendingCommands } from "./notices";
 import { Inspector } from "./inspector";
-import { METHODS } from "../contracts/methods";
-import { parseTarget, type Focus } from "./targets";
 import type { DraftFormat, DraftOperation } from "../contracts/content";
 import { DraftStore } from "./draft-storage";
 import type { DraftUpdate } from "./live-draft";
 
 export { DeliverableResult } from "./tool-result";
 
-function Workspace({
-  context: initialContext,
-  locale,
-}: {
-  context: ComponentContext;
-  locale: string;
-}) {
-  const [context] = useState(initialContext);
+function Workspace({ context, locale }: PluginComponentProps) {
   const t = useTranslator(catalogs, locale);
   const dateTime = useMemo(
     () =>
@@ -62,7 +52,6 @@ function Workspace({
     [locale],
   );
   const state = useDeliverables(context);
-  const link = useLink(context, state);
   const bodyViewport = useRef<HTMLDivElement>(null);
   const archiveSearchField = useRef<HTMLInputElement>(null);
   const archiveOrigin = useRef<{
@@ -143,6 +132,9 @@ function Workspace({
   );
   const document = state.read?.value;
   const studioDocument = useStudioDocument(state);
+  const focus = state.selection?.id === studioDocument?.document.id
+    ? state.selection
+    : undefined;
   const slideDraft = useDocumentDraft(context, "pptx", studioDocument);
   const sheetDraft = useDocumentDraft(context, "xlsx", studioDocument);
   const docDraft = useDocumentDraft(context, "docx", studioDocument);
@@ -175,9 +167,9 @@ function Workspace({
       }
     >
       <Notices state={state} onOpen={openForReading} t={t} />
-      {link.error && (
+      {state.linkError && (
         <Callout kind="warning">
-          {t("link.unavailable")} {link.error}
+          {t("link.unavailable")} {state.linkError}
         </Callout>
       )}
       <PendingCommands state={state} t={t} />
@@ -212,7 +204,7 @@ function Workspace({
           state={state}
           document={studioDocument}
           {...slideDraft}
-          link={link.shown(studioDocument)}
+          link={focus}
           dateTime={dateTime}
           t={t}
         />
@@ -223,7 +215,7 @@ function Workspace({
           state={state}
           document={studioDocument}
           {...docDraft}
-          link={link.shown(studioDocument)}
+          link={focus}
           dateTime={dateTime}
           t={t}
         />
@@ -234,7 +226,7 @@ function Workspace({
           state={state}
           document={studioDocument}
           {...sheetDraft}
-          link={link.shown(studioDocument)}
+          link={focus}
           dateTime={dateTime}
           t={t}
         />
@@ -258,51 +250,6 @@ function Workspace({
       />
     </Panel>
   );
-}
-
-// Each target the view is opened with selects its document and revision; a
-// target without a revision opens the newest one, which is the head because
-// revisions only append.
-function useLink(context: ComponentContext, state: DeliverablesState) {
-  const [link, setLink] = useState<Focus & { document: string }>();
-  const [error, setError] = useState<string>();
-  useEffect(
-    () =>
-      context.views?.subscribeTarget((value) => {
-        const target = parseTarget(value);
-        if (!target) {
-          setError(value);
-          return;
-        }
-        void (async () => {
-          try {
-            const revision =
-              target.revision ??
-              (
-                await state.operations.query(
-                  METHODS.history,
-                  { id: target.document, limit: 1 },
-                  state.signal,
-                )
-              ).entries[0]!.id;
-            state.open({ id: target.document, revision });
-            setError(undefined);
-            setLink((current) => ({
-              document: target.document,
-              revision,
-              ...(target.object ? { object: target.object } : {}),
-              key: (current?.key ?? 0) + 1,
-            }));
-          } catch (cause) {
-            if (!state.signal.aborted) setError(failureText(cause));
-          }
-        })();
-      }),
-    [context.views, state.open, state.operations, state.signal],
-  );
-  const shown = (document: DocumentRead) =>
-    link?.document === document.document.id ? link : undefined;
-  return { error, shown };
 }
 
 // An editor keeps the revision it shows while another revision of the same
@@ -338,12 +285,7 @@ function useDocumentDraft<Format extends DraftFormat>(
   };
 }
 
-export function Deliverables({ context }: { context: ComponentContext }) {
-  // Display wrappers do not retire the captured I/O or authored drafts.
-  const { runtime, component, binding, track, signal, saveFile } = context;
-  const instance = useMemo(
-    () => crypto.randomUUID(),
-    [runtime, component, binding, track, signal, saveFile],
-  );
-  return <Workspace key={instance} context={context} locale={context.locale} />;
+export function Deliverables({ context, locale }: PluginComponentProps) {
+  const instance = useMemo(() => crypto.randomUUID(), [context.signal]);
+  return <Workspace key={instance} context={context} locale={locale} />;
 }

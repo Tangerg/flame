@@ -79,7 +79,6 @@ export const de: Record<string, string> = {
   "action.disable": "Deaktivieren",
   "action.delete": "Löschen",
   "nextFiring.label": "Nächste Auslösung",
-  "nextFiring.none": "Nicht geplant",
   "details.title": "Details",
   "fact.cron": "Cron",
   "fact.timeZone": "Zeitzone",
@@ -97,7 +96,9 @@ export const de: Record<string, string> = {
   "notice.accepted":
     "Die Runtime hat den Lauf {{run}} in der Sitzung {{session}} akzeptiert.",
   "notice.openSession": "Unterhaltung öffnen",
+  "notice.sessionMissing": "Diese Unterhaltung ist nicht mehr verfügbar.",
   "notice.completed": "{{label}} abgeschlossen.",
+  "notice.refused": "Die Runtime hat die ursprüngliche Zeitplanänderung abgelehnt.",
   "notice.revision":
     "Der Zeitplan hat sich geändert. Lies seine neueste Revision und öffne eine neue Bearbeitung, bevor du speicherst.",
   "template.hourly.title": "Stündliche Fortschrittsprüfung",

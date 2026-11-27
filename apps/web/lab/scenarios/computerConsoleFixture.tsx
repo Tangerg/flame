@@ -1,4 +1,5 @@
 import { unavailableComponentNotifications } from "@/test/unavailableNotifications";
+import { useLocale } from "@/lib/i18n/index";
 import type { PluginComponent, ComponentContext } from "@flame/component-sdk";
 import * as stylex from "@stylexjs/stylex";
 import { ScrollArea } from "@/ui/index";
@@ -33,6 +34,10 @@ const encoder = new TextEncoder();
 const styles = stylex.create({
   frame: { display: "flex", height: "100dvh", minHeight: 0, minWidth: 0 },
 });
+
+function ConsoleFixture({ Computer, context }: { Computer: PluginComponent; context: ComponentContext }) {
+  return <Computer context={context} locale={useLocale()} />;
+}
 
 type Receipt = ReceiptEvidence & {
   readonly kind: "tool" | "command";
@@ -119,7 +124,7 @@ function replay(receipt: Receipt, requestId: string | number): Response {
   });
 }
 
-export async function createComputerConsoleFixture(locale: string, requestedState: string | null) {
+export async function createComputerConsoleFixture(requestedState: string | null) {
   const state = COMPUTER_FIXTURE_VARIANTS.find(({ id }) => id === requestedState)?.id ?? "default";
   const load = Object.values(modules);
   if (load.length !== 1) throw new Error("computer fixture requires one built component");
@@ -486,7 +491,6 @@ export async function createComputerConsoleFixture(locale: string, requestedStat
     },
     signal: owner.signal,
     runtime: client,
-    locale,
     telemetry: { read: () => ({ spans: [], logs: [], metrics: [] }), clear: () => undefined },
     track: (operation) => operation(owner.signal),
     saveFile: async () => "requested",
@@ -506,7 +510,7 @@ export async function createComputerConsoleFixture(locale: string, requestedStat
       <div {...stylex.props(styles.frame)}>
         <AgentWorkspaceView>
           <ScrollArea>
-            <Computer context={context} />
+            <ConsoleFixture Computer={Computer} context={context} />
           </ScrollArea>
         </AgentWorkspaceView>
       </div>

@@ -73,7 +73,6 @@ export const zh: Record<string, string> = {
   "action.disable": "禁用",
   "action.delete": "删除",
   "nextFiring.label": "下次触发",
-  "nextFiring.none": "未排定",
   "details.title": "详情",
   "fact.cron": "Cron",
   "fact.timeZone": "时区",
@@ -90,7 +89,9 @@ export const zh: Record<string, string> = {
   "pages.current": "第 {{page}} 页",
   "notice.accepted": "Runtime 已接受会话 {{session}} 中的运行 {{run}}。",
   "notice.openSession": "打开对话",
+  "notice.sessionMissing": "此对话已不可用。",
   "notice.completed": "{{label}}已完成。",
+  "notice.refused": "Runtime 拒绝了原排程更改。",
   "notice.revision":
     "定时任务已更改。请读取其最新修订版本，并在保存前打开新的编辑。",
   "template.hourly.title": "每小时进度检查",

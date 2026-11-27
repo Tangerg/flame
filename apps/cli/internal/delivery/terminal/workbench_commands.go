@@ -10,6 +10,16 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 )
 
+func (c *promptComposer) moveDraftToHistory(message authoring.Message) error {
+	sessionID := c.session.current.ID
+	err := c.commitAuthoring(func() error { return c.workbench.MoveDraftToHistory(sessionID, message) })
+	c.report(workbenchDraft, err)
+	if err == nil {
+		c.replaceDraft(authoring.Message{})
+	}
+	return err
+}
+
 func (c *promptComposer) stashPrompt() error {
 	message, present, err := c.draft()
 	if err != nil {
@@ -18,20 +28,18 @@ func (c *promptComposer) stashPrompt() error {
 	if !present {
 		return errors.New("the composer has no prompt to stash")
 	}
-	// Flush the exact visible value first, serializing this transfer after every
-	// autosave. The store can then move that durable draft into the stash
-	// collection without racing an older writer that would resurrect it.
-	if saveDraftErr := c.saveDraft(message); saveDraftErr != nil {
-		c.report(workbenchDraft, saveDraftErr)
-		return fmt.Errorf("save session draft before stashing: %w", saveDraftErr)
-	}
-	stash, err := c.workbench.StashDraft(c.session.current.ID, message)
+	sessionID := c.session.current.ID
+	var stash workbench.Stash
+	err = c.commitAuthoring(func() error {
+		var err error
+		stash, err = c.workbench.StashDraft(sessionID, message)
+		return err
+	})
 	c.report(workbenchDraft, err)
 	if err != nil {
 		return fmt.Errorf("stash session draft: %w", err)
 	}
-	c.drafts.adopt(c.session.current.ID, authoring.Message{})
-	c.restoreComposer(authoring.Message{})
+	c.replaceDraft(authoring.Message{})
 	c.notify("stashed prompt · " + stash.ID)
 	return nil
 }

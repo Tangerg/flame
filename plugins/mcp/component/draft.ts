@@ -1,5 +1,10 @@
-import { type MCPServerSettings } from "./model";
-import { type MCPTransport } from "./model";
+import type { UpdateMCPServerRequest } from "@flame/runtime-client/wire";
+import {
+  directoryTarget,
+  updateRequest,
+  type MCPServerSettings,
+  type MCPTransport,
+} from "./model";
 import {
   type MCPConnectionInput,
   type MCPServerInput,
@@ -82,7 +87,7 @@ export interface MCPServerFields {
 export class MCPServerEdit {
   private constructor(
     readonly fields: MCPServerFields,
-    private readonly stored: MCPServerSettings | undefined,
+    readonly original: MCPServerSettings | undefined,
   ) {}
 
   static of(server?: MCPServerSettings): MCPServerEdit {
@@ -110,7 +115,11 @@ export class MCPServerEdit {
     key: K,
     value: MCPServerFields[K],
   ): MCPServerEdit {
-    return new MCPServerEdit({ ...this.fields, [key]: value }, this.stored);
+    return new MCPServerEdit({ ...this.fields, [key]: value }, this.original);
+  }
+
+  get target() {
+    return this.original && directoryTarget(this.original);
   }
 
   get isValid(): boolean {
@@ -131,11 +140,12 @@ export class MCPServerEdit {
     return (
       this.fields.transport === "stdio" &&
       this.fields.environment.disposition === "preserve" &&
-      this.stored?.type === "stdio" &&
+      this.original?.type === "stdio" &&
       Boolean(
-        this.stored.envMasked && Object.keys(this.stored.envMasked).length > 0,
+        this.original.envMasked &&
+        Object.keys(this.original.envMasked).length > 0,
       ) &&
-      !this.sameStdioTarget(this.stored)
+      !this.sameStdioTarget(this.original)
     );
   }
 
@@ -143,12 +153,12 @@ export class MCPServerEdit {
     return (
       this.fields.transport === "streamableHttp" &&
       this.fields.headers.disposition === "preserve" &&
-      this.stored?.type === "streamableHttp" &&
+      this.original?.type === "streamableHttp" &&
       Boolean(
-        this.stored.headersMasked &&
-        Object.keys(this.stored.headersMasked).length > 0,
+        this.original.headersMasked &&
+        Object.keys(this.original.headersMasked).length > 0,
       ) &&
-      !sameHTTPOrigin(this.stored.url, this.fields.url)
+      !sameHTTPOrigin(this.original.url, this.fields.url)
     );
   }
 
@@ -156,9 +166,9 @@ export class MCPServerEdit {
     return (
       this.fields.transport === "streamableHttp" &&
       this.fields.authorization.disposition === "preserve" &&
-      this.stored?.type === "streamableHttp" &&
-      Boolean(this.stored.authorizationMasked) &&
-      !sameHTTPOrigin(this.stored.url, this.fields.url)
+      this.original?.type === "streamableHttp" &&
+      Boolean(this.original.authorizationMasked) &&
+      !sameHTTPOrigin(this.original.url, this.fields.url)
     );
   }
 
@@ -172,35 +182,40 @@ export class MCPServerEdit {
     return {
       ...this.connectionInput(),
       name: this.fields.name.trim(),
-      enabled: this.stored?.enabled ?? true,
+      enabled: this.original?.enabled ?? true,
       description: this.fields.description.trim() || undefined,
       handshakeTimeout,
     };
   }
 
-  toUpdate(): MCPServerUpdateInput | undefined {
-    if (!this.stored) throw new Error("mcp_update_requires_inspected_server");
+  toUpdate(): UpdateMCPServerRequest | undefined {
+    const original = this.original;
+    const target = this.target;
+    if (!original || !target)
+      throw new Error("MCP update requires an observed directory revision");
     const input = this.toInput();
     const update: MCPServerUpdateInput = {};
-    if ((input.description ?? "") !== (this.stored.description ?? "")) {
+    if ((input.description ?? "") !== (original.description ?? "")) {
       update.description = input.description ?? "";
     }
     if (
       mcpHandshakeTimeoutSeconds(input.handshakeTimeout) !==
-      mcpHandshakeTimeoutSeconds(this.stored.handshakeTimeout)
+      mcpHandshakeTimeoutSeconds(original.handshakeTimeout)
     ) {
       update.handshakeTimeout = input.handshakeTimeout;
     }
     const connectionChanged =
-      input.transport !== this.stored.type ||
+      input.transport !== original.type ||
       (input.transport === "stdio"
-        ? !this.sameStdioTarget(this.stored) ||
+        ? !this.sameStdioTarget(this.original) ||
           this.fields.environment.disposition !== "preserve"
-        : input.url !== this.stored.url ||
+        : input.url !== original.url ||
           this.fields.authorization.disposition !== "preserve" ||
           this.fields.headers.disposition !== "preserve");
     if (connectionChanged) update.connection = this.connectionInput();
-    return Object.keys(update).length > 0 ? update : undefined;
+    return Object.keys(update).length > 0
+      ? updateRequest(target, update)
+      : undefined;
   }
 
   private connectionInput(): MCPConnectionInput {

@@ -1,10 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
+import { isCancellationReason } from "dougong";
 import {
   createFlameClient,
   type FlameClient,
   JSONRPC_VERSION,
   MutationJournalCleanupError,
   MutationJournalOwnershipError,
+  RpcCancellationError,
   RpcError,
   RpcProtocolError,
   RpcTransportError,
@@ -13,6 +15,7 @@ import {
   asSessionId,
   createSidecarClient,
   createHttpTransport,
+  createMutationSettler,
   mutationSettlementIsUnknown,
 } from "@flame/runtime-client";
 import {
@@ -295,9 +298,9 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: protocol delivery", () => {
 
       const subscription = await client.runtimeEvents.subscribe({ topics: [topic] });
       const events = subscription.events[Symbol.asyncIterator]();
-      await expect(client.runtimeEvents.subscribe({ topics: [topic, topic] })).rejects.toBeInstanceOf(
-        RpcProtocolError,
-      );
+      await expect(
+        client.runtimeEvents.subscribe({ topics: [topic, topic] }),
+      ).rejects.toBeInstanceOf(RpcProtocolError);
       expect(openings).toBe(1);
       await events.return?.();
     } finally {
@@ -337,7 +340,9 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: protocol delivery", () => {
       const events = subscription.events[Symbol.asyncIterator]();
       createdIds.push((await fixture.client.sessions.create({ title: "Dropped invalidation" })).id);
       await within(dropped.promise, "the dropped Runtime frame");
-      createdIds.push((await fixture.client.sessions.create({ title: "Following invalidation" })).id);
+      createdIds.push(
+        (await fixture.client.sessions.create({ title: "Following invalidation" })).id,
+      );
       await expect(within(events.next(), "the sequence gap")).rejects.toBeInstanceOf(
         RpcProtocolError,
       );
@@ -759,13 +764,13 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: protocol delivery", () => {
       if (!pending || pending.method !== method) throw new Error("expected the retained command");
 
       clientName = "replacement-configuration-client";
-      await expect(
+      expect(() =>
         cold.runtime.retryCommand(method, pending, { ...params, title: "changed" }),
-      ).rejects.toBeInstanceOf(MutationJournalOwnershipError);
+      ).toThrow(MutationJournalOwnershipError);
       expect(deliveries).toBe(1);
       await expect(cold.runtime.retryCommand(method, pending, params)).resolves.toEqual(accepted);
       expect(cold.runtime.pendingCommands()).toEqual([]);
-      await expect(cold.runtime.retryCommand(method, pending, params)).rejects.toBeInstanceOf(
+      expect(() => cold.runtime.retryCommand(method, pending, params)).toThrow(
         MutationJournalOwnershipError,
       );
       expect(deliveries).toBe(2);
@@ -774,6 +779,87 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: protocol delivery", () => {
       for (const session of await fixture.client.sessions.list().autoPagingToArray()) {
         if (session.title === title) await fixture.client.sessions.delete(asSessionId(session.id));
       }
+    }
+  }, 30_000);
+
+  it("keeps a fresh observation distinct from an unresolved command with identical input", async () => {
+    const method = "sessions.create";
+    const title = "Equal inputs in independent mutation observations";
+    const params = { workspace: { path: fixture.root }, title };
+    const fault = faultUnaryResponse(method, "afterCommit");
+    let loseResponse = true;
+    const client = fixture.createRuntimeClient((url, init) => {
+      if (
+        loseResponse &&
+        fault.attempts() > 0 &&
+        new Headers(init?.headers).get(HTTP_HEADERS.method) === method
+      )
+        throw new Error("disconnected before the first mutation could be reobserved");
+      return fault.fetch(url, init);
+    });
+    const settler = createMutationSettler();
+    const open = (signal: AbortSignal) => client.sessions.create(params, signal);
+    const sessions = async () =>
+      (await fixture.client.sessions.list().autoPagingToArray()).filter(
+        (session) => session.title === title,
+      );
+    try {
+      await expect(settler.settle(open)).rejects.toSatisfy(mutationSettlementIsUnknown);
+      const [original] = await sessions();
+      const [pending] = client.runtime.pendingCommands();
+      if (!original || pending?.method !== method) throw new Error("original command is missing");
+
+      loseResponse = false;
+      const fresh = await settler.settle(open);
+      expect(fresh.id).not.toBe(original.id);
+      expect(client.runtime.pendingCommands()).toEqual([pending]);
+      await expect(
+        settler.settle((signal) => client.runtime.retryCommand(method, pending, params, signal)),
+      ).resolves.toEqual(original);
+      expect(client.runtime.pendingCommands()).toEqual([]);
+      expect(await sessions()).toHaveLength(2);
+    } finally {
+      settler.dispose();
+      await client.close();
+      for (const session of await sessions())
+        await fixture.client.sessions.delete(asSessionId(session.id));
+    }
+  }, 30_000);
+
+  it("reobserves the same command when an accepted reply reaches its deadline", async () => {
+    const method = "sessions.create";
+    const title = "One Session across a mutation observation deadline";
+    let deliveries = 0;
+    const client = fixture.createRuntimeClient(async (url, init) => {
+      const response = await fetch(url, init);
+      if (new Headers(init?.headers).get(HTTP_HEADERS.method) !== method || ++deliveries !== 1)
+        return response;
+      await response.arrayBuffer();
+      const signal = init?.signal;
+      if (!signal) throw new Error("the command attempt omitted a cancellation signal");
+      signal.throwIfAborted();
+      return new Promise<Response>((_, reject) => {
+        signal.addEventListener("abort", () => reject(signal.reason), { once: true });
+      });
+    });
+    const settler = createMutationSettler();
+    const sessions = async () =>
+      (await fixture.client.sessions.list().autoPagingToArray()).filter(
+        ({ title: value }) => value === title,
+      );
+    try {
+      const session = await settler.settle(
+        (signal) => client.sessions.create({ title, workspace: { path: fixture.root } }, signal),
+        { timeoutMs: 2_000 },
+      );
+      expect(deliveries).toBe(2);
+      expect(await sessions()).toEqual([session]);
+      expect(client.runtime.pendingCommands()).toEqual([]);
+    } finally {
+      settler.dispose();
+      await client.close();
+      for (const session of await sessions())
+        await fixture.client.sessions.delete(asSessionId(session.id));
     }
   }, 30_000);
 
@@ -790,7 +876,8 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: protocol delivery", () => {
       createHttpTransport({
         baseUrl: fixture.baseUrl,
         fetch: (url, init) => {
-          if (new Headers(init?.headers).get(HTTP_HEADERS.method) === "sessions.create") deliveries++;
+          if (new Headers(init?.headers).get(HTTP_HEADERS.method) === "sessions.create")
+            deliveries++;
           return globalThis.fetch(url, init);
         },
       }),
@@ -838,6 +925,54 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: protocol delivery", () => {
     }
   }, 30_000);
 
+  it("keeps the cancellation cause and the original dispatched command", async () => {
+    const responded = Promise.withResolvers<void>();
+    const release = Promise.withResolvers<void>();
+    const controller = new AbortController();
+    const mutationStorage = new MemoryMutationStorage();
+    const title = "Session committed before its observer canceled";
+    let attempts = 0;
+    const client = createFlameClient(createHttpTransport({
+      baseUrl: fixture.baseUrl,
+      fetch: async (url, init) => {
+        const response = await fetch(url, init);
+        if (new Headers(init?.headers).get(HTTP_HEADERS.method) === "sessions.create" && ++attempts === 1) {
+          responded.resolve();
+          await release.promise;
+        }
+        return response;
+      },
+    }), { capabilities: () => fixture.negotiated, mutationStorage });
+    const command = client.sessions.create({ title }, controller.signal);
+    const outcome = command.catch((error: unknown) => error);
+    const createdSessions = async () =>
+      (await fixture.client.sessions.list().autoPagingToArray()).filter((session) => session.title === title);
+    try {
+      await within(responded.promise, "the committed Session creation response");
+      const reason = new Error("the Session creation observer closed");
+      controller.abort(reason);
+      await expect(command).rejects.toBeInstanceOf(RpcCancellationError);
+      const error = await outcome;
+      expect(error).toHaveProperty("cause", reason);
+      expect(isCancellationReason(controller.signal, error)).toBe(true);
+      expect(client.runtime.pendingCommands()).toContainEqual(expect.objectContaining({
+        method: "sessions.create", idempotencyKey: command.idempotencyKey,
+      }));
+
+      const [created] = await createdSessions();
+      expect(created).toBeDefined();
+      release.resolve();
+      await expect(command.retry({})).resolves.toEqual(created);
+      await expect(createdSessions()).resolves.toEqual([created]);
+      expect(mutationStorage.size).toBe(0);
+      expect(attempts).toBe(2);
+    } finally {
+      release.resolve();
+      await client.close();
+      for (const session of await createdSessions()) await fixture.client.sessions.delete(asSessionId(session.id));
+    }
+  }, 30_000);
+
   it("withdraws an unsent mutation and keeps its confirmed retry settled", async () => {
     const mutationStorage = new MemoryMutationStorage();
     let dispatched = 0;
@@ -862,8 +997,10 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: protocol delivery", () => {
         { title: "Confirmed before disconnect" },
         controller.signal,
       );
-      controller.abort();
-      await expect(command).rejects.toMatchObject({ name: "RpcCancellationError" });
+      const reason = new Error("the Session creation was canceled before dispatch");
+      controller.abort(reason);
+      await expect(command).rejects.toBeInstanceOf(RpcCancellationError);
+      await expect(command).rejects.toHaveProperty("cause", reason);
       expect(mutationStorage.size).toBe(0);
       expect(dispatched).toBe(0);
 

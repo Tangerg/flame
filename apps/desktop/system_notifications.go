@@ -15,8 +15,8 @@ const notificationTargetKey = "target"
 
 type systemNotifications interface {
 	start(ctx context.Context) error
-	authorized() (bool, error)
-	requestAuthorization() (bool, error)
+	authorization() (bridge.NotificationAuthorization, error)
+	requestAuthorization() error
 	send(notification bridge.DesktopNotification) error
 }
 
@@ -45,12 +45,9 @@ func (w wailsNotifications) start(ctx context.Context) error {
 	return w.service.ServiceStartup(ctx, application.ServiceOptions{})
 }
 
-func (w wailsNotifications) authorized() (bool, error) {
-	return w.service.CheckNotificationAuthorization()
-}
-
-func (w wailsNotifications) requestAuthorization() (bool, error) {
-	return w.service.RequestNotificationAuthorization()
+func (w wailsNotifications) requestAuthorization() error {
+	_, err := w.service.RequestNotificationAuthorization()
+	return err
 }
 
 func (w wailsNotifications) send(notification bridge.DesktopNotification) error {
@@ -80,28 +77,22 @@ func (d *DesktopHost) NotificationAuthorization() (bridge.NotificationAuthorizat
 	if !d.notificationsReady.Load() {
 		return bridge.NotificationsUnsupported, nil
 	}
-	allowed, err := d.shell.notifications.authorized()
+	status, err := d.shell.notifications.authorization()
 	if err != nil {
 		return "", fmt.Errorf("desktop host: check notification authorization: %w", err)
 	}
-	if allowed {
-		return bridge.NotificationsGranted, nil
-	}
-	return bridge.NotificationsUndecided, nil
+	return status, nil
 }
 
 func (d *DesktopHost) RequestNotificationAuthorization() (bridge.NotificationAuthorization, error) {
-	if !d.notificationsReady.Load() {
-		return bridge.NotificationsUnsupported, nil
+	status, err := d.NotificationAuthorization()
+	if err != nil || status != bridge.NotificationsUndecided {
+		return status, err
 	}
-	allowed, err := d.shell.notifications.requestAuthorization()
-	if err != nil {
+	if err := d.shell.notifications.requestAuthorization(); err != nil {
 		return "", fmt.Errorf("desktop host: request notification authorization: %w", err)
 	}
-	if allowed {
-		return bridge.NotificationsGranted, nil
-	}
-	return bridge.NotificationsDenied, nil
+	return d.NotificationAuthorization()
 }
 
 func (d *DesktopHost) SendNotification(notification bridge.DesktopNotification) error {

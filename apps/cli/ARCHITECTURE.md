@@ -136,6 +136,20 @@ The application root only composes the terminal: it builds the owners below, rou
 - `screens` are the management surfaces, each owning one Runtime port and its state: run options (model choice, catalog, status), approval policy, workspace inspection, goals, model configuration, usage, feedback, MCP, Skills, hooks, diagnostic tools, agent documents, and installed plugins with their terminal views. A screen reaches the terminal only through `screenHost`; a screen whose port is absent is nil, which command availability reports.
 - `taskRunner` applies background results on the loop under an operation lease. `readerSurface` owns the reader and the query behind its document. `pickerDialog` pairs a searchable picker with its modal; `confirmPrompt`, `contextEditing`, `liveSearch`, the timeline and the shortcut guide own their modals likewise. `keyRouter` owns key bindings and partial sequences.
 
+An explicit Session change retires the previous background read before loading a
+projection. Creation, fork, import and relocation preserve the Runtime
+acknowledgement while opening the Session. A failed or canceled open leaves the
+committed Session available through the Sessions center.
+
+A definitive missing result retires background reads of the old Session and admits
+one automatic replacement. The terminal keeps the old draft editable until the
+person opens a Session. A subsequent open transfers the draft and retires the
+deleted Session's remaining local state.
+
+The Sessions center filters its accepted catalog locally. Background reads
+refresh the loaded page range while keeping the search and selected Session.
+An explicit request for another page extends that range.
+
 Configured product actions replace Oolong's default bindings for those actions.
 Input routing and help read the resulting maps; configured sequence order
 determines which shortcut help presents first. Oolong supplies defaults only for
@@ -198,7 +212,8 @@ Workbench owns the authoring record keys, current encodings and mutation
 semantics. The SQLite adapter holds the partition's directory lease and commits
 record batches, with byte limits enforced at read and encoding boundaries.
 Workbench installs its in-memory projections after the transaction commits.
-Draft transfer merges the destination and adjusts the source in one commit.
+Opening a Session commits the recent workspace, draft transfer, rollback
+receipt consumption, and any deleted Session's local retirement together.
 Stashing adds the stash and clears the draft in one commit. A confirmed Runtime
 session deletion retires both its local state and its pending command together.
 Session document publication continues to report file visibility and durability

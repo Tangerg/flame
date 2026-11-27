@@ -5,7 +5,7 @@ type QuestionAnswers = string[][];
 interface QuestionAnswerSubmit {
   submit: (answers: QuestionAnswers) => void;
   pending: boolean;
-  submitted: boolean;
+  available: boolean;
 }
 
 export function useQuestionAnswer(
@@ -13,14 +13,14 @@ export function useQuestionAnswer(
   runId?: string,
   itemId?: string,
 ): QuestionAnswerSubmit {
-  const { pending, submitted, resume } = useInterruptResume<true>(sessionId, runId, itemId);
+  const { state, available, submit: respond } = useInterruptResume(sessionId, runId, itemId);
 
   const submit = useCallback(
     (answers: QuestionAnswers) => {
-      resume(true, { type: "answer", answers });
+      respond({ type: "answer", answers });
     },
-    [resume],
+    [respond],
   );
 
-  return { submit, pending: pending !== null, submitted };
+  return { submit, pending: state === "pending", available };
 }

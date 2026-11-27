@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/exactint"
@@ -79,12 +80,20 @@ func (s *ProjectStore) Get(ctx context.Context, id identity.ProjectID) (project.
 
 func (s *ProjectStore) ListPage(ctx context.Context, read projects.CatalogRead) ([]project.Project, error) {
 	return scopedValue(ctx, s.db.read, func(ctx context.Context) ([]project.Project, error) {
-		query := `SELECT ` + projectColumns + ` FROM projects WHERE archived = ?`
-		args := []any{boolToInt(read.Archived)}
+		query := `SELECT ` + projectColumns + ` FROM projects`
+		var predicates []string
+		var args []any
+		if read.Archived != nil {
+			predicates = append(predicates, `archived = ?`)
+			args = append(args, boolToInt(*read.Archived))
+		}
 		if read.After != nil {
 			updatedAt := read.After.UpdatedAt.UnixNano()
-			query += ` AND (updated_at < ? OR (updated_at = ? AND id < ?))`
+			predicates = append(predicates, `(updated_at < ? OR (updated_at = ? AND id < ?))`)
 			args = append(args, updatedAt, updatedAt, read.After.ID)
+		}
+		if len(predicates) > 0 {
+			query += ` WHERE ` + strings.Join(predicates, ` AND `)
 		}
 		query += ` ORDER BY updated_at DESC, id DESC LIMIT ?`
 		args = append(args, read.Limit)

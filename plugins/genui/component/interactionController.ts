@@ -3,11 +3,9 @@ import type {
   InteractionSubmission,
 } from "@flame/component-sdk";
 import {
-  isErrorType,
-  mutationSettlementIsUnknown,
   OperationFailure,
   pluginMethod,
-  type PluginCommandRecovery,
+  type PluginCommand,
 } from "@flame/runtime-client";
 import { parseJSON, stringifyJSON } from "@frame/sdk/json";
 import type { PluginCallRoute } from "@flame/runtime-client/wire";
@@ -25,26 +23,31 @@ type Review = {
   approve(): void;
   cancel(): void;
 };
-type Recovery = { label: string; key?: string } & (
-  { recover(): Promise<void> } | { error: unknown }
-);
+type RecoveryView = { label: string; key: string };
+type FollowupRecovery = RecoveryView & {
+  recover(): Promise<void>;
+};
 
-export type InteractionView = Readonly<
+type ForegroundView =
   | { status: "idle" }
-  | { status: "running"; label: string }
+  | { status: "running" }
   | { status: "review"; review: Review }
-  | { status: "unknown"; recoveries: readonly Recovery[] }
   | { status: "failed"; error: unknown }
-  | { status: "complete" }
+  | { status: "complete" };
+
+type Foreground =
+  | ForegroundView
+  | { status: "followupUnconfirmed"; recovery: FollowupRecovery };
+type Outcome = "idle" | "complete";
+type InteractionView = Readonly<
+  ForegroundView | { status: "unknown"; recoveries: readonly RecoveryView[] }
 >;
 
-export interface InteractionSnapshot {
-  readonly action: InteractionView;
-}
+const initializing = { status: "running" } as const;
 
-class Unconfirmed extends Error {
+class UnconfirmedFollowup extends Error {
   constructor(
-    readonly recovery: Recovery,
+    readonly recovery: FollowupRecovery,
     cause?: unknown,
   ) {
     super("genui: recover the original action before continuing", { cause });
@@ -58,10 +61,10 @@ export class InteractionController {
   readonly #presentation: Presentation;
   readonly #state: InteractionState;
   readonly #listeners = new Set<() => void>();
-  #snapshot: InteractionSnapshot = {
-    action: { status: "idle" },
-  };
-  #initialized = false;
+  #foreground: Foreground = initializing;
+  #view: InteractionView = initializing;
+  #commandIntents = new Map<string, string>();
+  #initialization?: Promise<void>;
 
   constructor(
     context: ComponentContext,
@@ -73,7 +76,7 @@ export class InteractionController {
     this.#state = state;
   }
 
-  readonly snapshot = (): InteractionSnapshot => this.#snapshot;
+  readonly snapshot = (): InteractionView => this.#view;
   readonly subscribe = (listener: () => void): (() => void) => {
     this.#listeners.add(listener);
     return () => {
@@ -83,38 +86,91 @@ export class InteractionController {
 
   get blocked(): boolean {
     return (
-      this.#snapshot.action.status === "running" ||
-      this.#snapshot.action.status === "review" ||
-      this.#snapshot.action.status === "unknown"
+      this.#view.status === "running" ||
+      this.#view.status === "review" ||
+      this.#view.status === "unknown"
     );
   }
 
-  #publish(view: InteractionView): void {
-    this.#commit({ ...this.#snapshot, action: view });
+  #publish(view: Foreground): void {
+    this.#foreground = view;
+    this.#project();
   }
 
-  #commit(snapshot: InteractionSnapshot): void {
+  #project = (): void => {
     if (this.#context.signal.aborted) return;
-    this.#snapshot = snapshot;
+    const foreground = this.#foreground;
+    let view: InteractionView;
+    if (foreground.status === "followupUnconfirmed") {
+      const { label, key } = foreground.recovery;
+      view = { status: "unknown", recoveries: [{ label, key }] };
+    } else if (
+      foreground.status === "running" ||
+      foreground.status === "review"
+    ) {
+      view = foreground;
+    } else {
+      view = foreground;
+      try {
+        const originals = this.#commands();
+        if (originals.some(({ command }) => command.state === "active")) {
+          view = { status: "running" };
+        } else if (originals.length) {
+          view = {
+            status: "unknown",
+            recoveries: originals.map(({ id, command }) => ({
+              label: id,
+              key: command.idempotencyKey,
+            })),
+          };
+        }
+      } catch (error) {
+        view = { status: "failed", error };
+      }
+    }
+    this.#view = view;
     for (const listener of this.#listeners) listener();
+  };
+
+  connect(): () => void {
+    const stop = this.#context.runtime.plugins.subscribeCommands(this.#project);
+    this.#initialization ??= this.#initialize();
+    this.#project();
+    return stop;
   }
 
-  async initialize(): Promise<void> {
-    if (this.#initialized) return;
-    this.#initialized = true;
-    await this.#guard(
-      "initialize",
-      async () => {
-        if (await this.#pending()) return;
-      },
-      false,
-    );
+  async #initialize(): Promise<void> {
+    try {
+      const commands = this.#presentation
+        .operations()
+        .filter(({ binding }) => pluginMethod(binding).kind === "command");
+      const intents = await Promise.all(
+        commands.map(
+          async ({ request: { id } }) =>
+            [id, await this.#intent(id, id)] as const,
+        ),
+      );
+      if (this.#context.signal.aborted) return;
+      this.#commandIntents = new Map(intents);
+      this.#publish({ status: "idle" });
+    } catch (error) {
+      this.#publish({ status: "failed", error });
+    }
+  }
+
+  #commands(): { id: string; command: PluginCommand }[] {
+    if (!this.#commandIntents.size) return [];
+    return this.#context.runtime.plugins.commands().flatMap((command) => {
+      for (const [id, intent] of this.#commandIntents)
+        if (command.matchesIntent(intent)) return [{ id, command }];
+      return [];
+    });
   }
 
   async execute(action: ActionPayload): Promise<void> {
     if (this.blocked) return;
     const captured = structuredClone(action);
-    await this.#guard(captured.name, async () => {
+    await this.#guard(async () => {
       this.#presentation.action(captured);
       if (captured.name === BUILTIN_ACTIONS.resetDraft) {
         this.#state.resetDraft(captured.surfaceId);
@@ -152,49 +208,57 @@ export class InteractionController {
           captured.name,
         );
       } else {
-        await this.#operation(captured.name, captured.context);
+        return this.#operation(captured.name, captured.context);
       }
+      return "complete";
     });
   }
 
-  async #guard(
-    label: string,
-    run: () => Promise<void>,
-    completed = true,
-  ): Promise<void> {
-    this.#publish({ status: "running", label });
+  async #guard(run: () => Promise<Outcome>): Promise<void> {
+    this.#publish({ status: "running" });
     try {
       this.#context.signal.throwIfAborted();
-      await run();
-      if (this.#snapshot.action.status === "running")
-        this.#publish({ status: completed ? "complete" : "idle" });
+      this.#publish({ status: await run() });
     } catch (error) {
       if (this.#context.signal.aborted) return;
-      if (error instanceof Unconfirmed)
-        this.#publish({ status: "unknown", recoveries: [error.recovery] });
+      if (error instanceof UnconfirmedFollowup)
+        this.#publish({
+          status: "followupUnconfirmed",
+          recovery: error.recovery,
+        });
       else if (error instanceof CanceledReview)
         this.#publish({ status: "idle" });
       else this.#publish({ status: "failed", error });
     }
   }
 
-  async recover(recovery: Recovery): Promise<void> {
-    if (
-      this.#snapshot.action.status !== "unknown" ||
-      !this.#snapshot.action.recoveries.includes(recovery) ||
-      !("recover" in recovery)
-    )
-      return;
-    await this.#guard(recovery.label, async () => {
-      await recovery.recover();
-      await this.#pending();
+  async recover(key: string): Promise<void> {
+    const view = this.#view;
+    if (view.status !== "unknown") return;
+    if (!view.recoveries.some((entry) => entry.key === key)) return;
+    const foreground = this.#foreground;
+    await this.#guard(async () => {
+      if (foreground.status === "followupUnconfirmed") {
+        await foreground.recovery.recover();
+        return "complete";
+      }
+      const original = this.#commands().find(
+        ({ command }) => command.idempotencyKey === key,
+      );
+      if (original?.command.state !== "recoverable") return "idle";
+      const { id, command } = original;
+      return this.#observeOperation(id, () =>
+        this.#context.track((signal) =>
+          command.recover((value) => value, signal),
+        ),
+      );
     });
   }
 
   async #followup(result: InteractionSubmission, label: string): Promise<void> {
     this.#context.signal.throwIfAborted();
     if (result.status === "unknown") {
-      const recovery: Recovery = {
+      const recovery: FollowupRecovery = {
         label,
         key: result.idempotencyKey,
         recover: async () => {
@@ -202,12 +266,12 @@ export class InteractionController {
           try {
             settled = await result.recover();
           } catch (cause) {
-            throw new Unconfirmed(recovery, cause);
+            throw new UnconfirmedFollowup(recovery, cause);
           }
           await this.#followup(settled, label);
         },
       };
-      throw new Unconfirmed(recovery);
+      throw new UnconfirmedFollowup(recovery);
     }
     if (result.status === "retired")
       throw new Error("genui: the original conversation input was retired");
@@ -236,97 +300,6 @@ export class InteractionController {
     );
   }
 
-  async #pending(): Promise<boolean> {
-    this.#context.signal.throwIfAborted();
-    const operations = this.#presentation
-      .operations()
-      .filter(({ binding }) => pluginMethod(binding).kind === "command");
-    if (!operations.length) return false;
-    const intents = await Promise.all(
-      operations.map(({ request }) =>
-        this.#intent(request.id, request.id).then((intent) => ({
-          intent,
-          operationId: request.id,
-        })),
-      ),
-    );
-    this.#context.signal.throwIfAborted();
-    const recoveries = this.#context.runtime.plugins
-      .pendingCommands()
-      .flatMap((command) => {
-        const captured = intents.find(({ intent }) =>
-          command.matchesIntent(intent),
-        );
-        if (!captured) return [];
-        this.#state.writeOperation(captured.operationId, {
-          status: "unknown",
-          idempotencyKey: command.idempotencyKey,
-        });
-        return [
-          {
-            label: captured.operationId,
-            key: command.idempotencyKey,
-            recover: () => this.#recoverCommand(captured.operationId, command),
-          },
-        ];
-      });
-    if (!recoveries.length) return false;
-    this.#publish({ status: "unknown", recoveries });
-    return true;
-  }
-
-  async #recoverCommand(
-    id: string,
-    command: PluginCommandRecovery,
-  ): Promise<void> {
-    this.#context.signal.throwIfAborted();
-    try {
-      const data = await this.#context.track(() =>
-        command.recover((value) => value, this.#context.signal),
-      );
-      this.#context.signal.throwIfAborted();
-      this.#state.writeOperation(id, { status: "success", data });
-    } catch (cause) {
-      if (this.#context.signal.aborted) throw cause;
-      if (
-        !(cause instanceof OperationFailure) &&
-        !isErrorType(cause, "plugin_command_retired")
-      )
-        throw new Unconfirmed(
-          {
-            label: id,
-            key: command.idempotencyKey,
-            recover: () => this.#recoverCommand(id, command),
-          },
-          cause,
-        );
-      this.#state.writeOperation(id, {
-        status: "error",
-        error: cause instanceof Error ? cause.message : String(cause),
-      });
-      throw cause;
-    }
-  }
-
-  #retainCommand(id: string, intent: string): Recovery {
-    try {
-      const original = this.#context.runtime.plugins
-        .pendingCommands()
-        .find((command) => command.matchesIntent(intent));
-      if (!original)
-        throw new Error(
-          "genui: the original command handle is unavailable; inspect the existing command recovery view",
-        );
-      return {
-        label: id,
-        key: original.idempotencyKey,
-        recover: () => this.#recoverCommand(id, original),
-      };
-    } catch (error) {
-      return { label: id, error };
-    }
-  }
-
   async #review(binding: PluginCallRoute, input: string): Promise<void> {
     const approved = await new Promise<boolean>((resolve) => {
       const abort = () => resolve(false);
@@ -347,32 +320,32 @@ export class InteractionController {
     });
     this.#context.signal.throwIfAborted();
     if (!approved) throw new CanceledReview();
-    this.#publish({ status: "running", label: binding.method });
+    this.#publish({ status: "running" });
   }
 
   async #operation(
     id: string,
     inputValue: Record<string, unknown>,
-  ): Promise<void> {
+  ): Promise<Outcome> {
     this.#context.signal.throwIfAborted();
     const { binding: route } = this.#presentation.operation(id);
     const method = pluginMethod(route);
     const streaming = method.delivery === "plugins.stream";
     const input = stringifyJSON(inputValue);
-    if (method.kind === "command") await this.#review(route, input);
     const consume = (chunk: unknown) => {
       this.#context.signal.throwIfAborted();
       this.#state.writeOperation(id, { status: "loading", chunk });
     };
-    const { contract, method: name, ...binding } = route;
-    const intent = method.kind === "command" ? await this.#intent(id, id) : "";
-    this.#context.signal.throwIfAborted();
-    this.#state.writeOperation(id, { status: "loading" });
-    try {
-      let data: unknown;
-      if (method.kind === "command") {
-        const command = { contract, method: name, input };
-        data = await this.#context.track(() =>
+    if (method.kind === "command") {
+      const intent = this.#commandIntents.get(id);
+      if (intent === undefined)
+        throw new Error("genui: the captured command intent is unavailable");
+      await this.#review(route, input);
+      if (this.#commands().length) return "idle";
+      const { contract, method: name, ...binding } = route;
+      const command = { contract, method: name, input };
+      return this.#observeOperation(id, () =>
+        this.#context.track((signal) =>
           streaming
             ? this.#context.runtime.plugins.stream(
                 intent,
@@ -380,47 +353,58 @@ export class InteractionController {
                 async () => binding,
                 consume,
                 (value) => value,
-                this.#context.signal,
+                signal,
               )
             : this.#context.runtime.plugins.command(
                 intent,
                 command,
                 async () => binding,
                 (value) => value,
-                this.#context.signal,
+                signal,
               ),
-        );
-      } else if (streaming) {
-        data = await this.#context.track(() =>
-          this.#context.runtime.plugins.queryStream(
+        ),
+      );
+    }
+    return this.#observeOperation(id, () =>
+      this.#context.track(async (signal) => {
+        if (streaming)
+          return this.#context.runtime.plugins.queryStream(
             { route, input },
             consume,
             (value) => value,
-            this.#context.signal,
-          ),
-        );
-      } else {
-        const reply = await this.#context.track(() =>
-          this.#context.runtime.plugins.call(
-            { route, input },
-            { signal: this.#context.signal },
-          ),
+            signal,
+          );
+        const reply = await this.#context.runtime.plugins.call(
+          { route, input },
+          { signal },
         );
         if (reply.failure)
           throw new OperationFailure(reply.failure.code, reply.failure.message);
         if (reply.output === undefined)
           throw new Error("genui: query omitted its output");
-        data = parseJSON(reply.output);
-      }
+        return parseJSON(reply.output);
+      }),
+    );
+  }
+
+  async #observeOperation(
+    id: string,
+    attempt: () => Promise<unknown>,
+  ): Promise<Outcome> {
+    this.#state.writeOperation(id, { status: "loading" });
+    try {
+      const data = await attempt();
       this.#context.signal.throwIfAborted();
       this.#state.writeOperation(id, { status: "success", data });
+      return "complete";
     } catch (cause) {
-      if (this.#context.signal.aborted) throw cause;
-      if (method.kind === "command" && mutationSettlementIsUnknown(cause)) {
-        this.#state.writeOperation(id, { status: "unknown" });
-        // Retain the actual original handle. Re-entering command() after
-        // another view settles the journal entry could create a new command.
-        throw new Unconfirmed(this.#retainCommand(id, intent), cause);
+      this.#context.signal.throwIfAborted();
+      if (
+        this.#commandIntents.has(id) &&
+        this.#commands().some((entry) => entry.id === id)
+      ) {
+        this.#state.writeOperation(id, undefined);
+        return "idle";
       }
       this.#state.writeOperation(id, {
         status: "error",

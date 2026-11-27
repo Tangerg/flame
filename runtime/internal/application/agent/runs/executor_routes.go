@@ -11,6 +11,16 @@ import (
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
+type segmentBoundary uint8
+
+const (
+	boundaryOpen segmentBoundary = iota
+	boundaryTerminal
+	boundaryParked
+)
+
+func (b segmentBoundary) closed() bool { return b != boundaryOpen }
+
 type executorRoute struct {
 	member           ExecutorMember
 	memberBound      bool
@@ -98,7 +108,7 @@ func (e *executorRoutes) unfinishedInPostorder() ([]*executorRoute, error) {
 		if route == nil {
 			return nil, fmt.Errorf("runs: executor tree ordered unknown run %q", runID)
 		}
-		if !route.boundary.finished() {
+		if !route.boundary.closed() {
 			if route.lineage.IsChild() {
 				parent := byRunID[route.lineage.ParentRunID()]
 				if parent == nil {
@@ -108,7 +118,7 @@ func (e *executorRoutes) unfinishedInPostorder() ([]*executorRoute, error) {
 						route.lineage.ParentRunID(),
 					)
 				}
-				if parent.boundary.finished() {
+				if parent.boundary.closed() {
 					return nil, fmt.Errorf(
 						"runs: active executor route %q descends from finished route %q",
 						route.runID,
@@ -125,7 +135,7 @@ func (e *executorRoutes) unfinishedInPostorder() ([]*executorRoute, error) {
 func (e *executorRoutes) unfinishedCount() int {
 	count := 0
 	for _, route := range e.admissionOrder {
-		if !route.boundary.finished() {
+		if !route.boundary.closed() {
 			count++
 		}
 	}
@@ -160,7 +170,7 @@ func (e *executorRoutes) resolveChild(member ExecutorMember) (*executorRoute, er
 	if err := e.bindChildMember(route, member); err != nil {
 		return nil, err
 	}
-	if route.boundary.finished() {
+	if route.boundary.closed() {
 		return nil, fmt.Errorf("runs: child executor member %q published after its segment finished", member.MemberID)
 	}
 	return route, nil
@@ -242,7 +252,7 @@ func (e *executorRoutes) parent(member ExecutorMember) (*executorRoute, error) {
 			member.ParentID,
 		)
 	}
-	if parent.boundary.finished() {
+	if parent.boundary.closed() {
 		return nil, fmt.Errorf(
 			"runs: child executor member %q parent member %q already finished",
 			member.MemberID,
@@ -262,7 +272,7 @@ func (e *executorRoutes) installChild(member ExecutorMember, route *executorRout
 
 func (e *executorRoutes) abortUnfinished(cause error) {
 	for _, route := range e.admissionOrder {
-		if !route.boundary.finished() && route.reducer != nil {
+		if !route.boundary.closed() && route.reducer != nil {
 			route.reducer.abort(cause)
 		}
 	}

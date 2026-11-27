@@ -7,7 +7,6 @@ import {
 import { type TranscriptRow } from "@/features/agent/public/conversation";
 import { useQuestionAnswer } from "@/features/agent/public/hitl";
 import {
-  canSubmitQuestion,
   questionDraftAnswers,
   questionDraftComplete,
   questionSettled,
@@ -55,25 +54,11 @@ export function questionCardSettledView({
   resumeRunId?: string;
   answered?: boolean;
   pending: boolean;
-  questions: readonly QuestionItem[];
-  draft: QuestionDraft;
   answers?: QuestionAnswers;
 }): QuestionCardSettledView {
   if (pending) return { settled: false };
   if (!questionSettled({ status, resumeRunId, answered })) return { settled: false };
   return { settled: true, answers };
-}
-
-function canSubmitQuestionCard({
-  resumeRunId,
-  itemId,
-  pending,
-}: {
-  resumeRunId?: string;
-  itemId?: string;
-  pending: boolean;
-}): boolean {
-  return !pending && canSubmitQuestion({ resumeRunId, itemId });
 }
 
 export function useQuestionCardActions({
@@ -89,7 +74,7 @@ export function useQuestionCardActions({
   questions: readonly QuestionItem[];
   draft: QuestionDraft;
 }) {
-  const { submit, pending, submitted } = useQuestionAnswer(sessionId, resumeRunId, itemId);
+  const { submit, pending, available } = useQuestionAnswer(sessionId, resumeRunId, itemId);
   const complete = useMemo(() => questionDraftComplete(questions, draft), [questions, draft]);
 
   const submitAnswer = useCallback(
@@ -102,7 +87,7 @@ export function useQuestionCardActions({
   return {
     pending,
     complete,
-    disabled: submitted || !canSubmitQuestionCard({ resumeRunId, itemId, pending }),
+    disabled: !available,
     submit: submitAnswer,
   };
 }

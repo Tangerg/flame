@@ -2,7 +2,7 @@ import { type RefObject, useRef } from "react";
 import { Metadata, RecordBody, RecordGroup, Toolbar } from "@flame/ui";
 import { failureText, type Translate } from "@flame/component-sdk";
 import { MemoryAction } from "./MemoryAction";
-import { type Command, type Feedback, type Scope } from "./types";
+import { type Feedback, type Scope } from "./types";
 export function MemoryFeedback({
   feedback,
   original,
@@ -14,9 +14,9 @@ export function MemoryFeedback({
   t,
 }: {
   feedback?: Feedback;
-  original?: Command;
+  original?: string;
   pending: boolean;
-  reconcile(): void;
+  reconcile?: () => void;
   result?: RefObject<HTMLElement | null>;
   canRestoreFocus(): boolean;
   scopeLabel(scope: Scope): string;
@@ -32,9 +32,7 @@ export function MemoryFeedback({
       t(`error.${feedback.failure.fallback}`),
     );
   const key = original && (
-    <Metadata>
-      {t("feedback.original", { key: original.promise.idempotencyKey })}
-    </Metadata>
+    <Metadata>{t("feedback.original", { key: original })}</Metadata>
   );
   return (
     // A caller-owned destination sits outside any form, so this group is its reading unit.
@@ -47,8 +45,9 @@ export function MemoryFeedback({
         {feedback && (
           <RecordBody>
             {t(`feedback.${feedback.state}`, {
-              label:
-                feedback.intent.action === "add"
+              label: !feedback.intent
+                ? t("feedback.original.label")
+                : feedback.intent.action === "add"
                   ? t(`command.add.${scopeLabel(feedback.intent.scope)}`)
                   : t(`command.${feedback.intent.action}`, {
                       id: feedback.intent.id,
@@ -58,7 +57,7 @@ export function MemoryFeedback({
         )}
         {detail && <RecordBody>{detail}</RecordBody>}
       </RecordGroup>
-      {original?.source === "record" ? (
+      {original && reconcile ? (
         <Toolbar label={t("feedback.original.label")}>
           {key}
           <MemoryAction

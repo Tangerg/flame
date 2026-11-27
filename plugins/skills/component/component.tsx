@@ -1,5 +1,5 @@
 import { useId, useRef } from "react";
-import { type ComponentContext } from "@flame/component-sdk";
+import { type PluginComponentProps } from "@flame/component-sdk";
 import {
   Button,
   Panel,
@@ -28,7 +28,7 @@ import {
 import { SkillDocument, SkillDocumentToolbar } from "./document";
 import { SkillReviewForm } from "./review";
 
-export function Skills({ context }: { context: ComponentContext }) {
+export function Skills({ context, locale }: PluginComponentProps) {
   const {
     t,
     bodyViewport,
@@ -58,7 +58,7 @@ export function Skills({ context }: { context: ComponentContext }) {
     rows,
     matching,
     openDocument,
-  } = useSkills(context);
+  } = useSkills(context, locale);
   const summary = catalogSummary(snapshot, matching.length, rows.length, t);
   const documentTitleId = useId();
   const instructions = useRef<HTMLElement>(null);

@@ -262,6 +262,7 @@ function startFixture(messages: NotificationFeed, render: (node: ReactNode) => v
                     ? "workspace-permissions-toolserver"
                     : "workspace-tools",
                 },
+                revision: "visual-mcp-revision",
                 connection:
                   query.get("mcp-transport") === "streamableHttp"
                     ? {
@@ -335,7 +336,7 @@ function startFixture(messages: NotificationFeed, render: (node: ReactNode) => v
       }
       if (fixture === "computer") {
         const { createComputerConsoleFixture } = await import("./computerConsoleFixture");
-        const computer = await createComputerConsoleFixture(requestedLocale, requestedState);
+        const computer = await createComputerConsoleFixture(requestedState);
         currentRuntimeClient = computer.client;
         await loadPluginsForTest(
           definePlugin({

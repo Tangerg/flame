@@ -13,6 +13,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/goals"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
+	"github.com/Tangerg/flame/runtime/internal/domain/automation/goalref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 )
 
@@ -25,7 +26,7 @@ func (s *Handler) commitUpdateGoal(ctx context.Context, in protocol.UpdateGoalRe
 }
 
 func (s *Handler) updateGoal(ctx context.Context, in protocol.UpdateGoalRequest, complete operation.Reply[goal.Goal]) error {
-	sessionID, parseErr := sessionParameter(in.SessionID)
+	target, parseErr := goalTargetParameter(in.GoalTarget)
 	if parseErr != nil {
 		return parseErr
 	}
@@ -33,23 +34,23 @@ func (s *Handler) updateGoal(ctx context.Context, in protocol.UpdateGoalRequest,
 	if err != nil {
 		return err
 	}
-	return mapGoalErr(s.goals.UpdateObjective(ctx, sessionID, in.Objective, caller, complete))
+	return mapGoalErr(s.goals.UpdateObjective(ctx, target, in.Objective, caller, complete))
 }
 
-func (s *Handler) ClearGoal(ctx context.Context, in protocol.GoalRequest) error {
+func (s *Handler) ClearGoal(ctx context.Context, in protocol.GoalTarget) error {
 	return s.clearGoal(ctx, in, operation.DirectReply(new(struct{})))
 }
 
-func (s *Handler) commitClearGoal(ctx context.Context, in protocol.GoalRequest, outcome atomicOutcome) error {
+func (s *Handler) commitClearGoal(ctx context.Context, in protocol.GoalTarget, outcome atomicOutcome) error {
 	return outcome.settleRefusal(ctx, s.clearGoal(ctx, in, outcome.acknowledgement()))
 }
 
-func (s *Handler) clearGoal(ctx context.Context, in protocol.GoalRequest, complete operation.Reply[struct{}]) error {
-	sessionID, parseErr := sessionParameter(in.SessionID)
+func (s *Handler) clearGoal(ctx context.Context, in protocol.GoalTarget, complete operation.Reply[struct{}]) error {
+	target, parseErr := goalTargetParameter(in)
 	if parseErr != nil {
 		return parseErr
 	}
-	return mapGoalErr(s.goals.Clear(ctx, sessionID, complete))
+	return mapGoalErr(s.goals.Clear(ctx, target, complete))
 }
 
 func (s *Handler) StartGoal(ctx context.Context, in protocol.StartGoalRequest) (*protocol.Goal, error) {
@@ -65,6 +66,10 @@ func (s *Handler) startGoal(ctx context.Context, in protocol.StartGoalRequest, c
 	if parseErr != nil {
 		return parseErr
 	}
+	replaces, _, err := goalref.ParseOptionalIncarnation(in.ReplaceIncarnationID)
+	if err != nil {
+		return protocol.NewFailure(protocol.ErrInvalidParams, err.Error(), err)
+	}
 	selection, err := flamemodel.NewWithReasoningEffort(in.Provider, in.Model, in.ReasoningEffort)
 	if err != nil {
 		return mapGoalErr(err)
@@ -73,10 +78,13 @@ func (s *Handler) startGoal(ctx context.Context, in protocol.StartGoalRequest, c
 	if err != nil {
 		return err
 	}
-	return mapGoalErr(s.goals.Start(ctx, sessionID, in.Objective, selection, capabilities, complete))
+	return mapGoalErr(s.goals.Start(ctx, goals.StartCommand{
+		SessionID: sessionID, Replaces: replaces, Objective: in.Objective,
+		Selection: selection, Capabilities: capabilities,
+	}, complete))
 }
 
-func (s *Handler) GetGoal(ctx context.Context, in protocol.GoalRequest) (*protocol.Goal, error) {
+func (s *Handler) GetGoal(ctx context.Context, in protocol.GetGoalRequest) (*protocol.Goal, error) {
 	sessionID, parseErr := sessionParameter(in.SessionID)
 	if parseErr != nil {
 		return nil, parseErr
@@ -91,32 +99,32 @@ func (s *Handler) GetGoal(ctx context.Context, in protocol.GoalRequest) (*protoc
 	return presentGoal(g)
 }
 
-func (s *Handler) StopGoal(ctx context.Context, in protocol.GoalRequest) error {
+func (s *Handler) StopGoal(ctx context.Context, in protocol.GoalTarget) error {
 	return s.stopGoal(ctx, in, operation.DirectReply(new(struct{})))
 }
 
-func (s *Handler) commitStopGoal(ctx context.Context, in protocol.GoalRequest, outcome atomicOutcome) error {
+func (s *Handler) commitStopGoal(ctx context.Context, in protocol.GoalTarget, outcome atomicOutcome) error {
 	return outcome.settleRefusal(ctx, s.stopGoal(ctx, in, outcome.acknowledgement()))
 }
 
-func (s *Handler) stopGoal(ctx context.Context, in protocol.GoalRequest, complete operation.Reply[struct{}]) error {
-	sessionID, parseErr := sessionParameter(in.SessionID)
+func (s *Handler) stopGoal(ctx context.Context, in protocol.GoalTarget, complete operation.Reply[struct{}]) error {
+	target, parseErr := goalTargetParameter(in)
 	if parseErr != nil {
 		return parseErr
 	}
-	return mapGoalErr(s.goals.Stop(ctx, sessionID, complete))
+	return mapGoalErr(s.goals.Stop(ctx, target, complete))
 }
 
-func (s *Handler) ResumeGoal(ctx context.Context, in protocol.GoalRequest) (*protocol.Goal, error) {
+func (s *Handler) ResumeGoal(ctx context.Context, in protocol.GoalTarget) (*protocol.Goal, error) {
 	return applyGoalCommand(func(complete operation.Reply[goal.Goal]) error { return s.resumeGoal(ctx, in, complete) })
 }
 
-func (s *Handler) commitResumeGoal(ctx context.Context, in protocol.GoalRequest, outcome atomicOutcome) error {
+func (s *Handler) commitResumeGoal(ctx context.Context, in protocol.GoalTarget, outcome atomicOutcome) error {
 	return outcome.settleRefusal(ctx, s.resumeGoal(ctx, in, outcome.goal()))
 }
 
-func (s *Handler) resumeGoal(ctx context.Context, in protocol.GoalRequest, complete operation.Reply[goal.Goal]) error {
-	sessionID, parseErr := sessionParameter(in.SessionID)
+func (s *Handler) resumeGoal(ctx context.Context, in protocol.GoalTarget, complete operation.Reply[goal.Goal]) error {
+	target, parseErr := goalTargetParameter(in)
 	if parseErr != nil {
 		return parseErr
 	}
@@ -124,7 +132,19 @@ func (s *Handler) resumeGoal(ctx context.Context, in protocol.GoalRequest, compl
 	if err != nil {
 		return err
 	}
-	return mapGoalErr(s.goals.Resume(ctx, sessionID, caller, complete))
+	return mapGoalErr(s.goals.Resume(ctx, target, caller, complete))
+}
+
+func goalTargetParameter(in protocol.GoalTarget) (goalref.Target, error) {
+	sessionID, err := sessionParameter(in.SessionID)
+	if err != nil {
+		return goalref.Target{}, err
+	}
+	incarnation, err := goalref.ParseIncarnation(in.IncarnationID)
+	if err != nil {
+		return goalref.Target{}, protocol.NewFailure(protocol.ErrInvalidParams, err.Error(), err)
+	}
+	return goalref.Target{SessionID: sessionID, IncarnationID: incarnation}, nil
 }
 
 func applyGoalCommand(command func(operation.Reply[goal.Goal]) error) (*protocol.Goal, error) {
@@ -158,9 +178,8 @@ func mapGoalErr(err error) error {
 	case errors.Is(err, goals.ErrGoalActive):
 		return protocol.NewFailure(protocol.ErrSessionBusy, err.Error(), err)
 	case errors.Is(err, goals.ErrGoalConflict):
-		return protocol.NewFailure(protocol.ErrRevisionConflict, "the goal changed while the command was being prepared", err)
-	case errors.Is(err, goals.ErrNoGoal),
-		errors.Is(err, goal.ErrNotResumable),
+		return protocol.NewFailure(protocol.ErrRevisionConflict, "the goal changed before the command could be applied", err)
+	case errors.Is(err, goal.ErrNotResumable),
 		errors.Is(err, goal.ErrNotEditable),
 		flamemodel.IsInvalid(err),
 		errors.Is(err, goal.ErrInvalid),
@@ -182,7 +201,7 @@ func presentGoal(g goal.Goal) (*protocol.Goal, error) {
 	}
 	selection, used := g.ModelSelection(), g.Used()
 	w := protocol.Goal{
-		SessionID:       g.SessionID().String(),
+		GoalTarget:      protocol.GoalTarget{SessionID: g.SessionID().String(), IncarnationID: g.IncarnationID().String()},
 		Objective:       g.Objective(),
 		Status:          status,
 		Reason:          reason,

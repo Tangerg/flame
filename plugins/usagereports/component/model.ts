@@ -26,11 +26,14 @@ export type OpenedReport = {
   error?: string;
 };
 export type ArchiveReturn = { opener?: HTMLElement; scroll: ScrollPosition[] };
+export type ArchiveMutation = { kind: "capture" } | { kind: "removal"; id: string };
 export type Action =
-  { kind: "capture" | "removal" } | { kind: "check" | "retire"; key: string };
+  | ArchiveMutation
+  | { kind: "check"; key: string }
+  | { kind: "retire"; key: string };
 export type Outcome =
   | {
-      kind: "saved" | "removed" | "removalConfirmed" | "unknown" | "retired";
+      kind: "saved" | "removed" | "refused" | "retired";
     }
   | { kind: "savedArchived"; header: Header }
   | {

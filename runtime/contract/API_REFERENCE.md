@@ -5,7 +5,7 @@
 > method the Runtime does not serve. The adjacent JSON artifacts are the
 > machine-readable contract; this file is its mechanical human-readable index.
 
-Protocol `2026-11-27.8` · 115 methods
+Protocol `2026-11-27.13` · 115 methods
 
 ## Methods
 
@@ -32,7 +32,7 @@ Protocol `2026-11-27.8` · 115 methods
 | `projects.update` | command | unary | replayResponse | none | none | — | — | `project_not_found`, `revision_conflict` |
 | `modelInvocations.endpoints` | query | unary | none | none | cursor | — | — | `capability_not_negotiated` |
 | `modelInvocations.list` | query | unary | none | none | cursor | — | — | `run_not_found`, `capability_not_negotiated` |
-| `runs.start` | command | stream | ownerRun | run | none | — | — | `plugin_unavailable`, `plugin_stale`, `session_not_found`, `project_not_found`, `session_busy`, `session_has_active_run`, `prompt_source_too_large`, `unsupported_mime`, `capability_not_negotiated`, `plugin_changed` |
+| `runs.start` | command | stream | ownerRun | run | none | — | — | `plugin_unavailable`, `plugin_stale`, `session_not_found`, `project_not_found`, `session_busy`, `session_has_active_run`, `prompt_source_too_large`, `prompt_rejected`, `unsupported_mime`, `capability_not_negotiated`, `plugin_changed` |
 | `runs.resume` | command | stream | ownerRun | run | none | — | — | `run_not_found`, `interrupt_not_open`, `capability_not_negotiated`, `plugin_changed` |
 | `runs.subscribe` | subscription | stream | none | run | none | — | — | `run_not_found`, `run_not_root`, `run_waiting`, `run_finished`, `stale_segment`, `replay_cursor_invalid`, `replay_unavailable`, `capability_not_negotiated` |
 | `runs.cancel` | command | unary | replayResponse | none | none | — | — | `run_not_found`, `run_finished`, `session_busy`, `capability_not_negotiated` |
@@ -69,8 +69,8 @@ Protocol `2026-11-27.8` · 115 methods
 | `mcp.tools.setExposure` | command | unary | replayResponse | none | none | — | `mcp` | `capability_not_negotiated` |
 | `mcp.servers.list` | query | unary | none | none | none | — | `mcp` | `capability_not_negotiated` |
 | `mcp.servers.create` | command | unary | replayResponse | none | none | — | `mcp` | `mcp_server_already_exists`, `plugin_unavailable`, `capability_not_negotiated` |
-| `mcp.servers.update` | command | unary | replayResponse | none | none | — | `mcp` | `mcp_server_not_found`, `capability_not_negotiated` |
-| `mcp.servers.delete` | command | unary | replayResponse | none | none | — | `mcp` | `mcp_server_not_found`, `capability_not_negotiated` |
+| `mcp.servers.update` | command | unary | replayResponse | none | none | — | `mcp` | `mcp_server_not_found`, `mcp_owned_by_installation`, `revision_conflict`, `capability_not_negotiated` |
+| `mcp.servers.delete` | command | unary | replayResponse | none | none | — | `mcp` | `mcp_server_not_found`, `mcp_owned_by_installation`, `revision_conflict`, `capability_not_negotiated` |
 | `mcp.servers.test` | query | unary | none | none | none | — | `mcp` | `plugin_unavailable`, `capability_not_negotiated` |
 | `mcp.tools.list` | query | unary | none | none | none | — | `mcp` | `capability_not_negotiated` |
 | `mcp.servers.reconnect` | command | unary | replayResponse | none | none | — | `mcp` | `mcp_server_not_found`, `mcp_server_disabled`, `capability_not_negotiated` |
@@ -206,6 +206,7 @@ publish one namespaced pattern branch without weakening first-party tags.
 | `plugin_stale` | — | `detail`, `docUrl` |
 | `plugin_unavailable` | — | `detail`, `docUrl` |
 | `project_not_found` | — | `detail`, `docUrl` |
+| `prompt_rejected` | — | `detail`, `docUrl` |
 | `prompt_source_too_large` | — | `detail`, `docUrl` |
 | `provider_error` | — | `detail`, `docUrl` |
 | `provider_rejected` | — | `detail`, `docUrl` |
@@ -245,7 +246,7 @@ publish one namespaced pattern branch without weakening first-party tags.
 | tag | required | optional |
 | --- | --- | --- |
 | `notRecorded` | — | `candidateUserItemId` |
-| `accepted` | `runId`, `segmentId`, `sessionId`, `run` | `userItemId`, `input`, `appliedItem` |
+| `accepted` | `runId`, `segmentId`, `sessionId` | `userItemId`, `input` |
 | `retired` | `runId`, `segmentId`, `sessionId` | `userItemId`, `input` |
 
 ### `RunOutcome`
@@ -598,6 +599,8 @@ TypeScript validator from this single registry projection.
 | `ListSessionsRequest` | `search` | `maxLength(1024)` |
 | `ListSessionsRequest` | `projectId` | `identity` |
 | `ListSessionsRequest` | `projectId` | `maxLength(256)` |
+| `ListSessionsRequest` | `idPrefix` | `identity` |
+| `ListSessionsRequest` | `idPrefix` | `maxLength(256)` |
 | `CreateSessionRequest` | `projectId` | `identity` |
 | `CreateSessionRequest` | `projectId` | `maxLength(256)` |
 | `GetSessionRequest` | `sessionId` | `nonEmpty` |
@@ -1041,6 +1044,12 @@ TypeScript validator from this single registry projection.
 | `ListApprovalRulesRequest` | `sessionId` | `maxLength(256)` |
 | `ListApprovalRulesResult` | `rules` | `maxItems(2048)` |
 | `ForgetApprovalRuleRequest` | `id` | `nonEmpty` |
+| `MCPServer` | `revision` | `nonEmpty` |
+| `MCPServer` | `revision` | `identity` |
+| `MCPServer` | `revision` | `maxLength(256)` |
+| `MCPDirectoryTarget` | `expectedRevision` | `nonEmpty` |
+| `MCPDirectoryTarget` | `expectedRevision` | `identity` |
+| `MCPDirectoryTarget` | `expectedRevision` | `maxLength(256)` |
 | `MCPOrigin` | `installationId` | `pattern("^(?:[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000000[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000000[1-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000000[1-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000000[1-9a-f])$")` |
 | `MCPServerID` | `name` | `pattern("^[a-z0-9][a-z0-9._-]{0,31}$")` |
 | `MCPToolExposure` | `disabledTools` | `maxItems(2048)` |
@@ -1217,9 +1226,12 @@ TypeScript validator from this single registry projection.
 | `ModelCapabilities` | `reasoningDefaultLevel` | `maxLength(32)` |
 | `InvokeToolRequest` | `name` | `nonEmpty` |
 | `AgentDoc` | `path` | `pattern("\\S")` |
-| `Goal` | `sessionId` | `nonEmpty` |
-| `Goal` | `sessionId` | `identity` |
-| `Goal` | `sessionId` | `maxLength(256)` |
+| `GoalTarget` | `sessionId` | `nonEmpty` |
+| `GoalTarget` | `sessionId` | `identity` |
+| `GoalTarget` | `sessionId` | `maxLength(256)` |
+| `GoalTarget` | `incarnationId` | `nonEmpty` |
+| `GoalTarget` | `incarnationId` | `identity` |
+| `GoalTarget` | `incarnationId` | `maxLength(128)` |
 | `Goal` | `objective` | `pattern("\\S")` |
 | `Goal` | `provider` | `identity` |
 | `Goal` | `provider` | `maxLength(64)` |
@@ -1234,18 +1246,18 @@ TypeScript validator from this single registry projection.
 | `StartGoalRequest` | `sessionId` | `identity` |
 | `StartGoalRequest` | `sessionId` | `maxLength(256)` |
 | `StartGoalRequest` | `objective` | `pattern("\\S")` |
+| `StartGoalRequest` | `replaceIncarnationId` | `nonEmpty` |
+| `StartGoalRequest` | `replaceIncarnationId` | `identity` |
+| `StartGoalRequest` | `replaceIncarnationId` | `maxLength(128)` |
 | `StartGoalRequest` | `provider` | `identity` |
 | `StartGoalRequest` | `provider` | `maxLength(64)` |
 | `StartGoalRequest` | `model` | `identity` |
 | `StartGoalRequest` | `model` | `maxLength(256)` |
 | `StartGoalRequest` | `reasoningEffort` | `identity` |
 | `StartGoalRequest` | `reasoningEffort` | `maxLength(32)` |
-| `GoalRequest` | `sessionId` | `nonEmpty` |
-| `GoalRequest` | `sessionId` | `identity` |
-| `GoalRequest` | `sessionId` | `maxLength(256)` |
-| `UpdateGoalRequest` | `sessionId` | `nonEmpty` |
-| `UpdateGoalRequest` | `sessionId` | `identity` |
-| `UpdateGoalRequest` | `sessionId` | `maxLength(256)` |
+| `GetGoalRequest` | `sessionId` | `nonEmpty` |
+| `GetGoalRequest` | `sessionId` | `identity` |
+| `GetGoalRequest` | `sessionId` | `maxLength(256)` |
 | `UpdateGoalRequest` | `objective` | `pattern("\\S")` |
 | `ClientInfo` | `name` | `nonEmpty` |
 | `ClientInfo` | `version` | `nonEmpty` |

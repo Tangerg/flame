@@ -1,5 +1,6 @@
 import { agentInputToContentBlocks } from "@/features/agent/adapters/wireInput";
 import { localUserMessage } from "@/features/agent/adapters/optimisticUserMessage";
+import { retiredSteerMessageId } from "@/features/agent/application/view/optimisticMessageIdentity";
 import { type AgentSessionStore } from "@/features/agent/adapters/agentSessionStore";
 import { type Navigator } from "@/lib/navigation";
 import {
@@ -11,6 +12,8 @@ import { type AgentOpenSessions } from "@/features/agent/application/session/ses
 import { type AgentSessionViewPort } from "@/features/agent/application/session/sessionAccess";
 import { createAgentViewSelectors } from "@/features/agent/adapters/agentViewSelectors";
 import { type AgentStoreOwner } from "@/features/agent/adapters/agentStore";
+import { ASYNC_OWNERSHIP_RETIRED, settleBeforeAbort } from "@/lib/asyncOwnership";
+import { createPublicationSlot } from "@/lib/publicationSlot";
 export function createAgentState(
   navigation: Navigator,
   sessionStore: AgentSessionStore,
@@ -42,12 +45,43 @@ export function createAgentState(
     };
   }
 
+  const pendingSessionOpen = createPublicationSlot<AbortController>();
+  function retirePendingSessionOpen() {
+    const pending = pendingSessionOpen.current();
+    if (pending && pendingSessionOpen.withdraw(pending)) pending.abort();
+  }
+  const stopNavigation = navigation.subscribe((location, previous) => {
+    if (location.session !== previous.session) retirePendingSessionOpen();
+  });
+
   function goToSession(id: string, options?: { replace?: boolean }): void {
+    retirePendingSessionOpen();
     const store = useAgentSessionStore.getState();
     if (id !== "") store.holdOpen(id);
     store.rememberSession(id);
     navigation.go({ session: id, view: null }, options);
   }
+
+  const selectExistingSession: AgentSessionStatePort["selectExistingSession"] = async (
+    id,
+    source,
+    verify,
+  ) => {
+    if (source.aborted) return "superseded";
+    const opening = new AbortController();
+    pendingSessionOpen.publish(opening, (previous) => previous.abort());
+    const signal = AbortSignal.any([source, opening.signal]);
+    try {
+      const exists = await settleBeforeAbort(verify(signal), signal);
+      if (exists === ASYNC_OWNERSHIP_RETIRED || signal.aborted) return "superseded";
+      if (!exists) return "missing";
+      pendingSessionOpen.withdraw(opening);
+      goToSession(id);
+      return "opened";
+    } finally {
+      pendingSessionOpen.withdraw(opening);
+    }
+  };
 
   const refreshOwner = projection.refresh();
   const deletedSessionListeners = new Set<(id: string) => void>();
@@ -94,6 +128,7 @@ export function createAgentState(
       };
     },
     selectSession: goToSession,
+    selectExistingSession,
     closeSession,
     deleteSession: (id) => {
       closeSession(id);
@@ -146,8 +181,11 @@ export function createAgentState(
       useAgentStore.getState().dropMessage(sessionId, messageId),
     projectSteerDelivery: (sessionId, messageId, command) =>
       useAgentStore.getState().projectSteerDelivery(sessionId, messageId, command),
-    projectSteerReceipt: (sessionId, messageId, steer) =>
-      useAgentStore.getState().projectSteerReceipt(sessionId, messageId, steer),
+    appendRetiredSteer: (sessionId, { runId, userItemId, input }) =>
+      useAgentStore.getState().appendLocalMessage(sessionId, {
+        ...localUserMessage(retiredSteerMessageId(userItemId), agentInputToContentBlocks(input)),
+        steer: { runId, receipt: "retired" },
+      }),
     reconcileMessageIdentity: (sessionId, fromId, toId, steer) =>
       useAgentStore.getState().reconcileMessageIdentity(sessionId, fromId, toId, steer),
     appendLocalUserMessage: (sessionId, messageId, input) =>
@@ -162,14 +200,17 @@ export function createAgentState(
       refreshOwner.commit(sessionId, token, view, commands),
     retireProjectionGeneration: (sessionIds) => refreshOwner.retireProjectionGeneration(sessionIds),
     replaceServerScope: (sessionIds) => refreshOwner.replaceServerScope(sessionIds),
-    clearProblem: (sessionId) => useAgentStore.getState().clearProblem(sessionId),
+    dismissProblem: (target) => useAgentStore.getState().dismissProblem(target),
     subscribeSessions: (onChange) => useAgentStore.subscribe((state) => onChange(state.sessions)),
     subscribeRootRunSettlements: projection.subscribeRootRunSettlements,
   };
   return {
     state,
     view,
+    retirePendingSessionOpen,
     dispose() {
+      stopNavigation();
+      retirePendingSessionOpen();
       deletedSessionListeners.clear();
       refreshOwner.dispose();
     },

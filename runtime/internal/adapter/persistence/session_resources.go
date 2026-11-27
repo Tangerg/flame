@@ -72,30 +72,25 @@ func sessionResourceRetirementPending(ctx context.Context, connection sqlite.Exe
 	return pending, nil
 }
 
-func (s *ResourceRetirementStore) ListPending(ctx context.Context) ([]sessions.ResourceRetirement, error) {
-	return scopedValue(ctx, s.db.read, func(ctx context.Context) ([]sessions.ResourceRetirement, error) {
-		rows, err := s.db.connection(ctx).QueryContext(ctx, `SELECT retirement_id, session_id FROM committed_session_resource_retirements ORDER BY session_id`)
+func (s *ResourceRetirementStore) ListPendingSessions(ctx context.Context) ([]identity.SessionID, error) {
+	return scopedValue(ctx, s.db.read, func(ctx context.Context) ([]identity.SessionID, error) {
+		rows, err := s.db.connection(ctx).QueryContext(ctx, `SELECT session_id FROM committed_session_resource_retirements ORDER BY session_id`)
 		if err != nil {
 			return nil, fmt.Errorf("sqlite: list Session resource retirements: %w", err)
 		}
 		defer rows.Close()
-		var retirements []sessions.ResourceRetirement
+		var pending []identity.SessionID
 		for rows.Next() {
-			var id string
 			var sessionID identity.SessionID
-			if err := rows.Scan(&id, &sessionID); err != nil {
-				return nil, fmt.Errorf("sqlite: scan Session resource retirement: %w", err)
+			if err := rows.Scan(&sessionID); err != nil {
+				return nil, fmt.Errorf("sqlite: scan Session with a pending resource retirement: %w", err)
 			}
-			retirement, err := sessions.RestoreResourceRetirement(id, sessionID)
-			if err != nil {
-				return nil, fmt.Errorf("sqlite: decode Session resource retirement: %w", err)
-			}
-			retirements = append(retirements, retirement)
+			pending = append(pending, sessionID)
 		}
 		if err := rows.Err(); err != nil {
 			return nil, fmt.Errorf("sqlite: iterate Session resource retirements: %w", err)
 		}
-		return retirements, nil
+		return pending, nil
 	})
 }
 

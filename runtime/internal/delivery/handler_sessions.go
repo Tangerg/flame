@@ -62,8 +62,10 @@ func (s *Handler) ListSessions(ctx context.Context, q protocol.ListSessionsReque
 	if err != nil {
 		return nil, err
 	}
-	if q.Search != "" || q.Workspace != nil || !project.IsZero() {
-		filter, err = session.NewCatalogFilter(q.Search, workspace, project)
+	if q.Search != "" || q.IDPrefix != "" || workspace != nil || !project.IsZero() {
+		filter, err = session.NewCatalogFilter(session.CatalogCriteria{
+			Search: q.Search, IDPrefix: q.IDPrefix, Workspace: workspace, Project: project,
+		})
 		if err != nil {
 			return nil, protocol.NewFailure(protocol.ErrInvalidParams, err.Error(), err)
 		}

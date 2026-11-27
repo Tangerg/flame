@@ -8,6 +8,11 @@ import (
 
 const MaximumIncarnationCharacters = 128
 
+type Target struct {
+	SessionID     identity.SessionID
+	IncarnationID IncarnationID
+}
+
 type IncarnationID struct {
 	text string
 }

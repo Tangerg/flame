@@ -1,41 +1,45 @@
-import { type AgentProblem, type AgentSessionView } from "@/features/agent/public/sessionView";
+import {
+  type AgentProblem,
+  type AgentRunFailureOutcome,
+  type AgentSessionView,
+} from "@/features/agent/public/sessionView";
 import { isAgentRunFailure } from "@/features/agent/application/view/runOutcome";
-import { selectCurrentRootRun, selectRunProblem } from "@/features/agent/application/view/runTree";
-export interface ProblemPresentation {
-  readonly commandError: AgentProblem | null;
-  readonly dismissedRunId: string | null;
-}
+import { selectCurrentRootRun } from "@/features/agent/application/view/runTree";
 
-export const EMPTY_PROBLEM_PRESENTATION: ProblemPresentation = {
-  commandError: null,
-  dismissedRunId: null,
-};
+export type DisplayedSessionProblem = { readonly sessionId: string } & (
+  | { readonly kind: "command"; readonly error: AgentProblem }
+  | {
+      readonly kind: "run";
+      readonly runId: string;
+      readonly outcome: AgentRunFailureOutcome;
+    }
+);
 
-export function selectVisibleProblem(
-  view: AgentSessionView,
-  presentation: ProblemPresentation,
-): AgentProblem | null {
-  if (presentation.commandError) return presentation.commandError;
-  const run = selectCurrentRootRun(view);
-  return run?.id === presentation.dismissedRunId ? null : selectRunProblem(run);
-}
+export class ProblemPresentation {
+  static readonly empty = new ProblemPresentation(null, null);
 
-export function withCommandError(
-  presentation: ProblemPresentation,
-  error: AgentProblem | null,
-): ProblemPresentation {
-  if (presentation.commandError === error) return presentation;
-  return { ...presentation, commandError: error };
-}
+  private constructor(
+    private readonly commandError: AgentProblem | null,
+    private readonly dismissedRunId: string | null,
+  ) {}
 
-export function dismissVisibleProblem(
-  view: AgentSessionView,
-  presentation: ProblemPresentation,
-): ProblemPresentation {
-  const run = selectCurrentRootRun(view);
-  const dismissedRunId = isAgentRunFailure(run?.outcome) ? run.id : presentation.dismissedRunId;
-  if (presentation.commandError === null && dismissedRunId === presentation.dismissedRunId) {
-    return presentation;
+  withCommandError(error: AgentProblem | null): ProblemPresentation {
+    return error === this.commandError ? this : new ProblemPresentation(error, this.dismissedRunId);
   }
-  return { commandError: null, dismissedRunId };
+
+  displayed(sessionId: string, view: AgentSessionView): DisplayedSessionProblem | null {
+    if (this.commandError) return { kind: "command", sessionId, error: this.commandError };
+    const run = selectCurrentRootRun(view);
+    if (!run || run.id === this.dismissedRunId || !isAgentRunFailure(run.outcome)) return null;
+    return { kind: "run", sessionId, runId: run.id, outcome: run.outcome };
+  }
+
+  dismiss(view: AgentSessionView, target: DisplayedSessionProblem): ProblemPresentation {
+    const current = this.displayed(target.sessionId, view);
+    if (target.kind === "command" && current?.kind === "command" && current.error === target.error)
+      return this.withCommandError(null);
+    if (target.kind === "run" && current?.kind === "run" && current.runId === target.runId)
+      return new ProblemPresentation(this.commandError, target.runId);
+    return this;
+  }
 }

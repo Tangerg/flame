@@ -352,12 +352,12 @@ export function useRuntimeFixture(
       }),
     });
 
-  const startCLI = (args: string[]) => {
+  const startCLI = (args: string[], home = join(environmentRoot, "cli-data")) => {
     const child = spawn(cliExecutable, ["--runtime-url", baseUrl, ...args], {
       cwd: root,
       env: {
         ...process.env,
-        FLAME_HOME: join(environmentRoot, "cli-data"),
+        FLAME_HOME: home,
         XDG_CONFIG_HOME: join(environmentRoot, "cli-config"),
         FLAME_RUNTIME_TOKEN: "",
         FLAME_PROVIDER: "",

@@ -1,9 +1,6 @@
 package terminal
 
 import (
-	"fmt"
-	"slices"
-
 	"github.com/Tangerg/flame/apps/cli/internal/delivery/format"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 
@@ -22,9 +19,7 @@ type sessionCenterPane struct {
 	theme          kit.Theme
 	glyphs         kit.Glyphs
 	picker         *picker[conversation.Session]
-	items          []conversation.Session
-	cursor         string
-	seenCursors    map[string]struct{}
+	catalog        sessionCatalog
 	loadMore       func()
 	toggleFavorite func(conversation.Session)
 	rename         func(conversation.Session)
@@ -33,99 +28,38 @@ type sessionCenterPane struct {
 
 func newSessionCenterPane(theme kit.Theme, glyphs kit.Glyphs, open func(conversation.Session)) *sessionCenterPane {
 	center := &sessionCenterPane{theme: theme, glyphs: glyphs}
-	center.picker = newPicker(theme, glyphs, "search loaded sessions",
-		func(session conversation.Session) string {
+	center.picker = newPicker(theme, glyphs, pickerConfig[conversation.Session]{
+		placeholder: "search loaded sessions",
+		label: func(session conversation.Session) string {
 			group := "Recent"
 			if session.Favorite {
 				group = glyphs.Taken + " Favorites"
 			}
 			return group + format.Separator + displayTitle(session)
 		},
-		func(session conversation.Session) string { return compactRelativeAge(session.UpdatedAt) },
-		open,
-	)
-	center.Reset()
+		detail: func(session conversation.Session) string { return compactRelativeAge(session.UpdatedAt) },
+		same:   func(left, right conversation.Session) bool { return left.ID == right.ID },
+		choose: open,
+	})
 	return center
 }
 
 func (s *sessionCenterPane) Reset() {
-	s.items, s.cursor = nil, ""
-	s.seenCursors = map[string]struct{}{"": {}}
 	s.picker.Reset()
-	s.picker.SetItems(nil)
+	s.SetCatalog(sessionCatalog{})
 }
 
-type sessionPagePosition uint8
-
-const (
-	firstSessionPage sessionPagePosition = iota + 1
-	nextSessionPage
-)
-
-func (s *sessionCenterPane) requestCursor(position sessionPagePosition) string {
-	if position == nextSessionPage {
-		return s.cursor
-	}
-	return ""
+func (s *sessionCenterPane) SetCatalog(catalog sessionCatalog) {
+	s.catalog = catalog
+	s.picker.SetItems(catalog.items)
 }
-
-func (s *sessionCenterPane) SetPage(page conversation.SessionPage, position sessionPagePosition) error {
-	appendPage := position == nextSessionPage
-	if !appendPage {
-		s.seenCursors = map[string]struct{}{"": {}}
-	}
-	if page.NextCursor != "" {
-		if _, exists := s.seenCursors[page.NextCursor]; exists {
-			return fmt.Errorf("session catalog returned cyclic continuation cursor %q", page.NextCursor)
-		}
-	}
-	next := slices.Clone(page.Items)
-	if appendPage {
-		seen := make(map[string]struct{}, len(s.items)+len(page.Items))
-		for _, session := range s.items {
-			seen[session.ID] = struct{}{}
-		}
-		for _, session := range page.Items {
-			if _, duplicate := seen[session.ID]; duplicate {
-				return fmt.Errorf("session page repeats previously loaded id %q", session.ID)
-			}
-			seen[session.ID] = struct{}{}
-		}
-		next = append(slices.Clone(s.items), page.Items...)
-	}
-	s.items, s.cursor = next, page.NextCursor
-	if page.NextCursor != "" {
-		s.seenCursors[page.NextCursor] = struct{}{}
-	}
-	s.picker.SetItems(s.items)
-	return nil
-}
-
-func (s *sessionCenterPane) Replace(session conversation.Session) {
-	index := slices.IndexFunc(s.items, func(loaded conversation.Session) bool { return loaded.ID == session.ID })
-	if index < 0 {
-		return
-	}
-	s.items[index] = session
-	if selected, ok := s.picker.Current(); ok && selected.ID == session.ID {
-		s.picker.Reset()
-	}
-	s.picker.SetItems(s.items)
-}
-
-func (s *sessionCenterPane) Remove(id string) {
-	s.items = slices.DeleteFunc(s.items, func(session conversation.Session) bool { return session.ID == id })
-	s.picker.SetItems(s.items)
-}
-
-func (s *sessionCenterPane) HasMore() bool { return s.cursor != "" }
 
 func (s *sessionCenterPane) Element() scene.Element {
 	if s.group == nil {
 		preview := scene.NewElement(scene.ElementConfig{Paint: func(frame scene.Frame) { s.drawPreview(frame.View) }})
 		help := scene.NewElement(scene.ElementConfig{Paint: func(frame scene.Frame) {
 			more := "all sessions loaded"
-			if s.HasMore() {
+			if s.catalog.nextCursor != "" {
 				more = "alt+l load more"
 			}
 			kit.Label{Text: "alt+f favorite · alt+r rename · alt+d delete · " + more, Style: s.theme.Subtle, Ellipsis: s.glyphs.Ellipsis}.Draw(frame.View)
@@ -172,7 +106,7 @@ func (s *sessionCenterPane) Handle(event input.Event) bool {
 	}
 	s.picker.cancelPress()
 	if key.Rune == 'l' {
-		if s.HasMore() && s.loadMore != nil {
+		if s.loadMore != nil {
 			s.loadMore()
 		}
 		return true

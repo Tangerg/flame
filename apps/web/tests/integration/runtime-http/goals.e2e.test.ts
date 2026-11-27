@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { asRunId, asSessionId } from "@flame/runtime-client";
+import { asRunId, asSessionId, RpcError } from "@flame/runtime-client";
 import { createProviderGate } from "./fakeProvider";
 import { collectRunEvents, originalOpeningEvents, watchGoal, within } from "./observation";
 import { useRuntimeFixture } from "./fixture";
@@ -17,6 +17,71 @@ const unconfirmedModelOutcome = {
 
 describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: Goals", () => {
   const fixture = useRuntimeFixture("goals");
+
+  it("fences every Goal mutation to the incarnation observed by its caller", async () => {
+    const session = await fixture.client.sessions.create({ workspace: { path: fixture.root } });
+    const sessionId = asSessionId(session.id);
+    const other = fixture.createSharedClient();
+    const oldGate = createProviderGate("E2E_ORIGINAL_GOAL_TARGET");
+    const newGate = createProviderGate("E2E_REPLACEMENT_GOAL_TARGET");
+    fixture.providerGate = oldGate;
+    try {
+      const original = await fixture.client.goals.start({
+        sessionId,
+        objective: "E2E_ORIGINAL_GOAL_TARGET an earlier goal the user saw.",
+      });
+      await within(oldGate.arrived.promise, "the first Goal's model request");
+      await other.goals.stop(original);
+      oldGate.release.resolve();
+
+      const objective = "E2E_REPLACEMENT_GOAL_TARGET a different goal by another client.";
+      fixture.providerGate = newGate;
+      const isGoalConflict = (error: unknown) =>
+        error instanceof RpcError && error.data.type === "revision_conflict";
+      await expect(other.goals.start({ sessionId, objective })).rejects.toSatisfy(isGoalConflict);
+      const replacement = await other.goals.start({
+        sessionId,
+        objective,
+        replaceIncarnationId: original.incarnationId,
+      });
+      expect(replacement.incarnationId).not.toBe(original.incarnationId);
+      await within(newGate.arrived.promise, "the replacement Goal's model request");
+      await expect(fixture.client.goals.stop(original)).rejects.toSatisfy(isGoalConflict);
+      await expect(fixture.client.goals.resume(original)).rejects.toSatisfy(isGoalConflict);
+      await expect(fixture.client.goals.clear(original)).rejects.toSatisfy(isGoalConflict);
+      await expect(
+        fixture.client.goals.update({
+          sessionId,
+          incarnationId: original.incarnationId,
+          objective: "Edit an earlier goal.",
+        }),
+      ).rejects.toSatisfy(isGoalConflict);
+      const staleReplacement = {
+        sessionId,
+        objective: "Replace an earlier goal.",
+        replaceIncarnationId: original.incarnationId,
+      };
+      await expect(fixture.client.goals.start(staleReplacement)).rejects.toSatisfy(isGoalConflict);
+      await expect(other.goals.get(sessionId)).resolves.toMatchObject({
+        incarnationId: replacement.incarnationId,
+        objective,
+        status: "active",
+      });
+
+      await other.goals.clear(replacement);
+      await expect(fixture.client.goals.clear(replacement)).resolves.toBeUndefined();
+      await expect(fixture.client.goals.start(staleReplacement)).rejects.toSatisfy(isGoalConflict);
+      await expect(other.goals.get(sessionId)).resolves.toBeNull();
+    } finally {
+      oldGate.release.resolve();
+      newGate.release.resolve();
+      fixture.providerGate = undefined;
+      const remaining = await other.goals.get(sessionId);
+      if (remaining) await other.goals.clear(remaining);
+      await other.close();
+      await fixture.client.sessions.delete(sessionId);
+    }
+  }, 30_000);
 
   it("publishes Goal changes before and after the model-reported outcome settles", async () => {
     const gate = createProviderGate("E2E_GOAL_SETTLEMENT", { minimumToolResults: 1 });
@@ -70,12 +135,11 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: Goals", () => {
     });
     const sessionId = asSessionId(session.id);
     const waitForGoal = await watchGoal(fixture.client, sessionId);
-    await expect(
-      fixture.client.goals.start({
-        sessionId,
-        objective: "E2E_HITL E2E_GOAL_AFTER_INPUT ask for input, then complete the goal.",
-      }),
-    ).resolves.toMatchObject({
+    const started = await fixture.client.goals.start({
+      sessionId,
+      objective: "E2E_HITL E2E_GOAL_AFTER_INPUT ask for input, then complete the goal.",
+    });
+    expect(started).toMatchObject({
       sessionId: session.id,
       status: "active",
       used: { runs: 0 },
@@ -105,7 +169,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: Goals", () => {
       throw new Error("goal-owned run did not persist its question interrupt");
     }
 
-    await expect(fixture.client.goals.resume(sessionId)).resolves.toMatchObject({
+    await expect(fixture.client.goals.resume(started)).resolves.toMatchObject({
       sessionId: session.id,
       status: "active",
     });
@@ -158,15 +222,14 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: Goals", () => {
         title: "HTTP goal stop and resume",
       });
       const sessionId = asSessionId(session.id);
-      await expect(
-        fixture.client.goals.start({
-          sessionId,
-          objective: "E2E_GOAL_STOP exercise stop and resume.",
-        }),
-      ).resolves.toMatchObject({ status: "active", used: { runs: 0 } });
+      const started = await fixture.client.goals.start({
+        sessionId,
+        objective: "E2E_GOAL_STOP exercise stop and resume.",
+      });
+      expect(started).toMatchObject({ status: "active", used: { runs: 0 } });
       await within(gate.arrived.promise, "the goal-owned model request");
 
-      await expect(fixture.client.goals.stop(sessionId)).resolves.toBeUndefined();
+      await expect(fixture.client.goals.stop(started)).resolves.toBeUndefined();
       await within(gate.closed.promise, "the stopped goal provider connection to close");
       gate.release.resolve();
       fixture.providerGate = undefined;
@@ -186,7 +249,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: Goals", () => {
       });
 
       const waitForGoal = await watchGoal(fixture.client, sessionId);
-      await expect(fixture.client.goals.resume(sessionId)).resolves.toMatchObject({
+      await expect(fixture.client.goals.resume(started)).resolves.toMatchObject({
         sessionId: session.id,
         status: "active",
         used: { runs: 1 },

@@ -1,7 +1,7 @@
 import { summarizeWorkingTreeChanges } from "./workingTreeChanges";
 import { useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
-  type ComponentContext,
+  type PluginComponentProps,
   type WorkspaceChangesActionInput,
   useTranslator,
 } from "@flame/component-sdk";
@@ -47,8 +47,8 @@ import {
 
 const CATALOGS = { en, zh, "zh-TW": zhTW, ja, ko, es, fr, de };
 
-export function WorkspaceDiff({ context }: { context: ComponentContext }) {
-  const t = useTranslator(CATALOGS, context.locale);
+export function WorkspaceDiff({ context, locale }: PluginComponentProps) {
+  const t = useTranslator(CATALOGS, locale);
   const {
     runtime,
     workspace: capturedWorkspace,
@@ -64,8 +64,8 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
     ...(workspace.focusPath ? { path: workspace.focusPath } : {}),
   }));
   const timeFormat = useMemo(
-    () => new Intl.DateTimeFormat(context.locale, { timeStyle: "medium" }),
-    [context.locale],
+    () => new Intl.DateTimeFormat(locale, { timeStyle: "medium" }),
+    [locale],
   );
   const [filter, setFilter] = useState("");
   const [layout, setLayout] = useState<DiffLayout>("unified");
@@ -321,13 +321,11 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
 
 export function WorktreeChanges({
   context,
+  locale,
   input,
-}: {
-  context: ComponentContext;
-  input?: WorkspaceChangesActionInput;
-}) {
+}: PluginComponentProps<WorkspaceChangesActionInput>) {
   const labelId = useId();
-  const t = useTranslator(CATALOGS, context.locale);
+  const t = useTranslator(CATALOGS, locale);
   const summary = summarizeWorkingTreeChanges(input?.changes);
   if (!input || !summary) return null;
   const counted =

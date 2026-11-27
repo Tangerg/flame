@@ -47,19 +47,13 @@ var runCommandOperations = wireVocabulary[runs.CommandOperation, protocol.RunCom
 
 // A start lookup that carries its request must match the accepted request
 // exactly; a different request under the same key is a conflict.
-func checkStartAcceptanceReplay(ctx context.Context, in protocol.GetRunAcceptanceRequest, record runs.CommandAcceptanceRecord) error {
-	if in.Operation != protocol.RunCommandStart {
-		return protocol.ErrInvalidParams
-	}
-	if record.Use != runs.CommandKeyAccepted {
-		return nil
-	}
+func checkStartAcceptanceReplay(ctx context.Context, request protocol.StartRunRequest, accepted runs.CommandAcceptance) error {
 	capabilities, _ := clientCapabilitiesFrom(ctx)
-	fingerprint, err := runCommandFingerprint(RunsStart, *in.Request, capabilities)
+	fingerprint, err := runCommandFingerprint(RunsStart, request, capabilities)
 	if err != nil {
 		return err
 	}
-	if record.Acceptance.Fingerprint != fingerprint {
+	if accepted.Fingerprint != fingerprint {
 		return protocol.ErrIdempotencyConflict
 	}
 	return nil
@@ -69,49 +63,46 @@ func (s *Handler) GetRunAcceptance(ctx context.Context, in protocol.GetRunAccept
 	if in.Namespace != s.idempotency.Namespace {
 		return nil, protocol.ErrIdempotencyStoreMismatch
 	}
+	requested, known := runCommandOperations.domain(in.Operation)
+	if !known || (in.Request != nil && requested != runs.CommandStartOpening) {
+		return nil, protocol.ErrInvalidParams
+	}
 	commandKey := operation.ScopedKey(ctx, in.Key)
 	record, err := s.runs.LookupCommandAcceptance(ctx, commandKey)
 	if err != nil {
 		return nil, err
 	}
-	operation, known := runCommandOperations.domain(in.Operation)
-	if !known {
-		return nil, protocol.ErrInvalidParams
-	}
-	if record.Use == runs.CommandKeyForeign || (record.Use == runs.CommandKeyAccepted && record.Acceptance.Operation != operation) {
+	accepted, found := record.Accepted()
+	if record.Foreign() || (found && accepted.Operation != requested) {
 		return nil, protocol.ErrIdempotencyConflict
 	}
+	if !found {
+		response := &protocol.RunAcceptance{Type: protocol.RunAcceptanceNotRecorded}
+		if requested == runs.CommandSteerInput {
+			response.CandidateUserItemID = runs.SteerItemID(commandKey).String()
+		}
+		return response, nil
+	}
 	if in.Request != nil {
-		if err := checkStartAcceptanceReplay(ctx, in, record); err != nil {
+		if err := checkStartAcceptanceReplay(ctx, *in.Request, accepted); err != nil {
 			return nil, err
 		}
 	}
-	response := presentRunAcceptance(record)
-	if record.Use != runs.CommandKeyAccepted && in.Operation == protocol.RunCommandSteer {
-		response.CandidateUserItemID = runs.SteerItemID(commandKey).String()
-	}
-	return response, nil
+	return presentRunAcceptance(accepted, record.RetainsMaterial()), nil
 }
 
-func presentRunAcceptance(record runs.CommandAcceptanceRecord) *protocol.RunAcceptance {
-	if record.Use != runs.CommandKeyAccepted {
-		return &protocol.RunAcceptance{Type: protocol.RunAcceptanceNotRecorded}
+func presentRunAcceptance(accepted runs.CommandAcceptance, materialRetained bool) *protocol.RunAcceptance {
+	state := protocol.RunAcceptanceRetired
+	if materialRetained {
+		state = protocol.RunAcceptanceAccepted
 	}
 	response := &protocol.RunAcceptance{
-		Type: protocol.RunAcceptanceRetired, RunID: record.Acceptance.RunID.String(),
-		SegmentID: record.Acceptance.SegmentID.String(), SessionID: record.Acceptance.SessionID.String(),
-		UserItemID: record.Acceptance.UserItemID.String(),
+		Type: state, RunID: accepted.RunID.String(),
+		SegmentID: accepted.SegmentID.String(), SessionID: accepted.SessionID.String(),
+		UserItemID: accepted.UserItemID.String(),
 	}
-	for _, block := range record.Acceptance.SteerInput {
+	for _, block := range accepted.SteerInput {
 		response.Input = append(response.Input, presentContent(block))
-	}
-	if record.AppliedItem != nil {
-		item := presentItem(*record.AppliedItem)
-		response.AppliedItem = &item
-	}
-	if record.CurrentRun != nil {
-		current := presentRun(*record.CurrentRun)
-		response.Type, response.Run = protocol.RunAcceptanceAccepted, &current
 	}
 	return response
 }

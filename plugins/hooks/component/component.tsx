@@ -8,7 +8,7 @@ import {
 import {
   failureText,
   mutationSettlementIsUnknown,
-  type ComponentContext,
+  type PluginComponentProps,
   type Translate,
   useTranslator,
   watchRuntimeTopics,
@@ -58,10 +58,10 @@ type Command =
   | { phase: "unknown"; original: MutationPromise<void>; error: string };
 const literal = { whiteSpace: "pre-wrap", overflowWrap: "anywhere" } as const;
 
-export function Hooks({ context }: { context: ComponentContext }) {
+export function Hooks({ context, locale }: PluginComponentProps) {
   const { runtime, track, signal: componentSignal, sessionId } = context;
   const workspaceRef = context.workspace?.ref;
-  const t = useTranslator(CATALOGS, context.locale);
+  const t = useTranslator(CATALOGS, locale);
   const [read, setRead] = useState<Read>({ loading: true });
   const reading = useRef<AbortController>(undefined);
   const [observationError, setObservationError] = useState<string>();

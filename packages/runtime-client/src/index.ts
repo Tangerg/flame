@@ -11,14 +11,15 @@ export { asItemId, asRunId, asSegmentId, asSessionId } from "./ids";
 export type { ItemId, RunId, SegmentId, SessionId } from "./ids";
 export type { MutationAttemptOptions, MutationPromise } from "./mutation";
 export { MutationLookupError } from "./mutation";
-export type { MutationJournalStorage } from "./mutationJournal";
+export type { MutationJournalStorage, PluginCommandChange, PluginRecoveryResolution } from "./mutationJournal";
 export {
   MutationJournalCleanupError,
+  MutationJournalError,
   MutationJournalOwnershipError,
   type MutationConfirmation,
 } from "./mutationJournalErrors";
 export type { PendingRuntimeCommand, RuntimeCommandMethod } from "./mutationJournalEntry";
-export type { PluginCommandRecovery } from "./pluginCommand";
+export type { PluginCommand, PluginCommandRecovery } from "./pluginCommand";
 export type { PluginCommandInput, PluginCommandBinding } from "./mutationJournal";
 export { createMutationSettler } from "./mutationSettlement";
 export type { MutationSettler } from "./mutationSettlement";
@@ -78,6 +79,7 @@ export type {
   Plan,
   InterruptResponse,
   Goal,
+  GoalTarget,
   WorkspaceFileChange,
   PlanStep,
   Usage,
@@ -90,6 +92,7 @@ export type {
   MCPToolExposure,
   SetMCPToolExposureRequest,
   MCPServer,
+  MCPDirectoryTarget,
   MCPServerID,
   MCPOrigin,
   MCPHandshakeTimeout,

@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"iter"
-	"slices"
 	"time"
 
 	flameidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
@@ -281,12 +280,10 @@ func runExecutionContext(
 	scope runs.ExecutionScope,
 	start runs.RootExecutionStart,
 ) context.Context {
-	capabilities := run.Capabilities{
+	return executionctx.WithRunScope(ctx, scope, run.Capabilities{
 		ChildRuns:      start.ChildRunAdmissionEnabled,
-		InterruptTypes: slices.Clone(start.InterruptTypes),
-	}.Normalized()
-	ctx = executionctx.WithScope(ctx, scope)
-	return executionctx.WithRunCapabilities(ctx, capabilities)
+		InterruptTypes: start.InterruptTypes,
+	})
 }
 
 func (i *InteractionExecutor) Release(ctx context.Context, ref runs.ExecutorRef) error {

@@ -26,7 +26,7 @@ func TestMCPAuthorizationDeliversRecordedOutcomeBeforeRetiringItsEpoch(t *testin
 	r.poMCPTools(&server, func(tools []protocol.MCPTool) bool { return len(tools) == 1 && tools[0].Name == "record" })
 
 	ownerPath := filepath.Join(cfg.stores.DataDirectory, "plugins", "data", installed.ID, "external-servers.db")
-	owner, err := sql.Open("sqlite", "file:"+ownerPath+"?mode=rw")
+	owner, err := persistencefixture.OpenExistingSQL(ownerPath)
 	if err != nil {
 		t.Fatal(err)
 	}

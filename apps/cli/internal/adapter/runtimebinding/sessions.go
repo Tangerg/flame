@@ -32,6 +32,7 @@ func (r *Connection) ListSessions(ctx context.Context, query conversation.Sessio
 	request := protocol.ListSessionsRequest{
 		PageQuery: protocol.PageQuery{Limit: protocolPositiveInt(limit), Cursor: query.Cursor},
 		Search:    query.Search,
+		IDPrefix:  query.IDPrefix,
 	}
 	if query.Workspace != "" {
 		request.Workspace = &protocol.WorkspaceRef{Path: query.Workspace}

@@ -39,20 +39,22 @@ const column = {
 } as const;
 export const Providers = defineComponent((source) => {
   const settings = new ProviderSettings(source);
-  return function ProviderSettingsView({ context }) {
-    return <ProvidersPane context={context} settings={settings} />;
+  return function ProviderSettingsView({ context, locale }) {
+    return <ProvidersPane context={context} locale={locale} settings={settings} />;
   };
 });
 
 function ProvidersPane({
   context,
+  locale,
   settings,
 }: {
   context: ComponentContext;
+  locale: string;
   settings: ProviderSettings;
 }) {
   const state = useSyncExternalStore(settings.subscribe, settings.getSnapshot);
-  const t = useTranslator(CATALOGS, context.locale);
+  const t = useTranslator(CATALOGS, locale);
   const [attempt, setAttempt] = useState(0);
   const observe = useEffectEvent(() => settings.observe(context));
   useEffect(() => observe(), [settings, context.signal, attempt]);

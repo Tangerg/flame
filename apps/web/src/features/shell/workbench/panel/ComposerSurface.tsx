@@ -1,6 +1,5 @@
 import { useComposer } from "@/features/composer/public/composer";
 import { memo } from "react";
-import { type AgentInput } from "@/features/agent/public/input";
 import { Composer } from "@/features/composer/public/ui";
 import { useSelectedModel } from "@/features/composer/public/selectedModel";
 import {
@@ -15,11 +14,7 @@ import {
   useRemoveComposerReference,
   useRestoreComposerPaste,
 } from "@/features/composer/public/attachments";
-export const ComposerSurface = memo(function ComposerSurface({
-  onSend,
-}: {
-  onSend: (input: AgentInput) => boolean;
-}) {
+export const ComposerSurface = memo(function ComposerSurface() {
   const key = useComposer().useDraftKey();
   const images = useComposerImageAttachments();
   const removeImage = useRemoveComposerImage();
@@ -36,7 +31,6 @@ export const ComposerSurface = memo(function ComposerSurface({
   return (
     <Composer
       key={key}
-      onSend={onSend}
       images={images}
       onRemoveImage={removeImage}
       onAddImages={addImageFiles}

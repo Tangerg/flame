@@ -49,7 +49,7 @@ func (p *ModelProviders) OpenEmbedding(ctx context.Context, selection flamemodel
 	if err != nil {
 		return modeladapter.ResolvedEmbedding{}, err
 	}
-	opened, err := providerMethod(ctx, use, method, uuid.NewString(), modelprovider.Open{Connection: connection, Model: selection.Model()})
+	opened, err := invokeProvider(ctx, use, method, uuid.NewString(), modelprovider.Open{Connection: connection, Model: selection.Model()})
 	if err != nil {
 		return modeladapter.ResolvedEmbedding{}, err
 	}

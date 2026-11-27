@@ -1,9 +1,17 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useSyncExternalStore,
+} from "react";
+import {
+  CursorPager,
   failureText,
   useContextState,
   watchRuntimeTopics,
   type ComponentContext,
+  type PageDirection,
 } from "@flame/component-sdk";
 import { METHODS } from "../contracts/methods";
 import { LIMITS } from "../contracts/limits";
@@ -12,56 +20,23 @@ import { bindDeliverableOperations } from "./operations";
 import { useProjections } from "./useProjections";
 import {
   COMMAND_EFFECTS,
-  useCommandJournal,
-  type CommandObservation,
-} from "./useCommandJournal";
+  useDeliverableCommands,
+} from "./useDeliverableCommands";
 import { useAssetSave } from "./useAssetSave";
-
-export interface Selection {
-  id: string;
-  revision: string;
-}
+import { DocumentNavigation, type Selection } from "./documentNavigation";
+import { type MethodOutputs } from "./methods.generated";
 
 function commandNotice(
   method: CommandMethod,
   result: unknown,
 ): Notice | undefined {
-  const effect = COMMAND_EFFECTS[method];
-  if (!effect.announced) return undefined;
-  if (effect.result === "asset")
+  const notice = COMMAND_EFFECTS[method].notice;
+  if (!notice) return undefined;
+  if (notice === "asset")
     return { kind: "command", method, asset: result as Asset };
-  if (effect.result === "revision")
+  if (notice === "revision")
     return { kind: "command", method, revision: result as Revision };
   return { kind: "command", method };
-}
-
-type PageDirection = "next" | "previous";
-
-// Paging keeps a stack of the cursors that opened each earlier page; a page
-// still loading or without a further cursor does not move.
-function pageCursor(
-  direction: PageDirection,
-  prior: { loading: boolean; value?: { next?: string } } | undefined,
-  pages: ReadonlyArray<string | undefined>,
-): { before?: string } | undefined {
-  if (prior?.loading) return undefined;
-  if (direction === "next")
-    return prior?.value?.next ? { before: prior.value.next } : undefined;
-  if (!pages.length) return undefined;
-  const before = pages.at(-1);
-  return before ? { before } : {};
-}
-
-function movedPages(
-  pages: Array<string | undefined>,
-  direction: PageDirection,
-  openedBy: string | undefined,
-): Array<string | undefined> {
-  return direction === "next" ? [...pages, openedBy] : pages.slice(0, -1);
-}
-
-function sameSelection(a?: Selection, b?: Selection): boolean {
-  return a?.id === b?.id && a?.revision === b?.revision;
 }
 
 export function useDeliverables(context: ComponentContext) {
@@ -78,12 +53,71 @@ export function useDeliverables(context: ComponentContext) {
     [context.signal, owner],
   );
   const { values, query, abort } = useProjections(context, operations, signal);
-  const [selection, setTarget] = useContextState<Selection>(context);
-  const current = useRef(selection);
-  current.current = selection;
-  const [listPages, setListPages] = useState<Array<string | undefined>>([]);
-  const [historyPages, setHistoryPages] = useState<Array<string | undefined>>(
-    [],
+  const archivePager = useMemo(
+    () =>
+      new CursorPager(signal, (before, readSignal) =>
+        operations.query(
+          METHODS.list,
+          { limit: LIMITS.pageSize, ...scoped, ...(before ? { before } : {}) },
+          readSignal,
+        ),
+      ),
+    [signal, operations, scoped],
+  );
+  const list = useSyncExternalStore(
+    archivePager.subscribe,
+    archivePager.snapshot,
+  );
+  const navigation = useMemo(
+    () =>
+      new DocumentNavigation(
+        signal,
+        async (id, signal) => {
+          const history = await operations.query(
+            METHODS.history,
+            { id, limit: 1 },
+            signal,
+          );
+          const head = history.entries[0];
+          if (!head) throw new Error("This deliverable has no revisions.");
+          return head.id;
+        },
+        (previous, next) => {
+          abort(METHODS.read);
+          if (previous?.id === next?.id) return;
+          abort(METHODS.threads);
+          abort(METHODS.suggestions);
+        },
+      ),
+    [signal, operations, abort],
+  );
+  const { selection, linkError } = useSyncExternalStore(
+    navigation.subscribe,
+    navigation.snapshot,
+  );
+  const selectedDocument = selection?.id;
+  const historyPager = useMemo(
+    () =>
+      new CursorPager<MethodOutputs[typeof METHODS.history]>(
+        signal,
+        selectedDocument
+          ? (before, readSignal) =>
+              operations.query(
+                METHODS.history,
+                {
+                  id: selectedDocument,
+                  limit: LIMITS.pageSize,
+                  ...(before ? { before } : {}),
+                },
+                readSignal,
+              )
+          : undefined,
+      ),
+    [signal, operations, selectedDocument],
+  );
+  const history = useSyncExternalStore(
+    historyPager.subscribe,
+    historyPager.snapshot,
   );
   const [notice, setNotice] = useContextState<Notice>(context);
   const tell = useCallback(
@@ -98,73 +132,55 @@ export function useDeliverables(context: ComponentContext) {
   );
 
   useEffect(() => () => owner.abort(), [owner]);
-
-  const open = useCallback(
-    (value: Selection) => {
-      if (signal.aborted) return;
-      if (sameSelection(current.current, value)) return;
-      abort(METHODS.read);
-      if (current.current?.id !== value.id) {
-        abort(METHODS.history);
-        setHistoryPages([]);
-      }
-      current.current = value;
-      setTarget(value);
-    },
-    [abort, setTarget, signal],
+  useEffect(
+    () =>
+      context.views?.subscribeTarget((value) => void navigation.openLink(value)),
+    [context.views, navigation],
   );
   const selectRevision = useCallback(
     (revision: Revision, captured: Selection | undefined) => {
-      if (signal.aborted || !sameSelection(current.current, captured)) return;
-      open({ id: revision.documentId, revision: revision.id });
+      navigation.replace(captured, {
+        id: revision.documentId,
+        revision: revision.id,
+      });
     },
-    [open, signal],
+    [navigation],
   );
 
   useEffect(() => {
-    setListPages([]);
-    setHistoryPages([]);
     void query(METHODS.catalog, {});
-    void query(METHODS.list, { limit: LIMITS.pageSize, ...scoped });
+    void archivePager.refresh();
     void query(METHODS.uploads, {});
-  }, [query, scoped]);
+    return archivePager.stop;
+  }, [query, archivePager]);
   useEffect(() => {
-    if (selection) void query(METHODS.read, selection);
+    if (selection) {
+      const { id, revision } = selection;
+      void query(METHODS.read, { id, revision });
+    }
   }, [query, selection?.id, selection?.revision]);
   useEffect(() => {
-    if (!selection) return;
-    void query(METHODS.history, { id: selection.id, limit: LIMITS.pageSize });
-    void query(METHODS.threads, { id: selection.id, limit: LIMITS.pageSize });
+    if (!selectedDocument) return;
+    void historyPager.refresh();
+    void query(METHODS.threads, { id: selectedDocument, limit: LIMITS.pageSize });
     void query(METHODS.suggestions, {
-      id: selection.id,
+      id: selectedDocument,
       status: "pending",
       limit: LIMITS.pageSize,
     });
-  }, [query, selection?.id]);
+    return historyPager.stop;
+  }, [query, selectedDocument, historyPager]);
 
   const refresh = useCallback(async () => {
-    const captured = current.current;
+    const captured = navigation.snapshot().selection;
     await Promise.all([
       query(METHODS.catalog, {}),
-      query(METHODS.list, {
-        limit: LIMITS.pageSize,
-        ...scoped,
-        ...(values[METHODS.list]?.input.before
-          ? { before: values[METHODS.list]!.input.before }
-          : {}),
-      }),
+      archivePager.refresh(),
       query(METHODS.uploads, {}),
       ...(captured
         ? [
-            query(METHODS.read, captured),
-            query(METHODS.history, {
-              id: captured.id,
-              limit: LIMITS.pageSize,
-              ...(values[METHODS.history]?.input.id === captured.id &&
-              values[METHODS.history]?.input.before
-                ? { before: values[METHODS.history]!.input.before }
-                : {}),
-            }),
+            query(METHODS.read, { id: captured.id, revision: captured.revision }),
+            ...(captured.id === selectedDocument ? [historyPager.refresh()] : []),
             query(METHODS.threads, { id: captured.id, limit: LIMITS.pageSize }),
             query(METHODS.suggestions, {
               id: captured.id,
@@ -174,7 +190,7 @@ export function useDeliverables(context: ComponentContext) {
           ]
         : []),
     ]);
-  }, [query, scoped, values]);
+  }, [navigation, query, archivePager, historyPager, selectedDocument]);
   const refreshRef = useRef(refresh);
   refreshRef.current = refresh;
   // Runtime announces plugin data changes, including the model's tool calls,
@@ -196,23 +212,21 @@ export function useDeliverables(context: ComponentContext) {
   }, [context, signal, fail]);
 
   const settle = useCallback(
-    (command: CommandObservation, result: unknown) => {
-      const announced = commandNotice(command.method, result);
+    (method: CommandMethod, result: unknown, followUp?: () => void) => {
+      const announced = commandNotice(method, result);
       if (announced) tell(announced);
-      // This callback belongs to the original authored action, never the current draft.
       try {
-        command.settled?.(result);
+        followUp?.();
       } catch (error) {
         fail(error);
       }
-      const { reload } = COMMAND_EFFECTS[command.method];
+      const { reload } = COMMAND_EFFECTS[method];
       if (reload === "uploads") void query(METHODS.uploads, {});
       else if (reload === "views") void refreshRef.current();
     },
     [fail, query, tell],
   );
-  const journal = useCommandJournal({
-    context,
+  const journal = useDeliverableCommands({
     operations,
     signal,
     scoped,
@@ -221,61 +235,26 @@ export function useDeliverables(context: ComponentContext) {
   });
   const assets = useAssetSave(context, operations, signal, tell);
 
-  const page = useCallback(
-    async (kind: "list" | "history", direction: PageDirection) => {
-      if (kind === "list") {
-        const prior = values[METHODS.list];
-        const cursor = pageCursor(direction, prior, listPages);
-        if (!cursor) return;
-        const result = await query(METHODS.list, {
-          limit: LIMITS.pageSize,
-          ...scoped,
-          ...cursor,
-        });
-        if (result)
-          setListPages((pages) =>
-            movedPages(pages, direction, prior?.input.before),
-          );
-        return;
-      }
-      const captured = current.current;
-      const prior = values[METHODS.history];
-      const cursor = captured && pageCursor(direction, prior, historyPages);
-      if (!captured || !cursor) return;
-      const result = await query(METHODS.history, {
-        id: captured.id,
-        limit: LIMITS.pageSize,
-        ...cursor,
-      });
-      if (result && current.current?.id === captured.id)
-        setHistoryPages((pages) =>
-          movedPages(pages, direction, prior?.input.before),
-        );
-    },
-    [historyPages, listPages, query, scoped, values],
-  );
-
   return {
     context,
     signal,
     operations,
     selection,
-    open,
+    linkError,
+    open: navigation.open,
     selectRevision,
     refresh,
-    page,
+    page: (kind: "list" | "history", direction: PageDirection) =>
+      (kind === "list" ? archivePager : historyPager).move(direction),
     catalog: values[METHODS.catalog],
-    list: values[METHODS.list],
+    list,
     uploads: values[METHODS.uploads],
     read:
       values[METHODS.read]?.input.id === selection?.id &&
       values[METHODS.read]?.input.revision === selection?.revision
         ? values[METHODS.read]
         : undefined,
-    history:
-      values[METHODS.history]?.input.id === selection?.id
-        ? values[METHODS.history]
-        : undefined,
+    history,
     threads:
       values[METHODS.threads]?.input.id === selection?.id
         ? values[METHODS.threads]
@@ -284,22 +263,13 @@ export function useDeliverables(context: ComponentContext) {
       values[METHODS.suggestions]?.input.id === selection?.id
         ? values[METHODS.suggestions]
         : undefined,
-    listPrevious: listPages.length > 0,
-    historyPrevious: historyPages.length > 0,
+    listPrevious: Boolean(list?.cursors.length),
+    historyPrevious: Boolean(history?.cursors.length),
     ...journal,
     notice,
     refreshUploads: () => query(METHODS.uploads, {}),
     ...assets,
-    clearSelection: (captured: Selection) => {
-      if (!signal.aborted && sameSelection(current.current, captured)) {
-        abort(METHODS.read);
-        abort(METHODS.history);
-        abort(METHODS.threads);
-        abort(METHODS.suggestions);
-        current.current = undefined;
-        setTarget(undefined);
-      }
-    },
+    clearSelection: navigation.clear,
   };
 }
 

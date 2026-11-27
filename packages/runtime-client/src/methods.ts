@@ -1,7 +1,7 @@
 import {
   callPluginCommand,
-  pendingPluginCommand,
-  type PluginCommandRecovery,
+  pluginCommandRecovery,
+  type PluginCommand,
 } from "./pluginCommand";
 import { callPluginStream, queryPluginStream } from "./pluginStream";
 import type {
@@ -34,6 +34,7 @@ import type {
   PluginReleaseRef,
   ConfigurePluginRequest,
   SetPluginEnablementRequest,
+  MCPDirectoryTarget,
   MCPServerID,
   MCPToolExposure,
   SetMCPToolExposureRequest,
@@ -115,6 +116,7 @@ import type {
   SkillProposal,
   SkillProposalRef,
   Goal,
+  GoalTarget,
   StartGoalRequest,
   StartRunRequest,
   RuntimeSubscribeRequest,
@@ -143,7 +145,7 @@ import { streamRuntimeEvents } from "./stream";
 import { createRuntimeEventFeed } from "./runtimeEventFeed";
 import type { AutoPagingPromise } from "./pagination";
 import { RUNTIME_SUBSCRIBE_METHOD } from "./transport";
-import type { PluginCommandInput, PluginCommandBinding } from "./mutationJournal";
+import type { PluginCommandInput, PluginCommandBinding, PluginCommandChange, MutationJournal } from "./mutationJournal";
 import type { PendingRuntimeCommand } from "./mutationJournalEntry";
 
 import { callOrDispose, type StreamingResult } from "./stream";
@@ -317,7 +319,7 @@ export interface Methods {
     list: (signal?: AbortSignal) => Promise<Page<MCPServer>>;
     create: (params: MCPServerCandidate) => MutationPromise<void>;
     update: (params: UpdateMCPServerRequest) => MutationPromise<void>;
-    delete: (server: MCPServerID) => MutationPromise<void>;
+    delete: (target: MCPDirectoryTarget) => MutationPromise<void>;
     test: (params: MCPServerCandidate, signal?: AbortSignal) => Promise<MCPTestResult>;
     listTools: (server?: MCPServerID, signal?: AbortSignal) => Promise<Page<MCPTool>>;
     toolExposure: (server: MCPServerID, signal?: AbortSignal) => Promise<MCPToolExposure>;
@@ -346,7 +348,10 @@ export interface Methods {
     ) => MutationPromise<void>;
     getCommand: (request: PluginCommandRequest, signal?: AbortSignal) => Promise<CallPluginRequest>;
     retireCommand: (request: PluginCommandRequest, signal?: AbortSignal) => MutationPromise<void>;
-    pendingCommands: () => PluginCommandRecovery[];
+    commands: () => PluginCommand[];
+    commandsVersion: () => number;
+    subscribeCommands: (listener: (change: PluginCommandChange) => void) => () => void;
+    observeRecovery: MutationJournal["observePluginRecovery"];
     queryStream: <T>(
       request: CallPluginRequest,
       consume: (chunk: unknown, signal: AbortSignal) => void | Promise<void>,
@@ -433,9 +438,9 @@ export interface Methods {
       signal?: AbortSignal,
     ) => MutationPromise<Goal>;
     update: (params: UpdateGoalRequest, signal?: AbortSignal) => MutationPromise<Goal>;
-    clear: (sessionId: SessionId, signal?: AbortSignal) => MutationPromise<void>;
-    stop: (sessionId: SessionId, signal?: AbortSignal) => MutationPromise<void>;
-    resume: (sessionId: SessionId, signal?: AbortSignal) => MutationPromise<Goal>;
+    clear: (target: GoalTarget, signal?: AbortSignal) => MutationPromise<void>;
+    stop: (target: GoalTarget, signal?: AbortSignal) => MutationPromise<void>;
+    resume: (target: GoalTarget, signal?: AbortSignal) => MutationPromise<Goal>;
   };
   feedback: {
     create: (params: FeedbackRequest) => MutationPromise<void>;
@@ -611,7 +616,7 @@ export function createMethods(
       list: (signal) => call("mcp.servers.list", {}, { signal }),
       create: (params) => call("mcp.servers.create", params),
       update: (params) => call("mcp.servers.update", params),
-      delete: (server) => call("mcp.servers.delete", { server }),
+      delete: (target) => call("mcp.servers.delete", target),
       test: (params, signal) => call("mcp.servers.test", params, { signal }),
       listTools: (server, signal) => call("mcp.tools.list", server ? { server } : {}, { signal }),
       toolExposure: (server, signal) => call("mcp.tools.exposure", { server }, { signal }),
@@ -631,10 +636,15 @@ export function createMethods(
         call("plugins.closeBrowserRealm", request, { signal }),
       getCommand: (request, signal) => call("plugins.getCommand", request, { signal }),
       retireCommand: (request, signal) => call("plugins.retireCommand", request, { signal }),
-      pendingCommands: () =>
+      commands: () =>
         mutationJournal
-          .pendingPluginCommands()
-          .map((command) => pendingPluginCommand(command, wire)),
+          .pluginCommands()
+          .map((command) =>
+            command.state === "recoverable" ? pluginCommandRecovery(command, wire) : command,
+          ),
+      commandsVersion: mutationJournal.pluginCommandsVersion,
+      subscribeCommands: mutationJournal.subscribePluginCommands,
+      observeRecovery: mutationJournal.observePluginRecovery,
       queryStream: (request, consume, decode, signal) =>
         queryPluginStream(wire, request, consume, decode, signal),
       stream: (intent, input, prepare, consume, decode, signal) =>
@@ -680,10 +690,14 @@ export function createMethods(
     goals: {
       get: (sessionId, signal) => call("goals.get", { sessionId }, { signal }),
       start: (params, signal) => call("goals.start", params, { signal }),
-      update: (params, signal) => call("goals.update", params, { signal }),
-      clear: (sessionId, signal) => call("goals.clear", { sessionId }, { signal }),
-      stop: (sessionId, signal) => call("goals.stop", { sessionId }, { signal }),
-      resume: (sessionId, signal) => call("goals.resume", { sessionId }, { signal }),
+      update: ({ sessionId, incarnationId, objective }, signal) =>
+        call("goals.update", { sessionId, incarnationId, objective }, { signal }),
+      clear: ({ sessionId, incarnationId }, signal) =>
+        call("goals.clear", { sessionId, incarnationId }, { signal }),
+      stop: ({ sessionId, incarnationId }, signal) =>
+        call("goals.stop", { sessionId, incarnationId }, { signal }),
+      resume: ({ sessionId, incarnationId }, signal) =>
+        call("goals.resume", { sessionId, incarnationId }, { signal }),
     },
     feedback: {
       create: (params) => call("feedback.create", params),

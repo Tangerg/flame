@@ -65,31 +65,28 @@ func (s *Store) PendingSessionDeletion(sessionID string) (PendingSessionDeletion
 	return pending, ok
 }
 
-func (s *Store) StageSessionDeletion(request conversation.DeleteSession, replayGuard authoring.ReplayGuard) error {
-	if err := request.Validate(); err != nil {
-		return err
-	}
-	if request.CommandID == "" {
-		return errors.New("stage session deletion: command id is empty")
-	}
-	if err := replayGuard.Validate(); err != nil {
-		return err
-	}
+func (s *Store) StageSessionDeletion(request conversation.DeleteSession, replayGuard authoring.ReplayGuard) (PendingSessionDeletion, error) {
 	pending := PendingSessionDeletion{
 		CommandID: request.CommandID, SessionID: request.SessionID,
 		Replay: replayGuard,
+	}
+	if err := pending.validate(); err != nil {
+		return PendingSessionDeletion{}, err
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if current, exists := s.sessionDeletions[request.SessionID]; exists {
 		if current == pending {
-			return nil
+			return current, nil
 		}
-		return errors.New("another session deletion is already pending")
+		return PendingSessionDeletion{}, errors.New("another session deletion is already pending")
 	}
 	next := maps.Clone(s.sessionDeletions)
 	next[request.SessionID] = pending
-	return s.save(sessionDeletionsName, sortedSessionDeletions(next), func() { s.sessionDeletions = next })
+	if err := s.save(sessionDeletionsName, sortedSessionDeletions(next), func() { s.sessionDeletions = next }); err != nil {
+		return PendingSessionDeletion{}, err
+	}
+	return pending, nil
 }
 
 func (s *Store) RejectSessionDeletion(sessionID string, commandID authoring.CommandID) error {
@@ -122,18 +119,6 @@ func (s *Store) ConfirmSessionDeletion(sessionID string, commandID authoring.Com
 	return s.retireSessionStateLocked(sessionID)
 }
 
-func (s *Store) CheckSessionActivation(sessionID string) error {
-	if err := protocol.ValidateSessionID(sessionID); err != nil {
-		return err
-	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if _, exists := s.sessionDeletions[sessionID]; exists {
-		return errors.New("session deletion acknowledgement is still pending")
-	}
-	return nil
-}
-
 func (s *Store) RetireSessionState(sessionID string) error {
 	if err := protocol.ValidateSessionID(sessionID); err != nil {
 		return err
@@ -144,9 +129,7 @@ func (s *Store) RetireSessionState(sessionID string) error {
 }
 
 func (s *Store) retireSessionStateLocked(sessionID string) error {
-	next := maps.Clone(s.sessionDeletions)
-	delete(next, sessionID)
-	record, err := encodeRecord(sessionDeletionsName, sortedSessionDeletions(next))
+	next, record, err := s.withoutSessionDeletion(sessionID)
 	if err != nil {
 		return err
 	}
@@ -155,6 +138,13 @@ func (s *Store) retireSessionStateLocked(sessionID string) error {
 	}
 	s.sessionDeletions = next
 	return nil
+}
+
+func (s *Store) withoutSessionDeletion(sessionID string) (map[string]PendingSessionDeletion, RecordChange, error) {
+	next := maps.Clone(s.sessionDeletions)
+	delete(next, sessionID)
+	record, err := encodeRecord(sessionDeletionsName, sortedSessionDeletions(next))
+	return next, record, err
 }
 
 func sortedSessionDeletions(source map[string]PendingSessionDeletion) []PendingSessionDeletion {

@@ -135,7 +135,7 @@ func (e *Embedder) start(ctx context.Context, request *embedding.Request) (model
 	if err := invocation.Validate(); err != nil {
 		return modelref.EndpointInvocation{}, err
 	}
-	if err := e.journal.StartEndpointInvocation(ctx, invocation, executionctx.InvocationOwner(ctx)); err != nil {
+	if err := e.journal.StartEndpointInvocation(ctx, invocation, executionctx.EndpointOwner(ctx)); err != nil {
 		return modelref.EndpointInvocation{}, err
 	}
 	return invocation, nil

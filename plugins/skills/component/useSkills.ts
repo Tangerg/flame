@@ -50,8 +50,8 @@ export const SECTION_VALUES = [
   "review",
   "library",
 ] as const satisfies readonly Target[];
-export function useSkills(context: ComponentContext) {
-  const t = useTranslator(CATALOGS, context.locale);
+export function useSkills(context: ComponentContext, locale: string) {
+  const t = useTranslator(CATALOGS, locale);
   const {
     runtime,
     workspace: capturedWorkspace,

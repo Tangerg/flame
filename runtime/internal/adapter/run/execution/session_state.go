@@ -10,26 +10,21 @@ import (
 )
 
 type TransientSessionState struct {
-	workingContexts *WorkingContextComposer
-	tools           *toolset.Resolver
-	shells          *exec.Shells
+	tools  *toolset.Resolver
+	shells *exec.Shells
 }
 
 func NewTransientSessionState(
-	workingContexts *WorkingContextComposer,
 	tools *toolset.Resolver,
 	shells *exec.Shells,
 ) (*TransientSessionState, error) {
-	if workingContexts == nil {
-		return nil, errors.New("execution: working context composer is required")
-	}
 	if tools == nil {
 		return nil, errors.New("execution: tool resolver is required")
 	}
 	if shells == nil {
 		return nil, errors.New("execution: shells are required")
 	}
-	return &TransientSessionState{workingContexts: workingContexts, tools: tools, shells: shells}, nil
+	return &TransientSessionState{tools: tools, shells: shells}, nil
 }
 
 func (s *TransientSessionState) QuiesceSession(sessionID identity.SessionID) error {
@@ -38,11 +33,6 @@ func (s *TransientSessionState) QuiesceSession(sessionID identity.SessionID) err
 
 func (s *TransientSessionState) QuiesceWorkspace(root string) error {
 	return s.shells.StopWorkspace(root)
-}
-
-func (s *TransientSessionState) ForgetSession(sessionID identity.SessionID) {
-	s.workingContexts.ForgetSession(sessionID)
-	s.ForgetSessionContext(sessionID)
 }
 
 func (s *TransientSessionState) ForgetSessionContext(sessionID identity.SessionID) {

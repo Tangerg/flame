@@ -107,6 +107,9 @@ Mutation handles retain the original key and receipt authority after uncertain
 responses. An unresolved retry continues the original command. After
 confirmation, retries return the observed result or refusal directly. To open a
 fresh observation of an acknowledged Run, use `runs.subscribe`.
+Opening a keyed mutation validates and stages the command synchronously. A
+staging failure throws its original error before a mutation handle is issued.
+`createMutationSettler` reports that error through its settlement promise.
 The client reports local journal maintenance through
 `onMutationJournalCleanupFailure`, with console diagnostics by default.
 `MutationJournalCleanupError` carries the confirmed outcome and the local
@@ -130,16 +133,30 @@ through its authored intent.
 when withdrawing an observed approval or denial. Omit it when deliberately
 forgetting the rule at that identity regardless of its decision.
 
-`createMutationSettler().settle` accepts `onMutation(idempotencyKey)` to project
-the identity of the selected original mutation, including retained or shared
-recovery attempts. It grants no replacement command or independent retry owner;
-the existing mutation handle and journal retain settlement authority.
+`createMutationSettler().settle(open, options)` observes the mutation returned by
+`open`. Pass a fresh command factory to author a command. To recover an existing
+command, pass a factory that retries its original handle or journal identity.
+`onCommand(command)` supplies the original handle for callers that expose recovery.
+The consumer owns any observation returned by a settled mutation and closes it
+when the consumer's view retires.
 Deadlines must be positive whole milliseconds within the platform timer range;
-invalid deadlines are refused before opening or consuming a recovery attempt.
-Failure to open an original command's retry remains a `MutationLookupError` and
-retains that original handle because it cannot prove the command's outcome.
+invalid deadlines are refused before opening the mutation. A deadline permits
+one further observation through the same handle. If that observation cannot be
+opened or also reaches its deadline, `MutationLookupError` preserves the unknown
+outcome and the journal remains available for recovery.
 
-Each `plugins.pendingCommands()` handle exposes `matchesIntent(intent)`, a
+`plugins.commands()` lists active claims and recoverable entries under their
+original keys. Only recoverable entries expose `recover()` and `retire()`.
+`plugins.subscribeCommands(listener)` observes claim and settlement changes,
+and `plugins.commandsVersion()` supplies the current snapshot version.
+Each change identifies the original key. A resolved change reports the
+definitive recovery or retirement outcome. Availability still follows any
+remaining journal cleanup.
+`plugins.observeRecovery(key, route, listener, signal)` delivers the settled
+result once to an observer of that exact key and route. The recovering caller's
+output decoder runs after the original receipt is delivered. The general
+subscription exposes the outcome category and refusal code.
+Each entry exposes `matchesIntent(intent)`, a
 read-only comparison against the original journal's salted intent fingerprint.
 Use the same authored intent when associating pending work with a document or
 action; equal bindings alone cannot identify that input. Direct calls without a
@@ -164,10 +181,9 @@ option. Recovery handles and `createMutationSettler` retain their explicit
 operation lifetimes. Every mutation, including one with an explicit key, must
 reserve its immutable input and Runtime store namespace before
 dispatch. Missing scope or failed persistence refuses the command without opening
-transport. That refused handle cannot later capture a different target through
-`retry()`; start a new user action after the prerequisite recovers. A successfully
-reserved command retains its original identity and receipt lookup even while
-discovery is unavailable, and cannot dispatch into another store.
+transport. A successfully reserved command retains its original identity and
+receipt lookup even while discovery is unavailable. Its dispatch stays bound to
+the original store.
 
 The journal captures exact JSON input and the request metadata before admission.
 It owns the durable transition from reserved to dispatched. RPC delivery commits
@@ -175,8 +191,9 @@ that transition immediately before opening transport; a failed write prevents
 sending. Cancellation removes a reservation only while it is known not to have
 been dispatched. Dispatched identities survive cancellation and process loss,
 including a canceled retry. Plugin preparation observes the same cancellation
-boundary before reserving an intent. `RpcCancellationError` identifies explicit
-cancellation without treating an arbitrary transport failure as proof of it.
+boundary before reserving an intent. `RpcCancellationError` represents explicit
+caller cancellation with the standard `AbortError` name and the original signal
+reason as its `cause`.
 A recovery handle can read an original receipt after another observer clears
 the pending record. Dispatch requires the original reservation. Only the
 handle that withdrew an unsent reservation can reopen it.

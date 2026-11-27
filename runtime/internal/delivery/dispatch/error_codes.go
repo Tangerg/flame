@@ -48,5 +48,6 @@ const (
 	codePluginChanged                   = -32046
 	codePluginCommandRetired            = -32047
 	codeProjectNotFound                 = -32048
-	codeWorkspaceFileNotFound           = -32049
+	codePromptRejected                  = -32049
+	codeWorkspaceFileNotFound           = -32050
 )

@@ -88,14 +88,19 @@ func TestScheduleRecoveryCrashHelper(t *testing.T) {
 		t.Fatal("original result was not withheld")
 	}
 	receipt, err := stores.CommandAcceptances.Lookup(t.Context(), scheduleCrashKey)
-	if err != nil || receipt.Use != runs.CommandKeyAccepted {
+	acceptance, recorded := receipt.Accepted()
+	if err != nil || !recorded {
 		t.Fatalf("original receipt: %+v,%v", receipt, err)
 	}
-	segmentID := receipt.Acceptance.SegmentID
-	if receipt.CurrentRun != nil && !receipt.CurrentRun.ActiveSegmentID().IsZero() {
-		segmentID = receipt.CurrentRun.ActiveSegmentID()
+	current, found, err := stores.Runs.Run(t.Context(), acceptance.RunID)
+	if err != nil || !found {
+		t.Fatalf("original Run is missing: %v", err)
 	}
-	_, events, err := api.SubscribeRun(acceptedCrashContext(t), protocol.SubscribeRunRequest{RunID: receipt.Acceptance.RunID.String(), SegmentID: segmentID.String(), Snapshot: true})
+	segmentID := acceptance.SegmentID
+	if active := current.ActiveSegmentID(); !active.IsZero() {
+		segmentID = active
+	}
+	_, events, err := api.SubscribeRun(acceptedCrashContext(t), protocol.SubscribeRunRequest{RunID: acceptance.RunID.String(), SegmentID: segmentID.String(), Snapshot: true})
 	if err != nil && !errors.Is(err, protocol.ErrRunFinished) {
 		t.Fatal(err)
 	}
@@ -106,7 +111,7 @@ func TestScheduleRecoveryCrashHelper(t *testing.T) {
 			}
 		}
 	}
-	value, err := api.GetRun(acceptedCrashContext(t), protocol.GetRunRequest{RunID: receipt.Acceptance.RunID.String()})
+	value, err := api.GetRun(acceptedCrashContext(t), protocol.GetRunRequest{RunID: acceptance.RunID.String()})
 	want := protocol.OutcomeCompleted
 	if phase.Inconclusive() {
 		want = protocol.OutcomeLost
@@ -144,10 +149,11 @@ func disableOriginalScheduleBinding(t *testing.T, cfg assemblyConfig) {
 		t.Fatalf("original execution ownership did not recover: %v", err)
 	}
 	receipt, err := cfg.stores.CommandAcceptances.Lookup(t.Context(), scheduleCrashKey)
-	if err != nil || receipt.Use != runs.CommandKeyAccepted {
-		t.Fatalf("original accepted command: %t, %v", receipt.Use == runs.CommandKeyAccepted, err)
+	acceptance, recorded := receipt.Accepted()
+	if err != nil || !recorded {
+		t.Fatalf("original accepted command: %t, %v", recorded, err)
 	}
-	root := (scoperun.StartID{Scope: receipt.Acceptance.SessionID.String(), Key: receipt.Acceptance.RunID.String()}).Root()
+	root := (scoperun.StartID{Scope: acceptance.SessionID.String(), Key: acceptance.RunID.String()}).Root()
 	checkpoint, err := cfg.stores.ExecutorCheckpoints.LoadCheckpoint(t.Context(), root.String())
 	if err != nil {
 		t.Fatalf("original retained execution: %v", err)
@@ -165,10 +171,11 @@ func disableOriginalScheduleBinding(t *testing.T, cfg assemblyConfig) {
 
 func scheduleResolutionCommitted(ctx context.Context, stores *persistence.Bundle) (bool, error) {
 	receipt, err := stores.CommandAcceptances.Lookup(ctx, scheduleCrashKey)
-	if err != nil || receipt.Use != runs.CommandKeyAccepted {
+	acceptance, recorded := receipt.Accepted()
+	if err != nil || !recorded {
 		return false, err
 	}
-	items, err := stores.Transcript.List(ctx, receipt.Acceptance.SessionID)
+	items, err := stores.Transcript.List(ctx, acceptance.SessionID)
 	if err != nil {
 		return false, err
 	}

@@ -425,5 +425,5 @@ func (i *interactionSession) closeExecution(ctx context.Context) error {
 	i.state.mu.Lock()
 	deployments := i.state.deployments
 	i.state.mu.Unlock()
-	return errors.Join(deployments.close(), i.selectedChat.Close(context.WithoutCancel(ctx)))
+	return errors.Join(deployments.close(), i.selectedChat.Close(ctx))
 }

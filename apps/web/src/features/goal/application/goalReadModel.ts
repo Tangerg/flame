@@ -1,5 +1,5 @@
 import type { WorkflowAuthor } from "@/features/plugins/public/workflows";
-import { type GoalStatus, type GoalReason } from "@flame/runtime-client/wire";
+import { type GoalTarget, type GoalStatus, type GoalReason } from "@flame/runtime-client/wire";
 import { useAgentSessionSharedMaterial } from "@/features/agent/public/sessionMaterial";
 import { type AgentProjectionMaterial } from "@/features/agent/public/sessionMaterial";
 export type { GoalStatus };
@@ -10,9 +10,8 @@ interface GoalUsage {
   steps: number;
 }
 
-export interface GoalReadModel {
+export interface GoalReadModel extends GoalTarget {
   author?: WorkflowAuthor;
-  sessionId: string;
   objective: string;
   status: GoalStatus;
   reason?: GoalReason;

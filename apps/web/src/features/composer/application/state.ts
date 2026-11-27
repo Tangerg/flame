@@ -17,6 +17,7 @@ export interface ComposerSubmission {
   readonly attachmentsReady: boolean;
   readonly pastes: readonly PastedText[];
   readonly references: readonly ComposerDraftReference[];
+  claimInputDelivery(): { readonly sessionId: string; release(): void } | null;
   consume(historyText?: string): boolean;
 }
 
@@ -38,6 +39,7 @@ export interface ComposerImageIntake {
 
 // The mounted editor owns the live document; the store keeps its checkpoint.
 export interface ComposerEditor {
+  readonly draftKey: string;
   readonly element: HTMLElement;
   restore(content: DraftContent): void;
   focus(): void;
@@ -62,6 +64,7 @@ export interface ComposerStatePort {
   usePersistenceState(): ComposerPersistenceState;
   retryPersistence(): void;
   getRecoveryDrafts(): string;
+  useInputDeliveryPending(): boolean;
   captureSubmission(): ComposerSubmission;
   captureDraftRecovery(sessionId: string): ComposerDraftRecovery;
   replaceDraft(

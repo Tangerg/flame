@@ -541,6 +541,11 @@ function workspaceDataPlugin(
         VISUAL_MEMORY_BINDING,
       );
       const memoryView = publishedComponent(memoryDeclaration, "memory");
+      const MemoryView = Memory.create({
+        runtimeIdentity: memorySources.runtime,
+        component: memorySources.component,
+        signal: memoryLifetime.lifetime.signal,
+      });
       memoryLifetime.add(WORKSPACE_VIEW, {
         id: "package:visual:memory",
         title: { text: memoryView.title },
@@ -550,7 +555,7 @@ function workspaceDataPlugin(
           createElement(InstalledComponent, {
             ...memorySources,
             scope: "client",
-            entry: Memory,
+            entry: MemoryView,
           }),
       });
 
@@ -562,6 +567,11 @@ function workspaceDataPlugin(
         VISUAL_SCHEDULES_BINDING,
       );
       const schedulesView = publishedComponent(schedulesDeclaration, "schedules");
+      const SchedulesView = Schedules.create({
+        runtimeIdentity: schedulesSources.runtime,
+        component: schedulesSources.component,
+        signal: schedulesLifetime.lifetime.signal,
+      });
       schedulesLifetime.add(WORKSPACE_VIEW, {
         id: "package:visual:schedules",
         title: { text: schedulesView.title },
@@ -571,7 +581,7 @@ function workspaceDataPlugin(
           createElement(InstalledComponent, {
             ...schedulesSources,
             scope: "client",
-            entry: Schedules,
+            entry: SchedulesView,
           }),
       });
 

@@ -51,7 +51,6 @@ function Document() {
     () => ({
       component,
       runtime,
-      locale: "en",
       signal: owner.signal,
       telemetry: { read: () => ({ spans: [], metrics: [], logs: [] }), clear() {} },
       toolResult: {
@@ -88,7 +87,7 @@ function Document() {
     }),
     [owner],
   );
-  return <GenUI context={context} />;
+  return <GenUI context={context} locale="en" />;
 }
 async function highlightsProbe(worker: boolean): Promise<string> {
   try {

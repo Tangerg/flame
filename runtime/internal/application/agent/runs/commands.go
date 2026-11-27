@@ -10,6 +10,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/Tangerg/flame/packages/go-sdk/hook"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 
 	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
@@ -383,13 +384,28 @@ func validateOptions(options *corechat.Options) error {
 	return nil
 }
 
-type ActiveRunConflictError struct {
+type PromptRejectedError struct {
+	Event  hook.Event
+	Reason string
+}
+
+func (e *PromptRejectedError) Error() string {
+	return fmt.Sprintf("runs: %s rejected the prompt: %s", e.Event, e.Reason)
+}
+
+type ActiveRoot struct {
 	RunID identity.RunID
 	State run.State
 }
 
-func (a *ActiveRunConflictError) Error() string {
-	return fmt.Sprintf("runs: session already has a %s run %q", a.State, a.RunID)
+type ActiveRunConflictError struct {
+	Root ActiveRoot
 }
+
+func (a *ActiveRunConflictError) Error() string {
+	return fmt.Sprintf("runs: session already has a %s run %q", a.Root.State, a.Root.RunID)
+}
+
+func (a *ActiveRunConflictError) Unwrap() error { return ErrRunAdmissionBusy }
 
 func (r StartResult) Reopened() bool { return r.Opening != OpeningAdmitted }

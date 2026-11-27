@@ -4,21 +4,21 @@ import { ChatPanel, type ChatPanelHandle } from "@/features/shell/workbench/pane
 import { useWarmMarkdownRenderer } from "@/features/chat/public/message/rendering";
 import { SettingsPage } from "@/features/settings/public/SettingsPage";
 import { SidebarPanel } from "@/features/sidebar/public/SidebarPanel";
-import { useChatSend } from "@/features/agent/public/input";
-import { useReconcilePersistedAgentSessions } from "@/features/agent/public/session";
+import {
+  useObserveActiveSession,
+  useReconcilePersistedAgentSessions,
+} from "@/features/agent/public/session";
 import { contributeLayout } from "@/extensions/contributeHelpers";
 import { definePlugin } from "@/extensions/definePlugin";
 import { COMMAND } from "@/features/command/public/extensionPoints";
 import { WORKSPACE_VIEW } from "@/features/workspace/public/views";
 import { WORKSPACE_SETTINGS_VIEW, openWorkspaceView } from "@/features/workspace/public/navigation";
-import { useDefaultChatSession } from "@/features/agent/public/defaultSession";
 import { ComposerFolderTray } from "@/features/shell/workbench/panel/FolderSelector";
 function WorkbenchChat({ panel }: { panel: RefObject<ChatPanelHandle | null> }) {
   useWarmMarkdownRenderer();
   useReconcilePersistedAgentSessions();
-  useDefaultChatSession();
-  const send = useChatSend();
-  return <ChatPanel ref={panel} onSend={send} />;
+  useObserveActiveSession();
+  return <ChatPanel ref={panel} />;
 }
 
 function WorkbenchSidebar() {

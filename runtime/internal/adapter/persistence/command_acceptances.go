@@ -9,7 +9,6 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
 type commandAcceptanceStore struct{ db *database }
@@ -50,15 +49,14 @@ func (s *commandAcceptanceStore) admitSteer(ctx context.Context, acceptance runs
 	if err != nil {
 		return false, err
 	}
-	switch record.Use {
-	case runs.CommandKeyForeign:
+	if record.Foreign() {
 		return false, runs.ErrCommandKeyConflict
-	case runs.CommandKeyAccepted:
-		if !record.Acceptance.Equal(acceptance) {
+	}
+	if original, found := record.Accepted(); found {
+		if !original.Equal(acceptance) {
 			return false, runs.ErrCommandKeyConflict
 		}
 		return true, nil
-	case runs.CommandKeyUnused:
 	}
 	current, found, err := newRunStore(s.db).Run(ctx, acceptance.RunID)
 	if err != nil {
@@ -70,106 +68,69 @@ func (s *commandAcceptanceStore) admitSteer(ctx context.Context, acceptance runs
 	return false, runs.RequireRunningSegment(current, acceptance.SegmentID)
 }
 
+const commandAcceptanceColumns = `kind, key, fingerprint, operation, session_id, run_id, segment_id, user_item_id, material_run_id, steer_input`
+
 func (s *commandAcceptanceStore) SessionSteerInputs(ctx context.Context, sessionID identity.SessionID) ([]runs.CommandAcceptance, error) {
 	return scopedValue(ctx, s.db.read, func(ctx context.Context) ([]runs.CommandAcceptance, error) {
-		rows, err := s.db.connection(ctx).QueryContext(ctx, `SELECT key FROM idempotency_records
+		rows, err := s.db.connection(ctx).QueryContext(ctx, `SELECT `+commandAcceptanceColumns+` FROM idempotency_records
 		WHERE kind=? AND operation=? AND session_id=? AND material_run_id IS NOT NULL
 		ORDER BY key`, idempotencyRunAcceptance, runs.CommandSteerInput, sessionID)
 		if err != nil {
 			return nil, err
 		}
 		defer rows.Close()
-		var keys []string
-		for rows.Next() {
-			var key string
-			if err := rows.Scan(&key); err != nil {
-				return nil, err
-			}
-			keys = append(keys, key)
-		}
-		if err := rows.Err(); err != nil {
-			return nil, err
-		}
 		var inputs []runs.CommandAcceptance
-		for _, key := range keys {
-			record, err := s.Lookup(ctx, key)
+		for rows.Next() {
+			record, err := scanCommandAcceptance(rows)
 			if err != nil {
 				return nil, err
 			}
-			if record.Use != runs.CommandKeyAccepted || record.CurrentRun == nil {
-				return nil, errors.New("sqlite: accepted input changed inside its snapshot")
-			}
-			inputs = append(inputs, record.Acceptance)
+			input, _ := record.Accepted()
+			inputs = append(inputs, input)
 		}
-		return inputs, nil
+		return inputs, rows.Err()
 	})
 }
 
 func (s *commandAcceptanceStore) Lookup(ctx context.Context, key string) (runs.CommandAcceptanceRecord, error) {
 	return scopedValue(ctx, s.db.read, func(ctx context.Context) (runs.CommandAcceptanceRecord, error) {
-		var (
-			kind        string
-			digest      string
-			operation   sql.NullString
-			sessionID   identity.SessionID
-			runID       identity.RunID
-			segmentID   identity.SegmentID
-			userItemID  identity.ItemID
-			materialRun identity.RunID
-			steerInput  []byte
-		)
-		err := s.db.connection(ctx).QueryRowContext(ctx, `SELECT kind, fingerprint, operation, session_id, run_id, segment_id, user_item_id, material_run_id, steer_input
-		   FROM idempotency_records WHERE key = ?`, key).Scan(&kind, &digest, &operation, &sessionID, &runID, &segmentID, &userItemID, &materialRun, &steerInput)
+		row := s.db.connection(ctx).QueryRowContext(ctx, `SELECT `+commandAcceptanceColumns+` FROM idempotency_records WHERE key=?`, key)
+		record, err := scanCommandAcceptance(row)
 		if errors.Is(err, sql.ErrNoRows) {
 			return runs.CommandAcceptanceRecord{}, nil
 		}
 		if err != nil {
 			return runs.CommandAcceptanceRecord{}, fmt.Errorf("sqlite: look up command acceptance: %w", err)
 		}
-		if kind != idempotencyRunAcceptance {
-			return runs.CommandAcceptanceRecord{Use: runs.CommandKeyForeign}, nil
-		}
-		acceptance := runs.CommandAcceptance{Key: key, Fingerprint: digest, Operation: runs.CommandOperation(operation.String), SessionID: sessionID, RunID: runID, SegmentID: segmentID, UserItemID: userItemID}
-		if len(steerInput) > 0 {
-			acceptance.SteerInput, err = decodeUserContent(steerInput)
-			if err != nil {
-				return runs.CommandAcceptanceRecord{}, err
-			}
-		}
-		if err := acceptance.Validate(); err != nil {
-			return runs.CommandAcceptanceRecord{}, fmt.Errorf("sqlite: decode command acceptance: %w", err)
-		}
-		record := runs.CommandAcceptanceRecord{Use: runs.CommandKeyAccepted, Acceptance: acceptance}
-		if materialRun.IsZero() {
-			return record, nil
-		}
-		return s.withAcceptedMaterial(ctx, record, materialRun)
+		return record, nil
 	})
 }
 
-func (s *commandAcceptanceStore) withAcceptedMaterial(ctx context.Context, record runs.CommandAcceptanceRecord, materialRun identity.RunID) (runs.CommandAcceptanceRecord, error) {
-	acceptance := record.Acceptance
-	current, found, err := newRunStore(s.db).Run(ctx, materialRun)
-	if err != nil {
+func scanCommandAcceptance(row scanRow) (runs.CommandAcceptanceRecord, error) {
+	var (
+		kind        string
+		operation   sql.NullString
+		acceptance  runs.CommandAcceptance
+		materialRun identity.RunID
+		steerInput  []byte
+	)
+	if err := row.Scan(&kind, &acceptance.Key, &acceptance.Fingerprint, &operation, &acceptance.SessionID,
+		&acceptance.RunID, &acceptance.SegmentID, &acceptance.UserItemID, &materialRun, &steerInput); err != nil {
 		return runs.CommandAcceptanceRecord{}, err
 	}
-	if !found || current.SessionID() != acceptance.SessionID {
-		return runs.CommandAcceptanceRecord{}, errors.New("sqlite: accepted Run material is missing or has another Session")
+	if kind != idempotencyRunAcceptance {
+		return runs.OccupiedCommandKey(), nil
 	}
-	record.CurrentRun = &current
-	if acceptance.Operation != runs.CommandSteerInput {
-		return record, nil
+	acceptance.Operation = runs.CommandOperation(operation.String)
+	if len(steerInput) > 0 {
+		input, err := decodeUserContent(steerInput)
+		if err != nil {
+			return runs.CommandAcceptanceRecord{}, err
+		}
+		acceptance.SteerInput = input
 	}
-	item, found, err := newTranscriptStore(s.db).Item(ctx, acceptance.UserItemID)
-	if err != nil {
-		return runs.CommandAcceptanceRecord{}, err
+	if err := acceptance.Validate(); err != nil {
+		return runs.CommandAcceptanceRecord{}, fmt.Errorf("sqlite: decode command acceptance: %w", err)
 	}
-	if !found {
-		return record, nil
-	}
-	if item.RunID() != acceptance.RunID || item.SessionID() != acceptance.SessionID || item.Kind() != transcript.UserMessage || item.Status() != transcript.ItemCompleted {
-		return runs.CommandAcceptanceRecord{}, errors.New("sqlite: steer application Item has another owner or kind")
-	}
-	record.AppliedItem = &item
-	return record, nil
+	return runs.RecordedCommandAcceptance(acceptance, !materialRun.IsZero()), nil
 }

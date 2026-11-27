@@ -8,8 +8,8 @@ import (
 )
 
 type Goal struct {
+	GoalTarget
 	Author          *extension.ContributionSource `json:"author,omitzero"`
-	SessionID       string                        `json:"sessionId"`
 	Objective       string                        `json:"objective"`
 	Status          GoalStatus                    `json:"status"`
 	Reason          *GoalReason                   `json:"reason,omitzero"`
@@ -58,18 +58,24 @@ type GoalUsage struct {
 }
 
 type StartGoalRequest struct {
-	SessionID       string `json:"sessionId"`
-	Objective       string `json:"objective"`
-	Provider        string `json:"provider,omitempty"`
-	Model           string `json:"model,omitempty"`
-	ReasoningEffort string `json:"reasoningEffort,omitempty"`
+	ReplaceIncarnationID string `json:"replaceIncarnationId,omitempty"`
+	SessionID            string `json:"sessionId"`
+	Objective            string `json:"objective"`
+	Provider             string `json:"provider,omitempty"`
+	Model                string `json:"model,omitempty"`
+	ReasoningEffort      string `json:"reasoningEffort,omitempty"`
 }
 
 type UpdateGoalRequest struct {
-	SessionID string `json:"sessionId"`
+	GoalTarget
 	Objective string `json:"objective"`
 }
 
-type GoalRequest struct {
+type GoalTarget struct {
+	SessionID     string `json:"sessionId"`
+	IncarnationID string `json:"incarnationId"`
+}
+
+type GetGoalRequest struct {
 	SessionID string `json:"sessionId"`
 }

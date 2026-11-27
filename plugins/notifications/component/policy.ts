@@ -20,6 +20,7 @@ const copy = {
 export async function announceSettlement(
   context: ComponentContext,
   settlement: RootRunSettlement,
+  locale: string,
   signal: AbortSignal,
 ): Promise<void> {
   signal.throwIfAborted();
@@ -33,7 +34,7 @@ export async function announceSettlement(
     if ((await context.notifications.requestAuthorization()) !== "granted")
       return;
     signal.throwIfAborted();
-    const t = createTranslator(catalogs, context.locale);
+    const t = createTranslator(catalogs, locale);
     const [title, body] = copy[settlement.status];
     await context.notifications.send({
       id: `run:${settlement.sessionId}`,

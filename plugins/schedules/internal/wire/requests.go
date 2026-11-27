@@ -9,7 +9,7 @@ const (
 	List   = "flame.schedules/list.v2"
 	Create = "flame.schedules/create.v2"
 	Update = "flame.schedules/update.v2"
-	Delete = "flame.schedules/delete.v2"
+	Delete = "flame.schedules/delete.v3"
 	RunNow = "flame.schedules/runNow.v2"
 )
 
@@ -40,7 +40,15 @@ type ItemInput struct {
 	ID string `json:"id"`
 }
 
-type Ack struct{}
+type DeleteInput struct {
+	ID               string `json:"id"`
+	ExpectedRevision uint64 `json:"expectedRevision"`
+}
+
+type DeleteResult struct {
+	ID       string `json:"id"`
+	Revision uint64 `json:"revision"`
+}
 
 type ModelPatch struct {
 	Provider        *string `json:"provider,omitzero"`

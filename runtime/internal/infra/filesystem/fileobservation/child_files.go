@@ -13,7 +13,6 @@ import (
 )
 
 type ChildFileTarget struct {
-	Key        string
 	Path       string
 	Boundary   string
 	FileName   string
@@ -21,7 +20,12 @@ type ChildFileTarget struct {
 	MaxBytes   int64
 }
 
-func WatchChildFiles(targets []ChildFileTarget, notify func([]string), report func(error)) (Observation, error) {
+type ChildFilesObservation interface {
+	io.Closer
+	AdvancePublishedPaths([]string) error
+}
+
+func WatchChildFiles(targets []ChildFileTarget, notify func(), report func(error)) (ChildFilesObservation, error) {
 	if notify == nil {
 		return nil, errors.New("observe child files: change notifier is required")
 	}
@@ -29,7 +33,10 @@ func WatchChildFiles(targets []ChildFileTarget, notify func([]string), report fu
 	if err != nil {
 		return nil, err
 	}
-	return startObservation("observe child files", canonical, func(candidate childFileTarget) string {
+	if len(canonical) == 0 {
+		return nopChildFiles{}, nil
+	}
+	watcher, err := startObservation("observe child files", canonical, func(candidate childFileTarget) string {
 		return candidate.physicalBoundary
 	}, report, func(lifecycle *observerLifecycle, roots *observationRoots) *childFileWatch {
 		return &childFileWatch{
@@ -40,10 +47,13 @@ func WatchChildFiles(targets []ChildFileTarget, notify func([]string), report fu
 			roots:             roots,
 		}
 	})
+	if err != nil {
+		return nil, err
+	}
+	return watcher, nil
 }
 
 type childFileTarget struct {
-	key              string
 	path             string
 	physicalBoundary string
 	fileName         string
@@ -56,9 +66,6 @@ func canonicalChildFileTargets(targets []ChildFileTarget) ([]childFileTarget, er
 }
 
 func canonicalChildFileTarget(index int, candidate ChildFileTarget) (childFileTarget, error) {
-	if candidate.Key == "" {
-		return childFileTarget{}, fmt.Errorf("observe child files: target %d key is required", index)
-	}
 	if candidate.Path == "" || !filepath.IsAbs(candidate.Path) {
 		return childFileTarget{}, fmt.Errorf("observe child files: target %d path must be absolute", index)
 	}
@@ -76,7 +83,7 @@ func canonicalChildFileTarget(index int, candidate ChildFileTarget) (childFileTa
 		return childFileTarget{}, err
 	}
 	return childFileTarget{
-		key: candidate.Key, path: filepath.Clean(candidate.Path), physicalBoundary: boundary,
+		path: filepath.Clean(candidate.Path), physicalBoundary: boundary,
 		fileName: candidate.FileName, maxEntries: candidate.MaxEntries, maxBytes: candidate.MaxBytes,
 	}, nil
 }
@@ -103,12 +110,29 @@ type childFileSnapshot struct {
 type childFileWatch struct {
 	*observerLifecycle
 	targets   []childFileTarget
-	notify    func([]string)
+	notify    func()
 	baselines []childFileSnapshot
 	roots     *observationRoots
 }
 
-func (t *childFileWatch) reconcile(pass reconcilePass, accepted acceptance) error {
+func (t *childFileWatch) observe(pass reconcilePass) error {
+	return t.reconcile(pass, nil)
+}
+
+func (t *childFileWatch) AdvancePublishedPaths(paths []string) error {
+	accepted := make(map[string]bool, len(paths))
+	for _, published := range paths {
+		if filepath.IsAbs(published) {
+			accepted[filepath.Clean(published)] = true
+		}
+	}
+	if len(accepted) == 0 {
+		return nil
+	}
+	return t.reconcile(observedPass, accepted)
+}
+
+func (t *childFileWatch) reconcile(pass reconcilePass, accepted map[string]bool) error {
 	t.stateMu.Lock()
 	if t.closedLocked() {
 		t.stateMu.Unlock()
@@ -116,8 +140,7 @@ func (t *childFileWatch) reconcile(pass reconcilePass, accepted acceptance) erro
 	}
 	directories := make(map[string]struct{})
 	next := make([]childFileSnapshot, len(t.targets))
-	changedKeys := make([]string, 0, len(t.targets))
-	accepting := len(accepted.keys) > 0 && len(accepted.identities) > 0
+	var changed bool
 	for index, candidate := range t.targets {
 		state, watched, err := scanChildFiles(candidate, t.roots)
 		if err != nil {
@@ -130,13 +153,11 @@ func (t *childFileWatch) reconcile(pass reconcilePass, accepted acceptance) erro
 		switch {
 		case pass == baselinePass:
 			next[index] = state
-		case accepting:
-			next[index] = acceptChildFileChanges(candidate, t.baselines[index], state, accepted)
+		case len(accepted) > 0:
+			next[index] = acceptChildFileChanges(t.baselines[index], state, accepted)
 		default:
 			next[index] = state
-			if !childFileSnapshotsEqual(state, t.baselines[index]) && !slices.Contains(changedKeys, candidate.key) {
-				changedKeys = append(changedKeys, candidate.key)
-			}
+			changed = changed || !childFileSnapshotsEqual(state, t.baselines[index])
 		}
 	}
 	if err := t.replacePaths(directories); err != nil {
@@ -145,8 +166,8 @@ func (t *childFileWatch) reconcile(pass reconcilePass, accepted acceptance) erro
 	}
 	t.baselines = next
 	t.stateMu.Unlock()
-	if !accepting && len(changedKeys) > 0 {
-		t.notify(changedKeys)
+	if changed {
+		t.notify()
 	}
 	return nil
 }
@@ -395,36 +416,33 @@ func (t *childFileWatch) Close() error {
 }
 
 func acceptChildFileChanges(
-	candidate childFileTarget,
 	baseline, current childFileSnapshot,
-	accepted acceptance,
+	accepted map[string]bool,
 ) childFileSnapshot {
-	next := childFileSnapshot{files: make(map[string]observedPath, len(baseline.files)), overflow: baseline.overflow}
-	for logical, entry := range baseline.files {
-		next.files[logical] = entry
-	}
-	if !accepted.keys[candidate.key] {
-		return next
-	}
 	// Capacity overflow is one opaque invalid source state. Retaining its prior
 	// baseline may produce one conservative duplicate notification when an
 	// accepted write enters or leaves overflow, but cannot hide an unrelated
 	// external change whose individual identity was never observed.
 	if baseline.overflow || current.overflow {
-		return next
+		return baseline
 	}
+	next := childFileSnapshot{files: make(map[string]observedPath, len(baseline.files))}
 	for logical, entry := range baseline.files {
-		if accepted.identities[logical] || accepted.identities[entry.physical] {
-			delete(next.files, logical)
+		if !accepted[logical] && !accepted[entry.physical] {
+			next.files[logical] = entry
 		}
 	}
 	for logical, entry := range current.files {
-		if accepted.identities[logical] || accepted.identities[entry.physical] {
+		if accepted[logical] || accepted[entry.physical] {
 			next.files[logical] = entry
 		}
 	}
 	return next
 }
+
+type nopChildFiles struct{ nopWatch }
+
+func (nopChildFiles) AdvancePublishedPaths([]string) error { return nil }
 
 func childFileSnapshotsEqual(left, right childFileSnapshot) bool {
 	if left.overflow != right.overflow || len(left.files) != len(right.files) {

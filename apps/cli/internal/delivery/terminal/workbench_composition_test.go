@@ -1,6 +1,9 @@
 package terminal
 
 import (
+	"database/sql"
+	"net/url"
+	"path/filepath"
 	"sync/atomic"
 	"testing"
 
@@ -25,7 +28,7 @@ func openTestWorkbench(t testing.TB, directory string) (*workbench.Store, error)
 	if err != nil {
 		return nil, err
 	}
-	store, err := workbench.Open(persistence, workbench.Config{})
+	store, err := workbench.Open(persistence)
 	if err == nil {
 		t.Cleanup(func() {
 			if err := store.Close(); err != nil {
@@ -39,4 +42,19 @@ func openTestWorkbench(t testing.TB, directory string) (*workbench.Store, error)
 func persistentTestWorkbench(t testing.TB, directory string) func() (*workbench.Store, error) {
 	t.Helper()
 	return func() (*workbench.Store, error) { return openTestWorkbench(t, directory) }
+}
+
+func inspectSessionWorkbench(t *testing.T, directory string) *sql.DB {
+	t.Helper()
+	address := url.URL{Scheme: "file", Path: filepath.ToSlash(filepath.Join(directory, "authoring.db")), RawQuery: "mode=rw"}
+	database, err := sql.Open("sqlite", address.String())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := database.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	return database
 }

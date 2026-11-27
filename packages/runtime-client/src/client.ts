@@ -501,7 +501,7 @@ export function createRpcClient(transport: Transport): RpcClient {
       };
       const onAbort = () => {
         const request = requests.get(id);
-        if (request?.state === "awaiting") rejectAwaiting(new RpcCancellationError());
+        if (request?.state === "awaiting") rejectAwaiting(new RpcCancellationError(signal?.reason));
         else requests.delete(id);
       };
       requests.set(id, {

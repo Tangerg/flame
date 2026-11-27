@@ -1,6 +1,4 @@
 import { type AgentAccess } from "@/features/agent/public/agent";
-import { type WorkspaceAccess } from "@/features/workspace/public/workspace";
-import { selectWorkspaceChat } from "@/features/workspace/public/navigation";
 import { type SystemNotifier } from "@/features/notifications/systemNotifier";
 import { type NotificationOwner } from "@/features/notifications/adapters/notifications";
 import { definePlugin } from "@/extensions/definePlugin";
@@ -10,23 +8,28 @@ export const SYSTEM_NOTIFICATIONS_PLUGIN = "flame.builtin.system-notifications";
 
 export function startSystemNotificationRouting(
   notifier: SystemNotifier,
-  agent: AgentAccess,
-  workspace: WorkspaceAccess,
+  agent: Pick<AgentAccess, "openExistingAgentSession">,
   revealWindow: () => Promise<void>,
 ): () => void {
+  const lifetime = new AbortController();
   const stop = notifier.onSystemNotificationOpened((sessionId) => {
     void revealWindow().catch((error: unknown) =>
       console.error("[notify] reveal window failed:", error),
     );
-    agent.selectAgentSession(sessionId);
-    selectWorkspaceChat(workspace);
+    void agent.openExistingAgentSession(sessionId, lifetime.signal).catch((error: unknown) => {
+      if (!lifetime.signal.aborted)
+        console.error("[notify] open notification Session failed", error);
+    });
   });
   void notifier
     .refreshNotificationAuthorization()
     .catch((error: unknown) =>
       console.error("[notify] notification authorization check failed:", error),
     );
-  return stop;
+  return () => {
+    stop();
+    lifetime.abort();
+  };
 }
 
 export function createSystemNotificationsPlugin(notifications: NotificationOwner) {

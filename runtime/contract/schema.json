@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Flame Runtime Protocol wire types",
-  "protocolVersion": "2026-11-27.8",
+  "protocolVersion": "2026-11-27.13",
   "$defs": {
     "AcquirePluginComponentRequest": {
       "type": "object",
@@ -2763,6 +2763,20 @@
         }
       ]
     },
+    "GetGoalRequest": {
+      "type": "object",
+      "properties": {
+        "sessionId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "^[^\\p{C}\\p{Z}]*$"
+        }
+      },
+      "required": [
+        "sessionId"
+      ]
+    },
     "GetPlanRequest": {
       "type": "object",
       "properties": {
@@ -2872,6 +2886,12 @@
           "type": "string",
           "format": "date-time"
         },
+        "incarnationId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[^\\p{C}\\p{Z}]*$"
+        },
         "model": {
           "type": "string",
           "maxLength": 256,
@@ -2913,6 +2933,7 @@
       },
       "required": [
         "createdAt",
+        "incarnationId",
         "objective",
         "sessionId",
         "status",
@@ -3186,9 +3207,24 @@
         "blockedByModel"
       ]
     },
-    "GoalRequest": {
+    "GoalStatus": {
+      "type": "string",
+      "enum": [
+        "active",
+        "paused",
+        "blocked",
+        "completing"
+      ]
+    },
+    "GoalTarget": {
       "type": "object",
       "properties": {
+        "incarnationId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[^\\p{C}\\p{Z}]*$"
+        },
         "sessionId": {
           "type": "string",
           "minLength": 1,
@@ -3197,16 +3233,8 @@
         }
       },
       "required": [
+        "incarnationId",
         "sessionId"
-      ]
-    },
-    "GoalStatus": {
-      "type": "string",
-      "enum": [
-        "active",
-        "paused",
-        "blocked",
-        "completing"
       ]
     },
     "GoalUsage": {
@@ -4752,6 +4780,11 @@
           "type": "string",
           "maxLength": 65536
         },
+        "idPrefix": {
+          "type": "string",
+          "maxLength": 256,
+          "pattern": "^[^\\p{C}\\p{Z}]*$"
+        },
         "limit": {
           "type": "integer",
           "minimum": 1
@@ -5239,6 +5272,87 @@
         }
       ]
     },
+    "MCPDirectoryTarget": {
+      "type": "object",
+      "properties": {
+        "expectedRevision": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "^[^\\p{C}\\p{Z}]*$"
+        },
+        "server": {
+          "$ref": "#/$defs/MCPServerID"
+        }
+      },
+      "required": [
+        "server"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "server": {
+                "properties": {
+                  "origin": {
+                    "properties": {
+                      "type": {
+                        "const": "user"
+                      }
+                    },
+                    "required": [
+                      "type"
+                    ]
+                  }
+                },
+                "required": [
+                  "origin"
+                ]
+              }
+            },
+            "required": [
+              "server"
+            ]
+          },
+          "then": {
+            "required": [
+              "expectedRevision"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "server": {
+                "properties": {
+                  "origin": {
+                    "properties": {
+                      "type": {
+                        "const": "installation"
+                      }
+                    },
+                    "required": [
+                      "type"
+                    ]
+                  }
+                },
+                "required": [
+                  "origin"
+                ]
+              }
+            },
+            "required": [
+              "server"
+            ]
+          },
+          "then": {
+            "properties": {
+              "expectedRevision": false
+            }
+          }
+        }
+      ]
+    },
     "MCPEnvironmentChange": {
       "type": "object",
       "properties": {
@@ -5434,6 +5548,12 @@
         "id": {
           "$ref": "#/$defs/MCPServerID"
         },
+        "revision": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "^[^\\p{C}\\p{Z}]*$"
+        },
         "status": {
           "$ref": "#/$defs/MCPServerState"
         }
@@ -5443,6 +5563,70 @@
         "handshakeTimeout",
         "id",
         "status"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "id": {
+                "properties": {
+                  "origin": {
+                    "properties": {
+                      "type": {
+                        "const": "user"
+                      }
+                    },
+                    "required": [
+                      "type"
+                    ]
+                  }
+                },
+                "required": [
+                  "origin"
+                ]
+              }
+            },
+            "required": [
+              "id"
+            ]
+          },
+          "then": {
+            "required": [
+              "revision"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "id": {
+                "properties": {
+                  "origin": {
+                    "properties": {
+                      "type": {
+                        "const": "installation"
+                      }
+                    },
+                    "required": [
+                      "type"
+                    ]
+                  }
+                },
+                "required": [
+                  "origin"
+                ]
+              }
+            },
+            "required": [
+              "id"
+            ]
+          },
+          "then": {
+            "properties": {
+              "revision": false
+            }
+          }
+        }
       ]
     },
     "MCPServerCandidate": {
@@ -9299,6 +9483,20 @@
             "requiredCapabilities": false,
             "retryAfterSeconds": false,
             "type": {
+              "const": "prompt_rejected"
+            }
+          },
+          "required": [
+            "type"
+          ]
+        },
+        {
+          "properties": {
+            "activeRun": false,
+            "errors": false,
+            "requiredCapabilities": false,
+            "retryAfterSeconds": false,
+            "type": {
               "const": "prompt_source_too_large"
             }
           },
@@ -10443,9 +10641,6 @@
     "RunAcceptance": {
       "type": "object",
       "properties": {
-        "appliedItem": {
-          "$ref": "#/$defs/Item"
-        },
         "candidateUserItemId": {
           "type": "string",
           "maxLength": 256,
@@ -10456,9 +10651,6 @@
           "items": {
             "$ref": "#/$defs/ContentBlock"
           }
-        },
-        "run": {
-          "$ref": "#/$defs/RunRef"
         },
         "runId": {
           "type": "string",
@@ -10487,9 +10679,7 @@
       "oneOf": [
         {
           "properties": {
-            "appliedItem": false,
             "input": false,
-            "run": false,
             "runId": false,
             "segmentId": false,
             "sessionId": false,
@@ -10510,7 +10700,6 @@
             }
           },
           "required": [
-            "run",
             "runId",
             "segmentId",
             "sessionId",
@@ -10519,9 +10708,7 @@
         },
         {
           "properties": {
-            "appliedItem": false,
             "candidateUserItemId": false,
-            "run": false,
             "type": {
               "const": "retired"
             }
@@ -12914,6 +13101,12 @@
           "maxLength": 32,
           "pattern": "^[^\\p{C}\\p{Z}]*$"
         },
+        "replaceIncarnationId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[^\\p{C}\\p{Z}]*$"
+        },
         "sessionId": {
           "type": "string",
           "minLength": 1,
@@ -13999,6 +14192,12 @@
     "UpdateGoalRequest": {
       "type": "object",
       "properties": {
+        "incarnationId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[^\\p{C}\\p{Z}]*$"
+        },
         "objective": {
           "type": "string",
           "pattern": "\\S"
@@ -14011,6 +14210,7 @@
         }
       },
       "required": [
+        "incarnationId",
         "objective",
         "sessionId"
       ]
@@ -14026,6 +14226,12 @@
         },
         "enabled": {
           "type": "boolean"
+        },
+        "expectedRevision": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "^[^\\p{C}\\p{Z}]*$"
         },
         "handshakeTimeout": {
           "$ref": "#/$defs/MCPHandshakeTimeout"

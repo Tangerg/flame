@@ -372,12 +372,26 @@ external effects. Root and delegated narratives render the same read-only eviden
 observed output stays an exact document and never becomes a final ToolResult or an
 instruction to resume the finished Run.
 
+Each Session notice dismisses the displayed command refusal or failed root Run.
+A local opening supersedes the previous command notice when it starts. Run
+events only project execution. Unknown acceptance recovers the original
+journaled command, and message regeneration gets its input from the committed
+rollback result.
+
 The client owns authoring facts: drafts, attachment preparation, queued intent,
 and unresolved command identity. A draft reference keeps the label and model text
 its producer wrote when the user added it; the Composer shows and removes it but
 never rewrites it, and Runtime owns it once the message is sent. Changing the endpoint scopes this local state
 to the selected Runtime. A remote path describes the Runtime machine; a browser
 file selection does not turn it into a server workspace.
+
+One chat input delivery holds the captured Composer draft for its Session.
+A settled acceptance consumes that draft. Unconfirmed delivery transfers
+responsibility for the exact command to the journal. A refusal leaves the
+draft editable, and settlement only clears the submitted revision.
+Run opening commands retain their original Runtime client and journal
+namespace. A Session view and a reconnecting event feed can retire their
+observations while the opening still settles.
 
 The URL owns current navigation: active Session, main view, dock target, and
 Settings pane. Stores retain tab sets, drafts, per-view state, and continuity.
@@ -578,14 +592,14 @@ read-only bootstrap or private appearance projection remains.
 
 ## Neutral Agent types
 
-`features/agent/adapters/runtimeDriver.ts` owns the wire-rich RuntimeAgentDriver.
-Runtime sources and selection remain inside Agent adapters. Application and public
-views expose neutral input, interruption and session/run facts. Pending opening
-views contain the original key, receipt and renderable request. Only the adapter
-of that generation retains the SDK retry handle; `retryOpening(key)` resolves that
-original handle without creating a second settlement path. Generated closed string
-enums such as `ChangeStatus` are shared vocabulary and may appear in public views;
-Runtime-client records, command handles and anything mixing them stay inside adapters.
+The Agent composition owns Run opening and resets its handles with the Runtime
+generation. Every start receives the Session captured by its command binding.
+Application and public views expose neutral input, interruption and Session/Run
+facts. A mounted input retains its original opening handle. Restored pending
+openings expose the key, receipt and renderable request. The adapter retains
+the actual SDK handle for that generation. Generated closed string enums such
+as `ChangeStatus` are shared vocabulary. Runtime-client command handles remain in
+adapters.
 
 Settings pages compose theme, i18n, notification and chat controls through their
 real public modules. Features independently contribute panes to Settings. Installed plugin component

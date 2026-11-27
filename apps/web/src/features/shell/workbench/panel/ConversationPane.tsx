@@ -26,17 +26,8 @@ import { SessionIdentity } from "@/features/shell/workbench/panel/SessionIdentit
 import { WorkspaceWindowHeader } from "@/features/shell/workbench/panel/WorkspaceWindowHeader";
 import { useT } from "@/lib/i18n/index";
 import { shellStyles as sh } from "@/features/shell/workbench/shellStyles";
-import { type AgentInput } from "@/features/agent/public/input";
 
-function ConversationContent({
-  ready,
-  sessionId,
-  onSend,
-}: {
-  ready: boolean;
-  sessionId: string;
-  onSend: (input: AgentInput) => boolean;
-}) {
+function ConversationContent({ ready, sessionId }: { ready: boolean; sessionId: string }) {
   const t = useT();
   const session = useActiveSession();
   if (!ready)
@@ -58,7 +49,7 @@ function ConversationContent({
       </AgentSurfaceHeader>
       <TranscriptReaderProvider sessionId={sessionId}>
         <Slot name="chat.search" />
-        <ChatStream onSend={onSend} />
+        <ChatStream />
       </TranscriptReaderProvider>
       <RunAnnouncer />
     </>
@@ -71,14 +62,12 @@ export function ConversationPane({
   fallbackFocus,
   ready,
   sessionId,
-  onSend,
 }: {
   ref: Ref<HTMLDivElement>;
   hidden: boolean;
   fallbackFocus: RefObject<HTMLElement | null>;
   ready: boolean;
   sessionId: string;
-  onSend: (input: AgentInput) => boolean;
 }) {
   const t = useT();
   return (
@@ -93,7 +82,7 @@ export function ConversationPane({
       {...stylex.props(sh.paneNarrow, paneStyles.conversation, hidden && paneStyles.inactiveView)}
     >
       <ContentVisibility visible={!hidden} fallbackFocus={fallbackFocus}>
-        <ConversationContent ready={ready} sessionId={sessionId} onSend={onSend} />
+        <ConversationContent ready={ready} sessionId={sessionId} />
       </ContentVisibility>
     </div>
   );

@@ -216,7 +216,7 @@ func assembleSessions(cfg assemblyConfig, policy policyComposition, workspaceSer
 	}
 	admissionGate, err := ownership.NewGate(ownership.GateConfig{
 		TreesOverlap: filesystem.PathsOverlap, ResolveTree: filesystem.CanonicalPath,
-		SettleRetirement: retirer.Settle, WorkspaceRollbackPending: cfg.stores.WorkspaceMutations.SessionPending,
+		SettleRetirement: retirer.SettleSession, WorkspaceRollbackPending: cfg.stores.WorkspaceMutations.SessionPending,
 	})
 	if err != nil {
 		return sessionAssembly{}, fmt.Errorf("runtime: session admission: %w", err)

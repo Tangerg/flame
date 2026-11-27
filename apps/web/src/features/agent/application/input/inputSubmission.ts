@@ -1,5 +1,3 @@
-import { type AgentDependencies } from "@/features/agent/application/agentDependencies";
-
 export interface AgentOpeningAcceptance {
   readonly status: "accepted" | "retired";
   readonly sessionId: string;
@@ -45,21 +43,7 @@ export function settleAgentInput(
     if (!idempotencyKey || !original.isUnknown(error)) throw error;
     return { status: "unknown", idempotencyKey, recover: original.recover };
   });
-  // Composer admission deliberately does not wait for the receipt. Its existing
-  // command owner reports failures while other consumers can await this handle.
+  // Retry affordances may leave receipt observation to the Agent command owner.
   void settlement.catch(() => {});
   return settlement;
-}
-export function recoverOpeningInput(
-  agentAccess: AgentDependencies,
-  sessionId: string,
-  idempotencyKey: string,
-): Promise<AgentInputSettlement> {
-  const operation = agentAccess.view.getSession(sessionId)?.retryOpening?.(idempotencyKey);
-  if (!operation) throw new Error("session is not ready to recover the original input");
-  return settleAgentInput(operation, {
-    key: () => idempotencyKey,
-    isUnknown: (error) => agentAccess.runtime.isInputReceiptUnknown(error),
-    recover: () => recoverOpeningInput(agentAccess, sessionId, idempotencyKey),
-  });
 }

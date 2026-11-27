@@ -1,5 +1,5 @@
 {
-  "protocolVersion": "2026-11-27.8",
+  "protocolVersion": "2026-11-27.13",
   "features": [
     "reasoning",
     "multimodal",
@@ -350,6 +350,7 @@
         "session_busy",
         "session_has_active_run",
         "prompt_source_too_large",
+        "prompt_rejected",
         "unsupported_mime",
         "capability_not_negotiated",
         "plugin_changed"
@@ -918,6 +919,8 @@
       "pagination": "none",
       "errors": [
         "mcp_server_not_found",
+        "mcp_owned_by_installation",
+        "revision_conflict",
         "capability_not_negotiated"
       ],
       "features": [
@@ -934,6 +937,8 @@
       "pagination": "none",
       "errors": [
         "mcp_server_not_found",
+        "mcp_owned_by_installation",
+        "revision_conflict",
         "capability_not_negotiated"
       ],
       "features": [
@@ -2112,7 +2117,11 @@
       {
         "type": "mcp_owned_by_installation",
         "code": -32044,
-        "recoveryAction": "promptUser"
+        "recoveryAction": "promptUser",
+        "methods": [
+          "mcp.servers.delete",
+          "mcp.servers.update"
+        ]
       },
       {
         "type": "mcp_server_already_exists",
@@ -2403,6 +2412,14 @@
         ]
       },
       {
+        "type": "prompt_rejected",
+        "code": -32049,
+        "recoveryAction": "stop",
+        "methods": [
+          "runs.start"
+        ]
+      },
+      {
         "type": "prompt_source_too_large",
         "code": -32038,
         "recoveryAction": "promptUser",
@@ -2445,6 +2462,8 @@
           "goals.start",
           "goals.stop",
           "goals.update",
+          "mcp.servers.delete",
+          "mcp.servers.update",
           "projects.background.setPolicy",
           "projects.update",
           "sessions.rollback",
@@ -2603,7 +2622,7 @@
       },
       {
         "type": "workspace_file_not_found",
-        "code": -32049,
+        "code": -32050,
         "recoveryAction": "refetch",
         "methods": [
           "workspace.files.read"
@@ -3810,6 +3829,13 @@
           ]
         },
         {
+          "tag": "prompt_rejected",
+          "optional": [
+            "detail",
+            "docUrl"
+          ]
+        },
+        {
           "tag": "prompt_source_too_large",
           "optional": [
             "detail",
@@ -4035,13 +4061,11 @@
           "required": [
             "runId",
             "segmentId",
-            "sessionId",
-            "run"
+            "sessionId"
           ],
           "optional": [
             "userItemId",
-            "input",
-            "appliedItem"
+            "input"
           ]
         },
         {
@@ -7063,6 +7087,64 @@
       ]
     },
     {
+      "type": "MCPServer",
+      "rules": [
+        {
+          "when": [
+            {
+              "field": "id.origin.type",
+              "operator": "equals",
+              "value": "user"
+            }
+          ],
+          "required": [
+            "revision"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "id.origin.type",
+              "operator": "equals",
+              "value": "installation"
+            }
+          ],
+          "forbidden": [
+            "revision"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "MCPDirectoryTarget",
+      "rules": [
+        {
+          "when": [
+            {
+              "field": "server.origin.type",
+              "operator": "equals",
+              "value": "user"
+            }
+          ],
+          "required": [
+            "expectedRevision"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "server.origin.type",
+              "operator": "equals",
+              "value": "installation"
+            }
+          ],
+          "forbidden": [
+            "expectedRevision"
+          ]
+        }
+      ]
+    },
+    {
       "type": "MCPAuthorizationAttempt",
       "rules": [
         {
@@ -7488,6 +7570,14 @@
         },
         {
           "field": "projectId",
+          "constraint": "maxLength(256)"
+        },
+        {
+          "field": "idPrefix",
+          "constraint": "identity"
+        },
+        {
+          "field": "idPrefix",
           "constraint": "maxLength(256)"
         }
       ]
@@ -9805,6 +9895,40 @@
       ]
     },
     {
+      "type": "MCPServer",
+      "rules": [
+        {
+          "field": "revision",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "revision",
+          "constraint": "identity"
+        },
+        {
+          "field": "revision",
+          "constraint": "maxLength(256)"
+        }
+      ]
+    },
+    {
+      "type": "MCPDirectoryTarget",
+      "rules": [
+        {
+          "field": "expectedRevision",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "expectedRevision",
+          "constraint": "identity"
+        },
+        {
+          "field": "expectedRevision",
+          "constraint": "maxLength(256)"
+        }
+      ]
+    },
+    {
       "type": "MCPOrigin",
       "rules": [
         {
@@ -10869,7 +10993,7 @@
       ]
     },
     {
-      "type": "Goal",
+      "type": "GoalTarget",
       "rules": [
         {
           "field": "sessionId",
@@ -10883,6 +11007,23 @@
           "field": "sessionId",
           "constraint": "maxLength(256)"
         },
+        {
+          "field": "incarnationId",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "incarnationId",
+          "constraint": "identity"
+        },
+        {
+          "field": "incarnationId",
+          "constraint": "maxLength(128)"
+        }
+      ]
+    },
+    {
+      "type": "Goal",
+      "rules": [
         {
           "field": "objective",
           "constraint": "pattern(\"\\\\S\")"
@@ -10950,6 +11091,18 @@
           "constraint": "pattern(\"\\\\S\")"
         },
         {
+          "field": "replaceIncarnationId",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "replaceIncarnationId",
+          "constraint": "identity"
+        },
+        {
+          "field": "replaceIncarnationId",
+          "constraint": "maxLength(128)"
+        },
+        {
           "field": "provider",
           "constraint": "identity"
         },
@@ -10976,7 +11129,7 @@
       ]
     },
     {
-      "type": "GoalRequest",
+      "type": "GetGoalRequest",
       "rules": [
         {
           "field": "sessionId",
@@ -10995,18 +11148,6 @@
     {
       "type": "UpdateGoalRequest",
       "rules": [
-        {
-          "field": "sessionId",
-          "constraint": "nonEmpty"
-        },
-        {
-          "field": "sessionId",
-          "constraint": "identity"
-        },
-        {
-          "field": "sessionId",
-          "constraint": "maxLength(256)"
-        },
         {
           "field": "objective",
           "constraint": "pattern(\"\\\\S\")"

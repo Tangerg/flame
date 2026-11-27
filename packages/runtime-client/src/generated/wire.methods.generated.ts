@@ -34,6 +34,7 @@ import type {
   ForgetApprovalRuleRequest,
   ForkSessionRequest,
   GetDiffRequest,
+  GetGoalRequest,
   GetPlanRequest,
   GetProjectRequest,
   GetRunAcceptanceRequest,
@@ -41,7 +42,7 @@ import type {
   GetSessionRequest,
   GetSessionSnapshotRequest,
   Goal,
-  GoalRequest,
+  GoalTarget,
   GrepRequest,
   GrepResult,
   HooksListResult,
@@ -65,6 +66,7 @@ import type {
   ListSessionsRequest,
   MCPAuthorizationAttempt,
   MCPAuthorizationAttemptRef,
+  MCPDirectoryTarget,
   MCPListToolsRequest,
   MCPServerCandidate,
   MCPServerRequest,
@@ -1617,7 +1619,7 @@ export interface WireShapes {
   "mcp.servers.list": { params: Record<string, never>; result: PageOfMCPServer };
   "mcp.servers.create": { params: MCPServerCandidate };
   "mcp.servers.update": { params: UpdateMCPServerRequest };
-  "mcp.servers.delete": { params: MCPServerRequest };
+  "mcp.servers.delete": { params: MCPDirectoryTarget };
   "mcp.servers.test": { params: MCPServerCandidate; result: MCPTestResult };
   "mcp.tools.list": { params: MCPListToolsRequest; result: PageOfMCPTool };
   "mcp.servers.reconnect": { params: MCPServerRequest };
@@ -1656,10 +1658,10 @@ export interface WireShapes {
   "approval.forgetRule": { params: ForgetApprovalRuleRequest };
   "goals.start": { params: StartGoalRequest; result: Goal };
   "goals.update": { params: UpdateGoalRequest; result: Goal };
-  "goals.clear": { params: GoalRequest };
-  "goals.get": { params: GoalRequest; result: Goal | null };
-  "goals.stop": { params: GoalRequest };
-  "goals.resume": { params: GoalRequest; result: Goal };
+  "goals.clear": { params: GoalTarget };
+  "goals.get": { params: GetGoalRequest; result: Goal | null };
+  "goals.stop": { params: GoalTarget };
+  "goals.resume": { params: GoalTarget; result: Goal };
   "providers.list": { params: Record<string, never>; result: PageOfProvider };
   "providers.update": { params: UpdateProviderRequest; result: Provider };
   "providers.test": { params: TestProviderRequest; result: ProviderTestResult };

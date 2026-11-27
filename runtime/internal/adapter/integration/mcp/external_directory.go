@@ -130,7 +130,7 @@ func (c *ExternalConnector) settleDirectory(ctx context.Context, u *connectorUse
 	switch decision {
 	case wire.Applied:
 	case wire.Conflict:
-		refusal = plugin.ErrStale
+		refusal = mcpapp.ErrDirectoryRevisionConflict
 		if intent.Change.Expected == "" {
 			refusal = mcpapp.ErrServerAlreadyExists
 		}

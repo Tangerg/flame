@@ -58,6 +58,7 @@ type WorkingContextInput struct {
 	Project      identity.ProjectID
 	PromptText   string
 	Seed         []corechat.Message
+	FirstRun     bool
 }
 
 type ExecutionContinuer interface {
@@ -157,8 +158,9 @@ type sessionCreator interface {
 	PrepareOpening(ctx context.Context, opening SessionOpening, selection flamemodel.Selection) (session.Session, *session.Session, error)
 }
 
-type activeRunReader interface {
-	ActiveRun(ctx context.Context, sessionID identity.SessionID) (run.Run, bool, error)
+type rootRunReader interface {
+	ActiveRoot(ctx context.Context, sessionID identity.SessionID) (*ActiveRoot, error)
+	HasRootRun(ctx context.Context, sessionID identity.SessionID) (bool, error)
 }
 
 type pendingReader interface {

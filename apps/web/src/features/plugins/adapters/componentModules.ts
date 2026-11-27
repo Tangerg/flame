@@ -63,24 +63,26 @@ function assertComponentPlan(unit: PlannedUnit, contract: Service<SourceComponen
 
 // Shared imports must come from this host's module profile, so the component
 // renders with the host's React, SDK and UI instances.
-function componentConfiguration(configurationJson: string): { export: string } {
+function componentConfiguration(configurationJson: string): { componentId: string; export: string } {
   const configuration = parseJSON(configurationJson) as {
+    componentId?: unknown;
     export?: unknown;
     moduleProfile?: unknown;
     sharedModules?: unknown;
   };
-  if (!configuration || typeof configuration.export !== "string" || !configuration.export)
+  if (
+    !configuration ||
+    typeof configuration.componentId !== "string" || !configuration.componentId ||
+    typeof configuration.export !== "string" || !configuration.export
+  )
     throw new FrameError(
       "contract_mismatch",
-      "Flame component configuration omitted its declared export",
+      "Flame component configuration omitted its declared identity or export",
     );
   const { sharedModules, moduleProfile } = configuration;
-  const profileMatches =
-    moduleProfile === hostModuleProfile ||
-    (moduleProfile === undefined && Array.isArray(sharedModules) && sharedModules.length === 0);
   if (
     !Array.isArray(sharedModules) ||
-    !profileMatches ||
+    moduleProfile !== hostModuleProfile ||
     sharedModules.some(
       (specifier) =>
         typeof specifier !== "string" ||
@@ -91,7 +93,7 @@ function componentConfiguration(configurationJson: string): { export: string } {
       "contract_mismatch",
       "component shared imports differ from the current native host module profile",
     );
-  return { export: configuration.export };
+  return { componentId: configuration.componentId, export: configuration.export };
 }
 
 // This adapter owns the actual window bootstrap. Frame owns plugin objects, work,
@@ -240,14 +242,14 @@ export class ComponentModules {
 
   async #openArtifact(unit: PlannedUnit, signal: AbortSignal) {
     const client = this.#client;
-    const configuration = parseJSON(unit.configurationJson) as { component?: { id?: unknown } };
-    if (!client || typeof configuration.component?.id !== "string" || !configuration.component.id)
+    if (!client)
       throw new FrameError("invalid_plan", "component execution has no Flame artifact source");
+    const { componentId } = componentConfiguration(unit.configurationJson);
     const resource = await client.plugins.readResource(
       {
         installationId: unit.instance.source.installationId,
         digest: unit.instance.source.release,
-        componentId: configuration.component.id,
+        componentId,
         path: unit.module.path,
       },
       signal,

@@ -34,14 +34,15 @@ type timelinePane struct {
 
 func newTimelinePane(theme kit.Theme, glyphs kit.Glyphs, jump func(timelineEntry), fork func(timelineEntry)) *timelinePane {
 	pane := &timelinePane{theme: theme, glyphs: glyphs, fork: fork}
-	pane.picker = newPicker(theme, glyphs, "search runs",
-		func(entry timelineEntry) string {
+	pane.picker = newPicker(theme, glyphs, pickerConfig[timelineEntry]{
+		placeholder: "search runs",
+		label: func(entry timelineEntry) string {
 			if entry.Depth > 0 {
 				return strings.Repeat("  ", entry.Depth-1) + glyphs.Bullet + " Subagent · " + shortIdentity(entry.Run.ID)
 			}
 			return fmt.Sprintf("Run %d of %d · %s", entry.RootPosition, entry.RootTotal, shortIdentity(entry.Run.ID))
 		},
-		func(entry timelineEntry) string {
+		detail: func(entry timelineEntry) string {
 			detail := string(entry.Run.Status)
 			if entry.Run.Model != "" {
 				detail = entry.Run.Model + format.Separator + detail
@@ -51,8 +52,8 @@ func newTimelinePane(theme kit.Theme, glyphs kit.Glyphs, jump func(timelineEntry
 			}
 			return detail
 		},
-		jump,
-	)
+		choose: jump,
+	})
 	return pane
 }
 

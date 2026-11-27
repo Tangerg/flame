@@ -10,7 +10,7 @@ export const VISUAL_AGENT_STATES = [
   "terminal",
   "canceled",
   "error",
-  "error-retryable",
+  "provider-error",
   "recovery",
   "cwd-missing",
   "delegated",

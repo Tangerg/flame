@@ -11,9 +11,7 @@ import type { DeliverableOperations } from "./operations";
 
 export type ViewMethod =
   | typeof METHODS.catalog
-  | typeof METHODS.list
   | typeof METHODS.read
-  | typeof METHODS.history
   | typeof METHODS.threads
   | typeof METHODS.suggestions
   | typeof METHODS.uploads;
@@ -26,7 +24,6 @@ type Projection<K extends ViewMethod> = {
 type Projections = { [K in ViewMethod]?: Projection<K> };
 // Reads of one document's pages keep their value while the same document reads again.
 const PER_DOCUMENT = new Set<ViewMethod>([
-  METHODS.history,
   METHODS.threads,
   METHODS.suggestions,
 ]);
@@ -56,7 +53,6 @@ export function useProjections(
         const existing = previous ?? {};
         const prior = existing[method] as Projection<K> | undefined;
         const retain =
-          method === METHODS.list ||
           method === METHODS.catalog ||
           method === METHODS.uploads ||
           (PER_DOCUMENT.has(method) &&

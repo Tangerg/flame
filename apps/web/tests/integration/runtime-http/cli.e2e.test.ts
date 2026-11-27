@@ -20,6 +20,42 @@ const unconfirmedModelOutcome = {
 describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: CLI", () => {
   const fixture = useRuntimeFixture("cli");
 
+  it("completes an older Session by ID even when it is outside the first page", async () => {
+    const title = "A Session older than the first catalog page";
+    const workspace = { path: fixture.root };
+    const older = await fixture.client.sessions.create({ title, workspace });
+    const pageSize = 100;
+    for (let index = 0; index < pageSize; index++) {
+      await fixture.client.sessions.create({ title: `More recent Session ${index}`, workspace });
+    }
+    const first = await fixture.client.sessions.list({ limit: pageSize });
+    expect(first.data).toHaveLength(pageSize);
+    expect(first.data.some(({ id }) => id === older.id)).toBe(false);
+
+    const prefix = older.id.slice(0, -4);
+    const matching = await fixture.client.sessions.list({ idPrefix: prefix });
+    expect(matching.data.map(({ id }) => id)).toEqual([older.id]);
+    const differentlyCased = await fixture.client.sessions.list({ idPrefix: prefix.toUpperCase() });
+    expect(differentlyCased.data).toEqual([]);
+    const broad = await fixture.client.sessions.list({ idPrefix: older.id.slice(0, 1), limit: 1 });
+    if (!broad.nextCursor) throw new Error("expected a continuation for the broader prefix");
+    await expect(
+      fixture.client.sessions.list({ idPrefix: prefix, cursor: broad.nextCursor }),
+    ).rejects.toSatisfy(
+      (error: unknown) => error instanceof RpcError && error.data.type === "invalid_params",
+    );
+
+    const command = fixture.startCLI(["__complete", "sessions", "show", prefix]);
+    try {
+      const result = await within(command.done, "session ID completion");
+      expect(result.code).toBe(0);
+      expect(result.stdout.split("\n")).toContain(`${older.id}\t${title}`);
+    } finally {
+      if (command.child.exitCode === null) command.child.kill("SIGKILL");
+      await command.done;
+    }
+  }, 30_000);
+
   it("joins a CLI-owned run from independent views without canceling it when a view closes", async () => {
     const observer = fixture.createSharedClient();
     const retiringView = fixture.createSharedClient();

@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"io"
 	"slices"
 	"sync"
 	"time"
@@ -18,23 +17,15 @@ import (
 var ErrUnavailable = errors.New("CLI workbench is unavailable")
 
 const (
-	defaultHistoryCapacity   = 1000
-	defaultStashCapacity     = 100
-	defaultWorkspaceCapacity = 50
-	stashIDEntropyBytes      = 8
-	historyName              = "history"
-	workspacesName           = "workspaces"
-	stashesName              = "stashes"
-	sessionDeletionsName     = "session-deletions"
+	maxHistoryEntries    = 1000
+	maxStashes           = 100
+	maxRecentWorkspaces  = 50
+	stashIDEntropyBytes  = 8
+	historyName          = "history"
+	workspacesName       = "workspaces"
+	stashesName          = "stashes"
+	sessionDeletionsName = "session-deletions"
 )
-
-type Config struct {
-	HistoryCapacity   *Capacity
-	StashCapacity     *Capacity
-	WorkspaceCapacity *Capacity
-	Now               func() time.Time
-	Random            io.Reader
-}
 
 type Stash struct {
 	ID        string            `json:"id"`
@@ -74,11 +65,6 @@ func (w Workspace) Validate() error {
 type Store struct {
 	mu                sync.Mutex
 	persistence       Persistence
-	historyCapacity   int
-	stashCapacity     int
-	workspaceCapacity int
-	now               func() time.Time
-	random            io.Reader
 	history           []authoring.Message
 	drafts            map[string]authoring.Message
 	stashes           []Stash
@@ -93,44 +79,24 @@ type Store struct {
 	closeErr          error
 }
 
-func OpenMemory(config Config) (*Store, error) {
-	return newStore(newMemoryStorage(), config)
+func OpenMemory() *Store {
+	return newStore(newMemoryStorage())
 }
 
-func Open(storage Persistence, config Config) (*Store, error) {
+func Open(storage Persistence) (*Store, error) {
 	if storage == nil {
 		return nil, errors.New("workbench persistence is not configured")
 	}
-	store, err := newStore(storage, config)
-	if err == nil {
-		err = store.loadState()
-	}
-	if err != nil {
+	store := newStore(storage)
+	if err := store.loadState(); err != nil {
 		return nil, errors.Join(err, storage.Close())
 	}
 	return store, nil
 }
 
-func newStore(storage Persistence, config Config) (*Store, error) {
-	historyCapacity, err := resolveCapacity(config.HistoryCapacity, defaultHistoryCapacity)
-	if err != nil {
-		return nil, fmt.Errorf("history capacity: %w", err)
-	}
-	stashCapacity, err := resolveCapacity(config.StashCapacity, defaultStashCapacity)
-	if err != nil {
-		return nil, fmt.Errorf("stash capacity: %w", err)
-	}
-	workspaceCapacity, err := resolveCapacity(config.WorkspaceCapacity, defaultWorkspaceCapacity)
-	if err != nil {
-		return nil, fmt.Errorf("workspace capacity: %w", err)
-	}
+func newStore(storage Persistence) *Store {
 	store := &Store{
 		persistence:       storage,
-		historyCapacity:   historyCapacity,
-		stashCapacity:     stashCapacity,
-		workspaceCapacity: workspaceCapacity,
-		now:               config.Now,
-		random:            config.Random,
 		drafts:            make(map[string]authoring.Message),
 		pendingResumes:    make(map[string]PendingResume),
 		pendingRollbacks:  make(map[string]PendingSessionRollback),
@@ -139,13 +105,7 @@ func newStore(storage Persistence, config Config) (*Store, error) {
 		installedCommands: make(map[string]PendingInstalledCommand),
 	}
 	store.queue = Queue{store: store, bySession: make(map[string][]PendingRun)}
-	if store.now == nil {
-		store.now = time.Now
-	}
-	if store.random == nil {
-		store.random = rand.Reader
-	}
-	return store, nil
+	return store
 }
 
 func (s *Store) Queue() *Queue { return &s.queue }
@@ -171,21 +131,18 @@ func (s *Store) History() []authoring.Message {
 	return messages
 }
 
-func (s *Store) Remember(message authoring.Message) error {
-	message = message.Clone()
-	if message.IsEmpty() {
-		return nil
+func (s *Store) MoveDraftToHistory(sessionID string, message authoring.Message) error {
+	if err := protocol.ValidateSessionID(sessionID); err != nil {
+		return err
 	}
 	if err := message.Validate(); err != nil {
-		return fmt.Errorf("remember prompt: %w", err)
+		return fmt.Errorf("move draft to history: %w", err)
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if len(s.history) > 0 && s.history[len(s.history)-1].Equal(message) {
-		return nil
-	}
-	next := s.historyWith(message)
-	return s.save(historyName, next, func() { s.history = next })
+	update := s.sessionUpdate(sessionID)
+	update.draft = authoring.Message{}
+	return s.recordPromptSettlement(update, message)
 }
 
 func (s *Store) Draft(sessionID string) (authoring.Message, bool) {
@@ -211,34 +168,16 @@ func (s *Store) SaveDraft(sessionID string, message authoring.Message) error {
 
 func (s *Store) newStash(message authoring.Message) (Stash, error) {
 	message = message.Clone()
-	if message.IsEmpty() {
-		return Stash{}, errors.New("cannot stash an empty prompt")
+	if err := message.Validate(); err != nil {
+		return Stash{}, fmt.Errorf("stash prompt: %w", err)
 	}
-	identity := make([]byte, stashIDEntropyBytes)
-	if _, err := io.ReadFull(s.random, identity); err != nil {
-		return Stash{}, fmt.Errorf("create stash id: %w", err)
+	var identity [stashIDEntropyBytes]byte
+	rand.Read(identity[:])
+	id := hex.EncodeToString(identity[:])
+	if slices.ContainsFunc(s.stashes, func(stash Stash) bool { return stash.ID == id }) {
+		return Stash{}, fmt.Errorf("stash identity %q is already in use", id)
 	}
-	stash := Stash{ID: hex.EncodeToString(identity), CreatedAt: s.now().UTC(), Message: message}
-	if err := validateStashes(append(slices.Clone(s.stashes), stash)); err != nil {
-		return Stash{}, err
-	}
-	return stash, nil
-}
-
-func (s *Store) StashPrompt(message authoring.Message) (Stash, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	stash, err := s.newStash(message)
-	if err != nil {
-		return Stash{}, err
-	}
-	next := append(slices.Clone(s.stashes), stash)
-	next = tailStashes(next, s.stashCapacity)
-	if err := s.save(stashesName, next, func() { s.stashes = next }); err != nil {
-		return Stash{}, err
-	}
-
-	return cloneStash(stash), nil
+	return Stash{ID: id, CreatedAt: time.Now().UTC(), Message: message}, nil
 }
 
 func (s *Store) StashDraft(sessionID string, message authoring.Message) (Stash, error) {
@@ -247,19 +186,16 @@ func (s *Store) StashDraft(sessionID string, message authoring.Message) (Stash, 
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	update := s.sessionUpdate(sessionID)
-	if !update.draft.Equal(message) {
-		return Stash{}, errors.New("session draft changed before it could be stashed")
-	}
-	stash, err := s.newStash(update.draft)
+	stash, err := s.newStash(message)
 	if err != nil {
 		return Stash{}, err
 	}
-	next := tailStashes(append(slices.Clone(s.stashes), stash), s.stashCapacity)
+	next := retainedStashes(append(slices.Clone(s.stashes), stash))
 	record, err := encodeRecord(stashesName, next)
 	if err != nil {
 		return Stash{}, err
 	}
+	update := s.sessionUpdate(sessionID)
 	update.draft = authoring.Message{}
 	if err := s.commitSessions([]sessionUpdate{update}, record); err != nil {
 		return Stash{}, err
@@ -278,17 +214,6 @@ func (s *Store) Stashes() []Stash {
 	return out
 }
 
-func (s *Store) Stash(id string) (Stash, bool) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	for _, stash := range s.stashes {
-		if stash.ID == id {
-			return cloneStash(stash), true
-		}
-	}
-	return Stash{}, false
-}
-
 func (s *Store) DeleteStash(id string) (bool, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -301,19 +226,6 @@ func (s *Store) DeleteStash(id string) (bool, error) {
 	}
 
 	return true, nil
-}
-
-func (s *Store) RememberWorkspace(path string) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	workspace := Workspace{Path: path, LastOpened: s.now().UTC()}
-	if err := workspace.Validate(); err != nil {
-		return err
-	}
-	next := slices.DeleteFunc(slices.Clone(s.workspaces), func(item Workspace) bool { return item.Path == path })
-	next = slices.Insert(next, 0, workspace)
-	next = next[:min(len(next), s.workspaceCapacity)]
-	return s.save(workspacesName, next, func() { s.workspaces = next })
 }
 
 func (s *Store) Workspaces() []Workspace {
@@ -345,13 +257,19 @@ func validateDistinct[T interface{ Validate() error }](noun string, records []T,
 	return nil
 }
 
-func (s *Store) historyWith(message authoring.Message) []authoring.Message {
-	start := max(0, len(s.history)-s.historyCapacity+1)
-	return append(slices.Clone(s.history[start:]), message.Clone())
+func (s *Store) historyWith(message authoring.Message) ([]authoring.Message, bool) {
+	if len(s.history) > 0 && s.history[len(s.history)-1].Equal(message) {
+		return nil, false
+	}
+	start := max(0, len(s.history)-maxHistoryEntries+1)
+	return append(slices.Clone(s.history[start:]), message.Clone()), true
 }
 
 func (s *Store) recordPromptSettlement(update sessionUpdate, message authoring.Message) error {
-	history := s.historyWith(message)
+	history, changed := s.historyWith(message)
+	if !changed {
+		return s.commitSessions([]sessionUpdate{update})
+	}
 	record, err := encodeRecord(historyName, history)
 	if err != nil {
 		return err
@@ -363,10 +281,8 @@ func (s *Store) recordPromptSettlement(update sessionUpdate, message authoring.M
 	return nil
 }
 
-func tailStashes(stashes []Stash, limit int) []Stash {
-	if len(stashes) > limit {
-		stashes = stashes[len(stashes)-limit:]
-	}
+func retainedStashes(stashes []Stash) []Stash {
+	stashes = stashes[max(0, len(stashes)-maxStashes):]
 	out := make([]Stash, len(stashes))
 	for i, stash := range stashes {
 		out[i] = cloneStash(stash)

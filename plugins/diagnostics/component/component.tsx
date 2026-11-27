@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   failureText,
-  type ComponentContext,
+  type PluginComponentProps,
   type TelemetrySnapshot,
   type SpanRow,
   type MetricRow,
@@ -228,9 +228,9 @@ type Read = {
   error?: { operation: "read" | "clear"; cause: unknown };
 };
 
-export function Diagnostics({ context }: { context: ComponentContext }) {
+export function Diagnostics({ context, locale }: PluginComponentProps) {
   const { telemetry, signal: componentSignal } = context;
-  const t = useTranslator(CATALOGS, context.locale);
+  const t = useTranslator(CATALOGS, locale);
   const [signal, setSignal] = useState<Signal>("spans");
   const [read, setRead] = useState<Read>({});
   const refresh = useCallback(() => {
@@ -328,7 +328,7 @@ export function Diagnostics({ context }: { context: ComponentContext }) {
             snapshot={read.snapshot}
             signal={signal}
             t={t}
-            locale={context.locale}
+            locale={locale}
           />
         </>
       )}

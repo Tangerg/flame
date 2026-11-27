@@ -8,30 +8,28 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
 } from "react";
+import type { PluginCommandChange } from "@flame/runtime-client";
 import {
   failureText,
-  bindOperations,
   mutationSettlementIsUnknown,
+  type CommandActivity,
   type ComponentContext,
   useTranslator,
   watchRuntimeTopics,
 } from "@flame/component-sdk";
-import {
-  CAPABILITY_JSON,
-  type MethodInputs,
-  type MethodOutputs,
-} from "../package/io.github.tangerg.flame/contracts/methods.generated";
+import type { MethodInputs } from "../package/io.github.tangerg.flame/contracts/methods.generated";
 import {
   type MemoryItem,
   type MutationName,
   type Scope,
   type Read,
   type Edit,
-  type Command,
+  type CommandPresentation,
   type CommandIntent,
   type CommandSource,
-  type CommandState,
+  type Failure,
   type Feedback,
   type Outcome,
 } from "./types";
@@ -44,40 +42,19 @@ import { es } from "./locales/es";
 import { fr } from "./locales/fr";
 import { de } from "./locales/de";
 import { METHODS } from "./methods";
+import { bindMemoryOperations } from "./memoryOperations";
 const CATALOGS = { en, zh, "zh-TW": zhTW, ja, ko, es, fr, de };
-const IDLE: CommandState = { phase: "idle" };
 
-function activeFeedback(state: CommandState): Feedback | undefined {
-  switch (state.phase) {
-    case "idle":
-      return undefined;
-    case "unknown":
-      return {
-        intent: state.command.intent,
-        state: "unknown",
-        failure: state.failure,
-      };
-    default:
-      return { intent: state.command.intent, state: "submitting" };
-  }
-}
+type Attempt = { kind: "submit"; editor?: Edit } | { kind: "check" };
+
 export function useMemory(
   context: ComponentContext,
+  locale: string,
   filters: MemoryFilterState,
+  activity: CommandActivity<CommandPresentation>,
 ) {
-  const t = useTranslator(CATALOGS, context.locale);
-  const operations = useMemo(() => {
-    if (!context.binding)
-      throw new Error("Memory requires its declared callable contribution");
-    return bindOperations<MethodInputs, MethodOutputs>(
-      context,
-      CAPABILITY_JSON,
-      {
-        scope: "installation",
-        reference: context.binding.installationId,
-      },
-    );
-  }, [context]);
+  const t = useTranslator(CATALOGS, locale);
+  const operations = useMemo(() => bindMemoryOperations(context), [context]);
   const [scope, setScope] = useState<Scope>("project");
   // A Session in a Project keeps project memory under that Project, never under
   // the folder it happens to run in.
@@ -133,22 +110,48 @@ export function useMemory(
   function closeEditor() {
     const form = editorElement.current;
     if (form && canRestoreFocus()) handoffFocus(form, resolveOpener());
-    setEdit(undefined);
+    setEdit((current) => current === edit ? undefined : current);
   }
-  const [command, setCommand] = useState<CommandState>(IDLE);
+  const activeCommand = useSyncExternalStore(
+    activity.subscribe,
+    activity.snapshot,
+  );
+  useSyncExternalStore(
+    operations.subscribeCommands,
+    operations.commandsVersion,
+  );
+  const journalCommand = context.signal.aborted
+    ? undefined
+    : operations.originalCommand();
+  const original =
+    journalCommand?.state === "recoverable" ? journalCommand : undefined;
+  const [recoveryDetail, setRecoveryDetail] = useState<{
+    key: string;
+    presentation: CommandPresentation;
+    failure: Failure;
+    editor?: Edit;
+  }>();
   const [outcomes, setOutcomes] = useState<{
     [source in CommandSource]?: Outcome;
   }>({});
   const pending =
-    command.phase === "submitting" || command.phase === "checking";
-  const unknown =
-    command.phase === "unknown" || command.phase === "checking"
-      ? command.command
+    activeCommand !== undefined || journalCommand?.state === "active";
+  const detail =
+    original && recoveryDetail?.key === original.idempotencyKey
+      ? recoveryDetail
       : undefined;
-  function feedbackFor(source: CommandSource) {
-    return command.phase !== "idle" && command.command.source === source
-      ? activeFeedback(command)
-      : outcomes[source];
+  const recoverySource =
+    detail?.editor && detail.editor === edit ? "editor" : "record";
+  function feedbackFor(source: CommandSource): Feedback | undefined {
+    if (source === activeCommand?.source)
+      return { intent: activeCommand.intent, state: "submitting" };
+    if (original && source === recoverySource)
+      return {
+        intent: detail?.presentation.intent,
+        state: "unknown",
+        failure: detail?.failure,
+      };
+    return outcomes[source];
   }
   function settle(source: CommandSource, outcome: Outcome | undefined) {
     setOutcomes((current) => ({ ...current, [source]: outcome }));
@@ -245,7 +248,7 @@ export function useMemory(
     void context.track(() => watch());
     return () => controller.abort();
   }, [context, load]);
-  const locked = command.phase !== "idle" || context.signal.aborted;
+  const locked = pending || original !== undefined || context.signal.aborted;
   function beginEdit(next: Edit) {
     filters.setOpen(false);
     settle("editor", undefined);
@@ -283,42 +286,79 @@ export function useMemory(
     if (!owner || owner.signal.aborted || context.signal.aborted) return;
     return AbortSignal.any([context.signal, owner.signal]);
   }
-  // A retired display context drops its command; the new one starts idle
-  // instead of staying locked behind a settlement it will never observe.
-  async function observe(
-    original: Command,
-    owner: AbortSignal,
-    phase: "submitting" | "checking",
-  ) {
-    setCommand({ phase, command: original });
-    settle(original.source, undefined);
-    try {
-      await original.promise;
-      if (owner.aborted) return;
-      setCommand(IDLE);
-      if (original.source === "editor") closeEditor();
-      settle("record", { intent: original.intent, state: "confirmed" });
+
+  const resolveOriginal = useEffectEvent((change: PluginCommandChange) => {
+    if (change.type !== "resolved" || recoveryDetail?.key !== change.idempotencyKey)
+      return;
+    const owner = observerSignal();
+    if (!owner) return;
+    const { editor, presentation } = recoveryDetail;
+    const { resolution } = change;
+    setRecoveryDetail(undefined);
+    if (resolution.type === "retired") return;
+    if (resolution.type === "confirmed" && editor && editor === edit) closeEditor();
+    if (activity.snapshot()) return;
+    if (resolution.type === "confirmed") {
+      settle("record", { intent: presentation.intent, state: "confirmed" });
       void load(owner);
-    } catch (error) {
-      if (owner.aborted) return;
-      if (mutationSettlementIsUnknown(error)) {
-        setCommand({ phase: "unknown", command: original });
-        return;
-      }
-      setCommand(IDLE);
-      settle(original.source, {
-        intent: original.intent,
+    } else {
+      settle(presentation.source, {
+        intent: presentation.intent,
         state: "refused",
-        failure: { cause: error, fallback: "refused" },
+        failure: { cause: undefined, fallback: "refused" },
       });
-    } finally {
-      if (owner.aborted)
-        setCommand((current) =>
-          current.phase !== "idle" && current.command === original
-            ? IDLE
-            : current,
-        );
     }
+  });
+  useEffect(() => operations.subscribeCommands(resolveOriginal), [operations]);
+
+  function observe(
+    presentation: CommandPresentation,
+    execute: () => Promise<unknown> | undefined,
+    observation: Attempt,
+  ) {
+    const owner = observerSignal();
+    if (!owner) return;
+    const { source, intent } = presentation;
+    const checking = observation.kind === "check";
+    void activity.run(presentation, async () => {
+      let fallback: Failure["fallback"] = checking ? "check" : "submit";
+      try {
+        const attempt = execute();
+        if (!attempt) return;
+        settle(source, undefined);
+        if (!checking) fallback = "refused";
+        await attempt;
+        if (owner.aborted) return;
+        if (observation.kind === "submit") {
+          setRecoveryDetail(undefined);
+          if (observation.editor && observation.editor === edit) closeEditor();
+        }
+        settle("record", { intent, state: "confirmed" });
+        void load(owner);
+      } catch (error) {
+        if (owner.aborted) return;
+        const failure = { cause: error, fallback };
+        if (mutationSettlementIsUnknown(error)) {
+          const retained = operations.originalCommand();
+          if (retained?.state === "recoverable") {
+            setRecoveryDetail({
+              key: retained.idempotencyKey,
+              presentation,
+              failure,
+              editor:
+                observation.kind === "submit"
+                  ? observation.editor
+                  : detail?.key === retained.idempotencyKey
+                    ? detail.editor
+                    : undefined,
+            });
+            return;
+          }
+        }
+        setRecoveryDetail(undefined);
+        settle(source, { intent, state: "refused", failure });
+      }
+    });
   }
   function change<K extends MutationName>(
     method: K,
@@ -326,22 +366,11 @@ export function useMemory(
     intent: CommandIntent,
     source: CommandSource = "record",
   ) {
-    const owner = observerSignal();
-    if (!owner || command.phase !== "idle" || target === undefined) return;
-    try {
-      const original = {
-        promise: operations.command(method, input),
-        source,
-        intent,
-      };
-      void observe(original, owner, "submitting");
-    } catch (error) {
-      settle(source, {
-        intent,
-        state: "refused",
-        failure: { cause: error, fallback: "submit" },
-      });
-    }
+    if (locked || target === undefined) return;
+    observe({ source, intent }, () => operations.submit(method, input), {
+      kind: "submit",
+      editor: source === "editor" ? edit : undefined,
+    });
   }
   function saveEdit() {
     if (!edit || edit.type === "delete") return;
@@ -375,23 +404,16 @@ export function useMemory(
       "editor",
     );
   }
-  function reconcile() {
-    const owner = observerSignal();
-    if (!owner || command.phase !== "unknown") return;
-    const original = command.command;
-    try {
-      const attempt = {
-        ...original,
-        promise: original.promise.retry({ signal: owner }),
-      };
-      void observe(attempt, owner, "checking");
-    } catch (error) {
-      setCommand({
-        phase: "unknown",
-        command: original,
-        failure: { cause: error, fallback: "check" },
-      });
-    }
+  function reconcile(key: string) {
+    if (context.signal.aborted) return;
+    const retained = operations.originalCommand();
+    if (retained?.state !== "recoverable" || retained.idempotencyKey !== key)
+      return;
+    observe(
+      { source: recoverySource, intent: detail?.presentation.intent },
+      retained.recover,
+      { kind: "check" },
+    );
   }
   return {
     canRestoreFocus,
@@ -415,7 +437,8 @@ export function useMemory(
     changeScope,
     resolveOpener,
     editorFeedback: feedbackFor("editor"),
-    unknown,
+    editorRecovery: recoverySource === "editor" ? original : undefined,
+    recordRecovery: recoverySource === "record" ? original : undefined,
     reconcile,
     change,
     current,

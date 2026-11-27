@@ -69,6 +69,7 @@ export async function revalidateAgentSessionMaterial(
     material.unresolvedOpenings,
   );
   if (committed) {
+    for (const steer of material.retiredSteers ?? []) viewPort.appendRetiredSteer(sessionId, steer);
     if (material.unresolvedSteers?.length)
       restoreUnresolvedSteers(agentAccess, sessionId, material.unresolvedSteers);
     material.acknowledgeRecoveredCommands?.();

@@ -353,6 +353,12 @@ for queries and constraints from the stored Segment and outcome.
 
 Checkpoint and waiting facts commit in the Application order required to recover the same logical Run. Terminalization and checkpoint cleanup preserve one durable winner. Recovery reconstructs from durable Runtime state and public framework checkpoints; it does not infer state from event delivery or client caches.
 
+Startup recovery makes one decision per claimed Run tree. A preserved tree keeps
+its checkpoint and interrupt. A lost tree carries its conversation closure,
+Item replacements, and Run replacements in postorder. Persistence derives
+cleanup from that root and commits the batch in one SQLite transaction. The same
+committed tree supplies client invalidations.
+
 Runtime decodes its execution-context envelope with the standard strict JSON decoder, rejecting duplicate and unknown members, including field-name aliases. Active and waiting cuts use one payload for frozen bindings, instructions, model options, accounting, calibration, input associations, and result presentation metadata. Scope alone decodes and validates its separate acknowledged execution-tree head; that tree is never copied into the context payload.
 
 The cold `create_schedule` class admits a single product root and its ordinary Tool processes under the original Session lease. The Run owner reinstalls the original Segment and reducer before writer activation or result publication. Effective Tool arguments and exact release/source attribution commit before external I/O. Subsequent tree cuts, context, and known product results share an atomic write. Restored reducers observe the original Segment's committed Item identities and operational Tool start times before continuing. They do not emit another opening, Tool attempt, or allocation for those facts. Existing terminal decisions, incompatible builds and bindings, and unsupported active execution remain outside this class.

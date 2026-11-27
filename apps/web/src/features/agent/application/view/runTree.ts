@@ -1,10 +1,8 @@
 import {
-  type AgentProblem,
   type AgentRunView,
   type AgentSessionView,
   type Message,
 } from "@/features/agent/public/sessionView";
-import { isAgentRunFailure } from "@/features/agent/application/view/runOutcome";
 const EMPTY_MESSAGES: Message[] = [];
 
 export interface DelegatedRunNarrative {
@@ -85,12 +83,4 @@ export function selectDelegatedRunNarratives(
     (byItemId[run.spawnedByItemId] ??= []).push(narrative);
   }
   return byItemId;
-}
-
-export function selectRunProblem(run: AgentRunView | null): AgentProblem | null {
-  const outcome = run?.outcome;
-  if (!isAgentRunFailure(outcome)) return null;
-  return outcome.type === "lost"
-    ? { lossReason: outcome.loss.reason, recovery: "promptUser" }
-    : outcome.error;
 }

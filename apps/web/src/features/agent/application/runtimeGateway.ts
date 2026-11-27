@@ -14,17 +14,18 @@ import {
 import { type AgentInput } from "@/features/agent/domain/input";
 import { type AgentPlan } from "@/features/agent/public/sessionView";
 import { type AgentOpeningAcceptance } from "@/features/agent/application/input/inputSubmission";
+export interface AgentSteerInput {
+  runId: string;
+  userItemId: string;
+  input: AgentInput;
+}
+
 export interface AgentSessionSnapshot {
   items: AgentItem[];
   runs: AgentRunFact[];
   pendingInterruptSets: AgentPendingInterruptSet[];
   plan?: AgentPlan;
-  steerInputs?: Array<{
-    runId: string;
-    userItemId: string;
-    input: AgentInput;
-    receipt: "accepted" | "retired";
-  }>;
+  steerInputs?: AgentSteerInput[];
 }
 
 interface SessionRollbackBasis {
@@ -37,14 +38,13 @@ export interface AgentSessionMaterialRead {
   rollbackBasis: SessionRollbackBasis;
   projectAssociatedSharedMaterial(shared: Record<string, unknown>): Record<string, unknown>;
   acknowledgeRecoveredCommands?: () => void;
+  retiredSteers?: AgentSteerInput[];
   unresolvedSteers?: AgentUnresolvedSteer[];
   unresolvedOpenings?: AgentOpeningCommand[];
-  recoveredInputs?: Array<{
-    idempotencyKey: string;
-    input: AgentInput;
-    acceptance: AgentOpeningAcceptance;
-    acknowledge(): void;
-  }>;
+}
+
+export interface AgentOpeningRecovery extends AgentOpeningAcceptance {
+  releaseObservation?(): Promise<void>;
 }
 
 export type AgentOpeningCommand = (
@@ -58,6 +58,7 @@ export type AgentOpeningCommand = (
 ) & {
   idempotencyKey: string;
   receipt: "notRecorded" | "unknown";
+  retry(): Promise<AgentOpeningRecovery>;
 };
 
 export interface AgentSessionUsage {
@@ -88,8 +89,13 @@ export interface AgentUnresolvedSteer {
 
 export type AgentSessionProjectChange = { type: "set"; projectId: string } | { type: "clear" };
 
+export type AgentSessionCreation =
+  | { type: "confirmed"; sessionId: string }
+  | { type: "unconfirmed"; idempotencyKey: string; retry(): Promise<AgentSessionCreation> };
+
 export interface AgentRuntimeGateway {
-  createSession(input: { cwd: string; projectId?: string }): Promise<string>;
+  createSession(input: { cwd: string; projectId?: string }): Promise<AgentSessionCreation>;
+  sessionExists(sessionId: string, signal: AbortSignal): Promise<boolean>;
   deleteSession(sessionId: string): Promise<void>;
   updateSession(input: {
     sessionId: string;

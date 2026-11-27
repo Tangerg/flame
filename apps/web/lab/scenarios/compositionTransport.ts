@@ -6,7 +6,7 @@ import type {
   PluginInstallation,
 } from "@flame/runtime-client/wire";
 import { type ComponentReference } from "@flame/component-sdk";
-import { componentExport, hostModuleProfile } from "@flame/component-sdk/runtime-profile";
+import { componentExport } from "@flame/component-sdk/runtime-profile";
 import moduleGraph from "../../../../examples/plugins/composition/provider/package/io.github.tangerg.flame/components/modules.generated.json";
 import {
   PROTOCOL,
@@ -90,8 +90,8 @@ export async function createCompositionTransport(
         },
         configurationJson: JSON.stringify({
           export: entry.export,
-          component: { id: entry.id },
-          moduleProfile: hostModuleProfile,
+          componentId: entry.id,
+          moduleProfile: moduleGraph.runtimeProfile,
           sharedModules: moduleGraph.sharedSpecifiers,
         }),
         profile: "browser-js",

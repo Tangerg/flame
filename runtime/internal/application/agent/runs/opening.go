@@ -11,11 +11,13 @@ import (
 	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/application/ownership"
+	"github.com/Tangerg/flame/runtime/internal/completion"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/keylock"
 	corechat "github.com/Tangerg/scope/core/chat"
 	"github.com/samber/lo"
+	"go.opentelemetry.io/otel"
 )
 
 type Openings struct {
@@ -28,7 +30,7 @@ type Openings struct {
 	modelSelector      models.Selector
 	sessionReader      sessionReader
 	sessionCreator     sessionCreator
-	activeRuns         activeRunReader
+	rootRuns           rootRunReader
 	isolation          isolationProvider
 	releases           ExecutionReleaser
 	admission          *ownership.Gate
@@ -45,7 +47,7 @@ type OpeningDependencies struct {
 	ModelSelector      models.Selector
 	Sessions           sessionReader
 	SessionCreator     sessionCreator
-	ActiveRuns         activeRunReader
+	RootRuns           rootRunReader
 	Segments           *Segments
 	Admissions         *ownership.Gate
 	Isolation          isolationProvider
@@ -64,7 +66,7 @@ func NewOpenings(deps OpeningDependencies) (*Openings, error) {
 		{"model admitter", deps.Models},
 		{"session reader", deps.Sessions},
 		{"session creator", deps.SessionCreator},
-		{"active run reader", deps.ActiveRuns},
+		{"root Run reader", deps.RootRuns},
 		{"segment supervisor", deps.Segments},
 		{"admission gate", deps.Admissions},
 		{"isolation provider", deps.Isolation},
@@ -85,7 +87,7 @@ func NewOpenings(deps OpeningDependencies) (*Openings, error) {
 		modelSelector:      deps.ModelSelector,
 		sessionReader:      deps.Sessions,
 		sessionCreator:     deps.SessionCreator,
-		activeRuns:         deps.ActiveRuns,
+		rootRuns:           deps.RootRuns,
 		isolation:          deps.Isolation,
 		releases:           deps.Releases,
 		admission:          deps.Admissions,
@@ -104,29 +106,45 @@ func (c *Openings) AdmitSelection(ctx context.Context, selection flamemodel.Sele
 }
 
 func (c *Openings) WaitSessionStartable(ctx context.Context, sessionID identity.SessionID) error {
-	sess, err := c.sessionReader.Get(ctx, sessionID)
-	if err != nil {
-		return err
-	}
 	for {
-		// Every writer releases its admission after settling durable state,
-		// including parked cancellation, recovery and failed cleanup. Capture
-		// that version before either read so no successful release is missed.
+		if err := errors.Join(ctx.Err(), context.Cause(ctx)); err != nil {
+			return err
+		}
+		// A Session edit can change which tree blocks the Run. Its release
+		// must invalidate both the Session read and the readiness observation.
 		changed := c.admission.Changes()
-		if err := c.admission.WaitRunStartable(ctx, sess.ID(), sess.Workspace().Path()); err != nil {
+		sess, err := c.sessionReader.Get(ctx, sessionID)
+		if err != nil {
 			return err
 		}
-		_, active, err := c.activeRuns.ActiveRun(ctx, sess.ID())
-		err = errors.Join(err, errors.Join(ctx.Err(), context.Cause(ctx)))
-		if err != nil || !active {
+		ready, err := c.admission.RunStartable(sess.ID(), sess.Workspace().Path())
+		if err != nil {
 			return err
 		}
-		select {
-		case <-ctx.Done():
-			return errors.Join(ctx.Err(), context.Cause(ctx))
-		case <-changed:
+		if ready {
+			active, err := c.rootRuns.ActiveRoot(ctx, sess.ID())
+			if err := errors.Join(err, ctx.Err(), context.Cause(ctx)); err != nil {
+				return err
+			}
+			if active == nil {
+				select {
+				case <-changed:
+					continue
+				default:
+					return nil
+				}
+			}
+		}
+		if err := waitForAdmissionChange(ctx, changed); err != nil {
+			return err
 		}
 	}
+}
+
+func waitForAdmissionChange(ctx context.Context, changed <-chan struct{}) error {
+	ctx, span := otel.Tracer("github.com/Tangerg/flame/runtime/internal/application/agent/runs").Start(ctx, "wait for session admission")
+	defer span.End()
+	return completion.Wait(ctx, changed)
 }
 
 type rootStartPreparation struct {
@@ -184,6 +202,10 @@ func (c *Openings) startRoot(ctx context.Context, cmd StartCommand) (result Star
 	cmd = preparation.command
 	draft := preparation.draft
 	draft.SessionID = preparation.session.ID()
+	hasRootRun, err := c.rootRuns.HasRootRun(ctx, draft.SessionID)
+	if err != nil {
+		return StartResult{}, err
+	}
 	if cmd.NewSession != nil {
 		draft.RunID = cmd.NewSession.RunID
 	} else {
@@ -212,6 +234,7 @@ func (c *Openings) startRoot(ctx context.Context, cmd StartCommand) (result Star
 		Project:      draft.Project,
 		PromptText:   preparation.promptText,
 		Seed:         draft.WorkingContext,
+		FirstRun:     !hasRootRun,
 	})
 	if err != nil {
 		return StartResult{}, fmt.Errorf("runs: compose working context: %w", err)
@@ -386,7 +409,7 @@ func (c *Openings) resolveOpeningError(ctx context.Context, sessionID identity.S
 	if !errors.Is(err, run.ErrSessionBusy) {
 		return err
 	}
-	if conflict, lookupErr := c.activeRunConflict(ctx, sessionID); lookupErr == nil && conflict != nil {
+	if conflict, lookupErr := c.activeRootConflict(ctx, sessionID); lookupErr == nil && conflict != nil {
 		return conflict
 	}
 	return err
@@ -438,7 +461,7 @@ func (c *Openings) claimFreshRun(ctx context.Context, sess session.Session) (own
 	if leaseErr != nil {
 		return ownership.RunAdmission{}, leaseErr
 	}
-	conflict, err := c.activeRunConflict(ctx, sess.ID())
+	conflict, err := c.activeRootConflict(ctx, sess.ID())
 	if err != nil {
 		runAdmission.Release()
 		return ownership.RunAdmission{}, err
@@ -453,12 +476,12 @@ func (c *Openings) claimFreshRun(ctx context.Context, sess session.Session) (own
 	return runAdmission, nil
 }
 
-func (c *Openings) activeRunConflict(ctx context.Context, sessionID identity.SessionID) (*ActiveRunConflictError, error) {
-	run, found, err := c.activeRuns.ActiveRun(ctx, sessionID)
-	if err != nil || !found {
+func (c *Openings) activeRootConflict(ctx context.Context, sessionID identity.SessionID) (*ActiveRunConflictError, error) {
+	root, err := c.rootRuns.ActiveRoot(ctx, sessionID)
+	if err != nil || root == nil {
 		return nil, err
 	}
-	return &ActiveRunConflictError{RunID: run.ID(), State: run.State()}, nil
+	return &ActiveRunConflictError{Root: *root}, nil
 }
 
 func (c *Openings) executionCWD(ctx context.Context, sess session.Session) (cwd string, isolated bool, err error) {

@@ -103,20 +103,10 @@ func (p *RecoveryStore) applyRecovery(ctx context.Context, commit runs.RecoveryC
 	if err := p.markToolInvocationsIncomplete(ctx, commit); err != nil {
 		return err
 	}
-	if err := p.applyConversationTransitions(ctx, commit); err != nil {
-		return err
-	}
-	if err := p.replaceTranscriptItems(ctx, commit); err != nil {
-		return err
-	}
-	if err := p.recoverLostRuns(ctx, commit); err != nil {
-		return err
-	}
-	if err := p.deleteInterrupts(ctx, commit); err != nil {
-		return err
-	}
-	if err := p.deleteExecutorCheckpoints(ctx, commit); err != nil {
-		return err
+	for tree := range commit.LostTrees() {
+		if err := p.recoverLostTree(ctx, tree); err != nil {
+			return err
+		}
 	}
 	return p.deleteChildRunStartReservations(ctx, commit)
 }
@@ -139,73 +129,48 @@ func (p *RecoveryStore) markToolInvocationsIncomplete(ctx context.Context, commi
 	return nil
 }
 
-func (p *RecoveryStore) applyConversationTransitions(ctx context.Context, commit runs.RecoveryCommit) error {
-	for _, transition := range commit.ConversationTransitions() {
-		count, err := p.messages.Count(ctx, transition.SessionID)
-		if err != nil {
-			return fmt.Errorf(
-				"recovery: count conversation for root Run %q: %w",
-				transition.RootRunID,
-				err,
-			)
-		}
-		if count != transition.ExpectedCount {
-			return fmt.Errorf(
-				"recovery: conversation for root Run %q moved from %d to %d messages",
-				transition.RootRunID,
-				transition.ExpectedCount,
-				count,
-			)
-		}
-		if err := p.messages.Write(ctx, transition.SessionID, transition.Messages...); err != nil {
-			return fmt.Errorf(
-				"recovery: close conversation for root Run %q: %w",
-				transition.RootRunID,
-				err,
-			)
-		}
+func (p *RecoveryStore) recoverLostTree(ctx context.Context, tree runs.LostTreeRecovery) error {
+	root := tree.Root()
+	if err := p.closeRecoveryConversation(ctx, tree); err != nil {
+		return err
 	}
-	return nil
-}
-
-func (p *RecoveryStore) replaceTranscriptItems(ctx context.Context, commit runs.RecoveryCommit) error {
-	for _, replacement := range commit.ItemReplacements() {
+	for replacement := range tree.ItemReplacements() {
 		if err := p.transcript.ReplaceItem(ctx, replacement); err != nil {
 			return fmt.Errorf("recovery: replace transcript Item %q: %w", replacement.Expected().ID(), err)
 		}
 	}
-	return nil
-}
-
-func (p *RecoveryStore) recoverLostRuns(ctx context.Context, commit runs.RecoveryCommit) error {
-	for _, replacement := range commit.LostRuns() {
+	for replacement := range tree.RunReplacements() {
 		if err := p.runs.RecoverLost(ctx, replacement); err != nil {
 			return fmt.Errorf("recovery: recover lost Run %q: %w", replacement.State().ID(), err)
 		}
 	}
-	return nil
-}
-
-func (p *RecoveryStore) deleteInterrupts(ctx context.Context, commit runs.RecoveryCommit) error {
-	for _, rootRunID := range commit.DeleteInterrupts() {
-		if err := p.interrupts.Delete(ctx, rootRunID); err != nil {
-			return fmt.Errorf("recovery: delete interrupt for root Run %q: %w", rootRunID, err)
-		}
+	if err := p.interrupts.Delete(ctx, root.ID()); err != nil {
+		return fmt.Errorf("recovery: delete interrupt for root Run %q: %w", root.ID(), err)
+	}
+	if err := p.executorCheckpoints.DeleteSessionCheckpoints(ctx, root.SessionID()); err != nil {
+		return fmt.Errorf("recovery: delete executor checkpoints for Session %q: %w", root.SessionID(), err)
 	}
 	return nil
 }
 
-func (p *RecoveryStore) deleteExecutorCheckpoints(ctx context.Context, commit runs.RecoveryCommit) error {
-	for _, sessionID := range commit.DeleteCheckpointSessionIDs() {
-		if err := p.executorCheckpoints.DeleteSessionCheckpoints(ctx, sessionID); err != nil {
-			return fmt.Errorf("recovery: delete executor checkpoints for Session %q: %w", sessionID, err)
-		}
+func (p *RecoveryStore) closeRecoveryConversation(ctx context.Context, tree runs.LostTreeRecovery) error {
+	root := tree.Root()
+	expectedCount, messages := tree.ConversationClosure()
+	count, err := p.messages.Count(ctx, root.SessionID())
+	if err != nil {
+		return fmt.Errorf("recovery: count conversation for root Run %q: %w", root.ID(), err)
+	}
+	if count != expectedCount {
+		return fmt.Errorf("recovery: conversation for root Run %q moved from %d to %d messages", root.ID(), expectedCount, count)
+	}
+	if err := p.messages.Write(ctx, root.SessionID(), messages...); err != nil {
+		return fmt.Errorf("recovery: close conversation for root Run %q: %w", root.ID(), err)
 	}
 	return nil
 }
 
 func (p *RecoveryStore) deleteChildRunStartReservations(ctx context.Context, commit runs.RecoveryCommit) error {
-	for _, sessionID := range commit.RecoveredSessionIDs() {
+	for sessionID := range commit.RecoveredSessionIDs() {
 		if err := p.childRunStarts.DeleteSession(ctx, sessionID); err != nil {
 			return fmt.Errorf(
 				"recovery: delete child Run start reservations for Session %q: %w",

@@ -14,13 +14,13 @@ func workbenchFactory(base string) func(string) (*workbench.Store, error) {
 	return func(endpoint string) (*workbench.Store, error) {
 		directory := targetStateDirectory(base, endpoint)
 		if strings.TrimSpace(directory) == "" {
-			return workbench.OpenMemory(workbench.Config{})
+			return workbench.OpenMemory(), nil
 		}
 		persistence, err := workbenchdb.Open(directory)
 		if err != nil {
 			return nil, err
 		}
-		return workbench.Open(persistence, workbench.Config{})
+		return workbench.Open(persistence)
 	}
 }
 

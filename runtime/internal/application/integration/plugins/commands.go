@@ -53,6 +53,9 @@ func (c *Commands) Captured(ctx context.Context, id, method string) (plugin.Comm
 		return plugin.CommandBinding{}, err
 	}
 	record := command.Snapshot()
+	if record.Phase == plugin.CommandRetired {
+		return plugin.CommandBinding{}, plugin.ErrCommandRetired
+	}
 	if record.Method != method {
 		return plugin.CommandBinding{}, framecall.ErrConflict
 	}
@@ -68,7 +71,7 @@ func (c *Commands) authorized(ctx context.Context, id string) (*plugin.Command, 
 		return nil, plugin.ErrNotFound
 	}
 	record := command.Snapshot()
-	if actor, managed := operation.ActorFrom(ctx); managed && !actor.Allows(record.Provider, record.Contribution, record.Contract) {
+	if actor, managed := operation.ActorFrom(ctx); managed && command.HasBinding() && !actor.Allows(record.Provider, record.Contribution, record.Contract) {
 		return nil, plugin.ErrInvalid
 	}
 	return command, nil
@@ -77,6 +80,13 @@ func (c *Commands) authorized(ctx context.Context, id string) (*plugin.Command, 
 func (c *Commands) Retire(ctx context.Context, id string) error {
 	return c.admission.Admit(ctx, func(ctx context.Context) error {
 		command, err := c.authorized(ctx, id)
+		if errors.Is(err, plugin.ErrNotFound) {
+			command, err = plugin.NewUnboundRetirement(id)
+			if err != nil {
+				return err
+			}
+			return c.store.Save(ctx, command)
+		}
 		if err != nil {
 			return err
 		}
@@ -112,8 +122,10 @@ func (c *Commands) RestoreInvocation(ctx context.Context, invocation framecall.I
 
 func (c *Commands) Find(ctx context.Context, id, method string, input framevalue.JSON) (*plugin.Command, bool, error) {
 	command, found, err := c.store.Get(ctx, id)
-	if err == nil && found && !command.Matches(method, input) {
-		return nil, false, plugin.ErrCommandConflict
+	if err == nil && found {
+		if err := command.AdmitReplay(method, input); err != nil {
+			return nil, false, err
+		}
 	}
 	return command, found, err
 }
@@ -126,14 +138,11 @@ type CommandAdmission struct {
 func (c *Commands) Bind(ctx context.Context, id, method string, input framevalue.JSON, resolve func(context.Context) (CommandAdmission, error), capture func(ContributionBinding) (framecall.Invocation, error)) (*plugin.Command, error) {
 	var command *plugin.Command
 	err := c.admission.Admit(ctx, func(ctx context.Context) error {
-		previous, found, err := c.store.Get(ctx, id)
+		previous, found, err := c.Find(ctx, id, method, input)
 		if err != nil {
 			return err
 		}
 		if found {
-			if !previous.Matches(method, input) {
-				return plugin.ErrCommandConflict
-			}
 			command = previous
 			return nil
 		}

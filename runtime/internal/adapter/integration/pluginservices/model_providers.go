@@ -302,7 +302,7 @@ func (p *ModelProviders) OpenChat(ctx context.Context, selection flamemodel.Sele
 		return modeladapter.ResolvedChat{}, err
 	}
 	id := uuid.NewString()
-	opened, err := providerMethod(ctx, use, method, id, modelprovider.Open{Connection: connection, Model: selection.Model()})
+	opened, err := invokeProvider(ctx, use, method, id, modelprovider.Open{Connection: connection, Model: selection.Model()})
 	if err != nil {
 		return modeladapter.ResolvedChat{}, err
 	}
@@ -339,7 +339,7 @@ func (p *ModelProviders) RestoreChat(ctx context.Context, selection flamemodel.S
 	if err != nil {
 		return modeladapter.ResolvedChat{}, err
 	}
-	opened, err := providerMethod(ctx, use, method, uuid.NewString(), modelprovider.Reopen{Original: capture.Chat.Original})
+	opened, err := invokeProvider(ctx, use, method, uuid.NewString(), modelprovider.Reopen{Original: capture.Chat.Original})
 	if err != nil {
 		return modeladapter.ResolvedChat{}, err
 	}
@@ -451,7 +451,8 @@ func (u *providerUse) Close(ctx context.Context) error {
 	if u.handle.ID != "" {
 		method, err := modelprovider.CloseMethod()
 		if err == nil {
-			_, err = invokeProvider(ctx, u, method, uuid.NewString(), u.handle)
+			// The captured handle still needs release after its request has ended.
+			_, err = invokeProvider(context.WithoutCancel(ctx), u, method, uuid.NewString(), u.handle)
 		}
 		u.err = err
 	}

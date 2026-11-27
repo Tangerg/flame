@@ -288,9 +288,6 @@ func (c *CommandCalls) admitCommandRoute(ctx context.Context, route commandRoute
 			return plugin.CommandBinding{}, err
 		}
 	}
-	if record.Phase == plugin.CommandRetired {
-		return plugin.CommandBinding{}, plugin.ErrCommandRetired
-	}
 	return record, nil
 }
 

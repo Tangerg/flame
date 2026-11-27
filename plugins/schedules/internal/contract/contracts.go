@@ -16,7 +16,7 @@ type Contracts struct {
 	List       *pluginmcp.Method[wire.ListInput, wire.Page]
 	Create     *pluginmcp.Method[schedule.Draft, schedule.Snapshot]
 	Update     *pluginmcp.Method[wire.UpdateInput, schedule.Snapshot]
-	Delete     *pluginmcp.Method[wire.ItemInput, wire.Ack]
+	Delete     *pluginmcp.Method[wire.DeleteInput, wire.DeleteResult]
 	RunNow     *pluginmcp.Method[wire.ItemInput, scheduling.RunReference]
 }
 
@@ -31,7 +31,7 @@ func NewContracts() (Contracts, error) {
 		List:       pluginmcp.Implement[wire.ListInput, wire.Page](methods, wire.List),
 		Create:     pluginmcp.Implement[schedule.Draft, schedule.Snapshot](methods, wire.Create),
 		Update:     pluginmcp.Implement[wire.UpdateInput, schedule.Snapshot](methods, wire.Update),
-		Delete:     pluginmcp.Implement[wire.ItemInput, wire.Ack](methods, wire.Delete),
+		Delete:     pluginmcp.Implement[wire.DeleteInput, wire.DeleteResult](methods, wire.Delete),
 		RunNow:     pluginmcp.Implement[wire.ItemInput, scheduling.RunReference](methods, wire.RunNow),
 	}
 	if err := methods.Err(); err != nil {

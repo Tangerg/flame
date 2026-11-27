@@ -231,9 +231,7 @@ type RunAcceptance struct {
 	SegmentID           string            `json:"segmentId,omitempty"`
 	SessionID           string            `json:"sessionId,omitempty"`
 	UserItemID          string            `json:"userItemId,omitempty"`
-	Run                 *RunRef           `json:"run,omitzero"`
 	Input               []ContentBlock    `json:"input,omitempty"`
-	AppliedItem         *Item             `json:"appliedItem,omitzero"`
 }
 
 type SteerInput struct {

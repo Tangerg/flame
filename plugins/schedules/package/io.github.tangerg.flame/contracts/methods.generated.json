@@ -8,12 +8,12 @@
     "output": "schema.json#/$defs/CreateV2Output"
   },
   {
-    "name": "flame.schedules/delete.v2",
+    "name": "flame.schedules/delete.v3",
     "kind": "command",
     "target": "installation",
-    "description": "Delete one schedule definition.",
-    "input": "schema.json#/$defs/DeleteV2Input",
-    "output": "schema.json#/$defs/DeleteV2Output"
+    "description": "Delete one schedule using its inspected revision.",
+    "input": "schema.json#/$defs/DeleteV3Input",
+    "output": "schema.json#/$defs/DeleteV3Output"
   },
   {
     "name": "flame.schedules/list.v2",

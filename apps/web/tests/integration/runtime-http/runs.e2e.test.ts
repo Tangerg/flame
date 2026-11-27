@@ -461,11 +461,22 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: runs", () => {
       });
       await within(gate.arrived.promise, "the steer model request");
 
-      const accepted = await fixture.client.runs.steer(
+      const input = [{ type: "text", text: "Include the queued steering instruction." }] as const;
+      const steering = fixture.client.runs.steer(
         asRunId(started.result.runId),
         asSegmentId(started.result.segmentId),
-        [{ type: "text", text: "Include the queued steering instruction." }],
+        [...input],
       );
+      const accepted = await steering;
+      const namespace = fixture.negotiated?.limits.idempotency.namespace;
+      if (!namespace) throw new Error("Runtime did not negotiate an idempotency namespace");
+      const query = {
+        namespace,
+        operation: "steer" as const,
+        key: steering.idempotencyKey,
+      };
+      const receipt = await fixture.client.runs.getAcceptance(query);
+      expect(receipt).toMatchObject({ type: "accepted", userItemId: accepted.userItemId });
       gate.release.resolve();
 
       const events = await within(
@@ -488,6 +499,15 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: runs", () => {
       expect(events.at(-1)?.event).toMatchObject({
         type: "segment.finished",
         run: { status: "finished", outcome: { type: "completed" } },
+      });
+      await expect(fixture.client.runs.getAcceptance(query)).resolves.toEqual(receipt);
+      expect(receipt).toEqual({
+        type: "accepted",
+        sessionId: session.id,
+        runId: started.result.runId,
+        segmentId: started.result.segmentId,
+        userItemId: accepted.userItemId,
+        input,
       });
       await expect(
         fixture.client.items.list({ scope: { type: "run", runId: started.result.runId } }),

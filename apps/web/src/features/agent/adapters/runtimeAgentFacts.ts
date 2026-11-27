@@ -15,12 +15,7 @@ import {
   type ToolInvocation,
   type Usage,
 } from "@flame/runtime-client";
-import {
-  PROBLEM_RECOVERY,
-  type RecordedToolSource,
-  RUN_PROBLEM_RECOVERY,
-  type RecoveryAction,
-} from "@flame/runtime-client/wire";
+import { type RecordedToolSource } from "@flame/runtime-client/wire";
 import {
   type AgentCancelResult,
   type AgentEventEnvelope,
@@ -58,26 +53,10 @@ function runtimeRunMetrics(metrics: RunMetrics): AgentRunMetrics {
   };
 }
 
-export function requestProblem(problem: ProblemData): AgentProblem {
-  return runtimeProblem(problem, PROBLEM_RECOVERY);
-}
-
-function runProblem(problem: ProblemData): AgentProblem {
-  return runtimeProblem(problem, RUN_PROBLEM_RECOVERY);
-}
-
-function runtimeProblem(
-  problem: ProblemData,
-  recoveries: Partial<Record<ProblemData["type"], RecoveryAction>>,
-): AgentProblem {
-  const recovery = recoveries[problem.type];
+export function runtimeProblem(problem: ProblemData): AgentProblem {
   return {
     code: problem.type,
-    ...(recovery ? { recovery } : {}),
     ...(problem.detail ? { message: problem.detail } : {}),
-    ...("retryAfterSeconds" in problem && problem.retryAfterSeconds !== undefined
-      ? { retryAfterSeconds: problem.retryAfterSeconds }
-      : {}),
     ...(problem.type === "session_has_active_run" ? { activeRun: { ...problem.activeRun } } : {}),
   };
 }
@@ -91,7 +70,7 @@ function runtimeRunOutcome(outcome: RunOutcome): AgentRunOutcome {
       return { type: "completed", ...evidence };
     case "timedOut":
     case "failed":
-      return { type: outcome.type, error: runProblem(outcome.error), ...evidence };
+      return { type: outcome.type, error: runtimeProblem(outcome.error), ...evidence };
     case "lost":
       return {
         type: outcome.type,
@@ -260,7 +239,7 @@ function runtimeToolCall(item: Extract<Item, { type: "toolCall" }>): AgentItem {
     ...(item.durationMillis !== undefined ? { durationMillis: item.durationMillis } : {}),
     ...(item.safetyClass !== undefined ? { safetyClass: item.safetyClass } : {}),
     ...(item.approvalDecision !== undefined ? { approvalDecision: item.approvalDecision } : {}),
-    ...(item.error ? { error: runProblem(item.error) } : {}),
+    ...(item.error ? { error: runtimeProblem(item.error) } : {}),
     tool: runtimeTool(item.tool),
   };
 }

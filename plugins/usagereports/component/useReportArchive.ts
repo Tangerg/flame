@@ -6,7 +6,9 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
 } from "react";
+import type { PluginCommandChange } from "@flame/runtime-client";
 import {
   bindOperations,
   mutationSettlementIsUnknown,
@@ -23,6 +25,7 @@ import {
   failure,
   makeFormatters,
   type Action,
+  type ArchiveMutation,
   type ArchiveRead,
   type ArchiveReturn,
   type BoundContext,
@@ -39,13 +42,13 @@ import { ko } from "./locales/ko";
 import { es } from "./locales/es";
 import { fr } from "./locales/fr";
 import { de } from "./locales/de";
+import { ReportActions } from "./reportActions";
 
 const CATALOGS = { en, zh, "zh-TW": zhTW, ja, ko, es, fr, de };
 
 // One archive owns its reads, commands and the focus each transition returns to;
 // command outcomes decide against the committed view, not the one they started in.
-export function useReportArchive(context: BoundContext) {
-  const locale = context.locale;
+export function useReportArchive(context: BoundContext, locale: string) {
   const t = useTranslator(CATALOGS, locale);
   const fmt = useMemo(() => makeFormatters(locale, t), [locale, t]);
   const operations = useMemo(
@@ -60,9 +63,18 @@ export function useReportArchive(context: BoundContext) {
   const [opened, setOpened] = useState<OpenedReport>();
   const [removing, setRemoving] = useState<Header>();
   const [period, setPeriod] = useState<Period>("daily");
-  const [action, setAction] = useState<Action>();
+  const actions = useMemo(
+    () => new ReportActions(context.signal),
+    [context.signal],
+  );
+  const action = useSyncExternalStore(actions.subscribe, actions.snapshot);
+  useSyncExternalStore(
+    operations.subscribeCommands,
+    operations.commandsVersion,
+  );
   const busy = action !== undefined;
   const [outcome, setOutcome] = useState<Outcome>();
+  const retainedChange = useRef<{ idempotencyKey: string; mutation: ArchiveMutation }>(undefined);
   const lifetime = useRef<AbortController>(undefined);
   const inspecting = useRef<AbortController>(undefined);
   const listing = useRef<AbortController>(undefined);
@@ -83,10 +95,18 @@ export function useReportArchive(context: BoundContext) {
   }>(null);
   // A confirmed recovery unmounts its initiating control after the commit.
   const recoveryReturn = useRef<Element | null>(null);
-  const unknown = [
-    ...operations.pendingCommands(METHODS.capture),
-    ...operations.pendingCommands(METHODS.delete),
-  ];
+  const originalCommands = () =>
+    operations.commands(METHODS.capture, METHODS.delete);
+  const commands = context.signal.aborted ? [] : originalCommands();
+  const locked = busy || commands.length > 0;
+  const recoverable = commands.filter((command) => command.state === "recoverable");
+  const canAuthor = () => actions.canStart() && originalCommands().length === 0;
+  const isPending = (key: string) =>
+    actions.canStart() &&
+    originalCommands().some(
+      (command) =>
+        command.state === "recoverable" && command.idempotencyKey === key,
+    );
 
   const refresh = useCallback(
     async (owner: AbortSignal): Promise<Header[] | undefined> => {
@@ -238,89 +258,126 @@ export function useReportArchive(context: BoundContext) {
   }
 
   async function settleRemoval(
-    removed: Header | undefined,
+    removed: MethodOutputs[typeof METHODS.delete],
     active: Element | null,
     signal: AbortSignal,
   ) {
-    setOutcome({ kind: removed ? "removed" : "removalConfirmed" });
-    const accepted = await refresh(signal);
-    if (signal.aborted) return;
-    // A recovered removal reports success without its original target. Only
-    // the captured target or fresh canonical membership can retire the open
-    // report; an unread archive keeps it.
-    const current = shown.current;
-    if (
-      current &&
-      (current.header.id === removed?.id ||
-        (accepted && !accepted.some(({ id }) => id === current.header.id)))
-    )
-      leave(active, "archive");
+    setOutcome({ kind: "removed" });
+    if (shown.current?.header.id === removed.id) leave(active, "archive");
+    await refresh(signal);
   }
 
-  async function observe(
-    started: Action,
-    command: Promise<Header | boolean>,
-    removed?: Header,
-  ) {
+  const resolveChange = useEffectEvent((change: PluginCommandChange) => {
+    const retained = retainedChange.current;
+    if (change.type !== "resolved" || retained?.idempotencyKey !== change.idempotencyKey)
+      return;
+    retainedChange.current = undefined;
+    if (!actions.canStart()) return;
     const signal = ownerSignal();
-    const active = activeElement();
-    setAction(started);
-    setOutcome(undefined);
-    try {
-      const result = await command;
-      if (signal.aborted) return;
-      if (started.kind === "check") recoveryReturn.current = active;
-      if (typeof result !== "boolean") settleSaved(result, active, signal);
-      else await settleRemoval(removed, active, signal);
-    } catch (error) {
-      if (!signal.aborted)
-        setOutcome(
-          mutationSettlementIsUnknown(error)
-            ? { kind: "unknown" }
-            : { kind: "archiveFailed", error: failure(error) },
-        );
-    } finally {
-      if (!signal.aborted) {
-        setAction(undefined);
-        setRemoving(undefined);
-      }
+    if (signal.aborted) return;
+    switch (change.resolution.type) {
+      case "confirmed":
+        if (retained.mutation.kind === "removal") {
+          const active = activeElement();
+          void settleRemoval(
+            { id: retained.mutation.id },
+            panel.current?.contains(active) ? active : null,
+            signal,
+          );
+        } else {
+          setOutcome({ kind: "saved" });
+          void refresh(signal);
+        }
+        break;
+      case "retired":
+        setOutcome({ kind: "retired" });
+        break;
+      case "refused":
+        setOutcome({ kind: "refused" });
+        break;
     }
+  });
+  useEffect(() => operations.subscribeCommands(resolveChange), [operations]);
+
+  function observe<Result>(
+    started: Exclude<Action, { kind: "retire" }>,
+    command: (signal: AbortSignal) => Promise<Result>,
+    settle: (
+      result: Result,
+      active: Element | null,
+      signal: AbortSignal,
+    ) => void | Promise<void>,
+  ) {
+    return actions.run(started, async () => {
+      const signal = ownerSignal();
+      if (signal.aborted) return;
+      const active = activeElement();
+      setOutcome(undefined);
+      let originalKey = started.kind === "check" ? started.key : undefined;
+      try {
+        const attempt = command(signal);
+        if ("idempotencyKey" in attempt && typeof attempt.idempotencyKey === "string")
+          originalKey = attempt.idempotencyKey;
+        const result = await attempt;
+        if (signal.aborted) return;
+        if (started.kind === "check") recoveryReturn.current = active;
+        await settle(result, active, signal);
+      } catch (error) {
+        if (signal.aborted) return;
+        if (
+          originalKey !== undefined &&
+          mutationSettlementIsUnknown(error) &&
+          originalCommands().some(
+            (original) => original.idempotencyKey === originalKey,
+          )
+        ) {
+          if (started.kind !== "check")
+            retainedChange.current = { idempotencyKey: originalKey, mutation: started };
+          return;
+        }
+        const refusal =
+          started.kind === "capture"
+            ? "captureRejected"
+            : started.kind === "removal"
+              ? "removalRejected"
+              : "archiveFailed";
+        setOutcome({
+          kind: refusal,
+          error: failure(error),
+        });
+      } finally {
+        if (!signal.aborted) setRemoving(undefined);
+      }
+    });
   }
 
   function save() {
-    if (busy || unknown.length) return;
-    try {
-      void observe(
-        { kind: "capture" },
-        operations.command(METHODS.capture, { period }),
-      );
-    } catch (error) {
-      setOutcome({ kind: "captureRejected", error: failure(error) });
-    }
+    if (!canAuthor()) return;
+    void observe(
+      { kind: "capture" },
+      () => operations.command(METHODS.capture, { period }),
+      settleSaved,
+    );
   }
 
   function requestRemoval() {
-    if (!opened || busy || unknown.length) return;
+    if (!opened || !canAuthor()) return;
     setOutcome(undefined);
     setRemoving(structuredClone(opened.header));
   }
 
   function confirmRemoval() {
-    if (!removing || busy || unknown.length) return;
-    try {
-      void observe(
-        { kind: "removal" },
-        operations.command(METHODS.delete, { id: removing.id }),
-        removing,
-      );
-    } catch (error) {
-      setRemoving(undefined);
-      setOutcome({ kind: "removalRejected", error: failure(error) });
-    }
+    if (!removing || !canAuthor()) return;
+    const { id } = removing;
+    void observe(
+      { kind: "removal", id },
+      () => operations.command(METHODS.delete, { id }),
+      settleRemoval,
+    );
   }
 
   function dismissRemoval() {
-    if (!busy) setRemoving(undefined);
+    if (actions.canStart()) setRemoving(undefined);
   }
 
   const removalReturn = useCallback(() => {
@@ -341,36 +398,40 @@ export function useReportArchive(context: BoundContext) {
       (shown.current ? removalReturn() : saveButton.current)?.focus();
   }, [action, removalReturn]);
 
-  function check(command: (typeof unknown)[number]) {
-    if (busy) return;
-    void observe(
-      { kind: "check", key: command.idempotencyKey },
-      command.recover(ownerSignal()),
-    );
+  function check(command: (typeof recoverable)[number]) {
+    if (!isPending(command.idempotencyKey)) return;
+    const checking = { kind: "check", key: command.idempotencyKey } as const;
+    if (command.method === METHODS.capture)
+      void observe(checking, command.recover, settleSaved);
+    else void observe(checking, command.recover, settleRemoval);
   }
 
-  async function retire(command: (typeof unknown)[number]) {
-    if (busy) return;
-    const signal = ownerSignal();
-    const active = activeElement();
-    setAction({ kind: "retire", key: command.idempotencyKey });
-    try {
-      await command.retire(signal);
-      if (signal.aborted) return;
-      recoveryReturn.current = active;
-      setOutcome({ kind: "retired" });
-    } catch (error) {
-      if (!signal.aborted)
-        setOutcome({ kind: "retireFailed", error: failure(error) });
-    } finally {
-      if (!signal.aborted) setAction(undefined);
-    }
+  function retire(command: (typeof recoverable)[number]) {
+    if (!isPending(command.idempotencyKey)) return;
+    return actions.run(
+      { kind: "retire", key: command.idempotencyKey },
+      async () => {
+        const signal = ownerSignal();
+        if (signal.aborted) return;
+        const active = activeElement();
+        try {
+          await command.retire(signal);
+          if (signal.aborted) return;
+          recoveryReturn.current = active;
+          setOutcome({ kind: "retired" });
+        } catch (error) {
+          if (!signal.aborted)
+            setOutcome({ kind: "retireFailed", error: failure(error) });
+        }
+      },
+    );
   }
 
   return {
     t,
     fmt,
     busy,
+    locked,
     action,
     outcome,
     refs: {
@@ -406,9 +467,9 @@ export function useReportArchive(context: BoundContext) {
       focusReturn: removalReturn,
     },
     recovery: {
-      commands: unknown,
+      commands: recoverable,
       check,
-      retire: (command: (typeof unknown)[number]) => void retire(command),
+      retire: (command: (typeof recoverable)[number]) => void retire(command),
     },
   };
 }

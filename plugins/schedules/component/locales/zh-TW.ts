@@ -73,7 +73,6 @@ export const zhTW: Record<string, string> = {
   "action.disable": "停用",
   "action.delete": "刪除",
   "nextFiring.label": "下次觸發",
-  "nextFiring.none": "未排定",
   "details.title": "詳情",
   "fact.cron": "Cron",
   "fact.timeZone": "時區",
@@ -90,7 +89,9 @@ export const zhTW: Record<string, string> = {
   "pages.current": "第 {{page}} 頁",
   "notice.accepted": "Runtime 已接受工作階段 {{session}} 中的執行 {{run}}。",
   "notice.openSession": "開啟對話",
+  "notice.sessionMissing": "這段對話已無法開啟。",
   "notice.completed": "{{label}}已完成。",
+  "notice.refused": "Runtime 拒絕了原排程變更。",
   "notice.revision":
     "排程已變更。請讀取其最新修訂版本，並在儲存前開啟新的編輯。",
   "template.hourly.title": "每小時進度檢查",

@@ -73,13 +73,13 @@ type MCPManagement interface {
 	ToolExposure(context.Context, protocol.MCPServerID) (protocol.MCPToolExposure, error)
 	SetToolExposure(context.Context, protocol.SetMCPToolExposureRequest) error
 	Servers(context.Context) ([]protocol.MCPServer, error)
-	CreateServer(context.Context, authoring.CommandID, mcp.Candidate) error
-	UpdateServer(context.Context, authoring.CommandID, mcp.ServerUpdate) error
-	DeleteServer(context.Context, protocol.MCPServerID) error
-	TestServer(context.Context, mcp.Candidate) (protocol.MCPTestOutcome, error)
+	CreateServer(context.Context, authoring.CommandID, protocol.MCPServerCandidate) error
+	UpdateServer(context.Context, authoring.CommandID, protocol.UpdateMCPServerRequest) error
+	DeleteServer(context.Context, protocol.MCPDirectoryTarget) error
+	TestServer(context.Context, protocol.MCPServerCandidate) (protocol.MCPTestOutcome, error)
 	Tools(context.Context, *protocol.MCPServerID) ([]protocol.MCPTool, error)
 	ReconnectServer(context.Context, protocol.MCPServerID) error
-	StartAuthorization(context.Context, protocol.MCPServerID) (mcp.AuthorizationReference, error)
+	StartAuthorization(context.Context, authoring.CommandID, protocol.MCPServerID) (mcp.AuthorizationReference, error)
 	GetAuthorization(context.Context, mcp.AuthorizationReference) (protocol.MCPAuthorizationAttempt, error)
 }
 
@@ -87,9 +87,9 @@ type Goals interface {
 	GetGoal(context.Context, string) (protocol.Goal, bool, error)
 	StartGoal(context.Context, protocol.StartGoalRequest) (protocol.Goal, error)
 	UpdateGoal(context.Context, protocol.UpdateGoalRequest) (protocol.Goal, error)
-	ClearGoal(context.Context, string) error
-	StopGoal(context.Context, string) error
-	ResumeGoal(context.Context, string) (protocol.Goal, error)
+	ClearGoal(context.Context, protocol.GoalTarget) error
+	StopGoal(context.Context, protocol.GoalTarget) error
+	ResumeGoal(context.Context, protocol.GoalTarget) (protocol.Goal, error)
 }
 
 type Skills interface {

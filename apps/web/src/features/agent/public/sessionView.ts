@@ -1,7 +1,6 @@
 import {
   type ActivityType,
   type LossReason,
-  type RecoveryAction,
   type MessagePhase as AgentMessagePhase,
   type ToolCategory,
   type RunStatus as AgentRunStatus,
@@ -63,8 +62,6 @@ export interface AgentProblem {
   message?: string;
   code?: string;
   lossReason?: LossReason;
-  recovery?: RecoveryAction;
-  retryAfterSeconds?: number;
   activeRun?: { runId: string; status: string };
 }
 

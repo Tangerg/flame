@@ -231,9 +231,9 @@ func newApp(loop *program.Runtime, cfg appConfig) (*app, error) {
 		appendNote: a.appendNote,
 		cleared:    a.confirmation.Reset,
 	}
-	a.composer.drafts.store = newDraftPersistence(cfg.workbench, func(result draftPersistenceResult) {
+	a.composer.drafts.writer = newDraftPersistence(cfg.workbench.SaveDraft, func(result draftPersistenceResult) {
 		if err := loop.Dispatcher().Post(func() {
-			if a.closed || !a.composer.drafts.store.Current(result.revision) {
+			if a.closed || !a.composer.drafts.writer.Current(result.revision) {
 				return
 			}
 			a.reportWorkbenchIssue(workbenchDraft, result.err)
@@ -341,10 +341,7 @@ func (a *app) configureComposer(appearance terminalAppearance, keys *keymap.Map,
 		Glyphs: appearance.glyphs,
 		Prompt: appearance.glyphs.Marker + " ",
 	})
-	if a.workbench != nil {
-		a.composer.history.Load(a.workbench.History())
-	}
-	a.composer.restoreComposer(initial)
+	a.composer.replaceDraft(initial)
 }
 
 func (a *app) configureCompletion(appearance terminalAppearance) {
@@ -420,7 +417,6 @@ func (a *app) buildSessionPicker(theme kit.Theme, glyphs kit.Glyphs, replayPolic
 		runtime: a.runtime, workbench: a.workbench, replayPolicy: replayPolicy,
 		session: &a.lifecycle.state, tasks: a.tasks, status: a.status, stack: &a.stack, theme: theme, glyphs: glyphs,
 		clipboard: a.loop.Clipboard(), notify: a.message, observing: a.runs.observing, adoptCurrent: func(session conversation.Session) { a.lifecycle.setActiveSession(session) },
-		catalogChanged: func() { a.lifecycle.reloadSessionCatalog() },
 	}, switchTo: func(id string) { a.lifecycle.switchSession(id) }})
 }
 
@@ -447,7 +443,7 @@ func (a *app) Close(ctx context.Context) error {
 	}
 	a.composer.drafts.cancel()
 	closeErr = errors.Join(closeErr, a.composer.persistDraft())
-	closeErr = errors.Join(closeErr, a.composer.drafts.store.Close())
+	closeErr = errors.Join(closeErr, a.composer.drafts.writer.Close())
 	closeErr = errors.Join(closeErr, a.runs.finishShutdown(ctx, shutdown))
 	a.transcript.Close()
 	closeErr = errors.Join(closeErr, a.transcript.releaseErr)
@@ -472,7 +468,7 @@ func (a *app) submit() {
 	}
 	if name, arg, command := parseSlashCommand(strings.TrimSpace(message.Text)); command {
 		a.runCommand(name, arg, func() {
-			a.composer.restoreComposer(authoring.Message{Attachments: message.Attachments})
+			a.composer.replaceDraft(authoring.Message{Attachments: message.Attachments})
 			a.operations.Cancel(completionOperation)
 			a.completion.popup.Dismiss()
 		})
@@ -490,8 +486,16 @@ func (a *app) dispatchPrompt(message authoring.Message) {
 		a.message(sessionChangeOperation.busy().Error())
 		return
 	}
+	if a.lifecycle.state.freshness == sessionMissing {
+		a.message(errSessionRequiredForPrompt.Error())
+		return
+	}
 	commandID := mutation.NewCommandID()
-	if _, err := a.queue.EnqueueCommand(commandID, a.lifecycle.state.current.ID, message, a.options); err != nil {
+	sessionID, options := a.lifecycle.state.current.ID, a.options
+	if err := a.composer.commitAuthoring(func() error {
+		_, err := a.queue.EnqueueCommand(commandID, sessionID, message, options)
+		return err
+	}); err != nil {
 		a.reportWorkbenchIssue(workbenchRunOutbox, err)
 		a.message("prompt submission blocked: " + err.Error())
 		return
@@ -501,9 +505,9 @@ func (a *app) dispatchPrompt(message authoring.Message) {
 		a.runs.enqueueDeferredPrompt()
 		return
 	}
-	a.sessions.dialog.Dismiss()
+	a.sessions.dismissCatalog()
 	a.screens.options.dismissModelPicker()
-	a.composer.resetComposer()
+	a.composer.replaceDraft(authoring.Message{})
 	a.operations.Cancel(completionOperation)
 	a.completion.popup.Dismiss()
 	if !a.runs.drainQueue() {

@@ -25,6 +25,10 @@ export function useActiveSessionId(): string {
   return agentAccess.state.useActiveSessionId();
 }
 
+export function useObserveActiveSession(): void {
+  useAgentDependencies().useObserveActiveSession();
+}
+
 export function getActiveSessionId(agentAccess: AgentDependencies): string {
   return agentAccess.state.getActiveSessionId();
 }
@@ -58,6 +62,16 @@ export function subscribeDeletedAgentSession(
 
 export function selectAgentSession(agentAccess: AgentDependencies, id: string): void {
   agentAccess.state.selectSession(id);
+}
+
+export function openExistingAgentSession(
+  agentAccess: AgentDependencies,
+  id: string,
+  signal: AbortSignal,
+) {
+  return agentAccess.state.selectExistingSession(id, signal, (reading) =>
+    agentAccess.runtime.sessionExists(id, reading),
+  );
 }
 
 export function closeActiveAgentSession(agentAccess: AgentDependencies): boolean {

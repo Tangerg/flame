@@ -41,7 +41,7 @@ func TestAcceptedMCPDisableSurvivesCallerCancellation(t *testing.T) {
 		WHEN OLD.key = 'disable-once'
 		BEGIN SELECT test_mcp_directory_acknowledgement(); END`)
 
-	request := protocol.UpdateMCPServerRequest{Server: serverID, Enabled: new(false)}
+	request := protocol.UpdateMCPServerRequest{MCPDirectoryTarget: runtime.userServerTarget(serverID), Enabled: new(false)}
 	options := protocol.CallMetadata{
 		IdempotencyKey: "disable-once", RequestMeta: protocol.RequestMeta{ProtocolVersion: new(protocol.Version)},
 	}

@@ -106,7 +106,7 @@ func (i *InteractionExecutor) assembleInteraction(
 	transferred := false
 	defer func() {
 		if !transferred {
-			err = errors.Join(err, resolved.Close(context.WithoutCancel(ctx)))
+			err = errors.Join(err, resolved.Close(ctx))
 		}
 	}()
 	model := resolved.Model()

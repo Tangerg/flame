@@ -31,8 +31,9 @@ workbench places the generated surface in the answer and keeps the recorded
 call and its arguments available in the tool disclosure.
 
 Editable controls bind under `/draft`. Subsequent recorded `updateDataModel`
-messages may write only under `/data/`. Operation results are published under
-`/data/operations/<operation id>`. Business identifiers and exact quantities use
+messages write named presentation fields under `/data/`. The Runtime observer
+owns `/data/operations/<operation id>` and exposes it as a read-only binding for
+the presentation. Business identifiers and exact quantities use
 strings. A field's current native value and validation state are projected from
 the A2UI model. Remote presentation messages cannot overwrite an edited draft.
 Closing a trusted Dialog returns to its opener and keeps the surface's draft
@@ -52,9 +53,11 @@ installation digest and target; discovery does not grant command permission.
 
 Queries and calls enter the existing Runtime plugin method boundary. Commands
 require the existing user review, permission and mutation journal. Their original
-handles, idempotency keys and recovery outcomes remain attached to the captured
-Run, Item, Session and installation. An uncertain command is recovered through
-its original handle. A new action cannot retarget it to the current conversation.
+idempotency keys remain attached to the captured Run, Item, Session and
+installation. The card reads command availability from the SDK journal and stays
+locked while an original claim is active or recoverable, including across views.
+Recovery reads the original receipt. The card publishes operation output when
+its own attempt or recovery observes that output.
 
 ## Lifetime and scrolling
 

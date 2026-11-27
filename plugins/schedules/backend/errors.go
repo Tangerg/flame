@@ -23,6 +23,7 @@ var errorCodes = []struct {
 }{
 	{"workspace", scheduling.ErrWorkspaceUnavailable},
 	{"not_found", schedule.ErrNotFound},
+	{"invalid_id", schedule.ErrInvalidID},
 	{"revision", schedule.ErrRevisionConflict},
 	{"cursor", pagination.ErrInvalidCursor},
 	{"limit", pagination.ErrInvalidLimit},

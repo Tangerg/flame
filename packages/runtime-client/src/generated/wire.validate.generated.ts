@@ -104,6 +104,7 @@ export type WireTypeName =
   | "ForkSessionRequest"
   | "GenerationParams"
   | "GetDiffRequest"
+  | "GetGoalRequest"
   | "GetPlanRequest"
   | "GetProjectRequest"
   | "GetRunAcceptanceRequest"
@@ -113,8 +114,8 @@ export type WireTypeName =
   | "Goal"
   | "GoalReason"
   | "GoalReasonCode"
-  | "GoalRequest"
   | "GoalStatus"
+  | "GoalTarget"
   | "GoalUsage"
   | "GrepCoverage"
   | "GrepMatch"
@@ -171,6 +172,7 @@ export type WireTypeName =
   | "MCPAuthorizationChange"
   | "MCPConnection"
   | "MCPConnectionInput"
+  | "MCPDirectoryTarget"
   | "MCPEnvironmentChange"
   | "MCPHandshakeTimeout"
   | "MCPHandshakeTimeoutType"
@@ -1339,6 +1341,9 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       }, []),
     ),
   ]),
+  GetGoalRequest: object({
+    sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+  }, ["sessionId"]),
   GetPlanRequest: object({
     sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
   }, ["sessionId"]),
@@ -1365,6 +1370,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     object({
       author: ref(() => CHECKS.ContributionSource),
       createdAt: text(),
+      incarnationId: allOf([text(), minLength(1), maxLength(128), pattern("^[^\\p{C}\\p{Z}]*$")]),
       model: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
       objective: allOf([text(), pattern("\\S")]),
       provider: allOf([text(), maxLength(64), pattern("^[^\\p{C}\\p{Z}]*$")]),
@@ -1374,7 +1380,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       status: ref(() => CHECKS.GoalStatus),
       updatedAt: text(),
       used: ref(() => CHECKS.GoalUsage),
-    }, ["createdAt", "objective", "sessionId", "status", "updatedAt", "used"]),
+    }, ["createdAt", "incarnationId", "objective", "sessionId", "status", "updatedAt", "used"]),
     ifThen(
       fields({
         status: literal("active"),
@@ -1482,10 +1488,11 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     ),
   ]),
   GoalReasonCode: enumOf(["stoppedByUser", "runtimeRestarted", "runStartFailed", "awaitingInput", "terminalOutcomeMissing", "runNotCompleted", "blockedByModel"]),
-  GoalRequest: object({
-    sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
-  }, ["sessionId"]),
   GoalStatus: enumOf(["active", "paused", "blocked", "completing"]),
+  GoalTarget: object({
+    incarnationId: allOf([text(), minLength(1), maxLength(128), pattern("^[^\\p{C}\\p{Z}]*$")]),
+    sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+  }, ["incarnationId", "sessionId"]),
   GoalUsage: object({
     costUsd: allOf([numeric(), minimum("0")]),
     runs: allOf([integer(), minimum("0")]),
@@ -1991,6 +1998,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   }, ["sessionId"]),
   ListSessionsRequest: object({
     cursor: allOf([text(), maxLength(65536)]),
+    idPrefix: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
     limit: allOf([integer(), minimum("1")]),
     projectId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
     search: allOf([text(), maxLength(1024)]),
@@ -2159,6 +2167,34 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       }, ["command", "type"]),
     ]),
   ]),
+  MCPDirectoryTarget: allOf([
+    object({
+      expectedRevision: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+      server: ref(() => CHECKS.MCPServerID),
+    }, ["server"]),
+    ifThen(
+      fields({
+        server: fields({
+          origin: fields({
+            type: literal("user"),
+          }, ["type"]),
+        }, ["origin"]),
+      }, ["server"]),
+      fields({}, ["expectedRevision"]),
+    ),
+    ifThen(
+      fields({
+        server: fields({
+          origin: fields({
+            type: literal("installation"),
+          }, ["type"]),
+        }, ["origin"]),
+      }, ["server"]),
+      fields({
+        expectedRevision: absent(),
+      }, []),
+    ),
+  ]),
   MCPEnvironmentChange: allOf([
     object({
       type: ref(() => CHECKS.MCPSecretChangeType),
@@ -2225,13 +2261,38 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   ]),
   MCPOriginType: enumOf(["user", "installation"]),
   MCPSecretChangeType: enumOf(["set", "clear"]),
-  MCPServer: object({
-    connection: ref(() => CHECKS.MCPConnection),
-    description: text(),
-    handshakeTimeout: ref(() => CHECKS.MCPHandshakeTimeout),
-    id: ref(() => CHECKS.MCPServerID),
-    status: ref(() => CHECKS.MCPServerState),
-  }, ["connection", "handshakeTimeout", "id", "status"]),
+  MCPServer: allOf([
+    object({
+      connection: ref(() => CHECKS.MCPConnection),
+      description: text(),
+      handshakeTimeout: ref(() => CHECKS.MCPHandshakeTimeout),
+      id: ref(() => CHECKS.MCPServerID),
+      revision: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+      status: ref(() => CHECKS.MCPServerState),
+    }, ["connection", "handshakeTimeout", "id", "status"]),
+    ifThen(
+      fields({
+        id: fields({
+          origin: fields({
+            type: literal("user"),
+          }, ["type"]),
+        }, ["origin"]),
+      }, ["id"]),
+      fields({}, ["revision"]),
+    ),
+    ifThen(
+      fields({
+        id: fields({
+          origin: fields({
+            type: literal("installation"),
+          }, ["type"]),
+        }, ["origin"]),
+      }, ["id"]),
+      fields({
+        revision: absent(),
+      }, []),
+    ),
+  ]),
   MCPServerCandidate: object({
     connection: ref(() => CHECKS.MCPConnectionInput),
     description: text(),
@@ -3414,6 +3475,13 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
         errors: absent(),
         requiredCapabilities: absent(),
         retryAfterSeconds: absent(),
+        type: literal("prompt_rejected"),
+      }, ["type"]),
+      fields({
+        activeRun: absent(),
+        errors: absent(),
+        requiredCapabilities: absent(),
+        retryAfterSeconds: absent(),
         type: literal("prompt_source_too_large"),
       }, ["type"]),
       fields({
@@ -3795,10 +3863,8 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   }, ["droppedRuns", "session"]),
   RunAcceptance: allOf([
     object({
-      appliedItem: ref(() => CHECKS.Item),
       candidateUserItemId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
       input: array(ref(() => CHECKS.ContentBlock)),
-      run: ref(() => CHECKS.RunRef),
       runId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
       segmentId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
       sessionId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
@@ -3807,9 +3873,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     }, []),
     oneOf([
       fields({
-        appliedItem: absent(),
         input: absent(),
-        run: absent(),
         runId: absent(),
         segmentId: absent(),
         sessionId: absent(),
@@ -3819,11 +3883,9 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       fields({
         candidateUserItemId: absent(),
         type: literal("accepted"),
-      }, ["run", "runId", "segmentId", "sessionId", "type"]),
+      }, ["runId", "segmentId", "sessionId", "type"]),
       fields({
-        appliedItem: absent(),
         candidateUserItemId: absent(),
-        run: absent(),
         type: literal("retired"),
       }, ["runId", "segmentId", "sessionId", "type"]),
     ]),
@@ -4522,6 +4584,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       objective: allOf([text(), pattern("\\S")]),
       provider: allOf([text(), maxLength(64), pattern("^[^\\p{C}\\p{Z}]*$")]),
       reasoningEffort: allOf([text(), maxLength(32), pattern("^[^\\p{C}\\p{Z}]*$")]),
+      replaceIncarnationId: allOf([text(), minLength(1), maxLength(128), pattern("^[^\\p{C}\\p{Z}]*$")]),
       sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
     }, ["objective", "sessionId"]),
     ifThen(
@@ -4853,13 +4916,15 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   }, ["cause", "effectId", "processId"]),
   UnresolvedEffectCause: enumOf(["termination", "runtimeFailure"]),
   UpdateGoalRequest: object({
+    incarnationId: allOf([text(), minLength(1), maxLength(128), pattern("^[^\\p{C}\\p{Z}]*$")]),
     objective: allOf([text(), pattern("\\S")]),
     sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
-  }, ["objective", "sessionId"]),
+  }, ["incarnationId", "objective", "sessionId"]),
   UpdateMCPServerRequest: object({
     connection: ref(() => CHECKS.MCPConnectionInput),
     description: text(),
     enabled: flag(),
+    expectedRevision: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
     handshakeTimeout: ref(() => CHECKS.MCPHandshakeTimeout),
     server: ref(() => CHECKS.MCPServerID),
   }, ["server"]),
@@ -5102,7 +5167,7 @@ const METHOD_PARAMS: Record<WireMethodName, WireCheck> = {
   "mcp.servers.list": object({}, []),
   "mcp.servers.create": ref(() => CHECKS.MCPServerCandidate),
   "mcp.servers.update": ref(() => CHECKS.UpdateMCPServerRequest),
-  "mcp.servers.delete": ref(() => CHECKS.MCPServerRequest),
+  "mcp.servers.delete": ref(() => CHECKS.MCPDirectoryTarget),
   "mcp.servers.test": ref(() => CHECKS.MCPServerCandidate),
   "mcp.tools.list": ref(() => CHECKS.MCPListToolsRequest),
   "mcp.servers.reconnect": ref(() => CHECKS.MCPServerRequest),
@@ -5141,10 +5206,10 @@ const METHOD_PARAMS: Record<WireMethodName, WireCheck> = {
   "approval.forgetRule": ref(() => CHECKS.ForgetApprovalRuleRequest),
   "goals.start": ref(() => CHECKS.StartGoalRequest),
   "goals.update": ref(() => CHECKS.UpdateGoalRequest),
-  "goals.clear": ref(() => CHECKS.GoalRequest),
-  "goals.get": ref(() => CHECKS.GoalRequest),
-  "goals.stop": ref(() => CHECKS.GoalRequest),
-  "goals.resume": ref(() => CHECKS.GoalRequest),
+  "goals.clear": ref(() => CHECKS.GoalTarget),
+  "goals.get": ref(() => CHECKS.GetGoalRequest),
+  "goals.stop": ref(() => CHECKS.GoalTarget),
+  "goals.resume": ref(() => CHECKS.GoalTarget),
   "providers.list": object({}, []),
   "providers.update": ref(() => CHECKS.UpdateProviderRequest),
   "providers.test": ref(() => CHECKS.TestProviderRequest),

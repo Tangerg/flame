@@ -6,13 +6,30 @@ import (
 )
 
 type sessionState struct {
-	current         conversation.Session
-	context         *sessionContextLease
-	invalidated     bool
-	draftTransition *sessionDraftTransition
+	current   conversation.Session
+	context   *sessionContextLease
+	freshness sessionFreshness
+	change    *sessionChange
+}
+
+type sessionFreshness uint8
+
+const (
+	sessionObserved sessionFreshness = iota
+	sessionStale
+	sessionMissing
+)
+
+func (s *sessionState) invalidate() bool {
+	if s.freshness == sessionMissing {
+		return false
+	}
+	s.freshness = sessionStale
+	return true
 }
 
 type openingReceipt struct {
+	SessionID string
 	RunID     string
 	CommandID authoring.CommandID
 }
@@ -59,9 +76,9 @@ func (e *executionState) blocksAdmission() bool {
 }
 
 func (r *runs) runAdmissionBlocked() bool {
-	return r.execution.blocksAdmission() || r.session.invalidated || r.tasks.operations.BlocksRunAdmission()
+	return r.execution.blocksAdmission() || r.runtimeChangeBlocksRunAdmission()
 }
 
 func (r *runs) runtimeChangeBlocksRunAdmission() bool {
-	return r.session.invalidated || r.tasks.operations.BlocksRunAdmission()
+	return r.session.freshness != sessionObserved || r.tasks.operations.BlocksRunAdmission()
 }

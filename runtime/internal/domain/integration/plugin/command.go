@@ -60,6 +60,13 @@ func NewCommand(record CommandBinding) (*Command, error) {
 	return RestoreCommand(record)
 }
 
+func NewUnboundRetirement(id string) (*Command, error) {
+	if !validCommandText(id) {
+		return nil, fmt.Errorf("%w: command identity", ErrInvalid)
+	}
+	return &Command{record: CommandBinding{ID: id, Phase: CommandRetired}}, nil
+}
+
 func RestoreCommand(record CommandBinding) (*Command, error) {
 	if !validCommandText(record.ID) || !validCommandText(record.Method) {
 		return nil, fmt.Errorf("%w: command identity or method", ErrInvalid)
@@ -134,6 +141,8 @@ func (c *Command) Snapshot() CommandBinding {
 	return record
 }
 
+func (c *Command) HasBinding() bool { return c.record.Method != "" }
+
 func (c *Command) SameBinding(other *Command) bool {
 	a, b := c.record, other.record
 	return a.ID == b.ID && a.Method == b.Method && a.Input == b.Input && a.Contract == b.Contract &&
@@ -141,8 +150,14 @@ func (c *Command) SameBinding(other *Command) bool {
 		a.Export == b.Export && a.Invocation == b.Invocation && a.Activation.Equal(b.Activation)
 }
 
-func (c *Command) Matches(method string, input framevalue.JSON) bool {
-	return c.record.Method == method && c.record.Input == input
+func (c *Command) AdmitReplay(method string, input framevalue.JSON) error {
+	if c.record.Phase == CommandRetired {
+		return ErrCommandRetired
+	}
+	if c.record.Method != method || c.record.Input != input {
+		return ErrCommandConflict
+	}
+	return nil
 }
 
 var pendingCommandPhases = []CommandPhase{CommandPrepared, CommandDispatched}

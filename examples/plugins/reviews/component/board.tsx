@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import {
   Button,
   EmptyState,
@@ -12,8 +19,8 @@ import {
 } from "@flame/ui";
 import {
   bindOperations,
-  mutationSettlementIsUnknown,
   useContextState,
+  watchRuntimeTopics,
   type ComponentContext,
 } from "@flame/component-sdk";
 import {
@@ -77,9 +84,23 @@ function ReviewsBoard({ context }: { context: BoundContext }) {
   const analyzers = current?.analyzers;
   const loading = current === undefined || current.pending;
   const [analysis, setAnalysis] = useState<Analysis>();
-  const [pending, setPending] = useState(false);
+  const matchingAnalysis =
+    analysis &&
+    reviews.some(
+      (review) =>
+        review.id === analysis.review.id &&
+        String(review.revision) === String(analysis.review.revision),
+    )
+      ? analysis
+      : undefined;
+  const [analyzing, setAnalyzing] = useState(false);
   const [message, setMessage] = useState<string>();
-  const unknown = operations.pendingCommands(updateMethod);
+  const [recoveryError, setRecoveryError] = useState<{ key: string; text: string }>();
+  useSyncExternalStore(operations.subscribeCommands, operations.commandsVersion);
+  const readCommands = () => context.signal.aborted ? [] : operations.commands(updateMethod);
+  const commands = readCommands();
+  const locked = analyzing || commands.length > 0;
+  const recoverable = commands.filter((command) => command.state === "recoverable");
   const [status, setStatus] = useState<Status>("resolved");
   const lifetime = useRef<AbortController>(undefined);
   const reading = useRef<AbortController>(undefined);
@@ -155,15 +176,32 @@ function ReviewsBoard({ context }: { context: BoundContext }) {
     const owner = new AbortController();
     lifetime.current = owner;
     const signal = AbortSignal.any([context.signal, owner.signal]);
-    void refresh(signal);
+    void context
+      .track(() =>
+        watchRuntimeTopics(
+          context.runtime,
+          { topics: ["plugins.dataChanged"] },
+          signal,
+          () => void refresh(signal),
+        ),
+      )
+      .catch((error: unknown) => {
+        if (signal.aborted) return;
+        setMessage(`Live review updates ended. ${failureMessage(error)}`);
+        void refresh(signal);
+      });
     return () => owner.abort();
-  }, [refresh, context.signal]);
+  }, [context, refresh]);
 
-  async function observe(command: Promise<UpdateResult>, owner: AbortSignal) {
-    setPending(true);
+  async function observe(
+    key: string,
+    attempt: () => Promise<UpdateResult>,
+    owner: AbortSignal,
+  ) {
     setMessage(undefined);
+    setRecoveryError(undefined);
     try {
-      const result = await command;
+      const result = await attempt();
       if (owner.aborted) return;
       setAnalysis(undefined);
       setMessage(
@@ -173,26 +211,28 @@ function ReviewsBoard({ context }: { context: BoundContext }) {
             ? "The review changed after you read it. Inspect the current revision before submitting another change."
             : `The change was refused: ${result.type}.`,
       );
-      await reload(owner);
+      if (result.type !== "updated") await reload(owner);
     } catch (error) {
       if (owner.aborted) return;
-      if (mutationSettlementIsUnknown(error)) {
-        setMessage(
-          "Confirmation is unknown. Preserve this command and check its original outcome before submitting another change.",
-        );
-      } else setMessage(`The change failed: ${failureMessage(error)}`);
-    } finally {
-      if (!owner.aborted) setPending(false);
+      const text = failureMessage(error);
+      if (readCommands().some((command) => command.idempotencyKey === key && command.state === "recoverable"))
+        setRecoveryError({ key, text });
+      else setMessage(`The change failed: ${text}`);
     }
   }
 
   function change(review: Review) {
     const owner = lifetime.current;
-    if (!owner || pending || unknown.length) return;
+    if (!owner || owner.signal.aborted || analyzing) return;
     const input = { id: review.id, expectedRevision: review.revision, status };
     try {
+      if (readCommands().length > 0) return;
       const command = operations.command(updateMethod, input);
-      void observe(command, AbortSignal.any([owner.signal, context.signal]));
+      void observe(
+        command.idempotencyKey,
+        () => command,
+        AbortSignal.any([owner.signal, context.signal]),
+      );
     } catch (error) {
       if (!context.signal.aborted && !owner.signal.aborted)
         setMessage(
@@ -201,18 +241,28 @@ function ReviewsBoard({ context }: { context: BoundContext }) {
     }
   }
 
+  function recover(key: string) {
+    const owner = lifetime.current;
+    if (!owner || owner.signal.aborted || analyzing) return;
+    const original = readCommands().find((command) => command.idempotencyKey === key);
+    if (original?.state !== "recoverable") return;
+    const signal = AbortSignal.any([owner.signal, context.signal]);
+    void observe(key, () => original.recover(signal), signal);
+  }
+
   async function analyze() {
     const owner = lifetime.current;
     if (
       !owner ||
-      pending ||
+      analyzing ||
+      readCommands().length > 0 ||
       loading ||
       analyzers?.type !== "ready" ||
       !analyzers.available
     )
       return;
     const signal = AbortSignal.any([owner.signal, context.signal]);
-    setPending(true);
+    setAnalyzing(true);
     try {
       const result = await operations.query(analyzeMethod, {}, signal);
       if (!signal.aborted) setAnalysis(result);
@@ -220,7 +270,7 @@ function ReviewsBoard({ context }: { context: BoundContext }) {
       if (!signal.aborted)
         setMessage(`Analysis failed: ${failureMessage(error)}`);
     } finally {
-      if (!signal.aborted) setPending(false);
+      if (!signal.aborted) setAnalyzing(false);
     }
   }
 
@@ -229,7 +279,7 @@ function ReviewsBoard({ context }: { context: BoundContext }) {
       <Toolbar label="Review actions">
         <PanelTitle>Reviews</PanelTitle>
         <Button
-          disabled={loading || pending}
+          disabled={loading || analyzing}
           onClick={() => {
             const owner = lifetime.current;
             if (owner)
@@ -240,7 +290,7 @@ function ReviewsBoard({ context }: { context: BoundContext }) {
         </Button>
         {analyzers?.type === "ready" && analyzers.available && (
           <Button
-            disabled={loading || pending || unknown.length > 0}
+            disabled={loading || locked}
             onClick={() => void analyze()}
           >
             Analyze
@@ -254,21 +304,15 @@ function ReviewsBoard({ context }: { context: BoundContext }) {
           Analyzer actions could not be resolved: {analyzers.message}
         </p>
       )}
-      {unknown.map((command) => (
+      {recoverable.map((command) => (
         <Toolbar key={command.idempotencyKey} label="Original command recovery">
           <Metadata>Command: {command.idempotencyKey}</Metadata>
+          {recoveryError?.key === command.idempotencyKey && (
+            <p role="alert">{recoveryError.text}</p>
+          )}
           <Button
-            disabled={pending}
-            onClick={() => {
-              const owner = lifetime.current;
-              if (owner)
-                void observe(
-                  command.recover(
-                    AbortSignal.any([owner.signal, context.signal]),
-                  ),
-                  AbortSignal.any([owner.signal, context.signal]),
-                );
-            }}
+            disabled={analyzing}
+            onClick={() => recover(command.idempotencyKey)}
           >
             Check original outcome
           </Button>
@@ -298,13 +342,12 @@ function ReviewsBoard({ context }: { context: BoundContext }) {
                   if (selected !== undefined) setStatus(selected);
                 }}
                 options={statusOptions}
-                disabled={pending || unknown.length > 0}
+                disabled={locked}
               />
               <Button
                 disabled={
-                  pending ||
+                  locked ||
                   loading ||
-                  unknown.length > 0 ||
                   review.status === status
                 }
                 onClick={() => change(review)}
@@ -315,12 +358,14 @@ function ReviewsBoard({ context }: { context: BoundContext }) {
           </section>
         ))}
       </RecordGroup>
-      {analysis && (
+      {matchingAnalysis && (
         <section aria-label="Analyzer findings">
-          <h2>Findings for revision {String(analysis.review.revision)}</h2>
-          {!analysis.findings.length && <p>No applicable findings.</p>}
+          <h2>
+            Findings for revision {String(matchingAnalysis.review.revision)}
+          </h2>
+          {!matchingAnalysis.findings.length && <p>No applicable findings.</p>}
           <ul>
-            {analysis.findings.map((finding, index) => (
+            {matchingAnalysis.findings.map((finding, index) => (
               <li key={`${finding.code}/${index}`}>
                 <RecordBody>{finding.message}</RecordBody>
                 <Metadata>

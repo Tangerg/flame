@@ -24,14 +24,22 @@ const (
 type CatalogFilter struct {
 	kind      catalogFilterKind
 	search    string
+	idPrefix  string
 	workspace string
 	project   identity.ProjectID
 }
 
 func AllCatalogEntries() CatalogFilter { return CatalogFilter{kind: allCatalogEntries} }
 
-func NewCatalogFilter(search string, workspace *Workspace, project identity.ProjectID) (CatalogFilter, error) {
-	normalizedSearch, err := NormalizeCatalogText(strings.TrimSpace(search))
+type CatalogCriteria struct {
+	Search    string
+	IDPrefix  string
+	Workspace *Workspace
+	Project   identity.ProjectID
+}
+
+func NewCatalogFilter(criteria CatalogCriteria) (CatalogFilter, error) {
+	normalizedSearch, err := NormalizeCatalogText(strings.TrimSpace(criteria.Search))
 	if err != nil {
 		return CatalogFilter{}, fmt.Errorf("session: catalog search: %w", err)
 	}
@@ -41,19 +49,24 @@ func NewCatalogFilter(search string, workspace *Workspace, project identity.Proj
 			MaximumCatalogSearchCharacters,
 		)
 	}
+	if criteria.IDPrefix != "" {
+		if err := identity.ValidateText(criteria.IDPrefix, identity.MaximumResourceCharacters); err != nil {
+			return CatalogFilter{}, fmt.Errorf("session: catalog identity prefix: %w", err)
+		}
+	}
 	workspacePath := ""
-	if workspace != nil {
-		if err := workspace.Validate(); err != nil {
+	if criteria.Workspace != nil {
+		if err := criteria.Workspace.Validate(); err != nil {
 			return CatalogFilter{}, fmt.Errorf("session: catalog workspace: %w", err)
 		}
-		workspacePath = workspace.Path()
+		workspacePath = criteria.Workspace.Path()
 	}
-	if normalizedSearch == "" && workspacePath == "" && project.IsZero() {
-		return CatalogFilter{}, errors.New("session: filtered catalog requires search, workspace or project")
+	if normalizedSearch == "" && criteria.IDPrefix == "" && workspacePath == "" && criteria.Project.IsZero() {
+		return CatalogFilter{}, errors.New("session: filtered catalog requires a criterion")
 	}
 	return CatalogFilter{
-		kind: filteredCatalogEntries, search: normalizedSearch,
-		workspace: workspacePath, project: project,
+		kind: filteredCatalogEntries, search: normalizedSearch, idPrefix: criteria.IDPrefix,
+		workspace: workspacePath, project: criteria.Project,
 	}, nil
 }
 
@@ -78,22 +91,14 @@ func (f CatalogFilter) Validate() error {
 
 func (f CatalogFilter) Search() (string, bool) { return f.search, f.search != "" }
 
+func (f CatalogFilter) IDPrefix() (string, bool) { return f.idPrefix, f.idPrefix != "" }
+
 func (f CatalogFilter) WorkspacePath() (string, bool) { return f.workspace, f.workspace != "" }
 
 func (f CatalogFilter) Project() (identity.ProjectID, bool) { return f.project, !f.project.IsZero() }
 
 func (f CatalogFilter) CursorIdentity() []string {
-	var identity []string
-	if search, ok := f.Search(); ok {
-		identity = append(identity, "search", search)
-	}
-	if workspace, ok := f.WorkspacePath(); ok {
-		identity = append(identity, "workspace", workspace)
-	}
-	if project, ok := f.Project(); ok {
-		identity = append(identity, "project", project.String())
-	}
-	return identity
+	return []string{f.search, f.idPrefix, f.workspace, f.project.String()}
 }
 
 type CatalogAnchor struct {

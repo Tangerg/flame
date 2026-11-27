@@ -74,10 +74,7 @@ export const fr: Record<string, string> = {
     "Rapport principal enregistré : {{title}}. Il figure dans les archives.",
   "message.removed":
     "Rapport enregistré supprimé. La comptabilité principale est inchangée.",
-  "message.removalConfirmed":
-    "Suppression du rapport d’origine confirmée. La comptabilité principale est inchangée.",
-  "message.unknown":
-    "La confirmation est inconnue. Vérifiez le résultat d’origine avant de soumettre une autre modification des archives.",
+  "message.refused": "Le Runtime a refusé la modification d’origine de l’archive.",
   "message.archiveFailed": "La modification des archives a échoué : {{error}}",
   "message.captureRejected": "La capture n’a pas pu être admise : {{error}}",
   "message.removalRejected":

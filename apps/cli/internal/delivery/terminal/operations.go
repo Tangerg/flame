@@ -60,6 +60,7 @@ var (
 	readerSearchOperation         = latestSlot("reader-search")
 	readerDocumentOperation       = latestSlot("reader-document")
 	pickerCatalogOperation        = latestSlot("picker-catalog")
+	sessionCatalogOperation       = exclusiveSlot("session-catalog").reported("session catalog read")
 	approvalModeOperation         = latestSlot("approval-mode")
 	sessionCenterOperation        = exclusiveSlot("session-center").reported("session action")
 	sessionChangeOperation        = exclusiveSlot("session-change").reported("session change")
@@ -229,7 +230,7 @@ func (o *operationOwner) BlocksRunAdmission() bool {
 	return false
 }
 
-func (o *operationOwner) Cancel(slot operationSlot) {
+func (o *operationOwner) Cancel(slot operationSlot) bool {
 	o.mu.Lock()
 	active, ok := o.active[slot.name]
 	if ok {
@@ -239,6 +240,7 @@ func (o *operationOwner) Cancel(slot operationSlot) {
 	if ok {
 		active.cancel()
 	}
+	return ok
 }
 
 // Removing all leases under one lock prevents a completed old worker from winning

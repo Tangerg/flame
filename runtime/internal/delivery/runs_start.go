@@ -65,9 +65,11 @@ func (s *Handler) StartRun(ctx context.Context, in protocol.StartRunRequest) (*p
 		}
 		command.NewSession = &runs.SessionOpening{SessionID: sessionID, RunID: runID, Title: in.NewSession.Title, CWD: s.sessionWorkspacePath(in.NewSession.Workspace), Project: project}
 	}
-	actor, installed := operation.ActorFrom(ctx)
+	// The opening transaction still checks the initiating grant. Host-owned
+	// preparation and its service calls must use their own authority.
+	opening, actor := operation.DetachActor(ctx)
 	if source := in.Background; source != nil {
-		if !installed || command.Acceptance == nil || actor.Server().String() != source.Kind ||
+		if actor == nil || command.Acceptance == nil || actor.Server().String() != source.Kind ||
 			(source.Kind != "schedules" && source.Kind != "filewatch") {
 			return nil, nil, protocol.NewFailure(protocol.ErrInvalidParams, "background events require an authenticated trigger and a command identity", nil)
 		}
@@ -80,14 +82,12 @@ func (s *Handler) StartRun(ctx context.Context, in protocol.StartRunRequest) (*p
 				return nil, nil, protocol.NewFailure(protocol.ErrInvalidParams, "background event requires a bounded source ID, version and title", nil)
 			}
 		}
-		actor = actor.WithBackground(project.BackgroundSource{
+		*actor = actor.WithBackground(project.BackgroundSource{
 			ProjectID: projectID, Kind: source.Kind, ID: source.ID, Version: source.Version, Title: source.Title,
 		})
 	}
-	if installed {
-		command.Actor = &actor
-	}
-	result, err := s.runOpenings.Start(ctx, command)
+	command.Actor = actor
+	result, err := s.runOpenings.Start(opening, command)
 	if err != nil {
 		return nil, nil, wireRunStartErr(err)
 	}
@@ -152,9 +152,12 @@ func invalidWireContentBlock(index int, field, detail string) error {
 }
 
 func wireRunStartErr(err error) error {
+	if refusal, ok := errors.AsType[*runs.PromptRejectedError](err); ok {
+		return protocol.NewFailure(protocol.ErrPromptRejected, rundomain.Diagnostic(refusal), err)
+	}
 	if conflict, ok := errors.AsType[*runs.ActiveRunConflictError](err); ok {
 		return &ActiveRunConflictError{ActiveRun: protocol.ActiveRunRef{
-			RunID: conflict.RunID.String(), Status: presentRunStatus(conflict.State),
+			RunID: conflict.Root.RunID.String(), Status: presentRunStatus(conflict.Root.State),
 		}}
 	}
 	switch {

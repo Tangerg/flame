@@ -13,6 +13,7 @@ export interface MutationAttemptOptions {
 }
 
 export interface MutationPromise<T> extends Promise<T> {
+  // A mutation handle is issued only after its original command is staged.
   readonly idempotencyKey: string;
   retry(options?: MutationAttemptOptions): MutationPromise<T>;
 }
@@ -51,17 +52,9 @@ function retryableTransportFailure(error: unknown): error is RpcTransportError {
   return error.status === undefined || error.status === 408 || (error.status ?? 0) >= 500;
 }
 
-class MutationObservationInterruptedError extends Error {
-  constructor(cause: unknown) {
-    super("mutation observation ended before settlement", { cause });
-    this.name = "MutationObservationInterruptedError";
-  }
-}
-
 export function mutationSettlementIsUnknown(error: unknown): boolean {
   if (error instanceof RpcError && error.recordedOutcome) return false;
   if (error instanceof MutationLookupError) return true;
-  if (error instanceof MutationObservationInterruptedError) return true;
   if (error instanceof RpcProtocolError) return true;
   // HTTP admission failure cannot settle an earlier dispatch under this identity.
   if (error instanceof RpcTransportError) return true;
@@ -75,12 +68,8 @@ export function mutationSettlementIsUnknown(error: unknown): boolean {
   );
 }
 
-function abortReason(signal: AbortSignal): unknown {
-  return signal.reason ?? new DOMException("The operation was aborted", "AbortError");
-}
-
 async function waitForReplay(seconds: number, signal?: AbortSignal): Promise<void> {
-  if (signal?.aborted) throw abortReason(signal);
+  if (signal?.aborted) throw new RpcCancellationError(signal.reason);
   await new Promise<void>((resolve, reject) => {
     const finish = () => {
       signal?.removeEventListener("abort", abort);
@@ -88,7 +77,7 @@ async function waitForReplay(seconds: number, signal?: AbortSignal): Promise<voi
     };
     const abort = () => {
       clearTimeout(timer);
-      reject(abortReason(signal!));
+      reject(new RpcCancellationError(signal?.reason));
     };
     const timer = setTimeout(finish, seconds * MILLISECONDS_PER_SECOND);
     signal?.addEventListener("abort", abort, { once: true });
@@ -104,7 +93,7 @@ async function settleMutation<T>(
   let waitedForInProgress = false;
   for (;;) {
     try {
-      if (options.signal?.aborted) throw new RpcCancellationError();
+      if (options.signal?.aborted) throw new RpcCancellationError(options.signal.reason);
       return await execute(idempotencyKey, options);
     } catch (error) {
       if (options.signal?.aborted) throw error;
@@ -118,12 +107,7 @@ async function settleMutation<T>(
         !error.recordedOutcome
       ) {
         waitedForInProgress = true;
-        try {
-          await waitForReplay(error.data.retryAfterSeconds, options.signal);
-        } catch (cause) {
-          // Stopping observation cannot settle the command already reserved by Runtime.
-          throw new MutationObservationInterruptedError(cause);
-        }
+        await waitForReplay(error.data.retryAfterSeconds, options.signal);
         continue;
       }
       throw error;
@@ -133,7 +117,7 @@ async function settleMutation<T>(
 
 export function createMutationPromise<T>(
   execute: MutationExecution<T>,
-  idempotencyKey: string = crypto.randomUUID(),
+  idempotencyKey: string,
   options: MutationAttemptOptions = {},
 ): MutationPromise<T> {
   const promise = Promise.resolve().then(() => settleMutation(execute, idempotencyKey, options));

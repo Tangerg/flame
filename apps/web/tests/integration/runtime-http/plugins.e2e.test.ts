@@ -7,7 +7,7 @@ import {
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { describe, expect, it, onTestFinished } from "vitest";
-import { componentExport } from "@flame/component-sdk/runtime-profile";
+import { componentExport, hostModuleProfile } from "@flame/component-sdk/runtime-profile";
 import { defineUnit, FrameError, Lifetime, Service } from "@frame/sdk";
 import { ControlPump, HTTPControl, Runtime } from "@frame/sdk/browser";
 import { RpcError } from "@flame/runtime-client";
@@ -157,6 +157,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: plugins", () => {
     });
     const windowLifetime = new Lifetime("vanished-window");
     const contract = new Service(session.componentContract);
+    const configurations: unknown[] = [];
     const realm = new Runtime({
       authority: session.authority,
       realm: session.realm,
@@ -167,13 +168,15 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: plugins", () => {
         maximumMessageBytes: session.maximumMessageBytes,
         lifetime: windowLifetime.branch("control"),
       }),
-      load: (unit) =>
-        defineUnit({
+      load: (unit) => {
+        configurations.push(JSON.parse(unit.configurationJson));
+        return defineUnit({
           id: unit.instance.source.unitId,
           imports: {},
           exports: { [componentExport]: contract },
           setup: () => ({ [componentExport]: () => null }),
-        }),
+        });
+      },
       remote: () => {
         throw new FrameError("contract_mismatch", "components declare no portable imports");
       },
@@ -195,6 +198,12 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: plugins", () => {
       realm: session.realm,
     });
     await realm.accept(grant);
+    expect(configurations).toContainEqual({
+      componentId: entry.id,
+      export: entry.export,
+      moduleProfile: hostModuleProfile,
+      sharedModules: expect.arrayContaining(["@flame/component-sdk"]),
+    });
     // A closed or reloaded window sends no exit proof for the component it held.
     windowLifetime.beginClose();
 

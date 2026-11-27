@@ -21,8 +21,6 @@ const fileElement base.ElementKind = 1
 
 const draftPersistenceDelay = 150 * time.Millisecond
 
-const promptHistoryCapacity = 1000
-
 type composerContent struct {
 	*kit.Editor
 	chips map[base.ElementID]authoring.Attachment
@@ -39,7 +37,7 @@ type promptComposer struct {
 	composerContent
 	observe        func()
 	drafts         draftAutosave
-	history        promptHistory
+	recall         historyCursor
 	attachments    *attachment.Resolver
 	workbench      *workbench.Store
 	editor         *draftEditor
@@ -63,77 +61,41 @@ type attachmentInsertion struct {
 	count int
 }
 
-type draftObservation struct {
-	sessionID string
-	message   authoring.Message
-	ready     bool
+type historyCursor struct {
+	entries  []authoring.Message
+	offset   int
+	original authoring.Message
 }
 
-func (d *draftObservation) Observe(sessionID string, message authoring.Message) bool {
-	changed := d.ready &&
-		(d.sessionID != sessionID || !d.message.Equal(message))
-	d.Reset(sessionID, message)
-	return changed
+func (h *historyCursor) reset() {
+	*h = historyCursor{}
 }
 
-func (d *draftObservation) Reset(sessionID string, message authoring.Message) {
-	d.sessionID = sessionID
-	d.message = message.Clone()
-	d.ready = true
-}
-
-type promptHistory struct {
-	entries []authoring.Message
-	at      int
-	draft   authoring.Message
-}
-
-func (p *promptHistory) Load(messages []authoring.Message) {
-	p.entries, p.at, p.draft = nil, 0, authoring.Message{}
-	for _, message := range messages {
-		p.Add(message)
+func (h *historyCursor) previous(store *workbench.Store, current authoring.Message) (authoring.Message, bool) {
+	if h.offset == 0 {
+		h.entries = store.History()
 	}
-}
-
-func (p *promptHistory) Add(message authoring.Message) {
-	p.at, p.draft = 0, authoring.Message{}
-	message = message.Clone()
-	if message.IsEmpty() {
-		return
-	}
-	if len(p.entries) > 0 && p.entries[len(p.entries)-1].Equal(message) {
-		return
-	}
-	p.entries = append(p.entries, message)
-	if len(p.entries) > promptHistoryCapacity {
-		dropped := len(p.entries) - promptHistoryCapacity
-		clear(p.entries[:dropped])
-		p.entries = slices.Clone(p.entries[dropped:])
-	}
-}
-
-func (p *promptHistory) Back(current authoring.Message) (authoring.Message, bool) {
-	if p.at >= len(p.entries) {
+	if h.offset == len(h.entries) {
 		return authoring.Message{}, false
 	}
-	if p.at == 0 {
-		p.draft = current.Clone()
+	if h.offset == 0 {
+		h.original = current.Clone()
 	}
-	p.at++
-	return p.entries[len(p.entries)-p.at].Clone(), true
+	h.offset++
+	return h.entries[len(h.entries)-h.offset].Clone(), true
 }
 
-func (p *promptHistory) Forward() (authoring.Message, bool) {
-	if p.at == 0 {
+func (h *historyCursor) next() (authoring.Message, bool) {
+	if h.offset == 0 {
 		return authoring.Message{}, false
 	}
-	p.at--
-	if p.at == 0 {
-		draft := p.draft.Clone()
-		p.draft = authoring.Message{}
+	h.offset--
+	if h.offset == 0 {
+		draft := h.original
+		h.reset()
 		return draft, true
 	}
-	return p.entries[len(p.entries)-p.at].Clone(), true
+	return h.entries[len(h.entries)-h.offset].Clone(), true
 }
 
 func (c *promptComposer) resolveAttachment(path string) (attachmentInsertion, error) {
@@ -360,11 +322,6 @@ func stripAttachmentElements(lines []string, elements []base.Element) error {
 	return nil
 }
 
-func (c *promptComposer) resetComposer() {
-	c.clearComposer()
-	c.scheduleDraftPersistence()
-}
-
 func (c *promptComposer) clearComposer() {
 	c.clear()
 	c.cleared()
@@ -390,18 +347,6 @@ func (c *composerContent) draft() (authoring.Message, bool, error) {
 	return message, true, nil
 }
 
-func (c *promptComposer) rememberPrompt(message authoring.Message) error {
-	if c.workbench != nil {
-		if err := c.workbench.Remember(message); err != nil {
-			c.report(workbenchHistory, err)
-			return err
-		}
-	}
-	c.history.Add(message)
-	c.report(workbenchHistory, nil)
-	return nil
-}
-
 func (c *promptComposer) persistDraft() error {
 	c.drafts.cancel()
 	message, _, err := c.draft()
@@ -413,8 +358,7 @@ func (c *promptComposer) persistDraft() error {
 }
 
 type draftAutosave struct {
-	store   *draftPersistence
-	saved   draftObservation
+	writer  *draftPersistence
 	pending func()
 }
 
@@ -427,8 +371,8 @@ func (d *draftAutosave) schedule(after func(time.Duration, func()) func(), captu
 			report(err)
 			return
 		}
-		if d.saved.Observe(sessionID, message) {
-			report(d.store.Schedule(sessionID, message))
+		if err := d.writer.Schedule(sessionID, message); err != nil {
+			report(err)
 		}
 	})
 }
@@ -439,19 +383,6 @@ func (d *draftAutosave) cancel() {
 	}
 	d.pending()
 	d.pending = nil
-}
-
-func (d *draftAutosave) save(sessionID string, message authoring.Message) error {
-	d.cancel()
-	if err := d.store.Flush(sessionID, message); err != nil {
-		return err
-	}
-	d.saved.Reset(sessionID, message)
-	return nil
-}
-
-func (d *draftAutosave) adopt(sessionID string, message authoring.Message) {
-	d.saved.Reset(sessionID, message)
 }
 
 func (c *promptComposer) scheduleDraftPersistence() {
@@ -465,7 +396,21 @@ func (c *promptComposer) scheduleDraftPersistence() {
 }
 
 func (c *promptComposer) saveDraft(message authoring.Message) error {
-	return c.drafts.save(c.session.current.ID, message)
+	sessionID := c.session.current.ID
+	return c.commitAuthoring(func() error {
+		if sessionID == "" {
+			return nil
+		}
+		return c.workbench.SaveDraft(sessionID, message)
+	})
+}
+
+func (c *promptComposer) commitAuthoring(apply func() error) error {
+	err := c.drafts.writer.Commit(apply)
+	if err == nil {
+		c.drafts.cancel()
+	}
+	return err
 }
 
 func (c *promptComposer) commitDraft(message authoring.Message) error {
@@ -474,19 +419,26 @@ func (c *promptComposer) commitDraft(message authoring.Message) error {
 	if err != nil {
 		return err
 	}
-	c.restoreComposer(message)
+	c.replaceDraft(message)
 	return nil
 }
 
 func (c *promptComposer) recoverDraft(message authoring.Message) error {
-	c.restoreComposer(message)
+	c.replaceDraft(message)
 	return c.persistDraft()
+}
+
+func (c *promptComposer) replaceDraft(message authoring.Message) {
+	c.recall.reset()
+	c.restoreComposer(message)
 }
 
 func (c *promptComposer) restoreComposer(message authoring.Message) {
 	c.clearComposer()
 	c.insertAttachments(message.Attachments)
-	c.Controller().Insert(message.Text)
+	if message.Text != "" {
+		c.Controller().Insert(message.Text)
+	}
 	c.scheduleDraftPersistence()
 }
 
@@ -496,7 +448,7 @@ func (c *promptComposer) recallPrevious() bool {
 		c.notify(err.Error())
 		return true
 	}
-	message, ok := c.history.Back(current)
+	message, ok := c.recall.previous(c.workbench, current)
 	if ok {
 		c.restoreComposer(message)
 	}
@@ -504,7 +456,7 @@ func (c *promptComposer) recallPrevious() bool {
 }
 
 func (c *promptComposer) recallNext() bool {
-	message, ok := c.history.Forward()
+	message, ok := c.recall.next()
 	if ok {
 		c.restoreComposer(message)
 	}

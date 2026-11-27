@@ -3,7 +3,7 @@ import { DATA_PROVIDER } from "@/extensions/dataProvider";
 import { type FlameClient, type Project } from "@flame/runtime-client";
 import {
   PROJECTS_KEY,
-  commitProjectSummary,
+  invalidateProjects,
   type ProjectSummary,
 } from "@/features/projects/application/projectQueries";
 import { type ProjectCommands } from "@/features/projects/application/projectCommands";
@@ -19,38 +19,38 @@ function toProjectSummary(project: Project): ProjectSummary {
   };
 }
 
+export async function readRuntimeProjectSummaries(
+  client: Pick<FlameClient, "projects">,
+  signal?: AbortSignal,
+): Promise<ProjectSummary[]> {
+  const projects = await client.projects.list(undefined, signal).autoPagingToArray();
+  return projects.map(toProjectSummary);
+}
+
 export function registerProjectDataProviders(
   ctx: Contributor,
   runtimeClient: () => FlameClient,
 ): void {
   ctx.add(DATA_PROVIDER, {
     key: PROJECTS_KEY,
-    fetcher: async (_params, signal) => {
-      const client = runtimeClient();
-      const [active, archived] = await Promise.all([
-        client.projects.list(undefined, signal).autoPagingToArray(),
-        client.projects.list({ archived: true }, signal).autoPagingToArray(),
-      ]);
-      return [...active, ...archived].map(toProjectSummary);
-    },
+    fetcher: (_params, signal) => readRuntimeProjectSummaries(runtimeClient(), signal),
   });
 }
 
 export function createRuntimeProjectCommands(runtimeClient: () => FlameClient): ProjectCommands {
-  const settle = async (pending: Promise<Project>) => {
-    const project = toProjectSummary(await pending);
-    commitProjectSummary(project);
-    return project;
-  };
   return {
-    create: (name) => settle(runtimeClient().projects.create({ name })),
-    update: (project, patch) =>
-      settle(
-        runtimeClient().projects.update({
-          projectId: project.id,
-          expectedRevision: project.revision,
-          ...patch,
-        }),
-      ),
+    async create(name) {
+      const { id } = await runtimeClient().projects.create({ name });
+      await invalidateProjects();
+      return id;
+    },
+    async update(project, patch) {
+      await runtimeClient().projects.update({
+        projectId: project.id,
+        expectedRevision: project.revision,
+        ...patch,
+      });
+      await invalidateProjects();
+    },
   };
 }

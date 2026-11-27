@@ -26,7 +26,7 @@ func define() (*plugincontract.Capability, error) {
 	if err != nil {
 		return nil, err
 	}
-	deleteMethod, err := pluginmcp.NewMethod[wire.ItemInput, wire.Ack](frame.MethodConfig{Name: wire.Delete, Kind: frame.Command, Target: extension.ScopeInstallation, Description: "Delete one schedule definition."})
+	deleteMethod, err := pluginmcp.NewMethod[wire.DeleteInput, wire.DeleteResult](frame.MethodConfig{Name: wire.Delete, Kind: frame.Command, Target: extension.ScopeInstallation, Description: "Delete one schedule using its inspected revision."})
 	if err != nil {
 		return nil, err
 	}

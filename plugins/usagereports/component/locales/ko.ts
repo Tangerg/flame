@@ -67,10 +67,7 @@ export const ko: Record<string, string> = {
     "핵심 보고서를 저장했습니다: {{title}}. 아카이브에 나열되어 있습니다.",
   "message.removed":
     "저장된 보고서를 삭제했습니다. 핵심 정산은 변경되지 않았습니다.",
-  "message.removalConfirmed":
-    "원래 보고서 삭제가 확인되었습니다. 핵심 정산은 변경되지 않았습니다.",
-  "message.unknown":
-    "확인 결과를 알 수 없습니다. 다른 아카이브 변경을 제출하기 전에 원래 결과를 확인하세요.",
+  "message.refused": "Runtime에서 원래 보관 변경을 거부했습니다.",
   "message.archiveFailed": "아카이브 변경에 실패했습니다: {{error}}",
   "message.captureRejected": "캡처를 승인할 수 없습니다: {{error}}",
   "message.removalRejected": "삭제를 승인할 수 없습니다: {{error}}",
