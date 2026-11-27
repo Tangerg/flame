@@ -14,6 +14,9 @@ import { runtimeWorkspaceErrorClassifier } from "@/features/workspace/adapters/r
 import { bindConversationImportRuntime } from "@/features/workspace/adapters/runtimeConversationImportGateway";
 import { pickTextFile } from "@/features/workspace/adapters/fileTransfer";
 import { type NotificationFeed } from "@/features/notifications/public/notifications";
+import { TaskWorktreeCommands } from "@/features/workspace/application/taskWorktreeCommands";
+import { taskWorktreesQueryKey } from "@/features/workspace/application/workspaceQueries";
+import { replaceCachedRead } from "@/lib/queryClient";
 export function createWorkspace(
   client: () => FlameClient,
   navigation: Navigator,
@@ -34,14 +37,22 @@ export function createWorkspace(
   const conversationImport = createConversationImport(agent, runtime, notifications, {
     pickText: pickTextFile,
   });
+  const worktrees = () => client().workspaces.tasks;
+  const taskWorktreeCommands = new TaskWorktreeCommands(worktrees, () => {
+    void replaceCachedRead({
+      queryKey: taskWorktreesQueryKey(runtime.endpoint.currentRuntimeEndpoint()),
+      exact: true,
+    });
+  });
   const access: WorkspaceAccess = {
     navigation: navigationState,
     local: createLocalWorkspaceActions(host, canAccessLocalWorkspace),
     errors: runtimeWorkspaceErrorClassifier,
     conversationImport,
-    taskWorktrees: () => client().workspaces.tasks,
+    taskWorktreeCommands,
+    taskWorktrees: worktrees,
   };
-  let unbindConversationImport: (() => void) | null = null;
+  let unbindRuntime: (() => void) | null = null;
   let disposed = false;
   return {
     access,
@@ -49,16 +60,23 @@ export function createWorkspace(
     layout,
     start(scope: RuntimeServerScope) {
       if (disposed) throw new Error("Workspace is disposed");
-      if (unbindConversationImport) return;
+      if (unbindRuntime) return;
       dock.activate(runtime.endpoint.currentRuntimeEndpoint());
-      unbindConversationImport = bindConversationImportRuntime(conversationImport, client, scope);
+      const unbindImport = bindConversationImportRuntime(conversationImport, client, scope);
+      taskWorktreeCommands.replaceTarget();
+      const unsubscribe = scope.subscribeReplacement(taskWorktreeCommands.replaceTarget);
+      unbindRuntime = () => {
+        unsubscribe();
+        taskWorktreeCommands.retireTarget();
+        unbindImport();
+      };
     },
     dispose() {
       if (disposed) return;
       disposed = true;
       navigationState.dispose();
-      unbindConversationImport?.();
-      unbindConversationImport = null;
+      unbindRuntime?.();
+      unbindRuntime = null;
       dock.store.setState({ inspection: null });
     },
   };

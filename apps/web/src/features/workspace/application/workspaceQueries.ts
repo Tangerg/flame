@@ -72,6 +72,10 @@ export const WORKSPACE_LIST_FILES_KEY = "list-files";
 
 export const WORKSPACE_READ_FILE_KEY = "read-file";
 
+export function taskWorktreesQueryKey(endpoint: string) {
+  return ["task-worktrees", endpoint] as const;
+}
+
 export const useWorkspaceFolders = createDataQuery<WorkspaceFolderSummary[]>(WORKSPACE_FOLDERS_KEY);
 
 export const useWorkspaceFileChanges = createParameterizedDataQuery<
