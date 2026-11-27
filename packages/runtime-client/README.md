@@ -108,6 +108,11 @@ Presentation components
 must not rebuild settlement or invent a replacement identity. Streaming reads
 and durable commands retain their registry-classified distinction.
 
+Each new Start, Resume, Steer or direct plugin command without a supplied key
+gets a fresh command identity. Retry the original handle or select the pending
+command by its retained identity after reconnect. The stable-intent plugin API
+can recover the original command through its authored intent.
+
 `createMutationSettler().settle` accepts `onMutation(idempotencyKey)` to project
 the identity of the selected original mutation, including retained or shared
 recovery attempts. It grants no replacement command or independent retry owner;

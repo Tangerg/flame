@@ -310,6 +310,13 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: configuration commits after lo
         output: expect.any(String),
       });
       await expect(cold.plugins.getCommand({ namespace, key: secondKey })).resolves.toEqual(first);
+      const fresh = cold.plugins.call(request);
+      if (!("idempotencyKey" in fresh)) throw new Error("expected the new plugin command handle");
+      await expect(fresh).resolves.toMatchObject({ output: expect.any(String) });
+      expect(fresh.idempotencyKey).not.toBe(firstKey);
+      await expect(cold.plugins.getCommand({ namespace, key: fresh.idempotencyKey })).resolves.toEqual(
+        first,
+      );
       expect(cold.plugins.pendingCommands().map((command) => command.idempotencyKey)).toEqual([
         firstKey,
       ]);

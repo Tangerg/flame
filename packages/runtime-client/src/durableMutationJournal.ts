@@ -320,17 +320,23 @@ export function openDurableMutationJournal(
       // These records are unresolved evidence, not a cache of completed receipts.
       // Neither expiry nor replacement of the serving store settles their outcome.
       const entries = loadEntries(options.storage);
-      const matches = (entry: JournalEntry) =>
-        (entry.command.kind !== "plugin" || entry.command.intentFingerprint === null) &&
-        matchesCommand(entry, method, params, requestMeta);
       let entry: JournalEntry | undefined;
       if (requestedKey === undefined) {
         entry = entries
-          .filter((candidate) => matches(candidate) && !claimed(candidate.idempotencyKey))
+          .filter(
+            (candidate) =>
+              candidate.command.kind === "method" &&
+              !claimed(candidate.idempotencyKey) &&
+              matchesCommand(candidate, method, params, requestMeta),
+          )
           .toSorted((left, right) => left.createdAt - right.createdAt)[0];
       } else {
         entry = entries.find((pending) => pending.idempotencyKey === requestedKey);
-        if (entry && !matches(entry)) {
+        if (
+          entry &&
+          ((entry.command.kind === "plugin" && entry.command.intentFingerprint !== null) ||
+            !matchesCommand(entry, method, params, requestMeta))
+        ) {
           throw new MutationJournalOwnershipError(
             "Runtime mutation key belongs to a different command",
           );

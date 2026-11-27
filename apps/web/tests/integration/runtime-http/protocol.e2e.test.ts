@@ -777,7 +777,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: protocol delivery", () => {
     }
   }, 30_000);
 
-  it("requires the durable command to recover a cold opening and its snapshot tail", async () => {
+  it("recovers a cold opening without turning the same input into a retry", async () => {
     if (!fixture.negotiated) throw new Error("runtime client was not initialized");
     const session = await fixture.client.sessions.create({
       workspace: { path: fixture.root },
@@ -853,7 +853,8 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: protocol delivery", () => {
       const commands = await cold.runs.recoverCommands();
       expect(commands).toHaveLength(1);
       const [recorded] = commands;
-      if (recorded?.operation !== "start") throw new Error("expected the original Run opening");
+      if (recorded?.operation !== "start" || recorded.observation.type !== "recorded")
+        throw new Error("expected the original Run opening receipt");
       expect(recorded).toMatchObject({
         idempotencyKey: pending.idempotencyKey,
         observation: {
@@ -862,12 +863,10 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: protocol delivery", () => {
         },
       });
       expect(mutationStorage.snapshot()).toEqual(evidence);
-      const recovered = cold.runs.start(params);
+      const recovered = recorded.retry();
       expect(recovered.idempotencyKey).toBe(pending.idempotencyKey);
-      expect(mutationStorage.snapshot()).toEqual(evidence);
       const opening = await recovered;
       expect(opening.observation).toEqual({ type: "snapshot", sessionId: session.id });
-      expect(mutationStorage.size).toBe(0);
       expect(fault.attempts()).toBe(1);
       const receipt = await cold.runs.getAcceptance({
         namespace: fixture.negotiated.limits.idempotency.namespace,
@@ -897,6 +896,18 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: protocol delivery", () => {
       ).toHaveLength(1);
       expect(damagedRecovery).toMatchObject({ error: { name: "MutationJournalStorageError" } });
       expect(damagedRecord).toMatchObject({ command: null });
+
+      const fresh = cold.runs.start(params);
+      const second = await fresh;
+      expect(fresh.idempotencyKey).not.toBe(pending.idempotencyKey);
+      expect(second.result.runId).not.toBe(opening.result.runId);
+      if (second.observation.type !== "stream") throw new Error("expected the new Run stream");
+      expect((await collectRunEvents(second.observation.events)).at(-1)?.event).toMatchObject({
+        type: "segment.finished",
+        run: { id: second.result.runId, status: "finished" },
+      });
+      expect(mutationStorage.snapshot()).toEqual(evidence);
+      recorded.observation.acknowledge();
 
       coldLookupAvailable = false;
       const observedLookups = coldLookups;
