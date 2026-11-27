@@ -123,7 +123,7 @@ func assembleRuns(
 		ModelSelector:      execution.tools.callComposition,
 		Sessions:           foundation.sessions,
 		SessionCreator:     foundation.sessions,
-		ActiveRoots:        cfg.stores.Runs,
+		RootRuns:           cfg.stores.Runs,
 		Admissions:         foundation.admissions,
 	}
 	cancellationDependencies := runs.CancellationDependencies{

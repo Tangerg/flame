@@ -121,7 +121,6 @@ type retirementTransient struct{}
 
 func (retirementTransient) QuiesceSession(identity.SessionID) error            { return nil }
 func (retirementTransient) QuiesceWorkspace(string) error                      { return nil }
-func (retirementTransient) ForgetSession(identity.SessionID)                   {}
 func (retirementTransient) ForgetSessionContext(identity.SessionID)            {}
 func (retirementTransient) ForgetWorkspace(string)                             {}
 func (retirementTransient) Release(context.Context, runsapp.ExecutorRef) error { return nil }

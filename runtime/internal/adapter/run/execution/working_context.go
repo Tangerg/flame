@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
-	"sync"
 
 	hookdata "github.com/Tangerg/flame/packages/go-sdk/hook"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
@@ -47,9 +46,6 @@ type workingContextHookResolver interface {
 
 type WorkingContextComposer struct {
 	config WorkingContextConfig
-
-	mu           sync.Mutex
-	seenSessions map[identity.SessionID]struct{}
 }
 
 func NewWorkingContextComposer(config WorkingContextConfig) (*WorkingContextComposer, error) {
@@ -71,10 +67,7 @@ func NewWorkingContextComposer(config WorkingContextConfig) (*WorkingContextComp
 			return nil, fmt.Errorf("execution: working context %s is required", required.name)
 		}
 	}
-	return &WorkingContextComposer{
-		config:       config,
-		seenSessions: make(map[identity.SessionID]struct{}),
-	}, nil
+	return &WorkingContextComposer{config: config}, nil
 }
 
 func (w *WorkingContextComposer) ComposeWorkingContext(
@@ -171,7 +164,7 @@ func (w *WorkingContextComposer) evaluatePromptHooks(
 	defer func() { returned = errors.Join(returned, bound.Close()) }()
 
 	result := promptHookResult{}
-	if w.claimSessionStart(input.SessionID) {
+	if input.FirstRun {
 		result = result.including(hookdata.SessionStart, bound.Run(ctx, hookdata.Input{
 			Event: hookdata.SessionStart, SessionID: input.SessionID.String(), CWD: input.CWD,
 		}))
@@ -180,22 +173,6 @@ func (w *WorkingContextComposer) evaluatePromptHooks(
 		Event: hookdata.UserPromptSubmit, SessionID: input.SessionID.String(),
 		CWD: input.CWD, Prompt: input.PromptText,
 	})), nil
-}
-
-func (w *WorkingContextComposer) claimSessionStart(sessionID identity.SessionID) bool {
-	w.mu.Lock()
-	defer w.mu.Unlock()
-	if _, seen := w.seenSessions[sessionID]; seen {
-		return false
-	}
-	w.seenSessions[sessionID] = struct{}{}
-	return true
-}
-
-func (w *WorkingContextComposer) ForgetSession(sessionID identity.SessionID) {
-	w.mu.Lock()
-	delete(w.seenSessions, sessionID)
-	w.mu.Unlock()
 }
 
 func (w *WorkingContextComposer) BeforeToolUse(
@@ -361,8 +338,7 @@ func (w *WorkingContextComposer) recallPart(
 }
 
 var (
-	_ runs.WorkingContextComposer                    = (*WorkingContextComposer)(nil)
-	_ interactionToolHooks                           = (*WorkingContextComposer)(nil)
-	_ compactionHook                                 = (*WorkingContextComposer)(nil)
-	_ interface{ ForgetSession(identity.SessionID) } = (*WorkingContextComposer)(nil)
+	_ runs.WorkingContextComposer = (*WorkingContextComposer)(nil)
+	_ interactionToolHooks        = (*WorkingContextComposer)(nil)
+	_ compactionHook              = (*WorkingContextComposer)(nil)
 )

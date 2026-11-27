@@ -11,11 +11,13 @@ import (
 	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/application/ownership"
+	"github.com/Tangerg/flame/runtime/internal/completion"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/keylock"
 	corechat "github.com/Tangerg/scope/core/chat"
 	"github.com/samber/lo"
+	"go.opentelemetry.io/otel"
 )
 
 type Openings struct {
@@ -28,7 +30,7 @@ type Openings struct {
 	modelSelector      models.Selector
 	sessionReader      sessionReader
 	sessionCreator     sessionCreator
-	activeRoots        activeRootReader
+	rootRuns           rootRunReader
 	isolation          isolationProvider
 	releases           ExecutionReleaser
 	admission          *ownership.Gate
@@ -45,7 +47,7 @@ type OpeningDependencies struct {
 	ModelSelector      models.Selector
 	Sessions           sessionReader
 	SessionCreator     sessionCreator
-	ActiveRoots        activeRootReader
+	RootRuns           rootRunReader
 	Segments           *Segments
 	Admissions         *ownership.Gate
 	Isolation          isolationProvider
@@ -64,7 +66,7 @@ func NewOpenings(deps OpeningDependencies) (*Openings, error) {
 		{"model admitter", deps.Models},
 		{"session reader", deps.Sessions},
 		{"session creator", deps.SessionCreator},
-		{"active root reader", deps.ActiveRoots},
+		{"root Run reader", deps.RootRuns},
 		{"segment supervisor", deps.Segments},
 		{"admission gate", deps.Admissions},
 		{"isolation provider", deps.Isolation},
@@ -85,7 +87,7 @@ func NewOpenings(deps OpeningDependencies) (*Openings, error) {
 		modelSelector:      deps.ModelSelector,
 		sessionReader:      deps.Sessions,
 		sessionCreator:     deps.SessionCreator,
-		activeRoots:        deps.ActiveRoots,
+		rootRuns:           deps.RootRuns,
 		isolation:          deps.Isolation,
 		releases:           deps.Releases,
 		admission:          deps.Admissions,
@@ -120,7 +122,7 @@ func (c *Openings) WaitSessionStartable(ctx context.Context, sessionID identity.
 			return err
 		}
 		if ready {
-			active, err := c.activeRoots.ActiveRoot(ctx, sess.ID())
+			active, err := c.rootRuns.ActiveRoot(ctx, sess.ID())
 			if err := errors.Join(err, ctx.Err(), context.Cause(ctx)); err != nil {
 				return err
 			}
@@ -133,12 +135,16 @@ func (c *Openings) WaitSessionStartable(ctx context.Context, sessionID identity.
 				}
 			}
 		}
-		select {
-		case <-ctx.Done():
-			return errors.Join(ctx.Err(), context.Cause(ctx))
-		case <-changed:
+		if err := waitForAdmissionChange(ctx, changed); err != nil {
+			return err
 		}
 	}
+}
+
+func waitForAdmissionChange(ctx context.Context, changed <-chan struct{}) error {
+	ctx, span := otel.Tracer("github.com/Tangerg/flame/runtime/internal/application/agent/runs").Start(ctx, "wait for session admission")
+	defer span.End()
+	return completion.Wait(ctx, changed)
 }
 
 type rootStartPreparation struct {
@@ -196,6 +202,10 @@ func (c *Openings) startRoot(ctx context.Context, cmd StartCommand) (result Star
 	cmd = preparation.command
 	draft := preparation.draft
 	draft.SessionID = preparation.session.ID()
+	hasRootRun, err := c.rootRuns.HasRootRun(ctx, draft.SessionID)
+	if err != nil {
+		return StartResult{}, err
+	}
 	if cmd.NewSession != nil {
 		draft.RunID = cmd.NewSession.RunID
 	} else {
@@ -224,6 +234,7 @@ func (c *Openings) startRoot(ctx context.Context, cmd StartCommand) (result Star
 		Project:      draft.Project,
 		PromptText:   preparation.promptText,
 		Seed:         draft.WorkingContext,
+		FirstRun:     !hasRootRun,
 	})
 	if err != nil {
 		return StartResult{}, fmt.Errorf("runs: compose working context: %w", err)
@@ -466,7 +477,7 @@ func (c *Openings) claimFreshRun(ctx context.Context, sess session.Session) (own
 }
 
 func (c *Openings) activeRootConflict(ctx context.Context, sessionID identity.SessionID) (*ActiveRunConflictError, error) {
-	root, err := c.activeRoots.ActiveRoot(ctx, sessionID)
+	root, err := c.rootRuns.ActiveRoot(ctx, sessionID)
 	if err != nil || root == nil {
 		return nil, err
 	}

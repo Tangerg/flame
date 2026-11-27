@@ -81,7 +81,6 @@ type MaterialSnapshotReader interface {
 type transientState interface {
 	QuiesceSession(sessionID identity.SessionID) error
 	QuiesceWorkspace(root string) error
-	ForgetSession(sessionID identity.SessionID)
 	ForgetSessionContext(sessionID identity.SessionID)
 	ForgetWorkspace(root string)
 }

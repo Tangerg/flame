@@ -25,7 +25,25 @@ const runReadJoins = `LEFT JOIN interrupts AS i
 		        WHEN r.root_run_id = '' THEN r.run_id
 		        ELSE r.root_run_id
 		      END`
-const activeRootRunPredicate = `state != '` + string(rundomain.Finished) + `' AND root_run_id = ''`
+const rootRunPredicate = `root_run_id = ''`
+const activeRootRunPredicate = `state != '` + string(rundomain.Finished) + `' AND ` + rootRunPredicate
+
+func (r *RunStore) HasRootRun(ctx context.Context, sessionID identity.SessionID) (bool, error) {
+	if err := validateResource("check Session for root Runs", sessionID); err != nil {
+		return false, err
+	}
+	return scopedValue(ctx, r.db.read, func(ctx context.Context) (bool, error) {
+		var found bool
+		err := r.db.connection(ctx).QueryRowContext(ctx,
+			`SELECT EXISTS(SELECT 1 FROM runs WHERE session_id = ? AND `+rootRunPredicate+`)`,
+			sessionID,
+		).Scan(&found)
+		if err != nil {
+			return false, fmt.Errorf("sqlite: check Session %q for root Runs: %w", sessionID, err)
+		}
+		return found, nil
+	})
+}
 
 func (r *RunStore) ActiveRoot(ctx context.Context, sessionID identity.SessionID) (*runs.ActiveRoot, error) {
 	const operation = "read active root Run"
@@ -60,7 +78,7 @@ func (r *RunStore) PageRuns(ctx context.Context, sessionID identity.SessionID, s
 		var args []any
 		var conditions []string
 		if !includeDescendants {
-			conditions = append(conditions, `r.root_run_id = ''`)
+			conditions = append(conditions, "r."+rootRunPredicate)
 		}
 		if !sessionID.IsZero() {
 			conditions = append(conditions, `r.session_id = ?`)

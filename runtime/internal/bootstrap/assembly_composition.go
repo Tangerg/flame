@@ -208,7 +208,6 @@ func buildExecutionComposition(
 		return executionComposition{}, fmt.Errorf("runtime: build working context: %w", err)
 	}
 	transientSessions, err := executionadapter.NewTransientSessionState(
-		workingContexts,
 		toolRuntime.tools.Resolver,
 		toolRuntime.tools.Shells,
 	)

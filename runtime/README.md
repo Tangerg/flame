@@ -2674,5 +2674,9 @@ fails or returns an invalid decision. Required policies apply only to
 undo completed work. Explicit deny and ask decisions retain their existing
 semantics under either policy. The SDK owns the default and the permitted events;
 clients display that resolved policy. Repository trust remains Runtime-owned.
+The first admitted root Run in the Session's current history carries
+`SessionStart` material. Refused openings leave that history empty, so the
+next attempt still evaluates the rules. Restarting Runtime keeps the existing
+admitted opening and its material.
 Commands use the installed process environment rather than inheriting ambient
 Runtime variables.

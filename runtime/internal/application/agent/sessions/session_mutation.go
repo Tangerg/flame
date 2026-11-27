@@ -55,7 +55,7 @@ func (c *Coordinator) DeleteSession(ctx context.Context, sessionID identity.Sess
 					cleanupErrs = append(cleanupErrs, err)
 				}
 			}
-			c.transientState.ForgetSession(sessionID)
+			c.transientState.ForgetSessionContext(sessionID)
 			return errors.Join(cleanupErrs...)
 		},
 	)
