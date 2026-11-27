@@ -133,7 +133,7 @@ forgetting the rule at that identity regardless of its decision.
 `createMutationSettler().settle(open, options)` observes the mutation returned by
 `open`. Pass a fresh command factory to author a command. To recover an existing
 command, pass a factory that retries its original handle or journal identity.
-`onMutation(idempotencyKey)` exposes the identity for the caller's projection.
+`onCommand(command)` supplies the original handle for callers that expose recovery.
 Deadlines must be positive whole milliseconds within the platform timer range;
 invalid deadlines are refused before opening the mutation. A deadline permits
 one further observation through the same handle. If that observation cannot be

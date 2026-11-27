@@ -206,6 +206,86 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: restart and crash recovery", (
     }
   }, 30_000);
 
+  it("recovers the original Run receipt while the Session refresh is still waiting", async () => {
+    const session = await fixture.client.sessions.create({ workspace: { path: fixture.root } });
+    const sessionId = asSessionId(session.id);
+    const refreshing = Promise.withResolvers<void>();
+    const allowRefresh = Promise.withResolvers<void>();
+    const submitted: string[] = [];
+    let originalCommitted = false;
+    let loseReceipt = true;
+    const client = fixture.createRuntimeClient(async (url, init) => {
+      const headers = new Headers(init?.headers);
+      const method = headers.get(HTTP_HEADERS.method);
+      if (originalCommitted && method === "sessions.snapshot") {
+        refreshing.resolve();
+        await allowRefresh.promise;
+      }
+      if (loseReceipt && originalCommitted && method === "runs.getAcceptance") {
+        throw new Error("lost original Run acceptance lookup");
+      }
+      const response = await fetch(url, init);
+      if (method === "runs.start") {
+        submitted.push(headers.get(HTTP_HEADERS.idempotencyKey) ?? "");
+        if (loseReceipt) {
+          await response.text();
+          originalCommitted = true;
+          throw new Error("lost original Run opening response");
+        }
+      }
+      return response;
+    });
+    const web = openWebSession(client, fixture.baseUrl, sessionId);
+    const gateway = new RuntimeRunsGateway(() => client);
+    const unbind = bindAgentSession(
+      web.agent.sessionDependencies(),
+      () => client,
+      createRpcAgentDriver(sessionId, () => gateway),
+      sessionId,
+      () => {},
+    );
+    try {
+      const entry = web.agent.dependencies.view.getSession(sessionId);
+      if (!entry?.synchronize) throw new Error("session command binding was not installed");
+      await expect(
+        within(entry.synchronize("after-live"), "the source Session projection"),
+      ).resolves.toBe(true);
+      const original = await submitCapturedAgentInput(
+        web.agent.dependencies,
+        sessionId,
+        agentTextInput("E2E_RUN retain the original input handle across the interrupted reply."),
+        new AbortController().signal,
+      );
+      expect(original).toMatchObject({ status: "unknown" });
+      if (original.status !== "unknown") throw new Error("the original reply was meant to be lost");
+      await within(refreshing.promise, "the held Session snapshot request");
+      const remote = await fixture.client.runs.list({ sessionId });
+      expect(remote.data).toHaveLength(1);
+      const committed = remote.data[0];
+      expect(committed?.status).toBe("finished");
+
+      loseReceipt = false;
+      await expect(
+        within(Promise.resolve().then(original.recover), "the original Run receipt"),
+      ).resolves.toMatchObject({ status: "accepted", sessionId, runId: committed?.id });
+      expect(submitted).toEqual([original.idempotencyKey]);
+
+      allowRefresh.resolve();
+      await expect(
+        within(entry.synchronize("after-live"), "the committed Session view"),
+      ).resolves.toBe(true);
+      await expect(client.runs.recoverCommands()).resolves.toEqual([]);
+      await expect(fixture.client.runs.list({ sessionId })).resolves.toEqual(remote);
+    } finally {
+      allowRefresh.resolve();
+      unbind();
+      gateway.dispose();
+      web.dispose();
+      await client.close();
+      await fixture.client.sessions.delete(sessionId);
+    }
+  }, 30_000);
+
   it("keeps the latest Session list when an older edit acknowledgement arrives", async () => {
     const session = await fixture.client.sessions.create({ workspace: { path: fixture.root } });
     const sessionId = asSessionId(session.id);

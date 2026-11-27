@@ -4,7 +4,10 @@ import { type AgentSessionStore } from "@/features/agent/adapters/agentSessionSt
 import { type createAgentRuntimeGateway } from "@/features/agent/adapters/agentRuntimeGateway";
 import { type FlameClient } from "@flame/runtime-client";
 import { t } from "@/lib/i18n/index";
-import { type RuntimeAgentDriver } from "@/features/agent/adapters/runtimeDriver";
+import {
+  type RuntimeAgentDriver,
+  type RunStartRecovery,
+} from "@/features/agent/adapters/runtimeDriver";
 import { type AgentRunStartOptions } from "@/features/agent/public/runOptions";
 import {
   asItemId,
@@ -16,7 +19,6 @@ import { queryClient } from "@/lib/queryClient";
 import { type AgentInput } from "@/features/agent/domain/input";
 import {
   settleAgentInput,
-  recoverOpeningInput,
   type AgentInputSettlement,
   type AgentOpeningAcceptance,
 } from "@/features/agent/application/input/inputSubmission";
@@ -151,28 +153,9 @@ export function bindAgentSession(
         agentAccess.notifications.notify("info", t("agent.acceptedRunRetired"), {
           source: "session",
         });
-        const view = await refreshAgentSessionProjection(agentAccess, sessionId, {
-          signal,
-          canCommit: () => !disposed && !signal.aborted,
-        });
-        if (!disposed && !signal.aborted) commandsReady = view !== null;
-        return;
       }
       if (outcome.type === "stream") await disposeAsyncIterable(outcome.events);
-      const view = await startAgentSessionRecovery(agentAccess, {
-        client: client(),
-        sessionId,
-        signal,
-        isCanceled: () => disposed,
-        hasInteracted: () => false,
-        isFollowing: runPump.isFollowing,
-        setAbortController: (controller) => {
-          observation = controller;
-        },
-        pump: runPump.pump,
-        onSynchronizationFailed: reportSynchronizationFailure,
-      });
-      if (!disposed && !signal.aborted) commandsReady = view !== null;
+      if (!disposed && !signal.aborted) await projectionSynchronization.request();
     } catch (error) {
       if (!disposed && !signal.aborted) reportSynchronizationFailure(error);
       throw error;
@@ -203,11 +186,11 @@ export function bindAgentSession(
     const wireInput = agentInputToContentBlocks(input);
     const optimistic = createOptimisticUserMessage(wireInput);
     store().appendLocalMessage(sessionId, optimistic.message);
-    let key: string | undefined;
+    let original: RunStartRecovery | undefined;
     const opening = runOpening.begin(
       (signal) =>
-        driver.start(wireInput, options, signal, (value) => {
-          key = value;
+        driver.start(wireInput, options, signal, (command) => {
+          original = command;
         }),
       {
         onResult: (result, observation) => {
@@ -222,14 +205,37 @@ export function bindAgentSession(
       },
     );
     return settleAgentInput(opening.then(acceptance), {
-      key: () => key,
+      key: () => original?.idempotencyKey,
       isUnknown: (error) => agentAccess.runtime.isInputReceiptUnknown(error),
       recover: () => {
-        if (!key) throw new Error("input command omitted its mutation identity");
-        return recoverOpeningInput(agentAccess, sessionId, key);
+        if (!original) throw new Error("input command omitted its original handle");
+        return recoverStart(original);
       },
     });
   };
+
+  function retryOpening(
+    key: string,
+    retry: (signal: AbortSignal) => ReturnType<RuntimeAgentDriver["resume"]>,
+  ): Promise<AgentOpeningAcceptance> {
+    const opening = runOpening.begin(retry, {
+      onResult: () => store().projectOpeningAccepted(sessionId, key),
+      observe: recoverOpeningObservation,
+    });
+    const settlement = opening.then(acceptance);
+    void settlement.catch(() => {});
+    return settlement;
+  }
+
+  function recoverStart(original: RunStartRecovery): Promise<AgentInputSettlement> {
+    if (disposed || runOpening.isStarting())
+      throw new Error("session is not ready to recover the original input");
+    return settleAgentInput(retryOpening(original.idempotencyKey, original.retry), {
+      key: () => original.idempotencyKey,
+      isUnknown: (error) => agentAccess.runtime.isInputReceiptUnknown(error),
+      recover: () => recoverStart(original),
+    });
+  }
 
   const resume = (
     runId: string,
@@ -316,13 +322,7 @@ export function bindAgentSession(
   store().setResume(sessionId, resume);
   store().setRetryOpening(sessionId, (key) => {
     if (!commandsReady || runOpening.isStarting()) return null;
-    const opening = runOpening.begin((signal) => retries.retry(sessionId, key, signal), {
-      onResult: () => store().projectOpeningAccepted(sessionId, key),
-      observe: recoverOpeningObservation,
-    });
-    const settlement = opening.then(acceptance);
-    void settlement.catch(() => {});
-    return settlement;
+    return retryOpening(key, (signal) => retries.retry(sessionId, key, signal));
   });
   store().setSynchronize(sessionId, (ownership) => {
     if (

@@ -17,19 +17,19 @@ export interface MutationSettlerConfig {
   acceptedAttempt?: AcceptedAttempt;
 }
 
-interface MutationSettleOptions {
+interface MutationSettleOptions<T> {
   parent?: AbortSignal;
   timeoutMs?: number;
-  onMutation?: (idempotencyKey: string) => void;
+  onCommand?: (command: MutationPromise<T>) => void;
 }
 
 function projectMutation<T>(
   settlement: Promise<T>,
-  idempotencyKey: string,
-  onMutation: MutationSettleOptions["onMutation"],
+  command: MutationPromise<T>,
+  onCommand: MutationSettleOptions<T>["onCommand"],
 ): Promise<T> {
   try {
-    onMutation?.(idempotencyKey);
+    onCommand?.(command);
   } catch (cause) {
     // A projection failure cannot orphan a dispatched command or its deadline.
     return settlement.then(
@@ -47,7 +47,7 @@ function projectMutation<T>(
 export interface MutationSettler {
   settle<T>(
     open: (signal: AbortSignal) => MutationPromise<T>,
-    options?: MutationSettleOptions,
+    options?: MutationSettleOptions<T>,
   ): Promise<T>;
   dispose(): void;
 }
@@ -168,7 +168,7 @@ export function createMutationSettler(config: MutationSettlerConfig = {}): Mutat
   return {
     settle<T>(
       open: (signal: AbortSignal) => MutationPromise<T>,
-      options: MutationSettleOptions = {},
+      options: MutationSettleOptions<T> = {},
     ): Promise<T> {
       if (lifetime.signal.aborted) return Promise.reject(lifetime.signal.reason);
       const timeoutMs = options.timeoutMs ?? MUTATION_ATTEMPT_TIMEOUT_MS;
@@ -192,7 +192,7 @@ export function createMutationSettler(config: MutationSettlerConfig = {}): Mutat
         return Promise.reject(error);
       }
       const settlement = driveMutation(mutation, first, ownership, timeoutMs, acceptedAttempt);
-      return projectMutation(settlement, mutation.idempotencyKey, options.onMutation);
+      return projectMutation(settlement, mutation, options.onCommand);
     },
     dispose(): void {
       if (!lifetime.signal.aborted) lifetime.abort(new MutationSettlementClosedError());

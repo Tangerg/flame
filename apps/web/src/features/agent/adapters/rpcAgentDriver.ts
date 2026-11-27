@@ -1,4 +1,7 @@
-import { type RuntimeAgentDriver } from "@/features/agent/adapters/runtimeDriver";
+import {
+  type RuntimeAgentDriver,
+  type RunStartRecovery,
+} from "@/features/agent/adapters/runtimeDriver";
 const DEFAULT_RPC_SESSION_ID = "ses_default";
 
 type RpcAgentInput = Parameters<RuntimeAgentDriver["start"]>[0];
@@ -27,7 +30,7 @@ export interface RpcRunsGateway {
   start: (
     params: RpcRunStartParams,
     signal?: AbortSignal,
-    onMutation?: (idempotencyKey: string) => void,
+    onCommand?: (original: RunStartRecovery) => void,
   ) => ReturnType<RuntimeAgentDriver["start"]>;
   resume: (
     params: RpcRunResumeParams,
@@ -59,8 +62,8 @@ export function createRpcAgentDriver(
   gateway: () => RpcRunsGateway,
 ): RuntimeAgentDriver {
   return {
-    start: (input, options, signal, onMutation) =>
-      gateway().start(rpcRunStartParams(sessionId, input, options), signal, onMutation),
+    start: (input, options, signal, onCommand) =>
+      gateway().start(rpcRunStartParams(sessionId, input, options), signal, onCommand),
     resume: (runId, options, signal) => gateway().resume({ runId, ...options }, signal),
   };
 }

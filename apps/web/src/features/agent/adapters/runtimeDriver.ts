@@ -7,13 +7,24 @@ import {
   type SegmentId,
   type RunOpeningResult,
 } from "@flame/runtime-client";
+export type StartedRunOpening = RunOpeningResult<{
+  runId: RunId;
+  segmentId: SegmentId;
+  userItemId: ItemId;
+}>;
+
+export interface RunStartRecovery {
+  readonly idempotencyKey: string;
+  retry(signal: AbortSignal): Promise<StartedRunOpening>;
+}
+
 export interface RuntimeAgentDriver {
   start: (
     input: ContentBlock[],
     options: AgentRunStartOptions,
     signal?: AbortSignal,
-    onMutation?: (idempotencyKey: string) => void,
-  ) => Promise<RunOpeningResult<{ runId: RunId; segmentId: SegmentId; userItemId: ItemId }>>;
+    onCommand?: (original: RunStartRecovery) => void,
+  ) => Promise<StartedRunOpening>;
   resume: (
     runId: RunId,
     options: {

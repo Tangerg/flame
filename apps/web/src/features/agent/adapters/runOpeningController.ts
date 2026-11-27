@@ -38,40 +38,33 @@ export function createRunOpeningController({
   setStartError,
   onRejected,
 }: RunOpeningControllerOptions): RunOpeningController {
-  let starting = false;
-  let openingLease: object = {};
-  let endActiveSpan: (() => void) | null = null;
-  let releaseActiveDraft: (() => void) | null = null;
+  let active: { releaseDraft(): void; finishSpan(): void } | null = null;
 
   return {
-    isStarting: () => starting,
+    isStarting: () => active !== null,
     begin(run, { observe, onResult, onStartError }) {
-      releaseActiveDraft?.();
-      endActiveSpan?.();
-      starting = true;
-      const ownLease = (openingLease = {});
+      active?.releaseDraft();
+      active?.finishSpan();
       markInteracted();
       abortCurrent();
       const ctrl = new AbortController();
       setAbortController(ctrl);
       const span = startRunSpan({ "flame.session_id": sessionId });
       let failure: unknown;
-      let accepted = false;
-      let draftReleased = false;
+      let releasePendingDraft = onStartError;
       const releaseDraft = () => {
-        if (accepted || draftReleased) return;
-        draftReleased = true;
-        onStartError?.();
+        const release = releasePendingDraft;
+        releasePendingDraft = undefined;
+        release?.();
       };
-      releaseActiveDraft = releaseDraft;
       let spanEnded = false;
       const finishSpan = () => {
         if (spanEnded) return;
         spanEnded = true;
-        if (endActiveSpan === finishSpan) endActiveSpan = null;
         endSpan(span, failure);
       };
-      endActiveSpan = finishSpan;
+      const openingLease = { releaseDraft, finishSpan };
+      active = openingLease;
       let opening: ReturnType<typeof run>;
       try {
         opening = withSpan(span, () => run(ctrl.signal));
@@ -81,25 +74,26 @@ export function createRunOpeningController({
       void opening
         .then(
           async (opening) => {
-            if (isCanceled() || ctrl.signal.aborted || ownLease !== openingLease) {
+            if (isCanceled() || ctrl.signal.aborted || active !== openingLease) {
               if (opening.observation.type === "stream") {
                 void disposeAsyncIterable(opening.observation.events);
               }
               return;
             }
             try {
-              accepted = true;
+              releasePendingDraft = undefined;
               onResult?.(opening.result, opening.observation);
               span.setAttribute("flame.run_id", opening.result.runId);
               await observe(opening, ctrl.signal);
             } catch (err) {
-              if (isCanceled() || ctrl.signal.aborted || ownLease !== openingLease) return;
+              if (isCanceled() || ctrl.signal.aborted || active !== openingLease) return;
               failure = err;
               console.error("[agent] accepted run stream failed:", sessionId, err);
             }
           },
           (err: unknown) => {
-            if (isCanceled() || ctrl.signal.aborted || ownLease !== openingLease) return;
+            if (isCanceled() || ctrl.signal.aborted || active !== openingLease) return;
+            active = null;
             releaseDraft();
             failure = err;
             console.error("[agent] run failed to start:", sessionId, err);
@@ -110,8 +104,7 @@ export function createRunOpeningController({
           },
         )
         .finally(() => {
-          if (releaseActiveDraft === releaseDraft) releaseActiveDraft = null;
-          if (ownLease === openingLease) starting = false;
+          if (active === openingLease) active = null;
           finishSpan();
         });
       // Acceptance and the observed Run have different lifetimes. The existing
@@ -119,12 +112,11 @@ export function createRunOpeningController({
       return opening;
     },
     retire() {
-      releaseActiveDraft?.();
-      releaseActiveDraft = null;
-      openingLease = {};
-      starting = false;
+      const opening = active;
+      active = null;
+      opening?.releaseDraft();
       abortCurrent();
-      endActiveSpan?.();
+      opening?.finishSpan();
     },
   };
 }

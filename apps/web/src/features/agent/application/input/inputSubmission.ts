@@ -1,5 +1,3 @@
-import { type AgentDependencies } from "@/features/agent/application/agentDependencies";
-
 export interface AgentOpeningAcceptance {
   readonly status: "accepted" | "retired";
   readonly sessionId: string;
@@ -49,17 +47,4 @@ export function settleAgentInput(
   // command owner reports failures while other consumers can await this handle.
   void settlement.catch(() => {});
   return settlement;
-}
-export function recoverOpeningInput(
-  agentAccess: AgentDependencies,
-  sessionId: string,
-  idempotencyKey: string,
-): Promise<AgentInputSettlement> {
-  const operation = agentAccess.view.getSession(sessionId)?.retryOpening?.(idempotencyKey);
-  if (!operation) throw new Error("session is not ready to recover the original input");
-  return settleAgentInput(operation, {
-    key: () => idempotencyKey,
-    isUnknown: (error) => agentAccess.runtime.isInputReceiptUnknown(error),
-    recover: () => recoverOpeningInput(agentAccess, sessionId, idempotencyKey),
-  });
 }
