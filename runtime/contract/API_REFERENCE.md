@@ -5,7 +5,7 @@
 > method the Runtime does not serve. The adjacent JSON artifacts are the
 > machine-readable contract; this file is its mechanical human-readable index.
 
-Protocol `2026-11-27.8` · 108 methods
+Protocol `2026-11-27.9` · 108 methods
 
 ## Methods
 
@@ -590,6 +590,8 @@ TypeScript validator from this single registry projection.
 | `ListSessionsRequest` | `search` | `maxLength(1024)` |
 | `ListSessionsRequest` | `projectId` | `identity` |
 | `ListSessionsRequest` | `projectId` | `maxLength(256)` |
+| `ListSessionsRequest` | `idPrefix` | `identity` |
+| `ListSessionsRequest` | `idPrefix` | `maxLength(256)` |
 | `CreateSessionRequest` | `projectId` | `identity` |
 | `CreateSessionRequest` | `projectId` | `maxLength(256)` |
 | `GetSessionRequest` | `sessionId` | `nonEmpty` |

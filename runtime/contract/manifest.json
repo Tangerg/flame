@@ -1,5 +1,5 @@
 {
-  "protocolVersion": "2026-11-27.8",
+  "protocolVersion": "2026-11-27.9",
   "features": [
     "reasoning",
     "multimodal",
@@ -7290,6 +7290,14 @@
         },
         {
           "field": "projectId",
+          "constraint": "maxLength(256)"
+        },
+        {
+          "field": "idPrefix",
+          "constraint": "identity"
+        },
+        {
+          "field": "idPrefix",
           "constraint": "maxLength(256)"
         }
       ]

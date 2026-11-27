@@ -111,6 +111,9 @@ func (r *Runtime) ListSessions(ctx context.Context, query conversation.SessionQu
 		if workspace != "" && state.meta.Workspace.Path != workspace {
 			continue
 		}
+		if !strings.HasPrefix(state.meta.ID, query.IDPrefix) {
+			continue
+		}
 		if needle != "" && !strings.Contains(strings.ToLower(state.meta.Title+"\n"+state.meta.Workspace.Path+"\n"+state.meta.Workspace.RepositoryRoot), needle) {
 			continue
 		}

@@ -45,7 +45,7 @@ func registerSessionValues(s *Shapes) {
 		GoType: typeOf[protocol.ListSessionsRequest](),
 		Constraints: append([]FieldConstraint{{
 			Field: "search", Kind: ConstraintMaxLength, Limit: session.MaximumCatalogSearchCharacters,
-		}}, resourceIdentity("projectId")...),
+		}}, append(resourceIdentity("projectId"), resourceIdentity("idPrefix")...)...),
 	})
 	s.valueConstraint(FieldConstraintSpec{
 		GoType: typeOf[protocol.CreateSessionRequest](), Constraints: resourceIdentity("projectId"),

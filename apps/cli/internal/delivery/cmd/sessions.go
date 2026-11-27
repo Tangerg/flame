@@ -329,9 +329,10 @@ func completeSessionIDs(provider runtimeProvider) cobra.CompletionFunc {
 		if err != nil {
 			return nil, cobra.ShellCompDirectiveError
 		}
-		// The completed word is a Session ID, which Runtime's search does not
-		// match; searching with it would hide every candidate.
-		page, err := runtime.ListSessions(cmd.Context(), conversation.SessionQuery{PageSize: conversation.MaximumPageSize()})
+		page, err := runtime.ListSessions(cmd.Context(), conversation.SessionQuery{
+			PageSize: conversation.MaximumPageSize(),
+			IDPrefix: toComplete,
+		})
 		if err != nil {
 			return nil, cobra.ShellCompDirectiveError
 		}
@@ -339,7 +340,7 @@ func completeSessionIDs(provider runtimeProvider) cobra.CompletionFunc {
 		for _, session := range page.Items {
 			items = append(items, session.ID+"\t"+session.Title)
 		}
-		return filterCompletionPrefix(items, toComplete), cobra.ShellCompDirectiveNoFileComp
+		return items, cobra.ShellCompDirectiveNoFileComp
 	}
 }
 

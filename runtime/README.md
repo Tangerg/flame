@@ -501,6 +501,10 @@ migration. Use a fresh data directory when upgrading.
 - `localruntime` owns the executable/companion-package layout and credential handoff.
   The Runtime process and clients consume that layout without checkout discovery.
 
+`sessions.list` accepts a case-sensitive `idPrefix` alongside the catalog's text,
+workspace and project filters. A continuation cursor belongs to the full set of
+filters. The CLI sends the typed prefix before the Runtime pages the results.
+
 Installed operations enter `CallPlugin`/`StreamPlugin`, Protocol
 `plugins.call`/`plugins.stream`, or CLI `plugins call --request ...`. Typed Go
 bindings validate the complete consumer contract. The shared TypeScript client

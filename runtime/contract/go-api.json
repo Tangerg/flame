@@ -10717,7 +10717,7 @@
         {
           "name": "Version",
           "type": "untyped string",
-          "value": "\"2026-11-27.8\""
+          "value": "\"2026-11-27.9\""
         },
         {
           "name": "WorkspaceAvailable",
@@ -13687,6 +13687,11 @@
               "name": "Search",
               "type": "string",
               "tag": "json:\"search,omitempty\""
+            },
+            {
+              "name": "IDPrefix",
+              "type": "string",
+              "tag": "json:\"idPrefix,omitempty\""
             },
             {
               "name": "Workspace",

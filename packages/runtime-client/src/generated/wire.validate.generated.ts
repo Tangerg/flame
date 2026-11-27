@@ -1963,6 +1963,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   }, ["sessionId"]),
   ListSessionsRequest: object({
     cursor: allOf([text(), maxLength(65536)]),
+    idPrefix: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
     limit: allOf([integer(), minimum("1")]),
     projectId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
     search: allOf([text(), maxLength(1024)]),

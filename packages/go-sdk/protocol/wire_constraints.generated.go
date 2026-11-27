@@ -45,6 +45,12 @@ func (l ListSessionsRequest) validateWire(object wireObject) []FieldError {
 			maxLength("projectId", l.ProjectID, 256),
 		)
 	}
+	if object.present("idPrefix") {
+		violations.add(
+			identity("idPrefix", l.IDPrefix),
+			maxLength("idPrefix", l.IDPrefix, 256),
+		)
+	}
 	if object.present("limit") {
 		violations.add(
 			positiveNumber("limit", *l.Limit),

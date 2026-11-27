@@ -87,6 +87,7 @@ type SessionQuery struct {
 	Cursor    string
 	PageSize  PageSize
 	Search    string
+	IDPrefix  string
 	Workspace string
 }
 
@@ -101,7 +102,7 @@ func (s SessionQuery) Normalize() (SessionQuery, error) {
 	if strings.ContainsRune(s.Search, 0) {
 		return SessionQuery{}, errors.New("session query: search contains NUL")
 	}
-	if err := protocol.ValidateWireTree((protocol.ListSessionsRequest{Search: s.Search})); err != nil {
+	if err := protocol.ValidateWireTree(protocol.ListSessionsRequest{Search: s.Search, IDPrefix: s.IDPrefix}); err != nil {
 		return SessionQuery{}, fmt.Errorf("session query: %w", err)
 	}
 	s.Workspace = strings.TrimSpace(s.Workspace)
