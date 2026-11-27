@@ -1,9 +1,6 @@
 import { useAgentDependencies } from "@/features/agent/application/agentContext";
 import { useCallback } from "react";
-import {
-  invalidateAgentSessions,
-  writeAgentSessionSummary,
-} from "@/features/agent/application/session/sessionQueries";
+import { editAgentSession } from "@/features/agent/application/session/editSession";
 import { reportSessionError } from "@/features/agent/application/session/reportSessionError";
 
 // A null Project removes the Session from its Project; Runtime refuses either
@@ -20,7 +17,7 @@ export function useSetSessionProject(): (
       const owner = agentAccess.commands.current();
       const runtime = agentAccess.runtime;
       try {
-        await writeAgentSessionSummary(owner, id, () =>
+        await editAgentSession(owner, id, () =>
           runtime.updateSession({
             sessionId: id,
             expectedRevision,
@@ -31,7 +28,6 @@ export function useSetSessionProject(): (
         return true;
       } catch (err) {
         if (!owner.isCurrent()) return false;
-        void invalidateAgentSessions();
         reportSessionError(agentAccess.notifications, "project", err);
         return false;
       }

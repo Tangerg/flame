@@ -30,7 +30,6 @@ import {
   unresolvedSteer,
   type RecoveredOpening,
 } from "@/features/agent/adapters/runtimeSessionMaterial";
-import { toAgentSessionSummary } from "@/features/agent/adapters/runtimeSessionSummary";
 import { type AgentCommands } from "@/features/agent/application/agentCommandOwner";
 import { type createAgentSessionUsage } from "@/features/agent/application/session/sessionUsage";
 
@@ -100,7 +99,7 @@ class RuntimeAgentGateway implements AgentRuntimeGateway {
           signal,
         ),
     );
-    return toAgentSessionSummary(session);
+    return session.id;
   }
 
   async deleteSession(sessionId: string) {
@@ -117,12 +116,11 @@ class RuntimeAgentGateway implements AgentRuntimeGateway {
     cwd,
     ...patch
   }: Parameters<AgentRuntimeGateway["updateSession"]>[0]) {
-    const updated = await this.runtimeClient().sessions.update({
+    await this.runtimeClient().sessions.update({
       sessionId: asSessionId(sessionId),
       ...patch,
       ...(cwd ? { workspace: { path: cwd } } : {}),
     });
-    return toAgentSessionSummary(updated);
   }
 
   async forkSession(input: Parameters<AgentRuntimeGateway["forkSession"]>[0]) {
@@ -130,7 +128,7 @@ class RuntimeAgentGateway implements AgentRuntimeGateway {
       sessionId: asSessionId(input.sessionId),
       ...(input.fromRunId ? { fromRunId: asRunId(input.fromRunId) } : {}),
     });
-    return { id: fork.id };
+    return fork.id;
   }
 
   async loadSessionSnapshot(sessionId: string, signal?: AbortSignal) {

@@ -1,9 +1,6 @@
 import { useAgentDependencies } from "@/features/agent/application/agentContext";
 import { useCallback } from "react";
-import {
-  invalidateAgentSessions,
-  writeAgentSessionSummary,
-} from "@/features/agent/application/session/sessionQueries";
+import { editAgentSession } from "@/features/agent/application/session/editSession";
 import { rpcErrorText } from "@/lib/rpcErrors";
 
 import { reportSessionError } from "@/features/agent/application/session/reportSessionError";
@@ -20,14 +17,13 @@ export function useRelocateSession(): (
       const owner = agentAccess.commands.current();
       const runtime = agentAccess.runtime;
       try {
-        await writeAgentSessionSummary(owner, id, () =>
+        await editAgentSession(owner, id, () =>
           runtime.updateSession({ sessionId: id, expectedRevision, cwd }),
         );
         owner.assertCurrent();
         return true;
       } catch (err) {
         if (!owner.isCurrent()) return false;
-        void invalidateAgentSessions();
         reportSessionError(
           agentAccess.notifications,
           "relocate",

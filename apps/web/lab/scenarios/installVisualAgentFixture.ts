@@ -98,28 +98,47 @@ function visualSession(
 
 function visualAgentRuntimeGateway(
   snapshot: RuntimeAgentSessionSnapshot,
-  session: AgentSessionSummary,
+  initial: AgentSessionSummary,
+  sessions: Map<string, AgentSessionSummary>,
   runtimeClient: () => FlameClient,
 ): AgentRuntimeGateway {
   return {
-    createSession: async ({ cwd }) => ({
-      ...session,
-      workspace: { ...session.workspace, path: cwd },
-    }),
-    deleteSession: async () => undefined,
-    updateSession: async ({ expectedRevision, title, favorite, cwd }) => ({
-      ...session,
-      revision: expectedRevision + 1,
-      ...(title !== undefined ? { title } : {}),
-      ...(favorite !== undefined ? { favorite } : {}),
-      ...(cwd !== undefined ? { workspace: { ...session.workspace, path: cwd } } : {}),
-    }),
-    forkSession: async () => ({ id: `${VISUAL_SESSION_ID}_fork` }),
-    loadSessionSnapshot: async () => ({
+    createSession: async ({ cwd, projectId }) => {
+      sessions.set(initial.id, {
+        ...initial,
+        projectId,
+        workspace: { ...initial.workspace, path: cwd },
+      });
+      return initial.id;
+    },
+    deleteSession: async (id) => {
+      sessions.delete(id);
+    },
+    updateSession: async ({ sessionId, expectedRevision, title, favorite, cwd, project }) => {
+      const session = sessions.get(sessionId);
+      if (!session || session.revision !== expectedRevision)
+        throw new Error("Visual Session changed");
+      sessions.set(sessionId, {
+        ...session,
+        revision: session.revision + 1,
+        ...(title !== undefined ? { title } : {}),
+        ...(favorite !== undefined ? { favorite } : {}),
+        ...(cwd !== undefined ? { workspace: { ...session.workspace, path: cwd } } : {}),
+        ...(project ? { projectId: project.type === "set" ? project.projectId : undefined } : {}),
+      });
+    },
+    forkSession: async ({ sessionId }) => {
+      const session = sessions.get(sessionId);
+      if (!session) throw new Error("Visual Session is unavailable");
+      const id = `${session.id}_fork`;
+      sessions.set(id, { ...session, id, revision: 1 });
+      return id;
+    },
+    loadSessionSnapshot: async (sessionId) => ({
       snapshot: projectRuntimeAgentSnapshot(snapshot),
       rollbackBasis: {
         expectedLastRootRunId: snapshot.runs.findLast((run) => !run.parentRunId)?.id ?? "",
-        expectedWorkspacePath: session.workspace.path,
+        expectedWorkspacePath: sessions.get(sessionId)?.workspace.path ?? initial.workspace.path,
       },
       projectAssociatedSharedMaterial: (shared) => shared,
     }),
@@ -206,12 +225,20 @@ const fileListProvider = (state: VisualFileListState | undefined) => {
   });
 };
 
-const visualAgentSessions = (visual: VisualClient, runtimeClient: () => FlameClient) =>
+const visualAgentSessions = (
+  visual: VisualClient,
+  runtimeClient: () => FlameClient,
+  sessions: ReadonlyMap<string, AgentSessionSummary>,
+) =>
   definePlugin({
     name: "flame.visual.agent-session-ports",
     provides: { sessions: AGENT_SESSIONS },
     setup(ctx) {
       registerApprovalPolicyDataProviders(ctx.contributions, runtimeClient);
+      ctx.contributions.add(DATA_PROVIDER, {
+        key: AGENT_SESSIONS_KEY,
+        fetcher: async () => [...sessions.values()],
+      });
       return {
         sessions: {
           getActiveSessionId: () => visual.agent.access.getActiveSessionId(),
@@ -293,6 +320,8 @@ export async function installVisualAgentFixture(
 ): Promise<AgentSessionView> {
   seedCommandOutput(snapshot, commandOutput);
   const projectless = state === "empty" || state === "runtime-down";
+  const initial = visualSession(state, snapshot);
+  const sessions = new Map(projectless ? [] : [[initial.id, initial]]);
   const goalAuthor = {
     installationId: "ed7c6993-768d-454d-adf8-34fbdb263c87",
     release: "f".repeat(64),
@@ -314,7 +343,7 @@ export async function installVisualAgentFixture(
   installVisualRuntimeServiceStatusPort(visual, state === "runtime-down" ? "unavailable" : "ready");
   visual.agent.dependencies = {
     ...visual.agent.dependencies,
-    runtime: visualAgentRuntimeGateway(snapshot, visualSession(state, snapshot), runtimeClient),
+    runtime: visualAgentRuntimeGateway(snapshot, initial, sessions, runtimeClient),
   };
 
   visual.agent.sessions.store.setState({
@@ -326,10 +355,6 @@ export async function installVisualAgentFixture(
   queryClient.setQueryDefaults([WORKSPACE_FOLDERS_KEY], { staleTime: Infinity });
   queryClient.setQueryDefaults([MODELS_KEY], { staleTime: Infinity });
   queryClient.setQueryDefaults([APPROVAL_MODE_KEY], { staleTime: Infinity });
-  queryClient.setQueryData(
-    [AGENT_SESSIONS_KEY],
-    projectless ? [] : [visualSession(state, snapshot)],
-  );
   queryClient.setQueryData<WorkspaceFolderSummary[]>([WORKSPACE_FOLDERS_KEY], []);
   queryClient.setQueryData(
     [MODELS_KEY],
@@ -352,7 +377,7 @@ export async function installVisualAgentFixture(
     flameDark(visual.theme.access.preference),
     customTheme(visual.theme.access.preference),
     ...builtinVisualStyles,
-    visualAgentSessions(visual, runtimeClient),
+    visualAgentSessions(visual, runtimeClient, sessions),
     visualRuntimeStream(visual),
     visualNavigationBootstrap(visual),
     createComposerBootstrap(visual.composer),
@@ -384,6 +409,7 @@ export async function installVisualAgentFixture(
     await visualToolResults(runtimeClient, state === "genui-report"),
     fileListProvider(fileListState),
   );
+  queryClient.setQueryData([AGENT_SESSIONS_KEY], [...sessions.values()]);
 
   seedComposer(visual.composer.store.getState(), state, fileListState);
 

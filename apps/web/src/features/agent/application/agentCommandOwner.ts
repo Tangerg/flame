@@ -78,9 +78,9 @@ export function createAgentCommands() {
       };
     }
 
-    serializeSessionSummary<T>(sessionId: string, execute: () => Promise<T>): Promise<T> {
+    serializeSessionEdit<T>(sessionId: string, execute: () => Promise<T>): Promise<T> {
       this.assertCurrent();
-      return this.#cohort.runSerial(tupleKey("session-summary", sessionId), execute);
+      return this.#cohort.runSerial(tupleKey("session-edit", sessionId), execute);
     }
 
     serializeApprovalMode<T>(execute: () => Promise<T>): Promise<T> {

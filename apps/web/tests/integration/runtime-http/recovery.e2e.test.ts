@@ -1,9 +1,19 @@
 import { lstat } from "node:fs/promises";
 import { join } from "node:path";
 import { describe, expect, it, onTestFinished } from "vitest";
+import { QueryObserver } from "@tanstack/react-query";
 import { asRunId, asSessionId, createSidecarClient, type FlameClient } from "@flame/runtime-client";
 import { HTTP_HEADERS } from "@flame/runtime-client/wire";
 import { composeAgent } from "@/features/agent/adapters/agent";
+import {
+  readRuntimeSessionSummaries,
+  toAgentSessionSummary,
+} from "@/features/agent/adapters/runtimeSessionSummary";
+import { editAgentSession } from "@/features/agent/application/session/editSession";
+import {
+  AGENT_SESSIONS_KEY,
+  type AgentSessionSummary,
+} from "@/features/agent/application/session/sessionQueries";
 import {
   editAndRerunMessage,
   regenerateMessage,
@@ -17,6 +27,7 @@ import { NotificationFeed } from "@/features/notifications/public/notifications"
 import { createConversationImportGateway } from "@/features/workspace/adapters/runtimeConversationImportGateway";
 import { createConversationImport } from "@/features/workspace/application/conversationImport";
 import { createMemoryNavigator } from "@/lib/navigation.testkit";
+import { queryClient } from "@/lib/queryClient";
 import {
   type ProviderGate,
   compactionCutpointMarker,
@@ -103,6 +114,111 @@ function openWebComposer(
 
 describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: restart and crash recovery", () => {
   const fixture = useRuntimeFixture("recovery");
+
+  it("keeps the latest Session list when an older edit acknowledgement arrives", async () => {
+    const session = await fixture.client.sessions.create({ workspace: { path: fixture.root } });
+    const sessionId = asSessionId(session.id);
+    const recorded = Promise.withResolvers<void>();
+    const release = Promise.withResolvers<void>();
+    const client = fixture.createRuntimeClient(async (url, init) => {
+      const response = await fetch(url, init);
+      if (new Headers(init?.headers).get(HTTP_HEADERS.method) === "sessions.update") {
+        recorded.resolve();
+        await release.promise;
+      }
+      return response;
+    });
+    const web = openWebSession(client, fixture.baseUrl, sessionId);
+    const { commands, runtime } = web.agent.dependencies;
+    const queryKey = [AGENT_SESSIONS_KEY];
+    const edit = editAgentSession(commands.current(), sessionId, () =>
+      runtime.updateSession({ sessionId, expectedRevision: session.revision, favorite: true }),
+    );
+    try {
+      await within(recorded.promise, "recording the first Session edit");
+      const saved = await fixture.client.sessions.get(sessionId);
+      const latest = await fixture.client.sessions.update({
+        sessionId,
+        expectedRevision: saved.revision,
+        title: "A newer title from the other client",
+      });
+      const sessions = await queryClient.fetchQuery({
+        queryKey,
+        queryFn: ({ signal }) => readRuntimeSessionSummaries(client, signal),
+      });
+      expect(sessions.find(({ id }) => id === sessionId)).toEqual(toAgentSessionSummary(latest));
+
+      release.resolve();
+      await edit;
+      expect(
+        queryClient
+          .getQueryData<AgentSessionSummary[]>(queryKey)
+          ?.find(({ id }) => id === sessionId),
+      ).toEqual(toAgentSessionSummary(latest));
+    } finally {
+      release.resolve();
+      await edit.catch(() => {});
+      queryClient.removeQueries({ queryKey });
+      web.dispose();
+      await client.close();
+      await fixture.client.sessions.delete(sessionId);
+    }
+  }, 30_000);
+
+  it("opens a new Session after the list observes its creation", async () => {
+    const session = await fixture.client.sessions.create({ workspace: { path: fixture.root } });
+    const sessionId = asSessionId(session.id);
+    const opening = await fixture.client.runs.start({
+      sessionId,
+      input: [{ type: "text", text: "A conversation that should stay open in its own tab." }],
+    });
+    await collectRunEvents(originalOpeningEvents(opening));
+
+    const listing = Promise.withResolvers<void>();
+    const release = Promise.withResolvers<void>();
+    let created = false;
+    const client = fixture.createRuntimeClient(async (url, init) => {
+      const method = new Headers(init?.headers).get(HTTP_HEADERS.method);
+      const response = await fetch(url, init);
+      if (method === "sessions.create") created = true;
+      if (method === "sessions.list" && created) {
+        listing.resolve();
+        await release.promise;
+      }
+      return response;
+    });
+    const web = openWebSession(client, fixture.baseUrl, sessionId);
+    const access = web.agent.access;
+    const queryKey = [AGENT_SESSIONS_KEY];
+    const observer = new QueryObserver(queryClient, {
+      queryKey,
+      queryFn: ({ signal }) => readRuntimeSessionSummaries(client, signal),
+    });
+    const unsubscribe = observer.subscribe(() => {});
+    let creating: Promise<string | null> | undefined;
+    try {
+      await observer.refetch({ throwOnError: true });
+      await expect(access.synchronizeRewrittenSessionView(sessionId)).resolves.toBe(true);
+      creating = access.createSession();
+      await within(listing.promise, "the Session list refetch after creation");
+      expect(access.getActiveSessionId()).toBe(sessionId);
+      release.resolve();
+      const newId = await creating;
+      expect(newId).toBeTruthy();
+      expect(newId).not.toBe(sessionId);
+      expect(access.getActiveSessionId()).toBe(newId);
+      expect(observer.getCurrentResult().data?.map(({ id }) => id)).toContain(newId);
+    } finally {
+      release.resolve();
+      const newId = await creating?.catch(() => null);
+      unsubscribe();
+      queryClient.removeQueries({ queryKey });
+      web.dispose();
+      await client.close();
+      if (newId && newId !== sessionId) await fixture.client.sessions.delete(asSessionId(newId));
+      await fixture.client.sessions.delete(sessionId);
+    }
+  }, 30_000);
 
   it("opens an unmounted JSON import and refreshes an existing view on reimport", async () => {
     const title = "Conversation imported before its view mounts";

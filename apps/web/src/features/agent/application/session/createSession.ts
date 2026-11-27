@@ -4,7 +4,7 @@ import { queryClient } from "@/lib/queryClient";
 import { useCallback } from "react";
 import {
   AGENT_SESSIONS_KEY,
-  commitCreatedAgentSession,
+  invalidateAgentSessions,
   type AgentSessionSummary,
 } from "@/features/agent/application/session/sessionQueries";
 import { type AgentRuntimeGateway } from "@/features/agent/application/runtimeGateway";
@@ -29,11 +29,12 @@ async function createAndOpen({
   runtime: AgentRuntimeGateway;
   state: AgentSessionStatePort;
 }): Promise<string> {
-  const session = await owner.settle(runtime.createSession({ cwd, projectId }));
+  const sessionId = await owner.settle(runtime.createSession({ cwd, projectId }));
   owner.assertCurrent();
-  commitCreatedAgentSession(session);
-  state.selectSession(session.id);
-  return session.id;
+  await owner.settle(invalidateAgentSessions());
+  owner.assertCurrent();
+  state.selectSession(sessionId);
+  return sessionId;
 }
 
 function joinKey(opts: CreateSessionOptions): string {

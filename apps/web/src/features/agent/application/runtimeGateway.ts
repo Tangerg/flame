@@ -13,7 +13,6 @@ import {
 } from "@/features/agent/domain/hitl";
 import { type AgentInput } from "@/features/agent/domain/input";
 import { type AgentPlan } from "@/features/agent/public/sessionView";
-import { type AgentSessionSummary } from "@/features/agent/application/session/sessionQueries";
 import { type AgentOpeningAcceptance } from "@/features/agent/application/input/inputSubmission";
 export interface AgentSessionSnapshot {
   items: AgentItem[];
@@ -90,7 +89,7 @@ export interface AgentUnresolvedSteer {
 export type AgentSessionProjectChange = { type: "set"; projectId: string } | { type: "clear" };
 
 export interface AgentRuntimeGateway {
-  createSession(input: { cwd: string; projectId?: string }): Promise<AgentSessionSummary>;
+  createSession(input: { cwd: string; projectId?: string }): Promise<string>;
   deleteSession(sessionId: string): Promise<void>;
   updateSession(input: {
     sessionId: string;
@@ -99,18 +98,20 @@ export interface AgentRuntimeGateway {
     favorite?: boolean;
     cwd?: string;
     project?: AgentSessionProjectChange;
-  }): Promise<AgentSessionSummary>;
-  forkSession(input: { sessionId: string; fromRunId?: string }): Promise<{ id: string }>;
+  }): Promise<void>;
+  forkSession(input: { sessionId: string; fromRunId?: string }): Promise<string>;
   loadSessionSnapshot(
     sessionId: string,
     signal?: AbortSignal,
   ): Promise<AgentSessionMaterialRead | null>;
   loadSessionUsage(sessionId: string, signal?: AbortSignal): Promise<AgentSessionUsage>;
-  rollbackSession(input: SessionRollbackBasis & {
-    sessionId: string;
-    toRunId?: string;
-    restoreType?: RestoreType;
-  }): Promise<{
+  rollbackSession(
+    input: SessionRollbackBasis & {
+      sessionId: string;
+      toRunId?: string;
+      restoreType?: RestoreType;
+    },
+  ): Promise<{
     droppedRuns: Array<{ runId: string; userInput?: AgentInput }>;
   }>;
   steerRun(runId: string, segmentId: string, input: AgentInput): AgentSteerSubmission;
