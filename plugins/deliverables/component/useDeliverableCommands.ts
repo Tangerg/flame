@@ -190,7 +190,7 @@ export function useDeliverableCommands({
     try {
       const original = originalCommand(id, method);
       if (original?.state !== "recoverable") return;
-      await observe(
+      await observe<MethodOutputs[CommandMethod]>(
         id,
         method,
         () => original.recover(signal),
