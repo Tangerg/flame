@@ -287,7 +287,9 @@ changed.
 Document and revision-history pagination keeps its controls focusable while a
 read is pending and at page boundaries. Pending controls reject repeat activation;
 settlement preserves the user's current focus, including a later move to another
-control. Read failures retain the accepted page and its available navigation.
+control. Background invalidation follows the selected archive or history cursor
+while navigation is pending. Read failures retain the accepted page and its
+available navigation.
 The exact revision being read remains a selectable option alongside each history
 page, so paging does not replace its label with a raw identity or change selection.
 Opening a retained document, a completed command's revision or the Inspector's

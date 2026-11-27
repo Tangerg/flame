@@ -3,7 +3,6 @@ import {
   useEffect,
   useMemo,
   useRef,
-  useState,
   useSyncExternalStore,
 } from "react";
 import {
@@ -24,6 +23,8 @@ import {
 } from "./useCommandJournal";
 import { useAssetSave } from "./useAssetSave";
 import { DocumentNavigation, type Selection } from "./documentNavigation";
+import { ArchivePager, type PageDirection } from "./archivePager";
+import { type MethodOutputs } from "./methods.generated";
 
 function commandNotice(
   method: CommandMethod,
@@ -36,31 +37,6 @@ function commandNotice(
   if (effect.result === "revision")
     return { kind: "command", method, revision: result as Revision };
   return { kind: "command", method };
-}
-
-type PageDirection = "next" | "previous";
-
-// Paging keeps a stack of the cursors that opened each earlier page; a page
-// still loading or without a further cursor does not move.
-function pageCursor(
-  direction: PageDirection,
-  prior: { loading: boolean; value?: { next?: string } } | undefined,
-  pages: ReadonlyArray<string | undefined>,
-): { before?: string } | undefined {
-  if (prior?.loading) return undefined;
-  if (direction === "next")
-    return prior?.value?.next ? { before: prior.value.next } : undefined;
-  if (!pages.length) return undefined;
-  const before = pages.at(-1);
-  return before ? { before } : {};
-}
-
-function movedPages(
-  pages: Array<string | undefined>,
-  direction: PageDirection,
-  openedBy: string | undefined,
-): Array<string | undefined> {
-  return direction === "next" ? [...pages, openedBy] : pages.slice(0, -1);
 }
 
 export function useDeliverables(context: ComponentContext) {
@@ -77,9 +53,20 @@ export function useDeliverables(context: ComponentContext) {
     [context.signal, owner],
   );
   const { values, query, abort } = useProjections(context, operations, signal);
-  const [listPages, setListPages] = useState<Array<string | undefined>>([]);
-  const [historyPages, setHistoryPages] = useState<Array<string | undefined>>(
-    [],
+  const archivePager = useMemo(
+    () =>
+      new ArchivePager(signal, (before, readSignal) =>
+        operations.query(
+          METHODS.list,
+          { limit: LIMITS.pageSize, ...scoped, ...(before ? { before } : {}) },
+          readSignal,
+        ),
+      ),
+    [signal, operations, scoped],
+  );
+  const list = useSyncExternalStore(
+    archivePager.subscribe,
+    archivePager.snapshot,
   );
   const navigation = useMemo(
     () =>
@@ -98,10 +85,8 @@ export function useDeliverables(context: ComponentContext) {
         (previous, next) => {
           abort(METHODS.read);
           if (previous?.id === next?.id) return;
-          abort(METHODS.history);
           abort(METHODS.threads);
           abort(METHODS.suggestions);
-          setHistoryPages([]);
         },
       ),
     [signal, operations, abort],
@@ -109,6 +94,30 @@ export function useDeliverables(context: ComponentContext) {
   const { selection, linkError } = useSyncExternalStore(
     navigation.subscribe,
     navigation.snapshot,
+  );
+  const selectedDocument = selection?.id;
+  const historyPager = useMemo(
+    () =>
+      new ArchivePager<MethodOutputs[typeof METHODS.history]>(
+        signal,
+        selectedDocument
+          ? (before, readSignal) =>
+              operations.query(
+                METHODS.history,
+                {
+                  id: selectedDocument,
+                  limit: LIMITS.pageSize,
+                  ...(before ? { before } : {}),
+                },
+                readSignal,
+              )
+          : undefined,
+      ),
+    [signal, operations, selectedDocument],
+  );
+  const history = useSyncExternalStore(
+    historyPager.subscribe,
+    historyPager.snapshot,
   );
   const [notice, setNotice] = useContextState<Notice>(context);
   const tell = useCallback(
@@ -139,12 +148,11 @@ export function useDeliverables(context: ComponentContext) {
   );
 
   useEffect(() => {
-    setListPages([]);
-    setHistoryPages([]);
     void query(METHODS.catalog, {});
-    void query(METHODS.list, { limit: LIMITS.pageSize, ...scoped });
+    void archivePager.refresh();
     void query(METHODS.uploads, {});
-  }, [query, scoped]);
+    return archivePager.stop;
+  }, [query, archivePager]);
   useEffect(() => {
     if (selection) {
       const { id, revision } = selection;
@@ -152,39 +160,27 @@ export function useDeliverables(context: ComponentContext) {
     }
   }, [query, selection?.id, selection?.revision]);
   useEffect(() => {
-    if (!selection) return;
-    void query(METHODS.history, { id: selection.id, limit: LIMITS.pageSize });
-    void query(METHODS.threads, { id: selection.id, limit: LIMITS.pageSize });
+    if (!selectedDocument) return;
+    void historyPager.refresh();
+    void query(METHODS.threads, { id: selectedDocument, limit: LIMITS.pageSize });
     void query(METHODS.suggestions, {
-      id: selection.id,
+      id: selectedDocument,
       status: "pending",
       limit: LIMITS.pageSize,
     });
-  }, [query, selection?.id]);
+    return historyPager.stop;
+  }, [query, selectedDocument, historyPager]);
 
   const refresh = useCallback(async () => {
     const captured = navigation.snapshot().selection;
     await Promise.all([
       query(METHODS.catalog, {}),
-      query(METHODS.list, {
-        limit: LIMITS.pageSize,
-        ...scoped,
-        ...(values[METHODS.list]?.input.before
-          ? { before: values[METHODS.list]!.input.before }
-          : {}),
-      }),
+      archivePager.refresh(),
       query(METHODS.uploads, {}),
       ...(captured
         ? [
             query(METHODS.read, { id: captured.id, revision: captured.revision }),
-            query(METHODS.history, {
-              id: captured.id,
-              limit: LIMITS.pageSize,
-              ...(values[METHODS.history]?.input.id === captured.id &&
-              values[METHODS.history]?.input.before
-                ? { before: values[METHODS.history]!.input.before }
-                : {}),
-            }),
+            ...(captured.id === selectedDocument ? [historyPager.refresh()] : []),
             query(METHODS.threads, { id: captured.id, limit: LIMITS.pageSize }),
             query(METHODS.suggestions, {
               id: captured.id,
@@ -194,7 +190,7 @@ export function useDeliverables(context: ComponentContext) {
           ]
         : []),
     ]);
-  }, [navigation, query, scoped, values]);
+  }, [navigation, query, archivePager, historyPager, selectedDocument]);
   const refreshRef = useRef(refresh);
   refreshRef.current = refresh;
   // Runtime announces plugin data changes, including the model's tool calls,
@@ -241,40 +237,6 @@ export function useDeliverables(context: ComponentContext) {
   });
   const assets = useAssetSave(context, operations, signal, tell);
 
-  const page = useCallback(
-    async (kind: "list" | "history", direction: PageDirection) => {
-      if (kind === "list") {
-        const prior = values[METHODS.list];
-        const cursor = pageCursor(direction, prior, listPages);
-        if (!cursor) return;
-        const result = await query(METHODS.list, {
-          limit: LIMITS.pageSize,
-          ...scoped,
-          ...cursor,
-        });
-        if (result)
-          setListPages((pages) =>
-            movedPages(pages, direction, prior?.input.before),
-          );
-        return;
-      }
-      const captured = navigation.snapshot().selection;
-      const prior = values[METHODS.history];
-      const cursor = captured && pageCursor(direction, prior, historyPages);
-      if (!captured || !cursor) return;
-      const result = await query(METHODS.history, {
-        id: captured.id,
-        limit: LIMITS.pageSize,
-        ...cursor,
-      });
-      if (result && navigation.snapshot().selection?.id === captured.id)
-        setHistoryPages((pages) =>
-          movedPages(pages, direction, prior?.input.before),
-        );
-    },
-    [historyPages, listPages, navigation, query, scoped, values],
-  );
-
   return {
     context,
     signal,
@@ -284,19 +246,17 @@ export function useDeliverables(context: ComponentContext) {
     open: navigation.open,
     selectRevision,
     refresh,
-    page,
+    page: (kind: "list" | "history", direction: PageDirection) =>
+      (kind === "list" ? archivePager : historyPager).move(direction),
     catalog: values[METHODS.catalog],
-    list: values[METHODS.list],
+    list,
     uploads: values[METHODS.uploads],
     read:
       values[METHODS.read]?.input.id === selection?.id &&
       values[METHODS.read]?.input.revision === selection?.revision
         ? values[METHODS.read]
         : undefined,
-    history:
-      values[METHODS.history]?.input.id === selection?.id
-        ? values[METHODS.history]
-        : undefined,
+    history,
     threads:
       values[METHODS.threads]?.input.id === selection?.id
         ? values[METHODS.threads]
@@ -305,8 +265,8 @@ export function useDeliverables(context: ComponentContext) {
       values[METHODS.suggestions]?.input.id === selection?.id
         ? values[METHODS.suggestions]
         : undefined,
-    listPrevious: listPages.length > 0,
-    historyPrevious: historyPages.length > 0,
+    listPrevious: Boolean(list?.cursors.length),
+    historyPrevious: Boolean(history?.cursors.length),
     ...journal,
     notice,
     refreshUploads: () => query(METHODS.uploads, {}),
