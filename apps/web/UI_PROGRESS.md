@@ -2010,6 +2010,64 @@ The next review follows the shortened workspace name beside
 the heading, where folders with the same basename need
 distinct full paths.
 
+### The conversation header reveals the exact workspace path
+
+Signed Wails at `981283538` opens two real directories
+named `workspace` under separate parents. Each contains
+a `note.txt` with different literal text. Both header
+breadcrumbs show `workspace`. A stationary pointer over
+either shows no full path in the owned window evidence.
+The header's native text has empty Help. Sidebar folder
+buttons do carry their exact paths as native Help. The
+header's keyboard menu shows only the two copy commands.
+
+The existing workspace label now uses the shared Tooltip
+when its displayed basename omits part of the path. Both
+existing copy menus place the exact path under Copy working
+directory. The action's accessible name and typeahead use
+the original label. The full value is its description and
+comes from the same current Session path as the copy action.
+macOS exposes this description as `AXCustomContent`.
+The initial scratch probe checked Help and was corrected to
+read the role's actual description.
+
+- Chinese/light/14 px/Flame at 1120 × 728 with Files
+  beside Conversation. The two tooltips identify the
+  distinct `north-review/workspace` and
+  `south-review/workspace` roots while their readers
+  display the corresponding North and South source text.
+  The tooltip stays readable when the pointer enters it.
+- Backward Tab opens North's existing More menu and
+  exposes its full path beside the copy commands.
+  Right-click on South's heading names South and shows
+  that path. Escape returns from the menus. Cmd+L resumes
+  North's `2468` at caret 2. The next digit produces
+  `24568`, and Undo restores the original draft.
+- English/dark/18 px/Blue at 1280 × 800. The path and
+  file content follow the active Session. Direction keys
+  visit the two original copy actions. The request-version
+  changes on `f6441b1c4` are included in the final signed
+  replay of both paths and North's keyboard menu.
+
+Both private Sessions, their empty Items and Runs, and
+the two file digests match through a Runtime restart.
+The loopback provider serves twelve catalog reads and
+zero generations. Native macOS qualification covers actual
+pointer, keyboard, focus, visible paths and the accessibility
+description. The clipboard payload is inspected in source.
+Screen reader speech and other hosts require separate checks.
+
+Web typecheck, 84 contracts, bootstrap, scoped Prettier,
+diff checks, production staging, Runtime packaging and
+strict Wails signatures pass. Three Wails hosts exit
+normally. Both private Runtime instances reach the existing
+drain deadline. The owned provider, listeners, registration,
+profile, fixtures, captures, diagnostics, checkout outputs
+and caches are removed.
+
+The next review follows the same-basename folders in the
+sidebar before a Session is selected.
+
 ## Error notes leave retrying to their buttons (2026-11-26)
 
 Five error notes ended by narrating the buttons beside them. The sidebar's folder error said `Check the Runtime connection, then retry.` above `Retry`. The shared data-view error said `… Check the connection and retry.`, and every caller offers Retry except provider selections, whose section has its own Refresh selections. The draft notices said `Keep this window open and retry, or copy drafts.` above `Retry` and `Copy draft text`. The startup failure said `Retry, or copy the diagnostics to report it.` above `Retry` and `Copy diagnostics`. Each now stops at what the buttons can't say:
