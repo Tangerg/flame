@@ -114,6 +114,53 @@ it(
         contributions: [],
       });
 
+      const businessRequest = interfaceRequest();
+      const button = businessRequest.messages[0].createSurface.components.find(
+        ({ id }) => id === "send",
+      );
+      const event = button.action.event;
+      event.context.payload = {
+        catalogId: "inventory",
+        event: { name: "shipment.arrived" },
+        component: "TextField",
+        call: "fulfillment desk",
+      };
+      const businessPayload = await client.callTool({
+        name: presentationTool,
+        arguments: businessRequest,
+      });
+      expect(
+        businessPayload.isError,
+        businessPayload.content[0]?.text,
+      ).not.toBe(true);
+      expect(businessPayload.structuredContent).toEqual({
+        ...businessRequest,
+        contributions: [],
+      });
+      expect(
+        Presentation.read(
+          JSON.stringify(businessPayload.structuredContent),
+        ).snapshot(),
+      ).toEqual(businessPayload.structuredContent);
+      event.name = "shipment.arrived";
+      const undeclaredAction = await client.callTool({
+        name: presentationTool,
+        arguments: businessRequest,
+      });
+      expect(undeclaredAction.isError).toBe(true);
+      expect(undeclaredAction.content[0].text).toContain(
+        "action is not declared",
+      );
+      button.action = { functionCall: { call: "unregistered_function" } };
+      const undeclaredFunction = await client.callTool({
+        name: presentationTool,
+        arguments: businessRequest,
+      });
+      expect(undeclaredFunction.isError).toBe(true);
+      expect(undeclaredFunction.content[0].text).toContain(
+        "renderer function is not admitted",
+      );
+
       const data = request.messages[0].createSurface.dataModel.data;
       data.padding = "";
       const bytes = Buffer.byteLength(

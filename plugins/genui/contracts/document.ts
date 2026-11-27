@@ -4,6 +4,7 @@ import {
   type ActionPayload,
 } from "@a2ui/web_core";
 import {
+  ActionSchema,
   AgentToRendererMessageSchema,
   type AgentToRendererMessage,
 } from "@a2ui/web_core/v1_0";
@@ -130,10 +131,6 @@ function bounded(value: unknown): unknown {
   validateContentCapacity(value);
   return normalize(value);
 }
-function unique(values: readonly string[]) {
-  if (new Set(values).size !== values.length)
-    throw new InvalidPresentation("duplicate interface identity");
-}
 const bindingKey = (
   value: Pick<CapturedContribution, "installationId" | "contribution">,
 ) => JSON.stringify([value.installationId, value.contribution]);
@@ -166,46 +163,61 @@ function assertDraftBinding(value: unknown): void {
     throw new InvalidPresentation("editable values must bind below /draft");
 }
 
-function admit(document: UiDocument): void {
-  unique(document.operations.map(({ id }) => id));
-  const names = new Set([
-    ...builtinActionNames,
-    ...document.operations.map(({ id }) => id),
-  ]);
-  if (document.operations.some(({ id }) => builtinActionNames.has(id)))
-    throw new InvalidPresentation("reserved action name");
-  function admitNode(record: Record<string, unknown>) {
-    const call = record["@call"] ?? record.call;
-    if (typeof call === "string" && !catalog.rendererFunctions.has(call))
-      throw new InvalidPresentation(
-        "renderer function is not admitted: " + call,
-      );
-    if (record.catalogId !== undefined && record.catalogId !== CATALOG_ID)
-      throw new InvalidPresentation("catalog is not admitted");
-    const event = record.event;
-    if (
-      event &&
-      typeof event === "object" &&
-      "name" in event &&
-      !names.has(String(event.name))
-    )
+function admitRendererFunction(name: string, catalogId: unknown): void {
+  if (!catalog.rendererFunctions.has(name))
+    throw new InvalidPresentation(`renderer function is not admitted: ${name}`);
+  if (catalogId !== undefined && catalogId !== CATALOG_ID)
+    throw new InvalidPresentation("catalog is not admitted");
+}
+
+function admitExpressions(value: unknown): void {
+  if (Array.isArray(value)) {
+    value.forEach(admitExpressions);
+    return;
+  }
+  if (!value || typeof value !== "object") return;
+  const record = value as Record<string, unknown>;
+  const call = record["@call"];
+  if (typeof call === "string") admitRendererFunction(call, record.catalogId);
+  Object.values(record).forEach(admitExpressions);
+}
+
+function admitComponent(
+  component: Record<string, unknown>,
+  admittedActions: ReadonlySet<string>,
+): void {
+  if (
+    component.component === trustedComponentApis.textField.name ||
+    component.component === trustedComponentApis.checkbox.name
+  )
+    assertDraftBinding(component.value);
+  if (component.action !== undefined) {
+    const action = ActionSchema.safeParse(component.action);
+    if (!action.success)
+      throw new InvalidPresentation("invalid component action", action.error);
+    if ("event" in action.data && !admittedActions.has(action.data.event.name))
       throw new InvalidPresentation("action is not declared");
-    if (
-      record.component === trustedComponentApis.textField.name ||
-      record.component === trustedComponentApis.checkbox.name
-    )
-      assertDraftBinding(record.value);
-  }
-  function walk(value: unknown) {
-    if (Array.isArray(value)) {
-      value.forEach(walk);
-      return;
+    if ("functionCall" in action.data) {
+      // A2UI evaluates the unprefixed name within an explicit function action.
+      const { "@call": expression, call, catalogId } = action.data.functionCall;
+      if (expression === undefined && call !== undefined)
+        admitRendererFunction(call, catalogId);
     }
-    if (!value || typeof value !== "object") return;
-    const record = value as Record<string, unknown>;
-    admitNode(record);
-    Object.values(record).forEach(walk);
   }
+  admitExpressions(component);
+}
+
+function admit(document: UiDocument): void {
+  const admittedActions = new Set(builtinActionNames);
+  for (const { id } of document.operations) {
+    if (builtinActionNames.has(id))
+      throw new InvalidPresentation("reserved action name");
+    if (admittedActions.has(id))
+      throw new InvalidPresentation("duplicate interface identity");
+    admittedActions.add(id);
+  }
+  const admitControls = (component: Record<string, unknown>) =>
+    admitComponent(component, admittedActions);
   const surfaces = new Set<string>();
   for (const message of document.messages) {
     if ("callRendererFunction" in message || "agentFunctionResponse" in message)
@@ -221,17 +233,20 @@ function admit(document: UiDocument): void {
       )
         throw new InvalidPresentation("invalid surface admission");
       surfaces.add(surface.surfaceId);
+      surface.components?.forEach(admitControls);
+      continue;
     }
-    if ("updateDataModel" in message) {
-      const path = message.updateDataModel.path;
-      if (!path?.startsWith("/data/"))
-        throw new InvalidPresentation(
-          "remote updates may write only below /data",
-        );
+    if ("updateComponents" in message) {
+      message.updateComponents.components.forEach(admitControls);
+      continue;
     }
-    if ("createSurface" in message) walk(message.createSurface.components);
-    if ("updateComponents" in message)
-      walk(message.updateComponents.components);
+    if (
+      "updateDataModel" in message &&
+      !message.updateDataModel.path?.startsWith("/data/")
+    )
+      throw new InvalidPresentation(
+        "remote updates may write only below /data",
+      );
   }
   const processor = new MessageProcessor([catalog], undefined, {
     version: A2UI_VERSION,
