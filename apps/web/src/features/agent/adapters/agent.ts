@@ -18,7 +18,7 @@ import { ApprovalActionRegistry } from "@/features/agent/application/hitl/approv
 import { createAgentSessionStore } from "@/features/agent/adapters/agentSessionStore";
 import { createAgentStore } from "@/features/agent/adapters/agentStore";
 import { createAgentState } from "@/features/agent/adapters/agentStatePorts";
-import { createAgentRuntimeGateway } from "@/features/agent/adapters/agentRuntimeGateway";
+import { RuntimeAgentGateway } from "@/features/agent/adapters/agentRuntimeGateway";
 import { RuntimeRunOpenings } from "./runtimeRunOpenings";
 import { createActiveSessionObservation } from "@/features/agent/adapters/activeSessionObservation";
 import { installAgentSessionScope } from "@/features/agent/adapters/agentSessionScope";
@@ -58,13 +58,9 @@ export function composeAgent(
   const commands = createAgentCommands();
   const usage = createAgentSessionUsage();
   const sharedMaterial = createAgentSharedMaterial();
-  const gateway = createAgentRuntimeGateway(
-    client,
-    runtime.capabilities,
-    sharedMaterial,
-    commands,
-    usage,
-  );
+  const gateway = new RuntimeAgentGateway(client, runtime.capabilities, sharedMaterial, commands);
+  commands.replace();
+  usage.replace(gateway);
   const runOpenings = new RuntimeRunOpenings(client);
   const interrupts = new InterruptResponseCoordinator(state.view);
   const approvalActions = new ApprovalActionRegistry();
@@ -88,7 +84,7 @@ export function composeAgent(
     state: state.state,
     view: state.view,
     useObserveActiveSession,
-    runtime: gateway.gateway,
+    runtime: gateway,
     commands,
     usage,
     sharedMaterial,
@@ -127,12 +123,12 @@ export function composeAgent(
           scope,
           runtime.endpoint.currentRuntimeEndpoint,
         ),
-      );
-      stops.push(
-        followRuntimeGeneration(stream, () => {
+        scope.subscribeReplacement(() => {
           state.retirePendingSessionOpen();
-          gateway.replaceRuntimeGeneration();
+          gateway.replaceServerScope();
+          commands.replace();
         }),
+        followRuntimeGeneration(stream, () => usage.replace(gateway)),
       );
     },
     dispose() {
@@ -141,6 +137,8 @@ export function composeAgent(
       for (const stop of stops.splice(0).reverse()) stop();
       interrupts.retire();
       sharedMaterial.dispose();
+      commands.dispose();
+      usage.dispose();
       gateway.dispose();
       runOpenings.dispose();
       state.dispose();

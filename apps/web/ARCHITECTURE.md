@@ -392,6 +392,9 @@ draft editable, and settlement only clears the submitted revision.
 Run opening commands retain their original Runtime client and journal
 namespace. A Session view and a reconnecting event feed can retire their
 observations while the opening still settles.
+Agent Session and approval commands follow the selected Runtime target. A
+reconnecting event feed refreshes usage reads while an in-flight Session
+creation retains its acknowledgement and navigation intent.
 
 The URL owns current navigation: active Session, main view, dock target, and
 Settings pane. Stores retain tab sets, drafts, per-view state, and continuity.
