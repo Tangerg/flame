@@ -25,9 +25,10 @@ Stashing a draft moves its visible content directly to a saved stash.
 When a steer is refused, the Workbench restores its attachments to the current
 draft and retires the original command in one commit.
 
-MCP forms preserve command and directory bytes, and encode arguments as JSON
-arrays and environment/header replacements as JSON objects. Empty and whitespace
-values remain explicit process material; Runtime owns their final admission.
+MCP forms preserve command and directory bytes. Arguments are JSON arrays of
+strings, and environment and header replacements are JSON objects with string
+values. Empty strings and whitespace remain explicit process material. Runtime
+owns final admission.
 Busy operation admission keeps the original form and step. An admitted form is
 read-only until settlement. A definite refusal restores editing; an uncertain
 acknowledgement retains the original request, target, command identity and replay

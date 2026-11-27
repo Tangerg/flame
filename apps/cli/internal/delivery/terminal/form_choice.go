@@ -19,5 +19,4 @@ func (c formChange) Validate() error {
 	}
 }
 
-func (c formChange) SetsValue() bool   { return c == formChangeSet }
-func (c formChange) ClearsValue() bool { return c == formChangeClear }
+func (c formChange) SetsValue() bool { return c == formChangeSet }

@@ -73,10 +73,10 @@ type MCPManagement interface {
 	ToolExposure(context.Context, protocol.MCPServerID) (protocol.MCPToolExposure, error)
 	SetToolExposure(context.Context, protocol.SetMCPToolExposureRequest) error
 	Servers(context.Context) ([]protocol.MCPServer, error)
-	CreateServer(context.Context, authoring.CommandID, mcp.Candidate) error
-	UpdateServer(context.Context, authoring.CommandID, mcp.ServerUpdate) error
+	CreateServer(context.Context, authoring.CommandID, protocol.MCPServerCandidate) error
+	UpdateServer(context.Context, authoring.CommandID, protocol.UpdateMCPServerRequest) error
 	DeleteServer(context.Context, protocol.MCPDirectoryTarget) error
-	TestServer(context.Context, mcp.Candidate) (protocol.MCPTestOutcome, error)
+	TestServer(context.Context, protocol.MCPServerCandidate) (protocol.MCPTestOutcome, error)
 	Tools(context.Context, *protocol.MCPServerID) ([]protocol.MCPTool, error)
 	ReconnectServer(context.Context, protocol.MCPServerID) error
 	StartAuthorization(context.Context, protocol.MCPServerID) (mcp.AuthorizationReference, error)
