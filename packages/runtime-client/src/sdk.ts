@@ -1,7 +1,11 @@
 import { createRpcClient } from "./client";
 import { createMethods, type Methods } from "./methods";
 import type { Transport } from "./transport";
-import { createMutationJournal, type MutationJournalStorage } from "./mutationJournal";
+import {
+  createMutationJournal,
+  type MutationJournalCleanupObserver,
+  type MutationJournalStorage,
+} from "./mutationJournal";
 import type { RequestMeta, ServerCapabilities } from "@flame/runtime-client/wire";
 import { requireCapabilities } from "./preflight";
 import { createWireCallPath, type WireCallPath } from "./wireCallPath";
@@ -15,14 +19,21 @@ export interface FlameClientOptions {
   capabilities?: () => ServerCapabilities | null | undefined;
   requestMeta?: () => RequestMeta | undefined;
   mutationStorage?: MutationJournalStorage;
+  onMutationJournalCleanupFailure?: MutationJournalCleanupObserver;
 }
 
 export function createFlameClient(
   transport: Transport,
-  { capabilities, requestMeta, mutationStorage }: FlameClientOptions = {},
+  {
+    capabilities,
+    requestMeta,
+    mutationStorage,
+    onMutationJournalCleanupFailure,
+  }: FlameClientOptions = {},
 ): FlameClient {
   const mutationJournal = createMutationJournal({
     storage: mutationStorage,
+    onCleanupFailure: onMutationJournalCleanupFailure,
     scope: () => capabilities?.()?.limits.idempotency,
     admitNewCommand: (method, params, metadata) => {
       requireCapabilities(method, params, capabilities?.(), metadata?.clientCapabilities);

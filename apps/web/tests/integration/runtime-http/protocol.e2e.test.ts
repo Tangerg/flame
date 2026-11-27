@@ -784,6 +784,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: protocol delivery", () => {
     const removal = vi.spyOn(mutationStorage, "remove").mockImplementation(() => {
       throw unavailable;
     });
+    const diagnostics: MutationJournalCleanupError[] = [];
     let deliveries = 0;
     const client = createFlameClient(
       createHttpTransport({
@@ -793,14 +794,20 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: protocol delivery", () => {
           return globalThis.fetch(url, init);
         },
       }),
-      { capabilities: () => fixture.negotiated, mutationStorage },
+      {
+        capabilities: () => fixture.negotiated,
+        mutationStorage,
+        onMutationJournalCleanupFailure: (failure: MutationJournalCleanupError) => {
+          diagnostics.push(failure);
+        },
+      },
     );
     try {
       const mutation = client.sessions.create({ title });
-      const failure = await mutation.catch((error: unknown) => error);
-      if (!(failure instanceof MutationJournalCleanupError)) {
-        throw new Error("expected cleanup of the confirmed command to fail", { cause: failure });
-      }
+      const result = await mutation;
+      expect(diagnostics).toHaveLength(1);
+      const [failure] = diagnostics;
+      if (!failure) throw new Error("missing journal cleanup diagnostic");
       expect(failure.cause).toHaveProperty("cause", unavailable);
       expect(deliveries).toBe(1);
       expect(mutationStorage.size).toBe(1);
@@ -809,7 +816,13 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: protocol delivery", () => {
         (session) => session.title === title,
       );
       if (!accepted) throw new Error("the Session was not committed");
+      expect(result).toEqual(accepted);
       expect(failure.confirmation).toEqual({ type: "accepted", result: accepted });
+
+      await expect(mutation.retry()).resolves.toEqual(accepted);
+      expect(diagnostics).toHaveLength(2);
+      expect(deliveries).toBe(1);
+      expect(() => failure.retryCleanup()).toThrow(MutationJournalCleanupError);
 
       removal.mockRestore();
       await expect(mutation.retry()).resolves.toEqual(accepted);

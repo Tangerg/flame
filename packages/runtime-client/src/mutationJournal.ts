@@ -74,6 +74,8 @@ type AttemptOutcome<T> =
   | { type: "unresolved" }
   | { type: "canceled" };
 
+export type MutationJournalCleanupObserver = (failure: MutationJournalCleanupError) => void;
+
 class ConfirmedMutation<T> {
   #cleanup: (() => void) | undefined;
 
@@ -84,12 +86,19 @@ class ConfirmedMutation<T> {
     this.#cleanup = cleanup;
   }
 
-  cleanup(): void {
+  tryCleanup(): MutationJournalCleanupError<T> | undefined {
     if (!this.#cleanup) return;
     try {
       this.#cleanup();
     } catch (cause) {
-      throw new MutationJournalCleanupError(this.confirmation, () => this.cleanup(), cause);
+      return new MutationJournalCleanupError(
+        this.confirmation,
+        () => {
+          const failure = this.tryCleanup();
+          if (failure) throw failure;
+        },
+        cause,
+      );
     }
     this.#cleanup = undefined;
   }
@@ -112,7 +121,11 @@ export class MutationJournal {
   readonly #preparing = new Set<string>();
   #retired = false;
 
-  constructor(journal: DurableMutationJournal) {
+  constructor(
+    journal: DurableMutationJournal,
+    private readonly onCleanupFailure: MutationJournalCleanupObserver = (failure) =>
+      console.error(failure),
+  ) {
     this.#journal = journal;
   }
 
@@ -306,7 +319,7 @@ export class MutationJournal {
       activeAttempts--;
       if (activeAttempts !== 0) return;
       if (confirmed) {
-        confirmed.cleanup();
+        this.#cleanConfirmed(confirmed);
         return;
       }
       try {
@@ -346,7 +359,7 @@ export class MutationJournal {
         if (observed) {
           const result = Promise.resolve().then(() => {
             // The last active attempt retires the entry that the other attempts still use.
-            if (activeAttempts === 0) observed.cleanup();
+            if (activeAttempts === 0) this.#cleanConfirmed(observed);
             return observed.result();
           });
           return mutationHandle(result, idempotencyKey, retry);
@@ -373,6 +386,18 @@ export class MutationJournal {
     return observe(create);
   }
 
+  #cleanConfirmed<T>(confirmed: ConfirmedMutation<T>): void {
+    const failure = confirmed.tryCleanup();
+    if (!failure) return;
+    try {
+      this.onCleanupFailure(failure);
+    } catch (observerFailure) {
+      console.error(
+        new AggregateError([failure, observerFailure], "mutation journal cleanup observer failed"),
+      );
+    }
+  }
+
   #assertClaim(identity: DurableMutationIdentity): void {
     this.#assertCurrent();
     if (this.#claims.get(identity.idempotencyKey) !== identity) {
@@ -389,10 +414,13 @@ export class MutationJournal {
   }
 }
 
-export function createMutationJournal(
-  options: Omit<DurableMutationJournalOptions, "storage" | "now"> &
-    Partial<Pick<DurableMutationJournalOptions, "storage" | "now">>,
-): MutationJournal {
+export function createMutationJournal({
+  onCleanupFailure,
+  ...options
+}: Omit<DurableMutationJournalOptions, "storage" | "now"> &
+  Partial<Pick<DurableMutationJournalOptions, "storage" | "now">> & {
+    onCleanupFailure?: MutationJournalCleanupObserver;
+  }): MutationJournal {
   const values = new Map<string, unknown>();
   const storage = options.storage ?? {
     get: (key: string) => values.get(key),
@@ -402,5 +430,6 @@ export function createMutationJournal(
   };
   return new MutationJournal(
     openDurableMutationJournal({ ...options, storage, now: options.now ?? Date.now }),
+    onCleanupFailure,
   );
 }
