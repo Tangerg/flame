@@ -78,15 +78,16 @@ Workspace filename suggestions use the optional `nameQuery` of `workspace.files.
 Task worktrees live under the Runtime data directory. Create one from a local Git
 branch or a commit, then open an ordinary Session with the resulting workspace.
 An optional setup command runs in place with the restricted macOS sandbox and
-retains its exit status and bounded output. The catalog keeps serving registered
-tasks while a new checkout runs its setup, and the same source repository can
-prepare another task at the same time. The main checkout is independent of task
-setup and edits. Handoff previews bind tracked and untracked changes to the
-original checkout's branch and HEAD. Accepting a current preview stages its
-changes in that clean destination. Release uses Git's non-forced removal for an
-owned worktree at its original base with no attached Session. Task custody follows
-the Git registration created by Runtime. Worktrees created before Runtime recorded
-that custody appear as unavailable and remain on disk.
+retains its exit status and bounded output. A registered checkout keeps its
+creation receipt when the request ends during setup. The catalog keeps serving
+registered tasks while a new checkout runs its setup, and the same source
+repository can prepare another task at the same time. The main checkout is
+independent of task setup and edits. Handoff previews bind tracked and untracked
+changes to the original checkout's branch and HEAD. Accepting a current preview
+stages its changes in that clean destination. Release uses Git's non-forced
+removal for an owned worktree at its original base with no attached Session.
+Task custody follows the Git registration created by Runtime. Worktrees created
+before Runtime recorded that custody appear as unavailable and remain on disk.
 
 Project Home shows recent accepted background Runs and links to their original
 Sessions and PR reviews. A schedule or file watcher can capture a Project ID when

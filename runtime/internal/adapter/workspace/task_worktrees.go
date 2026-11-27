@@ -33,6 +33,8 @@ const (
 	maxTaskRecord = 16 << 10
 )
 
+const taskPublicationTimeout = 5 * time.Second
+
 type TaskWorktrees struct {
 	root       string
 	toolDirs   []string
@@ -137,7 +139,10 @@ func (b *TaskWorktrees) Create(ctx context.Context, path, base, setup string) (w
 			return work.TaskWorktree{}, err
 		}
 	}
-	return b.inspect(ctx, record)
+	// The caller can stop setup after Git has registered the checkout.
+	publicationCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), taskPublicationTimeout)
+	defer cancel()
+	return b.inspect(publicationCtx, record)
 }
 
 func (b *TaskWorktrees) List(ctx context.Context) ([]work.TaskWorktree, error) {
