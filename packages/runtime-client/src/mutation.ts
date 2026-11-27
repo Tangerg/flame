@@ -17,6 +17,26 @@ export interface MutationPromise<T> extends Promise<T> {
   retry(options?: MutationAttemptOptions): MutationPromise<T>;
 }
 
+export function mutationHandle<T>(
+  promise: Promise<T>,
+  idempotencyKey: string,
+  retry: MutationPromise<T>["retry"],
+): MutationPromise<T> {
+  return Object.defineProperties(promise, {
+    idempotencyKey: { enumerable: true, value: idempotencyKey },
+    retry: { enumerable: true, value: retry },
+  }) as MutationPromise<T>;
+}
+
+export function observedMutation<T>(idempotencyKey: string, result: T): MutationPromise<T> {
+  const handle: MutationPromise<T> = mutationHandle(
+    Promise.resolve(result),
+    idempotencyKey,
+    () => handle,
+  );
+  return handle;
+}
+
 type MutationExecution<T> = (idempotencyKey: string, options: MutationAttemptOptions) => Promise<T>;
 
 export class MutationLookupError extends Error {
@@ -117,12 +137,7 @@ export function createMutationPromise<T>(
   options: MutationAttemptOptions = {},
 ): MutationPromise<T> {
   const promise = Promise.resolve().then(() => settleMutation(execute, idempotencyKey, options));
-  return Object.defineProperties(promise, {
-    idempotencyKey: { enumerable: true, value: idempotencyKey },
-    retry: {
-      enumerable: true,
-      value: (retryOptions: MutationAttemptOptions = options) =>
-        createMutationPromise(execute, idempotencyKey, retryOptions),
-    },
-  }) as MutationPromise<T>;
+  return mutationHandle(promise, idempotencyKey, (retryOptions = options) =>
+    createMutationPromise(execute, idempotencyKey, retryOptions),
+  );
 }

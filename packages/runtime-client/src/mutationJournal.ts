@@ -13,7 +13,12 @@ import {
   type PluginCommandBinding,
 } from "./mutationJournalEntry";
 import { MutationJournalError, MutationJournalOwnershipError } from "./mutationJournalErrors";
-import { MutationLookupError, mutationSettlementIsUnknown, type MutationPromise } from "./mutation";
+import {
+  MutationLookupError,
+  mutationHandle,
+  mutationSettlementIsUnknown,
+  type MutationPromise,
+} from "./mutation";
 import type { CallPluginRequest, PluginCallRoute } from "@flame/runtime-client/wire";
 import { RpcCancellationError } from "./errors";
 import { captureRequestMeta } from "./request";
@@ -58,66 +63,13 @@ export type PendingRunCommand = RunCommand & {
   reserve(): MutationReservation;
 };
 
-function rejectedMutation<T>(
-  error: unknown,
-  idempotencyKey: string,
-  retry: (options?: { signal?: AbortSignal }) => MutationPromise<T>,
-): MutationPromise<T> {
-  const rejected = Promise.reject(error);
-  return Object.defineProperties(rejected, {
-    idempotencyKey: { enumerable: true, value: idempotencyKey },
-    retry: { enumerable: true, value: retry },
-  }) as unknown as MutationPromise<T>;
-}
-
-interface MutationLifecycle {
-  begin(): void;
-  claim(): void;
-  resolve(): void;
-  reject(error: unknown): void;
-}
+type AttemptOutcome<T> =
+  { type: "confirmed"; handle: MutationPromise<T> } | { type: "unresolved" } | { type: "canceled" };
 
 // Caller-owned copies of admitted journal data must retain exact JSON numbers.
 function copyJournalProjection<T>(value: T): T {
   const copy: unknown = cloneJSON(value);
   return copy as T;
-}
-
-function trackedMutation<T>(
-  create: () => MutationPromise<T>,
-  lifecycle: MutationLifecycle,
-): MutationPromise<T> {
-  lifecycle.begin();
-  let mutation: MutationPromise<T>;
-  try {
-    mutation = create();
-  } catch (error) {
-    const unknown = new MutationLookupError(error);
-    lifecycle.reject(unknown);
-    throw unknown;
-  }
-  const tracked = mutation.then(
-    (value) => {
-      lifecycle.resolve();
-      return value;
-    },
-    (error: unknown) => {
-      lifecycle.reject(error);
-      throw error;
-    },
-  );
-  const retry = (options?: { signal?: AbortSignal }): MutationPromise<T> => {
-    try {
-      lifecycle.claim();
-      return trackedMutation(() => mutation.retry(options), lifecycle);
-    } catch (error) {
-      return rejectedMutation(error, mutation.idempotencyKey, retry);
-    }
-  };
-  return Object.defineProperties(tracked, {
-    idempotencyKey: { enumerable: true, get: () => mutation.idempotencyKey },
-    retry: { enumerable: true, value: retry },
-  }) as MutationPromise<T>;
 }
 
 export class MutationJournal {
@@ -249,7 +201,6 @@ export class MutationJournal {
   #claim(identity: DurableMutationIdentity): MutationReservation {
     this.#claims.set(identity.idempotencyKey, identity);
     const journal = this.#journal;
-    const lifecycle = this.#lifecycle(identity);
     return {
       idempotencyKey: identity.idempotencyKey,
       get steerItemId() {
@@ -274,7 +225,7 @@ export class MutationJournal {
         this.#assertClaim(identity);
         return this.#journal.markDispatched(identity);
       },
-      track: (create) => trackedMutation(create, lifecycle),
+      track: (create) => this.#track(identity, create),
     };
   }
 
@@ -284,50 +235,76 @@ export class MutationJournal {
     this.#claims.clear();
   }
 
-  #lifecycle(identity: DurableMutationIdentity): MutationLifecycle {
+  #track<T>(
+    identity: DurableMutationIdentity,
+    create: () => MutationPromise<T>,
+  ): MutationPromise<T> {
     const idempotencyKey = identity.idempotencyKey;
     let activeAttempts = 0;
-    let definitiveOutcome = false;
-    const finish = (definitive: boolean, canceled = false) => {
-      // Retirement revokes delivery, not a result's authority over its original
-      // identity. The durable owner checks the exact record before removing it.
-      activeAttempts = Math.max(0, activeAttempts - 1);
-      definitiveOutcome ||= definitive;
-      if (activeAttempts > 0) return;
-      try {
-        if (definitiveOutcome || (canceled && !this.#journal.wasDispatched(identity))) {
-          this.#journal.settle(identity);
+    let confirmed: MutationPromise<T> | undefined;
+    const finish = (outcome: AttemptOutcome<T>) => {
+      const observed = confirmed ?? (outcome.type === "confirmed" ? outcome.handle : undefined);
+      activeAttempts -= 1;
+      if (activeAttempts === 0) {
+        try {
+          if (observed || (outcome.type === "canceled" && !this.#journal.wasDispatched(identity))) {
+            this.#journal.settle(identity);
+          }
+        } finally {
+          if (this.#claims.get(idempotencyKey) === identity) this.#claims.delete(idempotencyKey);
         }
-      } finally {
-        definitiveOutcome = false;
-        if (this.#claims.get(idempotencyKey) === identity) this.#claims.delete(idempotencyKey);
       }
+      confirmed = observed;
     };
-    return {
-      begin: () => {
-        this.#assertClaim(identity);
-        activeAttempts += 1;
-      },
-      claim: () => {
-        this.#assertCurrent();
-        if (activeAttempts === 0) definitiveOutcome = false;
-        const claimed = this.#claims.get(idempotencyKey);
-        if (claimed && claimed !== identity)
-          throw new MutationJournalOwnershipError(
-            "Runtime mutation identity is already owned by another attempt",
-          );
-        if (!claimed) {
-          this.#journal.retain(identity);
-          this.#claims.set(idempotencyKey, identity);
+    const observe = (start: () => MutationPromise<T>): MutationPromise<T> => {
+      this.#assertClaim(identity);
+      activeAttempts += 1;
+      let mutation: MutationPromise<T>;
+      try {
+        mutation = start();
+      } catch (cause) {
+        finish({ type: "unresolved" });
+        throw new MutationLookupError(cause);
+      }
+      const tracked = mutation.then(
+        (value) => {
+          finish({ type: "confirmed", handle });
+          return value;
+        },
+        (error: unknown) => {
+          if (error instanceof RpcCancellationError) {
+            finish({ type: "canceled" });
+          } else if (mutationSettlementIsUnknown(error) || error instanceof MutationJournalError) {
+            finish({ type: "unresolved" });
+          } else {
+            finish({ type: "confirmed", handle });
+          }
+          throw error;
+        },
+      );
+      const retry: MutationPromise<T>["retry"] = (options) => {
+        // A racing attempt may still be draining after this receipt reached its caller.
+        if (confirmed) return confirmed;
+        try {
+          this.#assertCurrent();
+          const claimed = this.#claims.get(idempotencyKey);
+          if (claimed && claimed !== identity)
+            throw new MutationJournalOwnershipError(
+              "Runtime mutation identity is already owned by another attempt",
+            );
+          if (!claimed) {
+            this.#journal.retain(identity);
+            this.#claims.set(idempotencyKey, identity);
+          }
+          return observe(() => mutation.retry(options));
+        } catch (error) {
+          return mutationHandle(Promise.reject(error), idempotencyKey, retry);
         }
-      },
-      resolve: () => finish(true),
-      reject: (error) =>
-        finish(
-          !mutationSettlementIsUnknown(error) && !(error instanceof MutationJournalError),
-          error instanceof RpcCancellationError,
-        ),
+      };
+      const handle = mutationHandle(tracked, idempotencyKey, retry);
+      return handle;
     };
+    return observe(create);
   }
 
   #assertClaim(identity: DurableMutationIdentity): void {

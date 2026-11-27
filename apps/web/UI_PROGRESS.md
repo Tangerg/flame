@@ -2118,8 +2118,164 @@ drain deadline. The owned provider, listeners, app registration,
 profile, fixture, screenshots, diagnostics, checkout outputs
 and caches are removed.
 
-The next review isolates sidebar folder expansion across
-a visit to Settings, starting with a direct open and close.
+[Settings preserves sidebar folds and scroll](#settings-preserves-sidebar-folds-and-scroll)
+isolates folder expansion with a direct open and close.
+
+### Settings preserves sidebar folds and scroll
+
+Signed Wails at `38f777eb3` opened and closed Settings without
+changing preferences. The folded North folder reopened when
+the sidebar mounted again. South stayed selected, its
+`note.txt` stayed open and draft `2468` kept caret 2.
+
+`AgentAppShell` retains the Work Index in its existing panel.
+Settings conceals it visually and removes it from pointer,
+keyboard and accessibility navigation. The existing sidebar
+components keep their folder and project expansion and the
+scroll container keeps its position. `ContentVisibility`
+retires temporary popups. The owners in `SessionRow` and
+`ProjectsSection` clear their pending dialogs during cover.
+The Settings entry in `useInspectionFocus` hands off from an
+active element that WebKit still reports in a concealed
+subtree. This extends the existing retained workspace cover.
+[HTML inert](https://html.spec.whatwg.org/multipage/interaction.html#the-inert-attribute)
+
+- Chinese/light/14 px/Flame at 1120 × 728. North stays folded
+  at y=351. Tab in Settings reaches its search field. Closing
+  Settings restores South's reader and the Composer at caret
+  2. Typing 5 makes `24568`; Undo restores `2468` at caret
+  2. Opening Settings from the directory path tooltip and
+  from the sidebar footer places focus in Settings. The
+  sidebar menu, blank New Project and unsubmitted Rename
+  close on entry. Their individual return probes preserve
+  the same South file and fold.
+- At 1280 × 800, setting English, dark, 18 px and Blue keeps
+  North folded, South's file open and the draft caret.
+  Session Search chooses North and unfolds its group.
+  Pointer collapse of South survives another Settings visit
+  while North's distinct note remains open. An unchosen
+  Move dialog closes into Settings and stays dismissed.
+- Fourteen private folders overflow the native Work Index.
+  A wheel move takes the same row from y=643 to y=307.
+  After opening and closing Settings it returns at
+  `12 307 221 31`, with North's file still open.
+- The first retained sidebar build left focus at the WebView
+  root when entering from a focused folder. The concealed
+  origin handoff restores Settings focus. On the rebuild
+  at `dbc1613b9`, a closing Delete confirmation also left
+  focus at the WebView root. Unmounting that unconfirmed
+  dialog on cover restores Settings focus. The final signed
+  replay reads North, keeps South folded at y=610, restores
+  draft caret 2 and dismisses the unconfirmed prompt.
+
+All 16 private Sessions, the single private project and
+both notes survive a Runtime restart with matching records
+and file digests. Items and Runs stay empty. The loopback
+provider serves ten catalog reads and zero generations.
+The five Wails hosts exit normally. Both private Runtime
+instances reach the existing drain deadline. The owned
+processes, listeners, app registration, profile, fixtures,
+diagnostics, captures, checkout outputs and caches are removed.
+
+Web typecheck, 84 contract tests, bootstrap, scoped Prettier
+and diff checks pass on the integrated source. Production
+Web staging, Runtime packaging and strict Wails signature
+checks pass. The final parent `1cbbe377f` updates submitted
+command receipts. The four UI files match byte for byte,
+and the Web checks pass again on that parent. The native
+evidence at `dbc1613b9` covers keyboard, pointer,
+focus, scrolling and the recorded viewport and theme cases.
+VoiceOver speech and other hosts remain unverified.
+
+One preliminary search probe showed `south` in the field
+while the host Pinyin input source was active. All sixteen
+rows remained. A click derived from the native static-text
+rectangle selected North among the private Sessions.
+[Session search distinguishes identical titles by workspace](#session-search-distinguishes-identical-titles-by-workspace)
+checks committed input, result focus and the visible hit target independently.
+
+### Session search distinguishes identical titles by workspace
+
+In signed Wails at `3ed5cc884`, a committed numeric query
+of `4820` narrows a scrolled 16-row search to two results.
+Both read `4820 workspace review` with the same relative
+time in the picker and native accessibility tree. Both
+folder names are `workspace`. Keyboard selection of the
+second opens the North note. Clicking the visually located
+first row opens the South note. The two results have distinct
+destinations and the same visible identity.
+
+`SessionSearch` now supplies the full existing workspace
+path when the displayed result set has identical titles
+with different nonempty paths. The literal path wraps under
+the title and participates in the option's accessible name.
+Unique results keep their compact title and time. Title
+matching, result order and the existing per-Session ID
+continue to drive the options. ZCode's read-only
+`CommandCenterDialog` pairs a workspace label with each
+conversation result and uses a separate identity for selection.
+[WAI combobox pattern](https://www.w3.org/WAI/ARIA/apg/patterns/combobox/)
+
+- Chinese/light/14 px/Flame at 1120 × 728. Committed
+  `4820` resets the scrolled results to the two labeled
+  matches. Native focus starts on the South path. Down
+  highlights the exact North path and Return opens its
+  `note.txt` with `North review source`. Selecting the
+  current North result returns draft `2468` at caret 2.
+  Typing 5 gives `24568` and Undo returns to caret 2.
+  Query `14` shows the compact unique result, and Escape
+  restores the Composer caret.
+- English/dark/18 px/Blue at 1280 × 800. Both paths wrap
+  completely and keep their timestamps. A click on the
+  displayed South path opens `South review source`.
+  Fifteen Down presses from the first unfiltered option
+  bring the complete last North option into view. Return
+  opens the North note and its draft. Query `9999` shows
+  the empty state and remains open on Return. Escape
+  resumes the North reader and Composer.
+
+The signed native samples use committed digits and
+on-screen pointer targets. They cover keyboard focus, list
+scrolling and exact file context. Composed Pinyin, VoiceOver
+speech and other hosts remain outside this sample. All 16
+private Session records and both source digests match, with
+empty Items and Runs. The loopback provider serves ten
+catalog reads and zero generations.
+
+Web typecheck, 84 contract tests, bootstrap, scoped Prettier
+and diff checks pass on the verified tree at `3ed5cc884`.
+Production staging, Runtime packaging and strict Wails
+signatures pass there. The parent `356222be0` updates Run
+recovery receipts after these checks. The verified UI file
+matches byte for byte, and this task records zero Runs.
+Both Wails hosts exit
+normally. The private Runtime reaches the existing drain
+deadline. The owned provider, listeners, bundle registration,
+profile, fixtures, logs, captures, checkout outputs and
+caches are removed.
+
+At 18 px and a narrow sidebar, the Search sessions trigger
+fades the end of its label while the keyboard hint stays
+visible. The [milestone pause](#milestone-pause-after-workspace-aware-session-search)
+records the next native check.
+
+### Milestone pause after workspace-aware Session Search
+
+Desktop UI polishing pauses at the maintainer's request.
+The published code through `71e127d34` includes the
+[retained sidebar state in Settings](#settings-preserves-sidebar-folds-and-scroll)
+and [workspace paths for identical session titles](#session-search-distinguishes-identical-titles-by-workspace).
+Their sections record the signed Wails verification and
+the 84 passing Web contracts.
+
+The sidebar Search trigger review reached source inspection
+and a strictly signed baseline build. The desktop and Runtime
+launches await resumption. Start by checking the full French
+or German label at the minimum sidebar width and 18 px, then
+compare the fitting width and the keyboard, pointer and
+focus-return paths. The loopback provider, baseline app
+bundle, private fixture and generated checkout outputs were
+removed before the pause.
 
 ## Error notes leave retrying to their buttons (2026-11-26)
 

@@ -3,6 +3,7 @@ import * as stylex from "@stylexjs/stylex";
 import { clsx } from "clsx";
 import { type ReactNode } from "react";
 import { createContext, useContext, useSyncExternalStore, useState } from "react";
+import { ContentVisibility } from "@flame/ui";
 import { AgentSidebar } from "@/ui/agent/sidebar";
 import { AgentDrawerToggle } from "@/ui/agent/surface-header";
 interface AgentAppShellProps {
@@ -56,6 +57,7 @@ export function AgentAppShell({
   const [shell, setShell] = useState<HTMLDivElement | null>(null);
   const hasSidebar = sidebar !== undefined;
   const showSidebar = hasSidebar && !sidebarCovered;
+  const sidebarInactive = sidebarCovered || !sidebarOpen;
 
   const [initial] = useState(() => sidebarLayout ?? undefined);
   const narrow = useSyncExternalStore(
@@ -99,15 +101,16 @@ export function AgentAppShell({
               minSize={sidebarOpen ? (narrow ? 100 : 240) : 0}
               maxSize={sidebarOpen ? (narrow ? "40%" : 520) : 0}
             >
-              {showSidebar && (
-                <div
-                  inert={!sidebarOpen}
-                  aria-hidden={!sidebarOpen || undefined}
-                  style={{ height: "100%" }}
-                >
+              <div
+                inert={sidebarInactive}
+                aria-hidden={sidebarInactive || undefined}
+                className={stylex.props(sidebarCovered && styles.hidden).className}
+                style={{ height: "100%" }}
+              >
+                <ContentVisibility visible={!sidebarCovered}>
                   <AgentSidebar label={sidebarLabel}>{sidebar}</AgentSidebar>
-                </div>
-              )}
+                </ContentVisibility>
+              </div>
             </Panel>
           )}
           {hasSidebar && sidebarOpen && (
