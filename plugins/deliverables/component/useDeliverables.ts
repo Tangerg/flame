@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import {
   failureText,
   useContextState,
@@ -16,11 +23,7 @@ import {
   type CommandObservation,
 } from "./useCommandJournal";
 import { useAssetSave } from "./useAssetSave";
-
-export interface Selection {
-  id: string;
-  revision: string;
-}
+import { DocumentNavigation, type Selection } from "./documentNavigation";
 
 function commandNotice(
   method: CommandMethod,
@@ -60,10 +63,6 @@ function movedPages(
   return direction === "next" ? [...pages, openedBy] : pages.slice(0, -1);
 }
 
-function sameSelection(a?: Selection, b?: Selection): boolean {
-  return a?.id === b?.id && a?.revision === b?.revision;
-}
-
 export function useDeliverables(context: ComponentContext) {
   const operations = useMemo(
     () => bindDeliverableOperations(context),
@@ -78,12 +77,38 @@ export function useDeliverables(context: ComponentContext) {
     [context.signal, owner],
   );
   const { values, query, abort } = useProjections(context, operations, signal);
-  const [selection, setTarget] = useContextState<Selection>(context);
-  const current = useRef(selection);
-  current.current = selection;
   const [listPages, setListPages] = useState<Array<string | undefined>>([]);
   const [historyPages, setHistoryPages] = useState<Array<string | undefined>>(
     [],
+  );
+  const navigation = useMemo(
+    () =>
+      new DocumentNavigation(
+        signal,
+        async (id, signal) => {
+          const history = await operations.query(
+            METHODS.history,
+            { id, limit: 1 },
+            signal,
+          );
+          const head = history.entries[0];
+          if (!head) throw new Error("This deliverable has no revisions.");
+          return head.id;
+        },
+        (previous, next) => {
+          abort(METHODS.read);
+          if (previous?.id === next?.id) return;
+          abort(METHODS.history);
+          abort(METHODS.threads);
+          abort(METHODS.suggestions);
+          setHistoryPages([]);
+        },
+      ),
+    [signal, operations, abort],
+  );
+  const { selection, linkError } = useSyncExternalStore(
+    navigation.subscribe,
+    navigation.snapshot,
   );
   const [notice, setNotice] = useContextState<Notice>(context);
   const tell = useCallback(
@@ -98,27 +123,19 @@ export function useDeliverables(context: ComponentContext) {
   );
 
   useEffect(() => () => owner.abort(), [owner]);
-
-  const open = useCallback(
-    (value: Selection) => {
-      if (signal.aborted) return;
-      if (sameSelection(current.current, value)) return;
-      abort(METHODS.read);
-      if (current.current?.id !== value.id) {
-        abort(METHODS.history);
-        setHistoryPages([]);
-      }
-      current.current = value;
-      setTarget(value);
-    },
-    [abort, setTarget, signal],
+  useEffect(
+    () =>
+      context.views?.subscribeTarget((value) => void navigation.openLink(value)),
+    [context.views, navigation],
   );
   const selectRevision = useCallback(
     (revision: Revision, captured: Selection | undefined) => {
-      if (signal.aborted || !sameSelection(current.current, captured)) return;
-      open({ id: revision.documentId, revision: revision.id });
+      navigation.replace(captured, {
+        id: revision.documentId,
+        revision: revision.id,
+      });
     },
-    [open, signal],
+    [navigation],
   );
 
   useEffect(() => {
@@ -129,7 +146,10 @@ export function useDeliverables(context: ComponentContext) {
     void query(METHODS.uploads, {});
   }, [query, scoped]);
   useEffect(() => {
-    if (selection) void query(METHODS.read, selection);
+    if (selection) {
+      const { id, revision } = selection;
+      void query(METHODS.read, { id, revision });
+    }
   }, [query, selection?.id, selection?.revision]);
   useEffect(() => {
     if (!selection) return;
@@ -143,7 +163,7 @@ export function useDeliverables(context: ComponentContext) {
   }, [query, selection?.id]);
 
   const refresh = useCallback(async () => {
-    const captured = current.current;
+    const captured = navigation.snapshot().selection;
     await Promise.all([
       query(METHODS.catalog, {}),
       query(METHODS.list, {
@@ -156,7 +176,7 @@ export function useDeliverables(context: ComponentContext) {
       query(METHODS.uploads, {}),
       ...(captured
         ? [
-            query(METHODS.read, captured),
+            query(METHODS.read, { id: captured.id, revision: captured.revision }),
             query(METHODS.history, {
               id: captured.id,
               limit: LIMITS.pageSize,
@@ -174,7 +194,7 @@ export function useDeliverables(context: ComponentContext) {
           ]
         : []),
     ]);
-  }, [query, scoped, values]);
+  }, [navigation, query, scoped, values]);
   const refreshRef = useRef(refresh);
   refreshRef.current = refresh;
   // Runtime announces plugin data changes, including the model's tool calls,
@@ -238,7 +258,7 @@ export function useDeliverables(context: ComponentContext) {
           );
         return;
       }
-      const captured = current.current;
+      const captured = navigation.snapshot().selection;
       const prior = values[METHODS.history];
       const cursor = captured && pageCursor(direction, prior, historyPages);
       if (!captured || !cursor) return;
@@ -247,12 +267,12 @@ export function useDeliverables(context: ComponentContext) {
         limit: LIMITS.pageSize,
         ...cursor,
       });
-      if (result && current.current?.id === captured.id)
+      if (result && navigation.snapshot().selection?.id === captured.id)
         setHistoryPages((pages) =>
           movedPages(pages, direction, prior?.input.before),
         );
     },
-    [historyPages, listPages, query, scoped, values],
+    [historyPages, listPages, navigation, query, scoped, values],
   );
 
   return {
@@ -260,7 +280,8 @@ export function useDeliverables(context: ComponentContext) {
     signal,
     operations,
     selection,
-    open,
+    linkError,
+    open: navigation.open,
     selectRevision,
     refresh,
     page,
@@ -290,16 +311,7 @@ export function useDeliverables(context: ComponentContext) {
     notice,
     refreshUploads: () => query(METHODS.uploads, {}),
     ...assets,
-    clearSelection: (captured: Selection) => {
-      if (!signal.aborted && sameSelection(current.current, captured)) {
-        abort(METHODS.read);
-        abort(METHODS.history);
-        abort(METHODS.threads);
-        abort(METHODS.suggestions);
-        current.current = undefined;
-        setTarget(undefined);
-      }
-    },
+    clearSelection: navigation.clear,
   };
 }
 

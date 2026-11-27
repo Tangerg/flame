@@ -120,7 +120,8 @@ element, a sheet's cell or a document block. "Copy link" in each editor links
 the shown object and pins the revision when the editor shows an earlier one or
 the object is a document block, whose identity is a position; otherwise the link
 follows the head. Opening a link reads the head when it names no revision and
-selects the object once the editor shows that revision. A completed create,
+selects the object once the editor shows that revision. A newer link or archive
+selection retires any earlier pending head lookup. A completed create,
 import, edit, recalculate or restore tool call shows its revision in the
 conversation with "Open", which opens that exact revision beside it.
 

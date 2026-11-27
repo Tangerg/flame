@@ -606,11 +606,11 @@ export function useFocus(
   shown: string | undefined,
   locate: (object: string) => void,
 ) {
-  const located = useRef<number>(undefined);
+  const located = useRef<Focus>(undefined);
   useEffect(() => {
     if (!focus?.object || shown !== focus.revision) return;
-    if (located.current === focus.key) return;
-    located.current = focus.key;
+    if (located.current === focus) return;
+    located.current = focus;
     locate(focus.object);
   }, [focus, shown]);
 }

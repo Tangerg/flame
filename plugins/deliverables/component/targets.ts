@@ -25,6 +25,4 @@ export function parseTarget(value: string): ViewTarget | undefined {
   }
 }
 
-// A target's object for the editor to locate in the revision the link opened;
-// the key distinguishes repeated openings of the same object.
-export type Focus = { object?: string; revision: string; key: number };
+export type Focus = { readonly object?: string; readonly revision: string };
