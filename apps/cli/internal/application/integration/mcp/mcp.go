@@ -65,14 +65,3 @@ func (a AuthorizationReference) Validate() error {
 	}
 	return nil
 }
-
-func ValidateAuthorizationAttempt(attempt protocol.MCPAuthorizationAttempt) error {
-	if attempt.FinishedAt != nil && attempt.FinishedAt.Before(attempt.CreatedAt) {
-		return errors.New("MCP authorization finished before it started")
-	}
-	return nil
-}
-
-func AuthorizationReferenceFrom(attempt protocol.MCPAuthorizationAttempt) AuthorizationReference {
-	return AuthorizationReference{ID: attempt.ID, Server: attempt.Server}
-}

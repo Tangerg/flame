@@ -190,6 +190,10 @@ func (r *Connection) commandOptionsFor(commandID authoring.CommandID) (protocol.
 	if commandID == "" {
 		return r.commandOptions(), nil
 	}
+	return r.originalCommandOptions(commandID)
+}
+
+func (r *Connection) originalCommandOptions(commandID authoring.CommandID) (protocol.CommandOptions, error) {
 	if err := commandID.Validate(); err != nil {
 		return protocol.CommandOptions{}, err
 	}

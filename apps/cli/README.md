@@ -37,6 +37,9 @@ unreplayable unknown outcome stays blocked. Success or explicit cancellation
 clears the form's secret fields; closing a pending form does not undo an accepted
 Runtime operation.
 
+When `/mcp-auth <server>` loses an acknowledgement, repeat the same command in
+the same terminal to recover the original authorization attempt.
+
 Workspace `/diff --raw` displays the original patch, including file headers and
 line-termination markers. `/diff --rows` renders Runtime's per-file rows with
 old/new line numbers, rename paths, binary changes and truncation feedback.

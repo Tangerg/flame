@@ -79,7 +79,7 @@ type MCPManagement interface {
 	TestServer(context.Context, protocol.MCPServerCandidate) (protocol.MCPTestOutcome, error)
 	Tools(context.Context, *protocol.MCPServerID) ([]protocol.MCPTool, error)
 	ReconnectServer(context.Context, protocol.MCPServerID) error
-	StartAuthorization(context.Context, protocol.MCPServerID) (mcp.AuthorizationReference, error)
+	StartAuthorization(context.Context, authoring.CommandID, protocol.MCPServerID) (mcp.AuthorizationReference, error)
 	GetAuthorization(context.Context, mcp.AuthorizationReference) (protocol.MCPAuthorizationAttempt, error)
 }
 
