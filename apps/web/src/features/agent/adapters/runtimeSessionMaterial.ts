@@ -57,30 +57,10 @@ export function recoveredCommandBelongs(
   return runIds.has(command.params.runId);
 }
 
-// A recorded command is merged into the snapshot it may predate: its input is
-// kept for the composer, and an accepted steer contributes its applied item and
-// pending input once.
-export function mergeRecordedCommand(
+export function mergeRecordedSteer(
   material: AgentSessionMaterialRead,
-  command: RunCommandRecovery,
-  observation: RecordedObservation,
+  receipt: RecordedObservation["acceptance"],
 ): void {
-  const receipt = observation.acceptance;
-  if (command.operation !== "resume") {
-    material.recoveredInputs ??= [];
-    material.recoveredInputs.push({
-      idempotencyKey: command.idempotencyKey,
-      input: contentBlocksToAgentInput(command.params.input),
-      acceptance: {
-        status: receipt.type,
-        sessionId: receipt.sessionId,
-        runId: receipt.runId,
-        ...(receipt.userItemId ? { userItemId: receipt.userItemId } : {}),
-      },
-      acknowledge: observation.acknowledge,
-    });
-  }
-  if (command.operation !== "steer") return;
   if (receipt.type === "accepted" && receipt.appliedItem) {
     const applied = receipt.appliedItem;
     if (!material.snapshot.items.some((item) => item.id === applied.id))

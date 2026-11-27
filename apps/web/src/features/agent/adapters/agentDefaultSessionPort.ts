@@ -2,10 +2,8 @@ import { type FlameClient } from "@flame/runtime-client";
 import { pickAgentSource } from "@/features/agent/adapters/runtimeSources";
 import { type Navigator } from "@/lib/navigation";
 import { type AgentDefaultSessionPort } from "@/features/agent/application/session/sessionAccess";
-import {
-  useAgentSession,
-  type AgentSessionDependencies,
-} from "@/features/agent/adapters/useAgentSession";
+import { useAgentSession } from "@/features/agent/adapters/useAgentSession";
+import { type AgentSessionDependencies } from "@/features/agent/adapters/agentSessionBinding";
 export function createAgentDefaultSession(
   navigation: Navigator,
   dependencies: () => AgentSessionDependencies,

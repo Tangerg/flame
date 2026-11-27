@@ -25,7 +25,7 @@ import {
 import { type RuntimeAccess } from "@/features/connection/public/runtime";
 import { type AgentSharedMaterial } from "@/features/agent/application/session/sharedMaterial";
 import {
-  mergeRecordedCommand,
+  mergeRecordedSteer,
   recoveredCommandBelongs,
   runtimeSessionMaterial,
   unresolvedOpening,
@@ -183,7 +183,7 @@ class RuntimeAgentGateway implements AgentRuntimeGateway {
         const { observation } = command;
         if (observation.type === "recorded") {
           acknowledge.push(observation.acknowledge);
-          mergeRecordedCommand(material, command, observation);
+          if (command.operation === "steer") mergeRecordedSteer(material, observation.acceptance);
         } else if (command.operation === "steer") {
           if (observation.type === "unknown")
             console.warn("[session] original steer query failed:", observation.cause);

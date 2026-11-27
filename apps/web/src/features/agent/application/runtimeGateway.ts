@@ -13,7 +13,6 @@ import {
 } from "@/features/agent/domain/hitl";
 import { type AgentInput } from "@/features/agent/domain/input";
 import { type AgentPlan } from "@/features/agent/public/sessionView";
-import { type AgentOpeningAcceptance } from "@/features/agent/application/input/inputSubmission";
 export interface AgentSessionSnapshot {
   items: AgentItem[];
   runs: AgentRunFact[];
@@ -39,12 +38,6 @@ export interface AgentSessionMaterialRead {
   acknowledgeRecoveredCommands?: () => void;
   unresolvedSteers?: AgentUnresolvedSteer[];
   unresolvedOpenings?: AgentOpeningCommand[];
-  recoveredInputs?: Array<{
-    idempotencyKey: string;
-    input: AgentInput;
-    acceptance: AgentOpeningAcceptance;
-    acknowledge(): void;
-  }>;
 }
 
 export type AgentOpeningCommand = (

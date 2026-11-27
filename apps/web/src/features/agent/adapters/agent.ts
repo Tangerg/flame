@@ -66,15 +66,16 @@ export function composeAgent(
   );
   const interrupts = new InterruptResponseCoordinator(state.view);
   const approvalActions = new ApprovalActionRegistry();
-  const defaultSession = createAgentDefaultSession(
-    navigation,
-    () => ({ agentAccess: dependencies, projection, sessions, retries: gateway.retries }),
-    client,
-    () => {
-      const generation = stream.connectionGeneration();
-      if (generation) stream.reportConnectionLoss(generation);
-    },
-  );
+  const sessionDependencies = () => ({
+    agentAccess: dependencies,
+    projection,
+    sessions,
+    retries: gateway.retries,
+  });
+  const defaultSession = createAgentDefaultSession(navigation, sessionDependencies, client, () => {
+    const generation = stream.connectionGeneration();
+    if (generation) stream.reportConnectionLoss(generation);
+  });
   let dependencies: AgentDependencies = {
     notifications,
     state: state.state,
@@ -104,6 +105,7 @@ export function composeAgent(
     },
     sessions,
     projection,
+    sessionDependencies,
     Provider({ children }: { children: ReactNode }) {
       return createElement(AgentScope, { dependencies, access }, children);
     },

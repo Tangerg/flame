@@ -241,14 +241,6 @@ function observeSteer(
   return attempt(open);
 }
 
-export function recoverUnresolvedSteer(
-  agentAccess: AgentDependencies,
-  sessionId: string,
-  command: AgentUnresolvedSteer,
-): Promise<AgentInputSettlement> {
-  return observeSteer(agentAccess, sessionId, unresolvedSteer(command), "deliver");
-}
-
 export function retrySteerInput(agentAccess: AgentDependencies, messageId: string): boolean {
   return agentAccess.commands.current().retrySteer(messageId);
 }
