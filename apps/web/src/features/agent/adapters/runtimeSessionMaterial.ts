@@ -102,10 +102,9 @@ export function unresolvedOpening(
     ...request,
     idempotencyKey: command.idempotencyKey,
     receipt,
-    async retry(signal) {
+    async retry() {
       assertCurrent();
-      signal.throwIfAborted();
-      const { result, observation } = await command.retry({ signal });
+      const { result, observation } = await command.retry();
       return {
         status: observation.type === "retired" ? "retired" : "accepted",
         sessionId: observation.type === "stream" ? sessionId : observation.sessionId,

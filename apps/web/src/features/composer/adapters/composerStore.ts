@@ -472,6 +472,9 @@ export function createComposerStore() {
     );
   return {
     store: useComposerStore,
+    draftKey(sessionId: string) {
+      return JSON.stringify([current.endpoint, sessionId]);
+    },
     activate,
     retryPersistence,
     hasUnconfirmedDrafts: () => unconfirmed().length > 0,

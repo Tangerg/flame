@@ -192,8 +192,8 @@ export function bindAgentSession(
     store().appendLocalMessage(sessionId, optimistic.message);
     let original: RunStartRecovery | undefined;
     const opening = runOpening.begin(
-      (signal: AbortSignal) =>
-        runOpenings.start(sessionId, wireInput, options, signal, (command) => {
+      () =>
+        runOpenings.start(sessionId, wireInput, options, (command) => {
           original = command;
         }),
       {
@@ -202,7 +202,7 @@ export function bindAgentSession(
             store().dropMessage(sessionId, optimistic.localId);
           else store().reconcileMessageIdentity(sessionId, optimistic.localId, opening.userItemId);
         },
-        onStartError: () => store().dropMessage(sessionId, optimistic.localId),
+        releaseProvisional: () => store().dropMessage(sessionId, optimistic.localId),
         release: releaseRuntimeOpening,
         observe: (opening, signal) =>
           opening.observation.type === "stream"
@@ -251,16 +251,12 @@ export function bindAgentSession(
       itemId: asItemId(response.itemId),
       response: response.response,
     }));
-    runOpening.begin(
-      (signal: AbortSignal) =>
-        runOpenings.resume(asRunId(runId), { responses: wireResponses }, signal),
-      {
-        onResult: onSettled ? () => onSettled() : undefined,
-        onStartError,
-        release: releaseRuntimeOpening,
-        observe: recoverRuntimeOpening,
-      },
-    );
+    runOpening.begin(() => runOpenings.resume(asRunId(runId), { responses: wireResponses }), {
+      onResult: onSettled,
+      releaseProvisional: onStartError,
+      release: releaseRuntimeOpening,
+      observe: recoverRuntimeOpening,
+    });
     return true;
   };
 

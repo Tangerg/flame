@@ -33,20 +33,19 @@ type StartedRunOpening = RuntimeRunOpening<{
 
 export interface RunStartRecovery {
   readonly idempotencyKey: string;
-  retry(signal: AbortSignal): Promise<StartedRunOpening>;
+  retry(): Promise<StartedRunOpening>;
 }
 
 type StartMutation = ReturnType<FlameClient["runs"]["start"]>;
 export class RuntimeRunOpenings {
   constructor(private readonly runtimeClient: () => FlameClient) {}
 
-  #settler = createMutationSettler({ acceptedAttempt: "retained" });
+  #settler = createMutationSettler();
 
   start(
     sessionId: string,
     input: ContentBlock[],
     options: AgentRunStartOptions,
-    signal?: AbortSignal,
     onCommand?: (original: RunStartRecovery) => void,
   ): Promise<StartedRunOpening> {
     const client = this.runtimeClient();
@@ -64,20 +63,14 @@ export class RuntimeRunOpenings {
           },
           attempt,
         ),
-      signal,
       onCommand,
     );
   }
 
-  async resume(
-    runId: RunId,
-    request: Pick<ResumeRunRequest, "responses" | "input">,
-    signal?: AbortSignal,
-  ) {
+  async resume(runId: RunId, request: Pick<ResumeRunRequest, "responses" | "input">) {
     const client = this.runtimeClient();
-    const { result, observation } = await this.#settler.settle(
-      (attemptSignal) => client.runs.resume({ runId, ...request }, attemptSignal),
-      { parent: signal },
+    const { result, observation } = await this.#settler.settle((attemptSignal) =>
+      client.runs.resume({ runId, ...request }, attemptSignal),
     );
     return {
       runId: asRunId(result.runId),
@@ -89,7 +82,7 @@ export class RuntimeRunOpenings {
 
   replaceRuntimeGeneration(): void {
     const predecessor = this.#settler;
-    this.#settler = createMutationSettler({ acceptedAttempt: "retained" });
+    this.#settler = createMutationSettler();
     predecessor.dispose();
   }
 
@@ -101,18 +94,15 @@ export class RuntimeRunOpenings {
 async function observeRunStart(
   owner: MutationSettler,
   open: (signal: AbortSignal) => StartMutation,
-  parent?: AbortSignal,
   onCommand?: (original: RunStartRecovery) => void,
 ): Promise<StartedRunOpening> {
   const { result, observation } = await owner.settle(open, {
-    parent,
     onCommand:
       onCommand &&
       ((command) =>
         onCommand({
           idempotencyKey: command.idempotencyKey,
-          retry: (signal) =>
-            observeRunStart(owner, (attempt) => command.retry({ signal: attempt }), signal),
+          retry: () => observeRunStart(owner, (attempt) => command.retry({ signal: attempt })),
         })),
   });
   return { ...brandStartedRun(result), observation };

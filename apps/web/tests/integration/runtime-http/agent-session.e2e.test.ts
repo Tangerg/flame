@@ -8,6 +8,7 @@ import {
 } from "@flame/runtime-client";
 import { HTTP_HEADERS } from "@flame/runtime-client/wire";
 import { bindAgentSession } from "@/features/agent/adapters/agentSessionBinding";
+import { agentTextInput } from "@/features/agent/public/input";
 import { createSystemNotifier } from "@/features/notifications/systemNotifier";
 import { startSystemNotificationRouting } from "@/features/notifications/systemNotificationRouting";
 import { createProviderGate } from "./fakeProvider";
@@ -140,6 +141,63 @@ describe("Web agent Session recovery over Runtime HTTP", () => {
       unsubscribe();
       stop();
       notifier.dispose();
+      web.dispose();
+      await client.close();
+    }
+  }, 30_000);
+
+  it("commits the original input after its Session observer retires", async () => {
+    const session = await fixture.client.sessions.create({ workspace: { path: fixture.root } });
+    const sessionId = asSessionId(session.id);
+    const lookup = Promise.withResolvers<void>();
+    const releaseLookup = Promise.withResolvers<void>();
+    let starts = 0;
+    const client = fixture.createRuntimeClient(async (url, init) => {
+      const method = new Headers(init?.headers).get(HTTP_HEADERS.method);
+      if (method === "runs.getAcceptance") {
+        lookup.resolve();
+        await releaseLookup.promise;
+      }
+      if (method === "runs.start") starts++;
+      return fetch(url, init);
+    });
+    const web = openWebSession(client, fixture.baseUrl, sessionId);
+    let unbind: (() => void) | undefined = bindAgentSession(
+      web.agent.sessionDependencies(),
+      () => client,
+      sessionId,
+      () => {},
+    );
+    const { view } = web.agent.dependencies;
+    try {
+      const entry = view.getSession(sessionId);
+      if (!entry?.synchronize || !entry.send) throw new Error("Session is not bound");
+      await expect(
+        within(entry.synchronize("after-live"), "original Session material"),
+      ).resolves.toBe(true);
+      const text = "Keep the input submitted before retiring its observer.";
+      const opening = entry.send(agentTextInput(text));
+      if (!opening) throw new Error("Session refused the submitted input");
+      await within(lookup.promise, "the original receipt lookup");
+      unbind();
+      unbind = undefined;
+      releaseLookup.resolve();
+
+      const accepted = await within(opening, "the original Run acceptance");
+      if (accepted.status !== "accepted")
+        throw new Error(`original input settled as ${accepted.status}`);
+      const runId = asRunId(accepted.runId);
+      await expect.poll(async () => (await fixture.client.runs.get(runId)).status).toBe("finished");
+      const items = await fixture.client.items
+        .list({ scope: { type: "run", runId } })
+        .autoPagingToArray();
+      expect(starts).toBe(1);
+      expect(items.filter(({ type }) => type === "userMessage")).toMatchObject([
+        { id: accepted.userItemId, content: [{ type: "text", text }] },
+      ]);
+    } finally {
+      releaseLookup.resolve();
+      unbind?.();
       web.dispose();
       await client.close();
     }

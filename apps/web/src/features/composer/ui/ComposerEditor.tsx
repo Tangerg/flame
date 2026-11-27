@@ -357,7 +357,7 @@ function $pointStillExists(point: PointType): boolean {
     : $isElementNode(node) && point.offset <= node.getChildrenSize();
 }
 
-function Commands({ onAddImages, onAddPaste, acceptsImages }: EditorProps) {
+function Commands({ draftKey, onAddImages, onAddPaste, acceptsImages }: EditorProps) {
   const [editor] = useLexicalComposerContext();
   const access = useComposer();
   const submit = useSubmitComposer();
@@ -394,6 +394,7 @@ function Commands({ onAddImages, onAddPaste, acceptsImages }: EditorProps) {
         COMMAND_PRIORITY_LOW,
       );
       const releaseEditor = access.registerEditor({
+        draftKey,
         element: root,
         restore: (content) => {
           if (readContent(editor.getEditorState()).equals(content)) return;
@@ -437,7 +438,7 @@ function Commands({ onAddImages, onAddPaste, acceptsImages }: EditorProps) {
       stop();
       release();
     };
-  }, [editor, access]);
+  }, [editor, access, draftKey]);
   useEffect(
     () =>
       editor.registerCommand(
@@ -493,6 +494,7 @@ function Commands({ onAddImages, onAddPaste, acceptsImages }: EditorProps) {
   );
 }
 interface EditorProps {
+  draftKey: string;
   inputRef?: Ref<HTMLDivElement>;
   onAddImages(files: File[]): void;
   onAddPaste(text: string): void;

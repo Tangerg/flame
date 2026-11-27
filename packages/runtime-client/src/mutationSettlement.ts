@@ -11,12 +11,6 @@ export class MutationSettlementClosedError extends Error {
   }
 }
 
-type AcceptedAttempt = "released" | "retained";
-
-export interface MutationSettlerConfig {
-  acceptedAttempt?: AcceptedAttempt;
-}
-
 interface MutationSettleOptions<T> {
   parent?: AbortSignal;
   timeoutMs?: number;
@@ -60,11 +54,7 @@ interface MutationAttempt {
   dispose(): void;
 }
 
-function createAttempt(
-  ownership: AbortSignal,
-  timeoutMs: number,
-  acceptedAttempt: AcceptedAttempt,
-): MutationAttempt {
+function createAttempt(ownership: AbortSignal, timeoutMs: number): MutationAttempt {
   const controller = new AbortController();
   let expired = false;
   let deadlineSettled = false;
@@ -116,7 +106,7 @@ function createAttempt(
     wait: (operation) => Promise.race([operation, deadline]),
     accept: () => {
       releaseDeadline();
-      if (acceptedAttempt === "released") detach();
+      detach();
     },
     dispose: () => {
       releaseDeadline();
@@ -131,7 +121,6 @@ async function driveMutation<T>(
   first: MutationAttempt,
   ownership: AbortSignal,
   timeoutMs: number,
-  acceptedAttempt: AcceptedAttempt,
 ): Promise<T> {
   try {
     const value = await first.wait(mutation);
@@ -142,7 +131,7 @@ async function driveMutation<T>(
     if (!first.deadlineExpired() || ownership.aborted) throw error;
   }
 
-  const retry = createAttempt(ownership, timeoutMs, acceptedAttempt);
+  const retry = createAttempt(ownership, timeoutMs);
   let replay: MutationPromise<T>;
   try {
     replay = mutation.retry({ signal: retry.signal });
@@ -161,8 +150,7 @@ async function driveMutation<T>(
   }
 }
 
-export function createMutationSettler(config: MutationSettlerConfig = {}): MutationSettler {
-  const acceptedAttempt = config.acceptedAttempt ?? "released";
+export function createMutationSettler(): MutationSettler {
   const lifetime = new AbortController();
 
   return {
@@ -183,7 +171,7 @@ export function createMutationSettler(config: MutationSettlerConfig = {}): Mutat
       const ownership = options.parent
         ? AbortSignal.any([options.parent, lifetime.signal])
         : lifetime.signal;
-      const first = createAttempt(ownership, timeoutMs, acceptedAttempt);
+      const first = createAttempt(ownership, timeoutMs);
       let mutation: MutationPromise<T>;
       try {
         mutation = open(first.signal);
@@ -191,7 +179,7 @@ export function createMutationSettler(config: MutationSettlerConfig = {}): Mutat
         first.dispose();
         return Promise.reject(error);
       }
-      const settlement = driveMutation(mutation, first, ownership, timeoutMs, acceptedAttempt);
+      const settlement = driveMutation(mutation, first, ownership, timeoutMs);
       return projectMutation(settlement, mutation, options.onCommand);
     },
     dispose(): void {

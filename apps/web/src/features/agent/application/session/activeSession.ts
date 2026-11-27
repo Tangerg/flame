@@ -25,6 +25,10 @@ export function useActiveSessionId(): string {
   return agentAccess.state.useActiveSessionId();
 }
 
+export function useObserveActiveSession(): void {
+  useAgentDependencies().useObserveActiveSession();
+}
+
 export function getActiveSessionId(agentAccess: AgentDependencies): string {
   return agentAccess.state.getActiveSessionId();
 }

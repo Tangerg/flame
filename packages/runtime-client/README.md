@@ -137,6 +137,8 @@ forgetting the rule at that identity regardless of its decision.
 `open`. Pass a fresh command factory to author a command. To recover an existing
 command, pass a factory that retries its original handle or journal identity.
 `onCommand(command)` supplies the original handle for callers that expose recovery.
+The consumer owns any observation returned by a settled mutation and closes it
+when the consumer's view retires.
 Deadlines must be positive whole milliseconds within the platform timer range;
 invalid deadlines are refused before opening the mutation. A deadline permits
 one further observation through the same handle. If that observation cannot be
@@ -179,10 +181,9 @@ option. Recovery handles and `createMutationSettler` retain their explicit
 operation lifetimes. Every mutation, including one with an explicit key, must
 reserve its immutable input and Runtime store namespace before
 dispatch. Missing scope or failed persistence refuses the command without opening
-transport. That refused handle cannot later capture a different target through
-`retry()`; start a new user action after the prerequisite recovers. A successfully
-reserved command retains its original identity and receipt lookup even while
-discovery is unavailable, and cannot dispatch into another store.
+transport. A successfully reserved command retains its original identity and
+receipt lookup even while discovery is unavailable. Its dispatch stays bound to
+the original store.
 
 The journal captures exact JSON input and the request metadata before admission.
 It owns the durable transition from reserved to dispatched. RPC delivery commits

@@ -20,7 +20,7 @@ import { createAgentStore } from "@/features/agent/adapters/agentStore";
 import { createAgentState } from "@/features/agent/adapters/agentStatePorts";
 import { createAgentRuntimeGateway } from "@/features/agent/adapters/agentRuntimeGateway";
 import { RuntimeRunOpenings } from "./runtimeRunOpenings";
-import { createAgentDefaultSession } from "@/features/agent/adapters/agentDefaultSessionPort";
+import { createActiveSessionObservation } from "@/features/agent/adapters/activeSessionObservation";
 import { installAgentSessionScope } from "@/features/agent/adapters/agentSessionScope";
 import { type NotificationFeed } from "@/features/notifications/public/notifications";
 export function createAgent(
@@ -74,15 +74,20 @@ export function composeAgent(
     sessions,
     runOpenings,
   });
-  const defaultSession = createAgentDefaultSession(navigation, sessionDependencies, client, () => {
-    const generation = stream.connectionGeneration();
-    if (generation) stream.reportConnectionLoss(generation);
-  });
+  const useObserveActiveSession = createActiveSessionObservation(
+    navigation,
+    sessionDependencies,
+    client,
+    () => {
+      const generation = stream.connectionGeneration();
+      if (generation) stream.reportConnectionLoss(generation);
+    },
+  );
   let dependencies: AgentDependencies = {
     notifications,
     state: state.state,
     view: state.view,
-    defaultSession,
+    useObserveActiveSession,
     runtime: gateway.gateway,
     commands,
     usage,

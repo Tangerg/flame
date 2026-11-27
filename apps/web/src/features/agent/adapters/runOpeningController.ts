@@ -17,12 +17,12 @@ interface RunOpeningControllerOptions {
 interface RunOpeningController {
   isStarting: () => boolean;
   begin: <Result extends OpenedRun>(
-    run: (signal: AbortSignal) => Promise<Result>,
+    open: () => Promise<Result>,
     callbacks: {
       observe: (opening: Result, signal: AbortSignal) => Promise<void>;
       release?: (opening: Result) => Promise<void> | undefined;
       onResult?: (opening: Result) => void;
-      onStartError?: () => void;
+      releaseProvisional?: () => void;
     },
   ) => Promise<Result>;
   retire: () => void;
@@ -37,50 +37,43 @@ export function createRunOpeningController({
   setStartError,
   onRejected,
 }: RunOpeningControllerOptions): RunOpeningController {
-  let active: { releaseDraft(): void; finishSpan(): void } | null = null;
+  let active: { releasePending(): void } | null = null;
 
   return {
     isStarting: () => active !== null,
-    begin(run, { observe, release, onResult, onStartError }) {
-      active?.releaseDraft();
-      active?.finishSpan();
+    begin(open, { observe, release, onResult, releaseProvisional }) {
+      active?.releasePending();
       onBegin();
       abortCurrent();
       const ctrl = new AbortController();
       setAbortController(ctrl);
       const span = startRunSpan({ "flame.session_id": sessionId });
       let failure: unknown;
-      let releasePendingDraft = onStartError;
-      const releaseDraft = () => {
-        const release = releasePendingDraft;
-        releasePendingDraft = undefined;
+      let releasePendingView = releaseProvisional;
+      const releasePending = () => {
+        const release = releasePendingView;
+        releasePendingView = undefined;
         release?.();
       };
-      let spanEnded = false;
-      const finishSpan = () => {
-        if (spanEnded) return;
-        spanEnded = true;
-        endSpan(span, failure);
-      };
-      const openingLease = { releaseDraft, finishSpan };
+      const openingLease = { releasePending };
       active = openingLease;
-      let opening: ReturnType<typeof run>;
+      let opening: ReturnType<typeof open>;
       try {
-        opening = withSpan(span, () => run(ctrl.signal));
+        opening = withSpan(span, open);
       } catch (err) {
         opening = Promise.reject(err);
       }
       void opening
         .then(
           async (opening) => {
+            span.setAttribute("flame.run_id", opening.runId);
             if (isCanceled() || ctrl.signal.aborted || active !== openingLease) {
               void release?.(opening);
               return;
             }
             try {
-              releasePendingDraft = undefined;
+              releasePendingView = undefined;
               onResult?.(opening);
-              span.setAttribute("flame.run_id", opening.runId);
               await observe(opening, ctrl.signal);
             } catch (err) {
               if (isCanceled() || ctrl.signal.aborted || active !== openingLease) return;
@@ -89,10 +82,10 @@ export function createRunOpeningController({
             }
           },
           (err: unknown) => {
+            failure = err;
             if (isCanceled() || ctrl.signal.aborted || active !== openingLease) return;
             active = null;
-            releaseDraft();
-            failure = err;
+            releasePending();
             console.error("[agent] run failed to start:", sessionId, err);
             onRejected();
             if (mutationSettlementIsUnknown(err)) return;
@@ -102,18 +95,16 @@ export function createRunOpeningController({
         )
         .finally(() => {
           if (active === openingLease) active = null;
-          finishSpan();
+          endSpan(span, failure);
         });
-      // Acceptance and the observed Run have different lifetimes. The existing
-      // controller keeps the stream; input consumers only receive its receipt.
+      // A view may retire while the connection still owns the opening.
       return opening;
     },
     retire() {
       const opening = active;
       active = null;
-      opening?.releaseDraft();
+      opening?.releasePending();
       abortCurrent();
-      opening?.finishSpan();
     },
   };
 }

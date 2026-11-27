@@ -15,10 +15,6 @@ import {
 } from "@/features/connection/application/runtimeEndpoint";
 import { RuntimeProvider, type RuntimeAccess } from "@/features/connection/public/runtime";
 import { composeAgent } from "@/features/agent/adapters/agent";
-import { useAgentDependencies } from "@/features/agent/application/agentContext";
-import { submitAgentInput } from "@/features/agent/application/input/submitAgentInput";
-import { type AgentInput } from "@/features/agent/public/input";
-import { useStopCurrentRootRun } from "@/features/agent/public/run";
 import { createComposer } from "@/features/composer/adapters/composerStatePorts";
 import { ComposerProvider } from "@/features/composer/public/composer";
 import { createWorkspace } from "@/features/workspace/adapters/workspace";
@@ -33,15 +29,6 @@ import { InstalledPluginsProvider } from "@/features/plugins/context";
 import { createTheme } from "@/features/theme/adapters/theme";
 import { ThemeProvider } from "@/features/theme/public/theme";
 import { VISUAL_RUNTIME_GENERATION } from "./agentFixtureFacts";
-
-function useRecordedChatSession() {
-  const agent = useAgentDependencies();
-  const stop = useStopCurrentRootRun();
-  return {
-    send: (input: AgentInput) => submitAgentInput(agent, agent.state.getActiveSessionId(), input),
-    stop: () => stop?.(),
-  };
-}
 
 /** One browser fixture owns these feature instances; production has no default instance. */
 export function createVisualClient(runtimeClient: () => FlameClient, messages: NotificationFeed) {
@@ -95,7 +82,7 @@ export function createVisualClient(runtimeClient: () => FlameClient, messages: N
   const agent = composeAgent(runtimeClient, navigation, runtime, stream, scope, messages);
   agent.dependencies = {
     ...agent.dependencies,
-    defaultSession: { useDefaultChatSession: useRecordedChatSession },
+    useObserveActiveSession: () => {},
   };
   agent.start();
   const goals = createGoals((sessionId) =>

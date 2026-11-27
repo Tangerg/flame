@@ -59,7 +59,10 @@ export function createComposer(
     else focusOriginalTarget();
   };
   // Draft transitions run once in the domain; a mounted editor then shows their result.
-  const presentDraft = () => editor?.restore(useComposerStore.getState().composer.draft.content);
+  const presentDraft = () => {
+    const { activeSessionId, draft } = useComposerStore.getState().composer;
+    if (editor?.draftKey === owner.draftKey(activeSessionId)) editor.restore(draft.content);
+  };
   const withDraftConfirmation = (
     requestConfirmation: RequestDraftReplacementConfirmation,
     begin: (capture: DraftCapture) => boolean,
@@ -81,8 +84,7 @@ export function createComposer(
     }
   };
   const access: ComposerStatePort = {
-    useDraftKey: () =>
-      useComposerStore((state) => JSON.stringify([endpoint(), state.composer.activeSessionId])),
+    useDraftKey: () => useComposerStore((state) => owner.draftKey(state.composer.activeSessionId)),
     initialContent: () => useComposerStore.getState().composer.draft.content,
     registerEditor: (value) => {
       editor = value;
@@ -160,7 +162,7 @@ export function createComposer(
           if (capturedEditor && editor === capturedEditor && capturedEditor.revision() !== revision)
             return false;
           const consumed = draft.consume(historyText);
-          if (consumed && editor === capturedEditor) presentDraft();
+          if (consumed) presentDraft();
           return consumed;
         },
       };

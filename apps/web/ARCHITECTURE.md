@@ -389,6 +389,8 @@ One chat input delivery holds the captured Composer draft for its Session.
 A settled acceptance consumes that draft. Unconfirmed delivery transfers
 responsibility for the exact command to the journal. A refusal leaves the
 draft editable, and settlement only clears the submitted revision.
+Run opening commands follow the Runtime connection lifetime. A Session view
+can retire its event observation while the opening still settles.
 
 The URL owns current navigation: active Session, main view, dock target, and
 Settings pane. Stores retain tab sets, drafts, per-view state, and continuity.

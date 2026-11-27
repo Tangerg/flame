@@ -58,7 +58,7 @@ export type AgentOpeningCommand = (
 ) & {
   idempotencyKey: string;
   receipt: "notRecorded" | "unknown";
-  retry(signal: AbortSignal): Promise<AgentOpeningRecovery>;
+  retry(): Promise<AgentOpeningRecovery>;
 };
 
 export interface AgentSessionUsage {

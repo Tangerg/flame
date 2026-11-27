@@ -94,6 +94,7 @@ export function Composer({
         ) : (
           <ComposerEditor
             key={draftKey}
+            draftKey={draftKey}
             inputRef={inputRef}
             onAddImages={onAddImages}
             onAddPaste={onAddPaste}

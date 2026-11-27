@@ -39,6 +39,7 @@ export interface ComposerImageIntake {
 
 // The mounted editor owns the live document; the store keeps its checkpoint.
 export interface ComposerEditor {
+  readonly draftKey: string;
   readonly element: HTMLElement;
   restore(content: DraftContent): void;
   focus(): void;

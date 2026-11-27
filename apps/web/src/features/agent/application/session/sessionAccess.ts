@@ -141,12 +141,3 @@ export interface AgentSessionViewPort {
     onChange: (sessions: Record<string, AgentSessionViewEntry>) => void,
   ): () => void;
 }
-
-export interface AgentSession {
-  send: SendAgentInputAction;
-  stop: () => void;
-}
-
-export interface AgentDefaultSessionPort {
-  useDefaultChatSession(): AgentSession;
-}

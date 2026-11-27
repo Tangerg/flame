@@ -2,6 +2,7 @@ export {
   useActiveSession,
   useActiveSessionWorkspace,
   useActiveSessionId,
+  useObserveActiveSession,
   resolvedWorkspaceCwd,
   isWorkspaceResolving,
   type ActiveSessionWorkspaceSelection,
