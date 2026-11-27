@@ -87,9 +87,9 @@ type Goals interface {
 	GetGoal(context.Context, string) (protocol.Goal, bool, error)
 	StartGoal(context.Context, protocol.StartGoalRequest) (protocol.Goal, error)
 	UpdateGoal(context.Context, protocol.UpdateGoalRequest) (protocol.Goal, error)
-	ClearGoal(context.Context, string) error
-	StopGoal(context.Context, string) error
-	ResumeGoal(context.Context, string) (protocol.Goal, error)
+	ClearGoal(context.Context, protocol.GoalTarget) error
+	StopGoal(context.Context, protocol.GoalTarget) error
+	ResumeGoal(context.Context, protocol.GoalTarget) (protocol.Goal, error)
 }
 
 type Skills interface {

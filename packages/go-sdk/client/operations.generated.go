@@ -280,17 +280,17 @@ func (r *Client) StartGoal(ctx context.Context, request protocol.StartGoalReques
 func (r *Client) UpdateGoal(ctx context.Context, request protocol.UpdateGoalRequest, options protocol.CommandOptions) (*protocol.Goal, error) {
 	return r.invoke[protocol.UpdateGoalRequest, *protocol.Goal](ctx, "goals.update", request, options.Metadata())
 }
-func (r *Client) ClearGoal(ctx context.Context, request protocol.GoalRequest, options protocol.CommandOptions) error {
-	return r.invokeAck[protocol.GoalRequest](ctx, "goals.clear", request, options.Metadata())
+func (r *Client) ClearGoal(ctx context.Context, request protocol.GoalTarget, options protocol.CommandOptions) error {
+	return r.invokeAck[protocol.GoalTarget](ctx, "goals.clear", request, options.Metadata())
 }
-func (r *Client) GetGoal(ctx context.Context, request protocol.GoalRequest, options protocol.CallOptions) (*protocol.Goal, error) {
-	return r.invoke[protocol.GoalRequest, *protocol.Goal](ctx, "goals.get", request, options.Metadata())
+func (r *Client) GetGoal(ctx context.Context, request protocol.GetGoalRequest, options protocol.CallOptions) (*protocol.Goal, error) {
+	return r.invoke[protocol.GetGoalRequest, *protocol.Goal](ctx, "goals.get", request, options.Metadata())
 }
-func (r *Client) StopGoal(ctx context.Context, request protocol.GoalRequest, options protocol.CommandOptions) error {
-	return r.invokeAck[protocol.GoalRequest](ctx, "goals.stop", request, options.Metadata())
+func (r *Client) StopGoal(ctx context.Context, request protocol.GoalTarget, options protocol.CommandOptions) error {
+	return r.invokeAck[protocol.GoalTarget](ctx, "goals.stop", request, options.Metadata())
 }
-func (r *Client) ResumeGoal(ctx context.Context, request protocol.GoalRequest, options protocol.CommandOptions) (*protocol.Goal, error) {
-	return r.invoke[protocol.GoalRequest, *protocol.Goal](ctx, "goals.resume", request, options.Metadata())
+func (r *Client) ResumeGoal(ctx context.Context, request protocol.GoalTarget, options protocol.CommandOptions) (*protocol.Goal, error) {
+	return r.invoke[protocol.GoalTarget, *protocol.Goal](ctx, "goals.resume", request, options.Metadata())
 }
 func (r *Client) ListProviders(ctx context.Context, options protocol.CallOptions) (*protocol.Page[protocol.Provider], error) {
 	return r.invoke[struct{}, *protocol.Page[protocol.Provider]](ctx, "providers.list", struct{}{}, options.Metadata())

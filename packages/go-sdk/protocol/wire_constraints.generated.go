@@ -829,6 +829,13 @@ func (s StartGoalRequest) validateWire(object wireObject) []FieldError {
 		maxLength("sessionId", s.SessionID, 256),
 		textPattern("objective", s.Objective, "\\S"),
 	)
+	if object.present("replaceIncarnationId") {
+		violations.add(
+			nonEmptyText("replaceIncarnationId", s.ReplaceIncarnationID),
+			identity("replaceIncarnationId", s.ReplaceIncarnationID),
+			maxLength("replaceIncarnationId", s.ReplaceIncarnationID, 128),
+		)
+	}
 	if object.present("provider") {
 		violations.add(
 			identity("provider", s.Provider),
@@ -859,15 +866,31 @@ func (s StartGoalRequest) validateWire(object wireObject) []FieldError {
 func (u UpdateGoalRequest) validateWire(object wireObject) []FieldError {
 	var violations wireViolations
 	violations.add(
+		textPattern("objective", u.Objective, "\\S"),
 		nonEmptyText("sessionId", u.SessionID),
 		identity("sessionId", u.SessionID),
 		maxLength("sessionId", u.SessionID, 256),
-		textPattern("objective", u.Objective, "\\S"),
+		nonEmptyText("incarnationId", u.IncarnationID),
+		identity("incarnationId", u.IncarnationID),
+		maxLength("incarnationId", u.IncarnationID, 128),
 	)
 	return violations
 }
 
-func (g GoalRequest) validateWire(object wireObject) []FieldError {
+func (g GoalTarget) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	violations.add(
+		nonEmptyText("sessionId", g.SessionID),
+		identity("sessionId", g.SessionID),
+		maxLength("sessionId", g.SessionID, 256),
+		nonEmptyText("incarnationId", g.IncarnationID),
+		identity("incarnationId", g.IncarnationID),
+		maxLength("incarnationId", g.IncarnationID, 128),
+	)
+	return violations
+}
+
+func (g GetGoalRequest) validateWire(object wireObject) []FieldError {
 	var violations wireViolations
 	violations.add(
 		nonEmptyText("sessionId", g.SessionID),
@@ -3004,9 +3027,6 @@ func (f FileDiff) validateWire(object wireObject) []FieldError {
 func (g Goal) validateWire(object wireObject) []FieldError {
 	var violations wireViolations
 	violations.add(
-		nonEmptyText("sessionId", g.SessionID),
-		identity("sessionId", g.SessionID),
-		maxLength("sessionId", g.SessionID, 256),
 		textPattern("objective", g.Objective, "\\S"),
 	)
 	if object.present("provider") {
@@ -3028,6 +3048,12 @@ func (g Goal) validateWire(object wireObject) []FieldError {
 		)
 	}
 	violations.add(
+		nonEmptyText("sessionId", g.SessionID),
+		identity("sessionId", g.SessionID),
+		maxLength("sessionId", g.SessionID, 256),
+		nonEmptyText("incarnationId", g.IncarnationID),
+		identity("incarnationId", g.IncarnationID),
+		maxLength("incarnationId", g.IncarnationID, 128),
 		required("createdAt", object),
 		required("updatedAt", object),
 		forbiddenWhen(object.equals("status", "active"), "reason", object),

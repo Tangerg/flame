@@ -28,9 +28,9 @@ export function useGoalCommands(): Pick<GoalCommands, "update" | "clear" | "stop
     };
     return {
       update: (input) => requireGeneration().update(input),
-      clear: (sessionId) => requireGeneration().clear(sessionId),
-      stop: (sessionId) => requireGeneration().stop(sessionId),
-      resume: (sessionId) => requireGeneration().resume(sessionId),
+      clear: (target) => requireGeneration().clear(target),
+      stop: (target) => requireGeneration().stop(target),
+      resume: (target) => requireGeneration().resume(target),
     };
   }, [generation]);
 }

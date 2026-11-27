@@ -45,6 +45,11 @@ Core `2026-11-27.8` accepts `expectedDecision` on `approval.forgetRule`. Runtime
 checks the committed rule's decision in the same transaction that records the
 acknowledgement. The MCP auto-approval switch uses it to withdraw the allow
 decision it displayed.
+Core `2026-11-27.10` binds Goal commands to the observed incarnation. A new
+Goal requires an empty session slot. A replacement must name the existing
+incarnation in `replaceIncarnationId`. Update, stop, resume and clear use the
+incarnation from the Goal read or start receipt. Usage changes within that
+incarnation do not make a command stale.
 Protocol admission checks enum values throughout each request, including plugin
 server and skill configuration maps, before creating a command receipt. A caller
 can correct an invalid enum and retry with the original key.

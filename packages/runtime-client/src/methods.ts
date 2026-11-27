@@ -115,6 +115,7 @@ import type {
   SkillProposal,
   SkillProposalRef,
   Goal,
+  GoalTarget,
   StartGoalRequest,
   StartRunRequest,
   RuntimeSubscribeRequest,
@@ -413,9 +414,9 @@ export interface Methods {
       signal?: AbortSignal,
     ) => MutationPromise<Goal>;
     update: (params: UpdateGoalRequest, signal?: AbortSignal) => MutationPromise<Goal>;
-    clear: (sessionId: SessionId, signal?: AbortSignal) => MutationPromise<void>;
-    stop: (sessionId: SessionId, signal?: AbortSignal) => MutationPromise<void>;
-    resume: (sessionId: SessionId, signal?: AbortSignal) => MutationPromise<Goal>;
+    clear: (target: GoalTarget, signal?: AbortSignal) => MutationPromise<void>;
+    stop: (target: GoalTarget, signal?: AbortSignal) => MutationPromise<void>;
+    resume: (target: GoalTarget, signal?: AbortSignal) => MutationPromise<Goal>;
   };
   feedback: {
     create: (params: FeedbackRequest) => MutationPromise<void>;
@@ -649,10 +650,14 @@ export function createMethods(
     goals: {
       get: (sessionId, signal) => call("goals.get", { sessionId }, { signal }),
       start: (params, signal) => call("goals.start", params, { signal }),
-      update: (params, signal) => call("goals.update", params, { signal }),
-      clear: (sessionId, signal) => call("goals.clear", { sessionId }, { signal }),
-      stop: (sessionId, signal) => call("goals.stop", { sessionId }, { signal }),
-      resume: (sessionId, signal) => call("goals.resume", { sessionId }, { signal }),
+      update: ({ sessionId, incarnationId, objective }, signal) =>
+        call("goals.update", { sessionId, incarnationId, objective }, { signal }),
+      clear: ({ sessionId, incarnationId }, signal) =>
+        call("goals.clear", { sessionId, incarnationId }, { signal }),
+      stop: ({ sessionId, incarnationId }, signal) =>
+        call("goals.stop", { sessionId, incarnationId }, { signal }),
+      resume: ({ sessionId, incarnationId }, signal) =>
+        call("goals.resume", { sessionId, incarnationId }, { signal }),
     },
     feedback: {
       create: (params) => call("feedback.create", params),

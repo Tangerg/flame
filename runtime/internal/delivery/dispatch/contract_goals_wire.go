@@ -1,6 +1,9 @@
 package dispatch
 
-import "github.com/Tangerg/flame/packages/go-sdk/protocol"
+import (
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/runtime/internal/domain/automation/goalref"
+)
 
 func registerGoalConditions(s *Shapes) {
 	s.constraint(ObjectConstraintSpec{GoType: typeOf[protocol.StartGoalRequest](), Rules: modelSelectionRules()})
@@ -50,23 +53,28 @@ func registerGoalConditions(s *Shapes) {
 
 func registerGoalValues(s *Shapes) {
 	const nonBlankObjective = `\S`
+	objective := FieldConstraint{Field: "objective", Kind: ConstraintPattern, Value: nonBlankObjective}
 	s.valueConstraint(FieldConstraintSpec{
-		GoType: typeOf[protocol.Goal](),
-		Constraints: append(append(requiredResourceIdentity("sessionId"), []FieldConstraint{
-			{Field: "objective", Kind: ConstraintPattern, Value: nonBlankObjective},
-		}...), modelSelectionIdentities()...),
+		GoType:      typeOf[protocol.GoalTarget](),
+		Constraints: append(requiredResourceIdentity("sessionId"), goalIncarnationIdentity("incarnationId")...),
+	})
+	s.valueConstraint(FieldConstraintSpec{
+		GoType:      typeOf[protocol.Goal](),
+		Constraints: append([]FieldConstraint{objective}, modelSelectionIdentities()...),
 	})
 	nonNegative[protocol.GoalUsage](s, "runs", "costUsd", "steps")
 	s.valueConstraint(FieldConstraintSpec{
 		GoType: typeOf[protocol.StartGoalRequest](),
-		Constraints: append(append(requiredResourceIdentity("sessionId"), []FieldConstraint{
-			{Field: "objective", Kind: ConstraintPattern, Value: nonBlankObjective},
-		}...), modelSelectionIdentities()...),
+		Constraints: append(append(append(requiredResourceIdentity("sessionId"), objective),
+			goalIncarnationIdentity("replaceIncarnationId")...), modelSelectionIdentities()...),
 	})
-	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.GoalRequest](), Constraints: requiredResourceIdentity("sessionId")})
+	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.GetGoalRequest](), Constraints: requiredResourceIdentity("sessionId")})
 	s.valueConstraint(FieldConstraintSpec{
-		GoType: typeOf[protocol.UpdateGoalRequest](),
-		Constraints: append(requiredResourceIdentity("sessionId"),
-			FieldConstraint{Field: "objective", Kind: ConstraintPattern, Value: nonBlankObjective}),
+		GoType:      typeOf[protocol.UpdateGoalRequest](),
+		Constraints: []FieldConstraint{objective},
 	})
+}
+
+func goalIncarnationIdentity(field string) []FieldConstraint {
+	return append([]FieldConstraint{{Field: field, Kind: ConstraintNonEmpty}}, boundedIdentity(field, goalref.MaximumIncarnationCharacters)...)
 }

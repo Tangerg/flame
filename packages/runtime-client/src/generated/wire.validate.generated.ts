@@ -101,6 +101,7 @@ export type WireTypeName =
   | "ForkSessionRequest"
   | "GenerationParams"
   | "GetDiffRequest"
+  | "GetGoalRequest"
   | "GetPlanRequest"
   | "GetProjectRequest"
   | "GetRunAcceptanceRequest"
@@ -110,8 +111,8 @@ export type WireTypeName =
   | "Goal"
   | "GoalReason"
   | "GoalReasonCode"
-  | "GoalRequest"
   | "GoalStatus"
+  | "GoalTarget"
   | "GoalUsage"
   | "GrepCoverage"
   | "GrepMatch"
@@ -1311,6 +1312,9 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       }, []),
     ),
   ]),
+  GetGoalRequest: object({
+    sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+  }, ["sessionId"]),
   GetPlanRequest: object({
     sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
   }, ["sessionId"]),
@@ -1337,6 +1341,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     object({
       author: ref(() => CHECKS.ContributionSource),
       createdAt: text(),
+      incarnationId: allOf([text(), minLength(1), maxLength(128), pattern("^[^\\p{C}\\p{Z}]*$")]),
       model: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
       objective: allOf([text(), pattern("\\S")]),
       provider: allOf([text(), maxLength(64), pattern("^[^\\p{C}\\p{Z}]*$")]),
@@ -1346,7 +1351,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       status: ref(() => CHECKS.GoalStatus),
       updatedAt: text(),
       used: ref(() => CHECKS.GoalUsage),
-    }, ["createdAt", "objective", "sessionId", "status", "updatedAt", "used"]),
+    }, ["createdAt", "incarnationId", "objective", "sessionId", "status", "updatedAt", "used"]),
     ifThen(
       fields({
         status: literal("active"),
@@ -1454,10 +1459,11 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     ),
   ]),
   GoalReasonCode: enumOf(["stoppedByUser", "runtimeRestarted", "runStartFailed", "awaitingInput", "terminalOutcomeMissing", "runNotCompleted", "blockedByModel"]),
-  GoalRequest: object({
-    sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
-  }, ["sessionId"]),
   GoalStatus: enumOf(["active", "paused", "blocked", "completing"]),
+  GoalTarget: object({
+    incarnationId: allOf([text(), minLength(1), maxLength(128), pattern("^[^\\p{C}\\p{Z}]*$")]),
+    sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+  }, ["incarnationId", "sessionId"]),
   GoalUsage: object({
     costUsd: allOf([numeric(), minimum("0")]),
     runs: allOf([integer(), minimum("0")]),
@@ -4459,6 +4465,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       objective: allOf([text(), pattern("\\S")]),
       provider: allOf([text(), maxLength(64), pattern("^[^\\p{C}\\p{Z}]*$")]),
       reasoningEffort: allOf([text(), maxLength(32), pattern("^[^\\p{C}\\p{Z}]*$")]),
+      replaceIncarnationId: allOf([text(), minLength(1), maxLength(128), pattern("^[^\\p{C}\\p{Z}]*$")]),
       sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
     }, ["objective", "sessionId"]),
     ifThen(
@@ -4778,9 +4785,10 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   }, ["cause", "effectId", "processId"]),
   UnresolvedEffectCause: enumOf(["termination", "runtimeFailure"]),
   UpdateGoalRequest: object({
+    incarnationId: allOf([text(), minLength(1), maxLength(128), pattern("^[^\\p{C}\\p{Z}]*$")]),
     objective: allOf([text(), pattern("\\S")]),
     sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
-  }, ["objective", "sessionId"]),
+  }, ["incarnationId", "objective", "sessionId"]),
   UpdateMCPServerRequest: object({
     connection: ref(() => CHECKS.MCPConnectionInput),
     description: text(),
@@ -5047,10 +5055,10 @@ const METHOD_PARAMS: Record<WireMethodName, WireCheck> = {
   "approval.forgetRule": ref(() => CHECKS.ForgetApprovalRuleRequest),
   "goals.start": ref(() => CHECKS.StartGoalRequest),
   "goals.update": ref(() => CHECKS.UpdateGoalRequest),
-  "goals.clear": ref(() => CHECKS.GoalRequest),
-  "goals.get": ref(() => CHECKS.GoalRequest),
-  "goals.stop": ref(() => CHECKS.GoalRequest),
-  "goals.resume": ref(() => CHECKS.GoalRequest),
+  "goals.clear": ref(() => CHECKS.GoalTarget),
+  "goals.get": ref(() => CHECKS.GetGoalRequest),
+  "goals.stop": ref(() => CHECKS.GoalTarget),
+  "goals.resume": ref(() => CHECKS.GoalTarget),
   "providers.list": object({}, []),
   "providers.update": ref(() => CHECKS.UpdateProviderRequest),
   "providers.test": ref(() => CHECKS.TestProviderRequest),

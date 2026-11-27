@@ -179,7 +179,7 @@ func TestLiveDeepSeekGoalAndPlan(t *testing.T) {
 	lastGoal := goal
 	for {
 		current, getErr := fixture.runtime.GetGoal(
-			fixture.ctx, protocol.GoalRequest{SessionID: session.ID}, protocol.CallOptions{},
+			fixture.ctx, protocol.GetGoalRequest{SessionID: session.ID}, protocol.CallOptions{},
 		)
 		if getErr != nil {
 			t.Fatal(getErr)

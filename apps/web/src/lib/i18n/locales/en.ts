@@ -283,7 +283,7 @@ export const en = {
   "goal.edit.save": "Save",
   "goal.edit.saving": "Saving…",
   "goal.edit.conflict":
-    "The goal changed while you were saving. Review the latest loaded objective before saving again.",
+    "The goal changed during this edit. Review the latest objective, then reopen the editor to update it.",
   "goal.edit.latestObjective": "Latest loaded objective",
   "goal.error.start": "Couldn’t start the goal",
   "goal.error.attachmentsUnsupported": "Goal objectives can’t include attachments",

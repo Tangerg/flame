@@ -1,5 +1,5 @@
 {
-  "protocolVersion": "2026-11-27.9",
+  "protocolVersion": "2026-11-27.10",
   "features": [
     "reasoning",
     "multimodal",
@@ -10679,7 +10679,7 @@
       ]
     },
     {
-      "type": "Goal",
+      "type": "GoalTarget",
       "rules": [
         {
           "field": "sessionId",
@@ -10693,6 +10693,23 @@
           "field": "sessionId",
           "constraint": "maxLength(256)"
         },
+        {
+          "field": "incarnationId",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "incarnationId",
+          "constraint": "identity"
+        },
+        {
+          "field": "incarnationId",
+          "constraint": "maxLength(128)"
+        }
+      ]
+    },
+    {
+      "type": "Goal",
+      "rules": [
         {
           "field": "objective",
           "constraint": "pattern(\"\\\\S\")"
@@ -10760,6 +10777,18 @@
           "constraint": "pattern(\"\\\\S\")"
         },
         {
+          "field": "replaceIncarnationId",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "replaceIncarnationId",
+          "constraint": "identity"
+        },
+        {
+          "field": "replaceIncarnationId",
+          "constraint": "maxLength(128)"
+        },
+        {
           "field": "provider",
           "constraint": "identity"
         },
@@ -10786,7 +10815,7 @@
       ]
     },
     {
-      "type": "GoalRequest",
+      "type": "GetGoalRequest",
       "rules": [
         {
           "field": "sessionId",
@@ -10805,18 +10834,6 @@
     {
       "type": "UpdateGoalRequest",
       "rules": [
-        {
-          "field": "sessionId",
-          "constraint": "nonEmpty"
-        },
-        {
-          "field": "sessionId",
-          "constraint": "identity"
-        },
-        {
-          "field": "sessionId",
-          "constraint": "maxLength(256)"
-        },
         {
           "field": "objective",
           "constraint": "pattern(\"\\\\S\")"

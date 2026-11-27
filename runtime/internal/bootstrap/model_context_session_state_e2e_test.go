@@ -117,7 +117,7 @@ func TestActiveGoalAndPlanStayCurrentAcrossLongRunCompaction(t *testing.T) {
 		if event.Type != protocol.RuntimeGoalsChanged || !slices.Contains(event.SessionIDs, sessionID) {
 			continue
 		}
-		current, getErr := api.GetGoal(settlementCtx, protocol.GoalRequest{SessionID: sessionID})
+		current, getErr := api.GetGoal(settlementCtx, protocol.GetGoalRequest{SessionID: sessionID})
 		if getErr != nil {
 			t.Fatal(getErr)
 		}
@@ -127,7 +127,7 @@ func TestActiveGoalAndPlanStayCurrentAcrossLongRunCompaction(t *testing.T) {
 		}
 	}
 	if !cleared {
-		current, readErr := api.GetGoal(ctx, protocol.GoalRequest{SessionID: sessionID})
+		current, readErr := api.GetGoal(ctx, protocol.GetGoalRequest{SessionID: sessionID})
 		runs, listErr := api.ListRuns(ctx, protocol.ListRunsRequest{SessionID: sessionID})
 		var outcome *protocol.RunOutcome
 		if listErr == nil && len(runs.Data) > 0 {

@@ -92,7 +92,7 @@ func (*Runtime) UpdateProvider(context.Context, models.UpdateProvider) (_ models
 	return
 }
 
-func (*Runtime) ClearGoal(context.Context, string) (err error) {
+func (*Runtime) ClearGoal(context.Context, protocol.GoalTarget) (err error) {
 	err = errUnsupported
 	return
 }
@@ -102,7 +102,7 @@ func (*Runtime) GetGoal(context.Context, string) (_ protocol.Goal, _ bool, err e
 	return
 }
 
-func (*Runtime) ResumeGoal(context.Context, string) (_ protocol.Goal, err error) {
+func (*Runtime) ResumeGoal(context.Context, protocol.GoalTarget) (_ protocol.Goal, err error) {
 	err = errUnsupported
 	return
 }
@@ -112,7 +112,7 @@ func (*Runtime) StartGoal(context.Context, protocol.StartGoalRequest) (_ protoco
 	return
 }
 
-func (*Runtime) StopGoal(context.Context, string) (err error) {
+func (*Runtime) StopGoal(context.Context, protocol.GoalTarget) (err error) {
 	err = errUnsupported
 	return
 }

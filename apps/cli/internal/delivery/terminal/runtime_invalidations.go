@@ -198,6 +198,7 @@ func (l *sessionLifecycle) installRefreshedSnapshot(snapshot conversation.Sessio
 	conversationMatches := l.runs.conversation().MatchesSnapshot(snapshot)
 	sessionMatches := l.state.current.Equal(snapshot.Session)
 	if conversationMatches && l.state.current.Workspace == snapshot.Session.Workspace {
+		l.header.SetGoal(snapshot.Goal)
 		if !sessionMatches {
 			l.installSessionMetadata(snapshot.Session)
 		}

@@ -42,19 +42,19 @@ func registerGoals(registry *Registry) {
 		Name: goalsClear, GoName: "ClearGoal", Errors: []string{protocol.ErrSessionNotFound.Error(), protocol.ErrRevisionConflict.Error()},
 		CapabilityRules: requires(protocol.FeatureGoals),
 	}, func(service interface {
-		ClearGoal(context.Context, protocol.GoalRequest) error
-	}, ctx context.Context, request protocol.GoalRequest) error {
+		ClearGoal(context.Context, protocol.GoalTarget) error
+	}, ctx context.Context, request protocol.GoalTarget) error {
 		return service.ClearGoal(ctx, request)
 	}).withOwnedReplay(atomicReplay((interface {
-		commitClearGoal(context.Context, protocol.GoalRequest, atomicOutcome) error
+		commitClearGoal(context.Context, protocol.GoalTarget, atomicOutcome) error
 	}).commitClearGoal))
 
 	registry.query(MethodMeta{
 		Name: goalsGet, GoName: "GetGoal", Errors: []string{protocol.ErrSessionNotFound.Error()},
 		ResultNullable: true, CapabilityRules: requires(protocol.FeatureGoals),
 	}, func(service interface {
-		GetGoal(context.Context, protocol.GoalRequest) (*protocol.Goal, error)
-	}, ctx context.Context, request protocol.GoalRequest) (*protocol.Goal, error) {
+		GetGoal(context.Context, protocol.GetGoalRequest) (*protocol.Goal, error)
+	}, ctx context.Context, request protocol.GetGoalRequest) (*protocol.Goal, error) {
 		return service.GetGoal(ctx, request)
 	})
 
@@ -62,21 +62,21 @@ func registerGoals(registry *Registry) {
 		Name: goalsStop, GoName: "StopGoal", Errors: pluginProviderErrors(protocol.ErrSessionNotFound.Error(), protocol.ErrRevisionConflict.Error()),
 		CapabilityRules: requires(protocol.FeatureGoals),
 	}, func(service interface {
-		StopGoal(context.Context, protocol.GoalRequest) error
-	}, ctx context.Context, request protocol.GoalRequest) error {
+		StopGoal(context.Context, protocol.GoalTarget) error
+	}, ctx context.Context, request protocol.GoalTarget) error {
 		return service.StopGoal(ctx, request)
 	}).withOwnedReplay(atomicReplay((interface {
-		commitStopGoal(context.Context, protocol.GoalRequest, atomicOutcome) error
+		commitStopGoal(context.Context, protocol.GoalTarget, atomicOutcome) error
 	}).commitStopGoal))
 
 	registry.command(MethodMeta{
 		Name: goalsResume, GoName: "ResumeGoal", Errors: pluginProviderErrors(protocol.ErrSessionNotFound.Error(), protocol.ErrRevisionConflict.Error()),
 		CapabilityRules: requires(protocol.FeatureGoals),
 	}, func(service interface {
-		ResumeGoal(context.Context, protocol.GoalRequest) (*protocol.Goal, error)
-	}, ctx context.Context, request protocol.GoalRequest) (*protocol.Goal, error) {
+		ResumeGoal(context.Context, protocol.GoalTarget) (*protocol.Goal, error)
+	}, ctx context.Context, request protocol.GoalTarget) (*protocol.Goal, error) {
 		return service.ResumeGoal(ctx, request)
 	}).withOwnedReplay(atomicReplay((interface {
-		commitResumeGoal(context.Context, protocol.GoalRequest, atomicOutcome) error
+		commitResumeGoal(context.Context, protocol.GoalTarget, atomicOutcome) error
 	}).commitResumeGoal))
 }

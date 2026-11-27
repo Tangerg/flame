@@ -69,14 +69,13 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: run commands after lost respon
     fixture.providerGate = firstGate;
 
     try {
-      await expect(
-        callAfterCommitLoss("goals.start", (faultClient) =>
-          faultClient.goals.start({
-            sessionId,
-            objective: "E2E_GOAL_REPLAY_CUTPOINT preserve one drive per command.",
-          }),
-        ),
-      ).resolves.toMatchObject({ status: "active", used: { runs: 0 } });
+      const started = await callAfterCommitLoss("goals.start", (faultClient) =>
+        faultClient.goals.start({
+          sessionId,
+          objective: "E2E_GOAL_REPLAY_CUTPOINT preserve one drive per command.",
+        }),
+      );
+      expect(started).toMatchObject({ status: "active", used: { runs: 0 } });
       await within(firstGate.arrived.promise, "the replayed Goal's first model request");
       await expect(nextRuntimeEvent(events, "goals.changed")).resolves.toMatchObject({
         type: "goals.changed",
@@ -91,7 +90,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: run commands after lost respon
       });
 
       await expect(
-        callAfterCommitLoss("goals.stop", (faultClient) => faultClient.goals.stop(sessionId)),
+        callAfterCommitLoss("goals.stop", (faultClient) => faultClient.goals.stop(started)),
       ).resolves.toBeUndefined();
       await within(
         firstGate.closed.promise,
@@ -120,7 +119,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: run commands after lost respon
       resumedGate = createProviderGate("E2E_GOAL_REPLAY_CUTPOINT");
       fixture.providerGate = resumedGate;
       await expect(
-        callAfterCommitLoss("goals.resume", (faultClient) => faultClient.goals.resume(sessionId)),
+        callAfterCommitLoss("goals.resume", (faultClient) => faultClient.goals.resume(started)),
       ).resolves.toMatchObject({ status: "active", used: { runs: 1 } });
       await within(resumedGate.arrived.promise, "the replayed Goal's resumed model request");
       await expect(nextRuntimeEvent(events, "goals.changed")).resolves.toMatchObject({
@@ -136,7 +135,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: run commands after lost respon
       expect(resumedRuns.data.filter((run) => run.status === "running")).toHaveLength(1);
       expect(resumedRuns.data.filter((run) => run.outcome?.type === "lost")).toHaveLength(1);
 
-      await expect(fixture.client.goals.stop(sessionId)).resolves.toBeUndefined();
+      await expect(fixture.client.goals.stop(started)).resolves.toBeUndefined();
       await within(resumedGate.closed.promise, "the cleanup Goal provider connection to close");
       await expect(fixture.client.goals.get(sessionId)).resolves.toMatchObject({
         status: "paused",

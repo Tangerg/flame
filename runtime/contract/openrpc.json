@@ -2,7 +2,7 @@
   "openrpc": "1.3.2",
   "info": {
     "title": "Flame Runtime Protocol",
-    "version": "2026-11-27.9",
+    "version": "2026-11-27.10",
     "description": "Generated from the Contract Registry. Shapes live in schema.json; this document is the method surface."
   },
   "methods": [
@@ -7438,6 +7438,15 @@
       "paramStructure": "by-name",
       "params": [
         {
+          "name": "replaceIncarnationId",
+          "schema": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[^\\p{C}\\p{Z}]*$"
+          }
+        },
+        {
           "name": "sessionId",
           "required": true,
           "schema": {
@@ -7538,6 +7547,7 @@
           "objective": {},
           "provider": {},
           "reasoningEffort": {},
+          "replaceIncarnationId": {},
           "sessionId": {}
         },
         "unevaluatedProperties": false,
@@ -7559,6 +7569,16 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 256,
+            "pattern": "^[^\\p{C}\\p{Z}]*$"
+          }
+        },
+        {
+          "name": "incarnationId",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
             "pattern": "^[^\\p{C}\\p{Z}]*$"
           }
         },
@@ -7625,6 +7645,7 @@
           "_meta": {
             "$ref": "#/components/schemas/RequestMeta"
           },
+          "incarnationId": {},
           "objective": {},
           "sessionId": {}
         },
@@ -7647,6 +7668,16 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 256,
+            "pattern": "^[^\\p{C}\\p{Z}]*$"
+          }
+        },
+        {
+          "name": "incarnationId",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
             "pattern": "^[^\\p{C}\\p{Z}]*$"
           }
         },
@@ -7697,12 +7728,13 @@
           "_meta": {
             "$ref": "#/components/schemas/RequestMeta"
           },
+          "incarnationId": {},
           "sessionId": {}
         },
         "unevaluatedProperties": false,
         "allOf": [
           {
-            "$ref": "schema.json#/$defs/GoalRequest"
+            "$ref": "schema.json#/$defs/GoalTarget"
           }
         ]
       }
@@ -7776,7 +7808,7 @@
         "unevaluatedProperties": false,
         "allOf": [
           {
-            "$ref": "schema.json#/$defs/GoalRequest"
+            "$ref": "schema.json#/$defs/GetGoalRequest"
           }
         ]
       }
@@ -7792,6 +7824,16 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 256,
+            "pattern": "^[^\\p{C}\\p{Z}]*$"
+          }
+        },
+        {
+          "name": "incarnationId",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
             "pattern": "^[^\\p{C}\\p{Z}]*$"
           }
         },
@@ -7850,12 +7892,13 @@
           "_meta": {
             "$ref": "#/components/schemas/RequestMeta"
           },
+          "incarnationId": {},
           "sessionId": {}
         },
         "unevaluatedProperties": false,
         "allOf": [
           {
-            "$ref": "schema.json#/$defs/GoalRequest"
+            "$ref": "schema.json#/$defs/GoalTarget"
           }
         ]
       }
@@ -7871,6 +7914,16 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 256,
+            "pattern": "^[^\\p{C}\\p{Z}]*$"
+          }
+        },
+        {
+          "name": "incarnationId",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
             "pattern": "^[^\\p{C}\\p{Z}]*$"
           }
         },
@@ -7929,12 +7982,13 @@
           "_meta": {
             "$ref": "#/components/schemas/RequestMeta"
           },
+          "incarnationId": {},
           "sessionId": {}
         },
         "unevaluatedProperties": false,
         "allOf": [
           {
-            "$ref": "schema.json#/$defs/GoalRequest"
+            "$ref": "schema.json#/$defs/GoalTarget"
           }
         ]
       }

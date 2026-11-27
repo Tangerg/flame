@@ -36,6 +36,7 @@ import {
   goalIsActive,
 } from "@/features/goal/application/goalStatusPresentation";
 import { type GoalReadModel, useGoalMaterial } from "@/features/goal/application/goalReadModel";
+import type { GoalTarget } from "@flame/runtime-client/wire";
 import {
   runtimeCommandsAvailable,
   useRuntimeCommandsAvailable,
@@ -120,7 +121,7 @@ export function GoalStatusSurface() {
   if (!goal) return null;
   return (
     <AgentComposerTopTraySurface
-      key={tupleKey(goal.sessionId, material.generation.toString(), goal.createdAt)}
+      key={tupleKey(goal.sessionId, material.generation.toString())}
       className={stylex.props(goalTray.material).className}
     >
       <GoalRow key={writable ? "writable" : "read-only"} goal={goal} writable={writable} />
@@ -173,12 +174,12 @@ function GoalRow({ goal, writable }: { goal: GoalReadModel; writable: boolean })
 
   const changeStatus = () => {
     if (!canChangeStatus || !admitted(statusFallback)) return;
-    statusAction.run(() => (active ? stopGoal(goal.sessionId) : resumeGoal(goal.sessionId)));
+    statusAction.run(() => (active ? stopGoal(goal) : resumeGoal(goal)));
   };
 
   const clear = () => {
     if (!admitted(t("goal.error.clear"))) return;
-    clearAction.run(() => clearGoal(goal.sessionId));
+    clearAction.run(() => clearGoal(goal));
   };
 
   return (
@@ -315,53 +316,67 @@ function useGoalEditor(goal: GoalReadModel, canEdit: boolean) {
   const runtimeAccess = useRuntime();
   const t = useT();
   const { update: updateGoal } = useGoalCommands();
-  const [open, setOpen] = useState(false);
-  const [draft, setDraft] = useState(goal.objective);
-  const [failure, setFailure] = useState<string>();
-  const [conflict, setConflict] = useState(false);
+  const [editing, setEditing] = useState<GoalTarget & { draft: string }>();
+  const [failure, setFailure] = useState<
+    { type: "conflict" } | { type: "error"; message: string }
+  >();
   const action = useCommandAction({
     wasRetired: wasGenerationRetired,
     fallback: t("goal.error.update"),
     onError: (message, error) => {
-      if (isErrorType(error, "revision_conflict")) setConflict(true);
-      else setFailure(message);
+      setFailure(
+        isErrorType(error, "revision_conflict") ? { type: "conflict" } : { type: "error", message },
+      );
     },
   });
+  const draft = editing?.draft ?? goal.objective;
   const objective = draft.trim();
-  const canSave = canEdit && objective.length > 0 && objective !== goal.objective;
+  const conflict =
+    editing !== undefined &&
+    (editing.incarnationId !== goal.incarnationId || failure?.type === "conflict");
+  const canSave =
+    canEdit &&
+    editing !== undefined &&
+    !conflict &&
+    objective.length > 0 &&
+    objective !== goal.objective;
   const changeOpen = (next: boolean) => {
-    setOpen(next);
     if (!next) {
+      setEditing(undefined);
       setFailure(undefined);
-      setConflict(false);
     }
   };
   return {
-    open,
+    open: editing !== undefined,
     draft,
     conflict,
-    error: failure ?? (conflict ? t("goal.edit.conflict") : undefined),
+    error: conflict
+      ? t("goal.edit.conflict")
+      : failure?.type === "error"
+        ? failure.message
+        : undefined,
     busy: action.busy,
     canSave,
     changeOpen,
     begin: () => {
-      setDraft(goal.objective);
+      const { sessionId, incarnationId, objective } = goal;
+      setEditing({ sessionId, incarnationId, draft: objective });
       setFailure(undefined);
-      setOpen(true);
     },
     edit: (value: string) => {
-      setDraft(value);
-      setFailure(undefined);
+      if (editing) setEditing({ ...editing, draft: value });
+      if (failure?.type === "error") setFailure(undefined);
     },
     save: () => {
-      if (!canSave) return;
+      if (!editing || !canSave) return;
       if (!runtimeCommandsAvailable(runtimeAccess)) {
-        setFailure(t("goal.error.update"));
+        setFailure({ type: "error", message: t("goal.error.update") });
         return;
       }
       setFailure(undefined);
       action.run(async () => {
-        await updateGoal({ sessionId: goal.sessionId, objective });
+        const { sessionId, incarnationId } = editing;
+        await updateGoal({ sessionId, incarnationId, objective });
         changeOpen(false);
       });
     },

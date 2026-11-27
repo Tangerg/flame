@@ -27,7 +27,7 @@ function SessionGoalModeIndicator({ sessionId }: { sessionId: string }) {
   const originalAvailable = useGoalAuthorAvailable(goal?.author);
   const available =
     material?.available === true && (!goal || originalAvailable) && goalCanEnterComposerMode(goal);
-  const active = snapshot.sessionId === sessionId && snapshot.phase !== "inactive";
+  const active = snapshot.sessionId === sessionId;
 
   useEffect(
     () => () => {
@@ -68,18 +68,20 @@ function SessionGoalModeIndicator({ sessionId }: { sessionId: string }) {
         />
         <span>{t("goal.mode.label")}</span>
       </Button>
-      <ConfirmDialog
-        open={confirming}
-        onOpenChange={(open) => {
-          if (!open) owner.cancelReplacement(sessionId);
-        }}
-        title={t("goal.replace.title")}
-        body={t("goal.replace.body", { objective: snapshot.replacedObjective ?? "" })}
-        confirmLabel={t("goal.replace.confirm")}
-        cancelLabel={t("common.cancel")}
-        destructive
-        onConfirm={() => owner.confirmReplacement(sessionId)}
-      />
+      {confirming && (
+        <ConfirmDialog
+          open
+          onOpenChange={(open) => {
+            if (!open) owner.cancelReplacement(sessionId);
+          }}
+          title={t("goal.replace.title")}
+          body={t("goal.replace.body", { objective: snapshot.replacedObjective })}
+          confirmLabel={t("goal.replace.confirm")}
+          cancelLabel={t("common.cancel")}
+          destructive
+          onConfirm={() => owner.confirmReplacement(sessionId)}
+        />
+      )}
     </>
   );
 }

@@ -76,6 +76,7 @@ export type {
   Plan,
   InterruptResponse,
   Goal,
+  GoalTarget,
   WorkspaceFileChange,
   PlanStep,
   Usage,

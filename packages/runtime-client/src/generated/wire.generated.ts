@@ -9,7 +9,7 @@
 // in the generated validator and in schema.json.
 
 // The wire version this runtime serves; a client states it in request metadata.
-export const PROTOCOL_VERSION = "2026-11-27.9";
+export const PROTOCOL_VERSION = "2026-11-27.10";
 
 // The only Session Artifact version this runtime imports or exports.
 export const SESSION_ARTIFACT_VERSION = 32;
@@ -664,6 +664,10 @@ export interface GetDiffRequest {
   workspace: WorkspaceRef;
 }
 
+export interface GetGoalRequest {
+  sessionId: string;
+}
+
 export interface GetPlanRequest {
   sessionId: string;
 }
@@ -695,6 +699,7 @@ export interface GetSessionSnapshotRequest {
 export interface Goal {
   author?: ContributionSource;
   createdAt: string;
+  incarnationId: string;
   model?: string;
   objective: string;
   provider?: string;
@@ -714,11 +719,12 @@ export interface GoalReason {
 
 export type GoalReasonCode = "stoppedByUser" | "runtimeRestarted" | "runStartFailed" | "awaitingInput" | "terminalOutcomeMissing" | "runNotCompleted" | "blockedByModel";
 
-export interface GoalRequest {
+export type GoalStatus = "active" | "paused" | "blocked" | "completing";
+
+export interface GoalTarget {
+  incarnationId: string;
   sessionId: string;
 }
-
-export type GoalStatus = "active" | "paused" | "blocked" | "completing";
 
 export interface GoalUsage {
   costUsd?: number;
@@ -2319,6 +2325,7 @@ export interface StartGoalRequest {
   objective: string;
   provider?: string;
   reasoningEffort?: string;
+  replaceIncarnationId?: string;
   sessionId: string;
 }
 
@@ -2463,6 +2470,7 @@ export interface UnresolvedEffect {
 export type UnresolvedEffectCause = "termination" | "runtimeFailure";
 
 export interface UpdateGoalRequest {
+  incarnationId: string;
   objective: string;
   sessionId: string;
 }

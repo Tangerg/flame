@@ -27,7 +27,6 @@ import (
 
 var (
 	ErrGoalActive   = errors.New("goals: a goal is already active for this session")
-	ErrNoGoal       = errors.New("goals: no goal for this session")
 	ErrNoSession    = errors.New("goals: session does not exist")
 	ErrGoalConflict = errors.New("goals: goal changed concurrently")
 	ErrClosed       = errors.New("goals: driver closed")
@@ -105,13 +104,16 @@ func NewDriver(
 	}, nil
 }
 
-func (d *Driver) Start(
-	ctx context.Context,
-	sessionID identity.SessionID, objective string,
-	selection flamemodel.Selection,
-	capabilities run.Capabilities,
-	complete operation.Reply[goal.Goal],
-) error {
+type StartCommand struct {
+	SessionID    identity.SessionID
+	Replaces     goalref.IncarnationID
+	Objective    string
+	Selection    flamemodel.Selection
+	Capabilities run.Capabilities
+}
+
+func (d *Driver) Start(ctx context.Context, command StartCommand, complete operation.Reply[goal.Goal]) error {
+	sessionID := command.SessionID
 	release, err := d.admitCommand(ctx, sessionID)
 	if err != nil {
 		return err
@@ -124,31 +126,31 @@ func (d *Driver) Start(
 	if !exists {
 		return ErrNoSession
 	}
-	if selection.Configured() {
-		if admissionErr := d.runs.AdmitSelection(ctx, selection); admissionErr != nil {
-			return admissionErr
+	current, err := d.goals.Get(ctx, sessionID)
+	if err != nil {
+		return err
+	}
+	if existing, present := current.Goal(); present {
+		matches := command.Replaces == existing.IncarnationID()
+		if existing.Status() == goal.StatusActive && (command.Replaces.IsZero() || matches) {
+			return ErrGoalActive
+		}
+		if !matches {
+			return ErrGoalConflict
+		}
+	} else if !command.Replaces.IsZero() {
+		return ErrGoalConflict
+	}
+	if command.Selection.Configured() {
+		if err := d.runs.AdmitSelection(ctx, command.Selection); err != nil {
+			return err
 		}
 	}
-	existing, ok, err := loadGoal(ctx, d.goals, sessionID)
+	g, err := d.beginGoal(ctx, sessionID, command.Objective, command.Selection, command.Capabilities)
 	if err != nil {
 		return err
 	}
-	if ok && existing.Status() == goal.StatusActive {
-		return ErrGoalActive
-	}
-	unwritten, err := goal.Unwritten(sessionID)
-	if err != nil {
-		return err
-	}
-	expected := unwritten.Version()
-	if ok {
-		expected = existing.Version()
-	}
-	g, err := d.beginGoal(ctx, sessionID, objective, selection, capabilities)
-	if err != nil {
-		return err
-	}
-	return d.replaceAndDrive(ctx, expected, g, complete)
+	return d.replaceAndDrive(ctx, current.Version(), g, complete)
 }
 
 func (d *Driver) beginGoal(ctx context.Context, sessionID identity.SessionID, objective string, selection flamemodel.Selection, capabilities run.Capabilities) (goal.Goal, error) {
@@ -165,18 +167,19 @@ func (d *Driver) beginGoal(ctx context.Context, sessionID identity.SessionID, ob
 	return g, err
 }
 
-func (d *Driver) Resume(ctx context.Context, sessionID identity.SessionID, caller run.Capabilities, complete operation.Reply[goal.Goal]) error {
+func (d *Driver) Resume(ctx context.Context, target goalref.Target, caller run.Capabilities, complete operation.Reply[goal.Goal]) error {
+	sessionID := target.SessionID
 	release, err := d.admitCommand(ctx, sessionID)
 	if err != nil {
 		return err
 	}
 	defer release()
-	g, ok, err := loadGoal(ctx, d.goals, sessionID)
+	g, ok, err := d.loadTarget(ctx, target)
 	if err != nil {
 		return err
 	}
 	if !ok {
-		return ErrNoGoal
+		return ErrGoalConflict
 	}
 	if missing := g.Capabilities().MissingFrom(caller); !missing.IsEmpty() {
 		return fmt.Errorf("goals: session %q: %w", sessionID, &run.InsufficientCapabilitiesError{Missing: missing})
@@ -218,18 +221,19 @@ func (d *Driver) resumeActive(ctx context.Context, g goal.Goal, complete operati
 	return nil
 }
 
-func (d *Driver) Stop(ctx context.Context, sessionID identity.SessionID, complete operation.Reply[struct{}]) error {
+func (d *Driver) Stop(ctx context.Context, target goalref.Target, complete operation.Reply[struct{}]) error {
+	sessionID := target.SessionID
 	release, err := d.admitCommand(ctx, sessionID)
 	if err != nil {
 		return err
 	}
 	defer release()
-	current, present, err := loadGoal(ctx, d.goals, sessionID)
+	current, present, err := d.loadTarget(ctx, target)
 	if err != nil {
 		return err
 	}
 	if !present {
-		return ErrNoGoal
+		return ErrGoalConflict
 	}
 	var change *goal.Replacement
 	if current.Status() == goal.StatusActive {
@@ -267,21 +271,22 @@ func (d *Driver) Stop(ctx context.Context, sessionID identity.SessionID, complet
 // charge the replacement.
 func (d *Driver) UpdateObjective(
 	ctx context.Context,
-	sessionID identity.SessionID, objective string,
+	target goalref.Target, objective string,
 	caller run.Capabilities,
 	complete operation.Reply[goal.Goal],
 ) error {
+	sessionID := target.SessionID
 	release, err := d.admitCommand(ctx, sessionID)
 	if err != nil {
 		return err
 	}
 	defer release()
-	current, present, err := loadGoal(ctx, d.goals, sessionID)
+	current, present, err := d.loadTarget(ctx, target)
 	if err != nil {
 		return err
 	}
 	if !present {
-		return ErrNoGoal
+		return ErrGoalConflict
 	}
 	if current.Status() == goal.StatusComplete {
 		return goal.ErrNotEditable
@@ -340,13 +345,14 @@ func (d *Driver) saveReplacement(ctx context.Context, change goal.Replacement) e
 	return nil
 }
 
-func (d *Driver) Clear(ctx context.Context, sessionID identity.SessionID, complete operation.Reply[struct{}]) error {
+func (d *Driver) Clear(ctx context.Context, target goalref.Target, complete operation.Reply[struct{}]) error {
+	sessionID := target.SessionID
 	release, err := d.admitCommand(ctx, sessionID)
 	if err != nil {
 		return err
 	}
 	defer release()
-	current, present, err := loadGoal(ctx, d.goals, sessionID)
+	current, present, err := d.loadTarget(ctx, target)
 	if err != nil {
 		return err
 	}
@@ -370,6 +376,14 @@ func (d *Driver) Clear(ctx context.Context, sessionID identity.SessionID, comple
 		d.retireDrive(ctx, sessionID)
 	}
 	return nil
+}
+
+func (d *Driver) loadTarget(ctx context.Context, target goalref.Target) (goal.Goal, bool, error) {
+	current, present, err := loadGoal(ctx, d.goals, target.SessionID)
+	if present && current.IncarnationID() != target.IncarnationID {
+		return goal.Goal{}, false, ErrGoalConflict
+	}
+	return current, present, err
 }
 
 func (d *Driver) publishChange(sessionID identity.SessionID) {

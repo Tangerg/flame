@@ -5,7 +5,7 @@
 > method the Runtime does not serve. The adjacent JSON artifacts are the
 > machine-readable contract; this file is its mechanical human-readable index.
 
-Protocol `2026-11-27.9` · 108 methods
+Protocol `2026-11-27.10` · 108 methods
 
 ## Methods
 
@@ -1211,9 +1211,12 @@ TypeScript validator from this single registry projection.
 | `ModelCapabilities` | `reasoningDefaultLevel` | `maxLength(32)` |
 | `InvokeToolRequest` | `name` | `nonEmpty` |
 | `AgentDoc` | `path` | `pattern("\\S")` |
-| `Goal` | `sessionId` | `nonEmpty` |
-| `Goal` | `sessionId` | `identity` |
-| `Goal` | `sessionId` | `maxLength(256)` |
+| `GoalTarget` | `sessionId` | `nonEmpty` |
+| `GoalTarget` | `sessionId` | `identity` |
+| `GoalTarget` | `sessionId` | `maxLength(256)` |
+| `GoalTarget` | `incarnationId` | `nonEmpty` |
+| `GoalTarget` | `incarnationId` | `identity` |
+| `GoalTarget` | `incarnationId` | `maxLength(128)` |
 | `Goal` | `objective` | `pattern("\\S")` |
 | `Goal` | `provider` | `identity` |
 | `Goal` | `provider` | `maxLength(64)` |
@@ -1228,18 +1231,18 @@ TypeScript validator from this single registry projection.
 | `StartGoalRequest` | `sessionId` | `identity` |
 | `StartGoalRequest` | `sessionId` | `maxLength(256)` |
 | `StartGoalRequest` | `objective` | `pattern("\\S")` |
+| `StartGoalRequest` | `replaceIncarnationId` | `nonEmpty` |
+| `StartGoalRequest` | `replaceIncarnationId` | `identity` |
+| `StartGoalRequest` | `replaceIncarnationId` | `maxLength(128)` |
 | `StartGoalRequest` | `provider` | `identity` |
 | `StartGoalRequest` | `provider` | `maxLength(64)` |
 | `StartGoalRequest` | `model` | `identity` |
 | `StartGoalRequest` | `model` | `maxLength(256)` |
 | `StartGoalRequest` | `reasoningEffort` | `identity` |
 | `StartGoalRequest` | `reasoningEffort` | `maxLength(32)` |
-| `GoalRequest` | `sessionId` | `nonEmpty` |
-| `GoalRequest` | `sessionId` | `identity` |
-| `GoalRequest` | `sessionId` | `maxLength(256)` |
-| `UpdateGoalRequest` | `sessionId` | `nonEmpty` |
-| `UpdateGoalRequest` | `sessionId` | `identity` |
-| `UpdateGoalRequest` | `sessionId` | `maxLength(256)` |
+| `GetGoalRequest` | `sessionId` | `nonEmpty` |
+| `GetGoalRequest` | `sessionId` | `identity` |
+| `GetGoalRequest` | `sessionId` | `maxLength(256)` |
 | `UpdateGoalRequest` | `objective` | `pattern("\\S")` |
 | `ClientInfo` | `name` | `nonEmpty` |
 | `ClientInfo` | `version` | `nonEmpty` |

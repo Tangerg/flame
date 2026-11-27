@@ -4,6 +4,7 @@ import {
   asSessionId,
   createMutationSettler,
   type Goal,
+  type GoalTarget,
   type FlameClient,
   type SessionSnapshot,
   type MutationSettler,
@@ -23,6 +24,7 @@ import {
 function toGoalReadModel(goal: Goal): GoalReadModel {
   return {
     sessionId: goal.sessionId,
+    incarnationId: goal.incarnationId,
     ...(goal.author ? { author: goal.author } : {}),
     objective: goal.objective,
     status: goal.status,
@@ -49,7 +51,7 @@ function runtimeGoalMaterial(goal: Goal | undefined, available: boolean): GoalSt
 
 class RuntimeGoalCommandsGateway implements GoalCommandsGateway {
   readonly #client: FlameClient;
-  #mutations: MutationSettler = createMutationSettler();
+  readonly #mutations: MutationSettler = createMutationSettler();
 
   constructor(client: FlameClient) {
     this.#client = client;
@@ -63,29 +65,23 @@ class RuntimeGoalCommandsGateway implements GoalCommandsGateway {
   }
 
   async update(input: Parameters<GoalCommandsGateway["update"]>[0]) {
-    const goal = await this.#mutations.settle((signal) =>
-      this.#client.goals.update({ ...input, sessionId: asSessionId(input.sessionId) }, signal),
-    );
+    const goal = await this.#mutations.settle((signal) => this.#client.goals.update(input, signal));
     return toGoalCommandReceipt(goal);
   }
 
-  async clear(sessionId: string) {
-    await this.#mutations.settle((signal) =>
-      this.#client.goals.clear(asSessionId(sessionId), signal),
-    );
-    return { sessionId };
+  async clear(target: GoalTarget) {
+    await this.#mutations.settle((signal) => this.#client.goals.clear(target, signal));
+    return { sessionId: target.sessionId };
   }
 
-  async stop(sessionId: string) {
-    await this.#mutations.settle((signal) =>
-      this.#client.goals.stop(asSessionId(sessionId), signal),
-    );
-    return { sessionId };
+  async stop(target: GoalTarget) {
+    await this.#mutations.settle((signal) => this.#client.goals.stop(target, signal));
+    return { sessionId: target.sessionId };
   }
 
-  async resume(sessionId: string) {
+  async resume(target: GoalTarget) {
     const goal = await this.#mutations.settle((signal) =>
-      this.#client.goals.resume(asSessionId(sessionId), signal),
+      this.#client.goals.resume(target, signal),
     );
     return toGoalCommandReceipt(goal);
   }

@@ -2331,6 +2331,7 @@ export const AGENT_SESSION_TAIL_EVENTS: Readonly<Record<VisualAgentState, AgentE
 export const VISUAL_GOALS: Partial<Record<VisualAgentState, GoalReadModel>> = {
   running: {
     sessionId: SESSION_ID,
+    incarnationId: "goal-visual-running",
     objective: "Get the desktop suite green on Linux without loosening any gate or skipping a test",
     status: "active",
     used: { runs: 7, costUsd: 4.5, steps: 31 },
@@ -2338,6 +2339,7 @@ export const VISUAL_GOALS: Partial<Record<VisualAgentState, GoalReadModel>> = {
   },
   terminal: {
     sessionId: SESSION_ID,
+    incarnationId: "goal-visual-terminal",
     objective: "Get the desktop suite green on Linux",
     status: "paused",
     used: { runs: 12, costUsd: 5, steps: 58 },
@@ -2345,6 +2347,7 @@ export const VISUAL_GOALS: Partial<Record<VisualAgentState, GoalReadModel>> = {
   },
   canceled: {
     sessionId: SESSION_ID,
+    incarnationId: "goal-visual-canceled",
     objective: "Get the desktop suite green on Linux",
     status: "blocked",
     used: { runs: 4, costUsd: 1.2, steps: 18 },
@@ -2352,6 +2355,7 @@ export const VISUAL_GOALS: Partial<Record<VisualAgentState, GoalReadModel>> = {
   },
   steer: {
     sessionId: SESSION_ID,
+    incarnationId: "goal-visual-steer",
     objective: "Get the desktop suite green on Linux",
     status: "completing",
     used: { runs: 19, costUsd: 4.9, steps: 96 },

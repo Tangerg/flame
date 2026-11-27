@@ -32,6 +32,7 @@ import type {
   ForgetApprovalRuleRequest,
   ForkSessionRequest,
   GetDiffRequest,
+  GetGoalRequest,
   GetPlanRequest,
   GetProjectRequest,
   GetRunAcceptanceRequest,
@@ -39,7 +40,7 @@ import type {
   GetSessionRequest,
   GetSessionSnapshotRequest,
   Goal,
-  GoalRequest,
+  GoalTarget,
   GrepRequest,
   GrepResult,
   HooksListResult,
@@ -1563,10 +1564,10 @@ export interface WireShapes {
   "approval.forgetRule": { params: ForgetApprovalRuleRequest };
   "goals.start": { params: StartGoalRequest; result: Goal };
   "goals.update": { params: UpdateGoalRequest; result: Goal };
-  "goals.clear": { params: GoalRequest };
-  "goals.get": { params: GoalRequest; result: Goal | null };
-  "goals.stop": { params: GoalRequest };
-  "goals.resume": { params: GoalRequest; result: Goal };
+  "goals.clear": { params: GoalTarget };
+  "goals.get": { params: GetGoalRequest; result: Goal | null };
+  "goals.stop": { params: GoalTarget };
+  "goals.resume": { params: GoalTarget; result: Goal };
   "providers.list": { params: Record<string, never>; result: PageOfProvider };
   "providers.update": { params: UpdateProviderRequest; result: Provider };
   "providers.test": { params: TestProviderRequest; result: ProviderTestResult };
