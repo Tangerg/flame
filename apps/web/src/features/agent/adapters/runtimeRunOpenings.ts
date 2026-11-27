@@ -40,7 +40,7 @@ type StartMutation = ReturnType<FlameClient["runs"]["start"]>;
 export class RuntimeRunOpenings {
   constructor(private readonly runtimeClient: () => FlameClient) {}
 
-  #settler = createMutationSettler();
+  readonly #settler = createMutationSettler();
 
   start(
     sessionId: string,
@@ -78,12 +78,6 @@ export class RuntimeRunOpenings {
       ...(result.userItemId ? { userItemId: asItemId(result.userItemId) } : {}),
       observation,
     };
-  }
-
-  replaceRuntimeGeneration(): void {
-    const predecessor = this.#settler;
-    this.#settler = createMutationSettler();
-    predecessor.dispose();
   }
 
   dispose(): void {

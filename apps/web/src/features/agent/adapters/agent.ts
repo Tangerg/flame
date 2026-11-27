@@ -132,7 +132,6 @@ export function composeAgent(
         followRuntimeGeneration(stream, () => {
           state.retirePendingSessionOpen();
           gateway.replaceRuntimeGeneration();
-          runOpenings.replaceRuntimeGeneration();
         }),
       );
     },
