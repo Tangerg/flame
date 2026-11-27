@@ -75,86 +75,65 @@ func (c *Coordinator) InspectWorkspace(cwd string) (workspaceapp.Resolved, error
 	return c.paths.Inspect(cwd)
 }
 
-type Creation struct {
-	value   session.Session
-	View    View
-	write   func(context.Context) error
-	publish func()
-}
-
-func (c Creation) Commit(ctx context.Context) error { return c.write(ctx) }
-func (c Creation) Publish()                         { c.publish() }
-
-func (c Creation) apply(ctx context.Context) (session.Session, error) {
-	if err := c.Commit(ctx); err != nil {
-		return session.Session{}, err
-	}
-	c.Publish()
-	return c.value, nil
-}
-
-func (c *Coordinator) PrepareCreate(ctx context.Context, title, cwd string, project identity.ProjectID) (Creation, error) {
-	created, _, err := c.prepareInitial(ctx, initialSession{id: c.newID(), title: title, cwd: cwd, project: project})
+func (c *Coordinator) Create(ctx context.Context, title, cwd string, project identity.ProjectID, complete operation.Reply[View]) error {
+	workspace, release, err := c.bindWorkspace(cwd)
 	if err != nil {
-		return Creation{}, err
+		return err
+	}
+	defer release()
+	created, err := c.newSession(ctx, session.Draft{ID: c.newID(), Title: title, Workspace: workspace, Project: project})
+	if err != nil {
+		return err
 	}
 	view, err := c.view(created, activityIdle)
 	if err != nil {
-		return Creation{}, err
+		return err
 	}
-	return Creation{value: created, View: view, write: func(tx context.Context) error { return c.sessions.Insert(tx, created) }, publish: func() { c.publishSessionMoved(created.ID()) }}, nil
+	if err := complete(ctx, func(tx context.Context) (View, error) {
+		return view, c.sessions.Insert(tx, created)
+	}); err != nil {
+		return err
+	}
+	c.publishSessionMoved(created.ID())
+	return nil
 }
 
-func (c *Coordinator) PrepareOpening(ctx context.Context, opening runs.SessionOpening, selection flamemodel.Selection) (current session.Session, initial *session.Session, err error) {
-	_, err = c.Get(ctx, opening.SessionID)
+func (c *Coordinator) PrepareOpening(ctx context.Context, opening runs.SessionOpening, selection flamemodel.Selection) (session.Session, error) {
+	_, err := c.Get(ctx, opening.SessionID)
 	if err == nil {
-		return session.Session{}, nil, fmt.Errorf("%w: new opening Session already exists", session.ErrInvalid)
+		return session.Session{}, fmt.Errorf("%w: new opening Session already exists", session.ErrInvalid)
 	}
 	if !errors.Is(err, session.ErrNotFound) {
-		return session.Session{}, nil, err
+		return session.Session{}, err
 	}
-	return c.prepareInitial(ctx, initialSession{id: opening.SessionID, title: opening.Title, cwd: opening.CWD, project: opening.Project, selection: selection})
+	workspace, err := c.resolveSessionWorkspace(opening.CWD)
+	if err != nil {
+		return session.Session{}, err
+	}
+	return c.newSession(ctx, session.Draft{
+		ID: opening.SessionID, Title: opening.Title, Workspace: workspace, Project: opening.Project, Selection: selection,
+	})
 }
 
 func (c *Coordinator) DefaultModelSelection() flamemodel.Selection {
 	return c.defaultModelSelection
 }
 
-// Unlike session.Draft, the workspace is still an unresolved path and the
-// model selection may be unset until prepareInitial resolves both.
-type initialSession struct {
-	id        identity.SessionID
-	title     string
-	cwd       string
-	project   identity.ProjectID
-	selection flamemodel.Selection
-}
-
-func (c *Coordinator) prepareInitial(ctx context.Context, request initialSession) (session.Session, *session.Session, error) {
-	workspace, err := c.resolveSessionWorkspace(request.cwd)
-	if err != nil {
-		return session.Session{}, nil, err
+func (c *Coordinator) newSession(ctx context.Context, draft session.Draft) (session.Session, error) {
+	if err := c.requireProject(ctx, draft.Project); err != nil {
+		return session.Session{}, err
 	}
-	if err := c.requireProject(ctx, request.project); err != nil {
-		return session.Session{}, nil, err
+	if !draft.Selection.Configured() {
+		draft.Selection = c.defaultModelSelection
 	}
-	selection := request.selection
-	if !selection.Configured() {
-		selection = c.defaultModelSelection
+	if validateErr := draft.Selection.ValidateExact(); validateErr != nil {
+		return session.Session{}, fmt.Errorf("sessions: initial model selection: %w", validateErr)
 	}
-	if validateErr := selection.ValidateExact(); validateErr != nil {
-		return session.Session{}, nil, fmt.Errorf("sessions: initial model selection: %w", validateErr)
+	if admitErr := c.models.AdmitSelection(ctx, draft.Selection); admitErr != nil {
+		return session.Session{}, fmt.Errorf("sessions: initial model selection is not admitted: %w", admitErr)
 	}
-	if admitErr := c.models.AdmitSelection(ctx, selection); admitErr != nil {
-		return session.Session{}, nil, fmt.Errorf("sessions: initial model selection is not admitted: %w", admitErr)
-	}
-	created, err := session.New(session.Draft{
-		ID: request.id, Title: request.title, Workspace: workspace, Project: request.project, Selection: selection, CreatedAt: c.now(),
-	})
-	if err != nil {
-		return session.Session{}, nil, err
-	}
-	return created, &created, nil
+	draft.CreatedAt = c.now()
+	return session.New(draft)
 }
 
 // Projects are never deleted, so an existence check before the write cannot be
@@ -167,22 +146,16 @@ func (c *Coordinator) requireProject(ctx context.Context, id identity.ProjectID)
 	return err
 }
 
-func (c *Coordinator) patchedWorkspace(path *string) (*session.Workspace, error) {
-	if path == nil {
-		return nil, nil
-	}
-	resolved, err := c.resolveSessionWorkspace(*path)
-	if err != nil {
-		return nil, err
-	}
-	return &resolved, nil
-}
-
 func (c *Coordinator) Update(ctx context.Context, id identity.SessionID, patch Patch, complete operation.Reply[View]) error {
 	patch = patch.clone()
-	workspace, err := c.patchedWorkspace(patch.WorkspacePath)
-	if err != nil {
-		return err
+	var workspace *session.Workspace
+	if patch.WorkspacePath != nil {
+		resolved, release, err := c.bindWorkspace(*patch.WorkspacePath)
+		if err != nil {
+			return err
+		}
+		defer release()
+		workspace = &resolved
 	}
 	if patch.Project != nil {
 		if err := c.requireProject(ctx, *patch.Project); err != nil {
@@ -276,4 +249,21 @@ func (c *Coordinator) resolveSessionWorkspace(path string) (session.Workspace, e
 		return session.Workspace{}, fmt.Errorf("sessions: resolved workspace: %w", err)
 	}
 	return workspace, nil
+}
+
+func (c *Coordinator) bindWorkspace(path string) (session.Workspace, func(), error) {
+	release, acquired, err := c.admissions.AcquireWorkspaceBinding(path)
+	if err != nil {
+		return session.Workspace{}, nil, errors.Join(workspaceapp.ErrCWDUnavailable, err)
+	}
+	if !acquired {
+		return session.Workspace{}, nil, fmt.Errorf("%w: %q is being released", workspaceapp.ErrCWDUnavailable, path)
+	}
+	// Keep the checkout present from directory validation through the Session commit.
+	workspace, err := c.resolveSessionWorkspace(path)
+	if err != nil {
+		release()
+		return session.Workspace{}, nil, err
+	}
+	return workspace, release, nil
 }

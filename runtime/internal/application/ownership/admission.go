@@ -9,17 +9,18 @@ import (
 )
 
 type Gate struct {
-	mu               sync.Mutex
-	runs             map[identity.RunID]reservedRun
-	pending          map[*runAdmissionLease]reservedRun
-	maintenance      map[*maintenanceReservation]struct{}
-	claims           map[identity.SessionID]sessionClaimKind
-	treeMutations    map[string]struct{}
-	changed          chan struct{}
-	resolveTree      func(string) (string, error)
-	treesOverlap     func(string, string) (bool, error)
-	settleRetirement func(context.Context, identity.SessionID) error
-	rollbackPending  func(context.Context, identity.SessionID) (bool, error)
+	mu                sync.Mutex
+	runs              map[identity.RunID]reservedRun
+	pending           map[*runAdmissionLease]reservedRun
+	maintenance       map[*maintenanceReservation]struct{}
+	claims            map[identity.SessionID]sessionClaimKind
+	treeMutations     map[string]treeMutationKind
+	workspaceBindings map[*workspaceBinding]struct{}
+	changed           chan struct{}
+	resolveTree       func(string) (string, error)
+	treesOverlap      func(string, string) (bool, error)
+	settleRetirement  func(context.Context, identity.SessionID) error
+	rollbackPending   func(context.Context, identity.SessionID) (bool, error)
 }
 
 type GateConfig struct {
@@ -43,16 +44,17 @@ func NewGate(cfg GateConfig) (*Gate, error) {
 		return nil, errors.New("session admission: workspace rollback fence is required")
 	}
 	return &Gate{
-		resolveTree:      cfg.ResolveTree,
-		treesOverlap:     cfg.TreesOverlap,
-		settleRetirement: cfg.SettleRetirement,
-		rollbackPending:  cfg.WorkspaceRollbackPending,
-		runs:             make(map[identity.RunID]reservedRun),
-		pending:          make(map[*runAdmissionLease]reservedRun),
-		maintenance:      make(map[*maintenanceReservation]struct{}),
-		claims:           make(map[identity.SessionID]sessionClaimKind),
-		treeMutations:    make(map[string]struct{}),
-		changed:          make(chan struct{}),
+		resolveTree:       cfg.ResolveTree,
+		treesOverlap:      cfg.TreesOverlap,
+		settleRetirement:  cfg.SettleRetirement,
+		rollbackPending:   cfg.WorkspaceRollbackPending,
+		runs:              make(map[identity.RunID]reservedRun),
+		pending:           make(map[*runAdmissionLease]reservedRun),
+		maintenance:       make(map[*maintenanceReservation]struct{}),
+		claims:            make(map[identity.SessionID]sessionClaimKind),
+		treeMutations:     make(map[string]treeMutationKind),
+		workspaceBindings: make(map[*workspaceBinding]struct{}),
+		changed:           make(chan struct{}),
 	}, nil
 }
 
@@ -79,6 +81,17 @@ const (
 	sessionMutation sessionClaimKind = iota
 	sessionRecovery
 )
+
+type treeMutationKind uint8
+
+const (
+	treeEdit treeMutationKind = iota
+	treeRemoval
+)
+
+type workspaceBinding struct {
+	cwd string
+}
 
 func (r RunAdmission) Admit(runID identity.RunID) bool {
 	if r.lease == nil {
@@ -231,10 +244,42 @@ func (g *Gate) BeginMaintenance(runID identity.RunID) (release func(), ok bool) 
 	}, true
 }
 
+func (g *Gate) AcquireWorkspaceBinding(cwd string) (release func(), ok bool, err error) {
+	cwd, err = g.resolveTree(cwd)
+	if err != nil {
+		return nil, false, err
+	}
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	for tree, kind := range g.treeMutations {
+		if kind != treeRemoval {
+			continue
+		}
+		if overlaps, err := g.treesOverlap(tree, cwd); err != nil || overlaps {
+			return nil, false, err
+		}
+	}
+	binding := &workspaceBinding{cwd: cwd}
+	g.workspaceBindings[binding] = struct{}{}
+	return func() {
+		g.mu.Lock()
+		defer g.mu.Unlock()
+		delete(g.workspaceBindings, binding)
+	}, true, nil
+}
+
 func (g *Gate) AcquireWorkingTreeMutation(cwd string) (release func(), ok bool, err error) {
 	if cwd == "" {
 		return func() {}, true, nil
 	}
+	return g.acquireTreeMutation(cwd, treeEdit)
+}
+
+func (g *Gate) AcquireWorkingTreeRemoval(cwd string) (release func(), ok bool, err error) {
+	return g.acquireTreeMutation(cwd, treeRemoval)
+}
+
+func (g *Gate) acquireTreeMutation(cwd string, kind treeMutationKind) (release func(), ok bool, err error) {
 	cwd, err = g.resolveTree(cwd)
 	if err != nil {
 		return nil, false, err
@@ -247,7 +292,14 @@ func (g *Gate) AcquireWorkingTreeMutation(cwd string) (release func(), ok bool, 
 	if busy, err := g.treeReservedLocked(cwd); err != nil || busy {
 		return nil, false, err
 	}
-	g.treeMutations[cwd] = struct{}{}
+	if kind == treeRemoval {
+		for binding := range g.workspaceBindings {
+			if overlaps, err := g.treesOverlap(cwd, binding.cwd); err != nil || overlaps {
+				return nil, false, err
+			}
+		}
+	}
+	g.treeMutations[cwd] = kind
 	return g.releaseTreeMutation(cwd), true, nil
 }
 

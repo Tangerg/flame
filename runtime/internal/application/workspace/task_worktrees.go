@@ -50,6 +50,7 @@ type taskWorktreeBackend interface {
 
 type worktreeMutationGate interface {
 	AcquireWorkingTreeMutation(string) (func(), bool, error)
+	AcquireWorkingTreeRemoval(string) (func(), bool, error)
 }
 
 type worktreeSessions interface {
@@ -121,9 +122,12 @@ func (w *TaskWorktrees) Release(ctx context.Context, id string) error {
 		return err
 	}
 	if task.Available {
-		release, err := w.claim(task.Path)
+		release, ok, err := w.gate.AcquireWorkingTreeRemoval(task.Path)
 		if err != nil {
 			return err
+		}
+		if !ok {
+			return ErrTaskWorktreeBusy
 		}
 		defer release()
 	}

@@ -176,14 +176,19 @@ func (s *SessionStores) readHistory(ctx context.Context, sessionID identity.Sess
 	}, nil
 }
 
-func (s *SessionStores) ApplyFork(ctx context.Context, fork sessions.ForkPlan) (session.Session, error) {
+func (s *SessionStores) ApplyFork(ctx context.Context, fork sessions.ForkPlan) error {
 	snapshot := fork.History()
 	child := snapshot.Session
 	parentID := fork.ParentID()
 	planReplacement := fork.PlanReplacement()
-	err := s.tx(ctx, func(ctx context.Context) error {
-		if _, err := s.sessions.Get(ctx, parentID); err != nil {
+	return s.tx(ctx, func(ctx context.Context) error {
+		parent, err := s.sessions.Get(ctx, parentID)
+		if err != nil {
 			return err
+		}
+		// The committed parent must still protect the inherited checkout from release.
+		if parent.Workspace() != child.Workspace() {
+			return session.ErrRevisionConflict
 		}
 		if err := s.sessions.Insert(ctx, child); err != nil {
 			return err
@@ -202,10 +207,6 @@ func (s *SessionStores) ApplyFork(ctx context.Context, fork sessions.ForkPlan) (
 		}
 		return s.restoreTranscript(ctx, snapshot.Items, snapshot.ToolResults)
 	})
-	if err != nil {
-		return session.Session{}, err
-	}
-	return child, nil
 }
 
 func (s *SessionStores) ApplyRollback(ctx context.Context, rollback sessions.RollbackPlan) error {

@@ -20,10 +20,10 @@ Protocol `2026-11-27.13` · 115 methods
 | `sessions.create` | command | unary | replayResponse | none | none | — | — | `plugin_unavailable`, `plugin_stale`, `workspace_unavailable`, `project_not_found` |
 | `sessions.update` | command | unary | replayResponse | none | none | — | `relocate`, `isolation` | `plugin_unavailable`, `plugin_stale`, `session_not_found`, `revision_conflict`, `workspace_unavailable`, `project_not_found`, `session_busy`, `capability_not_negotiated` |
 | `sessions.delete` | command | unary | replayResponse | none | none | — | — | `session_not_found` |
-| `sessions.fork` | command | unary | replayResponse | none | none | — | — | `plugin_unavailable`, `plugin_stale`, `session_not_found`, `run_not_found` |
+| `sessions.fork` | command | unary | replayResponse | none | none | — | — | `plugin_unavailable`, `plugin_stale`, `session_not_found`, `run_not_found`, `revision_conflict` |
 | `sessions.rollback` | command | unary | replayResponse | none | none | — | `checkpoints` | `session_not_found`, `run_not_found`, `session_busy`, `revision_conflict`, `checkpoint_unavailable`, `checkpoint_conflict`, `capability_not_negotiated` |
 | `sessions.export` | query | unary | none | none | none | — | `sessionExport` | `plugin_unavailable`, `plugin_stale`, `session_not_found`, `session_busy`, `export_too_large`, `capability_not_negotiated` |
-| `sessions.import` | command | unary | replayResponse | none | none | — | `sessionExport` | `session_busy`, `export_too_large`, `capability_not_negotiated` |
+| `sessions.import` | command | unary | replayResponse | none | none | — | `sessionExport` | `session_busy`, `export_too_large`, `workspace_unavailable`, `capability_not_negotiated` |
 | `projects.background.get` | query | unary | none | none | none | — | — | `project_not_found` |
 | `projects.background.setPolicy` | command | unary | replayResponse | none | none | — | — | `project_not_found`, `revision_conflict` |
 | `projects.list` | query | unary | none | none | cursor | — | — | — |
@@ -32,7 +32,7 @@ Protocol `2026-11-27.13` · 115 methods
 | `projects.update` | command | unary | replayResponse | none | none | — | — | `project_not_found`, `revision_conflict` |
 | `modelInvocations.endpoints` | query | unary | none | none | cursor | — | — | `capability_not_negotiated` |
 | `modelInvocations.list` | query | unary | none | none | cursor | — | — | `run_not_found`, `capability_not_negotiated` |
-| `runs.start` | command | stream | ownerRun | run | none | — | — | `plugin_unavailable`, `plugin_stale`, `session_not_found`, `project_not_found`, `session_busy`, `session_has_active_run`, `prompt_source_too_large`, `prompt_rejected`, `unsupported_mime`, `capability_not_negotiated`, `plugin_changed` |
+| `runs.start` | command | stream | ownerRun | run | none | — | — | `plugin_unavailable`, `plugin_stale`, `session_not_found`, `project_not_found`, `session_busy`, `session_has_active_run`, `workspace_unavailable`, `prompt_source_too_large`, `prompt_rejected`, `unsupported_mime`, `capability_not_negotiated`, `plugin_changed` |
 | `runs.resume` | command | stream | ownerRun | run | none | — | — | `run_not_found`, `interrupt_not_open`, `capability_not_negotiated`, `plugin_changed` |
 | `runs.subscribe` | subscription | stream | none | run | none | — | — | `run_not_found`, `run_not_root`, `run_waiting`, `run_finished`, `stale_segment`, `replay_cursor_invalid`, `replay_unavailable`, `capability_not_negotiated` |
 | `runs.cancel` | command | unary | replayResponse | none | none | — | — | `run_not_found`, `run_finished`, `session_busy`, `capability_not_negotiated` |

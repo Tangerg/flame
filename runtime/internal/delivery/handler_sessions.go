@@ -173,13 +173,21 @@ func (s *Handler) GetSessionSnapshot(ctx context.Context, in protocol.GetSession
 }
 
 func (s *Handler) CreateSession(ctx context.Context, in protocol.CreateSessionRequest) (*protocol.Session, error) {
-	plan, err := s.prepareCreate(ctx, in)
-	return applySessionCreation(ctx, plan, err)
+	return completeSessionView(func(complete operation.Reply[sessions.View]) error {
+		return s.createSession(ctx, in, complete)
+	})
 }
 
 func (s *Handler) commitCreateSession(ctx context.Context, in protocol.CreateSessionRequest, outcome atomicOutcome) error {
-	creation, err := s.prepareCreate(ctx, in)
-	return outcome.commitCreation(ctx, creation, err)
+	return outcome.settleRefusal(ctx, s.createSession(ctx, in, outcome.sessionView()))
+}
+
+func (s *Handler) createSession(ctx context.Context, in protocol.CreateSessionRequest, complete operation.Reply[sessions.View]) error {
+	project, err := wireIdentity("projectId", in.ProjectID, identity.ParseOptionalProject)
+	if err != nil {
+		return err
+	}
+	return wireSessionErr(s.sessions.Create(ctx, in.Title, s.sessionWorkspacePath(in.Workspace), project, complete))
 }
 
 func (s *Handler) DeleteSession(ctx context.Context, id string) error {
@@ -206,8 +214,7 @@ func (s *Handler) UpdateSession(ctx context.Context, in protocol.UpdateSessionRe
 }
 
 func (s *Handler) commitUpdateSession(ctx context.Context, in protocol.UpdateSessionRequest, outcome atomicOutcome) error {
-	reply := outcome.sessionView(func(session *protocol.Session) any { return session })
-	return outcome.settleRefusal(ctx, s.updateSession(ctx, in, reply))
+	return outcome.settleRefusal(ctx, s.updateSession(ctx, in, outcome.sessionView()))
 }
 
 func (s *Handler) updateSession(ctx context.Context, in protocol.UpdateSessionRequest, complete operation.Reply[sessions.View]) error {
@@ -274,56 +281,29 @@ func wireSessionMutationErr(err error, sessionID identity.SessionID) error {
 }
 
 func (s *Handler) ForkSession(ctx context.Context, in protocol.ForkSessionRequest) (*protocol.Session, error) {
-	plan, err := s.prepareFork(ctx, in)
-	return applySessionCreation(ctx, plan, err)
+	return completeSessionView(func(complete operation.Reply[sessions.View]) error {
+		return s.forkSession(ctx, in, complete)
+	})
 }
 
 func (s *Handler) commitForkSession(ctx context.Context, in protocol.ForkSessionRequest, outcome atomicOutcome) error {
-	creation, err := s.prepareFork(ctx, in)
-	return outcome.commitCreation(ctx, creation, err)
+	return outcome.settleRefusal(ctx, s.forkSession(ctx, in, outcome.sessionView()))
 }
 
-func (s *Handler) prepareCreate(ctx context.Context, in protocol.CreateSessionRequest) (sessions.Creation, error) {
-	project, err := wireIdentity("projectId", in.ProjectID, identity.ParseOptionalProject)
-	if err != nil {
-		return sessions.Creation{}, err
-	}
-	creation, err := s.sessions.PrepareCreate(ctx, in.Title, s.sessionWorkspacePath(in.Workspace), project)
-	if errors.Is(err, projectdomain.ErrNotFound) {
-		return sessions.Creation{}, protocol.ErrProjectNotFound
-	}
-	return creation, err
-}
-
-func (s *Handler) prepareFork(ctx context.Context, in protocol.ForkSessionRequest) (sessions.Creation, error) {
+func (s *Handler) forkSession(ctx context.Context, in protocol.ForkSessionRequest, complete operation.Reply[sessions.View]) error {
 	sessionID, parseErr := sessionParameter(in.SessionID)
 	if parseErr != nil {
-		return sessions.Creation{}, parseErr
+		return parseErr
 	}
 	fromRunID, err := wireIdentity("fromRunId", in.FromRunID, identity.ParseOptionalRun)
 	if err != nil {
-		return sessions.Creation{}, err
+		return err
 	}
-	plan, err := s.sessions.PrepareFork(ctx, sessions.ForkSpec{ParentID: sessionID, FromRunID: fromRunID, Title: in.Title})
-	if err != nil {
-		if !fromRunID.IsZero() {
-			err = wireBoundaryErr(err)
-		}
-		return sessions.Creation{}, wireSessionErr(err)
+	err = s.sessions.Fork(ctx, sessions.ForkSpec{ParentID: sessionID, FromRunID: fromRunID, Title: in.Title}, complete)
+	if !fromRunID.IsZero() {
+		err = wireBoundaryErr(err)
 	}
-	return plan, nil
-}
-
-func applySessionCreation(ctx context.Context, creation sessions.Creation, err error) (*protocol.Session, error) {
-	if err != nil {
-		return nil, err
-	}
-	if err := creation.Commit(ctx); err != nil {
-		return nil, wireSessionErr(err)
-	}
-	creation.Publish()
-	view := presentSession(creation.View)
-	return &view, nil
+	return wireSessionErr(err)
 }
 
 func presentSession(view sessions.View) protocol.Session {

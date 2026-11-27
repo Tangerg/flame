@@ -151,7 +151,6 @@ type rootStartPreparation struct {
 	command            StartCommand
 	requestedSelection flamemodel.Selection
 	session            session.Session
-	initialSession     *session.Session
 	draft              RootExecutionStart
 	currentMessage     corechat.Message
 	promptText         string
@@ -322,17 +321,27 @@ func (c *Openings) admitRootStart(
 	ctx context.Context,
 	cmd StartCommand,
 ) (ownership.RunAdmission, rootStartPreparation, error) {
+	if opening := cmd.NewSession; opening != nil {
+		admission, err := c.claimFreshRun(ctx, opening.SessionID, opening.CWD)
+		if err != nil {
+			return ownership.RunAdmission{}, rootStartPreparation{}, err
+		}
+		// A new Session validates its workspace under the Run's tree reservation.
+		preparation, err := c.prepareRootStart(ctx, cmd)
+		if err != nil {
+			admission.Release()
+			return ownership.RunAdmission{}, rootStartPreparation{}, err
+		}
+		return admission, preparation, nil
+	}
 	for {
 		preparation, err := c.prepareRootStart(ctx, cmd)
 		if err != nil {
 			return ownership.RunAdmission{}, rootStartPreparation{}, err
 		}
-		runAdmission, err := c.claimFreshRun(ctx, preparation.session)
+		runAdmission, err := c.claimFreshRun(ctx, preparation.session.ID(), preparation.session.Workspace().Path())
 		if err != nil {
 			return ownership.RunAdmission{}, rootStartPreparation{}, err
-		}
-		if preparation.initialSession != nil {
-			return runAdmission, preparation, nil
 		}
 		committed, err := c.sessionReader.Get(ctx, preparation.session.ID())
 		if err != nil {
@@ -356,7 +365,7 @@ func (c *Openings) prepareRootStart(
 		return rootStartPreparation{}, err
 	}
 	promptText := currentMessage.Text()
-	sess, initialSession, effectiveSelection, err := c.resolveSessionSelection(ctx, cmd)
+	sess, effectiveSelection, err := c.resolveSessionSelection(ctx, cmd)
 	if err != nil {
 		return rootStartPreparation{}, err
 	}
@@ -374,7 +383,7 @@ func (c *Openings) prepareRootStart(
 	}
 	return rootStartPreparation{
 		command: cmd, requestedSelection: requestedSelection, session: sess,
-		initialSession: initialSession, draft: draft, currentMessage: currentMessage,
+		draft: draft, currentMessage: currentMessage,
 		promptText: promptText, openingUserText: strings.TrimSpace(promptText),
 	}, nil
 }
@@ -383,8 +392,8 @@ func prepareStartSessionWrite(
 	preparation rootStartPreparation,
 	createdAt time.Time,
 ) (OpeningSessionWrite, error) {
-	if preparation.initialSession != nil {
-		return SessionInsert{Session: *preparation.initialSession}, nil
+	if preparation.command.NewSession != nil {
+		return SessionInsert{Session: preparation.session}, nil
 	}
 	if !preparation.requestedSelection.Configured() {
 		return nil, nil
@@ -418,50 +427,49 @@ func (c *Openings) resolveOpeningError(ctx context.Context, sessionID identity.S
 func (c *Openings) resolveSessionSelection(
 	ctx context.Context,
 	cmd StartCommand,
-) (session.Session, *session.Session, flamemodel.Selection, error) {
+) (session.Session, flamemodel.Selection, error) {
 	requested := cmd.ModelSelection
 	if requested.Configured() {
 		if err := c.AdmitSelection(ctx, requested); err != nil {
-			return session.Session{}, nil, flamemodel.Selection{}, err
+			return session.Session{}, flamemodel.Selection{}, err
 		}
 	}
-	sess, initial, err := c.resolveSession(ctx, cmd, requested)
+	sess, err := c.resolveSession(ctx, cmd, requested)
 	if err != nil {
-		return session.Session{}, nil, flamemodel.Selection{}, err
+		return session.Session{}, flamemodel.Selection{}, err
 	}
 	effective := requested
 	if !effective.Configured() {
 		effective = sess.Selection()
 	}
 	if err := effective.ValidateExact(); err != nil {
-		return session.Session{}, nil, flamemodel.Selection{}, fmt.Errorf("runs: effective model selection: %w", err)
+		return session.Session{}, flamemodel.Selection{}, fmt.Errorf("runs: effective model selection: %w", err)
 	}
 	if effective != requested {
 		if err := c.AdmitSelection(ctx, effective); err != nil {
-			return session.Session{}, nil, flamemodel.Selection{}, err
+			return session.Session{}, flamemodel.Selection{}, err
 		}
 	}
-	return sess, initial, effective, nil
+	return sess, effective, nil
 }
 
 func (c *Openings) resolveSession(
 	ctx context.Context,
 	cmd StartCommand,
 	selection flamemodel.Selection,
-) (session.Session, *session.Session, error) {
+) (session.Session, error) {
 	if cmd.NewSession != nil {
 		return c.sessionCreator.PrepareOpening(ctx, *cmd.NewSession, selection)
 	}
-	sess, err := c.sessionReader.Get(ctx, cmd.SessionID)
-	return sess, nil, err
+	return c.sessionReader.Get(ctx, cmd.SessionID)
 }
 
-func (c *Openings) claimFreshRun(ctx context.Context, sess session.Session) (ownership.RunAdmission, error) {
-	runAdmission, ok, leaseErr := c.admission.AcquireRun(ctx, sess.ID(), sess.Workspace().Path())
+func (c *Openings) claimFreshRun(ctx context.Context, sessionID identity.SessionID, cwd string) (ownership.RunAdmission, error) {
+	runAdmission, ok, leaseErr := c.admission.AcquireRun(ctx, sessionID, cwd)
 	if leaseErr != nil {
 		return ownership.RunAdmission{}, leaseErr
 	}
-	conflict, err := c.activeRootConflict(ctx, sess.ID())
+	conflict, err := c.activeRootConflict(ctx, sessionID)
 	if err != nil {
 		runAdmission.Release()
 		return ownership.RunAdmission{}, err
