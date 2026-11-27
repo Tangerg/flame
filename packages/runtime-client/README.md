@@ -64,8 +64,9 @@ command when a replay is refused without that evidence.
 
 HTTP credentials and metadata must be ASCII field values without surrounding
 whitespace. Caller-chosen command keys are 1–255 visible ASCII characters
-without spaces and are retained exactly for receipt lookup. Unrepresentable
-header values are refused before opening Fetch.
+without spaces and are retained exactly for receipt lookup. A caller-chosen key
+selects its exact command, even if another pending command has identical input.
+The HTTP transport refuses unrepresentable header values before opening Fetch.
 
 Consumers use explicit public entries: the main API, `wire`, `methods`,
 `validation`, `testing`, and `testing/samples/*`. Internal implementation paths

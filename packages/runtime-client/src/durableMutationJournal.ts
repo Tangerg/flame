@@ -66,7 +66,7 @@ export interface DurableMutationJournal {
   reserve(
     method: WireMethodName,
     params: unknown,
-    preferredKey: string | undefined,
+    requestedKey: string | undefined,
     claimed: (idempotencyKey: string) => boolean,
     requestMeta: RequestMeta | null,
   ): DurableMutationIdentity;
@@ -313,9 +313,9 @@ export function openDurableMutationJournal(
         );
       }
     },
-    reserve(method, params, preferredKey, claimed, requestMeta) {
-      if (preferredKey !== undefined && !isIdempotencyKey(preferredKey)) {
-        throw new MutationJournalError("Runtime mutation identity candidate is invalid");
+    reserve(method, params, requestedKey, claimed, requestMeta) {
+      if (requestedKey !== undefined && !isIdempotencyKey(requestedKey)) {
+        throw new MutationJournalError("Runtime mutation key is invalid");
       }
       // These records are unresolved evidence, not a cache of completed receipts.
       // Neither expiry nor replacement of the serving store settles their outcome.
@@ -323,24 +323,24 @@ export function openDurableMutationJournal(
       const matches = (entry: JournalEntry) =>
         (entry.command.kind !== "plugin" || entry.command.intentFingerprint === null) &&
         matchesCommand(entry, method, params, requestMeta);
-      const preferred =
-        preferredKey === undefined
-          ? undefined
-          : entries.find((entry) => entry.idempotencyKey === preferredKey);
-      if (preferred && !matches(preferred)) {
-        throw new MutationJournalOwnershipError(
-          "Runtime mutation identity candidate belongs to a different command",
-        );
+      let entry: JournalEntry | undefined;
+      if (requestedKey === undefined) {
+        entry = entries
+          .filter((candidate) => matches(candidate) && !claimed(candidate.idempotencyKey))
+          .toSorted((left, right) => left.createdAt - right.createdAt)[0];
+      } else {
+        entry = entries.find((pending) => pending.idempotencyKey === requestedKey);
+        if (entry && !matches(entry)) {
+          throw new MutationJournalOwnershipError(
+            "Runtime mutation key belongs to a different command",
+          );
+        }
+        if (claimed(requestedKey)) {
+          throw new MutationJournalOwnershipError(
+            "Runtime mutation identity is already owned by an active command",
+          );
+        }
       }
-      if (preferred && claimed(preferred.idempotencyKey)) {
-        throw new MutationJournalOwnershipError(
-          "Runtime mutation identity is already owned by an active command",
-        );
-      }
-      let entry = preferred;
-      entry ??= entries
-        .filter((candidate) => matches(candidate) && !claimed(candidate.idempotencyKey))
-        .toSorted((left, right) => left.createdAt - right.createdAt)[0];
       if (!entry) {
         const scope = currentScope();
         if (entries.length >= MAX_ENTRIES) {
@@ -350,7 +350,7 @@ export function openDurableMutationJournal(
           method,
           params,
           scope,
-          preferredKey ?? crypto.randomUUID(),
+          requestedKey ?? crypto.randomUUID(),
           requestMeta,
         );
       }

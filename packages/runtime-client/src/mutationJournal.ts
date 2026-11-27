@@ -182,14 +182,14 @@ export class MutationJournal {
   reserve(
     method: WireMethodName,
     params: unknown,
-    preferredKey?: string,
+    requestedKey?: string,
     requestMeta: RequestMeta | null = null,
   ): MutationReservation {
     this.#assertCurrent();
     const identity = this.#journal.reserve(
       method,
       params,
-      preferredKey,
+      requestedKey,
       (idempotencyKey) => this.#claims.has(idempotencyKey),
       requestMeta,
     );
