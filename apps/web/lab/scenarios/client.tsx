@@ -85,9 +85,7 @@ export function createVisualClient(runtimeClient: () => FlameClient, messages: N
     useObserveActiveSession: () => {},
   };
   agent.start();
-  const goals = createGoals((sessionId) =>
-    agent.access.synchronizeMountedAgentSession(sessionId, "replace-live"),
-  );
+  const goals = createGoals();
   const composer = createComposer(
     {
       getActiveSessionId: agent.access.getActiveSessionId,

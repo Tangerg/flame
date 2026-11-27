@@ -85,7 +85,7 @@ interface MountedAgentSessionSynchronization {
   ownership: SessionProjectionSynchronizationOwnership;
 }
 
-export function synchronizeMountedAgentSession(
+function synchronizeMountedAgentSession(
   agentAccess: AgentDependencies,
   sessionId: string,
   ownership: SessionProjectionSynchronizationOwnership,

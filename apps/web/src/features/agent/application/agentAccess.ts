@@ -17,10 +17,7 @@ import {
 } from "./session/historyActions";
 import { forkSessionAt } from "./session/forkSession";
 import { synchronizeRewrittenSessionView } from "./session/synchronizeRewrittenSessionView";
-import {
-  synchronizeMountedAgentSession,
-  synchronizeMountedAgentSessions,
-} from "./session/refreshSessionProjection";
+import { synchronizeMountedAgentSessions } from "./session/refreshSessionProjection";
 import { stepActiveAgentSession } from "./session/stepSession";
 import { cancelSessionRun, stopCurrentRootRun } from "./run/runCommands";
 import { subscribeAnySessionRunning } from "./run/rootAttention";
@@ -47,7 +44,6 @@ export function createAgentAccess(dependencies: AgentDependencies) {
     rollbackSessionToBeforeRun: rollbackSessionToBeforeRun.bind(undefined, dependencies),
     regenerateSessionRun: regenerateSessionRun.bind(undefined, dependencies),
     synchronizeRewrittenSessionView: synchronizeRewrittenSessionView.bind(undefined, dependencies),
-    synchronizeMountedAgentSession: synchronizeMountedAgentSession.bind(undefined, dependencies),
     synchronizeMountedAgentSessions: synchronizeMountedAgentSessions.bind(undefined, dependencies),
     stepActiveAgentSession: stepActiveAgentSession.bind(undefined, dependencies),
     cancelSessionRun: cancelSessionRun.bind(undefined, dependencies),
