@@ -72,7 +72,6 @@ export const zh: Record<string, string> = {
   "action.disable": "禁用",
   "action.delete": "删除",
   "nextFiring.label": "下次触发",
-  "nextFiring.none": "未排定",
   "details.title": "详情",
   "fact.cron": "Cron",
   "fact.timeZone": "时区",

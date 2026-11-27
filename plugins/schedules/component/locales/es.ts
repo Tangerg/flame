@@ -81,7 +81,6 @@ export const es: Record<string, string> = {
   "action.disable": "Desactivar",
   "action.delete": "Eliminar",
   "nextFiring.label": "Próxima ejecución",
-  "nextFiring.none": "Sin programar",
   "details.title": "Detalles",
   "fact.cron": "Cron",
   "fact.timeZone": "Zona horaria",

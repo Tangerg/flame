@@ -63,6 +63,16 @@ export const UNFILTERED = "all";
 export const SCHEDULE_FILTERS = [UNFILTERED, "enabled", "disabled"] as const;
 export type ScheduleFilter = (typeof SCHEDULE_FILTERS)[number];
 
+type ScheduleTask =
+  | { kind: "edit"; edit: Edit }
+  | { kind: "delete"; schedule: Schedule };
+
+type TaskSubmission = { task: ScheduleTask; originalKey?: string };
+
+function targetsExistingSchedule(task: ScheduleTask): boolean {
+  return task.kind === "delete" || task.edit.basis !== undefined;
+}
+
 export function useSchedules(
   context: ComponentContext,
   locale: string,
@@ -102,10 +112,10 @@ export function useSchedules(
   const currentModels =
     modelRead?.source === modelSource ? modelRead : undefined;
   const models = [...(currentModels?.catalogs.values() ?? [])].flat();
-  const [edit, setEdit] = useState<Edit>();
-  const [deleting, setDeleting] = useState<{
-    item: Schedule;
-  }>();
+  const [task, setTask] = useState<ScheduleTask>();
+  const edit = task?.kind === "edit" ? task.edit : undefined;
+  const deleteTarget = task?.kind === "delete" ? task.schedule : undefined;
+  const retainedTask = useRef<Required<TaskSubmission>>(undefined);
   const searchElement = useRef<HTMLInputElement>(null);
   const taskOpener = useRef<HTMLElement>(null);
   const titleElement = useRef<HTMLInputElement>(null);
@@ -224,6 +234,7 @@ export function useSchedules(
   function observe(
     command: Command,
     execute: () => Promise<MethodOutputs[keyof MethodOutputs]> | undefined,
+    submission?: TaskSubmission,
   ) {
     if (context.signal.aborted) return;
     void observation.run(command, async () => {
@@ -233,9 +244,8 @@ export function useSchedules(
         setNotice(undefined);
         const output = await attempt;
         if (context.signal.aborted) return;
-        if (edit?.basis || deleting) taskOpener.current = searchElement.current;
-        setEdit(undefined);
-        setDeleting(undefined);
+        if (submission)
+          closeTask(submission.task, targetsExistingSchedule(submission.task));
         setNotice(
           "runId" in output
             ? output
@@ -247,12 +257,23 @@ export function useSchedules(
         const stale =
           error instanceof OperationFailure && error.code === REVISION_CONFLICT;
         setNotice(stale ? t("notice.revision") : failure(error));
-        if (stale) {
-          taskOpener.current = searchElement.current;
-          setEdit(undefined);
-          setDeleting(undefined);
+        if (stale && submission) closeTask(submission.task, true);
+        const unresolved = mutationSettlementIsUnknown(error);
+        if (unresolved && submission) {
+          const original = operations.originalCommand();
+          if (
+            original?.state === "recoverable" &&
+            original.method === command.method &&
+            (submission.originalKey === undefined ||
+              original.idempotencyKey === submission.originalKey)
+          ) {
+            retainedTask.current = {
+              originalKey: original.idempotencyKey,
+              task: submission.task,
+            };
+          }
         }
-        if (!mutationSettlementIsUnknown(error)) void refresh();
+        if (!unresolved) void refresh();
       }
     });
   }
@@ -260,8 +281,13 @@ export function useSchedules(
     method: K,
     input: MethodInputs[K],
     label: string,
+    owner?: ScheduleTask,
   ) {
-    observe({ method, label }, () => operations.submit(method, input));
+    observe(
+      { method, label },
+      () => operations.submit(method, input),
+      owner && { task: owner },
+    );
   }
   function reconcile(key: string) {
     if (context.signal.aborted) return;
@@ -270,33 +296,39 @@ export function useSchedules(
       return;
     const { method } = original;
     if (!isAuthoringMethod(method)) return;
-    observe({ method, label: t(AUTHORING_LABELS[method]) }, () => {
-      const feedback = feedbackElement.current;
-      if (
-        feedback &&
-        !isConcealed(feedback) &&
-        (feedback.contains(feedback.ownerDocument.activeElement) ||
-          feedback.ownerDocument.activeElement === feedback.ownerDocument.body)
-      )
-        feedback.focus({ preventScroll: true });
-      return original.recover();
-    });
+    const retained = retainedTask.current;
+    observe(
+      { method, label: t(AUTHORING_LABELS[method]) },
+      () => {
+        const feedback = feedbackElement.current;
+        if (
+          feedback &&
+          !isConcealed(feedback) &&
+          (feedback.contains(feedback.ownerDocument.activeElement) ||
+            feedback.ownerDocument.activeElement === feedback.ownerDocument.body)
+        )
+          feedback.focus({ preventScroll: true });
+        return original.recover();
+      },
+      retained?.originalKey === key ? retained : undefined,
+    );
   }
-  // Opening a task replaces any other one and remembers where focus returns.
-  function beginTask(
-    opener: HTMLElement,
-    task: { edit: Edit } | { deleting: Schedule },
-  ) {
+  function beginTask(opener: HTMLElement, next: ScheduleTask) {
     if (busy) return;
     taskOpener.current = opener;
     setNotice(undefined);
-    setEdit("edit" in task ? task.edit : undefined);
-    setDeleting(
-      "deleting" in task ? { item: structuredClone(task.deleting) } : undefined,
-    );
+    retainedTask.current = undefined;
+    setTask(next);
+  }
+  function closeTask(owned: ScheduleTask, focusSearch: boolean) {
+    if (owned !== task) return;
+    if (focusSearch) taskOpener.current = searchElement.current;
+    if (retainedTask.current?.task === owned) retainedTask.current = undefined;
+    setTask((current) => current === owned ? undefined : current);
   }
   function add(opener: HTMLElement, template?: (typeof templates)[number]) {
     beginTask(opener, {
+      kind: "edit",
       edit: {
         draft: {
           title: template ? t(`template.${template.id}.title`) : "",
@@ -314,6 +346,7 @@ export function useSchedules(
   }
   function editSchedule(item: Schedule, opener: HTMLElement) {
     beginTask(opener, {
+      kind: "edit",
       edit: {
         basis: structuredClone(item),
         draft: {
@@ -329,12 +362,17 @@ export function useSchedules(
     });
   }
   function confirmDeletion(item: Schedule, opener: HTMLElement) {
-    beginTask(opener, { deleting: item });
+    beginTask(opener, { kind: "delete", schedule: structuredClone(item) });
   }
   function deleteConfirmed() {
-    if (deleting) {
-      const { id, revision } = deleting.item;
-      submit(METHODS.delete, { id, expectedRevision: revision }, t("command.delete"));
+    if (task?.kind === "delete") {
+      const { id, revision } = task.schedule;
+      submit(
+        METHODS.delete,
+        { id, expectedRevision: revision },
+        t("command.delete"),
+        task,
+      );
     }
   }
   function runNow(item: Schedule) {
@@ -354,14 +392,18 @@ export function useSchedules(
     );
   }
   function patch<K extends keyof Draft>(key: K, value: Draft[K]) {
-    setEdit((previous) =>
-      previous
-        ? { ...previous, draft: { ...previous.draft, [key]: value } }
-        : undefined,
+    setTask((current) =>
+      current?.kind === "edit"
+        ? {
+            ...current,
+            edit: { ...current.edit, draft: { ...current.edit.draft, [key]: value } },
+          }
+        : current,
     );
   }
   function save() {
-    if (!edit || !canSave) return;
+    if (task?.kind !== "edit" || !canSave) return;
+    const { edit } = task;
     const draft = {
       ...edit.draft,
       title: edit.draft.title.trim(),
@@ -385,17 +427,18 @@ export function useSchedules(
           modelSelection: draft.modelSelection,
         },
         t("command.save"),
+        task,
       );
-    else submit(METHODS.create, draft, t("command.create"));
+    else submit(METHODS.create, draft, t("command.create"), task);
   }
   function cancelTask() {
-    if (busy) return;
+    if (busy || !task) return;
     // Base UI resolves the target before sibling buttons are re-enabled.
     // Catalog reads, rather than the retiring editor, can keep them disabled.
-    if ((edit?.basis || deleting) && (read.loading || read.error))
-      taskOpener.current = searchElement.current;
-    setEdit(undefined);
-    setDeleting(undefined);
+    closeTask(
+      task,
+      targetsExistingSchedule(task) && Boolean(read.loading || read.error),
+    );
   }
   function filterPage(nextSearch: string, nextStatus: ScheduleFilter = status) {
     if (nextSearch === search && nextStatus === status) return;
@@ -421,7 +464,7 @@ export function useSchedules(
     edit.draft.cron.trim() &&
     edit.draft.timeZone.trim(),
   );
-  const editorOpen = Boolean(edit || deleting);
+  const editorOpen = task !== undefined;
   const actionsDisabled = busy || editorOpen;
   const disabled = actionsDisabled || read.loading || Boolean(read.error);
   const selectedModel = models.find(
@@ -469,7 +512,7 @@ export function useSchedules(
     selectedModel,
     currentModels,
     setModelRefresh,
-    deleting,
+    deleteTarget,
     deleteCancel,
     page,
     rows,

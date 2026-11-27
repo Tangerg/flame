@@ -103,7 +103,7 @@ function SchedulesPanel({
     summary,
     liveError,
     edit,
-    deleting,
+    deleteTarget,
     page,
     rows,
     matching,
@@ -134,10 +134,10 @@ function SchedulesPanel({
       {edit && (
         <ScheduleEditor {...schedules} edit={edit} feedback={feedback} />
       )}
-      {deleting && (
+      {deleteTarget && (
         <ScheduleDeletion
           {...schedules}
-          item={deleting.item}
+          item={deleteTarget}
           feedback={feedback}
         />
       )}

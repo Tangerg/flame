@@ -72,7 +72,6 @@ export const zhTW: Record<string, string> = {
   "action.disable": "停用",
   "action.delete": "刪除",
   "nextFiring.label": "下次觸發",
-  "nextFiring.none": "未排定",
   "details.title": "詳情",
   "fact.cron": "Cron",
   "fact.timeZone": "時區",

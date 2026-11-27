@@ -77,7 +77,6 @@ export const en: Record<string, string> = {
   "action.disable": "Disable",
   "action.delete": "Delete",
   "nextFiring.label": "Next firing",
-  "nextFiring.none": "Not scheduled",
   "details.title": "Details",
   "fact.cron": "Cron",
   "fact.timeZone": "Time zone",

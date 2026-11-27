@@ -13,7 +13,6 @@ import {
   RecordExcerpt,
   RecordHeading,
 } from "@flame/ui";
-import { enabled } from "./useSchedules";
 import { type Schedule } from "./types";
 import { type ScheduleState } from "./useSchedules";
 import { METHODS } from "./methods";
@@ -99,6 +98,7 @@ export function ScheduleRow({
   | "confirmDeletion"
 > & { item: Schedule }) {
   const title = item.title || t("untitled");
+  const nextRunAt = item.nextRunAt;
   const { provider, model, reasoningEffort } = item.modelSelection;
   return (
     <ListRow>
@@ -126,7 +126,8 @@ export function ScheduleRow({
                 onSelect: (opener) => editSchedule(item, opener),
               },
               {
-                label: enabled(item) ? t("action.disable") : t("action.enable"),
+                label:
+                  nextRunAt === undefined ? t("action.enable") : t("action.disable"),
                 onSelect: () => toggleEnabled(item),
               },
               {
@@ -139,20 +140,17 @@ export function ScheduleRow({
         }
         // Enabled is the resting state; only a paused schedule needs a word.
         status={
-          enabled(item) ? undefined : <Badge>{t("status.disabled")}</Badge>
+          nextRunAt === undefined ? (
+            <Badge>{t("status.disabled")}</Badge>
+          ) : undefined
         }
       />
-      {/* A disabled schedule says so in its status; "not scheduled" would only repeat it. */}
-      {(enabled(item) || item.nextRunAt !== undefined) && (
+      {nextRunAt !== undefined && (
         <Metadata>
           {t("nextFiring.label")} ·{" "}
-          {item.nextRunAt !== undefined ? (
-            <time dateTime={item.nextRunAt}>
-              {dateTime.format(new Date(item.nextRunAt))}
-            </time>
-          ) : (
-            t("nextFiring.none")
-          )}
+          <time dateTime={nextRunAt}>
+            {dateTime.format(new Date(nextRunAt))}
+          </time>
         </Metadata>
       )}
       <Disclosure title={t("details.title")}>
