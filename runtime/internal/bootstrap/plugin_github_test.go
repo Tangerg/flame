@@ -37,8 +37,18 @@ func TestGitHubInstalledSecretLifecycleAndModelWritesShareThePublishedOwner(t *t
 	cfg.modelProviders = testChatResolver(client)
 	r := poMCPOpen(t, cfg)
 	installed := poMCPActivate(r, filepath.Join(firstPartyPackages, "github"))
-	if len(installed.Selected.Diagnostics) != 0 || len(installed.Selected.Inputs) != 1 || !installed.Selected.Inputs[0].Secret || installed.Selected.Inputs[0].Required {
-		t.Fatalf("GitHub secret declaration is invalid: %+v", installed.Selected)
+	if len(installed.Selected.Diagnostics) != 0 {
+		t.Fatalf("GitHub release diagnostics: %+v", installed.Selected.Diagnostics)
+	}
+	for _, input := range []protocol.PluginInput{
+		{ID: "token", Secret: true, Server: "github", Target: protocol.PluginInputEnvironment, Key: "GITHUB_TOKEN"},
+		{ID: "review-checks", Server: "github", Target: protocol.PluginInputEnvironment, Key: "GITHUB_REVIEW_CHECKS"},
+		{ID: "webhook-port", Server: "github", Target: protocol.PluginInputEnvironment, Key: "GITHUB_WEBHOOK_PORT"},
+		{ID: "webhook-secret", Secret: true, Server: "github", Target: protocol.PluginInputEnvironment, Key: "GITHUB_WEBHOOK_SECRET"},
+	} {
+		if !slices.Contains(installed.Selected.Inputs, input) {
+			t.Fatalf("GitHub input %q is invalid: %+v", input.ID, installed.Selected.Inputs)
+		}
 	}
 	server := &protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "github"}
 	ready := func(tools []protocol.MCPTool) bool {
