@@ -190,13 +190,17 @@ func (s *Store) ActivateSessionDraft(sessionID string, incoming authoring.Messag
 	confirmed := exists && pending.Restoration != nil
 	var recovery *SessionRollbackRecovery
 	if confirmed {
-		var merged bool
-		draft, merged = mergeRollbackText(draft, pending.Restoration.OpeningText)
+		opening := authoring.Message{Text: pending.Restoration.OpeningText}
+		merged, err := MergeSessionDraft(opening, draft)
+		if err != nil {
+			return SessionDraftActivation{}, err
+		}
 		recovery = &SessionRollbackRecovery{
 			DroppedCount:  pending.Restoration.DroppedCount,
 			OpeningImages: pending.Restoration.OpeningImages,
-			Merged:        merged,
+			Merged:        !draft.IsEmpty() && !draft.Equal(merged),
 		}
+		draft = merged
 	}
 	if current.Equal(draft) && !confirmed {
 		return SessionDraftActivation{Draft: draft.Clone()}, nil
@@ -221,28 +225,4 @@ func (s *Store) pendingResumePointer(sessionID string) *PendingResume {
 		return nil
 	}
 	return &pending
-}
-
-func mergeRollbackText(current authoring.Message, text string) (authoring.Message, bool) {
-	recovered := authoring.Message{Text: text}
-	current = current.Clone()
-	recovered = recovered.Clone()
-	if recovered.IsEmpty() {
-		return current, false
-	}
-	if current.IsEmpty() {
-		return recovered, false
-	}
-	if current.Equal(recovered) ||
-		(strings.TrimSpace(recovered.Text) != "" && strings.HasPrefix(current.Text, recovered.Text)) {
-		return current, false
-	}
-	if strings.TrimSpace(recovered.Text) != "" {
-		if strings.TrimSpace(current.Text) == "" {
-			current.Text = recovered.Text
-		} else {
-			current.Text = recovered.Text + "\n\n" + current.Text
-		}
-	}
-	return current, true
 }

@@ -36,7 +36,9 @@ The client does not parse raw patches into a second diff model.
 The terminal captures the latest root Run and workspace in the rollback
 confirmation. The Workbench retains the exact keyed command across a lost
 reply. The original Runtime receipt supplies the dropped input for draft
-recovery, including when the Session already contains later work.
+recovery, including when the Session already contains later work. The Workbench
+adds the recovered opening before distinct draft text and consumes the receipt
+in the same local write.
 
 ## Configuration
 

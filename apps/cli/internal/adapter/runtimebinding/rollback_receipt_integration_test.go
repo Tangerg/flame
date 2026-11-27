@@ -113,6 +113,10 @@ func TestRollbackRecoveryUsesTheOriginalReceiptAfterMoreRuns(t *testing.T) {
 	defer disconnect()
 	backoff := mutation.AcknowledgementBackoff()
 	interrupted := interruptedRollbackReply{Connection: connection, disconnect: disconnect}
+	const newerDraft = droppedInput + " Include the later evidence."
+	if err := store.SaveDraft(created.ID, authoring.Message{Text: newerDraft}); err != nil {
+		t.Fatal(err)
+	}
 	_, err = sessionworkflow.Rollback(call, interrupted, store, preview, policy, backoff)
 	if !errors.Is(err, context.Canceled) && !errors.Is(err, conversation.ErrDisconnected) {
 		t.Fatalf("interrupted rollback = %v; want a lost reply", err)
@@ -131,8 +135,13 @@ func TestRollbackRecoveryUsesTheOriginalReceiptAfterMoreRuns(t *testing.T) {
 		t.Fatal(err)
 	}
 	restored, err := reopened.ActivateSessionDraft(created.ID, authoring.Message{})
-	if err != nil || restored.Rollback == nil || restored.Rollback.DroppedCount != 1 || restored.Draft.Text != droppedInput {
-		t.Fatalf("recovered rollback draft = %+v, %v; want the original input of Run %q", restored, err, dropped)
+	wantDraft := droppedInput + "\n\n" + newerDraft
+	if err != nil || restored.Rollback == nil || restored.Rollback.DroppedCount != 1 || !restored.Rollback.Merged || restored.Draft.Text != wantDraft {
+		t.Fatalf("recovered rollback draft = %+v, %v; want the original input of Run %q before the newer draft", restored, err, dropped)
+	}
+	repeated, err := reopened.ActivateSessionDraft(created.ID, authoring.Message{})
+	if err != nil || repeated.Rollback != nil || repeated.Draft.Text != wantDraft {
+		t.Fatalf("draft after consuming rollback = %+v, %v; want the same draft without another receipt", repeated, err)
 	}
 	current, err := connection.GetSession(ctx, created.ID)
 	if err != nil || len(current.Runs) != 2 || current.Runs[0].ID != kept || current.Runs[1].ID != later {
