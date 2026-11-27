@@ -113,6 +113,10 @@ export function useMemory(
     activity.subscribe,
     activity.snapshot,
   );
+  useSyncExternalStore(
+    operations.subscribePendingCommands,
+    operations.pendingCommandsVersion,
+  );
   const original = context.signal.aborted
     ? undefined
     : operations.pendingCommand();

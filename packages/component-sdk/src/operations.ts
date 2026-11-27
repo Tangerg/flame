@@ -108,6 +108,9 @@ export function bindOperations<
       };
       return {
         pendingCommand,
+        pendingCommandsVersion: context.runtime.plugins.pendingCommandsVersion,
+        subscribePendingCommands:
+          context.runtime.plugins.subscribePendingCommands,
         submit<K extends keyof Inputs & string>(
           method: K,
           input: Inputs[K],

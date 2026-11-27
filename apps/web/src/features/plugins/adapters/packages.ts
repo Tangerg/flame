@@ -28,7 +28,10 @@ export const PROVIDERS_KEY = "runtime-plugin-providers";
 
 export const usePluginProviders = createDataQuery<PluginProviderSelection[]>(PROVIDERS_KEY);
 
-export type PackageOperations = Omit<Methods["plugins"], "pendingCommands" | "selectProvider"> & {
+export type PackageOperations = Omit<
+  Methods["plugins"],
+  "pendingCommands" | "pendingCommandsVersion" | "subscribePendingCommands" | "selectProvider"
+> & {
   signal: AbortSignal;
   pendingCommands: PendingPluginCommands;
   providerSelections: ProviderSelectionCommands;

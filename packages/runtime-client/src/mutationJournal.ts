@@ -115,11 +115,15 @@ function copyJournalProjection<T>(value: T): T {
   return copy as T;
 }
 
+const PLUGIN_COMMANDS_CHANGED = "plugin-commands-changed";
+
 export class MutationJournal {
   readonly #journal: DurableMutationJournal;
   readonly #claims = new Map<string, DurableMutationIdentity>();
   readonly #preparing = new Set<string>();
-  #retired = false;
+  readonly #lifetime = new AbortController();
+  readonly #pluginCommandChanges = new EventTarget();
+  #pluginCommandVersion = 0;
 
   constructor(
     journal: DurableMutationJournal,
@@ -177,6 +181,16 @@ export class MutationJournal {
       return [pending];
     });
   }
+
+  pendingPluginCommandsVersion = (): number => this.#pluginCommandVersion;
+
+  subscribePendingPluginCommands = (listener: () => void): (() => void) => {
+    const changes = this.#pluginCommandChanges;
+    changes.addEventListener(PLUGIN_COMMANDS_CHANGED, listener, {
+      signal: this.#lifetime.signal,
+    });
+    return () => changes.removeEventListener(PLUGIN_COMMANDS_CHANGED, listener);
+  };
 
   async capturePluginCommand(
     intent: string,
@@ -262,7 +276,7 @@ export class MutationJournal {
   }
 
   #claim(identity: DurableMutationIdentity): MutationReservation {
-    this.#claims.set(identity.idempotencyKey, identity);
+    this.#own(identity);
     const journal = this.#journal;
     return {
       idempotencyKey: identity.idempotencyKey,
@@ -293,9 +307,20 @@ export class MutationJournal {
   }
 
   dispose(): void {
-    if (this.#retired) return;
-    this.#retired = true;
+    if (this.#lifetime.signal.aborted) return;
+    this.#lifetime.abort();
     this.#claims.clear();
+  }
+
+  #own(identity: DurableMutationIdentity): void {
+    this.#claims.set(identity.idempotencyKey, identity);
+    this.#publishClaim(identity);
+  }
+
+  #publishClaim(identity: DurableMutationIdentity): void {
+    if (identity.command.kind !== "plugin") return;
+    this.#pluginCommandVersion += 1;
+    this.#pluginCommandChanges.dispatchEvent(new Event(PLUGIN_COMMANDS_CHANGED));
   }
 
   #track<T>(
@@ -307,7 +332,9 @@ export class MutationJournal {
     let confirmed: ConfirmedMutation<T> | undefined;
     let reopen: (() => void) | undefined;
     const releaseClaim = () => {
-      if (this.#claims.get(idempotencyKey) === identity) this.#claims.delete(idempotencyKey);
+      if (this.#claims.get(idempotencyKey) !== identity) return;
+      this.#claims.delete(idempotencyKey);
+      this.#publishClaim(identity);
     };
     const finish = (outcome: AttemptOutcome<T>) => {
       if (outcome.type === "confirmed") {
@@ -374,7 +401,7 @@ export class MutationJournal {
           if (!claimed) {
             reopen?.();
             reopen = undefined;
-            this.#claims.set(idempotencyKey, identity);
+            this.#own(identity);
           }
           return observe(() => mutation.retry(options));
         } catch (error) {
@@ -408,7 +435,7 @@ export class MutationJournal {
   }
 
   #assertCurrent(): void {
-    if (this.#retired) {
+    if (this.#lifetime.signal.aborted) {
       throw new MutationJournalOwnershipError("Runtime mutation client was closed");
     }
   }

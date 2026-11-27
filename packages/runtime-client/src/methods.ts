@@ -329,6 +329,8 @@ export interface Methods {
     getCommand: (request: PluginCommandRequest, signal?: AbortSignal) => Promise<CallPluginRequest>;
     retireCommand: (request: PluginCommandRequest, signal?: AbortSignal) => MutationPromise<void>;
     pendingCommands: () => PluginCommandRecovery[];
+    pendingCommandsVersion: () => number;
+    subscribePendingCommands: (listener: () => void) => () => void;
     queryStream: <T>(
       request: CallPluginRequest,
       consume: (chunk: unknown, signal: AbortSignal) => void | Promise<void>,
@@ -606,6 +608,8 @@ export function createMethods(
         mutationJournal
           .pendingPluginCommands()
           .map((command) => pendingPluginCommand(command, wire)),
+      pendingCommandsVersion: mutationJournal.pendingPluginCommandsVersion,
+      subscribePendingCommands: mutationJournal.subscribePendingPluginCommands,
       queryStream: (request, consume, decode, signal) =>
         queryPluginStream(wire, request, consume, decode, signal),
       stream: (intent, input, prepare, consume, decode, signal) =>

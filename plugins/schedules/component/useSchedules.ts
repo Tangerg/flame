@@ -121,6 +121,10 @@ export function useSchedules(
     observation.subscribe,
     observation.snapshot,
   );
+  useSyncExternalStore(
+    operations.subscribePendingCommands,
+    operations.pendingCommandsVersion,
+  );
   const pending = context.signal.aborted ? undefined : operations.pendingCommand();
   const [notice, setNotice] = useState<Notice>();
   const feedbackElement = useRef<HTMLElement>(null);

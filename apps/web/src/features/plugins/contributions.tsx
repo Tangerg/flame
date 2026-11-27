@@ -169,8 +169,14 @@ export function registerPackageContributions(
   });
   const signal = scope.lifetime.signal;
   const track: PackageOperations["track"] = (operation) => trackContributionIO(scope, operation);
-  const { pendingCommands: readPendingCommands, selectProvider, ...pluginOperations } = client.plugins;
-  const pendingCommands = new PendingPluginCommands(signal, readPendingCommands, track);
+  const {
+    pendingCommands: _pendingCommands,
+    pendingCommandsVersion: _pendingCommandsVersion,
+    subscribePendingCommands: _subscribePendingCommands,
+    selectProvider,
+    ...pluginOperations
+  } = client.plugins;
+  const pendingCommands = new PendingPluginCommands(signal, client.plugins, track);
   const providerSelections = new ProviderSelectionCommands({
     signal,
     select: (request) => track((owned) => selectProvider(request, owned)),

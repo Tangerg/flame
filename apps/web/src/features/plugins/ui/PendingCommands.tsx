@@ -1,7 +1,8 @@
-import { useEffect, useSyncExternalStore } from "react";
+import { useRef, useSyncExternalStore } from "react";
 import {
   Button,
   CodeBlock,
+  handoffFocus,
   ListRow,
   Metadata,
   PanelSection,
@@ -37,13 +38,15 @@ function CommandOutcome({ outcome }: { outcome: PluginCommandOutcome }) {
   );
 }
 
-export function PendingCommands({ operations }: {
+export function PendingCommands({
+  operations,
+}: {
   operations: Pick<PackageOperations, "pendingCommands" | "signal">;
 }) {
   const t = useT();
   const commands = operations.pendingCommands;
+  const panel = useRef<HTMLElement>(null);
   const snapshot = useSyncExternalStore(commands.subscribe, commands.snapshot);
-  useEffect(commands.refresh, [commands]);
   if (!snapshot) return null;
   const { read, observation } = snapshot;
   const checking = observation?.type === "checking";
@@ -51,32 +54,27 @@ export function PendingCommands({ operations }: {
   if (read.type === "ready" && read.commands.length === 0 && !observation) return null;
   return (
     <PanelSection
+      ref={panel}
+      tabIndex={-1}
       aria-label={t("packages.commands.title")}
       title={t("packages.commands.title")}
       description={t("packages.commands.explanation")}
       actions={
-        <Button
-          variant="soft"
-          size="sm"
-          disabled={disabled}
-          onClick={commands.refresh}
-        >
-          {t("packages.commands.refresh")}
-        </Button>
+        read.type === "failed" && (
+          <Button variant="soft" size="sm" disabled={disabled} onClick={commands.refresh}>
+            {t("packages.commands.refresh")}
+          </Button>
+        )
       }
     >
-      {checking && (
-        <p role="status">{t("packages.commands.checking", { id: observation.key })}</p>
-      )}
+      {checking && <p role="status">{t("packages.commands.checking", { id: observation.key })}</p>}
       {read.type === "failed" ? (
         <SystemMessage variant="warning">
           {failureText(read.error, t("packages.commands.failed"))}
         </SystemMessage>
       ) : (
         <>
-          {!checking && !read.commands.length && (
-            <Metadata>{t("packages.commands.none")}</Metadata>
-          )}
+          {!checking && !read.commands.length && <Metadata>{t("packages.commands.none")}</Metadata>}
           <RecordGroup variant="list" hidden={!read.commands.length}>
             {read.commands.map((command) => (
               <ListRow
@@ -92,13 +90,19 @@ export function PendingCommands({ operations }: {
                 <Toolbar label={command.idempotencyKey}>
                   <Button
                     disabled={disabled}
-                    onClick={() => void commands.observe(command.idempotencyKey, "recover")}
+                    onClick={(event) => {
+                      handoffFocus(event.currentTarget, panel.current);
+                      void commands.observe(command.idempotencyKey, "recover");
+                    }}
                   >
                     {t("packages.commands.recover")}
                   </Button>
                   <Button
                     disabled={disabled}
-                    onClick={() => void commands.observe(command.idempotencyKey, "retire")}
+                    onClick={(event) => {
+                      handoffFocus(event.currentTarget, panel.current);
+                      void commands.observe(command.idempotencyKey, "retire");
+                    }}
                   >
                     {t("packages.commands.retire")}
                   </Button>

@@ -10,6 +10,7 @@ import {
   type CallPluginRequest,
   type CallPluginResponse,
 } from "@flame/runtime-client/wire";
+import { PendingPluginCommands } from "@/features/plugins/adapters/pendingPluginCommands";
 import { METHODS } from "../../../../../plugins/schedules/component/methods";
 import { bindScheduleOperations } from "../../../../../plugins/schedules/component/scheduleCommands";
 import { type RunReference } from "../../../../../plugins/schedules/package/io.github.tangerg.flame/contracts/methods.generated";
@@ -155,6 +156,12 @@ describe("Schedules commands over Runtime HTTP", () => {
     });
     let outstanding: Promise<unknown> | undefined;
     try {
+      const management = new PendingPluginCommands(
+        replacementLifetime.signal,
+        client.plugins,
+        (operation) => operation(replacementLifetime.signal),
+      );
+      expect(management.snapshot()?.read).toMatchObject({ type: "ready", commands: [] });
       const first = bindView(client, originalLifetime.signal);
       const draft = {
         title: "Retired before HTTP delivery",
@@ -171,12 +178,17 @@ describe("Schedules commands over Runtime HTTP", () => {
       const delayed = await within(pendingDelivery.promise, "the withheld Schedule request");
       originalLifetime.abort();
       expect(mutationSettlementIsUnknown(await outstanding)).toBe(true);
+      expect(management.snapshot()?.read).toMatchObject({
+        type: "ready",
+        commands: [expect.objectContaining({ idempotencyKey: delayed.key })],
+      });
 
       const original = client.plugins
         .pendingCommands()
         .find(({ idempotencyKey }) => idempotencyKey === delayed.key);
       if (!original) throw new Error("the SDK did not retain its undelivered command");
       await original.retire(replacementLifetime.signal);
+      expect(management.snapshot()?.read).toMatchObject({ type: "ready", commands: [] });
       const replacement = bindView(client, replacementLifetime.signal);
       expect(replacement.pendingCommand()).toBeUndefined();
       const reply = await delayed.send();

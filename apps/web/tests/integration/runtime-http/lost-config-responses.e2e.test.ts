@@ -346,7 +346,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: configuration commits after lo
       expect(cold.plugins.pendingCommands().map((command) => command.idempotencyKey)).toEqual([
         firstKey,
       ]);
-      const pending = new PendingPluginCommands(signal, cold.plugins.pendingCommands, (run) =>
+      const pending = new PendingPluginCommands(signal, cold.plugins, (run) =>
         run(signal),
       );
       holdLookup = true;
