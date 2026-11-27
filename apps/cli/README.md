@@ -122,6 +122,8 @@ partition from loading through Close; a second terminal targeting it is refused.
 Each partition uses a private SQLite `authoring.db`. Draft transfers, stashing,
 prompt settlement and session retirement publish their local changes in single
 transactions. Pending Runtime commands retain their original keys across reconnects.
+When a Start or Resume loses its opening observation, the CLI settles the outbox
+from the original Runtime receipt and recovers the accepted Run's observation.
 This development cutover starts a fresh authoring database in each partition and
 leaves existing JSON records on disk for prior builds.
 Runtime's durable idempotency namespace still guards command replay independently

@@ -107,7 +107,8 @@ func (r *runs) settleOpeningForShutdown() error {
 	if r.execution.blocksAdmission() || r.execution.opening == nil {
 		return nil
 	}
-	if err := r.attemptQueuedDispatchSettlement(r.execution.opening.CommandID); err != nil {
+	opening := r.execution.opening
+	if err := r.attemptQueuedDispatchSettlement(opening.SessionID, opening.CommandID); err != nil {
 		return fmt.Errorf("settle acknowledged run start: %w", err)
 	}
 	r.execution.opening = nil

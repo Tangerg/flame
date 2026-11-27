@@ -61,24 +61,13 @@ func (r *Connection) StartRun(ctx context.Context, input authoring.StartRun) (co
 	if err != nil {
 		return conversation.SegmentStream{}, classifyError(err)
 	}
-	stream := conversation.SegmentStream{}
-	if ack != nil {
-		stream.RunID, stream.SegmentID, stream.UserItemID = ack.RunID, ack.SegmentID, ack.UserItemID
-	}
-	if events != nil {
-		stream.Events = projectEventStream(events, stream.SegmentID)
-	}
 	if ack == nil || events == nil {
-		return conversation.SegmentStream{}, conversation.NewAcceptedMutationError(
-			stream, runtimeContractViolation("start run returned an incomplete stream"),
-		)
+		return conversation.SegmentStream{}, fmt.Errorf("%w: %w", conversation.ErrInvalidOpeningObservation, runtimeContractViolation("start run returned an incomplete stream"))
 	}
-	if err := stream.ValidateStart(); err != nil {
-		return conversation.SegmentStream{}, conversation.NewAcceptedMutationError(
-			stream, runtimeContractViolation("start run returned an invalid stream: %v", err),
-		)
-	}
-	return stream, nil
+	return conversation.SegmentStream{
+		RunID: ack.RunID, SegmentID: ack.SegmentID, UserItemID: ack.UserItemID,
+		Events: projectEventStream(events, ack.SegmentID),
+	}, nil
 }
 
 func generationParamsPresent(value protocol.GenerationParams) bool {
@@ -115,25 +104,12 @@ func (r *Connection) ResumeRun(ctx context.Context, input conversation.ResumeRun
 	if err != nil {
 		return conversation.SegmentStream{}, classifyError(err)
 	}
-	stream := conversation.SegmentStream{}
-	if ack != nil {
-		stream.RunID, stream.SegmentID = ack.RunID, ack.SegmentID
-		if ack.UserItemID != nil {
-			stream.UserItemID = *ack.UserItemID
-		}
-	}
-	if events != nil {
-		stream.Events = projectEventStream(events, stream.SegmentID)
-	}
 	if ack == nil || events == nil {
-		return conversation.SegmentStream{}, conversation.NewAcceptedMutationError(
-			stream, runtimeContractViolation("resume run returned an incomplete stream"),
-		)
+		return conversation.SegmentStream{}, fmt.Errorf("%w: %w", conversation.ErrInvalidOpeningObservation, runtimeContractViolation("resume run returned an incomplete stream"))
 	}
-	if err := stream.ValidateResume(input.RunID, input.Message); err != nil {
-		return conversation.SegmentStream{}, conversation.NewAcceptedMutationError(
-			stream, runtimeContractViolation("resume run returned an invalid stream: %v", err),
-		)
+	stream := conversation.SegmentStream{RunID: ack.RunID, SegmentID: ack.SegmentID, Events: projectEventStream(events, ack.SegmentID)}
+	if ack.UserItemID != nil {
+		stream.UserItemID = *ack.UserItemID
 	}
 	return stream, nil
 }

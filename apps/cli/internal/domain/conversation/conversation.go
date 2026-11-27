@@ -9,8 +9,10 @@ import (
 )
 
 var (
-	errUnknownBlock      = errors.New("unknown transcript block")
-	errInvalidTransition = errors.New("invalid conversation transition")
+	ErrInvalidOpeningObservation = errors.New("invalid run opening observation")
+	ErrOpeningRetired            = errors.New("accepted run material has been retired")
+	errUnknownBlock              = errors.New("unknown transcript block")
+	errInvalidTransition         = errors.New("invalid conversation transition")
 )
 
 type EventAcceptance struct{ Applied bool }

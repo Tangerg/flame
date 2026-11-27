@@ -27,9 +27,6 @@ type activeDurationClock struct {
 	segmentStartedAt time.Time
 }
 
-// Protocol validation failures after a successful call are excluded: the Runtime
-// already acknowledged the command, so replaying cannot repair its malformed
-// receipt.
 type startRunCallError struct{ err error }
 
 func (s *startRunCallError) Error() string { return s.err.Error() }
@@ -111,36 +108,21 @@ func (r *runs) startPreparedRun(pending workbench.PendingRun, prepared *workbenc
 	input := pending.Command
 
 	r.presentRunStart(status)
-	r.followOpening(func(ctx context.Context) (conversation.SegmentStream, error) {
+	r.followOpening(input.SessionID, func(ctx context.Context) (runworkflow.Opening, error) {
 		opened, err := runworkflow.OpenPendingStart(ctx, r.runtime, r.workbench, pending, r.replayPolicy)
 		if err != nil {
-			if _, accepted := conversation.AcceptedMutationReceipt(err); accepted {
-				return conversation.SegmentStream{}, err
-			}
-			return conversation.SegmentStream{}, &startRunCallError{err: err}
-		}
-		if err := opened.ValidateStart(); err != nil {
-			return conversation.SegmentStream{}, conversation.NewAcceptedMutationError(opened, fmt.Errorf("start run: %w", err))
+			return runworkflow.Opening{}, &startRunCallError{err: err}
 		}
 		return opened, nil
 	}, streamOpeningObserver{
 		persistent: true,
-		accepted: func(opened conversation.SegmentStream) streamOpeningDisposition {
-			r.acceptStartedRun(input, opened)
+		accepted: func(opened runworkflow.Opening) streamOpeningDisposition {
+			r.acceptStartedRun(input, opened.RunID())
 			return followOpenedStream
 		},
 		rejected: func(err error) error {
-			if _, retired := errors.AsType[*conversation.RetiredOpeningError](err); retired {
+			if errors.Is(err, conversation.ErrOpeningRetired) {
 				return errors.Join(err, r.retireQueuedCommand(input.SessionID, input.CommandID))
-			}
-			if receipt, accepted := conversation.AcceptedMutationReceipt(err); accepted {
-				if identityErr := protocol.ValidateRunID(receipt.RunID); identityErr != nil {
-					return errors.Join(err, identityErr, r.requeueDefinitivelyRefusedStart(input, err))
-				}
-				r.execution.opening = &openingReceipt{RunID: receipt.RunID, CommandID: input.CommandID}
-				r.cancelRuntimePreservingFailure(conversation.CancelRun{
-					RunID: receipt.RunID, Reason: "runtime returned an invalid start receipt",
-				})
 			}
 			return errors.Join(err, r.requeueDefinitivelyRefusedStart(input, err))
 		},
@@ -159,23 +141,23 @@ func (r *runs) presentRunStart(status string) {
 	r.syncAnimation()
 }
 
-func (r *runs) acceptStartedRun(input authoring.StartRun, opened conversation.SegmentStream) {
-	r.execution.opening = &openingReceipt{RunID: opened.RunID, CommandID: input.CommandID}
+func (r *runs) acceptStartedRun(input authoring.StartRun, runID string) {
+	r.execution.opening = &openingReceipt{SessionID: input.SessionID, RunID: runID, CommandID: input.CommandID}
 	pending, found := r.queue.Head(input.SessionID)
 	if !found || pending.Command.CommandID != input.CommandID {
 		return
 	}
 	cancellation := pending.Cancellation()
 	if cancellation == nil {
-		r.settleQueuedDispatch(input.CommandID)
+		r.settleQueuedDispatch(input.SessionID, input.CommandID)
 		return
 	}
 	r.status.active(statusCanceling)
-	r.requestRuntimeCancellation(conversation.CancelRun{
+	r.cancelRuntime(conversation.CancelRun{
 		CommandID: cancellation.CommandID,
-		RunID:     opened.RunID,
+		RunID:     runID,
 		Reason:    unconfirmedStartCancellationReason,
-	}, applyRuntimeSettlement)
+	})
 }
 
 func (r *runs) requeueDefinitivelyRefusedStart(input authoring.StartRun, failure error) error {
@@ -198,16 +180,16 @@ const (
 )
 
 type streamOpeningObserver struct {
-	accepted   func(conversation.SegmentStream) streamOpeningDisposition
+	accepted   func(runworkflow.Opening) streamOpeningDisposition
 	rejected   func(error) error
 	persistent bool
 }
 
 func (r *runs) followOpening(
-	open func(context.Context) (conversation.SegmentStream, error),
+	sessionID string,
+	open func(context.Context) (runworkflow.Opening, error),
 	observer streamOpeningObserver,
 ) {
-	sessionID := r.session.current.ID
 	r.startFollowing(func(ctx context.Context, lease operationLease) {
 		follower := streamFollower{
 			runs: r, ctx: ctx, lease: lease, sessionID: sessionID,

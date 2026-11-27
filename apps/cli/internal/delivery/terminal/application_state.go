@@ -13,6 +13,7 @@ type sessionState struct {
 }
 
 type openingReceipt struct {
+	SessionID string
 	RunID     string
 	CommandID authoring.CommandID
 }

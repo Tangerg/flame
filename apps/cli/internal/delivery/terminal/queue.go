@@ -127,8 +127,9 @@ func (r *runs) drainQueue() bool {
 			r.tasks.operations.Active(sessionChangeOperation) || r.tasks.operations.Active(pendingRunRecoveryOperation) {
 			return false
 		}
-		if err := r.attemptQueuedDispatchSettlement(r.execution.opening.CommandID); err != nil {
-			r.reportQueuedDispatchSettlementFailure(r.execution.opening.CommandID, err)
+		opening := r.execution.opening
+		if err := r.attemptQueuedDispatchSettlement(opening.SessionID, opening.CommandID); err != nil {
+			r.reportQueuedDispatchSettlementFailure(opening.SessionID, opening.CommandID, err)
 			return false
 		}
 		r.execution.opening = nil
@@ -150,8 +151,8 @@ func (r *runs) drainQueue() bool {
 	return true
 }
 
-func (r *runs) attemptQueuedDispatchSettlement(commandID authoring.CommandID) error {
-	entry, retired, err := r.queue.SettleDispatch(r.session.current.ID, commandID)
+func (r *runs) attemptQueuedDispatchSettlement(sessionID string, commandID authoring.CommandID) error {
+	entry, retired, err := r.queue.SettleDispatch(sessionID, commandID)
 	if err != nil {
 		return err
 	}
@@ -177,35 +178,33 @@ func (r *runs) presentQueuedRetirement(entry authoring.QueueEntry, retired bool)
 	r.syncQueue()
 }
 
-func (r *runs) settleQueuedDispatch(commandID authoring.CommandID) bool {
+func (r *runs) settleQueuedDispatch(sessionID string, commandID authoring.CommandID) {
 	if r.tasks.operations.Active(pendingRunSettlementOperation) {
-		return false
+		return
 	}
-	if err := r.attemptQueuedDispatchSettlement(commandID); err != nil {
-		r.reportQueuedDispatchSettlementFailure(commandID, err)
-		return false
+	if err := r.attemptQueuedDispatchSettlement(sessionID, commandID); err != nil {
+		r.reportQueuedDispatchSettlementFailure(sessionID, commandID, err)
 	}
-	return true
 }
 
 func (r *runs) queuedDispatchCanceling() bool {
 	return r.queue.DispatchCanceling(r.session.current.ID)
 }
 
-func (r *runs) reportQueuedDispatchSettlementFailure(commandID authoring.CommandID, err error) {
+func (r *runs) reportQueuedDispatchSettlementFailure(sessionID string, commandID authoring.CommandID, err error) {
 	if errors.Is(err, workbench.ErrDispatchCanceling) {
 		return
 	}
 	r.report(workbenchRunOutbox, err)
 	r.link.message("could not settle acknowledged run start: " + err.Error())
-	r.retryQueuedDispatchSettlement(commandID)
+	r.retryQueuedDispatchSettlement(sessionID, commandID)
 }
 
-func (r *runs) retryQueuedDispatchSettlement(commandID authoring.CommandID) {
+func (r *runs) retryQueuedDispatchSettlement(sessionID string, commandID authoring.CommandID) {
 	receipt := r.execution.opening
 	r.retryAuthoringSettlement(
 		pendingRunSettlementOperation,
-		func() error { return r.attemptQueuedDispatchSettlement(commandID) },
+		func() error { return r.attemptQueuedDispatchSettlement(sessionID, commandID) },
 		func() { r.finishQueuedSettlementRecovery(receipt) },
 	)
 }

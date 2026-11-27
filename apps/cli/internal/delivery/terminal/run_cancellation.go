@@ -12,7 +12,6 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
-	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 const (
@@ -34,7 +33,7 @@ func (r *runs) cancel() {
 	}
 	if r.execution.pendingCancel != nil {
 		r.status.doing = "retrying cancellation"
-		r.requestRuntimeCancellation(r.execution.pendingCancel.request, r.execution.pendingCancel.policy)
+		r.cancelRuntime(r.execution.pendingCancel.request)
 		return
 	}
 	if !r.execution.conversation.Busy() && !r.execution.following() {
@@ -95,14 +94,13 @@ func (r *runs) reconcileCanceledStart(pending workbench.PendingRun) {
 				!r.tasks.operations.Release(lease) {
 				return
 			}
-			if _, retired := errors.AsType[*conversation.RetiredOpeningError](err); retired {
+			if errors.Is(err, conversation.ErrOpeningRetired) {
 				if err := r.retireCanceledStart(pending); err != nil {
 					r.fail(err)
 				}
 				return
 			}
-			observed, accepted := observedSegmentStream(opened, err)
-			if !accepted {
+			if err != nil {
 				if mutation.OutcomeUnknown(err) {
 					r.fail(fmt.Errorf("reconcile canceled start: %w", err))
 					return
@@ -112,23 +110,11 @@ func (r *runs) reconcileCanceledStart(pending workbench.PendingRun) {
 				}
 				return
 			}
-			validationErr := observed.ValidateStart()
-			if identityErr := protocol.ValidateRunID(observed.RunID); identityErr != nil {
-				r.fail(errors.Join(
-					fmt.Errorf("reconcile canceled start: accepted receipt: %w", identityErr),
-					err,
-					validationErr,
-				))
-				return
-			}
-			if receiptErr := errors.Join(err, validationErr); receiptErr != nil {
-				r.link.message("runtime returned an invalid start receipt; canceling accepted run: " + receiptErr.Error())
-			}
-			r.requestRuntimeCancellation(conversation.CancelRun{
+			r.cancelRuntime(conversation.CancelRun{
 				CommandID: pending.Cancellation().CommandID,
-				RunID:     observed.RunID,
+				RunID:     opened.RunID(),
 				Reason:    unconfirmedStartCancellationReason,
-			}, recoverCanceledOpening)
+			})
 		})
 	})
 }
@@ -140,21 +126,13 @@ func openStartRunWithBackoff(
 	pending workbench.PendingRun,
 	replayPolicy mutation.ReplayPolicy,
 	backoff retry.Backoff,
-) (conversation.SegmentStream, error) {
+) (runworkflow.Opening, error) {
 	return mutation.ConfirmAdmitted(
 		ctx, backoff, nil,
-		func(ctx context.Context) (conversation.SegmentStream, error) {
+		func(ctx context.Context) (runworkflow.Opening, error) {
 			return runworkflow.OpenPendingStart(ctx, runtime, store, pending, replayPolicy)
 		},
 	)
-}
-
-func observedSegmentStream(stream conversation.SegmentStream, err error) (conversation.SegmentStream, bool) {
-	if err == nil {
-		return stream, true
-	}
-	receipt, accepted := conversation.AcceptedMutationReceipt(err)
-	return receipt, accepted
 }
 
 func (r *runs) retireCanceledStart(pending workbench.PendingRun) error {
@@ -179,36 +157,19 @@ func (r *runs) activeCancellation() (conversation.CancelRun, bool) {
 	return conversation.CancelRun{}, false
 }
 
-func (r *runs) cancelRuntime(target conversation.CancelRun) {
-	r.requestRuntimeCancellation(target, applyRuntimeSettlement)
-}
-
-func (r *runs) cancelRuntimePreservingFailure(target conversation.CancelRun) {
-	r.requestRuntimeCancellation(target, recoverProjectionFailure)
-}
-
-type cancellationResultPolicy uint8
-
-const (
-	applyRuntimeSettlement cancellationResultPolicy = iota
-	recoverProjectionFailure
-	recoverCanceledOpening
-)
-
 type pendingCancellation struct {
 	request          conversation.CancelRun
 	openingCommandID authoring.CommandID
-	policy           cancellationResultPolicy
 	replay           authoring.ReplayGuard
 }
 
-func (r *runs) requestRuntimeCancellation(target conversation.CancelRun, policy cancellationResultPolicy) {
+func (r *runs) cancelRuntime(target conversation.CancelRun) {
 	if target.CommandID == "" {
 		commandID := mutation.NewCommandID()
 		target.CommandID = commandID
 	}
 	pending := pendingCancellation{
-		request: target, openingCommandID: r.openingCommandForRun(target.RunID), policy: policy,
+		request: target, openingCommandID: r.openingCommandForRun(target.RunID),
 	}
 	head, _ := r.queue.Head(r.session.current.ID)
 	current := r.execution.pendingCancel
@@ -295,12 +256,6 @@ func (r *runs) handleRuntimeCancellation(
 	}
 	r.execution.opening = nil
 	r.dropStream()
-	if pending.policy == recoverProjectionFailure {
-		r.prompt.SetBusy(false)
-		r.syncAnimation()
-		r.sessions.refreshInvalidatedSession(refreshSettlingRun)
-		return
-	}
 	r.status.note(canceledActivity)
 	r.prompt.SetBusy(false)
 	r.syncAnimation()
@@ -372,31 +327,22 @@ func (r *runs) cancelOpeningRunNow(ownerCtx context.Context, pending workbench.P
 	opened, err := openStartRunWithBackoff(
 		ctx, r.runtime, r.workbench, pending, r.replayPolicy, runtimeRecoveryBackoff,
 	)
-	if _, retired := errors.AsType[*conversation.RetiredOpeningError](err); retired {
+	if errors.Is(err, conversation.ErrOpeningRetired) {
 		return r.retireCanceledStart(pending)
 	}
-	opened, accepted := observedSegmentStream(opened, err)
-	if !accepted {
+	if err != nil {
 		if !mutation.OutcomeUnknown(err) {
 			return r.retireCanceledStart(pending)
 		}
 		return fmt.Errorf("reconcile run start during terminal close: %w", err)
 	}
-	validationErr := opened.ValidateStart()
-	if identityErr := protocol.ValidateRunID(opened.RunID); identityErr != nil {
-		return errors.Join(
-			fmt.Errorf("reconcile run start during terminal close: accepted receipt: %w", identityErr),
-			err,
-			validationErr,
-		)
-	}
 	cancelErr := r.cancelRuntimeNow(ctx, conversation.CancelRun{
 		CommandID: pending.Cancellation().CommandID,
-		RunID:     opened.RunID,
+		RunID:     opened.RunID(),
 		Reason:    unconfirmedStartCancellationReason,
 	}, pending.Cancellation().Replay)
 	if cancelErr != nil {
-		return errors.Join(err, validationErr, fmt.Errorf("cancel run opened during terminal close: %w", cancelErr))
+		return fmt.Errorf("cancel run opened during terminal close: %w", cancelErr)
 	}
 	return r.retireCanceledStart(pending)
 }
