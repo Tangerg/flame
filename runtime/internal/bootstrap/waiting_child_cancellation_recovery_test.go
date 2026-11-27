@@ -2,7 +2,6 @@ package bootstrap
 
 import (
 	"context"
-	"database/sql"
 	"database/sql/driver"
 	json "encoding/json/v2"
 	"errors"
@@ -15,9 +14,9 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	localruntime "github.com/Tangerg/flame/packages/local-runtime"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	scoperun "github.com/Tangerg/scope/agent/run"
@@ -318,11 +317,7 @@ func waitingChildScopeLog(payload []byte) (scoperun.Log, error) {
 
 func readWaitingChildScopeLog(t *testing.T, home string) scoperun.Log {
 	t.Helper()
-	directory, err := localruntime.DataDirectoryAt(home)
-	if err != nil {
-		t.Fatal(err)
-	}
-	db, err := sql.Open("sqlite", directory.DatabasePath())
+	db, err := persistencefixture.OpenRawSQL(home)
 	if err != nil {
 		t.Fatal(err)
 	}
