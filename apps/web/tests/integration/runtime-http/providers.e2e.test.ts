@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { RpcError, asRunId, asSessionId } from "@flame/runtime-client";
-import { type RunEvent } from "@flame/runtime-client/wire";
+import {
+  RpcError,
+  asRunId,
+  asSessionId,
+  createFlameClient,
+  createHttpTransport,
+} from "@flame/runtime-client";
+import { HTTP_HEADERS, type RunEvent } from "@flame/runtime-client/wire";
+import { ProviderCredentialsDraft } from "../../../../../plugins/providers/component/draft";
+import { ProviderSettings } from "../../../../../plugins/providers/component/settings";
 import { createProviderGate } from "./fakeProvider";
 import { collectRunEvents, originalOpeningEvents, within } from "./observation";
 import { useRuntimeFixture } from "./fixture";
@@ -137,6 +145,80 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: providers", () => {
     } finally {
       gate.release.resolve();
       fixture.providerGate = undefined;
+    }
+  }, 30_000);
+
+  it("keeps an address edited back to its original value while a save is pending", async () => {
+    const providerId = "openai";
+    const initialAddress = fixture.providerBaseUrl;
+    await fixture.client.providers.update({
+      provider: providerId,
+      baseUrl: { type: "set", value: initialAddress },
+    });
+    const readProvider = async () => {
+      const provider = (await fixture.client.providers.list()).data.find(
+        (candidate) => candidate.id === providerId,
+      );
+      if (!provider) throw new Error(`missing provider ${providerId}`);
+      return provider;
+    };
+    const initial = await readProvider();
+    const submittedAddress = new URL("/settings-save/v1", initialAddress).href;
+    const committed = Promise.withResolvers<void>();
+    const release = Promise.withResolvers<void>();
+    let held = false;
+    const client = createFlameClient(
+      createHttpTransport({
+        baseUrl: fixture.baseUrl,
+        fetch: async (input, init) => {
+          const response = await globalThis.fetch(input, init);
+          if (!held && new Headers(init?.headers).get(HTTP_HEADERS.method) === "providers.update") {
+            held = true;
+            committed.resolve();
+            await release.promise;
+          }
+          return response;
+        },
+      }),
+      { capabilities: () => fixture.negotiated },
+    );
+    const lifetime = new AbortController();
+    const context = {
+      runtime: client,
+      component: { installationId: "providers", digest: "settings-test", componentId: "providers" },
+      signal: lifetime.signal,
+      track<P extends Promise<unknown>>(operation: (signal: AbortSignal) => P): P {
+        lifetime.signal.throwIfAborted();
+        return operation(lifetime.signal);
+      },
+    };
+    const settings = new ProviderSettings({ ...context, runtimeIdentity: client });
+    const submitted = ProviderCredentialsDraft.initial().withBaseURL(submittedAddress);
+    settings.edit(context, initial, submitted);
+    const saving = settings.save(context, initial, submitted);
+    try {
+      await within(committed.promise, "provider update acknowledgement");
+      const saved = await readProvider();
+      expect(saved.baseUrl).toBe(submittedAddress);
+      settings.edit(context, initial, submitted.withBaseURL(initialAddress));
+      release.resolve();
+      await expect(saving).resolves.toBe(true);
+
+      const later = settings.getSnapshot().drafts.get(providerId);
+      expect(later?.baseURL(saved)).toBe(initialAddress);
+      if (!later) throw new Error("expected the later address edit");
+      expect(later.dirty(saved)).toBe(true);
+      await expect(settings.save(context, saved, later)).resolves.toBe(true);
+      expect((await readProvider()).baseUrl).toBe(initialAddress);
+    } finally {
+      release.resolve();
+      await saving;
+      lifetime.abort();
+      await client.close();
+      await fixture.client.providers.update({
+        provider: providerId,
+        baseUrl: { type: "set", value: initialAddress },
+      });
     }
   }, 30_000);
 });

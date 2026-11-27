@@ -14,6 +14,11 @@ import type {
 } from "@flame/runtime-client/wire";
 import { ProviderCredentialsDraft } from "./draft";
 
+type SettingsContext = Pick<
+  ComponentContext,
+  "component" | "runtime" | "signal" | "track"
+>;
+
 export type Feedback =
   | { kind: "saved" }
   | { kind: "tested"; outcome: ProviderTestResult["outcome"] }
@@ -49,16 +54,22 @@ interface Snapshot {
   readonly feedback: ReadonlyMap<string, Feedback>;
   readonly probing: ReadonlySet<string>;
 }
-interface Pending {
-  original: MutationPromise<unknown>;
-  accept(result: unknown): void;
-  witness?: { provider: string; draft: ProviderCredentialsDraft };
+interface CommandObservation {
+  readonly original: MutationPromise<unknown>;
+  readonly accept: (result: unknown) => void;
+  readonly draft?: { providerId: string; revision: symbol | undefined };
+}
+
+type TrackedCommand = Command & { readonly observation: CommandObservation };
+
+interface SettingsState extends Omit<Snapshot, "commands"> {
+  readonly commands: ReadonlyMap<string, TrackedCommand>;
 }
 
 export const providerResource = (id: string) =>
   JSON.stringify(["provider", id]);
 
-function loadingSnapshot(): Snapshot {
+function loadingSnapshot(): SettingsState {
   return {
     providers: { phase: "loading" },
     models: { phase: "loading" },
@@ -76,8 +87,6 @@ export class ProviderSettings {
   readonly #component: ComponentSource["component"];
   readonly #signal: AbortSignal;
   readonly #listeners = new Set<() => void>();
-  readonly #pending = new Map<string, Pending>();
-  readonly #draftEdits = new Map<string, object>();
   readonly #reads = new Map<ReadKey, AbortController>();
   #snapshot = loadingSnapshot();
 
@@ -89,8 +98,6 @@ export class ProviderSettings {
     this.#signal.addEventListener(
       "abort",
       () => {
-        this.#pending.clear();
-        this.#draftEdits.clear();
         for (const controller of this.#reads.values()) controller.abort();
         this.#reads.clear();
         this.#snapshot = loadingSnapshot();
@@ -100,13 +107,13 @@ export class ProviderSettings {
     );
   }
 
-  getSnapshot = () => this.#snapshot;
+  getSnapshot = (): Snapshot => this.#snapshot;
   subscribe = (listener: () => void) => {
     this.#listeners.add(listener);
     return () => this.#listeners.delete(listener);
   };
 
-  observe(context: ComponentContext) {
+  observe(context: SettingsContext) {
     this.#assert(context);
     const controller = new AbortController();
     const signal = AbortSignal.any([
@@ -134,13 +141,13 @@ export class ProviderSettings {
     return () => controller.abort();
   }
 
-  refresh(context: ComponentContext, signal = context.signal) {
+  refresh(context: SettingsContext, signal = context.signal) {
     for (const key of ["providers", "models", ...ROLE_KINDS] as const)
       this.refreshRead(context, key, signal);
   }
 
   refreshRead<K extends ReadKey>(
-    context: ComponentContext,
+    context: SettingsContext,
     key: K,
     parent = context.signal,
   ) {
@@ -183,23 +190,25 @@ export class ProviderSettings {
   }
 
   edit(
-    context: ComponentContext,
+    context: SettingsContext,
     provider: Provider,
     draft: ProviderCredentialsDraft,
   ) {
     this.#assert(context);
-    this.#draftEdits.set(provider.id, {});
-    const drafts = new Map(this.#snapshot.drafts);
-    if (draft.dirty(provider)) drafts.set(provider.id, draft);
-    else drafts.delete(provider.id);
-    const feedback = new Map(this.#snapshot.feedback);
-    feedback.delete(providerResource(provider.id));
-    this.#snapshot = { ...this.#snapshot, drafts, feedback };
+    const resource = providerResource(provider.id);
+    // A value equal to the current provider may be a correction to a pending save.
+    const savingCredentials =
+      this.#snapshot.commands.get(resource)?.observation.draft !== undefined;
+    this.#storeDraft(
+      provider.id,
+      savingCredentials ? draft : draft.rebase(provider),
+    );
+    this.#feedback(resource);
     this.#publish();
   }
 
   save(
-    context: ComponentContext,
+    context: SettingsContext,
     provider: Provider,
     submitted: ProviderCredentialsDraft,
   ) {
@@ -209,7 +218,7 @@ export class ProviderSettings {
   }
 
   #save(
-    context: ComponentContext,
+    context: SettingsContext,
     provider: Provider,
     submitted: ProviderCredentialsDraft,
   ) {
@@ -220,19 +229,15 @@ export class ProviderSettings {
       (saved) => {
         this.#acceptProvider(saved);
         const current = this.#snapshot.drafts.get(provider.id) ?? submitted;
-        const settled = current.settle(submitted);
-        const drafts = new Map(this.#snapshot.drafts);
-        if (settled.dirty(saved)) drafts.set(provider.id, settled);
-        else drafts.delete(provider.id);
-        this.#snapshot = { ...this.#snapshot, drafts };
-        if (current === submitted)
+        this.#storeDraft(provider.id, current.settle(submitted).rebase(saved));
+        if (current.revision === submitted.revision)
           this.#feedback(providerResource(provider.id), { kind: "saved" });
       },
-      { provider: provider.id, draft: submitted },
+      { providerId: provider.id, revision: submitted.revision },
     );
   }
 
-  clearKey(context: ComponentContext, provider: string) {
+  clearKey(context: SettingsContext, provider: string) {
     this.#assert(context);
     if (this.#snapshot.probing.has(provider)) return Promise.resolve(false);
     return this.#command(
@@ -248,7 +253,7 @@ export class ProviderSettings {
   }
 
   setRole(
-    context: ComponentContext,
+    context: SettingsContext,
     kind: RoleKind,
     value: UtilityRole | EmbeddingRole,
   ) {
@@ -270,19 +275,22 @@ export class ProviderSettings {
   }
 
   async test(
-    context: ComponentContext,
+    context: SettingsContext,
     provider: Provider,
     draft: ProviderCredentialsDraft,
   ) {
     this.#assert(context);
     const resource = providerResource(provider.id);
-    if (this.#pending.has(resource) || this.#snapshot.probing.has(provider.id))
+    if (
+      this.#snapshot.commands.has(resource) ||
+      this.#snapshot.probing.has(provider.id)
+    )
       return;
     const probing = new Set(this.#snapshot.probing).add(provider.id);
     this.#snapshot = { ...this.#snapshot, probing };
     this.#feedback(resource);
     this.#publish();
-    const witness = this.#draftEdits.get(provider.id);
+    const revision = this.#snapshot.drafts.get(provider.id)?.revision;
     try {
       if (
         draft.dirty(provider) &&
@@ -296,13 +304,16 @@ export class ProviderSettings {
       const result = await context.track(() =>
         context.runtime.providers.test(provider.id, signal),
       );
-      if (!signal.aborted && this.#draftEdits.get(provider.id) === witness)
+      if (
+        !signal.aborted &&
+        this.#snapshot.drafts.get(provider.id)?.revision === revision
+      )
         this.#feedback(resource, { kind: "tested", outcome: result.outcome });
     } catch (error) {
       if (
         !this.#signal.aborted &&
         !context.signal.aborted &&
-        this.#draftEdits.get(provider.id) === witness
+        this.#snapshot.drafts.get(provider.id)?.revision === revision
       )
         this.#feedback(resource, { kind: "error", error });
     } finally {
@@ -315,33 +326,31 @@ export class ProviderSettings {
     }
   }
 
-  recover(context: ComponentContext, resource: string) {
+  recover(context: SettingsContext, resource: string) {
     this.#assert(context);
-    const pending = this.#pending.get(resource);
-    if (!pending || this.#snapshot.commands.get(resource)?.phase !== "unknown")
-      return;
-    return this.#observe(context, resource, pending, true);
+    const command = this.#snapshot.commands.get(resource);
+    if (command?.phase !== "unknown") return;
+    return this.#observe(context, resource, command.observation, true);
   }
 
   #command<T>(
-    context: ComponentContext,
+    context: SettingsContext,
     resource: string,
     execute: () => MutationPromise<T>,
     accept: (result: T) => void,
-    witness?: Pending["witness"],
+    draft?: CommandObservation["draft"],
   ) {
     this.#assert(context);
-    if (this.#pending.has(resource)) return Promise.resolve(false);
+    if (this.#snapshot.commands.has(resource)) return Promise.resolve(false);
     this.#feedback(resource);
     try {
       const original = context.track(execute);
-      const pending: Pending = {
+      const observation: CommandObservation = {
         original,
         accept: (result) => accept(result as T),
-        witness,
+        draft,
       };
-      this.#pending.set(resource, pending);
-      return this.#observe(context, resource, pending, false);
+      return this.#observe(context, resource, observation, false);
     } catch (error) {
       this.#feedback(resource, { kind: "error", error });
       this.#publish();
@@ -350,52 +359,54 @@ export class ProviderSettings {
   }
 
   async #observe(
-    context: ComponentContext,
+    context: SettingsContext,
     resource: string,
-    pending: Pending,
+    observation: CommandObservation,
     recover: boolean,
   ) {
-    this.#setCommand(resource, { phase: "running" });
+    const running: TrackedCommand = { phase: "running", observation };
+    this.#setCommand(resource, running);
+    this.#publish();
+    let result: unknown;
     try {
-      const result = await (recover
+      result = await (recover
         ? context.track(() =>
-            pending.original.retry({ signal: context.signal }),
+            observation.original.retry({ signal: context.signal }),
           )
-        : pending.original);
-      if (this.#signal.aborted || this.#pending.get(resource) !== pending)
-        return false;
-      this.#pending.delete(resource);
-      pending.accept(result);
-      this.#setCommand(resource);
-      if (isRoleKind(resource)) this.refreshRead(context, resource);
-      else {
-        this.refreshRead(context, "providers");
-        this.refreshRead(context, "models");
-      }
-      return true;
+        : observation.original);
     } catch (error) {
-      if (this.#signal.aborted || this.#pending.get(resource) !== pending)
-        return false;
+      if (this.#snapshot.commands.get(resource) !== running) return false;
       if (
         mutationSettlementIsUnknown(error) ||
         (recover && context.signal.aborted)
       )
-        this.#setCommand(resource, { phase: "unknown", error });
+        this.#setCommand(resource, { phase: "unknown", observation, error });
       else {
-        this.#pending.delete(resource);
+        const submitted = observation.draft;
         if (
-          !pending.witness ||
-          this.#snapshot.drafts.get(pending.witness.provider) ===
-            pending.witness.draft
+          !submitted ||
+          this.#snapshot.drafts.get(submitted.providerId)?.revision ===
+            submitted.revision
         )
           this.#feedback(resource, { kind: "error", error });
         this.#setCommand(resource);
       }
+      this.#publish();
       return false;
     }
+    if (this.#snapshot.commands.get(resource) !== running) return false;
+    this.#setCommand(resource);
+    observation.accept(result);
+    this.#publish();
+    if (isRoleKind(resource)) this.refreshRead(context, resource);
+    else {
+      this.refreshRead(context, "providers");
+      this.refreshRead(context, "models");
+    }
+    return true;
   }
 
-  #assert(context: ComponentContext) {
+  #assert(context: SettingsContext) {
     this.#signal.throwIfAborted();
     context.signal.throwIfAborted();
     if (
@@ -427,12 +438,16 @@ export class ProviderSettings {
     this.#reads.delete(key);
   }
 
-  #setCommand(resource: string, value?: Command) {
+  #storeDraft(providerId: string, draft: ProviderCredentialsDraft) {
+    const drafts = new Map(this.#snapshot.drafts).set(providerId, draft);
+    this.#snapshot = { ...this.#snapshot, drafts };
+  }
+
+  #setCommand(resource: string, value?: TrackedCommand) {
     const commands = new Map(this.#snapshot.commands);
     if (value) commands.set(resource, value);
     else commands.delete(resource);
     this.#snapshot = { ...this.#snapshot, commands };
-    this.#publish();
   }
 
   #feedback(resource: string, value?: Feedback) {

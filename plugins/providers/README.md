@@ -17,7 +17,8 @@ Runtime retirement clears that state and fences stale submissions. Known command
 responses update the accepted projection before refreshing it; a refresh failure
 cannot turn that command into a failure. An unconfirmed command blocks another
 write to the same resource and retains its original promise for reconciliation.
-Later edits survive settlement and cannot receive feedback from an older probe.
+Later edits survive settlement, including an address changed back to the value
+shown when a save began. Probe feedback belongs to the draft revision that was tested.
 No plugin-owned credential registry, role state machine or module-global presenter
 is introduced. Role controls fill their grid track, so they share the description's
 reading axis when the row stacks.
