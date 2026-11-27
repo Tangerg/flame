@@ -34,13 +34,14 @@ const (
 )
 
 type TaskWorktrees struct {
-	root     string
-	toolDirs []string
-	creating sync.RWMutex
+	root       string
+	toolDirs   []string
+	creatingMu sync.RWMutex
+	creating   map[string]struct{}
 }
 
 func NewTaskWorktrees(root string, toolDirs []string) *TaskWorktrees {
-	return &TaskWorktrees{root: root, toolDirs: toolDirs}
+	return &TaskWorktrees{root: root, toolDirs: toolDirs, creating: make(map[string]struct{})}
 }
 
 type taskRecord struct {
@@ -52,8 +53,6 @@ type taskRecord struct {
 }
 
 func (b *TaskWorktrees) Create(ctx context.Context, path, base, setup string) (work.TaskWorktree, error) {
-	b.creating.Lock()
-	defer b.creating.Unlock()
 	source, err := taskGitValue(ctx, path, "rev-parse", "--show-toplevel")
 	if err != nil {
 		return work.TaskWorktree{}, errors.Join(work.ErrVCSUnavailable, err)
@@ -92,6 +91,16 @@ func (b *TaskWorktrees) Create(ctx context.Context, path, base, setup string) (w
 	if err := root.Mkdir(record.ID, filesystem.PrivateDirectoryMode); err != nil {
 		return work.TaskWorktree{}, err
 	}
+	// The manifest must survive interruption. A live creation still owns the
+	// checkout until its setup and registration can be published together.
+	b.creatingMu.Lock()
+	b.creating[record.ID] = struct{}{}
+	b.creatingMu.Unlock()
+	defer func() {
+		b.creatingMu.Lock()
+		delete(b.creating, record.ID)
+		b.creatingMu.Unlock()
+	}()
 	if err := writeTaskRecord(root, record); err != nil {
 		return work.TaskWorktree{}, err
 	}
@@ -160,8 +169,6 @@ func (b *TaskWorktrees) List(ctx context.Context) ([]work.TaskWorktree, error) {
 }
 
 func (b *TaskWorktrees) Get(ctx context.Context, id string) (work.TaskWorktree, error) {
-	b.creating.RLock()
-	defer b.creating.RUnlock()
 	record, err := b.load(id)
 	if err != nil {
 		return work.TaskWorktree{}, err
@@ -171,6 +178,11 @@ func (b *TaskWorktrees) Get(ctx context.Context, id string) (work.TaskWorktree, 
 
 func (b *TaskWorktrees) load(id string) (taskRecord, error) {
 	if !isTaskID(id) {
+		return taskRecord{}, work.ErrTaskWorktreeNotFound
+	}
+	b.creatingMu.RLock()
+	defer b.creatingMu.RUnlock()
+	if _, creating := b.creating[id]; creating {
 		return taskRecord{}, work.ErrTaskWorktreeNotFound
 	}
 	root, err := os.OpenRoot(b.root)
