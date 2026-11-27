@@ -120,9 +120,9 @@ a plugin business result. The additional private routing schema requires a fresh
 Runtime data directory; incompatible directories are refused without conversion
 and must be retained separately.
 
-Post-segment maintenance captures its finishing Session and workspace explicitly.
-A new root opened by another Run's plugin call cannot inherit that caller's
-Session, Goal or physical-model invocation for detached title generation.
+Run and Session scopes carry their own model publication authority. Post-segment
+maintenance enters the finishing Session's scope. Title generation keeps the
+triggering caller's provenance and records its usage against that Session.
 The originating Run reserves title maintenance before releasing its Session
 admission. A committed Session restore or deletion revokes the reservation
 even if a later import reuses its ID. A committed history rollback revokes it

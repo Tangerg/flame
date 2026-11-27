@@ -165,21 +165,21 @@ type modelCapture struct {
 	err         error
 }
 
-func (c *modelCapture) enter(ctx context.Context) (context.Context, func(), error) {
+func (c *modelCapture) enter(ctx context.Context) (context.Context, func(), string, error) {
 	invocation, err := pluginmcp.InvocationFromContext(ctx)
 	if err != nil || invocation.Target.Scope != extension.ScopeCall {
-		return nil, nil, errors.Join(err, errors.New("model composition: model call identity is required"))
+		return nil, nil, "", errors.Join(err, errors.New("model composition: model call identity is required"))
 	}
 	c.mu.Lock()
 	if c.closed || c.lifetime.Err() != nil {
 		c.mu.Unlock()
-		return nil, nil, errors.Join(pluginmcp.ErrStaleCall, c.lifetime.Err(), context.Cause(c.lifetime))
+		return nil, nil, "", errors.Join(pluginmcp.ErrStaleCall, c.lifetime.Err(), context.Cause(c.lifetime))
 	}
 	c.active.Add(1)
 	c.mu.Unlock()
 	calling, cancel := context.WithCancelCause(ctx)
 	stop := context.AfterFunc(c.lifetime, func() { cancel(context.Cause(c.lifetime)) })
-	return calling, func() { stop(); cancel(nil); c.active.Done() }, nil
+	return calling, func() { stop(); cancel(nil); c.active.Done() }, invocation.ID, nil
 }
 
 func (c *modelCapture) prepare(ctx context.Context, request *chat.Request) (*chat.Request, error) {
@@ -218,12 +218,12 @@ func (c *modelCapture) prepare(ctx context.Context, request *chat.Request) (*cha
 }
 
 func (c *modelCapture) Call(ctx context.Context, request *chat.Request) (response *chat.Response, returned error) {
-	calling, leave, err := c.enter(ctx)
+	calling, leave, callID, err := c.enter(ctx)
 	if err != nil {
 		return nil, err
 	}
 	defer leave()
-	calling, finish, err := beginCapturedModelCall(calling, c.resolved.Selection())
+	calling, finish, err := executionctx.StartIndependentModelCall(calling, callID, c.resolved.Selection())
 	if err != nil {
 		return nil, err
 	}
@@ -245,13 +245,13 @@ func (c *streamedModelCapture) Stream(ctx context.Context, request *chat.Request
 	return func(yield func(*chat.ResponseDelta, error) bool) {
 		sender := newModelStreamSender(yield)
 		defer sender.finish()
-		calling, leave, err := c.enter(ctx)
+		calling, leave, callID, err := c.enter(ctx)
 		if err != nil {
 			sender.fail(err)
 			return
 		}
 		defer leave()
-		calling, finish, err := beginCapturedModelCall(calling, c.resolved.Selection())
+		calling, finish, err := executionctx.StartIndependentModelCall(calling, callID, c.resolved.Selection())
 		if err != nil {
 			sender.fail(err)
 			return
@@ -295,28 +295,6 @@ func (c *modelCapture) close() error {
 	o.mu.Unlock()
 	close(c.done)
 	return c.err
-}
-
-func beginCapturedModelCall(ctx context.Context, selection flamemodel.Selection) (context.Context, func(context.Context, error) error, error) {
-	invocation, err := pluginmcp.InvocationFromContext(ctx)
-	if err != nil {
-		return nil, nil, err
-	}
-	if invocation.ID == executionctx.InvocationOwner(ctx) {
-		return nil, nil, errors.New("model call: independent invocation cannot claim its executing owner identity")
-	}
-	publisher := executionctx.ModelCallsFromContext(ctx)
-	if publisher == nil {
-		if executionctx.InvocationOwner(ctx) != "" {
-			return nil, nil, errors.New("model call: executing owner has no model consumption publisher")
-		}
-		return ctx, func(context.Context, error) error { return nil }, nil
-	}
-	finish, err := publisher.Start(ctx, invocation.ID, selection)
-	if err != nil {
-		return nil, nil, err
-	}
-	return executionctx.WithInvocationOwner(ctx, invocation.ID), finish, nil
 }
 
 func modelCompositionBindings(resolved modeladapter.SelectedChat, observers, contexts, inputs []plugins.ContributionBinding) []plugins.ContributionBinding {

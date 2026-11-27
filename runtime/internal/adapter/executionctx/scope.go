@@ -11,81 +11,57 @@ import (
 )
 
 type scopeKey struct{}
-type invocationOwnerKey struct{}
-type runCapabilitiesKey struct{}
 
-func WithScope(ctx context.Context, scope runs.ExecutionScope) context.Context {
-	return context.WithValue(ctx, scopeKey{}, scope)
+type executionScope struct {
+	target       runs.ExecutionScope
+	capabilities run.Capabilities
+	model        modelCallScope
 }
 
-func Scope(ctx context.Context) (runs.ExecutionScope, bool) {
-	if ctx == nil {
-		return runs.ExecutionScope{}, false
-	}
-	scope, ok := ctx.Value(scopeKey{}).(runs.ExecutionScope)
-	return scope, ok
+// A new scope carries caller provenance through the parent context, but its
+// calls cannot publish into the execution that requested it.
+func WithSessionScope(ctx context.Context, sessionID identity.SessionID, workspace string) context.Context {
+	return context.WithValue(ctx, scopeKey{}, executionScope{
+		target: runs.ExecutionScope{SessionID: sessionID, CWD: workspace, WorkspaceCWD: workspace},
+	})
 }
 
-func WithRunCapabilities(ctx context.Context, capabilities run.Capabilities) context.Context {
-	return context.WithValue(ctx, runCapabilitiesKey{}, capabilities.Clone())
+func WithRunScope(ctx context.Context, target runs.ExecutionScope, capabilities run.Capabilities) context.Context {
+	return context.WithValue(ctx, scopeKey{}, executionScope{target: target, capabilities: capabilities.Normalized()})
 }
 
-func RunCapabilities(ctx context.Context) (run.Capabilities, bool) {
-	if ctx == nil {
-		return run.Capabilities{}, false
-	}
-	capabilities, ok := ctx.Value(runCapabilitiesKey{}).(run.Capabilities)
-	return capabilities.Clone(), ok
+func currentScope(ctx context.Context) executionScope {
+	scope, _ := ctx.Value(scopeKey{}).(executionScope)
+	return scope
+}
+
+func RunCapabilities(ctx context.Context) run.Capabilities {
+	return currentScope(ctx).capabilities.Clone()
 }
 
 func CWD(ctx context.Context) (string, bool) {
-	if scope, ok := Scope(ctx); ok && scope.CWD != "" {
-		return scope.CWD, true
-	}
-	return "", false
+	cwd := currentScope(ctx).target.CWD
+	return cwd, cwd != ""
 }
 
 func WorkspaceCWD(ctx context.Context) (string, bool) {
-	if scope, ok := Scope(ctx); ok && scope.WorkspaceCWD != "" {
-		return scope.WorkspaceCWD, true
-	}
-	return "", false
+	cwd := currentScope(ctx).target.WorkspaceCWD
+	return cwd, cwd != ""
 }
 
 func Project(ctx context.Context) identity.ProjectID {
-	if scope, ok := Scope(ctx); ok {
-		return scope.Project
-	}
-	return identity.ProjectID{}
+	return currentScope(ctx).target.Project
 }
 
 func Isolated(ctx context.Context) bool {
-	scope, ok := Scope(ctx)
-	return ok && scope.Isolated
+	return currentScope(ctx).target.Isolated
 }
 
 func GoalIncarnationID(ctx context.Context) (goalref.IncarnationID, bool) {
-	if scope, ok := Scope(ctx); ok && !scope.GoalIncarnationID.IsZero() {
-		return scope.GoalIncarnationID, true
-	}
-	return goalref.IncarnationID{}, false
+	id := currentScope(ctx).target.GoalIncarnationID
+	return id, !id.IsZero()
 }
 
 func SessionID(ctx context.Context) identity.SessionID {
-	if scope, ok := Scope(ctx); ok {
-		return scope.SessionID
-	}
-	return identity.SessionID{}
-}
-
-func WithInvocationOwner(ctx context.Context, callID string) context.Context {
-	return context.WithValue(ctx, invocationOwnerKey{}, callID)
-}
-
-func InvocationOwner(ctx context.Context) string {
-	if ctx == nil {
-		return ""
-	}
-	owner, _ := ctx.Value(invocationOwnerKey{}).(string)
-	return owner
+	return currentScope(ctx).target.SessionID
 }

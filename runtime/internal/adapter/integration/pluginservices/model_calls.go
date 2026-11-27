@@ -66,7 +66,7 @@ func (o *CallComposition) captureIndependent(ctx context.Context, resolve modela
 	if err != nil {
 		return modeladapter.SelectedChat{}, nil, nil, err
 	}
-	if invocation.ID == executionctx.InvocationOwner(ctx) {
+	if invocation.ID == executionctx.EndpointOwner(ctx) {
 		return modeladapter.SelectedChat{}, nil, nil, errors.New("model call: independent invocation cannot claim its executing owner identity")
 	}
 

@@ -136,7 +136,7 @@ func (c *creator) create(ctx context.Context, args createArgs) (goalResult, erro
 	if strings.TrimSpace(args.Objective) == "" {
 		return goalResult{Message: "Provide a non-empty autonomous objective."}, nil
 	}
-	capabilities, _ := executionctx.RunCapabilities(ctx)
+	capabilities := executionctx.RunCapabilities(ctx)
 	// Nobody chose a model for this Goal, so its Runs follow the Session's
 	// selection rather than a copy of the model this Run happens to use.
 	var g goal.Goal

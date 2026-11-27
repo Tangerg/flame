@@ -12,7 +12,6 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/model/catalog"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
-	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 
@@ -145,7 +144,7 @@ func (i *interactionModelContextReducer) prepareContextView(ctx context.Context,
 	if err != nil {
 		return nil, modelRequestContext{}, nil, false, err
 	}
-	calling := executionctx.WithModelCalls(ctx, modelCalls{session: i.session, member: i.session.executorMember(invocation.process)})
+	calling := i.session.modelCallContext(ctx, i.session.executorMember(invocation.process), "")
 	calling, err = pluginmcp.WithInvocation(calling, framecall.Invocation{ID: identity.String(), Origin: extension.Automatic, Parent: effectInvocationParent(invocation.effect), Target: framecall.Target{Scope: extension.ScopeCall, Reference: identity.String()}})
 	if err != nil {
 		return nil, modelRequestContext{}, nil, false, err
