@@ -41,9 +41,11 @@ export function rollbackSessionToBeforeRun(
   runId: string,
   restoreType: RestoreType = "history",
 ): Promise<SessionRollbackResult> {
-  return withSessionRollback(agentAccess, sessionId, (owner) =>
-    rollbackBeforeRun(agentAccess, owner, sessionId, runId, restoreType),
-  );
+  return withSessionRollback(agentAccess, sessionId, async (owner) => {
+    const rollback = await rollbackBeforeRun(agentAccess, owner, sessionId, runId, restoreType);
+    if (rollback.status === "committed") void refreshAfterRollback(agentAccess, owner, sessionId);
+    return rollback;
+  });
 }
 
 export function regenerateSessionRun(
@@ -55,9 +57,10 @@ export function regenerateSessionRun(
   return withSessionRollback<SessionRegenerationResult>(agentAccess, sessionId, async (owner) => {
     const rollback = await rollbackBeforeRun(agentAccess, owner, sessionId, runId, restoreType);
     if (rollback.status !== "committed") return rollback;
+    const refreshed = await refreshAfterRollback(agentAccess, owner, sessionId);
     owner.assertCurrent();
     if (!rollback.userInput) return { status: "noInput" };
-    if (!submitAgentInput(agentAccess, sessionId, rollback.userInput))
+    if (!refreshed || !submitAgentInput(agentAccess, sessionId, rollback.userInput))
       return { status: "notReady" };
     return { status: "submitted" };
   });
@@ -114,8 +117,25 @@ async function rollbackBeforeRun(
     }),
   );
   owner.assertCurrent();
-  await owner.settle(rehydrateSessionView(agentAccess, sessionId));
-  owner.assertCurrent();
   const userInput = result.droppedRuns.find((dropped) => dropped.runId === runId)?.userInput;
   return { status: "committed", ...(userInput ? { userInput } : {}) };
+}
+
+async function refreshAfterRollback(
+  agentAccess: AgentDependencies,
+  owner: AgentCommandOwner,
+  sessionId: string,
+): Promise<boolean> {
+  try {
+    await owner.settle(rehydrateSessionView(agentAccess, sessionId));
+    return true;
+  } catch (error) {
+    if (owner.isCurrent()) {
+      console.error("[session] rollback view could not be refreshed:", error);
+      agentAccess.notifications.notify("error", t("agent.synchronizationIncomplete"), {
+        source: "session",
+      });
+    }
+    return false;
+  }
 }

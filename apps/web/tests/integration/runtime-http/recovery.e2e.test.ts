@@ -2,6 +2,12 @@ import { lstat } from "node:fs/promises";
 import { join } from "node:path";
 import { describe, expect, it, onTestFinished } from "vitest";
 import { asRunId, asSessionId } from "@flame/runtime-client";
+import { HTTP_HEADERS } from "@flame/runtime-client/wire";
+import { composeAgent } from "@/features/agent/adapters/agent";
+import { createRuntimeConnectionProjection } from "@/features/connection/adapters/runtimeConnectionProjection";
+import { createRuntimeEndpoint } from "@/features/connection/application/runtimeEndpoint";
+import { NotificationFeed } from "@/features/notifications/public/notifications";
+import { createMemoryNavigator } from "@/lib/navigation.testkit";
 import {
   type ProviderGate,
   compactionCutpointMarker,
@@ -27,6 +33,69 @@ const compactionCutpointDeadlineMilliseconds = 15_000;
 
 describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: restart and crash recovery", () => {
   const fixture = useRuntimeFixture("recovery");
+
+  it("returns the committed rollback input when the next Session read fails", async () => {
+    const session = await fixture.client.sessions.create({ workspace: { path: fixture.root } });
+    const sessionId = asSessionId(session.id);
+    const input = "The input belongs to the committed rollback receipt.";
+    const run = await fixture.client.runs.start({
+      sessionId,
+      input: [{ type: "text", text: input }],
+    });
+    await collectRunEvents(originalOpeningEvents(run));
+
+    const refreshing = Promise.withResolvers<void>();
+    let committed = false;
+    const client = fixture.createRuntimeClient(async (url, init) => {
+      const method = new Headers(init?.headers).get(HTTP_HEADERS.method);
+      if (method === "sessions.snapshot" && committed) {
+        refreshing.resolve();
+        throw new Error("Session read unavailable after the rollback committed");
+      }
+      const response = await fetch(url, init);
+      if (method === "sessions.rollback") committed = true;
+      return response;
+    });
+    const connection = createRuntimeConnectionProjection();
+    const target = () => ({ endpoint: fixture.baseUrl });
+    const runtime = {
+      capabilities: connection.capabilities,
+      status: connection.status,
+      endpoint: createRuntimeEndpoint({
+        read: target,
+        defaultTarget: target,
+        replace: () => false,
+        reset: () => false,
+      }),
+    };
+    const notifications = new NotificationFeed(() => {});
+    const agent = composeAgent(
+      () => client,
+      createMemoryNavigator({ session: sessionId }),
+      runtime,
+      connection.stream,
+      connection.scope,
+      notifications,
+    );
+    agent.sessions.store.getState().holdOpen(sessionId);
+    agent.projection.store.getState().ensureSession(sessionId);
+    try {
+      await expect(
+        agent.access.rollbackSessionToBeforeRun(sessionId, run.result.runId),
+      ).resolves.toEqual({ status: "committed", userInput: { parts: [{ kind: "text", text: input }] } });
+      await within(refreshing.promise, "Session refresh after the committed rollback");
+      await expect(fixture.client.sessions.snapshot(sessionId)).resolves.toMatchObject({ runs: [] });
+      await expect
+        .poll(() => notifications.snapshot().some(({ level }) => level === "error"))
+        .toBe(true);
+    } finally {
+      agent.dispose();
+      notifications.dispose();
+      connection.dispose();
+      await client.close();
+      await fixture.client.sessions.delete(sessionId);
+    }
+  }, 30_000);
 
   it("reopens durable reads and event reconciliation after a Runtime process restart", async () => {
     const beforeRestart = await fixture.client.runtime.discover();
