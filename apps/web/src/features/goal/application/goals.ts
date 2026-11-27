@@ -2,19 +2,19 @@ import {
   GoalCommandOwner,
   type GoalProjectionRepair,
 } from "@/features/goal/application/goalCommands";
-import { GoalComposerModeOwner } from "@/features/goal/application/goalComposerMode";
+import { GoalComposerSubmissionOwner } from "@/features/goal/application/goalComposerSubmission";
 import { type GoalAccess } from "@/features/goal/application/goalAccess";
 
 export function createGoals(repairProjection: GoalProjectionRepair) {
   const commands = new GoalCommandOwner(null, repairProjection);
-  const composerMode = new GoalComposerModeOwner();
-  const access: GoalAccess = { commands, composerMode };
+  const submissions = new GoalComposerSubmissionOwner();
+  const access: GoalAccess = { commands, submissions };
   return {
     commands,
-    composerMode,
+    submissions,
     access,
     dispose() {
-      composerMode.dispose();
+      submissions.dispose();
       commands.dispose();
     },
   };

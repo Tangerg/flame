@@ -279,13 +279,16 @@ export function SessionRow({
       {visible && onDelete && (
         <ConfirmDialog
           open={confirmingDelete}
-          onOpenChange={setConfirmingDelete}
+          onDismiss={() => setConfirmingDelete(false)}
           title={t("session.delete.title")}
           body={t("session.delete.body", { title })}
           confirmLabel={t("session.action.delete")}
           cancelLabel={t("common.cancel")}
           destructive
-          onConfirm={() => onDelete(session.id)}
+          onConfirm={() => {
+            setConfirmingDelete(false);
+            onDelete(session.id);
+          }}
         />
       )}
     </>

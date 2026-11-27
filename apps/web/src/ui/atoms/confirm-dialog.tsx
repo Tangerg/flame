@@ -2,7 +2,7 @@ import { useRef, type ComponentProps, type ReactNode } from "react";
 import { Button, ModalDialog } from "@flame/ui";
 interface ConfirmDialogProps {
   open: boolean;
-  onOpenChange: (open: boolean) => void;
+  onDismiss: () => void;
   onOpenChangeComplete?: (open: boolean) => void;
   title: ReactNode;
   body: ReactNode;
@@ -15,7 +15,7 @@ interface ConfirmDialogProps {
 
 export function ConfirmDialog({
   open,
-  onOpenChange,
+  onDismiss,
   onOpenChangeComplete,
   title,
   body,
@@ -29,7 +29,9 @@ export function ConfirmDialog({
   return (
     <ModalDialog
       open={open}
-      onOpenChange={onOpenChange}
+      onOpenChange={(next) => {
+        if (!next) onDismiss();
+      }}
       onOpenChangeComplete={onOpenChangeComplete}
       title={title}
       description={body}
@@ -40,16 +42,13 @@ export function ConfirmDialog({
       finalFocus={finalFocus}
       footer={
         <>
-          <Button ref={cancel} variant="ghost" onClick={() => onOpenChange(false)}>
+          <Button ref={cancel} variant="ghost" onClick={onDismiss}>
             {cancelLabel}
           </Button>
           <Button
             variant={destructive ? "tonal" : "primary"}
             tone={destructive ? "negative" : undefined}
-            onClick={() => {
-              onOpenChange(false);
-              onConfirm();
-            }}
+            onClick={onConfirm}
           >
             {confirmLabel}
           </Button>

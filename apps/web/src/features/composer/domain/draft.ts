@@ -40,6 +40,21 @@ export interface PastedText {
 
 const PARAGRAPH_BREAK = "\n\n";
 
+export interface ComposerSlashCommand {
+  command: string;
+  args: string;
+}
+
+export type LeadingSlashCommandEdit = "remove" | "prepareArguments";
+
+export function parseComposerSlashCommand(value: string): ComposerSlashCommand | null {
+  const text = value.trim();
+  if (!text.startsWith("/")) return null;
+  const separator = text.search(/\s/);
+  if (separator === -1) return { command: text, args: "" };
+  return { command: text.slice(0, separator), args: text.slice(separator + 1) };
+}
+
 export function joinDraftParts(parts: readonly string[]): string {
   return parts.filter(Boolean).join(PARAGRAPH_BREAK);
 }
@@ -131,6 +146,18 @@ export class DraftContent {
   startSlashCommand(): DraftContent {
     if (this.text.trim()) throw new Error("a slash command must start a blank draft");
     return DraftContent.fromText("/");
+  }
+
+  editLeadingSlashCommand(command: string, edit: LeadingSlashCommandEdit): DraftContent {
+    const leading = this.segments[0];
+    const slash = parseComposerSlashCommand(this.text);
+    if (leading?.kind !== "text" || slash?.command !== command) return this;
+
+    if (edit === "prepareArguments") {
+      return slash.args || /\s$/.test(this.text) ? this : this.concat(" ");
+    }
+    const text = leading.text.trimStart().slice(command.length).trimStart();
+    return DraftContent.of([{ ...leading, text }, ...this.segments.slice(1)]);
   }
 
   private trimEnd(): DraftContent {

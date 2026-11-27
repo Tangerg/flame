@@ -419,6 +419,9 @@ only a new user selection initializes defaults from the chosen catalog entry.
 Composer owns submission intent and accepts an injected send function. Agent
 owns the send use case. Workbench consumers call Agent's public input surface
 directly; Composer does not republish that same hook under another name.
+The draft's `/goal` command determines Goal submission across view changes and
+connection recovery. The Goal surface projects that command and manages pending
+confirmation and submission for the captured Session.
 
 A mutation's prepared parameters, idempotency key, and Runtime namespace survive
 an uncertain acknowledgement. A transport failure does not authorize creating a

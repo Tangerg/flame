@@ -1,10 +1,10 @@
 import { type GoalCommandAccess } from "@/features/goal/application/goalCommands";
-import { type GoalComposerModeOwner } from "@/features/goal/application/goalComposerMode";
+import { type GoalComposerSubmissionOwner } from "@/features/goal/application/goalComposerSubmission";
 
 export interface GoalAccess {
   readonly commands: GoalCommandAccess;
-  readonly composerMode: Pick<
-    GoalComposerModeOwner,
-    "snapshot" | "subscribe" | "deactivate" | "confirmReplacement" | "cancelReplacement"
+  readonly submissions: Pick<
+    GoalComposerSubmissionOwner,
+    "snapshot" | "subscribe" | "confirmReplacement" | "cancelReplacement"
   >;
 }

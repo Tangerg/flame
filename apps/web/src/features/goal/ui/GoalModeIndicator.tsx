@@ -1,4 +1,3 @@
-import { useGoalAuthorAvailable } from "@/features/plugins/public/workflows";
 import * as stylex from "@stylexjs/stylex";
 import { useEffect, useSyncExternalStore } from "react";
 import { ConfirmDialog } from "@/ui/index";
@@ -6,10 +5,10 @@ import { Icon } from "@/ui/index";
 import { Button, GlyphSwap, vocab } from "@flame/ui";
 import { useT } from "@/lib/i18n/index";
 import { useActiveSessionId } from "@/features/agent/public/session";
-import { useGoalMaterial } from "@/features/goal/application/goalReadModel";
+import { GOAL_SLASH_COMMAND } from "@/features/goal/application/goalReadModel";
 import { useGoalAccess } from "@/features/goal/public/goals";
-import { goalCanEnterComposerMode } from "@/features/goal/application/goalComposerSubmitMode";
 import { useComposer } from "@/features/composer/public/composer";
+import { parseComposerSlashCommand } from "@/features/composer/public/draft";
 import { captureComposerFocus } from "@/features/composer/public/focus";
 export function GoalModeIndicator() {
   const sessionId = useActiveSessionId();
@@ -20,31 +19,19 @@ export function GoalModeIndicator() {
 function SessionGoalModeIndicator({ sessionId }: { sessionId: string }) {
   const t = useT();
   const composer = useComposer();
-  const owner = useGoalAccess().composerMode;
-  const snapshot = useSyncExternalStore(owner.subscribe, owner.snapshot, owner.snapshot);
-  const material = useGoalMaterial().value;
-  const goal = material?.goal ?? null;
-  const originalAvailable = useGoalAuthorAvailable(goal?.author);
-  const available =
-    material?.available === true && (!goal || originalAvailable) && goalCanEnterComposerMode(goal);
-  const active = snapshot.sessionId === sessionId;
+  const owner = useGoalAccess().submissions;
+  const readSubmission = () => owner.snapshot(sessionId);
+  const snapshot = useSyncExternalStore(owner.subscribe, readSubmission, readSubmission);
+  const slash = parseComposerSlashCommand(composer.useText());
 
   useEffect(
     () => () => {
-      owner.deactivate(sessionId);
+      owner.cancelReplacement(sessionId);
     },
     [owner, sessionId],
   );
 
-  useEffect(() => {
-    if (!available && snapshot.sessionId === sessionId && snapshot.phase !== "starting") {
-      owner.deactivate(sessionId);
-    }
-  }, [available, owner, sessionId, snapshot.phase, snapshot.sessionId]);
-
-  if (!active) return null;
-  const confirming = snapshot.phase === "confirming";
-  const starting = snapshot.phase === "starting";
+  if (slash?.command !== GOAL_SLASH_COMMAND) return null;
 
   return (
     <>
@@ -53,11 +40,11 @@ function SessionGoalModeIndicator({ sessionId }: { sessionId: string }) {
         variant="ghost"
         size="md"
         aria-label={t("goal.mode.clear")}
-        disabled={starting}
+        disabled={snapshot?.phase === "starting"}
         chip
         onClick={() => {
           const restoreFocus = captureComposerFocus(composer);
-          if (owner.deactivate(sessionId)) restoreFocus();
+          if (composer.editLeadingSlashCommand(GOAL_SLASH_COMMAND, "remove")) restoreFocus();
         }}
       >
         <GlyphSwap
@@ -68,12 +55,10 @@ function SessionGoalModeIndicator({ sessionId }: { sessionId: string }) {
         />
         <span>{t("goal.mode.label")}</span>
       </Button>
-      {confirming && (
+      {snapshot?.phase === "confirming" && (
         <ConfirmDialog
           open
-          onOpenChange={(open) => {
-            if (!open) owner.cancelReplacement(sessionId);
-          }}
+          onDismiss={() => owner.cancelReplacement(sessionId)}
           title={t("goal.replace.title")}
           body={t("goal.replace.body", { objective: snapshot.replacedObjective })}
           confirmLabel={t("goal.replace.confirm")}

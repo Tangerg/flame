@@ -10,34 +10,12 @@ export interface ComposerKeyBindingSpec {
   handler: (ctx: ComposerKeyContext) => boolean | void;
 }
 
-interface ComposerSubmitModeDraft {
-  rawText: string;
-  text: string;
-  body: string;
-  slash: { command: string; args: string } | null;
-  hasImages: boolean;
-  hasPastes: boolean;
-  hasReferences: boolean;
-}
-
-export interface ComposerSubmitModeContext extends ComposerSubmitModeDraft {
-  accept(): void;
-  clear(): void;
-}
-
-export interface ComposerSubmitModeSpec {
-  id: string;
-  matches(draft: ComposerSubmitModeDraft): boolean;
-  submit(context: ComposerSubmitModeContext): void | Promise<void>;
-}
-
-interface SlashCommandRunCtx {
+export interface SlashCommandContext {
   args: string;
+  hasAttachments: boolean;
   accept(): void;
-  send: (text: string) => boolean;
 }
 
-export interface SlashCommandSpec {
-  description: MessageKey;
-  run?: (ctx: SlashCommandRunCtx) => void | Promise<void>;
-}
+export type SlashCommandHandler = (context: SlashCommandContext) => void | Promise<void>;
+export type SlashCommandSpec =
+  { description: MessageKey; run?: never } | { description?: MessageKey; run: SlashCommandHandler };

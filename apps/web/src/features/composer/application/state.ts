@@ -5,6 +5,7 @@ import {
   type ComposerImage,
   type ComposerImageAttachment,
   type ComposerReference,
+  type LeadingSlashCommandEdit,
   type PastedText,
 } from "@/features/composer/domain/draft";
 export type ComposerModelPreference =
@@ -60,6 +61,7 @@ export interface ComposerStatePort {
   useText(): string;
   startFileReference(): string;
   startSlashCommand(): string;
+  editLeadingSlashCommand(command: string, edit: LeadingSlashCommandEdit): boolean;
   useDraftLoading(): boolean;
   usePersistenceState(): ComposerPersistenceState;
   retryPersistence(): void;

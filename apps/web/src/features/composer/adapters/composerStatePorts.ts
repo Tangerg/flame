@@ -146,6 +146,11 @@ export function createComposer(
       presentDraft();
       return useComposerStore.getState().composer.draft.value;
     },
+    editLeadingSlashCommand: (command, action) => {
+      if (!useComposerStore.getState().editLeadingSlashCommand(command, action)) return false;
+      presentDraft();
+      return true;
+    },
     useDraftLoading: () => useComposerStore((state) => state.persistenceState.status === "loading"),
     usePersistenceState: () => useComposerStore((state) => state.persistenceState),
     retryPersistence: owner.retryPersistence,
