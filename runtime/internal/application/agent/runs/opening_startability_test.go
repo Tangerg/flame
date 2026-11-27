@@ -39,7 +39,7 @@ func TestWaitSessionStartableFollowsWorkspaceEdit(t *testing.T) {
 	gate, err := ownership.NewGate(ownership.GateConfig{
 		ResolveTree:              filesystem.CanonicalPath,
 		TreesOverlap:             filesystem.PathsOverlap,
-		SettleRetirement:         func(context.Context, identity.SessionID) (bool, error) { return true, nil },
+		SettleRetirement:         func(context.Context, identity.SessionID) error { return nil },
 		WorkspaceRollbackPending: func(context.Context, identity.SessionID) (bool, error) { return false, nil },
 	})
 	if err != nil {

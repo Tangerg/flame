@@ -67,27 +67,19 @@ func NewResourceRetirer(retirements resourceRetirements, cleanups ...Cleanup) (*
 	return &ResourceRetirer{retirements: retirements, cleanups: slices.Clone(cleanups)}, nil
 }
 
-func (r *ResourceRetirer) Settle(ctx context.Context, sessionID identity.SessionID) (bool, error) {
+func (r *ResourceRetirer) SettleSession(ctx context.Context, sessionID identity.SessionID) error {
 	retirement, found, err := r.retirements.Lookup(ctx, sessionID)
-	if err != nil || !found {
-		return err == nil, err
-	}
-	if err := r.complete(ctx, retirement); err != nil {
-		slog.ErrorContext(ctx, "sessions: committed resource retirement is still pending",
-			telemetry.SessionID(sessionID), telemetry.Error(err))
-		return false, nil
-	}
-	return true, nil
-}
-
-func (r *ResourceRetirer) complete(ctx context.Context, retirement ResourceRetirement) error {
-	committed, found, err := r.retirements.Lookup(ctx, retirement.SessionID())
 	if err != nil || !found {
 		return err
 	}
-	if committed != retirement {
-		return fmt.Errorf("%w: Session resource retirement changed", rundomain.ErrSessionBusy)
+	if err := r.retireCommitted(ctx, retirement); err != nil {
+		return fmt.Errorf("%w: retire committed resources for Session %q: %w", rundomain.ErrSessionBusy, sessionID, err)
 	}
+	return nil
+}
+
+// Session admission pins the committed retirement across cleanup and completion.
+func (r *ResourceRetirer) retireCommitted(ctx context.Context, retirement ResourceRetirement) error {
 	var errs []error
 	for _, cleanup := range r.cleanups {
 		if err := cleanup.Retire(ctx, retirement.SessionID()); err != nil {
@@ -101,23 +93,23 @@ func (r *ResourceRetirer) complete(ctx context.Context, retirement ResourceRetir
 }
 
 func (r *ResourceRetirer) RecoverPending(ctx context.Context, admissions recoveryClaims) error {
-	pending, err := r.retirements.ListPending(ctx)
+	pending, err := r.retirements.ListPendingSessions(ctx)
 	if err != nil {
 		return err
 	}
-	for _, retirement := range pending {
-		release, ok, err := admissions.AcquireRecoverySession(ctx, retirement.SessionID())
+	for _, sessionID := range pending {
+		release, ok, err := admissions.AcquireRecoverySession(ctx, sessionID)
 		if err != nil {
 			return err
 		}
 		if !ok {
 			continue
 		}
-		err = r.complete(ctx, retirement)
+		err = r.SettleSession(ctx, sessionID)
 		release()
 		if err != nil {
 			slog.ErrorContext(ctx, "sessions: committed resource retirement is still pending",
-				telemetry.SessionID(retirement.SessionID()), telemetry.Error(err))
+				telemetry.SessionID(sessionID), telemetry.Error(err))
 		}
 	}
 	return nil

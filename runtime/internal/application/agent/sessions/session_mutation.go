@@ -45,7 +45,7 @@ func (c *Coordinator) DeleteSession(ctx context.Context, sessionID identity.Sess
 		},
 		func(ctx context.Context) error {
 			c.publishAggregateMoved([]identity.SessionID{sessionID}, nil)
-			cleanupErrs := []error{c.retirer.complete(ctx, deletion.Retirement())}
+			cleanupErrs := []error{c.retirer.retireCommitted(ctx, deletion.Retirement())}
 			for _, item := range pending {
 				if err := c.releaseExecution(ctx, RunExecutionBinding{
 					RunID:      item.RootRunID,
@@ -114,7 +114,7 @@ func (c *Coordinator) RestorePortableSession(ctx context.Context, portable Porta
 			c.transientState.ForgetSessionContext(sessionID)
 			c.publishAggregateMoved([]identity.SessionID{sessionID}, nil)
 			if retirement, replaced := restore.Retirement(); replaced {
-				return c.retirer.complete(ctx, retirement)
+				return c.retirer.retireCommitted(ctx, retirement)
 			}
 			return nil
 		},

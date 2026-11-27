@@ -18,14 +18,14 @@ type Gate struct {
 	changed          chan struct{}
 	resolveTree      func(string) (string, error)
 	treesOverlap     func(string, string) (bool, error)
-	settleRetirement func(context.Context, identity.SessionID) (bool, error)
+	settleRetirement func(context.Context, identity.SessionID) error
 	rollbackPending  func(context.Context, identity.SessionID) (bool, error)
 }
 
 type GateConfig struct {
 	ResolveTree              func(string) (string, error)
 	TreesOverlap             func(string, string) (bool, error)
-	SettleRetirement         func(context.Context, identity.SessionID) (bool, error)
+	SettleRetirement         func(context.Context, identity.SessionID) error
 	WorkspaceRollbackPending func(context.Context, identity.SessionID) (bool, error)
 }
 
@@ -136,9 +136,7 @@ func (g *Gate) acquireForegroundSession(ctx context.Context, sessionID identity.
 	if err != nil || !ok {
 		return nil, false, err
 	}
-	settled, err := g.settleRetirement(ctx, sessionID)
-	err = errors.Join(err, errors.Join(ctx.Err(), context.Cause(ctx)))
-	if err != nil || !settled {
+	if err := errors.Join(g.settleRetirement(ctx, sessionID), ctx.Err(), context.Cause(ctx)); err != nil {
 		release()
 		return nil, false, err
 	}
@@ -196,9 +194,7 @@ func (g *Gate) AcquireRun(ctx context.Context, sessionID identity.SessionID, cwd
 	if err != nil || !ok {
 		return RunAdmission{}, false, err
 	}
-	settled, err := g.settleRetirement(ctx, sessionID)
-	err = errors.Join(err, errors.Join(ctx.Err(), context.Cause(ctx)))
-	if err != nil || !settled {
+	if err := errors.Join(g.settleRetirement(ctx, sessionID), ctx.Err(), context.Cause(ctx)); err != nil {
 		admission.Release()
 		return RunAdmission{}, false, err
 	}

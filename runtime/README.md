@@ -145,8 +145,10 @@ clears the branch's current Plan when rolling back to that Run.
 
 A keyed Session edit, deletion or archive import commits its original reply
 with the Session transaction. A retry can recover the same acknowledgement
-after restart or a later edit. Resource retirement becomes enforceable only
-after the history change and acknowledgement commit.
+after restart or a later edit. Resource retirement becomes enforceable after
+the history change and acknowledgement commit. Admission holds the Session
+while settling its current retirement and preserves the cleanup error if it
+fails. A Goal pauses on that error and can resume once cleanup succeeds.
 
 Runtime is not another agent framework. Scope owns process execution, strategies, tools, and provider libraries; Runtime adapts those capabilities to Flame's Session, Run, Goal, Plan, persistence, recovery, and protocol model.
 
