@@ -15,6 +15,7 @@ import type {
   PluginCommandInput,
   PluginCommandBinding,
 } from "./mutationJournal";
+import type { PendingRuntimeCommand, RuntimeCommandMethod } from "./mutationJournalEntry";
 import { requireCapabilities } from "./preflight";
 import type { DispatchPhase } from "./durableMutationJournal";
 import {
@@ -91,6 +92,12 @@ export interface WireCallPath {
   queryJSON: RpcClient["callJSON"];
   dispatchCommand: CommandDispatch;
   openMutation: OpenMutation;
+  retryCommand<M extends RuntimeCommandMethod>(
+    method: M,
+    identity: Pick<PendingRuntimeCommand, "idempotencyKey" | "namespace">,
+    params: WireParams<M>,
+    signal?: AbortSignal,
+  ): MutationPromise<WireResult<M>>;
   capturePluginCommand(
     intent: string,
     input: PluginCommandInput,
@@ -101,7 +108,7 @@ export interface WireCallPath {
 
 interface OriginalMutation {
   readonly idempotencyKey: string;
-  reserve(): MutationReservation;
+  reserve(preparedParams: unknown): MutationReservation;
 }
 
 type MutationOpeningOptions = {
@@ -212,7 +219,7 @@ export function createWireCallPath(client: RpcClient, options: WireCallPathOptio
       if (!original && signal?.aborted) throw new RpcCancellationError();
       preparedParams = checkRequest(method, cloneJSON(params));
       if (original) {
-        reservation = original.reserve();
+        reservation = original.reserve(preparedParams);
       } else {
         reservation = options.mutationJournal.reserve(
           method,
@@ -234,6 +241,27 @@ export function createWireCallPath(client: RpcClient, options: WireCallPathOptio
         { signal },
       );
     return reservation.track(create);
+  };
+
+  const retryCommand: WireCallPath["retryCommand"] = (method, identity, params, signal) => {
+    const command: PendingRuntimeCommand = {
+      method,
+      idempotencyKey: identity.idempotencyKey,
+      namespace: identity.namespace,
+    };
+    return openMutation(
+      method,
+      params,
+      (prepared, reservation, attemptSignal) =>
+        dispatchCommand(method, prepared, reservation, { signal: attemptSignal }),
+      {
+        signal,
+        original: {
+          idempotencyKey: command.idempotencyKey,
+          reserve: (prepared) => options.mutationJournal.recoverRuntimeCommand(command, prepared),
+        },
+      },
+    );
   };
 
   const invoke = (<M extends WireMethodName>(
@@ -294,5 +322,13 @@ export function createWireCallPath(client: RpcClient, options: WireCallPathOptio
       signal,
     );
 
-  return { call, callUnkeyed, queryJSON, dispatchCommand, openMutation, capturePluginCommand };
+  return {
+    call,
+    callUnkeyed,
+    queryJSON,
+    dispatchCommand,
+    openMutation,
+    retryCommand,
+    capturePluginCommand,
+  };
 }

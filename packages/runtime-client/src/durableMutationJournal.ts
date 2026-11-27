@@ -8,6 +8,7 @@ import {
   type DurableMutationIdentity,
   type JournalEntry,
   MAX_IDENTITY_LENGTH,
+  type PendingRuntimeCommand,
   type PluginCommandInput,
   captureJournalCommand,
   decodeJournalEntry,
@@ -63,6 +64,7 @@ export interface DurableMutationJournal {
   ): CapturedPluginCommand;
   pendingEntries(): JournalEntry[];
   validatePluginCommand(identity: DurableMutationIdentity, request: CallPluginRequest): void;
+  recoverRuntimeCommand(command: PendingRuntimeCommand, params: unknown): DurableMutationIdentity;
   reserve(
     method: WireMethodName,
     params: unknown,
@@ -313,6 +315,22 @@ export function openDurableMutationJournal(
         );
       }
     },
+    recoverRuntimeCommand(command, params) {
+      if (!isIdempotencyKey(command.idempotencyKey)) {
+        throw new MutationJournalError("Runtime mutation key is invalid");
+      }
+      const entry = readEntry(options.storage, entryKey(command.idempotencyKey));
+      if (
+        entry?.command.kind !== "method" ||
+        entry.namespace !== command.namespace ||
+        !matchesCommand(entry, command.method, params, entry.requestMeta)
+      ) {
+        throw new MutationJournalOwnershipError(
+          "Runtime command does not match a retained journal entry",
+        );
+      }
+      return mutationIdentity(entry);
+    },
     reserve(method, params, requestedKey, claimed, requestMeta) {
       if (requestedKey !== undefined && !isIdempotencyKey(requestedKey)) {
         throw new MutationJournalError("Runtime mutation key is invalid");
@@ -321,16 +339,7 @@ export function openDurableMutationJournal(
       // Neither expiry nor replacement of the serving store settles their outcome.
       const entries = loadEntries(options.storage);
       let entry: JournalEntry | undefined;
-      if (requestedKey === undefined) {
-        entry = entries
-          .filter(
-            (candidate) =>
-              candidate.command.kind === "method" &&
-              !claimed(candidate.idempotencyKey) &&
-              matchesCommand(candidate, method, params, requestMeta),
-          )
-          .toSorted((left, right) => left.createdAt - right.createdAt)[0];
-      } else {
+      if (requestedKey !== undefined) {
         entry = entries.find((pending) => pending.idempotencyKey === requestedKey);
         if (
           entry &&

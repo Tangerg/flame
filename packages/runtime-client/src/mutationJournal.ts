@@ -8,6 +8,7 @@ import type { WireMethodName } from "@flame/runtime-client/methods";
 import {
   mutationIdentity,
   type DurableMutationIdentity,
+  type PendingRuntimeCommand,
   type RunCommand,
   type PluginCommandInput,
   type PluginCommandBinding,
@@ -80,6 +81,24 @@ export class MutationJournal {
 
   constructor(journal: DurableMutationJournal) {
     this.#journal = journal;
+  }
+
+  pendingRuntimeCommands(): PendingRuntimeCommand[] {
+    this.#assertCurrent();
+    return this.#journal.pendingEntries().flatMap(({ command, idempotencyKey, namespace }) => {
+      if (command.kind !== "method" || this.#claims.has(idempotencyKey)) return [];
+      return [{ method: command.method, idempotencyKey, namespace }];
+    });
+  }
+
+  recoverRuntimeCommand(command: PendingRuntimeCommand, params: unknown): MutationReservation {
+    this.#assertCurrent();
+    if (this.#claims.has(command.idempotencyKey)) {
+      throw new MutationJournalOwnershipError(
+        "Runtime mutation identity is already owned by an active command",
+      );
+    }
+    return this.#claim(this.#journal.recoverRuntimeCommand(command, params));
   }
 
   pendingPluginCommands(): PendingPluginCommand[] {

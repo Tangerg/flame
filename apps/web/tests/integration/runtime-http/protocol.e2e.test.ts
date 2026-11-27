@@ -3,6 +3,7 @@ import {
   createFlameClient,
   type FlameClient,
   JSONRPC_VERSION,
+  MutationJournalOwnershipError,
   RpcError,
   RpcProtocolError,
   RpcTransportError,
@@ -11,6 +12,7 @@ import {
   asSessionId,
   createSidecarClient,
   createHttpTransport,
+  mutationSettlementIsUnknown,
 } from "@flame/runtime-client";
 import {
   HTTP_HEADERS,
@@ -700,6 +702,77 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: protocol delivery", () => {
       for (const id of createdIds) await fixture.client.sessions.delete(asSessionId(id));
       streamController.abort();
       await events.return?.();
+    }
+  }, 30_000);
+
+  it("starts a fresh identical command and recovers the original by its retained identity", async () => {
+    const method = "sessions.create";
+    const title = "Separate same-input Session commands";
+    const params = { workspace: { path: fixture.root }, title };
+    const mutationStorage = new MemoryMutationStorage();
+    let clientName = "original-configuration-client";
+    const options = {
+      capabilities: () => fixture.negotiated,
+      mutationStorage,
+      requestMeta: (): RequestMeta => ({
+        protocolVersion: PROTOCOL_VERSION,
+        clientInfo: { name: clientName, version: "1" },
+      }),
+    };
+    const lost = faultUnaryResponse(method, "afterCommit");
+    const original = createFlameClient(
+      createHttpTransport({
+        baseUrl: fixture.baseUrl,
+        fetch: (url, init) => {
+          if (lost.attempts() > 0) throw new Error("disconnected before original command recovery");
+          return lost.fetch(url, init);
+        },
+      }),
+      options,
+    );
+    let deliveries = 0;
+    const cold = createFlameClient(
+      createHttpTransport({
+        baseUrl: fixture.baseUrl,
+        fetch: (url, init) => {
+          if (new Headers(init?.headers).get(HTTP_HEADERS.method) === method) deliveries++;
+          return globalThis.fetch(url, init);
+        },
+      }),
+      options,
+    );
+    try {
+      const committed = original.sessions.create(params);
+      await expect(committed).rejects.toSatisfy(mutationSettlementIsUnknown);
+      await original.close();
+      const [accepted] = (await fixture.client.sessions.list().autoPagingToArray()).filter(
+        (session) => session.title === title,
+      );
+      if (!accepted) throw new Error("the original Session was not committed");
+
+      const fresh = cold.sessions.create(params);
+      await expect(fresh).resolves.not.toMatchObject({ id: accepted.id });
+      expect(fresh.idempotencyKey).not.toBe(committed.idempotencyKey);
+      const [pending] = cold.runtime.pendingCommands();
+      expect(pending).toMatchObject({ method, idempotencyKey: committed.idempotencyKey });
+      if (!pending || pending.method !== method) throw new Error("expected the retained command");
+
+      clientName = "replacement-configuration-client";
+      await expect(
+        cold.runtime.retryCommand(method, pending, { ...params, title: "changed" }),
+      ).rejects.toBeInstanceOf(MutationJournalOwnershipError);
+      expect(deliveries).toBe(1);
+      await expect(cold.runtime.retryCommand(method, pending, params)).resolves.toEqual(accepted);
+      expect(cold.runtime.pendingCommands()).toEqual([]);
+      await expect(cold.runtime.retryCommand(method, pending, params)).rejects.toBeInstanceOf(
+        MutationJournalOwnershipError,
+      );
+      expect(deliveries).toBe(2);
+    } finally {
+      await Promise.all([original.close(), cold.close()]);
+      for (const session of await fixture.client.sessions.list().autoPagingToArray()) {
+        if (session.title === title) await fixture.client.sessions.delete(asSessionId(session.id));
+      }
     }
   }, 30_000);
 

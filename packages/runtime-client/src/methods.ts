@@ -136,6 +136,7 @@ import { createRuntimeEventFeed } from "./runtimeEventFeed";
 import type { AutoPagingPromise } from "./pagination";
 import { RUNTIME_SUBSCRIBE_METHOD } from "./transport";
 import type { PluginCommandInput, PluginCommandBinding } from "./mutationJournal";
+import type { PendingRuntimeCommand } from "./mutationJournalEntry";
 
 import { callOrDispose, type StreamingResult } from "./stream";
 import {
@@ -178,6 +179,8 @@ interface WorkspaceMethods {
 export interface Methods {
   runtime: {
     discover: (signal?: AbortSignal) => Promise<DiscoverResponse>;
+    pendingCommands: () => readonly PendingRuntimeCommand[];
+    retryCommand: WireCallPath["retryCommand"];
   };
   sessions: {
     list: (query?: ListSessionsRequest, signal?: AbortSignal) => AutoPagingPromise<Page<Session>>;
@@ -477,6 +480,8 @@ export function createMethods(
   return {
     runtime: {
       discover: (signal) => call("runtime.discover", {}, { signal }),
+      pendingCommands: () => mutationJournal.pendingRuntimeCommands(),
+      retryCommand: wire.retryCommand,
     },
     sessions: {
       list: (query, signal) => call("sessions.list", query ?? {}, { signal }),
