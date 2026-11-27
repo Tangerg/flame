@@ -11,6 +11,8 @@ import (
 
 type Contracts struct {
 	Capability          *plugincontract.Capability
+	ReviewWork          *pluginmcp.Method[wire.ReviewWorkInput, wire.ReviewWork]
+	UpdateReviewWork    *pluginmcp.Method[wire.ReviewWorkChange, wire.ReviewWork]
 	List                *pluginmcp.Method[wire.ListInput, wire.IssuePage]
 	Issue               *pluginmcp.Method[wire.IssueInput, wire.Issue]
 	File                *pluginmcp.Method[wire.FileInput, wire.File]
@@ -45,6 +47,8 @@ func NewContracts() (Contracts, error) {
 	methods := pluginmcp.NewMethodSet(capability)
 	c := Contracts{
 		Capability:          capability,
+		ReviewWork:          pluginmcp.Implement[wire.ReviewWorkInput, wire.ReviewWork](methods, published.ReviewWorkV1Method),
+		UpdateReviewWork:    pluginmcp.Implement[wire.ReviewWorkChange, wire.ReviewWork](methods, published.UpdateReviewWorkV1Method),
 		List:                pluginmcp.Implement[wire.ListInput, wire.IssuePage](methods, published.ListIssuesV1Method),
 		Issue:               pluginmcp.Implement[wire.IssueInput, wire.Issue](methods, published.GetIssueV1Method),
 		File:                pluginmcp.Implement[wire.FileInput, wire.File](methods, published.ReadFileV1Method),

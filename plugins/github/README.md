@@ -53,6 +53,98 @@ directory without converting it or creating command tables in it. Retain the old
 installation and private directory separately, then use a fresh installation/data
 directory with this complete release. Re-enter its token for the new executable.
 
+## Pull request reviews
+
+Open the installed **Pull request reviews** view and enter a repository and PR
+number, such as `owner/repo#42`. Inspect the current revision to retain its base
+and head commits. On a later inspection, findings from the preceding captured
+revision stay available for recheck. Accept or defer an individual finding with
+a reason on its inspected revision. Its code reference names the exact file,
+commit, side and line. Revision links reopen the original base/head pair.
+
+Choose **Follow new commits** to track this PR while the plugin is running. It
+reconciles against GitHub once when following starts and every two minutes.
+Each observed revision is saved before verification. A restart resumes pending
+work at its captured head. A completed revision reuses its evidence when the
+same base and head arrive again.
+
+Verification fetches the captured base and head to a private detached worktree,
+verifies the checkout SHA and checks the diff for whitespace errors. Prior
+findings show their source revision and a bounded file diff. A person can
+confirm, defer or resolve a finding on the selected revision with a reason.
+The original finding and its earlier decisions remain accessible. Unresolved
+findings carry forward when the next captured revision is checked. Private
+repositories require GitHub Contents read permission.
+
+### Project checks
+
+Set the optional `review-checks` installation input to a JSON object keyed by
+repository. The installed backend uses only these configured commands.
+
+```json
+{
+  "owner/repo": {
+    "environment": "macos-project-tools-2026-11",
+    "checks": [
+      { "name": "Tests", "command": "/bin/sh scripts/check.sh", "timeoutSeconds": 90 }
+    ]
+  }
+}
+```
+
+The environment name identifies the toolchain and dependencies prepared by the
+installation owner. Update it when that environment changes. A policy can name
+one to four checks and optional absolute `readOnlyPaths` for prepared tools or
+dependencies. Use absolute tool paths or set the command's PATH when it needs
+tools outside the system PATH. Each command has a 1 to 300 second deadline.
+
+On macOS each check runs offline in a fresh restricted copy of the checked-out
+tree with a clean environment. The worktree and its verification copies are
+removed after the attempt. Each result records the SHA through its enclosing
+review, the command, declared environment and policy digest, runner, elapsed
+time, exit status and bounded output. Unsupported runners and changed or removed
+policies report checks as unavailable. After a restart an unfinished revision
+can rerun its checks in fresh copies of the same commit.
+
+### GitHub App delivery
+
+Set the optional `webhook-port` and secret `webhook-secret` installation inputs
+together. The selected backend listens only on `127.0.0.1`. Configure the GitHub
+App to send JSON pull request events to a trusted HTTPS endpoint forwarding
+`POST /github/review-webhook` to the local listener. Preserve the request body
+and GitHub signature headers and use the same signing secret in the App. The
+receiver verifies the raw-body HMAC before interpreting the event. See GitHub's
+[validation guide](https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries).
+
+A signed `pull_request.synchronize` event for a followed PR durably captures the
+exact base and head before acknowledging it. Duplicate captures and events for
+other PRs are ignored. A delayed delivery can add a historical revision while
+the current publication target still comes from a fresh GitHub read. The
+background worker rechecks current PR access before verification. Polling
+continues to reconcile the current head when the listener is disabled or an
+event is missed. Intermediate heads are available when those commits reach
+Flame by delivery or polling.
+
+Checking a retained revision records CI only for its head SHA. Discussion
+comments captured from the pull request retain their upstream identities and
+revision times. Repeated observations of one comment version reuse its captured
+entry. Use **Continue from this comment** to attach it to the current Composer.
+The review inspector reads the first 32 comments and check runs at a time.
+The plugin reports incomplete check coverage if GitHub offers another page or
+returns a different SHA.
+
+`review-work.v1` checks current access to the pull request before serving stored
+review work. `update-review-work.v1` uses the expected work version for a new
+inspection, finding or individual human decision. The local decision and
+command receipt commit together. **Publish comment to GitHub** submits a separate
+review at the selected head through the original GitHub write and receipt
+protocol. Publishing checks GitHub's current head before sending the review and
+rejects a stale draft. The GitHub API takes the captured commit SHA without a
+conditional head check, so a head change during submission can still leave a
+review on that captured commit. Reopening an original command recovers its
+receipt even when the head has advanced. The review workspace stores its data in
+the same account-scoped GitHub database.
+
 ## Writes and original outcomes
 
 Use the same `github-operations` contribution, installation target and complete

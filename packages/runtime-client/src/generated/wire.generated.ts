@@ -153,6 +153,7 @@ export const PROBLEM_CODES = {
   "stale_segment": -32026,
   "unsupported_mime": -32011,
   "vcs_unavailable": -32017,
+  "workspace_file_not_found": -32050,
   "workspace_unavailable": -32005,
 } as const satisfies Partial<Record<ProblemData['type'], number>>;
 
@@ -207,6 +208,7 @@ export const PROBLEM_RECOVERY = {
   "stale_segment": "refetch",
   "unsupported_mime": "promptUser",
   "vcs_unavailable": "promptUser",
+  "workspace_file_not_found": "refetch",
   "workspace_unavailable": "promptUser",
 } as const satisfies Partial<Record<ProblemData['type'], RecoveryAction>>;
 
@@ -277,6 +279,11 @@ export interface AppliedChange {
   path: string;
   removed: number;
   status: ChangeStatus;
+}
+
+export interface ApplyWorktreeHandoffRequest {
+  digest: string;
+  id: string;
 }
 
 export type ApprovalDecision = "approve" | "deny";
@@ -386,6 +393,14 @@ export interface ArtifactToolResult {
   modelOnly: boolean;
 }
 
+export interface BackgroundSource {
+  id: string;
+  kind: string;
+  projectId: string;
+  title: string;
+  version: string;
+}
+
 export interface CallPluginRequest {
   input: string;
   route: PluginCallRoute;
@@ -484,6 +499,12 @@ export interface CreateSessionRequest {
   projectId?: string;
   title?: string;
   workspace?: WorkspaceRef;
+}
+
+export interface CreateTaskWorktreeRequest {
+  base: string;
+  setup?: string;
+  source: WorkspaceRef;
 }
 
 export interface DeleteSessionRequest {
@@ -1254,6 +1275,8 @@ export type PageOfSession = Page<Session>;
 
 export type PageOfSkillProposal = Page<SkillProposal>;
 
+export type PageOfTaskWorktree = Page<TaskWorktree>;
+
 export type PageOfToolSpec = Page<ToolSpec>;
 
 export type PageOfTrajectoryEntry = Page<TrajectoryEntry>;
@@ -1739,6 +1762,7 @@ export type ProblemData =
   | { type: "tool_failed"; detail?: string; docUrl?: string }
   | { type: "unsupported_mime"; detail?: string; docUrl?: string }
   | { type: "vcs_unavailable"; detail?: string; docUrl?: string }
+  | { type: "workspace_file_not_found"; detail?: string; docUrl?: string }
   | { type: "workspace_unavailable"; detail?: string; docUrl?: string }
   | { detail?: string; docUrl?: string; retryAfterSeconds?: number; type: `plugin:${string}/${string}` };
 
@@ -1750,6 +1774,30 @@ export interface Project {
   name: string;
   revision: number;
   updatedAt: string;
+}
+
+export interface ProjectBackgroundActivity {
+  active: number;
+  admitted: number;
+  policy: ProjectBackgroundPolicy;
+  recent: ProjectBackgroundRun[];
+}
+
+export interface ProjectBackgroundPolicy {
+  maxActive: number;
+  maxDailyRuns: number;
+  paused: boolean;
+  pullRequests: string[];
+  revision: number;
+}
+
+export interface ProjectBackgroundRun {
+  admittedAt: string;
+  outcome?: string;
+  runId: string;
+  sessionId: string;
+  source: BackgroundSource;
+  status: string;
 }
 
 export interface Provider {
@@ -2257,6 +2305,11 @@ export interface SetPluginEnablementRequest {
   installationId: string;
 }
 
+export interface SetProjectBackgroundPolicyRequest {
+  policy: ProjectBackgroundPolicy;
+  projectId: string;
+}
+
 export interface Skill {
   description?: string;
   installation?: SkillInstallation;
@@ -2339,6 +2392,7 @@ export interface StartGoalRequest {
 }
 
 export interface StartRunRequest {
+  background?: BackgroundSource;
   input: ContentBlock[];
   model?: string;
   newSession?: RunSessionOpening;
@@ -2406,6 +2460,19 @@ export type SuppressibleRunEventType = "segment.progress" | "item.delta";
 export interface Target {
   reference: string;
   scope: string;
+}
+
+export interface TaskWorktree {
+  available: boolean;
+  base: string;
+  id: string;
+  setup?: WorktreeSetup;
+  source: WorkspaceRef;
+  workspace: WorkspaceRef;
+}
+
+export interface TaskWorktreeRequest {
+  id: string;
 }
 
 export type TerminalActionTarget = "view" | "row";
@@ -2614,6 +2681,20 @@ export interface WorkspaceSummary {
   name: string;
   sessionCount: number;
   workspace: WorkspaceInfo;
+}
+
+export interface WorktreeHandoff {
+  branch: string;
+  digest: string;
+  head: string;
+  patch: string;
+  worktree: TaskWorktree;
+}
+
+export interface WorktreeSetup {
+  command: string;
+  exitCode?: number;
+  output: string;
 }
 
 // The closed value sets, as data: a union type does not exist at runtime.

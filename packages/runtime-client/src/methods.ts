@@ -123,6 +123,9 @@ import type {
   RuntimeSubscribeResponse,
   UpdateSessionRequest,
   UpdateProjectRequest,
+  ProjectBackgroundActivity,
+  ProjectBackgroundPolicy,
+  SetProjectBackgroundPolicyRequest,
   UpdateMCPServerRequest,
   SessionUsage,
   UsageSummary,
@@ -131,6 +134,10 @@ import type {
   RuntimeEvent,
   WorkspaceFileChange,
   WorkspaceInfo,
+  ApplyWorktreeHandoffRequest,
+  CreateTaskWorktreeRequest,
+  TaskWorktree,
+  WorktreeHandoff,
   WorkspaceRef,
   WorkspaceSummary,
 } from "@flame/runtime-client/wire";
@@ -214,6 +221,12 @@ export interface Methods {
     import: (artifact: SessionArtifact) => MutationPromise<ImportSessionResponse>;
   };
   projects: {
+    background: {
+      get: (projectId: string, signal?: AbortSignal) => Promise<ProjectBackgroundActivity>;
+      setPolicy: (
+        params: SetProjectBackgroundPolicyRequest,
+      ) => MutationPromise<ProjectBackgroundPolicy>;
+    };
     list: (query?: ListProjectsRequest, signal?: AbortSignal) => AutoPagingPromise<Page<Project>>;
     get: (projectId: string, signal?: AbortSignal) => Promise<Project>;
     create: (params: CreateProjectRequest) => MutationPromise<Project>;
@@ -279,6 +292,13 @@ export interface Methods {
     resolve: (ref?: WorkspaceRef, signal?: AbortSignal) => Promise<WorkspaceInfo>;
     list: (signal?: AbortSignal) => Promise<Page<WorkspaceSummary>>;
     open: (ref?: WorkspaceRef, signal?: AbortSignal) => Promise<WorkspaceMethods>;
+    tasks: {
+      list: (signal?: AbortSignal) => Promise<Page<TaskWorktree>>;
+      create: (request: CreateTaskWorktreeRequest) => MutationPromise<TaskWorktree>;
+      preview: (id: string, signal?: AbortSignal) => Promise<WorktreeHandoff>;
+      apply: (request: ApplyWorktreeHandoffRequest) => MutationPromise<WorktreeHandoff>;
+      release: (id: string) => MutationPromise<void>;
+    };
   };
   workspace: (ref: WorkspaceRef) => WorkspaceMethods;
   runtimeEvents: {
@@ -516,6 +536,10 @@ export function createMethods(
         }),
     },
     projects: {
+      background: {
+        get: (projectId, signal) => call("projects.background.get", { projectId }, { signal }),
+        setPolicy: (params) => call("projects.background.setPolicy", params),
+      },
       list: (query, signal) => call("projects.list", query ?? {}, { signal }),
       get: (projectId, signal) => call("projects.get", { projectId }, { signal }),
       create: (params) => call("projects.create", params),
@@ -567,6 +591,13 @@ export function createMethods(
       resolve: (ref, signal) => call("workspaces.resolve", ref ? { ref } : {}, { signal }),
       list: (signal) => call("workspaces.list", {}, { signal }),
       open: openWorkspace,
+      tasks: {
+        list: (signal) => call("workspaces.tasks.list", {}, { signal }),
+        create: (request) => call("workspaces.tasks.create", request),
+        preview: (id, signal) => call("workspaces.tasks.handoff.preview", { id }, { signal }),
+        apply: (request) => call("workspaces.tasks.handoff.apply", request),
+        release: (id) => call("workspaces.tasks.release", { id }),
+      },
     },
     workspace: (ref) => bindWorkspace(call, ref),
     hooks: {

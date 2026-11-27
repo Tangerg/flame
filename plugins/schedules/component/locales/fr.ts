@@ -42,6 +42,7 @@ export const fr: Record<string, string> = {
   "field.instructions": "Instructions",
   "field.cron": "Expression cron",
   "field.timeZone": "Fuseau horaire",
+  "field.project": "Identifiant du projet",
   "field.workspace": "Chemin de l’espace de travail",
   "field.workspace.placeholder": "Vide utilise la valeur par défaut du Runtime",
   "field.model": "Modèle",

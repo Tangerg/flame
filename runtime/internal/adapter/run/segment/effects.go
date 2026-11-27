@@ -9,6 +9,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
+	"github.com/Tangerg/flame/runtime/internal/domain/project"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -76,6 +77,7 @@ type runWriter interface {
 }
 
 type RunStore interface {
+	RecordProjectBackground(context.Context, run.Draft, project.BackgroundSource, identity.InstallationID) error
 	ResultPublicationCommitted(ctx context.Context, sessionID identity.SessionID, runID identity.RunID, segmentID identity.SegmentID, publicationID, digest string) (bool, error)
 	RecordResultPublication(ctx context.Context, sessionID identity.SessionID, runID identity.RunID, segmentID identity.SegmentID, publicationID, digest string, results []chat.ToolResult) error
 	runs.ToolResultPublications

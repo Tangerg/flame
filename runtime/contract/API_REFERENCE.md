@@ -5,7 +5,7 @@
 > method the Runtime does not serve. The adjacent JSON artifacts are the
 > machine-readable contract; this file is its mechanical human-readable index.
 
-Protocol `2026-11-27.13` · 108 methods
+Protocol `2026-11-27.13` · 115 methods
 
 ## Methods
 
@@ -24,6 +24,8 @@ Protocol `2026-11-27.13` · 108 methods
 | `sessions.rollback` | command | unary | replayResponse | none | none | — | `checkpoints` | `session_not_found`, `run_not_found`, `session_busy`, `revision_conflict`, `checkpoint_unavailable`, `checkpoint_conflict`, `capability_not_negotiated` |
 | `sessions.export` | query | unary | none | none | none | — | `sessionExport` | `plugin_unavailable`, `plugin_stale`, `session_not_found`, `session_busy`, `export_too_large`, `capability_not_negotiated` |
 | `sessions.import` | command | unary | replayResponse | none | none | — | `sessionExport` | `session_busy`, `export_too_large`, `capability_not_negotiated` |
+| `projects.background.get` | query | unary | none | none | none | — | — | `project_not_found` |
+| `projects.background.setPolicy` | command | unary | replayResponse | none | none | — | — | `project_not_found`, `revision_conflict` |
 | `projects.list` | query | unary | none | none | cursor | — | — | — |
 | `projects.get` | query | unary | none | none | none | — | — | `project_not_found` |
 | `projects.create` | command | unary | replayResponse | none | none | — | — | — |
@@ -41,13 +43,18 @@ Protocol `2026-11-27.13` · 108 methods
 | `interrupts.list` | query | unary | none | none | cursor | — | — | `run_not_root`, `capability_not_negotiated` |
 | `plan.get` | query | unary | none | none | none | — | `plan` | `session_not_found`, `capability_not_negotiated` |
 | `items.list` | query | unary | none | none | cursor | — | `childRuns` | `session_not_found`, `run_not_found`, `capability_not_negotiated` |
+| `workspaces.tasks.create` | command | unary | replayResponse | none | none | — | `git` | `workspace_unavailable`, `vcs_unavailable`, `session_busy`, `capability_not_negotiated` |
+| `workspaces.tasks.list` | query | unary | none | none | none | — | `git` | `capability_not_negotiated` |
+| `workspaces.tasks.handoff.preview` | query | unary | none | none | none | — | `git` | `workspace_unavailable`, `session_busy`, `revision_conflict`, `capability_not_negotiated` |
+| `workspaces.tasks.handoff.apply` | command | unary | replayResponse | none | none | — | `git` | `workspace_unavailable`, `session_busy`, `revision_conflict`, `capability_not_negotiated` |
+| `workspaces.tasks.release` | command | unary | replayResponse | none | none | — | `git` | `workspace_unavailable`, `session_busy`, `revision_conflict`, `capability_not_negotiated` |
 | `workspaces.resolve` | query | unary | none | none | none | — | — | `workspace_unavailable` |
 | `workspaces.list` | query | unary | none | none | none | — | — | — |
 | `workspace.changes.list` | query | unary | none | none | none | — | `git` | `workspace_unavailable`, `vcs_unavailable`, `capability_not_negotiated` |
 | `workspace.diff.get` | query | unary | none | none | none | — | `git` | `workspace_unavailable`, `vcs_unavailable`, `path_outside_root`, `capability_not_negotiated` |
 | `workspace.files.search` | query | unary | none | none | none | — | — | `workspace_unavailable`, `path_outside_root` |
 | `workspace.files.list` | query | unary | none | none | cursor | — | — | `workspace_unavailable`, `path_outside_root` |
-| `workspace.files.read` | query | unary | none | none | none | — | — | `workspace_unavailable`, `path_outside_root`, `unsupported_mime` |
+| `workspace.files.read` | query | unary | none | none | none | — | — | `workspace_unavailable`, `path_outside_root`, `workspace_file_not_found`, `unsupported_mime` |
 | `runtime.subscribe` | subscription | stream | none | none | none | — | `fileWatch` | `capability_not_negotiated` |
 | `skills.discovered.list` | query | unary | none | none | none | — | `skills` | `workspace_unavailable`, `capability_not_negotiated` |
 | `skills.discovered.get` | query | unary | none | none | none | — | `skills` | `workspace_unavailable`, `skill_not_found`, `skill_unavailable`, `capability_not_negotiated` |
@@ -223,6 +230,7 @@ publish one namespaced pattern branch without weakening first-party tags.
 | `tool_failed` | — | `detail`, `docUrl` |
 | `unsupported_mime` | — | `detail`, `docUrl` |
 | `vcs_unavailable` | — | `detail`, `docUrl` |
+| `workspace_file_not_found` | — | `detail`, `docUrl` |
 | `workspace_unavailable` | — | `detail`, `docUrl` |
 | `^plugin:[a-z0-9][a-z0-9._-]*/[a-z0-9][a-z0-9._-]*$` | — | `detail`, `docUrl`, `retryAfterSeconds` |
 
@@ -1342,6 +1350,11 @@ available. Refusal is `capability_not_negotiated` — never a silent downgrade.
 | `runs.list` | `includeDescendants` == `true` | `childRuns` |
 | `plan.get` | always | `plan` |
 | `items.list` | `scope.includeDescendants` == `true` | `childRuns` |
+| `workspaces.tasks.create` | always | `git` |
+| `workspaces.tasks.list` | always | `git` |
+| `workspaces.tasks.handoff.preview` | always | `git` |
+| `workspaces.tasks.handoff.apply` | always | `git` |
+| `workspaces.tasks.release` | always | `git` |
 | `workspace.changes.list` | always | `git` |
 | `workspace.diff.get` | always | `git` |
 | `runtime.subscribe` | `watches` present | `fileWatch` |

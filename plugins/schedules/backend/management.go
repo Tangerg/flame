@@ -25,7 +25,7 @@ func registerManagementCommands(backend *pluginmcp.Backend, db framesqlite.Datab
 			return pluginstorage.NewCommandPlan(mutation.State().Snapshot(), mutation.Apply)
 		}),
 		pluginstorage.RegisterCommand(backend, db, contracts.Update, classify, func(ctx context.Context, _ *sdk.ServerSession, input wire.UpdateInput) (pluginstorage.CommandPlan[schedule.Snapshot], error) {
-			mutation, err := coordinator.PrepareUpdate(ctx, scheduling.UpdateCommand{ID: input.ID, ExpectedRevision: input.ExpectedRevision, Patch: scheduling.Patch{Title: input.Title, Instructions: input.Instructions, CWD: input.CWD, Cron: input.Cron, TimeZone: input.TimeZone, Enabled: input.Enabled, ModelSelection: input.ModelSelection.Patch()}})
+			mutation, err := coordinator.PrepareUpdate(ctx, scheduling.UpdateCommand{ID: input.ID, ExpectedRevision: input.ExpectedRevision, Patch: scheduling.Patch{ProjectID: input.ProjectID, Title: input.Title, Instructions: input.Instructions, CWD: input.CWD, Cron: input.Cron, TimeZone: input.TimeZone, Enabled: input.Enabled, ModelSelection: input.ModelSelection.Patch()}})
 			if err != nil {
 				return pluginstorage.CommandPlan[schedule.Snapshot]{}, err
 			}

@@ -25,7 +25,8 @@ func TestRuntimeMutationRequiresNewReadEvidenceAndKeepsRefusalDurable(t *testing
 		{call: chat.ToolCall{ID: "second_edit", Name: "edit", Arguments: `{"path":"notes.txt","old_string":"applied","new_string":"finished"}`}},
 	}}
 	model := delegateRestartModel{chat.ModelFunc(script.Call)}
-	stores, api, ctx, home := newSessionStateE2ERuntime(t, model)
+	stores, runtime, ctx, home := newSessionStateE2ERuntime(t, model)
+	api := runtime.api
 	if err := stores.ApprovalModes.SetDefaultMode(ctx, approval.ModeBalanced); err != nil {
 		t.Fatal(err)
 	}

@@ -4845,7 +4845,7 @@
       "name": "flame.deliverables/suggest.v1",
       "kind": "command",
       "target": "installation",
-      "description": "Propose edits the person can review in the live editor for an exact revision. Nothing changes until they adopt the edits into their draft and save it. The supported operations are PPTX replaceText, setFrame, setChartData, deleteElement. XLSX setCell. DOCX replaceText, insertParagraph, deleteBlock, setParagraphStyle. For replaceText, use a text run from the revision's slides or blocks projection. Use edit for direct changes, including text outside those projections.",
+      "description": "Propose edits the person can review in the live editor for an exact revision. Nothing changes until they adopt the edits into their draft and save it. The supported operations are PPTX replaceText, setFrame, setChartData, setChartLegend, deleteElement. XLSX setCell. DOCX replaceText, insertParagraph, deleteBlock, setParagraphStyle. For replaceText, use a text run from the revision's slides or blocks projection. Use edit for direct changes, including text outside those projections.",
       "input": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,

@@ -752,7 +752,42 @@ async function goMembers(native) {
     const linkerArgs = macOS ? ["-ldflags", macOS.linkerFlags] : [];
     for (const operation of ["test", "build"]) {
       const args = [operation, "-mod=readonly", ...linkerArgs];
-      if (operation === "test") args.push("-p=1");
+      if (operation === "test") {
+        args.push("-p=1");
+        if (directory === join(root, "runtime")) {
+          const bootstrap =
+            "github.com/Tangerg/flame/runtime/internal/bootstrap";
+          const otherPackages = run(
+            "go",
+            ["list", "-mod=readonly", "./..."],
+            directory,
+            memberEnv,
+            true,
+          )
+            .toString()
+            .trim()
+            .split("\n")
+            .filter((name) => name !== bootstrap);
+          run("go", [...args, ...otherPackages], directory, memberEnv);
+          // Bound the lifetime of a growing integration suite while each test
+          // retains its original process deadlines and isolated Runtime fixture.
+          const installedWorkflows =
+            "^Test(Plugin|Filewatch|GitHub|KnowledgeBase|OpenCode|Projects|Research|Schedule|TaskWorktrees|UsageReports|WebInstalled)";
+          run(
+            "go",
+            [...args, "-run", installedWorkflows, bootstrap],
+            directory,
+            memberEnv,
+          );
+          run(
+            "go",
+            [...args, "-skip", installedWorkflows, bootstrap],
+            directory,
+            memberEnv,
+          );
+          continue;
+        }
+      }
       run("go", [...args, ...packages], directory, memberEnv);
     }
     if (native) {

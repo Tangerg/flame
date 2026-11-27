@@ -4,7 +4,12 @@ import { type ChartData, type Frame } from "../contracts/content";
 import { type ElementView, type SlideLayout } from "../contracts/layouts";
 import type { Draft } from "./live-draft";
 import { Reconcile } from "./live";
-import { reconcile, withCurrent, type SlideOperation } from "./slides-draft";
+import {
+  proposedValue,
+  reconcile,
+  withCurrent,
+  type SlideOperation,
+} from "./slides-draft";
 import { chartText, frameText, label } from "./slides-presentation";
 
 export function describeSlideOperation(
@@ -24,6 +29,8 @@ export function describeSlideOperation(
 function show(operation: SlideOperation, value: unknown, t: Translate) {
   if (operation.type === "setFrame") return frameText(value as Frame);
   if (operation.type === "setChartData") return chartText(value as ChartData);
+  if (operation.type === "setChartLegend")
+    return t(`slides.chart.legend.${value}`);
   if (operation.type === "deleteElement") return label(value as ElementView, t);
   return String(value);
 }
@@ -55,15 +62,7 @@ export function SlideReconcile({
       mine={(operation) =>
         operation.type === "deleteElement"
           ? t("slides.kind.deleted")
-          : show(
-              operation,
-              operation.type === "replaceText"
-                ? operation.text
-                : operation.type === "setFrame"
-                  ? operation.frame
-                  : operation.data,
-              t,
-            )
+          : show(operation, proposedValue(operation), t)
       }
       theirs={(result) => show(result.operation, result.current, t)}
       withCurrent={withCurrent}

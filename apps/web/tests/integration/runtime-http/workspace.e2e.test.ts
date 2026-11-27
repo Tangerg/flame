@@ -2,6 +2,7 @@ import { OperationFailure, RpcError, asSessionId } from "@flame/runtime-client";
 import { parseVisualDiff } from "../../../../../plugins/diff/component/visualDiff";
 import {
   addInstalledMemory,
+  captureMemoryBinding,
   deleteInstalledMemory,
   readInstalledMemory,
   reviewInstalledMemory,
@@ -172,13 +173,14 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: workspace", () => {
     const workspaceRoot = join(fixture.root, "workspace-agent-memory");
     await mkdir(workspaceRoot);
     const workspace = fixture.client.workspace({ path: workspaceRoot });
+    const binding = await captureMemoryBinding(fixture.client);
     const streamController = new AbortController();
     const subscription = await fixture.client.runtimeEvents.subscribe(
       { topics: ["plugins.dataChanged", "sessions.changed"] },
       streamController.signal,
     );
     const runtimeEvents = subscription.events[Symbol.asyncIterator]();
-    const project = await addInstalledMemory(fixture.client, {
+    const project = await addInstalledMemory(fixture.client, binding, {
       scope: "project",
       cwd: workspaceRoot,
       content: "project memory marker",
@@ -193,7 +195,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: workspace", () => {
       status: "active",
       pinned: false,
     });
-    const duplicate = await addInstalledMemory(fixture.client, {
+    const duplicate = await addInstalledMemory(fixture.client, binding, {
       scope: "project",
       cwd: workspaceRoot,
       content: "project memory marker",
@@ -202,9 +204,9 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: workspace", () => {
     await expect(nextRuntimeEvent(runtimeEvents, "plugins.dataChanged")).resolves.toMatchObject({
       type: "plugins.dataChanged",
     });
-    await expect(readInstalledMemory(fixture.client, "project", workspaceRoot)).resolves.toEqual([
-      project,
-    ]);
+    await expect(
+      readInstalledMemory(fixture.client, binding, "project", workspaceRoot),
+    ).resolves.toEqual([project]);
 
     const orderingMarker = await fixture.client.sessions.create({
       workspace: { path: workspaceRoot },
@@ -216,7 +218,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: workspace", () => {
       value: { type: "sessions.changed", sessionIds: expect.arrayContaining([orderingMarker.id]) },
     });
 
-    const user = await addInstalledMemory(fixture.client, {
+    const user = await addInstalledMemory(fixture.client, binding, {
       scope: "user",
       content: "user memory marker",
     });
@@ -225,17 +227,19 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: workspace", () => {
     });
     expect(user).toMatchObject({ scope: "user", origin: "user", status: "active" });
     await expect(
-      readInstalledMemory(fixture.client, "project", workspace.ref.path).then((data) => ({ data })),
+      readInstalledMemory(fixture.client, binding, "project", workspace.ref.path).then((data) => ({
+        data,
+      })),
     ).resolves.toMatchObject({
       data: [expect.objectContaining({ id: project.id, content: "project memory marker" })],
     });
     await expect(
-      readInstalledMemory(fixture.client, "user", "").then((data) => ({ data })),
+      readInstalledMemory(fixture.client, binding, "user", "").then((data) => ({ data })),
     ).resolves.toMatchObject({
       data: [expect.objectContaining({ id: user.id, content: "user memory marker" })],
     });
 
-    const updated = await updateInstalledMemory(fixture.client, {
+    const updated = await updateInstalledMemory(fixture.client, binding, {
       id: project.id,
       expectedRevision: project.revision,
       content: "project memory marker updated",
@@ -250,7 +254,9 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: workspace", () => {
       pinned: true,
     });
     await expect(
-      readInstalledMemory(fixture.client, "project", workspace.ref.path).then((data) => ({ data })),
+      readInstalledMemory(fixture.client, binding, "project", workspace.ref.path).then((data) => ({
+        data,
+      })),
     ).resolves.toMatchObject({
       data: [
         expect.objectContaining({
@@ -261,30 +267,32 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: workspace", () => {
       ],
     });
     await expect(
-      reviewInstalledMemory(fixture.client, project.id, updated.revision, "approve"),
+      reviewInstalledMemory(fixture.client, binding, project.id, updated.revision, "approve"),
     ).rejects.toSatisfy(
       (error: unknown) => error instanceof OperationFailure && error.code === "not_pending",
     );
 
-    await deleteInstalledMemory(fixture.client, project.id, updated.revision);
+    await deleteInstalledMemory(fixture.client, binding, project.id, updated.revision);
     await expect(nextRuntimeEvent(runtimeEvents, "plugins.dataChanged")).resolves.toMatchObject({
       type: "plugins.dataChanged",
     });
-    await deleteInstalledMemory(fixture.client, user.id, user.revision);
+    await deleteInstalledMemory(fixture.client, binding, user.id, user.revision);
     await expect(nextRuntimeEvent(runtimeEvents, "plugins.dataChanged")).resolves.toMatchObject({
       type: "plugins.dataChanged",
     });
     expect(
       (
-        await readInstalledMemory(fixture.client, "project", workspace.ref.path).then((data) => ({
-          data,
-        }))
+        await readInstalledMemory(fixture.client, binding, "project", workspace.ref.path).then(
+          (data) => ({
+            data,
+          }),
+        )
       ).data.some((item) => item.id === project.id),
     ).toBe(false);
     expect(
-      (await readInstalledMemory(fixture.client, "user", "").then((data) => ({ data }))).data.some(
-        (item) => item.id === user.id,
-      ),
+      (
+        await readInstalledMemory(fixture.client, binding, "user", "").then((data) => ({ data }))
+      ).data.some((item) => item.id === user.id),
     ).toBe(false);
     streamController.abort();
     await runtimeEvents.return?.();

@@ -14,7 +14,7 @@ import {
   relationshipsPath,
   MAIN_PARTS,
 } from "./archive";
-import { setChartData } from "./charts";
+import { chartLegendPatch, repairChartTables, setChartData } from "./charts";
 import { HOUSE_STYLE } from "./style";
 import { imageBytes } from "./images";
 import { inspectOfficeText, officeReport } from "./inspection";
@@ -358,6 +358,7 @@ export async function createPresentation(json: string): Promise<Uint8Array> {
   if (!(result instanceof Uint8Array))
     throw new Error("presentation encoder returned an unexpected result");
   const archive = OfficePackage.open("pptx", result);
+  repairChartTables(archive, archive.parts.keys());
   nameSlides(archive, content.slides);
   return archive.save();
 }
@@ -461,7 +462,9 @@ function stageDeletions(
   const released = new Map<string, Set<string>>();
   for (const operation of deletions) {
     const { part, element } = resolveElement(archive, operation.id);
+    const chart = chartPart(archive, part, element.node);
     if (
+      (chart && patches.has(chart)) ||
       (patches.get(part) ?? []).some(
         (patch) =>
           patch.start >= element.node.start && patch.end <= element.node.end,
@@ -547,9 +550,12 @@ export async function editPresentation(
     restructureSlides(archive, structural);
     return archive.save();
   }
-  const targets = of("setFrame", "deleteElement", "setChartData").map(
-    (operation) => `${operation.type} ${operation.id}`,
-  );
+  const targets = of(
+    "setFrame",
+    "deleteElement",
+    "setChartData",
+    "setChartLegend",
+  ).map((operation) => `${operation.type} ${operation.id}`);
   if (new Set(targets).size !== targets.length)
     throw new Error(
       "one element property may be changed only once per revision",
@@ -574,16 +580,26 @@ export async function editPresentation(
     const { part, document, element } = resolveElement(archive, operation.id);
     add(part, framePatch(archive, part, document, element.node, operation));
   }
-  const charts = of("setChartData").map((operation) => {
+  const charts = of("setChartData", "setChartLegend").flatMap((operation) => {
     if (deleted.has(operation.id))
       throw new Error("a deleted element cannot also be edited");
     const { part, element } = resolveElement(archive, operation.id);
     const chart = chartPart(archive, part, element.node);
-    if (!chart) throw new Error("setChartData requires a chart element");
-    return { chart, operation };
+    if (!chart) throw new Error("the chart operation requires a chart element");
+    if (operation.type === "setChartData") return [{ chart, operation }];
+    add(
+      chart,
+      chartLegendPatch(
+        archive.xml(chart),
+        operation.expect,
+        operation.position,
+      ),
+    );
+    return [];
   });
   const reachable = deleted.size ? reachableParts(archive) : undefined;
   for (const [part, edits] of patches) archive.patch(part, edits);
+  repairChartTables(archive, patches.keys());
   for (const { chart, operation } of charts)
     await setChartData(archive, chart, operation.expect, operation.data);
   releaseRelationships(archive, released);

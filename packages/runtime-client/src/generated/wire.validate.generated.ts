@@ -24,6 +24,7 @@ export type WireTypeName =
   | "AgentDocScope"
   | "AnnotationSource"
   | "AppliedChange"
+  | "ApplyWorktreeHandoffRequest"
   | "ApprovalDecision"
   | "ApprovalGate"
   | "ApprovalMode"
@@ -43,6 +44,7 @@ export type WireTypeName =
   | "ArtifactRun"
   | "ArtifactSession"
   | "ArtifactToolResult"
+  | "BackgroundSource"
   | "CallPluginRequest"
   | "CallPluginResponse"
   | "CancelRunRequest"
@@ -65,6 +67,7 @@ export type WireTypeName =
   | "CreateMCPAuthorizationAttemptRequest"
   | "CreateProjectRequest"
   | "CreateSessionRequest"
+  | "CreateTaskWorktreeRequest"
   | "DeleteSessionRequest"
   | "Diff"
   | "DiffBaseline"
@@ -226,6 +229,7 @@ export type WireTypeName =
   | "PageOfRunRef"
   | "PageOfSession"
   | "PageOfSkillProposal"
+  | "PageOfTaskWorktree"
   | "PageOfToolSpec"
   | "PageOfTrajectoryEntry"
   | "PageOfWorkspaceFileChange"
@@ -305,6 +309,9 @@ export type WireTypeName =
   | "PluginValueChangeType"
   | "ProblemData"
   | "Project"
+  | "ProjectBackgroundActivity"
+  | "ProjectBackgroundPolicy"
+  | "ProjectBackgroundRun"
   | "Provider"
   | "ProviderConfigChange"
   | "ProviderConfigChangeType"
@@ -393,6 +400,7 @@ export type WireTypeName =
   | "SetMCPToolExposureRequest"
   | "SetPluginCompositionRequest"
   | "SetPluginEnablementRequest"
+  | "SetProjectBackgroundPolicyRequest"
   | "Skill"
   | "SkillDetail"
   | "SkillDetailRequest"
@@ -419,6 +427,8 @@ export type WireTypeName =
   | "SubscriptionLimits"
   | "SuppressibleRunEventType"
   | "Target"
+  | "TaskWorktree"
+  | "TaskWorktreeRequest"
   | "TerminalActionTarget"
   | "TerminalBindingSource"
   | "TerminalContext"
@@ -455,6 +465,8 @@ export type WireTypeName =
   | "WorkspaceQuery"
   | "WorkspaceRef"
   | "WorkspaceSummary"
+  | "WorktreeHandoff"
+  | "WorktreeSetup"
   ;
 
 const CHECKS: Record<WireTypeName, WireCheck> = {
@@ -516,6 +528,10 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     removed: integer(),
     status: ref(() => CHECKS.ChangeStatus),
   }, ["added", "path", "removed", "status"]),
+  ApplyWorktreeHandoffRequest: object({
+    digest: text(),
+    id: text(),
+  }, ["digest", "id"]),
   ApprovalDecision: enumOf(["approve", "deny"]),
   ApprovalGate: enumOf(["pass", "prompt", "deny"]),
   ApprovalMode: enumOf(["safe", "balanced", "yolo"]),
@@ -897,6 +913,13 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     itemId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
     modelOnly: flag(),
   }, ["body", "createdAt", "id", "itemId", "modelOnly"]),
+  BackgroundSource: object({
+    id: text(),
+    kind: text(),
+    projectId: text(),
+    title: text(),
+    version: text(),
+  }, ["id", "kind", "projectId", "title", "version"]),
   CallPluginRequest: object({
     input: allOf([text(), minLength(1)]),
     route: ref(() => CHECKS.PluginCallRoute),
@@ -1033,6 +1056,11 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     title: text(),
     workspace: ref(() => CHECKS.WorkspaceRef),
   }, []),
+  CreateTaskWorktreeRequest: object({
+    base: text(),
+    setup: text(),
+    source: ref(() => CHECKS.WorkspaceRef),
+  }, ["base", "source"]),
   DeleteSessionRequest: object({
     sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
   }, ["sessionId"]),
@@ -2602,6 +2630,10 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     data: array(ref(() => CHECKS.SkillProposal)),
     nextCursor: allOf([text(), maxLength(65536)]),
   }, ["data"]),
+  PageOfTaskWorktree: object({
+    data: array(ref(() => CHECKS.TaskWorktree)),
+    nextCursor: allOf([text(), maxLength(65536)]),
+  }, ["data"]),
   PageOfToolSpec: object({
     data: array(ref(() => CHECKS.ToolSpec)),
     nextCursor: allOf([text(), maxLength(65536)]),
@@ -3607,6 +3639,13 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
         errors: absent(),
         requiredCapabilities: absent(),
         retryAfterSeconds: absent(),
+        type: literal("workspace_file_not_found"),
+      }, ["type"]),
+      fields({
+        activeRun: absent(),
+        errors: absent(),
+        requiredCapabilities: absent(),
+        retryAfterSeconds: absent(),
         type: literal("workspace_unavailable"),
       }, ["type"]),
       fields({
@@ -3626,6 +3665,27 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     revision: allOf([integer(), minimum("1"), maximum("9007199254740991")]),
     updatedAt: text(),
   }, ["createdAt", "id", "name", "revision", "updatedAt"]),
+  ProjectBackgroundActivity: object({
+    active: integer(),
+    admitted: integer(),
+    policy: ref(() => CHECKS.ProjectBackgroundPolicy),
+    recent: array(ref(() => CHECKS.ProjectBackgroundRun)),
+  }, ["active", "admitted", "policy", "recent"]),
+  ProjectBackgroundPolicy: object({
+    maxActive: integer(),
+    maxDailyRuns: integer(),
+    paused: flag(),
+    pullRequests: array(text()),
+    revision: integer(),
+  }, ["maxActive", "maxDailyRuns", "paused", "pullRequests", "revision"]),
+  ProjectBackgroundRun: object({
+    admittedAt: text(),
+    outcome: text(),
+    runId: text(),
+    sessionId: text(),
+    source: ref(() => CHECKS.BackgroundSource),
+    status: text(),
+  }, ["admittedAt", "runId", "sessionId", "source", "status"]),
   Provider: object({
     baseUrl: text(),
     configured: flag(),
@@ -4456,6 +4516,10 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     enabled: flag(),
     installationId: allOf([text(), pattern("^(?:[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000000[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000000[1-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000000[1-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000000[1-9a-f])$")]),
   }, ["enabled", "installationId"]),
+  SetProjectBackgroundPolicyRequest: object({
+    policy: ref(() => CHECKS.ProjectBackgroundPolicy),
+    projectId: text(),
+  }, ["policy", "projectId"]),
   Skill: object({
     description: text(),
     installation: ref(() => CHECKS.SkillInstallation),
@@ -4538,6 +4602,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   ]),
   StartRunRequest: allOf([
     object({
+      background: ref(() => CHECKS.BackgroundSource),
       input: allOf([array(ref(() => CHECKS.ContentBlock)), minItems(1)]),
       model: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
       newSession: ref(() => CHECKS.RunSessionOpening),
@@ -4719,6 +4784,17 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     reference: text(),
     scope: text(),
   }, ["reference", "scope"]),
+  TaskWorktree: object({
+    available: flag(),
+    base: text(),
+    id: text(),
+    setup: ref(() => CHECKS.WorktreeSetup),
+    source: ref(() => CHECKS.WorkspaceRef),
+    workspace: ref(() => CHECKS.WorkspaceRef),
+  }, ["available", "base", "id", "source", "workspace"]),
+  TaskWorktreeRequest: object({
+    id: text(),
+  }, ["id"]),
   TerminalActionTarget: enumOf(["view", "row"]),
   TerminalBindingSource: enumOf(["value", "row", "context", "form"]),
   TerminalContext: enumOf(["workspace", "timeZone"]),
@@ -5017,6 +5093,18 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     sessionCount: allOf([integer(), minimum("0")]),
     workspace: ref(() => CHECKS.WorkspaceInfo),
   }, ["name", "sessionCount", "workspace"]),
+  WorktreeHandoff: object({
+    branch: text(),
+    digest: text(),
+    head: text(),
+    patch: text(),
+    worktree: ref(() => CHECKS.TaskWorktree),
+  }, ["branch", "digest", "head", "patch", "worktree"]),
+  WorktreeSetup: object({
+    command: text(),
+    exitCode: integer(),
+    output: text(),
+  }, ["command", "output"]),
 };
 
 const METHOD_PARAMS: Record<WireMethodName, WireCheck> = {
@@ -5033,6 +5121,8 @@ const METHOD_PARAMS: Record<WireMethodName, WireCheck> = {
   "sessions.rollback": ref(() => CHECKS.RollbackSessionRequest),
   "sessions.export": ref(() => CHECKS.ExportSessionRequest),
   "sessions.import": ref(() => CHECKS.ImportSessionRequest),
+  "projects.background.get": ref(() => CHECKS.GetProjectRequest),
+  "projects.background.setPolicy": ref(() => CHECKS.SetProjectBackgroundPolicyRequest),
   "projects.list": ref(() => CHECKS.ListProjectsRequest),
   "projects.get": ref(() => CHECKS.GetProjectRequest),
   "projects.create": ref(() => CHECKS.CreateProjectRequest),
@@ -5050,6 +5140,11 @@ const METHOD_PARAMS: Record<WireMethodName, WireCheck> = {
   "interrupts.list": ref(() => CHECKS.ListInterruptsRequest),
   "plan.get": ref(() => CHECKS.GetPlanRequest),
   "items.list": ref(() => CHECKS.ListItemsRequest),
+  "workspaces.tasks.create": ref(() => CHECKS.CreateTaskWorktreeRequest),
+  "workspaces.tasks.list": object({}, []),
+  "workspaces.tasks.handoff.preview": ref(() => CHECKS.TaskWorktreeRequest),
+  "workspaces.tasks.handoff.apply": ref(() => CHECKS.ApplyWorktreeHandoffRequest),
+  "workspaces.tasks.release": ref(() => CHECKS.TaskWorktreeRequest),
   "workspaces.resolve": ref(() => CHECKS.ResolveWorkspaceRequest),
   "workspaces.list": object({}, []),
   "workspace.changes.list": ref(() => CHECKS.WorkspaceQuery),
@@ -5151,6 +5246,8 @@ const METHOD_RESULTS: Record<WireMethodName, WireCheck> = {
   "sessions.rollback": ref(() => CHECKS.RollbackSessionResponse),
   "sessions.export": ref(() => CHECKS.ExportSessionResponse),
   "sessions.import": ref(() => CHECKS.ImportSessionResponse),
+  "projects.background.get": ref(() => CHECKS.ProjectBackgroundActivity),
+  "projects.background.setPolicy": ref(() => CHECKS.ProjectBackgroundPolicy),
   "projects.list": ref(() => CHECKS.PageOfProject),
   "projects.get": ref(() => CHECKS.Project),
   "projects.create": ref(() => CHECKS.Project),
@@ -5168,6 +5265,11 @@ const METHOD_RESULTS: Record<WireMethodName, WireCheck> = {
   "interrupts.list": ref(() => CHECKS.PageOfPendingInterruptSet),
   "plan.get": ref(() => CHECKS.Plan),
   "items.list": ref(() => CHECKS.ListItemsResponse),
+  "workspaces.tasks.create": ref(() => CHECKS.TaskWorktree),
+  "workspaces.tasks.list": ref(() => CHECKS.PageOfTaskWorktree),
+  "workspaces.tasks.handoff.preview": ref(() => CHECKS.WorktreeHandoff),
+  "workspaces.tasks.handoff.apply": ref(() => CHECKS.WorktreeHandoff),
+  "workspaces.tasks.release": object({}, []),
   "workspaces.resolve": ref(() => CHECKS.WorkspaceInfo),
   "workspaces.list": ref(() => CHECKS.PageOfWorkspaceSummary),
   "workspace.changes.list": ref(() => CHECKS.PageOfWorkspaceFileChange),

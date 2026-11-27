@@ -29,7 +29,7 @@ import (
 func buildCallContributor(t *testing.T) string {
 	t.Helper()
 	binary := filepath.Join(t.TempDir(), "contributor")
-	command := exec.CommandContext(t.Context(), "go", "build", "-o", binary, "./testdata/call-contributor")
+	command := exec.CommandContext(t.Context(), "go", "build", "-trimpath", "-ldflags=-s -w", "-o", binary, "./testdata/call-contributor")
 	if output, err := command.CombinedOutput(); err != nil {
 		t.Fatalf("build public call contributor: %s, %v", output, err)
 	}
@@ -124,6 +124,7 @@ func (c proposalCase) executes() bool {
 
 func TestInstalledToolProposalIsApprovedExecutedAndRetainedWithoutTransformReplay(t *testing.T) {
 	binary := buildCallContributor(t)
+	reviewsSource := reviewExamplePackage(t)
 	for _, test := range proposalCases {
 		t.Run(test.name, func(t *testing.T) {
 			source := &proposalTraceSource{}
@@ -139,7 +140,7 @@ func TestInstalledToolProposalIsApprovedExecutedAndRetainedWithoutTransformRepla
 			cfg.modelProviders = testChatResolver(client)
 			r := poMCPOpen(t, cfg)
 			defer func() { r.close() }()
-			reviews := poMCPActivate(r, reviewExamplePackage(t))
+			reviews := poMCPActivate(r, reviewsSource)
 			server := &protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: reviews.ID}, Name: "reviews"}
 			r.poMCPTools(server, func(tools []protocol.MCPTool) bool { return len(tools) == 3 })
 			contract, err := pluginsdk.ToolProposalContract()

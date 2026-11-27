@@ -24,6 +24,7 @@ var (
 )
 
 type Draft struct {
+	ProjectID      string               `json:"projectId,omitempty"`
 	Title          string               `json:"title"`
 	Instructions   string               `json:"instructions"`
 	CWD            string               `json:"cwd"`
@@ -42,6 +43,7 @@ func (d Draft) Validate() error {
 }
 
 type Snapshot struct {
+	ProjectID      string               `json:"projectId,omitempty"`
 	ID             string               `json:"id"`
 	Title          string               `json:"title"`
 	Instructions   string               `json:"instructions"`
@@ -56,6 +58,7 @@ type Snapshot struct {
 }
 
 type Schedule struct {
+	projectID      string
 	id             scheduleIdentity
 	title          string
 	instructions   string
@@ -69,6 +72,7 @@ type Schedule struct {
 }
 
 type Patch struct {
+	ProjectID    *string
 	Title        *string
 	Instructions *string
 	CWD          *string
@@ -92,7 +96,7 @@ func New(id string, draft Draft, createdAt time.Time) (Schedule, error) {
 	}
 	createdAt = canonicalTime(createdAt)
 	value := Schedule{
-		id: parsedID, title: draft.Title, instructions: draft.Instructions, cwd: draft.CWD,
+		id: parsedID, projectID: draft.ProjectID, title: draft.Title, instructions: draft.Instructions, cwd: draft.CWD,
 		modelSelection: draft.ModelSelection, recurrence: recurrence,
 		createdAt: createdAt, revision: exactint.First(),
 	}
@@ -113,7 +117,7 @@ func Restore(snapshot Snapshot) (Schedule, error) {
 		return Schedule{}, err
 	}
 	value := Schedule{
-		id: parsedID, title: snapshot.Title, instructions: snapshot.Instructions,
+		id: parsedID, projectID: snapshot.ProjectID, title: snapshot.Title, instructions: snapshot.Instructions,
 		cwd: snapshot.CWD, modelSelection: snapshot.ModelSelection, recurrence: recurrence,
 		lastRunAt: canonicalTime(snapshot.LastRunAt),
 		nextRunAt: canonicalTime(snapshot.NextRunAt), createdAt: canonicalTime(snapshot.CreatedAt),
@@ -137,6 +141,9 @@ func (s Schedule) Edit(p Patch, expectedRevision uint64, after time.Time) (Sched
 	}
 	if p.Instructions != nil {
 		s.instructions = *p.Instructions
+	}
+	if p.ProjectID != nil {
+		s.projectID = *p.ProjectID
 	}
 	if p.CWD != nil {
 		s.cwd = *p.CWD
@@ -220,7 +227,7 @@ func (s Schedule) validateProduct() error {
 	if _, err := parseScheduleID(s.id.String()); err != nil {
 		return err
 	}
-	if err := validateInstructions(s.instructions); err != nil {
+	if err := s.execution().validate(); err != nil {
 		return err
 	}
 	if s.recurrence.zone == nil {
@@ -254,7 +261,7 @@ func (s Schedule) scheduledAfter(enabled bool, after time.Time) (Schedule, error
 
 func (s Schedule) Snapshot() Snapshot {
 	return Snapshot{
-		ID: s.id.String(), Title: s.title, Instructions: s.instructions, CWD: s.cwd,
+		ID: s.id.String(), ProjectID: s.projectID, Title: s.title, Instructions: s.instructions, CWD: s.cwd,
 		ModelSelection: s.modelSelection, Cron: s.recurrence.Cron(), TimeZone: s.recurrence.TimeZone(),
 		LastRunAt: s.lastRunAt, NextRunAt: s.nextRunAt, CreatedAt: s.createdAt,
 		Revision: s.revision.Value(),
@@ -264,6 +271,7 @@ func (s Schedule) Snapshot() Snapshot {
 func (s Schedule) ID() string                           { return s.id.String() }
 func (s Schedule) Title() string                        { return s.title }
 func (s Schedule) Instructions() string                 { return s.instructions }
+func (s Schedule) ProjectID() string                    { return s.projectID }
 func (s Schedule) CWD() string                          { return s.cwd }
 func (s Schedule) ModelSelection() flamemodel.Selection { return s.modelSelection }
 func (s Schedule) Recurrence() Recurrence               { return s.recurrence }

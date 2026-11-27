@@ -1,0 +1,33 @@
+{
+  "protocol": "io.github.tangerg.flame/plugin/1",
+  "inputs": [
+    {
+      "id": "executable",
+      "server": "opencode",
+      "target": "env",
+      "key": "OPENCODE_EXECUTABLE",
+      "secret": false,
+      "required": false
+    }
+  ],
+  "contributions": [
+    {
+      "id": "native-sessions",
+      "server": "opencode",
+      "export": "native-sessions",
+      "contract": "io.github.tangerg.flame/contracts/capability.generated.json"
+    }
+  ],
+  "components": [
+    {
+      "id": "opencode-sessions",
+      "title": "OpenCode sessions",
+      "localizedTitles": {"zh": "OpenCode 会话", "zh-TW": "OpenCode 工作階段"},
+      "scope": "client",
+      "placement": "workspaceView",
+      "entry": "io.github.tangerg.flame/components/component.js",
+      "export": "OpenCodeSessions",
+      "contribution": "native-sessions"
+    }
+  ]
+}

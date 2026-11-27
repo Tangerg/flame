@@ -1,0 +1,9 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "flame.opencode",
+  "version": "1.0.0",
+  "description": "Open existing native OpenCode sessions through Agent Client Protocol.",
+  "extensions": {
+    "io.github.tangerg.flame": { "declaration": "io.github.tangerg.flame/declaration.json" }
+  }
+}

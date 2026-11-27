@@ -6,6 +6,7 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+	"github.com/Tangerg/flame/runtime/internal/domain/project"
 
 	framevalue "github.com/Tangerg/frame/value"
 )
@@ -16,6 +17,7 @@ type Actor struct {
 	authority    framevalue.Digest
 	server       mcpserver.ServerName
 	bindings     *plugin.RequiredBindings
+	background   *project.BackgroundSource
 }
 
 func NewActor(installation, release, authority, server string) (Actor, error) {
@@ -46,6 +48,18 @@ func (a Actor) Authority() framevalue.Digest            { return a.authority }
 func (a Actor) WithBindings(bindings *plugin.RequiredBindings) Actor {
 	a.bindings = bindings
 	return a
+}
+
+func (a Actor) WithBackground(source project.BackgroundSource) Actor {
+	a.background = &source
+	return a
+}
+
+func (a Actor) Background() (project.BackgroundSource, bool) {
+	if a.background == nil {
+		return project.BackgroundSource{}, false
+	}
+	return *a.background, true
 }
 
 func (a Actor) Allows(provider plugin.Dependency, contribution plugin.ContributionID, contract framevalue.JSON) bool {

@@ -60,6 +60,28 @@ const resultPublicationResultsColumn = "model_results TEXT CHECK (model_results 
 func currentSchema() []string {
 	firstExactInteger := exactint.First().Value()
 	stmts := []string{
+		`CREATE TABLE IF NOT EXISTS project_background_policy (
+			project_id TEXT PRIMARY KEY REFERENCES projects(id) ON DELETE CASCADE,
+			revision INTEGER NOT NULL CHECK (revision > 0),
+			paused INTEGER NOT NULL CHECK (paused IN (0, 1)),
+			max_active INTEGER NOT NULL CHECK (max_active BETWEEN 1 AND 32),
+			max_daily_runs INTEGER NOT NULL CHECK (max_daily_runs BETWEEN 1 AND 1000),
+			pull_requests TEXT NOT NULL CHECK (json_valid(pull_requests))
+		)`,
+		`CREATE TABLE IF NOT EXISTS project_background_runs (
+			run_id TEXT PRIMARY KEY,
+			project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+			session_id TEXT NOT NULL,
+			installation_id TEXT NOT NULL,
+			kind TEXT NOT NULL,
+			source_id TEXT NOT NULL,
+			source_version TEXT NOT NULL,
+			title TEXT NOT NULL,
+			admitted_at INTEGER NOT NULL,
+			UNIQUE (installation_id, kind, source_id, source_version)
+		)`,
+		`CREATE INDEX IF NOT EXISTS idx_project_background_recent
+			ON project_background_runs (project_id, admitted_at DESC, run_id DESC)`,
 		`CREATE TABLE IF NOT EXISTS plugin_initialization (id INTEGER PRIMARY KEY CHECK (id = 1))`,
 		`CREATE TABLE IF NOT EXISTS execution_trees (root_id TEXT PRIMARY KEY, session_id TEXT NOT NULL, writer TEXT NOT NULL, sequence TEXT NOT NULL, commit_id TEXT NOT NULL, commit_digest TEXT NOT NULL, digest TEXT NOT NULL, payload BLOB NOT NULL)`,
 		`CREATE TABLE IF NOT EXISTS execution_tree_commits (root_id TEXT NOT NULL REFERENCES execution_trees(root_id) ON DELETE CASCADE, commit_id TEXT NOT NULL, digest TEXT NOT NULL, PRIMARY KEY(root_id, commit_id))`,

@@ -19,3 +19,20 @@ export const fileView = definePlugin({
     });
   },
 });
+
+export const taskWorktreeView = definePlugin({
+  name: "flame.builtin.view-task-worktrees",
+  setup(ctx) {
+    ctx.contributions.add(WORKSPACE_VIEW, {
+      id: "task-worktrees",
+      title: "workspace.tasks.title",
+      order: 25,
+      dock: "workspace",
+      component: lazy(() =>
+        import(/* @flame-lazy:workspace */ "@/features/workspace/ui/TaskWorktrees").then((m) => ({
+          default: m.TaskWorktrees,
+        })),
+      ),
+    });
+  },
+});

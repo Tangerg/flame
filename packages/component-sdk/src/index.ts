@@ -273,6 +273,13 @@ export interface ComponentContext {
 export interface ComponentViews {
   open(componentId: string, target?: string, origin?: HTMLElement): void;
   href(componentId: string, target?: string): string;
+  openRelated?(
+    dependency: string,
+    installationId: string,
+    componentId: string,
+    target?: string,
+    origin?: HTMLElement,
+  ): Promise<void>;
   // Each target this component's view is shown with, the current one first.
   subscribeTarget(listener: (target: string) => void): () => void;
 }

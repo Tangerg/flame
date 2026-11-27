@@ -8,6 +8,7 @@ import (
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	rpc "github.com/Tangerg/flame/plugins/github/internal/contract"
+	"github.com/Tangerg/flame/plugins/github/internal/wire"
 	framecall "github.com/Tangerg/frame/call"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 
@@ -48,26 +49,30 @@ func registerRead[P, R any](backend *pluginmcp.Backend, tools *[]tool.Tool, meth
 	return nil
 }
 
-func newServer(connector *connector) (*sdk.Server, error) {
+func newServer(connector *connector) (*sdk.Server, *pluginmcp.Backend, error) {
 	if connector == nil {
-		return nil, errors.New("github: connector is required")
+		return nil, nil, errors.New("github: connector is required")
 	}
 	contracts, err := rpc.NewContracts()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	server := sdk.NewServer(&sdk.Implementation{Name: "flame.github", Version: "1.0.0"}, nil)
 	backend, err := pluginmcp.NewBackend(server)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	var tools []tool.Tool
 	receipts := make(map[string]toolReceiptReader)
 	toolReceipts, err := pluginsdk.ToolReceiptQuery()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if err := errors.Join(
+		registerRead(backend, &tools, contracts.ReviewWork, "review_work", connector.readReviewWork),
+		contracts.UpdateReviewWork.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[wire.ReviewWorkChange]) (wire.ReviewWork, error) {
+			return connector.changeReviewWork(ctx, command, contracts.UpdateReviewWork.Name())
+		}),
 		registerRead(backend, &tools, contracts.List, "list_issues", connector.listIssues),
 		registerRead(backend, &tools, contracts.Issue, "get_issue", connector.getIssue),
 		registerRead(backend, &tools, contracts.File, "read_file", connector.readFile),
@@ -101,14 +106,15 @@ func newServer(connector *connector) (*sdk.Server, error) {
 			return read(ctx, command.Input)
 		}),
 		backend.BindCapability("github", contracts.Capability),
+		backend.OnSetup(connector.setUpReviewFollow),
 	); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if err := pluginsdk.RegisterTools(server, tools...); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if err := backend.Publish(); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return server, nil
+	return server, backend, nil
 }

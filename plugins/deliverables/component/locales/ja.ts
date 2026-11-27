@@ -368,6 +368,13 @@ export const ja = {
   "slides.chart.series": "系列 {{number}} の名前",
   "slides.chart.apply": "このデータを使用",
   "slides.chart.invalid": "数値を入力するか空欄にしてください。",
+  "slides.chart.titleRun": "グラフのタイトル {{number}}",
+  "slides.chart.legend": "凡例の位置",
+  "slides.chart.legend.b": "下",
+  "slides.chart.legend.l": "左",
+  "slides.chart.legend.r": "右",
+  "slides.chart.legend.t": "上",
+  "slides.chart.legend.tr": "右上",
   "slides.chart.mixed":
     "このグラフの埋め込みブックには他のデータもあります。PowerPoint で編集してください。",
   "slides.chart.unsupported":
@@ -381,6 +388,8 @@ export const ja = {
   "handoff.failed": "参照をコピーできませんでした。",
   "handoff.unsaved":
     "Agent に渡す前に下書きを保存または破棄してください。参照は保存済みのリビジョンだけを指します。",
+  "slides.handoff.saved":
+    "エージェントには保存済みの版が渡ります。未保存の変更は下書きに残ります。",
   "slides.slideActions": "スライドの操作",
   "slides.moveUp": "前へ移動",
   "slides.moveDown": "後ろへ移動",
@@ -411,6 +420,7 @@ export const ja = {
   "slides.op.setFrame": "{{name}} の位置",
   "slides.op.replaceText": "テキスト「{{text}}」",
   "slides.op.deleteElement": "{{name}} を削除",
+  "slides.op.setChartLegend": "{{name}} の凡例",
   "slides.op.setChartData": "{{name}} のデータ",
   "handoff.add": "Agent に渡す",
   "link.copy": "リンクをコピー",

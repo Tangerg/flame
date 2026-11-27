@@ -2,9 +2,11 @@ import { type WorkspaceNavigationPort } from "@/features/workspace/application/n
 import { type LocalWorkspace } from "@/features/workspace/application/localWorkspace";
 import { type WorkspaceErrorClassifier } from "@/features/workspace/application/fileRead";
 import { type ConversationImport } from "@/features/workspace/application/conversationImport";
+import { type FlameClient } from "@flame/runtime-client";
 export interface WorkspaceAccess {
   readonly navigation: WorkspaceNavigationPort;
   readonly local: LocalWorkspace;
   readonly errors: WorkspaceErrorClassifier;
   readonly conversationImport: ConversationImport;
+  taskWorktrees(): FlameClient["workspaces"]["tasks"];
 }

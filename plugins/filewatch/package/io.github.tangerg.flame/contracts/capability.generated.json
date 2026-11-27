@@ -32,6 +32,9 @@
               }
             ],
             "properties": {
+              "capturePartitions": {
+                "type": "boolean"
+              },
               "instructions": {
                 "minLength": 1,
                 "type": "string"
@@ -48,11 +51,17 @@
                 "type": "array",
                 "uniqueItems": true
               },
+              "projectId": {
+                "type": "string"
+              },
               "provider": {
                 "minLength": 1,
                 "type": "string"
               },
               "reasoningEffort": {
+                "type": "string"
+              },
+              "targetSessionId": {
                 "type": "string"
               },
               "title": {
@@ -68,9 +77,7 @@
               "title",
               "workspace",
               "paths",
-              "instructions",
-              "provider",
-              "model"
+              "instructions"
             ],
             "type": "object"
           },
@@ -142,6 +149,9 @@
               }
             ],
             "properties": {
+              "capturePartitions": {
+                "type": "boolean"
+              },
               "instructions": {
                 "minLength": 1,
                 "type": "string"
@@ -158,11 +168,17 @@
                 "type": "array",
                 "uniqueItems": true
               },
+              "projectId": {
+                "type": "string"
+              },
               "provider": {
                 "minLength": 1,
                 "type": "string"
               },
               "reasoningEffort": {
+                "type": "string"
+              },
+              "targetSessionId": {
                 "type": "string"
               },
               "title": {
@@ -178,9 +194,7 @@
               "title",
               "workspace",
               "paths",
-              "instructions",
-              "provider",
-              "model"
+              "instructions"
             ],
             "type": "object"
           },
@@ -295,6 +309,9 @@
               }
             ],
             "properties": {
+              "capturePartitions": {
+                "type": "boolean"
+              },
               "instructions": {
                 "minLength": 1,
                 "type": "string"
@@ -311,11 +328,17 @@
                 "type": "array",
                 "uniqueItems": true
               },
+              "projectId": {
+                "type": "string"
+              },
               "provider": {
                 "minLength": 1,
                 "type": "string"
               },
               "reasoningEffort": {
+                "type": "string"
+              },
+              "targetSessionId": {
                 "type": "string"
               },
               "title": {
@@ -331,25 +354,42 @@
               "title",
               "workspace",
               "paths",
-              "instructions",
-              "provider",
-              "model"
+              "instructions"
             ],
             "type": "object"
           },
           "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2ZpbGV3YXRjaA.RXZlbnQ": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2ZpbGV3YXRjaA.ZXZlbnRQcm9qZWN0aW9u"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2ZpbGV3YXRjaA.UGFydGl0aW9u": {
             "additionalProperties": false,
             "properties": {
-              "accepted": {
-                "type": "boolean"
+              "path": {
+                "type": "string"
               },
-              "capture": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2ZpbGV3YXRjaA.Q2FwdHVyZQ"
+              "sha256": {
+                "type": "string"
+              },
+              "state": {
+                "allOf": [
+                  {
+                    "enum": [
+                      "read",
+                      "missing",
+                      "unavailable",
+                      "truncated"
+                    ]
+                  }
+                ],
+                "type": "string"
+              },
+              "text": {
+                "type": "string"
               }
             },
             "required": [
-              "capture",
-              "accepted"
+              "path",
+              "state"
             ],
             "type": "object"
           },
@@ -375,6 +415,12 @@
               },
               "observedAt": {
                 "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
+              },
+              "partitions": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2ZpbGV3YXRjaA.UGFydGl0aW9u"
+                },
+                "type": "array"
               },
               "paths": {
                 "items": {
@@ -424,6 +470,25 @@
             ],
             "type": "object"
           },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2ZpbGV3YXRjaA.ZXZlbnRQcm9qZWN0aW9u": {
+            "additionalProperties": false,
+            "properties": {
+              "accepted": {
+                "type": "boolean"
+              },
+              "admittedRunId": {
+                "type": "string"
+              },
+              "capture": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2ZpbGV3YXRjaA.Q2FwdHVyZQ"
+              }
+            },
+            "required": [
+              "capture",
+              "accepted"
+            ],
+            "type": "object"
+          },
           "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL2NhbGw.SW52b2NhdGlvbg": {
             "additionalProperties": false,
             "properties": {
@@ -469,6 +534,9 @@
         "properties": {
           "accepted": {
             "type": "boolean"
+          },
+          "admittedRunId": {
+            "type": "string"
           },
           "capture": {
             "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZmlsZXdhdGNoL2ludGVybmFsL2ZpbGV3YXRjaA.Q2FwdHVyZQ"
@@ -602,6 +670,9 @@
               }
             ],
             "properties": {
+              "capturePartitions": {
+                "type": "boolean"
+              },
               "instructions": {
                 "minLength": 1,
                 "type": "string"
@@ -618,11 +689,17 @@
                 "type": "array",
                 "uniqueItems": true
               },
+              "projectId": {
+                "type": "string"
+              },
               "provider": {
                 "minLength": 1,
                 "type": "string"
               },
               "reasoningEffort": {
+                "type": "string"
+              },
+              "targetSessionId": {
                 "type": "string"
               },
               "title": {
@@ -638,9 +715,7 @@
               "title",
               "workspace",
               "paths",
-              "instructions",
-              "provider",
-              "model"
+              "instructions"
             ],
             "type": "object"
           },

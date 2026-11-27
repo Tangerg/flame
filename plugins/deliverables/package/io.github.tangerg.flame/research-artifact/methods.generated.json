@@ -1,0 +1,10 @@
+[
+  {
+    "name": "flame.research-artifact/read.v1",
+    "kind": "query",
+    "target": "installation",
+    "description": "Check Project access, exact native revision and optional chart identity at the original revision and current head.",
+    "input": "schema.json#/$defs/ReadV1Input",
+    "output": "schema.json#/$defs/ReadV1Output"
+  }
+]

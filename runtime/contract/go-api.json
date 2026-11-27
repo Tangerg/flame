@@ -719,6 +719,10 @@
               "signature": "func(ctx context.Context, request protocol.AcquirePluginComponentRequest, options protocol.CommandOptions) (*protocol.PluginBrowserUseGrant, error)"
             },
             {
+              "name": "ApplyWorktreeHandoff",
+              "signature": "func(ctx context.Context, request protocol.ApplyWorktreeHandoffRequest, options protocol.CommandOptions) (*protocol.WorktreeHandoff, error)"
+            },
+            {
               "name": "ApproveSkillProposal",
               "signature": "func(ctx context.Context, request protocol.SkillProposalRef, options protocol.CommandOptions) error"
             },
@@ -769,6 +773,10 @@
             {
               "name": "CreateSession",
               "signature": "func(ctx context.Context, request protocol.CreateSessionRequest, options protocol.CommandOptions) (*protocol.Session, error)"
+            },
+            {
+              "name": "CreateTaskWorktree",
+              "signature": "func(ctx context.Context, request protocol.CreateTaskWorktreeRequest, options protocol.CommandOptions) (*protocol.TaskWorktree, error)"
             },
             {
               "name": "DeleteMCPServer",
@@ -833,6 +841,10 @@
             {
               "name": "GetProject",
               "signature": "func(ctx context.Context, request protocol.GetProjectRequest, options protocol.CallOptions) (*protocol.Project, error)"
+            },
+            {
+              "name": "GetProjectBackground",
+              "signature": "func(ctx context.Context, request protocol.GetProjectRequest, options protocol.CallOptions) (*protocol.ProjectBackgroundActivity, error)"
             },
             {
               "name": "GetRun",
@@ -963,6 +975,10 @@
               "signature": "func(ctx context.Context, request protocol.WorkspaceQuery, options protocol.CallOptions) (*protocol.Page[protocol.SkillProposal], error)"
             },
             {
+              "name": "ListTaskWorktrees",
+              "signature": "func(ctx context.Context, options protocol.CallOptions) (*protocol.Page[protocol.TaskWorktree], error)"
+            },
+            {
               "name": "ListTools",
               "signature": "func(ctx context.Context, options protocol.CallOptions) (*protocol.Page[protocol.ToolSpec], error)"
             },
@@ -987,6 +1003,10 @@
               "signature": "func(ctx context.Context, request protocol.OpenPluginBrowserRealmRequest, options protocol.CommandOptions) (*protocol.PluginBrowserSession, error)"
             },
             {
+              "name": "PreviewWorktreeHandoff",
+              "signature": "func(ctx context.Context, request protocol.TaskWorktreeRequest, options protocol.CallOptions) (*protocol.WorktreeHandoff, error)"
+            },
+            {
               "name": "ReadPluginLocale",
               "signature": "func(ctx context.Context, request protocol.ReadPluginLocaleRequest, options protocol.CallOptions) (*protocol.PluginLocaleCatalog, error)"
             },
@@ -1005,6 +1025,10 @@
             {
               "name": "RejectSkillProposal",
               "signature": "func(ctx context.Context, request protocol.SkillProposalRef, options protocol.CommandOptions) error"
+            },
+            {
+              "name": "ReleaseTaskWorktree",
+              "signature": "func(ctx context.Context, request protocol.TaskWorktreeRequest, options protocol.CommandOptions) error"
             },
             {
               "name": "ResolvePluginComposition",
@@ -1081,6 +1105,10 @@
             {
               "name": "SetPluginEnablement",
               "signature": "func(ctx context.Context, request protocol.SetPluginEnablementRequest, options protocol.CommandOptions) (*protocol.PluginEnablement, error)"
+            },
+            {
+              "name": "SetProjectBackgroundPolicy",
+              "signature": "func(ctx context.Context, request protocol.SetProjectBackgroundPolicyRequest, options protocol.CommandOptions) (*protocol.ProjectBackgroundPolicy, error)"
             },
             {
               "name": "SetUtilityRole",
@@ -10920,6 +10948,10 @@
           "type": "error"
         },
         {
+          "name": "ErrWorkspaceFileNotFound",
+          "type": "error"
+        },
+        {
           "name": "ErrWorkspaceUnavailable",
           "type": "error"
         }
@@ -11187,6 +11219,22 @@
           "name": "AgentDocScope",
           "kind": "defined",
           "underlying": "string"
+        },
+        {
+          "name": "ApplyWorktreeHandoffRequest",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "ID",
+              "type": "string",
+              "tag": "json:\"id\""
+            },
+            {
+              "name": "Digest",
+              "type": "string",
+              "tag": "json:\"digest\""
+            }
+          ]
         },
         {
           "name": "ApprovalDecision",
@@ -11664,6 +11712,37 @@
           ]
         },
         {
+          "name": "BackgroundSource",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "ProjectID",
+              "type": "string",
+              "tag": "json:\"projectId\""
+            },
+            {
+              "name": "Kind",
+              "type": "string",
+              "tag": "json:\"kind\""
+            },
+            {
+              "name": "ID",
+              "type": "string",
+              "tag": "json:\"id\""
+            },
+            {
+              "name": "Version",
+              "type": "string",
+              "tag": "json:\"version\""
+            },
+            {
+              "name": "Title",
+              "type": "string",
+              "tag": "json:\"title\""
+            }
+          ]
+        },
+        {
           "name": "CallMetadata",
           "kind": "struct",
           "fields": [
@@ -12004,6 +12083,27 @@
               "name": "Title",
               "type": "string",
               "tag": "json:\"title,omitempty\""
+            }
+          ]
+        },
+        {
+          "name": "CreateTaskWorktreeRequest",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Source",
+              "type": "WorkspaceRef",
+              "tag": "json:\"source\""
+            },
+            {
+              "name": "Base",
+              "type": "string",
+              "tag": "json:\"base\""
+            },
+            {
+              "name": "Setup",
+              "type": "string",
+              "tag": "json:\"setup,omitempty\""
             }
           ]
         },
@@ -16329,6 +16429,99 @@
           ]
         },
         {
+          "name": "ProjectBackgroundActivity",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Policy",
+              "type": "ProjectBackgroundPolicy",
+              "tag": "json:\"policy\""
+            },
+            {
+              "name": "Active",
+              "type": "int",
+              "tag": "json:\"active\""
+            },
+            {
+              "name": "Admitted",
+              "type": "int",
+              "tag": "json:\"admitted\""
+            },
+            {
+              "name": "Recent",
+              "type": "[]ProjectBackgroundRun",
+              "tag": "json:\"recent\""
+            }
+          ]
+        },
+        {
+          "name": "ProjectBackgroundPolicy",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Revision",
+              "type": "int64",
+              "tag": "json:\"revision\""
+            },
+            {
+              "name": "Paused",
+              "type": "bool",
+              "tag": "json:\"paused\""
+            },
+            {
+              "name": "MaxActive",
+              "type": "int",
+              "tag": "json:\"maxActive\""
+            },
+            {
+              "name": "MaxDailyRuns",
+              "type": "int",
+              "tag": "json:\"maxDailyRuns\""
+            },
+            {
+              "name": "PullRequests",
+              "type": "[]string",
+              "tag": "json:\"pullRequests\""
+            }
+          ]
+        },
+        {
+          "name": "ProjectBackgroundRun",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Source",
+              "type": "BackgroundSource",
+              "tag": "json:\"source\""
+            },
+            {
+              "name": "SessionID",
+              "type": "string",
+              "tag": "json:\"sessionId\""
+            },
+            {
+              "name": "RunID",
+              "type": "string",
+              "tag": "json:\"runId\""
+            },
+            {
+              "name": "Status",
+              "type": "string",
+              "tag": "json:\"status\""
+            },
+            {
+              "name": "Outcome",
+              "type": "string",
+              "tag": "json:\"outcome,omitempty\""
+            },
+            {
+              "name": "AdmittedAt",
+              "type": "time.Time",
+              "tag": "json:\"admittedAt\""
+            }
+          ]
+        },
+        {
           "name": "Provider",
           "kind": "struct",
           "fields": [
@@ -17930,6 +18123,22 @@
           ]
         },
         {
+          "name": "SetProjectBackgroundPolicyRequest",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "ProjectID",
+              "type": "string",
+              "tag": "json:\"projectId\""
+            },
+            {
+              "name": "Policy",
+              "type": "ProjectBackgroundPolicy",
+              "tag": "json:\"policy\""
+            }
+          ]
+        },
+        {
           "name": "Skill",
           "kind": "struct",
           "fields": [
@@ -18237,6 +18446,11 @@
               "name": "Params",
               "type": "*GenerationParams",
               "tag": "json:\"params,omitzero\""
+            },
+            {
+              "name": "Background",
+              "type": "*BackgroundSource",
+              "tag": "json:\"background,omitzero\""
             }
           ]
         },
@@ -18463,6 +18677,53 @@
           "name": "SuppressibleRunEventType",
           "kind": "defined",
           "underlying": "string"
+        },
+        {
+          "name": "TaskWorktree",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "ID",
+              "type": "string",
+              "tag": "json:\"id\""
+            },
+            {
+              "name": "Workspace",
+              "type": "WorkspaceRef",
+              "tag": "json:\"workspace\""
+            },
+            {
+              "name": "Source",
+              "type": "WorkspaceRef",
+              "tag": "json:\"source\""
+            },
+            {
+              "name": "Base",
+              "type": "string",
+              "tag": "json:\"base\""
+            },
+            {
+              "name": "Available",
+              "type": "bool",
+              "tag": "json:\"available\""
+            },
+            {
+              "name": "Setup",
+              "type": "*WorktreeSetup",
+              "tag": "json:\"setup,omitzero\""
+            }
+          ]
+        },
+        {
+          "name": "TaskWorktreeRequest",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "ID",
+              "type": "string",
+              "tag": "json:\"id\""
+            }
+          ]
         },
         {
           "name": "TestProviderRequest",
@@ -19198,6 +19459,58 @@
               "tag": "json:\"lastActiveAt,omitzero\""
             }
           ]
+        },
+        {
+          "name": "WorktreeHandoff",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Worktree",
+              "type": "TaskWorktree",
+              "tag": "json:\"worktree\""
+            },
+            {
+              "name": "Branch",
+              "type": "string",
+              "tag": "json:\"branch\""
+            },
+            {
+              "name": "Head",
+              "type": "string",
+              "tag": "json:\"head\""
+            },
+            {
+              "name": "Digest",
+              "type": "string",
+              "tag": "json:\"digest\""
+            },
+            {
+              "name": "Patch",
+              "type": "string",
+              "tag": "json:\"patch\""
+            }
+          ]
+        },
+        {
+          "name": "WorktreeSetup",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Command",
+              "type": "string",
+              "tag": "json:\"command\""
+            },
+            {
+              "name": "ExitCode",
+              "type": "*int",
+              "tag": "json:\"exitCode,omitzero\""
+            },
+            {
+              "name": "Output",
+              "type": "string",
+              "tag": "json:\"output\""
+            }
+          ]
         }
       ]
     },
@@ -19476,6 +19789,10 @@
         {
           "name": "NewConfiner",
           "signature": "func(userHome string, readOnlyPaths []string) (*Confiner, error)"
+        },
+        {
+          "name": "RunInPlace",
+          "signature": "func(ctx context.Context, config Config, path string, input shell.Input) (shell.Output, error)"
         }
       ],
       "types": [
@@ -19512,6 +19829,10 @@
             {
               "name": "ReadOnlyPaths",
               "type": "[]string"
+            },
+            {
+              "name": "RestrictReads",
+              "type": "bool"
             }
           ]
         },
@@ -20313,6 +20634,10 @@
               "signature": "func(ctx context.Context, request protocol.AcquirePluginComponentRequest, options protocol.CommandOptions) (*protocol.PluginBrowserUseGrant, error)"
             },
             {
+              "name": "ApplyWorktreeHandoff",
+              "signature": "func(ctx context.Context, request protocol.ApplyWorktreeHandoffRequest, options protocol.CommandOptions) (*protocol.WorktreeHandoff, error)"
+            },
+            {
               "name": "ApproveSkillProposal",
               "signature": "func(ctx context.Context, request protocol.SkillProposalRef, options protocol.CommandOptions) error"
             },
@@ -20363,6 +20688,10 @@
             {
               "name": "CreateSession",
               "signature": "func(ctx context.Context, request protocol.CreateSessionRequest, options protocol.CommandOptions) (*protocol.Session, error)"
+            },
+            {
+              "name": "CreateTaskWorktree",
+              "signature": "func(ctx context.Context, request protocol.CreateTaskWorktreeRequest, options protocol.CommandOptions) (*protocol.TaskWorktree, error)"
             },
             {
               "name": "DeleteMCPServer",
@@ -20427,6 +20756,10 @@
             {
               "name": "GetProject",
               "signature": "func(ctx context.Context, request protocol.GetProjectRequest, options protocol.CallOptions) (*protocol.Project, error)"
+            },
+            {
+              "name": "GetProjectBackground",
+              "signature": "func(ctx context.Context, request protocol.GetProjectRequest, options protocol.CallOptions) (*protocol.ProjectBackgroundActivity, error)"
             },
             {
               "name": "GetRun",
@@ -20557,6 +20890,10 @@
               "signature": "func(ctx context.Context, request protocol.WorkspaceQuery, options protocol.CallOptions) (*protocol.Page[protocol.SkillProposal], error)"
             },
             {
+              "name": "ListTaskWorktrees",
+              "signature": "func(ctx context.Context, options protocol.CallOptions) (*protocol.Page[protocol.TaskWorktree], error)"
+            },
+            {
               "name": "ListTools",
               "signature": "func(ctx context.Context, options protocol.CallOptions) (*protocol.Page[protocol.ToolSpec], error)"
             },
@@ -20581,6 +20918,10 @@
               "signature": "func(ctx context.Context, request protocol.OpenPluginBrowserRealmRequest, options protocol.CommandOptions) (*protocol.PluginBrowserSession, error)"
             },
             {
+              "name": "PreviewWorktreeHandoff",
+              "signature": "func(ctx context.Context, request protocol.TaskWorktreeRequest, options protocol.CallOptions) (*protocol.WorktreeHandoff, error)"
+            },
+            {
               "name": "ReadPluginLocale",
               "signature": "func(ctx context.Context, request protocol.ReadPluginLocaleRequest, options protocol.CallOptions) (*protocol.PluginLocaleCatalog, error)"
             },
@@ -20599,6 +20940,10 @@
             {
               "name": "RejectSkillProposal",
               "signature": "func(ctx context.Context, request protocol.SkillProposalRef, options protocol.CommandOptions) error"
+            },
+            {
+              "name": "ReleaseTaskWorktree",
+              "signature": "func(ctx context.Context, request protocol.TaskWorktreeRequest, options protocol.CommandOptions) error"
             },
             {
               "name": "ResolvePluginComposition",
@@ -20675,6 +21020,10 @@
             {
               "name": "SetPluginEnablement",
               "signature": "func(ctx context.Context, request protocol.SetPluginEnablementRequest, options protocol.CommandOptions) (*protocol.PluginEnablement, error)"
+            },
+            {
+              "name": "SetProjectBackgroundPolicy",
+              "signature": "func(ctx context.Context, request protocol.SetProjectBackgroundPolicyRequest, options protocol.CommandOptions) (*protocol.ProjectBackgroundPolicy, error)"
             },
             {
               "name": "SetUtilityRole",

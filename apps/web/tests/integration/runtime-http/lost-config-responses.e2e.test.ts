@@ -1,5 +1,6 @@
 import {
   addInstalledMemory,
+  captureMemoryBinding,
   deleteInstalledMemory,
   readInstalledMemory,
   updateInstalledMemory,
@@ -163,6 +164,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: configuration commits after lo
     const workspaceRoot = join(fixture.root, "workspace-state-replay-cutpoints");
     await mkdir(workspaceRoot);
     const workspace = fixture.client.workspace({ path: workspaceRoot });
+    const binding = await captureMemoryBinding(fixture.client);
     const streamController = new AbortController();
     const subscription = await fixture.client.runtimeEvents.subscribe(
       { topics: ["plugins.dataChanged"] },
@@ -196,7 +198,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: configuration commits after lo
         cwd: workspaceRoot,
         content: "agent-memory replay cutpoint",
       };
-      await expect(addInstalledMemory(original, input)).rejects.toSatisfy(
+      await expect(addInstalledMemory(original, binding, input)).rejects.toSatisfy(
         mutationSettlementIsUnknown,
       );
       await original.close();
@@ -208,22 +210,24 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: configuration commits after lo
       const retained = await cold.plugins.getCommand({ namespace, key: pending.idempotencyKey });
       expect(pending.binding).toEqual(retained.route);
       expect(Object.hasOwn(pending.binding, "input")).toBe(false);
-      const added = await addInstalledMemory(cold, input);
+      const added = await addInstalledMemory(cold, binding, input);
       expect(mutationStorage.size).toBe(0);
       memoryRecord = added;
       await expect(nextRuntimeEvent(events, "plugins.dataChanged")).resolves.toMatchObject({
         type: "plugins.dataChanged",
       });
       await expect(
-        readInstalledMemory(fixture.client, "project", workspace.ref.path).then((data) => ({
-          data,
-        })),
+        readInstalledMemory(fixture.client, binding, "project", workspace.ref.path).then(
+          (data) => ({
+            data,
+          }),
+        ),
       ).resolves.toMatchObject({
         data: [expect.objectContaining({ id: added.id, content: "agent-memory replay cutpoint" })],
       });
 
       const updated = await callAfterCommitLoss("plugins.call", (faultClient) =>
-        updateInstalledMemory(faultClient, {
+        updateInstalledMemory(faultClient, binding, {
           id: added.id,
           expectedRevision: added.revision,
           content: "agent-memory replay cutpoint updated",
@@ -235,9 +239,11 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: configuration commits after lo
         type: "plugins.dataChanged",
       });
       await expect(
-        readInstalledMemory(fixture.client, "project", workspace.ref.path).then((data) => ({
-          data,
-        })),
+        readInstalledMemory(fixture.client, binding, "project", workspace.ref.path).then(
+          (data) => ({
+            data,
+          }),
+        ),
       ).resolves.toMatchObject({
         data: [
           expect.objectContaining({
@@ -250,7 +256,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: configuration commits after lo
       });
 
       await callAfterCommitLoss("plugins.call", (faultClient) =>
-        deleteInstalledMemory(faultClient, added.id, updated.revision),
+        deleteInstalledMemory(faultClient, binding, added.id, updated.revision),
       );
       memoryRecord = undefined;
       await expect(nextRuntimeEvent(events, "plugins.dataChanged")).resolves.toMatchObject({
@@ -258,17 +264,22 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: configuration commits after lo
       });
       expect(
         (
-          await readInstalledMemory(fixture.client, "project", workspace.ref.path).then((data) => ({
-            data,
-          }))
+          await readInstalledMemory(fixture.client, binding, "project", workspace.ref.path).then(
+            (data) => ({
+              data,
+            }),
+          )
         ).data,
       ).toEqual([]);
     } finally {
       await Promise.all([original.close(), cold.close()]);
       if (memoryRecord)
-        await deleteInstalledMemory(fixture.client, memoryRecord.id, memoryRecord.revision).catch(
-          () => undefined,
-        );
+        await deleteInstalledMemory(
+          fixture.client,
+          binding,
+          memoryRecord.id,
+          memoryRecord.revision,
+        ).catch(() => undefined);
       streamController.abort();
       await events.return?.();
     }

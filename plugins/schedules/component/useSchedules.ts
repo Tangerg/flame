@@ -367,6 +367,7 @@ export function useSchedules(
           cron: template?.cron ?? "",
           timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
           cwd: context.workspace?.ref.path ?? "",
+          projectId: context.project?.id,
           modelSelection: selection(),
           enabled: true,
         },
@@ -384,6 +385,7 @@ export function useSchedules(
           cron: item.cron,
           timeZone: item.timeZone,
           cwd: item.cwd,
+          projectId: item.projectId,
           modelSelection: structuredClone(item.modelSelection),
           enabled: enabled(item),
         },
@@ -440,6 +442,7 @@ export function useSchedules(
       cron: edit.draft.cron.trim(),
       timeZone: edit.draft.timeZone.trim(),
       cwd: edit.draft.cwd.trim(),
+      projectId: edit.draft.projectId?.trim(),
     };
     if (edit.basis)
       submit(
@@ -452,6 +455,7 @@ export function useSchedules(
           cron: draft.cron,
           timeZone: draft.timeZone,
           cwd: draft.cwd,
+          projectId: draft.projectId ?? "",
           enabled: draft.enabled,
           modelSelection: draft.modelSelection,
         },

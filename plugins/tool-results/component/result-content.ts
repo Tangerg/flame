@@ -1,4 +1,5 @@
 import type { CapturedToolResult, Translate } from "@flame/component-sdk";
+import { parseJSON, prettyJSON, stringifyJSON } from "@frame/sdk/json";
 import { ansiText } from "./ansi";
 
 export type Row =
@@ -25,9 +26,12 @@ function record(value: unknown): Record<string, unknown> {
     ? (value as Record<string, unknown>)
     : {};
 }
-function parsed(value: string): Record<string, unknown> {
+function parsed(
+  value: string,
+  decode: (value: string) => unknown = JSON.parse,
+): Record<string, unknown> {
   try {
-    return record(JSON.parse(value));
+    return record(decode(value));
   } catch {
     return {};
   }
@@ -396,7 +400,8 @@ const RENDERERS: Readonly<Record<string, Renderer>> = {
   "web-fetch": webDocument,
   "web-browse": webDocument,
   "web-search": webSearch,
-  "run-script": (source, _tool, t) => scriptContent(parsed(source), source, t),
+  "run-script": (source, _tool, t) =>
+    scriptContent(parsed(source, parseJSON), source, t),
 };
 
 export function resultContent(
@@ -445,7 +450,7 @@ function scriptContent(
         : call.result !== undefined
           ? typeof call.result === "string"
             ? call.result
-            : JSON.stringify(call.result, null, 2)
+            : prettyJSON(call.result)
           : typeof call.omittedBytes === "number"
             ? t("script.call.omitted", { bytes: call.omittedBytes })
             : undefined;
@@ -457,7 +462,7 @@ function scriptContent(
           typeof call.source === "string" ? call.source : undefined,
           call.arguments === undefined
             ? undefined
-            : JSON.stringify(call.arguments),
+            : stringifyJSON(call.arguments),
         ]
           .filter((part) => part !== undefined)
           .join("\n") || undefined,

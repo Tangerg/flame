@@ -8,6 +8,7 @@ import (
 
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	"github.com/Tangerg/flame/plugins/knowledgebase/internal/knowledge"
+	"github.com/Tangerg/flame/plugins/knowledgebase/internal/wire"
 
 	"github.com/Tangerg/frame/sqlite"
 )
@@ -19,6 +20,10 @@ var errStoredDocument = errors.New("knowledge base: invalid stored document")
 func openStore(ctx context.Context, path string) (*store, error) {
 	db, err := sqlite.OpenSchema(ctx, path, []string{
 		pluginstorage.CommandsSchema,
+		`CREATE TABLE IF NOT EXISTS document_history (id TEXT NOT NULL, revision INTEGER NOT NULL, source TEXT NOT NULL CHECK(json_valid(source)), PRIMARY KEY(id, revision))`,
+		researchSchema,
+		methodSchema,
+		workSchema,
 		`CREATE TABLE IF NOT EXISTS documents (id TEXT PRIMARY KEY, snapshot TEXT NOT NULL CHECK(json_valid(snapshot)))`,
 		// Retiring an identity prevents an old revision from matching a later reimport.
 		`CREATE TABLE IF NOT EXISTS retired_documents (id TEXT PRIMARY KEY)`,
@@ -108,6 +113,13 @@ func (s *store) indexTarget(ctx context.Context, id string, expected int64) (kno
 			return err
 		}
 		if current.Header().Revision != 0 {
+			var versions int
+			if err := connection.QueryRowContext(ctx, `SELECT COUNT(*) FROM document_history WHERE id=?`, id).Scan(&versions); err != nil {
+				return err
+			}
+			if versions >= 32 {
+				return knowledge.ErrCapacity
+			}
 			return nil
 		}
 		var count int
@@ -131,12 +143,31 @@ func (s *store) prepareReplacement(ctx context.Context, id string, expected int6
 	if err != nil {
 		return pluginstorage.CommandPlan[knowledge.Header]{}, err
 	}
+	return s.prepareSourceWrite(ctx, current, next)
+}
+
+func (s *store) prepareMove(ctx context.Context, input wire.MoveInput) (pluginstorage.CommandPlan[knowledge.Header], error) {
+	current, err := s.indexTarget(ctx, input.ID, input.ExpectedRevision)
+	if err != nil {
+		return pluginstorage.CommandPlan[knowledge.Header]{}, err
+	}
+	next, err := current.Move(input.ExpectedRevision, input.Project, input.TargetProject)
+	if err != nil {
+		return pluginstorage.CommandPlan[knowledge.Header]{}, err
+	}
+	return s.prepareSourceWrite(ctx, current, next)
+}
+
+func (s *store) prepareSourceWrite(ctx context.Context, current, next knowledge.Document) (pluginstorage.CommandPlan[knowledge.Header], error) {
 	encoded, err := json.Marshal(next.Snapshot())
 	if err != nil {
 		return pluginstorage.CommandPlan[knowledge.Header]{}, err
 	}
 	return pluginstorage.NewCommandPlan(next.Header(), func(ctx context.Context) error {
-		_, err := s.db.Executor(ctx).ExecContext(ctx, `INSERT INTO documents(id,snapshot) VALUES(?,?) ON CONFLICT(id) DO UPDATE SET snapshot=excluded.snapshot`, id, string(encoded))
+		if err := s.retainSource(ctx, current); err != nil {
+			return err
+		}
+		_, err := s.db.Executor(ctx).ExecContext(ctx, `INSERT INTO documents(id,snapshot) VALUES(?,?) ON CONFLICT(id) DO UPDATE SET snapshot=excluded.snapshot`, next.Header().ID, string(encoded))
 		return err
 	})
 }
@@ -152,6 +183,9 @@ func (s *store) prepareDeletion(ctx context.Context, id string, expected int64) 
 	return pluginstorage.NewCommandPlan(true, func(ctx context.Context) error {
 		connection := s.db.Executor(ctx)
 		if _, err := connection.ExecContext(ctx, `INSERT INTO retired_documents(id) VALUES(?)`, id); err != nil {
+			return err
+		}
+		if _, err := connection.ExecContext(ctx, `DELETE FROM document_history WHERE id=?`, id); err != nil {
 			return err
 		}
 		_, err := connection.ExecContext(ctx, `DELETE FROM documents WHERE id=?`, id)

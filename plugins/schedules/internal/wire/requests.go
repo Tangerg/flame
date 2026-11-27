@@ -14,6 +14,7 @@ const (
 )
 
 type UpdateInput struct {
+	ProjectID        *string    `json:"projectId,omitzero"`
 	ID               string     `json:"id"`
 	ExpectedRevision uint64     `json:"expectedRevision"`
 	Title            *string    `json:"title,omitzero"`

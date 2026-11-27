@@ -2,6 +2,67 @@
 // Numeric and cross-field constraints remain in schema.json and the business owner.
 import type { JSONNumber } from "@frame/sdk/json";
 
+export type AcceptClaimV1Input = ClaimAcceptInput;
+
+export type AcceptClaimV1Output = ClaimReceipt;
+
+export type AcceptClaimV1OutputInstantTimestamp = string;
+
+export type AcceptWorkV1Input = WorkAccept;
+
+export interface AcceptWorkV1InputWireArtifactRef {
+  id: string;
+  installationId: string;
+  object?: string;
+  revision: string;
+}
+
+export interface AcceptWorkV1InputWireResearchMethod {
+  instructions: string;
+  name: string;
+}
+
+export type AcceptWorkV1Output = AcceptWorkV1OutputWireWorkReceipt;
+
+export interface AcceptWorkV1OutputWireWorkReceipt {
+  id: string;
+  methodVersion: string;
+  revision: JSONNumber;
+}
+
+export interface ClaimAcceptInput {
+  citations: Array<MaterialCitation>;
+  expectedRevision: JSONNumber;
+  id: string;
+  project: string;
+  reason: string;
+  statement: string;
+}
+
+export interface ClaimReadInput {
+  id: string;
+  project: string;
+  revision?: JSONNumber;
+}
+
+export interface ClaimReceipt {
+  acceptedAt: AcceptClaimV1OutputInstantTimestamp;
+  id: string;
+  revision: JSONNumber;
+}
+
+export interface ClaimRef {
+  id: string;
+  revision: JSONNumber;
+}
+
+export interface ClaimSummary {
+  id: string;
+  revision: JSONNumber;
+  state: "current" | "recheck" | "unavailable";
+  statement?: string;
+}
+
 export type Content = ({ id: string; project?: string; source: string; text: string; title: string }) & ({ id?: unknown; source?: unknown; text?: unknown; title?: unknown } & Record<string, unknown>);
 
 export type DeleteV1Input = DeleteV1InputWireDocumentInput;
@@ -12,7 +73,19 @@ export type DeleteV1Output = boolean;
 
 export interface DocumentRead {
   document: ReadV1OutputKnowledgeHeader;
+  page?: JSONNumber;
+  pages: JSONNumber;
   text: string;
+}
+
+export interface Evidence {
+  acceptedSha256?: string;
+  available: boolean;
+  format?: string;
+  head?: string;
+  headSha256?: string;
+  objectAtHead: boolean;
+  title?: string;
 }
 
 export interface ImportInput {
@@ -34,11 +107,19 @@ export interface ImportV1OutputKnowledgeHeader {
   title: string;
 }
 
-export interface ListInput {
+export type ListClaimsV1Input = ListClaimsV1InputWireListInput;
+
+export interface ListClaimsV1InputWireListInput {
   project?: string;
 }
 
-export type ListV1Input = ListInput;
+export type ListClaimsV1Output = Array<ClaimSummary>;
+
+export type ListV1Input = ListV1InputWireListInput;
+
+export interface ListV1InputWireListInput {
+  project?: string;
+}
 
 export type ListV1Output = Array<ListV1OutputKnowledgeHeader>;
 
@@ -52,6 +133,20 @@ export interface ListV1OutputKnowledgeHeader {
   title: string;
 }
 
+export type ListWorkV1Input = ListWorkV1InputWireListInput;
+
+export interface ListWorkV1InputWireListInput {
+  project?: string;
+}
+
+export type ListWorkV1Output = Array<ListWorkV1OutputWireWorkReceipt>;
+
+export interface ListWorkV1OutputWireWorkReceipt {
+  id: string;
+  methodVersion: string;
+  revision: JSONNumber;
+}
+
 export interface Match {
   chunk: JSONNumber;
   document: SearchV1OutputKnowledgeHeader;
@@ -59,9 +154,66 @@ export interface Match {
   text: string;
 }
 
+export interface MaterialCitation {
+  documentId: string;
+  firstLine: JSONNumber;
+  lastLine: JSONNumber;
+  page: JSONNumber;
+  revision: JSONNumber;
+}
+
+export interface MoveInput {
+  expectedRevision: JSONNumber;
+  id: string;
+  project: string;
+  targetProject: string;
+}
+
+export type MoveV1Input = MoveInput;
+
+export type MoveV1Output = MoveV1OutputKnowledgeHeader;
+
+export interface MoveV1OutputKnowledgeHeader {
+  chunks: JSONNumber;
+  id: string;
+  project?: string;
+  revision: JSONNumber;
+  source: string;
+  space: string;
+  title: string;
+}
+
 export type Number = JSONNumber;
 
-export type ReadInput = ({ id: string; project?: string }) & ({ id?: unknown } & Record<string, unknown>);
+export type ReadClaimV1Input = ClaimReadInput;
+
+export type ReadClaimV1Output = ReadClaimV1OutputWireClaimRead;
+
+export type ReadClaimV1OutputInstantTimestamp = string;
+
+export interface ReadClaimV1OutputWireClaimEvidence {
+  documentId: string;
+  excerpt: string;
+  firstLine: JSONNumber;
+  lastLine: JSONNumber;
+  needsRecheck: boolean;
+  page: JSONNumber;
+  revision: JSONNumber;
+  source: string;
+  title: string;
+}
+
+export interface ReadClaimV1OutputWireClaimRead {
+  acceptedAt: ReadClaimV1OutputInstantTimestamp;
+  evidence: Array<ReadClaimV1OutputWireClaimEvidence>;
+  id: string;
+  reason?: string;
+  revision: JSONNumber;
+  state: "current" | "recheck" | "unavailable";
+  statement?: string;
+}
+
+export type ReadInput = ({ id: string; page?: JSONNumber; project?: string; revision?: JSONNumber }) & ({ id?: unknown } & Record<string, unknown>);
 
 export type ReadV1Input = ReadInput;
 
@@ -75,6 +227,46 @@ export interface ReadV1OutputKnowledgeHeader {
   source: string;
   space: string;
   title: string;
+}
+
+export type ReadWorkV1Input = WorkRead;
+
+export type ReadWorkV1Output = WorkView;
+
+export type ReadWorkV1OutputInstantTimestamp = string;
+
+export interface ReadWorkV1OutputWireArtifactRef {
+  id: string;
+  installationId: string;
+  object?: string;
+  revision: string;
+}
+
+export interface ReadWorkV1OutputWireClaimEvidence {
+  documentId: string;
+  excerpt: string;
+  firstLine: JSONNumber;
+  lastLine: JSONNumber;
+  needsRecheck: boolean;
+  page: JSONNumber;
+  revision: JSONNumber;
+  source: string;
+  title: string;
+}
+
+export interface ReadWorkV1OutputWireClaimRead {
+  acceptedAt: ReadWorkV1OutputInstantTimestamp;
+  evidence: Array<ReadWorkV1OutputWireClaimEvidence>;
+  id: string;
+  reason?: string;
+  revision: JSONNumber;
+  state: "current" | "recheck" | "unavailable";
+  statement?: string;
+}
+
+export interface ReadWorkV1OutputWireResearchMethod {
+  instructions: string;
+  name: string;
 }
 
 export type ReindexV1Input = ReindexV1InputWireDocumentInput;
@@ -109,29 +301,78 @@ export interface SearchV1OutputKnowledgeHeader {
   title: string;
 }
 
+export interface WorkAccept {
+  artifact: AcceptWorkV1InputWireArtifactRef;
+  claims: Array<ClaimRef>;
+  expectedRevision: JSONNumber;
+  id: string;
+  method: AcceptWorkV1InputWireResearchMethod;
+  project: string;
+  title: string;
+}
+
+export interface WorkRead {
+  id: string;
+  project: string;
+  revision?: JSONNumber;
+}
+
+export interface WorkView {
+  artifact?: ReadWorkV1OutputWireArtifactRef;
+  claims: Array<ReadWorkV1OutputWireClaimRead>;
+  evidence?: Evidence;
+  id: string;
+  method?: ReadWorkV1OutputWireResearchMethod;
+  methodVersion: string;
+  revision: JSONNumber;
+  state: string;
+  title: string;
+}
+
 export interface MethodInputs {
+  "flame.knowledgebase/accept-claim.v1": AcceptClaimV1Input;
+  "flame.knowledgebase/accept-work.v1": AcceptWorkV1Input;
   "flame.knowledgebase/delete.v1": DeleteV1Input;
   "flame.knowledgebase/import.v1": ImportV1Input;
+  "flame.knowledgebase/list-claims.v1": ListClaimsV1Input;
+  "flame.knowledgebase/list-work.v1": ListWorkV1Input;
   "flame.knowledgebase/list.v1": ListV1Input;
+  "flame.knowledgebase/move.v1": MoveV1Input;
+  "flame.knowledgebase/read-claim.v1": ReadClaimV1Input;
+  "flame.knowledgebase/read-work.v1": ReadWorkV1Input;
   "flame.knowledgebase/read.v1": ReadV1Input;
   "flame.knowledgebase/reindex.v1": ReindexV1Input;
   "flame.knowledgebase/search.v1": SearchV1Input;
 }
 export interface MethodOutputs {
+  "flame.knowledgebase/accept-claim.v1": AcceptClaimV1Output;
+  "flame.knowledgebase/accept-work.v1": AcceptWorkV1Output;
   "flame.knowledgebase/delete.v1": DeleteV1Output;
   "flame.knowledgebase/import.v1": ImportV1Output;
+  "flame.knowledgebase/list-claims.v1": ListClaimsV1Output;
+  "flame.knowledgebase/list-work.v1": ListWorkV1Output;
   "flame.knowledgebase/list.v1": ListV1Output;
+  "flame.knowledgebase/move.v1": MoveV1Output;
+  "flame.knowledgebase/read-claim.v1": ReadClaimV1Output;
+  "flame.knowledgebase/read-work.v1": ReadWorkV1Output;
   "flame.knowledgebase/read.v1": ReadV1Output;
   "flame.knowledgebase/reindex.v1": ReindexV1Output;
   "flame.knowledgebase/search.v1": SearchV1Output;
 }
 export const METHODS = {
+  ["flame.knowledgebase/accept-claim.v1"]: { kind: "command", target: "installation" },
+  ["flame.knowledgebase/accept-work.v1"]: { kind: "command", target: "installation" },
   ["flame.knowledgebase/delete.v1"]: { kind: "command", target: "installation" },
   ["flame.knowledgebase/import.v1"]: { kind: "command", target: "installation" },
+  ["flame.knowledgebase/list-claims.v1"]: { kind: "query", target: "installation" },
+  ["flame.knowledgebase/list-work.v1"]: { kind: "query", target: "installation" },
   ["flame.knowledgebase/list.v1"]: { kind: "query", target: "installation" },
+  ["flame.knowledgebase/move.v1"]: { kind: "command", target: "installation" },
+  ["flame.knowledgebase/read-claim.v1"]: { kind: "query", target: "installation" },
+  ["flame.knowledgebase/read-work.v1"]: { kind: "query", target: "installation" },
   ["flame.knowledgebase/read.v1"]: { kind: "query", target: "installation" },
   ["flame.knowledgebase/reindex.v1"]: { kind: "command", target: "installation" },
   ["flame.knowledgebase/search.v1"]: { kind: "query", target: "installation" },
 } as const;
-export const CAPABILITY = {"protocol":"io.github.tangerg.flame/plugin/1","reference":"flame.knowledgebase.v1","composition":"collection","scope":"installation","contract":"9c1884ff14ab11c3cdb4320836f881272b166936a37981a4a14ee86b19d2df7f"} as const;
-export const CAPABILITY_JSON = "{\"composition\":\"collection\",\"methods\":[{\"description\":\"\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl.RG9jdW1lbnRJbnB1dA\":{\"additionalProperties\":false,\"allOf\":[{\"properties\":{\"id\":{\"maxLength\":128}}}],\"properties\":{\"expectedRevision\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"id\":{\"minLength\":1,\"type\":\"string\"}},\"required\":[\"id\",\"expectedRevision\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"allOf\":[{\"properties\":{\"id\":{\"maxLength\":128}}}],\"properties\":{\"expectedRevision\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"id\":{\"minLength\":1,\"type\":\"string\"}},\"required\":[\"id\",\"expectedRevision\"],\"type\":\"object\"},\"kind\":\"command\",\"name\":\"flame.knowledgebase/delete.v1\",\"output\":{\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"type\":\"boolean\"},\"target\":\"installation\"},{\"description\":\"\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl.SW1wb3J0SW5wdXQ\":{\"additionalProperties\":false,\"properties\":{\"content\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9rbm93bGVkZ2U.Q29udGVudA\"},\"expectedRevision\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":0,\"type\":\"integer\"}},\"required\":[\"content\",\"expectedRevision\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9rbm93bGVkZ2U.Q29udGVudA\":{\"additionalProperties\":false,\"allOf\":[{\"properties\":{\"id\":{\"maxLength\":128},\"source\":{\"maxLength\":2048},\"text\":{\"maxLength\":16384},\"title\":{\"maxLength\":256}}}],\"properties\":{\"id\":{\"minLength\":1,\"type\":\"string\"},\"project\":{\"type\":\"string\"},\"source\":{\"minLength\":1,\"type\":\"string\"},\"text\":{\"minLength\":1,\"type\":\"string\"},\"title\":{\"minLength\":1,\"type\":\"string\"}},\"required\":[\"id\",\"title\",\"source\",\"text\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"content\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9rbm93bGVkZ2U.Q29udGVudA\"},\"expectedRevision\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":0,\"type\":\"integer\"}},\"required\":[\"content\",\"expectedRevision\"],\"type\":\"object\"},\"kind\":\"command\",\"name\":\"flame.knowledgebase/import.v1\",\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9rbm93bGVkZ2U.SGVhZGVy\":{\"additionalProperties\":false,\"properties\":{\"chunks\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"id\":{\"type\":\"string\"},\"project\":{\"type\":\"string\"},\"revision\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"source\":{\"type\":\"string\"},\"space\":{\"type\":\"string\"},\"title\":{\"type\":\"string\"}},\"required\":[\"id\",\"title\",\"source\",\"revision\",\"chunks\",\"space\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"chunks\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"id\":{\"type\":\"string\"},\"project\":{\"type\":\"string\"},\"revision\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"source\":{\"type\":\"string\"},\"space\":{\"type\":\"string\"},\"title\":{\"type\":\"string\"}},\"required\":[\"id\",\"title\",\"source\",\"revision\",\"chunks\",\"space\"],\"type\":\"object\"},\"target\":\"installation\"},{\"description\":\"\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl.TGlzdElucHV0\":{\"additionalProperties\":false,\"properties\":{\"project\":{\"type\":\"string\"}},\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"project\":{\"type\":\"string\"}},\"type\":\"object\"},\"kind\":\"query\",\"name\":\"flame.knowledgebase/list.v1\",\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9rbm93bGVkZ2U.SGVhZGVy\":{\"additionalProperties\":false,\"properties\":{\"chunks\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"id\":{\"type\":\"string\"},\"project\":{\"type\":\"string\"},\"revision\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"source\":{\"type\":\"string\"},\"space\":{\"type\":\"string\"},\"title\":{\"type\":\"string\"}},\"required\":[\"id\",\"title\",\"source\",\"revision\",\"chunks\",\"space\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9rbm93bGVkZ2U.SGVhZGVy\"},\"type\":\"array\"},\"target\":\"installation\"},{\"description\":\"\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl.UmVhZElucHV0\":{\"additionalProperties\":false,\"allOf\":[{\"properties\":{\"id\":{\"maxLength\":128}}}],\"properties\":{\"id\":{\"minLength\":1,\"type\":\"string\"},\"project\":{\"type\":\"string\"}},\"required\":[\"id\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"allOf\":[{\"properties\":{\"id\":{\"maxLength\":128}}}],\"properties\":{\"id\":{\"minLength\":1,\"type\":\"string\"},\"project\":{\"type\":\"string\"}},\"required\":[\"id\"],\"type\":\"object\"},\"kind\":\"query\",\"name\":\"flame.knowledgebase/read.v1\",\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl.RG9jdW1lbnRSZWFk\":{\"additionalProperties\":false,\"properties\":{\"document\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9rbm93bGVkZ2U.SGVhZGVy\"},\"text\":{\"type\":\"string\"}},\"required\":[\"document\",\"text\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9rbm93bGVkZ2U.SGVhZGVy\":{\"additionalProperties\":false,\"properties\":{\"chunks\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"id\":{\"type\":\"string\"},\"project\":{\"type\":\"string\"},\"revision\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"source\":{\"type\":\"string\"},\"space\":{\"type\":\"string\"},\"title\":{\"type\":\"string\"}},\"required\":[\"id\",\"title\",\"source\",\"revision\",\"chunks\",\"space\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"document\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9rbm93bGVkZ2U.SGVhZGVy\"},\"text\":{\"type\":\"string\"}},\"required\":[\"document\",\"text\"],\"type\":\"object\"},\"target\":\"installation\"},{\"description\":\"\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl.RG9jdW1lbnRJbnB1dA\":{\"additionalProperties\":false,\"allOf\":[{\"properties\":{\"id\":{\"maxLength\":128}}}],\"properties\":{\"expectedRevision\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"id\":{\"minLength\":1,\"type\":\"string\"}},\"required\":[\"id\",\"expectedRevision\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"allOf\":[{\"properties\":{\"id\":{\"maxLength\":128}}}],\"properties\":{\"expectedRevision\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"id\":{\"minLength\":1,\"type\":\"string\"}},\"required\":[\"id\",\"expectedRevision\"],\"type\":\"object\"},\"kind\":\"command\",\"name\":\"flame.knowledgebase/reindex.v1\",\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9rbm93bGVkZ2U.SGVhZGVy\":{\"additionalProperties\":false,\"properties\":{\"chunks\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"id\":{\"type\":\"string\"},\"project\":{\"type\":\"string\"},\"revision\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"source\":{\"type\":\"string\"},\"space\":{\"type\":\"string\"},\"title\":{\"type\":\"string\"}},\"required\":[\"id\",\"title\",\"source\",\"revision\",\"chunks\",\"space\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"chunks\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"id\":{\"type\":\"string\"},\"project\":{\"type\":\"string\"},\"revision\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"source\":{\"type\":\"string\"},\"space\":{\"type\":\"string\"},\"title\":{\"type\":\"string\"}},\"required\":[\"id\",\"title\",\"source\",\"revision\",\"chunks\",\"space\"],\"type\":\"object\"},\"target\":\"installation\"},{\"description\":\"\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl.U2VhcmNoSW5wdXQ\":{\"additionalProperties\":false,\"allOf\":[{\"properties\":{\"limit\":{\"maximum\":8},\"query\":{\"maxLength\":4096}}}],\"properties\":{\"limit\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"project\":{\"type\":\"string\"},\"query\":{\"minLength\":1,\"type\":\"string\"}},\"required\":[\"query\",\"limit\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"allOf\":[{\"properties\":{\"limit\":{\"maximum\":8},\"query\":{\"maxLength\":4096}}}],\"properties\":{\"limit\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"project\":{\"type\":\"string\"},\"query\":{\"minLength\":1,\"type\":\"string\"}},\"required\":[\"query\",\"limit\"],\"type\":\"object\"},\"kind\":\"query\",\"name\":\"flame.knowledgebase/search.v1\",\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9rbm93bGVkZ2U.SGVhZGVy\":{\"additionalProperties\":false,\"properties\":{\"chunks\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"id\":{\"type\":\"string\"},\"project\":{\"type\":\"string\"},\"revision\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"source\":{\"type\":\"string\"},\"space\":{\"type\":\"string\"},\"title\":{\"type\":\"string\"}},\"required\":[\"id\",\"title\",\"source\",\"revision\",\"chunks\",\"space\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9rbm93bGVkZ2U.TWF0Y2g\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9rbm93bGVkZ2U.bWF0Y2hQcm9qZWN0aW9u\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9rbm93bGVkZ2U.bWF0Y2hQcm9qZWN0aW9u\":{\"additionalProperties\":false,\"properties\":{\"chunk\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"document\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9rbm93bGVkZ2U.SGVhZGVy\"},\"score\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3ZhbHVl.TnVtYmVy\"},\"text\":{\"type\":\"string\"}},\"required\":[\"document\",\"chunk\",\"text\",\"score\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3ZhbHVl.TnVtYmVy\":{\"type\":\"number\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9rbm93bGVkZ2U.TWF0Y2g\"},\"type\":\"array\"},\"target\":\"installation\"}],\"protocol\":\"io.github.tangerg.flame/plugin/1\",\"reference\":\"flame.knowledgebase.v1\",\"scope\":\"installation\"}";
+export const CAPABILITY = {"protocol":"io.github.tangerg.flame/plugin/1","reference":"flame.knowledgebase.v1","composition":"collection","scope":"installation","contract":"2701887a917895537f3866aeba4fab3ec61c96ec00e41e977e6b49502bb631f0"} as const;
+export const CAPABILITY_JSON = "{\"composition\":\"collection\",\"methods\":[{\"description\":\"\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl.Q2xhaW1BY2NlcHRJbnB1dA\":{\"additionalProperties\":false,\"properties\":{\"citations\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl.TWF0ZXJpYWxDaXRhdGlvbg\"},\"maxItems\":8,\"minItems\":1,\"type\":\"array\"},\"expectedRevision\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":0,\"type\":\"integer\"},\"id\":{\"maxLength\":128,\"minLength\":1,\"type\":\"string\"},\"project\":{\"minLength\":1,\"type\":\"string\"},\"reason\":{\"maxLength\":4096,\"minLength\":1,\"type\":\"string\"},\"statement\":{\"maxLength\":4096,\"minLength\":1,\"type\":\"string\"}},\"required\":[\"project\",\"id\",\"expectedRevision\",\"statement\",\"reason\",\"citations\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl.TWF0ZXJpYWxDaXRhdGlvbg\":{\"additionalProperties\":false,\"properties\":{\"documentId\":{\"maxLength\":128,\"minLength\":1,\"type\":\"string\"},\"firstLine\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"lastLine\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"page\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"revision\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"}},\"required\":[\"documentId\",\"revision\",\"page\",\"firstLine\",\"lastLine\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"citations\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl.TWF0ZXJpYWxDaXRhdGlvbg\"},\"maxItems\":8,\"minItems\":1,\"type\":\"array\"},\"expectedRevision\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":0,\"type\":\"integer\"},\"id\":{\"maxLength\":128,\"minLength\":1,\"type\":\"string\"},\"project\":{\"minLength\":1,\"type\":\"string\"},\"reason\":{\"maxLength\":4096,\"minLength\":1,\"type\":\"string\"},\"statement\":{\"maxLength\":4096,\"minLength\":1,\"type\":\"string\"}},\"required\":[\"project\",\"id\",\"expectedRevision\",\"statement\",\"reason\",\"citations\"],\"type\":\"object\"},\"kind\":\"command\",\"name\":\"flame.knowledgebase/accept-claim.v1\",\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\":{\"type\":\"string\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl.Q2xhaW1SZWNlaXB0\":{\"additionalProperties\":false,\"properties\":{\"acceptedAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"},\"id\":{\"type\":\"string\"},\"revision\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"}},\"required\":[\"id\",\"revision\",\"acceptedAt\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"acceptedAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"},\"id\":{\"type\":\"string\"},\"revision\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"}},\"required\":[\"id\",\"revision\",\"acceptedAt\"],\"type\":\"object\"},\"target\":\"installation\"},{\"description\":\"\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl.Q2xhaW1SZWY\":{\"additionalProperties\":false,\"properties\":{\"id\":{\"maxLength\":128,\"minLength\":1,\"type\":\"string\"},\"revision\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"}},\"required\":[\"id\",\"revision\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl.QXJ0aWZhY3RSZWY\":{\"additionalProperties\":false,\"properties\":{\"id\":{\"pattern\":\"^[a-f0-9]{64}$\",\"type\":\"string\"},\"installationId\":{\"type\":\"string\"},\"object\":{\"maxLength\":2048,\"type\":\"string\"},\"revision\":{\"pattern\":\"^[a-f0-9]{64}$\",\"type\":\"string\"}},\"required\":[\"installationId\",\"id\",\"revision\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl.UmVzZWFyY2hNZXRob2Q\":{\"additionalProperties\":false,\"properties\":{\"instructions\":{\"maxLength\":8192,\"minLength\":1,\"type\":\"string\"},\"name\":{\"maxLength\":128,\"minLength\":1,\"type\":\"string\"}},\"required\":[\"name\",\"instructions\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl.V29ya0FjY2VwdA\":{\"additionalProperties\":false,\"properties\":{\"artifact\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl.QXJ0aWZhY3RSZWY\"},\"claims\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl.Q2xhaW1SZWY\"},\"maxItems\":16,\"minItems\":1,\"type\":\"array\"},\"expectedRevision\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":0,\"type\":\"integer\"},\"id\":{\"maxLength\":128,\"minLength\":1,\"type\":\"string\"},\"method\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl.UmVzZWFyY2hNZXRob2Q\"},\"project\":{\"type\":\"string\"},\"title\":{\"maxLength\":128,\"minLength\":1,\"type\":\"string\"}},\"required\":[\"project\",\"id\",\"expectedRevision\",\"title\",\"method\",\"claims\",\"artifact\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"artifact\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl.QXJ0aWZhY3RSZWY\"},\"claims\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl.Q2xhaW1SZWY\"},\"maxItems\":16,\"minItems\":1,\"type\":\"array\"},\"expectedRevision\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":0,\"type\":\"integer\"},\"id\":{\"maxLength\":128,\"minLength\":1,\"type\":\"string\"},\"method\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl.UmVzZWFyY2hNZXRob2Q\"},\"project\":{\"type\":\"string\"},\"title\":{\"maxLength\":128,\"minLength\":1,\"type\":\"string\"}},\"required\":[\"project\",\"id\",\"expectedRevision\",\"title\",\"method\",\"claims\",\"artifact\"],\"type\":\"object\"},\"kind\":\"command\",\"name\":\"flame.knowledgebase/accept-work.v1\",\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl.V29ya1JlY2VpcHQ\":{\"additionalProperties\":false,\"properties\":{\"id\":{\"type\":\"string\"},\"methodVersion\":{\"type\":\"string\"},\"revision\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"}},\"required\":[\"id\",\"revision\",\"methodVersion\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"id\":{\"type\":\"string\"},\"methodVersion\":{\"type\":\"string\"},\"revision\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"}},\"required\":[\"id\",\"revision\",\"methodVersion\"],\"type\":\"object\"},\"target\":\"installation\"},{\"description\":\"\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl.RG9jdW1lbnRJbnB1dA\":{\"additionalProperties\":false,\"allOf\":[{\"properties\":{\"id\":{\"maxLength\":128}}}],\"properties\":{\"expectedRevision\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"id\":{\"minLength\":1,\"type\":\"string\"}},\"required\":[\"id\",\"expectedRevision\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"allOf\":[{\"properties\":{\"id\":{\"maxLength\":128}}}],\"properties\":{\"expectedRevision\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"id\":{\"minLength\":1,\"type\":\"string\"}},\"required\":[\"id\",\"expectedRevision\"],\"type\":\"object\"},\"kind\":\"command\",\"name\":\"flame.knowledgebase/delete.v1\",\"output\":{\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"type\":\"boolean\"},\"target\":\"installation\"},{\"description\":\"\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl.SW1wb3J0SW5wdXQ\":{\"additionalProperties\":false,\"properties\":{\"content\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9rbm93bGVkZ2U.Q29udGVudA\"},\"expectedRevision\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":0,\"type\":\"integer\"}},\"required\":[\"content\",\"expectedRevision\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9rbm93bGVkZ2U.Q29udGVudA\":{\"additionalProperties\":false,\"allOf\":[{\"properties\":{\"id\":{\"maxLength\":128},\"source\":{\"maxLength\":2048},\"text\":{\"maxLength\":16384},\"title\":{\"maxLength\":256}}}],\"properties\":{\"id\":{\"minLength\":1,\"type\":\"string\"},\"project\":{\"type\":\"string\"},\"source\":{\"minLength\":1,\"type\":\"string\"},\"text\":{\"minLength\":1,\"type\":\"string\"},\"title\":{\"minLength\":1,\"type\":\"string\"}},\"required\":[\"id\",\"title\",\"source\",\"text\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"content\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9rbm93bGVkZ2U.Q29udGVudA\"},\"expectedRevision\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":0,\"type\":\"integer\"}},\"required\":[\"content\",\"expectedRevision\"],\"type\":\"object\"},\"kind\":\"command\",\"name\":\"flame.knowledgebase/import.v1\",\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9rbm93bGVkZ2U.SGVhZGVy\":{\"additionalProperties\":false,\"properties\":{\"chunks\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"id\":{\"type\":\"string\"},\"project\":{\"type\":\"string\"},\"revision\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"source\":{\"type\":\"string\"},\"space\":{\"type\":\"string\"},\"title\":{\"type\":\"string\"}},\"required\":[\"id\",\"title\",\"source\",\"revision\",\"chunks\",\"space\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"chunks\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"id\":{\"type\":\"string\"},\"project\":{\"type\":\"string\"},\"revision\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"source\":{\"type\":\"string\"},\"space\":{\"type\":\"string\"},\"title\":{\"type\":\"string\"}},\"required\":[\"id\",\"title\",\"source\",\"revision\",\"chunks\",\"space\"],\"type\":\"object\"},\"target\":\"installation\"},{\"description\":\"\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl.TGlzdElucHV0\":{\"additionalProperties\":false,\"properties\":{\"project\":{\"type\":\"string\"}},\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"project\":{\"type\":\"string\"}},\"type\":\"object\"},\"kind\":\"query\",\"name\":\"flame.knowledgebase/list-claims.v1\",\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl.Q2xhaW1TdW1tYXJ5\":{\"additionalProperties\":false,\"properties\":{\"id\":{\"type\":\"string\"},\"revision\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"state\":{\"allOf\":[{\"enum\":[\"current\",\"recheck\",\"unavailable\"]}],\"type\":\"string\"},\"statement\":{\"type\":\"string\"}},\"required\":[\"id\",\"revision\",\"state\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl.Q2xhaW1TdW1tYXJ5\"},\"type\":\"array\"},\"target\":\"installation\"},{\"description\":\"\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl.TGlzdElucHV0\":{\"additionalProperties\":false,\"properties\":{\"project\":{\"type\":\"string\"}},\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"project\":{\"type\":\"string\"}},\"type\":\"object\"},\"kind\":\"query\",\"name\":\"flame.knowledgebase/list-work.v1\",\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl.V29ya1JlY2VpcHQ\":{\"additionalProperties\":false,\"properties\":{\"id\":{\"type\":\"string\"},\"methodVersion\":{\"type\":\"string\"},\"revision\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"}},\"required\":[\"id\",\"revision\",\"methodVersion\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl.V29ya1JlY2VpcHQ\"},\"type\":\"array\"},\"target\":\"installation\"},{\"description\":\"\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl.TGlzdElucHV0\":{\"additionalProperties\":false,\"properties\":{\"project\":{\"type\":\"string\"}},\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"project\":{\"type\":\"string\"}},\"type\":\"object\"},\"kind\":\"query\",\"name\":\"flame.knowledgebase/list.v1\",\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9rbm93bGVkZ2U.SGVhZGVy\":{\"additionalProperties\":false,\"properties\":{\"chunks\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"id\":{\"type\":\"string\"},\"project\":{\"type\":\"string\"},\"revision\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"source\":{\"type\":\"string\"},\"space\":{\"type\":\"string\"},\"title\":{\"type\":\"string\"}},\"required\":[\"id\",\"title\",\"source\",\"revision\",\"chunks\",\"space\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9rbm93bGVkZ2U.SGVhZGVy\"},\"type\":\"array\"},\"target\":\"installation\"},{\"description\":\"\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl.TW92ZUlucHV0\":{\"additionalProperties\":false,\"properties\":{\"expectedRevision\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"id\":{\"maxLength\":128,\"minLength\":1,\"type\":\"string\"},\"project\":{\"minLength\":1,\"type\":\"string\"},\"targetProject\":{\"minLength\":1,\"type\":\"string\"}},\"required\":[\"id\",\"expectedRevision\",\"project\",\"targetProject\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"expectedRevision\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"id\":{\"maxLength\":128,\"minLength\":1,\"type\":\"string\"},\"project\":{\"minLength\":1,\"type\":\"string\"},\"targetProject\":{\"minLength\":1,\"type\":\"string\"}},\"required\":[\"id\",\"expectedRevision\",\"project\",\"targetProject\"],\"type\":\"object\"},\"kind\":\"command\",\"name\":\"flame.knowledgebase/move.v1\",\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9rbm93bGVkZ2U.SGVhZGVy\":{\"additionalProperties\":false,\"properties\":{\"chunks\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"id\":{\"type\":\"string\"},\"project\":{\"type\":\"string\"},\"revision\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"source\":{\"type\":\"string\"},\"space\":{\"type\":\"string\"},\"title\":{\"type\":\"string\"}},\"required\":[\"id\",\"title\",\"source\",\"revision\",\"chunks\",\"space\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"chunks\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"id\":{\"type\":\"string\"},\"project\":{\"type\":\"string\"},\"revision\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"source\":{\"type\":\"string\"},\"space\":{\"type\":\"string\"},\"title\":{\"type\":\"string\"}},\"required\":[\"id\",\"title\",\"source\",\"revision\",\"chunks\",\"space\"],\"type\":\"object\"},\"target\":\"installation\"},{\"description\":\"\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl.Q2xhaW1SZWFkSW5wdXQ\":{\"additionalProperties\":false,\"properties\":{\"id\":{\"maxLength\":128,\"minLength\":1,\"type\":\"string\"},\"project\":{\"minLength\":1,\"type\":\"string\"},\"revision\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"}},\"required\":[\"project\",\"id\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"id\":{\"maxLength\":128,\"minLength\":1,\"type\":\"string\"},\"project\":{\"minLength\":1,\"type\":\"string\"},\"revision\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"}},\"required\":[\"project\",\"id\"],\"type\":\"object\"},\"kind\":\"query\",\"name\":\"flame.knowledgebase/read-claim.v1\",\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\":{\"type\":\"string\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl.Q2xhaW1FdmlkZW5jZQ\":{\"additionalProperties\":false,\"properties\":{\"documentId\":{\"maxLength\":128,\"minLength\":1,\"type\":\"string\"},\"excerpt\":{\"type\":\"string\"},\"firstLine\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"lastLine\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"needsRecheck\":{\"type\":\"boolean\"},\"page\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"revision\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"source\":{\"type\":\"string\"},\"title\":{\"type\":\"string\"}},\"required\":[\"documentId\",\"revision\",\"page\",\"firstLine\",\"lastLine\",\"title\",\"source\",\"excerpt\",\"needsRecheck\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl.Q2xhaW1SZWFk\":{\"additionalProperties\":false,\"properties\":{\"acceptedAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"},\"evidence\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl.Q2xhaW1FdmlkZW5jZQ\"},\"type\":\"array\"},\"id\":{\"type\":\"string\"},\"reason\":{\"type\":\"string\"},\"revision\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"state\":{\"allOf\":[{\"enum\":[\"current\",\"recheck\",\"unavailable\"]}],\"type\":\"string\"},\"statement\":{\"type\":\"string\"}},\"required\":[\"id\",\"revision\",\"state\",\"acceptedAt\",\"evidence\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"acceptedAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"},\"evidence\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl.Q2xhaW1FdmlkZW5jZQ\"},\"type\":\"array\"},\"id\":{\"type\":\"string\"},\"reason\":{\"type\":\"string\"},\"revision\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"state\":{\"allOf\":[{\"enum\":[\"current\",\"recheck\",\"unavailable\"]}],\"type\":\"string\"},\"statement\":{\"type\":\"string\"}},\"required\":[\"id\",\"revision\",\"state\",\"acceptedAt\",\"evidence\"],\"type\":\"object\"},\"target\":\"installation\"},{\"description\":\"\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl.V29ya1JlYWQ\":{\"additionalProperties\":false,\"properties\":{\"id\":{\"maxLength\":128,\"minLength\":1,\"type\":\"string\"},\"project\":{\"type\":\"string\"},\"revision\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":0,\"type\":\"integer\"}},\"required\":[\"project\",\"id\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"id\":{\"maxLength\":128,\"minLength\":1,\"type\":\"string\"},\"project\":{\"type\":\"string\"},\"revision\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":0,\"type\":\"integer\"}},\"required\":[\"project\",\"id\"],\"type\":\"object\"},\"kind\":\"query\",\"name\":\"flame.knowledgebase/read-work.v1\",\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\":{\"type\":\"string\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl.Q2xhaW1FdmlkZW5jZQ\":{\"additionalProperties\":false,\"properties\":{\"documentId\":{\"maxLength\":128,\"minLength\":1,\"type\":\"string\"},\"excerpt\":{\"type\":\"string\"},\"firstLine\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"lastLine\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"needsRecheck\":{\"type\":\"boolean\"},\"page\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"revision\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"source\":{\"type\":\"string\"},\"title\":{\"type\":\"string\"}},\"required\":[\"documentId\",\"revision\",\"page\",\"firstLine\",\"lastLine\",\"title\",\"source\",\"excerpt\",\"needsRecheck\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl.Q2xhaW1SZWFk\":{\"additionalProperties\":false,\"properties\":{\"acceptedAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"},\"evidence\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl.Q2xhaW1FdmlkZW5jZQ\"},\"type\":\"array\"},\"id\":{\"type\":\"string\"},\"reason\":{\"type\":\"string\"},\"revision\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"state\":{\"allOf\":[{\"enum\":[\"current\",\"recheck\",\"unavailable\"]}],\"type\":\"string\"},\"statement\":{\"type\":\"string\"}},\"required\":[\"id\",\"revision\",\"state\",\"acceptedAt\",\"evidence\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl.QXJ0aWZhY3RSZWY\":{\"additionalProperties\":false,\"properties\":{\"id\":{\"pattern\":\"^[a-f0-9]{64}$\",\"type\":\"string\"},\"installationId\":{\"type\":\"string\"},\"object\":{\"maxLength\":2048,\"type\":\"string\"},\"revision\":{\"pattern\":\"^[a-f0-9]{64}$\",\"type\":\"string\"}},\"required\":[\"installationId\",\"id\",\"revision\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl.UmVzZWFyY2hNZXRob2Q\":{\"additionalProperties\":false,\"properties\":{\"instructions\":{\"maxLength\":8192,\"minLength\":1,\"type\":\"string\"},\"name\":{\"maxLength\":128,\"minLength\":1,\"type\":\"string\"}},\"required\":[\"name\",\"instructions\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl.V29ya1ZpZXc\":{\"additionalProperties\":false,\"properties\":{\"artifact\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl.QXJ0aWZhY3RSZWY\"},\"claims\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl.Q2xhaW1SZWFk\"},\"type\":\"array\"},\"evidence\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvcmVzZWFyY2hhcnRpZmFjdA.RXZpZGVuY2U\"},\"id\":{\"type\":\"string\"},\"method\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl.UmVzZWFyY2hNZXRob2Q\"},\"methodVersion\":{\"type\":\"string\"},\"revision\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"state\":{\"type\":\"string\"},\"title\":{\"type\":\"string\"}},\"required\":[\"id\",\"revision\",\"methodVersion\",\"title\",\"state\",\"claims\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvcmVzZWFyY2hhcnRpZmFjdA.RXZpZGVuY2U\":{\"additionalProperties\":false,\"properties\":{\"acceptedSha256\":{\"type\":\"string\"},\"available\":{\"type\":\"boolean\"},\"format\":{\"type\":\"string\"},\"head\":{\"type\":\"string\"},\"headSha256\":{\"type\":\"string\"},\"objectAtHead\":{\"type\":\"boolean\"},\"title\":{\"type\":\"string\"}},\"required\":[\"available\",\"objectAtHead\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"artifact\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl.QXJ0aWZhY3RSZWY\"},\"claims\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl.Q2xhaW1SZWFk\"},\"type\":\"array\"},\"evidence\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvcmVzZWFyY2hhcnRpZmFjdA.RXZpZGVuY2U\"},\"id\":{\"type\":\"string\"},\"method\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl.UmVzZWFyY2hNZXRob2Q\"},\"methodVersion\":{\"type\":\"string\"},\"revision\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"state\":{\"type\":\"string\"},\"title\":{\"type\":\"string\"}},\"required\":[\"id\",\"revision\",\"methodVersion\",\"title\",\"state\",\"claims\"],\"type\":\"object\"},\"target\":\"installation\"},{\"description\":\"\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl.UmVhZElucHV0\":{\"additionalProperties\":false,\"allOf\":[{\"properties\":{\"id\":{\"maxLength\":128}}}],\"properties\":{\"id\":{\"minLength\":1,\"type\":\"string\"},\"page\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"project\":{\"type\":\"string\"},\"revision\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"}},\"required\":[\"id\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"allOf\":[{\"properties\":{\"id\":{\"maxLength\":128}}}],\"properties\":{\"id\":{\"minLength\":1,\"type\":\"string\"},\"page\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"project\":{\"type\":\"string\"},\"revision\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"}},\"required\":[\"id\"],\"type\":\"object\"},\"kind\":\"query\",\"name\":\"flame.knowledgebase/read.v1\",\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl.RG9jdW1lbnRSZWFk\":{\"additionalProperties\":false,\"properties\":{\"document\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9rbm93bGVkZ2U.SGVhZGVy\"},\"page\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"pages\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"text\":{\"type\":\"string\"}},\"required\":[\"document\",\"text\",\"pages\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9rbm93bGVkZ2U.SGVhZGVy\":{\"additionalProperties\":false,\"properties\":{\"chunks\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"id\":{\"type\":\"string\"},\"project\":{\"type\":\"string\"},\"revision\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"source\":{\"type\":\"string\"},\"space\":{\"type\":\"string\"},\"title\":{\"type\":\"string\"}},\"required\":[\"id\",\"title\",\"source\",\"revision\",\"chunks\",\"space\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"document\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9rbm93bGVkZ2U.SGVhZGVy\"},\"page\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"pages\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"text\":{\"type\":\"string\"}},\"required\":[\"document\",\"text\",\"pages\"],\"type\":\"object\"},\"target\":\"installation\"},{\"description\":\"\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl.RG9jdW1lbnRJbnB1dA\":{\"additionalProperties\":false,\"allOf\":[{\"properties\":{\"id\":{\"maxLength\":128}}}],\"properties\":{\"expectedRevision\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"id\":{\"minLength\":1,\"type\":\"string\"}},\"required\":[\"id\",\"expectedRevision\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"allOf\":[{\"properties\":{\"id\":{\"maxLength\":128}}}],\"properties\":{\"expectedRevision\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"id\":{\"minLength\":1,\"type\":\"string\"}},\"required\":[\"id\",\"expectedRevision\"],\"type\":\"object\"},\"kind\":\"command\",\"name\":\"flame.knowledgebase/reindex.v1\",\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9rbm93bGVkZ2U.SGVhZGVy\":{\"additionalProperties\":false,\"properties\":{\"chunks\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"id\":{\"type\":\"string\"},\"project\":{\"type\":\"string\"},\"revision\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"source\":{\"type\":\"string\"},\"space\":{\"type\":\"string\"},\"title\":{\"type\":\"string\"}},\"required\":[\"id\",\"title\",\"source\",\"revision\",\"chunks\",\"space\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"chunks\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"id\":{\"type\":\"string\"},\"project\":{\"type\":\"string\"},\"revision\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"source\":{\"type\":\"string\"},\"space\":{\"type\":\"string\"},\"title\":{\"type\":\"string\"}},\"required\":[\"id\",\"title\",\"source\",\"revision\",\"chunks\",\"space\"],\"type\":\"object\"},\"target\":\"installation\"},{\"description\":\"\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC93aXJl.U2VhcmNoSW5wdXQ\":{\"additionalProperties\":false,\"allOf\":[{\"properties\":{\"limit\":{\"maximum\":8},\"query\":{\"maxLength\":4096}}}],\"properties\":{\"limit\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"project\":{\"type\":\"string\"},\"query\":{\"minLength\":1,\"type\":\"string\"}},\"required\":[\"query\",\"limit\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"allOf\":[{\"properties\":{\"limit\":{\"maximum\":8},\"query\":{\"maxLength\":4096}}}],\"properties\":{\"limit\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"project\":{\"type\":\"string\"},\"query\":{\"minLength\":1,\"type\":\"string\"}},\"required\":[\"query\",\"limit\"],\"type\":\"object\"},\"kind\":\"query\",\"name\":\"flame.knowledgebase/search.v1\",\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9rbm93bGVkZ2U.SGVhZGVy\":{\"additionalProperties\":false,\"properties\":{\"chunks\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"id\":{\"type\":\"string\"},\"project\":{\"type\":\"string\"},\"revision\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"source\":{\"type\":\"string\"},\"space\":{\"type\":\"string\"},\"title\":{\"type\":\"string\"}},\"required\":[\"id\",\"title\",\"source\",\"revision\",\"chunks\",\"space\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9rbm93bGVkZ2U.TWF0Y2g\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9rbm93bGVkZ2U.bWF0Y2hQcm9qZWN0aW9u\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9rbm93bGVkZ2U.bWF0Y2hQcm9qZWN0aW9u\":{\"additionalProperties\":false,\"properties\":{\"chunk\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"document\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9rbm93bGVkZ2U.SGVhZGVy\"},\"score\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3ZhbHVl.TnVtYmVy\"},\"text\":{\"type\":\"string\"}},\"required\":[\"document\",\"chunk\",\"text\",\"score\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3ZhbHVl.TnVtYmVy\":{\"type\":\"number\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMva25vd2xlZGdlYmFzZS9pbnRlcm5hbC9rbm93bGVkZ2U.TWF0Y2g\"},\"type\":\"array\"},\"target\":\"installation\"}],\"protocol\":\"io.github.tangerg.flame/plugin/1\",\"reference\":\"flame.knowledgebase.v1\",\"scope\":\"installation\"}";

@@ -11,7 +11,7 @@ import {
   MAIN_PARTS,
 } from "./archive";
 import { readChart } from "./charts";
-import { textNodes, textRunId } from "./inspection";
+import { isSlideChartPart, textNodes, textRunId } from "./inspection";
 import { attribute, namespaces, type XmlDocument, type XmlNode } from "./xml";
 
 const POWERPOINT_2010 =
@@ -349,6 +349,13 @@ export function slideLayout(archive: OfficePackage): SlideLayout {
         const placed = elementFrame(archive, slide.id, node);
         const rotation = transformNode(node)?.attributes.rot;
         const part = chartPart(archive, slide.id, node);
+        if (part && isSlideChartPart(part))
+          text.push(
+            ...textNodes(archive, part).nodes.map((run, index) => ({
+              id: textRunId(part, index),
+              text: run.text,
+            })),
+          );
         let chart: ElementView["chart"];
         if (part)
           try {
@@ -357,6 +364,7 @@ export function slideLayout(archive: OfficePackage): SlideLayout {
               type: model.type,
               workbook: model.workbook.kind,
               data: model.data,
+              legendPosition: model.legendPosition,
             };
           } catch {
             // Unsupported chart structures stay visible but expose no editable data.

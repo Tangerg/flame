@@ -41,6 +41,7 @@ export const en: Record<string, string> = {
   "field.instructions": "Instructions",
   "field.cron": "Cron expression",
   "field.timeZone": "Time zone",
+  "field.project": "Project ID",
   "field.workspace": "Workspace path",
   "field.workspace.placeholder": "Empty uses the Runtime default",
   "field.model": "Model",

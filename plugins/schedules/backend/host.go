@@ -37,6 +37,17 @@ func (h remoteRuns) Admit(ctx context.Context, request schedule.RunRequest) erro
 		Input:      []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: execution.Instructions()}},
 		Provider:   selection.Provider(), Model: selection.Model(), ReasoningEffort: selection.ReasoningEffort(),
 	}
+	if execution.ProjectID() != "" {
+		start.NewSession.ProjectID = execution.ProjectID()
+		title := execution.Title()
+		if title == "" {
+			title = request.ScheduleID()
+		}
+		start.Background = &protocol.BackgroundSource{
+			ProjectID: execution.ProjectID(), Kind: "schedules", ID: request.ScheduleID(),
+			Version: request.EventVersion(), Title: title,
+		}
+	}
 	if execution.CWD() != "" {
 		start.NewSession.Workspace = &protocol.WorkspaceRef{Path: execution.CWD()}
 	}
@@ -45,7 +56,13 @@ func (h remoteRuns) Admit(ctx context.Context, request schedule.RunRequest) erro
 	if err != nil {
 		return err
 	}
-	acceptance, err := h.client.GetRunAcceptance(ctx, protocol.GetRunAcceptanceRequest{Namespace: namespace, Key: key, Operation: protocol.RunCommandStart, Request: &start}, protocol.CallOptions{})
+	options := protocol.RunCommandOptions{IdempotencyKey: key, IdempotencyNamespace: namespace}
+	if start.Background != nil {
+		options.RequestMeta.ClientCapabilities = &protocol.ClientCapabilities{
+			InterruptTypes: []protocol.InterruptType{protocol.InterruptQuestion, protocol.InterruptApproval},
+		}
+	}
+	acceptance, err := h.client.GetRunAcceptance(ctx, protocol.GetRunAcceptanceRequest{Namespace: namespace, Key: key, Operation: protocol.RunCommandStart, Request: &start}, protocol.CallOptions{RequestMeta: options.RequestMeta})
 	if err != nil {
 		return err
 	}
@@ -61,7 +78,7 @@ func (h remoteRuns) Admit(ctx context.Context, request schedule.RunRequest) erro
 	}
 	observation, cancel := context.WithCancel(ctx)
 	defer cancel()
-	ack, _, err := h.client.StartRun(observation, start, protocol.RunCommandOptions{IdempotencyKey: key, IdempotencyNamespace: namespace})
+	ack, _, err := h.client.StartRun(observation, start, options)
 	if err != nil {
 		return err
 	}

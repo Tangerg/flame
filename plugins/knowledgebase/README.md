@@ -8,7 +8,7 @@ There is no Session store or provider client in the backend.
 Build this package with the ordinary first-party builder documented in
 [`../README.md`](../README.md). Installation requires the built package, including
 its executable. Enable it and configure Runtime's embedding role before importing
-documents. The package has no graphical component.
+documents. Open **Project research** from a project home or the workspace view catalog.
 
 ## Operations and tools
 
@@ -55,6 +55,23 @@ code points; a block larger than that limit is split at the limit. One import us
 embedding exchange over at most 32 chunks. Search uses one query embedding and a
 bounded scan of the private index. There is no automatic provider retry.
 
+## Project research
+
+Import a UTF-8 text or Markdown file from the research view. A form-feed
+character separates numbered pages, including text extracted from a paginated
+source. A page reader shows line numbers so a citation can identify one
+document, revision, page and range. Accept a research statement by recording a
+reason and one or more inspected citations. A decision link opens that exact
+claim revision in the owning Project.
+
+When a document changes, the research view compares each cited range with the
+current text and retains the old passage and reason. Matching ranges stay
+current. Replacing or moving a document retains up to 32 previous source
+revisions. Moving a document to another Project preserves its index and
+withdraws the former Project's access. The original Project's research view
+then omits the affected statement, reason and passages. The accept receipt
+contains the decision identity, revision and acceptance time.
+
 ## Model context
 
 Add `knowledgebase-context` to the ordered `flame.model-context.v3` composition
@@ -96,6 +113,22 @@ Database corruption is a protocol failure, not a business refusal.
 Generate contracts from the repository workspace with
 `make generate`. Run the backend's tests from
 the workspace with `go test ./plugins/knowledgebase/backend/... -count=1`.
+
+## Research deliverables
+
+In Project Research, accept work against current claim revisions and an exact
+native Deliverables revision. An optional presentation chart element anchors the
+link to that object. The Deliverables dependency checks the Project, the native
+bytes and the chart from its own archive. The research procedure has an
+immutable content version that can be reused by another work item.
+
+Revalidate to check the original page lines and current native head. Work with
+changed inputs needs a new acceptance. If a cited material is moved out of the
+Project, the affected work hides its derived text and links. Open the latest
+authorized revision in Deliverables to download the editable native file.
+Enable Deliverables before Knowledge Base captures its optional dependency.
+After installing or changing that dependency, reconnect Knowledge Base to
+capture the current release.
 
 ## Contract publication
 

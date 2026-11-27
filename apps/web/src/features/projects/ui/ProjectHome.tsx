@@ -3,7 +3,8 @@ import { useState } from "react";
 import { Button, HeadingLevel, Panel, PanelSection, PanelTitle, TextArea, vocab } from "@flame/ui";
 import { AgentRow } from "@/ui/agent/index";
 import { SystemMessage } from "@/ui/atoms/system-message";
-import { useT } from "@/lib/i18n/index";
+import { labelText, useT } from "@/lib/i18n/index";
+import { useWorkspaceViews } from "@/features/workspace/public/views";
 import { formatRelative } from "@/lib/i18n/relativeTime";
 import { rpcErrorText } from "@/lib/rpcErrors";
 import { useAgent } from "@/features/agent/public/agent";
@@ -15,10 +16,11 @@ import {
 import { useWorkspace } from "@/features/workspace/public/workspace";
 import { useStartProjectSession } from "@/features/projects/application/startProjectSession";
 import { selectWorkspaceChat } from "@/features/workspace/public/navigation";
+import type { ProjectCommandTarget } from "@/features/projects/application/projectCommands";
 import { useProjectsAccess } from "@/features/projects/application/projectsContext";
 import { useProjectHomeTarget } from "@/features/projects/application/projectHome";
 import { useProjects, type ProjectSummary } from "@/features/projects/application/projectQueries";
-import type { ProjectCommandTarget } from "@/features/projects/application/projectCommands";
+import { ProjectBackground } from "./ProjectBackground";
 import { ProjectNameDialog } from "@/features/projects/ui/ProjectNameDialog";
 import { color, space, type as typeStep } from "@flame/ui/tokens.stylex";
 
@@ -55,6 +57,8 @@ function LoadedProjectHome({ project }: { project: ProjectSummary }) {
   const access = useProjectsAccess();
   const agent = useAgent();
   const workspace = useWorkspace();
+  const researchers = useWorkspaceViews().filter((view) => view.material === "project-research");
+  const research = researchers.length === 1 ? researchers[0] : undefined;
   const startSession = useStartProjectSession();
   const { data: sessions = EMPTY_SESSIONS } = useAgentSessions();
   const members = sessions
@@ -95,6 +99,21 @@ function LoadedProjectHome({ project }: { project: ProjectSummary }) {
               <Button variant="primary" size="sm" onClick={() => startSession(project.id)}>
                 {t("projects.home.newSession")}
               </Button>
+              {research && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={(event) =>
+                    workspace.navigation.openViewInDock(
+                      research.id,
+                      event.currentTarget,
+                      JSON.stringify({ project: project.id }),
+                    )
+                  }
+                >
+                  {labelText(research.title)}
+                </Button>
+              )}
               <Button variant="ghost" size="sm" onClick={() => setRenaming(project)}>
                 {t("projects.rename.title")}
               </Button>
@@ -154,6 +173,7 @@ function LoadedProjectHome({ project }: { project: ProjectSummary }) {
             )}
           </div>
         </PanelSection>
+        <ProjectBackground project={project} openSession={open} />
         <PanelSection title={t("projects.home.sessions")}>
           {members.length === 0 ? (
             <p {...stylex.props(vocab.muted, typeStep.uiSm)}>{t("projects.home.noSessions")}</p>

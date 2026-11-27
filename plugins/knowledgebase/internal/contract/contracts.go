@@ -12,13 +12,20 @@ import (
 )
 
 type Contracts struct {
-	Capability *plugincontract.Capability
-	Import     *pluginmcp.Method[wire.ImportInput, knowledge.Header]
-	Reindex    *pluginmcp.Method[wire.DocumentInput, knowledge.Header]
-	Delete     *pluginmcp.Method[wire.DocumentInput, bool]
-	List       *pluginmcp.Method[wire.ListInput, []knowledge.Header]
-	Read       *pluginmcp.Method[wire.ReadInput, wire.DocumentRead]
-	Search     *pluginmcp.Method[wire.SearchInput, []knowledge.Match]
+	AcceptWork  *pluginmcp.Method[wire.WorkAccept, wire.WorkReceipt]
+	ReadWork    *pluginmcp.Method[wire.WorkRead, wire.WorkView]
+	ListWork    *pluginmcp.Method[wire.ListInput, []wire.WorkReceipt]
+	Capability  *plugincontract.Capability
+	Import      *pluginmcp.Method[wire.ImportInput, knowledge.Header]
+	Reindex     *pluginmcp.Method[wire.DocumentInput, knowledge.Header]
+	Delete      *pluginmcp.Method[wire.DocumentInput, bool]
+	List        *pluginmcp.Method[wire.ListInput, []knowledge.Header]
+	Read        *pluginmcp.Method[wire.ReadInput, wire.DocumentRead]
+	Search      *pluginmcp.Method[wire.SearchInput, []knowledge.Match]
+	AcceptClaim *pluginmcp.Method[wire.ClaimAcceptInput, wire.ClaimReceipt]
+	Move        *pluginmcp.Method[wire.MoveInput, knowledge.Header]
+	ReadClaim   *pluginmcp.Method[wire.ClaimReadInput, wire.ClaimRead]
+	ListClaims  *pluginmcp.Method[wire.ListInput, []wire.ClaimSummary]
 }
 
 func NewContracts() (Contracts, error) {
@@ -28,13 +35,20 @@ func NewContracts() (Contracts, error) {
 	}
 	methods := pluginmcp.NewMethodSet(capability)
 	c := Contracts{
-		Capability: capability,
-		Import:     pluginmcp.Implement[wire.ImportInput, knowledge.Header](methods, published.ImportV1Method),
-		Reindex:    pluginmcp.Implement[wire.DocumentInput, knowledge.Header](methods, published.ReindexV1Method),
-		Delete:     pluginmcp.Implement[wire.DocumentInput, bool](methods, published.DeleteV1Method),
-		List:       pluginmcp.Implement[wire.ListInput, []knowledge.Header](methods, published.ListV1Method),
-		Search:     pluginmcp.Implement[wire.SearchInput, []knowledge.Match](methods, published.SearchV1Method),
-		Read:       pluginmcp.Implement[wire.ReadInput, wire.DocumentRead](methods, published.ReadV1Method),
+		AcceptWork:  pluginmcp.Implement[wire.WorkAccept, wire.WorkReceipt](methods, wire.AcceptWork),
+		ReadWork:    pluginmcp.Implement[wire.WorkRead, wire.WorkView](methods, wire.ReadWork),
+		ListWork:    pluginmcp.Implement[wire.ListInput, []wire.WorkReceipt](methods, wire.ListWork),
+		Capability:  capability,
+		AcceptClaim: pluginmcp.Implement[wire.ClaimAcceptInput, wire.ClaimReceipt](methods, published.AcceptClaimV1Method),
+		Move:        pluginmcp.Implement[wire.MoveInput, knowledge.Header](methods, published.MoveV1Method),
+		ReadClaim:   pluginmcp.Implement[wire.ClaimReadInput, wire.ClaimRead](methods, published.ReadClaimV1Method),
+		ListClaims:  pluginmcp.Implement[wire.ListInput, []wire.ClaimSummary](methods, published.ListClaimsV1Method),
+		Import:      pluginmcp.Implement[wire.ImportInput, knowledge.Header](methods, published.ImportV1Method),
+		Reindex:     pluginmcp.Implement[wire.DocumentInput, knowledge.Header](methods, published.ReindexV1Method),
+		Delete:      pluginmcp.Implement[wire.DocumentInput, bool](methods, published.DeleteV1Method),
+		List:        pluginmcp.Implement[wire.ListInput, []knowledge.Header](methods, published.ListV1Method),
+		Search:      pluginmcp.Implement[wire.SearchInput, []knowledge.Match](methods, published.SearchV1Method),
+		Read:        pluginmcp.Implement[wire.ReadInput, wire.DocumentRead](methods, published.ReadV1Method),
 	}
 	if err := methods.Err(); err != nil {
 		return Contracts{}, err

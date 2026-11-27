@@ -371,6 +371,13 @@ export const es = {
   "slides.chart.series": "Nombre de la serie {{number}}",
   "slides.chart.apply": "Usar estos datos",
   "slides.chart.invalid": "Escribe números o deja el valor vacío.",
+  "slides.chart.titleRun": "Título del gráfico {{number}}",
+  "slides.chart.legend": "Posición de la leyenda",
+  "slides.chart.legend.b": "Abajo",
+  "slides.chart.legend.l": "Izquierda",
+  "slides.chart.legend.r": "Derecha",
+  "slides.chart.legend.t": "Arriba",
+  "slides.chart.legend.tr": "Arriba a la derecha",
   "slides.chart.mixed":
     "El libro incrustado de este gráfico contiene otros datos. Edítalos en PowerPoint.",
   "slides.chart.unsupported":
@@ -383,6 +390,8 @@ export const es = {
   "handoff.failed": "No se pudo copiar la referencia.",
   "handoff.unsaved":
     "Guarda o descarta el borrador antes de pasarlo al Agent; una referencia solo nombra revisiones guardadas.",
+  "slides.handoff.saved":
+    "El agente recibe la revisión guardada. Los cambios sin guardar se quedan en el borrador.",
   "slides.slideActions": "Acciones de diapositiva",
   "slides.moveUp": "Mover antes",
   "slides.moveDown": "Mover después",
@@ -413,6 +422,7 @@ export const es = {
   "slides.op.setFrame": "Posición de {{name}}",
   "slides.op.replaceText": "Texto «{{text}}»",
   "slides.op.deleteElement": "Eliminar {{name}}",
+  "slides.op.setChartLegend": "Leyenda de {{name}}",
   "slides.op.setChartData": "Datos de {{name}}",
   "handoff.add": "Pasar al Agent",
   "link.copy": "Copiar enlace",

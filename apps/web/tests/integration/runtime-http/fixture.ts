@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { mkdir, writeFile, copyFile } from "node:fs/promises";
+import { mkdir, writeFile, copyFile, cp, link } from "node:fs/promises";
 import { createConnection } from "node:net";
 import { join } from "node:path";
 import { createInterface } from "node:readline";
@@ -39,7 +39,10 @@ const unavailableIsolationProfile = `(version 1)(allow default)(deny file-read-m
 // live for the whole file, with live accessors for state tests replace.
 export function useRuntimeFixture(
   suite: string,
-  { isolationUnavailable: defaultIsolationUnavailable = false } = {},
+  {
+    packages,
+    isolationUnavailable: defaultIsolationUnavailable = false,
+  }: { packages?: readonly string[]; isolationUnavailable?: boolean } = {},
 ) {
   const environmentRoot = inject("runtimeHttpEnvironmentRoot");
   // Each suite owns a fresh Runtime, so its workspace and durable state start
@@ -49,6 +52,7 @@ export function useRuntimeFixture(
   const runtimeHome = join(suiteRoot, "home");
   const runtimeData = join(suiteRoot, "runtime-data");
   const runtimeStore = join(runtimeData, "runtime");
+  const distribution = packages ? join(suiteRoot, "distribution") : environmentRoot;
   let baseUrl = "";
   let mcpFixturePath = "";
   let providerBaseUrl = "";
@@ -65,7 +69,7 @@ export function useRuntimeFixture(
   let client: FlameClient | undefined;
   let negotiated: ServerCapabilities | undefined;
   let processOutput = "";
-  const runtimeExecutable = join(environmentRoot, "flame-e2e");
+  const runtimeExecutable = join(distribution, "flame-e2e");
   const cliExecutable = join(environmentRoot, "flame-cli-e2e");
   const managedOwners = new Map<"memory" | "schedules", PluginInstallation>();
 
@@ -166,7 +170,7 @@ export function useRuntimeFixture(
     const directory = join(runtimeStore, "runner");
     const socketPath = join(directory, "control.sock");
     const child = spawn(
-      join(environmentRoot, "frame-runner"),
+      join(distribution, "frame-runner"),
       ["--directory", directory, "--socket", socketPath],
       { cwd: root, stdio: ["ignore", "pipe", "pipe"] },
     );
@@ -382,6 +386,18 @@ export function useRuntimeFixture(
   beforeAll(async () => {
     const readyBefore = Date.now() + runtimeFixtureStartupMilliseconds;
     await Promise.all([mkdir(root, { recursive: true }), mkdir(runtimeHome, { recursive: true })]);
+    if (packages) {
+      const directory = join(distribution, "plugins");
+      await mkdir(directory, { recursive: true });
+      await Promise.all([
+        ...["flame-e2e", "frame-runner"].map((name) =>
+          link(join(environmentRoot, name), join(distribution, name)),
+        ),
+        ...packages.map((name) =>
+          cp(join(environmentRoot, "plugins", name), join(directory, name), { recursive: true }),
+        ),
+      ]);
+    }
     mcpFixturePath = join(suiteRoot, "mcp-fixture.mjs");
     await copyFile(mcpFixtureSource, mcpFixturePath);
     const managedSkillDirectory = join(runtimeStore, "skills", managedSkillName);

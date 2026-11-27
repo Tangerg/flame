@@ -177,6 +177,13 @@ export function ScheduleEditor({
             />
           </FormField>
         </FormRow>
+        <FormField label={t("field.project")}>
+          <TextField
+            value={draft.projectId ?? ""}
+            disabled={busy}
+            onChange={(event) => patch("projectId", event.target.value)}
+          />
+        </FormField>
         <FormField label={t("field.workspace")}>
           <TextField
             size="lg"

@@ -201,11 +201,12 @@ type ViewNavigation = Pick<
   "openViewInDock" | "viewHref" | "subscribeViewTarget"
 >;
 
-// A component opens, links and follows only its own plugin's views.
+// Related views require a currently admitted dependency of the calling component.
 function captureViews(
   navigation: ViewNavigation,
   component: ComponentReference,
   signal: AbortSignal,
+  owner?: { runtime: FlameClient; binding: PluginOperationBinding },
 ): ComponentViews {
   const view = (componentId: string) => packageScopedId(component.installationId, componentId);
   return Object.freeze({
@@ -214,6 +215,31 @@ function captureViews(
       navigation.openViewInDock(view(componentId), origin, target);
     },
     href: (componentId: string, target?: string) => navigation.viewHref(view(componentId), target),
+    openRelated:
+      owner &&
+      (async (
+        dependency: string,
+        installationId: string,
+        componentId: string,
+        target?: string,
+        origin?: HTMLElement,
+      ) => {
+        signal.throwIfAborted();
+        const requirements = await owner.runtime.plugins.resolveRequirements(
+          {
+            installationId: owner.binding.installationId,
+            digest: owner.binding.digest,
+            contribution: owner.binding.contribution,
+          },
+          signal,
+        );
+        const admitted = requirements.data.find((entry) => entry.id === dependency);
+        if (!admitted?.bindings.some((binding) => binding.installationId === installationId)) {
+          throw new Error("A related view requires a currently admitted plugin dependency.");
+        }
+        signal.throwIfAborted();
+        navigation.openViewInDock(packageScopedId(installationId, componentId), origin, target);
+      }),
     subscribeTarget(listener: (target: string) => void) {
       signal.throwIfAborted();
       const stop = navigation.subscribeViewTarget(view(component.componentId), (target) => {
@@ -278,7 +304,14 @@ class ComponentInstance {
         signal.throwIfAborted();
         return track((reading) => openSession(sessionId, reading));
       },
-      views: this.sources.views && captureViews(this.sources.views, component, signal),
+      views:
+        this.sources.views &&
+        captureViews(
+          this.sources.views,
+          component,
+          signal,
+          this.sources.binding && { runtime, binding: this.sources.binding },
+        ),
       ...this.effectCapabilities(signal, component),
       notifications: createComponentNotifications(
         this.sources.lifetime,

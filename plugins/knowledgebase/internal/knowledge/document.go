@@ -185,6 +185,21 @@ func (d Document) Replace(expected int64, indexed IndexedDraft) (Document, error
 	return Document{draft: indexed.draft, revision: d.revision + 1, index: indexed.index}, nil
 }
 
+func (d Document) Move(expected int64, from, to string) (Document, error) {
+	if d.revision == 0 || d.draft.content.Project != from || from == "" {
+		return Document{}, ErrNotFound
+	}
+	if err := d.CheckReplacement(expected, d.draft.content.ID); err != nil {
+		return Document{}, err
+	}
+	if _, err := identity.ParseOptionalProject(to); err != nil || to == "" || from == to {
+		return Document{}, ErrInvalidDocument
+	}
+	d.draft.content.Project = to
+	d.revision++
+	return d, nil
+}
+
 func (d Document) CheckReplacement(expected int64, id string) error {
 	if expected != d.revision || d.revision == exactint.Maximum {
 		return ErrRevisionConflict

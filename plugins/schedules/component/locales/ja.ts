@@ -42,6 +42,7 @@ export const ja: Record<string, string> = {
   "field.instructions": "指示",
   "field.cron": "Cron 式",
   "field.timeZone": "タイムゾーン",
+  "field.project": "プロジェクト ID",
   "field.workspace": "ワークスペースのパス",
   "field.workspace.placeholder": "空の場合は Runtime の既定値を使用",
   "field.model": "モデル",

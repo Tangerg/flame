@@ -160,6 +160,14 @@
     "output": "schema.json#/$defs/ReplyPullRequestCommentV1Output"
   },
   {
+    "name": "flame.github/review-work.v1",
+    "kind": "query",
+    "target": "installation",
+    "description": "Open retained review work for one pull request and optional exact base/head revision. Access to the pull request is checked again.",
+    "input": "schema.json#/$defs/ReviewWorkV1Input",
+    "output": "schema.json#/$defs/ReviewWorkV1Output"
+  },
+  {
     "name": "flame.github/submit-pull-request-review.v1",
     "kind": "command",
     "target": "installation",
@@ -190,5 +198,13 @@
     "description": "Replace an inline PR review comment's body by its inspected comment ID. Requires the user's intent and a configured token. Recovery reads the original receipt; an unknown outcome never permits resubmission.",
     "input": "schema.json#/$defs/UpdatePullRequestCommentV1Input",
     "output": "schema.json#/$defs/UpdatePullRequestCommentV1Output"
+  },
+  {
+    "name": "flame.github/update-review-work.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Capture the current pull request, inspect checks for a retained revision, record a finding or human decision, or change the follow setting. Following a pull request rechecks each captured revision and runs configured project checks in isolation. A local decision on a finding or its recheck does not publish a GitHub review.",
+    "input": "schema.json#/$defs/UpdateReviewWorkV1Input",
+    "output": "schema.json#/$defs/UpdateReviewWorkV1Output"
   }
 ]

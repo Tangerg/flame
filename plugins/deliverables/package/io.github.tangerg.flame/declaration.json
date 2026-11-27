@@ -9,6 +9,12 @@
   ],
   "contributions": [
     {
+      "id": "research-artifact",
+      "server": "deliverables",
+      "export": "research-artifact",
+      "contract": "io.github.tangerg.flame/research-artifact/research-artifact.generated.json"
+    },
+    {
       "id": "deliverables",
       "server": "deliverables",
       "export": "deliverables",

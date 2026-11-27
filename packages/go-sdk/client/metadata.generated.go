@@ -20,6 +20,8 @@ var methodMetadata = map[string]methodMeta{
 	"sessions.rollback":                {Name: "sessions.rollback", Kind: unaryMethod, Operation: commandOperation, Result: reflect.TypeFor[*protocol.RollbackSessionResponse](), Event: nil, ResultNullable: false},
 	"sessions.export":                  {Name: "sessions.export", Kind: unaryMethod, Operation: queryOperation, Result: reflect.TypeFor[*protocol.ExportSessionResponse](), Event: nil, ResultNullable: false},
 	"sessions.import":                  {Name: "sessions.import", Kind: unaryMethod, Operation: commandOperation, Result: reflect.TypeFor[*protocol.ImportSessionResponse](), Event: nil, ResultNullable: false},
+	"projects.background.get":          {Name: "projects.background.get", Kind: unaryMethod, Operation: queryOperation, Result: reflect.TypeFor[*protocol.ProjectBackgroundActivity](), Event: nil, ResultNullable: false},
+	"projects.background.setPolicy":    {Name: "projects.background.setPolicy", Kind: unaryMethod, Operation: commandOperation, Result: reflect.TypeFor[*protocol.ProjectBackgroundPolicy](), Event: nil, ResultNullable: false},
 	"projects.list":                    {Name: "projects.list", Kind: unaryMethod, Operation: queryOperation, Result: reflect.TypeFor[*protocol.Page[protocol.Project]](), Event: nil, ResultNullable: false},
 	"projects.get":                     {Name: "projects.get", Kind: unaryMethod, Operation: queryOperation, Result: reflect.TypeFor[*protocol.Project](), Event: nil, ResultNullable: false},
 	"projects.create":                  {Name: "projects.create", Kind: unaryMethod, Operation: commandOperation, Result: reflect.TypeFor[*protocol.Project](), Event: nil, ResultNullable: false},
@@ -37,6 +39,11 @@ var methodMetadata = map[string]methodMeta{
 	"interrupts.list":                  {Name: "interrupts.list", Kind: unaryMethod, Operation: queryOperation, Result: reflect.TypeFor[*protocol.Page[protocol.PendingInterruptSet]](), Event: nil, ResultNullable: false},
 	"plan.get":                         {Name: "plan.get", Kind: unaryMethod, Operation: queryOperation, Result: reflect.TypeFor[*protocol.Plan](), Event: nil, ResultNullable: false},
 	"items.list":                       {Name: "items.list", Kind: unaryMethod, Operation: queryOperation, Result: reflect.TypeFor[*protocol.ListItemsResponse](), Event: nil, ResultNullable: false},
+	"workspaces.tasks.create":          {Name: "workspaces.tasks.create", Kind: unaryMethod, Operation: commandOperation, Result: reflect.TypeFor[*protocol.TaskWorktree](), Event: nil, ResultNullable: false},
+	"workspaces.tasks.list":            {Name: "workspaces.tasks.list", Kind: unaryMethod, Operation: queryOperation, Result: reflect.TypeFor[*protocol.Page[protocol.TaskWorktree]](), Event: nil, ResultNullable: false},
+	"workspaces.tasks.handoff.preview": {Name: "workspaces.tasks.handoff.preview", Kind: unaryMethod, Operation: queryOperation, Result: reflect.TypeFor[*protocol.WorktreeHandoff](), Event: nil, ResultNullable: false},
+	"workspaces.tasks.handoff.apply":   {Name: "workspaces.tasks.handoff.apply", Kind: unaryMethod, Operation: commandOperation, Result: reflect.TypeFor[*protocol.WorktreeHandoff](), Event: nil, ResultNullable: false},
+	"workspaces.tasks.release":         {Name: "workspaces.tasks.release", Kind: unaryMethod, Operation: commandOperation, Result: reflect.TypeFor[struct{}](), Event: nil, ResultNullable: false},
 	"workspaces.resolve":               {Name: "workspaces.resolve", Kind: unaryMethod, Operation: queryOperation, Result: reflect.TypeFor[*protocol.WorkspaceInfo](), Event: nil, ResultNullable: false},
 	"workspaces.list":                  {Name: "workspaces.list", Kind: unaryMethod, Operation: queryOperation, Result: reflect.TypeFor[*protocol.Page[protocol.WorkspaceSummary]](), Event: nil, ResultNullable: false},
 	"workspace.changes.list":           {Name: "workspace.changes.list", Kind: unaryMethod, Operation: queryOperation, Result: reflect.TypeFor[*protocol.Page[protocol.WorkspaceFileChange]](), Event: nil, ResultNullable: false},
@@ -192,6 +199,7 @@ var problemCodes = map[string]int{
 	"stale_segment":                       -32026,
 	"unsupported_mime":                    -32011,
 	"vcs_unavailable":                     -32017,
+	"workspace_file_not_found":            -32050,
 	"workspace_unavailable":               -32005,
 }
 var refusalProblems = map[string]int{

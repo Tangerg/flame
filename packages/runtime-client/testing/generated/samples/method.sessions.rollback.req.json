@@ -1,7 +1,7 @@
 {
   "sessionId": "ses_01",
   "toRunId": "run_01",
-  "expectedLastRootRunId": "run_02",
-  "expectedWorkspacePath": "/workspace/example",
+  "expectedLastRootRunId": "run_01",
+  "expectedWorkspacePath": "/Users/dev/project",
   "restoreType": "history"
 }

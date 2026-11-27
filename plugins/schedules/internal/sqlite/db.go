@@ -2,6 +2,7 @@ package sqlite
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/Tangerg/flame/packages/go-sdk/exactint"
@@ -12,7 +13,7 @@ import (
 
 func Open(ctx context.Context, path string) (sqlite.Database, error) {
 	firstExactInteger := exactint.First().Value()
-	return sqlite.OpenSchema(ctx, path, []string{pluginstorage.CommandsSchema, manualSchema,
+	db, err := sqlite.OpenSchema(ctx, path, []string{pluginstorage.CommandsSchema, manualSchema,
 		pluginstorage.RuntimeTargetSchema,
 
 		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS schedules (
@@ -20,6 +21,7 @@ func Open(ctx context.Context, path string) (sqlite.Database, error) {
 			title       TEXT    NOT NULL DEFAULT '',
 			instructions      TEXT    NOT NULL,
 			cwd         TEXT    NOT NULL DEFAULT '',
+			project_id  TEXT    NOT NULL DEFAULT '',
 			provider    TEXT    NOT NULL DEFAULT '',
 			model       TEXT    NOT NULL DEFAULT '',
 			reasoning_effort TEXT NOT NULL DEFAULT '',
@@ -38,6 +40,7 @@ func Open(ctx context.Context, path string) (sqlite.Database, error) {
 			title       TEXT    NOT NULL DEFAULT '',
 			instructions      TEXT    NOT NULL,
 			cwd         TEXT    NOT NULL DEFAULT '',
+			project_id  TEXT    NOT NULL DEFAULT '',
 			provider    TEXT    NOT NULL DEFAULT '',
 			model       TEXT    NOT NULL DEFAULT '',
 			reasoning_effort TEXT NOT NULL DEFAULT '',
@@ -60,4 +63,26 @@ func Open(ctx context.Context, path string) (sqlite.Database, error) {
 		fmt.Sprintf(`CREATE UNIQUE INDEX IF NOT EXISTS idx_schedule_firings_schedule_pending
 			ON schedule_firings(schedule_id) WHERE state = '%s'`, scheduleFiringPending.databaseValue()),
 	})
+	if err != nil {
+		return db, err
+	}
+	err = db.RunInTx(ctx, func(tx context.Context) error {
+		executor := db.Executor(tx)
+		for _, table := range []string{"schedules", "schedule_firings"} {
+			var existing int
+			if err := executor.QueryRowContext(tx, `SELECT COUNT(*) FROM pragma_table_info(?) WHERE name = 'project_id'`, table).Scan(&existing); err != nil {
+				return err
+			}
+			if existing == 0 {
+				if _, err := executor.ExecContext(tx, "ALTER TABLE "+table+" ADD COLUMN project_id TEXT NOT NULL DEFAULT ''"); err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return sqlite.Database{}, errors.Join(err, db.Close())
+	}
+	return db, nil
 }

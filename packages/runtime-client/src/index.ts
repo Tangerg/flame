@@ -43,6 +43,8 @@ export type {
   Project,
   Session,
   WorkspaceSummary,
+  TaskWorktree,
+  WorktreeHandoff,
   SessionArtifact,
   SessionTrajectory,
   ExportTrajectoryRequest,

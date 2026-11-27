@@ -24,6 +24,12 @@
         "observedAt": {
           "$ref": "#/$defs/EventV1OutputInstantTimestamp"
         },
+        "partitions": {
+          "items": {
+            "$ref": "#/$defs/Partition"
+          },
+          "type": "array"
+        },
         "paths": {
           "items": {
             "type": "string"
@@ -118,6 +124,9 @@
         }
       ],
       "properties": {
+        "capturePartitions": {
+          "type": "boolean"
+        },
         "instructions": {
           "minLength": 1,
           "type": "string"
@@ -134,11 +143,17 @@
           "type": "array",
           "uniqueItems": true
         },
+        "projectId": {
+          "type": "string"
+        },
         "provider": {
           "minLength": 1,
           "type": "string"
         },
         "reasoningEffort": {
+          "type": "string"
+        },
+        "targetSessionId": {
           "type": "string"
         },
         "title": {
@@ -154,9 +169,7 @@
         "title",
         "workspace",
         "paths",
-        "instructions",
-        "provider",
-        "model"
+        "instructions"
       ],
       "type": "object"
     },
@@ -184,6 +197,9 @@
         }
       ],
       "properties": {
+        "capturePartitions": {
+          "type": "boolean"
+        },
         "instructions": {
           "minLength": 1,
           "type": "string"
@@ -200,11 +216,17 @@
           "type": "array",
           "uniqueItems": true
         },
+        "projectId": {
+          "type": "string"
+        },
         "provider": {
           "minLength": 1,
           "type": "string"
         },
         "reasoningEffort": {
+          "type": "string"
+        },
+        "targetSessionId": {
           "type": "string"
         },
         "title": {
@@ -220,9 +242,7 @@
         "title",
         "workspace",
         "paths",
-        "instructions",
-        "provider",
-        "model"
+        "instructions"
       ],
       "type": "object"
     },
@@ -253,6 +273,9 @@
       "properties": {
         "accepted": {
           "type": "boolean"
+        },
+        "admittedRunId": {
+          "type": "string"
         },
         "capture": {
           "$ref": "#/$defs/Capture"
@@ -305,6 +328,9 @@
         }
       ],
       "properties": {
+        "capturePartitions": {
+          "type": "boolean"
+        },
         "instructions": {
           "minLength": 1,
           "type": "string"
@@ -321,11 +347,17 @@
           "type": "array",
           "uniqueItems": true
         },
+        "projectId": {
+          "type": "string"
+        },
         "provider": {
           "minLength": 1,
           "type": "string"
         },
         "reasoningEffort": {
+          "type": "string"
+        },
+        "targetSessionId": {
           "type": "string"
         },
         "title": {
@@ -341,9 +373,7 @@
         "title",
         "workspace",
         "paths",
-        "instructions",
-        "provider",
-        "model"
+        "instructions"
       ],
       "type": "object"
     },
@@ -393,6 +423,9 @@
         }
       ],
       "properties": {
+        "capturePartitions": {
+          "type": "boolean"
+        },
         "instructions": {
           "minLength": 1,
           "type": "string"
@@ -409,11 +442,17 @@
           "type": "array",
           "uniqueItems": true
         },
+        "projectId": {
+          "type": "string"
+        },
         "provider": {
           "minLength": 1,
           "type": "string"
         },
         "reasoningEffort": {
+          "type": "string"
+        },
+        "targetSessionId": {
           "type": "string"
         },
         "title": {
@@ -429,9 +468,7 @@
         "title",
         "workspace",
         "paths",
-        "instructions",
-        "provider",
-        "model"
+        "instructions"
       ],
       "type": "object"
     },
@@ -537,6 +574,38 @@
         "id",
         "origin",
         "target"
+      ],
+      "type": "object"
+    },
+    "Partition": {
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "sha256": {
+          "type": "string"
+        },
+        "state": {
+          "allOf": [
+            {
+              "enum": [
+                "read",
+                "missing",
+                "unavailable",
+                "truncated"
+              ]
+            }
+          ],
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "state"
       ],
       "type": "object"
     },

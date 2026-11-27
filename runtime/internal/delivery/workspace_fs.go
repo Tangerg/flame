@@ -2,7 +2,9 @@ package delivery
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io/fs"
 
 	"github.com/Tangerg/flame/packages/go-sdk/pagination"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
@@ -72,6 +74,9 @@ func (s *Handler) ReadWorkspaceFile(ctx context.Context, in protocol.ReadFileReq
 	read, err := s.workspaceFiles.Read(ctx, in.Workspace.Path, workspaceapp.FileReadInput{
 		Path: in.Path, Range: lineRange, ByteLimit: byteLimit, FromEnd: in.FromEnd,
 	})
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil, protocol.NewFailure(protocol.ErrWorkspaceFileNotFound, "the requested workspace file is missing", err)
+	}
 	if err != nil {
 		return nil, wireWorkspaceError(err)
 	}

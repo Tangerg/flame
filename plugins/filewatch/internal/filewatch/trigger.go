@@ -8,6 +8,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/Tangerg/flame/packages/go-sdk/exactint"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/scope/core/jsonschema"
 )
@@ -28,13 +29,16 @@ var (
 )
 
 type Draft struct {
-	Title           string   `json:"title" jsonschema:"minLength=1"`
-	Workspace       string   `json:"workspace" jsonschema:"minLength=1"`
-	Paths           []string `json:"paths" jsonschema:"minItems=1,uniqueItems=true"`
-	Instructions    string   `json:"instructions" jsonschema:"minLength=1"`
-	Provider        string   `json:"provider" jsonschema:"minLength=1"`
-	Model           string   `json:"model" jsonschema:"minLength=1"`
-	ReasoningEffort string   `json:"reasoningEffort,omitempty"`
+	ProjectID         string   `json:"projectId,omitempty"`
+	Title             string   `json:"title" jsonschema:"minLength=1"`
+	Workspace         string   `json:"workspace" jsonschema:"minLength=1"`
+	Paths             []string `json:"paths" jsonschema:"minItems=1,uniqueItems=true"`
+	Instructions      string   `json:"instructions" jsonschema:"minLength=1"`
+	TargetSessionID   string   `json:"targetSessionId,omitempty"`
+	CapturePartitions bool     `json:"capturePartitions,omitzero"`
+	Provider          string   `json:"provider,omitempty" jsonschema:"minLength=1"`
+	Model             string   `json:"model,omitempty" jsonschema:"minLength=1"`
+	ReasoningEffort   string   `json:"reasoningEffort,omitempty"`
 }
 
 func (Draft) JSONSchemaConstraints() jsonschema.Constraints {
@@ -49,14 +53,29 @@ func (Draft) JSONSchemaConstraints() jsonschema.Constraints {
 type Trigger struct{ draft Draft }
 
 func newTrigger(draft Draft) (Trigger, error) {
+	if _, err := identity.ParseOptionalProject(draft.ProjectID); err != nil {
+		return Trigger{}, errors.Join(ErrInvalid, err)
+	}
 	if !boundedText(draft.Title, maxTitleLength) || !boundedText(draft.Instructions, maxInstructionsLength) ||
 		!boundedText(draft.Workspace, maxWorkspaceLength) || !filepath.IsAbs(draft.Workspace) || filepath.Clean(draft.Workspace) != draft.Workspace ||
 		len(draft.Paths) == 0 || len(draft.Paths) > maxPaths {
 		return Trigger{}, ErrInvalid
 	}
-	selection, err := model.NewWithReasoningEffort(draft.Provider, draft.Model, draft.ReasoningEffort)
-	if err != nil || selection.ValidateExact() != nil {
-		return Trigger{}, errors.Join(ErrInvalid, err)
+	if draft.TargetSessionID != "" {
+		if _, err := identity.ParseSession(draft.TargetSessionID); err != nil {
+			return Trigger{}, errors.Join(ErrInvalid, err)
+		}
+		if draft.Provider != "" || draft.Model != "" || draft.ReasoningEffort != "" {
+			return Trigger{}, ErrInvalid
+		}
+	} else {
+		if draft.CapturePartitions {
+			return Trigger{}, ErrInvalid
+		}
+		selection, err := model.NewWithReasoningEffort(draft.Provider, draft.Model, draft.ReasoningEffort)
+		if err != nil || selection.ValidateExact() != nil {
+			return Trigger{}, errors.Join(ErrInvalid, err)
+		}
 	}
 	seen := make(map[string]bool, len(draft.Paths))
 	for _, path := range draft.Paths {

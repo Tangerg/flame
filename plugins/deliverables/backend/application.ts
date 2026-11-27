@@ -1,5 +1,9 @@
 import { ASSET_MIME } from "../contracts/media";
-import { canonicalJSON, type CallContext } from "@flame/backend-sdk/mcp";
+import {
+  canonicalJSON,
+  Refusal,
+  type CallContext,
+} from "@flame/backend-sdk/mcp";
 import { toolCommandId } from "@flame/backend-sdk";
 import { z } from "zod";
 import {
@@ -10,6 +14,7 @@ import {
   type ThreadMessage,
 } from "../contracts/capability";
 import { LIMITS } from "../contracts/limits";
+import { slideLayoutSchema } from "../contracts/layouts";
 import { projectNumbers, type FrozenJSONValue } from "@frame/sdk/json";
 import { engineCatalogSchema } from "../contracts/evidence";
 import { Archive } from "./archive";
@@ -94,6 +99,53 @@ export class Application {
         .assessments(input.id, source.metadata.id)
         .map(({ reportJSON: _report, ...header }) => header),
     });
+  }
+
+  async researchEvidence(
+    input: { project: string; id: string; revision: string; object?: string },
+    signal: AbortSignal,
+  ) {
+    const unavailable = { available: false, objectAtHead: false };
+    try {
+      const header = this.#archive.document(input.id).snapshot();
+      if (header.project !== input.project) return unavailable;
+      const source = this.#archive.revision(input.id, input.revision);
+      const head =
+        header.head === input.revision
+          ? source
+          : this.#archive.revision(input.id, header.head);
+      let objectAtHead = !input.object;
+      if (input.object) {
+        if (header.format !== "pptx") return unavailable;
+        const chart = input.object;
+        const containsChart = async (bytes: Uint8Array) =>
+          slideLayoutSchema
+            .parse(await this.#formats.slides(bytes, signal))
+            .slides.some((slide) =>
+              slide.elements.some(
+                (element) => element.id === chart && element.kind === "chart",
+              ),
+            );
+        if (!(await containsChart(source.bytes))) return unavailable;
+        objectAtHead = head === source || (await containsChart(head.bytes));
+      }
+      return {
+        available: true,
+        title: header.title,
+        format: header.format,
+        acceptedSha256: source.metadata.sha256,
+        head: header.head,
+        headSha256: head.metadata.sha256,
+        objectAtHead,
+      };
+    } catch (cause) {
+      if (
+        cause instanceof Refusal &&
+        ["document_not_found", "revision_not_found"].includes(cause.code)
+      )
+        return unavailable;
+      throw cause;
+    }
   }
 
   async query(

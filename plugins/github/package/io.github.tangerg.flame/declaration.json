@@ -8,14 +8,60 @@
       "key": "GITHUB_TOKEN",
       "secret": true,
       "required": false
+    },
+    {
+      "id": "review-checks",
+      "server": "github",
+      "target": "env",
+      "key": "GITHUB_REVIEW_CHECKS",
+      "secret": false,
+      "required": false
+    },
+    {
+      "id": "webhook-port",
+      "server": "github",
+      "target": "env",
+      "key": "GITHUB_WEBHOOK_PORT",
+      "secret": false,
+      "required": false
+    },
+    {
+      "id": "webhook-secret",
+      "server": "github",
+      "target": "env",
+      "key": "GITHUB_WEBHOOK_SECRET",
+      "secret": true,
+      "required": false
     }
   ],
   "contributions": [
     {
       "id": "github-operations",
+      "background": true,
       "server": "github",
       "export": "github",
       "contract": "io.github.tangerg.flame/contracts/capability.generated.json"
+    }
+  ],
+  "components": [
+    {
+      "id": "github-reviews",
+      "material": "project-pr-reviews",
+      "title": "Pull request reviews",
+      "localizedTitles": {
+        "zh": "PR 复审",
+        "zh-TW": "PR 複審",
+        "de": "Pull-Request-Prüfungen",
+        "es": "Revisiones de pull requests",
+        "fr": "Revues de pull requests",
+        "ja": "プルリクエストレビュー",
+        "ko": "풀 리퀘스트 검토"
+      },
+      "scope": "client",
+      "placement": "workspaceView",
+      "entry": "io.github.tangerg.flame/components/component.js",
+      "export": "GitHubReviews",
+      "contribution": "github-operations"
     }
   ]
 }

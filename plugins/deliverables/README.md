@@ -111,8 +111,10 @@ that choice.
 "Hand to Agent" appends the saved revision's document, revision and selected
 identities to the conversation's Composer draft through `context.composer`. The
 user adds the instruction and sends it, and the model resolves the identities
-with the same projection. A reference names saved revisions only, so the action
-waits until the draft is saved or discarded. Hosts without a Composer
+with the same projection. A Slides reference can be sent while edits are
+unsaved. It names the revision shown beneath the local draft and leaves the draft
+in the editor. Word and workbook references require the draft to be saved or
+discarded. Hosts without a Composer
 collaborator get "Copy reference for Agent" instead.
 
 A link names a document, optionally a revision and an object: a slide or
@@ -169,7 +171,10 @@ follows the head, so the list keeps everything since that revision.
 editing surface, not a rendering, and actual page images remain the render
 evidence. Elements can be dragged, resized, nudged with the arrow keys (Shift
 moves an inch) or reached from the element list, which also lists elements
-without a frame. Frame, text, chart-data and deletion changes go to the draft.
+without a frame. Frame, text, chart-data, legend position and deletion changes
+go to the draft. An editable chart title uses the native title text runs. Legend
+position has its own precondition, so it can merge with a concurrent title or
+data edit.
 Inserting, reordering, duplicating and deleting slides and adding a text box or
 shape submit immediately and need an empty draft; the editor then selects what
 was added. A new slide takes its layout's title and body placeholders, each
@@ -219,6 +224,10 @@ block's identity and precondition hash. Both are derived per read like `slides`.
 Element edits name the exact source revision. `setFrame` and `setChartData`
 carry the value they replace as `expect`, so a stale value is refused instead
 of overwritten, while edits to other properties still apply on a later revision.
+New charts and chart title or legend edits correct the legacy table range in
+the chart's embedded workbook. Readers such as Keynote can open the resulting
+chart with its original series ranges and values.
+
 `setChartData` keeps category and series counts. It regenerates an embedded chart
 workbook only when that workbook holds nothing but the chart's ranges; otherwise
 the edit is refused so Office's "Edit Data" cannot revert the chart. Duplicating

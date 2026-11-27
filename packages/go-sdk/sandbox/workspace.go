@@ -21,6 +21,7 @@ type Config struct {
 	BaseDir       string
 	UserHome      string
 	ReadOnlyPaths []string
+	RestrictReads bool
 }
 
 type workspaceState uint8
@@ -44,11 +45,20 @@ type Workspace struct {
 var _ toolshell.Executor = (*Workspace)(nil)
 
 func New(ctx context.Context, config Config, source string) (*Workspace, error) {
-	runner, err := platformRunner(config.UserHome, config.ReadOnlyPaths)
+	runner, err := platformRunner(config)
 	if err != nil {
 		return nil, err
 	}
 	return newWorkspace(ctx, config, source, runner)
+}
+
+// RunInPlace confines a command to a workspace whose lifecycle the caller owns.
+func RunInPlace(ctx context.Context, config Config, path string, input toolshell.Input) (toolshell.Output, error) {
+	runner, err := platformRunner(config)
+	if err != nil {
+		return toolshell.Output{}, err
+	}
+	return runner.Run(ctx, path, input)
 }
 
 func newWorkspace(ctx context.Context, config Config, source string, runner commandRunner) (_ *Workspace, err error) {

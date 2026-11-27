@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 2,
+  "runtimeProfile": "io.github.tangerg.flame/component-runtime@8",
+  "entry": "component.js",
+  "modules": [
+    {
+      "path": "component.js",
+      "imports": [
+        "@flame/component-sdk",
+        "@flame/ui",
+        "react",
+        "react/jsx-runtime"
+      ],
+      "dynamicImports": [],
+      "exports": [
+        "OpenCodeSessions"
+      ]
+    }
+  ],
+  "sharedSpecifiers": [
+    "@flame/component-sdk",
+    "@flame/ui",
+    "react",
+    "react/jsx-runtime"
+  ]
+}

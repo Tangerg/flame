@@ -188,6 +188,11 @@ func (e *Effects) admitOpening(ctx context.Context, opening runs.OpeningCommit) 
 		if err := e.actorAuthority.Admit(ctx, actor); err != nil {
 			return err
 		}
+		if source, captured := actor.Background(); captured {
+			if err := e.runState.RecordProjectBackground(ctx, admission, source, actor.InstallationID()); err != nil {
+				return err
+			}
+		}
 	}
 	return nil
 }

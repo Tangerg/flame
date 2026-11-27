@@ -77,6 +77,9 @@
         "nextRunAt": {
           "$ref": "#/$defs/CreateV2OutputInstantTimestamp"
         },
+        "projectId": {
+          "type": "string"
+        },
         "revision": {
           "allOf": [
             {
@@ -173,6 +176,9 @@
         },
         "modelSelection": {
           "$ref": "#/$defs/CreateV2InputModelSelection"
+        },
+        "projectId": {
+          "type": "string"
         },
         "timeZone": {
           "type": "string"
@@ -280,6 +286,9 @@
         },
         "nextRunAt": {
           "$ref": "#/$defs/ListV2OutputInstantTimestamp"
+        },
+        "projectId": {
+          "type": "string"
         },
         "revision": {
           "allOf": [
@@ -396,6 +405,9 @@
         "modelSelection": {
           "$ref": "#/$defs/ModelPatch"
         },
+        "projectId": {
+          "type": "string"
+        },
         "timeZone": {
           "type": "string"
         },
@@ -465,6 +477,9 @@
         },
         "nextRunAt": {
           "$ref": "#/$defs/UpdateV2OutputInstantTimestamp"
+        },
+        "projectId": {
+          "type": "string"
         },
         "revision": {
           "allOf": [

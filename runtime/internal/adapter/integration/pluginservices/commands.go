@@ -158,6 +158,7 @@ func (c *CommandCalls) openCommand(ctx context.Context, record plugin.CommandBin
 		return fail(errors.Join(plugin.ErrCommandUnconfirmed, err))
 	}
 	ctx = borrowed.Context()
+	binding.Activation = &record.Activation
 	command.binding, command.session, command.release = binding, borrowed.Session(), func() { _ = borrowed.Close() }
 	contract, err := plugincontract.ParseCapability(record.Contract.Bytes())
 	if err != nil {

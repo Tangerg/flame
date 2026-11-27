@@ -1,0 +1,58 @@
+[
+  {
+    "name": "flame.opencode/cancel.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Request cancellation of the original prompt and await its stop reason.",
+    "input": "schema.json#/$defs/CancelV1Input",
+    "output": "schema.json#/$defs/CancelV1Output"
+  },
+  {
+    "name": "flame.opencode/fork.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Fork the native session when OpenCode advertises the capability.",
+    "input": "schema.json#/$defs/ForkV1Input",
+    "output": "schema.json#/$defs/ForkV1Output"
+  },
+  {
+    "name": "flame.opencode/get.v1",
+    "kind": "query",
+    "target": "installation",
+    "description": "Read the captured session, progress, permissions and turn settlement.",
+    "input": "schema.json#/$defs/GetV1Input",
+    "output": "schema.json#/$defs/GetV1Output"
+  },
+  {
+    "name": "flame.opencode/list.v1",
+    "kind": "query",
+    "target": "installation",
+    "description": "List native sessions in the canonical workspace.",
+    "input": "schema.json#/$defs/ListV1Input",
+    "output": "schema.json#/$defs/ListV1Output"
+  },
+  {
+    "name": "flame.opencode/open.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Load the original OpenCode session and its history.",
+    "input": "schema.json#/$defs/OpenV1Input",
+    "output": "schema.json#/$defs/OpenV1Output"
+  },
+  {
+    "name": "flame.opencode/permission.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Select an option from the original pending permission.",
+    "input": "schema.json#/$defs/PermissionV1Input",
+    "output": "schema.json#/$defs/PermissionV1Output"
+  },
+  {
+    "name": "flame.opencode/prompt.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Accept one prompt for the bound native session.",
+    "input": "schema.json#/$defs/PromptV1Input",
+    "output": "schema.json#/$defs/PromptV1Output"
+  }
+]

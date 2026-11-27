@@ -40,6 +40,7 @@ type HandlerConfig struct {
 	RunStreams         *runs.Segments
 	Queries            *sessions.QueryCoordinator
 	Projects           *projects.Coordinator
+	ProjectBackground  projectBackgroundStore
 	Usage              *sessions.UsageReporter
 	Feedback           *feedback.Recorder
 	TrajectoryExports  *sessions.TrajectoryExporter
@@ -56,6 +57,7 @@ type HandlerConfig struct {
 	WorkspaceFiles         *workspaceapp.Files
 	WorkspaceVCS           *workspaceapp.VCS
 	WorkspaceDiscovery     *workspaceapp.Discovery
+	TaskWorktrees          *workspaceapp.TaskWorktrees
 	WorkspaceSkills        *workspaceapp.Skills
 	Hooks                  *apphooks.Catalog
 	WorkspaceWatch         *workspaceapp.Watch
@@ -85,6 +87,7 @@ type Handler struct {
 	runStreams         *runs.Segments
 	queries            *sessions.QueryCoordinator
 	projects           *projects.Coordinator
+	projectBackground  projectBackgroundStore
 	usage              *sessions.UsageReporter
 	feedback           *feedback.Recorder
 	trajectoryExports  *sessions.TrajectoryExporter
@@ -94,6 +97,7 @@ type Handler struct {
 	workspaceFiles         *workspaceapp.Files
 	workspaceVCS           *workspaceapp.VCS
 	workspaceDiscovery     *workspaceapp.Discovery
+	taskWorktrees          *workspaceapp.TaskWorktrees
 	workspaceSkills        *workspaceapp.Skills
 	hooks                  *apphooks.Catalog
 	workspaceWatch         *workspaceapp.Watch
@@ -158,6 +162,7 @@ func (c HandlerConfig) validate() error {
 		{name: "WorkspaceFiles", value: c.WorkspaceFiles},
 		{name: "WorkspaceVCS", value: c.WorkspaceVCS},
 		{name: "WorkspaceDiscovery", value: c.WorkspaceDiscovery},
+		{name: "TaskWorktrees", value: c.TaskWorktrees},
 		{name: "WorkspaceSkills", value: c.WorkspaceSkills},
 		{name: "Hooks", value: c.Hooks},
 		{name: "WorkspaceWatch", value: c.WorkspaceWatch},
@@ -239,6 +244,7 @@ func newHandler(cfg HandlerConfig, facts contractFacts) *Handler {
 		runStreams:               cfg.RunStreams,
 		queries:                  cfg.Queries,
 		projects:                 cfg.Projects,
+		projectBackground:        cfg.ProjectBackground,
 		usage:                    cfg.Usage,
 		feedback:                 cfg.Feedback,
 		trajectoryExports:        cfg.TrajectoryExports,
@@ -248,6 +254,7 @@ func newHandler(cfg HandlerConfig, facts contractFacts) *Handler {
 		workspaceFiles:           cfg.WorkspaceFiles,
 		workspaceVCS:             cfg.WorkspaceVCS,
 		workspaceDiscovery:       cfg.WorkspaceDiscovery,
+		taskWorktrees:            cfg.TaskWorktrees,
 		workspaceSkills:          cfg.WorkspaceSkills,
 		hooks:                    cfg.Hooks,
 		workspaceWatch:           cfg.WorkspaceWatch,

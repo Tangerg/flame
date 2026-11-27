@@ -1135,6 +1135,123 @@
       }
     },
     {
+      "name": "projects.background.get",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "projectId",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256,
+            "pattern": "^[^\\p{C}\\p{Z}]*$"
+          }
+        },
+        {
+          "name": "_meta",
+          "schema": {
+            "$ref": "#/components/schemas/RequestMeta"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "schema.json#/$defs/ProjectBackgroundActivity"
+        }
+      },
+      "errors": [
+        {
+          "code": -32048,
+          "message": "project_not_found"
+        }
+      ],
+      "x-flame-kind": "unary",
+      "x-flame-operation": "query",
+      "x-flame-idempotency": "none",
+      "x-flame-replayCursor": "none",
+      "x-flame-pagination": "none",
+      "x-flame-requestFrame": {
+        "properties": {
+          "_meta": {
+            "$ref": "#/components/schemas/RequestMeta"
+          },
+          "projectId": {}
+        },
+        "unevaluatedProperties": false,
+        "allOf": [
+          {
+            "$ref": "schema.json#/$defs/GetProjectRequest"
+          }
+        ]
+      }
+    },
+    {
+      "name": "projects.background.setPolicy",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "projectId",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "policy",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/ProjectBackgroundPolicy"
+          }
+        },
+        {
+          "name": "_meta",
+          "schema": {
+            "$ref": "#/components/schemas/RequestMeta"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "schema.json#/$defs/ProjectBackgroundPolicy"
+        }
+      },
+      "errors": [
+        {
+          "code": -32048,
+          "message": "project_not_found"
+        },
+        {
+          "code": -32019,
+          "message": "revision_conflict"
+        }
+      ],
+      "x-flame-kind": "unary",
+      "x-flame-operation": "command",
+      "x-flame-idempotency": "replayResponse",
+      "x-flame-replayCursor": "none",
+      "x-flame-pagination": "none",
+      "x-flame-requestFrame": {
+        "properties": {
+          "_meta": {
+            "$ref": "#/components/schemas/RequestMeta"
+          },
+          "policy": {
+            "$ref": "#/components/schemas/ProjectBackgroundPolicy"
+          },
+          "projectId": {}
+        },
+        "unevaluatedProperties": false,
+        "allOf": [
+          {
+            "$ref": "schema.json#/$defs/SetProjectBackgroundPolicyRequest"
+          }
+        ]
+      }
+    },
+    {
       "name": "projects.list",
       "paramStructure": "by-name",
       "params": [
@@ -1596,6 +1713,12 @@
           }
         },
         {
+          "name": "background",
+          "schema": {
+            "$ref": "#/components/schemas/BackgroundSource"
+          }
+        },
+        {
           "name": "_meta",
           "schema": {
             "$ref": "#/components/schemas/RequestMeta"
@@ -1666,6 +1789,9 @@
         "properties": {
           "_meta": {
             "$ref": "#/components/schemas/RequestMeta"
+          },
+          "background": {
+            "$ref": "#/components/schemas/BackgroundSource"
           },
           "input": {
             "items": {
@@ -2567,6 +2693,371 @@
       }
     },
     {
+      "name": "workspaces.tasks.create",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "source",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/WorkspaceRef"
+          }
+        },
+        {
+          "name": "base",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "setup",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "_meta",
+          "schema": {
+            "$ref": "#/components/schemas/RequestMeta"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "schema.json#/$defs/TaskWorktree"
+        }
+      },
+      "errors": [
+        {
+          "code": -32005,
+          "message": "workspace_unavailable"
+        },
+        {
+          "code": -32017,
+          "message": "vcs_unavailable"
+        },
+        {
+          "code": -32018,
+          "message": "session_busy"
+        },
+        {
+          "code": -32006,
+          "message": "capability_not_negotiated"
+        }
+      ],
+      "x-flame-kind": "unary",
+      "x-flame-operation": "command",
+      "x-flame-idempotency": "replayResponse",
+      "x-flame-replayCursor": "none",
+      "x-flame-pagination": "none",
+      "x-flame-features": [
+        "git"
+      ],
+      "x-flame-capabilityRules": [
+        {
+          "requires": [
+            "git"
+          ]
+        }
+      ],
+      "x-flame-requestFrame": {
+        "properties": {
+          "_meta": {
+            "$ref": "#/components/schemas/RequestMeta"
+          },
+          "base": {},
+          "setup": {},
+          "source": {
+            "$ref": "#/components/schemas/WorkspaceRef"
+          }
+        },
+        "unevaluatedProperties": false,
+        "allOf": [
+          {
+            "$ref": "schema.json#/$defs/CreateTaskWorktreeRequest"
+          }
+        ]
+      }
+    },
+    {
+      "name": "workspaces.tasks.list",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "_meta",
+          "schema": {
+            "$ref": "#/components/schemas/RequestMeta"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "schema.json#/$defs/PageOfTaskWorktree"
+        }
+      },
+      "errors": [
+        {
+          "code": -32006,
+          "message": "capability_not_negotiated"
+        }
+      ],
+      "x-flame-kind": "unary",
+      "x-flame-operation": "query",
+      "x-flame-idempotency": "none",
+      "x-flame-replayCursor": "none",
+      "x-flame-pagination": "none",
+      "x-flame-features": [
+        "git"
+      ],
+      "x-flame-capabilityRules": [
+        {
+          "requires": [
+            "git"
+          ]
+        }
+      ],
+      "x-flame-requestFrame": {
+        "properties": {
+          "_meta": {
+            "$ref": "#/components/schemas/RequestMeta"
+          }
+        },
+        "unevaluatedProperties": false,
+        "allOf": [
+          {
+            "type": "object"
+          }
+        ]
+      }
+    },
+    {
+      "name": "workspaces.tasks.handoff.preview",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "id",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "_meta",
+          "schema": {
+            "$ref": "#/components/schemas/RequestMeta"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "schema.json#/$defs/WorktreeHandoff"
+        }
+      },
+      "errors": [
+        {
+          "code": -32005,
+          "message": "workspace_unavailable"
+        },
+        {
+          "code": -32018,
+          "message": "session_busy"
+        },
+        {
+          "code": -32019,
+          "message": "revision_conflict"
+        },
+        {
+          "code": -32006,
+          "message": "capability_not_negotiated"
+        }
+      ],
+      "x-flame-kind": "unary",
+      "x-flame-operation": "query",
+      "x-flame-idempotency": "none",
+      "x-flame-replayCursor": "none",
+      "x-flame-pagination": "none",
+      "x-flame-features": [
+        "git"
+      ],
+      "x-flame-capabilityRules": [
+        {
+          "requires": [
+            "git"
+          ]
+        }
+      ],
+      "x-flame-requestFrame": {
+        "properties": {
+          "_meta": {
+            "$ref": "#/components/schemas/RequestMeta"
+          },
+          "id": {}
+        },
+        "unevaluatedProperties": false,
+        "allOf": [
+          {
+            "$ref": "schema.json#/$defs/TaskWorktreeRequest"
+          }
+        ]
+      }
+    },
+    {
+      "name": "workspaces.tasks.handoff.apply",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "id",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "digest",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "_meta",
+          "schema": {
+            "$ref": "#/components/schemas/RequestMeta"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "schema.json#/$defs/WorktreeHandoff"
+        }
+      },
+      "errors": [
+        {
+          "code": -32005,
+          "message": "workspace_unavailable"
+        },
+        {
+          "code": -32018,
+          "message": "session_busy"
+        },
+        {
+          "code": -32019,
+          "message": "revision_conflict"
+        },
+        {
+          "code": -32006,
+          "message": "capability_not_negotiated"
+        }
+      ],
+      "x-flame-kind": "unary",
+      "x-flame-operation": "command",
+      "x-flame-idempotency": "replayResponse",
+      "x-flame-replayCursor": "none",
+      "x-flame-pagination": "none",
+      "x-flame-features": [
+        "git"
+      ],
+      "x-flame-capabilityRules": [
+        {
+          "requires": [
+            "git"
+          ]
+        }
+      ],
+      "x-flame-requestFrame": {
+        "properties": {
+          "_meta": {
+            "$ref": "#/components/schemas/RequestMeta"
+          },
+          "digest": {},
+          "id": {}
+        },
+        "unevaluatedProperties": false,
+        "allOf": [
+          {
+            "$ref": "schema.json#/$defs/ApplyWorktreeHandoffRequest"
+          }
+        ]
+      }
+    },
+    {
+      "name": "workspaces.tasks.release",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "id",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "_meta",
+          "schema": {
+            "$ref": "#/components/schemas/RequestMeta"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "object"
+        }
+      },
+      "errors": [
+        {
+          "code": -32005,
+          "message": "workspace_unavailable"
+        },
+        {
+          "code": -32018,
+          "message": "session_busy"
+        },
+        {
+          "code": -32019,
+          "message": "revision_conflict"
+        },
+        {
+          "code": -32006,
+          "message": "capability_not_negotiated"
+        }
+      ],
+      "x-flame-kind": "unary",
+      "x-flame-operation": "command",
+      "x-flame-idempotency": "replayResponse",
+      "x-flame-replayCursor": "none",
+      "x-flame-pagination": "none",
+      "x-flame-features": [
+        "git"
+      ],
+      "x-flame-capabilityRules": [
+        {
+          "requires": [
+            "git"
+          ]
+        }
+      ],
+      "x-flame-requestFrame": {
+        "properties": {
+          "_meta": {
+            "$ref": "#/components/schemas/RequestMeta"
+          },
+          "id": {}
+        },
+        "unevaluatedProperties": false,
+        "allOf": [
+          {
+            "$ref": "schema.json#/$defs/TaskWorktreeRequest"
+          }
+        ]
+      }
+    },
+    {
       "name": "workspaces.resolve",
       "paramStructure": "by-name",
       "params": [
@@ -3087,6 +3578,10 @@
         {
           "code": -32013,
           "message": "path_outside_root"
+        },
+        {
+          "code": -32050,
+          "message": "workspace_file_not_found"
         },
         {
           "code": -32011,
@@ -8958,6 +9453,21 @@
           }
         ]
       },
+      "BackgroundSource": {
+        "properties": {
+          "id": {},
+          "kind": {},
+          "projectId": {},
+          "title": {},
+          "version": {}
+        },
+        "unevaluatedProperties": false,
+        "allOf": [
+          {
+            "$ref": "schema.json#/$defs/BackgroundSource"
+          }
+        ]
+      },
       "ClientCapabilities": {
         "properties": {
           "excludedEphemeralEvents": {
@@ -9297,6 +9807,23 @@
           }
         ]
       },
+      "ProjectBackgroundPolicy": {
+        "properties": {
+          "maxActive": {},
+          "maxDailyRuns": {},
+          "paused": {},
+          "pullRequests": {
+            "items": {}
+          },
+          "revision": {}
+        },
+        "unevaluatedProperties": false,
+        "allOf": [
+          {
+            "$ref": "schema.json#/$defs/ProjectBackgroundPolicy"
+          }
+        ]
+      },
       "ProviderConfigChange": {
         "properties": {
           "type": {},
@@ -9518,6 +10045,9 @@
       },
       "StartRunRequest": {
         "properties": {
+          "background": {
+            "$ref": "#/components/schemas/BackgroundSource"
+          },
           "input": {
             "items": {
               "$ref": "#/components/schemas/ContentBlock"

@@ -19,6 +19,14 @@ func (c *DeferredCompletion) ReserveForRun(ctx context.Context, runID identity.R
 	if runID.IsZero() {
 		return errors.New("idempotency: deferred live work requires its original Run")
 	}
+	return c.reserve(ctx, runID)
+}
+
+func (c *DeferredCompletion) ReserveExternal(ctx context.Context) error {
+	return c.reserve(ctx, identity.RunID{})
+}
+
+func (c *DeferredCompletion) reserve(ctx context.Context, runID identity.RunID) error {
 	if err := c.claim(ctx, runID); err != nil {
 		return err
 	}

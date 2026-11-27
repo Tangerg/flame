@@ -5,13 +5,41 @@
       "id": "knowledgebase-operations",
       "server": "knowledgebase",
       "export": "knowledgebase",
-      "contract": "io.github.tangerg.flame/contracts/capability.generated.json"
+      "contract": "io.github.tangerg.flame/contracts/capability.generated.json",
+      "requires": [
+        {
+          "id": "research-artifacts",
+          "contract": "io.github.tangerg.flame/contracts/research-artifact.generated.json",
+          "optional": true
+        }
+      ]
     },
     {
       "id": "knowledgebase-context",
       "server": "knowledgebase",
       "export": "context",
       "contract": "io.github.tangerg.flame/contracts/context.generated.json"
+    }
+  ],
+  "components": [
+    {
+      "id": "project-research",
+      "title": "Project research",
+      "localizedTitles": {
+        "zh": "项目研究",
+        "zh-TW": "專案研究",
+        "de": "Projektrecherche",
+        "es": "Investigación del proyecto",
+        "fr": "Recherche du projet",
+        "ja": "プロジェクト調査",
+        "ko": "프로젝트 조사"
+      },
+      "scope": "client",
+      "placement": "workspaceView",
+      "entry": "io.github.tangerg.flame/components/component.js",
+      "export": "ProjectResearch",
+      "material": "project-research",
+      "contribution": "knowledgebase-operations"
     }
   ]
 }

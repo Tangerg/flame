@@ -12,7 +12,7 @@ import {
 
 export type SlideOperation = DraftOperation<"pptx">;
 
-function target(operation: SlideOperation): unknown {
+export function proposedValue(operation: SlideOperation): unknown {
   switch (operation.type) {
     case "setFrame":
       return operation.frame;
@@ -20,6 +20,8 @@ function target(operation: SlideOperation): unknown {
       return operation.text;
     case "setChartData":
       return operation.data;
+    case "setChartLegend":
+      return operation.position;
     case "deleteElement":
       return undefined;
   }
@@ -59,10 +61,14 @@ export function record(
     prior && "expect" in prior ? { ...next, expect: prior.expect } : next
   ) as SlideOperation;
   const unchanged =
-    merged.type !== "deleteElement" && same(expected(merged), target(merged));
+    merged.type !== "deleteElement" &&
+    same(expected(merged), proposedValue(merged));
   if (unchanged)
     return prior
-      ? edited(draft, draft.operations.filter((operation) => operation !== prior))
+      ? edited(
+          draft,
+          draft.operations.filter((operation) => operation !== prior),
+        )
       : draft;
   return mergeDraftEdits(draft, [merged], (operation) =>
     editTarget(operation, runs.has(operation.id) ? element?.id : undefined),
@@ -98,6 +104,7 @@ export function preview(
   const frames = by("setFrame");
   const texts = by("replaceText");
   const charts = by("setChartData");
+  const legends = by("setChartLegend");
   const deleted = by("deleteElement");
   return {
     ...layout,
@@ -121,11 +128,14 @@ export function preview(
             ...run,
             text: texts.get(run.id)?.text ?? run.text,
           })),
-          ...(element.chart && charts.has(element.id)
+          ...(element.chart
             ? {
                 chart: {
                   ...element.chart,
-                  data: charts.get(element.id)!.data,
+                  data: charts.get(element.id)?.data ?? element.chart.data,
+                  ...(legends.has(element.id)
+                    ? { legendPosition: legends.get(element.id)!.position }
+                    : {}),
                 },
               }
             : {}),
@@ -190,11 +200,21 @@ export function reconcile(
         ? { operation, status: "clean", rebased: operation }
         : { operation, status: "conflict", rebased: operation, current };
     }
-    const value =
-      operation.type === "setFrame" ? current?.frame : current?.chart?.data;
+    let value: unknown;
+    switch (operation.type) {
+      case "setFrame":
+        value = current?.frame;
+        break;
+      case "setChartData":
+        value = current?.chart?.data;
+        break;
+      case "setChartLegend":
+        value = current?.chart?.legendPosition;
+        break;
+    }
     if (!current || value === undefined)
       return { operation, status: "missing" };
-    if (same(value, target(operation)))
+    if (same(value, proposedValue(operation)))
       return { operation, status: "applied", rebased: operation };
     if (same(value, operation.expect))
       return { operation, status: "clean", rebased: operation };
