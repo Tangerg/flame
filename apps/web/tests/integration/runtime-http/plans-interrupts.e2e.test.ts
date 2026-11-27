@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { asRunId, asSessionId } from "@flame/runtime-client";
-import { type MCPServerID } from "@flame/runtime-client/wire";
-import { collectRunEvents, nextRuntimeEvent, originalOpeningEvents } from "./observation";
+import { HTTP_HEADERS, type ApprovalModeResult, type MCPServerID } from "@flame/runtime-client/wire";
+import { createAgentRuntimeGateway } from "@/features/agent/adapters/agentRuntimeGateway";
+import { createAgentCommands } from "@/features/agent/application/agentCommandOwner";
+import { setApprovalMode } from "@/features/agent/application/approvalPolicy";
+import { APPROVAL_MODE_KEY } from "@/features/agent/public/approvalPolicy";
+import { createAgentSessionUsage } from "@/features/agent/application/session/sessionUsage";
+import { createAgentSharedMaterial } from "@/features/agent/application/session/sharedMaterial";
+import { queryClient } from "@/lib/queryClient";
+import { collectRunEvents, nextRuntimeEvent, originalOpeningEvents, within } from "./observation";
 import { useRuntimeFixture } from "./fixture";
 
 describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: Plans and interrupts", () => {
@@ -429,5 +436,52 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: Plans and interrupts", () => {
     });
     await expect(fixture.client.approval.setMode(original.mode)).resolves.toEqual(original);
     await expect(fixture.client.approval.getMode()).resolves.toEqual(original);
+  }, 30_000);
+
+  it("keeps the newer approval query after an older mode acknowledgement arrives", async () => {
+    const original = await fixture.client.approval.getMode();
+    const submitted = "safe";
+    const newer = "balanced";
+    const committed = Promise.withResolvers<void>();
+    const release = Promise.withResolvers<void>();
+    const client = fixture.createRuntimeClient(async (input, init) => {
+      const response = await fetch(input, init);
+      if (new Headers(init?.headers).get(HTTP_HEADERS.method) === "approval.setMode") {
+        committed.resolve();
+        await release.promise;
+      }
+      return response;
+    });
+    const commands = createAgentCommands();
+    const runtime = createAgentRuntimeGateway(
+      () => client,
+      { hasCapability: (feature) => fixture.negotiated?.features[feature]?.enabled === true },
+      createAgentSharedMaterial(),
+      commands,
+      createAgentSessionUsage(),
+    );
+    const key = [APPROVAL_MODE_KEY];
+    const saving = setApprovalMode({ commands, runtime: runtime.gateway }, submitted);
+    try {
+      await within(committed.promise, "approval mode acknowledgement");
+      await expect(fixture.client.approval.getMode()).resolves.toMatchObject({ mode: submitted });
+      await fixture.client.approval.setMode(newer);
+      await expect(queryClient.fetchQuery({
+        queryKey: key,
+        queryFn: ({ signal }) => client.approval.getMode(signal),
+        staleTime: 0,
+      })).resolves.toMatchObject({ mode: newer });
+
+      release.resolve();
+      await saving;
+      expect(queryClient.getQueryData<ApprovalModeResult>(key)?.mode).toBe(newer);
+    } finally {
+      release.resolve();
+      await saving;
+      queryClient.removeQueries({ queryKey: key });
+      runtime.dispose();
+      await client.close();
+      await fixture.client.approval.setMode(original.mode);
+    }
   }, 30_000);
 });

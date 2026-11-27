@@ -1,4 +1,4 @@
-import { type RestoreType } from "@/foundation/protocolValues.generated";
+import { type ApprovalRuleDecision, type RestoreType } from "@/foundation/protocolValues.generated";
 export type { RestoreType };
 import {
   type AgentItem,
@@ -118,5 +118,5 @@ export interface AgentRuntimeGateway {
   isRunGone(error: unknown): boolean;
   isReplayLost(error: unknown): boolean;
   setApprovalMode(mode: ApprovalMode): Promise<ApprovalModeResult>;
-  forgetApprovalRule(id: string): Promise<void>;
+  forgetApprovalRule(id: string, expectedDecision: ApprovalRuleDecision): Promise<void>;
 }

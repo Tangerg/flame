@@ -1,4 +1,5 @@
 import type { RuntimeAgentDriver } from "./runtimeDriver";
+import type { ApprovalRuleDecision } from "@/foundation/protocolValues.generated";
 import { type FlameClient } from "@flame/runtime-client";
 import {
   asRunId,
@@ -238,8 +239,8 @@ class RuntimeAgentGateway implements AgentRuntimeGateway {
     return this.runtimeClient().approval.setMode(mode);
   }
 
-  async forgetApprovalRule(id: string) {
-    await this.runtimeClient().approval.forgetRule({ id });
+  async forgetApprovalRule(id: string, expectedDecision: ApprovalRuleDecision) {
+    await this.runtimeClient().approval.forgetRule({ id, expectedDecision });
   }
 
   replaceRuntimeGeneration(): void {

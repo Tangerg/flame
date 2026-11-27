@@ -28,7 +28,7 @@ import {
 } from "./run/runCommands";
 import { subscribeAnySessionRunning } from "./run/rootAttention";
 import { retrySteerInput } from "./input/steering";
-import { forgetRule, forgetRules, setApprovalMode } from "./approvalPolicy";
+import { forgetRules, setApprovalMode } from "./approvalPolicy";
 import { getActiveConversationMessages } from "./conversation/readModel";
 import { submitPendingApproval } from "./hitl/submitPendingApproval";
 
@@ -59,7 +59,6 @@ export function createAgentAccess(dependencies: AgentDependencies) {
     subscribeAnySessionRunning: subscribeAnySessionRunning.bind(undefined, dependencies),
     subscribeRootRunSettlements: dependencies.view.subscribeRootRunSettlements,
     retrySteerInput: retrySteerInput.bind(undefined, dependencies),
-    forgetRule: forgetRule.bind(undefined, dependencies),
     forgetRules: forgetRules.bind(undefined, dependencies),
     setApprovalMode: setApprovalMode.bind(undefined, dependencies),
     getActiveConversationMessages: getActiveConversationMessages.bind(undefined, dependencies),

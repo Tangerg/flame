@@ -4,18 +4,13 @@ import {
   type ApprovalRuleSummary,
   describeApprovalRuleTool,
   describeApprovalSubject,
+  useApprovalRules,
 } from "@/features/agent/public/approvalPolicy";
 import * as stylex from "@stylexjs/stylex";
 import { Fragment, useId, useLayoutEffect, useRef, type ReactNode, type RefObject } from "react";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
-import { DataView } from "@/ui/index";
-import { TextButton } from "@/ui/index";
+import { DataView, TextButton } from "@/ui/index";
 import { Badge, IconButton, PanelSection, vocab, handoffFocus } from "@flame/ui";
-import {
-  forgetApprovalRule,
-  forgetApprovalRules,
-  useApprovalRuleConfigs,
-} from "@/features/approvals/application/approvalConfig";
 import { useActiveSessionId } from "@/features/agent/public/session";
 import { useCommandAction } from "@/features/command/public/commandAction";
 import { Trans, useT, type Translate } from "@/lib/i18n/index";
@@ -76,7 +71,7 @@ export function RulesSection() {
 
   const t = useT();
   const sessionId = useActiveSessionId();
-  const { data, isPending, error, refetch } = useApprovalRuleConfigs(sessionId);
+  const { data, isPending, error, refetch } = useApprovalRules({ sessionId });
   const { busy, run } = useCommandAction({
     wasRetired: wasGenerationRetired,
     fallback: t("approvals.error.forget"),
@@ -100,7 +95,7 @@ export function RulesSection() {
             current={() =>
               source.current.agentAccess === agentAccess && source.current.sessionId === sessionId
             }
-            onClick={() => run(() => forgetApprovalRules(agentAccess, data))}
+            onClick={() => run(() => agentAccess.forgetRules(data))}
             label={t("approvals.clearAll")}
           />
         ) : undefined
@@ -149,7 +144,7 @@ export function RulesSection() {
                       name={t("approvals.forget", { tool: rule.modelName })}
                       descriptionId={descriptionId}
                       busy={busy}
-                      onClick={() => run(() => forgetApprovalRule(agentAccess, rule.id))}
+                      onClick={() => run(() => agentAccess.forgetRules([rule]))}
                     />
                   </div>
                 );
@@ -177,10 +172,8 @@ function RuleForget({
   busy: boolean;
   onClick(): void;
 }) {
-  const action = useRef<HTMLButtonElement>(null);
   return (
     <IconButton
-      ref={action}
       data-rule-forget=""
       icon={iconGlyph("x")}
       size="xs"
@@ -211,10 +204,8 @@ function ClearRules({
   onClick(): void;
   label: string;
 }) {
-  const action = useRef<HTMLButtonElement>(null);
   return (
     <TextButton
-      ref={action}
       pending={busy}
       onClick={(event) => {
         if (current()) handoffFocus(event.currentTarget, context.current);
