@@ -10,7 +10,7 @@ import {
   type PluginCommandRecovery,
 } from "@flame/runtime-client";
 import { parseJSON, stringifyJSON } from "@frame/sdk/json";
-import type { CallPluginRequest } from "@flame/runtime-client/wire";
+import type { PluginCallRoute } from "@flame/runtime-client/wire";
 import type { ActionPayload } from "@a2ui/web_core";
 import { BUILTIN_ACTIONS, Presentation, limits } from "../contracts/document";
 
@@ -19,9 +19,8 @@ export interface InteractionState {
   resetDraft(surfaceId: string): void;
 }
 
-type Binding = Omit<CallPluginRequest, "input">;
 type Review = {
-  binding: Binding;
+  binding: PluginCallRoute;
   input: string;
   approve(): void;
   cancel(): void;
@@ -328,7 +327,7 @@ export class InteractionController {
     }
   }
 
-  async #review(binding: Binding, input: string): Promise<void> {
+  async #review(binding: PluginCallRoute, input: string): Promise<void> {
     const approved = await new Promise<boolean>((resolve) => {
       const abort = () => resolve(false);
       this.#context.signal.addEventListener("abort", abort, { once: true });
@@ -356,15 +355,16 @@ export class InteractionController {
     inputValue: Record<string, unknown>,
   ): Promise<void> {
     this.#context.signal.throwIfAborted();
-    const { binding } = this.#presentation.operation(id);
-    const method = pluginMethod(binding);
+    const { binding: route } = this.#presentation.operation(id);
+    const method = pluginMethod(route);
+    const streaming = method.delivery === "plugins.stream";
     const input = stringifyJSON(inputValue);
-    if (method.kind === "command") await this.#review(binding, input);
+    if (method.kind === "command") await this.#review(route, input);
     const consume = (chunk: unknown) => {
       this.#context.signal.throwIfAborted();
       this.#state.writeOperation(id, { status: "loading", chunk });
     };
-    const { contract, method: name, ...route } = binding;
+    const { contract, method: name, ...binding } = route;
     const intent = method.kind === "command" ? await this.#intent(id, id) : "";
     this.#context.signal.throwIfAborted();
     this.#state.writeOperation(id, { status: "loading" });
@@ -373,11 +373,11 @@ export class InteractionController {
       if (method.kind === "command") {
         const command = { contract, method: name, input };
         data = await this.#context.track(() =>
-          method.streaming
+          streaming
             ? this.#context.runtime.plugins.stream(
                 intent,
                 command,
-                async () => route,
+                async () => binding,
                 consume,
                 (value) => value,
                 this.#context.signal,
@@ -385,15 +385,15 @@ export class InteractionController {
             : this.#context.runtime.plugins.command(
                 intent,
                 command,
-                async () => route,
+                async () => binding,
                 (value) => value,
                 this.#context.signal,
               ),
         );
-      } else if (method.streaming) {
+      } else if (streaming) {
         data = await this.#context.track(() =>
           this.#context.runtime.plugins.queryStream(
-            { ...binding, input },
+            { route, input },
             consume,
             (value) => value,
             this.#context.signal,
@@ -402,7 +402,7 @@ export class InteractionController {
       } else {
         const reply = await this.#context.track(() =>
           this.#context.runtime.plugins.call(
-            { ...binding, input },
+            { route, input },
             { signal: this.#context.signal },
           ),
         );

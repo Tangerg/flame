@@ -5,7 +5,7 @@ import {
   type WireParams,
 } from "@flame/runtime-client/methods";
 import { validateMethodParams, validateWire } from "@flame/runtime-client/validation";
-import type { RequestMeta, CallPluginRequest } from "@flame/runtime-client/wire";
+import type { PluginCallRoute, RequestMeta } from "@flame/runtime-client/wire";
 import { RpcProtocolError } from "./errors";
 import { cloneJSON, parseJSON } from "@frame/sdk/json";
 
@@ -33,7 +33,7 @@ export function requestRequiresIdempotency<M extends WireMethodName>(
     return wireMethodRequiresIdempotency(method);
   }
   const request = checkRequest("plugins.call", params);
-  return pluginMethod(request).kind === "command";
+  return pluginMethod(request.route).kind === "command";
 }
 
 // This projection reads routing metadata without re-encoding the feature's
@@ -68,7 +68,9 @@ export function pluginContract(text: string) {
   };
 }
 
-export function pluginMethod(request: Pick<CallPluginRequest, "contract" | "method">) {
+export type PluginMethodReference = Pick<PluginCallRoute, "contract" | "method">;
+
+export function pluginMethod(request: PluginMethodReference) {
   const contract = pluginContract(request.contract);
   const members = contract.methods.filter(
     (member: unknown): member is Record<string, unknown> =>
@@ -89,7 +91,7 @@ export function pluginMethod(request: Pick<CallPluginRequest, "contract" | "meth
   return {
     kind: method.kind,
     target: method.target,
-    streaming: Object.hasOwn(method, "stream"),
+    delivery: Object.hasOwn(method, "stream") ? "plugins.stream" : "plugins.call",
   } as const;
 }
 
@@ -101,18 +103,4 @@ export type PluginDeliveryMethod = "plugins.call" | "plugins.stream";
 
 export function isPluginDeliveryMethod(method: string): method is PluginDeliveryMethod {
   return method === "plugins.call" || method === "plugins.stream";
-}
-
-export function pluginDeliveryMethod(
-  request: Pick<CallPluginRequest, "contract" | "method">,
-): PluginDeliveryMethod {
-  const method = pluginMethod(request);
-  if (!method.streaming) return "plugins.call";
-  return "plugins.stream";
-}
-
-export function pluginOperationKind(
-  request: Pick<CallPluginRequest, "contract" | "method">,
-): "query" | "command" {
-  return pluginMethod(request).kind;
 }

@@ -16,7 +16,6 @@ import (
 
 	"github.com/Tangerg/frame"
 	framecall "github.com/Tangerg/frame/call"
-
 	framevalue "github.com/Tangerg/frame/value"
 )
 
@@ -31,21 +30,16 @@ type PendingInstalledCommand struct {
 
 // Input stays binary so formatting cannot change accepted request bytes.
 type installedCommandRecord struct {
-	Intent         string                `json:"intent"`
-	CommandID      authoring.CommandID   `json:"commandId"`
-	InstallationID string                `json:"installationId"`
-	Digest         string                `json:"digest"`
-	Contribution   string                `json:"contribution"`
-	Contract       string                `json:"contract"`
-	Method         string                `json:"method"`
-	Input          []byte                `json:"input"`
-	Target         framecall.Target      `json:"target"`
-	Replay         authoring.ReplayGuard `json:"replay"`
+	Intent    string                   `json:"intent"`
+	CommandID authoring.CommandID      `json:"commandId"`
+	Route     protocol.PluginCallRoute `json:"route"`
+	Input     []byte                   `json:"input"`
+	Replay    authoring.ReplayGuard    `json:"replay"`
 }
 
 func (p PendingInstalledCommand) MarshalJSON() ([]byte, error) {
 	request := p.Request
-	return json.Marshal(installedCommandRecord{Intent: p.Intent, CommandID: p.CommandID, InstallationID: request.InstallationID, Digest: request.Digest, Contribution: request.Contribution, Contract: request.Contract, Method: request.Method, Input: []byte(request.Input), Target: request.Target, Replay: p.Replay})
+	return json.Marshal(installedCommandRecord{Intent: p.Intent, CommandID: p.CommandID, Route: request.Route, Input: []byte(request.Input), Replay: p.Replay})
 }
 
 func (p *PendingInstalledCommand) UnmarshalJSON(body []byte) error {
@@ -53,7 +47,10 @@ func (p *PendingInstalledCommand) UnmarshalJSON(body []byte) error {
 	if err := json.Unmarshal(body, &record, json.RejectUnknownMembers(true)); err != nil {
 		return err
 	}
-	next := PendingInstalledCommand{Intent: record.Intent, CommandID: record.CommandID, Replay: record.Replay, Request: protocol.CallPluginRequest{InstallationID: record.InstallationID, Digest: record.Digest, Contribution: record.Contribution, Contract: record.Contract, Method: record.Method, Input: string(record.Input), Target: record.Target}}
+	next := PendingInstalledCommand{Intent: record.Intent, CommandID: record.CommandID, Replay: record.Replay, Request: protocol.CallPluginRequest{
+		Route: record.Route,
+		Input: string(record.Input),
+	}}
 	if err := next.validate(); err != nil {
 		return err
 	}
@@ -65,18 +62,19 @@ func (p PendingInstalledCommand) validate() error {
 	if strings.TrimSpace(p.Intent) == "" || p.Intent != strings.TrimSpace(p.Intent) {
 		return errors.New("installed command intent is empty or padded")
 	}
-	if err := errors.Join(p.CommandID.Validate(), p.Replay.Validate(), protocol.ValidateWireTree(p.Request), p.Request.Target.Validate()); err != nil {
+	route := p.Request.Route
+	if err := errors.Join(p.CommandID.Validate(), p.Replay.Validate(), protocol.ValidateWireTree(p.Request), route.Target.Validate()); err != nil {
 		return err
 	}
-	contract, err := plugincontract.ParseCapability([]byte(p.Request.Contract))
+	contract, err := plugincontract.ParseCapability([]byte(route.Contract))
 	if err != nil {
 		return err
 	}
-	method, found := contract.Method(p.Request.Method)
+	method, found := contract.Method(route.Method)
 	if !found || method.Kind() != frame.Command {
 		return errors.New("installed command method is not a command")
 	}
-	if method.Descriptor().Target != p.Request.Target.Scope {
+	if method.Descriptor().Target != route.Target.Scope {
 		return errors.New("installed command target does not match its method")
 	}
 	input, err := framevalue.ParseJSON([]byte(p.Request.Input))
@@ -93,9 +91,6 @@ func (s *Store) loadInstalledCommands() error {
 	}
 	identities := make(map[authoring.CommandID]struct{}, len(commands))
 	for _, command := range commands {
-		if err := command.validate(); err != nil {
-			return fmt.Errorf("load installed command: %w", err)
-		}
 		if _, duplicate := s.installedCommands[command.Intent]; duplicate {
 			return errors.New("duplicate installed command intent")
 		}
@@ -159,10 +154,8 @@ func (s *Store) retireInstalledCommand(command PendingInstalledCommand) error {
 }
 
 func installedCommandEqual(left, right PendingInstalledCommand) bool {
-	a, b := left.Request, right.Request
 	return left.Intent == right.Intent && left.CommandID == right.CommandID && left.Replay == right.Replay &&
-		a.InstallationID == b.InstallationID && a.Digest == b.Digest && a.Contribution == b.Contribution &&
-		a.Contract == b.Contract && a.Method == b.Method && a.Target == b.Target && a.Input == b.Input
+		left.Request == right.Request
 }
 
 func sortedInstalledCommands(commands map[string]PendingInstalledCommand) []PendingInstalledCommand {

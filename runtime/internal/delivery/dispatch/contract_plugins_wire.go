@@ -124,12 +124,11 @@ func registerPluginValues(s *Shapes) {
 	} {
 		s.valueConstraint(spec)
 	}
-	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.CallPluginRequest](), Constraints: []FieldConstraint{
-		{Field: "contract", Kind: ConstraintNonEmpty},
-		{Field: "input", Kind: ConstraintNonEmpty},
-		{Field: "installationId", Kind: ConstraintPattern, Value: identity.InstallationIDPattern()},
-		{Field: "digest", Kind: ConstraintPattern, Value: framevalue.DigestPattern()},
-		{Field: "contribution", Kind: ConstraintPattern, Value: identity.DeclarationIDPattern},
+	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.PluginCallRoute](), Constraints: []FieldConstraint{
+		nonEmpty("contract"),
+		installation,
+		digest,
+		declared("contribution"),
 		{Field: "method", Kind: ConstraintNonEmpty},
 		{Field: "method", Kind: ConstraintMaxLength, Limit: plugin.MaximumCommandTextCharacters},
 		{Field: "method", Kind: ConstraintIdentity},
@@ -139,6 +138,7 @@ func registerPluginValues(s *Shapes) {
 		{Field: "target.reference", Kind: ConstraintNonEmpty},
 		{Field: "target.reference", Kind: ConstraintPattern, Value: `^[^\p{Cc}]*$`},
 	}})
+	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.CallPluginRequest](), Constraints: []FieldConstraint{nonEmpty("input")}})
 	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.PluginCallFailure](), Constraints: []FieldConstraint{
 		{Field: "code", Kind: ConstraintNonEmpty},
 		{Field: "code", Kind: ConstraintMaxLength, Limit: protocol.MaximumPluginFailureCodeCharacters},

@@ -40,7 +40,17 @@ func scheduleQuery(r *poMCPRuntime, query protocol.PageQuery) protocol.CallPlugi
 			if err != nil {
 				r.t.Fatal(err)
 			}
-			return protocol.CallPluginRequest{InstallationID: installation.ID, Digest: installation.Selected.Digest, Contribution: provider.Contribution, Contract: string(contracts.Identity().Bytes()), Method: testsupport.SchedulesListV2Method, Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: installation.ID}, Input: string(input)}
+			return protocol.CallPluginRequest{
+				Route: protocol.PluginCallRoute{
+					InstallationID: installation.ID,
+					Digest:         installation.Selected.Digest,
+					Contribution:   provider.Contribution,
+					Contract:       string(contracts.Identity().Bytes()),
+					Method:         testsupport.SchedulesListV2Method,
+					Target:         framecall.Target{Scope: extension.ScopeInstallation, Reference: installation.ID},
+				},
+				Input: string(input),
+			}
 		}
 	}
 	r.t.Fatal("selected schedule contribution unavailable")
@@ -67,7 +77,7 @@ func scheduleRunRequest(r *poMCPRuntime, id string) protocol.CallPluginRequest {
 	if err != nil {
 		r.t.Fatal(err)
 	}
-	request.Method, request.Input = testsupport.SchedulesRunNowV2Method, string(input)
+	request.Route.Method, request.Input = testsupport.SchedulesRunNowV2Method, string(input)
 	return request
 }
 
@@ -94,7 +104,7 @@ func scheduleCreateRequest(r *poMCPRuntime, draft testsupport.SchedulesDraft) pr
 	if err != nil {
 		r.t.Fatal(err)
 	}
-	request.Method, request.Input = testsupport.SchedulesCreateV2Method, string(input)
+	request.Route.Method, request.Input = testsupport.SchedulesCreateV2Method, string(input)
 	return request
 }
 
@@ -121,7 +131,7 @@ func scheduleUpdateRequest(r *poMCPRuntime, input testsupport.SchedulesUpdateInp
 	if err != nil {
 		r.t.Fatal(err)
 	}
-	request.Method, request.Input = testsupport.SchedulesUpdateV2Method, string(encoded)
+	request.Route.Method, request.Input = testsupport.SchedulesUpdateV2Method, string(encoded)
 	return request
 }
 

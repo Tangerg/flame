@@ -4,6 +4,7 @@ import { join, resolve } from "node:path";
 import { promisify } from "node:util";
 import { describe, expect, it } from "vitest";
 import { INSTALLATION_SCOPE } from "@flame/runtime-client";
+import { RPC_HTTP } from "@flame/runtime-client/wire";
 import { useRuntimeFixture } from "./fixture";
 import { waitUntilReady, within } from "./observation";
 
@@ -67,13 +68,44 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: plugin streams", () => {
       });
       await waitUntilReady(fixture.baseUrl, () => fixture.processOutput);
       const request = {
-        ...installation,
-        contribution: "stream",
-        contract,
-        method: "example.records/read.v1",
+        route: {
+          ...installation,
+          contribution: "stream",
+          contract,
+          method: "example.records/read.v1",
+          target: { scope: INSTALLATION_SCOPE, reference: installation.installationId },
+        },
         input: "{}",
-        target: { scope: INSTALLATION_SCOPE, reference: installation.installationId },
       };
+      const accept = { Accept: `${RPC_HTTP.documentMediaType}, ${RPC_HTTP.streamMediaType}` };
+      const flat = await fixture.postRPC(
+        "plugins.stream",
+        { ...request.route, input: request.input },
+        accept,
+      );
+      await expect(flat.json()).resolves.toMatchObject({
+        error: { data: { problem: { type: "invalid_params" } } },
+      });
+      const invalidRoute = await fixture.postRPC(
+        "plugins.stream",
+        {
+          ...request,
+          route: { ...request.route, target: { ...request.route.target, scope: "" } },
+        },
+        accept,
+      );
+      await expect(invalidRoute.json()).resolves.toMatchObject({
+        error: {
+          data: {
+            problem: {
+              type: "invalid_params",
+              errors: expect.arrayContaining([
+                expect.objectContaining({ field: "route.target.scope" }),
+              ]),
+            },
+          },
+        },
+      });
       const order: unknown[] = [];
       const release = Promise.withResolvers<void>();
       const firstArrived = Promise.withResolvers<void>();

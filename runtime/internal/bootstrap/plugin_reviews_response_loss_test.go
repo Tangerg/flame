@@ -62,10 +62,15 @@ func TestReviewCommandWithoutRunRecoversItsOriginalOwnerAcrossReplacementAndRest
 	r.poMCPTools(&server, func(tools []protocol.MCPTool) bool { return len(tools) == 3 })
 	contribution := installed.Selected.Contributions[0]
 	request := protocol.CallPluginRequest{
-		InstallationID: installed.ID, Digest: installed.Selected.Digest,
-		Contribution: contribution.ID, Contract: contribution.Contract, Method: method,
-		Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: installed.ID},
-		Input:  `{"id":"example-review","expectedRevision":1,"status":"resolved"}`,
+		Route: protocol.PluginCallRoute{
+			InstallationID: installed.ID,
+			Digest:         installed.Selected.Digest,
+			Contribution:   contribution.ID,
+			Contract:       contribution.Contract,
+			Method:         method,
+			Target:         framecall.Target{Scope: extension.ScopeInstallation, Reference: installed.ID},
+		},
+		Input: `{"id":"example-review","expectedRevision":1,"status":"resolved"}`,
 	}
 	options := protocol.CallMetadata{IdempotencyKey: "original-review-command", RequestMeta: protocol.RequestMeta{ProtocolVersion: new(protocol.Version)}}
 	if result := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, options); result.Failure == nil || !errors.Is(result.Failure, protocol.ErrInternalError) {
@@ -136,7 +141,7 @@ func TestReviewCommandWithoutRunRecoversItsOriginalOwnerAcrossReplacementAndRest
 		t.Fatalf("disabled owner settled an unconfirmed command: %+v", result)
 	}
 	retargeted := request
-	retargeted.InstallationID, retargeted.Digest, retargeted.Target.Reference = replacement.ID, replacement.Selected.Digest, replacement.ID
+	retargeted.Route.InstallationID, retargeted.Route.Digest, retargeted.Route.Target.Reference = replacement.ID, replacement.Selected.Digest, replacement.ID
 	if result := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, retargeted, options); !errors.Is(result.Failure, protocol.ErrIdempotencyConflict) {
 		t.Fatalf("original identity adopted a replacement target: %+v", result)
 	}
@@ -157,8 +162,8 @@ func TestReviewCommandWithoutRunRecoversItsOriginalOwnerAcrossReplacementAndRest
 	read := func(owner *protocol.PluginInstallation, revision int64, status string) {
 		t.Helper()
 		query := request
-		query.InstallationID, query.Digest, query.Target.Reference = owner.ID, owner.Selected.Digest, owner.ID
-		query.Method, query.Input = "io.github.tangerg.flame.examples/reviews.list", `{}`
+		query.Route.InstallationID, query.Route.Digest, query.Route.Target.Reference = owner.ID, owner.Selected.Digest, owner.ID
+		query.Route.Method, query.Input = "io.github.tangerg.flame.examples/reviews.list", `{}`
 		reply := r.must(delivery.PluginsCall, query, "").(*protocol.CallPluginResponse)
 		var page struct {
 			Reviews []struct {

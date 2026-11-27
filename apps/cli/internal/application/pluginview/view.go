@@ -166,9 +166,15 @@ func (v View) request(method string, bindings []protocol.PluginTerminalInput, co
 		return protocol.CallPluginRequest{}, err
 	}
 	return protocol.CallPluginRequest{
-		InstallationID: v.InstallationID, Digest: v.Digest, Contribution: v.Contribution, Contract: v.contract,
-		Method: method, Input: string(encoded),
-		Target: framecall.Target{Scope: compiled.Descriptor().Target, Reference: v.InstallationID},
+		Route: protocol.PluginCallRoute{
+			InstallationID: v.InstallationID,
+			Digest:         v.Digest,
+			Contribution:   v.Contribution,
+			Contract:       v.contract,
+			Method:         method,
+			Target:         framecall.Target{Scope: compiled.Descriptor().Target, Reference: v.InstallationID},
+		},
+		Input: string(encoded),
 	}, nil
 }
 

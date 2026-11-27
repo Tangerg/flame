@@ -323,7 +323,17 @@ func fixtureScheduleRunRequest(t *testing.T, fixture *liveDeepSeekFixture, id st
 		}
 		for _, installation := range installations.Data {
 			if installation.ID == provider.InstallationID {
-				return protocol.CallPluginRequest{InstallationID: installation.ID, Digest: installation.Selected.Digest, Contribution: provider.Contribution, Contract: string(contracts.Identity().Bytes()), Method: testsupport.SchedulesRunNowV2Method, Input: string(input), Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: installation.ID}}
+				return protocol.CallPluginRequest{
+					Route: protocol.PluginCallRoute{
+						InstallationID: installation.ID,
+						Digest:         installation.Selected.Digest,
+						Contribution:   provider.Contribution,
+						Contract:       string(contracts.Identity().Bytes()),
+						Method:         testsupport.SchedulesRunNowV2Method,
+						Target:         framecall.Target{Scope: extension.ScopeInstallation, Reference: installation.ID},
+					},
+					Input: string(input),
+				}
 			}
 		}
 	}
@@ -353,7 +363,7 @@ func fixtureScheduleCreateRequest(t *testing.T, fixture *liveDeepSeekFixture, dr
 	if err != nil {
 		t.Fatal(err)
 	}
-	request.Method, request.Input = testsupport.SchedulesCreateV2Method, string(input)
+	request.Route.Method, request.Input = testsupport.SchedulesCreateV2Method, string(input)
 	return request
 }
 

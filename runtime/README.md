@@ -327,6 +327,11 @@ The shared TS client and component SDK expose `queryStream` for reads and
 retain `stream` for durable commands. Early consumer withdrawal cancels and joins
 the original stream; missing final evidence never synthesizes completion.
 
+Core `2026-11-27.6` carries a required `route` and the original `input` in
+plugin calls, streams, and command lookups. The route owns installation, release,
+contribution, callable contract, method, and target validation. A pending CLI
+command records the same route shape and keeps the original input bytes.
+
 ## Never-dispatched command retirement
 
 Core `2026-10-16.1` exposes `plugins.retireCommand` and Go `RetirePluginCommand`

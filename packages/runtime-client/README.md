@@ -121,6 +121,10 @@ and it does not validate changed input. Original input, contract and route remai
 validated by command capture and receipt recovery. No raw intent or authored
 input is added to the persistent journal.
 
+`plugins.call` and `plugins.stream` carry an admitted `PluginCallRoute` under
+`route`, with exact feature JSON in `input`. A pending command exposes its
+original route as `binding`. Command lookup returns that route and its input.
+
 Each client owns one mutation journal and retires it when `close()` begins.
 Closing also settles each outstanding response or stream and joins transport,
 receive and consumer work. A failed error observer

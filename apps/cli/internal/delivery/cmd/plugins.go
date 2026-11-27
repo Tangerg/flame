@@ -147,11 +147,11 @@ func newPluginCallCommand(provider runtimeProvider) *cobra.Command {
 		if err != nil {
 			return err
 		}
-		contract, err := plugincontract.ParseCapability([]byte(request.Contract))
+		contract, err := plugincontract.ParseCapability([]byte(request.Route.Contract))
 		if err != nil {
 			return err
 		}
-		method, found := contract.Method(request.Method)
+		method, found := contract.Method(request.Route.Method)
 		if !found {
 			return errors.New("plugin method is absent from the required contract")
 		}

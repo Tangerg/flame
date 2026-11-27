@@ -64,13 +64,16 @@ export class OperationCatalog {
               "genui: admitted contract contains an invalid method",
             );
           }
+          const admitted = pluginMethod({
+            contract: contribution.contract,
+            method: value.name,
+          });
           return {
             ...identity,
             method: value.name,
-            ...pluginMethod({
-              contract: contribution.contract,
-              method: value.name,
-            }),
+            kind: admitted.kind,
+            target: admitted.target,
+            streaming: admitted.delivery === "plugins.stream",
           };
         });
       });

@@ -25,10 +25,15 @@ func TestA2AInstalledConnectorOwnsConfigurationAndAvailability(t *testing.T) {
 		t.Fatal(err)
 	}
 	call := protocol.CallPluginRequest{
-		InstallationID: installed.ID, Digest: installed.Selected.Digest,
-		Contribution: "remote-agents", Contract: contract.Identity().String(),
-		Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: installed.ID},
-		Method: testsupport.A2AAgentsV1Method, Input: `{}`,
+		Route: protocol.PluginCallRoute{
+			InstallationID: installed.ID,
+			Digest:         installed.Selected.Digest,
+			Contribution:   "remote-agents",
+			Contract:       contract.Identity().String(),
+			Target:         framecall.Target{Scope: extension.ScopeInstallation, Reference: installed.ID},
+			Method:         testsupport.A2AAgentsV1Method,
+		},
+		Input: `{}`,
 	}
 	result := r.must(delivery.PluginsCall, call, "").(*protocol.CallPluginResponse)
 	var agents struct {
@@ -39,14 +44,14 @@ func TestA2AInstalledConnectorOwnsConfigurationAndAvailability(t *testing.T) {
 	if result.Failure != nil || json.Unmarshal([]byte(result.Output), &agents) != nil || len(agents.Agents) != 0 {
 		t.Fatalf("parent configuration became installation authority: %+v", result)
 	}
-	call.Method, call.Input = testsupport.A2ASendV1Method, `{"agent":"missing","message":"hello"}`
+	call.Route.Method, call.Input = testsupport.A2ASendV1Method, `{"agent":"missing","message":"hello"}`
 	result = r.must(delivery.PluginsCall, call, "send-unconfigured").(*protocol.CallPluginResponse)
 	if result.Failure == nil || result.Failure.Code != "agent_unconfigured" {
 		t.Fatalf("unconfigured agent was not refused: %+v", result)
 	}
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: false}, "disable-a2a")
 	r.poMCPTools(server, func(tools []protocol.MCPTool) bool { return len(tools) == 0 })
-	call.Method, call.Input = testsupport.A2AAgentsV1Method, `{}`
+	call.Route.Method, call.Input = testsupport.A2AAgentsV1Method, `{}`
 	response := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, call, protocol.CallMetadata{RequestMeta: protocol.RequestMeta{ProtocolVersion: new(protocol.Version)}})
 	if response.Failure == nil {
 		t.Fatal("disabled connector accepted a new call")

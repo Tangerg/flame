@@ -136,10 +136,15 @@ func testReviewReceiptHistoryEntrances(t *testing.T, updateInput, expected strin
 	runtime.poMCPTools(&server, func(tools []protocol.MCPTool) bool { return len(tools) == 3 })
 	contribution := installed.Selected.Contributions[0]
 	request := protocol.CallPluginRequest{
-		InstallationID: installed.ID, Digest: installed.Selected.Digest,
-		Contribution: contribution.ID, Contract: contribution.Contract,
-		Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: installed.ID},
-		Method: "io.github.tangerg.flame.examples/reviews.list", Input: `{}`,
+		Route: protocol.PluginCallRoute{
+			InstallationID: installed.ID,
+			Digest:         installed.Selected.Digest,
+			Contribution:   contribution.ID,
+			Contract:       contribution.Contract,
+			Target:         framecall.Target{Scope: extension.ScopeInstallation, Reference: installed.ID},
+			Method:         "io.github.tangerg.flame.examples/reviews.list",
+		},
+		Input: `{}`,
 	}
 	initial := runtime.must(delivery.PluginsCall, request, "").(*protocol.CallPluginResponse)
 	before, err := framevalue.ParseJSON([]byte(initial.Output))
@@ -148,7 +153,7 @@ func testReviewReceiptHistoryEntrances(t *testing.T, updateInput, expected strin
 	}
 	key := "cli_" + strings.Repeat("d", 32)
 	malformed := request
-	malformed.Method = "io.github.tangerg.flame.examples/reviews.update"
+	malformed.Route.Method = "io.github.tangerg.flame.examples/reviews.update"
 	malformed.Input = `{"id":"` + strings.Repeat("x", 129) + `","expectedRevision":1,"status":"resolved"}`
 	refused := runtime.endpoint.Invoke(t.Context(), delivery.PluginsCall, malformed, protocol.CallMetadata{
 		IdempotencyKey: key, RequestMeta: protocol.RequestMeta{ProtocolVersion: new(protocol.Version)},
@@ -163,7 +168,7 @@ func testReviewReceiptHistoryEntrances(t *testing.T, updateInput, expected strin
 	}
 	runCLI, closeCLI := reviewCLICommand(t, runtime)
 	defer closeCLI()
-	request.Method, request.Input = "io.github.tangerg.flame.examples/reviews.update", updateInput
+	request.Route.Method, request.Input = "io.github.tangerg.flame.examples/reviews.update", updateInput
 	encoded, err := json.Marshal(request)
 	if err != nil {
 		t.Fatal(err)
@@ -185,7 +190,7 @@ func testReviewReceiptHistoryEntrances(t *testing.T, updateInput, expected strin
 		assertReply(&reply)
 	}
 	assertReply(runtime.must(delivery.PluginsCall, request, key).(*protocol.CallPluginResponse))
-	request.Method, request.Input = "io.github.tangerg.flame.examples/reviews.list", `{}`
+	request.Route.Method, request.Input = "io.github.tangerg.flame.examples/reviews.list", `{}`
 	current := runtime.must(delivery.PluginsCall, request, "").(*protocol.CallPluginResponse)
 	after, err := framevalue.ParseJSON([]byte(current.Output))
 	if err != nil || current.Failure != nil || after != before {

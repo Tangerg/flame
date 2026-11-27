@@ -80,7 +80,17 @@ func TestSandboxInstalledNativeToolAndTypedCommandsKeepCoreRunOwnership(t *testi
 	if err != nil {
 		t.Fatal(err)
 	}
-	request := protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "sandbox-operations", Contract: contracts.Identity().String(), Method: testsupport.SandboxExecuteV1Method, Input: input.String(), Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: installed.ID}}
+	request := protocol.CallPluginRequest{
+		Route: protocol.PluginCallRoute{
+			InstallationID: installed.ID,
+			Digest:         installed.Selected.Digest,
+			Contribution:   "sandbox-operations",
+			Contract:       contracts.Identity().String(),
+			Method:         testsupport.SandboxExecuteV1Method,
+			Target:         framecall.Target{Scope: extension.ScopeInstallation, Reference: installed.ID},
+		},
+		Input: input.String(),
+	}
 	typed := r.must(delivery.PluginsCall, request, "native-typed").(*protocol.CallPluginResponse)
 	var result testsupport.SandboxResult
 	if err := json.Unmarshal([]byte(typed.Output), &result); err != nil || typed.Failure != nil || generatedInteger(t, result.ExitCode) != 5 || result.Stdout.Content != "native-typed-result" {

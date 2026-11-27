@@ -143,10 +143,15 @@ func assertReviewCLIEntrances(t *testing.T, runtime *poMCPRuntime, installed *pr
 	}
 	contribution := installed.Selected.Contributions[0]
 	request := protocol.CallPluginRequest{
-		InstallationID: installed.ID, Digest: installed.Selected.Digest,
-		Contribution: contribution.ID, Contract: contribution.Contract,
-		Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: installed.ID},
-		Method: "io.github.tangerg.flame.examples/reviews.list", Input: `{}`,
+		Route: protocol.PluginCallRoute{
+			InstallationID: installed.ID,
+			Digest:         installed.Selected.Digest,
+			Contribution:   contribution.ID,
+			Contract:       contribution.Contract,
+			Target:         framecall.Target{Scope: extension.ScopeInstallation, Reference: installed.ID},
+			Method:         "io.github.tangerg.flame.examples/reviews.list",
+		},
+		Input: `{}`,
 	}
 	call := func(key string, expected any) {
 		t.Helper()
@@ -173,11 +178,11 @@ func assertReviewCLIEntrances(t *testing.T, runtime *poMCPRuntime, installed *pr
 		}
 	}
 	call("", expected)
-	request.Method, request.Input = "io.github.tangerg.flame.examples/reviews.update", `{"id":"example-review","expectedRevision":1,"status":"resolved"}`
+	request.Route.Method, request.Input = "io.github.tangerg.flame.examples/reviews.update", `{"id":"example-review","expectedRevision":1,"status":"resolved"}`
 	key := "cli_" + strings.Repeat("c", 32)
 	call(key, conflict)
 	call(key, conflict)
-	request.Method, request.Input = "io.github.tangerg.flame.examples/reviews.list", `{}`
+	request.Route.Method, request.Input = "io.github.tangerg.flame.examples/reviews.list", `{}`
 	call("", expected)
 }
 

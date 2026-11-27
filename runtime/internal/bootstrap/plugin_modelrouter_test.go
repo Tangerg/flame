@@ -44,7 +44,17 @@ func TestModelRouterInstalledPolicyBindsNewRunWithoutRewritingSessionOrAcceptedR
 		if err != nil {
 			t.Fatal(err)
 		}
-		request := protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "modelrouter-policy", Contract: contracts.Identity().String(), Method: testsupport.ModelrouterReplacePolicyV1Method, Input: input.String(), Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: installed.ID}}
+		request := protocol.CallPluginRequest{
+			Route: protocol.PluginCallRoute{
+				InstallationID: installed.ID,
+				Digest:         installed.Selected.Digest,
+				Contribution:   "modelrouter-policy",
+				Contract:       contracts.Identity().String(),
+				Method:         testsupport.ModelrouterReplacePolicyV1Method,
+				Target:         framecall.Target{Scope: extension.ScopeInstallation, Reference: installed.ID},
+			},
+			Input: input.String(),
+		}
 		result := r.must(delivery.PluginsCall, request, key).(*protocol.CallPluginResponse)
 		if result.Failure != nil {
 			t.Fatal(result.Failure)

@@ -45,15 +45,20 @@ func TestReviewPrivateInvocationConflictMatchesModelToolAndExecutableCLI(t *test
 	runtime.poMCPTools(&server, func(tools []protocol.MCPTool) bool { return len(tools) == 3 })
 	contribution := installed.Selected.Contributions[0]
 	request := protocol.CallPluginRequest{
-		InstallationID: installed.ID, Digest: installed.Selected.Digest,
-		Contribution: contribution.ID, Contract: contribution.Contract,
-		Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: installed.ID},
-		Method: "io.github.tangerg.flame.examples/reviews.update", Input: input,
+		Route: protocol.PluginCallRoute{
+			InstallationID: installed.ID,
+			Digest:         installed.Selected.Digest,
+			Contribution:   contribution.ID,
+			Contract:       contribution.Contract,
+			Target:         framecall.Target{Scope: extension.ScopeInstallation, Reference: installed.ID},
+			Method:         "io.github.tangerg.flame.examples/reviews.update",
+		},
+		Input: input,
 	}
 	read := func() framevalue.JSON {
 		t.Helper()
 		query := request
-		query.Method, query.Input = "io.github.tangerg.flame.examples/reviews.list", `{}`
+		query.Route.Method, query.Input = "io.github.tangerg.flame.examples/reviews.list", `{}`
 		reply := runtime.must(delivery.PluginsCall, query, "").(*protocol.CallPluginResponse)
 		value, err := framevalue.ParseJSON([]byte(reply.Output))
 		if err != nil || reply.Failure != nil {

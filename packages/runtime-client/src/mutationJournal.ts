@@ -14,7 +14,7 @@ import {
 } from "./mutationJournalEntry";
 import { MutationJournalError, MutationJournalOwnershipError } from "./mutationJournalErrors";
 import { MutationLookupError, mutationSettlementIsUnknown, type MutationPromise } from "./mutation";
-import type { CallPluginRequest } from "@flame/runtime-client/wire";
+import type { CallPluginRequest, PluginCallRoute } from "@flame/runtime-client/wire";
 import { RpcCancellationError } from "./errors";
 import { captureRequestMeta } from "./request";
 import { cloneJSON } from "@frame/sdk/json";
@@ -44,7 +44,7 @@ export interface MutationReservation {
 export interface PendingPluginCommand {
   readonly idempotencyKey: string;
   readonly namespace: string;
-  readonly binding: Omit<CallPluginRequest, "input">;
+  readonly binding: PluginCallRoute;
   matchesIntent(intent: string): boolean;
   reserve(): MutationReservation;
   validate(request: CallPluginRequest): void;
@@ -190,7 +190,10 @@ export class MutationJournal {
         if (signal?.aborted) throw new RpcCancellationError();
         captured = this.#journal.stagePluginCommand(
           intent,
-          { ...binding, ...preparedInput },
+          {
+            route: { ...binding, contract: preparedInput.contract, method: preparedInput.method },
+            input: preparedInput.input,
+          },
           (key) => this.#claims.has(key),
           metadata,
         );

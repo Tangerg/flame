@@ -37,7 +37,17 @@ func memoryQuery(r *poMCPRuntime, input memorycontract.ListInput) (protocol.Call
 			if !installation.Enabled {
 				return protocol.CallPluginRequest{}, protocol.ErrPluginUnavailable
 			}
-			return protocol.CallPluginRequest{InstallationID: installation.ID, Digest: installation.Selected.Digest, Contribution: provider.Contribution, Contract: string(contracts.Identity().Bytes()), Method: memorycontract.ListV3Method, Input: string(encoded), Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: installation.ID}}, nil
+			return protocol.CallPluginRequest{
+				Route: protocol.PluginCallRoute{
+					InstallationID: installation.ID,
+					Digest:         installation.Selected.Digest,
+					Contribution:   provider.Contribution,
+					Contract:       string(contracts.Identity().Bytes()),
+					Method:         memorycontract.ListV3Method,
+					Target:         framecall.Target{Scope: extension.ScopeInstallation, Reference: installation.ID},
+				},
+				Input: string(encoded),
+			}, nil
 		}
 	}
 	return protocol.CallPluginRequest{}, protocol.ErrPluginUnavailable
@@ -78,7 +88,7 @@ func memoryAddRequest(r *poMCPRuntime, input memorycontract.AddInput) protocol.C
 	if err != nil {
 		r.t.Fatal(err)
 	}
-	request.Method, request.Input = memorycontract.AddV3Method, string(encoded)
+	request.Route.Method, request.Input = memorycontract.AddV3Method, string(encoded)
 	return request
 }
 

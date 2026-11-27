@@ -5,12 +5,12 @@ import {
   type WireMutationMethodName,
 } from "@flame/runtime-client/methods";
 import { z } from "zod";
-import type { CallPluginRequest, RequestMeta } from "@flame/runtime-client/wire";
+import type { CallPluginRequest, PluginCallRoute, RequestMeta } from "@flame/runtime-client/wire";
 import {
   checkRequest,
   isPluginDeliveryMethod,
-  pluginDeliveryMethod,
-  pluginOperationKind,
+  pluginMethod,
+  type PluginMethodReference,
 } from "./request";
 import { validateWire } from "./generated/wire.validate.generated";
 import { MutationJournalError } from "./mutationJournalErrors";
@@ -22,8 +22,6 @@ export const MAX_IDENTITY_LENGTH = 255;
 const FINGERPRINT_HEX_LENGTH = 32;
 
 const FINGERPRINT_PATTERN = new RegExp(`^[0-9a-f]{${FINGERPRINT_HEX_LENGTH}}$`);
-
-type InstalledRoute = Omit<CallPluginRequest, "input">;
 
 type MethodOnlyCommandName = {
   [M in WireMutationMethodName]: (typeof WIRE_METHOD_POLICY)[M]["idempotency"] extends "ownerRun"
@@ -65,7 +63,7 @@ const journalCommand = z.discriminatedUnion("kind", [
   z.strictObject({
     kind: z.literal("plugin"),
     intentFingerprint: digest.nullable(),
-    route: z.custom<InstalledRoute>(validInstalledRoute),
+    route: z.custom<PluginCallRoute>(isInstalledCommandRoute),
   }),
   z.strictObject({
     kind: z.literal("method"),
@@ -94,9 +92,9 @@ const entrySchema = z.strictObject({
 
 export type JournalEntry = z.infer<typeof entrySchema>;
 
-export type PluginCommandInput = Pick<CallPluginRequest, "contract" | "method" | "input">;
+export type PluginCommandInput = PluginMethodReference & Pick<CallPluginRequest, "input">;
 
-export type PluginCommandBinding = Omit<CallPluginRequest, keyof PluginCommandInput>;
+export type PluginCommandBinding = Omit<PluginCallRoute, keyof PluginMethodReference>;
 
 export interface CapturedPluginCommand {
   identity: DurableMutationIdentity;
@@ -115,7 +113,7 @@ function commandMethod(command: JournalCommand): WireMethodName {
     case "run":
       return `runs.${command.request.operation}`;
     case "plugin":
-      return pluginDeliveryMethod(command.route);
+      return pluginMethod(command.route).delivery;
     case "method":
       return command.method;
   }
@@ -137,11 +135,10 @@ export function validSteerItem(value: unknown): value is string {
   );
 }
 
-function validInstalledRoute(value: unknown): value is InstalledRoute {
-  if (!value || typeof value !== "object" || Array.isArray(value) || "input" in value) return false;
+function isInstalledCommandRoute(value: unknown): value is PluginCallRoute {
+  if (validateWire("PluginCallRoute", value, "request").length !== 0) return false;
   try {
-    const route = checkRequest("plugins.call", { ...value, input: "null" });
-    return pluginOperationKind(route) === "command";
+    return pluginMethod(value as PluginCallRoute).kind === "command";
   } catch {
     return false;
   }
@@ -193,8 +190,9 @@ export function captureJournalCommand(
       };
     case "plugins.call":
     case "plugins.stream": {
-      const { input: _, ...route } = checkRequest(method, cloneJSON(params));
-      if (pluginOperationKind(route) !== "command" || pluginDeliveryMethod(route) !== method)
+      const { route } = checkRequest(method, cloneJSON(params));
+      const declaration = pluginMethod(route);
+      if (declaration.kind !== "command" || declaration.delivery !== method)
         throw new MutationJournalError("plugin command requires its declared delivery method");
       return {
         kind: "plugin",
@@ -236,7 +234,7 @@ function pluginIntentFingerprint(salt: string, intent: string): string {
 export function pluginRouteForIntent(
   entry: DurableMutationIdentity,
   intent: string,
-): InstalledRoute | undefined {
+): PluginCallRoute | undefined {
   const { command } = entry;
   if (
     command.kind === "plugin" &&
@@ -252,15 +250,12 @@ export function fingerprintCommand(
   params: unknown,
   requestMeta: RequestMeta | null,
 ): string {
-  // jsoninput.Input ignores object spelling but preserves numeric lexemes.
-  // Ordinary JSON.parse would collapse receipt-relevant numbers here.
-  const request = isPluginDeliveryMethod(method)
-    ? {
-        ...(params as CallPluginRequest),
-        contract: parseJSON((params as CallPluginRequest).contract),
-        input: parseJSON((params as CallPluginRequest).input),
-      }
-    : params;
+  let request = params;
+  if (isPluginDeliveryMethod(method)) {
+    // The original route and exact feature JSON identify the command across encodings.
+    const { route, input } = params as CallPluginRequest;
+    request = { ...route, contract: parseJSON(route.contract), input: parseJSON(input) };
+  }
   return fingerprint(
     [salt, method, canonicalJSON({ request, requestMeta })].join(FINGERPRINT_FIELD_SEPARATOR),
   );

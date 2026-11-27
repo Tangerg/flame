@@ -79,7 +79,17 @@ func TestFirstPartyInitializationAndRestartPreserveUserDecisions(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	reply, err := current.CallPlugin(t.Context(), protocol.CallPluginRequest{InstallationID: scheduling.ID, Digest: scheduling.Selected.Digest, Contribution: "schedules-provider", Contract: string(contract.Identity().Bytes()), Method: SchedulesListV2Method, Input: string(input), Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: scheduling.ID}}, protocol.PluginCallOptions{})
+	reply, err := current.CallPlugin(t.Context(), protocol.CallPluginRequest{
+		Route: protocol.PluginCallRoute{
+			InstallationID: scheduling.ID,
+			Digest:         scheduling.Selected.Digest,
+			Contribution:   "schedules-provider",
+			Contract:       string(contract.Identity().Bytes()),
+			Method:         SchedulesListV2Method,
+			Target:         framecall.Target{Scope: extension.ScopeInstallation, Reference: scheduling.ID},
+		},
+		Input: string(input),
+	}, protocol.PluginCallOptions{})
 	if err != nil || reply.Failure != nil {
 		t.Fatalf("default schedule backend: %+v, %v", reply, err)
 	}
@@ -177,9 +187,15 @@ func checkUsageReportsList(t *testing.T, current *flameruntime.Runtime, reports 
 		t.Fatalf("terminal list uses %q", view.List.Method)
 	}
 	reply, err := current.CallPlugin(t.Context(), protocol.CallPluginRequest{
-		InstallationID: reports.ID, Digest: reports.Selected.Digest, Contribution: view.Contribution,
-		Contract: contract.Identity().String(), Method: view.List.Method, Input: "{}",
-		Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: reports.ID},
+		Route: protocol.PluginCallRoute{
+			InstallationID: reports.ID,
+			Digest:         reports.Selected.Digest,
+			Contribution:   view.Contribution,
+			Contract:       contract.Identity().String(),
+			Method:         view.List.Method,
+			Target:         framecall.Target{Scope: extension.ScopeInstallation, Reference: reports.ID},
+		},
+		Input: "{}",
 	}, protocol.PluginCallOptions{})
 	if err != nil || reply.Failure != nil {
 		t.Fatalf("terminal archive list: %+v, %v", reply, err)

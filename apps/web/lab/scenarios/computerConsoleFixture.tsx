@@ -55,7 +55,7 @@ async function original(
   method: string,
   input: unknown,
   origin: "human" | "model",
-  target: CallPluginRequest["target"],
+  target: CallPluginRequest["route"]["target"],
   admittedAt = new Date(Date.now()).toISOString(),
 ): Promise<Receipt> {
   return {
@@ -329,7 +329,7 @@ export async function createComputerConsoleFixture(locale: string, requestedStat
       if (request.method === "plugins.stream") return streamResponse(request.id, init?.signal);
       if (request.method !== "plugins.call")
         throw new Error("unsupported computer fixture request");
-      const method = params.method;
+      const method = params.route.method;
       const input = JSON.parse(params.input) as Record<string, unknown>;
       const query = queries[method];
       if (query) return output(query(input));
@@ -340,7 +340,7 @@ export async function createComputerConsoleFixture(locale: string, requestedStat
         method,
         parseJSON(params.input),
         "human",
-        params.target,
+        params.route.target,
       );
       const previous = evidence.get(key);
       if (previous) return replay(previous, request.id);

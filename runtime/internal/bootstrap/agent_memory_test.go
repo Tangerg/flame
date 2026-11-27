@@ -27,7 +27,7 @@ func TestMemoryEditSurvivesBackendAndRuntimeRestart(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	request.Method, request.Input = memorycontract.UpdateV3Method, string(input)
+	request.Route.Method, request.Input = memorycontract.UpdateV3Method, string(input)
 	reply := r.must(delivery.PluginsCall, request, "edit-memory").(*protocol.CallPluginResponse)
 	var edited memorycontract.UpdateV3OutputContractItem
 	if err := json.Unmarshal([]byte(reply.Output), &edited); err != nil {

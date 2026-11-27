@@ -8,7 +8,7 @@ import type {
   PluginCommandBinding,
 } from "./mutationJournal";
 import type { WireCallPath } from "./wireCallPath";
-import { pluginDeliveryMethod, pluginOperationKind } from "./request";
+import { pluginMethod } from "./request";
 import { parseJSON } from "@frame/sdk/json";
 import { NOTIFICATIONS_PLUGIN_STREAM, type CallPluginRequest } from "@flame/runtime-client/wire";
 
@@ -82,7 +82,8 @@ export async function callPluginStream<T>(
   decode: (output: unknown) => T,
   signal?: AbortSignal,
 ): Promise<T> {
-  if (pluginDeliveryMethod(input) !== "plugins.stream" || pluginOperationKind(input) !== "command")
+  const method = pluginMethod(input);
+  if (method.delivery !== "plugins.stream" || method.kind !== "command")
     throw new TypeError("Plugin stream requires a streaming command method");
   parseJSON(input.input);
   const { request, reservation } = await wire.capturePluginCommand(intent, input, prepare, signal);
@@ -146,10 +147,8 @@ export async function queryPluginStream<T>(
   decode: (output: unknown) => T,
   signal?: AbortSignal,
 ): Promise<T> {
-  if (
-    pluginDeliveryMethod(request) !== "plugins.stream" ||
-    pluginOperationKind(request) !== "query"
-  )
+  const method = pluginMethod(request.route);
+  if (method.delivery !== "plugins.stream" || method.kind !== "query")
     throw new TypeError("Plugin query stream requires a streaming query method");
   parseJSON(request.input);
   const stream = observePluginStream(consume, signal);

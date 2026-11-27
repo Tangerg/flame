@@ -53,7 +53,7 @@ export async function readInstalledMemory(
     signal?.throwIfAborted();
     const reply = await client.plugins.call(
       {
-        ...binding,
+        route: binding,
         input: stringifyJSON({ scope: scope, cwd: cwd, cursor: cursor }),
       },
       { signal },

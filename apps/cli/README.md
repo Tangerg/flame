@@ -121,8 +121,8 @@ Runtime's durable idempotency namespace still guards command replay independentl
 of that local endpoint partition. Equivalent endpoint spellings share their authoring partition. Distinct reverse-proxy prefixes have separate partitions.
 
 `flame plugins get-command --request '<JSON>'` inspects the Core-owned original
-request using its retained `namespace` and `key`. It returns the exact installation,
-release, contribution, target, contract and admitted input, including when that
+request using its retained `namespace` and `key`. It returns the original
+`route` and admitted `input`, including when that
 producer has been uninstalled. It does not allocate a mutation identity or execute
 the plugin. The original backend receipt remains the owner of the business
 outcome. A different store namespace is refused; selection of a new provider cannot
@@ -303,10 +303,11 @@ reader refreshes after `plugins.changed` and Runtime resynchronization. Local
 sideloaded command extensions use `/extensions`; `/reload` and `/unload` operate
 on that local extension host. They do not change Runtime installations.
 
-`flame plugins call --request '<JSON>'` remains the generic entry for an installed
-operation, using its exact installation, digest, contribution, required contract
-and target. Memory and Schedules terminal forms consume those same installed
-business contracts; their local interaction does not create another installation.
+`flame plugins call --request '<JSON>'` takes a `route` with the exact installation,
+digest, contribution, contract, method and target, plus an `input` string containing
+feature JSON. Memory and Schedules terminal forms use those same installed business
+contracts. The pending-command file uses the nested route and retains the original
+input bytes.
 
 `flame plugins providers` reads explicit provider choices. Use
 `flame plugins select-provider --request '{"role":"memory","installationId":"…","contribution":"memory"}'`

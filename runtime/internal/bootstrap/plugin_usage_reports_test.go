@@ -38,7 +38,17 @@ func TestUsageReportsRecoversItsOriginalReceiptAfterBackendExitsBeforeReply(t *t
 	if err != nil {
 		t.Fatal(err)
 	}
-	request := protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "usage-reports", Contract: contracts.Identity().String(), Method: testsupport.UsageReportsCaptureV1Method, Input: `{"period":"daily"}`, Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: installed.ID}}
+	request := protocol.CallPluginRequest{
+		Route: protocol.PluginCallRoute{
+			InstallationID: installed.ID,
+			Digest:         installed.Selected.Digest,
+			Contribution:   "usage-reports",
+			Contract:       contracts.Identity().String(),
+			Method:         testsupport.UsageReportsCaptureV1Method,
+			Target:         framecall.Target{Scope: extension.ScopeInstallation, Reference: installed.ID},
+		},
+		Input: `{"period":"daily"}`,
+	}
 	options := protocol.CallMetadata{IdempotencyKey: "original-lost-save", RequestMeta: protocol.RequestMeta{ProtocolVersion: new(protocol.Version)}}
 	first := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, options)
 	if first.Failure == nil {
@@ -55,7 +65,7 @@ func TestUsageReportsRecoversItsOriginalReceiptAfterBackendExitsBeforeReply(t *t
 	if reply.Failure != nil || json.Unmarshal([]byte(reply.Output), &saved) != nil || saved.Id == "" {
 		t.Fatalf("original capture was not reconciled: %+v", reply)
 	}
-	request.Method, request.Input = testsupport.UsageReportsListV2Method, `{}`
+	request.Route.Method, request.Input = testsupport.UsageReportsListV2Method, `{}`
 	listed := r.must(delivery.PluginsCall, request, "").(*protocol.CallPluginResponse)
 	var headers testsupport.UsageReportsListV2Output
 	if err := json.Unmarshal([]byte(listed.Output), &headers); err != nil || len(headers.Reports) != 1 || headers.Reports[0].Id != saved.Id || headers.Reports[0].ObservedAt != saved.ObservedAt {
@@ -78,7 +88,17 @@ func TestUsageReportsInstalledCaptureKeepsCoreFactsAcrossLaterWorkAndRestart(t *
 		if err != nil {
 			t.Fatal(err)
 		}
-		result := r.must(delivery.PluginsCall, protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "usage-reports", Contract: contracts.Identity().String(), Method: method, Input: encoded.String(), Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: installed.ID}}, key).(*protocol.CallPluginResponse)
+		result := r.must(delivery.PluginsCall, protocol.CallPluginRequest{
+			Route: protocol.PluginCallRoute{
+				InstallationID: installed.ID,
+				Digest:         installed.Selected.Digest,
+				Contribution:   "usage-reports",
+				Contract:       contracts.Identity().String(),
+				Method:         method,
+				Target:         framecall.Target{Scope: extension.ScopeInstallation, Reference: installed.ID},
+			},
+			Input: encoded.String(),
+		}, key).(*protocol.CallPluginResponse)
 		if result.Failure != nil {
 			t.Fatalf("report operation failed: %+v", result.Failure)
 		}
