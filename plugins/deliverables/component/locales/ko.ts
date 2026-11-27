@@ -365,6 +365,13 @@ export const ko = {
   "slides.chart.series": "계열 {{number}} 이름",
   "slides.chart.apply": "이 데이터 사용",
   "slides.chart.invalid": "숫자를 입력하거나 비워 두세요.",
+  "slides.chart.titleRun": "차트 제목 {{number}}",
+  "slides.chart.legend": "범례 위치",
+  "slides.chart.legend.b": "아래",
+  "slides.chart.legend.l": "왼쪽",
+  "slides.chart.legend.r": "오른쪽",
+  "slides.chart.legend.t": "위",
+  "slides.chart.legend.tr": "오른쪽 위",
   "slides.chart.mixed":
     "이 차트의 포함된 통합 문서에 다른 데이터도 있습니다. PowerPoint에서 편집하세요.",
   "slides.chart.unsupported":
@@ -378,6 +385,8 @@ export const ko = {
   "handoff.failed": "참조를 복사하지 못했습니다.",
   "handoff.unsaved":
     "Agent에게 넘기기 전에 초안을 저장하거나 버리세요. 참조는 저장된 리비전만 가리킵니다.",
+  "slides.handoff.saved":
+    "에이전트에는 저장된 리비전이 전달됩니다. 저장하지 않은 편집은 초안에 남습니다。",
   "slides.slideActions": "슬라이드 작업",
   "slides.moveUp": "앞으로 이동",
   "slides.moveDown": "뒤로 이동",
@@ -408,6 +417,7 @@ export const ko = {
   "slides.op.setFrame": "{{name}}의 위치",
   "slides.op.replaceText": "텍스트 “{{text}}”",
   "slides.op.deleteElement": "{{name}} 삭제",
+  "slides.op.setChartLegend": "{{name}}의 범례",
   "slides.op.setChartData": "{{name}}의 데이터",
   "handoff.add": "Agent에게 넘기기",
   "link.copy": "링크 복사",

@@ -1,5 +1,13 @@
 [
   {
+    "name": "flame.knowledgebase/accept-claim.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Accept an exact research statement and reason with validated citations in one Project.",
+    "input": "schema.json#/$defs/AcceptClaimV1Input",
+    "output": "schema.json#/$defs/AcceptClaimV1Output"
+  },
+  {
     "name": "flame.knowledgebase/delete.v1",
     "kind": "command",
     "target": "installation",
@@ -16,6 +24,14 @@
     "output": "schema.json#/$defs/ImportV1Output"
   },
   {
+    "name": "flame.knowledgebase/list-claims.v1",
+    "kind": "query",
+    "target": "installation",
+    "description": "List a Project's latest research decisions and current evidence status.",
+    "input": "schema.json#/$defs/ListClaimsV1Input",
+    "output": "schema.json#/$defs/ListClaimsV1Output"
+  },
+  {
     "name": "flame.knowledgebase/list.v1",
     "kind": "query",
     "target": "installation",
@@ -24,10 +40,26 @@
     "output": "schema.json#/$defs/ListV1Output"
   },
   {
+    "name": "flame.knowledgebase/move.v1",
+    "kind": "command",
+    "target": "installation",
+    "description": "Move an inspected material to another Project without re-embedding its content. This withdraws access from the original Project.",
+    "input": "schema.json#/$defs/MoveV1Input",
+    "output": "schema.json#/$defs/MoveV1Output"
+  },
+  {
+    "name": "flame.knowledgebase/read-claim.v1",
+    "kind": "query",
+    "target": "installation",
+    "description": "Read a retained research decision with exact page and line citations, checking current Project access and changes to each cited passage.",
+    "input": "schema.json#/$defs/ReadClaimV1Input",
+    "output": "schema.json#/$defs/ReadClaimV1Output"
+  },
+  {
     "name": "flame.knowledgebase/read.v1",
     "kind": "query",
     "target": "installation",
-    "description": "Read one complete stored document visible to the caller with its exact source, revision and index identity without embedding or provider I/O.",
+    "description": "Read a stored document or one numbered page at the current or retained revision. Current Project access is checked before returning source metadata or text.",
     "input": "schema.json#/$defs/ReadV1Input",
     "output": "schema.json#/$defs/ReadV1Output"
   },

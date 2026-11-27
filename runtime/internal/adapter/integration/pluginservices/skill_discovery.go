@@ -56,11 +56,7 @@ func (s *SkillGovernance) Discover(ctx context.Context, candidates skilllearning
 		return zero, err
 	}
 	capture.Command = operation.Identity(ctx)
-	record, err := c.routing.Get(ctx, capture.Command)
-	if err != nil {
-		return zero, err
-	}
-	capture.Activation = record.Snapshot().Activation
+	capture.Activation = *reply.binding.Activation
 	return reply.value, nil
 }
 

@@ -5,6 +5,7 @@ import {
   cellRangeSchema,
   cellValueSchema,
   chartDataSchema,
+  chartLegendPositionSchema,
   extentSchema,
   frameSchema,
 } from "./content";
@@ -52,6 +53,7 @@ export const slideLayoutSchema = z.strictObject({
               // rewritten with the data; "mixed": it holds more, so edits are refused.
               workbook: z.enum(["none", "chart", "mixed"]),
               data: chartDataSchema,
+              legendPosition: chartLegendPositionSchema.optional(),
             })
             .optional(),
         }),

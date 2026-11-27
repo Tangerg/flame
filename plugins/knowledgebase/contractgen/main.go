@@ -33,9 +33,37 @@ func define() (*plugincontract.Capability, error) {
 	if err != nil {
 		return nil, err
 	}
-	readMethod, err := pluginmcp.NewMethod[wire.ReadInput, wire.DocumentRead](frame.MethodConfig{Name: "flame.knowledgebase/read.v1", Kind: frame.Query, Target: extension.ScopeInstallation, Description: "Read one complete stored document visible to the caller with its exact source, revision and index identity without embedding or provider I/O."})
+	readMethod, err := pluginmcp.NewMethod[wire.ReadInput, wire.DocumentRead](frame.MethodConfig{Name: "flame.knowledgebase/read.v1", Kind: frame.Query, Target: extension.ScopeInstallation, Description: "Read a stored document or one numbered page at the current or retained revision. Current Project access is checked before returning source metadata or text."})
 	if err != nil {
 		return nil, err
 	}
-	return plugincontract.NewCapability(plugincontract.CapabilityConfig{Reference: "flame.knowledgebase.v1", Composition: plugincontract.Collection, Scope: extension.ScopeInstallation}, importMethod.Descriptor(), reindexMethod.Descriptor(), deleteMethod.Descriptor(), listMethod.Descriptor(), readMethod.Descriptor(), searchMethod.Descriptor())
+	moveMethod, err := pluginmcp.NewMethod[wire.MoveInput, knowledge.Header](frame.MethodConfig{
+		Name: "flame.knowledgebase/move.v1", Kind: frame.Command, Target: extension.ScopeInstallation,
+		Description: "Move an inspected material to another Project without re-embedding its content. This withdraws access from the original Project.",
+	})
+	if err != nil {
+		return nil, err
+	}
+	claimAccept, err := pluginmcp.NewMethod[wire.ClaimAcceptInput, wire.ClaimReceipt](frame.MethodConfig{
+		Name: "flame.knowledgebase/accept-claim.v1", Kind: frame.Command, Target: extension.ScopeInstallation,
+		Description: "Accept an exact research statement and reason with validated citations in one Project.",
+	})
+	if err != nil {
+		return nil, err
+	}
+	claimRead, err := pluginmcp.NewMethod[wire.ClaimReadInput, wire.ClaimRead](frame.MethodConfig{
+		Name: "flame.knowledgebase/read-claim.v1", Kind: frame.Query, Target: extension.ScopeInstallation,
+		Description: "Read a retained research decision with exact page and line citations, checking current Project access and changes to each cited passage.",
+	})
+	if err != nil {
+		return nil, err
+	}
+	claimList, err := pluginmcp.NewMethod[wire.ListInput, []wire.ClaimSummary](frame.MethodConfig{
+		Name: "flame.knowledgebase/list-claims.v1", Kind: frame.Query, Target: extension.ScopeInstallation,
+		Description: "List a Project's latest research decisions and current evidence status.",
+	})
+	if err != nil {
+		return nil, err
+	}
+	return plugincontract.NewCapability(plugincontract.CapabilityConfig{Reference: "flame.knowledgebase.v1", Composition: plugincontract.Collection, Scope: extension.ScopeInstallation}, importMethod.Descriptor(), reindexMethod.Descriptor(), deleteMethod.Descriptor(), listMethod.Descriptor(), readMethod.Descriptor(), searchMethod.Descriptor(), claimAccept.Descriptor(), claimRead.Descriptor(), claimList.Descriptor(), moveMethod.Descriptor())
 }

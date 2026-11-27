@@ -10911,6 +10911,10 @@
           "type": "error"
         },
         {
+          "name": "ErrWorkspaceFileNotFound",
+          "type": "error"
+        },
+        {
           "name": "ErrWorkspaceUnavailable",
           "type": "error"
         }

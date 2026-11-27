@@ -33,10 +33,11 @@ func connectGitHubWrites(t *testing.T, path string, transport http.RoundTripper,
 	if err != nil {
 		t.Fatal(err)
 	}
-	server, err := newServer(c)
+	server, operations, err := newServer(c)
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(func() { _ = operations.Close() })
 	client := sdk.NewClient(&sdk.Implementation{Name: "github-write-test"}, nil)
 	if err := pluginmcp.RegisterClient(client); err != nil {
 		t.Fatal(err)

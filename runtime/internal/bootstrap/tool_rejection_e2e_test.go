@@ -34,7 +34,8 @@ func TestRuntimeRejectedToolSurvivesFollowingCallsAndHistoryReads(t *testing.T) 
 		t.Run(test.name, func(t *testing.T) {
 			script := &rejectionScript{tool: test.tool, arguments: test.arguments, finish: test.finish, planMode: test.planMode}
 			model := delegateRestartModel{chat.ModelFunc(script.Call)}
-			stores, api, ctx, home := newSessionStateE2ERuntime(t, model)
+			stores, runtime, ctx, home := newSessionStateE2ERuntime(t, model)
+			api := runtime.api
 			if err := os.WriteFile(filepath.Join(home, "input.txt"), []byte("content"), 0600); err != nil {
 				t.Fatal(err)
 			}

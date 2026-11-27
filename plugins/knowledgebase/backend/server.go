@@ -6,6 +6,7 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
@@ -56,6 +57,25 @@ func newServer(library *library) (*sdk.Server, error) {
 	}
 	if err := errors.Join(
 		pluginstorage.RegisterReceipts(backend, library.store.db),
+		pluginstorage.RegisterCommand(backend, library.store.db, contracts.Move, classify, func(ctx context.Context, _ *sdk.ServerSession, input wire.MoveInput) (pluginstorage.CommandPlan[knowledge.Header], error) {
+			call, err := pluginmcp.InvocationFromContext(ctx)
+			if err != nil {
+				return pluginstorage.CommandPlan[knowledge.Header]{}, err
+			}
+			if call.Origin != extension.Human {
+				return pluginstorage.CommandPlan[knowledge.Header]{}, errHumanMove
+			}
+			return library.store.prepareMove(ctx, input)
+		}),
+		pluginstorage.RegisterCommand(backend, library.store.db, contracts.AcceptClaim, classify, func(ctx context.Context, _ *sdk.ServerSession, input wire.ClaimAcceptInput) (pluginstorage.CommandPlan[wire.ClaimReceipt], error) {
+			return library.store.acceptClaim(ctx, input)
+		}),
+		contracts.ReadClaim.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[wire.ClaimReadInput]) (wire.ClaimRead, error) {
+			return library.store.readClaim(ctx, command.Input)
+		}),
+		contracts.ListClaims.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[wire.ListInput]) ([]wire.ClaimSummary, error) {
+			return library.store.listClaims(ctx, command.Input)
+		}),
 		contracts.Import.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[wire.ImportInput]) (knowledge.Header, error) {
 			input, err := command.RequestInput()
 			if err != nil {
@@ -123,7 +143,7 @@ func knowledgeTools(library *library, contracts rpc.Contracts) ([]tool.Tool, err
 		if err != nil {
 			return wire.DocumentRead{}, err
 		}
-		return modelResult(library.read(ctx, wire.ReadInput{ID: input.ID, Project: project}))
+		return modelResult(library.read(ctx, wire.ReadInput{ID: input.ID, Project: project, Revision: input.Revision, Page: input.Page}))
 	})
 	if err != nil {
 		return nil, err

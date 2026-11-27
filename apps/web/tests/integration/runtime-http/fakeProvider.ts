@@ -292,7 +292,7 @@ const SCRIPT: readonly ScriptRule[] = [
     reply: () => call("search_tools", { query: `select:${killedMCPToolName}` }),
   },
   {
-    when: (turn) => said(turn, "E2E_FORCE_KILL_TOOL") && turn.toolResults >= 1,
+    when: (turn) => said(turn, "E2E_FORCE_KILL_TOOL") && turn.tools.has(killedMCPToolName),
     reply: () => call(killedMCPToolName, {}),
   },
 ];

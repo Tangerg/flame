@@ -7,9 +7,15 @@ import {
   FormActions,
   Metadata,
   RecordGroup,
+  Select,
   Toolbar,
 } from "@flame/ui";
-import { type ChartData, type Frame } from "../contracts/content";
+import {
+  CHART_LEGEND_POSITIONS,
+  type ChartData,
+  type ChartLegendPosition,
+  type Frame,
+} from "../contracts/content";
 import { type ElementView, type SlideView } from "../contracts/layouts";
 import type { DocumentRead } from "./types";
 import { label } from "./slides-presentation";
@@ -62,6 +68,7 @@ export function ElementInspector({
   onFrame,
   onText,
   onChart,
+  onLegend,
   onDelete,
   onRevert,
 }: {
@@ -75,9 +82,12 @@ export function ElementInspector({
   onFrame(frame: Frame): void;
   onText(id: string, expect: string, text: string): void;
   onChart(expect: ChartData, data: ChartData): void;
+  onLegend(expect: ChartLegendPosition, position: ChartLegendPosition): void;
   onDelete(): void;
   onRevert(): void;
 }) {
+  const legend = element.chart?.legendPosition;
+  const savedLegend = original?.chart?.legendPosition;
   return (
     <RecordGroup>
       <Facts
@@ -103,7 +113,10 @@ export function ElementInspector({
         return (
           <RunField
             key={run.id}
-            label={t("slides.run", { number: index + 1 })}
+            label={t(
+              element.kind === "chart" ? "slides.chart.titleRun" : "slides.run",
+              { number: index + 1 },
+            )}
             text={run.text}
             editable={editable}
             onCommit={(text) => onText(run.id, saved, text)}
@@ -112,6 +125,18 @@ export function ElementInspector({
       })}
       {element.kind === "chart" && !element.chart && (
         <Metadata>{t("slides.chart.unsupported")}</Metadata>
+      )}
+      {legend && savedLegend && (
+        <Select
+          label={t("slides.chart.legend")}
+          value={legend}
+          disabled={!editable}
+          onValueChange={(position) => onLegend(savedLegend, position)}
+          options={CHART_LEGEND_POSITIONS.map((value) => ({
+            value,
+            label: t(`slides.chart.legend.${value}`),
+          }))}
+        />
       )}
       {element.chart && original?.chart && (
         <ChartFields
@@ -130,7 +155,7 @@ export function ElementInspector({
         </Button>
         {reference}
       </Toolbar>
-      {dirty && <Metadata>{t("handoff.unsaved")}</Metadata>}
+      {dirty && <Metadata>{t("slides.handoff.saved")}</Metadata>}
     </RecordGroup>
   );
 }

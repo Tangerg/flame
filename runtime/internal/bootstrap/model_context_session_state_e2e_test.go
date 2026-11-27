@@ -31,8 +31,9 @@ import (
 
 func TestRuntimeCompactionKeepsOnlyTheCurrentSessionPlan(t *testing.T) {
 	model := &planChangingLongContextModel{}
-	stores, api, ctx, home := newSessionStateE2ERuntime(t, model)
-	sessionID := createSessionWithInitialPlan(t, stores, api, ctx, home, "Plan replacement across compaction")
+	stores, runtime, ctx, home := newSessionStateE2ERuntime(t, model)
+	api := runtime.api
+	sessionID := createSessionWithInitialPlan(t, stores, runtime, ctx, home, "Plan replacement across compaction")
 	started, sequence, err := api.StartRun(ctx, protocol.StartRunRequest{
 		SessionID: sessionID,
 		Input: []protocol.ContentBlock{{
@@ -75,8 +76,10 @@ func TestRuntimeCompactionKeepsOnlyTheCurrentSessionPlan(t *testing.T) {
 func TestActiveGoalAndPlanStayCurrentAcrossLongRunCompaction(t *testing.T) {
 	model := newGoalAndPlanLongContextModel()
 	defer model.releaseOpeningCall()
-	stores, api, ctx, home := newSessionStateE2ERuntime(t, model)
-	sessionID := createSessionWithInitialPlan(t, stores, api, ctx, home, "Goal and Plan compaction ownership")
+	stores, runtime, ctx, home := newSessionStateE2ERuntime(t, model)
+	api := runtime.api
+	activateWorkflow(runtime, filepath.Join(firstPartyPackages, "goals"), "compaction-goal", goalworkflow.Reference, "goal-workflow")
+	sessionID := createSessionWithInitialPlan(t, stores, runtime, ctx, home, "Goal and Plan compaction ownership")
 	startedGoal, err := api.StartGoal(ctx, protocol.StartGoalRequest{
 		SessionID: sessionID,
 		Objective: goalAcrossCompactionObjective,
@@ -168,7 +171,7 @@ type sessionStateE2EModel interface {
 func newSessionStateE2ERuntime(
 	t *testing.T,
 	model sessionStateE2EModel,
-) (*persistence.Bundle, *delivery.Handler, context.Context, string) {
+) (*persistence.Bundle, *poMCPRuntime, context.Context, string) {
 	t.Helper()
 	home := testsupport.TempDirectory(t)
 	t.Setenv("FLAME_HOME", home)
@@ -193,8 +196,6 @@ func newSessionStateE2ERuntime(
 	cfg.processRunner = testProcessRunner(t)
 	host, api := buildProtocolRuntime(t, cfg, home)
 	fixture := &poMCPRuntime{t: t, host: host, api: api, endpoint: host.Endpoint()}
-	activateWorkflow(fixture, filepath.Join(firstPartyPackages, "plans"), "compaction-plan", planworkflow.Reference, "plan-workflow")
-	activateWorkflow(fixture, filepath.Join(firstPartyPackages, "goals"), "compaction-goal", goalworkflow.Reference, "goal-workflow")
 	t.Cleanup(func() {
 		if closeErr := host.Close(); closeErr != nil {
 			t.Errorf("close runtime: %v", closeErr)
@@ -203,19 +204,20 @@ func newSessionStateE2ERuntime(
 	ctx := delivery.WithRequestMeta(t.Context(), protocol.RequestMeta{
 		ProtocolVersion: new(protocol.Version),
 	})
-	return stores, api, ctx, home
+	return stores, fixture, ctx, home
 }
 
 func createSessionWithInitialPlan(
 	t *testing.T,
 	stores *persistence.Bundle,
-	api *delivery.Handler,
+	runtime *poMCPRuntime,
 	ctx context.Context,
 	home string,
 	title string,
 ) string {
 	t.Helper()
-	session, err := api.CreateSession(ctx, protocol.CreateSessionRequest{
+	activateWorkflow(runtime, filepath.Join(firstPartyPackages, "plans"), "compaction-plan", planworkflow.Reference, "plan-workflow")
+	session, err := runtime.api.CreateSession(ctx, protocol.CreateSessionRequest{
 		Workspace: &protocol.WorkspaceRef{Path: home}, Title: title,
 	})
 	if err != nil {
@@ -452,8 +454,9 @@ func toolCallResponse(call chat.ToolCall, text ...string) *chat.Response {
 
 func TestPlanChangeKeepsEveryEarlierMessageACachePrefix(t *testing.T) {
 	model := &prefixRecordingPlanModel{}
-	stores, api, ctx, home := newSessionStateE2ERuntime(t, model)
-	sessionID := createSessionWithInitialPlan(t, stores, api, ctx, home, "Plan change and the cache prefix")
+	stores, runtime, ctx, home := newSessionStateE2ERuntime(t, model)
+	api := runtime.api
+	sessionID := createSessionWithInitialPlan(t, stores, runtime, ctx, home, "Plan change and the cache prefix")
 	_, sequence, err := api.StartRun(ctx, protocol.StartRunRequest{
 		SessionID: sessionID,
 		Input:     []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "Replace the Plan once."}},

@@ -3076,6 +3076,10 @@
           "message": "path_outside_root"
         },
         {
+          "code": -32049,
+          "message": "workspace_file_not_found"
+        },
+        {
           "code": -32011,
           "message": "unsupported_mime"
         }

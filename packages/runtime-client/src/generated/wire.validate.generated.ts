@@ -3534,6 +3534,13 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
         errors: absent(),
         requiredCapabilities: absent(),
         retryAfterSeconds: absent(),
+        type: literal("workspace_file_not_found"),
+      }, ["type"]),
+      fields({
+        activeRun: absent(),
+        errors: absent(),
+        requiredCapabilities: absent(),
+        retryAfterSeconds: absent(),
         type: literal("workspace_unavailable"),
       }, ["type"]),
       fields({

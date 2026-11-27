@@ -26,7 +26,10 @@ import { useRuntimeFixture } from "./fixture";
 const compactionCutpointDeadlineMilliseconds = 15_000;
 
 describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: restart and crash recovery", () => {
-  const fixture = useRuntimeFixture("recovery");
+  // Bound startup work to the owners exercised at the crash boundaries.
+  const fixture = useRuntimeFixture("recovery", {
+    packages: ["goals", "mcp", "memory", "plans", "providers", "schedules", "skills"],
+  });
 
   it("reopens durable reads and event reconciliation after a Runtime process restart", async () => {
     const beforeRestart = await fixture.client.runtime.discover();
@@ -429,10 +432,8 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: restart and crash recovery", (
   it("marks an in-flight Tool incomplete and its Run lost after SIGKILL", async () => {
     const server = "http-e2e-kill";
     const serverId = { origin: { type: "user" as const }, name: server };
-    const toolCallMarker = join(fixture.environmentRoot, "sigkill-tool-call-arrived");
-    const gate = createProviderGate("E2E_FORCE_KILL_TOOL", { minimumToolResults: 1 });
+    const toolCallMarker = join(fixture.root, "sigkill-tool-call-arrived");
     let serverCreated = false;
-    fixture.providerGate = gate;
     try {
       const connection = await watchRuntimeTopic(fixture.client, "mcp.changed");
       await fixture.client.mcp.create({
@@ -473,10 +474,6 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: restart and crash recovery", (
         () => undefined,
         () => undefined,
       );
-      await within(gate.arrived.promise, "the SIGKILL Tool model request");
-      gate.release.resolve();
-      fixture.providerGate = undefined;
-
       const deliveredBefore = Date.now() + defaultTestDeadlineMilliseconds;
       while (true) {
         try {
@@ -524,8 +521,6 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: restart and crash recovery", (
         ]),
       });
     } finally {
-      gate.release.resolve();
-      fixture.providerGate = undefined;
       if (serverCreated && fixture.client)
         await fixture.client.mcp.delete(serverId).catch(() => undefined);
     }

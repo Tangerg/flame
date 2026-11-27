@@ -6,6 +6,8 @@ import (
 	"github.com/Tangerg/flame/plugins/knowledgebase/internal/knowledge"
 )
 
+var errHumanMove = errors.New("knowledge base: a person must move the material")
+
 func classify(err error) (string, bool) {
 	if errors.Is(err, errStoredDocument) {
 		return "", false
@@ -14,7 +16,7 @@ func classify(err error) (string, bool) {
 		cause error
 		code  string
 	}{
-		{knowledge.ErrInvalidDocument, "invalid_document"}, {knowledge.ErrRevisionConflict, "revision_conflict"},
+		{errClaimInvalid, "invalid_claim"}, {errHumanClaim, "not_allowed"}, {errHumanMove, "not_allowed"}, {knowledge.ErrInvalidDocument, "invalid_document"}, {knowledge.ErrRevisionConflict, "revision_conflict"},
 		{knowledge.ErrCapacity, "capacity"}, {knowledge.ErrNotFound, "not_found"},
 		{knowledge.ErrRetired, "retired_document"},
 		{knowledge.ErrInvalidIndex, "invalid_index"}, {knowledge.ErrEmbeddingSpace, "embedding_space_changed"},

@@ -1,5 +1,6 @@
 import { projectNumber, parseJSON, stringifyJSON } from "@frame/sdk/json";
 import { type FlameClient } from "@flame/runtime-client";
+import type { CallPluginRequest } from "@flame/runtime-client/wire";
 import {
   CAPABILITY_JSON,
   type MethodInputs,
@@ -32,18 +33,18 @@ interface MemoryItem {
 }
 
 type MemoryPage = MethodOutputs["flame.memory/list.v3"];
+type MemoryBinding = Pick<
+  CallPluginRequest,
+  "installationId" | "digest" | "contribution" | "target"
+>;
 
 export async function readInstalledMemory(
   client: FlameClient,
+  binding: MemoryBinding,
   scope: MemoryScope,
   cwd: string,
   signal?: AbortSignal,
 ): Promise<MemoryItem[]> {
-  const binding = {
-    ...(await selectMemoryBinding(client, signal)),
-    contract: CAPABILITY_JSON,
-    method: "flame.memory/list.v3",
-  };
   const items: MemoryItem[] = [];
   const seen = new Set<string>();
   const cursors = new Set<string>();
@@ -54,6 +55,8 @@ export async function readInstalledMemory(
     const reply = await client.plugins.call(
       {
         ...binding,
+        contract: CAPABILITY_JSON,
+        method: "flame.memory/list.v3",
         input: stringifyJSON({ scope: scope, cwd: cwd, cursor: cursor }),
       },
       { signal },
@@ -107,11 +110,11 @@ function admitMemoryPage(
   return pageCapacity;
 }
 
-async function selectMemoryBinding(client: FlameClient, signal?: AbortSignal) {
-  const providers = await client.plugins.listProviders(signal);
+export async function captureMemoryBinding(client: FlameClient): Promise<MemoryBinding> {
+  const providers = await client.plugins.listProviders();
   const selected = providers.data.find((value) => value.role === "memory");
   if (!selected) throw new Error("memory provider is unavailable");
-  const installations = await client.plugins.list(signal);
+  const installations = await client.plugins.list();
   const installation = installations.data.find((value) => value.id === selected.installationId);
   if (
     !installation?.enabled ||
@@ -128,6 +131,7 @@ async function selectMemoryBinding(client: FlameClient, signal?: AbortSignal) {
 
 export async function deleteInstalledMemory(
   client: FlameClient,
+  binding: MemoryBinding,
   id: string,
   expectedRevision: number,
   signal?: AbortSignal,
@@ -144,7 +148,7 @@ export async function deleteInstalledMemory(
         method: "flame.memory/delete.v3",
         input: stringifyJSON(input),
       },
-      () => selectMemoryBinding(client, signal),
+      async () => binding,
       decodeMemoryAcknowledgement,
       signal,
     )
@@ -153,6 +157,7 @@ export async function deleteInstalledMemory(
 
 export function reviewInstalledMemory(
   client: FlameClient,
+  binding: MemoryBinding,
   id: string,
   expectedRevision: number,
   decision: ReviewDecision,
@@ -171,7 +176,7 @@ export function reviewInstalledMemory(
         method: "flame.memory/review.v3",
         input: stringifyJSON(input),
       },
-      () => selectMemoryBinding(client, signal),
+      async () => binding,
       decodeMemoryAcknowledgement,
       signal,
     )
@@ -191,6 +196,7 @@ function decodeMemoryAcknowledgement(output: unknown): MethodOutputs["flame.memo
 
 export function updateInstalledMemory(
   client: FlameClient,
+  binding: MemoryBinding,
   input: MethodInputs["flame.memory/update.v3"],
   signal?: AbortSignal,
 ): Promise<MemoryItem> {
@@ -209,7 +215,7 @@ export function updateInstalledMemory(
       method: "flame.memory/update.v3",
       input: stringifyJSON(patch),
     },
-    () => selectMemoryBinding(client, signal),
+    async () => binding,
     (output) => {
       const item = decodeMemoryItem(output);
       if (item.id !== patch.id)
@@ -272,6 +278,7 @@ function decodeMemoryItem(output: unknown): MemoryItem {
 
 export function addInstalledMemory(
   client: FlameClient,
+  binding: MemoryBinding,
   input: MemoryAddInput,
   signal?: AbortSignal,
 ): Promise<MemoryItem> {
@@ -289,7 +296,7 @@ export function addInstalledMemory(
       method: "flame.memory/add.v3",
       input: stringifyJSON(request),
     },
-    () => selectMemoryBinding(client, signal),
+    async () => binding,
     (output) => {
       const result = output as MethodOutputs["flame.memory/add.v3"];
       if (!result || typeof result.changed !== "boolean")

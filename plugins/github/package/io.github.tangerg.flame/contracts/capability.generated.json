@@ -4638,6 +4638,527 @@
       }
     },
     {
+      "name": "flame.github/review-work.v1",
+      "kind": "query",
+      "target": "installation",
+      "description": "Open retained review work for one pull request and optional exact base/head revision. Access to the pull request is checked again.",
+      "input": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.UmV2aWV3V29ya0lucHV0": {
+            "additionalProperties": false,
+            "properties": {
+              "number": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "minimum": 1,
+                "type": "integer"
+              },
+              "repository": {
+                "maxLength": 256,
+                "minLength": 3,
+                "type": "string"
+              },
+              "revision": {
+                "maxLength": 129,
+                "type": "string"
+              }
+            },
+            "required": [
+              "repository",
+              "number"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "number": {
+            "allOf": [
+              {
+                "maximum": 9223372036854775807,
+                "minimum": -9223372036854775808
+              }
+            ],
+            "minimum": 1,
+            "type": "integer"
+          },
+          "repository": {
+            "maxLength": 256,
+            "minLength": 3,
+            "type": "string"
+          },
+          "revision": {
+            "maxLength": 129,
+            "type": "string"
+          }
+        },
+        "required": [
+          "repository",
+          "number"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w": {
+            "type": "string"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.RmluZGluZ0RlY2lzaW9u": {
+            "additionalProperties": false,
+            "properties": {
+              "at": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
+              },
+              "disposition": {
+                "allOf": [
+                  {
+                    "enum": [
+                      "accepted",
+                      "deferred"
+                    ]
+                  }
+                ],
+                "type": "string"
+              },
+              "reason": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "disposition",
+              "reason",
+              "at"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.RmluZGluZ1JlY2hlY2s": {
+            "additionalProperties": false,
+            "properties": {
+              "finding": {
+                "type": "string"
+              },
+              "status": {
+                "allOf": [
+                  {
+                    "enum": [
+                      "unchanged",
+                      "changed",
+                      "unavailable"
+                    ]
+                  }
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "finding",
+              "status"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.UmV2aWV3Q2hlY2s": {
+            "additionalProperties": false,
+            "properties": {
+              "conclusion": {
+                "type": "string"
+              },
+              "headSha": {
+                "type": "string"
+              },
+              "id": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "type": "integer"
+              },
+              "name": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "url": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "headSha",
+              "status",
+              "url"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.UmV2aWV3RGlzY3Vzc2lvbg": {
+            "additionalProperties": false,
+            "properties": {
+              "author": {
+                "type": "string"
+              },
+              "body": {
+                "type": "string"
+              },
+              "createdAt": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
+              },
+              "id": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "type": "integer"
+              },
+              "receivedAtRevision": {
+                "type": "string"
+              },
+              "updatedAt": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
+              },
+              "url": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "url",
+              "author",
+              "body",
+              "createdAt",
+              "updatedAt",
+              "receivedAtRevision"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.UmV2aWV3RmluZGluZw": {
+            "additionalProperties": false,
+            "properties": {
+              "decisions": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.RmluZGluZ0RlY2lzaW9u"
+                },
+                "type": "array"
+              },
+              "id": {
+                "type": "string"
+              },
+              "line": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "minimum": 1,
+                "type": "integer"
+              },
+              "path": {
+                "maxLength": 4096,
+                "minLength": 1,
+                "type": "string"
+              },
+              "side": {
+                "allOf": [
+                  {
+                    "enum": [
+                      "LEFT",
+                      "RIGHT"
+                    ]
+                  }
+                ],
+                "type": "string"
+              },
+              "summary": {
+                "maxLength": 2048,
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "path",
+              "side",
+              "line",
+              "summary",
+              "id",
+              "decisions"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.UmV2aWV3UmVjaGVjaw": {
+            "additionalProperties": false,
+            "properties": {
+              "checkedHead": {
+                "type": "string"
+              },
+              "completedAt": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
+              },
+              "diagnostic": {
+                "type": "string"
+              },
+              "findings": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.RmluZGluZ1JlY2hlY2s"
+                },
+                "type": "array"
+              },
+              "previousRevision": {
+                "type": "string"
+              },
+              "status": {
+                "allOf": [
+                  {
+                    "enum": [
+                      "pending",
+                      "clean",
+                      "issues",
+                      "failed"
+                    ]
+                  }
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "status",
+              "previousRevision",
+              "findings"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.UmV2aWV3V29yaw": {
+            "additionalProperties": false,
+            "properties": {
+              "checks": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.UmV2aWV3Q2hlY2s"
+                },
+                "type": "array"
+              },
+              "checksPartial": {
+                "type": "boolean"
+              },
+              "currentHead": {
+                "type": "string"
+              },
+              "discussion": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.UmV2aWV3RGlzY3Vzc2lvbg"
+                },
+                "type": "array"
+              },
+              "findings": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.UmV2aWV3RmluZGluZw"
+                },
+                "type": "array"
+              },
+              "followError": {
+                "type": "string"
+              },
+              "following": {
+                "type": "boolean"
+              },
+              "latest": {
+                "type": "string"
+              },
+              "needsRecheck": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.UmV2aWV3RmluZGluZw"
+                },
+                "type": "array"
+              },
+              "number": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "minimum": 1,
+                "type": "integer"
+              },
+              "repository": {
+                "maxLength": 256,
+                "minLength": 3,
+                "type": "string"
+              },
+              "selected": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.UmV2aWV3VmVyc2lvbg"
+              },
+              "url": {
+                "type": "string"
+              },
+              "version": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "type": "integer"
+              },
+              "versions": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.UmV2aWV3VmVyc2lvbg"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "repository",
+              "number",
+              "url",
+              "version",
+              "currentHead",
+              "following",
+              "versions",
+              "checks",
+              "checksPartial",
+              "findings",
+              "needsRecheck",
+              "discussion"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.UmV2aWV3VmVyc2lvbg": {
+            "additionalProperties": false,
+            "properties": {
+              "baseSha": {
+                "type": "string"
+              },
+              "headRepository": {
+                "type": "string"
+              },
+              "headSha": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              },
+              "recheck": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.UmV2aWV3UmVjaGVjaw"
+              },
+              "title": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "baseSha",
+              "headSha",
+              "title"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "checks": {
+            "items": {
+              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.UmV2aWV3Q2hlY2s"
+            },
+            "type": "array"
+          },
+          "checksPartial": {
+            "type": "boolean"
+          },
+          "currentHead": {
+            "type": "string"
+          },
+          "discussion": {
+            "items": {
+              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.UmV2aWV3RGlzY3Vzc2lvbg"
+            },
+            "type": "array"
+          },
+          "findings": {
+            "items": {
+              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.UmV2aWV3RmluZGluZw"
+            },
+            "type": "array"
+          },
+          "followError": {
+            "type": "string"
+          },
+          "following": {
+            "type": "boolean"
+          },
+          "latest": {
+            "type": "string"
+          },
+          "needsRecheck": {
+            "items": {
+              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.UmV2aWV3RmluZGluZw"
+            },
+            "type": "array"
+          },
+          "number": {
+            "allOf": [
+              {
+                "maximum": 9223372036854775807,
+                "minimum": -9223372036854775808
+              }
+            ],
+            "minimum": 1,
+            "type": "integer"
+          },
+          "repository": {
+            "maxLength": 256,
+            "minLength": 3,
+            "type": "string"
+          },
+          "selected": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.UmV2aWV3VmVyc2lvbg"
+          },
+          "url": {
+            "type": "string"
+          },
+          "version": {
+            "allOf": [
+              {
+                "maximum": 9223372036854775807,
+                "minimum": -9223372036854775808
+              }
+            ],
+            "type": "integer"
+          },
+          "versions": {
+            "items": {
+              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.UmV2aWV3VmVyc2lvbg"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "repository",
+          "number",
+          "url",
+          "version",
+          "currentHead",
+          "following",
+          "versions",
+          "checks",
+          "checksPartial",
+          "findings",
+          "needsRecheck",
+          "discussion"
+        ],
+        "type": "object"
+      }
+    },
+    {
       "name": "flame.github/submit-pull-request-review.v1",
       "kind": "command",
       "target": "installation",
@@ -5785,6 +6306,642 @@
           "commitId",
           "originalCommitId",
           "side"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "flame.github/update-review-work.v1",
+      "kind": "command",
+      "target": "installation",
+      "description": "Capture the current pull request, inspect checks for a retained revision, record a finding or human decision, or change the follow setting. Following a pull request rechecks each new captured revision in a detached worktree. A local decision does not publish a GitHub review.",
+      "input": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.RmluZGluZ0RlY2lzaW9uSW5wdXQ": {
+            "additionalProperties": false,
+            "properties": {
+              "disposition": {
+                "allOf": [
+                  {
+                    "enum": [
+                      "accepted",
+                      "deferred"
+                    ]
+                  }
+                ],
+                "type": "string"
+              },
+              "finding": {
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              "reason": {
+                "maxLength": 2048,
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "finding",
+              "disposition",
+              "reason"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.UmV2aWV3RmluZGluZ0lucHV0": {
+            "additionalProperties": false,
+            "properties": {
+              "line": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "minimum": 1,
+                "type": "integer"
+              },
+              "path": {
+                "maxLength": 4096,
+                "minLength": 1,
+                "type": "string"
+              },
+              "side": {
+                "allOf": [
+                  {
+                    "enum": [
+                      "LEFT",
+                      "RIGHT"
+                    ]
+                  }
+                ],
+                "type": "string"
+              },
+              "summary": {
+                "maxLength": 2048,
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "path",
+              "side",
+              "line",
+              "summary"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.UmV2aWV3V29ya0NoYW5nZQ": {
+            "additionalProperties": false,
+            "properties": {
+              "decision": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.RmluZGluZ0RlY2lzaW9uSW5wdXQ"
+              },
+              "expectedVersion": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "minimum": 0,
+                "type": "integer"
+              },
+              "finding": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.UmV2aWV3RmluZGluZ0lucHV0"
+              },
+              "follow": {
+                "type": "boolean"
+              },
+              "number": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "minimum": 1,
+                "type": "integer"
+              },
+              "repository": {
+                "maxLength": 256,
+                "minLength": 3,
+                "type": "string"
+              },
+              "revision": {
+                "maxLength": 129,
+                "type": "string"
+              }
+            },
+            "required": [
+              "repository",
+              "number",
+              "expectedVersion"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "decision": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.RmluZGluZ0RlY2lzaW9uSW5wdXQ"
+          },
+          "expectedVersion": {
+            "allOf": [
+              {
+                "maximum": 9223372036854775807,
+                "minimum": -9223372036854775808
+              }
+            ],
+            "minimum": 0,
+            "type": "integer"
+          },
+          "finding": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.UmV2aWV3RmluZGluZ0lucHV0"
+          },
+          "follow": {
+            "type": "boolean"
+          },
+          "number": {
+            "allOf": [
+              {
+                "maximum": 9223372036854775807,
+                "minimum": -9223372036854775808
+              }
+            ],
+            "minimum": 1,
+            "type": "integer"
+          },
+          "repository": {
+            "maxLength": 256,
+            "minLength": 3,
+            "type": "string"
+          },
+          "revision": {
+            "maxLength": 129,
+            "type": "string"
+          }
+        },
+        "required": [
+          "repository",
+          "number",
+          "expectedVersion"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w": {
+            "type": "string"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.RmluZGluZ0RlY2lzaW9u": {
+            "additionalProperties": false,
+            "properties": {
+              "at": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
+              },
+              "disposition": {
+                "allOf": [
+                  {
+                    "enum": [
+                      "accepted",
+                      "deferred"
+                    ]
+                  }
+                ],
+                "type": "string"
+              },
+              "reason": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "disposition",
+              "reason",
+              "at"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.RmluZGluZ1JlY2hlY2s": {
+            "additionalProperties": false,
+            "properties": {
+              "finding": {
+                "type": "string"
+              },
+              "status": {
+                "allOf": [
+                  {
+                    "enum": [
+                      "unchanged",
+                      "changed",
+                      "unavailable"
+                    ]
+                  }
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "finding",
+              "status"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.UmV2aWV3Q2hlY2s": {
+            "additionalProperties": false,
+            "properties": {
+              "conclusion": {
+                "type": "string"
+              },
+              "headSha": {
+                "type": "string"
+              },
+              "id": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "type": "integer"
+              },
+              "name": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "url": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "headSha",
+              "status",
+              "url"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.UmV2aWV3RGlzY3Vzc2lvbg": {
+            "additionalProperties": false,
+            "properties": {
+              "author": {
+                "type": "string"
+              },
+              "body": {
+                "type": "string"
+              },
+              "createdAt": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
+              },
+              "id": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "type": "integer"
+              },
+              "receivedAtRevision": {
+                "type": "string"
+              },
+              "updatedAt": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
+              },
+              "url": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "url",
+              "author",
+              "body",
+              "createdAt",
+              "updatedAt",
+              "receivedAtRevision"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.UmV2aWV3RmluZGluZw": {
+            "additionalProperties": false,
+            "properties": {
+              "decisions": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.RmluZGluZ0RlY2lzaW9u"
+                },
+                "type": "array"
+              },
+              "id": {
+                "type": "string"
+              },
+              "line": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "minimum": 1,
+                "type": "integer"
+              },
+              "path": {
+                "maxLength": 4096,
+                "minLength": 1,
+                "type": "string"
+              },
+              "side": {
+                "allOf": [
+                  {
+                    "enum": [
+                      "LEFT",
+                      "RIGHT"
+                    ]
+                  }
+                ],
+                "type": "string"
+              },
+              "summary": {
+                "maxLength": 2048,
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "path",
+              "side",
+              "line",
+              "summary",
+              "id",
+              "decisions"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.UmV2aWV3UmVjaGVjaw": {
+            "additionalProperties": false,
+            "properties": {
+              "checkedHead": {
+                "type": "string"
+              },
+              "completedAt": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
+              },
+              "diagnostic": {
+                "type": "string"
+              },
+              "findings": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.RmluZGluZ1JlY2hlY2s"
+                },
+                "type": "array"
+              },
+              "previousRevision": {
+                "type": "string"
+              },
+              "status": {
+                "allOf": [
+                  {
+                    "enum": [
+                      "pending",
+                      "clean",
+                      "issues",
+                      "failed"
+                    ]
+                  }
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "status",
+              "previousRevision",
+              "findings"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.UmV2aWV3V29yaw": {
+            "additionalProperties": false,
+            "properties": {
+              "checks": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.UmV2aWV3Q2hlY2s"
+                },
+                "type": "array"
+              },
+              "checksPartial": {
+                "type": "boolean"
+              },
+              "currentHead": {
+                "type": "string"
+              },
+              "discussion": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.UmV2aWV3RGlzY3Vzc2lvbg"
+                },
+                "type": "array"
+              },
+              "findings": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.UmV2aWV3RmluZGluZw"
+                },
+                "type": "array"
+              },
+              "followError": {
+                "type": "string"
+              },
+              "following": {
+                "type": "boolean"
+              },
+              "latest": {
+                "type": "string"
+              },
+              "needsRecheck": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.UmV2aWV3RmluZGluZw"
+                },
+                "type": "array"
+              },
+              "number": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "minimum": 1,
+                "type": "integer"
+              },
+              "repository": {
+                "maxLength": 256,
+                "minLength": 3,
+                "type": "string"
+              },
+              "selected": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.UmV2aWV3VmVyc2lvbg"
+              },
+              "url": {
+                "type": "string"
+              },
+              "version": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "type": "integer"
+              },
+              "versions": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.UmV2aWV3VmVyc2lvbg"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "repository",
+              "number",
+              "url",
+              "version",
+              "currentHead",
+              "following",
+              "versions",
+              "checks",
+              "checksPartial",
+              "findings",
+              "needsRecheck",
+              "discussion"
+            ],
+            "type": "object"
+          },
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.UmV2aWV3VmVyc2lvbg": {
+            "additionalProperties": false,
+            "properties": {
+              "baseSha": {
+                "type": "string"
+              },
+              "headRepository": {
+                "type": "string"
+              },
+              "headSha": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              },
+              "recheck": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.UmV2aWV3UmVjaGVjaw"
+              },
+              "title": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "baseSha",
+              "headSha",
+              "title"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "checks": {
+            "items": {
+              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.UmV2aWV3Q2hlY2s"
+            },
+            "type": "array"
+          },
+          "checksPartial": {
+            "type": "boolean"
+          },
+          "currentHead": {
+            "type": "string"
+          },
+          "discussion": {
+            "items": {
+              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.UmV2aWV3RGlzY3Vzc2lvbg"
+            },
+            "type": "array"
+          },
+          "findings": {
+            "items": {
+              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.UmV2aWV3RmluZGluZw"
+            },
+            "type": "array"
+          },
+          "followError": {
+            "type": "string"
+          },
+          "following": {
+            "type": "boolean"
+          },
+          "latest": {
+            "type": "string"
+          },
+          "needsRecheck": {
+            "items": {
+              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.UmV2aWV3RmluZGluZw"
+            },
+            "type": "array"
+          },
+          "number": {
+            "allOf": [
+              {
+                "maximum": 9223372036854775807,
+                "minimum": -9223372036854775808
+              }
+            ],
+            "minimum": 1,
+            "type": "integer"
+          },
+          "repository": {
+            "maxLength": 256,
+            "minLength": 3,
+            "type": "string"
+          },
+          "selected": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.UmV2aWV3VmVyc2lvbg"
+          },
+          "url": {
+            "type": "string"
+          },
+          "version": {
+            "allOf": [
+              {
+                "maximum": 9223372036854775807,
+                "minimum": -9223372036854775808
+              }
+            ],
+            "type": "integer"
+          },
+          "versions": {
+            "items": {
+              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ2l0aHViL2ludGVybmFsL3dpcmU.UmV2aWV3VmVyc2lvbg"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "repository",
+          "number",
+          "url",
+          "version",
+          "currentHead",
+          "following",
+          "versions",
+          "checks",
+          "checksPartial",
+          "findings",
+          "needsRecheck",
+          "discussion"
         ],
         "type": "object"
       }

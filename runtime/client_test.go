@@ -1,9 +1,11 @@
 package runtime
 
 import (
+	"context"
 	json "encoding/json/v2"
 	"errors"
 	"fmt"
+	"iter"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -11,6 +13,7 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	runtimeclient "github.com/Tangerg/flame/packages/go-sdk/client"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
@@ -134,7 +137,10 @@ func TestRuntimePreservesLocalCauseAndProjectsPublicProblem(t *testing.T) {
 	rt, server, _ := remoteRuntime(t, data)
 	remote := remoteTestClient(t, server.URL)
 	options := protocol.CallOptions{}
+	waitForRuntimeCompanions(t, rt)
 
+	// Moving the root while companions are starting can fail their process
+	// admission independently of the storage error exercised by Discover.
 	moved := filepath.Join(root, "moved-data")
 	if err := os.Rename(data, moved); err != nil {
 		t.Fatal(err)
@@ -165,6 +171,39 @@ func TestRuntimePreservesLocalCauseAndProjectsPublicProblem(t *testing.T) {
 	}
 	if wire := wireFailure.Problem(); wire.Type != public.Type || wire.Detail != public.Detail {
 		t.Fatalf("remote discovery changed the public problem: %+v", wire)
+	}
+}
+
+func waitForRuntimeCompanions(t *testing.T, rt *Runtime) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+	defer cancel()
+	_, changes, err := rt.SubscribeRuntime(ctx, protocol.RuntimeSubscribeRequest{
+		Topics: []protocol.RuntimeTopic{protocol.TopicMCPChanged},
+	}, protocol.SubscriptionOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	next, stop := iter.Pull2(changes)
+	defer stop()
+	for {
+		servers, err := rt.ListMCPServers(ctx, protocol.CallOptions{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		var pending []string
+		for _, server := range servers.Data {
+			switch server.Status.Type {
+			case protocol.MCPServerConnecting, protocol.MCPServerDisconnected:
+				pending = append(pending, server.ID.Name)
+			}
+		}
+		if len(pending) == 0 {
+			return
+		}
+		if _, err, ok := next(); err != nil || !ok {
+			t.Fatalf("runtime companions did not settle: %v: %v", pending, errors.Join(err, ctx.Err()))
+		}
 	}
 }
 

@@ -3,8 +3,10 @@ package bootstrap
 import (
 	"bytes"
 	"context"
+	"encoding/json/jsontext"
 	json "encoding/json/v2"
 	"errors"
+	"iter"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -12,6 +14,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 )
@@ -24,10 +27,20 @@ const (
 
 type waitingChildReceiptCrashStore struct {
 	operation.ReplayStore
-	path string
+	path          string
+	awaitSurvivor func() protocol.Interrupt
+}
+
+type waitingChildReceiptCut struct {
+	Outcome         jsontext.Value `json:"outcome"`
+	SurvivingRunID  string         `json:"survivingRunId"`
+	SurvivingItemID string         `json:"survivingItemId"`
 }
 
 func (s waitingChildReceiptCrashStore) Complete(ctx context.Context, record operation.ReplayRecord) (operation.ReplayRecord, error) {
+	if len(record.Settlement) == 0 {
+		return s.ReplayStore.Complete(ctx, record)
+	}
 	original, found, err := s.ReplayStore.Lookup(ctx, record.Key, record.Fingerprint)
 	if err != nil {
 		return operation.ReplayRecord{}, err
@@ -35,7 +48,16 @@ func (s waitingChildReceiptCrashStore) Complete(ctx context.Context, record oper
 	if !found || len(original.Settlement) == 0 || !bytes.Equal(original.Settlement, record.Settlement) {
 		return operation.ReplayRecord{}, errors.New("original waiting child cancellation settlement was not durably staged")
 	}
-	if err := os.WriteFile(s.path, record.Payload, 0o600); err != nil {
+	// A released sibling can enter an Effect outside the cancellation
+	// recovery window. Cut only once its question is durably waiting.
+	survivor := s.awaitSurvivor()
+	data, err := json.Marshal(waitingChildReceiptCut{
+		Outcome: record.Payload, SurvivingRunID: survivor.RunID, SurvivingItemID: survivor.ItemID,
+	})
+	if err != nil {
+		return operation.ReplayRecord{}, err
+	}
+	if err := os.WriteFile(s.path, data, 0o600); err != nil {
 		return operation.ReplayRecord{}, err
 	}
 	os.Exit(commandCrashExit)
@@ -68,18 +90,60 @@ func TestWaitingChildCancellationReceiptCrashHelper(t *testing.T) {
 	if err != nil || len(pending.Data) != 1 || len(pending.Data[0].Interrupts) == 0 {
 		t.Fatalf("expected at least one waiting sibling: %+v, %v", pending, err)
 	}
+	canceledRunID := pending.Data[0].Interrupts[0].RunID
+	watching, stopWatching := context.WithTimeout(ctx, lifecycleWaitBudget(t))
+	defer stopWatching()
+	_, changes, err := api.SubscribeRuntime(watching, protocol.RuntimeSubscribeRequest{
+		Topics: []protocol.RuntimeTopic{protocol.TopicInterruptsChanged},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
 	endpoint, err := delivery.NewEndpoint(api, delivery.EndpointConfig{
 		Lifetime: t.Context(), IdempotencyNamespace: stores.IdempotencyNamespace.String(),
-		IdempotencyStore: waitingChildReceiptCrashStore{ReplayStore: stores.Idempotency, path: path},
-		ValidateStorage:  stores.ValidateDirectory,
+		IdempotencyStore: waitingChildReceiptCrashStore{
+			ReplayStore: stores.Idempotency, path: path,
+			awaitSurvivor: func() protocol.Interrupt {
+				return awaitSurvivingSibling(t, watching, api, opening.RunID, canceledRunID, changes)
+			},
+		},
+		ValidateStorage: stores.ValidateDirectory,
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 	result := endpoint.Invoke(ctx, delivery.RunsCancel, protocol.CancelRunRequest{
-		RunID: pending.Data[0].Interrupts[0].RunID, Reason: waitingChildReceiptReason,
+		RunID: canceledRunID, Reason: waitingChildReceiptReason,
 	}, protocol.CallMetadata{RequestMeta: meta, IdempotencyKey: waitingChildReceiptKey})
-	t.Fatalf("waiting child cancellation did not reach its receipt cut: %+v", result.Failure)
+	if result.Failure == nil {
+		t.Fatal("waiting child cancellation returned without reaching its receipt cut")
+	}
+	if settlement, ok := errors.AsType[*runs.CancellationSettlementError](result.Failure); ok {
+		t.Fatalf("waiting child cancellation did not reach its receipt cut: %v", settlement)
+	}
+	t.Fatalf("waiting child cancellation did not reach its receipt cut: %v (%v)", result.Failure, errors.Unwrap(result.Failure))
+}
+
+func awaitSurvivingSibling(t *testing.T, ctx context.Context, api *delivery.Handler, rootRunID, canceledRunID string, changes iter.Seq2[protocol.RuntimeEvent, error]) protocol.Interrupt {
+	t.Helper()
+	next, stop := iter.Pull2(changes)
+	defer stop()
+	for {
+		pending, err := api.ListInterrupts(ctx, protocol.ListInterruptsRequest{RootRunID: rootRunID})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(pending.Data) == 1 && len(pending.Data[0].Interrupts) == 1 {
+			survivor := pending.Data[0].Interrupts[0]
+			if survivor.RunID != canceledRunID && survivor.RunID != rootRunID {
+				return survivor
+			}
+		}
+		_, err, ok := next()
+		if err != nil || !ok {
+			t.Fatalf("the surviving sibling did not commit its question before the receipt cut: %+v, %v, %v", pending, err, ctx.Err())
+		}
+	}
 }
 
 func TestWaitingChildCancellationRecoversOriginalAcknowledgement(t *testing.T) {
@@ -97,10 +161,14 @@ func TestWaitingChildCancellationRecoversOriginalAcknowledgement(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	var cut waitingChildReceiptCut
+	if err := json.Unmarshal(data, &cut); err != nil {
+		t.Fatal(err)
+	}
 	var original struct {
 		Value *protocol.CancelRunResponse `json:"value"`
 	}
-	if err := json.Unmarshal(data, &original); err != nil {
+	if err := json.Unmarshal(cut.Outcome, &original); err != nil {
 		t.Fatal(err)
 	}
 	want := original.Value
@@ -117,7 +185,7 @@ func TestWaitingChildCancellationRecoversOriginalAcknowledgement(t *testing.T) {
 	})
 	meta := waitingChildCancellationMeta()
 	ctx := delivery.WithRequestMeta(t.Context(), meta)
-	answerWaitingSibling(t, ctx, api, want.RootRun.ID, want.Run.ID)
+	answerWaitingSibling(t, ctx, api, want.RootRun.ID, cut)
 	finished, err := api.GetRun(ctx, protocol.GetRunRequest{RunID: want.RootRun.ID})
 	if err != nil || finished.Outcome == nil || finished.Outcome.Type != protocol.OutcomeCompleted ||
 		finished.Status == want.RootRun.Status {
@@ -148,30 +216,17 @@ func TestWaitingChildCancellationRecoversOriginalAcknowledgement(t *testing.T) {
 	}
 }
 
-func answerWaitingSibling(t *testing.T, ctx context.Context, api *delivery.Handler, rootRunID, canceledRunID string) {
+func answerWaitingSibling(t *testing.T, ctx context.Context, api *delivery.Handler, rootRunID string, cut waitingChildReceiptCut) {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(ctx, lifecycleWaitBudget(t))
 	defer cancel()
-	ticker := time.NewTicker(10 * time.Millisecond)
-	defer ticker.Stop()
-	var survivor protocol.Interrupt
-	for survivor.ItemID == "" {
-		pending, err := api.ListInterrupts(ctx, protocol.ListInterruptsRequest{RootRunID: rootRunID})
-		if err != nil {
-			t.Fatal(err)
-		}
-		if len(pending.Data) == 1 && len(pending.Data[0].Interrupts) == 1 {
-			survivor = pending.Data[0].Interrupts[0]
-			break
-		}
-		select {
-		case <-ticker.C:
-		case <-ctx.Done():
-			t.Fatal("the surviving sibling did not retain its question")
-		}
+	pending, err := api.ListInterrupts(ctx, protocol.ListInterruptsRequest{RootRunID: rootRunID})
+	if err != nil || len(pending.Data) != 1 || len(pending.Data[0].Interrupts) != 1 {
+		t.Fatalf("the surviving sibling did not retain its question %q: %+v, %v", cut.SurvivingItemID, pending, err)
 	}
-	if survivor.RunID == canceledRunID {
-		t.Fatalf("the canceled sibling %q published another question", canceledRunID)
+	survivor := pending.Data[0].Interrupts[0]
+	if survivor.RunID != cut.SurvivingRunID || survivor.ItemID != cut.SurvivingItemID {
+		t.Fatalf("the surviving question changed across restart: %+v, want %s / %s", survivor, cut.SurvivingRunID, cut.SurvivingItemID)
 	}
 	_, events, err := api.ResumeRun(ctx, protocol.ResumeRunRequest{
 		RunID: rootRunID, Responses: []protocol.InterruptResponse{{

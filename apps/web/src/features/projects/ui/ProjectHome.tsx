@@ -3,7 +3,8 @@ import { useState } from "react";
 import { Button, HeadingLevel, Panel, PanelSection, PanelTitle, TextArea, vocab } from "@flame/ui";
 import { AgentRow } from "@/ui/agent/index";
 import { SystemMessage } from "@/ui/atoms/system-message";
-import { useT } from "@/lib/i18n/index";
+import { labelText, useT } from "@/lib/i18n/index";
+import { useWorkspaceViews } from "@/features/workspace/public/views";
 import { formatRelative } from "@/lib/i18n/relativeTime";
 import { rpcErrorText } from "@/lib/rpcErrors";
 import { useAgent } from "@/features/agent/public/agent";
@@ -50,6 +51,8 @@ function LoadedProjectHome({ project }: { project: ProjectSummary }) {
   const access = useProjectsAccess();
   const agent = useAgent();
   const workspace = useWorkspace();
+  const researchers = useWorkspaceViews().filter((view) => view.material === "project-research");
+  const research = researchers.length === 1 ? researchers[0] : undefined;
   const startSession = useStartProjectSession();
   const { data: sessions = EMPTY_SESSIONS } = useAgentSessions();
   const members = sessions
@@ -90,6 +93,13 @@ function LoadedProjectHome({ project }: { project: ProjectSummary }) {
               <Button variant="primary" size="sm" onClick={() => startSession(project.id)}>
                 {t("projects.home.newSession")}
               </Button>
+              {research && (
+                <Button variant="ghost" size="sm" onClick={(event) =>
+                  workspace.navigation.openViewInDock(research.id, event.currentTarget, JSON.stringify({ project: project.id }))
+                }>
+                  {labelText(research.title)}
+                </Button>
+              )}
               <Button variant="ghost" size="sm" onClick={() => setRenaming(true)}>
                 {t("projects.rename.title")}
               </Button>

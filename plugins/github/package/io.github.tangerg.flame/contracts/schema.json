@@ -1176,6 +1176,38 @@
       ],
       "type": "object"
     },
+    "FindingDecisionInput": {
+      "additionalProperties": false,
+      "properties": {
+        "disposition": {
+          "allOf": [
+            {
+              "enum": [
+                "accepted",
+                "deferred"
+              ]
+            }
+          ],
+          "type": "string"
+        },
+        "finding": {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        },
+        "reason": {
+          "maxLength": 2048,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "finding",
+        "disposition",
+        "reason"
+      ],
+      "type": "object"
+    },
     "GetIssueV1Input": {
       "$ref": "#/$defs/GetIssueV1InputWireIssueInput"
     },
@@ -2662,6 +2694,49 @@
       ],
       "type": "object"
     },
+    "ReviewFindingInput": {
+      "additionalProperties": false,
+      "properties": {
+        "line": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        },
+        "path": {
+          "maxLength": 4096,
+          "minLength": 1,
+          "type": "string"
+        },
+        "side": {
+          "allOf": [
+            {
+              "enum": [
+                "LEFT",
+                "RIGHT"
+              ]
+            }
+          ],
+          "type": "string"
+        },
+        "summary": {
+          "maxLength": 2048,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "side",
+        "line",
+        "summary"
+      ],
+      "type": "object"
+    },
     "ReviewPage": {
       "additionalProperties": false,
       "properties": {
@@ -2683,6 +2758,446 @@
       },
       "required": [
         "reviews"
+      ],
+      "type": "object"
+    },
+    "ReviewWorkChange": {
+      "additionalProperties": false,
+      "properties": {
+        "decision": {
+          "$ref": "#/$defs/FindingDecisionInput"
+        },
+        "expectedVersion": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 0,
+          "type": "integer"
+        },
+        "finding": {
+          "$ref": "#/$defs/ReviewFindingInput"
+        },
+        "follow": {
+          "type": "boolean"
+        },
+        "number": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        },
+        "repository": {
+          "maxLength": 256,
+          "minLength": 3,
+          "type": "string"
+        },
+        "revision": {
+          "maxLength": 129,
+          "type": "string"
+        }
+      },
+      "required": [
+        "repository",
+        "number",
+        "expectedVersion"
+      ],
+      "type": "object"
+    },
+    "ReviewWorkInput": {
+      "additionalProperties": false,
+      "properties": {
+        "number": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        },
+        "repository": {
+          "maxLength": 256,
+          "minLength": 3,
+          "type": "string"
+        },
+        "revision": {
+          "maxLength": 129,
+          "type": "string"
+        }
+      },
+      "required": [
+        "repository",
+        "number"
+      ],
+      "type": "object"
+    },
+    "ReviewWorkV1Input": {
+      "$ref": "#/$defs/ReviewWorkInput"
+    },
+    "ReviewWorkV1Output": {
+      "$ref": "#/$defs/ReviewWorkV1OutputWireReviewWork"
+    },
+    "ReviewWorkV1OutputInstantTimestamp": {
+      "type": "string"
+    },
+    "ReviewWorkV1OutputWireFindingDecision": {
+      "additionalProperties": false,
+      "properties": {
+        "at": {
+          "$ref": "#/$defs/ReviewWorkV1OutputInstantTimestamp"
+        },
+        "disposition": {
+          "allOf": [
+            {
+              "enum": [
+                "accepted",
+                "deferred"
+              ]
+            }
+          ],
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "disposition",
+        "reason",
+        "at"
+      ],
+      "type": "object"
+    },
+    "ReviewWorkV1OutputWireFindingRecheck": {
+      "additionalProperties": false,
+      "properties": {
+        "finding": {
+          "type": "string"
+        },
+        "status": {
+          "allOf": [
+            {
+              "enum": [
+                "unchanged",
+                "changed",
+                "unavailable"
+              ]
+            }
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "finding",
+        "status"
+      ],
+      "type": "object"
+    },
+    "ReviewWorkV1OutputWireReviewCheck": {
+      "additionalProperties": false,
+      "properties": {
+        "conclusion": {
+          "type": "string"
+        },
+        "headSha": {
+          "type": "string"
+        },
+        "id": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "name": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "headSha",
+        "status",
+        "url"
+      ],
+      "type": "object"
+    },
+    "ReviewWorkV1OutputWireReviewDiscussion": {
+      "additionalProperties": false,
+      "properties": {
+        "author": {
+          "type": "string"
+        },
+        "body": {
+          "type": "string"
+        },
+        "createdAt": {
+          "$ref": "#/$defs/ReviewWorkV1OutputInstantTimestamp"
+        },
+        "id": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "receivedAtRevision": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "$ref": "#/$defs/ReviewWorkV1OutputInstantTimestamp"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "url",
+        "author",
+        "body",
+        "createdAt",
+        "updatedAt",
+        "receivedAtRevision"
+      ],
+      "type": "object"
+    },
+    "ReviewWorkV1OutputWireReviewFinding": {
+      "additionalProperties": false,
+      "properties": {
+        "decisions": {
+          "items": {
+            "$ref": "#/$defs/ReviewWorkV1OutputWireFindingDecision"
+          },
+          "type": "array"
+        },
+        "id": {
+          "type": "string"
+        },
+        "line": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        },
+        "path": {
+          "maxLength": 4096,
+          "minLength": 1,
+          "type": "string"
+        },
+        "side": {
+          "allOf": [
+            {
+              "enum": [
+                "LEFT",
+                "RIGHT"
+              ]
+            }
+          ],
+          "type": "string"
+        },
+        "summary": {
+          "maxLength": 2048,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "side",
+        "line",
+        "summary",
+        "id",
+        "decisions"
+      ],
+      "type": "object"
+    },
+    "ReviewWorkV1OutputWireReviewRecheck": {
+      "additionalProperties": false,
+      "properties": {
+        "checkedHead": {
+          "type": "string"
+        },
+        "completedAt": {
+          "$ref": "#/$defs/ReviewWorkV1OutputInstantTimestamp"
+        },
+        "diagnostic": {
+          "type": "string"
+        },
+        "findings": {
+          "items": {
+            "$ref": "#/$defs/ReviewWorkV1OutputWireFindingRecheck"
+          },
+          "type": "array"
+        },
+        "previousRevision": {
+          "type": "string"
+        },
+        "status": {
+          "allOf": [
+            {
+              "enum": [
+                "pending",
+                "clean",
+                "issues",
+                "failed"
+              ]
+            }
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "status",
+        "previousRevision",
+        "findings"
+      ],
+      "type": "object"
+    },
+    "ReviewWorkV1OutputWireReviewVersion": {
+      "additionalProperties": false,
+      "properties": {
+        "baseSha": {
+          "type": "string"
+        },
+        "headRepository": {
+          "type": "string"
+        },
+        "headSha": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "recheck": {
+          "$ref": "#/$defs/ReviewWorkV1OutputWireReviewRecheck"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "baseSha",
+        "headSha",
+        "title"
+      ],
+      "type": "object"
+    },
+    "ReviewWorkV1OutputWireReviewWork": {
+      "additionalProperties": false,
+      "properties": {
+        "checks": {
+          "items": {
+            "$ref": "#/$defs/ReviewWorkV1OutputWireReviewCheck"
+          },
+          "type": "array"
+        },
+        "checksPartial": {
+          "type": "boolean"
+        },
+        "currentHead": {
+          "type": "string"
+        },
+        "discussion": {
+          "items": {
+            "$ref": "#/$defs/ReviewWorkV1OutputWireReviewDiscussion"
+          },
+          "type": "array"
+        },
+        "findings": {
+          "items": {
+            "$ref": "#/$defs/ReviewWorkV1OutputWireReviewFinding"
+          },
+          "type": "array"
+        },
+        "followError": {
+          "type": "string"
+        },
+        "following": {
+          "type": "boolean"
+        },
+        "latest": {
+          "type": "string"
+        },
+        "needsRecheck": {
+          "items": {
+            "$ref": "#/$defs/ReviewWorkV1OutputWireReviewFinding"
+          },
+          "type": "array"
+        },
+        "number": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        },
+        "repository": {
+          "maxLength": 256,
+          "minLength": 3,
+          "type": "string"
+        },
+        "selected": {
+          "$ref": "#/$defs/ReviewWorkV1OutputWireReviewVersion"
+        },
+        "url": {
+          "type": "string"
+        },
+        "version": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "versions": {
+          "items": {
+            "$ref": "#/$defs/ReviewWorkV1OutputWireReviewVersion"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "repository",
+        "number",
+        "url",
+        "version",
+        "currentHead",
+        "following",
+        "versions",
+        "checks",
+        "checksPartial",
+        "findings",
+        "needsRecheck",
+        "discussion"
       ],
       "type": "object"
     },
@@ -3325,6 +3840,368 @@
         "commitId",
         "originalCommitId",
         "side"
+      ],
+      "type": "object"
+    },
+    "UpdateReviewWorkV1Input": {
+      "$ref": "#/$defs/ReviewWorkChange"
+    },
+    "UpdateReviewWorkV1Output": {
+      "$ref": "#/$defs/UpdateReviewWorkV1OutputWireReviewWork"
+    },
+    "UpdateReviewWorkV1OutputInstantTimestamp": {
+      "type": "string"
+    },
+    "UpdateReviewWorkV1OutputWireFindingDecision": {
+      "additionalProperties": false,
+      "properties": {
+        "at": {
+          "$ref": "#/$defs/UpdateReviewWorkV1OutputInstantTimestamp"
+        },
+        "disposition": {
+          "allOf": [
+            {
+              "enum": [
+                "accepted",
+                "deferred"
+              ]
+            }
+          ],
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "disposition",
+        "reason",
+        "at"
+      ],
+      "type": "object"
+    },
+    "UpdateReviewWorkV1OutputWireFindingRecheck": {
+      "additionalProperties": false,
+      "properties": {
+        "finding": {
+          "type": "string"
+        },
+        "status": {
+          "allOf": [
+            {
+              "enum": [
+                "unchanged",
+                "changed",
+                "unavailable"
+              ]
+            }
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "finding",
+        "status"
+      ],
+      "type": "object"
+    },
+    "UpdateReviewWorkV1OutputWireReviewCheck": {
+      "additionalProperties": false,
+      "properties": {
+        "conclusion": {
+          "type": "string"
+        },
+        "headSha": {
+          "type": "string"
+        },
+        "id": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "name": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "headSha",
+        "status",
+        "url"
+      ],
+      "type": "object"
+    },
+    "UpdateReviewWorkV1OutputWireReviewDiscussion": {
+      "additionalProperties": false,
+      "properties": {
+        "author": {
+          "type": "string"
+        },
+        "body": {
+          "type": "string"
+        },
+        "createdAt": {
+          "$ref": "#/$defs/UpdateReviewWorkV1OutputInstantTimestamp"
+        },
+        "id": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "receivedAtRevision": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "$ref": "#/$defs/UpdateReviewWorkV1OutputInstantTimestamp"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "url",
+        "author",
+        "body",
+        "createdAt",
+        "updatedAt",
+        "receivedAtRevision"
+      ],
+      "type": "object"
+    },
+    "UpdateReviewWorkV1OutputWireReviewFinding": {
+      "additionalProperties": false,
+      "properties": {
+        "decisions": {
+          "items": {
+            "$ref": "#/$defs/UpdateReviewWorkV1OutputWireFindingDecision"
+          },
+          "type": "array"
+        },
+        "id": {
+          "type": "string"
+        },
+        "line": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        },
+        "path": {
+          "maxLength": 4096,
+          "minLength": 1,
+          "type": "string"
+        },
+        "side": {
+          "allOf": [
+            {
+              "enum": [
+                "LEFT",
+                "RIGHT"
+              ]
+            }
+          ],
+          "type": "string"
+        },
+        "summary": {
+          "maxLength": 2048,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "side",
+        "line",
+        "summary",
+        "id",
+        "decisions"
+      ],
+      "type": "object"
+    },
+    "UpdateReviewWorkV1OutputWireReviewRecheck": {
+      "additionalProperties": false,
+      "properties": {
+        "checkedHead": {
+          "type": "string"
+        },
+        "completedAt": {
+          "$ref": "#/$defs/UpdateReviewWorkV1OutputInstantTimestamp"
+        },
+        "diagnostic": {
+          "type": "string"
+        },
+        "findings": {
+          "items": {
+            "$ref": "#/$defs/UpdateReviewWorkV1OutputWireFindingRecheck"
+          },
+          "type": "array"
+        },
+        "previousRevision": {
+          "type": "string"
+        },
+        "status": {
+          "allOf": [
+            {
+              "enum": [
+                "pending",
+                "clean",
+                "issues",
+                "failed"
+              ]
+            }
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "status",
+        "previousRevision",
+        "findings"
+      ],
+      "type": "object"
+    },
+    "UpdateReviewWorkV1OutputWireReviewVersion": {
+      "additionalProperties": false,
+      "properties": {
+        "baseSha": {
+          "type": "string"
+        },
+        "headRepository": {
+          "type": "string"
+        },
+        "headSha": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "recheck": {
+          "$ref": "#/$defs/UpdateReviewWorkV1OutputWireReviewRecheck"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "baseSha",
+        "headSha",
+        "title"
+      ],
+      "type": "object"
+    },
+    "UpdateReviewWorkV1OutputWireReviewWork": {
+      "additionalProperties": false,
+      "properties": {
+        "checks": {
+          "items": {
+            "$ref": "#/$defs/UpdateReviewWorkV1OutputWireReviewCheck"
+          },
+          "type": "array"
+        },
+        "checksPartial": {
+          "type": "boolean"
+        },
+        "currentHead": {
+          "type": "string"
+        },
+        "discussion": {
+          "items": {
+            "$ref": "#/$defs/UpdateReviewWorkV1OutputWireReviewDiscussion"
+          },
+          "type": "array"
+        },
+        "findings": {
+          "items": {
+            "$ref": "#/$defs/UpdateReviewWorkV1OutputWireReviewFinding"
+          },
+          "type": "array"
+        },
+        "followError": {
+          "type": "string"
+        },
+        "following": {
+          "type": "boolean"
+        },
+        "latest": {
+          "type": "string"
+        },
+        "needsRecheck": {
+          "items": {
+            "$ref": "#/$defs/UpdateReviewWorkV1OutputWireReviewFinding"
+          },
+          "type": "array"
+        },
+        "number": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "minimum": 1,
+          "type": "integer"
+        },
+        "repository": {
+          "maxLength": 256,
+          "minLength": 3,
+          "type": "string"
+        },
+        "selected": {
+          "$ref": "#/$defs/UpdateReviewWorkV1OutputWireReviewVersion"
+        },
+        "url": {
+          "type": "string"
+        },
+        "version": {
+          "allOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": -9223372036854775808
+            }
+          ],
+          "type": "integer"
+        },
+        "versions": {
+          "items": {
+            "$ref": "#/$defs/UpdateReviewWorkV1OutputWireReviewVersion"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "repository",
+        "number",
+        "url",
+        "version",
+        "currentHead",
+        "following",
+        "versions",
+        "checks",
+        "checksPartial",
+        "findings",
+        "needsRecheck",
+        "discussion"
       ],
       "type": "object"
     }

@@ -48,6 +48,7 @@ var rpcCodeSpecs = mustRPCCodeSpecs([]rpcCodeSpec{
 	{protocol.ErrSessionHasActiveRun.Error(), codeSessionHasActiveRun},
 	{protocol.ErrCapabilityNotNeg.Error(), codeCapabilityNotNeg},
 	{protocol.ErrWorkspaceUnavailable.Error(), codeWorkspaceUnavailable},
+	{protocol.ErrWorkspaceFileNotFound.Error(), codeWorkspaceFileNotFound},
 	{protocol.ErrCheckpointUnavailable.Error(), codeCheckpointUnavail},
 	{protocol.ErrCheckpointConflict.Error(), codeCheckpointConflict},
 	{protocol.ErrPromptSourceTooLarge.Error(), codePromptSourceTooLarge},

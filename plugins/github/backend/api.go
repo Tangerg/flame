@@ -10,6 +10,7 @@ import (
 	"maps"
 	"net/http"
 	"net/url"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -33,6 +34,8 @@ type connector struct {
 	store      *store
 	http       *http.Client
 	credential credential
+	reviewGit  reviewGit
+	reviewWake chan struct{}
 }
 
 const (
@@ -49,7 +52,11 @@ func newConnector(store *store, transport http.RoundTripper, credential credenti
 		return nil, errors.New("github: store and HTTP transport are required")
 	}
 	client := &http.Client{Transport: transport, Timeout: requestTimeout, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
-	return &connector{store: store, http: client, credential: credential}, nil
+	return &connector{
+		store: store, http: client, credential: credential,
+		reviewGit:  reviewGit{root: filepath.Join(store.data, "review-worktrees"), origin: "https://github.com"},
+		reviewWake: make(chan struct{}, 1),
+	}, nil
 }
 
 const (
