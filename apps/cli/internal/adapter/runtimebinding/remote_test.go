@@ -34,12 +34,15 @@ func TestRemoteConnectionRecoversLostDeletionAcknowledgement(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = store.Close() })
 	result, err := session.Delete(t.Context(), connection, store, created.ID, policy, mutation.AcknowledgementBackoff())
-	if err != nil || result.Outcome != mutation.Confirmed {
+	if err != nil || result.LocalCleanupError != nil {
 		t.Fatalf("remote deletion = %+v, %v", result, err)
 	}
 	keys := attempts()
-	if len(keys) != 2 || keys[0] == "" || keys[1] != keys[0] || keys[0] != string(result.Request.CommandID) {
+	if len(keys) != 2 || keys[0] == "" || keys[1] != keys[0] {
 		t.Fatalf("mutation identities across lost reply = %v", keys)
+	}
+	if pending, exists := store.PendingSessionDeletion(created.ID); exists {
+		t.Fatalf("confirmed deletion is still in the Workbench: %+v", pending)
 	}
 	if err := owner.Close(); err != nil {
 		t.Fatal(err)
