@@ -340,6 +340,8 @@ current revision. Each review captures its revision, render and reviewed page se
 An old page's successful review cannot certify a later edit. A disconnected
 component retains its original command handle and consults that receipt; it
 cannot turn an absent receipt into permission to execute again.
+The current observation reserves its command before starting recovery or
+retirement, and only that attempt can settle the outcome.
 
 ## Execution and evidence
 

@@ -1,11 +1,9 @@
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useMemo, useSyncExternalStore } from "react";
 import {
   failureText,
   isErrorType,
   mutationSettlementIsUnknown,
   OperationFailure,
-  useContextState,
-  type ComponentContext,
 } from "@flame/component-sdk";
 import {
   METHODS as DECLARATIONS,
@@ -22,20 +20,33 @@ const commandMethods = (
   (method): method is CommandMethod => DECLARATIONS[method].kind === "command",
 );
 
-export interface CommandObservation {
-  id: string;
-  method: CommandMethod;
-  status: "running" | "unknown";
-  error?: string;
-  recover?: () => Promise<unknown>;
-  retire?: () => Promise<void>;
-  settled?: (result: unknown) => void;
+type CommandRecovery = ReturnType<
+  DeliverableOperations["pendingCommands"]
+>[number];
+
+interface CommandIdentity {
+  readonly id: string;
+  readonly method: CommandMethod;
+  readonly settled?: (result: unknown) => void;
+}
+
+type RunningCommand = CommandIdentity & { readonly status: "running" };
+type UnknownCommand = CommandIdentity & {
+  readonly status: "unknown";
+  readonly error?: string;
+  readonly recovery?: CommandRecovery;
+};
+
+export type CommandObservation = RunningCommand | UnknownCommand;
+
+interface CommandSettlement {
+  settle(command: CommandObservation, result: unknown): void;
+  fail(error: unknown): void;
 }
 
 interface CommandEffect {
   // An announced result the notice offers to open.
-  result?: "asset" | "revision";
-  announced: boolean;
+  notice?: "asset" | "revision" | "command";
   reload: "views" | "uploads" | "none";
   // Commands that author a document carry the current project scope.
   scoped?: true;
@@ -43,43 +54,39 @@ interface CommandEffect {
 
 export const COMMAND_EFFECTS: Record<CommandMethod, CommandEffect> = {
   [METHODS.create]: {
-    result: "revision",
-    announced: true,
+    notice: "revision",
     reload: "views",
     scoped: true,
   },
   [METHODS.import]: {
-    result: "revision",
-    announced: true,
+    notice: "revision",
     reload: "views",
     scoped: true,
   },
   [METHODS.copy]: {
-    result: "revision",
-    announced: true,
+    notice: "revision",
     reload: "views",
     scoped: true,
   },
-  [METHODS.edit]: { result: "revision", announced: true, reload: "views" },
+  [METHODS.edit]: { notice: "revision", reload: "views" },
   [METHODS.recalculate]: {
-    result: "revision",
-    announced: true,
+    notice: "revision",
     reload: "views",
   },
-  [METHODS.restore]: { result: "revision", announced: true, reload: "views" },
-  [METHODS.comment]: { announced: false, reload: "views" },
-  [METHODS.reply]: { announced: false, reload: "views" },
-  [METHODS.resolve]: { announced: false, reload: "views" },
-  [METHODS.reopen]: { announced: false, reload: "views" },
-  [METHODS.suggest]: { announced: false, reload: "views" },
-  [METHODS.settle]: { announced: false, reload: "views" },
-  [METHODS.export]: { result: "asset", announced: true, reload: "none" },
-  [METHODS.render]: { announced: true, reload: "views" },
-  [METHODS.review]: { announced: true, reload: "views" },
-  [METHODS.remove]: { announced: true, reload: "views" },
-  [METHODS.discard]: { announced: true, reload: "uploads" },
-  [METHODS.upload]: { announced: false, reload: "uploads" },
-  [METHODS.append]: { announced: false, reload: "none" },
+  [METHODS.restore]: { notice: "revision", reload: "views" },
+  [METHODS.comment]: { reload: "views" },
+  [METHODS.reply]: { reload: "views" },
+  [METHODS.resolve]: { reload: "views" },
+  [METHODS.reopen]: { reload: "views" },
+  [METHODS.suggest]: { reload: "views" },
+  [METHODS.settle]: { reload: "views" },
+  [METHODS.export]: { notice: "asset", reload: "none" },
+  [METHODS.render]: { notice: "command", reload: "views" },
+  [METHODS.review]: { notice: "command", reload: "views" },
+  [METHODS.remove]: { notice: "command", reload: "views" },
+  [METHODS.discard]: { notice: "command", reload: "uploads" },
+  [METHODS.upload]: { reload: "uploads" },
+  [METHODS.append]: { reload: "none" },
 };
 
 // A failure that does not prove the command was refused leaves its outcome
@@ -93,148 +100,179 @@ function outcomeUnknown(error: unknown, recoverable: boolean): boolean {
   );
 }
 
+class CommandJournal {
+  #commands: readonly CommandObservation[];
+  readonly #listeners = new Set<() => void>();
+
+  constructor(
+    private readonly operations: DeliverableOperations,
+    private readonly signal: AbortSignal,
+  ) {
+    this.#commands = commandMethods.flatMap((method) =>
+      operations.pendingCommands(method).map((recovery): UnknownCommand => ({
+        id: recovery.idempotencyKey,
+        method,
+        status: "unknown",
+        recovery,
+      })),
+    );
+  }
+
+  snapshot = () => this.#commands;
+
+  subscribe = (listener: () => void) => {
+    this.#listeners.add(listener);
+    return () => this.#listeners.delete(listener);
+  };
+
+  async run<K extends CommandMethod>(
+    method: K,
+    input: MethodInputs[K],
+    settlement: CommandSettlement,
+    settled?: (value: MethodOutputs[K]) => void,
+  ): Promise<MethodOutputs[K] | undefined> {
+    if (this.signal.aborted) return;
+    if (method === METHODS.discard) {
+      if (this.#commands.some((command) => command.method === method)) return;
+    } else if (this.#commands.length) return;
+
+    try {
+      const result = this.operations.command(method, input);
+      const command: RunningCommand = {
+        id: result.idempotencyKey,
+        method,
+        status: "running",
+        settled: settled
+          ? (value) => settled(value as MethodOutputs[K])
+          : undefined,
+      };
+      this.#publish([...this.#commands, command]);
+      return await this.#observe(command, () => result, settlement);
+    } catch (error) {
+      if (!this.signal.aborted) settlement.fail(error);
+    }
+  }
+
+  async recover(
+    original: CommandObservation,
+    settlement: CommandSettlement,
+  ): Promise<void> {
+    if (original.status !== "unknown" || !original.recovery) return;
+    const recovery = original.recovery;
+    const command = this.#claim(original);
+    if (command)
+      await this.#observe(
+        command,
+        () => recovery.recover(this.signal),
+        settlement,
+        recovery,
+      );
+  }
+
+  async retire(original: CommandObservation): Promise<void> {
+    if (original.status !== "unknown" || !original.recovery) return;
+    const command = this.#claim(original);
+    if (!command) return;
+    try {
+      await original.recovery.retire(this.signal);
+      this.#replace(command);
+    } catch (error) {
+      this.#replace(command, { ...original, error: failureText(error) });
+    }
+  }
+
+  #claim(original: UnknownCommand): RunningCommand | undefined {
+    const { id, method, settled } = original;
+    const command: RunningCommand = { id, method, settled, status: "running" };
+    return this.#replace(original, command) ? command : undefined;
+  }
+
+  async #observe<T>(
+    command: RunningCommand,
+    execute: () => Promise<T>,
+    settlement: CommandSettlement,
+    previous?: CommandRecovery,
+  ): Promise<T | undefined> {
+    let result: T;
+    try {
+      result = await execute();
+    } catch (error) {
+      if (this.signal.aborted) return;
+      const recovery =
+        this.operations
+          .pendingCommands(command.method)
+          .find(({ idempotencyKey }) => idempotencyKey === command.id) ??
+        previous;
+      if (outcomeUnknown(error, recovery !== undefined)) {
+        this.#replace(command, {
+          ...command,
+          status: "unknown",
+          error: failureText(error),
+          recovery,
+        });
+      } else if (this.#replace(command)) settlement.fail(error);
+      return;
+    }
+    if (!this.#replace(command)) return;
+    settlement.settle(command, result);
+    return result;
+  }
+
+  #replace(current: CommandObservation, next?: CommandObservation): boolean {
+    if (this.signal.aborted) return false;
+    const index = this.#commands.indexOf(current);
+    if (index === -1) return false;
+    this.#publish(
+      next
+        ? this.#commands.toSpliced(index, 1, next)
+        : this.#commands.toSpliced(index, 1),
+    );
+    return true;
+  }
+
+  #publish(commands: readonly CommandObservation[]) {
+    this.#commands = commands;
+    for (const listener of this.#listeners) listener();
+  }
+}
+
 export function useCommandJournal({
-  context,
   operations,
   signal,
   scoped,
   settle,
   fail,
 }: {
-  context: ComponentContext;
   operations: DeliverableOperations;
   signal: AbortSignal;
   scoped: { project?: string };
-  settle: (command: CommandObservation, result: unknown) => void;
-  fail: (error: unknown) => void;
-}) {
-  const commands = useMemo(() => {
-    const entries = new Map<string, CommandObservation>();
-    for (const method of commandMethods)
-      for (const original of operations.pendingCommands(method)) {
-        entries.set(original.idempotencyKey, {
-          id: original.idempotencyKey,
-          method,
-          status: "unknown",
-          recover: () => original.recover(signal),
-          retire: () => original.retire(signal),
-        });
-      }
-    return entries;
-  }, [operations, signal]);
-  const [published, setPublished] =
-    useContextState<CommandObservation[]>(context);
-  const publish = useCallback(() => {
-    if (!signal.aborted) setPublished([...commands.values()]);
-  }, [commands, setPublished, signal]);
-  useEffect(publish, [publish]);
-
-  const observe = useCallback(
-    async (
-      original: CommandObservation,
-      promise: Promise<unknown>,
-    ): Promise<unknown> => {
-      commands.set(original.id, {
-        ...original,
-        status: "running",
-        error: undefined,
-      });
-      publish();
-      try {
-        const result = await promise;
-        if (signal.aborted) return;
-        commands.delete(original.id);
-        settle(original, result);
-        return result;
-      } catch (error) {
-        if (signal.aborted) return;
-        const pending = operations
-          .pendingCommands(original.method)
-          .find((entry) => entry.idempotencyKey === original.id);
-        if (outcomeUnknown(error, original.recover !== undefined)) {
-          commands.set(original.id, {
-            ...original,
-            status: "unknown",
-            error: failureText(error),
-            recover: pending ? () => pending.recover(signal) : original.recover,
-            retire: pending ? () => pending.retire(signal) : original.retire,
-          });
-        } else {
-          commands.delete(original.id);
-          fail(error);
-        }
-      } finally {
-        publish();
-      }
-    },
-    [commands, fail, operations, publish, settle, signal],
+} & CommandSettlement) {
+  const journal = useMemo(
+    () => new CommandJournal(operations, signal),
+    [operations, signal],
   );
-
+  const commands = useSyncExternalStore(journal.subscribe, journal.snapshot);
   const run = useCallback(
-    async <K extends CommandMethod>(
+    <K extends CommandMethod>(
       method: K,
       input: MethodInputs[K],
       settled?: (value: MethodOutputs[K]) => void,
-    ): Promise<MethodOutputs[K] | undefined> => {
-      if (
-        signal.aborted ||
-        (commands.size && method !== METHODS.discard) ||
-        [...commands.values()].some(
-          (entry) =>
-            entry.method === METHODS.discard && method === METHODS.discard,
-        )
-      )
-        return;
-      try {
-        const promise = operations.command(
-          method,
-          COMMAND_EFFECTS[method].scoped ? { ...input, ...scoped } : input,
-        );
-        return (await observe(
-          {
-            id: promise.idempotencyKey,
-            method,
-            status: "running",
-            settled: settled
-              ? (value) => settled(value as MethodOutputs[K])
-              : undefined,
-          },
-          promise,
-        )) as MethodOutputs[K] | undefined;
-      } catch (error) {
-        fail(error);
-      }
-    },
-    [commands, fail, observe, operations, scoped, signal],
+    ) =>
+      journal.run(
+        method,
+        COMMAND_EFFECTS[method].scoped ? { ...input, ...scoped } : input,
+        { settle, fail },
+        settled,
+      ),
+    [journal, scoped, settle, fail],
   );
-
   return {
-    commands: published ?? [...commands.values()],
-    blocked: commands.size > 0,
+    commands,
+    blocked: commands.length > 0,
     run,
     recover: (command: CommandObservation) => {
-      if (!signal.aborted && command.status === "unknown" && command.recover)
-        void observe(command, command.recover());
+      void journal.recover(command, { settle, fail }).catch(fail);
     },
-    retire: async (command: CommandObservation) => {
-      if (signal.aborted || command.status !== "unknown" || !command.retire)
-        return;
-      commands.set(command.id, {
-        ...command,
-        status: "running",
-        error: undefined,
-      });
-      publish();
-      try {
-        await command.retire();
-        if (signal.aborted) return;
-        commands.delete(command.id);
-      } catch (error) {
-        if (!signal.aborted)
-          commands.set(command.id, { ...command, error: failureText(error) });
-      } finally {
-        publish();
-      }
-    },
+    retire: (command: CommandObservation) => journal.retire(command),
   };
 }

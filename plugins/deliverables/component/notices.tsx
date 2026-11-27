@@ -43,7 +43,7 @@ export function PendingCommands({
   state,
   t,
 }: {
-  state: DeliverablesState;
+  state: Pick<DeliverablesState, "commands" | "recover" | "retire">;
   t: Translate;
 }) {
   if (!state.commands.length) return null;
@@ -59,16 +59,18 @@ export function PendingCommands({
                 : "command.unknown",
             )}
           </Metadata>
-          {command.error && <Callout kind="warning">{command.error}</Callout>}
+          {command.status === "unknown" && command.error && (
+            <Callout kind="warning">{command.error}</Callout>
+          )}
           <Toolbar label={t("command.actions")}>
             <Button
-              disabled={command.status !== "unknown" || !command.recover}
+              disabled={command.status !== "unknown" || !command.recovery}
               onClick={() => state.recover(command)}
             >
               {t("command.recover")}
             </Button>
             <Button
-              disabled={command.status !== "unknown" || !command.retire}
+              disabled={command.status !== "unknown" || !command.recovery}
               onClick={() => {
                 void state.retire(command);
               }}

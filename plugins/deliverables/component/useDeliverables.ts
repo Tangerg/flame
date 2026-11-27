@@ -30,11 +30,11 @@ function commandNotice(
   method: CommandMethod,
   result: unknown,
 ): Notice | undefined {
-  const effect = COMMAND_EFFECTS[method];
-  if (!effect.announced) return undefined;
-  if (effect.result === "asset")
+  const notice = COMMAND_EFFECTS[method].notice;
+  if (!notice) return undefined;
+  if (notice === "asset")
     return { kind: "command", method, asset: result as Asset };
-  if (effect.result === "revision")
+  if (notice === "revision")
     return { kind: "command", method, revision: result as Revision };
   return { kind: "command", method };
 }
@@ -228,7 +228,6 @@ export function useDeliverables(context: ComponentContext) {
     [fail, query, tell],
   );
   const journal = useCommandJournal({
-    context,
     operations,
     signal,
     scoped,
