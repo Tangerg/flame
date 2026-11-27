@@ -1,14 +1,9 @@
 import { useAgentDependencies } from "@/features/agent/application/agentContext";
 import { type AgentDependencies } from "@/features/agent/application/agentDependencies";
-import { queryClient } from "@/lib/queryClient";
 import { useCallback } from "react";
 import { t } from "@/lib/i18n/index";
 import { tupleKey } from "@/lib/tupleKey";
-import {
-  AGENT_SESSIONS_KEY,
-  invalidateAgentSessions,
-  type AgentSessionSummary,
-} from "@/features/agent/application/session/sessionQueries";
+import { invalidateAgentSessions } from "@/features/agent/application/session/sessionQueries";
 import { type AgentSessionCreation } from "@/features/agent/application/runtimeGateway";
 import { reportSessionError } from "@/features/agent/application/session/reportSessionError";
 import { type AgentCommandOwner } from "@/features/agent/application/agentCommandOwner";
@@ -27,11 +22,12 @@ function observeSessionCreation(
     .runSessionCreate(key, async () => {
       const outcome = await owner.settle(observe());
       owner.assertCurrent();
-      void invalidateAgentSessions();
       if (outcome.type === "confirmed") {
         agentAccess.state.selectSession(outcome.sessionId);
+        invalidateAgentSessions([outcome.sessionId]);
         return outcome.sessionId;
       }
+      invalidateAgentSessions();
       agentAccess.notifications.show({
         level: "error",
         message: t("agent.command.unknown"),
@@ -66,12 +62,9 @@ function doCreate(
   );
 }
 
-export function createSession(agentAccess: AgentDependencies): Promise<string | null> {
+export async function createSession(agentAccess: AgentDependencies): Promise<string | null> {
   const sessionId = agentAccess.state.getActiveSessionId();
-  if (!sessionId) return Promise.resolve(null);
-  const sessions = queryClient.getQueryData<AgentSessionSummary[]>([AGENT_SESSIONS_KEY]);
-  const active = sessions?.find((session) => session.id === sessionId);
-  if (!active) return Promise.resolve(null);
+  if (!sessionId) return null;
   const current = agentAccess.view.getSession(sessionId);
   if (
     current?.hasAuthoritativeSnapshot &&
@@ -79,8 +72,17 @@ export function createSession(agentAccess: AgentDependencies): Promise<string | 
     current.view.messages.length === 0 &&
     Object.keys(current.view.runsById).length === 0
   )
-    return Promise.resolve(sessionId);
-  return doCreate(agentAccess, { cwd: active.workspace.path, projectId: active.projectId });
+    return sessionId;
+  const owner = agentAccess.commands.current();
+  try {
+    const active = await owner.settle(agentAccess.runtime.loadSessionSummary(sessionId));
+    owner.assertCurrent();
+    if (!active) return null;
+    return doCreate(agentAccess, { cwd: active.workspace.path, projectId: active.projectId });
+  } catch (error) {
+    if (owner.isCurrent()) reportSessionError(agentAccess.notifications, "create", error);
+    return null;
+  }
 }
 
 export function useCreateSession(): (opts: CreateSessionOptions) => Promise<string | null> {

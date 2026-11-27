@@ -14,6 +14,7 @@ import {
 import { type AgentInput } from "@/features/agent/domain/input";
 import { type AgentPlan } from "@/features/agent/public/sessionView";
 import { type AgentOpeningAcceptance } from "@/features/agent/application/input/inputSubmission";
+import { type AgentSessionSummary } from "@/features/agent/application/session/sessionQueries";
 export interface AgentSteerInput {
   runId: string;
   userItemId: string;
@@ -95,7 +96,7 @@ export type AgentSessionCreation =
 
 export interface AgentRuntimeGateway {
   createSession(input: { cwd: string; projectId?: string }): Promise<AgentSessionCreation>;
-  sessionExists(sessionId: string, signal: AbortSignal): Promise<boolean>;
+  loadSessionSummary(sessionId: string, signal?: AbortSignal): Promise<AgentSessionSummary | null>;
   deleteSession(sessionId: string): Promise<void>;
   updateSession(input: {
     sessionId: string;

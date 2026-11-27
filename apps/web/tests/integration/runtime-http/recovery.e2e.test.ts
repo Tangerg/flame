@@ -4,6 +4,9 @@ import { describe, expect, it, onTestFinished } from "vitest";
 import { QueryObserver } from "@tanstack/react-query";
 import { asRunId, asSessionId, createSidecarClient, type FlameClient } from "@flame/runtime-client";
 import { HTTP_HEADERS } from "@flame/runtime-client/wire";
+import { startKernel, stopKernel } from "@/extensions/bootstrap";
+import { definePlugin } from "@/extensions/definePlugin";
+import { registerAgentDataProviders } from "@/features/agent/adapters/runtimeDataProviders";
 import {
   readRuntimeSessionSummaries,
   toAgentSessionSummary,
@@ -11,6 +14,7 @@ import {
 import { editAgentSession } from "@/features/agent/application/session/editSession";
 import {
   AGENT_SESSIONS_KEY,
+  fetchAgentSessionSummary,
   type AgentSessionSummary,
 } from "@/features/agent/application/session/sessionQueries";
 import {
@@ -141,12 +145,10 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: restart and crash recovery", (
 
       const listing = Promise.withResolvers<void>();
       const release = Promise.withResolvers<void>();
-      let committed = false;
       const client = fixture.createRuntimeClient(async (url, init) => {
         const method = new Headers(init?.headers).get(HTTP_HEADERS.method);
         const response = await fetch(url, init);
-        if (method === `sessions.${action}` && response.ok) committed = true;
-        if (method === "sessions.list" && committed) {
+        if (method === "sessions.list") {
           listing.resolve();
           await release.promise;
         }
@@ -162,14 +164,13 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: restart and crash recovery", (
       const unsubscribe = observer.subscribe(() => {});
       let openingSession: Promise<string | null> | undefined;
       try {
-        await observer.refetch({ throwOnError: true });
+        await within(listing.promise, "the pending Session catalog read");
         openingSession =
           action === "create"
             ? access.createSession()
             : access
                 .forkAgentSession(sessionId, opening.result.runId)
                 .then(access.getActiveSessionId);
-        await within(listing.promise, "the pending Session catalog read");
         const newId = await within(
           openingSession,
           "opening a Session while its catalog read is held",
@@ -177,7 +178,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: restart and crash recovery", (
         if (!newId) throw new Error("new Session ID is missing");
         expect(newId).not.toBe(sessionId);
         expect(access.getActiveSessionId()).toBe(newId);
-        expect(observer.getCurrentResult().data?.map(({ id }) => id)).not.toContain(newId);
+        expect(observer.getCurrentResult().data).toBeUndefined();
         await expect(fixture.client.sessions.get(asSessionId(newId))).resolves.toMatchObject({
           id: newId,
         });
@@ -309,6 +310,14 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: restart and crash recovery", (
       pickText: async () => JSON.stringify(artifact),
     });
     const unbind = bindConversationImportRuntime(imports, () => client, web.connection.scope);
+    const kernel = await startKernel([
+      definePlugin({
+        name: "flame.test.session-summary-query",
+        setup({ contributions }) {
+          registerAgentDataProviders(contributions, () => client);
+        },
+      }),
+    ]);
     const queryKey = [AGENT_SESSIONS_KEY];
     const catalog = new QueryObserver(queryClient, {
       queryKey,
@@ -318,6 +327,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: restart and crash recovery", (
     try {
       await web.connection.status.refresh();
       await catalog.refetch({ throwOnError: true });
+      await expect(fetchAgentSessionSummary(sourceId)).resolves.toBeNull();
       const generation = web.connection.stream.connectionGeneration();
       if (!generation) throw new Error("the Runtime had no initial connection");
       const importing = imports.importConversationJson();
@@ -333,6 +343,13 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: restart and crash recovery", (
       await within(importing, "opening the imported Session while its catalog read is held");
       expect(access.getActiveSessionId()).toBe(sourceId);
       expect(catalog.getCurrentResult().data?.map(({ id }) => id)).not.toContain(sourceId);
+      await expect(fetchAgentSessionSummary(sourceId)).resolves.toMatchObject({
+        id: sourceId,
+        title,
+        workspace: { path: source.workspace.ref.path },
+        provider: source.provider,
+        model: source.model,
+      });
       expect(web.agent.dependencies.view.getSession(sourceId)).toBeUndefined();
       expect(presentations).toEqual(["success"]);
       await expect(fixture.client.sessions.snapshot(sourceId)).resolves.toMatchObject({
@@ -364,6 +381,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: restart and crash recovery", (
       unsubscribe();
       queryClient.removeQueries({ queryKey });
       unbind();
+      await stopKernel(kernel);
       notifications.dispose();
       web.dispose();
       await client.close();

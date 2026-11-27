@@ -147,6 +147,10 @@ function parameterizedQuery<P, T>(key: string, params: P | undefined) {
   });
 }
 
+export function fetchParameterizedData<P, T>(key: string, params: P): Promise<T> {
+  return queryClient.fetchQuery(parameterizedQuery<P, T>(key, params));
+}
+
 function useQueryCacheState<T>(cache: QueryCache, queryHash: string | undefined) {
   const readState = useMemo(
     () => ({

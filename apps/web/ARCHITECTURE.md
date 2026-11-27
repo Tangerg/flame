@@ -346,6 +346,9 @@ Each feature registers once and removes its contribution with its own plugin
 installation. Defaults has no business-data registry or cross-feature mapper.
 Components consume query hooks and read models rather than RPC envelopes.
 
+The workbench reads the active Session by ID. The title, workspace and model
+selection can load while the catalog is still reading its pages.
+
 Agent usage query keys include the owning instance. Replacing a gateway or
 retiring its Workspace observation only invalidates that instance's usage
 queries, even when another renderer reads the same Session ID.

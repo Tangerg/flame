@@ -73,7 +73,7 @@ export function createConversationImport(
         const session = await this.#cohort.run(() => this.#gateway.importConversation(artifact));
         this.#cohort.assertCurrent();
         agentAccess.selectAgentSession(session.id);
-        void invalidateAgentSessions();
+        invalidateAgentSessions([session.id]);
         notifications.show({
           level: "success",
           message: t("convExport.importSuccess", {

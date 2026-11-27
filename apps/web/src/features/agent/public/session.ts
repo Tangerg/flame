@@ -11,9 +11,12 @@ export { type AgentOpenSessions } from "@/features/agent/application/session/ses
 export { useReconcilePersistedAgentSessions } from "@/features/agent/application/session/sessionList";
 export {
   AGENT_SESSIONS_KEY,
+  AGENT_SESSION_SUMMARY_KEY,
+  fetchAgentSessionSummary,
   invalidateAgentSessions,
   subscribeAgentSessionProjection,
   useAgentSessions,
+  useAgentSessionSummary,
   type AgentSessionSummary,
 } from "@/features/agent/application/session/sessionQueries";
 export { useCreateSession } from "@/features/agent/application/session/createSession";

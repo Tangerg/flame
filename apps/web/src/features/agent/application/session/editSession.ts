@@ -10,7 +10,7 @@ export function editAgentSession(
     try {
       await write();
     } finally {
-      if (owner.isCurrent()) void invalidateAgentSessions();
+      if (owner.isCurrent()) invalidateAgentSessions([sessionId]);
     }
   });
 }

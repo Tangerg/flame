@@ -1,4 +1,4 @@
-import { type FlameClient, type Session } from "@flame/runtime-client";
+import { asSessionId, isErrorType, type FlameClient, type Session } from "@flame/runtime-client";
 import { type AgentSessionSummary } from "@/features/agent/application/session/sessionQueries";
 
 export async function readRuntimeSessionSummaries(
@@ -8,6 +8,19 @@ export async function readRuntimeSessionSummaries(
   return (await client.sessions.list(undefined, signal).autoPagingToArray()).map(
     toAgentSessionSummary,
   );
+}
+
+export async function readRuntimeSessionSummary(
+  client: FlameClient,
+  sessionId: string,
+  signal?: AbortSignal,
+): Promise<AgentSessionSummary | null> {
+  try {
+    return toAgentSessionSummary(await client.sessions.get(asSessionId(sessionId), signal));
+  } catch (error) {
+    if (isErrorType(error, "session_not_found")) return null;
+    throw error;
+  }
 }
 
 export function toAgentSessionSummary(session: Session): AgentSessionSummary {

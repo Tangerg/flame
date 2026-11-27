@@ -5,7 +5,11 @@ import { createElement } from "react";
 import { RenameSession } from "../../../../plugins/trajectory/component/component";
 import trajectoryDeclaration from "../../../../plugins/trajectory/package/io.github.tangerg.flame/declaration.json";
 import { InstalledSessionActionComponent } from "@/features/plugins/ui/InstalledComponent";
-import { AGENT_SESSIONS_KEY, type AgentSessionSummary } from "@/features/agent/public/session";
+import {
+  AGENT_SESSIONS_KEY,
+  AGENT_SESSION_SUMMARY_KEY,
+  type AgentSessionSummary,
+} from "@/features/agent/public/session";
 import sessionSearch from "@/features/navigation/session-search/index";
 import commandMenu from "@/features/command/menu/index";
 import { useSessionSearchStore } from "@/features/navigation/session-search/sessionSearchState";
@@ -23,7 +27,7 @@ import {
   WORKSPACE_FOLDERS_KEY,
   type WorkspaceFolderSummary,
 } from "@/features/workspace/public/queries";
-import { DATA_PROVIDER } from "@/extensions/dataProvider";
+import { DATA_PROVIDER, requiredParams } from "@/extensions/dataProvider";
 import { SESSION_ACTION } from "@/features/navigation/public/sessionActions";
 import { definePlugin } from "@/extensions/definePlugin";
 import { type AnyPlugin } from "dougong";
@@ -154,6 +158,15 @@ function dataProviderPlugin(state: VisualWorkIndexState): AnyPlugin {
       ctx.contributions.add(DATA_PROVIDER, {
         key: AGENT_SESSIONS_KEY,
         fetcher: async () => (state === "populated" ? SESSIONS : []),
+      });
+      ctx.contributions.add(DATA_PROVIDER, {
+        key: AGENT_SESSION_SUMMARY_KEY,
+        fetcher: async (params) => {
+          const id = requiredParams<string>(AGENT_SESSION_SUMMARY_KEY, params);
+          return state === "populated"
+            ? (SESSIONS.find((session) => session.id === id) ?? null)
+            : null;
+        },
       });
     },
   });

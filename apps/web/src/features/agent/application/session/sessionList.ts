@@ -24,9 +24,9 @@ export function useReconcilePersistedAgentSessions(): void {
     // A catalog read can predate the receipt that opened the Session.
     for (const id of candidates) {
       if (known.has(id)) continue;
-      void runtime.sessionExists(id, controller.signal).then(
-        (exists) => {
-          if (!exists && isCurrent()) state.deleteSession(id);
+      void runtime.loadSessionSummary(id, controller.signal).then(
+        (session) => {
+          if (!session && isCurrent()) state.deleteSession(id);
         },
         (error: unknown) => {
           if (isCurrent()) console.warn("[agent] Could not verify Session:", id, error);

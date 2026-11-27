@@ -1,7 +1,9 @@
 import { useAgentDependencies } from "@/features/agent/application/agentContext";
 import { type AgentDependencies } from "@/features/agent/application/agentDependencies";
-import { type AgentSessionSummary } from "@/features/agent/application/session/sessionQueries";
-import { useAgentSessions } from "@/features/agent/application/session/sessionQueries";
+import {
+  type AgentSessionSummary,
+  useAgentSessionSummary,
+} from "@/features/agent/application/session/sessionQueries";
 
 import { type AgentOpenSessions } from "@/features/agent/application/session/sessionAccess";
 export type { AgentOpenSessions } from "@/features/agent/application/session/sessionSelectionModel";
@@ -69,8 +71,10 @@ export function openExistingAgentSession(
   id: string,
   signal: AbortSignal,
 ) {
-  return agentAccess.state.selectExistingSession(id, signal, (reading) =>
-    agentAccess.runtime.sessionExists(id, reading),
+  return agentAccess.state.selectExistingSession(
+    id,
+    signal,
+    async (reading) => (await agentAccess.runtime.loadSessionSummary(id, reading)) !== null,
   );
 }
 
@@ -82,25 +86,14 @@ export function closeActiveAgentSession(agentAccess: AgentDependencies): boolean
 }
 
 export function useActiveSession(): AgentSessionSummary | undefined {
-  const activeSessionId = useActiveSessionId();
-  const { data } = useAgentSessions();
-  if (!activeSessionId) return undefined;
-  return data?.find((s) => s.id === activeSessionId);
-}
-
-function activeSessionWorkspaceSelection(
-  activeSessionId: string,
-  sessions: readonly AgentSessionSummary[] | undefined,
-): ActiveSessionWorkspaceSelection {
-  if (!activeSessionId) return { status: "ready" };
-  const session = sessions?.find((candidate) => candidate.id === activeSessionId);
-  return session
-    ? { status: "ready", cwd: session.workspace.path }
-    : { status: "resolving", sessionId: activeSessionId };
+  return useAgentSessionSummary(useActiveSessionId() || undefined).data ?? undefined;
 }
 
 export function useActiveSessionWorkspace(): ActiveSessionWorkspaceSelection {
-  const activeSessionId = useActiveSessionId();
-  const { data } = useAgentSessions();
-  return activeSessionWorkspaceSelection(activeSessionId, data);
+  const sessionId = useActiveSessionId();
+  const { data: session } = useAgentSessionSummary(sessionId || undefined);
+  if (!sessionId) return { status: "ready" };
+  return session
+    ? { status: "ready", cwd: session.workspace.path }
+    : { status: "resolving", sessionId };
 }

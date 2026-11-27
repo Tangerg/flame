@@ -19,7 +19,11 @@ import {
 } from "@/features/agent/application/runtimeGateway";
 import { projectAgentSessionSnapshot } from "@/features/agent/application/session/sessionSnapshot";
 import { type AgentSessionView } from "@/features/agent/public/sessionView";
-import { AGENT_SESSIONS_KEY, type AgentSessionSummary } from "@/features/agent/public/session";
+import {
+  AGENT_SESSIONS_KEY,
+  AGENT_SESSION_SUMMARY_KEY,
+  type AgentSessionSummary,
+} from "@/features/agent/public/session";
 
 import { AGENT_SESSIONS } from "@/features/agent/public/services";
 import { APPROVAL_MODE_KEY } from "@/features/agent/public/approvalPolicy";
@@ -51,7 +55,7 @@ import { queryClient } from "@/lib/queryClient";
 import { loadPluginsForTest } from "@/test/kernel";
 import { createToolRenderingPlugins } from "@/app/builtinPlugins";
 import { commitVisualInterruptResponses } from "./interruptResponses";
-import { DATA_PROVIDER } from "@/extensions/dataProvider";
+import { DATA_PROVIDER, requiredParams } from "@/extensions/dataProvider";
 import { definePlugin } from "@/extensions/definePlugin";
 import { visualNavigationBootstrap, visualRuntimeStream } from "./visualRuntimePorts";
 import { visualToolResults } from "./visualToolResults";
@@ -111,9 +115,9 @@ function visualAgentRuntimeGateway(
       });
       return { type: "confirmed", sessionId: initial.id };
     },
-    sessionExists: async (id, signal) => {
-      signal.throwIfAborted();
-      return sessions.has(id);
+    loadSessionSummary: async (id, signal) => {
+      signal?.throwIfAborted();
+      return sessions.get(id) ?? null;
     },
     deleteSession: async (id) => {
       sessions.delete(id);
@@ -242,6 +246,11 @@ const visualAgentSessions = (
       ctx.contributions.add(DATA_PROVIDER, {
         key: AGENT_SESSIONS_KEY,
         fetcher: async () => [...sessions.values()],
+      });
+      ctx.contributions.add(DATA_PROVIDER, {
+        key: AGENT_SESSION_SUMMARY_KEY,
+        fetcher: async (params) =>
+          sessions.get(requiredParams<string>(AGENT_SESSION_SUMMARY_KEY, params)) ?? null,
       });
       return {
         sessions: {
