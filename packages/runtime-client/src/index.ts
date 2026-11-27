@@ -14,6 +14,7 @@ export { MutationLookupError } from "./mutation";
 export type { MutationJournalStorage, PluginCommandChange, PluginRecoveryResolution } from "./mutationJournal";
 export {
   MutationJournalCleanupError,
+  MutationJournalError,
   MutationJournalOwnershipError,
   type MutationConfirmation,
 } from "./mutationJournalErrors";

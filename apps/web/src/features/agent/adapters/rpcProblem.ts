@@ -1,4 +1,5 @@
 import {
+  MutationJournalError,
   MutationLookupError,
   RpcError,
   RpcProtocolError,
@@ -7,6 +8,7 @@ import {
 import { type AgentProblem } from "@/features/agent/public/sessionView";
 import { runtimeProblem } from "@/features/agent/adapters/runtimeAgentFacts";
 export function agentProblemFromRpcFailure(error: unknown): AgentProblem | null {
+  if (error instanceof MutationJournalError) return { message: error.message };
   if (
     error instanceof RpcTransportError ||
     error instanceof RpcProtocolError ||

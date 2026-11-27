@@ -94,7 +94,7 @@ export async function callPluginStream<T>(
       deliverPluginStream(wire, prepared, original, consume, decode, attemptSignal),
     {
       signal,
-      original: { idempotencyKey: reservation.idempotencyKey, reserve: () => reservation },
+      original: { reserve: () => reservation },
     },
   );
 }

@@ -13,6 +13,7 @@ export interface MutationAttemptOptions {
 }
 
 export interface MutationPromise<T> extends Promise<T> {
+  // A mutation handle is issued only after its original command is staged.
   readonly idempotencyKey: string;
   retry(options?: MutationAttemptOptions): MutationPromise<T>;
 }
@@ -116,7 +117,7 @@ async function settleMutation<T>(
 
 export function createMutationPromise<T>(
   execute: MutationExecution<T>,
-  idempotencyKey: string = crypto.randomUUID(),
+  idempotencyKey: string,
   options: MutationAttemptOptions = {},
 ): MutationPromise<T> {
   const promise = Promise.resolve().then(() => settleMutation(execute, idempotencyKey, options));

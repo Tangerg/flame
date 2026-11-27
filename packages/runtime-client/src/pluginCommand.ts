@@ -124,7 +124,7 @@ export async function callPluginCommand<T>(
       deliverPluginCommand(wire, prepared, original, decode, attemptSignal),
     {
       signal,
-      original: { idempotencyKey: reservation.idempotencyKey, reserve: () => reservation },
+      original: { reserve: () => reservation },
     },
   );
 }

@@ -107,6 +107,9 @@ Mutation handles retain the original key and receipt authority after uncertain
 responses. An unresolved retry continues the original command. After
 confirmation, retries return the observed result or refusal directly. To open a
 fresh observation of an acknowledged Run, use `runs.subscribe`.
+Opening a keyed mutation validates and stages the command synchronously. A
+staging failure throws its original error before a mutation handle is issued.
+`createMutationSettler` reports that error through its settlement promise.
 The client reports local journal maintenance through
 `onMutationJournalCleanupFailure`, with console diagnostics by default.
 `MutationJournalCleanupError` carries the confirmed outcome and the local

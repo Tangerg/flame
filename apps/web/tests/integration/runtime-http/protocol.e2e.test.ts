@@ -764,13 +764,13 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: protocol delivery", () => {
       if (!pending || pending.method !== method) throw new Error("expected the retained command");
 
       clientName = "replacement-configuration-client";
-      await expect(
+      expect(() =>
         cold.runtime.retryCommand(method, pending, { ...params, title: "changed" }),
-      ).rejects.toBeInstanceOf(MutationJournalOwnershipError);
+      ).toThrow(MutationJournalOwnershipError);
       expect(deliveries).toBe(1);
       await expect(cold.runtime.retryCommand(method, pending, params)).resolves.toEqual(accepted);
       expect(cold.runtime.pendingCommands()).toEqual([]);
-      await expect(cold.runtime.retryCommand(method, pending, params)).rejects.toBeInstanceOf(
+      expect(() => cold.runtime.retryCommand(method, pending, params)).toThrow(
         MutationJournalOwnershipError,
       );
       expect(deliveries).toBe(2);
