@@ -19,7 +19,7 @@ import (
 	framevalue "github.com/Tangerg/frame/value"
 )
 
-const installedCommandsName = "installed-commands.json"
+const installedCommandsName = "installed-commands"
 
 type PendingInstalledCommand struct {
 	Intent    string

@@ -4,11 +4,9 @@ import (
 	"bytes"
 	"fmt"
 	"io/fs"
-	"path/filepath"
 	"slices"
+	"strings"
 	"sync"
-
-	"github.com/Tangerg/flame/packages/go-sdk/filesystem/commit"
 )
 
 // Records live as long as the process: that is all the durability a
@@ -35,31 +33,30 @@ func (m *memoryStorage) Read(name string, maximumBytes int64) ([]byte, error) {
 	return bytes.Clone(body), nil
 }
 
-func (m *memoryStorage) ListFiles(directory, extension string) ([]string, error) {
+func (m *memoryStorage) Keys(prefix string) ([]string, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	var names []string
 	for name := range m.records {
-		if filepath.Dir(name) == directory && filepath.Ext(name) == extension {
-			names = append(names, filepath.Base(name))
+		if strings.HasPrefix(name, prefix) {
+			names = append(names, name)
 		}
 	}
 	slices.Sort(names)
 	return names, nil
 }
 
-func (m *memoryStorage) Replace(name string, body []byte) commit.Result {
+func (m *memoryStorage) Commit(changes ...RecordChange) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.records[name] = bytes.Clone(body)
-	return commit.Result{State: commit.Durable}
+	for _, change := range changes {
+		if change.Body == nil {
+			delete(m.records, change.Key)
+		} else {
+			m.records[change.Key] = bytes.Clone(change.Body)
+		}
+	}
+	return nil
 }
 
-func (m *memoryStorage) Remove(name string) commit.Result {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	delete(m.records, name)
-	return commit.Result{State: commit.Durable}
-}
-
-func (m *memoryStorage) ConfirmDurability() error { return nil }
+func (m *memoryStorage) Close() error { return nil }

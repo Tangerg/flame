@@ -4,7 +4,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/Tangerg/flame/apps/cli/internal/adapter/filesystem/statefile"
+	"github.com/Tangerg/flame/apps/cli/internal/adapter/workbenchdb"
 	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
 )
 
@@ -21,7 +21,7 @@ func observeTestWorkbench(open func() (*workbench.Store, error)) (func() (*workb
 
 func openTestWorkbench(t testing.TB, directory string) (*workbench.Store, error) {
 	t.Helper()
-	persistence, err := statefile.Open(directory)
+	persistence, err := workbenchdb.Open(directory)
 	if err != nil {
 		return nil, err
 	}

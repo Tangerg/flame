@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/apps/cli/internal/adapter/filesystem/statefile"
+	"github.com/Tangerg/flame/apps/cli/internal/adapter/workbenchdb"
 	sessionworkflow "github.com/Tangerg/flame/apps/cli/internal/application/agent/session"
 	"github.com/Tangerg/flame/apps/cli/internal/application/mutation"
 	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
@@ -89,7 +89,7 @@ func TestRollbackRecoveryUsesTheOriginalReceiptAfterMoreRuns(t *testing.T) {
 	directory := t.TempDir()
 	openStore := func() *workbench.Store {
 		t.Helper()
-		persistence, err := statefile.Open(directory)
+		persistence, err := workbenchdb.Open(directory)
 		if err != nil {
 			t.Fatal(err)
 		}

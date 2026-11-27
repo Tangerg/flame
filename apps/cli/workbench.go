@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/Tangerg/flame/apps/cli/internal/adapter/filesystem/statefile"
+	"github.com/Tangerg/flame/apps/cli/internal/adapter/workbenchdb"
 	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
 )
 
@@ -16,7 +16,7 @@ func workbenchFactory(base string) func(string) (*workbench.Store, error) {
 		if strings.TrimSpace(directory) == "" {
 			return workbench.OpenMemory(workbench.Config{})
 		}
-		persistence, err := statefile.Open(directory)
+		persistence, err := workbenchdb.Open(directory)
 		if err != nil {
 			return nil, err
 		}

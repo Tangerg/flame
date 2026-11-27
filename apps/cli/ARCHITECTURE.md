@@ -194,33 +194,43 @@ input, stages or retires installed commands. Memory response identity and scope
 checks precede retirement. A different desired request cannot replace an
 unconfirmed intent, including after restart or provider replacement.
 
-Workbench persistence contains only CLI-authored facts. The workbench Application owner owns record names, the strict current shape, and recovery semantics; its narrow persistence port carries opaque bytes while the filesystem adapter owns rooted paths, regular-file checks, and atomic replacement. Records fail closed on unknown, malformed, oversized, truncated, or trailing content.
-
-Persistence ports and session-file publication share the SDK's pure
-`filesystem/commit` evidence value. Application consumes that contract without
-importing the filesystem operation package; only adapters establish visibility
-and durability from actual I/O.
-
-Persistence reports uncommitted, visible, or durable writes with the original I/O error. Workbench publishes each record into memory at the visible commit boundary, including on a later directory-sync failure. A failure cannot roll back a committed record or mint a replacement identity. Unconfirmed durability fences subsequent writes and every external mutation that depends on retained intent, including retries that skip staging. Read-only Runtime receipt reconciliation remains available. Reopening first confirms the actual files, directories and ancestor links, then loads and recovers the visible records before admitting delivery. Stash compensation applies only before a step commits; a committed failure leaves the journal for forward recovery. Session tombstones hide retired state immediately, and cleanup failures remain explicit until recovery succeeds.
+Workbench owns the authoring record keys, current encodings and mutation
+semantics. The SQLite adapter holds the partition's directory lease and commits
+record batches, with byte limits enforced at read and encoding boundaries.
+Workbench installs its in-memory projections after the transaction commits.
+Draft transfer merges the destination and adjusts the source in one commit.
+Stashing adds the stash and clears the draft in one commit. A confirmed Runtime
+session deletion retires both its local state and its pending command together.
+Session document publication continues to report file visibility and durability
+through the SDK's `filesystem/commit` evidence value.
 
 The Workbench queue owns prompt order, entry identity and the exact Start
-command. Enqueue transfers the draft in the same write, and edits publish with
-that Session record. Each prompt keeps its entry identity when a definitive
-refusal or an edit gives it a new command identity. Preparation and editing
-claims live only in the current workbench. A durable dispatch captures the input
-and replay guard, and can carry the original cancellation request and its own
-guard. Acknowledgement commits history and retires the original command. A
-partial history commit is retried under the same identity. Terminal controllers
+command. Enqueue transfers the draft in the same write. A definitive refusal or
+edit can assign a new command identity while retaining the queue entry.
+Preparation and editing claims live only in the current workbench. A durable
+dispatch captures the replay guard and can carry the original cancellation
+request and its guard. Prompt settlement commits history and retires the
+original queue or Steer entry in the same transaction. Terminal controllers
 read the committed queue through detached snapshots.
 
-Pending queue records now contain the stable entry identity and the captured
-dispatch. Use a fresh CLI workbench directory for this build and retain the
-prior directory for any outstanding commands.
+Each partition opens `authoring.db`. The development cutover leaves the former
+JSON state with the previous build for outstanding commands.
 
+Drafts and queued prompts keep attachment paths editable. Before the first
+mutation dispatch, the binding adapter materializes those paths into Runtime
+content within the existing file and encoding limits. A later attempt uses the
+captured content, original key and replay guard. Plain text already lives in
+the immutable command. The terminal prepares input in the background and only
+the current callback can stage a command for delivery.
 
-Drafts and queued prompts keep attachment paths editable. Before the first mutation dispatch, the binding adapter materializes those paths into Runtime content under the existing per-file size and encoding limits. Start binds that content when it leaves the queue; Steer and a Resume carrying additional input bind it before staging. Every later attempt uses the same prepared content, command identity, and replay guard without reopening the original paths. Plain text already lives completely in the immutable command and needs no external materialization. The terminal uses its existing operation owner to prepare and save content in the background. Only a current UI callback can publish the small session journal before starting delivery; cancellation or editing the source draft discards the prepared result. Input encoding and blob persistence run outside the authoring mutex. The filesystem Store serializes rooted I/O with Close so its directory lease covers active writes. A live filesystem Store stays bound to its original physical state directory: replacing that directory requires reopening the workbench as a new owner, with the original directory retained for reconciliation. Temporarily blocking the path and then restoring the same directory allows the original owner to continue.
-
-Workbench stores prepared content in separate SHA-256-addressed files so the supported 20 MiB attachment size does not exceed the 16 MiB authoring-record budget after base64 encoding. It commits content first, then atomically publishes its digest with the command identity and replay guard in the session record. An uncommitted publication leaves the command editable and may leave an unreferenced content file; a visible publication transfers ownership even when later confirmation fails. Content-addressed files are deduplicated and retained after cancellation or retirement: opening another Store cannot prove that an unreferenced file is not awaiting publication by a live owner, so opening never collects them. Referenced files are checked against their digest before replay. Missing or damaged content and older dispatched records containing attachment paths alone remain recoverable local records with an unknown mutation outcome. They are never filled from current files, automatically reidentified, or treated as a definitive refusal. The original session must be inspected before an explicit user decision about an unavailable command. Runtime command conflicts and local pre-dispatch failures likewise cannot prove an earlier attempt failed.
+Prepared content is stored as a separate SHA-256-addressed record to preserve
+attachment size limits independently of the authoring-record budget. Workbench
+commits content before publishing its digest with the original command in the
+session record. Referenced content is checked against its digest before replay.
+Missing or damaged content blocks redelivery while the Runtime receipt remains
+available for reconciliation. Prepared content records persist beyond command
+retirement. The adapter checks the original physical directory before database
+access and holds the lease until close.
 
 ## JSON
 

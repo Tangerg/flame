@@ -7,7 +7,6 @@ import (
 	json "encoding/json/v2"
 	"errors"
 	"fmt"
-	"path/filepath"
 	"slices"
 	"strings"
 
@@ -31,7 +30,7 @@ func (d inputDigest) validate() error {
 	return nil
 }
 
-func (d inputDigest) name() string { return filepath.Join("inputs", string(d)+".json") }
+func (d inputDigest) name() string { return "input/" + string(d) }
 
 type PreparedInput struct {
 	owner   *Store
@@ -60,19 +59,11 @@ func (s *Store) PrepareInput(ctx context.Context, message authoring.Message, inp
 	}
 	prepared.digest = inputDigest(fmt.Sprintf("%x", sha256.Sum256(encoded)))
 	s.mu.Lock()
-	err = s.admitWrite()
-	s.mu.Unlock()
-	if err != nil {
-		return nil, err
-	}
+	defer s.mu.Unlock()
 	if err := context.Cause(ctx); err != nil {
 		return nil, err
 	}
-	result := s.persistence.Replace(prepared.digest.name(), encoded)
-	s.mu.Lock()
-	err = s.acceptCommit(prepared.digest.name(), result, func() {})
-	s.mu.Unlock()
-	if err != nil {
+	if err := s.commit(RecordChange{Key: prepared.digest.name(), Body: encoded}); err != nil {
 		return nil, fmt.Errorf("save prepared input: %w", err)
 	}
 	if err := context.Cause(ctx); err != nil {

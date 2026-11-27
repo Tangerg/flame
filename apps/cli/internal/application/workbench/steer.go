@@ -198,13 +198,9 @@ func (s *Store) AcknowledgePendingSteer(sessionID string, commandID authoring.Co
 		return err
 	}
 
-	if err := s.recordPromptHistoryLocked(commandID, pending.command.Message.Clone()); err != nil {
-		return err
-	}
-	return s.saveSessionStateRecord(
-		sessionID, s.drafts[sessionID], s.queue.bySession[sessionID],
-		s.pendingResumePointer(sessionID), s.pendingRollbackPointer(sessionID), nil,
-	)
+	update := s.sessionUpdate(sessionID)
+	update.steer = nil
+	return s.recordPromptSettlement(update, pending.command.Message)
 }
 
 func (s *Store) RejectPendingSteer(

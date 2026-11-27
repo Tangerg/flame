@@ -1,30 +1,25 @@
 package workbench
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json/jsontext"
 	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"io/fs"
-	"path/filepath"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
-	"github.com/Tangerg/flame/packages/go-sdk/filesystem/commit"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 const (
-	maximumStateBytes     = 16 << 20
-	sessionStateDirectory = "sessions"
-	sessionStateExtension = ".json"
+	maximumStateBytes   = 16 << 20
+	sessionRecordPrefix = "session/"
 )
 
 type sessionState struct {
-	SessionID       string                  `json:"sessionId"`
 	Draft           authoring.Message       `json:"draft"`
 	PendingRuns     []PendingRun            `json:"pendingRuns"`
 	PendingResume   *PendingResume          `json:"pendingResume,omitzero"`
@@ -46,8 +41,10 @@ func (s *Store) loadState() error {
 	if err := s.loadOptional(historyName, &s.history); err != nil {
 		return fmt.Errorf("load prompt history: %w", err)
 	}
-	if err := validateHistory(s.history); err != nil {
-		return fmt.Errorf("load prompt history: %w", err)
+	for index, message := range s.history {
+		if err := message.Validate(); err != nil {
+			return fmt.Errorf("load prompt history entry %d: %w", index+1, err)
+		}
 	}
 	if err := s.loadOptional(stashesName, &s.stashes); err != nil {
 		return fmt.Errorf("load prompt stashes: %w", err)
@@ -70,34 +67,9 @@ func (s *Store) loadState() error {
 	if err := s.loadSessionStates(); err != nil {
 		return fmt.Errorf("load session authoring state: %w", err)
 	}
-	if err := s.loadDraftTransfer(); err != nil {
-		return err
-	}
-	if err := s.recoverConfirmedSessionDeletions(); err != nil {
-		return fmt.Errorf("recover retired sessions: %w", err)
-	}
-	s.history = s.trimHistory(s.history)
+	s.history = s.history[max(0, len(s.history)-s.historyCapacity):]
 	s.stashes = tailStashes(s.stashes, s.stashCapacity)
 	s.workspaces = slices.Clone(s.workspaces[:min(len(s.workspaces), s.workspaceCapacity)])
-	if err := s.recoverStashTransfer(); err != nil {
-		return fmt.Errorf("recover prompt stash transfer: %w", err)
-	}
-	return nil
-}
-
-func (s *Store) loadDraftTransfer() error {
-	var draftTransfer *DraftTransfer
-	if err := s.loadOptional(sessionDraftTransferName, &draftTransfer); err != nil {
-		return fmt.Errorf("load session draft transfer: %w", err)
-	}
-	if draftTransfer == nil {
-		return nil
-	}
-	cloned := draftTransfer.clone()
-	s.draftTransfer = &cloned
-	if err := s.recoverDraftTransfer(); err != nil {
-		return fmt.Errorf("recover session draft transfer: %w", err)
-	}
 	return nil
 }
 
@@ -116,9 +88,7 @@ func decodeStateJSON(encoded []byte, value any) error {
 	return json.Unmarshal(encoded, value, stateJSONOptions)
 }
 
-// encoding/json/v2 has no decided JSON form for time.Duration, so the store states
-// the one its files already contain: whole nanoseconds. An unknown member is a
-// record this build cannot honor.
+// The codec leaves time.Duration unspecified and the outbox needs an exact unit.
 var stateJSONOptions = json.JoinOptions(
 	json.Deterministic(true),
 	json.RejectUnknownMembers(true),
@@ -152,45 +122,32 @@ func (s *Store) loadOptional(name string, value any) error {
 }
 
 func (s *Store) loadSessionStates() error {
-	entries, err := s.persistence.ListFiles(sessionStateDirectory, sessionStateExtension)
-	if errors.Is(err, fs.ErrNotExist) {
-		return nil
-	}
+	keys, err := s.persistence.Keys(sessionRecordPrefix)
 	if err != nil {
 		return err
 	}
-	for _, name := range entries {
-		if s.confirmedSessionStateFile(name) {
-			continue
+	for _, key := range keys {
+		sessionID := strings.TrimPrefix(key, sessionRecordPrefix)
+		if err := protocol.ValidateSessionID(sessionID); err != nil {
+			return fmt.Errorf("invalid session record %q: %w", key, err)
 		}
-		state, err := s.loadSessionState(name)
-		if err != nil {
+		var state sessionState
+		if err := s.load(key, &state); err != nil {
 			return err
 		}
-		if err := s.restoreSessionState(name, state); err != nil {
-			return err
+		if err := s.restoreSessionState(sessionID, state); err != nil {
+			return fmt.Errorf("restore %s: %w", key, err)
 		}
 	}
 	return nil
 }
 
-func (s *Store) loadSessionState(name string) (sessionState, error) {
-	var state sessionState
-	if err := s.load(filepath.Join(sessionStateDirectory, name), &state); err != nil {
-		return sessionState{}, fmt.Errorf("load %s: %w", name, err)
-	}
-	if err := protocol.ValidateSessionID(state.SessionID); err != nil || name != filepath.Base(s.sessionStateName(state.SessionID)) {
-		return sessionState{}, fmt.Errorf("state %s has an invalid session identity", name)
-	}
-	return state, nil
-}
-
-func (s *Store) restoreSessionState(name string, state sessionState) error {
+func (s *Store) restoreSessionState(sessionID string, state sessionState) error {
 	if err := validateSessionDraft(state.Draft); err != nil {
-		return fmt.Errorf("state %s: %w", name, err)
+		return err
 	}
-	if err := validatePendingRunSequence(state.SessionID, state.PendingRuns); err != nil {
-		return fmt.Errorf("state %s: %w", name, err)
+	if err := validatePendingRunSequence(sessionID, state.PendingRuns); err != nil {
+		return err
 	}
 	for index := range state.PendingRuns {
 		pending := &state.PendingRuns[index]
@@ -200,40 +157,36 @@ func (s *Store) restoreSessionState(name string, state sessionState) error {
 	}
 	if state.PendingResume != nil {
 		if err := state.PendingResume.validate(); err != nil {
-			return fmt.Errorf("state %s pending resume: %w", name, err)
+			return fmt.Errorf("pending resume: %w", err)
 		}
 		state.PendingResume.Command.Input, state.PendingResume.inputFailure = s.readInput(state.PendingResume.InputDigest)
 	}
 	if state.PendingRollback != nil {
 		if err := state.PendingRollback.Validate(); err != nil {
-			return fmt.Errorf("state %s pending rollback: %w", name, err)
+			return fmt.Errorf("pending rollback: %w", err)
 		}
-		if state.PendingRollback.SessionID != state.SessionID {
-			return fmt.Errorf("state %s pending rollback belongs to another session", name)
+		if state.PendingRollback.SessionID != sessionID {
+			return errors.New("pending rollback belongs to another session")
 		}
 	}
 	var steer *PendingSteer
 	if state.PendingSteer != nil {
 		pending, err := restorePendingSteer(*state.PendingSteer)
 		if err != nil {
-			return fmt.Errorf("state %s pending steer: %w", name, err)
+			return fmt.Errorf("pending steer: %w", err)
 		}
-		if err := pending.validateSession(state.SessionID); err != nil {
-			return fmt.Errorf("state %s pending steer: %w", name, err)
+		if err := pending.validateSession(sessionID); err != nil {
+			return fmt.Errorf("pending steer: %w", err)
 		}
 		pending.command.Input, pending.inputFailure = s.readInput(pending.inputDigest)
 		steer = &pending
 	}
-	s.installSessionState(state.SessionID, state.Draft, state.PendingRuns, state.PendingResume, state.PendingRollback, steer)
+	s.installSessionState(sessionID, state.Draft, state.PendingRuns, state.PendingResume, state.PendingRollback, steer)
 	return nil
 }
 
 func (s *Store) saveSessionState(sessionID string, draft authoring.Message, pending []PendingRun) error {
-	resume, ok := s.pendingResumes[sessionID]
-	if !ok {
-		return s.saveSessionStateWithResume(sessionID, draft, pending, nil)
-	}
-	return s.saveSessionStateWithResume(sessionID, draft, pending, &resume)
+	return s.saveSessionStateWithResume(sessionID, draft, pending, s.pendingResumePointer(sessionID))
 }
 
 func (s *Store) saveSessionStateWithResume(
@@ -242,17 +195,7 @@ func (s *Store) saveSessionStateWithResume(
 	pending []PendingRun,
 	resume *PendingResume,
 ) error {
-	var rollback *PendingSessionRollback
-	if pendingRollback, exists := s.pendingRollbacks[sessionID]; exists {
-		cloned := pendingRollback.clone()
-		rollback = &cloned
-	}
-	var steer *PendingSteer
-	if pendingSteer, exists := s.pendingSteers[sessionID]; exists {
-		cloned := pendingSteer.clone()
-		steer = &cloned
-	}
-	return s.saveSessionStateRecord(sessionID, draft, pending, resume, rollback, steer)
+	return s.saveSessionStateRecord(sessionID, draft, pending, resume, s.pendingRollbackPointer(sessionID), s.pendingSteerPointer(sessionID))
 }
 
 func (s *Store) saveSessionStateRecord(
@@ -263,105 +206,99 @@ func (s *Store) saveSessionStateRecord(
 	rollback *PendingSessionRollback,
 	steer *PendingSteer,
 ) error {
-	if s.draftTransferBlocks(sessionID) {
-		return errDraftTransferRecovery
-	}
-	return s.saveSessionStateRecordUnfenced(sessionID, draft, pending, resume, rollback, steer)
+	update := sessionUpdate{sessionID: sessionID, draft: draft, runs: pending, resume: resume, rollback: rollback, steer: steer}
+	return s.commitSessions([]sessionUpdate{update})
 }
 
-func (s *Store) saveSessionStateRecordUnfenced(
-	sessionID string,
-	draft authoring.Message,
-	pending []PendingRun,
-	resume *PendingResume,
-	rollback *PendingSessionRollback,
-	steer *PendingSteer,
-) error {
-	if err := protocol.ValidateSessionID(sessionID); err != nil {
-		return err
+type sessionUpdate struct {
+	sessionID string
+	draft     authoring.Message
+	runs      []PendingRun
+	resume    *PendingResume
+	rollback  *PendingSessionRollback
+	steer     *PendingSteer
+}
+
+func (s *Store) sessionUpdate(sessionID string) sessionUpdate {
+	return sessionUpdate{
+		sessionID: sessionID, draft: s.drafts[sessionID], runs: s.queue.bySession[sessionID],
+		resume: s.pendingResumePointer(sessionID), rollback: s.pendingRollbackPointer(sessionID), steer: s.pendingSteerPointer(sessionID),
 	}
-	if err := validateSessionDraft(draft); err != nil {
-		return err
+}
+
+func (u sessionUpdate) record() (RecordChange, error) {
+	if err := protocol.ValidateSessionID(u.sessionID); err != nil {
+		return RecordChange{}, err
 	}
-	if pending, exists := s.sessionDeletions[sessionID]; exists && pending.Phase == CommandConfirmed {
-		return errors.New("session authoring state has been retired")
+	if err := validateSessionDraft(u.draft); err != nil {
+		return RecordChange{}, err
 	}
-	name := s.sessionStateName(sessionID)
-	if draft.IsEmpty() && len(pending) == 0 && resume == nil && rollback == nil && steer == nil {
-		return s.remove(name, func() { s.publishSessionState(sessionID, draft, pending, resume, rollback, steer) })
+	key := sessionStateKey(u.sessionID)
+	if u.draft.IsEmpty() && len(u.runs) == 0 && u.resume == nil && u.rollback == nil && u.steer == nil {
+		return RecordChange{Key: key}, nil
 	}
-	state := sessionState{
-		SessionID: sessionID, Draft: draft.Clone(), PendingRuns: clonePendingRunSlice(pending),
-	}
-	if resume != nil {
-		cloned := clonePendingResume(*resume)
-		state.PendingResume = &cloned
-	}
-	if rollback != nil {
-		cloned := rollback.clone()
-		state.PendingRollback = &cloned
-	}
-	if steer != nil {
-		record := steer.record()
+	state := sessionState{Draft: u.draft, PendingRuns: u.runs, PendingResume: u.resume, PendingRollback: u.rollback}
+	if u.steer != nil {
+		record := u.steer.record()
 		state.PendingSteer = &record
 	}
-	return s.save(name, state, func() { s.publishSessionState(sessionID, draft, pending, resume, rollback, steer) })
+	return encodeRecord(key, state)
+}
+
+func (s *Store) commitSessions(updates []sessionUpdate, changes ...RecordChange) error {
+	for _, update := range updates {
+		record, err := update.record()
+		if err != nil {
+			return err
+		}
+		changes = append(changes, record)
+	}
+	if err := s.commit(changes...); err != nil {
+		return err
+	}
+	for _, update := range updates {
+		s.installSessionState(update.sessionID, update.draft, update.runs, update.resume, update.rollback, update.steer)
+	}
+	return nil
 }
 
 func (s *Store) admitWrite() error {
 	if s.closed {
 		return errors.New("workbench is closed")
 	}
-	return s.writeBarrier
+	return nil
 }
 
-func (s *Store) save(name string, value any, publish func()) error {
-	if err := s.admitWrite(); err != nil {
-		return &WriteError{Record: name, Result: commit.Result{Err: err}}
-	}
-	encoded, err := json.Marshal(
-		value,
-		jsontext.WithIndent("  "),
-		stateJSONOptions,
-	)
+func encodeRecord(key string, value any) (RecordChange, error) {
+	encoded, err := json.Marshal(value, stateJSONOptions)
 	if err != nil {
-		return fmt.Errorf("encode state snapshot: %w", err)
+		return RecordChange{}, fmt.Errorf("encode workbench record %q: %w", key, err)
 	}
-	encoded = append(encoded, '\n')
 	if len(encoded) > maximumStateBytes {
-		return fmt.Errorf("workbench state %q exceeds %d bytes", name, maximumStateBytes)
+		return RecordChange{}, fmt.Errorf("workbench record %q exceeds %d bytes", key, maximumStateBytes)
 	}
-	return s.acceptCommit(name, s.persistence.Replace(name, encoded), publish)
+	return RecordChange{Key: key, Body: encoded}, nil
 }
 
-func (s *Store) remove(name string, publish func()) error {
+func (s *Store) commit(changes ...RecordChange) error {
 	if err := s.admitWrite(); err != nil {
-		return &WriteError{Record: name, Result: commit.Result{Err: err}}
+		return err
 	}
-	return s.acceptCommit(name, s.persistence.Remove(name), publish)
+	if err := s.persistence.Commit(changes...); err != nil {
+		return fmt.Errorf("commit workbench state: %w", err)
+	}
+	return nil
 }
 
-func (s *Store) acceptCommit(name string, result commit.Result, publish func()) error {
-	switch result.State {
-	case commit.Uncommitted:
-		if result.Err == nil {
-			return s.blockWrites(errors.New("persistence returned an uncommitted write without a cause"))
-		}
-		return &WriteError{Record: name, Result: result}
-	case commit.Visible, commit.Durable:
-		publish()
-	default:
-		return s.blockWrites(errors.New("persistence returned an unknown commit state"))
+func (s *Store) save(key string, value any, publish func()) error {
+	record, err := encodeRecord(key, value)
+	if err != nil {
+		return err
 	}
-	if result.State == commit.Visible {
-		if result.Err == nil {
-			result.Err = errors.New("persistence did not confirm record durability")
-		}
-		s.raiseWriteBarrier(fmt.Errorf("record %q durability is unconfirmed: %w", name, result.Err))
+	if err := s.commit(record); err != nil {
+		return err
 	}
-	if result.Err != nil {
-		return &WriteError{Record: name, Result: result}
-	}
+	publish()
 	return nil
 }
 
@@ -391,13 +328,6 @@ func (s *Store) CancellationReady(commandID authoring.CommandID) error {
 	return nil
 }
 
-func (s *Store) publishSessionState(sessionID string, draft authoring.Message, pending []PendingRun, resume *PendingResume, rollback *PendingSessionRollback, steer *PendingSteer) {
-	s.installSessionState(sessionID, draft, pending, resume, rollback, steer)
-	// Cold restore trims only after all Sessions have loaded, so another Session's
-	// pinned history survives.
-	s.history = s.trimHistory(s.history)
-}
-
 func (s *Store) installSessionState(
 	sessionID string,
 	draft authoring.Message,
@@ -425,21 +355,4 @@ func (s *Store) installSessionState(
 	}
 }
 
-func (s *Store) blockWrites(cause error) error {
-	s.raiseWriteBarrier(cause)
-	return errors.Join(cause, s.writeBarrier)
-}
-
-func (s *Store) raiseWriteBarrier(cause error) {
-	if s.writeBarrier == nil {
-		s.writeBarrier = fmt.Errorf(
-			"workbench persistence requires reopen after an incomplete transaction: %w",
-			cause,
-		)
-	}
-}
-
-func (s *Store) sessionStateName(sessionID string) string {
-	digest := sha256.Sum256([]byte(sessionID))
-	return filepath.Join(sessionStateDirectory, hex.EncodeToString(digest[:16])+sessionStateExtension)
-}
+func sessionStateKey(sessionID string) string { return sessionRecordPrefix + sessionID }

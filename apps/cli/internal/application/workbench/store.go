@@ -22,11 +22,10 @@ const (
 	defaultStashCapacity     = 100
 	defaultWorkspaceCapacity = 50
 	stashIDEntropyBytes      = 8
-	historyName              = "history.json"
-	workspacesName           = "workspaces.json"
-	stashesName              = "stashes.json"
-	stashTransferName        = "stash-transfer.json"
-	sessionDeletionsName     = "session-deletions.json"
+	historyName              = "history"
+	workspacesName           = "workspaces"
+	stashesName              = "stashes"
+	sessionDeletionsName     = "session-deletions"
 )
 
 type Config struct {
@@ -57,32 +56,6 @@ func (s Stash) Validate() error {
 	return nil
 }
 
-type stashTransfer struct {
-	SessionID string            `json:"sessionId"`
-	Draft     authoring.Message `json:"draft"`
-	Stash     Stash             `json:"stash"`
-}
-
-func (s stashTransfer) validate() error {
-	if err := protocol.ValidateSessionID(s.SessionID); err != nil {
-		return fmt.Errorf("stash transfer: %w", err)
-	}
-	if err := s.Draft.Validate(); err != nil {
-		return fmt.Errorf("stash transfer source: %w", err)
-	}
-	if err := s.Stash.Validate(); err != nil {
-		return fmt.Errorf("stash transfer destination: %w", err)
-	}
-	if !s.Stash.Message.Equal(s.Draft) {
-		return errors.New("stash transfer prompts are inconsistent")
-	}
-	return nil
-}
-
-func stashEqual(left, right Stash) bool {
-	return left.ID == right.ID && left.CreatedAt.Equal(right.CreatedAt) && left.Message.Equal(right.Message)
-}
-
 type Workspace struct {
 	Path       string    `json:"path"`
 	LastOpened time.Time `json:"lastOpened"`
@@ -98,12 +71,6 @@ func (w Workspace) Validate() error {
 	return nil
 }
 
-type historyEntry struct {
-	authoring.Message
-
-	CommandID authoring.CommandID `json:"commandId,omitzero"`
-}
-
 type Store struct {
 	mu                sync.Mutex
 	persistence       Persistence
@@ -112,7 +79,7 @@ type Store struct {
 	workspaceCapacity int
 	now               func() time.Time
 	random            io.Reader
-	history           []historyEntry
+	history           []authoring.Message
 	drafts            map[string]authoring.Message
 	stashes           []Stash
 	workspaces        []Workspace
@@ -122,8 +89,6 @@ type Store struct {
 	pendingSteers     map[string]PendingSteer
 	sessionDeletions  map[string]PendingSessionDeletion
 	installedCommands map[string]PendingInstalledCommand
-	draftTransfer     *DraftTransfer
-	writeBarrier      error
 	closed            bool
 	closeErr          error
 }
@@ -133,20 +98,15 @@ func OpenMemory(config Config) (*Store, error) {
 }
 
 func Open(storage Persistence, config Config) (*Store, error) {
-	if missingPersistence(storage) {
+	if storage == nil {
 		return nil, errors.New("workbench persistence is not configured")
 	}
 	store, err := newStore(storage, config)
 	if err == nil {
-		if confirmErr := storage.ConfirmDurability(); confirmErr != nil {
-			err = fmt.Errorf("confirm workbench durability: %w", confirmErr)
-		}
-	}
-	if err == nil {
 		err = store.loadState()
 	}
 	if err != nil {
-		return nil, errors.Join(err, closePersistence(storage))
+		return nil, errors.Join(err, storage.Close())
 	}
 	return store, nil
 }
@@ -197,7 +157,7 @@ func (s *Store) Close() error {
 		return s.closeErr
 	}
 	s.closed = true
-	s.closeErr = closePersistence(s.persistence)
+	s.closeErr = s.persistence.Close()
 	return s.closeErr
 }
 
@@ -224,8 +184,7 @@ func (s *Store) Remember(message authoring.Message) error {
 	if len(s.history) > 0 && s.history[len(s.history)-1].Equal(message) {
 		return nil
 	}
-	next := append(cloneHistory(s.history), historyEntry{Message: message})
-	next = s.trimHistory(next)
+	next := s.historyWith(message)
 	return s.save(historyName, next, func() { s.history = next })
 }
 
@@ -288,112 +247,25 @@ func (s *Store) StashDraft(sessionID string, message authoring.Message) (Stash, 
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	stash, err := s.newStash(message)
+	update := s.sessionUpdate(sessionID)
+	if !update.draft.Equal(message) {
+		return Stash{}, errors.New("session draft changed before it could be stashed")
+	}
+	stash, err := s.newStash(update.draft)
 	if err != nil {
 		return Stash{}, err
 	}
-	transfer := stashTransfer{SessionID: sessionID, Draft: stash.Message, Stash: stash}
-
-	current, present := s.drafts[sessionID]
-	if !present || !current.Equal(message) {
-		return Stash{}, errors.New("session draft changed before it could be stashed")
-	}
-	previous := slices.Clone(s.stashes)
 	next := tailStashes(append(slices.Clone(s.stashes), stash), s.stashCapacity)
-	if err := s.save(stashTransferName, transfer, func() {}); err != nil {
-		if writeCommitted(err) {
-			return Stash{}, s.blockWrites(fmt.Errorf("save stash transfer: %w", err))
-		}
-		return Stash{}, fmt.Errorf("save stash transfer: %w", err)
-	}
-	if err := s.save(stashesName, next, func() { s.stashes = next }); err != nil {
-		if writeCommitted(err) {
-			return Stash{}, s.blockWrites(err)
-		}
-		if cleanupErr := s.remove(stashTransferName, func() {}); cleanupErr != nil {
-			failure := errors.Join(err, fmt.Errorf("retire prompt stash transfer: %w", cleanupErr))
-			return Stash{}, s.blockWrites(failure)
-		}
+	record, err := encodeRecord(stashesName, next)
+	if err != nil {
 		return Stash{}, err
 	}
-	if err := s.saveSessionState(sessionID, authoring.Message{}, s.queue.bySession[sessionID]); err != nil {
-		return Stash{}, s.undoStash(err, previous, next)
+	update.draft = authoring.Message{}
+	if err := s.commitSessions([]sessionUpdate{update}, record); err != nil {
+		return Stash{}, err
 	}
-
-	// Once the source draft is absent, the transfer is committed. A stale
-	// journal must not survive while new authoring writes are accepted: a later
-	// identical draft has the same value but is not the old source owner.
-	if err := s.remove(stashTransferName, func() {}); err != nil {
-		return Stash{}, s.blockWrites(fmt.Errorf("retire prompt stash transfer: %w", err))
-	}
+	s.stashes = next
 	return cloneStash(stash), nil
-}
-
-func (s *Store) undoStash(clearErr error, previous, next []Stash) error {
-	if writeCommitted(clearErr) {
-		return s.blockWrites(fmt.Errorf("clear session draft: %w", clearErr))
-	}
-	if rollbackErr := s.save(stashesName, previous, func() { s.stashes = previous }); rollbackErr != nil {
-		return s.blockWrites(errors.Join(
-			fmt.Errorf("clear session draft: %w", clearErr),
-			fmt.Errorf("restore prompt stashes: %w", rollbackErr),
-		))
-	}
-	cleanupErr := s.remove(stashTransferName, func() {})
-	if cleanupErr == nil {
-		return fmt.Errorf("clear session draft: %w", clearErr)
-	}
-	if writeCommitted(cleanupErr) {
-		return errors.Join(clearErr, cleanupErr)
-	}
-	failure := errors.Join(
-		fmt.Errorf("clear session draft: %w", clearErr),
-		fmt.Errorf("remove stash transfer: %w", cleanupErr),
-	)
-	// Re-publish the intended stash so a surviving journal always describes
-	// a forward-recoverable state rather than reviving a rolled-back move.
-	if restoreErr := s.save(stashesName, next, func() { s.stashes = next }); restoreErr != nil {
-		failure = errors.Join(failure, fmt.Errorf("restore recoverable stash: %w", restoreErr))
-	}
-	return s.blockWrites(failure)
-}
-
-func (s *Store) recoverStashTransfer() error {
-	var transfer stashTransfer
-	if err := s.loadOptional(stashTransferName, &transfer); err != nil {
-		return err
-	}
-	if transfer.SessionID == "" {
-		return nil
-	}
-	if err := transfer.validate(); err != nil {
-		return err
-	}
-	current, present := s.drafts[transfer.SessionID]
-	if !present || current.Equal(transfer.Draft) {
-		index := slices.IndexFunc(s.stashes, func(stash Stash) bool { return stash.ID == transfer.Stash.ID })
-		switch {
-		case index >= 0 && !stashEqual(s.stashes[index], transfer.Stash):
-			return errors.New("stash transfer identity belongs to another prompt")
-		case index < 0:
-			next := tailStashes(append(slices.Clone(s.stashes), transfer.Stash), s.stashCapacity)
-			if err := s.save(stashesName, next, func() { s.stashes = next }); err != nil {
-				return fmt.Errorf("save recovered prompt stash: %w", err)
-			}
-		}
-		if present {
-			if err := s.saveSessionState(transfer.SessionID, authoring.Message{}, s.queue.bySession[transfer.SessionID]); err != nil {
-				return fmt.Errorf("retire recovered session draft: %w", err)
-			}
-		}
-	}
-	// A newer draft supersedes a merely staged transfer. An absent source proves
-	// the transfer crossed its retirement boundary, so the journal remains
-	// authoritative for restoring a destination lost by a crash.
-	if err := s.remove(stashTransferName, func() {}); err != nil {
-		return fmt.Errorf("retire recovered prompt stash transfer: %w", err)
-	}
-	return nil
 }
 
 func (s *Store) Stashes() []Stash {
@@ -450,26 +322,6 @@ func (s *Store) Workspaces() []Workspace {
 	return slices.Clone(s.workspaces)
 }
 
-func validateHistory(history []historyEntry) error {
-	seen := make(map[authoring.CommandID]struct{}, len(history))
-	for index, entry := range history {
-		if err := entry.Validate(); err != nil {
-			return fmt.Errorf("entry %d: %w", index+1, err)
-		}
-		if entry.CommandID == "" {
-			continue
-		}
-		if err := entry.CommandID.Validate(); err != nil {
-			return fmt.Errorf("entry %d command: %w", index+1, err)
-		}
-		if _, duplicate := seen[entry.CommandID]; duplicate {
-			return fmt.Errorf("entry %d repeats command %s", index+1, entry.CommandID)
-		}
-		seen[entry.CommandID] = struct{}{}
-	}
-	return nil
-}
-
 func validateStashes(stashes []Stash) error {
 	return validateDistinct("stash", stashes, func(stash Stash) string { return stash.ID })
 }
@@ -493,50 +345,22 @@ func validateDistinct[T interface{ Validate() error }](noun string, records []T,
 	return nil
 }
 
-func (s *Store) recordPromptHistoryLocked(commandID authoring.CommandID, message authoring.Message) error {
-	next := cloneHistory(s.history)
-	index := slices.IndexFunc(next, func(entry historyEntry) bool {
-		return entry.CommandID == commandID
-	})
-	if index >= 0 {
-		if !next[index].Equal(message) {
-			return errors.New("prompt history command identity already owns another message")
-		}
-		return nil
-	}
-	next = s.trimHistory(append(next, historyEntry{Message: message, CommandID: commandID}))
-	return s.save(historyName, next, func() { s.history = next })
+func (s *Store) historyWith(message authoring.Message) []authoring.Message {
+	start := max(0, len(s.history)-s.historyCapacity+1)
+	return append(slices.Clone(s.history[start:]), message.Clone())
 }
 
-func (s *Store) trimHistory(history []historyEntry) []historyEntry {
-	pinned := make(map[authoring.CommandID]struct{})
-	for _, commands := range s.queue.bySession {
-		for _, pending := range commands {
-			pinned[pending.Command.CommandID] = struct{}{}
-		}
+func (s *Store) recordPromptSettlement(update sessionUpdate, message authoring.Message) error {
+	history := s.historyWith(message)
+	record, err := encodeRecord(historyName, history)
+	if err != nil {
+		return err
 	}
-	pinnedHistory := 0
-	for _, entry := range history {
-		if _, protected := pinned[entry.CommandID]; protected {
-			pinnedHistory++
-		}
+	if err := s.commitSessions([]sessionUpdate{update}, record); err != nil {
+		return err
 	}
-	nonPinnedBudget := s.historyCapacity
-	keepNonPinned := make(map[int]struct{}, nonPinnedBudget)
-	for index := len(history) - 1; index >= 0 && len(keepNonPinned) < nonPinnedBudget; index-- {
-		if _, protected := pinned[history[index].CommandID]; !protected {
-			keepNonPinned[index] = struct{}{}
-		}
-	}
-	trimmed := make([]historyEntry, 0, min(len(history), s.historyCapacity+pinnedHistory))
-	for index, entry := range history {
-		_, protected := pinned[entry.CommandID]
-		_, recent := keepNonPinned[index]
-		if protected || recent {
-			trimmed = append(trimmed, historyEntry{Message: entry.Clone(), CommandID: entry.CommandID})
-		}
-	}
-	return trimmed
+	s.history = history
+	return nil
 }
 
 func tailStashes(stashes []Stash, limit int) []Stash {
@@ -546,14 +370,6 @@ func tailStashes(stashes []Stash, limit int) []Stash {
 	out := make([]Stash, len(stashes))
 	for i, stash := range stashes {
 		out[i] = cloneStash(stash)
-	}
-	return out
-}
-
-func cloneHistory(history []historyEntry) []historyEntry {
-	out := make([]historyEntry, len(history))
-	for index, entry := range history {
-		out[index] = historyEntry{Message: entry.Clone(), CommandID: entry.CommandID}
 	}
 	return out
 }

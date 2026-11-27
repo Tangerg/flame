@@ -221,53 +221,17 @@ type sessionDraftTransition struct {
 	disposition     sourceDraftDisposition
 }
 
-func (s sessionDraftTransition) resolve(
-	store *workbench.Store,
-	destinationSessionID string,
-	destinationDraft authoring.Message,
-	currentDraft authoring.Message,
-) (authoring.Message, error) {
+func (s sessionDraftTransition) apply(store *workbench.Store, destinationID string) error {
 	switch s.disposition {
 	case retireSourceDraft:
-		if destinationSessionID == s.sourceSessionID {
-			return authoring.Message{}, fmt.Errorf("replacement session reused retired identity %s", destinationSessionID)
-		}
-		merged, err := workbench.MergeSessionDraft(destinationDraft, currentDraft)
-		if err != nil {
-			return authoring.Message{}, fmt.Errorf("merge replacement session draft: %w", err)
-		}
-		if strings.TrimSpace(currentDraft.Text) == "" && len(currentDraft.Attachments) == 0 {
-			return merged, nil
-		}
-		if err := store.ApplyDraftTransfer(workbench.DraftTransfer{
-			SourceSessionID: s.sourceSessionID, DestinationSessionID: destinationSessionID,
-			SourceBefore: currentDraft, DestinationBefore: destinationDraft,
-			DestinationAfter: merged,
-		}); err != nil {
-			return authoring.Message{}, fmt.Errorf("transfer replacement session draft: %w", err)
-		}
-		return merged, nil
+		return store.TransferSessionDraft(s.sourceSessionID, destinationID, authoring.Message{})
 	case preserveSourceDraft:
-		if destinationSessionID == s.sourceSessionID {
-			return destinationDraft, nil
+		if destinationID == s.sourceSessionID {
+			return nil
 		}
-		if currentDraft.Equal(s.baseline) {
-			return destinationDraft, nil
-		}
-		merged, err := workbench.MergeSessionDraft(destinationDraft, currentDraft)
-		if err != nil {
-			return authoring.Message{}, fmt.Errorf("merge session draft: %w", err)
-		}
-		if err := store.ApplyDraftTransfer(workbench.DraftTransfer{
-			SourceSessionID: s.sourceSessionID, DestinationSessionID: destinationSessionID,
-			SourceBefore: currentDraft, SourceAfter: s.baseline,
-			DestinationBefore: destinationDraft, DestinationAfter: merged,
-		}); err != nil {
-			return authoring.Message{}, fmt.Errorf("transfer session draft: %w", err)
-		}
-		return merged, nil
+		return store.TransferSessionDraft(s.sourceSessionID, destinationID, s.baseline)
 	default:
-		return authoring.Message{}, errors.New("session draft transition has an invalid source disposition")
+		return errors.New("session draft transition has an invalid source disposition")
 	}
 }
 
@@ -309,17 +273,16 @@ func (l *sessionLifecycle) prepareDestinationDraft(
 	if saveDraftErr := l.composer.saveDraft(current); saveDraftErr != nil {
 		return authoring.Message{}, nil, fmt.Errorf("save source session draft: %w", saveDraftErr)
 	}
-	if activateSessionStateErr := l.workbench.ActivateSessionState(session.ID); activateSessionStateErr != nil {
-		return authoring.Message{}, nil, fmt.Errorf("activate destination session state: %w", activateSessionStateErr)
+	if err := l.workbench.CheckSessionActivation(session.ID); err != nil {
+		return authoring.Message{}, nil, fmt.Errorf("activate destination session state: %w", err)
 	}
-	draft, _ := l.workbench.Draft(session.ID)
 	if rememberWorkspaceErr := l.workbench.RememberWorkspace(session.Workspace.Path); rememberWorkspaceErr != nil {
 		return authoring.Message{}, nil, fmt.Errorf("remember workspace: %w", rememberWorkspaceErr)
 	}
 	transition := l.state.draftTransition
 	if transition != nil {
-		if _, transitionErr := transition.resolve(l.workbench, session.ID, draft, current); transitionErr != nil {
-			return authoring.Message{}, nil, transitionErr
+		if err := transition.apply(l.workbench, session.ID); err != nil {
+			return authoring.Message{}, nil, fmt.Errorf("transfer session draft: %w", err)
 		}
 	}
 	activation, err := l.workbench.ActivateSessionDraft(session.ID, authoring.Message{})

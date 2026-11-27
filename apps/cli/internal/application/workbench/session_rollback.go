@@ -182,7 +182,7 @@ func (s *Store) ActivateSessionDraft(sessionID string, incoming authoring.Messag
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	current := s.drafts[sessionID]
-	draft, err := MergeSessionDraft(current, incoming)
+	draft, err := mergeSessionDraft(current, incoming)
 	if err != nil {
 		return SessionDraftActivation{}, err
 	}
@@ -191,7 +191,7 @@ func (s *Store) ActivateSessionDraft(sessionID string, incoming authoring.Messag
 	var recovery *SessionRollbackRecovery
 	if confirmed {
 		opening := authoring.Message{Text: pending.Restoration.OpeningText}
-		merged, err := MergeSessionDraft(opening, draft)
+		merged, err := mergeSessionDraft(opening, draft)
 		if err != nil {
 			return SessionDraftActivation{}, err
 		}

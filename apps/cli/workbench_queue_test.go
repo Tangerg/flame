@@ -79,7 +79,7 @@ func TestWorkbenchQueueReopensItsCommittedEntries(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, recovered := openQueue()
+	recoveredStore, recovered := openQueue()
 	recovered.ReleasePreparation(sessionID)
 	pending, found := recovered.Head(sessionID)
 	if !found || pending.Dispatch == nil || pending.Dispatch.Replay != replay ||
@@ -107,5 +107,16 @@ func TestWorkbenchQueueReopensItsCommittedEntries(t *testing.T) {
 	if len(waiting) != 1 || waiting[0].ID != first.ID ||
 		waiting[0].CommandID == first.CommandID || !waiting[0].Message.Equal(edited) {
 		t.Fatalf("edited queue = %+v", waiting)
+	}
+	if err := recoveredStore.Close(); err != nil {
+		t.Fatal(err)
+	}
+	settledStore, settled := openQueue()
+	history := settledStore.History()
+	if len(history) != 1 || !history[0].Equal(second.Message) {
+		t.Fatalf("reopened history = %+v, want the retired prompt", history)
+	}
+	if entries := settled.Snapshot(sessionID).Entries; len(entries) != 1 || !entries[0].Message.Equal(edited) {
+		t.Fatalf("reopened queue = %+v, want only the remaining prompt", entries)
 	}
 }
