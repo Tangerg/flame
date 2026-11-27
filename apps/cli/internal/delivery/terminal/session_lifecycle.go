@@ -2,7 +2,6 @@ package terminal
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 
@@ -89,34 +88,23 @@ func (l *sessionLifecycle) RenameSession(title string) {
 }
 
 func (l *sessionLifecycle) ForkSession(title string) {
-	source := l.state.current.ID
-	l.runSessionChange("forking session",
-		func(ctx context.Context) (conversation.SessionSnapshot, error) {
-			forked, err := l.runtime.ForkSession(ctx, conversation.ForkSession{SessionID: source, Title: strings.TrimSpace(title)})
-			if err != nil {
-				return conversation.SessionSnapshot{}, err
-			}
-			return l.readSessionAfterMutation(ctx, forked.ID)
-		},
-		func(snapshot conversation.SessionSnapshot) error { return l.installSnapshot(snapshot) },
-	)
+	l.forkSession(conversation.ForkSession{SessionID: l.state.current.ID, Title: strings.TrimSpace(title)})
 }
 
 func (l *sessionLifecycle) forkSessionFromRun(runID string) {
-	source := l.state.current.ID
-	short := shortIdentity(runID)
-	l.runSessionChange("forking session from "+short,
-		func(ctx context.Context) (conversation.SessionSnapshot, error) {
-			forked, err := l.runtime.ForkSession(ctx, conversation.ForkSession{
-				SessionID: source, FromRunID: runID, Title: "Fork from " + short,
-			})
-			if err != nil {
-				return conversation.SessionSnapshot{}, err
-			}
-			return l.readSessionAfterMutation(ctx, forked.ID)
-		},
-		func(snapshot conversation.SessionSnapshot) error { return l.installSnapshot(snapshot) },
-	)
+	l.forkSession(conversation.ForkSession{
+		SessionID: l.state.current.ID, FromRunID: runID, Title: "Fork from " + shortIdentity(runID),
+	})
+}
+
+func (l *sessionLifecycle) forkSession(request conversation.ForkSession) {
+	text := sessionChangeText{working: "forking session", committed: "forked session"}
+	if request.FromRunID != "" {
+		text.working += " from " + shortIdentity(request.FromRunID)
+	}
+	l.runSessionMutation(text, func(ctx context.Context) (conversation.Session, error) {
+		return l.runtime.ForkSession(ctx, request)
+	})
 }
 
 func (l *sessionLifecycle) switchSession(id string) {
@@ -128,113 +116,6 @@ func (l *sessionLifecycle) switchSession(id string) {
 		func(ctx context.Context) (conversation.SessionSnapshot, error) { return l.runtime.GetSession(ctx, id) },
 		func(snapshot conversation.SessionSnapshot) error { return l.installSnapshot(snapshot) },
 	)
-}
-
-func (l *sessionLifecycle) runSessionChange[T any](label string, work func(context.Context) (T, error), apply func(T) error) {
-	l.runSessionChangeWithDraftDisposition(label, preserveSourceDraft, work, apply)
-}
-
-func (l *sessionLifecycle) runSessionChangeWithDraftDisposition[T any](
-	label string,
-	disposition sourceDraftDisposition,
-	work func(context.Context) (T, error),
-	apply func(T) error,
-) {
-	if l.runs.observing() {
-		l.root.message("finish or cancel the current run before changing sessions")
-		return
-	}
-	if l.runs.cancelPending() {
-		l.root.message("wait for runtime cancellation to finish")
-		return
-	}
-	if l.tasks.operations.Active(sessionChangeOperation) {
-		l.root.message(sessionChangeOperation.busy().Error())
-		return
-	}
-	if l.tasks.operations.Active(sessionCenterOperation) {
-		l.root.message(sessionCenterOperation.busy().Error())
-		return
-	}
-	l.tasks.operations.Cancel(pickerCatalogOperation)
-	l.sessions.dialog.Dismiss()
-	baseline, _, err := l.composer.draft()
-	if err != nil {
-		l.root.message(label + " failed: " + err.Error())
-		return
-	}
-	if err := l.composer.saveDraft(baseline); err != nil {
-		l.report(workbenchDraft, err)
-		l.root.message("session change blocked: save session draft: " + err.Error())
-		return
-	}
-	l.report(workbenchDraft, nil)
-	if l.tasks.operations.Cancel(sessionInvalidationOperation) {
-		l.state.invalidated = true
-	}
-	l.state.draftTransition = &sessionDraftTransition{
-		sourceSessionID: l.state.current.ID,
-		baseline:        baseline,
-		disposition:     disposition,
-	}
-	l.root.message(label)
-	if !l.tasks.sessionFence(sessionChangeOperation, work, func(result T, err error) {
-		defer l.settleSessionChange()
-		if err != nil {
-			l.root.message(label + " failed: " + err.Error())
-			return
-		}
-		if err := apply(result); err != nil {
-			l.root.message(label + " failed: " + err.Error())
-		}
-	}) {
-		l.settleSessionChange()
-		l.root.message(sessionChangeOperation.busy().Error())
-	}
-}
-
-func (l *sessionLifecycle) cancelSessionChange() bool {
-	if !l.tasks.operations.Cancel(sessionChangeOperation) {
-		return false
-	}
-	l.root.message("session change canceled")
-	l.settleSessionChange()
-	return true
-}
-
-func (l *sessionLifecycle) settleSessionChange() {
-	l.state.draftTransition = nil
-	if l.state.invalidated && l.runs.conversation().Phase() != conversation.Running &&
-		!l.runs.following() && !l.runs.cancelPending() {
-		l.refreshInvalidatedSession(refreshAfterChange)
-	}
-}
-
-type sourceDraftDisposition uint8
-
-const (
-	preserveSourceDraft sourceDraftDisposition = iota
-	retireSourceDraft
-)
-
-type sessionDraftTransition struct {
-	sourceSessionID string
-	baseline        authoring.Message
-	disposition     sourceDraftDisposition
-}
-
-func (s sessionDraftTransition) apply(store *workbench.Store, destinationID string) error {
-	switch s.disposition {
-	case retireSourceDraft:
-		return store.TransferSessionDraft(s.sourceSessionID, destinationID, authoring.Message{})
-	case preserveSourceDraft:
-		if destinationID == s.sourceSessionID {
-			return nil
-		}
-		return store.TransferSessionDraft(s.sourceSessionID, destinationID, s.baseline)
-	default:
-		return errors.New("session draft transition has an invalid source disposition")
-	}
 }
 
 type sessionInstallation struct {
@@ -281,9 +162,8 @@ func (l *sessionLifecycle) prepareDestinationDraft(
 	if rememberWorkspaceErr := l.workbench.RememberWorkspace(session.Workspace.Path); rememberWorkspaceErr != nil {
 		return authoring.Message{}, nil, fmt.Errorf("remember workspace: %w", rememberWorkspaceErr)
 	}
-	transition := l.state.draftTransition
-	if transition != nil {
-		if err := transition.apply(l.workbench, session.ID); err != nil {
+	if change := l.state.change; change != nil {
+		if err := change.transferDraft(l.workbench, session.ID); err != nil {
 			return authoring.Message{}, nil, fmt.Errorf("transfer session draft: %w", err)
 		}
 	}

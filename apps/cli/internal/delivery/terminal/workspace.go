@@ -191,21 +191,16 @@ func (l *sessionLifecycle) relocateSession(path string) {
 		return
 	}
 	sessionID := l.state.current.ID
-	l.runSessionChange("relocating session",
-		func(ctx context.Context) (conversation.SessionSnapshot, error) {
-			latest, err := l.runtime.GetSession(ctx, sessionID)
-			if err != nil {
-				return conversation.SessionSnapshot{}, err
-			}
-			if _, err := l.runtime.UpdateSession(ctx, conversation.UpdateSession{
-				SessionID: sessionID, Workspace: &path, ExpectedRevision: latest.Session.Revision,
-			}); err != nil {
-				return conversation.SessionSnapshot{}, err
-			}
-			return l.readSessionAfterMutation(ctx, sessionID)
-		},
-		func(snapshot conversation.SessionSnapshot) error { return l.installSnapshot(snapshot) },
-	)
+	text := sessionChangeText{working: "relocating session", committed: "relocated session"}
+	l.runSessionMutation(text, func(ctx context.Context) (conversation.Session, error) {
+		latest, err := l.runtime.GetSession(ctx, sessionID)
+		if err != nil {
+			return conversation.Session{}, err
+		}
+		return l.runtime.UpdateSession(ctx, conversation.UpdateSession{
+			SessionID: sessionID, Workspace: &path, ExpectedRevision: latest.Session.Revision,
+		})
+	})
 }
 
 func (l *sessionLifecycle) startSessionInWorkspace(workspace string) {

@@ -51,22 +51,10 @@ func (l *sessionLifecycle) prepareSessionImport(path string) error {
 }
 
 func (l *sessionLifecycle) importSession(artifact session.Document) {
-	l.runSessionChange("importing session",
-		func(ctx context.Context) (conversation.SessionSnapshot, error) {
-			imported, err := l.transfers.ImportSession(ctx, session.ImportRequest{Artifact: artifact})
-			if err != nil {
-				return conversation.SessionSnapshot{}, err
-			}
-			return l.readSessionAfterMutation(ctx, imported.ID)
-		},
-		func(snapshot conversation.SessionSnapshot) error {
-			if err := l.installSnapshot(snapshot); err != nil {
-				return err
-			}
-			l.root.message("imported session · " + displayTitle(snapshot.Session))
-			return nil
-		},
-	)
+	text := sessionChangeText{working: "importing session", committed: "imported session"}
+	l.runSessionMutation(text, func(ctx context.Context) (conversation.Session, error) {
+		return l.transfers.ImportSession(ctx, session.ImportRequest{Artifact: artifact})
+	})
 }
 
 func (l *sessionLifecycle) prepareSessionRollback(argument string) error {

@@ -6,10 +6,10 @@ import (
 )
 
 type sessionState struct {
-	current         conversation.Session
-	context         *sessionContextLease
-	invalidated     bool
-	draftTransition *sessionDraftTransition
+	current     conversation.Session
+	context     *sessionContextLease
+	invalidated bool
+	change      *sessionChange
 }
 
 type openingReceipt struct {

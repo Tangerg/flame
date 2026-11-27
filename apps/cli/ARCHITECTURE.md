@@ -136,6 +136,11 @@ The application root only composes the terminal: it builds the owners below, rou
 - `screens` are the management surfaces, each owning one Runtime port and its state: run options (model choice, catalog, status), approval policy, workspace inspection, goals, model configuration, usage, feedback, MCP, Skills, hooks, diagnostic tools, agent documents, and installed plugins with their terminal views. A screen reaches the terminal only through `screenHost`; a screen whose port is absent is nil, which command availability reports.
 - `taskRunner` applies background results on the loop under an operation lease. `readerSurface` owns the reader and the query behind its document. `pickerDialog` pairs a searchable picker with its modal; `confirmPrompt`, `contextEditing`, `liveSearch`, the timeline and the shortcut guide own their modals likewise. `keyRouter` owns key bindings and partial sequences.
 
+An explicit Session change retires the previous background read before loading a
+projection. Fork, import and relocation publish the Runtime acknowledgement before
+opening its Session. A failed or canceled open leaves that committed Session
+available through the Sessions center.
+
 Configured product actions replace Oolong's default bindings for those actions.
 Input routing and help read the resulting maps; configured sequence order
 determines which shortcut help presents first. Oolong supplies defaults only for
