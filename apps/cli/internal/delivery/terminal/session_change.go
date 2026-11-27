@@ -4,37 +4,15 @@ import (
 	"context"
 	"errors"
 
-	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 )
 
-type sourceDraftDisposition uint8
-
-const (
-	preserveSourceDraft sourceDraftDisposition = iota
-	retireSourceDraft
-)
+var errSessionRequiredForPrompt = errors.New("open a session before sending a prompt")
 
 type sessionChange struct {
-	sourceSessionID string
-	baseline        authoring.Message
-	disposition     sourceDraftDisposition
-	receipt         *sessionChangeReceipt
-}
-
-func (s sessionChange) transferDraft(store *workbench.Store, destinationID string) error {
-	switch s.disposition {
-	case retireSourceDraft:
-		return store.TransferSessionDraft(s.sourceSessionID, destinationID, authoring.Message{})
-	case preserveSourceDraft:
-		if destinationID == s.sourceSessionID {
-			return nil
-		}
-		return store.TransferSessionDraft(s.sourceSessionID, destinationID, s.baseline)
-	default:
-		return errors.New("session change has an invalid source draft disposition")
-	}
+	baseline authoring.Message
+	receipt  *sessionChangeReceipt
 }
 
 type sessionChangeText struct {
@@ -51,8 +29,15 @@ func (r sessionChangeReceipt) summary() string {
 	return r.action + " · " + displayTitle(r.session)
 }
 
-func (l *sessionLifecycle) runSessionMutation(text sessionChangeText, command func(context.Context) (conversation.Session, error)) {
-	if !l.beginSessionChange(text.working, preserveSourceDraft) {
+type sessionOpeningSource uint8
+
+const (
+	readCommittedSession sessionOpeningSource = iota
+	openCreatedSession
+)
+
+func (l *sessionLifecycle) runSessionMutation(text sessionChangeText, source sessionOpeningSource, command func(context.Context) (conversation.Session, error)) {
+	if !l.beginSessionChange(text.working) {
 		return
 	}
 	l.runSessionChangeStep(text.working, command, func(committed conversation.Session, err error) {
@@ -63,34 +48,31 @@ func (l *sessionLifecycle) runSessionMutation(text sessionChangeText, command fu
 		}
 		receipt := &sessionChangeReceipt{session: committed, action: text.committed}
 		l.state.change.receipt = receipt
+		if source == openCreatedSession {
+			l.finishSessionOpening(conversation.SessionSnapshot{Session: committed}, nil)
+			return
+		}
 		l.runSessionChangeStep(receipt.summary()+" · opening",
 			func(ctx context.Context) (conversation.SessionSnapshot, error) {
 				return l.readSessionAfterMutation(ctx, receipt.session.ID)
 			},
-			func(snapshot conversation.SessionSnapshot, err error) {
-				if err == nil {
-					err = l.installSnapshot(snapshot)
-				}
-				if err != nil {
-					l.abandonSessionOpening("could not open: " + err.Error())
-				}
-				l.settleSessionChange()
-			},
+			l.finishSessionOpening,
 		)
 	})
 }
 
-func (l *sessionLifecycle) runSessionChange[T any](label string, work func(context.Context) (T, error), apply func(T) error) {
-	l.runSessionChangeWithDraftDisposition(label, preserveSourceDraft, work, apply)
+func (l *sessionLifecycle) finishSessionOpening(snapshot conversation.SessionSnapshot, err error) {
+	if err == nil {
+		err = l.installSnapshot(snapshot)
+	}
+	if err != nil {
+		l.abandonSessionOpening("could not open: " + err.Error())
+	}
+	l.settleSessionChange()
 }
 
-func (l *sessionLifecycle) runSessionChangeWithDraftDisposition[T any](
-	label string,
-	disposition sourceDraftDisposition,
-	work func(context.Context) (T, error),
-	apply func(T) error,
-) {
-	if !l.beginSessionChange(label, disposition) {
+func (l *sessionLifecycle) runSessionChange[T any](label string, work func(context.Context) (T, error), apply func(T) error) {
+	if !l.beginSessionChange(label) {
 		return
 	}
 	l.runSessionChangeStep(label, work, func(result T, err error) {
@@ -104,7 +86,7 @@ func (l *sessionLifecycle) runSessionChangeWithDraftDisposition[T any](
 	})
 }
 
-func (l *sessionLifecycle) beginSessionChange(label string, disposition sourceDraftDisposition) bool {
+func (l *sessionLifecycle) beginSessionChange(label string) bool {
 	if l.runs.observing() {
 		l.root.message("finish or cancel the current run before changing sessions")
 		return false
@@ -135,13 +117,9 @@ func (l *sessionLifecycle) beginSessionChange(label string, disposition sourceDr
 	}
 	l.report(workbenchDraft, nil)
 	if l.tasks.operations.Cancel(sessionInvalidationOperation) {
-		l.state.invalidated = true
+		l.state.invalidate()
 	}
-	l.state.change = &sessionChange{
-		sourceSessionID: l.state.current.ID,
-		baseline:        baseline,
-		disposition:     disposition,
-	}
+	l.state.change = &sessionChange{baseline: baseline}
 	return true
 }
 
@@ -169,14 +147,14 @@ func (l *sessionLifecycle) cancelSessionChange() bool {
 func (l *sessionLifecycle) abandonSessionOpening(reason string) {
 	receipt := l.state.change.receipt
 	if receipt.session.ID == l.state.current.ID {
-		l.state.invalidated = true
+		l.state.invalidate()
 	}
 	l.root.message(receipt.summary() + " · " + reason)
 }
 
 func (l *sessionLifecycle) settleSessionChange() {
 	l.state.change = nil
-	if l.state.invalidated && l.runs.conversation().Phase() != conversation.Running &&
+	if l.state.freshness == sessionStale && l.runs.conversation().Phase() != conversation.Running &&
 		!l.runs.following() && !l.runs.cancelPending() {
 		l.refreshInvalidatedSession(refreshAfterChange)
 	}

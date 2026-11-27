@@ -306,7 +306,7 @@ func (r *runs) noteRunFinished() {
 func (r *runs) finishFollowing() {
 	r.execution.observation = observationDetached
 	r.link.refreshOpenTimeline()
-	if r.session.invalidated {
+	if r.session.freshness == sessionStale {
 		r.sessions.refreshInvalidatedSession(refreshSettlingRun)
 		return
 	}

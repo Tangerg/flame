@@ -159,8 +159,14 @@ func openSessionNavigationRuntime(t *testing.T) (*runtimebinding.Connection, con
 
 func openSessionNavigationTerminal(t *testing.T, connection *runtimebinding.Connection, backend Runtime, source conversation.Session) *uitest.Host {
 	t.Helper()
+	host, _, _ := runUIFromConfig(t, sessionNavigationConfig(connection, backend, source))
+	host.Shows(t, "Ask flame")
+	return host
+}
+
+func sessionNavigationConfig(connection *runtimebinding.Connection, backend Runtime, source conversation.Session) Config {
 	profile := connection.Profile()
-	host, _, _ := runUIFromConfig(t, Config{
+	return Config{
 		Runtime: backend, RuntimeProfile: &profile, Workspace: source.Workspace.Path,
 		Workspaces: connection, Changes: connection, Transfers: connection, Usage: connection, ModelConfig: connection,
 		Goals: connection, Skills: connection, MCP: connection, Plugins: connection,
@@ -168,9 +174,7 @@ func openSessionNavigationTerminal(t *testing.T, connection *runtimebinding.Conn
 		Hooks: connection.Hooks(), Feedback: connection.Feedback(),
 		SessionID: source.ID, OpenWorkbench: func() (*workbench.Store, error) { return workbench.OpenMemory(workbench.Config{}) },
 		Settings: settings.Default(),
-	})
-	host.Shows(t, "Ask flame")
-	return host
+	}
 }
 
 type unavailableForkSnapshot struct {

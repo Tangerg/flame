@@ -192,7 +192,7 @@ func (l *sessionLifecycle) relocateSession(path string) {
 	}
 	sessionID := l.state.current.ID
 	text := sessionChangeText{working: "relocating session", committed: "relocated session"}
-	l.runSessionMutation(text, func(ctx context.Context) (conversation.Session, error) {
+	l.runSessionMutation(text, readCommittedSession, func(ctx context.Context) (conversation.Session, error) {
 		latest, err := l.runtime.GetSession(ctx, sessionID)
 		if err != nil {
 			return conversation.Session{}, err
@@ -204,30 +204,13 @@ func (l *sessionLifecycle) relocateSession(path string) {
 }
 
 func (l *sessionLifecycle) startSessionInWorkspace(workspace string) {
-	l.runSessionChange("creating session in "+workspace,
-		func(ctx context.Context) (conversation.SessionSnapshot, error) {
-			created, err := l.runtime.CreateSession(ctx, conversation.CreateSession{Workspace: workspace})
-			return conversation.SessionSnapshot{Session: created}, err
-		},
-		func(snapshot conversation.SessionSnapshot) error { return l.installSnapshot(snapshot) },
-	)
-}
-
-func (l *sessionLifecycle) replaceDeletedSessionInWorkspace(workspace string) {
-	retiredSessionID := l.state.current.ID
-	l.runSessionChangeWithDraftDisposition("creating replacement session in "+workspace, retireSourceDraft,
-		func(ctx context.Context) (conversation.SessionSnapshot, error) {
-			created, err := l.runtime.CreateSession(ctx, conversation.CreateSession{Workspace: workspace})
-			return conversation.SessionSnapshot{Session: created}, err
-		},
-		func(snapshot conversation.SessionSnapshot) error {
-			if err := l.installSnapshot(snapshot); err != nil {
-				return err
-			}
-			l.reportRetiredSessionState(l.retireSessionState(retiredSessionID))
-			return nil
-		},
-	)
+	text := sessionChangeText{working: "creating session in " + workspace, committed: "created session"}
+	if l.state.freshness == sessionMissing {
+		text = sessionChangeText{working: "current session missing · creating a replacement", committed: "created replacement session"}
+	}
+	l.runSessionMutation(text, openCreatedSession, func(ctx context.Context) (conversation.Session, error) {
+		return l.runtime.CreateSession(ctx, conversation.CreateSession{Workspace: workspace})
+	})
 }
 
 func resolveWorkspace(current, requested string) (string, error) {

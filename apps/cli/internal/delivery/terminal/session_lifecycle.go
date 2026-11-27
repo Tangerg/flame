@@ -102,13 +102,13 @@ func (l *sessionLifecycle) forkSession(request conversation.ForkSession) {
 	if request.FromRunID != "" {
 		text.working += " from " + shortIdentity(request.FromRunID)
 	}
-	l.runSessionMutation(text, func(ctx context.Context) (conversation.Session, error) {
+	l.runSessionMutation(text, readCommittedSession, func(ctx context.Context) (conversation.Session, error) {
 		return l.runtime.ForkSession(ctx, request)
 	})
 }
 
 func (l *sessionLifecycle) switchSession(id string) {
-	if id == l.state.current.ID {
+	if id == l.state.current.ID && l.state.freshness != sessionMissing {
 		l.root.message("already in " + displayTitle(l.state.current))
 		return
 	}
@@ -162,8 +162,12 @@ func (l *sessionLifecycle) prepareDestinationDraft(
 	if rememberWorkspaceErr := l.workbench.RememberWorkspace(session.Workspace.Path); rememberWorkspaceErr != nil {
 		return authoring.Message{}, nil, fmt.Errorf("remember workspace: %w", rememberWorkspaceErr)
 	}
-	if change := l.state.change; change != nil {
-		if err := change.transferDraft(l.workbench, session.ID); err != nil {
+	if change := l.state.change; change != nil && session.ID != l.state.current.ID {
+		remaining := change.baseline
+		if l.state.freshness == sessionMissing {
+			remaining = authoring.Message{}
+		}
+		if err := l.workbench.TransferSessionDraft(l.state.current.ID, session.ID, remaining); err != nil {
 			return authoring.Message{}, nil, fmt.Errorf("transfer session draft: %w", err)
 		}
 	}
@@ -218,8 +222,10 @@ func (l *sessionLifecycle) readSessionAfterMutation(ctx context.Context, session
 func (l *sessionLifecycle) install(s sessionInstallation) {
 	previousSessionID := l.state.current.ID
 	previousWorkspace := l.state.current.Workspace
-	if previousSessionID != s.snapshot.Session.ID {
-		l.state.invalidated = false
+	previousMissing := l.state.freshness == sessionMissing
+	switching := previousSessionID != s.snapshot.Session.ID
+	if switching || previousMissing {
+		l.state.freshness = sessionObserved
 	}
 	l.prepareSessionProjectionReplacement(s.snapshot.Session, s.projection.conversation)
 	l.root.cancelPluginCommands()
@@ -248,11 +254,14 @@ func (l *sessionLifecycle) install(s sessionInstallation) {
 	}
 	if l.runs.conversation().Phase() == conversation.Idle {
 		l.root.message("session · " + displayTitle(s.snapshot.Session))
-		if l.state.invalidated {
+		if l.state.freshness == sessionStale {
 			l.refreshInvalidatedSession(refreshAfterChange)
 		}
 	}
 	l.steering.restoreSteerReceipts(s.snapshot)
+	if previousMissing && switching {
+		l.reportRetiredSessionState(l.retireSessionState(previousSessionID))
+	}
 }
 
 func (l *sessionLifecycle) installSnapshot(snapshot conversation.SessionSnapshot) error {

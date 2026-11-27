@@ -137,9 +137,14 @@ The application root only composes the terminal: it builds the owners below, rou
 - `taskRunner` applies background results on the loop under an operation lease. `readerSurface` owns the reader and the query behind its document. `pickerDialog` pairs a searchable picker with its modal; `confirmPrompt`, `contextEditing`, `liveSearch`, the timeline and the shortcut guide own their modals likewise. `keyRouter` owns key bindings and partial sequences.
 
 An explicit Session change retires the previous background read before loading a
-projection. Fork, import and relocation publish the Runtime acknowledgement before
-opening its Session. A failed or canceled open leaves that committed Session
-available through the Sessions center.
+projection. Creation, fork, import and relocation preserve the Runtime
+acknowledgement while opening the Session. A failed or canceled open leaves the
+committed Session available through the Sessions center.
+
+A definitive missing result retires background reads of the old Session and admits
+one automatic replacement. The terminal keeps the old draft editable until the
+person opens a Session. A subsequent open transfers the draft and retires the
+deleted Session's remaining local state.
 
 Configured product actions replace Oolong's default bindings for those actions.
 Input routing and help read the resulting maps; configured sequence order

@@ -490,6 +490,10 @@ func (a *app) dispatchPrompt(message authoring.Message) {
 		a.message(sessionChangeOperation.busy().Error())
 		return
 	}
+	if a.lifecycle.state.freshness == sessionMissing {
+		a.message(errSessionRequiredForPrompt.Error())
+		return
+	}
 	commandID := mutation.NewCommandID()
 	if _, err := a.queue.EnqueueCommand(commandID, a.lifecycle.state.current.ID, message, a.options); err != nil {
 		a.reportWorkbenchIssue(workbenchRunOutbox, err)

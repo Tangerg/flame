@@ -125,7 +125,7 @@ func (r *runs) restoreRejectedInterruptReview(review *interruptReview, command c
 		}
 	}
 	r.execution.stopFollowing()
-	if r.session.invalidated {
+	if r.session.freshness == sessionStale {
 		r.status.note("resume refused · refreshing session")
 		r.sessions.refreshInvalidatedSession(refreshAfterChange)
 		return nil

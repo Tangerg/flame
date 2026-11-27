@@ -277,6 +277,9 @@ func (r *runs) queueSendBlocked() error {
 	if r.tasks.operations.Active(sessionChangeOperation) {
 		return sessionChangeOperation.busy()
 	}
+	if r.session.freshness == sessionMissing {
+		return errSessionRequiredForPrompt
+	}
 	if !r.execution.blocksAdmission() && r.runtimeChangeBlocksRunAdmission() {
 		return errors.New("wait for the pending runtime change before sending a queued prompt")
 	}

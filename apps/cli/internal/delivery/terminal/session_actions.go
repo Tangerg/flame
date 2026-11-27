@@ -52,7 +52,7 @@ func (l *sessionLifecycle) prepareSessionImport(path string) error {
 
 func (l *sessionLifecycle) importSession(artifact session.Document) {
 	text := sessionChangeText{working: "importing session", committed: "imported session"}
-	l.runSessionMutation(text, func(ctx context.Context) (conversation.Session, error) {
+	l.runSessionMutation(text, readCommittedSession, func(ctx context.Context) (conversation.Session, error) {
 		return l.transfers.ImportSession(ctx, session.ImportRequest{Artifact: artifact})
 	})
 }
