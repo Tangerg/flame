@@ -231,9 +231,9 @@ func newApp(loop *program.Runtime, cfg appConfig) (*app, error) {
 		appendNote: a.appendNote,
 		cleared:    a.confirmation.Reset,
 	}
-	a.composer.drafts.store = newDraftPersistence(cfg.workbench, func(result draftPersistenceResult) {
+	a.composer.drafts.writer = newDraftPersistence(cfg.workbench.SaveDraft, func(result draftPersistenceResult) {
 		if err := loop.Dispatcher().Post(func() {
-			if a.closed || !a.composer.drafts.store.Current(result.revision) {
+			if a.closed || !a.composer.drafts.writer.Current(result.revision) {
 				return
 			}
 			a.reportWorkbenchIssue(workbenchDraft, result.err)
@@ -443,7 +443,7 @@ func (a *app) Close(ctx context.Context) error {
 	}
 	a.composer.drafts.cancel()
 	closeErr = errors.Join(closeErr, a.composer.persistDraft())
-	closeErr = errors.Join(closeErr, a.composer.drafts.store.Close())
+	closeErr = errors.Join(closeErr, a.composer.drafts.writer.Close())
 	closeErr = errors.Join(closeErr, a.runs.finishShutdown(ctx, shutdown))
 	a.transcript.Close()
 	closeErr = errors.Join(closeErr, a.transcript.releaseErr)
@@ -491,7 +491,11 @@ func (a *app) dispatchPrompt(message authoring.Message) {
 		return
 	}
 	commandID := mutation.NewCommandID()
-	if _, err := a.queue.EnqueueCommand(commandID, a.lifecycle.state.current.ID, message, a.options); err != nil {
+	sessionID, options := a.lifecycle.state.current.ID, a.options
+	if err := a.composer.commitAuthoring(func() error {
+		_, err := a.queue.EnqueueCommand(commandID, sessionID, message, options)
+		return err
+	}); err != nil {
 		a.reportWorkbenchIssue(workbenchRunOutbox, err)
 		a.message("prompt submission blocked: " + err.Error())
 		return

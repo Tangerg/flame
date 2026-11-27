@@ -105,9 +105,13 @@ func (s *steerDesk) steerRun(instruction string) error {
 }
 
 func (s *steerDesk) deliverPreparedSteer(request authoring.SteerRun, sourceDraft authoring.Message, input *workbench.PreparedInput) error {
-	pending, err := runworkflow.StageSteer(
-		s.workbench, s.session.current.ID, request, sourceDraft, s.replayPolicy, input,
-	)
+	sessionID := s.session.current.ID
+	var pending workbench.PendingSteer
+	err := s.composer.commitAuthoring(func() error {
+		var err error
+		pending, err = runworkflow.StageSteer(s.workbench, sessionID, request, sourceDraft, s.replayPolicy, input)
+		return err
+	})
 	if err != nil {
 		s.report(workbenchSteerOutbox, fmt.Errorf("save steer command journal: %w", err))
 		return err
@@ -179,7 +183,6 @@ func (s *steerDesk) acknowledgeSteer(pending workbench.PendingSteer) error {
 		return fmt.Errorf("retire accepted steer command: %w", err)
 	}
 	s.report(workbenchSteerOutbox, nil)
-	s.report(workbenchHistory, nil)
 	return nil
 }
 

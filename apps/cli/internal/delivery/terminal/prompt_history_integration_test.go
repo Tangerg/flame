@@ -32,13 +32,13 @@ func TestPromptHistoryDoesNotRestoreAnotherSessionsDraft(t *testing.T) {
 	const sourceText = "draft belonging to the source session"
 	const destinationText = "draft belonging to the destination session"
 	const historyText = "a previously accepted prompt"
+	if err := store.MoveDraftToHistory(source.ID, authoring.Message{Text: historyText}); err != nil {
+		t.Fatal(err)
+	}
 	if err := store.SaveDraft(source.ID, authoring.Message{Text: sourceText}); err != nil {
 		t.Fatal(err)
 	}
 	if err := store.SaveDraft(destination.ID, authoring.Message{Text: destinationText}); err != nil {
-		t.Fatal(err)
-	}
-	if err := store.Remember(authoring.Message{Text: historyText}); err != nil {
 		t.Fatal(err)
 	}
 	if err := store.Close(); err != nil {

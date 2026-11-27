@@ -347,12 +347,6 @@ func (c *composerContent) draft() (authoring.Message, bool, error) {
 	return message, true, nil
 }
 
-func (c *promptComposer) rememberPrompt(message authoring.Message) error {
-	err := c.workbench.Remember(message)
-	c.report(workbenchHistory, err)
-	return err
-}
-
 func (c *promptComposer) persistDraft() error {
 	c.drafts.cancel()
 	message, _, err := c.draft()
@@ -364,7 +358,7 @@ func (c *promptComposer) persistDraft() error {
 }
 
 type draftAutosave struct {
-	store   *draftPersistence
+	writer  *draftPersistence
 	pending func()
 }
 
@@ -377,7 +371,7 @@ func (d *draftAutosave) schedule(after func(time.Duration, func()) func(), captu
 			report(err)
 			return
 		}
-		if err := d.store.Schedule(sessionID, message); err != nil {
+		if err := d.writer.Schedule(sessionID, message); err != nil {
 			report(err)
 		}
 	})
@@ -391,11 +385,6 @@ func (d *draftAutosave) cancel() {
 	d.pending = nil
 }
 
-func (d *draftAutosave) save(sessionID string, message authoring.Message) error {
-	d.cancel()
-	return d.store.Flush(sessionID, message)
-}
-
 func (c *promptComposer) scheduleDraftPersistence() {
 	if c.closed() {
 		return
@@ -407,7 +396,21 @@ func (c *promptComposer) scheduleDraftPersistence() {
 }
 
 func (c *promptComposer) saveDraft(message authoring.Message) error {
-	return c.drafts.save(c.session.current.ID, message)
+	sessionID := c.session.current.ID
+	return c.commitAuthoring(func() error {
+		if sessionID == "" {
+			return nil
+		}
+		return c.workbench.SaveDraft(sessionID, message)
+	})
+}
+
+func (c *promptComposer) commitAuthoring(apply func() error) error {
+	err := c.drafts.writer.Commit(apply)
+	if err == nil {
+		c.drafts.cancel()
+	}
+	return err
 }
 
 func (c *promptComposer) commitDraft(message authoring.Message) error {

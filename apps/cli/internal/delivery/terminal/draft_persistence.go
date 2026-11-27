@@ -2,29 +2,14 @@ package terminal
 
 import (
 	"errors"
-	"math"
 	"sync"
 
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 )
 
-var (
-	errDraftPersistenceClosed            = errors.New("draft persistence is closed")
-	errDraftPersistenceRevisionExhausted = errors.New("draft persistence revision space is exhausted")
-)
+var errDraftPersistenceClosed = errors.New("draft persistence is closed")
 
 type draftRevision uint64
-
-func (r draftRevision) successor() (draftRevision, bool) {
-	if r == draftRevision(math.MaxUint64) {
-		return 0, false
-	}
-	return r + 1, true
-}
-
-type draftRepository interface {
-	SaveDraft(string, authoring.Message) error
-}
 
 type draftSnapshot struct {
 	revision  draftRevision
@@ -38,7 +23,7 @@ type draftPersistenceResult struct {
 }
 
 type draftPersistence struct {
-	repository draftRepository
+	writeDraft func(string, authoring.Message) error
 	notify     func(draftPersistenceResult)
 
 	commandMu sync.Mutex
@@ -47,22 +32,23 @@ type draftPersistence struct {
 	revision  draftRevision
 	closed    bool
 	wake      chan struct{}
-	flush     chan draftFlush
+	commit    chan draftCommit
 	shutdown  chan chan error
 	done      chan struct{}
 }
 
-type draftFlush struct {
-	snapshot draftSnapshot
+type draftCommit struct {
+	revision draftRevision
+	apply    func() error
 	done     chan error
 }
 
-func newDraftPersistence(repository draftRepository, notify func(draftPersistenceResult)) *draftPersistence {
+func newDraftPersistence(writeDraft func(string, authoring.Message) error, notify func(draftPersistenceResult)) *draftPersistence {
 	persistence := &draftPersistence{
-		repository: repository,
+		writeDraft: writeDraft,
 		notify:     notify,
 		wake:       make(chan struct{}, 1),
-		flush:      make(chan draftFlush),
+		commit:     make(chan draftCommit),
 		shutdown:   make(chan chan error),
 		done:       make(chan struct{}),
 	}
@@ -76,38 +62,32 @@ func (d *draftPersistence) Schedule(sessionID string, message authoring.Message)
 		return nil
 	}
 	d.mu.Lock()
-	if d.closed {
+	revision, err := d.advanceLocked()
+	if err != nil {
 		d.mu.Unlock()
-		return errDraftPersistenceClosed
+		return err
 	}
-	next, ok := d.revision.successor()
-	if !ok {
-		d.mu.Unlock()
-		return errDraftPersistenceRevisionExhausted
-	}
-	d.revision = next
-	snapshot := draftSnapshot{revision: d.revision, sessionID: sessionID, message: message.Clone()}
+	snapshot := draftSnapshot{revision: revision, sessionID: sessionID, message: message.Clone()}
 	d.pending = &snapshot
 	d.mu.Unlock()
 	d.signal()
 	return nil
 }
 
-// Waiting for older writes prevents a queued draft from overwriting a later
-// session transition.
-func (d *draftPersistence) Flush(sessionID string, message authoring.Message) error {
-	if sessionID == "" {
-		return nil
-	}
+// A workbench change that consumes the visible draft must run after any older
+// autosave has finished so that an old snapshot cannot bring the draft back.
+func (d *draftPersistence) Commit(apply func() error) error {
 	d.commandMu.Lock()
 	defer d.commandMu.Unlock()
-	snapshot, err := d.reserve(sessionID, message)
+	d.mu.Lock()
+	revision, err := d.advanceLocked()
+	d.mu.Unlock()
 	if err != nil {
 		return err
 	}
-	request := draftFlush{snapshot: snapshot, done: make(chan error, 1)}
+	request := draftCommit{revision: revision, apply: apply, done: make(chan error, 1)}
 	select {
-	case d.flush <- request:
+	case d.commit <- request:
 		return <-request.done
 	case <-d.done:
 		return errDraftPersistenceClosed
@@ -143,18 +123,12 @@ func (d *draftPersistence) Close() error {
 	}
 }
 
-func (d *draftPersistence) reserve(sessionID string, message authoring.Message) (draftSnapshot, error) {
-	d.mu.Lock()
-	defer d.mu.Unlock()
+func (d *draftPersistence) advanceLocked() (draftRevision, error) {
 	if d.closed {
-		return draftSnapshot{}, errDraftPersistenceClosed
+		return 0, errDraftPersistenceClosed
 	}
-	next, ok := d.revision.successor()
-	if !ok {
-		return draftSnapshot{}, errDraftPersistenceRevisionExhausted
-	}
-	d.revision = next
-	return draftSnapshot{revision: d.revision, sessionID: sessionID, message: message.Clone()}, nil
+	d.revision++
+	return d.revision, nil
 }
 
 func (d *draftPersistence) takePending() (draftSnapshot, bool) {
@@ -191,9 +165,12 @@ func (d *draftPersistence) run() {
 			if snapshot, ok := d.takePending(); ok {
 				d.publish(snapshot, d.save(snapshot))
 			}
-		case request := <-d.flush:
-			d.discardPendingThrough(request.snapshot.revision)
-			request.done <- d.save(request.snapshot)
+		case request := <-d.commit:
+			err := request.apply()
+			if err == nil {
+				d.discardPendingThrough(request.revision)
+			}
+			request.done <- err
 			if snapshot, ok := d.takePending(); ok {
 				d.publish(snapshot, d.save(snapshot))
 			}
@@ -209,7 +186,7 @@ func (d *draftPersistence) run() {
 }
 
 func (d *draftPersistence) save(snapshot draftSnapshot) error {
-	return d.repository.SaveDraft(snapshot.sessionID, snapshot.message)
+	return d.writeDraft(snapshot.sessionID, snapshot.message)
 }
 
 func (d *draftPersistence) publish(snapshot draftSnapshot, err error) {

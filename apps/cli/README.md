@@ -20,6 +20,8 @@ Running without a subcommand opens the Oolong terminal interface. Runtime owns d
 Workbench prompt history is shared across Sessions. Consecutive identical
 prompts occupy one recall entry. Switching Sessions ends history navigation and
 loads the destination Session's draft.
+Clearing a draft moves its visible content to history in the same transaction.
+Stashing a draft moves its visible content directly to a saved stash.
 
 MCP forms preserve command and directory bytes, and encode arguments as JSON
 arrays and environment/header replacements as JSON objects. Empty and whitespace

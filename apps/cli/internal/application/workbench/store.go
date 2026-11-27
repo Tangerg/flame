@@ -171,21 +171,18 @@ func (s *Store) History() []authoring.Message {
 	return messages
 }
 
-func (s *Store) Remember(message authoring.Message) error {
-	message = message.Clone()
-	if message.IsEmpty() {
-		return nil
+func (s *Store) MoveDraftToHistory(sessionID string, message authoring.Message) error {
+	if err := protocol.ValidateSessionID(sessionID); err != nil {
+		return err
 	}
 	if err := message.Validate(); err != nil {
-		return fmt.Errorf("remember prompt: %w", err)
+		return fmt.Errorf("move draft to history: %w", err)
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	next, changed := s.historyWith(message)
-	if !changed {
-		return nil
-	}
-	return s.save(historyName, next, func() { s.history = next })
+	update := s.sessionUpdate(sessionID)
+	update.draft = authoring.Message{}
+	return s.recordPromptSettlement(update, message)
 }
 
 func (s *Store) Draft(sessionID string) (authoring.Message, bool) {
@@ -247,11 +244,7 @@ func (s *Store) StashDraft(sessionID string, message authoring.Message) (Stash, 
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	update := s.sessionUpdate(sessionID)
-	if !update.draft.Equal(message) {
-		return Stash{}, errors.New("session draft changed before it could be stashed")
-	}
-	stash, err := s.newStash(update.draft)
+	stash, err := s.newStash(message)
 	if err != nil {
 		return Stash{}, err
 	}
@@ -260,6 +253,7 @@ func (s *Store) StashDraft(sessionID string, message authoring.Message) (Stash, 
 	if err != nil {
 		return Stash{}, err
 	}
+	update := s.sessionUpdate(sessionID)
 	update.draft = authoring.Message{}
 	if err := s.commitSessions([]sessionUpdate{update}, record); err != nil {
 		return Stash{}, err
