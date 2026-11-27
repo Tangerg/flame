@@ -7,6 +7,6 @@ export interface WorkspaceAccess {
   readonly navigation: WorkspaceNavigationPort;
   readonly local: LocalWorkspace;
   readonly errors: WorkspaceErrorClassifier;
-  readonly conversationImport: ConversationImport;
+  readonly conversationImport: Pick<ConversationImport, "importConversationJson">;
   taskWorktrees(): FlameClient["workspaces"]["tasks"];
 }

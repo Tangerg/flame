@@ -26,7 +26,6 @@ import {
   workspaceReadTargets,
 } from "@/features/workspace/adapters/workspaceReadObservation";
 import { RUNTIME_SERVER_SCOPE, RUNTIME_STREAM } from "@/features/connection/public/services";
-import { WORKSPACE_MUTATION_LIFECYCLE } from "@/features/workspace/public/services";
 export function createWorkspaceEventsPlugin(
   agentAccess: AgentAccess,
   runtimeAccess: RuntimeAccess,
@@ -37,7 +36,6 @@ export function createWorkspaceEventsPlugin(
     requires: {
       runtime: RUNTIME_STREAM,
       serverScope: RUNTIME_SERVER_SCOPE,
-      mutationLifecycle: WORKSPACE_MUTATION_LIFECYCLE,
       sessions: AGENT_SESSIONS,
     },
     setup(ctx) {
@@ -63,10 +61,7 @@ export function createWorkspaceEventsPlugin(
           canSubscribe: canSubscribeWorkspaceEvents.bind(null, runtimeAccess),
           connectionGeneration: ctx.dependencies.runtime.connectionGeneration,
           subscribeConnection: ctx.dependencies.runtime.subscribeConnection,
-          retireReadModels: () => {
-            ctx.dependencies.mutationLifecycle.replaceRuntimeGeneration();
-            retireWorkspaceReadModels(agentAccess);
-          },
+          retireReadModels: retireWorkspaceReadModels.bind(null, agentAccess),
           resolveWorkspaceCwd: (signal) =>
             resolveActiveSessionWorkspaceCwd(runtimeClient, ctx.dependencies.sessions, signal),
           reportResolutionError: (error) =>

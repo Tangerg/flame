@@ -21,7 +21,7 @@ import { createComposer } from "@/features/composer/adapters/composerStatePorts"
 import { DraftContent } from "@/features/composer/domain/draft";
 import { runtimeServiceInspector } from "@/features/connection/adapters/runtimeServiceInspector";
 import { NotificationFeed } from "@/features/notifications/public/notifications";
-import { createConversationImportGateway } from "@/features/workspace/adapters/runtimeConversationImportGateway";
+import { bindConversationImportRuntime } from "@/features/workspace/adapters/runtimeConversationImportGateway";
 import { createConversationImport } from "@/features/workspace/application/conversationImport";
 import { queryClient } from "@/lib/queryClient";
 import {
@@ -250,7 +250,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: restart and crash recovery", (
     }
   }, 30_000);
 
-  it("opens an unmounted JSON import and refreshes an existing view on reimport", async () => {
+  it("opens a JSON import after reconnect and refreshes an existing view on reimport", async () => {
     const title = "Conversation imported before its view mounts";
     const source = await fixture.client.sessions.create({
       title,
@@ -266,7 +266,20 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: restart and crash recovery", (
     const { artifact } = await fixture.client.sessions.export(sourceId, "json");
     if (!artifact) throw new Error("JSON export omitted its Session artifact");
 
-    const client = fixture.createSharedClient();
+    const committed = Promise.withResolvers<number>();
+    const release = Promise.withResolvers<void>();
+    let importsSent = 0;
+    const client = fixture.createSharedClient(async (url, init) => {
+      const response = await fetch(url, init);
+      if (
+        new Headers(init?.headers).get(HTTP_HEADERS.method) === "sessions.import" &&
+        ++importsSent === 1
+      ) {
+        committed.resolve(response.status);
+        await release.promise;
+      }
+      return response;
+    });
     const web = openWebSession(client, fixture.baseUrl, "");
     const access = web.agent.access;
     const sidecar = createSidecarClient({ baseUrl: fixture.baseUrl });
@@ -278,13 +291,24 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: restart and crash recovery", (
     );
     const presentations: string[] = [];
     const notifications = new NotificationFeed(({ level }) => presentations.push(level));
-    const imports = createConversationImport(web.agent.access, web.runtime, notifications);
-    const gateway = createConversationImportGateway(imports, () => client, {
+    const imports = createConversationImport(access, web.runtime, notifications, {
       pickText: async () => JSON.stringify(artifact),
     });
+    const unbind = bindConversationImportRuntime(imports, () => client, web.connection.scope);
     try {
       await web.connection.status.refresh();
-      await imports.importConversationJson();
+      const generation = web.connection.stream.connectionGeneration();
+      if (!generation) throw new Error("the Runtime had no initial connection");
+      const importing = imports.importConversationJson();
+      await expect(within(committed.promise, "the import receipt")).resolves.toBe(200);
+      web.connection.stream.reportConnectionLoss(generation);
+      expect(web.connection.stream.connectionGeneration()).toBeNull();
+      await web.connection.status.refresh();
+      const restored = web.connection.stream.connectionGeneration();
+      expect(restored?.processGeneration).toBe(generation.processGeneration);
+      expect(restored).not.toBe(generation);
+      release.resolve();
+      await importing;
       expect(access.getActiveSessionId()).toBe(sourceId);
       expect(web.agent.dependencies.view.getSession(sourceId)).toBeUndefined();
       expect(presentations).toEqual(["success"]);
@@ -292,6 +316,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: restart and crash recovery", (
         session: { id: sourceId, title },
         runs: [expect.objectContaining({ id: run.result.runId })],
       });
+      expect(importsSent).toBe(1);
 
       await fixture.client.sessions.rollback({
         sessionId: sourceId,
@@ -307,7 +332,8 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: restart and crash recovery", (
         expect.objectContaining({ role: "user", runId: run.result.runId }),
       );
     } finally {
-      gateway.dispose();
+      release.resolve();
+      unbind();
       notifications.dispose();
       web.dispose();
       await client.close();

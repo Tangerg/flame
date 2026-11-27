@@ -339,8 +339,8 @@ export function useRuntimeFixture(
       headers,
     );
 
-  const createSharedClient = () =>
-    createFlameClient(createHttpTransport({ baseUrl }), {
+  const createSharedClient = (fetch?: typeof globalThis.fetch) =>
+    createFlameClient(createHttpTransport({ baseUrl, fetch }), {
       capabilities: () => negotiated,
       requestMeta: () => ({
         protocolVersion: PROTOCOL_VERSION,

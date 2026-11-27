@@ -1,7 +1,8 @@
 import { type FlameClient, type SessionArtifact } from "@flame/runtime-client";
+import { type RuntimeServerScope } from "@/features/connection/public/services";
 import { type ConversationImport } from "@/features/workspace/application/conversationImport";
 import { type ConversationImportGateway } from "@/features/workspace/application/ports/conversationImportGateway";
-import { type FileTransferPort } from "@/features/workspace/application/ports/fileTransfer";
+
 function runtimeConversationImportGateway(client: FlameClient): ConversationImportGateway {
   return {
     async importConversation(artifact) {
@@ -14,18 +15,17 @@ function runtimeConversationImportGateway(client: FlameClient): ConversationImpo
   };
 }
 
-export function createConversationImportGateway(
+export function bindConversationImportRuntime(
   imports: ConversationImport,
   runtimeClient: () => FlameClient,
-  files: FileTransferPort,
-) {
-  const owner = imports.install({
-    gateway: runtimeConversationImportGateway(runtimeClient()),
-    files,
-  });
-  return {
-    replaceRuntimeGeneration: () =>
-      owner.replaceRuntimeGeneration(() => runtimeConversationImportGateway(runtimeClient())),
-    dispose: () => owner.dispose(),
+  scope: RuntimeServerScope,
+): () => void {
+  const replaceTarget = () =>
+    imports.replaceTarget(runtimeConversationImportGateway(runtimeClient()));
+  replaceTarget();
+  const unsubscribe = scope.subscribeReplacement(replaceTarget);
+  return () => {
+    unsubscribe();
+    imports.retireTarget();
   };
 }

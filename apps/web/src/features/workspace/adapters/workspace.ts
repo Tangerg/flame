@@ -3,6 +3,7 @@ import { type Navigator } from "@/lib/navigation";
 import { type ClientHost } from "@/platform/host";
 import { type AgentAccess } from "@/features/agent/public/agent";
 import { type RuntimeAccess } from "@/features/connection/public/runtime";
+import { type RuntimeServerScope } from "@/features/connection/public/services";
 import { type WorkspaceAccess } from "@/features/workspace/application/workspaceAccess";
 import { createConversationImport } from "@/features/workspace/application/conversationImport";
 import { createContextDockStore } from "@/features/workspace/adapters/contextDockStore";
@@ -10,7 +11,7 @@ import { createShellLayoutStore } from "@/features/workspace/adapters/shellLayou
 import { createWorkspaceNavigation } from "@/features/workspace/adapters/navigationStatePort";
 import { createLocalWorkspaceActions } from "@/features/workspace/adapters/localWorkspaceActions";
 import { runtimeWorkspaceErrorClassifier } from "@/features/workspace/adapters/runtimeWorkspaceErrorClassifier";
-import { createConversationImportGateway } from "@/features/workspace/adapters/runtimeConversationImportGateway";
+import { bindConversationImportRuntime } from "@/features/workspace/adapters/runtimeConversationImportGateway";
 import { pickTextFile } from "@/features/workspace/adapters/fileTransfer";
 import { type NotificationFeed } from "@/features/notifications/public/notifications";
 export function createWorkspace(
@@ -30,7 +31,9 @@ export function createWorkspace(
     layout,
     runtime.endpoint.currentRuntimeEndpoint,
   );
-  const conversationImport = createConversationImport(agent, runtime, notifications);
+  const conversationImport = createConversationImport(agent, runtime, notifications, {
+    pickText: pickTextFile,
+  });
   const access: WorkspaceAccess = {
     navigation: navigationState,
     local: createLocalWorkspaceActions(host, canAccessLocalWorkspace),
@@ -38,29 +41,24 @@ export function createWorkspace(
     conversationImport,
     taskWorktrees: () => client().workspaces.tasks,
   };
-  let importGateway: ReturnType<typeof createConversationImportGateway> | null = null;
+  let unbindConversationImport: (() => void) | null = null;
   let disposed = false;
   return {
     access,
     dock,
     layout,
-    start() {
+    start(scope: RuntimeServerScope) {
       if (disposed) throw new Error("Workspace is disposed");
-      if (importGateway) return;
+      if (unbindConversationImport) return;
       dock.activate(runtime.endpoint.currentRuntimeEndpoint());
-      importGateway = createConversationImportGateway(conversationImport, client, {
-        pickText: pickTextFile,
-      });
-    },
-    replaceRuntimeGeneration() {
-      importGateway?.replaceRuntimeGeneration();
+      unbindConversationImport = bindConversationImportRuntime(conversationImport, client, scope);
     },
     dispose() {
       if (disposed) return;
       disposed = true;
       navigationState.dispose();
-      importGateway?.dispose();
-      importGateway = null;
+      unbindConversationImport?.();
+      unbindConversationImport = null;
       dock.store.setState({ inspection: null });
     },
   };
