@@ -23,6 +23,7 @@ import (
 )
 
 func TestResearchKeepsPageEvidenceAndHidesRevokedSources(t *testing.T) {
+	t.Parallel()
 	provider := httptest.NewServer(&knowledgeProvider{t: t})
 	t.Cleanup(provider.Close)
 	cfg := poMCPConfig(t)

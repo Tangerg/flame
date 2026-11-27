@@ -106,6 +106,7 @@ func schedulesWithLostOpening(t *testing.T, cfg assemblyConfig) (*poMCPRuntime, 
 }
 
 func TestSchedulesReconcilesLostCoreOpeningBeforePrivateAcknowledgement(t *testing.T) {
+	t.Parallel()
 	cfg := poMCPConfig(t)
 	r, opening := schedulesWithLostOpening(t, cfg)
 	installed := poMCPActivate(r, filepath.Join(firstPartyPackages, "schedules"))

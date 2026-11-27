@@ -26,6 +26,7 @@ import (
 )
 
 func TestKnowledgeBaseInstalledEntriesShareRetrievalAndLeaveConversationWithCore(t *testing.T) {
+	t.Parallel()
 	kb := &knowledgeProvider{t: t, referenced: map[string]string{}, retrieved: map[string]string{}}
 	kb.toolName.Store("")
 	kb.toolOutput.Store("")

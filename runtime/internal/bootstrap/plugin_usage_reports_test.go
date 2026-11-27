@@ -18,6 +18,7 @@ import (
 )
 
 func TestUsageReportsRecoversItsOriginalReceiptAfterBackendExitsBeforeReply(t *testing.T) {
+	t.Parallel()
 	source := filepath.Join(t.TempDir(), "lost reply candidate")
 	if err := os.CopyFS(source, os.DirFS(filepath.Join(firstPartyPackages, "usagereports"))); err != nil {
 		t.Fatal(err)
@@ -74,6 +75,7 @@ func TestUsageReportsRecoversItsOriginalReceiptAfterBackendExitsBeforeReply(t *t
 }
 
 func TestUsageReportsInstalledCaptureKeepsCoreFactsAcrossLaterWorkAndRestart(t *testing.T) {
+	t.Parallel()
 	cfg := poMCPConfig(t)
 	r := poMCPOpen(t, cfg)
 	installed := poMCPActivate(r, filepath.Join(firstPartyPackages, "usagereports"))

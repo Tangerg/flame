@@ -47,6 +47,7 @@ type nativeOpenCodeSession struct {
 }
 
 func TestOpenCodeHostKeepsTheNativeSessionPermissionsAndCancellation(t *testing.T) {
+	t.Parallel()
 	executable := os.Getenv("FLAME_OPENCODE_NATIVE_EXECUTABLE")
 	if executable == "" {
 		t.Skip("set FLAME_OPENCODE_NATIVE_EXECUTABLE to exercise installed OpenCode offline")

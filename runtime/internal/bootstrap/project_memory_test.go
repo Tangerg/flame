@@ -22,6 +22,7 @@ import (
 // Two Projects that share one repository must not share what the agent learns or
 // is told there, and neither may implicitly read the directory's older memories.
 func TestProjectsInOneWorkspaceKeepInstructionsAndMemoryApart(t *testing.T) {
+	t.Parallel()
 	const (
 		directoryFact = "directory release checklist"
 		projectFact   = "payments vendor shortlist"

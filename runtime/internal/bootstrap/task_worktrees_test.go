@@ -20,6 +20,7 @@ import (
 )
 
 func TestTaskWorktreesKeepSeparateChangesAndHandoffAfterRestart(t *testing.T) {
+	t.Parallel()
 	source := t.TempDir()
 	git := func(args ...string) string {
 		t.Helper()

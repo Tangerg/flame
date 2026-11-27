@@ -27,6 +27,7 @@ import (
 )
 
 func TestFilewatchInstalledIngressReconcilesLostOpeningAcrossDisableAndRestart(t *testing.T) {
+	t.Parallel()
 	t.Run("new-work", func(t *testing.T) { testFilewatchRetry(t, false) })
 	t.Run("continue-work", func(t *testing.T) { testFilewatchRetry(t, true) })
 }
