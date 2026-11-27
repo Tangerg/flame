@@ -93,7 +93,7 @@ func TestRollbackRecoveryUsesTheOriginalReceiptAfterMoreRuns(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		store, err := workbench.Open(persistence, workbench.Config{})
+		store, err := workbench.Open(persistence)
 		if err != nil {
 			t.Fatal(err)
 		}

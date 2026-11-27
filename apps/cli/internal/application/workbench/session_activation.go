@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
@@ -57,13 +58,13 @@ func (s *Store) ActivateSession(input SessionActivation) (ActivatedSession, erro
 	if _, pending := s.sessionDeletions[input.SessionID]; pending {
 		return ActivatedSession{}, errors.New("session deletion acknowledgement is still pending")
 	}
-	workspace := Workspace{Path: input.WorkspacePath, LastOpened: s.now().UTC()}
+	workspace := Workspace{Path: input.WorkspacePath, LastOpened: time.Now().UTC()}
 	if err := workspace.Validate(); err != nil {
 		return ActivatedSession{}, err
 	}
 	workspaces := slices.DeleteFunc(slices.Clone(s.workspaces), func(item Workspace) bool { return item.Path == workspace.Path })
 	workspaces = slices.Insert(workspaces, 0, workspace)
-	workspaces = workspaces[:min(len(workspaces), s.workspaceCapacity)]
+	workspaces = workspaces[:min(len(workspaces), maxRecentWorkspaces)]
 	workspaceRecord, err := encodeRecord(workspacesName, workspaces)
 	if err != nil {
 		return ActivatedSession{}, err

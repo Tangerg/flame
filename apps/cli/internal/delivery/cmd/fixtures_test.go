@@ -48,7 +48,7 @@ func executeCommandWithRuntime(
 	var out, errb bytes.Buffer
 	dependencies := Dependencies{
 		OpenRuntime:   func(context.Context, settings.Runtime) (Runtime, RuntimeProfile, error) { return runtime, profile, nil },
-		OpenWorkbench: func(string) (*workbench.Store, error) { return workbench.OpenMemory(workbench.Config{}) },
+		OpenWorkbench: func(string) (*workbench.Store, error) { return workbench.OpenMemory(), nil },
 		StartTerminal: func(context.Context, TerminalRequest) error {
 			return errors.New("the terminal is not part of command tests")
 		},

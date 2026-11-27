@@ -177,7 +177,7 @@ func sessionNavigationConfig(connection *runtimebinding.Connection, backend Runt
 		Goals: connection, Skills: connection, MCP: connection, Plugins: connection,
 		DiagnosticTools: connection.DiagnosticTools(), AuthoringContext: connection.AuthoringContext(),
 		Hooks: connection.Hooks(), Feedback: connection.Feedback(),
-		SessionID: source.ID, OpenWorkbench: func() (*workbench.Store, error) { return workbench.OpenMemory(workbench.Config{}) },
+		SessionID: source.ID, OpenWorkbench: func() (*workbench.Store, error) { return workbench.OpenMemory(), nil },
 		Settings: settings.Default(),
 	}
 }

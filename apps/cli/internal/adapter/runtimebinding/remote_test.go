@@ -28,10 +28,7 @@ func TestRemoteConnectionRecoversLostDeletionAcknowledgement(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	store, err := workbench.OpenMemory(workbench.Config{})
-	if err != nil {
-		t.Fatal(err)
-	}
+	store := workbench.OpenMemory()
 	t.Cleanup(func() { _ = store.Close() })
 	result, err := session.Delete(t.Context(), connection, store, created.ID, policy, mutation.AcknowledgementBackoff())
 	if err != nil || result.LocalCleanupError != nil {

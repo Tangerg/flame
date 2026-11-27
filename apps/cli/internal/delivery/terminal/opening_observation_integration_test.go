@@ -67,7 +67,7 @@ func TestTerminalRecoversAnAcceptedRunAfterInvalidOpeningObservation(t *testing.
 		Goals: connection, Skills: connection, MCP: connection, Plugins: connection,
 		DiagnosticTools: connection.DiagnosticTools(), AuthoringContext: connection.AuthoringContext(),
 		Hooks: connection.Hooks(), Feedback: connection.Feedback(),
-		SessionID: session.ID, OpenWorkbench: func() (*workbench.Store, error) { return workbench.OpenMemory(workbench.Config{}) },
+		SessionID: session.ID, OpenWorkbench: func() (*workbench.Store, error) { return workbench.OpenMemory(), nil },
 		Settings: settings.Default(),
 	})
 	release := sync.OnceFunc(func() { close(allowProvider) })

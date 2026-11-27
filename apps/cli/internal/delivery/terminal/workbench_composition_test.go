@@ -28,7 +28,7 @@ func openTestWorkbench(t testing.TB, directory string) (*workbench.Store, error)
 	if err != nil {
 		return nil, err
 	}
-	store, err := workbench.Open(persistence, workbench.Config{})
+	store, err := workbench.Open(persistence)
 	if err == nil {
 		t.Cleanup(func() {
 			if err := store.Close(); err != nil {
