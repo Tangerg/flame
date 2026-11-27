@@ -252,6 +252,7 @@ export function useSchedules(context: ComponentContext, locale: string) {
         ) {
           taskOpener.current = searchElement.current;
           setEdit(undefined);
+          setDeleting(undefined);
         }
         void refresh();
       }
@@ -353,8 +354,10 @@ export function useSchedules(context: ComponentContext, locale: string) {
     beginTask(opener, { deleting: item });
   }
   function deleteConfirmed() {
-    if (deleting)
-      submit(METHODS.delete, { id: deleting.item.id }, t("command.delete"));
+    if (deleting) {
+      const { id, revision } = deleting.item;
+      submit(METHODS.delete, { id, expectedRevision: revision }, t("command.delete"));
+    }
   }
   function runNow(item: Schedule) {
     submit(METHODS.runNow, { id: item.id }, t("command.runNow"));

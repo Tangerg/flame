@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"encoding/json/jsontext"
-	json "encoding/json/v2"
 	"errors"
 	"fmt"
 
@@ -37,7 +36,7 @@ func toolReceipt(ctx context.Context, db framesqlite.Database, input pluginmcp.R
 		}
 		return pluginsdk.NewFailedToolReceipt(failure)
 	}
-	projection, err := toolReceiptProjection(ctx, db, remote, input.ID, receipt.Reply)
+	projection, err := toolReceiptProjection(remote, receipt.Reply)
 	if err != nil {
 		return pluginsdk.ToolReceipt{}, err
 	}
@@ -59,7 +58,7 @@ func toolCommandMethod(tool string) (string, bool) {
 	}
 }
 
-func toolReceiptProjection(ctx context.Context, db framesqlite.Database, tool string, commandID pluginmcp.CommandID, reply jsontext.Value) (any, error) {
+func toolReceiptProjection(tool string, reply jsontext.Value) (any, error) {
 	switch tool {
 	case createScheduleTool, updateScheduleTool:
 		snapshot, err := pluginmcp.DecodeReply[schedule.Snapshot](reply)
@@ -72,10 +71,11 @@ func toolReceiptProjection(ctx context.Context, db framesqlite.Database, tool st
 		}
 		return scheduleResponse{Schedule: viewSchedule(state)}, nil
 	case deleteScheduleTool:
-		if _, err := pluginmcp.DecodeReply[wire.Ack](reply); err != nil {
+		deleted, err := pluginmcp.DecodeReply[wire.DeleteResult](reply)
+		if err != nil {
 			return nil, err
 		}
-		return deletedScheduleProjection(ctx, db, commandID)
+		return viewScheduleDeletion(deleted), nil
 	case runScheduleTool:
 		reference, err := pluginmcp.DecodeReply[scheduling.RunReference](reply)
 		if err != nil {
@@ -88,21 +88,4 @@ func toolReceiptProjection(ctx context.Context, db framesqlite.Database, tool st
 	default:
 		return nil, fmt.Errorf("schedules: Tool %q keeps no receipt", tool)
 	}
-}
-
-func deletedScheduleProjection(ctx context.Context, db framesqlite.Database, commandID pluginmcp.CommandID) (any, error) {
-	var original string
-	if err := db.Read(ctx, func(reader framesqlite.Reader) error {
-		return reader.QueryRowContext(ctx, `SELECT business_input_json FROM commands WHERE id=?`, commandID).Scan(&original)
-	}); err != nil {
-		return nil, err
-	}
-	var arguments deleteScheduleArgs
-	if err := json.Unmarshal([]byte(original), &arguments, json.RejectUnknownMembers(true)); err != nil {
-		return nil, err
-	}
-	if err := schedule.ValidateID(arguments.ScheduleID); err != nil {
-		return nil, err
-	}
-	return scheduleDeleteResponse(arguments), nil
 }

@@ -28,7 +28,7 @@ type ManagementStore interface {
 	Get(ctx context.Context, id string) (schedule.Schedule, error)
 	Insert(ctx context.Context, scheduled schedule.Schedule) error
 	Update(ctx context.Context, replacement schedule.Replacement) error
-	Delete(ctx context.Context, id string) (bool, error)
+	Delete(ctx context.Context, id string, expectedRevision uint64) error
 }
 
 type Coordinator struct {
@@ -195,26 +195,26 @@ func (c *Coordinator) prepareUpdate(
 	}}, nil
 }
 
-func (c *Coordinator) PrepareDelete(ctx context.Context, id string) (func(context.Context) error, error) {
+func (c *Coordinator) PrepareDelete(ctx context.Context, id string, expectedRevision uint64) (ScheduleMutation, error) {
 	if err := schedule.ValidateID(id); err != nil {
-		return nil, refusal{err}
+		return ScheduleMutation{}, err
 	}
-	if _, err := c.store.Get(ctx, id); err != nil {
-		if errors.Is(err, schedule.ErrNotFound) {
-			return nil, nil
-		}
-		return nil, err
+	if expectedRevision == 0 {
+		return ScheduleMutation{}, schedule.ErrRevisionRequired
 	}
-	return func(ctx context.Context) error {
-		deleted, err := c.store.Delete(ctx, id)
-		if err != nil {
-			return err
-		}
-		if !deleted {
-			return errors.New("schedules: decided deletion lost its original schedule")
-		}
-		return nil
-	}, nil
+	current, err := c.store.Get(ctx, id)
+	if errors.Is(err, schedule.ErrNotFound) {
+		return ScheduleMutation{}, schedule.ErrRevisionConflict
+	}
+	if err != nil {
+		return ScheduleMutation{}, fmt.Errorf("schedules: get %q for deletion: %w", id, err)
+	}
+	if err := current.CheckRevision(expectedRevision); err != nil {
+		return ScheduleMutation{}, err
+	}
+	return ScheduleMutation{state: current, persist: func(ctx context.Context) error {
+		return c.store.Delete(ctx, current.ID(), current.Revision())
+	}}, nil
 }
 
 func (c *Coordinator) resolveCWD(cwd string) (string, error) {

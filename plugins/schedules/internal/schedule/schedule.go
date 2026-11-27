@@ -129,11 +129,8 @@ func (s Schedule) Edit(p Patch, expectedRevision uint64, after time.Time) (Sched
 	if err := s.id.validate(); err != nil {
 		return Schedule{}, err
 	}
-	if expectedRevision == 0 {
-		return Schedule{}, ErrRevisionRequired
-	}
-	if expectedRevision != s.revision.Value() {
-		return Schedule{}, ErrRevisionConflict
+	if err := s.CheckRevision(expectedRevision); err != nil {
+		return Schedule{}, err
 	}
 	if p.Title != nil {
 		s.title = *p.Title
@@ -164,6 +161,16 @@ func (s Schedule) Edit(p Patch, expectedRevision uint64, after time.Time) (Sched
 		return next.scheduledAfter(enabled, after)
 	}
 	return next, next.Validate()
+}
+
+func (s Schedule) CheckRevision(expected uint64) error {
+	if expected == 0 {
+		return ErrRevisionRequired
+	}
+	if s.Revision() != expected {
+		return ErrRevisionConflict
+	}
+	return nil
 }
 
 func (r Recurrence) patched(cron, timeZone *string) (Recurrence, bool, error) {

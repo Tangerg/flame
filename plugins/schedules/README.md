@@ -134,6 +134,11 @@ empty title/workspace or `enabled: false` are real patches. Pausing stops future
 cron claims without deleting identity or rewriting captured/accepted work. A
 revision conflict requires a fresh read and a new edit decision.
 
+Deletion requires the inspected ID and revision. The component command is
+`flame.schedules/delete.v3` and the model supplies `expected_revision`. A changed
+or removed definition requires fresh review. The transaction stores the deleted
+ID and revision in its reply, so replay settles the original deletion.
+
 Metadata edits retain `NextRunAt` and `LastRunAt`, including an already-due
 occurrence. Only a changed cron or time zone while enabled, or a
 disable/re-enable transition, recomputes the scheduling cursor. A disabled cron edit retains its zero cursor.

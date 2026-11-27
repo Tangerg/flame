@@ -253,21 +253,78 @@
       }
     },
     {
-      "name": "flame.schedules/delete.v2",
+      "name": "flame.schedules/delete.v3",
       "kind": "command",
       "target": "installation",
-      "description": "Delete one schedule definition.",
+      "description": "Delete one schedule using its inspected revision.",
       "input": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU.SXRlbUlucHV0": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU.RGVsZXRlSW5wdXQ": {
             "additionalProperties": false,
             "properties": {
+              "expectedRevision": {
+                "allOf": [
+                  {
+                    "maximum": 18446744073709551615,
+                    "minimum": 0
+                  }
+                ],
+                "type": "integer"
+              },
               "id": {
                 "type": "string"
               }
             },
             "required": [
-              "id"
+              "id",
+              "expectedRevision"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "expectedRevision": {
+            "allOf": [
+              {
+                "maximum": 18446744073709551615,
+                "minimum": 0
+              }
+            ],
+            "type": "integer"
+          },
+          "id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "expectedRevision"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU.RGVsZXRlUmVzdWx0": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "revision": {
+                "allOf": [
+                  {
+                    "maximum": 18446744073709551615,
+                    "minimum": 0
+                  }
+                ],
+                "type": "integer"
+              }
+            },
+            "required": [
+              "id",
+              "revision"
             ],
             "type": "object"
           }
@@ -277,24 +334,21 @@
         "properties": {
           "id": {
             "type": "string"
+          },
+          "revision": {
+            "allOf": [
+              {
+                "maximum": 18446744073709551615,
+                "minimum": 0
+              }
+            ],
+            "type": "integer"
           }
         },
         "required": [
-          "id"
+          "id",
+          "revision"
         ],
-        "type": "object"
-      },
-      "output": {
-        "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU.QWNr": {
-            "additionalProperties": false,
-            "properties": {},
-            "type": "object"
-          }
-        },
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "additionalProperties": false,
-        "properties": {},
         "type": "object"
       }
     },

@@ -13,6 +13,8 @@ import (
 
 const IDPrefix = "sch_"
 
+var ErrInvalidID = errors.New("schedule: invalid id")
+
 const maximumIDCharacters = identity.MaximumResourceCharacters
 
 const (
@@ -35,10 +37,10 @@ func (i scheduleIdentity) validate() error {
 
 func parseScheduleID(text string) (scheduleIdentity, error) {
 	if err := identity.ValidateResource("schedule", text, maximumIDCharacters); err != nil {
-		return scheduleIdentity{}, fmt.Errorf("schedule: %w", err)
+		return scheduleIdentity{}, fmt.Errorf("%w: %w", ErrInvalidID, err)
 	}
 	if !strings.HasPrefix(text, IDPrefix) || utf8.RuneCountInString(text) == utf8.RuneCountInString(IDPrefix) {
-		return scheduleIdentity{}, errIDRequired
+		return scheduleIdentity{}, ErrInvalidID
 	}
 	return scheduleIdentity{text: text}, nil
 }

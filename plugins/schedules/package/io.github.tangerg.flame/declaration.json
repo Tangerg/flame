@@ -262,12 +262,15 @@
         {
           "id": "delete",
           "title": "Delete",
-          "method": "flame.schedules/delete.v2",
+          "method": "flame.schedules/delete.v3",
           "target": "row",
           "confirm": true,
           "input": {
             "id": {
               "row": "id"
+            },
+            "expectedRevision": {
+              "row": "revision"
             }
           }
         }

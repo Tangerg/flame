@@ -73,7 +73,7 @@ func readSchedulePage(r *poMCPRuntime, query protocol.PageQuery) *protocol.Page[
 func scheduleRunRequest(r *poMCPRuntime, id string) protocol.CallPluginRequest {
 	r.t.Helper()
 	request := scheduleQuery(r, protocol.PageQuery{})
-	input, err := json.Marshal(testsupport.SchedulesRunNowV2InputWireItemInput{Id: id})
+	input, err := json.Marshal(testsupport.SchedulesItemInput{Id: id})
 	if err != nil {
 		r.t.Fatal(err)
 	}

@@ -5,7 +5,7 @@ Generated from the feature's Go-owned method contracts.
 | Method | Kind | Target | Description |
 | --- | --- | --- | --- |
 | `flame.schedules/create.v2` | command | installation | Create one schedule definition. |
-| `flame.schedules/delete.v2` | command | installation | Delete one schedule definition. |
+| `flame.schedules/delete.v3` | command | installation | Delete one schedule using its inspected revision. |
 | `flame.schedules/list.v2` | query | installation | List current schedule definitions and revisions. |
 | `flame.schedules/runNow.v2` | command | installation | Capture and reconcile one manual Run through its original Runtime acceptance. |
 | `flame.schedules/update.v2` | command | installation | Change one schedule using its inspected revision. |

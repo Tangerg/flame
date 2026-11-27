@@ -4,7 +4,7 @@ import type { METHODS as DECLARED } from "../package/io.github.tangerg.flame/con
 // version moves, so a method bump touches only this table.
 export const METHODS = Object.freeze({
   create: "flame.schedules/create.v2",
-  delete: "flame.schedules/delete.v2",
+  delete: "flame.schedules/delete.v3",
   list: "flame.schedules/list.v2",
   runNow: "flame.schedules/runNow.v2",
   update: "flame.schedules/update.v2",

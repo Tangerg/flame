@@ -208,23 +208,19 @@ func (t toolCommands) RunNow(ctx context.Context, _ wire.ItemInput) (scheduling.
 	return value, decodeError(err)
 }
 
-func (t toolCommands) Delete(ctx context.Context, _ deleteScheduleArgs) error {
+func (t toolCommands) Delete(ctx context.Context, _ deleteScheduleArgs) (wire.DeleteResult, error) {
 	invocation, err := pluginsdk.ToolCommandID(ctx)
 	if err != nil {
-		return err
+		return wire.DeleteResult{}, err
 	}
 	admitted, err := pluginmcp.RequestInput(ctx)
 	if err != nil {
-		return err
+		return wire.DeleteResult{}, err
 	}
-	_, err = pluginstorage.Command(ctx, t.db, wire.Delete, invocation, admitted, classify, func(ctx context.Context, input deleteScheduleArgs) (pluginstorage.CommandPlan[wire.Ack], error) {
-		apply, err := t.coordinator.PrepareDelete(ctx, input.ScheduleID)
-		if err != nil {
-			return pluginstorage.CommandPlan[wire.Ack]{}, err
-		}
-		return pluginstorage.NewCommandPlan(wire.Ack{}, apply)
+	deleted, err := pluginstorage.Command(ctx, t.db, wire.Delete, invocation, admitted, classify, func(ctx context.Context, input deleteScheduleArgs) (pluginstorage.CommandPlan[wire.DeleteResult], error) {
+		return prepareScheduleDeletion(ctx, t.coordinator, wire.DeleteInput{ID: input.ScheduleID, ExpectedRevision: input.ExpectedRevision})
 	})
-	return decodeError(err)
+	return deleted, decodeError(err)
 }
 
 func newRunIdentity() (identity.SessionID, identity.RunID, error) {

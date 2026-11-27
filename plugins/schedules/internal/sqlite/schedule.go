@@ -305,27 +305,22 @@ func (s *ScheduleStore) recordAcceptedRun(ctx context.Context, id string, ranAt 
 	return nil
 }
 
-func (s *ScheduleStore) Delete(ctx context.Context, id string) (bool, error) {
-	var removed bool
-	err := s.db.RunInTx(ctx, func(ctx context.Context) error {
-		if err := schedule.ValidateID(id); err != nil {
-			removed = false
-			return err
-		}
-		result, err := s.db.Executor(ctx).ExecContext(ctx, `DELETE FROM schedules WHERE id = ?`, id)
+func (s *ScheduleStore) Delete(ctx context.Context, id string, expectedRevision uint64) error {
+	return s.db.RunInTx(ctx, func(ctx context.Context) error {
+		result, err := s.db.Executor(ctx).ExecContext(ctx,
+			`DELETE FROM schedules WHERE id = ? AND revision = ?`, id, expectedRevision)
 		if err != nil {
-			removed = false
 			return fmt.Errorf("sqlite: delete schedule: %w", err)
 		}
 		deleted, err := result.RowsAffected()
 		if err != nil {
-			removed = false
 			return fmt.Errorf("sqlite: inspect deleted schedule: %w", err)
 		}
-		removed = deleted > 0
+		if deleted == 0 {
+			return schedule.ErrRevisionConflict
+		}
 		return nil
 	})
-	return removed, err
 }
 
 func (s *ScheduleStore) query(ctx context.Context, operation, q string, args ...any) ([]schedule.Schedule, error) {
