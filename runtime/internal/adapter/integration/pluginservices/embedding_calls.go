@@ -26,7 +26,7 @@ func EmbeddingRoleCallback(resolve func(context.Context) (*modeladapter.Embedder
 		if !configured {
 			return pluginsdk.TextEmbeddings{}, &framecall.Refusal{Code: refusalModelRoleUnconfigured, Message: "embedding call: role is not configured"}
 		}
-		defer func() { returned = errors.Join(returned, model.Close(context.WithoutCancel(ctx))) }()
+		defer func() { returned = errors.Join(returned, model.Close(ctx)) }()
 		vectors, err := model.Embed(ctx, command.Input)
 		return pluginsdk.TextEmbeddings{Space: model.ID(), Vectors: vectors}, err
 	})

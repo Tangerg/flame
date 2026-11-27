@@ -253,12 +253,8 @@ func TestModelEndpointAccountingFollowsDispatchEvidence(t *testing.T) {
 	}
 }
 
-func TestInstalledModelStreamRequiresMatchingReceipt(t *testing.T) {
-	const providerID = "openai-compatible"
-	stream, err := modelprovider.StreamMethod()
-	if err != nil {
-		t.Fatal(err)
-	}
+func modelProviderProbe(t *testing.T, evidence, method, mode string) string {
+	t.Helper()
 	source := filepath.Join(t.TempDir(), "providers")
 	if err := os.CopyFS(source, os.DirFS(filepath.Join(firstPartyPackages, "providers"))); err != nil {
 		t.Fatal(err)
@@ -267,6 +263,28 @@ func TestInstalledModelStreamRequiresMatchingReceipt(t *testing.T) {
 	build := exec.CommandContext(t.Context(), "go", "build", "-trimpath", "-o", filepath.Join(source, probe), "./testdata/managed-message-loss")
 	if output, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("build provider response probe: %v: %s", err, output)
+	}
+	manifest, err := json.Marshal(map[string]any{
+		"$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
+		"mcpServers": map[string]any{"providers": map[string]any{
+			"type": "stdio", "command": probe, "args": []string{evidence, "./bin/providers", method, "", mode},
+		}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(source, "mcp.json"), manifest, 0600); err != nil {
+		t.Fatal(err)
+	}
+	authorPluginPackage(t, source)
+	return source
+}
+
+func TestInstalledModelStreamRequiresMatchingReceipt(t *testing.T) {
+	const providerID = "openai-compatible"
+	stream, err := modelprovider.StreamMethod()
+	if err != nil {
+		t.Fatal(err)
 	}
 	receipt, err := modelprovider.NewStreamReceipt(completedTextResponse("different response"), nil)
 	if err != nil {
@@ -280,19 +298,7 @@ func TestInstalledModelStreamRequiresMatchingReceipt(t *testing.T) {
 	if err := os.WriteFile(replyFile, replacement.Bytes(), 0600); err != nil {
 		t.Fatal(err)
 	}
-	manifest, err := json.Marshal(map[string]any{
-		"$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
-		"mcpServers": map[string]any{"providers": map[string]any{
-			"type": "stdio", "command": probe, "args": []string{replyFile, "./bin/providers", stream.Descriptor().Name, "", "replace-response"},
-		}},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(source, "mcp.json"), manifest, 0600); err != nil {
-		t.Fatal(err)
-	}
-	authorPluginPackage(t, source)
+	source := modelProviderProbe(t, replyFile, stream.Descriptor().Name, "replace-response")
 	var dispatched atomic.Int32
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		dispatched.Add(1)
@@ -346,5 +352,65 @@ func TestInstalledModelStreamRequiresMatchingReceipt(t *testing.T) {
 	endpoint := endpoints.Data[0]
 	if endpoint.State != protocol.ModelInvocationUnknown || endpoint.Response != "" || !strings.Contains(endpoint.Failure, "stream receipt disagrees with delivered response") {
 		t.Fatalf("physical endpoint accepted unconfirmed output: %+v", endpoint)
+	}
+}
+
+func TestRejectedModelConstructionReleasesItsInstalledHandle(t *testing.T) {
+	const providerID = "openai-compatible"
+	open, err := modelprovider.OpenChatMethod()
+	if err != nil {
+		t.Fatal(err)
+	}
+	evidence := filepath.Join(t.TempDir(), "model-handle")
+	source := modelProviderProbe(t, evidence, open.Name(), "mismatch-chat-original")
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		t.Error("a rejected model construction reached the upstream API")
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	t.Cleanup(upstream.Close)
+	cfg := poMCPConfig(t)
+	cfg.modelProviders = nil
+	cfg.defaultSelection = testsupport.MustModelSelection(providerID, "model-test")
+	cfg.maintenance = noMaintenance{}
+	r := poMCPOpen(t, cfg)
+	installed := r.installAndInspect(source, "install-provider")
+	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, "enable-provider")
+	r.must(delivery.PluginsSelectProvider, protocol.SelectPluginProviderRequest{
+		Role: extension.ModelProviderRole(providerID), InstallationID: installed.ID, Contribution: "model-provider",
+	}, "select-provider")
+	r.must(delivery.ProvidersUpdate, protocol.UpdateProviderRequest{
+		Provider: providerID,
+		APIKey:   &protocol.ProviderConfigChange{Type: protocol.ProviderConfigSet, Value: new("test-key")},
+		BaseURL:  &protocol.ProviderConfigChange{Type: protocol.ProviderConfigSet, Value: &upstream.URL},
+	}, "configure-provider")
+	ctx := protocolLifecycleContext(t.Context())
+	session, err := r.api.CreateSession(ctx, protocol.CreateSessionRequest{Title: "Rejected provider construction"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _, err = r.api.StartRun(ctx, protocol.StartRunRequest{
+		SessionID: session.ID,
+		Input:     []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "Start with the selected provider."}},
+	})
+	if err == nil || !strings.Contains(err.Error(), "original construction identity changed") {
+		t.Fatalf("opening accepted the changed construction identity: %v", err)
+	}
+	readHandle := func(suffix string) modelprovider.Handle {
+		t.Helper()
+		data, err := os.ReadFile(evidence + suffix)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var handle modelprovider.Handle
+		if err := json.Unmarshal(data, &handle); err != nil {
+			t.Fatal(err)
+		}
+		if err := handle.Validate(); err != nil {
+			t.Fatal(err)
+		}
+		return handle
+	}
+	if opened, closed := readHandle(".opened"), readHandle(".closed"); opened != closed {
+		t.Fatalf("provider closed handle %q, want the rejected construction's handle %q", closed.ID, opened.ID)
 	}
 }

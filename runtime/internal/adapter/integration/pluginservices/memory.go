@@ -117,7 +117,7 @@ func (m *Memory) Search(ctx context.Context, project, text string, topK int) (_ 
 	}
 	space := ""
 	if embeds {
-		defer func() { returned = errors.Join(returned, embedder.Close(context.WithoutCancel(ctx))) }()
+		defer func() { returned = errors.Join(returned, embedder.Close(ctx)) }()
 		space = embedder.ID()
 	}
 	grant, release, err := GrantMemoryModels(ctx, m.callbacks, session, nil, embedder)

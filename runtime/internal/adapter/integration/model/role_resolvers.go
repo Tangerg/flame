@@ -82,9 +82,9 @@ func LiveUtilityModel(
 		}
 		capture, err := NewSelectedChat(selection, resolved)
 		if err != nil {
-			return SelectedChat{}, nil, errors.Join(err, resolved.Close(context.WithoutCancel(ctx)))
+			return SelectedChat{}, nil, errors.Join(err, resolved.Close(ctx))
 		}
-		return capture, func() error { return resolved.Close(context.WithoutCancel(ctx)) }, nil
+		return capture, func() error { return resolved.Close(ctx) }, nil
 	}, nil
 }
 
