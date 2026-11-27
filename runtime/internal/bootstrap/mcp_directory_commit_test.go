@@ -58,7 +58,14 @@ func TestAcceptedMCPDisableSurvivesCallerCancellation(t *testing.T) {
 	}
 	assertWithdrawn := func() {
 		t.Helper()
-		tools := runtime.must(delivery.MCPToolsList, protocol.MCPListToolsRequest{Server: &serverID}, "").(*protocol.Page[protocol.MCPTool])
+		ctx, stop := context.WithTimeout(t.Context(), lifecycleWaitBudget(t))
+		defer stop()
+		listed := runtime.endpoint.Invoke(ctx, delivery.MCPToolsList, protocol.MCPListToolsRequest{Server: &serverID},
+			protocol.CallMetadata{RequestMeta: options.RequestMeta})
+		if listed.Failure != nil {
+			t.Fatalf("list withdrawn MCP tools: %v", listed.Failure)
+		}
+		tools := listed.Value.(*protocol.Page[protocol.MCPTool])
 		if len(tools.Data) != 0 {
 			t.Errorf("disabled server still advertises tools: %+v", tools.Data)
 		}

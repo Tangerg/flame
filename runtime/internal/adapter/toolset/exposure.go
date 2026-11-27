@@ -219,10 +219,6 @@ func mcpToolRef(executable toolcontract.Tool) (tool.Ref, error) {
 }
 
 func (r *Resolver) MCPTools(ctx context.Context, server *mcpserver.ID) ([]mcpserver.AdvertisedTool, map[tool.Ref][]tool.Ref, error) {
-	disabled, err := r.disabledMCPTools(ctx)
-	if err != nil {
-		return nil, nil, err
-	}
 	snapshot := r.mcpSnapshot()
 	refs := make([]tool.Ref, 0, len(snapshot))
 	advertised := make([]mcpserver.AdvertisedTool, 0, len(snapshot))
@@ -231,14 +227,23 @@ func (r *Resolver) MCPTools(ctx context.Context, server *mcpserver.ID) ([]mcpser
 		if err != nil {
 			return nil, nil, err
 		}
-		if _, hidden := disabled[ref]; !hidden {
-			refs = append(refs, ref)
-		}
+		refs = append(refs, ref)
 		source, remote, _ := ref.MCP()
 		if server != nil && source != *server {
 			continue
 		}
 		advertised = append(advertised, mcpserver.AdvertisedTool{Server: source, Name: remote, Definition: executable.Definition()})
 	}
-	return advertised, tool.NameConflicts(refs), nil
+	if len(advertised) == 0 {
+		return nil, nil, nil
+	}
+	disabled, err := r.disabledMCPTools(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+	exposed := slices.DeleteFunc(refs, func(ref tool.Ref) bool {
+		_, hidden := disabled[ref]
+		return hidden
+	})
+	return advertised, tool.NameConflicts(exposed), nil
 }
