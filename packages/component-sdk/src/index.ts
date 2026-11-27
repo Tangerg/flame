@@ -463,12 +463,12 @@ export function bindOperations<
     method: K,
     input: Inputs[K],
     kind: "query" | "command",
-    delivery: "unary" | "stream",
+    delivery: ReturnType<typeof pluginMethod>["delivery"],
   ) {
     context.signal.throwIfAborted();
     const descriptor = pluginMethod({ contract, method });
     if (
-      descriptor.streaming !== (delivery === "stream") ||
+      descriptor.delivery !== delivery ||
       descriptor.kind !== kind ||
       descriptor.target !== captured.scope
     ) {
@@ -477,13 +477,15 @@ export function bindOperations<
       );
     }
     return {
-      installationId: binding.installationId,
-      digest: binding.digest,
-      contribution: binding.contribution,
-      contract,
-      method,
+      route: {
+        installationId: binding.installationId,
+        digest: binding.digest,
+        contribution: binding.contribution,
+        contract,
+        method,
+        target: captured,
+      },
       input: stringifyJSON(input),
-      target: captured,
     };
   }
   return {
@@ -530,7 +532,7 @@ export function bindOperations<
     ): Promise<Outputs[K]> =>
       context.track(() =>
         context.runtime.plugins.queryStream(
-          request(method, input, "query", "stream"),
+          request(method, input, "query", "plugins.stream"),
           (chunk, signal) => consume(chunk as Chunks[K], signal),
           (value) => value as Outputs[K],
           AbortSignal.any([context.signal, signal]),
@@ -543,8 +545,8 @@ export function bindOperations<
       consume: (chunk: Chunks[K], signal: AbortSignal) => void | Promise<void>,
       signal: AbortSignal = context.signal,
     ): Promise<Outputs[K]> => {
-      const invocation = request(method, input, "command", "stream");
-      const { input: _, contract, method: name, ...binding } = invocation;
+      const invocation = request(method, input, "command", "plugins.stream");
+      const { contract, method: name, ...binding } = invocation.route;
       return context.track(() =>
         context.runtime.plugins.stream(
           intent,
@@ -563,7 +565,7 @@ export function bindOperations<
     ): Promise<Outputs[K]> =>
       context.track<Promise<Outputs[K]>>(() =>
         context.runtime.plugins
-          .call(request(method, input, "query", "unary"), {
+          .call(request(method, input, "query", "plugins.call"), {
             signal: AbortSignal.any([context.signal, signal]),
           })
           .then(output<Outputs[K]>),
@@ -574,7 +576,7 @@ export function bindOperations<
     ): MutationPromise<Outputs[K]> =>
       context.track(() => {
         const mutation = context.runtime.plugins.call(
-          request(method, input, "command", "unary"),
+          request(method, input, "command", "plugins.call"),
           { signal: context.signal },
         );
         if (!("retry" in mutation) || !("idempotencyKey" in mutation))

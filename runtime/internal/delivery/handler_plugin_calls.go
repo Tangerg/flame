@@ -40,9 +40,12 @@ func (s *Handler) GetPluginCommand(ctx context.Context, in protocol.PluginComman
 	}
 	record := command.Snapshot()
 	return &protocol.CallPluginRequest{
-		InstallationID: record.Provider.InstallationID.String(), Digest: record.Provider.Digest.String(),
-		Contribution: record.Contribution.String(), Contract: string(record.Contract.Bytes()),
-		Method: record.Method, Input: string(record.Input.Bytes()), Target: record.Invocation.Target,
+		Route: protocol.PluginCallRoute{
+			InstallationID: record.Provider.InstallationID.String(), Digest: record.Provider.Digest.String(),
+			Contribution: record.Contribution.String(), Contract: string(record.Contract.Bytes()),
+			Method: record.Method, Target: record.Invocation.Target,
+		},
+		Input: string(record.Input.Bytes()),
 	}, nil
 }
 
@@ -128,15 +131,16 @@ func (s *Handler) PreparePluginCall(ctx context.Context, in protocol.CallPluginR
 }
 
 func parsePluginCall(in protocol.CallPluginRequest) (plugins.CallRequest, error) {
-	id, digest, err := parseInstallationRelease(in.InstallationID, in.Digest)
+	route := in.Route
+	id, digest, err := parseInstallationRelease(route.InstallationID, route.Digest)
 	if err != nil {
 		return plugins.CallRequest{}, err
 	}
-	contribution, err := plugin.ParseContributionID(in.Contribution)
+	contribution, err := plugin.ParseContributionID(route.Contribution)
 	if err != nil {
 		return plugins.CallRequest{}, protocol.InvalidParameters(err)
 	}
-	contract, err := plugincontract.ParseCapability([]byte(in.Contract))
+	contract, err := plugincontract.ParseCapability([]byte(route.Contract))
 	if err != nil {
 		return plugins.CallRequest{}, protocol.InvalidParameters(err)
 	}
@@ -144,7 +148,7 @@ func parsePluginCall(in protocol.CallPluginRequest) (plugins.CallRequest, error)
 	if err != nil {
 		return plugins.CallRequest{}, protocol.InvalidParameters(err)
 	}
-	return plugins.CallRequest{Installation: id, Digest: digest, Contribution: contribution, Contract: contract, Method: in.Method, Input: input, Target: in.Target}, nil
+	return plugins.CallRequest{Installation: id, Digest: digest, Contribution: contribution, Contract: contract, Method: route.Method, Input: input, Target: route.Target}, nil
 }
 
 func (s *Handler) PreparePluginStream(ctx context.Context, in protocol.CallPluginRequest) (frame.MethodKind, func(context.Context) (struct{}, iter.Seq2[protocol.PluginStreamEvent, error], error), error) {

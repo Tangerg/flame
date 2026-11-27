@@ -91,8 +91,15 @@ func (b boundMethod) request(input any, options protocol.PluginCallOptions) (pro
 		return protocol.CallPluginRequest{}, err
 	}
 	return protocol.CallPluginRequest{
-		InstallationID: b.binding.InstallationID, Digest: b.binding.Digest, Contribution: b.binding.Contribution,
-		Contract: string(b.binding.Contract.Identity().Bytes()), Method: b.method.Name(), Input: string(encoded.Bytes()), Target: b.binding.Target,
+		Route: protocol.PluginCallRoute{
+			InstallationID: b.binding.InstallationID,
+			Digest:         b.binding.Digest,
+			Contribution:   b.binding.Contribution,
+			Contract:       string(b.binding.Contract.Identity().Bytes()),
+			Method:         b.method.Name(),
+			Target:         b.binding.Target,
+		},
+		Input: string(encoded.Bytes()),
 	}, nil
 }
 

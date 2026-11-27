@@ -1,5 +1,5 @@
 {
-  "protocolVersion": "2026-11-27.5",
+  "protocolVersion": "2026-11-27.6",
   "features": [
     "reasoning",
     "multimodal",
@@ -10089,14 +10089,10 @@
       ]
     },
     {
-      "type": "CallPluginRequest",
+      "type": "PluginCallRoute",
       "rules": [
         {
           "field": "contract",
-          "constraint": "nonEmpty"
-        },
-        {
-          "field": "input",
           "constraint": "nonEmpty"
         },
         {
@@ -10142,6 +10138,15 @@
         {
           "field": "target.reference",
           "constraint": "pattern(\"^[^\\\\p{Cc}]*$\")"
+        }
+      ]
+    },
+    {
+      "type": "CallPluginRequest",
+      "rules": [
+        {
+          "field": "input",
+          "constraint": "nonEmpty"
         }
       ]
     },

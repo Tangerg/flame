@@ -225,7 +225,17 @@ func (d *distribution) captureRequest(ctx context.Context) (protocol.CallPluginR
 		if err != nil {
 			return protocol.CallPluginRequest{}, err
 		}
-		return protocol.CallPluginRequest{InstallationID: usage.ID, Digest: usage.Selected.Digest, Contribution: "usage-reports", Contract: contract.Identity().String(), Method: UsageReportsCaptureV1Method, Input: string(input), Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: usage.ID}}, nil
+		return protocol.CallPluginRequest{
+			Route: protocol.PluginCallRoute{
+				InstallationID: usage.ID,
+				Digest:         usage.Selected.Digest,
+				Contribution:   "usage-reports",
+				Contract:       contract.Identity().String(),
+				Method:         UsageReportsCaptureV1Method,
+				Target:         framecall.Target{Scope: extension.ScopeInstallation, Reference: usage.ID},
+			},
+			Input: string(input),
+		}, nil
 	}
 	return protocol.CallPluginRequest{}, errors.New("qualification: complete managed usage package is absent")
 }
@@ -264,7 +274,7 @@ func (d *distribution) checkReports(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	if err := d.waitBackend(ctx, request.InstallationID); err != nil {
+	if err := d.waitBackend(ctx, request.Route.InstallationID); err != nil {
 		return err
 	}
 	original, err := d.call(ctx, request, originalSaveCommand)
@@ -286,7 +296,7 @@ func (d *distribution) checkReports(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	if err := d.restart(ctx, request.InstallationID); err != nil {
+	if err := d.restart(ctx, request.Route.InstallationID); err != nil {
 		return err
 	}
 	if err := errors.Join(
@@ -305,7 +315,7 @@ func (d *distribution) checkReports(ctx context.Context) error {
 	if err := d.verifyOriginal(ctx, request, originalSaveCommand, original.Output); err != nil {
 		return err
 	}
-	_, err = d.client.SetPluginEnablement(ctx, protocol.SetPluginEnablementRequest{InstallationID: request.InstallationID, Enabled: false}, protocol.CommandOptions{})
+	_, err = d.client.SetPluginEnablement(ctx, protocol.SetPluginEnablementRequest{InstallationID: request.Route.InstallationID, Enabled: false}, protocol.CommandOptions{})
 	return err
 }
 
@@ -314,7 +324,7 @@ func reportRequest(base protocol.CallPluginRequest, method string, input any) (p
 	if err != nil {
 		return protocol.CallPluginRequest{}, err
 	}
-	base.Method, base.Input = method, string(encoded)
+	base.Route.Method, base.Input = method, string(encoded)
 	return base, nil
 }
 
@@ -334,7 +344,7 @@ func (d *distribution) verifyOriginal(ctx context.Context, request protocol.Call
 		return err
 	}
 	if reply.Output != output {
-		return fmt.Errorf("qualification: %s result changed across restart", request.Method)
+		return fmt.Errorf("qualification: %s result changed across restart", request.Route.Method)
 	}
 	return nil
 }

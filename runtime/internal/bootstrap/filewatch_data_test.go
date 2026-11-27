@@ -74,7 +74,14 @@ func TestFilewatchResumesTheSamePartialDataMethodWithPinnedInputs(t *testing.T) 
 		if err != nil {
 			t.Fatal(err)
 		}
-		result := r.must(delivery.PluginsCall, protocol.CallPluginRequest{InstallationID: installation.ID, Digest: installation.Selected.Digest, Contribution: contribution, Contract: contract.Identity().String(), Method: method, Input: encoded.String(), Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: installation.ID}}, key).(*protocol.CallPluginResponse)
+		result := r.must(delivery.PluginsCall, protocol.CallPluginRequest{
+			Route: protocol.PluginCallRoute{
+				InstallationID: installation.ID, Digest: installation.Selected.Digest, Contribution: contribution,
+				Contract: contract.Identity().String(), Method: method,
+				Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: installation.ID},
+			},
+			Input: encoded.String(),
+		}, key).(*protocol.CallPluginResponse)
 		if result.Failure != nil {
 			t.Fatalf("%s: %+v", method, result.Failure)
 		}
@@ -141,7 +148,7 @@ func TestFilewatchResumesTheSamePartialDataMethodWithPinnedInputs(t *testing.T) 
 	write(east, "P1,0\nP2,80")
 	write(west, "P1,6\nP2,90")
 	const instructions = "M1. Filter P1 and generate a new editable chart for these inputs. Include exact source hashes and the read/required denominator. Ask before proceeding with partial data."
-	meta := protocol.RequestMeta{ProtocolVersion: protocol.Version, ClientCapabilities: &protocol.ClientCapabilities{
+	meta := protocol.RequestMeta{ProtocolVersion: new(protocol.Version), ClientCapabilities: &protocol.ClientCapabilities{
 		InterruptTypes: []protocol.InterruptType{protocol.InterruptQuestion, protocol.InterruptApproval},
 	}}
 	ctx := delivery.WithRequestMeta(t.Context(), meta)

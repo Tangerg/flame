@@ -1,6 +1,6 @@
 import type { CallPluginRequest, RequestMeta } from "@flame/runtime-client/wire";
 import type { WireMethodName } from "@flame/runtime-client/methods";
-import { checkRequest, pluginDeliveryMethod } from "./request";
+import { checkRequest, pluginMethod } from "./request";
 import { canonicalJSON, cloneJSON } from "@frame/sdk/json";
 import {
   type CapturedPluginCommand,
@@ -263,8 +263,13 @@ export function openDurableMutationJournal(
       const match = matches[0];
       if (!match) return undefined;
       const { entry, route } = match;
-      const request = checkRequest("plugins.call", cloneJSON({ ...route, ...input }));
-      if (!matchesCommand(entry, pluginDeliveryMethod(request), request, entry.requestMeta))
+      const candidate = checkRequest("plugins.call", {
+        route: { ...route, contract: input.contract, method: input.method },
+        input: input.input,
+      });
+      if (
+        !matchesCommand(entry, pluginMethod(candidate.route).delivery, candidate, entry.requestMeta)
+      )
         throw new MutationJournalOwnershipError(
           "plugin command intent requires its original contract and input",
         );
@@ -272,13 +277,17 @@ export function openDurableMutationJournal(
         throw new MutationJournalOwnershipError(
           "plugin command intent is already owned by an active command",
         );
-      return { identity: mutationIdentity(entry), request };
+      return { identity: mutationIdentity(entry), request: { route, input: candidate.input } };
     },
     stagePluginCommand(intent, request, claimed, requestMeta) {
       request = checkRequest("plugins.call", cloneJSON(request));
-      const original = journal.findPluginCommand(intent, request, claimed);
+      const original = journal.findPluginCommand(
+        intent,
+        { contract: request.route.contract, method: request.route.method, input: request.input },
+        claimed,
+      );
       if (original) return original;
-      const method = pluginDeliveryMethod(request);
+      const method = pluginMethod(request.route).delivery;
       const scope = currentScope();
       if (loadEntries(options.storage).length >= MAX_ENTRIES)
         throw new MutationJournalCapacityError("Runtime mutation journal capacity is exhausted");
@@ -291,7 +300,14 @@ export function openDurableMutationJournal(
     validatePluginCommand(identity, request) {
       validateIdentity(identity, currentScope());
       readReservedEntry(identity);
-      if (!matchesCommand(identity, pluginDeliveryMethod(request), request, identity.requestMeta)) {
+      if (
+        !matchesCommand(
+          identity,
+          pluginMethod(request.route).delivery,
+          request,
+          identity.requestMeta,
+        )
+      ) {
         throw new MutationJournalOwnershipError(
           "original plugin command differs from retained identity",
         );

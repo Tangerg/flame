@@ -62,7 +62,7 @@ type VisualMemoryPages = Readonly<
 >;
 
 function pluginCallResult(call: CallPluginRequest, memoryPages: VisualMemoryPages) {
-  switch (call.method) {
+  switch (call.route.method) {
     case MEMORY_METHODS.list: {
       const input = JSON.parse(call.input ?? "") as Partial<
         MemoryInputs[typeof MEMORY_METHODS.list]
@@ -92,7 +92,7 @@ function pluginCallResult(call: CallPluginRequest, memoryPages: VisualMemoryPage
       return { output: stringifyJSON(report) };
     }
     default:
-      throw new Error(`Visual plugin has no response for "${call.method}"`);
+      throw new Error(`Visual plugin has no response for "${call.route.method}"`);
   }
 }
 
@@ -288,7 +288,7 @@ export function createVisualRuntimeTransport(
       let result: unknown;
       if (
         request.method === "plugins.call" &&
-        (request.params as CallPluginRequest).method === SCHEDULE_METHODS.list
+        (request.params as CallPluginRequest).route.method === SCHEDULE_METHODS.list
       ) {
         result = { output: JSON.stringify(schedules) };
       } else if (request.method === "skills.proposals.list") {

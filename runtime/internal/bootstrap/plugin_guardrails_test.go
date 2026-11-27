@@ -52,7 +52,17 @@ func TestGuardrailsInstalledInputRefusesDispatchWithoutRewritingAuthoredHistory(
 	if err != nil {
 		t.Fatal(err)
 	}
-	result := r.must(delivery.PluginsCall, protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "guardrails-policy", Contract: contracts.Identity().String(), Method: testsupport.GuardrailsReplacePolicyV1Method, Input: input.String(), Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: installed.ID}}, "protect-phrase").(*protocol.CallPluginResponse)
+	result := r.must(delivery.PluginsCall, protocol.CallPluginRequest{
+		Route: protocol.PluginCallRoute{
+			InstallationID: installed.ID,
+			Digest:         installed.Selected.Digest,
+			Contribution:   "guardrails-policy",
+			Contract:       contracts.Identity().String(),
+			Method:         testsupport.GuardrailsReplacePolicyV1Method,
+			Target:         framecall.Target{Scope: extension.ScopeInstallation, Reference: installed.ID},
+		},
+		Input: input.String(),
+	}, "protect-phrase").(*protocol.CallPluginResponse)
 	if result.Failure != nil || strings.Contains(result.Output, protected) {
 		t.Fatalf("policy result leaked or refused: %+v", result)
 	}

@@ -138,11 +138,11 @@ func (r *Connection) CallPlugin(ctx context.Context, request protocol.CallPlugin
 	if result.Failure != nil {
 		return nil, &framecall.Refusal{Code: result.Failure.Code, Message: result.Failure.Message}
 	}
-	contract, err := plugincontract.ParseCapability([]byte(request.Contract))
+	contract, err := plugincontract.ParseCapability([]byte(request.Route.Contract))
 	if err != nil {
 		return nil, err
 	}
-	method, found := contract.Method(request.Method)
+	method, found := contract.Method(request.Route.Method)
 	if !found {
 		return nil, runtimeContractViolation("plugin call method is absent from the required contract")
 	}

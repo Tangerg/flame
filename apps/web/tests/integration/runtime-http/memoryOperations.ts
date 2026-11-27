@@ -1,6 +1,6 @@
 import { projectNumber, parseJSON, stringifyJSON } from "@frame/sdk/json";
 import { type FlameClient } from "@flame/runtime-client";
-import type { CallPluginRequest } from "@flame/runtime-client/wire";
+import type { PluginCallRoute } from "@flame/runtime-client/wire";
 import {
   CAPABILITY_JSON,
   type MethodInputs,
@@ -34,7 +34,7 @@ interface MemoryItem {
 
 type MemoryPage = MethodOutputs["flame.memory/list.v3"];
 type MemoryBinding = Pick<
-  CallPluginRequest,
+  PluginCallRoute,
   "installationId" | "digest" | "contribution" | "target"
 >;
 
@@ -54,9 +54,7 @@ export async function readInstalledMemory(
     signal?.throwIfAborted();
     const reply = await client.plugins.call(
       {
-        ...binding,
-        contract: CAPABILITY_JSON,
-        method: "flame.memory/list.v3",
+        route: { ...binding, contract: CAPABILITY_JSON, method: "flame.memory/list.v3" },
         input: stringifyJSON({ scope: scope, cwd: cwd, cursor: cursor }),
       },
       { signal },

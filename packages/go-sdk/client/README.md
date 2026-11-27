@@ -20,6 +20,8 @@ version claim to Runtime, where an empty or unsupported version is refused.
 
 A plugin command requires a caller-retained `PluginCallOptions.IdempotencyKey`
 for receipt recovery. Plugin queries omit the command identity.
+Compose `CallPluginRequest` with a `PluginCallRoute` and the original input
+text. Command lookup returns that same division between route and input.
 
 Typed plugin bindings capture the admitted contract by value. Replacing the
 caller's Capability cannot retarget a bound method or its delayed stream.

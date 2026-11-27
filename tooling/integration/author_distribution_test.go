@@ -159,7 +159,17 @@ func verifyStandalonePlugin(t *testing.T, author standaloneAuthor) {
 			t.Fatal("standalone author changed the contract its host publishes")
 		}
 	}
-	request := protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: author.contribution, Contract: contract, Method: author.method, Input: author.input, Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: installed.ID}}
+	request := protocol.CallPluginRequest{
+		Route: protocol.PluginCallRoute{
+			InstallationID: installed.ID,
+			Digest:         installed.Selected.Digest,
+			Contribution:   author.contribution,
+			Contract:       contract,
+			Method:         author.method,
+			Target:         framecall.Target{Scope: extension.ScopeInstallation, Reference: installed.ID},
+		},
+		Input: author.input,
+	}
 	if author.memoryProvider {
 		if len(installed.Selected.Components) == 0 {
 			t.Fatal("author release lost its component")

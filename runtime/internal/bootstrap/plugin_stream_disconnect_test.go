@@ -51,7 +51,17 @@ func TestInstalledStreamProcessExitRetainsOutputAndNeverRedispatchesOriginalComm
 	r := poMCPOpen(t, poMCPConfig(t))
 	defer r.close()
 	installed := installCallContributor(t, r, binary, "stream-drop", trace.URL, contract)
-	request := protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "contributor", Contract: contract.Identity().String(), Method: contract.Descriptor().Methods[0].Name, Input: `{}`, Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: installed.ID}}
+	request := protocol.CallPluginRequest{
+		Route: protocol.PluginCallRoute{
+			InstallationID: installed.ID,
+			Digest:         installed.Selected.Digest,
+			Contribution:   "contributor",
+			Contract:       contract.Identity().String(),
+			Method:         contract.Descriptor().Methods[0].Name,
+			Target:         framecall.Target{Scope: extension.ScopeInstallation, Reference: installed.ID},
+		},
+		Input: `{}`,
+	}
 	keyless := r.endpoint.Invoke(t.Context(), delivery.PluginsStream, request, protocol.CallMetadata{})
 	if keyless.Events != nil || !errors.Is(keyless.Failure, protocol.ErrInvalidParams) || starts.Load() != 0 {
 		t.Fatalf("opened a command stream without its caller identity: %+v, starts=%d", keyless, starts.Load())

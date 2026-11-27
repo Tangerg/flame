@@ -187,7 +187,17 @@ func TestMemoryComponentUsesInstalledPublicOperationsAndPreservesPrivateFacts(t 
 		if err != nil {
 			t.Fatal(err)
 		}
-		request := protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "memory-provider", Contract: string(contracts.Identity().Bytes()), Method: memorycontract.ListV3Method, Input: string(input.Bytes()), Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: installed.ID}}
+		request := protocol.CallPluginRequest{
+			Route: protocol.PluginCallRoute{
+				InstallationID: installed.ID,
+				Digest:         installed.Selected.Digest,
+				Contribution:   "memory-provider",
+				Contract:       string(contracts.Identity().Bytes()),
+				Method:         memorycontract.ListV3Method,
+				Target:         framecall.Target{Scope: extension.ScopeInstallation, Reference: installed.ID},
+			},
+			Input: string(input.Bytes()),
+		}
 		result := r.must(delivery.PluginsCall, request, "").(*protocol.CallPluginResponse)
 		if result.Failure != nil {
 			t.Fatalf("installed list refusal: %+v", result.Failure)
@@ -249,7 +259,17 @@ func TestScheduleComponentUsesOwnBackendAndWithdrawalPreservesPrivateData(t *tes
 		if err != nil {
 			t.Fatal(err)
 		}
-		installedReply := r.must(delivery.PluginsCall, protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "schedules-provider", Contract: string(contracts.Identity().Bytes()), Method: testsupport.SchedulesListV2Method, Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: installed.ID}, Input: string(input)}, "").(*protocol.CallPluginResponse)
+		installedReply := r.must(delivery.PluginsCall, protocol.CallPluginRequest{
+			Route: protocol.PluginCallRoute{
+				InstallationID: installed.ID,
+				Digest:         installed.Selected.Digest,
+				Contribution:   "schedules-provider",
+				Contract:       string(contracts.Identity().Bytes()),
+				Method:         testsupport.SchedulesListV2Method,
+				Target:         framecall.Target{Scope: extension.ScopeInstallation, Reference: installed.ID},
+			},
+			Input: string(input),
+		}, "").(*protocol.CallPluginResponse)
 		var page testsupport.SchedulesPage
 		if err := json.Unmarshal([]byte(installedReply.Output), &page); err != nil {
 			t.Fatal(err)
@@ -281,7 +301,17 @@ func TestScheduleComponentUsesOwnBackendAndWithdrawalPreservesPrivateData(t *tes
 		t.Fatalf("disabled schedule page: %v", refused.Failure)
 	}
 	r.must(delivery.PluginsUninstall, protocol.PluginRequest{InstallationID: installed.ID}, "uninstall-schedules")
-	result := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "schedules-provider", Contract: string(contracts.Identity().Bytes()), Method: testsupport.SchedulesListV2Method, Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: installed.ID}, Input: `{"cursor":""}`}, protocol.CallMetadata{RequestMeta: protocol.RequestMeta{ProtocolVersion: new(protocol.Version)}})
+	result := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, protocol.CallPluginRequest{
+		Route: protocol.PluginCallRoute{
+			InstallationID: installed.ID,
+			Digest:         installed.Selected.Digest,
+			Contribution:   "schedules-provider",
+			Contract:       string(contracts.Identity().Bytes()),
+			Method:         testsupport.SchedulesListV2Method,
+			Target:         framecall.Target{Scope: extension.ScopeInstallation, Reference: installed.ID},
+		},
+		Input: `{"cursor":""}`,
+	}, protocol.CallMetadata{RequestMeta: protocol.RequestMeta{ProtocolVersion: new(protocol.Version)}})
 	if !errors.Is(result.Failure, protocol.ErrPluginNotFound) {
 		t.Fatalf("uninstalled Schedule owner=%v", result.Failure)
 	}

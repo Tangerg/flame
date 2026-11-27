@@ -73,7 +73,17 @@ func testFilewatchRetry(t *testing.T, follow bool) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		result := r.must(delivery.PluginsCall, protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "filewatch-operations", Contract: contracts.Identity().String(), Method: method, Input: encoded.String(), Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: installed.ID}}, key).(*protocol.CallPluginResponse)
+		result := r.must(delivery.PluginsCall, protocol.CallPluginRequest{
+			Route: protocol.PluginCallRoute{
+				InstallationID: installed.ID,
+				Digest:         installed.Selected.Digest,
+				Contribution:   "filewatch-operations",
+				Contract:       contracts.Identity().String(),
+				Method:         method,
+				Target:         framecall.Target{Scope: extension.ScopeInstallation, Reference: installed.ID},
+			},
+			Input: encoded.String(),
+		}, key).(*protocol.CallPluginResponse)
 		if result.Failure != nil {
 			t.Fatalf("filewatch operation failed: %+v", result.Failure)
 		}

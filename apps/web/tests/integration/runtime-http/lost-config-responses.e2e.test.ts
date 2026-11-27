@@ -8,10 +8,16 @@ import {
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { createFlameClient, type FlameClient, createHttpTransport } from "@flame/runtime-client";
-import { PROTOCOL_VERSION, type RequestMeta } from "@flame/runtime-client/wire";
+import {
+  createFlameClient,
+  type FlameClient,
+  createHttpTransport,
+  mutationSettlementIsUnknown,
+} from "@flame/runtime-client";
+import { HTTP_HEADERS, PROTOCOL_VERSION, type RequestMeta } from "@flame/runtime-client/wire";
 import { nextRuntimeEvent, nextUserMCPChange } from "./observation";
 import { managedSkillName, useRuntimeFixture } from "./fixture";
+import { MemoryMutationStorage } from "./mutationStorage";
 import { faultUnaryResponse } from "./transportFaults";
 
 describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: configuration commits after lost responses", () => {
@@ -150,15 +156,45 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: configuration commits after lo
     );
     const events = subscription.events[Symbol.asyncIterator]();
     let memoryRecord: Awaited<ReturnType<typeof addInstalledMemory>> | undefined;
+    const mutationStorage = new MemoryMutationStorage();
+    const options = { capabilities: () => fixture.negotiated, requestMeta, mutationStorage };
+    const lost = faultUnaryResponse("plugins.call", "afterCommit");
+    const original = createFlameClient(
+      createHttpTransport({
+        baseUrl: fixture.baseUrl,
+        fetch: async (url, init) => {
+          if (
+            new Headers(init?.headers).get(HTTP_HEADERS.method) === "plugins.call" &&
+            lost.attempts() > 0
+          ) {
+            throw new Error("injected disconnect before original command recovery");
+          }
+          return lost.fetch(url, init);
+        },
+      }),
+      options,
+    );
+    const cold = createFlameClient(createHttpTransport({ baseUrl: fixture.baseUrl }), options);
 
     try {
-      const added = await callAfterCommitLoss("plugins.call", (faultClient) =>
-        addInstalledMemory(faultClient, binding, {
-          scope: "project",
-          cwd: workspaceRoot,
-          content: "agent-memory replay cutpoint",
-        }),
+      const input = {
+        scope: "project" as const,
+        cwd: workspaceRoot,
+        content: "agent-memory replay cutpoint",
+      };
+      await expect(addInstalledMemory(original, binding, input)).rejects.toSatisfy(
+        mutationSettlementIsUnknown,
       );
+      await original.close();
+      expect(lost.attempts()).toBe(1);
+      const [pending] = cold.plugins.pendingCommands();
+      const namespace = fixture.negotiated?.limits.idempotency.namespace;
+      if (!pending || !namespace) throw new Error("expected the original pending plugin command");
+      const retained = await cold.plugins.getCommand({ namespace, key: pending.idempotencyKey });
+      expect(pending.binding).toEqual(retained.route);
+      expect(Object.hasOwn(pending.binding, "input")).toBe(false);
+      const added = await addInstalledMemory(cold, binding, input);
+      expect(mutationStorage.size).toBe(0);
       memoryRecord = added;
       await expect(nextRuntimeEvent(events, "plugins.dataChanged")).resolves.toMatchObject({
         type: "plugins.dataChanged",
@@ -219,6 +255,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: configuration commits after lo
         ).data,
       ).toEqual([]);
     } finally {
+      await Promise.all([original.close(), cold.close()]);
       if (memoryRecord)
         await deleteInstalledMemory(
           fixture.client,

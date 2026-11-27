@@ -45,9 +45,12 @@ func TestResearchKeepsPageEvidenceAndHidesRevokedSources(t *testing.T) {
 			t.Fatal(err)
 		}
 		return r.must(delivery.PluginsCall, protocol.CallPluginRequest{
-			InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "knowledgebase-operations",
-			Contract: contract.Identity().String(), Method: method, Input: encoded.String(),
-			Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: installed.ID},
+			Route: protocol.PluginCallRoute{
+				InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "knowledgebase-operations",
+				Contract: contract.Identity().String(), Method: method,
+				Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: installed.ID},
+			},
+			Input: encoded.String(),
 		}, key).(*protocol.CallPluginResponse)
 	}
 	first := r.must(delivery.Name("projects.create"), protocol.CreateProjectRequest{Name: "Payments research"}, "research-new").(*protocol.Project)

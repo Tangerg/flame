@@ -54,7 +54,17 @@ func TestPreparedInstalledCommandRetiresAfterRestartWithoutBackendDispatch(t *te
 		t.Fatal(err)
 	}
 	contribution := installed.Selected.Contributions[0]
-	request := protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: contribution.ID, Contract: contribution.Contract, Method: method, Input: `{"id":"example-review","expectedRevision":1,"status":"resolved"}`, Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: installed.ID}}
+	request := protocol.CallPluginRequest{
+		Route: protocol.PluginCallRoute{
+			InstallationID: installed.ID,
+			Digest:         installed.Selected.Digest,
+			Contribution:   contribution.ID,
+			Contract:       contribution.Contract,
+			Method:         method,
+			Target:         framecall.Target{Scope: extension.ScopeInstallation, Reference: installed.ID},
+		},
+		Input: `{"id":"example-review","expectedRevision":1,"status":"resolved"}`,
+	}
 	options := protocol.CallMetadata{IdempotencyKey: "prepared-review"}
 	ctx, cancel := context.WithCancel(t.Context())
 	result := r.endpoint.Invoke(ctx, delivery.PluginsCall, request, options)

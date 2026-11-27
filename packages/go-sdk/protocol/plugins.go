@@ -12,16 +12,20 @@ type PluginCommandRequest struct {
 	Key       string `json:"key"`
 }
 
-// Contracts and feature values cross Core as JSON text because their numeric
-// ranges and receipt lexemes belong to the feature, not to a JS number.
-type CallPluginRequest struct {
+// Contracts and inputs cross Core as JSON text to preserve feature-owned
+// numeric ranges and receipt lexemes.
+type PluginCallRoute struct {
 	InstallationID string           `json:"installationId"`
 	Digest         string           `json:"digest"`
 	Contribution   string           `json:"contribution"`
 	Contract       string           `json:"contract"`
 	Method         string           `json:"method"`
-	Input          string           `json:"input"`
 	Target         framecall.Target `json:"target"`
+}
+
+type CallPluginRequest struct {
+	Route PluginCallRoute `json:"route"`
+	Input string          `json:"input"`
 }
 
 type CallPluginResponse struct {

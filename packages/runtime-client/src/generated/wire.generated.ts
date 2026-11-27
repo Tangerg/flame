@@ -9,7 +9,7 @@
 // in the generated validator and in schema.json.
 
 // The wire version this runtime serves; a client states it in request metadata.
-export const PROTOCOL_VERSION = "2026-11-27.5";
+export const PROTOCOL_VERSION = "2026-11-27.6";
 
 // The only Session Artifact version this runtime imports or exports.
 export const SESSION_ARTIFACT_VERSION = 32;
@@ -384,13 +384,8 @@ export interface ArtifactToolResult {
 }
 
 export interface CallPluginRequest {
-  contract: string;
-  contribution: string;
-  digest: string;
   input: string;
-  installationId: string;
-  method: string;
-  target: Target;
+  route: PluginCallRoute;
 }
 
 export interface CallPluginResponse {
@@ -1356,6 +1351,15 @@ export interface PluginBrowserUseGrant {
 export interface PluginCallFailure {
   code: string;
   message: string;
+}
+
+export interface PluginCallRoute {
+  contract: string;
+  contribution: string;
+  digest: string;
+  installationId: string;
+  method: string;
+  target: Target;
 }
 
 export interface PluginChangeNotice {

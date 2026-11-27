@@ -60,7 +60,7 @@ func invocationOperation(meta methodMeta, request any) (operation, error) {
 	if !ok {
 		return 0, protocol.ErrInvalidParams
 	}
-	kind, err := plugincontract.MethodKindFor([]byte(call.Contract), call.Method)
+	kind, err := plugincontract.MethodKindFor([]byte(call.Route.Contract), call.Route.Method)
 	if err != nil {
 		return 0, protocol.InvalidParameters(err)
 	}

@@ -11,15 +11,15 @@ import type {
   PendingPluginCommand,
   MutationReservation,
 } from "./mutationJournal";
-import type { CallPluginRequest } from "@flame/runtime-client/wire";
+import type { CallPluginRequest, PluginCallRoute } from "@flame/runtime-client/wire";
 import type { WireCallPath } from "./wireCallPath";
 import { deliverPluginStream } from "./pluginStream";
-import { pluginDeliveryMethod } from "./request";
+import { pluginMethod } from "./request";
 import { parseJSON } from "@frame/sdk/json";
 
 export interface PluginCommandRecovery {
   readonly idempotencyKey: string;
-  readonly binding: Omit<CallPluginRequest, "input">;
+  readonly binding: PluginCallRoute;
   matchesIntent(intent: string): boolean;
   recover<T>(decode: (output: unknown) => T, signal?: AbortSignal): Promise<T>;
   retire(signal?: AbortSignal): Promise<void>;
@@ -59,7 +59,7 @@ export function pendingPluginCommand(
                 throw error;
               throw new MutationLookupError(error);
             }
-            if (pluginDeliveryMethod(request) === "plugins.stream")
+            if (pluginMethod(request.route).delivery === "plugins.stream")
               return deliverPluginStream(
                 wire,
                 request,
@@ -109,8 +109,9 @@ export async function callPluginCommand<T>(
   decode: (output: unknown) => T,
   signal?: AbortSignal,
 ): Promise<T> {
-  if (pluginDeliveryMethod(input) !== "plugins.call")
-    throw new TypeError("Unary plugin command requires a unary method");
+  const method = pluginMethod(input);
+  if (method.delivery !== "plugins.call" || method.kind !== "command")
+    throw new TypeError("Plugin command requires a unary command method");
   parseJSON(input.input);
   const { request, reservation } = await wire.capturePluginCommand(intent, input, prepare, signal);
   return wire.openMutation(

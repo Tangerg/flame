@@ -133,7 +133,17 @@ func TestLiveDeepSeekManualScheduleRun(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	reply, err := fixture.runtime.CallPlugin(fixture.ctx, protocol.CallPluginRequest{InstallationID: target.ID, Digest: target.Selected.Digest, Contribution: contribution, Contract: string(contracts.Identity().Bytes()), Method: testsupport.SchedulesListV2Method, Input: string(input), Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: target.ID}}, protocol.PluginCallOptions{})
+	reply, err := fixture.runtime.CallPlugin(fixture.ctx, protocol.CallPluginRequest{
+		Route: protocol.PluginCallRoute{
+			InstallationID: target.ID,
+			Digest:         target.Selected.Digest,
+			Contribution:   contribution,
+			Contract:       string(contracts.Identity().Bytes()),
+			Method:         testsupport.SchedulesListV2Method,
+			Target:         framecall.Target{Scope: extension.ScopeInstallation, Reference: target.ID},
+		},
+		Input: string(input),
+	}, protocol.PluginCallOptions{})
 	if err != nil || reply.Failure != nil {
 		t.Fatalf("installed schedules: %+v, %v", reply, err)
 	}

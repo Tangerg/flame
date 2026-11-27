@@ -100,7 +100,17 @@ func TestGitHubInstalledSecretLifecycleAndModelWritesShareThePublishedOwner(t *t
 		}
 		script.arguments.Store(input.String())
 		script.refusalText.Store("")
-		request := protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "github-operations", Contract: contracts.Identity().String(), Method: test.method, Input: input.String(), Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: installed.ID}}
+		request := protocol.CallPluginRequest{
+			Route: protocol.PluginCallRoute{
+				InstallationID: installed.ID,
+				Digest:         installed.Selected.Digest,
+				Contribution:   "github-operations",
+				Contract:       contracts.Identity().String(),
+				Method:         test.method,
+				Target:         framecall.Target{Scope: extension.ScopeInstallation, Reference: installed.ID},
+			},
+			Input: input.String(),
+		}
 		typed := r.must(delivery.PluginsCall, request, test.key).(*protocol.CallPluginResponse)
 		if typed.Failure == nil || typed.Failure.Code != test.code {
 			t.Fatalf("typed %s bypassed admission: %+v", test.name, typed)

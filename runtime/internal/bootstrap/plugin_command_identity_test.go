@@ -24,15 +24,20 @@ func TestReviewExecutableCLIIdentityConflictPreservesOriginalReceipt(t *testing.
 	runtime.poMCPTools(&server, func(tools []protocol.MCPTool) bool { return len(tools) == 3 })
 	contribution := installed.Selected.Contributions[0]
 	request := protocol.CallPluginRequest{
-		InstallationID: installed.ID, Digest: installed.Selected.Digest,
-		Contribution: contribution.ID, Contract: contribution.Contract,
-		Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: installed.ID},
-		Method: "io.github.tangerg.flame.examples/reviews.list", Input: `{}`,
+		Route: protocol.PluginCallRoute{
+			InstallationID: installed.ID,
+			Digest:         installed.Selected.Digest,
+			Contribution:   contribution.ID,
+			Contract:       contribution.Contract,
+			Target:         framecall.Target{Scope: extension.ScopeInstallation, Reference: installed.ID},
+			Method:         "io.github.tangerg.flame.examples/reviews.list",
+		},
+		Input: `{}`,
 	}
 	read := func() framevalue.JSON {
 		t.Helper()
 		query := request
-		query.Method, query.Input = "io.github.tangerg.flame.examples/reviews.list", `{}`
+		query.Route.Method, query.Input = "io.github.tangerg.flame.examples/reviews.list", `{}`
 		reply := runtime.must(delivery.PluginsCall, query, "").(*protocol.CallPluginResponse)
 		value, err := framevalue.ParseJSON([]byte(reply.Output))
 		if err != nil || reply.Failure != nil {
@@ -63,7 +68,7 @@ func TestReviewExecutableCLIIdentityConflictPreservesOriginalReceipt(t *testing.
 	advanced := encode(map[string]any{"type": "updated", "review": opened})
 	invoke, closeCLI := reviewCLIInvocation(t, runtime)
 	defer closeCLI()
-	request.Method = "io.github.tangerg.flame.examples/reviews.update"
+	request.Route.Method = "io.github.tangerg.flame.examples/reviews.update"
 	call := func(key, input string) ([]byte, []byte, error) {
 		t.Helper()
 		request.Input = input

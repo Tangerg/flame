@@ -48,7 +48,17 @@ func TestInstalledReviewsPointUsesCapturedCollaboratorsAndCurrentConsumerLifetim
 	consumer := activate(consumerSource, "consumer")
 	consumerServer := wait(consumer, "reviews")
 	contribution := consumer.Selected.Contributions[0]
-	request := protocol.CallPluginRequest{InstallationID: consumer.ID, Digest: consumer.Selected.Digest, Contribution: contribution.ID, Contract: contribution.Contract, Method: "io.github.tangerg.flame.examples/reviews.analyzers", Input: `{}`, Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: consumer.ID}}
+	request := protocol.CallPluginRequest{
+		Route: protocol.PluginCallRoute{
+			InstallationID: consumer.ID,
+			Digest:         consumer.Selected.Digest,
+			Contribution:   contribution.ID,
+			Contract:       contribution.Contract,
+			Method:         "io.github.tangerg.flame.examples/reviews.analyzers",
+			Target:         framecall.Target{Scope: extension.ScopeInstallation, Reference: consumer.ID},
+		},
+		Input: `{}`,
+	}
 	type analysis struct {
 		Review struct {
 			ID       string `json:"id"`
@@ -85,7 +95,7 @@ func TestInstalledReviewsPointUsesCapturedCollaboratorsAndCurrentConsumerLifetim
 	}
 	read(1)
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: analyzer.ID}, "disable-analyzer")
-	withdrawnPoint := protocol.ResolvePluginPointRequest{Contract: consumer.Selected.Points[0].Contract, Target: request.Target, Attributes: `{"reviewStatus":"open"}`, Order: []protocol.PluginPointReference{}}
+	withdrawnPoint := protocol.ResolvePluginPointRequest{Contract: consumer.Selected.Points[0].Contract, Target: request.Route.Target, Attributes: `{"reviewStatus":"open"}`, Order: []protocol.PluginPointReference{}}
 	withdrawn := r.must(delivery.PluginsResolvePoint, withdrawnPoint, "").(*protocol.Page[protocol.PluginPointBinding])
 	if len(withdrawn.Data) != 0 {
 		t.Fatalf("disabled analyzer remains publicly selectable: %+v", withdrawn.Data)
@@ -95,7 +105,7 @@ func TestInstalledReviewsPointUsesCapturedCollaboratorsAndCurrentConsumerLifetim
 		t.Fatalf("new query ignored its unavailable captured collaborator: %v", query.Failure)
 	}
 	mutation := request
-	mutation.Method = "io.github.tangerg.flame.examples/reviews.update"
+	mutation.Route.Method = "io.github.tangerg.flame.examples/reviews.update"
 	mutation.Input = `{"id":"example-review","expectedRevision":1,"status":"resolved"}`
 	calling := operation.Start(t.Context(), extension.Human, "point-lifecycle", "withdrawn-provider-update")
 	_, invoke, err := r.api.PreparePluginCall(calling, mutation)
@@ -133,7 +143,7 @@ func TestInstalledReviewsPointUsesCapturedCollaboratorsAndCurrentConsumerLifetim
 	other := activate(consumerSource, "other-consumer")
 	wait(other, "reviews")
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: consumer.ID}, "disable-consumer")
-	point := protocol.ResolvePluginPointRequest{Contract: consumer.Selected.Points[0].Contract, Target: request.Target, Attributes: `{"reviewStatus":"open"}`, Order: []protocol.PluginPointReference{}}
+	point := protocol.ResolvePluginPointRequest{Contract: consumer.Selected.Points[0].Contract, Target: request.Route.Target, Attributes: `{"reviewStatus":"open"}`, Order: []protocol.PluginPointReference{}}
 	result = r.endpoint.Invoke(t.Context(), delivery.PluginsResolvePoint, point, protocol.CallMetadata{RequestMeta: protocol.RequestMeta{ProtocolVersion: new(protocol.Version)}})
 	if result.Failure == nil || !errors.Is(result.Failure, protocol.ErrPluginUnavailable) {
 		t.Fatalf("disabled consumer borrowed another installation's declaration: %v", result.Failure)

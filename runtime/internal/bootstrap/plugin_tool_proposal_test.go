@@ -229,7 +229,17 @@ func TestInstalledToolProposalIsApprovedExecutedAndRetainedWithoutTransformRepla
 			if !found || source.transformations.Load() != 1 {
 				t.Fatalf("proposal missing or replayed across approval/restart: found=%v transformations=%d", found, source.transformations.Load())
 			}
-			read := r.must(delivery.PluginsCall, protocol.CallPluginRequest{InstallationID: reviews.ID, Digest: reviews.Selected.Digest, Contribution: "review-operations", Contract: reviews.Selected.Contributions[0].Contract, Method: "io.github.tangerg.flame.examples/reviews.list", Input: `{}`, Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: reviews.ID}}, "").(*protocol.CallPluginResponse)
+			read := r.must(delivery.PluginsCall, protocol.CallPluginRequest{
+				Route: protocol.PluginCallRoute{
+					InstallationID: reviews.ID,
+					Digest:         reviews.Selected.Digest,
+					Contribution:   "review-operations",
+					Contract:       reviews.Selected.Contributions[0].Contract,
+					Method:         "io.github.tangerg.flame.examples/reviews.list",
+					Target:         framecall.Target{Scope: extension.ScopeInstallation, Reference: reviews.ID},
+				},
+				Input: `{}`,
+			}, "").(*protocol.CallPluginResponse)
 			var current struct {
 				Reviews []struct {
 					Revision int64  `json:"revision"`

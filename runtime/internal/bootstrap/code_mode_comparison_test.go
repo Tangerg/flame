@@ -79,7 +79,14 @@ func TestCodeModeMatchesDirectReadsAcrossWorkspaceAndKnowledgeBase(t *testing.T)
 	if err != nil {
 		t.Fatal(err)
 	}
-	imported := r.must(delivery.PluginsCall, protocol.CallPluginRequest{InstallationID: kb.ID, Digest: kb.Selected.Digest, Contribution: "knowledgebase-operations", Contract: contract.Identity().String(), Method: testsupport.KnowledgebaseImportV1Method, Input: source.String(), Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: kb.ID}}, "comparison-source").(*protocol.CallPluginResponse)
+	imported := r.must(delivery.PluginsCall, protocol.CallPluginRequest{
+		Route: protocol.PluginCallRoute{
+			InstallationID: kb.ID, Digest: kb.Selected.Digest, Contribution: "knowledgebase-operations",
+			Contract: contract.Identity().String(), Method: testsupport.KnowledgebaseImportV1Method,
+			Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: kb.ID},
+		},
+		Input: source.String(),
+	}, "comparison-source").(*protocol.CallPluginResponse)
 	if imported.Failure != nil {
 		t.Fatal(imported.Failure)
 	}
@@ -95,7 +102,7 @@ func TestCodeModeMatchesDirectReadsAcrossWorkspaceAndKnowledgeBase(t *testing.T)
 		result := r.endpoint.Invoke(t.Context(), delivery.RunsStart, protocol.StartRunRequest{
 			SessionID: session.ID,
 			Input:     []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "Read records.csv and page 1 of the archived events. Count unique P1 IDs and return coverage and the greatest exact ID."}},
-		}, protocol.CallMetadata{IdempotencyKey: "compare-run-" + key, RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
+		}, protocol.CallMetadata{IdempotencyKey: "compare-run-" + key, RequestMeta: protocol.RequestMeta{ProtocolVersion: new(protocol.Version)}})
 		if result.Failure != nil {
 			t.Fatal(result.Failure)
 		}

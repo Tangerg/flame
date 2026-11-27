@@ -10712,7 +10712,7 @@
         {
           "name": "Version",
           "type": "untyped string",
-          "value": "\"2026-11-27.5\""
+          "value": "\"2026-11-27.6\""
         },
         {
           "name": "WorkspaceAvailable",
@@ -11697,39 +11697,14 @@
           "kind": "struct",
           "fields": [
             {
-              "name": "InstallationID",
-              "type": "string",
-              "tag": "json:\"installationId\""
-            },
-            {
-              "name": "Digest",
-              "type": "string",
-              "tag": "json:\"digest\""
-            },
-            {
-              "name": "Contribution",
-              "type": "string",
-              "tag": "json:\"contribution\""
-            },
-            {
-              "name": "Contract",
-              "type": "string",
-              "tag": "json:\"contract\""
-            },
-            {
-              "name": "Method",
-              "type": "string",
-              "tag": "json:\"method\""
+              "name": "Route",
+              "type": "PluginCallRoute",
+              "tag": "json:\"route\""
             },
             {
               "name": "Input",
               "type": "string",
               "tag": "json:\"input\""
-            },
-            {
-              "name": "Target",
-              "type": "call.Target",
-              "tag": "json:\"target\""
             }
           ]
         },
@@ -15070,6 +15045,42 @@
             {
               "name": "Metadata",
               "signature": "func() CallMetadata"
+            }
+          ]
+        },
+        {
+          "name": "PluginCallRoute",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "InstallationID",
+              "type": "string",
+              "tag": "json:\"installationId\""
+            },
+            {
+              "name": "Digest",
+              "type": "string",
+              "tag": "json:\"digest\""
+            },
+            {
+              "name": "Contribution",
+              "type": "string",
+              "tag": "json:\"contribution\""
+            },
+            {
+              "name": "Contract",
+              "type": "string",
+              "tag": "json:\"contract\""
+            },
+            {
+              "name": "Method",
+              "type": "string",
+              "tag": "json:\"method\""
+            },
+            {
+              "name": "Target",
+              "type": "call.Target",
+              "tag": "json:\"target\""
             }
           ]
         },

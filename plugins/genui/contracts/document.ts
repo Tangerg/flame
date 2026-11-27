@@ -15,7 +15,7 @@ import {
   projectNumbers,
   type FrozenJSONValue,
 } from "@frame/sdk/json";
-import type { CallPluginRequest } from "@flame/runtime-client/wire";
+import type { PluginCallRoute } from "@flame/runtime-client/wire";
 import { z } from "zod/mini";
 import { CATALOG_ID, catalog, functions } from "./catalog";
 
@@ -136,7 +136,7 @@ const bindingKey = (
 function binding(
   request: OperationRequest,
   captured: CapturedContribution,
-): Omit<CallPluginRequest, "input"> {
+): PluginCallRoute {
   const method = pluginMethod({ ...captured, method: request.method });
   const target =
     method.target === INSTALLATION_SCOPE
