@@ -53,8 +53,8 @@ export class RpcTransportError extends Error {
   readonly status?: number;
   readonly requestId?: string;
 
-  constructor(message: string, status?: number, requestId?: string) {
-    super(message);
+  constructor(message: string, status?: number, requestId?: string, options?: ErrorOptions) {
+    super(message, options);
     this.name = "RpcTransportError";
     this.status = status;
     this.requestId = requestId;
@@ -62,9 +62,9 @@ export class RpcTransportError extends Error {
 }
 
 export class RpcCancellationError extends RpcTransportError {
-  constructor() {
-    super("aborted");
-    this.name = "RpcCancellationError";
+  constructor(reason: unknown) {
+    super("aborted", undefined, undefined, { cause: reason });
+    this.name = "AbortError";
   }
 }
 

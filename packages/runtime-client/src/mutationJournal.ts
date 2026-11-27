@@ -186,7 +186,7 @@ export class MutationJournal {
     signal?: AbortSignal,
   ): Promise<{ request: CallPluginRequest; reservation: MutationReservation }> {
     this.#assertCurrent();
-    if (signal?.aborted) throw new RpcCancellationError();
+    if (signal?.aborted) throw new RpcCancellationError(signal.reason);
     if (this.#preparing.has(intent))
       throw new MutationJournalOwnershipError("plugin command intent is already being prepared");
     this.#preparing.add(intent);
@@ -203,7 +203,7 @@ export class MutationJournal {
         const metadata = captureRequestMeta(requestMeta?.());
         const binding = await prepare();
         this.#assertCurrent();
-        if (signal?.aborted) throw new RpcCancellationError();
+        if (signal?.aborted) throw new RpcCancellationError(signal.reason);
         captured = this.#journal.stagePluginCommand(
           intent,
           {

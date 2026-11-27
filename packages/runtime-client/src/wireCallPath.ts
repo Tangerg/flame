@@ -216,7 +216,7 @@ export function createWireCallPath(client: RpcClient, options: WireCallPathOptio
     let preparedParams: WireParams<M>;
     let reservation: MutationReservation;
     try {
-      if (!original && signal?.aborted) throw new RpcCancellationError();
+      if (!original && signal?.aborted) throw new RpcCancellationError(signal.reason);
       preparedParams = checkRequest(method, cloneJSON(params));
       if (original) {
         reservation = original.reserve(preparedParams);

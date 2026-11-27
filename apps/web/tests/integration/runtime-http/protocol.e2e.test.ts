@@ -1,10 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
+import { isCancellationReason } from "dougong";
 import {
   createFlameClient,
   type FlameClient,
   JSONRPC_VERSION,
   MutationJournalCleanupError,
   MutationJournalOwnershipError,
+  RpcCancellationError,
   RpcError,
   RpcProtocolError,
   RpcTransportError,
@@ -923,6 +925,54 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: protocol delivery", () => {
     }
   }, 30_000);
 
+  it("keeps the cancellation cause and the original dispatched command", async () => {
+    const responded = Promise.withResolvers<void>();
+    const release = Promise.withResolvers<void>();
+    const controller = new AbortController();
+    const mutationStorage = new MemoryMutationStorage();
+    const title = "Session committed before its observer canceled";
+    let attempts = 0;
+    const client = createFlameClient(createHttpTransport({
+      baseUrl: fixture.baseUrl,
+      fetch: async (url, init) => {
+        const response = await fetch(url, init);
+        if (new Headers(init?.headers).get(HTTP_HEADERS.method) === "sessions.create" && ++attempts === 1) {
+          responded.resolve();
+          await release.promise;
+        }
+        return response;
+      },
+    }), { capabilities: () => fixture.negotiated, mutationStorage });
+    const command = client.sessions.create({ title }, controller.signal);
+    const outcome = command.catch((error: unknown) => error);
+    const createdSessions = async () =>
+      (await fixture.client.sessions.list().autoPagingToArray()).filter((session) => session.title === title);
+    try {
+      await within(responded.promise, "the committed Session creation response");
+      const reason = new Error("the Session creation observer closed");
+      controller.abort(reason);
+      await expect(command).rejects.toBeInstanceOf(RpcCancellationError);
+      const error = await outcome;
+      expect(error).toHaveProperty("cause", reason);
+      expect(isCancellationReason(controller.signal, error)).toBe(true);
+      expect(client.runtime.pendingCommands()).toContainEqual(expect.objectContaining({
+        method: "sessions.create", idempotencyKey: command.idempotencyKey,
+      }));
+
+      const [created] = await createdSessions();
+      expect(created).toBeDefined();
+      release.resolve();
+      await expect(command.retry({})).resolves.toEqual(created);
+      await expect(createdSessions()).resolves.toEqual([created]);
+      expect(mutationStorage.size).toBe(0);
+      expect(attempts).toBe(2);
+    } finally {
+      release.resolve();
+      await client.close();
+      for (const session of await createdSessions()) await fixture.client.sessions.delete(asSessionId(session.id));
+    }
+  }, 30_000);
+
   it("withdraws an unsent mutation and keeps its confirmed retry settled", async () => {
     const mutationStorage = new MemoryMutationStorage();
     let dispatched = 0;
@@ -947,8 +997,10 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: protocol delivery", () => {
         { title: "Confirmed before disconnect" },
         controller.signal,
       );
-      controller.abort();
-      await expect(command).rejects.toMatchObject({ name: "RpcCancellationError" });
+      const reason = new Error("the Session creation was canceled before dispatch");
+      controller.abort(reason);
+      await expect(command).rejects.toBeInstanceOf(RpcCancellationError);
+      await expect(command).rejects.toHaveProperty("cause", reason);
       expect(mutationStorage.size).toBe(0);
       expect(dispatched).toBe(0);
 

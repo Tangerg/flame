@@ -176,8 +176,9 @@ that transition immediately before opening transport; a failed write prevents
 sending. Cancellation removes a reservation only while it is known not to have
 been dispatched. Dispatched identities survive cancellation and process loss,
 including a canceled retry. Plugin preparation observes the same cancellation
-boundary before reserving an intent. `RpcCancellationError` identifies explicit
-cancellation without treating an arbitrary transport failure as proof of it.
+boundary before reserving an intent. `RpcCancellationError` represents explicit
+caller cancellation with the standard `AbortError` name and the original signal
+reason as its `cause`.
 A recovery handle can read an original receipt after another observer clears
 the pending record. Dispatch requires the original reservation. Only the
 handle that withdrew an unsent reservation can reopen it.

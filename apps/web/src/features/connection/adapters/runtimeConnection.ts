@@ -1,5 +1,6 @@
-import { RpcCancellationError, type RequestMeta } from "@flame/runtime-client";
+import { type RequestMeta } from "@flame/runtime-client";
 import { type ClientBootstrap, type ClientHost } from "@/platform/host";
+import { GenerationRetiredError } from "@/lib/asyncOwnership";
 import { tupleKey } from "@/lib/tupleKey";
 import {
   type FlameClient,
@@ -121,7 +122,8 @@ export function createRuntimeConnection(
       const owner = projection.start({
         async inspect(signal) {
           if (binding.usesHostCredential() && !(await readHost(signal))) {
-            throw new RpcCancellationError();
+            signal.throwIfAborted();
+            throw new GenerationRetiredError("host_bootstrap");
           }
           return inspector.inspect(signal);
         },
