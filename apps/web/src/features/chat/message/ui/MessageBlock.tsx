@@ -107,9 +107,8 @@ function DraftReplacementDialog({
   return (
     <ConfirmDialog
       open={visible && replacement.status === "confirming"}
-      onOpenChange={(open) => {
-        if (!open && replacement.status === "confirming")
-          onChange({ ...replacement, status: "dismissed" });
+      onDismiss={() => {
+        if (replacement.status === "confirming") onChange({ ...replacement, status: "dismissed" });
       }}
       onOpenChangeComplete={(open) => {
         if (open) return;

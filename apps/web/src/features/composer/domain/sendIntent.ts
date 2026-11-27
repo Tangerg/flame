@@ -1,13 +1,12 @@
-import { joinDraftParts } from "@/features/composer/domain/draft";
-interface SlashIntent {
-  cmd: string;
-  args: string;
-}
+import {
+  joinDraftParts,
+  parseComposerSlashCommand,
+  type ComposerSlashCommand,
+} from "@/features/composer/domain/draft";
 
 interface ComposerSendIntent {
-  text: string;
   body: string;
-  slash: SlashIntent | null;
+  slash: ComposerSlashCommand | null;
   shouldSend: boolean;
   historyText: string | null;
 }
@@ -28,17 +27,9 @@ export function createComposerSendIntent(draft: SendableDraft): ComposerSendInte
   const body = joinDraftParts([text, ...draft.pastes.map((paste) => paste.text)]);
   const shouldSend = hasSendableContent(draft);
   return {
-    text,
     body,
-    slash: text ? parseSlash(text) : null,
+    slash: parseComposerSlashCommand(draft.value),
     shouldSend,
     historyText: text || null,
   };
-}
-
-function parseSlash(text: string): SlashIntent | null {
-  if (!text.startsWith("/")) return null;
-  const space = text.search(/\s/);
-  if (space === -1) return { cmd: text, args: "" };
-  return { cmd: text.slice(0, space), args: text.slice(space + 1) };
 }

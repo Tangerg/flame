@@ -7,6 +7,7 @@ import {
   type ComposerImage,
   type ComposerReference,
   type ImageReadResult,
+  type LeadingSlashCommandEdit,
 } from "@/features/composer/domain/draft";
 import {
   type ComposerModelPreference,
@@ -39,6 +40,7 @@ interface ComposerActions {
   removeReference(id: string): void;
   startFileReference(): void;
   startSlashCommand(): void;
+  editLeadingSlashCommand(command: string, edit: LeadingSlashCommandEdit): boolean;
   setModel(preference: ComposerModelPreference): void;
   clear(): void;
   captureSubmission(): ComposerSubmission;
@@ -298,6 +300,13 @@ export function createComposerStore() {
         edit((draft) => draft.withContent(draft.content.startFileReference())),
       startSlashCommand: () =>
         edit((draft) => draft.withContent(draft.content.startSlashCommand())),
+      editLeadingSlashCommand: (command, action) => {
+        const previous = get().composer.draft.content;
+        const content = previous.editLeadingSlashCommand(command, action);
+        if (content === previous) return false;
+        edit((draft) => draft.withContent(content));
+        return true;
+      },
       setModel: (modelPreference) => publish({ modelPreference }, null),
       clear: () => {
         cancelReads(current, current.state.composer.activeSessionId);

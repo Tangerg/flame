@@ -10,8 +10,7 @@ import { contributeLayout } from "@/extensions/contributeHelpers";
 import { definePlugin } from "@/extensions/definePlugin";
 import { type NotificationFeed } from "@/features/notifications/public/notifications";
 import { resolveAgentRunStartOptions } from "@/features/agent/public/runOptions";
-import { type SlashCommandSpec } from "@/features/composer/public/types";
-import { COMPOSER_SUBMIT_MODE, SLASH_COMMAND } from "@/features/composer/public/extensionPoints";
+import { SLASH_COMMAND } from "@/features/composer/public/extensionPoints";
 import { TOOL_STANDING_SURFACE } from "@/features/chat/public/tools/types";
 import { t } from "@/lib/i18n/index";
 import { rpcErrorText } from "@/lib/rpcErrors";
@@ -24,7 +23,7 @@ import { focusComposer } from "@/features/composer/public/focus";
 import { runtimeCommandsAvailable } from "@/features/connection/public/serviceStatus";
 import { type Goals } from "@/features/goal/application/goals";
 import { GenerationRetiredError } from "@/lib/asyncOwnership";
-import { createGoalComposerSubmitMode } from "@/features/goal/application/goalComposerSubmitMode";
+import { createGoalComposerCommand } from "@/features/goal/application/goalComposerCommand";
 import {
   GOAL_MATERIAL,
   GOAL_SLASH_COMMAND,
@@ -32,10 +31,6 @@ import {
 } from "@/features/goal/application/goalReadModel";
 import { GOAL_COMMAND_GENERATION } from "@/features/goal/application/goalCommands";
 const GOAL_SURFACE = "composer.overlay.top:goal";
-
-const GOAL_SLASH_SPEC: SlashCommandSpec = {
-  description: "slash.goal",
-};
 
 export function createGoalPlugin(
   agentAccess: AgentAccess,
@@ -50,8 +45,8 @@ export function createGoalPlugin(
     name: "flame.builtin.goal",
     requires: { runtime: RUNTIME_STREAM },
     setup(ctx) {
-      const composerMode = goals.composerMode;
-      ctx.lifetime.defer(() => composerMode.reset());
+      const submissions = goals.submissions;
+      ctx.lifetime.defer(() => submissions.reset());
       const runtimeAdapter = createGoalRuntimeAdapter(
         agentAccess,
         runtimeAccess,
@@ -62,7 +57,6 @@ export function createGoalPlugin(
       ctx.lifetime.defer(() => runtimeAdapter.dispose());
       ctx.lifetime.defer(
         followRuntimeGeneration(ctx.dependencies.runtime, (next) => {
-          composerMode.reset();
           if (next === null) runtimeAdapter.retireRuntimeGeneration();
           else runtimeAdapter.replaceRuntimeGeneration();
         }),
@@ -80,64 +74,63 @@ export function createGoalPlugin(
       for (const key of toolFamilyNames("goals")) {
         ctx.contributions.add(TOOL_STANDING_SURFACE, GOAL_SURFACE, { key });
       }
-      // A withdrawn /goal draft must never be delivered as an ordinary chat message.
-      ctx.contributions.add(
-        COMPOSER_SUBMIT_MODE,
-        createGoalComposerSubmitMode(composerMode, {
-          getActiveSessionId: agentAccess.getActiveSessionId,
-          goalState: (sessionId) => {
-            const state = agentAccess.getAgentSessionSharedMaterial<GoalState>(
-              sessionId,
+      const run = createGoalComposerCommand(submissions, {
+        getActiveSessionId: agentAccess.getActiveSessionId,
+        goalState: (sessionId) => {
+          const state = agentAccess.getAgentSessionSharedMaterial<GoalState>(
+            sessionId,
+            GOAL_MATERIAL,
+          );
+          if (state?.goal && !providers.admits(GOAL_WORKFLOW, state.goal.author))
+            return { ...state, available: false };
+          return state;
+        },
+        runtimeAvailable: () =>
+          providers.selected(GOAL_WORKFLOW) !== undefined &&
+          runtimeCommandsAvailable(runtimeAccess),
+        runOptions: resolveAgentRunStartOptions,
+        captureStart: () => {
+          const source = providers.selected(GOAL_WORKFLOW);
+          const commands = goals.commands.capture();
+          return (input) => {
+            const original = agentAccess.getAgentSessionSharedMaterial<GoalState>(
+              input.sessionId,
               GOAL_MATERIAL,
-            );
-            if (state?.goal && !providers.admits(GOAL_WORKFLOW, state.goal.author))
-              return { ...state, available: false };
-            return state;
-          },
-          runtimeAvailable: () =>
-            providers.selected(GOAL_WORKFLOW) !== undefined &&
-            runtimeCommandsAvailable(runtimeAccess),
-          runOptions: resolveAgentRunStartOptions,
-          captureStart: () => {
-            const source = providers.selected(GOAL_WORKFLOW);
-            const commands = goals.commands.capture();
-            return (input) => {
-              const original = agentAccess.getAgentSessionSharedMaterial<GoalState>(
-                input.sessionId,
-                GOAL_MATERIAL,
-              )?.goal;
-              if (
-                !commands ||
-                source === undefined ||
-                providers.selected(GOAL_WORKFLOW) !== source ||
-                (original && !providers.admits(GOAL_WORKFLOW, original.author))
-              )
-                throw new GenerationRetiredError(GOAL_COMMAND_GENERATION);
-              return commands.start(input);
-            };
-          },
-          focusComposer: focusComposer.bind(null, composerAccess),
-          reportUnavailable: () => notifications.notify("error", t("goal.error.unavailable")),
-          reportUnsupportedAttachments: () =>
-            notifications.notify("error", t("goal.error.attachmentsUnsupported")),
-          reportStartError: (error) =>
-            notifications.notify("error", rpcErrorText(error) ?? t("goal.error.start")),
-          retired: wasGenerationRetired,
-        }),
-      );
-      let previous: string | undefined;
+            )?.goal;
+            if (
+              !commands ||
+              source === undefined ||
+              providers.selected(GOAL_WORKFLOW) !== source ||
+              (original && !providers.admits(GOAL_WORKFLOW, original.author))
+            )
+              throw new GenerationRetiredError(GOAL_COMMAND_GENERATION);
+            return commands.start(input);
+          };
+        },
+        prepareObjective: () => {
+          composerAccess.editLeadingSlashCommand(GOAL_SLASH_COMMAND, "prepareArguments");
+          focusComposer(composerAccess);
+        },
+        reportUnavailable: () => notifications.notify("error", t("goal.error.unavailable")),
+        reportUnsupportedAttachments: () =>
+          notifications.notify("error", t("goal.error.attachmentsUnsupported")),
+        reportStartError: (error) =>
+          notifications.notify("error", rpcErrorText(error) ?? t("goal.error.start")),
+        retired: wasGenerationRetired,
+      });
+      let previous: boolean | undefined;
       let unregister: (() => void) | undefined;
       const refresh = () => {
-        const source = providers.selected(GOAL_WORKFLOW);
-        if (source === previous) return;
-        previous = source;
+        const available = providers.selected(GOAL_WORKFLOW) !== undefined;
+        if (available === previous) return;
+        previous = available;
         unregister?.();
-        unregister = undefined;
-        composerMode.reset();
-        if (source === undefined) return;
-        const slash = ctx.contributions.add(SLASH_COMMAND, GOAL_SLASH_SPEC, {
-          key: GOAL_SLASH_COMMAND,
-        });
+        // Saved Goal drafts still resolve this command while its provider is unavailable.
+        const slash = ctx.contributions.add(
+          SLASH_COMMAND,
+          { description: available ? "slash.goal" : undefined, run },
+          { key: GOAL_SLASH_COMMAND },
+        );
         unregister = () => slash[disposeSymbol]();
       };
       ctx.lifetime.defer(providers.subscribe(refresh));

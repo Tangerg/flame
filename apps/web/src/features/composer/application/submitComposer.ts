@@ -1,7 +1,6 @@
 import { buildInput } from "@/features/composer/public/input";
 import { type ComposerSubmission } from "@/features/composer/application/state";
 import {
-  agentTextInput,
   type AgentInput,
   type AgentInputSettlement,
   type SubmitChatInput,
@@ -13,15 +12,10 @@ import { runtimeCommandsAvailable } from "@/features/connection/public/serviceSt
 import { useCallback } from "react";
 import { createComposerSendIntent } from "@/features/composer/domain/sendIntent";
 import {
-  COMPOSER_SUBMIT_MODE,
   lookupSlashCommandOwner,
   SLASH_COMMAND,
 } from "@/features/composer/public/extensionPoints";
-import {
-  lookupExtensionByKey,
-  lookupExtensionOwner,
-  lookupExtensionPoint,
-} from "@/extensions/selectors/extensions";
+import { lookupExtensionByKey } from "@/extensions/selectors/extensions";
 import { reportPluginError } from "@/extensions/errors";
 interface SubmitDeps {
   draft: ComposerSubmission;
@@ -52,23 +46,12 @@ function submitComposer({ draft, sendInput, canSend, restoreFocus }: SubmitDeps)
   const intent = createComposerSendIntent({ value, images, pastes, references });
   if (!intent.shouldSend) return;
 
-  const modeDraft = {
-    rawText: value,
-    text: intent.text,
-    body: intent.body,
-    slash: intent.slash ? { command: intent.slash.cmd, args: intent.slash.args } : null,
-    hasImages: images.length > 0,
-    hasPastes: pastes.length > 0,
-    hasReferences: references.length > 0,
-  };
   let settled = false;
-  const consume = (history: "record" | "skip") => {
+  const accept = () => {
     if (settled) return;
     settled = true;
-    if (draft.consume(history === "record" ? intent.historyText || undefined : undefined))
-      restoreFocus();
+    if (draft.consume(intent.historyText ?? undefined)) restoreFocus();
   };
-  const accept = () => consume("record");
   const dispatch = (input: AgentInput): boolean => {
     if (!canSend()) return false;
     const delivery = draft.claimInputDelivery();
@@ -86,43 +69,20 @@ function submitComposer({ draft, sendInput, canSend, restoreFocus }: SubmitDeps)
     }
   };
 
-  for (const mode of lookupExtensionPoint(COMPOSER_SUBMIT_MODE)) {
-    const owner = lookupExtensionOwner(COMPOSER_SUBMIT_MODE, mode.id) ?? "unknown";
-    let matches = false;
-    try {
-      matches = mode.matches(modeDraft);
-    } catch (error) {
-      reportPluginError(owner, "command", error, `composer.submitMode:${mode.id}`);
-      return;
-    }
-    if (!matches) continue;
-
-    const report = (error: unknown) =>
-      reportPluginError(owner, "command", error, `composer.submitMode:${mode.id}`);
-    try {
-      void Promise.resolve(
-        mode.submit({ ...modeDraft, accept, clear: () => consume("skip") }),
-      ).catch(report);
-    } catch (error) {
-      report(error);
-    }
-    return;
-  }
-
   const slash = intent.slash;
   if (slash) {
-    const spec = lookupExtensionByKey(SLASH_COMMAND, slash.cmd);
+    const spec = lookupExtensionByKey(SLASH_COMMAND, slash.command);
     if (spec?.run) {
-      const owner = lookupSlashCommandOwner(slash.cmd) ?? "unknown";
+      const owner = lookupSlashCommandOwner(slash.command) ?? "unknown";
       const report = (err: unknown) => {
-        reportPluginError(owner, "command", err, `command: ${slash.cmd}`);
+        reportPluginError(owner, "command", err, `command: ${slash.command}`);
       };
       try {
         void Promise.resolve(
           spec.run({
             args: slash.args,
+            hasAttachments: images.length > 0 || pastes.length > 0 || references.length > 0,
             accept,
-            send: (text) => dispatch(agentTextInput(text)),
           }),
         ).catch(report);
       } catch (error) {

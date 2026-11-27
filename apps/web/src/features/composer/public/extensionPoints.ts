@@ -1,6 +1,5 @@
 import {
   type ComposerKeyBindingSpec,
-  type ComposerSubmitModeSpec,
   type SlashCommandSpec,
 } from "@/features/composer/public/types";
 import { defineExtensionPoint } from "@/extensions/contracts";
@@ -20,15 +19,15 @@ export const COMPOSER_KEY_BINDING = defineExtensionPoint<ComposerKeyBindingSpec>
   normalizeKey: normalizeHotkey,
 });
 
-export const COMPOSER_SUBMIT_MODE = defineExtensionPoint<ComposerSubmitModeSpec>({
-  id: "flame.composer.submitMode",
-  keying: "single",
-  keyOf: (mode) => mode.id,
-});
-
-export function useSlashCommands(): Array<{ cmd: string; spec: SlashCommandSpec }> {
+export function useSlashCommandSuggestions() {
   const entries = useExtensionEntries(SLASH_COMMAND);
-  return useMemo(() => entries.map((entry) => ({ cmd: entry.key, spec: entry.item })), [entries]);
+  return useMemo(
+    () =>
+      entries.flatMap(({ key, item: { description } }) =>
+        description ? [{ command: key, description }] : [],
+      ),
+    [entries],
+  );
 }
 
 export function lookupSlashCommandOwner(cmd: string): string | undefined {

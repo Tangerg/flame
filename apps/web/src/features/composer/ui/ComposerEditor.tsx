@@ -43,7 +43,7 @@ import { FLOATING_PANEL } from "@flame/ui/floating-surface";
 import { useComposer } from "@/features/composer/public/composer";
 import { resolvedWorkspaceCwd, useActiveSessionWorkspace } from "@/features/agent/public/session";
 import { useWorkspaceListFiles } from "@/features/workspace/public/queries";
-import { useSlashCommands, COMPOSER_KEY_BINDING } from "@/features/composer/public/extensionPoints";
+import { useSlashCommandSuggestions, COMPOSER_KEY_BINDING } from "@/features/composer/public/extensionPoints";
 import { lookupExtensionByKey } from "@/extensions/selectors/extensions";
 import { useSubmitComposer } from "@/features/composer/application/submitComposer";
 import {
@@ -225,7 +225,7 @@ function Suggestions() {
     };
   }, []);
   const cwd = resolvedWorkspaceCwd(useActiveSessionWorkspace());
-  const commands = useSlashCommands();
+  const commands = useSlashCommandSuggestions();
   const listing = useWorkspaceListFiles(
     query !== null && kind === "file" && cwd !== undefined
       ? { cwd, recursive: true, nameQuery: query, limit: 8 }
@@ -238,8 +238,8 @@ function Suggestions() {
         : kind === "file"
           ? (listing.data?.data ?? []).map((entry) => new Candidate("file", entry.path))
           : commands
-              .filter(({ cmd }) => cmd.toLowerCase().startsWith("/" + query.toLowerCase()))
-              .map(({ cmd, spec }) => new Candidate("slash", cmd, spec.description)),
+              .filter(({ command }) => command.toLowerCase().startsWith("/" + query.toLowerCase()))
+              .map(({ command, description }) => new Candidate("slash", command, description)),
     [query, kind, listing.data, commands],
   );
   return (
