@@ -1280,6 +1280,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   }, ["complete", "coverage", "data"]),
   FileStatus: enumOf(["added", "modified", "deleted", "renamed", "untracked"]),
   ForgetApprovalRuleRequest: object({
+    expectedDecision: ref(() => CHECKS.ApprovalRuleDecision),
     id: allOf([text(), minLength(1)]),
   }, ["id"]),
   ForkSessionRequest: object({

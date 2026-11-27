@@ -257,7 +257,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: Plans and interrupts", () => {
     ]);
     const rememberedRule = rules.rules[0];
     if (!rememberedRule) throw new Error("approval decision was not remembered");
-    await fixture.client.approval.forgetRule(rememberedRule.id);
+    await fixture.client.approval.forgetRule({ id: rememberedRule.id });
     await expect(fixture.client.approval.listRules(asSessionId(session.id))).resolves.toEqual({
       rules: [],
     });
@@ -413,7 +413,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: Plans and interrupts", () => {
     });
 
     const rules = await fixture.client.approval.listRules(asSessionId(session.id));
-    await Promise.all(rules.rules.map((rule) => fixture.client.approval.forgetRule(rule.id)));
+    await Promise.all(rules.rules.map(({ id }) => fixture.client.approval.forgetRule({ id })));
   }, 30_000);
 
   it("round-trips the runtime approval mode without changing run policy", async () => {

@@ -124,6 +124,10 @@ fingerprint for ordinary command inputs, so credentials and other inputs stay
 with the caller. The stable-intent plugin API can recover the original command
 through its authored intent.
 
+`approval.forgetRule` accepts `{ id, expectedDecision }`. Supply the decision
+when withdrawing an observed approval or denial. Omit it when deliberately
+forgetting the rule at that identity regardless of its decision.
+
 `createMutationSettler().settle` accepts `onMutation(idempotencyKey)` to project
 the identity of the selected original mutation, including retained or shared
 recovery attempts. It grants no replacement command or independent retry owner;

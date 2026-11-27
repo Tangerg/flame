@@ -239,7 +239,7 @@ class RuntimeAgentGateway implements AgentRuntimeGateway {
   }
 
   async forgetApprovalRule(id: string) {
-    await this.runtimeClient().approval.forgetRule(id);
+    await this.runtimeClient().approval.forgetRule({ id });
   }
 
   replaceRuntimeGeneration(): void {

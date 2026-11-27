@@ -38,6 +38,7 @@ import type {
   MCPToolExposure,
   SetMCPToolExposureRequest,
   SetApprovalRuleRequest,
+  ForgetApprovalRuleRequest,
 } from "./generated/wire.generated";
 import type { RpcCallOptions } from "./client";
 import { type MutationPromise } from "./mutation";
@@ -424,7 +425,7 @@ export interface Methods {
     setMode: (mode: ApprovalMode) => MutationPromise<ApprovalModeResult>;
     listRules: (sessionId?: SessionId, signal?: AbortSignal) => Promise<ListApprovalRulesResult>;
     setRule: (params: SetApprovalRuleRequest) => MutationPromise<void>;
-    forgetRule: (id: string) => MutationPromise<void>;
+    forgetRule: (params: ForgetApprovalRuleRequest) => MutationPromise<void>;
   };
 }
 
@@ -661,7 +662,7 @@ export function createMethods(
       setMode: (mode) => call("approval.setMode", { mode }),
       listRules: (sessionId, signal) => call("approval.listRules", { sessionId }, { signal }),
       setRule: (params) => call("approval.setRule", params),
-      forgetRule: (id) => call("approval.forgetRule", { id }),
+      forgetRule: (params) => call("approval.forgetRule", params),
     },
   };
 }

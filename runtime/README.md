@@ -41,6 +41,10 @@ Core `2026-11-27.7` requires caller-chosen idempotency keys to contain 1–255
 visible ASCII characters without spaces. Dispatch and receipt lookup accept
 the same exact key. A present empty HTTP key or namespace is invalid. Omit
 both headers for commands that allow unkeyed dispatch.
+Core `2026-11-27.8` accepts `expectedDecision` on `approval.forgetRule`. Runtime
+checks the committed rule's decision in the same transaction that records the
+acknowledgement. The MCP auto-approval switch uses it to withdraw the allow
+decision it displayed.
 Protocol admission checks enum values throughout each request, including plugin
 server and skill configuration maps, before creating a command receipt. A caller
 can correct an invalid enum and retry with the original key.

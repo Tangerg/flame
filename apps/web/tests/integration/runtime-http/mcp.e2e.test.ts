@@ -449,4 +449,65 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: MCP", () => {
         if (id.name === first || id.name === second) await fixture.client.mcp.delete(id);
     }
   }, 30_000);
+
+  it("revokes auto-approval without deleting a newer denial", async () => {
+    const server = { origin: { type: "user" as const }, name: "http-e2e-mcp-rule" };
+    await fixture.client.mcp.create({
+      name: server.name,
+      connection: { type: "stdio", command: process.execPath, args: [fixture.mcpFixturePath] },
+      enabled: true,
+      handshakeTimeout: { type: "unbounded" },
+    });
+    await fixture.awaitMCPTools(server, (tools) => tools.some((tool) => tool.name === "ping"));
+    const rule = {
+      tool: { type: "mcp", server, name: "ping" },
+      scope: "global",
+      subject: { type: "all" },
+      decision: "allow",
+    } as const;
+    await fixture.client.approval.setRule(rule);
+    const requested = Promise.withResolvers<void>();
+    const dispatch = Promise.withResolvers<void>();
+    const client = fixture.createRuntimeClient(async (input, init) => {
+      if (new Headers(init?.headers).get(HTTP_HEADERS.method) === "approval.forgetRule") {
+        requested.resolve();
+        await dispatch.promise;
+      }
+      return fetch(input, init);
+    });
+    const lifetime = new AbortController();
+    const context = settingsContext(client, lifetime.signal);
+    const settings = new MCPSettings({ ...context, runtimeIdentity: client });
+    const readAllow = async () => {
+      settings.readRules(context);
+      await expect.poll(() => settings.getSnapshot().rules.phase).toBe("ready");
+      const observed = settings.autoApproveRule(server, "ping");
+      if (!observed) throw new Error("auto-approval rule was not visible");
+      return observed.id;
+    };
+    const readRule = async (id: string) =>
+      (await fixture.client.approval.listRules()).rules.find((rule) => rule.id === id);
+    let revoking: Promise<boolean> | undefined;
+    try {
+      const id = await readAllow();
+      revoking = settings.setAutoApprove(context, server, "ping", false);
+      await within(requested.promise, "auto-approval revocation request");
+      await fixture.client.approval.setRule({ ...rule, decision: "deny" });
+      await expect(readRule(id)).resolves.toMatchObject({ decision: "deny" });
+      dispatch.resolve();
+      await expect(revoking).resolves.toBe(true);
+      await expect(readRule(id)).resolves.toMatchObject({ decision: "deny" });
+
+      await fixture.client.approval.setRule(rule);
+      expect(await readAllow()).toBe(id);
+      await expect(settings.setAutoApprove(context, server, "ping", false)).resolves.toBe(true);
+      await expect(readRule(id)).resolves.toBeUndefined();
+    } finally {
+      dispatch.resolve();
+      await revoking;
+      lifetime.abort();
+      await client.close();
+      await fixture.client.mcp.delete(server);
+    }
+  }, 30_000);
 });

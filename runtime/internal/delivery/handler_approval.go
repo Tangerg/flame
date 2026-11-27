@@ -71,11 +71,23 @@ func (s *Handler) ListApprovalRules(ctx context.Context, in protocol.ListApprova
 }
 
 func (s *Handler) ForgetApprovalRule(ctx context.Context, in protocol.ForgetApprovalRuleRequest) error {
-	return s.approvals.ForgetRule(ctx, in.ID, operation.DirectReply(new(struct{})))
+	return s.forgetApprovalRule(ctx, in, operation.DirectReply(new(struct{})))
 }
 
 func (s *Handler) commitForgetApprovalRule(ctx context.Context, in protocol.ForgetApprovalRuleRequest, outcome atomicOutcome) error {
-	return outcome.settleRefusal(ctx, s.approvals.ForgetRule(ctx, in.ID, outcome.acknowledgement()))
+	return outcome.settleRefusal(ctx, s.forgetApprovalRule(ctx, in, outcome.acknowledgement()))
+}
+
+func (s *Handler) forgetApprovalRule(ctx context.Context, in protocol.ForgetApprovalRuleRequest, complete operation.Reply[struct{}]) error {
+	var expected *approval.Decision
+	if in.ExpectedDecision != nil {
+		decision, ok := approvalDecisions.domain(*in.ExpectedDecision)
+		if !ok {
+			return protocol.NewFailure(protocol.ErrInvalidParams, "invalid expected approval decision")
+		}
+		expected = &decision
+	}
+	return s.approvals.ForgetRule(ctx, in.ID, expected, complete)
 }
 
 func presentApprovalRule(r approvals.RuleView) (protocol.ApprovalRule, error) {

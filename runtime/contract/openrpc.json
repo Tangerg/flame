@@ -2,7 +2,7 @@
   "openrpc": "1.3.2",
   "info": {
     "title": "Flame Runtime Protocol",
-    "version": "2026-11-27.7",
+    "version": "2026-11-27.8",
     "description": "Generated from the Contract Registry. Shapes live in schema.json; this document is the method surface."
   },
   "methods": [
@@ -7385,6 +7385,12 @@
           }
         },
         {
+          "name": "expectedDecision",
+          "schema": {
+            "$ref": "schema.json#/$defs/ApprovalRuleDecision"
+          }
+        },
+        {
           "name": "_meta",
           "schema": {
             "$ref": "#/components/schemas/RequestMeta"
@@ -7407,6 +7413,7 @@
           "_meta": {
             "$ref": "#/components/schemas/RequestMeta"
           },
+          "expectedDecision": {},
           "id": {}
         },
         "unevaluatedProperties": false,

@@ -345,7 +345,10 @@ export class MCPSettings {
       : existing && {
           resource,
           execute: (context) =>
-            context.runtime.approval.forgetRule(existing.id),
+            context.runtime.approval.forgetRule({
+              id: existing.id,
+              expectedDecision: existing.decision,
+            }),
         };
     if (!step) return Promise.resolve(true);
     return this.#start(

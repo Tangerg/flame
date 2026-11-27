@@ -9,7 +9,7 @@
 // in the generated validator and in schema.json.
 
 // The wire version this runtime serves; a client states it in request metadata.
-export const PROTOCOL_VERSION = "2026-11-27.7";
+export const PROTOCOL_VERSION = "2026-11-27.8";
 
 // The only Session Artifact version this runtime imports or exports.
 export const SESSION_ARTIFACT_VERSION = 32;
@@ -639,6 +639,7 @@ export interface FileListPage {
 export type FileStatus = "added" | "modified" | "deleted" | "renamed" | "untracked";
 
 export interface ForgetApprovalRuleRequest {
+  expectedDecision?: ApprovalRuleDecision;
   id: string;
 }
 
