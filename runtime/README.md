@@ -53,6 +53,9 @@ incarnation do not make a command stale.
 Core `2026-11-27.11` lets `projects.list` read the entire catalog when
 `archived` is omitted. A supplied boolean selects that archive state, and a
 continuation cursor belongs to the selected filter.
+Core `2026-11-27.12` uses the connector's observed revision when editing or
+deleting a user MCP server. The connector commits against that same revision,
+so another edit or re-creation under the name cannot redirect the command.
 Protocol admission checks enum values throughout each request, including plugin
 server and skill configuration maps, before creating a command receipt. A caller
 can correct an invalid enum and retry with the original key.

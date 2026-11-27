@@ -9,7 +9,7 @@
 // in the generated validator and in schema.json.
 
 // The wire version this runtime serves; a client states it in request metadata.
-export const PROTOCOL_VERSION = "2026-11-27.11";
+export const PROTOCOL_VERSION = "2026-11-27.12";
 
 // The only Session Artifact version this runtime imports or exports.
 export const SESSION_ARTIFACT_VERSION = 32;
@@ -1009,6 +1009,11 @@ export type MCPConnectionInput =
   | { type: "streamableHttp"; authorization?: MCPAuthorizationChange; headers?: MCPHeadersChange; url: string }
   | { type: "stdio"; args?: string[]; command: string; dir?: string; env?: MCPEnvironmentChange };
 
+export interface MCPDirectoryTarget {
+  expectedRevision?: string;
+  server: MCPServerID;
+}
+
 export type MCPEnvironmentChange =
   | { type: "set"; value: Record<string, string> }
   | { type: "clear" };
@@ -1040,6 +1045,7 @@ export interface MCPServer {
   description?: string;
   handshakeTimeout: MCPHandshakeTimeout;
   id: MCPServerID;
+  revision?: string;
   status: MCPServerState;
 }
 
@@ -2479,6 +2485,7 @@ export interface UpdateMCPServerRequest {
   connection?: MCPConnectionInput;
   description?: string;
   enabled?: boolean;
+  expectedRevision?: string;
   handshakeTimeout?: MCPHandshakeTimeout;
   server: MCPServerID;
 }

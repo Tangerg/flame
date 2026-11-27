@@ -246,7 +246,7 @@ func ToolLabel(ref protocol.ToolRef) (string, error) {
 }
 
 type ServerUpdate struct {
-	Server           protocol.MCPServerID
+	protocol.MCPDirectoryTarget
 	Enabled          *bool
 	Description      *string
 	Connection       *ConnectionInput
@@ -254,7 +254,7 @@ type ServerUpdate struct {
 }
 
 func (s ServerUpdate) Validate() error {
-	if err := protocol.ValidateWireTree(s.Server); err != nil {
+	if err := protocol.ValidateWireTree(s.MCPDirectoryTarget); err != nil {
 		return fmt.Errorf("MCP update server: %w", err)
 	}
 	if !s.HasChanges() {

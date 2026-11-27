@@ -64,6 +64,7 @@ import type {
   ListSessionsRequest,
   MCPAuthorizationAttempt,
   MCPAuthorizationAttemptRef,
+  MCPDirectoryTarget,
   MCPListToolsRequest,
   MCPServerCandidate,
   MCPServerRequest,
@@ -1525,7 +1526,7 @@ export interface WireShapes {
   "mcp.servers.list": { params: Record<string, never>; result: PageOfMCPServer };
   "mcp.servers.create": { params: MCPServerCandidate };
   "mcp.servers.update": { params: UpdateMCPServerRequest };
-  "mcp.servers.delete": { params: MCPServerRequest };
+  "mcp.servers.delete": { params: MCPDirectoryTarget };
   "mcp.servers.test": { params: MCPServerCandidate; result: MCPTestResult };
   "mcp.tools.list": { params: MCPListToolsRequest; result: PageOfMCPTool };
   "mcp.servers.reconnect": { params: MCPServerRequest };

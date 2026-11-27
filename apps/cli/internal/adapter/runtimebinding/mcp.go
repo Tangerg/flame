@@ -16,7 +16,7 @@ type mcpBinding interface {
 	ListMCPServers(context.Context, protocol.CallOptions) (*protocol.Page[protocol.MCPServer], error)
 	CreateMCPServer(context.Context, protocol.MCPServerCandidate, protocol.CommandOptions) error
 	UpdateMCPServer(context.Context, protocol.UpdateMCPServerRequest, protocol.CommandOptions) error
-	DeleteMCPServer(context.Context, protocol.MCPServerRequest, protocol.CommandOptions) error
+	DeleteMCPServer(context.Context, protocol.MCPDirectoryTarget, protocol.CommandOptions) error
 	TestMCPServer(context.Context, protocol.MCPServerCandidate, protocol.CallOptions) (*protocol.MCPTestResult, error)
 	ListMCPTools(context.Context, protocol.MCPListToolsRequest, protocol.CallOptions) (*protocol.Page[protocol.MCPTool], error)
 	ReconnectMCPServer(context.Context, protocol.MCPServerRequest, protocol.CommandOptions) error
@@ -66,7 +66,7 @@ func (r *Connection) UpdateServer(ctx context.Context, commandID authoring.Comma
 		return err
 	}
 	request := protocol.UpdateMCPServerRequest{
-		Server: update.Server, Enabled: update.Enabled, Description: update.Description,
+		MCPDirectoryTarget: update.MCPDirectoryTarget, Enabled: update.Enabled, Description: update.Description,
 	}
 	if update.HandshakeTimeout != nil {
 		timeout := projectMCPHandshakeTimeout(*update.HandshakeTimeout)
@@ -82,26 +82,19 @@ func (r *Connection) UpdateServer(ctx context.Context, commandID authoring.Comma
 	return classifyError(r.mcp.UpdateMCPServer(ctx, request, options))
 }
 
-func (r *Connection) DeleteServer(ctx context.Context, server protocol.MCPServerID) error {
-	return r.mutateMCPServer(ctx, "delete MCP server", server, r.mcp.DeleteMCPServer)
+func (r *Connection) DeleteServer(ctx context.Context, target protocol.MCPDirectoryTarget) error {
+	if err := protocol.ValidateWireTree(target); err != nil {
+		return fmt.Errorf("delete MCP server: %w", err)
+	}
+	return classifyError(r.mcp.DeleteMCPServer(ctx, target, r.commandOptions()))
 }
 
 func (r *Connection) ReconnectServer(ctx context.Context, server protocol.MCPServerID) error {
-	return r.mutateMCPServer(ctx, "reconnect MCP server", server, r.mcp.ReconnectMCPServer)
-}
-
-func (r *Connection) mutateMCPServer(
-	ctx context.Context,
-	operation string,
-	server protocol.MCPServerID,
-	mutate func(context.Context, protocol.MCPServerRequest, protocol.CommandOptions) error,
-) error {
 	request := protocol.MCPServerRequest{Server: server}
 	if err := protocol.ValidateWireTree(request); err != nil {
-		return fmt.Errorf("%s: %w", operation, err)
+		return fmt.Errorf("reconnect MCP server: %w", err)
 	}
-	options := r.commandOptions()
-	return classifyError(mutate(ctx, request, options))
+	return classifyError(r.mcp.ReconnectMCPServer(ctx, request, r.commandOptions()))
 }
 
 func (r *Connection) TestServer(ctx context.Context, candidate mcp.Candidate) (protocol.MCPTestOutcome, error) {

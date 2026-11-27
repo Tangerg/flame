@@ -1,4 +1,5 @@
 import type {
+  MCPDirectoryTarget,
   MCPServer,
   MCPServerID,
   MCPStatusProblemType,
@@ -11,6 +12,7 @@ import type { MCPServerInput, MCPServerUpdateInput } from "./input";
 export type { MCPServerID, MCPTransport };
 export interface MCPServerSettings {
   id: MCPServerID;
+  revision?: string;
   status: MCPServer["status"]["type"];
   errorDetail?: MCPStatusProblemType;
   type: MCPTransport;
@@ -25,6 +27,13 @@ export interface MCPServerSettings {
   dir?: string;
   handshakeTimeout: MCPHandshakeTimeout;
   toolCount?: number;
+}
+export function directoryTarget(
+  server: MCPServerSettings,
+): MCPDirectoryTarget | undefined {
+  return server.revision === undefined
+    ? undefined
+    : { server: server.id, expectedRevision: server.revision };
 }
 export function serverKey(server: MCPServerID): string {
   return JSON.stringify(
@@ -43,6 +52,7 @@ export function serverSettings(server: MCPServer): MCPServerSettings {
   const { connection, status } = server;
   return {
     id: server.id,
+    revision: server.revision,
     status: status.type,
     errorDetail:
       status.type === "failed" || status.type === "needsAuth"
@@ -100,12 +110,12 @@ export function candidate(input: MCPServerInput): MCPServerCandidate {
   };
 }
 export function updateRequest(
-  server: MCPServerID,
+  target: MCPDirectoryTarget,
   input: MCPServerUpdateInput,
 ): UpdateMCPServerRequest {
   const connection = input.connection;
   return {
-    server,
+    ...target,
     description: input.description,
     handshakeTimeout: input.handshakeTimeout,
     connection:

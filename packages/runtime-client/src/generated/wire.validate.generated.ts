@@ -169,6 +169,7 @@ export type WireTypeName =
   | "MCPAuthorizationChange"
   | "MCPConnection"
   | "MCPConnectionInput"
+  | "MCPDirectoryTarget"
   | "MCPEnvironmentChange"
   | "MCPHandshakeTimeout"
   | "MCPHandshakeTimeoutType"
@@ -2138,6 +2139,34 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       }, ["command", "type"]),
     ]),
   ]),
+  MCPDirectoryTarget: allOf([
+    object({
+      expectedRevision: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+      server: ref(() => CHECKS.MCPServerID),
+    }, ["server"]),
+    ifThen(
+      fields({
+        server: fields({
+          origin: fields({
+            type: literal("user"),
+          }, ["type"]),
+        }, ["origin"]),
+      }, ["server"]),
+      fields({}, ["expectedRevision"]),
+    ),
+    ifThen(
+      fields({
+        server: fields({
+          origin: fields({
+            type: literal("installation"),
+          }, ["type"]),
+        }, ["origin"]),
+      }, ["server"]),
+      fields({
+        expectedRevision: absent(),
+      }, []),
+    ),
+  ]),
   MCPEnvironmentChange: allOf([
     object({
       type: ref(() => CHECKS.MCPSecretChangeType),
@@ -2204,13 +2233,38 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   ]),
   MCPOriginType: enumOf(["user", "installation"]),
   MCPSecretChangeType: enumOf(["set", "clear"]),
-  MCPServer: object({
-    connection: ref(() => CHECKS.MCPConnection),
-    description: text(),
-    handshakeTimeout: ref(() => CHECKS.MCPHandshakeTimeout),
-    id: ref(() => CHECKS.MCPServerID),
-    status: ref(() => CHECKS.MCPServerState),
-  }, ["connection", "handshakeTimeout", "id", "status"]),
+  MCPServer: allOf([
+    object({
+      connection: ref(() => CHECKS.MCPConnection),
+      description: text(),
+      handshakeTimeout: ref(() => CHECKS.MCPHandshakeTimeout),
+      id: ref(() => CHECKS.MCPServerID),
+      revision: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+      status: ref(() => CHECKS.MCPServerState),
+    }, ["connection", "handshakeTimeout", "id", "status"]),
+    ifThen(
+      fields({
+        id: fields({
+          origin: fields({
+            type: literal("user"),
+          }, ["type"]),
+        }, ["origin"]),
+      }, ["id"]),
+      fields({}, ["revision"]),
+    ),
+    ifThen(
+      fields({
+        id: fields({
+          origin: fields({
+            type: literal("installation"),
+          }, ["type"]),
+        }, ["origin"]),
+      }, ["id"]),
+      fields({
+        revision: absent(),
+      }, []),
+    ),
+  ]),
   MCPServerCandidate: object({
     connection: ref(() => CHECKS.MCPConnectionInput),
     description: text(),
@@ -4793,6 +4847,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     connection: ref(() => CHECKS.MCPConnectionInput),
     description: text(),
     enabled: flag(),
+    expectedRevision: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
     handshakeTimeout: ref(() => CHECKS.MCPHandshakeTimeout),
     server: ref(() => CHECKS.MCPServerID),
   }, ["server"]),
@@ -5016,7 +5071,7 @@ const METHOD_PARAMS: Record<WireMethodName, WireCheck> = {
   "mcp.servers.list": object({}, []),
   "mcp.servers.create": ref(() => CHECKS.MCPServerCandidate),
   "mcp.servers.update": ref(() => CHECKS.UpdateMCPServerRequest),
-  "mcp.servers.delete": ref(() => CHECKS.MCPServerRequest),
+  "mcp.servers.delete": ref(() => CHECKS.MCPDirectoryTarget),
   "mcp.servers.test": ref(() => CHECKS.MCPServerCandidate),
   "mcp.tools.list": ref(() => CHECKS.MCPListToolsRequest),
   "mcp.servers.reconnect": ref(() => CHECKS.MCPServerRequest),

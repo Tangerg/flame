@@ -100,7 +100,7 @@ func TestMCPDirectoryRecoversTheOriginalDirectoryReceiptAfterAbruptExit(t *testi
 			if scenario.key != "" {
 				replayCreate()
 			}
-			restored.must(delivery.MCPServersUpdate, protocol.UpdateMCPServerRequest{Server: id, Description: new(newerDescription)}, "update-after-recovery")
+			restored.must(delivery.MCPServersUpdate, protocol.UpdateMCPServerRequest{MCPDirectoryTarget: restored.userServerTarget(id), Description: new(newerDescription)}, "update-after-recovery")
 			if scenario.key != "" {
 				replayCreate()
 			}

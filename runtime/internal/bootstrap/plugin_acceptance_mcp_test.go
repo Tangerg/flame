@@ -116,6 +116,18 @@ func (r *poMCPRuntime) createUserServer(candidate protocol.MCPServerCandidate, k
 	return protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginUser}, Name: candidate.Name}
 }
 
+func (r *poMCPRuntime) userServerTarget(id protocol.MCPServerID) protocol.MCPDirectoryTarget {
+	r.t.Helper()
+	catalog := r.must(delivery.MCPServersList, struct{}{}, "").(*protocol.Page[protocol.MCPServer])
+	for _, server := range catalog.Data {
+		if server.ID == id && server.Revision != "" {
+			return protocol.MCPDirectoryTarget{Server: id, ExpectedRevision: server.Revision}
+		}
+	}
+	r.t.Fatalf("no directory revision for user server %v", id)
+	return protocol.MCPDirectoryTarget{}
+}
+
 func (r *poMCPRuntime) poMCPTools(server *protocol.MCPServerID, ready func([]protocol.MCPTool) bool) []protocol.MCPTool {
 	r.t.Helper()
 	deadline := time.Now().Add(10 * time.Second)
@@ -416,7 +428,7 @@ func TestMCPInstallationAndExternalServerWithdrawIndependently(t *testing.T) {
 	expectOwners(external)
 	current.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installation.ID, Enabled: true}, "enable-backend")
 	expectOwners(backend, external)
-	current.must(delivery.MCPServersDelete, protocol.MCPServerRequest{Server: external}, "remove-external")
+	current.must(delivery.MCPServersDelete, current.userServerTarget(external), "remove-external")
 	expectOwners(backend)
 	current = reopenPluginRuntime(t, current, &cfg)
 	expectOwners(backend)

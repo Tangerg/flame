@@ -167,7 +167,7 @@ func (*Runtime) CreateServer(context.Context, authoring.CommandID, mcp.Candidate
 	return
 }
 
-func (*Runtime) DeleteServer(context.Context, protocol.MCPServerID) (err error) {
+func (*Runtime) DeleteServer(context.Context, protocol.MCPDirectoryTarget) (err error) {
 	err = errUnsupported
 	return
 }

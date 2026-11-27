@@ -62,6 +62,7 @@ type Connection struct {
 }
 
 type Server struct {
+	Revision         string
 	ID               mcpserver.ID
 	Description      string
 	Connection       Connection
@@ -124,6 +125,7 @@ func maskedValues(values map[string]string) map[string]string {
 
 func serverView(server mcpserver.Server, status *mcpserver.ConnectionStatus) (Server, error) {
 	view := Server{
+		Revision:         server.DirectoryRevision,
 		ID:               server.ID(),
 		Description:      server.Description,
 		Connection:       connectionView(server),

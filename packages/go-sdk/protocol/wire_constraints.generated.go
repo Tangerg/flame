@@ -602,6 +602,34 @@ func (m MCPServerCandidate) validateWire(object wireObject) []FieldError {
 	return violations
 }
 
+func (u UpdateMCPServerRequest) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	if object.present("expectedRevision") {
+		violations.add(
+			nonEmptyText("expectedRevision", u.ExpectedRevision),
+			identity("expectedRevision", u.ExpectedRevision),
+			maxLength("expectedRevision", u.ExpectedRevision, 256),
+		)
+	}
+	return violations
+}
+
+func (m MCPDirectoryTarget) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	if object.present("expectedRevision") {
+		violations.add(
+			nonEmptyText("expectedRevision", m.ExpectedRevision),
+			identity("expectedRevision", m.ExpectedRevision),
+			maxLength("expectedRevision", m.ExpectedRevision, 256),
+		)
+	}
+	violations.add(
+		requiredWhen(object.equals("server.origin.type", "user"), "expectedRevision", object),
+		forbiddenWhen(object.equals("server.origin.type", "installation"), "expectedRevision", object),
+	)
+	return violations
+}
+
 func (m MCPAuthorizationAttemptRef) validateWire(object wireObject) []FieldError {
 	var violations wireViolations
 	violations.add(
@@ -3084,6 +3112,22 @@ func (g GoalReason) validateWire(object wireObject) []FieldError {
 		forbiddenWhen(object.equals("code", "awaitingInput"), "explanation", object),
 		forbiddenWhen(object.equals("code", "terminalOutcomeMissing"), "runOutcome", object),
 		forbiddenWhen(object.equals("code", "terminalOutcomeMissing"), "explanation", object),
+	)
+	return violations
+}
+
+func (m MCPServer) validateWire(object wireObject) []FieldError {
+	var violations wireViolations
+	if object.present("revision") {
+		violations.add(
+			nonEmptyText("revision", m.Revision),
+			identity("revision", m.Revision),
+			maxLength("revision", m.Revision, 256),
+		)
+	}
+	violations.add(
+		requiredWhen(object.equals("id.origin.type", "user"), "revision", object),
+		forbiddenWhen(object.equals("id.origin.type", "installation"), "revision", object),
 	)
 	return violations
 }

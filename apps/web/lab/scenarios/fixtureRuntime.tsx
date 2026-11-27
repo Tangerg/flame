@@ -262,6 +262,7 @@ function startFixture(messages: NotificationFeed, render: (node: ReactNode) => v
                     ? "workspace-permissions-toolserver"
                     : "workspace-tools",
                 },
+                revision: "visual-mcp-revision",
                 connection:
                   query.get("mcp-transport") === "streamableHttp"
                     ? {

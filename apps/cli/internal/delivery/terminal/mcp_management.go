@@ -256,6 +256,12 @@ func (m *mcpScreens) EditMCPServer(argument string) error {
 	if err != nil {
 		return err
 	}
+	return m.loadEditableMCPServer(id, func(server protocol.MCPServer) {
+		m.openMCPServerForm(mcpFormUpdate, server)
+	})
+}
+
+func (m *mcpScreens) loadEditableMCPServer(id protocol.MCPServerID, apply func(protocol.MCPServer)) error {
 	presentation := m.session.context
 	m.status.note("loading MCP server " + mcp.ServerLabel(id))
 	started := m.tasks.application(mcpOperation,
@@ -277,14 +283,14 @@ func (m *mcpScreens) EditMCPServer(argument string) error {
 				return
 			}
 			if !m.session.context.current(presentation) {
-				m.message("MCP server loaded after the active session changed; reopen the editor to continue")
+				m.message("MCP server loaded after the active session changed; repeat the command to continue")
 				return
 			}
 			if server.ID.Origin.Type == protocol.MCPOriginInstallation {
 				m.message("MCP connection configuration is owned by installation " + server.ID.Origin.InstallationID + "; use flame plugins configure")
 				return
 			}
-			m.openMCPServerForm(mcpFormUpdate, server)
+			apply(server)
 		},
 	)
 	if !started {
@@ -297,18 +303,19 @@ func (m *mcpScreens) PrepareDeleteMCPServer(argument string) error {
 	if strings.TrimSpace(argument) == "" {
 		return errors.New("usage: /mcp-delete <server>")
 	}
-	server, err := mcp.ParseServerReference(argument)
+	id, err := mcp.ParseServerReference(argument)
 	if err != nil {
 		return err
 	}
-	m.confirm("Delete MCP server", "Delete "+mcp.ServerLabel(server)+" and its live connection?", "Delete permanently", "", func() {
-		m.deleteMCPServer(server)
+	return m.loadEditableMCPServer(id, func(server protocol.MCPServer) {
+		target := protocol.MCPDirectoryTarget{Server: server.ID, ExpectedRevision: server.Revision}
+		label := mcp.ServerLabel(server.ID)
+		m.confirm("Delete MCP server", "Delete "+label+" and its live connection?", "Delete permanently", "", func() {
+			m.runMCPAck("deleting MCP server "+label, func(ctx context.Context) error {
+				return m.service.DeleteServer(ctx, target)
+			})
+		})
 	})
-	return nil
-}
-
-func (m *mcpScreens) deleteMCPServer(server protocol.MCPServerID) {
-	m.runMCPAck("deleting MCP server "+mcp.ServerLabel(server), func(ctx context.Context) error { return m.service.DeleteServer(ctx, server) })
 }
 
 func (m *mcpScreens) ReconnectMCPServer(argument string) error {

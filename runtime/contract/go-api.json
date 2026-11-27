@@ -772,7 +772,7 @@
             },
             {
               "name": "DeleteMCPServer",
-              "signature": "func(ctx context.Context, request protocol.MCPServerRequest, options protocol.CommandOptions) error"
+              "signature": "func(ctx context.Context, request protocol.MCPDirectoryTarget, options protocol.CommandOptions) error"
             },
             {
               "name": "DeleteSession",
@@ -10717,7 +10717,7 @@
         {
           "name": "Version",
           "type": "untyped string",
-          "value": "\"2026-11-27.11\""
+          "value": "\"2026-11-27.12\""
         },
         {
           "name": "WorkspaceAvailable",
@@ -13908,6 +13908,22 @@
           ]
         },
         {
+          "name": "MCPDirectoryTarget",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Server",
+              "type": "MCPServerID",
+              "tag": "json:\"server\""
+            },
+            {
+              "name": "ExpectedRevision",
+              "type": "string",
+              "tag": "json:\"expectedRevision,omitempty\""
+            }
+          ]
+        },
+        {
           "name": "MCPEnvironmentChange",
           "kind": "struct",
           "fields": [
@@ -14001,6 +14017,11 @@
           "name": "MCPServer",
           "kind": "struct",
           "fields": [
+            {
+              "name": "Revision",
+              "type": "string",
+              "tag": "json:\"revision,omitempty\""
+            },
             {
               "name": "ID",
               "type": "MCPServerID",
@@ -18701,9 +18722,8 @@
           "kind": "struct",
           "fields": [
             {
-              "name": "Server",
-              "type": "MCPServerID",
-              "tag": "json:\"server\""
+              "name": "MCPDirectoryTarget",
+              "type": "MCPDirectoryTarget"
             },
             {
               "name": "Enabled",
@@ -20352,7 +20372,7 @@
             },
             {
               "name": "DeleteMCPServer",
-              "signature": "func(ctx context.Context, request protocol.MCPServerRequest, options protocol.CommandOptions) error"
+              "signature": "func(ctx context.Context, request protocol.MCPDirectoryTarget, options protocol.CommandOptions) error"
             },
             {
               "name": "DeleteSession",

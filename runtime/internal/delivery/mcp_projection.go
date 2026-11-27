@@ -20,6 +20,7 @@ func presentMCPServer(server mcpapp.Server) (protocol.MCPServer, error) {
 	}
 	return protocol.MCPServer{
 		ID:               presentMCPServerID(server.ID),
+		Revision:         server.Revision,
 		Description:      server.Description,
 		Connection:       connection,
 		HandshakeTimeout: presentMCPHandshakeTimeout(server.HandshakeTimeout),

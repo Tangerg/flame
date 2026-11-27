@@ -36,6 +36,7 @@ import {
 import {
   collectRunEvents,
   defaultTestDeadlineMilliseconds,
+  deleteUserMCPServers,
   nextRuntimeEvent,
   originalOpeningEvents,
   waitForUserMCPConnection,
@@ -975,7 +976,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: restart and crash recovery", (
       gate.release.resolve();
       fixture.providerGate = undefined;
       if (serverCreated && fixture.client)
-        await fixture.client.mcp.delete(serverId).catch(() => undefined);
+        await deleteUserMCPServers(fixture.client, serverId.name);
     }
   }, 30_000);
 });

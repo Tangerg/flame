@@ -43,7 +43,7 @@ require (
 )
 
 require (
-	github.com/Tangerg/flame/packages/go-sdk v0.1.89-dev.20261127.t90293db6ad41
+	github.com/Tangerg/flame/packages/go-sdk v0.1.90-dev.20261127.tc92e3579cedf
 	github.com/Tangerg/flame/packages/local-runtime v0.1.14-dev.20261123.tca9fa5e1c260
 	github.com/Tangerg/frame v0.5.0
 	github.com/Tangerg/go-sdk v1.9.0-scope.1

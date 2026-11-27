@@ -21,7 +21,7 @@ import {
   type RequestMeta,
 } from "@flame/runtime-client/wire";
 import { CAPABILITY_JSON } from "../../../../../plugins/memory/package/io.github.tangerg.flame/contracts/methods.generated";
-import { nextRuntimeEvent, nextUserMCPChange } from "./observation";
+import { deleteUserMCPServers, nextRuntimeEvent, nextUserMCPChange, readMCPDirectoryTarget } from "./observation";
 import { managedSkillName, useRuntimeFixture } from "./fixture";
 import { MemoryMutationStorage } from "./mutationStorage";
 import { faultUnaryResponse } from "./transportFaults";
@@ -386,10 +386,11 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: configuration commits after lo
         (await fixture.client.mcp.list()).data.filter((entry) => entry.id.name === server),
       ).toHaveLength(1);
 
+      const updateTarget = await readMCPDirectoryTarget(fixture.client, server);
       await expect(
         callAfterCommitLoss("mcp.servers.update", (faultClient) =>
           faultClient.mcp.update({
-            server: serverId,
+            ...updateTarget,
             description: "MCP replay cutpoint updated",
           }),
         ),
@@ -405,8 +406,9 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: configuration commits after lo
         status: { type: "disabled" },
       });
 
+      const deleteTarget = await readMCPDirectoryTarget(fixture.client, server);
       await callAfterCommitLoss("mcp.servers.delete", (faultClient) =>
-        faultClient.mcp.delete(serverId),
+        faultClient.mcp.delete(deleteTarget),
       );
       await expect(nextUserMCPChange(events, server)).resolves.toMatchObject({
         servers: expect.arrayContaining([serverId]),
@@ -440,7 +442,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: configuration commits after lo
         data: [expect.objectContaining({ name: managedSkillName, lifecycle: "active" })],
       });
     } finally {
-      await fixture.client.mcp.delete(serverId).catch(() => undefined);
+      await deleteUserMCPServers(fixture.client, server);
       const managed = (await fixture.client.skills.listLibrary()).data.find(
         (skill) => skill.name === managedSkillName,
       );

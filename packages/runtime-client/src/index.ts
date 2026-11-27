@@ -89,6 +89,7 @@ export type {
   MCPToolExposure,
   SetMCPToolExposureRequest,
   MCPServer,
+  MCPDirectoryTarget,
   MCPServerID,
   MCPOrigin,
   MCPHandshakeTimeout,

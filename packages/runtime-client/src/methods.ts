@@ -34,6 +34,7 @@ import type {
   PluginReleaseRef,
   ConfigurePluginRequest,
   SetPluginEnablementRequest,
+  MCPDirectoryTarget,
   MCPServerID,
   MCPToolExposure,
   SetMCPToolExposureRequest,
@@ -298,7 +299,7 @@ export interface Methods {
     list: (signal?: AbortSignal) => Promise<Page<MCPServer>>;
     create: (params: MCPServerCandidate) => MutationPromise<void>;
     update: (params: UpdateMCPServerRequest) => MutationPromise<void>;
-    delete: (server: MCPServerID) => MutationPromise<void>;
+    delete: (target: MCPDirectoryTarget) => MutationPromise<void>;
     test: (params: MCPServerCandidate, signal?: AbortSignal) => Promise<MCPTestResult>;
     listTools: (server?: MCPServerID, signal?: AbortSignal) => Promise<Page<MCPTool>>;
     toolExposure: (server: MCPServerID, signal?: AbortSignal) => Promise<MCPToolExposure>;
@@ -581,7 +582,7 @@ export function createMethods(
       list: (signal) => call("mcp.servers.list", {}, { signal }),
       create: (params) => call("mcp.servers.create", params),
       update: (params) => call("mcp.servers.update", params),
-      delete: (server) => call("mcp.servers.delete", { server }),
+      delete: (target) => call("mcp.servers.delete", target),
       test: (params, signal) => call("mcp.servers.test", params, { signal }),
       listTools: (server, signal) => call("mcp.tools.list", server ? { server } : {}, { signal }),
       toolExposure: (server, signal) => call("mcp.tools.exposure", { server }, { signal }),

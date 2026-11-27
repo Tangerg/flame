@@ -41,6 +41,7 @@ type MCPListToolsRequest struct {
 }
 
 type MCPServer struct {
+	Revision         string              `json:"revision,omitempty"`
 	ID               MCPServerID         `json:"id"`
 	Description      string              `json:"description,omitempty"`
 	Connection       MCPConnection       `json:"connection"`
@@ -157,8 +158,13 @@ type MCPServerCandidate struct {
 	HandshakeTimeout MCPHandshakeTimeout `json:"handshakeTimeout"`
 }
 
+type MCPDirectoryTarget struct {
+	Server           MCPServerID `json:"server"`
+	ExpectedRevision string      `json:"expectedRevision,omitempty"`
+}
+
 type UpdateMCPServerRequest struct {
-	Server           MCPServerID          `json:"server"`
+	MCPDirectoryTarget
 	Enabled          *bool                `json:"enabled,omitzero"`
 	Description      *string              `json:"description,omitzero"`
 	Connection       *MCPConnectionInput  `json:"connection,omitzero"`

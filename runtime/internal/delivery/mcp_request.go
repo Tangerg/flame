@@ -70,6 +70,14 @@ func mcpServerIDFromWire(in protocol.MCPServerID) (mcpserver.ID, error) {
 	return id, nil
 }
 
+func mcpDirectoryTargetFromWire(in protocol.MCPDirectoryTarget) (mcpapp.DirectoryTarget, error) {
+	server, err := mcpServerIDFromWire(in.Server)
+	if err != nil {
+		return mcpapp.DirectoryTarget{}, err
+	}
+	return mcpapp.DirectoryTarget{Server: server, Revision: in.ExpectedRevision}, nil
+}
+
 func mcpServerPatchFromRequest(in protocol.UpdateMCPServerRequest) (mcpapp.ServerPatch, error) {
 	patch := mcpapp.ServerPatch{
 		Enabled:     in.Enabled,

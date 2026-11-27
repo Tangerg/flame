@@ -75,7 +75,7 @@ type MCPManagement interface {
 	Servers(context.Context) ([]protocol.MCPServer, error)
 	CreateServer(context.Context, authoring.CommandID, mcp.Candidate) error
 	UpdateServer(context.Context, authoring.CommandID, mcp.ServerUpdate) error
-	DeleteServer(context.Context, protocol.MCPServerID) error
+	DeleteServer(context.Context, protocol.MCPDirectoryTarget) error
 	TestServer(context.Context, mcp.Candidate) (protocol.MCPTestOutcome, error)
 	Tools(context.Context, *protocol.MCPServerID) ([]protocol.MCPTool, error)
 	ReconnectServer(context.Context, protocol.MCPServerID) error

@@ -14,7 +14,7 @@ func TestCommittedMCPWithdrawalDetachesToolsEvenIfLocalSettlementFails(t *testin
 		triggerName string
 		trigger     string
 		method      delivery.Name
-		request     func(protocol.MCPServerID) any
+		request     func(protocol.MCPDirectoryTarget) any
 		removed     bool
 	}{
 		{
@@ -23,8 +23,8 @@ func TestCommittedMCPWithdrawalDetachesToolsEvenIfLocalSettlementFails(t *testin
 				WHEN OLD.key = 'withdraw-server'
 				BEGIN SELECT RAISE(ABORT, 'withheld directory receipt'); END`,
 			method: delivery.MCPServersUpdate,
-			request: func(id protocol.MCPServerID) any {
-				return protocol.UpdateMCPServerRequest{Server: id, Enabled: new(false)}
+			request: func(target protocol.MCPDirectoryTarget) any {
+				return protocol.UpdateMCPServerRequest{MCPDirectoryTarget: target, Enabled: new(false)}
 			},
 		},
 		{
@@ -32,8 +32,8 @@ func TestCommittedMCPWithdrawalDetachesToolsEvenIfLocalSettlementFails(t *testin
 			trigger: `CREATE TRIGGER withhold_grant_removal BEFORE DELETE ON mcp_launch_grants
 				BEGIN SELECT RAISE(ABORT, 'withheld grant removal'); END`,
 			method: delivery.MCPServersDelete,
-			request: func(id protocol.MCPServerID) any {
-				return protocol.MCPServerRequest{Server: id}
+			request: func(target protocol.MCPDirectoryTarget) any {
+				return target
 			},
 			removed: true,
 		},
@@ -50,12 +50,13 @@ func TestCommittedMCPWithdrawalDetachesToolsEvenIfLocalSettlementFails(t *testin
 				HandshakeTimeout: protocol.MCPHandshakeTimeout{Type: protocol.MCPHandshakeUnbounded},
 			}, "create-before-withdrawal")
 			runtime.poMCPTools(&serverID, func(tools []protocol.MCPTool) bool { return len(tools) == 1 })
+			request := scenario.request(runtime.userServerTarget(serverID))
 			questionCrashDatabase(t, cfg.stores.DataDirectory, scenario.trigger)
 
 			options := protocol.CallMetadata{
 				IdempotencyKey: "withdraw-server", RequestMeta: protocol.RequestMeta{ProtocolVersion: new(protocol.Version)},
 			}
-			result := runtime.endpoint.Invoke(t.Context(), scenario.method, scenario.request(serverID), options)
+			result := runtime.endpoint.Invoke(t.Context(), scenario.method, request, options)
 			if !errors.Is(result.Failure, protocol.ErrIdempotencyInProgress) {
 				t.Fatalf("withdrawal hid the local storage failure: %+v", result)
 			}
@@ -78,7 +79,7 @@ func TestCommittedMCPWithdrawalDetachesToolsEvenIfLocalSettlementFails(t *testin
 			}
 
 			questionCrashDatabase(t, cfg.stores.DataDirectory, "DROP TRIGGER "+scenario.triggerName)
-			result = runtime.endpoint.Invoke(t.Context(), scenario.method, scenario.request(serverID), options)
+			result = runtime.endpoint.Invoke(t.Context(), scenario.method, request, options)
 			if result.Failure != nil || result.Value != (struct{}{}) {
 				t.Fatalf("original withdrawal after settlement resumed = %+v, %v", result.Value, result.Failure)
 			}
@@ -107,7 +108,7 @@ func TestMCPReplacementLaunchUsesTheConnectorReceipt(t *testing.T) {
 
 	allowReceipt := refuseCommandReceipt(t, cfg.stores.DataDirectory)
 	change := protocol.UpdateMCPServerRequest{
-		Server: id, Connection: &protocol.MCPConnectionInput{Type: protocol.MCPTransportStreamableHTTP, URL: replacement},
+		MCPDirectoryTarget: host.userServerTarget(id), Connection: &protocol.MCPConnectionInput{Type: protocol.MCPTransportStreamableHTTP, URL: replacement},
 	}
 	const key = "replace-original-transport"
 	result := host.endpoint.Invoke(t.Context(), delivery.MCPServersUpdate, change, protocol.CallMetadata{IdempotencyKey: key})

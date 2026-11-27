@@ -8,6 +8,7 @@ import type {
   ApprovalRule,
   MCPAuthorizationAttempt,
   MCPAuthorizationAttemptRef,
+  MCPDirectoryTarget,
   MCPServerID,
   MCPTool,
   MCPTestResult,
@@ -17,7 +18,6 @@ import {
   sameMCPServer,
   serverKey,
   serverSettings,
-  updateRequest,
   userMCPServer,
   type MCPServerSettings,
 } from "./model";
@@ -227,65 +227,85 @@ export class MCPSettings {
     this.#feedback(key);
     this.#publish();
   }
-  save(context: SettingsContext, draft: MCPServerEdit, server?: MCPServerID) {
+  discardDraft(context: SettingsContext, key: string) {
+    this.#assert(context);
+    this.#removeDraft(key);
+    this.#feedback(key);
+    this.#publish();
+  }
+  save(context: SettingsContext, draft: MCPServerEdit) {
     this.#assert(context);
     if (!draft.isValid) throw new Error("invalid MCP server draft");
-    const input = draft.toInput();
-    const update = server ? draft.toUpdate() : undefined;
-    if (server && !update) return Promise.resolve(true);
-    const key = editorKey(server);
-    const target = server ?? userMCPServer(input.name);
+    const key = editorKey(draft.original?.id);
+    const accept = () => {
+      if (this.#snapshot.drafts.get(key) === draft) this.#removeDraft(key);
+    };
+    if (draft.original) {
+      const request = draft.toUpdate();
+      if (!request) {
+        accept();
+        this.#publish();
+        return Promise.resolve(true);
+      }
+      return this.#start(
+        context,
+        key,
+        new CommandBatch([
+          {
+            resource: key,
+            execute: (context) => context.runtime.mcp.update(request),
+            accept,
+          },
+        ]),
+      );
+    }
+    const request = candidate(draft.toInput());
     return this.#start(
       context,
       key,
       new CommandBatch([
         {
-          resource: serverKey(target),
+          resource: serverKey(userMCPServer(request.name)),
+          execute: (context) => context.runtime.mcp.create(request),
+          accept,
+        },
+      ]),
+    );
+  }
+  #removeDraft(key: string) {
+    if (!this.#snapshot.drafts.has(key)) return;
+    const drafts = new Map(this.#snapshot.drafts);
+    drafts.delete(key);
+    this.#snapshot = { ...this.#snapshot, drafts };
+  }
+  remove(context: SettingsContext, target: MCPDirectoryTarget) {
+    const key = serverKey(target.server);
+    return this.#start(
+      context,
+      key,
+      new CommandBatch([
+        {
+          resource: key,
+          execute: (context) => context.runtime.mcp.delete(target),
+          accept: () => this.#removeDraft(key),
+        },
+      ]),
+    );
+  }
+  setEnabled(
+    context: SettingsContext,
+    target: MCPDirectoryTarget,
+    enabled: boolean,
+  ) {
+    const key = serverKey(target.server);
+    return this.#start(
+      context,
+      key,
+      new CommandBatch([
+        {
+          resource: key,
           execute: (context) =>
-            server
-              ? context.runtime.mcp.update(updateRequest(server, update!))
-              : context.runtime.mcp.create(candidate(input)),
-          accept: () => {
-            if (
-              !this.#snapshot.drafts.has(key) ||
-              this.#snapshot.drafts.get(key) === draft
-            ) {
-              const drafts = new Map(this.#snapshot.drafts);
-              drafts.delete(key);
-              this.#snapshot = { ...this.#snapshot, drafts };
-            }
-          },
-        },
-      ]),
-    );
-  }
-  remove(context: SettingsContext, server: MCPServerID) {
-    const key = serverKey(server);
-    return this.#start(
-      context,
-      key,
-      new CommandBatch([
-        {
-          resource: key,
-          execute: (context) => context.runtime.mcp.delete(server),
-          accept: () => {
-            const drafts = new Map(this.#snapshot.drafts);
-            drafts.delete(key);
-            this.#snapshot = { ...this.#snapshot, drafts };
-          },
-        },
-      ]),
-    );
-  }
-  setEnabled(context: SettingsContext, server: MCPServerID, enabled: boolean) {
-    const key = serverKey(server);
-    return this.#start(
-      context,
-      key,
-      new CommandBatch([
-        {
-          resource: key,
-          execute: (context) => context.runtime.mcp.update({ server, enabled }),
+            context.runtime.mcp.update({ ...target, enabled }),
         },
       ]),
     );
@@ -501,6 +521,8 @@ export class MCPSettings {
           if (!observationCanceled)
             this.#feedback(key, { kind: "error", error });
           this.#command(key);
+          if (isErrorType(error, "revision_conflict"))
+            this.readServers(context);
         }
         return false;
       }

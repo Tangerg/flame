@@ -98,7 +98,9 @@ func (m mcpFormDraft) update(original protocol.MCPServer) (mcp.ServerUpdate, boo
 	if err != nil {
 		return mcp.ServerUpdate{}, false, err
 	}
-	update := mcp.ServerUpdate{Server: original.ID}
+	update := mcp.ServerUpdate{
+		MCPDirectoryTarget: protocol.MCPDirectoryTarget{Server: original.ID, ExpectedRevision: original.Revision},
+	}
 	enabled := m.enabled
 	if enabled != (original.Status.Type != protocol.MCPServerDisabled) {
 		update.Enabled = &enabled

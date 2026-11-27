@@ -45,7 +45,7 @@ func (s *Handler) UpdateMCPServer(ctx context.Context, in protocol.UpdateMCPServ
 }
 
 func (s *Handler) updateMCPServer(ctx context.Context, in protocol.UpdateMCPServerRequest, receipt operation.ReplayClaim) error {
-	name, err := mcpServerIDFromWire(in.Server)
+	target, err := mcpDirectoryTargetFromWire(in.MCPDirectoryTarget)
 	if err != nil {
 		return err
 	}
@@ -53,19 +53,19 @@ func (s *Handler) updateMCPServer(ctx context.Context, in protocol.UpdateMCPServ
 	if err != nil {
 		return err
 	}
-	return s.mcp.UpdateServer(ctx, name, patch, receipt)
+	return s.mcp.UpdateServer(ctx, target, patch, receipt)
 }
 
-func (s *Handler) DeleteMCPServer(ctx context.Context, server protocol.MCPServerID) error {
-	return wireMCPError(s.deleteMCPServer(ctx, protocol.MCPServerRequest{Server: server}, operation.ReplayClaim{}))
+func (s *Handler) DeleteMCPServer(ctx context.Context, in protocol.MCPDirectoryTarget) error {
+	return wireMCPError(s.deleteMCPServer(ctx, in, operation.ReplayClaim{}))
 }
 
-func (s *Handler) deleteMCPServer(ctx context.Context, in protocol.MCPServerRequest, receipt operation.ReplayClaim) error {
-	name, err := mcpServerIDFromWire(in.Server)
+func (s *Handler) deleteMCPServer(ctx context.Context, in protocol.MCPDirectoryTarget, receipt operation.ReplayClaim) error {
+	target, err := mcpDirectoryTargetFromWire(in)
 	if err != nil {
 		return err
 	}
-	return s.mcp.DeleteServer(ctx, name, receipt)
+	return s.mcp.DeleteServer(ctx, target, receipt)
 }
 
 func (s *Handler) TestMCPServer(ctx context.Context, in protocol.MCPServerCandidate) (*protocol.MCPTestResult, error) {
@@ -163,6 +163,8 @@ func wireMCPError(err error) error {
 		return protocol.NewFailure(protocol.ErrPluginUnavailable, "select an enabled external MCP connector", err)
 	case errors.Is(err, mcpapp.ErrOwnedByInstallation):
 		return protocol.NewFailure(protocol.ErrMCPOwnedByInstallation, err.Error(), err)
+	case errors.Is(err, mcpapp.ErrDirectoryRevisionConflict):
+		return protocol.NewFailure(protocol.ErrRevisionConflict, err.Error(), err)
 	case errors.Is(err, mcpapp.ErrUnknownServer):
 		return protocol.NewFailure(protocol.ErrMCPServerNotFound, err.Error(), err)
 	case errors.Is(err, mcpapp.ErrServerAlreadyExists):

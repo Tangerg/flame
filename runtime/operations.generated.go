@@ -164,8 +164,8 @@ func (r *Runtime) CreateMCPServer(ctx context.Context, request protocol.MCPServe
 func (r *Runtime) UpdateMCPServer(ctx context.Context, request protocol.UpdateMCPServerRequest, options protocol.CommandOptions) error {
 	return r.invokeAck[protocol.UpdateMCPServerRequest](ctx, delivery.Name("mcp.servers.update"), request, options.Metadata())
 }
-func (r *Runtime) DeleteMCPServer(ctx context.Context, request protocol.MCPServerRequest, options protocol.CommandOptions) error {
-	return r.invokeAck[protocol.MCPServerRequest](ctx, delivery.Name("mcp.servers.delete"), request, options.Metadata())
+func (r *Runtime) DeleteMCPServer(ctx context.Context, request protocol.MCPDirectoryTarget, options protocol.CommandOptions) error {
+	return r.invokeAck[protocol.MCPDirectoryTarget](ctx, delivery.Name("mcp.servers.delete"), request, options.Metadata())
 }
 func (r *Runtime) TestMCPServer(ctx context.Context, request protocol.MCPServerCandidate, options protocol.CallOptions) (*protocol.MCPTestResult, error) {
 	return r.invoke[protocol.MCPServerCandidate, *protocol.MCPTestResult](ctx, delivery.Name("mcp.servers.test"), request, options.Metadata())

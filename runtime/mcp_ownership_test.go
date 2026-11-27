@@ -82,11 +82,12 @@ func TestRuntimeRestartPreservesMCPResourceChanges(t *testing.T) {
 	}
 	stored := servers.Data[0]
 	if stored.ID != id || stored.Status.Type != protocol.MCPServerDisabled ||
+		stored.Revision == "" || stored.Revision != created.Revision ||
 		stored.Description != created.Description || stored.Connection.URL != created.Connection.URL ||
 		stored.Connection.AuthorizationMasked != created.Connection.AuthorizationMasked {
 		t.Fatalf("restart changed resource configuration: got %+v, want %+v", stored, created)
 	}
-	if err := reopened.DeleteMCPServer(t.Context(), protocol.MCPServerRequest{Server: id}, protocol.CommandOptions{
+	if err := reopened.DeleteMCPServer(t.Context(), protocol.MCPDirectoryTarget{Server: id, ExpectedRevision: stored.Revision}, protocol.CommandOptions{
 		IdempotencyKey: "delete-managed-server",
 	}); err != nil {
 		t.Fatal(err)
