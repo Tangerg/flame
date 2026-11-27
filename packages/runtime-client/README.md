@@ -153,6 +153,9 @@ been dispatched. Dispatched identities survive cancellation and process loss,
 including a canceled retry. Plugin preparation observes the same cancellation
 boundary before reserving an intent. `RpcCancellationError` identifies explicit
 cancellation without treating an arbitrary transport failure as proof of it.
+A recovery handle can read an original receipt after another observer clears
+the pending record. Dispatch requires the original reservation. Only the
+handle that withdrew an unsent reservation can reopen it.
 That one captured metadata value belongs to every original dispatch and explicit
 retry, including stable-intent plugin commands. Replacing client defaults cannot
 change an unresolved command. A replay refusal at the HTTP boundary does not

@@ -102,7 +102,6 @@ export class MutationJournal {
             throw new MutationJournalOwnershipError(
               "plugin command is already owned by an active attempt",
             );
-          this.#journal.retain(identity);
           return this.#claim(identity);
         },
         validate: (request) => {
@@ -173,7 +172,6 @@ export class MutationJournal {
             throw new MutationJournalOwnershipError(
               "Runtime mutation identity is already owned by an active command",
             );
-          this.#journal.retain(identity);
           return this.#claim(identity);
         },
       };
@@ -242,14 +240,15 @@ export class MutationJournal {
     const idempotencyKey = identity.idempotencyKey;
     let activeAttempts = 0;
     let confirmed: MutationPromise<T> | undefined;
+    let reopen: (() => void) | undefined;
     const finish = (outcome: AttemptOutcome<T>) => {
       const observed = confirmed ?? (outcome.type === "confirmed" ? outcome.handle : undefined);
       activeAttempts -= 1;
       if (activeAttempts === 0) {
         try {
-          if (observed || (outcome.type === "canceled" && !this.#journal.wasDispatched(identity))) {
-            this.#journal.settle(identity);
-          }
+          if (observed) this.#journal.settle(identity);
+          else if (outcome.type === "canceled")
+            reopen = this.#journal.withdrawBeforeDispatch(identity);
         } finally {
           if (this.#claims.get(idempotencyKey) === identity) this.#claims.delete(idempotencyKey);
         }
@@ -293,7 +292,8 @@ export class MutationJournal {
               "Runtime mutation identity is already owned by another attempt",
             );
           if (!claimed) {
-            this.#journal.retain(identity);
+            reopen?.();
+            reopen = undefined;
             this.#claims.set(idempotencyKey, identity);
           }
           return observe(() => mutation.retry(options));

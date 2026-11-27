@@ -71,11 +71,10 @@ export interface DurableMutationJournal {
   ): DurableMutationIdentity;
   authorizeDispatch(identity: DurableMutationIdentity): string;
   markDispatched(identity: DurableMutationIdentity): DispatchPhase;
-  wasDispatched(identity: DurableMutationIdentity): boolean;
   lookupNamespace(identity: DurableMutationIdentity): string;
   steerItemId(identity: DurableMutationIdentity): string | null;
   bindSteerItem(identity: DurableMutationIdentity, userItemId: string): string;
-  retain(identity: DurableMutationIdentity): void;
+  withdrawBeforeDispatch(identity: DurableMutationIdentity): (() => void) | undefined;
   settle(identity: DurableMutationIdentity): void;
 }
 
@@ -365,9 +364,6 @@ export function openDurableMutationJournal(
       persistEntry({ ...entry, delivery: "dispatched" });
       return "initial";
     },
-    wasDispatched(identity) {
-      return readReservedEntry(identity)?.delivery === "dispatched";
-    },
     lookupNamespace(identity) {
       readReservedEntry(identity);
       return identity.namespace;
@@ -390,9 +386,16 @@ export function openDurableMutationJournal(
       if (persisted.steerItemId === null) persistEntry({ ...persisted, steerItemId: userItemId });
       return userItemId;
     },
-    retain(identity) {
-      if (readReservedEntry(identity)) return;
-      reserveEntry(identity);
+    withdrawBeforeDispatch(identity) {
+      const withdrawn = readReservedEntry(identity);
+      // A missing record cannot establish that the original command was unsent.
+      if (withdrawn?.delivery !== "reserved") return undefined;
+      removeEntry(withdrawn);
+      return () => {
+        if (readReservedEntry(identity)) return;
+        validateIdentity(identity, currentScope());
+        persistEntry(withdrawn);
+      };
     },
     settle(identity) {
       const persisted = readReservedEntry(identity);

@@ -560,7 +560,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: protocol delivery", () => {
     }
   }, 30_000);
 
-  it("keeps a confirmed mutation settled when its delivery path becomes unavailable", async () => {
+  it("withdraws an unsent mutation and keeps its confirmed retry settled", async () => {
     const mutationStorage = new MemoryMutationStorage();
     let dispatched = 0;
     let available = true;
@@ -579,8 +579,19 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK: protocol delivery", () => {
     );
     let sessionId: ReturnType<typeof asSessionId> | undefined;
     try {
-      const command = client.sessions.create({ title: "Confirmed before disconnect" });
-      const created = await command;
+      const controller = new AbortController();
+      const command = client.sessions.create(
+        { title: "Confirmed before disconnect" },
+        controller.signal,
+      );
+      controller.abort();
+      await expect(command).rejects.toMatchObject({ name: "RpcCancellationError" });
+      expect(mutationStorage.size).toBe(0);
+      expect(dispatched).toBe(0);
+
+      const resumed = command.retry({});
+      expect(resumed.idempotencyKey).toBe(command.idempotencyKey);
+      const created = await resumed;
       sessionId = asSessionId(created.id);
       expect(mutationStorage.size).toBe(0);
 
